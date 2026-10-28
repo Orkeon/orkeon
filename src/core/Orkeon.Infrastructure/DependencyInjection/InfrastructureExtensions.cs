@@ -795,6 +795,19 @@ public static class InfrastructureExtensions
         });
         services.TryAddSingleton<IGuardianPipeline>(sp => sp.GetRequiredService<GuardianPipeline>());
 
+        // The decision circuit: on when a decision model is registered and Orkeon:Decision:Enabled allows it.
+        services.AddOrkeonSettings<Orkeon.Infrastructure.LLMs.Decision.DecisionCircuitOptions>(Orkeon.Infrastructure.LLMs.Decision.DecisionCircuitOptions.SectionName);
+        services.TryAddSingleton<Orkeon.Application.Crew.Execution.DecisionCircuit>(sp =>
+        {
+            var enabled = sp.GetService<Orkeon.Application.Interfaces.Ports.IDecisionModel>() is not null
+                && (sp.GetRequiredService<IOptions<Orkeon.Infrastructure.LLMs.Decision.DecisionCircuitOptions>>().Value.Enabled);
+            return new Orkeon.Application.Crew.Execution.DecisionCircuit(enabled);
+        });
+        services.TryAddSingleton<Orkeon.Application.Crew.Execution.DecisionTaskRunner>(sp => new Orkeon.Application.Crew.Execution.DecisionTaskRunner(
+            sp.GetService<Orkeon.Application.Interfaces.Ports.IDecisionModel>(),
+            sp.GetRequiredService<Orkeon.Application.Crew.Execution.DecisionCircuit>(),
+            sp.GetRequiredService<ILogger<Orkeon.Application.Crew.Execution.DecisionTaskRunner>>()));
+
         return services;
     }
 }

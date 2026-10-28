@@ -1,5 +1,6 @@
 using Orkeon.Application.Decision.DTOs;
 using Orkeon.Application.Validation;
+using Orkeon.Constants.Llm;
 
 namespace Orkeon.Application.Decision;
 
@@ -10,12 +11,6 @@ namespace Orkeon.Application.Decision;
 /// </summary>
 public sealed class DecisionRequestValidator : ICommandValidator<DecisionRequest>
 {
-    /// <summary>The most options a choice question takes.</summary>
-    public const int MaxChoiceOptions = 255;
-
-    /// <summary>The most levels a score question takes.</summary>
-    public const int MaxScoreLevels = 10;
-
     /// <inheritdoc />
     public ValidationResult Validate(DecisionRequest command)
     {
@@ -32,11 +27,11 @@ public sealed class DecisionRequestValidator : ICommandValidator<DecisionRequest
 
             switch (question)
             {
-                case ChoiceQuestion choice when choice.Criteria.Count is 0 or > MaxChoiceOptions:
-                    errors.Add($"Choice question '{name}' needs 1 to {MaxChoiceOptions} options, not {choice.Criteria.Count}.");
+                case ChoiceQuestion choice when choice.Criteria.Count is 0 or > DecisionLimits.MaxChoiceOptions:
+                    errors.Add($"Choice question '{name}' needs 1 to {DecisionLimits.MaxChoiceOptions} options, not {choice.Criteria.Count}.");
                     break;
-                case ScoreQuestion score when score.Criteria.Count is 0 or > MaxScoreLevels:
-                    errors.Add($"Score question '{name}' needs 1 to {MaxScoreLevels} levels, not {score.Criteria.Count}.");
+                case ScoreQuestion score when score.Criteria.Count is 0 or > DecisionLimits.MaxScoreLevels:
+                    errors.Add($"Score question '{name}' needs 1 to {DecisionLimits.MaxScoreLevels} levels, not {score.Criteria.Count}.");
                     break;
                 case BoxQuestion when command.Assets is not { Count: > 0 }:
                     errors.Add($"Box question '{name}' needs an image among the request's assets.");

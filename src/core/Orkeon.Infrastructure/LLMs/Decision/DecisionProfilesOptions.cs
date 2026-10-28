@@ -13,6 +13,16 @@ public sealed class DecisionProfilesOptions
     public Dictionary<string, DecisionProfileOptions> Profiles { get; init; } = new(StringComparer.OrdinalIgnoreCase);
 }
 
+/// <summary>The <c>Orkeon:Decision:Enabled</c> switch of the decision circuit.</summary>
+public sealed class DecisionCircuitOptions
+{
+    /// <summary>The configuration section bound to these options.</summary>
+    public const string SectionName = "Orkeon:Decision";
+
+    /// <summary>Gets or sets a value indicating whether decision tasks ask the decision model.</summary>
+    public bool Enabled { get; set; } = true;
+}
+
 /// <summary>One decision profile: <c>Orkeon:Decision:Profiles:&lt;name&gt;</c>.</summary>
 public sealed class DecisionProfileOptions
 {

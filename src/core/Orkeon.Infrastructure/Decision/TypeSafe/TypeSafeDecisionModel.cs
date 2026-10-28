@@ -100,7 +100,8 @@ public sealed partial class TypeSafeDecisionModel : IDecisionModel
                 if (sent.LongContext)
                     message.Headers.Add(LongContextHeader, "true");
             },
-            cancellationToken).ConfigureAwait(false);
+            cancellationToken,
+            sent.LongContext).ConfigureAwait(false);
 
         var decision = Deserialize<DecisionResponse>(response, "systemone");
         Meter(decision);
@@ -119,7 +120,8 @@ public sealed partial class TypeSafeDecisionModel : IDecisionModel
         string path,
         string? body,
         Action<HttpRequestMessage>? decorate,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        bool longContext = false)
     {
         var key = ResolveApiKey();
         var uri = new Uri(_options.BaseUrl.AbsoluteUri.TrimEnd('/') + "/" + path);
@@ -161,7 +163,7 @@ public sealed partial class TypeSafeDecisionModel : IDecisionModel
             var text = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
             if (response.IsSuccessStatusCode)
                 return text;
-            throw Failure(response.StatusCode, text);
+            throw Failure(response.StatusCode, text, longContext);
         }
     }
 
@@ -192,12 +194,15 @@ public sealed partial class TypeSafeDecisionModel : IDecisionModel
             : key.Trim();
     }
 
-    private static DecisionModelException Failure(HttpStatusCode status, string body)
+    private static DecisionModelException Failure(HttpStatusCode status, string body, bool longContext)
     {
         var code = (int)status;
         var detail = Detail(body);
         var message = code switch
         {
+            400 when body.Contains("max_tokens_exceeded", StringComparison.Ordinal) => longContext
+                ? $"TypeSafe refused the request: the state is over the model's long context limit ({Orkeon.Constants.Llm.DecisionLimits.LongContextTokens} tokens)."
+                : $"TypeSafe refused the request: the state is over the model's context limit ({Orkeon.Constants.Llm.DecisionLimits.StandardContextTokens} tokens); set long context on the task to use {Orkeon.Constants.Llm.DecisionLimits.LongContextTokens}.",
             400 => $"TypeSafe refused the request (400): {detail}",
             401 => $"TypeSafe refused the API key (401): check {DecisionProviderDefaults.TypeSafeApiKeyVariable} or {TypeSafeOptions.SectionName}:ApiKey.",
             413 => "TypeSafe refused the request (413): the body is over 32 MiB.",

@@ -63,6 +63,11 @@ public sealed record CrewConfiguration
     /// wrote no block.
     /// </summary>
     public IReadOnlyList<Orkeon.Domain.FileSystem.MountReference>? Mounts { get; init; }
+
+    /// <summary>Lists what each task declares about decisions.</summary>
+    public IReadOnlyList<Orkeon.Domain.Task.ValueObjects.DecisionTaskDeclaration> DecisionDeclarations() =>
+        Tasks.Select(t => new Orkeon.Domain.Task.ValueObjects.DecisionTaskDeclaration(
+            t.Key ?? t.Description, t.Decision, t.Condition, t.AssignedAgentId is not null)).ToList();
 }
 
 /// <summary>Configuration for agent setup.</summary>
@@ -157,6 +162,12 @@ public sealed record TaskConfiguration
     /// tool-call semantics (agent emits <c>file_write</c> itself).
     /// </summary>
     public Orkeon.Domain.Task.ValueObjects.TaskDeliverable? Deliverable { get; init; }
+
+    /// <summary>Gets the decision this task makes instead of an agent, or null.</summary>
+    public Orkeon.Domain.Task.ValueObjects.TaskDecision? Decision { get; init; }
+
+    /// <summary>Gets the condition under which this task runs, or null.</summary>
+    public Orkeon.Domain.Task.ValueObjects.TaskCondition? Condition { get; init; }
 
     /// <summary>
     /// Gets the per-task LLM override (e.g. <c>response_format: json_object</c>). Resolved

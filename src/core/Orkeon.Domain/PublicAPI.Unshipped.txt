@@ -1442,3 +1442,164 @@ static Orkeon.Domain.Crew.ValueObjects.CrewBudget.Unset.get -> Orkeon.Domain.Cre
 static Orkeon.Domain.Crew.ValueObjects.CrewBudget.operator !=(Orkeon.Domain.Crew.ValueObjects.CrewBudget? left, Orkeon.Domain.Crew.ValueObjects.CrewBudget? right) -> bool
 static Orkeon.Domain.Crew.ValueObjects.CrewBudget.operator ==(Orkeon.Domain.Crew.ValueObjects.CrewBudget? left, Orkeon.Domain.Crew.ValueObjects.CrewBudget? right) -> bool
 Orkeon.Domain.Crew.CrewBuilder.Budget(Orkeon.Domain.Crew.ValueObjects.CrewBudget! budget) -> Orkeon.Domain.Crew.CrewBuilder!
+abstract Orkeon.Domain.Task.ValueObjects.DecisionQuestionSpec.<Clone>$() -> Orkeon.Domain.Task.ValueObjects.DecisionQuestionSpec!
+Orkeon.Domain.Configuration.CrewConfiguration.DecisionDeclarations() -> System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Task.ValueObjects.DecisionTaskDeclaration!>!
+Orkeon.Domain.Configuration.TaskConfiguration.Condition.get -> Orkeon.Domain.Task.ValueObjects.TaskCondition?
+Orkeon.Domain.Configuration.TaskConfiguration.Condition.init -> void
+Orkeon.Domain.Configuration.TaskConfiguration.Decision.get -> Orkeon.Domain.Task.ValueObjects.TaskDecision?
+Orkeon.Domain.Configuration.TaskConfiguration.Decision.init -> void
+Orkeon.Domain.Task.CrewTaskBase<TContext>.Condition.get -> Orkeon.Domain.Task.ValueObjects.TaskCondition?
+Orkeon.Domain.Task.CrewTaskBase<TContext>.Decision.get -> Orkeon.Domain.Task.ValueObjects.TaskDecision?
+Orkeon.Domain.Task.CrewTaskBase<TContext>.IsDecision.get -> bool
+Orkeon.Domain.Task.CrewTaskBuilder.When(Orkeon.Domain.Task.ValueObjects.TaskCondition! condition) -> Orkeon.Domain.Task.CrewTaskBuilder!
+Orkeon.Domain.Task.CrewTaskBuilder.WithDecision(Orkeon.Domain.Task.ValueObjects.TaskDecision! decision) -> Orkeon.Domain.Task.CrewTaskBuilder!
+Orkeon.Domain.Task.DecisionTaskRules
+Orkeon.Domain.Task.ValueObjects.ChoiceQuestionSpec
+Orkeon.Domain.Task.ValueObjects.ChoiceQuestionSpec.ChoiceQuestionSpec() -> void
+Orkeon.Domain.Task.ValueObjects.ChoiceQuestionSpec.Equals(Orkeon.Domain.Task.ValueObjects.ChoiceQuestionSpec? other) -> bool
+Orkeon.Domain.Task.ValueObjects.ChoiceQuestionSpec.Instructions.get -> string!
+Orkeon.Domain.Task.ValueObjects.ChoiceQuestionSpec.Instructions.init -> void
+Orkeon.Domain.Task.ValueObjects.ChoiceQuestionSpec.Options.get -> System.Collections.Generic.IReadOnlyDictionary<string!, string!>!
+Orkeon.Domain.Task.ValueObjects.ChoiceQuestionSpec.Options.init -> void
+Orkeon.Domain.Task.ValueObjects.ConditionClause
+Orkeon.Domain.Task.ValueObjects.ConditionClause.Comparison.get -> Orkeon.Domain.Task.ValueObjects.ConditionComparison
+Orkeon.Domain.Task.ValueObjects.ConditionClause.Option.get -> string?
+Orkeon.Domain.Task.ValueObjects.ConditionClause.Options.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Orkeon.Domain.Task.ValueObjects.ConditionClause.Question.get -> string!
+Orkeon.Domain.Task.ValueObjects.ConditionClause.Value.get -> double
+Orkeon.Domain.Task.ValueObjects.ConditionComparison
+Orkeon.Domain.Task.ValueObjects.ConditionComparison.Greater = 1 -> Orkeon.Domain.Task.ValueObjects.ConditionComparison
+Orkeon.Domain.Task.ValueObjects.ConditionComparison.GreaterOrEqual = 0 -> Orkeon.Domain.Task.ValueObjects.ConditionComparison
+Orkeon.Domain.Task.ValueObjects.ConditionComparison.Less = 3 -> Orkeon.Domain.Task.ValueObjects.ConditionComparison
+Orkeon.Domain.Task.ValueObjects.ConditionComparison.LessOrEqual = 2 -> Orkeon.Domain.Task.ValueObjects.ConditionComparison
+Orkeon.Domain.Task.ValueObjects.DecisionAnswerValue
+Orkeon.Domain.Task.ValueObjects.DecisionAnswerValue.<Clone>$() -> Orkeon.Domain.Task.ValueObjects.DecisionAnswerValue!
+Orkeon.Domain.Task.ValueObjects.DecisionAnswerValue.Chosen.get -> string?
+Orkeon.Domain.Task.ValueObjects.DecisionAnswerValue.Chosen.init -> void
+Orkeon.Domain.Task.ValueObjects.DecisionAnswerValue.Confidence.get -> double
+Orkeon.Domain.Task.ValueObjects.DecisionAnswerValue.Confidence.init -> void
+Orkeon.Domain.Task.ValueObjects.DecisionAnswerValue.DecisionAnswerValue() -> void
+Orkeon.Domain.Task.ValueObjects.DecisionAnswerValue.Equals(Orkeon.Domain.Task.ValueObjects.DecisionAnswerValue? other) -> bool
+Orkeon.Domain.Task.ValueObjects.DecisionAnswerValue.Probabilities.get -> System.Collections.Generic.IReadOnlyDictionary<string!, double>!
+Orkeon.Domain.Task.ValueObjects.DecisionAnswerValue.Probabilities.init -> void
+Orkeon.Domain.Task.ValueObjects.DecisionAnswerValue.Probability.get -> double?
+Orkeon.Domain.Task.ValueObjects.DecisionAnswerValue.Probability.init -> void
+Orkeon.Domain.Task.ValueObjects.DecisionAnswerValue.Score.get -> double?
+Orkeon.Domain.Task.ValueObjects.DecisionAnswerValue.Score.init -> void
+Orkeon.Domain.Task.ValueObjects.DecisionOutcome
+Orkeon.Domain.Task.ValueObjects.DecisionOutcome.<Clone>$() -> Orkeon.Domain.Task.ValueObjects.DecisionOutcome!
+Orkeon.Domain.Task.ValueObjects.DecisionOutcome.Answers.get -> System.Collections.Generic.IReadOnlyDictionary<string!, Orkeon.Domain.Task.ValueObjects.DecisionAnswerValue!>!
+Orkeon.Domain.Task.ValueObjects.DecisionOutcome.Answers.init -> void
+Orkeon.Domain.Task.ValueObjects.DecisionOutcome.DecisionOutcome() -> void
+Orkeon.Domain.Task.ValueObjects.DecisionOutcome.Equals(Orkeon.Domain.Task.ValueObjects.DecisionOutcome? other) -> bool
+Orkeon.Domain.Task.ValueObjects.DecisionOutcome.IsDefaulted.get -> bool
+Orkeon.Domain.Task.ValueObjects.DecisionOutcome.IsDefaulted.init -> void
+Orkeon.Domain.Task.ValueObjects.DecisionOutcome.ToCompactJson() -> string!
+Orkeon.Domain.Task.ValueObjects.DecisionQuestionSpec
+Orkeon.Domain.Task.ValueObjects.DecisionQuestionSpec.DecisionQuestionSpec() -> void
+Orkeon.Domain.Task.ValueObjects.DecisionQuestionSpec.DecisionQuestionSpec(Orkeon.Domain.Task.ValueObjects.DecisionQuestionSpec! original) -> void
+Orkeon.Domain.Task.ValueObjects.DecisionQuestionSpec.Name.get -> string!
+Orkeon.Domain.Task.ValueObjects.DecisionQuestionSpec.Name.init -> void
+Orkeon.Domain.Task.ValueObjects.DecisionTaskDeclaration
+Orkeon.Domain.Task.ValueObjects.DecisionTaskDeclaration.<Clone>$() -> Orkeon.Domain.Task.ValueObjects.DecisionTaskDeclaration!
+Orkeon.Domain.Task.ValueObjects.DecisionTaskDeclaration.Condition.get -> Orkeon.Domain.Task.ValueObjects.TaskCondition?
+Orkeon.Domain.Task.ValueObjects.DecisionTaskDeclaration.Condition.init -> void
+Orkeon.Domain.Task.ValueObjects.DecisionTaskDeclaration.Decision.get -> Orkeon.Domain.Task.ValueObjects.TaskDecision?
+Orkeon.Domain.Task.ValueObjects.DecisionTaskDeclaration.Decision.init -> void
+Orkeon.Domain.Task.ValueObjects.DecisionTaskDeclaration.DecisionTaskDeclaration(string! Name, Orkeon.Domain.Task.ValueObjects.TaskDecision? Decision, Orkeon.Domain.Task.ValueObjects.TaskCondition? Condition, bool HasAgent) -> void
+Orkeon.Domain.Task.ValueObjects.DecisionTaskDeclaration.Deconstruct(out string! Name, out Orkeon.Domain.Task.ValueObjects.TaskDecision? Decision, out Orkeon.Domain.Task.ValueObjects.TaskCondition? Condition, out bool HasAgent) -> void
+Orkeon.Domain.Task.ValueObjects.DecisionTaskDeclaration.Equals(Orkeon.Domain.Task.ValueObjects.DecisionTaskDeclaration? other) -> bool
+Orkeon.Domain.Task.ValueObjects.DecisionTaskDeclaration.HasAgent.get -> bool
+Orkeon.Domain.Task.ValueObjects.DecisionTaskDeclaration.HasAgent.init -> void
+Orkeon.Domain.Task.ValueObjects.DecisionTaskDeclaration.Name.get -> string!
+Orkeon.Domain.Task.ValueObjects.DecisionTaskDeclaration.Name.init -> void
+Orkeon.Domain.Task.ValueObjects.ScoreQuestionSpec
+Orkeon.Domain.Task.ValueObjects.ScoreQuestionSpec.Equals(Orkeon.Domain.Task.ValueObjects.ScoreQuestionSpec? other) -> bool
+Orkeon.Domain.Task.ValueObjects.ScoreQuestionSpec.Instructions.get -> string!
+Orkeon.Domain.Task.ValueObjects.ScoreQuestionSpec.Instructions.init -> void
+Orkeon.Domain.Task.ValueObjects.ScoreQuestionSpec.Levels.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Orkeon.Domain.Task.ValueObjects.ScoreQuestionSpec.Levels.init -> void
+Orkeon.Domain.Task.ValueObjects.ScoreQuestionSpec.ScoreQuestionSpec() -> void
+Orkeon.Domain.Task.ValueObjects.TaskCondition
+Orkeon.Domain.Task.ValueObjects.TaskCondition.Clauses.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Task.ValueObjects.ConditionClause!>!
+Orkeon.Domain.Task.ValueObjects.TaskCondition.DecisionTask.get -> string!
+Orkeon.Domain.Task.ValueObjects.TaskCondition.Holds(Orkeon.Domain.Task.ValueObjects.DecisionOutcome! outcome, Orkeon.Domain.Task.ValueObjects.TaskDecision! decision) -> bool
+Orkeon.Domain.Task.ValueObjects.TaskCondition.IsOtherwise.get -> bool
+Orkeon.Domain.Task.ValueObjects.TaskCondition.OtherwiseHolds(Orkeon.Domain.Task.ValueObjects.DecisionOutcome! outcome, Orkeon.Domain.Task.ValueObjects.TaskDecision! decision, System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Task.ValueObjects.TaskCondition!>! siblings) -> bool
+Orkeon.Domain.Task.ValueObjects.TaskDecision
+Orkeon.Domain.Task.ValueObjects.TaskDecision.ConfidenceFloor.get -> double
+Orkeon.Domain.Task.ValueObjects.TaskDecision.Fallback.get -> System.Collections.Generic.IReadOnlyDictionary<string!, string!>!
+Orkeon.Domain.Task.ValueObjects.TaskDecision.FallbackOutcome() -> Orkeon.Domain.Task.ValueObjects.DecisionOutcome!
+Orkeon.Domain.Task.ValueObjects.TaskDecision.HasExplicitFallback.get -> bool
+Orkeon.Domain.Task.ValueObjects.TaskDecision.LongContext.get -> bool
+Orkeon.Domain.Task.ValueObjects.TaskDecision.Questions.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Task.ValueObjects.DecisionQuestionSpec!>!
+Orkeon.Domain.Task.ValueObjects.TaskDecision.Question(string! name) -> Orkeon.Domain.Task.ValueObjects.DecisionQuestionSpec?
+Orkeon.Domain.Task.ValueObjects.TaskDecision.StateFrom.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Orkeon.Domain.Task.ValueObjects.YesNoQuestionSpec
+Orkeon.Domain.Task.ValueObjects.YesNoQuestionSpec.Equals(Orkeon.Domain.Task.ValueObjects.YesNoQuestionSpec? other) -> bool
+Orkeon.Domain.Task.ValueObjects.YesNoQuestionSpec.Statement.get -> string!
+Orkeon.Domain.Task.ValueObjects.YesNoQuestionSpec.Statement.init -> void
+Orkeon.Domain.Task.ValueObjects.YesNoQuestionSpec.YesNoQuestionSpec() -> void
+override Orkeon.Domain.Task.ValueObjects.ChoiceQuestionSpec.<Clone>$() -> Orkeon.Domain.Task.ValueObjects.ChoiceQuestionSpec!
+override Orkeon.Domain.Task.ValueObjects.ChoiceQuestionSpec.Equals(object? obj) -> bool
+override Orkeon.Domain.Task.ValueObjects.ChoiceQuestionSpec.GetHashCode() -> int
+override Orkeon.Domain.Task.ValueObjects.ChoiceQuestionSpec.ToString() -> string!
+override Orkeon.Domain.Task.ValueObjects.DecisionAnswerValue.Equals(object? obj) -> bool
+override Orkeon.Domain.Task.ValueObjects.DecisionAnswerValue.GetHashCode() -> int
+override Orkeon.Domain.Task.ValueObjects.DecisionAnswerValue.ToString() -> string!
+override Orkeon.Domain.Task.ValueObjects.DecisionOutcome.Equals(object? obj) -> bool
+override Orkeon.Domain.Task.ValueObjects.DecisionOutcome.GetHashCode() -> int
+override Orkeon.Domain.Task.ValueObjects.DecisionOutcome.ToString() -> string!
+override Orkeon.Domain.Task.ValueObjects.DecisionQuestionSpec.Equals(object? obj) -> bool
+override Orkeon.Domain.Task.ValueObjects.DecisionQuestionSpec.GetHashCode() -> int
+override Orkeon.Domain.Task.ValueObjects.DecisionQuestionSpec.ToString() -> string!
+override Orkeon.Domain.Task.ValueObjects.DecisionTaskDeclaration.Equals(object? obj) -> bool
+override Orkeon.Domain.Task.ValueObjects.DecisionTaskDeclaration.GetHashCode() -> int
+override Orkeon.Domain.Task.ValueObjects.DecisionTaskDeclaration.ToString() -> string!
+override Orkeon.Domain.Task.ValueObjects.ScoreQuestionSpec.<Clone>$() -> Orkeon.Domain.Task.ValueObjects.ScoreQuestionSpec!
+override Orkeon.Domain.Task.ValueObjects.ScoreQuestionSpec.Equals(object? obj) -> bool
+override Orkeon.Domain.Task.ValueObjects.ScoreQuestionSpec.GetHashCode() -> int
+override Orkeon.Domain.Task.ValueObjects.ScoreQuestionSpec.ToString() -> string!
+override Orkeon.Domain.Task.ValueObjects.YesNoQuestionSpec.<Clone>$() -> Orkeon.Domain.Task.ValueObjects.YesNoQuestionSpec!
+override Orkeon.Domain.Task.ValueObjects.YesNoQuestionSpec.Equals(object? obj) -> bool
+override Orkeon.Domain.Task.ValueObjects.YesNoQuestionSpec.GetHashCode() -> int
+override Orkeon.Domain.Task.ValueObjects.YesNoQuestionSpec.ToString() -> string!
+override sealed Orkeon.Domain.Task.ValueObjects.ChoiceQuestionSpec.Equals(Orkeon.Domain.Task.ValueObjects.DecisionQuestionSpec? other) -> bool
+override sealed Orkeon.Domain.Task.ValueObjects.ScoreQuestionSpec.Equals(Orkeon.Domain.Task.ValueObjects.DecisionQuestionSpec? other) -> bool
+override sealed Orkeon.Domain.Task.ValueObjects.YesNoQuestionSpec.Equals(Orkeon.Domain.Task.ValueObjects.DecisionQuestionSpec? other) -> bool
+static Orkeon.Domain.Task.DecisionTaskRules.CheckFallbacks(System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Task.ValueObjects.DecisionTaskDeclaration!>! tasks) -> System.Collections.Generic.IReadOnlyList<string!>!
+static Orkeon.Domain.Task.DecisionTaskRules.Check(Orkeon.Domain.SharedKernel.ValueObjects.ProcessType! process, System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Task.ValueObjects.DecisionTaskDeclaration!>! tasks) -> System.Collections.Generic.IReadOnlyList<string!>!
+static Orkeon.Domain.Task.ValueObjects.ChoiceQuestionSpec.Create(string! name, string! instructions, System.Collections.Generic.IReadOnlyDictionary<string!, string!>! options) -> Orkeon.Domain.Task.ValueObjects.ChoiceQuestionSpec!
+static Orkeon.Domain.Task.ValueObjects.ChoiceQuestionSpec.operator ==(Orkeon.Domain.Task.ValueObjects.ChoiceQuestionSpec? left, Orkeon.Domain.Task.ValueObjects.ChoiceQuestionSpec? right) -> bool
+static Orkeon.Domain.Task.ValueObjects.ChoiceQuestionSpec.operator !=(Orkeon.Domain.Task.ValueObjects.ChoiceQuestionSpec? left, Orkeon.Domain.Task.ValueObjects.ChoiceQuestionSpec? right) -> bool
+static Orkeon.Domain.Task.ValueObjects.ConditionClause.OneOf(Orkeon.Domain.Task.ValueObjects.TaskDecision! decision, string! question, System.Collections.Generic.IReadOnlyList<string!>! options) -> Orkeon.Domain.Task.ValueObjects.ConditionClause!
+static Orkeon.Domain.Task.ValueObjects.ConditionClause.Threshold(Orkeon.Domain.Task.ValueObjects.TaskDecision! decision, string! question, string? option, Orkeon.Domain.Task.ValueObjects.ConditionComparison comparison, double value) -> Orkeon.Domain.Task.ValueObjects.ConditionClause!
+static Orkeon.Domain.Task.ValueObjects.DecisionAnswerValue.operator ==(Orkeon.Domain.Task.ValueObjects.DecisionAnswerValue? left, Orkeon.Domain.Task.ValueObjects.DecisionAnswerValue? right) -> bool
+static Orkeon.Domain.Task.ValueObjects.DecisionAnswerValue.operator !=(Orkeon.Domain.Task.ValueObjects.DecisionAnswerValue? left, Orkeon.Domain.Task.ValueObjects.DecisionAnswerValue? right) -> bool
+static Orkeon.Domain.Task.ValueObjects.DecisionOutcome.Defaulted(System.Collections.Generic.IReadOnlyDictionary<string!, Orkeon.Domain.Task.ValueObjects.DecisionAnswerValue!>! answers) -> Orkeon.Domain.Task.ValueObjects.DecisionOutcome!
+static Orkeon.Domain.Task.ValueObjects.DecisionOutcome.operator ==(Orkeon.Domain.Task.ValueObjects.DecisionOutcome? left, Orkeon.Domain.Task.ValueObjects.DecisionOutcome? right) -> bool
+static Orkeon.Domain.Task.ValueObjects.DecisionOutcome.operator !=(Orkeon.Domain.Task.ValueObjects.DecisionOutcome? left, Orkeon.Domain.Task.ValueObjects.DecisionOutcome? right) -> bool
+static Orkeon.Domain.Task.ValueObjects.DecisionQuestionSpec.operator ==(Orkeon.Domain.Task.ValueObjects.DecisionQuestionSpec? left, Orkeon.Domain.Task.ValueObjects.DecisionQuestionSpec? right) -> bool
+static Orkeon.Domain.Task.ValueObjects.DecisionQuestionSpec.operator !=(Orkeon.Domain.Task.ValueObjects.DecisionQuestionSpec? left, Orkeon.Domain.Task.ValueObjects.DecisionQuestionSpec? right) -> bool
+static Orkeon.Domain.Task.ValueObjects.DecisionTaskDeclaration.operator ==(Orkeon.Domain.Task.ValueObjects.DecisionTaskDeclaration? left, Orkeon.Domain.Task.ValueObjects.DecisionTaskDeclaration? right) -> bool
+static Orkeon.Domain.Task.ValueObjects.DecisionTaskDeclaration.operator !=(Orkeon.Domain.Task.ValueObjects.DecisionTaskDeclaration? left, Orkeon.Domain.Task.ValueObjects.DecisionTaskDeclaration? right) -> bool
+static Orkeon.Domain.Task.ValueObjects.ScoreQuestionSpec.Create(string! name, string! instructions, System.Collections.Generic.IReadOnlyList<string!>! levels) -> Orkeon.Domain.Task.ValueObjects.ScoreQuestionSpec!
+static Orkeon.Domain.Task.ValueObjects.ScoreQuestionSpec.operator ==(Orkeon.Domain.Task.ValueObjects.ScoreQuestionSpec? left, Orkeon.Domain.Task.ValueObjects.ScoreQuestionSpec? right) -> bool
+static Orkeon.Domain.Task.ValueObjects.ScoreQuestionSpec.operator !=(Orkeon.Domain.Task.ValueObjects.ScoreQuestionSpec? left, Orkeon.Domain.Task.ValueObjects.ScoreQuestionSpec? right) -> bool
+static Orkeon.Domain.Task.ValueObjects.TaskCondition.Create(string! decisionTask, System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Task.ValueObjects.ConditionClause!>! clauses) -> Orkeon.Domain.Task.ValueObjects.TaskCondition!
+static Orkeon.Domain.Task.ValueObjects.TaskCondition.Otherwise(string! decisionTask) -> Orkeon.Domain.Task.ValueObjects.TaskCondition!
+static Orkeon.Domain.Task.ValueObjects.TaskDecision.Create(System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Task.ValueObjects.DecisionQuestionSpec!>! questions, double? confidenceFloor = null, System.Collections.Generic.IReadOnlyList<string!>? stateFrom = null, bool longContext = false, System.Collections.Generic.IReadOnlyDictionary<string!, string!>? fallback = null) -> Orkeon.Domain.Task.ValueObjects.TaskDecision!
+static Orkeon.Domain.Task.ValueObjects.YesNoQuestionSpec.Create(string! name, string! statement) -> Orkeon.Domain.Task.ValueObjects.YesNoQuestionSpec!
+static Orkeon.Domain.Task.ValueObjects.YesNoQuestionSpec.operator ==(Orkeon.Domain.Task.ValueObjects.YesNoQuestionSpec? left, Orkeon.Domain.Task.ValueObjects.YesNoQuestionSpec? right) -> bool
+static Orkeon.Domain.Task.ValueObjects.YesNoQuestionSpec.operator !=(Orkeon.Domain.Task.ValueObjects.YesNoQuestionSpec? left, Orkeon.Domain.Task.ValueObjects.YesNoQuestionSpec? right) -> bool
+virtual Orkeon.Domain.Task.ValueObjects.DecisionQuestionSpec.EqualityContract.get -> System.Type!
+virtual Orkeon.Domain.Task.ValueObjects.DecisionQuestionSpec.Equals(Orkeon.Domain.Task.ValueObjects.DecisionQuestionSpec? other) -> bool
+virtual Orkeon.Domain.Task.ValueObjects.DecisionQuestionSpec.PrintMembers(System.Text.StringBuilder! builder) -> bool
+Orkeon.Domain.Task.ValueObjects.TaskOutput.Decision.get -> Orkeon.Domain.Task.ValueObjects.DecisionOutcome?
+Orkeon.Domain.Task.ValueObjects.TaskOutput.Decision.init -> void
+override Orkeon.Domain.Task.ValueObjects.TaskDecision.Equals(object? obj) -> bool
+override Orkeon.Domain.Task.ValueObjects.TaskDecision.GetHashCode() -> int
+override Orkeon.Domain.Task.ValueObjects.TaskCondition.Equals(object? obj) -> bool
+override Orkeon.Domain.Task.ValueObjects.TaskCondition.GetHashCode() -> int
+override Orkeon.Domain.Task.ValueObjects.ConditionClause.Equals(object? obj) -> bool
+override Orkeon.Domain.Task.ValueObjects.ConditionClause.GetHashCode() -> int

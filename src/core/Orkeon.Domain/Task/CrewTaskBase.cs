@@ -45,6 +45,25 @@ public abstract class CrewTaskBase<TContext> : AggregateRoot<TaskId>, ICrewTask
     /// </summary>
     public AgentId? AssignedAgent { get; private set; }
 
+    /// <summary>Gets the decision this task makes instead of an agent.</summary>
+    public TaskDecision? Decision { get; private set; }
+
+    /// <summary>Gets the condition under which this task runs.</summary>
+    public TaskCondition? Condition { get; private set; }
+
+    /// <summary>Gets whether the task is a decision task.</summary>
+    public bool IsDecision => Decision is not null;
+
+    internal void SetDecision(TaskDecision decision)
+    {
+        if (AssignedAgent is not null)
+            throw new InvalidOperationException("A task carries a decision or an agent, never both.");
+
+        Decision = decision;
+    }
+
+    internal void SetCondition(TaskCondition condition) => Condition = condition;
+
     /// <summary>
     /// Gets the task status.
     /// </summary>
@@ -212,6 +231,9 @@ public abstract class CrewTaskBase<TContext> : AggregateRoot<TaskId>, ICrewTask
     public void AssignTo(AgentId agentId)
     {
         ArgumentNullException.ThrowIfNull(agentId);
+
+        if (IsDecision)
+            throw new InvalidOperationException("A decision task takes no agent.");
 
         if (HasEnded)
             throw new InvalidOperationException($"Cannot assign task in {Status} status.");

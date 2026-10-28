@@ -128,6 +128,9 @@ public record TaskResult(
     /// </summary>
     public ImmutableArray<string> UnknownFqns { get; init; } = ImmutableArray<string>.Empty;
 
+    /// <summary>The outcome of a decision task; null for any other task.</summary>
+    public Orkeon.Domain.Task.ValueObjects.DecisionOutcome? Decision { get; init; }
+
     /// <summary>
     /// Bare-form prose citations (e.g. <c>ts::Symbol</c>) that the validator resolved
     /// uniquely to a canonical long FQN via local-name lookup. Mapping is bare → canonical.

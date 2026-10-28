@@ -25,6 +25,8 @@ public sealed class CrewTaskBuilder
     private bool _humanInput;
     private LlmConfigOverride? _llmOverride;
     private Orkeon.Domain.Agent.GuardrailsConfig? _guardrails;
+    private TaskDecision? _decision;
+    private TaskCondition? _condition;
 
     /// <summary>Sets the task description from a string value.</summary>
     public CrewTaskBuilder Description(string description)
@@ -204,6 +206,20 @@ public sealed class CrewTaskBuilder
         return this;
     }
 
+    /// <summary>Makes the task a decision task.</summary>
+    public CrewTaskBuilder WithDecision(TaskDecision decision)
+    {
+        _decision = decision;
+        return this;
+    }
+
+    /// <summary>Sets the condition under which the task runs.</summary>
+    public CrewTaskBuilder When(TaskCondition condition)
+    {
+        _condition = condition;
+        return this;
+    }
+
     /// <summary>
     /// Builds and returns a new <see cref="CrewTask"/> instance.
     /// </summary>
@@ -217,6 +233,9 @@ public sealed class CrewTaskBuilder
 
         if (_expectedOutput is null)
             throw new BuilderValidationException("Task", "ExpectedOutput is required.");
+
+        if (_decision is not null && _assignedAgent is not null)
+            throw new BuilderValidationException("Task", "A task carries a decision or an agent, never both.");
 
         var outputOptions = new TaskOutputOptions
         {
@@ -247,6 +266,16 @@ public sealed class CrewTaskBuilder
         if (_assignedAgent is not null)
         {
             task.AssignTo(_assignedAgent);
+        }
+
+        if (_decision is not null)
+        {
+            task.SetDecision(_decision);
+        }
+
+        if (_condition is not null)
+        {
+            task.SetCondition(_condition);
         }
 
         if (_llmOverride is not null)

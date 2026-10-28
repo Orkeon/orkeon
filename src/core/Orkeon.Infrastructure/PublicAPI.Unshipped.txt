@@ -383,3 +383,8 @@ Orkeon.Infrastructure.Tools.SystemOneDecideTool.SystemOneDecideTool(Orkeon.Appli
 const Orkeon.Infrastructure.Decision.TypeSafe.TypeSafeInputGuard.GuardName = "typesafe" -> string!
 override Orkeon.Infrastructure.Tools.SystemOneDecideTool.Access.get -> Orkeon.Domain.Tools.ToolAccess
 static readonly Orkeon.Infrastructure.Decision.TypeSafe.TypeSafeInputGuard.DefaultRisks -> System.Collections.Immutable.ImmutableDictionary<string!, string!>!
+Orkeon.Infrastructure.LLMs.Decision.DecisionCircuitOptions
+Orkeon.Infrastructure.LLMs.Decision.DecisionCircuitOptions.DecisionCircuitOptions() -> void
+Orkeon.Infrastructure.LLMs.Decision.DecisionCircuitOptions.Enabled.get -> bool
+Orkeon.Infrastructure.LLMs.Decision.DecisionCircuitOptions.Enabled.set -> void
+const Orkeon.Infrastructure.LLMs.Decision.DecisionCircuitOptions.SectionName = "Orkeon:Decision" -> string!

@@ -2640,8 +2640,6 @@ Orkeon.Application.Interfaces.Ports.IDecisionModel.ListModelsAsync(System.Thread
 Orkeon.Application.Interfaces.Ports.IDecisionModel.Name.get -> string!
 abstract Orkeon.Application.Decision.DTOs.DecisionAnswer.<Clone>$() -> Orkeon.Application.Decision.DTOs.DecisionAnswer!
 abstract Orkeon.Application.Decision.DTOs.DecisionQuestion.<Clone>$() -> Orkeon.Application.Decision.DTOs.DecisionQuestion!
-const Orkeon.Application.Decision.DecisionRequestValidator.MaxChoiceOptions = 255 -> int
-const Orkeon.Application.Decision.DecisionRequestValidator.MaxScoreLevels = 10 -> int
 override Orkeon.Application.Decision.DTOs.BoxAnswer.<Clone>$() -> Orkeon.Application.Decision.DTOs.BoxAnswer!
 override Orkeon.Application.Decision.DTOs.BoxAnswer.Equals(object? obj) -> bool
 override Orkeon.Application.Decision.DTOs.BoxAnswer.GetHashCode() -> int
@@ -2778,3 +2776,23 @@ static Orkeon.Application.Decision.DecisionVerdict.Escalate(string! profile, str
 static Orkeon.Application.Decision.DecisionVerdict.Route(string! profile, string? reason = null) -> Orkeon.Application.Decision.DecisionVerdict!
 static Orkeon.Application.Decision.DecisionVerdict.operator !=(Orkeon.Application.Decision.DecisionVerdict? left, Orkeon.Application.Decision.DecisionVerdict? right) -> bool
 static Orkeon.Application.Decision.DecisionVerdict.operator ==(Orkeon.Application.Decision.DecisionVerdict? left, Orkeon.Application.Decision.DecisionVerdict? right) -> bool
+Orkeon.Application.Crew.Execution.DecisionCircuit
+Orkeon.Application.Crew.Execution.DecisionCircuit.DecisionCircuit(bool Enabled) -> void
+Orkeon.Application.Crew.Execution.DecisionCircuit.Enabled.get -> bool
+Orkeon.Application.Crew.Execution.DecisionCircuit.Enabled.init -> void
+static Orkeon.Application.Crew.Execution.DecisionCircuit.On.get -> Orkeon.Application.Crew.Execution.DecisionCircuit!
+static Orkeon.Application.Crew.Execution.DecisionCircuit.Off.get -> Orkeon.Application.Crew.Execution.DecisionCircuit!
+Orkeon.Application.Crew.Execution.DecisionTaskRunner
+Orkeon.Application.Crew.Execution.DecisionTaskRunner.DecisionTaskRunner(Orkeon.Application.Interfaces.Ports.IDecisionModel? model, Orkeon.Application.Crew.Execution.DecisionCircuit! circuit, Microsoft.Extensions.Logging.ILogger<Orkeon.Application.Crew.Execution.DecisionTaskRunner!>! logger) -> void
+Orkeon.Application.Crew.Execution.DecisionTaskRunner.IsEnabled.get -> bool
+Orkeon.Application.Crew.Execution.DecisionTaskRunner.RunAsync(Orkeon.Domain.Task.CrewTask! task, System.Collections.Generic.IReadOnlyList<(string! TaskName, string! Output)>! inputs, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<Orkeon.Application.Interfaces.Services.TaskResult!>!
+Orkeon.Application.Interfaces.Services.TaskResult.Decision.get -> Orkeon.Domain.Task.ValueObjects.DecisionOutcome?
+Orkeon.Application.Interfaces.Services.TaskResult.Decision.init -> void
+Orkeon.Application.Crew.Execution.DecisionCircuit.<Clone>$() -> Orkeon.Application.Crew.Execution.DecisionCircuit!
+Orkeon.Application.Crew.Execution.DecisionCircuit.Deconstruct(out bool Enabled) -> void
+Orkeon.Application.Crew.Execution.DecisionCircuit.Equals(Orkeon.Application.Crew.Execution.DecisionCircuit? other) -> bool
+override Orkeon.Application.Crew.Execution.DecisionCircuit.Equals(object? obj) -> bool
+override Orkeon.Application.Crew.Execution.DecisionCircuit.GetHashCode() -> int
+override Orkeon.Application.Crew.Execution.DecisionCircuit.ToString() -> string!
+static Orkeon.Application.Crew.Execution.DecisionCircuit.operator ==(Orkeon.Application.Crew.Execution.DecisionCircuit? left, Orkeon.Application.Crew.Execution.DecisionCircuit? right) -> bool
+static Orkeon.Application.Crew.Execution.DecisionCircuit.operator !=(Orkeon.Application.Crew.Execution.DecisionCircuit? left, Orkeon.Application.Crew.Execution.DecisionCircuit? right) -> bool

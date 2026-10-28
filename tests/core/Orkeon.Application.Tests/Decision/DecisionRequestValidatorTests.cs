@@ -62,6 +62,21 @@ public sealed class DecisionRequestValidatorTests
     }
 
     [Fact]
+    [Trait("BR", "BR-07")]
+    public void ShouldReadLimitsFromConstants_WhenValidatingRequest()
+    {
+        var maxOptions = Orkeon.Constants.Llm.DecisionLimits.MaxChoiceOptions;
+        var maxLevels = Orkeon.Constants.Llm.DecisionLimits.MaxScoreLevels;
+        ImmutableList<JsonNode> Levels(int count) =>
+            Enumerable.Range(0, count).Select(i => (JsonNode)JsonValue.Create($"level {i}")!).ToImmutableList();
+
+        Assert.True(_validator.Validate(With(("c", new ChoiceQuestion { Criteria = Options(maxOptions) }))).IsValid);
+        Assert.False(_validator.Validate(With(("c", new ChoiceQuestion { Criteria = Options(maxOptions + 1) }))).IsValid);
+        Assert.True(_validator.Validate(With(("s", new ScoreQuestion { Criteria = Levels(maxLevels) }))).IsValid);
+        Assert.False(_validator.Validate(With(("s", new ScoreQuestion { Criteria = Levels(maxLevels + 1) }))).IsValid);
+    }
+
+    [Fact]
     public void Validate_Refuses_ABoxWithoutImage()
     {
         var result = _validator.Validate(With(("cat", new BoxQuestion())));

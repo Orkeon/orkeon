@@ -37,3 +37,10 @@ static Orkeon.Constants.Llm.ModelProviderCatalog.Find(string? key) -> Orkeon.Con
 static Orkeon.Constants.Llm.ModelProviderCatalog.InCategory(Orkeon.Constants.Llm.ModelProviderCategory category) -> System.Collections.Generic.IReadOnlyList<Orkeon.Constants.Llm.ModelProviderDescriptor!>!
 static Orkeon.Constants.Llm.ModelProviderDescriptor.operator !=(Orkeon.Constants.Llm.ModelProviderDescriptor? left, Orkeon.Constants.Llm.ModelProviderDescriptor? right) -> bool
 static Orkeon.Constants.Llm.ModelProviderDescriptor.operator ==(Orkeon.Constants.Llm.ModelProviderDescriptor? left, Orkeon.Constants.Llm.ModelProviderDescriptor? right) -> bool
+Orkeon.Constants.Llm.DecisionLimits
+const Orkeon.Constants.Llm.DecisionLimits.DefaultConfidenceFloor = 0.5 -> double
+const Orkeon.Constants.Llm.DecisionLimits.MaxChoiceOptions = 255 -> int
+const Orkeon.Constants.Llm.DecisionLimits.MaxScoreLevels = 10 -> int
+const Orkeon.Constants.Llm.DecisionLimits.StandardContextTokens = 64000 -> int
+const Orkeon.Constants.Llm.DecisionLimits.QuestionContextTokens = 32000 -> int
+const Orkeon.Constants.Llm.DecisionLimits.LongContextTokens = 262000 -> int

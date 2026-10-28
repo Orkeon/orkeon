@@ -293,4 +293,45 @@ public class TypeSafeDecisionModelTests
         Assert.IsType<TypeSafeDecisionModel>(provider.GetRequiredService<IDecisionModel>());
         Assert.Equal("jev-1.14.0", provider.GetRequiredService<IOptions<TypeSafeOptions>>().Value.Model);
     }
+
+    [Fact]
+    [Trait("BR", "BR-09")]
+    public async Task ShouldNameLimitInFailure_WhenModelRefusesStateAsTooLong()
+    {
+        using var handler = TestHttpMessageHandler.CreateWithResponse(HttpStatusCode.BadRequest, """{"detail":"max_tokens_exceeded"}""");
+        var model = Create(handler);
+
+        var ex = await Assert.ThrowsAsync<DecisionModelException>(() => model.DecideAsync(ChoiceRequest(), TestContext.Current.CancellationToken));
+
+        Assert.Contains("64000", ex.Message, StringComparison.Ordinal);
+        Assert.Contains("long context", ex.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    [Trait("BR", "BR-09")]
+    public async Task ShouldNameLongContextLimit_WhenLongRequestRefusedAsTooLong()
+    {
+        using var handler = TestHttpMessageHandler.CreateWithResponse(HttpStatusCode.BadRequest, """{"detail":"max_tokens_exceeded"}""");
+        var model = Create(handler);
+
+        var ex = await Assert.ThrowsAsync<DecisionModelException>(() => model.DecideAsync(ChoiceRequest(longContext: true), TestContext.Current.CancellationToken));
+
+        Assert.Contains("262000", ex.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain("64000", ex.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain("set long context", ex.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Theory]
+    [Trait("BR", "BR-10")]
+    [InlineData(400, """{"detail":"max_tokens_exceeded"}""")]
+    [InlineData(401, "{}")]
+    public async Task ShouldNotLeakKey_WhenFailureMessageBuilt(int status, string body)
+    {
+        using var handler = TestHttpMessageHandler.CreateWithResponse((HttpStatusCode)status, body);
+        var model = Create(handler);
+
+        var ex = await Assert.ThrowsAsync<DecisionModelException>(() => model.DecideAsync(ChoiceRequest(), TestContext.Current.CancellationToken));
+
+        Assert.DoesNotContain(Key, ex.ToString(), StringComparison.Ordinal);
+    }
 }
