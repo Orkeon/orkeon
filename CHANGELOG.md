@@ -43,6 +43,48 @@ sequential and graph strategies do); the former eight-argument constructor is in
 decision task it does not depend on fails the run at entry, and the parallel run's final output is the output of the
 last task that ran.
 
+### Fixed — the `orkeon-runners` image builds again
+
+`Dockerfile.runners` copied the root `Directory.Build.props` but not the root
+`Directory.Build.targets`, which `src/Directory.Build.targets` imports since #195. The
+import resolved to an empty path, `dotnet publish` failed with `MSB4020` on both
+platforms, and the `v1.0.0-rc.6` run pushed no image to GHCR. The build stage now copies
+the file.
+
+## [1.0.0-rc.6] - 2026-10-28
+
+The release candidate of the agent loop and the scriptable runtime. Since `1.0.0-rc.5`:
+agents get file tools made for the loop — `edit_file`, ranged reads, `glob`, `grep` —,
+structural editing, a working root, background agents, durable memory and sessions
+(RT-01..44, #136–#179); scripted commands read the runtime that runs them — its version,
+the session's usage by model and by command, a token budget that counts the context once,
+a save and load of the REPL's session — and the `Orkeon.Scripting` package runs a
+`crew.ork.ts` inside a .NET application (#224–#229); `shell_command` runs confined by
+default — bubblewrap, Seatbelt or an AppContainer (ADR-014) —; the permission gate reads
+the session's rules and `orkeon-repl` asks the operator, connects MCP servers, loads
+plugins and replays a session; RaggableTree indexes JavaScript, Java, C, C++, PHP, Ruby
+and Bash, and the structural tools serve every grammar; agents reach Google Drive and
+OneDrive (DRIVE-01..07); the console takes a Claude-Code-like bottom area, Esc Esc
+interrupts and the split-pane view shows one screen per thread; Orkeon Studio gets one
+Launch screen with a Trial | Real switch; and a run is a trace, every model call measured
+once. Many entries below are **[breaking]**: each one says what a crew, a script or a C#
+implementer changes.
+
+The public API surface is frozen at this tag: the 2 618 additions and 3 672 removals
+accumulated since rc.5 move from `PublicAPI.Unshipped.txt` to `PublicAPI.Shipped.txt`
+across the twenty-five projects that carried them, and the `ORKCON001` analyzer rule moves
+to `AnalyzerReleases.Shipped.md` under `## Release 1.0.0`.
+
+### Fixed — the Debian smoke starts `orkeon-repl` with a mount
+
+The deb smoke's `repl-start` step started `orkeon-repl --ui plain` with no settings file and no
+mount, and expected exit 0. Since the REPL refuses a mount it cannot honour at start, as the runners
+do (GAP-50 to GAP-55, #123), a REPL with no mount at all stops at its start with exit 1 and
+`At least one file system mount must be configured in 'Orkeon:FileSystem:Mounts'.` The step was added
+after rc.5 and first ran on the rc.6 tag, where it failed on amd64 and arm64 and held the Release
+back. It now mounts its run directory at `/workspace`, as a user mounts a project
+(`scripts/smoke-onboarding/lib/smoke-common.sh`). The REPL itself is unchanged.
+
 ### Added — `CommandResponse.streamed` tells a script its answer already streamed (#228)
 
 With `Orkeon:Cli:ConsoleStreaming:Enabled`, the foreground act streams its answer inline to the console, and a command
@@ -10584,7 +10626,8 @@ Initial public development snapshot. Core domain model established in C# followi
 - Standalone mode (no Redis required)
 - Console application entry point
 
-[Unreleased]: https://github.com/Orkeon/orkeon/compare/v1.0.0-rc.5...HEAD
+[Unreleased]: https://github.com/Orkeon/orkeon/compare/v1.0.0-rc.6...HEAD
+[1.0.0-rc.6]: https://github.com/Orkeon/orkeon/compare/v1.0.0-rc.5...v1.0.0-rc.6
 [1.0.0-rc.5]: https://github.com/Orkeon/orkeon/compare/v1.0.0-rc.4...v1.0.0-rc.5
 [1.0.0-rc.4]: https://github.com/Orkeon/orkeon/compare/v1.0.0-rc.3...v1.0.0-rc.4
 [1.0.0-rc.3]: https://github.com/Orkeon/orkeon/compare/v1.0.0-rc.2...v1.0.0-rc.3

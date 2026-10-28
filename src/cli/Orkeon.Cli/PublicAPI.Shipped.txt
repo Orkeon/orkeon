@@ -21,5 +21,6 @@ Orkeon.Cli.Commands.HelpCommand.Name.get -> string!
 Orkeon.Cli.Registry.DefaultCommandRegistry
 Orkeon.Cli.Registry.DefaultCommandRegistry.Commands.get -> System.Collections.Generic.IEnumerable<Orkeon.Cli.Abstractions.Commands.IInteractiveCommand!>!
 Orkeon.Cli.Registry.DefaultCommandRegistry.DefaultCommandRegistry(Orkeon.Cli.Commands.HelpCommand! help, Orkeon.Cli.Commands.ExitCommand! exit, Orkeon.Cli.Commands.ClearCommand! clear) -> void
+Orkeon.Cli.Registry.DefaultCommandRegistry.DefaultCommandRegistry(Orkeon.Cli.Commands.HelpCommand! help, Orkeon.Cli.Commands.ExitCommand! exit, Orkeon.Cli.Commands.ClearCommand! clear, System.Collections.Generic.IEnumerable<Orkeon.Cli.Abstractions.Commands.IInteractiveCommand!>! additional) -> void
 Orkeon.Cli.Registry.DefaultCommandRegistry.Fallback.get -> Orkeon.Cli.Abstractions.Commands.IInteractiveCommand?
 static Microsoft.Extensions.DependencyInjection.CliServiceCollectionExtensions.AddOrkeonCli(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!

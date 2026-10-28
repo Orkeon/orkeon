@@ -125,7 +125,9 @@ WORKDIR /src
 
 # Central build/version/package config inherited by both src/ and examples/,
 # plus the SDK pin so the container resolves the same toolchain as the host.
-COPY global.json Directory.Build.props Directory.Packages.props ./
+# src/Directory.Build.targets imports the root one: without it the import path
+# resolves to "" and every project fails with MSB4020.
+COPY global.json Directory.Build.props Directory.Build.targets Directory.Packages.props ./
 
 # Full framework + examples sources. The runners' project graph spans src/core,
 # src/hosting, src/scripting and the examples tree,

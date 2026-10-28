@@ -1,5 +1,1 @@
 #nullable enable
-Orkeon.Rag.Abstractions.Models.IngestionRequest.Prune.get -> bool
-Orkeon.Rag.Abstractions.Models.IngestionRequest.Prune.init -> void
-Orkeon.Rag.Abstractions.Models.IngestionReport.SourcesPruned.get -> int
-Orkeon.Rag.Abstractions.Models.IngestionReport.SourcesPruned.init -> void

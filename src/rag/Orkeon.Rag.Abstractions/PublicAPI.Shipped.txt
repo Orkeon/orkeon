@@ -155,6 +155,8 @@ Orkeon.Rag.Abstractions.Models.IngestionReport.Errors.init -> void
 Orkeon.Rag.Abstractions.Models.IngestionReport.IngestionReport() -> void
 Orkeon.Rag.Abstractions.Models.IngestionReport.SourcesAdded.get -> int
 Orkeon.Rag.Abstractions.Models.IngestionReport.SourcesAdded.init -> void
+Orkeon.Rag.Abstractions.Models.IngestionReport.SourcesPruned.get -> int
+Orkeon.Rag.Abstractions.Models.IngestionReport.SourcesPruned.init -> void
 Orkeon.Rag.Abstractions.Models.IngestionReport.SourcesReingested.get -> int
 Orkeon.Rag.Abstractions.Models.IngestionReport.SourcesReingested.init -> void
 Orkeon.Rag.Abstractions.Models.IngestionReport.SourcesUnchanged.get -> int
@@ -169,6 +171,8 @@ Orkeon.Rag.Abstractions.Models.IngestionRequest.Collection.get -> string!
 Orkeon.Rag.Abstractions.Models.IngestionRequest.Collection.init -> void
 Orkeon.Rag.Abstractions.Models.IngestionRequest.Equals(Orkeon.Rag.Abstractions.Models.IngestionRequest? other) -> bool
 Orkeon.Rag.Abstractions.Models.IngestionRequest.IngestionRequest() -> void
+Orkeon.Rag.Abstractions.Models.IngestionRequest.Prune.get -> bool
+Orkeon.Rag.Abstractions.Models.IngestionRequest.Prune.init -> void
 Orkeon.Rag.Abstractions.Models.IngestionRequest.Reindex.get -> bool
 Orkeon.Rag.Abstractions.Models.IngestionRequest.Reindex.init -> void
 Orkeon.Rag.Abstractions.Models.IngestionRequest.Sources.get -> System.Collections.Immutable.ImmutableList<Orkeon.Rag.Abstractions.Models.SourceDescriptor!>!

@@ -217,6 +217,14 @@ Orkeon.Analysis.Abstractions.DTOs.Responses.SubGraph.Nodes.init -> void
 Orkeon.Analysis.Abstractions.DTOs.Responses.SubGraph.SubGraph() -> void
 Orkeon.Analysis.Abstractions.DTOs.Responses.SubGraph.Truncated.get -> bool
 Orkeon.Analysis.Abstractions.DTOs.Responses.SubGraph.Truncated.init -> void
+Orkeon.Analysis.Abstractions.DTOs.Tools.AccessCostReport
+Orkeon.Analysis.Abstractions.DTOs.Tools.AccessCostReport.<Clone>$() -> Orkeon.Analysis.Abstractions.DTOs.Tools.AccessCostReport!
+Orkeon.Analysis.Abstractions.DTOs.Tools.AccessCostReport.AccessCostReport() -> void
+Orkeon.Analysis.Abstractions.DTOs.Tools.AccessCostReport.Cost.get -> Orkeon.Analysis.Abstractions.DTOs.Tools.CostLine!
+Orkeon.Analysis.Abstractions.DTOs.Tools.AccessCostReport.Cost.init -> void
+Orkeon.Analysis.Abstractions.DTOs.Tools.AccessCostReport.Equals(Orkeon.Analysis.Abstractions.DTOs.Tools.AccessCostReport? other) -> bool
+Orkeon.Analysis.Abstractions.DTOs.Tools.AccessCostReport.Members.get -> System.Collections.Immutable.ImmutableList<Orkeon.Analysis.Abstractions.DTOs.Tools.MemberAccessCost!>!
+Orkeon.Analysis.Abstractions.DTOs.Tools.AccessCostReport.Members.init -> void
 Orkeon.Analysis.Abstractions.DTOs.Tools.CodebaseMapRequest
 Orkeon.Analysis.Abstractions.DTOs.Tools.CodebaseMapRequest.<Clone>$() -> Orkeon.Analysis.Abstractions.DTOs.Tools.CodebaseMapRequest!
 Orkeon.Analysis.Abstractions.DTOs.Tools.CodebaseMapRequest.CodebaseMapRequest() -> void
@@ -311,10 +319,25 @@ Orkeon.Analysis.Abstractions.DTOs.Tools.ComplexityReportResponse.P95.get -> doub
 Orkeon.Analysis.Abstractions.DTOs.Tools.ComplexityReportResponse.P95.init -> void
 Orkeon.Analysis.Abstractions.DTOs.Tools.ComplexityReportResponse.Top.get -> System.Collections.Immutable.ImmutableArray<Orkeon.Analysis.Abstractions.DTOs.Responses.ComplexityEntry!>
 Orkeon.Analysis.Abstractions.DTOs.Tools.ComplexityReportResponse.Top.init -> void
+Orkeon.Analysis.Abstractions.DTOs.Tools.CostLine
+Orkeon.Analysis.Abstractions.DTOs.Tools.CostLine.<Clone>$() -> Orkeon.Analysis.Abstractions.DTOs.Tools.CostLine!
+Orkeon.Analysis.Abstractions.DTOs.Tools.CostLine.CostLine() -> void
+Orkeon.Analysis.Abstractions.DTOs.Tools.CostLine.Equals(Orkeon.Analysis.Abstractions.DTOs.Tools.CostLine? other) -> bool
+Orkeon.Analysis.Abstractions.DTOs.Tools.CostLine.Lambdas.get -> int
+Orkeon.Analysis.Abstractions.DTOs.Tools.CostLine.Lambdas.init -> void
+Orkeon.Analysis.Abstractions.DTOs.Tools.CostLine.Loops.get -> int
+Orkeon.Analysis.Abstractions.DTOs.Tools.CostLine.Loops.init -> void
+Orkeon.Analysis.Abstractions.DTOs.Tools.CostLine.MemoryFilters.get -> int
+Orkeon.Analysis.Abstractions.DTOs.Tools.CostLine.MemoryFilters.init -> void
+Orkeon.Analysis.Abstractions.DTOs.Tools.CostLine.Reads.get -> int
+Orkeon.Analysis.Abstractions.DTOs.Tools.CostLine.Reads.init -> void
+Orkeon.Analysis.Abstractions.DTOs.Tools.CostLine.Render() -> string!
+Orkeon.Analysis.Abstractions.DTOs.Tools.CostLine.Writes.get -> int
+Orkeon.Analysis.Abstractions.DTOs.Tools.CostLine.Writes.init -> void
 Orkeon.Analysis.Abstractions.DTOs.Tools.DependencyGraphRequest
 Orkeon.Analysis.Abstractions.DTOs.Tools.DependencyGraphRequest.<Clone>$() -> Orkeon.Analysis.Abstractions.DTOs.Tools.DependencyGraphRequest!
 Orkeon.Analysis.Abstractions.DTOs.Tools.DependencyGraphRequest.DependencyGraphRequest() -> void
-Orkeon.Analysis.Abstractions.DTOs.Tools.DependencyGraphRequest.EdgeKinds.get -> System.Collections.Immutable.ImmutableArray<Orkeon.Analysis.Abstractions.EdgeKind>
+Orkeon.Analysis.Abstractions.DTOs.Tools.DependencyGraphRequest.EdgeKinds.get -> System.Collections.Immutable.ImmutableArray<string!>
 Orkeon.Analysis.Abstractions.DTOs.Tools.DependencyGraphRequest.EdgeKinds.init -> void
 Orkeon.Analysis.Abstractions.DTOs.Tools.DependencyGraphRequest.Equals(Orkeon.Analysis.Abstractions.DTOs.Tools.DependencyGraphRequest? other) -> bool
 Orkeon.Analysis.Abstractions.DTOs.Tools.DependencyGraphRequest.IncludeDot.get -> bool
@@ -325,6 +348,8 @@ Orkeon.Analysis.Abstractions.DTOs.Tools.DependencyGraphRequest.IncludeMermaid.ge
 Orkeon.Analysis.Abstractions.DTOs.Tools.DependencyGraphRequest.IncludeMermaid.init -> void
 Orkeon.Analysis.Abstractions.DTOs.Tools.DependencyGraphRequest.MaxNodes.get -> int
 Orkeon.Analysis.Abstractions.DTOs.Tools.DependencyGraphRequest.MaxNodes.init -> void
+Orkeon.Analysis.Abstractions.DTOs.Tools.DependencyGraphRequest.NodeKinds.get -> System.Collections.Immutable.ImmutableArray<string!>
+Orkeon.Analysis.Abstractions.DTOs.Tools.DependencyGraphRequest.NodeKinds.init -> void
 Orkeon.Analysis.Abstractions.DTOs.Tools.DependencyGraphRequest.RootFqn.get -> string?
 Orkeon.Analysis.Abstractions.DTOs.Tools.DependencyGraphRequest.RootFqn.init -> void
 Orkeon.Analysis.Abstractions.DTOs.Tools.DependencyGraphRequest.Scope.get -> Orkeon.Analysis.Abstractions.NodeLevel
@@ -462,6 +487,14 @@ Orkeon.Analysis.Abstractions.DTOs.Tools.ImpactAnalysisResponse.TransitiveImpact.
 Orkeon.Analysis.Abstractions.DTOs.Tools.ImpactAnalysisResponse.TransitiveImpact.init -> void
 Orkeon.Analysis.Abstractions.DTOs.Tools.ImpactAnalysisResponse.Truncated.get -> bool
 Orkeon.Analysis.Abstractions.DTOs.Tools.ImpactAnalysisResponse.Truncated.init -> void
+Orkeon.Analysis.Abstractions.DTOs.Tools.InMemoryFilter
+Orkeon.Analysis.Abstractions.DTOs.Tools.InMemoryFilter.<Clone>$() -> Orkeon.Analysis.Abstractions.DTOs.Tools.InMemoryFilter!
+Orkeon.Analysis.Abstractions.DTOs.Tools.InMemoryFilter.Equals(Orkeon.Analysis.Abstractions.DTOs.Tools.InMemoryFilter? other) -> bool
+Orkeon.Analysis.Abstractions.DTOs.Tools.InMemoryFilter.InMemoryFilter() -> void
+Orkeon.Analysis.Abstractions.DTOs.Tools.InMemoryFilter.Line.get -> int
+Orkeon.Analysis.Abstractions.DTOs.Tools.InMemoryFilter.Line.init -> void
+Orkeon.Analysis.Abstractions.DTOs.Tools.InMemoryFilter.Method.get -> string!
+Orkeon.Analysis.Abstractions.DTOs.Tools.InMemoryFilter.Method.init -> void
 Orkeon.Analysis.Abstractions.DTOs.Tools.IncrementalReindexRequest
 Orkeon.Analysis.Abstractions.DTOs.Tools.IncrementalReindexRequest.<Clone>$() -> Orkeon.Analysis.Abstractions.DTOs.Tools.IncrementalReindexRequest!
 Orkeon.Analysis.Abstractions.DTOs.Tools.IncrementalReindexRequest.ChangedFiles.get -> System.Collections.Immutable.ImmutableArray<string!>
@@ -527,6 +560,10 @@ Orkeon.Analysis.Abstractions.DTOs.Tools.IndexFilterStats.ExcludedByGitignore.get
 Orkeon.Analysis.Abstractions.DTOs.Tools.IndexFilterStats.ExcludedByGitignore.init -> void
 Orkeon.Analysis.Abstractions.DTOs.Tools.IndexFilterStats.ExcludedByLanguage.get -> int
 Orkeon.Analysis.Abstractions.DTOs.Tools.IndexFilterStats.ExcludedByLanguage.init -> void
+Orkeon.Analysis.Abstractions.DTOs.Tools.IndexFilterStats.ExcludedByPolicy.get -> int
+Orkeon.Analysis.Abstractions.DTOs.Tools.IndexFilterStats.ExcludedByPolicy.init -> void
+Orkeon.Analysis.Abstractions.DTOs.Tools.IndexFilterStats.ExcludedByPolicyPaths.get -> System.Collections.Immutable.ImmutableArray<string!>
+Orkeon.Analysis.Abstractions.DTOs.Tools.IndexFilterStats.ExcludedByPolicyPaths.init -> void
 Orkeon.Analysis.Abstractions.DTOs.Tools.IndexFilterStats.ExcludedBySuffix.get -> int
 Orkeon.Analysis.Abstractions.DTOs.Tools.IndexFilterStats.ExcludedBySuffix.init -> void
 Orkeon.Analysis.Abstractions.DTOs.Tools.IndexFilterStats.IndexFilterStats() -> void
@@ -601,6 +638,18 @@ Orkeon.Analysis.Abstractions.DTOs.Tools.MapEntry.LoC.init -> void
 Orkeon.Analysis.Abstractions.DTOs.Tools.MapEntry.MapEntry() -> void
 Orkeon.Analysis.Abstractions.DTOs.Tools.MapEntry.Name.get -> string!
 Orkeon.Analysis.Abstractions.DTOs.Tools.MapEntry.Name.init -> void
+Orkeon.Analysis.Abstractions.DTOs.Tools.MemberAccessCost
+Orkeon.Analysis.Abstractions.DTOs.Tools.MemberAccessCost.<Clone>$() -> Orkeon.Analysis.Abstractions.DTOs.Tools.MemberAccessCost!
+Orkeon.Analysis.Abstractions.DTOs.Tools.MemberAccessCost.Cost.get -> Orkeon.Analysis.Abstractions.DTOs.Tools.CostLine!
+Orkeon.Analysis.Abstractions.DTOs.Tools.MemberAccessCost.Cost.init -> void
+Orkeon.Analysis.Abstractions.DTOs.Tools.MemberAccessCost.Equals(Orkeon.Analysis.Abstractions.DTOs.Tools.MemberAccessCost? other) -> bool
+Orkeon.Analysis.Abstractions.DTOs.Tools.MemberAccessCost.InMemoryFilters.get -> System.Collections.Immutable.ImmutableList<Orkeon.Analysis.Abstractions.DTOs.Tools.InMemoryFilter!>!
+Orkeon.Analysis.Abstractions.DTOs.Tools.MemberAccessCost.InMemoryFilters.init -> void
+Orkeon.Analysis.Abstractions.DTOs.Tools.MemberAccessCost.Member.get -> string!
+Orkeon.Analysis.Abstractions.DTOs.Tools.MemberAccessCost.Member.init -> void
+Orkeon.Analysis.Abstractions.DTOs.Tools.MemberAccessCost.MemberAccessCost() -> void
+Orkeon.Analysis.Abstractions.DTOs.Tools.MemberAccessCost.PortCalls.get -> System.Collections.Immutable.ImmutableList<Orkeon.Analysis.Abstractions.DTOs.Tools.PortCall!>!
+Orkeon.Analysis.Abstractions.DTOs.Tools.MemberAccessCost.PortCalls.init -> void
 Orkeon.Analysis.Abstractions.DTOs.Tools.PackageSummaryRequest
 Orkeon.Analysis.Abstractions.DTOs.Tools.PackageSummaryRequest.<Clone>$() -> Orkeon.Analysis.Abstractions.DTOs.Tools.PackageSummaryRequest!
 Orkeon.Analysis.Abstractions.DTOs.Tools.PackageSummaryRequest.Equals(Orkeon.Analysis.Abstractions.DTOs.Tools.PackageSummaryRequest? other) -> bool
@@ -635,6 +684,20 @@ Orkeon.Analysis.Abstractions.DTOs.Tools.PackageSummaryResponse.SymbolCount.get -
 Orkeon.Analysis.Abstractions.DTOs.Tools.PackageSummaryResponse.SymbolCount.init -> void
 Orkeon.Analysis.Abstractions.DTOs.Tools.PackageSummaryResponse.Truncated.get -> bool
 Orkeon.Analysis.Abstractions.DTOs.Tools.PackageSummaryResponse.Truncated.init -> void
+Orkeon.Analysis.Abstractions.DTOs.Tools.PortCall
+Orkeon.Analysis.Abstractions.DTOs.Tools.PortCall.<Clone>$() -> Orkeon.Analysis.Abstractions.DTOs.Tools.PortCall!
+Orkeon.Analysis.Abstractions.DTOs.Tools.PortCall.Equals(Orkeon.Analysis.Abstractions.DTOs.Tools.PortCall? other) -> bool
+Orkeon.Analysis.Abstractions.DTOs.Tools.PortCall.InLambda.get -> bool
+Orkeon.Analysis.Abstractions.DTOs.Tools.PortCall.InLambda.init -> void
+Orkeon.Analysis.Abstractions.DTOs.Tools.PortCall.InLoop.get -> bool
+Orkeon.Analysis.Abstractions.DTOs.Tools.PortCall.InLoop.init -> void
+Orkeon.Analysis.Abstractions.DTOs.Tools.PortCall.Line.get -> int
+Orkeon.Analysis.Abstractions.DTOs.Tools.PortCall.Line.init -> void
+Orkeon.Analysis.Abstractions.DTOs.Tools.PortCall.Method.get -> string!
+Orkeon.Analysis.Abstractions.DTOs.Tools.PortCall.Method.init -> void
+Orkeon.Analysis.Abstractions.DTOs.Tools.PortCall.PortCall() -> void
+Orkeon.Analysis.Abstractions.DTOs.Tools.PortCall.Receiver.get -> string!
+Orkeon.Analysis.Abstractions.DTOs.Tools.PortCall.Receiver.init -> void
 Orkeon.Analysis.Abstractions.DTOs.Tools.StatementHit
 Orkeon.Analysis.Abstractions.DTOs.Tools.StatementHit.<Clone>$() -> Orkeon.Analysis.Abstractions.DTOs.Tools.StatementHit!
 Orkeon.Analysis.Abstractions.DTOs.Tools.StatementHit.Condition.get -> string?
@@ -681,13 +744,15 @@ Orkeon.Analysis.Abstractions.DTOs.Tools.SubGraphRequest.Depth.get -> int
 Orkeon.Analysis.Abstractions.DTOs.Tools.SubGraphRequest.Depth.init -> void
 Orkeon.Analysis.Abstractions.DTOs.Tools.SubGraphRequest.Direction.get -> Orkeon.Analysis.Abstractions.Direction
 Orkeon.Analysis.Abstractions.DTOs.Tools.SubGraphRequest.Direction.init -> void
-Orkeon.Analysis.Abstractions.DTOs.Tools.SubGraphRequest.EdgeKinds.get -> System.Collections.Immutable.ImmutableArray<Orkeon.Analysis.Abstractions.EdgeKind>
+Orkeon.Analysis.Abstractions.DTOs.Tools.SubGraphRequest.EdgeKinds.get -> System.Collections.Immutable.ImmutableArray<string!>
 Orkeon.Analysis.Abstractions.DTOs.Tools.SubGraphRequest.EdgeKinds.init -> void
 Orkeon.Analysis.Abstractions.DTOs.Tools.SubGraphRequest.Equals(Orkeon.Analysis.Abstractions.DTOs.Tools.SubGraphRequest? other) -> bool
 Orkeon.Analysis.Abstractions.DTOs.Tools.SubGraphRequest.IncludeMermaid.get -> bool
 Orkeon.Analysis.Abstractions.DTOs.Tools.SubGraphRequest.IncludeMermaid.init -> void
 Orkeon.Analysis.Abstractions.DTOs.Tools.SubGraphRequest.MaxNodes.get -> int
 Orkeon.Analysis.Abstractions.DTOs.Tools.SubGraphRequest.MaxNodes.init -> void
+Orkeon.Analysis.Abstractions.DTOs.Tools.SubGraphRequest.NodeKinds.get -> System.Collections.Immutable.ImmutableArray<string!>
+Orkeon.Analysis.Abstractions.DTOs.Tools.SubGraphRequest.NodeKinds.init -> void
 Orkeon.Analysis.Abstractions.DTOs.Tools.SubGraphRequest.Seeds.get -> System.Collections.Immutable.ImmutableArray<string!>
 Orkeon.Analysis.Abstractions.DTOs.Tools.SubGraphRequest.Seeds.init -> void
 Orkeon.Analysis.Abstractions.DTOs.Tools.SubGraphRequest.SubGraphRequest() -> void
@@ -812,10 +877,14 @@ Orkeon.Analysis.Abstractions.Direction.Forward = 0 -> Orkeon.Analysis.Abstractio
 Orkeon.Analysis.Abstractions.EdgeKind
 Orkeon.Analysis.Abstractions.EdgeKind.Calls = 2 -> Orkeon.Analysis.Abstractions.EdgeKind
 Orkeon.Analysis.Abstractions.EdgeKind.Contains = 16 -> Orkeon.Analysis.Abstractions.EdgeKind
+Orkeon.Analysis.Abstractions.EdgeKind.Documents = 64 -> Orkeon.Analysis.Abstractions.EdgeKind
 Orkeon.Analysis.Abstractions.EdgeKind.Extends = 4 -> Orkeon.Analysis.Abstractions.EdgeKind
 Orkeon.Analysis.Abstractions.EdgeKind.Implements = 8 -> Orkeon.Analysis.Abstractions.EdgeKind
 Orkeon.Analysis.Abstractions.EdgeKind.Imports = 1 -> Orkeon.Analysis.Abstractions.EdgeKind
 Orkeon.Analysis.Abstractions.EdgeKind.None = 0 -> Orkeon.Analysis.Abstractions.EdgeKind
+Orkeon.Analysis.Abstractions.EdgeKind.ProjectDepends = 128 -> Orkeon.Analysis.Abstractions.EdgeKind
+Orkeon.Analysis.Abstractions.EdgeKind.Tests = 32 -> Orkeon.Analysis.Abstractions.EdgeKind
+Orkeon.Analysis.Abstractions.Editing.FileEditLocks
 Orkeon.Analysis.Abstractions.ExpandModes
 Orkeon.Analysis.Abstractions.ExpandModes.All = Orkeon.Analysis.Abstractions.ExpandModes.Members | Orkeon.Analysis.Abstractions.ExpandModes.Inheritance | Orkeon.Analysis.Abstractions.ExpandModes.Callers | Orkeon.Analysis.Abstractions.ExpandModes.Callees | Orkeon.Analysis.Abstractions.ExpandModes.PublicExports | Orkeon.Analysis.Abstractions.ExpandModes.Statements | Orkeon.Analysis.Abstractions.ExpandModes.Decorators | Orkeon.Analysis.Abstractions.ExpandModes.ParentChain -> Orkeon.Analysis.Abstractions.ExpandModes
 Orkeon.Analysis.Abstractions.ExpandModes.Callees = 8 -> Orkeon.Analysis.Abstractions.ExpandModes
@@ -832,6 +901,7 @@ Orkeon.Analysis.Abstractions.FileChangeKind.Created = 0 -> Orkeon.Analysis.Abstr
 Orkeon.Analysis.Abstractions.FileChangeKind.Deleted = 2 -> Orkeon.Analysis.Abstractions.FileChangeKind
 Orkeon.Analysis.Abstractions.FileChangeKind.Modified = 1 -> Orkeon.Analysis.Abstractions.FileChangeKind
 Orkeon.Analysis.Abstractions.FileChangeKind.Renamed = 3 -> Orkeon.Analysis.Abstractions.FileChangeKind
+Orkeon.Analysis.Abstractions.GraphKindNames
 Orkeon.Analysis.Abstractions.Interfaces.AmbiguousFqn
 Orkeon.Analysis.Abstractions.Interfaces.AmbiguousFqn.<Clone>$() -> Orkeon.Analysis.Abstractions.Interfaces.AmbiguousFqn!
 Orkeon.Analysis.Abstractions.Interfaces.AmbiguousFqn.AmbiguousFqn(string! BareFqn, System.Collections.Immutable.ImmutableArray<string!> Candidates) -> void
@@ -841,6 +911,18 @@ Orkeon.Analysis.Abstractions.Interfaces.AmbiguousFqn.Candidates.get -> System.Co
 Orkeon.Analysis.Abstractions.Interfaces.AmbiguousFqn.Candidates.init -> void
 Orkeon.Analysis.Abstractions.Interfaces.AmbiguousFqn.Deconstruct(out string! BareFqn, out System.Collections.Immutable.ImmutableArray<string!> Candidates) -> void
 Orkeon.Analysis.Abstractions.Interfaces.AmbiguousFqn.Equals(Orkeon.Analysis.Abstractions.Interfaces.AmbiguousFqn? other) -> bool
+Orkeon.Analysis.Abstractions.Interfaces.BuildOutcome
+Orkeon.Analysis.Abstractions.Interfaces.BuildOutcome.Green = 0 -> Orkeon.Analysis.Abstractions.Interfaces.BuildOutcome
+Orkeon.Analysis.Abstractions.Interfaces.BuildOutcome.Red = 1 -> Orkeon.Analysis.Abstractions.Interfaces.BuildOutcome
+Orkeon.Analysis.Abstractions.Interfaces.BuildOutcome.Skipped = 2 -> Orkeon.Analysis.Abstractions.Interfaces.BuildOutcome
+Orkeon.Analysis.Abstractions.Interfaces.BuildValidation
+Orkeon.Analysis.Abstractions.Interfaces.BuildValidation.<Clone>$() -> Orkeon.Analysis.Abstractions.Interfaces.BuildValidation!
+Orkeon.Analysis.Abstractions.Interfaces.BuildValidation.BuildValidation() -> void
+Orkeon.Analysis.Abstractions.Interfaces.BuildValidation.Detail.get -> string!
+Orkeon.Analysis.Abstractions.Interfaces.BuildValidation.Detail.init -> void
+Orkeon.Analysis.Abstractions.Interfaces.BuildValidation.Equals(Orkeon.Analysis.Abstractions.Interfaces.BuildValidation? other) -> bool
+Orkeon.Analysis.Abstractions.Interfaces.BuildValidation.Outcome.get -> Orkeon.Analysis.Abstractions.Interfaces.BuildOutcome
+Orkeon.Analysis.Abstractions.Interfaces.BuildValidation.Outcome.init -> void
 Orkeon.Analysis.Abstractions.Interfaces.CodebaseChangeNotification
 Orkeon.Analysis.Abstractions.Interfaces.CodebaseChangeNotification.<Clone>$() -> Orkeon.Analysis.Abstractions.Interfaces.CodebaseChangeNotification!
 Orkeon.Analysis.Abstractions.Interfaces.CodebaseChangeNotification.Changes.get -> System.Collections.Immutable.ImmutableArray<Orkeon.Analysis.Abstractions.Interfaces.FileChange!>
@@ -893,6 +975,10 @@ Orkeon.Analysis.Abstractions.Interfaces.DiscoveryFilterStats.ExcludedByGitignore
 Orkeon.Analysis.Abstractions.Interfaces.DiscoveryFilterStats.ExcludedByGitignore.init -> void
 Orkeon.Analysis.Abstractions.Interfaces.DiscoveryFilterStats.ExcludedByLanguage.get -> int
 Orkeon.Analysis.Abstractions.Interfaces.DiscoveryFilterStats.ExcludedByLanguage.init -> void
+Orkeon.Analysis.Abstractions.Interfaces.DiscoveryFilterStats.ExcludedByPolicy.get -> int
+Orkeon.Analysis.Abstractions.Interfaces.DiscoveryFilterStats.ExcludedByPolicy.init -> void
+Orkeon.Analysis.Abstractions.Interfaces.DiscoveryFilterStats.ExcludedByPolicyPaths.get -> System.Collections.Immutable.ImmutableArray<string!>
+Orkeon.Analysis.Abstractions.Interfaces.DiscoveryFilterStats.ExcludedByPolicyPaths.init -> void
 Orkeon.Analysis.Abstractions.Interfaces.DiscoveryFilterStats.ExcludedBySuffix.get -> int
 Orkeon.Analysis.Abstractions.Interfaces.DiscoveryFilterStats.ExcludedBySuffix.init -> void
 Orkeon.Analysis.Abstractions.Interfaces.DiscoveryFilterStats.PhysicalEntriesProbe.get -> int
@@ -936,6 +1022,8 @@ Orkeon.Analysis.Abstractions.Interfaces.FileChange.Kind.get -> Orkeon.Analysis.A
 Orkeon.Analysis.Abstractions.Interfaces.FileChange.Kind.init -> void
 Orkeon.Analysis.Abstractions.Interfaces.FileChange.RelativePath.get -> string!
 Orkeon.Analysis.Abstractions.Interfaces.FileChange.RelativePath.init -> void
+Orkeon.Analysis.Abstractions.Interfaces.IBuildValidator
+Orkeon.Analysis.Abstractions.Interfaces.IBuildValidator.ValidateAsync(System.Collections.Generic.IReadOnlyList<string!>! editedPhysicalPaths, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Orkeon.Analysis.Abstractions.Interfaces.BuildValidation!>!
 Orkeon.Analysis.Abstractions.Interfaces.ICitationBlockValidator
 Orkeon.Analysis.Abstractions.Interfaces.ICitationBlockValidator.ValidateAsync(string! fileContent, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<Orkeon.Analysis.Abstractions.Interfaces.ValidationResult!>!
 Orkeon.Analysis.Abstractions.Interfaces.ICodebaseContextProvider
@@ -1351,10 +1439,16 @@ Orkeon.Analysis.Abstractions.Models.StatementNode.Expression.get -> string!
 Orkeon.Analysis.Abstractions.Models.StatementNode.Expression.init -> void
 Orkeon.Analysis.Abstractions.Models.StatementNode.Id.get -> string!
 Orkeon.Analysis.Abstractions.Models.StatementNode.Id.init -> void
+Orkeon.Analysis.Abstractions.Models.StatementNode.InLambda.get -> bool
+Orkeon.Analysis.Abstractions.Models.StatementNode.InLambda.init -> void
+Orkeon.Analysis.Abstractions.Models.StatementNode.InLoop.get -> bool
+Orkeon.Analysis.Abstractions.Models.StatementNode.InLoop.init -> void
 Orkeon.Analysis.Abstractions.Models.StatementNode.Kind.get -> Orkeon.Analysis.Abstractions.StatementKind
 Orkeon.Analysis.Abstractions.Models.StatementNode.Kind.init -> void
 Orkeon.Analysis.Abstractions.Models.StatementNode.ParentSymbolId.get -> string!
 Orkeon.Analysis.Abstractions.Models.StatementNode.ParentSymbolId.init -> void
+Orkeon.Analysis.Abstractions.Models.StatementNode.Receiver.get -> string?
+Orkeon.Analysis.Abstractions.Models.StatementNode.Receiver.init -> void
 Orkeon.Analysis.Abstractions.Models.StatementNode.References.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Analysis.Abstractions.Models.SymbolReference!>!
 Orkeon.Analysis.Abstractions.Models.StatementNode.StartLine.get -> int
 Orkeon.Analysis.Abstractions.Models.StatementNode.StartLine.init -> void
@@ -1497,14 +1591,17 @@ Orkeon.Analysis.Abstractions.StatementKind.While = 13 -> Orkeon.Analysis.Abstrac
 Orkeon.Analysis.Abstractions.StatementKind.Yield = 25 -> Orkeon.Analysis.Abstractions.StatementKind
 Orkeon.Analysis.Abstractions.UniversalNodeKind
 Orkeon.Analysis.Abstractions.UniversalNodeKind.Class = 3 -> Orkeon.Analysis.Abstractions.UniversalNodeKind
+Orkeon.Analysis.Abstractions.UniversalNodeKind.CodeFence = 23 -> Orkeon.Analysis.Abstractions.UniversalNodeKind
 Orkeon.Analysis.Abstractions.UniversalNodeKind.Constant = 18 -> Orkeon.Analysis.Abstractions.UniversalNodeKind
 Orkeon.Analysis.Abstractions.UniversalNodeKind.Constructor = 13 -> Orkeon.Analysis.Abstractions.UniversalNodeKind
 Orkeon.Analysis.Abstractions.UniversalNodeKind.Decorator = 20 -> Orkeon.Analysis.Abstractions.UniversalNodeKind
 Orkeon.Analysis.Abstractions.UniversalNodeKind.Destructor = 14 -> Orkeon.Analysis.Abstractions.UniversalNodeKind
 Orkeon.Analysis.Abstractions.UniversalNodeKind.Enum = 7 -> Orkeon.Analysis.Abstractions.UniversalNodeKind
 Orkeon.Analysis.Abstractions.UniversalNodeKind.Field = 17 -> Orkeon.Analysis.Abstractions.UniversalNodeKind
+Orkeon.Analysis.Abstractions.UniversalNodeKind.FrontMatter = 25 -> Orkeon.Analysis.Abstractions.UniversalNodeKind
 Orkeon.Analysis.Abstractions.UniversalNodeKind.Function = 11 -> Orkeon.Analysis.Abstractions.UniversalNodeKind
 Orkeon.Analysis.Abstractions.UniversalNodeKind.Interface = 4 -> Orkeon.Analysis.Abstractions.UniversalNodeKind
+Orkeon.Analysis.Abstractions.UniversalNodeKind.Link = 24 -> Orkeon.Analysis.Abstractions.UniversalNodeKind
 Orkeon.Analysis.Abstractions.UniversalNodeKind.Method = 12 -> Orkeon.Analysis.Abstractions.UniversalNodeKind
 Orkeon.Analysis.Abstractions.UniversalNodeKind.Module = 2 -> Orkeon.Analysis.Abstractions.UniversalNodeKind
 Orkeon.Analysis.Abstractions.UniversalNodeKind.Monorepo = 0 -> Orkeon.Analysis.Abstractions.UniversalNodeKind
@@ -1513,6 +1610,7 @@ Orkeon.Analysis.Abstractions.UniversalNodeKind.Operator = 15 -> Orkeon.Analysis.
 Orkeon.Analysis.Abstractions.UniversalNodeKind.Package = 1 -> Orkeon.Analysis.Abstractions.UniversalNodeKind
 Orkeon.Analysis.Abstractions.UniversalNodeKind.Property = 16 -> Orkeon.Analysis.Abstractions.UniversalNodeKind
 Orkeon.Analysis.Abstractions.UniversalNodeKind.Record = 8 -> Orkeon.Analysis.Abstractions.UniversalNodeKind
+Orkeon.Analysis.Abstractions.UniversalNodeKind.Section = 22 -> Orkeon.Analysis.Abstractions.UniversalNodeKind
 Orkeon.Analysis.Abstractions.UniversalNodeKind.Struct = 6 -> Orkeon.Analysis.Abstractions.UniversalNodeKind
 Orkeon.Analysis.Abstractions.UniversalNodeKind.Trait = 5 -> Orkeon.Analysis.Abstractions.UniversalNodeKind
 Orkeon.Analysis.Abstractions.UniversalNodeKind.Type = 9 -> Orkeon.Analysis.Abstractions.UniversalNodeKind
@@ -1566,6 +1664,9 @@ override Orkeon.Analysis.Abstractions.DTOs.Responses.SourceSlice.ToString() -> s
 override Orkeon.Analysis.Abstractions.DTOs.Responses.SubGraph.Equals(object? obj) -> bool
 override Orkeon.Analysis.Abstractions.DTOs.Responses.SubGraph.GetHashCode() -> int
 override Orkeon.Analysis.Abstractions.DTOs.Responses.SubGraph.ToString() -> string!
+override Orkeon.Analysis.Abstractions.DTOs.Tools.AccessCostReport.Equals(object? obj) -> bool
+override Orkeon.Analysis.Abstractions.DTOs.Tools.AccessCostReport.GetHashCode() -> int
+override Orkeon.Analysis.Abstractions.DTOs.Tools.AccessCostReport.ToString() -> string!
 override Orkeon.Analysis.Abstractions.DTOs.Tools.CodebaseMapRequest.Equals(object? obj) -> bool
 override Orkeon.Analysis.Abstractions.DTOs.Tools.CodebaseMapRequest.GetHashCode() -> int
 override Orkeon.Analysis.Abstractions.DTOs.Tools.CodebaseMapRequest.ToString() -> string!
@@ -1587,6 +1688,9 @@ override Orkeon.Analysis.Abstractions.DTOs.Tools.ComplexityReportRequest.ToStrin
 override Orkeon.Analysis.Abstractions.DTOs.Tools.ComplexityReportResponse.Equals(object? obj) -> bool
 override Orkeon.Analysis.Abstractions.DTOs.Tools.ComplexityReportResponse.GetHashCode() -> int
 override Orkeon.Analysis.Abstractions.DTOs.Tools.ComplexityReportResponse.ToString() -> string!
+override Orkeon.Analysis.Abstractions.DTOs.Tools.CostLine.Equals(object? obj) -> bool
+override Orkeon.Analysis.Abstractions.DTOs.Tools.CostLine.GetHashCode() -> int
+override Orkeon.Analysis.Abstractions.DTOs.Tools.CostLine.ToString() -> string!
 override Orkeon.Analysis.Abstractions.DTOs.Tools.DependencyGraphRequest.Equals(object? obj) -> bool
 override Orkeon.Analysis.Abstractions.DTOs.Tools.DependencyGraphRequest.GetHashCode() -> int
 override Orkeon.Analysis.Abstractions.DTOs.Tools.DependencyGraphRequest.ToString() -> string!
@@ -1617,6 +1721,9 @@ override Orkeon.Analysis.Abstractions.DTOs.Tools.ImpactAnalysisRequest.ToString(
 override Orkeon.Analysis.Abstractions.DTOs.Tools.ImpactAnalysisResponse.Equals(object? obj) -> bool
 override Orkeon.Analysis.Abstractions.DTOs.Tools.ImpactAnalysisResponse.GetHashCode() -> int
 override Orkeon.Analysis.Abstractions.DTOs.Tools.ImpactAnalysisResponse.ToString() -> string!
+override Orkeon.Analysis.Abstractions.DTOs.Tools.InMemoryFilter.Equals(object? obj) -> bool
+override Orkeon.Analysis.Abstractions.DTOs.Tools.InMemoryFilter.GetHashCode() -> int
+override Orkeon.Analysis.Abstractions.DTOs.Tools.InMemoryFilter.ToString() -> string!
 override Orkeon.Analysis.Abstractions.DTOs.Tools.IncrementalReindexRequest.Equals(object? obj) -> bool
 override Orkeon.Analysis.Abstractions.DTOs.Tools.IncrementalReindexRequest.GetHashCode() -> int
 override Orkeon.Analysis.Abstractions.DTOs.Tools.IncrementalReindexRequest.ToString() -> string!
@@ -1647,12 +1754,18 @@ override Orkeon.Analysis.Abstractions.DTOs.Tools.IsPathIndexedResponse.ToString(
 override Orkeon.Analysis.Abstractions.DTOs.Tools.MapEntry.Equals(object? obj) -> bool
 override Orkeon.Analysis.Abstractions.DTOs.Tools.MapEntry.GetHashCode() -> int
 override Orkeon.Analysis.Abstractions.DTOs.Tools.MapEntry.ToString() -> string!
+override Orkeon.Analysis.Abstractions.DTOs.Tools.MemberAccessCost.Equals(object? obj) -> bool
+override Orkeon.Analysis.Abstractions.DTOs.Tools.MemberAccessCost.GetHashCode() -> int
+override Orkeon.Analysis.Abstractions.DTOs.Tools.MemberAccessCost.ToString() -> string!
 override Orkeon.Analysis.Abstractions.DTOs.Tools.PackageSummaryRequest.Equals(object? obj) -> bool
 override Orkeon.Analysis.Abstractions.DTOs.Tools.PackageSummaryRequest.GetHashCode() -> int
 override Orkeon.Analysis.Abstractions.DTOs.Tools.PackageSummaryRequest.ToString() -> string!
 override Orkeon.Analysis.Abstractions.DTOs.Tools.PackageSummaryResponse.Equals(object? obj) -> bool
 override Orkeon.Analysis.Abstractions.DTOs.Tools.PackageSummaryResponse.GetHashCode() -> int
 override Orkeon.Analysis.Abstractions.DTOs.Tools.PackageSummaryResponse.ToString() -> string!
+override Orkeon.Analysis.Abstractions.DTOs.Tools.PortCall.Equals(object? obj) -> bool
+override Orkeon.Analysis.Abstractions.DTOs.Tools.PortCall.GetHashCode() -> int
+override Orkeon.Analysis.Abstractions.DTOs.Tools.PortCall.ToString() -> string!
 override Orkeon.Analysis.Abstractions.DTOs.Tools.StatementHit.Equals(object? obj) -> bool
 override Orkeon.Analysis.Abstractions.DTOs.Tools.StatementHit.GetHashCode() -> int
 override Orkeon.Analysis.Abstractions.DTOs.Tools.StatementHit.ToString() -> string!
@@ -1686,6 +1799,9 @@ override Orkeon.Analysis.Abstractions.DependencyInjection.LocalEmbeddingOptions.
 override Orkeon.Analysis.Abstractions.Interfaces.AmbiguousFqn.Equals(object? obj) -> bool
 override Orkeon.Analysis.Abstractions.Interfaces.AmbiguousFqn.GetHashCode() -> int
 override Orkeon.Analysis.Abstractions.Interfaces.AmbiguousFqn.ToString() -> string!
+override Orkeon.Analysis.Abstractions.Interfaces.BuildValidation.Equals(object? obj) -> bool
+override Orkeon.Analysis.Abstractions.Interfaces.BuildValidation.GetHashCode() -> int
+override Orkeon.Analysis.Abstractions.Interfaces.BuildValidation.ToString() -> string!
 override Orkeon.Analysis.Abstractions.Interfaces.CodebaseChangeNotification.Equals(object? obj) -> bool
 override Orkeon.Analysis.Abstractions.Interfaces.CodebaseChangeNotification.GetHashCode() -> int
 override Orkeon.Analysis.Abstractions.Interfaces.CodebaseChangeNotification.ToString() -> string!
@@ -1814,6 +1930,8 @@ static Orkeon.Analysis.Abstractions.DTOs.Responses.SourceSlice.operator !=(Orkeo
 static Orkeon.Analysis.Abstractions.DTOs.Responses.SourceSlice.operator ==(Orkeon.Analysis.Abstractions.DTOs.Responses.SourceSlice? left, Orkeon.Analysis.Abstractions.DTOs.Responses.SourceSlice? right) -> bool
 static Orkeon.Analysis.Abstractions.DTOs.Responses.SubGraph.operator !=(Orkeon.Analysis.Abstractions.DTOs.Responses.SubGraph? left, Orkeon.Analysis.Abstractions.DTOs.Responses.SubGraph? right) -> bool
 static Orkeon.Analysis.Abstractions.DTOs.Responses.SubGraph.operator ==(Orkeon.Analysis.Abstractions.DTOs.Responses.SubGraph? left, Orkeon.Analysis.Abstractions.DTOs.Responses.SubGraph? right) -> bool
+static Orkeon.Analysis.Abstractions.DTOs.Tools.AccessCostReport.operator !=(Orkeon.Analysis.Abstractions.DTOs.Tools.AccessCostReport? left, Orkeon.Analysis.Abstractions.DTOs.Tools.AccessCostReport? right) -> bool
+static Orkeon.Analysis.Abstractions.DTOs.Tools.AccessCostReport.operator ==(Orkeon.Analysis.Abstractions.DTOs.Tools.AccessCostReport? left, Orkeon.Analysis.Abstractions.DTOs.Tools.AccessCostReport? right) -> bool
 static Orkeon.Analysis.Abstractions.DTOs.Tools.CodebaseMapRequest.operator !=(Orkeon.Analysis.Abstractions.DTOs.Tools.CodebaseMapRequest? left, Orkeon.Analysis.Abstractions.DTOs.Tools.CodebaseMapRequest? right) -> bool
 static Orkeon.Analysis.Abstractions.DTOs.Tools.CodebaseMapRequest.operator ==(Orkeon.Analysis.Abstractions.DTOs.Tools.CodebaseMapRequest? left, Orkeon.Analysis.Abstractions.DTOs.Tools.CodebaseMapRequest? right) -> bool
 static Orkeon.Analysis.Abstractions.DTOs.Tools.CodebaseMapResponse.operator !=(Orkeon.Analysis.Abstractions.DTOs.Tools.CodebaseMapResponse? left, Orkeon.Analysis.Abstractions.DTOs.Tools.CodebaseMapResponse? right) -> bool
@@ -1828,6 +1946,8 @@ static Orkeon.Analysis.Abstractions.DTOs.Tools.ComplexityReportRequest.operator 
 static Orkeon.Analysis.Abstractions.DTOs.Tools.ComplexityReportRequest.operator ==(Orkeon.Analysis.Abstractions.DTOs.Tools.ComplexityReportRequest? left, Orkeon.Analysis.Abstractions.DTOs.Tools.ComplexityReportRequest? right) -> bool
 static Orkeon.Analysis.Abstractions.DTOs.Tools.ComplexityReportResponse.operator !=(Orkeon.Analysis.Abstractions.DTOs.Tools.ComplexityReportResponse? left, Orkeon.Analysis.Abstractions.DTOs.Tools.ComplexityReportResponse? right) -> bool
 static Orkeon.Analysis.Abstractions.DTOs.Tools.ComplexityReportResponse.operator ==(Orkeon.Analysis.Abstractions.DTOs.Tools.ComplexityReportResponse? left, Orkeon.Analysis.Abstractions.DTOs.Tools.ComplexityReportResponse? right) -> bool
+static Orkeon.Analysis.Abstractions.DTOs.Tools.CostLine.operator !=(Orkeon.Analysis.Abstractions.DTOs.Tools.CostLine? left, Orkeon.Analysis.Abstractions.DTOs.Tools.CostLine? right) -> bool
+static Orkeon.Analysis.Abstractions.DTOs.Tools.CostLine.operator ==(Orkeon.Analysis.Abstractions.DTOs.Tools.CostLine? left, Orkeon.Analysis.Abstractions.DTOs.Tools.CostLine? right) -> bool
 static Orkeon.Analysis.Abstractions.DTOs.Tools.DependencyGraphRequest.operator !=(Orkeon.Analysis.Abstractions.DTOs.Tools.DependencyGraphRequest? left, Orkeon.Analysis.Abstractions.DTOs.Tools.DependencyGraphRequest? right) -> bool
 static Orkeon.Analysis.Abstractions.DTOs.Tools.DependencyGraphRequest.operator ==(Orkeon.Analysis.Abstractions.DTOs.Tools.DependencyGraphRequest? left, Orkeon.Analysis.Abstractions.DTOs.Tools.DependencyGraphRequest? right) -> bool
 static Orkeon.Analysis.Abstractions.DTOs.Tools.DependencyGraphResponse.operator !=(Orkeon.Analysis.Abstractions.DTOs.Tools.DependencyGraphResponse? left, Orkeon.Analysis.Abstractions.DTOs.Tools.DependencyGraphResponse? right) -> bool
@@ -1848,6 +1968,8 @@ static Orkeon.Analysis.Abstractions.DTOs.Tools.ImpactAnalysisRequest.operator !=
 static Orkeon.Analysis.Abstractions.DTOs.Tools.ImpactAnalysisRequest.operator ==(Orkeon.Analysis.Abstractions.DTOs.Tools.ImpactAnalysisRequest? left, Orkeon.Analysis.Abstractions.DTOs.Tools.ImpactAnalysisRequest? right) -> bool
 static Orkeon.Analysis.Abstractions.DTOs.Tools.ImpactAnalysisResponse.operator !=(Orkeon.Analysis.Abstractions.DTOs.Tools.ImpactAnalysisResponse? left, Orkeon.Analysis.Abstractions.DTOs.Tools.ImpactAnalysisResponse? right) -> bool
 static Orkeon.Analysis.Abstractions.DTOs.Tools.ImpactAnalysisResponse.operator ==(Orkeon.Analysis.Abstractions.DTOs.Tools.ImpactAnalysisResponse? left, Orkeon.Analysis.Abstractions.DTOs.Tools.ImpactAnalysisResponse? right) -> bool
+static Orkeon.Analysis.Abstractions.DTOs.Tools.InMemoryFilter.operator !=(Orkeon.Analysis.Abstractions.DTOs.Tools.InMemoryFilter? left, Orkeon.Analysis.Abstractions.DTOs.Tools.InMemoryFilter? right) -> bool
+static Orkeon.Analysis.Abstractions.DTOs.Tools.InMemoryFilter.operator ==(Orkeon.Analysis.Abstractions.DTOs.Tools.InMemoryFilter? left, Orkeon.Analysis.Abstractions.DTOs.Tools.InMemoryFilter? right) -> bool
 static Orkeon.Analysis.Abstractions.DTOs.Tools.IncrementalReindexRequest.operator !=(Orkeon.Analysis.Abstractions.DTOs.Tools.IncrementalReindexRequest? left, Orkeon.Analysis.Abstractions.DTOs.Tools.IncrementalReindexRequest? right) -> bool
 static Orkeon.Analysis.Abstractions.DTOs.Tools.IncrementalReindexRequest.operator ==(Orkeon.Analysis.Abstractions.DTOs.Tools.IncrementalReindexRequest? left, Orkeon.Analysis.Abstractions.DTOs.Tools.IncrementalReindexRequest? right) -> bool
 static Orkeon.Analysis.Abstractions.DTOs.Tools.IndexCodebaseRequest.operator !=(Orkeon.Analysis.Abstractions.DTOs.Tools.IndexCodebaseRequest? left, Orkeon.Analysis.Abstractions.DTOs.Tools.IndexCodebaseRequest? right) -> bool
@@ -1868,10 +1990,14 @@ static Orkeon.Analysis.Abstractions.DTOs.Tools.IsPathIndexedResponse.operator !=
 static Orkeon.Analysis.Abstractions.DTOs.Tools.IsPathIndexedResponse.operator ==(Orkeon.Analysis.Abstractions.DTOs.Tools.IsPathIndexedResponse? left, Orkeon.Analysis.Abstractions.DTOs.Tools.IsPathIndexedResponse? right) -> bool
 static Orkeon.Analysis.Abstractions.DTOs.Tools.MapEntry.operator !=(Orkeon.Analysis.Abstractions.DTOs.Tools.MapEntry? left, Orkeon.Analysis.Abstractions.DTOs.Tools.MapEntry? right) -> bool
 static Orkeon.Analysis.Abstractions.DTOs.Tools.MapEntry.operator ==(Orkeon.Analysis.Abstractions.DTOs.Tools.MapEntry? left, Orkeon.Analysis.Abstractions.DTOs.Tools.MapEntry? right) -> bool
+static Orkeon.Analysis.Abstractions.DTOs.Tools.MemberAccessCost.operator !=(Orkeon.Analysis.Abstractions.DTOs.Tools.MemberAccessCost? left, Orkeon.Analysis.Abstractions.DTOs.Tools.MemberAccessCost? right) -> bool
+static Orkeon.Analysis.Abstractions.DTOs.Tools.MemberAccessCost.operator ==(Orkeon.Analysis.Abstractions.DTOs.Tools.MemberAccessCost? left, Orkeon.Analysis.Abstractions.DTOs.Tools.MemberAccessCost? right) -> bool
 static Orkeon.Analysis.Abstractions.DTOs.Tools.PackageSummaryRequest.operator !=(Orkeon.Analysis.Abstractions.DTOs.Tools.PackageSummaryRequest? left, Orkeon.Analysis.Abstractions.DTOs.Tools.PackageSummaryRequest? right) -> bool
 static Orkeon.Analysis.Abstractions.DTOs.Tools.PackageSummaryRequest.operator ==(Orkeon.Analysis.Abstractions.DTOs.Tools.PackageSummaryRequest? left, Orkeon.Analysis.Abstractions.DTOs.Tools.PackageSummaryRequest? right) -> bool
 static Orkeon.Analysis.Abstractions.DTOs.Tools.PackageSummaryResponse.operator !=(Orkeon.Analysis.Abstractions.DTOs.Tools.PackageSummaryResponse? left, Orkeon.Analysis.Abstractions.DTOs.Tools.PackageSummaryResponse? right) -> bool
 static Orkeon.Analysis.Abstractions.DTOs.Tools.PackageSummaryResponse.operator ==(Orkeon.Analysis.Abstractions.DTOs.Tools.PackageSummaryResponse? left, Orkeon.Analysis.Abstractions.DTOs.Tools.PackageSummaryResponse? right) -> bool
+static Orkeon.Analysis.Abstractions.DTOs.Tools.PortCall.operator !=(Orkeon.Analysis.Abstractions.DTOs.Tools.PortCall? left, Orkeon.Analysis.Abstractions.DTOs.Tools.PortCall? right) -> bool
+static Orkeon.Analysis.Abstractions.DTOs.Tools.PortCall.operator ==(Orkeon.Analysis.Abstractions.DTOs.Tools.PortCall? left, Orkeon.Analysis.Abstractions.DTOs.Tools.PortCall? right) -> bool
 static Orkeon.Analysis.Abstractions.DTOs.Tools.StatementHit.operator !=(Orkeon.Analysis.Abstractions.DTOs.Tools.StatementHit? left, Orkeon.Analysis.Abstractions.DTOs.Tools.StatementHit? right) -> bool
 static Orkeon.Analysis.Abstractions.DTOs.Tools.StatementHit.operator ==(Orkeon.Analysis.Abstractions.DTOs.Tools.StatementHit? left, Orkeon.Analysis.Abstractions.DTOs.Tools.StatementHit? right) -> bool
 static Orkeon.Analysis.Abstractions.DTOs.Tools.StatementQueryRequest.operator !=(Orkeon.Analysis.Abstractions.DTOs.Tools.StatementQueryRequest? left, Orkeon.Analysis.Abstractions.DTOs.Tools.StatementQueryRequest? right) -> bool
@@ -1892,8 +2018,19 @@ static Orkeon.Analysis.Abstractions.DTOs.Tools.SymbolSourceResponse.operator !=(
 static Orkeon.Analysis.Abstractions.DTOs.Tools.SymbolSourceResponse.operator ==(Orkeon.Analysis.Abstractions.DTOs.Tools.SymbolSourceResponse? left, Orkeon.Analysis.Abstractions.DTOs.Tools.SymbolSourceResponse? right) -> bool
 static Orkeon.Analysis.Abstractions.DependencyInjection.LocalEmbeddingOptions.operator !=(Orkeon.Analysis.Abstractions.DependencyInjection.LocalEmbeddingOptions? left, Orkeon.Analysis.Abstractions.DependencyInjection.LocalEmbeddingOptions? right) -> bool
 static Orkeon.Analysis.Abstractions.DependencyInjection.LocalEmbeddingOptions.operator ==(Orkeon.Analysis.Abstractions.DependencyInjection.LocalEmbeddingOptions? left, Orkeon.Analysis.Abstractions.DependencyInjection.LocalEmbeddingOptions? right) -> bool
+static Orkeon.Analysis.Abstractions.Editing.FileEditLocks.Release(System.Collections.Generic.IReadOnlyList<string!>! paths, string! holderId) -> void
+static Orkeon.Analysis.Abstractions.Editing.FileEditLocks.TryAcquire(System.Collections.Generic.IReadOnlyList<string!>! paths, string! holderId, out string? heldPath) -> bool
+static Orkeon.Analysis.Abstractions.GraphKindNames.EdgeKindNames.get -> System.Collections.Immutable.ImmutableArray<string!>
+static Orkeon.Analysis.Abstractions.GraphKindNames.NodeKindNames.get -> System.Collections.Immutable.ImmutableArray<string!>
+static Orkeon.Analysis.Abstractions.GraphKindNames.ParseEdgeKinds(System.Collections.Immutable.ImmutableArray<string!> names) -> System.Collections.Immutable.ImmutableArray<Orkeon.Analysis.Abstractions.EdgeKind>
+static Orkeon.Analysis.Abstractions.GraphKindNames.ParseNodeKinds(System.Collections.Immutable.ImmutableArray<string!> names) -> System.Func<Orkeon.Analysis.Abstractions.Models.RaggableNode!, bool>!
+static Orkeon.Analysis.Abstractions.GraphKindNames.ParseNodeQueries(System.Collections.Immutable.ImmutableArray<string!> names) -> System.Collections.Immutable.ImmutableArray<Orkeon.Analysis.Abstractions.DTOs.Queries.NodeQuery!>
+static Orkeon.Analysis.Abstractions.GraphKindNames.TryParseEdgeKind(string? name, out Orkeon.Analysis.Abstractions.EdgeKind kind) -> bool
+static Orkeon.Analysis.Abstractions.GraphKindNames.TryParseNodeKind(string? name, out System.Func<Orkeon.Analysis.Abstractions.Models.RaggableNode!, bool>! matches) -> bool
 static Orkeon.Analysis.Abstractions.Interfaces.AmbiguousFqn.operator !=(Orkeon.Analysis.Abstractions.Interfaces.AmbiguousFqn? left, Orkeon.Analysis.Abstractions.Interfaces.AmbiguousFqn? right) -> bool
 static Orkeon.Analysis.Abstractions.Interfaces.AmbiguousFqn.operator ==(Orkeon.Analysis.Abstractions.Interfaces.AmbiguousFqn? left, Orkeon.Analysis.Abstractions.Interfaces.AmbiguousFqn? right) -> bool
+static Orkeon.Analysis.Abstractions.Interfaces.BuildValidation.operator !=(Orkeon.Analysis.Abstractions.Interfaces.BuildValidation? left, Orkeon.Analysis.Abstractions.Interfaces.BuildValidation? right) -> bool
+static Orkeon.Analysis.Abstractions.Interfaces.BuildValidation.operator ==(Orkeon.Analysis.Abstractions.Interfaces.BuildValidation? left, Orkeon.Analysis.Abstractions.Interfaces.BuildValidation? right) -> bool
 static Orkeon.Analysis.Abstractions.Interfaces.CodebaseChangeNotification.operator !=(Orkeon.Analysis.Abstractions.Interfaces.CodebaseChangeNotification? left, Orkeon.Analysis.Abstractions.Interfaces.CodebaseChangeNotification? right) -> bool
 static Orkeon.Analysis.Abstractions.Interfaces.CodebaseChangeNotification.operator ==(Orkeon.Analysis.Abstractions.Interfaces.CodebaseChangeNotification? left, Orkeon.Analysis.Abstractions.Interfaces.CodebaseChangeNotification? right) -> bool
 static Orkeon.Analysis.Abstractions.Interfaces.CodebaseContextOptions.operator !=(Orkeon.Analysis.Abstractions.Interfaces.CodebaseContextOptions? left, Orkeon.Analysis.Abstractions.Interfaces.CodebaseContextOptions? right) -> bool

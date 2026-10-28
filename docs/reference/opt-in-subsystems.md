@@ -588,7 +588,7 @@ No attribute carries an id of a crew, task or agent.
   paths. `AgentFacing` mounts, ordinal matching; without mounts both passes are
   no-ops.
 - **Confinement is not opt-in** (`Orkeon:Tools:Shell:Confinement`): since
-  `1.0.0-rc.5` the process runs confined by default (`Mode = Auto`: bubblewrap on Linux,
+  `1.0.0-rc.6` the process runs confined by default (`Mode = Auto`: bubblewrap on Linux,
   Seatbelt on macOS, an AppContainer on Windows, off in a container), and
   `AllowInterpreters` lets in more commands, not a wider view. `Mode = None` is the
   opt-out — see [Shell confinement](../architecture/security.md#shell-confinement).

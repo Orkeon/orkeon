@@ -14,7 +14,7 @@
 
 **Give a team of AI agents real work — your files, your inbox, your drives, your code — and know exactly what it may touch.** Orkeon is a .NET runtime that executes teams of agents under rules declared up front and enforced on every call, and a suite of tools — Orkeon Studio, Orkeon Workshop, Orkeon Code, the `orkeon` CLI — to design, try, run and manage those teams. It runs as happily on a model on your own machine as on a cloud provider; no API key to start.
 
-Version **1.0.0-rc.5**, MIT, .NET 10. Three repositories: this one (the runtime, the CLI, Studio), [orkeon-workshop](https://github.com/Orkeon/orkeon-workshop) and [orkeon-code](https://github.com/Orkeon/orkeon-code).
+Version **1.0.0-rc.6**, MIT, .NET 10. Three repositories: this one (the runtime, the CLI, Studio), [orkeon-workshop](https://github.com/Orkeon/orkeon-workshop) and [orkeon-code](https://github.com/Orkeon/orkeon-code).
 
 ## What a team does for you
 

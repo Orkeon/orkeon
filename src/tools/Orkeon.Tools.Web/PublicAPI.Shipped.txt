@@ -69,10 +69,14 @@ Orkeon.Tools.Web.GitHubRequest
 Orkeon.Tools.Web.GitHubRequest.<Clone>$() -> Orkeon.Tools.Web.GitHubRequest!
 Orkeon.Tools.Web.GitHubRequest.Action.get -> string!
 Orkeon.Tools.Web.GitHubRequest.Action.init -> void
+Orkeon.Tools.Web.GitHubRequest.Base.get -> string?
+Orkeon.Tools.Web.GitHubRequest.Base.init -> void
 Orkeon.Tools.Web.GitHubRequest.Body.get -> string?
 Orkeon.Tools.Web.GitHubRequest.Body.init -> void
 Orkeon.Tools.Web.GitHubRequest.Equals(Orkeon.Tools.Web.GitHubRequest? other) -> bool
 Orkeon.Tools.Web.GitHubRequest.GitHubRequest() -> void
+Orkeon.Tools.Web.GitHubRequest.Head.get -> string?
+Orkeon.Tools.Web.GitHubRequest.Head.init -> void
 Orkeon.Tools.Web.GitHubRequest.Number.get -> int?
 Orkeon.Tools.Web.GitHubRequest.Number.init -> void
 Orkeon.Tools.Web.GitHubRequest.Owner.get -> string!
@@ -99,6 +103,12 @@ Orkeon.Tools.Web.GitHubResponse.TotalCount.get -> int
 Orkeon.Tools.Web.GitHubResponse.TotalCount.init -> void
 Orkeon.Tools.Web.GitHubTool
 Orkeon.Tools.Web.GitHubTool.GitHubTool(string? personalAccessToken = null, System.Net.Http.HttpClient? httpClient = null, Microsoft.Extensions.Logging.ILogger? logger = null) -> void
+Orkeon.Tools.Web.GitHubToolOptions
+Orkeon.Tools.Web.GitHubToolOptions.GitHubToolOptions() -> void
+Orkeon.Tools.Web.GitHubToolOptions.Token.get -> string?
+Orkeon.Tools.Web.GitHubToolOptions.Token.set -> void
+Orkeon.Tools.Web.GitHubToolOptions.TokenVariable.get -> string!
+Orkeon.Tools.Web.GitHubToolOptions.TokenVariable.set -> void
 Orkeon.Tools.Web.HttpApiRequest
 Orkeon.Tools.Web.HttpApiRequest.Body.get -> string?
 Orkeon.Tools.Web.HttpApiRequest.Body.set -> void
@@ -322,6 +332,9 @@ Orkeon.Tools.Web.WebSearchResult.WebSearchResult() -> void
 Orkeon.Tools.Web.WebSearchTool
 Orkeon.Tools.Web.WebSearchTool.WebSearchTool(Orkeon.Application.Interfaces.Security.ISecretProvider! secretProvider, System.Net.Http.HttpClient? httpClient = null, Microsoft.Extensions.Logging.ILogger<Orkeon.Tools.Web.WebSearchTool!>? logger = null) -> void
 const Orkeon.Tools.Web.DependencyInjection.WebToolExtensions.HttpClientName = "orkeon.web-tools" -> string!
+const Orkeon.Tools.Web.GitHubToolOptions.DefaultTokenVariable = "GITHUB_TOKEN" -> string!
+const Orkeon.Tools.Web.GitHubToolOptions.FallbackTokenVariable = "GH_TOKEN" -> string!
+const Orkeon.Tools.Web.GitHubToolOptions.SectionName = "Orkeon:Tools:GitHub" -> string!
 const Orkeon.Tools.Web.ImageGenerationTool.OpenAiApiKeySecretName = "OPENAI_API_KEY" -> string!
 const Orkeon.Tools.Web.WebScrapeTool.CacheSourceTag = "web_scrape" -> string!
 const Orkeon.Tools.Web.WebSearchTool.TavilyApiKeySecretName = "TAVILY_API_KEY" -> string!
@@ -347,9 +360,13 @@ override Orkeon.Tools.Web.GitHubRequest.ToString() -> string!
 override Orkeon.Tools.Web.GitHubResponse.Equals(object? obj) -> bool
 override Orkeon.Tools.Web.GitHubResponse.GetHashCode() -> int
 override Orkeon.Tools.Web.GitHubResponse.ToString() -> string!
+override Orkeon.Tools.Web.GitHubTool.Access.get -> Orkeon.Domain.Tools.ToolAccess
+override Orkeon.Tools.Web.GitHubTool.AccessFor(System.Collections.Generic.IReadOnlyDictionary<string!, object?>! arguments) -> Orkeon.Domain.Tools.ToolAccess
+override Orkeon.Tools.Web.GitHubTool.Description.get -> string!
 override Orkeon.Tools.Web.GitHubTool.ExecuteTypedAsync(Orkeon.Tools.Web.GitHubRequest! request, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Orkeon.Tools.Web.GitHubResponse!>!
 override Orkeon.Tools.Web.GitHubTool.ValidateTypedRequest(Orkeon.Tools.Web.GitHubRequest! request) -> string?
 override Orkeon.Tools.Web.HttpApiTool.Access.get -> Orkeon.Domain.Tools.ToolAccess
+override Orkeon.Tools.Web.HttpApiTool.AccessFor(System.Collections.Generic.IReadOnlyDictionary<string!, object?>! arguments) -> Orkeon.Domain.Tools.ToolAccess
 override Orkeon.Tools.Web.HttpApiTool.Description.get -> string!
 override Orkeon.Tools.Web.HttpApiTool.ExecuteTypedAsync(Orkeon.Tools.Web.HttpApiRequest! request, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Orkeon.Tools.Web.HttpApiResponse!>!
 override Orkeon.Tools.Web.HttpApiTool.Name.get -> string!
@@ -362,6 +379,7 @@ override Orkeon.Tools.Web.ScrapeElementRequest.ToString() -> string!
 override Orkeon.Tools.Web.ScrapeElementResponse.Equals(object? obj) -> bool
 override Orkeon.Tools.Web.ScrapeElementResponse.GetHashCode() -> int
 override Orkeon.Tools.Web.ScrapeElementResponse.ToString() -> string!
+override Orkeon.Tools.Web.ScrapeElementTool.Access.get -> Orkeon.Domain.Tools.ToolAccess
 override Orkeon.Tools.Web.ScrapeElementTool.ExecuteTypedAsync(Orkeon.Tools.Web.ScrapeElementRequest! request, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Orkeon.Tools.Web.ScrapeElementResponse!>!
 override Orkeon.Tools.Web.ScrapeElementTool.ValidateTypedRequest(Orkeon.Tools.Web.ScrapeElementRequest! request) -> string?
 override Orkeon.Tools.Web.ScrapedElement.Equals(object? obj) -> bool
@@ -380,6 +398,7 @@ override Orkeon.Tools.Web.WebScrapeRequest.ToString() -> string!
 override Orkeon.Tools.Web.WebScrapeResponse.Equals(object? obj) -> bool
 override Orkeon.Tools.Web.WebScrapeResponse.GetHashCode() -> int
 override Orkeon.Tools.Web.WebScrapeResponse.ToString() -> string!
+override Orkeon.Tools.Web.WebScrapeTool.Access.get -> Orkeon.Domain.Tools.ToolAccess
 override Orkeon.Tools.Web.WebScrapeTool.ExecuteTypedAsync(Orkeon.Tools.Web.WebScrapeRequest! request, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Orkeon.Tools.Web.WebScrapeResponse!>!
 override Orkeon.Tools.Web.WebScrapeTool.ValidateTypedRequest(Orkeon.Tools.Web.WebScrapeRequest! request) -> string?
 override Orkeon.Tools.Web.WebSearchRequest.Equals(object? obj) -> bool
@@ -391,6 +410,7 @@ override Orkeon.Tools.Web.WebSearchResponse.ToString() -> string!
 override Orkeon.Tools.Web.WebSearchResult.Equals(object? obj) -> bool
 override Orkeon.Tools.Web.WebSearchResult.GetHashCode() -> int
 override Orkeon.Tools.Web.WebSearchResult.ToString() -> string!
+override Orkeon.Tools.Web.WebSearchTool.Access.get -> Orkeon.Domain.Tools.ToolAccess
 override Orkeon.Tools.Web.WebSearchTool.ExecuteTypedAsync(Orkeon.Tools.Web.WebSearchRequest! request, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Orkeon.Tools.Web.WebSearchResponse!>!
 override Orkeon.Tools.Web.WebSearchTool.ValidateTypedRequest(Orkeon.Tools.Web.WebSearchRequest! request) -> string?
 static Orkeon.Tools.Web.CacheSearchHit.operator !=(Orkeon.Tools.Web.CacheSearchHit? left, Orkeon.Tools.Web.CacheSearchHit? right) -> bool
@@ -411,6 +431,7 @@ static Orkeon.Tools.Web.GitHubRequest.operator !=(Orkeon.Tools.Web.GitHubRequest
 static Orkeon.Tools.Web.GitHubRequest.operator ==(Orkeon.Tools.Web.GitHubRequest? left, Orkeon.Tools.Web.GitHubRequest? right) -> bool
 static Orkeon.Tools.Web.GitHubResponse.operator !=(Orkeon.Tools.Web.GitHubResponse? left, Orkeon.Tools.Web.GitHubResponse? right) -> bool
 static Orkeon.Tools.Web.GitHubResponse.operator ==(Orkeon.Tools.Web.GitHubResponse? left, Orkeon.Tools.Web.GitHubResponse? right) -> bool
+static Orkeon.Tools.Web.GitHubToolOptions.ResolveToken(Microsoft.Extensions.Configuration.IConfiguration? configuration, System.Func<string!, string?>! readEnvironment) -> string?
 static Orkeon.Tools.Web.ScrapeElementRequest.operator !=(Orkeon.Tools.Web.ScrapeElementRequest? left, Orkeon.Tools.Web.ScrapeElementRequest? right) -> bool
 static Orkeon.Tools.Web.ScrapeElementRequest.operator ==(Orkeon.Tools.Web.ScrapeElementRequest? left, Orkeon.Tools.Web.ScrapeElementRequest? right) -> bool
 static Orkeon.Tools.Web.ScrapeElementResponse.operator !=(Orkeon.Tools.Web.ScrapeElementResponse? left, Orkeon.Tools.Web.ScrapeElementResponse? right) -> bool

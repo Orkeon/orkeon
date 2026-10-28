@@ -1,2 +1,1 @@
 #nullable enable
-Orkeon.Cli.Registry.DefaultCommandRegistry.DefaultCommandRegistry(Orkeon.Cli.Commands.HelpCommand! help, Orkeon.Cli.Commands.ExitCommand! exit, Orkeon.Cli.Commands.ClearCommand! clear, System.Collections.Generic.IEnumerable<Orkeon.Cli.Abstractions.Commands.IInteractiveCommand!>! additional) -> void
