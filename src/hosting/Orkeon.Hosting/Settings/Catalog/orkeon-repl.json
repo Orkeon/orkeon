@@ -18,6 +18,7 @@
     "Orkeon:Consensus",
     "Orkeon:CostTracking",
     "Orkeon:CrewMemory",
+    "Orkeon:Decision",
     "Orkeon:EmbeddingCache",
     "Orkeon:Embeddings",
     "Orkeon:Encryption",

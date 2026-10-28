@@ -315,6 +315,31 @@ public abstract class CrewTaskBase<TContext> : AggregateRoot<TaskId>, ICrewTask
         });
     }
 
+    /// <summary>Completes a decision task, which no agent runs.</summary>
+    /// <param name="output">The output carrying the decision.</param>
+    public void CompleteWithoutAgent(TaskOutput output)
+    {
+        ArgumentNullException.ThrowIfNull(output);
+
+        if (!IsDecision)
+            throw new InvalidOperationException("Only a decision task completes without an agent.");
+
+        if (Status != TaskStatus.InProgress)
+            throw new InvalidOperationException($"Cannot complete task in {Status} status.");
+
+        Output = output;
+        CompletedAt = DateTime.UtcNow;
+        UpdateStatus(TaskStatus.Completed);
+
+        RaiseDomainEvent(new TaskCompletedEvent
+        {
+            TaskId = Id,
+            AgentId = null,
+            Output = output,
+            Duration = CompletedAt.Value - (StartedAt ?? CreatedAt)
+        });
+    }
+
     /// <inheritdoc />
     public void Fail(string errorMessage, Exception? exception = null)
     {

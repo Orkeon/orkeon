@@ -2796,3 +2796,7 @@ override Orkeon.Application.Crew.Execution.DecisionCircuit.GetHashCode() -> int
 override Orkeon.Application.Crew.Execution.DecisionCircuit.ToString() -> string!
 static Orkeon.Application.Crew.Execution.DecisionCircuit.operator ==(Orkeon.Application.Crew.Execution.DecisionCircuit? left, Orkeon.Application.Crew.Execution.DecisionCircuit? right) -> bool
 static Orkeon.Application.Crew.Execution.DecisionCircuit.operator !=(Orkeon.Application.Crew.Execution.DecisionCircuit? left, Orkeon.Application.Crew.Execution.DecisionCircuit? right) -> bool
+Orkeon.Application.Crew.TaskExecutionSnapshot.Defaulted.get -> bool
+Orkeon.Application.Crew.TaskExecutionSnapshot.Defaulted.init -> void
+Orkeon.Application.Interfaces.Services.CrewExecutionEvent.Defaulted.get -> bool
+Orkeon.Application.Interfaces.Services.CrewExecutionEvent.Defaulted.init -> void

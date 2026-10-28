@@ -32,7 +32,7 @@
       "category": "models",
       "hosts": [],
       "registration": "AddOrkeonDecisionProfiles",
-      "description": "The `Orkeon:Decision` section: the decision profiles, each a set of stages run around the calls to a target profile. A crew uses one like any profile, `llm: { profile: <name> }`."
+      "description": "The `Orkeon:Decision:Enabled` switch of the decision circuit."
     },
     {
       "path": "Orkeon:TokenCounter",
@@ -791,6 +791,13 @@
       "type": "boolean",
       "default": true,
       "description": "Whether cost tracking is enabled (default: true)."
+    },
+    {
+      "path": "Orkeon:Decision:Enabled",
+      "section": "Orkeon:Decision",
+      "type": "boolean",
+      "default": true,
+      "description": "Whether decision tasks ask the decision model."
     },
     {
       "path": "Orkeon:Decision:Profiles:<name>:FailClosed",

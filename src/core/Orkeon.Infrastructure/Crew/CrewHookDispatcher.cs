@@ -87,6 +87,7 @@ internal sealed partial class CrewHookDispatcher
             Success = snapshot.Success,
             Skipped = snapshot.Skipped,
             SkipReason = snapshot.SkipReason,
+            Defaulted = snapshot.Defaulted,
             Duration = snapshot.Duration,
             Tokens = snapshot.TokensUsed,
             ToolCalls = snapshot.ToolCallCount,

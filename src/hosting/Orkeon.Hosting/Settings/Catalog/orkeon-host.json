@@ -20,6 +20,7 @@
     "Orkeon:CostTracking",
     "Orkeon:CrewFactory",
     "Orkeon:CrewMemory",
+    "Orkeon:Decision",
     "Orkeon:EmbeddingCache",
     "Orkeon:Embeddings",
     "Orkeon:Encryption",

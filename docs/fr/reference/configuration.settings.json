@@ -19,6 +19,7 @@
   },
   "settings": {
     "Evaluation:EnableLlmJudge": "Quand la clé est vraie, la suite d'évaluation par défaut exécute aussi les évaluateurs « LLM juge » (cohérence, fluidité, ancrage). Requiert un IChatClient enregistré dans le conteneur. Défaut : false. Liée depuis la section `Evaluation`.",
+    "Orkeon:Decision:Enabled": "Si les tâches de décision interrogent le modèle de décision.",
     "Orkeon:Decision:Profiles:<name>:FailClosed": "Si une étape en échec bloque l'appel ; false le laisse passer avec un avertissement.",
     "Orkeon:Decision:Profiles:<name>:Stages:<i>:BlockThreshold": "La probabilité à partir de laquelle une étape `guard` bloque.",
     "Orkeon:Decision:Profiles:<name>:Stages:<i>:Criterion": "Ce qu'est une bonne réponse, pour une étape `verify` ; vide, le critère par défaut s'applique.",

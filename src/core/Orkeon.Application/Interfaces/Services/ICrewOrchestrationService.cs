@@ -252,6 +252,9 @@ public sealed record CrewExecutionEvent
     /// <summary><c>task.completed</c>: why the task was skipped; null unless <see cref="Skipped"/>.</summary>
     public string? SkipReason { get; init; }
 
+    /// <summary><c>task.completed</c>: the decision task resolved to its fallback because the circuit is off.</summary>
+    public bool Defaulted { get; init; }
+
     /// <summary><c>task.completed</c>: the tokens the task used, 0 when its mode does not track them.</summary>
     public int Tokens { get; init; }
 

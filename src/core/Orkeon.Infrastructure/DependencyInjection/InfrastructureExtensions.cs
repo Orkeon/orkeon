@@ -398,7 +398,15 @@ public static class InfrastructureExtensions
 
         // The collaborators every strategy shares, resolved once per scope so a strategy
         // constructor only names what its own mode adds on top of them.
-        services.TryAddScoped<Crew.Strategies.CrewStrategyDependencies>();
+        services.TryAddScoped<Crew.Strategies.CrewStrategyDependencies>(sp => new Crew.Strategies.CrewStrategyDependencies(
+            sp.GetRequiredService<Orkeon.Domain.Task.ITaskRepository>(),
+            sp.GetRequiredService<Orkeon.Domain.Agent.IAgentRepository>(),
+            sp.GetRequiredService<Orkeon.Application.Interfaces.Services.IAgentExecutionService>(),
+            sp.GetRequiredService<Orkeon.Application.Interfaces.Ports.IMemoryScope>(),
+            sp.GetService<Orkeon.Domain.SharedKernel.Events.IDomainEventDispatcher>())
+        {
+            DecisionRunner = sp.GetRequiredService<Orkeon.Application.Crew.Execution.DecisionTaskRunner>(),
+        });
 
         // Add Process Strategies
         services.AddScoped<SequentialProcessStrategy>();

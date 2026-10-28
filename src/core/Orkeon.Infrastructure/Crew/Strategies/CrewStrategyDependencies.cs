@@ -63,6 +63,9 @@ public sealed class CrewStrategyDependencies
     /// <summary>Delivers the events of the tasks and agents as the run goes; null when nothing does.</summary>
     public IDomainEventDispatcher? DomainEvents { get; }
 
+    /// <summary>Runs decision tasks; null when the strategy has no decision support.</summary>
+    public Orkeon.Application.Crew.Execution.DecisionTaskRunner? DecisionRunner { get; init; }
+
     /// <summary>The lifecycle of the tasks and agents of a strategy's runs, logging through <paramref name="logger"/>.</summary>
     internal TaskLifecycle LifecycleFor(Microsoft.Extensions.Logging.ILogger logger) =>
         new(TaskRepository, AgentRepository, DomainEvents, logger);

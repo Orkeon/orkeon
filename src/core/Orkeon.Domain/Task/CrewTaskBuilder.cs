@@ -213,6 +213,15 @@ public sealed class CrewTaskBuilder
         return this;
     }
 
+    /// <summary>Sets the condition and depends on the decision task.</summary>
+    public CrewTaskBuilder When(TaskId decisionTaskId, TaskCondition condition)
+    {
+        if (!_dependencies.Contains(decisionTaskId))
+            _dependencies.Add(decisionTaskId);
+        _condition = condition;
+        return this;
+    }
+
     /// <summary>Sets the condition under which the task runs.</summary>
     public CrewTaskBuilder When(TaskCondition condition)
     {

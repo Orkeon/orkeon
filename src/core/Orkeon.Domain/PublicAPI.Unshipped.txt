@@ -1603,3 +1603,7 @@ override Orkeon.Domain.Task.ValueObjects.TaskCondition.Equals(object? obj) -> bo
 override Orkeon.Domain.Task.ValueObjects.TaskCondition.GetHashCode() -> int
 override Orkeon.Domain.Task.ValueObjects.ConditionClause.Equals(object? obj) -> bool
 override Orkeon.Domain.Task.ValueObjects.ConditionClause.GetHashCode() -> int
+Orkeon.Domain.Task.CrewTaskBase<TContext>.CompleteWithoutAgent(Orkeon.Domain.Task.ValueObjects.TaskOutput! output) -> void
+Orkeon.Domain.Task.CrewTaskBuilder.When(Orkeon.Domain.Common.TaskId! decisionTaskId, Orkeon.Domain.Task.ValueObjects.TaskCondition! condition) -> Orkeon.Domain.Task.CrewTaskBuilder!
+*REMOVED*Orkeon.Domain.Task.Events.TaskCompletedEvent.AgentId.get -> Orkeon.Domain.Common.AgentId!
+Orkeon.Domain.Task.Events.TaskCompletedEvent.AgentId.get -> Orkeon.Domain.Common.AgentId?

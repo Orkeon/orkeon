@@ -70,6 +70,9 @@ public sealed record TaskExecutionSnapshot
     /// <summary>Why the task was skipped — null unless <see cref="Skipped"/>.</summary>
     public string? SkipReason { get; init; }
 
+    /// <summary>True for a decision task that resolved to its fallback because the circuit is off.</summary>
+    public bool Defaulted { get; init; }
+
     /// <summary>
     /// FQNs mentioned in the task's deliverable that could not be resolved in the
     /// RaggableTree store. Populated by <see cref="DeliverableResolvers.FinalMessageResolver"/>

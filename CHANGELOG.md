@@ -21,6 +21,14 @@ route or escalate a call before and after it, without rewriting the messages or 
 RAG reranker `rerank.kind: decision` (alias `typesafe`) and the tool `system_one_decide` (120 tool classes). See
 [Decision models](docs/architecture/decision-models.md).
 
+### Changed — `TaskCompletedEvent.AgentId` is nullable; `ParallelProcessStrategy` takes `CrewStrategyDependencies` **[breaking]**
+
+`TaskCompletedEvent.AgentId` is now `AgentId?`: a decision task answered by the decision runner completes without an
+agent. The public constructor of `ParallelProcessStrategy` now takes a `CrewStrategyDependencies` (the way the
+sequential and graph strategies do); the former eight-argument constructor is internal. A task whose condition names a
+decision task it does not depend on fails the run at entry, and the parallel run's final output is the output of the
+last task that ran.
+
 ### Added — `CommandResponse.streamed` tells a script its answer already streamed (#228)
 
 With `Orkeon:Cli:ConsoleStreaming:Enabled`, the foreground act streams its answer inline to the console, and a command
