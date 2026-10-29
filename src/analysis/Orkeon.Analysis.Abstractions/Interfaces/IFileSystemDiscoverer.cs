@@ -37,11 +37,11 @@ public sealed record DiscoveryRequest
         ["node_modules", "dist", "build", ".git", "target", "bin", "obj"];
 
     /// <summary>
-    /// When <see langword="true"/> (default), a <c>.gitignore</c> file at the
-    /// virtual root is parsed and its patterns are used to filter the
-    /// enumeration. When <see langword="false"/>, gitignore is ignored —
-    /// useful when indexing source trees recovered from sourcemaps or
-    /// distribution archives where files would otherwise be filtered out.
+    /// When <see langword="true"/> (default), the ignore files under the virtual root filter the
+    /// enumeration as git applies them: <c>.git/info/exclude</c>, the root <c>.gitignore</c> and each
+    /// nested <c>.gitignore</c> for the paths under its folder. When <see langword="false"/>, they are
+    /// ignored — useful when indexing source trees recovered from sourcemaps or distribution archives
+    /// where files would otherwise be filtered out.
     /// </summary>
     public bool RespectGitignore { get; init; } = true;
 

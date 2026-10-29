@@ -166,6 +166,13 @@ levels its field knows, `LlmProviderCapabilities.EffortLevels` (`low`, `medium`,
 Anthropic and OpenRouter; `max` without `xhigh` for DeepSeek and Z.ai), and sends, for a level it does not know, the highest
 declared level below it (`LlmThinkingConfig.EffortFor`) with a warning naming both (event 112), never a silent
 change. The typings of `LlmConfigOverrides` now declare `effort`.
+### Fixed — the index reads every ignore file of the tree
+
+`index_codebase` applied the root `.gitignore` alone: a folder named only in `.git/info/exclude` (a package cache
+checked out beside the sources) or in a nested `.gitignore` was walked and parsed. With `respect_gitignore` (the
+default) the discovery now applies the ignore files as git does — `.git/info/exclude`, the root `.gitignore`, then
+each nested `.gitignore` for the paths under its folder, the last matching pattern deciding and a deeper file over a
+shallower one. A nested `.gitignore` whose own folder is ignored is not read.
 
 ### Added — model provider categories and TypeSafe decision models (ADR-015)
 

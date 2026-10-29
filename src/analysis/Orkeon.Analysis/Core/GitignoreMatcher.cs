@@ -27,10 +27,17 @@ internal sealed class GitignoreMatcher
         }
     }
 
-    public bool IsIgnored(string relativePath, bool isDirectory)
+    public bool IsIgnored(string relativePath, bool isDirectory) => Match(relativePath, isDirectory) == true;
+
+    /// <summary>
+    /// The verdict of the last pattern matching <paramref name="relativePath"/>: <see langword="true"/> ignored,
+    /// <see langword="false"/> re-included by a negation, <see langword="null"/> when no pattern matches, so a
+    /// caller layering several files can let the next one decide.
+    /// </summary>
+    public bool? Match(string relativePath, bool isDirectory)
     {
         var path = relativePath.Replace('\\', '/');
-        var ignored = false;
+        bool? ignored = null;
         foreach (var p in _patterns)
         {
             if (p.DirectoryOnly && !isDirectory) continue;
