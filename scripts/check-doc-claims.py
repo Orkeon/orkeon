@@ -220,13 +220,13 @@ def gt_constants_satellites() -> int:
 
 def gt_umbrella_satellites() -> int:
     """Orkeon.Constants.* satellites the `Orkeon` umbrella package embeds (its ProjectReferences)."""
-    return len(re.findall(r'<ProjectReference Include="[^"]*Orkeon\.Constants\.\w+\.csproj"',
+    return len(re.findall(r'<ProjectReference Include="[^"]*Orkeon\.Constants\.[\w.]+\.csproj"',
                           read("src/packaging/Orkeon/Orkeon.csproj")))
 
 
 def gt_tool_families() -> int:
     """Tool families of the `Orkeon.Tools` package: its ProjectReferences to Orkeon.Tools.<family>."""
-    return len(re.findall(r'<ProjectReference Include="[^"]*Orkeon\.Tools\.\w+\.csproj"[^>]*PrivateAssets',
+    return len(re.findall(r'<ProjectReference Include="[^"]*Orkeon\.Tools\.[\w.]+\.csproj"[^>]*PrivateAssets',
                           read("src/packaging/Orkeon.Tools/Orkeon.Tools.csproj")))
 
 
@@ -577,7 +577,10 @@ NUMBER_WORDS.update({w: i + 1 for i, w in enumerate((
 NUM = r"(\d+|" + "|".join(sorted(NUMBER_WORDS, key=len, reverse=True)) + r")"
 
 # Pages that are dated records keep the numbers of their day: ADRs (and the amendments they carry).
-HISTORICAL_DOCS = ("docs/adr/", "docs/fr/adr/")
+# The ADR index (docs/adr/README.md) states the current status and stays checked.
+HISTORICAL_DOCS = ("docs/adr/ADR-", "docs/fr/adr/ADR-")
+# Words between a number and "satellites" that end the claim: "one of the satellites" counts nothing.
+CLAIM_BREAK = r"(?!(?:of|the|its|their|and|in|which|de|des|les|du|ses|leurs|et|dans|qui|" + NUM[1:-1] + r")\b)"
 
 
 def number_of(token: str) -> int:
@@ -606,7 +609,7 @@ def expect_counts(pages: list[tuple[str, str]], pattern: str, allowed: set[int],
 
 def check_docs_counts(tools: int, src_projects: int, test_projects: int) -> None:
     pages = docs_pages()
-    expect_counts(pages, rf"\b{NUM}\*{{0,2}}\s+(?:built-in\s+tool(?!\s+famil)|outils\s+int[ée]gr[ée]s)",
+    expect_counts(pages, rf"\b{NUM}\*{{0,2}}\s+(?:built-in\s+(?:tools\b|tool\s+classes)|outils\s+int[ée]gr[ée]s)",
                   {tools}, "built-in tool classes")
     expect_counts(pages, rf"\b{NUM}\*{{0,2}}\s+(?:tools\s+by\s+category|outils\s+par\s+cat[ée]gorie)",
                   {tools}, "built-in tool classes")
@@ -615,7 +618,7 @@ def check_docs_counts(tools: int, src_projects: int, test_projects: int) -> None
     expect_counts(pages, rf"\btests/\s+#\s*{NUM}\s+(?:projects|projets)", {test_projects},
                   "csproj count under tests/")
     # A satellite count is either the folder src/constants or what the umbrella package embeds.
-    expect_counts(pages, rf"\b{NUM}\s+(?:[\w-]+\s+){{0,3}}?(?:`Orkeon\.Constants\.\*`\s+)?satellites?\b",
+    expect_counts(pages, rf"\b{NUM}\s+(?:{CLAIM_BREAK}[\w-]+\s+){{0,3}}?(?:`Orkeon\.Constants\.\*`\s+)?satellites\b",
                   {gt_constants_satellites(), gt_umbrella_satellites()}, "Orkeon.Constants.* satellites")
     families = {gt_tool_families()}
     expect_counts(pages, rf"\b{NUM}\s+(?:built-in\s+)?tool\s+families", families,

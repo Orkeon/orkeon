@@ -156,4 +156,4 @@ the umbrella, and `PublicAPI.*.txt` still guards it.
 ## Amendment (2026-10-29)
 
 - The "Source of truth" table lists the copies as they stood when this ADR was written (2026-08-29), before the migration into the satellites; the endpoint and default-model constants it places under `Constants/Llm/` now live in `Orkeon.Constants.Llm`.
-- `Hosting/RunnerMounts.cs` and `RunnerMounts.CrewVirtualRoot` are now `RunnerVirtualRoots` (`src/constants/Orkeon.Constants.FileSystem/RunnerVirtualRoots.cs`).
+- `Hosting/RunnerMounts.cs` is now `RunnerVirtualRoots` (`src/constants/Orkeon.Constants.FileSystem/RunnerVirtualRoots.cs`), and `RunnerMounts.CrewVirtualRoot` is `RunnerVirtualRoots.Crew`.

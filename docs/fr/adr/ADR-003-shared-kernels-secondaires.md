@@ -63,4 +63,4 @@ Tant que ces résorptions ne sont pas faites, la présente ADR sert de justifica
 
 ## Amendement (2026-10-29)
 
-Les « 64 fichiers » de `Orkeon.Analysis.Abstractions` étaient le compte à l'écriture de l'ADR. Le projet compte maintenant 76 fichiers `.cs` ; l'argument ne dépend pas du chiffre.
+Les « 64 fichiers » de `Orkeon.Analysis.Abstractions` étaient le compte à l'écriture de l'ADR. Le projet compte maintenant 70 fichiers `.cs` ; l'argument ne dépend pas du chiffre.

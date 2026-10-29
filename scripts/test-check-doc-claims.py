@@ -182,6 +182,14 @@ class DocsCountTests(unittest.TestCase):
         self.assertIn("'huit'", self.errors_for("les huit familles d'outils"))
         self.assertIn("'nine'", self.errors_for("the nine `Orkeon.Tools.<family>` projects"))
 
+    def test_a_singular_or_a_partitive_is_not_a_count(self) -> None:
+        text = ("replace one built-in tool with yours; un outil intégré\n"
+                "lives in a satellite, vit dans un satellite, one of the satellites, un des satellites\n")
+        self.assertEqual("", self.errors_for(text))
+
+    def test_the_adr_index_is_checked_like_any_page(self) -> None:
+        self.assertIn("'seven'", self.errors_for("seven satellites", "docs/adr/README.md"))
+
     def test_adrs_keep_the_numbers_of_their_day(self) -> None:
         self.assertEqual("", self.errors_for("49 src and 102 built-in tools", "docs/adr/ADR-099.md"))
         self.assertEqual("", self.errors_for("102 built-in tools", "docs/fr/adr/ADR-099.md"))

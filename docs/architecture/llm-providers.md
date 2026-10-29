@@ -119,9 +119,10 @@ warning below, never in silence. A temperature, `top_p` or penalty is sent as wr
 significant digits (the `float` of `ChatOptions` holds no more): `0.7`, never `0.699999988079071`,
 under any current culture.
 
-Every provider the factory builds is wrapped in `CallModeLlmProvider`, then in
-`MeteredLlmProvider` / `RateLimitedLlmProvider` when the host registered an `ILlmUsageSink` /
-an `ILlmRateLimiter` (see [Decorators and registration](#decorators-and-registration)), and
+Every provider the factory builds is wrapped in `CallModeLlmProvider`, then, by
+`LlmProviderEntrance`, in `MeteredLlmProvider` (always; it reports to the host's `ILlmUsageSink`
+when one is registered), `TracedLlmProvider` and, when the host registered an `ILlmRateLimiter`,
+`RateLimitedLlmProvider` (see [Decorators and registration](#decorators-and-registration)), and
 returned behind an `LlmProviderAdapter`.
 
 ## Declared capabilities

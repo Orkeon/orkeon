@@ -123,9 +123,10 @@ structuré décrit plus bas, jamais en silence. Une température, un `top_p` ou 
 qu'écrite, à six chiffres significatifs au plus (le `float` de `ChatOptions` n'en tient pas plus) :
 `0.7`, jamais `0.699999988079071`, sous toute culture courante.
 
-Chaque provider construit par la fabrique est enveloppé dans `CallModeLlmProvider`, puis dans
-`MeteredLlmProvider` / `RateLimitedLlmProvider` quand l'hôte a enregistré un `ILlmUsageSink` /
-un `ILlmRateLimiter` (voir [Décorateurs et enregistrement](#décorateurs-et-enregistrement)), et
+Chaque provider construit par la fabrique est enveloppé dans `CallModeLlmProvider`, puis, par
+`LlmProviderEntrance`, dans `MeteredLlmProvider` (toujours ; il rend compte à l'`ILlmUsageSink` de
+l'hôte quand celui-ci en a enregistré un), `TracedLlmProvider` et, quand l'hôte a enregistré un
+`ILlmRateLimiter`, `RateLimitedLlmProvider` (voir [Décorateurs et enregistrement](#décorateurs-et-enregistrement)), et
 rendu derrière un `LlmProviderAdapter`.
 
 ## Capacités déclarées

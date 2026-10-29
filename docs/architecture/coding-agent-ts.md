@@ -46,7 +46,7 @@ is in [TypeScript CLI commands](cli-ts-commands.md).
 | Method | Semantics |
 |---|---|
 | `runCrew(name, input?)` | Loads `<crews-dir>/<name>/crew.ork.ts`, runs it via `ScriptHost.RunFromFileAsync` (honours `.body()` + `ctx.llm`), **waits**, returns `CrewRunOutput` (`{ ok, summary?, artifacts?, streamed, error? }`). Short crews: the wait is bounded by `RunCrewTimeout` (below), past which the script receives a `TimeoutException`. |
-| `runCrewAsync(name, input?, options?)` | Posts the run on a pool thread, returns a **ticket** immediately. Completion drains to a `defineAsyncCommand`'s `completed(result)` via the same ticket cycle as `commands.post`. Long workflows. `options` takes `{ chain: "continue" }` and `{ exclusive: true }` (a crew already running is refused: `crew 'x' already running (ticket tN)`), described in [CLI TypeScript commands](./cli-ts-commands.md). |
+| `runCrewAsync(name, input?, options?)` | Posts the run on a pool thread, returns a **ticket** immediately. Completion drains to a `defineAsyncCommand`'s `completed(result)` via the same ticket cycle as `commands.post`. Long workflows. `options` takes `{ chain: "continue" }` and `{ exclusive: true }` (refused while another exclusive launch of the same crew runs: `crew 'x' already running (ticket tN)`), described in [CLI TypeScript commands](./cli-ts-commands.md). |
 | `listCrews()` | Discovered crew names. |
 
 An unknown crew is not an exception: `runCrew` returns `ok: false` with

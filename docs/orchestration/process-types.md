@@ -98,7 +98,7 @@ A selection that fails, or names an agent the crew does not carry, falls back to
 | **Relative LLM cost** | Low | Medium | Low | High | Low to medium | Medium |
 | **Main use case** | ETL pipelines | QA, review loops | Fan-out + synthesis | Multiple independent attempts | Flaky tasks worth retrying | Exploration, R&D |
 
-Decision tasks and `when` conditions are described in [Decision models](../architecture/decision-models.md) and [ADR-016](../adr/ADR-016-decision-tasks-and-conditional-fan-out.md): Sequential, Parallel and Graph run them, the other three modes refuse a crew that uses them when it is loaded.
+Decision tasks and `when` conditions are described in [Decision models](../architecture/decision-models.md) and [ADR-016](../adr/ADR-016-decision-tasks-and-conditional-fan-out.md): Sequential, Parallel and Graph run them, the other three modes refuse a crew that uses them when it is loaded (a crew built in C# before its first task).
 
 ---
 
@@ -626,7 +626,7 @@ for each task:  Manager (LLM) ── assigns ──→ Agent A ── executes
 | `MaxSpawnedAgents` | 1 | 3 | 10 | Agents created through `SpawnAgentTool` |
 | `MaxWallTime` | 2 min | 5 min | 15 min | Maximum execution duration |
 
-A sixth limit, `MaxContextTokens` (no limit by default), counts tokens with the context counted once under the `Tokens` dimension; the crew `budget:` YAML has no key for it and an autonomous crew's `.ork.ts` budget refuses `contextTokens` (see [Autonomous](autonomous.md#multi-dimensional-budget)).
+A sixth limit, `MaxContextTokens` (no limit by default), counts tokens with the context counted once and is reported under the `Tokens` dimension; the autonomous strategy never sets it: the crew `budget:` YAML has no key for it and an autonomous crew's `.ork.ts` budget refuses `contextTokens` (see [Autonomous](autonomous.md#multi-dimensional-budget)).
 
 `ICrewOrchestrationService` runs this mode under the crew's budget (YAML `budget:`); a crew that sets none has no token cap and no wall time, and keeps the structural limits of 50 tasks handed out, 4 delegations and 10 spawns.
 

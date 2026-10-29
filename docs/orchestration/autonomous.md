@@ -121,7 +121,7 @@ The budget controls 5 independent dimensions. Each dimension has a thread-safe c
 | MaxTokensConsumed | 16,000 | 8,000 | 64,000 | Running sum of tokens (prompt + completion of every call recorded) |
 | MaxSpawnedAgents | 3 | 1 | 10 | Maximum number of spawned sub-agents |
 
-`AgentExecutionBudget` has a sixth limit, `MaxContextTokens` (default `int.MaxValue`, no limit): the tokens counted with the context counted once, reported under the `Tokens` dimension (`BudgetDimension` keeps its 5 members) and propagated to child budgets. It is set by the `contextTokens` key of the `.ork.ts` budgets of an agent run ([scripting DSL](../reference/scripting-dsl.md)); the crew `budget:` YAML has no such key, and an autonomous crew's `.ork.ts` budget refuses it.
+`AgentExecutionBudget` has a sixth limit, `MaxContextTokens` (default `int.MaxValue`, no limit): the tokens counted with the context counted once, reported under the `Tokens` dimension (`BudgetDimension` keeps its 5 members) and propagated to child budgets. It is set by the `contextTokens` key of an `.ork.ts` budget — the procedural `crewBuilder().budget(...)` and the `budget` option of `crew.runAgent` / `ctx.delegate` ([scripting DSL](../reference/scripting-dsl.md)); the crew `budget:` YAML has no such key, and an autonomous crew's `.ork.ts` budget refuses it.
 
 ### Presets
 
@@ -164,7 +164,7 @@ var childBudget = parentBudget.CreateChildBudget();
 // MaxSpawnedAgents   = max(0, parent.Max - parent.Current)
 ```
 
-A child budget is an independent copy of the parent's **remaining** allowance, with its own counters: two children derived one after the other each receive the full remainder. The parent's cap is held where the consumption is recorded on it too — the tokens of a delegated execution, and each spawn: a child budget carries `ChargedTo`, the budget it charges, and `IsExhausted` is true when the budget itself or the one it charges is spent.
+A child budget is an independent copy of the parent's **remaining** allowance, with its own counters: two children derived one after the other each receive the full remainder. The parent's cap is held where the consumption is recorded on it too — the tokens of a delegated execution, and each spawn. A budget may also charge another one (`ChargedTo`, set by the `charge: "crew"` option of the [scripting DSL](../reference/scripting-dsl.md)): every tool call, token and spawn recorded on it is recorded there too, `CreateChildBudget()` hands that charge on to the child (it does not charge the parent itself), and `IsExhausted` is true when the budget itself or the one it charges is spent.
 
 ## A2A communication (IAgentChannel)
 

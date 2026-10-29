@@ -64,4 +64,4 @@ Until these phase-outs are carried out, this ADR serves as the consultable justi
 
 ## Amendment (2026-10-29)
 
-The "64 files" of `Orkeon.Analysis.Abstractions` was the count when the ADR was written. The project now holds 76 `.cs` files; the argument does not depend on the figure.
+The "64 files" of `Orkeon.Analysis.Abstractions` was the count when the ADR was written. The project now holds 70 `.cs` files; the argument does not depend on the figure.

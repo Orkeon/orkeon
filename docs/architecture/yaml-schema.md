@@ -418,8 +418,9 @@ Graph mode, `orkeon forge` and the corrective RAG graph use them (see [FSM](../o
 ## Removed: `outputFile`
 
 A task's `outputFile:` key is gone, and a crew that still writes one is **refused at load** with a
-message pointing to the replacement: the framework writes a task's file from its `deliverable:` block,
-so write `deliverable: { path: /output/report.md }`.
+message pointing to the replacement: the task's `deliverable:` block (above), e.g.
+`deliverable: { path: /output/report.md }`. With the default `source: tool_call` the agent is told to
+write that path; with `source: final_message` the framework writes the final answer there.
 
 ## Autonomous budget
 

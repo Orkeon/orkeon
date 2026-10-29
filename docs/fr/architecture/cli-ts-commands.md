@@ -233,7 +233,7 @@ documentation ; les membres au runtime sont en PascalCase.
 ### Services
 
 ```typescript
-const fs = ctx.services.get("fs");       // unknown : les typings ne déclarent aucun type de service
+const fs = ctx.services.get("fs");       // unknown : aucun type n'est déclaré pour `fs` ni `tools`
 const tools = ctx.services.get("tools");
 if (ctx.services.has("llm")) { /* … */ }
 ```

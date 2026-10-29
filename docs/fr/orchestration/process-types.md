@@ -98,7 +98,7 @@ Une sélection qui échoue, ou qui désigne un agent absent de la crew, retombe 
 | **Coût LLM relatif** | Bas | Moyen | Bas | Élevé | Bas à moyen | Moyen |
 | **Cas d'usage principal** | Pipelines ETL | QA, boucles de revue | Fan-out + synthèse | Plusieurs tentatives indépendantes | Tâches instables à relancer | Exploration, R&D |
 
-Les tâches de décision et les conditions `when` sont décrites dans [Modèles de décision](../architecture/decision-models.md) et dans l'[ADR-016](../adr/ADR-016-decision-tasks-and-conditional-fan-out.md) : Sequential, Parallel et Graph les exécutent, les trois autres modes refusent au chargement une crew qui en utilise.
+Les tâches de décision et les conditions `when` sont décrites dans [Modèles de décision](../architecture/decision-models.md) et dans l'[ADR-016](../adr/ADR-016-decision-tasks-and-conditional-fan-out.md) : Sequential, Parallel et Graph les exécutent, les trois autres modes refusent au chargement une crew qui en utilise (une crew construite en C#, avant sa première tâche).
 
 ---
 
@@ -627,7 +627,7 @@ pour chaque tâche : Manager (LLM) ── assigne ──→ Agent A ── exéc
 | `MaxSpawnedAgents` | 1 | 3 | 10 | Agents créés via `SpawnAgentTool` |
 | `MaxWallTime` | 2 min | 5 min | 15 min | Durée d'exécution maximale |
 
-Une sixième limite, `MaxContextTokens` (sans limite par défaut), compte les tokens en ne comptant le contexte qu'une fois, sous la dimension `Tokens` ; le `budget:` YAML de la crew n'a pas de clé pour elle et le budget `.ork.ts` d'une crew autonome refuse `contextTokens` (voir [Autonomous](autonomous.md#budget-multi-dimensionnel)).
+Une sixième limite, `MaxContextTokens` (sans limite par défaut), compte les tokens en ne comptant le contexte qu'une fois et se rapporte sous la dimension `Tokens` ; la stratégie autonome ne la fixe jamais : le `budget:` YAML de la crew n'a pas de clé pour elle et le budget `.ork.ts` d'une crew autonome refuse `contextTokens` (voir [Autonomous](autonomous.md#budget-multi-dimensionnel)).
 
 `ICrewOrchestrationService` exécute ce mode sous le budget de la crew (`budget:` en YAML) ; une crew qui n'en fixe aucun n'a ni plafond de tokens ni temps mural, et garde les limites structurelles de 50 tâches distribuées, 4 délégations et 10 spawns.
 

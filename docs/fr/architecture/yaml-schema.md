@@ -434,8 +434,9 @@ servent (voir [FSM](../orchestration/fsm.md)).
 ## Supprimé : `outputFile`
 
 La clé `outputFile:` d'une tâche n'existe plus, et une crew qui en écrit encore une est **refusée au
-chargement** par un message qui indique le remplacement : le framework écrit le fichier d'une tâche à
-partir de son bloc `deliverable:`, donc écrivez `deliverable: { path: /output/report.md }`.
+chargement** par un message qui indique le remplacement : le bloc `deliverable:` de la tâche (plus haut),
+par exemple `deliverable: { path: /output/report.md }`. Avec la `source: tool_call` par défaut, l'agent
+reçoit la consigne d'écrire ce chemin ; avec `source: final_message`, le framework y écrit la réponse finale.
 
 ## Budget autonome
 

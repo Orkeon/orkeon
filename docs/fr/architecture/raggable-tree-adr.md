@@ -118,8 +118,8 @@ le texte ci-dessus est conservé tel quel :
 
 ## Amendement 2026-10-29
 
-Deux chiffres des amendements ci-dessus sont périmés ; l'enregistrement ci-dessus
-est conservé tel quel.
+Quatre affirmations de l'enregistrement et de ses amendements ci-dessus sont
+périmées ; l'enregistrement ci-dessus est conservé tel quel.
 
 - **Tools** : `AddRaggableTreeTools` enregistre désormais **28** tools, et non 15
   (amendement du 2026-08-18) ; les « 27 points d'extension » qui en étaient

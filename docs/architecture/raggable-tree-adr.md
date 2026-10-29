@@ -117,8 +117,8 @@ the text above is kept as written:
 
 ## Amendment 2026-10-29
 
-Two figures of the amendments above are out of date; the record above is kept
-as written.
+Four statements of the record and its amendments above are out of date; the
+record above is kept as written.
 
 - **Tools**: `AddRaggableTreeTools` now registers **28** tools, not 15 (the
   2026-08-18 amendment); the "27 extension points" it derived from that count

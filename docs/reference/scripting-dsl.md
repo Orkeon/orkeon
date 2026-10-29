@@ -83,11 +83,11 @@ inferred.
 | `planning` — YAML `planning: true`: a step-by-step plan per task, read in the task's prompt (off by default; on the host's default profile) | ❌ (warned) | ✅ |
 | `maxRpm` — YAML `maxRpm:`: at most N model requests per minute for the crew, all its agents and its manager together (none by default; 0 or less refused at `build()`) | ❌ (warned) | ✅ |
 | `budget` | ✅ | ✅ with `process("autonomous")` — the crew's budget, as YAML `budget:`; refused with another process, as is a limit that is not 1 or more, when the run adapts the crew |
-| `concurrency(n)` — the most children (`ctx.spawnBackground`, `spawn_agent`) the crew runs at once (default 4; `n` must be 1 or more) | ✅ | ❌ |
-| `maxInstances(n)` — the most agent instances (`crew.instances()`) the crew keeps (default 32; the oldest ended one goes first) | ✅ | ❌ |
+| `concurrency(n)` — the most children (`ctx.spawnBackground`, `spawn_agent`) the crew runs at once (default 4; `n` must be 1 or more) | ✅ | ❌ (not warned) |
+| `maxInstances(n)` — the most agent instances (`crew.instances()`) the crew keeps (default 32; the oldest ended one goes first) | ✅ | ❌ (not warned) |
 | `onCrewStart` / `onCrewComplete` / `onCrewError` | ✅ | ❌ |
 
-Everything marked ❌ on the declarative side is now **announced**: the run logs one warning
+Everything marked ❌ on the declarative side, `concurrency` and `maxInstances` aside, is now **announced**: the run logs one warning
 per dropped declaration, naming the method and the agent it was written on. It is still
 dropped — the two shapes are two engines — but a crew no longer runs a body that was never
 invoked and says nothing about it.

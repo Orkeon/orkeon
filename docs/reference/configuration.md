@@ -1115,9 +1115,10 @@ root it is appended (never merged, never dropped). One root declared twice is le
 every entry of it carries an id — `--mount-id`, or the crew's `mounts:`, then selects one and the
 others are withdrawn for the run; with nothing selecting one the run is refused before any host
 builds (`'/output' is declared twice in <settings> (<idA>: <folderA>, <idB>: <folderB>) and nothing selects one. Pass --mount-id <id>, list '<id>|/output' under mounts: in the crew, or pass --mount <folder>:/output:rw to replace them all.`),
-except for `orkeon forge` and a command that offers no way to select an entry (`orkeon mcp serve`),
-which withdraw every entry of that root with a warning and carry on; so is a root declared twice with an entry that has no id
-(`… and '<entry>' has no id. Give every entry an id …`) or an id carried by two entries. Every
+except under `orkeon forge` and a command that offers no way to select an entry (`orkeon mcp serve`),
+which withdraw every entry of that root with a warning and carry on. A root declared twice with an
+entry that has no id (`… and '<entry>' has no id. Give every entry an id …`) or an id carried by
+two entries is refused by every command. Every
 declared entry's base path is **whitelisted for `PathValidator`** without
 `--allow-external-mounts` — a declared folder is the machine owner's intent, so it is reachable
 even when it lies outside the process working directory; a withdrawn entry is not.
@@ -1801,7 +1802,7 @@ esbuild toolchain resolution: `EsbuildPath` comes first in the lookup order. Rea
 
 | Key | Type | Default | Meaning |
 |---|---|---|---|
-| `EsbuildPath` | string | — | Absolute path to the esbuild binary. When null, the transpiler falls back to the `ORKEON_ESBUILD_PATH` environment variable, then to a binary bundled next to the application (`esbuild-bin/esbuild`), then to the copy checked in the repository (`tools/scripting-esbuild/node_modules/`), then to a PATH lookup. |
+| `EsbuildPath` | string | — | Absolute path to the esbuild binary. When null, the transpiler falls back to the `ORKEON_ESBUILD_PATH` environment variable, then to a binary bundled next to the application (`esbuild-bin/esbuild`), then to the copy `npm install` places in a checkout of the repository (`tools/scripting-esbuild/node_modules/`, searched from the working directory and the application directory upwards), then to a PATH lookup. |
 | `EsbuildTimeout` | duration | `"00:00:30"` | Maximum time esbuild has to transpile a single source. Default: 30 s. |
 <!-- /settings -->
 

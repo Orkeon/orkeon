@@ -230,7 +230,7 @@ convenience; the runtime members are PascalCase.
 ### Services
 
 ```typescript
-const fs = ctx.services.get("fs");       // unknown: the typings declare no service types
+const fs = ctx.services.get("fs");       // unknown: no type is declared for `fs` or `tools`
 const tools = ctx.services.get("tools");
 if (ctx.services.has("llm")) { /* … */ }
 ```

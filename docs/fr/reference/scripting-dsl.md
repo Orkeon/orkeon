@@ -87,11 +87,11 @@ déduit.
 | `planning` — le `planning: true` du YAML : un plan pas à pas par tâche, lu dans le prompt de la tâche (coupé par défaut ; sur le profil par défaut de l'hôte) | ❌ (avertit) | ✅ |
 | `maxRpm` — le `maxRpm:` du YAML : au plus N requêtes au modèle par minute pour la crew, tous ses agents et son manager confondus (aucun par défaut ; 0 ou moins refusé à `build()`) | ❌ (avertit) | ✅ |
 | `budget` | ✅ | ✅ avec `process("autonomous")` — le budget de la crew, comme `budget:` en YAML ; refusé avec un autre process, comme une limite qui n'est pas d'au moins 1, quand le run adapte la crew |
-| `concurrency(n)` — le plus grand nombre d'enfants (`ctx.spawnBackground`, `spawn_agent`) que la crew exécute à la fois (4 par défaut ; `n` doit valoir 1 ou plus) | ✅ | ❌ |
-| `maxInstances(n)` — le plus grand nombre d'instances d'agent (`crew.instances()`) que la crew garde (32 par défaut ; la plus ancienne terminée part la première) | ✅ | ❌ |
+| `concurrency(n)` — le plus grand nombre d'enfants (`ctx.spawnBackground`, `spawn_agent`) que la crew exécute à la fois (4 par défaut ; `n` doit valoir 1 ou plus) | ✅ | ❌ (sans avertissement) |
+| `maxInstances(n)` — le plus grand nombre d'instances d'agent (`crew.instances()`) que la crew garde (32 par défaut ; la plus ancienne terminée part la première) | ✅ | ❌ (sans avertissement) |
 | `onCrewStart` / `onCrewComplete` / `onCrewError` | ✅ | ❌ |
 
-Tout ce qui porte un ❌ du côté déclaratif est désormais **annoncé** : l'exécution journalise
+Tout ce qui porte un ❌ du côté déclaratif, hors `concurrency` et `maxInstances`, est désormais **annoncé** : l'exécution journalise
 un avertissement par déclaration abandonnée, en nommant la méthode et l'agent sur lequel elle
 était écrite. C'est toujours abandonné — les deux formes sont deux moteurs — mais une crew ne
 peut plus exécuter un `.body()` jamais invoqué sans rien en dire.

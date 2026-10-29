@@ -1162,9 +1162,10 @@ Studio en écrit un à chaque enregistrement. Un `--mount` CLI sur la même raci
 ses entrées porte un identifiant — `--mount-id`, ou le `mounts:` de la crew, en sélectionne alors
 une et les autres sont retirées pour le run ; si rien n'en sélectionne une, le run est refusé
 avant tout host (`'/output' is declared twice in <settings> (<idA>: <dossierA>, <idB>: <dossierB>) and nothing selects one. Pass --mount-id <id>, list '<id>|/output' under mounts: in the crew, or pass --mount <folder>:/output:rw to replace them all.`),
-sauf pour `orkeon forge` et une commande qui n'offre aucun moyen de sélectionner une entrée (`orkeon mcp serve`),
-qui retirent toutes les entrées de cette racine avec un avertissement et poursuivent ; de même qu'une racine déclarée deux fois avec une entrée sans identifiant
-(`… and '<entrée>' has no id. Give every entry an id …`) ou un identifiant porté par deux entrées.
+sauf sous `orkeon forge` et une commande qui n'offre aucun moyen de sélectionner une entrée (`orkeon mcp serve`),
+qui retirent toutes les entrées de cette racine avec un avertissement et poursuivent. Une racine
+déclarée deux fois avec une entrée sans identifiant (`… and '<entrée>' has no id. Give every entry an id …`)
+ou un identifiant porté par deux entrées est refusée par toutes les commandes.
 Le chemin de base de chaque entrée déclarée est **mis en liste blanche pour `PathValidator`** sans
 `--allow-external-mounts` — un dossier déclaré est l'intention du propriétaire de la machine, il
 reste donc accessible même hors du répertoire de travail du processus ; une entrée retirée ne
@@ -1864,7 +1865,7 @@ Lue par `EsbuildTranspiler.Create` — `orkeon run`, le runner partagé, `orkeon
 
 | Clé | Type | Défaut | Sens |
 |---|---|---|---|
-| `EsbuildPath` | chaîne | — | Chemin absolu du binaire esbuild. À null, le transpileur se rabat sur la variable d'environnement `ORKEON_ESBUILD_PATH`, puis sur un binaire livré à côté de l'application (`esbuild-bin/esbuild`), puis sur la copie versionnée dans le dépôt (`tools/scripting-esbuild/node_modules/`), puis sur une recherche dans le PATH. |
+| `EsbuildPath` | chaîne | — | Chemin absolu du binaire esbuild. À null, le transpileur se rabat sur la variable d'environnement `ORKEON_ESBUILD_PATH`, puis sur un binaire livré à côté de l'application (`esbuild-bin/esbuild`), puis sur la copie que `npm install` dépose dans une copie de travail du dépôt (`tools/scripting-esbuild/node_modules/`, cherchée en remontant depuis le répertoire de travail et le répertoire de l'application), puis sur une recherche dans le PATH. |
 | `EsbuildTimeout` | durée | `"00:00:30"` | Temps maximal dont dispose esbuild pour transpiler une source. Défaut : 30 s. |
 <!-- /settings -->
 
