@@ -175,8 +175,8 @@ extracted, and an argument the request does not declare is ignored.
 ### Index cache
 
 `AddRaggableTree` registers `CachingTreeBuilder`, which `index_codebase` uses to keep the
-index between sessions. Each build saves the tree and the SHA-256 of every indexed file and
-of every package marker in one SQLite database, `<root>/.orkeon/cache/raggable-tree/index.db`,
+index between sessions. Each build saves the tree, the SHA-256, size and write time of every
+indexed file and the SHA-256 of every package marker in one SQLite database, `<root>/.orkeon/cache/raggable-tree/index.db`,
 in a folder holding its own `.gitignore` (`*`). The next call with the same options reads
 it back and answers `cache`:
 
@@ -196,41 +196,58 @@ is a miss. A root the process cannot write is indexed without a cache.
 
 #### Database schema
 
-`RaggableTreeCache` owns the database. One database holds one saved index: the entry of
-the last key saved. Its schema version is `PRAGMA user_version` (`1`); a database of
-another version has its tables dropped and created again at the next save, and reads as a
-miss until then. The connection runs with `foreign_keys = ON` and the journal in WAL mode.
+`RaggableTreeCache` owns the database. One database keeps up to `RaggableTreeCache.MaxEntries`
+(`3`) saved indexes side by side, one per key: two callers indexing one root with different
+options each find their own. A save past that count evicts the entry least recently used
+(`used_at`, which every save and every hit refresh). Its schema version is `PRAGMA user_version`
+(`2`); a database of another version has its tables dropped and created again at the next
+save, and reads as a miss until then. The connection runs with `foreign_keys = ON` and the
+journal in WAL mode.
 
 | Table | Primary key | Holds |
 |---|---|---|
-| `cache_state` | `id` (`CHECK (id = 1)`: one row) | The key and identity of the saved index, and its edges |
-| `indexed_files` | `path` (`WITHOUT ROWID`) | The SHA-256 of each indexed file |
-| `package_markers` | `path` (`WITHOUT ROWID`) | The SHA-256 of each package marker |
-| `node_groups` | `group_id` (rowid alias) | The nodes of one source file |
-| `node_runs` | `position` | The order of the nodes in the tree |
+| `cache_entries` | `entry_id` (rowid alias); `cache_key` `UNIQUE` | One saved index: its key, identity and edges |
+| `indexed_files` | (`entry_id`, `path`) (`WITHOUT ROWID`) | The stamp of each indexed file of an entry |
+| `package_markers` | (`entry_id`, `path`) (`WITHOUT ROWID`) | The SHA-256 of each package marker of an entry |
+| `node_groups` | `group_id` (rowid alias); (`entry_id`, `virtual_path`) `UNIQUE` | The nodes of one source file of an entry |
+| `node_runs` | (`entry_id`, `position`) (`WITHOUT ROWID`) | The order of an entry's nodes in its tree |
 
-`cache_state`:
+Every other table names its entry through `entry_id`, a `FOREIGN KEY` → `cache_entries (entry_id)`
+`ON DELETE CASCADE`: deleting an entry deletes its files, markers, groups and runs with it.
+
+`cache_entries`:
 
 | Column | Type | Constraint | Meaning |
 |---|---|---|---|
-| `id` | `INTEGER` | `PRIMARY KEY`, `CHECK (id = 1)` | The single row |
-| `cache_key` | `TEXT` | `NOT NULL` | The SHA-256 of the key described above |
+| `entry_id` | `INTEGER` | `PRIMARY KEY` | Surrogate key, referenced by every other table |
+| `cache_key` | `TEXT` | `NOT NULL UNIQUE` | The SHA-256 of the key described above |
 | `index_id` | `TEXT` | `NOT NULL` | The `IndexId` of the saved tree |
-| `generation` | `INTEGER` | `NOT NULL` | Counts the saves under this key, from `1` |
+| `generation` | `INTEGER` | `NOT NULL`, `CHECK (generation > 0)` | Counts the saves under this key, from `1` |
 | `node_count`, `edge_count` | `INTEGER` | `NOT NULL` | The size of the tree, for whoever inspects the database; the load does not read them |
 | `edges` | `BLOB` | `NOT NULL` | Every edge, gzip of the JSON array of the serializer's edges |
-| `saved_at` | `TEXT` | `NOT NULL` | The UTC time of the save, ISO 8601 |
+| `saved_at` | `TEXT` | `NOT NULL` | The UTC time of the last save, ISO 8601 |
+| `used_at` | `TEXT` | `NOT NULL` | The UTC time of the last save or hit, ISO 8601; orders the eviction |
 
-`indexed_files` and `package_markers` have the same two columns: `path` (`TEXT PRIMARY KEY`,
-relative to the root) and `sha256` (`TEXT NOT NULL`, lowercase hex). The builder compares
-them with the files it discovers to tell a hit, a refresh or a miss.
+`indexed_files`:
+
+| Column | Type | Constraint | Meaning |
+|---|---|---|---|
+| `entry_id` | `INTEGER` | `NOT NULL`, `FOREIGN KEY` `ON DELETE CASCADE` | The entry |
+| `path` | `TEXT` | `NOT NULL` | The file, relative to the root |
+| `sha256` | `TEXT` | `NOT NULL` | The SHA-256 of its content, lowercase hex |
+| `size_bytes` | `INTEGER` | `NOT NULL` | Its size when it was hashed |
+| `modified_ticks` | `INTEGER` | nullable | Its last write time (UTC ticks) when it was hashed; `NULL` when that time is not trusted |
+
+`package_markers` has `entry_id`, `path` and `sha256`, as `indexed_files`. The builder
+compares them with the files it discovers to tell a hit, a refresh or a miss.
 
 `node_groups`:
 
 | Column | Type | Constraint | Meaning |
 |---|---|---|---|
 | `group_id` | `INTEGER` | `PRIMARY KEY` | Surrogate key, referenced by `node_runs` |
-| `virtual_path` | `TEXT` | `NOT NULL UNIQUE` | The source file of the nodes (`VirtualFilePath`); the nodes without a file share the empty path |
+| `entry_id` | `INTEGER` | `NOT NULL`, `FOREIGN KEY` `ON DELETE CASCADE` | The entry; (`entry_id`, `group_id`) is `UNIQUE` too, the target of `node_runs`' foreign key |
+| `virtual_path` | `TEXT` | `NOT NULL`, `UNIQUE` with `entry_id` | The source file of the nodes (`VirtualFilePath`); the nodes without a file share the empty path |
 | `node_count` | `INTEGER` | `NOT NULL`, `CHECK (node_count > 0)` | How many nodes `nodes` holds |
 | `content_sha256` | `TEXT` | `NOT NULL` | The SHA-256 of the uncompressed JSON of `nodes` |
 | `generation` | `INTEGER` | `NOT NULL` | The generation of the save that last wrote the row |
@@ -240,32 +257,49 @@ them with the files it discovers to tell a hit, a refresh or a miss.
 
 | Column | Type | Constraint | Meaning |
 |---|---|---|---|
-| `position` | `INTEGER` | `PRIMARY KEY` | The rank of the run, from `0` |
-| `group_id` | `INTEGER` | `NOT NULL`, `FOREIGN KEY` → `node_groups (group_id)` `ON DELETE RESTRICT`, indexed (`ix_node_runs_group_id`) | The group the run takes its nodes from |
+| `entry_id` | `INTEGER` | `NOT NULL`, `FOREIGN KEY` `ON DELETE CASCADE` | The entry |
+| `position` | `INTEGER` | `NOT NULL` | The rank of the run in its entry, from `0` |
+| `group_id` | `INTEGER` | `NOT NULL`; (`entry_id`, `group_id`) `FOREIGN KEY` → `node_groups (entry_id, group_id)`, indexed (`ix_node_runs_group`) | The group the run takes its nodes from |
 | `node_count` | `INTEGER` | `NOT NULL`, `CHECK (node_count > 0)` | How many nodes the run takes |
 
 The tree's node list is not grouped by file: the nodes of one file can come back after
-another file's. `node_runs` keeps that order: the load reads the runs by `position` and each
-takes the next `node_count` nodes of its group, so the tree reads back in the order it was
-saved. A run that asks for more nodes than its group holds, or a group whose nodes no run
-takes up, makes the load a miss. The foreign key forbids a run to name a group that does
-not exist, and `RESTRICT` forbids deleting a group a run still names: a save deletes the
-runs before the groups.
+another file's. `node_runs` keeps that order: the load reads an entry's runs by `position`
+and each takes the next `node_count` nodes of its group, so the tree reads back in the order
+it was saved. A run that asks for more nodes than its group holds, or a group whose nodes no
+run takes up, makes the load a miss. The composite foreign key forbids a run to name a group
+that does not exist or belongs to another entry, and forbids deleting a group a run still
+names: a save deletes the runs before the groups. The check runs at the end of each
+statement, so the cascade from an entry deletes its runs and groups together.
 
 A save is one transaction:
 
-1. Under the same key, the generation is the saved one plus one; under another key, every
-   table is emptied and the generation starts at `1`.
-2. `indexed_files` and `package_markers` are rewritten.
+1. The entry of the key is upserted (`ON CONFLICT (cache_key) DO UPDATE`): a new key starts
+   at generation `1`, a known one adds one; `saved_at` and `used_at` take the current time.
+2. The entry's `indexed_files` and `package_markers` are rewritten.
 3. The nodes are grouped by file. A group whose `content_sha256` is unchanged is left as it
-   is; a changed or new group is upserted (`ON CONFLICT (virtual_path) DO UPDATE`) with the
-   current generation; a group whose file is gone is deleted after the runs.
-4. `node_runs` is rewritten, then the row of `cache_state`.
+   is; a changed or new group is upserted (`ON CONFLICT (entry_id, virtual_path) DO UPDATE`)
+   with the current generation; a group whose file is gone is deleted after the runs.
+4. The entry's `node_runs` are rewritten.
+5. The entries past `MaxEntries`, by `used_at` from the most recent, are deleted, their rows
+   with them.
 
 A refresh that reindexes three files therefore rewrites three groups, not the whole tree.
 A load that fails (a file that is not a SQLite database, a missing table, a blob that does
 not decompress or deserialize, runs and groups that disagree) is a miss. A save that fails on a
 SQLite error deletes the database with its `-wal` and `-shm` files and tries once more.
+
+#### File stamps
+
+Discovering the files hashes each of them, which reads every byte of the root at every call.
+As `git status` does, the builder hands the discoverer the stamps it saved: a file whose size
+and last write time equal its stamp keeps the saved SHA-256 without being read (the
+discoverer still checks that the VFS lets it read the file). A stamp keeps the write time
+only when it is older than the start of the discovery by more than two seconds; a file
+written within that window, or later, is stored with `modified_ticks` `NULL` and hashed
+again at the next call, so a change made during a build, or within the clock's resolution,
+is never hidden. The stamp cannot see a change that keeps both the size and the write time
+(a tool that restores the time); `use_cache: false` rebuilds from the content.
+
 
 ## Agent strategies
 
@@ -595,7 +629,7 @@ Implement `IVectorStoreProvider` (`IndexAsync`, `SearchAsync`, `DeleteAsync`) an
 - The summarizer is C#-only (`Summarizer.Provider` + an `ILlmProvider`); OpenAI/Ollama embeddings need their endpoint, while the runner host's on-device default needs nothing. The pipeline works without embeddings (`codebase_search` then ranks by BM25 only).
 - The index is process-local: `InMemoryRaggableStore` is rebuilt by `index_codebase` in each process, and the optional vector-store mirror is never read back.
 - `FileSystemWatcherCodebaseWatcher` (the `ICodebaseWatcher` implementation, registered by no shipped host) relies on `System.IO.FileSystemWatcher` — on Linux/WSL, rename events may arrive decomposed (observed as Deleted then Created).
-- The index cache refreshes in place only when no `root_alias` is set and at most half of the files changed; otherwise it rebuilds from scratch. A file whose content is unchanged keeps its saved nodes even when a file it imports changed: the refresh relinks the edges, it does not parse the file again. The database holds one key: two callers indexing one root with different options replace each other's entry.
+- The index cache refreshes in place only when no `root_alias` is set and at most half of the files changed; otherwise it rebuilds from scratch. A file whose content is unchanged keeps its saved nodes even when a file it imports changed: the refresh relinks the edges, it does not parse the file again. The database keeps `MaxEntries` (3) keys: a fourth evicts the least recently used. A file stamp does not see a change that keeps both the size and the write time; `use_cache: false` rebuilds from the content.
 
 ---
 

@@ -16,7 +16,11 @@ keys, the `node_runs.group_id` foreign key, constraints) is in `docs/architectur
 changed (`cache: "hit"`), reindexes only the changed files when at most half of them changed and no package marker did
 (`"refreshed"`, with `reindexed_file_count`), and rebuilds otherwise (`"miss"`). The key covers the options, the
 Analysis version and the adapters, summarizer and embedder (with its dimension) the host wires. `use_cache: false`
-rebuilds from scratch, then saves (`"bypassed"`); a tool built without the cache answers `"disabled"`.
+rebuilds from scratch, then saves (`"bypassed"`); a tool built without the cache answers `"disabled"`. The database
+keeps up to `RaggableTreeCache.MaxEntries` (3) keys side by side and evicts the least recently used. A file whose size
+and write time match the saved stamp keeps its saved SHA-256 without being read (`DiscoveryRequest.KnownFiles`,
+`FileStamp`, `DiscoveredFile.LastModified`), as `git status` does; a file written within two seconds of the discovery is
+hashed again at the next call.
 
 | Before | After |
 |---|---|

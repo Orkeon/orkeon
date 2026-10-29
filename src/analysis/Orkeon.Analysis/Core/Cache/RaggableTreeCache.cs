@@ -2,6 +2,7 @@ using System.IO.Compression;
 using System.Security.Cryptography;
 using System.Text.Json;
 using Microsoft.Data.Sqlite;
+using Orkeon.Analysis.Abstractions.Interfaces;
 using Orkeon.Analysis.Abstractions.Models;
 using Orkeon.Analysis.Core.Serialization;
 using Orkeon.Constants.FileSystem;
@@ -10,18 +11,23 @@ using Orkeon.Domain.FileSystem;
 namespace Orkeon.Analysis.Core.Cache;
 
 /// <summary>
-/// Saves the index of a root in one SQLite database, <c>&lt;root&gt;/.orkeon/cache/raggable-tree/index.db</c>, next to a
-/// <c>.gitignore</c> that keeps the folder out of git. The nodes are stored by the file they come from, gzip-compressed
-/// JSON, so a save after a refresh rewrites only the groups whose nodes changed; every save is one transaction.
-/// The schema is described in <c>docs/architecture/raggable-tree.md</c>, "Index cache".
+/// Saves the indexes of a root in one SQLite database, <c>&lt;root&gt;/.orkeon/cache/raggable-tree/index.db</c>, next to
+/// a <c>.gitignore</c> that keeps the folder out of git. The database keeps one entry per cache key, at most
+/// <see cref="MaxEntries"/>: a save past it drops the entries least recently used. The nodes of an entry are stored by
+/// the file they come from, gzip-compressed JSON, so a save after a refresh rewrites only the groups whose nodes
+/// changed; every save is one transaction. The schema is described in <c>docs/architecture/raggable-tree.md</c>,
+/// "Index cache".
 /// </summary>
 public sealed class RaggableTreeCache : IRaggableTreeCache
 {
     public const string CacheDirectory = ConventionalNames.StateDirectory + "/cache/raggable-tree";
     public const string DatabaseFileName = "index.db";
 
+    /// <summary>How many keys one database keeps; a save past it drops the entries least recently used.</summary>
+    public const int MaxEntries = 3;
+
     // PRAGMA user_version of the database: another value drops the tables and creates them again.
-    private const int SchemaVersion = 1;
+    private const int SchemaVersion = 2;
 
     private const string CreateSchemaSql = """
         DROP TABLE IF EXISTS node_runs;
@@ -29,54 +35,60 @@ public sealed class RaggableTreeCache : IRaggableTreeCache
         DROP TABLE IF EXISTS indexed_files;
         DROP TABLE IF EXISTS package_markers;
         DROP TABLE IF EXISTS cache_state;
+        DROP TABLE IF EXISTS cache_entries;
 
-        CREATE TABLE cache_state (
-            id          INTEGER PRIMARY KEY CHECK (id = 1),
-            cache_key   TEXT    NOT NULL,
+        CREATE TABLE cache_entries (
+            entry_id    INTEGER PRIMARY KEY,
+            cache_key   TEXT    NOT NULL UNIQUE,
             index_id    TEXT    NOT NULL,
-            generation  INTEGER NOT NULL,
+            generation  INTEGER NOT NULL CHECK (generation > 0),
             node_count  INTEGER NOT NULL,
             edge_count  INTEGER NOT NULL,
             edges       BLOB    NOT NULL,
-            saved_at    TEXT    NOT NULL
+            saved_at    TEXT    NOT NULL,
+            used_at     TEXT    NOT NULL
         );
 
         CREATE TABLE indexed_files (
-            path    TEXT PRIMARY KEY,
-            sha256  TEXT NOT NULL
+            entry_id        INTEGER NOT NULL REFERENCES cache_entries (entry_id) ON DELETE CASCADE,
+            path            TEXT    NOT NULL,
+            sha256          TEXT    NOT NULL,
+            size_bytes      INTEGER NOT NULL,
+            modified_ticks  INTEGER,
+            PRIMARY KEY (entry_id, path)
         ) WITHOUT ROWID;
 
         CREATE TABLE package_markers (
-            path    TEXT PRIMARY KEY,
-            sha256  TEXT NOT NULL
+            entry_id    INTEGER NOT NULL REFERENCES cache_entries (entry_id) ON DELETE CASCADE,
+            path        TEXT    NOT NULL,
+            sha256      TEXT    NOT NULL,
+            PRIMARY KEY (entry_id, path)
         ) WITHOUT ROWID;
 
         CREATE TABLE node_groups (
             group_id        INTEGER PRIMARY KEY,
-            virtual_path    TEXT    NOT NULL UNIQUE,
+            entry_id        INTEGER NOT NULL REFERENCES cache_entries (entry_id) ON DELETE CASCADE,
+            virtual_path    TEXT    NOT NULL,
             node_count      INTEGER NOT NULL CHECK (node_count > 0),
             content_sha256  TEXT    NOT NULL,
             generation      INTEGER NOT NULL,
-            nodes           BLOB    NOT NULL
+            nodes           BLOB    NOT NULL,
+            UNIQUE (entry_id, virtual_path),
+            UNIQUE (entry_id, group_id)
         );
 
         CREATE TABLE node_runs (
-            position    INTEGER PRIMARY KEY,
-            group_id    INTEGER NOT NULL REFERENCES node_groups (group_id) ON DELETE RESTRICT,
-            node_count  INTEGER NOT NULL CHECK (node_count > 0)
-        );
+            entry_id    INTEGER NOT NULL REFERENCES cache_entries (entry_id) ON DELETE CASCADE,
+            position    INTEGER NOT NULL,
+            group_id    INTEGER NOT NULL,
+            node_count  INTEGER NOT NULL CHECK (node_count > 0),
+            PRIMARY KEY (entry_id, position),
+            FOREIGN KEY (entry_id, group_id) REFERENCES node_groups (entry_id, group_id)
+        ) WITHOUT ROWID;
 
-        CREATE INDEX ix_node_runs_group_id ON node_runs (group_id);
+        CREATE INDEX ix_node_runs_group ON node_runs (entry_id, group_id);
 
-        PRAGMA user_version = 1;
-        """;
-
-    private const string ClearSql = """
-        DELETE FROM node_runs;
-        DELETE FROM node_groups;
-        DELETE FROM indexed_files;
-        DELETE FROM package_markers;
-        DELETE FROM cache_state;
+        PRAGMA user_version = 2;
         """;
 
     private readonly IFileSystemService _fs;
@@ -106,7 +118,10 @@ public sealed class RaggableTreeCache : IRaggableTreeCache
             await using (connection.ConfigureAwait(false))
             {
                 if (await SchemaVersionOfAsync(connection, ct).ConfigureAwait(false) != SchemaVersion) return null;
-                return await ReadEntryAsync(connection, cacheKey, ct).ConfigureAwait(false);
+                var loaded = await ReadEntryAsync(connection, cacheKey, ct).ConfigureAwait(false);
+                if (loaded is null) return null;
+                await TouchAsync(connection, loaded.Value.EntryId, ct).ConfigureAwait(false);
+                return loaded.Value.Entry;
             }
         }
         catch (SqliteException) { return null; }
@@ -117,30 +132,34 @@ public sealed class RaggableTreeCache : IRaggableTreeCache
         catch (FileAccessDeniedException) { return null; }
     }
 
-    private static async Task<RaggableTreeCacheEntry?> ReadEntryAsync(SqliteConnection connection, string cacheKey, CancellationToken ct)
+    private static async Task<(long EntryId, RaggableTreeCacheEntry Entry)?> ReadEntryAsync(
+        SqliteConnection connection, string cacheKey, CancellationToken ct)
     {
+        long entryId;
         string indexId;
         List<RaggableEdge> edges;
         using (var state = connection.CreateCommand())
         {
-            state.CommandText = "SELECT cache_key, index_id, edges FROM cache_state WHERE id = 1";
+            state.CommandText = "SELECT entry_id, index_id, edges FROM cache_entries WHERE cache_key = $key";
+            state.Parameters.AddWithValue("$key", cacheKey);
             var reader = await state.ExecuteReaderAsync(ct).ConfigureAwait(false);
             await using (reader.ConfigureAwait(false))
             {
                 if (!await reader.ReadAsync(ct).ConfigureAwait(false)) return null;
-                if (!string.Equals(reader.GetString(0), cacheKey, StringComparison.Ordinal)) return null;
+                entryId = reader.GetInt64(0);
                 indexId = reader.GetString(1);
                 edges = [.. Decompress<List<EdgeDto>>(reader.GetStream(2)).Select(NodeMapper.ToModel)];
             }
         }
 
-        var files = await ReadPairsAsync(connection, files: true, ct).ConfigureAwait(false);
-        var markers = await ReadPairsAsync(connection, files: false, ct).ConfigureAwait(false);
+        var files = await ReadFilesAsync(connection, entryId, ct).ConfigureAwait(false);
+        var markers = await ReadMarkersAsync(connection, entryId, ct).ConfigureAwait(false);
 
         var groups = new Dictionary<long, List<RaggableNode>>();
         using (var select = connection.CreateCommand())
         {
-            select.CommandText = "SELECT group_id, nodes FROM node_groups";
+            select.CommandText = "SELECT group_id, nodes FROM node_groups WHERE entry_id = $entry";
+            select.Parameters.AddWithValue("$entry", entryId);
             var reader = await select.ExecuteReaderAsync(ct).ConfigureAwait(false);
             await using (reader.ConfigureAwait(false))
             {
@@ -154,7 +173,8 @@ public sealed class RaggableTreeCache : IRaggableTreeCache
         var taken = new Dictionary<long, int>();
         using (var select = connection.CreateCommand())
         {
-            select.CommandText = "SELECT group_id, node_count FROM node_runs ORDER BY position";
+            select.CommandText = "SELECT group_id, node_count FROM node_runs WHERE entry_id = $entry ORDER BY position";
+            select.Parameters.AddWithValue("$entry", entryId);
             var reader = await select.ExecuteReaderAsync(ct).ConfigureAwait(false);
             await using (reader.ConfigureAwait(false))
             {
@@ -177,7 +197,21 @@ public sealed class RaggableTreeCache : IRaggableTreeCache
         {
             if (!string.IsNullOrEmpty(node.Fqn)) index.TryAdd(node.Fqn, node);
         }
-        return new RaggableTreeCacheEntry(new RaggableTree(nodes, edges, index), indexId, cacheKey, files, markers);
+        return (entryId, new RaggableTreeCacheEntry(new RaggableTree(nodes, edges, index), indexId, cacheKey, files, markers));
+    }
+
+    // Marks the entry used now, so the eviction keeps it. A busy database leaves the mark as it was.
+    private static async Task TouchAsync(SqliteConnection connection, long entryId, CancellationToken ct)
+    {
+        try
+        {
+            using var update = connection.CreateCommand();
+            update.CommandText = "UPDATE cache_entries SET used_at = $now WHERE entry_id = $entry";
+            update.Parameters.AddWithValue("$now", Now());
+            update.Parameters.AddWithValue("$entry", entryId);
+            await update.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
+        }
+        catch (SqliteException) { /* the mark is best-effort: the entry read back is still valid */ }
     }
 
     public Task<bool> SaveAsync(string rootPath, RaggableTreeCacheEntry entry, CancellationToken ct)
@@ -236,55 +270,95 @@ public sealed class RaggableTreeCache : IRaggableTreeCache
             var tx = (SqliteTransaction)await connection.BeginTransactionAsync(ct).ConfigureAwait(false);
             await using (tx.ConfigureAwait(false))
             {
-                var generation = await NextGenerationAsync(connection, tx, entry.CacheKey, ct).ConfigureAwait(false);
-                await ReplacePairsAsync(connection, tx, entry.Files, files: true, ct).ConfigureAwait(false);
-                await ReplacePairsAsync(connection, tx, entry.Markers, files: false, ct).ConfigureAwait(false);
-                await WriteNodesAsync(connection, tx, entry.Tree.Nodes, generation, ct).ConfigureAwait(false);
-                await WriteStateAsync(connection, tx, entry, generation, ct).ConfigureAwait(false);
+                var (entryId, generation) = await WriteStateAsync(connection, tx, entry, ct).ConfigureAwait(false);
+                await ReplaceFilesAsync(connection, tx, entryId, entry.Files, ct).ConfigureAwait(false);
+                await ReplaceMarkersAsync(connection, tx, entryId, entry.Markers, ct).ConfigureAwait(false);
+                await WriteNodesAsync(connection, tx, entryId, entry.Tree.Nodes, generation, ct).ConfigureAwait(false);
+                await EvictAsync(connection, tx, ct).ConfigureAwait(false);
                 await tx.CommitAsync(ct).ConfigureAwait(false);
             }
         }
     }
 
-    // The generation of this save: one more than the saved one under the same key; under another key, everything
-    // saved is dropped and the count starts again.
-    private static async Task<long> NextGenerationAsync(SqliteConnection connection, SqliteTransaction tx, string cacheKey, CancellationToken ct)
+    // Writes the row of the key: one more generation than the saved one under it, or a new entry at generation 1.
+    private static async Task<(long EntryId, long Generation)> WriteStateAsync(
+        SqliteConnection connection, SqliteTransaction tx, RaggableTreeCacheEntry entry, CancellationToken ct)
     {
-        using var select = Command(connection, tx);
-        select.CommandText = "SELECT cache_key, generation FROM cache_state WHERE id = 1";
-        string? savedKey = null;
-        long generation = 0;
-        var reader = await select.ExecuteReaderAsync(ct).ConfigureAwait(false);
+        using var upsert = Command(connection, tx);
+        upsert.CommandText = """
+            INSERT INTO cache_entries (cache_key, index_id, generation, node_count, edge_count, edges, saved_at, used_at)
+            VALUES ($key, $index_id, 1, $node_count, $edge_count, $edges, $now, $now)
+            ON CONFLICT (cache_key) DO UPDATE SET
+                index_id = excluded.index_id,
+                generation = generation + 1,
+                node_count = excluded.node_count,
+                edge_count = excluded.edge_count,
+                edges = excluded.edges,
+                saved_at = excluded.saved_at,
+                used_at = excluded.used_at
+            RETURNING entry_id, generation
+            """;
+        upsert.Parameters.AddWithValue("$key", entry.CacheKey);
+        upsert.Parameters.AddWithValue("$index_id", entry.IndexId);
+        upsert.Parameters.AddWithValue("$node_count", entry.Tree.Nodes.Count);
+        upsert.Parameters.AddWithValue("$edge_count", entry.Tree.Edges.Count);
+        upsert.Parameters.Add("$edges", SqliteType.Blob).Value = Compress(
+            JsonSerializer.SerializeToUtf8Bytes(entry.Tree.Edges.Select(NodeMapper.ToDto).ToList(), RaggableTreeSerializer.Options));
+        upsert.Parameters.AddWithValue("$now", Now());
+        var reader = await upsert.ExecuteReaderAsync(ct).ConfigureAwait(false);
         await using (reader.ConfigureAwait(false))
         {
-            if (await reader.ReadAsync(ct).ConfigureAwait(false))
-            {
-                savedKey = reader.GetString(0);
-                generation = reader.GetInt64(1);
-            }
+            await reader.ReadAsync(ct).ConfigureAwait(false);
+            return (reader.GetInt64(0), reader.GetInt64(1));
         }
-        if (string.Equals(savedKey, cacheKey, StringComparison.Ordinal)) return generation + 1;
-
-        using var clear = Command(connection, tx);
-        clear.CommandText = ClearSql;
-        await clear.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
-        return 1;
     }
 
-    private static async Task ReplacePairsAsync(
-        SqliteConnection connection, SqliteTransaction tx, IReadOnlyDictionary<string, string> pairs, bool files, CancellationToken ct)
+    private static async Task ReplaceFilesAsync(
+        SqliteConnection connection, SqliteTransaction tx, long entryId, IReadOnlyDictionary<string, FileStamp> files, CancellationToken ct)
     {
-        using var delete = Command(connection, tx);
-        if (files) delete.CommandText = "DELETE FROM indexed_files";
-        else delete.CommandText = "DELETE FROM package_markers";
-        await delete.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
+        using (var delete = Command(connection, tx))
+        {
+            delete.CommandText = "DELETE FROM indexed_files WHERE entry_id = $entry";
+            delete.Parameters.AddWithValue("$entry", entryId);
+            await delete.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
+        }
 
         using var insert = Command(connection, tx);
-        if (files) insert.CommandText = "INSERT INTO indexed_files (path, sha256) VALUES ($path, $sha256)";
-        else insert.CommandText = "INSERT INTO package_markers (path, sha256) VALUES ($path, $sha256)";
+        insert.CommandText = """
+            INSERT INTO indexed_files (entry_id, path, sha256, size_bytes, modified_ticks)
+            VALUES ($entry, $path, $sha256, $size, $ticks)
+            """;
+        insert.Parameters.AddWithValue("$entry", entryId);
         var path = insert.Parameters.Add("$path", SqliteType.Text);
         var sha = insert.Parameters.Add("$sha256", SqliteType.Text);
-        foreach (var (key, value) in pairs)
+        var size = insert.Parameters.Add("$size", SqliteType.Integer);
+        var ticks = insert.Parameters.Add("$ticks", SqliteType.Integer);
+        foreach (var (key, stamp) in files)
+        {
+            path.Value = key;
+            sha.Value = stamp.Sha256;
+            size.Value = stamp.SizeBytes;
+            ticks.Value = stamp.LastModified is { } modified ? modified.UtcTicks : DBNull.Value;
+            await insert.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
+        }
+    }
+
+    private static async Task ReplaceMarkersAsync(
+        SqliteConnection connection, SqliteTransaction tx, long entryId, IReadOnlyDictionary<string, string> markers, CancellationToken ct)
+    {
+        using (var delete = Command(connection, tx))
+        {
+            delete.CommandText = "DELETE FROM package_markers WHERE entry_id = $entry";
+            delete.Parameters.AddWithValue("$entry", entryId);
+            await delete.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
+        }
+
+        using var insert = Command(connection, tx);
+        insert.CommandText = "INSERT INTO package_markers (entry_id, path, sha256) VALUES ($entry, $path, $sha256)";
+        insert.Parameters.AddWithValue("$entry", entryId);
+        var path = insert.Parameters.Add("$path", SqliteType.Text);
+        var sha = insert.Parameters.Add("$sha256", SqliteType.Text);
+        foreach (var (key, value) in markers)
         {
             path.Value = key;
             sha.Value = value;
@@ -295,7 +369,7 @@ public sealed class RaggableTreeCache : IRaggableTreeCache
     // Groups the nodes by the file they come from, rewrites a group only when its content changed, and records the
     // runs that give the order of the nodes back.
     private static async Task WriteNodesAsync(
-        SqliteConnection connection, SqliteTransaction tx, IReadOnlyList<RaggableNode> nodes, long generation, CancellationToken ct)
+        SqliteConnection connection, SqliteTransaction tx, long entryId, IReadOnlyList<RaggableNode> nodes, long generation, CancellationToken ct)
     {
         var groups = new Dictionary<string, List<RaggableNode>>(StringComparer.Ordinal);
         var runs = new List<(string Path, int Count)>();
@@ -313,7 +387,8 @@ public sealed class RaggableTreeCache : IRaggableTreeCache
         var saved = new Dictionary<string, (long Id, string Sha)>(StringComparer.Ordinal);
         using (var select = Command(connection, tx))
         {
-            select.CommandText = "SELECT group_id, virtual_path, content_sha256 FROM node_groups";
+            select.CommandText = "SELECT group_id, virtual_path, content_sha256 FROM node_groups WHERE entry_id = $entry";
+            select.Parameters.AddWithValue("$entry", entryId);
             var reader = await select.ExecuteReaderAsync(ct).ConfigureAwait(false);
             await using (reader.ConfigureAwait(false))
             {
@@ -324,7 +399,8 @@ public sealed class RaggableTreeCache : IRaggableTreeCache
 
         using (var deleteRuns = Command(connection, tx))
         {
-            deleteRuns.CommandText = "DELETE FROM node_runs";
+            deleteRuns.CommandText = "DELETE FROM node_runs WHERE entry_id = $entry";
+            deleteRuns.Parameters.AddWithValue("$entry", entryId);
             await deleteRuns.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
         }
 
@@ -332,15 +408,16 @@ public sealed class RaggableTreeCache : IRaggableTreeCache
         using (var upsert = Command(connection, tx))
         {
             upsert.CommandText = """
-                INSERT INTO node_groups (virtual_path, node_count, content_sha256, generation, nodes)
-                VALUES ($path, $count, $sha256, $generation, $nodes)
-                ON CONFLICT (virtual_path) DO UPDATE SET
+                INSERT INTO node_groups (entry_id, virtual_path, node_count, content_sha256, generation, nodes)
+                VALUES ($entry, $path, $count, $sha256, $generation, $nodes)
+                ON CONFLICT (entry_id, virtual_path) DO UPDATE SET
                     node_count = excluded.node_count,
                     content_sha256 = excluded.content_sha256,
                     generation = excluded.generation,
                     nodes = excluded.nodes
                 RETURNING group_id
                 """;
+            upsert.Parameters.AddWithValue("$entry", entryId);
             var path = upsert.Parameters.Add("$path", SqliteType.Text);
             var count = upsert.Parameters.Add("$count", SqliteType.Integer);
             var sha = upsert.Parameters.Add("$sha256", SqliteType.Text);
@@ -365,7 +442,8 @@ public sealed class RaggableTreeCache : IRaggableTreeCache
 
         using (var delete = Command(connection, tx))
         {
-            delete.CommandText = "DELETE FROM node_groups WHERE virtual_path = $path";
+            delete.CommandText = "DELETE FROM node_groups WHERE entry_id = $entry AND virtual_path = $path";
+            delete.Parameters.AddWithValue("$entry", entryId);
             var path = delete.Parameters.Add("$path", SqliteType.Text);
             foreach (var gone in saved.Keys.Where(p => !groups.ContainsKey(p)))
             {
@@ -376,7 +454,8 @@ public sealed class RaggableTreeCache : IRaggableTreeCache
 
         using (var insert = Command(connection, tx))
         {
-            insert.CommandText = "INSERT INTO node_runs (position, group_id, node_count) VALUES ($position, $group, $count)";
+            insert.CommandText = "INSERT INTO node_runs (entry_id, position, group_id, node_count) VALUES ($entry, $position, $group, $count)";
+            insert.Parameters.AddWithValue("$entry", entryId);
             var position = insert.Parameters.Add("$position", SqliteType.Integer);
             var group = insert.Parameters.Add("$group", SqliteType.Integer);
             var count = insert.Parameters.Add("$count", SqliteType.Integer);
@@ -390,23 +469,16 @@ public sealed class RaggableTreeCache : IRaggableTreeCache
         }
     }
 
-    private static async Task WriteStateAsync(
-        SqliteConnection connection, SqliteTransaction tx, RaggableTreeCacheEntry entry, long generation, CancellationToken ct)
+    // Keeps the MaxEntries entries used last; deleting an entry cascades to its files, markers, groups and runs.
+    private static async Task EvictAsync(SqliteConnection connection, SqliteTransaction tx, CancellationToken ct)
     {
-        using var upsert = Command(connection, tx);
-        upsert.CommandText = """
-            INSERT OR REPLACE INTO cache_state (id, cache_key, index_id, generation, node_count, edge_count, edges, saved_at)
-            VALUES (1, $key, $index_id, $generation, $node_count, $edge_count, $edges, $saved_at)
+        using var delete = Command(connection, tx);
+        delete.CommandText = """
+            DELETE FROM cache_entries WHERE entry_id NOT IN (
+                SELECT entry_id FROM cache_entries ORDER BY used_at DESC, entry_id DESC LIMIT $max)
             """;
-        upsert.Parameters.AddWithValue("$key", entry.CacheKey);
-        upsert.Parameters.AddWithValue("$index_id", entry.IndexId);
-        upsert.Parameters.AddWithValue("$generation", generation);
-        upsert.Parameters.AddWithValue("$node_count", entry.Tree.Nodes.Count);
-        upsert.Parameters.AddWithValue("$edge_count", entry.Tree.Edges.Count);
-        upsert.Parameters.Add("$edges", SqliteType.Blob).Value = Compress(
-            JsonSerializer.SerializeToUtf8Bytes(entry.Tree.Edges.Select(NodeMapper.ToDto).ToList(), RaggableTreeSerializer.Options));
-        upsert.Parameters.AddWithValue("$saved_at", DateTimeOffset.UtcNow.ToString("O", System.Globalization.CultureInfo.InvariantCulture));
-        await upsert.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
+        delete.Parameters.AddWithValue("$max", MaxEntries);
+        await delete.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
     }
 
     public async Task InvalidateAsync(string rootPath, CancellationToken ct)
@@ -445,20 +517,40 @@ public sealed class RaggableTreeCache : IRaggableTreeCache
         return (long)(await pragma.ExecuteScalarAsync(ct).ConfigureAwait(false))!;
     }
 
-    private static async Task<Dictionary<string, string>> ReadPairsAsync(SqliteConnection connection, bool files, CancellationToken ct)
+    private static async Task<Dictionary<string, FileStamp>> ReadFilesAsync(SqliteConnection connection, long entryId, CancellationToken ct)
     {
-        var pairs = new Dictionary<string, string>(StringComparer.Ordinal);
+        var files = new Dictionary<string, FileStamp>(StringComparer.Ordinal);
         using var select = connection.CreateCommand();
-        if (files) select.CommandText = "SELECT path, sha256 FROM indexed_files";
-        else select.CommandText = "SELECT path, sha256 FROM package_markers";
+        select.CommandText = "SELECT path, sha256, size_bytes, modified_ticks FROM indexed_files WHERE entry_id = $entry";
+        select.Parameters.AddWithValue("$entry", entryId);
         var reader = await select.ExecuteReaderAsync(ct).ConfigureAwait(false);
         await using (reader.ConfigureAwait(false))
         {
             while (await reader.ReadAsync(ct).ConfigureAwait(false))
-                pairs[reader.GetString(0)] = reader.GetString(1);
+            {
+                DateTimeOffset? modified = await reader.IsDBNullAsync(3, ct).ConfigureAwait(false) ? null : new DateTimeOffset(reader.GetInt64(3), TimeSpan.Zero);
+                files[reader.GetString(0)] = new FileStamp(reader.GetString(1), reader.GetInt64(2), modified);
+            }
         }
-        return pairs;
+        return files;
     }
+
+    private static async Task<Dictionary<string, string>> ReadMarkersAsync(SqliteConnection connection, long entryId, CancellationToken ct)
+    {
+        var markers = new Dictionary<string, string>(StringComparer.Ordinal);
+        using var select = connection.CreateCommand();
+        select.CommandText = "SELECT path, sha256 FROM package_markers WHERE entry_id = $entry";
+        select.Parameters.AddWithValue("$entry", entryId);
+        var reader = await select.ExecuteReaderAsync(ct).ConfigureAwait(false);
+        await using (reader.ConfigureAwait(false))
+        {
+            while (await reader.ReadAsync(ct).ConfigureAwait(false))
+                markers[reader.GetString(0)] = reader.GetString(1);
+        }
+        return markers;
+    }
+
+    private static string Now() => DateTimeOffset.UtcNow.ToString("O", System.Globalization.CultureInfo.InvariantCulture);
 
     private static SqliteCommand Command(SqliteConnection connection, SqliteTransaction tx)
     {

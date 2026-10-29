@@ -68,15 +68,15 @@ Orkeon.Analysis.Core.Cache.RaggableTreeCacheEntry
 Orkeon.Analysis.Core.Cache.RaggableTreeCacheEntry.<Clone>$() -> Orkeon.Analysis.Core.Cache.RaggableTreeCacheEntry!
 Orkeon.Analysis.Core.Cache.RaggableTreeCacheEntry.CacheKey.get -> string!
 Orkeon.Analysis.Core.Cache.RaggableTreeCacheEntry.CacheKey.init -> void
-Orkeon.Analysis.Core.Cache.RaggableTreeCacheEntry.Deconstruct(out Orkeon.Analysis.Abstractions.Models.RaggableTree! Tree, out string! IndexId, out string! CacheKey, out System.Collections.Generic.IReadOnlyDictionary<string!, string!>! Files, out System.Collections.Generic.IReadOnlyDictionary<string!, string!>! Markers) -> void
+Orkeon.Analysis.Core.Cache.RaggableTreeCacheEntry.Deconstruct(out Orkeon.Analysis.Abstractions.Models.RaggableTree! Tree, out string! IndexId, out string! CacheKey, out System.Collections.Generic.IReadOnlyDictionary<string!, Orkeon.Analysis.Abstractions.Interfaces.FileStamp!>! Files, out System.Collections.Generic.IReadOnlyDictionary<string!, string!>! Markers) -> void
 Orkeon.Analysis.Core.Cache.RaggableTreeCacheEntry.Equals(Orkeon.Analysis.Core.Cache.RaggableTreeCacheEntry? other) -> bool
-Orkeon.Analysis.Core.Cache.RaggableTreeCacheEntry.Files.get -> System.Collections.Generic.IReadOnlyDictionary<string!, string!>!
+Orkeon.Analysis.Core.Cache.RaggableTreeCacheEntry.Files.get -> System.Collections.Generic.IReadOnlyDictionary<string!, Orkeon.Analysis.Abstractions.Interfaces.FileStamp!>!
 Orkeon.Analysis.Core.Cache.RaggableTreeCacheEntry.Files.init -> void
 Orkeon.Analysis.Core.Cache.RaggableTreeCacheEntry.IndexId.get -> string!
 Orkeon.Analysis.Core.Cache.RaggableTreeCacheEntry.IndexId.init -> void
 Orkeon.Analysis.Core.Cache.RaggableTreeCacheEntry.Markers.get -> System.Collections.Generic.IReadOnlyDictionary<string!, string!>!
 Orkeon.Analysis.Core.Cache.RaggableTreeCacheEntry.Markers.init -> void
-Orkeon.Analysis.Core.Cache.RaggableTreeCacheEntry.RaggableTreeCacheEntry(Orkeon.Analysis.Abstractions.Models.RaggableTree! Tree, string! IndexId, string! CacheKey, System.Collections.Generic.IReadOnlyDictionary<string!, string!>! Files, System.Collections.Generic.IReadOnlyDictionary<string!, string!>! Markers) -> void
+Orkeon.Analysis.Core.Cache.RaggableTreeCacheEntry.RaggableTreeCacheEntry(Orkeon.Analysis.Abstractions.Models.RaggableTree! Tree, string! IndexId, string! CacheKey, System.Collections.Generic.IReadOnlyDictionary<string!, Orkeon.Analysis.Abstractions.Interfaces.FileStamp!>! Files, System.Collections.Generic.IReadOnlyDictionary<string!, string!>! Markers) -> void
 Orkeon.Analysis.Core.Cache.RaggableTreeCacheEntry.Tree.get -> Orkeon.Analysis.Abstractions.Models.RaggableTree!
 Orkeon.Analysis.Core.Cache.RaggableTreeCacheEntry.Tree.init -> void
 Orkeon.Analysis.Core.RaggableTreeBuilder.BuildAsync(Orkeon.Analysis.Abstractions.Interfaces.DiscoveryResult! discovery, Orkeon.Analysis.Abstractions.DTOs.Tools.IndexCodebaseRequest! opts, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<Orkeon.Analysis.Core.BuildResult!>!
@@ -94,3 +94,4 @@ static Orkeon.Analysis.Core.Cache.CachingTreeBuilder.DescribeEnvironment(System.
 static Orkeon.Analysis.Core.Cache.RaggableTreeCacheEntry.operator !=(Orkeon.Analysis.Core.Cache.RaggableTreeCacheEntry? left, Orkeon.Analysis.Core.Cache.RaggableTreeCacheEntry? right) -> bool
 static Orkeon.Analysis.Core.Cache.RaggableTreeCacheEntry.operator ==(Orkeon.Analysis.Core.Cache.RaggableTreeCacheEntry? left, Orkeon.Analysis.Core.Cache.RaggableTreeCacheEntry? right) -> bool
 static Orkeon.Analysis.Core.RaggableTreeBuilder.DiscoveryRequestOf(string! virtualRoot, Orkeon.Analysis.Abstractions.DTOs.Tools.IndexCodebaseRequest! opts) -> Orkeon.Analysis.Abstractions.Interfaces.DiscoveryRequest!
+const Orkeon.Analysis.Core.Cache.RaggableTreeCache.MaxEntries = 3 -> int

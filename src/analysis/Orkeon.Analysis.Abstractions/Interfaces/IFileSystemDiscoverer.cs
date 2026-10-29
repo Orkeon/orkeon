@@ -16,7 +16,18 @@ public sealed record DiscoveredFile(
     string RelativePath,
     string Language,
     long SizeBytes,
-    string Sha256);
+    string Sha256)
+{
+    /// <summary>The last write time the file system reported when the file was discovered.</summary>
+    public DateTimeOffset LastModified { get; init; }
+}
+
+/// <summary>
+/// What is known of a file from an earlier discovery: its SHA-256, its size and its last write time. A null
+/// <see cref="LastModified"/> means the time cannot be trusted (the file was written too close to the discovery that
+/// hashed it), so the file is hashed again.
+/// </summary>
+public sealed record FileStamp(string Sha256, long SizeBytes, DateTimeOffset? LastModified);
 
 public sealed record DiscoveryRequest
 {
@@ -33,6 +44,12 @@ public sealed record DiscoveryRequest
     /// distribution archives where files would otherwise be filtered out.
     /// </summary>
     public bool RespectGitignore { get; init; } = true;
+
+    /// <summary>
+    /// Files known from an earlier discovery, by path relative to the root. A file whose size and last write time
+    /// are those of its stamp takes the stamp's SHA-256 without being read again, as git trusts its index.
+    /// </summary>
+    public IReadOnlyDictionary<string, FileStamp>? KnownFiles { get; init; }
 }
 
 public sealed record DiscoveryResult

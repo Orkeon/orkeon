@@ -40,6 +40,9 @@ public sealed partial class CachingTreeBuilder
     // Bumped when what a cached tree holds changes in a way the serializer version does not tell.
     private const char FormatVersion = '1';
 
+    // How close to its discovery a file may have been written for its last write time to be trusted next time.
+    private static readonly TimeSpan RacyWindow = TimeSpan.FromSeconds(2);
+
     private readonly IRaggableTreeCache _cache;
     private readonly IFileSystemDiscoverer _discoverer;
     private readonly IFileSystemService _fs;
@@ -100,14 +103,17 @@ public sealed partial class CachingTreeBuilder
 
     private async Task<CachedBuildResult> BuildCoreAsync(string virtualRoot, IndexCodebaseRequest request, CancellationToken ct)
     {
-        var discovery = await _discoverer.DiscoverAllAsync(
-            RaggableTreeBuilder.DiscoveryRequestOf(virtualRoot, request), ct).ConfigureAwait(false);
         var key = CacheKeyOf(request);
-        var files = discovery.Files.ToDictionary(f => f.RelativePath, f => f.Sha256, StringComparer.Ordinal);
+        var saved = request.UseCache ? await _cache.LoadAsync(virtualRoot, key, ct).ConfigureAwait(false) : null;
+
+        // The saved stamps spare hashing the files whose size and last write time did not change.
+        var discoveredAt = DateTimeOffset.UtcNow;
+        var discovery = await _discoverer.DiscoverAllAsync(
+            RaggableTreeBuilder.DiscoveryRequestOf(virtualRoot, request) with { KnownFiles = saved?.Files }, ct).ConfigureAwait(false);
+        var files = StampsOf(discovery, discoveredAt);
         var markers = await MarkerHashesAsync(discovery, ct).ConfigureAwait(false);
         var indexId = TreeAssembly.ComputeIndexId(discovery.Files);
 
-        var saved = request.UseCache ? await _cache.LoadAsync(virtualRoot, key, ct).ConfigureAwait(false) : null;
         if (saved is not null && SameEntries(saved.Markers, markers))
         {
             var changed = ChangedPaths(saved.Files, files);
@@ -164,10 +170,18 @@ public sealed partial class CachingTreeBuilder
         return hashes;
     }
 
-    private static List<string> ChangedPaths(IReadOnlyDictionary<string, string> saved, Dictionary<string, string> current)
+    // A file written within RacyWindow of its discovery may change again without its size or time telling it: its
+    // time is not saved, so the next discovery hashes it again.
+    private static Dictionary<string, FileStamp> StampsOf(DiscoveryResult discovery, DateTimeOffset discoveredAt) =>
+        discovery.Files.ToDictionary(
+            f => f.RelativePath,
+            f => new FileStamp(f.Sha256, f.SizeBytes, f.LastModified < discoveredAt - RacyWindow ? f.LastModified : null),
+            StringComparer.Ordinal);
+
+    private static List<string> ChangedPaths(IReadOnlyDictionary<string, FileStamp> saved, Dictionary<string, FileStamp> current)
     {
         var changed = current
-            .Where(kv => !saved.TryGetValue(kv.Key, out var sha) || !string.Equals(sha, kv.Value, StringComparison.Ordinal))
+            .Where(kv => !saved.TryGetValue(kv.Key, out var stamp) || !string.Equals(stamp.Sha256, kv.Value.Sha256, StringComparison.Ordinal))
             .Select(kv => kv.Key)
             .ToList();
         changed.AddRange(saved.Keys.Where(p => !current.ContainsKey(p)));

@@ -1,5 +1,6 @@
 using Microsoft.Data.Sqlite;
 using Orkeon.Analysis.Abstractions;
+using Orkeon.Analysis.Abstractions.Interfaces;
 using Orkeon.Analysis.Abstractions.Models;
 using Orkeon.Analysis.Core.Cache;
 
@@ -20,11 +21,15 @@ public class RaggableTreeCacheTests
             Assert.True(saved);
             Assert.True(File.Exists(DatabasePath(root)));
             Assert.Equal("*\n", await File.ReadAllTextAsync(Path.Combine(CacheDir(root), ".gitignore"), TestContext.Current.CancellationToken));
-            Assert.Equal(1L, Scalar(root, "PRAGMA user_version"));
+            Assert.Equal(2L, Scalar(root, "PRAGMA user_version"));
             Assert.Equal(
-                "cache_state,indexed_files,node_groups,node_runs,package_markers",
+                "cache_entries,indexed_files,node_groups,node_runs,package_markers",
                 Scalar(root, "SELECT group_concat(name, ',') FROM (SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name)"));
-            Assert.Equal("node_groups", Scalar(root, "SELECT \"table\" FROM pragma_foreign_key_list('node_runs')"));
+            Assert.Equal("cache_entries,node_groups", Scalar(root,
+                "SELECT group_concat(t, ',') FROM (SELECT DISTINCT \"table\" AS t FROM pragma_foreign_key_list('node_runs') ORDER BY t)"));
+            Assert.Equal("CASCADE", Scalar(root, "SELECT on_delete FROM pragma_foreign_key_list('node_groups')"));
+            Assert.Equal("CASCADE", Scalar(root, "SELECT on_delete FROM pragma_foreign_key_list('indexed_files')"));
+            Assert.Equal("CASCADE", Scalar(root, "SELECT on_delete FROM pragma_foreign_key_list('package_markers')"));
         }
         finally { Directory.Delete(root, recursive: true); }
     }
@@ -69,7 +74,7 @@ public class RaggableTreeCacheTests
             await cache.SaveAsync(TestFixtures.TestVirtualRoot,
                 Entry("idx-2", Tree(("a1", "/src/a.ts"), ("b2", "/src/b.ts"))), CancellationToken.None);
 
-            Assert.Equal(2L, Scalar(root, "SELECT generation FROM cache_state"));
+            Assert.Equal(2L, Scalar(root, "SELECT generation FROM cache_entries"));
             Assert.Equal("/src/a.ts=1,/src/b.ts=2", Scalar(root,
                 "SELECT group_concat(virtual_path || '=' || generation, ',') FROM (SELECT * FROM node_groups ORDER BY virtual_path)"));
             var loaded = await cache.LoadAsync(TestFixtures.TestVirtualRoot, Key, CancellationToken.None);
@@ -80,21 +85,74 @@ public class RaggableTreeCacheTests
     }
 
     [Fact]
-    public async Task SaveAsync_under_another_key_drops_what_was_saved()
+    public async Task SaveAsync_under_another_key_keeps_both_entries()
     {
         var root = await TestFixtures.WriteDirectoryAsync([("a.ts", "export const a = 1;")]);
         try
         {
             var cache = BuildCache(root);
-            await cache.SaveAsync(TestFixtures.TestVirtualRoot, Entry("idx", Tree(("a1", "/src/a.ts"))), CancellationToken.None);
+            await cache.SaveAsync(TestFixtures.TestVirtualRoot, Entry("idx-1", Tree(("a1", "/src/a.ts"))), CancellationToken.None);
 
             await cache.SaveAsync(TestFixtures.TestVirtualRoot,
-                Entry("idx", Tree(("b1", "/src/b.ts"))) with { CacheKey = "key-2" }, CancellationToken.None);
+                Entry("idx-2", Tree(("b1", "/src/b.ts"))) with { CacheKey = "key-2" }, CancellationToken.None);
 
-            Assert.Null(await cache.LoadAsync(TestFixtures.TestVirtualRoot, Key, CancellationToken.None));
-            Assert.NotNull(await cache.LoadAsync(TestFixtures.TestVirtualRoot, "key-2", CancellationToken.None));
-            Assert.Equal(1L, Scalar(root, "SELECT generation FROM cache_state"));
-            Assert.Equal("/src/b.ts", Scalar(root, "SELECT group_concat(virtual_path) FROM node_groups"));
+            var first = await cache.LoadAsync(TestFixtures.TestVirtualRoot, Key, CancellationToken.None);
+            var second = await cache.LoadAsync(TestFixtures.TestVirtualRoot, "key-2", CancellationToken.None);
+            Assert.NotNull(first);
+            Assert.NotNull(second);
+            Assert.Equal(["a1"], first.Tree.Nodes.Select(n => n.Id));
+            Assert.Equal(["b1"], second.Tree.Nodes.Select(n => n.Id));
+            Assert.Equal(2L, Scalar(root, "SELECT count(*) FROM cache_entries"));
+            Assert.Equal(1L, Scalar(root, "SELECT max(generation) FROM cache_entries"));
+        }
+        finally { Directory.Delete(root, recursive: true); }
+    }
+
+    [Fact]
+    public async Task SaveAsync_past_MaxEntries_evicts_the_least_recently_used_entry_and_its_rows()
+    {
+        var root = await TestFixtures.WriteDirectoryAsync([("a.ts", "export const a = 1;")]);
+        try
+        {
+            var cache = BuildCache(root);
+            for (var i = 1; i <= RaggableTreeCache.MaxEntries; i++)
+            {
+                await cache.SaveAsync(TestFixtures.TestVirtualRoot,
+                    Entry("idx", Tree(($"n{i}", $"/src/f{i}.ts"))) with { CacheKey = $"k{i}" }, CancellationToken.None);
+            }
+            // k2 becomes the least recently used, whatever order the clock gave the saves.
+            Scalar(root, "UPDATE cache_entries SET used_at = CASE cache_key WHEN 'k2' THEN '2000-01-01' ELSE '2001-01-01' END");
+
+            await cache.SaveAsync(TestFixtures.TestVirtualRoot,
+                Entry("idx", Tree(("n4", "/src/f4.ts"))) with { CacheKey = "k4" }, CancellationToken.None);
+
+            Assert.Equal((long)RaggableTreeCache.MaxEntries, Scalar(root, "SELECT count(*) FROM cache_entries"));
+            Assert.Null(await cache.LoadAsync(TestFixtures.TestVirtualRoot, "k2", CancellationToken.None));
+            Assert.NotNull(await cache.LoadAsync(TestFixtures.TestVirtualRoot, "k1", CancellationToken.None));
+            Assert.NotNull(await cache.LoadAsync(TestFixtures.TestVirtualRoot, "k4", CancellationToken.None));
+            // The cascade took the evicted entry's rows with it.
+            Assert.Equal(0L, Scalar(root, "SELECT count(*) FROM node_groups WHERE virtual_path = '/src/f2.ts'"));
+            Assert.Equal(0L, Scalar(root,
+                "SELECT count(*) FROM node_runs WHERE entry_id NOT IN (SELECT entry_id FROM cache_entries)"));
+            Assert.Equal((long)RaggableTreeCache.MaxEntries, Scalar(root, "SELECT count(DISTINCT entry_id) FROM indexed_files"));
+            Assert.Equal((long)RaggableTreeCache.MaxEntries, Scalar(root, "SELECT count(DISTINCT entry_id) FROM package_markers"));
+        }
+        finally { Directory.Delete(root, recursive: true); }
+    }
+
+    [Fact]
+    public async Task LoadAsync_marks_the_entry_as_used()
+    {
+        var root = await TestFixtures.WriteDirectoryAsync([("a.ts", "export const a = 1;")]);
+        try
+        {
+            var cache = BuildCache(root);
+            await cache.SaveAsync(TestFixtures.TestVirtualRoot, Entry("idx", Tree()), CancellationToken.None);
+            Scalar(root, "UPDATE cache_entries SET used_at = '2000-01-01'");
+
+            await cache.LoadAsync(TestFixtures.TestVirtualRoot, Key, CancellationToken.None);
+
+            Assert.Equal(0L, Scalar(root, "SELECT count(*) FROM cache_entries WHERE used_at = '2000-01-01'"));
         }
         finally { Directory.Delete(root, recursive: true); }
     }
@@ -206,7 +264,11 @@ public class RaggableTreeCacheTests
         tree,
         indexId,
         Key,
-        new Dictionary<string, string> { ["a.ts"] = "sha-a" },
+        new Dictionary<string, FileStamp>
+        {
+            ["a.ts"] = new("sha-a", 19, new DateTimeOffset(2026, 1, 2, 3, 4, 5, TimeSpan.Zero)),
+            ["b.ts"] = new("sha-b", 7, null),
+        },
         new Dictionary<string, string> { ["package.json"] = "sha-p" });
 
     private static RaggableTree Tree(params (string Id, string File)[] nodes)

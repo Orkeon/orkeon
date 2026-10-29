@@ -171,8 +171,8 @@ toujours extraits, et un argument que la requête ne déclare pas est ignoré.
 ### Cache d'index
 
 `AddRaggableTree` enregistre `CachingTreeBuilder`, dont `index_codebase` se sert pour
-garder l'index entre les sessions. Chaque construction enregistre l'arbre et le SHA-256 de
-chaque fichier indexé et de chaque marqueur de paquet dans une seule base SQLite,
+garder l'index entre les sessions. Chaque construction enregistre l'arbre, le SHA-256, la taille et
+l'heure d'écriture de chaque fichier indexé et le SHA-256 de chaque marqueur de paquet dans une seule base SQLite,
 `<root>/.orkeon/cache/raggable-tree/index.db`, dans un dossier qui porte son propre
 `.gitignore` (`*`). L'appel suivant avec les mêmes options la relit et répond `cache` :
 
@@ -193,33 +193,51 @@ sans cache.
 
 #### Schéma de la base
 
-`RaggableTreeCache` possède la base. Une base garde un seul index : l'entrée de la dernière
-clé enregistrée. La version de son schéma est `PRAGMA user_version` (`1`) ; une base d'une
-autre version voit ses tables supprimées et recréées à l'enregistrement suivant, et se lit
-comme un miss d'ici là. La connexion tourne avec `foreign_keys = ON` et le journal en mode WAL.
+`RaggableTreeCache` possède la base. Une base garde jusqu'à `RaggableTreeCache.MaxEntries`
+(`3`) index enregistrés côte à côte, un par clé : deux appelants qui indexent une racine avec
+des options différentes retrouvent chacun le sien. Un enregistrement au-delà de ce nombre
+évince l'entrée utilisée le moins récemment (`used_at`, que rafraîchissent chaque
+enregistrement et chaque hit). La version de son schéma est `PRAGMA user_version` (`2`) ;
+une base d'une autre version voit ses tables supprimées et recréées à l'enregistrement
+suivant, et se lit comme un miss d'ici là. La connexion tourne avec `foreign_keys = ON` et le
+journal en mode WAL.
 
 | Table | Clé primaire | Contenu |
 |---|---|---|
-| `cache_state` | `id` (`CHECK (id = 1)` : une ligne) | La clé et l'identité de l'index enregistré, et ses arêtes |
-| `indexed_files` | `path` (`WITHOUT ROWID`) | Le SHA-256 de chaque fichier indexé |
-| `package_markers` | `path` (`WITHOUT ROWID`) | Le SHA-256 de chaque marqueur de paquet |
-| `node_groups` | `group_id` (alias du rowid) | Les nœuds d'un fichier source |
-| `node_runs` | `position` | L'ordre des nœuds dans l'arbre |
+| `cache_entries` | `entry_id` (alias du rowid) ; `cache_key` `UNIQUE` | Un index enregistré : sa clé, son identité et ses arêtes |
+| `indexed_files` | (`entry_id`, `path`) (`WITHOUT ROWID`) | L'empreinte de chaque fichier indexé d'une entrée |
+| `package_markers` | (`entry_id`, `path`) (`WITHOUT ROWID`) | Le SHA-256 de chaque marqueur de paquet d'une entrée |
+| `node_groups` | `group_id` (alias du rowid) ; (`entry_id`, `virtual_path`) `UNIQUE` | Les nœuds d'un fichier source d'une entrée |
+| `node_runs` | (`entry_id`, `position`) (`WITHOUT ROWID`) | L'ordre des nœuds d'une entrée dans son arbre |
 
-`cache_state` :
+Toute autre table nomme son entrée par `entry_id`, une `FOREIGN KEY` → `cache_entries (entry_id)`
+`ON DELETE CASCADE` : supprimer une entrée supprime avec elle ses fichiers, marqueurs, groupes
+et séquences.
+
+`cache_entries` :
 
 | Colonne | Type | Contrainte | Sens |
 |---|---|---|---|
-| `id` | `INTEGER` | `PRIMARY KEY`, `CHECK (id = 1)` | L'unique ligne |
-| `cache_key` | `TEXT` | `NOT NULL` | Le SHA-256 de la clé décrite plus haut |
+| `entry_id` | `INTEGER` | `PRIMARY KEY` | Clé de substitution, référencée par toutes les autres tables |
+| `cache_key` | `TEXT` | `NOT NULL UNIQUE` | Le SHA-256 de la clé décrite plus haut |
 | `index_id` | `TEXT` | `NOT NULL` | L'`IndexId` de l'arbre enregistré |
-| `generation` | `INTEGER` | `NOT NULL` | Compte les enregistrements sous cette clé, à partir de `1` |
+| `generation` | `INTEGER` | `NOT NULL`, `CHECK (generation > 0)` | Compte les enregistrements sous cette clé, à partir de `1` |
 | `node_count`, `edge_count` | `INTEGER` | `NOT NULL` | La taille de l'arbre, pour qui inspecte la base ; le chargement ne les lit pas |
 | `edges` | `BLOB` | `NOT NULL` | Toutes les arêtes, gzip du tableau JSON des arêtes du sérialiseur |
-| `saved_at` | `TEXT` | `NOT NULL` | L'heure UTC de l'enregistrement, ISO 8601 |
+| `saved_at` | `TEXT` | `NOT NULL` | L'heure UTC du dernier enregistrement, ISO 8601 |
+| `used_at` | `TEXT` | `NOT NULL` | L'heure UTC du dernier enregistrement ou hit, ISO 8601 ; ordonne l'éviction |
 
-`indexed_files` et `package_markers` ont les deux mêmes colonnes : `path` (`TEXT PRIMARY KEY`,
-relatif à la racine) et `sha256` (`TEXT NOT NULL`, hexadécimal minuscule). Le constructeur
+`indexed_files` :
+
+| Colonne | Type | Contrainte | Sens |
+|---|---|---|---|
+| `entry_id` | `INTEGER` | `NOT NULL`, `FOREIGN KEY` `ON DELETE CASCADE` | L'entrée |
+| `path` | `TEXT` | `NOT NULL` | Le fichier, relatif à la racine |
+| `sha256` | `TEXT` | `NOT NULL` | Le SHA-256 de son contenu, hexadécimal minuscule |
+| `size_bytes` | `INTEGER` | `NOT NULL` | Sa taille quand il a été haché |
+| `modified_ticks` | `INTEGER` | nullable | Son heure de dernière écriture (ticks UTC) quand il a été haché ; `NULL` quand cette heure n'est pas fiable |
+
+`package_markers` a `entry_id`, `path` et `sha256`, comme `indexed_files`. Le constructeur
 les compare aux fichiers qu'il découvre pour distinguer un hit, un rafraîchissement ou un miss.
 
 `node_groups` :
@@ -227,7 +245,8 @@ les compare aux fichiers qu'il découvre pour distinguer un hit, un rafraîchiss
 | Colonne | Type | Contrainte | Sens |
 |---|---|---|---|
 | `group_id` | `INTEGER` | `PRIMARY KEY` | Clé de substitution, référencée par `node_runs` |
-| `virtual_path` | `TEXT` | `NOT NULL UNIQUE` | Le fichier source des nœuds (`VirtualFilePath`) ; les nœuds sans fichier partagent le chemin vide |
+| `entry_id` | `INTEGER` | `NOT NULL`, `FOREIGN KEY` `ON DELETE CASCADE` | L'entrée ; (`entry_id`, `group_id`) est aussi `UNIQUE`, cible de la clé étrangère de `node_runs` |
+| `virtual_path` | `TEXT` | `NOT NULL`, `UNIQUE` avec `entry_id` | Le fichier source des nœuds (`VirtualFilePath`) ; les nœuds sans fichier partagent le chemin vide |
 | `node_count` | `INTEGER` | `NOT NULL`, `CHECK (node_count > 0)` | Combien de nœuds contient `nodes` |
 | `content_sha256` | `TEXT` | `NOT NULL` | Le SHA-256 du JSON non compressé de `nodes` |
 | `generation` | `INTEGER` | `NOT NULL` | La génération de l'enregistrement qui a écrit la ligne en dernier |
@@ -237,35 +256,55 @@ les compare aux fichiers qu'il découvre pour distinguer un hit, un rafraîchiss
 
 | Colonne | Type | Contrainte | Sens |
 |---|---|---|---|
-| `position` | `INTEGER` | `PRIMARY KEY` | Le rang de la séquence, à partir de `0` |
-| `group_id` | `INTEGER` | `NOT NULL`, `FOREIGN KEY` → `node_groups (group_id)` `ON DELETE RESTRICT`, indexée (`ix_node_runs_group_id`) | Le groupe dont la séquence prend ses nœuds |
+| `entry_id` | `INTEGER` | `NOT NULL`, `FOREIGN KEY` `ON DELETE CASCADE` | L'entrée |
+| `position` | `INTEGER` | `NOT NULL` | Le rang de la séquence dans son entrée, à partir de `0` |
+| `group_id` | `INTEGER` | `NOT NULL` ; (`entry_id`, `group_id`) `FOREIGN KEY` → `node_groups (entry_id, group_id)`, indexée (`ix_node_runs_group`) | Le groupe dont la séquence prend ses nœuds |
 | `node_count` | `INTEGER` | `NOT NULL`, `CHECK (node_count > 0)` | Combien de nœuds la séquence prend |
 
 La liste des nœuds de l'arbre n'est pas groupée par fichier : les nœuds d'un fichier peuvent
 revenir après ceux d'un autre. `node_runs` garde cet ordre : le chargement lit les séquences
-par `position` et chacune prend les `node_count` nœuds suivants de son groupe, si bien que
-l'arbre se relit dans l'ordre où il a été enregistré. Une séquence qui demande plus de nœuds
-que son groupe n'en a, ou un groupe dont aucune séquence ne reprend tous les nœuds, fait du
-chargement un miss. La clé étrangère interdit à une séquence de nommer un groupe qui n'existe
-pas, et `RESTRICT` interdit de supprimer un groupe qu'une séquence nomme encore :
-un enregistrement supprime les séquences avant les groupes.
+d'une entrée par `position` et chacune prend les `node_count` nœuds suivants de son groupe,
+si bien que l'arbre se relit dans l'ordre où il a été enregistré. Une séquence qui demande
+plus de nœuds que son groupe n'en a, ou un groupe dont aucune séquence ne reprend tous les
+nœuds, fait du chargement un miss. La clé étrangère composite interdit à une séquence de
+nommer un groupe qui n'existe pas ou qui appartient à une autre entrée, et interdit de
+supprimer un groupe qu'une séquence nomme encore : un enregistrement supprime les séquences
+avant les groupes. Le contrôle a lieu à la fin de chaque instruction, si bien que la cascade
+depuis une entrée supprime ensemble ses séquences et ses groupes.
 
 Un enregistrement est une seule transaction :
 
-1. Sous la même clé, la génération est celle enregistrée plus un ; sous une autre clé, toutes
-   les tables sont vidées et la génération repart à `1`.
-2. `indexed_files` et `package_markers` sont réécrites.
+1. L'entrée de la clé est insérée ou mise à jour (`ON CONFLICT (cache_key) DO UPDATE`) : une
+   clé nouvelle part de la génération `1`, une clé connue l'augmente de un ; `saved_at` et
+   `used_at` prennent l'heure courante.
+2. Les `indexed_files` et `package_markers` de l'entrée sont réécrites.
 3. Les nœuds sont groupés par fichier. Un groupe dont le `content_sha256` n'a pas changé est
    laissé tel quel ; un groupe modifié ou nouveau est inséré ou mis à jour
-   (`ON CONFLICT (virtual_path) DO UPDATE`) avec la génération courante ; un groupe dont le
-   fichier a disparu est supprimé après les séquences.
-4. `node_runs` est réécrite, puis la ligne de `cache_state`.
+   (`ON CONFLICT (entry_id, virtual_path) DO UPDATE`) avec la génération courante ; un groupe
+   dont le fichier a disparu est supprimé après les séquences.
+4. Les `node_runs` de l'entrée sont réécrites.
+5. Les entrées au-delà de `MaxEntries`, par `used_at` depuis la plus récente, sont
+   supprimées, et leurs lignes avec elles.
 
 Un rafraîchissement qui réindexe trois fichiers réécrit donc trois groupes, pas tout l'arbre.
 Un chargement qui échoue (un fichier qui n'est pas une base SQLite, une table absente, un blob
 qui ne se décompresse ou ne se désérialise pas, des séquences et des groupes qui ne concordent pas) est un miss.
 Un enregistrement qui échoue sur une erreur SQLite supprime la base avec ses fichiers `-wal`
 et `-shm` et réessaie une fois.
+
+#### Empreintes des fichiers
+
+Découvrir les fichiers les hache tous, ce qui lit chaque octet de la racine à chaque appel.
+Comme `git status`, le constructeur passe au découvreur les empreintes qu'il a enregistrées :
+un fichier dont la taille et l'heure de dernière écriture égalent son empreinte garde le
+SHA-256 enregistré sans être lu (le découvreur vérifie quand même que le VFS l'autorise à le
+lire). Une empreinte ne garde l'heure d'écriture que si elle précède de plus de deux secondes
+le début de la découverte ; un fichier écrit dans cette fenêtre, ou après, est enregistré
+avec `modified_ticks` à `NULL` et haché de nouveau à l'appel suivant, si bien qu'une
+modification faite pendant une construction, ou sous la résolution de l'horloge, n'est jamais
+masquée. L'empreinte ne voit pas une modification qui garde à la fois la taille et l'heure
+d'écriture (un outil qui restaure l'heure) ; `use_cache: false` reconstruit depuis le contenu.
+
 
 ## Stratégies d'agents
 
@@ -599,7 +638,7 @@ Implémenter `IVectorStoreProvider` (`IndexAsync`, `SearchAsync`, `DeleteAsync`)
 - Le summarizer se configure uniquement en C# (`Summarizer.Provider` + un `ILlmProvider`) ; les embeddings OpenAI/Ollama exigent leur endpoint, alors que le défaut on-device du runner host ne demande rien. Le pipeline fonctionne sans embeddings (`codebase_search` classe alors par BM25 seul).
 - L'index est local au processus : `InMemoryRaggableStore` est reconstruit par `index_codebase` dans chaque processus, et le miroir vector store optionnel n'est jamais relu.
 - `FileSystemWatcherCodebaseWatcher` (l'implémentation d'`ICodebaseWatcher`, qu'aucun hôte livré n'enregistre) se base sur `System.IO.FileSystemWatcher` — sous Linux/WSL, les événements de rename peuvent arriver décomposés (observés comme Deleted puis Created).
-- Le cache d'index ne se rafraîchit sur place que sans `root_alias` et quand au plus la moitié des fichiers a changé ; sinon il reconstruit tout. Un fichier dont le contenu n'a pas changé garde ses nœuds enregistrés même quand un fichier qu'il importe a changé : le rafraîchissement relie à nouveau les arêtes, il ne réanalyse pas le fichier. La base garde une seule clé : deux appelants qui indexent une racine avec des options différentes remplacent l'entrée l'un de l'autre.
+- Le cache d'index ne se rafraîchit sur place que sans `root_alias` et quand au plus la moitié des fichiers a changé ; sinon il reconstruit tout. Un fichier dont le contenu n'a pas changé garde ses nœuds enregistrés même quand un fichier qu'il importe a changé : le rafraîchissement relie à nouveau les arêtes, il ne réanalyse pas le fichier. La base garde `MaxEntries` (3) clés : une quatrième évince la moins récemment utilisée. Une empreinte de fichier ne voit pas une modification qui garde à la fois la taille et l'heure d'écriture ; `use_cache: false` reconstruit depuis le contenu.
 
 ---
 

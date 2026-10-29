@@ -1,3 +1,4 @@
+using Orkeon.Analysis.Abstractions.Interfaces;
 using Orkeon.Analysis.Abstractions.Models;
 
 namespace Orkeon.Analysis.Core.Cache;
@@ -8,7 +9,7 @@ namespace Orkeon.Analysis.Core.Cache;
 /// </summary>
 public interface IRaggableTreeCache
 {
-    /// <summary>The entry saved for <paramref name="rootPath"/> under <paramref name="cacheKey"/>, or null: absent, saved under another key, unreadable or torn.</summary>
+    /// <summary>The entry saved for <paramref name="rootPath"/> under <paramref name="cacheKey"/>, or null: absent, never saved under this key or evicted, unreadable or torn.</summary>
     Task<RaggableTreeCacheEntry?> LoadAsync(string rootPath, string cacheKey, CancellationToken ct);
 
     /// <summary>Saves <paramref name="entry"/>; false when the root cannot be written (a read-only mount), never an exception for it.</summary>
@@ -18,12 +19,12 @@ public interface IRaggableTreeCache
 }
 
 /// <summary>
-/// One saved index: the tree, its id, the key it was built under, the SHA-256 of each indexed file by relative path,
-/// and the SHA-256 of each package marker file (a csproj, a package.json) by relative path.
+/// One saved index: the tree, its id, the key it was built under, the stamp (SHA-256, size, last write time) of each
+/// indexed file by relative path, and the SHA-256 of each package marker file (a csproj, a package.json) by relative path.
 /// </summary>
 public sealed record RaggableTreeCacheEntry(
     RaggableTree Tree,
     string IndexId,
     string CacheKey,
-    IReadOnlyDictionary<string, string> Files,
+    IReadOnlyDictionary<string, FileStamp> Files,
     IReadOnlyDictionary<string, string> Markers);

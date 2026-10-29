@@ -240,6 +240,53 @@ public class CachingTreeBuilderTests
     }
 
     [Fact]
+    public async Task ShouldSeeAChangeOfTheSameSize_WhenTheFileWasWrittenJustBeforeTheSave()
+    {
+        var dir = await FixtureAsync();
+        try
+        {
+            // A time inside the racy window whatever the load of the machine: the save does not trust it.
+            var recent = DateTime.UtcNow.AddHours(1);
+            foreach (var file in Directory.EnumerateFiles(dir, "*", SearchOption.AllDirectories)) File.SetLastWriteTimeUtc(file, recent);
+            var fs = TestFixtures.CreateFs(dir);
+            await Caching(fs).BuildAsync(TestFixtures.TestVirtualRoot, Request, CancellationToken.None);
+            var path = Path.Combine(dir, "src", "b.ts");
+            await File.WriteAllTextAsync(path, "export function b() { return 7; }\n", TestContext.Current.CancellationToken);
+            File.SetLastWriteTimeUtc(path, recent);
+
+            var refreshed = await Caching(fs).BuildAsync(TestFixtures.TestVirtualRoot, Request, CancellationToken.None);
+
+            Assert.Equal(IndexCacheOutcome.Refreshed, refreshed.Outcome);
+            Assert.Equal(1, refreshed.ReindexedFileCount);
+        }
+        finally { Directory.Delete(dir, recursive: true); }
+    }
+
+    [Fact]
+    public async Task ShouldTrustTheSavedStamp_WhenTheFileIsOlderThanTheRacyWindow()
+    {
+        var dir = await FixtureAsync();
+        try
+        {
+            var old = DateTime.UtcNow.AddHours(-1);
+            foreach (var file in Directory.EnumerateFiles(dir, "*", SearchOption.AllDirectories)) File.SetLastWriteTimeUtc(file, old);
+            var fs = TestFixtures.CreateFs(dir);
+            await Caching(fs).BuildAsync(TestFixtures.TestVirtualRoot, Request, CancellationToken.None);
+            // Same size, same time: like git, the change is not seen without use_cache false.
+            var path = Path.Combine(dir, "src", "b.ts");
+            await File.WriteAllTextAsync(path, "export function b() { return 7; }\n", TestContext.Current.CancellationToken);
+            File.SetLastWriteTimeUtc(path, old);
+
+            var second = await Caching(fs).BuildAsync(TestFixtures.TestVirtualRoot, Request, CancellationToken.None);
+            var bypassed = await Caching(fs).BuildAsync(TestFixtures.TestVirtualRoot, Request with { UseCache = false }, CancellationToken.None);
+
+            Assert.Equal(IndexCacheOutcome.Hit, second.Outcome);
+            Assert.NotEqual(second.Build.IndexId, bypassed.Build.IndexId);
+        }
+        finally { Directory.Delete(dir, recursive: true); }
+    }
+
+    [Fact]
     public void ShouldDescribeTheEmbeddingSize_InTheEnvironment()
     {
         var adapters = new ILanguageAdapter[] { new TypeScriptAdapter() };
