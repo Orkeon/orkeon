@@ -359,6 +359,18 @@ defineAsyncCommand({
   `completed` (a `dispatch`, a handler) the option changes nothing: the launch takes the
   depth it takes without it (a first hop is depth 1), and a `post` always climbs. Any
   other `chain` value is a script error.
+- **A crew that must not run twice: `{ exclusive: true }`.** A crew that must not run
+  twice at a time (a review, the writer of a shared store) is launched with
+  `runCrewAsync(name, input, { exclusive: true })`: while another exclusive launch of the
+  same crew is not terminal, the call throws before any LLM call, naming the running
+  instance — `crew 'code-review' already running (ticket t2)`. The check and the launch
+  are one step, so two lines typed in the same tick, or a `completed` chain, cannot both
+  pass. The crew is free again as soon as its instance completes, fails or is cancelled
+  (a `completed` that relaunches it is admitted). A launch without the option is neither
+  refused nor counted; a non-boolean `exclusive` is a script error. Unlike
+  `maxConcurrent` below, it bounds the crew, not the command: an alias of the command
+  that launches nothing answers during the run. Both options combine
+  (`{ chain: "continue", exclusive: true }`).
 
 ### Admission quota — `maxConcurrent`
 

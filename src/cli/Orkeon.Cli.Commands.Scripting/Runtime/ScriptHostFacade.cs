@@ -151,7 +151,9 @@ public sealed partial class ScriptHostFacade
     /// <c>completed(result)</c>. The <c>result.payload</c> is the crew's summary. For long workflows.
     /// <paramref name="options"/> may carry <c>{ chain: "continue" }</c>: from the <c>completed</c> of the same
     /// command, the new instance keeps the parent's chain depth instead of climbing one
-    /// (<see cref="CommandDispatchService.postWork(string, string, Func{CancellationToken, Task{CommandResponse}}, bool)"/>).
+    /// (<see cref="CommandDispatchService.postWork(string, string, Func{CancellationToken, Task{CommandResponse}}, bool, bool)"/>).
+    /// It may also carry <c>{ exclusive: true }</c>: refused, before any LLM call, while another exclusive launch of the
+    /// same crew runs, as a JS throw naming the running ticket (<c>crew 'code-review' already running (ticket t2)</c>).
     /// </summary>
     public string runCrewAsync(string name, JsValue? input = null, JsValue? options = null)
     {
@@ -161,10 +163,10 @@ public sealed partial class ScriptHostFacade
 
         var safeName = SanitizeName(name);
         var inputsJson = ToInputsJson(input);
-        var continueChain = ReadContinueChain(options);
+        var (continueChain, exclusive) = ReadLaunchOptions(options);
         try
         {
-            return _dispatch.postWork(safeName, $"crew:{safeName}", continueChain: continueChain, work: async ct =>
+            return _dispatch.postWork(safeName, $"crew:{safeName}", continueChain: continueChain, exclusive: exclusive, work: async ct =>
             {
                 var output = await RunCrewCoreAsync(safeName, inputsJson, ct).ConfigureAwait(false);
                 return new CommandResponse(
@@ -182,6 +184,10 @@ public sealed partial class ScriptHostFacade
             // A bare CLR exception unwinds through the script (SCR-25): hand the refusal over as a JS throw.
             throw new Jint.Runtime.JavaScriptException(new Jint.Native.JsString(refused.Message));
         }
+        catch (ExclusiveLaunchRefusedException refused)
+        {
+            throw new Jint.Runtime.JavaScriptException(new Jint.Native.JsString($"crew '{safeName}' already running (ticket {refused.Ticket})"));
+        }
     }
 
     /// <summary>Lists the discovered crew names (directories holding a crew entry file).</summary>
@@ -191,19 +197,36 @@ public sealed partial class ScriptHostFacade
 
     // ---- internals ------------------------------------------------------------------------
 
-    /// <summary>Reads <c>options.chain</c>: absent, or <c>"continue"</c>; any other value is a script error.</summary>
-    private static bool ReadContinueChain(JsValue? options)
+    /// <summary>
+    /// Reads <c>options.chain</c> (absent, or <c>"continue"</c>) and <c>options.exclusive</c> (absent, or a boolean);
+    /// any other value is a script error.
+    /// </summary>
+    private static (bool ContinueChain, bool Exclusive) ReadLaunchOptions(JsValue? options)
     {
         if (options is null || options.IsUndefined() || options.IsNull())
-            return false;
+            return (false, false);
         if (!options.IsObject())
-            throw new Jint.Runtime.JavaScriptException(new JsString("script-host.runCrewAsync: options must be an object, e.g. { chain: \"continue\" }."));
-        var chain = options.AsObject().Get("chain");
+            throw new Jint.Runtime.JavaScriptException(new JsString("script-host.runCrewAsync: options must be an object, e.g. { chain: \"continue\" } or { exclusive: true }."));
+        var source = options.AsObject();
+        return (ReadContinueChain(source.Get("chain")), ReadExclusive(source.Get("exclusive")));
+    }
+
+    private static bool ReadContinueChain(JsValue chain)
+    {
         if (chain.IsUndefined() || chain.IsNull())
             return false;
         if (chain.IsString() && string.Equals(chain.AsString(), "continue", StringComparison.Ordinal))
             return true;
         throw new Jint.Runtime.JavaScriptException(new JsString($"script-host.runCrewAsync: unknown chain mode '{chain}' (expected \"continue\")."));
+    }
+
+    private static bool ReadExclusive(JsValue exclusive)
+    {
+        if (exclusive.IsUndefined() || exclusive.IsNull())
+            return false;
+        if (exclusive.IsBoolean())
+            return exclusive.AsBoolean();
+        throw new Jint.Runtime.JavaScriptException(new JsString($"script-host.runCrewAsync: exclusive must be a boolean, not '{exclusive}'."));
     }
 
     /// <summary>

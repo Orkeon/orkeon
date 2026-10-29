@@ -40,6 +40,15 @@ circuit off: decision tasks answer from their `fallback`; a question the model l
 reason, the defaulted flag and the decision answers. See [ADR-016](docs/adr/ADR-016-decision-tasks-and-conditional-fan-out.md)
 and [Decision models](docs/architecture/decision-models.md).
 
+### Added — an exclusive crew launch (#239)
+
+`script-host.runCrewAsync(name, input, { exclusive: true })` refuses a crew whose previous exclusive launch is still
+running, before any LLM call, with a JS throw naming its ticket (`crew 'code-review' already running (ticket t2)`). The
+check and the registration of the instance are one step (`CommandDispatchService.postWork(..., exclusive: true)`,
+`ExclusiveLaunchRefusedException`); the crew is free again once that instance completes, fails or is cancelled. A
+command that launches such a crew no longer needs `maxConcurrent`, which also blocked its aliases. See
+[scripted commands](docs/architecture/cli-ts-commands.md).
+
 ### Changed — `TaskCompletedEvent.AgentId` is nullable; `ParallelProcessStrategy` takes `CrewStrategyDependencies` **[breaking]**
 
 `TaskCompletedEvent.AgentId` is now `AgentId?`: a decision task answered by the decision runner completes without an

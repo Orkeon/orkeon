@@ -296,6 +296,40 @@ public sealed class ScriptHostFacadeTests : IDisposable
         Assert.Equal("echoed:async", view.result?.payload);
     }
 
+    [Fact]
+    [Trait("BR", "#239")]
+    public void RunCrewAsync_exclusive_throws_naming_the_running_ticket_while_the_crew_runs()
+    {
+        WriteCrew("review", "\"reviewed\";");
+        var dispatch = NewDispatch();
+        var facade = BuildFacade(dispatch);
+        var gate = new TaskCompletionSource<CommandResponse>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var running = dispatch.postWork("review", "crew:review", ct => gate.Task.WaitAsync(ct), exclusive: true);
+
+        try
+        {
+            var refused = Assert.Throws<Jint.Runtime.JavaScriptException>(
+                () => facade.runCrewAsync("review", options: JsObject("{ exclusive: true }")));
+            Assert.Equal($"crew 'review' already running (ticket {running})", refused.Message);
+            Assert.Single(dispatch.Registry.List(CommandInstanceFilter.All));
+        }
+        finally
+        {
+            gate.SetResult(new CommandResponse("a", "i", success: true, payload: "p", error: null));
+        }
+    }
+
+    [Fact]
+    [Trait("BR", "#239")]
+    public void RunCrewAsync_exclusive_that_is_not_a_boolean_is_a_script_error()
+    {
+        var facade = BuildFacade(NewDispatch());
+
+        var refused = Assert.Throws<Jint.Runtime.JavaScriptException>(
+            () => facade.runCrewAsync("review", options: JsObject("{ exclusive: 'yes' }")));
+        Assert.Equal("script-host.runCrewAsync: exclusive must be a boolean, not 'yes'.", refused.Message);
+    }
+
     // ── runCrew holds the read loop: its wait answers the crew's questions ──
 
     private static Orkeon.Application.Interfaces.Security.ToolApprovalRequest Question() => new()
