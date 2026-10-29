@@ -5,8 +5,12 @@ namespace Orkeon.Scripting.Tests.Typings;
 /// <summary>
 /// Type-checks small scripts against the shipped typings with the repository's tsc
 /// (tools/scripting-typecheck), as scripts/check-scripting-typings.sh does.
+/// <para>
+/// A fast test: CI's fast suite runs after that script has bootstrapped tsc. Without tsc or
+/// node the checks are skipped, as BuiltInToolTypingsTests does, never failed: the nightly
+/// Integration and Slow run bootstraps no npm package (#236).
+/// </para>
 /// </summary>
-[Trait("Category", "Slow")]
 public sealed class DecisionTypingsTests
 {
     private const string DecisionScript = """
@@ -60,12 +64,19 @@ public sealed class DecisionTypingsTests
         return null;
     }
 
+    private static string? FindOnPath(string program) =>
+        (Environment.GetEnvironmentVariable("PATH") ?? string.Empty)
+            .Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries)
+            .SelectMany(d => new[] { Path.Combine(d, program), Path.Combine(d, program + ".exe") })
+            .FirstOrDefault(File.Exists);
+
     private static async Task<string> TypeCheckAsync(string script)
     {
         var typings = FindUp(Path.Combine("src", "scripting", "Orkeon.Scripting", "Typings"));
         var tsc = FindUp(Path.Combine("tools", "scripting-typecheck", "node_modules", "typescript", "bin", "tsc"));
         Assert.True(typings is not null, "Typings folder not found above the test output.");
-        Assert.True(tsc is not null, "tsc not bootstrapped: run npm --prefix tools/scripting-typecheck install.");
+        Assert.SkipWhen(tsc is null, "tsc is not bootstrapped: npm --prefix tools/scripting-typecheck ci");
+        Assert.SkipWhen(FindOnPath("node") is null, "node is not available in this environment.");
 
         var work = Path.Combine(Path.GetTempPath(), "orkeon-decision-typings-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(work);
