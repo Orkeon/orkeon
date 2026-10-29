@@ -8,6 +8,7 @@
 # This checks file *existence* (the contract), not content equivalence — a missing mirror
 # is a hard error; keeping the two in sync content-wise stays the contributor's job.
 set -euo pipefail
+export LC_ALL=C   # comm needs the sort order of sort: independent of the locale of the machine
 
 cd "$(dirname "$0")/.."
 

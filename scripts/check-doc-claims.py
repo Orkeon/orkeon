@@ -213,6 +213,23 @@ def git_tags() -> list[str]:
     return [line.strip() for line in out.splitlines() if line.strip()]
 
 
+def gt_constants_satellites() -> int:
+    """Orkeon.Constants.* satellites: one csproj per folder of src/constants."""
+    return len(git_files(ROOT / "src/constants", (".csproj",)))
+
+
+def gt_umbrella_satellites() -> int:
+    """Orkeon.Constants.* satellites the `Orkeon` umbrella package embeds (its ProjectReferences)."""
+    return len(re.findall(r'<ProjectReference Include="[^"]*Orkeon\.Constants\.\w+\.csproj"',
+                          read("src/packaging/Orkeon/Orkeon.csproj")))
+
+
+def gt_tool_families() -> int:
+    """Tool families of the `Orkeon.Tools` package: its ProjectReferences to Orkeon.Tools.<family>."""
+    return len(re.findall(r'<ProjectReference Include="[^"]*Orkeon\.Tools\.\w+\.csproj"[^>]*PrivateAssets',
+                          read("src/packaging/Orkeon.Tools/Orkeon.Tools.csproj")))
+
+
 def surface() -> list[tuple[str, object, str]]:
     """Every number the front page shows, with the rule that produced it."""
     facts, theories = gt_test_methods()
@@ -231,6 +248,11 @@ def surface() -> list[tuple[str, object, str]]:
         ("vfs_rules", gt_vfs_rules(), 'distinct id: "ORKVFS…" under src/analyzers'),
         ("src_projects", gt_src_projects(), "*.csproj under src/"),
         ("test_projects", gt_test_projects(), "*.csproj under tests/"),
+        ("constants_satellites", gt_constants_satellites(), "*.csproj under src/constants"),
+        ("umbrella_satellites", gt_umbrella_satellites(),
+         "Orkeon.Constants.* ProjectReferences of src/packaging/Orkeon/Orkeon.csproj"),
+        ("tool_families", gt_tool_families(),
+         "Orkeon.Tools.<family> ProjectReferences of src/packaging/Orkeon.Tools/Orkeon.Tools.csproj"),
         ("test_facts", facts, "lines starting with [Fact under tests/**/*.cs"),
         ("test_theories", theories, "lines starting with [Theory under tests/**/*.cs"),
     ]
@@ -544,6 +566,65 @@ def check_private_submodule_leaks() -> None:
                      f"repository -- a reader cannot open it")
 
 
+# --- counts written in prose and in trees, on every docs page --------------------------
+
+NUMBER_WORDS = {w: i + 1 for i, w in enumerate((
+    "one two three four five six seven eight nine ten eleven twelve thirteen fourteen fifteen "
+    "sixteen seventeen eighteen nineteen twenty").split())}
+NUMBER_WORDS.update({w: i + 1 for i, w in enumerate((
+    "un deux trois quatre cinq six sept huit neuf dix onze douze treize quatorze quinze seize "
+    "dix-sept dix-huit dix-neuf vingt").split())})
+NUM = r"(\d+|" + "|".join(sorted(NUMBER_WORDS, key=len, reverse=True)) + r")"
+
+# Pages that are dated records keep the numbers of their day: ADRs (and the amendments they carry).
+HISTORICAL_DOCS = ("docs/adr/", "docs/fr/adr/")
+
+
+def number_of(token: str) -> int:
+    return int(token) if token.isdigit() else NUMBER_WORDS[token.lower()]
+
+
+def docs_pages() -> list[tuple[str, str]]:
+    pages = []
+    for f in git_files(ROOT / "docs", (".md",)):
+        rel = f.relative_to(ROOT).as_posix()
+        if not rel.startswith(HISTORICAL_DOCS):
+            pages.append((rel, f.read_text(encoding="utf-8")))
+    return pages
+
+
+def expect_counts(pages: list[tuple[str, str]], pattern: str, allowed: set[int], why: str) -> None:
+    """Every match of `pattern` (group 1 = the number, digits or word) must be in `allowed`."""
+    for rel, text in pages:
+        for m in re.finditer(pattern, text, flags=re.I):
+            claimed = number_of(m.group(1))
+            if claimed not in allowed:
+                line = text.count("\n", 0, m.start()) + 1
+                want = "/".join(str(a) for a in sorted(allowed))
+                fail(f"{rel}:{line}: states {m.group(1)!r} ({why}: the code says {want})")
+
+
+def check_docs_counts(tools: int, src_projects: int, test_projects: int) -> None:
+    pages = docs_pages()
+    expect_counts(pages, rf"\b{NUM}\*{{0,2}}\s+(?:built-in\s+tool(?!\s+famil)|outils\s+int[ée]gr[ée]s)",
+                  {tools}, "built-in tool classes")
+    expect_counts(pages, rf"\b{NUM}\*{{0,2}}\s+(?:tools\s+by\s+category|outils\s+par\s+cat[ée]gorie)",
+                  {tools}, "built-in tool classes")
+    expect_counts(pages, rf"\bsrc/\s+#\s*{NUM}\s+(?:projects|projets)", {src_projects},
+                  "csproj count under src/")
+    expect_counts(pages, rf"\btests/\s+#\s*{NUM}\s+(?:projects|projets)", {test_projects},
+                  "csproj count under tests/")
+    # A satellite count is either the folder src/constants or what the umbrella package embeds.
+    expect_counts(pages, rf"\b{NUM}\s+(?:[\w-]+\s+){{0,3}}?(?:`Orkeon\.Constants\.\*`\s+)?satellites?\b",
+                  {gt_constants_satellites(), gt_umbrella_satellites()}, "Orkeon.Constants.* satellites")
+    families = {gt_tool_families()}
+    expect_counts(pages, rf"\b{NUM}\s+(?:built-in\s+)?tool\s+families", families,
+                  "Orkeon.Tools families")
+    expect_counts(pages, rf"\b{NUM}\s+familles\s+d['\u2019]outils", families, "Orkeon.Tools families")
+    expect_counts(pages, rf"\b{NUM}\s+(?:projects|projets)?\s*`Orkeon\.Tools\.<(?:family|famille)>`",
+                  families, "Orkeon.Tools families")
+
+
 def main(argv: list[str]) -> int:
     if "--surface" in argv:
         print_surface(as_json="--json" in argv)
@@ -602,6 +683,9 @@ def main(argv: list[str]) -> int:
         expect_contains(path, needle, "exact tool count -- no 'N+' floor")
         expect_absent(path, r"\b\d+\+ (?:built-in tools|tools by category|tools,|outils)",
                       "a 'N+' floor is not a verifiable number")
+
+    # The same counts in every page of docs/ (ADRs are dated records and keep their day's numbers).
+    check_docs_counts(tools, src_projects, test_projects)
 
     # Memory stores.
     expect_contains("README.md", f"{stores} memory providers", "classes deriving MemoryProviderBase")
