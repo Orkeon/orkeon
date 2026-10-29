@@ -3,7 +3,6 @@ using Orkeon.Analysis.Abstractions.Interfaces;
 using Orkeon.Analysis.Adapters;
 using Orkeon.Analysis.Core;
 using Orkeon.Analysis.Core.Cache;
-using Orkeon.Analysis.Core.Serialization;
 using Orkeon.Domain.FileSystem;
 
 namespace Orkeon.Analysis.Tests;
@@ -255,7 +254,7 @@ public class CachingTreeBuilderTests
     }
 
     private static CachingTreeBuilder Caching(IFileSystemService fs, string environment = "test") => new(
-        new RaggableTreeCache(new RaggableTreeSerializer(), fs),
+        new RaggableTreeCache(fs),
         new FileSystemDiscoverer(fs),
         fs,
         () => new RaggableTreeBuilder(new TypeScriptAdapter(), fs),

@@ -109,7 +109,7 @@ All fields are immutable `record` types in `Orkeon.Analysis.DependencyInjection.
 3. **Dependency resolution** (`DependencyGraphBuilder` + `IReferenceResolver`) — resolution of imports, calls, inheritance, implementations into edges (`EdgeKind.Imports`, `Calls`, `Extends`, `Implements`). Unresolved FQNs become `UnresolvedRef`.
 4. **Fingerprinting** (`IFrameworkFingerprinter`) — application of per-decorator/annotation rules (NestJS, Angular, ASP.NET, Flask, FastAPI): placing tags such as `http-endpoint`, `guard`, `service` on the relevant nodes.
 5. **Enrichment** — optionally an LLM summary (`INodeSummarizer`, when the call sets `enrich_with_llm` and a summarizer is registered), composition of the `EmbeddingText` (`IEmbeddingTextComposer`), then batch embedding (`IEmbeddingProvider`, skipped when none is registered).
-6. **Persistence** — the tree lives in `InMemoryRaggableStore` (`index_codebase` replaces its content), which also answers every query. When an `IVectorStoreProvider` is registered, `IndexAsync` additionally receives a mirror of the embeddings — no shipped host registers one (`MemoryProviderVectorStoreAdapter`, `Orkeon.Analysis.Vectors`, adapts any `IMemoryProvider` for a host that wants it), and nothing reads that mirror back. Between sessions, `index_codebase` saves the tree under `<root>/.orkeon/cache/raggable-tree/` (see [Index cache](#index-cache)).
+6. **Persistence** — the tree lives in `InMemoryRaggableStore` (`index_codebase` replaces its content), which also answers every query. When an `IVectorStoreProvider` is registered, `IndexAsync` additionally receives a mirror of the embeddings — no shipped host registers one (`MemoryProviderVectorStoreAdapter`, `Orkeon.Analysis.Vectors`, adapts any `IMemoryProvider` for a host that wants it), and nothing reads that mirror back. Between sessions, `index_codebase` saves the tree in a SQLite database, `<root>/.orkeon/cache/raggable-tree/index.db` (see [Index cache](#index-cache)).
 
 Each phase reports its progress (`IndexBuildPhase`: Discovery, Parse, Resolve, Enrich, Embed, Persist) to an optional `IProgress<IndexBuildProgress>` registered by the host (the REPL wires it to its status-line progress bar).
 
@@ -175,10 +175,10 @@ extracted, and an argument the request does not declare is ignored.
 ### Index cache
 
 `AddRaggableTree` registers `CachingTreeBuilder`, which `index_codebase` uses to keep the
-index between sessions. Each build saves the tree and a manifest (the SHA-256 of every
-indexed file and of every package marker) under `<root>/.orkeon/cache/raggable-tree/`, a
-folder holding its own `.gitignore` (`*`). The next call with the same options reads them
-back and answers `cache`:
+index between sessions. Each build saves the tree and the SHA-256 of every indexed file and
+of every package marker in one SQLite database, `<root>/.orkeon/cache/raggable-tree/index.db`,
+in a folder holding its own `.gitignore` (`*`). The next call with the same options reads
+it back and answers `cache`:
 
 | `cache` | When | What it does |
 |---|---|---|
@@ -192,8 +192,80 @@ The key covers what shapes the tree beyond the files: the options (`languages`, 
 `respect_gitignore`, `root_alias`, `enrich_with_llm`, `embedding_model`, not
 `max_parallelism`), the Analysis assembly version, the serializer version, and the adapters,
 fingerprinters, summarizer and embedder (with its dimension) the host wires. A changed key
-is a miss. A root the process cannot write is indexed without a cache. A manifest or tree
-that does not read back (corrupt, torn write) is a miss.
+is a miss. A root the process cannot write is indexed without a cache.
+
+#### Database schema
+
+`RaggableTreeCache` owns the database. One database holds one saved index: the entry of
+the last key saved. Its schema version is `PRAGMA user_version` (`1`); a database of
+another version has its tables dropped and created again at the next save, and reads as a
+miss until then. The connection runs with `foreign_keys = ON` and the journal in WAL mode.
+
+| Table | Primary key | Holds |
+|---|---|---|
+| `cache_state` | `id` (`CHECK (id = 1)`: one row) | The key and identity of the saved index, and its edges |
+| `indexed_files` | `path` (`WITHOUT ROWID`) | The SHA-256 of each indexed file |
+| `package_markers` | `path` (`WITHOUT ROWID`) | The SHA-256 of each package marker |
+| `node_groups` | `group_id` (rowid alias) | The nodes of one source file |
+| `node_runs` | `position` | The order of the nodes in the tree |
+
+`cache_state`:
+
+| Column | Type | Constraint | Meaning |
+|---|---|---|---|
+| `id` | `INTEGER` | `PRIMARY KEY`, `CHECK (id = 1)` | The single row |
+| `cache_key` | `TEXT` | `NOT NULL` | The SHA-256 of the key described above |
+| `index_id` | `TEXT` | `NOT NULL` | The `IndexId` of the saved tree |
+| `generation` | `INTEGER` | `NOT NULL` | Counts the saves under this key, from `1` |
+| `node_count`, `edge_count` | `INTEGER` | `NOT NULL` | The size of the tree, for whoever inspects the database; the load does not read them |
+| `edges` | `BLOB` | `NOT NULL` | Every edge, gzip of the JSON array of the serializer's edges |
+| `saved_at` | `TEXT` | `NOT NULL` | The UTC time of the save, ISO 8601 |
+
+`indexed_files` and `package_markers` have the same two columns: `path` (`TEXT PRIMARY KEY`,
+relative to the root) and `sha256` (`TEXT NOT NULL`, lowercase hex). The builder compares
+them with the files it discovers to tell a hit, a refresh or a miss.
+
+`node_groups`:
+
+| Column | Type | Constraint | Meaning |
+|---|---|---|---|
+| `group_id` | `INTEGER` | `PRIMARY KEY` | Surrogate key, referenced by `node_runs` |
+| `virtual_path` | `TEXT` | `NOT NULL UNIQUE` | The source file of the nodes (`VirtualFilePath`); the nodes without a file share the empty path |
+| `node_count` | `INTEGER` | `NOT NULL`, `CHECK (node_count > 0)` | How many nodes `nodes` holds |
+| `content_sha256` | `TEXT` | `NOT NULL` | The SHA-256 of the uncompressed JSON of `nodes` |
+| `generation` | `INTEGER` | `NOT NULL` | The generation of the save that last wrote the row |
+| `nodes` | `BLOB` | `NOT NULL` | gzip of the JSON array of the group's nodes, in tree order |
+
+`node_runs`:
+
+| Column | Type | Constraint | Meaning |
+|---|---|---|---|
+| `position` | `INTEGER` | `PRIMARY KEY` | The rank of the run, from `0` |
+| `group_id` | `INTEGER` | `NOT NULL`, `FOREIGN KEY` → `node_groups (group_id)` `ON DELETE RESTRICT`, indexed (`ix_node_runs_group_id`) | The group the run takes its nodes from |
+| `node_count` | `INTEGER` | `NOT NULL`, `CHECK (node_count > 0)` | How many nodes the run takes |
+
+The tree's node list is not grouped by file: the nodes of one file can come back after
+another file's. `node_runs` keeps that order: the load reads the runs by `position` and each
+takes the next `node_count` nodes of its group, so the tree reads back in the order it was
+saved. A run that asks for more nodes than its group holds, or a group whose nodes no run
+takes up, makes the load a miss. The foreign key forbids a run to name a group that does
+not exist, and `RESTRICT` forbids deleting a group a run still names: a save deletes the
+runs before the groups.
+
+A save is one transaction:
+
+1. Under the same key, the generation is the saved one plus one; under another key, every
+   table is emptied and the generation starts at `1`.
+2. `indexed_files` and `package_markers` are rewritten.
+3. The nodes are grouped by file. A group whose `content_sha256` is unchanged is left as it
+   is; a changed or new group is upserted (`ON CONFLICT (virtual_path) DO UPDATE`) with the
+   current generation; a group whose file is gone is deleted after the runs.
+4. `node_runs` is rewritten, then the row of `cache_state`.
+
+A refresh that reindexes three files therefore rewrites three groups, not the whole tree.
+A load that fails (a file that is not a SQLite database, a missing table, a blob that does
+not decompress or deserialize, runs and groups that disagree) is a miss. A save that fails on a
+SQLite error deletes the database with its `-wal` and `-shm` files and tries once more.
 
 ## Agent strategies
 
@@ -523,7 +595,7 @@ Implement `IVectorStoreProvider` (`IndexAsync`, `SearchAsync`, `DeleteAsync`) an
 - The summarizer is C#-only (`Summarizer.Provider` + an `ILlmProvider`); OpenAI/Ollama embeddings need their endpoint, while the runner host's on-device default needs nothing. The pipeline works without embeddings (`codebase_search` then ranks by BM25 only).
 - The index is process-local: `InMemoryRaggableStore` is rebuilt by `index_codebase` in each process, and the optional vector-store mirror is never read back.
 - `FileSystemWatcherCodebaseWatcher` (the `ICodebaseWatcher` implementation, registered by no shipped host) relies on `System.IO.FileSystemWatcher` — on Linux/WSL, rename events may arrive decomposed (observed as Deleted then Created).
-- The index cache refreshes in place only when no `root_alias` is set and at most half of the files changed; otherwise it rebuilds from scratch. A file whose content is unchanged keeps its saved nodes even when a file it imports changed: the refresh relinks the edges, it does not parse the file again.
+- The index cache refreshes in place only when no `root_alias` is set and at most half of the files changed; otherwise it rebuilds from scratch. A file whose content is unchanged keeps its saved nodes even when a file it imports changed: the refresh relinks the edges, it does not parse the file again. The database holds one key: two callers indexing one root with different options replace each other's entry.
 
 ---
 

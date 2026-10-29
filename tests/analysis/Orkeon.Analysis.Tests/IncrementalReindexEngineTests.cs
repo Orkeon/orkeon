@@ -470,6 +470,66 @@ public class IncrementalReindexEngineTests
         finally { Directory.Delete(dir, recursive: true); }
     }
 
+    [Fact]
+    public async Task ShouldKeepUnresolvedCalls_WhenAnotherFileReindexed()
+    {
+        var dir = await TestFixtures.WriteDirectoryAsync([
+            ("src/a.ts", "export function a(s: string): string { return s.trim(); }"),
+            ("src/b.ts", "export function b(): number { return 1; }"),
+        ]);
+        try
+        {
+            var root = TestFixtures.TestVirtualRoot;
+            var request = new IndexCodebaseRequest { RootPath = root };
+            var built = await new RaggableTreeBuilder(new TypeScriptAdapter(), SortedFs(dir)).BuildAsync(root, request, CancellationToken.None);
+            Assert.Contains(built.Tree.Edges, e => e.Kind == EdgeKind.Calls && e.ToId.StartsWith("ext::unresolved::", StringComparison.Ordinal));
+            await File.WriteAllTextAsync(Path.Combine(dir, "src", "b.ts"),
+                "export function b(): number { return 2; }", TestContext.Current.CancellationToken);
+
+            var result = await new IncrementalReindexEngine(new TypeScriptAdapter(), SortedFs(dir)).ReindexAsync(
+                built.Tree, root, [$"{root}/src/b.ts"], request, CancellationToken.None);
+
+            Assert.Equal(await FullBuildEdgesAsync(dir), EdgesOf(result.Tree));
+        }
+        finally { Directory.Delete(dir, recursive: true); }
+    }
+
+    [Fact]
+    public async Task ShouldReplaceTheUnresolvedCall_WhenAnAddedFileDefinesItsName()
+    {
+        var dir = await TestFixtures.WriteDirectoryAsync([("src/caller.ts", CallerSource)]);
+        try
+        {
+            var root = TestFixtures.TestVirtualRoot;
+            var request = new IndexCodebaseRequest { RootPath = root };
+            var built = await new RaggableTreeBuilder(new TypeScriptAdapter(), SortedFs(dir)).BuildAsync(root, request, CancellationToken.None);
+            Assert.Contains(built.Tree.Edges, e => e.Kind == EdgeKind.Calls && e.ToId == "ext::unresolved::foo");
+            await File.WriteAllTextAsync(Path.Combine(dir, "src", "foo.ts"),
+                "export function foo(): number { return 1; }", TestContext.Current.CancellationToken);
+
+            var result = await new IncrementalReindexEngine(new TypeScriptAdapter(), SortedFs(dir)).ReindexAsync(
+                built.Tree, root, [$"{root}/src/foo.ts"], request, CancellationToken.None);
+
+            Assert.DoesNotContain(result.Tree.Edges, e => e.ToId == "ext::unresolved::foo");
+            Assert.Equal(await FullBuildEdgesAsync(dir), EdgesOf(result.Tree));
+        }
+        finally { Directory.Delete(dir, recursive: true); }
+    }
+
+    private static async Task<HashSet<string>> FullBuildEdgesAsync(string dir)
+    {
+        var full = await new RaggableTreeBuilder(new TypeScriptAdapter(), SortedFs(dir)).BuildAsync(
+            TestFixtures.TestVirtualRoot, new IndexCodebaseRequest { RootPath = TestFixtures.TestVirtualRoot }, CancellationToken.None);
+        return EdgesOf(full.Tree);
+    }
+
+    // Every edge by kind and ends, an end that is no node (an `ext::` id) by its id.
+    private static HashSet<string> EdgesOf(RaggableTree tree)
+    {
+        var byId = tree.Nodes.ToDictionary(n => n.Id, n => n.Fqn);
+        return tree.Edges.Select(e => $"{e.Kind} {byId.GetValueOrDefault(e.FromId, e.FromId)} -> {byId.GetValueOrDefault(e.ToId, e.ToId)}").ToHashSet();
+    }
+
     private const string CallerSource = "export function caller(): number { return foo(); }";
 
     private static async Task<HashSet<string>> FullBuildCallsAsync(string dir)

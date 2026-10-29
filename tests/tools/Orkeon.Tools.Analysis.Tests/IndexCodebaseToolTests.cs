@@ -154,7 +154,7 @@ public class IndexCodebaseToolTests
     private static async Task<IndexCodebaseResponse> IndexAsync(DiskBackedFileSystemService fs, IndexCodebaseRequest request)
     {
         var caching = new CachingTreeBuilder(
-            new RaggableTreeCache(new RaggableTreeSerializer(), fs),
+            new RaggableTreeCache(fs),
             new FileSystemDiscoverer(fs),
             fs,
             () => new RaggableTreeBuilder(new TypeScriptAdapter(), fs),

@@ -62,7 +62,7 @@ Orkeon.Analysis.Core.Cache.IndexCacheOutcome.Hit = 2 -> Orkeon.Analysis.Core.Cac
 Orkeon.Analysis.Core.Cache.IndexCacheOutcome.Miss = 1 -> Orkeon.Analysis.Core.Cache.IndexCacheOutcome
 Orkeon.Analysis.Core.Cache.IndexCacheOutcome.Refreshed = 3 -> Orkeon.Analysis.Core.Cache.IndexCacheOutcome
 Orkeon.Analysis.Core.Cache.RaggableTreeCache.LoadAsync(string! rootPath, string! cacheKey, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<Orkeon.Analysis.Core.Cache.RaggableTreeCacheEntry?>!
-Orkeon.Analysis.Core.Cache.RaggableTreeCache.RaggableTreeCache(Orkeon.Analysis.Core.Serialization.IRaggableTreeSerializer! serializer, Orkeon.Domain.FileSystem.IFileSystemService! fileSystem) -> void
+Orkeon.Analysis.Core.Cache.RaggableTreeCache.RaggableTreeCache(Orkeon.Domain.FileSystem.IFileSystemService! fileSystem) -> void
 Orkeon.Analysis.Core.Cache.RaggableTreeCache.SaveAsync(string! rootPath, Orkeon.Analysis.Core.Cache.RaggableTreeCacheEntry! entry, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<bool>!
 Orkeon.Analysis.Core.Cache.RaggableTreeCacheEntry
 Orkeon.Analysis.Core.Cache.RaggableTreeCacheEntry.<Clone>$() -> Orkeon.Analysis.Core.Cache.RaggableTreeCacheEntry!
@@ -81,8 +81,7 @@ Orkeon.Analysis.Core.Cache.RaggableTreeCacheEntry.Tree.get -> Orkeon.Analysis.Ab
 Orkeon.Analysis.Core.Cache.RaggableTreeCacheEntry.Tree.init -> void
 Orkeon.Analysis.Core.RaggableTreeBuilder.BuildAsync(Orkeon.Analysis.Abstractions.Interfaces.DiscoveryResult! discovery, Orkeon.Analysis.Abstractions.DTOs.Tools.IndexCodebaseRequest! opts, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<Orkeon.Analysis.Core.BuildResult!>!
 const Orkeon.Analysis.Core.Cache.RaggableTreeCache.CacheDirectory = ".orkeon/cache/raggable-tree" -> string!
-const Orkeon.Analysis.Core.Cache.RaggableTreeCache.ManifestFileName = "manifest.json" -> string!
-const Orkeon.Analysis.Core.Cache.RaggableTreeCache.TreeFileName = "tree.json" -> string!
+const Orkeon.Analysis.Core.Cache.RaggableTreeCache.DatabaseFileName = "index.db" -> string!
 override Orkeon.Analysis.Core.Cache.CachedBuildResult.Equals(object? obj) -> bool
 override Orkeon.Analysis.Core.Cache.CachedBuildResult.GetHashCode() -> int
 override Orkeon.Analysis.Core.Cache.CachedBuildResult.ToString() -> string!

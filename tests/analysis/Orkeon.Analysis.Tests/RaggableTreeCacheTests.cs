@@ -1,7 +1,7 @@
+using Microsoft.Data.Sqlite;
 using Orkeon.Analysis.Abstractions;
 using Orkeon.Analysis.Abstractions.Models;
 using Orkeon.Analysis.Core.Cache;
-using Orkeon.Analysis.Core.Serialization;
 
 namespace Orkeon.Analysis.Tests;
 
@@ -10,30 +10,34 @@ public class RaggableTreeCacheTests
     private const string Key = "key-1";
 
     [Fact]
-    public async Task SaveAsync_writes_tree_manifest_and_a_gitignore_keeping_the_folder_out_of_git()
+    public async Task SaveAsync_writes_the_database_and_a_gitignore_keeping_the_folder_out_of_git()
     {
         var root = await TestFixtures.WriteDirectoryAsync([("a.ts", "export const a = 1;")]);
         try
         {
-            var saved = await BuildCache(root).SaveAsync(TestFixtures.TestVirtualRoot, Entry("idx-1"), CancellationToken.None);
+            var saved = await BuildCache(root).SaveAsync(TestFixtures.TestVirtualRoot, Entry("idx-1", Tree()), CancellationToken.None);
 
-            var dir = Path.Combine(root, ".orkeon", "cache", "raggable-tree");
             Assert.True(saved);
-            Assert.True(File.Exists(Path.Combine(dir, "tree.json")));
-            Assert.True(File.Exists(Path.Combine(dir, "manifest.json")));
-            Assert.Equal("*\n", await File.ReadAllTextAsync(Path.Combine(dir, ".gitignore"), TestContext.Current.CancellationToken));
+            Assert.True(File.Exists(DatabasePath(root)));
+            Assert.Equal("*\n", await File.ReadAllTextAsync(Path.Combine(CacheDir(root), ".gitignore"), TestContext.Current.CancellationToken));
+            Assert.Equal(1L, Scalar(root, "PRAGMA user_version"));
+            Assert.Equal(
+                "cache_state,indexed_files,node_groups,node_runs,package_markers",
+                Scalar(root, "SELECT group_concat(name, ',') FROM (SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name)"));
+            Assert.Equal("node_groups", Scalar(root, "SELECT \"table\" FROM pragma_foreign_key_list('node_runs')"));
         }
         finally { Directory.Delete(root, recursive: true); }
     }
 
     [Fact]
-    public async Task LoadAsync_roundtrips_the_saved_entry_under_its_key()
+    public async Task LoadAsync_roundtrips_the_saved_entry_in_its_node_order()
     {
         var root = await TestFixtures.WriteDirectoryAsync([("a.ts", "export const a = 1;")]);
         try
         {
             var cache = BuildCache(root);
-            var entry = Entry("idx-rt");
+            // a, b, a: the nodes of one file are not contiguous, the runs must give this order back.
+            var entry = Entry("idx-rt", Tree(("a1", "/src/a.ts"), ("b1", "/src/b.ts"), ("a2", "/src/a.ts")));
             await cache.SaveAsync(TestFixtures.TestVirtualRoot, entry, CancellationToken.None);
 
             var loaded = await cache.LoadAsync(TestFixtures.TestVirtualRoot, Key, CancellationToken.None);
@@ -41,9 +45,56 @@ public class RaggableTreeCacheTests
             Assert.NotNull(loaded);
             Assert.Equal("idx-rt", loaded.IndexId);
             Assert.Equal(Key, loaded.CacheKey);
-            Assert.Equal(entry.Tree.Nodes.Select(n => n.Id), loaded.Tree.Nodes.Select(n => n.Id));
+            Assert.Equal(["a1", "b1", "a2"], loaded.Tree.Nodes.Select(n => n.Id));
+            Assert.Equal(entry.Tree.Edges, loaded.Tree.Edges);
+            Assert.Same(loaded.Tree.Nodes[1], loaded.Tree.Index["pkg::b1"]);
             Assert.Equal(entry.Files, loaded.Files);
             Assert.Equal(entry.Markers, loaded.Markers);
+            Assert.Equal(2L, Scalar(root, "SELECT count(*) FROM node_groups"));
+            Assert.Equal(3L, Scalar(root, "SELECT count(*) FROM node_runs"));
+        }
+        finally { Directory.Delete(root, recursive: true); }
+    }
+
+    [Fact]
+    public async Task SaveAsync_rewrites_only_the_groups_whose_nodes_changed()
+    {
+        var root = await TestFixtures.WriteDirectoryAsync([("a.ts", "export const a = 1;")]);
+        try
+        {
+            var cache = BuildCache(root);
+            await cache.SaveAsync(TestFixtures.TestVirtualRoot,
+                Entry("idx-1", Tree(("a1", "/src/a.ts"), ("b1", "/src/b.ts"), ("c1", "/src/c.ts"))), CancellationToken.None);
+
+            await cache.SaveAsync(TestFixtures.TestVirtualRoot,
+                Entry("idx-2", Tree(("a1", "/src/a.ts"), ("b2", "/src/b.ts"))), CancellationToken.None);
+
+            Assert.Equal(2L, Scalar(root, "SELECT generation FROM cache_state"));
+            Assert.Equal("/src/a.ts=1,/src/b.ts=2", Scalar(root,
+                "SELECT group_concat(virtual_path || '=' || generation, ',') FROM (SELECT * FROM node_groups ORDER BY virtual_path)"));
+            var loaded = await cache.LoadAsync(TestFixtures.TestVirtualRoot, Key, CancellationToken.None);
+            Assert.NotNull(loaded);
+            Assert.Equal(["a1", "b2"], loaded.Tree.Nodes.Select(n => n.Id));
+        }
+        finally { Directory.Delete(root, recursive: true); }
+    }
+
+    [Fact]
+    public async Task SaveAsync_under_another_key_drops_what_was_saved()
+    {
+        var root = await TestFixtures.WriteDirectoryAsync([("a.ts", "export const a = 1;")]);
+        try
+        {
+            var cache = BuildCache(root);
+            await cache.SaveAsync(TestFixtures.TestVirtualRoot, Entry("idx", Tree(("a1", "/src/a.ts"))), CancellationToken.None);
+
+            await cache.SaveAsync(TestFixtures.TestVirtualRoot,
+                Entry("idx", Tree(("b1", "/src/b.ts"))) with { CacheKey = "key-2" }, CancellationToken.None);
+
+            Assert.Null(await cache.LoadAsync(TestFixtures.TestVirtualRoot, Key, CancellationToken.None));
+            Assert.NotNull(await cache.LoadAsync(TestFixtures.TestVirtualRoot, "key-2", CancellationToken.None));
+            Assert.Equal(1L, Scalar(root, "SELECT generation FROM cache_state"));
+            Assert.Equal("/src/b.ts", Scalar(root, "SELECT group_concat(virtual_path) FROM node_groups"));
         }
         finally { Directory.Delete(root, recursive: true); }
     }
@@ -66,7 +117,7 @@ public class RaggableTreeCacheTests
         try
         {
             var cache = BuildCache(root);
-            await cache.SaveAsync(TestFixtures.TestVirtualRoot, Entry("idx"), CancellationToken.None);
+            await cache.SaveAsync(TestFixtures.TestVirtualRoot, Entry("idx", Tree()), CancellationToken.None);
 
             Assert.Null(await cache.LoadAsync(TestFixtures.TestVirtualRoot, "key-2", CancellationToken.None));
         }
@@ -74,32 +125,31 @@ public class RaggableTreeCacheTests
     }
 
     [Fact]
-    public async Task LoadAsync_returns_null_when_the_manifest_is_corrupted()
+    public async Task A_file_that_is_not_a_database_is_a_miss_then_replaced_by_the_next_save()
     {
         var root = await TestFixtures.WriteDirectoryAsync([("a.ts", "export const a = 1;")]);
         try
         {
             var cache = BuildCache(root);
-            await cache.SaveAsync(TestFixtures.TestVirtualRoot, Entry("idx"), CancellationToken.None);
-            await File.WriteAllTextAsync(
-                Path.Combine(root, ".orkeon", "cache", "raggable-tree", "manifest.json"), "{ not json", TestContext.Current.CancellationToken);
+            Directory.CreateDirectory(CacheDir(root));
+            await File.WriteAllTextAsync(DatabasePath(root), "not a database, only text", TestContext.Current.CancellationToken);
 
             Assert.Null(await cache.LoadAsync(TestFixtures.TestVirtualRoot, Key, CancellationToken.None));
+            Assert.True(await cache.SaveAsync(TestFixtures.TestVirtualRoot, Entry("idx", Tree()), CancellationToken.None));
+            Assert.NotNull(await cache.LoadAsync(TestFixtures.TestVirtualRoot, Key, CancellationToken.None));
         }
         finally { Directory.Delete(root, recursive: true); }
     }
 
     [Fact]
-    public async Task LoadAsync_returns_null_when_the_tree_file_does_not_match_its_manifest()
+    public async Task LoadAsync_returns_null_when_a_run_names_more_nodes_than_its_group_holds()
     {
         var root = await TestFixtures.WriteDirectoryAsync([("a.ts", "export const a = 1;")]);
         try
         {
             var cache = BuildCache(root);
-            await cache.SaveAsync(TestFixtures.TestVirtualRoot, Entry("idx"), CancellationToken.None);
-            var treePath = Path.Combine(root, ".orkeon", "cache", "raggable-tree", "tree.json");
-            var text = await File.ReadAllTextAsync(treePath, TestContext.Current.CancellationToken);
-            await File.WriteAllTextAsync(treePath, text.Replace("sym::x", "sym::y", StringComparison.Ordinal), TestContext.Current.CancellationToken);
+            await cache.SaveAsync(TestFixtures.TestVirtualRoot, Entry("idx", Tree()), CancellationToken.None);
+            Scalar(root, "UPDATE node_runs SET node_count = 5");
 
             Assert.Null(await cache.LoadAsync(TestFixtures.TestVirtualRoot, Key, CancellationToken.None));
         }
@@ -112,7 +162,7 @@ public class RaggableTreeCacheTests
         var root = await TestFixtures.WriteDirectoryAsync([("a.ts", "export const a = 1;"), (".orkeon", "a file, not a folder")]);
         try
         {
-            Assert.False(await BuildCache(root).SaveAsync(TestFixtures.TestVirtualRoot, Entry("idx"), CancellationToken.None));
+            Assert.False(await BuildCache(root).SaveAsync(TestFixtures.TestVirtualRoot, Entry("idx", Tree()), CancellationToken.None));
         }
         finally { Directory.Delete(root, recursive: true); }
     }
@@ -124,43 +174,58 @@ public class RaggableTreeCacheTests
         try
         {
             var cache = BuildCache(root);
-            await cache.SaveAsync(TestFixtures.TestVirtualRoot, Entry("idx"), CancellationToken.None);
+            await cache.SaveAsync(TestFixtures.TestVirtualRoot, Entry("idx", Tree()), CancellationToken.None);
 
             await cache.InvalidateAsync(TestFixtures.TestVirtualRoot, CancellationToken.None);
 
             Assert.Null(await cache.LoadAsync(TestFixtures.TestVirtualRoot, Key, CancellationToken.None));
-            Assert.False(File.Exists(Path.Combine(root, ".orkeon", "cache", "raggable-tree", "tree.json")));
+            Assert.False(File.Exists(DatabasePath(root)));
         }
         finally { Directory.Delete(root, recursive: true); }
     }
 
     // ----- Helpers -----
 
-    private static RaggableTreeCache BuildCache(string dir) =>
-        new(new RaggableTreeSerializer(), TestFixtures.CreateFs(dir));
+    private static RaggableTreeCache BuildCache(string dir) => new(TestFixtures.CreateFs(dir));
 
-    private static RaggableTreeCacheEntry Entry(string indexId) => new(
-        BuildTinyTree(),
+    private static string CacheDir(string root) => Path.Combine(root, ".orkeon", "cache", "raggable-tree");
+
+    private static string DatabasePath(string root) => Path.Combine(CacheDir(root), RaggableTreeCache.DatabaseFileName);
+
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Security", "CA2100", Justification = "Every caller passes a constant query of this test.")]
+    private static object? Scalar(string root, string sql)
+    {
+        using var connection = new SqliteConnection($"Data Source={DatabasePath(root)};Pooling=False");
+        connection.Open();
+        using var command = connection.CreateCommand();
+        command.CommandText = sql;
+        return command.ExecuteScalar();
+    }
+
+    private static RaggableTreeCacheEntry Entry(string indexId, RaggableTree tree) => new(
+        tree,
         indexId,
         Key,
         new Dictionary<string, string> { ["a.ts"] = "sha-a" },
         new Dictionary<string, string> { ["package.json"] = "sha-p" });
 
-    private static RaggableTree BuildTinyTree()
+    private static RaggableTree Tree(params (string Id, string File)[] nodes)
     {
-        var node = new RaggableNode
+        if (nodes.Length == 0) nodes = [("x", "/src/x.ts")];
+        var built = nodes.Select(n => new RaggableNode
         {
-            Id = "sym::x",
+            Id = n.Id,
             Kind = UniversalNodeKind.Method,
-            Name = "x",
-            VirtualFilePath = "/tmp/x.ts",
+            Name = n.Id,
+            VirtualFilePath = n.File,
             Range = new NodeRange(0, 5, 1, 2, 0),
             Level = NodeLevel.L3_Symbol,
             Language = "typescript",
             SourceSnippet = "fn",
             Sha256 = "abc",
-            Fqn = "pkg::x",
-        };
-        return new RaggableTree([node], [], new Dictionary<string, RaggableNode> { [node.Fqn] = node });
+            Fqn = $"pkg::{n.Id}",
+        }).ToList();
+        var edges = built.Count > 1 ? [new RaggableEdge("e1", built[0].Id, built[1].Id, EdgeKind.Calls)] : new List<RaggableEdge>();
+        return new RaggableTree(built, edges, built.ToDictionary(n => n.Fqn, StringComparer.Ordinal));
     }
 }

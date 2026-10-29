@@ -11,6 +11,9 @@ public sealed class RaggableTreeSerializer : IRaggableTreeSerializer
     private static readonly JsonSerializerOptions s_options = BuildOptions(indented: false);
     private static readonly JsonSerializerOptions s_indentedOptions = BuildOptions(indented: true);
 
+    // The options of the compact form, shared with the index cache that stores the same DTOs.
+    internal static JsonSerializerOptions Options => s_options;
+
     private readonly JsonSerializerOptions _options;
 
     public RaggableTreeSerializer(bool writeIndented = false)

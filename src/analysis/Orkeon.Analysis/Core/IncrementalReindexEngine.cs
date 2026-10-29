@@ -139,10 +139,12 @@ public sealed class IncrementalReindexEngine
             .ToDictionary(g => g.Key, g => g.First(), StringComparer.Ordinal);
         var newIds = new HashSet<string>(newNodes.Select(n => n.Id), StringComparer.Ordinal);
 
-        // Edges held by the other files survive when both ends still exist; the changed files' own
-        // outgoing edges are the ones just rebuilt.
+        // Edges held by the other files survive unless they point at a node that is gone; a target that never was
+        // a node (an `ext::` id: a package, an unresolved call) stays. The changed files' own outgoing edges are the
+        // ones just rebuilt.
         var keptEdges = currentTree.Edges
-            .Where(e => nodesById.ContainsKey(e.FromId) && nodesById.ContainsKey(e.ToId) && !newIds.Contains(e.FromId))
+            .Where(e => nodesById.ContainsKey(e.FromId) && !newIds.Contains(e.FromId)
+                && (nodesById.ContainsKey(e.ToId) || !removedIds.Contains(e.ToId)))
             .ToList();
         var changedCsprojs = changedVirtual.ToHashSet(StringComparer.Ordinal);
         var editedProjectIds = allNodes
@@ -312,19 +314,32 @@ public sealed class IncrementalReindexEngine
         return symbols;
     }
 
-    // A caller holds one Calls edge per name: the resolver's new pick replaces the kept one.
+    // A caller holds one Calls edge per name: the resolver's new pick replaces the kept one, a node of that name or
+    // the unresolved call the name was before it resolved.
     private static void DropSupersededCalls(RaggableEdge edge, List<RaggableEdge> keptEdges, Dictionary<string, RaggableNode> nodesById)
     {
         if (!nodesById.TryGetValue(edge.ToId, out var target) || !nodesById.TryGetValue(edge.FromId, out var caller)) return;
         foreach (var stale in keptEdges
             .Where(e => e.Kind == EdgeKind.Calls && e.FromId == edge.FromId && e.ToId != edge.ToId
-                && nodesById.TryGetValue(e.ToId, out var old) && old.Name == target.Name)
+                && (nodesById.TryGetValue(e.ToId, out var old) ? old.Name == target.Name : NamesUnresolved(e.ToId, target.Name)))
             .ToList())
         {
             keptEdges.Remove(stale);
             caller.CallIdsMutable.Remove(stale.ToId);
-            nodesById[stale.ToId].CalledByIdsMutable.Remove(caller.Id);
+            if (nodesById.TryGetValue(stale.ToId, out var old)) old.CalledByIdsMutable.Remove(caller.Id);
         }
+    }
+
+    // `ext::unresolved::<raw name>`, whose raw name ends with this simple name (`trim`, `s.trim`, `A::trim`).
+    private static bool NamesUnresolved(string targetId, string name)
+    {
+        const string Prefix = "ext::unresolved::";
+        if (!targetId.StartsWith(Prefix, StringComparison.Ordinal)) return false;
+        var raw = targetId.AsSpan(Prefix.Length);
+        if (!raw.EndsWith(name, StringComparison.Ordinal)) return false;
+        if (raw.Length == name.Length) return true;
+        var before = raw[raw.Length - name.Length - 1];
+        return before is '.' or ':';
     }
 
     // The order a full build discovers the files in is the file system's listing (no file is read).

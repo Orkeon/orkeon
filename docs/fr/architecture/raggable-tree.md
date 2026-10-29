@@ -106,7 +106,7 @@ Tous les champs sont des `record` immuables dans `Orkeon.Analysis.DependencyInje
 3. **Dependency resolution** (`DependencyGraphBuilder` + `IReferenceResolver`) — résolution des imports, appels, héritage, implémentations en arêtes (`EdgeKind.Imports`, `Calls`, `Extends`, `Implements`). Les FQN non résolus deviennent des `UnresolvedRef`.
 4. **Fingerprinting** (`IFrameworkFingerprinter`) — application des règles par décorateur/annotation (NestJS, Angular, ASP.NET, Flask, FastAPI) : pose de tags comme `http-endpoint`, `guard`, `service` sur les nœuds concernés.
 5. **Enrichissement** — optionnellement un résumé LLM (`INodeSummarizer`, quand l'appel positionne `enrich_with_llm` et qu'un summarizer est enregistré), composition du `EmbeddingText` (`IEmbeddingTextComposer`), puis embedding batch (`IEmbeddingProvider`, sauté quand aucun n'est enregistré).
-6. **Persistance** — l'arbre vit dans `InMemoryRaggableStore` (`index_codebase` en remplace le contenu), qui répond aussi à toutes les requêtes. Quand un `IVectorStoreProvider` est enregistré, `IndexAsync` reçoit en plus un miroir des embeddings — aucun hôte livré n'en enregistre (`MemoryProviderVectorStoreAdapter`, `Orkeon.Analysis.Vectors`, adapte n'importe quel `IMemoryProvider` pour un hôte qui le souhaite), et rien ne relit ce miroir. Entre les sessions, `index_codebase` enregistre l'arbre sous `<root>/.orkeon/cache/raggable-tree/` (voir [Cache d'index](#cache-dindex)).
+6. **Persistance** — l'arbre vit dans `InMemoryRaggableStore` (`index_codebase` en remplace le contenu), qui répond aussi à toutes les requêtes. Quand un `IVectorStoreProvider` est enregistré, `IndexAsync` reçoit en plus un miroir des embeddings — aucun hôte livré n'en enregistre (`MemoryProviderVectorStoreAdapter`, `Orkeon.Analysis.Vectors`, adapte n'importe quel `IMemoryProvider` pour un hôte qui le souhaite), et rien ne relit ce miroir. Entre les sessions, `index_codebase` enregistre l'arbre dans une base SQLite, `<root>/.orkeon/cache/raggable-tree/index.db` (voir [Cache d'index](#cache-dindex)).
 
 Chaque phase rapporte sa progression (`IndexBuildPhase` : Discovery, Parse, Resolve, Enrich, Embed, Persist) à un `IProgress<IndexBuildProgress>` optionnel enregistré par l'hôte (le REPL le branche sur la barre de progression de sa ligne d'état).
 
@@ -171,10 +171,10 @@ toujours extraits, et un argument que la requête ne déclare pas est ignoré.
 ### Cache d'index
 
 `AddRaggableTree` enregistre `CachingTreeBuilder`, dont `index_codebase` se sert pour
-garder l'index entre les sessions. Chaque construction enregistre l'arbre et un manifeste
-(le SHA-256 de chaque fichier indexé et de chaque marqueur de paquet) sous
-`<root>/.orkeon/cache/raggable-tree/`, un dossier qui porte son propre `.gitignore` (`*`).
-L'appel suivant avec les mêmes options les relit et répond `cache` :
+garder l'index entre les sessions. Chaque construction enregistre l'arbre et le SHA-256 de
+chaque fichier indexé et de chaque marqueur de paquet dans une seule base SQLite,
+`<root>/.orkeon/cache/raggable-tree/index.db`, dans un dossier qui porte son propre
+`.gitignore` (`*`). L'appel suivant avec les mêmes options la relit et répond `cache` :
 
 | `cache` | Quand | Ce qu'il fait |
 |---|---|---|
@@ -189,8 +189,83 @@ La clé couvre ce qui façonne l'arbre au-delà des fichiers : les options (`lan
 `max_parallelism`), la version de l'assembly Analysis, celle du sérialiseur, et les
 adaptateurs, fingerprinters, résumeur et embedder (avec sa dimension) que l'hôte câble.
 Une clé changée est un miss. Une racine que le processus ne peut pas écrire est indexée
-sans cache. Un manifeste ou un arbre qui ne se relit pas (corrompu, écriture interrompue)
-est un miss.
+sans cache.
+
+#### Schéma de la base
+
+`RaggableTreeCache` possède la base. Une base garde un seul index : l'entrée de la dernière
+clé enregistrée. La version de son schéma est `PRAGMA user_version` (`1`) ; une base d'une
+autre version voit ses tables supprimées et recréées à l'enregistrement suivant, et se lit
+comme un miss d'ici là. La connexion tourne avec `foreign_keys = ON` et le journal en mode WAL.
+
+| Table | Clé primaire | Contenu |
+|---|---|---|
+| `cache_state` | `id` (`CHECK (id = 1)` : une ligne) | La clé et l'identité de l'index enregistré, et ses arêtes |
+| `indexed_files` | `path` (`WITHOUT ROWID`) | Le SHA-256 de chaque fichier indexé |
+| `package_markers` | `path` (`WITHOUT ROWID`) | Le SHA-256 de chaque marqueur de paquet |
+| `node_groups` | `group_id` (alias du rowid) | Les nœuds d'un fichier source |
+| `node_runs` | `position` | L'ordre des nœuds dans l'arbre |
+
+`cache_state` :
+
+| Colonne | Type | Contrainte | Sens |
+|---|---|---|---|
+| `id` | `INTEGER` | `PRIMARY KEY`, `CHECK (id = 1)` | L'unique ligne |
+| `cache_key` | `TEXT` | `NOT NULL` | Le SHA-256 de la clé décrite plus haut |
+| `index_id` | `TEXT` | `NOT NULL` | L'`IndexId` de l'arbre enregistré |
+| `generation` | `INTEGER` | `NOT NULL` | Compte les enregistrements sous cette clé, à partir de `1` |
+| `node_count`, `edge_count` | `INTEGER` | `NOT NULL` | La taille de l'arbre, pour qui inspecte la base ; le chargement ne les lit pas |
+| `edges` | `BLOB` | `NOT NULL` | Toutes les arêtes, gzip du tableau JSON des arêtes du sérialiseur |
+| `saved_at` | `TEXT` | `NOT NULL` | L'heure UTC de l'enregistrement, ISO 8601 |
+
+`indexed_files` et `package_markers` ont les deux mêmes colonnes : `path` (`TEXT PRIMARY KEY`,
+relatif à la racine) et `sha256` (`TEXT NOT NULL`, hexadécimal minuscule). Le constructeur
+les compare aux fichiers qu'il découvre pour distinguer un hit, un rafraîchissement ou un miss.
+
+`node_groups` :
+
+| Colonne | Type | Contrainte | Sens |
+|---|---|---|---|
+| `group_id` | `INTEGER` | `PRIMARY KEY` | Clé de substitution, référencée par `node_runs` |
+| `virtual_path` | `TEXT` | `NOT NULL UNIQUE` | Le fichier source des nœuds (`VirtualFilePath`) ; les nœuds sans fichier partagent le chemin vide |
+| `node_count` | `INTEGER` | `NOT NULL`, `CHECK (node_count > 0)` | Combien de nœuds contient `nodes` |
+| `content_sha256` | `TEXT` | `NOT NULL` | Le SHA-256 du JSON non compressé de `nodes` |
+| `generation` | `INTEGER` | `NOT NULL` | La génération de l'enregistrement qui a écrit la ligne en dernier |
+| `nodes` | `BLOB` | `NOT NULL` | gzip du tableau JSON des nœuds du groupe, dans l'ordre de l'arbre |
+
+`node_runs` :
+
+| Colonne | Type | Contrainte | Sens |
+|---|---|---|---|
+| `position` | `INTEGER` | `PRIMARY KEY` | Le rang de la séquence, à partir de `0` |
+| `group_id` | `INTEGER` | `NOT NULL`, `FOREIGN KEY` → `node_groups (group_id)` `ON DELETE RESTRICT`, indexée (`ix_node_runs_group_id`) | Le groupe dont la séquence prend ses nœuds |
+| `node_count` | `INTEGER` | `NOT NULL`, `CHECK (node_count > 0)` | Combien de nœuds la séquence prend |
+
+La liste des nœuds de l'arbre n'est pas groupée par fichier : les nœuds d'un fichier peuvent
+revenir après ceux d'un autre. `node_runs` garde cet ordre : le chargement lit les séquences
+par `position` et chacune prend les `node_count` nœuds suivants de son groupe, si bien que
+l'arbre se relit dans l'ordre où il a été enregistré. Une séquence qui demande plus de nœuds
+que son groupe n'en a, ou un groupe dont aucune séquence ne reprend tous les nœuds, fait du
+chargement un miss. La clé étrangère interdit à une séquence de nommer un groupe qui n'existe
+pas, et `RESTRICT` interdit de supprimer un groupe qu'une séquence nomme encore :
+un enregistrement supprime les séquences avant les groupes.
+
+Un enregistrement est une seule transaction :
+
+1. Sous la même clé, la génération est celle enregistrée plus un ; sous une autre clé, toutes
+   les tables sont vidées et la génération repart à `1`.
+2. `indexed_files` et `package_markers` sont réécrites.
+3. Les nœuds sont groupés par fichier. Un groupe dont le `content_sha256` n'a pas changé est
+   laissé tel quel ; un groupe modifié ou nouveau est inséré ou mis à jour
+   (`ON CONFLICT (virtual_path) DO UPDATE`) avec la génération courante ; un groupe dont le
+   fichier a disparu est supprimé après les séquences.
+4. `node_runs` est réécrite, puis la ligne de `cache_state`.
+
+Un rafraîchissement qui réindexe trois fichiers réécrit donc trois groupes, pas tout l'arbre.
+Un chargement qui échoue (un fichier qui n'est pas une base SQLite, une table absente, un blob
+qui ne se décompresse ou ne se désérialise pas, des séquences et des groupes qui ne concordent pas) est un miss.
+Un enregistrement qui échoue sur une erreur SQLite supprime la base avec ses fichiers `-wal`
+et `-shm` et réessaie une fois.
 
 ## Stratégies d'agents
 
@@ -524,7 +599,7 @@ Implémenter `IVectorStoreProvider` (`IndexAsync`, `SearchAsync`, `DeleteAsync`)
 - Le summarizer se configure uniquement en C# (`Summarizer.Provider` + un `ILlmProvider`) ; les embeddings OpenAI/Ollama exigent leur endpoint, alors que le défaut on-device du runner host ne demande rien. Le pipeline fonctionne sans embeddings (`codebase_search` classe alors par BM25 seul).
 - L'index est local au processus : `InMemoryRaggableStore` est reconstruit par `index_codebase` dans chaque processus, et le miroir vector store optionnel n'est jamais relu.
 - `FileSystemWatcherCodebaseWatcher` (l'implémentation d'`ICodebaseWatcher`, qu'aucun hôte livré n'enregistre) se base sur `System.IO.FileSystemWatcher` — sous Linux/WSL, les événements de rename peuvent arriver décomposés (observés comme Deleted puis Created).
-- Le cache d'index ne se rafraîchit sur place que sans `root_alias` et quand au plus la moitié des fichiers a changé ; sinon il reconstruit tout. Un fichier dont le contenu n'a pas changé garde ses nœuds enregistrés même quand un fichier qu'il importe a changé : le rafraîchissement relie à nouveau les arêtes, il ne réanalyse pas le fichier.
+- Le cache d'index ne se rafraîchit sur place que sans `root_alias` et quand au plus la moitié des fichiers a changé ; sinon il reconstruit tout. Un fichier dont le contenu n'a pas changé garde ses nœuds enregistrés même quand un fichier qu'il importe a changé : le rafraîchissement relie à nouveau les arêtes, il ne réanalyse pas le fichier. La base garde une seule clé : deux appelants qui indexent une racine avec des options différentes remplacent l'entrée l'un de l'autre.
 
 ---
 

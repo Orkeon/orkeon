@@ -4,7 +4,6 @@ using Orkeon.Analysis.Abstractions.DTOs.Queries;
 using Orkeon.Analysis.Abstractions.Models;
 using Orkeon.Analysis.Core;
 using Orkeon.Analysis.Core.Cache;
-using Orkeon.Analysis.Core.Serialization;
 using Orkeon.Analysis.Vectors;
 using Orkeon.Domain.Constants.Memory;
 using Orkeon.Domain.Memory;
@@ -129,7 +128,7 @@ public class EmbeddingDimensionPropagationTests
     {
         var adapters = new Abstractions.Interfaces.ILanguageAdapter[] { new Adapters.TypeScriptAdapter() };
         return new CachingTreeBuilder(
-            new RaggableTreeCache(new RaggableTreeSerializer(), fs),
+            new RaggableTreeCache(fs),
             new FileSystemDiscoverer(fs),
             fs,
             () => new RaggableTreeBuilder(adapters, fs),

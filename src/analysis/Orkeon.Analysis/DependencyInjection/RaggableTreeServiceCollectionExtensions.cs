@@ -285,11 +285,8 @@ public static class RaggableTreeServiceCollectionExtensions
         services.AddTransient<Func<RaggableTreeBuilder>>(sp =>
             () => sp.GetRequiredService<RaggableTreeBuilder>());
 
-        // The index saved between sessions under <root>/.orkeon/cache/raggable-tree/, read by index_codebase.
-        services.TryAddSingleton<IRaggableTreeSerializer, RaggableTreeSerializer>();
-        services.TryAddSingleton<IRaggableTreeCache>(sp => new RaggableTreeCache(
-            sp.GetRequiredService<IRaggableTreeSerializer>(),
-            sp.GetRequiredService<IFileSystemService>()));
+        // The index saved between sessions in <root>/.orkeon/cache/raggable-tree/index.db, read by index_codebase.
+        services.TryAddSingleton<IRaggableTreeCache>(sp => new RaggableTreeCache(sp.GetRequiredService<IFileSystemService>()));
         services.TryAddSingleton(sp => new CachingTreeBuilder(
             sp.GetRequiredService<IRaggableTreeCache>(),
             sp.GetRequiredService<IFileSystemDiscoverer>(),
