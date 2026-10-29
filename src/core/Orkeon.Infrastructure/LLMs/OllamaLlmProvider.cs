@@ -452,13 +452,22 @@ public partial class OllamaLlmProvider : HttpLlmProviderBase
             : "json";
     }
 
+    /// <summary>A level Ollama's <c>think</c> does not know is lowered to the nearest it knows, said aloud (LLM-02).</summary>
+    private string ThinkLevel(string effort)
+    {
+        var sent = LlmThinkingConfig.EffortFor(effort, DeclaredCapabilities.EffortLevels);
+        if (sent != effort)
+            LogEffortLowered(effort, string.Join(", ", DeclaredCapabilities.EffortLevels), sent);
+        return sent;
+    }
+
     private void ApplyChatThinking(Dictionary<string, object> payload, LlmThinkingConfig? thinking)
     {
         if (thinking is null)
             return;
 
         if (!string.IsNullOrWhiteSpace(thinking.Effort))
-            payload["think"] = thinking.Effort;
+            payload["think"] = ThinkLevel(thinking.Effort);
         else if (thinking.Enabled.HasValue)
             payload["think"] = thinking.Enabled.Value;
 
@@ -1010,7 +1019,7 @@ public partial class OllamaLlmProvider : HttpLlmProviderBase
             return;
 
         if (!string.IsNullOrWhiteSpace(thinking.Effort))
-            builder.AddThink(thinking.Effort);
+            builder.AddThink(ThinkLevel(thinking.Effort));
         else if (thinking.Enabled.HasValue)
             builder.AddThink(thinking.Enabled.Value);
 
@@ -1221,4 +1230,8 @@ public partial class OllamaLlmProvider : HttpLlmProviderBase
     [LoggerMessage(EventId = 110, Level = Microsoft.Extensions.Logging.LogLevel.Warning,
         Message = "Option '{Option}' was declared but Ollama does not support it — it was not sent. {Remedy}.")]
     private partial void LogUnsupportedOption(string option, string remedy);
+
+    [LoggerMessage(EventId = 112, Level = Microsoft.Extensions.Logging.LogLevel.Warning,
+        Message = "Effort '{Effort}' was declared but Ollama's think field knows {Known} only — '{Sent}' was sent in its place. Ask for a level it knows, or pick a provider that knows this one.")]
+    private partial void LogEffortLowered(string effort, string known, string sent);
 }

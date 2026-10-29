@@ -1522,7 +1522,13 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
         }
 
         if (!string.IsNullOrWhiteSpace(thinking.Effort))
-            payload["reasoning_effort"] = thinking.Effort;
+        {
+            // A level the declared field does not know is lowered to the nearest it knows, said aloud (LLM-02).
+            var sent = LlmThinkingConfig.EffortFor(thinking.Effort, Capabilities.EffortLevels);
+            if (sent != thinking.Effort)
+                LogEffortLowered(thinking.Effort, ProviderDisplayName, string.Join(", ", Capabilities.EffortLevels), sent);
+            payload["reasoning_effort"] = sent;
+        }
 
         // No OpenAI-dialect field carries a reasoning budget; only DashScope does, and Qwen
         // overrides this method to emit it.
@@ -2154,6 +2160,14 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
     [LoggerMessage(EventId = 110, Level = LogLevel.Warning,
         Message = "Option '{Option}' was declared but {ProviderName} does not support it — it was not sent. {Remedy}.")]
     private partial void LogUnsupportedOption(string option, string providerName, string remedy);
+
+    /// <summary>
+    /// The same rule for an effort the declared field does not know: the nearest known level is sent,
+    /// and the caller is told, instead of the request failing or the level vanishing.
+    /// </summary>
+    [LoggerMessage(EventId = 112, Level = LogLevel.Warning,
+        Message = "Effort '{Effort}' was declared but {ProviderName} knows {Known} only — '{Sent}' was sent in its place. Ask for a level it knows, or pick a provider that knows this one.")]
+    private partial void LogEffortLowered(string effort, string providerName, string known, string sent);
 
     [LoggerMessage(EventId = 100, Level = LogLevel.Warning,
         Message = "{ProviderName} was asked for a JSON response format but no system/user message contains the word 'json'. This API may then emit an unbounded whitespace stream until max_tokens. Add 'json' to the prompt to be safe.")]

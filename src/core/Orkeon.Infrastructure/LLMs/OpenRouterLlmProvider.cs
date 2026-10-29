@@ -68,6 +68,7 @@ public class OpenRouterLlmProvider : OpenAICompatibleProviderBase
     {
         ResponseFormat = ResponseFormatSupport.JsonSchema,
         Thinking = ThinkingSupport.Budget,
+        EffortLevels = LlmThinkingConfig.Levels,
         Vision = true,
     };
 

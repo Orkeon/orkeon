@@ -40,6 +40,7 @@ public class ZaiLlmProvider : OpenAICompatibleProviderBase
     {
         ResponseFormat = ResponseFormatSupport.JsonObject,
         Thinking = ThinkingSupport.Toggle,
+        EffortLevels = ["low", "medium", "high", "max"],
         Vision = true,
     };
 

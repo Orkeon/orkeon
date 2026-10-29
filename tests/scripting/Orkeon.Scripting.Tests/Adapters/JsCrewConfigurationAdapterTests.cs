@@ -281,7 +281,28 @@ public sealed class JsCrewConfigurationAdapterTests
             agentBuilder().name("a").role("R").goal("G").effort("extreme").build();
             """));
 
-        Assert.Contains("low|medium|high", ex.Message);
+        Assert.Contains("low|medium|high|xhigh|max", ex.Message);
+    }
+
+    [Theory]
+    [Trait("BR", "RT-15")]
+    [InlineData("xhigh")]
+    [InlineData("max")]
+    public void ShouldCarryEffortAboveHighToAgentConfig_WhenAgentBuilderEffortCalled(string level)
+    {
+        var engine = NewEngine();
+        var crew = BuildCrew(engine, $$"""
+            const a = agentBuilder().name("a").role("R").goal("G").effort("{{level}}").build();
+            const t = taskBuilder().name("t").agent(a).description("d").expectedOutput("o").build();
+            crewBuilder().name("c").withAgent(a).withTask(t).build();
+            """);
+
+        var config = JsCrewConfigurationAdapter.ToConfiguration(crew);
+
+        var thinking = config.Agents[0].LlmConfig?.Thinking;
+        Assert.NotNull(thinking);
+        Assert.True(thinking!.Enabled);
+        Assert.Equal(level, thinking.Effort);
     }
 
     [Fact]

@@ -84,7 +84,7 @@ agents:
       topP: float         # Nucleus sampling, envoyé quelle que soit sa valeur — omis = celui du profil, sinon rien n'est envoyé (Mistral écrit 1)
       thinking:           # Contrôle du raisonnement (gaté par capacité selon le provider)
         enabled: bool
-        effort: string    # "low" | "medium" | "high" | "max" (selon le provider)
+        effort: string    # "low" | "medium" | "high" | "xhigh" | "max" (un provider envoie le niveau le plus proche que son champ connaît)
         budget_tokens: int # Honoré par Qwen seul ; les autres providers émettent un warning
       responseFormat: string # "text" (= défaut du provider) | "json_object" | "json_schema" — toute autre valeur est transmise telle quelle avec un warning
       responseSchema:     # Avec responseFormat: json_schema (un schéma seul implique json_schema)

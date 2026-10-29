@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — `effort` takes `xhigh` and `max`
+
+The effort of a thinking setting (`act({ effort })`, the other `ctx.llm` calls, `LlmConfig.with({ effort })`,
+`agentBuilder().effort(level)`, YAML `thinking.effort`) accepts five levels, `low|medium|high|xhigh|max`
+(`LlmThinkingConfig.Levels`), where the scripting layer refused all but the first three. A provider declares the
+levels its field knows, `LlmProviderCapabilities.EffortLevels` (`low`, `medium`, `high` by default; the five for
+Anthropic and OpenRouter; `max` without `xhigh` for DeepSeek and Z.ai), and sends, for a level it does not know, the highest
+declared level below it (`LlmThinkingConfig.EffortFor`) with a warning naming both (event 112), never a silent
+change. The typings of `LlmConfigOverrides` now declare `effort`.
+
 ### Added — model provider categories and TypeSafe decision models (ADR-015)
 
 Model providers now come in four categories (`ModelProviderCategory`: `Generation`, `Embedding`, `Reranking`,

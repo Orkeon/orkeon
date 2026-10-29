@@ -39,8 +39,12 @@ declare global {
         /** A positive integer (1 to 2147483647). Omitted keeps the inherited cap; anything else throws. */
         maxTokens?: number;
         responseFormat?: ResponseFormatType;
-        /** Turns thinking on at this level; anything else throws. */
-        effort?: "low" | "medium" | "high";
+        /**
+         * Turns thinking on at this level; anything else throws. Anthropic takes the five levels; a provider whose field
+         * knows fewer (three for OpenAI's `reasoning_effort` and Ollama's `think`) sends the highest it knows
+         * below the one asked, and warns.
+         */
+        effort?: "low" | "medium" | "high" | "xhigh" | "max";
     }
 
     namespace llm {

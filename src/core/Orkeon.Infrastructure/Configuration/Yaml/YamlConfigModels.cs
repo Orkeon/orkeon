@@ -263,7 +263,7 @@ public class ThinkingYamlConfig
 {
     /// <summary>Gets or sets whether thinking mode is enabled (default: provider-managed).</summary>
     public bool? Enabled { get; set; }
-    /// <summary>Gets or sets the reasoning effort hint ("low" | "medium" | "high" | "max").</summary>
+    /// <summary>Gets or sets the reasoning effort hint ("low" | "medium" | "high" | "xhigh" | "max"; a provider sends the nearest level its field knows).</summary>
     public string? Effort { get; set; }
     /// <summary>
     /// Gets or sets a hard token budget for the reasoning pass. Only Qwen's DashScope API

@@ -114,9 +114,10 @@ public sealed class JsLlmConfig
         => new() { Enabled = true, Effort = RequireEffort(effort) };
 
     internal static string RequireEffort(string? value)
-        => value is "low" or "medium" or "high"
+        => value is not null && LlmThinkingConfig.Levels.Contains(value)
             ? value
-            : throw new InvalidScriptException($"effort must be low|medium|high, not '{value}'.");
+            : throw new InvalidScriptException(
+                $"effort must be {string.Join('|', LlmThinkingConfig.Levels)}, not '{value}'.");
 
     internal static string RequireModel(string? value)
         => string.IsNullOrWhiteSpace(value)

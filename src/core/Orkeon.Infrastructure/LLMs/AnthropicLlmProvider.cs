@@ -43,6 +43,7 @@ public partial class AnthropicLlmProvider : HttpLlmProviderBase
     {
         ResponseFormat = ResponseFormatSupport.JsonSchema,
         Thinking = ThinkingSupport.Toggle,
+        EffortLevels = LlmThinkingConfig.Levels,
         Vision = true,
         ExplicitPromptCaching = true,
     };
