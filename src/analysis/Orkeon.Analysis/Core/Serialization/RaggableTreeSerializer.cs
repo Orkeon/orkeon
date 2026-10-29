@@ -1,7 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Orkeon.Analysis.Abstractions.Models;
-using Orkeon.Domain.Constants.Serialization;
 
 namespace Orkeon.Analysis.Core.Serialization;
 
@@ -74,6 +73,9 @@ public sealed class RaggableTreeSerializer : IRaggableTreeSerializer
         return new RaggableTreeSnapshot(tree, envelope.IndexId, envelope.CreatedAt);
     }
 
+    // Statements nest as deep as the source does (two JSON levels each), past the shared limit of 32 on real code.
+    private const int TreeMaxDepth = 1024;
+
     private static JsonSerializerOptions BuildOptions(bool indented)
     {
         var options = new JsonSerializerOptions
@@ -81,7 +83,7 @@ public sealed class RaggableTreeSerializer : IRaggableTreeSerializer
             PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
             DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
             WriteIndented = indented,
-            MaxDepth = SerializationDefaults.JsonMaxDepth,
+            MaxDepth = TreeMaxDepth,
         };
         options.Converters.Add(new JsonStringEnumConverter());
         return options;

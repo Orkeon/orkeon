@@ -221,6 +221,26 @@ public class CachingTreeBuilderTests
     }
 
     [Fact]
+    public async Task ShouldReloadTheSavedIndex_WhenStatementsNestDeeperThanTheSharedJsonLimit()
+    {
+        var body = string.Concat(Enumerable.Range(0, 40).Select(i => $"if (x > {i}) {{ ")) + "return x;" + new string('}', 40);
+        var dir = await TestFixtures.WriteDirectoryAsync([("deep.ts", $"export function deep(x: number) {{ {body} return 0; }}\n")]);
+        try
+        {
+            var fs = TestFixtures.CreateFs(dir);
+            var first = await Caching(fs).BuildAsync(TestFixtures.TestVirtualRoot, Request, CancellationToken.None);
+
+            var second = await Caching(fs).BuildAsync(TestFixtures.TestVirtualRoot, Request, CancellationToken.None);
+
+            Assert.Equal(IndexCacheOutcome.Hit, second.Outcome);
+            Assert.Equal(
+                first.Build.Tree.Nodes.Sum(n => n.Statements.Count),
+                second.Build.Tree.Nodes.Sum(n => n.Statements.Count));
+        }
+        finally { Directory.Delete(dir, recursive: true); }
+    }
+
+    [Fact]
     public void ShouldDescribeTheEmbeddingSize_InTheEnvironment()
     {
         var adapters = new ILanguageAdapter[] { new TypeScriptAdapter() };

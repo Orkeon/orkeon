@@ -98,6 +98,7 @@ public sealed class RaggableTreeCache : IRaggableTreeCache
             await _fs.WriteAllTextAsync(paths.Manifest, JsonSerializer.Serialize(manifest, s_manifestOptions), ct).ConfigureAwait(false);
             return true;
         }
+        catch (JsonException) { return false; }
         catch (IOException) { return false; }
         catch (UnauthorizedAccessException) { return false; }
         catch (FileAccessDeniedException) { return false; }
