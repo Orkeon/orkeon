@@ -1,3 +1,11 @@
 #nullable enable
 Orkeon.Analysis.Abstractions.DTOs.Tools.IndexCodebaseRequest.MaxParallelism.get -> int
 Orkeon.Analysis.Abstractions.DTOs.Tools.IndexCodebaseRequest.MaxParallelism.init -> void
+Orkeon.Analysis.Abstractions.DTOs.Tools.IndexCodebaseRequest.UseCache.get -> bool
+Orkeon.Analysis.Abstractions.DTOs.Tools.IndexCodebaseRequest.UseCache.init -> void
+Orkeon.Analysis.Abstractions.DTOs.Tools.IndexCodebaseResponse.Cache.get -> string!
+Orkeon.Analysis.Abstractions.DTOs.Tools.IndexCodebaseResponse.Cache.init -> void
+Orkeon.Analysis.Abstractions.DTOs.Tools.IndexCodebaseResponse.ReindexedFileCount.get -> int
+Orkeon.Analysis.Abstractions.DTOs.Tools.IndexCodebaseResponse.ReindexedFileCount.init -> void
+Orkeon.Analysis.Abstractions.Interfaces.DetectedPackage.MarkerPath.get -> string!
+Orkeon.Analysis.Abstractions.Interfaces.DetectedPackage.MarkerPath.init -> void

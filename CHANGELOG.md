@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — an index cache between sessions (`index_codebase` `use_cache`)
+
+`AddRaggableTree` now registers `CachingTreeBuilder`, and `index_codebase` saves the index under
+`<root>/.orkeon/cache/raggable-tree/` (a folder holding its own `.gitignore`). The next session reloads it when no file
+changed (`cache: "hit"`), reindexes only the changed files when at most half of them changed and no package marker did
+(`"refreshed"`, with `reindexed_file_count`), and rebuilds otherwise (`"miss"`). The key covers the options, the
+Analysis version and the adapters, summarizer and embedder (with its dimension) the host wires. `use_cache: false`
+rebuilds from scratch, then saves (`"bypassed"`); a tool built without the cache answers `"disabled"`.
+
+| Before | After |
+|---|---|
+| `IRaggableTreeCache.LoadAsync(root, adapterVersions, embeddingProfile)` / `IsValidAsync` / `RaggableTreeCacheLoadResult` / `EmbeddingCacheProfile` | `LoadAsync(root, cacheKey)` returning a `RaggableTreeCacheEntry?`; `SaveAsync(root, entry)` returns `false` when the root cannot be written |
+| `new IndexCodebaseTool(store, builderFactory, logger)` | `new IndexCodebaseTool(store, builderFactory, cachingBuilder, logger)` |
+| `DetectedPackage.MarkerFile` only (the ecosystem) | plus `MarkerPath`, the marker file under the root |
+
 ### Added — parallel index build (`index_codebase` `max_parallelism`)
 
 `index_codebase` reads and parses files `max_parallelism` at a time (`IndexCodebaseRequest.MaxParallelism`): `0`, the

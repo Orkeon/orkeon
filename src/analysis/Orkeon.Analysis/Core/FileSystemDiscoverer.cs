@@ -78,13 +78,13 @@ public sealed class FileSystemDiscoverer : IFileSystemDiscoverer
                     ? TrailingSegment(ctx.VirtualRoot)
                     : Path.GetFileName(pkgDir);
                 if (string.IsNullOrEmpty(pkgName)) pkgName = fileName;
-                packages.Add(new DetectedPackage(pkgName, pkgDir, marker));
+                packages.Add(new DetectedPackage(pkgName, pkgDir, marker) { MarkerPath = relative });
             }
             else if (fileName.EndsWith(".csproj", StringComparison.OrdinalIgnoreCase))
             {
                 var pkgDir = Path.GetDirectoryName(relative) ?? string.Empty;
                 var pkgName = Path.GetFileNameWithoutExtension(fileName);
-                packages.Add(new DetectedPackage(pkgName, pkgDir, "csproj"));
+                packages.Add(new DetectedPackage(pkgName, pkgDir, "csproj") { MarkerPath = relative });
             }
 
             var discovered = await TryBuildAsync(entry, ctx, stats, ct).ConfigureAwait(false);

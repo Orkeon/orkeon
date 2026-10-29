@@ -82,4 +82,9 @@ public sealed record DiscoveryFilterStats
     public string PhysicalRoot { get; init; } = "";
 }
 
-public sealed record DetectedPackage(string Name, string RelativePath, string MarkerFile);
+/// <summary>A package found by discovery: <see cref="MarkerFile"/> names its ecosystem (<c>npm</c>, <c>csproj</c>).</summary>
+public sealed record DetectedPackage(string Name, string RelativePath, string MarkerFile)
+{
+    /// <summary>Path of the marker file under the root (<c>src/App/App.csproj</c>, <c>package.json</c>).</summary>
+    public string MarkerPath { get; init; } = "";
+}

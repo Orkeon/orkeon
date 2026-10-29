@@ -106,7 +106,7 @@ Tous les champs sont des `record` immuables dans `Orkeon.Analysis.DependencyInje
 3. **Dependency resolution** (`DependencyGraphBuilder` + `IReferenceResolver`) — résolution des imports, appels, héritage, implémentations en arêtes (`EdgeKind.Imports`, `Calls`, `Extends`, `Implements`). Les FQN non résolus deviennent des `UnresolvedRef`.
 4. **Fingerprinting** (`IFrameworkFingerprinter`) — application des règles par décorateur/annotation (NestJS, Angular, ASP.NET, Flask, FastAPI) : pose de tags comme `http-endpoint`, `guard`, `service` sur les nœuds concernés.
 5. **Enrichissement** — optionnellement un résumé LLM (`INodeSummarizer`, quand l'appel positionne `enrich_with_llm` et qu'un summarizer est enregistré), composition du `EmbeddingText` (`IEmbeddingTextComposer`), puis embedding batch (`IEmbeddingProvider`, sauté quand aucun n'est enregistré).
-6. **Persistance** — l'arbre vit dans `InMemoryRaggableStore` (`index_codebase` en remplace le contenu), qui répond aussi à toutes les requêtes. Quand un `IVectorStoreProvider` est enregistré, `IndexAsync` reçoit en plus un miroir des embeddings — aucun hôte livré n'en enregistre (`MemoryProviderVectorStoreAdapter`, `Orkeon.Analysis.Vectors`, adapte n'importe quel `IMemoryProvider` pour un hôte qui le souhaite), et rien ne relit ce miroir. Le sérialiseur JSON `RaggableTreeCache` existe mais n'est câblé par aucun hôte livré.
+6. **Persistance** — l'arbre vit dans `InMemoryRaggableStore` (`index_codebase` en remplace le contenu), qui répond aussi à toutes les requêtes. Quand un `IVectorStoreProvider` est enregistré, `IndexAsync` reçoit en plus un miroir des embeddings — aucun hôte livré n'en enregistre (`MemoryProviderVectorStoreAdapter`, `Orkeon.Analysis.Vectors`, adapte n'importe quel `IMemoryProvider` pour un hôte qui le souhaite), et rien ne relit ce miroir. Entre les sessions, `index_codebase` enregistre l'arbre sous `<root>/.orkeon/cache/raggable-tree/` (voir [Cache d'index](#cache-dindex)).
 
 Chaque phase rapporte sa progression (`IndexBuildPhase` : Discovery, Parse, Resolve, Enrich, Embed, Persist) à un `IProgress<IndexBuildProgress>` optionnel enregistré par l'hôte (le REPL le branche sur la barre de progression de sa ligne d'état).
 
@@ -161,11 +161,36 @@ Les 28 tools sont enregistrés via `AddRaggableTreeTools` (`Orkeon.Tools.Analysi
 (vide = auto-détection), `exclude` (défaut `node_modules`, `dist`, `.git`, `bin`,
 `obj`), `respect_gitignore` (défaut `true`), `enrich_with_llm` (défaut `false` ; exige
 un résumeur enregistré), `root_alias` (remplace le préfixe de racine virtuelle de chaque
-FQN), `embedding_model` et `max_parallelism` (combien de fichiers sont lus et analysés
+FQN), `embedding_model`, `max_parallelism` (combien de fichiers sont lus et analysés
 à la fois : `0`, le défaut, un par processeur ; `1` l'un après l'autre ; une valeur
-négative est refusée) — exactement ce que lit la construction. Les statements sont
+négative est refusée) et `use_cache` (défaut `true` ; `false` reconstruit tout, puis
+enregistre) — exactement ce que lit la construction. Les statements sont
 toujours extraits, et un argument que la requête ne déclare pas est ignoré.
 `incremental_reindex` accepte les mêmes `root_path`, `languages` et `enrich_with_llm`.
+
+### Cache d'index
+
+`AddRaggableTree` enregistre `CachingTreeBuilder`, dont `index_codebase` se sert pour
+garder l'index entre les sessions. Chaque construction enregistre l'arbre et un manifeste
+(le SHA-256 de chaque fichier indexé et de chaque marqueur de paquet) sous
+`<root>/.orkeon/cache/raggable-tree/`, un dossier qui porte son propre `.gitignore` (`*`).
+L'appel suivant avec les mêmes options les relit et répond `cache` :
+
+| `cache` | Quand | Ce qu'il fait |
+|---|---|---|
+| `hit` | Aucun fichier n'a changé | Recharge l'arbre enregistré |
+| `refreshed` | Au plus la moitié des fichiers a changé (ajoutés, modifiés, supprimés), aucun marqueur de paquet n'a changé, pas de `root_alias` | Recharge l'arbre et réindexe les fichiers modifiés (`reindexed_file_count`), comme `incremental_reindex`, puis l'enregistre |
+| `miss` | Rien d'enregistré, une clé changée, un marqueur changé, ou plus de fichiers modifiés | Reconstruit tout, puis enregistre |
+| `bypassed` | `use_cache: false` | Reconstruit tout, puis enregistre |
+| `disabled` | L'outil a été construit sans cache (pas d'`AddRaggableTree`) | Reconstruit tout, n'enregistre rien |
+
+La clé couvre ce qui façonne l'arbre au-delà des fichiers : les options (`languages`,
+`exclude`, `respect_gitignore`, `root_alias`, `enrich_with_llm`, `embedding_model`, pas
+`max_parallelism`), la version de l'assembly Analysis, celle du sérialiseur, et les
+adaptateurs, fingerprinters, résumeur et embedder (avec sa dimension) que l'hôte câble.
+Une clé changée est un miss. Une racine que le processus ne peut pas écrire est indexée
+sans cache. Un manifeste ou un arbre qui ne se relit pas (corrompu, écriture interrompue)
+est un miss.
 
 ## Stratégies d'agents
 
@@ -499,7 +524,7 @@ Implémenter `IVectorStoreProvider` (`IndexAsync`, `SearchAsync`, `DeleteAsync`)
 - Le summarizer se configure uniquement en C# (`Summarizer.Provider` + un `ILlmProvider`) ; les embeddings OpenAI/Ollama exigent leur endpoint, alors que le défaut on-device du runner host ne demande rien. Le pipeline fonctionne sans embeddings (`codebase_search` classe alors par BM25 seul).
 - L'index est local au processus : `InMemoryRaggableStore` est reconstruit par `index_codebase` dans chaque processus, et le miroir vector store optionnel n'est jamais relu.
 - `FileSystemWatcherCodebaseWatcher` (l'implémentation d'`ICodebaseWatcher`, qu'aucun hôte livré n'enregistre) se base sur `System.IO.FileSystemWatcher` — sous Linux/WSL, les événements de rename peuvent arriver décomposés (observés comme Deleted puis Created).
-- Le cache JSON (`RaggableTreeCache`, câblé par aucun hôte livré) n'est pas versionné : une mise à jour d'adapter peut invalider les caches existants, qui sont alors reconstruits à la demande.
+- Le cache d'index ne se rafraîchit sur place que sans `root_alias` et quand au plus la moitié des fichiers a changé ; sinon il reconstruit tout. Un fichier dont le contenu n'a pas changé garde ses nœuds enregistrés même quand un fichier qu'il importe a changé : le rafraîchissement relie à nouveau les arêtes, il ne réanalyse pas le fichier.
 
 ---
 

@@ -295,6 +295,30 @@ public class RaggableTreeServiceCollectionExtensionsTests
     }
 
     [Fact]
+    public async Task AddRaggableTree_gives_index_codebase_the_index_cache()
+    {
+        var dir = await TestFixtures.WriteDirectoryAsync([("a.ts", "export const a = 1;")]);
+        try
+        {
+            var services = new ServiceCollection();
+            services.AddSingleton<IFileSystemService>(TestFixtures.CreateFs(dir));
+            services.AddRaggableTree();
+            services.AddRaggableTreeTools();
+            using var provider = services.BuildServiceProvider();
+            var request = new Abstractions.DTOs.Tools.IndexCodebaseRequest { RootPath = TestFixtures.TestVirtualRoot };
+
+            var first = await provider.GetServices<IBaseTool>().OfType<IndexCodebaseTool>().Single()
+                .ExecuteTypedForTest(request, CancellationToken.None);
+            var second = await provider.GetServices<IBaseTool>().OfType<IndexCodebaseTool>().Single()
+                .ExecuteTypedForTest(request, CancellationToken.None);
+
+            Assert.Equal("miss", first.Cache);
+            Assert.Equal("hit", second.Cache);
+        }
+        finally { Directory.Delete(dir, recursive: true); }
+    }
+
+    [Fact]
     [Trait("BR", "RT-35")]
     [Trait("BR", "RT-32")]
     [Trait("BR", "RT-42")]

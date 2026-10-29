@@ -109,7 +109,7 @@ All fields are immutable `record` types in `Orkeon.Analysis.DependencyInjection.
 3. **Dependency resolution** (`DependencyGraphBuilder` + `IReferenceResolver`) — resolution of imports, calls, inheritance, implementations into edges (`EdgeKind.Imports`, `Calls`, `Extends`, `Implements`). Unresolved FQNs become `UnresolvedRef`.
 4. **Fingerprinting** (`IFrameworkFingerprinter`) — application of per-decorator/annotation rules (NestJS, Angular, ASP.NET, Flask, FastAPI): placing tags such as `http-endpoint`, `guard`, `service` on the relevant nodes.
 5. **Enrichment** — optionally an LLM summary (`INodeSummarizer`, when the call sets `enrich_with_llm` and a summarizer is registered), composition of the `EmbeddingText` (`IEmbeddingTextComposer`), then batch embedding (`IEmbeddingProvider`, skipped when none is registered).
-6. **Persistence** — the tree lives in `InMemoryRaggableStore` (`index_codebase` replaces its content), which also answers every query. When an `IVectorStoreProvider` is registered, `IndexAsync` additionally receives a mirror of the embeddings — no shipped host registers one (`MemoryProviderVectorStoreAdapter`, `Orkeon.Analysis.Vectors`, adapts any `IMemoryProvider` for a host that wants it), and nothing reads that mirror back. The `RaggableTreeCache` JSON serializer exists but is wired by no shipped host.
+6. **Persistence** — the tree lives in `InMemoryRaggableStore` (`index_codebase` replaces its content), which also answers every query. When an `IVectorStoreProvider` is registered, `IndexAsync` additionally receives a mirror of the embeddings — no shipped host registers one (`MemoryProviderVectorStoreAdapter`, `Orkeon.Analysis.Vectors`, adapts any `IMemoryProvider` for a host that wants it), and nothing reads that mirror back. Between sessions, `index_codebase` saves the tree under `<root>/.orkeon/cache/raggable-tree/` (see [Index cache](#index-cache)).
 
 Each phase reports its progress (`IndexBuildPhase`: Discovery, Parse, Resolve, Enrich, Embed, Persist) to an optional `IProgress<IndexBuildProgress>` registered by the host (the REPL wires it to its status-line progress bar).
 
@@ -164,12 +164,36 @@ The 28 tools are registered via `AddRaggableTreeTools` (`Orkeon.Tools.Analysis.D
 `exclude` (default `node_modules`, `dist`, `.git`, `bin`, `obj`),
 `respect_gitignore` (default `true`), `enrich_with_llm` (default `false`; needs
 a registered summarizer), `root_alias` (replaces the virtual-root prefix of every
-FQN), `embedding_model` and `max_parallelism` (how many files are read and parsed
+FQN), `embedding_model`, `max_parallelism` (how many files are read and parsed
 at once: `0`, the default, one per processor; `1` one after the other; a negative
-value is refused) — exactly what the build reads. Statements are always
+value is refused) and `use_cache` (default `true`; `false` rebuilds from scratch, then
+saves) — exactly what the build reads. Statements are always
 extracted, and an argument the request does not declare is ignored.
 `incremental_reindex` accepts the same `root_path`, `languages` and
 `enrich_with_llm`.
+
+### Index cache
+
+`AddRaggableTree` registers `CachingTreeBuilder`, which `index_codebase` uses to keep the
+index between sessions. Each build saves the tree and a manifest (the SHA-256 of every
+indexed file and of every package marker) under `<root>/.orkeon/cache/raggable-tree/`, a
+folder holding its own `.gitignore` (`*`). The next call with the same options reads them
+back and answers `cache`:
+
+| `cache` | When | What it does |
+|---|---|---|
+| `hit` | No file changed | Reloads the saved tree |
+| `refreshed` | At most half of the files changed (added, modified, removed), no package marker changed, no `root_alias` | Reloads the tree and reindexes the changed files (`reindexed_file_count`), as `incremental_reindex` does, then saves it |
+| `miss` | Nothing saved, a key change, a changed marker, or more files changed | Builds from scratch, then saves |
+| `bypassed` | `use_cache: false` | Builds from scratch, then saves |
+| `disabled` | The tool was built without a cache (no `AddRaggableTree`) | Builds from scratch, saves nothing |
+
+The key covers what shapes the tree beyond the files: the options (`languages`, `exclude`,
+`respect_gitignore`, `root_alias`, `enrich_with_llm`, `embedding_model`, not
+`max_parallelism`), the Analysis assembly version, the serializer version, and the adapters,
+fingerprinters, summarizer and embedder (with its dimension) the host wires. A changed key
+is a miss. A root the process cannot write is indexed without a cache. A manifest or tree
+that does not read back (corrupt, torn write) is a miss.
 
 ## Agent strategies
 
@@ -499,7 +523,7 @@ Implement `IVectorStoreProvider` (`IndexAsync`, `SearchAsync`, `DeleteAsync`) an
 - The summarizer is C#-only (`Summarizer.Provider` + an `ILlmProvider`); OpenAI/Ollama embeddings need their endpoint, while the runner host's on-device default needs nothing. The pipeline works without embeddings (`codebase_search` then ranks by BM25 only).
 - The index is process-local: `InMemoryRaggableStore` is rebuilt by `index_codebase` in each process, and the optional vector-store mirror is never read back.
 - `FileSystemWatcherCodebaseWatcher` (the `ICodebaseWatcher` implementation, registered by no shipped host) relies on `System.IO.FileSystemWatcher` — on Linux/WSL, rename events may arrive decomposed (observed as Deleted then Created).
-- The JSON cache (`RaggableTreeCache`, wired by no shipped host) is not versioned: an adapter update may invalidate existing caches, which are then rebuilt on demand.
+- The index cache refreshes in place only when no `root_alias` is set and at most half of the files changed; otherwise it rebuilds from scratch. A file whose content is unchanged keeps its saved nodes even when a file it imports changed: the refresh relinks the edges, it does not parse the file again.
 
 ---
 

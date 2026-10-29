@@ -1,1 +1,3 @@
 #nullable enable
+*REMOVED*Orkeon.Tools.Analysis.IndexCodebaseTool.IndexCodebaseTool(Orkeon.Analysis.Core.InMemoryRaggableStore! store, System.Func<Orkeon.Analysis.Core.RaggableTreeBuilder!>! builderFactory, Microsoft.Extensions.Logging.ILogger<Orkeon.Tools.Analysis.IndexCodebaseTool!>? logger = null) -> void
+Orkeon.Tools.Analysis.IndexCodebaseTool.IndexCodebaseTool(Orkeon.Analysis.Core.InMemoryRaggableStore! store, System.Func<Orkeon.Analysis.Core.RaggableTreeBuilder!>! builderFactory, Orkeon.Analysis.Core.Cache.CachingTreeBuilder? cachingBuilder = null, Microsoft.Extensions.Logging.ILogger<Orkeon.Tools.Analysis.IndexCodebaseTool!>? logger = null) -> void

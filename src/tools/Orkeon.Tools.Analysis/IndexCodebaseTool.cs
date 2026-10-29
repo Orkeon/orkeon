@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 using Orkeon.Analysis.Abstractions;
 using Orkeon.Analysis.Abstractions.DTOs.Tools;
 using Orkeon.Analysis.Core;
+using Orkeon.Analysis.Core.Cache;
 using Orkeon.Domain.Tools;
 using Orkeon.Tools.Abstractions.Base;
 
@@ -13,18 +14,22 @@ public sealed class IndexCodebaseTool : ToolBase<IndexCodebaseRequest, IndexCode
 {
     private readonly InMemoryRaggableStore _store;
     private readonly Func<RaggableTreeBuilder> _builderFactory;
+    private readonly CachingTreeBuilder? _cachingBuilder;
 
+    /// <summary>Without <paramref name="cachingBuilder"/>, the index cache between sessions, every call builds from scratch.</summary>
     public IndexCodebaseTool(
         InMemoryRaggableStore store,
         Func<RaggableTreeBuilder> builderFactory,
+        CachingTreeBuilder? cachingBuilder = null,
         ILogger<IndexCodebaseTool>? logger = null) : base(logger)
     {
         _store = store ?? throw new ArgumentNullException(nameof(store));
         _builderFactory = builderFactory ?? throw new ArgumentNullException(nameof(builderFactory));
+        _cachingBuilder = cachingBuilder;
     }
 
     public override string Name => "index_codebase";
-    public override string Description => "Scan the codebase and build the full RaggableTree index.";
+    public override string Description => "Scan the codebase and build the full RaggableTree index, reusing the one saved by an earlier session when the host wires the cache.";
 
     /// <summary>Declared access class for permission gates.</summary>
     public override ToolAccess Access => ToolAccess.Read;
@@ -65,8 +70,26 @@ public sealed class IndexCodebaseTool : ToolBase<IndexCodebaseRequest, IndexCode
         }
 
         var stopwatch = Stopwatch.StartNew();
-        var builder = _builderFactory();
-        var buildResult = await builder.BuildAsync(request.RootPath, request, cancellationToken).ConfigureAwait(false);
+        BuildResult buildResult;
+        var cache = "disabled";
+        var reindexed = 0;
+        if (_cachingBuilder is null)
+        {
+            buildResult = await _builderFactory().BuildAsync(request.RootPath, request, cancellationToken).ConfigureAwait(false);
+        }
+        else
+        {
+            var cached = await _cachingBuilder.BuildAsync(request.RootPath, request, cancellationToken).ConfigureAwait(false);
+            buildResult = cached.Build;
+            cache = cached.Outcome switch
+            {
+                IndexCacheOutcome.Bypassed => "bypassed",
+                IndexCacheOutcome.Hit => "hit",
+                IndexCacheOutcome.Refreshed => "refreshed",
+                _ => "miss",
+            };
+            reindexed = cached.ReindexedFileCount;
+        }
 
         _store.Replace(buildResult.Tree.Nodes, buildResult.Tree.Edges);
         stopwatch.Stop();
@@ -93,6 +116,8 @@ public sealed class IndexCodebaseTool : ToolBase<IndexCodebaseRequest, IndexCode
             Elapsed = stopwatch.Elapsed,
             Errors = errors,
             EmbeddingStats = buildResult.EmbeddingStats,
+            Cache = cache,
+            ReindexedFileCount = reindexed,
             FilterStats = new IndexFilterStats
             {
                 TotalEnumerated = buildResult.FilterStats.TotalEnumerated,

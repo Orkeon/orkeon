@@ -103,65 +103,38 @@ public class EmbeddingDimensionPropagationTests
         Assert.Equal(OpenAiDimensions, provider.LastIndexedEmbeddingLength);
     }
 
-    // ----- 3. RaggableTreeCache — clean miss when embedding dimension switches -----
+    // ----- 3. Index cache - an index saved under one embedding size is never reloaded under another -----
 
     [Fact]
-    public async Task RaggableTreeCache_invalidates_cleanly_when_switching_from_1536_to_384()
+    public async Task CachingTreeBuilder_misses_cleanly_when_switching_from_1536_to_384()
     {
-        // Arrange — physical dir + VFS mount.
-        var dir = await TestFixtures.WriteDirectoryAsync(
-        [
-            ("a.ts", "export const a = 1;"),
-        ]);
+        var dir = await TestFixtures.WriteDirectoryAsync([("a.ts", "export const a = 1;")]);
         try
         {
             var fs = TestFixtures.CreateFs(dir);
+            var request = new Abstractions.DTOs.Tools.IndexCodebaseRequest { RootPath = TestFixtures.TestVirtualRoot };
 
-            var openAiProfile = new EmbeddingCacheProfile
-            {
-                Provider = "OpenAI",
-                Model = "text-embedding-3-small",
-                Dimensions = OpenAiDimensions,
-            };
-            var localProfile = new EmbeddingCacheProfile
-            {
-                Provider = "LocalSmartComponents",
-                Model = "bge-micro-v2",
-                Dimensions = LocalDimensions,
-            };
+            var saved = await Caching(fs, OpenAiDimensions).BuildAsync(TestFixtures.TestVirtualRoot, request, CancellationToken.None);
+            var same = await Caching(fs, OpenAiDimensions).BuildAsync(TestFixtures.TestVirtualRoot, request, CancellationToken.None);
+            var switched = await Caching(fs, LocalDimensions).BuildAsync(TestFixtures.TestVirtualRoot, request, CancellationToken.None);
 
-            // 1) Save with 1536-dim profile.
-            var saveCache = new RaggableTreeCache(
-                new RaggableTreeSerializer(),
-                new FileSystemDiscoverer(fs),
-                fs,
-                adapterVersions: new Dictionary<string, string> { ["typescript"] = "1.0" },
-                embeddingProfile: openAiProfile);
-
-            var tree = BuildTinyTree();
-            await saveCache.SaveAsync(tree, "idx-1", TestFixtures.TestVirtualRoot, CancellationToken.None);
-            Assert.True(
-                await saveCache.IsValidAsync(TestFixtures.TestVirtualRoot, CancellationToken.None),
-                "cache must be valid against the same profile right after save");
-
-            // 2) Reload with the 384-dim profile — must observe a clean miss without throwing.
-            var loadCache = new RaggableTreeCache(
-                new RaggableTreeSerializer(),
-                new FileSystemDiscoverer(fs),
-                fs,
-                adapterVersions: new Dictionary<string, string> { ["typescript"] = "1.0" },
-                embeddingProfile: localProfile);
-
-            // Act — the LE-10 contract: this must not throw, must report a miss.
-            var loaded = await loadCache.LoadAsync(TestFixtures.TestVirtualRoot, CancellationToken.None);
-            var valid = await loadCache.IsValidAsync(TestFixtures.TestVirtualRoot, CancellationToken.None);
-
-            // Assert
-            Assert.False(loaded.Hit, "cross-dimension cache must report a miss");
-            Assert.Null(loaded.Tree);
-            Assert.False(valid, "cross-dimension cache must be reported invalid");
+            Assert.Equal(IndexCacheOutcome.Miss, saved.Outcome);
+            Assert.Equal(IndexCacheOutcome.Hit, same.Outcome);
+            Assert.Equal(IndexCacheOutcome.Miss, switched.Outcome);
         }
         finally { Directory.Delete(dir, recursive: true); }
+    }
+
+    private static CachingTreeBuilder Caching(Orkeon.Domain.FileSystem.IFileSystemService fs, int dimensions)
+    {
+        var adapters = new Abstractions.Interfaces.ILanguageAdapter[] { new Adapters.TypeScriptAdapter() };
+        return new CachingTreeBuilder(
+            new RaggableTreeCache(new RaggableTreeSerializer(), fs),
+            new FileSystemDiscoverer(fs),
+            fs,
+            () => new RaggableTreeBuilder(adapters, fs),
+            () => new IncrementalReindexEngine(adapters, fs),
+            CachingTreeBuilder.DescribeEnvironment(adapters, [], null, new Doubles.StubEmbeddingProvider { Size = dimensions }));
     }
 
     // ----- Helpers -----
@@ -191,24 +164,6 @@ public class EmbeddingDimensionPropagationTests
             v[i] = seed + (i % 17) * 0.001f;
         }
         return v;
-    }
-
-    private static RaggableTree BuildTinyTree()
-    {
-        var node = new RaggableNode
-        {
-            Id = "sym::x",
-            Kind = UniversalNodeKind.Method,
-            Name = "x",
-            VirtualFilePath = "/tmp/x.ts",
-            Range = new NodeRange(0, 5, 1, 2, 0),
-            Level = NodeLevel.L3_Symbol,
-            Language = "typescript",
-            SourceSnippet = "fn",
-            Sha256 = "abc",
-            Fqn = "pkg::x",
-        };
-        return new RaggableTree([node], [], new Dictionary<string, RaggableNode> { [node.Fqn] = node });
     }
 
     /// <summary>
