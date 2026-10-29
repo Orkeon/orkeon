@@ -54,6 +54,12 @@ constructing `ParallelProcessStrategy` passes a `CrewStrategyDependencies`.
 | `new ParallelProcessStrategy(taskRepository, agentRepository, executionService, memoryScope, logger, hook, selector, domainEvents)` | `new ParallelProcessStrategy(new CrewStrategyDependencies(taskRepository, agentRepository, executionService, memoryScope, domainEvents), logger, hook, selector)` |
 | `string agentId = completed.AgentId;` | `string? agentId = completed.AgentId;` (`null` for a decision task) |
 
+### Fixed — the rate-limit window reads `retry-after-ms`
+
+`RateLimitResetHeaders` reads the `retry-after-ms` header (milliseconds) that OpenAI and TypeSafe send beside
+`Retry-After`, so a 429 announcing a sub-second window is waited out for that window instead of the whole second
+`Retry-After` rounds it up to; the longest header still wins, a value that is not a finite number is ignored.
+
 ### Fixed — the `orkeon-runners` image builds again
 
 `Dockerfile.runners` copied the root `Directory.Build.props` but not the root

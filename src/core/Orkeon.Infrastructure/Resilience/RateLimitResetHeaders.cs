@@ -4,7 +4,11 @@ using System.Text.RegularExpressions;
 
 namespace Orkeon.Infrastructure.Resilience;
 
-/// <summary>The rate-limit window a response announces through its reset headers.</summary>
+/// <summary>
+/// The rate-limit window a response announces through its reset headers: <c>Retry-After</c>,
+/// <c>retry-after-ms</c> (milliseconds, sent by OpenAI and TypeSafe), the Anthropic RFC 3339 resets
+/// and the OpenAI duration resets; the longest wins.
+/// </summary>
 public sealed partial class RateLimitResetHeaders
 {
     private static readonly string[] _rfc3339Headers =
@@ -12,6 +16,8 @@ public sealed partial class RateLimitResetHeaders
 
     private static readonly string[] _durationHeaders =
         ["x-ratelimit-reset-requests", "x-ratelimit-reset-tokens"];
+
+    private static readonly string[] _millisecondHeaders = ["retry-after-ms"];
 
     /// <summary>The reason reported to retry observers while a rate-limit window is waited out.</summary>
     public const string Reason = "rate-limit window";
@@ -47,6 +53,14 @@ public sealed partial class RateLimitResetHeaders
         {
             if (TryFirstValue(headers, name, out var raw))
                 Offer(ParseDuration(raw));
+        }
+
+        foreach (var name in _millisecondHeaders)
+        {
+            if (TryFirstValue(headers, name, out var raw)
+                && double.TryParse(raw, NumberStyles.Float, CultureInfo.InvariantCulture, out var milliseconds)
+                && double.IsFinite(milliseconds))
+                Offer(TimeSpan.FromMilliseconds(milliseconds));
         }
 
         return new RateLimitResetHeaders(longest);
