@@ -367,6 +367,19 @@ defineAsyncCommand({
   l'option ne change rien : le lancement prend la profondeur qu'il prendrait sans elle (un
   premier saut est de profondeur 1), et un `post` monte toujours. Toute autre valeur de
   `chain` est une erreur de script.
+- **Un crew qui ne doit pas tourner deux fois : `{ exclusive: true }`.** Un crew qui ne
+  doit pas tourner deux fois à la fois (une revue, l'écrivain d'un magasin partagé) est
+  lancé par `runCrewAsync(name, input, { exclusive: true })` : tant qu'un autre lancement
+  exclusif du même crew n'est pas terminal, l'appel lève une erreur avant tout appel LLM,
+  en nommant l'instance en cours — `crew 'code-review' already running (ticket t2)`. La
+  vérification et le lancement sont une seule étape : deux lignes tapées dans le même tick,
+  ou une chaîne de `completed`, ne peuvent pas passer toutes les deux. Le crew est libre de
+  nouveau dès que son instance se termine, échoue ou est annulée (un `completed` qui le
+  relance est admis ; une exécution annulée s'arrête à son prochain point d'annulation
+  coopératif, si bien que sa dernière étape peut chevaucher le lancement suivant). Un lancement sans l'option n'est ni refusé ni compté ; un `exclusive`
+  non booléen est une erreur de script. Contrairement à `maxConcurrent` ci-dessous, elle
+  borne le crew, pas la commande : un alias de la commande qui ne lance rien répond pendant
+  l'exécution. Les deux options se combinent (`{ chain: "continue", exclusive: true }`).
 
 ### Quota d'admission — `maxConcurrent`
 

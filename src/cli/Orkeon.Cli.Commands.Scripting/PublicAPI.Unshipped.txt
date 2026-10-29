@@ -1,1 +1,9 @@
 #nullable enable
+Orkeon.Cli.Commands.Scripting.Dispatch.ExclusiveLaunchRefusedException
+Orkeon.Cli.Commands.Scripting.Dispatch.ExclusiveLaunchRefusedException.ExclusiveLaunchRefusedException() -> void
+Orkeon.Cli.Commands.Scripting.Dispatch.ExclusiveLaunchRefusedException.ExclusiveLaunchRefusedException(string! message) -> void
+Orkeon.Cli.Commands.Scripting.Dispatch.ExclusiveLaunchRefusedException.ExclusiveLaunchRefusedException(string! message, System.Exception! innerException) -> void
+Orkeon.Cli.Commands.Scripting.Dispatch.ExclusiveLaunchRefusedException.ExclusiveLaunchRefusedException(string! target, string! ticket) -> void
+Orkeon.Cli.Commands.Scripting.Dispatch.ExclusiveLaunchRefusedException.Target.get -> string?
+Orkeon.Cli.Commands.Scripting.Dispatch.ExclusiveLaunchRefusedException.Ticket.get -> string?
+override Orkeon.Cli.Commands.Scripting.Dispatch.ExclusiveLaunchRefusedException.GetObjectData(System.Runtime.Serialization.SerializationInfo! info, System.Runtime.Serialization.StreamingContext context) -> void

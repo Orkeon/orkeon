@@ -41,6 +41,10 @@ public sealed partial class CommandDispatchService
     // post without affecting the (already-returned) REPL command's token.
     private readonly ConcurrentDictionary<string, CancellationTokenSource> _asyncCts = new(StringComparer.Ordinal);
 
+    // The instance holding each target launched exclusively (#239): the holder releases it as it turns terminal.
+    private readonly Dictionary<string, CommandInstance> _exclusive = new(StringComparer.Ordinal);
+    private readonly object _exclusiveGate = new();
+
     private static readonly AsyncLocal<CommandDispatchScope?> _ambient = new();
 
     private volatile CommandDispatchScope? _promptScope;
@@ -214,17 +218,24 @@ public sealed partial class CommandDispatchService
     /// command drains only its own completions), so the parent instance is always one of the same command. Outside a
     /// <c>completed</c> (a handler or a <c>dispatch</c>) the flag has no effect: the launch climbs as without it.
     /// </param>
+    /// <param name="exclusive">
+    /// <see langword="true"/>: refused while another exclusive launch of the same <paramref name="target"/> is not
+    /// terminal (#239). The check and the registration are one step, so two launches in the same tick cannot both
+    /// pass; the target is free again as soon as its holder completes, fails or is cancelled. A launch without the
+    /// flag is neither refused nor counted.
+    /// </param>
     /// <exception cref="ChainDepthExceededException">The depth reached <c>MaxChainDepth</c> on a launch that climbs.</exception>
+    /// <exception cref="ExclusiveLaunchRefusedException">An exclusive launch of <paramref name="target"/> still runs.</exception>
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Fire-and-forget host-work fault barrier: a background work failure is logged and recorded on the instance so it cannot crash the detached task; cancellation marks the instance cancelled.")]
-    public string postWork(string label, string target, Func<CancellationToken, Task<CommandResponse>> work, bool continueChain = false)
+    public string postWork(string label, string target, Func<CancellationToken, Task<CommandResponse>> work, bool continueChain = false, bool exclusive = false)
     {
         ArgumentNullException.ThrowIfNull(work);
         var scope = _ambient.Value;
         var command = scope?.CommandName ?? label ?? "postWork";
         var depth = ChainDepthOf(scope, command, continueChain);
-        var correlationId = Guid.NewGuid();
-        var instance = _registry.Register(
-            command, CommandInstanceKind.Async, target ?? string.Empty, label ?? string.Empty, correlationId);
+        var instance = exclusive
+            ? RegisterExclusive(command, target ?? string.Empty, label ?? string.Empty)
+            : _registry.Register(command, CommandInstanceKind.Async, target ?? string.Empty, label ?? string.Empty, Guid.NewGuid());
         instance.Depth = depth;
         scope?.Capture(instance);
 
@@ -298,6 +309,20 @@ public sealed partial class CommandDispatchService
         {
             streamed = receipt.Streamed,
         };
+    }
+
+    /// <summary>Registers an instance of <paramref name="target"/> unless a non-terminal exclusive holder has it.</summary>
+    /// <exception cref="ExclusiveLaunchRefusedException">The holder of <paramref name="target"/> is not terminal.</exception>
+    private CommandInstance RegisterExclusive(string command, string target, string label)
+    {
+        lock (_exclusiveGate)
+        {
+            if (_exclusive.TryGetValue(target, out var holder) && !holder.IsTerminal)
+                throw new ExclusiveLaunchRefusedException(target, holder.Ticket);
+            var instance = _registry.Register(command, CommandInstanceKind.Async, target, label, Guid.NewGuid());
+            _exclusive[target] = instance;
+            return instance;
+        }
     }
 
     /// <summary>
