@@ -196,7 +196,10 @@ public sealed class JsAgentBuilder
         return this;
     }
 
-    /// <summary>Turns the provider's thinking on at <c>low</c>, <c>medium</c> or <c>high</c> effort.</summary>
+    /// <summary>
+    /// Turns the provider's thinking on at <c>low</c>, <c>medium</c>, <c>high</c>, <c>xhigh</c> or <c>max</c>
+    /// effort. A provider whose field does not know the level sends the nearest it knows, and warns.
+    /// </summary>
     public JsAgentBuilder effort(string level)
     {
         EffortValue = Orkeon.Scripting.Runtime.JsLlmConfig.RequireEffort(level);

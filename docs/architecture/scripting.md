@@ -137,10 +137,12 @@ the call starts (one `ActSession` per call):
   does not hold throws `UnknownToolError` before the model is asked. A tool call the model makes to a tool
   the call does not offer is answered `ERROR: tool '<name>' is not available to this agent.` at once:
   neither the permission gate nor `onToolCall` sees it, and no approval is asked.
-- **`effort: "low" | "medium" | "high"`** sets the provider's thinking setting for the call
+- **`effort: "low" | "medium" | "high" | "xhigh" | "max"`** sets the provider's thinking setting for the call
   (`LlmConfig.Thinking`, enabled with that effort). The same `effort` is accepted by the other `ctx.llm`
   calls, by `LlmConfig.with({...})` (`llm.default_.with({ effort })`) and by `agentBuilder().effort(level)`; any other value is refused with
-  `effort must be low|medium|high`.
+  `effort must be low|medium|high|xhigh|max`. Anthropic takes the five levels; a provider whose field knows
+  fewer (its declared `EffortLevels`: three for OpenAI's `reasoning_effort` and Ollama's `think`) sends the
+  highest level it knows below the one asked, and logs a warning saying so, never a silent change.
 - **`onToolCall(call)`** runs before each tool call, after the permission gate. It returns `"allow"`;
   `"ask"` (the call goes to the approval channel as a `default`-mode edit would, and a denied answer
   is a deny); `{ deny: reason }` (the call does not run, the model reads `DENIED: <reason>`); or

@@ -313,6 +313,71 @@ public class ProviderCapabilityPayloadTests
         Assert.Equal("high", body.GetProperty("output_config").GetProperty("effort").GetString());
     }
 
+    /// <summary>
+    /// Anthropic's <c>output_config.effort</c> knows the five levels: <c>xhigh</c> and <c>max</c>
+    /// travel untouched, and nothing is reported.
+    /// </summary>
+    [Theory]
+    [InlineData("xhigh")]
+    [InlineData("max")]
+    public async Task ShouldSendTheEffortAboveHighUntouched_OnAnthropic(string effort)
+    {
+        var probe = await ProviderProbe.CapturePayloadWithLogAsync(nameof(AnthropicLlmProvider), config => config with
+        {
+            Thinking = new LlmThinkingConfig { Enabled = true, Effort = effort },
+        });
+
+        Assert.Equal(effort, probe.Body.GetProperty("output_config").GetProperty("effort").GetString());
+        Assert.DoesNotContain(probe.Warnings, w => w.Contains("Effort", StringComparison.Ordinal));
+    }
+
+    /// <summary>
+    /// The OpenAI dialect's <c>reasoning_effort</c> knows three levels: a level above <c>high</c>
+    /// is sent as <c>high</c>, and the lowering is reported (LLM-02) rather than done in silence.
+    /// </summary>
+    [Theory]
+    [InlineData(nameof(OpenAIProvider), "xhigh")]
+    [InlineData(nameof(OpenAIProvider), "max")]
+    [InlineData(nameof(GrokLlmProvider), "xhigh")]
+    public async Task ShouldLowerTheEffortToHighAndReportIt_WhereThreeLevelsAreKnown(string providerTypeName, string effort)
+    {
+        var probe = await ProviderProbe.CapturePayloadWithLogAsync(providerTypeName, config => config with
+        {
+            Thinking = new LlmThinkingConfig { Effort = effort },
+        });
+
+        Assert.Equal("high", probe.Body.GetProperty("reasoning_effort").GetString());
+        Assert.Contains(probe.Warnings, w => w.Contains($"Effort '{effort}'", StringComparison.Ordinal));
+    }
+
+    /// <summary>DeepSeek's field knows <c>max</c> but no <c>xhigh</c>: the one travels, the other is lowered to <c>high</c>.</summary>
+    [Theory]
+    [InlineData("max", "max")]
+    [InlineData("xhigh", "high")]
+    public async Task ShouldSendTheNearestKnownLevel_OnDeepSeek(string effort, string sent)
+    {
+        var probe = await ProviderProbe.CapturePayloadWithLogAsync(nameof(DeepSeekLlmProvider), config => config with
+        {
+            Thinking = new LlmThinkingConfig { Effort = effort },
+        });
+
+        Assert.Equal(sent, probe.Body.GetProperty("reasoning_effort").GetString());
+        Assert.Equal(sent != effort, probe.Warnings.Any(w => w.Contains($"Effort '{effort}'", StringComparison.Ordinal)));
+    }
+
+    /// <summary>Ollama's <c>think</c> field knows the same three levels: the same lowering, said aloud.</summary>
+    [Fact]
+    public async Task ShouldLowerTheEffortToHighAndReportIt_OnOllama()
+    {
+        var probe = await ProviderProbe.CapturePayloadWithLogAsync(nameof(OllamaLlmProvider), config => config with
+        {
+            Thinking = new LlmThinkingConfig { Effort = "max" },
+        });
+
+        Assert.Equal("high", probe.Body.GetProperty("think").GetString());
+        Assert.Contains(probe.Warnings, w => w.Contains("Effort 'max'", StringComparison.Ordinal));
+    }
+
     [Fact]
     public async Task ShouldSendThinkField_OnOllama()
     {

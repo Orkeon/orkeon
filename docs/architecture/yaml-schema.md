@@ -82,7 +82,7 @@ agents:
       topP: float         # Nucleus sampling, sent whatever its value — omitted = the profile's, else none is sent (Mistral writes 1)
       thinking:           # Reasoning control (capability-gated per provider)
         enabled: bool
-        effort: string    # "low" | "medium" | "high" | "max" (provider-dependent)
+        effort: string    # "low" | "medium" | "high" | "xhigh" | "max" (a provider sends the nearest level its field knows)
         budget_tokens: int # Honoured by Qwen only; other providers warn
       responseFormat: string # "text" (= provider default) | "json_object" | "json_schema" — any other value is forwarded as-is with a warning
       responseSchema:     # With responseFormat: json_schema (a schema alone implies json_schema)

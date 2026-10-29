@@ -171,3 +171,8 @@ static Orkeon.Domain.Task.ValueObjects.YesNoQuestionSpec.operator ==(Orkeon.Doma
 virtual Orkeon.Domain.Task.ValueObjects.DecisionQuestionSpec.EqualityContract.get -> System.Type!
 virtual Orkeon.Domain.Task.ValueObjects.DecisionQuestionSpec.Equals(Orkeon.Domain.Task.ValueObjects.DecisionQuestionSpec? other) -> bool
 virtual Orkeon.Domain.Task.ValueObjects.DecisionQuestionSpec.PrintMembers(System.Text.StringBuilder! builder) -> bool
+static readonly Orkeon.Domain.SharedKernel.ValueObjects.LlmThinkingConfig.Levels -> System.Collections.Generic.IReadOnlyList<string!>!
+static Orkeon.Domain.SharedKernel.ValueObjects.LlmThinkingConfig.EffortFor(string! asked, System.Collections.Generic.IReadOnlyList<string!>! known) -> string!
+static readonly Orkeon.Domain.SharedKernel.ValueObjects.LlmThinkingConfig.ThreeLevels -> System.Collections.Generic.IReadOnlyList<string!>!
+Orkeon.Domain.SharedKernel.ValueObjects.LlmProviderCapabilities.EffortLevels.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Orkeon.Domain.SharedKernel.ValueObjects.LlmProviderCapabilities.EffortLevels.init -> void

@@ -134,10 +134,12 @@ rendu derrière un `LlmProviderAdapter`.
 Chaque provider déclare un value object `LlmProviderCapabilities` (Domain, exposé sur
 `ILlmProvider` ; un provider surcharge `HttpLlmProviderBase.DeclaredCapabilities`, qui vaut
 `LlmProviderCapabilities.Unknown` par défaut) : `ResponseFormat`
-(`None`/`JsonObject`/`JsonSchema`), `Thinking` (`None`/`EffortOnly`/`Toggle`/`Budget`),
-`Vision`, `ExplicitPromptCaching`, `RequiresJsonKeywordInPrompt`, `ReplaysReasoningContent`,
-`RunsOwnTools` (déclarée par le seul pont Microsoft Agent Framework : c'est un agent qui exécute
-ses propres outils).
+(`None`/`JsonObject`/`JsonSchema`), `Thinking` (`None`/`EffortOnly`/`Toggle`/`Budget`), `EffortLevels`
+(les niveaux d'effort que le champ connaît, `low`, `medium`, `high` par défaut, les cinq avec `xhigh` et `max`
+pour Anthropic et OpenRouter, `max` sans `xhigh` pour DeepSeek et Z.ai : un niveau demandé qui n'est pas déclaré est
+envoyé comme le plus haut niveau déclaré en dessous, avec un avertissement dans le journal du provider), `Vision`,
+`ExplicitPromptCaching`, `RequiresJsonKeywordInPrompt`, `ReplaysReasoningContent`, `RunsOwnTools` (déclarée par le
+seul pont Microsoft Agent Framework : c'est un agent qui exécute ses propres outils).
 Une capacité n'est pas au vendeur de la déclarer : `GbnfGrammar`, qu'aucune API de vendeur ne
 documente, est allumée par la configuration avec laquelle le provider est construit
 (`Llm:Grammar`, `LlmConfig.GrammarEnabled`) pour un serveur compatible llama.cpp derrière les

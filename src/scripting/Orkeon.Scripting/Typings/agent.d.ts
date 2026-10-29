@@ -32,8 +32,12 @@ declare global {
         allowDelegation(value: boolean): this;
         /** The turns the agent may take on a task. Default 20 — YAML parity `maxIter:`. Must be 1 or more. */
         maxIterations(value: number): this;
-        /** Turns the provider's thinking on at this effort. */
-        effort(level: "low" | "medium" | "high"): this;
+        /**
+         * Turns the provider's thinking on at this effort. Anthropic takes the five levels; a provider whose field
+         * knows fewer (three for OpenAI's `reasoning_effort` and Ollama's `think`) sends the highest it knows
+         * below the one asked, and warns.
+         */
+        effort(level: "low" | "medium" | "high" | "xhigh" | "max"): this;
         /**
          * YAML parity `maxRpm:` — the model requests this agent may make per minute, each of its
          * turns on the declarative shape: the request of too many waits its turn, it never fails the

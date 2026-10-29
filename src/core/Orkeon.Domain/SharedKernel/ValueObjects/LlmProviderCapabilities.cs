@@ -81,6 +81,14 @@ public sealed record LlmProviderCapabilities
     /// <summary>How much control the API gives over the reasoning pass.</summary>
     public ThinkingSupport Thinking { get; init; }
 
+    /// <summary>
+    /// The effort levels the API's field knows, among <see cref="LlmThinkingConfig.Levels"/>. Default
+    /// <see cref="LlmThinkingConfig.ThreeLevels"/>; Anthropic knows the five. A level asked that is not here
+    /// is sent as the highest known level below it (<see cref="LlmThinkingConfig.EffortFor"/>), and the
+    /// provider says so in its log.
+    /// </summary>
+    public IReadOnlyList<string> EffortLevels { get; init; } = LlmThinkingConfig.ThreeLevels;
+
     /// <summary>Whether the API accepts image content parts alongside text.</summary>
     public bool Vision { get; init; }
 

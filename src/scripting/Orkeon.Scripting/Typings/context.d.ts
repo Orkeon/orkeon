@@ -92,7 +92,7 @@ declare global {
         /** The per-call model: the host's provider keeps its credentials and endpoint. */
         llm?: { model?: string };
         /** Turns the provider's thinking on at this effort for the call. */
-        effort?: "low" | "medium" | "high";
+        effort?: "low" | "medium" | "high" | "xhigh" | "max";
     }
 
     /**

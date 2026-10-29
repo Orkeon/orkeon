@@ -44,6 +44,7 @@ public class DeepSeekLlmProvider : OpenAICompatibleProviderBase
     {
         ResponseFormat = ResponseFormatSupport.JsonObject,
         Thinking = ThinkingSupport.Toggle,
+        EffortLevels = ["low", "medium", "high", "max"],
         Vision = true,
         RequiresJsonKeywordInPrompt = true,
         ReplaysReasoningContent = true,

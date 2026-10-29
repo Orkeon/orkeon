@@ -139,10 +139,13 @@ au début de l'appel (une `ActSession` par appel) :
   l'agent ne possède pas lève `UnknownToolError` avant que le modèle soit interrogé. Un appel que le
   modèle fait à un outil que l'appel n'offre pas reçoit aussitôt `ERROR: tool '<name>' is not available to
   this agent.` : ni la porte de permission ni `onToolCall` ne le voient, et aucune approbation n'est demandée.
-- **`effort: "low" | "medium" | "high"`** règle la réflexion du fournisseur pour l'appel
+- **`effort: "low" | "medium" | "high" | "xhigh" | "max"`** règle la réflexion du fournisseur pour l'appel
   (`LlmConfig.Thinking`, activée avec cet effort). Le même `effort` est accepté par les autres appels
   `ctx.llm`, par `LlmConfig.with({...})` (`llm.default_.with({ effort })`) et par `agentBuilder().effort(level)` ; toute autre valeur est refusée
-  avec `effort must be low|medium|high`.
+  avec `effort must be low|medium|high|xhigh|max`. Anthropic prend les cinq niveaux ; un fournisseur dont le
+  champ en connaît moins (ses `EffortLevels` déclarés : trois pour `reasoning_effort` d'OpenAI et `think`
+  d'Ollama) envoie le plus haut niveau qu'il connaît en dessous de celui demandé, et le dit dans un
+  avertissement, jamais un changement silencieux.
 - **`onToolCall(call)`** s'exécute avant chaque appel d'outil, après la porte de permission. Il renvoie
   `"allow"` ; `"ask"` (l'appel passe par le canal d'approbation comme une édition en mode `default`, et
   une réponse négative vaut refus) ; `{ deny: raison }` (l'appel ne s'exécute pas, le modèle lit
