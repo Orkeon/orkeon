@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — the rate-limit window reads `retry-after-ms`
+
+`RateLimitResetHeaders` reads the `retry-after-ms` header (milliseconds) that OpenAI and TypeSafe send beside
+`Retry-After`, so a 429 announcing a sub-second window is waited out for that window instead of the whole second
+`Retry-After` rounds it up to; the longest header still wins, a value that is not a finite number is ignored.
+
 ### Fixed — the `orkeon-runners` image builds again
 
 `Dockerfile.runners` copied the root `Directory.Build.props` but not the root
