@@ -39,4 +39,11 @@ public sealed record IndexCodebaseRequest
     /// everything the caller actually wants indexed.
     /// </summary>
     public bool RespectGitignore { get; init; } = true;
+
+    /// <summary>
+    /// How many files are read and parsed at once. <c>0</c> (default) uses one per processor, <c>1</c> parses
+    /// them one after the other; a negative value is refused. The index is the same whatever the value: files are
+    /// merged in the order they were discovered.
+    /// </summary>
+    public int MaxParallelism { get; init; }
 }

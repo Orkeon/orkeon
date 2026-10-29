@@ -50,6 +50,20 @@ public sealed class IndexCodebaseTool : ToolBase<IndexCodebaseRequest, IndexCode
             };
         }
 
+        if (request.MaxParallelism < 0)
+        {
+            return new IndexCodebaseResponse
+            {
+                IndexId = string.Empty,
+                NodeCount = 0,
+                EdgeCount = 0,
+                StatementCount = 0,
+                FileCount = 0,
+                Elapsed = TimeSpan.Zero,
+                Errors = [$"max_parallelism must be 0 (one per processor) or a positive number, not {request.MaxParallelism}."],
+            };
+        }
+
         var stopwatch = Stopwatch.StartNew();
         var builder = _builderFactory();
         var buildResult = await builder.BuildAsync(request.RootPath, request, cancellationToken).ConfigureAwait(false);

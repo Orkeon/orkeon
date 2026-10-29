@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — parallel index build (`index_codebase` `max_parallelism`)
+
+`index_codebase` reads and parses files `max_parallelism` at a time (`IndexCodebaseRequest.MaxParallelism`): `0`, the
+default, uses one per processor, `1` parses them one after the other as before, and a negative value is refused with a
+tool error (`RaggableTreeBuilder.BuildAsync` throws `ArgumentOutOfRangeException`). Each file is extracted on its own,
+then merged in discovery order, so the index is the same whatever the degree: same nodes, same edges, same order, same
+`IndexId`. `Parse` progress reports may arrive out of order. `incremental_reindex` is unchanged.
+
 ### Changed — `effort` takes `xhigh` and `max`
 
 The effort of a thinking setting (`act({ effort })`, the other `ctx.llm` calls, `LlmConfig.with({ effort })`,

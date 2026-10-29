@@ -1,5 +1,7 @@
 using Orkeon.Analysis.Abstractions.DTOs.Tools;
+using Orkeon.Analysis.Adapters;
 using Orkeon.Analysis.Core;
+using Orkeon.Tests.Shared.FileSystem;
 
 namespace Orkeon.Tools.Analysis.Tests;
 
@@ -60,5 +62,44 @@ public class IndexCodebaseToolTests
         Assert.DoesNotContain("SummarizerModel", names);
         Assert.DoesNotContain("SummarizerMaxTokens", names);
         Assert.DoesNotContain("SummarizerConcurrency", names);
+    }
+
+    [Fact]
+    public async Task Returns_validation_error_when_max_parallelism_is_negative()
+    {
+        using var tool = new IndexCodebaseTool(TestGraph.Store([], []), ThrowingFactory);
+
+        var resp = await tool.ExecuteTypedForTest(
+            new IndexCodebaseRequest { RootPath = "/src", MaxParallelism = -2 },
+            CancellationToken.None);
+
+        Assert.Equal(0, resp.NodeCount);
+        Assert.Contains(resp.Errors, e => e.Contains("max_parallelism", StringComparison.Ordinal));
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(4)]
+    public async Task Indexes_with_any_non_negative_max_parallelism(int maxParallelism)
+    {
+        var dir = Directory.CreateTempSubdirectory("index-parallel").FullName;
+        try
+        {
+            for (var i = 0; i < 6; i++)
+            {
+                await File.WriteAllTextAsync(Path.Combine(dir, $"m{i}.ts"),
+                    $"export function f{i}(): number {{ return {i}; }}\n", TestContext.Current.CancellationToken);
+            }
+            var fs = new DiskBackedFileSystemService(dir, "/src");
+            using var tool = new IndexCodebaseTool(TestGraph.Store([], []), () => new RaggableTreeBuilder(new TypeScriptAdapter(), fs));
+
+            var resp = await tool.ExecuteTypedForTest(
+                new IndexCodebaseRequest { RootPath = "/src", MaxParallelism = maxParallelism },
+                CancellationToken.None);
+
+            Assert.Empty(resp.Errors);
+            Assert.Equal(6, resp.FileCount);
+        }
+        finally { Directory.Delete(dir, recursive: true); }
     }
 }

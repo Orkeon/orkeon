@@ -1,1 +1,3 @@
 #nullable enable
+Orkeon.Analysis.Abstractions.DTOs.Tools.IndexCodebaseRequest.MaxParallelism.get -> int
+Orkeon.Analysis.Abstractions.DTOs.Tools.IndexCodebaseRequest.MaxParallelism.init -> void

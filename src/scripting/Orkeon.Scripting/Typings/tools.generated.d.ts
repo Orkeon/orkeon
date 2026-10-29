@@ -603,6 +603,7 @@ declare global {
             enrich_with_llm?: boolean;
             exclude?: readonly string[];
             languages?: readonly string[];
+            max_parallelism?: number;
             respect_gitignore?: boolean;
             root_alias?: string;
             root_path?: string;

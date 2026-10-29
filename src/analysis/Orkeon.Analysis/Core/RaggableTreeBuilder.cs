@@ -30,6 +30,9 @@ public sealed class RaggableTreeBuilder
     internal const string MarkdownLanguage = "markdown";
     internal static readonly MarkdownDocumentMapper MarkdownMapper = new();
 
+    // A Markdown mapper per extraction thread: its YAML deserializer is not documented as thread-safe.
+    private static readonly ThreadLocal<MarkdownDocumentMapper> ThreadMarkdownMappers = new(() => new MarkdownDocumentMapper());
+
     public RaggableTreeBuilder(ILanguageAdapter adapter, IFileSystemService fileSystem)
         : this(
             [adapter ?? throw new ArgumentNullException(nameof(adapter))],
@@ -86,37 +89,51 @@ public sealed class RaggableTreeBuilder
     {
         ArgumentException.ThrowIfNullOrEmpty(virtualRoot);
         ArgumentNullException.ThrowIfNull(opts);
+        ArgumentOutOfRangeException.ThrowIfNegative(opts.MaxParallelism);
         return BuildCoreAsync(virtualRoot, opts, ct);
     }
 
-    // A Markdown file is mapped on its own; a file of a supported language is mapped and registered for its graph.
-    private async Task ParseFileAsync(
-        DiscoveredFile file,
-        List<RaggableNode> allNodes,
-        List<RaggableNode> packageNodes,
-        RaggableNode monorepo,
-        Dictionary<string, DependencyGraphBuilder> graphBuildersByGroup,
-        CancellationToken ct)
+    // A Markdown file is mapped on its own; a file of a supported language is mapped and kept with its source for
+    // its graph. Touches no shared state: files are extracted in parallel, then merged in discovery order.
+    private async Task<ExtractedFile?> ExtractFileAsync(DiscoveredFile file, CancellationToken ct)
     {
         if (file.Language == MarkdownLanguage)
         {
             var markdown = await _fileSystem.TryReadAllTextAsync(file.VirtualPath, ct).ConfigureAwait(false);
-            if (markdown is not null) allNodes.AddRange(MarkdownMapper.Map(file.VirtualPath, markdown));
+            return markdown is null
+                ? null
+                : new ExtractedFile(file, ThreadMarkdownMappers.Value!.Map(file.VirtualPath, markdown), null, null);
+        }
+
+        if (!_adaptersByLanguage.TryGetValue(file.Language, out var adapter)) return null;
+
+        var source = await _fileSystem.TryReadAllTextAsync(file.VirtualPath, ct).ConfigureAwait(false);
+        if (source is null) return null;
+
+        var mapper = new UniversalSemanticMapper(adapter, _pool);
+        return new ExtractedFile(file, mapper.ExtractNodes(file.VirtualPath, source), source, adapter);
+    }
+
+    // Sequential: the node list and the graph builders keep the order of discovery, so the index does not depend
+    // on the degree of parallelism.
+    private void MergeFile(
+        ExtractedFile extracted,
+        List<RaggableNode> allNodes,
+        List<RaggableNode> packageNodes,
+        RaggableNode monorepo,
+        Dictionary<string, DependencyGraphBuilder> graphBuildersByGroup)
+    {
+        if (extracted.Adapter is null)
+        {
+            allNodes.AddRange(extracted.Nodes);
             return;
         }
 
-        if (!_adaptersByLanguage.TryGetValue(file.Language, out var adapter)) return;
+        TreeAssembly.LinkToPackage(extracted.Nodes, packageNodes, monorepo);
+        allNodes.AddRange(extracted.Nodes);
 
-        var source = await _fileSystem.TryReadAllTextAsync(file.VirtualPath, ct).ConfigureAwait(false);
-        if (source is null) return;
-
-        var mapper = new UniversalSemanticMapper(adapter, _pool);
-        var fileNodes = mapper.ExtractNodes(file.VirtualPath, source);
-        TreeAssembly.LinkToPackage(fileNodes, packageNodes, monorepo);
-        allNodes.AddRange(fileNodes);
-
-        GetOrCreateBuilder(graphBuildersByGroup, adapter)
-            .RegisterFile(file.VirtualPath, source, fileNodes, adapter);
+        GetOrCreateBuilder(graphBuildersByGroup, extracted.Adapter)
+            .RegisterFile(extracted.File.VirtualPath, extracted.Source!, extracted.Nodes, extracted.Adapter);
     }
 
     private async Task<BuildResult> BuildCoreAsync(
@@ -143,12 +160,22 @@ public sealed class RaggableTreeBuilder
 
         // Phase 2/3 — Parse + Extract per file
         var graphBuildersByGroup = new Dictionary<string, DependencyGraphBuilder>(StringComparer.OrdinalIgnoreCase);
+        var files = discovery.Files;
+        var extracted = new ExtractedFile?[files.Length];
         var fileIndex = 0;
-        foreach (var file in discovery.Files)
+        var parallelism = new ParallelOptions
         {
-            ct.ThrowIfCancellationRequested();
-            _buildProgress?.Report(new IndexBuildProgress(IndexBuildPhase.Parse, ++fileIndex, discovery.Files.Length));
-            await ParseFileAsync(file, allNodes, packageNodes, monorepo, graphBuildersByGroup, ct).ConfigureAwait(false);
+            MaxDegreeOfParallelism = opts.MaxParallelism == 0 ? Environment.ProcessorCount : opts.MaxParallelism,
+            CancellationToken = ct,
+        };
+        await Parallel.ForEachAsync(Enumerable.Range(0, files.Length), parallelism, async (i, token) =>
+        {
+            _buildProgress?.Report(new IndexBuildProgress(IndexBuildPhase.Parse, Interlocked.Increment(ref fileIndex), files.Length));
+            extracted[i] = await ExtractFileAsync(files[i], token).ConfigureAwait(false);
+        }).ConfigureAwait(false);
+        foreach (var file in extracted)
+        {
+            if (file is { } f) MergeFile(f, allNodes, packageNodes, monorepo, graphBuildersByGroup);
         }
 
         ResolveMarkdownLinks(allNodes, new MarkdownLinkIndex(allNodes));
@@ -288,3 +315,7 @@ public sealed record BuildResult(
     int FileCount,
     EmbeddingStats? EmbeddingStats,
     DiscoveryFilterStats FilterStats);
+
+// One file's extraction, merged in discovery order: Source and Adapter are null for a Markdown file.
+internal readonly record struct ExtractedFile(
+    DiscoveredFile File, IReadOnlyList<RaggableNode> Nodes, string? Source, ILanguageAdapter? Adapter);

@@ -83,7 +83,7 @@ ne lie rien. Le RaggableTree est **actif par défaut** dans les deux :
 La section porte ces deux clés et rien d'autre : le runner refuse de démarrer sur
 toute autre clé sous `RaggableTree`, en la nommant. Ce que couvre un index se règle à
 chaque appel `index_codebase` (`exclude`, `root_alias`, `enrich_with_llm`,
-`respect_gitignore`, `languages` — voir le [catalogue de tools](#catalogue-de-tools)),
+`respect_gitignore`, `languages`, `max_parallelism` — voir le [catalogue de tools](#catalogue-de-tools)),
 jamais par l'hôte. Les langages en particulier ne se configurent **jamais** : ils sont
 auto-détectés depuis la codebase et scellés par appel.
 
@@ -102,7 +102,7 @@ Tous les champs sont des `record` immuables dans `Orkeon.Analysis.DependencyInje
 ## Pipeline en six phases
 
 1. **Discovery** (`IFileSystemDiscoverer`) — parcours récursif, détection de packages via markers (`package.json`, `*.csproj`, `pyproject.toml`, `go.mod`, `Cargo.toml`, `pom.xml`, `build.gradle`, `build.gradle.kts`, `composer.json`, `Gemfile`, `CMakeLists.txt`), exclusion via patterns et `.gitignore`. Un fichier dont la politique du système de fichiers refuse la lecture (un droit de montage, une extension bloquée) est écarté et compté, jamais un échec de toute la construction : `index_codebase` le signale dans `filter_stats.excluded_by_policy` et `filter_stats.excluded_by_policy_paths`.
-2. **Parse + Extract** (`UniversalSemanticMapper` + `ILanguageAdapter`) — Tree-sitter parse → application des queries de l'adaptateur → nœuds L2 (module) et L3 (symbole) avec `Fqn`, `Signature`, `SourceSnippet`, `Sha256` ; statements L4 (`StatementExtractor`), extraits à chaque construction.
+2. **Parse + Extract** (`UniversalSemanticMapper` + `ILanguageAdapter`) — Tree-sitter parse → application des queries de l'adaptateur → nœuds L2 (module) et L3 (symbole) avec `Fqn`, `Signature`, `SourceSnippet`, `Sha256` ; statements L4 (`StatementExtractor`), extraits à chaque construction. Les fichiers sont lus et analysés `max_parallelism` à la fois, puis fusionnés un par un dans l'ordre de découverte : l'index (nœuds, arêtes, leur ordre, `IndexId`) est le même quel que soit le degré. `incremental_reindex` analyse ses fichiers modifiés l'un après l'autre.
 3. **Dependency resolution** (`DependencyGraphBuilder` + `IReferenceResolver`) — résolution des imports, appels, héritage, implémentations en arêtes (`EdgeKind.Imports`, `Calls`, `Extends`, `Implements`). Les FQN non résolus deviennent des `UnresolvedRef`.
 4. **Fingerprinting** (`IFrameworkFingerprinter`) — application des règles par décorateur/annotation (NestJS, Angular, ASP.NET, Flask, FastAPI) : pose de tags comme `http-endpoint`, `guard`, `service` sur les nœuds concernés.
 5. **Enrichissement** — optionnellement un résumé LLM (`INodeSummarizer`, quand l'appel positionne `enrich_with_llm` et qu'un summarizer est enregistré), composition du `EmbeddingText` (`IEmbeddingTextComposer`), puis embedding batch (`IEmbeddingProvider`, sauté quand aucun n'est enregistré).
@@ -161,7 +161,9 @@ Les 28 tools sont enregistrés via `AddRaggableTreeTools` (`Orkeon.Tools.Analysi
 (vide = auto-détection), `exclude` (défaut `node_modules`, `dist`, `.git`, `bin`,
 `obj`), `respect_gitignore` (défaut `true`), `enrich_with_llm` (défaut `false` ; exige
 un résumeur enregistré), `root_alias` (remplace le préfixe de racine virtuelle de chaque
-FQN) et `embedding_model` — exactement ce que lit la construction. Les statements sont
+FQN), `embedding_model` et `max_parallelism` (combien de fichiers sont lus et analysés
+à la fois : `0`, le défaut, un par processeur ; `1` l'un après l'autre ; une valeur
+négative est refusée) — exactement ce que lit la construction. Les statements sont
 toujours extraits, et un argument que la requête ne déclare pas est ignoré.
 `incremental_reindex` accepte les mêmes `root_path`, `languages` et `enrich_with_llm`.
 
