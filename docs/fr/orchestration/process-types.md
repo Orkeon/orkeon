@@ -55,7 +55,7 @@ Un `agent:` au niveau de la tâche est une décision, pas une suggestion : Seque
 | Valeur | Comportement |
 |--------|--------------|
 | `FirstFit` (défaut) | Round-robin sur les agents de la crew |
-| `Embedding` | Correspondance sémantique entre la tâche et le profil de chaque agent (exige un vrai fournisseur d'embeddings — voir les [limitations](../reference/limitations.md)) |
+| `Embedding` | Correspondance sémantique entre la tâche et le profil de chaque agent (exige un vrai fournisseur d'embeddings — voir les [limitations](../reference/limitations.md)) : le fournisseur est BGE local (`AddOrkeonLocalEmbeddings()`), sinon la configuration distante `Orkeon:Embeddings`, sinon le premier usage échoue et la tâche retombe en round-robin avec un avertissement |
 | `Skill` | Correspondance lexicale (Jaccard) sur les mots-clés rôle/objectif/backstory, sans fournisseur d'embeddings |
 
 Une sélection qui échoue, ou qui désigne un agent absent de la crew, retombe sur le round-robin avec un avertissement. Hierarchical et Autonomous laissent choisir le LLM manager (l'`agent:` d'une tâche n'y est pas consulté) ; Consensual fait exécuter chaque tâche par tous les agents.
@@ -97,6 +97,8 @@ Une sélection qui échoue, ou qui désigne un agent absent de la crew, retombe 
 | **Complexité** | ⭐ | ⭐⭐ | ⭐ | ⭐⭐⭐ | ⭐⭐ | ⭐⭐⭐⭐ |
 | **Coût LLM relatif** | Bas | Moyen | Bas | Élevé | Bas à moyen | Moyen |
 | **Cas d'usage principal** | Pipelines ETL | QA, boucles de revue | Fan-out + synthèse | Plusieurs tentatives indépendantes | Tâches instables à relancer | Exploration, R&D |
+
+Les tâches de décision et les conditions `when` sont décrites dans [Modèles de décision](../architecture/decision-models.md) et dans l'[ADR-016](../adr/ADR-016-decision-tasks-and-conditional-fan-out.md) : Sequential, Parallel et Graph les exécutent, les trois autres modes refusent au chargement une crew qui en utilise.
 
 ---
 
@@ -527,7 +529,7 @@ START ──→ execute_task ──→ route ──┬── tâches en attente 
 | `PendingTaskIds` | `Queue<TaskId>` | Tâches restant à exécuter |
 | `FailedTaskIds` | `Queue<TaskId>` | Tâches échouées que le nœud `route` remet en tête de file |
 | `RetryCounts` | `Dictionary<string, int>` | Compteur de retries par tâche |
-| `MaxRetryCycles` | `int` | Retries par tâche échouée (défaut : 2) |
+| `MaxRetryCycles` | `int` | Retries par tâche échouée (obligatoire ; rempli depuis `graphConfig.maxRetryCycles`, sinon depuis `MaxRetryCycles` de la stratégie, 2 par défaut) |
 | `ApplicationOutputs` / `DomainResults` | `IReadOnlyList<…>` | Sorties accumulées, une par tentative |
 | `TotalTokensUsed` | `int` | Tokens consommés (propagés dans les métadonnées de `CrewOutput` sous `totalTokens`) |
 | `PromptTokensUsed` / `CompletionTokensUsed` | `int` | Ventilation prompt/complétion (0 quand le fournisseur ne la rapporte pas) |
@@ -624,6 +626,8 @@ pour chaque tâche : Manager (LLM) ── assigne ──→ Agent A ── exéc
 | `MaxTokensConsumed` | 8 000 | 16 000 | 64 000 | Tokens imputés au budget (exécutions déléguées) |
 | `MaxSpawnedAgents` | 1 | 3 | 10 | Agents créés via `SpawnAgentTool` |
 | `MaxWallTime` | 2 min | 5 min | 15 min | Durée d'exécution maximale |
+
+Une sixième limite, `MaxContextTokens` (sans limite par défaut), compte les tokens en ne comptant le contexte qu'une fois, sous la dimension `Tokens` ; le `budget:` YAML de la crew n'a pas de clé pour elle et le budget `.ork.ts` d'une crew autonome refuse `contextTokens` (voir [Autonomous](autonomous.md#budget-multi-dimensionnel)).
 
 `ICrewOrchestrationService` exécute ce mode sous le budget de la crew (`budget:` en YAML) ; une crew qui n'en fixe aucun n'a ni plafond de tokens ni temps mural, et garde les limites structurelles de 50 tâches distribuées, 4 délégations et 10 spawns.
 

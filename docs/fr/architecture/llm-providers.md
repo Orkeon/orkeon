@@ -50,7 +50,8 @@ Des adaptateurs génériques (`ChatClientToLlmProviderAdapter`, `LlmProviderToCh
 - `Create(providerType, config)` prend une clé de provider explicite (`LlmProviderKeys`) :
   `openai`, `anthropic`, `ollama`, `azure-openai` / `azure`, `together` / `togetherai`,
   `qwen`, `deepseek`, `kimi` / `moonshot`, `mistral`, `huggingface` / `hf`, `gemini` /
-  `google`, `grok` / `xai`, `minimax`, `zai` / `glm` / `zhipu`, `openrouter`, `mammouth`.
+  `google`, `grok` / `xai`, `minimax`, `zai` / `glm` / `zhipu`, `openrouter`, `mammouth`, et
+  `custom` / `docker-model-runner`, qui construisent le dialecte OpenAI sur l'URL de base configurée.
   Une clé inconnue lève `NotSupportedException`. C'est le chemin de
   `orkeon llm probe --provider`.
 - `Create(config)` déduit le provider — c'est ce que fait un run, puisque la section `Llm` du
@@ -122,9 +123,10 @@ structuré décrit plus bas, jamais en silence. Une température, un `top_p` ou 
 qu'écrite, à six chiffres significatifs au plus (le `float` de `ChatOptions` n'en tient pas plus) :
 `0.7`, jamais `0.699999988079071`, sous toute culture courante.
 
-Chaque provider construit par la fabrique est enveloppé dans `MeteredLlmProvider` (voir
-[Décorateurs et enregistrement](#décorateurs-et-enregistrement)) et rendu derrière un
-`LlmProviderAdapter`.
+Chaque provider construit par la fabrique est enveloppé dans `CallModeLlmProvider`, puis dans
+`MeteredLlmProvider` / `RateLimitedLlmProvider` quand l'hôte a enregistré un `ILlmUsageSink` /
+un `ILlmRateLimiter` (voir [Décorateurs et enregistrement](#décorateurs-et-enregistrement)), et
+rendu derrière un `LlmProviderAdapter`.
 
 ## Capacités déclarées
 
@@ -132,7 +134,9 @@ Chaque provider déclare un value object `LlmProviderCapabilities` (Domain, expo
 `ILlmProvider` ; un provider surcharge `HttpLlmProviderBase.DeclaredCapabilities`, qui vaut
 `LlmProviderCapabilities.Unknown` par défaut) : `ResponseFormat`
 (`None`/`JsonObject`/`JsonSchema`), `Thinking` (`None`/`EffortOnly`/`Toggle`/`Budget`),
-`Vision`, `ExplicitPromptCaching`, `RequiresJsonKeywordInPrompt`, `ReplaysReasoningContent`.
+`Vision`, `ExplicitPromptCaching`, `RequiresJsonKeywordInPrompt`, `ReplaysReasoningContent`,
+`RunsOwnTools` (déclarée par le seul pont Microsoft Agent Framework : c'est un agent qui exécute
+ses propres outils).
 Une capacité n'est pas au vendeur de la déclarer : `GbnfGrammar`, qu'aucune API de vendeur ne
 documente, est allumée par la configuration avec laquelle le provider est construit
 (`Llm:Grammar`, `LlmConfig.GrammarEnabled`) pour un serveur compatible llama.cpp derrière les

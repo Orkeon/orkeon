@@ -110,6 +110,10 @@ IHost host = RunnerHost.Build(
         SelectedMountIds = [],            // --mount-id values, parsed: the settings entries kept when
                                           // several declare one virtual root (VFS-90)
         CrewMountReferences = [],         // the crew's mounts: block — selects and validates, never restricts
+        InputDirectories = [],            // folders a command reads as its inputs, readable without the
+                                          // external-mounts opt-in
+        WithdrawsAmbiguousRoots = false,  // true: a root the settings declare several times with nothing
+                                          // selecting one is withdrawn instead of refusing the host
         LlmLogVirtualPath = null,         // when set, a VIRTUAL directory the caller has mounted:
                                           // LLM HTTP exchanges are captured there as .jsonl
     },
@@ -188,7 +192,8 @@ The registration order is deliberate:
    section.
 4. **Strict tools** — `CrewFactoryOptions.StrictTools` defaults to `true` here (a crew referencing an
    unknown tool fails loudly with `unknown tool(s): …; available: …`); opt out with
-   `"Orkeon:CrewFactory:StrictTools": false`. (The library default stays lenient.)
+   `"Orkeon:CrewFactory:StrictTools": false`. (The library default stays lenient.) The `.ork.ts` sandbox
+   limits and the esbuild toolchain (`ScriptingLimitsOptions`, `ScriptingToolchainOptions`) are bound here too and judged at the host's start.
 5. **Permission gate** — `AddOrkeonPermissionGate(configuration)` (config opt-in
    `Orkeon:Security:PermissionGate:Enabled`; a no-op otherwise).
 6. **Core tool suites** — file system, data, web, code, abstractions, session tools; then the
@@ -196,7 +201,10 @@ The registration order is deliberate:
    permissive default so a crew without a `links:` block behaves as before); then the e-mail
    tools (`AddOrkeonEmailTools(configuration)`, inert until an account is declared) and, when an
    OAuth e-mail account is declared, their token store over the internal `/credentials` root —
-   mounted by the configuration step, reached through `PrivilegedFileSystemAccess`.
+   mounted by the configuration step, reached through `PrivilegedFileSystemAccess`; then the drive tools
+   (`AddOrkeonDriveTools(configuration)`, inert until an account is declared) and, when the internal
+   `/credentials` root is mounted, their token store in a subdirectory of their own; then the RAG
+   subsystem and its three tools (`AddOrkeonRag`, `AddOrkeonRagTools`).
 7. **VFS mounts** — `AddOrkeonFileSystem` when `Orkeon:FileSystem:Mounts` **or**
    `Orkeon:FileSystem:InternalMounts` exists **and holds at least one entry** (two empty arrays
    register nothing). Either list alone makes the VFS real: `--list-tools` has only the second.
@@ -214,9 +222,10 @@ The registration order is deliberate:
    connecting: the servers are connected by the flows below, before the crew loads
    (see [MCP](../architecture/mcp.md#activation)). A section that still carries the removed
    `MCP:EnableServer` fails the build of the host, servers declared or not (GAP-24).
-10. **Tool registry** — nothing of its own: `AddOrkeonInfrastructure()` already registered the default
+10. **Decision models** — `RegisterDecisionModels`: TypeSafe when the `Orkeon:TypeSafe` section exists or its API-key variable (`TYPESAFE_API_KEY`) is set, and the decision profiles of `Orkeon:Decision:Profiles`.
+11. **Tool registry** — nothing of its own: `AddOrkeonInfrastructure()` already registered the default
     `ToolRegistry`, which reads every `IBaseTool` the steps above registered when it is first resolved.
-11. **Runner services** — the caller's `configureServices` hook runs last.
+12. **Runner services** — the caller's `configureServices` hook runs last.
 
 `semantic_search` is not in this list: it is registered by `AddSemanticSearchTool()`, which
 `orkeon run` calls through its `configureServices` hook and `orkeon-host` does not.

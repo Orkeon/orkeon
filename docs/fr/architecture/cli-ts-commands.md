@@ -233,14 +233,14 @@ documentation ; les membres au runtime sont en PascalCase.
 ### Services
 
 ```typescript
-const fs = ctx.services.get<IFileSystemService>("fs");
-const tools = ctx.services.get<IBaseTool[]>("tools");
+const fs = ctx.services.get("fs");       // unknown : les typings ne déclarent aucun type de service
+const tools = ctx.services.get("tools");
 if (ctx.services.has("llm")) { /* … */ }
 ```
 
 La whitelist de l'hôte détermine ce qui est accessible. Clés par défaut : `fs`,
 `tools` et `runtime` (la version du runtime, plus bas), plus en option `llm`, `logger`, `commands` (la façade de dispatch — voir
-plus bas), `script-host` (lancement de crews depuis une commande — voir
+plus bas), `script-host` (lancement de crews depuis une commande, et `script-host.listCrews()`, les noms de crews découverts — voir
 [Piloter des crews depuis le REPL](./coding-agent-ts.md)) et, dans `orkeon-repl`, `permissions`
 (les règles d'appels d'outils de la session, plus bas), `approvals` (les approbations d'outils en
 attente, plus bas) et `session` (enregistrer la session conservée, en charger une autre, plus bas),

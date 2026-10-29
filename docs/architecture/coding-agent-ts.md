@@ -45,8 +45,8 @@ is in [TypeScript CLI commands](cli-ts-commands.md).
 
 | Method | Semantics |
 |---|---|
-| `runCrew(name, input?)` | Loads `<crews-dir>/<name>/crew.ork.ts`, runs it via `ScriptHost.RunFromFileAsync` (honours `.body()` + `ctx.llm`), **waits**, returns `CrewRunOutput` (`{ ok, summary?, artifacts?, error? }`). Short crews: the wait is bounded by `RunCrewTimeout` (below), past which the script receives a `TimeoutException`. |
-| `runCrewAsync(name, input?)` | Posts the run on a pool thread, returns a **ticket** immediately. Completion drains to a `defineAsyncCommand`'s `completed(result)` via the same ticket cycle as `commands.post`. Long workflows. |
+| `runCrew(name, input?)` | Loads `<crews-dir>/<name>/crew.ork.ts`, runs it via `ScriptHost.RunFromFileAsync` (honours `.body()` + `ctx.llm`), **waits**, returns `CrewRunOutput` (`{ ok, summary?, artifacts?, streamed, error? }`). Short crews: the wait is bounded by `RunCrewTimeout` (below), past which the script receives a `TimeoutException`. |
+| `runCrewAsync(name, input?, options?)` | Posts the run on a pool thread, returns a **ticket** immediately. Completion drains to a `defineAsyncCommand`'s `completed(result)` via the same ticket cycle as `commands.post`. Long workflows. `options` takes `{ chain: "continue" }` and `{ exclusive: true }` (a crew already running is refused: `crew 'x' already running (ticket tN)`), described in [CLI TypeScript commands](./cli-ts-commands.md). |
 | `listCrews()` | Discovered crew names. |
 
 An unknown crew is not an exception: `runCrew` returns `ok: false` with
@@ -98,7 +98,7 @@ tool declares `Access` `Read` **and** its name is on the explicit allow-list (`f
 `directory_read`, `directory_search`, `count_pattern`, `glob`, `grep`, `rag_search`, `codebase_*`,
 `symbol_*`, `index_status`, `node_outline`, `node_read`; the shell session is not on it) — run
 concurrently, bounded by `MaxParallelToolCalls` (default 4) of
-[`Orkeon:Tools:ResultLimits`](../reference/configuration.md#securitytoolresults). A write call, or one whose access is `Unspecified`, is a
+[`Orkeon:Tools:ResultLimits`](../reference/configuration.md#orkeontoolsresultlimits). A write call, or one whose access is `Unspecified`, is a
 barrier: a read after it waits for it and sees its effect. The results, and the tool messages sent
 back to the model, keep the call order. Hooks: for each parallel group, `onToolCall` runs for every
 read first (sequentially, in call order, on the engine thread), then the executions, then

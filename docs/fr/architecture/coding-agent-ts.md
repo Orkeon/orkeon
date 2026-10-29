@@ -46,8 +46,8 @@ elle-même. Elle *parle* à un moteur côté hôte au travers de la whitelist de
 
 | Méthode | Sémantique |
 |---|---|
-| `runCrew(name, input?)` | Charge `<crews-dir>/<nom>/crew.ork.ts`, l'exécute via `ScriptHost.RunFromFileAsync` (honore `.body()` + `ctx.llm`), **attend**, rend un `CrewRunOutput` (`{ ok, summary?, artifacts?, error? }`). Crews courtes : l'attente est bornée par `RunCrewTimeout` (ci-dessous), au-delà de quoi le script reçoit une `TimeoutException`. |
-| `runCrewAsync(name, input?)` | Poste l'exécution sur un thread du pool et rend un **ticket** immédiatement. La complétion est drainée vers le `completed(result)` d'un `defineAsyncCommand`, par le même cycle de tickets que `commands.post`. Workflows longs. |
+| `runCrew(name, input?)` | Charge `<crews-dir>/<nom>/crew.ork.ts`, l'exécute via `ScriptHost.RunFromFileAsync` (honore `.body()` + `ctx.llm`), **attend**, rend un `CrewRunOutput` (`{ ok, summary?, artifacts?, streamed, error? }`). Crews courtes : l'attente est bornée par `RunCrewTimeout` (ci-dessous), au-delà de quoi le script reçoit une `TimeoutException`. |
+| `runCrewAsync(name, input?, options?)` | Poste l'exécution sur un thread du pool et rend un **ticket** immédiatement. La complétion est drainée vers le `completed(result)` d'un `defineAsyncCommand`, par le même cycle de tickets que `commands.post`. Workflows longs. `options` accepte `{ chain: "continue" }` et `{ exclusive: true }` (une crew déjà en cours est refusée : `crew 'x' already running (ticket tN)`), décrits dans [Commandes TypeScript du CLI](./cli-ts-commands.md). |
 | `listCrews()` | Les noms de crews découverts. |
 
 Une crew inconnue n'est pas une exception : `runCrew` rend `ok: false` avec
@@ -102,7 +102,7 @@ d'autorisation explicite (`file_read`, `directory_read`, `directory_search`, `co
 `glob`, `grep`, `rag_search`, `codebase_*`, `symbol_*`, `index_status`, `node_outline`,
 `node_read` ; la session shell n'y figure pas) — s'exécutent en parallèle, dans la limite de
 `MaxParallelToolCalls` (4 par défaut) de
-[`Orkeon:Tools:ResultLimits`](../../reference/configuration.md#securitytoolresults). Un appel d'écriture, ou dont l'accès est `Unspecified`, est une
+[`Orkeon:Tools:ResultLimits`](../../reference/configuration.md#orkeontoolsresultlimits). Un appel d'écriture, ou dont l'accès est `Unspecified`, est une
 barrière : une lecture placée après lui l'attend et voit son effet. Les résultats, et les messages
 d'outil renvoyés au modèle, gardent l'ordre des appels. Hooks : pour chaque groupe parallèle,
 `onToolCall` s'exécute d'abord pour toutes les lectures (séquentiellement, dans l'ordre des

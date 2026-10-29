@@ -165,7 +165,7 @@ at load with the ordinary `unknown tool(s)` line, which lists the tools that are
 | A tool result is cut at 4000 characters; `file_read` gets 32,000. | `AgentDefaults.MaxToolResultLength`, `MaxToolResultLengthOverrides` | It writes the whole transcript to a file and returns its virtual path when the text is longer than `INLINE_LIMIT`. |
 | The handshake must answer within 30 s at startup. | the runners' MCP startup step | It loads the model on the first call. |
 | A tool name the registry already holds is refused; the earlier tool keeps it. | `McpToolProvider` | It names its tool `transcribe_audio`, no built-in name. |
-| The legacy handshake asks for `2025-11-25` and refuses a server that answers `2025-03-26`. | `McpClient.InitializeAsync` | It needs an `mcp` package recent enough to answer `2025-06-18` or later; `uv run --with mcp` takes the latest. |
+| The legacy handshake asks for `2025-11-25` and refuses a server that answers `2025-03-26`. | `McpClient.InitializeAsync` | It needs an `mcp` package that does not answer `2025-03-26` (the client accepts `2025-11-25`, `2025-06-18` and `2024-11-05`); `uv run --with mcp` takes the latest. |
 | The HTTP transport sends no `Authorization` header. | `SseMcpTransport` | It runs over stdio. |
 
 A transcript is data from outside: it crosses the result sanitizer like any tool result

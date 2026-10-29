@@ -123,3 +123,7 @@ fragment.
 is not called, one usage event under the agent; counted once over Orkeon's model; tools refused at
 build, at `AddTool` and at run), and by a third section of `examples/interop/agent-framework/`, run on
 the echo provider; the campaign on a local model is the owner's.
+
+## Amendment (2026-10-29)
+
+Decision 1 says the package depends on `Orkeon` and `Microsoft.Agents.AI.Abstractions` only. As built, `Orkeon.Interop.AgentFramework.csproj` references the Orkeon core projects `Orkeon.Domain`, `Orkeon.Application` and `Orkeon.Tools.Abstractions`, and the packages `Microsoft.Agents.AI.Abstractions`, `Microsoft.Extensions.AI.Abstractions` and `Microsoft.Extensions.DependencyInjection.Abstractions`.

@@ -319,7 +319,7 @@ and serves its tools to an MCP client, `human_input` aside — see
 
 | Suite / tool | `orkeon run` (CLI) | `orkeon-repl` (ConsoleApp) |
 |---|---|---|
-| FileSystem (6), Data (22), Web core (5), `shell_command`, `list_mounts`, session (6) | ✅ | ✅ |
+| FileSystem (8), Data (22), Web core (5), `shell_command`, `list_mounts`, session (6) | ✅ | ✅ |
 | E-mail (13) — the mailbox tools refuse every call until an account is declared under `Orkeon:Tools:Email` | ✅ (OAuth tokens under the internal `/credentials` root) | ✅ password accounts only — the REPL keeps no token store, so an OAuth account is refused |
 | Drive (11) — every tool but `drive_accounts` refuses each call until an account is declared under `Orkeon:Tools:Drive` and signed in | ✅ (OAuth tokens under the internal `/credentials` root) | registered, but every account is refused: all sign in with OAuth, and the REPL keeps no token store |
 | EventHub (7) | ✅ | ❌ |
@@ -378,7 +378,7 @@ Tools are registered in `IToolRegistry` at application startup via the DI extens
 (each table above names the one that owns its tools):
 
 ```csharp
-services.AddOrkeonFileSystemTools();   // file_read, file_write, directory_read, directory_search, count_pattern, glob, grep
+services.AddOrkeonFileSystemTools();   // file_read, file_write, edit_file, directory_read, directory_search, count_pattern, glob, grep
 services.AddOrkeonDataTools();         // the 22 data tools (relational + MongoDB + graph chained internally)
 services.AddOrkeonWebTools();          // http_api, web_scrape, scrape_element, github, image_generation
 services.AddOrkeonCodeTools();         // shell_command
@@ -388,7 +388,7 @@ services.AddOrkeonInMemoryEventHub();
 services.AddOrkeonEventHubTools();     // the 7 event-hub tools
 services.AddOrkeonEmailTools(configuration); // the 13 email_* tools; the mailbox ones need a declared account
 services.AddOrkeonDriveTools(configuration); // the 11 drive_* tools; they need a declared, signed-in account
-services.AddRaggableTreeTools();       // the 15 analysis tools
+services.AddRaggableTreeTools();       // the 28 analysis tools
 services.AddOrkeonLocalEmbeddings();   // local_embed_text
 services.AddSemanticSearchTool();      // semantic_search (the extension lives in Orkeon.Hosting)
 services.AddOrkeonWebSearchTool();     // web_search

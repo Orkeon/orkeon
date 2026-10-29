@@ -32,7 +32,7 @@ La structure YAML suit ce schéma :
 
 ```yaml
 # Schéma CrewYamlConfig — clés les plus utilisées (surface complète dans docs/architecture/yaml-schema.md :
-# llm:/rag:/links:/mounts: au niveau crew, knowledge: agent, tools:/deliverable:/llm_override: tâche, llm thinking/responseFormat/cache)
+# llm:/rag:/links:/mounts: au niveau crew, workingRoot:/knowledge: agent, decision:/when: tâche (voir docs/fr/architecture/decision-models.md), tools:/deliverable:/llm_override: tâche, llm thinking/responseFormat/cache)
 name: string              # Identifiant de la crew ; portée de sa mémoire long terme (les crews d'un même nom la partagent)
 goal: string              # Objectif (requis)
 process: string           # "sequential" | "hierarchical" | "parallel" | "consensual" | "graph" | "autonomous"
@@ -137,7 +137,7 @@ Quand `process: "graph"` est utilisé, un bloc `graphConfig` supplémentaire con
 ```yaml
 graphConfig:
   maxRetryCycles: int           # default: 2 — cycles de retry pour tâches échouées
-  circuitBreakerPreset: string  # "strict" | "permissive" | "default"
+  circuitBreakerPreset: string  # "strict" | "permissive" | "default" — défaut : strict
   maxTransitions: int           # Défaut : calculé, 2 × visites + 1
   maxStateVisits: int           # Plafond de tentatives — défaut : calculé, tâches × (1 + maxRetryCycles)
   maxTotalDurationSeconds: int  # Durée totale en secondes (surcharge le preset)

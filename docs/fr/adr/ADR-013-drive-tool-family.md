@@ -75,3 +75,8 @@ Microsoft Graph en HTTP simple — le tout interne à `Orkeon.Tools.Email`.
   copies et un montage VFS sont hors périmètre, documentés dans le guide.
 - La campagne sur de vrais comptes est celle du propriétaire (DRIVE-07) : les tests hors ligne
   scriptent les deux API, et le guide dit que la famille n'est pas encore campagnée.
+
+## Amendement (2026-10-29)
+
+- Les comptes des Conséquences (102 classes d'outils intégrées, 49 projets src et 37 projets de tests) sont ceux du jour d'écriture de l'ADR. À cette date, le dépôt compte 120 classes d'outils intégrées, 50 projets src et 38 projets de tests (`scripts/check-doc-claims.py`).
+- La dernière puce des Conséquences dit que le guide présente la famille comme pas encore campagnée. Un passage de campagne (DRIVE-07) a eu lieu le 2026-10-24 ; le guide ([Drive](../guides/drive.md)) dit ce qui est consigné, et la fiche DRIVE-07 n'est pas close.

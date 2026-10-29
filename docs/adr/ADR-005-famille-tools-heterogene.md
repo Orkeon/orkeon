@@ -60,3 +60,7 @@ Since then (2026-09-26): `Tools.Web` references the concrete `Orkeon.Rag` as wel
 `Application` the same transitive way, through `Orkeon.Rag` and its prompt-injection
 detector; `Tools.Embeddings.Local` matches the "abstractions-only" profile
 (`Domain`, `Tools.Abstractions`, `Analysis.Abstractions`).
+
+## Amendment (2026-10-29)
+
+`Tools.Drive` ([ADR-013](./ADR-013-drive-tool-family.md)) references `Domain`, `Tools.Abstractions`, `Orkeon.Constants.Configuration` and the concrete `Orkeon.Rag`, so it reaches `Application` transitively through `Orkeon.Rag`, like `Tools.Web` and `Tools.Email`.

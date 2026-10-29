@@ -130,3 +130,7 @@ n'est pas appelé, un seul événement d'usage au nom de l'agent ; compté une f
 outils refusés au build, à `AddTool` et au run), et par une troisième section de
 `examples/interop/agent-framework/`, lancée sur le fournisseur écho ; la campagne sur un modèle local
 revient au propriétaire.
+
+## Amendement (2026-10-29)
+
+La décision 1 dit que le paquet ne dépend que d'`Orkeon` et de `Microsoft.Agents.AI.Abstractions`. Tel que construit, `Orkeon.Interop.AgentFramework.csproj` référence les projets du cœur d'Orkeon `Orkeon.Domain`, `Orkeon.Application` et `Orkeon.Tools.Abstractions`, et les paquets `Microsoft.Agents.AI.Abstractions`, `Microsoft.Extensions.AI.Abstractions` et `Microsoft.Extensions.DependencyInjection.Abstractions`.

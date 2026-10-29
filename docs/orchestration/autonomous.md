@@ -121,6 +121,8 @@ The budget controls 5 independent dimensions. Each dimension has a thread-safe c
 | MaxTokensConsumed | 16,000 | 8,000 | 64,000 | Running sum of tokens (prompt + completion of every call recorded) |
 | MaxSpawnedAgents | 3 | 1 | 10 | Maximum number of spawned sub-agents |
 
+`AgentExecutionBudget` has a sixth limit, `MaxContextTokens` (default `int.MaxValue`, no limit): the tokens counted with the context counted once, reported under the `Tokens` dimension (`BudgetDimension` keeps its 5 members) and propagated to child budgets. It is set by the `contextTokens` key of the `.ork.ts` budgets of an agent run ([scripting DSL](../reference/scripting-dsl.md)); the crew `budget:` YAML has no such key, and an autonomous crew's `.ork.ts` budget refuses it.
+
 ### Presets
 
 ```csharp
@@ -162,7 +164,7 @@ var childBudget = parentBudget.CreateChildBudget();
 // MaxSpawnedAgents   = max(0, parent.Max - parent.Current)
 ```
 
-A child budget is an independent copy of the parent's **remaining** allowance, with its own counters: two children derived one after the other each receive the full remainder. The parent's cap is held where the consumption is recorded on it too — the tokens of a delegated execution, and each spawn.
+A child budget is an independent copy of the parent's **remaining** allowance, with its own counters: two children derived one after the other each receive the full remainder. The parent's cap is held where the consumption is recorded on it too — the tokens of a delegated execution, and each spawn: a child budget carries `ChargedTo`, the budget it charges, and `IsExhausted` is true when the budget itself or the one it charges is spent.
 
 ## A2A communication (IAgentChannel)
 
@@ -218,7 +220,7 @@ enforces is the one the host hands it, not the run's budget.
 }
 ```
 
-`role` and `goal` are required; `backstory` is optional. Each spawn calls `RecordSpawn()` on the budget (a spent budget refuses the call). The spawned agent is created with `MaxIterations = 5` and a child budget (passed in the spawn request metadata and in the execution context). With `wait_for_result: true` (the default) the tool executes the task and returns its output; `false` only creates the agent.
+`role`, `goal` and `task` are required; `backstory`, `allow_delegation` and `wait_for_result` are optional. Each spawn calls `RecordSpawn()` on the budget (a spent budget refuses the call). The spawned agent is created with `MaxIterations = 5` and a child budget (passed in the spawn request metadata and in the execution context). With `wait_for_result: true` (the default) the tool executes the task and returns its output; `false` only creates the agent.
 
 ## Observability
 
@@ -240,7 +242,7 @@ The `CrewOutput` in Autonomous mode includes budget metadata, next to the token 
 
 ### BudgetSnapshot
 
-`budget.ToSnapshot()` returns an immutable `BudgetSnapshot` at any time (`ToolCalls`/`MaxToolCalls`, `DelegationDepth`/`MaxDelegationDepth`, `TokensConsumed`/`MaxTokensConsumed`, `SpawnedAgents`/`MaxSpawnedAgents`, `Elapsed`/`MaxWallTime`, `IsExhausted`), loggable and serializable.
+`budget.ToSnapshot()` returns an immutable `BudgetSnapshot` at any time (`ToolCalls`/`MaxToolCalls`, `DelegationDepth`/`MaxDelegationDepth`, `TokensConsumed`/`MaxTokensConsumed`, `SpawnedAgents`/`MaxSpawnedAgents`, `Elapsed`/`MaxWallTime`, `IsExhausted`), loggable and serializable. `Charged` holds the snapshot of the budget this one charges (`ChargedTo`), and `IsExhausted` is also true when that one is spent, even if every dimension of this snapshot is under its limit.
 
 ### Structured logging
 

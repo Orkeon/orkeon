@@ -79,7 +79,7 @@ graph TB
 
 An Agent is the intelligent unit of work of the framework. It is a DDD *Aggregate Root* identified by an `AgentId`. An agent is defined by two mandatory elements, a **role** (`AgentRole`) and a **goal** (`AgentGoal`), plus an optional **backstory** (`AgentBackstory`) which contextualizes its personality for the LLM.
 
-Each agent has a list of tools (`IReadOnlyList<IBaseTool> Tools`), a status (`AgentStatus`: Created, Idle, Busy, Unavailable, Deactivated or Error), execution constraints (`MaxIterations`, `MaxRpm`, `MaxExecutionTime`), and can be configured to delegate tasks (`AllowDelegation`).
+Each agent has a list of tools (`IReadOnlyList<IBaseTool> Tools`), a status (the `AgentStatus` value object: Created, Idle, Busy, Unavailable, Deactivated or Error), execution constraints (`MaxIterations`, `MaxRpm`, `MaxExecutionTime`), and can be configured to delegate tasks (`AllowDelegation`).
 
 There is only one `Agent` class — the manager behavior in hierarchical mode is handled by the `IManagerAgent` interface and its `LlmBasedManager` implementation.
 
@@ -112,7 +112,7 @@ var task = new CrewTaskBuilder()
 
 A Tool is a concrete capability made available to an agent. The `IBaseTool` interface exposes a `Name`, a `Description`, a `Schema` (JSON schema of the parameters), and two execution methods: `CallAsync` (structured protocol via `ToolCallRequest`/`ToolCallResponse`) and `ExecuteAsync` (legacy string mode).
 
-Tools are organized into families — `Orkeon.Tools.FileSystem`, `.Data`, `.Web`, `.Code`, `.Email`, `.EventHub`, `.Rag`, `.Analysis` — shipped together in the `Orkeon.Tools` NuGet package; each family has its own registration extension — `AddOrkeonFileSystemTools()`, …, `AddRaggableTreeTools()` (see [Bootstrap](./bootstrap.md)) and the full list is the [tool inventory](../tools/inventory.md). To give agents a mailbox (the `.Email` family: Gmail, Outlook.com, your own IMAP/POP3/SMTP server), start with [Give your agents a mailbox](./give-your-agents-a-mailbox.md).
+Tools are organized into families — `Orkeon.Tools.FileSystem`, `.Data`, `.Web`, `.Code`, `.Email`, `.Drive`, `.EventHub`, `.Rag`, `.Analysis` — shipped together in the `Orkeon.Tools` NuGet package; each family has its own registration extension — `AddOrkeonFileSystemTools()`, …, `AddOrkeonDriveTools(configuration)`, …, `AddRaggableTreeTools()` (see [Bootstrap](./bootstrap.md)) and the full list is the [tool inventory](../tools/inventory.md). To give agents a mailbox (the `.Email` family: Gmail, Outlook.com, your own IMAP/POP3/SMTP server), start with [Give your agents a mailbox](./give-your-agents-a-mailbox.md).
 
 ### Crew (`Orkeon.Domain.Crew.Crew`)
 
@@ -267,16 +267,17 @@ Agents collaborate through delegation: the `AskQuestionTool` and `DelegateWorkTo
 
 ```
 Orkeon.sln
-├── src/                            # 48 projects, 14 zones
+├── src/                            # 50 projects, 14 zones
 │   ├── core/
 │   │   ├── Orkeon.Domain/          # Entities, value objects, interfaces, events
 │   │   ├── Orkeon.Application/     # CQRS, services, orchestration, ports
 │   │   └── Orkeon.Infrastructure/  # Implementations, LLM providers, memory, DI
-│   ├── tools/                      # 10 tool packs
+│   ├── tools/                      # 11 tool packs
 │   │   ├── Orkeon.Tools.Abstractions/     # Tool base classes
 │   │   ├── Orkeon.Tools.Analysis/         # RaggableTree agent tools (15)
 │   │   ├── Orkeon.Tools.Code/             # Code tools (ShellCommand)
 │   │   ├── Orkeon.Tools.Data/             # Data tools (CSV, PDF, JSON, SQL, MongoDB…)
+│   │   ├── Orkeon.Tools.Drive/            # Google Drive and OneDrive tools
 │   │   ├── Orkeon.Tools.Email/            # E-mail tools (IMAP, POP3, SMTP, Microsoft Graph)
 │   │   ├── Orkeon.Tools.Embeddings.Local/ # On-device embeddings (BGE-micro ONNX)
 │   │   ├── Orkeon.Tools.EventHub/         # EventHub messaging tools
@@ -286,7 +287,7 @@ Orkeon.sln
 │   ├── rag/                        # RAG subsystem (Abstractions, Rag, Onnx, Onnx.Model)
 │   ├── analysis/                   # RaggableTree engine (Abstractions, Analysis)
 │   ├── scripting/                  # .ork.ts DSL (Orkeon.Scripting) + the `orkeon` CLI (Orkeon.Scripting.Cli)
-│   ├── cli/                        # CLI building blocks (Abstractions, Cli, Commands.Scripting, TerminalGui)
+│   ├── cli/                        # CLI building blocks (Abstractions, Cli, Cli.Scripting, Commands.Scripting, TerminalGui)
 │   ├── hosting/                    # Orkeon.Hosting (RunnerHost), Orkeon.Host (`orkeon-host` daemon), Orkeon.Hosting.Aspire
 │   ├── plugins/                    # Orkeon.Plugins (runtime plugin loading)
 │   ├── interop/                    # Orkeon.Interop.AgentFramework (Microsoft Agent Framework bridge)
@@ -297,7 +298,7 @@ Orkeon.sln
 │   └── apps/
 │       ├── Orkeon.ConsoleApp/      # Interactive REPL (`orkeon-repl`)
 │       └── Orkeon.Studio.*/        # Orkeon Studio (Config, Core, Run, Wpf)
-├── tests/                          # 36 projects (src mirrors + e2e, shared)
+├── tests/                          # 38 projects (src mirrors + e2e, shared)
 ├── examples/                       # 104 bundled examples (9 categories + showcases)
 └── docs/                           # Documentation (EN + docs/fr mirror)
 ```

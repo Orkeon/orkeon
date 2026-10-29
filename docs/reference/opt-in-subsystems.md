@@ -72,12 +72,13 @@ services.AddOrkeonA2A(options => options.EnableServer = true);
 | Local on-device embeddings | `AddOrkeonLocalEmbeddings()` | Tools.Embeddings.Local | `IEmbeddingProvider` (BGE-micro-v2 ONNX, 384 dims, CPU, no API key) — first link of the embedding resolution chain | Beta |
 | External memory providers (Redis, SQLite, ChromaDB, Pinecone, LanceDB) + migration | A type — `Memory:Provider`, a crew's `memoryProvider:`, `Orkeon:Rag:Provider` — plus that provider's host section (`Orkeon:Redis`, `Orkeon:Sqlite`, `Orkeon:ChromaDb`, `Orkeon:Pinecone`, `Orkeon:LanceDb`), all bound by `AddOrkeonInfrastructure()`; `MemoryProviderFactory` hands out one shared instance per type, which connects on first use. `AddOrkeonRedisMemory(configuration)` makes Redis the application-wide `IMemoryProvider`; `AddOrkeonLanceDb`/`AddOrkeonChromaDb`/`AddOrkeonPinecone(configuration)` expose the shared provider by its class (the last two are called by `AddOrkeonInfrastructure(configuration)` when their section exists) · `AddOrkeonMemoryMigration()` | Infrastructure | `RedisMemoryProvider`, `LanceDbMemoryProvider` (+ `LanceDbMigrationService`), `MemoryMigrationService` — see [Memory system](../architecture/memory-system.md#selection-by-configuration) | Beta |
 | Cognitive memory | `AddOrkeonCognitiveMemory(configuration)` (`Orkeon:CognitiveMemory`; no shipped binary calls it) | Infrastructure | `ICognitiveMemoryService` — LLM analysis, contradiction detection, consolidation, composite recall scoring; needs an `ILlmProvider` and an `IEmbeddingProvider` — see [Memory system](../architecture/memory-system.md#cognitive-memory) | Experimental |
-| LLM exchange logging | `AddLlmExchangeLogging(logDirectory, options?)` (full JSONL capture + structured summary, handler injected into every `IHttpClientFactory` client but those a tool family excludes with `LlmExchangeLogExclusion` — the drive and e-mail clients) — wired by `RunnerHost` only when a run passes `--llm-log` (`LlmLogging` section) | Infrastructure | `ILlmExchangeLogger`, `LlmLoggingDelegatingHandler` — see [LLM providers](../architecture/llm-providers.md) | Beta |
+| LLM exchange logging | `AddLlmExchangeLogging(logDirectory, options?)` (full JSONL capture + structured summary, handler injected into every `IHttpClientFactory` client but those a tool family excludes with `LlmExchangeLogExclusion` — the drive and e-mail clients; the clients of the web tools and of the RAG web fallback are still captured, so with `--llm-log` the pages they fetch land in the JSONL as LLM exchanges) — wired by `RunnerHost` only when a run passes `--llm-log` (`LlmLogging` section) | Infrastructure | `ILlmExchangeLogger`, `LlmLoggingDelegatingHandler` — see [LLM providers](../architecture/llm-providers.md) | Beta |
 | Human input tool | `AddOrkeonHumanInput()` (auto-approve fallback provider) / `AddOrkeonHumanInput<TProvider>()` — wired by the runner execution path | Infrastructure | `human_input` (`IBaseTool`), `IHumanInputProvider` | Beta |
 | Session tools | `AddOrkeonSessionTools(configuration?)` (`Llm:AvailableModels`) — wired by `RunnerHost` and the REPL | Infrastructure | `session_store`, `session_snip`, `token_budget`, `memory_store`, `session_cost`, `session_stats`; `ISessionBufferService`, `ICategoryMemoryStore` — see [Coding agent (TS)](../architecture/coding-agent-ts.md) | Beta |
 | Semantic search tool | `AddSemanticSearchTool()` (`Orkeon.Hosting`) — wired by `orkeon run` | Hosting | `semantic_search` (`SearchTool`) + `IEmbeddingService` adapter over `IEmbeddingProvider` + in-memory `IVectorMemoryStore` | Beta |
 | EventHub core + agent tools | `AddOrkeonInMemoryEventHub()` · `AddOrkeonEventHubTools()` — both wired by `RunnerHost` (hence `orkeon run` and `orkeon-host`) | Infrastructure / Tools.EventHub | `IEventHub` (in-process), the seven EventHub tools — see [EventHub](../architecture/event-hub-and-crew-lifecycle.md) | Beta |
 | E-mail tools | `AddOrkeonEmailTools(configuration)` (`Orkeon:Tools:Email`, inert until an account is declared) · `AddOrkeonEmailTokenStore(fileSystem, virtualDirectory)` (OAuth token store) — both wired by `RunnerHost`; the REPL wires the tools only | Tools.Email | the 13 `email_*` tools — see [E-mail tools](../guides/email.md) | Beta |
+| Drive tools | `AddOrkeonDriveTools(configuration)` (`Orkeon:Tools:Drive`, inert until an account is declared) · `AddOrkeonDriveTokenStore(fileSystem, virtualDirectory)` (OAuth token store) — both wired by `RunnerHost`; the REPL wires the tools only | Tools.Drive | the 11 `drive_*` tools — see [Drive tools](../guides/drive.md) | Beta |
 | Microsoft Agent Framework bridge | `AddOrkeonAgentFramework()` | Interop.AgentFramework | `ICrewAgentFactory` (a crew as an `AIAgent`, loaded and run in a scope of its own every turn) — see [ADR-010](../adr/ADR-010-agent-framework-interop.md) | Beta |
 
 > **Not in this catalog — registered by `AddOrkeonInfrastructure()` and gated by
@@ -95,7 +96,7 @@ services.AddOrkeonA2A(options => options.EnableServer = true);
 > `AddOrkeonWebSearchTool`, `AddOrkeonBraveSearchTool`, `AddOrkeonCacheSearchTool`,
 > `AddOrkeonSlackTool`, `AddOrkeonSlackReadTool`), `AddOrkeonDataTools` (plus
 > `AddRelationalDatabaseTools`, `AddMongoDbTools`, `AddGraphDatabaseTools`),
-> `AddOrkeonCodeTools`, `AddOrkeonAbstractionTools`, `AddRaggableTreeTools` — see the
+> `AddOrkeonCodeTools`, `AddOrkeonDriveTools`, `AddOrkeonAbstractionTools`, `AddRaggableTreeTools` — see the
 > [tool inventory](../tools/inventory.md).
 
 ## Building blocks registered by `AddOrkeonInfrastructure()`
@@ -531,7 +532,7 @@ No attribute carries an id of a crew, task or agent.
   (`.budget({ wallTime })`) stop meanwhile; a refusal reads
   `DENIED: … The operator denied the call.` Headless, every ask degrades to a motivated
   `DENIED:` fed back to the model as the tool result (no exception). Unknown tools
-  are classified as writes (fail-closed).
+  are classified as writes (fail-closed). The session's permission rules (set from a script with `ctx.services.get("permissions")`, see the [CLI reference](./cli.md)) are checked before the mode: a deny rule refuses in every mode, an allow rule admits the call in every mode but `plan`.
 - **Declarative classification**: tools can self-declare their class via
   `IBaseTool.Access` (`ToolAccess.Read` / `Edit` / `Execute`) — a declaration wins
   over the gate's name tables; `Unspecified` (the default) falls back to the tables.

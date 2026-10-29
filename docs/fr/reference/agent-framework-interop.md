@@ -176,7 +176,7 @@ outils de l'agent — le miroir de l'`AsAIFunction()` de MAF :
 
 | | |
 |---|---|
-| Nom | `toolName`, ou `agent_<slug>` du nom de l'agent MAF (en minuscules, tout autre caractère devient `_`) |
+| Nom | `toolName`, ou `agent_<slug>` du nom de l'agent MAF (en minuscules, tout autre caractère devient `_`, les `_` de tête et de fin sont retirés ; l'id de l'agent sert de repli s'il n'a pas de nom) |
 | Description | `description`, ou celle de l'agent MAF, ou une phrase générée |
 | Catégorie | `Delegation` |
 | Entrée | `request` (requis, refusé s'il est vide) — envoyé comme un message utilisateur |

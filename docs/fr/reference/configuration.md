@@ -175,7 +175,7 @@ WARNING: ToolRateLimiting is read by no component of this host: a C# host reads 
 `orkeon doctor` rapporte la même phrase en ligne `warn` de `runner-settings`, une par section, et
 sort toujours en `0`. Les sections sont celles que le catalogue des réglages marque comme lues par
 aucun binaire livré : `ToolRateLimiting`, `TokenBudget`, `Orkeon:Dlp`, `Orkeon:Monitoring`,
-`Orkeon:CognitiveMemory`, `Orkeon:MultiModal`, `Plugins`, `Evaluation`, `Orkeon:VectorSearch`,
+`Orkeon:CognitiveMemory`, `Orkeon:MultiModal`, `Evaluation`, `Orkeon:VectorSearch`,
 `Orkeon:Checkpointing` et `Orkeon:ExecutionState:Persistence`
 ([sous-systèmes opt-in](./opt-in-subsystems.md)). La liste est calculée, pas écrite : une section
 qu'un binaire livré se met à lire en sort. Ne sont pas signalées : une section qu'un autre binaire
@@ -434,8 +434,8 @@ n'est pas celle qui est lue : elle n'est pas jugée. Les réglages jugés, tiré
 | Réglages | Correction énoncée |
 |---|---|
 | `Llm:ApiKey`, `Llm:Profiles:<nom>:ApiKey` | écrire `"ApiKeyEnvVar": "<NOM>"` à la place |
-| `Llm:ApiKeyEnvVar`, `Llm:Profiles:<nom>:ApiKeyEnvVar`, `Orkeon:Rag:WebFallback:ApiKeyEnvVar`, `Orkeon:TypeSafe:ApiKeyEnvVar`, `Orkeon:Host:Discord:TokenEnvironmentVariable`, `A2A:Security:ApiKeySecretNames:<i>`, `Orkeon:Encryption:SecretName` | écrire le nom seul, sans `${` ni `}` |
-| `MCP:Servers:<id>:Command`, `:Args:<i>`, `:Url` ; `Orkeon:Redis:ConnectionString`, `Orkeon:Sqlite:ConnectionString` ; `RaggableTree:Embedding:ApiKey`, `Orkeon:Pinecone:ApiKey`, `Orkeon:LanceDb:ApiKey` ; `Llm:BaseUrl`, `Llm:Profiles:<nom>:BaseUrl`, `RaggableTree:Embedding:BaseUrl`, `Orkeon:ChromaDb:BaseUrl`, `Orkeon:Pinecone:Host`, `Orkeon:LanceDb:Endpoint`, `Orkeon:Rag:WebFallback:Endpoint`, `Telemetry:OtlpEndpoint` ; `Security:Vault:AzureKeyVaultUri`, `A2A:Security:AzureAD:Authority`, `A2A:Security:Oidc:Authority` | écrire la valeur, ou la garder hors du fichier par la couche d'environnement `ORKEON_<chemin avec __>` |
+| `Llm:ApiKeyEnvVar`, `Llm:Profiles:<nom>:ApiKeyEnvVar`, `Orkeon:Rag:WebFallback:ApiKeyEnvVar`, `Orkeon:Host:Discord:TokenEnvironmentVariable`, `A2A:Security:ApiKeySecretNames:<i>`, `Orkeon:Encryption:SecretName`, `Orkeon:Tools:GitHub:TokenVariable` | écrire le nom seul, sans `${` ni `}` |
+| `MCP:Servers:<id>:Command`, `:Args:<i>`, `:Url` ; `Orkeon:Redis:ConnectionString`, `Orkeon:Sqlite:ConnectionString` ; `RaggableTree:Embedding:ApiKey`, `Orkeon:Pinecone:ApiKey`, `Orkeon:LanceDb:ApiKey` ; `Llm:BaseUrl`, `Llm:Profiles:<nom>:BaseUrl`, `RaggableTree:Embedding:BaseUrl`, `Orkeon:ChromaDb:BaseUrl`, `Orkeon:Pinecone:Host`, `Orkeon:LanceDb:Endpoint`, `Orkeon:Rag:WebFallback:Endpoint`, `Telemetry:OtlpEndpoint` ; `Security:Vault:AzureKeyVaultUri`, `A2A:Security:AzureAD:Authority`, `A2A:Security:Oidc:Authority` ; `Orkeon:Tools:GitHub:Token` | écrire la valeur, ou la garder hors du fichier par la couche d'environnement `ORKEON_<chemin avec __>` |
 | `MCP:Servers:<id>:Env:<nom>` | retirer l'entrée : le serveur hérite de l'environnement où tourne Orkeon, y poser la variable |
 | `Secrets:<nom>` | retirer l'entrée et poser `ORKEON_<nom>`, que la chaîne des secrets lit en premier |
 | `BRAVE_API_KEY` | retirer l'entrée, Orkeon lit la variable |
@@ -450,7 +450,7 @@ en contient une, ne refuse pas le démarrage : le compte est mis de côté, avec
 Un hôte peut offrir plusieurs fournisseurs. Chaque enfant de `Llm:Profiles` est un **profil** :
 un nom, et un fournisseur décrit avec exactement les clés de la section `Llm` (`BaseUrl`,
 `ApiKeyEnvVar`, `ApiKey`, `Model`, `Temperature`, `MaxTokens`, `TimeoutSeconds`, `MaxRetries`,
-`Thinking`, `Grammar`). La section `Llm` elle-même reste le profil **par défaut** — celui de tout agent qui
+`Thinking`, `Grammar`, `CallMode`, `MaxRateLimitWait`, `StreamIdleSeconds`). La section `Llm` elle-même reste le profil **par défaut** — celui de tout agent qui
 n'en nomme pas d'autre. Une crew choisit un profil **par son nom**, jamais par une clé ou une URL :
 `llm: { profile: claude }` sur la crew, un agent ou le `llm_override` d'une tâche en YAML,
 `llm.profile("claude")` sur un agent et `taskBuilder().withProfile("claude")` sur une tâche en `.ork.ts` ([YAML et builders](../getting-started/yaml-and-builders.md#un-fournisseur-par-agent-profils)).
@@ -1162,7 +1162,8 @@ Studio en écrit un à chaque enregistrement. Un `--mount` CLI sur la même raci
 ses entrées porte un identifiant — `--mount-id`, ou le `mounts:` de la crew, en sélectionne alors
 une et les autres sont retirées pour le run ; si rien n'en sélectionne une, le run est refusé
 avant tout host (`'/output' is declared twice in <settings> (<idA>: <dossierA>, <idB>: <dossierB>) and nothing selects one. Pass --mount-id <id>, list '<id>|/output' under mounts: in the crew, or pass --mount <folder>:/output:rw to replace them all.`),
-de même qu'une racine déclarée deux fois avec une entrée sans identifiant
+sauf pour `orkeon forge` et une commande qui n'offre aucun moyen de sélectionner une entrée (`orkeon mcp serve`),
+qui retirent toutes les entrées de cette racine avec un avertissement et poursuivent ; de même qu'une racine déclarée deux fois avec une entrée sans identifiant
 (`… and '<entrée>' has no id. Give every entry an id …`) ou un identifiant porté par deux entrées.
 Le chemin de base de chaque entrée déclarée est **mis en liste blanche pour `PathValidator`** sans
 `--allow-external-mounts` — un dossier déclaré est l'intention du propriétaire de la machine, il
@@ -1863,7 +1864,7 @@ Lue par `EsbuildTranspiler.Create` — `orkeon run`, le runner partagé, `orkeon
 
 | Clé | Type | Défaut | Sens |
 |---|---|---|---|
-| `EsbuildPath` | chaîne | — | Chemin absolu du binaire esbuild. À null, le transpileur se rabat sur la variable d'environnement `ORKEON_ESBUILD_PATH`, puis sur un binaire livré à côté de l'application (`esbuild-bin/esbuild`), puis sur une recherche dans le PATH. |
+| `EsbuildPath` | chaîne | — | Chemin absolu du binaire esbuild. À null, le transpileur se rabat sur la variable d'environnement `ORKEON_ESBUILD_PATH`, puis sur un binaire livré à côté de l'application (`esbuild-bin/esbuild`), puis sur la copie versionnée dans le dépôt (`tools/scripting-esbuild/node_modules/`), puis sur une recherche dans le PATH. |
 | `EsbuildTimeout` | durée | `"00:00:30"` | Temps maximal dont dispose esbuild pour transpiler une source. Défaut : 30 s. |
 <!-- /settings -->
 

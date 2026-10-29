@@ -13,8 +13,9 @@ reconnaît les clés en camelCase (la forme canonique, celle qu'écrit `YamlCrew
 chargement : une clé qu'aucun modèle ne porte (ou une clé retirée) fait échouer le chargement avec
 son fichier, sa ligne et son chemin, et la clé la plus proche (`Did you mean 'expectedOutput'?`) ;
 `CrewYamlKeyCheck` s'exécute avant la désérialisation. Seuls les noms que vous choisissez restent libres :
-les identifiants sous `agents:` et `tasks:`, les noms d'outils sous `toolRules:`, et les clés et
-valeurs de `context:`.
+les identifiants sous `agents:` et `tasks:`, les noms d'outils sous `toolRules:`, les noms de collections sous `rag.collections:`, les clés et
+valeurs de `context:`, les noms de questions sous `decision.questions:` et `decision.fallback:`, les noms d'options sous le
+`choice:` d'une question, et les clés de `when:`.
 Une clé de fusion (`<<:`) est refusée, de même qu'une ancre sur une clé inconnue : partagez le texte
 sous `anchors:`. Les mêmes modèles servent le format mono-fichier
 et les formats multi-fichiers (`crew.yaml` + `agents.yaml` + `tasks.yaml`, ou `config.yaml` +
@@ -29,7 +30,7 @@ goal: string              # Objectif (requis)
 process: string           # "sequential" (défaut) | "hierarchical" | "parallel" | "consensual" | "graph" | "autonomous" — insensible à la casse ; une valeur inconnue fait échouer le chargement
 verbose: bool             # default: false — chaque agent du run journalise ses tours (appels d'outils, résultats, réponses du modèle) en Information, catégorie Orkeon.Verbose
 memory: bool              # default: false. true : la crew range le résultat de chaque tâche et rappelle les plus proches avant chaque tâche (embedder requis au kickoff) ; false : rien n'est rangé ni rappelé
-memoryProvider: string    # Exige memory: true (refusé sinon). "InMemory" | "Redis" | "Sqlite" | "ChromaDb" | "Pinecone" | "LanceDb" — insensible à la casse (alias "in-memory", "chroma", "lance") ; inconnu → in-memory avec un warning. Le TYPE seul : la connexion vient de la section hôte (Orkeon:Redis, Orkeon:Sqlite, …). Absent : le magasin par défaut de l'hôte (Memory:Provider)
+memoryProvider: string    # Exige memory: true (refusé sinon). "InMemory" | "Redis" | "Sqlite" | "ChromaDb" | "Pinecone" | "LanceDb" — insensible à la casse (alias "in-memory", "chroma", "lance") ; un type inconnu fait échouer le chargement, en listant les types connus. Le TYPE seul : la connexion vient de la section hôte (Orkeon:Redis, Orkeon:Sqlite, …). Absent : le magasin par défaut de l'hôte (Memory:Provider)
 planning: bool            # default: false. true : avant la première tâche, un planificateur (le profil par défaut de l'hôte) écrit un plan pas à pas par tâche, que la tâche lit dans son prompt, dans chaque mode ; il ne change ni l'ordre ni les agents
 maxRpm: int               # default: aucun — au plus N requêtes au modèle par minute pour toute la crew, tous ses agents et son manager confondus (vagues parallèles comprises) ; une de plus attend son tour. Le max_rpm de CrewAI (max_rpm: est accepté). 0 ou moins fait échouer le chargement
 budget: {tokens, wallTimeSeconds, toolCalls, delegationDepth, spawnedAgents}  # process: autonomous seulement — voir Budget autonome plus bas ; default: aucun plafond de tokens ni de durée, 50 / 4 / 10
@@ -52,7 +53,7 @@ mounts:                   # Les racines virtuelles que la crew utilise (optionne
   - 01J9Z3K4M5N6P7Q8R9S0T1V2W3|/data   # une racine épinglée à UNE entrée des settings par son identifiant, quand plusieurs la déclarent
 
 rag:                      # Configuration RAG au niveau crew (optionnel)
-  provider: string        # Supprimée : le chargement avertit et l'ignore — le magasin est celui de l'hôte, Orkeon:Rag:Provider
+  provider: string        # Supprimée : le chargement la refuse et renvoie à Orkeon:Rag:Provider — le magasin est celui de l'hôte
   collections:
     <nom_collection>:
       sources: [string]   # Fichiers, globs, répertoires ou URL — relatifs au dossier de la crew sauf s'ils sont absolus — ingérés à la création de la crew
@@ -429,6 +430,12 @@ erreurs d'outil identiques consécutives, et les reprises de validation de sorti
 run de graphe, c'est `graphConfig` (ci-dessus). Le moteur générique de machine d'états et
 `CircuitBreakerPolicy` restent — le mode Graph, `orkeon forge` et le graphe RAG correctif s'en
 servent (voir [FSM](../orchestration/fsm.md)).
+
+## Supprimé : `outputFile`
+
+La clé `outputFile:` d'une tâche n'existe plus, et une crew qui en écrit encore une est **refusée au
+chargement** par un message qui indique le remplacement : le framework écrit le fichier d'une tâche à
+partir de son bloc `deliverable:`, donc écrivez `deliverable: { path: /output/report.md }`.
 
 ## Budget autonome
 

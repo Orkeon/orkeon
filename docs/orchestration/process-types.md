@@ -55,7 +55,7 @@ A task-level `agent:` is a decision, not a hint: Sequential, Parallel and Graph 
 | Value | Behavior |
 |-------|----------|
 | `FirstFit` (default) | Round-robin over the crew's agents |
-| `Embedding` | Semantic match between the task and each agent profile (needs a real embedding provider — see [limitations](../reference/limitations.md)) |
+| `Embedding` | Semantic match between the task and each agent profile (needs a real embedding provider — see [limitations](../reference/limitations.md)): the provider is local BGE (`AddOrkeonLocalEmbeddings()`), else the remote `Orkeon:Embeddings` configuration, else the first use fails and the task falls back to round-robin with a warning |
 | `Skill` | Lexical (Jaccard) match on role/goal/backstory keywords, no embedding provider |
 
 A selection that fails, or names an agent the crew does not carry, falls back to round-robin with a warning. Hierarchical and Autonomous let the manager LLM choose (a task's `agent:` is not consulted there); Consensual runs every task with every agent.
@@ -97,6 +97,8 @@ A selection that fails, or names an agent the crew does not carry, falls back to
 | **Complexity** | ⭐ | ⭐⭐ | ⭐ | ⭐⭐⭐ | ⭐⭐ | ⭐⭐⭐⭐ |
 | **Relative LLM cost** | Low | Medium | Low | High | Low to medium | Medium |
 | **Main use case** | ETL pipelines | QA, review loops | Fan-out + synthesis | Multiple independent attempts | Flaky tasks worth retrying | Exploration, R&D |
+
+Decision tasks and `when` conditions are described in [Decision models](../architecture/decision-models.md) and [ADR-016](../adr/ADR-016-decision-tasks-and-conditional-fan-out.md): Sequential, Parallel and Graph run them, the other three modes refuse a crew that uses them when it is loaded.
 
 ---
 
@@ -526,7 +528,7 @@ START ──→ execute_task ──→ route ──┬── tasks pending (or f
 | `PendingTaskIds` | `Queue<TaskId>` | Remaining tasks to execute |
 | `FailedTaskIds` | `Queue<TaskId>` | Failed tasks the `route` node puts back at the head of the queue |
 | `RetryCounts` | `Dictionary<string, int>` | Per-task retry counter |
-| `MaxRetryCycles` | `int` | Retries per failed task (default: 2) |
+| `MaxRetryCycles` | `int` | Retries per failed task (required; filled from `graphConfig.maxRetryCycles`, else the strategy's `MaxRetryCycles`, 2 by default) |
 | `ApplicationOutputs` / `DomainResults` | `IReadOnlyList<…>` | Accumulated outputs, one per attempt |
 | `TotalTokensUsed` | `int` | Consumed tokens (propagated to the `CrewOutput` metadata under `totalTokens`) |
 | `PromptTokensUsed` / `CompletionTokensUsed` | `int` | Prompt/completion split (0 when the provider does not report it) |
@@ -623,6 +625,8 @@ for each task:  Manager (LLM) ── assigns ──→ Agent A ── executes
 | `MaxTokensConsumed` | 8,000 | 16,000 | 64,000 | Tokens recorded against the budget (delegated executions) |
 | `MaxSpawnedAgents` | 1 | 3 | 10 | Agents created through `SpawnAgentTool` |
 | `MaxWallTime` | 2 min | 5 min | 15 min | Maximum execution duration |
+
+A sixth limit, `MaxContextTokens` (no limit by default), counts tokens with the context counted once under the `Tokens` dimension; the crew `budget:` YAML has no key for it and an autonomous crew's `.ork.ts` budget refuses `contextTokens` (see [Autonomous](autonomous.md#multi-dimensional-budget)).
 
 `ICrewOrchestrationService` runs this mode under the crew's budget (YAML `budget:`); a crew that sets none has no token cap and no wall time, and keeps the structural limits of 50 tasks handed out, 4 delegations and 10 spawns.
 

@@ -219,7 +219,7 @@ d'une crew nommée qui ne déclare aucun `memoryProvider:` ([plus bas](#la-mémo
 | `AddOrkeonInfrastructure()` | Les cinq sections, `IMemoryProviderFactory` + le singleton `IMemoryProvider` ci-dessus |
 | `AddOrkeonRedisMemory(configuration)` | Lie `Orkeon:Redis` depuis `configuration`, expose le `RedisMemoryProvider` partagé par sa classe et **réassocie** `IMemoryProvider` à lui — comme `Memory:Provider = redis` |
 | `AddOrkeonChromaDb(configuration)` | Lie `Orkeon:ChromaDb` et expose le `ChromaDbMemoryProvider` partagé par sa classe (client HTTP issu d'`IHttpClientFactory`). Appelée par `AddOrkeonInfrastructure(configuration)` quand la section existe |
-| `AddOrkeonPinecone(configuration)` | Même forme sur `Orkeon:Pinecone` (`ApiKey`, `IndexName`, `Host`, `Namespace`) |
+| `AddOrkeonPinecone(configuration)` | Même forme sur `Orkeon:Pinecone` (`ApiKey`, `IndexName`, `Host`, `Namespace`). Aussi appelée par `AddOrkeonInfrastructure(configuration)` quand la section existe |
 | `AddOrkeonLanceDb(configuration)` | Même forme sur `Orkeon:LanceDb`, plus `LanceDbMigrationService` (`MigrateToLanceDbAsync`, copie un provider existant dans la table LanceDB) |
 | `AddOrkeonMemoryMigration()` | `MemoryMigrationService` — `MigrateAsync` copie toutes les entrées d'un provider vers un autre. Non enregistrée par `AddOrkeonInfrastructure()` : l'appeler quand on déplace un store (p. ex. In-Memory ou SQLite vers une base vectorielle), résoudre le service et lui passer les providers source et cible (deux instances de `MemoryProviderBase` — la source est parcourue clé par clé) |
 

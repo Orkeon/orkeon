@@ -70,3 +70,7 @@ porte la famille à **dix** projets : les neuf familles référencent toutes
 `Tools.Abstractions` (`Orkeon.Tools.Rag` compris, même si ses trois outils implémentent
 toujours `IBaseTool` directement), et `Tools.Abstractions` ne référence toujours que
 `Orkeon.Domain`.
+
+## Amendement (2026-10-29)
+
+`Orkeon.Tools.Drive` ([ADR-013](./ADR-013-drive-tool-family.md)) a rejoint la famille après la note ci-dessus : `src/tools/` compte maintenant **onze** projets, `Tools.Abstractions` et dix familles, et chaque famille référence `Tools.Abstractions`.

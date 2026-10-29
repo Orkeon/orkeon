@@ -115,6 +115,10 @@ IHost host = RunnerHost.Build(
         SelectedMountIds = [],            // valeurs --mount-id, parsées : les entrées des settings gardées
                                           // quand plusieurs déclarent une même racine virtuelle (VFS-90)
         CrewMountReferences = [],         // le bloc mounts: de la crew — sélectionne et valide, ne restreint jamais
+        InputDirectories = [],            // dossiers qu'une commande lit comme entrées, lisibles sans l'opt-in
+                                          // des montages externes
+        WithdrawsAmbiguousRoots = false,  // true : une racine que les réglages déclarent plusieurs fois sans que
+                                          // rien n'en choisisse une est retirée au lieu de refuser l'hôte
         LlmLogVirtualPath = null,         // si renseigné, un répertoire VIRTUEL que l'appelant a monté :
                                           // les échanges HTTP LLM y sont capturés en .jsonl
     },
@@ -197,7 +201,8 @@ L'ordre d'enregistrement est délibéré :
    sans paramètre), puis `AddOrkeonTelemetry(configuration)` pour la section `Telemetry`.
 4. **Outils stricts** — `CrewFactoryOptions.StrictTools` vaut `true` par défaut ici (un crew qui
    référence un outil inconnu échoue bruyamment avec `unknown tool(s): …; available: …`) ; opt-out via
-   `"Orkeon:CrewFactory:StrictTools": false`. (Le défaut de la bibliothèque reste tolérant.)
+   `"Orkeon:CrewFactory:StrictTools": false`. (Le défaut de la bibliothèque reste tolérant.) Les limites du bac à sable
+   `.ork.ts` et la chaîne d'outils esbuild (`ScriptingLimitsOptions`, `ScriptingToolchainOptions`) sont aussi liées ici et jugées au démarrage de l'hôte.
 5. **Permission gate** — `AddOrkeonPermissionGate(configuration)` (opt-in par config
    `Orkeon:Security:PermissionGate:Enabled` ; no-op sinon).
 6. **Suites d'outils cœur** — système de fichiers, data, web, code, abstractions, outils de
@@ -206,7 +211,9 @@ L'ordre d'enregistrement est délibéré :
    puis les outils e-mail (`AddOrkeonEmailTools(configuration)`, inertes tant qu'aucun compte n'est
    déclaré) et, quand un compte e-mail OAuth est déclaré, leur magasin de jetons sur la racine
    interne `/credentials` — montée par l'étape de configuration, atteinte par
-   `PrivilegedFileSystemAccess`.
+   `PrivilegedFileSystemAccess` ; puis les outils drive (`AddOrkeonDriveTools(configuration)`, inertes tant
+   qu'aucun compte n'est déclaré) et, quand la racine interne `/credentials` est montée, leur magasin de jetons
+   dans un sous-répertoire à part ; puis le sous-système RAG et ses trois outils (`AddOrkeonRag`, `AddOrkeonRagTools`).
 7. **Montages VFS** — `AddOrkeonFileSystem` quand `Orkeon:FileSystem:Mounts` **ou**
    `Orkeon:FileSystem:InternalMounts` existe **et contient au moins une entrée** (deux tableaux
    vides n'enregistrent rien). L'une ou l'autre liste suffit à rendre le VFS réel : `--list-tools`
@@ -226,9 +233,10 @@ L'ordre d'enregistrement est délibéré :
    (voir [MCP](../architecture/mcp.md#activation)). Une section qui porte encore la clé
    supprimée `MCP:EnableServer` fait échouer la construction de l'hôte, serveurs déclarés ou non
    (GAP-24).
-10. **Registre d'outils** — rien de propre : `AddOrkeonInfrastructure()` a déjà enregistré le `ToolRegistry`
+10. **Modèles de décision** — `RegisterDecisionModels` : TypeSafe quand la section `Orkeon:TypeSafe` existe ou que sa variable de clé d'API (`TYPESAFE_API_KEY`) est posée, et les profils de décision de `Orkeon:Decision:Profiles`.
+11. **Registre d'outils** — rien de propre : `AddOrkeonInfrastructure()` a déjà enregistré le `ToolRegistry`
     par défaut, qui lit chaque `IBaseTool` enregistré par les étapes ci-dessus à sa première résolution.
-11. **Services du runner** — le hook `configureServices` de l'appelant s'exécute en dernier.
+12. **Services du runner** — le hook `configureServices` de l'appelant s'exécute en dernier.
 
 `semantic_search` n'est pas dans cette liste : il est enregistré par `AddSemanticSearchTool()`,
 qu'`orkeon run` appelle par son hook `configureServices` et qu'`orkeon-host` n'appelle pas.

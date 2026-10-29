@@ -50,7 +50,8 @@ Generic adapters (`ChatClientToLlmProviderAdapter`, `LlmProviderToChatClientAdap
 - `Create(providerType, config)` takes an explicit provider key (`LlmProviderKeys`):
   `openai`, `anthropic`, `ollama`, `azure-openai` / `azure`, `together` / `togetherai`,
   `qwen`, `deepseek`, `kimi` / `moonshot`, `mistral`, `huggingface` / `hf`, `gemini` /
-  `google`, `grok` / `xai`, `minimax`, `zai` / `glm` / `zhipu`, `openrouter`, `mammouth`.
+  `google`, `grok` / `xai`, `minimax`, `zai` / `glm` / `zhipu`, `openrouter`, `mammouth`, and
+  `custom` / `docker-model-runner`, which build the OpenAI dialect on the configured base URL.
   An unknown key throws `NotSupportedException`. This is the path of
   `orkeon llm probe --provider`.
 - `Create(config)` infers the provider — this is what a run does, since the `Llm` section of
@@ -118,9 +119,10 @@ warning below, never in silence. A temperature, `top_p` or penalty is sent as wr
 significant digits (the `float` of `ChatOptions` holds no more): `0.7`, never `0.699999988079071`,
 under any current culture.
 
-Every provider the factory builds is wrapped in `MeteredLlmProvider` (see
-[Decorators and registration](#decorators-and-registration)) and returned behind an
-`LlmProviderAdapter`.
+Every provider the factory builds is wrapped in `CallModeLlmProvider`, then in
+`MeteredLlmProvider` / `RateLimitedLlmProvider` when the host registered an `ILlmUsageSink` /
+an `ILlmRateLimiter` (see [Decorators and registration](#decorators-and-registration)), and
+returned behind an `LlmProviderAdapter`.
 
 ## Declared capabilities
 
@@ -128,7 +130,9 @@ Every provider declares a `LlmProviderCapabilities` value object (Domain, expose
 `ILlmProvider`; a provider overrides `HttpLlmProviderBase.DeclaredCapabilities`, which defaults
 to `LlmProviderCapabilities.Unknown`): `ResponseFormat`
 (`None`/`JsonObject`/`JsonSchema`), `Thinking` (`None`/`EffortOnly`/`Toggle`/`Budget`),
-`Vision`, `ExplicitPromptCaching`, `RequiresJsonKeywordInPrompt`, `ReplaysReasoningContent`.
+`Vision`, `ExplicitPromptCaching`, `RequiresJsonKeywordInPrompt`, `ReplaysReasoningContent`,
+`RunsOwnTools` (declared by the Microsoft Agent Framework bridge alone: it is an agent that runs
+its own tools).
 One capability is not the vendor's to declare: `GbnfGrammar`, which no vendor API documents, is
 switched on by the configuration the provider is built with (`Llm:Grammar`,
 `LlmConfig.GrammarEnabled`) for a llama.cpp-compatible server behind the OpenAI-compatible

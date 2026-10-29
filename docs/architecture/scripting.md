@@ -47,7 +47,7 @@ src/
     │   ├── Testing/              ← mock LLM / mock tool doubles (not exposed to scripts)
     │   ├── Toolchain/            ← EsbuildTranspiler, PassThroughTranspiler
     │   └── Typings/              ← the *.d.ts declarations
-    └── Orkeon.Scripting.Cli/     ← the `orkeon` tool: `run`, `forge`, `init`, `doctor`, `llm`, `rag`, `usecases`, `email`, `settings`, `typings`, `mcp`
+    └── Orkeon.Scripting.Cli/     ← the `orkeon` tool: `run`, `quickstart`, `init`, `doctor`, `settings`, `llm`, `rag`, `forge`, `usecases`, `email`, `drive`, `typings`, `mcp`
 ```
 
 ## Quick start
@@ -139,7 +139,7 @@ the call starts (one `ActSession` per call):
   neither the permission gate nor `onToolCall` sees it, and no approval is asked.
 - **`effort: "low" | "medium" | "high"`** sets the provider's thinking setting for the call
   (`LlmConfig.Thinking`, enabled with that effort). The same `effort` is accepted by the other `ctx.llm`
-  calls, by `ctx.llm.with({...})` and by `agent().effort(level)`; any other value is refused with
+  calls, by `LlmConfig.with({...})` (`llm.default_.with({ effort })`) and by `agentBuilder().effort(level)`; any other value is refused with
   `effort must be low|medium|high`.
 - **`onToolCall(call)`** runs before each tool call, after the permission gate. It returns `"allow"`;
   `"ask"` (the call goes to the approval channel as a `default`-mode edit would, and a denied answer
@@ -411,7 +411,7 @@ forms is read by its reference form.
 
 ## V1 limits
 
-- `concurrency(N)` capped at 1 (mutex). N-holders semaphore is V1.5.
+- `agentBuilder().concurrency(N)` capped at 1 (mutex). N-holders semaphore is V1.5.
 - Locks have no timeout. `LockTimeoutError` is V1.5.
 - Streaming through `ctx.llm.stream` is **per-token** when the provider is an
   `IStreamingLlmProvider` (all 16 shipped providers are); the single full-text

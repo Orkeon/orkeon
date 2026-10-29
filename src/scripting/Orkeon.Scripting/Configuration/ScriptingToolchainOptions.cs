@@ -18,7 +18,8 @@ public sealed record ScriptingToolchainOptions
     /// <summary>
     /// Absolute path to the esbuild binary. When null, the transpiler falls back to
     /// the <c>ORKEON_ESBUILD_PATH</c> environment variable, then to a binary bundled
-    /// next to the application (<c>esbuild-bin/esbuild</c>), then to a PATH lookup.
+    /// next to the application (<c>esbuild-bin/esbuild</c>), then to the copy checked in the repository
+    /// (<c>tools/scripting-esbuild/node_modules/</c>), then to a PATH lookup.
     /// </summary>
     public string? EsbuildPath { get; init; }
 

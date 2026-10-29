@@ -92,7 +92,7 @@ générateur unique :
 
 ```bash
 python3 scripts/generate-vitrine-data.py           # (re)génère chaque dossier data/ de vitrine
-python3 scripts/generate-vitrine-data.py --check   # vérifie seulement que chaque fichier existe
+python3 scripts/generate-vitrine-data.py --check   # ne vérifie aucun fichier : affiche un avis et sort avec 0
 ```
 
 Les vitrines RAG (`rag/*/data/`) et les exemples de scripting (`scripting/data/`)

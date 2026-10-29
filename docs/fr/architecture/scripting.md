@@ -47,7 +47,7 @@ src/
     │   ├── Testing/              ← doublures LLM / outil (non exposées aux scripts)
     │   ├── Toolchain/            ← EsbuildTranspiler, PassThroughTranspiler
     │   └── Typings/              ← les déclarations *.d.ts
-    └── Orkeon.Scripting.Cli/     ← l'outil `orkeon` : `run`, `forge`, `init`, `doctor`, `llm`, `rag`, `usecases`, `email`, `settings`, `typings`, `mcp`
+    └── Orkeon.Scripting.Cli/     ← l'outil `orkeon` : `run`, `quickstart`, `init`, `doctor`, `settings`, `llm`, `rag`, `forge`, `usecases`, `email`, `drive`, `typings`, `mcp`
 ```
 
 ## Démarrage rapide
@@ -141,7 +141,7 @@ au début de l'appel (une `ActSession` par appel) :
   this agent.` : ni la porte de permission ni `onToolCall` ne le voient, et aucune approbation n'est demandée.
 - **`effort: "low" | "medium" | "high"`** règle la réflexion du fournisseur pour l'appel
   (`LlmConfig.Thinking`, activée avec cet effort). Le même `effort` est accepté par les autres appels
-  `ctx.llm`, par `ctx.llm.with({...})` et par `agent().effort(level)` ; toute autre valeur est refusée
+  `ctx.llm`, par `LlmConfig.with({...})` (`llm.default_.with({ effort })`) et par `agentBuilder().effort(level)` ; toute autre valeur est refusée
   avec `effort must be low|medium|high`.
 - **`onToolCall(call)`** s'exécute avant chaque appel d'outil, après la porte de permission. Il renvoie
   `"allow"` ; `"ask"` (l'appel passe par le canal d'approbation comme une édition en mode `default`, et
@@ -433,7 +433,7 @@ sa forme référence.
 
 ## Limites V1
 
-- `concurrency(N)` plafonné à 1 (mutex). Le sémaphore à N détenteurs est prévu en V1.5.
+- `agentBuilder().concurrency(N)` plafonné à 1 (mutex). Le sémaphore à N détenteurs est prévu en V1.5.
 - Les locks n'ont pas de timeout. `LockTimeoutError` est prévu en V1.5.
 - Le streaming via `ctx.llm.stream` est **par token** dès que le provider est un
   `IStreamingLlmProvider` (les 16 providers livrés le sont) ; le chunk unique en

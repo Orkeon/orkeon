@@ -73,6 +73,9 @@ three agents review a diff and leave a markdown report.
 ### Agents
 
 ```ts
+// pickTools is not a global: it is the example's own helper (tools/index.ts).
+import { pickTools } from "./tools/index.ts";
+
 const scanner = agentBuilder()
     .name("scanner")
     .role("Change scanner")

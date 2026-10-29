@@ -230,15 +230,15 @@ convenience; the runtime members are PascalCase.
 ### Services
 
 ```typescript
-const fs = ctx.services.get<IFileSystemService>("fs");
-const tools = ctx.services.get<IBaseTool[]>("tools");
+const fs = ctx.services.get("fs");       // unknown: the typings declare no service types
+const tools = ctx.services.get("tools");
 if (ctx.services.has("llm")) { /* … */ }
 ```
 
 The host whitelist drives what's reachable. Default keys: `fs`, `tools` and `runtime` (the
 version of the runtime, below), plus the
 optional `llm`, `logger`, `commands` (the dispatch façade — see below), `script-host`
-(crew launching from a command — see
+(crew launching from a command, and `script-host.listCrews()`, the discovered crew names — see
 [Driving crews from the REPL](./coding-agent-ts.md)) and, in `orkeon-repl`, `permissions` (the
 session's tool-call rules, below), `approvals` (the tool approvals waiting, below) and `session`
 (save the persisted session, load a saved one, below), and `usage` (the session's LLM usage by model

@@ -14,7 +14,7 @@ A missed registration fails loudly rather than silently: `ProcessType.From`, the
 
 Before starting, decide:
 
-- **Mode name**: the `ProcessType` value (PascalCase, e.g. `Swarm`) and its YAML/scripting spelling (`swarm`, matched case-insensitively)
+- **Mode name**: the `ProcessType` value (PascalCase, e.g. `Swarm`) and its YAML/scripting spelling (`swarm`: the YAML is matched case-insensitively, the scripting builder `process()` accepts the lowercase name only)
 - **Entry point**: reuse `IProcessStrategy.ExecuteSequentialAsync(crew, inputVariables, ct)` (Graph, Consensual) or add a dedicated method (Autonomous, which needs an `AgentExecutionBudget`)
 - **Configuration**: none, a .NET options section (Consensual: `Orkeon:Consensus`), or a crew-level YAML block (Graph: `graphConfig`)
 - **Engine**: whether the mode needs a reusable Domain engine (`StateGraph<TState>`, `StateMachine<TState, TEvent>`) or lives entirely in its strategy
@@ -36,11 +36,13 @@ private static readonly Dictionary<string, ProcessType> s_all = new(StringCompar
 
 `ProcessType.All`, `From` and `TryFrom` read `s_all`: once the entry is there, YAML (`YamlCrewMapper.ParseProcessType`) and the scripting adapter (`JsCrewConfigurationAdapter`) accept the new value without further change, and their error messages list it.
 
+**Per-mode predicates.** Decide the mode's answer to each of these, because they fall back to a default for a mode they do not list: `ProcessType.AcceptsManagerAgent` (Hierarchical and Consensual) and `AcceptsManagerLlm` (Hierarchical and Autonomous), which gate the manager a crew may declare; `CrewPlanner.HonoursTaskAgent`, `HowTheCrewRuns` and `AgentTheModeChooses` (`src/core/Orkeon.Domain/Crew/CrewPlanner.cs`), whose `_` branch describes a sequential run; `DecisionTaskRules.Check` (`src/core/Orkeon.Domain/Task/DecisionTaskRules.cs`), which supports decision tasks and `when` conditions in Sequential, Parallel and Graph only; and the budget, which `Crew.cs` and `CrewDefinitionValidator` accept for Autonomous only.
+
 **Entry point.** When the mode needs its own entry point, add it to `IProcessStrategy` (`src/core/Orkeon.Domain/Crew/IProcessStrategy.cs`), as `ExecuteAutonomousAsync` was added; every existing strategy then implements it by throwing `NotSupportedException("Use <Mode>ProcessStrategy …")`.
 
 **Public API.** The core projects track their public surface: add each new public member to the project's `PublicAPI.Unshipped.txt` (`src/core/Orkeon.Domain/`, `src/core/Orkeon.Infrastructure/`, `src/core/Orkeon.Application/`), or the build fails (RS0016/RS0017 are errors).
 
-**Application DTO.** Nothing to add: `CrewDto.ProcessType` is a string, and `CrewMapper` (`Common/Mapping/CrewMapper.cs`) copies the `ProcessType.Value` of the Domain value object, so the new name reaches the DTO as soon as step 1 is done.
+**Application DTO.** Nothing to add: `CrewDto.ProcessType` is a string, and the handlers (`GetCrewHandler`, `CreateCrewHandler`) copy the `ProcessType.Value` of the Domain value object, so the new name reaches the DTO as soon as step 1 is done.
 
 **Fluent Builder (optional).** `CrewBuilder.Process(ProcessType.Swarm)` works as is; a shortcut such as `.Swarm()` exists only for the historical modes (`Sequential()`, `Hierarchical(...)`, `Parallel()`, `Consensual()`).
 
@@ -245,6 +247,7 @@ python3 scripts/check-doc-claims.py
 | Criterion | Expected | Verified |
 |---------|-------------------|---------|
 | Declared | `ProcessType` entry, `All` count | [ ] |
+| Mode-aware | `AcceptsManagerAgent`, `AcceptsManagerLlm`, `CrewPlanner` helpers, `DecisionTaskRules.Check`, budget rule decided for the new mode | [ ] |
 | Routed | Strategy registered, `ProcessStrategyFactory` case, `SequentialCrewOrchestrator` case | [ ] |
 | Terminates | Circuit breaker, budget, or a bounded loop — and cancellation honoured | [ ] |
 | Observable | Hook terminal event on every exit, token metadata, structured logs | [ ] |

@@ -167,7 +167,7 @@ other tools — the mirror of MAF's `AsAIFunction()`:
 
 | | |
 |---|---|
-| Name | `toolName`, or `agent_<slug>` of the MAF agent's name (lower-case, every other character `_`) |
+| Name | `toolName`, or `agent_<slug>` of the MAF agent's name (lower-case, every other character `_`, leading and trailing `_` removed; the agent's id stands in when it has no name) |
 | Description | `description`, or the MAF agent's own, or a generated sentence |
 | Category | `Delegation` |
 | Input | `request` (required, refused when empty) — sent as one user message |

@@ -163,7 +163,7 @@ WARNING: ToolRateLimiting is read by no component of this host: a C# host reads 
 `orkeon doctor` reports the same sentence as a `warn` row of `runner-settings`, one per section,
 and still exits `0`. The sections are those the settings catalogue marks as read by no shipped
 binary: `ToolRateLimiting`, `TokenBudget`, `Orkeon:Dlp`, `Orkeon:Monitoring`,
-`Orkeon:CognitiveMemory`, `Orkeon:MultiModal`, `Plugins`, `Evaluation`, `Orkeon:VectorSearch`,
+`Orkeon:CognitiveMemory`, `Orkeon:MultiModal`, `Evaluation`, `Orkeon:VectorSearch`,
 `Orkeon:Checkpointing` and `Orkeon:ExecutionState:Persistence`
 ([opt-in subsystems](./opt-in-subsystems.md)). The list is computed, not written: a section a
 shipped binary starts to read leaves it. Not reported: a section another shipped binary reads
@@ -409,8 +409,8 @@ covers is not the one read, so it is not judged. The settings judged, from
 | Settings | Correction stated |
 |---|---|
 | `Llm:ApiKey`, `Llm:Profiles:<name>:ApiKey` | write `"ApiKeyEnvVar": "<NAME>"` instead |
-| `Llm:ApiKeyEnvVar`, `Llm:Profiles:<name>:ApiKeyEnvVar`, `Orkeon:Rag:WebFallback:ApiKeyEnvVar`, `Orkeon:TypeSafe:ApiKeyEnvVar`, `Orkeon:Host:Discord:TokenEnvironmentVariable`, `A2A:Security:ApiKeySecretNames:<i>`, `Orkeon:Encryption:SecretName` | write the name alone, without `${` and `}` |
-| `MCP:Servers:<id>:Command`, `:Args:<i>`, `:Url`; `Orkeon:Redis:ConnectionString`, `Orkeon:Sqlite:ConnectionString`; `RaggableTree:Embedding:ApiKey`, `Orkeon:Pinecone:ApiKey`, `Orkeon:LanceDb:ApiKey`; `Llm:BaseUrl`, `Llm:Profiles:<name>:BaseUrl`, `RaggableTree:Embedding:BaseUrl`, `Orkeon:ChromaDb:BaseUrl`, `Orkeon:Pinecone:Host`, `Orkeon:LanceDb:Endpoint`, `Orkeon:Rag:WebFallback:Endpoint`, `Telemetry:OtlpEndpoint`; `Security:Vault:AzureKeyVaultUri`, `A2A:Security:AzureAD:Authority`, `A2A:Security:Oidc:Authority` | write the value, or keep it out of the file through the environment layer `ORKEON_<path with __>` |
+| `Llm:ApiKeyEnvVar`, `Llm:Profiles:<name>:ApiKeyEnvVar`, `Orkeon:Rag:WebFallback:ApiKeyEnvVar`, `Orkeon:Host:Discord:TokenEnvironmentVariable`, `A2A:Security:ApiKeySecretNames:<i>`, `Orkeon:Encryption:SecretName`, `Orkeon:Tools:GitHub:TokenVariable` | write the name alone, without `${` and `}` |
+| `MCP:Servers:<id>:Command`, `:Args:<i>`, `:Url`; `Orkeon:Redis:ConnectionString`, `Orkeon:Sqlite:ConnectionString`; `RaggableTree:Embedding:ApiKey`, `Orkeon:Pinecone:ApiKey`, `Orkeon:LanceDb:ApiKey`; `Llm:BaseUrl`, `Llm:Profiles:<name>:BaseUrl`, `RaggableTree:Embedding:BaseUrl`, `Orkeon:ChromaDb:BaseUrl`, `Orkeon:Pinecone:Host`, `Orkeon:LanceDb:Endpoint`, `Orkeon:Rag:WebFallback:Endpoint`, `Telemetry:OtlpEndpoint`; `Security:Vault:AzureKeyVaultUri`, `A2A:Security:AzureAD:Authority`, `A2A:Security:Oidc:Authority`; `Orkeon:Tools:GitHub:Token` | write the value, or keep it out of the file through the environment layer `ORKEON_<path with __>` |
 | `MCP:Servers:<id>:Env:<name>` | remove the entry: the server inherits the environment Orkeon runs in, set the variable there |
 | `Secrets:<name>` | remove the entry and set `ORKEON_<name>`, which the secret chain reads first |
 | `BRAVE_API_KEY` | remove the entry, Orkeon reads the variable |
@@ -425,7 +425,7 @@ start refusal: the account is set aside, with its problem ([e-mail guide](../gui
 A host can offer more than one provider. Each child of `Llm:Profiles` is a **profile**: a
 name, and a provider described with exactly the keys of the `Llm` section (`BaseUrl`,
 `ApiKeyEnvVar`, `ApiKey`, `Model`, `Temperature`, `MaxTokens`, `TimeoutSeconds`, `MaxRetries`,
-`Thinking`, `Grammar`).
+`Thinking`, `Grammar`, `CallMode`, `MaxRateLimitWait`, `StreamIdleSeconds`).
 The `Llm` section itself stays the **default** profile — the one every agent runs on unless it
 names another. A crew picks a profile **by name**, never by key or endpoint: `llm: { profile:
 claude }` on the crew, an agent or a task's `llm_override` in YAML, `llm.profile("claude")` on an
@@ -1115,7 +1115,8 @@ root it is appended (never merged, never dropped). One root declared twice is le
 every entry of it carries an id — `--mount-id`, or the crew's `mounts:`, then selects one and the
 others are withdrawn for the run; with nothing selecting one the run is refused before any host
 builds (`'/output' is declared twice in <settings> (<idA>: <folderA>, <idB>: <folderB>) and nothing selects one. Pass --mount-id <id>, list '<id>|/output' under mounts: in the crew, or pass --mount <folder>:/output:rw to replace them all.`),
-and so is a root declared twice with an entry that has no id
+except for `orkeon forge` and a command that offers no way to select an entry (`orkeon mcp serve`),
+which withdraw every entry of that root with a warning and carry on; so is a root declared twice with an entry that has no id
 (`… and '<entry>' has no id. Give every entry an id …`) or an id carried by two entries. Every
 declared entry's base path is **whitelisted for `PathValidator`** without
 `--allow-external-mounts` — a declared folder is the machine owner's intent, so it is reachable
@@ -1800,7 +1801,7 @@ esbuild toolchain resolution: `EsbuildPath` comes first in the lookup order. Rea
 
 | Key | Type | Default | Meaning |
 |---|---|---|---|
-| `EsbuildPath` | string | — | Absolute path to the esbuild binary. When null, the transpiler falls back to the `ORKEON_ESBUILD_PATH` environment variable, then to a binary bundled next to the application (`esbuild-bin/esbuild`), then to a PATH lookup. |
+| `EsbuildPath` | string | — | Absolute path to the esbuild binary. When null, the transpiler falls back to the `ORKEON_ESBUILD_PATH` environment variable, then to a binary bundled next to the application (`esbuild-bin/esbuild`), then to the copy checked in the repository (`tools/scripting-esbuild/node_modules/`), then to a PATH lookup. |
 | `EsbuildTimeout` | duration | `"00:00:30"` | Maximum time esbuild has to transpile a single source. Default: 30 s. |
 <!-- /settings -->
 

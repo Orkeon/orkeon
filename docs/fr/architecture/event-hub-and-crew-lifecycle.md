@@ -90,14 +90,14 @@ public interface IEventHub
 
     // Fire-and-forget 1→1 (vers une boîte adressée)
     Task<MessageId> PostAsync(
-        MailboxAddress to,
+        MailboxAddress recipient,
         object payload,
         MailboxOptions? options,
         CancellationToken ct);
 
     // Request-response 1→1 (timeout obligatoire — pas de Forever ici)
     Task<TResponse> SendAsync<TRequest, TResponse>(
-        MailboxAddress to,
+        MailboxAddress recipient,
         TRequest request,
         TimeSpan timeout,
         MailboxOptions? options,

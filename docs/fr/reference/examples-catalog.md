@@ -56,6 +56,7 @@ cette catégorie. La numérotation est historique et non contiguë.
 | `interop/agent-framework/` | `Orkeon.Interop.AgentFramework` dans les deux sens : un crew enveloppé en `AIAgent` Microsoft Agent Framework, et un agent MAF confié à un agent Orkeon comme outil |
 | `09-experimental/llm-response-format/`, `09-experimental/streaming-demo/` | Deux démos non numérotées dans la catégorie expérimentale : la sortie structurée (`response_format`) et un run de crew diffusé au fil de l'eau (`KickoffStreamingAsync`) |
 | `appsettings/` | La matrice de profils de settings partagée : un `appsettings.json` plus un `*.local.json.example` par fournisseur |
+| `Orkeon.Examples.sln`, `run-example.sh` / `.ps1`, `test-all-examples.sh` / `.ps1` | La solution des exemples C#, le lanceur d'un exemple et le pilote qui teste tous les exemples ; ses rapports vont dans `test-reports/`, un dossier généré que git ignore |
 | `others/` | Le README d'un corpus de benchmark de vingt bases de code TypeScript pour la crew `102` (les bases de code elles-mêmes ne sont pas versionnées) |
 
 **Vous cherchez l'e-mail ?** Deux exemples, de deux natures différentes :

@@ -275,9 +275,9 @@ scope*. Composing only the execution's own mounts made `Orkeon:Host:Crews:*:Moun
 feature's own configuration key — unable to load the crew it was set on, and the failure came back
 as a generic run-failed message because `ExistsAsync` swallows the denial.
 
-**Who enters one today.** `orkeon-host` is the one shipped composition root that does, once per
+**Who enters one today.** `orkeon-host` is the one shipped runner host that does, once per
 hosted crew, from `Orkeon:Host:Crews:*:Mounts` — so two hosted crews may each address their own
-`/output` over different folders, which the single flat boot registry cannot express. Every other
+`/output` over different folders, which the single flat boot registry cannot express. The `orkeon forge` trial (`ForgeTrialScope`) enters one too, over its trial folders. Every other
 runner keeps the boot mounts: one process per launch makes the question moot for them.
 
 The guards apply to scoped mounts exactly as to boot mounts, because they run per operation over
@@ -296,7 +296,7 @@ All seven diagnostics (`ORKVFS001`–`ORKVFS007`) are **errors**, so CI blocks a
 
 - [x] `VIOLATION-HISTORIC == 0` — the 23 historic violations were eliminated in P5-VFS-50.
 - [x] `VIOLATION-NEW` reduced to documented exceptions behind `[Obsolete]` / `if (_fs is null)` guards, all covered by `[SuppressVfsCompliance]`.
-- [x] `EXCEPTION-BOOTSTRAP` ≤ 15 — 7 at the programme's close, all legitimate (`SandboxSession`). The threshold measured the framework libraries; the host applications added since (runners, `orkeon-host`, the REPL, Studio) carry their own bootstrap scopes, listed in the ratified table above.
+- [x] `EXCEPTION-BOOTSTRAP` ≤ 15 — 7 at the programme's close (a figure of that moment, not a current count), all legitimate (`SandboxSession`). The threshold measured the framework libraries; the host applications added since (runners, `orkeon-host`, the REPL, Studio) carry their own bootstrap scopes, listed in the ratified table above.
 - [x] Roslyn analyzer `Orkeon.Compliance.Vfs` in place and wired in `src/Directory.Build.props`.
 - [x] Build passes clean; negative test confirms a deliberate `File.ReadAllText` in framework code trips `ORKVFS001`.
 - [x] Eliminate residual `EXCEPTION-BACKCOMPAT` suppressions by migrating all tool callers to DI — **done in VFS-70**: 0 `EXCEPTION-BACKCOMPAT` and 0 FS-related `EXCEPTION-OBSOLETE` remain in `src/`; all file tools + the knowledge ingestion path (now the `Orkeon.Rag` loaders, RAG-02) require a non-nullable `IFileSystemService`; SQLite governed via `ResolveAndValidate`; `ORKVFS004` promoted to error and `ORKVFS006`/`ORKVFS007` added to close the `StreamReader/Writer(string)` and nullable-`IFileSystemService` blind spots.

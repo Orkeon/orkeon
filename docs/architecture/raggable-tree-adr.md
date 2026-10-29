@@ -115,6 +115,23 @@ the text above is kept as written:
   (`LocalSmartComponents`, no API key). The JSON cache named in the accepted
   risks (`RaggableTreeCache`) is wired by no shipped host.
 
+## Amendment 2026-10-29
+
+Two figures of the amendments above are out of date; the record above is kept
+as written.
+
+- **Tools**: `AddRaggableTreeTools` now registers **28** tools, not 15 (the
+  2026-08-18 amendment); the "27 extension points" it derived from that count
+  no longer holds. [The RaggableTree guide](./raggable-tree.md) lists them.
+- **Edges**: `EdgeKind` has eight values, not the five named under Decision:
+  `Imports`, `Calls`, `Extends`, `Implements`, `Contains`, plus `Tests`,
+  `Documents` and `ProjectDepends`.
+- **Search tools**: `semantic_search` is not a RaggableTree tool; the search tool
+  is `codebase_search`.
+- **Summary size**: the guide gives the budget of the context summary as about
+  300 tokens (`markdown`, the default) and about 150 (`compact`), not the 500 and
+  200 under Consequences.
+
 ---
 
 > **See also**: [RaggableTree guide](./raggable-tree.md) · [Back to index](../INDEX.md)
