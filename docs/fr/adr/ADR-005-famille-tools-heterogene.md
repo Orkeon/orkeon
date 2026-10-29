@@ -62,3 +62,7 @@ d'`Application` ; `Tools.Email` ([ADR-012](./ADR-012-email-tool-family.md)) atte
 `Application` par la même voie transitive, via `Orkeon.Rag` et son détecteur
 d'injection de prompt ; `Tools.Embeddings.Local` colle au profil « abstractions
 seulement » (`Domain`, `Tools.Abstractions`, `Analysis.Abstractions`).
+
+## Amendement (2026-10-29)
+
+`Tools.Drive` ([ADR-013](./ADR-013-drive-tool-family.md)) référence `Domain`, `Tools.Abstractions`, `Orkeon.Constants.Configuration` et le `Orkeon.Rag` concret ; il atteint donc `Application` de façon transitive via `Orkeon.Rag`, comme `Tools.Web` et `Tools.Email`.

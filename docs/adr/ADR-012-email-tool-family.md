@@ -125,3 +125,7 @@ The provider constraints, checked on 2026-09-26:
   MAIL-07 is closed; Outlook over IMAP and SMTP was not run and stays documented as such.
 - Out of this version: deleting folders, copying a message or giving it several Gmail labels,
   Graph uploads above about 3 MB (an upload session), interactive human approval of a send.
+
+## Amendment (2026-10-29)
+
+The versions named in decision 2 (MailKit 4.18.0, MimeKit 4.18.1) were those of 2026-09-26; `Directory.Packages.props` now pins MailKit 4.18.2 and MimeKit 4.18.2.

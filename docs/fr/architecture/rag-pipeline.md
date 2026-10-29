@@ -276,6 +276,7 @@ l'aide d'un `IReranker` nommé :
 | `none` (`noop`) | `NoopReranker` | Troncature dans l'ordre du retrieval |
 | `llm` (`listwise`) | `LlmListwiseReranker` | Un appel de chat listwise ; parsing tolérant (une réponse malformée conserve l'ordre du retrieval) ; l'alternative intégrée quand le package ONNX est absent — à sélectionner explicitement |
 | `onnx` (`cross-encoder`) | `Orkeon.Rag.Onnx` | Cross-encoder ms-marco-MiniLM-L-6-v2, poids int8 embarqués, entièrement offline ; `AddOrkeonOnnxReranker()` |
+| `decision` (`typesafe`) | `DecisionModelReranker` | Une requête au modèle de décision de l'hôte : la requête et tous les passages comme état, une question oui/non par passage, le score étant la probabilité du oui ; un passage est coupé à 4000 caractères. Exige `AddOrkeonTypeSafe` (section `Orkeon:TypeSafe`), sinon sa résolution lève `InvalidOperationException` |
 
 Les hôtes contribuent des rerankers via `IRerankerRegistrar` — enregistrés dans la DI,
 appliqués à la construction du singleton `RerankerFactory`, ordre d'enregistrement
@@ -285,8 +286,8 @@ enregistrée en `TryAdd` : une `RerankerFactory` enregistrée par l'hôte l'empo
 purement et simplement.
 
 Les chunks reclassés portent leur scoreur dans `ScoredChunk.ScoreOrigin` :
-`cross-encoder` (logits passés par une sigmoïde, dans (0, 1)) ou `llm-rerank` (rang
-décroissant normalisé, meilleur = 1.0).
+`cross-encoder` (logits passés par une sigmoïde, dans (0, 1)), `llm-rerank` (rang
+décroissant normalisé, meilleur = 1.0) ou `decision-rerank` (la probabilité du oui).
 
 Le reranker ONNX résout son modèle paresseusement au premier usage : le package
 compagnon `Orkeon.Rag.Onnx.Model` quand il est référencé (poids embarqués, offline
@@ -363,7 +364,7 @@ Liée par-dessus le preset sélectionné — chaque clé est une surcharge indiv
 | `Orkeon:Rag:QueryTransform:Mode` | `none` | `none` / `multi-query` / `rag-fusion` / `hyde` |
 | `Orkeon:Rag:QueryTransform:VariantCount` | 3 | Variantes demandées aux transformers autres que `none` |
 | `Orkeon:Rag:Rerank:Enabled` | false (`fast`) | Si l'étape de rerank s'exécute |
-| `Orkeon:Rag:Rerank:Kind` | `none` | `none` / `llm` / `onnx` / tout nom enregistré |
+| `Orkeon:Rag:Rerank:Kind` | `none` | `none` / `llm` / `onnx` / `decision` / tout nom enregistré |
 | `Orkeon:Rag:Rerank:TopN` | 5 | Chunks conservés après reranking |
 | `Orkeon:Rag:Context:MaxTokens` | 2000 | Budget de contexte (≈ 4 caractères/token ; les chunks en excès sont écartés, jamais de dépassement) |
 | `Orkeon:Rag:Context:Ordering` | `edges` | `edges` (anti-Lost-in-the-Middle) ou `linear` |
@@ -522,8 +523,8 @@ Clés YAML :
 | `knowledge:` forme longue `profile` | Le pipeline de retrieval : le `profile` de la pièce jointe, sinon `rag.defaults.profile`, sinon `Orkeon:Rag:Profile` (`fast` s'il n'est pas défini). `fast`, `balanced` et `quality` savent récupérer seuls ; `corrective` et `adaptive` non (leurs graphes génèrent en chemin) et font échouer la tâche avec un message qui le dit ; un nom inconnu échoue comme le résolveur. `balanced`/`quality` exigent aussi le reranker ONNX, qu'`orkeon`, `orkeon-host` et `orkeon-repl` enregistrent |
 
 Le document store relève de l'hôte (`Orkeon:Rag:Provider`), pas de la crew : l'ancienne
-clé `rag.provider` a disparu, et une crew qui l'écrit encore reçoit un avertissement au
-chargement.
+clé `rag.provider` a disparu, et une crew qui l'écrit encore est refusée au chargement
+(`'rag.provider' is retired: the document store is the host's choice — set Orkeon:Rag:Provider in the settings`).
 
 ## Surfaces scripting et CLI
 

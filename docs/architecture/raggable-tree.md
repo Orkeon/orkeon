@@ -44,7 +44,7 @@ services.AddRaggableTree(new RaggableTreeOptions
 {
     Embedding = new EmbeddingOptions { Provider = EmbeddingProviderKind.OpenAI, ApiKey = apiKey },
 });
-services.AddRaggableTreeTools();   // the 15 agent tools (Orkeon.Tools.Analysis)
+services.AddRaggableTreeTools();   // the 28 agent tools (Orkeon.Tools.Analysis)
 ```
 
 `AddRaggableTree` (`Orkeon.Analysis.DependencyInjection`) registers the twelve
@@ -92,7 +92,8 @@ The rest of `RaggableTreeOptions` is reachable from C# via
 `AddRaggableTree(options)`: `Summarizer` (`Provider` = `None` | `Anthropic` —
 the latter registers `LlmNodeSummarizer` over the host's `ILlmProvider`, and an
 `index_codebase` call with `enrich_with_llm` then summarizes every node; plus
-`Model`, default `claude-haiku-4-5`, and `Concurrency`, default 5) and
+`Model`, empty by default, which runs the summaries on the model of the host's
+`ILlmProvider`, and `Concurrency`, default 5) and
 `ValidateCitations` (default `true`, registers the `ICitationBlockValidator` /
 `IInlineFqnValidator` citation validators). The runner host never sets a
 summarizer, so no shipped host generates LLM summaries. Note the C# default of
@@ -148,6 +149,13 @@ Ranges are UTF-8 **byte** offsets (`NodeRange.StartByte`/`EndByte`), like the ot
 | `node_replace` | Replace one node by selector and expected SHA-256 (Edit class) | `{ "path": "/workspace/Calc.cs", "selector": "Demo.Calc.Add(int)", "expected_hash": "<sha256>", "text": "..." }` |
 | `node_insert` | Add a node `inside`, `before` or `after` an anchor selector (Edit class) | `{ "path": "/workspace/Calc.cs", "selector": "Demo.Calc", "position": "inside", "text": "public int Zero() => 0;" }` |
 | `edit_batch` | Several `node_replace` / `node_insert` operations over several files as one transaction (Edit class) | `{ "operations": [{ "kind": "node_replace", "path": "/workspace/Calc.cs", "selector": "Demo.Calc.Add(int)", "expected_hash": "<sha256>", "text": "..." }], "validate": "parse" }` |
+| `node_ensure` | Apply one idempotent intent operation (`ensure_using`, `ensure_import`, `ensure_field`, `ensure_member`, `ensure_section`, `insert_under_heading`, `replace_mermaid`), see [Intent operations](#intent-operations) | `{ "op": "ensure_using", "path": "/workspace/Calc.cs", "name": "System.Text" }` |
+| `structural_search` | Find syntax nodes by pattern or by rule (read class), see [Structural search](#structural-search) | `{ "language": "cs", "pattern": "Log.Write($X)" }` |
+| `structural_rewrite` | Rewrite the matches with a `fix` template, dry run by default (Edit class), see [Structural rewrite](#structural-rewrite) | `{ "language": "cs", "pattern": "Log.Write($X)", "fix": "logger.Info($X)", "glob": "src/**/*.cs" }` |
+| `affected_tests` | Test projects and classes reached through the graph by changed files, see [Graph queries](#graph-queries) | `{ "changed_files": ["/src/Orders/A.cs"] }` |
+| `batch_anchors` | Closure of anchors (contains, callers, tests) and overlap of two anchor sets | `{ "action": "closure", "fqns": ["Demo.Calc"] }` |
+| `documented_in` | Markdown sections that document a symbol | `{ "fqn": "Demo.Calc" }` |
+| `documents_of` | Symbols documented by the sections of a Markdown file | `{ "path": "/workspace/docs/calc.md" }` |
 
 The 28 tools are registered via `AddRaggableTreeTools` (`Orkeon.Tools.Analysis.DependencyInjection.RaggableToolsExtensions`).
 
@@ -349,7 +357,7 @@ Any other key (`follows`, `precedes`, `matches`, `constraints`, `transform`, …
 
 Metavariables: `$A` captures one node, and a repeated name must match equal text; `$$$ARGS` captures a sequence of siblings. Captures are returned with each match.
 
-Languages: C# (`cs`), TypeScript (`ts`), Markdown (`md`) and the other grammars the index ships. In Markdown the kinds are `heading`, `fence`, `link` and `front_matter`; `regex` applies to the heading text or the fence info string, and `pattern` is not available.
+Languages: C# (`cs`), TypeScript (`ts`), Markdown (`md`) and the other grammars the index ships. In Markdown the kinds are `heading`, `fence`, `link` and `front_matter`; `regex` applies to the heading text or the fence info string, and neither `pattern` nor `field` is available (`field` is refused).
 
 A YAML rule file (`id`, `language`, `rule`, `message`, `severity`, `fix`) is read through the VFS under a mounted root; `fix` is read, never applied.
 

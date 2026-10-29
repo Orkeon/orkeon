@@ -326,7 +326,7 @@ d'`orkeon run --list-tools` et sert ses outils à un client MCP, `human_input` �
 
 | Suite / tool | `orkeon run` (CLI) | `orkeon-repl` (ConsoleApp) |
 |---|---|---|
-| FileSystem (6), Data (22), Web cœur (5), `shell_command`, `list_mounts`, session (6) | ✅ | ✅ |
+| FileSystem (8), Data (22), Web cœur (5), `shell_command`, `list_mounts`, session (6) | ✅ | ✅ |
 | E-mail (13) — les tools de boîte aux lettres refusent tout appel tant qu'aucun compte n'est déclaré sous `Orkeon:Tools:Email` | ✅ (jetons OAuth sous la racine interne `/credentials`) | ✅ comptes à mot de passe seulement — le REPL ne tient aucun magasin de jetons, un compte OAuth y est refusé |
 | Drive (11) — chaque tool sauf `drive_accounts` refuse tout appel tant qu'un compte n'est pas déclaré sous `Orkeon:Tools:Drive` et connecté | ✅ (jetons OAuth sous la racine interne `/credentials`) | enregistrés, mais chaque compte y est refusé : tous se connectent en OAuth, et le REPL ne tient aucun magasin de jetons |
 | EventHub (7) | ✅ | ❌ |
@@ -386,7 +386,7 @@ Les tools sont enregistrés dans `IToolRegistry` au démarrage de l'application 
 extensions DI (chaque table ci-dessus nomme celle qui possède ses tools) :
 
 ```csharp
-services.AddOrkeonFileSystemTools();   // file_read, file_write, directory_read, directory_search, count_pattern, glob, grep
+services.AddOrkeonFileSystemTools();   // file_read, file_write, edit_file, directory_read, directory_search, count_pattern, glob, grep
 services.AddOrkeonDataTools();         // les 22 tools de données (relationnel + MongoDB + graphe chaînés en interne)
 services.AddOrkeonWebTools();          // http_api, web_scrape, scrape_element, github, image_generation
 services.AddOrkeonCodeTools();         // shell_command
@@ -396,7 +396,7 @@ services.AddOrkeonInMemoryEventHub();
 services.AddOrkeonEventHubTools();     // les 7 tools du hub d'événements
 services.AddOrkeonEmailTools(configuration); // les 13 tools email_* ; ceux de boîte aux lettres demandent un compte déclaré
 services.AddOrkeonDriveTools(configuration); // les 11 tools drive_* ; ils demandent un compte déclaré et connecté
-services.AddRaggableTreeTools();       // les 17 tools d'analyse
+services.AddRaggableTreeTools();       // les 28 tools d'analyse
 services.AddOrkeonLocalEmbeddings();   // local_embed_text
 services.AddSemanticSearchTool();      // semantic_search (l'extension vit dans Orkeon.Hosting)
 services.AddOrkeonWebSearchTool();     // web_search

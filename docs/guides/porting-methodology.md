@@ -70,7 +70,7 @@ Categorize each responsibility according to this grid:
 
 ### 1.4 Identify human interactions
 
-Spot the points where the application requires human intervention (validation, input, approval). These points will become tasks with `HumanInput = true` in Orkeon (`humanInput: true` in YAML). The flag hands the agent the `human_input` tool for that task, so the host must register one: `orkeon run` surfaces the question on its run event bus, and a hand-built host calls `AddOrkeonHumanInput<TProvider>()` with its own `IHumanInputProvider` (the parameterless `AddOrkeonHumanInput()` auto-approves). Without a registered `human_input` tool the flag is a no-op.
+Spot the points where the application requires human intervention (validation, input, approval). These points will become tasks with `HumanInput = true` in Orkeon (`humanInput: true` in YAML). The flag hands the agent the `human_input` tool for that task, so the host must register one: `orkeon run` surfaces the question on its run event bus, and a hand-built host calls `AddOrkeonHumanInput<TProvider>()` with its own `IHumanInputProvider` (the parameterless `AddOrkeonHumanInput()` auto-approves). Without a registered `human_input` tool the flag is a no-op (`TaskToolbelt.Compose` adds the tool to the task's belt only when the host registered one).
 
 ## Step 2 — Map the responsibilities to agent roles
 

@@ -121,6 +121,8 @@ Le budget contrôle 5 dimensions indépendantes. Chaque dimension a un compteur 
 | MaxTokensConsumed | 16 000 | 8 000 | 64 000 | Somme courante des tokens (prompt + complétion de chaque appel compté) |
 | MaxSpawnedAgents | 3 | 1 | 10 | Nombre maximal de sous-agents créés |
 
+`AgentExecutionBudget` a une sixième limite, `MaxContextTokens` (défaut `int.MaxValue`, sans limite) : les tokens comptés en ne comptant le contexte qu'une fois, rapportés sous la dimension `Tokens` (`BudgetDimension` garde ses 5 membres) et propagés aux budgets enfants. Elle se fixe par la clé `contextTokens` d'un budget `.ork.ts` — le `crewBuilder().budget(...)` procédural et l'option `budget` de `crew.runAgent` / `ctx.delegate` ([DSL de script](../reference/scripting-dsl.md)) ; le `budget:` YAML de la crew n'a pas cette clé, et le budget `.ork.ts` d'une crew autonome la refuse.
+
 ### Presets
 
 ```csharp
@@ -162,7 +164,7 @@ var childBudget = parentBudget.CreateChildBudget();
 // MaxSpawnedAgents   = max(0, parent.Max - parent.Current)
 ```
 
-Un budget enfant est une copie indépendante de l'allocation **restante** du parent, avec ses propres compteurs : deux enfants dérivés l'un après l'autre reçoivent chacun la totalité du reste. Le plafond du parent n'est tenu que là où la consommation lui est aussi imputée — les tokens d'une exécution déléguée, et chaque spawn.
+Un budget enfant est une copie indépendante de l'allocation **restante** du parent, avec ses propres compteurs : deux enfants dérivés l'un après l'autre reçoivent chacun la totalité du reste. Le plafond du parent n'est tenu que là où la consommation lui est aussi imputée — les tokens d'une exécution déléguée, et chaque spawn. Un budget peut aussi en imputer un autre (`ChargedTo`, posé par l'option `charge: "crew"` du [DSL de script](../reference/scripting-dsl.md)) : chaque appel d'outil, token et spawn qu'il enregistre l'est aussi sur celui-là, `CreateChildBudget()` transmet cette imputation à l'enfant (il n'impute pas le parent lui-même), et `IsExhausted` est vrai quand le budget lui-même ou celui qu'il impute est épuisé.
 
 ## Communication A2A (IAgentChannel)
 
@@ -218,7 +220,7 @@ Le budget qu'il fait respecter est celui que l'hôte lui remet, pas le budget du
 }
 ```
 
-`role` et `goal` sont obligatoires ; `backstory` est facultatif. Chaque spawn appelle `RecordSpawn()` sur le budget (un budget épuisé refuse l'appel). L'agent créé l'est avec `MaxIterations = 5` et un budget enfant (transmis dans les métadonnées de la demande de spawn et dans le contexte d'exécution). Avec `wait_for_result: true` (le défaut), l'outil exécute la tâche et renvoie sa sortie ; `false` se contente de créer l'agent.
+`role`, `goal` et `task` sont obligatoires ; `backstory`, `allow_delegation` et `wait_for_result` sont facultatifs. Chaque spawn appelle `RecordSpawn()` sur le budget (un budget épuisé refuse l'appel). L'agent créé l'est avec `MaxIterations = 5` et un budget enfant (transmis dans les métadonnées de la demande de spawn et dans le contexte d'exécution). Avec `wait_for_result: true` (le défaut), l'outil exécute la tâche et renvoie sa sortie ; `false` se contente de créer l'agent.
 
 ## Observabilité
 
@@ -240,7 +242,7 @@ Le `CrewOutput` en mode Autonomous inclut des métadonnées de budget, à côté
 
 ### BudgetSnapshot
 
-`budget.ToSnapshot()` renvoie à tout moment un `BudgetSnapshot` immuable (`ToolCalls`/`MaxToolCalls`, `DelegationDepth`/`MaxDelegationDepth`, `TokensConsumed`/`MaxTokensConsumed`, `SpawnedAgents`/`MaxSpawnedAgents`, `Elapsed`/`MaxWallTime`, `IsExhausted`), journalisable et sérialisable.
+`budget.ToSnapshot()` renvoie à tout moment un `BudgetSnapshot` immuable (`ToolCalls`/`MaxToolCalls`, `DelegationDepth`/`MaxDelegationDepth`, `TokensConsumed`/`MaxTokensConsumed`, `SpawnedAgents`/`MaxSpawnedAgents`, `Elapsed`/`MaxWallTime`, `IsExhausted`), journalisable et sérialisable. `Charged` porte l'instantané du budget que celui-ci impute (`ChargedTo`), et `IsExhausted` est aussi vrai quand ce dernier est épuisé, même si chaque dimension de cet instantané est sous sa limite.
 
 ### Journalisation structurée
 

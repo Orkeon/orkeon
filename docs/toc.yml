@@ -36,6 +36,12 @@
   items:
     - name: LLM providers
       href: architecture/llm-providers.md
+    - name: Model providers
+      href: architecture/model-providers.md
+    - name: Decision models
+      href: architecture/decision-models.md
+    - name: Console compliance
+      href: architecture/console-compliance.md
     - name: Memory system
       href: architecture/memory-system.md
     - name: Events, CQRS and observability
@@ -164,6 +170,12 @@
       href: adr/ADR-012-email-tool-family.md
     - name: ADR-013 — The drive tool family
       href: adr/ADR-013-drive-tool-family.md
+    - name: ADR-014 — Shell confinement by default
+      href: adr/ADR-014-shell-confinement-by-default.md
+    - name: ADR-015 — Model provider categories and decision stages
+      href: adr/ADR-015-model-provider-categories-and-decision-stages.md
+    - name: ADR-016 — Decision tasks and conditional fan-out
+      href: adr/ADR-016-decision-tasks-and-conditional-fan-out.md
     - name: ADR — RaggableTree semantic graph
       href: architecture/raggable-tree-adr.md
 - name: Templates

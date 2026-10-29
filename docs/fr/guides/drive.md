@@ -23,9 +23,10 @@ déplace, renomme, supprime et partage — dans les limites de ce qu'autorise l'
 - **Chaque compte se connecte une fois en OAuth2** (`orkeon drive login` dans un terminal, ou
   « Se connecter » dans Orkeon Studio), et les outils rafraîchissent eux-mêmes le jeton d'accès.
 
-> **Pas encore campagné.** La famille est couverte par des tests hors ligne contre des API Google
-> et Microsoft scriptées. Elle n'a pas encore été exécutée contre un vrai Google Drive ou un vrai
-> OneDrive : cette campagne est celle du propriétaire (DRIVE-07). Signalez ce qui diffère.
+> **État de la campagne.** La famille est couverte par des tests hors ligne contre des API Google
+> et Microsoft scriptées. Un passage de campagne (DRIVE-07) a eu lieu le 2026-10-24 et a révélé deux
+> défauts de `drive_search`, corrigés depuis (voir le CHANGELOG). La fiche DRIVE-07 n'est pas close,
+> et cette page ne dit pas ce que le passage a couvert. Signalez ce qui diffère.
 
 ## Les onze outils
 
@@ -194,8 +195,8 @@ Windows — les variables propres à l'utilisateur.
   déplacement : Google Drive accepterait deux éléments du même nom, et un agent qui désigne les
   fichiers par leur nom prendrait alors le mauvais.
 - **La corbeille d'abord.** `drive_delete` met à la corbeille (la corbeille de OneDrive), d'où une
-  personne le restaure. `permanent: true` exige `Purge` ; un OneDrive personnel n'a pas de
-  suppression définitive et la refuse.
+  personne le restaure. `permanent: true` exige `Purge` ; un compte du tenant `consumers` (le
+  défaut) n'a pas de suppression définitive sur OneDrive et l'outil la refuse.
 - **Un crew dont les outils drive exigent un droit qu'aucun compte prêt n'accorde est refusé au
   départ**, avant tout appel au modèle, avec une ligne par outil — comme pour les outils mail.
 

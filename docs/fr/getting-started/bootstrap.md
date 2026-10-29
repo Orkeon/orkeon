@@ -9,7 +9,7 @@
 Avant que le code ci-dessous ne compile, ajoutez les deux paquets NuGet qu'il utilise. Le
 framework lui-même est livré en un seul paquet, `Orkeon` ; les suites d'outils intégrées
 câblées plus bas (`AddOrkeonFileSystemTools`, `AddOrkeonDataTools`, `AddOrkeonWebTools`,
-`AddOrkeonCodeTools`, `AddOrkeonEmailTools`) vivent dans un second, `Orkeon.Tools` :
+`AddOrkeonCodeTools`, `AddOrkeonEmailTools` ; le paquet porte d'autres suites, comme `AddOrkeonDriveTools`) vivent dans un second, `Orkeon.Tools` :
 
 ```bash
 dotnet add package Orkeon --prerelease
@@ -23,7 +23,7 @@ exactement le même résultat.
 
 `Orkeon` embarque la fermeture du cœur en un seul paquet — Domain, Application,
 Infrastructure, les moteurs RAG et RaggableTree (`Orkeon.Analysis`),
-`Orkeon.Tools.Abstractions` et trois satellites `Orkeon.Constants.*` ; il n'existe pas de
+`Orkeon.Tools.Abstractions` et quatre satellites `Orkeon.Constants.*` ; il n'existe pas de
 paquet séparé `Orkeon.Domain` / `Orkeon.Application` / `Orkeon.Infrastructure`. L'hôte des
 runners (`Orkeon.Hosting`, `RunnerHost`), le chargeur de plugins (`Orkeon.Plugins`) et le
 DSL de scripting (`Orkeon.Scripting`) n'en font **pas** partie : ils sont livrés dans la

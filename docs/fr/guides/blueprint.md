@@ -14,7 +14,7 @@ Un enregistrement oublié échoue bruyamment plutôt qu'en silence : `ProcessTyp
 
 Avant de commencer, décidez :
 
-- **Nom du mode** : la valeur de `ProcessType` (PascalCase, par ex. `Swarm`) et son écriture YAML/scripting (`swarm`, comparée sans tenir compte de la casse)
+- **Nom du mode** : la valeur de `ProcessType` (PascalCase, par ex. `Swarm`) et son écriture YAML/scripting (`swarm` : le YAML est comparé sans tenir compte de la casse, le `process()` du builder de scripting n'accepte que le nom en minuscules)
 - **Point d'entrée** : réutiliser `IProcessStrategy.ExecuteSequentialAsync(crew, inputVariables, ct)` (Graph, Consensual) ou ajouter une méthode dédiée (Autonomous, qui a besoin d'un `AgentExecutionBudget`)
 - **Configuration** : aucune, une section d'options .NET (Consensual : `Orkeon:Consensus`), ou un bloc YAML de niveau crew (Graph : `graphConfig`)
 - **Moteur** : si le mode a besoin d'un moteur Domain réutilisable (`StateGraph<TState>`, `StateMachine<TState, TEvent>`) ou vit entièrement dans sa stratégie
@@ -36,11 +36,13 @@ private static readonly Dictionary<string, ProcessType> s_all = new(StringCompar
 
 `ProcessType.All`, `From` et `TryFrom` lisent `s_all` : une fois l'entrée ajoutée, le YAML (`YamlCrewMapper.ParseProcessType`) et l'adaptateur de scripting (`JsCrewConfigurationAdapter`) acceptent la nouvelle valeur sans autre changement, et leurs messages d'erreur la listent.
 
+**Prédicats par mode.** Décidez la réponse du mode à chacun, car ils retombent sur une valeur par défaut pour un mode qu'ils ne listent pas : `ProcessType.AcceptsManagerAgent` (Hierarchical et Consensual) et `AcceptsManagerLlm` (Hierarchical et Autonomous), qui encadrent le manager qu'une crew peut déclarer ; `CrewPlanner.HonoursTaskAgent`, `HowTheCrewRuns` et `AgentTheModeChooses` (`src/core/Orkeon.Domain/Crew/CrewPlanner.cs`), dont la branche `_` décrit une exécution séquentielle ; `DecisionTaskRules.Check` (`src/core/Orkeon.Domain/Task/DecisionTaskRules.cs`), qui ne gère les tâches de décision et les conditions `when` que pour Sequential, Parallel et Graph ; et le budget, que `Crew.cs` et `CrewDefinitionValidator` n'acceptent que pour Autonomous.
+
 **Point d'entrée.** Quand le mode a besoin de son propre point d'entrée, ajoutez-le à `IProcessStrategy` (`src/core/Orkeon.Domain/Crew/IProcessStrategy.cs`), comme l'a été `ExecuteAutonomousAsync` ; chaque stratégie existante l'implémente alors en levant `NotSupportedException("Use <Mode>ProcessStrategy …")`.
 
 **API publique.** Les projets core suivent leur surface publique : ajoutez chaque nouveau membre public au `PublicAPI.Unshipped.txt` du projet (`src/core/Orkeon.Domain/`, `src/core/Orkeon.Infrastructure/`, `src/core/Orkeon.Application/`), sinon le build échoue (RS0016/RS0017 sont des erreurs).
 
-**DTO Application.** Rien à ajouter : `CrewDto.ProcessType` est une chaîne, et `CrewMapper` (`Common/Mapping/CrewMapper.cs`) y copie le `ProcessType.Value` du value object Domain ; le nouveau nom atteint donc le DTO dès l'étape 1 faite.
+**DTO Application.** Rien à ajouter : `CrewDto.ProcessType` est une chaîne, et les handlers (`GetCrewHandler`, `CreateCrewHandler`) y copient le `ProcessType.Value` du value object Domain ; le nouveau nom atteint donc le DTO dès l'étape 1 faite.
 
 **Fluent Builder (optionnel).** `CrewBuilder.Process(ProcessType.Swarm)` fonctionne tel quel ; un raccourci comme `.Swarm()` n'existe que pour les modes historiques (`Sequential()`, `Hierarchical(...)`, `Parallel()`, `Consensual()`).
 
@@ -245,6 +247,7 @@ python3 scripts/check-doc-claims.py
 | Critère | Attendu | Vérifié |
 |---------|-------------------|---------|
 | Déclaré | Entrée `ProcessType`, nombre d'éléments de `All` | [ ] |
+| Prédicats par mode | `AcceptsManagerAgent`, `AcceptsManagerLlm`, helpers de `CrewPlanner`, `DecisionTaskRules.Check`, règle du budget tranchés pour le nouveau mode | [ ] |
 | Aiguillé | Stratégie enregistrée, cas `ProcessStrategyFactory`, cas `SequentialCrewOrchestrator` | [ ] |
 | Se termine | Circuit breaker, budget ou boucle bornée — et annulation respectée | [ ] |
 | Observable | Événement terminal du hook sur chaque sortie, métadonnées de tokens, logs structurés | [ ] |

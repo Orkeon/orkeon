@@ -16,7 +16,7 @@
 >
 > **Ce que vérifie la CI** (`scripts/lint-example-readmes.py`, sur chaque exemple
 > numéroté qui a un `config.yaml` ou un `main.ork.ts`) : le README existe ; un titre de
-> lancement (`## Run`, `## Run it`, `## Running`, `## Usage`, `## Lancer`, `## Exécuter` — à
+> lancement (`## Run`, `## Run it`, `## Running`, `## Usage`, `## Lancement`, `## Lancer`, `## Exécuter` — à
 > n'importe quel niveau de `##` à `######`) contient une commande `orkeon run <config>`, ou
 > la forme depuis les sources `dotnet run --project …Scripting.Cli -- run <config>`, dont le
 > chemin `.yaml`/`.ork.ts` — écrit depuis la racine du dépôt — existe (une commande hors

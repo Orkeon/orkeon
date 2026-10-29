@@ -55,6 +55,7 @@ inferred.
 | `llm` | the provider only: an agent configured with `llm.profile("…")` has `ctx.llm` talk to that profile's provider, on the profile's model; otherwise `ctx.llm` uses the host's provider on its configured model (per call: `{ llm: { model } }`) | ✅ an `LlmConfig` — `llm.default_`, `llm.model("…")`, `llm.profile("…")`, `.with({...})` — sets the agent's provider (one of the host's profiles), model, temperature and token cap. A string or a plain object is refused by `.llm(...)` |
 | `tools([...])` built-ins by name | ✅ what `ctx.llm.act` may call — a name the host does not offer rejects `act` with an `UnknownToolError`, before any model call | ✅ strict: an unknown name fails the run |
 | `withAutonomousTool(s)` instances | callable from a body (`tool.execute(input)`) and offered to `ctx.llm.act`, which runs the tool's `execute` in the script | ✅ registered and resolved by name |
+| `effort(level)` — `"low"`, `"medium"` or `"high"`: turns the provider's thinking on at that effort | ❌ stored, not sent (per call: `{ effort }`) | ✅ |
 | `maxIterations` `verbose` `allowDelegation` | ❌ (`act` has its own `maxIterations`) | ✅ — `maxIterations` defaults to 20, as in YAML and C# |
 | `maxRpm` — YAML `maxRpm:`: at most N model requests per minute for this agent, one more waiting its turn (none by default; 0 or less refused at `build()`) | ❌ (warned: `ctx.llm` calls are no agent turns — the host's `RateLimiting` still caps them) | ✅ |
 | `maxExecutionTime(seconds)` — YAML `maxExecutionTime:`: the seconds a task may take on this agent (none by default; 0, negative, decimal or above 4294967 refused at `build()`) | ❌ (warned: the procedural engine runs no task) | ✅ |
@@ -82,9 +83,11 @@ inferred.
 | `planning` — YAML `planning: true`: a step-by-step plan per task, read in the task's prompt (off by default; on the host's default profile) | ❌ (warned) | ✅ |
 | `maxRpm` — YAML `maxRpm:`: at most N model requests per minute for the crew, all its agents and its manager together (none by default; 0 or less refused at `build()`) | ❌ (warned) | ✅ |
 | `budget` | ✅ | ✅ with `process("autonomous")` — the crew's budget, as YAML `budget:`; refused with another process, as is a limit that is not 1 or more, when the run adapts the crew |
+| `concurrency(n)` — the most children (`ctx.spawnBackground`, `spawn_agent`) the crew runs at once (default 4; `n` must be 1 or more) | ✅ | ❌ (not warned) |
+| `maxInstances(n)` — the most agent instances (`crew.instances()`) the crew keeps (default 32; the oldest ended one goes first) | ✅ | ❌ (not warned) |
 | `onCrewStart` / `onCrewComplete` / `onCrewError` | ✅ | ❌ |
 
-Everything marked ❌ on the declarative side is now **announced**: the run logs one warning
+Everything marked ❌ on the declarative side, `concurrency` and `maxInstances` aside, is now **announced**: the run logs one warning
 per dropped declaration, naming the method and the agent it was written on. It is still
 dropped — the two shapes are two engines — but a crew no longer runs a body that was never
 invoked and says nothing about it.
@@ -184,10 +187,13 @@ state is a JS `Proxy` whose `set` trap exists to make that loud rather than lost
 and `reasoningChunks` are read after the loop), `extract(prompt, schema)`,
 `decide(prompt, choices)`, `embed(text)`, `act(prompt, opts)`, and `interrupt()` /
 `isInterrupted`. Every call goes to the host's configured provider; without one, a
-`<undefined-llm:…>` echo answers, which is what lets the examples run keyless. A call takes two
-options, both patching the host provider's configuration for that call only:
-`responseFormat` (`"json_object"`, `"json_schema"`, `"text"`) and `llm: { model }` (a per-call
-model). There is no per-call provider, temperature or token cap, and no `signal` — the call
+`<undefined-llm:…>` echo answers, which is what lets the examples run keyless. A call takes three
+options, all patching the host provider's configuration for that call only:
+`responseFormat` (`"json_object"`, `"json_schema"`, `"text"`), `llm: { model }` (a per-call
+model) and `effort` (`"low"`, `"medium"` or `"high"`: the provider's thinking, on at that effort;
+any other value is refused with `effort must be low|medium|high`). `act` takes more: see
+[Options of `act`](../architecture/scripting.md#options-of-act) (`tools`, `effort`, `onToolCall`,
+`onToolResult`, `waitFor`). There is no per-call provider, temperature or token cap, and no `signal` — the call
 already observes the context's.
 
 `act` is the LLM ⇄ tool-call loop: it offers the model the built-ins the agent selected with
@@ -199,7 +205,7 @@ turn is replayed in the provider's own tool protocol — the assistant turn with
 one `tool` result per call, a permission refusal or a tool error included — whether the
 provider answers in the OpenAI shape (most providers, Ollama included) or with the Anthropic
 Messages body. A result is cut once, at the framework's bound
-(`AgentDefaults.ResolveMaxToolResultLength`: 4 000 characters, 32 000 for `file_read`): by the
+(`AgentDefaults.ResolveMaxToolResultLength`: 4 000 characters by default; per-tool overrides: `file_read` 32 000, `node_read` 256 000, `shell_command` 10 000): by the
 host's tool invocation pipeline when it has one, by `act` otherwise. A turn the provider failed
 resolves `output` to `<undefined-llm:<the provider's error>>`, as `complete` does. A name in `.tools([...])` that no tool of the host
 answers to (compared case-insensitively) is not skipped: `act` rejects with an
@@ -247,7 +253,7 @@ timeout })` and `broadcast(message)` exchange messages; `send` and `broadcast` a
 `ctx.crew` is a read-only view of the crew (`name`, `findByName`, `findById`, `findByRole`,
 `has`, `lock(name, fn)`). `ctx.log.info(message, ...args)` joins the extra arguments with a
 space, objects as JSON. Also `ctx.memory` (`crew`, and `agent` in an agent body),
-`ctx.events`, `ctx.lock(name, fn)`, `ctx.spawn`. See `context.d.ts`.
+`ctx.events`, `ctx.lock(name, fn)`, `ctx.spawn`. `ctx.spawnBackground(agent, input)` starts a crew agent as a child and returns its ticket; `ctx.instanceId` is the id of the agent instance a body runs as; `crew.instances()`, `crew.send(id, message)` and `crew.stop(id)` list, message and stop the kept instances ([Agent instances](../architecture/scripting.md#agent-instances-crewinstances-crewsend-crewstop)). See `context.d.ts`.
 
 A host failure reaches the script as an instance of the class `errors.d.ts` declares —
 `try { await q.pop({ timeout: 100 }) } catch (e) { if (e instanceof ReceiveTimeoutError) … }`
@@ -261,9 +267,9 @@ name } }` and the context; `code` is one of `rate_limit`, `network`, `timeout`,
 
 | Global | What it holds |
 |---|---|
-| `llm` | The model settings `agentBuilder().llm(...)` takes (declarative shape). `llm.default_` — a value, not a function — is the host's provider on its configured model (an empty `model` when the host configures none: the agent then runs on that provider's own default, never on OpenAI's), or the `<undefined-llm>` echo when the host has none; `llm.model(name, overrides?)` is the same provider on another model; `llm.profile(name, overrides?)` is one of the host's named profiles (`Llm:Profiles:<name>`) on its own model — an agent configured with it runs its turns and its `ctx.llm` calls on that provider, and a name the host does not offer throws, listing the known ones (`"default"` is `llm.default_`). `with({ model, temperature, maxTokens, responseFormat })` returns a copy, keeps the profile, and refuses any other key. There is no per-vendor factory: a script picks among the providers the host configured, by profile name. |
+| `llm` | The model settings `agentBuilder().llm(...)` takes (declarative shape). `llm.default_` — a value, not a function — is the host's provider on its configured model (an empty `model` when the host configures none: the agent then runs on that provider's own default, never on OpenAI's), or the `<undefined-llm>` echo when the host has none; `llm.model(name, overrides?)` is the same provider on another model; `llm.profile(name, overrides?)` is one of the host's named profiles (`Llm:Profiles:<name>`) on its own model — an agent configured with it runs its turns and its `ctx.llm` calls on that provider, and a name the host does not offer throws, listing the known ones (`"default"` is `llm.default_`). `with({ model, temperature, maxTokens, responseFormat, effort })` returns a copy, keeps the profile, and refuses any other key. There is no per-vendor factory: a script picks among the providers the host configured, by profile name. |
 | `tools` | The host's built-in tools, called from a body: `tools.fileRead({ path })`, the snake_case name camelCased. `tools.generated.d.ts` declares the input and the result of every built-in tool a run registers, written from its request and response records (the tool's own snake_case keys: `tools.fileRead({ path, max_length })`), so a misspelled parameter fails the type check; `tools.d.ts` declares the e-mail and drive families by hand. A plugin or MCP tool is reachable the same way, untyped. |
-| `rag` | `rag.ingest({ collection, sources, chunkingStrategy?, reindex? })`, `rag.query(question, { collection, profile?, topN? })` (a grounded answer with citations) and `rag.retrieve(...)` (the same passages, no generation). Needs a host that registered the RAG subsystem (`AddOrkeonRag`); bound in `orkeon run`, the REPL and the daemon host alike. |
+| `rag` | `rag.ingest({ collection, sources, chunkingStrategy?, reindex?, prune? })`, `rag.query(question, { collection, profile?, topN? })` (a grounded answer with citations) and `rag.retrieve(...)` (the same passages, no generation). Needs a host that registered the RAG subsystem (`AddOrkeonRag`); bound in `orkeon run`, the REPL and the daemon host alike. |
 | `ErrorAction` | The factories an `onError` handler returns: `fail()`, `skip()`, `fallback(value)`, `retry({ delay?, max? })`. Anything else is treated as `fail()`. |
 | `stateMachine`, `stateGraph`, `START`, `END` | Below. |
 
@@ -326,7 +332,7 @@ each of them stated rather than silent.
 
 | Limit | Behaviour |
 |---|---|
-| `budget()` in the declarative shape | The crew's budget when the process is `"autonomous"`, the one process that spends it (keys `toolCalls`, `tokens`, `delegationDepth`, `spawnedAgents`, `wallTime`; `contextTokens` is refused there, the strategy counting each finished task's tokens, not each call's prompt). With another process it is ignored, and said so: the run logs a warning naming the method. |
+| `budget()` in the declarative shape | The crew's budget when the process is `"autonomous"`, the one process that spends it (keys `toolCalls`, `tokens`, `delegationDepth`, `spawnedAgents`, `wallTime`; `contextTokens` is refused there, the strategy counting each finished task's tokens, not each call's prompt). With another process the crew is refused when the run adapts it, the error naming the process. |
 | `.body()` in the declarative shape | Ignored, and said so: the run logs a warning naming the agent. The most expensive confusion in the DSL, and the reason for the shape table above. |
 | `globalThis.inputs` in the declarative shape | Never planted. Passing `--inputs`, `--inputs-file` or `--memory-limit-mb` to a declarative script prints a warning on stderr instead of dropping the flag in silence. |
 | `ctx.llm.embed` | Returns a stub vector. Real embedders are a follow-up. |

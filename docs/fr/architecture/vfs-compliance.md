@@ -285,10 +285,10 @@ rendait `Orkeon:Host:Crews:*:Mounts` — la clé de configuration de la fonction
 incapable de charger le crew sur lequel elle était posée, et l'échec revenait sous forme d'un
 message générique parce qu'`ExistsAsync` avale le refus.
 
-**Qui en entre un aujourd'hui.** `orkeon-host` est la seule racine de composition livrée qui le
+**Qui en entre un aujourd'hui.** `orkeon-host` est le seul hôte de runner livré qui le
 fasse, une fois par crew hébergé, depuis `Orkeon:Host:Crews:*:Mounts` — deux crews hébergés peuvent
 donc adresser chacun son `/output` sur des dossiers différents, ce que l'unique registre de boot,
-plat, ne sait pas exprimer. Tous les autres runners gardent les mounts de boot : un processus par
+plat, ne sait pas exprimer. L'essai de `orkeon forge` (`ForgeTrialScope`) en entre un aussi, sur ses dossiers d'essai. Tous les autres runners gardent les mounts de boot : un processus par
 lancement rend la question sans objet chez eux.
 
 Les gardes s'appliquent aux mounts scopés exactement comme aux mounts de démarrage, car elles
@@ -309,7 +309,7 @@ Les sept diagnostics (`ORKVFS001`–`ORKVFS007`) sont tous des **erreurs**, donc
 
 - [x] `VIOLATION-HISTORIC == 0` — les 23 violations historiques ont été éliminées dans P5-VFS-50.
 - [x] `VIOLATION-NEW` réduit aux exceptions documentées derrière des gardes `[Obsolete]` / `if (_fs is null)`, toutes couvertes par `[SuppressVfsCompliance]`.
-- [x] `EXCEPTION-BOOTSTRAP` ≤ 15 — 7 à la clôture du programme, toutes légitimes (`SandboxSession`). Le seuil portait sur les bibliothèques du framework ; les applications hôtes ajoutées depuis (runners, `orkeon-host`, le REPL, Studio) portent leurs propres portées de bootstrap, listées dans le tableau des exceptions ratifiées ci-dessus.
+- [x] `EXCEPTION-BOOTSTRAP` ≤ 15 — 7 à la clôture du programme (un chiffre de ce moment, pas un compte actuel), toutes légitimes (`SandboxSession`). Le seuil portait sur les bibliothèques du framework ; les applications hôtes ajoutées depuis (runners, `orkeon-host`, le REPL, Studio) portent leurs propres portées de bootstrap, listées dans le tableau des exceptions ratifiées ci-dessus.
 - [x] Analyseur Roslyn `Orkeon.Compliance.Vfs` en place et câblé dans `src/Directory.Build.props`.
 - [x] Le build passe proprement ; un test négatif confirme qu'un `File.ReadAllText` délibéré dans le code du framework déclenche `ORKVFS001`.
 - [x] Éliminer les suppressions `EXCEPTION-BACKCOMPAT` résiduelles en migrant tous les appelants d'outils vers la DI — **fait dans VFS-70** : 0 `EXCEPTION-BACKCOMPAT` et 0 `EXCEPTION-OBSOLETE` lié au FS ne subsistent dans `src/` ; tous les outils fichier + le chemin d'ingestion de connaissances (désormais les loaders `Orkeon.Rag`, RAG-02) exigent un `IFileSystemService` non-nullable ; SQLite gouverné via `ResolveAndValidate` ; `ORKVFS004` promu en erreur et `ORKVFS006`/`ORKVFS007` ajoutés pour fermer les angles morts `StreamReader/Writer(string)` et `IFileSystemService` nullable.

@@ -75,6 +75,9 @@ trois agents relisent un diff et laissent un rapport markdown.
 ### Les agents
 
 ```ts
+// pickTools n'est pas un global : c'est l'assistant propre à l'exemple (tools/index.ts).
+import { pickTools } from "./tools/index.ts";
+
 const scanner = agentBuilder()
     .name("scanner")
     .role("Change scanner")

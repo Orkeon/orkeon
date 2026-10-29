@@ -60,3 +60,7 @@ Tant que ces résorptions ne sont pas faites, la présente ADR sert de justifica
 - **Vigilance** : `Analysis.Abstractions` doit **rester dépendant du seul `Domain`** ; toute
   extension de l'usage de `Analysis` concret dans l'Infrastructure (au-delà du câblage DI) doit
   rouvrir cette ADR.
+
+## Amendement (2026-10-29)
+
+Les « 64 fichiers » de `Orkeon.Analysis.Abstractions` étaient le compte à l'écriture de l'ADR. Le projet compte maintenant 70 fichiers `.cs` ; l'argument ne dépend pas du chiffre.

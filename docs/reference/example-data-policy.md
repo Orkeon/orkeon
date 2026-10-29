@@ -89,7 +89,7 @@ out of the box. Their data is produced by a single generator:
 
 ```bash
 python3 scripts/generate-vitrine-data.py           # (re)generate every showcase data/ folder
-python3 scripts/generate-vitrine-data.py --check   # only check that every file exists
+python3 scripts/generate-vitrine-data.py --check   # does not check any file: it prints a notice and exits 0
 ```
 
 The RAG showcases (`rag/*/data/`) and the scripting samples (`scripting/data/`) carry

@@ -90,8 +90,8 @@ auto-détectés depuis la codebase et scellés par appel.
 Le reste de `RaggableTreeOptions` est accessible en C# via `AddRaggableTree(options)` :
 `Summarizer` (`Provider` = `None` | `Anthropic` — ce dernier enregistre
 `LlmNodeSummarizer` sur l'`ILlmProvider` de l'hôte, et un appel `index_codebase` avec
-`enrich_with_llm` résume alors chaque nœud ; plus `Model`, défaut `claude-haiku-4-5`, et
-`Concurrency`, défaut 5) et `ValidateCitations` (défaut `true`, enregistre les
+`enrich_with_llm` résume alors chaque nœud ; plus `Model`, vide par défaut, ce qui exécute les résumés sur le modèle de
+l'`ILlmProvider` de l'hôte, et `Concurrency`, défaut 5) et `ValidateCitations` (défaut `true`, enregistre les
 validateurs de citations `ICitationBlockValidator` / `IInlineFqnValidator`). Le runner
 host ne positionne jamais de résumeur : aucun hôte livré ne génère donc de résumés LLM.
 À noter : le défaut C# de `Embedding.Provider` est `None` ; seul le runner host prend
@@ -146,6 +146,13 @@ Les plages sont des offsets en **octets** UTF-8 (`NodeRange.StartByte`/`EndByte`
 | `node_replace` | Remplace un nœud par sélecteur et SHA-256 attendu (classe Edit) | `{ "path": "/workspace/Calc.cs", "selector": "Demo.Calc.Add(int)", "expected_hash": "<sha256>", "text": "..." }` |
 | `node_insert` | Ajoute un nœud `inside`, `before` ou `after` un sélecteur d'ancrage (classe Edit) | `{ "path": "/workspace/Calc.cs", "selector": "Demo.Calc", "position": "inside", "text": "public int Zero() => 0;" }` |
 | `edit_batch` | Plusieurs opérations `node_replace` / `node_insert` sur plusieurs fichiers en une transaction (classe Edit) | `{ "operations": [{ "kind": "node_replace", "path": "/workspace/Calc.cs", "selector": "Demo.Calc.Add(int)", "expected_hash": "<sha256>", "text": "..." }], "validate": "parse" }` |
+| `node_ensure` | Applique une opération d'intention idempotente (`ensure_using`, `ensure_import`, `ensure_field`, `ensure_member`, `ensure_section`, `insert_under_heading`, `replace_mermaid`), voir [Opérations d'intention](#opérations-dintention) | `{ "op": "ensure_using", "path": "/workspace/Calc.cs", "name": "System.Text" }` |
+| `structural_search` | Trouve des nœuds de syntaxe par motif ou par règle (classe Read), voir [Recherche structurelle](#recherche-structurelle) | `{ "language": "cs", "pattern": "Log.Write($X)" }` |
+| `structural_rewrite` | Réécrit les correspondances avec un gabarit `fix`, à blanc par défaut (classe Edit), voir [Réécriture structurelle](#réécriture-structurelle) | `{ "language": "cs", "pattern": "Log.Write($X)", "fix": "logger.Info($X)", "glob": "src/**/*.cs" }` |
+| `affected_tests` | Projets et classes de test atteints par le graphe depuis les fichiers modifiés, voir [Requêtes sur le graphe](#requêtes-sur-le-graphe) | `{ "changed_files": ["/src/Orders/A.cs"] }` |
+| `batch_anchors` | Fermeture d'ancres (contenu, appelants, tests) et recouvrement de deux ensembles d'ancres | `{ "action": "closure", "fqns": ["Demo.Calc"] }` |
+| `documented_in` | Sections Markdown qui documentent un symbole | `{ "fqn": "Demo.Calc" }` |
+| `documents_of` | Symboles documentés par les sections d'un fichier Markdown | `{ "path": "/workspace/docs/calc.md" }` |
 
 Les 28 tools sont enregistrés via `AddRaggableTreeTools` (`Orkeon.Tools.Analysis.DependencyInjection.RaggableToolsExtensions`).
 
@@ -350,7 +357,7 @@ Toute autre clé (`follows`, `precedes`, `matches`, `constraints`, `transform`, 
 
 Métavariables : `$A` capture un nœud, et un nom répété doit correspondre à un texte égal ; `$$$ARGS` capture une suite de nœuds frères. Les captures sont renvoyées avec chaque correspondance.
 
-Langages : C# (`cs`), TypeScript (`ts`), Markdown (`md`) et les autres grammaires livrées par l'index. En Markdown les genres sont `heading`, `fence`, `link` et `front_matter` ; `regex` porte sur le texte du titre ou sur la chaîne d'information de la clôture, et `pattern` n'est pas disponible.
+Langages : C# (`cs`), TypeScript (`ts`), Markdown (`md`) et les autres grammaires livrées par l'index. En Markdown les genres sont `heading`, `fence`, `link` et `front_matter` ; `regex` porte sur le texte du titre ou sur la chaîne d'information de la clôture, et ni `pattern` ni `field` ne sont disponibles (`field` est refusé).
 
 Un fichier de règles YAML (`id`, `language`, `rule`, `message`, `severity`, `fix`) est lu via le VFS sous une racine montée ; `fix` est lu, jamais appliqué.
 

@@ -80,7 +80,7 @@ installs it with the archive's own installer: `%LOCALAPPDATA%\Programs\Orkeon` o
 `~/.local` elsewhere.
 
 `orkeon --version` then answers the version of your checkout —
-`1.0.0-rc.4.local.<commit date>` off a tag, never the name of a release — and
+`<version>.local.<commit date>` off a tag, never the name of a release — and
 `orkeon doctor` names the channel `source`.
 
 | Windows | Linux, macOS | |
@@ -119,7 +119,7 @@ Each [GitHub Release](https://github.com/Orkeon/orkeon/releases) attaches a
 | **`dotnet tool install --global Orkeon.Scripting.Cli --prerelease`** | the `orkeon` CLI — **without esbuild**: a `.ork.ts` script needs `npm install -g esbuild` (or `ORKEON_ESBUILD_PATH`); YAML crews do not. `orkeon typings` writes the editor typings | .NET 10 **SDK** | Getting just the CLI on a dev box that already builds .NET |
 
 `<rid>` is `linux-x64`, `linux-arm64`, `osx-x64`, `osx-arm64` (`.tar.gz`) or
-`win-x64` (`.zip`). In every file name, `<version>` is the tag's version (`1.0.0-rc.4`) — except the `.deb`
+`win-x64` (`.zip`). In every file name, `<version>` is the tag's version (for example `1.0.0-rc.6`) — except the `.deb`
 of the releases up to `1.0.0-rc.4`, named `orkeon_1.0.0.rc.N_amd64.deb` while their `SHA256SUMS` line reads
 `orkeon_1.0.0~rc.N_amd64.deb`: check those two by hand.
 `SHA256SUMS` covers every artifact of the release except the MSI, which

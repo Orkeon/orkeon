@@ -68,3 +68,8 @@ the secret reading of Studio's user scope, and Microsoft Graph in plain HTTP —
   of scope, documented in the guide.
 - The real-account campaign is the owner's (DRIVE-07): the offline tests script both APIs, and the
   guide says the family is not yet campaigned.
+
+## Amendment (2026-10-29)
+
+- The counts in Consequences (102 built-in tool classes, 49 src and 37 test projects) are those of the day the ADR was written. At this date the repository holds 120 built-in tool classes, 50 src projects and 38 test projects (`scripts/check-doc-claims.py`).
+- The last Consequences bullet says the guide shows the family as not yet campaigned. A campaign pass (DRIVE-07) ran on 2026-10-24; the guide ([Drive](../guides/drive.md)) states what is recorded, and the DRIVE-07 card is not closed.

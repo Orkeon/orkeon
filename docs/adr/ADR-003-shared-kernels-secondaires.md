@@ -61,3 +61,7 @@ Until these phase-outs are carried out, this ADR serves as the consultable justi
   (verified at commit `b5179b3c`).
 - **Vigilance**: `Analysis.Abstractions` must **keep depending on `Domain` alone**; any extension of
   the concrete `Analysis` usage in the Infrastructure (beyond the DI wiring) must reopen this ADR.
+
+## Amendment (2026-10-29)
+
+The "64 files" of `Orkeon.Analysis.Abstractions` was the count when the ADR was written. The project now holds 70 `.cs` files; the argument does not depend on the figure.

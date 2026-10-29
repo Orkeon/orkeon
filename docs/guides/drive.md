@@ -22,9 +22,10 @@ operator allows:
 - **Every account signs in once with OAuth2** (`orkeon drive login` in a terminal, or « Sign in »
   in Orkeon Studio), and the tools refresh the access token by themselves.
 
-> **Not yet campaigned.** The family is covered by offline tests against scripted Google and
-> Microsoft APIs. It has not been run against a real Google Drive or OneDrive yet: that campaign
-> is the owner's (DRIVE-07). Report what differs.
+> **Campaign status.** The family is covered by offline tests against scripted Google and
+> Microsoft APIs. A campaign pass (DRIVE-07) ran on 2026-10-24 and revealed two `drive_search`
+> gaps, fixed since (see the CHANGELOG). The DRIVE-07 card is not closed, and this page does not
+> claim what the pass covered. Report what differs.
 
 ## The eleven tools
 
@@ -187,8 +188,8 @@ like the e-mail secrets: the process environment, then — on Windows — the us
   would accept two items of the same name, and an agent addressing files by name would then pick
   the wrong one.
 - **The trash first.** `drive_delete` moves to the trash (the recycle bin on OneDrive), from where a
-  person restores it. `permanent: true` needs `Purge`; a personal OneDrive has no permanent
-  deletion and refuses it.
+  person restores it. `permanent: true` needs `Purge`; an account on the `consumers` tenant (the
+  default) has no permanent deletion on OneDrive and the tool refuses it.
 - **A crew whose drive tools need a right no ready account grants is refused at start**, before
   any model call, with a line per tool — as for the mail tools.
 

@@ -12,7 +12,9 @@ matches keys in camelCase (the canonical form, the one `YamlCrewExporter` writes
 `llmOverride` are equivalent everywhere. Every key is read or refused at load: a key no model carries (or a retired one) fails the
 load with its file, line and path, and the nearest key (`Did you mean 'expectedOutput'?`);
 `CrewYamlKeyCheck` runs before the deserialization. Only the names you choose stay free: the ids under
-`agents:` and `tasks:`, the tool names under `toolRules:`, and the keys and values of `context:`. A merge
+`agents:` and `tasks:`, the tool names under `toolRules:`, the collection names under `rag.collections:`, the keys and values of `context:`, the
+question names under `decision.questions:` and `decision.fallback:`, the option names under a question's `choice:`, and the
+keys of `when:`. A merge
 key (`<<:`) is refused, and so is an anchor on an unknown key: share text under `anchors:`. The same models
 serve the single-file layout and the multi-file layouts (`crew.yaml` + `agents.yaml` +
 `tasks.yaml`, or `config.yaml` + `agents/` + `tasks/`) described in
@@ -26,7 +28,7 @@ goal: string              # Goal (required)
 process: string           # "sequential" (default) | "hierarchical" | "parallel" | "consensual" | "graph" | "autonomous" — case-insensitive; an unknown value fails the load
 verbose: bool             # default: false — every agent of the run logs its turns (tool calls, tool results, model responses) at Information, category Orkeon.Verbose
 memory: bool              # default: false. true: the crew stores the result of each task and recalls the closest ones before each task (embedder required at kickoff); false: nothing is stored or recalled
-memoryProvider: string    # Requires memory: true (refused otherwise). "InMemory" | "Redis" | "Sqlite" | "ChromaDb" | "Pinecone" | "LanceDb" — case-insensitive (aliases "in-memory", "chroma", "lance"); unknown → in-memory with a warning. The TYPE only: the connection comes from the host section (Orkeon:Redis, Orkeon:Sqlite, …). Unset: the host's default store (Memory:Provider)
+memoryProvider: string    # Requires memory: true (refused otherwise). "InMemory" | "Redis" | "Sqlite" | "ChromaDb" | "Pinecone" | "LanceDb" — case-insensitive (aliases "in-memory", "chroma", "lance"); an unknown type fails the load, listing the known types. The TYPE only: the connection comes from the host section (Orkeon:Redis, Orkeon:Sqlite, …). Unset: the host's default store (Memory:Provider)
 planning: bool            # default: false. true: before the first task, a planner (the host's default profile) writes a step-by-step plan per task, which the task reads in its prompt, in every mode; it changes neither the order nor the agents
 maxRpm: int               # default: none — at most N model requests per minute for the whole crew, all its agents and its manager together (parallel waves included); one more waits its turn. CrewAI's max_rpm (max_rpm: is accepted). 0 or less fails the load
 budget: {tokens, wallTimeSeconds, toolCalls, delegationDepth, spawnedAgents}  # process: autonomous only — see Autonomous budget below; default: no token or time cap, 50 / 4 / 10
@@ -49,7 +51,7 @@ mounts:                   # The virtual roots the crew uses (optional, VFS-90) �
   - 01J9Z3K4M5N6P7Q8R9S0T1V2W3|/data   # a root pinned to ONE settings entry by its id, when several entries declare it
 
 rag:                      # Crew-level RAG configuration (optional)
-  provider: string        # Removed: the load warns and ignores it — the store is the host's, Orkeon:Rag:Provider
+  provider: string        # Removed: the load refuses it and points to Orkeon:Rag:Provider — the store is the host's
   collections:
     <collection_name>:
       sources: [string]   # Files, globs, directories or URLs — relative to the crew's folder unless absolute — ingested when the crew is created
@@ -412,6 +414,13 @@ What bounds a task is its agent loop: the agent's `maxIter`, the stop after thre
 consecutive tool errors, and the output-validation retries. What bounds a graph run is
 `graphConfig` (above). The generic state-machine engine and `CircuitBreakerPolicy` stay — the
 Graph mode, `orkeon forge` and the corrective RAG graph use them (see [FSM](../orchestration/fsm.md)).
+
+## Removed: `outputFile`
+
+A task's `outputFile:` key is gone, and a crew that still writes one is **refused at load** with a
+message pointing to the replacement: the task's `deliverable:` block (above), e.g.
+`deliverable: { path: /output/report.md }`. With the default `source: tool_call` the agent is told to
+write that path; with `source: final_message` the framework writes the final answer there.
 
 ## Autonomous budget
 

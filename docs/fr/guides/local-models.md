@@ -23,7 +23,7 @@ embarqués ciblent `host.docker.internal:12434` avec le modèle
 |---|---|
 | `host-dmr` | Docker Model Runner sur l'hôte — le défaut embarqué |
 | `host-ollama` | Ollama sur l'hôte (`http://host.docker.internal:11434`) |
-| `openai` | OpenAI cloud — à coupler avec `-e ORKEON_Llm__ApiKey=sk-...` |
+| `openai` | OpenAI cloud, modèle `gpt-4o-mini` (à surcharger avec `-e ORKEON_Llm__Model=...`) — à coupler avec `-e ORKEON_Llm__ApiKey=sk-...` |
 | `local` | le modèle embarqué (images de l'option 3 uniquement) |
 
 `orkeon-example settings`, dans le conteneur, montre quels settings s'appliquent et pourquoi.

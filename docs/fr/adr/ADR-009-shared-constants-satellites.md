@@ -159,3 +159,8 @@ Les « quatre nouveaux projets packagés » des Conséquences sont historiques. 
 [la matrice de publication](../reference/publication-matrix.md)), et non publiés comme paquets
 NuGet distincts. La décision elle-même ne change pas ; une constante qui y est posée reste une
 surface publique figée du parapluie, et les `PublicAPI.*.txt` la gardent toujours.
+
+## Amendement (2026-10-29)
+
+- Le tableau « Source of truth » liste les copies telles qu'elles étaient à l'écriture de cet ADR (2026-08-29), avant la migration vers les satellites ; les constantes d'endpoints et de modèles par défaut qu'il place sous `Constants/Llm/` vivent maintenant dans `Orkeon.Constants.Llm`.
+- `Hosting/RunnerMounts.cs` s'appelle maintenant `RunnerVirtualRoots` (`src/constants/Orkeon.Constants.FileSystem/RunnerVirtualRoots.cs`), et `RunnerMounts.CrewVirtualRoot` est `RunnerVirtualRoots.Crew`.

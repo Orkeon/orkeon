@@ -23,7 +23,7 @@ alternatives live in `/etc/orkeon/profiles` and are selected with
 |---|---|
 | `host-dmr` | Docker Model Runner on the host — the baked default |
 | `host-ollama` | Ollama on the host (`http://host.docker.internal:11434`) |
-| `openai` | OpenAI cloud — pair with `-e ORKEON_Llm__ApiKey=sk-...` |
+| `openai` | OpenAI cloud, model `gpt-4o-mini` (override with `-e ORKEON_Llm__Model=...`) — pair with `-e ORKEON_Llm__ApiKey=sk-...` |
 | `local` | the embedded model (option 3 images only) |
 
 `orkeon-example settings`, inside the container, shows which settings apply and why.

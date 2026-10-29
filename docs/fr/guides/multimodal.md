@@ -103,7 +103,7 @@ Les data URLs base64 (`data:image/png;base64,...`) sont dépaquetées en source 
 
 Les images par URL http(s) ou data URL passent telles quelles dans `image_url.url` ;
 les bytes bruts sont encodés en data URL base64. Les mêmes parts sont écrites par chaque
-provider compatible OpenAI (Azure OpenAI, DeepSeek, Gemini, Grok, HuggingFace, Kimi, Mammouth,
+provider compatible OpenAI (OpenAI, Azure OpenAI, DeepSeek, Gemini, Grok, HuggingFace, Kimi, Mammouth,
 MiniMax, Mistral, OpenRouter, Qwen, Together AI, Z.AI).
 
 **Ollama (`/api/chat`)** — pas de parts de contenu : le message garde une chaîne `content`

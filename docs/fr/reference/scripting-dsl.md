@@ -59,6 +59,7 @@ déduit.
 | `llm` | le fournisseur seulement : un agent configuré avec `llm.profile("…")` fait parler `ctx.llm` au fournisseur de ce profil, sur le modèle du profil ; sinon `ctx.llm` utilise le fournisseur de l'hôte sur son modèle configuré (par appel : `{ llm: { model } }`) | ✅ un `LlmConfig` — `llm.default_`, `llm.model("…")`, `llm.profile("…")`, `.with({...})` — règle le fournisseur de l'agent (l'un des profils de l'hôte), son modèle, sa température et son plafond de jetons. Une chaîne ou un objet simple est refusé par `.llm(...)` |
 | `tools([...])` intégrés par nom | ✅ ce que `ctx.llm.act` peut appeler — un nom que l'hôte n'offre pas fait rejeter `act` par une `UnknownToolError`, avant tout appel au modèle | ✅ strict : un nom inconnu fait échouer le run |
 | `withAutonomousTool(s)` instances | appelables depuis un `body` (`tool.execute(input)`) et proposées à `ctx.llm.act`, qui exécute le `execute` de l'outil dans le script | ✅ enregistrées et résolues par nom |
+| `effort(level)` — `"low"`, `"medium"` ou `"high"` : active la réflexion du fournisseur à cet effort | ❌ conservé, non envoyé (par appel : `{ effort }`) | ✅ |
 | `maxIterations` `verbose` `allowDelegation` | ❌ (`act` a son propre `maxIterations`) | ✅ — `maxIterations` vaut 20 par défaut, comme en YAML et en C# |
 | `maxRpm` — le `maxRpm:` du YAML : au plus N requêtes au modèle par minute pour cet agent, une de plus attendant son tour (aucun par défaut ; 0 ou moins refusé à `build()`) | ❌ (avertit : les appels `ctx.llm` ne sont pas des tours d'agent — le `RateLimiting` de l'hôte les plafonne toujours) | ✅ |
 | `maxExecutionTime(seconds)` — le `maxExecutionTime:` du YAML : les secondes qu'une tâche peut prendre chez cet agent (aucun par défaut ; 0, négatif, décimal ou au-dessus de 4294967 refusé à `build()`) | ❌ (avertit : le moteur procédural n'exécute aucune tâche) | ✅ |
@@ -86,9 +87,11 @@ déduit.
 | `planning` — le `planning: true` du YAML : un plan pas à pas par tâche, lu dans le prompt de la tâche (coupé par défaut ; sur le profil par défaut de l'hôte) | ❌ (avertit) | ✅ |
 | `maxRpm` — le `maxRpm:` du YAML : au plus N requêtes au modèle par minute pour la crew, tous ses agents et son manager confondus (aucun par défaut ; 0 ou moins refusé à `build()`) | ❌ (avertit) | ✅ |
 | `budget` | ✅ | ✅ avec `process("autonomous")` — le budget de la crew, comme `budget:` en YAML ; refusé avec un autre process, comme une limite qui n'est pas d'au moins 1, quand le run adapte la crew |
+| `concurrency(n)` — le plus grand nombre d'enfants (`ctx.spawnBackground`, `spawn_agent`) que la crew exécute à la fois (4 par défaut ; `n` doit valoir 1 ou plus) | ✅ | ❌ (sans avertissement) |
+| `maxInstances(n)` — le plus grand nombre d'instances d'agent (`crew.instances()`) que la crew garde (32 par défaut ; la plus ancienne terminée part la première) | ✅ | ❌ (sans avertissement) |
 | `onCrewStart` / `onCrewComplete` / `onCrewError` | ✅ | ❌ |
 
-Tout ce qui porte un ❌ du côté déclaratif est désormais **annoncé** : l'exécution journalise
+Tout ce qui porte un ❌ du côté déclaratif, hors `concurrency` et `maxInstances`, est désormais **annoncé** : l'exécution journalise
 un avertissement par déclaration abandonnée, en nommant la méthode et l'agent sur lequel elle
 était écrite. C'est toujours abandonné — les deux formes sont deux moteurs — mais une crew ne
 peut plus exécuter un `.body()` jamais invoqué sans rien en dire.
@@ -192,9 +195,12 @@ Transmettez-le (`crew.run({ signal: ctx.signal })`) plutôt que de l'interroger.
 `decide(prompt, choices)`, `embed(text)`, `act(prompt, opts)`, et `interrupt()` /
 `isInterrupted`. Chaque appel part vers le fournisseur configuré de l'hôte ; sans fournisseur,
 un écho `<undefined-llm:…>` répond, ce qui permet aux exemples de tourner sans clé. Un appel
-prend deux options, qui corrigent toutes deux la configuration du fournisseur de l'hôte pour
-cet appel seulement : `responseFormat` (`"json_object"`, `"json_schema"`, `"text"`) et
-`llm: { model }` (un modèle par appel). Il n'y a ni fournisseur, ni température, ni plafond de
+prend trois options, qui corrigent toutes la configuration du fournisseur de l'hôte pour
+cet appel seulement : `responseFormat` (`"json_object"`, `"json_schema"`, `"text"`),
+`llm: { model }` (un modèle par appel) et `effort` (`"low"`, `"medium"` ou `"high"` : la réflexion du fournisseur, activée à cet effort ;
+toute autre valeur est refusée avec `effort must be low|medium|high`). `act` en prend davantage : voir
+[Options de `act`](../architecture/scripting.md#options-de-act) (`tools`, `effort`, `onToolCall`,
+`onToolResult`, `waitFor`). Il n'y a ni fournisseur, ni température, ni plafond de
 jetons par appel, et pas de `signal` — l'appel observe déjà celui du contexte.
 
 `act` est la boucle LLM ⇄ appels d'outils : elle propose au modèle les outils intégrés que
@@ -207,7 +213,7 @@ protocole d'outils du fournisseur — le tour de l'assistant avec ses appels, pu
 `tool` par appel, refus de permission ou erreur d'outil compris —, que le fournisseur réponde
 au format OpenAI (la plupart des fournisseurs, Ollama compris) ou avec le corps Messages
 d'Anthropic. Un résultat est coupé une fois, à la borne du framework
-(`AgentDefaults.ResolveMaxToolResultLength` : 4 000 caractères, 32 000 pour `file_read`) : par
+(`AgentDefaults.ResolveMaxToolResultLength` : 4 000 caractères par défaut ; surcharges par outil : `file_read` 32 000, `node_read` 256 000, `shell_command` 10 000) : par
 le pipeline d'invocation d'outils de l'hôte quand il en a un, par `act` sinon. Un tour en échec
 chez le fournisseur résout `output` en `<undefined-llm:<l'erreur du fournisseur>>`, comme
 `complete`. Un nom de `.tools([...])` auquel aucun outil de l'hôte ne répond (comparaison
@@ -259,7 +265,7 @@ différents sont ouverts (un fan-out à côté d'une exécution déléguée budg
 sont synchrones. `ctx.crew` est une vue en lecture seule de la crew (`name`, `findByName`,
 `findById`, `findByRole`, `has`, `lock(name, fn)`). `ctx.log.info(message, ...args)` joint les
 arguments supplémentaires par une espace, les objets en JSON. Et aussi `ctx.memory` (`crew`, et
-`agent` dans un `body` d'agent), `ctx.events`, `ctx.lock(name, fn)`, `ctx.spawn`. Voir
+`agent` dans un `body` d'agent), `ctx.events`, `ctx.lock(name, fn)`, `ctx.spawn`. `ctx.spawnBackground(agent, input)` démarre un agent de la crew comme enfant et rend son ticket ; `ctx.instanceId` est l'id de l'instance d'agent dont un `body` est l'exécution ; `crew.instances()`, `crew.send(id, message)` et `crew.stop(id)` listent, interrogent et arrêtent les instances gardées ([Instances d'agents](../architecture/scripting.md#instances-dagents--crewinstances-crewsend-crewstop)). Voir
 `context.d.ts`.
 
 Un échec côté hôte parvient au script comme une instance de la classe que déclare
@@ -275,9 +281,9 @@ agent: { id, name } }` et le contexte ; `code` vaut `rate_limit`, `network`, `ti
 
 | Globale | Ce qu'elle contient |
 |---|---|
-| `llm` | Les réglages de modèle que prend `agentBuilder().llm(...)` (forme déclarative). `llm.default_` — une valeur, pas une fonction — est le fournisseur de l'hôte sur son modèle configuré (un `model` vide quand l'hôte n'en configure aucun : l'agent tourne alors sur le modèle par défaut de ce fournisseur, jamais sur celui d'OpenAI), ou l'écho `<undefined-llm>` quand l'hôte n'en a pas ; `llm.model(name, overrides?)` est le même fournisseur sur un autre modèle ; `llm.profile(name, overrides?)` est l'un des profils nommés de l'hôte (`Llm:Profiles:<nom>`) sur son propre modèle — un agent configuré avec lui fait ses tours et ses appels `ctx.llm` sur ce fournisseur, et un nom que l'hôte n'offre pas lève une erreur qui liste les profils connus (`"default"` est `llm.default_`). `with({ model, temperature, maxTokens, responseFormat })` rend une copie, garde le profil et refuse toute autre clé. Il n'y a pas de fabrique par vendeur : un script choisit parmi les fournisseurs que l'hôte a configurés, par nom de profil. |
+| `llm` | Les réglages de modèle que prend `agentBuilder().llm(...)` (forme déclarative). `llm.default_` — une valeur, pas une fonction — est le fournisseur de l'hôte sur son modèle configuré (un `model` vide quand l'hôte n'en configure aucun : l'agent tourne alors sur le modèle par défaut de ce fournisseur, jamais sur celui d'OpenAI), ou l'écho `<undefined-llm>` quand l'hôte n'en a pas ; `llm.model(name, overrides?)` est le même fournisseur sur un autre modèle ; `llm.profile(name, overrides?)` est l'un des profils nommés de l'hôte (`Llm:Profiles:<nom>`) sur son propre modèle — un agent configuré avec lui fait ses tours et ses appels `ctx.llm` sur ce fournisseur, et un nom que l'hôte n'offre pas lève une erreur qui liste les profils connus (`"default"` est `llm.default_`). `with({ model, temperature, maxTokens, responseFormat, effort })` rend une copie, garde le profil et refuse toute autre clé. Il n'y a pas de fabrique par vendeur : un script choisit parmi les fournisseurs que l'hôte a configurés, par nom de profil. |
 | `tools` | Les outils intégrés de l'hôte, appelés depuis un `body` : `tools.fileRead({ path })`, le nom snake_case passé en camelCase. `tools.generated.d.ts` déclare l'entrée et le résultat de chaque outil intégré qu'un run enregistre, écrits depuis ses records de requête et de réponse (les clés snake_case de l'outil : `tools.fileRead({ path, max_length })`), si bien qu'un paramètre mal orthographié échoue au contrôle de types ; `tools.d.ts` déclare à la main les familles e-mail et drive. Un outil de plugin ou MCP s'atteint de la même façon, sans type. |
-| `rag` | `rag.ingest({ collection, sources, chunkingStrategy?, reindex? })`, `rag.query(question, { collection, profile?, topN? })` (une réponse ancrée avec citations) et `rag.retrieve(...)` (les mêmes passages, sans génération). Demande un hôte qui a enregistré le sous-système RAG (`AddOrkeonRag`) ; liée dans `orkeon run`, le REPL et l'hôte daemon. |
+| `rag` | `rag.ingest({ collection, sources, chunkingStrategy?, reindex?, prune? })`, `rag.query(question, { collection, profile?, topN? })` (une réponse ancrée avec citations) et `rag.retrieve(...)` (les mêmes passages, sans génération). Demande un hôte qui a enregistré le sous-système RAG (`AddOrkeonRag`) ; liée dans `orkeon run`, le REPL et l'hôte daemon. |
 | `ErrorAction` | Les fabriques qu'un gestionnaire `onError` retourne : `fail()`, `skip()`, `fallback(value)`, `retry({ delay?, max? })`. Tout le reste vaut `fail()`. |
 | `stateMachine`, `stateGraph`, `START`, `END` | Ci-dessous. |
 
@@ -342,7 +348,7 @@ limites de conception, chacune dite plutôt que silencieuse.
 
 | Limite | Comportement |
 |---|---|
-| `budget()` en forme déclarative | Le budget de la crew quand le process est `"autonomous"`, le seul process qui le dépense (clés `toolCalls`, `tokens`, `delegationDepth`, `spawnedAgents`, `wallTime` ; `contextTokens` y est refusé, la stratégie comptant les tokens de chaque tâche terminée, pas le prompt de chaque appel). Avec un autre process il est ignoré, et dit : l'exécution journalise un avertissement qui nomme la méthode. |
+| `budget()` en forme déclarative | Le budget de la crew quand le process est `"autonomous"`, le seul process qui le dépense (clés `toolCalls`, `tokens`, `delegationDepth`, `spawnedAgents`, `wallTime` ; `contextTokens` y est refusé, la stratégie comptant les tokens de chaque tâche terminée, pas le prompt de chaque appel). Avec un autre process, la crew est refusée quand l'exécution l'adapte, l'erreur nommant le process. |
 | `.body()` en forme déclarative | Ignoré, et dit : l'exécution journalise un avertissement qui nomme l'agent. La confusion la plus coûteuse du DSL, et la raison du tableau des formes ci-dessus. |
 | `globalThis.inputs` en forme déclarative | Jamais planté. Passer `--inputs`, `--inputs-file` ou `--memory-limit-mb` à un script déclaratif affiche un avertissement sur stderr au lieu de perdre l'option en silence. |
 | `ctx.llm.embed` | Rend un vecteur bidon. Les vrais embedders sont une suite. |

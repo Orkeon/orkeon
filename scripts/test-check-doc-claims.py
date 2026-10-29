@@ -111,5 +111,89 @@ class GitEnumerationTests(unittest.TestCase):
         self.assertEqual({"src/Lib/New.cs"}, seen)
 
 
+class DocsCountTests(unittest.TestCase):
+    """The counts written in prose and in trees on any docs page, against the code."""
+
+    def setUp(self) -> None:
+        self.root = Path(tempfile.mkdtemp(prefix="doc-claims-counts-"))
+        self._saved_root = gate.ROOT
+        gate.ROOT = self.root
+        gate.ERRORS.clear()
+        _git(self.root, "init", "-q")
+        for n in ("Llm", "FileSystem", "Protocol"):
+            self.write(f"src/constants/Orkeon.Constants.{n}/Orkeon.Constants.{n}.csproj", "<Project/>")
+        refs = lambda names, kind: "".join(
+            f'<ProjectReference Include="..\\..\\x\\Orkeon.{kind}.{n}\\Orkeon.{kind}.{n}.csproj" PrivateAssets="all" />'
+            for n in names)
+        self.write("src/packaging/Orkeon/Orkeon.csproj", f"<Project>{refs(['Llm', 'FileSystem'], 'Constants')}</Project>")
+        self.write("src/packaging/Orkeon.Tools/Orkeon.Tools.csproj",
+                   f"<Project>{refs(['Code', 'Data', 'Web'], 'Tools')}</Project>")
+        _git(self.root, "add", "-A")
+
+    def tearDown(self) -> None:
+        gate.ROOT = self._saved_root
+        gate.ERRORS.clear()
+        shutil.rmtree(self.root, ignore_errors=True)
+
+    def write(self, rel: str, text: str) -> None:
+        path = self.root / rel
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(text, encoding="utf-8")
+
+    def errors_for(self, text: str, rel: str = "docs/page.md") -> str:
+        self.write(rel, text)
+        gate.ERRORS.clear()
+        gate._GIT_LISTING.clear()  # the listing is cached per ROOT; this test adds files between calls
+        gate.check_docs_counts(tools=120, src_projects=50, test_projects=38)
+        return "\n".join(gate.ERRORS)
+
+    def test_truths_are_read_from_the_code(self) -> None:
+        self.assertEqual(3, gate.gt_constants_satellites())
+        self.assertEqual(2, gate.gt_umbrella_satellites())
+        self.assertEqual(3, gate.gt_tool_families())
+
+    def test_exact_claims_pass(self) -> None:
+        text = ("120 built-in tool classes, **120** outils intégrés, 120 tools by category.\n"
+                "src/    # 50 projects\ntests/  # 38 projets\n"
+                "three built-in tool families, trois familles d'outils, the three `Orkeon.Tools.<family>` projects\n"
+                "two `Orkeon.Constants.*` satellites, three zero-dependency constants satellites\n")
+        self.assertEqual("", self.errors_for(text))
+
+    def test_a_stale_built_in_tool_count_is_reported_in_both_languages(self) -> None:
+        self.assertIn("docs/page.md:1", self.errors_for("102 built-in tools"))
+        (self.root / "docs/page.md").unlink()
+        self.assertIn("docs/fr/page.md:1", self.errors_for("102 outils intégrés", "docs/fr/page.md"))
+
+    def test_a_stale_tool_total_by_category_is_reported(self) -> None:
+        self.assertIn("'99'", self.errors_for("99 tools by category"))
+
+    def test_the_tool_families_of_a_package_are_not_the_built_in_total(self) -> None:
+        self.assertEqual("", self.errors_for("The three built-in tool families"))
+
+    def test_a_stale_project_count_in_a_tree_is_reported(self) -> None:
+        self.assertIn("'48'", self.errors_for("src/    # 48 projects"))
+        self.assertIn("'36'", self.errors_for("tests/  # 36 projets"))
+
+    def test_a_stale_satellite_count_is_reported_with_a_number_word(self) -> None:
+        self.assertIn("'seven'", self.errors_for("the seven `Orkeon.Constants.*` satellites"))
+
+    def test_a_stale_family_count_is_reported(self) -> None:
+        self.assertIn("'eight'", self.errors_for("The eight built-in tool families"))
+        self.assertIn("'huit'", self.errors_for("les huit familles d'outils"))
+        self.assertIn("'nine'", self.errors_for("the nine `Orkeon.Tools.<family>` projects"))
+
+    def test_a_singular_or_a_partitive_is_not_a_count(self) -> None:
+        text = ("replace one built-in tool with yours; un outil intégré\n"
+                "lives in a satellite, vit dans un satellite, one of the satellites, un des satellites\n")
+        self.assertEqual("", self.errors_for(text))
+
+    def test_the_adr_index_is_checked_like_any_page(self) -> None:
+        self.assertIn("'seven'", self.errors_for("seven satellites", "docs/adr/README.md"))
+
+    def test_adrs_keep_the_numbers_of_their_day(self) -> None:
+        self.assertEqual("", self.errors_for("49 src and 102 built-in tools", "docs/adr/ADR-099.md"))
+        self.assertEqual("", self.errors_for("102 built-in tools", "docs/fr/adr/ADR-099.md"))
+
+
 if __name__ == "__main__":
     unittest.main()

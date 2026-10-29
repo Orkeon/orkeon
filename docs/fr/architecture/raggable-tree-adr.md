@@ -116,6 +116,23 @@ le texte ci-dessus est conservé tel quel :
   on-device (`LocalSmartComponents`, sans clé d'API). Le cache JSON cité dans les
   risques acceptés (`RaggableTreeCache`) n'est câblé par aucun hôte livré.
 
+## Amendement 2026-10-29
+
+Quatre affirmations de l'enregistrement et de ses amendements ci-dessus sont
+périmées ; l'enregistrement ci-dessus est conservé tel quel.
+
+- **Tools** : `AddRaggableTreeTools` enregistre désormais **28** tools, et non 15
+  (amendement du 2026-08-18) ; les « 27 points d'extension » qui en étaient
+  dérivés ne tiennent plus. [Le guide RaggableTree](./raggable-tree.md) les liste.
+- **Arêtes** : `EdgeKind` a huit valeurs, et non les cinq nommées sous Décision :
+  `Imports`, `Calls`, `Extends`, `Implements`, `Contains`, plus `Tests`,
+  `Documents` et `ProjectDepends`.
+- **Tools de recherche** : `semantic_search` n'est pas un tool RaggableTree ; le
+  tool de recherche est `codebase_search`.
+- **Taille du résumé** : le guide donne le budget du résumé de contexte à environ
+  300 tokens (`markdown`, le défaut) et environ 150 (`compact`), et non les 500 et
+  200 des Conséquences.
+
 ---
 
 > **Voir aussi** : [Guide RaggableTree](./raggable-tree.md) · [Retour à l'index](../INDEX.md)

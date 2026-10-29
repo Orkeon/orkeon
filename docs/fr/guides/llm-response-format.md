@@ -256,6 +256,6 @@ Les 6 stratégies de process (Sequential, Hierarchical, Autonomous, Graph, Paral
 - Record de patch : `Orkeon.Domain.SharedKernel.ValueObjects.LlmConfigOverride`
 - Fusion : `Orkeon.Domain.SharedKernel.ValueObjects.LlmConfigResolver.Resolve`
 - Traduction wire : `Orkeon.Infrastructure.LLMs.Base.OpenAICompatibleProviderBase.ApplyProviderSpecificOptions` (virtuelle — Qwen, OpenRouter et Together AI la surchargent et appellent la base pour `response_format`) ; `AnthropicLlmProvider` et `OllamaLlmProvider` pour leurs dialectes propres
-- Mapping YAML : `Orkeon.Infrastructure.Configuration.Yaml.YamlCrewMapper.MapResponseFormat`
+- Mapping YAML : `Orkeon.Infrastructure.Configuration.Yaml.YamlCrewMapper` (son `MapResponseFormat` privé) ; l'export est `Orkeon.Infrastructure.Configuration.YamlCrewExporter.MapResponseFormat`
 - Plan / spec : l'archive des mainteneurs (plan LLM-RESPONSE-FORMAT)
 - Doc API DeepSeek : https://api-docs.deepseek.com/api/create-chat-completion

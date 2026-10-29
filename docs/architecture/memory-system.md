@@ -217,7 +217,7 @@ of a named crew that declares no `memoryProvider:` lives ([below](#a-crews-memor
 | `AddOrkeonInfrastructure()` | The five sections, `IMemoryProviderFactory` + the `IMemoryProvider` singleton above |
 | `AddOrkeonRedisMemory(configuration)` | Binds `Orkeon:Redis` from `configuration`, exposes the shared `RedisMemoryProvider` by its class and **rebinds** `IMemoryProvider` to it — the same as `Memory:Provider = redis` |
 | `AddOrkeonChromaDb(configuration)` | Binds `Orkeon:ChromaDb` and exposes the shared `ChromaDbMemoryProvider` by its class (HTTP client from `IHttpClientFactory`). Called by `AddOrkeonInfrastructure(configuration)` when the section exists |
-| `AddOrkeonPinecone(configuration)` | Same shape on `Orkeon:Pinecone` (`ApiKey`, `IndexName`, `Host`, `Namespace`) |
+| `AddOrkeonPinecone(configuration)` | Same shape on `Orkeon:Pinecone` (`ApiKey`, `IndexName`, `Host`, `Namespace`). Also called by `AddOrkeonInfrastructure(configuration)` when the section exists |
 | `AddOrkeonLanceDb(configuration)` | Same shape on `Orkeon:LanceDb`, plus `LanceDbMigrationService` (`MigrateToLanceDbAsync`, copies an existing provider into the LanceDB table) |
 | `AddOrkeonMemoryMigration()` | `MemoryMigrationService` — `MigrateAsync` copies every entry from one provider to another. Not registered by `AddOrkeonInfrastructure()`: call it when you move a store (e.g. In-Memory or SQLite to a vector database), resolve the service and pass it the source and target providers (two `MemoryProviderBase` instances — the source is enumerated key by key) |
 

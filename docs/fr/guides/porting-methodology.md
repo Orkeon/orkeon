@@ -70,7 +70,7 @@ Catégoriser chaque responsabilité selon cette grille :
 
 ### 1.4 Identifier les interactions humaines
 
-Repérer les points où l'application nécessite une intervention humaine (validation, saisie, approbation). Ces points deviendront des tasks avec `HumanInput = true` dans Orkeon (`humanInput: true` en YAML). Le drapeau donne à l'agent l'outil `human_input` pour cette task ; l'hôte doit donc en enregistrer un : `orkeon run` fait remonter la question sur son bus d'événements de run, et un hôte construit à la main appelle `AddOrkeonHumanInput<TProvider>()` avec son propre `IHumanInputProvider` (`AddOrkeonHumanInput()` sans paramètre approuve automatiquement). Sans outil `human_input` enregistré, le drapeau est sans effet.
+Repérer les points où l'application nécessite une intervention humaine (validation, saisie, approbation). Ces points deviendront des tasks avec `HumanInput = true` dans Orkeon (`humanInput: true` en YAML). Le drapeau donne à l'agent l'outil `human_input` pour cette task ; l'hôte doit donc en enregistrer un : `orkeon run` fait remonter la question sur son bus d'événements de run, et un hôte construit à la main appelle `AddOrkeonHumanInput<TProvider>()` avec son propre `IHumanInputProvider` (`AddOrkeonHumanInput()` sans paramètre approuve automatiquement). Sans outil `human_input` enregistré, le drapeau est sans effet (`TaskToolbelt.Compose` n'ajoute l'outil à la ceinture de la task que si l'hôte en a enregistré un).
 
 ## Étape 2 — Mapper les responsabilités vers des rôles d'agents
 

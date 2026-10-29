@@ -3056,7 +3056,7 @@
       "path": "Orkeon:Scripting:Toolchain:EsbuildPath",
       "section": "Orkeon:Scripting:Toolchain",
       "type": "string",
-      "description": "Absolute path to the esbuild binary. When null, the transpiler falls back to the `ORKEON_ESBUILD_PATH` environment variable, then to a binary bundled next to the application (`esbuild-bin/esbuild`), then to a PATH lookup."
+      "description": "Absolute path to the esbuild binary. When null, the transpiler falls back to the `ORKEON_ESBUILD_PATH` environment variable, then to a binary bundled next to the application (`esbuild-bin/esbuild`), then to the copy `npm install` places in a checkout of the repository (`tools/scripting-esbuild/node_modules/`, searched from the working directory and the application directory upwards), then to a PATH lookup."
     },
     {
       "path": "Orkeon:Scripting:Toolchain:EsbuildTimeout",

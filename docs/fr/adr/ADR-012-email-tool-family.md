@@ -138,3 +138,7 @@ Les contraintes des fournisseurs, vérifiées le 2026-09-26 :
 - Hors de cette version : supprimer des dossiers, copier un message ou lui donner plusieurs
   libellés Gmail, les envois Graph au-delà d'environ 3 Mo (une session de chargement),
   l'approbation humaine interactive d'un envoi.
+
+## Amendement (2026-10-29)
+
+Les versions citées à la décision 2 (MailKit 4.18.0, MimeKit 4.18.1) étaient celles du 2026-09-26 ; `Directory.Packages.props` épingle maintenant MailKit 4.18.2 et MimeKit 4.18.2.

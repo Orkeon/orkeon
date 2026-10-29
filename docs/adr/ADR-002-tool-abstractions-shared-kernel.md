@@ -68,3 +68,7 @@ Since then (2026-09-26), `Orkeon.Tools.Email` ([ADR-012](./ADR-012-email-tool-fa
 brought the family to **ten** projects: all nine families reference `Tools.Abstractions`
 (`Orkeon.Tools.Rag` included, although its three tools still implement `IBaseTool`
 directly), and `Tools.Abstractions` still references `Orkeon.Domain` alone.
+
+## Amendment (2026-10-29)
+
+`Orkeon.Tools.Drive` ([ADR-013](./ADR-013-drive-tool-family.md)) joined the family after the note above: `src/tools/` now holds **eleven** projects, `Tools.Abstractions` and ten families, and each family references `Tools.Abstractions`.
