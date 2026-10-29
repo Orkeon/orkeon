@@ -85,8 +85,11 @@ public sealed class DependencyGraphBuilder
         IReferenceResolver resolver, IReadOnlyList<string> filePaths, CancellationToken ct)
     {
         var index = BuildGlobalIndex();
-        var edges = new List<RaggableEdge>();
+        // Built once: the imports add only external modules to the index, never a symbol.
+        var byShortName = BuildShortNameIndex(index);
+        var edges = new EdgeSet();
         var unresolvedCalls = new List<UnresolvedRef>();
+        using var queries = new QueryCache();
 
         foreach (var filePath in filePaths)
         {
@@ -95,20 +98,23 @@ public sealed class DependencyGraphBuilder
             var moduleNode = ctx.Nodes.FirstOrDefault(n => n.Level == NodeLevel.L2_Module);
             if (moduleNode is null) continue;
 
-            CollectFileEdges(edges, unresolvedCalls, index, filePath, moduleNode, ctx);
+            CollectFileEdges(edges, unresolvedCalls, index, byShortName, queries, filePath, moduleNode, ctx);
         }
 
         var resolved = await resolver.ResolveAsync(unresolvedCalls, index, ct).ConfigureAwait(false);
-        edges.AddRange(resolved);
+        var all = edges.Edges;
+        all.AddRange(resolved);
 
-        ApplyInverseLinks(edges, index);
-        return edges;
+        ApplyInverseLinks(all, index);
+        return all;
     }
 
     private void CollectFileEdges(
-        List<RaggableEdge> edges,
+        EdgeSet edges,
         List<UnresolvedRef> unresolvedCalls,
         Dictionary<string, RaggableNode> index,
+        Dictionary<string, List<RaggableNode>> byShortName,
+        QueryCache queries,
         string filePath,
         RaggableNode moduleNode,
         FileContext ctx)
@@ -116,21 +122,21 @@ public sealed class DependencyGraphBuilder
         using var parsed = _pool.Parse(ctx.Source, ctx.Adapter.LanguageName);
         var language = parsed.Tree.Language;
 
-        CollectImports(edges, index, filePath, moduleNode, ctx.Adapter, parsed.Root, language);
-        CollectInheritance(edges, index, ctx, parsed.Root, language);
-        CollectCalls(unresolvedCalls, ctx, moduleNode, parsed.Root, language);
+        CollectImports(edges, index, filePath, moduleNode, ctx.Adapter, parsed.Root, queries.Get(language, ctx.Adapter.LanguageName, ctx.Adapter.ImportQuery));
+        CollectInheritance(edges, byShortName, ctx, parsed.Root, queries.Get(language, ctx.Adapter.LanguageName, ctx.Adapter.InheritanceQuery));
+        CollectCalls(unresolvedCalls, ctx, moduleNode, parsed.Root, queries.Get(language, ctx.Adapter.LanguageName, ctx.Adapter.CallQuery));
     }
 
     private static void CollectImports(
-        List<RaggableEdge> edges,
+        EdgeSet edges,
         Dictionary<string, RaggableNode> index,
         string filePath,
         RaggableNode moduleNode,
         ILanguageAdapter adapter,
         TsNode root,
-        TsLanguage language)
+        TsQuery? query)
     {
-        var importNodes = RunQuery(language, adapter.ImportQuery, root, "import");
+        var importNodes = RunQuery(query, root, "import");
         foreach (var importNode in importNodes)
         {
             var spec = ExtractImportSpecifier(importNode);
@@ -142,10 +148,8 @@ public sealed class DependencyGraphBuilder
             var target = ResolveImportTarget(resolved, index);
             if (target is null) continue;
 
-            var edgeId = $"{moduleNode.Id}→{target.Id}:{EdgeKind.Imports}";
-            if (edges.Any(e => e.Id == edgeId)) continue;
             if (moduleNode.Id == target.Id) continue;
-            edges.Add(new RaggableEdge(edgeId, moduleNode.Id, target.Id, EdgeKind.Imports));
+            edges.TryAdd($"{moduleNode.Id}→{target.Id}:{EdgeKind.Imports}", moduleNode.Id, target.Id, EdgeKind.Imports);
         }
     }
 
@@ -171,17 +175,15 @@ public sealed class DependencyGraphBuilder
     }
 
     private static void CollectInheritance(
-        List<RaggableEdge> edges,
-        Dictionary<string, RaggableNode> index,
+        EdgeSet edges,
+        Dictionary<string, List<RaggableNode>> byShortName,
         FileContext ctx,
         TsNode root,
-        TsLanguage language)
+        TsQuery? query)
     {
-        var byShortName = BuildShortNameIndex(index);
-
         foreach (var (captureName, kind) in new[] { ("extends", EdgeKind.Extends), ("implements", EdgeKind.Implements) })
         {
-            var clauses = RunQuery(language, ctx.Adapter.InheritanceQuery, root, captureName);
+            var clauses = RunQuery(query, root, captureName);
             foreach (var clause in clauses)
             {
                 var ownerSymbol = FindEnclosingSymbol(clause, ctx.Nodes);
@@ -190,10 +192,8 @@ public sealed class DependencyGraphBuilder
                 {
                     var target = ResolveByShortName(name, byShortName, ownerSymbol.VirtualFilePath);
                     if (target is null) continue;
-                    var edgeId = $"{ownerSymbol.Id}→{target.Id}:{kind}";
-                    if (edges.Any(e => e.Id == edgeId)) continue;
                     if (ownerSymbol.Id == target.Id) continue;
-                    edges.Add(new RaggableEdge(edgeId, ownerSymbol.Id, target.Id, kind));
+                    edges.TryAdd($"{ownerSymbol.Id}→{target.Id}:{kind}", ownerSymbol.Id, target.Id, kind);
                 }
             }
         }
@@ -204,9 +204,9 @@ public sealed class DependencyGraphBuilder
         FileContext ctx,
         RaggableNode moduleNode,
         TsNode root,
-        TsLanguage language)
+        TsQuery? query)
     {
-        var calls = RunQuery(language, ctx.Adapter.CallQuery, root, "call");
+        var calls = RunQuery(query, root, "call");
         foreach (var call in calls)
         {
             var ownerSymbol = FindEnclosingSymbol(call, ctx.Nodes);
@@ -248,12 +248,24 @@ public sealed class DependencyGraphBuilder
         List<RaggableEdge> edges,
         Dictionary<string, RaggableNode> index)
     {
+        // The index is keyed by FQN, path and id; an id it lacks (an unresolved call target)
+        // is looked up by node id, the first node in index order, as a scan would find it.
+        Dictionary<string, RaggableNode>? byId = null;
+        RaggableNode? Find(string id)
+        {
+            if (index.TryGetValue(id, out var node)) return node;
+            if (byId is null)
+            {
+                byId = new Dictionary<string, RaggableNode>(StringComparer.Ordinal);
+                foreach (var candidate in index.Values) byId.TryAdd(candidate.Id, candidate);
+            }
+            return byId.GetValueOrDefault(id);
+        }
+
         foreach (var edge in edges)
         {
-            if (!index.TryGetValue(edge.FromId, out var fromNode))
-                fromNode = index.Values.FirstOrDefault(n => n.Id == edge.FromId);
-            if (!index.TryGetValue(edge.ToId, out var toNode))
-                toNode = index.Values.FirstOrDefault(n => n.Id == edge.ToId);
+            var fromNode = Find(edge.FromId);
+            var toNode = Find(edge.ToId);
 
             if (fromNode is null || toNode is null) continue;
 
@@ -310,15 +322,17 @@ public sealed class DependencyGraphBuilder
         Dictionary<string, RaggableNode> index)
     {
         var map = new Dictionary<string, List<RaggableNode>>(StringComparer.Ordinal);
+        // A node sits in the index under its FQN and its id: keep its first occurrence.
+        var seen = new HashSet<RaggableNode>(ReferenceEqualityComparer.Instance);
         foreach (var node in index.Values)
         {
-            if (node.Level != NodeLevel.L3_Symbol) continue;
+            if (node.Level != NodeLevel.L3_Symbol || !seen.Add(node)) continue;
             if (!map.TryGetValue(node.Name, out var bucket))
             {
                 bucket = [];
                 map[node.Name] = bucket;
             }
-            if (!bucket.Contains(node)) bucket.Add(node);
+            bucket.Add(node);
         }
         return map;
     }
@@ -427,27 +441,56 @@ public sealed class DependencyGraphBuilder
         }
     }
 
-    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Best-effort query compilation: a malformed/unsupported tree-sitter query yields no matches rather than crashing edge resolution.")]
-    private static List<TsNode> RunQuery(
-        TsLanguage language, string queryText, TsNode root, string captureName)
+    private static List<TsNode> RunQuery(TsQuery? query, TsNode root, string captureName)
     {
-        if (string.IsNullOrWhiteSpace(queryText)) return [];
-        TsQuery query;
-        try { query = language.CreateQuery(queryText); }
-        catch { return []; }
+        if (query is null) return [];
         var results = new List<TsNode>();
-        using (query)
+        using var cursor = query.Execute(root);
+        foreach (var match in cursor.Matches)
         {
-            using var cursor = query.Execute(root);
-            foreach (var match in cursor.Matches)
+            foreach (var capture in match.Captures)
             {
-                foreach (var capture in match.Captures)
-                {
-                    if (capture.Name == captureName) results.Add(capture.Node);
-                }
+                if (capture.Name == captureName) results.Add(capture.Node);
             }
         }
         return results;
+    }
+
+    // The edges of one resolution, in insertion order, with their ids for the duplicate check.
+    private sealed class EdgeSet
+    {
+        private readonly HashSet<string> _ids = new(StringComparer.Ordinal);
+
+        public List<RaggableEdge> Edges { get; } = [];
+
+        public void TryAdd(string id, string fromId, string toId, EdgeKind kind)
+        {
+            if (_ids.Add(id)) Edges.Add(new RaggableEdge(id, fromId, toId, kind));
+        }
+    }
+
+    // The queries of one resolution, compiled once per language instead of once per file.
+    private sealed class QueryCache : IDisposable
+    {
+        private readonly Dictionary<(string Language, string Text), TsQuery?> _queries = [];
+
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Best-effort query compilation: a malformed/unsupported tree-sitter query yields no matches rather than crashing edge resolution.")]
+        public TsQuery? Get(TsLanguage language, string languageName, string queryText)
+        {
+            if (string.IsNullOrWhiteSpace(queryText)) return null;
+            if (_queries.TryGetValue((languageName, queryText), out var cached)) return cached;
+            TsQuery? query;
+            try { query = language.CreateQuery(queryText); }
+            catch { query = null; }
+            _queries[(languageName, queryText)] = query;
+            return query;
+        }
+
+        public void Dispose()
+        {
+            foreach (var query in _queries.Values) query?.Dispose();
+            _queries.Clear();
+        }
     }
 
     /// <summary>

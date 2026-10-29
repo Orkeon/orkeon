@@ -35,6 +35,14 @@ hashed again at the next call.
 file, so a refresh lost them (3129 of 11868 edges on one repository). They are kept now, and the one a reindexed file
 makes resolvable (a newly defined function) is replaced by the resolved edge: a refresh gives the edges of a full build.
 
+### Changed — the dependency graph of an index builds in seconds, not minutes
+
+`DependencyGraphBuilder` rebuilt the short-name symbol table for every file, checked each new edge against every edge
+already found, compiled its tree-sitter queries once per file, and looked an unresolved call target up by scanning every
+node. It now builds the table and compiles the queries once per resolution and checks duplicates through a set and ids
+through a dictionary. On Orkeon's own `src` (3166 files, 45107 nodes, 62758 edges) a full `index_codebase` build drops from
+221 s to 15 s; the tree is byte-for-byte the same (same edges in the same order, same links and tags, same `IndexId`).
+
 ### Added — parallel index build (`index_codebase` `max_parallelism`)
 
 `index_codebase` reads and parses files `max_parallelism` at a time (`IndexCodebaseRequest.MaxParallelism`): `0`, the
