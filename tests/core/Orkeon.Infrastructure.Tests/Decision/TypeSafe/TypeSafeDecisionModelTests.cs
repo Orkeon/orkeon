@@ -143,6 +143,46 @@ public class TypeSafeDecisionModelTests
     }
 
     [Fact]
+    public async Task ShouldMeterZeroTokens_WhenTheUsageCarriesNullCounts()
+    {
+        var sink = new MockLlmUsageSink();
+        const string body = """
+            {"model":"jev-1.14.0","answers":{"tone":{"type":"choice","choice":"calm","confidence":0.91,
+            "probabilities":{"calm":0.91,"angry":0.09}}},"usage":{"input_tokens":null,"output_tokens":null}}
+            """;
+        using var handler = TestHttpMessageHandler.CreateWithResponse(HttpStatusCode.OK, body);
+        var model = Create(handler, sink: sink);
+
+        var response = await model.DecideAsync(ChoiceRequest(), TestContext.Current.CancellationToken);
+
+        Assert.Null(response.Usage.InputTokens);
+        var usage = Assert.Single(sink.Recorded);
+        Assert.Equal(0, usage.PromptTokens);
+        Assert.Equal(0, usage.CompletionTokens);
+    }
+
+    [Fact]
+    public async Task ShouldCiteTheRequestId_WhenTheApiRefusesWithOne()
+    {
+        using var handler = new TestHttpMessageHandler(_ =>
+        {
+            var response = new HttpResponseMessage(HttpStatusCode.BadRequest)
+            {
+                Content = new StringContent("""{"detail":"state is not valid"}""", System.Text.Encoding.UTF8, "application/json"),
+            };
+            response.Headers.Add(TypeSafeDecisionModel.RequestIdHeader, "req_0123abcd");
+            return response;
+        });
+        var model = Create(handler);
+
+        var ex = await Assert.ThrowsAsync<DecisionModelException>(() => model.DecideAsync(ChoiceRequest(), TestContext.Current.CancellationToken));
+
+        Assert.Contains("state is not valid", ex.Message, StringComparison.Ordinal);
+        Assert.EndsWith("(TypeSafe request req_0123abcd)", ex.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain(Key, ex.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task ShouldRefuseBeforeSending_WhenTheRequestIsInvalid()
     {
         using var handler = TestHttpMessageHandler.CreateWithResponse(HttpStatusCode.OK, ChoiceBody);

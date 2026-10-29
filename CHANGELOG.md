@@ -13,7 +13,8 @@ Model providers now come in four categories (`ModelProviderCategory`: `Generatio
 `Decision`), listed with their key variable and endpoint in `ModelProviderCatalog` (`Orkeon.Constants.Llm`). The new
 `Decision` category has its own port, `IDecisionModel` (`Orkeon.Application`), with typed `choice`, `score`, `noul` and
 `box` questions and their answers; `AddOrkeonTypeSafe(configuration)` binds `Orkeon:TypeSafe` and serves TypeSafe's Jev
-(`jev-latest`, key in `TYPESAFE_API_KEY`, 429 and 529 retried, usage metered as `decision`). TypeSafe is not an LLM
+(`jev-latest`, key in `TYPESAFE_API_KEY`, 429 and 529 retried, usage metered as `decision`, errors citing TypeSafe's
+request id). TypeSafe is not an LLM
 provider: the count stays at 16. The three shipped binaries (`orkeon run`, `orkeon-host`, `orkeon-repl`) call it when
 their settings hold `Orkeon:TypeSafe` or `TYPESAFE_API_KEY` is set. `AddOrkeonDecisionProfiles(configuration)`, which
 the three binaries call in every case, reads `Orkeon:Decision:Profiles` and

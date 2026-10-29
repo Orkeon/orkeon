@@ -63,7 +63,9 @@ in every case; a host written in C# calls both.
 - **Errors** become a `DecisionModelException`: a 422 cites the field at fault, a 401 names the
   key variable, a 400 `max_tokens_exceeded` names the limit (and suggests `longContext` when the
   request did not ask for it), a 413 or 415 says what the request exceeded. A 429 or a 529 is retried with an
-  exponential backoff, up to `MaxRetries` times; each attempt has its own `TimeoutSeconds`.
+  exponential backoff, up to `MaxRetries` times; each attempt has its own `TimeoutSeconds`. Every
+  error cites the id TypeSafe gave the request (`x-typesafe-request-id`) when the answer carries one.
+  A `usage` without token counts is metered as zero, not refused.
 - **The danger-zone headers** are set from the request: `TypeSafe-Danger-Zone-Images` when it
   carries images or a `box` question, `TypeSafe-Danger-Zone-Long-Context` when `LongContext` is set.
 - **Usage** is metered once, as `decision` (`LlmUsageOperations.Decision`): TypeSafe bills

@@ -167,6 +167,7 @@ Orkeon.Infrastructure.Tools.SystemOneDecideTool
 Orkeon.Infrastructure.Tools.SystemOneDecideTool.SystemOneDecideTool(Orkeon.Application.Interfaces.Ports.IDecisionModel! model) -> void
 const Orkeon.Infrastructure.Decision.TypeSafe.TypeSafeDecisionModel.ImagesHeader = "TypeSafe-Danger-Zone-Images" -> string!
 const Orkeon.Infrastructure.Decision.TypeSafe.TypeSafeDecisionModel.LongContextHeader = "TypeSafe-Danger-Zone-Long-Context" -> string!
+const Orkeon.Infrastructure.Decision.TypeSafe.TypeSafeDecisionModel.RequestIdHeader = "x-typesafe-request-id" -> string!
 const Orkeon.Infrastructure.Decision.TypeSafe.TypeSafeInputGuard.GuardName = "typesafe" -> string!
 const Orkeon.Infrastructure.Decision.TypeSafe.TypeSafeOptions.SectionName = "Orkeon:TypeSafe" -> string!
 const Orkeon.Infrastructure.LLMs.Decision.DecisionCircuitOptions.SectionName = "Orkeon:Decision" -> string!

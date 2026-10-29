@@ -110,9 +110,9 @@ Orkeon.Application.Decision.DTOs.DecisionUsage
 Orkeon.Application.Decision.DTOs.DecisionUsage.<Clone>$() -> Orkeon.Application.Decision.DTOs.DecisionUsage!
 Orkeon.Application.Decision.DTOs.DecisionUsage.DecisionUsage() -> void
 Orkeon.Application.Decision.DTOs.DecisionUsage.Equals(Orkeon.Application.Decision.DTOs.DecisionUsage? other) -> bool
-Orkeon.Application.Decision.DTOs.DecisionUsage.InputTokens.get -> int
+Orkeon.Application.Decision.DTOs.DecisionUsage.InputTokens.get -> int?
 Orkeon.Application.Decision.DTOs.DecisionUsage.InputTokens.init -> void
-Orkeon.Application.Decision.DTOs.DecisionUsage.OutputTokens.get -> int
+Orkeon.Application.Decision.DTOs.DecisionUsage.OutputTokens.get -> int?
 Orkeon.Application.Decision.DTOs.DecisionUsage.OutputTokens.init -> void
 Orkeon.Application.Decision.DTOs.DecisionVerdictKind
 Orkeon.Application.Decision.DTOs.DecisionVerdictKind.Block = 1 -> Orkeon.Application.Decision.DTOs.DecisionVerdictKind

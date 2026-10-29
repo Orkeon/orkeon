@@ -35,13 +35,13 @@ public sealed record DecisionResponse
 /// <summary>The tokens a decision request used. Some providers bill the input only.</summary>
 public sealed record DecisionUsage
 {
-    /// <summary>Gets the billable input tokens.</summary>
+    /// <summary>Gets the billable input tokens; null when the model reported none.</summary>
     [JsonPropertyName("input_tokens")]
-    public int InputTokens { get; init; }
+    public int? InputTokens { get; init; }
 
-    /// <summary>Gets the output tokens.</summary>
+    /// <summary>Gets the output tokens; null when the model reported none.</summary>
     [JsonPropertyName("output_tokens")]
-    public int OutputTokens { get; init; }
+    public int? OutputTokens { get; init; }
 }
 
 /// <summary>A model or alias a decision provider accepts.</summary>

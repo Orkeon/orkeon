@@ -93,6 +93,19 @@ public sealed class DecisionDtoJsonTests
     }
 
     [Fact]
+    public void ShouldReadNullTokenCounts_WhenTheUsageCarriesNone()
+    {
+        const string body = """
+            {"model":"jev-1.14.0","answers":{"spam":{"type":"noul","noul":0.02}},"usage":{"input_tokens":null,"output_tokens":null}}
+            """;
+
+        var response = JsonSerializer.Deserialize<DecisionResponse>(body)!;
+
+        Assert.Null(response.Usage.InputTokens);
+        Assert.Null(response.Usage.OutputTokens);
+    }
+
+    [Fact]
     public void Get_Throws_WhenTheAnswerIsMissingOrOfAnotherType()
     {
         var response = new DecisionResponse

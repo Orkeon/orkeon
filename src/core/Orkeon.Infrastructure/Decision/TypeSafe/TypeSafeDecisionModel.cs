@@ -20,8 +20,8 @@ namespace Orkeon.Infrastructure.Decision.TypeSafe;
 /// <see cref="IDecisionModel"/> over the TypeSafe System One API (<c>POST /systemone</c>,
 /// <c>GET /models</c>). A request is validated before it is sent; a 429, a 529 or a network
 /// error is retried with the LLM retry policy; each answered request is metered as a
-/// <see cref="LlmUsageOperations.Decision"/> call. An error names what to fix and never carries
-/// the key.
+/// <see cref="LlmUsageOperations.Decision"/> call. An error names what to fix, cites TypeSafe's
+/// request id when the answer carries one, and never carries the key.
 /// </summary>
 public sealed partial class TypeSafeDecisionModel : IDecisionModel
 {
@@ -30,6 +30,9 @@ public sealed partial class TypeSafeDecisionModel : IDecisionModel
 
     /// <summary>The header that raises both context limits.</summary>
     public const string LongContextHeader = "TypeSafe-Danger-Zone-Long-Context";
+
+    /// <summary>The response header that carries the id TypeSafe gave the request, cited by every error.</summary>
+    public const string RequestIdHeader = "x-typesafe-request-id";
 
     private static readonly DecisionRequestValidator s_validator = new();
 
@@ -165,7 +168,8 @@ public sealed partial class TypeSafeDecisionModel : IDecisionModel
             var text = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
             if (response.IsSuccessStatusCode)
                 return text;
-            throw Failure(response.StatusCode, text, longContext);
+            var requestId = response.Headers.TryGetValues(RequestIdHeader, out var ids) ? ids.FirstOrDefault() : null;
+            throw Failure(response.StatusCode, text, longContext, requestId);
         }
     }
 
@@ -196,7 +200,7 @@ public sealed partial class TypeSafeDecisionModel : IDecisionModel
             : key.Trim();
     }
 
-    private static DecisionModelException Failure(HttpStatusCode status, string body, bool longContext)
+    private static DecisionModelException Failure(HttpStatusCode status, string body, bool longContext, string? requestId)
     {
         var code = (int)status;
         var detail = Detail(body);
@@ -214,6 +218,8 @@ public sealed partial class TypeSafeDecisionModel : IDecisionModel
             529 => "TypeSafe is overloaded (529) after the retries.",
             _ => $"TypeSafe answered {code}: {detail}",
         };
+        if (!string.IsNullOrWhiteSpace(requestId))
+            message += $" (TypeSafe request {requestId.Trim()})";
         return new DecisionModelException(message, code, isTransient: code is 429 or >= 500);
     }
 
@@ -262,7 +268,8 @@ public sealed partial class TypeSafeDecisionModel : IDecisionModel
         Justification = "Host-sink fault barrier: usage accounting must never fail the decision it observes.")]
     private void Meter(DecisionResponse response)
     {
-        LogDecisionAnswered(response.Model, response.Answers.Count, response.Usage.InputTokens);
+        // A usage without counts (the SDKs accept it) is metered as zero rather than refused.
+        LogDecisionAnswered(response.Model, response.Answers.Count, response.Usage.InputTokens ?? 0);
         if (_usageSink is null)
             return;
         var attribution = LlmUsageScope.Current;
@@ -276,8 +283,8 @@ public sealed partial class TypeSafeDecisionModel : IDecisionModel
                 OperationType = LlmUsageOperations.Decision,
                 Model = response.Model,
                 Provider = Name,
-                PromptTokens = response.Usage.InputTokens,
-                CompletionTokens = response.Usage.OutputTokens,
+                PromptTokens = response.Usage.InputTokens ?? 0,
+                CompletionTokens = response.Usage.OutputTokens ?? 0,
             });
         }
         catch (Exception)

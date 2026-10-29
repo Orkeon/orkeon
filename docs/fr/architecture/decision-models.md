@@ -64,7 +64,9 @@ leurs réglages portent une section `Orkeon:TypeSafe` ou que `TYPESAFE_API_KEY` 
   nomme la variable de clé, un 400 `max_tokens_exceeded` nomme la limite (et suggère `longContext`
   quand la requête ne l'a pas demandé), un 413 ou un 415 dit ce que la requête a dépassé. Un 429 ou un 529 est
   réessayé avec un backoff exponentiel, jusqu'à `MaxRetries` fois ; chaque tentative a son propre
-  `TimeoutSeconds`.
+  `TimeoutSeconds`. Chaque erreur cite l'identifiant que TypeSafe a donné à la requête
+  (`x-typesafe-request-id`) quand la réponse le porte. Un `usage` sans compteurs de tokens est
+  mesuré à zéro, pas refusé.
 - **Les en-têtes « danger zone »** se posent selon la requête : `TypeSafe-Danger-Zone-Images`
   quand elle porte des images ou une question `box`, `TypeSafe-Danger-Zone-Long-Context` quand
   `LongContext` est posé.
