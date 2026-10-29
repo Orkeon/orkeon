@@ -121,11 +121,13 @@ public static class DecisionProfileServiceCollectionExtensions
                 $"{key}: '{name}' is a decision profile; a decision profile names LLM profiles only.");
     }
 
+    private static readonly string[] s_knownKinds = [RouteKind, GuardKind, VerifyKind];
+
     /// <summary>The stage kind <paramref name="kind"/> names, whatever its case; itself when it names none.</summary>
     private static string KindOf(string kind)
     {
         var trimmed = kind.Trim();
-        foreach (var known in (string[])[RouteKind, GuardKind, VerifyKind])
+        foreach (var known in s_knownKinds)
         {
             if (string.Equals(known, trimmed, StringComparison.OrdinalIgnoreCase))
                 return known;

@@ -75,7 +75,7 @@ public sealed class TaskDecision
     /// <inheritdoc />
     public override bool Equals(object? obj) =>
         obj is TaskDecision other
-        && ConfidenceFloor == other.ConfidenceFloor
+        && ConfidenceFloor.Equals(other.ConfidenceFloor)
         && LongContext == other.LongContext
         && Questions.SequenceEqual(other.Questions)
         && StateFrom.SequenceEqual(other.StateFrom)

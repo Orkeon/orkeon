@@ -40,8 +40,7 @@ internal static class JsDecisionMapper
                     : null,
                 map.TryGetValue("state", out var state) ? Strings(state) : null,
                 map.TryGetValue("longContext", out var longContext) && longContext is not null
-                    ? longContext is bool flag ? flag : throw new ArgumentException("longContext must be a bool.")
-                    : false,
+                    && (longContext is bool flag ? flag : throw new ArgumentException("longContext must be a bool.")),
                 map.TryGetValue("fallback", out var fallback) && AsMap(fallback) is { } answers
                     ? answers.ToDictionary(a => a.Key, a => Convert.ToString(a.Value, CultureInfo.InvariantCulture)!)
                     : null);

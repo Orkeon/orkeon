@@ -28,8 +28,8 @@ public class DecisionModelRerankerTests
         {
             Model = "jev",
             Answers = relevance
-                .Select((p, i) => (Id: $"p{i}", Answer: (DecisionAnswer)new NoulAnswer { Noul = p }))
-                .ToImmutableDictionary(a => a.Id, a => a.Answer),
+                .Select((p, i) => (Id: $"p{i}", Answer: new NoulAnswer { Noul = p }))
+                .ToImmutableDictionary(a => a.Id, DecisionAnswer (a) => a.Answer),
         },
     };
 

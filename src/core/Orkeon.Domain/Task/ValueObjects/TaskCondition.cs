@@ -93,7 +93,7 @@ public sealed class ConditionClause
         && Question == other.Question
         && Option == other.Option
         && Comparison == other.Comparison
-        && Value == other.Value
+        && Value.Equals(other.Value)
         && IsThreshold == other.IsThreshold
         && Options.SequenceEqual(other.Options);
 

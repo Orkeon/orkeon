@@ -215,6 +215,7 @@ public class DecisionLlmProviderTests
         {
             await foreach (var _ in provider.GenerateStreamingAsync("x", cancellationToken: TestContext.Current.CancellationToken))
             {
+                // Drains the stream: the throw is what the test checks.
             }
         });
     }
