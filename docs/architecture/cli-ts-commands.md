@@ -366,7 +366,8 @@ defineAsyncCommand({
   instance — `crew 'code-review' already running (ticket t2)`. The check and the launch
   are one step, so two lines typed in the same tick, or a `completed` chain, cannot both
   pass. The crew is free again as soon as its instance completes, fails or is cancelled
-  (a `completed` that relaunches it is admitted). A launch without the option is neither
+  (a `completed` that relaunches it is admitted; a cancelled run stops at its next
+  cooperative checkpoint, so its last step may overlap the next launch). A launch without the option is neither
   refused nor counted; a non-boolean `exclusive` is a script error. Unlike
   `maxConcurrent` below, it bounds the crew, not the command: an alias of the command
   that launches nothing answers during the run. Both options combine

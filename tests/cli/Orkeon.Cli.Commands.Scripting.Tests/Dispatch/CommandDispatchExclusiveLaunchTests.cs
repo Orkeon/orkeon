@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging.Abstractions;
 using Orkeon.Cli.Commands.Scripting.Dispatch;
+using Orkeon.Cli.Commands.Scripting.Tests.Fixtures;
 using Orkeon.Infrastructure.Communication;
 
 namespace Orkeon.Cli.Commands.Scripting.Tests.Dispatch;
@@ -8,9 +9,26 @@ namespace Orkeon.Cli.Commands.Scripting.Tests.Dispatch;
 /// #239: <c>postWork(..., exclusive: true)</c> refuses a target whose previous exclusive launch is not terminal, in the
 /// same step as the registration of the instance.
 /// </summary>
-public sealed class CommandDispatchExclusiveLaunchTests
+[Collection("PromptScope")]
+public sealed class CommandDispatchExclusiveLaunchTests : IDisposable
 {
     private readonly TaskCompletionSource _gate = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    private readonly string _tempDir = Path.Combine(Path.GetTempPath(), "orkeon-exclusive-" + Guid.NewGuid().ToString("N"));
+    private readonly string _crewsDir;
+
+    public CommandDispatchExclusiveLaunchTests()
+    {
+        Directory.CreateDirectory(_tempDir);
+        _crewsDir = _tempDir + "-crews";
+        Directory.CreateDirectory(_crewsDir);
+    }
+
+    public void Dispose()
+    {
+        _gate.TrySetResult();
+        try { Directory.Delete(_tempDir, recursive: true); } catch { /* best effort */ }
+        try { Directory.Delete(_crewsDir, recursive: true); } catch { /* best effort */ }
+    }
 
     private static CommandDispatchService NewService() => new(
         new InMemoryAgentChannel(NullLogger<InMemoryAgentChannel>.Instance),
@@ -115,5 +133,22 @@ public sealed class CommandDispatchExclusiveLaunchTests
         var admitted = Assert.Single(tickets, t => t is not null);
         _gate.SetResult();
         await WaitTerminal(service.Registry.Get(admitted!)!);
+    }
+
+    [Fact]
+    [Trait("BR", "#239")]
+    public async Task ShouldAdmitTheExclusiveRelaunch_WhenTheCompletedOfTheHolderRelaunchesIt()
+    {
+        var service = NewService();
+        var cmd = ChainHarness.Load(service, _tempDir, _crewsDir, "exclusive-async.cmd.ts", "exclusive-async");
+        var console = new ScriptedTestConsole();
+
+        await cmd.ExecuteAsync(ChainHarness.Ctx("exclusive-async", "", console), CancellationToken.None);
+        await ChainHarness.WaitUntil(() => console.Output.Contains("exclusive-done:", StringComparison.Ordinal) || console.Output.Contains("refused:", StringComparison.Ordinal));
+
+        Assert.DoesNotContain("refused:", console.Output, StringComparison.Ordinal);
+        Assert.Contains("relaunched:t2", console.Output, StringComparison.Ordinal);
+        Assert.Contains("exclusive-done:one-out", console.Output, StringComparison.Ordinal);
+        Assert.Equal(2, service.Registry.List(CommandInstanceFilter.All).Count);
     }
 }

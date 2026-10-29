@@ -43,7 +43,7 @@ public sealed partial class CommandDispatchService
 
     // The instance holding each target launched exclusively (#239): the holder releases it as it turns terminal.
     private readonly Dictionary<string, CommandInstance> _exclusive = new(StringComparer.Ordinal);
-    private readonly Lock _exclusiveGate = new();
+    private readonly object _exclusiveGate = new();
 
     private static readonly AsyncLocal<CommandDispatchScope?> _ambient = new();
 

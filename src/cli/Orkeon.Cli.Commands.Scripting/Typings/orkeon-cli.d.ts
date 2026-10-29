@@ -298,7 +298,8 @@ export interface CrewLaunchOptions {
    * time (a review, the writer of a shared store). The check and the launch are one step, so two lines typed in
    * the same tick cannot both pass. The refusal is a throw, before any LLM call, naming the running instance:
    * `crew 'code-review' already running (ticket t2)`. The crew is free again as soon as that instance completes,
-   * fails or is cancelled. A launch without the option is neither refused nor counted. Any non-boolean throws.
+   * fails or is cancelled (a cancelled run stops at its next cooperative checkpoint). A launch without the option
+   * is neither refused nor counted. Any non-boolean throws.
    */
   exclusive?: boolean;
 }

@@ -298,25 +298,46 @@ public sealed class ScriptHostFacadeTests : IDisposable
 
     [Fact]
     [Trait("BR", "#239")]
-    public void RunCrewAsync_exclusive_throws_naming_the_running_ticket_while_the_crew_runs()
+    public async Task RunCrewAsync_exclusive_refuses_a_crew_still_running_naming_its_ticket_then_admits_it_once_done()
     {
-        WriteCrew("review", "\"reviewed\";");
+        WriteCrew("review", "tools.hold({}); \"reviewed\";");
+        using var held = new ManualResetEventSlim();
+        var hold = new StubBaseTool("hold").RespondWith(_ =>
+        {
+            held.Wait(TimeSpan.FromSeconds(15));
+            return new ToolCallResponse(true, "ok", null);
+        });
         var dispatch = NewDispatch();
-        var facade = BuildFacade(dispatch);
-        var gate = new TaskCompletionSource<CommandResponse>(TaskCreationOptions.RunContinuationsAsynchronously);
-        var running = dispatch.postWork("review", "crew:review", ct => gate.Task.WaitAsync(ct), exclusive: true);
+        var facade = BuildFacade(dispatch, tool: hold);
 
-        try
+        string first;
+        Jint.Runtime.JavaScriptException refused;
+        using (dispatch.BeginCommand("review", CancellationToken.None))
         {
-            var refused = Assert.Throws<Jint.Runtime.JavaScriptException>(
+            first = facade.runCrewAsync("review", options: JsObject("{ exclusive: true }"));
+            refused = Assert.Throws<Jint.Runtime.JavaScriptException>(
                 () => facade.runCrewAsync("review", options: JsObject("{ exclusive: true }")));
-            Assert.Equal($"crew 'review' already running (ticket {running})", refused.Message);
-            Assert.Single(dispatch.Registry.List(CommandInstanceFilter.All));
         }
-        finally
-        {
-            gate.SetResult(new CommandResponse("a", "i", success: true, payload: "p", error: null));
-        }
+
+        Assert.Equal($"crew 'review' already running (ticket {first})", refused.Message);
+        Assert.Single(dispatch.Registry.List(CommandInstanceFilter.All));
+
+        held.Set();
+        await WaitTerminal(dispatch.Registry.Get(first)!);
+        Assert.Equal("done", dispatch.Registry.Get(first)!.Snapshot().state);
+        string second;
+        using (dispatch.BeginCommand("review", CancellationToken.None))
+            second = facade.runCrewAsync("review", options: JsObject("{ exclusive: true }"));
+        await WaitTerminal(dispatch.Registry.Get(second)!);
+        Assert.Equal("done", dispatch.Registry.Get(second)!.Snapshot().state);
+    }
+
+    private static async Task WaitTerminal(CommandInstance instance)
+    {
+        var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(15);
+        while (!instance.IsTerminal && DateTime.UtcNow < deadline)
+            await Task.Delay(25, TestContext.Current.CancellationToken);
+        Assert.True(instance.IsTerminal, $"instance {instance.Ticket} never reached a terminal state.");
     }
 
     [Fact]
