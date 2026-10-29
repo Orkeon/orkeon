@@ -21,4 +21,44 @@ public sealed class RateLimitResetHeadersTests
 
         Assert.Equal(TimeSpan.FromMinutes(6), parsed.Wait);
     }
+
+    [Fact]
+    public void ShouldReadRetryAfterMs_WhenItAsksForTheLongestWait()
+    {
+        var now = new DateTimeOffset(2026, 10, 29, 12, 0, 0, TimeSpan.Zero);
+        using var response = new HttpResponseMessage(HttpStatusCode.TooManyRequests);
+        response.Headers.TryAddWithoutValidation("Retry-After", "1");
+        response.Headers.TryAddWithoutValidation("retry-after-ms", "2500");
+
+        var parsed = RateLimitResetHeaders.Parse(response.Headers, now);
+
+        Assert.Equal(TimeSpan.FromMilliseconds(2500), parsed.Wait);
+    }
+
+    [Theory]
+    [InlineData("soon")]
+    [InlineData("")]
+    [InlineData("NaN")]
+    public void ShouldIgnoreRetryAfterMs_WhenItIsNotANumber(string raw)
+    {
+        var now = new DateTimeOffset(2026, 10, 29, 12, 0, 0, TimeSpan.Zero);
+        using var response = new HttpResponseMessage(HttpStatusCode.TooManyRequests);
+        response.Headers.TryAddWithoutValidation("retry-after-ms", raw);
+
+        var parsed = RateLimitResetHeaders.Parse(response.Headers, now);
+
+        Assert.Null(parsed.Wait);
+    }
+
+    [Fact]
+    public void ShouldClampRetryAfterMsToZero_WhenItIsNegative()
+    {
+        var now = new DateTimeOffset(2026, 10, 29, 12, 0, 0, TimeSpan.Zero);
+        using var response = new HttpResponseMessage(HttpStatusCode.TooManyRequests);
+        response.Headers.TryAddWithoutValidation("retry-after-ms", "-40");
+
+        var parsed = RateLimitResetHeaders.Parse(response.Headers, now);
+
+        Assert.Equal(TimeSpan.Zero, parsed.Wait);
+    }
 }
