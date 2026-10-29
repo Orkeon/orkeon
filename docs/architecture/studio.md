@@ -85,6 +85,7 @@ The first version showed only what had **finished**. During a seven-minute task 
 | `ActiveTools` — every tool at work, oldest first, with its name and `StartedAt` (the envelope `ts`). `ActiveToolName`, the latest of them, is what the Launch card's activity line names | `tool.called`, closed by the `tool.returned` under the same correlation id |
 | `ToolCallCount`, `SucceededToolCalls`, `FailedToolCalls` | `tool.called`; the `success` of `tool.returned` |
 | `RunningTasks` | `task.started`, until its `task.completed` |
+| Finished tasks (`RunTaskProgress`) — beyond `Success`, `DurationMs`, `Tokens` and `ToolCalls`: `Skipped` and `SkipReason` (a dependency that failed, or a `when` condition that did not hold), `IsDecision` (the task is a decision task: the screen labels it « decision », or « decision (defaulted) » when `Defaulted`, the circuit being off) and `DecisionAnswers` (its answers, compact JSON) | `skipped`, `skipReason`, `isDecision`, `defaulted` and `decision` of `task.completed`; absent fields read as `false` or null |
 | `ActiveDelegations` — the role the work went to, and since when | `delegation.started`, until its `tool.returned` |
 | `SpawnedAgents` — role, reason, time | `agent.spawned` |
 | `IsWaitingForAnswer` — a question for a human or an agent's request is pending (`PendingQuestion`, `PendingAgentRequest`) | `input.needed`; `hub.message` marked `expectsReply` |

@@ -45,6 +45,30 @@ public abstract class CrewTaskBase<TContext> : AggregateRoot<TaskId>, ICrewTask
     /// </summary>
     public AgentId? AssignedAgent { get; private set; }
 
+    /// <summary>Gets the key this task was declared with, or null when it has none.</summary>
+    public string? Key { get; private set; }
+
+    /// <summary>Gets the decision this task makes instead of an agent.</summary>
+    public TaskDecision? Decision { get; private set; }
+
+    /// <summary>Gets the condition under which this task runs.</summary>
+    public TaskCondition? Condition { get; private set; }
+
+    /// <summary>Gets whether the task is a decision task.</summary>
+    public bool IsDecision => Decision is not null;
+
+    internal void SetDecision(TaskDecision decision)
+    {
+        if (AssignedAgent is not null)
+            throw new InvalidOperationException("A task carries a decision or an agent, never both.");
+
+        Decision = decision;
+    }
+
+    internal void SetKey(string? key) => Key = key;
+
+    internal void SetCondition(TaskCondition condition) => Condition = condition;
+
     /// <summary>
     /// Gets the task status.
     /// </summary>
@@ -213,6 +237,9 @@ public abstract class CrewTaskBase<TContext> : AggregateRoot<TaskId>, ICrewTask
     {
         ArgumentNullException.ThrowIfNull(agentId);
 
+        if (IsDecision)
+            throw new InvalidOperationException("A decision task takes no agent.");
+
         if (HasEnded)
             throw new InvalidOperationException($"Cannot assign task in {Status} status.");
 
@@ -290,6 +317,31 @@ public abstract class CrewTaskBase<TContext> : AggregateRoot<TaskId>, ICrewTask
             AgentId = agentId,
             Output = output,
             Duration = duration
+        });
+    }
+
+    /// <summary>Completes a decision task, which no agent runs.</summary>
+    /// <param name="output">The output carrying the decision.</param>
+    public void CompleteWithoutAgent(TaskOutput output)
+    {
+        ArgumentNullException.ThrowIfNull(output);
+
+        if (!IsDecision)
+            throw new InvalidOperationException("Only a decision task completes without an agent.");
+
+        if (Status != TaskStatus.InProgress)
+            throw new InvalidOperationException($"Cannot complete task in {Status} status.");
+
+        Output = output;
+        CompletedAt = DateTime.UtcNow;
+        UpdateStatus(TaskStatus.Completed);
+
+        RaiseDomainEvent(new TaskCompletedEvent
+        {
+            TaskId = Id,
+            AgentId = null,
+            Output = output,
+            Duration = CompletedAt.Value - (StartedAt ?? CreatedAt)
         });
     }
 

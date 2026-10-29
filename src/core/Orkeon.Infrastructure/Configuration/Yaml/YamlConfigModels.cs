@@ -98,6 +98,38 @@ public class TaskYamlConfig
     public LlmOverrideYamlConfig? LlmOverride { get; set; }
     /// <summary>Gets or sets the optional per-task guardrails (same shape as agent-level guardrails).</summary>
     public GuardrailsYamlConfig? Guardrails { get; set; }
+    /// <summary>Gets or sets the decision this task makes instead of an agent.</summary>
+    public DecisionYamlConfig? Decision { get; set; }
+    /// <summary>Gets or sets the <c>when:</c> condition: decision task name (optionally dotted) to a value.</summary>
+    public Dictionary<string, object>? When { get; set; }
+}
+
+/// <summary>YAML model for the <c>decision:</c> block of a task.</summary>
+public class DecisionYamlConfig
+{
+    /// <summary>Gets or sets the questions by name.</summary>
+    public Dictionary<string, QuestionYamlConfig>? Questions { get; set; }
+    /// <summary>Gets or sets the confidence floor.</summary>
+    public double? MinConfidence { get; set; }
+    /// <summary>Gets or sets the tasks whose output is the decision state.</summary>
+    public Collection<string>? State { get; set; }
+    /// <summary>Gets or sets whether the decision reads a long context.</summary>
+    public bool? LongContext { get; set; }
+    /// <summary>Gets or sets the fallback answers by question.</summary>
+    public Dictionary<string, string>? Fallback { get; set; }
+}
+
+/// <summary>YAML model for one question of a decision.</summary>
+public class QuestionYamlConfig
+{
+    /// <summary>Gets or sets the options of a choice question (name to description).</summary>
+    public Dictionary<string, string>? Choice { get; set; }
+    /// <summary>Gets or sets the levels of a score question.</summary>
+    public Collection<string>? Score { get; set; }
+    /// <summary>Gets or sets the statement of a yes/no question.</summary>
+    public string? Noul { get; set; }
+    /// <summary>Gets or sets the instructions of the question.</summary>
+    public string? Instructions { get; set; }
 }
 
 /// <summary>

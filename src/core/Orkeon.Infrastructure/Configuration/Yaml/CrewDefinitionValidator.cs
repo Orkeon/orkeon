@@ -4,6 +4,7 @@ using Orkeon.Domain.Agent;
 using Orkeon.Domain.Common;
 using Orkeon.Domain.Configuration;
 using Orkeon.Domain.SharedKernel.ValueObjects;
+using Orkeon.Domain.Task;
 
 namespace Orkeon.Infrastructure.Configuration;
 
@@ -188,6 +189,8 @@ public static class CrewDefinitionValidator
         {
             ValidateSingleTask(task, agentIds, taskIds, errors);
         }
+
+        errors.AddRange(DecisionTaskRules.Check(config.Process, config.DecisionDeclarations()));
 
         if (HasCircularDependencies(config.Tasks))
             errors.Add("Circular task dependencies detected.");

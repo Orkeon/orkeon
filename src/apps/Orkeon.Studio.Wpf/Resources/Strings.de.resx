@@ -825,6 +825,9 @@
   <data name="Studio.Run.NothingYet" xml:space="preserve">
     <value>Bisher nichts gemeldet.</value>
   </data>
+  <data name="Studio.Run.SkipReason" xml:space="preserve"><value>Übersprungen: {0}</value></data>
+  <data name="Studio.Run.Decision" xml:space="preserve"><value>Entscheidung</value></data>
+  <data name="Studio.Run.DecisionDefaulted" xml:space="preserve"><value>Entscheidung (Standard)</value></data>
   <data name="Studio.Run.TasksDone" xml:space="preserve">
     <value>{0} Aufgabe(n) abgeschlossen.</value>
   </data>

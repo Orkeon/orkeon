@@ -4,6 +4,7 @@ using Jint.Native;
 using Orkeon.Domain.Common;
 using Orkeon.Domain.Configuration;
 using Orkeon.Domain.SharedKernel.ValueObjects;
+using Orkeon.Domain.Task;
 using Orkeon.Domain.Task.ValueObjects;
 using Orkeon.Scripting.Builders;
 using Orkeon.Scripting.Exceptions;
@@ -60,9 +61,21 @@ public static class JsCrewConfigurationAdapter
 
         RefuseReferencesOutsideTheCrew(crew, jsTasks, agentMap, taskMap);
 
+        var decisions = new Dictionary<string, TaskDecision>(StringComparer.Ordinal);
+        foreach (var jsTask in jsTasks.Where(t => t.DecisionSpec is not null))
+        {
+            if (decisions.ContainsKey(jsTask.name))
+                throw new InvalidOperationException($"Task '{jsTask.name}' declares a decision twice.");
+            decisions[jsTask.name] = JsDecisionMapper.MapDecision(jsTask.name, jsTask.DecisionSpec!);
+        }
+
         var taskConfigs = new List<TaskConfiguration>();
         foreach (var jsTask in jsTasks)
-            taskConfigs.Add(BuildTaskConfiguration(taskMap[jsTask], jsTask, agentMap, taskMap));
+            taskConfigs.Add(BuildTaskConfiguration(taskMap[jsTask], jsTask, agentMap, taskMap, jsTasks, decisions));
+
+        var refusals = DecisionTaskRules.Check(process, new CrewConfiguration { Name = crew.name, Tasks = taskConfigs }.DecisionDeclarations());
+        if (refusals.Count > 0)
+            throw new InvalidOperationException("Invalid decision or when declaration: " + string.Join(" ", refusals));
 
         AgentId? managerId = null;
         if (crew.Manager is { } mgr)
@@ -151,7 +164,9 @@ public static class JsCrewConfigurationAdapter
         TaskId id,
         JsTask jsTask,
         Dictionary<JsAgent, AgentId> agentMap,
-        Dictionary<JsTask, TaskId> taskMap)
+        Dictionary<JsTask, TaskId> taskMap,
+        IReadOnlyList<JsTask> jsTasks,
+        Dictionary<string, TaskDecision> decisions)
     {
         AgentId? assigned = null;
         if (jsTask.AssignedAgent is { } a && agentMap.TryGetValue(a, out var aid))
@@ -164,9 +179,33 @@ public static class JsCrewConfigurationAdapter
                 deps.Add(depId);
         }
 
+        TaskCondition? condition = null;
+        if (jsTask.WhenTask is { } whenTask)
+        {
+            if (!decisions.TryGetValue(whenTask, out var target))
+                throw new InvalidOperationException($"Task '{jsTask.name}' when: '{whenTask}' is not a decision task of the crew.");
+            condition = JsDecisionMapper.MapCondition(jsTask.name, whenTask, jsTask.WhenSpec!, target);
+        }
+
+        // The state a decision reads names tasks of the crew, as the YAML loader holds it to.
+        var stateFrom = decisions.TryGetValue(jsTask.name, out var own) && jsTask.DecisionSpec is not null ? own.StateFrom : [];
+        foreach (var name in stateFrom.Where(name => jsTasks.All(t => t.name != name)))
+            throw new InvalidOperationException($"Task '{jsTask.name}' decision.state names '{name}', which is no task of the crew.");
+
+        // The decision task and the tasks the decision reads its state from run before this task.
+        var needed = (condition is null ? [] : new[] { condition.DecisionTask }).Concat(stateFrom);
+        foreach (var other in needed.SelectMany(n => jsTasks.Where(t => t.name == n)))
+        {
+            if (taskMap.TryGetValue(other, out var neededId) && !deps.Contains(neededId))
+                deps.Add(neededId);
+        }
+
         return new TaskConfiguration
         {
             Id = id,
+            Key = jsTask.Key,
+            Decision = jsTask.DecisionSpec is null ? null : decisions[jsTask.name],
+            Condition = condition,
             Description = jsTask.description,
             ExpectedOutput = jsTask.expectedOutput,
             AssignedAgentId = assigned,

@@ -131,6 +131,9 @@ public sealed class RunnerHostSettingsRefusalTests : IDisposable
         { "ScriptingLimitsOptions", "Orkeon:Scripting:Limits:ExecutionTimeout", "2 minutes", "Orkeon:Scripting:Limits:ExecutionTimeout" },
         { "ScriptingToolchainOptions", "Orkeon:Scripting:Toolchain:EsbuildTimeout", "soon", "Orkeon:Scripting:Toolchain:EsbuildTimeout" },
         { "ScriptAgentMemoryOptions", "Orkeon:Scripting:AgentMemory:RootDirectory", "", "Orkeon:Scripting:AgentMemory:RootDirectory" },
+        { "DecisionCircuitOptions", "Orkeon:Decision:Enabled", "sometimes", "Orkeon:Decision:Enabled" },
+        { "TypeSafeOptions", "Orkeon:TypeSafe:MaxRetries", "many", "Orkeon:TypeSafe:MaxRetries" },
+        { "DecisionProfilesOptions", "Orkeon:Decision:Profiles:triage:Target", "cheap", "Orkeon:Decision:Profiles:triage:Stages" },
         { "TelemetryOptions", "Telemetry:Enabled", "maybe", "Telemetry:Enabled" },
     };
 

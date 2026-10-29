@@ -7,6 +7,53 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — model provider categories and TypeSafe decision models (ADR-015)
+
+Model providers now come in four categories (`ModelProviderCategory`: `Generation`, `Embedding`, `Reranking`,
+`Decision`), listed with their key variable and endpoint in `ModelProviderCatalog` (`Orkeon.Constants.Llm`). The new
+`Decision` category has its own port, `IDecisionModel` (`Orkeon.Application`), with typed `choice`, `score`, `noul` and
+`box` questions and their answers; `AddOrkeonTypeSafe(configuration)` binds `Orkeon:TypeSafe` and serves TypeSafe's Jev
+(`jev-latest`, key in `TYPESAFE_API_KEY`, 429 and 529 retried, usage metered as `decision`, errors citing TypeSafe's
+request id). TypeSafe is not an LLM
+provider: the count stays at 16. The three shipped binaries (`orkeon run`, `orkeon-host`, `orkeon-repl`) call it when
+their settings hold `Orkeon:TypeSafe` or `TYPESAFE_API_KEY` is set. `AddOrkeonDecisionProfiles(configuration)`, which
+the three binaries call in every case, reads `Orkeon:Decision:Profiles` and
+registers each one as an LLM profile wrapped in `DecisionLlmProvider`, whose `route`, `guard` and `verify` stages block,
+route or escalate a call before and after it, without rewriting the messages or the response (fail-open by default,
+`FailClosed` to block). Also opt-in: the agent input guard `TypeSafeInputGuard` (`Orkeon:TypeSafe:Guard:Enabled`), the
+RAG reranker `rerank.kind: decision` (alias `typesafe`) and the tool `system_one_decide` (120 tool classes). See
+[Decision models](docs/architecture/decision-models.md).
+
+### Added — decision tasks and `when` conditions (ADR-016)
+
+A task can carry a `decision` block instead of an agent: it sends typed questions to the decision model in one request
+and its output is the answers. A later task carries a `when` condition naming a decision task and the answers it
+needs (an option under a confidence floor, a threshold on a probability in [0, 1] or on a score read as a level position
+from 0 to n-1, or `otherwise`). A false
+condition skips the task, it does not fail it: the skip reason is recorded, a task whose dependencies were all skipped
+is skipped too, and a skipped task leaves nothing in a later task's context. Sequential, Parallel and Graph run them;
+Hierarchical, Consensual and Autonomous refuse them on load, and fail before their first task when a crew built in C#
+reaches them. `orkeon run --no-decision` (or `Orkeon:Decision:Enabled=false`, or no decision model) switches the decision
+circuit off: decision tasks answer from their `fallback`; a question the model leaves unanswered fails the task. The `task.completed` event gains `skipReason`,
+`defaulted`, `isDecision` and `decision` (the answers as compact JSON), `TaskExecutionSnapshot` gains `SkipReason`,
+`Defaulted`, `IsDecision` and `DecisionAnswers`, and the run consoles and Studio's `RunProgressModel` show the skip
+reason, the defaulted flag and the decision answers. See [ADR-016](docs/adr/ADR-016-decision-tasks-and-conditional-fan-out.md)
+and [Decision models](docs/architecture/decision-models.md).
+
+### Changed — `TaskCompletedEvent.AgentId` is nullable; `ParallelProcessStrategy` takes `CrewStrategyDependencies` **[breaking]**
+
+`TaskCompletedEvent.AgentId` is now `AgentId?`: a decision task answered by the decision runner completes without an
+agent. The public constructor of `ParallelProcessStrategy` now takes a `CrewStrategyDependencies` (the way the
+sequential and graph strategies do); the former eight-argument constructor is internal. A task whose condition names a
+decision task it does not depend on fails the run at entry, and the parallel run's final output is the output of the
+last task that ran in declared order. Migration: a consumer reading `TaskCompletedEvent.AgentId` handles `null`; a host
+constructing `ParallelProcessStrategy` passes a `CrewStrategyDependencies`.
+
+| Before | After |
+|---|---|
+| `new ParallelProcessStrategy(taskRepository, agentRepository, executionService, memoryScope, logger, hook, selector, domainEvents)` | `new ParallelProcessStrategy(new CrewStrategyDependencies(taskRepository, agentRepository, executionService, memoryScope, domainEvents), logger, hook, selector)` |
+| `string agentId = completed.AgentId;` | `string? agentId = completed.AgentId;` (`null` for a decision task) |
+
 ### Fixed — the rate-limit window reads `retry-after-ms`
 
 `RateLimitResetHeaders` reads the `retry-after-ms` header (milliseconds) that OpenAI and TypeSafe send beside

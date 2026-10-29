@@ -6,6 +6,7 @@ using ITaskRepository = Orkeon.Domain.Task.ITaskRepository;
 using Microsoft.Extensions.Logging;
 using Orkeon.Domain.Common;
 using Orkeon.Application.Crew;
+using Orkeon.Application.Crew.Execution;
 using Orkeon.Application.Interfaces.Services;
 using Orkeon.Application.Interfaces.Ports;
 using Orkeon.Application.Context;
@@ -50,6 +51,9 @@ public sealed partial class SequentialProcessStrategy : IProcessStrategy
     /// </summary>
     private readonly CrewHookDispatcher _hooks;
     private readonly TaskAgentSelector _agentSelector;
+    private readonly DecisionTaskRunner? _decisionRunner;
+    private readonly DecisionDispatch? _decisions;
+    private const string DecisionRole = DecisionDispatch.Role;
 
     /// <summary>Initializes a new instance of <see cref="SequentialProcessStrategy"/>.</summary>
     /// <param name="dependencies">The collaborators shared by every crew strategy.</param>
@@ -76,6 +80,8 @@ public sealed partial class SequentialProcessStrategy : IProcessStrategy
         _hooks = new CrewHookDispatcher(hook, logger);
         _agentSelector = agentSelector ?? TaskAgentSelector.RoundRobin;
         _lifecycle = dependencies.LifecycleFor(logger);
+        _decisionRunner = dependencies.DecisionRunner;
+        _decisions = _decisionRunner is null ? null : new DecisionDispatch(_decisionRunner);
     }
 
     /// <inheritdoc />
@@ -116,24 +122,36 @@ public sealed partial class SequentialProcessStrategy : IProcessStrategy
                 crew, _taskRepository, _logger, cancellationToken).ConfigureAwait(false);
             var agentIndex = 0;
 
+            var loaded = new List<Orkeon.Domain.Task.CrewTask?>(taskIds.Count);
+            foreach (var taskId in taskIds)
+                loaded.Add(await _taskRepository.GetByIdAsync(taskId, cancellationToken).ConfigureAwait(false));
+            var crewTasks = loaded.OfType<Orkeon.Domain.Task.CrewTask>().ToList();
+
+            // Once, before any task: a decision task that could not answer fails the run at its door.
+            var faults = DecisionPreflight.Check(crewTasks, _decisionRunner);
+            if (faults.Count > 0)
+                return await DecisionPreflight.FailAtEntryAsync(_hooks, crew.Id.Value.ToString(), startedAt, string.Join(' ', faults)).ConfigureAwait(false);
+
             for (var position = 0; position < taskIds.Count; position++)
             {
                 var taskId = taskIds[position];
                 cancellationToken.ThrowIfCancellationRequested();
                 LogExecutingTask(taskId);
 
-                var task = await _taskRepository.GetByIdAsync(taskId, cancellationToken).ConfigureAwait(false);
+                var task = loaded[position];
                 if (task == null)
                 {
                     LogTaskNotFoundSkipping(taskId);
                     continue;
                 }
 
-                var agent = await _agentSelector
-                    .ForTaskAsync(task, agents, agentIndex++, cancellationToken)
-                    .ConfigureAwait(false);
+                var agent = task.IsDecision
+                    ? null
+                    : await _agentSelector
+                        .ForTaskAsync(task, agents, agentIndex++, cancellationToken)
+                        .ConfigureAwait(false);
 
-                await DispatchTaskAsync(run, position, task, agent, cancellationToken).ConfigureAwait(false);
+                await DispatchTaskAsync(run, position, task, agent, crewTasks, cancellationToken).ConfigureAwait(false);
             }
 
             // Nothing outlives the run: the crew waits for every task it launched (GAP-22),
@@ -218,16 +236,63 @@ public sealed partial class SequentialProcessStrategy : IProcessStrategy
     /// skipped, launched alongside the run (<c>asyncExecution</c>) or run while the run waits.
     /// </summary>
     private async System.Threading.Tasks.Task DispatchTaskAsync(
-        SequentialRun run, int position, Orkeon.Domain.Task.CrewTask task, DomainAgent agent, CancellationToken cancellationToken)
+        SequentialRun run, int position, Orkeon.Domain.Task.CrewTask task, DomainAgent? agent,
+        IReadOnlyList<Orkeon.Domain.Task.CrewTask> crewTasks, CancellationToken cancellationToken)
     {
         await JoinDependenciesAsync(run, task).ConfigureAwait(false);
 
         if (run.Outcome.BlockingDependency(task) is { } blockedBy)
             await SkipBlockedTaskAsync(run, position, task, agent, blockedBy).ConfigureAwait(false);
+        else if (ConditionGate.ShouldRun(task, run.Outcome, crewTasks) is { Run: false } skipped)
+            await SkipByConditionAsync(run, task, agent, skipped.Reason!).ConfigureAwait(false);
+        else if (agent is null)
+            await RunDecisionTaskAsync(run, position, task, crewTasks, cancellationToken).ConfigureAwait(false);
         else if (task.AsyncExecution)
             await LaunchAsync(run, position, task, agent, cancellationToken).ConfigureAwait(false);
         else
             await RunTaskAsync(run, position, task, agent, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>A decision task answered by the decision runner while the run waits: no agent, no memory, no tokens.</summary>
+    private async System.Threading.Tasks.Task RunDecisionTaskAsync(
+        SequentialRun run, int position, Orkeon.Domain.Task.CrewTask task,
+        IReadOnlyList<Orkeon.Domain.Task.CrewTask> crewTasks, CancellationToken cancellationToken)
+    {
+        if (_decisions is null)
+            throw new InvalidOperationException($"Task {task.Id} is a decision task and the strategy has no decision runner.");
+
+        await _hooks.TaskStartedAsync(
+            CrewHookDispatcher.Started(task.Id.Value.ToString(), DecisionRole), CancellationToken.None)
+            .ConfigureAwait(false);
+        await run.Outcome.RecordStartWithoutAgentAsync(task, []).ConfigureAwait(false);
+
+        var result = await _decisions
+            .RunAsync(task, crewTasks, run.ContextNow().PreviousOutputs, cancellationToken)
+            .ConfigureAwait(false);
+
+        LogTaskCompletedSuccess(task.Id, result.Success);
+
+        var domainOutput = CrewRunOutcome.OutputOf(task, null, result);
+        run.Fold(
+            position,
+            domainOutput,
+            new ApplicationTaskOutput(
+                task.Id.Value.ToString(), null, domainOutput.RawOutput, DateTime.UtcNow, result.Success, result.ExecutionTime));
+
+        if (result.Success)
+            await run.Outcome.RecordSuccessAsync(task, domainOutput, endedAt: result.EndedAt).ConfigureAwait(false);
+        else
+            await run.Outcome.RecordFailureAsync(task, DecisionRole, result.Error ?? result.LastError, result.EndedAt).ConfigureAwait(false);
+
+        await ReportEndAsync(run, CrewRunOutcome.WithDecision(new TaskExecutionSnapshot
+        {
+            TaskId = task.Id.Value.ToString(),
+            AgentRole = DecisionRole,
+            Success = result.Success,
+            Duration = result.ExecutionTime,
+            CompletedAt = DateTimeOffset.UtcNow,
+            Defaulted = result.Decision?.IsDefaulted ?? false,
+        }, domainOutput)).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -310,15 +375,28 @@ public sealed partial class SequentialProcessStrategy : IProcessStrategy
     /// cancelled with the reason (GAP-21).
     /// </summary>
     private async System.Threading.Tasks.Task SkipBlockedTaskAsync(
-        SequentialRun run, int position, Orkeon.Domain.Task.CrewTask task, DomainAgent agent, TaskId blockedBy)
+        SequentialRun run, int position, Orkeon.Domain.Task.CrewTask task, DomainAgent? agent, TaskId blockedBy)
     {
-        var reason = await run.Outcome.RecordSkipAsync(task, agent.Role.Value, blockedBy).ConfigureAwait(false);
-        LogTaskSkippedAfterDependency(task.Id, agent.Role, blockedBy);
+        var role = agent?.Role.Value ?? DecisionRole;
+        var reason = await run.Outcome.RecordSkipAsync(task, role, blockedBy).ConfigureAwait(false);
+        LogTaskSkippedAfterDependency(task.Id, role, blockedBy);
 
-        var (domainOutput, applicationOutput) = CrewRunOutcome.SkippedOutputs(task.Id, agent.Id.ToString(), blockedBy);
+        var (domainOutput, applicationOutput) = CrewRunOutcome.SkippedOutputs(task.Id, agent?.Id.ToString(), blockedBy);
         run.Fold(position, domainOutput, applicationOutput);
 
-        await ReportEndAsync(run, CrewRunOutcome.SkippedSnapshot(task.Id, agent.Role.Value, reason)).ConfigureAwait(false);
+        await ReportEndAsync(run, CrewRunOutcome.SkippedSnapshot(task.Id, role, reason)).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// A task whose condition did not hold: cancelled and reported skipped, never a failure, and it
+    /// leaves no output for the next tasks' context.
+    /// </summary>
+    private async System.Threading.Tasks.Task SkipByConditionAsync(
+        SequentialRun run, Orkeon.Domain.Task.CrewTask task, DomainAgent? agent, string reason)
+    {
+        await run.Outcome.RecordConditionSkipAsync(task, reason).ConfigureAwait(false);
+        await ReportEndAsync(run, CrewRunOutcome.SkippedSnapshot(task.Id, agent?.Role.Value ?? DecisionRole, reason))
+            .ConfigureAwait(false);
     }
 
     /// <summary>One task run by its agent while the run waits, its outcome folded into the pass.</summary>

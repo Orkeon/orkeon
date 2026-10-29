@@ -63,8 +63,8 @@ public sealed record TaskCompletedEvent : DomainEvent
 {
     /// <summary>Gets the task identifier.</summary>
     public required TaskId TaskId { get; init; }
-    /// <summary>Gets the agent identifier.</summary>
-    public required AgentId AgentId { get; init; }
+    /// <summary>Gets the agent that completed the task; <see langword="null"/> for a decision task, which no agent runs.</summary>
+    public AgentId? AgentId { get; init; }
     /// <summary>Gets the task output.</summary>
     public required TaskOutput Output { get; init; }
     /// <summary>Gets the task execution duration.</summary>

@@ -28,11 +28,25 @@
       "description": "Configuration options for cost tracking and budget management. Bind to \"Orkeon:CostTracking\" configuration section."
     },
     {
+      "path": "Orkeon:Decision",
+      "category": "models",
+      "hosts": [],
+      "registration": "AddOrkeonDecisionProfiles",
+      "description": "The `Orkeon:Decision:Enabled` switch of the decision circuit."
+    },
+    {
       "path": "Orkeon:TokenCounter",
       "category": "models",
       "hosts": [],
       "registration": "AddOrkeonCostTracking",
       "description": "Configuration options for token counting approximation. Bind to \"Orkeon:TokenCounter\" configuration section."
+    },
+    {
+      "path": "Orkeon:TypeSafe",
+      "category": "models",
+      "hosts": [],
+      "registration": "AddOrkeonTypeSafe",
+      "description": "The `Orkeon:TypeSafe` section: how `TypeSafeDecisionModel` reaches the TypeSafe System One API."
     },
     {
       "path": "RateLimiting",
@@ -779,6 +793,98 @@
       "description": "Whether cost tracking is enabled (default: true)."
     },
     {
+      "path": "Orkeon:Decision:Enabled",
+      "section": "Orkeon:Decision",
+      "type": "boolean",
+      "default": true,
+      "description": "Whether decision tasks ask the decision model."
+    },
+    {
+      "path": "Orkeon:Decision:Profiles:<name>:FailClosed",
+      "section": "Orkeon:Decision",
+      "type": "boolean",
+      "default": false,
+      "description": "Whether a failing stage blocks the call; false lets it go on with a warning."
+    },
+    {
+      "path": "Orkeon:Decision:Profiles:<name>:Stages:<i>:BlockThreshold",
+      "section": "Orkeon:Decision",
+      "type": "number",
+      "default": 0.5,
+      "description": "The probability at or over which a `guard` blocks."
+    },
+    {
+      "path": "Orkeon:Decision:Profiles:<name>:Stages:<i>:Criterion",
+      "section": "Orkeon:Decision",
+      "type": "string",
+      "description": "What a good answer is, for a `verify`; empty takes the default criterion."
+    },
+    {
+      "path": "Orkeon:Decision:Profiles:<name>:Stages:<i>:EscalateTo",
+      "section": "Orkeon:Decision",
+      "type": "string",
+      "description": "The profile a `verify` escalates to."
+    },
+    {
+      "path": "Orkeon:Decision:Profiles:<name>:Stages:<i>:Fallback",
+      "section": "Orkeon:Decision",
+      "type": "string",
+      "description": "The profile a `route` takes under `MinConfidence`; empty keeps the target."
+    },
+    {
+      "path": "Orkeon:Decision:Profiles:<name>:Stages:<i>:Kind",
+      "section": "Orkeon:Decision",
+      "type": "string",
+      "default": "",
+      "description": "The stage: `route`, `guard` or `verify`."
+    },
+    {
+      "path": "Orkeon:Decision:Profiles:<name>:Stages:<i>:MinConfidence",
+      "section": "Orkeon:Decision",
+      "type": "number",
+      "default": 0,
+      "description": "The confidence under which a `route` takes `Fallback`."
+    },
+    {
+      "path": "Orkeon:Decision:Profiles:<name>:Stages:<i>:MinProbability",
+      "section": "Orkeon:Decision",
+      "type": "number",
+      "default": 0.5,
+      "description": "The probability under which a `verify` escalates."
+    },
+    {
+      "path": "Orkeon:Decision:Profiles:<name>:Stages:<i>:Phase",
+      "section": "Orkeon:Decision",
+      "type": "string",
+      "description": "When a `guard` judges: `request`, `response` or `both` (the default)."
+    },
+    {
+      "path": "Orkeon:Decision:Profiles:<name>:Stages:<i>:Risks:<name>",
+      "section": "Orkeon:Decision",
+      "type": "string",
+      "description": "The risks a `guard` detects, each with what it is."
+    },
+    {
+      "path": "Orkeon:Decision:Profiles:<name>:Stages:<i>:Routes:<name>",
+      "section": "Orkeon:Decision",
+      "type": "string",
+      "description": "The profiles a `route` may choose, each with what it is for."
+    },
+    {
+      "path": "Orkeon:Decision:Profiles:<name>:Stages:<i>:WarnThreshold",
+      "section": "Orkeon:Decision",
+      "type": "number",
+      "default": 0.3,
+      "description": "The probability at or over which a `guard` logs a warning."
+    },
+    {
+      "path": "Orkeon:Decision:Profiles:<name>:Target",
+      "section": "Orkeon:Decision",
+      "type": "string",
+      "default": "",
+      "description": "The profile a call goes to when no stage routes it; `default` is the `Llm` section."
+    },
+    {
       "path": "Orkeon:TokenCounter:CharsPerToken",
       "section": "Orkeon:TokenCounter",
       "type": "number",
@@ -805,6 +911,82 @@
       "type": "integer",
       "default": 3,
       "description": "Number of overhead tokens for the reply priming (default: 3)."
+    },
+    {
+      "path": "Orkeon:TypeSafe:ApiKey",
+      "section": "Orkeon:TypeSafe",
+      "type": "string",
+      "secret": true,
+      "description": "The API key. Discouraged in a settings file: leave it empty and set the variable `ApiKeyEnvVar` names."
+    },
+    {
+      "path": "Orkeon:TypeSafe:ApiKeyEnvVar",
+      "section": "Orkeon:TypeSafe",
+      "type": "string",
+      "default": "TYPESAFE_API_KEY",
+      "description": "The environment variable read when `ApiKey` is empty."
+    },
+    {
+      "path": "Orkeon:TypeSafe:BaseUrl",
+      "section": "Orkeon:TypeSafe",
+      "type": "uri",
+      "default": "https://api.typesafe.ai/v1",
+      "description": "The API root; `/systemone` and `/models` are appended to it."
+    },
+    {
+      "path": "Orkeon:TypeSafe:Guard:BlockThreshold",
+      "section": "Orkeon:TypeSafe",
+      "type": "number",
+      "default": 0.8,
+      "description": "The probability at or over which a risk blocks the input."
+    },
+    {
+      "path": "Orkeon:TypeSafe:Guard:Enabled",
+      "section": "Orkeon:TypeSafe",
+      "type": "boolean",
+      "default": false,
+      "description": "Whether the guard runs; off by default."
+    },
+    {
+      "path": "Orkeon:TypeSafe:Guard:FailClosed",
+      "section": "Orkeon:TypeSafe",
+      "type": "boolean",
+      "default": false,
+      "description": "Whether an unreachable decision model blocks the input; false warns and lets it in."
+    },
+    {
+      "path": "Orkeon:TypeSafe:Guard:Risks:<name>",
+      "section": "Orkeon:TypeSafe",
+      "type": "string",
+      "description": "The risks detected, each with what it is; empty takes `TypeSafeInputGuard.DefaultRisks`."
+    },
+    {
+      "path": "Orkeon:TypeSafe:Guard:WarnThreshold",
+      "section": "Orkeon:TypeSafe",
+      "type": "number",
+      "default": 0.5,
+      "description": "The probability at or over which a risk is a warning."
+    },
+    {
+      "path": "Orkeon:TypeSafe:MaxRetries",
+      "section": "Orkeon:TypeSafe",
+      "type": "integer",
+      "default": 3,
+      "description": "The retries after a 429, a 529, another 5xx or a network error."
+    },
+    {
+      "path": "Orkeon:TypeSafe:Model",
+      "section": "Orkeon:TypeSafe",
+      "type": "string",
+      "default": "jev-latest",
+      "description": "The model a request naming none runs on."
+    },
+    {
+      "path": "Orkeon:TypeSafe:TimeoutSeconds",
+      "section": "Orkeon:TypeSafe",
+      "type": "integer",
+      "default": 30,
+      "description": "The HTTP timeout of one attempt, in seconds."
     },
     {
       "path": "RateLimiting:AgentRequestsPerMinute",

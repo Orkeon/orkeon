@@ -2,6 +2,7 @@ using Microsoft.Extensions.AI;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
+using Orkeon.Application.Interfaces.Ports;
 using Orkeon.Rag.Factories;
 using Orkeon.Rag.Reranking;
 
@@ -38,6 +39,13 @@ public static class RagRerankingExtensions
                     RagLlm.ChatClient(sp),
                     sp.GetService<ILogger<LlmListwiseReranker>>()),
                 "listwise");
+
+            factory.Register(
+                DecisionModelReranker.RerankerName,
+                () => new DecisionModelReranker(sp.GetService<IDecisionModel>()
+                    ?? throw new InvalidOperationException(
+                        "The 'decision' reranker needs a decision model: call AddOrkeonTypeSafe (section Orkeon:TypeSafe).")),
+                DecisionModelReranker.TypeSafeAlias);
 
             foreach (var registrar in sp.GetServices<IRerankerRegistrar>())
             {

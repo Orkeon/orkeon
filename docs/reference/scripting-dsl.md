@@ -117,10 +117,12 @@ the DAG), `tools` (added to the agent's own tools for that task only, never repl
 `withResponseSchema(name, schema, strict?)` and `withProfile(name)` (YAML `llm_override: { profile }`:
 this task alone runs on one of the host's profiles, on that profile's own model, and `"default"`
 brings it back to the host's default; a name the host does not offer fails the load, listing the
-known ones). Accepted but not acted on: `name` (a task
-configuration has no name; it only names the task in a load error) and `expect` (recorded in the
+known ones). `name` is the task's key: `when(...)` and a decision's `state` refer to a task by it, and a
+decision task requires it. Accepted but not acted on: `expect` (recorded in the
 task context when there is no `deliverable`, never validated). `withTaskTool` is gone: nothing ever
 read it, and `tools` covers it.
+
+`decision(spec)` makes the task a decision task: `spec` is an object literal `{ questions, minConfidence, state, longContext, fallback }`, the shape of the YAML `decision:` block. It needs no `agent`, and a task that has both is refused at load. `when(decisionTask, clauses)` runs the task only when the decision task named answered as asked: `clauses` is a clause object (`{ category: ["bug"], urgency: ">= 0.7", "category.bug": ">= 0.25" }`) or the string `"otherwise"`; `when()` throws an `InvalidScriptException` only for an empty task name or for `clauses` that is neither an object nor a string. A string other than `"otherwise"`, an unknown question or option, or a malformed clause passes the builder and is refused at load. Two decision tasks with the same `name` in one script are refused at load (`Task '<name>' declares a decision twice.`). `state` lists the tasks whose output is the decision's state (default: each dependency that ran); with the circuit off, or by `--no-decision`, the task answers from `fallback` (see [Decision models](../architecture/decision-models.md#the-decision-circuit-and-the-fallback)). Decision tasks and conditions run in the Sequential, Parallel and Graph processes only. See [Decision models](../architecture/decision-models.md).
 
 `asyncExecution()` follows the YAML rule: under `.process("sequential")` the task runs alongside
 the tasks after it, and a task that lists it in `withContext` waits for it; under
@@ -335,11 +337,11 @@ each of them stated rather than silent.
 
 ### Conditional inclusion
 
-There is no builder method for it. `when(predicate)` used to be declared on all three
-builders and was honoured by neither engine — `JsCrewBuilder.when` and `JsTaskBuilder.when`
-discarded the argument outright, and the predicate `JsAgentBuilder` stored was never read,
-so `.when(() => false)` included the agent anyway. It was removed rather than implemented:
-a method that silently does the opposite of what it says is worse than no method.
+The only conditional construct is `when(decisionTask, clauses)` on a task builder, which runs the
+task on a decision task's answers at runtime (see `decision(spec)` above). There is no predicate
+that includes or excludes an agent or a task when the script is built: `when(predicate)` used to be
+declared on all three builders and was honoured by neither engine, so it was removed rather than
+implemented, a method that silently does the opposite of what it says being worse than no method.
 
 Guard the call instead:
 

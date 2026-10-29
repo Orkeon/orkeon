@@ -55,6 +55,8 @@ using Orkeon.Infrastructure.Orchestration;
 using Orkeon.Application.Interfaces.Services;
 using Orkeon.Constants.Configuration;
 
+using Orkeon.Infrastructure.Decision.TypeSafe;
+
 namespace Orkeon.Infrastructure.DependencyInjection;
 
 /// <summary>
@@ -396,7 +398,15 @@ public static class InfrastructureExtensions
 
         // The collaborators every strategy shares, resolved once per scope so a strategy
         // constructor only names what its own mode adds on top of them.
-        services.TryAddScoped<Crew.Strategies.CrewStrategyDependencies>();
+        services.TryAddScoped<Crew.Strategies.CrewStrategyDependencies>(sp => new Crew.Strategies.CrewStrategyDependencies(
+            sp.GetRequiredService<Orkeon.Domain.Task.ITaskRepository>(),
+            sp.GetRequiredService<Orkeon.Domain.Agent.IAgentRepository>(),
+            sp.GetRequiredService<Orkeon.Application.Interfaces.Services.IAgentExecutionService>(),
+            sp.GetRequiredService<Orkeon.Application.Interfaces.Ports.IMemoryScope>(),
+            sp.GetService<Orkeon.Domain.SharedKernel.Events.IDomainEventDispatcher>())
+        {
+            DecisionRunner = sp.GetRequiredService<Orkeon.Application.Crew.Execution.DecisionTaskRunner>(),
+        });
 
         // Add Process Strategies
         services.AddScoped<SequentialProcessStrategy>();
@@ -783,12 +793,28 @@ public static class InfrastructureExtensions
                 return pipeline;
 
             pipeline.AddGuard(GuardPhase.Input, sp.GetRequiredService<InputGuard>());
+            // The decision model's input guard, beside the built-in one (AddOrkeonTypeSafe).
+            if (sp.GetService<TypeSafeInputGuard>() is { Enabled: true } typeSafeGuard)
+                pipeline.AddGuard(GuardPhase.Input, typeSafeGuard);
             pipeline.AddGuard(GuardPhase.ToolExecution, sp.GetRequiredService<ToolGuard>());
             pipeline.AddGuard(GuardPhase.Delegation, sp.GetRequiredService<DelegationGuard>());
 
             return pipeline;
         });
         services.TryAddSingleton<IGuardianPipeline>(sp => sp.GetRequiredService<GuardianPipeline>());
+
+        // The decision circuit: on when a decision model is registered and Orkeon:Decision:Enabled allows it.
+        services.AddOrkeonSettings<Orkeon.Infrastructure.LLMs.Decision.DecisionCircuitOptions>(Orkeon.Infrastructure.LLMs.Decision.DecisionCircuitOptions.SectionName);
+        services.TryAddSingleton<Orkeon.Application.Crew.Execution.DecisionCircuit>(sp =>
+        {
+            var enabled = sp.GetService<Orkeon.Application.Interfaces.Ports.IDecisionModel>() is not null
+                && (sp.GetRequiredService<IOptions<Orkeon.Infrastructure.LLMs.Decision.DecisionCircuitOptions>>().Value.Enabled);
+            return new Orkeon.Application.Crew.Execution.DecisionCircuit(enabled);
+        });
+        services.TryAddSingleton<Orkeon.Application.Crew.Execution.DecisionTaskRunner>(sp => new Orkeon.Application.Crew.Execution.DecisionTaskRunner(
+            sp.GetService<Orkeon.Application.Interfaces.Ports.IDecisionModel>(),
+            sp.GetRequiredService<Orkeon.Application.Crew.Execution.DecisionCircuit>(),
+            sp.GetRequiredService<ILogger<Orkeon.Application.Crew.Execution.DecisionTaskRunner>>()));
 
         return services;
     }

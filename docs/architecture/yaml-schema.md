@@ -137,6 +137,21 @@ tasks:
       rules: [string]
       toolRules:
         <tool_name>: [string]
+    decision:             # Makes the task a decision task: no agent, answered by the decision model — see Decision tasks and conditions below. Together with agent: refused at load
+      questions:          # Required, at least one; the key is the question's name
+        <question>:
+          choice: {<option>: string}  # One option among up to 255, each with its description
+          score: [string]             # An ordered scale of up to 10 levels
+          noul: string                # A yes-no question: the statement
+          instructions: string        # Optional, for choice and score
+      minConfidence: float   # default: 0.5, in [0, 1] — under it, an option condition selects nothing
+      state: [string]        # Keys of the tasks whose output the model judges; default: the outputs of the dependencies that ran
+      longContext: bool      # default: false — asks for the model's long context
+      fallback: {<question>: string}  # Answers used without a request when the decision circuit is off
+    when:                 # Runs the task only when a decision task answered as written (one decision task per when:)
+      <task>.<question>: [string] | ">= 0.7"  # An option list (choice), or a threshold: a probability (yes-no) or a level position (score)
+      <task>.<question>.<option>: ">= 0.25"   # The probability of one option of a choice
+      <task>: otherwise                       # Alone: holds when no sibling condition on that task holds
 ```
 
 Validation happens at load time (`CrewDefinitionValidator`): a crew needs a `name`, a `goal`, at least one agent (each
@@ -160,6 +175,129 @@ time spent waiting for a human does not count.
 
 A message names an agent or a task by its key — `Agent 'researcher' must have a goal.` —, a
 configuration built in code by its identifier.
+
+## Decision tasks and conditions
+
+A task that carries a `decision:` block is a **decision task**: it has no agent, no LLM call and
+writes no text. At run time it sends its state and all its questions to the decision model in one
+request (see [Decision models](./decision-models.md#decision-tasks-and-conditional-fan-out)), and
+its output is the answers. A task that carries a `when:` block runs only when a decision task
+answered as written, and is skipped otherwise.
+
+```yaml
+agents:
+  reader: { role: Reader, goal: Read tickets }
+  engineer: { role: Engineer, goal: Fix defects }
+  finance: { role: Finance, goal: Handle refunds }
+tasks:
+  ticket:
+    description: Read the support ticket
+    expectedOutput: A summary of the ticket
+    agent: reader
+  triage:
+    description: Sort the ticket
+    expectedOutput: The category and whether a refund is asked
+    dependencies: [ticket]
+    decision:
+      questions:
+        category:
+          choice:
+            bug: a defect in the product
+            feature: a request for a new capability
+            billing: a question about an invoice
+        refund_requested:
+          noul: the customer asks for a refund
+      minConfidence: 0.6
+  fix_bug:
+    description: Fix the defect or plan the feature
+    expectedOutput: A fix or a plan
+    agent: engineer
+    when:
+      triage.category: [bug, feature]
+  refund:
+    description: Handle the refund
+    expectedOutput: A refund decision
+    agent: finance
+    when:
+      triage.category: [billing]
+      triage.refund_requested: ">= 0.7"
+  manual_triage:
+    description: Route the ticket to a person
+    expectedOutput: A hand-over note
+    agent: reader
+    when:
+      triage: otherwise
+  summary:
+    description: Summarise what was done
+    expectedOutput: A short report
+    agent: reader
+    dependencies: [fix_bug, refund, manual_triage]
+```
+
+**The `decision:` block.**
+
+- `questions` is required and holds at least one question. A question declares exactly one kind:
+  `choice` (a map from option to description, up to 255 options), `score` (an ordered list of up to
+  10 levels) or `noul` (the statement of a yes-no question, Jev's name for it). `instructions` is
+  optional on a choice and a score. Question names are unique.
+- `minConfidence` is the confidence floor, a number in [0, 1]; it defaults to 0.5. `min_confidence`
+  is read the same way, as every key of the file.
+- `state` lists the keys of the tasks whose output the model judges; without it the model reads the
+  outputs of the task's dependencies that ran, in order. A listed task is added to the task's
+  `dependencies` when it is not there.
+- `longContext` (default `false`) asks for the model's long context; it is never requested on its
+  own.
+- `fallback` maps a question to the answer used when the decision circuit is off: an option of a
+  choice, a level of a score, `yes` or `no` of a yes-no (quote `"no"`, which YAML reads as a
+  boolean). A question without a fallback answer selects no option. See
+  [the fallback](./decision-models.md#the-decision-circuit-and-the-fallback).
+- A decision task still needs a `description` and an `expectedOutput` like any task, and the crew
+  still needs one agent, even when no task uses it.
+
+**The `when:` block.** A `when:` names one decision task; every clause is `<task>`, `<task>.<question>`
+or `<task>.<question>.<option>`, where `<task>` is the key of the decision task. Several clauses are
+written in one block and **all must hold**. The grammar:
+
+| Clause | Holds when |
+|---|---|
+| `<task>.<question>: [a, b]` | The question is a choice, the chosen option is one of the list and the confidence is at or above `minConfidence`. |
+| `<task>.<question>: ">= 0.7"` | The question is a yes-no (its probability of a yes, in [0, 1]) or a score (the model's weighted score on the positions of the levels, 0 to n-1) and the comparison holds. The floor does not apply. |
+| `<task>.<question>.<option>: ">= 0.25"` | The probability of that option of a choice satisfies the comparison, even when the option is not the chosen one. The floor does not apply. |
+| `<task>: otherwise` | No sibling condition on that decision task holds, including when the confidence is under the floor. |
+
+A threshold is an operator (`>=`, `>`, `<=`, `<`) and a number, written as a quoted string: a
+probability in [0, 1] on a yes-no or an option, a level position from 0 to the number of levels minus
+one on a score (`"> 1.5"` on `[low, medium, high]` is above the middle level).
+Several tasks whose conditions hold for the same decision all run (a fan-out); a task that depends on
+several branches runs when at least one of them ran. The decision task named by a `when:` is added to
+the task's `dependencies` when it is not there. A task whose condition does not hold, or whose every
+dependency was skipped by a condition, is skipped: it leaves no output, and the crew still succeeds.
+
+**Where it runs.** Decision tasks and `when:` are supported in `process: sequential`, `parallel` and
+`graph`. The other processes refuse them at load (`Task 'triage' declares a decision or a condition,
+which the Hierarchical process does not support.`); a crew built in C# that reaches one of them fails
+before its first task with the same message.
+
+**What is refused at load.** A task is named by its declared key, the key of the YAML map, in every
+message, in the form `Task '<key>' <part> …` where the part is `decision`,
+`decision.questions.<name>`, `decision.fallback` or `when`. The load fails on:
+
+- a task with both an `agent:` and a `decision:`, a decision with no question, a choice of more than
+  255 options, a score of more than 10 levels, a `minConfidence` outside [0, 1] or that is not a
+  number, a `longContext` that is not a boolean;
+- a question that declares more than one of `choice`, `score` and `noul`;
+- a fallback that names an unknown question, or an answer the question does not have;
+- a `when:` on a task that is not a decision task, or that names an unknown question or option, or
+  with a threshold outside its range (a probability in [0, 1], a score position from 0 to n-1) or not
+  written as an operator and a finite number;
+- `otherwise` written beside other clauses, a second `otherwise` task on one decision task, an
+  `otherwise` with no sibling condition on that decision task;
+- an option clause with a list on an option (`triage.category.bug: [bug]`), which takes a threshold
+  string only;
+- a decision or a `when:` in a process other than the three above.
+
+With the decision circuit off, the run is also refused before its first task when a decision task has
+neither a `fallback` nor an `otherwise` task.
 
 ## Guardrails configuration
 

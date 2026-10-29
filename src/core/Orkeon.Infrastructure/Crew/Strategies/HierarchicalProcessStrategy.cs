@@ -2,6 +2,7 @@ using Microsoft.Extensions.Logging;
 using Orkeon.Domain.Crew;
 using Orkeon.Domain.Agent;
 using DomainAgent = Orkeon.Domain.Agent.Agent;
+using Orkeon.Domain.SharedKernel.ValueObjects;
 using Orkeon.Domain.Task;
 using ITaskRepository = Orkeon.Domain.Task.ITaskRepository;
 using Orkeon.Application.Interfaces;
@@ -176,6 +177,8 @@ public sealed partial class HierarchicalProcessStrategy : IProcessStrategy
             // sequential one: the declared order sorted on the dependencies (STUDIO-12 C2).
             var taskIds = await CrewTaskSequencer.ResolveAsync(
                 crew, _taskRepository, _logger, cancellationToken).ConfigureAwait(false);
+            await DecisionPreflight.RefuseUnsupportedAsync(
+                ProcessType.Hierarchical, taskIds, _taskRepository, cancellationToken).ConfigureAwait(false);
 
             foreach (var taskId in taskIds)
             {

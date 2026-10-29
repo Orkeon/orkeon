@@ -9,6 +9,7 @@ using Orkeon.Application.Interfaces.Services;
 using Orkeon.Application.Context;
 using Orkeon.Domain.Autonomous;
 using Orkeon.Domain.Common;
+using Orkeon.Domain.SharedKernel.ValueObjects;
 using Orkeon.Domain.Task;
 using Orkeon.Infrastructure.Crew.Strategies;
 using IProcessStrategy = Orkeon.Domain.Crew.IProcessStrategy;
@@ -184,6 +185,8 @@ public sealed partial class ConsensualProcessStrategy : IProcessStrategy
         // (STUDIO-12 C2) — never a plan's (GAP-31).
         var taskIds = await CrewTaskSequencer.ResolveAsync(
             crew, _taskRepository, _logger, ct).ConfigureAwait(false);
+        await DecisionPreflight.RefuseUnsupportedAsync(
+            ProcessType.Consensual, taskIds, _taskRepository, ct).ConfigureAwait(false);
 
         foreach (var taskId in taskIds)
         {

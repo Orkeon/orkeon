@@ -53,6 +53,11 @@ public sealed record TaskOutput : ValueObjectRecord
     public object? StructuredOutput { get; }
 
     /// <summary>
+    /// Gets the outcome of a decision task, or null for a task an agent ran.
+    /// </summary>
+    public DecisionOutcome? Decision { get; init; }
+
+    /// <summary>
     /// Gets the output string (alias for RawOutput).
     /// </summary>
     public string Output => RawOutput;

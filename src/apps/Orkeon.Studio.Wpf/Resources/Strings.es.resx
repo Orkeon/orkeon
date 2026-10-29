@@ -825,6 +825,9 @@
   <data name="Studio.Run.NothingYet" xml:space="preserve">
     <value>Nada reportado por ahora.</value>
   </data>
+  <data name="Studio.Run.SkipReason" xml:space="preserve"><value>Omitida: {0}</value></data>
+  <data name="Studio.Run.Decision" xml:space="preserve"><value>decisión</value></data>
+  <data name="Studio.Run.DecisionDefaulted" xml:space="preserve"><value>decisión (por defecto)</value></data>
   <data name="Studio.Run.TasksDone" xml:space="preserve">
     <value>{0} tarea(s) terminada(s).</value>
   </data>

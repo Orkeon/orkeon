@@ -889,6 +889,7 @@
                           <ColumnDefinition Width="Auto" SharedSizeGroup="RunTokens"/>
                           <ColumnDefinition Width="Auto" SharedSizeGroup="RunDuration"/>
                         </Grid.ColumnDefinitions>
+                        <StackPanel VerticalAlignment="Center">
                         <DockPanel Margin="12,0,0,0">
                           <controls:LucideIcon DockPanel.Dock="Left" Size="13" Margin="0,0,8,0" VerticalAlignment="Center">
                             <controls:LucideIcon.Style>
@@ -909,6 +910,30 @@
                           <TextBlock FontSize="13" Foreground="{DynamicResource InkBrush}" TextWrapping="Wrap"
                                      VerticalAlignment="Center" Text="{Binding Title}"/>
                         </DockPanel>
+                        <!-- UC-03/UC-04: the decision label and the skip reason, each absent when empty. -->
+                          <TextBlock Margin="33,2,0,0" Text="{Binding DecisionLabel}" ToolTip="{Binding Task.DecisionAnswers}">
+                            <TextBlock.Style>
+                              <Style TargetType="TextBlock" BasedOn="{StaticResource Hint}">
+                                <Style.Triggers>
+                                  <DataTrigger Binding="{Binding DecisionLabel}" Value="">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                  </DataTrigger>
+                                </Style.Triggers>
+                              </Style>
+                            </TextBlock.Style>
+                          </TextBlock>
+                          <TextBlock Margin="33,2,0,0" Text="{Binding SkipReason}" TextWrapping="Wrap">
+                            <TextBlock.Style>
+                              <Style TargetType="TextBlock" BasedOn="{StaticResource Hint}">
+                                <Style.Triggers>
+                                  <DataTrigger Binding="{Binding SkipReason}" Value="">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                  </DataTrigger>
+                                </Style.Triggers>
+                              </Style>
+                            </TextBlock.Style>
+                          </TextBlock>
+                        </StackPanel>
                         <TextBlock Grid.Column="1" FontSize="13" Foreground="{DynamicResource InkBrush}" Margin="24,0,0,0"
                                    HorizontalAlignment="Right" VerticalAlignment="Center" Typography.NumeralAlignment="Tabular"
                                    Text="{Binding Task.ToolCalls, StringFormat=N0}"/>

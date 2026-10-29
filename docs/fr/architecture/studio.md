@@ -85,6 +85,7 @@ La première version ne montrait que ce qui était **terminé**. Pendant une tâ
 | `ActiveTools` — chaque outil au travail, du plus ancien au plus récent, avec son nom et `StartedAt` (le `ts` de l'enveloppe). `ActiveToolName`, le plus récent d'entre eux, est celui que nomme la ligne d'activité de la carte Lancer | `tool.called`, clos par le `tool.returned` de même identifiant de corrélation |
 | `ToolCallCount`, `SucceededToolCalls`, `FailedToolCalls` | `tool.called` ; le `success` de `tool.returned` |
 | `RunningTasks` | `task.started`, jusqu'à son `task.completed` |
+| Tâches terminées (`RunTaskProgress`) — en plus de `Success`, `DurationMs`, `Tokens` et `ToolCalls` : `Skipped` et `SkipReason` (une dépendance en échec, ou une condition `when` qui n'était pas vraie), `IsDecision` (la tâche est une tâche de décision : l'écran l'étiquette « décision », ou « décision (par défaut) » quand `Defaulted`, le circuit étant coupé) et `DecisionAnswers` (ses réponses, JSON compact) | `skipped`, `skipReason`, `isDecision`, `defaulted` et `decision` de `task.completed` ; un champ absent se lit `false` ou null |
 | `ActiveDelegations` — le rôle à qui le travail est confié, et depuis quand | `delegation.started`, jusqu'à son `tool.returned` |
 | `SpawnedAgents` — rôle, raison, heure | `agent.spawned` |
 | `IsWaitingForAnswer` — une question à un humain ou la requête d'un agent attend (`PendingQuestion`, `PendingAgentRequest`) | `input.needed` ; `hub.message` marqué `expectsReply` |

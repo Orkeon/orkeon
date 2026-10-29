@@ -1,1 +1,45 @@
 #nullable enable
+Orkeon.Constants.Llm.DecisionLimits
+Orkeon.Constants.Llm.DecisionProviderDefaults
+Orkeon.Constants.Llm.DecisionProviderKeys
+Orkeon.Constants.Llm.ModelProviderCatalog
+Orkeon.Constants.Llm.ModelProviderCategory
+Orkeon.Constants.Llm.ModelProviderCategory.Decision = 3 -> Orkeon.Constants.Llm.ModelProviderCategory
+Orkeon.Constants.Llm.ModelProviderCategory.Embedding = 1 -> Orkeon.Constants.Llm.ModelProviderCategory
+Orkeon.Constants.Llm.ModelProviderCategory.Generation = 0 -> Orkeon.Constants.Llm.ModelProviderCategory
+Orkeon.Constants.Llm.ModelProviderCategory.Reranking = 2 -> Orkeon.Constants.Llm.ModelProviderCategory
+Orkeon.Constants.Llm.ModelProviderDescriptor
+Orkeon.Constants.Llm.ModelProviderDescriptor.<Clone>$() -> Orkeon.Constants.Llm.ModelProviderDescriptor!
+Orkeon.Constants.Llm.ModelProviderDescriptor.ApiKeyVariable.get -> string?
+Orkeon.Constants.Llm.ModelProviderDescriptor.ApiKeyVariable.init -> void
+Orkeon.Constants.Llm.ModelProviderDescriptor.Categories.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Constants.Llm.ModelProviderCategory>!
+Orkeon.Constants.Llm.ModelProviderDescriptor.Categories.init -> void
+Orkeon.Constants.Llm.ModelProviderDescriptor.Deconstruct(out string! Key, out string! DisplayName, out System.Collections.Generic.IReadOnlyList<Orkeon.Constants.Llm.ModelProviderCategory>! Categories, out string? ApiKeyVariable, out string? DefaultBaseUrl) -> void
+Orkeon.Constants.Llm.ModelProviderDescriptor.DefaultBaseUrl.get -> string?
+Orkeon.Constants.Llm.ModelProviderDescriptor.DefaultBaseUrl.init -> void
+Orkeon.Constants.Llm.ModelProviderDescriptor.DisplayName.get -> string!
+Orkeon.Constants.Llm.ModelProviderDescriptor.DisplayName.init -> void
+Orkeon.Constants.Llm.ModelProviderDescriptor.Equals(Orkeon.Constants.Llm.ModelProviderDescriptor? other) -> bool
+Orkeon.Constants.Llm.ModelProviderDescriptor.Key.get -> string!
+Orkeon.Constants.Llm.ModelProviderDescriptor.Key.init -> void
+Orkeon.Constants.Llm.ModelProviderDescriptor.ModelProviderDescriptor(string! Key, string! DisplayName, System.Collections.Generic.IReadOnlyList<Orkeon.Constants.Llm.ModelProviderCategory>! Categories, string? ApiKeyVariable, string? DefaultBaseUrl) -> void
+Orkeon.Constants.Llm.ModelProviderDescriptor.Serves(Orkeon.Constants.Llm.ModelProviderCategory category) -> bool
+const Orkeon.Constants.Llm.DecisionLimits.DefaultConfidenceFloor = 0.5 -> double
+const Orkeon.Constants.Llm.DecisionLimits.LongContextTokens = 262000 -> int
+const Orkeon.Constants.Llm.DecisionLimits.MaxChoiceOptions = 255 -> int
+const Orkeon.Constants.Llm.DecisionLimits.MaxScoreLevels = 10 -> int
+const Orkeon.Constants.Llm.DecisionLimits.QuestionContextTokens = 32000 -> int
+const Orkeon.Constants.Llm.DecisionLimits.StandardContextTokens = 64000 -> int
+const Orkeon.Constants.Llm.DecisionProviderDefaults.TypeSafeApiKeyVariable = "TYPESAFE_API_KEY" -> string!
+const Orkeon.Constants.Llm.DecisionProviderDefaults.TypeSafeBaseUrl = "https://api.typesafe.ai/v1" -> string!
+const Orkeon.Constants.Llm.DecisionProviderDefaults.TypeSafeModel = "jev-latest" -> string!
+const Orkeon.Constants.Llm.DecisionProviderKeys.TypeSafe = "typesafe" -> string!
+override Orkeon.Constants.Llm.ModelProviderDescriptor.Equals(object? obj) -> bool
+override Orkeon.Constants.Llm.ModelProviderDescriptor.GetHashCode() -> int
+override Orkeon.Constants.Llm.ModelProviderDescriptor.ToString() -> string!
+static Orkeon.Constants.Llm.DecisionProviderKeys.All.get -> System.Collections.Generic.IReadOnlyList<string!>!
+static Orkeon.Constants.Llm.ModelProviderCatalog.All.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Constants.Llm.ModelProviderDescriptor!>!
+static Orkeon.Constants.Llm.ModelProviderCatalog.Find(string? key) -> Orkeon.Constants.Llm.ModelProviderDescriptor?
+static Orkeon.Constants.Llm.ModelProviderCatalog.InCategory(Orkeon.Constants.Llm.ModelProviderCategory category) -> System.Collections.Generic.IReadOnlyList<Orkeon.Constants.Llm.ModelProviderDescriptor!>!
+static Orkeon.Constants.Llm.ModelProviderDescriptor.operator !=(Orkeon.Constants.Llm.ModelProviderDescriptor? left, Orkeon.Constants.Llm.ModelProviderDescriptor? right) -> bool
+static Orkeon.Constants.Llm.ModelProviderDescriptor.operator ==(Orkeon.Constants.Llm.ModelProviderDescriptor? left, Orkeon.Constants.Llm.ModelProviderDescriptor? right) -> bool

@@ -1,1 +1,313 @@
 #nullable enable
+Orkeon.Application.Crew.Execution.DecisionCircuit
+Orkeon.Application.Crew.Execution.DecisionCircuit.<Clone>$() -> Orkeon.Application.Crew.Execution.DecisionCircuit!
+Orkeon.Application.Crew.Execution.DecisionCircuit.DecisionCircuit(bool Enabled) -> void
+Orkeon.Application.Crew.Execution.DecisionCircuit.Deconstruct(out bool Enabled) -> void
+Orkeon.Application.Crew.Execution.DecisionCircuit.Enabled.get -> bool
+Orkeon.Application.Crew.Execution.DecisionCircuit.Enabled.init -> void
+Orkeon.Application.Crew.Execution.DecisionCircuit.Equals(Orkeon.Application.Crew.Execution.DecisionCircuit? other) -> bool
+Orkeon.Application.Crew.Execution.DecisionTaskRunner
+Orkeon.Application.Crew.Execution.DecisionTaskRunner.DecisionTaskRunner(Orkeon.Application.Interfaces.Ports.IDecisionModel? model, Orkeon.Application.Crew.Execution.DecisionCircuit! circuit, Microsoft.Extensions.Logging.ILogger<Orkeon.Application.Crew.Execution.DecisionTaskRunner!>! logger) -> void
+Orkeon.Application.Crew.Execution.DecisionTaskRunner.IsEnabled.get -> bool
+Orkeon.Application.Crew.Execution.DecisionTaskRunner.RunAsync(Orkeon.Domain.Task.CrewTask! task, System.Collections.Generic.IReadOnlyList<(string! TaskName, string! Output)>! inputs, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<Orkeon.Application.Interfaces.Services.TaskResult!>!
+Orkeon.Application.Crew.TaskExecutionSnapshot.DecisionAnswers.get -> string?
+Orkeon.Application.Crew.TaskExecutionSnapshot.DecisionAnswers.init -> void
+Orkeon.Application.Crew.TaskExecutionSnapshot.Defaulted.get -> bool
+Orkeon.Application.Crew.TaskExecutionSnapshot.Defaulted.init -> void
+Orkeon.Application.Crew.TaskExecutionSnapshot.IsDecision.get -> bool
+Orkeon.Application.Crew.TaskExecutionSnapshot.IsDecision.init -> void
+Orkeon.Application.Decision.DTOs.BoxAnswer
+Orkeon.Application.Decision.DTOs.BoxAnswer.Box.get -> Orkeon.Application.Decision.DTOs.BoxCoordinates!
+Orkeon.Application.Decision.DTOs.BoxAnswer.Box.init -> void
+Orkeon.Application.Decision.DTOs.BoxAnswer.BoxAnswer() -> void
+Orkeon.Application.Decision.DTOs.BoxAnswer.Confidence.get -> double?
+Orkeon.Application.Decision.DTOs.BoxAnswer.Confidence.init -> void
+Orkeon.Application.Decision.DTOs.BoxAnswer.Equals(Orkeon.Application.Decision.DTOs.BoxAnswer? other) -> bool
+Orkeon.Application.Decision.DTOs.BoxCoordinates
+Orkeon.Application.Decision.DTOs.BoxCoordinates.<Clone>$() -> Orkeon.Application.Decision.DTOs.BoxCoordinates!
+Orkeon.Application.Decision.DTOs.BoxCoordinates.Bottom.get -> double
+Orkeon.Application.Decision.DTOs.BoxCoordinates.Bottom.init -> void
+Orkeon.Application.Decision.DTOs.BoxCoordinates.BoxCoordinates() -> void
+Orkeon.Application.Decision.DTOs.BoxCoordinates.Equals(Orkeon.Application.Decision.DTOs.BoxCoordinates? other) -> bool
+Orkeon.Application.Decision.DTOs.BoxCoordinates.Left.get -> double
+Orkeon.Application.Decision.DTOs.BoxCoordinates.Left.init -> void
+Orkeon.Application.Decision.DTOs.BoxCoordinates.Right.get -> double
+Orkeon.Application.Decision.DTOs.BoxCoordinates.Right.init -> void
+Orkeon.Application.Decision.DTOs.BoxCoordinates.Top.get -> double
+Orkeon.Application.Decision.DTOs.BoxCoordinates.Top.init -> void
+Orkeon.Application.Decision.DTOs.BoxQuestion
+Orkeon.Application.Decision.DTOs.BoxQuestion.BoxQuestion() -> void
+Orkeon.Application.Decision.DTOs.BoxQuestion.Equals(Orkeon.Application.Decision.DTOs.BoxQuestion? other) -> bool
+Orkeon.Application.Decision.DTOs.ChoiceAnswer
+Orkeon.Application.Decision.DTOs.ChoiceAnswer.Choice.get -> string!
+Orkeon.Application.Decision.DTOs.ChoiceAnswer.Choice.init -> void
+Orkeon.Application.Decision.DTOs.ChoiceAnswer.ChoiceAnswer() -> void
+Orkeon.Application.Decision.DTOs.ChoiceAnswer.Confidence.get -> double
+Orkeon.Application.Decision.DTOs.ChoiceAnswer.Confidence.init -> void
+Orkeon.Application.Decision.DTOs.ChoiceAnswer.Equals(Orkeon.Application.Decision.DTOs.ChoiceAnswer? other) -> bool
+Orkeon.Application.Decision.DTOs.ChoiceAnswer.Probabilities.get -> System.Collections.Immutable.ImmutableDictionary<string!, double>!
+Orkeon.Application.Decision.DTOs.ChoiceAnswer.Probabilities.init -> void
+Orkeon.Application.Decision.DTOs.ChoiceQuestion
+Orkeon.Application.Decision.DTOs.ChoiceQuestion.ChoiceQuestion() -> void
+Orkeon.Application.Decision.DTOs.ChoiceQuestion.Criteria.get -> System.Collections.Immutable.ImmutableDictionary<string!, System.Text.Json.Nodes.JsonNode?>!
+Orkeon.Application.Decision.DTOs.ChoiceQuestion.Criteria.init -> void
+Orkeon.Application.Decision.DTOs.ChoiceQuestion.Equals(Orkeon.Application.Decision.DTOs.ChoiceQuestion? other) -> bool
+Orkeon.Application.Decision.DTOs.DecisionAnswer
+Orkeon.Application.Decision.DTOs.DecisionAnswer.DecisionAnswer() -> void
+Orkeon.Application.Decision.DTOs.DecisionAnswer.DecisionAnswer(Orkeon.Application.Decision.DTOs.DecisionAnswer! original) -> void
+Orkeon.Application.Decision.DTOs.DecisionImage
+Orkeon.Application.Decision.DTOs.DecisionImage.<Clone>$() -> Orkeon.Application.Decision.DTOs.DecisionImage!
+Orkeon.Application.Decision.DTOs.DecisionImage.DataBase64.get -> string!
+Orkeon.Application.Decision.DTOs.DecisionImage.DataBase64.init -> void
+Orkeon.Application.Decision.DTOs.DecisionImage.DecisionImage() -> void
+Orkeon.Application.Decision.DTOs.DecisionImage.Equals(Orkeon.Application.Decision.DTOs.DecisionImage? other) -> bool
+Orkeon.Application.Decision.DTOs.DecisionImage.Format.get -> string!
+Orkeon.Application.Decision.DTOs.DecisionImage.Format.init -> void
+Orkeon.Application.Decision.DTOs.DecisionImage.Type.get -> string!
+Orkeon.Application.Decision.DTOs.DecisionImage.Type.init -> void
+Orkeon.Application.Decision.DTOs.DecisionModelDto
+Orkeon.Application.Decision.DTOs.DecisionModelDto.<Clone>$() -> Orkeon.Application.Decision.DTOs.DecisionModelDto!
+Orkeon.Application.Decision.DTOs.DecisionModelDto.DecisionModelDto() -> void
+Orkeon.Application.Decision.DTOs.DecisionModelDto.Description.get -> string!
+Orkeon.Application.Decision.DTOs.DecisionModelDto.Description.init -> void
+Orkeon.Application.Decision.DTOs.DecisionModelDto.Equals(Orkeon.Application.Decision.DTOs.DecisionModelDto? other) -> bool
+Orkeon.Application.Decision.DTOs.DecisionModelDto.Name.get -> string!
+Orkeon.Application.Decision.DTOs.DecisionModelDto.Name.init -> void
+Orkeon.Application.Decision.DTOs.DecisionModelDto.ReleaseDate.get -> string!
+Orkeon.Application.Decision.DTOs.DecisionModelDto.ReleaseDate.init -> void
+Orkeon.Application.Decision.DTOs.DecisionQuestion
+Orkeon.Application.Decision.DTOs.DecisionQuestion.DecisionQuestion() -> void
+Orkeon.Application.Decision.DTOs.DecisionQuestion.DecisionQuestion(Orkeon.Application.Decision.DTOs.DecisionQuestion! original) -> void
+Orkeon.Application.Decision.DTOs.DecisionQuestion.Instructions.get -> System.Text.Json.Nodes.JsonNode?
+Orkeon.Application.Decision.DTOs.DecisionQuestion.Instructions.init -> void
+Orkeon.Application.Decision.DTOs.DecisionRequest
+Orkeon.Application.Decision.DTOs.DecisionRequest.<Clone>$() -> Orkeon.Application.Decision.DTOs.DecisionRequest!
+Orkeon.Application.Decision.DTOs.DecisionRequest.Assets.get -> System.Collections.Immutable.ImmutableDictionary<string!, Orkeon.Application.Decision.DTOs.DecisionImage!>?
+Orkeon.Application.Decision.DTOs.DecisionRequest.Assets.init -> void
+Orkeon.Application.Decision.DTOs.DecisionRequest.DecisionRequest() -> void
+Orkeon.Application.Decision.DTOs.DecisionRequest.Equals(Orkeon.Application.Decision.DTOs.DecisionRequest? other) -> bool
+Orkeon.Application.Decision.DTOs.DecisionRequest.LongContext.get -> bool
+Orkeon.Application.Decision.DTOs.DecisionRequest.LongContext.init -> void
+Orkeon.Application.Decision.DTOs.DecisionRequest.Model.get -> string?
+Orkeon.Application.Decision.DTOs.DecisionRequest.Model.init -> void
+Orkeon.Application.Decision.DTOs.DecisionRequest.Questions.get -> System.Collections.Immutable.ImmutableDictionary<string!, Orkeon.Application.Decision.DTOs.DecisionQuestion!>!
+Orkeon.Application.Decision.DTOs.DecisionRequest.Questions.init -> void
+Orkeon.Application.Decision.DTOs.DecisionRequest.State.get -> System.Text.Json.Nodes.JsonNode!
+Orkeon.Application.Decision.DTOs.DecisionRequest.State.init -> void
+Orkeon.Application.Decision.DTOs.DecisionRequest.UsesImages.get -> bool
+Orkeon.Application.Decision.DTOs.DecisionResponse
+Orkeon.Application.Decision.DTOs.DecisionResponse.<Clone>$() -> Orkeon.Application.Decision.DTOs.DecisionResponse!
+Orkeon.Application.Decision.DTOs.DecisionResponse.Answers.get -> System.Collections.Immutable.ImmutableDictionary<string!, Orkeon.Application.Decision.DTOs.DecisionAnswer!>!
+Orkeon.Application.Decision.DTOs.DecisionResponse.Answers.init -> void
+Orkeon.Application.Decision.DTOs.DecisionResponse.DecisionResponse() -> void
+Orkeon.Application.Decision.DTOs.DecisionResponse.Equals(Orkeon.Application.Decision.DTOs.DecisionResponse? other) -> bool
+Orkeon.Application.Decision.DTOs.DecisionResponse.Get<TAnswer>(string! name) -> TAnswer!
+Orkeon.Application.Decision.DTOs.DecisionResponse.Model.get -> string!
+Orkeon.Application.Decision.DTOs.DecisionResponse.Model.init -> void
+Orkeon.Application.Decision.DTOs.DecisionResponse.Usage.get -> Orkeon.Application.Decision.DTOs.DecisionUsage!
+Orkeon.Application.Decision.DTOs.DecisionResponse.Usage.init -> void
+Orkeon.Application.Decision.DTOs.DecisionUsage
+Orkeon.Application.Decision.DTOs.DecisionUsage.<Clone>$() -> Orkeon.Application.Decision.DTOs.DecisionUsage!
+Orkeon.Application.Decision.DTOs.DecisionUsage.DecisionUsage() -> void
+Orkeon.Application.Decision.DTOs.DecisionUsage.Equals(Orkeon.Application.Decision.DTOs.DecisionUsage? other) -> bool
+Orkeon.Application.Decision.DTOs.DecisionUsage.InputTokens.get -> int?
+Orkeon.Application.Decision.DTOs.DecisionUsage.InputTokens.init -> void
+Orkeon.Application.Decision.DTOs.DecisionUsage.OutputTokens.get -> int?
+Orkeon.Application.Decision.DTOs.DecisionUsage.OutputTokens.init -> void
+Orkeon.Application.Decision.DTOs.DecisionVerdictKind
+Orkeon.Application.Decision.DTOs.DecisionVerdictKind.Block = 1 -> Orkeon.Application.Decision.DTOs.DecisionVerdictKind
+Orkeon.Application.Decision.DTOs.DecisionVerdictKind.Continue = 0 -> Orkeon.Application.Decision.DTOs.DecisionVerdictKind
+Orkeon.Application.Decision.DTOs.DecisionVerdictKind.Escalate = 3 -> Orkeon.Application.Decision.DTOs.DecisionVerdictKind
+Orkeon.Application.Decision.DTOs.DecisionVerdictKind.Route = 2 -> Orkeon.Application.Decision.DTOs.DecisionVerdictKind
+Orkeon.Application.Decision.DTOs.NoulAnswer
+Orkeon.Application.Decision.DTOs.NoulAnswer.Equals(Orkeon.Application.Decision.DTOs.NoulAnswer? other) -> bool
+Orkeon.Application.Decision.DTOs.NoulAnswer.Noul.get -> double
+Orkeon.Application.Decision.DTOs.NoulAnswer.Noul.init -> void
+Orkeon.Application.Decision.DTOs.NoulAnswer.NoulAnswer() -> void
+Orkeon.Application.Decision.DTOs.NoulCriteria
+Orkeon.Application.Decision.DTOs.NoulCriteria.<Clone>$() -> Orkeon.Application.Decision.DTOs.NoulCriteria!
+Orkeon.Application.Decision.DTOs.NoulCriteria.Equals(Orkeon.Application.Decision.DTOs.NoulCriteria? other) -> bool
+Orkeon.Application.Decision.DTOs.NoulCriteria.False.get -> System.Text.Json.Nodes.JsonNode?
+Orkeon.Application.Decision.DTOs.NoulCriteria.False.init -> void
+Orkeon.Application.Decision.DTOs.NoulCriteria.NoulCriteria() -> void
+Orkeon.Application.Decision.DTOs.NoulCriteria.True.get -> System.Text.Json.Nodes.JsonNode?
+Orkeon.Application.Decision.DTOs.NoulCriteria.True.init -> void
+Orkeon.Application.Decision.DTOs.NoulQuestion
+Orkeon.Application.Decision.DTOs.NoulQuestion.Criteria.get -> Orkeon.Application.Decision.DTOs.NoulCriteria?
+Orkeon.Application.Decision.DTOs.NoulQuestion.Criteria.init -> void
+Orkeon.Application.Decision.DTOs.NoulQuestion.Equals(Orkeon.Application.Decision.DTOs.NoulQuestion? other) -> bool
+Orkeon.Application.Decision.DTOs.NoulQuestion.NoulQuestion() -> void
+Orkeon.Application.Decision.DTOs.ScoreAnswer
+Orkeon.Application.Decision.DTOs.ScoreAnswer.Confidence.get -> double
+Orkeon.Application.Decision.DTOs.ScoreAnswer.Confidence.init -> void
+Orkeon.Application.Decision.DTOs.ScoreAnswer.Equals(Orkeon.Application.Decision.DTOs.ScoreAnswer? other) -> bool
+Orkeon.Application.Decision.DTOs.ScoreAnswer.Legend.get -> System.Collections.Immutable.ImmutableDictionary<string!, System.Text.Json.Nodes.JsonNode?>!
+Orkeon.Application.Decision.DTOs.ScoreAnswer.Legend.init -> void
+Orkeon.Application.Decision.DTOs.ScoreAnswer.Probabilities.get -> System.Collections.Immutable.ImmutableDictionary<string!, double>!
+Orkeon.Application.Decision.DTOs.ScoreAnswer.Probabilities.init -> void
+Orkeon.Application.Decision.DTOs.ScoreAnswer.Score.get -> double
+Orkeon.Application.Decision.DTOs.ScoreAnswer.Score.init -> void
+Orkeon.Application.Decision.DTOs.ScoreAnswer.ScoreAnswer() -> void
+Orkeon.Application.Decision.DTOs.ScoreQuestion
+Orkeon.Application.Decision.DTOs.ScoreQuestion.Criteria.get -> System.Collections.Immutable.ImmutableList<System.Text.Json.Nodes.JsonNode!>!
+Orkeon.Application.Decision.DTOs.ScoreQuestion.Criteria.init -> void
+Orkeon.Application.Decision.DTOs.ScoreQuestion.Equals(Orkeon.Application.Decision.DTOs.ScoreQuestion? other) -> bool
+Orkeon.Application.Decision.DTOs.ScoreQuestion.ScoreQuestion() -> void
+Orkeon.Application.Decision.DecisionModelException
+Orkeon.Application.Decision.DecisionModelException.DecisionModelException() -> void
+Orkeon.Application.Decision.DecisionModelException.DecisionModelException(string! message) -> void
+Orkeon.Application.Decision.DecisionModelException.DecisionModelException(string! message, System.Exception! innerException) -> void
+Orkeon.Application.Decision.DecisionModelException.DecisionModelException(string! message, int? statusCode, bool isTransient, System.Exception? innerException = null) -> void
+Orkeon.Application.Decision.DecisionModelException.IsTransient.get -> bool
+Orkeon.Application.Decision.DecisionModelException.StatusCode.get -> int?
+Orkeon.Application.Decision.DecisionRequestValidator
+Orkeon.Application.Decision.DecisionRequestValidator.DecisionRequestValidator() -> void
+Orkeon.Application.Decision.DecisionRequestValidator.Validate(Orkeon.Application.Decision.DTOs.DecisionRequest! command) -> Orkeon.Application.Validation.ValidationResult!
+Orkeon.Application.Decision.DecisionVerdict
+Orkeon.Application.Decision.DecisionVerdict.<Clone>$() -> Orkeon.Application.Decision.DecisionVerdict!
+Orkeon.Application.Decision.DecisionVerdict.DecisionVerdict() -> void
+Orkeon.Application.Decision.DecisionVerdict.Equals(Orkeon.Application.Decision.DecisionVerdict? other) -> bool
+Orkeon.Application.Decision.DecisionVerdict.Kind.get -> Orkeon.Application.Decision.DTOs.DecisionVerdictKind
+Orkeon.Application.Decision.DecisionVerdict.Kind.init -> void
+Orkeon.Application.Decision.DecisionVerdict.Profile.get -> string?
+Orkeon.Application.Decision.DecisionVerdict.Profile.init -> void
+Orkeon.Application.Decision.DecisionVerdict.Reason.get -> string?
+Orkeon.Application.Decision.DecisionVerdict.Reason.init -> void
+Orkeon.Application.Interfaces.Ports.IDecisionModel
+Orkeon.Application.Interfaces.Ports.IDecisionModel.DecideAsync(Orkeon.Application.Decision.DTOs.DecisionRequest! request, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Application.Decision.DTOs.DecisionResponse!>!
+Orkeon.Application.Interfaces.Ports.IDecisionModel.ListModelsAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Immutable.ImmutableList<Orkeon.Application.Decision.DTOs.DecisionModelDto!>!>!
+Orkeon.Application.Interfaces.Ports.IDecisionModel.Name.get -> string!
+Orkeon.Application.Interfaces.Ports.IDecisionStage
+Orkeon.Application.Interfaces.Ports.IDecisionStage.Name.get -> string!
+Orkeon.Application.Interfaces.Ports.IDecisionStage.OnRequestAsync(Orkeon.Domain.SharedKernel.ValueObjects.LlmMessage![]! messages, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Application.Decision.DecisionVerdict!>!
+Orkeon.Application.Interfaces.Ports.IDecisionStage.OnResponseAsync(Orkeon.Domain.SharedKernel.ValueObjects.LlmMessage![]! messages, Orkeon.Domain.SharedKernel.ValueObjects.LlmResponse! response, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Application.Decision.DecisionVerdict!>!
+Orkeon.Application.Interfaces.Services.CrewExecutionEvent.Defaulted.get -> bool
+Orkeon.Application.Interfaces.Services.CrewExecutionEvent.Defaulted.init -> void
+Orkeon.Application.Interfaces.Services.TaskResult.Decision.get -> Orkeon.Domain.Task.ValueObjects.DecisionOutcome?
+Orkeon.Application.Interfaces.Services.TaskResult.Decision.init -> void
+abstract Orkeon.Application.Decision.DTOs.DecisionAnswer.<Clone>$() -> Orkeon.Application.Decision.DTOs.DecisionAnswer!
+abstract Orkeon.Application.Decision.DTOs.DecisionQuestion.<Clone>$() -> Orkeon.Application.Decision.DTOs.DecisionQuestion!
+const Orkeon.Application.Interfaces.Ports.LlmUsageOperations.Decision = "decision" -> string!
+override Orkeon.Application.Crew.Execution.DecisionCircuit.Equals(object? obj) -> bool
+override Orkeon.Application.Crew.Execution.DecisionCircuit.GetHashCode() -> int
+override Orkeon.Application.Crew.Execution.DecisionCircuit.ToString() -> string!
+override Orkeon.Application.Decision.DTOs.BoxAnswer.<Clone>$() -> Orkeon.Application.Decision.DTOs.BoxAnswer!
+override Orkeon.Application.Decision.DTOs.BoxAnswer.Equals(object? obj) -> bool
+override Orkeon.Application.Decision.DTOs.BoxAnswer.GetHashCode() -> int
+override Orkeon.Application.Decision.DTOs.BoxAnswer.ToString() -> string!
+override Orkeon.Application.Decision.DTOs.BoxCoordinates.Equals(object? obj) -> bool
+override Orkeon.Application.Decision.DTOs.BoxCoordinates.GetHashCode() -> int
+override Orkeon.Application.Decision.DTOs.BoxCoordinates.ToString() -> string!
+override Orkeon.Application.Decision.DTOs.BoxQuestion.<Clone>$() -> Orkeon.Application.Decision.DTOs.BoxQuestion!
+override Orkeon.Application.Decision.DTOs.BoxQuestion.Equals(object? obj) -> bool
+override Orkeon.Application.Decision.DTOs.BoxQuestion.GetHashCode() -> int
+override Orkeon.Application.Decision.DTOs.BoxQuestion.ToString() -> string!
+override Orkeon.Application.Decision.DTOs.ChoiceAnswer.<Clone>$() -> Orkeon.Application.Decision.DTOs.ChoiceAnswer!
+override Orkeon.Application.Decision.DTOs.ChoiceAnswer.Equals(object? obj) -> bool
+override Orkeon.Application.Decision.DTOs.ChoiceAnswer.GetHashCode() -> int
+override Orkeon.Application.Decision.DTOs.ChoiceAnswer.ToString() -> string!
+override Orkeon.Application.Decision.DTOs.ChoiceQuestion.<Clone>$() -> Orkeon.Application.Decision.DTOs.ChoiceQuestion!
+override Orkeon.Application.Decision.DTOs.ChoiceQuestion.Equals(object? obj) -> bool
+override Orkeon.Application.Decision.DTOs.ChoiceQuestion.GetHashCode() -> int
+override Orkeon.Application.Decision.DTOs.ChoiceQuestion.ToString() -> string!
+override Orkeon.Application.Decision.DTOs.DecisionAnswer.Equals(object? obj) -> bool
+override Orkeon.Application.Decision.DTOs.DecisionAnswer.GetHashCode() -> int
+override Orkeon.Application.Decision.DTOs.DecisionAnswer.ToString() -> string!
+override Orkeon.Application.Decision.DTOs.DecisionImage.Equals(object? obj) -> bool
+override Orkeon.Application.Decision.DTOs.DecisionImage.GetHashCode() -> int
+override Orkeon.Application.Decision.DTOs.DecisionImage.ToString() -> string!
+override Orkeon.Application.Decision.DTOs.DecisionModelDto.Equals(object? obj) -> bool
+override Orkeon.Application.Decision.DTOs.DecisionModelDto.GetHashCode() -> int
+override Orkeon.Application.Decision.DTOs.DecisionModelDto.ToString() -> string!
+override Orkeon.Application.Decision.DTOs.DecisionQuestion.Equals(object? obj) -> bool
+override Orkeon.Application.Decision.DTOs.DecisionQuestion.GetHashCode() -> int
+override Orkeon.Application.Decision.DTOs.DecisionQuestion.ToString() -> string!
+override Orkeon.Application.Decision.DTOs.DecisionRequest.Equals(object? obj) -> bool
+override Orkeon.Application.Decision.DTOs.DecisionRequest.GetHashCode() -> int
+override Orkeon.Application.Decision.DTOs.DecisionRequest.ToString() -> string!
+override Orkeon.Application.Decision.DTOs.DecisionResponse.Equals(object? obj) -> bool
+override Orkeon.Application.Decision.DTOs.DecisionResponse.GetHashCode() -> int
+override Orkeon.Application.Decision.DTOs.DecisionResponse.ToString() -> string!
+override Orkeon.Application.Decision.DTOs.DecisionUsage.Equals(object? obj) -> bool
+override Orkeon.Application.Decision.DTOs.DecisionUsage.GetHashCode() -> int
+override Orkeon.Application.Decision.DTOs.DecisionUsage.ToString() -> string!
+override Orkeon.Application.Decision.DTOs.NoulAnswer.<Clone>$() -> Orkeon.Application.Decision.DTOs.NoulAnswer!
+override Orkeon.Application.Decision.DTOs.NoulAnswer.Equals(object? obj) -> bool
+override Orkeon.Application.Decision.DTOs.NoulAnswer.GetHashCode() -> int
+override Orkeon.Application.Decision.DTOs.NoulAnswer.ToString() -> string!
+override Orkeon.Application.Decision.DTOs.NoulCriteria.Equals(object? obj) -> bool
+override Orkeon.Application.Decision.DTOs.NoulCriteria.GetHashCode() -> int
+override Orkeon.Application.Decision.DTOs.NoulCriteria.ToString() -> string!
+override Orkeon.Application.Decision.DTOs.NoulQuestion.<Clone>$() -> Orkeon.Application.Decision.DTOs.NoulQuestion!
+override Orkeon.Application.Decision.DTOs.NoulQuestion.Equals(object? obj) -> bool
+override Orkeon.Application.Decision.DTOs.NoulQuestion.GetHashCode() -> int
+override Orkeon.Application.Decision.DTOs.NoulQuestion.ToString() -> string!
+override Orkeon.Application.Decision.DTOs.ScoreAnswer.<Clone>$() -> Orkeon.Application.Decision.DTOs.ScoreAnswer!
+override Orkeon.Application.Decision.DTOs.ScoreAnswer.Equals(object? obj) -> bool
+override Orkeon.Application.Decision.DTOs.ScoreAnswer.GetHashCode() -> int
+override Orkeon.Application.Decision.DTOs.ScoreAnswer.ToString() -> string!
+override Orkeon.Application.Decision.DTOs.ScoreQuestion.<Clone>$() -> Orkeon.Application.Decision.DTOs.ScoreQuestion!
+override Orkeon.Application.Decision.DTOs.ScoreQuestion.Equals(object? obj) -> bool
+override Orkeon.Application.Decision.DTOs.ScoreQuestion.GetHashCode() -> int
+override Orkeon.Application.Decision.DTOs.ScoreQuestion.ToString() -> string!
+override Orkeon.Application.Decision.DecisionVerdict.Equals(object? obj) -> bool
+override Orkeon.Application.Decision.DecisionVerdict.GetHashCode() -> int
+override Orkeon.Application.Decision.DecisionVerdict.ToString() -> string!
+override sealed Orkeon.Application.Decision.DTOs.BoxAnswer.Equals(Orkeon.Application.Decision.DTOs.DecisionAnswer? other) -> bool
+override sealed Orkeon.Application.Decision.DTOs.BoxQuestion.Equals(Orkeon.Application.Decision.DTOs.DecisionQuestion? other) -> bool
+override sealed Orkeon.Application.Decision.DTOs.ChoiceAnswer.Equals(Orkeon.Application.Decision.DTOs.DecisionAnswer? other) -> bool
+override sealed Orkeon.Application.Decision.DTOs.ChoiceQuestion.Equals(Orkeon.Application.Decision.DTOs.DecisionQuestion? other) -> bool
+override sealed Orkeon.Application.Decision.DTOs.NoulAnswer.Equals(Orkeon.Application.Decision.DTOs.DecisionAnswer? other) -> bool
+override sealed Orkeon.Application.Decision.DTOs.NoulQuestion.Equals(Orkeon.Application.Decision.DTOs.DecisionQuestion? other) -> bool
+override sealed Orkeon.Application.Decision.DTOs.ScoreAnswer.Equals(Orkeon.Application.Decision.DTOs.DecisionAnswer? other) -> bool
+override sealed Orkeon.Application.Decision.DTOs.ScoreQuestion.Equals(Orkeon.Application.Decision.DTOs.DecisionQuestion? other) -> bool
+static Orkeon.Application.Crew.Execution.DecisionCircuit.Off.get -> Orkeon.Application.Crew.Execution.DecisionCircuit!
+static Orkeon.Application.Crew.Execution.DecisionCircuit.On.get -> Orkeon.Application.Crew.Execution.DecisionCircuit!
+static Orkeon.Application.Crew.Execution.DecisionCircuit.operator !=(Orkeon.Application.Crew.Execution.DecisionCircuit? left, Orkeon.Application.Crew.Execution.DecisionCircuit? right) -> bool
+static Orkeon.Application.Crew.Execution.DecisionCircuit.operator ==(Orkeon.Application.Crew.Execution.DecisionCircuit? left, Orkeon.Application.Crew.Execution.DecisionCircuit? right) -> bool
+static Orkeon.Application.Decision.DTOs.BoxAnswer.operator !=(Orkeon.Application.Decision.DTOs.BoxAnswer? left, Orkeon.Application.Decision.DTOs.BoxAnswer? right) -> bool
+static Orkeon.Application.Decision.DTOs.BoxAnswer.operator ==(Orkeon.Application.Decision.DTOs.BoxAnswer? left, Orkeon.Application.Decision.DTOs.BoxAnswer? right) -> bool
+static Orkeon.Application.Decision.DTOs.BoxCoordinates.operator !=(Orkeon.Application.Decision.DTOs.BoxCoordinates? left, Orkeon.Application.Decision.DTOs.BoxCoordinates? right) -> bool
+static Orkeon.Application.Decision.DTOs.BoxCoordinates.operator ==(Orkeon.Application.Decision.DTOs.BoxCoordinates? left, Orkeon.Application.Decision.DTOs.BoxCoordinates? right) -> bool
+static Orkeon.Application.Decision.DTOs.BoxQuestion.operator !=(Orkeon.Application.Decision.DTOs.BoxQuestion? left, Orkeon.Application.Decision.DTOs.BoxQuestion? right) -> bool
+static Orkeon.Application.Decision.DTOs.BoxQuestion.operator ==(Orkeon.Application.Decision.DTOs.BoxQuestion? left, Orkeon.Application.Decision.DTOs.BoxQuestion? right) -> bool
+static Orkeon.Application.Decision.DTOs.ChoiceAnswer.operator !=(Orkeon.Application.Decision.DTOs.ChoiceAnswer? left, Orkeon.Application.Decision.DTOs.ChoiceAnswer? right) -> bool
+static Orkeon.Application.Decision.DTOs.ChoiceAnswer.operator ==(Orkeon.Application.Decision.DTOs.ChoiceAnswer? left, Orkeon.Application.Decision.DTOs.ChoiceAnswer? right) -> bool
+static Orkeon.Application.Decision.DTOs.ChoiceQuestion.operator !=(Orkeon.Application.Decision.DTOs.ChoiceQuestion? left, Orkeon.Application.Decision.DTOs.ChoiceQuestion? right) -> bool
+static Orkeon.Application.Decision.DTOs.ChoiceQuestion.operator ==(Orkeon.Application.Decision.DTOs.ChoiceQuestion? left, Orkeon.Application.Decision.DTOs.ChoiceQuestion? right) -> bool
+static Orkeon.Application.Decision.DTOs.DecisionAnswer.operator !=(Orkeon.Application.Decision.DTOs.DecisionAnswer? left, Orkeon.Application.Decision.DTOs.DecisionAnswer? right) -> bool
+static Orkeon.Application.Decision.DTOs.DecisionAnswer.operator ==(Orkeon.Application.Decision.DTOs.DecisionAnswer? left, Orkeon.Application.Decision.DTOs.DecisionAnswer? right) -> bool
+static Orkeon.Application.Decision.DTOs.DecisionImage.operator !=(Orkeon.Application.Decision.DTOs.DecisionImage? left, Orkeon.Application.Decision.DTOs.DecisionImage? right) -> bool
+static Orkeon.Application.Decision.DTOs.DecisionImage.operator ==(Orkeon.Application.Decision.DTOs.DecisionImage? left, Orkeon.Application.Decision.DTOs.DecisionImage? right) -> bool
+static Orkeon.Application.Decision.DTOs.DecisionModelDto.operator !=(Orkeon.Application.Decision.DTOs.DecisionModelDto? left, Orkeon.Application.Decision.DTOs.DecisionModelDto? right) -> bool
+static Orkeon.Application.Decision.DTOs.DecisionModelDto.operator ==(Orkeon.Application.Decision.DTOs.DecisionModelDto? left, Orkeon.Application.Decision.DTOs.DecisionModelDto? right) -> bool
+static Orkeon.Application.Decision.DTOs.DecisionQuestion.operator !=(Orkeon.Application.Decision.DTOs.DecisionQuestion? left, Orkeon.Application.Decision.DTOs.DecisionQuestion? right) -> bool
+static Orkeon.Application.Decision.DTOs.DecisionQuestion.operator ==(Orkeon.Application.Decision.DTOs.DecisionQuestion? left, Orkeon.Application.Decision.DTOs.DecisionQuestion? right) -> bool
+static Orkeon.Application.Decision.DTOs.DecisionRequest.operator !=(Orkeon.Application.Decision.DTOs.DecisionRequest? left, Orkeon.Application.Decision.DTOs.DecisionRequest? right) -> bool
+static Orkeon.Application.Decision.DTOs.DecisionRequest.operator ==(Orkeon.Application.Decision.DTOs.DecisionRequest? left, Orkeon.Application.Decision.DTOs.DecisionRequest? right) -> bool
+static Orkeon.Application.Decision.DTOs.DecisionResponse.operator !=(Orkeon.Application.Decision.DTOs.DecisionResponse? left, Orkeon.Application.Decision.DTOs.DecisionResponse? right) -> bool
+static Orkeon.Application.Decision.DTOs.DecisionResponse.operator ==(Orkeon.Application.Decision.DTOs.DecisionResponse? left, Orkeon.Application.Decision.DTOs.DecisionResponse? right) -> bool
+static Orkeon.Application.Decision.DTOs.DecisionUsage.operator !=(Orkeon.Application.Decision.DTOs.DecisionUsage? left, Orkeon.Application.Decision.DTOs.DecisionUsage? right) -> bool
+static Orkeon.Application.Decision.DTOs.DecisionUsage.operator ==(Orkeon.Application.Decision.DTOs.DecisionUsage? left, Orkeon.Application.Decision.DTOs.DecisionUsage? right) -> bool
+static Orkeon.Application.Decision.DTOs.NoulAnswer.operator !=(Orkeon.Application.Decision.DTOs.NoulAnswer? left, Orkeon.Application.Decision.DTOs.NoulAnswer? right) -> bool
+static Orkeon.Application.Decision.DTOs.NoulAnswer.operator ==(Orkeon.Application.Decision.DTOs.NoulAnswer? left, Orkeon.Application.Decision.DTOs.NoulAnswer? right) -> bool
+static Orkeon.Application.Decision.DTOs.NoulCriteria.operator !=(Orkeon.Application.Decision.DTOs.NoulCriteria? left, Orkeon.Application.Decision.DTOs.NoulCriteria? right) -> bool
+static Orkeon.Application.Decision.DTOs.NoulCriteria.operator ==(Orkeon.Application.Decision.DTOs.NoulCriteria? left, Orkeon.Application.Decision.DTOs.NoulCriteria? right) -> bool
+static Orkeon.Application.Decision.DTOs.NoulQuestion.operator !=(Orkeon.Application.Decision.DTOs.NoulQuestion? left, Orkeon.Application.Decision.DTOs.NoulQuestion? right) -> bool
+static Orkeon.Application.Decision.DTOs.NoulQuestion.operator ==(Orkeon.Application.Decision.DTOs.NoulQuestion? left, Orkeon.Application.Decision.DTOs.NoulQuestion? right) -> bool
+static Orkeon.Application.Decision.DTOs.ScoreAnswer.operator !=(Orkeon.Application.Decision.DTOs.ScoreAnswer? left, Orkeon.Application.Decision.DTOs.ScoreAnswer? right) -> bool
+static Orkeon.Application.Decision.DTOs.ScoreAnswer.operator ==(Orkeon.Application.Decision.DTOs.ScoreAnswer? left, Orkeon.Application.Decision.DTOs.ScoreAnswer? right) -> bool
+static Orkeon.Application.Decision.DTOs.ScoreQuestion.operator !=(Orkeon.Application.Decision.DTOs.ScoreQuestion? left, Orkeon.Application.Decision.DTOs.ScoreQuestion? right) -> bool
+static Orkeon.Application.Decision.DTOs.ScoreQuestion.operator ==(Orkeon.Application.Decision.DTOs.ScoreQuestion? left, Orkeon.Application.Decision.DTOs.ScoreQuestion? right) -> bool
+static Orkeon.Application.Decision.DecisionVerdict.Block(string! reason) -> Orkeon.Application.Decision.DecisionVerdict!
+static Orkeon.Application.Decision.DecisionVerdict.Continue.get -> Orkeon.Application.Decision.DecisionVerdict!
+static Orkeon.Application.Decision.DecisionVerdict.Escalate(string! profile, string? reason = null) -> Orkeon.Application.Decision.DecisionVerdict!
+static Orkeon.Application.Decision.DecisionVerdict.Route(string! profile, string? reason = null) -> Orkeon.Application.Decision.DecisionVerdict!
+static Orkeon.Application.Decision.DecisionVerdict.operator !=(Orkeon.Application.Decision.DecisionVerdict? left, Orkeon.Application.Decision.DecisionVerdict? right) -> bool
+static Orkeon.Application.Decision.DecisionVerdict.operator ==(Orkeon.Application.Decision.DecisionVerdict? left, Orkeon.Application.Decision.DecisionVerdict? right) -> bool
+virtual Orkeon.Application.Decision.DTOs.DecisionAnswer.EqualityContract.get -> System.Type!
+virtual Orkeon.Application.Decision.DTOs.DecisionAnswer.Equals(Orkeon.Application.Decision.DTOs.DecisionAnswer? other) -> bool
+virtual Orkeon.Application.Decision.DTOs.DecisionAnswer.PrintMembers(System.Text.StringBuilder! builder) -> bool
+virtual Orkeon.Application.Decision.DTOs.DecisionQuestion.EqualityContract.get -> System.Type!
+virtual Orkeon.Application.Decision.DTOs.DecisionQuestion.Equals(Orkeon.Application.Decision.DTOs.DecisionQuestion? other) -> bool
+virtual Orkeon.Application.Decision.DTOs.DecisionQuestion.PrintMembers(System.Text.StringBuilder! builder) -> bool

@@ -1,1 +1,9 @@
 #nullable enable
+Orkeon.Rag.Reranking.DecisionModelReranker
+Orkeon.Rag.Reranking.DecisionModelReranker.DecisionModelReranker(Orkeon.Application.Interfaces.Ports.IDecisionModel! model) -> void
+Orkeon.Rag.Reranking.DecisionModelReranker.Name.get -> string!
+Orkeon.Rag.Reranking.DecisionModelReranker.RerankAsync(string! query, System.Collections.Generic.IReadOnlyList<Orkeon.Rag.Abstractions.Models.ScoredChunk!>! candidates, int topN, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Orkeon.Rag.Abstractions.Models.ScoredChunk!>!>!
+const Orkeon.Rag.Reranking.DecisionModelReranker.MaxPassageChars = 4000 -> int
+const Orkeon.Rag.Reranking.DecisionModelReranker.RerankerName = "decision" -> string!
+const Orkeon.Rag.Reranking.DecisionModelReranker.ScoreOrigin = "decision-rerank" -> string!
+const Orkeon.Rag.Reranking.DecisionModelReranker.TypeSafeAlias = "typesafe" -> string!

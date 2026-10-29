@@ -40,7 +40,11 @@ public sealed record RunTaskProgress(
     long DurationMs,
     long? Tokens,
     int? ToolCalls,
-    bool Skipped = false);
+    bool Skipped = false,
+    string? SkipReason = null,
+    bool IsDecision = false,
+    bool Defaulted = false,
+    string? DecisionAnswers = null);
 
 /// <summary>
 /// What the run has spent so far, as its latest <c>cost.updated</c> said it — every figure
@@ -107,9 +111,12 @@ public static class RunCostOperations
     /// <summary>An LLM judge grading an output.</summary>
     public const string Judge = "judge";
 
+    /// <summary>A decision model answering typed questions: a route, a guard, a verification, a rerank.</summary>
+    public const string Decision = "decision";
+
     private static readonly HashSet<string> Machinery = new(StringComparer.Ordinal)
     {
-        Manager, Planning, Rag, Memory, Judge,
+        Manager, Planning, Rag, Memory, Judge, Decision,
     };
 
     /// <summary>
@@ -438,7 +445,11 @@ public sealed class RunProgressModel
             (int?)orkeonEvent.GetInt64("toolCalls"),
             // A task that never ran because a dependency failed (LLM-11): not started,
             // completed with success=false, and told apart from a failure by this flag.
-            orkeonEvent.GetBool("skipped") ?? false);
+            orkeonEvent.GetBool("skipped") ?? false,
+            orkeonEvent.GetString("skipReason"),
+            orkeonEvent.GetBool("isDecision") ?? false,
+            orkeonEvent.GetBool("defaulted") ?? false,
+            orkeonEvent.GetString("decision"));
         _tasks.Add(finished);
         Settle(finished.TaskId, finished.AgentRole);
         return true;

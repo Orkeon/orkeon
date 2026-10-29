@@ -337,9 +337,11 @@ public partial class CrewFactory : ICrewFactory
     private async Task<Dictionary<string, CrewTask>> CreateTasksAsync(
         IReadOnlyList<TaskConfiguration> taskConfigs, Dictionary<string, DomainAgent> agentMap, CancellationToken ct)
     {
-        var taskMap = new Dictionary<string, CrewTask>();
+        var created = new Dictionary<string, CrewTask>();
+        var idByName = new Dictionary<string, TaskId>(StringComparer.Ordinal);
 
-        foreach (var taskConfig in taskConfigs)
+        // Decision tasks first: a condition names its decision task and needs its id.
+        foreach (var taskConfig in taskConfigs.Where(t => t.Decision is not null).Concat(taskConfigs.Where(t => t.Decision is null)))
         {
             ct.ThrowIfCancellationRequested();
             var resolvedTools = await ResolveToolsAsync(taskConfig.Tools).ConfigureAwait(false);
@@ -349,7 +351,19 @@ public partial class CrewFactory : ICrewFactory
                 .ExpectedOutput(taskConfig.ExpectedOutput)
                 .Async(taskConfig.AsyncExecution)
                 .HumanInput(taskConfig.HumanInput)
-                .WithTools(resolvedTools);
+                .WithTools(resolvedTools)
+                .WithKey(taskConfig.Key);
+
+            if (taskConfig.Decision is not null)
+                builder.WithDecision(taskConfig.Decision);
+
+            if (taskConfig.Condition is not null)
+            {
+                if (idByName.TryGetValue(taskConfig.Condition.DecisionTask, out var decisionId))
+                    builder.When(decisionId, taskConfig.Condition);
+                else
+                    builder.When(taskConfig.Condition);
+            }
 
             if (taskConfig.AssignedAgentId is not null
                 && agentMap.TryGetValue(taskConfig.AssignedAgentId.ToString(), out var assignedAgent))
@@ -368,10 +382,16 @@ public partial class CrewFactory : ICrewFactory
             if (taskConfig.Guardrails is not null)
                 task.SetGuardrails(taskConfig.Guardrails);
 
-            taskMap[taskConfig.Id] = task;
+            created[taskConfig.Id] = task;
+            if (taskConfig.Decision is not null)
+                idByName[taskConfig.Key ?? taskConfig.Description] = task.Id;
 
             LogCreatedTaskWithDomainId(taskConfig.Id, task.Id);
         }
+
+        var taskMap = new Dictionary<string, CrewTask>();
+        foreach (var taskConfig in taskConfigs)
+            taskMap[taskConfig.Id] = created[taskConfig.Id];
 
         return taskMap;
     }

@@ -11,6 +11,12 @@ public static class LlmUsageOperations
     /// <summary>An agent working on its task: each turn, each retry, each correction round.</summary>
     public const string Agent = "agent";
 
+    /// <summary>
+    /// A decision model answering typed questions (<c>IDecisionModel</c>): a route, a guard, a
+    /// verification, a rerank. Billed per input token by its provider.
+    /// </summary>
+    public const string Decision = "decision";
+
     /// <summary>The hierarchical manager assigning a task or reviewing its output.</summary>
     public const string Manager = "manager";
 

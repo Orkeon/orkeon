@@ -825,6 +825,9 @@
   <data name="Studio.Run.NothingYet" xml:space="preserve">
     <value>目前还没有任何报告。</value>
   </data>
+  <data name="Studio.Run.SkipReason" xml:space="preserve"><value>已跳过：{0}</value></data>
+  <data name="Studio.Run.Decision" xml:space="preserve"><value>决策</value></data>
+  <data name="Studio.Run.DecisionDefaulted" xml:space="preserve"><value>决策（默认）</value></data>
   <data name="Studio.Run.TasksDone" xml:space="preserve">
     <value>已完成 {0} 项任务。</value>
   </data>

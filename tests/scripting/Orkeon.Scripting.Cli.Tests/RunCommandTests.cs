@@ -1,4 +1,8 @@
+using Microsoft.Extensions.DependencyInjection;
+using Orkeon.Application.Crew.Execution;
+using Orkeon.Application.Interfaces.Ports;
 using Orkeon.Scripting.Cli.Commands;
+using Orkeon.Scripting.Cli.Tests.Doubles;
 
 namespace Orkeon.Scripting.Cli.Tests;
 
@@ -249,5 +253,119 @@ public sealed class RunCommandTests
         });
 
         Assert.Equal(Program.ExitOk, exit);
+    }
+
+    private const string EnabledSettings = "{\"Orkeon\":{\"Decision\":{\"Enabled\":true}}}";
+
+    [Fact]
+    [Trait("BR", "UC-04")]
+    public async Task ShouldSwitchCircuitOff_WhenRunCommandGivenNoDecisionOption()
+    {
+        using var scratch = new ScriptScratch();
+        var script = scratch.WriteScript("nd.ork.ts", ResultOne);
+        var settings = scratch.WriteFile("appsettings.json", EnabledSettings);
+        using var console = new TestConsole();
+        var probe = new CircuitProbe();
+
+        var exit = await RunCommand.ExecuteAsync(console, new RunCommandOptions
+        {
+            ScriptPath = script,
+            SettingsPath = settings,
+            NoDecision = true,
+            ConfigureTestServices = probe.Configure,
+        });
+
+        Assert.Equal(Program.ExitOk, exit);
+        Assert.NotNull(probe.Seen);
+        Assert.False(probe.Seen.Enabled);
+    }
+
+    [Fact]
+    [Trait("BR", "UC-04")]
+    public async Task ShouldSwitchCircuitOff_WhenYamlCrewRunsWithNoDecisionOption()
+    {
+        using var scratch = new ScriptScratch();
+        var crew = scratch.WriteScript("crew.yaml", """
+            name: nd-crew
+            agents:
+              - name: a
+                role: r
+                goal: g
+            tasks:
+              - name: t
+                description: d
+                agent: a
+            """);
+        var settings = scratch.WriteFile("appsettings.json", EnabledSettings);
+        using var console = new TestConsole();
+        var probe = new CircuitProbe();
+
+        // The run itself may fail later (no LLM): only the circuit the provider resolves is observed.
+        _ = await RunCommand.ExecuteAsync(console, new RunCommandOptions
+        {
+            ScriptPath = crew,
+            SettingsPath = settings,
+            NoDecision = true,
+            AllowExternalMounts = true,
+            ConfigureTestServices = probe.Configure,
+        });
+
+        Assert.NotNull(probe.Seen);
+        Assert.False(probe.Seen.Enabled);
+    }
+
+    [Theory]
+    [Trait("BR", "UC-04")]
+    [InlineData("nd.ork.ts")]
+    [InlineData("crew.yaml")]
+    public async Task ShouldSwitchCircuitOff_WhenNoDecisionOptionIsGivenWithEvents(string target)
+    {
+        using var scratch = new ScriptScratch();
+        var path = target.EndsWith(".yaml", StringComparison.Ordinal)
+            ? scratch.WriteScript(target, """
+                name: nd-crew
+                agents:
+                  - name: a
+                    role: r
+                    goal: g
+                tasks:
+                  - name: t
+                    description: d
+                    agent: a
+                """)
+            : scratch.WriteScript(target, ResultOne);
+        var settings = scratch.WriteFile("appsettings.json", EnabledSettings);
+        using var console = new TestConsole();
+        var probe = new CircuitProbe();
+
+        // The run itself may fail later (no LLM): only the circuit the provider resolves is observed.
+        _ = await RunCommand.ExecuteAsync(console, new RunCommandOptions
+        {
+            ScriptPath = path,
+            SettingsPath = settings,
+            NoDecision = true,
+            Events = "jsonl",
+            AllowExternalMounts = true,
+            ConfigureTestServices = probe.Configure,
+        });
+
+        Assert.NotNull(probe.Seen);
+        Assert.False(probe.Seen.Enabled);
+    }
+
+    private sealed class CircuitProbe
+    {
+        public DecisionCircuit? Seen { get; private set; }
+
+        public void Configure(Microsoft.Extensions.Hosting.HostBuilderContext ctx, IServiceCollection services)
+        {
+            services.AddSingleton<IDecisionModel, FakeDecisionModel>();
+            // The run resolves ILoggerFactory from its provider: reading the circuit there observes the provider's answer.
+            services.AddSingleton<Microsoft.Extensions.Logging.ILoggerFactory>(sp =>
+            {
+                Seen = sp.GetRequiredService<DecisionCircuit>();
+                return new Microsoft.Extensions.Logging.LoggerFactory();
+            });
+        }
     }
 }

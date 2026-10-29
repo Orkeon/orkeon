@@ -50,6 +50,18 @@ public sealed class JsTask
     /// <summary>Task-level tools (names or <see cref="JsTool"/> instances) captured by <c>taskBuilder().tools(...)</c>.</summary>
     internal IReadOnlyList<JsValue> Tools { get; }
 
+    /// <summary>The name given by <c>.name()</c>, or null.</summary>
+    internal string? Key { get; }
+
+    /// <summary>Plain data of <c>.decision({...})</c>, or null.</summary>
+    internal object? DecisionSpec { get; }
+
+    /// <summary>The decision task of <c>.when(...)</c>, or null.</summary>
+    internal string? WhenTask { get; }
+
+    /// <summary>The <c>.when</c> clauses as plain data, or the string <c>otherwise</c>.</summary>
+    internal object? WhenSpec { get; }
+
     internal JsTask(
         string name,
         DomainCrewTask domain,
@@ -75,6 +87,10 @@ public sealed class JsTask
         HumanInputFlag = metadata.HumanInput;
         AsyncExecutionFlag = metadata.AsyncExecution;
         Tools = metadata.Tools;
+        Key = metadata.Key;
+        DecisionSpec = metadata.DecisionSpec;
+        WhenTask = metadata.WhenTask;
+        WhenSpec = metadata.WhenSpec;
     }
 }
 #pragma warning restore CS1591

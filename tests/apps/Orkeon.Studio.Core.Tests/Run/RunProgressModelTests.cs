@@ -704,6 +704,41 @@ public class RunProgressModelTests
         Assert.Null(model.Cost.Provider);
     }
 
+    [Fact]
+    [Trait("BR", "UC-03")]
+    public void ShouldShowSkipReason_WhenTaskCompletedSkipped()
+    {
+        var model = Fold(
+            """{"v":2,"seq":1,"ts":"t","kind":"task.completed","taskId":"publish","agentRole":"writer","success":true,"skipped":true,"skipReason":"condition 'review.approved' is false","durationMs":0,"tokens":0,"toolCalls":0}""");
+
+        var task = Assert.Single(model.Tasks);
+        Assert.True(task.Skipped);
+        Assert.Equal("condition 'review.approved' is false", task.SkipReason);
+    }
+
+    [Fact]
+    [Trait("BR", "UC-03")]
+    [Trait("BR", "UC-04")]
+    public void ShouldLabelDecisionTaskAndDefaulted_WhenTaskCompletedWithDecision()
+    {
+        var model = Fold(
+            """{"v":2,"seq":1,"ts":"t","kind":"task.completed","taskId":"review","agentRole":"judge","success":true,"isDecision":true,"defaulted":true,"decision":"{\"approved\":true}","durationMs":10,"tokens":0,"toolCalls":0}""");
+
+        var task = Assert.Single(model.Tasks);
+        Assert.True(task.IsDecision);
+        Assert.True(task.Defaulted);
+        Assert.Equal("{\"approved\":true}", task.DecisionAnswers);
+
+        var plain = Fold(
+            """{"v":2,"seq":1,"ts":"t","kind":"task.completed","taskId":"t1","agentRole":"analyst","success":true,"durationMs":10,"tokens":1,"toolCalls":0}""");
+
+        var other = Assert.Single(plain.Tasks);
+        Assert.Null(other.SkipReason);
+        Assert.False(other.IsDecision);
+        Assert.False(other.Defaulted);
+        Assert.Null(other.DecisionAnswers);
+    }
+
     private static OrkeonEvent Parse(string line)
     {
         Assert.True(OrkeonEventParser.TryParse(line, out var orkeonEvent), line);

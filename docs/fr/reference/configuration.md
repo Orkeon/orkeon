@@ -194,7 +194,7 @@ qu'elle accepte quand leur liste est fermée, et son sens.
 <!-- settings-index -->
 | Catégorie | Sections | Clés |
 |---|---|---|
-| [Modèles](#modèles) | [`Evaluation`](#evaluation), [`Llm`](#llm), [`LlmLogging`](#llmlogging), [`Orkeon:CostTracking`](#orkeoncosttracking), [`Orkeon:TokenCounter`](#orkeontokencounter) | 50 |
+| [Modèles](#modèles) | [`Evaluation`](#evaluation), [`Llm`](#llm), [`LlmLogging`](#llmlogging), [`Orkeon:CostTracking`](#orkeoncosttracking), [`Orkeon:Decision`](#orkeondecision), [`Orkeon:TokenCounter`](#orkeontokencounter), [`Orkeon:TypeSafe`](#orkeontypesafe) | 75 |
 | [Débit et budgets](#débit-et-budgets) | [`RateLimiting`](#ratelimiting), [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting) | 11 |
 | [Mémoire et vecteurs](#mémoire-et-vecteurs) | [`Memory`](#memory), [`Orkeon:ChromaDb`](#orkeonchromadb), [`Orkeon:CognitiveMemory`](#orkeoncognitivememory), [`Orkeon:CrewMemory`](#orkeoncrewmemory), [`Orkeon:EmbeddingCache`](#orkeonembeddingcache), [`Orkeon:Embeddings`](#orkeonembeddings), [`Orkeon:Encryption`](#orkeonencryption), [`Orkeon:LanceDb`](#orkeonlancedb), [`Orkeon:Pinecone`](#orkeonpinecone), [`Orkeon:Redis`](#orkeonredis), [`Orkeon:Sqlite`](#orkeonsqlite), [`Orkeon:VectorSearch`](#orkeonvectorsearch) | 58 |
 | [RAG](#rag) | [`Orkeon:Rag`](#orkeonrag), [`Orkeon:Rag:Ingestion`](#orkeonragingestion), [`Orkeon:Rag:QueryRouting`](#orkeonragqueryrouting), [`Orkeon:Rag:Retrieval:Hybrid`](#orkeonragretrievalhybrid), [`Orkeon:Rag:WebFallback`](#orkeonragwebfallback) | 34 |
@@ -206,7 +206,7 @@ qu'elle accepte quand leur liste est fermée, et son sens.
 | [Hôte de service et A2A](#hôte-de-service-et-a2a) | [`A2A`](#a2a), [`A2A:Security`](#a2asecurity), [`A2A:Security:AzureAD`](#a2asecurityazuread), [`A2A:Security:Oidc`](#a2asecurityoidc), [`Orkeon:Host`](#orkeonhost), [`Orkeon:Host:Discord`](#orkeonhostdiscord) | 46 |
 | [Observabilité](#observabilité) | [`Logging`](#logging), [`Orkeon:Monitoring`](#orkeonmonitoring), [`Telemetry`](#telemetry) | 8 |
 
-72 sections, 392 clés. Lues par aucun binaire livré, seulement par un hôte écrit en C# (10) : [`Evaluation`](#evaluation), [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:CognitiveMemory`](#orkeoncognitivememory), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Checkpointing`](#orkeoncheckpointing), [`Orkeon:ExecutionState:Persistence`](#orkeonexecutionstatepersistence), [`Orkeon:Monitoring`](#orkeonmonitoring).
+74 sections, 417 clés. Lues par aucun binaire livré, seulement par un hôte écrit en C# (10) : [`Evaluation`](#evaluation), [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:CognitiveMemory`](#orkeoncognitivememory), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Checkpointing`](#orkeoncheckpointing), [`Orkeon:ExecutionState:Persistence`](#orkeonexecutionstatepersistence), [`Orkeon:Monitoring`](#orkeonmonitoring).
 <!-- /settings-index -->
 
 Lire un tableau :
@@ -434,7 +434,7 @@ n'est pas celle qui est lue : elle n'est pas jugée. Les réglages jugés, tiré
 | Réglages | Correction énoncée |
 |---|---|
 | `Llm:ApiKey`, `Llm:Profiles:<nom>:ApiKey` | écrire `"ApiKeyEnvVar": "<NOM>"` à la place |
-| `Llm:ApiKeyEnvVar`, `Llm:Profiles:<nom>:ApiKeyEnvVar`, `Orkeon:Rag:WebFallback:ApiKeyEnvVar`, `Orkeon:Host:Discord:TokenEnvironmentVariable`, `A2A:Security:ApiKeySecretNames:<i>`, `Orkeon:Encryption:SecretName` | écrire le nom seul, sans `${` ni `}` |
+| `Llm:ApiKeyEnvVar`, `Llm:Profiles:<nom>:ApiKeyEnvVar`, `Orkeon:Rag:WebFallback:ApiKeyEnvVar`, `Orkeon:TypeSafe:ApiKeyEnvVar`, `Orkeon:Host:Discord:TokenEnvironmentVariable`, `A2A:Security:ApiKeySecretNames:<i>`, `Orkeon:Encryption:SecretName` | écrire le nom seul, sans `${` ni `}` |
 | `MCP:Servers:<id>:Command`, `:Args:<i>`, `:Url` ; `Orkeon:Redis:ConnectionString`, `Orkeon:Sqlite:ConnectionString` ; `RaggableTree:Embedding:ApiKey`, `Orkeon:Pinecone:ApiKey`, `Orkeon:LanceDb:ApiKey` ; `Llm:BaseUrl`, `Llm:Profiles:<nom>:BaseUrl`, `RaggableTree:Embedding:BaseUrl`, `Orkeon:ChromaDb:BaseUrl`, `Orkeon:Pinecone:Host`, `Orkeon:LanceDb:Endpoint`, `Orkeon:Rag:WebFallback:Endpoint`, `Telemetry:OtlpEndpoint` ; `Security:Vault:AzureKeyVaultUri`, `A2A:Security:AzureAD:Authority`, `A2A:Security:Oidc:Authority` | écrire la valeur, ou la garder hors du fichier par la couche d'environnement `ORKEON_<chemin avec __>` |
 | `MCP:Servers:<id>:Env:<nom>` | retirer l'entrée : le serveur hérite de l'environnement où tourne Orkeon, y poser la variable |
 | `Secrets:<nom>` | retirer l'entrée et poser `ORKEON_<nom>`, que la chaîne des secrets lit en premier |
@@ -677,6 +677,61 @@ second appel n'enregistre aucun évaluateur deux fois).
 | Clé | Type | Défaut | Sens |
 |---|---|---|---|
 | `EnableLlmJudge` | booléen | `false` | Quand la clé est vraie, la suite d'évaluation par défaut exécute aussi les évaluateurs « LLM juge » (cohérence, fluidité, ancrage). Requiert un IChatClient enregistré dans le conteneur. Défaut : false. Liée depuis la section `Evaluation`. |
+<!-- /settings -->
+
+### `Orkeon:TypeSafe`
+
+Le modèle de décision TypeSafe (Jev), lié par `AddOrkeonTypeSafe(configuration)`, que les trois
+binaires livrés appellent quand cette section est présente ou que `TYPESAFE_API_KEY` est définie : la clé,
+l'endpoint, le modèle par défaut, le délai et les nouvelles tentatives de chaque appel, et la garde
+d'entrée des agents (`Guard`). Voir [Modèles de décision](../architecture/decision-models.md).
+
+<!-- settings:Orkeon:TypeSafe -->
+**Lue par** : `orkeon`, `orkeon-host`, `orkeon-repl`.
+
+| Clé | Type | Défaut | Sens |
+|---|---|---|---|
+| `ApiKey` | chaîne, secret | — | La clé d'API. Déconseillée dans un fichier de réglages : laissez-la vide et posez la variable que nomme `ApiKeyEnvVar`. |
+| `ApiKeyEnvVar` | chaîne | `"TYPESAFE_API_KEY"` | La variable d'environnement lue quand `ApiKey` est vide. |
+| `BaseUrl` | URI | `"https://api.typesafe.ai/v1"` | La racine de l'API ; `/systemone` et `/models` s'y ajoutent. |
+| `Guard:BlockThreshold` | nombre | `0.8` | La probabilité à partir de laquelle un risque bloque l'entrée. |
+| `Guard:Enabled` | booléen | `false` | Si la garde tourne ; coupée par défaut. |
+| `Guard:FailClosed` | booléen | `false` | Si un modèle de décision injoignable bloque l'entrée ; false avertit et la laisse passer. |
+| `Guard:Risks:<nom>` | chaîne | — | Les risques détectés, chacun avec ce qu'il est ; vide, `TypeSafeInputGuard.DefaultRisks` s'applique. |
+| `Guard:WarnThreshold` | nombre | `0.5` | La probabilité à partir de laquelle un risque est un avertissement. |
+| `MaxRetries` | entier | `3` | Les nouvelles tentatives après un 429, un 529, un autre 5xx ou une erreur réseau. |
+| `Model` | chaîne | `"jev-latest"` | Le modèle sur lequel tourne une requête qui n'en nomme aucun. |
+| `TimeoutSeconds` | entier | `30` | Le délai HTTP d'une tentative, en secondes. |
+<!-- /settings -->
+
+### `Orkeon:Decision`
+
+`Enabled`, le circuit de décision des tâches de décision, est lié par `AddOrkeonInfrastructure()` ;
+les profils de décision (`Profiles`) par `AddOrkeonDecisionProfiles(configuration)`, que les trois
+binaires livrés appellent : chaque profil
+enveloppe un profil LLM (`Target`) dans des étapes qui bloquent, routent ou escaladent un appel.
+Une crew en utilise un comme tout profil, `llm: { profile: <nom> }`. Voir
+[Modèles de décision](../architecture/decision-models.md).
+
+<!-- settings:Orkeon:Decision -->
+**Lue par** : `orkeon`, `orkeon-host`, `orkeon-repl`.
+
+| Clé | Type | Défaut | Sens |
+|---|---|---|---|
+| `Enabled` | booléen | `true` | Si les tâches de décision interrogent le modèle de décision. |
+| `Profiles:<nom>:FailClosed` | booléen | `false` | Si une étape en échec bloque l'appel ; false le laisse passer avec un avertissement. |
+| `Profiles:<nom>:Stages:<i>:BlockThreshold` | nombre | `0.5` | La probabilité à partir de laquelle une étape `guard` bloque. |
+| `Profiles:<nom>:Stages:<i>:Criterion` | chaîne | — | Ce qu'est une bonne réponse, pour une étape `verify` ; vide, le critère par défaut s'applique. |
+| `Profiles:<nom>:Stages:<i>:EscalateTo` | chaîne | — | Le profil vers lequel une étape `verify` escalade. |
+| `Profiles:<nom>:Stages:<i>:Fallback` | chaîne | — | Le profil que prend une étape `route` sous `MinConfidence` ; vide, la cible reste. |
+| `Profiles:<nom>:Stages:<i>:Kind` | chaîne | `""` | L'étape : `route`, `guard` ou `verify`. |
+| `Profiles:<nom>:Stages:<i>:MinConfidence` | nombre | `0` | La confiance sous laquelle une étape `route` prend `Fallback`. |
+| `Profiles:<nom>:Stages:<i>:MinProbability` | nombre | `0.5` | La probabilité sous laquelle une étape `verify` escalade. |
+| `Profiles:<nom>:Stages:<i>:Phase` | chaîne | — | Quand une étape `guard` juge : `request`, `response` ou `both` (le défaut). |
+| `Profiles:<nom>:Stages:<i>:Risks:<nom>` | chaîne | — | Les risques que détecte une étape `guard`, chacun avec ce qu'il est. |
+| `Profiles:<nom>:Stages:<i>:Routes:<nom>` | chaîne | — | Les profils qu'une étape `route` peut choisir, chacun avec ce à quoi il sert. |
+| `Profiles:<nom>:Stages:<i>:WarnThreshold` | nombre | `0.3` | La probabilité à partir de laquelle une étape `guard` journalise un avertissement. |
+| `Profiles:<nom>:Target` | chaîne | `""` | Le profil où va un appel qu'aucune étape ne route ; `default` est la section `Llm`. |
 <!-- /settings -->
 
 ## Débit et budgets
@@ -2167,6 +2222,7 @@ une valeur : le secret reste hors du fichier. `orkeon settings <clé>` décrit c
 | `Orkeon:Tools:Email:Accounts:<nom>:Auth:PasswordEnvVar` | Le mot de passe, ou mot de passe d'application, du compte e-mail. | L'environnement du processus, puis les variables de l'utilisateur sous Windows. |
 | `Orkeon:Tools:Email:Accounts:<nom>:Auth:ClientSecretEnvVar` | Le secret client OAuth du compte e-mail. | L'environnement du processus, puis les variables de l'utilisateur sous Windows. |
 | `Orkeon:Tools:Drive:Accounts:<nom>:Auth:ClientSecretEnvVar` | Le secret client OAuth du compte Google Drive. | L'environnement du processus, puis les variables de l'utilisateur sous Windows. |
+| `Orkeon:TypeSafe:ApiKeyEnvVar` | La clé du modèle de décision TypeSafe ; la clé nomme `TYPESAFE_API_KEY` quand rien ne la règle. | L'environnement du processus, puis les variables de l'utilisateur sous Windows. |
 | `Orkeon:Rag:WebFallback:ApiKeyEnvVar` | La clé de la recherche web sur laquelle le RAG correctif se replie ; vide, aucune clé n'est envoyée. | L'environnement du processus. |
 | `Orkeon:Host:Discord:TokenEnvironmentVariable` | Le jeton de bot du canal Discord ; la clé nomme `ORKEON_DISCORD_TOKEN` quand rien ne la règle. | L'environnement du processus. |
 

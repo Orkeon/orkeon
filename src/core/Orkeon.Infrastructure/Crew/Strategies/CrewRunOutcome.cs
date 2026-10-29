@@ -40,6 +40,8 @@ internal sealed class CrewRunOutcome
     private readonly CancellationToken _runToken;
     private readonly List<string> _failures = [];
     private readonly HashSet<TaskId> _notSucceeded = [];
+    private readonly HashSet<TaskId> _conditionSkipped = [];
+    private readonly Dictionary<TaskId, Domain.Task.ValueObjects.DecisionOutcome> _decisionOutcomes = [];
     private readonly Dictionary<TaskId, RunningTask> _running = [];
     private readonly HashSet<TaskId> _recorded = [];
     private string? _headline;
@@ -72,6 +74,13 @@ internal sealed class CrewRunOutcome
     /// then every failed or skipped task, each naming itself.
     /// </summary>
     internal string Reason => string.Join("; ", _headline is null ? _failures : [_headline, .. _failures]);
+
+    /// <summary>Whether <paramref name="taskId"/> was skipped because its condition did not hold: not a failure.</summary>
+    internal bool IsConditionSkipped(TaskId taskId) => _conditionSkipped.Contains(taskId);
+
+    /// <summary>The outcome the decision task <paramref name="taskId"/> answered with, or null when it recorded none.</summary>
+    internal Domain.Task.ValueObjects.DecisionOutcome? DecisionOf(TaskId taskId) =>
+        _decisionOutcomes.GetValueOrDefault(taskId);
 
     /// <summary>Whether <paramref name="taskId"/> failed or was skipped.</summary>
     internal bool DidNotSucceed(TaskId taskId) => _notSucceeded.Contains(taskId);
@@ -119,6 +128,10 @@ internal sealed class CrewRunOutcome
     /// </summary>
     internal System.Threading.Tasks.Task RecordStartWithoutAgentAsync(DomainTask task, IReadOnlyList<DomainAgent> agents)
     {
+        // A task this run already runs (a graph retry of a decision task) goes on.
+        if (_running.ContainsKey(task.Id))
+            return System.Threading.Tasks.Task.CompletedTask;
+
         var reopen = FirstRecord(task);
         _running[task.Id] = new RunningTask(task, [.. agents]);
         CrewRunTracing.StartTask(task.Id, agentName: null);
@@ -177,11 +190,23 @@ internal sealed class CrewRunOutcome
     /// </summary>
     internal System.Threading.Tasks.Task RecordSuccessAsync(DomainTask task, DomainTaskOutput output, DomainAgent? author = null, DateTimeOffset? endedAt = null)
     {
+        if (output.Decision is { } decision)
+            _decisionOutcomes[task.Id] = decision;
         _running.Remove(task.Id, out var running);
         EndSpan(task.Id, running is not null, TaskSpanStatus.Completed, reason: null, endedAt);
         var agents = running?.Agents ?? [];
         var completer = author ?? agents.FirstOrDefault();
         var reopen = running is null && FirstRecord(task);
+        if (task.IsDecision)
+        {
+            return _lifecycle.ApplyAsync(task, [], () =>
+            {
+                if (reopen)
+                    task.Reopen();
+                task.CompleteWithoutAgent(output);
+            });
+        }
+
         List<DomainAgent> touched = [.. agents];
         if (completer is not null && !touched.Exists(a => a.Id == completer.Id))
             touched.Add(completer);
@@ -226,6 +251,16 @@ internal sealed class CrewRunOutcome
                 End(agent, task.Id, output: null, cause);
         }).ConfigureAwait(false);
         return reason;
+    }
+
+    /// <summary>
+    /// Records a task whose condition did not hold: cancelled with <paramref name="reason"/>, neither
+    /// a failure nor an output of the run.
+    /// </summary>
+    internal async System.Threading.Tasks.Task RecordConditionSkipAsync(DomainTask task, string reason)
+    {
+        _conditionSkipped.Add(task.Id);
+        await CancelAsync(task, $"condition skipped: {reason}").ConfigureAwait(false);
     }
 
     /// <summary>
@@ -369,7 +404,7 @@ internal sealed class CrewRunOutcome
     }
 
     /// <summary>An agent's own answer to a task, as the output its completion carries.</summary>
-    private static DomainTaskOutput OutputOf(DomainTask task, DomainAgent agent, Application.Interfaces.Services.TaskResult answer) =>
+    internal static DomainTaskOutput OutputOf(DomainTask task, DomainAgent? agent, Application.Interfaces.Services.TaskResult answer) =>
         DomainTaskOutput.Create(
             rawOutput: RawOutputOf(answer),
             format: "text",
@@ -378,7 +413,7 @@ internal sealed class CrewRunOutcome
             success: true,
             executionTime: answer.ExecutionTime,
             structuredOutput: answer.StructuredOutput,
-            agentId: agent.Id.ToString());
+            agentId: agent?.Id.ToString()) with { Decision = answer.Decision };
 
     /// <summary>
     /// The text a task's output carries: the agent's answer, or — when it gave none — a
@@ -418,6 +453,12 @@ internal sealed class CrewRunOutcome
             agentId: agentId);
         return (domain, application);
     }
+
+    /// <summary>Marks the snapshot of a completed decision task: the flag and its answers (the compact-JSON output).</summary>
+    internal static TaskExecutionSnapshot WithDecision(TaskExecutionSnapshot snapshot, DomainTaskOutput output) =>
+        output.Decision is null
+            ? snapshot
+            : snapshot with { IsDecision = true, DecisionAnswers = output.RawOutput };
 
     /// <summary>The snapshot a skipped task reports: marked skipped, with its reason.</summary>
     internal static TaskExecutionSnapshot SkippedSnapshot(TaskId taskId, string agentRole, string reason) =>

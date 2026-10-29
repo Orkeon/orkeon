@@ -25,6 +25,9 @@ public sealed class CrewTaskBuilder
     private bool _humanInput;
     private LlmConfigOverride? _llmOverride;
     private Orkeon.Domain.Agent.GuardrailsConfig? _guardrails;
+    private TaskDecision? _decision;
+    private TaskCondition? _condition;
+    private string? _key;
 
     /// <summary>Sets the task description from a string value.</summary>
     public CrewTaskBuilder Description(string description)
@@ -51,6 +54,13 @@ public sealed class CrewTaskBuilder
     public CrewTaskBuilder ExpectedOutput(ExpectedOutput expectedOutput)
     {
         _expectedOutput = expectedOutput;
+        return this;
+    }
+
+    /// <summary>Sets the key the task is declared with.</summary>
+    public CrewTaskBuilder WithKey(string? key)
+    {
+        _key = key;
         return this;
     }
 
@@ -204,6 +214,29 @@ public sealed class CrewTaskBuilder
         return this;
     }
 
+    /// <summary>Makes the task a decision task.</summary>
+    public CrewTaskBuilder WithDecision(TaskDecision decision)
+    {
+        _decision = decision;
+        return this;
+    }
+
+    /// <summary>Sets the condition and depends on the decision task.</summary>
+    public CrewTaskBuilder When(TaskId decisionTaskId, TaskCondition condition)
+    {
+        if (!_dependencies.Contains(decisionTaskId))
+            _dependencies.Add(decisionTaskId);
+        _condition = condition;
+        return this;
+    }
+
+    /// <summary>Sets the condition under which the task runs.</summary>
+    public CrewTaskBuilder When(TaskCondition condition)
+    {
+        _condition = condition;
+        return this;
+    }
+
     /// <summary>
     /// Builds and returns a new <see cref="CrewTask"/> instance.
     /// </summary>
@@ -217,6 +250,9 @@ public sealed class CrewTaskBuilder
 
         if (_expectedOutput is null)
             throw new BuilderValidationException("Task", "ExpectedOutput is required.");
+
+        if (_decision is not null && _assignedAgent is not null)
+            throw new BuilderValidationException("Task", "A task carries a decision or an agent, never both.");
 
         var outputOptions = new TaskOutputOptions
         {
@@ -247,6 +283,18 @@ public sealed class CrewTaskBuilder
         if (_assignedAgent is not null)
         {
             task.AssignTo(_assignedAgent);
+        }
+
+        task.SetKey(_key);
+
+        if (_decision is not null)
+        {
+            task.SetDecision(_decision);
+        }
+
+        if (_condition is not null)
+        {
+            task.SetCondition(_condition);
         }
 
         if (_llmOverride is not null)

@@ -166,3 +166,47 @@ tasks:
       rules: [Name every supplier you mention.]
       toolRules:
         file_write: [Write /output/report.md only.]
+
+  triage:
+    description: Classify the change.
+    expectedOutput: A classification.
+    decision:
+      questions:
+        category:
+          choice:
+            price: a price change
+            delay: a delivery delay
+        urgency:
+          score: [low, medium, high]
+          instructions: How urgent is the change
+        escalate:
+          noul: the change needs an escalation
+      minConfidence: 0.6
+      state: [collect]
+      longContext: true
+      fallback:
+        category: price
+        urgency: low
+        escalate: "no"
+
+  followup:
+    description: Follow up on the change.
+    expectedOutput: A follow-up note.
+    agent: writer
+    when:
+      triage.category: [price]
+
+  escalation:
+    description: Escalate the change.
+    expectedOutput: An escalation note.
+    agent: writer
+    when:
+      triage.urgency: "> 1.5"
+      triage.category.price: ">= 0.6"
+
+  archive:
+    description: Archive the change.
+    expectedOutput: An archive entry.
+    agent: writer
+    when:
+      triage: otherwise

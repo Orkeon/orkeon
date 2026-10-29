@@ -4,6 +4,7 @@ using ITaskRepository = Orkeon.Domain.Task.ITaskRepository;
 using Microsoft.Extensions.Logging;
 using Orkeon.Domain.Common;
 using Orkeon.Application.Crew;
+using Orkeon.Application.Crew.Execution;
 using Orkeon.Application.Interfaces.Services;
 using Orkeon.Application.Interfaces.Ports;
 using Orkeon.Application.Context;
@@ -44,6 +45,33 @@ public sealed partial class ParallelProcessStrategy : IProcessStrategy
     private readonly TaskAgentSelector _agentSelector;
     private readonly ILogger<ParallelProcessStrategy> _logger;
     private readonly TaskLifecycle _lifecycle;
+    private readonly DecisionTaskRunner? _decisionRunner;
+    private readonly DecisionDispatch? _decisions;
+
+    /// <summary>Initializes a new instance of <see cref="ParallelProcessStrategy"/>.</summary>
+    /// <param name="dependencies">The collaborators shared by every crew strategy.</param>
+    /// <param name="logger">The logger.</param>
+    /// <param name="hook">Optional crew execution hook. May be null (BUS-03).</param>
+    /// <param name="agentSelector">Who runs a task that names no agent. Null means round-robin.</param>
+    public ParallelProcessStrategy(
+        CrewStrategyDependencies dependencies,
+        ILogger<ParallelProcessStrategy> logger,
+        ICrewExecutionHook? hook = null,
+        TaskAgentSelector? agentSelector = null)
+    {
+        ArgumentNullException.ThrowIfNull(dependencies);
+        _taskRepository = dependencies.TaskRepository;
+        _agentRepository = dependencies.AgentRepository;
+        _executionService = dependencies.ExecutionService;
+        _memoryScope = dependencies.MemoryScope;
+        ArgumentNullException.ThrowIfNull(logger);
+        _logger = logger;
+        _hooks = new CrewHookDispatcher(hook, logger);
+        _agentSelector = agentSelector ?? TaskAgentSelector.RoundRobin;
+        _lifecycle = dependencies.LifecycleFor(logger);
+        _decisionRunner = dependencies.DecisionRunner;
+        _decisions = _decisionRunner is null ? null : new DecisionDispatch(_decisionRunner);
+    }
 
     /// <summary>Initializes a new instance of <see cref="ParallelProcessStrategy"/>.</summary>
     /// <param name="taskRepository">The task repository.</param>
@@ -57,8 +85,8 @@ public sealed partial class ParallelProcessStrategy : IProcessStrategy
     /// Delivers the events of the tasks and agents as the run moves them (GAP-21); the container
     /// always provides one. Without it they are moved and saved, their events left queued.
     /// </param>
-#pragma warning disable S107 // DI constructor: the four collaborators of every strategy, the logger, and three optional services
-    public ParallelProcessStrategy(
+#pragma warning disable S107 // the four collaborators of every strategy, the logger, and three optional services
+    internal ParallelProcessStrategy(
         ITaskRepository taskRepository,
         IAgentRepository agentRepository,
         IAgentExecutionService executionService,
@@ -68,20 +96,10 @@ public sealed partial class ParallelProcessStrategy : IProcessStrategy
         TaskAgentSelector? agentSelector = null,
         Orkeon.Domain.SharedKernel.Events.IDomainEventDispatcher? domainEvents = null)
 #pragma warning restore S107
+        : this(
+            new CrewStrategyDependencies(taskRepository, agentRepository, executionService, memoryScope, domainEvents),
+            logger, hook, agentSelector)
     {
-        ArgumentNullException.ThrowIfNull(taskRepository);
-        _taskRepository = taskRepository;
-        ArgumentNullException.ThrowIfNull(agentRepository);
-        _agentRepository = agentRepository;
-        ArgumentNullException.ThrowIfNull(executionService);
-        _executionService = executionService;
-        ArgumentNullException.ThrowIfNull(memoryScope);
-        _memoryScope = memoryScope;
-        ArgumentNullException.ThrowIfNull(logger);
-        _logger = logger;
-        _hooks = new CrewHookDispatcher(hook, logger);
-        _agentSelector = agentSelector ?? TaskAgentSelector.RoundRobin;
-        _lifecycle = new TaskLifecycle(taskRepository, agentRepository, domainEvents, logger);
     }
 
     /// <inheritdoc />
@@ -118,7 +136,8 @@ public sealed partial class ParallelProcessStrategy : IProcessStrategy
     {
         LogStartingParallelExecutionForCrew(crew.Id);
 
-        var startTime = DateTime.UtcNow;
+        var startedAt = DateTimeOffset.UtcNow;
+        var startTime = startedAt.UtcDateTime;
         var variables = inputVariables != null
             ? new Dictionary<string, string>(inputVariables)
             : [];
@@ -130,12 +149,18 @@ public sealed partial class ParallelProcessStrategy : IProcessStrategy
         // event, and orphans still emitting task.completed after the strategy had returned.
         var run = new ParallelRun(new CrewRunOutcome(_lifecycle, cancellationToken));
         var outcome = run.Outcome;
+        List<DomainTask> tasks = [];
         try
         {
         // Setup stays inside the barrier: an agent-less crew is the everyday failure, and it
         // has to produce a terminal event like any other exit.
         var agents = await LoadAgentsAsync(crew, cancellationToken).ConfigureAwait(false);
-        var tasks = await LoadTasksAsync(crew, cancellationToken).ConfigureAwait(false);
+        tasks = await LoadTasksAsync(crew, cancellationToken).ConfigureAwait(false);
+
+        // Once, before any task: a decision task that could not answer fails the run at its door.
+        var faults = DecisionPreflight.Check(tasks, _decisionRunner);
+        if (faults.Count > 0)
+            return await DecisionPreflight.FailAtEntryAsync(_hooks, crew.Id.ToString(), startedAt, string.Join(' ', faults)).ConfigureAwait(false);
 
         var taskIndex = 0;
         var runContext = new SimpleExecutionContext(crew.Id, variables, _memoryScope, [], cancellationToken);
@@ -154,15 +179,17 @@ public sealed partial class ParallelProcessStrategy : IProcessStrategy
             // same context, and the list must not be mutated while they run.
             var previousOutputs = run.CompletedOutputs.ToList();
 
-            var launched = new List<(DomainTask Task, DomainAgent Agent)>();
+            var launched = new List<(DomainTask Task, DomainAgent? Agent)>();
             foreach (var task in wave)
             {
                 // The agent the crew declared, round-robin only when it declared none — the same
                 // choice Sequential and Graph make. This mode used to take loop order alone, so a
                 // YAML `agent:` was silently ignored in parallel mode and nowhere else.
-                var agent = await _agentSelector
-                    .ForTaskAsync(task, agents, taskIndex++, cancellationToken)
-                    .ConfigureAwait(false);
+                var agent = task.IsDecision
+                    ? null
+                    : await _agentSelector
+                        .ForTaskAsync(task, agents, taskIndex++, cancellationToken)
+                        .ConfigureAwait(false);
 
                 cancellationToken.ThrowIfCancellationRequested();
 
@@ -171,6 +198,14 @@ public sealed partial class ParallelProcessStrategy : IProcessStrategy
                 if (outcome.BlockingDependency(task) is { } blockedBy)
                 {
                     await SkipBlockedTaskAsync(run, task, agent, blockedBy, cancellationToken).ConfigureAwait(false);
+                    continue;
+                }
+
+                // A condition that does not hold skips the task: neither a failure nor an output.
+                // The decision it reads was recorded when its own wave joined.
+                if (ConditionGate.ShouldRun(task, outcome, tasks) is { Run: false } notRun)
+                {
+                    await SkipByConditionAsync(run, task, agent, notRun.Reason!, cancellationToken).ConfigureAwait(false);
                     continue;
                 }
 
@@ -183,10 +218,12 @@ public sealed partial class ParallelProcessStrategy : IProcessStrategy
 
                 // Started as it is launched, so the start goes out before its agent runs (GAP-21).
                 // One agent given two tasks of the wave runs both at once.
-                await outcome.RecordStartAsync(task, agent).ConfigureAwait(false);
+                await (agent is null
+                    ? outcome.RecordStartWithoutAgentAsync(task, [])
+                    : outcome.RecordStartAsync(task, agent)).ConfigureAwait(false);
                 launched.Add((task, agent));
                 executionTasks.Add(System.Threading.Tasks.Task.Run(async () => await ExecuteWaveTaskAsync(
-                    capturedAgent, capturedTask, context, run.TokenTally, run.TaskSnapshots, cancellationToken)
+                    capturedAgent, capturedTask, tasks, context, run.TokenTally, run.TaskSnapshots, cancellationToken)
                     .ConfigureAwait(false)));
             }
 
@@ -224,8 +261,11 @@ public sealed partial class ParallelProcessStrategy : IProcessStrategy
         var domainResults = run.Results.Select(r => r.domainOutput).ToList();
         var totalTime = DateTime.UtcNow - startTime;
 
-        // Aggregate: combine all outputs
-        var allOutputs = string.Join("\n\n", domainResults.Select(r => r.Output));
+        // The final output is the last task that ran in declared order (BR-04), as in the sequential
+        // and graph runs: a wave can hold a task declared before one that settled earlier.
+        var finalOutput = tasks
+            .Select(task => domainResults.LastOrDefault(result => result.TaskId is { } id && id == task.Id))
+            .LastOrDefault(result => result is not null)?.Output ?? string.Empty;
 
         if (outcome.HasFailures)
             LogParallelExecutionFailedForCrew(crew.Id, outcome.Failures.Count, outcome.Reason);
@@ -235,7 +275,7 @@ public sealed partial class ParallelProcessStrategy : IProcessStrategy
         return await outcome.CompleteAsync(_hooks, new CrewRunSummary(
             crew.Id.ToString(), startTime, run.TaskSnapshots, domainResults, totalTime,
             run.TokenTally.WriteTo(Orkeon.Domain.Crew.ValueObjects.CrewMetadata.CreateBuilder()).Build(),
-            allOutputs)).ConfigureAwait(false);
+            finalOutput)).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -263,16 +303,27 @@ public sealed partial class ParallelProcessStrategy : IProcessStrategy
     /// failed output for the next waves' context and the crew's result, a skipped snapshot for the hooks.
     /// </summary>
     private async System.Threading.Tasks.Task SkipBlockedTaskAsync(
-        ParallelRun run, DomainTask task, DomainAgent agent, TaskId blockedBy, CancellationToken cancellationToken)
+        ParallelRun run, DomainTask task, DomainAgent? agent, TaskId blockedBy, CancellationToken cancellationToken)
     {
-        var skipReason = await run.Outcome.RecordSkipAsync(task, agent.Role.Value, blockedBy).ConfigureAwait(false);
-        LogTaskSkippedAfterDependency(task.Id, agent.Role.Value, blockedBy);
-        var skipped = CrewRunOutcome.SkippedOutputs(task.Id, agent.Id.ToString(), blockedBy);
+        var role = agent?.Role.Value ?? DecisionDispatch.Role;
+        var skipReason = await run.Outcome.RecordSkipAsync(task, role, blockedBy).ConfigureAwait(false);
+        LogTaskSkippedAfterDependency(task.Id, role, blockedBy);
+        var skipped = CrewRunOutcome.SkippedOutputs(task.Id, agent?.Id.ToString(), blockedBy);
         run.Results.Add((skipped.Domain, skipped.Application));
         run.CompletedOutputs.Add(skipped.Application);
-        var skippedSnapshot = CrewRunOutcome.SkippedSnapshot(task.Id, agent.Role.Value, skipReason);
+        var skippedSnapshot = CrewRunOutcome.SkippedSnapshot(task.Id, role, skipReason);
         run.TaskSnapshots.Add(skippedSnapshot);
         await _hooks.TaskCompletedAsync(skippedSnapshot, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>A task whose condition did not hold: recorded as cancelled, reported skipped, and left out of every output.</summary>
+    private async System.Threading.Tasks.Task SkipByConditionAsync(
+        ParallelRun run, DomainTask task, DomainAgent? agent, string reason, CancellationToken cancellationToken)
+    {
+        await run.Outcome.RecordConditionSkipAsync(task, reason).ConfigureAwait(false);
+        var snapshot = CrewRunOutcome.SkippedSnapshot(task.Id, agent?.Role.Value ?? DecisionDispatch.Role, reason);
+        run.TaskSnapshots.Add(snapshot);
+        await _hooks.TaskCompletedAsync(snapshot, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -281,7 +332,7 @@ public sealed partial class ParallelProcessStrategy : IProcessStrategy
     /// </summary>
     private static async System.Threading.Tasks.Task RecordWaveAsync(
         ParallelRun run,
-        List<(DomainTask Task, DomainAgent Agent)> launched,
+        List<(DomainTask Task, DomainAgent? Agent)> launched,
         (DomainTaskOutput domainOutput, ApplicationTaskOutput appOutput, string? error, DateTimeOffset? endedAt)[] waveResults)
     {
         for (var i = 0; i < waveResults.Length; i++)
@@ -290,7 +341,7 @@ public sealed partial class ParallelProcessStrategy : IProcessStrategy
             if (domainOutput.Success)
                 await run.Outcome.RecordSuccessAsync(launched[i].Task, domainOutput, endedAt: endedAt).ConfigureAwait(false);
             else
-                await run.Outcome.RecordFailureAsync(launched[i].Task, launched[i].Agent.Role.Value, error, endedAt).ConfigureAwait(false);
+                await run.Outcome.RecordFailureAsync(launched[i].Task, launched[i].Agent?.Role.Value ?? DecisionDispatch.Role, error, endedAt).ConfigureAwait(false);
             run.Results.Add((domainOutput, appOutput));
         }
 
@@ -349,20 +400,24 @@ public sealed partial class ParallelProcessStrategy : IProcessStrategy
     /// usage, normalise the output and publish the completion snapshot.
     /// </summary>
     private async System.Threading.Tasks.Task<(DomainTaskOutput domainOutput, ApplicationTaskOutput appOutput, string? error, DateTimeOffset? endedAt)> ExecuteWaveTaskAsync(
-        DomainAgent agent,
+        DomainAgent? agent,
         DomainTask task,
+        IReadOnlyList<DomainTask> crewTasks,
         SimpleExecutionContext context,
         TokenUsageTally tokenTally,
         System.Collections.Concurrent.ConcurrentBag<TaskExecutionSnapshot> taskSnapshots,
         CancellationToken cancellationToken)
     {
-        LogStartingParallelExecutionOfTask(task.Id, agent.Id);
+        var role = agent?.Role.Value ?? DecisionDispatch.Role;
+        if (agent is not null)
+            LogStartingParallelExecutionOfTask(task.Id, agent.Id);
         await _hooks.TaskStartedAsync(
-            CrewHookDispatcher.Started(task.Id.Value.ToString(), agent.Role.Value), cancellationToken)
+            CrewHookDispatcher.Started(task.Id.Value.ToString(), role), cancellationToken)
             .ConfigureAwait(false);
 
-        var result = await _executionService.ExecuteTaskAsync(
-            agent, task, context, cancellationToken).ConfigureAwait(false);
+        var result = agent is null
+            ? await RunDecisionAsync(task, crewTasks, context, cancellationToken).ConfigureAwait(false)
+            : await _executionService.ExecuteTaskAsync(agent, task, context, cancellationToken).ConfigureAwait(false);
 
         tokenTally.Record(result);
 
@@ -376,11 +431,11 @@ public sealed partial class ParallelProcessStrategy : IProcessStrategy
             taskId: task.Id,
             success: result.Success,
             executionTime: result.ExecutionTime,
-            structuredOutput: result.StructuredOutput);
+            structuredOutput: result.StructuredOutput) with { Decision = result.Decision };
 
         var appOutput = new ApplicationTaskOutput(
             TaskId: task.Id.Value.ToString(),
-            AgentId: agent.Id.ToString(),
+            AgentId: agent?.Id.ToString(),
             Content: rawOutput,
             CompletedAt: DateTime.UtcNow,
             Success: result.Success,
@@ -389,10 +444,10 @@ public sealed partial class ParallelProcessStrategy : IProcessStrategy
 
         LogCompletedParallelExecutionOfTask(task.Id, result.Success);
 
-        var snapshot = new TaskExecutionSnapshot
+        var snapshot = CrewRunOutcome.WithDecision(new TaskExecutionSnapshot
         {
             TaskId = task.Id.Value.ToString(),
-            AgentRole = agent.Role.Value,
+            AgentRole = agent?.Role.Value ?? DecisionDispatch.Role,
             Success = result.Success,
             Duration = result.ExecutionTime,
             CompletedAt = DateTimeOffset.UtcNow,
@@ -400,12 +455,20 @@ public sealed partial class ParallelProcessStrategy : IProcessStrategy
             TokensUsed = result.TokensUsed,
             CacheHitTokens = result.CacheHitTokens,
             CacheMissTokens = result.CacheMissTokens,
-        };
+            Defaulted = result.Decision?.IsDefaulted ?? false,
+        }, domainOutput);
         taskSnapshots.Add(snapshot);
         await _hooks.TaskCompletedAsync(snapshot, cancellationToken).ConfigureAwait(false);
 
         return (domainOutput, appOutput, result.Error ?? result.LastError, result.EndedAt);
     }
+
+    /// <summary>A decision task answered by the decision runner from the wave's context: no agent, no memory, no tokens.</summary>
+    private System.Threading.Tasks.Task<TaskResult> RunDecisionAsync(
+        DomainTask task, IReadOnlyList<DomainTask> crewTasks, SimpleExecutionContext context, CancellationToken cancellationToken) =>
+        _decisions is null
+            ? throw new InvalidOperationException($"Task {task.Id} is a decision task and the strategy has no decision runner.")
+            : _decisions.RunAsync(task, crewTasks, context.PreviousOutputs, cancellationToken);
 
     /// <summary>
     /// The tasks grouped into dependency waves: everything in a wave can run at once, and a

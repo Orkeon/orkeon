@@ -43,6 +43,8 @@ public sealed partial class GraphProcessStrategy : IProcessStrategy
     private readonly ILogger<GraphProcessStrategy> _logger;
     private readonly TaskAgentSelector _agentSelector;
     private readonly TaskLifecycle _lifecycle;
+    private readonly Orkeon.Application.Crew.Execution.DecisionTaskRunner? _decisionRunner;
+    private readonly DecisionDispatch? _decisions;
 
     /// <summary>
     /// Circuit breaker policy used as-is when the crew carries no <see cref="Domain.Configuration.GraphConfig"/>.
@@ -88,6 +90,8 @@ public sealed partial class GraphProcessStrategy : IProcessStrategy
         _hooks = new CrewHookDispatcher(hook, logger);
         _agentSelector = agentSelector ?? TaskAgentSelector.RoundRobin;
         _lifecycle = dependencies.LifecycleFor(logger);
+        _decisionRunner = dependencies.DecisionRunner;
+        _decisions = _decisionRunner is null ? null : new DecisionDispatch(_decisionRunner);
     }
 
     /// <inheritdoc />
@@ -105,7 +109,8 @@ public sealed partial class GraphProcessStrategy : IProcessStrategy
         CancellationToken cancellationToken)
     {
         LogStartingGraphExecution(crew.Id);
-        var startTime = DateTime.UtcNow;
+        var startedAt = DateTimeOffset.UtcNow;
+        var startTime = startedAt.UtcDateTime;
         var outcome = new CrewRunOutcome(_lifecycle, cancellationToken);
 
         try
@@ -129,6 +134,18 @@ public sealed partial class GraphProcessStrategy : IProcessStrategy
         var taskIds = await CrewTaskSequencer.ResolveAsync(
             crew, _taskRepository, _logger, cancellationToken).ConfigureAwait(false);
 
+        var loaded = new List<Orkeon.Domain.Task.CrewTask>(taskIds.Count);
+        foreach (var id in taskIds)
+        {
+            if (await _taskRepository.GetByIdAsync(id, cancellationToken).ConfigureAwait(false) is { } found)
+                loaded.Add(found);
+        }
+
+        // Once, before any task: a decision task that could not answer fails the run at its door.
+        var faults = DecisionPreflight.Check(loaded, _decisionRunner);
+        if (faults.Count > 0)
+            return await DecisionPreflight.FailAtEntryAsync(_hooks, crew.Id.ToString(), startedAt, string.Join(' ', faults)).ConfigureAwait(false);
+
         // Resolve the effective graph config off the crew (P2-O-01): per-crew GraphConfig wins,
         // then this strategy's fallback defaults. The
         // config travels with the crew argument, not on the shared scoped strategy, so concurrent
@@ -147,6 +164,7 @@ public sealed partial class GraphProcessStrategy : IProcessStrategy
             RetryCounts = new Dictionary<string, int>(),
             MaxRetryCycles = effectiveMaxRetryCycles,
             Outcome = outcome,
+            CrewTasks = loaded,
             // The run's context, from which each task's is derived (GAP-30, GAP-21).
             Context = new SimpleExecutionContext(crew.Id, variables, _memoryScope, [], cancellationToken),
         };
@@ -259,15 +277,17 @@ public sealed partial class GraphProcessStrategy : IProcessStrategy
         IReadOnlyList<DomainTaskOutput> results,
         CrewGraphState state)
     {
-        var snapshots = new List<TaskExecutionSnapshot>(results.Count);
+        var snapshots = new List<TaskExecutionSnapshot>(results.Count + state.ConditionSkips.Count);
         for (var index = 0; index < results.Count; index++)
         {
+            // A task skipped by its condition was reported when it was skipped: listed here, in order.
+            snapshots.AddRange(state.ConditionSkips.Where(skip => skip.Position == index).Select(skip => skip.Snapshot));
             var result = results[index];
             var taskId = result.TaskId?.Value.ToString() ?? string.Empty;
             var usage = index < state.ResultUsage.Count ? state.ResultUsage[index] : default;
             var snapshot = state.SkipReasons.TryGetValue(index, out var skipReason)
                 ? CrewRunOutcome.SkippedSnapshot(result.TaskId!, "graph", skipReason)
-                : new TaskExecutionSnapshot
+                : CrewRunOutcome.WithDecision(new TaskExecutionSnapshot
                 {
                     TaskId = taskId,
                     AgentRole = "graph",
@@ -277,11 +297,13 @@ public sealed partial class GraphProcessStrategy : IProcessStrategy
                     TokensUsed = usage.Tokens,
                     CacheHitTokens = usage.CacheHit,
                     CacheMissTokens = usage.CacheMiss,
-                };
+                    Defaulted = result.TaskId is { } id && (state.Outcome.DecisionOf(id)?.IsDefaulted ?? false),
+                }, result);
             snapshots.Add(snapshot);
             await _hooks.TaskCompletedAsync(snapshot).ConfigureAwait(false);
         }
 
+        snapshots.AddRange(state.ConditionSkips.Where(skip => skip.Position >= results.Count).Select(skip => skip.Snapshot));
         return snapshots;
     }
 
@@ -340,25 +362,28 @@ public sealed partial class GraphProcessStrategy : IProcessStrategy
         var taskId = state.PendingTaskIds.Dequeue();
         LogExecutingTask(taskId);
 
-        var task = await _taskRepository.GetByIdAsync(taskId, ct).ConfigureAwait(false);
+        var task = state.CrewTasks.FirstOrDefault(t => t.Id == taskId);
         if (task == null)
         {
             LogTaskNotFound(taskId);
             return state;
         }
 
-        var agent = await _agentSelector
-            .ForTaskAsync(task, state.Agents, state.AgentIndex++, ct)
-            .ConfigureAwait(false);
+        var agent = task.IsDecision
+            ? null
+            : await _agentSelector
+                .ForTaskAsync(task, state.Agents, state.AgentIndex++, ct)
+                .ConfigureAwait(false);
+        var role = agent?.Role.Value ?? DecisionDispatch.Role;
 
         // A task depending on one that did not succeed is skipped, as in Sequential (GAP-03).
         // A failed task is retried before the next task runs (see RouteNodeAsync), so by the
         // time a dependant is dequeued its dependency has either succeeded or given up.
         if (state.Outcome.BlockingDependency(task) is { } blockedBy)
         {
-            var reason = await state.Outcome.RecordSkipAsync(task, agent.Role.Value, blockedBy).ConfigureAwait(false);
-            LogTaskSkippedAfterDependency(task.Id, agent.Role.Value, blockedBy);
-            var (skippedDomain, skippedApp) = CrewRunOutcome.SkippedOutputs(task.Id, agent.Id.ToString(), blockedBy);
+            var reason = await state.Outcome.RecordSkipAsync(task, role, blockedBy).ConfigureAwait(false);
+            LogTaskSkippedAfterDependency(task.Id, role, blockedBy);
+            var (skippedDomain, skippedApp) = CrewRunOutcome.SkippedOutputs(task.Id, agent?.Id.ToString(), blockedBy);
             state.SkipReasons[state.DomainResults.Count] = reason;
             state.AddResultUsage(0, 0, 0);
             state.AddApplicationOutput(skippedApp);
@@ -366,15 +391,30 @@ public sealed partial class GraphProcessStrategy : IProcessStrategy
             return state;
         }
 
+        // A condition that does not hold skips the task: neither a failure nor an output of the run.
+        if (ConditionGate.ShouldRun(task, state.Outcome, state.CrewTasks) is { Run: false } notRun)
+        {
+            await state.Outcome.RecordConditionSkipAsync(task, notRun.Reason!).ConfigureAwait(false);
+            var skippedSnapshot = CrewRunOutcome.SkippedSnapshot(task.Id, role, notRun.Reason!);
+            // Reported now, and kept at its place for the terminal list, which the results alone would miss.
+            state.ConditionSkips.Add((state.DomainResults.Count, skippedSnapshot));
+            await _hooks.TaskCompletedAsync(skippedSnapshot, ct).ConfigureAwait(false);
+            return state;
+        }
+
         // Completions are reported when the graph settles (NotifyResultsAsync); the start is
         // the one per-task moment this mode can announce live.
         await _hooks.TaskStartedAsync(
-            CrewHookDispatcher.Started(taskId.Value.ToString(), agent.Role.Value), ct)
+            CrewHookDispatcher.Started(taskId.Value.ToString(), role), ct)
             .ConfigureAwait(false);
         // A retry goes on with the task its first attempt started: started once (GAP-21).
-        await state.Outcome.RecordStartAsync(task, agent).ConfigureAwait(false);
+        await (agent is null
+            ? state.Outcome.RecordStartWithoutAgentAsync(task, [])
+            : state.Outcome.RecordStartAsync(task, agent)).ConfigureAwait(false);
 
-        var executionResult = await RunTaskAsync(state, task, agent, ct).ConfigureAwait(false);
+        var executionResult = agent is null
+            ? await RunDecisionTaskAsync(state, task, ct).ConfigureAwait(false)
+            : await RunTaskAsync(state, task, agent, ct).ConfigureAwait(false);
 
         AppendTaskOutputs(state, task, agent, executionResult);
         await EvaluateFailureForRetryAsync(state, task, agent, executionResult).ConfigureAwait(false);
@@ -382,6 +422,12 @@ public sealed partial class GraphProcessStrategy : IProcessStrategy
         LogTaskCompleted(taskId, executionResult.Success);
         return state;
     }
+
+    /// <summary>A decision task answered by the decision runner from the outputs so far: no agent, no memory, no tokens.</summary>
+    private Task<TaskResult> RunDecisionTaskAsync(CrewGraphState state, Orkeon.Domain.Task.CrewTask task, CancellationToken ct) =>
+        _decisions is null
+            ? throw new InvalidOperationException($"Task {task.Id} is a decision task and the strategy has no decision runner.")
+            : _decisions.RunAsync(task, state.CrewTasks, state.ApplicationOutputs, ct);
 
     /// <summary>
     /// Rebuilds the execution context with the latest outputs and runs the task.
@@ -408,7 +454,7 @@ public sealed partial class GraphProcessStrategy : IProcessStrategy
     private static void AppendTaskOutputs(
         CrewGraphState state,
         Orkeon.Domain.Task.CrewTask task,
-        DomainAgent agent,
+        DomainAgent? agent,
         TaskResult executionResult)
     {
         var rawOutput = CrewRunOutcome.RawOutputOf(executionResult);
@@ -424,7 +470,7 @@ public sealed partial class GraphProcessStrategy : IProcessStrategy
 
         var appOutput = new ApplicationTaskOutput(
             TaskId: task.Id.Value.ToString(),
-            AgentId: agent.Id.ToString(),
+            AgentId: agent?.Id.ToString(),
             Content: rawOutput,
             CompletedAt: DateTime.UtcNow,
             Success: executionResult.Success,
@@ -439,7 +485,7 @@ public sealed partial class GraphProcessStrategy : IProcessStrategy
             taskId: task.Id,
             success: executionResult.Success,
             executionTime: executionResult.ExecutionTime,
-            structuredOutput: executionResult.StructuredOutput));
+            structuredOutput: executionResult.StructuredOutput) with { Decision = executionResult.Decision });
     }
 
     /// <summary>
@@ -449,7 +495,7 @@ public sealed partial class GraphProcessStrategy : IProcessStrategy
     private async Task EvaluateFailureForRetryAsync(
         CrewGraphState state,
         Orkeon.Domain.Task.CrewTask task,
-        DomainAgent agent,
+        DomainAgent? agent,
         TaskResult executionResult)
     {
         var taskId = task.Id;
@@ -472,7 +518,7 @@ public sealed partial class GraphProcessStrategy : IProcessStrategy
         else
         {
             LogTaskFailedMaxRetries(taskId, state.MaxRetryCycles);
-            await state.Outcome.RecordFailureAsync(task, agent.Role.Value, executionResult.Error ?? executionResult.LastError).ConfigureAwait(false);
+            await state.Outcome.RecordFailureAsync(task, agent?.Role.Value ?? DecisionDispatch.Role, executionResult.Error ?? executionResult.LastError).ConfigureAwait(false);
         }
     }
 
@@ -706,6 +752,12 @@ public sealed class CrewGraphState
     /// <summary>The run's execution context, from which each task's is derived.</summary>
     internal SimpleExecutionContext Context { get; init; } = null!;
 
+    /// <summary>The crew's tasks, loaded once at entry: what the decision pre-flight, the conditions and the nodes read.</summary>
+    internal IReadOnlyList<Orkeon.Domain.Task.CrewTask> CrewTasks { get; init; } = [];
+
     /// <summary>Skip reasons, keyed by the index of the skipped task's entry in <see cref="DomainResults"/>.</summary>
     internal Dictionary<int, string> SkipReasons { get; } = [];
+
+    /// <summary>The tasks skipped by their condition, which leave no result: their snapshot and the count of results when they were skipped.</summary>
+    internal List<(int Position, TaskExecutionSnapshot Snapshot)> ConditionSkips { get; } = [];
 }

@@ -8,6 +8,7 @@ using Orkeon.Domain.EventHub;
 using Orkeon.Domain.FileSystem;
 using Orkeon.Domain.Knowledge;
 using Orkeon.Domain.SharedKernel.ValueObjects;
+using Orkeon.Constants.Llm;
 using Orkeon.Domain.Task.ValueObjects;
 
 namespace Orkeon.Infrastructure.Configuration;
@@ -429,8 +430,8 @@ public partial class YamlCrewExporter
             ExpectedOutput = task.ExpectedOutput,
             Agent = task.AssignedAgentId is { } agent ? names.Of(agent) : null,
             Tools = task.Tools.Count > 0 ? new Collection<string>(task.Tools.ToList()) : null,
-            Dependencies = task.Dependencies.Count > 0
-                ? new Collection<string>([.. task.Dependencies.Select(names.Of)])
+            Dependencies = ExplicitDependencies(task, names) is { Count: > 0 } explicitDependencies
+                ? new Collection<string>(explicitDependencies)
                 : null,
             AsyncExecution = task.AsyncExecution ? true : null,
             HumanInput = task.HumanInput ? true : null,
@@ -438,7 +439,75 @@ public partial class YamlCrewExporter
             Deliverable = MapDeliverable(task.Deliverable),
             LlmOverride = MapLlmOverride(task.LlmOverride),
             Guardrails = MapGuardrails(task.Guardrails),
+            Decision = task.Decision is null ? null : MapDecision(task.Decision),
+            When = task.Condition is null ? null : MapCondition(task.Condition),
         };
+    }
+
+    /// <summary>The dependencies the author wrote: the loader adds the state tasks and the decision task of a condition itself.</summary>
+    private static List<string> ExplicitDependencies(TaskConfiguration task, EntryNames names)
+    {
+        var implied = new HashSet<string>(task.Decision?.StateFrom ?? [], StringComparer.Ordinal);
+        if (task.Condition is not null)
+            implied.Add(task.Condition.DecisionTask);
+        return [.. task.Dependencies.Select(names.Of).Where(name => !implied.Contains(name))];
+    }
+
+    private static DecisionYamlConfig MapDecision(TaskDecision decision) => new()
+    {
+        Questions = decision.Questions.ToDictionary(q => q.Name, MapQuestion, StringComparer.Ordinal),
+        MinConfidence = decision.ConfidenceFloor.Equals(DecisionLimits.DefaultConfidenceFloor) ? null : decision.ConfidenceFloor,
+        State = decision.StateFrom.Count > 0 ? new Collection<string>([.. decision.StateFrom]) : null,
+        LongContext = decision.LongContext ? true : null,
+        Fallback = decision.HasExplicitFallback ? new Dictionary<string, string>(decision.Fallback) : null,
+    };
+
+    private static QuestionYamlConfig MapQuestion(DecisionQuestionSpec question) => question switch
+    {
+        ChoiceQuestionSpec choice => new QuestionYamlConfig
+        {
+            Choice = new Dictionary<string, string>(choice.Options),
+            Instructions = choice.Instructions.Length > 0 ? choice.Instructions : null,
+        },
+        ScoreQuestionSpec score => new QuestionYamlConfig
+        {
+            Score = new Collection<string>([.. score.Levels]),
+            Instructions = score.Instructions.Length > 0 ? score.Instructions : null,
+        },
+        YesNoQuestionSpec yesNo => new QuestionYamlConfig { Noul = yesNo.Statement },
+        _ => throw new NotSupportedException($"Question kind {question.GetType().Name} has no YAML form."),
+    };
+
+    private static Dictionary<string, object> MapCondition(TaskCondition condition)
+    {
+        var when = new Dictionary<string, object>(StringComparer.Ordinal);
+        if (condition.IsOtherwise)
+        {
+            when[condition.DecisionTask] = "otherwise";
+            return when;
+        }
+
+        foreach (var clause in condition.Clauses)
+        {
+            var key = $"{condition.DecisionTask}.{clause.Question}";
+            if (clause.Options.Count > 0)
+            {
+                when[key] = new Collection<string>([.. clause.Options]);
+                continue;
+            }
+
+            var symbol = clause.Comparison switch
+            {
+                ConditionComparison.GreaterOrEqual => ">=",
+                ConditionComparison.Greater => ">",
+                ConditionComparison.LessOrEqual => "<=",
+                _ => "<",
+            };
+            when[clause.Option is null ? key : $"{key}.{clause.Option}"] =
+                $"{symbol} {clause.Value.ToString(System.Globalization.CultureInfo.InvariantCulture)}";
+        }
+
+        return when;
     }
 
     /// <summary>

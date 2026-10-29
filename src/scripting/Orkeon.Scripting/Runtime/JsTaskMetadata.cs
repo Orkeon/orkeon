@@ -38,4 +38,16 @@ internal sealed record JsTaskMetadata
 
     /// <summary>Task-level <c>tools:</c> — names or <see cref="JsTool"/> instances the task requires.</summary>
     public IReadOnlyList<JsValue> Tools { get; init; } = [];
+
+    /// <summary>The name given by <c>.name()</c>; the task's key in the configuration. Null when unnamed.</summary>
+    public string? Key { get; init; }
+
+    /// <summary>Plain data of <c>.decision({...})</c>; null for a task that is not a decision task.</summary>
+    public object? DecisionSpec { get; init; }
+
+    /// <summary>The decision task named by <c>.when(task, ...)</c>.</summary>
+    public string? WhenTask { get; init; }
+
+    /// <summary>Plain data of the <c>.when</c> clauses, or the string <c>otherwise</c>.</summary>
+    public object? WhenSpec { get; init; }
 }
