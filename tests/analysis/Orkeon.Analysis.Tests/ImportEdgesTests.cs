@@ -225,6 +225,17 @@ public class ImportEdgesTests
     }
 
     [Theory]
+    [InlineData("var u = \"http://x\"; Alpha a;", "Alpha", true)]
+    [InlineData("var u = @\"a\"\"b\"; Alpha a;", "Alpha", true)]
+    [InlineData("var s = \"Beta\";", "Beta", true)]
+    [InlineData("// Alpha\nvar x = 1;", "Alpha", false)]
+    [InlineData("/* Alpha */ var x = 1;", "Alpha", false)]
+    public void CSharp_identifiers_skip_comments_but_not_a_comment_marker_inside_a_string(string source, string identifier, bool expected)
+    {
+        Assert.Equal(expected, DependencyGraphBuilder.CSharpIdentifiers(source).Contains(identifier));
+    }
+
+    [Theory]
     [InlineData("using System.Text;", "System.Text")]
     [InlineData("global using static global::Demo.Core.Beta;", "Demo.Core.Beta")]
     [InlineData("using L = System.Collections.Generic.List<int>;", "System.Collections.Generic.List")]

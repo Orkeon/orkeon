@@ -219,6 +219,15 @@ public sealed partial class DependencyGraphBuilder
                 var end = source.IndexOf("*/", i + 2, StringComparison.Ordinal);
                 i = end < 0 ? source.Length : end + 2;
             }
+            else if (c == '"')
+            {
+                // A `//` or `/*` inside a string literal (`"http://..."`) opens no comment: the literal is
+                // scanned to its closing quote and its identifiers kept.
+                var verbatim = i > 0 && source[i - 1] == '@';
+                var end = StringLiteralEnd(source, i + 1, verbatim);
+                AddIdentifiers(source, i + 1, end, result);
+                i = Math.Min(end + 1, source.Length);
+            }
             else if (char.IsLetter(c) || c == '_')
             {
                 var start = i;
@@ -231,6 +240,44 @@ public sealed partial class DependencyGraphBuilder
             }
         }
         return result;
+    }
+
+    // The index of the quote closing a literal whose contents start at `from`: `\"` escapes a quote in a
+    // regular literal, `""` in a verbatim one. An unterminated literal ends with the source.
+    private static int StringLiteralEnd(string source, int from, bool verbatim)
+    {
+        var i = from;
+        while (i < source.Length)
+        {
+            var c = source[i];
+            if (c == '"')
+            {
+                if (verbatim && i + 1 < source.Length && source[i + 1] == '"') { i += 2; continue; }
+                return i;
+            }
+            if (c == '\\' && !verbatim) { i += 2; continue; }
+            if (c == '\n' && !verbatim) return i;
+            i++;
+        }
+        return source.Length;
+    }
+
+    private static void AddIdentifiers(string source, int from, int to, HashSet<string> result)
+    {
+        var i = from;
+        while (i < to)
+        {
+            if (char.IsLetter(source[i]) || source[i] == '_')
+            {
+                var start = i;
+                while (i < to && (char.IsLetterOrDigit(source[i]) || source[i] == '_')) i++;
+                result.Add(source[start..i]);
+            }
+            else
+            {
+                i++;
+            }
+        }
     }
 
     // ---- Go ------------------------------------------------------------------------------------
