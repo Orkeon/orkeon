@@ -146,7 +146,8 @@ the call starts (one `ActSession` per call):
   The prompt cache is requested the same way on an agent, `agentBuilder().cache({ systemPrompt: true, tools: true,
   ttl: "1h" })` or `llm.default_.with({ cache: { systemPrompt: true } })`, mapped onto the YAML `cache:` block
   (`LlmCacheConfig`); a `ttl` other than `5m`/`1h`, a `ttl` on nothing cached or an unknown key throws. Like
-  `effort` on the builder, it shapes the agent's declared configuration (its turns in a crew), not `ctx.llm` calls.
+  `effort` on the builder, it shapes the agent's declared configuration (its turns in a crew) and the agent's
+  `ctx.llm` calls, a call's own `effort` or `cache` option winning (#254).
 - **`onToolCall(call)`** runs before each tool call, after the permission gate. It returns `"allow"`;
   `"ask"` (the call goes to the approval channel as a `default`-mode edit would, and a denied answer
   is a deny); `{ deny: reason }` (the call does not run, the model reads `DENIED: <reason>`); or

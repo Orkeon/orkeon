@@ -63,6 +63,25 @@ public sealed class JsLlmFacadeAgentSettingsTests
 
     [Fact]
     [Trait("BR", "CH-254")]
+    public async Task ShouldLetTheCallCacheWin_WhenTheCallSetsOne()
+    {
+        var provider = await RunAsync(""".cache({ systemPrompt: true })""", """, { cache: { tools: true, ttl: "1h" } }""");
+
+        var cache = Assert.IsType<LlmCacheConfig>(provider.LastConfig?.Cache);
+        Assert.False(cache.CacheSystemPrompt);
+        Assert.True(cache.CacheTools);
+        Assert.Equal("1h", cache.Ttl);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-254")]
+    public async Task ShouldRefuseTheCallCache_WhenItIsNotAnObject()
+    {
+        await Assert.ThrowsAnyAsync<Exception>(() => RunAsync("", """, { cache: "1h" }"""));
+    }
+
+    [Fact]
+    [Trait("BR", "CH-254")]
     public async Task ShouldHandOverNoConfig_WhenNeitherTheAgentNorTheCallSetsAnything()
     {
         var provider = await RunAsync("", "");

@@ -150,7 +150,7 @@ au début de l'appel (une `ActSession` par appel) :
   ttl: "1h" })` ou `llm.default_.with({ cache: { systemPrompt: true } })`, reporté sur le bloc YAML `cache:`
   (`LlmCacheConfig`) ; un `ttl` autre que `5m`/`1h`, un `ttl` sur rien de mis en cache ou une clé inconnue lève une
   erreur. Comme `effort` sur le builder, il façonne la configuration déclarée de l'agent (ses tours dans un
-  équipage), pas les appels `ctx.llm`.
+  équipage) et ses appels `ctx.llm`, l'option `effort` ou `cache` propre à un appel l'emportant (#254).
 - **`onToolCall(call)`** s'exécute avant chaque appel d'outil, après la porte de permission. Il renvoie
   `"allow"` ; `"ask"` (l'appel passe par le canal d'approbation comme une édition en mode `default`, et
   une réponse négative vaut refus) ; `{ deny: raison }` (l'appel ne s'exécute pas, le modèle lit

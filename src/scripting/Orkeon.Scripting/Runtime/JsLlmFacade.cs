@@ -1803,6 +1803,10 @@ public sealed partial class JsLlmFacade
         if (effort.IsString())
             config = (config ?? Inherited()) with { Thinking = JsLlmConfig.ThinkingAt(effort.AsString()) };
 
+        var cache = options.Get("cache");
+        if (!cache.IsUndefined())
+            config = (config ?? Inherited()) with { Cache = JsLlmConfig.CacheFrom(cache, "ctx.llm { cache }") };
+
         // Nested `{ llm: { model: "..." } }` — the per-call model override: the agent's boot
         // provider keeps its credentials and endpoint, only the model name changes.
         var llm = options.Get("llm");
