@@ -461,8 +461,8 @@ public sealed partial class GraphProcessStrategy : IProcessStrategy
         state.TotalTokensUsed += executionResult.TokensUsed;
         state.PromptTokensUsed += executionResult.PromptTokens;
         state.CompletionTokensUsed += executionResult.CompletionTokens;
-        state.CacheHitTokensUsed += executionResult.CacheHitTokens;
-        state.CacheMissTokensUsed += executionResult.CacheMissTokens;
+        state.CacheHitTokensUsed = TokenUsageTally.AddReported(state.CacheHitTokensUsed, executionResult.CacheHitTokens);
+        state.CacheMissTokensUsed = TokenUsageTally.AddReported(state.CacheMissTokensUsed, executionResult.CacheMissTokens);
 
         // One usage entry per attempt, in DomainResults order: the snapshots below zip
         // the two lists, so a retry costs what ITS attempt cost — never a running total.
@@ -715,23 +715,23 @@ public sealed class CrewGraphState
     /// <summary>Running total of completion-side tokens (0 when the provider does not report the split).</summary>
     public int CompletionTokensUsed { get; set; }
 
-    /// <summary>Running total of cache-served prompt tokens (0 when unreported) (W-08).</summary>
-    public long CacheHitTokensUsed { get; set; }
+    /// <summary>Running total of cache-served prompt tokens; null while no task reported the count (W-08).</summary>
+    public long? CacheHitTokensUsed { get; set; }
 
-    /// <summary>Running total of cache-missed prompt tokens (0 when unreported) (W-08).</summary>
-    public long CacheMissTokensUsed { get; set; }
+    /// <summary>Running total of cache-missed prompt tokens; null while no task reported the count (W-08).</summary>
+    public long? CacheMissTokensUsed { get; set; }
 
-    private readonly List<(int Tokens, long CacheHit, long CacheMiss)> _resultUsage = [];
+    private readonly List<(int Tokens, long? CacheHit, long? CacheMiss)> _resultUsage = [];
 
     /// <summary>
     /// Per-ATTEMPT usage, aligned index-for-index with <see cref="DomainResults"/> — a
     /// retried task appends one result per attempt, so keying usage by task would stamp
     /// the cumulative cost on every attempt's snapshot and double-count the totals.
     /// </summary>
-    public IReadOnlyList<(int Tokens, long CacheHit, long CacheMiss)> ResultUsage => _resultUsage;
+    public IReadOnlyList<(int Tokens, long? CacheHit, long? CacheMiss)> ResultUsage => _resultUsage;
 
-    /// <summary>Appends one attempt's usage, in <see cref="DomainResults"/> order.</summary>
-    public void AddResultUsage(int tokens, long cacheHit, long cacheMiss) =>
+    /// <summary>Appends one attempt's usage, in <see cref="DomainResults"/> order; a null cache count was not reported.</summary>
+    public void AddResultUsage(int tokens, long? cacheHit, long? cacheMiss) =>
         _resultUsage.Add((tokens, cacheHit, cacheMiss));
 
     /// <summary>Round-robin agent index.</summary>

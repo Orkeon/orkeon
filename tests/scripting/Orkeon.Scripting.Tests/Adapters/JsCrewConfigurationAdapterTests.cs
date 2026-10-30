@@ -350,7 +350,17 @@ public sealed class JsCrewConfigurationAdapterTests
     {
         var config = CacheCrew(""".llm(llm.default_.with({ cache: { tools: true } })).cache({})""");
 
-        Assert.Null(config.Agents[0].LlmConfig?.Cache);
+        Assert.Same(LlmCacheConfig.Off, config.Agents[0].LlmConfig?.Cache);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-254")]
+    public void ShouldCarryAnExplicitOff_WhenAgentBuilderCacheMarksNothingWithoutAnLlmConfig()
+    {
+        // Off reaches the agent's config so that it wins over the host default Llm:Cache.
+        var config = CacheCrew(""".cache({})""");
+
+        Assert.Same(LlmCacheConfig.Off, config.Agents[0].LlmConfig?.Cache);
     }
 
     [Theory]

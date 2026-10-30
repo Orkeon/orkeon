@@ -318,3 +318,15 @@ Orkeon.Application.Interfaces.Ports.ModelUsage.CacheWriteTokens.get -> long?
 *REMOVED*Orkeon.Application.Interfaces.Ports.ModelUsage.ReasoningTokens.get -> long
 Orkeon.Application.Interfaces.Ports.ModelUsage.ReasoningTokens.get -> long?
 static Orkeon.Application.Interfaces.Ports.ModelUsage.SumReported(System.Collections.Generic.IEnumerable<long?>! counts) -> long?
+*REMOVED*Orkeon.Application.Crew.CrewExecutionSnapshot.TotalCacheHitTokens.get -> long
+*REMOVED*Orkeon.Application.Crew.CrewExecutionSnapshot.TotalCacheMissTokens.get -> long
+*REMOVED*Orkeon.Application.Crew.TaskExecutionSnapshot.CacheHitTokens.get -> long
+*REMOVED*Orkeon.Application.Crew.TaskExecutionSnapshot.CacheMissTokens.get -> long
+*REMOVED*Orkeon.Application.Interfaces.Services.TaskResult.CacheHitTokens.get -> long
+*REMOVED*Orkeon.Application.Interfaces.Services.TaskResult.CacheMissTokens.get -> long
+Orkeon.Application.Crew.CrewExecutionSnapshot.TotalCacheHitTokens.get -> long?
+Orkeon.Application.Crew.CrewExecutionSnapshot.TotalCacheMissTokens.get -> long?
+Orkeon.Application.Crew.TaskExecutionSnapshot.CacheHitTokens.get -> long?
+Orkeon.Application.Crew.TaskExecutionSnapshot.CacheMissTokens.get -> long?
+Orkeon.Application.Interfaces.Services.TaskResult.CacheHitTokens.get -> long?
+Orkeon.Application.Interfaces.Services.TaskResult.CacheMissTokens.get -> long?

@@ -199,8 +199,31 @@ public class ChatClientAgentLoopTests
         Assert.Equal(100, result.TokensUsed);
         Assert.Equal(60, result.PromptTokens);
         Assert.Equal(40, result.CompletionTokens);
-        Assert.Equal(50, result.CacheHitTokens);
-        Assert.Equal(10, result.CacheMissTokens);
+        Assert.Equal(50L, result.CacheHitTokens);
+        Assert.Equal(10L, result.CacheMissTokens);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-254")]
+    public async System.Threading.Tasks.Task ShouldLeaveCacheCountsNull_WhenNoTurnReportedThem()
+    {
+        var (loop, client) = BuildLoop();
+        client.EnqueueText("final", new UsageDetails
+        {
+            TotalTokenCount = 100,
+            InputTokenCount = 60,
+            OutputTokenCount = 40,
+            AdditionalCounts = new AdditionalPropertiesDictionary<long>
+            {
+                [LlmUsageMetadataKeys.CacheHitTokens] = 0,
+            },
+        });
+
+        var result = await loop.ExecuteAsync(
+            BuildAgent(5), BuildTask(), "sys", "user", [], TestContext.Current.CancellationToken);
+
+        Assert.Equal(0L, result.CacheHitTokens);
+        Assert.Null(result.CacheMissTokens);
     }
 
     [Fact]

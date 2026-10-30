@@ -50,13 +50,13 @@ public sealed record TaskExecutionSnapshot
 
     /// <summary>
     /// Prompt tokens that hit the provider's prompt cache during the task (DeepSeek's
-    /// <c>prompt_cache_hit_tokens</c>). 0 when the provider does not expose the metric.
+    /// <c>prompt_cache_hit_tokens</c>); null when no call of the task reported the count.
     /// Surfaced for Experiment 07 friction #5 so operators can pilot the cache.
     /// </summary>
-    public long CacheHitTokens { get; init; }
+    public long? CacheHitTokens { get; init; }
 
-    /// <summary>Prompt tokens that missed the provider's prompt cache during the task.</summary>
-    public long CacheMissTokens { get; init; }
+    /// <summary>Prompt tokens that missed the provider's prompt cache during the task; null when unreported.</summary>
+    public long? CacheMissTokens { get; init; }
 
     /// <summary>
     /// True when the task never ran because a task it depends on did not succeed (LLM-11).
@@ -146,11 +146,14 @@ public sealed record CrewExecutionSnapshot
     /// <summary>Total tokens used across all tasks.</summary>
     public int TotalTokensUsed => Tasks.Sum(t => t.TokensUsed);
 
-    /// <summary>Total prompt cache hit tokens across all tasks.</summary>
-    public long TotalCacheHitTokens => Tasks.Sum(t => t.CacheHitTokens);
+    /// <summary>
+    /// Total prompt cache hit tokens across the tasks that reported the count; null when none did
+    /// (<see cref="Interfaces.Ports.ModelUsage.SumReported"/>).
+    /// </summary>
+    public long? TotalCacheHitTokens => Interfaces.Ports.ModelUsage.SumReported(Tasks.Select(t => t.CacheHitTokens));
 
-    /// <summary>Total prompt cache miss tokens across all tasks.</summary>
-    public long TotalCacheMissTokens => Tasks.Sum(t => t.CacheMissTokens);
+    /// <summary>Total prompt cache miss tokens across the tasks that reported the count; null when none did.</summary>
+    public long? TotalCacheMissTokens => Interfaces.Ports.ModelUsage.SumReported(Tasks.Select(t => t.CacheMissTokens));
 
     /// <summary>
     /// Aggregate prompt-cache hit ratio across all tasks — <c>hit / (hit + miss)</c> per DeepSeek
@@ -158,8 +161,8 @@ public sealed record CrewExecutionSnapshot
     /// indicates an unstable prompt prefix worth auditing for cache friendliness.
     /// </summary>
     public double? TotalCacheHitRatio =>
-        (TotalCacheHitTokens + TotalCacheMissTokens) > 0
-            ? (double)TotalCacheHitTokens / (TotalCacheHitTokens + TotalCacheMissTokens)
+        TotalCacheHitTokens is { } hit && TotalCacheMissTokens is { } miss && hit + miss > 0
+            ? (double)hit / (hit + miss)
             : null;
 
     /// <summary>Total tool calls across all tasks.</summary>

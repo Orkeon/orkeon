@@ -45,7 +45,8 @@ public sealed class JsLlmConfigCacheTests
     {
         var updated = With("{ systemPrompt: false }", LlmCacheConfig.SystemPrompt());
 
-        Assert.Null(updated.Domain.Cache);
+        // Off, never null: a null cache would inherit the host default Llm:Cache again.
+        Assert.Same(LlmCacheConfig.Off, updated.Domain.Cache);
     }
 
     [Theory]

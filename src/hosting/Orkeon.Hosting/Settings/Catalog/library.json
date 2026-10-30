@@ -526,6 +526,24 @@
       "description": "The address of the provider's endpoint, `http://` or `https://`. Left out, the address of the provider the model's name or the key points to."
     },
     {
+      "path": "Llm:Cache:SystemPrompt",
+      "section": "Llm",
+      "type": "boolean",
+      "description": "Marks the system prompt cacheable for every agent that sets no cache of its own, on a provider whose prompt cache is explicit (Anthropic). Left out, it is not."
+    },
+    {
+      "path": "Llm:Cache:Tools",
+      "section": "Llm",
+      "type": "boolean",
+      "description": "Marks the tool definitions cacheable for every agent that sets no cache of its own, on a provider whose prompt cache is explicit (Anthropic). Left out, they are not."
+    },
+    {
+      "path": "Llm:Cache:Ttl",
+      "section": "Llm",
+      "type": "string",
+      "description": "The cache lifetime, `5m` or `1h`; it needs `SystemPrompt` or `Tools`, and any other value refuses the load. Left out, the vendor default (5 minutes on Anthropic)."
+    },
+    {
       "path": "Llm:CallMode",
       "section": "Llm",
       "type": "string",
@@ -583,6 +601,24 @@
       "section": "Llm",
       "type": "string",
       "description": "The address of the provider's endpoint, `http://` or `https://`. Left out, the address of the provider the model's name or the key points to."
+    },
+    {
+      "path": "Llm:Profiles:<name>:Cache:SystemPrompt",
+      "section": "Llm",
+      "type": "boolean",
+      "description": "Marks the system prompt cacheable for every agent that sets no cache of its own, on a provider whose prompt cache is explicit (Anthropic). Left out, it is not."
+    },
+    {
+      "path": "Llm:Profiles:<name>:Cache:Tools",
+      "section": "Llm",
+      "type": "boolean",
+      "description": "Marks the tool definitions cacheable for every agent that sets no cache of its own, on a provider whose prompt cache is explicit (Anthropic). Left out, they are not."
+    },
+    {
+      "path": "Llm:Profiles:<name>:Cache:Ttl",
+      "section": "Llm",
+      "type": "string",
+      "description": "The cache lifetime, `5m` or `1h`; it needs `SystemPrompt` or `Tools`, and any other value refuses the load. Left out, the vendor default (5 minutes on Anthropic)."
     },
     {
       "path": "Llm:Profiles:<name>:CallMode",

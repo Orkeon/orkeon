@@ -318,9 +318,7 @@ public partial class YamlCrewExporter
             MaxTokens = llmOverride.MaxTokens,
             TopP = llmOverride.TopP,
             Thinking = MapThinking(llmOverride.Thinking),
-            Cache = llmOverride.Cache is { RequestsAnyBreakpoint: false }
-                ? new CacheYamlConfig { System = false, Tools = false }
-                : MapCache(llmOverride.Cache),
+            Cache = MapCache(llmOverride.Cache),
         };
     }
 
@@ -352,8 +350,12 @@ public partial class YamlCrewExporter
     /// <summary>The <c>cache:</c> block; null when it marks no breakpoint, as the loader reads one.</summary>
     private static CacheYamlConfig? MapCache(LlmCacheConfig? cache)
     {
-        if (cache is not { RequestsAnyBreakpoint: true })
+        if (cache is null)
             return null;
+
+        // The explicit "off" round-trips as a block marking nothing: it replaces an inherited cache.
+        if (!cache.RequestsAnyBreakpoint)
+            return new CacheYamlConfig { System = false, Tools = false };
 
         return new CacheYamlConfig
         {

@@ -35,14 +35,16 @@ declare global {
         /**
          * Turns the provider's thinking on at this effort. Anthropic takes the five levels; a provider whose field
          * knows fewer (three for OpenAI's `reasoning_effort` and Ollama's `think`) sends the highest it knows
-         * below the one asked, and warns.
+         * below the one asked, and warns. Applies to the agent's `ctx.llm` calls too, unless a call sets its own.
          */
         effort(level: "low" | "medium" | "high" | "xhigh" | "max"): this;
         /**
          * YAML parity `cache:` — asks the provider's prompt cache to keep the system prompt and/or the
          * tool definitions. Only a provider whose cache is explicit (Anthropic) needs it; the others cache
          * by their own rules and say so in their log when a `ttl` cannot be sent. Wins over the `cache` of
-         * the `LlmConfig` given to `.llm(...)`; an object that marks nothing cacheable turns caching off.
+         * the `LlmConfig` given to `.llm(...)` and over the host default `Llm:Cache`; an object that marks
+         * nothing cacheable (`cache({})`) turns caching off, the host default included. Applies to the
+         * agent's `ctx.llm` calls too.
          * Any other key or value throws. Declarative shape.
          */
         cache(options: LlmCacheOptions): this;

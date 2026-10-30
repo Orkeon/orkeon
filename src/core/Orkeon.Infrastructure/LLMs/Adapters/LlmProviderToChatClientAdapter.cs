@@ -638,9 +638,7 @@ public sealed class LlmProviderToChatClientAdapter : IChatClient
         // A base config — the adapter's, else the one the provider was built with (GAP-29):
         // merge sampling + tools into it, so an override of one option keeps every other setting.
         if ((_baseLlmConfig ?? _provider.BaseConfig) is { } baseConfig)
-        {
             return ApplyOptionsOverrides(baseConfig, options, tools, toolMode, ResolveStructuredOutput(options));
-        }
 
         // A provider that declares no configuration: build a fresh LlmConfig only when
         // ChatOptions has meaningful overrides.

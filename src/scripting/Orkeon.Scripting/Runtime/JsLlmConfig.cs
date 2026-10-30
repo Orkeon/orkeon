@@ -127,12 +127,13 @@ public sealed class JsLlmConfig
 
     /// <summary>
     /// The prompt-cache request a script's <c>cache</c> option describes, mapped by
-    /// <see cref="LlmCacheConfig.Request"/> as the YAML <c>cache:</c> block is: null when it marks
-    /// nothing cacheable, which turns an inherited cache off.
+    /// <see cref="LlmCacheConfig.Request"/> as the YAML <c>cache:</c> block is:
+    /// <see cref="LlmCacheConfig.Off"/> when it marks nothing cacheable, which turns an inherited
+    /// cache - the host default <c>Llm:Cache</c> included - off.
     /// </summary>
     /// <param name="value">The <c>{ systemPrompt?, tools?, ttl? }</c> object.</param>
     /// <param name="where">The call that received it, for the refusal.</param>
-    internal static LlmCacheConfig? CacheFrom(JsValue? value, string where)
+    internal static LlmCacheConfig CacheFrom(JsValue? value, string where)
     {
         if (value is null || !value.IsObject() || value.IsArray())
             throw new InvalidScriptException($"{where} takes an object {{ systemPrompt?, tools?, ttl? }}.");
@@ -163,7 +164,7 @@ public sealed class JsLlmConfig
 
         try
         {
-            return LlmCacheConfig.Request(systemPrompt, tools, ttl);
+            return LlmCacheConfig.Request(systemPrompt, tools, ttl) ?? LlmCacheConfig.Off;
         }
         catch (ArgumentException ex)
         {

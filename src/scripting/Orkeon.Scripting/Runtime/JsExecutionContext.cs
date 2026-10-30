@@ -74,6 +74,7 @@ public class JsExecutionContext
             })
         {
             ToolLimits = environment.ToolLimits,
+            AgentSettings = environment.Self.Builder.WithEffortAndCache(environment.Self.Builder.LlmConfig?.Domain),
         };
 #pragma warning restore CA2000
     }

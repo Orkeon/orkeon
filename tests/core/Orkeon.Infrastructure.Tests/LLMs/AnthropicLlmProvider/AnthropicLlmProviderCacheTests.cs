@@ -20,7 +20,7 @@ public class AnthropicLlmProviderCacheTests
         => (await SystemAsync(callTtl, new LlmCacheConfig { CacheSystemPrompt = true, Ttl = configTtl }))
             .EnumerateArray().Single().GetProperty("cache_control").Clone();
 
-    private static async Task<JsonElement> SystemAsync(string? callTtl, LlmCacheConfig? cache)
+    private static async Task<JsonElement> SystemAsync(string? callTtl, LlmCacheConfig? cache, LlmCacheConfig? agentCache = null)
     {
         using var handler = TestHttpMessageHandler.CreateWithResponse(HttpStatusCode.OK, OkBody);
         var factory = new TestHttpClientFactory();
@@ -37,6 +37,8 @@ public class AnthropicLlmProviderCacheTests
         var options = new ChatOptions { AdditionalProperties = new AdditionalPropertiesDictionary() };
         if (callTtl is not null)
             options.AdditionalProperties[LlmChatOptionsKeys.CacheTtl] = callTtl;
+        if (agentCache is not null)
+            options.AdditionalProperties[LlmChatOptionsKeys.Cache] = agentCache;
         await adapter.GetResponseAsync(
             [new ChatMessage(ChatRole.User, "hello")], options, TestContext.Current.CancellationToken);
 
@@ -71,5 +73,18 @@ public class AnthropicLlmProviderCacheTests
         Assert.Equal("1h", overConfig.GetProperty("ttl").GetString());
         Assert.False(none.TryGetProperty("ttl", out _));
         Assert.Equal("5m", fromConfig.GetProperty("ttl").GetString());
+    }
+
+    [Fact]
+    [Trait("BR", "CH-254")]
+    public async Task ShouldApplyTheHostDefaultCache_UnlessTheAgentTurnsItOff()
+    {
+        // The host default (Llm:Cache) is the provider's own configuration; an agent's Off wins.
+        var hostDefault = await SystemAsync(callTtl: null, cache: new LlmCacheConfig { CacheSystemPrompt = true, Ttl = "1h" });
+        var agentOff = await SystemAsync(callTtl: null, cache: LlmCacheConfig.SystemPrompt(), agentCache: LlmCacheConfig.Off);
+
+        var block = Assert.Single(hostDefault.EnumerateArray());
+        Assert.Equal("1h", block.GetProperty("cache_control").GetProperty("ttl").GetString());
+        Assert.Equal(JsonValueKind.String, agentOff.ValueKind);
     }
 }

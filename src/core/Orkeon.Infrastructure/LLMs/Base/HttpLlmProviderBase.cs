@@ -27,7 +27,21 @@ public abstract partial class HttpLlmProviderBase : ILlmProvider, IStreamingLlmP
     protected LlmConfig Config { get; }
 
     /// <inheritdoc />
-    public LlmConfig? BaseConfig => Config;
+    /// <remarks>
+    /// The configuration this provider was built with, less its prompt cache when the provider does
+    /// not cache explicitly (<see cref="LlmProviderCapabilities.ExplicitPromptCaching"/>): the host
+    /// default <c>Llm:Cache</c> applies to the agents of an explicit-caching provider only (#254).
+    /// </remarks>
+    public LlmConfig? BaseConfig => HostConfig;
+
+    /// <summary>
+    /// <see cref="Config"/> as the calls inherit it: its <see cref="LlmConfig.Cache"/> dropped on a
+    /// provider that caches implicitly, where it has nothing to mark.
+    /// </summary>
+    private LlmConfig HostConfig =>
+        _hostConfig ??= Config.Cache is not null && !Capabilities.ExplicitPromptCaching ? Config with { Cache = null } : Config;
+
+    private LlmConfig? _hostConfig;
 
     /// <summary>The HTTP client factory for creating named HTTP clients.</summary>
     protected IHttpClientFactory HttpClientFactory { get; }
@@ -78,7 +92,7 @@ public abstract partial class HttpLlmProviderBase : ILlmProvider, IStreamingLlmP
     /// <param name="config">The call's configuration; null for the provider's own.</param>
     /// <returns>The configuration to send the call with.</returns>
     protected LlmConfig EffectiveConfig(LlmConfig? config) =>
-        config is null ? Config : config.InheritFrom(Config);
+        config is null ? HostConfig : config.InheritFrom(HostConfig);
 
     /// <summary>
     /// The model a request names (GAP-18): the call's own when it names one, else the model this

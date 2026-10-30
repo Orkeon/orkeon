@@ -95,6 +95,13 @@ internal class LlmProfileShape
     public LlmThinkingShape? Thinking { get; set; }
 
     /// <summary>
+    /// The prompt cache every agent on a provider with explicit prompt caching (Anthropic) asks for
+    /// when it sets none of its own; an agent's own <c>cache</c>, one that marks nothing included,
+    /// wins. Elsewhere it is not applied: those providers cache on their own.
+    /// </summary>
+    public LlmCacheShape? Cache { get; set; }
+
+    /// <summary>
     /// Whether the endpoint honours a GBNF grammar — a llama.cpp-compatible server, such as Docker
     /// Model Runner. Elsewhere a grammar is dropped with a warning.
     /// </summary>
@@ -109,4 +116,26 @@ internal class LlmThinkingShape
 
     /// <summary>How hard it thinks, in the provider's own words (<c>low</c>, <c>medium</c>, <c>high</c>…). Left out, the provider's own.</summary>
     public string? Effort { get; set; }
+}
+
+/// <summary>The keys of <c>Llm:Cache</c>.</summary>
+internal class LlmCacheShape
+{
+    /// <summary>
+    /// Marks the system prompt cacheable for every agent that sets no cache of its own, on a provider
+    /// whose prompt cache is explicit (Anthropic). Left out, it is not.
+    /// </summary>
+    public bool? SystemPrompt { get; set; }
+
+    /// <summary>
+    /// Marks the tool definitions cacheable for every agent that sets no cache of its own, on a provider
+    /// whose prompt cache is explicit (Anthropic). Left out, they are not.
+    /// </summary>
+    public bool? Tools { get; set; }
+
+    /// <summary>
+    /// The cache lifetime, <c>5m</c> or <c>1h</c>; it needs <c>SystemPrompt</c> or <c>Tools</c>, and
+    /// any other value refuses the load. Left out, the vendor default (5 minutes on Anthropic).
+    /// </summary>
+    public string? Ttl { get; set; }
 }

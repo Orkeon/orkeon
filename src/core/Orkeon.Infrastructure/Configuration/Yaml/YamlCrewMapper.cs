@@ -531,7 +531,8 @@ public sealed partial class YamlCrewMapper
 
         try
         {
-            return LlmCacheConfig.Request(yaml.System ?? false, yaml.Tools ?? false, yaml.Ttl);
+            // A present block with no breakpoint is the explicit "off": it replaces an inherited cache.
+            return LlmCacheConfig.Request(yaml.System ?? false, yaml.Tools ?? false, yaml.Ttl) ?? LlmCacheConfig.Off;
         }
         catch (ArgumentException ex)
         {
@@ -572,8 +573,8 @@ public sealed partial class YamlCrewMapper
             MaxTokens = yaml.MaxTokens,
             TopP = yaml.TopP,
             Thinking = MapThinking(yaml.Thinking),
-            // A present block with no breakpoint stays an empty config: it replaces the agent's cache and turns it off.
-            Cache = yaml.Cache is null ? null : MapCache(yaml.Cache) ?? new LlmCacheConfig(),
+            // A present block with no breakpoint is Off: it replaces the agent's cache and turns it off.
+            Cache = MapCache(yaml.Cache),
         };
     }
 

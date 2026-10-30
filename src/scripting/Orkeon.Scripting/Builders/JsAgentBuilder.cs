@@ -39,11 +39,32 @@ public sealed class JsAgentBuilder
     internal string? ResponseFormatValue { get; private set; }
     internal string? EffortValue { get; private set; }
 
-    /// <summary>Whether <c>.cache(...)</c> was called: its <see cref="CacheValue"/> wins over the LlmConfig's, null included.</summary>
-    internal bool CacheSet { get; private set; }
-
-    /// <summary>The prompt-cache request <c>.cache(...)</c> received; null when it marks nothing cacheable.</summary>
+    /// <summary>
+    /// The prompt-cache request <c>.cache(...)</c> received, which wins over the LlmConfig's; null
+    /// when <c>.cache(...)</c> was not called, <see cref="Orkeon.Domain.SharedKernel.ValueObjects.LlmCacheConfig.Off"/>
+    /// when it marks nothing cacheable.
+    /// </summary>
     internal Orkeon.Domain.SharedKernel.ValueObjects.LlmCacheConfig? CacheValue { get; private set; }
+
+    /// <summary>
+    /// <paramref name="config"/> with the agent's own <c>.effort(...)</c> and <c>.cache(...)</c>
+    /// applied over it: what the crew's agent configuration and the procedural <c>ctx.llm</c> calls
+    /// both run with (#254).
+    /// </summary>
+    /// <param name="config">The configuration <c>.llm(...)</c> received; null for the host's own.</param>
+    /// <returns>The configuration, null when neither it nor the agent sets anything.</returns>
+    internal Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig? WithEffortAndCache(
+        Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig? config)
+    {
+        if (EffortValue is not null)
+            config = (config ?? Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig.OnProfile()) with
+            {
+                Thinking = Orkeon.Scripting.Runtime.JsLlmConfig.ThinkingAt(EffortValue),
+            };
+        if (CacheValue is not null)
+            config = (config ?? Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig.OnProfile()) with { Cache = CacheValue };
+        return config;
+    }
 
     /// <summary>Schema name captured by <c>withResponseSchema</c>; <c>null</c> when unset.</summary>
     internal string? ResponseSchemaName { get; private set; }
@@ -220,7 +241,6 @@ public sealed class JsAgentBuilder
     public JsAgentBuilder cache(JsValue options)
     {
         CacheValue = Orkeon.Scripting.Runtime.JsLlmConfig.CacheFrom(options, ".cache(...)");
-        CacheSet = true;
         return this;
     }
     public JsAgentBuilder allowDelegation(bool value) { AllowDelegationFlag = value; return this; }

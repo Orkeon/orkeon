@@ -241,7 +241,17 @@ The request is opt-in, from YAML (`llm.cache: { system, tools, ttl }`) or from a
 `agentBuilder().cache({ systemPrompt, tools, ttl })` and the `cache` key of `LlmConfig.with({...})` map onto the
 same `LlmCacheConfig` (`LlmCacheConfig.Request`). The TTL is `5m` or `1h`, anything else is refused in both, and a
 script's `ttl` without `systemPrompt` or `tools` is refused as caching nothing. An object that marks nothing
-turns an inherited cache off.
+(`cache: {}`, `cache({})`) is an explicit Off (`LlmCacheConfig.Off`): it turns an inherited cache off, the host
+default included, where a cache left out inherits it.
+
+A host sets a default for every agent with `Llm:Cache` (`SystemPrompt`, `Tools`, `Ttl`), and a profile with
+`Llm:Profiles:<name>:Cache`. It is validated as the YAML block is (`LlmCacheConfig.Request`): a `Ttl` other than
+`5m` or `1h`, or one with neither `SystemPrompt` nor `Tools`, refuses the load and names the key. It applies only
+to a provider whose cache is explicit (`LlmProviderCapabilities.ExplicitPromptCaching`, Anthropic): elsewhere the
+provider's `BaseConfig` drops it, so it neither reaches the call nor warns. An agent's or task's own cache, an
+explicit Off included, always wins. The procedural `ctx.llm` calls of a script agent run with the cache and the
+effort its builder set (`.cache(...)`, `.effort(...)`, or the `LlmConfig` given to `.llm(...)`), a call's own
+options winning.
 
 ## Decorators and registration
 

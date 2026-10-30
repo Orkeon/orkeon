@@ -160,16 +160,16 @@ public record TaskResult(
 
     /// <summary>
     /// Cumulative prompt tokens that hit the provider's prompt cache during the task.
-    /// Populated only for providers that report this metric (DeepSeek's <c>prompt_cache_hit_tokens</c>).
-    /// 0 = either no cache hits, or the provider does not expose the field.
+    /// Null when no call of the task reported the count: an unreported count never reads as 0,
+    /// while a reported 0 is a measured miss.
     /// </summary>
-    public long CacheHitTokens { get; init; }
+    public long? CacheHitTokens { get; init; }
 
     /// <summary>
     /// Cumulative prompt tokens that missed the provider's prompt cache during the task.
-    /// Populated only for providers that report this metric (DeepSeek's <c>prompt_cache_miss_tokens</c>).
+    /// Null when no call of the task reported the count.
     /// </summary>
-    public long CacheMissTokens { get; init; }
+    public long? CacheMissTokens { get; init; }
 }
 
 /// <summary>

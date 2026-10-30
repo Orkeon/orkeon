@@ -100,4 +100,35 @@ public sealed class AutoSummaryCachePromptTokensTests : IDisposable
         Assert.DoesNotContain("Prompt cache", md);
         Assert.Matches(@"\| 500 \|", md);
     }
+
+    [Fact]
+    [Trait("BR", "CH-254")]
+    public async Task AutoSummary_ShouldShowNotAvailable_WhenOnlyOneCacheCountWasReported()
+    {
+        var writer = CreateWriter();
+        var snapshot = new CrewExecutionSnapshot
+        {
+            CrewId = "partial-crew",
+            StartedAt = DateTimeOffset.UtcNow.AddMinutes(-1),
+            EndedAt = DateTimeOffset.UtcNow,
+            Status = CrewHookStatus.Completed,
+            Tasks = ImmutableList.Create(
+                new TaskExecutionSnapshot
+                {
+                    TaskId = "t1",
+                    AgentRole = "analyst",
+                    Success = true,
+                    Duration = TimeSpan.FromSeconds(3),
+                    CompletedAt = DateTimeOffset.UtcNow,
+                    TokensUsed = 700,
+                    CacheHitTokens = 0,
+                }),
+        };
+
+        await writer.OnCrewCompletedAsync(snapshot, CancellationToken.None);
+
+        var md = await File.ReadAllTextAsync(SummaryPath(), TestContext.Current.CancellationToken);
+        Assert.Contains("700 · 0/n/a", md);
+        Assert.Contains("hit 0 · miss n/a · hit-ratio n/a", md);
+    }
 }

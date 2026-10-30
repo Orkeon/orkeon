@@ -47,7 +47,7 @@ declare global {
         effort?: "low" | "medium" | "high" | "xhigh" | "max";
         /**
          * The prompt-cache request, as `agentBuilder().cache(...)` takes it; an object that marks nothing
-         * cacheable turns an inherited cache off.
+         * cacheable (`{}`) turns caching off, the host default `Llm:Cache` included.
          */
         cache?: LlmCacheOptions;
     }

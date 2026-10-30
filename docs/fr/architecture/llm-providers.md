@@ -251,7 +251,17 @@ La demande est explicite, depuis le YAML (`llm.cache: { system, tools, ttl }`) o
 `agentBuilder().cache({ systemPrompt, tools, ttl })` et la clé `cache` de `LlmConfig.with({...})` produisent le
 même `LlmCacheConfig` (`LlmCacheConfig.Request`). Le TTL vaut `5m` ou `1h`, toute autre valeur est refusée dans les
 deux, et un `ttl` de script sans `systemPrompt` ni `tools` est refusé puisqu'il ne met rien en cache. Un objet qui
-ne marque rien désactive un cache hérité.
+ne marque rien (`cache: {}`, `cache({})`) est un Off explicite (`LlmCacheConfig.Off`) : il désactive un cache
+hérité, celui de l'hôte compris, là où un cache omis en hérite.
+
+Un hôte fixe un cache par défaut pour chaque agent avec `Llm:Cache` (`SystemPrompt`, `Tools`, `Ttl`), et un profil
+avec `Llm:Profiles:<name>:Cache`. Il est validé comme le bloc YAML (`LlmCacheConfig.Request`) : un `Ttl` autre que
+`5m` ou `1h`, ou sans `SystemPrompt` ni `Tools`, refuse le chargement en nommant la clé. Il ne s'applique qu'à un
+fournisseur dont le cache est explicite (`LlmProviderCapabilities.ExplicitPromptCaching`, Anthropic) : ailleurs le
+`BaseConfig` du fournisseur l'écarte, si bien qu'il n'atteint pas l'appel et n'avertit pas. Le cache propre d'un
+agent ou d'une tâche, un Off explicite compris, l'emporte toujours. Les appels procéduraux `ctx.llm` d'un agent
+scripté tournent avec le cache et l'effort que son builder a fixés (`.cache(...)`, `.effort(...)`, ou le
+`LlmConfig` donné à `.llm(...)`), les options propres d'un appel l'emportant.
 
 ## Décorateurs et enregistrement
 

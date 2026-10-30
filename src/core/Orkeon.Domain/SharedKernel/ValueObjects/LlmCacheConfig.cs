@@ -47,6 +47,13 @@ public sealed record LlmCacheConfig
     /// <summary>The lifetimes <see cref="Ttl"/> takes: Anthropic's two cache tiers.</summary>
     public static IReadOnlyList<string> Ttls { get; } = ["5m", "1h"];
 
+    /// <summary>
+    /// The explicit "no cache" request: no breakpoint. Set on an agent, a task override or a script
+    /// agent, it replaces an inherited cache - the host default <c>Llm:Cache</c> included - and turns
+    /// caching off, where a null cache inherits it.
+    /// </summary>
+    public static LlmCacheConfig Off { get; } = new();
+
     /// <summary>Caches the system prompt only — the common case and the cheapest win.</summary>
     public static LlmCacheConfig SystemPrompt() => new() { CacheSystemPrompt = true };
 

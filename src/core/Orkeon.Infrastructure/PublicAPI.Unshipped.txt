@@ -191,3 +191,11 @@ Orkeon.Infrastructure.Tools.ModelTokensEntry.CacheReadTokens.get -> long?
 Orkeon.Infrastructure.Tools.ModelTokensEntry.CacheWriteTokens.get -> long?
 Orkeon.Infrastructure.Tools.ModelTokensEntry.ReasoningTokens.get -> long?
 Orkeon.Infrastructure.Tools.ModelTokensEntry.ReasoningTokens.init -> void
+*REMOVED*Orkeon.Infrastructure.Crew.Strategies.CrewGraphState.AddResultUsage(int tokens, long cacheHit, long cacheMiss) -> void
+*REMOVED*Orkeon.Infrastructure.Crew.Strategies.CrewGraphState.CacheHitTokensUsed.get -> long
+*REMOVED*Orkeon.Infrastructure.Crew.Strategies.CrewGraphState.CacheMissTokensUsed.get -> long
+*REMOVED*Orkeon.Infrastructure.Crew.Strategies.CrewGraphState.ResultUsage.get -> System.Collections.Generic.IReadOnlyList<(int Tokens, long CacheHit, long CacheMiss)>!
+Orkeon.Infrastructure.Crew.Strategies.CrewGraphState.AddResultUsage(int tokens, long? cacheHit, long? cacheMiss) -> void
+Orkeon.Infrastructure.Crew.Strategies.CrewGraphState.CacheHitTokensUsed.get -> long?
+Orkeon.Infrastructure.Crew.Strategies.CrewGraphState.CacheMissTokensUsed.get -> long?
+Orkeon.Infrastructure.Crew.Strategies.CrewGraphState.ResultUsage.get -> System.Collections.Generic.IReadOnlyList<(int Tokens, long? CacheHit, long? CacheMiss)>!
