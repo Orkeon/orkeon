@@ -396,18 +396,38 @@ public partial class AnthropicLlmProvider : HttpLlmProviderBase
 
         using var toolCallsDoc = JsonDocument.Parse(msg.RawToolCalls!);
         foreach (var tc in toolCallsDoc.RootElement.EnumerateArray())
-        {
-            var id = tc.GetProperty("id").GetString() ?? "";
-            var function = tc.GetProperty("function");
-            var name = function.GetProperty("name").GetString() ?? "";
-            var argumentsJson = function.GetProperty("arguments").GetString() ?? "{}";
-            var input = JsonSerializer.Deserialize<Dictionary<string, object>>(argumentsJson)
-                        ?? new Dictionary<string, object>();
-
-            blocks.Add(new { type = "tool_use", id, name, input });
-        }
+            blocks.Add(ToToolUseBlock(tc));
 
         conversationMessages.Add(new { role = LlmRoles.Assistant, content = (object)blocks });
+    }
+
+    /// <summary>
+    /// Replays one raw tool call as an Anthropic <c>tool_use</c> block. <see cref="LlmMessage.RawToolCalls"/>
+    /// holds either Anthropic <c>tool_use</c> blocks as received (<c>NativeToolCallTranscript</c>: the crew
+    /// loop, <c>ctx.llm.act</c>) or the OpenAI shape <c>{id, function: {name, arguments}}</c>
+    /// (<c>LlmProviderToChatClientAdapter</c>); both are accepted.
+    /// </summary>
+    private static object ToToolUseBlock(JsonElement tc)
+    {
+        var id = tc.GetProperty("id").GetString() ?? "";
+
+        if (tc.TryGetProperty("function", out var function))
+        {
+            var name = function.GetProperty("name").GetString() ?? "";
+            var argumentsJson = function.TryGetProperty("arguments", out var args) && args.ValueKind == JsonValueKind.String
+                ? args.GetString()
+                : null;
+            var input = string.IsNullOrWhiteSpace(argumentsJson)
+                ? new Dictionary<string, object>()
+                : JsonSerializer.Deserialize<Dictionary<string, object>>(argumentsJson) ?? new Dictionary<string, object>();
+            return new { type = "tool_use", id, name, input };
+        }
+
+        var blockName = tc.GetProperty("name").GetString() ?? "";
+        var blockInput = tc.TryGetProperty("input", out var inputProp) && inputProp.ValueKind == JsonValueKind.Object
+            ? inputProp.Clone()
+            : JsonSerializer.SerializeToElement(new Dictionary<string, object>());
+        return new { type = "tool_use", id, name = blockName, input = blockInput };
     }
 
     private static void AddToolResultMessages(

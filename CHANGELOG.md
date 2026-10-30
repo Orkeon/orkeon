@@ -29,6 +29,13 @@ hashed again at the next call.
 | `new IndexCodebaseTool(store, builderFactory, logger)` | `new IndexCodebaseTool(store, builderFactory, cachingBuilder, logger)` |
 | `DetectedPackage.MarkerFile` only (the ecosystem) | plus `MarkerPath`, the marker file under the root |
 
+### Fixed — Anthropic replays a tool call turn (#245)
+
+On Anthropic, every `ctx.llm.act` turn and crew agent turn that called a tool failed on its second model call with a
+`KeyNotFoundException`: `AnthropicLlmProvider` replayed `LlmMessage.RawToolCalls` in the OpenAI shape only
+(`{id, function: {name, arguments}}`), while `NativeToolCallTranscript` stores Anthropic `tool_use` blocks as received.
+The replay now accepts both shapes, and the property documents them.
+
 ### Fixed — `incremental_reindex` keeps the unresolved calls of the files it does not reparse
 
 `IncrementalReindexEngine` dropped every `Calls` edge to an `ext::unresolved::*` target whose caller sat in an unchanged
