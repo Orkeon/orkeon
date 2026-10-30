@@ -124,6 +124,7 @@ public sealed class IncrementalReindexEngine
         foreach (var (group, gb) in parsed.GraphBuildersByGroup)
         {
             var groupNodes = unchangedNodes.Where(n => string.Equals(DependencyGraphBuilder.GraphGroupOf(n.Language), group, StringComparison.OrdinalIgnoreCase));
+            gb.RegisterPackages(packageNodes);
             newEdges.AddRange(await gb.BuildForFilesAsync(parsed.ChangedByGroup[group], groupNodes, _resolver, ct).ConfigureAwait(false));
         }
 

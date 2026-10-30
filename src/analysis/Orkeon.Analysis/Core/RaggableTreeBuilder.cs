@@ -186,6 +186,7 @@ public sealed class RaggableTreeBuilder
         allNodes.Add(monorepo);
         var packageNodes = TreeAssembly.BuildPackageNodes(monorepo, discovery.Packages, discovery.RootPath);
         allNodes.AddRange(packageNodes);
+        await GoModuleFile.TagPackagesAsync(packageNodes, _fileSystem, ct).ConfigureAwait(false);
 
         // Phase 2/3 — Parse + Extract per file
         var graphBuildersByGroup = new Dictionary<string, DependencyGraphBuilder>(StringComparer.OrdinalIgnoreCase);
@@ -214,6 +215,7 @@ public sealed class RaggableTreeBuilder
         var allEdges = new List<RaggableEdge>();
         foreach (var gb in graphBuildersByGroup.Values)
         {
+            gb.RegisterPackages(packageNodes);
             var edges = await gb.BuildDependenciesAsync(_resolver, ct).ConfigureAwait(false);
             allEdges.AddRange(edges);
         }
