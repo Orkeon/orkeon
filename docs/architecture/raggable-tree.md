@@ -198,9 +198,10 @@ is a miss. A root the process cannot write is indexed without a cache.
 
 `RaggableTreeCache` owns the database. One database keeps up to `RaggableTreeCache.MaxEntries`
 (`3`) saved indexes side by side, one per key: two callers indexing one root with different
-options each find their own. A save past that count evicts the entry least recently used
-(`used_at`, which every save and every hit refresh). Its schema version is `PRAGMA user_version`
-(`2`); a database of another version has its tables dropped and created again at the next
+options each find their own. A save drops every entry saved by another runtime (another cache
+format or Analysis version, the `runtime` column), which no key of the current runtime can hit, then
+evicts past that count the entry least recently used (`used_at`, which every save and every hit
+refresh). Its schema version is `PRAGMA user_version` (`3`); a database of another version has its tables dropped and created again at the next
 save, and reads as a miss until then. The connection runs with `foreign_keys = ON` and the
 journal in WAL mode.
 
@@ -221,6 +222,7 @@ Every other table names its entry through `entry_id`, a `FOREIGN KEY` → `cache
 |---|---|---|---|
 | `entry_id` | `INTEGER` | `PRIMARY KEY` | Surrogate key, referenced by every other table |
 | `cache_key` | `TEXT` | `NOT NULL UNIQUE` | The SHA-256 of the key described above |
+| `runtime` | `TEXT` | `NOT NULL` | The cache format and Analysis version that saved the entry, the part of the key another runtime never matches |
 | `index_id` | `TEXT` | `NOT NULL` | The `IndexId` of the saved tree |
 | `generation` | `INTEGER` | `NOT NULL`, `CHECK (generation > 0)` | Counts the saves under this key, from `1` |
 | `node_count`, `edge_count` | `INTEGER` | `NOT NULL` | The size of the tree, for whoever inspects the database; the load does not read them |
@@ -280,8 +282,12 @@ A save is one transaction:
    is; a changed or new group is upserted (`ON CONFLICT (entry_id, virtual_path) DO UPDATE`)
    with the current generation; a group whose file is gone is deleted after the runs.
 4. The entry's `node_runs` are rewritten.
-5. The entries past `MaxEntries`, by `used_at` from the most recent, are deleted, their rows
-   with them.
+5. The entries of another `runtime` are deleted, then the entries past `MaxEntries`, by
+   `used_at` from the most recent, their rows with them.
+
+After the commit, a database whose free pages are more than half of its pages (a large entry just
+dropped) is compacted with `VACUUM`, so the file shrinks back on disk; below that, the next save
+reuses the free pages.
 
 A refresh that reindexes three files therefore rewrites three groups, not the whole tree.
 A load that fails (a file that is not a SQLite database, a missing table, a blob that does
@@ -629,7 +635,7 @@ Implement `IVectorStoreProvider` (`IndexAsync`, `SearchAsync`, `DeleteAsync`) an
 - The summarizer is C#-only (`Summarizer.Provider` + an `ILlmProvider`); OpenAI/Ollama embeddings need their endpoint, while the runner host's on-device default needs nothing. The pipeline works without embeddings (`codebase_search` then ranks by BM25 only).
 - The index is process-local: `InMemoryRaggableStore` is rebuilt by `index_codebase` in each process, and the optional vector-store mirror is never read back.
 - `FileSystemWatcherCodebaseWatcher` (the `ICodebaseWatcher` implementation, registered by no shipped host) relies on `System.IO.FileSystemWatcher` — on Linux/WSL, rename events may arrive decomposed (observed as Deleted then Created).
-- The index cache refreshes in place only when no `root_alias` is set and at most half of the files changed; otherwise it rebuilds from scratch. A file whose content is unchanged keeps its saved nodes even when a file it imports changed: the refresh relinks the edges, it does not parse the file again. The database keeps `MaxEntries` (3) keys: a fourth evicts the least recently used. A file stamp does not see a change that keeps both the size and the write time; `use_cache: false` rebuilds from the content.
+- The index cache refreshes in place only when no `root_alias` is set and at most half of the files changed; otherwise it rebuilds from scratch. A file whose content is unchanged keeps its saved nodes even when a file it imports changed: the refresh relinks the edges, it does not parse the file again. The database keeps `MaxEntries` (3) keys of the current runtime: a fourth evicts the least recently used, and an entry of another runtime is dropped at the next save. A file stamp does not see a change that keeps both the size and the write time; `use_cache: false` rebuilds from the content.
 
 ---
 

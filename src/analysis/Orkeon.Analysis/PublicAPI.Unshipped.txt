@@ -76,6 +76,8 @@ Orkeon.Analysis.Core.Cache.RaggableTreeCacheEntry.IndexId.get -> string!
 Orkeon.Analysis.Core.Cache.RaggableTreeCacheEntry.IndexId.init -> void
 Orkeon.Analysis.Core.Cache.RaggableTreeCacheEntry.Markers.get -> System.Collections.Generic.IReadOnlyDictionary<string!, string!>!
 Orkeon.Analysis.Core.Cache.RaggableTreeCacheEntry.Markers.init -> void
+Orkeon.Analysis.Core.Cache.RaggableTreeCacheEntry.Runtime.get -> string!
+Orkeon.Analysis.Core.Cache.RaggableTreeCacheEntry.Runtime.init -> void
 Orkeon.Analysis.Core.Cache.RaggableTreeCacheEntry.RaggableTreeCacheEntry(Orkeon.Analysis.Abstractions.Models.RaggableTree! Tree, string! IndexId, string! CacheKey, System.Collections.Generic.IReadOnlyDictionary<string!, Orkeon.Analysis.Abstractions.Interfaces.FileStamp!>! Files, System.Collections.Generic.IReadOnlyDictionary<string!, string!>! Markers) -> void
 Orkeon.Analysis.Core.Cache.RaggableTreeCacheEntry.Tree.get -> Orkeon.Analysis.Abstractions.Models.RaggableTree!
 Orkeon.Analysis.Core.Cache.RaggableTreeCacheEntry.Tree.init -> void

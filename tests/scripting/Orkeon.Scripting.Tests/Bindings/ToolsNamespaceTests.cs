@@ -1,7 +1,9 @@
 using System.Text.Json;
 using Jint;
 using Orkeon.Scripting.Bindings;
+using Orkeon.Domain.Tools.Protocol;
 using Orkeon.Tests.Shared.Doubles;
+using Orkeon.Tests.Shared.Timing;
 
 namespace Orkeon.Scripting.Tests.Bindings;
 
@@ -46,6 +48,33 @@ public sealed class ToolsNamespaceTests
         Assert.Equal("abc123:42", result.AsString());
     }
 
+
+    /// <summary>
+    /// Regression (#247): Jint's memory limit reads the engine thread's allocation counter, and a tool
+    /// whose async method completes synchronously (SQLite, an in-memory index build) used to run whole on
+    /// that thread, so its allocations were charged to the script. The call now starts off the engine
+    /// thread: a tool, however heavy, does not count against the script's ceiling.
+    /// </summary>
+    [Fact]
+    public async Task Tools_invocation_does_not_charge_the_tools_allocations_to_the_script_memory_limit()
+    {
+        var tool = new StubBaseTool("index_codebase").RespondWith(_ =>
+        {
+            var chunks = new List<byte[]>();
+            for (var i = 0; i < 64; i++)
+                chunks.Add(new byte[1024 * 1024]);
+            return new ToolCallResponse(true, chunks.Count, null);
+        });
+        var limits = new Orkeon.Scripting.Configuration.ScriptingLimitsOptions { MemoryLimitBytes = 16L * 1024 * 1024 };
+        var engine = new JsEngineFactory(limits, builtInTools: [(Orkeon.Domain.Tools.IBaseTool)tool]).Create();
+
+        var result = await Task.Run(() => engine.Evaluate(
+            "tools.indexCodebase({ root_path: '/src' }).then(n => 'chunks:' + n)")
+            .UnwrapIfPromise(TestContext.Current.CancellationToken))
+            .WaitAsync(HangGuards.EnginePromise, TestContext.Current.CancellationToken);
+
+        Assert.Equal("chunks:64", result.AsString());
+    }
 
     [Fact]
     public void ToCamelCase_converts_snake_and_kebab_to_camel()

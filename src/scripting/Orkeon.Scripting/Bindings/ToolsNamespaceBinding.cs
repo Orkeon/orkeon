@@ -86,7 +86,10 @@ public static partial class ToolsNamespaceBinding
             // failed when there are 5 sequential writes.
             TagCallSiteArgs(activity, parameters);
 
-            var resp = await tool.CallAsync(new ToolCallRequest(tool.Name, parameters)).ConfigureAwait(false);
+            // Started off the engine thread: Jint's memory limit reads that thread's allocation counter,
+            // and a tool whose async method completes synchronously (SQLite, an index build) would
+            // otherwise charge its whole work to the script (#247).
+            var resp = await Task.Run(() => tool.CallAsync(new ToolCallRequest(tool.Name, parameters))).ConfigureAwait(false);
             if (!resp.Success)
                 throw BuildToolFailure(tool, resp, parameters);
             if (resp.Result is JsValue jv) return jv;
