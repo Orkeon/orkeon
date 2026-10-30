@@ -21,7 +21,7 @@ public class RaggableTreeCacheTests
             Assert.True(saved);
             Assert.True(File.Exists(DatabasePath(root)));
             Assert.Equal("*\n", await File.ReadAllTextAsync(Path.Combine(CacheDir(root), ".gitignore"), TestContext.Current.CancellationToken));
-            Assert.Equal(2L, Scalar(root, "PRAGMA user_version"));
+            Assert.Equal(3L, Scalar(root, "PRAGMA user_version"));
             Assert.Equal(
                 "cache_entries,indexed_files,node_groups,node_runs,package_markers",
                 Scalar(root, "SELECT group_concat(name, ',') FROM (SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name)"));
@@ -136,6 +136,54 @@ public class RaggableTreeCacheTests
                 "SELECT count(*) FROM node_runs WHERE entry_id NOT IN (SELECT entry_id FROM cache_entries)"));
             Assert.Equal((long)RaggableTreeCache.MaxEntries, Scalar(root, "SELECT count(DISTINCT entry_id) FROM indexed_files"));
             Assert.Equal((long)RaggableTreeCache.MaxEntries, Scalar(root, "SELECT count(DISTINCT entry_id) FROM package_markers"));
+        }
+        finally { Directory.Delete(root, recursive: true); }
+    }
+
+    [Fact]
+    public async Task SaveAsync_drops_the_entries_of_another_runtime_and_keeps_its_own()
+    {
+        var root = await TestFixtures.WriteDirectoryAsync([("a.ts", "export const a = 1;")]);
+        try
+        {
+            var cache = BuildCache(root);
+            await cache.SaveAsync(TestFixtures.TestVirtualRoot,
+                Entry("idx", Tree(("old", "/src/old.ts"))) with { CacheKey = "k-old", Runtime = "analysis:1.0.0" }, CancellationToken.None);
+            await cache.SaveAsync(TestFixtures.TestVirtualRoot,
+                Entry("idx", Tree(("n1", "/src/f1.ts"))) with { CacheKey = "k1", Runtime = "analysis:2.0.0" }, CancellationToken.None);
+            await cache.SaveAsync(TestFixtures.TestVirtualRoot,
+                Entry("idx", Tree(("n2", "/src/f2.ts"))) with { CacheKey = "k2", Runtime = "analysis:2.0.0" }, CancellationToken.None);
+
+            // The entry no key of the current runtime can hit is gone with its rows, before MaxEntries is reached.
+            Assert.Null(await cache.LoadAsync(TestFixtures.TestVirtualRoot, "k-old", CancellationToken.None));
+            Assert.Equal(0L, Scalar(root, "SELECT count(*) FROM node_groups WHERE virtual_path = '/src/old.ts'"));
+            Assert.Equal(2L, Scalar(root, "SELECT count(*) FROM cache_entries"));
+            var kept = await cache.LoadAsync(TestFixtures.TestVirtualRoot, "k1", CancellationToken.None);
+            Assert.NotNull(kept);
+            Assert.Equal("analysis:2.0.0", kept.Runtime);
+            Assert.NotNull(await cache.LoadAsync(TestFixtures.TestVirtualRoot, "k2", CancellationToken.None));
+        }
+        finally { Directory.Delete(root, recursive: true); }
+    }
+
+    [Fact]
+    public async Task SaveAsync_gives_the_pages_of_a_large_dropped_entry_back_to_the_disk()
+    {
+        var root = await TestFixtures.WriteDirectoryAsync([("a.ts", "export const a = 1;")]);
+        try
+        {
+            var cache = BuildCache(root);
+            var large = Tree([.. Enumerable.Range(0, 2000).Select(i => ($"n{i}-{Guid.NewGuid():N}", $"/src/f{i}.ts"))]);
+            await cache.SaveAsync(TestFixtures.TestVirtualRoot,
+                Entry("idx", large) with { CacheKey = "k-old", Runtime = "analysis:1.0.0" }, CancellationToken.None);
+            var pagesBefore = (long)Scalar(root, "SELECT page_count FROM pragma_page_count")!;
+
+            await cache.SaveAsync(TestFixtures.TestVirtualRoot,
+                Entry("idx", Tree(("n", "/src/a.ts"))) with { CacheKey = "k-new", Runtime = "analysis:2.0.0" }, CancellationToken.None);
+
+            var pagesAfter = (long)Scalar(root, "SELECT page_count FROM pragma_page_count")!;
+            Assert.True(pagesAfter * 2 < pagesBefore, $"{pagesAfter} pages after the drop, {pagesBefore} before");
+            Assert.Equal(0L, Scalar(root, "SELECT freelist_count FROM pragma_freelist_count"));
         }
         finally { Directory.Delete(root, recursive: true); }
     }

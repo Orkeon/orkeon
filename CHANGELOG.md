@@ -29,6 +29,35 @@ hashed again at the next call.
 | `new IndexCodebaseTool(store, builderFactory, logger)` | `new IndexCodebaseTool(store, builderFactory, cachingBuilder, logger)` |
 | `DetectedPackage.MarkerFile` only (the ecosystem) | plus `MarkerPath`, the marker file under the root |
 
+### Fixed — a host tool no longer counts against a script's memory limit (#247)
+
+Jint's `LimitMemory` reads the allocation counter of the engine's thread, and a tool whose async method completes
+synchronously (the index cache's SQLite calls, an index build) ran whole on that thread: `index_codebase` on a large
+repository charged gigabytes to the script, which failed at random with `MemoryLimitExceededException` under the 2 GiB
+trusted ceiling. The engine's memory constraint now leaves out what a host tool allocates on the engine thread, for
+`tools.*` and for the tool calls of `ctx.llm.act`, which reached that thread after a model call that completed
+synchronously: a tool's work is not counted, however heavy, and `--memory-limit-mb 0` is no longer needed for it. The
+tool still runs where it did, so the order of its effects is unchanged, and the script's own allocations after the call
+are still counted. The window also holds when a host continuation drives the engine from another thread: what the
+previous thread counted is kept and the new thread is counted from its own counter, where Jint subtracted one thread's
+counter from another's and could fail a script that had allocated nothing.
+
+### Fixed — the index cache drops the entries of another runtime (#248)
+
+An index cache entry saved by another cache format or Analysis version could never be hit again, yet kept its full
+share of `index.db` (about 460 MB on the Orkeon repository) until two newer keys evicted it. `cache_entries` now holds
+the `runtime` that saved each entry (schema version `3`: an older database is recreated at the next save), and a save
+deletes the entries of every other runtime before the LRU eviction. A database whose free pages pass half of its pages
+is compacted with `VACUUM` after the save, so the file shrinks back on disk; a compaction that fails leaves the saved
+entries as they are.
+
+### Fixed — Anthropic replays a tool call turn (#245)
+
+On Anthropic, every `ctx.llm.act` turn and crew agent turn that called a tool failed on its second model call with a
+`KeyNotFoundException`: `AnthropicLlmProvider` replayed `LlmMessage.RawToolCalls` in the OpenAI shape only
+(`{id, function: {name, arguments}}`), while `NativeToolCallTranscript` stores Anthropic `tool_use` blocks as received.
+The replay now accepts both shapes, and the property documents them.
+
 ### Fixed — `incremental_reindex` keeps the unresolved calls of the files it does not reparse
 
 `IncrementalReindexEngine` dropped every `Calls` edge to an `ext::unresolved::*` target whose caller sat in an unchanged

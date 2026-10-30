@@ -195,9 +195,11 @@ sans cache.
 
 `RaggableTreeCache` possède la base. Une base garde jusqu'à `RaggableTreeCache.MaxEntries`
 (`3`) index enregistrés côte à côte, un par clé : deux appelants qui indexent une racine avec
-des options différentes retrouvent chacun le sien. Un enregistrement au-delà de ce nombre
-évince l'entrée utilisée le moins récemment (`used_at`, que rafraîchissent chaque
-enregistrement et chaque hit). La version de son schéma est `PRAGMA user_version` (`2`) ;
+des options différentes retrouvent chacun le sien. Un enregistrement supprime toute entrée
+enregistrée par un autre runtime (un autre format de cache ou une autre version de l'Analysis,
+la colonne `runtime`), qu'aucune clé du runtime courant ne peut atteindre, puis évince au-delà de
+ce nombre l'entrée utilisée le moins récemment (`used_at`, que rafraîchissent chaque
+enregistrement et chaque hit). La version de son schéma est `PRAGMA user_version` (`3`) ;
 une base d'une autre version voit ses tables supprimées et recréées à l'enregistrement
 suivant, et se lit comme un miss d'ici là. La connexion tourne avec `foreign_keys = ON` et le
 journal en mode WAL.
@@ -220,6 +222,7 @@ et séquences.
 |---|---|---|---|
 | `entry_id` | `INTEGER` | `PRIMARY KEY` | Clé de substitution, référencée par toutes les autres tables |
 | `cache_key` | `TEXT` | `NOT NULL UNIQUE` | Le SHA-256 de la clé décrite plus haut |
+| `runtime` | `TEXT` | `NOT NULL` | Le format de cache et la version de l'Analysis qui ont enregistré l'entrée, la part de la clé qu'un autre runtime ne retrouve jamais |
 | `index_id` | `TEXT` | `NOT NULL` | L'`IndexId` de l'arbre enregistré |
 | `generation` | `INTEGER` | `NOT NULL`, `CHECK (generation > 0)` | Compte les enregistrements sous cette clé, à partir de `1` |
 | `node_count`, `edge_count` | `INTEGER` | `NOT NULL` | La taille de l'arbre, pour qui inspecte la base ; le chargement ne les lit pas |
@@ -283,8 +286,14 @@ Un enregistrement est une seule transaction :
    (`ON CONFLICT (entry_id, virtual_path) DO UPDATE`) avec la génération courante ; un groupe
    dont le fichier a disparu est supprimé après les séquences.
 4. Les `node_runs` de l'entrée sont réécrites.
-5. Les entrées au-delà de `MaxEntries`, par `used_at` depuis la plus récente, sont
-   supprimées, et leurs lignes avec elles.
+5. Les entrées d'un autre `runtime` sont supprimées, puis les entrées au-delà de
+   `MaxEntries`, par `used_at` depuis la plus récente, et leurs lignes avec elles.
+
+Après le commit, une base dont les pages libres dépassent la moitié de ses pages (une grande
+entrée vient d'être supprimée) est compactée par `VACUUM`, et le fichier rétrécit sur le disque ;
+en deçà, l'enregistrement suivant réutilise les pages libres. Une compaction qui échoue (une base
+occupée, pas de place pour la copie) laisse les entrées enregistrées telles quelles, et
+l'enregistrement suivant réessaie.
 
 Un rafraîchissement qui réindexe trois fichiers réécrit donc trois groupes, pas tout l'arbre.
 Un chargement qui échoue (un fichier qui n'est pas une base SQLite, une table absente, un blob
@@ -638,7 +647,7 @@ Implémenter `IVectorStoreProvider` (`IndexAsync`, `SearchAsync`, `DeleteAsync`)
 - Le summarizer se configure uniquement en C# (`Summarizer.Provider` + un `ILlmProvider`) ; les embeddings OpenAI/Ollama exigent leur endpoint, alors que le défaut on-device du runner host ne demande rien. Le pipeline fonctionne sans embeddings (`codebase_search` classe alors par BM25 seul).
 - L'index est local au processus : `InMemoryRaggableStore` est reconstruit par `index_codebase` dans chaque processus, et le miroir vector store optionnel n'est jamais relu.
 - `FileSystemWatcherCodebaseWatcher` (l'implémentation d'`ICodebaseWatcher`, qu'aucun hôte livré n'enregistre) se base sur `System.IO.FileSystemWatcher` — sous Linux/WSL, les événements de rename peuvent arriver décomposés (observés comme Deleted puis Created).
-- Le cache d'index ne se rafraîchit sur place que sans `root_alias` et quand au plus la moitié des fichiers a changé ; sinon il reconstruit tout. Un fichier dont le contenu n'a pas changé garde ses nœuds enregistrés même quand un fichier qu'il importe a changé : le rafraîchissement relie à nouveau les arêtes, il ne réanalyse pas le fichier. La base garde `MaxEntries` (3) clés : une quatrième évince la moins récemment utilisée. Une empreinte de fichier ne voit pas une modification qui garde à la fois la taille et l'heure d'écriture ; `use_cache: false` reconstruit depuis le contenu.
+- Le cache d'index ne se rafraîchit sur place que sans `root_alias` et quand au plus la moitié des fichiers a changé ; sinon il reconstruit tout. Un fichier dont le contenu n'a pas changé garde ses nœuds enregistrés même quand un fichier qu'il importe a changé : le rafraîchissement relie à nouveau les arêtes, il ne réanalyse pas le fichier. La base garde `MaxEntries` (3) clés du runtime courant : une quatrième évince la moins récemment utilisée, et une entrée d'un autre runtime est supprimée à l'enregistrement suivant. Une empreinte de fichier ne voit pas une modification qui garde à la fois la taille et l'heure d'écriture ; `use_cache: false` reconstruit depuis le contenu.
 
 ---
 

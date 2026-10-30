@@ -128,25 +128,32 @@ public sealed partial class CachingTreeBuilder
                 var refreshed = await _engineFactory().ReindexAsync(
                     saved.Tree, root, [.. changed.Select(p => $"{root}/{p}")], request, ct).ConfigureAwait(false);
                 await MirrorAsync(refreshed.Tree, ct).ConfigureAwait(false);
-                await SaveAsync(virtualRoot, new RaggableTreeCacheEntry(refreshed.Tree, indexId, key, files, markers), ct).ConfigureAwait(false);
+                await SaveAsync(virtualRoot, new RaggableTreeCacheEntry(refreshed.Tree, indexId, key, files, markers) { Runtime = RuntimeStamp }, ct).ConfigureAwait(false);
                 return new CachedBuildResult(Result(refreshed.Tree, indexId, discovery, null), IndexCacheOutcome.Refreshed, changed.Count);
             }
         }
 
         var build = await _builderFactory().BuildAsync(discovery, request, ct).ConfigureAwait(false);
-        await SaveAsync(virtualRoot, new RaggableTreeCacheEntry(build.Tree, build.IndexId, key, files, markers), ct).ConfigureAwait(false);
+        await SaveAsync(virtualRoot, new RaggableTreeCacheEntry(build.Tree, build.IndexId, key, files, markers) { Runtime = RuntimeStamp }, ct).ConfigureAwait(false);
         return new CachedBuildResult(build, request.UseCache ? IndexCacheOutcome.Miss : IndexCacheOutcome.Bypassed, 0);
+    }
+
+    // The cache format and the Analysis version: an entry of another runtime can never be hit again.
+    private static readonly string RuntimeStamp = RuntimeStampOf();
+
+    private static string RuntimeStampOf()
+    {
+        var assembly = typeof(CachingTreeBuilder).Assembly;
+        var version = assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion
+            ?? assembly.GetName().Version?.ToString();
+        return $"format:{FormatVersion}:{RaggableTreeSerializer.SupportedVersion}\nanalysis:{version}";
     }
 
     // Everything of the request that shapes the tree; MaxParallelism and UseCache do not.
     private string CacheKeyOf(IndexCodebaseRequest request)
     {
-        var assembly = typeof(CachingTreeBuilder).Assembly;
-        var version = assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion
-            ?? assembly.GetName().Version?.ToString();
         var text = new StringBuilder()
-            .Append("format:").Append(FormatVersion).Append(':').Append(RaggableTreeSerializer.SupportedVersion).Append('\n')
-            .Append("analysis:").Append(version).Append('\n')
+            .Append(RuntimeStamp).Append('\n')
             .Append(_environment).Append('\n')
             .Append("languages:").AppendJoin(',', request.Languages.Order(StringComparer.OrdinalIgnoreCase)).Append('\n')
             .Append("exclude:").AppendJoin(',', request.Exclude.Order(StringComparer.Ordinal)).Append('\n')

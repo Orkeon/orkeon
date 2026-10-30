@@ -171,7 +171,11 @@ public sealed record LlmMessage
     /// <summary>Gets tool call-related metadata for multi-turn tool calling.</summary>
     public string? ToolCallId { get; init; }
 
-    /// <summary>Gets the raw tool calls JSON for assistant messages with native tool calling.</summary>
+    /// <summary>
+    /// Gets the raw tool calls JSON for assistant messages with native tool calling: a JSON array of
+    /// either Anthropic <c>tool_use</c> blocks (<c>{type, id, name, input}</c>) or OpenAI tool calls
+    /// (<c>{id, function: {name, arguments}}</c>). A provider replaying it accepts both shapes.
+    /// </summary>
     public string? RawToolCalls { get; init; }
 
     /// <summary>

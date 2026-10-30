@@ -26,8 +26,8 @@ public sealed class RaggableTreeCache : IRaggableTreeCache
     /// <summary>How many keys one database keeps; a save past it drops the entries least recently used.</summary>
     public const int MaxEntries = 3;
 
-    // PRAGMA user_version of the database: another value drops the tables and creates them again.
-    private const int SchemaVersion = 2;
+    // PRAGMA user_version of the database, also written at the end of CreateSchemaSql: another value drops the tables and creates them again.
+    private const int SchemaVersion = 3;
 
     private const string CreateSchemaSql = """
         DROP TABLE IF EXISTS node_runs;
@@ -40,6 +40,7 @@ public sealed class RaggableTreeCache : IRaggableTreeCache
         CREATE TABLE cache_entries (
             entry_id    INTEGER PRIMARY KEY,
             cache_key   TEXT    NOT NULL UNIQUE,
+            runtime     TEXT    NOT NULL,
             index_id    TEXT    NOT NULL,
             generation  INTEGER NOT NULL CHECK (generation > 0),
             node_count  INTEGER NOT NULL,
@@ -88,7 +89,7 @@ public sealed class RaggableTreeCache : IRaggableTreeCache
 
         CREATE INDEX ix_node_runs_group ON node_runs (entry_id, group_id);
 
-        PRAGMA user_version = 2;
+        PRAGMA user_version = 3;
         """;
 
     private readonly IFileSystemService _fs;
@@ -137,10 +138,11 @@ public sealed class RaggableTreeCache : IRaggableTreeCache
     {
         long entryId;
         string indexId;
+        string runtime;
         List<RaggableEdge> edges;
         using (var state = connection.CreateCommand())
         {
-            state.CommandText = "SELECT entry_id, index_id, edges FROM cache_entries WHERE cache_key = $key";
+            state.CommandText = "SELECT entry_id, index_id, edges, runtime FROM cache_entries WHERE cache_key = $key";
             state.Parameters.AddWithValue("$key", cacheKey);
             var reader = await state.ExecuteReaderAsync(ct).ConfigureAwait(false);
             await using (reader.ConfigureAwait(false))
@@ -148,6 +150,7 @@ public sealed class RaggableTreeCache : IRaggableTreeCache
                 if (!await reader.ReadAsync(ct).ConfigureAwait(false)) return null;
                 entryId = reader.GetInt64(0);
                 indexId = reader.GetString(1);
+                runtime = reader.GetString(3);
                 edges = [.. Decompress<List<EdgeDto>>(reader.GetStream(2)).Select(NodeMapper.ToModel)];
             }
         }
@@ -197,7 +200,7 @@ public sealed class RaggableTreeCache : IRaggableTreeCache
         {
             if (!string.IsNullOrEmpty(node.Fqn)) index.TryAdd(node.Fqn, node);
         }
-        return (entryId, new RaggableTreeCacheEntry(new RaggableTree(nodes, edges, index), indexId, cacheKey, files, markers));
+        return (entryId, new RaggableTreeCacheEntry(new RaggableTree(nodes, edges, index), indexId, cacheKey, files, markers) { Runtime = runtime });
     }
 
     // Marks the entry used now, so the eviction keeps it. A busy database leaves the mark as it was.
@@ -274,9 +277,10 @@ public sealed class RaggableTreeCache : IRaggableTreeCache
                 await ReplaceFilesAsync(connection, tx, entryId, entry.Files, ct).ConfigureAwait(false);
                 await ReplaceMarkersAsync(connection, tx, entryId, entry.Markers, ct).ConfigureAwait(false);
                 await WriteNodesAsync(connection, tx, entryId, entry.Tree.Nodes, generation, ct).ConfigureAwait(false);
-                await EvictAsync(connection, tx, ct).ConfigureAwait(false);
+                await EvictAsync(connection, tx, entry.Runtime, ct).ConfigureAwait(false);
                 await tx.CommitAsync(ct).ConfigureAwait(false);
             }
+            await CompactAsync(connection, ct).ConfigureAwait(false);
         }
     }
 
@@ -286,9 +290,10 @@ public sealed class RaggableTreeCache : IRaggableTreeCache
     {
         using var upsert = Command(connection, tx);
         upsert.CommandText = """
-            INSERT INTO cache_entries (cache_key, index_id, generation, node_count, edge_count, edges, saved_at, used_at)
-            VALUES ($key, $index_id, 1, $node_count, $edge_count, $edges, $now, $now)
+            INSERT INTO cache_entries (cache_key, runtime, index_id, generation, node_count, edge_count, edges, saved_at, used_at)
+            VALUES ($key, $runtime, $index_id, 1, $node_count, $edge_count, $edges, $now, $now)
             ON CONFLICT (cache_key) DO UPDATE SET
+                runtime = excluded.runtime,
                 index_id = excluded.index_id,
                 generation = generation + 1,
                 node_count = excluded.node_count,
@@ -299,6 +304,7 @@ public sealed class RaggableTreeCache : IRaggableTreeCache
             RETURNING entry_id, generation
             """;
         upsert.Parameters.AddWithValue("$key", entry.CacheKey);
+        upsert.Parameters.AddWithValue("$runtime", entry.Runtime);
         upsert.Parameters.AddWithValue("$index_id", entry.IndexId);
         upsert.Parameters.AddWithValue("$node_count", entry.Tree.Nodes.Count);
         upsert.Parameters.AddWithValue("$edge_count", entry.Tree.Edges.Count);
@@ -469,16 +475,38 @@ public sealed class RaggableTreeCache : IRaggableTreeCache
         }
     }
 
-    // Keeps the MaxEntries entries used last; deleting an entry cascades to its files, markers, groups and runs.
-    private static async Task EvictAsync(SqliteConnection connection, SqliteTransaction tx, CancellationToken ct)
+    // Drops the entries of another runtime, which no key of this one can hit (#248), then keeps the MaxEntries
+    // entries used last; deleting an entry cascades to its files, markers, groups and runs.
+    private static async Task EvictAsync(SqliteConnection connection, SqliteTransaction tx, string runtime, CancellationToken ct)
     {
         using var delete = Command(connection, tx);
         delete.CommandText = """
+            DELETE FROM cache_entries WHERE runtime <> $runtime;
             DELETE FROM cache_entries WHERE entry_id NOT IN (
-                SELECT entry_id FROM cache_entries ORDER BY used_at DESC, entry_id DESC LIMIT $max)
+                SELECT entry_id FROM cache_entries ORDER BY used_at DESC, entry_id DESC LIMIT $max);
             """;
+        delete.Parameters.AddWithValue("$runtime", runtime);
         delete.Parameters.AddWithValue("$max", MaxEntries);
         await delete.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
+    }
+
+    // A file never shrinks on its own: once more than half of its pages are free (an eviction of a large entry),
+    // VACUUM gives them back to the disk. Below that the next save reuses them. Best-effort: the entry is already
+    // committed, and a failed VACUUM (a busy database, no room for its copy) must not reach the save's catch, which
+    // deletes the database.
+    private static async Task CompactAsync(SqliteConnection connection, CancellationToken ct)
+    {
+        try
+        {
+            using var pages = connection.CreateCommand();
+            pages.CommandText = "SELECT (SELECT freelist_count FROM pragma_freelist_count) * 2 > (SELECT page_count FROM pragma_page_count)";
+            if (Convert.ToInt64(await pages.ExecuteScalarAsync(ct).ConfigureAwait(false), System.Globalization.CultureInfo.InvariantCulture) == 0)
+                return;
+            using var vacuum = connection.CreateCommand();
+            vacuum.CommandText = "VACUUM";
+            await vacuum.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
+        }
+        catch (SqliteException) { /* the next save that finds the pages free tries again */ }
     }
 
     public async Task InvalidateAsync(string rootPath, CancellationToken ct)

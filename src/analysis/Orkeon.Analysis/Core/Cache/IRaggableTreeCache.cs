@@ -27,4 +27,11 @@ public sealed record RaggableTreeCacheEntry(
     string IndexId,
     string CacheKey,
     IReadOnlyDictionary<string, FileStamp> Files,
-    IReadOnlyDictionary<string, string> Markers);
+    IReadOnlyDictionary<string, string> Markers)
+{
+    /// <summary>
+    /// The runtime that built the entry: the cache format and the Analysis version, the part of <see cref="CacheKey"/>
+    /// another runtime can never match. A save drops every entry of another runtime (#248).
+    /// </summary>
+    public string Runtime { get; init; } = "";
+}
