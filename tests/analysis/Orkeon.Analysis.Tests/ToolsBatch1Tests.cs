@@ -139,6 +139,51 @@ public class ToolsBatch1Tests
     }
 
     [Fact]
+    public async Task PackageSummary_entry_points_match_the_whole_file_name_only()
+    {
+        var (store, dir, result) = await BuildAsync([
+            ("package.json", TestFixtures.PackageJson),
+            ("src/index.ts", TestFixtures.Utils),
+            ("src/Program.ts", TestFixtures.Utils),
+            ("src/domainEvent.ts", TestFixtures.Utils),
+            ("src/bm25Index.ts", TestFixtures.Utils),
+            ("src/programRunner.ts", TestFixtures.Utils),
+        ]);
+        try
+        {
+            var pkg = result.Tree.Nodes.First(n => n.Level == NodeLevel.L1_Package);
+            var tool = new PackageSummaryTool(store);
+            var resp = await tool.ExecuteTypedForTest(new PackageSummaryRequest { Fqn = pkg.Fqn }, CancellationToken.None);
+            Assert.Equal(["Program.ts", "index.ts"], resp.EntryPoints.Select(Path.GetFileName).Order(StringComparer.Ordinal));
+        }
+        finally { Directory.Delete(dir, recursive: true); }
+    }
+
+    [Fact]
+    public async Task PackageSummary_dependencies_are_the_packages_its_modules_import()
+    {
+        var (store, dir, result) = await BuildAsync([
+            ("packages/a/package.json", """{ "name": "a" }"""),
+            ("packages/b/package.json", """{ "name": "b" }"""),
+            ("packages/a/src/a.ts", "import { Foo } from '../../b/src/foo';\nimport { Bar } from './bar';\nimport * as lodash from 'lodash';\nexport const a = new Foo();\n"),
+            ("packages/a/src/bar.ts", "export class Bar {}\n"),
+            ("packages/b/src/foo.ts", TestFixtures.Utils),
+        ]);
+        try
+        {
+            var packages = result.Tree.Nodes.Where(n => n.Level == NodeLevel.L1_Package).ToDictionary(n => n.Name);
+            var tool = new PackageSummaryTool(store);
+
+            var a = await tool.ExecuteTypedForTest(new PackageSummaryRequest { Fqn = packages["a"].Fqn }, CancellationToken.None);
+            var b = await tool.ExecuteTypedForTest(new PackageSummaryRequest { Fqn = packages["b"].Fqn }, CancellationToken.None);
+
+            Assert.Equal([packages["b"].Fqn], a.Dependencies);
+            Assert.Empty(b.Dependencies);
+        }
+        finally { Directory.Delete(dir, recursive: true); }
+    }
+
+    [Fact]
     public async Task PackageSummary_throws_fqn_not_found_with_suggestions()
     {
         var (store, dir, _) = await BuildAsync([

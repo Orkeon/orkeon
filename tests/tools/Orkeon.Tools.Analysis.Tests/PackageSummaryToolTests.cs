@@ -5,6 +5,9 @@ namespace Orkeon.Tools.Analysis.Tests;
 
 public class PackageSummaryToolTests
 {
+    private static readonly string[] ModulePaths =
+        ["/src/a/Program.cs", "/src/a/main.go", "/src/a/__main__.py", "/src/a/DomainEvent.cs", "/src/a/Bm25Index.cs", "/src/a/MainWindow.g.cs"];
+
     [Fact]
     public void Has_stable_tool_contract()
     {
@@ -71,13 +74,24 @@ public class PackageSummaryToolTests
     }
 
     [Fact]
-    public async Task Reports_package_dependencies_from_import_edges()
+    public async Task Reports_the_packages_its_modules_import()
     {
         var pkgA = TestGraph.Package("root::a", "/src/a");
         var pkgB = TestGraph.Package("root::b", "/src/b");
+        var a1 = TestGraph.Module("/src/a/one.ts", parentId: pkgA.Id);
+        var a2 = TestGraph.Module("/src/a/two.ts", parentId: pkgA.Id);
+        var b1 = TestGraph.Module("/src/b/one.ts", parentId: pkgB.Id);
+        var external = TestGraph.Module("ext::lodash", language: "external");
+        TestGraph.Link(pkgA, a1, a2);
+        TestGraph.Link(pkgB, b1);
         var store = TestGraph.Store(
-            [pkgA, pkgB],
-            [TestGraph.Edge(pkgA, pkgB, EdgeKind.Imports)]);
+            [pkgA, pkgB, a1, a2, b1, external],
+            [
+                TestGraph.Edge(a1, b1, EdgeKind.Imports),
+                TestGraph.Edge(a2, b1, EdgeKind.Imports),
+                TestGraph.Edge(a1, a2, EdgeKind.Imports),
+                TestGraph.Edge(a2, external, EdgeKind.Imports),
+            ]);
         using var tool = new PackageSummaryTool(store);
 
         var resp = await tool.ExecuteTypedForTest(
@@ -89,6 +103,22 @@ public class PackageSummaryToolTests
             },
             CancellationToken.None);
 
-        Assert.Contains(pkgB.Id, resp.Dependencies);
+        Assert.Equal(["root::b"], resp.Dependencies);
+    }
+
+    [Fact]
+    public async Task Reports_only_modules_named_after_an_entry_point_as_entry_points()
+    {
+        var pkg = TestGraph.Package("root::a", "/src/a");
+        var modules = ModulePaths.Select(path => TestGraph.Module(path, parentId: pkg.Id)).ToArray();
+        TestGraph.Link(pkg, modules);
+        var store = TestGraph.Store([pkg, .. modules], []);
+        using var tool = new PackageSummaryTool(store);
+
+        var resp = await tool.ExecuteTypedForTest(
+            new PackageSummaryRequest { Fqn = "root::a", IncludePublicExports = false, IncludeDependencies = false },
+            CancellationToken.None);
+
+        Assert.Equal(["/src/a/Program.cs", "/src/a/__main__.py", "/src/a/main.go"], resp.EntryPoints.Order(StringComparer.Ordinal));
     }
 }
