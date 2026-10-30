@@ -36,7 +36,7 @@ public static partial class ToolsNamespaceBinding
 
         // A call from code runs in the scope of the agent attempt open on the engine (RT-06), unless
         // it already runs in one (a tool of ctx.llm.act).
-        var ns = BuildNamespace(tools, jsName => AgentRunScope.Current is null ? JsEngineAttempts.ScopeForCode(engine, jsName) : null);
+        var ns = BuildNamespace(tools, jsName => AgentRunScope.Current is null ? JsEngineAttempts.ScopeForCode(engine, jsName) : null, engine);
         foreach (var toolName in tools.Select(tool => tool.Name))
         {
             var jsName = ToCamelCase(toolName);
@@ -48,20 +48,23 @@ public static partial class ToolsNamespaceBinding
     /// <summary>
     /// The namespace object of <paramref name="tools"/>, each under its camelCase name. Each call runs in
     /// the run scope <paramref name="scopeFor"/> names (its working root holds the file and shell tools),
-    /// or in the caller's own when it names none.
+    /// or in the caller's own when it names none. What a call allocates on <paramref name="engine"/>'s thread is
+    /// left out of its memory limit (#247).
     /// </summary>
-    internal static IDictionary<string, object?> BuildNamespace(IEnumerable<IBaseTool> tools, Func<string, AgentRunScope?> scopeFor)
+    internal static IDictionary<string, object?> BuildNamespace(IEnumerable<IBaseTool> tools, Func<string, AgentRunScope?> scopeFor, Engine engine)
     {
+        var memory = engine.Constraints.Find<HostWorkMemoryConstraint>();
         IDictionary<string, object?> ns = new ExpandoObject();
         foreach (var tool in tools)
         {
             var jsName = ToCamelCase(tool.Name);
-            ns[jsName] = WrapTool(tool, jsName, scopeFor);
+            ns[jsName] = WrapTool(tool, jsName, scopeFor, memory);
         }
         return ns;
     }
 
-    private static Func<JsValue, Task<object?>> WrapTool(IBaseTool tool, string jsName, Func<string, AgentRunScope?> scopeFor)
+    private static Func<JsValue, Task<object?>> WrapTool(
+        IBaseTool tool, string jsName, Func<string, AgentRunScope?> scopeFor, HostWorkMemoryConstraint? memory)
     {
         return async input =>
         {
@@ -86,10 +89,12 @@ public static partial class ToolsNamespaceBinding
             // failed when there are 5 sequential writes.
             TagCallSiteArgs(activity, parameters);
 
-            // Started off the engine thread: Jint's memory limit reads that thread's allocation counter,
-            // and a tool whose async method completes synchronously (SQLite, an index build) would
-            // otherwise charge its whole work to the script (#247).
-            var resp = await Task.Run(() => tool.CallAsync(new ToolCallRequest(tool.Name, parameters))).ConfigureAwait(false);
+            // The tool runs here, on the engine thread up to its first real await, so its effects keep their
+            // order against the script's next statements; what it allocates there is not the script's (#247).
+            Task<Orkeon.Domain.Tools.Protocol.ToolCallResponse> call;
+            using (HostWorkMemoryConstraint.Exclude(memory))
+                call = tool.CallAsync(new ToolCallRequest(tool.Name, parameters));
+            var resp = await call.ConfigureAwait(false);
             if (!resp.Success)
                 throw BuildToolFailure(tool, resp, parameters);
             if (resp.Result is JsValue jv) return jv;

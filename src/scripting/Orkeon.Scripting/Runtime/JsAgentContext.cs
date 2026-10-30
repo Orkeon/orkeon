@@ -77,7 +77,7 @@ public sealed class JsAgentContext : JsExecutionContext, IDisposable
     /// scope, held to its working root (RT-06) however many agents run beside it.
     /// </summary>
     public IDictionary<string, object?> tools
-        => _tools ??= Orkeon.Scripting.Bindings.ToolsNamespaceBinding.BuildNamespace(_builtInTools, _ => _runScope);
+        => _tools ??= Orkeon.Scripting.Bindings.ToolsNamespaceBinding.BuildNamespace(_builtInTools, _ => _runScope, _engineRef);
 
     public JsValue state { get; private set; }
 

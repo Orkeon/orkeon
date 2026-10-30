@@ -1552,12 +1552,21 @@ public sealed partial class JsLlmFacade
             return NotAvailable(name);
         try
         {
-            // Off the engine thread, like ToolsNamespaceBinding: a tool that completes synchronously
-            // must not charge its allocations to the script's memory limit (#247).
+            // The loop reaches here on the engine thread when the model call completed synchronously:
+            // what the tool allocates there is not the script's (#247).
+            var memory = _engine.Constraints.Find<HostWorkMemoryConstraint>();
             if (_toolInvocation is not null)
-                return await Task.Run(() => InvokeThroughPipelineAsync(_toolInvocation, tool, arguments)).ConfigureAwait(false);
+            {
+                Task<string> guarded;
+                using (HostWorkMemoryConstraint.Exclude(memory))
+                    guarded = InvokeThroughPipelineAsync(_toolInvocation, tool, arguments);
+                return await guarded.ConfigureAwait(false);
+            }
 
-            var resp = await Task.Run(() => tool.CallAsync(new ProtocolToolCallRequest(name, arguments), _ct)).ConfigureAwait(false);
+            Task<Orkeon.Domain.Tools.Protocol.ToolCallResponse> call;
+            using (HostWorkMemoryConstraint.Exclude(memory))
+                call = tool.CallAsync(new ProtocolToolCallRequest(name, arguments), _ct);
+            var resp = await call.ConfigureAwait(false);
             if (!resp.Success)
                 return $"ERROR: {resp.Error ?? "tool failed"}";
             // Without the host's pipeline, the bound it would have applied: one rule for both paths.

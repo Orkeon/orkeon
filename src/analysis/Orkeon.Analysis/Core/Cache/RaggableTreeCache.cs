@@ -491,16 +491,22 @@ public sealed class RaggableTreeCache : IRaggableTreeCache
     }
 
     // A file never shrinks on its own: once more than half of its pages are free (an eviction of a large entry),
-    // VACUUM gives them back to the disk. Below that the next save reuses them.
+    // VACUUM gives them back to the disk. Below that the next save reuses them. Best-effort: the entry is already
+    // committed, and a failed VACUUM (a busy database, no room for its copy) must not reach the save's catch, which
+    // deletes the database.
     private static async Task CompactAsync(SqliteConnection connection, CancellationToken ct)
     {
-        using var pages = connection.CreateCommand();
-        pages.CommandText = "SELECT (SELECT freelist_count FROM pragma_freelist_count) * 2 > (SELECT page_count FROM pragma_page_count)";
-        if (Convert.ToInt64(await pages.ExecuteScalarAsync(ct).ConfigureAwait(false), System.Globalization.CultureInfo.InvariantCulture) == 0)
-            return;
-        using var vacuum = connection.CreateCommand();
-        vacuum.CommandText = "VACUUM";
-        await vacuum.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
+        try
+        {
+            using var pages = connection.CreateCommand();
+            pages.CommandText = "SELECT (SELECT freelist_count FROM pragma_freelist_count) * 2 > (SELECT page_count FROM pragma_page_count)";
+            if (Convert.ToInt64(await pages.ExecuteScalarAsync(ct).ConfigureAwait(false), System.Globalization.CultureInfo.InvariantCulture) == 0)
+                return;
+            using var vacuum = connection.CreateCommand();
+            vacuum.CommandText = "VACUUM";
+            await vacuum.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
+        }
+        catch (SqliteException) { /* the next save that finds the pages free tries again */ }
     }
 
     public async Task InvalidateAsync(string rootPath, CancellationToken ct)

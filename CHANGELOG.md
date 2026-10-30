@@ -34,8 +34,11 @@ hashed again at the next call.
 Jint's `LimitMemory` reads the allocation counter of the engine's thread, and a tool whose async method completes
 synchronously (the index cache's SQLite calls, an index build) ran whole on that thread: `index_codebase` on a large
 repository charged gigabytes to the script, which failed at random with `MemoryLimitExceededException` under the 2 GiB
-trusted ceiling. `tools.*` and the tool calls of `ctx.llm.act` now start off the engine thread, so a tool's work is not
-counted, however heavy; `--memory-limit-mb 0` is no longer needed for it.
+trusted ceiling. The engine's memory constraint now leaves out what a host tool allocates on the engine thread, for
+`tools.*` and for the tool calls of `ctx.llm.act`, which reached that thread after a model call that completed
+synchronously: a tool's work is not counted, however heavy, and `--memory-limit-mb 0` is no longer needed for it. The
+tool still runs where it did, so the order of its effects is unchanged, and the script's own allocations after the call
+are still counted.
 
 ### Fixed — the index cache drops the entries of another runtime (#248)
 
@@ -43,7 +46,8 @@ An index cache entry saved by another cache format or Analysis version could nev
 share of `index.db` (about 460 MB on the Orkeon repository) until two newer keys evicted it. `cache_entries` now holds
 the `runtime` that saved each entry (schema version `3`: an older database is recreated at the next save), and a save
 deletes the entries of every other runtime before the LRU eviction. A database whose free pages pass half of its pages
-is compacted with `VACUUM` after the save, so the file shrinks back on disk.
+is compacted with `VACUUM` after the save, so the file shrinks back on disk; a compaction that fails leaves the saved
+entries as they are.
 
 ### Fixed — Anthropic replays a tool call turn (#245)
 

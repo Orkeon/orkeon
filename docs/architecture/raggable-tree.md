@@ -201,7 +201,8 @@ is a miss. A root the process cannot write is indexed without a cache.
 options each find their own. A save drops every entry saved by another runtime (another cache
 format or Analysis version, the `runtime` column), which no key of the current runtime can hit, then
 evicts past that count the entry least recently used (`used_at`, which every save and every hit
-refresh). Its schema version is `PRAGMA user_version` (`3`); a database of another version has its tables dropped and created again at the next
+refresh). Its schema version is `PRAGMA user_version` (`3`); a database of another version has
+its tables dropped and created again at the next
 save, and reads as a miss until then. The connection runs with `foreign_keys = ON` and the
 journal in WAL mode.
 
@@ -287,7 +288,8 @@ A save is one transaction:
 
 After the commit, a database whose free pages are more than half of its pages (a large entry just
 dropped) is compacted with `VACUUM`, so the file shrinks back on disk; below that, the next save
-reuses the free pages.
+reuses the free pages. A compaction that fails (a busy database, no room for the copy) leaves the
+saved entries as they are, and the next save tries again.
 
 A refresh that reindexes three files therefore rewrites three groups, not the whole tree.
 A load that fails (a file that is not a SQLite database, a missing table, a blob that does

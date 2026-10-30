@@ -155,7 +155,7 @@ public sealed class JsEngineFactory
         var engine = new Engine(opt =>
         {
             ApplyTimeLimit(ApplyInteropPolicy(opt)
-                .LimitMemory(_limits.MemoryLimitBytes)
+                .Constraint(new Runtime.HostWorkMemoryConstraint(_limits.MemoryLimitBytes))
                 .LimitRecursion(_limits.RecursionLimit), _limits.ExecutionTimeout);
             ApplyPromiseTimeout(opt);
         });

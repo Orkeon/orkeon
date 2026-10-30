@@ -291,7 +291,9 @@ Un enregistrement est une seule transaction :
 
 Après le commit, une base dont les pages libres dépassent la moitié de ses pages (une grande
 entrée vient d'être supprimée) est compactée par `VACUUM`, et le fichier rétrécit sur le disque ;
-en deçà, l'enregistrement suivant réutilise les pages libres.
+en deçà, l'enregistrement suivant réutilise les pages libres. Une compaction qui échoue (une base
+occupée, pas de place pour la copie) laisse les entrées enregistrées telles quelles, et
+l'enregistrement suivant réessaie.
 
 Un rafraîchissement qui réindexe trois fichiers réécrit donc trois groupes, pas tout l'arbre.
 Un chargement qui échoue (un fichier qui n'est pas une base SQLite, une table absente, un blob

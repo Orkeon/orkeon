@@ -34,9 +34,9 @@ public sealed record ScriptingLimitsOptions
     /// peak. It uses <c>GC.GetAllocatedBytesForCurrentThread()</c> and counts
     /// every allocation since the engine was created — including short-lived
     /// intermediates from template-literal concatenation, JSON serialization
-    /// of tool calls, esbuild bundle parsing, etc. A host tool a script calls
-    /// (<c>tools.*</c>, <c>ctx.llm.act</c>) starts off the engine thread, so its own
-    /// work is not counted, however heavy (#247).
+    /// of tool calls, esbuild bundle parsing, etc. What a host tool the script calls
+    /// (<c>tools.*</c>, <c>ctx.llm.act</c>) allocates on the engine thread is left
+    /// out, so its own work is not counted, however heavy (#247).
     ///
     /// This is a security ceiling that bounds local DoS by a pathological or
     /// hostile script. Trusted production runs that genuinely need more memory

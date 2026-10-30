@@ -393,7 +393,7 @@ par la voie script d'`orkeon run`, le runner partagé et la forge :
 
 | Clé | Défaut | Rôle |
 |---|---|---|
-| `MemoryLimitBytes` | `104857600` (100 Mo) | Plafond mémoire de Jint. `orkeon run --memory-limit-mb` le surcharge pour un script procédural ; `0` ou moins le désactive. |
+| `MemoryLimitBytes` | `104857600` (100 Mo) | Plafond mémoire de Jint. Ce qu'un outil de l'hôte que le script appelle (`tools.*`, `ctx.llm.act`) alloue sur le thread du moteur est laissé de côté : son propre travail n'est pas compté. `orkeon run --memory-limit-mb` le surcharge pour un script procédural ; `0` ou moins le désactive. |
 | `RecursionLimit` | `64` | Profondeur d'appel JavaScript maximale. |
 | `ExecutionTimeout` | `00:00:30` | Borne d'horloge d'une évaluation — un script entier, ou tout un run de crew piloté par le CLR ; les décisions du contrôle des permissions ne comptent pas. |
 

@@ -77,6 +77,30 @@ public sealed class ToolsNamespaceTests
     }
 
     [Fact]
+    public async Task Tools_invocation_still_charges_the_scripts_own_allocations_after_a_tool_call()
+    {
+        var tool = new StubBaseTool("index_codebase").RespondWith(_ =>
+        {
+            var chunks = new List<byte[]>();
+            for (var i = 0; i < 64; i++)
+                chunks.Add(new byte[1024 * 1024]);
+            return new ToolCallResponse(true, chunks.Count, null);
+        });
+        var limits = new Orkeon.Scripting.Configuration.ScriptingLimitsOptions { MemoryLimitBytes = 16L * 1024 * 1024 };
+        var engine = new JsEngineFactory(limits, builtInTools: [(Orkeon.Domain.Tools.IBaseTool)tool]).Create();
+
+        var thrown = await Assert.ThrowsAnyAsync<Exception>(() => Task.Run(() => engine.Evaluate("""
+            tools.indexCodebase({ root_path: '/src' }).then(() => {
+                var arr = []; for (var i = 0; i < 1000000; i++) { arr.push('x'.repeat(1000)); }
+                return arr.length;
+            })
+            """).UnwrapIfPromise(TestContext.Current.CancellationToken))
+            .WaitAsync(HangGuards.EnginePromise, TestContext.Current.CancellationToken));
+
+        Assert.Contains("is limited to 16777216", thrown.ToString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void ToCamelCase_converts_snake_and_kebab_to_camel()
     {
         Assert.Equal("fileRead", ToolsNamespaceBinding.ToCamelCase("file_read"));
