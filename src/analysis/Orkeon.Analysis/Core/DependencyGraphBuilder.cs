@@ -13,7 +13,7 @@ namespace Orkeon.Analysis.Core;
 /// <summary>
 /// Builds the cross-node dependency edge set of a RaggableTree.
 /// </summary>
-public sealed class DependencyGraphBuilder
+public sealed partial class DependencyGraphBuilder
 {
     private readonly ILanguageAdapter _adapter;
     private readonly TreeSitterParserPool _pool;
@@ -87,6 +87,7 @@ public sealed class DependencyGraphBuilder
         var index = BuildGlobalIndex();
         // Built once: the imports add only external modules to the index, never a symbol.
         var byShortName = BuildShortNameIndex(index);
+        var scope = new ImportScope(index);
         var edges = new EdgeSet();
         var unresolvedCalls = new List<UnresolvedRef>();
         using var queries = new QueryCache();
@@ -98,7 +99,7 @@ public sealed class DependencyGraphBuilder
             var moduleNode = ctx.Nodes.FirstOrDefault(n => n.Level == NodeLevel.L2_Module);
             if (moduleNode is null) continue;
 
-            CollectFileEdges(edges, unresolvedCalls, index, byShortName, queries, filePath, moduleNode, ctx);
+            CollectFileEdges(edges, unresolvedCalls, scope, byShortName, queries, filePath, moduleNode, ctx);
         }
 
         var resolved = await resolver.ResolveAsync(unresolvedCalls, index, ct).ConfigureAwait(false);
@@ -112,7 +113,7 @@ public sealed class DependencyGraphBuilder
     private void CollectFileEdges(
         EdgeSet edges,
         List<UnresolvedRef> unresolvedCalls,
-        Dictionary<string, RaggableNode> index,
+        ImportScope scope,
         Dictionary<string, List<RaggableNode>> byShortName,
         QueryCache queries,
         string filePath,
@@ -122,34 +123,43 @@ public sealed class DependencyGraphBuilder
         using var parsed = _pool.Parse(ctx.Source, ctx.Adapter.LanguageName);
         var language = parsed.Tree.Language;
 
-        CollectImports(edges, index, filePath, moduleNode, ctx.Adapter, parsed.Root, queries.Get(language, ctx.Adapter.LanguageName, ctx.Adapter.ImportQuery));
+        CollectImports(edges, scope, filePath, moduleNode, ctx, parsed.Root, queries.Get(language, ctx.Adapter.LanguageName, ctx.Adapter.ImportQuery));
         CollectInheritance(edges, byShortName, ctx, parsed.Root, queries.Get(language, ctx.Adapter.LanguageName, ctx.Adapter.InheritanceQuery));
         CollectCalls(unresolvedCalls, ctx, moduleNode, parsed.Root, queries.Get(language, ctx.Adapter.LanguageName, ctx.Adapter.CallQuery));
     }
 
-    private static void CollectImports(
+    private void CollectImports(
         EdgeSet edges,
-        Dictionary<string, RaggableNode> index,
+        ImportScope scope,
         string filePath,
         RaggableNode moduleNode,
-        ILanguageAdapter adapter,
+        FileContext ctx,
         TsNode root,
         TsQuery? query)
     {
         var importNodes = RunQuery(query, root, "import");
+        switch (ctx.Adapter.LanguageName)
+        {
+            case "csharp":
+                CollectCSharpUsings(edges, scope, moduleNode, ctx, importNodes);
+                return;
+            case "go":
+                CollectGoImports(edges, scope, moduleNode, importNodes);
+                return;
+            case "rust":
+                CollectRustUses(edges, scope, filePath, moduleNode, importNodes, _cargoRoots);
+                return;
+        }
+
         foreach (var importNode in importNodes)
         {
             var spec = ExtractImportSpecifier(importNode);
             if (spec is null) continue;
 
-            var resolved = adapter.ResolveImportPath(spec, filePath);
+            var resolved = ctx.Adapter.ResolveImportPath(spec, filePath);
             if (resolved is null) continue;
 
-            var target = ResolveImportTarget(resolved, index);
-            if (target is null) continue;
-
-            if (moduleNode.Id == target.Id) continue;
-            edges.TryAdd($"{moduleNode.Id}→{target.Id}:{EdgeKind.Imports}", moduleNode.Id, target.Id, EdgeKind.Imports);
+            AddImport(edges, moduleNode, ResolveImportTarget(resolved, scope.Index));
         }
     }
 

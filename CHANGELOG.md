@@ -29,6 +29,19 @@ hashed again at the next call.
 | `new IndexCodebaseTool(store, builderFactory, logger)` | `new IndexCodebaseTool(store, builderFactory, cachingBuilder, logger)` |
 | `DetectedPackage.MarkerFile` only (the ecosystem) | plus `MarkerPath`, the marker file under the root |
 
+### Fixed — a C# `using`, a Go `import` and a Rust `use` draw import edges (#252)
+
+The C#, Go and Rust adapters resolved no import path, so `dependency_graph` showed no file import edge for these
+languages and `package_summary` reported no `dependencies` for their packages. The dependency graph now resolves them
+after every file is parsed. A C# `using N;` reaches the files declaring a type of namespace `N` whose name the importing
+file uses, not every file of `N` (`using static N.T;` and `using A = N.T;` reach the files declaring `T`, a `global using`
+counts in the file that holds it); a namespace the tree does not declare goes to an `ext::dotnet::N` node. A Go import
+under the module path of a `go.mod` (read through the VFS, tagged `go_module` on the package node) reaches the non-test
+`.go` files of the directory below it; any other path goes to `ext::go::<path>`. A Rust `use crate::a::b::C` reaches
+`src/a/b.rs` or `src/a/b/mod.rs`, the longest prefix that is a module file; `super::`, `self::` and a child module of the
+current one start from the current module, and any other first segment goes to `ext::cargo::<crate>`. An incremental
+refresh rebuilds the import edges of the files it parses again with the same rules.
+
 ### Fixed — a host tool no longer counts against a script's memory limit (#247)
 
 Jint's `LimitMemory` reads the allocation counter of the engine's thread, and a tool whose async method completes
