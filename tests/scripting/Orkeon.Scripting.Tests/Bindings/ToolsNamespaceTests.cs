@@ -39,7 +39,7 @@ public sealed class ToolsNamespaceTests
         Assert.IsType<JsonElement>(elementBackedDict["index_id"]);
 
         var tool = new StubBaseTool("index_codebase").RespondWithSuccess(elementBackedDict);
-        var engine = new JsEngineFactory(builtInTools: [(Orkeon.Domain.Tools.IBaseTool)tool]).Create();
+        var engine = new JsEngineFactory(builtInTools: [tool]).Create();
 
         var result = await Task.Run(() => engine.Evaluate(
             "tools.indexCodebase({ root_path: '/src' }).then(r => r.index_id + ':' + r.node_count)")
@@ -66,7 +66,7 @@ public sealed class ToolsNamespaceTests
             return new ToolCallResponse(true, chunks.Count, null);
         });
         var limits = new Orkeon.Scripting.Configuration.ScriptingLimitsOptions { MemoryLimitBytes = 16L * 1024 * 1024 };
-        var engine = new JsEngineFactory(limits, builtInTools: [(Orkeon.Domain.Tools.IBaseTool)tool]).Create();
+        var engine = new JsEngineFactory(limits, builtInTools: [tool]).Create();
 
         var result = await Task.Run(() => engine.Evaluate(
             "tools.indexCodebase({ root_path: '/src' }).then(n => 'chunks:' + n)")
@@ -87,7 +87,7 @@ public sealed class ToolsNamespaceTests
             return new ToolCallResponse(true, chunks.Count, null);
         });
         var limits = new Orkeon.Scripting.Configuration.ScriptingLimitsOptions { MemoryLimitBytes = 16L * 1024 * 1024 };
-        var engine = new JsEngineFactory(limits, builtInTools: [(Orkeon.Domain.Tools.IBaseTool)tool]).Create();
+        var engine = new JsEngineFactory(limits, builtInTools: [tool]).Create();
 
         var thrown = await Assert.ThrowsAnyAsync<Exception>(() => Task.Run(() => engine.Evaluate("""
             tools.indexCodebase({ root_path: '/src' }).then(() => {
@@ -114,7 +114,7 @@ public sealed class ToolsNamespaceTests
     public void Tools_namespace_exposes_registered_IBaseTool_via_camelCase_alias()
     {
         var tool = new StubBaseTool("file_read").RespondWithSuccess("ok");
-        var engine = new JsEngineFactory(builtInTools: [(Orkeon.Domain.Tools.IBaseTool)tool]).Create();
+        var engine = new JsEngineFactory(builtInTools: [tool]).Create();
 
         var exists = engine.Evaluate("typeof tools.fileRead === 'function'").AsBoolean();
 
@@ -125,7 +125,7 @@ public sealed class ToolsNamespaceTests
     public async Task Tools_invocation_calls_IBaseTool_CallAsync_with_supplied_parameters()
     {
         var tool = new StubBaseTool("file_read").RespondWithSuccess("content here");
-        var engine = new JsEngineFactory(builtInTools: [(Orkeon.Domain.Tools.IBaseTool)tool]).Create();
+        var engine = new JsEngineFactory(builtInTools: [tool]).Create();
 
         var result = await Task.Run(() =>
             engine.Evaluate("tools.fileRead({ path: '/data/x.txt', encoding: 'utf-8' })").UnwrapIfPromise());
@@ -151,7 +151,7 @@ public sealed class ToolsNamespaceTests
     public async Task Tools_invocation_throws_when_underlying_tool_returns_failure()
     {
         var tool = new StubBaseTool("explode").RespondWithError("kaboom");
-        var engine = new JsEngineFactory(builtInTools: [(Orkeon.Domain.Tools.IBaseTool)tool]).Create();
+        var engine = new JsEngineFactory(builtInTools: [tool]).Create();
 
         var ex = await Assert.ThrowsAnyAsync<Exception>(() => Task.Run(() =>
             engine.Evaluate("tools.explode({})").UnwrapIfPromise()));
