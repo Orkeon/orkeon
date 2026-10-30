@@ -93,6 +93,35 @@ public sealed class RaggableTreeBuilder
         return BuildCoreAsync(virtualRoot, opts, ct);
     }
 
+    /// <summary>
+    /// Builds from a discovery the caller already ran with the options of <paramref name="opts"/>, so its files are
+    /// not enumerated and hashed again.
+    /// </summary>
+    public Task<BuildResult> BuildAsync(
+        DiscoveryResult discovery,
+        IndexCodebaseRequest opts,
+        CancellationToken ct)
+    {
+        ArgumentNullException.ThrowIfNull(discovery);
+        ArgumentNullException.ThrowIfNull(opts);
+        ArgumentOutOfRangeException.ThrowIfNegative(opts.MaxParallelism);
+        return BuildFromDiscoveryAsync(discovery, opts, ct);
+    }
+
+    /// <summary>The discovery request <see cref="BuildAsync(string, IndexCodebaseRequest, CancellationToken)"/> runs.</summary>
+    public static DiscoveryRequest DiscoveryRequestOf(string virtualRoot, IndexCodebaseRequest opts)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(virtualRoot);
+        ArgumentNullException.ThrowIfNull(opts);
+        return new DiscoveryRequest
+        {
+            RootPath = virtualRoot,
+            Languages = opts.Languages,
+            Exclude = opts.Exclude,
+            RespectGitignore = opts.RespectGitignore,
+        };
+    }
+
     // A Markdown file is mapped on its own; a file of a supported language is mapped and kept with its source for
     // its graph. Touches no shared state: files are extracted in parallel, then merged in discovery order.
     private async Task<ExtractedFile?> ExtractFileAsync(DiscoveredFile file, CancellationToken ct)
@@ -143,15 +172,15 @@ public sealed class RaggableTreeBuilder
     {
         // Phase 1 — Discover (RootPath is a virtual path, resolved by FileSystemDiscoverer via VFS)
         _buildProgress?.Report(new IndexBuildProgress(IndexBuildPhase.Discovery, 0, 0));
-        var discoveryRequest = new DiscoveryRequest
-        {
-            RootPath = virtualRoot,
-            Languages = opts.Languages,
-            Exclude = opts.Exclude,
-            RespectGitignore = opts.RespectGitignore,
-        };
-        var discovery = await _discoverer.DiscoverAllAsync(discoveryRequest, ct).ConfigureAwait(false);
+        var discovery = await _discoverer.DiscoverAllAsync(DiscoveryRequestOf(virtualRoot, opts), ct).ConfigureAwait(false);
+        return await BuildFromDiscoveryAsync(discovery, opts, ct).ConfigureAwait(false);
+    }
 
+    private async Task<BuildResult> BuildFromDiscoveryAsync(
+        DiscoveryResult discovery,
+        IndexCodebaseRequest opts,
+        CancellationToken ct)
+    {
         var allNodes = new List<RaggableNode>();
         var monorepo = TreeAssembly.BuildMonorepoNode(discovery.RootPath);
         allNodes.Add(monorepo);

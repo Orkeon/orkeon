@@ -38,6 +38,18 @@ public sealed record IndexCodebaseResponse
     /// </summary>
     [JsonPropertyName("filter_stats")]
     public IndexFilterStats FilterStats { get; init; } = new();
+
+    /// <summary>
+    /// What the index cache did: <c>disabled</c> (the host wires no cache), <c>bypassed</c> (<c>use_cache</c> was
+    /// false: rebuilt, then saved), <c>miss</c> (nothing reusable: built, then saved), <c>hit</c> (reloaded, no file
+    /// changed) or <c>refreshed</c> (reloaded, the <see cref="ReindexedFileCount"/> changed files parsed again).
+    /// </summary>
+    [JsonPropertyName("cache")]
+    public string Cache { get; init; } = "disabled";
+
+    /// <summary>Files added, changed or removed since the cached index, parsed again when <see cref="Cache"/> is <c>refreshed</c>.</summary>
+    [JsonPropertyName("reindexed_file_count")]
+    public int ReindexedFileCount { get; init; }
 }
 
 public sealed record IndexFilterStats

@@ -105,6 +105,34 @@ public class DependencyGraphBuilderTests
     }
 
     [Fact]
+    public async Task ShouldAddOneImportEdge_WhenAFileImportsAModuleTwice()
+    {
+        var (_, edges) = await BuildAsync(("/r/a.ts", "import { a } from 'lodash';\nimport { b } from 'lodash';\nexport const x = a(b);\n"));
+
+        var imports = edges.Where(e => e.Kind == EdgeKind.Imports).ToList();
+        Assert.Single(imports);
+        Assert.Equal(edges.Count, edges.Select(e => e.Id).Distinct(StringComparer.Ordinal).Count());
+    }
+
+    [Fact]
+    public async Task ShouldResolveTheBaseClassOfItsOwnFile_WhenTwoFilesDefineTheName()
+    {
+        var (nodes, edges) = await BuildAsync(
+            ("/r/a.ts", "export class Base { }\nexport class Left extends Base { }\n"),
+            ("/r/b.ts", "export class Base { }\nexport class Right extends Base { }\n"),
+            ("/r/c.ts", "export class Shape { }\n"),
+            ("/r/d.ts", "export class Circle extends Shape { }\n"));
+
+        string FileOf(string id) => nodes.Single(n => n.Id == id).VirtualFilePath;
+        var extends = edges.Where(e => e.Kind == EdgeKind.Extends).ToDictionary(e => nodes.Single(n => n.Id == e.FromId).Name, e => e.ToId);
+        Assert.Equal("/r/a.ts", FileOf(extends["Left"]));
+        Assert.Equal("/r/b.ts", FileOf(extends["Right"]));
+        // A name defined in another file only still resolves, through the table built once for every file.
+        Assert.Equal("/r/c.ts", FileOf(extends["Circle"]));
+        Assert.Contains(extends["Circle"], nodes.Single(n => n.Name == "Circle").ExtendsIds);
+    }
+
+    [Fact]
     public async Task External_import_creates_external_target()
     {
         var (_, edges) = await BuildAsync(("/r/a.ts", TestFixtures.Imports));

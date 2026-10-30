@@ -109,7 +109,7 @@ All fields are immutable `record` types in `Orkeon.Analysis.DependencyInjection.
 3. **Dependency resolution** (`DependencyGraphBuilder` + `IReferenceResolver`) — resolution of imports, calls, inheritance, implementations into edges (`EdgeKind.Imports`, `Calls`, `Extends`, `Implements`). Unresolved FQNs become `UnresolvedRef`.
 4. **Fingerprinting** (`IFrameworkFingerprinter`) — application of per-decorator/annotation rules (NestJS, Angular, ASP.NET, Flask, FastAPI): placing tags such as `http-endpoint`, `guard`, `service` on the relevant nodes.
 5. **Enrichment** — optionally an LLM summary (`INodeSummarizer`, when the call sets `enrich_with_llm` and a summarizer is registered), composition of the `EmbeddingText` (`IEmbeddingTextComposer`), then batch embedding (`IEmbeddingProvider`, skipped when none is registered).
-6. **Persistence** — the tree lives in `InMemoryRaggableStore` (`index_codebase` replaces its content), which also answers every query. When an `IVectorStoreProvider` is registered, `IndexAsync` additionally receives a mirror of the embeddings — no shipped host registers one (`MemoryProviderVectorStoreAdapter`, `Orkeon.Analysis.Vectors`, adapts any `IMemoryProvider` for a host that wants it), and nothing reads that mirror back. The `RaggableTreeCache` JSON serializer exists but is wired by no shipped host.
+6. **Persistence** — the tree lives in `InMemoryRaggableStore` (`index_codebase` replaces its content), which also answers every query. When an `IVectorStoreProvider` is registered, `IndexAsync` additionally receives a mirror of the embeddings — no shipped host registers one (`MemoryProviderVectorStoreAdapter`, `Orkeon.Analysis.Vectors`, adapts any `IMemoryProvider` for a host that wants it), and nothing reads that mirror back. Between sessions, `index_codebase` saves the tree in a SQLite database, `<root>/.orkeon/cache/raggable-tree/index.db` (see [Index cache](#index-cache)).
 
 Each phase reports its progress (`IndexBuildPhase`: Discovery, Parse, Resolve, Enrich, Embed, Persist) to an optional `IProgress<IndexBuildProgress>` registered by the host (the REPL wires it to its status-line progress bar).
 
@@ -164,12 +164,142 @@ The 28 tools are registered via `AddRaggableTreeTools` (`Orkeon.Tools.Analysis.D
 `exclude` (default `node_modules`, `dist`, `.git`, `bin`, `obj`),
 `respect_gitignore` (default `true`), `enrich_with_llm` (default `false`; needs
 a registered summarizer), `root_alias` (replaces the virtual-root prefix of every
-FQN), `embedding_model` and `max_parallelism` (how many files are read and parsed
+FQN), `embedding_model`, `max_parallelism` (how many files are read and parsed
 at once: `0`, the default, one per processor; `1` one after the other; a negative
-value is refused) — exactly what the build reads. Statements are always
+value is refused) and `use_cache` (default `true`; `false` rebuilds from scratch, then
+saves) — exactly what the build reads. Statements are always
 extracted, and an argument the request does not declare is ignored.
 `incremental_reindex` accepts the same `root_path`, `languages` and
 `enrich_with_llm`.
+
+### Index cache
+
+`AddRaggableTree` registers `CachingTreeBuilder`, which `index_codebase` uses to keep the
+index between sessions. Each build saves the tree, the SHA-256, size and write time of every
+indexed file and the SHA-256 of every package marker in one SQLite database, `<root>/.orkeon/cache/raggable-tree/index.db`,
+in a folder holding its own `.gitignore` (`*`). The next call with the same options reads
+it back and answers `cache`:
+
+| `cache` | When | What it does |
+|---|---|---|
+| `hit` | No file changed | Reloads the saved tree |
+| `refreshed` | At most half of the files changed (added, modified, removed), no package marker changed, no `root_alias` | Reloads the tree and reindexes the changed files (`reindexed_file_count`), as `incremental_reindex` does, then saves it |
+| `miss` | Nothing saved, a key change, a changed marker, or more files changed | Builds from scratch, then saves |
+| `bypassed` | `use_cache: false` | Builds from scratch, then saves |
+| `disabled` | The tool was built without a cache (no `AddRaggableTree`) | Builds from scratch, saves nothing |
+
+The key covers what shapes the tree beyond the files: the options (`languages`, `exclude`,
+`respect_gitignore`, `root_alias`, `enrich_with_llm`, `embedding_model`, not
+`max_parallelism`), the Analysis assembly version, the serializer version, and the adapters,
+fingerprinters, summarizer and embedder (with its dimension) the host wires. A changed key
+is a miss. A root the process cannot write is indexed without a cache.
+
+#### Database schema
+
+`RaggableTreeCache` owns the database. One database keeps up to `RaggableTreeCache.MaxEntries`
+(`3`) saved indexes side by side, one per key: two callers indexing one root with different
+options each find their own. A save past that count evicts the entry least recently used
+(`used_at`, which every save and every hit refresh). Its schema version is `PRAGMA user_version`
+(`2`); a database of another version has its tables dropped and created again at the next
+save, and reads as a miss until then. The connection runs with `foreign_keys = ON` and the
+journal in WAL mode.
+
+| Table | Primary key | Holds |
+|---|---|---|
+| `cache_entries` | `entry_id` (rowid alias); `cache_key` `UNIQUE` | One saved index: its key, identity and edges |
+| `indexed_files` | (`entry_id`, `path`) (`WITHOUT ROWID`) | The stamp of each indexed file of an entry |
+| `package_markers` | (`entry_id`, `path`) (`WITHOUT ROWID`) | The SHA-256 of each package marker of an entry |
+| `node_groups` | `group_id` (rowid alias); (`entry_id`, `virtual_path`) `UNIQUE` | The nodes of one source file of an entry |
+| `node_runs` | (`entry_id`, `position`) (`WITHOUT ROWID`) | The order of an entry's nodes in its tree |
+
+Every other table names its entry through `entry_id`, a `FOREIGN KEY` → `cache_entries (entry_id)`
+`ON DELETE CASCADE`: deleting an entry deletes its files, markers, groups and runs with it.
+
+`cache_entries`:
+
+| Column | Type | Constraint | Meaning |
+|---|---|---|---|
+| `entry_id` | `INTEGER` | `PRIMARY KEY` | Surrogate key, referenced by every other table |
+| `cache_key` | `TEXT` | `NOT NULL UNIQUE` | The SHA-256 of the key described above |
+| `index_id` | `TEXT` | `NOT NULL` | The `IndexId` of the saved tree |
+| `generation` | `INTEGER` | `NOT NULL`, `CHECK (generation > 0)` | Counts the saves under this key, from `1` |
+| `node_count`, `edge_count` | `INTEGER` | `NOT NULL` | The size of the tree, for whoever inspects the database; the load does not read them |
+| `edges` | `BLOB` | `NOT NULL` | Every edge, gzip of the JSON array of the serializer's edges |
+| `saved_at` | `TEXT` | `NOT NULL` | The UTC time of the last save, ISO 8601 |
+| `used_at` | `TEXT` | `NOT NULL` | The UTC time of the last save or hit, ISO 8601; orders the eviction |
+
+`indexed_files`:
+
+| Column | Type | Constraint | Meaning |
+|---|---|---|---|
+| `entry_id` | `INTEGER` | `NOT NULL`, `FOREIGN KEY` `ON DELETE CASCADE` | The entry |
+| `path` | `TEXT` | `NOT NULL` | The file, relative to the root |
+| `sha256` | `TEXT` | `NOT NULL` | The SHA-256 of its content, lowercase hex |
+| `size_bytes` | `INTEGER` | `NOT NULL` | Its size when it was hashed |
+| `modified_ticks` | `INTEGER` | nullable | Its last write time (UTC ticks) when it was hashed; `NULL` when that time is not trusted |
+
+`package_markers` has `entry_id`, `path` and `sha256`, as `indexed_files`. The builder
+compares them with the files it discovers to tell a hit, a refresh or a miss.
+
+`node_groups`:
+
+| Column | Type | Constraint | Meaning |
+|---|---|---|---|
+| `group_id` | `INTEGER` | `PRIMARY KEY` | Surrogate key, referenced by `node_runs` |
+| `entry_id` | `INTEGER` | `NOT NULL`, `FOREIGN KEY` `ON DELETE CASCADE` | The entry; (`entry_id`, `group_id`) is `UNIQUE` too, the target of `node_runs`' foreign key |
+| `virtual_path` | `TEXT` | `NOT NULL`, `UNIQUE` with `entry_id` | The source file of the nodes (`VirtualFilePath`); the nodes without a file share the empty path |
+| `node_count` | `INTEGER` | `NOT NULL`, `CHECK (node_count > 0)` | How many nodes `nodes` holds |
+| `content_sha256` | `TEXT` | `NOT NULL` | The SHA-256 of the uncompressed JSON of `nodes` |
+| `generation` | `INTEGER` | `NOT NULL` | The generation of the save that last wrote the row |
+| `nodes` | `BLOB` | `NOT NULL` | gzip of the JSON array of the group's nodes, in tree order |
+
+`node_runs`:
+
+| Column | Type | Constraint | Meaning |
+|---|---|---|---|
+| `entry_id` | `INTEGER` | `NOT NULL`, `FOREIGN KEY` `ON DELETE CASCADE` | The entry |
+| `position` | `INTEGER` | `NOT NULL` | The rank of the run in its entry, from `0` |
+| `group_id` | `INTEGER` | `NOT NULL`; (`entry_id`, `group_id`) `FOREIGN KEY` → `node_groups (entry_id, group_id)`, indexed (`ix_node_runs_group`) | The group the run takes its nodes from |
+| `node_count` | `INTEGER` | `NOT NULL`, `CHECK (node_count > 0)` | How many nodes the run takes |
+
+The tree's node list is not grouped by file: the nodes of one file can come back after
+another file's. `node_runs` keeps that order: the load reads an entry's runs by `position`
+and each takes the next `node_count` nodes of its group, so the tree reads back in the order
+it was saved. A run that asks for more nodes than its group holds, or a group whose nodes no
+run takes up, makes the load a miss. The composite foreign key forbids a run to name a group
+that does not exist or belongs to another entry, and forbids deleting a group a run still
+names: a save deletes the runs before the groups. The check runs at the end of each
+statement, so the cascade from an entry deletes its runs and groups together.
+
+A save is one transaction:
+
+1. The entry of the key is upserted (`ON CONFLICT (cache_key) DO UPDATE`): a new key starts
+   at generation `1`, a known one adds one; `saved_at` and `used_at` take the current time.
+2. The entry's `indexed_files` and `package_markers` are rewritten.
+3. The nodes are grouped by file. A group whose `content_sha256` is unchanged is left as it
+   is; a changed or new group is upserted (`ON CONFLICT (entry_id, virtual_path) DO UPDATE`)
+   with the current generation; a group whose file is gone is deleted after the runs.
+4. The entry's `node_runs` are rewritten.
+5. The entries past `MaxEntries`, by `used_at` from the most recent, are deleted, their rows
+   with them.
+
+A refresh that reindexes three files therefore rewrites three groups, not the whole tree.
+A load that fails (a file that is not a SQLite database, a missing table, a blob that does
+not decompress or deserialize, runs and groups that disagree) is a miss. A save that fails on a
+SQLite error deletes the database with its `-wal` and `-shm` files and tries once more.
+
+#### File stamps
+
+Discovering the files hashes each of them, which reads every byte of the root at every call.
+As `git status` does, the builder hands the discoverer the stamps it saved: a file whose size
+and last write time equal its stamp keeps the saved SHA-256 without being read (the
+discoverer still checks that the VFS lets it read the file). A stamp keeps the write time
+only when it is older than the start of the discovery by more than two seconds; a file
+written within that window, or later, is stored with `modified_ticks` `NULL` and hashed
+again at the next call, so a change made during a build, or within the clock's resolution,
+is never hidden. The stamp cannot see a change that keeps both the size and the write time
+(a tool that restores the time); `use_cache: false` rebuilds from the content.
+
 
 ## Agent strategies
 
@@ -499,7 +629,7 @@ Implement `IVectorStoreProvider` (`IndexAsync`, `SearchAsync`, `DeleteAsync`) an
 - The summarizer is C#-only (`Summarizer.Provider` + an `ILlmProvider`); OpenAI/Ollama embeddings need their endpoint, while the runner host's on-device default needs nothing. The pipeline works without embeddings (`codebase_search` then ranks by BM25 only).
 - The index is process-local: `InMemoryRaggableStore` is rebuilt by `index_codebase` in each process, and the optional vector-store mirror is never read back.
 - `FileSystemWatcherCodebaseWatcher` (the `ICodebaseWatcher` implementation, registered by no shipped host) relies on `System.IO.FileSystemWatcher` — on Linux/WSL, rename events may arrive decomposed (observed as Deleted then Created).
-- The JSON cache (`RaggableTreeCache`, wired by no shipped host) is not versioned: an adapter update may invalidate existing caches, which are then rebuilt on demand.
+- The index cache refreshes in place only when no `root_alias` is set and at most half of the files changed; otherwise it rebuilds from scratch. A file whose content is unchanged keeps its saved nodes even when a file it imports changed: the refresh relinks the edges, it does not parse the file again. The database keeps `MaxEntries` (3) keys: a fourth evicts the least recently used. A file stamp does not see a change that keeps both the size and the write time; `use_cache: false` rebuilds from the content.
 
 ---
 
