@@ -223,6 +223,43 @@ public class ModelPricingRegistryTests
         Assert.Equal((decimal)expectedPrompt, pricing.PromptPricePerMillion);
         Assert.Equal((decimal)expectedCompletion, pricing.CompletionPricePerMillion);
     }
+
+    /// <summary>#257 - every Anthropic 5.x model has a price, read through the prefix or its own entry, with the cache rates.</summary>
+    [Trait("BR", "CH-257")]
+    [Theory]
+    [InlineData("claude-haiku-5-5", 0.10, 0.50, 0.125, 0.01)]
+    [InlineData("claude-haiku-5", 0.10, 0.50, 0.125, 0.01)]
+    [InlineData("claude-sonnet-5-5", 2.00, 10.00, 2.50, 0.20)]
+    [InlineData("claude-opus-5-5", 4.00, 20.00, 5.00, 0.20)]
+    [InlineData("claude-opus-5", 5.00, 25.00, 6.25, 0.50)]
+    [InlineData("claude-fable-5-1", 10.00, 50.00, 12.50, 0.25)]
+    [InlineData("claude-opus-4-8", 5.00, 25.00, 6.25, 0.50)]
+    [InlineData("claude-opus-4-1", 15.00, 75.00, 18.75, 1.50)]
+    public void An_Anthropic_model_declares_its_prompt_and_cache_rates(
+        string model, double prompt, double completion, double cacheWrite, double cacheRead)
+    {
+        var pricing = _sut.GetPricing(model);
+
+        Assert.Equal((decimal)prompt, pricing.PromptPricePerMillion);
+        Assert.Equal((decimal)completion, pricing.CompletionPricePerMillion);
+        Assert.Equal((decimal)cacheWrite, pricing.CacheWritePricePerMillion);
+        Assert.Equal((decimal)cacheRead, pricing.CacheReadPricePerMillion);
+    }
+
+    /// <summary>#257 - no Anthropic entry is left without the cache rates: a cached call would pay the full prompt rate.</summary>
+    [Trait("BR", "CH-257")]
+    [Fact]
+    public void Every_Anthropic_default_pricing_declares_both_cache_rates()
+    {
+        var anthropic = _sut.GetAllPricings().Values.Where(p => p.ModelPattern.StartsWith("claude-", StringComparison.Ordinal)).ToList();
+
+        Assert.NotEmpty(anthropic);
+        Assert.All(anthropic, p =>
+        {
+            Assert.NotNull(p.CacheWritePricePerMillion);
+            Assert.NotNull(p.CacheReadPricePerMillion);
+        });
+    }
 }
 
 public class CostBudgetManagerTests
@@ -240,6 +277,30 @@ public class CostBudgetManagerTests
             _pricingRegistry,
             Options.Create(new CostTrackingOptions()),
             NullLogger<CostBudgetManager>.Instance);
+    }
+
+    /// <summary>#257 - a Haiku 5.5 call is priced, and its cache tokens at the cache rates, not the prompt rate.</summary>
+    [Trait("BR", "CH-257")]
+    [Fact]
+    public void A_cached_Haiku_5_5_call_costs_the_cache_rates_and_is_priced()
+    {
+        _sut.RecordUsage(new CostUsageEvent
+        {
+            Model = "claude-haiku-5-5",
+            PromptTokens = 10_000,
+            CompletionTokens = 1_000,
+            CacheWriteTokens = 4_000,
+            CacheHitTokens = 5_000
+        });
+
+        var report = _sut.GetReport();
+
+        var usage = report.ModelUsageByModel["claude-haiku-5-5"];
+        Assert.True(usage.Priced);
+        Assert.Equal(0, usage.UnpricedCalls);
+        Assert.Equal(0, report.TotalUsage.UnpricedCalls);
+        var expected = (1_000 * 0.10m + 4_000 * 0.125m + 5_000 * 0.01m + 1_000 * 0.50m) / 1_000_000m;
+        Assert.Equal(expected, usage.Cost);
     }
 
     /// <summary>#226 - the report keeps the reasoning tokens by model and says which models carry a price.</summary>

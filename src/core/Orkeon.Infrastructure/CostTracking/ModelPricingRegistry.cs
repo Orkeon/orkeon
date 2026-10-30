@@ -130,21 +130,33 @@ public sealed partial class ModelPricingRegistry : IModelPricingRegistry
         Register("o1-mini", 3.00m, 12.00m);
         Register("o3-mini", 1.10m, 4.40m);
 
-        // Anthropic models — vendor pricing page read 2026-09-19. Sonnet 5's introductory
-        // 2 / 10 became its standard price (the rise to 3 / 15 announced for 2026-09-01 was
-        // cancelled); Fable 5.1 and Fable 5 share the top tier.
-        Register("claude-fable-5-1", 10.00m, 50.00m);
-        Register("claude-fable-5", 10.00m, 50.00m);
-        Register("claude-opus-5", 5.00m, 25.00m);
-        Register("claude-sonnet-5", 2.00m, 10.00m);
-        Register("claude-haiku-4-5", 1.00m, 5.00m);
-        Register("claude-opus-4", 15.00m, 75.00m);
-        Register("claude-sonnet-4", 3.00m, 15.00m);
-        Register("claude-3-opus", 15.00m, 75.00m);
-        Register("claude-3.5-sonnet", 3.00m, 15.00m);
-        Register("claude-3-sonnet", 3.00m, 15.00m);
-        Register("claude-3.5-haiku", 0.80m, 4.00m);
-        Register("claude-3-haiku", 0.25m, 1.25m);
+        // Anthropic models — vendor pricing page read 2026-10-30 (#257). Every entry carries the
+        // prompt-cache rates: a write at 1.25x the prompt rate (the 5-minute TTL — the 1-hour TTL
+        // writes at 2x, but the usage event carries no TTL, so the cost assumes the 5-minute rate),
+        // a read at 0.1x the prompt rate unless the page states another figure. Sonnet 5's
+        // introductory 2 / 10 is its standard price; Fable 5.1 and Fable 5 share the top tier.
+        RegisterAnthropic("claude-fable-5-1", 10.00m, 50.00m, cacheReadPricePerMillion: 0.25m);
+        RegisterAnthropic("claude-fable-5", 10.00m, 50.00m);
+        // Opus 5.5 sits below the Opus 5 tier, so the prefix would overcharge it.
+        RegisterAnthropic("claude-opus-5-5", 4.00m, 20.00m, cacheReadPricePerMillion: 0.20m);
+        RegisterAnthropic("claude-opus-5", 5.00m, 25.00m);
+        // Sonnet 5.5 and Sonnet 5 share 2 / 10 and the 0.20 read: the prefix holds.
+        RegisterAnthropic("claude-sonnet-5", 2.00m, 10.00m);
+        // Haiku 5.5: the rate of a prompt up to 100K tokens; a longer prompt bills 0.50 / 2.50,
+        // which the registry does not model.
+        RegisterAnthropic("claude-haiku-5", 0.10m, 0.50m);
+        RegisterAnthropic("claude-haiku-4-5", 1.00m, 5.00m);
+        // Opus 4.6, 4.7 and 4.8 are priced at the Opus 5 tier, below Opus 4 and 4.1.
+        RegisterAnthropic("claude-opus-4-8", 5.00m, 25.00m);
+        RegisterAnthropic("claude-opus-4-7", 5.00m, 25.00m);
+        RegisterAnthropic("claude-opus-4-6", 5.00m, 25.00m);
+        RegisterAnthropic("claude-opus-4", 15.00m, 75.00m);
+        RegisterAnthropic("claude-sonnet-4", 3.00m, 15.00m);
+        RegisterAnthropic("claude-3-opus", 15.00m, 75.00m);
+        RegisterAnthropic("claude-3.5-sonnet", 3.00m, 15.00m);
+        RegisterAnthropic("claude-3-sonnet", 3.00m, 15.00m);
+        RegisterAnthropic("claude-3.5-haiku", 0.80m, 4.00m);
+        RegisterAnthropic("claude-3-haiku", 0.25m, 1.25m);
 
         // Embedding models
         RegisterEmbedding("text-embedding-3-small", 0.02m);
@@ -160,6 +172,27 @@ public sealed partial class ModelPricingRegistry : IModelPricingRegistry
             PromptPricePerMillion = promptPricePerMillion,
             CompletionPricePerMillion = completionPricePerMillion,
             EffectiveDate = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc)
+        };
+    }
+
+    /// <summary>
+    /// Registers an Anthropic model with its prompt-cache rates: a write costs 1.25x the prompt rate
+    /// (the 5-minute TTL), a read 0.1x unless the vendor states another figure.
+    /// </summary>
+    private void RegisterAnthropic(
+        string model,
+        decimal promptPricePerMillion,
+        decimal completionPricePerMillion,
+        decimal? cacheReadPricePerMillion = null)
+    {
+        _pricings[model] = new ModelPricing
+        {
+            ModelPattern = model,
+            PromptPricePerMillion = promptPricePerMillion,
+            CompletionPricePerMillion = completionPricePerMillion,
+            CacheWritePricePerMillion = promptPricePerMillion * 1.25m,
+            CacheReadPricePerMillion = cacheReadPricePerMillion ?? promptPricePerMillion * 0.10m,
+            EffectiveDate = new DateTime(2026, 10, 30, 0, 0, 0, DateTimeKind.Utc)
         };
     }
 

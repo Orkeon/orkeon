@@ -236,7 +236,12 @@ de coûts `by_model`, inchangée. Un compte de cache ou de raisonnement qu'aucun
 absente de l'entrée de `by_model_tokens[]` ; 0 signifie que le fournisseur n'a rien mesuré. Un modèle dont le `ModelPricing` déclare `CacheWritePricePerMillion` /
 `CacheReadPricePerMillion` est tarifé `(prompt - écriture - lecture) x tarif prompt + écriture x tarif
 d'écriture + lecture x tarif de lecture + complétion x tarif de complétion` ; sans ces tarifs, le coût est
-inchangé.
+inchangé. Chaque entrée Anthropic intégrée les déclare (#257) : une écriture à 1,25x le tarif prompt, une lecture
+à 0,1x sauf chiffre propre du fournisseur (Opus 5.5 et Sonnet 5.5 lisent à 0,20 $/M, Fable 5.1 à 0,25 $/M). Le
+tarif d'écriture est celui du TTL de 5 minutes : le TTL d'une heure écrit à 2x le tarif prompt, mais l'événement
+d'usage ne porte pas le TTL, si bien qu'une écriture d'une heure est comptée au tarif de 5 minutes. Haiku 5.5
+est tarifé à son tarif pour un prompt jusqu'à 100K jetons ; un prompt plus long est facturé davantage, ce que le
+registre ne modélise pas.
 
 Le TTL du cache est `LlmCacheConfig.Ttl` (`5m` ou `1h`). Un appel peut le porter comme option
 `LlmChatOptionsKeys.CacheTtl` (`orkeon:cache_ttl`), que `ChatOptionsComposer` remplit depuis le

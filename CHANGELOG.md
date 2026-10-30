@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — Anthropic pricing: Haiku 5.x priced, the prompt cache at its own rates (#257)
+
+`ModelPricingRegistry` had no entry for `claude-haiku-5*`, so a Haiku 5.5 call counted as unpriced, and no
+Anthropic entry declared `CacheWritePricePerMillion` / `CacheReadPricePerMillion`, so a cached call paid the full
+prompt rate on every token. Every Anthropic entry now carries both rates (a write at 1.25x the prompt rate, a read
+at 0.1x, or the vendor's own figure: 0.20 $/M on Opus 5.5 and Sonnet 5.5, 0.25 $/M on Fable 5.1), `claude-haiku-5`
+is priced at 0.10 / 0.50, and `claude-opus-5-5` (4 / 20) and `claude-opus-4-6`, `-4-7`, `-4-8` (5 / 25) get their
+own entries since the `claude-opus-5` and `claude-opus-4` prefixes overcharged them. The write rate is the
+5-minute TTL's: the usage event carries no TTL, so a 1-hour write (2x) is costed at the 5-minute rate, as
+`docs/architecture/llm-providers.md` says.
+
 ### Added — a script agent can request the prompt cache (#254)
 
 `agentBuilder().cache({ systemPrompt?, tools?, ttl?: "5m" | "1h" })` and the `cache` key of `LlmConfig.with({...})`

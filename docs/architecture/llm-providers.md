@@ -227,7 +227,11 @@ count that no call reported is null in `ModelUsage`, never 0 (a call that report
 null + 5 = 5), and its key is absent from the `by_model_tokens[]` entry; 0 means the provider measured nothing. A model whose
 `ModelPricing` declares `CacheWritePricePerMillion` / `CacheReadPricePerMillion` is priced as
 `(prompt - write - read) x prompt rate + write x write rate + read x read rate + completion x completion rate`;
-without those rates the cost is unchanged.
+without those rates the cost is unchanged. Every built-in Anthropic entry declares them (#257): a write at
+1.25x the prompt rate, a read at 0.1x unless the vendor states another figure (Opus 5.5 and Sonnet 5.5 read at
+0.20 $/M, Fable 5.1 at 0.25 $/M). The write rate is the 5-minute TTL's: the 1-hour TTL writes at 2x the prompt
+rate, but the usage event carries no TTL, so a 1-hour write is costed at the 5-minute rate. Haiku 5.5 is priced
+at its rate for a prompt up to 100K tokens; a longer prompt bills more, which the registry does not model.
 
 The cache TTL is `LlmCacheConfig.Ttl` (`5m` or `1h`). A call can carry it as the option
 `LlmChatOptionsKeys.CacheTtl` (`orkeon:cache_ttl`), which `ChatOptionsComposer` fills from the agent's
