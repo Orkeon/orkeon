@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — `grep` counts: `output_mode: "count"`, `total_matches` on every answer (#260)
+
+A "how many" question over a tree took one `grep` call per file, or a hit list far too long for a single number.
+`grep` now takes `output_mode` (`"hits"`, the default, or `"count"`). In count mode the answer carries no hit line:
+`total_matches`, `files_matched` and `counts`, the per-file counts highest first, cut to `max_results` entries. In
+both modes `total_matches` and `files_matched` are returned, and `scan_complete` says whether every candidate file was
+scanned to its end: reaching `max_results` no longer stops the scan, only `max_files` or a timeout does, so a total
+read with `scan_complete: true` is exact even when the hits were cut. `truncated` keeps saying when hits or files were
+left out.
+
 ### Fixed — Anthropic pricing: Haiku 5.x priced, the prompt cache at its own rates (#257)
 
 `ModelPricingRegistry` had no entry for `claude-haiku-5*`, so a Haiku 5.5 call counted as unpriced, and no

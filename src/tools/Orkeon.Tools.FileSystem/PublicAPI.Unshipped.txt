@@ -1,1 +1,27 @@
 #nullable enable
+const Orkeon.Tools.FileSystem.GrepOutputModes.Count = "count" -> string!
+const Orkeon.Tools.FileSystem.GrepOutputModes.Hits = "hits" -> string!
+Orkeon.Tools.FileSystem.GrepFileCount
+Orkeon.Tools.FileSystem.GrepFileCount.<Clone>$() -> Orkeon.Tools.FileSystem.GrepFileCount!
+Orkeon.Tools.FileSystem.GrepFileCount.Count.get -> int
+Orkeon.Tools.FileSystem.GrepFileCount.Count.init -> void
+Orkeon.Tools.FileSystem.GrepFileCount.Equals(Orkeon.Tools.FileSystem.GrepFileCount? other) -> bool
+Orkeon.Tools.FileSystem.GrepFileCount.GrepFileCount() -> void
+Orkeon.Tools.FileSystem.GrepFileCount.Path.get -> string!
+Orkeon.Tools.FileSystem.GrepFileCount.Path.init -> void
+Orkeon.Tools.FileSystem.GrepOutputModes
+Orkeon.Tools.FileSystem.GrepRequest.OutputMode.get -> string!
+Orkeon.Tools.FileSystem.GrepRequest.OutputMode.init -> void
+Orkeon.Tools.FileSystem.GrepResponse.Counts.get -> System.Collections.Immutable.ImmutableList<Orkeon.Tools.FileSystem.GrepFileCount!>!
+Orkeon.Tools.FileSystem.GrepResponse.Counts.init -> void
+Orkeon.Tools.FileSystem.GrepResponse.FilesMatched.get -> int
+Orkeon.Tools.FileSystem.GrepResponse.FilesMatched.init -> void
+Orkeon.Tools.FileSystem.GrepResponse.ScanComplete.get -> bool
+Orkeon.Tools.FileSystem.GrepResponse.ScanComplete.init -> void
+Orkeon.Tools.FileSystem.GrepResponse.TotalMatches.get -> int
+Orkeon.Tools.FileSystem.GrepResponse.TotalMatches.init -> void
+override Orkeon.Tools.FileSystem.GrepFileCount.Equals(object? obj) -> bool
+override Orkeon.Tools.FileSystem.GrepFileCount.GetHashCode() -> int
+override Orkeon.Tools.FileSystem.GrepFileCount.ToString() -> string!
+static Orkeon.Tools.FileSystem.GrepFileCount.operator ==(Orkeon.Tools.FileSystem.GrepFileCount? left, Orkeon.Tools.FileSystem.GrepFileCount? right) -> bool
+static Orkeon.Tools.FileSystem.GrepFileCount.operator !=(Orkeon.Tools.FileSystem.GrepFileCount? left, Orkeon.Tools.FileSystem.GrepFileCount? right) -> bool
