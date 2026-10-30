@@ -133,7 +133,7 @@ Ranges are UTF-8 **byte** offsets (`NodeRange.StartByte`/`EndByte`), like the ot
 | `index_status` | Lists every indexed virtual root (date, node/edge counts) | `{}` |
 | `is_path_indexed` | Checks whether a path is covered by an indexed root | `{ "virtual_path": "/src/app/main.ts" }` |
 | `codebase_map` | Overview: packages, file/symbol counts | `{ "level": "L2_Module" }` |
-| `package_summary` | Summary of a package (modules, dependencies, key symbols) | `{ "fqn": "app::core" }` |
+| `package_summary` | Summary of a package (modules, entry points such as `Program.cs` or `index.ts`, the packages its modules import, key symbols) | `{ "fqn": "app::core" }` |
 | `symbol_detail` | Detail of a symbol (signature, doc, callers, callees) | `{ "fqn": "app::UserService::create" }` |
 | `symbol_source` | Source code excerpt (signature, body, full span) | `{ "fqn": "...", "mode": "SignatureAndBody" }` |
 | `codebase_search` | Hybrid search — embedding + BM25 fused (see [below](#hybrid-search)) | `{ "query": "session expiration", "top_k": 10 }` |
@@ -632,7 +632,7 @@ Implement `IVectorStoreProvider` (`IndexAsync`, `SearchAsync`, `DeleteAsync`) an
 
 - No support for C++ macros / fully resolved templates, nor for Ruby/Elixir metaprogramming.
 - The import resolver is heuristic for dynamic languages (Python, TypeScript, JavaScript, Ruby, PHP): re-exports and monkey patches can produce `UnresolvedRef`.
-- File import edges come from relative paths only: Java `import`, PHP `use`, Ruby `require` (as opposed to `require_relative`) and a C `#include <...>` name a package, a namespace or a system header, not a file, and draw no edge to a file of the tree; a Bash `source` whose path holds a variable is not resolved. A PHP path starting with `/` (`__DIR__ . '/lib/a.php'`) is read from the file's directory.
+- File import edges come from relative paths only: a C# `using`, a Go `import` and a Rust `use` are never resolved (their adapters resolve no import path), Java `import`, PHP `use`, Ruby `require` (as opposed to `require_relative`) and a C `#include <...>` name a package, a namespace or a system header, not a file, and draw no edge to a file of the tree; a Bash `source` whose path holds a variable is not resolved. A PHP path starting with `/` (`__DIR__ . '/lib/a.php'`) is read from the file's directory. `package_summary` derives a package's `dependencies` from these edges (the packages holding the files its modules import), so a C#, Go or Rust package reports none.
 - Edges resolve within a graph group (`DependencyGraphBuilder.GraphGroupOf`): C and C++ share one, so a `.c` file reaches the `.h` header it includes (parsed as C++) and the functions declared there; JavaScript and TypeScript share another. The other languages resolve each in their own.
 - The summarizer is C#-only (`Summarizer.Provider` + an `ILlmProvider`); OpenAI/Ollama embeddings need their endpoint, while the runner host's on-device default needs nothing. The pipeline works without embeddings (`codebase_search` then ranks by BM25 only).
 - The index is process-local: `InMemoryRaggableStore` is rebuilt by `index_codebase` in each process, and the optional vector-store mirror is never read back.
