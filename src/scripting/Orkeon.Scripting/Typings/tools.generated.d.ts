@@ -586,6 +586,7 @@ declare global {
             root_path?: string;
             to_commit?: string | null;
         }, ctx?: ExecutionContext): Promise<{
+            readonly cache: string;
             readonly edge_count: number;
             readonly elapsed: string;
             readonly embedding_stats?: { readonly dimensions: number; readonly elapsed: string; readonly model: string; readonly nodes_embedded: number; readonly nodes_skipped: number; readonly provider: string; };
@@ -594,19 +595,23 @@ declare global {
             readonly filter_stats: { readonly excluded_by_exclude_set: number; readonly excluded_by_gitignore: number; readonly excluded_by_language: number; readonly excluded_by_policy: number; readonly excluded_by_policy_paths: readonly string[]; readonly excluded_by_suffix: number; readonly physical_entries_probe: number; readonly physical_root: string; readonly total_enumerated: number; readonly vfs_file_entries_yielded: number; };
             readonly index_id: string;
             readonly node_count: number;
+            readonly reindexed_file_count: number;
             readonly statement_count: number;
         }>;
 
-        /** `index_codebase` - Scan the codebase and build the full RaggableTree index. */
+        /** `index_codebase` - Scan the codebase and build the full RaggableTree index, reusing the one saved by an earlier session when the host wires the cache. */
         indexCodebase(input?: {
             embedding_model?: string;
             enrich_with_llm?: boolean;
             exclude?: readonly string[];
             languages?: readonly string[];
+            max_parallelism?: number;
             respect_gitignore?: boolean;
             root_alias?: string;
             root_path?: string;
+            use_cache?: boolean;
         }, ctx?: ExecutionContext): Promise<{
+            readonly cache: string;
             readonly edge_count: number;
             readonly elapsed: string;
             readonly embedding_stats?: { readonly dimensions: number; readonly elapsed: string; readonly model: string; readonly nodes_embedded: number; readonly nodes_skipped: number; readonly provider: string; };
@@ -615,6 +620,7 @@ declare global {
             readonly filter_stats: { readonly excluded_by_exclude_set: number; readonly excluded_by_gitignore: number; readonly excluded_by_language: number; readonly excluded_by_policy: number; readonly excluded_by_policy_paths: readonly string[]; readonly excluded_by_suffix: number; readonly physical_entries_probe: number; readonly physical_root: string; readonly total_enumerated: number; readonly vfs_file_entries_yielded: number; };
             readonly index_id: string;
             readonly node_count: number;
+            readonly reindexed_file_count: number;
             readonly statement_count: number;
         }>;
 

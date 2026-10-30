@@ -39,4 +39,19 @@ public sealed record IndexCodebaseRequest
     /// everything the caller actually wants indexed.
     /// </summary>
     public bool RespectGitignore { get; init; } = true;
+
+    /// <summary>
+    /// How many files are read and parsed at once. <c>0</c> (default) uses one per processor, <c>1</c> parses
+    /// them one after the other; a negative value is refused. The index is the same whatever the value: files are
+    /// merged in the order they were discovered.
+    /// </summary>
+    public int MaxParallelism { get; init; }
+
+    /// <summary>
+    /// When <see langword="true"/> (default) and the host wires the index cache, the index saved under
+    /// <c>&lt;root&gt;/.orkeon/cache/raggable-tree/</c> by an earlier call is reloaded instead of parsing the codebase
+    /// again: as is when no file changed, refreshed file by file when some did. <see langword="false"/> rebuilds
+    /// from scratch, then saves the new index for the next call.
+    /// </summary>
+    public bool UseCache { get; init; } = true;
 }

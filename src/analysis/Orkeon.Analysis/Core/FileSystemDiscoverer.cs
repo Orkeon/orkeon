@@ -78,13 +78,13 @@ public sealed class FileSystemDiscoverer : IFileSystemDiscoverer
                     ? TrailingSegment(ctx.VirtualRoot)
                     : Path.GetFileName(pkgDir);
                 if (string.IsNullOrEmpty(pkgName)) pkgName = fileName;
-                packages.Add(new DetectedPackage(pkgName, pkgDir, marker));
+                packages.Add(new DetectedPackage(pkgName, pkgDir, marker) { MarkerPath = relative });
             }
             else if (fileName.EndsWith(".csproj", StringComparison.OrdinalIgnoreCase))
             {
                 var pkgDir = Path.GetDirectoryName(relative) ?? string.Empty;
                 var pkgName = Path.GetFileNameWithoutExtension(fileName);
-                packages.Add(new DetectedPackage(pkgName, pkgDir, "csproj"));
+                packages.Add(new DetectedPackage(pkgName, pkgDir, "csproj") { MarkerPath = relative });
             }
 
             var discovered = await TryBuildAsync(entry, ctx, stats, ct).ConfigureAwait(false);
@@ -133,7 +133,7 @@ public sealed class FileSystemDiscoverer : IFileSystemDiscoverer
                 matcher = new GitignoreMatcher(SplitLines(gitignoreText));
         }
 
-        return new DiscoveryContext(virtualRoot, physicalRoot, excludeSet, languageFilter, matcher);
+        return new DiscoveryContext(virtualRoot, physicalRoot, excludeSet, languageFilter, matcher, req.KnownFiles);
     }
 
     [Orkeon.Compliance.Vfs.SuppressVfsCompliance(
@@ -213,6 +213,19 @@ public sealed class FileSystemDiscoverer : IFileSystemDiscoverer
             return null;
         }
 
+        if (ctx.KnownFiles is not null
+            && ctx.KnownFiles.TryGetValue(entry.Relative, out var known)
+            && known.LastModified is { } knownModified
+            && knownModified.UtcTicks == entry.Entry.LastModified.UtcTicks
+            && known.SizeBytes == entry.Entry.SizeBytes
+            && _fs.ResolveAndValidate(entry.Entry.VirtualPath, FileAccessRights.Read).IsAllowed)
+        {
+            return new DiscoveredFile(entry.Entry.VirtualPath, entry.Relative, language, known.SizeBytes, known.Sha256)
+            {
+                LastModified = entry.Entry.LastModified,
+            };
+        }
+
         string sha;
         long size;
         try
@@ -236,7 +249,10 @@ public sealed class FileSystemDiscoverer : IFileSystemDiscoverer
             return null;
         }
 
-        return new DiscoveredFile(entry.Entry.VirtualPath, entry.Relative, language, size, sha);
+        return new DiscoveredFile(entry.Entry.VirtualPath, entry.Relative, language, size, sha)
+        {
+            LastModified = entry.Entry.LastModified,
+        };
     }
 
     private static string TrailingSegment(string virtualPath)
@@ -306,7 +322,8 @@ public sealed class FileSystemDiscoverer : IFileSystemDiscoverer
         string PhysicalRoot,
         HashSet<string> ExcludeSet,
         HashSet<string>? LanguageFilter,
-        GitignoreMatcher? Matcher);
+        GitignoreMatcher? Matcher,
+        IReadOnlyDictionary<string, FileStamp>? KnownFiles);
 
     private readonly record struct DiscoveredEntry(VirtualFileEntry Entry, string Relative);
 

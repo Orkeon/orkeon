@@ -24,6 +24,10 @@
     <PackageReference Include="Markdig" />
     <PackageReference Include="YamlDotNet" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
+    <!-- The index cache between sessions (Core/Cache/RaggableTreeCache.cs). -->
+    <PackageReference Include="Microsoft.Data.Sqlite" />
+    <!-- Security pin (NU1903 / CVE-2025-6965): force the patched native SQLite 3.50.3. See Directory.Packages.props. -->
+    <PackageReference Include="SQLitePCLRaw.lib.e_sqlite3" />
   </ItemGroup>
 
   <ItemGroup>

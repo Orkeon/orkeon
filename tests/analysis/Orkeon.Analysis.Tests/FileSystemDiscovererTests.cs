@@ -128,6 +128,57 @@ public class FileSystemDiscovererTests
     }
 
     [Fact]
+    public async Task ShouldReuseTheKnownHash_WhenSizeAndTimeAreUnchanged()
+    {
+        var dir = await TestFixtures.WriteDirectoryAsync([("a.ts", "const x = 1;")]);
+        try
+        {
+            var sut = new FileSystemDiscoverer(TestFixtures.CreateFs(dir));
+            var first = (await sut.DiscoverAllAsync(new DiscoveryRequest { RootPath = TestFixtures.TestVirtualRoot }, CancellationToken.None)).Files[0];
+            // A hash the content cannot give: only a reuse without reading the file returns it.
+            var known = new Dictionary<string, FileStamp> { [first.RelativePath] = new("known-sha", first.SizeBytes, first.LastModified) };
+
+            var second = await sut.DiscoverAllAsync(
+                new DiscoveryRequest { RootPath = TestFixtures.TestVirtualRoot, KnownFiles = known }, CancellationToken.None);
+
+            Assert.Equal("known-sha", second.Files[0].Sha256);
+            Assert.Equal(first.LastModified, second.Files[0].LastModified);
+        }
+        finally { Directory.Delete(dir, recursive: true); }
+    }
+
+    [Theory]
+    [InlineData("time")]
+    [InlineData("size")]
+    [InlineData("untrusted")]
+    public async Task ShouldRehashTheFile_WhenItsStampDiffers(string differs)
+    {
+        var dir = await TestFixtures.WriteDirectoryAsync([("a.ts", "const x = 1;")]);
+        try
+        {
+            var sut = new FileSystemDiscoverer(TestFixtures.CreateFs(dir));
+            var first = (await sut.DiscoverAllAsync(new DiscoveryRequest { RootPath = TestFixtures.TestVirtualRoot }, CancellationToken.None)).Files[0];
+            var stamp = differs switch
+            {
+                "time" => new FileStamp("known-sha", first.SizeBytes, first.LastModified.AddSeconds(-10)),
+                "size" => new FileStamp("known-sha", first.SizeBytes + 1, first.LastModified),
+                _ => new FileStamp("known-sha", first.SizeBytes, null),
+            };
+
+            var second = await sut.DiscoverAllAsync(
+                new DiscoveryRequest
+                {
+                    RootPath = TestFixtures.TestVirtualRoot,
+                    KnownFiles = new Dictionary<string, FileStamp> { [first.RelativePath] = stamp },
+                },
+                CancellationToken.None);
+
+            Assert.Equal(first.Sha256, second.Files[0].Sha256);
+        }
+        finally { Directory.Delete(dir, recursive: true); }
+    }
+
+    [Fact]
     public async Task Deduces_language_by_extension()
     {
         var dir = await TestFixtures.WriteDirectoryAsync([

@@ -6,8 +6,10 @@ using Orkeon.Analysis.Abstractions.DependencyInjection;
 using Orkeon.Analysis.Abstractions.Interfaces;
 using Orkeon.Analysis.Adapters;
 using Orkeon.Analysis.Core;
+using Orkeon.Analysis.Core.Cache;
 using Orkeon.Analysis.Core.ContextInjection;
 using Orkeon.Analysis.Core.Editing;
+using Orkeon.Analysis.Core.Serialization;
 using Orkeon.Analysis.Core.Watcher;
 using Orkeon.Analysis.Fingerprinters;
 using Orkeon.Analysis.Summarizers;
@@ -216,20 +218,7 @@ public static class RaggableTreeServiceCollectionExtensions
         // builder so refreshed nodes keep their embeddings.
         services.TryAddSingleton(sp => new IndexFreshnessService(
             sp.GetRequiredService<InMemoryRaggableStore>(),
-            () => new IncrementalReindexEngine(
-                sp.GetServices<ILanguageAdapter>(),
-                sp.GetRequiredService<IFileSystemDiscoverer>(),
-                sp.GetRequiredService<IFileSystemService>(),
-                sp.GetRequiredService<TreeSitterParserPool>(),
-                sp.GetRequiredService<IReferenceResolver>(),
-                sp.GetRequiredService<IEmbeddingTextComposer>(),
-                new RaggableEnrichmentServices
-                {
-                    Fingerprinters = sp.GetServices<IFrameworkFingerprinter>(),
-                    Summarizer = sp.GetService<INodeSummarizer>(),
-                    Embedder = sp.GetService<IEmbeddingProvider>(),
-                    VectorStore = sp.GetService<IVectorStoreProvider>(),
-                }),
+            () => CreateReindexEngine(sp),
             sp.GetRequiredService<IFileSystemService>(),
             sp.GetService<IGitDiffProvider>(),
             sp.GetService<IRaggableTreeEventBus>(),
@@ -237,6 +226,21 @@ public static class RaggableTreeServiceCollectionExtensions
         services.TryAddSingleton<ICodebaseContextProvider>(sp =>
             new CodebaseContextProvider(sp.GetRequiredService<IRaggableStore>()));
     }
+
+    private static IncrementalReindexEngine CreateReindexEngine(IServiceProvider sp) => new(
+        sp.GetServices<ILanguageAdapter>(),
+        sp.GetRequiredService<IFileSystemDiscoverer>(),
+        sp.GetRequiredService<IFileSystemService>(),
+        sp.GetRequiredService<TreeSitterParserPool>(),
+        sp.GetRequiredService<IReferenceResolver>(),
+        sp.GetRequiredService<IEmbeddingTextComposer>(),
+        new RaggableEnrichmentServices
+        {
+            Fingerprinters = sp.GetServices<IFrameworkFingerprinter>(),
+            Summarizer = sp.GetService<INodeSummarizer>(),
+            Embedder = sp.GetService<IEmbeddingProvider>(),
+            VectorStore = sp.GetService<IVectorStoreProvider>(),
+        });
 
     private static Func<string, CancellationToken, Task<ReadOnlyMemory<float>?>>? CreateQueryEmbedder(
         IEmbeddingProvider? embedder)
@@ -280,6 +284,22 @@ public static class RaggableTreeServiceCollectionExtensions
 
         services.AddTransient<Func<RaggableTreeBuilder>>(sp =>
             () => sp.GetRequiredService<RaggableTreeBuilder>());
+
+        // The index saved between sessions in <root>/.orkeon/cache/raggable-tree/index.db, read by index_codebase.
+        services.TryAddSingleton<IRaggableTreeCache>(sp => new RaggableTreeCache(sp.GetRequiredService<IFileSystemService>()));
+        services.TryAddSingleton(sp => new CachingTreeBuilder(
+            sp.GetRequiredService<IRaggableTreeCache>(),
+            sp.GetRequiredService<IFileSystemDiscoverer>(),
+            sp.GetRequiredService<IFileSystemService>(),
+            () => sp.GetRequiredService<RaggableTreeBuilder>(),
+            () => CreateReindexEngine(sp),
+            CachingTreeBuilder.DescribeEnvironment(
+                sp.GetServices<ILanguageAdapter>(),
+                sp.GetServices<IFrameworkFingerprinter>(),
+                sp.GetService<INodeSummarizer>(),
+                sp.GetService<IEmbeddingProvider>()),
+            sp.GetService<IVectorStoreProvider>(),
+            sp.GetService<ILogger<CachingTreeBuilder>>()));
     }
 
     private static void RegisterCitationValidator(IServiceCollection services, RaggableTreeOptions options)

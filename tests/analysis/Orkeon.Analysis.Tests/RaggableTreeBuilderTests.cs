@@ -1,7 +1,10 @@
 using Orkeon.Analysis.Abstractions;
 using Orkeon.Analysis.Abstractions.DTOs.Tools;
+using Orkeon.Analysis.Abstractions.Models;
 using Orkeon.Analysis.Adapters;
 using Orkeon.Analysis.Core;
+using Orkeon.Analysis.Tests.Doubles;
+using Orkeon.Analysis.TreeSitter;
 
 namespace Orkeon.Analysis.Tests;
 
@@ -214,6 +217,115 @@ public class RaggableTreeBuilderTests
             Assert.True(AdapterHarness.HasEdge(nodes, result.Tree.Edges, EdgeKind.Imports,
                 $"{TestFixtures.TestVirtualRoot}/src/app.ts", $"{TestFixtures.TestVirtualRoot}/src/lib.js"));
             Assert.True(AdapterHarness.HasEdge(nodes, result.Tree.Edges, EdgeKind.Calls, "main", "helper"));
+        }
+        finally
+        {
+            Directory.Delete(dir, recursive: true);
+        }
+    }
+
+    // Two packages whose files import each other, plus Markdown linking both: enough files to interleave.
+    private static IEnumerable<(string Path, string Content)> ParallelFixture()
+    {
+        yield return ("packages/a/package.json", """{ "name": "a" }""");
+        yield return ("packages/b/package.json", """{ "name": "b" }""");
+        for (var i = 0; i < 12; i++)
+        {
+            yield return ($"packages/a/src/a{i}.ts",
+                $"import {{ b{i} }} from '../../b/src/b{i}';\nexport class A{i} {{ run(): number {{ return b{i}() + {i}; }} }}\n");
+            yield return ($"packages/b/src/b{i}.ts",
+                $"export function b{i}(): number {{ return {i}; }}\nexport interface Shape{i} {{ size: number; }}\n");
+        }
+        for (var i = 0; i < 4; i++)
+        {
+            yield return ($"docs/guide{i}.md",
+                $"# Guide {i}\n\nUse `A{i}` with `b{i}`, see [next](guide{(i + 1) % 4}.md).\n\n## Details\n\nMore on `Shape{i}`.\n");
+        }
+    }
+
+    private static async Task<BuildResult> BuildAsync(string dir, int maxParallelism, CancellationToken ct, IProgress<IndexBuildProgress>? progress = null)
+    {
+        var fs = TestFixtures.CreateFs(dir);
+        using var pool = new TreeSitterParserPool();
+        var builder = new RaggableTreeBuilder(
+            [new TypeScriptAdapter()], new FileSystemDiscoverer(fs), fs, pool,
+            new DefaultReferenceResolver(), new EmbeddingTextComposer(),
+            new RaggableEnrichmentServices { BuildProgress = progress });
+        return await builder.BuildAsync(
+            TestFixtures.TestVirtualRoot,
+            new IndexCodebaseRequest { RootPath = TestFixtures.TestVirtualRoot, MaxParallelism = maxParallelism },
+            ct);
+    }
+
+    [Fact]
+    public async Task Parallel_build_yields_the_same_index_as_a_sequential_build()
+    {
+        var dir = await TestFixtures.WriteDirectoryAsync([.. ParallelFixture()]);
+        try
+        {
+            var sequential = await BuildAsync(dir, 1, CancellationToken.None);
+            var parallel = await BuildAsync(dir, 8, CancellationToken.None);
+            var perProcessor = await BuildAsync(dir, 0, CancellationToken.None);
+
+            Assert.Contains(sequential.Tree.Edges, e => e.Kind == EdgeKind.Imports);
+            Assert.Contains(sequential.Tree.Edges, e => e.Kind == EdgeKind.Documents);
+            foreach (var other in new[] { parallel, perProcessor })
+            {
+                Assert.Equal(sequential.IndexId, other.IndexId);
+                Assert.Equal(sequential.FileCount, other.FileCount);
+                Assert.Equal(sequential.Tree.Nodes.Select(n => (n.Id, n.ParentId)), other.Tree.Nodes.Select(n => (n.Id, n.ParentId)));
+                Assert.Equal(sequential.Tree.Edges.Select(e => e.Id), other.Tree.Edges.Select(e => e.Id));
+            }
+        }
+        finally
+        {
+            Directory.Delete(dir, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task Parallel_build_reports_each_parsed_file_once()
+    {
+        var dir = await TestFixtures.WriteDirectoryAsync([.. ParallelFixture()]);
+        try
+        {
+            var progress = new FakeIndexBuildProgress();
+            var result = await BuildAsync(dir, 8, CancellationToken.None, progress);
+
+            var parse = progress.Reports.Where(r => r.Phase == IndexBuildPhase.Parse).ToList();
+            Assert.All(parse, r => Assert.Equal(result.FileCount, r.Total));
+            Assert.Equal(Enumerable.Range(1, result.FileCount), parse.Select(r => r.Current).Order());
+        }
+        finally
+        {
+            Directory.Delete(dir, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task Parallel_build_stops_when_cancelled()
+    {
+        var dir = await TestFixtures.WriteDirectoryAsync([.. ParallelFixture()]);
+        try
+        {
+            using var cts = new CancellationTokenSource();
+            await cts.CancelAsync();
+
+            await Assert.ThrowsAnyAsync<OperationCanceledException>(() => BuildAsync(dir, 8, cts.Token));
+        }
+        finally
+        {
+            Directory.Delete(dir, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task Negative_max_parallelism_is_refused()
+    {
+        var dir = await TestFixtures.WriteDirectoryAsync([("src/user.ts", TestFixtures.SimpleClass)]);
+        try
+        {
+            await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() => BuildAsync(dir, -1, CancellationToken.None));
         }
         finally
         {

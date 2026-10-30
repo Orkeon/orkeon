@@ -7,6 +7,50 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — an index cache between sessions (`index_codebase` `use_cache`)
+
+`AddRaggableTree` now registers `CachingTreeBuilder`, and `index_codebase` saves the index under
+`<root>/.orkeon/cache/raggable-tree/index.db`, a SQLite database in a folder holding its own `.gitignore`. The nodes are
+stored per source file, gzip-compressed, and a refresh rewrites only the files whose nodes changed; the schema (primary
+keys, the `node_runs.group_id` foreign key, constraints) is in `docs/architecture/raggable-tree.md`. The next session reloads it when no file
+changed (`cache: "hit"`), reindexes only the changed files when at most half of them changed and no package marker did
+(`"refreshed"`, with `reindexed_file_count`), and rebuilds otherwise (`"miss"`). The key covers the options, the
+Analysis version and the adapters, summarizer and embedder (with its dimension) the host wires. `use_cache: false`
+rebuilds from scratch, then saves (`"bypassed"`); a tool built without the cache answers `"disabled"`. The database
+keeps up to `RaggableTreeCache.MaxEntries` (3) keys side by side and evicts the least recently used. A file whose size
+and write time match the saved stamp keeps its saved SHA-256 without being read (`DiscoveryRequest.KnownFiles`,
+`FileStamp`, `DiscoveredFile.LastModified`), as `git status` does; a file written within two seconds of the discovery is
+hashed again at the next call.
+
+| Before | After |
+|---|---|
+| `IRaggableTreeCache.LoadAsync(root, adapterVersions, embeddingProfile)` / `IsValidAsync` / `RaggableTreeCacheLoadResult` / `EmbeddingCacheProfile` | `LoadAsync(root, cacheKey)` returning a `RaggableTreeCacheEntry?`; `SaveAsync(root, entry)` returns `false` when the root cannot be written |
+| `new RaggableTreeCache(serializer, discoverer, fileSystem, adapterVersions, embeddingProfile)` writing `manifest.json` and `tree.json` | `new RaggableTreeCache(fileSystem)` writing `index.db`; `RaggableTreeCache.DatabaseFileName` |
+| `new IndexCodebaseTool(store, builderFactory, logger)` | `new IndexCodebaseTool(store, builderFactory, cachingBuilder, logger)` |
+| `DetectedPackage.MarkerFile` only (the ecosystem) | plus `MarkerPath`, the marker file under the root |
+
+### Fixed — `incremental_reindex` keeps the unresolved calls of the files it does not reparse
+
+`IncrementalReindexEngine` dropped every `Calls` edge to an `ext::unresolved::*` target whose caller sat in an unchanged
+file, so a refresh lost them (3129 of 11868 edges on one repository). They are kept now, and the one a reindexed file
+makes resolvable (a newly defined function) is replaced by the resolved edge: a refresh gives the edges of a full build.
+
+### Changed — the dependency graph of an index builds in seconds, not minutes
+
+`DependencyGraphBuilder` rebuilt the short-name symbol table for every file, checked each new edge against every edge
+already found, compiled its tree-sitter queries once per file, and looked an unresolved call target up by scanning every
+node. It now builds the table and compiles the queries once per resolution and checks duplicates through a set and ids
+through a dictionary. On Orkeon's own `src` (3166 files, 45107 nodes, 62758 edges) a full `index_codebase` build drops from
+221 s to 15 s; the tree is byte-for-byte the same (same edges in the same order, same links and tags, same `IndexId`).
+
+### Added — parallel index build (`index_codebase` `max_parallelism`)
+
+`index_codebase` reads and parses files `max_parallelism` at a time (`IndexCodebaseRequest.MaxParallelism`): `0`, the
+default, uses one per processor, `1` parses them one after the other as before, and a negative value is refused with a
+tool error (`RaggableTreeBuilder.BuildAsync` throws `ArgumentOutOfRangeException`). Each file is extracted on its own,
+then merged in discovery order, so the index is the same whatever the degree: same nodes, same edges, same order, same
+`IndexId`. `Parse` progress reports may arrive out of order. `incremental_reindex` is unchanged.
+
 ### Changed — `effort` takes `xhigh` and `max`
 
 The effort of a thinking setting (`act({ effort })`, the other `ctx.llm` calls, `LlmConfig.with({ effort })`,

@@ -1,402 +1,293 @@
-using System.Text.Json;
+using Microsoft.Data.Sqlite;
 using Orkeon.Analysis.Abstractions;
+using Orkeon.Analysis.Abstractions.Interfaces;
 using Orkeon.Analysis.Abstractions.Models;
-using Orkeon.Analysis.Core;
 using Orkeon.Analysis.Core.Cache;
-using Orkeon.Analysis.Core.Serialization;
 
 namespace Orkeon.Analysis.Tests;
 
 public class RaggableTreeCacheTests
 {
+    private const string Key = "key-1";
+
     [Fact]
-    public async Task SaveAsync_writes_tree_and_manifest_files()
+    public async Task SaveAsync_writes_the_database_and_a_gitignore_keeping_the_folder_out_of_git()
     {
-        var root = await TestFixtures.WriteDirectoryAsync([
-            ("a.ts", "export const a = 1;"),
-            ("b.ts", "export const b = 2;"),
-        ]);
+        var root = await TestFixtures.WriteDirectoryAsync([("a.ts", "export const a = 1;")]);
         try
         {
-            var cache = BuildCache(root);
-            var tree = BuildTinyTree();
+            var saved = await BuildCache(root).SaveAsync(TestFixtures.TestVirtualRoot, Entry("idx-1", Tree()), CancellationToken.None);
 
-            await cache.SaveAsync(tree, "idx-1", TestFixtures.TestVirtualRoot, CancellationToken.None);
-
-            Assert.True(File.Exists(Path.Combine(root, ".orkeon", "raggable-tree.json")));
-            Assert.True(File.Exists(Path.Combine(root, ".orkeon", "raggable-tree-manifest.json")));
+            Assert.True(saved);
+            Assert.True(File.Exists(DatabasePath(root)));
+            Assert.Equal("*\n", await File.ReadAllTextAsync(Path.Combine(CacheDir(root), ".gitignore"), TestContext.Current.CancellationToken));
+            Assert.Equal(2L, Scalar(root, "PRAGMA user_version"));
+            Assert.Equal(
+                "cache_entries,indexed_files,node_groups,node_runs,package_markers",
+                Scalar(root, "SELECT group_concat(name, ',') FROM (SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name)"));
+            Assert.Equal("cache_entries,node_groups", Scalar(root,
+                "SELECT group_concat(t, ',') FROM (SELECT DISTINCT \"table\" AS t FROM pragma_foreign_key_list('node_runs') ORDER BY t)"));
+            Assert.Equal("CASCADE", Scalar(root, "SELECT on_delete FROM pragma_foreign_key_list('node_groups')"));
+            Assert.Equal("CASCADE", Scalar(root, "SELECT on_delete FROM pragma_foreign_key_list('indexed_files')"));
+            Assert.Equal("CASCADE", Scalar(root, "SELECT on_delete FROM pragma_foreign_key_list('package_markers')"));
         }
         finally { Directory.Delete(root, recursive: true); }
     }
 
     [Fact]
-    public async Task LoadAsync_roundtrips_saved_tree()
+    public async Task LoadAsync_roundtrips_the_saved_entry_in_its_node_order()
     {
-        var root = await TestFixtures.WriteDirectoryAsync([
-            ("a.ts", "export const a = 1;"),
-        ]);
+        var root = await TestFixtures.WriteDirectoryAsync([("a.ts", "export const a = 1;")]);
         try
         {
             var cache = BuildCache(root);
-            var tree = BuildTinyTree();
-            await cache.SaveAsync(tree, "idx-rt", TestFixtures.TestVirtualRoot, CancellationToken.None);
+            // a, b, a: the nodes of one file are not contiguous, the runs must give this order back.
+            var entry = Entry("idx-rt", Tree(("a1", "/src/a.ts"), ("b1", "/src/b.ts"), ("a2", "/src/a.ts")));
+            await cache.SaveAsync(TestFixtures.TestVirtualRoot, entry, CancellationToken.None);
 
-            var loaded = await cache.LoadAsync(TestFixtures.TestVirtualRoot, CancellationToken.None);
+            var loaded = await cache.LoadAsync(TestFixtures.TestVirtualRoot, Key, CancellationToken.None);
 
-            Assert.True(loaded.Hit);
+            Assert.NotNull(loaded);
             Assert.Equal("idx-rt", loaded.IndexId);
-            Assert.Equal(tree.Nodes.Count, loaded.Tree!.Nodes.Count);
-            Assert.Equal(tree.Edges.Count, loaded.Tree!.Edges.Count);
+            Assert.Equal(Key, loaded.CacheKey);
+            Assert.Equal(["a1", "b1", "a2"], loaded.Tree.Nodes.Select(n => n.Id));
+            Assert.Equal(entry.Tree.Edges, loaded.Tree.Edges);
+            Assert.Same(loaded.Tree.Nodes[1], loaded.Tree.Index["pkg::b1"]);
+            Assert.Equal(entry.Files, loaded.Files);
+            Assert.Equal(entry.Markers, loaded.Markers);
+            Assert.Equal(2L, Scalar(root, "SELECT count(*) FROM node_groups"));
+            Assert.Equal(3L, Scalar(root, "SELECT count(*) FROM node_runs"));
         }
         finally { Directory.Delete(root, recursive: true); }
     }
 
     [Fact]
-    public async Task LoadAsync_returns_miss_when_no_cache_exists()
+    public async Task SaveAsync_rewrites_only_the_groups_whose_nodes_changed()
     {
-        var root = await TestFixtures.WriteDirectoryAsync([
-            ("a.ts", "export const a = 1;"),
-        ]);
+        var root = await TestFixtures.WriteDirectoryAsync([("a.ts", "export const a = 1;")]);
         try
         {
             var cache = BuildCache(root);
-            var loaded = await cache.LoadAsync(TestFixtures.TestVirtualRoot, CancellationToken.None);
+            await cache.SaveAsync(TestFixtures.TestVirtualRoot,
+                Entry("idx-1", Tree(("a1", "/src/a.ts"), ("b1", "/src/b.ts"), ("c1", "/src/c.ts"))), CancellationToken.None);
 
-            Assert.False(loaded.Hit);
-            Assert.Null(loaded.Tree);
-            Assert.Null(loaded.IndexId);
+            await cache.SaveAsync(TestFixtures.TestVirtualRoot,
+                Entry("idx-2", Tree(("a1", "/src/a.ts"), ("b2", "/src/b.ts"))), CancellationToken.None);
+
+            Assert.Equal(2L, Scalar(root, "SELECT generation FROM cache_entries"));
+            Assert.Equal("/src/a.ts=1,/src/b.ts=2", Scalar(root,
+                "SELECT group_concat(virtual_path || '=' || generation, ',') FROM (SELECT * FROM node_groups ORDER BY virtual_path)"));
+            var loaded = await cache.LoadAsync(TestFixtures.TestVirtualRoot, Key, CancellationToken.None);
+            Assert.NotNull(loaded);
+            Assert.Equal(["a1", "b2"], loaded.Tree.Nodes.Select(n => n.Id));
         }
         finally { Directory.Delete(root, recursive: true); }
     }
 
     [Fact]
-    public async Task IsValidAsync_returns_false_when_a_file_is_modified()
+    public async Task SaveAsync_under_another_key_keeps_both_entries()
     {
-        var root = await TestFixtures.WriteDirectoryAsync([
-            ("a.ts", "export const a = 1;"),
-            ("b.ts", "export const b = 2;"),
-        ]);
+        var root = await TestFixtures.WriteDirectoryAsync([("a.ts", "export const a = 1;")]);
         try
         {
             var cache = BuildCache(root);
-            await cache.SaveAsync(BuildTinyTree(), "idx", TestFixtures.TestVirtualRoot, CancellationToken.None);
-            Assert.True(await cache.IsValidAsync(TestFixtures.TestVirtualRoot, CancellationToken.None));
+            await cache.SaveAsync(TestFixtures.TestVirtualRoot, Entry("idx-1", Tree(("a1", "/src/a.ts"))), CancellationToken.None);
 
-            await File.WriteAllTextAsync(Path.Combine(root, "a.ts"), "export const a = 999;", TestContext.Current.CancellationToken);
+            await cache.SaveAsync(TestFixtures.TestVirtualRoot,
+                Entry("idx-2", Tree(("b1", "/src/b.ts"))) with { CacheKey = "key-2" }, CancellationToken.None);
 
-            Assert.False(await cache.IsValidAsync(TestFixtures.TestVirtualRoot, CancellationToken.None));
+            var first = await cache.LoadAsync(TestFixtures.TestVirtualRoot, Key, CancellationToken.None);
+            var second = await cache.LoadAsync(TestFixtures.TestVirtualRoot, "key-2", CancellationToken.None);
+            Assert.NotNull(first);
+            Assert.NotNull(second);
+            Assert.Equal(["a1"], first.Tree.Nodes.Select(n => n.Id));
+            Assert.Equal(["b1"], second.Tree.Nodes.Select(n => n.Id));
+            Assert.Equal(2L, Scalar(root, "SELECT count(*) FROM cache_entries"));
+            Assert.Equal(1L, Scalar(root, "SELECT max(generation) FROM cache_entries"));
         }
         finally { Directory.Delete(root, recursive: true); }
     }
 
     [Fact]
-    public async Task IsValidAsync_returns_false_when_a_file_is_added()
+    public async Task SaveAsync_past_MaxEntries_evicts_the_least_recently_used_entry_and_its_rows()
     {
-        var root = await TestFixtures.WriteDirectoryAsync([
-            ("a.ts", "export const a = 1;"),
-        ]);
+        var root = await TestFixtures.WriteDirectoryAsync([("a.ts", "export const a = 1;")]);
         try
         {
             var cache = BuildCache(root);
-            await cache.SaveAsync(BuildTinyTree(), "idx", TestFixtures.TestVirtualRoot, CancellationToken.None);
+            for (var i = 1; i <= RaggableTreeCache.MaxEntries; i++)
+            {
+                await cache.SaveAsync(TestFixtures.TestVirtualRoot,
+                    Entry("idx", Tree(($"n{i}", $"/src/f{i}.ts"))) with { CacheKey = $"k{i}" }, CancellationToken.None);
+            }
+            // k2 becomes the least recently used, whatever order the clock gave the saves.
+            Scalar(root, "UPDATE cache_entries SET used_at = CASE cache_key WHEN 'k2' THEN '2000-01-01' ELSE '2001-01-01' END");
 
-            await File.WriteAllTextAsync(Path.Combine(root, "b.ts"), "export const b = 2;", TestContext.Current.CancellationToken);
+            await cache.SaveAsync(TestFixtures.TestVirtualRoot,
+                Entry("idx", Tree(("n4", "/src/f4.ts"))) with { CacheKey = "k4" }, CancellationToken.None);
 
-            Assert.False(await cache.IsValidAsync(TestFixtures.TestVirtualRoot, CancellationToken.None));
+            Assert.Equal((long)RaggableTreeCache.MaxEntries, Scalar(root, "SELECT count(*) FROM cache_entries"));
+            Assert.Null(await cache.LoadAsync(TestFixtures.TestVirtualRoot, "k2", CancellationToken.None));
+            Assert.NotNull(await cache.LoadAsync(TestFixtures.TestVirtualRoot, "k1", CancellationToken.None));
+            Assert.NotNull(await cache.LoadAsync(TestFixtures.TestVirtualRoot, "k4", CancellationToken.None));
+            // The cascade took the evicted entry's rows with it.
+            Assert.Equal(0L, Scalar(root, "SELECT count(*) FROM node_groups WHERE virtual_path = '/src/f2.ts'"));
+            Assert.Equal(0L, Scalar(root,
+                "SELECT count(*) FROM node_runs WHERE entry_id NOT IN (SELECT entry_id FROM cache_entries)"));
+            Assert.Equal((long)RaggableTreeCache.MaxEntries, Scalar(root, "SELECT count(DISTINCT entry_id) FROM indexed_files"));
+            Assert.Equal((long)RaggableTreeCache.MaxEntries, Scalar(root, "SELECT count(DISTINCT entry_id) FROM package_markers"));
         }
         finally { Directory.Delete(root, recursive: true); }
     }
 
     [Fact]
-    public async Task IsValidAsync_returns_false_when_a_file_is_removed()
+    public async Task LoadAsync_marks_the_entry_as_used()
     {
-        var root = await TestFixtures.WriteDirectoryAsync([
-            ("a.ts", "export const a = 1;"),
-            ("b.ts", "export const b = 2;"),
-        ]);
+        var root = await TestFixtures.WriteDirectoryAsync([("a.ts", "export const a = 1;")]);
         try
         {
             var cache = BuildCache(root);
-            await cache.SaveAsync(BuildTinyTree(), "idx", TestFixtures.TestVirtualRoot, CancellationToken.None);
+            await cache.SaveAsync(TestFixtures.TestVirtualRoot, Entry("idx", Tree()), CancellationToken.None);
+            Scalar(root, "UPDATE cache_entries SET used_at = '2000-01-01'");
 
-            File.Delete(Path.Combine(root, "b.ts"));
+            await cache.LoadAsync(TestFixtures.TestVirtualRoot, Key, CancellationToken.None);
 
-            Assert.False(await cache.IsValidAsync(TestFixtures.TestVirtualRoot, CancellationToken.None));
+            Assert.Equal(0L, Scalar(root, "SELECT count(*) FROM cache_entries WHERE used_at = '2000-01-01'"));
         }
         finally { Directory.Delete(root, recursive: true); }
     }
 
     [Fact]
-    public async Task IsValidAsync_returns_false_when_embedding_profile_changes()
+    public async Task LoadAsync_returns_null_when_nothing_was_saved()
     {
-        // Acceptance criterion for LE-10: a cache produced with one embedding provider
-        // (e.g. OpenAI 1536-dim) MUST be considered stale when reloaded with a different
-        // provider (e.g. local 384-dim). Otherwise vectors of mixed dimensions would
-        // coexist in the in-memory store and corrupt cosine similarity search.
-        var root = await TestFixtures.WriteDirectoryAsync([
-            ("a.ts", "export const a = 1;"),
-        ]);
+        var root = await TestFixtures.WriteDirectoryAsync([("a.ts", "export const a = 1;")]);
         try
         {
-            var openAiProfile = new EmbeddingCacheProfile
-            {
-                Provider = "OpenAI",
-                Model = "text-embedding-3-small",
-                Dimensions = 1536,
-            };
-            var localProfile = new EmbeddingCacheProfile
-            {
-                Provider = "LocalSmartComponents",
-                Model = "bge-micro-v2",
-                Dimensions = 384,
-            };
-
-            var saveCache = BuildCache(root, embeddingProfile: openAiProfile);
-            await saveCache.SaveAsync(BuildTinyTree(), "idx", TestFixtures.TestVirtualRoot, CancellationToken.None);
-            Assert.True(await saveCache.IsValidAsync(TestFixtures.TestVirtualRoot, CancellationToken.None));
-
-            // Reload with a different embedding profile → must miss cleanly (no exception).
-            var loadCache = BuildCache(root, embeddingProfile: localProfile);
-            Assert.False(await loadCache.IsValidAsync(TestFixtures.TestVirtualRoot, CancellationToken.None));
-
-            var loadResult = await loadCache.LoadAsync(TestFixtures.TestVirtualRoot, CancellationToken.None);
-            Assert.False(loadResult.Hit);
-            Assert.Null(loadResult.Tree);
+            Assert.Null(await BuildCache(root).LoadAsync(TestFixtures.TestVirtualRoot, Key, CancellationToken.None));
         }
         finally { Directory.Delete(root, recursive: true); }
     }
 
     [Fact]
-    public async Task IsValidAsync_returns_false_when_dimensions_change_only()
+    public async Task LoadAsync_returns_null_under_another_key()
     {
-        // Same provider + model but a different dimension override (e.g. OpenAI's
-        // dimensions request param shrinking 1536 → 512) must also invalidate.
-        var root = await TestFixtures.WriteDirectoryAsync([
-            ("a.ts", "export const a = 1;"),
-        ]);
-        try
-        {
-            var fullDim = new EmbeddingCacheProfile
-            {
-                Provider = "OpenAI",
-                Model = "text-embedding-3-small",
-                Dimensions = 1536,
-            };
-            var truncated = fullDim with { Dimensions = 512 };
-
-            var saveCache = BuildCache(root, embeddingProfile: fullDim);
-            await saveCache.SaveAsync(BuildTinyTree(), "idx", TestFixtures.TestVirtualRoot, CancellationToken.None);
-
-            var loadCache = BuildCache(root, embeddingProfile: truncated);
-            Assert.False(await loadCache.IsValidAsync(TestFixtures.TestVirtualRoot, CancellationToken.None));
-        }
-        finally { Directory.Delete(root, recursive: true); }
-    }
-
-    [Fact]
-    public async Task IsValidAsync_returns_true_when_embedding_profile_matches()
-    {
-        // Identity check: same triplet on both sides → cache is valid.
-        var root = await TestFixtures.WriteDirectoryAsync([
-            ("a.ts", "export const a = 1;"),
-        ]);
-        try
-        {
-            var profile = new EmbeddingCacheProfile
-            {
-                Provider = "OpenAI",
-                Model = "text-embedding-3-small",
-                Dimensions = 1536,
-            };
-
-            var saveCache = BuildCache(root, embeddingProfile: profile);
-            await saveCache.SaveAsync(BuildTinyTree(), "idx", TestFixtures.TestVirtualRoot, CancellationToken.None);
-
-            var loadCache = BuildCache(root, embeddingProfile: profile);
-            Assert.True(await loadCache.IsValidAsync(TestFixtures.TestVirtualRoot, CancellationToken.None));
-        }
-        finally { Directory.Delete(root, recursive: true); }
-    }
-
-    [Fact]
-    public async Task IsValidAsync_returns_false_when_active_profile_set_but_cache_is_legacy()
-    {
-        // Backward-compat: a cache created without a profile (legacy, pre-LE-10) must
-        // be treated as stale once a caller starts passing an explicit profile, to
-        // force a clean re-index that records the new profile in the manifest.
-        var root = await TestFixtures.WriteDirectoryAsync([
-            ("a.ts", "export const a = 1;"),
-        ]);
-        try
-        {
-            // Save without profile (legacy path).
-            var saveCache = BuildCache(root, embeddingProfile: null);
-            await saveCache.SaveAsync(BuildTinyTree(), "idx", TestFixtures.TestVirtualRoot, CancellationToken.None);
-
-            // Load with an explicit profile → cache is stale.
-            var profile = new EmbeddingCacheProfile
-            {
-                Provider = "OpenAI",
-                Model = "text-embedding-3-small",
-                Dimensions = 1536,
-            };
-            var loadCache = BuildCache(root, embeddingProfile: profile);
-            Assert.False(await loadCache.IsValidAsync(TestFixtures.TestVirtualRoot, CancellationToken.None));
-        }
-        finally { Directory.Delete(root, recursive: true); }
-    }
-
-    [Fact]
-    public async Task IsValidAsync_returns_false_when_adapter_versions_mismatch()
-    {
-        var root = await TestFixtures.WriteDirectoryAsync([
-            ("a.ts", "export const a = 1;"),
-        ]);
-        try
-        {
-            var saveCache = BuildCache(root, new() { ["typescript"] = "1.0" });
-            await saveCache.SaveAsync(BuildTinyTree(), "idx", TestFixtures.TestVirtualRoot, CancellationToken.None);
-
-            var loadCache = BuildCache(root, new() { ["typescript"] = "2.0" });
-            Assert.False(await loadCache.IsValidAsync(TestFixtures.TestVirtualRoot, CancellationToken.None));
-        }
-        finally { Directory.Delete(root, recursive: true); }
-    }
-
-    [Fact]
-    public async Task InvalidateAsync_removes_both_cache_files()
-    {
-        var root = await TestFixtures.WriteDirectoryAsync([
-            ("a.ts", "export const a = 1;"),
-        ]);
+        var root = await TestFixtures.WriteDirectoryAsync([("a.ts", "export const a = 1;")]);
         try
         {
             var cache = BuildCache(root);
-            await cache.SaveAsync(BuildTinyTree(), "idx", TestFixtures.TestVirtualRoot, CancellationToken.None);
-            Assert.True(File.Exists(Path.Combine(root, ".orkeon", "raggable-tree.json")));
+            await cache.SaveAsync(TestFixtures.TestVirtualRoot, Entry("idx", Tree()), CancellationToken.None);
+
+            Assert.Null(await cache.LoadAsync(TestFixtures.TestVirtualRoot, "key-2", CancellationToken.None));
+        }
+        finally { Directory.Delete(root, recursive: true); }
+    }
+
+    [Fact]
+    public async Task A_file_that_is_not_a_database_is_a_miss_then_replaced_by_the_next_save()
+    {
+        var root = await TestFixtures.WriteDirectoryAsync([("a.ts", "export const a = 1;")]);
+        try
+        {
+            var cache = BuildCache(root);
+            Directory.CreateDirectory(CacheDir(root));
+            await File.WriteAllTextAsync(DatabasePath(root), "not a database, only text", TestContext.Current.CancellationToken);
+
+            Assert.Null(await cache.LoadAsync(TestFixtures.TestVirtualRoot, Key, CancellationToken.None));
+            Assert.True(await cache.SaveAsync(TestFixtures.TestVirtualRoot, Entry("idx", Tree()), CancellationToken.None));
+            Assert.NotNull(await cache.LoadAsync(TestFixtures.TestVirtualRoot, Key, CancellationToken.None));
+        }
+        finally { Directory.Delete(root, recursive: true); }
+    }
+
+    [Fact]
+    public async Task LoadAsync_returns_null_when_a_run_names_more_nodes_than_its_group_holds()
+    {
+        var root = await TestFixtures.WriteDirectoryAsync([("a.ts", "export const a = 1;")]);
+        try
+        {
+            var cache = BuildCache(root);
+            await cache.SaveAsync(TestFixtures.TestVirtualRoot, Entry("idx", Tree()), CancellationToken.None);
+            Scalar(root, "UPDATE node_runs SET node_count = 5");
+
+            Assert.Null(await cache.LoadAsync(TestFixtures.TestVirtualRoot, Key, CancellationToken.None));
+        }
+        finally { Directory.Delete(root, recursive: true); }
+    }
+
+    [Fact]
+    public async Task SaveAsync_returns_false_when_the_cache_folder_cannot_be_created()
+    {
+        var root = await TestFixtures.WriteDirectoryAsync([("a.ts", "export const a = 1;"), (".orkeon", "a file, not a folder")]);
+        try
+        {
+            Assert.False(await BuildCache(root).SaveAsync(TestFixtures.TestVirtualRoot, Entry("idx", Tree()), CancellationToken.None));
+        }
+        finally { Directory.Delete(root, recursive: true); }
+    }
+
+    [Fact]
+    public async Task InvalidateAsync_makes_the_next_load_a_miss()
+    {
+        var root = await TestFixtures.WriteDirectoryAsync([("a.ts", "export const a = 1;")]);
+        try
+        {
+            var cache = BuildCache(root);
+            await cache.SaveAsync(TestFixtures.TestVirtualRoot, Entry("idx", Tree()), CancellationToken.None);
 
             await cache.InvalidateAsync(TestFixtures.TestVirtualRoot, CancellationToken.None);
 
-            Assert.False(File.Exists(Path.Combine(root, ".orkeon", "raggable-tree.json")));
-            Assert.False(File.Exists(Path.Combine(root, ".orkeon", "raggable-tree-manifest.json")));
-        }
-        finally { Directory.Delete(root, recursive: true); }
-    }
-
-    [Fact]
-    public async Task LoadAsync_returns_miss_when_file_changed_after_save()
-    {
-        var root = await TestFixtures.WriteDirectoryAsync([
-            ("a.ts", "export const a = 1;"),
-        ]);
-        try
-        {
-            var cache = BuildCache(root);
-            await cache.SaveAsync(BuildTinyTree(), "idx", TestFixtures.TestVirtualRoot, CancellationToken.None);
-
-            await File.WriteAllTextAsync(Path.Combine(root, "a.ts"), "export const a = 999;", TestContext.Current.CancellationToken);
-
-            var loaded = await cache.LoadAsync(TestFixtures.TestVirtualRoot, CancellationToken.None);
-            Assert.False(loaded.Hit);
-        }
-        finally { Directory.Delete(root, recursive: true); }
-    }
-
-    [Fact]
-    public async Task LoadAsync_returns_miss_when_manifest_is_corrupted()
-    {
-        var root = await TestFixtures.WriteDirectoryAsync([
-            ("a.ts", "export const a = 1;"),
-        ]);
-        try
-        {
-            var cache = BuildCache(root);
-            await cache.SaveAsync(BuildTinyTree(), "idx", TestFixtures.TestVirtualRoot, CancellationToken.None);
-
-            await File.WriteAllTextAsync(
-                Path.Combine(root, ".orkeon", "raggable-tree-manifest.json"),
-                "not json at all {{{", TestContext.Current.CancellationToken);
-
-            var loaded = await cache.LoadAsync(TestFixtures.TestVirtualRoot, CancellationToken.None);
-            Assert.False(loaded.Hit);
-        }
-        finally { Directory.Delete(root, recursive: true); }
-    }
-
-    [Fact]
-    public async Task Manifest_contains_indexId_and_file_hashes()
-    {
-        var root = await TestFixtures.WriteDirectoryAsync([
-            ("a.ts", "export const a = 1;"),
-            ("sub/b.ts", "export const b = 2;"),
-        ]);
-        try
-        {
-            var cache = BuildCache(root, new() { ["typescript"] = "1.0" });
-            await cache.SaveAsync(BuildTinyTree(), "idx-meta", TestFixtures.TestVirtualRoot, CancellationToken.None);
-
-            var json = await File.ReadAllTextAsync(Path.Combine(root, ".orkeon", "raggable-tree-manifest.json"), TestContext.Current.CancellationToken);
-            using var doc = JsonDocument.Parse(json);
-            var r = doc.RootElement;
-
-            Assert.Equal("idx-meta", r.GetProperty("indexId").GetString());
-            var files = r.GetProperty("files");
-            Assert.True(files.TryGetProperty("a.ts", out _));
-            Assert.True(files.TryGetProperty("sub/b.ts", out _));
-            var versions = r.GetProperty("adapterVersions");
-            Assert.Equal("1.0", versions.GetProperty("typescript").GetString());
-        }
-        finally { Directory.Delete(root, recursive: true); }
-    }
-
-    [Fact]
-    public async Task IsValidAsync_returns_false_when_tree_file_missing_but_manifest_present()
-    {
-        var root = await TestFixtures.WriteDirectoryAsync([
-            ("a.ts", "export const a = 1;"),
-        ]);
-        try
-        {
-            var cache = BuildCache(root);
-            await cache.SaveAsync(BuildTinyTree(), "idx", TestFixtures.TestVirtualRoot, CancellationToken.None);
-
-            File.Delete(Path.Combine(root, ".orkeon", "raggable-tree.json"));
-            Assert.False(await cache.IsValidAsync(TestFixtures.TestVirtualRoot, CancellationToken.None));
+            Assert.Null(await cache.LoadAsync(TestFixtures.TestVirtualRoot, Key, CancellationToken.None));
+            Assert.False(File.Exists(DatabasePath(root)));
         }
         finally { Directory.Delete(root, recursive: true); }
     }
 
     // ----- Helpers -----
 
-    private static RaggableTreeCache BuildCache(
-        string dir,
-        Dictionary<string, string>? adapterVersions = null,
-        EmbeddingCacheProfile? embeddingProfile = null)
+    private static RaggableTreeCache BuildCache(string dir) => new(TestFixtures.CreateFs(dir));
+
+    private static string CacheDir(string root) => Path.Combine(root, ".orkeon", "cache", "raggable-tree");
+
+    private static string DatabasePath(string root) => Path.Combine(CacheDir(root), RaggableTreeCache.DatabaseFileName);
+
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Security", "CA2100", Justification = "Every caller passes a constant query of this test.")]
+    private static object? Scalar(string root, string sql)
     {
-        var fs = TestFixtures.CreateFs(dir);
-        return new RaggableTreeCache(
-            new RaggableTreeSerializer(),
-            new FileSystemDiscoverer(fs),
-            fs,
-            adapterVersions ?? new Dictionary<string, string> { ["typescript"] = "1.0" },
-            embeddingProfile);
+        using var connection = new SqliteConnection($"Data Source={DatabasePath(root)};Pooling=False");
+        connection.Open();
+        using var command = connection.CreateCommand();
+        command.CommandText = sql;
+        return command.ExecuteScalar();
     }
 
-    private static RaggableTree BuildTinyTree()
-    {
-        var node = new RaggableNode
+    private static RaggableTreeCacheEntry Entry(string indexId, RaggableTree tree) => new(
+        tree,
+        indexId,
+        Key,
+        new Dictionary<string, FileStamp>
         {
-            Id = "sym::x",
+            ["a.ts"] = new("sha-a", 19, new DateTimeOffset(2026, 1, 2, 3, 4, 5, TimeSpan.Zero)),
+            ["b.ts"] = new("sha-b", 7, null),
+        },
+        new Dictionary<string, string> { ["package.json"] = "sha-p" });
+
+    private static RaggableTree Tree(params (string Id, string File)[] nodes)
+    {
+        if (nodes.Length == 0) nodes = [("x", "/src/x.ts")];
+        var built = nodes.Select(n => new RaggableNode
+        {
+            Id = n.Id,
             Kind = UniversalNodeKind.Method,
-            Name = "x",
-            VirtualFilePath = "/tmp/x.ts",
+            Name = n.Id,
+            VirtualFilePath = n.File,
             Range = new NodeRange(0, 5, 1, 2, 0),
             Level = NodeLevel.L3_Symbol,
             Language = "typescript",
             SourceSnippet = "fn",
             Sha256 = "abc",
-            Fqn = "pkg::x",
-        };
-        return new RaggableTree([node], [], new Dictionary<string, RaggableNode> { [node.Fqn] = node });
+            Fqn = $"pkg::{n.Id}",
+        }).ToList();
+        var edges = built.Count > 1 ? [new RaggableEdge("e1", built[0].Id, built[1].Id, EdgeKind.Calls)] : new List<RaggableEdge>();
+        return new RaggableTree(built, edges, built.ToDictionary(n => n.Fqn, StringComparer.Ordinal));
     }
 }

@@ -1,1 +1,31 @@
 #nullable enable
+Orkeon.Analysis.Abstractions.DTOs.Tools.IndexCodebaseRequest.MaxParallelism.get -> int
+Orkeon.Analysis.Abstractions.DTOs.Tools.IndexCodebaseRequest.MaxParallelism.init -> void
+Orkeon.Analysis.Abstractions.DTOs.Tools.IndexCodebaseRequest.UseCache.get -> bool
+Orkeon.Analysis.Abstractions.DTOs.Tools.IndexCodebaseRequest.UseCache.init -> void
+Orkeon.Analysis.Abstractions.DTOs.Tools.IndexCodebaseResponse.Cache.get -> string!
+Orkeon.Analysis.Abstractions.DTOs.Tools.IndexCodebaseResponse.Cache.init -> void
+Orkeon.Analysis.Abstractions.DTOs.Tools.IndexCodebaseResponse.ReindexedFileCount.get -> int
+Orkeon.Analysis.Abstractions.DTOs.Tools.IndexCodebaseResponse.ReindexedFileCount.init -> void
+Orkeon.Analysis.Abstractions.Interfaces.DetectedPackage.MarkerPath.get -> string!
+Orkeon.Analysis.Abstractions.Interfaces.DetectedPackage.MarkerPath.init -> void
+Orkeon.Analysis.Abstractions.Interfaces.DiscoveredFile.LastModified.get -> System.DateTimeOffset
+Orkeon.Analysis.Abstractions.Interfaces.DiscoveredFile.LastModified.init -> void
+Orkeon.Analysis.Abstractions.Interfaces.DiscoveryRequest.KnownFiles.get -> System.Collections.Generic.IReadOnlyDictionary<string!, Orkeon.Analysis.Abstractions.Interfaces.FileStamp!>?
+Orkeon.Analysis.Abstractions.Interfaces.DiscoveryRequest.KnownFiles.init -> void
+Orkeon.Analysis.Abstractions.Interfaces.FileStamp
+Orkeon.Analysis.Abstractions.Interfaces.FileStamp.<Clone>$() -> Orkeon.Analysis.Abstractions.Interfaces.FileStamp!
+Orkeon.Analysis.Abstractions.Interfaces.FileStamp.Deconstruct(out string! Sha256, out long SizeBytes, out System.DateTimeOffset? LastModified) -> void
+Orkeon.Analysis.Abstractions.Interfaces.FileStamp.Equals(Orkeon.Analysis.Abstractions.Interfaces.FileStamp? other) -> bool
+Orkeon.Analysis.Abstractions.Interfaces.FileStamp.FileStamp(string! Sha256, long SizeBytes, System.DateTimeOffset? LastModified) -> void
+Orkeon.Analysis.Abstractions.Interfaces.FileStamp.LastModified.get -> System.DateTimeOffset?
+Orkeon.Analysis.Abstractions.Interfaces.FileStamp.LastModified.init -> void
+Orkeon.Analysis.Abstractions.Interfaces.FileStamp.Sha256.get -> string!
+Orkeon.Analysis.Abstractions.Interfaces.FileStamp.Sha256.init -> void
+Orkeon.Analysis.Abstractions.Interfaces.FileStamp.SizeBytes.get -> long
+Orkeon.Analysis.Abstractions.Interfaces.FileStamp.SizeBytes.init -> void
+override Orkeon.Analysis.Abstractions.Interfaces.FileStamp.Equals(object? obj) -> bool
+override Orkeon.Analysis.Abstractions.Interfaces.FileStamp.GetHashCode() -> int
+override Orkeon.Analysis.Abstractions.Interfaces.FileStamp.ToString() -> string!
+static Orkeon.Analysis.Abstractions.Interfaces.FileStamp.operator !=(Orkeon.Analysis.Abstractions.Interfaces.FileStamp? left, Orkeon.Analysis.Abstractions.Interfaces.FileStamp? right) -> bool
+static Orkeon.Analysis.Abstractions.Interfaces.FileStamp.operator ==(Orkeon.Analysis.Abstractions.Interfaces.FileStamp? left, Orkeon.Analysis.Abstractions.Interfaces.FileStamp? right) -> bool
