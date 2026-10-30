@@ -44,6 +44,33 @@ public sealed record GrepRequest
     [JsonPropertyName("max_files")]
     [FieldSchema(Description = "Maximum number of files scanned; binary or unreadable files are skipped and counted (default: 2000)", IsRequired = false, Example = 2000)]
     public int MaxFiles { get; init; } = 2000;
+
+    /// <summary>What the response carries: the hit lines, or counts alone.</summary>
+    [JsonPropertyName("output_mode")]
+    [FieldSchema(Description = "hits: one path:line:text per match (default). count: no hit lines, only total_matches, files_matched and the per-file counts (the max_results highest)", IsRequired = false, Example = "count", Default = "hits", Enum = new[] { "hits", "count" })]
+    public string OutputMode { get; init; } = GrepOutputModes.Hits;
+}
+
+/// <summary>The values of <see cref="GrepRequest.OutputMode"/>.</summary>
+public static class GrepOutputModes
+{
+    /// <summary>One hit per matching line.</summary>
+    public const string Hits = "hits";
+
+    /// <summary>Counts only, no hit lines.</summary>
+    public const string Count = "count";
+}
+
+/// <summary>The number of matching lines in one file.</summary>
+public sealed record GrepFileCount
+{
+    /// <summary>Virtual path of the file.</summary>
+    [JsonPropertyName("path")]
+    public string Path { get; init; } = "";
+
+    /// <summary>Matching lines in the file.</summary>
+    [JsonPropertyName("count")]
+    public int Count { get; init; }
 }
 
 /// <summary>One matching line.</summary>
@@ -70,9 +97,29 @@ public sealed record GrepResponse : IBoundedToolResponse
     [ReturnSchema(Description = "Matching lines")]
     public ImmutableList<GrepHit> Hits { get; init; } = [];
 
+    /// <summary>Matching lines per file in count mode, the <c>max_results</c> highest first; empty in hits mode.</summary>
+    [JsonPropertyName("counts")]
+    [ReturnSchema(Description = "Count mode: matching lines per file, the max_results highest first (files_matched says how many files matched in all); empty in hits mode")]
+    public ImmutableList<GrepFileCount> Counts { get; init; } = [];
+
+    /// <summary>Matching lines over the files scanned, hits included or not.</summary>
+    [JsonPropertyName("total_matches")]
+    [ReturnSchema(Description = "Matching lines over the files scanned, whether or not they are listed in hits; exact when scan_complete is true")]
+    public int TotalMatches { get; init; }
+
+    /// <summary>Files with at least one matching line.</summary>
+    [JsonPropertyName("files_matched")]
+    [ReturnSchema(Description = "Files with at least one matching line; exact when scan_complete is true")]
+    public int FilesMatched { get; init; }
+
+    /// <summary>True when every candidate file was scanned to its end.</summary>
+    [JsonPropertyName("scan_complete")]
+    [ReturnSchema(Description = "True when every candidate file was scanned to its end (no max_files cut, no timeout), so total_matches and files_matched are exact")]
+    public bool ScanComplete { get; init; }
+
     /// <summary>True when hits or files were left out.</summary>
     [JsonPropertyName("truncated")]
-    [ReturnSchema(Description = "True when hits or files were left out")]
+    [ReturnSchema(Description = "True when hits or files were left out: max_results or the size bound cut the hits, or max_files or a timeout cut the scan")]
     public bool Truncated { get; init; }
 
     /// <summary>True when the scan stopped on a time bound.</summary>
@@ -112,7 +159,7 @@ public sealed class GrepTool : FileToolBase<GrepRequest, GrepResponse>
     public override string Name => "grep";
 
     /// <inheritdoc />
-    public override string Description => "Search the lines of text files under a mounted directory (path) with a regex; glob filters files relative to path. Binary, unreadable and over-1-MiB files are skipped; regex timeout, max_results and max_files bound the scan. Returns path:line:text hits.";
+    public override string Description => "Search the lines of text files under a mounted directory (path) with a regex; glob filters files relative to path. Binary, unreadable and over-1-MiB files are skipped; regex timeout, max_results and max_files bound the scan. Returns path:line:text hits plus total_matches and files_matched, or with output_mode \"count\" the counts alone (a \"how many\" question takes one call).";
 
     /// <summary>Declared access class for permission gates.</summary>
     public override ToolAccess Access => ToolAccess.Read;
@@ -140,6 +187,8 @@ public sealed class GrepTool : FileToolBase<GrepRequest, GrepResponse>
             return "max_results must be greater than 0";
         if (request.MaxFiles <= 0)
             return "max_files must be greater than 0";
+        if (request.OutputMode is not (GrepOutputModes.Hits or GrepOutputModes.Count))
+            return $"output_mode must be \"{GrepOutputModes.Hits}\" or \"{GrepOutputModes.Count}\"";
         if (string.IsNullOrWhiteSpace(request.Path))
             return "Path cannot be empty";
 
@@ -176,11 +225,12 @@ public sealed class GrepTool : FileToolBase<GrepRequest, GrepResponse>
             sizes[entry.VirtualPath] = entry.SizeBytes;
 
         var scan = new GrepScan();
+        var collectHits = request.OutputMode == GrepOutputModes.Hits;
         foreach (var path in candidates.Select(candidate => candidate.Location))
         {
             if (scan.Scanned + scan.Skipped >= request.MaxFiles)
             {
-                scan.Truncated = true;
+                scan.FilesCut = true;
                 break;
             }
 
@@ -192,19 +242,43 @@ public sealed class GrepTool : FileToolBase<GrepRequest, GrepResponse>
             }
             scan.Scanned++;
 
-            ScanText(path, text, regex, request.MaxResults, scan);
-            if (scan.Stopped) break;
+            ScanText(path, text, regex, collectHits ? request.MaxResults : null, scan);
+            if (scan.TimedOut) break;
         }
 
+        var counts = collectHits ? [] : TopCounts(scan, request.MaxResults);
         return new GrepResponse
         {
             Hits = scan.Hits.ToImmutable(),
-            Truncated = scan.Truncated,
+            Counts = counts,
+            TotalMatches = scan.Matches,
+            FilesMatched = scan.FileCounts.Count,
+            ScanComplete = !scan.FilesCut && !scan.TimedOut,
+            Truncated = scan.HitsCut || scan.FilesCut || scan.TimedOut,
             TimedOut = scan.TimedOut,
             FilesScanned = scan.Scanned,
             FilesSkipped = scan.Skipped,
             AlreadyBounded = scan.Bounded,
         };
+    }
+
+    /// <summary>The per-file counts, highest first, cut to <paramref name="maxResults"/> entries and to <see cref="MaxTotalChars"/>.</summary>
+    private static ImmutableList<GrepFileCount> TopCounts(GrepScan scan, int maxResults)
+    {
+        var counts = ImmutableList.CreateBuilder<GrepFileCount>();
+        var chars = 0;
+        foreach (var (path, count) in scan.FileCounts.OrderByDescending(c => c.Count).ThenBy(c => c.Path, StringComparer.Ordinal))
+        {
+            if (counts.Count >= maxResults) break;
+            chars += path.Length + 8;
+            if (chars > MaxTotalChars)
+            {
+                scan.Bounded = true;
+                break;
+            }
+            counts.Add(new GrepFileCount { Path = path, Count = count });
+        }
+        return counts.ToImmutable();
     }
 
     /// <summary>The text of <paramref name="path"/>, or null when it is too large, unreadable or binary.</summary>
@@ -218,12 +292,16 @@ public sealed class GrepTool : FileToolBase<GrepRequest, GrepResponse>
             : await ReadTextAsync(path, cancellationToken).ConfigureAwait(false);
     }
 
-    /// <summary>Scans the lines of one file, adding its hits to <paramref name="scan"/> until a bound stops it.</summary>
-    private void ScanText(string path, string text, Regex regex, int maxResults, GrepScan scan)
+    /// <summary>
+    /// Scans the lines of one file, counting its matches and, when <paramref name="maxResults"/> is given, adding
+    /// them to the hits of <paramref name="scan"/> until a bound stops that; only a timeout stops the count.
+    /// </summary>
+    private void ScanText(string path, string text, Regex regex, int? maxResults, GrepScan scan)
     {
         var start = 0;
         var lineNo = 0;
-        while (start < text.Length && !scan.Stopped)
+        var matches = 0;
+        while (start < text.Length && !scan.TimedOut)
         {
             var end = text.IndexOf('\n', start);
             var next = end < 0 ? text.Length : end + 1;
@@ -234,12 +312,18 @@ public sealed class GrepTool : FileToolBase<GrepRequest, GrepResponse>
             if (scan.Clock.Elapsed > _totalBudget)
             {
                 scan.TimedOut = true;
-                return;
+                break;
             }
 
-            if (IsMatch(regex, line, scan))
-                AddHit(path, lineNo, line, maxResults, scan);
+            if (!IsMatch(regex, line, scan)) continue;
+            matches++;
+            if (maxResults is { } max)
+                AddHit(path, lineNo, line, max, scan);
         }
+
+        if (matches == 0) return;
+        scan.Matches += matches;
+        scan.FileCounts.Add((path, matches));
     }
 
     /// <summary>Whether <paramref name="line"/> matches; a match timeout marks the scan timed out.</summary>
@@ -259,27 +343,32 @@ public sealed class GrepTool : FileToolBase<GrepRequest, GrepResponse>
     /// <summary>Adds one hit, cut to <see cref="MaxLineChars"/>, unless a result or size bound is reached.</summary>
     private static void AddHit(string path, int lineNo, string line, int maxResults, GrepScan scan)
     {
+        if (scan.HitsCut) return;
         if (line.Length > MaxLineChars)
             line = line[..MaxLineChars] + LineCutMarker;
         if (scan.Hits.Count >= maxResults)
         {
-            scan.Truncated = true;
+            scan.HitsCut = true;
             return;
         }
         var cost = path.Length + line.Length;
         if (scan.Chars + cost > MaxTotalChars)
         {
-            scan.Truncated = scan.Bounded = true;
+            scan.HitsCut = scan.Bounded = true;
             return;
         }
         scan.Chars += cost;
         scan.Hits.Add(new GrepHit { Path = path, Line = lineNo, Text = line });
     }
 
-    /// <summary>The running state of one grep: its hits, counters and why it stopped.</summary>
+    /// <summary>The running state of one grep: its hits, counters and what cut it.</summary>
     private sealed class GrepScan
     {
         public ImmutableList<GrepHit>.Builder Hits { get; } = ImmutableList.CreateBuilder<GrepHit>();
+
+        public List<(string Path, int Count)> FileCounts { get; } = [];
+
+        public int Matches { get; set; }
 
         public Stopwatch Clock { get; } = Stopwatch.StartNew();
 
@@ -289,13 +378,15 @@ public sealed class GrepTool : FileToolBase<GrepRequest, GrepResponse>
 
         public int Skipped { get; set; }
 
-        public bool Truncated { get; set; }
+        /// <summary>Hits were left out: <c>max_results</c> or the size bound was reached.</summary>
+        public bool HitsCut { get; set; }
+
+        /// <summary>Files were left out: <c>max_files</c> was reached.</summary>
+        public bool FilesCut { get; set; }
 
         public bool Bounded { get; set; }
 
         public bool TimedOut { get; set; }
-
-        public bool Stopped => Truncated || TimedOut;
     }
 
     private async Task<string?> ReadTextAsync(string virtualPath, CancellationToken cancellationToken)

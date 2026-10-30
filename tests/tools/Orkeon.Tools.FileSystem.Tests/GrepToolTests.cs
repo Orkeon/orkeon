@@ -33,23 +33,29 @@ public sealed class GrepToolTests : IDisposable
     private void Put(string path, string text) => _fs.AddFile(path, Encoding.UTF8.GetBytes(text));
 
     private static Task<ToolCallResponse> GrepAsync(
-        GrepTool tool, string pattern, string path, string? glob = null, bool? ignoreCase = null, int? max = null, int? maxFiles = null)
+        GrepTool tool, string pattern, string path, string? glob = null, bool? ignoreCase = null, int? max = null, int? maxFiles = null,
+        string? mode = null)
     {
         var p = new Dictionary<string, object?> { ["pattern"] = pattern, [ParamPath] = path };
         if (glob is not null) p["glob"] = glob;
         if (ignoreCase is { } c) p["case_insensitive"] = c;
         if (max is { } m) p["max_results"] = m;
         if (maxFiles is { } f) p["max_files"] = f;
+        if (mode is not null) p["output_mode"] = mode;
         return tool.CallAsync(new ToolCallRequest("grep", p));
     }
 
     private Task<ToolCallResponse> GrepAsync(
-        string pattern, string path, string? glob = null, bool? ignoreCase = null, int? max = null, int? maxFiles = null)
-        => GrepAsync(_tool, pattern, path, glob, ignoreCase, max, maxFiles);
+        string pattern, string path, string? glob = null, bool? ignoreCase = null, int? max = null, int? maxFiles = null, string? mode = null)
+        => GrepAsync(_tool, pattern, path, glob, ignoreCase, max, maxFiles, mode);
 
     private sealed record Hit(string Path, int Line, string Text);
 
-    private sealed record GrepView(IReadOnlyList<Hit> Hits, bool Truncated, bool TimedOut, int Scanned, int Skipped);
+    private sealed record FileCount(string Path, int Count);
+
+    private sealed record GrepView(
+        IReadOnlyList<Hit> Hits, bool Truncated, bool TimedOut, int Scanned, int Skipped,
+        IReadOnlyList<FileCount> Counts, int TotalMatches, int FilesMatched, bool ScanComplete);
 
     private static GrepView View(ToolCallResponse r)
     {
@@ -58,12 +64,20 @@ public sealed class GrepToolTests : IDisposable
             .Select(o => Assert.IsType<Dictionary<string, object?>>(o))
             .Select(h => new Hit((string)h["path"]!, Convert.ToInt32(h["line"]), (string)h["text"]!))
             .ToList();
+        var counts = ((System.Collections.IEnumerable)d["counts"]!).Cast<object>()
+            .Select(o => Assert.IsType<Dictionary<string, object?>>(o))
+            .Select(c => new FileCount((string)c["path"]!, Convert.ToInt32(c["count"])))
+            .ToList();
         return new GrepView(
             hits,
             Convert.ToBoolean(d["truncated"]),
             Convert.ToBoolean(d["timed_out"]),
             Convert.ToInt32(d["files_scanned"]),
-            Convert.ToInt32(d["files_skipped"]));
+            Convert.ToInt32(d["files_skipped"]),
+            counts,
+            Convert.ToInt32(d["total_matches"]),
+            Convert.ToInt32(d["files_matched"]),
+            Convert.ToBoolean(d["scan_complete"]));
     }
 
     private static GrepView Ok(ToolCallResponse r)
@@ -470,5 +484,89 @@ public sealed class GrepToolTests : IDisposable
         {
             try { Directory.Delete(root, recursive: true); } catch (IOException) { /* best-effort */ }
         }
+    }
+
+    [Fact]
+    [Trait("BR", "RT-09b")]
+    public async Task ShouldReturnCountsWithoutHits_WhenOutputModeIsCount()
+    {
+        Put("/workspace/proj/a.cs", "sealed class A\nsealed class B\nclass C\n");
+        Put("/workspace/proj/b.cs", "sealed class D\n");
+        Put("/workspace/proj/c.cs", "class E\n");
+        Put("/workspace/proj/d.cs", "sealed class F\nsealed class G\nsealed class H\n");
+
+        var res = Ok(await GrepAsync("^sealed class", "/workspace/proj", glob: "**/*.cs", mode: "count"));
+
+        Assert.Empty(res.Hits);
+        Assert.Equal(6, res.TotalMatches);
+        Assert.Equal(3, res.FilesMatched);
+        Assert.Equal(4, res.Scanned);
+        Assert.Equal(
+            [new FileCount("/workspace/proj/d.cs", 3), new FileCount("/workspace/proj/a.cs", 2), new FileCount("/workspace/proj/b.cs", 1)],
+            res.Counts);
+        Assert.True(res.ScanComplete);
+        Assert.False(res.Truncated);
+    }
+
+    [Fact]
+    [Trait("BR", "RT-09b")]
+    public async Task ShouldCapPerFileCountsButNotTotals_WhenCountModeExceedsMaxResults()
+    {
+        for (var i = 0; i < 5; i++) Put($"/workspace/proj/f{i}.txt", string.Concat(Enumerable.Repeat("needle\n", i + 1)));
+
+        var res = Ok(await GrepAsync("needle", "/workspace/proj", max: 2, mode: "count"));
+
+        Assert.Equal(15, res.TotalMatches);
+        Assert.Equal(5, res.FilesMatched);
+        Assert.Equal([new FileCount("/workspace/proj/f4.txt", 5), new FileCount("/workspace/proj/f3.txt", 4)], res.Counts);
+        Assert.True(res.ScanComplete);
+        Assert.False(res.Truncated);
+    }
+
+    [Fact]
+    [Trait("BR", "RT-09b")]
+    public async Task ShouldFlagIncompleteScan_WhenCountModeHitsMaxFiles()
+    {
+        for (var i = 0; i < 5; i++) Put($"/workspace/proj/f{i}.txt", "needle\n");
+
+        var limited = Ok(await GrepAsync("needle", "/workspace/proj", maxFiles: 3, mode: "count"));
+        var roomy = Ok(await GrepAsync("needle", "/workspace/proj", maxFiles: 5, mode: "count"));
+
+        Assert.Equal(3, limited.TotalMatches);
+        Assert.True(limited.Truncated);
+        Assert.False(limited.ScanComplete);
+        Assert.Equal(5, roomy.TotalMatches);
+        Assert.False(roomy.Truncated);
+        Assert.True(roomy.ScanComplete);
+    }
+
+    [Fact]
+    [Trait("BR", "RT-09b")]
+    public async Task ShouldReportTotalMatches_WhenHitsAreCutAtMaxResultsButScanIsComplete()
+    {
+        Put("/workspace/proj/a.txt", "needle 1\nneedle 2\nneedle 3\n");
+        Put("/workspace/proj/b.txt", "needle 4\nnone\n");
+
+        var res = Ok(await GrepAsync("needle", "/workspace/proj", max: 2));
+
+        Assert.Equal(2, res.Hits.Count);
+        Assert.True(res.Truncated);
+        Assert.True(res.ScanComplete);
+        Assert.Equal(4, res.TotalMatches);
+        Assert.Equal(2, res.FilesMatched);
+        Assert.Equal(2, res.Scanned);
+        Assert.Empty(res.Counts);
+    }
+
+    [Fact]
+    [Trait("BR", "RT-09b")]
+    public async Task ShouldRefuseGrep_WhenOutputModeIsUnknown()
+    {
+        Put("/workspace/proj/a.txt", "needle\n");
+
+        var res = await GrepAsync("needle", "/workspace/proj", mode: "lines");
+
+        AssertRefused(res, "an unknown output_mode is refused");
+        Assert.Contains("output_mode", res.Error, StringComparison.Ordinal);
     }
 }
