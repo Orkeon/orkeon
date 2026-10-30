@@ -1,7 +1,15 @@
+using System.Text.Json;
 using Jint;
+using Microsoft.Extensions.AI;
+using Orkeon.Domain.Configuration;
 using Orkeon.Domain.SharedKernel.ValueObjects;
+using Orkeon.Domain.Tools.Protocol;
+using Orkeon.Infrastructure.LLMs;
+using Orkeon.Infrastructure.LLMs.Adapters;
+using Orkeon.Infrastructure.LLMs.ToolCalling;
 using Orkeon.Scripting.Adapters;
 using Orkeon.Scripting.Runtime;
+using Orkeon.Scripting.Tests.Doubles;
 
 namespace Orkeon.Scripting.Tests.Adapters;
 
@@ -303,6 +311,103 @@ public sealed class JsCrewConfigurationAdapterTests
         Assert.NotNull(thinking);
         Assert.True(thinking!.Enabled);
         Assert.Equal(level, thinking.Effort);
+    }
+
+    private static CrewConfiguration CacheCrew(string cacheCall)
+    {
+        var engine = NewEngine();
+        var crew = BuildCrew(engine, $$"""
+            const a = agentBuilder().name("a").role("R").goal("G"){{cacheCall}}.build();
+            const t = taskBuilder().name("t").agent(a).description("d").expectedOutput("o").build();
+            crewBuilder().name("c").withAgent(a).withTask(t).build();
+            """);
+        return JsCrewConfigurationAdapter.ToConfiguration(crew);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-254")]
+    public void ShouldCarryCacheToAgentConfig_WhenAgentBuilderCacheCalled()
+    {
+        var config = CacheCrew(""".cache({ systemPrompt: true, tools: true, ttl: "1h" })""");
+
+        var cache = config.Agents[0].LlmConfig?.Cache;
+        Assert.Equal(new LlmCacheConfig { CacheSystemPrompt = true, CacheTools = true, Ttl = "1h" }, cache);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-254")]
+    public void ShouldCarryCacheFromLlmWith_WhenAgentRunsOnIt()
+    {
+        var config = CacheCrew(""".llm(llm.default_.with({ cache: { systemPrompt: true } }))""");
+
+        var cache = config.Agents[0].LlmConfig?.Cache;
+        Assert.Equal(new LlmCacheConfig { CacheSystemPrompt = true }, cache);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-254")]
+    public void ShouldTurnInheritedCacheOff_WhenAgentBuilderCacheMarksNothing()
+    {
+        var config = CacheCrew(""".llm(llm.default_.with({ cache: { tools: true } })).cache({})""");
+
+        Assert.Same(LlmCacheConfig.Off, config.Agents[0].LlmConfig?.Cache);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-254")]
+    public void ShouldCarryAnExplicitOff_WhenAgentBuilderCacheMarksNothingWithoutAnLlmConfig()
+    {
+        // Off reaches the agent's config so that it wins over the host default Llm:Cache.
+        var config = CacheCrew(""".cache({})""");
+
+        Assert.Same(LlmCacheConfig.Off, config.Agents[0].LlmConfig?.Cache);
+    }
+
+    [Theory]
+    [Trait("BR", "CH-254")]
+    [InlineData("""{ systemPrompt: true, ttl: "2h" }""", "5m or 1h")]
+    [InlineData("""{ systemPrompt: true, ttl: 60 }""", "5m or 1h")]
+    [InlineData("""{ system: true }""", "does not apply 'system'")]
+    [InlineData("""{ tools: "yes" }""", "tools must be true or false")]
+    [InlineData("""{ ttl: "1h" }""", "caches nothing on its own")]
+    [InlineData("true", "an object")]
+    public void ShouldRefuseCache_WhenOptionsInvalid(string options, string expected)
+    {
+        var engine = NewEngine();
+
+        var ex = Assert.ThrowsAny<Exception>(() => BuildCrew(engine, $$"""
+            agentBuilder().name("a").role("R").goal("G").cache({{options}}).build();
+            """));
+
+        Assert.Contains(".cache(...)", ex.Message);
+        Assert.Contains(expected, ex.Message);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-254")]
+    public async Task ShouldSendCacheControlToAnthropic_WhenScriptAgentRequestsCache()
+    {
+        var config = CacheCrew(""".cache({ systemPrompt: true, tools: true, ttl: "1h" })""");
+        var llm = config.Agents[0].LlmConfig! with
+        {
+            Model = "claude-sonnet-5",
+            ApiKey = "sk-ant-test",
+            SystemMessage = "You are a careful assistant.",
+            Tools = [new ToolSchema("echo", "Echoes the text.", [])],
+        };
+        using var handler = new CapturingHttpMessageHandler(
+            """{"content":[{"type":"text","text":"ok"}],"usage":{"input_tokens":1,"output_tokens":1}}""");
+        using var provider = new AnthropicLlmProvider(llm, new SingleHandlerHttpClientFactory(handler), new AnthropicToolCallingStrategy());
+        using var adapter = new LlmProviderToChatClientAdapter(provider, llm);
+
+        await adapter.GetResponseAsync(
+            [new ChatMessage(ChatRole.User, "hello")], new ChatOptions(), TestContext.Current.CancellationToken);
+
+        using var sent = JsonDocument.Parse(Assert.Single(handler.Bodies));
+        var system = sent.RootElement.GetProperty("system").EnumerateArray().Single();
+        Assert.Equal("1h", system.GetProperty("cache_control").GetProperty("ttl").GetString());
+        var lastTool = sent.RootElement.GetProperty("tools").EnumerateArray().Last();
+        Assert.Equal("1h", lastTool.GetProperty("cache_control").GetProperty("ttl").GetString());
     }
 
     [Fact]

@@ -324,9 +324,7 @@ public sealed partial class ConsensualProcessStrategy : IProcessStrategy
         // The loop is sequential, so the tally's delta around one task IS what the
         // whole vote cost — every agent, every round — not just the winning
         // execution the task result carries (review, RC2-FEAT-06 lot 7).
-        var tokensBefore = tokenTally.TotalTokens;
-        var cacheHitBefore = tokenTally.CacheHitTokens;
-        var cacheMissBefore = tokenTally.CacheMissTokens;
+        var before = tokenTally.Mark();
 
         // Null when the Fail fallback was triggered: no consensus, so no result. That is a
         // failed task like any other — its dependants are skipped and the crew fails — not
@@ -375,6 +373,7 @@ public sealed partial class ConsensualProcessStrategy : IProcessStrategy
 
         LogTaskCompletedViaConsensusSuccess(task.Id, taskResult.Success);
 
+        var used = tokenTally.Since(before);
         var snapshot = new TaskExecutionSnapshot
         {
             TaskId = task.Id.Value.ToString(),
@@ -384,9 +383,9 @@ public sealed partial class ConsensualProcessStrategy : IProcessStrategy
             Duration = taskResult.ExecutionTime,
             CompletedAt = DateTimeOffset.UtcNow,
             ToolCallCount = taskResult.ToolsUsed?.Count ?? 0,
-            TokensUsed = tokenTally.TotalTokens - tokensBefore,
-            CacheHitTokens = tokenTally.CacheHitTokens - cacheHitBefore,
-            CacheMissTokens = tokenTally.CacheMissTokens - cacheMissBefore,
+            TokensUsed = used.Tokens,
+            CacheHitTokens = used.CacheHit,
+            CacheMissTokens = used.CacheMiss,
         };
         run.TaskSnapshots.Add(snapshot);
         await _hooks.TaskCompletedAsync(snapshot, ct).ConfigureAwait(false);

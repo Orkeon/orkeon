@@ -126,8 +126,8 @@ internal sealed class ChatClientAgentLoop
         // it (R10.8). Tool-free retry turns only feed the total, so split <= total.
         var promptTokensTotal = 0;
         var completionTokensTotal = 0;
-        long cacheHitTotal = 0;
-        long cacheMissTotal = 0;
+        long? cacheHitTotal = null;
+        long? cacheMissTotal = null;
         var softBudgetSteeringInjected = false;
 
         // Circuit breaker state: detect repeated identical tool call errors
@@ -391,21 +391,25 @@ internal sealed class ChatClientAgentLoop
     /// </summary>
     private void AccumulateCacheUsage(
         ChatResponse chatResponse,
-        ref long cacheHitTotal,
-        ref long cacheMissTotal,
+        ref long? cacheHitTotal,
+        ref long? cacheMissTotal,
         string agentRole)
     {
         var counts = chatResponse.Usage?.AdditionalCounts;
         if (counts is null) return;
 
+        // A count the turn did not report stays out of the total: null until one turn reports it.
         long iterHit = 0, iterMiss = 0;
         if (counts.TryGetValue(Application.Common.DTOs.LlmUsageMetadataKeys.CacheHitTokens, out var hit))
+        {
             iterHit = hit;
+            cacheHitTotal = (cacheHitTotal ?? 0) + hit;
+        }
         if (counts.TryGetValue(Application.Common.DTOs.LlmUsageMetadataKeys.CacheMissTokens, out var miss))
+        {
             iterMiss = miss;
-
-        cacheHitTotal += iterHit;
-        cacheMissTotal += iterMiss;
+            cacheMissTotal = (cacheMissTotal ?? 0) + miss;
+        }
 
         var inputTokens = chatResponse.Usage?.InputTokenCount ?? 0;
         if (inputTokens > 0 && (iterHit + iterMiss) > 0 && iterHit + iterMiss != inputTokens)

@@ -44,6 +44,42 @@ public sealed record LlmCacheConfig
     /// <summary>True when this configuration asks for at least one breakpoint.</summary>
     public bool RequestsAnyBreakpoint => CacheSystemPrompt || CacheTools;
 
+    /// <summary>The lifetimes <see cref="Ttl"/> takes: Anthropic's two cache tiers.</summary>
+    public static IReadOnlyList<string> Ttls { get; } = ["5m", "1h"];
+
+    /// <summary>
+    /// The explicit "no cache" request: no breakpoint. Set on an agent, a task override or a script
+    /// agent, it replaces an inherited cache - the host default <c>Llm:Cache</c> included - and turns
+    /// caching off, where a null cache inherits it.
+    /// </summary>
+    public static LlmCacheConfig Off { get; } = new();
+
     /// <summary>Caches the system prompt only — the common case and the cheapest win.</summary>
     public static LlmCacheConfig SystemPrompt() => new() { CacheSystemPrompt = true };
+
+    /// <summary>
+    /// The configuration a <c>cache</c> request of a crew file or a script describes: the one mapping
+    /// the YAML <c>cache:</c> block and the script <c>cache({ ... })</c> option share, so both accept
+    /// and refuse the same values.
+    /// </summary>
+    /// <param name="systemPrompt">Whether the system prompt is marked cacheable.</param>
+    /// <param name="tools">Whether the tool definitions are marked cacheable.</param>
+    /// <param name="ttl">The lifetime, one of <see cref="Ttls"/>; null keeps the vendor default.</param>
+    /// <returns>
+    /// The configuration, or null when it asks for no breakpoint: caching stays off unless it was
+    /// actually requested.
+    /// </returns>
+    /// <exception cref="ArgumentException">The lifetime is not one of <see cref="Ttls"/>.</exception>
+    public static LlmCacheConfig? Request(bool systemPrompt, bool tools, string? ttl)
+    {
+        if (ttl is not null && !Ttls.Contains(ttl, StringComparer.Ordinal))
+        {
+            throw new ArgumentException(
+                $"cache ttl must be {string.Join(" or ", Ttls)}, not '{ttl}'; leave it out for the vendor default.",
+                nameof(ttl));
+        }
+
+        var config = new LlmCacheConfig { CacheSystemPrompt = systemPrompt, CacheTools = tools, Ttl = ttl };
+        return config.RequestsAnyBreakpoint ? config : null;
+    }
 }

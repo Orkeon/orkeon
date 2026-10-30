@@ -39,6 +39,33 @@ public sealed class JsAgentBuilder
     internal string? ResponseFormatValue { get; private set; }
     internal string? EffortValue { get; private set; }
 
+    /// <summary>
+    /// The prompt-cache request <c>.cache(...)</c> received, which wins over the LlmConfig's; null
+    /// when <c>.cache(...)</c> was not called, <see cref="Orkeon.Domain.SharedKernel.ValueObjects.LlmCacheConfig.Off"/>
+    /// when it marks nothing cacheable.
+    /// </summary>
+    internal Orkeon.Domain.SharedKernel.ValueObjects.LlmCacheConfig? CacheValue { get; private set; }
+
+    /// <summary>
+    /// <paramref name="config"/> with the agent's own <c>.effort(...)</c> and <c>.cache(...)</c>
+    /// applied over it: what the crew's agent configuration and the procedural <c>ctx.llm</c> calls
+    /// both run with (#254).
+    /// </summary>
+    /// <param name="config">The configuration <c>.llm(...)</c> received; null for the host's own.</param>
+    /// <returns>The configuration, null when neither it nor the agent sets anything.</returns>
+    internal Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig? WithEffortAndCache(
+        Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig? config)
+    {
+        if (EffortValue is not null)
+            config = (config ?? Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig.OnProfile()) with
+            {
+                Thinking = Orkeon.Scripting.Runtime.JsLlmConfig.ThinkingAt(EffortValue),
+            };
+        if (CacheValue is not null)
+            config = (config ?? Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig.OnProfile()) with { Cache = CacheValue };
+        return config;
+    }
+
     /// <summary>Schema name captured by <c>withResponseSchema</c>; <c>null</c> when unset.</summary>
     internal string? ResponseSchemaName { get; private set; }
 
@@ -203,6 +230,17 @@ public sealed class JsAgentBuilder
     public JsAgentBuilder effort(string level)
     {
         EffortValue = Orkeon.Scripting.Runtime.JsLlmConfig.RequireEffort(level);
+        return this;
+    }
+
+    /// <summary>
+    /// YAML parity <c>cache:</c> (#254): asks the provider's prompt cache to keep the system prompt
+    /// and/or the tool definitions, for <c>ttl</c> <c>5m</c> or <c>1h</c>. Only providers whose cache
+    /// is explicit (Anthropic) need it; the others cache by their own rules. Anything else is refused.
+    /// </summary>
+    public JsAgentBuilder cache(JsValue options)
+    {
+        CacheValue = Orkeon.Scripting.Runtime.JsLlmConfig.CacheFrom(options, ".cache(...)");
         return this;
     }
     public JsAgentBuilder allowDelegation(bool value) { AllowDelegationFlag = value; return this; }

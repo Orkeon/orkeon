@@ -17,6 +17,10 @@ public class AnthropicLlmProviderCacheTests
     private const string OkBody = """{"content":[{"type":"text","text":"ok"}],"usage":{"input_tokens":1,"output_tokens":1}}""";
 
     private static async Task<JsonElement> SystemBlockAsync(string? callTtl, string? configTtl)
+        => (await SystemAsync(callTtl, new LlmCacheConfig { CacheSystemPrompt = true, Ttl = configTtl }))
+            .EnumerateArray().Single().GetProperty("cache_control").Clone();
+
+    private static async Task<JsonElement> SystemAsync(string? callTtl, LlmCacheConfig? cache, LlmCacheConfig? agentCache = null)
     {
         using var handler = TestHttpMessageHandler.CreateWithResponse(HttpStatusCode.OK, OkBody);
         var factory = new TestHttpClientFactory();
@@ -24,7 +28,7 @@ public class AnthropicLlmProviderCacheTests
         var config = LlmConfig.Create("claude-sonnet-5", TestApiKey) with
         {
             SystemMessage = "You are a careful assistant.",
-            Cache = new LlmCacheConfig { CacheSystemPrompt = true, Ttl = configTtl },
+            Cache = cache,
         };
         using var provider = new AnthropicLlmProvider(
             config, factory, Policy.NoOpAsync<HttpResponseMessage>(), new TestLogger<AnthropicLlmProvider>());
@@ -33,12 +37,27 @@ public class AnthropicLlmProviderCacheTests
         var options = new ChatOptions { AdditionalProperties = new AdditionalPropertiesDictionary() };
         if (callTtl is not null)
             options.AdditionalProperties[LlmChatOptionsKeys.CacheTtl] = callTtl;
+        if (agentCache is not null)
+            options.AdditionalProperties[LlmChatOptionsKeys.Cache] = agentCache;
         await adapter.GetResponseAsync(
             [new ChatMessage(ChatRole.User, "hello")], options, TestContext.Current.CancellationToken);
 
         var raw = await handler.CapturedRequests.Single().Content!.ReadAsStringAsync(TestContext.Current.CancellationToken);
         using var doc = JsonDocument.Parse(raw);
-        return doc.RootElement.GetProperty("system").EnumerateArray().Single().GetProperty("cache_control").Clone();
+        return doc.RootElement.GetProperty("system").Clone();
+    }
+
+    [Fact]
+    [Trait("BR", "CH-254")]
+    public async Task ShouldMarkTheSystemPromptWithTheCallTtl_WhenNoCacheIsConfigured()
+    {
+        var perCallOnly = await SystemAsync(callTtl: "1h", cache: null);
+        var neither = await SystemAsync(callTtl: null, cache: null);
+
+        var block = Assert.Single(perCallOnly.EnumerateArray());
+        Assert.Equal("1h", block.GetProperty("cache_control").GetProperty("ttl").GetString());
+        // No breakpoint asked for: the system prompt stays the plain string, nothing is cached.
+        Assert.Equal(JsonValueKind.String, neither.ValueKind);
     }
 
     [Fact]
@@ -54,5 +73,18 @@ public class AnthropicLlmProviderCacheTests
         Assert.Equal("1h", overConfig.GetProperty("ttl").GetString());
         Assert.False(none.TryGetProperty("ttl", out _));
         Assert.Equal("5m", fromConfig.GetProperty("ttl").GetString());
+    }
+
+    [Fact]
+    [Trait("BR", "CH-254")]
+    public async Task ShouldApplyTheHostDefaultCache_UnlessTheAgentTurnsItOff()
+    {
+        // The host default (Llm:Cache) is the provider's own configuration; an agent's Off wins.
+        var hostDefault = await SystemAsync(callTtl: null, cache: new LlmCacheConfig { CacheSystemPrompt = true, Ttl = "1h" });
+        var agentOff = await SystemAsync(callTtl: null, cache: LlmCacheConfig.SystemPrompt(), agentCache: LlmCacheConfig.Off);
+
+        var block = Assert.Single(hostDefault.EnumerateArray());
+        Assert.Equal("1h", block.GetProperty("cache_control").GetProperty("ttl").GetString());
+        Assert.Equal(JsonValueKind.String, agentOff.ValueKind);
     }
 }

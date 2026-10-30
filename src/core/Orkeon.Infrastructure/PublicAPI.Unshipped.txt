@@ -185,3 +185,17 @@ static Orkeon.Infrastructure.Decision.TypeSafe.TypeSafeServiceCollectionExtensio
 static Orkeon.Infrastructure.LLMs.Decision.DecisionProfileServiceCollectionExtensions.AddOrkeonDecisionProfiles(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, Microsoft.Extensions.Configuration.IConfiguration! configuration) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
 static Orkeon.Infrastructure.LLMs.Decision.Stages.GuardDecisionStage.AssessAsync(Orkeon.Application.Interfaces.Ports.IDecisionModel! model, System.Collections.Generic.IReadOnlyDictionary<string!, string!>! risks, System.Text.Json.Nodes.JsonNode! state, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<(string! Risk, double Probability)>!>!
 static readonly Orkeon.Infrastructure.Decision.TypeSafe.TypeSafeInputGuard.DefaultRisks -> System.Collections.Immutable.ImmutableDictionary<string!, string!>!
+*REMOVED*Orkeon.Infrastructure.Tools.ModelTokensEntry.CacheReadTokens.get -> long
+Orkeon.Infrastructure.Tools.ModelTokensEntry.CacheReadTokens.get -> long?
+*REMOVED*Orkeon.Infrastructure.Tools.ModelTokensEntry.CacheWriteTokens.get -> long
+Orkeon.Infrastructure.Tools.ModelTokensEntry.CacheWriteTokens.get -> long?
+Orkeon.Infrastructure.Tools.ModelTokensEntry.ReasoningTokens.get -> long?
+Orkeon.Infrastructure.Tools.ModelTokensEntry.ReasoningTokens.init -> void
+*REMOVED*Orkeon.Infrastructure.Crew.Strategies.CrewGraphState.AddResultUsage(int tokens, long cacheHit, long cacheMiss) -> void
+*REMOVED*Orkeon.Infrastructure.Crew.Strategies.CrewGraphState.CacheHitTokensUsed.get -> long
+*REMOVED*Orkeon.Infrastructure.Crew.Strategies.CrewGraphState.CacheMissTokensUsed.get -> long
+*REMOVED*Orkeon.Infrastructure.Crew.Strategies.CrewGraphState.ResultUsage.get -> System.Collections.Generic.IReadOnlyList<(int Tokens, long CacheHit, long CacheMiss)>!
+Orkeon.Infrastructure.Crew.Strategies.CrewGraphState.AddResultUsage(int tokens, long? cacheHit, long? cacheMiss) -> void
+Orkeon.Infrastructure.Crew.Strategies.CrewGraphState.CacheHitTokensUsed.get -> long?
+Orkeon.Infrastructure.Crew.Strategies.CrewGraphState.CacheMissTokensUsed.get -> long?
+Orkeon.Infrastructure.Crew.Strategies.CrewGraphState.ResultUsage.get -> System.Collections.Generic.IReadOnlyList<(int Tokens, long? CacheHit, long? CacheMiss)>!

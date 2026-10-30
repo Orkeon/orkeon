@@ -93,6 +93,11 @@ declare global {
         llm?: { model?: string };
         /** Turns the provider's thinking on at this effort for the call. */
         effort?: "low" | "medium" | "high" | "xhigh" | "max";
+        /**
+         * The prompt-cache request of the call, as `agentBuilder().cache(...)` takes it; it wins over the
+         * agent's own. `{}` turns caching off for the call.
+         */
+        cache?: LlmCacheOptions;
     }
 
     /**

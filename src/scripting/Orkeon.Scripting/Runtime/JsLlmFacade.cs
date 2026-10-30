@@ -40,6 +40,14 @@ public sealed partial class JsLlmFacade
 
     /// <summary>The configured result limits and fan-out bound of the act loop.</summary>
     public ToolResultLimitsOptions ToolLimits { get; init; } = new();
+
+    /// <summary>
+    /// The effort and the prompt cache the agent itself set (<c>agentBuilder().effort(...)</c>,
+    /// <c>.cache(...)</c>, or the LlmConfig <c>.llm(...)</c> received): every <c>ctx.llm</c> call runs
+    /// with them unless its own options set another. Only <see cref="LlmConfig.Thinking"/> and
+    /// <see cref="LlmConfig.Cache"/> are read; null sets neither.
+    /// </summary>
+    internal LlmConfig? AgentSettings { get; init; }
     private readonly Orkeon.Application.Interfaces.Ports.ILlmDeltaSink? _deltaSink;
     private readonly Microsoft.Extensions.Logging.ILogger? _logger;
     private readonly string _crewName;
@@ -1766,9 +1774,16 @@ public sealed partial class JsLlmFacade
     /// </remarks>
     private LlmConfig? ConfigFrom(JsValue? options)
     {
-        if (options is null || options.IsUndefined() || options.IsNull()) return null;
+        // The agent's own effort and cache apply to every call; a call's options win over them (#254).
+        LlmConfig? config = AgentSettings is { Thinking: null, Cache: null } or null
+            ? null
+            : Inherited() with
+            {
+                Thinking = AgentSettings.Thinking ?? Inherited().Thinking,
+                Cache = AgentSettings.Cache ?? Inherited().Cache,
+            };
 
-        LlmConfig? config = null;
+        if (options is null || options.IsUndefined() || options.IsNull()) return config;
 
         // Top-level overrides (e.g. `{ responseFormat: "json_object" }`) — the most common
         // call-time shape, matching the LLM Response Format quickstart.
@@ -1776,7 +1791,7 @@ public sealed partial class JsLlmFacade
         if (topRf.IsString())
         {
             var rfType = topRf.AsString();
-            config = Inherited() with
+            config = (config ?? Inherited()) with
             {
                 ResponseFormat = string.Equals(rfType, "text", StringComparison.OrdinalIgnoreCase)
                     ? null
@@ -1787,6 +1802,10 @@ public sealed partial class JsLlmFacade
         var effort = options.Get("effort");
         if (effort.IsString())
             config = (config ?? Inherited()) with { Thinking = JsLlmConfig.ThinkingAt(effort.AsString()) };
+
+        var cache = options.Get("cache");
+        if (!cache.IsUndefined())
+            config = (config ?? Inherited()) with { Cache = JsLlmConfig.CacheFrom(cache, "ctx.llm { cache }") };
 
         // Nested `{ llm: { model: "..." } }` — the per-call model override: the agent's boot
         // provider keeps its credentials and endpoint, only the model name changes.

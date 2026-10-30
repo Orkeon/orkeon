@@ -402,12 +402,12 @@ export interface SessionUsage {
 export interface UsageTokens {
   readonly promptTokens: number;
   readonly completionTokens: number;
-  /** Prompt tokens served from the provider's cache; 0 when the provider reports none. */
-  readonly cacheHitTokens: number;
-  /** Prompt tokens written to the provider's cache; 0 when the provider reports none. */
-  readonly cacheWriteTokens: number;
-  /** Completion tokens spent reasoning (Z.AI, OpenRouter report them); 0 when the provider reports none. */
-  readonly reasoningTokens: number;
+  /** Prompt tokens served from the provider's cache; null when no call reported a cache count (not measured, never 0). */
+  readonly cacheHitTokens: number | null;
+  /** Prompt tokens written to the provider's cache; null when no call reported a cache count (not measured, never 0). */
+  readonly cacheWriteTokens: number | null;
+  /** Completion tokens spent reasoning (Z.AI, OpenRouter report them); null when no call reported them. */
+  readonly reasoningTokens: number | null;
 }
 
 /** What {@link SessionUsage.report} returns. */

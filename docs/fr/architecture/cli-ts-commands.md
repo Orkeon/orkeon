@@ -710,7 +710,9 @@ ctx.writeLine(`Orkeon ${runtime.commit ? `${runtime.version}+${runtime.commit}` 
 seule : `report()` rend les chiffres de l'instant, `{ promptTokens, completionTokens,
 cacheHitTokens, cacheWriteTokens, reasoningTokens, totalTokens, calls, unpricedCalls, cost, byModel,
 byCommand }`. Les comptes de cache sont une part du prompt, le raisonnement une part de la complétion
-(rapporté par Z.AI et OpenRouter, 0 ailleurs). Les totaux comptent chaque appel que le gestionnaire
+(rapporté par Z.AI et OpenRouter). Chacun de ces trois vaut null tant qu'aucun appel ne l'a rapporté,
+jamais 0 : un fournisseur qui ne mesure pas le cache donne `null`, un qui n'en a mesuré aucun donne 0, et
+un appel qui n'a rien rapporté n'ajoute rien aux autres. Les totaux comptent chaque appel que le gestionnaire
 de coûts a enregistré (`CostReport.TotalUsage`) ; `byModel` a une ligne par modèle nommé dans la
 réponse du fournisseur, avec ses `calls` : un appel dont le fournisseur ne nomme aucun modèle est
 dans les totaux et dans aucune ligne, les totaux peuvent donc dépasser la somme de `byModel`.
@@ -725,7 +727,7 @@ un minorant.
 
 ```typescript
 const usage = ctx.services.get("usage").report();
-for (const m of usage.byModel) ctx.writeLine(`${m.model}: ${m.promptTokens} in (${m.cacheHitTokens} cached), ${m.completionTokens} out, ${m.cost ?? "n/a"}`);
+for (const m of usage.byModel) ctx.writeLine(`${m.model}: ${m.promptTokens} in (${m.cacheHitTokens ?? "n/a"} cached), ${m.completionTokens} out, ${m.cost ?? "n/a"}`);
 for (const c of usage.byCommand) ctx.writeLine(`[${c.ticket}] ${c.name}: ${c.promptTokens + c.completionTokens} tokens, ${c.cost ?? "n/a"}`);
 ```
 

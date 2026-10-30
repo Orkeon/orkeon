@@ -133,8 +133,8 @@ public static class JsCrewConfigurationAdapter
             };
         }
 
-        if (builder.EffortValue is not null)
-            llmConfig = (llmConfig ?? LlmConfig.OnProfile()) with { Thinking = JsLlmConfig.ThinkingAt(builder.EffortValue) };
+        // agentBuilder().effort(...) and .cache({ ... }) win over the LlmConfig it was given (#254).
+        llmConfig = builder.WithEffortAndCache(llmConfig);
 
         return new AgentConfiguration
         {

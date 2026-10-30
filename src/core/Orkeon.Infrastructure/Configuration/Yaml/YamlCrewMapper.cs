@@ -521,20 +521,23 @@ public sealed partial class YamlCrewMapper
 
     /// <summary>
     /// Maps the YAML <c>cache:</c> block to its domain value object. Returns null when the
-    /// block asks for no breakpoint, so caching stays off unless it was actually requested.
+    /// block asks for no breakpoint, so caching stays off unless it was actually requested. The
+    /// mapping is <see cref="LlmCacheConfig.Request"/>, the one script agents use too: a <c>ttl</c>
+    /// other than <c>5m</c> or <c>1h</c> fails the load.
     /// </summary>
     private static LlmCacheConfig? MapCache(CacheYamlConfig? yaml)
     {
         if (yaml is null) return null;
 
-        var config = new LlmCacheConfig
+        try
         {
-            CacheSystemPrompt = yaml.System ?? false,
-            CacheTools = yaml.Tools ?? false,
-            Ttl = yaml.Ttl,
-        };
-
-        return config.RequestsAnyBreakpoint ? config : null;
+            // A present block with no breakpoint is the explicit "off": it replaces an inherited cache.
+            return LlmCacheConfig.Request(yaml.System ?? false, yaml.Tools ?? false, yaml.Ttl) ?? LlmCacheConfig.Off;
+        }
+        catch (ArgumentException ex)
+        {
+            throw new InvalidOperationException(ex.Message, ex);
+        }
     }
 
     private static LlmResponseFormat BuildJsonSchemaFormat(ResponseSchemaYamlConfig schema) =>
@@ -570,8 +573,8 @@ public sealed partial class YamlCrewMapper
             MaxTokens = yaml.MaxTokens,
             TopP = yaml.TopP,
             Thinking = MapThinking(yaml.Thinking),
-            // A present block with no breakpoint stays an empty config: it replaces the agent's cache and turns it off.
-            Cache = yaml.Cache is null ? null : MapCache(yaml.Cache) ?? new LlmCacheConfig(),
+            // A present block with no breakpoint is Off: it replaces the agent's cache and turns it off.
+            Cache = MapCache(yaml.Cache),
         };
     }
 

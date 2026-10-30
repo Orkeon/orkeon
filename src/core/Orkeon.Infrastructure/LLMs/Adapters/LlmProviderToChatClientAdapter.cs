@@ -638,9 +638,7 @@ public sealed class LlmProviderToChatClientAdapter : IChatClient
         // A base config — the adapter's, else the one the provider was built with (GAP-29):
         // merge sampling + tools into it, so an override of one option keeps every other setting.
         if ((_baseLlmConfig ?? _provider.BaseConfig) is { } baseConfig)
-        {
             return ApplyOptionsOverrides(baseConfig, options, tools, toolMode, ResolveStructuredOutput(options));
-        }
 
         // A provider that declares no configuration: build a fresh LlmConfig only when
         // ChatOptions has meaningful overrides.
@@ -783,7 +781,10 @@ public sealed class LlmProviderToChatClientAdapter : IChatClient
 
     /// <summary>
     /// Applies the per-call TTL under <see cref="LlmChatOptionsKeys.CacheTtl"/>; it wins over the
-    /// configured one. Absent, the cache configuration is returned as is.
+    /// configured one. Absent, the cache configuration is returned as is. Given with no cache
+    /// configuration that places a breakpoint, the TTL is itself the opt-in: it requests the
+    /// system-prompt breakpoint with that lifetime (#254) - a lifetime on nothing cached would
+    /// cache nothing. A provider that writes no lifetime still warns that it was not sent.
     /// </summary>
     private static LlmCacheConfig? WithCallTtl(LlmCacheConfig? cache, ChatOptions options)
     {
@@ -791,7 +792,8 @@ public sealed class LlmProviderToChatClientAdapter : IChatClient
             || !options.AdditionalProperties.TryGetValue(LlmChatOptionsKeys.CacheTtl, out var raw)
             || raw is not string ttl || string.IsNullOrWhiteSpace(ttl))
             return cache;
-        return (cache ?? new LlmCacheConfig()) with { Ttl = ttl };
+        var requested = cache is { RequestsAnyBreakpoint: true } ? cache : LlmCacheConfig.SystemPrompt();
+        return requested with { Ttl = ttl };
     }
 
     /// <summary>

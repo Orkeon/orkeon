@@ -196,6 +196,8 @@ public static class LlmSettings
             // Absent = Auto: stream, falling back on a buffered call when the provider refuses it.
             CallMode = ReadCallMode(section),
             Thinking = ReadThinking(section),
+            // Llm:Cache — the default prompt cache of every agent that sets none of its own.
+            Cache = ReadCache(section),
             // Llm:Grammar — the endpoint honours a GBNF grammar (llama.cpp-compatible server).
             GrammarEnabled = ReadBool(section, ConfigurationKeys.LlmGrammar) ?? LlmProfileShape.DefaultGrammar,
         };
@@ -375,6 +377,32 @@ public static class LlmSettings
         if (bool.TryParse(raw, out var value))
             return value;
         throw new InvalidOperationException($"{section.Path}:{key} is not true or false: '{raw}'.");
+    }
+
+    /// <summary>
+    /// <c>Llm:Cache:{SystemPrompt,Tools,Ttl}</c>, mapped by <see cref="LlmCacheConfig.Request"/> as a
+    /// crew file's <c>cache:</c> block and a script's <c>cache({ ... })</c> are (#254). A block that
+    /// marks nothing is no block; a <c>Ttl</c> that is not <c>5m</c> or <c>1h</c>, or one set with
+    /// nothing marked, refuses the start, naming its key.
+    /// </summary>
+    private static LlmCacheConfig? ReadCache(IConfigurationSection section)
+    {
+        var cache = section.GetSection("Cache");
+        var systemPrompt = ReadBool(cache, "SystemPrompt") ?? false;
+        var tools = ReadBool(cache, "Tools") ?? false;
+        var ttl = string.IsNullOrWhiteSpace(cache["Ttl"]) ? null : cache["Ttl"]!.Trim();
+        if (ttl is not null && !systemPrompt && !tools)
+            throw new InvalidOperationException(
+                $"{cache.Path}:Ttl caches nothing on its own: set SystemPrompt or Tools to true.");
+
+        try
+        {
+            return LlmCacheConfig.Request(systemPrompt, tools, ttl);
+        }
+        catch (ArgumentException ex)
+        {
+            throw new InvalidOperationException($"{cache.Path}:Ttl: {ex.Message}", ex);
+        }
     }
 
     private static LlmThinkingConfig? ReadThinking(IConfigurationSection section)

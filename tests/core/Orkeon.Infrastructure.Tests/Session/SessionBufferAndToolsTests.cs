@@ -309,6 +309,48 @@ public sealed class SessionBufferAndToolsTests
         Assert.Equal(40, entry.GetProperty("cache_read_tokens").GetInt64());
     }
 
+    [Fact]
+    [Trait("BR", "CH-254")]
+    public async Task ShouldReportNullCacheAndReasoning_WhenTheProviderReportedNone()
+    {
+        var manager = new CostBudgetManager(
+            new ModelPricingRegistry(Options.Create(new CostTrackingOptions()), NullLogger<ModelPricingRegistry>.Instance),
+            Options.Create(new CostTrackingOptions()), NullLogger<CostBudgetManager>.Instance);
+        manager.RecordUsage(new CostUsageEvent { Model = "quiet-model", PromptTokens = 200, CompletionTokens = 20 });
+        using var tool = new SessionStatsTool(new InMemorySessionBufferService(), manager);
+
+        var resp = await tool.CallAsync(new ToolCallRequest("session_stats", new Dictionary<string, object?>()), TestContext.Current.CancellationToken);
+
+        Assert.True(resp.Success, resp.Error);
+        using var doc = JsonDocument.Parse(JsonSerializer.Serialize(resp.Result));
+        var entry = Assert.Single(doc.RootElement.GetProperty("by_model_tokens").EnumerateArray());
+        Assert.Equal(200, entry.GetProperty("prompt_tokens").GetInt64());
+        // The tool result drops a null member of a nested object: an unreported count is absent, never 0.
+        Assert.False(entry.TryGetProperty("cache_write_tokens", out _));
+        Assert.False(entry.TryGetProperty("cache_read_tokens", out _));
+        Assert.False(entry.TryGetProperty("reasoning_tokens", out _));
+    }
+
+    [Fact]
+    [Trait("BR", "CH-254")]
+    public async Task ShouldReportZeroCache_WhenTheProviderReportedZero()
+    {
+        var manager = new CostBudgetManager(
+            new ModelPricingRegistry(Options.Create(new CostTrackingOptions()), NullLogger<ModelPricingRegistry>.Instance),
+            Options.Create(new CostTrackingOptions()), NullLogger<CostBudgetManager>.Instance);
+        manager.RecordUsage(new CostUsageEvent { Model = "quiet-model", PromptTokens = 200, CompletionTokens = 20 });
+        manager.RecordUsage(new CostUsageEvent { Model = "quiet-model", PromptTokens = 10, CompletionTokens = 2, CacheHitTokens = 0, ReasoningTokens = 4 });
+        using var tool = new SessionStatsTool(new InMemorySessionBufferService(), manager);
+
+        var resp = await tool.CallAsync(new ToolCallRequest("session_stats", new Dictionary<string, object?>()), TestContext.Current.CancellationToken);
+
+        using var doc = JsonDocument.Parse(JsonSerializer.Serialize(resp.Result));
+        var entry = Assert.Single(doc.RootElement.GetProperty("by_model_tokens").EnumerateArray());
+        Assert.Equal(0, entry.GetProperty("cache_read_tokens").GetInt64());
+        Assert.Equal(4, entry.GetProperty("reasoning_tokens").GetInt64());
+        Assert.False(entry.TryGetProperty("cache_write_tokens", out _));
+    }
+
     // ── TokenBudgetTool ─────────────────────────────────────────────────────
 
     [Fact]

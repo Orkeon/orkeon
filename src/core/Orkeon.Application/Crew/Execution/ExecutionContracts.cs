@@ -24,10 +24,10 @@ internal sealed record AgentLoopResult(
     public int PromptTokens { get; init; }
     /// <summary>Cumulative completion-side tokens across the loop (0 when the split is unavailable).</summary>
     public int CompletionTokens { get; init; }
-    /// <summary>Cumulative DeepSeek <c>prompt_cache_hit_tokens</c> across the loop (Experiment 07 friction #5).</summary>
-    public long CacheHitTokens { get; init; }
-    /// <summary>Cumulative DeepSeek <c>prompt_cache_miss_tokens</c> across the loop.</summary>
-    public long CacheMissTokens { get; init; }
+    /// <summary>Cumulative cache-served prompt tokens across the loop; null when no turn reported the count.</summary>
+    public long? CacheHitTokens { get; init; }
+    /// <summary>Cumulative cache-missed prompt tokens across the loop; null when no turn reported the count.</summary>
+    public long? CacheMissTokens { get; init; }
 }
 
 /// <summary>

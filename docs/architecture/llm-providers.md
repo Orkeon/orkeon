@@ -221,8 +221,10 @@ members, not through copies of the payload builder:
 (written to it — Anthropic's `cache_creation_input_tokens`) and `CacheMissTokens` (input not served from
 the cache). `PromptTokens` already includes the written and read tokens: a write is never counted twice.
 `MeteredLlmProvider` records them once per call in the `CostUsageEvent`; `CostBudgetManager` keeps per model
-the prompt, completion, cache-write and cache-read tokens and the cost (`CostReport.ModelUsageByModel`), and
-`session_stats` returns them in `by_model_tokens[]` beside the unchanged `by_model` cost map. A model whose
+the prompt, completion, cache-write, cache-read and reasoning tokens and the cost (`CostReport.ModelUsageByModel`), and
+`session_stats` returns them in `by_model_tokens[]` beside the unchanged `by_model` cost map. A cache or reasoning
+count that no call reported is null in `ModelUsage`, never 0 (a call that reported none adds nothing to the others:
+null + 5 = 5), and its key is absent from the `by_model_tokens[]` entry; 0 means the provider measured nothing. A model whose
 `ModelPricing` declares `CacheWritePricePerMillion` / `CacheReadPricePerMillion` is priced as
 `(prompt - write - read) x prompt rate + write x write rate + read x read rate + completion x completion rate`;
 without those rates the cost is unchanged.
@@ -230,8 +232,26 @@ without those rates the cost is unchanged.
 The cache TTL is `LlmCacheConfig.Ttl` (`5m` or `1h`). A call can carry it as the option
 `LlmChatOptionsKeys.CacheTtl` (`orkeon:cache_ttl`), which `ChatOptionsComposer` fills from the agent's
 `llm.cache.ttl`; the chat client adapter folds it into the call's `Cache.Ttl` and Anthropic emits it in
-`cache_control`. The OpenAI-compatible providers cannot honour it and log the structured unhonoured-option
+`cache_control`. A call TTL with no cache configuration that places a breakpoint is itself the request: the
+adapter marks the system prompt with that lifetime (`LlmCacheConfig.SystemPrompt()`), since a lifetime on
+nothing would cache nothing. The OpenAI-compatible providers and Ollama cannot honour it and log the structured unhonoured-option
 warning (event 110, `cache_ttl`) instead of dropping it silently.
+
+The request is opt-in, from YAML (`llm.cache: { system, tools, ttl }`) or from a script:
+`agentBuilder().cache({ systemPrompt, tools, ttl })` and the `cache` key of `LlmConfig.with({...})` map onto the
+same `LlmCacheConfig` (`LlmCacheConfig.Request`). The TTL is `5m` or `1h`, anything else is refused in both, and a
+script's `ttl` without `systemPrompt` or `tools` is refused as caching nothing. An object that marks nothing
+(`cache: {}`, `cache({})`) is an explicit Off (`LlmCacheConfig.Off`): it turns an inherited cache off, the host
+default included, where a cache left out inherits it.
+
+A host sets a default for every agent with `Llm:Cache` (`SystemPrompt`, `Tools`, `Ttl`), and a profile with
+`Llm:Profiles:<name>:Cache`. It is validated as the YAML block is (`LlmCacheConfig.Request`): a `Ttl` other than
+`5m` or `1h`, or one with neither `SystemPrompt` nor `Tools`, refuses the load and names the key. It applies only
+to a provider whose cache is explicit (`LlmProviderCapabilities.ExplicitPromptCaching`, Anthropic): elsewhere the
+provider's `BaseConfig` drops it, so it neither reaches the call nor warns. An agent's or task's own cache, an
+explicit Off included, always wins. The procedural `ctx.llm` calls of a script agent run with the cache and the
+effort its builder set (`.cache(...)`, `.effort(...)`, or the `LlmConfig` given to `.llm(...)`), a call's own
+options winning.
 
 ## Decorators and registration
 

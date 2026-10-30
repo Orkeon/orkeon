@@ -132,6 +132,31 @@ public sealed class InstanceAttributingUsageSinkTests
         Assert.Equal(175, instance.TokensUsed);
     }
 
+    /// <summary>#254 - a count no call reported stays null on the instance, never 0.</summary>
+    [Trait("BR", "CH-254")]
+    [Fact]
+    public void The_instance_keeps_an_unreported_count_null()
+    {
+        var sink = new InstanceAttributingUsageSink(new MockCostBudgetManager());
+        var instance = NewInstance();
+
+        ProgressAmbient.CurrentInstance = instance;
+        try
+        {
+            sink.Record(Usage(100, 20));
+            sink.Record(Usage(50, 5) with { CacheHitTokens = 5 });
+        }
+        finally
+        {
+            ProgressAmbient.CurrentInstance = null;
+        }
+
+        var usage = instance.Usage;
+        Assert.Equal(5, usage.CacheHitTokens);
+        Assert.Null(usage.CacheWriteTokens);
+        Assert.Null(usage.ReasoningTokens);
+    }
+
     [Trait("BR", "CH-226")]
     [Fact]
     public void An_instance_none_of_whose_calls_was_priced_has_no_cost()

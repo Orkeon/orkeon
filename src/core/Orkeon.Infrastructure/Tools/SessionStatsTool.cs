@@ -57,13 +57,20 @@ public sealed class ModelTokensEntry
     [JsonPropertyName("completion_tokens")]
     public long CompletionTokens { get; init; }
 
-    /// <summary>Cache-write tokens.</summary>
+    /// <summary>
+    /// Cache-write tokens; null when no call of the model reported them. A tool result drops a null member,
+    /// so the key is then absent from the answer: not measured never reads as 0 (#254).
+    /// </summary>
     [JsonPropertyName("cache_write_tokens")]
-    public long CacheWriteTokens { get; init; }
+    public long? CacheWriteTokens { get; init; }
 
-    /// <summary>Cache-read tokens.</summary>
+    /// <summary>Cache-read tokens; null (absent from the answer) when no call of the model reported them.</summary>
     [JsonPropertyName("cache_read_tokens")]
-    public long CacheReadTokens { get; init; }
+    public long? CacheReadTokens { get; init; }
+
+    /// <summary>Reasoning tokens, a part of the completion; null (absent from the answer) when no call of the model reported them.</summary>
+    [JsonPropertyName("reasoning_tokens")]
+    public long? ReasoningTokens { get; init; }
 }
 
 /// <summary>
@@ -116,6 +123,7 @@ public sealed class SessionStatsTool : ToolBase<SessionStatsRequest, SessionStat
                     CompletionTokens = kv.Value.CompletionTokens,
                     CacheWriteTokens = kv.Value.CacheWriteTokens,
                     CacheReadTokens = kv.Value.CacheReadTokens,
+                    ReasoningTokens = kv.Value.ReasoningTokens,
                 }).ToList(),
         };
 

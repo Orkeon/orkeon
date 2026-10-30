@@ -1190,7 +1190,7 @@ declare global {
         /** `session_stats` - Report full session telemetry: message count, estimated tokens, cost, and call totals. */
         sessionStats(input?: Record<string, never>, ctx?: ExecutionContext): Promise<{
             readonly by_model: Record<string, string>;
-            readonly by_model_tokens: readonly { readonly cache_read_tokens: number; readonly cache_write_tokens: number; readonly completion_tokens: number; readonly model: string; readonly prompt_tokens: number; }[];
+            readonly by_model_tokens: readonly { readonly cache_read_tokens?: number; readonly cache_write_tokens?: number; readonly completion_tokens: number; readonly model: string; readonly prompt_tokens: number; readonly reasoning_tokens?: number; }[];
             readonly estimated_tokens: number;
             readonly message_count: number;
             readonly total_calls: number;

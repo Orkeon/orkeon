@@ -1,3 +1,4 @@
 #nullable enable
 Orkeon.Scripting.Builders.JsTaskBuilder.decision(Jint.Native.JsValue! spec) -> Orkeon.Scripting.Builders.JsTaskBuilder!
 Orkeon.Scripting.Builders.JsTaskBuilder.when(string! decisionTask, Jint.Native.JsValue! clauses) -> Orkeon.Scripting.Builders.JsTaskBuilder!
+Orkeon.Scripting.Builders.JsAgentBuilder.cache(Jint.Native.JsValue! options) -> Orkeon.Scripting.Builders.JsAgentBuilder!

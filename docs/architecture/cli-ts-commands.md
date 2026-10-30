@@ -681,7 +681,9 @@ present when the host keeps a cost manager (`ICostBudgetManager`) or command ins
 keeps both). It is read-only: `report()` returns the figures of that moment, `{ promptTokens,
 completionTokens, cacheHitTokens, cacheWriteTokens, reasoningTokens, totalTokens, calls,
 unpricedCalls, cost, byModel, byCommand }`. The cache counts are a part of the prompt, the reasoning a
-part of the completion (reported by Z.AI and OpenRouter, 0 elsewhere). The totals count every call
+part of the completion (reported by Z.AI and OpenRouter). Each of these three is null while no call
+reported it, never 0: a provider that measures no cache reads `null`, one that measured none reads 0,
+and a call that reported nothing adds nothing to the others. The totals count every call
 the cost manager recorded (`CostReport.TotalUsage`); `byModel` has one row per model named in the
 provider's answer, with its `calls`, so a call whose provider named no model is in the totals and in
 no row: the totals may exceed the sum of `byModel`. `byCommand` has one row per command instance the
@@ -694,7 +696,7 @@ counts as 0: while it is not 0, the `cost` is a lower bound.
 
 ```typescript
 const usage = ctx.services.get("usage").report();
-for (const m of usage.byModel) ctx.writeLine(`${m.model}: ${m.promptTokens} in (${m.cacheHitTokens} cached), ${m.completionTokens} out, ${m.cost ?? "n/a"}`);
+for (const m of usage.byModel) ctx.writeLine(`${m.model}: ${m.promptTokens} in (${m.cacheHitTokens ?? "n/a"} cached), ${m.completionTokens} out, ${m.cost ?? "n/a"}`);
 for (const c of usage.byCommand) ctx.writeLine(`[${c.ticket}] ${c.name}: ${c.promptTokens + c.completionTokens} tokens, ${c.cost ?? "n/a"}`);
 ```
 

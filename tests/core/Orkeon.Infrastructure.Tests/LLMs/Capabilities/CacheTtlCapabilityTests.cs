@@ -64,6 +64,34 @@ public class CacheTtlCapabilityTests
         Assert.Contains("'cache_ttl'", warning.Message, StringComparison.Ordinal);
     }
 
+    [Fact]
+    [Trait("BR", "CH-254")]
+    public async Task ShouldIgnoreTheHostDefaultCache_WhenTheProviderCachesImplicitly()
+    {
+        // Llm:Cache applies to explicit-caching providers only: an implicit one neither carries
+        // it to its calls nor warns that its lifetime was not sent.
+        const string body = """{"choices":[{"message":{"content":"ok"}}],"usage":{"total_tokens":1,"prompt_tokens":1,"completion_tokens":0}}""";
+        using var handler = TestHttpMessageHandler.CreateWithResponse(HttpStatusCode.OK, body);
+        var factory = new TestHttpClientFactory();
+        factory.RegisterClient(nameof(OpenAIProvider), new HttpClient(handler));
+        var warnings = new List<(int Id, string Message)>();
+        var config = LlmConfig.Create("test-model", TestApiKey) with
+        {
+            BaseUrl = new Uri("https://provider.test/v1"),
+            Cache = new LlmCacheConfig { CacheSystemPrompt = true, Ttl = "1h" },
+        };
+        using var provider = new OpenAIProvider(
+            config, factory, Policy.NoOpAsync<HttpResponseMessage>(), new CollectingLogger<OpenAIProvider>(warnings));
+        using var adapter = new LlmProviderToChatClientAdapter(provider);
+
+        await adapter.GetResponseAsync(
+            [new ChatMessage(ChatRole.User, "hello")], new ChatOptions(), TestContext.Current.CancellationToken);
+        await provider.GenerateAsync("hello", null, TestContext.Current.CancellationToken);
+
+        Assert.DoesNotContain(warnings, w => w.Id == 110);
+        Assert.Null(provider.BaseConfig?.Cache);
+    }
+
     private sealed class CollectingLogger<T>(List<(int Id, string Message)> warnings) : ILogger<T>
     {
         public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;

@@ -7,6 +7,70 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — a script agent can request the prompt cache (#254)
+
+`agentBuilder().cache({ systemPrompt?, tools?, ttl?: "5m" | "1h" })` and the `cache` key of `LlmConfig.with({...})`
+request Anthropic's `cache_control` breakpoints as the YAML `llm.cache:` block does: both map onto the same
+`LlmCacheConfig` through `LlmCacheConfig.Request`. A TTL other than `5m`/`1h`, an unknown key, a non-boolean flag or a
+`ttl` with nothing marked cacheable throws a script error; an object marking nothing turns an inherited cache off.
+The typings declare `LlmCacheOptions`. The YAML `ttl` is now validated too: a value other than `5m` or `1h` is refused
+when the crew loads instead of reaching the vendor.
+
+### Changed — an unreported cache or reasoning count is null, not 0 (#254)
+
+`ModelUsage.CacheReadTokens`, `CacheWriteTokens` and `ReasoningTokens` are `long?`: null when no call reported them,
+the sum of the reported ones otherwise (null + 5 = 5, `ModelUsage.SumReported`). The same holds for
+`CommandInstanceUsage`, the `usage` service's `report()` (`cacheHitTokens`, `cacheWriteTokens`, `reasoningTokens`
+are `number | null`) and `session_stats` `by_model_tokens[]`, which gains `reasoning_tokens` and leaves an unreported
+count out instead of writing 0. A `/usage` command that printed the count prints `n/a` for null.
+
+| Before | After |
+|---|---|
+| `ModelUsage.CacheReadTokens` / `CacheWriteTokens` / `ReasoningTokens` : `long` (0 when unreported) | `long?` (null when unreported) |
+| `CommandInstanceUsage.CacheHitTokens` / `CacheWriteTokens` / `ReasoningTokens` : `long` | `long?` |
+| `ScriptUsageReport`, `ScriptModelUsage`, `ScriptCommandUsage` `cacheHitTokens` / `cacheWriteTokens` / `reasoningTokens` : `long` | `long?` (`number \| null` in `orkeon-cli.d.ts`) |
+| `ModelTokensEntry.CacheWriteTokens` / `CacheReadTokens` : `long` | `long?`, plus `ReasoningTokens` (`reasoning_tokens`) |
+
+### Fixed — `orkeon:cache_ttl` alone requests the system-prompt cache (#254)
+
+A per-call `orkeon:cache_ttl` on an agent with no cache configuration placed no breakpoint, so the lifetime cached
+nothing. The chat client adapter now treats it as the request: it marks the system prompt with that TTL. A provider
+that cannot write a TTL keeps logging the structured unhonoured-option warning (event 110, `cache_ttl`).
+
+### Added — a host default prompt cache, `Llm:Cache` (#254)
+
+`Llm:Cache:SystemPrompt`, `Llm:Cache:Tools` and `Llm:Cache:Ttl` (and `Llm:Profiles:<name>:Cache:*`) set the cache
+every agent asks for when it sets none of its own. They are validated through `LlmCacheConfig.Request`: a `Ttl` other
+than `5m` or `1h`, or a `Ttl` with nothing marked, refuses the load and names the key. The default applies only to a
+provider whose cache is explicit (`ExplicitPromptCaching`, Anthropic); elsewhere it is dropped from the provider's
+`BaseConfig` and neither reaches the call nor warns. `orkeon settings` lists the keys. An agent's or task's own
+cache always wins, and one that marks nothing (`cache: {}`, `cache({})`, `with({ cache: {} })`) is now an explicit
+Off, `LlmCacheConfig.Off`, that turns the host default off too; a cache left out inherits.
+
+| Before | After |
+|---|---|
+| YAML `cache: {}` / script `cache({})` mapped to `null` (inherit) | `LlmCacheConfig.Off` (explicit off, beats `Llm:Cache`) |
+
+### Fixed — `ctx.llm` calls of a procedural agent apply the builder's cache and effort (#254)
+
+A script agent's `.cache(...)` and `.effort(...)` (or the `cache`/`effort` of the `LlmConfig` given to `.llm(...)`)
+reached its declarative calls only: the procedural `ctx.llm.complete(...)`/`chat(...)` calls ran without them. They
+now run with both, a call's own `effort` or `cache` winning.
+
+### Changed — the crew pipeline's cache counts are null when unreported (#254)
+
+The cache counts carried from the agent loop to the crew result stay null when no call reported them, as
+`ModelUsage.SumReported` does, instead of reading 0: `AgentLoopResult`, `TaskResult`, `TaskExecutionSnapshot`, the
+crew totals and hit ratio, every orchestration strategy (`TokenUsageTally`, `CrewGraphState`) and the run metadata,
+which writes a key only when it was reported (a reported 0 included). The auto summary prints `n/a` for an unreported
+count, never 0. This pipeline carries no reasoning count.
+
+| Before | After |
+|---|---|
+| `TaskResult.CacheHitTokens` / `CacheMissTokens` : `long` | `long?` |
+| `TaskExecutionSnapshot.CacheHitTokens` / `CacheMissTokens`, `CrewExecutionSnapshot.TotalCacheHitTokens` / `TotalCacheMissTokens` : `long` | `long?` |
+| `CrewGraphState.CacheHitTokensUsed` / `CacheMissTokensUsed` : `long`; `AddResultUsage(int, long, long)` | `long?`; `AddResultUsage(int, long?, long?)` |
+
 ### Added — an index cache between sessions (`index_codebase` `use_cache`)
 
 `AddRaggableTree` now registers `CachingTreeBuilder`, and `index_codebase` saves the index under

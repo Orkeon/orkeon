@@ -202,7 +202,7 @@ public sealed partial class HierarchicalProcessStrategy : IProcessStrategy
 
                 // The loop is sequential, so the tally's delta around one task IS that
                 // task's usage — revision re-executions included (W-08).
-                var before = TokenUsageSnapshot.Of(tokenTally);
+                var before = tokenTally.Mark();
 
                 var processed = await ProcessSingleTaskAsync(task, run, context, cancellationToken).ConfigureAwait(false);
 
@@ -270,7 +270,7 @@ public sealed partial class HierarchicalProcessStrategy : IProcessStrategy
     /// metered on the tally's delta around it, goes to the hooks.
     /// </summary>
     private async Task RecordProcessedTaskAsync(
-        HierarchicalRun run, CrewTask task, ProcessedTask processed, TokenUsageSnapshot before, CancellationToken cancellationToken)
+        HierarchicalRun run, CrewTask task, ProcessedTask processed, TokenUsageMark before, CancellationToken cancellationToken)
     {
         var (domainOutput, appOutput) = (processed.Domain!, processed.Application!);
         run.Results.Add(domainOutput);
@@ -281,6 +281,7 @@ public sealed partial class HierarchicalProcessStrategy : IProcessStrategy
         else
             await run.Outcome.RecordFailureAsync(task, processed.Assignee!.Role.Value, processed.Error).ConfigureAwait(false);
 
+        var used = run.TokenTally.Since(before);
         var snapshot = new TaskExecutionSnapshot
         {
             TaskId = task.Id.Value.ToString(),
@@ -291,19 +292,12 @@ public sealed partial class HierarchicalProcessStrategy : IProcessStrategy
             Duration = domainOutput.ExecutionTime,
             CompletedAt = DateTimeOffset.UtcNow,
             ToolCallCount = appOutput.ToolsUsed?.Count ?? 0,
-            TokensUsed = run.TokenTally.TotalTokens - before.Total,
-            CacheHitTokens = run.TokenTally.CacheHitTokens - before.CacheHit,
-            CacheMissTokens = run.TokenTally.CacheMissTokens - before.CacheMiss,
+            TokensUsed = used.Tokens,
+            CacheHitTokens = used.CacheHit,
+            CacheMissTokens = used.CacheMiss,
         };
         run.TaskSnapshots.Add(snapshot);
         await _hooks.TaskCompletedAsync(snapshot, cancellationToken).ConfigureAwait(false);
-    }
-
-    /// <summary>The tally's counters at one moment, to meter one task on the delta around it.</summary>
-    private readonly record struct TokenUsageSnapshot(int Total, long CacheHit, long CacheMiss)
-    {
-        public static TokenUsageSnapshot Of(TokenUsageTally tally) =>
-            new(tally.TotalTokens, tally.CacheHitTokens, tally.CacheMissTokens);
     }
 
     /// <summary>

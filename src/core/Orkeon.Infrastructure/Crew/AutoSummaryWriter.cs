@@ -191,14 +191,13 @@ public sealed partial class AutoSummaryWriter : ICrewExecutionHook
 
     private static void AppendCacheStats(StringBuilder sb, CrewExecutionSnapshot snapshot)
     {
-        if (snapshot.TotalCacheHitTokens <= 0 && snapshot.TotalCacheMissTokens <= 0)
+        var hit = snapshot.TotalCacheHitTokens;
+        var miss = snapshot.TotalCacheMissTokens;
+        if (hit is null && miss is null)
             return;
 
-        var totalCached = snapshot.TotalCacheHitTokens + snapshot.TotalCacheMissTokens;
-        var ratio = totalCached > 0
-            ? (double)snapshot.TotalCacheHitTokens / totalCached
-            : 0.0;
-        sb.AppendLine(CultureInfo.InvariantCulture, $"**Prompt cache**: hit {snapshot.TotalCacheHitTokens} · miss {snapshot.TotalCacheMissTokens} · hit-ratio {ratio.ToString("P1", CultureInfo.InvariantCulture)}");
+        var ratio = snapshot.TotalCacheHitRatio is { } value ? value.ToString("P1", CultureInfo.InvariantCulture) : "n/a";
+        sb.AppendLine(CultureInfo.InvariantCulture, $"**Prompt cache**: hit {Reported(hit)} · miss {Reported(miss)} · hit-ratio {ratio}");
     }
 
     private static void AppendOutputFilesSection(StringBuilder sb, ImmutableList<OutputFileInfo> outputFiles)
@@ -232,11 +231,15 @@ public sealed partial class AutoSummaryWriter : ICrewExecutionHook
         _ => "✗ failed",
     };
 
-    private static string FormatTokens(int total, long cacheHit, long cacheMiss)
+    private static string FormatTokens(int total, long? cacheHit, long? cacheMiss)
     {
-        if (cacheHit == 0 && cacheMiss == 0) return total.ToString(CultureInfo.InvariantCulture);
-        return $"{total} · {cacheHit}/{cacheMiss}";
+        if (cacheHit is null && cacheMiss is null) return total.ToString(CultureInfo.InvariantCulture);
+        return string.Create(CultureInfo.InvariantCulture, $"{total} · {Reported(cacheHit)}/{Reported(cacheMiss)}");
     }
+
+    /// <summary>A count as reported, or <c>n/a</c> when no provider reported it: never a fabricated 0.</summary>
+    private static string Reported(long? count) =>
+        count is { } value ? value.ToString(CultureInfo.InvariantCulture) : "n/a";
 
     private static void AppendWarnings(StringBuilder sb, CrewExecutionSnapshot snapshot)
     {
