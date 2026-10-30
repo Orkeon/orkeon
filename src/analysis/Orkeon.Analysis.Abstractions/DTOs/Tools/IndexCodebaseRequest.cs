@@ -33,10 +33,10 @@ public sealed record IndexCodebaseRequest
     public string RootAlias { get; init; } = "";
 
     /// <summary>
-    /// When <see langword="true"/> (default), a <c>.gitignore</c> at the root
-    /// is parsed and applied. Disable when indexing trees recovered from
-    /// sourcemaps or distribution archives where gitignore would exclude
-    /// everything the caller actually wants indexed.
+    /// When <see langword="true"/> (default), the ignore files of the tree are applied as git applies
+    /// them: <c>.git/info/exclude</c>, the root <c>.gitignore</c> and each nested <c>.gitignore</c> for the
+    /// paths under its folder. Disable when indexing trees recovered from sourcemaps or distribution
+    /// archives where gitignore would exclude everything the caller actually wants indexed.
     /// </summary>
     public bool RespectGitignore { get; init; } = true;
 

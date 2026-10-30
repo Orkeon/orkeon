@@ -56,6 +56,115 @@ public class FileSystemDiscovererTests
         }
     }
 
+    [Fact]
+    public async Task Respects_a_nested_gitignore_under_its_own_folder_only()
+    {
+        // Arrange — lib/.gitignore ignores generated/: under lib only, never the root-level generated/
+        var dir = await TestFixtures.WriteDirectoryAsync([
+            ("lib/.gitignore", "generated/\n"),
+            ("lib/generated/a.ts", "export const a = 1;"),
+            ("lib/keep.ts", "export const k = 1;"),
+            ("generated/b.ts", "export const b = 2;"),
+        ]);
+        try
+        {
+            var sut = new FileSystemDiscoverer(TestFixtures.CreateFs(dir));
+
+            // Act
+            var result = await sut.DiscoverAllAsync(
+                new DiscoveryRequest { RootPath = TestFixtures.TestVirtualRoot }, CancellationToken.None);
+
+            // Assert
+            Assert.Equal(["generated/b.ts", "lib/keep.ts"], result.Files.Select(f => f.RelativePath).Order().ToArray());
+            Assert.Equal(1, result.FilterStats.ExcludedByGitignore);
+        }
+        finally
+        {
+            Directory.Delete(dir, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task Respects_git_info_exclude()
+    {
+        // Arrange — /packages is named in .git/info/exclude alone, as a package cache beside the sources is
+        var dir = await TestFixtures.WriteDirectoryAsync([
+            (".git/info/exclude", "/packages\n"),
+            ("packages/vendor.ts", "export const v = 1;"),
+            ("keep.ts", "export const k = 1;"),
+        ]);
+        try
+        {
+            var sut = new FileSystemDiscoverer(TestFixtures.CreateFs(dir));
+
+            // Act
+            var result = await sut.DiscoverAllAsync(
+                new DiscoveryRequest { RootPath = TestFixtures.TestVirtualRoot }, CancellationToken.None);
+
+            // Assert
+            Assert.Equal(["keep.ts"], result.Files.Select(f => f.RelativePath).ToArray());
+        }
+        finally
+        {
+            Directory.Delete(dir, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task Lets_a_nested_gitignore_re_include_what_the_root_ignores()
+    {
+        // Arrange — the root ignores *.gen.ts, lib/.gitignore takes keep.gen.ts back
+        var dir = await TestFixtures.WriteDirectoryAsync([
+            (".gitignore", "*.gen.ts\n"),
+            ("lib/.gitignore", "!keep.gen.ts\n"),
+            ("lib/keep.gen.ts", "export const k = 1;"),
+            ("lib/other.gen.ts", "export const o = 1;"),
+            ("top.gen.ts", "export const t = 1;"),
+        ]);
+        try
+        {
+            var sut = new FileSystemDiscoverer(TestFixtures.CreateFs(dir));
+
+            // Act
+            var result = await sut.DiscoverAllAsync(
+                new DiscoveryRequest { RootPath = TestFixtures.TestVirtualRoot }, CancellationToken.None);
+
+            // Assert
+            Assert.Equal(["lib/keep.gen.ts"], result.Files.Select(f => f.RelativePath).ToArray());
+        }
+        finally
+        {
+            Directory.Delete(dir, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task Keeps_a_file_under_an_ignored_folder_out_whatever_a_nested_gitignore_says()
+    {
+        // Arrange — git never re-includes a file whose folder is ignored
+        var dir = await TestFixtures.WriteDirectoryAsync([
+            (".gitignore", "vendor/\n"),
+            ("vendor/.gitignore", "!*.ts\n"),
+            ("vendor/lib.ts", "export const v = 1;"),
+            ("keep.ts", "export const k = 1;"),
+        ]);
+        try
+        {
+            var sut = new FileSystemDiscoverer(TestFixtures.CreateFs(dir));
+
+            // Act
+            var result = await sut.DiscoverAllAsync(
+                new DiscoveryRequest { RootPath = TestFixtures.TestVirtualRoot }, CancellationToken.None);
+
+            // Assert
+            Assert.Equal(["keep.ts"], result.Files.Select(f => f.RelativePath).ToArray());
+        }
+        finally
+        {
+            Directory.Delete(dir, recursive: true);
+        }
+    }
+
     [Theory]
     [InlineData("pom.xml", "maven")]
     [InlineData("build.gradle", "gradle")]

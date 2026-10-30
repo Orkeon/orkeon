@@ -101,7 +101,7 @@ Tous les champs sont des `record` immuables dans `Orkeon.Analysis.DependencyInje
 
 ## Pipeline en six phases
 
-1. **Discovery** (`IFileSystemDiscoverer`) — parcours récursif, détection de packages via markers (`package.json`, `*.csproj`, `pyproject.toml`, `go.mod`, `Cargo.toml`, `pom.xml`, `build.gradle`, `build.gradle.kts`, `composer.json`, `Gemfile`, `CMakeLists.txt`), exclusion via patterns et `.gitignore`. Un fichier dont la politique du système de fichiers refuse la lecture (un droit de montage, une extension bloquée) est écarté et compté, jamais un échec de toute la construction : `index_codebase` le signale dans `filter_stats.excluded_by_policy` et `filter_stats.excluded_by_policy_paths`.
+1. **Discovery** (`IFileSystemDiscoverer`) — parcours récursif, détection de packages via markers (`package.json`, `*.csproj`, `pyproject.toml`, `go.mod`, `Cargo.toml`, `pom.xml`, `build.gradle`, `build.gradle.kts`, `composer.json`, `Gemfile`, `CMakeLists.txt`), exclusion via patterns et les fichiers d'ignorance de l'arbre tels que git les applique (`.git/info/exclude`, le `.gitignore` racine, chaque `.gitignore` imbriqué pour les chemins sous son dossier). Un fichier dont la politique du système de fichiers refuse la lecture (un droit de montage, une extension bloquée) est écarté et compté, jamais un échec de toute la construction : `index_codebase` le signale dans `filter_stats.excluded_by_policy` et `filter_stats.excluded_by_policy_paths`.
 2. **Parse + Extract** (`UniversalSemanticMapper` + `ILanguageAdapter`) — Tree-sitter parse → application des queries de l'adaptateur → nœuds L2 (module) et L3 (symbole) avec `Fqn`, `Signature`, `SourceSnippet`, `Sha256` ; statements L4 (`StatementExtractor`), extraits à chaque construction. Les fichiers sont lus et analysés `max_parallelism` à la fois, puis fusionnés un par un dans l'ordre de découverte : l'index (nœuds, arêtes, leur ordre, `IndexId`) est le même quel que soit le degré. `incremental_reindex` analyse ses fichiers modifiés l'un après l'autre.
 3. **Dependency resolution** (`DependencyGraphBuilder` + `IReferenceResolver`) — résolution des imports, appels, héritage, implémentations en arêtes (`EdgeKind.Imports`, `Calls`, `Extends`, `Implements`). Les FQN non résolus deviennent des `UnresolvedRef`.
 4. **Fingerprinting** (`IFrameworkFingerprinter`) — application des règles par décorateur/annotation (NestJS, Angular, ASP.NET, Flask, FastAPI) : pose de tags comme `http-endpoint`, `guard`, `service` sur les nœuds concernés.
@@ -159,7 +159,7 @@ Les 28 tools sont enregistrés via `AddRaggableTreeTools` (`Orkeon.Tools.Analysi
 `index_codebase` porte les réglages de construction à chaque appel
 (`IndexCodebaseRequest`) : `root_path` (obligatoire, un chemin virtuel), `languages`
 (vide = auto-détection), `exclude` (défaut `node_modules`, `dist`, `.git`, `bin`,
-`obj`), `respect_gitignore` (défaut `true`), `enrich_with_llm` (défaut `false` ; exige
+`obj`), `respect_gitignore` (défaut `true` : `.git/info/exclude` et chaque `.gitignore` de l'arbre), `enrich_with_llm` (défaut `false` ; exige
 un résumeur enregistré), `root_alias` (remplace le préfixe de racine virtuelle de chaque
 FQN), `embedding_model`, `max_parallelism` (combien de fichiers sont lus et analysés
 à la fois : `0`, le défaut, un par processeur ; `1` l'un après l'autre ; une valeur

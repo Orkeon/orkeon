@@ -45,7 +45,7 @@ public sealed class FileSystemDiscoverer : IFileSystemDiscoverer
     public async IAsyncEnumerable<DiscoveredFile> DiscoverAsync(
         DiscoveryRequest req, [EnumeratorCancellation] CancellationToken ct)
     {
-        var ctx = await PrepareAsync(req, ct).ConfigureAwait(false);
+        var ctx = Prepare(req);
         var stats = new FilterStatsAccumulator();
 
         await foreach (var entry in EnumerateAsync(ctx, stats, ct).ConfigureAwait(false))
@@ -58,7 +58,7 @@ public sealed class FileSystemDiscoverer : IFileSystemDiscoverer
 
     public async Task<DiscoveryResult> DiscoverAllAsync(DiscoveryRequest req, CancellationToken ct)
     {
-        var ctx = await PrepareAsync(req, ct).ConfigureAwait(false);
+        var ctx = Prepare(req);
 
         var files = ImmutableArray.CreateBuilder<DiscoveredFile>();
         var packages = ImmutableArray.CreateBuilder<DetectedPackage>();
@@ -100,14 +100,14 @@ public sealed class FileSystemDiscoverer : IFileSystemDiscoverer
         };
     }
 
-    private Task<DiscoveryContext> PrepareAsync(DiscoveryRequest req, CancellationToken ct)
+    private DiscoveryContext Prepare(DiscoveryRequest req)
     {
         ArgumentNullException.ThrowIfNull(req);
         ArgumentException.ThrowIfNullOrWhiteSpace(req.RootPath);
-        return PrepareCoreAsync(req, ct);
+        return PrepareCore(req);
     }
 
-    private async Task<DiscoveryContext> PrepareCoreAsync(DiscoveryRequest req, CancellationToken ct)
+    private DiscoveryContext PrepareCore(DiscoveryRequest req)
     {
         var virtualRoot = NormalizeVirtualRoot(req.RootPath);
 
@@ -125,15 +125,7 @@ public sealed class FileSystemDiscoverer : IFileSystemDiscoverer
             ? null
             : new HashSet<string>(req.Languages, StringComparer.OrdinalIgnoreCase);
 
-        GitignoreMatcher? matcher = null;
-        if (req.RespectGitignore)
-        {
-            var gitignoreText = await _fs.TryReadAllTextAsync($"{virtualRoot}/.gitignore", ct).ConfigureAwait(false);
-            if (gitignoreText is not null)
-                matcher = new GitignoreMatcher(SplitLines(gitignoreText));
-        }
-
-        return new DiscoveryContext(virtualRoot, physicalRoot, excludeSet, languageFilter, matcher, req.KnownFiles);
+        return new DiscoveryContext(virtualRoot, physicalRoot, excludeSet, languageFilter, req.RespectGitignore, req.KnownFiles);
     }
 
     [Orkeon.Compliance.Vfs.SuppressVfsCompliance(
@@ -167,27 +159,40 @@ public sealed class FileSystemDiscoverer : IFileSystemDiscoverer
         }
         catch { /* probe is best-effort */ }
 
+        // The walk first, the ignore files after it: a nested .gitignore governs files the walk may have
+        // yielded before it, so the whole tree is known before any path is judged.
+        var walked = new List<DiscoveredEntry>();
+        var gitignores = new List<string>();
         var options = new VirtualEnumerationOptions(Recursive: true);
-
         await foreach (var entry in _fs.EnumerateFilesAsync(ctx.VirtualRoot, options, ct).ConfigureAwait(false))
         {
             if (entry.Kind != VirtualEntryKind.File) continue;
             stats.VfsFileEntriesYielded++;
-
             stats.TotalEnumerated++;
+
             var relative = ToRelative(ctx.VirtualRoot, entry.VirtualPath);
             if (HasExcludedSegment(relative, ctx.ExcludeSet))
             {
                 stats.ExcludedByExcludeSet++;
                 continue;
             }
-            if (ctx.Matcher is not null && IsPathIgnored(ctx.Matcher, relative))
+
+            if (ctx.RespectGitignore && Path.GetFileName(relative) == ".gitignore") gitignores.Add(relative);
+            walked.Add(new DiscoveredEntry(entry, relative));
+        }
+
+        var ignore = ctx.RespectGitignore
+            ? await IgnoreFiles.LoadAsync(_fs, ctx.VirtualRoot, gitignores, ct).ConfigureAwait(false)
+            : null;
+        foreach (var entry in walked)
+        {
+            if (ignore is not null && ignore.IsIgnored(entry.Relative))
             {
                 stats.ExcludedByGitignore++;
                 continue;
             }
 
-            yield return new DiscoveredEntry(entry, relative);
+            yield return entry;
         }
     }
 
@@ -300,29 +305,12 @@ public sealed class FileSystemDiscoverer : IFileSystemDiscoverer
         return relative.Split('/', StringSplitOptions.RemoveEmptyEntries).Any(excludeSet.Contains);
     }
 
-    private static bool IsPathIgnored(GitignoreMatcher matcher, string relative)
-    {
-        if (matcher.IsIgnored(relative, isDirectory: false)) return true;
-
-        var parts = relative.Split('/', StringSplitOptions.RemoveEmptyEntries);
-        var dirPath = string.Empty;
-        for (var i = 0; i < parts.Length - 1; i++)
-        {
-            dirPath = dirPath.Length == 0 ? parts[i] : $"{dirPath}/{parts[i]}";
-            if (matcher.IsIgnored(dirPath, isDirectory: true)) return true;
-        }
-        return false;
-    }
-
-    private static string[] SplitLines(string text) =>
-        text.Split(['\r', '\n'], StringSplitOptions.None);
-
     private sealed record DiscoveryContext(
         string VirtualRoot,
         string PhysicalRoot,
         HashSet<string> ExcludeSet,
         HashSet<string>? LanguageFilter,
-        GitignoreMatcher? Matcher,
+        bool RespectGitignore,
         IReadOnlyDictionary<string, FileStamp>? KnownFiles);
 
     private readonly record struct DiscoveredEntry(VirtualFileEntry Entry, string Relative);
