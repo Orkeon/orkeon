@@ -36,7 +36,9 @@ public sealed record ScriptingLimitsOptions
     /// intermediates from template-literal concatenation, JSON serialization
     /// of tool calls, esbuild bundle parsing, etc. What a host tool the script calls
     /// (<c>tools.*</c>, <c>ctx.llm.act</c>) allocates on the engine thread is left
-    /// out, so its own work is not counted, however heavy (#247).
+    /// out, so its own work is not counted, however heavy (#247). The counter is per
+    /// thread: when a host continuation drives the engine from another thread, what the
+    /// previous thread counted is kept and the new thread is counted from its own counter.
     ///
     /// This is a security ceiling that bounds local DoS by a pathological or
     /// hostile script. Trusted production runs that genuinely need more memory

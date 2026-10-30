@@ -38,7 +38,9 @@ trusted ceiling. The engine's memory constraint now leaves out what a host tool 
 `tools.*` and for the tool calls of `ctx.llm.act`, which reached that thread after a model call that completed
 synchronously: a tool's work is not counted, however heavy, and `--memory-limit-mb 0` is no longer needed for it. The
 tool still runs where it did, so the order of its effects is unchanged, and the script's own allocations after the call
-are still counted.
+are still counted. The window also holds when a host continuation drives the engine from another thread: what the
+previous thread counted is kept and the new thread is counted from its own counter, where Jint subtracted one thread's
+counter from another's and could fail a script that had allocated nothing.
 
 ### Fixed — the index cache drops the entries of another runtime (#248)
 

@@ -14,11 +14,18 @@ namespace Orkeon.Scripting.Runtime;
 /// The tool still runs where it ran, on the engine's thread up to its first real await, so the order of its
 /// effects against the script's next statements is unchanged. A scope opened on another thread excludes
 /// nothing: those bytes were never counted. Nested scopes count once, from the outermost.
+/// <para>
+/// The counter is per thread. When a host continuation drives the engine from another thread, the window keeps
+/// what the previous thread counted up to its last reading and starts a segment on the new thread's counter;
+/// Jint's own constraint subtracted one thread's counter from another's, a figure that meant nothing.
+/// </para>
 /// </remarks>
 internal sealed class HostWorkMemoryConstraint : Constraint
 {
     private readonly long _limit;
-    private long _windowStart;
+    private long _counted;
+    private long _segmentStart;
+    private long _lastSeen;
     private long _excluded;
     private int _window;
     private int _depth;
@@ -38,8 +45,18 @@ internal sealed class HostWorkMemoryConstraint : Constraint
     {
         if (_limit <= 0)
             return;
-        _thread = Environment.CurrentManagedThreadId;
-        var usage = GC.GetAllocatedBytesForCurrentThread() - _windowStart - _excluded;
+        var now = GC.GetAllocatedBytesForCurrentThread();
+        var thread = Environment.CurrentManagedThreadId;
+        if (thread != _thread)
+        {
+            _counted += _lastSeen - _segmentStart - _excluded;
+            _segmentStart = now;
+            _excluded = 0;
+            _depth = 0;
+            _thread = thread;
+        }
+        _lastSeen = now;
+        var usage = _counted + now - _segmentStart - _excluded;
         if (usage > _limit)
             throw new MemoryLimitExceededException($"Script has allocated {usage} but is limited to {_limit}");
     }
@@ -48,8 +65,10 @@ internal sealed class HostWorkMemoryConstraint : Constraint
     public override void Reset()
     {
         _thread = Environment.CurrentManagedThreadId;
-        _windowStart = GC.GetAllocatedBytesForCurrentThread();
+        _segmentStart = _lastSeen = GC.GetAllocatedBytesForCurrentThread();
+        _counted = 0;
         _excluded = 0;
+        _depth = 0;
         _window++;
     }
 
@@ -70,7 +89,7 @@ internal sealed class HostWorkMemoryConstraint : Constraint
 
     private void End(long start, int window)
     {
-        if (Environment.CurrentManagedThreadId != _thread)
+        if (Environment.CurrentManagedThreadId != _thread || window != _window)
             return;
         if (start < 0)
         {
@@ -78,8 +97,9 @@ internal sealed class HostWorkMemoryConstraint : Constraint
             return;
         }
         _depth = 0;
-        if (window == _window)
-            _excluded += GC.GetAllocatedBytesForCurrentThread() - start;
+        // The excluded bytes stay inside the segment's last reading, so a move to another thread folds them out.
+        _lastSeen = GC.GetAllocatedBytesForCurrentThread();
+        _excluded += _lastSeen - start;
     }
 
     /// <summary>One <see cref="ExcludeHostWork"/> scope; <c>default</c> excludes nothing.</summary>
