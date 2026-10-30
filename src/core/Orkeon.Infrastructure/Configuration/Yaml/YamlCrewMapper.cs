@@ -521,20 +521,22 @@ public sealed partial class YamlCrewMapper
 
     /// <summary>
     /// Maps the YAML <c>cache:</c> block to its domain value object. Returns null when the
-    /// block asks for no breakpoint, so caching stays off unless it was actually requested.
+    /// block asks for no breakpoint, so caching stays off unless it was actually requested. The
+    /// mapping is <see cref="LlmCacheConfig.Request"/>, the one script agents use too: a <c>ttl</c>
+    /// other than <c>5m</c> or <c>1h</c> fails the load.
     /// </summary>
     private static LlmCacheConfig? MapCache(CacheYamlConfig? yaml)
     {
         if (yaml is null) return null;
 
-        var config = new LlmCacheConfig
+        try
         {
-            CacheSystemPrompt = yaml.System ?? false,
-            CacheTools = yaml.Tools ?? false,
-            Ttl = yaml.Ttl,
-        };
-
-        return config.RequestsAnyBreakpoint ? config : null;
+            return LlmCacheConfig.Request(yaml.System ?? false, yaml.Tools ?? false, yaml.Ttl);
+        }
+        catch (ArgumentException ex)
+        {
+            throw new InvalidOperationException(ex.Message, ex);
+        }
     }
 
     private static LlmResponseFormat BuildJsonSchemaFormat(ResponseSchemaYamlConfig schema) =>

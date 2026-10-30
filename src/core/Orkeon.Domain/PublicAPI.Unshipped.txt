@@ -176,3 +176,5 @@ static Orkeon.Domain.SharedKernel.ValueObjects.LlmThinkingConfig.EffortFor(strin
 static readonly Orkeon.Domain.SharedKernel.ValueObjects.LlmThinkingConfig.ThreeLevels -> System.Collections.Generic.IReadOnlyList<string!>!
 Orkeon.Domain.SharedKernel.ValueObjects.LlmProviderCapabilities.EffortLevels.get -> System.Collections.Generic.IReadOnlyList<string!>!
 Orkeon.Domain.SharedKernel.ValueObjects.LlmProviderCapabilities.EffortLevels.init -> void
+static Orkeon.Domain.SharedKernel.ValueObjects.LlmCacheConfig.Request(bool systemPrompt, bool tools, string? ttl) -> Orkeon.Domain.SharedKernel.ValueObjects.LlmCacheConfig?
+static Orkeon.Domain.SharedKernel.ValueObjects.LlmCacheConfig.Ttls.get -> System.Collections.Generic.IReadOnlyList<string!>!

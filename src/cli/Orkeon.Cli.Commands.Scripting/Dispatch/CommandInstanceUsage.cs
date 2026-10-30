@@ -17,14 +17,14 @@ public sealed class CommandInstanceUsage
     /// <summary>Completion (output) tokens.</summary>
     public long CompletionTokens { get; init; }
 
-    /// <summary>Prompt tokens served from the provider's cache, a part of <see cref="PromptTokens"/>.</summary>
-    public long CacheHitTokens { get; init; }
+    /// <summary>Prompt tokens served from the provider's cache, a part of <see cref="PromptTokens"/>; null while no call reported them.</summary>
+    public long? CacheHitTokens { get; init; }
 
-    /// <summary>Prompt tokens written to the provider's cache, a part of <see cref="PromptTokens"/>.</summary>
-    public long CacheWriteTokens { get; init; }
+    /// <summary>Prompt tokens written to the provider's cache, a part of <see cref="PromptTokens"/>; null while no call reported them.</summary>
+    public long? CacheWriteTokens { get; init; }
 
-    /// <summary>Completion tokens spent reasoning, a part of <see cref="CompletionTokens"/>.</summary>
-    public long ReasoningTokens { get; init; }
+    /// <summary>Completion tokens spent reasoning, a part of <see cref="CompletionTokens"/>; null while no call reported them.</summary>
+    public long? ReasoningTokens { get; init; }
 
     /// <summary>The LLM calls credited.</summary>
     public int Calls { get; init; }
@@ -43,12 +43,16 @@ public sealed class CommandInstanceUsage
         {
             PromptTokens = PromptTokens + Math.Max(0, usage.PromptTokens),
             CompletionTokens = CompletionTokens + Math.Max(0, usage.CompletionTokens),
-            CacheHitTokens = CacheHitTokens + Math.Max(0, usage.CacheHitTokens ?? 0),
-            CacheWriteTokens = CacheWriteTokens + Math.Max(0, usage.CacheWriteTokens ?? 0),
-            ReasoningTokens = ReasoningTokens + Math.Max(0, usage.ReasoningTokens ?? 0),
+            CacheHitTokens = AddReported(CacheHitTokens, usage.CacheHitTokens),
+            CacheWriteTokens = AddReported(CacheWriteTokens, usage.CacheWriteTokens),
+            ReasoningTokens = AddReported(ReasoningTokens, usage.ReasoningTokens),
             Calls = Calls + 1,
             UnpricedCalls = cost is null ? UnpricedCalls + 1 : UnpricedCalls,
             Cost = cost is null ? Cost : (Cost ?? 0m) + cost.Value,
         };
     }
+
+    /// <summary>A running count plus one call's: a call that reported nothing leaves it as it was, null included (#254).</summary>
+    private static long? AddReported(long? total, long? count)
+        => count is { } value ? (total ?? 0L) + Math.Max(0L, value) : total;
 }

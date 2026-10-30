@@ -45,6 +45,28 @@ declare global {
          * below the one asked, and warns.
          */
         effort?: "low" | "medium" | "high" | "xhigh" | "max";
+        /**
+         * The prompt-cache request, as `agentBuilder().cache(...)` takes it; an object that marks nothing
+         * cacheable turns an inherited cache off.
+         */
+        cache?: LlmCacheOptions;
+    }
+
+    /**
+     * A prompt-cache request (YAML `cache:`). Caching is off unless asked for: a breakpoint changes what the
+     * vendor stores and how the call is billed. Anthropic caches only what is marked; other providers
+     * cache by their own rules.
+     */
+    interface LlmCacheOptions {
+        /** Marks the system prompt cacheable — usually the largest stable prefix. */
+        systemPrompt?: boolean;
+        /** Marks the tool definitions cacheable — worth it for a large, stable catalogue. */
+        tools?: boolean;
+        /**
+         * Cache lifetime: `"5m"` (the vendor default) or `"1h"` (billed higher on write). Needs `systemPrompt`
+         * or `tools`; on its own it throws.
+         */
+        ttl?: "5m" | "1h";
     }
 
     namespace llm {

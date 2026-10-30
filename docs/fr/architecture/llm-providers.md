@@ -229,9 +229,11 @@ pas par des copies du constructeur de payload :
 (écrits dans le cache — le `cache_creation_input_tokens` d'Anthropic) et `CacheMissTokens` (entrée non servie
 par le cache). `PromptTokens` inclut déjà les jetons écrits et lus : une écriture n'est jamais comptée deux
 fois. `MeteredLlmProvider` les enregistre une fois par appel dans le `CostUsageEvent` ; `CostBudgetManager`
-conserve par modèle les jetons de prompt, de complétion, d'écriture et de lecture du cache et le coût
+conserve par modèle les jetons de prompt, de complétion, d'écriture et de lecture du cache, de raisonnement et le coût
 (`CostReport.ModelUsageByModel`), et `session_stats` les renvoie dans `by_model_tokens[]` à côté de la table
-de coûts `by_model`, inchangée. Un modèle dont le `ModelPricing` déclare `CacheWritePricePerMillion` /
+de coûts `by_model`, inchangée. Un compte de cache ou de raisonnement qu'aucun appel n'a rapporté vaut null dans
+`ModelUsage`, jamais 0 (un appel qui n'a rien rapporté n'ajoute rien aux autres : null + 5 = 5), et sa clé est
+absente de l'entrée de `by_model_tokens[]` ; 0 signifie que le fournisseur n'a rien mesuré. Un modèle dont le `ModelPricing` déclare `CacheWritePricePerMillion` /
 `CacheReadPricePerMillion` est tarifé `(prompt - écriture - lecture) x tarif prompt + écriture x tarif
 d'écriture + lecture x tarif de lecture + complétion x tarif de complétion` ; sans ces tarifs, le coût est
 inchangé.
@@ -239,9 +241,17 @@ inchangé.
 Le TTL du cache est `LlmCacheConfig.Ttl` (`5m` ou `1h`). Un appel peut le porter comme option
 `LlmChatOptionsKeys.CacheTtl` (`orkeon:cache_ttl`), que `ChatOptionsComposer` remplit depuis le
 `llm.cache.ttl` de l'agent ; l'adaptateur de client de chat le replie dans le `Cache.Ttl` de l'appel et
-Anthropic l'émet dans `cache_control`. Les fournisseurs compatibles OpenAI ne peuvent pas l'honorer et
+Anthropic l'émet dans `cache_control`. Un TTL d'appel sans configuration de cache qui place un point d'arrêt
+est lui-même la demande : l'adaptateur marque le prompt système avec cette durée (`LlmCacheConfig.SystemPrompt()`),
+puisqu'une durée sur rien ne mettrait rien en cache. Les fournisseurs compatibles OpenAI et Ollama ne peuvent pas l'honorer et
 journalisent l'avertissement structuré d'option non honorée (événement 110, `cache_ttl`) au lieu de
 l'abandonner en silence.
+
+La demande est explicite, depuis le YAML (`llm.cache: { system, tools, ttl }`) ou depuis un script :
+`agentBuilder().cache({ systemPrompt, tools, ttl })` et la clé `cache` de `LlmConfig.with({...})` produisent le
+même `LlmCacheConfig` (`LlmCacheConfig.Request`). Le TTL vaut `5m` ou `1h`, toute autre valeur est refusée dans les
+deux, et un `ttl` de script sans `systemPrompt` ni `tools` est refusé puisqu'il ne met rien en cache. Un objet qui
+ne marque rien désactive un cache hérité.
 
 ## Décorateurs et enregistrement
 

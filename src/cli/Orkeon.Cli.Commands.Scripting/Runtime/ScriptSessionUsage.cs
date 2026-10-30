@@ -65,14 +65,14 @@ public sealed class ScriptUsageReport
     /// <summary>Completion (output) tokens of the session.</summary>
     public long completionTokens { get; init; }
 
-    /// <summary>Prompt tokens served from a provider's cache, a part of <see cref="promptTokens"/>.</summary>
-    public long cacheHitTokens { get; init; }
+    /// <summary>Prompt tokens served from a provider's cache, a part of <see cref="promptTokens"/>; null when no call reported them.</summary>
+    public long? cacheHitTokens { get; init; }
 
-    /// <summary>Prompt tokens written to a provider's cache, a part of <see cref="promptTokens"/>.</summary>
-    public long cacheWriteTokens { get; init; }
+    /// <summary>Prompt tokens written to a provider's cache, a part of <see cref="promptTokens"/>; null when no call reported them.</summary>
+    public long? cacheWriteTokens { get; init; }
 
-    /// <summary>Completion tokens spent reasoning, a part of <see cref="completionTokens"/>.</summary>
-    public long reasoningTokens { get; init; }
+    /// <summary>Completion tokens spent reasoning, a part of <see cref="completionTokens"/>; null when no call reported them.</summary>
+    public long? reasoningTokens { get; init; }
 
     /// <summary><see cref="promptTokens"/> + <see cref="completionTokens"/>.</summary>
     public long totalTokens { get; init; }
@@ -108,14 +108,14 @@ public sealed class ScriptModelUsage
     /// <summary>Completion (output) tokens.</summary>
     public long completionTokens { get; init; }
 
-    /// <summary>Prompt tokens served from the provider's cache.</summary>
-    public long cacheHitTokens { get; init; }
+    /// <summary>Prompt tokens served from the provider's cache; null when no call reported them.</summary>
+    public long? cacheHitTokens { get; init; }
 
-    /// <summary>Prompt tokens written to the provider's cache.</summary>
-    public long cacheWriteTokens { get; init; }
+    /// <summary>Prompt tokens written to the provider's cache; null when no call reported them.</summary>
+    public long? cacheWriteTokens { get; init; }
 
-    /// <summary>Completion tokens spent reasoning.</summary>
-    public long reasoningTokens { get; init; }
+    /// <summary>Completion tokens spent reasoning; null when no call reported them.</summary>
+    public long? reasoningTokens { get; init; }
 
     /// <summary>The LLM calls of the model.</summary>
     public int calls { get; init; }
@@ -158,14 +158,14 @@ public sealed class ScriptCommandUsage
     /// <summary>Completion (output) tokens.</summary>
     public long completionTokens { get; init; }
 
-    /// <summary>Prompt tokens served from the provider's cache.</summary>
-    public long cacheHitTokens { get; init; }
+    /// <summary>Prompt tokens served from the provider's cache; null when no call reported them.</summary>
+    public long? cacheHitTokens { get; init; }
 
-    /// <summary>Prompt tokens written to the provider's cache.</summary>
-    public long cacheWriteTokens { get; init; }
+    /// <summary>Prompt tokens written to the provider's cache; null when no call reported them.</summary>
+    public long? cacheWriteTokens { get; init; }
 
-    /// <summary>Completion tokens spent reasoning.</summary>
-    public long reasoningTokens { get; init; }
+    /// <summary>Completion tokens spent reasoning; null when no call reported them.</summary>
+    public long? reasoningTokens { get; init; }
 
     /// <summary>The LLM calls of the instance.</summary>
     public int calls { get; init; }

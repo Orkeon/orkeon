@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — a script agent can request the prompt cache (#254)
+
+`agentBuilder().cache({ systemPrompt?, tools?, ttl?: "5m" | "1h" })` and the `cache` key of `LlmConfig.with({...})`
+request Anthropic's `cache_control` breakpoints as the YAML `llm.cache:` block does: both map onto the same
+`LlmCacheConfig` through `LlmCacheConfig.Request`. A TTL other than `5m`/`1h`, an unknown key, a non-boolean flag or a
+`ttl` with nothing marked cacheable throws a script error; an object marking nothing turns an inherited cache off.
+The typings declare `LlmCacheOptions`. The YAML `ttl` is now validated too: a value other than `5m` or `1h` is refused
+when the crew loads instead of reaching the vendor.
+
+### Changed — an unreported cache or reasoning count is null, not 0 (#254)
+
+`ModelUsage.CacheReadTokens`, `CacheWriteTokens` and `ReasoningTokens` are `long?`: null when no call reported them,
+the sum of the reported ones otherwise (null + 5 = 5, `ModelUsage.SumReported`). The same holds for
+`CommandInstanceUsage`, the `usage` service's `report()` (`cacheHitTokens`, `cacheWriteTokens`, `reasoningTokens`
+are `number | null`) and `session_stats` `by_model_tokens[]`, which gains `reasoning_tokens` and leaves an unreported
+count out instead of writing 0. A `/usage` command that printed the count prints `n/a` for null.
+
+| Before | After |
+|---|---|
+| `ModelUsage.CacheReadTokens` / `CacheWriteTokens` / `ReasoningTokens` : `long` (0 when unreported) | `long?` (null when unreported) |
+| `CommandInstanceUsage.CacheHitTokens` / `CacheWriteTokens` / `ReasoningTokens` : `long` | `long?` |
+| `ScriptUsageReport`, `ScriptModelUsage`, `ScriptCommandUsage` `cacheHitTokens` / `cacheWriteTokens` / `reasoningTokens` : `long` | `long?` (`number \| null` in `orkeon-cli.d.ts`) |
+| `ModelTokensEntry.CacheWriteTokens` / `CacheReadTokens` : `long` | `long?`, plus `ReasoningTokens` (`reasoning_tokens`) |
+
+### Fixed — `orkeon:cache_ttl` alone requests the system-prompt cache (#254)
+
+A per-call `orkeon:cache_ttl` on an agent with no cache configuration placed no breakpoint, so the lifetime cached
+nothing. The chat client adapter now treats it as the request: it marks the system prompt with that TTL. A provider
+that cannot write a TTL keeps logging the structured unhonoured-option warning (event 110, `cache_ttl`).
+
 ### Added — an index cache between sessions (`index_codebase` `use_cache`)
 
 `AddRaggableTree` now registers `CachingTreeBuilder`, and `index_codebase` saves the index under

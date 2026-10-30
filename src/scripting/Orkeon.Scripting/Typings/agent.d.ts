@@ -39,6 +39,14 @@ declare global {
          */
         effort(level: "low" | "medium" | "high" | "xhigh" | "max"): this;
         /**
+         * YAML parity `cache:` — asks the provider's prompt cache to keep the system prompt and/or the
+         * tool definitions. Only a provider whose cache is explicit (Anthropic) needs it; the others cache
+         * by their own rules and say so in their log when a `ttl` cannot be sent. Wins over the `cache` of
+         * the `LlmConfig` given to `.llm(...)`; an object that marks nothing cacheable turns caching off.
+         * Any other key or value throws. Declarative shape.
+         */
+        cache(options: LlmCacheOptions): this;
+        /**
          * YAML parity `maxRpm:` — the model requests this agent may make per minute, each of its
          * turns on the declarative shape: the request of too many waits its turn, it never fails the
          * task. Bounded too by the host's `RateLimiting:AgentRequestsPerMinute`, the stricter winning.

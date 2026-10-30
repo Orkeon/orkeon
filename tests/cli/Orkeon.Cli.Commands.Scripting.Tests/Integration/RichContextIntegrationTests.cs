@@ -234,7 +234,7 @@ public sealed class RichContextIntegrationTests : IDisposable
 
         Assert.Contains("total 1015 tokens, 2 calls (1 unpriced), $0.0125", console.Output, StringComparison.Ordinal);
         Assert.Contains("model gpt-4o in=900 out=100 cache=600 reasoning=40 unpriced=0 $0.0125", console.Output, StringComparison.Ordinal);
-        Assert.Contains("model local-model in=10 out=5 cache=0 reasoning=0 unpriced=1 n/a", console.Output, StringComparison.Ordinal);
+        Assert.Contains("model local-model in=10 out=5 cache=n/a reasoning=n/a unpriced=1 n/a", console.Output, StringComparison.Ordinal);
         Assert.Contains($"command {crew.Ticket} dev-batches in=900 out=100 cache=600 calls=1 unpriced=0 $0.0125", console.Output, StringComparison.Ordinal);
     }
 

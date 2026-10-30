@@ -143,6 +143,10 @@ the call starts (one `ActSession` per call):
   `effort must be low|medium|high|xhigh|max`. Anthropic takes the five levels; a provider whose field knows
   fewer (its declared `EffortLevels`: three for OpenAI's `reasoning_effort` and Ollama's `think`) sends the
   highest level it knows below the one asked, and logs a warning saying so, never a silent change.
+  The prompt cache is requested the same way on an agent, `agentBuilder().cache({ systemPrompt: true, tools: true,
+  ttl: "1h" })` or `llm.default_.with({ cache: { systemPrompt: true } })`, mapped onto the YAML `cache:` block
+  (`LlmCacheConfig`); a `ttl` other than `5m`/`1h`, a `ttl` on nothing cached or an unknown key throws. Like
+  `effort` on the builder, it shapes the agent's declared configuration (its turns in a crew), not `ctx.llm` calls.
 - **`onToolCall(call)`** runs before each tool call, after the permission gate. It returns `"allow"`;
   `"ask"` (the call goes to the approval channel as a `default`-mode edit would, and a denied answer
   is a deny); `{ deny: reason }` (the call does not run, the model reads `DENIED: <reason>`); or

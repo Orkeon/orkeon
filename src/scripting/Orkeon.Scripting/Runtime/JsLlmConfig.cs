@@ -21,7 +21,7 @@ namespace Orkeon.Scripting.Runtime;
 #pragma warning disable CS1591 // JS-interop mirror of LlmConfig in Typings/llm.d.ts; that declaration is the contract scripts read.
 public sealed class JsLlmConfig
 {
-    private static readonly string[] s_overridable = ["model", "temperature", "maxTokens", "responseFormat", "effort"];
+    private static readonly string[] s_overridable = ["model", "temperature", "maxTokens", "responseFormat", "effort", "cache"];
 
     public string provider { get; }
     public string model { get; }
@@ -78,6 +78,10 @@ public sealed class JsLlmConfig
         if (newEffort.IsString())
             domain = domain with { Thinking = ThinkingAt(newEffort.AsString()) };
 
+        var newCache = overrides.Get("cache");
+        if (!newCache.IsUndefined())
+            domain = domain with { Cache = CacheFrom(newCache, "LlmConfig.with({ cache })") };
+
         // ResponseFormat sits on Domain (consumed by adapter → provider). 'text' = clear.
         if (newResponseFormat.IsString())
         {
@@ -118,6 +122,61 @@ public sealed class JsLlmConfig
             ? value
             : throw new InvalidScriptException(
                 $"effort must be {string.Join('|', LlmThinkingConfig.Levels)}, not '{value}'.");
+
+    private static readonly string[] s_cacheKeys = ["systemPrompt", "tools", "ttl"];
+
+    /// <summary>
+    /// The prompt-cache request a script's <c>cache</c> option describes, mapped by
+    /// <see cref="LlmCacheConfig.Request"/> as the YAML <c>cache:</c> block is: null when it marks
+    /// nothing cacheable, which turns an inherited cache off.
+    /// </summary>
+    /// <param name="value">The <c>{ systemPrompt?, tools?, ttl? }</c> object.</param>
+    /// <param name="where">The call that received it, for the refusal.</param>
+    internal static LlmCacheConfig? CacheFrom(JsValue? value, string where)
+    {
+        if (value is null || !value.IsObject() || value.IsArray())
+            throw new InvalidScriptException($"{where} takes an object {{ systemPrompt?, tools?, ttl? }}.");
+
+        var cache = value.AsObject();
+        foreach (var key in cache.GetOwnPropertyKeys())
+        {
+            var name = key.ToString();
+            if (Array.IndexOf(s_cacheKeys, name) < 0)
+                throw new InvalidScriptException(
+                    $"{where} does not apply '{name}'. It takes: {string.Join(", ", s_cacheKeys)}.");
+        }
+
+        var systemPrompt = RequireFlag(cache.Get("systemPrompt"), where, "systemPrompt");
+        var tools = RequireFlag(cache.Get("tools"), where, "tools");
+        var ttlValue = cache.Get("ttl");
+        string? ttl = null;
+        if (!ttlValue.IsUndefined())
+        {
+            ttl = ttlValue.IsString()
+                ? ttlValue.AsString()
+                : throw new InvalidScriptException(
+                    $"{where} ttl must be {string.Join(" or ", LlmCacheConfig.Ttls)}; leave it out for the vendor default.");
+            if (!systemPrompt && !tools)
+                throw new InvalidScriptException(
+                    $"{where} ttl caches nothing on its own: set systemPrompt or tools to true.");
+        }
+
+        try
+        {
+            return LlmCacheConfig.Request(systemPrompt, tools, ttl);
+        }
+        catch (ArgumentException ex)
+        {
+            throw new InvalidScriptException($"{where}: {ex.Message}");
+        }
+    }
+
+    private static bool RequireFlag(JsValue value, string where, string name)
+    {
+        if (value.IsUndefined()) return false;
+        if (value.IsBoolean()) return value.AsBoolean();
+        throw new InvalidScriptException($"{where} {name} must be true or false.");
+    }
 
     internal static string RequireModel(string? value)
         => string.IsNullOrWhiteSpace(value)

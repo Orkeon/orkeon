@@ -36,6 +36,44 @@ public class LlmProviderToChatClientAdapterTests
         Assert.Equal(50, result.Usage?.TotalTokenCount);
     }
 
+    [Theory]
+    [Trait("BR", "CH-254")]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ShouldRequestSystemPromptBreakpoint_WhenCallTtlComesWithoutCacheRequest(bool emptyCacheConfig)
+    {
+        _llmProvider.SetChatResult(new LlmResponse { Content = "ok" });
+        var baseConfig = LlmConfig.Create(TestModelName) with { Cache = emptyCacheConfig ? new LlmCacheConfig() : null };
+        using var adapter = new LlmProviderToChatClientAdapter(_llmProvider, baseConfig);
+        var options = new ChatOptions
+        {
+            AdditionalProperties = new AdditionalPropertiesDictionary { [LlmChatOptionsKeys.CacheTtl] = "1h" },
+        };
+
+        await adapter.GetResponseAsync([new ChatMessage(ChatRole.User, "test")], options, TestContext.Current.CancellationToken);
+
+        var config = Assert.IsType<LlmConfig>(_llmProvider.LastChatConfig);
+        Assert.Equal(new LlmCacheConfig { CacheSystemPrompt = true, Ttl = "1h" }, config.Cache);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-254")]
+    public async Task ShouldKeepRequestedBreakpoints_WhenCallTtlOverridesTheTtl()
+    {
+        _llmProvider.SetChatResult(new LlmResponse { Content = "ok" });
+        var baseConfig = LlmConfig.Create(TestModelName) with { Cache = new LlmCacheConfig { CacheTools = true, Ttl = "5m" } };
+        using var adapter = new LlmProviderToChatClientAdapter(_llmProvider, baseConfig);
+        var options = new ChatOptions
+        {
+            AdditionalProperties = new AdditionalPropertiesDictionary { [LlmChatOptionsKeys.CacheTtl] = "1h" },
+        };
+
+        await adapter.GetResponseAsync([new ChatMessage(ChatRole.User, "test")], options, TestContext.Current.CancellationToken);
+
+        var config = Assert.IsType<LlmConfig>(_llmProvider.LastChatConfig);
+        Assert.Equal(new LlmCacheConfig { CacheTools = true, Ttl = "1h" }, config.Cache);
+    }
+
     [Fact]
     [Trait("BR", "CH-05")]
     public async Task ShouldPassTheSamplingAsWritten_WhenChatOptionsCarryFloats()

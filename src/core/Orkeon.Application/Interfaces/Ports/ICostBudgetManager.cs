@@ -171,14 +171,14 @@ public sealed record ModelUsage
     /// <summary>Completion tokens.</summary>
     public long CompletionTokens { get; init; }
 
-    /// <summary>Cache-write tokens.</summary>
-    public long CacheWriteTokens { get; init; }
+    /// <summary>Cache-write tokens; null when no call counted reported them (not measured is not 0).</summary>
+    public long? CacheWriteTokens { get; init; }
 
-    /// <summary>Cache-read tokens.</summary>
-    public long CacheReadTokens { get; init; }
+    /// <summary>Cache-read tokens; null when no call counted reported them (not measured is not 0).</summary>
+    public long? CacheReadTokens { get; init; }
 
-    /// <summary>Reasoning tokens, a part of <see cref="CompletionTokens"/>; 0 when no provider reported them.</summary>
-    public long ReasoningTokens { get; init; }
+    /// <summary>Reasoning tokens, a part of <see cref="CompletionTokens"/>; null when no call counted reported them.</summary>
+    public long? ReasoningTokens { get; init; }
 
     /// <summary>Cost.</summary>
     public decimal Cost { get; init; }
@@ -197,6 +197,23 @@ public sealed record ModelUsage
     /// so a cost with unpriced calls is a lower bound.
     /// </summary>
     public int UnpricedCalls { get; init; }
+
+    /// <summary>
+    /// The sum of the counts a set of calls reported: null when none reported one, so "not measured"
+    /// never reads as 0; the calls that reported nothing add nothing otherwise (null + 5 = 5).
+    /// </summary>
+    /// <param name="counts">One count per call, null for a call that did not report it.</param>
+    public static long? SumReported(IEnumerable<long?> counts)
+    {
+        ArgumentNullException.ThrowIfNull(counts);
+        long? total = null;
+        foreach (var count in counts)
+        {
+            if (count is { } value)
+                total = (total ?? 0L) + value;
+        }
+        return total;
+    }
 }
 
 /// <summary>

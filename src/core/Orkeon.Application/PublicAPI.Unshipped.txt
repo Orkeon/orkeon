@@ -311,3 +311,10 @@ virtual Orkeon.Application.Decision.DTOs.DecisionAnswer.PrintMembers(System.Text
 virtual Orkeon.Application.Decision.DTOs.DecisionQuestion.EqualityContract.get -> System.Type!
 virtual Orkeon.Application.Decision.DTOs.DecisionQuestion.Equals(Orkeon.Application.Decision.DTOs.DecisionQuestion? other) -> bool
 virtual Orkeon.Application.Decision.DTOs.DecisionQuestion.PrintMembers(System.Text.StringBuilder! builder) -> bool
+*REMOVED*Orkeon.Application.Interfaces.Ports.ModelUsage.CacheReadTokens.get -> long
+Orkeon.Application.Interfaces.Ports.ModelUsage.CacheReadTokens.get -> long?
+*REMOVED*Orkeon.Application.Interfaces.Ports.ModelUsage.CacheWriteTokens.get -> long
+Orkeon.Application.Interfaces.Ports.ModelUsage.CacheWriteTokens.get -> long?
+*REMOVED*Orkeon.Application.Interfaces.Ports.ModelUsage.ReasoningTokens.get -> long
+Orkeon.Application.Interfaces.Ports.ModelUsage.ReasoningTokens.get -> long?
+static Orkeon.Application.Interfaces.Ports.ModelUsage.SumReported(System.Collections.Generic.IEnumerable<long?>! counts) -> long?

@@ -257,7 +257,7 @@ public class CostBudgetManagerTests
         Assert.Equal(123, priced.ReasoningTokens);
         Assert.True(priced.Priced);
         var unpriced = report.ModelUsageByModel["local-unpriced-model"];
-        Assert.Equal(0, unpriced.ReasoningTokens);
+        Assert.Null(unpriced.ReasoningTokens);
         Assert.False(unpriced.Priced);
     }
 
@@ -285,6 +285,40 @@ public class CostBudgetManagerTests
         Assert.Equal(22, total.ReasoningTokens);
         Assert.Equal(1, total.UnpricedCalls);
         Assert.True(total.Priced);
+    }
+
+    /// <summary>#254 - a cache or reasoning count no call reported stays null, never 0.</summary>
+    [Trait("BR", "CH-254")]
+    [Fact]
+    public void ShouldKeepUnreportedCountsNull_WhenNoCallReportedThem()
+    {
+        _sut.RecordUsage(new CostUsageEvent { Model = ModelGpt4o, PromptTokens = 100, CompletionTokens = 10 });
+        _sut.RecordUsage(new CostUsageEvent { Model = ModelGpt4o, PromptTokens = 50, CompletionTokens = 5 });
+
+        var report = _sut.GetReport();
+
+        foreach (var usage in new[] { report.ModelUsageByModel[ModelGpt4o], report.TotalUsage })
+        {
+            Assert.Equal(150, usage.PromptTokens);
+            Assert.Null(usage.CacheReadTokens);
+            Assert.Null(usage.CacheWriteTokens);
+            Assert.Null(usage.ReasoningTokens);
+        }
+    }
+
+    /// <summary>#254 - the calls that reported a count add up; the ones that did not add nothing.</summary>
+    [Trait("BR", "CH-254")]
+    [Fact]
+    public void ShouldSumReportedCountsOnly_WhenSomeCallsReportedNone()
+    {
+        _sut.RecordUsage(new CostUsageEvent { Model = ModelGpt4o, PromptTokens = 100, CompletionTokens = 10 });
+        _sut.RecordUsage(new CostUsageEvent { Model = ModelGpt4o, PromptTokens = 50, CompletionTokens = 5, CacheHitTokens = 5, CacheWriteTokens = 0, ReasoningTokens = 3 });
+
+        var usage = _sut.GetReport().ModelUsageByModel[ModelGpt4o];
+
+        Assert.Equal(5, usage.CacheReadTokens);
+        Assert.Equal(0, usage.CacheWriteTokens);
+        Assert.Equal(3, usage.ReasoningTokens);
     }
 
     /// <summary>#226 - the report counts the calls nobody priced, in each model and in the totals.</summary>
