@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — `session_store` reads several keys, writes several, appends one message (#263)
+
+A script paid one `session_store` call per state key it read, and two calls carrying the whole buffer for every
+message it added. `get_state` now takes `keys: string[]` and answers `values`, one entry per key that is set (a key
+never set is absent, `undefined` in a script); `set_state` takes `values: { key: value }` to write several keys and
+`keys: string[]` to remove several (the tool pipeline drops a `null` value, so removal goes through `keys`); `key`
+and `value` keep working as before. The new `append_message` operation (`role`, `content`, an optional `timestamp`)
+adds one message at the end of the buffer, which is neither returned nor rewritten; `ISessionBufferService` gains
+`AppendMessage(SessionMessage)` for it.
+
 ### Added — `grep` counts: `output_mode: "count"`, `total_matches` on every answer (#260)
 
 A "how many" question over a tree took one `grep` call per file, or a hit list far too long for a single number.

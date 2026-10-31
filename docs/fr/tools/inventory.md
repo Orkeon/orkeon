@@ -57,7 +57,7 @@ celui ci-dessus — est ce que le YAML référence.
 
 | Tool | Classe | Cas d'usage |
 |-------|--------|-------------|
-| `session_store` | `SessionStoreTool` | Lire/écrire/tronquer/annoter le buffer de session et ses métadonnées |
+| `session_store` | `SessionStoreTool` | Lire/écrire/tronquer/annoter le buffer de session et ses métadonnées ; `append_message` ajoute un message sans réécrire le buffer, `get_state` lit une `key` ou plusieurs `keys`, `set_state` écrit une `key` ou plusieurs `values` et supprime plusieurs `keys` |
 | `session_snip` | `SessionSnipTool` | Tronquer immédiatement la conversation à une fenêtre minimale |
 | `session_stats` | `SessionStatsTool` | Télémétrie complète de session : messages, tokens, coût, totaux d'appels |
 | `session_cost` | `SessionCostTool` | Coût cumulé de la session en USD avec ventilation par modèle |

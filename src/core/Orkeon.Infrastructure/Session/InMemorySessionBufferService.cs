@@ -84,6 +84,16 @@ public sealed class InMemorySessionBufferService : ISessionBufferService
     }
 
     /// <inheritdoc />
+    public void AppendMessage(SessionMessage message)
+    {
+        ArgumentNullException.ThrowIfNull(message);
+        lock (_gate)
+        {
+            _messages.Add(message);
+        }
+    }
+
+    /// <inheritdoc />
     public bool AppendNote(string note)
     {
         if (string.IsNullOrWhiteSpace(note)) return false;

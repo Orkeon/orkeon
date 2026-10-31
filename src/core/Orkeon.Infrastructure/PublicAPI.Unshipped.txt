@@ -199,3 +199,17 @@ Orkeon.Infrastructure.Crew.Strategies.CrewGraphState.AddResultUsage(int tokens, 
 Orkeon.Infrastructure.Crew.Strategies.CrewGraphState.CacheHitTokensUsed.get -> long?
 Orkeon.Infrastructure.Crew.Strategies.CrewGraphState.CacheMissTokensUsed.get -> long?
 Orkeon.Infrastructure.Crew.Strategies.CrewGraphState.ResultUsage.get -> System.Collections.Generic.IReadOnlyList<(int Tokens, long? CacheHit, long? CacheMiss)>!
+Orkeon.Infrastructure.Session.FileSessionBufferService.AppendMessage(Orkeon.Application.Interfaces.Ports.SessionMessage! message) -> void
+Orkeon.Infrastructure.Session.InMemorySessionBufferService.AppendMessage(Orkeon.Application.Interfaces.Ports.SessionMessage! message) -> void
+Orkeon.Infrastructure.Tools.SessionStoreRequest.Content.get -> string?
+Orkeon.Infrastructure.Tools.SessionStoreRequest.Content.set -> void
+Orkeon.Infrastructure.Tools.SessionStoreRequest.Keys.get -> System.Collections.Generic.IReadOnlyList<string!>?
+Orkeon.Infrastructure.Tools.SessionStoreRequest.Keys.set -> void
+Orkeon.Infrastructure.Tools.SessionStoreRequest.Role.get -> string?
+Orkeon.Infrastructure.Tools.SessionStoreRequest.Role.set -> void
+Orkeon.Infrastructure.Tools.SessionStoreRequest.Values.get -> System.Collections.Generic.IReadOnlyDictionary<string!, string!>?
+Orkeon.Infrastructure.Tools.SessionStoreRequest.Values.set -> void
+Orkeon.Infrastructure.Tools.SessionStoreResponse.Values.get -> System.Collections.Generic.IReadOnlyDictionary<string!, string!>?
+Orkeon.Infrastructure.Tools.SessionStoreResponse.Values.set -> void
+Orkeon.Infrastructure.Tools.SessionStoreRequest.Timestamp.get -> string?
+Orkeon.Infrastructure.Tools.SessionStoreRequest.Timestamp.set -> void

@@ -21,6 +21,9 @@ public interface ISessionBufferService
     /// <summary>Appends a pending note as a dedicated message; returns whether it was stored.</summary>
     bool AppendNote(string note);
 
+    /// <summary>Appends one message at the end of the buffer without rewriting the rest of it.</summary>
+    void AppendMessage(SessionMessage message);
+
     /// <summary>Current session metadata (id, title, model, counts).</summary>
     SessionMetadata GetMetadata();
 

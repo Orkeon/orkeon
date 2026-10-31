@@ -9,9 +9,21 @@ namespace Orkeon.Infrastructure.Tools;
 /// <summary>Typed request for <see cref="SessionStoreTool"/>.</summary>
 public sealed class SessionStoreRequest
 {
-    /// <summary>Operation: read_messages / write_messages / append_note / get_metadata / set_title / truncate / reset / get_state / set_state.</summary>
+    /// <summary>Operation: read_messages / write_messages / append_message / append_note / get_metadata / set_title / truncate / reset / get_state / set_state.</summary>
     [JsonPropertyName("operation")]
     public string Operation { get; set; } = "read_messages";
+
+    /// <summary>Role of the message append_message adds (user, assistant, system, note).</summary>
+    [JsonPropertyName("role")]
+    public string? Role { get; set; }
+
+    /// <summary>Content of the message append_message adds.</summary>
+    [JsonPropertyName("content")]
+    public string? Content { get; set; }
+
+    /// <summary>Optional timestamp of the message append_message adds, as write_messages takes it.</summary>
+    [JsonPropertyName("timestamp")]
+    public string? Timestamp { get; set; }
 
     /// <summary>New buffer contents for write_messages.</summary>
     [JsonPropertyName("messages")]
@@ -36,6 +48,14 @@ public sealed class SessionStoreRequest
     /// <summary>State value for set_state; null removes the key.</summary>
     [JsonPropertyName("value")]
     public string? Value { get; set; }
+
+    /// <summary>Several state keys: read in one call by get_state (the answer is values), removed in one call by set_state.</summary>
+    [JsonPropertyName("keys")]
+    public IReadOnlyList<string>? Keys { get; set; }
+
+    /// <summary>Several state entries for set_state, written in one call (the tool pipeline drops a null value: a key is removed through keys).</summary>
+    [JsonPropertyName("values")]
+    public IReadOnlyDictionary<string, string>? Values { get; set; }
 }
 
 /// <summary>Typed response for <see cref="SessionStoreTool"/>.</summary>
@@ -60,6 +80,10 @@ public sealed class SessionStoreResponse
     /// <summary>State value for get_state (null when the key was never set).</summary>
     [JsonPropertyName("value")]
     public string? Value { get; set; }
+
+    /// <summary>The state entries get_state read (keys) or set_state wrote (values); a key never set is absent.</summary>
+    [JsonPropertyName("values")]
+    public IReadOnlyDictionary<string, string>? Values { get; set; }
 }
 
 /// <summary>
@@ -72,7 +96,7 @@ public sealed class SessionStoreTool : ToolBase<SessionStoreRequest, SessionStor
     public override string Name => "session_store";
     /// <inheritdoc />
     public override string Description =>
-        "Read, write, truncate, and annotate the current session conversation buffer and metadata.";
+        "Read, write, append to, truncate, and annotate the current session conversation buffer and metadata; get_state reads one key or several (keys), set_state writes one (key, value) or several (values) and removes several (keys).";
 
     /// <summary>Declared access class for permission gates.</summary>
     public override ToolAccess Access => ToolAccess.Read;
@@ -99,26 +123,75 @@ public sealed class SessionStoreTool : ToolBase<SessionStoreRequest, SessionStor
                 Messages = _buffer.GetMessages().ToArray<object>(),
             },
             "write_messages" => WriteMessages(request),
+            "append_message" => AppendMessage(request),
             "append_note" => new SessionStoreResponse { Success = _buffer.AppendNote(request.Note ?? "") },
             "get_metadata" => new SessionStoreResponse { Success = true, Metadata = _buffer.GetMetadata() },
             "set_title" => new SessionStoreResponse { Success = _buffer.SetTitle(request.Title ?? "") },
             "truncate" => new SessionStoreResponse { Success = true, RemovedCount = _buffer.Truncate(request.RetainCount) },
             "reset" => new SessionStoreResponse { Success = true, RemovedCount = _buffer.Reset() },
-            "get_state" => string.IsNullOrWhiteSpace(request.Key)
-                ? new SessionStoreResponse { Success = false }
-                : new SessionStoreResponse { Success = true, Value = _buffer.GetState(request.Key) },
+            "get_state" => GetState(request),
             "set_state" => SetState(request),
             _ => new SessionStoreResponse { Success = false },
         };
         return Task.FromResult(response);
     }
 
+    /// <summary>Reads one key (value) or several keys (values, a key never set absent); refused without either.</summary>
+    private SessionStoreResponse GetState(SessionStoreRequest request)
+    {
+        if (request.Keys is { Count: > 0 } keys)
+        {
+            if (keys.Any(string.IsNullOrWhiteSpace))
+                return new SessionStoreResponse { Success = false };
+            var values = new Dictionary<string, string>(StringComparer.Ordinal);
+            foreach (var key in keys)
+            {
+                if (_buffer.GetState(key) is { } value)
+                    values[key] = value;
+            }
+            return new SessionStoreResponse { Success = true, Values = values };
+        }
+
+        if (string.IsNullOrWhiteSpace(request.Key))
+            return new SessionStoreResponse { Success = false };
+        return new SessionStoreResponse { Success = true, Value = _buffer.GetState(request.Key) };
+    }
+
+    /// <summary>Writes one key (key, value), or several (values) and removes several (keys); refused without any.</summary>
     private SessionStoreResponse SetState(SessionStoreRequest request)
     {
+        var values = request.Values is { Count: > 0 } ? request.Values : null;
+        var removed = request.Keys is { Count: > 0 } ? request.Keys : null;
+        if (values is not null || removed is not null)
+        {
+            if (values?.Keys.Any(string.IsNullOrWhiteSpace) == true || removed?.Any(string.IsNullOrWhiteSpace) == true)
+                return new SessionStoreResponse { Success = false };
+            if (values is not null)
+            {
+                foreach (var (key, value) in values)
+                    _buffer.SetState(key, value);
+            }
+            if (removed is not null)
+            {
+                foreach (var key in removed)
+                    _buffer.SetState(key, null);
+            }
+            return new SessionStoreResponse { Success = true, Values = values is null ? [] : new Dictionary<string, string>(values, StringComparer.Ordinal) };
+        }
+
         if (string.IsNullOrWhiteSpace(request.Key))
             return new SessionStoreResponse { Success = false };
         _buffer.SetState(request.Key, request.Value);
         return new SessionStoreResponse { Success = true, Value = request.Value };
+    }
+
+    /// <summary>Appends one message (role, content, optional timestamp) at the end of the buffer; the buffer is neither returned nor rewritten.</summary>
+    private SessionStoreResponse AppendMessage(SessionStoreRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.Role) || request.Content is null)
+            return new SessionStoreResponse { Success = false };
+        _buffer.AppendMessage(new SessionMessage { Role = request.Role.Trim(), Content = request.Content, Timestamp = request.Timestamp });
+        return new SessionStoreResponse { Success = true };
     }
 
     private SessionStoreResponse WriteMessages(SessionStoreRequest request)
