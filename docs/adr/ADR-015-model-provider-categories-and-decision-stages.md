@@ -48,6 +48,8 @@ categories. Jev fits none of these contracts: forcing it behind `ILlmProvider` w
    `TypeSafeInputGuard`, the RAG reranker `decision` (alias `typesafe`) and the tool
    `system_one_decide`.
 
+   > Amendment 2026-10-31: `IDecisionModel.ListModelsAsync` removed (no caller).
+
 ## Consequences
 
 - A new kind of model (speech, vision, a second decision vendor) adds a category and a port;

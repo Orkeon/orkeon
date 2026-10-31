@@ -967,7 +967,7 @@
       "section": "Orkeon:TypeSafe",
       "type": "uri",
       "default": "https://api.typesafe.ai/v1",
-      "description": "The API root; `/systemone` and `/models` are appended to it."
+      "description": "The API root; `/systemone` is appended to it."
     },
     {
       "path": "Orkeon:TypeSafe:Guard:BlockThreshold",
@@ -3079,7 +3079,7 @@
       "section": "Orkeon:Scripting:Limits",
       "type": "integer",
       "default": 104857600,
-      "description": "Maximum cumulative memory the engine is allowed to allocate, in bytes — counted since the engine was created, not at its peak. Default: 100 MB, a ceiling for scripts of unknown provenance; a trusted run that needs more raises it."
+      "description": "Maximum memory the script is allowed to allocate on the engine's thread during one run, in bytes — one window per run (reset when the run starts), not counted since the engine was created; what a host tool call allocates is left out. Default: 100 MB, a ceiling for scripts of unknown provenance; a trusted run that needs more raises it."
     },
     {
       "path": "Orkeon:Scripting:Limits:RecursionLimit",

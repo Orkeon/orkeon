@@ -40,6 +40,8 @@ the next task had to parse.
    `Defaulted`, `IsDecision` and `DecisionAnswers`; the consoles and Studio's `RunProgressModel`
    show them. `TaskCompletedEvent.AgentId` is nullable, a decision task having no agent.
 
+   > Amendment 2026-10-31: the reason of a jump is read by the run's JSONL and by Studio's `RunProgressModel`, not by "the consoles"; the question name `defaulted` is reserved.
+
 ## Consequences
 
 - A decision task costs one request per evaluation; the only repeats are the adapter's retries on

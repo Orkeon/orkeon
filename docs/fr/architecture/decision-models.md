@@ -14,7 +14,7 @@ passages, ou remet une décision à un agent
 ## Le port
 
 `IDecisionModel.DecideAsync(DecisionRequest, ct)` envoie une requête et renvoie une
-`DecisionResponse` ; `ListModelsAsync(ct)` liste les modèles que sert le fournisseur.
+`DecisionResponse`.
 
 Une `DecisionRequest` porte :
 
@@ -59,10 +59,10 @@ leurs réglages portent une section `Orkeon:TypeSafe` ou que `TYPESAFE_API_KEY` 
   (`TYPESAFE_API_KEY` par défaut), dans le processus puis dans la portée utilisateur. Elle
   n'apparaît jamais dans un log, une erreur ou un appel de tool.
 - **`BaseUrl`** vaut par défaut `https://api.typesafe.ai/v1` ; les requêtes vont vers
-  `POST <BaseUrl>/systemone` et `GET <BaseUrl>/models`.
+  `POST <BaseUrl>/systemone`.
 - **Les erreurs** deviennent une `DecisionModelException` : un 422 cite le champ fautif, un 401
   nomme la variable de clé, un 400 `max_tokens_exceeded` nomme la limite (et suggère `longContext`
-  quand la requête ne l'a pas demandé), un 413 ou un 415 dit ce que la requête a dépassé. Un 429 ou un 529 est
+  quand la requête ne l'a pas demandé), un 413 ou un 415 dit ce que la requête a dépassé. Un 429, un 5xx (529 compris), un 408 ou une erreur réseau est
   réessayé avec un backoff exponentiel, jusqu'à `MaxRetries` fois ; chaque tentative a son propre
   `TimeoutSeconds`. Chaque erreur cite l'identifiant que TypeSafe a donné à la requête
   (`x-typesafe-request-id`) quand la réponse le porte. Un `usage` sans compteurs de tokens est
@@ -196,7 +196,7 @@ une réponse typée et calibrée au lieu d'un appel LLM. La syntaxe est dans la
 - Une tâche de décision n'a ni agent, ni outil, ni mémoire, et n'écrit aucun texte. Sa sortie est les
   réponses en JSON compact, pour qu'une tâche LLM suivante les lise comme contexte : pour chaque
   question, l'option `chosen` (choix seulement), le `score` ou la `probability` d'un oui/non, les `probabilities` et la
-  `confidence`, plus `"defaulted": true` quand le repli a répondu. Une question de score a une seule
+  `confidence`, plus `"defaulted": true` quand le repli a répondu (`defaulted` est une clé réservée : aucune question ne peut porter ce nom). Une question de score a une seule
   forme : ses réponses sont indexées par position de niveau et elle ne porte pas de `chosen`, repli
   compris. Une dépendance rejouée est lue à sa dernière sortie réussie, sinon à sa dernière tentative.
   Le `TokensUsed` de la tâche est l'usage que le modèle rapporte.
@@ -205,7 +205,7 @@ une réponse typée et calibrée au lieu d'un appel LLM. La syntaxe est dans la
 - La tâche envoie son état et **toutes ses questions en une seule requête**. L'état est la sortie de
   chaque tâche dont elle dépend qui a tourné, étiquetée de la clé de la tâche, ou seulement des tâches
   que `state` liste. Les seules répétitions sont les nouvelles tentatives de l'adaptateur sur cette même
-  requête, sur un 429 ou un 529.
+  requête, sur un 429, un 5xx, un 408 ou une erreur réseau.
 - La requête est mesurée une fois, sous `decision`, comme toute requête au modèle ; une tâche en repli ne
   fait aucune requête et ne compte rien.
 - Un processus qui rejoue une tâche échouée (Graph) rejoue une tâche de décision échouée comme une
@@ -234,7 +234,7 @@ doivent valoir pour qu'elle tourne ; les clauses sont listées dans la
 - **`otherwise`.** Elle vaut exactement quand aucune condition sœur sur cette tâche de décision ne vaut
   sur les réponses, une confiance sous le seuil comprise ; qu'une sœur ait alors tourné ou été sautée
   pour une autre raison n'y change rien.
-- Une tâche sautée est rapportée par les consoles comme sautée, avec sa raison (voir
+- Une tâche sautée est rapportée comme sautée par le JSONL du run et par Studio, avec sa raison (voir
   [le bus d'événements de run](./run-event-bus.md)).
 
 ### Échec
@@ -265,7 +265,7 @@ quand :
 Une requête échouée ne coupe jamais le circuit : c'est une tâche échouée.
 
 Circuit coupé, chaque tâche de décision répond par son **repli**, sans requête, et est marquée
-**defaulted** (`defaulted` dans l'événement de la tâche). Son statut reste terminé.
+**defaulted** (`defaulted` dans l'événement de la tâche ; le nom de question `defaulted` est réservé pour cette raison). Son statut reste terminé.
 
 - Avec des réponses `fallback` explicites, la réponse choisie porte une confiance de 1 et une
   probabilité de 1 : les conditions dessus valent comme si le modèle avait répondu avec pleine

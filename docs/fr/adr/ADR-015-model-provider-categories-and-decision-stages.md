@@ -49,6 +49,8 @@ chaque vérification de capacité devrait l'exclure.
    agents `TypeSafeInputGuard`, le reranker RAG `decision` (alias `typesafe`) et le tool
    `system_one_decide`.
 
+   > Amendement 2026-10-31 : `IDecisionModel.ListModelsAsync` supprimée (aucun appelant).
+
 ## Conséquences
 
 - Un nouveau genre de modèle (parole, vision, un second fournisseur de décision) ajoute une

@@ -233,7 +233,7 @@ Vingt-huit tools sur le graphe sémantique de code RaggableTree — le guide com
 
 | Tool | Classe | Cas d'usage |
 |-------|--------|-------------|
-| `index_codebase` | `IndexCodebaseTool` | Scanner la codebase et construire l'index RaggableTree complet |
+| `index_codebase` | `IndexCodebaseTool` | Scanner la codebase et construire l'index RaggableTree complet ; recharge l'index sauvegardé depuis le cache (`use_cache`, vrai par défaut ; `false` reconstruit), analyse `max_parallelism` fichiers à la fois (0 = un par processeur) |
 | `incremental_reindex` | `IncrementalReindexTool` | Réindexer seulement les fichiers modifiés depuis un commit ou une liste explicite |
 | `index_status` | `IndexStatusTool` | Lister chaque racine virtuelle actuellement indexée |
 | `is_path_indexed` | `IsPathIndexedTool` | Vérifier si un chemin virtuel est couvert par une racine indexée |

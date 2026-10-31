@@ -43,19 +43,3 @@ public sealed record DecisionUsage
     [JsonPropertyName("output_tokens")]
     public int? OutputTokens { get; init; }
 }
-
-/// <summary>A model or alias a decision provider accepts.</summary>
-public sealed record DecisionModelDto
-{
-    /// <summary>Gets the name a request's model takes.</summary>
-    [JsonPropertyName("name")]
-    public required string Name { get; init; }
-
-    /// <summary>Gets the provider's description of the model.</summary>
-    [JsonPropertyName("description")]
-    public string Description { get; init; } = string.Empty;
-
-    /// <summary>Gets the release date, <c>YYYY-MM-DD</c>.</summary>
-    [JsonPropertyName("release_date")]
-    public string ReleaseDate { get; init; } = string.Empty;
-}

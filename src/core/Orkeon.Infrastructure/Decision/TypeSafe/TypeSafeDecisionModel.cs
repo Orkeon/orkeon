@@ -1,4 +1,3 @@
-using System.Collections.Immutable;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Text;
@@ -17,8 +16,8 @@ using Polly;
 namespace Orkeon.Infrastructure.Decision.TypeSafe;
 
 /// <summary>
-/// <see cref="IDecisionModel"/> over the TypeSafe System One API (<c>POST /systemone</c>,
-/// <c>GET /models</c>). A request is validated before it is sent; a 429, a 529 or a network
+/// <see cref="IDecisionModel"/> over the TypeSafe System One API (<c>POST /systemone</c>).
+/// A request is validated before it is sent; a 429, a 529 or a network
 /// error is retried with the LLM retry policy; each answered request is metered as a
 /// <see cref="LlmUsageOperations.Decision"/> call. An error names what to fix, cites TypeSafe's
 /// request id when the answer carries one, and never carries the key.
@@ -93,8 +92,6 @@ public sealed partial class TypeSafeDecisionModel : IDecisionModel
         var sent = request with { Model = string.IsNullOrWhiteSpace(request.Model) ? _options.Model : request.Model };
         var body = JsonSerializer.Serialize(sent);
         var response = await SendAsync(
-            HttpMethod.Post,
-            "systemone",
             body,
             message =>
             {
@@ -113,23 +110,14 @@ public sealed partial class TypeSafeDecisionModel : IDecisionModel
         return decision;
     }
 
-    /// <inheritdoc />
-    public async Task<ImmutableList<DecisionModelDto>> ListModelsAsync(CancellationToken cancellationToken = default)
-    {
-        var response = await SendAsync(HttpMethod.Get, "models", null, null, cancellationToken).ConfigureAwait(false);
-        return Deserialize<ModelList>(response, "models").Models;
-    }
-
     private async Task<string> SendAsync(
-        HttpMethod method,
-        string path,
-        string? body,
+        string body,
         Action<HttpRequestMessage>? decorate,
         CancellationToken cancellationToken,
         bool longContext = false)
     {
         var key = ResolveApiKey();
-        var uri = new Uri(_options.BaseUrl.AbsoluteUri.TrimEnd('/') + "/" + path);
+        var uri = new Uri(_options.BaseUrl.AbsoluteUri.TrimEnd('/') + "/systemone");
         var client = _httpClientFactory.CreateClient(nameof(TypeSafeDecisionModel));
         // A bound per attempt rather than HttpClient.Timeout: a factory may hand back a client
         // that has already sent, whose Timeout can no longer be set.
@@ -143,11 +131,10 @@ public sealed partial class TypeSafeDecisionModel : IDecisionModel
                 using var attempt = CancellationTokenSource.CreateLinkedTokenSource(ct);
                 attempt.CancelAfter(attemptTimeout);
                 // One message per attempt: a sent HttpRequestMessage cannot be sent again.
-                using var message = new HttpRequestMessage(method, uri);
+                using var message = new HttpRequestMessage(HttpMethod.Post, uri);
                 message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", key);
                 message.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
-                if (body is not null)
-                    message.Content = new StringContent(body, Encoding.UTF8, "application/json");
+                message.Content = new StringContent(body, Encoding.UTF8, "application/json");
                 decorate?.Invoke(message);
                 return await client.SendAsync(message, attempt.Token).ConfigureAwait(false);
             }, cancellationToken).ConfigureAwait(false);
@@ -295,10 +282,4 @@ public sealed partial class TypeSafeDecisionModel : IDecisionModel
 
     [LoggerMessage(Level = LogLevel.Debug, Message = "TypeSafe {Model} answered {Questions} question(s) for {InputTokens} input tokens")]
     private partial void LogDecisionAnswered(string model, int questions, int inputTokens);
-
-    private sealed record ModelList
-    {
-        [System.Text.Json.Serialization.JsonPropertyName("models")]
-        public ImmutableList<DecisionModelDto> Models { get; init; } = [];
-    }
 }

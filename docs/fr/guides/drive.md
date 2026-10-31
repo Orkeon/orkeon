@@ -195,7 +195,7 @@ Windows — les variables propres à l'utilisateur.
   déplacement : Google Drive accepterait deux éléments du même nom, et un agent qui désigne les
   fichiers par leur nom prendrait alors le mauvais.
 - **La corbeille d'abord.** `drive_delete` met à la corbeille (la corbeille de OneDrive), d'où une
-  personne le restaure. `permanent: true` exige `Purge` ; un compte du tenant `consumers` (le
+  personne le restaure. `permanent: true` exige `Purge` ; un compte du tenant `consumers` (comptes Microsoft personnels ; le
   défaut) n'a pas de suppression définitive sur OneDrive et l'outil la refuse.
 - **Un crew dont les outils drive exigent un droit qu'aucun compte prêt n'accorde est refusé au
   départ**, avant tout appel au modèle, avec une ligne par outil — comme pour les outils mail.
@@ -216,7 +216,7 @@ Windows — les variables propres à l'utilisateur.
   d'éléments jusqu'à tenir dans un résultat d'outil, si bien que `next_cursor` reprend exactement
   après le dernier élément montré ; `drive_read` rend des tranches avec `next_offset`.
 - **Une recherche s'en tient à la racine.** Aucun des deux fournisseurs ne cherche dans un
-  sous-arbre seul (Google cherche dans tout le drive, OneDrive personnel peut le faire), si bien que
+  sous-arbre seul (Google cherche dans tout le drive, OneDrive du tenant `consumers` peut le faire), si bien que
   `drive_search` écarte ce qui est hors de la racine du compte et lit d'autres pages du fournisseur,
   jusqu'à cinq, pour remplir la page demandée. Une page peut encore revenir courte, voire vide, avec
   un `next_cursor` qui reprend de là.

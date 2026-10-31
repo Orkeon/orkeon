@@ -188,7 +188,7 @@ like the e-mail secrets: the process environment, then — on Windows — the us
   would accept two items of the same name, and an agent addressing files by name would then pick
   the wrong one.
 - **The trash first.** `drive_delete` moves to the trash (the recycle bin on OneDrive), from where a
-  person restores it. `permanent: true` needs `Purge`; an account on the `consumers` tenant (the
+  person restores it. `permanent: true` needs `Purge`; an account on the `consumers` tenant (personal Microsoft accounts; the
   default) has no permanent deletion on OneDrive and the tool refuses it.
 - **A crew whose drive tools need a right no ready account grants is refused at start**, before
   any model call, with a line per tool — as for the mail tools.
@@ -209,7 +209,7 @@ like the e-mail secrets: the process environment, then — on Windows — the us
   result, so `next_cursor` resumes exactly after the last item shown; `drive_read` returns slices
   with `next_offset`.
 - **A search keeps to the root.** Neither provider searches a subtree alone (Google searches the
-  whole drive, OneDrive personal may), so `drive_search` drops what lies outside the account's root
+  whole drive, OneDrive on the `consumers` tenant may), so `drive_search` drops what lies outside the account's root
   and reads further provider pages, up to five, to fill the page asked for. A page can still come
   back short, even empty, with a `next_cursor` that goes on from there.
 - **Drive traffic stays out of the LLM exchange log.** The drive client is excluded from what

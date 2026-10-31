@@ -51,8 +51,8 @@ public sealed class DecisionTypingsTests
         Assert.Equal(0, inline.ExitCode);
         Assert.Equal(string.Empty, inline.Output);
 
-        var example = FindUp(Path.Combine("examples", "scripting", "09-decision-and-when.ork.ts"));
-        Assert.True(example is not null, "examples/scripting/09-decision-and-when.ork.ts is missing.");
+        var example = FindUp(Path.Combine("examples", "scripting", "14-decision-and-when.ork.ts"));
+        Assert.True(example is not null, "examples/scripting/14-decision-and-when.ork.ts is missing.");
         var shipped = await TypeCheckAsync(await File.ReadAllTextAsync(example!, TestContext.Current.CancellationToken));
         Assert.Equal(0, shipped.ExitCode);
         Assert.Equal(string.Empty, shipped.Output);

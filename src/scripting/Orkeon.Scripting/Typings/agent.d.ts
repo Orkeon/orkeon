@@ -34,7 +34,7 @@ declare global {
         maxIterations(value: number): this;
         /**
          * Turns the provider's thinking on at this effort. Anthropic takes the five levels; a provider whose field
-         * knows fewer (three for OpenAI's `reasoning_effort` and Ollama's `think`) sends the highest it knows
+         * knows fewer (three for OpenAI's `reasoning_effort` and Ollama's `think`; four, without `xhigh`, for DeepSeek and Z.ai; all five for OpenRouter) sends the highest it knows
          * below the one asked, and warns. Applies to the agent's `ctx.llm` calls too, unless a call sets its own.
          */
         effort(level: "low" | "medium" | "high" | "xhigh" | "max"): this;

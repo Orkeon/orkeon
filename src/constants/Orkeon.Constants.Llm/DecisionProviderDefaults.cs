@@ -8,7 +8,7 @@ public static class DecisionProviderDefaults
 {
 #pragma warning disable S1075 // URIs should not be hardcoded - an official, stable public endpoint
     /// <summary>
-    /// TypeSafe's API root: <c>POST /systemone</c> and <c>GET /models</c> are appended to it.
+    /// TypeSafe's API root: <c>POST /systemone</c> is appended to it.
     /// From docs.typesafe.ai (API reference and openapi.json), 2026-10-27.
     /// </summary>
     public const string TypeSafeBaseUrl = "https://api.typesafe.ai/v1";

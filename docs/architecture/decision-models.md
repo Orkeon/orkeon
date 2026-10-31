@@ -14,7 +14,7 @@ hands a decision to an agent
 ## The port
 
 `IDecisionModel.DecideAsync(DecisionRequest, ct)` sends one request and returns a
-`DecisionResponse`; `ListModelsAsync(ct)` lists the models the provider serves.
+`DecisionResponse`.
 
 A `DecisionRequest` carries:
 
@@ -58,11 +58,10 @@ in every case; a host written in C# calls both.
 - **The key** is read from `Orkeon:TypeSafe:ApiKey`, then from the variable `ApiKeyEnvVar`
   names (`TYPESAFE_API_KEY` by default), in the process and then in the user scope. It never
   appears in a log, an error or a tool call.
-- **`BaseUrl`** defaults to `https://api.typesafe.ai/v1`; requests go to `POST <BaseUrl>/systemone`
-  and `GET <BaseUrl>/models`.
+- **`BaseUrl`** defaults to `https://api.typesafe.ai/v1`; requests go to `POST <BaseUrl>/systemone`.
 - **Errors** become a `DecisionModelException`: a 422 cites the field at fault, a 401 names the
   key variable, a 400 `max_tokens_exceeded` names the limit (and suggests `longContext` when the
-  request did not ask for it), a 413 or 415 says what the request exceeded. A 429 or a 529 is retried with an
+  request did not ask for it), a 413 or 415 says what the request exceeded. A 429, a 5xx (529 included), a 408 or a network error is retried with an
   exponential backoff, up to `MaxRetries` times; each attempt has its own `TimeoutSeconds`. Every
   error cites the id TypeSafe gave the request (`x-typesafe-request-id`) when the answer carries one.
   A `usage` without token counts is metered as zero, not refused.
@@ -191,7 +190,7 @@ calibrated answer instead of an LLM call. The syntax is in the
 - A decision task has no agent, no tool and no memory, and writes no text. Its output is the
   answers as compact JSON, so that a later LLM task reads them as context: for each question the
   `chosen` option (a choice only), the `score` or the `probability` of a yes-no, the `probabilities` and the
-  `confidence`, plus `"defaulted": true` when the fallback answered. A score question has one form: its
+  `confidence`, plus `"defaulted": true` when the fallback answered (`defaulted` is a reserved key: no question may take that name). A score question has one form: its
   answers are keyed by level position and it carries no `chosen`, the fallback included. A dependency
   that was retried is read at its last successful output, else at its last attempt. The task's
   `TokensUsed` is the usage the model reports.
@@ -199,7 +198,7 @@ calibrated answer instead of an LLM call. The syntax is in the
   round-robin.
 - The task sends its state and **all its questions in one request**. The state is the output of
   each task it depends on that ran, labelled with the task's key, or only the tasks `state` lists.
-  The only repeats are the adapter's retries of that same request on a 429 or a 529.
+  The only repeats are the adapter's retries of that same request on a 429, a 5xx, a 408 or a network error.
 - The request is metered once, as `decision`, like every request to the model; a defaulted task
   makes no request and counts nothing.
 - A process that retries a failed task (Graph) retries a failed decision task as a new evaluation,
@@ -228,7 +227,7 @@ hold for it to run; the clauses are listed in the
 - **`otherwise`.** It holds exactly when no sibling condition on that decision task holds on the
   answers, a confidence under the floor included; whether a sibling then ran or was skipped for
   another reason does not matter.
-- A skipped task is reported by the consoles as skipped, with its reason (see
+- A skipped task is reported as skipped by the run's JSONL and by Studio, with its reason (see
   [the run event bus](./run-event-bus.md)).
 
 ### Failure
@@ -257,7 +256,7 @@ configured (in the shipped binaries, when `Orkeon:TypeSafe` or `TYPESAFE_API_KEY
 A failed request never turns the circuit off: that is a failed task.
 
 With the circuit off, every decision task answers by its **fallback**, without a request, and is
-marked **defaulted** (`defaulted` in the task's event). Its status stays completed.
+marked **defaulted** (`defaulted` in the task's event; the question name `defaulted` is reserved for that reason). Its status stays completed.
 
 - With explicit `fallback` answers, the chosen answer carries a confidence of 1 and a probability of
   1: the conditions on it hold as if the model had answered with full confidence. A question left out

@@ -1601,7 +1601,9 @@ public static partial class RunnerHost
     {
         ArgumentNullException.ThrowIfNull(context);
         ArgumentNullException.ThrowIfNull(services);
-        var configured = context.Configuration.GetSection(Orkeon.Infrastructure.Decision.TypeSafe.TypeSafeOptions.SectionName).Exists()
+        var typeSafeSection = Orkeon.Infrastructure.Decision.TypeSafe.TypeSafeOptions.SectionName;
+        var configured = context.Configuration.GetSection(Microsoft.Extensions.Configuration.ConfigurationPath.GetParentPath(typeSafeSection)!).GetChildren()
+                .Any(c => string.Equals(c.Key, Microsoft.Extensions.Configuration.ConfigurationPath.GetSectionKey(typeSafeSection), StringComparison.OrdinalIgnoreCase))
             || !string.IsNullOrEmpty(Environment.GetEnvironmentVariable(Orkeon.Constants.Llm.DecisionProviderDefaults.TypeSafeApiKeyVariable));
         if (configured)
             Orkeon.Infrastructure.Decision.TypeSafe.TypeSafeServiceCollectionExtensions.AddOrkeonTypeSafe(services, context.Configuration);

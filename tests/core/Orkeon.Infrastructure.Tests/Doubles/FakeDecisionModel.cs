@@ -23,9 +23,6 @@ public sealed class FakeDecisionModel : IDecisionModel
     /// <summary>Thrown by <see cref="DecideAsync"/> when set.</summary>
     public Exception? Failure { get; set; }
 
-    /// <summary>The models <see cref="ListModelsAsync"/> returns.</summary>
-    public ImmutableList<DecisionModelDto> Models { get; set; } = [];
-
     /// <summary>The requests received so far, oldest first.</summary>
     public IReadOnlyList<DecisionRequest> Requests
     {
@@ -44,8 +41,4 @@ public sealed class FakeDecisionModel : IDecisionModel
             return RespondAsync(request, cancellationToken);
         return Failure is null ? Task.FromResult(Respond(request)) : Task.FromException<DecisionResponse>(Failure);
     }
-
-    /// <inheritdoc />
-    public Task<ImmutableList<DecisionModelDto>> ListModelsAsync(CancellationToken cancellationToken = default) =>
-        Task.FromResult(Models);
 }

@@ -41,7 +41,7 @@ declare global {
         responseFormat?: ResponseFormatType;
         /**
          * Turns thinking on at this level; anything else throws. Anthropic takes the five levels; a provider whose field
-         * knows fewer (three for OpenAI's `reasoning_effort` and Ollama's `think`) sends the highest it knows
+         * knows fewer (three for OpenAI's `reasoning_effort` and Ollama's `think`; four, without `xhigh`, for DeepSeek and Z.ai; all five for OpenRouter) sends the highest it knows
          * below the one asked, and warns.
          */
         effort?: "low" | "medium" | "high" | "xhigh" | "max";

@@ -687,6 +687,16 @@ def main(argv: list[str]) -> int:
         expect_absent(path, r"\b\d+\+ (?:built-in tools|tools by category|tools,|outils)",
                       "a 'N+' floor is not a verifiable number")
 
+    # RaggableTree tool count: the *Tool.cs files of Orkeon.Tools.Analysis, computed.
+    analysis = sum(1 for f in tool_files() if "src/tools/Orkeon.Tools.Analysis/" in f.as_posix())
+    for path in ("docs/INDEX.md", "docs/fr/INDEX.md"):
+        for i, line in enumerate(read(path).splitlines()):
+            if "raggable-tree.md" in line:
+                for m in re.finditer(r"\b(\d+) tools\b", line):
+                    if int(m.group(1)) != analysis:
+                        fail(f"{path}:{i + 1}: RaggableTree line states {m.group(1)} tools "
+                             f"(*Tool.cs under src/tools/Orkeon.Tools.Analysis: {analysis})")
+
     # The same counts in every page of docs/ (ADRs are dated records and keep their day's numbers).
     check_docs_counts(tools, src_projects, test_projects)
 

@@ -141,7 +141,7 @@ the call starts (one `ActSession` per call):
   (`LlmConfig.Thinking`, enabled with that effort). The same `effort` is accepted by the other `ctx.llm`
   calls, by `LlmConfig.with({...})` (`llm.default_.with({ effort })`) and by `agentBuilder().effort(level)`; any other value is refused with
   `effort must be low|medium|high|xhigh|max`. Anthropic takes the five levels; a provider whose field knows
-  fewer (its declared `EffortLevels`: three for OpenAI's `reasoning_effort` and Ollama's `think`) sends the
+  fewer (its declared `EffortLevels`: three for OpenAI's `reasoning_effort` and Ollama's `think`; `low`, `medium`, `high` and `max` for DeepSeek and Z.ai; all five for Anthropic and OpenRouter) sends the
   highest level it knows below the one asked, and logs a warning saying so, never a silent change.
   The prompt cache is requested the same way on an agent, `agentBuilder().cache({ systemPrompt: true, tools: true,
   ttl: "1h" })` or `llm.default_.with({ cache: { systemPrompt: true } })`, mapped onto the YAML `cache:` block

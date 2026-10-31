@@ -23,8 +23,4 @@ public sealed class FakeDecisionModel : IDecisionModel
         Requests.Add(request);
         return Task.FromResult(Respond(request));
     }
-
-    /// <inheritdoc />
-    public Task<ImmutableList<DecisionModelDto>> ListModelsAsync(CancellationToken cancellationToken = default) =>
-        Task.FromResult(ImmutableList<DecisionModelDto>.Empty);
 }

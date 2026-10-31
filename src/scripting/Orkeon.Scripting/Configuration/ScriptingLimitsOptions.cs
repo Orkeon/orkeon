@@ -22,17 +22,18 @@ public sealed record ScriptingLimitsOptions
     public const string SectionName = "Orkeon:Scripting:Limits";
 
     /// <summary>
-    /// Maximum cumulative memory the engine is allowed to allocate, in bytes — counted
-    /// since the engine was created, not at its peak. Default: <strong>100 MB</strong>, a
+    /// Maximum memory the script is allowed to allocate on the engine's thread during one
+    /// run, in bytes — one window per run (reset when the run starts), not counted since the
+    /// engine was created; what a host tool call allocates is left out. Default: <strong>100 MB</strong>, a
     /// ceiling for scripts of unknown provenance; a trusted run that needs more raises it.
     /// </summary>
     /// <remarks>
     /// An <c>Untrusted</c>-by-default profile for <c>.ork.ts</c> scripts of unknown
     /// provenance (see R2.6 / SEC-009).
     ///
-    /// IMPORTANT: Jint's <c>LimitMemory</c> is <strong>cumulative</strong>, not
+    /// IMPORTANT: the count is <strong>cumulative within a run</strong>, not
     /// peak. It uses <c>GC.GetAllocatedBytesForCurrentThread()</c> and counts
-    /// every allocation since the engine was created — including short-lived
+    /// every allocation since the window opened at the last <c>Reset</c> (the start of the run), not since the engine was created — including short-lived
     /// intermediates from template-literal concatenation, JSON serialization
     /// of tool calls, esbuild bundle parsing, etc. What the execution of a host tool
     /// (<c>tools.*</c>, a tool call made by <c>ctx.llm.act</c>) allocates on the engine thread is left

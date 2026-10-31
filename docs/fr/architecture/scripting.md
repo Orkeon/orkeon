@@ -144,7 +144,7 @@ au début de l'appel (une `ActSession` par appel) :
   `ctx.llm`, par `LlmConfig.with({...})` (`llm.default_.with({ effort })`) et par `agentBuilder().effort(level)` ; toute autre valeur est refusée
   avec `effort must be low|medium|high|xhigh|max`. Anthropic prend les cinq niveaux ; un fournisseur dont le
   champ en connaît moins (ses `EffortLevels` déclarés : trois pour `reasoning_effort` d'OpenAI et `think`
-  d'Ollama) envoie le plus haut niveau qu'il connaît en dessous de celui demandé, et le dit dans un
+  d'Ollama ; `low`, `medium`, `high` et `max` pour DeepSeek et Z.ai ; les cinq pour Anthropic et OpenRouter) envoie le plus haut niveau qu'il connaît en dessous de celui demandé, et le dit dans un
   avertissement, jamais un changement silencieux.
   Le cache de prompt se demande de la même façon sur un agent, `agentBuilder().cache({ systemPrompt: true, tools: true,
   ttl: "1h" })` ou `llm.default_.with({ cache: { systemPrompt: true } })`, reporté sur le bloc YAML `cache:`

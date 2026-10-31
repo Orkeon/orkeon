@@ -227,7 +227,7 @@ Twenty-eight tools over the RaggableTree semantic code graph — the full guide 
 
 | Tool | Class | Use case |
 |-------|--------|-------------|
-| `index_codebase` | `IndexCodebaseTool` | Scan the codebase and build the full RaggableTree index |
+| `index_codebase` | `IndexCodebaseTool` | Scan the codebase and build the full RaggableTree index; reloads the saved index from the cache (`use_cache`, default true; `false` rebuilds), parses `max_parallelism` files at once (0 = one per processor) |
 | `incremental_reindex` | `IncrementalReindexTool` | Reindex only the files changed since a commit or an explicit list |
 | `index_status` | `IndexStatusTool` | List every virtual root currently indexed |
 | `is_path_indexed` | `IsPathIndexedTool` | Check whether a virtual path is covered by an indexed root |

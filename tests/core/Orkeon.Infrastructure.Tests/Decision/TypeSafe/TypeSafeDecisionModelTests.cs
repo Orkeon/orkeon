@@ -307,20 +307,6 @@ public class TypeSafeDecisionModelTests
     }
 
     [Fact]
-    public async Task ShouldGetTheModels_WhenListModelsAsync()
-    {
-        const string body = """{"models":[{"name":"jev-1.14.0","description":"Jev","release_date":"2026-09-01"}]}""";
-        using var handler = TestHttpMessageHandler.CreateWithResponse(HttpStatusCode.OK, body);
-        var model = Create(handler);
-
-        var models = await model.ListModelsAsync(TestContext.Current.CancellationToken);
-
-        Assert.Equal("jev-1.14.0", Assert.Single(models).Name);
-        Assert.Equal(HttpMethod.Get, handler.CapturedRequests[0].Method);
-        Assert.Equal("https://api.typesafe.ai/v1/models", handler.CapturedRequests[0].RequestUri!.ToString());
-    }
-
-    [Fact]
     public void ShouldRegisterTheDecisionModel_WhenAddOrkeonTypeSafe()
     {
         var configuration = new ConfigurationBuilder()

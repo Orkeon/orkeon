@@ -456,7 +456,7 @@ en contient une, ne refuse pas le démarrage : le compte est mis de côté, avec
 Un hôte peut offrir plusieurs fournisseurs. Chaque enfant de `Llm:Profiles` est un **profil** :
 un nom, et un fournisseur décrit avec exactement les clés de la section `Llm` (`BaseUrl`,
 `ApiKeyEnvVar`, `ApiKey`, `Model`, `Temperature`, `MaxTokens`, `TimeoutSeconds`, `MaxRetries`,
-`Thinking`, `Grammar`, `CallMode`, `MaxRateLimitWait`, `StreamIdleSeconds`). La section `Llm` elle-même reste le profil **par défaut** — celui de tout agent qui
+`Thinking`, `Cache`, `Grammar`, `CallMode`, `MaxRateLimitWait`, `StreamIdleSeconds`). La section `Llm` elle-même reste le profil **par défaut** — celui de tout agent qui
 n'en nomme pas d'autre. Une crew choisit un profil **par son nom**, jamais par une clé ou une URL :
 `llm: { profile: claude }` sur la crew, un agent ou le `llm_override` d'une tâche en YAML,
 `llm.profile("claude")` sur un agent et `taskBuilder().withProfile("claude")` sur une tâche en `.ork.ts` ([YAML et builders](../getting-started/yaml-and-builders.md#un-fournisseur-par-agent-profils)).
@@ -688,7 +688,7 @@ second appel n'enregistre aucun évaluateur deux fois).
 ### `Orkeon:TypeSafe`
 
 Le modèle de décision TypeSafe (Jev), lié par `AddOrkeonTypeSafe(configuration)`, que les trois
-binaires livrés appellent quand cette section est présente ou que `TYPESAFE_API_KEY` est définie : la clé,
+binaires livrés appellent quand cette section est présente — même vide, `TypeSafe: {}` compte — ou que `TYPESAFE_API_KEY` est définie : la clé,
 l'endpoint, le modèle par défaut, le délai et les nouvelles tentatives de chaque appel, et la garde
 d'entrée des agents (`Guard`). Voir [Modèles de décision](../architecture/decision-models.md).
 
@@ -699,7 +699,7 @@ d'entrée des agents (`Guard`). Voir [Modèles de décision](../architecture/dec
 |---|---|---|---|
 | `ApiKey` | chaîne, secret | — | La clé d'API. Déconseillée dans un fichier de réglages : laissez-la vide et posez la variable que nomme `ApiKeyEnvVar`. |
 | `ApiKeyEnvVar` | chaîne | `"TYPESAFE_API_KEY"` | La variable d'environnement lue quand `ApiKey` est vide. |
-| `BaseUrl` | URI | `"https://api.typesafe.ai/v1"` | La racine de l'API ; `/systemone` et `/models` s'y ajoutent. |
+| `BaseUrl` | URI | `"https://api.typesafe.ai/v1"` | La racine de l'API ; `/systemone` s'y ajoute. |
 | `Guard:BlockThreshold` | nombre | `0.8` | La probabilité à partir de laquelle un risque bloque l'entrée. |
 | `Guard:Enabled` | booléen | `false` | Si la garde tourne ; coupée par défaut. |
 | `Guard:FailClosed` | booléen | `false` | Si un modèle de décision injoignable bloque l'entrée ; false avertit et la laisse passer. |
@@ -1856,7 +1856,7 @@ profondeur de récursion de 64 et 30 s par défaut.
 | Clé | Type | Défaut | Sens |
 |---|---|---|---|
 | `ExecutionTimeout` | durée | `"00:00:30"` | Durée maximale, en temps réel, pendant laquelle le moteur peut tourner, au total — le temps passé à attendre un outil ou un modèle compte ; le temps que le contrôle des permissions met à décider, un opérateur qui répond à une demande d'approbation, ne compte pas. Défaut : 30 secondes, un plafond pour des scripts de provenance inconnue ; un run long de confiance le relève. |
-| `MemoryLimitBytes` | entier | `104857600` | Mémoire cumulée maximale que le moteur peut allouer, en octets — comptée depuis la création du moteur, pas à son pic. Défaut : 100 Mo, un plafond pour des scripts de provenance inconnue ; un run de confiance qui en demande plus le relève. |
+| `MemoryLimitBytes` | entier | `104857600` | Mémoire maximale que le script peut allouer sur le thread du moteur pendant un run, en octets — une fenêtre par run (remise à zéro au démarrage du run), pas comptée depuis la création du moteur ; ce qu'alloue l'appel d'un outil de l'hôte n'est pas compté. Défaut : 100 Mo, un plafond pour des scripts de provenance inconnue ; un run de confiance qui en demande plus le relève. |
 | `RecursionLimit` | entier | `64` | Profondeur de récursion maximale avant que le moteur ne lève une erreur. Défaut : 64 : elle arrête une récursion emballée bien avant le débordement de la pile .NET et laisse de la place à une logique de script légitimement imbriquée. Un script de confiance peut la relever. |
 <!-- /settings -->
 

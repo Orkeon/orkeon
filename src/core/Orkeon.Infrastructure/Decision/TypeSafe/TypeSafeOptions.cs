@@ -20,7 +20,7 @@ public sealed class TypeSafeOptions
     /// <summary>Gets or sets the environment variable read when <see cref="ApiKey"/> is empty.</summary>
     public string ApiKeyEnvVar { get; set; } = DecisionProviderDefaults.TypeSafeApiKeyVariable;
 
-    /// <summary>Gets or sets the API root; <c>/systemone</c> and <c>/models</c> are appended to it.</summary>
+    /// <summary>Gets or sets the API root; <c>/systemone</c> is appended to it.</summary>
     public Uri BaseUrl { get; set; } = new(DecisionProviderDefaults.TypeSafeBaseUrl);
 
     /// <summary>Gets or sets the model a request naming none runs on.</summary>

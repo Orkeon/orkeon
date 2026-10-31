@@ -278,8 +278,11 @@ name; otherwise a newer model is a **candidate** until a campaign has archived a
 | OpenRouter | `google/gemini-3.7-flash` | yes | `google/gemini-3.8-flash` (2026-09-02, same price) | follows the direct default — **campaigned 2026-10-07**: 11/1 on both (M10: cache fields returned with 0) |
 | Mammouth AI | `gemini-3.7-flash` | yes | `gemini-3.8-flash` | follows the direct default — **campaigned 2026-10-07**: 10/0/2 on both, every exercised mode green |
 
-`ModelPricingRegistry` follows the same pages: the GPT-5.6 family and `gpt-6-astra`, Sonnet 5
-at 2 / 10, Fable 5.1 / Fable 5 and Haiku 4.5.
+`ModelPricingRegistry` follows the same pages: the GPT-5.6 family and `gpt-6-astra`, and, for
+Anthropic (read 2026-10-30), Fable 5.1 / Fable 5 at 10 / 50, Opus 5.5 at 4 / 20, Opus 5 and Opus 4.5 to 4.8 at 5 / 25, Sonnet 5 at 2 / 10,
+Haiku 5 at 0.10 / 0.50 and Haiku 4.5 at 1 / 5. Cache tariffs: a 5-minute write at 1.25x the prompt rate, a 1-hour write at 2x
+(costed by the cost manager), a read at 0.1x (0.25 for Fable 5.1, 0.20 for Opus 5.5). The Haiku 5.5 tier above 100K prompt tokens
+(0.50 / 2.50) is not modelled.
 
 ## Models served and their default options — catalogue read of 2026-10-07
 

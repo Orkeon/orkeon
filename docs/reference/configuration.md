@@ -431,7 +431,7 @@ start refusal: the account is set aside, with its problem ([e-mail guide](../gui
 A host can offer more than one provider. Each child of `Llm:Profiles` is a **profile**: a
 name, and a provider described with exactly the keys of the `Llm` section (`BaseUrl`,
 `ApiKeyEnvVar`, `ApiKey`, `Model`, `Temperature`, `MaxTokens`, `TimeoutSeconds`, `MaxRetries`,
-`Thinking`, `Grammar`, `CallMode`, `MaxRateLimitWait`, `StreamIdleSeconds`).
+`Thinking`, `Cache`, `Grammar`, `CallMode`, `MaxRateLimitWait`, `StreamIdleSeconds`).
 The `Llm` section itself stays the **default** profile — the one every agent runs on unless it
 names another. A crew picks a profile **by name**, never by key or endpoint: `llm: { profile:
 claude }` on the crew, an agent or a task's `llm_override` in YAML, `llm.profile("claude")` on an
@@ -650,7 +650,7 @@ second call registers no evaluator twice).
 ### `Orkeon:TypeSafe`
 
 The decision model TypeSafe (Jev), bound by `AddOrkeonTypeSafe(configuration)`, which the three
-shipped binaries call when this section is present or `TYPESAFE_API_KEY` is set: the key, the
+shipped binaries call when this section is present — even empty, `TypeSafe: {}` counts — or `TYPESAFE_API_KEY` is set: the key, the
 endpoint, the default model, the timeout and retries of each call, and the agent input guard
 (`Guard`). See [Decision models](../architecture/decision-models.md).
 
@@ -661,7 +661,7 @@ endpoint, the default model, the timeout and retries of each call, and the agent
 |---|---|---|---|
 | `ApiKey` | string, secret | — | The API key. Discouraged in a settings file: leave it empty and set the variable `ApiKeyEnvVar` names. |
 | `ApiKeyEnvVar` | string | `"TYPESAFE_API_KEY"` | The environment variable read when `ApiKey` is empty. |
-| `BaseUrl` | uri | `"https://api.typesafe.ai/v1"` | The API root; `/systemone` and `/models` are appended to it. |
+| `BaseUrl` | uri | `"https://api.typesafe.ai/v1"` | The API root; `/systemone` is appended to it. |
 | `Guard:BlockThreshold` | number | `0.8` | The probability at or over which a risk blocks the input. |
 | `Guard:Enabled` | boolean | `false` | Whether the guard runs; off by default. |
 | `Guard:FailClosed` | boolean | `false` | Whether an unreachable decision model blocks the input; false warns and lets it in. |
@@ -1793,7 +1793,7 @@ depth of 64 and 30 s by default.
 | Key | Type | Default | Meaning |
 |---|---|---|---|
 | `ExecutionTimeout` | duration | `"00:00:30"` | Maximum wall-clock time the engine is allowed to run, in total — the time spent waiting for a tool or a model counts; the time the permission gate takes to decide, an operator answering a tool-call approval, does not. Default: 30 seconds, a ceiling for scripts of unknown provenance; a trusted long run raises it. |
-| `MemoryLimitBytes` | integer | `104857600` | Maximum cumulative memory the engine is allowed to allocate, in bytes — counted since the engine was created, not at its peak. Default: 100 MB, a ceiling for scripts of unknown provenance; a trusted run that needs more raises it. |
+| `MemoryLimitBytes` | integer | `104857600` | Maximum memory the script is allowed to allocate on the engine's thread during one run, in bytes — one window per run (reset when the run starts), not counted since the engine was created; what a host tool call allocates is left out. Default: 100 MB, a ceiling for scripts of unknown provenance; a trusted run that needs more raises it. |
 | `RecursionLimit` | integer | `64` | Maximum recursion depth before the engine throws. Default: 64: it catches runaway recursion well before the .NET stack overflows and leaves room for legitimately nested script logic. A trusted script may raise it. |
 <!-- /settings -->
 

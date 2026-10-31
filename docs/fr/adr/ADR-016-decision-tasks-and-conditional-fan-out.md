@@ -44,6 +44,8 @@ d'un modèle sans qu'un agent écrive un texte que la tâche suivante devait ana
    les montrent. `TaskCompletedEvent.AgentId` est nullable, une tâche de décision n'ayant pas
    d'agent.
 
+   > Amendement 2026-10-31 : la raison d'un saut est lue par le JSONL du run et par le `RunProgressModel` de Studio, pas par « les consoles » ; le nom de question `defaulted` est réservé.
+
 ## Conséquences
 
 - Une tâche de décision coûte une requête par évaluation ; les seules répétitions sont les

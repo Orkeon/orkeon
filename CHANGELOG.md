@@ -7,9 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — `IDecisionModel.ListModelsAsync` removed **[breaking]** (R-68, D8)
+
+`IDecisionModel.ListModelsAsync` is removed from the port and from `TypeSafeDecisionModel`: nothing called it. The unused `DecisionModelDto` goes with it. Consumers drop the override.
+
+### Fixed — documentation closes on what F1-F8 ship; an empty `Orkeon:TypeSafe` section registers the decision model (R-16, R-57, R-59 to R-65, R-72, R-74, R-75)
+
+A present-but-empty `Orkeon:TypeSafe` section now registers the decision model (R-64). The doc corrections: the Anthropic price list and cache tariffs
+(R-57), the decision-model pages (retry set, reader of a jump's reason, reserved question name `defaulted`, R-63, R-65, R-75), ADR-015 and ADR-016 amendments, and
+the RaggableTree tool count gate in `scripts/check-doc-claims.py` (R-61).
+
 ### Fixed — the scripting DSL refuses ill-formed decision and `when` forms at load; a decision-and-`when` example ships (R-03, R-28, R-30, R-31, R-32, R-34)
 
-**Breaking**: a second `.when()` on one task throws an `InvalidScriptException` naming the task; a non-array `state`, a non-object `fallback` and a non-string `choice` value, `score` entry or `fallback` value are refused at load naming the task and the key; two tasks with the same name are refused at load. A task without `.name()` is keyed by its full description (truncation is display only). `task.d.ts` documents `fallback` as strings and the decision model (`IDecisionModel`), and `examples/scripting/09-decision-and-when.ork.ts` shows a decision with `when` fan-out.
+**Breaking**: a second `.when()` on one task throws an `InvalidScriptException` naming the task; a non-array `state`, a non-object `fallback` and a non-string `choice` value, `score` entry or `fallback` value are refused at load naming the task and the key; two tasks with the same name are refused at load. A task without `.name()` is keyed by its full description (truncation is display only). `task.d.ts` documents `fallback` as strings and the decision model (`IDecisionModel`), and `examples/scripting/14-decision-and-when.ork.ts` shows a decision with `when` fan-out.
 
 ### Fixed — rate-limit wait, effort and cache refusals at load, Anthropic cost grid (R-09, R-40, R-41, R-42, R-43, R-44, R-45, R-47, R-58)
 
@@ -290,7 +300,7 @@ Model providers now come in four categories (`ModelProviderCategory`: `Generatio
 `Decision`), listed with their key variable and endpoint in `ModelProviderCatalog` (`Orkeon.Constants.Llm`). The new
 `Decision` category has its own port, `IDecisionModel` (`Orkeon.Application`), with typed `choice`, `score`, `noul` and
 `box` questions and their answers; `AddOrkeonTypeSafe(configuration)` binds `Orkeon:TypeSafe` and serves TypeSafe's Jev
-(`jev-latest`, key in `TYPESAFE_API_KEY`, 429 and 529 retried, usage metered as `decision`, errors citing TypeSafe's
+(`jev-latest`, key in `TYPESAFE_API_KEY`, 429, 5xx, 408 and network errors retried, usage metered as `decision`, errors citing TypeSafe's
 request id). TypeSafe is not an LLM
 provider: the count stays at 16. The three shipped binaries (`orkeon run`, `orkeon-host`, `orkeon-repl`) call it when
 their settings hold `Orkeon:TypeSafe` or `TYPESAFE_API_KEY` is set. `AddOrkeonDecisionProfiles(configuration)`, which
@@ -313,7 +323,7 @@ Hierarchical, Consensual and Autonomous refuse them on load, and fail before the
 reaches them. `orkeon run --no-decision` (or `Orkeon:Decision:Enabled=false`, or no decision model) switches the decision
 circuit off: decision tasks answer from their `fallback`; a question the model leaves unanswered fails the task. The `task.completed` event gains `skipReason`,
 `defaulted`, `isDecision` and `decision` (the answers as compact JSON), `TaskExecutionSnapshot` gains `SkipReason`,
-`Defaulted`, `IsDecision` and `DecisionAnswers`, and the run consoles and Studio's `RunProgressModel` show the skip
+`Defaulted`, `IsDecision` and `DecisionAnswers`, and the run's JSONL and Studio's `RunProgressModel` show the skip
 reason, the defaulted flag and the decision answers. See [ADR-016](docs/adr/ADR-016-decision-tasks-and-conditional-fan-out.md)
 and [Decision models](docs/architecture/decision-models.md).
 

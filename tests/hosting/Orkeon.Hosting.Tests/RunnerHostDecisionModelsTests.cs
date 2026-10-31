@@ -33,6 +33,22 @@ public sealed class RunnerHostDecisionModelsTests
     }
 
     [Fact]
+    [Trait("BR", "R-64")]
+    public void ShouldRegisterDecisionModel_WhenTypeSafeSectionIsEmpty()
+    {
+        using var json = new MemoryStream(System.Text.Encoding.UTF8.GetBytes("{\"Orkeon\":{\"TypeSafe\":{}}}"));
+        var configuration = new ConfigurationBuilder().AddJsonStream(json).Build();
+        var services = new ServiceCollection();
+        var context = new HostBuilderContext(new Dictionary<object, object>()) { Configuration = configuration };
+
+        RunnerHost.RegisterDecisionModels(context, services);
+
+        var descriptor = Assert.Single(services, d => d.ServiceType == typeof(IDecisionModel));
+        Assert.NotNull(descriptor.ImplementationFactory);
+        Assert.Contains(services, d => d.ServiceType == typeof(TypeSafeDecisionModel));
+    }
+
+    [Fact]
     public void ShouldRegisterNoDecisionModel_WhenTheSettingsHoldNoTypeSafeSection()
     {
         // The key variable also opts TypeSafe in: a machine that sets it cannot prove the absence.
