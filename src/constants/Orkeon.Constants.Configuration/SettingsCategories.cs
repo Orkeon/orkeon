@@ -95,6 +95,8 @@ public static class SettingsCategories
             ["Orkeon:TokenCounter"] = Models,
             ["Evaluation"] = Models,
             ["Orkeon:TypeSafe"] = Models,
+            ["Orkeon:Liquid"] = Models,
+            ["Orkeon:Kev"] = Models,
             ["Orkeon:Decision"] = Models,
 
             ["RateLimiting"] = RateAndBudgets,

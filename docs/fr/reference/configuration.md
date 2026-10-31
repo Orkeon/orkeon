@@ -194,7 +194,7 @@ qu'elle accepte quand leur liste est fermée, et son sens.
 <!-- settings-index -->
 | Catégorie | Sections | Clés |
 |---|---|---|
-| [Modèles](#modèles) | [`Evaluation`](#evaluation), [`Llm`](#llm), [`LlmLogging`](#llmlogging), [`Orkeon:CostTracking`](#orkeoncosttracking), [`Orkeon:Decision`](#orkeondecision), [`Orkeon:Decision:Guard`](#orkeondecisionguard), [`Orkeon:TokenCounter`](#orkeontokencounter), [`Orkeon:TypeSafe`](#orkeontypesafe) | 81 |
+| [Modèles](#modèles) | [`Evaluation`](#evaluation), [`Llm`](#llm), [`LlmLogging`](#llmlogging), [`Orkeon:CostTracking`](#orkeoncosttracking), [`Orkeon:Decision`](#orkeondecision), [`Orkeon:Decision:Guard`](#orkeondecisionguard), [`Orkeon:Kev`](#orkeonkev), [`Orkeon:Liquid`](#orkeonliquid), [`Orkeon:TokenCounter`](#orkeontokencounter), [`Orkeon:TypeSafe`](#orkeontypesafe) | 94 |
 | [Débit et budgets](#débit-et-budgets) | [`RateLimiting`](#ratelimiting), [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting) | 11 |
 | [Mémoire et vecteurs](#mémoire-et-vecteurs) | [`Memory`](#memory), [`Orkeon:ChromaDb`](#orkeonchromadb), [`Orkeon:CognitiveMemory`](#orkeoncognitivememory), [`Orkeon:CrewMemory`](#orkeoncrewmemory), [`Orkeon:EmbeddingCache`](#orkeonembeddingcache), [`Orkeon:Embeddings`](#orkeonembeddings), [`Orkeon:Encryption`](#orkeonencryption), [`Orkeon:LanceDb`](#orkeonlancedb), [`Orkeon:Pinecone`](#orkeonpinecone), [`Orkeon:Redis`](#orkeonredis), [`Orkeon:Sqlite`](#orkeonsqlite), [`Orkeon:VectorSearch`](#orkeonvectorsearch) | 58 |
 | [RAG](#rag) | [`Orkeon:Rag`](#orkeonrag), [`Orkeon:Rag:Ingestion`](#orkeonragingestion), [`Orkeon:Rag:QueryRouting`](#orkeonragqueryrouting), [`Orkeon:Rag:Retrieval:Hybrid`](#orkeonragretrievalhybrid), [`Orkeon:Rag:WebFallback`](#orkeonragwebfallback) | 34 |
@@ -206,7 +206,7 @@ qu'elle accepte quand leur liste est fermée, et son sens.
 | [Hôte de service et A2A](#hôte-de-service-et-a2a) | [`A2A`](#a2a), [`A2A:Security`](#a2asecurity), [`A2A:Security:AzureAD`](#a2asecurityazuread), [`A2A:Security:Oidc`](#a2asecurityoidc), [`Orkeon:Host`](#orkeonhost), [`Orkeon:Host:Discord`](#orkeonhostdiscord) | 46 |
 | [Observabilité](#observabilité) | [`Logging`](#logging), [`Orkeon:Monitoring`](#orkeonmonitoring), [`Telemetry`](#telemetry) | 8 |
 
-75 sections, 423 clés. Lues par aucun binaire livré, seulement par un hôte écrit en C# (10) : [`Evaluation`](#evaluation), [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:CognitiveMemory`](#orkeoncognitivememory), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Checkpointing`](#orkeoncheckpointing), [`Orkeon:ExecutionState:Persistence`](#orkeonexecutionstatepersistence), [`Orkeon:Monitoring`](#orkeonmonitoring).
+77 sections, 436 clés. Lues par aucun binaire livré, seulement par un hôte écrit en C# (10) : [`Evaluation`](#evaluation), [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:CognitiveMemory`](#orkeoncognitivememory), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Checkpointing`](#orkeoncheckpointing), [`Orkeon:ExecutionState:Persistence`](#orkeonexecutionstatepersistence), [`Orkeon:Monitoring`](#orkeonmonitoring).
 <!-- /settings-index -->
 
 Lire un tableau :
@@ -705,6 +705,45 @@ l'endpoint, le modèle par défaut, le délai et les nouvelles tentatives de cha
 | `TimeoutSeconds` | entier | `30` | Le délai HTTP d'une tentative, en secondes. |
 <!-- /settings -->
 
+### `Orkeon:Liquid`
+
+Le modèle de décision Liquid, lié par `AddOrkeonDecisionProvider(configuration, provider)` quand il est le fournisseur de
+décision actif : cette section est présente (même vide), ou `LIQUID_API_KEY` est définie, ou `Orkeon:Decision:Provider` vaut `liquid`.
+Un seul fournisseur est actif à la fois (voir [`Orkeon:Decision`](#orkeondecision)). Voir [Modèles de décision](../../architecture/decision-models.md).
+
+<!-- settings:Orkeon:Liquid -->
+**Lue par** : `orkeon`, `orkeon-host`, `orkeon-repl`.
+
+| Clé | Type | Défaut | Sens |
+|---|---|---|---|
+| `ApiKey` | chaîne, secret | — | La clé d'API. Déconseillée dans un fichier de réglages : laissez-la vide et posez la variable que nomme `ApiKeyEnvVar`. |
+| `ApiKeyEnvVar` | chaîne | `"LIQUID_API_KEY"` | La variable d'environnement lue quand `ApiKey` est vide. |
+| `BaseUrl` | URI | `"https://api.liquid.ai/decisions/v1"` | La racine de l'API ; `/systemone` s'y ajoute. |
+| `MaxRetries` | entier | `3` | Les nouvelles tentatives après un 429, un 529, un autre 5xx ou une erreur réseau. |
+| `Model` | chaîne | `"d1.1"` | Le modèle sur lequel tourne une requête qui n'en nomme aucun. |
+| `TimeoutSeconds` | entier | `30` | Le délai HTTP d'une tentative, en secondes. |
+<!-- /settings -->
+
+### `Orkeon:Kev`
+
+Le modèle de décision Kev, un serveur System One lancé en local, lié par `AddOrkeonDecisionProvider(configuration, provider)`
+seulement quand `Orkeon:Decision:Provider` vaut `kev` : une section Kev seule ne le choisit jamais et est signalée comme ignorée au démarrage.
+La clé est facultative, et une clé est refusée vers une adresse non locale en `http` clair. Voir [Modèles de décision](../../architecture/decision-models.md).
+
+<!-- settings:Orkeon:Kev -->
+**Lue par** : `orkeon`, `orkeon-host`, `orkeon-repl`.
+
+| Clé | Type | Défaut | Sens |
+|---|---|---|---|
+| `ApiKey` | chaîne, secret | — | La clé d'API. Déconseillée dans un fichier de réglages : laissez-la vide et posez la variable que nomme `ApiKeyEnvVar`. |
+| `ApiKeyEnvVar` | chaîne | `"KEV_API_KEY"` | La variable d'environnement lue quand `ApiKey` est vide. |
+| `BaseUrl` | URI | `"http://127.0.0.1:8009/v1"` | La racine de l'API ; `/systemone` s'y ajoute. |
+| `MaxRetries` | entier | `3` | Les nouvelles tentatives après un 429, un 529, un autre 5xx ou une erreur réseau. |
+| `Model` | chaîne | `"kev-latest"` | Le modèle sur lequel tourne une requête qui n'en nomme aucun. |
+| `TimeoutSeconds` | entier | `30` | Le délai HTTP d'une tentative, en secondes. |
+<!-- /settings -->
+
+
 ### `Orkeon:Decision`
 
 `Enabled`, le circuit de décision des tâches de décision, est lié par `AddOrkeonInfrastructure()` ;
@@ -733,6 +772,7 @@ Une crew en utilise un comme tout profil, `llm: { profile: <nom> }`. Voir
 | `Profiles:<nom>:Stages:<i>:Routes:<nom>` | chaîne | — | Les profils qu'une étape `route` peut choisir, chacun avec ce à quoi il sert. |
 | `Profiles:<nom>:Stages:<i>:WarnThreshold` | nombre | `0.3` | La probabilité à partir de laquelle une étape `guard` journalise un avertissement. |
 | `Profiles:<nom>:Target` | chaîne | `""` | Le profil où va un appel qu'aucune étape ne route ; `default` est la section `Llm`. |
+| `Provider` | chaîne | — | Le fournisseur de décision actif : `typesafe`, `liquid` ou `kev` ; vide, il se déduit des sections et des clés. |
 <!-- /settings -->
 
 ### `Orkeon:Decision:Guard`
@@ -2244,6 +2284,8 @@ une valeur : le secret reste hors du fichier. `orkeon settings <clé>` décrit c
 | `Orkeon:Tools:Email:Accounts:<nom>:Auth:ClientSecretEnvVar` | Le secret client OAuth du compte e-mail. | L'environnement du processus, puis les variables de l'utilisateur sous Windows. |
 | `Orkeon:Tools:Drive:Accounts:<nom>:Auth:ClientSecretEnvVar` | Le secret client OAuth du compte Google Drive. | L'environnement du processus, puis les variables de l'utilisateur sous Windows. |
 | `Orkeon:TypeSafe:ApiKeyEnvVar` | La clé du modèle de décision TypeSafe ; la clé nomme `TYPESAFE_API_KEY` quand rien ne la règle. | L'environnement du processus, puis les variables de l'utilisateur sous Windows. |
+| `Orkeon:Liquid:ApiKeyEnvVar` | La clé du modèle de décision Liquid ; la clé nomme `LIQUID_API_KEY` quand rien ne la règle. | L'environnement du processus, puis les variables de l'utilisateur sous Windows. |
+| `Orkeon:Kev:ApiKeyEnvVar` | La clé facultative du modèle de décision Kev ; la clé nomme `KEV_API_KEY` quand rien ne la règle. | L'environnement du processus, puis les variables de l'utilisateur sous Windows. |
 | `Orkeon:Rag:WebFallback:ApiKeyEnvVar` | La clé de la recherche web sur laquelle le RAG correctif se replie ; vide, aucune clé n'est envoyée. | L'environnement du processus. |
 | `Orkeon:Host:Discord:TokenEnvironmentVariable` | Le jeton de bot du canal Discord ; la clé nomme `ORKEON_DISCORD_TOKEN` quand rien ne la règle. | L'environnement du processus. |
 

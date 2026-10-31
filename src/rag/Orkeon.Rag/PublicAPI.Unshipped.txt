@@ -6,4 +6,3 @@ Orkeon.Rag.Reranking.DecisionModelReranker.RerankAsync(string! query, System.Col
 const Orkeon.Rag.Reranking.DecisionModelReranker.MaxPassageChars = 4000 -> int
 const Orkeon.Rag.Reranking.DecisionModelReranker.RerankerName = "decision" -> string!
 const Orkeon.Rag.Reranking.DecisionModelReranker.ScoreOrigin = "decision-rerank" -> string!
-const Orkeon.Rag.Reranking.DecisionModelReranker.TypeSafeAlias = "typesafe" -> string!

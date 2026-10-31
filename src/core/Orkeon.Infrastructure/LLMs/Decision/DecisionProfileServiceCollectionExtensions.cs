@@ -155,7 +155,7 @@ public static class DecisionProfileServiceCollectionExtensions
         var registry = services.GetRequiredService<ILlmProfileRegistry>();
         var model = services.GetService<IDecisionModel>()
             ?? throw new InvalidOperationException(
-                $"{path}: no decision model is registered; call AddOrkeonDecisionProvider.");
+                $"{path}: no decision model is registered; name a provider in Orkeon:Decision:Provider (or fill the Orkeon:TypeSafe, Orkeon:Liquid or Orkeon:Kev section), or call AddOrkeonDecisionProvider.");
         var loggerFactory = services.GetService<ILoggerFactory>() ?? NullLoggerFactory.Instance;
 
         ILlmProvider Resolve(string profileName) =>

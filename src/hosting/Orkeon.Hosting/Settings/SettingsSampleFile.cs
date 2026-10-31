@@ -41,7 +41,8 @@ internal static class SettingsSampleFile
     /// The sections shown and never written, each with the reason the file gives: one key of
     /// <c>Llm</c> written, even at its default, and the host has a default model — it stops saying
     /// that none is configured and stops running on the echo provider; <c>Orkeon:TypeSafe</c>
-    /// present, even empty, and the host registers the TypeSafe decision model.
+    /// or <c>Orkeon:Liquid</c> present, even empty, and the host registers that decision provider;
+    /// <c>Orkeon:Kev</c> present without <c>Orkeon:Decision:Provider</c> warns at every start.
     /// </summary>
     internal static IReadOnlyDictionary<string, string> ShownOnly { get; } =
         new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
@@ -52,9 +53,15 @@ internal static class SettingsSampleFile
             [Orkeon.Infrastructure.Decision.SystemOne.DecisionProviderDescriptor.TypeSafe.Section] =
                 "Shown, not written: the section present, even empty, and the host registers the TypeSafe decision model, " +
                 "which turns the decision circuit on and needs an API key. Left as it is, decision tasks answer from their fallback.",
+            [Orkeon.Infrastructure.Decision.SystemOne.DecisionProviderDescriptor.Liquid.Section] =
+                "Shown, not written: the section present, even empty, and the host registers the Liquid decision model, " +
+                "which turns the decision circuit on and needs an API key. Written beside `Orkeon:TypeSafe`, the host refuses to start.",
+            [Orkeon.Infrastructure.Decision.SystemOne.DecisionProviderDescriptor.Kev.Section] =
+                "Shown, not written: Kev is never deduced, so the section written without `Orkeon:Decision:Provider` set to `kev` " +
+                "is ignored and the host warns about it at every start.",
             [Orkeon.Infrastructure.Decision.DecisionGuardOptions.SectionName] =
-                "Shown, not written: the guard is registered with the decision model, which the host registers only when " +
-                "`Orkeon:TypeSafe` is present; written alone, the section is refused as a setting the host does not read.",
+                "Shown, not written: the guard is registered with the decision model, which the host registers for the active " +
+                "decision provider, whichever it is; written with no provider, the section is refused as a setting the host does not read.",
         };
 
     /// <summary>The file for <paramref name="catalog"/>: the sections at least one shipped binary reads.</summary>

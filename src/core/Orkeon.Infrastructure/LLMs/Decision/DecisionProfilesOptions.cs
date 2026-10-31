@@ -21,6 +21,9 @@ public sealed class DecisionCircuitOptions
 
     /// <summary>Gets or sets a value indicating whether decision tasks ask the decision model.</summary>
     public bool Enabled { get; set; } = true;
+
+    /// <summary>Gets or sets the decision provider: <c>typesafe</c>, <c>liquid</c> or <c>kev</c>; empty deduces it.</summary>
+    public string? Provider { get; set; }
 }
 
 /// <summary>One decision profile: <c>Orkeon:Decision:Profiles:&lt;name&gt;</c>.</summary>

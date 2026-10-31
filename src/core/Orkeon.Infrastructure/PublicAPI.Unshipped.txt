@@ -217,6 +217,7 @@ Orkeon.Infrastructure.Decision.SystemOne.SystemOneDecisionModel.DecideAsync(Orke
 Orkeon.Infrastructure.Decision.SystemOne.SystemOneDecisionModel.Name.get -> string!
 Orkeon.Infrastructure.Decision.SystemOne.SystemOneDecisionModel.SystemOneDecisionModel(Orkeon.Infrastructure.Decision.SystemOne.DecisionProviderDescriptor! provider, System.Net.Http.IHttpClientFactory! httpClientFactory, Microsoft.Extensions.Options.IOptions<Orkeon.Infrastructure.Decision.SystemOne.SystemOneProviderOptions!>! options, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.Decision.SystemOne.SystemOneDecisionModel!>! logger, Orkeon.Application.Interfaces.Ports.ILlmUsageSink? usageSink = null, Polly.IAsyncPolicy<System.Net.Http.HttpResponseMessage!>? policy = null) -> void
 Orkeon.Infrastructure.Decision.SystemOne.DecisionProviderServiceCollectionExtensions
+static Orkeon.Infrastructure.Decision.SystemOne.DecisionProviderServiceCollectionExtensions.AddOrkeonDecisionProvider(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, Microsoft.Extensions.Configuration.IConfiguration! configuration) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
 static Orkeon.Infrastructure.Decision.SystemOne.DecisionProviderServiceCollectionExtensions.AddOrkeonDecisionProvider(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, Microsoft.Extensions.Configuration.IConfiguration! configuration, Orkeon.Infrastructure.Decision.SystemOne.DecisionProviderDescriptor! provider) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
 Orkeon.Infrastructure.Decision.SystemOne.DecisionProviderDescriptor.<Clone>$() -> Orkeon.Infrastructure.Decision.SystemOne.DecisionProviderDescriptor!
 Orkeon.Infrastructure.Decision.SystemOne.DecisionProviderDescriptor.Deconstruct(out string! Key, out string! DisplayName, out string! Section, out System.Uri! DefaultBaseUrl, out string! DefaultModel, out string! DefaultApiKeyVariable, out bool KeyRequired, out bool Hosted) -> void
@@ -244,3 +245,27 @@ Orkeon.Infrastructure.Decision.DecisionInputGuard.DecisionInputGuard(Orkeon.Appl
 Orkeon.Infrastructure.Decision.DecisionInputGuard.Enabled.get -> bool
 const Orkeon.Infrastructure.Decision.DecisionGuardOptions.SectionName = "Orkeon:Decision:Guard" -> string!
 static readonly Orkeon.Infrastructure.Decision.DecisionInputGuard.DefaultRisks -> System.Collections.Immutable.ImmutableDictionary<string!, string!>!
+Orkeon.Infrastructure.Decision.SystemOne.DecisionProviderChoice
+Orkeon.Infrastructure.Decision.SystemOne.DecisionProviderChoice.<Clone>$() -> Orkeon.Infrastructure.Decision.SystemOne.DecisionProviderChoice!
+Orkeon.Infrastructure.Decision.SystemOne.DecisionProviderChoice.DecisionProviderChoice() -> void
+Orkeon.Infrastructure.Decision.SystemOne.DecisionProviderChoice.Equals(Orkeon.Infrastructure.Decision.SystemOne.DecisionProviderChoice? other) -> bool
+Orkeon.Infrastructure.Decision.SystemOne.DecisionProviderChoice.HasProvider.get -> bool
+Orkeon.Infrastructure.Decision.SystemOne.DecisionProviderChoice.How.get -> Orkeon.Infrastructure.Decision.SystemOne.DecisionProviderSelection
+Orkeon.Infrastructure.Decision.SystemOne.DecisionProviderChoice.How.init -> void
+Orkeon.Infrastructure.Decision.SystemOne.DecisionProviderChoice.IgnoredSections.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Orkeon.Infrastructure.Decision.SystemOne.DecisionProviderChoice.IgnoredSections.init -> void
+Orkeon.Infrastructure.Decision.SystemOne.DecisionProviderChoice.Provider.get -> Orkeon.Infrastructure.Decision.SystemOne.DecisionProviderDescriptor?
+Orkeon.Infrastructure.Decision.SystemOne.DecisionProviderChoice.Provider.init -> void
+Orkeon.Infrastructure.Decision.SystemOne.DecisionProviderSelection
+Orkeon.Infrastructure.Decision.SystemOne.DecisionProviderSelection.Deduced = 1 -> Orkeon.Infrastructure.Decision.SystemOne.DecisionProviderSelection
+Orkeon.Infrastructure.Decision.SystemOne.DecisionProviderSelection.Named = 0 -> Orkeon.Infrastructure.Decision.SystemOne.DecisionProviderSelection
+Orkeon.Infrastructure.LLMs.Decision.DecisionCircuitOptions.Provider.get -> string?
+Orkeon.Infrastructure.LLMs.Decision.DecisionCircuitOptions.Provider.set -> void
+override Orkeon.Infrastructure.Decision.SystemOne.DecisionProviderChoice.Equals(object? obj) -> bool
+override Orkeon.Infrastructure.Decision.SystemOne.DecisionProviderChoice.GetHashCode() -> int
+override Orkeon.Infrastructure.Decision.SystemOne.DecisionProviderChoice.ToString() -> string!
+static Orkeon.Infrastructure.Decision.SystemOne.DecisionProviderChoice.HasSection(Microsoft.Extensions.Configuration.IConfiguration! configuration, string! section) -> bool
+static Orkeon.Infrastructure.Decision.SystemOne.DecisionProviderChoice.None.get -> Orkeon.Infrastructure.Decision.SystemOne.DecisionProviderChoice!
+static Orkeon.Infrastructure.Decision.SystemOne.DecisionProviderChoice.operator ==(Orkeon.Infrastructure.Decision.SystemOne.DecisionProviderChoice? left, Orkeon.Infrastructure.Decision.SystemOne.DecisionProviderChoice? right) -> bool
+static Orkeon.Infrastructure.Decision.SystemOne.DecisionProviderChoice.operator !=(Orkeon.Infrastructure.Decision.SystemOne.DecisionProviderChoice? left, Orkeon.Infrastructure.Decision.SystemOne.DecisionProviderChoice? right) -> bool
+static Orkeon.Infrastructure.Decision.SystemOne.DecisionProviderChoice.Resolve(Microsoft.Extensions.Configuration.IConfiguration! configuration, System.Func<string!, string?>! environment) -> Orkeon.Infrastructure.Decision.SystemOne.DecisionProviderChoice!
