@@ -350,16 +350,33 @@ public sealed partial class DependencyGraphBuilder
     private static void CollectRustUses(
         EdgeSet edges, ImportScope scope, string filePath, RaggableNode moduleNode, List<TsNode> uses, IReadOnlyList<string> cargoRoots)
     {
-        var crate = RustCrateOf(filePath.Replace('\\', '/'), cargoRoots);
+        var fileCrate = RustCrateOf(filePath.Replace('\\', '/'), cargoRoots);
         foreach (var use in uses)
         {
             var argument = use.GetChildForField("argument")?.Text;
             if (string.IsNullOrWhiteSpace(argument)) continue;
+            var inline = InlineRustModules(use);
+            if (inline is null) continue;
+            var crate = fileCrate with { Current = [.. fileCrate.Current, .. inline] };
             foreach (var path in ExpandRustUse(argument))
             {
                 AddImport(edges, moduleNode, ResolveRustPath(path, crate, scope.Index));
             }
         }
+    }
+
+    // The names of the inline `mod x { ... }` blocks enclosing a node, outermost first; null when one is unnamed.
+    private static List<string>? InlineRustModules(TsNode node)
+    {
+        var names = new List<string>();
+        for (var parent = node.Parent; parent is not null; parent = parent.Parent)
+        {
+            if (parent.Type != "mod_item") continue;
+            var name = parent.GetChildForField("name")?.Text;
+            if (string.IsNullOrEmpty(name)) return null;
+            names.Insert(0, name);
+        }
+        return names;
     }
 
     private sealed record RustCrate(string RootDir, IReadOnlyList<string> CrateRootFiles, IReadOnlyList<string> Current);

@@ -71,4 +71,59 @@ public class GitignoreMatcherTests
         Assert.True(matcher.IsIgnored("xa.txt", isDirectory: false));
         Assert.False(matcher.IsIgnored("xb.txt", isDirectory: false));
     }
+
+    [Fact]
+    [Trait("BR", "R-05")]
+    public void ShouldMatchRootEntry_WhenPatternStartsWithDoubleStarSlash()
+    {
+        var matcher = new GitignoreMatcher(["**/foo"]);
+
+        Assert.True(matcher.IsIgnored("foo", isDirectory: false));
+        Assert.True(matcher.IsIgnored("a/b/foo", isDirectory: false));
+        Assert.False(matcher.IsIgnored("xfoo", isDirectory: false));
+    }
+
+    [Fact]
+    [Trait("BR", "R-05")]
+    public void ShouldMatchZeroDirectories_WhenDoubleStarIsInTheMiddle()
+    {
+        var matcher = new GitignoreMatcher(["a/**/b"]);
+
+        Assert.True(matcher.IsIgnored("a/b", isDirectory: false));
+        Assert.True(matcher.IsIgnored("a/x/y/b", isDirectory: false));
+    }
+
+    [Fact]
+    [Trait("BR", "R-05")]
+    public void ShouldMatchEverythingInside_WhenPatternEndsWithSlashDoubleStar()
+    {
+        var matcher = new GitignoreMatcher(["abc/**"]);
+
+        Assert.True(matcher.IsIgnored("abc/x", isDirectory: false));
+        Assert.True(matcher.IsIgnored("abc/x/y", isDirectory: false));
+        Assert.False(matcher.IsIgnored("sub/abc/x", isDirectory: false));
+    }
+
+    [Fact]
+    [Trait("BR", "R-06")]
+    public void ShouldAnchorPattern_WhenSlashIsInTheMiddle()
+    {
+        var matcher = new GitignoreMatcher(["docs/build"]);
+
+        Assert.True(matcher.IsIgnored("docs/build", isDirectory: true));
+        Assert.False(matcher.IsIgnored("tools/docs/build", isDirectory: true));
+    }
+
+    [Fact]
+    [Trait("BR", "R-38")]
+    public void ShouldKeepTrailingSpace_WhenEscaped()
+    {
+        var trailing = new GitignoreMatcher([@"foo\ "]);
+        var leading = new GitignoreMatcher(["  bar"]);
+
+        Assert.True(trailing.IsIgnored("foo ", isDirectory: false));
+        Assert.False(trailing.IsIgnored("foo", isDirectory: false));
+        Assert.True(leading.IsIgnored("  bar", isDirectory: false));
+        Assert.False(leading.IsIgnored("bar", isDirectory: false));
+    }
 }

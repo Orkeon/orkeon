@@ -38,6 +38,17 @@ no agent, and a failed or cancelled decision stops its dependants in `Parallel` 
 the `KickoffStreamingAsync` stream, gains `IsDecision` and `DecisionAnswers`, and the documentation of `Skipped` and
 `SkipReason` cites the `when` condition.
 
+### Fixed — RaggableTree index: gitignore translation, ignore files in the cache, Go importers, SQLite busy (R-04..R-07, R-35..R-39)
+
+`respect_gitignore` now follows gitignore(5): `**/` covers zero directories, a final `/**` covers all the content, a `/`
+at the start or in the middle anchors the pattern, an escaped trailing space is kept; POSIX classes such as
+`[[:alpha:]]` stay unsupported. Nested `.gitignore` files and `.git/info/exclude` enter the cache validity markers (a
+change forces a full rebuild) and the incremental path skips ignored paths. After a refresh, unchanged Go importers of
+a package that gains a file are re-resolved. A Rust `use super::*` inside an inline `mod` no longer draws a wrong
+import edge. Only `SQLITE_CORRUPT` / `SQLITE_NOTADB` erase the cache database: a busy or locked base abandons the save
+and keeps it. A refused `go.mod` or package marker read counts as absent, and parallel Parse progress is monotonic.
+`DiscoveryResult` (`Orkeon.Analysis.Abstractions`) gains `IgnoreFileContents`.
+
 ### Added — `session_store` reads several keys, writes several, appends one message (#263)
 
 A script paid one `session_store` call per state key it read, and two calls carrying the whole buffer for every

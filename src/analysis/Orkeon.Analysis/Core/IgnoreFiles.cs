@@ -15,6 +15,9 @@ internal sealed class IgnoreFiles
 
     private readonly List<Layer> _layers = [];
 
+    /// <summary>The content of each ignore file that was read, by its path relative to the root.</summary>
+    public Dictionary<string, string> Contents { get; } = new(StringComparer.Ordinal);
+
     private IgnoreFiles() { }
 
     /// <summary>
@@ -29,7 +32,7 @@ internal sealed class IgnoreFiles
         ArgumentNullException.ThrowIfNull(fs);
         ArgumentNullException.ThrowIfNull(gitignoreRelativePaths);
         var files = new IgnoreFiles();
-        await files.AddAsync(fs, $"{virtualRoot}/{InfoExclude}", prefix: string.Empty, ct).ConfigureAwait(false);
+        await files.AddAsync(fs, virtualRoot, InfoExclude, prefix: string.Empty, ct).ConfigureAwait(false);
         var nested = gitignoreRelativePaths
             .Select(p => p.Replace('\\', '/'))
             .Distinct(StringComparer.Ordinal)
@@ -41,7 +44,7 @@ internal sealed class IgnoreFiles
             if (!string.Equals(Path.GetFileName(relative), GitignoreName, StringComparison.Ordinal)) continue;
             var prefix = relative.Length > GitignoreName.Length ? relative[..^(GitignoreName.Length + 1)] : string.Empty;
             if (prefix.Length > 0 && files.IsIgnored(prefix)) continue;
-            await files.AddAsync(fs, $"{virtualRoot}/{relative}", prefix, ct).ConfigureAwait(false);
+            await files.AddAsync(fs, virtualRoot, relative, prefix, ct).ConfigureAwait(false);
         }
         return files;
     }
@@ -73,18 +76,19 @@ internal sealed class IgnoreFiles
         return result;
     }
 
-    private async Task AddAsync(IFileSystemService fs, string virtualPath, string prefix, CancellationToken ct)
+    private async Task AddAsync(IFileSystemService fs, string virtualRoot, string relative, string prefix, CancellationToken ct)
     {
         string? text;
         try
         {
-            text = await fs.TryReadAllTextAsync(virtualPath, ct).ConfigureAwait(false);
+            text = await fs.TryReadAllTextAsync($"{virtualRoot}/{relative}", ct).ConfigureAwait(false);
         }
         catch (FileAccessDeniedException)
         {
             return;
         }
         if (text is null) return;
+        Contents[relative] = text;
         _layers.Add(new Layer(prefix, new GitignoreMatcher(text.Split(['\r', '\n'], StringSplitOptions.None))));
     }
 

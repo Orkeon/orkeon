@@ -11,7 +11,7 @@ internal sealed class GitignoreMatcher
         _patterns = [];
         foreach (var raw in gitignoreLines)
         {
-            var line = raw.Trim();
+            var line = TrimUnescapedTrailingSpaces(raw);
             if (line.Length == 0 || line.StartsWith('#')) continue;
 
             var negate = line.StartsWith('!');
@@ -20,8 +20,8 @@ internal sealed class GitignoreMatcher
             var dirOnly = line.EndsWith('/');
             if (dirOnly) line = line[..^1];
 
-            var anchored = line.StartsWith('/');
-            if (anchored) line = line[1..];
+            var anchored = line.Contains('/', StringComparison.Ordinal);
+            if (line.StartsWith('/')) line = line[1..];
 
             _patterns.Add(new GitignorePattern(GlobToRegex(line, anchored), negate, dirOnly));
         }
@@ -46,6 +46,20 @@ internal sealed class GitignoreMatcher
         return ignored;
     }
 
+    // Only spaces not escaped by a backslash are stripped; an escaped one is part of the name.
+    private static string TrimUnescapedTrailingSpaces(string line)
+    {
+        var end = line.Length;
+        while (end > 0 && line[end - 1] == ' ')
+        {
+            var backslashes = 0;
+            while (end - 2 - backslashes >= 0 && line[end - 2 - backslashes] == '\\') backslashes++;
+            if (backslashes % 2 == 1) break;
+            end--;
+        }
+        return line[..end];
+    }
+
     private static Regex GlobToRegex(string pattern, bool anchored)
     {
         var sb = new System.Text.StringBuilder();
@@ -58,8 +72,17 @@ internal sealed class GitignoreMatcher
                 case '*':
                     if (i + 1 < pattern.Length && pattern[i + 1] == '*')
                     {
-                        sb.Append(".*");
-                        i++;
+                        var atSegmentStart = i == 0 || pattern[i - 1] == '/';
+                        if (atSegmentStart && i + 2 < pattern.Length && pattern[i + 2] == '/')
+                        {
+                            sb.Append("(.*/)?");
+                            i += 2;
+                        }
+                        else
+                        {
+                            sb.Append(".*");
+                            i++;
+                        }
                     }
                     else
                     {

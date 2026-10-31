@@ -215,6 +215,82 @@ public class ImportEdgesTests
         finally { Directory.Delete(dir, recursive: true); }
     }
 
+    [Fact]
+    [Trait("BR", "R-07")]
+    public async Task ShouldNotDrawImportEdge_WhenUseSuperIsInsideInlineModule()
+    {
+        var (result, dir) = await BuildAsync(new RustAdapter(),
+            ("Cargo.toml", "[package]\nname = \"app\"\n"),
+            ("src/main.rs", "mod net;\nfn main() {}\n"),
+            ("src/net/mod.rs", "pub mod client;\npub struct Helper;\n"),
+            ("src/net/client.rs", "pub struct Client;\n#[cfg(test)]\nmod tests {\n    use super::*;\n}\n"));
+        try
+        {
+            Assert.DoesNotContain(Module("src/net/mod.rs"), ImportTargets(result.Tree.Edges, "src/net/client.rs"));
+        }
+        finally { Directory.Delete(dir, recursive: true); }
+    }
+
+    [Fact]
+    [Trait("BR", "R-35")]
+    public async Task ShouldDrawImportEdge_WhenNewGoFileJoinsImportedPackageAfterRefresh()
+    {
+        var dir = await TestFixtures.WriteDirectoryAsync([
+            ("go.mod", GoMod),
+            ("util/strings.go", "package util\n\nfunc Upper(s string) string { return s }\n"),
+            ("main.go", "package main\n\nimport \"example.com/app/util\"\n\nfunc main() { util.Upper(\"a\") }\n"),
+        ]);
+        try
+        {
+            var fs = TestFixtures.CreateFs(dir);
+            var initial = await new RaggableTreeBuilder(new GoAdapter(), fs)
+                .BuildAsync(Root, new IndexCodebaseRequest { RootPath = Root }, CancellationToken.None);
+            await File.WriteAllTextAsync(
+                Path.Combine(dir, "util", "numbers.go"),
+                "package util\n\nfunc Two() int { return 2 }\n",
+                TestContext.Current.CancellationToken);
+
+            var reindexed = await new IncrementalReindexEngine(new GoAdapter(), fs).ReindexAsync(
+                initial.Tree, Root, [$"{Root}/util/numbers.go"],
+                new IndexCodebaseRequest { RootPath = Root }, CancellationToken.None);
+
+            Assert.Equal(
+                [Module("util/numbers.go"), Module("util/strings.go")],
+                ImportTargets(reindexed.Tree.Edges, "main.go"));
+        }
+        finally { Directory.Delete(dir, recursive: true); }
+    }
+
+    [Fact]
+    [Trait("BR", "R-35")]
+    public async Task ShouldNotReparseGoImporters_WhenImportedPackageFileIsOnlyEdited()
+    {
+        var dir = await TestFixtures.WriteDirectoryAsync([
+            ("go.mod", GoMod),
+            ("util/strings.go", "package util\n\nfunc Upper(s string) string { return s }\n"),
+            ("main.go", "package main\n\nimport \"example.com/app/util\"\n\nfunc main() { util.Upper(\"a\") }\n"),
+        ]);
+        try
+        {
+            var initial = await new RaggableTreeBuilder(new GoAdapter(), TestFixtures.CreateFs(dir))
+                .BuildAsync(Root, new IndexCodebaseRequest { RootPath = Root }, CancellationToken.None);
+            await File.WriteAllTextAsync(
+                Path.Combine(dir, "util", "strings.go"),
+                "package util\n\nfunc Upper(s string) string { return s + \"!\" }\n",
+                TestContext.Current.CancellationToken);
+            var counting = new Doubles.FakeCountingFileSystemService(TestFixtures.CreateFs(dir));
+
+            var reindexed = await new IncrementalReindexEngine(new GoAdapter(), counting).ReindexAsync(
+                initial.Tree, Root, [$"{Root}/util/strings.go"],
+                new IndexCodebaseRequest { RootPath = Root }, CancellationToken.None);
+
+            Assert.Contains($"{Root}/util/strings.go", counting.Reads);
+            Assert.DoesNotContain($"{Root}/main.go", counting.Reads);
+            Assert.Equal([Module("util/strings.go")], ImportTargets(reindexed.Tree.Edges, "main.go"));
+        }
+        finally { Directory.Delete(dir, recursive: true); }
+    }
+
     [Theory]
     [InlineData("crate::a::B", "crate::a::B")]
     [InlineData("crate::a::{b::C, d::{self, E as F}}", "crate::a::b::C|crate::a::d::self|crate::a::d::E")]

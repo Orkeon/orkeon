@@ -29,3 +29,5 @@ override Orkeon.Analysis.Abstractions.Interfaces.FileStamp.GetHashCode() -> int
 override Orkeon.Analysis.Abstractions.Interfaces.FileStamp.ToString() -> string!
 static Orkeon.Analysis.Abstractions.Interfaces.FileStamp.operator !=(Orkeon.Analysis.Abstractions.Interfaces.FileStamp? left, Orkeon.Analysis.Abstractions.Interfaces.FileStamp? right) -> bool
 static Orkeon.Analysis.Abstractions.Interfaces.FileStamp.operator ==(Orkeon.Analysis.Abstractions.Interfaces.FileStamp? left, Orkeon.Analysis.Abstractions.Interfaces.FileStamp? right) -> bool
+Orkeon.Analysis.Abstractions.Interfaces.DiscoveryResult.IgnoreFileContents.get -> System.Collections.Immutable.ImmutableDictionary<string!, string!>!
+Orkeon.Analysis.Abstractions.Interfaces.DiscoveryResult.IgnoreFileContents.init -> void
