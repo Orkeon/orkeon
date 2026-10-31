@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — Anthropic replays the signed thinking blocks of a tool-call turn, and a malformed tool call is named (R-08, R-46)
+
+An assistant turn that held `thinking` or `redacted_thinking` blocks and `tool_use` calls was replayed without the
+thinking blocks, which Anthropic rejects when extended thinking is on. `NativeToolCallTranscript.AssistantTurn` now
+keeps them raw, buffered or streamed, in the new `LlmMessage.RawThinkingBlocks`, and `AnthropicLlmProvider` re-emits
+them unchanged and first. A replayed tool call without `id`, `name` or an object `arguments` raises an
+`InvalidOperationException` naming its index, its name and the field, instead of a bare `KeyNotFoundException`.
+
 ### Added — `session_store` reads several keys, writes several, appends one message (#263)
 
 A script paid one `session_store` call per state key it read, and two calls carrying the whole buffer for every

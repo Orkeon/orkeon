@@ -391,12 +391,21 @@ public partial class AnthropicLlmProvider : HttpLlmProviderBase
     {
         var blocks = new List<object>();
 
+        // Signed thinking blocks go back unchanged, in received order, before text and tool_use.
+        if (!string.IsNullOrEmpty(msg.RawThinkingBlocks))
+        {
+            using var thinkingDoc = JsonDocument.Parse(msg.RawThinkingBlocks);
+            foreach (var thinkingBlock in thinkingDoc.RootElement.EnumerateArray())
+                blocks.Add(thinkingBlock.Clone());
+        }
+
         if (!string.IsNullOrEmpty(msg.Content))
             blocks.Add(new { type = "text", text = msg.Content });
 
         using var toolCallsDoc = JsonDocument.Parse(msg.RawToolCalls!);
+        var index = 0;
         foreach (var tc in toolCallsDoc.RootElement.EnumerateArray())
-            blocks.Add(ToToolUseBlock(tc));
+            blocks.Add(ToToolUseBlock(tc, index++));
 
         conversationMessages.Add(new { role = LlmRoles.Assistant, content = (object)blocks });
     }
@@ -407,28 +416,48 @@ public partial class AnthropicLlmProvider : HttpLlmProviderBase
     /// loop, <c>ctx.llm.act</c>) or the OpenAI shape <c>{id, function: {name, arguments}}</c>
     /// (<c>LlmProviderToChatClientAdapter</c>); both are accepted.
     /// </summary>
-    private static object ToToolUseBlock(JsonElement tc)
+    private static object ToToolUseBlock(JsonElement tc, int index)
     {
-        var id = tc.GetProperty("id").GetString() ?? "";
+        var hasFunction = tc.TryGetProperty("function", out var function);
+        var name = (hasFunction ? function : tc).TryGetProperty("name", out var nameProp) && nameProp.ValueKind == JsonValueKind.String
+            ? nameProp.GetString() ?? ""
+            : "";
 
-        if (tc.TryGetProperty("function", out var function))
+        if (!tc.TryGetProperty("id", out var idProp) || idProp.ValueKind != JsonValueKind.String)
+            throw MalformedToolCall(index, name, "id", "is missing or not a string");
+        var id = idProp.GetString() ?? "";
+
+        if (name.Length == 0)
+            throw MalformedToolCall(index, name, "name", "is missing or not a string");
+
+        if (hasFunction)
         {
-            var name = function.GetProperty("name").GetString() ?? "";
             var argumentsJson = function.TryGetProperty("arguments", out var args) && args.ValueKind == JsonValueKind.String
                 ? args.GetString()
                 : null;
-            var input = string.IsNullOrWhiteSpace(argumentsJson)
-                ? new Dictionary<string, object>()
-                : JsonSerializer.Deserialize<Dictionary<string, object>>(argumentsJson) ?? new Dictionary<string, object>();
+            var input = new Dictionary<string, object>();
+            if (!string.IsNullOrWhiteSpace(argumentsJson))
+            {
+                try
+                {
+                    input = JsonSerializer.Deserialize<Dictionary<string, object>>(argumentsJson) ?? input;
+                }
+                catch (JsonException)
+                {
+                    throw MalformedToolCall(index, name, "arguments", "is not a JSON object");
+                }
+            }
             return new { type = "tool_use", id, name, input };
         }
 
-        var blockName = tc.GetProperty("name").GetString() ?? "";
         var blockInput = tc.TryGetProperty("input", out var inputProp) && inputProp.ValueKind == JsonValueKind.Object
             ? inputProp.Clone()
             : JsonSerializer.SerializeToElement(new Dictionary<string, object>());
-        return new { type = "tool_use", id, name = blockName, input = blockInput };
+        return new { type = "tool_use", id, name, input = blockInput };
     }
+
+    private static InvalidOperationException MalformedToolCall(int index, string name, string field, string problem) =>
+        new($"Cannot replay tool call #{index} ('{name}') to Anthropic: field '{field}' {problem}.");
 
     private static void AddToolResultMessages(
         LlmMessage[] messages, ref int i, HashSet<string> knownToolUseIds, List<object> conversationMessages)
@@ -916,6 +945,9 @@ public partial class AnthropicLlmProvider : HttpLlmProviderBase
         /// <summary>The <c>tool_use</c> blocks streamed so far, by block index: id, name, input JSON.</summary>
         public SortedDictionary<int, StreamedToolUse> ToolUses { get; } = new();
 
+        /// <summary>The <c>thinking</c> and <c>redacted_thinking</c> blocks streamed so far, by block index.</summary>
+        public SortedDictionary<int, StreamedThinkingBlock> ThinkingBlocks { get; } = new();
+
         /// <summary>Whether the <c>message_stop</c> event — the end of a complete answer — was read.</summary>
         public bool Finished { get; set; }
 
@@ -925,6 +957,21 @@ public partial class AnthropicLlmProvider : HttpLlmProviderBase
         /// the vendor's error type and its sanitized message.
         /// </summary>
         public (string Label, string SanitizedMessage)? Error { get; set; }
+    }
+
+    /// <summary>One streamed thinking block: its text and signature, or the data of a redacted one.</summary>
+    private sealed class StreamedThinkingBlock
+    {
+        public StreamedThinkingBlock(string type, string data)
+        {
+            Type = type;
+            Data = data;
+        }
+
+        public string Type { get; }
+        public string Data { get; }
+        public StringBuilder Thinking { get; } = new();
+        public StringBuilder Signature { get; } = new();
     }
 
     /// <summary>One streamed <c>tool_use</c> block: its id and name, then its input as JSON fragments.</summary>
@@ -990,8 +1037,23 @@ public partial class AnthropicLlmProvider : HttpLlmProviderBase
                         block.TryGetProperty("name", out var toolName) ? toolName.GetString() ?? string.Empty : string.Empty);
                     break;
 
+                case "content_block_start" when root.TryGetProperty("content_block", out var thinkingStart)
+                    && thinkingStart.TryGetProperty("type", out var thinkingType)
+                    && thinkingType.GetString() is "thinking" or "redacted_thinking":
+                    state.ThinkingBlocks[BlockIndex(root)] = new StreamedThinkingBlock(
+                        thinkingType.GetString()!,
+                        thinkingStart.TryGetProperty("data", out var redacted) ? redacted.GetString() ?? string.Empty : string.Empty);
+                    break;
+
                 case "content_block_delta" when root.TryGetProperty("delta", out var blockDelta):
                     AccumulateBlockDelta(blockDelta, state, events);
+                    if (state.ThinkingBlocks.TryGetValue(BlockIndex(root), out var thinkingBlock))
+                    {
+                        if (blockDelta.TryGetProperty("thinking", out var thinkingPart))
+                            thinkingBlock.Thinking.Append(thinkingPart.GetString());
+                        if (blockDelta.TryGetProperty("signature", out var signaturePart))
+                            thinkingBlock.Signature.Append(signaturePart.GetString());
+                    }
                     if (blockDelta.TryGetProperty("partial_json", out var partialJson)
                         && state.ToolUses.TryGetValue(BlockIndex(root), out var toolUse))
                     {
@@ -1142,6 +1204,18 @@ public partial class AnthropicLlmProvider : HttpLlmProviderBase
     private static string SynthesizeMessageBody(AnthropicStreamState state)
     {
         var blocks = new List<object>();
+        foreach (var thinking in state.ThinkingBlocks.Values)
+        {
+            blocks.Add(thinking.Type == "thinking"
+                ? new Dictionary<string, object?>
+                {
+                    ["type"] = "thinking",
+                    ["thinking"] = thinking.Thinking.ToString(),
+                    ["signature"] = thinking.Signature.ToString(),
+                }
+                : new Dictionary<string, object?> { ["type"] = "redacted_thinking", ["data"] = thinking.Data });
+        }
+
         if (state.Content.Length > 0)
             blocks.Add(new Dictionary<string, object?> { ["type"] = "text", ["text"] = state.Content.ToString() });
 

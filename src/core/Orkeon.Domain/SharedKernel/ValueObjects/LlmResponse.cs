@@ -179,6 +179,13 @@ public sealed record LlmMessage
     public string? RawToolCalls { get; init; }
 
     /// <summary>
+    /// Gets the signed Anthropic <c>thinking</c> and <c>redacted_thinking</c> blocks of an assistant turn,
+    /// a JSON array kept as received and uninterpreted. Anthropic replays it unchanged before
+    /// <c>tool_use</c>; other providers ignore it.
+    /// </summary>
+    public string? RawThinkingBlocks { get; init; }
+
+    /// <summary>
     /// Gets the reasoning trace produced by thinking-mode models (e.g. DeepSeek R1, DeepSeek V4 in
     /// thinking mode). Providers that surface a separate <c>reasoning_content</c> field require it
     /// to be replayed on subsequent assistant messages — without it the API rejects the next turn
