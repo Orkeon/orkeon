@@ -292,6 +292,7 @@ public sealed class SessionBufferAndToolsTests
             ["operation"] = "append_message",
             ["role"] = "assistant",
             ["content"] = "third",
+            ["timestamp"] = "2026-10-31T10:00:00Z",
         }), TestContext.Current.CancellationToken);
 
         var dict = ResultDict(resp);
@@ -300,6 +301,7 @@ public sealed class SessionBufferAndToolsTests
         Assert.Equal(3, messages.Count);
         Assert.Equal("assistant", messages[^1].Role);
         Assert.Equal("third", messages[^1].Content);
+        Assert.Equal("2026-10-31T10:00:00Z", messages[^1].Timestamp);
         Assert.Equal("first", messages[0].Content);
     }
 

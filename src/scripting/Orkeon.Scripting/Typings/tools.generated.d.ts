@@ -1214,6 +1214,7 @@ declare global {
             operation?: string;
             retain_count?: number;
             role?: string | null;
+            timestamp?: string | null;
             title?: string | null;
             value?: string | null;
             values?: Record<string, string> | null;

@@ -211,3 +211,5 @@ Orkeon.Infrastructure.Tools.SessionStoreRequest.Values.get -> System.Collections
 Orkeon.Infrastructure.Tools.SessionStoreRequest.Values.set -> void
 Orkeon.Infrastructure.Tools.SessionStoreResponse.Values.get -> System.Collections.Generic.IReadOnlyDictionary<string!, string!>?
 Orkeon.Infrastructure.Tools.SessionStoreResponse.Values.set -> void
+Orkeon.Infrastructure.Tools.SessionStoreRequest.Timestamp.get -> string?
+Orkeon.Infrastructure.Tools.SessionStoreRequest.Timestamp.set -> void

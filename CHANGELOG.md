@@ -13,8 +13,9 @@ A script paid one `session_store` call per state key it read, and two calls carr
 message it added. `get_state` now takes `keys: string[]` and answers `values`, one entry per key that is set (a key
 never set is absent, `undefined` in a script); `set_state` takes `values: { key: value }` to write several keys and
 `keys: string[]` to remove several (the tool pipeline drops a `null` value, so removal goes through `keys`); `key`
-and `value` keep working as before. The new `append_message` operation (`role`, `content`) adds one message at the end of the buffer, which is
-neither returned nor rewritten; `ISessionBufferService` gains `AppendMessage(SessionMessage)` for it.
+and `value` keep working as before. The new `append_message` operation (`role`, `content`, an optional `timestamp`)
+adds one message at the end of the buffer, which is neither returned nor rewritten; `ISessionBufferService` gains
+`AppendMessage(SessionMessage)` for it.
 
 ### Added — `grep` counts: `output_mode: "count"`, `total_matches` on every answer (#260)
 

@@ -21,6 +21,10 @@ public sealed class SessionStoreRequest
     [JsonPropertyName("content")]
     public string? Content { get; set; }
 
+    /// <summary>Optional timestamp of the message append_message adds, as write_messages takes it.</summary>
+    [JsonPropertyName("timestamp")]
+    public string? Timestamp { get; set; }
+
     /// <summary>New buffer contents for write_messages.</summary>
     [JsonPropertyName("messages")]
     public IReadOnlyList<object>? Messages { get; set; }
@@ -181,12 +185,12 @@ public sealed class SessionStoreTool : ToolBase<SessionStoreRequest, SessionStor
         return new SessionStoreResponse { Success = true, Value = request.Value };
     }
 
-    /// <summary>Appends one message (role, content) at the end of the buffer; the buffer is neither returned nor rewritten.</summary>
+    /// <summary>Appends one message (role, content, optional timestamp) at the end of the buffer; the buffer is neither returned nor rewritten.</summary>
     private SessionStoreResponse AppendMessage(SessionStoreRequest request)
     {
         if (string.IsNullOrWhiteSpace(request.Role) || request.Content is null)
             return new SessionStoreResponse { Success = false };
-        _buffer.AppendMessage(new SessionMessage { Role = request.Role.Trim(), Content = request.Content });
+        _buffer.AppendMessage(new SessionMessage { Role = request.Role.Trim(), Content = request.Content, Timestamp = request.Timestamp });
         return new SessionStoreResponse { Success = true };
     }
 
