@@ -213,3 +213,6 @@ Orkeon.Infrastructure.Tools.SessionStoreResponse.Values.get -> System.Collection
 Orkeon.Infrastructure.Tools.SessionStoreResponse.Values.set -> void
 Orkeon.Infrastructure.Tools.SessionStoreRequest.Timestamp.get -> string?
 Orkeon.Infrastructure.Tools.SessionStoreRequest.Timestamp.set -> void
+Orkeon.Infrastructure.Session.InMemorySessionBufferService.SetStates(System.Collections.Generic.IReadOnlyDictionary<string!, string?>! values) -> void
+Orkeon.Infrastructure.Session.FileSessionBufferService.SetStates(System.Collections.Generic.IReadOnlyDictionary<string!, string?>! values) -> void
+override Orkeon.Infrastructure.Tools.SessionStoreTool.AccessFor(System.Collections.Generic.IReadOnlyDictionary<string!, object?>! arguments) -> Orkeon.Domain.Tools.ToolAccess

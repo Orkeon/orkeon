@@ -101,6 +101,15 @@ public sealed class SessionStoreTool : ToolBase<SessionStoreRequest, SessionStor
     /// <summary>Declared access class for permission gates.</summary>
     public override ToolAccess Access => ToolAccess.Read;
 
+    /// <summary>Reads stay <see cref="ToolAccess.Read"/>; every other operation mutates the session and is an <see cref="ToolAccess.Edit"/>.</summary>
+    public override ToolAccess AccessFor(IReadOnlyDictionary<string, object?> arguments)
+    {
+        var op = StringArgument(arguments, "operation", out _)?.Trim();
+        return string.IsNullOrEmpty(op) || op is "read_messages" or "get_metadata" or "get_state"
+            ? ToolAccess.Read
+            : ToolAccess.Edit;
+    }
+
     private readonly ISessionBufferService _buffer;
 
     /// <summary>Creates the tool with its backing service(s).</summary>
@@ -164,18 +173,28 @@ public sealed class SessionStoreTool : ToolBase<SessionStoreRequest, SessionStor
         var removed = request.Keys is { Count: > 0 } ? request.Keys : null;
         if (values is not null || removed is not null)
         {
+            if (!string.IsNullOrWhiteSpace(request.Key) || request.Value is not null)
+                return new SessionStoreResponse { Success = false };
             if (values?.Keys.Any(string.IsNullOrWhiteSpace) == true || removed?.Any(string.IsNullOrWhiteSpace) == true)
                 return new SessionStoreResponse { Success = false };
+            if (values is not null && removed is not null)
+            {
+                var overlap = removed.Where(values.ContainsKey).Distinct(StringComparer.Ordinal).ToArray();
+                if (overlap.Length > 0)
+                    throw new ArgumentException($"set_state: keys present in both values and keys: {string.Join(", ", overlap)}.");
+            }
+            var batch = new Dictionary<string, string?>(StringComparer.Ordinal);
             if (values is not null)
             {
                 foreach (var (key, value) in values)
-                    _buffer.SetState(key, value);
+                    batch[key] = value;
             }
             if (removed is not null)
             {
                 foreach (var key in removed)
-                    _buffer.SetState(key, null);
+                    batch[key] = null;
             }
+            _buffer.SetStates(batch);
             return new SessionStoreResponse { Success = true, Values = values is null ? [] : new Dictionary<string, string>(values, StringComparer.Ordinal) };
         }
 

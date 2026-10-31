@@ -144,6 +144,9 @@ public sealed class FileSessionBufferService : ISessionBufferService
     /// <inheritdoc />
     public void SetState(string key, string? value) => _inner.SetState(key, value);
 
+    /// <inheritdoc />
+    public void SetStates(IReadOnlyDictionary<string, string?> values) => _inner.SetStates(values);
+
     /// <summary><c>&lt;SessionsDirectory&gt;/&lt;project slug&gt;/last.json</c>.</summary>
     private string FilePath(string projectKey)
         => $"{_options.SessionsDirectory.TrimEnd('/')}/{ProjectKey.Slug(projectKey)}/last.json";

@@ -272,4 +272,19 @@ public sealed class FileSessionBufferServiceTests
 
         await Assert.ThrowsAsync<ArgumentException>(() => running.SaveToAsync(path, TestContext.Current.CancellationToken));
     }
+
+    [Fact]
+    [Trait("BR", "R-56")]
+    public async Task ShouldReloadAppendedMessage_WhenSessionIsSavedThenLoaded()
+    {
+        var fs = NewFs();
+        var first = await TurnAsync(fs, ProjectA);
+        first.AppendMessage(new SessionMessage { Role = "user", Content = "appended-77" });
+        await first.SaveAsync(TestContext.Current.CancellationToken);
+
+        var second = NewService(fs);
+        await second.LoadAsync(ProjectA, TestContext.Current.CancellationToken);
+
+        Assert.Equal(["question-42", "answer-42", "appended-77"], second.GetMessages().Select(m => m.Content));
+    }
 }

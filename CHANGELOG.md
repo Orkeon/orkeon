@@ -49,6 +49,16 @@ import edge. Only `SQLITE_CORRUPT` / `SQLITE_NOTADB` erase the cache database: a
 and keeps it. A refused `go.mod` or package marker read counts as absent, and parallel Parse progress is monotonic.
 `DiscoveryResult` (`Orkeon.Analysis.Abstractions`) gains `IgnoreFileContents`.
 
+### Fixed — `session_store` access per operation, atomic multi-key writes; `grep` completeness flags (R-10, R-11, R-50, R-51, R-52, R-56)
+
+`SessionStoreTool` declared the same access for every operation, so `plan` mode admitted `set_state`, `append_message`,
+`reset` and `truncate`: reads (`get_state`, `read_messages`, `get_metadata`) now declare `Read`, every write declares a
+write access and is denied in `plan` mode. `set_state` with several `values` / `keys` goes through the new
+`ISessionBufferService.SetStates(IReadOnlyDictionary<string, string?>)`, which changes every key under the buffer's one lock
+(all or nothing; **breaking** for any other implementation of the port, which must add the method); a `values` / `keys`
+overlap, or `key` / `value` mixed with `values` / `keys`, is refused with the keys named. `grep`: `truncated` is true when
+count mode cuts its counts, and `scan_complete` is false when a file over 1 MiB was skipped.
+
 ### Added — `session_store` reads several keys, writes several, appends one message (#263)
 
 A script paid one `session_store` call per state key it read, and two calls carrying the whole buffer for every
@@ -66,8 +76,10 @@ A "how many" question over a tree took one `grep` call per file, or a hit list f
 `total_matches`, `files_matched` and `counts`, the per-file counts highest first, cut to `max_results` entries. In
 both modes `total_matches` and `files_matched` are returned, and `scan_complete` says whether every candidate file was
 scanned to its end: reaching `max_results` no longer stops the scan, only `max_files` or a timeout does, so a total
-read with `scan_complete: true` is exact even when the hits were cut. `truncated` keeps saying when hits or files were
-left out.
+read with `scan_complete: true` is exact even when the hits were cut. `truncated` says when hits, files or counts were
+left out (count mode cutting its counts at `max_results` or at the character budget reports it too, and `scan_complete` is
+false when a file over 1 MiB was skipped). The default `hits` mode keeps scanning to `max_files` or to the 20 s budget
+even after `max_results` is reached, so a wide tree can end `timed_out` or `truncated`.
 
 ### Fixed — Anthropic pricing: Haiku 5.x priced, the prompt cache at its own rates (#257)
 

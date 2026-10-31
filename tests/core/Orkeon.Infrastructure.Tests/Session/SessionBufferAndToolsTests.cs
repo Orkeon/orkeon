@@ -531,4 +531,98 @@ public sealed class SessionBufferAndToolsTests
         Assert.Equal(100, byKind.GetProperty("user").GetInt32());
         Assert.Equal(used, byKind.EnumerateObject().Sum(p => p.Value.GetInt32()));
     }
+
+    [Trait("BR", "R-11")]
+    [Fact]
+    public void ShouldAllowRead_WhenPlanModeRunsGetState()
+    {
+        using var tool = new SessionStoreTool(new InMemorySessionBufferService());
+        var access = ((Orkeon.Domain.Tools.IBaseTool)tool).AccessFor(new Dictionary<string, object?> { ["operation"] = "get_state" });
+
+        Assert.Equal(Orkeon.Domain.Tools.ToolAccess.Read, access);
+    }
+
+    [Trait("BR", "R-11")]
+    [Theory]
+    [InlineData("set_state")]
+    [InlineData("append_message")]
+    [InlineData("reset")]
+    [InlineData("truncate")]
+    public async Task ShouldDenyWrite_WhenPlanModeRunsSetStateAppendResetOrTruncate(string operation)
+    {
+        using var tool = new SessionStoreTool(new InMemorySessionBufferService());
+        var access = ((Orkeon.Domain.Tools.IBaseTool)tool).AccessFor(new Dictionary<string, object?> { ["operation"] = operation });
+        var gate = new Orkeon.Infrastructure.Security.ModePermissionGate(isInteractive: false);
+
+        var verdict = await gate.CheckAsync("session_store", new Dictionary<string, object?>(), "plan", access, TestContext.Current.CancellationToken);
+
+        Assert.NotEqual(Orkeon.Domain.Tools.ToolAccess.Read, access);
+        Assert.Equal(Orkeon.Application.Interfaces.Security.PermissionAction.Deny, verdict.Action);
+    }
+
+    [Trait("BR", "R-50")]
+    [Fact]
+    public async Task ShouldWriteEveryKeyUnderOneLock_WhenSetStateGetsSeveralValues()
+    {
+        var buffer = new FakeGrowingSessionBufferService();
+        buffer.SetState("gone", "x");
+        using var tool = new SessionStoreTool(buffer);
+        var before = buffer.SetStateCalls;
+
+        var resp = await tool.CallAsync(new ToolCallRequest("session_store", new Dictionary<string, object?>
+        {
+            ["operation"] = "set_state",
+            ["values"] = new Dictionary<string, object?> { ["a"] = "1", ["b"] = "2" },
+            ["keys"] = new List<string> { "gone" },
+        }), TestContext.Current.CancellationToken);
+
+        ResultDict(resp);
+        Assert.Equal(1, buffer.SetStatesCalls);
+        Assert.Equal(before, buffer.SetStateCalls);
+        Assert.Equal("1", buffer.GetState("a"));
+        Assert.Equal("2", buffer.GetState("b"));
+        Assert.Null(buffer.GetState("gone"));
+    }
+
+    [Trait("BR", "R-50")]
+    [Trait("BR", "R-56")]
+    [Fact]
+    public async Task ShouldRefuseSetState_WhenValuesAndKeysOverlap()
+    {
+        var buffer = new InMemorySessionBufferService();
+        buffer.SetState("shared", "old");
+        using var tool = new SessionStoreTool(buffer);
+
+        var resp = await tool.CallAsync(new ToolCallRequest("session_store", new Dictionary<string, object?>
+        {
+            ["operation"] = "set_state",
+            ["values"] = new Dictionary<string, object?> { ["shared"] = "new", ["other"] = "1" },
+            ["keys"] = new List<string> { "shared" },
+        }), TestContext.Current.CancellationToken);
+
+        Assert.False(resp.Success);
+        Assert.Contains("shared", resp.Error);
+        Assert.Equal("old", buffer.GetState("shared"));
+        Assert.Null(buffer.GetState("other"));
+    }
+
+    [Trait("BR", "R-50")]
+    [Fact]
+    public async Task ShouldRefuseSetState_WhenSingleAndMultiKeyFormsAreMixed()
+    {
+        var buffer = new InMemorySessionBufferService();
+        using var tool = new SessionStoreTool(buffer);
+
+        var resp = await tool.CallAsync(new ToolCallRequest("session_store", new Dictionary<string, object?>
+        {
+            ["operation"] = "set_state",
+            ["key"] = "single",
+            ["value"] = "s",
+            ["values"] = new Dictionary<string, object?> { ["a"] = "1" },
+        }), TestContext.Current.CancellationToken);
+
+        Assert.False(resp.Success);
+        Assert.Null(buffer.GetState("single"));
+        Assert.Null(buffer.GetState("a"));
+    }
 }

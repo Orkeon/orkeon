@@ -335,3 +335,4 @@ Orkeon.Application.Crew.TaskExecutionSnapshot.CacheMissTokens.get -> long?
 Orkeon.Application.Interfaces.Services.TaskResult.CacheHitTokens.get -> long?
 Orkeon.Application.Interfaces.Services.TaskResult.CacheMissTokens.get -> long?
 Orkeon.Application.Interfaces.Ports.ISessionBufferService.AppendMessage(Orkeon.Application.Interfaces.Ports.SessionMessage! message) -> void
+Orkeon.Application.Interfaces.Ports.ISessionBufferService.SetStates(System.Collections.Generic.IReadOnlyDictionary<string!, string?>! values) -> void

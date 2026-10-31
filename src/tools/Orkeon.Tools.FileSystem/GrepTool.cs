@@ -47,7 +47,7 @@ public sealed record GrepRequest
 
     /// <summary>What the response carries: the hit lines, or counts alone.</summary>
     [JsonPropertyName("output_mode")]
-    [FieldSchema(Description = "hits: one path:line:text per match (default). count: no hit lines, only total_matches, files_matched and the per-file counts (the max_results highest)", IsRequired = false, Example = "count", Default = "hits", Enum = new[] { "hits", "count" })]
+    [FieldSchema(Description = "hits: one path:line:text per match (default); the scan is not stopped by max_results, it reads up to max_files or the 20 s budget, so a wide search can come back timed_out or truncated. count: no hit lines, only total_matches, files_matched and the per-file counts (the max_results highest)", IsRequired = false, Example = "count", Default = "hits", Enum = new[] { "hits", "count" })]
     public string OutputMode { get; init; } = GrepOutputModes.Hits;
 }
 
@@ -114,7 +114,7 @@ public sealed record GrepResponse : IBoundedToolResponse
 
     /// <summary>True when every candidate file was scanned to its end.</summary>
     [JsonPropertyName("scan_complete")]
-    [ReturnSchema(Description = "True when every candidate file was scanned to its end (no max_files cut, no timeout), so total_matches and files_matched are exact")]
+    [ReturnSchema(Description = "True when every candidate file was scanned to its end (no file over 1 MiB left unread, no max_files cut, no timeout), so total_matches and files_matched are exact")]
     public bool ScanComplete { get; init; }
 
     /// <summary>True when hits or files were left out.</summary>
@@ -234,7 +234,7 @@ public sealed class GrepTool : FileToolBase<GrepRequest, GrepResponse>
                 break;
             }
 
-            var text = await ReadCandidateAsync(path, sizes, cancellationToken).ConfigureAwait(false);
+            var text = await ReadCandidateAsync(path, sizes, scan, cancellationToken).ConfigureAwait(false);
             if (text is null)
             {
                 scan.Skipped++;
@@ -253,7 +253,7 @@ public sealed class GrepTool : FileToolBase<GrepRequest, GrepResponse>
             Counts = counts,
             TotalMatches = scan.Matches,
             FilesMatched = scan.FileCounts.Count,
-            ScanComplete = !scan.FilesCut && !scan.TimedOut,
+            ScanComplete = !scan.Oversize && !scan.FilesCut && !scan.TimedOut,
             Truncated = scan.HitsCut || scan.FilesCut || scan.TimedOut,
             TimedOut = scan.TimedOut,
             FilesScanned = scan.Scanned,
@@ -269,11 +269,16 @@ public sealed class GrepTool : FileToolBase<GrepRequest, GrepResponse>
         var chars = 0;
         foreach (var (path, count) in scan.FileCounts.OrderByDescending(c => c.Count).ThenBy(c => c.Path, StringComparer.Ordinal))
         {
-            if (counts.Count >= maxResults) break;
+            if (counts.Count >= maxResults)
+            {
+                scan.HitsCut = true;
+                break;
+            }
             chars += path.Length + 8;
             if (chars > MaxTotalChars)
             {
                 scan.Bounded = true;
+                scan.HitsCut = true;
                 break;
             }
             counts.Add(new GrepFileCount { Path = path, Count = count });
@@ -282,11 +287,12 @@ public sealed class GrepTool : FileToolBase<GrepRequest, GrepResponse>
     }
 
     /// <summary>The text of <paramref name="path"/>, or null when it is too large, unreadable or binary.</summary>
-    private async Task<string?> ReadCandidateAsync(string path, Dictionary<string, long> sizes, CancellationToken cancellationToken)
+    private async Task<string?> ReadCandidateAsync(string path, Dictionary<string, long> sizes, GrepScan scan, CancellationToken cancellationToken)
     {
         var size = sizes.TryGetValue(path, out var known)
             ? known
             : (await _fileSystemService.TryGetEntryAsync(path, cancellationToken).ConfigureAwait(false))?.SizeBytes;
+        if (size > MaxFileBytes) scan.Oversize = true;
         return size is null or > MaxFileBytes
             ? null
             : await ReadTextAsync(path, cancellationToken).ConfigureAwait(false);
@@ -377,6 +383,9 @@ public sealed class GrepTool : FileToolBase<GrepRequest, GrepResponse>
         public int Scanned { get; set; }
 
         public int Skipped { get; set; }
+
+        /// <summary>A file over 1 MiB was left unread; a binary or unreadable file is skipped by design and does not count.</summary>
+        public bool Oversize { get; set; }
 
         /// <summary>Hits were left out: <c>max_results</c> or the size bound was reached.</summary>
         public bool HitsCut { get; set; }
