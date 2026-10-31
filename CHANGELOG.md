@@ -26,6 +26,18 @@ keeps them raw, buffered or streamed, in the new `LlmMessage.RawThinkingBlocks`,
 them unchanged and first. A replayed tool call without `id`, `name` or an object `arguments` raises an
 `InvalidOperationException` naming its index, its name and the field, instead of a bare `KeyNotFoundException`.
 
+### Fixed — decision tasks: retried dependencies, failure record, answer validation, skipped turns
+
+A Graph decision reads the last successful output of a retried dependency, else its last attempt. A failing decision
+is recorded as a failed output marked as a decision, with its cause, and the exception is logged. The model's answer
+is validated: a choice outside the options fails the task non-transiently. The output has one form: score answers are
+keyed by level position and carry no `chosen`, the fallback included; `TokensUsed` is the usage the model reports.
+The domain refuses a non-finite confidence floor and repeated score levels, and `TaskCondition.Holds` is false for an
+`otherwise` clause. A skipped task takes no agent turn in round-robin, a crew of decision tasks only is admitted with
+no agent, and a failed or cancelled decision stops its dependants in `Parallel` and `Graph`. `CrewExecutionEvent`,
+the `KickoffStreamingAsync` stream, gains `IsDecision` and `DecisionAnswers`, and the documentation of `Skipped` and
+`SkipReason` cites the `when` condition.
+
 ### Added — `session_store` reads several keys, writes several, appends one message (#263)
 
 A script paid one `session_store` call per state key it read, and two calls carrying the whole buffer for every
@@ -2022,6 +2034,7 @@ and entered in its transparency log (Rekor). The publication matrix said the sam
 - The token-free API query decodes the statements with `jq` and prints the builder and the
   commit; the Release's SBOM and `publish.yml`'s are told apart; a table opens the page with
   the check for each kind of file.
+
 ### Fixed — a run is a trace **[breaking]**
 
 A run now emits one trace: `crew.run` for the crew, `task.run` per task, `memory.recall` and
@@ -6815,6 +6828,7 @@ topic, EN and FR together.
   Studio suites alike.
 
 <!-- STUDIO-29 -->
+
 ### Changed — `cost.updated` carries the ↑/↓ split and the vendor's real cost while the run goes (STUDIO-29)
 
 - **The split no longer waits for the end.** Every `cost.updated` of `orkeon run --events
@@ -6874,6 +6888,7 @@ accumulated since rc.3 move from `PublicAPI.Unshipped.txt` to `PublicAPI.Shipped
 across the twelve projects that carried them.
 
 <!-- SonarQube campaign of 2026-09-21 -->
+
 ### Fixed — a host without an `Llm` section runs on the echo provider again
 
 - **The fallback the warning announces is the fallback the run gets.** Since LLM-11 a call
@@ -6907,6 +6922,7 @@ across the twelve projects that carried them.
   YamlDotNet-populated probe, the vendors' key-console URLs).
 
 <!-- Studio — owner report of 2026-09-21 -->
+
 ### Fixed — Studio: My teams and the wizard — a discarded session resets the wizard, « Modify » reaches it at the first click
 
 - **A session deleted under « Sessions in progress » no longer lives on in the wizard.**
@@ -6940,6 +6956,7 @@ across the twelve projects that carried them.
   line instead of a discarded task.
 
 <!-- LLM-10 / LLM-08 -->
+
 ### Fixed — Together's context window is no longer sent as the output cap (LLM-10, campaign of 2026-09-21)
 
 - **`TogetherAiLlmProvider` sends the 4096 fallback again, not the model's window.** LLM-10
@@ -6963,6 +6980,7 @@ across the twelve projects that carried them.
   are in `docs/reference/llm-providers-comparison.md`, per-model table.
 
 <!-- FORGE-09 -->
+
 ### Added — « Modify » without a session: `orkeon forge reopen <team-folder>` rebuilds one from the team's files (FORGE-09)
 
 - **A promoted team no longer needs its forge session to be modified.** `orkeon forge reopen
@@ -6999,6 +7017,7 @@ across the twelve projects that carried them.
   resolve a `--mount-id` against the declared list the same way.
 
 <!-- VFS-90 -->
+
 ### Added — every settings mount carries a ULID; a crew names the entries it uses (`mounts:`), two entries may share a root, and `--mount-id` selects one for the run (VFS-90)
 
 - **A mount has an identity.** An entry of `Orkeon:FileSystem:Mounts` may carry a
@@ -7060,6 +7079,7 @@ across the twelve projects that carried them.
   the unit and fast suites are green.
 
 <!-- LLM-11 -->
+
 ### Fixed — a timed-out LLM call is a failed call, not an empty answer; the sequential mode skips the dependents of a failed task; Studio pins the thinking switch and a reasoning-model timeout (LLM-11)
 
 - **A call the provider never answered fails the task with the provider's reason.** On the
@@ -7103,6 +7123,7 @@ across the twelve projects that carried them.
   that brought it.
 
 <!-- STUDIO-22 -->
+
 ### Fixed — Studio: the limits tab shows the engine's defaults as watermarks, and its switches take one click (STUDIO-22)
 
 - **Every empty field of « Settings › Limits & index » now names the engine's default as a
@@ -7119,6 +7140,7 @@ across the twelve projects that carried them.
   the key. A guard refuses any nullable boolean on a section form.
 
 <!-- STUDIO-21 -->
+
 ### Added — Studio: Tools and MCP settings tabs; `orkeon run` connects the MCP servers the settings declare (STUDIO-21)
 
 - **`orkeon run` honours the `MCP` section.** Until now the section was bound by nobody: the
@@ -7150,6 +7172,7 @@ across the twelve projects that carried them.
   languages.
 
 <!-- T-31 / T-32 -->
+
 ### Changed — Studio: editable fields look editable, multi-line fields are five lines (T-31, T-32)
 
 - **A field says «you can type here» (T-31).** Every input — text box, password box, combo
@@ -7172,6 +7195,7 @@ across the twelve projects that carried them.
   The hard `MinHeight`/`MaxHeight` those fields carried are gone with the change.
 
 <!-- STUDIO-20 -->
+
 ### Changed — Studio: adopting a team ends the wizard at a blank step 1; the saved card is gone (STUDIO-20)
 
 - **« Save to my teams » ends the tunnel.** On a successful promotion the wizard goes back to a
@@ -7193,6 +7217,7 @@ across the twelve projects that carried them.
   in the sidecar, on the team card and in the team's `schedule/` folder.
 
 <!-- STUDIO-19 -->
+
 ### Changed — Studio: « Allow a folder » opens the OS folder dialog directly; the in-app picker modal is gone (STUDIO-19)
 
 - **The « Allow a folder » modal is deleted** — path field and Browse, the one-level tree with
@@ -7214,6 +7239,7 @@ across the twelve projects that carried them.
   consumer, the tree.
 
 <!-- STUDIO-18 -->
+
 ### Fixed — Studio opens on the per-user settings file (STUDIO-18)
 
 - **The window loads `%APPDATA%\Orkeon\appsettings.json` at startup** (`$XDG_CONFIG_HOME/Orkeon/appsettings.json`
@@ -7234,6 +7260,7 @@ across the twelve projects that carried them.
   the shell does, as the real window does.
 
 <!-- LLM-10 -->
+
 ### Changed — the output cap defaults to the model's documented maximum, not 4096 (LLM-10)
 
 - **`LlmConfig.MaxTokens` is a pin, nullable, null by default.** Nothing pinned means the
@@ -7268,6 +7295,7 @@ across the twelve projects that carried them.
   YAML exporter writes `maxTokens` only when pinned.
 
 <!-- STUDIO-17 -->
+
 ### Added — Studio: the Run screen shows the task in progress, pulses while it runs, stamps its journal and starts each launch clean (STUDIO-17)
 
 - **`task.started` joins the run event stream** (`orkeon run --events jsonl`): every
@@ -7301,6 +7329,7 @@ across the twelve projects that carried them.
   *Max tokens* field; the journal now says so at the moment it happens.
 
 <!-- LLM catalogue review 2026-09-19 -->
+
 ### Changed — the DeepSeek default follows the vendor's rename, vendor prices refreshed, catalogues reviewed (2026-09-19)
 
 - **`LlmProviderDefaultModels.DeepSeek` is `deepseek-flash`.** DeepSeek retired V4 Flash and
@@ -7330,6 +7359,7 @@ across the twelve projects that carried them.
   tools + thinking models. Nothing new for chat at Mistral and xAI.
 
 <!-- STUDIO-14 -->
+
 ### Added — team folders travel with the team, and the forge trial reads where the documents are (STUDIO-14, lots 0 and 1)
 
 - `orkeon forge … --read <dir>` (new session and `resume`): the trial mounts `<dir>` as
@@ -7356,6 +7386,7 @@ across the twelve projects that carried them.
   (Later / InsideTeam / ExistingFolders — the wizard entry below).
 
 <!-- STUDIO-14 recette -->
+
 ### Fixed — the forge trial no longer refuses a settings file that names `/output` or `/workspace` (STUDIO-14, owner recette)
 
 - `orkeon forge` refused any settings file whose `Orkeon:FileSystem:Mounts` named
@@ -7371,6 +7402,7 @@ across the twelve projects that carried them.
   stderr. `RunnerVirtualRoots.ForgeReserved` is removed.
 
 <!-- STUDIO-14 settings -->
+
 ### Added — Studio: Settings › Authorized folders lists each team's own folders, read-only (STUDIO-14, lot 6)
 
 - A team's own folders (`./input`, `./output`…) are vouched for by living inside the team
@@ -7389,6 +7421,7 @@ across the twelve projects that carried them.
   `reglages-dossiers`.
 
 <!-- STUDIO-14 wizard -->
+
 ### Added — Studio wizard: where the folders live, asked at step 1; « Create inside the team »; the trial reads the chosen folder; « Open the folder » (STUDIO-14, lots 2–5 and 8)
 
 - Step 1 « Describe » gains a fourth question, « Where are your folders? », with three chips
@@ -7481,6 +7514,7 @@ across the twelve projects that carried them.
   `reglages-dossiers-selection` now selects the writable mount.
 
 <!-- LLM-09 -->
+
 ### Added — OpenRouter and Mammouth AI, the fifteenth and sixteenth providers — two aggregators, the one exception to the scope freeze (LLM-09)
 
 The scope freeze said "no 15th provider — point `Orkeon:Llm:BaseUrl` at the endpoint", and
@@ -7541,6 +7575,7 @@ as the status when it is an HTTP one. Secrets in the vendor's message are redact
 `"error": null` on a healthy chunk is not an error.
 
 <!-- STUDIO-15 -->
+
 ### Changed — a `--mount` is placed by virtual root against the settings (STUDIO-15, STUDIO-12 C3/C4)
 
 - **`RunnerHost` places every `--mount` by virtual root.** On a root the declared
@@ -7625,6 +7660,7 @@ technical journal only the expert mode displays.
   `Stopping_the_engine_raises_no_failure_card`.
 
 <!-- STUDIO-12 -->
+
 ### Fixed — the team journey on a real crew: order, empty answers, single-file teams (STUDIO-12)
 
 - **Task order follows `dependencies`, in every layout.** Without a plan, the sequential

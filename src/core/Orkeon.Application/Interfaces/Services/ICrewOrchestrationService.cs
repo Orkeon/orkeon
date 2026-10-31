@@ -246,14 +246,20 @@ public sealed record CrewExecutionEvent
     /// <summary><c>tool.returned</c>, <c>task.completed</c>: how long the tool call or the task took.</summary>
     public TimeSpan? Duration { get; init; }
 
-    /// <summary><c>task.completed</c>: the task never ran, because a task it depends on did not succeed.</summary>
+    /// <summary><c>task.completed</c>: the task never ran, because a task it depends on did not succeed or its <c>when</c> condition was false.</summary>
     public bool Skipped { get; init; }
 
-    /// <summary><c>task.completed</c>: why the task was skipped; null unless <see cref="Skipped"/>.</summary>
+    /// <summary><c>task.completed</c>: why the task was skipped (the failed dependency or the <c>when</c> condition); null unless <see cref="Skipped"/>.</summary>
     public string? SkipReason { get; init; }
 
     /// <summary><c>task.completed</c>: the decision task resolved to its fallback because the circuit is off.</summary>
     public bool Defaulted { get; init; }
+
+    /// <summary><c>task.completed</c>: the task is a decision task.</summary>
+    public bool IsDecision { get; init; }
+
+    /// <summary><c>task.completed</c>: the decision answers as compact JSON; null unless <see cref="IsDecision"/>.</summary>
+    public string? DecisionAnswers { get; init; }
 
     /// <summary><c>task.completed</c>: the tokens the task used, 0 when its mode does not track them.</summary>
     public int Tokens { get; init; }

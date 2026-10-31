@@ -173,7 +173,7 @@ public sealed class TaskCondition
     {
         ArgumentNullException.ThrowIfNull(outcome);
         ArgumentNullException.ThrowIfNull(decision);
-        return Clauses.All(c => c.Holds(outcome, decision));
+        return !IsOtherwise && Clauses.All(c => c.Holds(outcome, decision));
     }
 
     /// <summary>Tells whether no sibling holds.</summary>

@@ -235,4 +235,80 @@ public sealed class DecisionTaskRunnerTests
         await Assert.ThrowsAsync<OperationCanceledException>(() =>
             Runner(DecisionCircuit.On).RunAsync(Decide(Of()), NoInputs, CancellationToken.None));
     }
+
+    [Fact]
+    [Trait("BR", "R-23")]
+    public async System.Threading.Tasks.Task ShouldLogExceptionAndCause_WhenDecisionModelThrows()
+    {
+        var cause = new InvalidOperationException("socket closed");
+        var failure = new DecisionModelException("rate limited", cause);
+        _model.Failure = failure;
+        var logger = new Orkeon.Application.Tests.Fixtures.TestLogger<DecisionTaskRunner>();
+
+        var result = await new DecisionTaskRunner(_model, DecisionCircuit.On, logger)
+            .RunAsync(Decide(Of()), NoInputs, CancellationToken.None);
+
+        Assert.False(result.Success);
+        var line = Assert.Single(logger.LogEntries);
+        Assert.Same(failure, line.Exception);
+        Assert.Same(cause, line.Exception!.InnerException);
+        Assert.Contains("socket closed", result.Error, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    [Trait("BR", "R-18")]
+    public async System.Threading.Tasks.Task ShouldShapeFallbackLikeModelAnswer_WhenCircuitIsOpen()
+    {
+        var score = ScoreQuestionSpec.Create("s", "Rate", ["low", "mid", "high"]);
+        var decision = TaskDecision.Create([score], null, null, false, new Dictionary<string, string> { ["s"] = "high" });
+
+        var result = await Runner(DecisionCircuit.Off).RunAsync(Decide(decision), NoInputs, CancellationToken.None);
+
+        Assert.NotNull(result.Decision);
+        var answer = result.Decision.Answers["s"];
+        Assert.Null(answer.Chosen);
+        Assert.Equal(2, answer.Score);
+        Assert.Equal(["0", "1", "2"], answer.Probabilities.Keys.Order().ToList());
+        using var json = JsonDocument.Parse(result.Output);
+        Assert.False(json.RootElement.GetProperty("s").TryGetProperty("chosen", out _));
+    }
+
+    [Fact]
+    [Trait("BR", "R-19")]
+    public async System.Threading.Tasks.Task ShouldFailNonTransiently_WhenChoiceIsNotAnOption()
+    {
+        _model.Respond = _ => new DecisionResponse
+        {
+            Model = "fake",
+            Answers = ImmutableDictionary<string, DecisionAnswer>.Empty.Add("q1", new ChoiceAnswer
+            {
+                Choice = "zzz",
+                Confidence = 0.9,
+                Probabilities = ImmutableDictionary<string, double>.Empty,
+            }),
+        };
+
+        var result = await Runner(DecisionCircuit.On).RunAsync(Decide(Of()), NoInputs, CancellationToken.None);
+
+        Assert.False(result.Success);
+        Assert.NotNull(result.Error);
+        Assert.Contains("'q1'", result.Error, StringComparison.Ordinal);
+        Assert.Contains("'zzz'", result.Error, StringComparison.Ordinal);
+        Assert.Null(result.Decision);
+    }
+
+    [Fact]
+    [Trait("BR", "R-20")]
+    public async System.Threading.Tasks.Task ShouldReportTokensUsed_WhenDecisionModelReportsUsage()
+    {
+        var inner = _model.Respond;
+        _model.Respond = request => inner(request) with { Usage = new DecisionUsage { InputTokens = 120, OutputTokens = 30 } };
+
+        var result = await Runner(DecisionCircuit.On).RunAsync(Decide(Of()), NoInputs, CancellationToken.None);
+
+        Assert.True(result.Success, result.Error);
+        Assert.Equal(150, result.TokensUsed);
+        Assert.Equal(120, result.PromptTokens);
+        Assert.Equal(30, result.CompletionTokens);
+    }
 }

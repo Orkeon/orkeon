@@ -190,8 +190,13 @@ calibrated answer instead of an LLM call. The syntax is in the
 
 - A decision task has no agent, no tool and no memory, and writes no text. Its output is the
   answers as compact JSON, so that a later LLM task reads them as context: for each question the
-  `chosen` option, the `score` or the `probability` of a yes-no, the `probabilities` and the
-  `confidence`, plus `"defaulted": true` when the fallback answered.
+  `chosen` option (a choice only), the `score` or the `probability` of a yes-no, the `probabilities` and the
+  `confidence`, plus `"defaulted": true` when the fallback answered. A score question has one form: its
+  answers are keyed by level position and it carries no `chosen`, the fallback included. A dependency
+  that was retried is read at its last successful output, else at its last attempt. The task's
+  `TokensUsed` is the usage the model reports.
+- A crew made of decision tasks only is admitted with no agent. A skipped task takes no agent turn in
+  round-robin.
 - The task sends its state and **all its questions in one request**. The state is the output of
   each task it depends on that ran, labelled with the task's key, or only the tasks `state` lists.
   The only repeats are the adapter's retries of that same request on a 429 or a 529.
@@ -232,7 +237,11 @@ A decision the model cannot make is a **failed task**, not a skip and not a fall
 refused the request (state over its limit, key refused, rate limit or overload after the retries) or
 is unavailable. The task fails with the reason; the tasks that depend on it, `otherwise` tasks
 included, are skipped as for any failed task, and the crew's rule for a failed task applies. The
-key is in no message.
+key is in no message. The failure is recorded as a failed output marked as a decision, with its
+cause, and the exception is logged. An answer outside the options (a choice not among those asked)
+fails the task, non-transiently: it is not retried. `Parallel` and `Graph` stop the dependants of a
+failed or cancelled decision. The domain refuses a non-finite confidence floor and repeated score
+levels, and `TaskCondition.Holds` is false for an `otherwise` clause (its rule is the one above).
 
 ### The decision circuit and the fallback
 

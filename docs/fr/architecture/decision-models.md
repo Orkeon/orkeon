@@ -195,8 +195,13 @@ une réponse typée et calibrée au lieu d'un appel LLM. La syntaxe est dans la
 
 - Une tâche de décision n'a ni agent, ni outil, ni mémoire, et n'écrit aucun texte. Sa sortie est les
   réponses en JSON compact, pour qu'une tâche LLM suivante les lise comme contexte : pour chaque
-  question, l'option `chosen`, le `score` ou la `probability` d'un oui/non, les `probabilities` et la
-  `confidence`, plus `"defaulted": true` quand le repli a répondu.
+  question, l'option `chosen` (choix seulement), le `score` ou la `probability` d'un oui/non, les `probabilities` et la
+  `confidence`, plus `"defaulted": true` quand le repli a répondu. Une question de score a une seule
+  forme : ses réponses sont indexées par position de niveau et elle ne porte pas de `chosen`, repli
+  compris. Une dépendance rejouée est lue à sa dernière sortie réussie, sinon à sa dernière tentative.
+  Le `TokensUsed` de la tâche est l'usage que le modèle rapporte.
+- Une crew composée uniquement de tâches de décision est admise sans agent. Une tâche sautée ne
+  prend aucun tour d'agent en round-robin.
 - La tâche envoie son état et **toutes ses questions en une seule requête**. L'état est la sortie de
   chaque tâche dont elle dépend qui a tourné, étiquetée de la clé de la tâche, ou seulement des tâches
   que `state` liste. Les seules répétitions sont les nouvelles tentatives de l'adaptateur sur cette même
@@ -238,7 +243,12 @@ Une décision que le modèle ne peut pas prendre est une **tâche échouée**, n
 modèle a refusé la requête (état au-delà de sa limite, clé refusée, limite de débit ou surcharge après
 les nouvelles tentatives) ou est indisponible. La tâche échoue avec la raison ; les tâches qui en
 dépendent, `otherwise` comprises, sont sautées comme pour toute tâche échouée, et la règle de la crew
-pour une tâche échouée s'applique. La clé n'est dans aucun message.
+pour une tâche échouée s'applique. La clé n'est dans aucun message. L'échec est enregistré comme une
+sortie échouée marquée décision, avec sa cause, et l'exception est journalisée. Une réponse hors des
+options (un choix absent de celles posées) fait échouer la tâche, sans nouvelle tentative. `Parallel` et
+`Graph` arrêtent les dépendantes d'une décision échouée ou annulée. Le domaine refuse un seuil de
+confiance non fini et des niveaux de score répétés, et `TaskCondition.Holds` est faux pour une clause
+`otherwise` (sa règle est celle ci-dessus).
 
 ### Le circuit de décision et le repli
 

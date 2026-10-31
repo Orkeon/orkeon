@@ -127,6 +127,10 @@ public sealed partial class SequentialProcessStrategy : IProcessStrategy
                 loaded.Add(await _taskRepository.GetByIdAsync(taskId, cancellationToken).ConfigureAwait(false));
             var crewTasks = loaded.OfType<Orkeon.Domain.Task.CrewTask>().ToList();
 
+            // Only a task an agent runs needs one: a crew of decisions runs with none.
+            if (agents.Count == 0 && crewTasks.Any(t => !t.IsDecision))
+                throw new InvalidOperationException("No agents available for sequential execution");
+
             // Once, before any task: a decision task that could not answer fails the run at its door.
             var faults = DecisionPreflight.Check(crewTasks, _decisionRunner);
             if (faults.Count > 0)
@@ -148,10 +152,12 @@ public sealed partial class SequentialProcessStrategy : IProcessStrategy
                 var agent = task.IsDecision
                     ? null
                     : await _agentSelector
-                        .ForTaskAsync(task, agents, agentIndex++, cancellationToken)
+                        .ForTaskAsync(task, agents, agentIndex, cancellationToken)
                         .ConfigureAwait(false);
 
-                await DispatchTaskAsync(run, position, task, agent, crewTasks, cancellationToken).ConfigureAwait(false);
+                // The round-robin cursor moves only for a task an agent ran: a skipped task keeps its turn for the next.
+                if (await DispatchTaskAsync(run, position, task, agent, crewTasks, cancellationToken).ConfigureAwait(false))
+                    agentIndex++;
             }
 
             // Nothing outlives the run: the crew waits for every task it launched (GAP-22),
@@ -211,7 +217,7 @@ public sealed partial class SequentialProcessStrategy : IProcessStrategy
 
     /// <summary>
     /// The crew's agents, each registered with the delegation provider and given its delegation
-    /// tools; a crew with tasks and no agent is refused.
+    /// tools.
     /// </summary>
     private async System.Threading.Tasks.Task<List<DomainAgent>> LoadAndRegisterAgentsAsync(DomainCrew crew)
     {
@@ -224,9 +230,6 @@ public sealed partial class SequentialProcessStrategy : IProcessStrategy
             _delegationProvider.AddDelegationToolsToAgent(agent);
         }
 
-        if (agents.Count == 0 && crew.Tasks.Count > 0)
-            throw new InvalidOperationException("No agents available for sequential execution");
-
         return agents;
     }
 
@@ -235,25 +238,38 @@ public sealed partial class SequentialProcessStrategy : IProcessStrategy
     /// decides whether this one runs, and its output joins the context it reads —, then the task is
     /// skipped, launched alongside the run (<c>asyncExecution</c>) or run while the run waits.
     /// </summary>
-    private async System.Threading.Tasks.Task DispatchTaskAsync(
+    private async System.Threading.Tasks.Task<bool> DispatchTaskAsync(
         SequentialRun run, int position, Orkeon.Domain.Task.CrewTask task, DomainAgent? agent,
         IReadOnlyList<Orkeon.Domain.Task.CrewTask> crewTasks, CancellationToken cancellationToken)
     {
         await JoinDependenciesAsync(run, task).ConfigureAwait(false);
 
         if (run.Outcome.BlockingDependency(task) is { } blockedBy)
+        {
             await SkipBlockedTaskAsync(run, position, task, agent, blockedBy).ConfigureAwait(false);
-        else if (ConditionGate.ShouldRun(task, run.Outcome, crewTasks) is { Run: false } skipped)
+            return false;
+        }
+
+        if (ConditionGate.ShouldRun(task, run.Outcome, crewTasks) is { Run: false } skipped)
+        {
             await SkipByConditionAsync(run, task, agent, skipped.Reason!).ConfigureAwait(false);
-        else if (agent is null)
+            return false;
+        }
+
+        if (agent is null)
+        {
             await RunDecisionTaskAsync(run, position, task, crewTasks, cancellationToken).ConfigureAwait(false);
-        else if (task.AsyncExecution)
+            return false;
+        }
+
+        if (task.AsyncExecution)
             await LaunchAsync(run, position, task, agent, cancellationToken).ConfigureAwait(false);
         else
             await RunTaskAsync(run, position, task, agent, cancellationToken).ConfigureAwait(false);
+        return true;
     }
 
-    /// <summary>A decision task answered by the decision runner while the run waits: no agent, no memory, no tokens.</summary>
+    /// <summary>A decision task answered by the decision runner while the run waits: no agent, no memory; the tokens the decision model reports are tallied.</summary>
     private async System.Threading.Tasks.Task RunDecisionTaskAsync(
         SequentialRun run, int position, Orkeon.Domain.Task.CrewTask task,
         IReadOnlyList<Orkeon.Domain.Task.CrewTask> crewTasks, CancellationToken cancellationToken)
@@ -271,6 +287,7 @@ public sealed partial class SequentialProcessStrategy : IProcessStrategy
             .ConfigureAwait(false);
 
         LogTaskCompletedSuccess(task.Id, result.Success);
+        run.TokenTally.Record(result);
 
         var domainOutput = CrewRunOutcome.OutputOf(task, null, result);
         run.Fold(
@@ -292,7 +309,8 @@ public sealed partial class SequentialProcessStrategy : IProcessStrategy
             Duration = result.ExecutionTime,
             CompletedAt = DateTimeOffset.UtcNow,
             Defaulted = result.Decision?.IsDefaulted ?? false,
-        }, domainOutput)).ConfigureAwait(false);
+            TokensUsed = result.TokensUsed,
+        }, domainOutput, isDecisionTask: true)).ConfigureAwait(false);
     }
 
     /// <summary>

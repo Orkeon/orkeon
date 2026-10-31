@@ -59,7 +59,8 @@ public sealed record TaskExecutionSnapshot
     public long? CacheMissTokens { get; init; }
 
     /// <summary>
-    /// True when the task never ran because a task it depends on did not succeed (LLM-11).
+    /// True when the task never ran because a task it depends on did not succeed (LLM-11)
+    /// or because its <c>when</c> condition was false.
     /// The sequential mode used to run it anyway, on a context holding "Task failed: …" in
     /// place of the output it needed, and the agent improvised a deliverable from what was
     /// left. <see cref="Success"/> is false and <see cref="Duration"/> zero;
@@ -67,7 +68,7 @@ public sealed record TaskExecutionSnapshot
     /// </summary>
     public bool Skipped { get; init; }
 
-    /// <summary>Why the task was skipped — null unless <see cref="Skipped"/>.</summary>
+    /// <summary>Why the task was skipped (the failed dependency or the <c>when</c> condition) — null unless <see cref="Skipped"/>.</summary>
     public string? SkipReason { get; init; }
 
     /// <summary>True for a decision task that resolved to its fallback because the circuit is off.</summary>

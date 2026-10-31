@@ -96,6 +96,9 @@ public sealed record ScoreQuestionSpec : DecisionQuestionSpec
         ArgumentException.ThrowIfNullOrWhiteSpace(Name);
         if (Levels.Count == 0 || Levels.Count > DecisionLimits.MaxScoreLevels)
             throw new ArgumentException($"A score question holds 1 to {DecisionLimits.MaxScoreLevels} levels.", nameof(Levels));
+        var repeated = Levels.GroupBy(l => l, StringComparer.Ordinal).FirstOrDefault(g => g.Count() > 1);
+        if (repeated is not null)
+            throw new ArgumentException($"A score question's levels are distinct: '{repeated.Key}' repeats.", nameof(Levels));
     }
 }
 

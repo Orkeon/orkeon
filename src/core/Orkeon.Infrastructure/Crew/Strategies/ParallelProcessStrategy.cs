@@ -157,6 +157,10 @@ public sealed partial class ParallelProcessStrategy : IProcessStrategy
         var agents = await LoadAgentsAsync(crew, cancellationToken).ConfigureAwait(false);
         tasks = await LoadTasksAsync(crew, cancellationToken).ConfigureAwait(false);
 
+        // Only a task an agent runs needs one: a crew of decisions runs with none.
+        if (agents.Count == 0 && !(tasks.Count > 0 && tasks.All(t => t.IsDecision)))
+            throw new InvalidOperationException("No agents available for parallel execution");
+
         // Once, before any task: a decision task that could not answer fails the run at its door.
         var faults = DecisionPreflight.Check(tasks, _decisionRunner);
         if (faults.Count > 0)
@@ -188,7 +192,7 @@ public sealed partial class ParallelProcessStrategy : IProcessStrategy
                 var agent = task.IsDecision
                     ? null
                     : await _agentSelector
-                        .ForTaskAsync(task, agents, taskIndex++, cancellationToken)
+                        .ForTaskAsync(task, agents, taskIndex, cancellationToken)
                         .ConfigureAwait(false);
 
                 cancellationToken.ThrowIfCancellationRequested();
@@ -208,6 +212,10 @@ public sealed partial class ParallelProcessStrategy : IProcessStrategy
                     await SkipByConditionAsync(run, task, agent, notRun.Reason!, cancellationToken).ConfigureAwait(false);
                     continue;
                 }
+
+                // The round-robin cursor moves only for a task an agent runs.
+                if (agent is not null)
+                    taskIndex++;
 
                 // Derived from the run's context, never rebuilt (GAP-30): every task of the wave
                 // reads what the previous waves produced.
@@ -364,9 +372,6 @@ public sealed partial class ParallelProcessStrategy : IProcessStrategy
             if (agent != null) agents.Add(agent);
         }
 
-        if (agents.Count == 0)
-            throw new InvalidOperationException("No agents available for parallel execution");
-
         return agents;
     }
 
@@ -456,7 +461,7 @@ public sealed partial class ParallelProcessStrategy : IProcessStrategy
             CacheHitTokens = result.CacheHitTokens,
             CacheMissTokens = result.CacheMissTokens,
             Defaulted = result.Decision?.IsDefaulted ?? false,
-        }, domainOutput);
+        }, domainOutput, isDecisionTask: agent is null);
         taskSnapshots.Add(snapshot);
         await _hooks.TaskCompletedAsync(snapshot, cancellationToken).ConfigureAwait(false);
 

@@ -215,6 +215,15 @@ public class TaskConditionTests
     }
 
     [Fact]
+    [Trait("BR", "R-22")]
+    public void ShouldNotHold_WhenClauseIsOtherwise()
+    {
+        var outcome = Outcome(("intent", Intent("a", 0.9)));
+
+        Assert.False(TaskCondition.Otherwise("decide").Holds(outcome, Decision));
+    }
+
+    [Fact]
     [Trait("BR", "BR-07")]
     public void ShouldNotChange_WhenCallerMutatesCollectionsAfterCreate()
     {

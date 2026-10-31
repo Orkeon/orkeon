@@ -14,6 +14,7 @@ using Orkeon.Infrastructure.Crew.Strategies;
 using Orkeon.Infrastructure.Persistence.Agent;
 using Orkeon.Infrastructure.Persistence.Task;
 using Orkeon.Infrastructure.Tests.Doubles;
+using DomainAgent = Orkeon.Domain.Agent.Agent;
 using DomainCrew = Orkeon.Domain.Crew.Crew;
 using TaskStatus = Orkeon.Domain.Task.ValueObjects.TaskStatus;
 
@@ -24,6 +25,8 @@ public sealed class SequentialConditionTests : IDisposable
     private readonly MockAgentExecutionService _executionService = new();
     private readonly MockMemoryScope _memoryScope = new();
     private readonly FakeDecisionModel _model = new();
+    private readonly List<DomainAgent> _agents = [];
+    private readonly Dictionary<TaskId, DomainAgent> _agentOf = [];
     private readonly List<TaskId> _ran = [];
     private readonly Dictionary<TaskId, SimpleExecutionContext> _contexts = [];
     private readonly HashSet<TaskId> _failing = [];
@@ -31,10 +34,11 @@ public sealed class SequentialConditionTests : IDisposable
     public SequentialConditionTests()
     {
         Answer("a");
-        _executionService.SetExecuteFunc((_, task, context, _) =>
+        _executionService.SetExecuteFunc((agent, task, context, _) =>
         {
             _ran.Add(task.TaskId);
             _contexts[task.TaskId] = context;
+                _agentOf[task.TaskId] = agent;
             return _failing.Contains(task.TaskId)
                 ? new TaskResult(false, "", null, [], TimeSpan.Zero, "boom")
                 : new TaskResult(true, "out-" + task.TaskId, null, [], TimeSpan.Zero);
@@ -370,6 +374,37 @@ public sealed class SequentialConditionTests : IDisposable
         Assert.Empty(_ran);
     }
 
+    [Fact]
+    [Trait("BR", "R-24")]
+    public async System.Threading.Tasks.Task ShouldGiveNextAgentToNextRunTask_WhenConditionSkipsTask()
+    {
+        var decide = DecisionTask("Decide");
+        var skipped = Conditioned("Skipped branch", decide, OneOf(decide, "b"));
+        var run = Conditioned("Run branch", decide, OneOf(decide, "a"));
+        var (crew, strategy) = Build([decide, skipped, run], DecisionCircuit.On, agentCount: 2);
+
+        var output = await Run(strategy, crew);
+
+        Assert.True(output.Success, output.Error);
+        Assert.Equal([run.Id], _ran);
+        Assert.Equal(_agents[0].Id, _agentOf[run.Id].Id);
+    }
+
+    [Fact]
+    [Trait("BR", "R-27")]
+    public async System.Threading.Tasks.Task ShouldRunCrew_WhenEveryTaskIsADecision()
+    {
+        var decide = DecisionTask("Decide");
+        var (crew, strategy) = Build([decide], DecisionCircuit.On, agentCount: 0);
+
+        var output = await Run(strategy, crew);
+
+        Assert.True(output.Success, output.Error);
+        Assert.Single(_model.Requests);
+        Assert.Equal(TaskStatus.Completed, decide.Status);
+        Assert.Equal(0, _executionService.ExecuteTaskCallCount);
+    }
+
     private static System.Threading.Tasks.Task<Orkeon.Domain.Crew.CrewOutput> Run(SequentialProcessStrategy strategy, DomainCrew crew) =>
         strategy.ExecuteSequentialAsync(crew, cancellationToken: TestContext.Current.CancellationToken);
 
@@ -406,17 +441,22 @@ public sealed class SequentialConditionTests : IDisposable
         return builder.Build();
     }
 
-    private (DomainCrew Crew, SequentialProcessStrategy Strategy) Build(IReadOnlyList<CrewTask> tasks, DecisionCircuit circuit)
+    private (DomainCrew Crew, SequentialProcessStrategy Strategy) Build(IReadOnlyList<CrewTask> tasks, DecisionCircuit circuit, int agentCount = 1)
     {
-        var agent = new AgentBuilder().Role("Worker").Goal("Work").Backstory("Works").Build();
+        _agents.Clear();
+        for (var i = 0; i < agentCount; i++)
+            _agents.Add(new AgentBuilder().Role("Worker " + i).Goal("Work").Backstory("Works").Build());
         var unitOfWork = new NullUnitOfWork();
         var taskRepository = new InMemoryTaskRepository(unitOfWork);
         var agentRepository = new InMemoryAgentRepository(unitOfWork);
         foreach (var task in tasks)
             taskRepository.AddAsync(task).GetAwaiter().GetResult();
-        agentRepository.AddAsync(agent).GetAwaiter().GetResult();
+        foreach (var agent in _agents)
+            agentRepository.AddAsync(agent).GetAwaiter().GetResult();
 
-        var builder = new CrewBuilder().Goal("Pipeline").Sequential().WithAgent(agent);
+        var builder = new CrewBuilder().Goal("Pipeline").Sequential();
+        foreach (var agent in _agents)
+            builder.WithAgent(agent);
         foreach (var task in tasks)
             builder.WithTask(task);
 

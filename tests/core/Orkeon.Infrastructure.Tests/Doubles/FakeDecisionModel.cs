@@ -17,6 +17,9 @@ public sealed class FakeDecisionModel : IDecisionModel
     public Func<DecisionRequest, DecisionResponse> Respond { get; set; } =
         _ => new DecisionResponse { Model = "fake", Answers = ImmutableDictionary<string, DecisionAnswer>.Empty };
 
+    /// <summary>When set, answers instead of <see cref="Respond"/> and receives the cancellation token.</summary>
+    public Func<DecisionRequest, CancellationToken, Task<DecisionResponse>>? RespondAsync { get; set; }
+
     /// <summary>Thrown by <see cref="DecideAsync"/> when set.</summary>
     public Exception? Failure { get; set; }
 
@@ -37,6 +40,8 @@ public sealed class FakeDecisionModel : IDecisionModel
     {
         lock (_gate)
             _requests.Add(request);
+        if (RespondAsync is not null)
+            return RespondAsync(request, cancellationToken);
         return Failure is null ? Task.FromResult(Respond(request)) : Task.FromException<DecisionResponse>(Failure);
     }
 

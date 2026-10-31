@@ -183,6 +183,10 @@ Orkeon.Application.Interfaces.Ports.IDecisionStage.OnRequestAsync(Orkeon.Domain.
 Orkeon.Application.Interfaces.Ports.IDecisionStage.OnResponseAsync(Orkeon.Domain.SharedKernel.ValueObjects.LlmMessage![]! messages, Orkeon.Domain.SharedKernel.ValueObjects.LlmResponse! response, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Application.Decision.DecisionVerdict!>!
 Orkeon.Application.Interfaces.Services.CrewExecutionEvent.Defaulted.get -> bool
 Orkeon.Application.Interfaces.Services.CrewExecutionEvent.Defaulted.init -> void
+Orkeon.Application.Interfaces.Services.CrewExecutionEvent.IsDecision.get -> bool
+Orkeon.Application.Interfaces.Services.CrewExecutionEvent.IsDecision.init -> void
+Orkeon.Application.Interfaces.Services.CrewExecutionEvent.DecisionAnswers.get -> string?
+Orkeon.Application.Interfaces.Services.CrewExecutionEvent.DecisionAnswers.init -> void
 Orkeon.Application.Interfaces.Services.TaskResult.Decision.get -> Orkeon.Domain.Task.ValueObjects.DecisionOutcome?
 Orkeon.Application.Interfaces.Services.TaskResult.Decision.init -> void
 abstract Orkeon.Application.Decision.DTOs.DecisionAnswer.<Clone>$() -> Orkeon.Application.Decision.DTOs.DecisionAnswer!
