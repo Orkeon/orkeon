@@ -40,6 +40,9 @@ public record CostUsageEvent
     /// <summary>Prompt tokens written to the provider's cache; null when unmeasured.</summary>
     public long? CacheWriteTokens { get; init; }
 
+    /// <summary>Cache-write tokens billed at the one-hour TTL; a SUBSET of <see cref="CacheWriteTokens"/>.</summary>
+    public int CacheWrite1hTokens { get; init; }
+
     /// <summary>
     /// Completion tokens the model spent reasoning, when the provider reports them
     /// (<c>completion_tokens_details.reasoning_tokens</c>). A PART of <see cref="CompletionTokens"/>,

@@ -1161,6 +1161,7 @@ public partial class AnthropicLlmProvider : HttpLlmProviderBase
             CompletionTokens = state.Usage.OutputTokens,
             CacheHitTokens = state.Usage.CacheReadTokens,
             CacheWriteTokens = state.Usage.CacheCreationTokens,
+            CacheWrite1hTokens = state.Usage.CacheCreation1hTokens,
             CacheMissTokens = state.Usage.CacheMissTokens,
             Model = ResolveModel(config),
             Metadata = metadata.Build().ToDictionary(),
@@ -1299,6 +1300,7 @@ public partial class AnthropicLlmProvider : HttpLlmProviderBase
             CompletionTokens = usage.OutputTokens,
             CacheHitTokens = usage.CacheReadTokens,
             CacheWriteTokens = usage.CacheCreationTokens,
+            CacheWrite1hTokens = usage.CacheCreation1hTokens,
             CacheMissTokens = usage.CacheMissTokens,
             Model = ResolveModel(config),
             Metadata = metadata.Build().ToDictionary(),
@@ -1317,7 +1319,7 @@ public partial class AnthropicLlmProvider : HttpLlmProviderBase
     /// everything that was not a read.
     /// </remarks>
     private readonly record struct AnthropicUsage(
-        int InputTokens, int OutputTokens, int? CacheCreationTokens, int? CacheReadTokens)
+        int InputTokens, int OutputTokens, int? CacheCreationTokens, int? CacheReadTokens, int? CacheCreation1hTokens = null)
     {
         public int PromptTokens => InputTokens + (CacheCreationTokens ?? 0) + (CacheReadTokens ?? 0);
 
@@ -1339,7 +1341,10 @@ public partial class AnthropicLlmProvider : HttpLlmProviderBase
             InputTokens: ReadInt(usage, "input_tokens") ?? 0,
             OutputTokens: ReadInt(usage, "output_tokens") ?? 0,
             CacheCreationTokens: ReadInt(usage, "cache_creation_input_tokens"),
-            CacheReadTokens: ReadInt(usage, "cache_read_input_tokens"));
+            CacheReadTokens: ReadInt(usage, "cache_read_input_tokens"),
+            CacheCreation1hTokens: usage.TryGetProperty("cache_creation", out var creation) && creation.ValueKind == JsonValueKind.Object
+                ? ReadInt(creation, "ephemeral_1h_input_tokens")
+                : null);
     }
 
     private static int? ReadInt(JsonElement element, string propertyName) =>

@@ -35,6 +35,47 @@ public sealed class RateLimitResetHeadersTests
         Assert.Equal(TimeSpan.FromMilliseconds(2500), parsed.Wait);
     }
 
+    [Fact]
+    [Trait("BR", "R-09")]
+    public void ShouldWaitRetryAfterMs_WhenBothRetryAfterHeadersAreSent()
+    {
+        var now = new DateTimeOffset(2026, 10, 31, 12, 0, 0, TimeSpan.Zero);
+        using var response = new HttpResponseMessage(HttpStatusCode.TooManyRequests);
+        response.Headers.TryAddWithoutValidation("Retry-After", "1");
+        response.Headers.TryAddWithoutValidation("retry-after-ms", "200");
+
+        var parsed = RateLimitResetHeaders.Parse(response.Headers, now);
+
+        Assert.Equal(TimeSpan.FromMilliseconds(200), parsed.Wait);
+    }
+
+    [Fact]
+    [Trait("BR", "R-09")]
+    public void ShouldKeepLongerReset_WhenResetHeaderExceedsRetryAfterMs()
+    {
+        var now = new DateTimeOffset(2026, 10, 31, 12, 0, 0, TimeSpan.Zero);
+        using var response = new HttpResponseMessage(HttpStatusCode.TooManyRequests);
+        response.Headers.TryAddWithoutValidation("Retry-After", "60");
+        response.Headers.TryAddWithoutValidation("retry-after-ms", "200");
+        response.Headers.TryAddWithoutValidation("x-ratelimit-reset-requests", "5s");
+
+        var parsed = RateLimitResetHeaders.Parse(response.Headers, now);
+
+        Assert.Equal(TimeSpan.FromSeconds(5), parsed.Wait);
+    }
+
+    [Fact]
+    [Trait("BR", "R-43")]
+    public void ShouldRaiseRateLimit_WhenRetryAfterMsIsOutOfRange()
+    {
+        var now = new DateTimeOffset(2026, 10, 31, 12, 0, 0, TimeSpan.Zero);
+        using var response = new HttpResponseMessage(HttpStatusCode.TooManyRequests);
+        response.Headers.TryAddWithoutValidation("retry-after-ms", "1e300");
+
+        Assert.Throws<Orkeon.Domain.Exceptions.LlmRateLimitException>(
+            () => RateLimitResetHeaders.WindowOf(response, now, TimeSpan.FromHours(1)));
+    }
+
     [Theory]
     [InlineData("soon")]
     [InlineData("")]

@@ -131,8 +131,8 @@ public sealed partial class ModelPricingRegistry : IModelPricingRegistry
         Register("o3-mini", 1.10m, 4.40m);
 
         // Anthropic models — vendor pricing page read 2026-10-30 (#257). Every entry carries the
-        // prompt-cache rates: a write at 1.25x the prompt rate (the 5-minute TTL — the 1-hour TTL
-        // writes at 2x, but the usage event carries no TTL, so the cost assumes the 5-minute rate),
+        // prompt-cache rates: a write at 1.25x the prompt rate (the 5-minute TTL; the 1-hour share
+        // of a write is costed at 2x by the cost manager),
         // a read at 0.1x the prompt rate unless the page states another figure. Sonnet 5's
         // introductory 2 / 10 is its standard price; Fable 5.1 and Fable 5 share the top tier.
         RegisterAnthropic("claude-fable-5-1", 10.00m, 50.00m, cacheReadPricePerMillion: 0.25m);
@@ -150,6 +150,8 @@ public sealed partial class ModelPricingRegistry : IModelPricingRegistry
         RegisterAnthropic("claude-opus-4-8", 5.00m, 25.00m);
         RegisterAnthropic("claude-opus-4-7", 5.00m, 25.00m);
         RegisterAnthropic("claude-opus-4-6", 5.00m, 25.00m);
+        // Opus 4.5 is priced at the Opus 5 tier, below Opus 4 and 4.1.
+        RegisterAnthropic("claude-opus-4-5", 5.00m, 25.00m);
         RegisterAnthropic("claude-opus-4", 15.00m, 75.00m);
         RegisterAnthropic("claude-sonnet-4", 3.00m, 15.00m);
         RegisterAnthropic("claude-3-opus", 15.00m, 75.00m);

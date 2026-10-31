@@ -11,6 +11,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 **Breaking**: a second `.when()` on one task throws an `InvalidScriptException` naming the task; a non-array `state`, a non-object `fallback` and a non-string `choice` value, `score` entry or `fallback` value are refused at load naming the task and the key; two tasks with the same name are refused at load. A task without `.name()` is keyed by its full description (truncation is display only). `task.d.ts` documents `fallback` as strings and the decision model (`IDecisionModel`), and `examples/scripting/09-decision-and-when.ork.ts` shows a decision with `when` fan-out.
 
+### Fixed — rate-limit wait, effort and cache refusals at load, Anthropic cost grid (R-09, R-40, R-41, R-42, R-43, R-44, R-45, R-47, R-58)
+
+`retry-after-ms` now takes priority over `Retry-After` and is then compared with the reset headers (the longer wins);
+a value beyond the window raises `LlmRateLimitException`, never `OverflowException`. A thinking `effort` outside
+`low`, `medium`, `high`, `xhigh`, `max` (exact case) refuses the load in the YAML mapper and in `Llm:Thinking`
+(`LlmThinkingConfig.ValidateEffort`) instead of falling back to `low`; the per-model effort table is deferred
+(`docs/reference/limitations.md`). A cache `ttl` without `system` or `tools` is refused by the YAML block as the script
+and `Llm:Cache` already did, and the Studio settings validator checks `Llm:Cache:Ttl` and `Llm:Thinking:Effort` with the same domain rules
+(`LlmCacheConfig.Request` throws). The chat client adapter drops a host `Llm:Cache` for a provider whose cache is implicit, so
+`orkeon run` no longer logs a `cache_ttl` warning on every OpenAI call. `claude-opus-4-5` (dated ids included) is priced at the
+official 5 / 25 $/M instead of the `claude-opus-4` prefix's 15 / 75, and the 1-hour share of a cache write
+(`usage.cache_creation.ephemeral_1h_input_tokens`) is read by `AnthropicLlmProvider`, buffered and streamed, and costed at 2x
+the prompt rate: `LlmResponse.CacheWrite1hTokens` and `CostUsageEvent.CacheWrite1hTokens` are new (additive).
+
 ### Fixed — an exclusive launch stays exclusive until its work ends; the host-work memory exclusion holds (R-12, R-48, R-49, R-53, R-54, R-55, R-73)
 
 `cancel()` no longer frees an exclusive crew: the target is released when the work really stops (the `finally` of
@@ -93,8 +107,7 @@ prompt rate on every token. Every Anthropic entry now carries both rates (a writ
 at 0.1x, or the vendor's own figure: 0.20 $/M on Opus 5.5 and Sonnet 5.5, 0.25 $/M on Fable 5.1), `claude-haiku-5`
 is priced at 0.10 / 0.50, and `claude-opus-5-5` (4 / 20) and `claude-opus-4-6`, `-4-7`, `-4-8` (5 / 25) get their
 own entries since the `claude-opus-5` and `claude-opus-4` prefixes overcharged them. The write rate is the
-5-minute TTL's: the usage event carries no TTL, so a 1-hour write (2x) is costed at the 5-minute rate, as
-`docs/architecture/llm-providers.md` says.
+5-minute TTL's, 1.25x; the 1-hour share of a write is costed at 2x since the rc.6 review (R-47, below).
 
 ### Added — a script agent can request the prompt cache (#254)
 
@@ -337,7 +350,9 @@ constructing `ParallelProcessStrategy` passes a `CrewStrategyDependencies`.
 
 `RateLimitResetHeaders` reads the `retry-after-ms` header (milliseconds) that OpenAI and TypeSafe send beside
 `Retry-After`, so a 429 announcing a sub-second window is waited out for that window instead of the whole second
-`Retry-After` rounds it up to; the longest header still wins, a value that is not a finite number is ignored.
+`Retry-After` rounds it up to. `retry-after-ms` replaces `Retry-After`, the longest of it and the reset headers wins,
+a value that is not a finite number is ignored, and a finite value beyond the window fails with `LlmRateLimitException`
+(R-09, R-43).
 
 ### Fixed — the `orkeon-runners` image builds again
 

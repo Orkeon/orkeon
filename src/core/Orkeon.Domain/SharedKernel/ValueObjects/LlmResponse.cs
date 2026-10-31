@@ -23,6 +23,8 @@ public sealed record LlmResponse
     public int? CacheMissTokens { get; init; }
     /// <summary>Gets the number of prompt tokens written to the provider's prompt cache (Anthropic's <c>cache_creation_input_tokens</c>).</summary>
     public int? CacheWriteTokens { get; init; }
+    /// <summary>Gets the share of <see cref="CacheWriteTokens"/> written at the one-hour TTL (Anthropic's <c>cache_creation.ephemeral_1h_input_tokens</c>).</summary>
+    public int? CacheWrite1hTokens { get; init; }
     /// <summary>
     /// Gets the normalized prompt-cache hit ratio — <c>hit / (hit + miss)</c> per DeepSeek guideline §6.5 —
     /// or <see langword="null"/> when the provider reports no cache token breakdown. Monitor this:

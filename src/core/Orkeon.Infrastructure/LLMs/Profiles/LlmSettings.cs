@@ -391,10 +391,6 @@ public static class LlmSettings
         var systemPrompt = ReadBool(cache, "SystemPrompt") ?? false;
         var tools = ReadBool(cache, "Tools") ?? false;
         var ttl = string.IsNullOrWhiteSpace(cache["Ttl"]) ? null : cache["Ttl"]!.Trim();
-        if (ttl is not null && !systemPrompt && !tools)
-            throw new InvalidOperationException(
-                $"{cache.Path}:Ttl caches nothing on its own: set SystemPrompt or Tools to true.");
-
         try
         {
             return LlmCacheConfig.Request(systemPrompt, tools, ttl);
@@ -415,6 +411,18 @@ public static class LlmSettings
         var effort = string.IsNullOrWhiteSpace(thinking["Effort"]) ? null : thinking["Effort"];
         if (enabled is null && effort is null)
             return null;
+
+        if (effort is not null)
+        {
+            try
+            {
+                LlmThinkingConfig.ValidateEffort(effort);
+            }
+            catch (ArgumentException ex)
+            {
+                throw new InvalidOperationException($"{thinking.Path}:Effort: {ex.Message}", ex);
+            }
+        }
 
         return new LlmThinkingConfig
         {

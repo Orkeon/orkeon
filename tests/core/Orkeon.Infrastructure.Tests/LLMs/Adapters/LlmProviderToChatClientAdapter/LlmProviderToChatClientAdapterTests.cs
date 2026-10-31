@@ -60,6 +60,7 @@ public class LlmProviderToChatClientAdapterTests
     [Trait("BR", "CH-254")]
     public async Task ShouldKeepRequestedBreakpoints_WhenCallTtlOverridesTheTtl()
     {
+        _llmProvider.Capabilities = LlmProviderCapabilities.Unknown with { ExplicitPromptCaching = true };
         _llmProvider.SetChatResult(new LlmResponse { Content = "ok" });
         var baseConfig = LlmConfig.Create(TestModelName) with { Cache = new LlmCacheConfig { CacheTools = true, Ttl = "5m" } };
         using var adapter = new LlmProviderToChatClientAdapter(_llmProvider, baseConfig);
@@ -72,6 +73,19 @@ public class LlmProviderToChatClientAdapterTests
 
         var config = Assert.IsType<LlmConfig>(_llmProvider.LastChatConfig);
         Assert.Equal(new LlmCacheConfig { CacheTools = true, Ttl = "1h" }, config.Cache);
+    }
+
+    [Fact]
+    [Trait("BR", "R-44")]
+    public async Task ShouldDropBaseCache_WhenProviderCachesImplicitly()
+    {
+        _llmProvider.SetChatResult(new LlmResponse { Content = "ok" });
+        var baseConfig = LlmConfig.Create(TestModelName) with { Cache = new LlmCacheConfig { CacheTools = true, Ttl = "5m" } };
+        using var adapter = new LlmProviderToChatClientAdapter(_llmProvider, baseConfig);
+
+        await adapter.GetResponseAsync([new ChatMessage(ChatRole.User, "test")], null, TestContext.Current.CancellationToken);
+
+        Assert.Null(_llmProvider.LastChatConfig?.Cache);
     }
 
     [Fact]

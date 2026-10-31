@@ -74,10 +74,13 @@ public sealed partial class CostBudgetManager : ICostBudgetManager
         // PromptTokens already includes the cache tokens: only the remainder pays the plain prompt rate.
         // A rate the model does not declare falls back to the prompt rate.
         var write = usageEvent.CacheWriteTokens ?? 0;
+        // The one-hour share (a subset of the write) costs 2x the prompt rate, the rest the 5-minute write price.
+        var write1h = Math.Min(usageEvent.CacheWrite1hTokens, write);
         var read = usageEvent.CacheHitTokens ?? 0;
         var fresh = Math.Max(0, usageEvent.PromptTokens - write - read);
         return (fresh * pricing.PromptPricePerMillion
-                + write * (pricing.CacheWritePricePerMillion ?? pricing.PromptPricePerMillion)
+                + (write - write1h) * (pricing.CacheWritePricePerMillion ?? pricing.PromptPricePerMillion)
+                + write1h * 2m * pricing.PromptPricePerMillion
                 + read * (pricing.CacheReadPricePerMillion ?? pricing.PromptPricePerMillion)
                 + usageEvent.CompletionTokens * pricing.CompletionPricePerMillion) / 1_000_000m;
     }

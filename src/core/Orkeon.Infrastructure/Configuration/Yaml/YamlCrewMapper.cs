@@ -466,6 +466,18 @@ public sealed partial class YamlCrewMapper
     {
         if (yaml is null) return null;
         if (yaml.Enabled is null && string.IsNullOrWhiteSpace(yaml.Effort) && yaml.BudgetTokens is null) return null;
+        if (!string.IsNullOrWhiteSpace(yaml.Effort))
+        {
+            try
+            {
+                LlmThinkingConfig.ValidateEffort(yaml.Effort);
+            }
+            catch (ArgumentException ex)
+            {
+                throw new InvalidOperationException($"thinking.effort: {ex.Message}", ex);
+            }
+        }
+
         return new LlmThinkingConfig
         {
             Enabled = yaml.Enabled,

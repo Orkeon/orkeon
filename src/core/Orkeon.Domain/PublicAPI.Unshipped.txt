@@ -181,3 +181,6 @@ static Orkeon.Domain.SharedKernel.ValueObjects.LlmCacheConfig.Ttls.get -> System
 static Orkeon.Domain.SharedKernel.ValueObjects.LlmCacheConfig.Off.get -> Orkeon.Domain.SharedKernel.ValueObjects.LlmCacheConfig!
 Orkeon.Domain.SharedKernel.ValueObjects.LlmMessage.RawThinkingBlocks.get -> string?
 Orkeon.Domain.SharedKernel.ValueObjects.LlmMessage.RawThinkingBlocks.init -> void
+static Orkeon.Domain.SharedKernel.ValueObjects.LlmThinkingConfig.ValidateEffort(string! effort) -> string!
+Orkeon.Domain.SharedKernel.ValueObjects.LlmResponse.CacheWrite1hTokens.get -> int?
+Orkeon.Domain.SharedKernel.ValueObjects.LlmResponse.CacheWrite1hTokens.init -> void

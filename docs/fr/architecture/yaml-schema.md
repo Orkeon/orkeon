@@ -84,7 +84,7 @@ agents:
       topP: float         # Nucleus sampling, envoyé quelle que soit sa valeur — omis = celui du profil, sinon rien n'est envoyé (Mistral écrit 1)
       thinking:           # Contrôle du raisonnement (gaté par capacité selon le provider)
         enabled: bool
-        effort: string    # "low" | "medium" | "high" | "xhigh" | "max" (un provider envoie le niveau le plus proche que son champ connaît)
+        effort: string    # "low" | "medium" | "high" | "xhigh" | "max", casse exacte — toute autre valeur fait échouer le chargement (un provider envoie le niveau le plus proche que son champ connaît)
         budget_tokens: int # Honoré par Qwen seul ; les autres providers émettent un warning
       responseFormat: string # "text" (= défaut du provider) | "json_object" | "json_schema" — toute autre valeur est transmise telle quelle avec un warning
       responseSchema:     # Avec responseFormat: json_schema (un schéma seul implique json_schema)
@@ -94,7 +94,7 @@ agents:
       cache:              # Prompt caching explicite (Anthropic) ; désactivé tant qu'aucun breakpoint n'est demandé
         system: bool      # default: false
         tools: bool       # default: false
-        ttl: string       # p. ex. "1h" ; omis = défaut du fournisseur
+        ttl: string       # "5m" | "1h" ; omis = défaut du fournisseur. Sans system ni tools, il ne met rien en cache et fait échouer le chargement
     guardrails:           # Règles opérationnelles injectées dans le system prompt de l'agent (optionnel)
       preset: string      # "analysis" | "strict" | "creative" — tout autre nom fait échouer le chargement
       header: string      # En-tête de section — utilisé seulement sans preset (chaque preset apporte le sien)
