@@ -409,4 +409,133 @@ public sealed class TaskBuilderTests
         Assert.StartsWith("Task 'triage' decision:", message, StringComparison.Ordinal);
         Assert.Contains("longContext", message, StringComparison.Ordinal);
     }
+
+    [Fact]
+    [Trait("BR", "R-03")]
+    public void ShouldRefuseTask_WhenWhenIsCalledTwice()
+    {
+        var ex = Assert.ThrowsAny<Exception>(() => NewEngine().Evaluate("""
+            const writer = agentBuilder().name("writer").role("Writer").goal("Write").build();
+            taskBuilder().name("refund").agent(writer)
+                .description("Handle the refund").expectedOutput("A refund")
+                .when("triage", { category: ["bug"] })
+                .when("triage", "otherwise").build();
+            """));
+
+        Assert.Contains("InvalidScriptException", ex.GetType().Name + ex.InnerException?.GetType().Name, StringComparison.Ordinal);
+        Assert.Contains("refund", ex.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    [Trait("BR", "R-30")]
+    public void ShouldRefuseDecision_WhenStateIsNotAnArray()
+    {
+        var message = Refusal("""
+            const triage = taskBuilder().name("triage").decision({
+                questions: { category: { choice: { bug: "a defect" } } },
+                state: "intake",
+            }).build();
+            const allTasks = [intake, triage];
+            """);
+
+        Assert.Contains("Task 'triage'", message, StringComparison.Ordinal);
+        Assert.Contains("state", message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    [Trait("BR", "R-30")]
+    public void ShouldRefuseDecision_WhenFallbackIsNotAnObject()
+    {
+        var message = Refusal("""
+            const triage = taskBuilder().name("triage").decision({
+                questions: { category: { choice: { bug: "a defect" } } },
+                fallback: "bug",
+            }).build();
+            const allTasks = [intake, triage];
+            """);
+
+        Assert.Contains("Task 'triage'", message, StringComparison.Ordinal);
+        Assert.Contains("fallback", message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    [Trait("BR", "R-31")]
+    public void ShouldRefuseQuestion_WhenChoiceIsNotAnObjectOfStrings()
+    {
+        var message = Refusal("""
+            const triage = taskBuilder().name("triage").decision({
+                questions: { category: { choice: { bug: 3 } } },
+            }).build();
+            const allTasks = [intake, triage];
+            """);
+
+        Assert.Contains("Task 'triage'", message, StringComparison.Ordinal);
+        Assert.Contains("choice", message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    [Trait("BR", "R-31")]
+    public void ShouldRefuseQuestion_WhenScoreIsNotAnArray()
+    {
+        var message = Refusal("""
+            const triage = taskBuilder().name("triage").decision({
+                questions: { urgency: { score: "low" } },
+            }).build();
+            const allTasks = [intake, triage];
+            """);
+
+        Assert.Contains("Task 'triage'", message, StringComparison.Ordinal);
+        Assert.Contains("score", message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    [Trait("BR", "R-17")]
+    public void ShouldRefuseDecision_WhenConfidenceFloorIsNaN()
+    {
+        var message = Refusal("""
+            const triage = taskBuilder().name("triage").decision({
+                questions: { category: { choice: { bug: "a defect" } } },
+                minConfidence: NaN,
+            }).build();
+            const allTasks = [intake, triage];
+            """);
+
+        Assert.Contains("Task 'triage'", message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    [Trait("BR", "R-28")]
+    public void ShouldResolveState_WhenUnnamedTaskIsTargeted()
+    {
+        const string description = "Collect every detail of the customer ticket before the triage starts, in full";
+        var config = Configure($$"""
+            const raw = taskBuilder().agent(writer)
+                .description("{{description}}").expectedOutput("Details").build();
+            const triage = taskBuilder().name("triage").decision({
+                questions: { category: { choice: { bug: "a defect" } } },
+                state: ["{{description}}"],
+            }).build();
+            const allTasks = [intake, raw, triage];
+            """);
+
+        var raw = config.Tasks.Single(t => t.Description == description);
+        var triage = config.Tasks.Single(t => t.Key == "triage");
+        Assert.Equal(description, raw.Key);
+        Assert.Contains(raw.Id, triage.Dependencies);
+    }
+
+    [Fact]
+    [Trait("BR", "R-32")]
+    public void ShouldRefuseCrew_WhenTwoTasksShareAName()
+    {
+        var message = Refusal("""
+            const first = taskBuilder().name("report").agent(writer)
+                .description("Write the first report").expectedOutput("A report").build();
+            const second = taskBuilder().name("report").agent(writer)
+                .description("Write the second report").expectedOutput("A report").build();
+            const allTasks = [intake, first, second];
+            """);
+
+        Assert.Contains("'report'", message, StringComparison.Ordinal);
+    }
 }

@@ -38,11 +38,13 @@ internal static class JsDecisionMapper
                         ? Convert.ToDouble(floor, CultureInfo.InvariantCulture)
                         : throw new ArgumentException("minConfidence must be a number.")
                     : null,
-                map.TryGetValue("state", out var state) ? Strings(state) : null,
+                map.TryGetValue("state", out var state)
+                    ? Strings(state) ?? throw new ArgumentException("state must be an array of task names.")
+                    : null,
                 map.TryGetValue("longContext", out var longContext) && longContext is not null
                     && (longContext is bool flag ? flag : throw new ArgumentException("longContext must be a bool.")),
-                map.TryGetValue("fallback", out var fallback) && AsMap(fallback) is { } answers
-                    ? answers.ToDictionary(a => a.Key, a => Convert.ToString(a.Value, CultureInfo.InvariantCulture)!)
+                map.TryGetValue("fallback", out var fallback)
+                    ? StringMap(fallback, "fallback", "an object of strings")
                     : null);
         }
         catch (Exception ex) when (ex is ArgumentException or FormatException or InvalidCastException or OverflowException)
@@ -97,10 +99,10 @@ internal static class JsDecisionMapper
         if (kinds.Count > 1)
             throw new ArgumentException($"declares more than one kind ({string.Join(", ", kinds)}); a question has exactly one.");
         var instructions = question.TryGetValue("instructions", out var i) ? i?.ToString() ?? string.Empty : string.Empty;
-        if (question.TryGetValue("choice", out var choice) && AsMap(choice) is { } options)
-            return ChoiceQuestionSpec.Create(name, instructions, options.ToDictionary(o => o.Key, o => o.Value?.ToString() ?? string.Empty));
-        if (question.TryGetValue("score", out var score) && Strings(score) is { } levels)
-            return ScoreQuestionSpec.Create(name, instructions, levels);
+        if (question.TryGetValue("choice", out var choice))
+            return ChoiceQuestionSpec.Create(name, instructions, StringMap(choice, "choice", "an object of strings"));
+        if (question.TryGetValue("score", out var score))
+            return ScoreQuestionSpec.Create(name, instructions, Strings(score) ?? throw new ArgumentException("score must be an array of strings."));
         return YesNoQuestionSpec.Create(name, question.TryGetValue("noul", out var statement) ? statement?.ToString() ?? string.Empty : string.Empty);
     }
 
@@ -115,5 +117,10 @@ internal static class JsDecisionMapper
     private static IDictionary<string, object?>? AsMap(object? value) => value as IDictionary<string, object?>;
 
     private static List<string>? Strings(object? value) =>
-        value is IEnumerable<object?> items ? items.Select(o => o?.ToString() ?? string.Empty).ToList() : null;
+        value is IEnumerable<object?> items && items.All(o => o is string) ? items.Select(o => (string)o!).ToList() : null;
+
+    private static Dictionary<string, string> StringMap(object? value, string part, string expected) =>
+        AsMap(value) is { } map && map.Values.All(v => v is string)
+            ? map.ToDictionary(e => e.Key, e => (string)e.Value!)
+            : throw new ArgumentException($"{part} must be {expected}.", part);
 }

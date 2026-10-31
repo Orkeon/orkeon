@@ -59,6 +59,7 @@ public sealed class ProceduralExamplesUnderSuspendingProviderTests
         "05-state-with-and-lock.ork.ts",
         "06-custom-tool-and-hooks.ork.ts",
         "07-fsm-and-graph.ork.ts",
+        "09-decision-and-when.ork.ts",
         "09-tools-and-act.ork.ts",
         "10-inputs-and-memory.ork.ts",
         "11-await-before-run.ork.ts",

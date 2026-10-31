@@ -29,14 +29,46 @@ public sealed class DecisionTypingsTests
         const other = taskBuilder().name("other").when("triage", "otherwise");
         """;
 
-    [Fact]
-    [Trait("BR", "UC-01")]
-    [Trait("BR", "UC-04")]
-    public async Task ShouldTypeCheck_WhenTypingsDeclareDecisionFallbackAndWhen()
-    {
-        var diagnostics = await TypeCheckAsync(DecisionScript);
+    private const string CrewScript = """
+        const triager = agentBuilder().name("triager").role("Triage").goal("Sort tickets").build();
+        const triage = taskBuilder().name("triage").decision({
+            questions: { category: { choice: { bug: "a defect", billing: "money" } } },
+            state: ["intake"],
+            fallback: { category: "bug" },
+        });
+        const intake = taskBuilder().name("intake");
+        const refund = taskBuilder().name("refund").when("triage", { category: ["billing"] });
+        const other = taskBuilder().name("other").when("triage", "otherwise");
+        const crew = crewBuilder().name("desk").withAgent(triager).build();
+        """;
 
-        Assert.Equal(string.Empty, diagnostics);
+    [Fact]
+    [Trait("BR", "R-33")]
+    [Trait("BR", "R-34")]
+    public async Task ShouldTypeCheck_WhenCrewIsBuiltWithTasksAndDecision()
+    {
+        var inline = await TypeCheckAsync(CrewScript);
+        Assert.Equal(0, inline.ExitCode);
+        Assert.Equal(string.Empty, inline.Output);
+
+        var example = FindUp(Path.Combine("examples", "scripting", "09-decision-and-when.ork.ts"));
+        Assert.True(example is not null, "examples/scripting/09-decision-and-when.ork.ts is missing.");
+        var shipped = await TypeCheckAsync(await File.ReadAllTextAsync(example!, TestContext.Current.CancellationToken));
+        Assert.Equal(0, shipped.ExitCode);
+        Assert.Equal(string.Empty, shipped.Output);
+    }
+
+    [Fact]
+    [Trait("BR", "R-33")]
+    public async Task ShouldFailTypeCheck_WhenDecisionHasWrongFallbackType()
+    {
+        var script = CrewScript.Replace("fallback: { category: \"bug\" }", "fallback: { bug: 3 }", StringComparison.Ordinal);
+
+        var result = await TypeCheckAsync(script);
+
+        Assert.NotEqual(0, result.ExitCode);
+        Assert.Contains("TS2322", result.Output, StringComparison.Ordinal);
+        Assert.Contains("'number' is not assignable to type 'string'", result.Output, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -46,7 +78,7 @@ public sealed class DecisionTypingsTests
         var script = DecisionScript.Replace("minConfidence: 0.5", "minConfidence: \"high\"", StringComparison.Ordinal);
         var expectedLine = script.Split('\n').ToList().FindIndex(l => l.Contains("minConfidence: \"high\"", StringComparison.Ordinal)) + 1;
 
-        var diagnostics = await TypeCheckAsync(script);
+        var diagnostics = (await TypeCheckAsync(script)).Output;
 
         Assert.Contains("TS2322", diagnostics, StringComparison.Ordinal);
         Assert.Contains("'string' is not assignable to type 'number'", diagnostics, StringComparison.Ordinal);
@@ -70,7 +102,7 @@ public sealed class DecisionTypingsTests
             .SelectMany(d => new[] { Path.Combine(d, program), Path.Combine(d, program + ".exe") })
             .FirstOrDefault(File.Exists);
 
-    private static async Task<string> TypeCheckAsync(string script)
+    private static async Task<(int ExitCode, string Output)> TypeCheckAsync(string script)
     {
         var typings = FindUp(Path.Combine("src", "scripting", "Orkeon.Scripting", "Typings"));
         var tsc = FindUp(Path.Combine("tools", "scripting-typecheck", "node_modules", "typescript", "bin", "tsc"));
@@ -102,9 +134,10 @@ public sealed class DecisionTypingsTests
                 psi.ArgumentList.Add(f);
 
             using var process = Process.Start(psi)!;
-            var output = await process.StandardOutput.ReadToEndAsync(TestContext.Current.CancellationToken);
+            var stdout = process.StandardOutput.ReadToEndAsync(TestContext.Current.CancellationToken);
+            var stderr = process.StandardError.ReadToEndAsync(TestContext.Current.CancellationToken);
             await process.WaitForExitAsync(TestContext.Current.CancellationToken);
-            return output.Trim();
+            return (process.ExitCode, ((await stdout) + (await stderr)).Trim());
         }
         finally
         {

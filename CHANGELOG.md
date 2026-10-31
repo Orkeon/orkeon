@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — the scripting DSL refuses ill-formed decision and `when` forms at load; a decision-and-`when` example ships (R-03, R-28, R-30, R-31, R-32, R-34)
+
+**Breaking**: a second `.when()` on one task throws an `InvalidScriptException` naming the task; a non-array `state`, a non-object `fallback` and a non-string `choice` value, `score` entry or `fallback` value are refused at load naming the task and the key; two tasks with the same name are refused at load. A task without `.name()` is keyed by its full description (truncation is display only). `task.d.ts` documents `fallback` as strings and the decision model (`IDecisionModel`), and `examples/scripting/09-decision-and-when.ork.ts` shows a decision with `when` fan-out.
+
 ### Fixed — an exclusive launch stays exclusive until its work ends; the host-work memory exclusion holds (R-12, R-48, R-49, R-53, R-54, R-55, R-73)
 
 `cancel()` no longer frees an exclusive crew: the target is released when the work really stops (the `finally` of

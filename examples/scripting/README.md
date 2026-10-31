@@ -22,6 +22,7 @@ and refuses the echo rather than misfile your mail (see below).
 | `07-fsm-and-graph.ork.ts` | `stateMachine` and `stateGraph` literal forms |
 | `08-rag.ork.ts` | First-class `rag.ingest` / `rag.query` over the RAG subsystem (offline) |
 | `09-tools-and-act.ork.ts` | The three tool surfaces, then `ctx.llm.act` — the tool-calling loop |
+| `09-decision-and-when.ork.ts` | A decision task (`choice`, `score`, `fallback`, `minConfidence`) and `when(...)` fan-out tasks, `"otherwise"` included |
 | `10-inputs-and-memory.ork.ts` | `globalThis.inputs`, agent state, crew memory, `ErrorAction.retry` |
 | `11-await-before-run.ork.ts` | A file read as the first top-level await, `crew.run()` as the second |
 | `12-events-async-handlers.ork.ts` | Topic handlers that await the LLM, then two crews run in sequence |
