@@ -123,6 +123,9 @@ public sealed class FileSessionBufferService : ISessionBufferService
     /// <inheritdoc />
     public void ReplaceMessages(IReadOnlyList<SessionMessage> messages) => _inner.ReplaceMessages(messages);
     /// <inheritdoc />
+    public void AppendMessage(SessionMessage message) => _inner.AppendMessage(message);
+
+    /// <inheritdoc />
     public bool AppendNote(string note) => _inner.AppendNote(note);
     /// <inheritdoc />
     public SessionMetadata GetMetadata() => _inner.GetMetadata();

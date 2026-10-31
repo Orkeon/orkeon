@@ -116,6 +116,7 @@ public sealed class TuiFidelityWiringInterruptTests
         public IReadOnlyList<SessionMessage> GetMessages() => [];
         public void ReplaceMessages(IReadOnlyList<SessionMessage> messages) { }
         public bool AppendNote(string note) => false;
+        public void AppendMessage(SessionMessage message) { }
         public SessionMetadata GetMetadata() => new() { SessionId = "s" };
         public bool SetTitle(string title) => false;
         public int Truncate(int retainCount) => 0;

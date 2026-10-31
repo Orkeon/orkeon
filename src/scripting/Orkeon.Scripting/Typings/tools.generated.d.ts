@@ -1204,21 +1204,26 @@ declare global {
             readonly total_tokens: number;
         }>;
 
-        /** `session_store` - Read, write, truncate, and annotate the current session conversation buffer and metadata. */
+        /** `session_store` - Read, write, append to, truncate, and annotate the current session conversation buffer and metadata; get_state reads one key or several (keys), set_state writes one (key, value) or several (values) and removes several (keys). */
         sessionStore(input?: {
+            content?: string | null;
             key?: string | null;
+            keys?: readonly string[] | null;
             messages?: readonly unknown[] | null;
             note?: string | null;
             operation?: string;
             retain_count?: number;
+            role?: string | null;
             title?: string | null;
             value?: string | null;
+            values?: Record<string, string> | null;
         }, ctx?: ExecutionContext): Promise<{
             readonly messages?: readonly unknown[];
             readonly metadata?: unknown;
             readonly removed_count: number;
             readonly success: boolean;
             readonly value?: string;
+            readonly values?: Record<string, string>;
         }>;
 
         /** `shell_command` - Execute shell commands with security controls. Supports allowlist/blocklist, timeout, and output capture. */

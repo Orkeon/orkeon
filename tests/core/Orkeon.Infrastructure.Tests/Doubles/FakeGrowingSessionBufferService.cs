@@ -32,6 +32,8 @@ public sealed class FakeGrowingSessionBufferService : ISessionBufferService
     /// <inheritdoc />
     public bool AppendNote(string note) => _inner.AppendNote(note);
 
+    public void AppendMessage(SessionMessage message) => _inner.AppendMessage(message);
+
     /// <inheritdoc />
     public SessionMetadata GetMetadata() => _inner.GetMetadata();
 

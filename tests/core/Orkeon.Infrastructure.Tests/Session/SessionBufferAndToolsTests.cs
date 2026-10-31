@@ -239,6 +239,93 @@ public sealed class SessionBufferAndToolsTests
     }
 
     [Fact]
+    public async Task ShouldReadSeveralKeysInOneCall_WhenGetStateTakesKeys()
+    {
+        var buffer = new InMemorySessionBufferService();
+        buffer.SetState("a", "1");
+        buffer.SetState("b", "2");
+        using var tool = new SessionStoreTool(buffer);
+
+        var resp = await tool.CallAsync(new ToolCallRequest("session_store", new Dictionary<string, object?>
+        {
+            ["operation"] = "get_state",
+            ["keys"] = new List<string> { "a", "b", "missing" },
+        }), TestContext.Current.CancellationToken);
+
+        var dict = ResultDict(resp);
+        var values = Assert.IsType<System.Collections.IDictionary>(dict["values"], exactMatch: false);
+        Assert.Equal("1", values["a"]);
+        Assert.Equal("2", values["b"]);
+        Assert.Null(values["missing"]);
+        Assert.True(!dict.TryGetValue("value", out var v) || v is null);
+    }
+
+    [Fact]
+    public async Task ShouldWriteAndRemoveSeveralKeysInOneCall_WhenSetStateTakesValuesAndKeys()
+    {
+        var buffer = new InMemorySessionBufferService();
+        buffer.SetState("gone", "x");
+        using var tool = new SessionStoreTool(buffer);
+
+        var resp = await tool.CallAsync(new ToolCallRequest("session_store", new Dictionary<string, object?>
+        {
+            ["operation"] = "set_state",
+            ["values"] = new Dictionary<string, object?> { ["a"] = "1", ["b"] = "2" },
+            ["keys"] = new List<string> { "gone" },
+        }), TestContext.Current.CancellationToken);
+
+        ResultDict(resp);
+        Assert.Equal("1", buffer.GetState("a"));
+        Assert.Equal("2", buffer.GetState("b"));
+        Assert.Null(buffer.GetState("gone"));
+    }
+
+    [Fact]
+    public async Task ShouldAppendOneMessageWithoutReturningTheBuffer_WhenAppendMessageCalled()
+    {
+        var buffer = new InMemorySessionBufferService();
+        buffer.ReplaceMessages([Msg("user", "first"), Msg("assistant", "second")]);
+        using var tool = new SessionStoreTool(buffer);
+
+        var resp = await tool.CallAsync(new ToolCallRequest("session_store", new Dictionary<string, object?>
+        {
+            ["operation"] = "append_message",
+            ["role"] = "assistant",
+            ["content"] = "third",
+        }), TestContext.Current.CancellationToken);
+
+        var dict = ResultDict(resp);
+        Assert.True(!dict.TryGetValue("messages", out var m) || m is null);
+        var messages = buffer.GetMessages();
+        Assert.Equal(3, messages.Count);
+        Assert.Equal("assistant", messages[^1].Role);
+        Assert.Equal("third", messages[^1].Content);
+        Assert.Equal("first", messages[0].Content);
+    }
+
+    [Fact]
+    public async Task ShouldRefuseAppendMessage_WhenRoleOrContentMissing()
+    {
+        var buffer = new InMemorySessionBufferService();
+        using var tool = new SessionStoreTool(buffer);
+
+        var noRole = await tool.CallAsync(new ToolCallRequest("session_store", new Dictionary<string, object?>
+        {
+            ["operation"] = "append_message",
+            ["content"] = "text",
+        }), TestContext.Current.CancellationToken);
+        var noContent = await tool.CallAsync(new ToolCallRequest("session_store", new Dictionary<string, object?>
+        {
+            ["operation"] = "append_message",
+            ["role"] = "user",
+        }), TestContext.Current.CancellationToken);
+
+        Assert.False(noRole.Success);
+        Assert.False(noContent.Success);
+        Assert.Equal(0, buffer.MessageCount);
+    }
+
+    [Fact]
     public async Task SessionStore_state_ops_without_key_fail()
     {
         var buffer = new InMemorySessionBufferService();
