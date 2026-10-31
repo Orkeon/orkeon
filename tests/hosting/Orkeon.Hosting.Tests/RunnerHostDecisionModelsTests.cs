@@ -3,7 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Orkeon.Application.Interfaces.Ports;
 using Orkeon.Constants.Llm;
-using Orkeon.Infrastructure.Decision.TypeSafe;
+using Orkeon.Infrastructure.Decision.SystemOne;
 
 namespace Orkeon.Hosting.Tests;
 
@@ -29,7 +29,7 @@ public sealed class RunnerHostDecisionModelsTests
 
         var descriptor = Assert.Single(services, d => d.ServiceType == typeof(IDecisionModel));
         Assert.NotNull(descriptor.ImplementationFactory);
-        Assert.Contains(services, d => d.ServiceType == typeof(TypeSafeDecisionModel));
+        Assert.Contains(services, d => d.ServiceType == typeof(SystemOneDecisionModel));
     }
 
     [Fact]
@@ -45,7 +45,7 @@ public sealed class RunnerHostDecisionModelsTests
 
         var descriptor = Assert.Single(services, d => d.ServiceType == typeof(IDecisionModel));
         Assert.NotNull(descriptor.ImplementationFactory);
-        Assert.Contains(services, d => d.ServiceType == typeof(TypeSafeDecisionModel));
+        Assert.Contains(services, d => d.ServiceType == typeof(SystemOneDecisionModel));
     }
 
     [Fact]
@@ -59,6 +59,6 @@ public sealed class RunnerHostDecisionModelsTests
         var services = Register(new Dictionary<string, string?> { ["Orkeon:Decision:Enabled"] = "true" });
 
         Assert.DoesNotContain(services, d => d.ServiceType == typeof(IDecisionModel));
-        Assert.DoesNotContain(services, d => d.ServiceType == typeof(TypeSafeDecisionModel));
+        Assert.DoesNotContain(services, d => d.ServiceType == typeof(SystemOneDecisionModel));
     }
 }

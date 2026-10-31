@@ -182,7 +182,7 @@ closed list, and what it means.
 <!-- settings-index -->
 | Category | Sections | Keys |
 |---|---|---|
-| [Models](#models) | [`Evaluation`](#evaluation), [`Llm`](#llm), [`LlmLogging`](#llmlogging), [`Orkeon:CostTracking`](#orkeoncosttracking), [`Orkeon:Decision`](#orkeondecision), [`Orkeon:TokenCounter`](#orkeontokencounter), [`Orkeon:TypeSafe`](#orkeontypesafe) | 81 |
+| [Models](#models) | [`Evaluation`](#evaluation), [`Llm`](#llm), [`LlmLogging`](#llmlogging), [`Orkeon:CostTracking`](#orkeoncosttracking), [`Orkeon:Decision`](#orkeondecision), [`Orkeon:Decision:Guard`](#orkeondecisionguard), [`Orkeon:TokenCounter`](#orkeontokencounter), [`Orkeon:TypeSafe`](#orkeontypesafe) | 81 |
 | [Rate and budgets](#rate-and-budgets) | [`RateLimiting`](#ratelimiting), [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting) | 11 |
 | [Memory and vectors](#memory-and-vectors) | [`Memory`](#memory), [`Orkeon:ChromaDb`](#orkeonchromadb), [`Orkeon:CognitiveMemory`](#orkeoncognitivememory), [`Orkeon:CrewMemory`](#orkeoncrewmemory), [`Orkeon:EmbeddingCache`](#orkeonembeddingcache), [`Orkeon:Embeddings`](#orkeonembeddings), [`Orkeon:Encryption`](#orkeonencryption), [`Orkeon:LanceDb`](#orkeonlancedb), [`Orkeon:Pinecone`](#orkeonpinecone), [`Orkeon:Redis`](#orkeonredis), [`Orkeon:Sqlite`](#orkeonsqlite), [`Orkeon:VectorSearch`](#orkeonvectorsearch) | 58 |
 | [RAG](#rag) | [`Orkeon:Rag`](#orkeonrag), [`Orkeon:Rag:Ingestion`](#orkeonragingestion), [`Orkeon:Rag:QueryRouting`](#orkeonragqueryrouting), [`Orkeon:Rag:Retrieval:Hybrid`](#orkeonragretrievalhybrid), [`Orkeon:Rag:WebFallback`](#orkeonragwebfallback) | 34 |
@@ -194,7 +194,7 @@ closed list, and what it means.
 | [Service host and A2A](#service-host-and-a2a) | [`A2A`](#a2a), [`A2A:Security`](#a2asecurity), [`A2A:Security:AzureAD`](#a2asecurityazuread), [`A2A:Security:Oidc`](#a2asecurityoidc), [`Orkeon:Host`](#orkeonhost), [`Orkeon:Host:Discord`](#orkeonhostdiscord) | 46 |
 | [Observability](#observability) | [`Logging`](#logging), [`Orkeon:Monitoring`](#orkeonmonitoring), [`Telemetry`](#telemetry) | 8 |
 
-74 sections, 423 keys. Read by no shipped binary, only by a host written in C# (10): [`Evaluation`](#evaluation), [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:CognitiveMemory`](#orkeoncognitivememory), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Checkpointing`](#orkeoncheckpointing), [`Orkeon:ExecutionState:Persistence`](#orkeonexecutionstatepersistence), [`Orkeon:Monitoring`](#orkeonmonitoring).
+75 sections, 423 keys. Read by no shipped binary, only by a host written in C# (10): [`Evaluation`](#evaluation), [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:CognitiveMemory`](#orkeoncognitivememory), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Checkpointing`](#orkeoncheckpointing), [`Orkeon:ExecutionState:Persistence`](#orkeonexecutionstatepersistence), [`Orkeon:Monitoring`](#orkeonmonitoring).
 <!-- /settings-index -->
 
 How to read a table:
@@ -649,26 +649,21 @@ second call registers no evaluator twice).
 
 ### `Orkeon:TypeSafe`
 
-The decision model TypeSafe (Jev), bound by `AddOrkeonTypeSafe(configuration)`, which the three
+The decision model TypeSafe (Jev), bound by `AddOrkeonDecisionProvider(configuration, provider)`, which the three
 shipped binaries call when this section is present — even empty, `TypeSafe: {}` counts — or `TYPESAFE_API_KEY` is set: the key, the
-endpoint, the default model, the timeout and retries of each call, and the agent input guard
-(`Guard`). See [Decision models](../architecture/decision-models.md).
+endpoint, the default model, the timeout and retries of each call, (the agent input guard is
+[`Orkeon:Decision:Guard`](#orkeondecisionguard)). See [Decision models](../architecture/decision-models.md).
 
 <!-- settings:Orkeon:TypeSafe -->
 **Read by**: `orkeon`, `orkeon-host`, `orkeon-repl`.
 
 | Key | Type | Default | Meaning |
 |---|---|---|---|
-| `ApiKey` | string, secret | — | The API key. Discouraged in a settings file: leave it empty and set the variable `ApiKeyEnvVar` names. |
+| `ApiKey` | string, secret | — | The API key. |
 | `ApiKeyEnvVar` | string | `"TYPESAFE_API_KEY"` | The environment variable read when `ApiKey` is empty. |
-| `BaseUrl` | uri | `"https://api.typesafe.ai/v1"` | The API root; `/systemone` is appended to it. |
-| `Guard:BlockThreshold` | number | `0.8` | The probability at or over which a risk blocks the input. |
-| `Guard:Enabled` | boolean | `false` | Whether the guard runs; off by default. |
-| `Guard:FailClosed` | boolean | `false` | Whether an unreachable decision model blocks the input; false warns and lets it in. |
-| `Guard:Risks:<name>` | string | — | The risks detected, each with what it is; empty takes `TypeSafeInputGuard.DefaultRisks`. |
-| `Guard:WarnThreshold` | number | `0.5` | The probability at or over which a risk is a warning. |
-| `MaxRetries` | integer | `3` | The retries after a 429, a 529, another 5xx or a network error. |
-| `Model` | string | `"jev-latest"` | The model a request naming none runs on. |
+| `BaseUrl` | uri | `"https://api.typesafe.ai/v1"` | The API root. |
+| `MaxRetries` | integer | `3` | The retries. |
+| `Model` | string | `"jev-latest"` | The default model. |
 | `TimeoutSeconds` | integer | `30` | The HTTP timeout of one attempt, in seconds. |
 <!-- /settings -->
 
@@ -699,6 +694,24 @@ call. A crew uses one like any profile, `llm: { profile: <name> }`. See
 | `Profiles:<name>:Stages:<i>:Routes:<name>` | string | — | The profiles a `route` may choose, each with what it is for. |
 | `Profiles:<name>:Stages:<i>:WarnThreshold` | number | `0.3` | The probability at or over which a `guard` logs a warning. |
 | `Profiles:<name>:Target` | string | `""` | The profile a call goes to when no stage routes it; `default` is the `Llm` section. |
+<!-- /settings -->
+
+### `Orkeon:Decision:Guard`
+
+The agent input guard, registered with the decision model by `AddOrkeonDecisionProvider`: it judges
+the input with that model, in the `Input` phase, beside the built-in guard. See
+[Decision models](../architecture/decision-models.md).
+
+<!-- settings:Orkeon:Decision:Guard -->
+**Read by**: `orkeon`, `orkeon-host`, `orkeon-repl`.
+
+| Key | Type | Default | Meaning |
+|---|---|---|---|
+| `BlockThreshold` | number | `0.8` | The probability at or over which a risk blocks the input. |
+| `Enabled` | boolean | `false` | Whether the guard runs; off by default. |
+| `FailClosed` | boolean | `false` | Whether an unreachable decision model blocks the input; false warns and lets it in. |
+| `Risks:<name>` | string | — | The risks detected, each with what it is; empty takes the default risks. |
+| `WarnThreshold` | number | `0.5` | The probability at or over which a risk is a warning. |
 <!-- /settings -->
 
 ## Rate and budgets

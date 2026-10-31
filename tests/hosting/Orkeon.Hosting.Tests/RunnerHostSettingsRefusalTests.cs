@@ -132,7 +132,7 @@ public sealed class RunnerHostSettingsRefusalTests : IDisposable
         { "ScriptingToolchainOptions", "Orkeon:Scripting:Toolchain:EsbuildTimeout", "soon", "Orkeon:Scripting:Toolchain:EsbuildTimeout" },
         { "ScriptAgentMemoryOptions", "Orkeon:Scripting:AgentMemory:RootDirectory", "", "Orkeon:Scripting:AgentMemory:RootDirectory" },
         { "DecisionCircuitOptions", "Orkeon:Decision:Enabled", "sometimes", "Orkeon:Decision:Enabled" },
-        { "TypeSafeOptions", "Orkeon:TypeSafe:MaxRetries", "many", "Orkeon:TypeSafe:MaxRetries" },
+        { "SystemOneProviderOptions", "Orkeon:TypeSafe:MaxRetries", "many", "Orkeon:TypeSafe:MaxRetries" },
         { "DecisionProfilesOptions", "Orkeon:Decision:Profiles:triage:Target", "cheap", "Orkeon:Decision:Profiles:triage:Stages" },
         { "TelemetryOptions", "Telemetry:Enabled", "maybe", "Telemetry:Enabled" },
     };
@@ -316,5 +316,15 @@ public sealed class RunnerHostSettingsRefusalTests : IDisposable
         Assert.Contains(key, error.Message, StringComparison.Ordinal);
         Assert.Contains("Telemetry:OtlpEndpoint", error.Message, StringComparison.Ordinal);
         Assert.Contains("OTEL_EXPORTER_OTLP_ENDPOINT", error.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    [Trait("BR", "BR-13")]
+    public void ShouldRefuseNamingTheNewPlace_WhenTheGuardIsUnderTypeSafe()
+    {
+        var error = Assert.Throws<RunnerSettingsException>(() => RunnerHost.Build(OneSetting("Orkeon:TypeSafe:Guard:Enabled", "true"), Mounted()));
+
+        Assert.Contains("Orkeon:TypeSafe:Guard", error.Message, StringComparison.Ordinal);
+        Assert.Contains("Orkeon:Decision:Guard", error.Message, StringComparison.Ordinal);
     }
 }

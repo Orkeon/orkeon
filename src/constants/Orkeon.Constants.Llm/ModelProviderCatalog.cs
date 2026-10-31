@@ -37,6 +37,10 @@ public static class ModelProviderCatalog
         new(LlmProviderKeys.Mammouth, "Mammouth", s_generation, "MAMMOUTH_API_KEY", LlmProviderEndpoints.Mammouth),
         new(DecisionProviderKeys.TypeSafe, "TypeSafe", [ModelProviderCategory.Decision],
             DecisionProviderDefaults.TypeSafeApiKeyVariable, DecisionProviderDefaults.TypeSafeBaseUrl),
+        new(DecisionProviderKeys.Liquid, "Liquid", [ModelProviderCategory.Decision],
+            DecisionProviderDefaults.LiquidApiKeyVariable, DecisionProviderDefaults.LiquidBaseUrl),
+        new(DecisionProviderKeys.Kev, "Kev", [ModelProviderCategory.Decision],
+            null, DecisionProviderDefaults.KevBaseUrl),
     ];
 
     /// <summary>The providers serving <paramref name="category"/>, in <see cref="All"/> order.</summary>

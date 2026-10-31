@@ -168,6 +168,8 @@ internal static class SettingsLibraryProducer
                 arguments[index] = nothing;
             else if (parameter.ParameterType == typeof(string))
                 arguments[index] = "catalogue";
+            else if (parameter.ParameterType == typeof(Orkeon.Infrastructure.Decision.SystemOne.DecisionProviderDescriptor))
+                arguments[index] = Orkeon.Infrastructure.Decision.SystemOne.DecisionProviderDescriptor.TypeSafe;
             else
                 return null;
         }

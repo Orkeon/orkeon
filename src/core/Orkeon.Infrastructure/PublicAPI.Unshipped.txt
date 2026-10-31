@@ -29,43 +29,6 @@ Orkeon.Infrastructure.Configuration.TaskYamlConfig.When.set -> void
 Orkeon.Infrastructure.Crew.Strategies.CrewStrategyDependencies.DecisionRunner.get -> Orkeon.Application.Crew.Execution.DecisionTaskRunner?
 Orkeon.Infrastructure.Crew.Strategies.CrewStrategyDependencies.DecisionRunner.init -> void
 Orkeon.Infrastructure.Crew.Strategies.ParallelProcessStrategy.ParallelProcessStrategy(Orkeon.Infrastructure.Crew.Strategies.CrewStrategyDependencies! dependencies, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.Crew.Strategies.ParallelProcessStrategy!>! logger, Orkeon.Application.Crew.ICrewExecutionHook? hook = null, Orkeon.Infrastructure.Crew.Strategies.TaskAgentSelector? agentSelector = null) -> void
-Orkeon.Infrastructure.Decision.TypeSafe.TypeSafeDecisionModel
-Orkeon.Infrastructure.Decision.TypeSafe.TypeSafeDecisionModel.DecideAsync(Orkeon.Application.Decision.DTOs.DecisionRequest! request, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Application.Decision.DTOs.DecisionResponse!>!
-Orkeon.Infrastructure.Decision.TypeSafe.TypeSafeDecisionModel.Name.get -> string!
-Orkeon.Infrastructure.Decision.TypeSafe.TypeSafeDecisionModel.TypeSafeDecisionModel(System.Net.Http.IHttpClientFactory! httpClientFactory, Microsoft.Extensions.Options.IOptions<Orkeon.Infrastructure.Decision.TypeSafe.TypeSafeOptions!>! options, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.Decision.TypeSafe.TypeSafeDecisionModel!>! logger, Orkeon.Application.Interfaces.Ports.ILlmUsageSink? usageSink = null, Polly.IAsyncPolicy<System.Net.Http.HttpResponseMessage!>? policy = null) -> void
-Orkeon.Infrastructure.Decision.TypeSafe.TypeSafeGuardOptions
-Orkeon.Infrastructure.Decision.TypeSafe.TypeSafeGuardOptions.BlockThreshold.get -> double
-Orkeon.Infrastructure.Decision.TypeSafe.TypeSafeGuardOptions.BlockThreshold.set -> void
-Orkeon.Infrastructure.Decision.TypeSafe.TypeSafeGuardOptions.Enabled.get -> bool
-Orkeon.Infrastructure.Decision.TypeSafe.TypeSafeGuardOptions.Enabled.set -> void
-Orkeon.Infrastructure.Decision.TypeSafe.TypeSafeGuardOptions.FailClosed.get -> bool
-Orkeon.Infrastructure.Decision.TypeSafe.TypeSafeGuardOptions.FailClosed.set -> void
-Orkeon.Infrastructure.Decision.TypeSafe.TypeSafeGuardOptions.Risks.get -> System.Collections.Generic.Dictionary<string!, string!>!
-Orkeon.Infrastructure.Decision.TypeSafe.TypeSafeGuardOptions.Risks.init -> void
-Orkeon.Infrastructure.Decision.TypeSafe.TypeSafeGuardOptions.TypeSafeGuardOptions() -> void
-Orkeon.Infrastructure.Decision.TypeSafe.TypeSafeGuardOptions.WarnThreshold.get -> double
-Orkeon.Infrastructure.Decision.TypeSafe.TypeSafeGuardOptions.WarnThreshold.set -> void
-Orkeon.Infrastructure.Decision.TypeSafe.TypeSafeInputGuard
-Orkeon.Infrastructure.Decision.TypeSafe.TypeSafeInputGuard.CheckAsync(Orkeon.Application.Interfaces.Security.GuardContext! context, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Application.Interfaces.Security.GuardResult!>!
-Orkeon.Infrastructure.Decision.TypeSafe.TypeSafeInputGuard.Enabled.get -> bool
-Orkeon.Infrastructure.Decision.TypeSafe.TypeSafeInputGuard.TypeSafeInputGuard(Orkeon.Application.Interfaces.Ports.IDecisionModel! model, Microsoft.Extensions.Options.IOptions<Orkeon.Infrastructure.Decision.TypeSafe.TypeSafeOptions!>! options, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.Decision.TypeSafe.TypeSafeInputGuard!>! logger) -> void
-Orkeon.Infrastructure.Decision.TypeSafe.TypeSafeOptions
-Orkeon.Infrastructure.Decision.TypeSafe.TypeSafeOptions.ApiKey.get -> string?
-Orkeon.Infrastructure.Decision.TypeSafe.TypeSafeOptions.ApiKey.set -> void
-Orkeon.Infrastructure.Decision.TypeSafe.TypeSafeOptions.ApiKeyEnvVar.get -> string!
-Orkeon.Infrastructure.Decision.TypeSafe.TypeSafeOptions.ApiKeyEnvVar.set -> void
-Orkeon.Infrastructure.Decision.TypeSafe.TypeSafeOptions.BaseUrl.get -> System.Uri!
-Orkeon.Infrastructure.Decision.TypeSafe.TypeSafeOptions.BaseUrl.set -> void
-Orkeon.Infrastructure.Decision.TypeSafe.TypeSafeOptions.Guard.get -> Orkeon.Infrastructure.Decision.TypeSafe.TypeSafeGuardOptions!
-Orkeon.Infrastructure.Decision.TypeSafe.TypeSafeOptions.Guard.init -> void
-Orkeon.Infrastructure.Decision.TypeSafe.TypeSafeOptions.MaxRetries.get -> int
-Orkeon.Infrastructure.Decision.TypeSafe.TypeSafeOptions.MaxRetries.set -> void
-Orkeon.Infrastructure.Decision.TypeSafe.TypeSafeOptions.Model.get -> string!
-Orkeon.Infrastructure.Decision.TypeSafe.TypeSafeOptions.Model.set -> void
-Orkeon.Infrastructure.Decision.TypeSafe.TypeSafeOptions.TimeoutSeconds.get -> int
-Orkeon.Infrastructure.Decision.TypeSafe.TypeSafeOptions.TimeoutSeconds.set -> void
-Orkeon.Infrastructure.Decision.TypeSafe.TypeSafeOptions.TypeSafeOptions() -> void
-Orkeon.Infrastructure.Decision.TypeSafe.TypeSafeServiceCollectionExtensions
 Orkeon.Infrastructure.LLMs.Decision.DecisionCircuitOptions
 Orkeon.Infrastructure.LLMs.Decision.DecisionCircuitOptions.DecisionCircuitOptions() -> void
 Orkeon.Infrastructure.LLMs.Decision.DecisionCircuitOptions.Enabled.get -> bool
@@ -164,11 +127,6 @@ Orkeon.Infrastructure.Tools.SystemOneDecideResponse.Success.set -> void
 Orkeon.Infrastructure.Tools.SystemOneDecideResponse.SystemOneDecideResponse() -> void
 Orkeon.Infrastructure.Tools.SystemOneDecideTool
 Orkeon.Infrastructure.Tools.SystemOneDecideTool.SystemOneDecideTool(Orkeon.Application.Interfaces.Ports.IDecisionModel! model) -> void
-const Orkeon.Infrastructure.Decision.TypeSafe.TypeSafeDecisionModel.ImagesHeader = "TypeSafe-Danger-Zone-Images" -> string!
-const Orkeon.Infrastructure.Decision.TypeSafe.TypeSafeDecisionModel.LongContextHeader = "TypeSafe-Danger-Zone-Long-Context" -> string!
-const Orkeon.Infrastructure.Decision.TypeSafe.TypeSafeDecisionModel.RequestIdHeader = "x-typesafe-request-id" -> string!
-const Orkeon.Infrastructure.Decision.TypeSafe.TypeSafeInputGuard.GuardName = "typesafe" -> string!
-const Orkeon.Infrastructure.Decision.TypeSafe.TypeSafeOptions.SectionName = "Orkeon:TypeSafe" -> string!
 const Orkeon.Infrastructure.LLMs.Decision.DecisionCircuitOptions.SectionName = "Orkeon:Decision" -> string!
 const Orkeon.Infrastructure.LLMs.Decision.DecisionLlmProvider.BlockedErrorType = "DecisionBlocked" -> string!
 const Orkeon.Infrastructure.LLMs.Decision.DecisionLlmProvider.StageMetadataKey = "decision_stage" -> string!
@@ -180,10 +138,8 @@ const Orkeon.Infrastructure.LLMs.Decision.Stages.RouteDecisionStage.Question = "
 const Orkeon.Infrastructure.LLMs.Decision.Stages.VerifyDecisionStage.DefaultCriterion = "The response addresses the request, is coherent, and states nothing the request does not support." -> string!
 const Orkeon.Infrastructure.LLMs.Decision.Stages.VerifyDecisionStage.Question = "verified" -> string!
 override Orkeon.Infrastructure.Tools.SystemOneDecideTool.Access.get -> Orkeon.Domain.Tools.ToolAccess
-static Orkeon.Infrastructure.Decision.TypeSafe.TypeSafeServiceCollectionExtensions.AddOrkeonTypeSafe(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, Microsoft.Extensions.Configuration.IConfiguration! configuration) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
 static Orkeon.Infrastructure.LLMs.Decision.DecisionProfileServiceCollectionExtensions.AddOrkeonDecisionProfiles(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, Microsoft.Extensions.Configuration.IConfiguration! configuration) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
 static Orkeon.Infrastructure.LLMs.Decision.Stages.GuardDecisionStage.AssessAsync(Orkeon.Application.Interfaces.Ports.IDecisionModel! model, System.Collections.Generic.IReadOnlyDictionary<string!, string!>! risks, System.Text.Json.Nodes.JsonNode! state, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<(string! Risk, double Probability)>!>!
-static readonly Orkeon.Infrastructure.Decision.TypeSafe.TypeSafeInputGuard.DefaultRisks -> System.Collections.Immutable.ImmutableDictionary<string!, string!>!
 *REMOVED*Orkeon.Infrastructure.Tools.ModelTokensEntry.CacheReadTokens.get -> long
 Orkeon.Infrastructure.Tools.ModelTokensEntry.CacheReadTokens.get -> long?
 *REMOVED*Orkeon.Infrastructure.Tools.ModelTokensEntry.CacheWriteTokens.get -> long
@@ -215,3 +171,76 @@ Orkeon.Infrastructure.Tools.SessionStoreRequest.Timestamp.set -> void
 Orkeon.Infrastructure.Session.InMemorySessionBufferService.SetStates(System.Collections.Generic.IReadOnlyDictionary<string!, string?>! values) -> void
 Orkeon.Infrastructure.Session.FileSessionBufferService.SetStates(System.Collections.Generic.IReadOnlyDictionary<string!, string?>! values) -> void
 override Orkeon.Infrastructure.Tools.SessionStoreTool.AccessFor(System.Collections.Generic.IReadOnlyDictionary<string!, object?>! arguments) -> Orkeon.Domain.Tools.ToolAccess
+Orkeon.Infrastructure.Decision.SystemOne.DecisionProviderDescriptor
+Orkeon.Infrastructure.Decision.SystemOne.DecisionProviderDescriptor.ApplyDefaults(Orkeon.Infrastructure.Decision.SystemOne.SystemOneProviderOptions! options) -> void
+Orkeon.Infrastructure.Decision.SystemOne.DecisionProviderDescriptor.DecisionProviderDescriptor(string! Key, string! DisplayName, string! Section, System.Uri! DefaultBaseUrl, string! DefaultModel, string! DefaultApiKeyVariable, bool KeyRequired, bool Hosted) -> void
+Orkeon.Infrastructure.Decision.SystemOne.DecisionProviderDescriptor.DefaultApiKeyVariable.get -> string!
+Orkeon.Infrastructure.Decision.SystemOne.DecisionProviderDescriptor.DefaultApiKeyVariable.init -> void
+Orkeon.Infrastructure.Decision.SystemOne.DecisionProviderDescriptor.DefaultBaseUrl.get -> System.Uri!
+Orkeon.Infrastructure.Decision.SystemOne.DecisionProviderDescriptor.DefaultBaseUrl.init -> void
+Orkeon.Infrastructure.Decision.SystemOne.DecisionProviderDescriptor.DefaultModel.get -> string!
+Orkeon.Infrastructure.Decision.SystemOne.DecisionProviderDescriptor.DefaultModel.init -> void
+Orkeon.Infrastructure.Decision.SystemOne.DecisionProviderDescriptor.DisplayName.get -> string!
+Orkeon.Infrastructure.Decision.SystemOne.DecisionProviderDescriptor.DisplayName.init -> void
+Orkeon.Infrastructure.Decision.SystemOne.DecisionProviderDescriptor.Hosted.get -> bool
+Orkeon.Infrastructure.Decision.SystemOne.DecisionProviderDescriptor.Hosted.init -> void
+Orkeon.Infrastructure.Decision.SystemOne.DecisionProviderDescriptor.Key.get -> string!
+Orkeon.Infrastructure.Decision.SystemOne.DecisionProviderDescriptor.Key.init -> void
+Orkeon.Infrastructure.Decision.SystemOne.DecisionProviderDescriptor.KeyRequired.get -> bool
+Orkeon.Infrastructure.Decision.SystemOne.DecisionProviderDescriptor.KeyRequired.init -> void
+Orkeon.Infrastructure.Decision.SystemOne.DecisionProviderDescriptor.Section.get -> string!
+Orkeon.Infrastructure.Decision.SystemOne.DecisionProviderDescriptor.Section.init -> void
+static Orkeon.Infrastructure.Decision.SystemOne.DecisionProviderDescriptor.All.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Infrastructure.Decision.SystemOne.DecisionProviderDescriptor!>!
+static Orkeon.Infrastructure.Decision.SystemOne.DecisionProviderDescriptor.Find(string! key) -> Orkeon.Infrastructure.Decision.SystemOne.DecisionProviderDescriptor?
+static Orkeon.Infrastructure.Decision.SystemOne.DecisionProviderDescriptor.Kev.get -> Orkeon.Infrastructure.Decision.SystemOne.DecisionProviderDescriptor!
+static Orkeon.Infrastructure.Decision.SystemOne.DecisionProviderDescriptor.Liquid.get -> Orkeon.Infrastructure.Decision.SystemOne.DecisionProviderDescriptor!
+static Orkeon.Infrastructure.Decision.SystemOne.DecisionProviderDescriptor.TypeSafe.get -> Orkeon.Infrastructure.Decision.SystemOne.DecisionProviderDescriptor!
+Orkeon.Infrastructure.Decision.SystemOne.SystemOneProviderOptions
+Orkeon.Infrastructure.Decision.SystemOne.SystemOneProviderOptions.SystemOneProviderOptions() -> void
+Orkeon.Infrastructure.Decision.SystemOne.SystemOneProviderOptions.ApiKey.get -> string?
+Orkeon.Infrastructure.Decision.SystemOne.SystemOneProviderOptions.ApiKey.set -> void
+Orkeon.Infrastructure.Decision.SystemOne.SystemOneProviderOptions.ApiKeyEnvVar.get -> string!
+Orkeon.Infrastructure.Decision.SystemOne.SystemOneProviderOptions.ApiKeyEnvVar.set -> void
+Orkeon.Infrastructure.Decision.SystemOne.SystemOneProviderOptions.BaseUrl.get -> System.Uri!
+Orkeon.Infrastructure.Decision.SystemOne.SystemOneProviderOptions.BaseUrl.set -> void
+Orkeon.Infrastructure.Decision.SystemOne.SystemOneProviderOptions.MaxRetries.get -> int
+Orkeon.Infrastructure.Decision.SystemOne.SystemOneProviderOptions.MaxRetries.set -> void
+Orkeon.Infrastructure.Decision.SystemOne.SystemOneProviderOptions.Model.get -> string!
+Orkeon.Infrastructure.Decision.SystemOne.SystemOneProviderOptions.Model.set -> void
+Orkeon.Infrastructure.Decision.SystemOne.SystemOneProviderOptions.TimeoutSeconds.get -> int
+Orkeon.Infrastructure.Decision.SystemOne.SystemOneProviderOptions.TimeoutSeconds.set -> void
+const Orkeon.Infrastructure.Decision.SystemOne.SystemOneDecisionModel.ImagesHeader = "TypeSafe-Danger-Zone-Images" -> string!
+const Orkeon.Infrastructure.Decision.SystemOne.SystemOneDecisionModel.LongContextHeader = "TypeSafe-Danger-Zone-Long-Context" -> string!
+const Orkeon.Infrastructure.Decision.SystemOne.SystemOneDecisionModel.RequestIdHeader = "x-typesafe-request-id" -> string!
+Orkeon.Infrastructure.Decision.SystemOne.SystemOneDecisionModel
+Orkeon.Infrastructure.Decision.SystemOne.SystemOneDecisionModel.DecideAsync(Orkeon.Application.Decision.DTOs.DecisionRequest! request, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Application.Decision.DTOs.DecisionResponse!>!
+Orkeon.Infrastructure.Decision.SystemOne.SystemOneDecisionModel.Name.get -> string!
+Orkeon.Infrastructure.Decision.SystemOne.SystemOneDecisionModel.SystemOneDecisionModel(Orkeon.Infrastructure.Decision.SystemOne.DecisionProviderDescriptor! provider, System.Net.Http.IHttpClientFactory! httpClientFactory, Microsoft.Extensions.Options.IOptions<Orkeon.Infrastructure.Decision.SystemOne.SystemOneProviderOptions!>! options, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.Decision.SystemOne.SystemOneDecisionModel!>! logger, Orkeon.Application.Interfaces.Ports.ILlmUsageSink? usageSink = null, Polly.IAsyncPolicy<System.Net.Http.HttpResponseMessage!>? policy = null) -> void
+Orkeon.Infrastructure.Decision.SystemOne.DecisionProviderServiceCollectionExtensions
+static Orkeon.Infrastructure.Decision.SystemOne.DecisionProviderServiceCollectionExtensions.AddOrkeonDecisionProvider(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, Microsoft.Extensions.Configuration.IConfiguration! configuration, Orkeon.Infrastructure.Decision.SystemOne.DecisionProviderDescriptor! provider) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
+Orkeon.Infrastructure.Decision.SystemOne.DecisionProviderDescriptor.<Clone>$() -> Orkeon.Infrastructure.Decision.SystemOne.DecisionProviderDescriptor!
+Orkeon.Infrastructure.Decision.SystemOne.DecisionProviderDescriptor.Deconstruct(out string! Key, out string! DisplayName, out string! Section, out System.Uri! DefaultBaseUrl, out string! DefaultModel, out string! DefaultApiKeyVariable, out bool KeyRequired, out bool Hosted) -> void
+Orkeon.Infrastructure.Decision.SystemOne.DecisionProviderDescriptor.Equals(Orkeon.Infrastructure.Decision.SystemOne.DecisionProviderDescriptor? other) -> bool
+override Orkeon.Infrastructure.Decision.SystemOne.DecisionProviderDescriptor.Equals(object? obj) -> bool
+override Orkeon.Infrastructure.Decision.SystemOne.DecisionProviderDescriptor.GetHashCode() -> int
+override Orkeon.Infrastructure.Decision.SystemOne.DecisionProviderDescriptor.ToString() -> string!
+static Orkeon.Infrastructure.Decision.SystemOne.DecisionProviderDescriptor.operator ==(Orkeon.Infrastructure.Decision.SystemOne.DecisionProviderDescriptor? left, Orkeon.Infrastructure.Decision.SystemOne.DecisionProviderDescriptor? right) -> bool
+static Orkeon.Infrastructure.Decision.SystemOne.DecisionProviderDescriptor.operator !=(Orkeon.Infrastructure.Decision.SystemOne.DecisionProviderDescriptor? left, Orkeon.Infrastructure.Decision.SystemOne.DecisionProviderDescriptor? right) -> bool
+Orkeon.Infrastructure.Decision.DecisionGuardOptions
+Orkeon.Infrastructure.Decision.DecisionGuardOptions.BlockThreshold.get -> double
+Orkeon.Infrastructure.Decision.DecisionGuardOptions.BlockThreshold.set -> void
+Orkeon.Infrastructure.Decision.DecisionGuardOptions.DecisionGuardOptions() -> void
+Orkeon.Infrastructure.Decision.DecisionGuardOptions.Enabled.get -> bool
+Orkeon.Infrastructure.Decision.DecisionGuardOptions.Enabled.set -> void
+Orkeon.Infrastructure.Decision.DecisionGuardOptions.FailClosed.get -> bool
+Orkeon.Infrastructure.Decision.DecisionGuardOptions.FailClosed.set -> void
+Orkeon.Infrastructure.Decision.DecisionGuardOptions.Risks.get -> System.Collections.Generic.Dictionary<string!, string!>!
+Orkeon.Infrastructure.Decision.DecisionGuardOptions.Risks.init -> void
+Orkeon.Infrastructure.Decision.DecisionGuardOptions.WarnThreshold.get -> double
+Orkeon.Infrastructure.Decision.DecisionGuardOptions.WarnThreshold.set -> void
+Orkeon.Infrastructure.Decision.DecisionInputGuard
+Orkeon.Infrastructure.Decision.DecisionInputGuard.CheckAsync(Orkeon.Application.Interfaces.Security.GuardContext! context, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Application.Interfaces.Security.GuardResult!>!
+Orkeon.Infrastructure.Decision.DecisionInputGuard.DecisionInputGuard(Orkeon.Application.Interfaces.Ports.IDecisionModel! model, Microsoft.Extensions.Options.IOptions<Orkeon.Infrastructure.Decision.DecisionGuardOptions!>! options, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.Decision.DecisionInputGuard!>! logger) -> void
+Orkeon.Infrastructure.Decision.DecisionInputGuard.Enabled.get -> bool
+const Orkeon.Infrastructure.Decision.DecisionGuardOptions.SectionName = "Orkeon:Decision:Guard" -> string!
+static readonly Orkeon.Infrastructure.Decision.DecisionInputGuard.DefaultRisks -> System.Collections.Immutable.ImmutableDictionary<string!, string!>!

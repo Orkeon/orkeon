@@ -55,7 +55,7 @@ using Orkeon.Infrastructure.Orchestration;
 using Orkeon.Application.Interfaces.Services;
 using Orkeon.Constants.Configuration;
 
-using Orkeon.Infrastructure.Decision.TypeSafe;
+using Orkeon.Infrastructure.Decision;
 
 namespace Orkeon.Infrastructure.DependencyInjection;
 
@@ -793,9 +793,9 @@ public static class InfrastructureExtensions
                 return pipeline;
 
             pipeline.AddGuard(GuardPhase.Input, sp.GetRequiredService<InputGuard>());
-            // The decision model's input guard, beside the built-in one (AddOrkeonTypeSafe).
-            if (sp.GetService<TypeSafeInputGuard>() is { Enabled: true } typeSafeGuard)
-                pipeline.AddGuard(GuardPhase.Input, typeSafeGuard);
+            // The decision model's input guard, beside the built-in one (AddOrkeonDecisionProvider).
+            if (sp.GetService<DecisionInputGuard>() is { Enabled: true } decisionGuard)
+                pipeline.AddGuard(GuardPhase.Input, decisionGuard);
             pipeline.AddGuard(GuardPhase.ToolExecution, sp.GetRequiredService<ToolGuard>());
             pipeline.AddGuard(GuardPhase.Delegation, sp.GetRequiredService<DelegationGuard>());
 

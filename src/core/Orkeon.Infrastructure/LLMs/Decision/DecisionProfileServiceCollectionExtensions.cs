@@ -28,7 +28,7 @@ public static class DecisionProfileServiceCollectionExtensions
     /// checked now: an unknown stage kind, a missing target or route, a threshold out of [0, 1], or
     /// a decision profile that names another decision profile fails the host build with the key to
     /// fix. Whether a named profile exists is checked when the decision profile is first used, and
-    /// so is the <see cref="IDecisionModel"/> (<c>AddOrkeonTypeSafe</c>).
+    /// so is the <see cref="IDecisionModel"/> (<c>AddOrkeonDecisionProvider</c>).
     /// </summary>
     /// <param name="services">The service collection.</param>
     /// <param name="configuration">The host configuration.</param>
@@ -155,7 +155,7 @@ public static class DecisionProfileServiceCollectionExtensions
         var registry = services.GetRequiredService<ILlmProfileRegistry>();
         var model = services.GetService<IDecisionModel>()
             ?? throw new InvalidOperationException(
-                $"{path}: no decision model is registered; call AddOrkeonTypeSafe (section Orkeon:TypeSafe).");
+                $"{path}: no decision model is registered; call AddOrkeonDecisionProvider.");
         var loggerFactory = services.GetService<ILoggerFactory>() ?? NullLoggerFactory.Instance;
 
         ILlmProvider Resolve(string profileName) =>

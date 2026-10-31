@@ -49,9 +49,12 @@ internal static class SettingsSampleFile
             [ConfigurationKeys.LlmSection] =
                 "Shown, not written: one key of this section written and the host has a default model. Left " +
                 "as it is, a host without a model says so and runs on the echo provider; `orkeon init` writes the section.",
-            [Orkeon.Infrastructure.Decision.TypeSafe.TypeSafeOptions.SectionName] =
+            [Orkeon.Infrastructure.Decision.SystemOne.DecisionProviderDescriptor.TypeSafe.Section] =
                 "Shown, not written: the section present, even empty, and the host registers the TypeSafe decision model, " +
                 "which turns the decision circuit on and needs an API key. Left as it is, decision tasks answer from their fallback.",
+            [Orkeon.Infrastructure.Decision.DecisionGuardOptions.SectionName] =
+                "Shown, not written: the guard is registered with the decision model, which the host registers only when " +
+                "`Orkeon:TypeSafe` is present; written alone, the section is refused as a setting the host does not read.",
         };
 
     /// <summary>The file for <paramref name="catalog"/>: the sections at least one shipped binary reads.</summary>

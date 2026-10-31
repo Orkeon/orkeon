@@ -194,7 +194,7 @@ qu'elle accepte quand leur liste est fermée, et son sens.
 <!-- settings-index -->
 | Catégorie | Sections | Clés |
 |---|---|---|
-| [Modèles](#modèles) | [`Evaluation`](#evaluation), [`Llm`](#llm), [`LlmLogging`](#llmlogging), [`Orkeon:CostTracking`](#orkeoncosttracking), [`Orkeon:Decision`](#orkeondecision), [`Orkeon:TokenCounter`](#orkeontokencounter), [`Orkeon:TypeSafe`](#orkeontypesafe) | 81 |
+| [Modèles](#modèles) | [`Evaluation`](#evaluation), [`Llm`](#llm), [`LlmLogging`](#llmlogging), [`Orkeon:CostTracking`](#orkeoncosttracking), [`Orkeon:Decision`](#orkeondecision), [`Orkeon:Decision:Guard`](#orkeondecisionguard), [`Orkeon:TokenCounter`](#orkeontokencounter), [`Orkeon:TypeSafe`](#orkeontypesafe) | 81 |
 | [Débit et budgets](#débit-et-budgets) | [`RateLimiting`](#ratelimiting), [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting) | 11 |
 | [Mémoire et vecteurs](#mémoire-et-vecteurs) | [`Memory`](#memory), [`Orkeon:ChromaDb`](#orkeonchromadb), [`Orkeon:CognitiveMemory`](#orkeoncognitivememory), [`Orkeon:CrewMemory`](#orkeoncrewmemory), [`Orkeon:EmbeddingCache`](#orkeonembeddingcache), [`Orkeon:Embeddings`](#orkeonembeddings), [`Orkeon:Encryption`](#orkeonencryption), [`Orkeon:LanceDb`](#orkeonlancedb), [`Orkeon:Pinecone`](#orkeonpinecone), [`Orkeon:Redis`](#orkeonredis), [`Orkeon:Sqlite`](#orkeonsqlite), [`Orkeon:VectorSearch`](#orkeonvectorsearch) | 58 |
 | [RAG](#rag) | [`Orkeon:Rag`](#orkeonrag), [`Orkeon:Rag:Ingestion`](#orkeonragingestion), [`Orkeon:Rag:QueryRouting`](#orkeonragqueryrouting), [`Orkeon:Rag:Retrieval:Hybrid`](#orkeonragretrievalhybrid), [`Orkeon:Rag:WebFallback`](#orkeonragwebfallback) | 34 |
@@ -206,7 +206,7 @@ qu'elle accepte quand leur liste est fermée, et son sens.
 | [Hôte de service et A2A](#hôte-de-service-et-a2a) | [`A2A`](#a2a), [`A2A:Security`](#a2asecurity), [`A2A:Security:AzureAD`](#a2asecurityazuread), [`A2A:Security:Oidc`](#a2asecurityoidc), [`Orkeon:Host`](#orkeonhost), [`Orkeon:Host:Discord`](#orkeonhostdiscord) | 46 |
 | [Observabilité](#observabilité) | [`Logging`](#logging), [`Orkeon:Monitoring`](#orkeonmonitoring), [`Telemetry`](#telemetry) | 8 |
 
-74 sections, 423 clés. Lues par aucun binaire livré, seulement par un hôte écrit en C# (10) : [`Evaluation`](#evaluation), [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:CognitiveMemory`](#orkeoncognitivememory), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Checkpointing`](#orkeoncheckpointing), [`Orkeon:ExecutionState:Persistence`](#orkeonexecutionstatepersistence), [`Orkeon:Monitoring`](#orkeonmonitoring).
+75 sections, 423 clés. Lues par aucun binaire livré, seulement par un hôte écrit en C# (10) : [`Evaluation`](#evaluation), [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:CognitiveMemory`](#orkeoncognitivememory), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Checkpointing`](#orkeoncheckpointing), [`Orkeon:ExecutionState:Persistence`](#orkeonexecutionstatepersistence), [`Orkeon:Monitoring`](#orkeonmonitoring).
 <!-- /settings-index -->
 
 Lire un tableau :
@@ -687,10 +687,10 @@ second appel n'enregistre aucun évaluateur deux fois).
 
 ### `Orkeon:TypeSafe`
 
-Le modèle de décision TypeSafe (Jev), lié par `AddOrkeonTypeSafe(configuration)`, que les trois
+Le modèle de décision TypeSafe (Jev), lié par `AddOrkeonDecisionProvider(configuration, provider)`, que les trois
 binaires livrés appellent quand cette section est présente — même vide, `TypeSafe: {}` compte — ou que `TYPESAFE_API_KEY` est définie : la clé,
-l'endpoint, le modèle par défaut, le délai et les nouvelles tentatives de chaque appel, et la garde
-d'entrée des agents (`Guard`). Voir [Modèles de décision](../architecture/decision-models.md).
+l'endpoint, le modèle par défaut, le délai et les nouvelles tentatives de chaque appel, (la garde d'entrée des agents est
+[`Orkeon:Decision:Guard`](#orkeondecisionguard)). Voir [Modèles de décision](../architecture/decision-models.md).
 
 <!-- settings:Orkeon:TypeSafe -->
 **Lue par** : `orkeon`, `orkeon-host`, `orkeon-repl`.
@@ -700,11 +700,6 @@ d'entrée des agents (`Guard`). Voir [Modèles de décision](../architecture/dec
 | `ApiKey` | chaîne, secret | — | La clé d'API. Déconseillée dans un fichier de réglages : laissez-la vide et posez la variable que nomme `ApiKeyEnvVar`. |
 | `ApiKeyEnvVar` | chaîne | `"TYPESAFE_API_KEY"` | La variable d'environnement lue quand `ApiKey` est vide. |
 | `BaseUrl` | URI | `"https://api.typesafe.ai/v1"` | La racine de l'API ; `/systemone` s'y ajoute. |
-| `Guard:BlockThreshold` | nombre | `0.8` | La probabilité à partir de laquelle un risque bloque l'entrée. |
-| `Guard:Enabled` | booléen | `false` | Si la garde tourne ; coupée par défaut. |
-| `Guard:FailClosed` | booléen | `false` | Si un modèle de décision injoignable bloque l'entrée ; false avertit et la laisse passer. |
-| `Guard:Risks:<nom>` | chaîne | — | Les risques détectés, chacun avec ce qu'il est ; vide, `TypeSafeInputGuard.DefaultRisks` s'applique. |
-| `Guard:WarnThreshold` | nombre | `0.5` | La probabilité à partir de laquelle un risque est un avertissement. |
 | `MaxRetries` | entier | `3` | Les nouvelles tentatives après un 429, un 529, un autre 5xx ou une erreur réseau. |
 | `Model` | chaîne | `"jev-latest"` | Le modèle sur lequel tourne une requête qui n'en nomme aucun. |
 | `TimeoutSeconds` | entier | `30` | Le délai HTTP d'une tentative, en secondes. |
@@ -738,6 +733,24 @@ Une crew en utilise un comme tout profil, `llm: { profile: <nom> }`. Voir
 | `Profiles:<nom>:Stages:<i>:Routes:<nom>` | chaîne | — | Les profils qu'une étape `route` peut choisir, chacun avec ce à quoi il sert. |
 | `Profiles:<nom>:Stages:<i>:WarnThreshold` | nombre | `0.3` | La probabilité à partir de laquelle une étape `guard` journalise un avertissement. |
 | `Profiles:<nom>:Target` | chaîne | `""` | Le profil où va un appel qu'aucune étape ne route ; `default` est la section `Llm`. |
+<!-- /settings -->
+
+### `Orkeon:Decision:Guard`
+
+La garde d'entrée des agents, enregistrée avec le modèle de décision par `AddOrkeonDecisionProvider` :
+elle juge l'entrée avec ce modèle, dans la phase `Input`, à côté de la garde intégrée. Voir
+[Modèles de décision](../architecture/decision-models.md).
+
+<!-- settings:Orkeon:Decision:Guard -->
+**Lue par** : `orkeon`, `orkeon-host`, `orkeon-repl`.
+
+| Clé | Type | Défaut | Sens |
+|---|---|---|---|
+| `BlockThreshold` | nombre | `0.8` | La probabilité à partir de laquelle un risque bloque l'entrée. |
+| `Enabled` | booléen | `false` | Si la garde tourne ; coupée par défaut. |
+| `FailClosed` | booléen | `false` | Si un modèle de décision injoignable bloque l'entrée ; false avertit et la laisse passer. |
+| `Risks:<nom>` | chaîne | — | Les risques détectés, chacun avec ce qu'il est ; vide, les risques par défaut s'appliquent. |
+| `WarnThreshold` | nombre | `0.5` | La probabilité à partir de laquelle un risque est un avertissement. |
 <!-- /settings -->
 
 ## Débit et budgets

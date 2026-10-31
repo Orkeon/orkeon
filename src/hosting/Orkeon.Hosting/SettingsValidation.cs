@@ -95,6 +95,9 @@ internal static class SettingsValidation
             "Orkeon:Rag:ProviderOptions is not a setting any more: the RAG store is connected from the section of " +
             "the provider Orkeon:Rag:Provider names. Move its keys there — Orkeon:Redis, Orkeon:Sqlite, " +
             "Orkeon:ChromaDb, Orkeon:Pinecone or Orkeon:LanceDb.",
+        ["Orkeon:TypeSafe:Guard"] =
+            "Orkeon:TypeSafe:Guard is not a setting any more: the input guard has its own section, " +
+            "Orkeon:Decision:Guard; move its keys there.",
         ["Orkeon:Pinecone:Environment"] =
             "Orkeon:Pinecone:Environment is not a setting any more: write Orkeon:Pinecone:Host, the host the Pinecone " +
             "console shows, or remove it and let the provider look the host up.",

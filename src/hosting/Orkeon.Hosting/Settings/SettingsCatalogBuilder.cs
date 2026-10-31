@@ -269,7 +269,13 @@ internal static class SettingsCatalogBuilder
 
         try
         {
-            return constructor.Invoke(null);
+            var created = constructor.Invoke(null);
+
+            // A provider's options start blank; the registration fills them from the descriptor.
+            if (created is Orkeon.Infrastructure.Decision.SystemOne.SystemOneProviderOptions providerOptions)
+                Orkeon.Infrastructure.Decision.SystemOne.DecisionProviderDescriptor.TypeSafe.ApplyDefaults(providerOptions);
+
+            return created;
         }
         catch (Exception ex) when (ex is TargetInvocationException or MemberAccessException or NotSupportedException)
         {
