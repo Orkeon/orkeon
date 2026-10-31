@@ -649,8 +649,8 @@ second call registers no evaluator twice).
 
 ### `Orkeon:TypeSafe`
 
-The decision model TypeSafe (Jev), bound by `AddOrkeonDecisionProvider(configuration, provider)`, which the three
-shipped binaries call when this section is present — even empty, `TypeSafe: {}` counts — or `TYPESAFE_API_KEY` is set: the key, the
+The decision provider TypeSafe (model Jev, key required), bound by `AddOrkeonDecisionProvider(configuration, provider)`, which the three
+shipped binaries call when it is the active provider (one provider is active at a time, see [`Orkeon:Decision`](#orkeondecision)): this section is present — even empty, `TypeSafe: {}` counts — or `TYPESAFE_API_KEY` is set, or `Orkeon:Decision:Provider` is `typesafe`: the key, the
 endpoint, the default model, the timeout and retries of each call, (the agent input guard is
 [`Orkeon:Decision:Guard`](#orkeondecisionguard)). See [Decision models](../architecture/decision-models.md).
 
@@ -689,8 +689,10 @@ provider is active at a time (see [`Orkeon:Decision`](#orkeondecision)). See [De
 ### `Orkeon:Kev`
 
 The decision model Kev, a System One server run locally, bound by `AddOrkeonDecisionProvider(configuration, provider)` only
-when `Orkeon:Decision:Provider` is `kev`: a Kev section alone never selects it and is reported as ignored at start. The key is
-optional, and a key is refused towards a non-local address over plain `http`. See [Decision models](../architecture/decision-models.md).
+when `Orkeon:Decision:Provider` is `kev`: a Kev section alone never selects it and is reported as ignored at start. The address needs an
+`http` or `https` scheme (refused at start otherwise, naming `Orkeon:Kev:BaseUrl`). The key is optional (`KEV_API_KEY`: sent when
+given, otherwise the call is unauthenticated), and a configured key is refused at start towards a non-local address over plain
+`http` (local: `localhost`, `127.0.0.0/8`, `::1`); use `https` for a remote Kev. See [Decision models](../architecture/decision-models.md).
 
 <!-- settings:Orkeon:Kev -->
 **Read by**: `orkeon`, `orkeon-host`, `orkeon-repl`.
@@ -711,8 +713,13 @@ optional, and a key is refused towards a non-local address over plain `http`. Se
 `Enabled`, the decision circuit of the decision tasks, is bound by `AddOrkeonInfrastructure()`; the
 decision profiles (`Profiles`) by `AddOrkeonDecisionProfiles(configuration)`, which the three shipped
 binaries call: each profile wraps an LLM profile (`Target`) in stages that block, route or escalate a
-call. A crew uses one like any profile, `llm: { profile: <name> }`. See
-[Decision models](../architecture/decision-models.md).
+call. A crew uses one like any profile, `llm: { profile: <name> }`.
+
+`Provider` names the active decision provider (`typesafe`, `liquid` or `kev`, case-insensitive; blank means not named; an
+unknown name is refused at start, the message listing the valid ones). Not named, the host deduces it: the `Orkeon:TypeSafe`
+or `Orkeon:Liquid` section (even empty), else the one whose key variable is set; a section outweighs a bare key (one section with both keys set picks the provider holding the section), and both
+sections present, or no section and both keys set, is refused, naming both and this setting. Kev is never deduced: a Kev section without `Provider: "kev"` is
+warned as ignored in the start log (with a hint to name it when no provider is named). See [Decision models](../architecture/decision-models.md).
 
 <!-- settings:Orkeon:Decision -->
 **Read by**: `orkeon`, `orkeon-host`, `orkeon-repl`.
@@ -739,7 +746,8 @@ call. A crew uses one like any profile, `llm: { profile: <name> }`. See
 ### `Orkeon:Decision:Guard`
 
 The agent input guard, registered with the decision model by `AddOrkeonDecisionProvider`: it judges
-the input with that model, in the `Input` phase, beside the built-in guard. See
+the input with that model, in the `Input` phase, beside the built-in guard, through the active provider; its verdicts are signed with that provider's
+name. This section is the guard's own: a `Guard` block left under `Orkeon:TypeSafe` is refused at start. Off unless `Enabled`. See
 [Decision models](../architecture/decision-models.md).
 
 <!-- settings:Orkeon:Decision:Guard -->

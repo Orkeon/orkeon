@@ -23,7 +23,8 @@ its API key is read from and its default endpoint:
 
 - the 16 generation providers, in `LlmProviderKeys.All` order; OpenAI and Ollama also serve
   `Embedding`;
-- TypeSafe, which serves `Decision` only (`TYPESAFE_API_KEY`, `https://api.typesafe.ai/v1`).
+- the decision providers, which serve `Decision` only: TypeSafe (`TYPESAFE_API_KEY`, `https://api.typesafe.ai/v1`),
+  Liquid (`LIQUID_API_KEY`, `https://api.liquid.ai/decisions/v1`) and Kev (no required key, `http://127.0.0.1:8009/v1`).
 
 `ModelProviderCatalog.InCategory(category)` filters it, and `Find(key)` resolves a key or one of
 its aliases. A test checks that every provider `LlmProviderFactory` builds is in the catalogue
@@ -38,6 +39,7 @@ decision reranker) are not providers of their own.
 - A **generation** provider follows [LLM providers](./llm-providers.md) and adds its catalogue
   line.
 - A provider of **another category** implements that category's contract and adds its line
-  with its categories. A second decision provider implements `IDecisionModel`; the stages, the
-  guard, the reranker and the tool use it unchanged.
+  with its categories. A decision provider is a descriptor of `SystemOneDecisionModel` when it speaks the System One wire
+  (TypeSafe, Liquid, Kev), otherwise an `IDecisionModel` of its own; the stages, the guard, the
+  reranker and the tool use it unchanged.
 - A **new category** adds an enum value and its own port; it never widens `ILlmProvider`.

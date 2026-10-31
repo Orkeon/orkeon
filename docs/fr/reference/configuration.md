@@ -687,8 +687,8 @@ second appel n'enregistre aucun évaluateur deux fois).
 
 ### `Orkeon:TypeSafe`
 
-Le modèle de décision TypeSafe (Jev), lié par `AddOrkeonDecisionProvider(configuration, provider)`, que les trois
-binaires livrés appellent quand cette section est présente — même vide, `TypeSafe: {}` compte — ou que `TYPESAFE_API_KEY` est définie : la clé,
+Le fournisseur de décision TypeSafe (modèle Jev, clé requise), lié par `AddOrkeonDecisionProvider(configuration, provider)`, que les trois
+binaires livrés appellent quand il est le fournisseur actif (un seul est actif à la fois, voir [`Orkeon:Decision`](#orkeondecision)) : cette section est présente — même vide, `TypeSafe: {}` compte — ou `TYPESAFE_API_KEY` est définie, ou `Orkeon:Decision:Provider` vaut `typesafe` : la clé,
 l'endpoint, le modèle par défaut, le délai et les nouvelles tentatives de chaque appel, (la garde d'entrée des agents est
 [`Orkeon:Decision:Guard`](#orkeondecisionguard)). Voir [Modèles de décision](../architecture/decision-models.md).
 
@@ -709,7 +709,7 @@ l'endpoint, le modèle par défaut, le délai et les nouvelles tentatives de cha
 
 Le modèle de décision Liquid, lié par `AddOrkeonDecisionProvider(configuration, provider)` quand il est le fournisseur de
 décision actif : cette section est présente (même vide), ou `LIQUID_API_KEY` est définie, ou `Orkeon:Decision:Provider` vaut `liquid`.
-Un seul fournisseur est actif à la fois (voir [`Orkeon:Decision`](#orkeondecision)). Voir [Modèles de décision](../../architecture/decision-models.md).
+Un seul fournisseur est actif à la fois (voir [`Orkeon:Decision`](#orkeondecision)). Voir [Modèles de décision](../architecture/decision-models.md).
 
 <!-- settings:Orkeon:Liquid -->
 **Lue par** : `orkeon`, `orkeon-host`, `orkeon-repl`.
@@ -728,7 +728,7 @@ Un seul fournisseur est actif à la fois (voir [`Orkeon:Decision`](#orkeondecisi
 
 Le modèle de décision Kev, un serveur System One lancé en local, lié par `AddOrkeonDecisionProvider(configuration, provider)`
 seulement quand `Orkeon:Decision:Provider` vaut `kev` : une section Kev seule ne le choisit jamais et est signalée comme ignorée au démarrage.
-La clé est facultative, et une clé est refusée vers une adresse non locale en `http` clair. Voir [Modèles de décision](../../architecture/decision-models.md).
+L'adresse exige un schéma `http` ou `https` (sinon refusée au démarrage, avec `Orkeon:Kev:BaseUrl` dans le message). La clé est facultative (`KEV_API_KEY` : envoyée si donnée, sinon l'appel est sans authentification), et une clé configurée est refusée au démarrage vers une adresse non locale en `http` clair (locale : `localhost`, `127.0.0.0/8`, `::1`) ; utiliser `https` pour un Kev distant. Voir [Modèles de décision](../architecture/decision-models.md).
 
 <!-- settings:Orkeon:Kev -->
 **Lue par** : `orkeon`, `orkeon-host`, `orkeon-repl`.
@@ -750,7 +750,13 @@ La clé est facultative, et une clé est refusée vers une adresse non locale en
 les profils de décision (`Profiles`) par `AddOrkeonDecisionProfiles(configuration)`, que les trois
 binaires livrés appellent : chaque profil
 enveloppe un profil LLM (`Target`) dans des étapes qui bloquent, routent ou escaladent un appel.
-Une crew en utilise un comme tout profil, `llm: { profile: <nom> }`. Voir
+Une crew en utilise un comme tout profil, `llm: { profile: <nom> }`.
+
+`Provider` nomme le fournisseur de décision actif (`typesafe`, `liquid` ou `kev`, sans distinction de casse ; vide = non nommé ; un
+nom inconnu est refusé au démarrage, le message listant les noms valides). Non nommé, l'hôte le déduit : la section `Orkeon:TypeSafe`
+ou `Orkeon:Liquid` (même vide), sinon celui dont la variable de clé est posée ; une section l'emporte sur une clé seule (une section avec les deux clés définies choisit le fournisseur qui a la section), et les deux
+sections présentes, ou aucune section et les deux clés définies, sont refusées, le message citant les deux et ce réglage. Kev n'est jamais déduit : une section Kev sans
+`Provider: "kev"` est signalée comme ignorée dans le journal de démarrage (avec l'indication de la nommer quand aucun fournisseur ne l'est). Voir
 [Modèles de décision](../architecture/decision-models.md).
 
 <!-- settings:Orkeon:Decision -->
@@ -778,7 +784,8 @@ Une crew en utilise un comme tout profil, `llm: { profile: <nom> }`. Voir
 ### `Orkeon:Decision:Guard`
 
 La garde d'entrée des agents, enregistrée avec le modèle de décision par `AddOrkeonDecisionProvider` :
-elle juge l'entrée avec ce modèle, dans la phase `Input`, à côté de la garde intégrée. Voir
+elle juge l'entrée avec ce modèle, dans la phase `Input`, à côté de la garde intégrée, par le fournisseur actif ; ses verdicts sont signés de son nom.
+Cette section est celle de la garde : un bloc `Guard` resté sous `Orkeon:TypeSafe` est refusé au démarrage. Coupée sauf `Enabled`. Voir
 [Modèles de décision](../architecture/decision-models.md).
 
 <!-- settings:Orkeon:Decision:Guard -->

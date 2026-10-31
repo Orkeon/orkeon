@@ -276,7 +276,7 @@ l'aide d'un `IReranker` nommé :
 | `none` (`noop`) | `NoopReranker` | Troncature dans l'ordre du retrieval |
 | `llm` (`listwise`) | `LlmListwiseReranker` | Un appel de chat listwise ; parsing tolérant (une réponse malformée conserve l'ordre du retrieval) ; l'alternative intégrée quand le package ONNX est absent — à sélectionner explicitement |
 | `onnx` (`cross-encoder`) | `Orkeon.Rag.Onnx` | Cross-encoder ms-marco-MiniLM-L-6-v2, poids int8 embarqués, entièrement offline ; `AddOrkeonOnnxReranker()` |
-| `decision` (`typesafe`) | `DecisionModelReranker` | Une requête au modèle de décision de l'hôte : la requête et tous les passages comme état, une question oui/non par passage, le score étant la probabilité du oui ; un passage est coupé à 4000 caractères. Exige `AddOrkeonTypeSafe` (section `Orkeon:TypeSafe`), sinon sa résolution lève `InvalidOperationException` |
+| `decision` | `DecisionModelReranker` | Une requête au modèle de décision de l'hôte : la requête et tous les passages comme état, une question oui/non par passage, le score étant la probabilité du oui ; un passage est coupé à 4000 caractères. Exige un fournisseur de décision actif (`AddOrkeonDecisionProvider`), sinon sa résolution lève `InvalidOperationException` |
 
 Les hôtes contribuent des rerankers via `IRerankerRegistrar` — enregistrés dans la DI,
 appliqués à la construction du singleton `RerankerFactory`, ordre d'enregistrement

@@ -31,7 +31,7 @@ the next task had to parse.
    do not run a task on the task it names: a crew that uses a decision task or a `when` with one
    of them is refused on load, and a crew built in C# that reaches them fails before its first task.
 5. **The circuit can be off.** When no decision model is configured (the shipped binaries register
-   TypeSafe when `Orkeon:TypeSafe` or `TYPESAFE_API_KEY` is set), when `Orkeon:Decision:Enabled` is
+   the active decision provider, named or deduced), when `Orkeon:Decision:Enabled` is
    `false`, or with `orkeon run --no-decision`, a decision task makes no request and answers from its `fallback`; its
    `task.completed` event carries `defaulted: true` and the conditions evaluate on that answer. A
    failing request is never turned into the fallback.
@@ -41,6 +41,8 @@ the next task had to parse.
    show them. `TaskCompletedEvent.AgentId` is nullable, a decision task having no agent.
 
    > Amendment 2026-10-31: the reason of a jump is read by the run's JSONL and by Studio's `RunProgressModel`, not by "the consoles"; the question name `defaulted` is reserved.
+
+   > Amendment 2026-10-31: the decision model behind a decision task may be TypeSafe, Liquid or Kev; the task, its circuit and its fallback do not change.
 
 ## Consequences
 

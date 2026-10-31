@@ -23,7 +23,8 @@ variable d'où se lit sa clé d'API et son endpoint par défaut :
 
 - les 16 fournisseurs de génération, dans l'ordre de `LlmProviderKeys.All` ; OpenAI et Ollama
   servent aussi `Embedding` ;
-- TypeSafe, qui ne sert que `Decision` (`TYPESAFE_API_KEY`, `https://api.typesafe.ai/v1`).
+- les fournisseurs de décision, qui ne servent que `Decision` : TypeSafe (`TYPESAFE_API_KEY`, `https://api.typesafe.ai/v1`),
+  Liquid (`LIQUID_API_KEY`, `https://api.liquid.ai/decisions/v1`) et Kev (aucune clé obligatoire, `http://127.0.0.1:8009/v1`).
 
 `ModelProviderCatalog.InCategory(category)` le filtre, et `Find(key)` résout une clé ou l'un de
 ses alias. Un test vérifie que chaque fournisseur que construit `LlmProviderFactory` figure au
@@ -39,7 +40,8 @@ reranker listwise par LLM, le reranker de décision) ne sont pas des fournisseur
 - Un fournisseur de **génération** suit [Fournisseurs LLM](./llm-providers.md) et ajoute sa ligne
   au catalogue.
 - Un fournisseur d'**une autre catégorie** implémente le contrat de cette catégorie et ajoute sa
-  ligne avec ses catégories. Un second fournisseur de décision implémente `IDecisionModel` ; les
-  étapes, la garde, le reranker et le tool l'utilisent sans changement.
+  ligne avec ses catégories. Un fournisseur de décision est un descripteur de `SystemOneDecisionModel` quand il parle le
+  protocole System One (TypeSafe, Liquid, Kev), sinon un `IDecisionModel` à lui ; les étapes, la
+  garde, le reranker et le tool l'utilisent sans changement.
 - Une **nouvelle catégorie** ajoute une valeur à l'enum et son propre port ; elle n'élargit
   jamais `ILlmProvider`.

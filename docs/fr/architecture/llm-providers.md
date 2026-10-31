@@ -2,7 +2,7 @@
 
 # Fournisseurs LLM
 
-Les fournisseurs de cette page servent la catégorie `Generation`. Les fournisseurs d'embedding, de reranking et de décision (TypeSafe) sont listés dans [Fournisseurs de modèles](./model-providers.md) ; un modèle de décision juge un appel au LLM à travers un profil de décision ([Modèles de décision](./decision-models.md)).
+Les fournisseurs de cette page servent la catégorie `Generation`. Les fournisseurs d'embedding, de reranking et de décision (TypeSafe, Liquid, Kev) sont listés dans [Fournisseurs de modèles](./model-providers.md) ; un modèle de décision juge un appel au LLM à travers un profil de décision ([Modèles de décision](./decision-models.md)).
 
 `HttpLlmProviderBase` (`Orkeon.Infrastructure.LLMs.Base`) fournit la base abstraite pour tous les fournisseurs LLM. Elle intègre la gestion HTTP (`IHttpClientFactory`), les politiques de retry Polly, et la sérialisation JSON.
 

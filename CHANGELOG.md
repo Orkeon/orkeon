@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — the decision model serves three providers (TypeSafe, Liquid, Kev); the TypeSafe-only names go **[breaking]** (UC-01, UC-02, UC-03)
+
+The decision model is no longer TypeSafe's alone. One client, `SystemOneDecisionModel`, serves TypeSafe, Liquid and Kev on the same System One wire, through three provider descriptors. The host starts with one active provider, named by `Orkeon:Decision:Provider` or deduced from the settings, logs it, and refuses the ambiguous or unsafe cases at start. The input guard moves to its own section, `Orkeon:Decision:Guard`, and signs its verdicts with the active provider's name. Consumers rename:
+
+| Before | After |
+|--------|-------|
+| `AddOrkeonTypeSafe` | `AddOrkeonDecisionProvider` |
+| `TypeSafeDecisionModel` | `SystemOneDecisionModel` |
+| `TypeSafeOptions` | `SystemOneProviderOptions` |
+| `TypeSafeInputGuard` | `DecisionInputGuard` |
+| `Orkeon:TypeSafe:Guard:*` | `Orkeon:Decision:Guard:*` |
+| reranker alias `typesafe` | removed: use `decision` |
+
+A settings file still holding `Orkeon:TypeSafe:Guard:*` is refused at start, with a message naming `Orkeon:Decision:Guard`.
+
+Added: the Liquid provider (`Orkeon:Liquid`, `LIQUID_API_KEY`, model `d1.1` or `d1-ultra`), the Kev provider (`Orkeon:Kev`, `KEV_API_KEY` optional, default address `http://127.0.0.1:8009/v1`, never deduced), and `Orkeon:Decision:Provider` (`typesafe`, `liquid` or `kev`). Both hosted sections, or no section and both keys, refuse the start; a Kev address without an `http`/`https` scheme, or a Kev key towards a non-local `http` address, is refused too. The open d1 weights served behind Kev or another System One-compatible local server are used as Kev.
+
 ### Changed — `IDecisionModel.ListModelsAsync` removed **[breaking]** (R-68, D8)
 
 `IDecisionModel.ListModelsAsync` is removed from the port and from `TypeSafeDecisionModel`: nothing called it. The unused `DecisionModelDto` goes with it. Consumers drop the override.
