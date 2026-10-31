@@ -47,7 +47,7 @@ request Anthropic's `cache_control` breakpoints as the YAML `llm.cache:` block d
 The typings declare `LlmCacheOptions`. The YAML `ttl` is now validated too: a value other than `5m` or `1h` is refused
 when the crew loads instead of reaching the vendor.
 
-### Changed — an unreported cache or reasoning count is null, not 0 (#254)
+### Changed — an unreported cache or reasoning count is null, not 0 **[breaking]** (#254)
 
 `ModelUsage.CacheReadTokens`, `CacheWriteTokens` and `ReasoningTokens` are `long?`: null when no call reported them,
 the sum of the reported ones otherwise (null + 5 = 5, `ModelUsage.SumReported`). The same holds for
@@ -68,7 +68,7 @@ A per-call `orkeon:cache_ttl` on an agent with no cache configuration placed no 
 nothing. The chat client adapter now treats it as the request: it marks the system prompt with that TTL. A provider
 that cannot write a TTL keeps logging the structured unhonoured-option warning (event 110, `cache_ttl`).
 
-### Added — a host default prompt cache, `Llm:Cache` (#254)
+### Added — a host default prompt cache, `Llm:Cache` **[breaking]** (#254)
 
 `Llm:Cache:SystemPrompt`, `Llm:Cache:Tools` and `Llm:Cache:Ttl` (and `Llm:Profiles:<name>:Cache:*`) set the cache
 every agent asks for when it sets none of its own. They are validated through `LlmCacheConfig.Request`: a `Ttl` other
@@ -88,7 +88,7 @@ A script agent's `.cache(...)` and `.effort(...)` (or the `cache`/`effort` of th
 reached its declarative calls only: the procedural `ctx.llm.complete(...)`/`chat(...)` calls ran without them. They
 now run with both, a call's own `effort` or `cache` winning.
 
-### Changed — the crew pipeline's cache counts are null when unreported (#254)
+### Changed — the crew pipeline's cache counts are null when unreported **[breaking]** (#254)
 
 The cache counts carried from the agent loop to the crew result stay null when no call reported them, as
 `ModelUsage.SumReported` does, instead of reading 0: `AgentLoopResult`, `TaskResult`, `TaskExecutionSnapshot`, the
@@ -102,7 +102,7 @@ count, never 0. This pipeline carries no reasoning count.
 | `TaskExecutionSnapshot.CacheHitTokens` / `CacheMissTokens`, `CrewExecutionSnapshot.TotalCacheHitTokens` / `TotalCacheMissTokens` : `long` | `long?` |
 | `CrewGraphState.CacheHitTokensUsed` / `CacheMissTokensUsed` : `long`; `AddResultUsage(int, long, long)` | `long?`; `AddResultUsage(int, long?, long?)` |
 
-### Added — an index cache between sessions (`index_codebase` `use_cache`)
+### Added — an index cache between sessions (`index_codebase` `use_cache`) (#244)
 
 `AddRaggableTree` now registers `CachingTreeBuilder`, and `index_codebase` saves the index under
 `<root>/.orkeon/cache/raggable-tree/index.db`, a SQLite database in a folder holding its own `.gitignore`. The nodes are
@@ -137,6 +137,21 @@ under the module path of a `go.mod` (read through the VFS, tagged `go_module` on
 current one start from the current module, and any other first segment goes to `ext::cargo::<crate>`. An incremental
 refresh rebuilds the import edges of the files it parses again with the same rules.
 
+### Fixed — the index reads every ignore file of the tree (#258)
+
+`index_codebase` applied the root `.gitignore` alone: a folder named only in `.git/info/exclude` (a package cache
+checked out beside the sources) or in a nested `.gitignore` was walked and parsed. With `respect_gitignore` (the
+default) the discovery now applies the ignore files as git does — `.git/info/exclude`, the root `.gitignore`, then
+each nested `.gitignore` for the paths under its folder, the last matching pattern deciding and a deeper file over a
+shallower one. A nested `.gitignore` whose own folder is ignored is not read.
+
+### Fixed — `package_summary` entry points by exact name, `.gitignore` character classes (#249, #250, #251)
+
+`package_summary` takes a module as an entry point only when its file name without extension is exactly `main`,
+`__main__`, `program` or `index` (#249). Its `dependencies` come from the `Imports` edges of the package's modules,
+mapped to the packages holding their targets (#250). The `.gitignore` matcher honours character classes (`[abc]`,
+`[a-z]`, `[!abc]`, `[^abc]`) and the backslash escape; a `[` with no closing `]` stays literal (#251).
+
 ### Fixed — a host tool no longer counts against a script's memory limit (#247)
 
 Jint's `LimitMemory` reads the allocation counter of the engine's thread, and a tool whose async method completes
@@ -166,13 +181,13 @@ On Anthropic, every `ctx.llm.act` turn and crew agent turn that called a tool fa
 (`{id, function: {name, arguments}}`), while `NativeToolCallTranscript` stores Anthropic `tool_use` blocks as received.
 The replay now accepts both shapes, and the property documents them.
 
-### Fixed — `incremental_reindex` keeps the unresolved calls of the files it does not reparse
+### Fixed — `incremental_reindex` keeps the unresolved calls of the files it does not reparse (#244)
 
 `IncrementalReindexEngine` dropped every `Calls` edge to an `ext::unresolved::*` target whose caller sat in an unchanged
 file, so a refresh lost them (3129 of 11868 edges on one repository). They are kept now, and the one a reindexed file
 makes resolvable (a newly defined function) is replaced by the resolved edge: a refresh gives the edges of a full build.
 
-### Changed — the dependency graph of an index builds in seconds, not minutes
+### Changed — the dependency graph of an index builds in seconds, not minutes (#244)
 
 `DependencyGraphBuilder` rebuilt the short-name symbol table for every file, checked each new edge against every edge
 already found, compiled its tree-sitter queries once per file, and looked an unresolved call target up by scanning every
@@ -180,7 +195,7 @@ node. It now builds the table and compiles the queries once per resolution and c
 through a dictionary. On Orkeon's own `src` (3166 files, 45107 nodes, 62758 edges) a full `index_codebase` build drops from
 221 s to 15 s; the tree is byte-for-byte the same (same edges in the same order, same links and tags, same `IndexId`).
 
-### Added — parallel index build (`index_codebase` `max_parallelism`)
+### Added — parallel index build (`index_codebase` `max_parallelism`) (#243)
 
 `index_codebase` reads and parses files `max_parallelism` at a time (`IndexCodebaseRequest.MaxParallelism`): `0`, the
 default, uses one per processor, `1` parses them one after the other as before, and a negative value is refused with a
@@ -197,13 +212,6 @@ levels its field knows, `LlmProviderCapabilities.EffortLevels` (`low`, `medium`,
 Anthropic and OpenRouter; `max` without `xhigh` for DeepSeek and Z.ai), and sends, for a level it does not know, the highest
 declared level below it (`LlmThinkingConfig.EffortFor`) with a warning naming both (event 112), never a silent
 change. The typings of `LlmConfigOverrides` now declare `effort`.
-### Fixed — the index reads every ignore file of the tree
-
-`index_codebase` applied the root `.gitignore` alone: a folder named only in `.git/info/exclude` (a package cache
-checked out beside the sources) or in a nested `.gitignore` was walked and parsed. With `respect_gitignore` (the
-default) the discovery now applies the ignore files as git does — `.git/info/exclude`, the root `.gitignore`, then
-each nested `.gitignore` for the paths under its folder, the last matching pattern deciding and a deeper file over a
-shallower one. A nested `.gitignore` whose own folder is ignored is not read.
 
 ### Added — model provider categories and TypeSafe decision models (ADR-015)
 

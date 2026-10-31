@@ -126,8 +126,10 @@ WORKDIR /src
 # Central build/version/package config inherited by both src/ and examples/,
 # plus the SDK pin so the container resolves the same toolchain as the host.
 # src/Directory.Build.targets imports the root one: without it the import path
-# resolves to "" and every project fails with MSB4020.
-COPY global.json Directory.Build.props Directory.Build.targets Directory.Packages.props ./
+# resolves to "" and every project fails with MSB4020. nuget.config (package sources) and
+# .editorconfig (the analyzer severities the build enforces) are part of the same
+# configuration: an image built without them restores and compiles under other rules.
+COPY global.json Directory.Build.props Directory.Build.targets Directory.Packages.props nuget.config .editorconfig ./
 
 # Full framework + examples sources. The runners' project graph spans src/core,
 # src/hosting, src/scripting and the examples tree,

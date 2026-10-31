@@ -16,7 +16,9 @@ WORKDIR /src
 # with an UNCONDITIONAL <Import>, so when the root one is missing the expression evaluates to
 # "" and MSBuild refuses it (MSB4020). `dotnet restore` tolerates the empty import; `publish`
 # does not — which is why omitting it produced a green restore layer and a failing publish.
-COPY Orkeon.sln global.json Directory.Build.props Directory.Packages.props ./
+# Directory.Build.targets is the same case: src/Directory.Build.targets imports the root one
+# unconditionally (line 4), so without it every project fails with MSB4020.
+COPY Orkeon.sln global.json Directory.Build.props Directory.Build.targets Directory.Packages.props ./
 COPY src/ src/
 
 RUN dotnet restore src/apps/Orkeon.ConsoleApp/Orkeon.ConsoleApp.csproj
