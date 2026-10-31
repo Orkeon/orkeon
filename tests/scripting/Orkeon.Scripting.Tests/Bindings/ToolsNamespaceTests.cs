@@ -77,6 +77,28 @@ public sealed class ToolsNamespaceTests
     }
 
     [Fact]
+    [Trait("BR", "R-55")]
+    public async Task ShouldNotCountHeavyToolResult_WhenActRunsHostTool()
+    {
+        var tool = new StubBaseTool("index_codebase").RespondWith(_ =>
+        {
+            var chunks = new List<byte[]>();
+            for (var i = 0; i < 64; i++)
+                chunks.Add(new byte[1024 * 1024]);
+            return new ToolCallResponse(true, chunks.Count, null);
+        });
+        var limits = new Orkeon.Scripting.Configuration.ScriptingLimitsOptions { MemoryLimitBytes = 16L * 1024 * 1024 };
+        var engine = new JsEngineFactory(limits, builtInTools: [tool]).Create();
+
+        var result = await Task.Run(() => engine.Evaluate(
+            "tools.indexCodebase({}).then(a => tools.indexCodebase({}).then(b => 'chunks:' + (a + b)))")
+            .UnwrapIfPromise(TestContext.Current.CancellationToken))
+            .WaitAsync(HangGuards.EnginePromise, TestContext.Current.CancellationToken);
+
+        Assert.Equal("chunks:128", result.AsString());
+    }
+
+    [Fact]
     public async Task Tools_invocation_still_charges_the_scripts_own_allocations_after_a_tool_call()
     {
         var tool = new StubBaseTool("index_codebase").RespondWith(_ =>

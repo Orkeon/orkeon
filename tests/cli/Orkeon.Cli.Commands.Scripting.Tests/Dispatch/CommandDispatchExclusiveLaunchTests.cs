@@ -1,7 +1,11 @@
+using System.Collections.Immutable;
 using Microsoft.Extensions.Logging.Abstractions;
 using Orkeon.Cli.Commands.Scripting.Dispatch;
+using Orkeon.Cli.Commands.Scripting.Runtime;
 using Orkeon.Cli.Commands.Scripting.Tests.Fixtures;
 using Orkeon.Infrastructure.Communication;
+using Orkeon.Scripting;
+using Orkeon.Tests.Shared.FileSystem;
 
 namespace Orkeon.Cli.Commands.Scripting.Tests.Dispatch;
 
@@ -23,9 +27,38 @@ public sealed class CommandDispatchExclusiveLaunchTests : IDisposable
         Directory.CreateDirectory(_crewsDir);
     }
 
+    private readonly TaskCompletionSource _stubbornGate = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+    /// <summary>Work that ignores its cancellation token: it ends only when the test opens the gate.</summary>
+    private async Task<CommandResponse> Stubborn(CancellationToken _)
+    {
+        await _stubbornGate.Task.ConfigureAwait(false);
+        return new CommandResponse("a", "i", success: true, payload: "p", error: null);
+    }
+
+    private static Jint.Native.JsValue Options(string literal)
+    {
+        using var engine = new Jint.Engine(options => options.Constraints.PromiseTimeout = Orkeon.Tests.Shared.Timing.HangGuards.EnginePromise);
+        return engine.Evaluate(literal);
+    }
+
+    private ScriptHostFacade NewFacade(CommandDispatchService service)
+    {
+        Directory.CreateDirectory(Path.Combine(_crewsDir, "one"));
+        File.WriteAllText(Path.Combine(_crewsDir, "one", "crew.ork.ts"), "\"one-out\";");
+        var crewFs = new DiskBackedFileSystemService(_crewsDir, virtualRoot: "/crews");
+        return new ScriptHostFacade(
+            new ScriptHost(crewFs, new JsEngineFactory(), NullLogger<ScriptHost>.Instance),
+            crewFs,
+            Microsoft.Extensions.Options.Options.Create(new ScriptHostFacadeOptions { CrewDirectories = ImmutableArray.Create("/crews") }),
+            service,
+            NullLogger<ScriptHostFacade>.Instance);
+    }
+
     public void Dispose()
     {
         _gate.TrySetResult();
+        _stubbornGate.TrySetResult();
         try { Directory.Delete(_tempDir, recursive: true); } catch { /* best effort */ }
         try { Directory.Delete(_crewsDir, recursive: true); } catch { /* best effort */ }
     }
@@ -85,20 +118,6 @@ public sealed class CommandDispatchExclusiveLaunchTests : IDisposable
 
     [Fact]
     [Trait("BR", "#239")]
-    public async Task ShouldAdmitANewLaunch_WhenTheHolderWasCancelled()
-    {
-        var service = NewService();
-        var first = service.postWork("review", "crew:review", Gated, exclusive: true);
-
-        Assert.True(service.cancel(first));
-        var second = service.postWork("review", "crew:review", Instant, exclusive: true);
-
-        Assert.NotEqual(first, second);
-        await WaitTerminal(service.Registry.Get(second)!);
-    }
-
-    [Fact]
-    [Trait("BR", "#239")]
     public async Task ShouldNeitherRefuseNorCount_ALaunchWithoutTheFlagOrOfAnotherTarget()
     {
         var service = NewService();
@@ -150,5 +169,72 @@ public sealed class CommandDispatchExclusiveLaunchTests : IDisposable
         Assert.Contains("relaunched:t2", console.Output, StringComparison.Ordinal);
         Assert.Contains("exclusive-done:one-out", console.Output, StringComparison.Ordinal);
         Assert.Equal(2, service.Registry.List(CommandInstanceFilter.All).Count);
+    }
+
+    [Fact]
+    [Trait("BR", "R-48")]
+    public async Task ShouldRefuseExclusiveRelaunch_WhenCancelledWorkHasNotEnded()
+    {
+        var service = NewService();
+        var first = service.postWork("review", "crew:review", Stubborn, exclusive: true);
+
+        Assert.True(service.cancel(first));
+        var refused = Assert.Throws<ExclusiveLaunchRefusedException>(() => service.postWork("review", "crew:review", Instant, exclusive: true));
+
+        Assert.Equal(first, refused.Ticket);
+        _stubbornGate.SetResult();
+        await Task.CompletedTask;
+    }
+
+    [Fact]
+    [Trait("BR", "R-48")]
+    public async Task ShouldAcceptExclusiveRelaunch_WhenCancelledWorkHasEnded()
+    {
+        var service = NewService();
+        var first = service.postWork("review", "crew:review", Stubborn, exclusive: true);
+        Assert.True(service.cancel(first));
+        _stubbornGate.SetResult();
+
+        string? second = null;
+        await Orkeon.Tests.Shared.Timing.Polling.WaitUntilAsync(() =>
+        {
+            try { second = service.postWork("review", "crew:review", Instant, exclusive: true); }
+            catch (ExclusiveLaunchRefusedException) { /* the cancelled work has not ended yet */ }
+            return second is not null;
+        }, Orkeon.Tests.Shared.Timing.Polling.DefaultTimeout);
+
+        Assert.NotNull(second);
+        Assert.NotEqual(first, second);
+        await WaitTerminal(service.Registry.Get(second)!);
+    }
+
+    [Fact]
+    [Trait("BR", "R-49")]
+    public async Task ShouldRefuseRunCrew_WhenSameCrewRunsExclusively()
+    {
+        var service = NewService();
+        var facade = NewFacade(service);
+        var first = service.postWork("one", "crew:one", Gated, exclusive: true);
+
+        var refused = Assert.Throws<ExclusiveLaunchRefusedException>(() => facade.runCrew("one"));
+
+        Assert.Equal(first, refused.Ticket);
+        _gate.SetResult();
+        await WaitTerminal(service.Registry.Get(first)!);
+    }
+
+    [Fact]
+    [Trait("BR", "R-73")]
+    public async Task ShouldRefuseLaunch_WhenExclusiveIsNull()
+    {
+        var service = NewService();
+        var facade = NewFacade(service);
+
+        var failure = Assert.Throws<Jint.Runtime.JavaScriptException>(() => facade.runCrewAsync("one", null, Options("({ exclusive: null })")));
+
+        Assert.Equal("script-host.runCrewAsync: exclusive must be a boolean, not 'null'.", failure.Message);
+        Assert.Empty(service.Registry.List(CommandInstanceFilter.All));
+        var accepted = facade.runCrewAsync("one", null, Options("({})"));
+        await WaitTerminal(service.Registry.Get(accepted)!);
     }
 }

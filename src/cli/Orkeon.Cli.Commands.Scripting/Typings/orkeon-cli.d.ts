@@ -85,7 +85,10 @@ export interface CommandsFacade {
   list(filter?: CommandInstanceFilter | string): readonly CommandInstanceView[];
   /** Full view for a ticket, or `undefined`. */
   get(ticket: string): CommandInstanceView | undefined;
-  /** Request cancellation of an in-flight ticket. */
+  /**
+   * Request cancellation of an in-flight ticket. An exclusive target stays held until the cancelled work has
+   * actually ended: a relaunch is refused until then.
+   */
   cancel(ticket: string): boolean;
 }
 
@@ -264,7 +267,8 @@ export interface ScriptHostFacade {
    * `TypeError`. `await` on it is harmless (it resolves to the same value). In `orkeon-repl`
    * with the permission gate on, a tool call of the crew that needs an approval is asked here,
    * while the call waits, and the time the operator takes to answer does not count in
-   * `RunCrewTimeout`.
+   * `RunCrewTimeout`. Refused with an `ExclusiveLaunchRefusedException` when the same crew is held by an
+   * exclusive `runCrewAsync`.
    */
   runCrew(name: string, input?: Record<string, unknown>): CrewRunOutput;
   /**
@@ -297,9 +301,10 @@ export interface CrewLaunchOptions {
    * `true`: refused while another exclusive launch of the same crew runs — a crew that must not run twice at a
    * time (a review, the writer of a shared store). The check and the launch are one step, so two lines typed in
    * the same tick cannot both pass. The refusal is a throw, before any LLM call, naming the running instance:
-   * `crew 'code-review' already running (ticket t2)`. The crew is free again as soon as that instance completes,
-   * fails or is cancelled (a cancelled run stops at its next cooperative checkpoint). A launch without the option
-   * is neither refused nor counted. Any non-boolean throws.
+   * `crew 'code-review' already running (ticket t2)`. The crew is free again when that instance's work has ended
+   * (completed, failed, or stopped after `cancel()`, at its next cooperative checkpoint); a synchronous `runCrew` of
+   * the same crew is refused meanwhile. A launch without the option
+   * is neither refused nor counted. Boolean or absent: any other value, an explicit `null` included, throws.
    */
   exclusive?: boolean;
 }

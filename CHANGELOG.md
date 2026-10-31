@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — an exclusive launch stays exclusive until its work ends; the host-work memory exclusion holds (R-12, R-48, R-49, R-53, R-54, R-55, R-73)
+
+`cancel()` no longer frees an exclusive crew: the target is released when the work really stops (the `finally` of
+`postWork`), so a relaunch right after a `cancel()` is refused until the cancelled run has finished. A synchronous
+`runCrew` of a crew held by an exclusive `runCrewAsync` is refused with `ExclusiveLaunchRefusedException` like a second
+`runCrewAsync`, and `exclusive: null` is a script error (the option is a boolean or absent). The
+exclusion of host-tool work from `MemoryLimitBytes` is closed on every exit of its scope, exception included, survives
+nesting and `Reset()`, and belongs to the thread that opened it; the documentation now says that only the execution of a
+host tool is outside the limit, not the rest of `ctx.llm.act`. The `postWork` signature change of #239 is declared as a
+break (`PublicAPI.Unshipped.txt`).
+
 ### Fixed — Anthropic replays the signed thinking blocks of a tool-call turn, and a malformed tool call is named (R-08, R-46)
 
 An assistant turn that held `thinking` or `redacted_thinking` blocks and `tool_use` calls was replayed without the
@@ -254,14 +265,20 @@ circuit off: decision tasks answer from their `fallback`; a question the model l
 reason, the defaulted flag and the decision answers. See [ADR-016](docs/adr/ADR-016-decision-tasks-and-conditional-fan-out.md)
 and [Decision models](docs/architecture/decision-models.md).
 
-### Added — an exclusive crew launch (#239)
+### Added — an exclusive crew launch **[breaking]** (#239)
 
 `script-host.runCrewAsync(name, input, { exclusive: true })` refuses a crew whose previous exclusive launch is still
 running, before any LLM call, with a JS throw naming its ticket (`crew 'code-review' already running (ticket t2)`). The
 check and the registration of the instance are one step (`CommandDispatchService.postWork(..., exclusive: true)`,
 `ExclusiveLaunchRefusedException`); the crew is free again once that instance completes, fails or is cancelled. A
 command that launches such a crew no longer needs `maxConcurrent`, which also blocked its aliases. See
-[scripted commands](docs/architecture/cli-ts-commands.md).
+[scripted commands](docs/architecture/cli-ts-commands.md). Migration: the public `CommandDispatchService.postWork` gains
+a trailing `bool exclusive = false` parameter and its previous signature (rc.6) is removed, with no overload; a host that
+calls it recompiles, and a host that binds it by reflection passes the new argument.
+
+| Before (rc.6) | After |
+|---|---|
+| `postWork(label, target, work, bool continueChain = false)` | `postWork(label, target, work, bool continueChain = false, bool exclusive = false)` |
 
 ### Changed — `TaskCompletedEvent.AgentId` is nullable; `ParallelProcessStrategy` takes `CrewStrategyDependencies` **[breaking]**
 

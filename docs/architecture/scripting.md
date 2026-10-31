@@ -377,7 +377,7 @@ The sandbox limits are read from `Orkeon:Scripting:Limits` (`ScriptingLimitsOpti
 
 | Key | Default | Meaning |
 |---|---|---|
-| `MemoryLimitBytes` | `104857600` (100 MB) | Jint memory ceiling. What a host tool the script calls (`tools.*`, `ctx.llm.act`) allocates on the engine thread is left out: its own work is not counted. `orkeon run --memory-limit-mb` overrides it for a procedural script; `0` or less disables it. |
+| `MemoryLimitBytes` | `104857600` (100 MB) | Jint memory ceiling. What a host tool the script calls (`tools.*`, or a tool call made by `ctx.llm.act`) allocates on the engine thread is left out: only the execution of the tool is outside the limit, not the rest of `ctx.llm.act`. The exclusion is closed on any exit from the tool call (an exception included), holds across nesting and `Reset()`, and belongs to the thread that opened it. `orkeon run --memory-limit-mb` overrides it for a procedural script; `0` or less disables it. |
 | `RecursionLimit` | `64` | Maximum JavaScript call depth. |
 | `ExecutionTimeout` | `00:00:30` | Wall-clock bound of one evaluation — a whole script, or a whole CLR-driven crew run; the permission gate's decisions are not counted. |
 
