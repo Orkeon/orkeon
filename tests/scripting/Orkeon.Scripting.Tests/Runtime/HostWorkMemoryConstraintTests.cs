@@ -75,13 +75,10 @@ public sealed class HostWorkMemoryConstraintTests
             constraint.Reset();
 
             var scope = constraint.ExcludeHostWork();
-            try
+            using (scope)
             {
-                for (var i = 0; i < 6; i++) Allocate(TenMegabytes);
-                throw new InvalidOperationException("host tool failed");
+                Assert.Throws<InvalidOperationException>(FailingHostTool);
             }
-            catch (InvalidOperationException) { }
-            finally { scope.Dispose(); }
             // a second end of the same scope (a cleanup path run twice) must not widen the window
             scope.Dispose();
             constraint.Check();
@@ -101,14 +98,15 @@ public sealed class HostWorkMemoryConstraintTests
             var constraint = new HostWorkMemoryConstraint(Limit);
             constraint.Reset();
 
-            var outer = constraint.ExcludeHostWork();
             using (constraint.ExcludeHostWork())
-                Allocate(TenMegabytes);
-            for (var i = 0; i < 5; i++) Allocate(TenMegabytes);
+            {
+                using (constraint.ExcludeHostWork())
+                    Allocate(TenMegabytes);
+                for (var i = 0; i < 5; i++) Allocate(TenMegabytes);
 
-            // the inner scope ended, the outer is still open: these bytes are not counted
-            constraint.Check();
-            outer.Dispose();
+                // the inner scope ended, the outer is still open: these bytes are not counted
+                constraint.Check();
+            }
             constraint.Check();
         });
     }
@@ -145,16 +143,23 @@ public sealed class HostWorkMemoryConstraintTests
             var constraint = new HostWorkMemoryConstraint(Limit);
             constraint.Reset();
 
-            var scope = constraint.ExcludeHostWork();
-            for (var i = 0; i < 6; i++) Allocate(TenMegabytes);
-            OnNewThread(constraint.Check);
-            constraint.Check();
-            scope.Dispose();
+            using (constraint.ExcludeHostWork())
+            {
+                for (var i = 0; i < 6; i++) Allocate(TenMegabytes);
+                OnNewThread(constraint.Check);
+                constraint.Check();
+            }
             Allocate(TenMegabytes);
             Allocate(TenMegabytes);
 
             Assert.Throws<MemoryLimitExceededException>(constraint.Check);
         });
+    }
+
+    private static void FailingHostTool()
+    {
+        for (var i = 0; i < 6; i++) Allocate(TenMegabytes);
+        throw new InvalidOperationException("host tool failed");
     }
 
     private static void Allocate(int bytes) => GC.KeepAlive(new byte[bytes]);

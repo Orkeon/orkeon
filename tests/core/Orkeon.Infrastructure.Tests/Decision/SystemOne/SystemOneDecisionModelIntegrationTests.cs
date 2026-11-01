@@ -101,7 +101,7 @@ public class SystemOneDecisionModelIntegrationTests
         var request = new DecisionRequest
         {
             State = JsonValue.Create(state),
-            Questions = ImmutableDictionary<string, DecisionQuestion>.Empty.Add("refund", new NoulQuestion()),
+            Questions = OneNoul("refund"),
         };
 
         var ex = await Assert.ThrowsAsync<DecisionModelException>(() => model.DecideAsync(request, TestContext.Current.CancellationToken));
@@ -110,6 +110,9 @@ public class SystemOneDecisionModelIntegrationTests
         Assert.False(ex.IsTransient);
         Assert.Contains($"context limit ({DecisionLimits.StandardContextTokens} tokens)", ex.Message, StringComparison.Ordinal);
     }
+
+    private static ImmutableDictionary<string, DecisionQuestion> OneNoul(string key) =>
+        ImmutableDictionary<string, DecisionQuestion>.Empty.Add(key, new NoulQuestion());
 
     private static async Task<bool> Answers(Uri address)
     {

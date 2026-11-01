@@ -87,8 +87,8 @@ public sealed class AnthropicLlmProviderUsageTests
                 final = ev.FinalResponse;
         }
 
-        Assert.NotNull(final);
-        Assert.Equal(10000, final.CacheWriteTokens);
-        Assert.Equal(4000, final.CacheWrite1hTokens);
+        var response = Assert.IsType<Orkeon.Domain.SharedKernel.ValueObjects.LlmResponse>(final);
+        Assert.Equal(10000, response.CacheWriteTokens);
+        Assert.Equal(4000, response.CacheWrite1hTokens);
     }
 }

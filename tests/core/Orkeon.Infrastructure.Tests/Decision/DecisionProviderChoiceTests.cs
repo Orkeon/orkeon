@@ -12,7 +12,7 @@ public class DecisionProviderChoiceTests
 
     // An empty section: the key exists with no value, as the JSON provider reads {}.
     private static IConfiguration EmptySections(params string[] sections)
-        => Config(sections.Select(x => ("Orkeon:" + x, (string?)null)).ToArray());
+        => Config(sections.Select<string, (string, string?)>(x => ("Orkeon:" + x, null)).ToArray());
 
     private static Func<string, string?> Env(params (string Name, string Value)[] values)
     {
