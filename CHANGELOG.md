@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — the console copies a keyboard selection and takes the terminal's paste over SSH
+
+- Over SSH (the `dotnet` driver, no X display) Terminal.Gui reports the REPL pane, not its input field, as the focused view: a selection made with Shift+arrow in the field was invisible to `Ctrl+C`, which printed its hint instead of copying, and the terminal's own paste (`Ctrl+Shift+V`, `Shift+Insert`, bracketed paste) was delivered to the pane, which dropped it. `Ctrl+C` now reads the field's selection after the focused view and before the transcript, and the pane forwards a paste it receives to the field at the caret.
+- `TUI_DIAG=1` also traces every modified key and bracketed paste the driver delivers, the focused view at `Ctrl+C`, and the surfaces each copy reached and each paste read from.
+
 ### Fixed — the REPL console opens no context menu
 
 - A right click in the input of the Terminal.Gui console flashed Terminal.Gui's own `TextView` context menu open and closed against the right-click paste. `MouseClipboardTextView` (the input, the transcript and agents panes) no longer passes a right button to the native handler, and its `Command.Context` (Ctrl+click, the menu's key) does nothing: a right click pastes, nothing else.

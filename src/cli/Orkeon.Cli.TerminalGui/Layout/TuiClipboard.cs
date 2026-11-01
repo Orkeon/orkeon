@@ -39,6 +39,12 @@ internal static class TuiClipboard
     internal static TextWriter? TerminalWriter { get; set; }
 
     /// <summary>
+    /// Sink of the <c>TUI_DIAG</c> trace, set by the host while the TUI runs: every copy names the
+    /// surfaces it reached, every read names the one it answered from.
+    /// </summary>
+    internal static Action<string>? Diagnostics { get; set; }
+
+    /// <summary>
     /// Copies <paramref name="text"/> to every reachable clipboard surface (in-process cache,
     /// OS clipboard when supported, host terminal via OSC 52). Returns false only for
     /// null/empty text — a non-empty copy always succeeds somewhere (at least the cache).
@@ -49,8 +55,9 @@ internal static class TuiClipboard
             return false;
 
         _lastCopy = text;
-        Application.Clipboard?.TrySetClipboardData(text);
-        EmitOsc52(text);
+        var osWritten = Application.Clipboard?.TrySetClipboardData(text) ?? false;
+        var osc52 = EmitOsc52(text);
+        Diagnostics?.Invoke($"Copy {text.Length} chars: os={osWritten} osc52={osc52}");
         return true;
     }
 
@@ -64,14 +71,17 @@ internal static class TuiClipboard
         if (os is not null && os.TryGetClipboardData(out var osText) && !string.IsNullOrEmpty(osText))
         {
             text = osText;
+            Diagnostics?.Invoke($"Paste read {text.Length} chars from the OS clipboard");
             return true;
         }
         if (!string.IsNullOrEmpty(_lastCopy))
         {
             text = _lastCopy;
+            Diagnostics?.Invoke($"Paste read {text.Length} chars from the in-process cache (OS clipboard supported={os?.IsSupported.ToString() ?? "<null>"})");
             return true;
         }
         text = string.Empty;
+        Diagnostics?.Invoke($"Paste found nothing (OS clipboard supported={os?.IsSupported.ToString() ?? "<null>"})");
         return false;
     }
 
@@ -89,24 +99,27 @@ internal static class TuiClipboard
         Application.Clipboard?.TrySetClipboardData(string.Empty);
     }
 
-    private static void EmitOsc52(string text)
+    /// <returns>True when the sequence was written to the terminal stream.</returns>
+    private static bool EmitOsc52(string text)
     {
         try
         {
             var payload = Convert.ToBase64String(Encoding.UTF8.GetBytes(text));
             if (payload.Length > MaxOsc52Base64Length)
-                return;
+                return false;
             var writer = TerminalWriter;
             if (writer is null)
-                return;
+                return false;
             // OSC 52 ; c(lipboard) ; <base64> BEL — atomic write + flush so the sequence never
             // interleaves with a partially-emitted TUI frame.
             writer.Write($"\x1b]52;c;{payload}\a");
             writer.Flush();
+            return true;
         }
         catch (IOException)
         {
             // stdout gone (detached tty) — copy still landed in the cache/OS clipboard.
+            return false;
         }
     }
 }

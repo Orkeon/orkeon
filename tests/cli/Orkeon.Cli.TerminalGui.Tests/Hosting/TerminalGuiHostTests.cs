@@ -26,7 +26,14 @@ public class TerminalGuiHostTests
     private const string Hint = "Ctrl+C or Ctrl+Shift+C copies a selection — esc esc interrupts the turn.";
 
     private static ReplPaneView CreatePane()
-        => new(new TerminalGuiOptions(), InlineDispatcher.Instance);
+    {
+        var pane = new ReplPaneView(new TerminalGuiOptions(), InlineDispatcher.Instance);
+        // A frame and a layout, as ReplPaneViewTests gives its panes: without a viewport the
+        // word-wrapping field tracks no column, so a selection and a caret collapse to 0.
+        pane.Frame = new System.Drawing.Rectangle(0, 0, 100, 20);
+        pane.Layout();
+        return pane;
+    }
 
     private static Key CtrlC() => new(KeyCode.C | KeyCode.CtrlMask);
 
@@ -119,6 +126,49 @@ public class TerminalGuiHostTests
         using var pane = CreatePane();
         TerminalGuiHost.HandleCtrlC(CtrlC(), runner, pane);
         Assert.Equal(Hint + "\n", pane.CurrentHistory);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-04")]
+    public void CtrlC_copies_the_keyboard_selection_of_the_input_when_the_pane_is_the_focused_view()
+    {
+        // Over SSH the navigation reports the pane, not its field, as the focused view: a Shift+arrow
+        // selection in the field was invisible to Ctrl+C, which printed the hint instead of copying.
+        TuiClipboard.Reset();
+        TuiClipboard.TerminalWriter = new StringWriter();
+        try
+        {
+            var runner = new FakeInteractiveRunner { Running = false };
+            using var pane = CreatePane();
+            pane.CurrentInput = "abcdef";
+            pane.RaiseKeyDown(Key.A.WithCtrl);
+            Assert.Equal("abcdef", pane.Input.SelectedText);
+
+            TerminalGuiHost.HandleCtrlC(CtrlC(), runner, pane);
+
+            Assert.True(TuiClipboard.TryGetText(out var copied));
+            Assert.Equal("abcdef", copied);
+            Assert.Equal(string.Empty, pane.CurrentHistory);
+        }
+        finally
+        {
+            TuiClipboard.Reset();
+            TuiClipboard.TerminalWriter = null;
+        }
+    }
+
+    [Fact]
+    [Trait("BR", "CH-09")]
+    public void A_bracketed_paste_delivered_to_the_pane_lands_in_the_input()
+    {
+        // The terminal's own paste (Ctrl+Shift+V, Shift+Insert) reaches the focused view as a paste
+        // payload; the pane forwards it to its field at the caret instead of dropping it.
+        using var pane = CreatePane();
+        pane.CurrentInput = "ab"; // caret at the end
+
+        Assert.True(pane.PasteText("hello"));
+
+        Assert.Equal("abhello", pane.CurrentInput);
     }
 
     private static Key CtrlV() => new(KeyCode.V | KeyCode.CtrlMask);
