@@ -32,6 +32,9 @@ public static class ErrorCodeMapper
     /// <summary>A <c>queue.pop({ timeout })</c> expired before a value arrived.</summary>
     public const string CodeReceiveTimeout = "receive_timeout";
 
+    /// <summary>A decision stage blocked a model call (<c>DecisionBlockedError</c>): a decision, not a failure.</summary>
+    public const string CodeDecisionBlocked = "decision_blocked";
+
     /// <summary>Fallback for an exception no other code claims.</summary>
     public const string CodeUnknown = "unknown";
 
@@ -56,6 +59,7 @@ public static class ErrorCodeMapper
             ArgumentException => CodeValidation,
             InvalidScriptException => CodeValidation,
             UnknownToolException => CodeValidation,
+            Orkeon.Application.Decision.DecisionBlockedException => CodeDecisionBlocked,
             _ => CodeUnknown,
         };
     }

@@ -20,6 +20,9 @@ public sealed record DecisionVerdict
     /// <summary>Why, for the log, the audit and a blocked call's error.</summary>
     public string? Reason { get; init; }
 
+    /// <summary>The risk a blocked call matched, when a guard blocked it; null otherwise.</summary>
+    public string? Risk { get; init; }
+
     /// <summary>Refuses the call.</summary>
     /// <param name="reason">Why; it reaches the caller.</param>
     /// <returns>The verdict.</returns>

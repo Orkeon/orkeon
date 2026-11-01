@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — decision profiles in an agent loop: `verify` judges answers, questions carry instructions, a block reaches scripts typed (#267, #268, #269, #270)
+
+- A `verify` stage lets a response that calls tools pass unjudged: in an agent loop each step escalated, since a tool call does not answer the request yet (#267). `Steps: "all"` judges the steps too; `final` is the default.
+- The `guard` and `verify` questions carry `instructions` with their criterion (`GuardDecisionStage.Instructions`, `VerifyDecisionStage.Instructions`): a System One server built on Liquid's reference code answered 500 to a question without them, and the stage failed open (#268).
+- A blocked call carries `decision_profile`, `decision_stage`, `decision_risk` and `decision_reason`; `DecisionBlockedException.FromResponse` reads them, and a text stream throws that exception instead of an `InvalidOperationException` **[breaking]**. A script receives a block as a `DecisionBlockedError` (`errorType`, `profile`, `stage`, `risk`, `reason`; `onError` code `decision_blocked`) from `complete`, `chat`, `extract`, `decide`, `act` and `stream`, never as an `<undefined-llm:…>` marker; uncaught, it fails the run with the `DecisionBlockedException` (#269). `JsLlmFacade.complete`, `chat`, `extract` and `decide` are now bridged JS functions (`JsValue`) **[breaking]**: a C# caller uses `CompleteAsync`, `ChatAsync`, `ExtractAsync`, `DecideAsync`.
+- The stage log no longer prints `(null)` for a verdict without a target: `stage guard decided Block (…)` (#270).
+
 ### Changed — the decision model serves three providers (TypeSafe, Liquid, Kev); the TypeSafe-only names go **[breaking]** (UC-01, UC-02, UC-03)
 
 The decision model is no longer TypeSafe's alone. One client, `SystemOneDecisionModel`, serves TypeSafe, Liquid and Kev on the same System One wire, through three provider descriptors. The host starts with one active provider, named by `Orkeon:Decision:Provider` or deduced from the settings, logs it, and refuses the ambiguous or unsafe cases at start. The input guard moves to its own section, `Orkeon:Decision:Guard`, and signs its verdicts with the active provider's name. Consumers rename:

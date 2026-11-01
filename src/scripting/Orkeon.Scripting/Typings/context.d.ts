@@ -37,6 +37,11 @@ declare global {
     }
 
     interface LlmFacade {
+        /**
+         * One prompt, the answer. A call a stage of the host's decision profile blocks rejects
+         * with a `DecisionBlockedError`, as `chat`, `extract`, `decide`, `act` and a `stream`
+         * iteration do; uncaught, it fails the run.
+         */
         complete(prompt: string, opts?: LlmCallOptions): Promise<string>;
         chat(messages: readonly Message[], opts?: LlmCallOptions): Promise<ChatResponse>;
         /**

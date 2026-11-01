@@ -50,7 +50,7 @@ public sealed class JsLlmFacadeCallConfigTests
         var facade = new JsLlmFacade(engine, provider, CancellationToken.None);
 
         var opts = await engine.EvaluateAsync("({ responseFormat: 'json_object' })", cancellationToken: TestContext.Current.CancellationToken);
-        await facade.complete("Return as json", opts);
+        await facade.CompleteAsync("Return as json", opts);
 
         AssertCredentialsSurvived(provider.LastConfig);
         Assert.Equal("boot-model", provider.LastConfig!.Model);
@@ -68,7 +68,7 @@ public sealed class JsLlmFacadeCallConfigTests
 
         var msgs = await engine.EvaluateAsync("[{role:'user', content:'hi'}]", cancellationToken: TestContext.Current.CancellationToken);
         var opts = await engine.EvaluateAsync("({ llm: { model: 'other-model' } })", cancellationToken: TestContext.Current.CancellationToken);
-        await facade.chat(msgs, opts);
+        await facade.ChatAsync(msgs, opts);
 
         AssertCredentialsSurvived(provider.LastConfig);
         Assert.Equal("other-model", provider.LastConfig!.Model);
@@ -121,7 +121,7 @@ public sealed class JsLlmFacadeCallConfigTests
         var opts = await engine.EvaluateAsync(
             "({ responseFormat: 'json_object', llm: { model: 'other-model' } })",
             cancellationToken: TestContext.Current.CancellationToken);
-        await facade.complete("p", opts);
+        await facade.CompleteAsync("p", opts);
 
         AssertCredentialsSurvived(provider.LastConfig);
         Assert.Equal("other-model", provider.LastConfig!.Model);
@@ -139,7 +139,7 @@ public sealed class JsLlmFacadeCallConfigTests
         provider.RespondWith(new LlmResponse { Content = "ok" });
         var facade = new JsLlmFacade(engine, provider, CancellationToken.None);
 
-        await facade.complete("p", null);
+        await facade.CompleteAsync("p", null);
 
         Assert.Null(provider.LastConfig);
     }
@@ -157,7 +157,7 @@ public sealed class JsLlmFacadeCallConfigTests
         var facade = new JsLlmFacade(engine, provider, CancellationToken.None);
 
         var opts = await engine.EvaluateAsync("({ responseFormat: 'json_object' })", cancellationToken: TestContext.Current.CancellationToken);
-        await facade.complete("p", opts);
+        await facade.CompleteAsync("p", opts);
 
         Assert.Equal("json_object", provider.LastConfig!.ResponseFormat!.Type);
         Assert.Equal(string.Empty, provider.LastConfig.Model);

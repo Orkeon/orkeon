@@ -208,7 +208,7 @@ provider answers in the OpenAI shape (most providers, Ollama included) or with t
 Messages body. A result is cut once, at the framework's bound
 (`AgentDefaults.ResolveMaxToolResultLength`: 4 000 characters by default; per-tool overrides: `file_read` 32 000, `node_read` 256 000, `shell_command` 10 000): by the
 host's tool invocation pipeline when it has one, by `act` otherwise. A turn the provider failed
-resolves `output` to `<undefined-llm:<the provider's error>>`, as `complete` does. A name in `.tools([...])` that no tool of the host
+resolves `output` to `<undefined-llm:<the provider's error>>`, as `complete` does. A call a stage of the host's decision profile blocks is not a provider failure: `complete`, `chat`, `extract`, `decide`, `act` and a `stream` iteration reject with a `DecisionBlockedError` (`errorType: "DecisionBlocked"`, `profile`, `stage`, `risk` for a guard, `reason`), so a crew can tell the user which stage refused the request; uncaught, it fails the run with the `DecisionBlockedException`. A name in `.tools([...])` that no tool of the host
 answers to (compared case-insensitively) is not skipped: `act` rejects with an
 `UnknownToolError` (`agentName`, `toolNames`, `availableTools`) before any model call — the
 procedural twin of the load failure the declarative shape gets for the same name; an `onError`
@@ -262,7 +262,7 @@ A host failure reaches the script as an instance of the class `errors.d.ts` decl
 `clr` (the exception). A failure with no declared class is a plain `Error` with the same two
 properties. An `onError` handler receives `{ code, message, exception, attempt, agent: { id,
 name } }` and the context; `code` is one of `rate_limit`, `network`, `timeout`,
-`receive_timeout`, `state_mutation`, `agent_not_in_crew`, `validation`, `unknown`.
+`receive_timeout`, `state_mutation`, `agent_not_in_crew`, `validation`, `decision_blocked`, `unknown`.
 
 ## The namespaces
 

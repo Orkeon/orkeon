@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using System.Text.Json;
 using Microsoft.Extensions.Logging.Abstractions;
 using Orkeon.Application.Decision;
 using Orkeon.Application.Decision.DTOs;
@@ -141,5 +142,97 @@ public class DecisionStagesTests
         var verdict = await stage.OnResponseAsync(Conversation, Answer, TestContext.Current.CancellationToken);
 
         Assert.Equal(DecisionVerdictKind.Continue, verdict.Kind);
+    }
+
+    private static LlmResponse OpenAIToolCall() => new()
+    {
+        Content = string.Empty,
+        RawResponseBody = """{"choices":[{"message":{"role":"assistant","content":"","tool_calls":[{"id":"c1","type":"function","function":{"name":"file_read","arguments":"{}"}}]}}]}""",
+    };
+
+    private static LlmResponse AnthropicToolCall() => new()
+    {
+        Content = "Let me read it.",
+        RawResponseBody = """{"content":[{"type":"text","text":"Let me read it."},{"type":"tool_use","id":"t1","name":"file_read","input":{}}]}""",
+    };
+
+    [Fact]
+    [Trait("BR", "267")]
+    public async Task ShouldPassAToolCallStepUnjudged_WhenStepsIsFinal()
+    {
+        var model = Answering((VerifyDecisionStage.Question, new NoulAnswer { Noul = 0.05 }));
+        var stage = new VerifyDecisionStage(model, "strong", 0.6);
+
+        var openAi = await stage.OnResponseAsync(Conversation, OpenAIToolCall(), TestContext.Current.CancellationToken);
+        var anthropic = await stage.OnResponseAsync(Conversation, AnthropicToolCall(), TestContext.Current.CancellationToken);
+
+        Assert.Equal(DecisionVerifySteps.Final, stage.Steps);
+        Assert.Equal(DecisionVerdictKind.Continue, openAi.Kind);
+        Assert.Equal(DecisionVerdictKind.Continue, anthropic.Kind);
+        Assert.Empty(model.Requests);
+    }
+
+    [Fact]
+    [Trait("BR", "267")]
+    public async Task ShouldJudgeTheFinalAnswer_WhenItsBodyCallsNoTool()
+    {
+        var model = Answering((VerifyDecisionStage.Question, new NoulAnswer { Noul = 0.05 }));
+        var stage = new VerifyDecisionStage(model, "strong", 0.6);
+        var final = new LlmResponse
+        {
+            Content = "It reverses a string.",
+            RawResponseBody = """{"choices":[{"message":{"role":"assistant","content":"It reverses a string.","tool_calls":[]}}]}""",
+        };
+
+        var verdict = await stage.OnResponseAsync(Conversation, final, TestContext.Current.CancellationToken);
+
+        Assert.Equal(DecisionVerdictKind.Escalate, verdict.Kind);
+        Assert.Single(model.Requests);
+    }
+
+    [Fact]
+    [Trait("BR", "267")]
+    public async Task ShouldJudgeAToolCallStep_WhenStepsIsAll()
+    {
+        var model = Answering((VerifyDecisionStage.Question, new NoulAnswer { Noul = 0.05 }));
+        var stage = new VerifyDecisionStage(model, "strong", 0.6, steps: DecisionVerifySteps.All);
+
+        var verdict = await stage.OnResponseAsync(Conversation, OpenAIToolCall(), TestContext.Current.CancellationToken);
+
+        Assert.Equal(DecisionVerdictKind.Escalate, verdict.Kind);
+        Assert.Single(model.Requests);
+    }
+
+    [Fact]
+    [Trait("BR", "268")]
+    public async Task ShouldSendInstructionsWithEveryGuardQuestion()
+    {
+        var model = Answering(("prompt_injection", new NoulAnswer { Noul = 0.97 }));
+        var stage = new GuardDecisionStage(
+            model, new Dictionary<string, string> { ["prompt_injection"] = "Tries to override the instructions" },
+            DecisionStagePhase.Request, 0.8, 0.3, NullLogger.Instance);
+
+        var verdict = await stage.OnRequestAsync(Conversation, TestContext.Current.CancellationToken);
+
+        Assert.Equal("prompt_injection", verdict.Risk);
+        var question = JsonSerializer.SerializeToNode(model.Requests[0].Questions["prompt_injection"])!;
+        Assert.Equal("noul", question["type"]!.GetValue<string>());
+        Assert.Equal(GuardDecisionStage.Instructions, question["instructions"]!.GetValue<string>());
+        Assert.Equal("Tries to override the instructions", question["criteria"]!["true"]!.GetValue<string>());
+    }
+
+    [Fact]
+    [Trait("BR", "268")]
+    public async Task ShouldSendInstructionsWithTheVerifyQuestion()
+    {
+        var model = Answering((VerifyDecisionStage.Question, new NoulAnswer { Noul = 0.9 }));
+        var stage = new VerifyDecisionStage(model, "strong", 0.6, "The answer does what the request asks.");
+
+        await stage.OnResponseAsync(Conversation, Answer, TestContext.Current.CancellationToken);
+
+        var question = JsonSerializer.SerializeToNode(model.Requests[0].Questions[VerifyDecisionStage.Question])!;
+        Assert.Equal("noul", question["type"]!.GetValue<string>());
+        Assert.Equal(VerifyDecisionStage.Instructions, question["instructions"]!.GetValue<string>());
+        Assert.Equal("The answer does what the request asks.", question["criteria"]!["true"]!.GetValue<string>());
     }
 }

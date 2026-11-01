@@ -928,6 +928,12 @@
       "description": "The profiles a `route` may choose, each with what it is for."
     },
     {
+      "path": "Orkeon:Decision:Profiles:<name>:Stages:<i>:Steps",
+      "section": "Orkeon:Decision",
+      "type": "string",
+      "description": "Which responses a `verify` judges: `final` (the default) lets a response that calls tools pass as a step of an agent loop, `all` judges it too."
+    },
+    {
       "path": "Orkeon:Decision:Profiles:<name>:Stages:<i>:WarnThreshold",
       "section": "Orkeon:Decision",
       "type": "number",

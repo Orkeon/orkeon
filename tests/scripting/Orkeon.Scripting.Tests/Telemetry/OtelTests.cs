@@ -108,7 +108,7 @@ public sealed class OtelTests
             // crew_run/agent_run/tool_call above, which all discriminate by tag).
             const string Prompt = "otel-probe-unique-prompt-length";
 
-            await facade.complete(Prompt, null);
+            await facade.CompleteAsync(Prompt, null);
 
             var span = Snapshot(spans)
                 .Where(s => s.OperationName.StartsWith(ScriptingActivitySource.LlmCallSpan, StringComparison.Ordinal))

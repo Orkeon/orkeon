@@ -322,3 +322,20 @@ Orkeon.Application.Interfaces.Ports.ISessionBufferService.AppendMessage(Orkeon.A
 Orkeon.Application.Interfaces.Ports.ISessionBufferService.SetStates(System.Collections.Generic.IReadOnlyDictionary<string!, string?>! values) -> void
 Orkeon.Application.Interfaces.Ports.CostUsageEvent.CacheWrite1hTokens.get -> int
 Orkeon.Application.Interfaces.Ports.CostUsageEvent.CacheWrite1hTokens.init -> void
+Orkeon.Application.Decision.DecisionBlockedException
+Orkeon.Application.Decision.DecisionBlockedException.DecisionBlockedException() -> void
+Orkeon.Application.Decision.DecisionBlockedException.DecisionBlockedException(string! message) -> void
+Orkeon.Application.Decision.DecisionBlockedException.DecisionBlockedException(string! message, System.Exception! innerException) -> void
+Orkeon.Application.Decision.DecisionBlockedException.DecisionBlockedException(string! message, string! profile, string! stage, string? risk, string? reason) -> void
+Orkeon.Application.Decision.DecisionBlockedException.Profile.get -> string!
+Orkeon.Application.Decision.DecisionBlockedException.Stage.get -> string!
+Orkeon.Application.Decision.DecisionBlockedException.Risk.get -> string?
+Orkeon.Application.Decision.DecisionBlockedException.Reason.get -> string?
+static Orkeon.Application.Decision.DecisionBlockedException.FromResponse(Orkeon.Domain.SharedKernel.ValueObjects.LlmResponse! response) -> Orkeon.Application.Decision.DecisionBlockedException?
+const Orkeon.Application.Decision.DecisionBlockedException.ErrorType = "DecisionBlocked" -> string!
+const Orkeon.Application.Decision.DecisionBlockedException.ProfileMetadataKey = "decision_profile" -> string!
+const Orkeon.Application.Decision.DecisionBlockedException.StageMetadataKey = "decision_stage" -> string!
+const Orkeon.Application.Decision.DecisionBlockedException.RiskMetadataKey = "decision_risk" -> string!
+const Orkeon.Application.Decision.DecisionBlockedException.ReasonMetadataKey = "decision_reason" -> string!
+Orkeon.Application.Decision.DecisionVerdict.Risk.get -> string?
+Orkeon.Application.Decision.DecisionVerdict.Risk.init -> void

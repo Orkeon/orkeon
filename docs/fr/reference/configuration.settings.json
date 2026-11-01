@@ -31,6 +31,7 @@
     "Orkeon:Decision:Profiles:<name>:Stages:<i>:Phase": "Quand une étape `guard` juge : `request`, `response` ou `both` (le défaut).",
     "Orkeon:Decision:Profiles:<name>:Stages:<i>:Risks:<name>": "Les risques que détecte une étape `guard`, chacun avec ce qu'il est.",
     "Orkeon:Decision:Profiles:<name>:Stages:<i>:Routes:<name>": "Les profils qu'une étape `route` peut choisir, chacun avec ce à quoi il sert.",
+    "Orkeon:Decision:Profiles:<name>:Stages:<i>:Steps": "Les réponses que juge une étape `verify` : `final` (le défaut) laisse passer une réponse qui appelle des outils comme une étape de boucle d'agent, `all` la juge aussi.",
     "Orkeon:Decision:Profiles:<name>:Stages:<i>:WarnThreshold": "La probabilité à partir de laquelle une étape `guard` journalise un avertissement.",
     "Orkeon:Decision:Profiles:<name>:Target": "Le profil où va un appel qu'aucune étape ne route ; `default` est la section `Llm`.",
     "Orkeon:TypeSafe:ApiKey": "La clé d'API. Déconseillée dans un fichier de réglages : laissez-la vide et posez la variable que nomme `ApiKeyEnvVar`.",

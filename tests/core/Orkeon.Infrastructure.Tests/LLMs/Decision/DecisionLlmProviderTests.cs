@@ -24,7 +24,8 @@ public class DecisionLlmProviderTests
         IDecisionStage[]? request = null,
         IDecisionStage[]? response = null,
         bool failClosed = false,
-        MockAuditLogger? audit = null) =>
+        MockAuditLogger? audit = null,
+        Microsoft.Extensions.Logging.ILogger? logger = null) =>
         new(
             "triage",
             _target,
@@ -32,7 +33,7 @@ public class DecisionLlmProviderTests
             response ?? [],
             name => name == "strong" ? _strong : throw new InvalidOperationException(name),
             failClosed,
-            NullLogger.Instance,
+            logger ?? NullLogger.Instance,
             audit);
 
     [Fact]
@@ -62,6 +63,57 @@ public class DecisionLlmProviderTests
         Assert.Contains("guard", response.Error, StringComparison.Ordinal);
         Assert.Contains("prompt injection", response.Error, StringComparison.Ordinal);
         Assert.Equal("guard", response.Metadata[DecisionLlmProvider.StageMetadataKey]);
+    }
+
+    [Fact]
+    [Trait("BR", "269")]
+    public async Task ShouldCarryTheProfileStageRiskAndReason_WhenAGuardBlocks()
+    {
+        var stage = new StubDecisionStage
+        {
+            Name = "guard",
+            OnRequest = _ => DecisionVerdict.Block("the request matches the risk 'prompt_injection' at 0.96") with { Risk = "prompt_injection" },
+        };
+        var provider = Create([stage]);
+
+        var response = await provider.ChatAsync(Conversation, cancellationToken: TestContext.Current.CancellationToken);
+
+        var blocked = DecisionBlockedException.FromResponse(response);
+        Assert.NotNull(blocked);
+        Assert.Equal("triage", blocked.Profile);
+        Assert.Equal("guard", blocked.Stage);
+        Assert.Equal("prompt_injection", blocked.Risk);
+        Assert.Equal("the request matches the risk 'prompt_injection' at 0.96", blocked.Reason);
+        Assert.Equal(response.Error, blocked.Message);
+    }
+
+    [Fact]
+    [Trait("BR", "269")]
+    public void ShouldReadNoBlock_WhenTheResponseIsAnAnswerOrAProviderFailure()
+    {
+        Assert.Null(DecisionBlockedException.FromResponse(new LlmResponse { Content = "hi" }));
+        Assert.Null(DecisionBlockedException.FromResponse(new LlmResponse
+        {
+            Metadata = new Dictionary<string, object> { ["error"] = "503", ["error_type"] = "ServerError" },
+        }));
+    }
+
+    [Theory]
+    [Trait("BR", "270")]
+    [InlineData(false, "Decision profile triage: stage guard decided Block (prompt injection)")]
+    [InlineData(true, "Decision profile triage: stage verify decided Escalate strong (weak answer)")]
+    public async Task ShouldLogTheTargetOnlyWhenTheVerdictHasOne(bool escalate, string expected)
+    {
+        var logger = new RecordingLogger();
+        var stage = escalate
+            ? new StubDecisionStage { Name = "verify", OnResponse = _ => DecisionVerdict.Escalate("strong", "weak answer") }
+            : new StubDecisionStage { Name = "guard", OnRequest = _ => DecisionVerdict.Block("prompt injection") };
+        var provider = escalate ? Create(response: [stage], logger: logger) : Create([stage], logger: logger);
+
+        await provider.ChatAsync(Conversation, cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.Contains(logger.Entries, e => e.Message == expected);
+        Assert.DoesNotContain(logger.Entries, e => e.Message.Contains("(null)", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -211,7 +263,7 @@ public class DecisionLlmProviderTests
     {
         var provider = Create([new StubDecisionStage { OnRequest = _ => DecisionVerdict.Block("no") }]);
 
-        await Assert.ThrowsAsync<InvalidOperationException>(async () =>
+        await Assert.ThrowsAsync<DecisionBlockedException>(async () =>
         {
             await foreach (var _ in provider.GenerateStreamingAsync("x", cancellationToken: TestContext.Current.CancellationToken))
             {

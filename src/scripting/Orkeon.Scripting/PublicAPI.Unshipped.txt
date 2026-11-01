@@ -2,3 +2,12 @@
 Orkeon.Scripting.Builders.JsTaskBuilder.decision(Jint.Native.JsValue! spec) -> Orkeon.Scripting.Builders.JsTaskBuilder!
 Orkeon.Scripting.Builders.JsTaskBuilder.when(string! decisionTask, Jint.Native.JsValue! clauses) -> Orkeon.Scripting.Builders.JsTaskBuilder!
 Orkeon.Scripting.Builders.JsAgentBuilder.cache(Jint.Native.JsValue! options) -> Orkeon.Scripting.Builders.JsAgentBuilder!
+const Orkeon.Scripting.ErrorPolicy.ErrorCodeMapper.CodeDecisionBlocked = "decision_blocked" -> string!
+*REMOVED*Orkeon.Scripting.Runtime.JsLlmFacade.chat.get -> System.Func<Jint.Native.JsValue!, Jint.Native.JsValue?, System.Threading.Tasks.Task<object!>!>!
+Orkeon.Scripting.Runtime.JsLlmFacade.chat.get -> Jint.Native.JsValue!
+*REMOVED*Orkeon.Scripting.Runtime.JsLlmFacade.complete.get -> System.Func<string!, Jint.Native.JsValue?, System.Threading.Tasks.Task<string!>!>!
+Orkeon.Scripting.Runtime.JsLlmFacade.complete.get -> Jint.Native.JsValue!
+*REMOVED*Orkeon.Scripting.Runtime.JsLlmFacade.decide.get -> System.Func<string!, Jint.Native.JsValue!, Jint.Native.JsValue?, System.Threading.Tasks.Task<string!>!>!
+Orkeon.Scripting.Runtime.JsLlmFacade.decide.get -> Jint.Native.JsValue!
+*REMOVED*Orkeon.Scripting.Runtime.JsLlmFacade.extract.get -> System.Func<string!, Jint.Native.JsValue!, Jint.Native.JsValue?, System.Threading.Tasks.Task<object?>!>!
+Orkeon.Scripting.Runtime.JsLlmFacade.extract.get -> Jint.Native.JsValue!

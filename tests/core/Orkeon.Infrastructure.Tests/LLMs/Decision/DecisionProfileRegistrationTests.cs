@@ -101,6 +101,7 @@ public class DecisionProfileRegistrationTests
     [InlineData("triage:Target", "other", "is a decision profile")]
     [InlineData("triage:Stages:0:MinConfidence", "1.5", "is not a probability")]
     [InlineData("triage:Stages:1:EscalateTo", "", "a profile name is required")]
+    [InlineData("triage:Stages:1:Steps", "some", "is not final or all")]
     public void ShouldFailTheBuildWithTheKey_WhenTheSectionIsInvalid(string key, string value, string expected)
     {
         var values = Triage.Where(v => v.Item1 != key).Append((key, value))

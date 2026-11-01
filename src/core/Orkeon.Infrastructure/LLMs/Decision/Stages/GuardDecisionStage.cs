@@ -16,6 +16,12 @@ namespace Orkeon.Infrastructure.LLMs.Decision.Stages;
 /// </summary>
 public sealed partial class GuardDecisionStage : IDecisionStage
 {
+    /// <summary>
+    /// The instructions every risk question carries with its description: a System One server
+    /// built on Liquid's reference code refuses a question without them.
+    /// </summary>
+    public const string Instructions = "Does the text match the following description?";
+
     private readonly IDecisionModel _model;
     private readonly ImmutableDictionary<string, string> _risks;
     private readonly ILogger _logger;
@@ -82,7 +88,11 @@ public sealed partial class GuardDecisionStage : IDecisionStage
             State = state,
             Questions = risks.ToImmutableDictionary(
                 r => r.Key,
-                r => (DecisionQuestion)new NoulQuestion { Criteria = new NoulCriteria { True = JsonValue.Create(r.Value) } }),
+                r => (DecisionQuestion)new NoulQuestion
+                {
+                    Instructions = JsonValue.Create(Instructions),
+                    Criteria = new NoulCriteria { True = JsonValue.Create(r.Value) },
+                }),
         }, cancellationToken).ConfigureAwait(false);
         return [.. risks.Keys
             .Select(risk => (risk, response.Get<NoulAnswer>(risk).Noul))
@@ -114,7 +124,7 @@ public sealed partial class GuardDecisionStage : IDecisionStage
         var (risk, probability) = assessed[0];
         var shown = probability.ToString("0.00", CultureInfo.InvariantCulture);
         if (probability >= BlockThreshold)
-            return DecisionVerdict.Block($"the {what} matches the risk '{risk}' at {shown}");
+            return DecisionVerdict.Block($"the {what} matches the risk '{risk}' at {shown}") with { Risk = risk };
         if (probability >= WarnThreshold)
             LogRiskUnderBlock(what, risk, probability);
         return DecisionVerdict.Continue;

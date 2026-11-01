@@ -28,7 +28,7 @@ public sealed class JsLlmFacadeUnconfiguredProviderTests
         using var engine = new Engine(options => options.Constraints.PromiseTimeout = HangGuards.EnginePromise);
         var facade = new JsLlmFacade(engine, new UnconfiguredProvider(), CancellationToken.None);
 
-        var answer = await facade.complete("hi", null);
+        var answer = await facade.CompleteAsync("hi", null);
 
         Assert.Equal(ExpectedMarker, answer);
     }
@@ -44,7 +44,7 @@ public sealed class JsLlmFacadeUnconfiguredProviderTests
         await foreach (var chunk in facade.StreamChunks("hi", null))
             chunks.Add(chunk);
 
-        var completed = await facade.complete("hi", null);
+        var completed = await facade.CompleteAsync("hi", null);
 
         // The heart of the fix: one chunk, carrying exactly what complete says.
         Assert.Equal(ExpectedSingleChunk, chunks);

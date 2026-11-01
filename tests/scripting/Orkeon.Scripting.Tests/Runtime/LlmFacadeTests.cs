@@ -22,7 +22,7 @@ public sealed class LlmFacadeTests
         var (_, provider) = NewFacade(out var facade);
         provider.RespondTo(p => p == "hi" ? new LlmResponse { Content = "world" } : new LlmResponse());
 
-        var result = await facade.complete("hi", null);
+        var result = await facade.CompleteAsync("hi", null);
 
         Assert.Equal("world", result);
     }
@@ -33,7 +33,7 @@ public sealed class LlmFacadeTests
         using var engine = new Engine(opt => { JsEngineFactory.ApplyInteropPolicy(opt); opt.Constraints.PromiseTimeout = HangGuards.EnginePromise; });
         var facade = new JsLlmFacade(engine, null, CancellationToken.None);
 
-        var result = await facade.complete("ping", null);
+        var result = await facade.CompleteAsync("ping", null);
 
         Assert.StartsWith("<undefined-llm:", result);
     }
@@ -45,7 +45,7 @@ public sealed class LlmFacadeTests
         provider.RespondToChatWith(new LlmResponse { Content = "ok", TokensUsed = 12 });
 
         var messages = await engine.EvaluateAsync("[{role:'user', content:'hi'}]", cancellationToken: TestContext.Current.CancellationToken);
-        var resp = await facade.chat(messages, null);
+        var resp = await facade.ChatAsync(messages, null);
 
         Assert.Equal("ok", resp.Get("content").AsString());
         Assert.Equal(12d, Convert.ToDouble(resp.Get("tokensUsed").ToObject()));
@@ -58,7 +58,7 @@ public sealed class LlmFacadeTests
         provider.RespondWith(new LlmResponse { Content = "{\"name\":\"Ada\",\"age\":36}" });
 
         var schema = await engine.EvaluateAsync("({type:'object'})", cancellationToken: TestContext.Current.CancellationToken);
-        var result = await facade.extract("Parse this", schema, null);
+        var result = await facade.ExtractAsync("Parse this", schema, null);
 
         Assert.Equal("Ada", result.Get("name").AsString());
         Assert.Equal(36d, Convert.ToDouble(result.Get("age").ToObject()));
@@ -71,7 +71,7 @@ public sealed class LlmFacadeTests
         provider.RespondWith(new LlmResponse { Content = "```json\n{\"name\":\"Ada\"}\n```" });
 
         var schema = await engine.EvaluateAsync("({type:'object'})", cancellationToken: TestContext.Current.CancellationToken);
-        var result = await facade.extract("Parse this", schema, null);
+        var result = await facade.ExtractAsync("Parse this", schema, null);
 
         Assert.Equal("Ada", result.Get("name").AsString());
     }
@@ -84,7 +84,7 @@ public sealed class LlmFacadeTests
 
         var schema = await engine.EvaluateAsync("({type:'object'})", cancellationToken: TestContext.Current.CancellationToken);
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(
-            () => facade.extract("p", schema, null));
+            () => facade.ExtractAsync("p", schema, null));
         Assert.Contains("non-JSON", ex.Message);
     }
 
@@ -95,7 +95,7 @@ public sealed class LlmFacadeTests
         provider.RespondWith(new LlmResponse { Content = "yes - we should" });
 
         var choices = await engine.EvaluateAsync("['yes', 'no']", cancellationToken: TestContext.Current.CancellationToken);
-        var picked = await facade.decide("?", choices, null);
+        var picked = await facade.DecideAsync("?", choices, null);
 
         Assert.Equal("yes", picked);
     }
@@ -108,7 +108,7 @@ public sealed class LlmFacadeTests
 
         var choices = await engine.EvaluateAsync("['yes', 'no']", cancellationToken: TestContext.Current.CancellationToken);
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(
-            () => facade.decide("?", choices, null));
+            () => facade.DecideAsync("?", choices, null));
         Assert.Contains("not one of", ex.Message);
     }
 

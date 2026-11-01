@@ -74,4 +74,10 @@ public sealed class DecisionStageOptions
 
     /// <summary>Gets or sets what a good answer is, for a <c>verify</c>; empty takes the default criterion.</summary>
     public string? Criterion { get; set; }
+
+    /// <summary>
+    /// Gets or sets which responses a <c>verify</c> judges: <c>final</c> (the default) lets a
+    /// response that calls tools pass as a step of an agent loop, <c>all</c> judges it too.
+    /// </summary>
+    public string? Steps { get; set; }
 }
