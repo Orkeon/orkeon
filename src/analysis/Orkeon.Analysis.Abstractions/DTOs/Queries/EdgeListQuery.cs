@@ -12,7 +12,11 @@ public sealed record EdgeListQuery
     /// <summary>The kinds kept, as a mask; <see cref="EdgeKind.None"/> keeps every kind.</summary>
     public EdgeKind Kinds { get; init; } = EdgeKind.None;
 
-    /// <summary>When set, keeps only an edge whose source or target FQN starts with this prefix (ordinal).</summary>
+    /// <summary>
+    /// When set, keeps only an edge with an end at or under this root, resolved as <see cref="NodeQuery.RootFqn"/>
+    /// is: a package or a file by path, a type or a member by FQN with a boundary, a namespace by its files and its
+    /// name as an FQN prefix, an unknown text as a path and as an FQN prefix with a boundary.
+    /// </summary>
     public string? RootFqn { get; init; }
 
     /// <summary>The key of the last edge of the previous page; null starts at the first edge.</summary>

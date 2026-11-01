@@ -80,11 +80,13 @@ public sealed class DependencyGraphTool : ToolBase<DependencyGraphRequest, Depen
     {
         var maxNodes = Math.Max(1, request.MaxNodes);
         var probe = maxNodes + 1;
+        // The root goes into the query: the page and truncated then describe the root's subset, not the whole scope.
+        var root = string.IsNullOrEmpty(request.RootFqn) ? null : request.RootFqn;
         IReadOnlyList<RaggableNode> nodes;
         if (request.NodeKinds.IsDefaultOrEmpty)
         {
             nodes = await _store.QueryAsync(
-                new NodeQuery { Level = request.Scope, Take = probe },
+                new NodeQuery { Level = request.Scope, RootFqn = root, Take = probe },
                 cancellationToken).ConfigureAwait(false);
         }
         else
@@ -92,7 +94,7 @@ public sealed class DependencyGraphTool : ToolBase<DependencyGraphRequest, Depen
             var found = new Dictionary<string, RaggableNode>(StringComparer.Ordinal);
             foreach (var query in GraphKindNames.ParseNodeQueries(request.NodeKinds))
             {
-                var batch = await _store.QueryAsync(query with { Level = request.Scope, Take = probe }, cancellationToken).ConfigureAwait(false);
+                var batch = await _store.QueryAsync(query with { Level = request.Scope, RootFqn = root, Take = probe }, cancellationToken).ConfigureAwait(false);
                 foreach (var n in batch) found.TryAdd(n.Id, n);
             }
 
@@ -101,16 +103,6 @@ public sealed class DependencyGraphTool : ToolBase<DependencyGraphRequest, Depen
 
         var truncated = nodes.Count > maxNodes;
         if (truncated) nodes = [.. nodes.Take(maxNodes)];
-
-        if (!string.IsNullOrEmpty(request.RootFqn))
-        {
-            var root = await _store.GetAsync(request.RootFqn, cancellationToken).ConfigureAwait(false);
-            if (root is not null)
-            {
-                nodes = [.. nodes.Where(n => n.Fqn.StartsWith(root.Fqn, StringComparison.Ordinal))];
-            }
-        }
-
         return (nodes, truncated);
     }
 

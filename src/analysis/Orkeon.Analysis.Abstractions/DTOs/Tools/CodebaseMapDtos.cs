@@ -11,7 +11,7 @@ public sealed record CodebaseMapRequest
     [FieldSchema(Description = "Add children_count, cyclomatic and loc to each entry.", IsRequired = false, Default = false)]
     public bool IncludeMetrics { get; init; }
 
-    [FieldSchema(Description = "Keep only the entries under this FQN (a package, a folder).", IsRequired = false)]
+    [FieldSchema(Description = "Keep only the entries at or under this node (a package or folder by path, a namespace by its files and name, a type by FQN); a node id, an FQN or a path.", IsRequired = false)]
     public string? RootFqn { get; init; }
 
     [FieldSchema(Description = "Most entries returned (default 200); truncated says when more exist.", IsRequired = false, Default = 200)]

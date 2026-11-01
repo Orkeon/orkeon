@@ -17,7 +17,7 @@ public sealed record EdgeListRequest
     [JsonPropertyName("edge_kinds")]
     public ImmutableArray<string> EdgeKinds { get; init; } = [];
 
-    [FieldSchema(Description = "Keep only the edges whose source or target FQN starts with this prefix (a file, a namespace, a type).", IsRequired = false)]
+    [FieldSchema(Description = "Keep only the edges with an end at or under this node: a package or file (by path), a namespace (its files and name), a type or member (by FQN); a node id, an FQN or a path.", IsRequired = false)]
     [JsonPropertyName("root_fqn")]
     public string? RootFqn { get; init; }
 

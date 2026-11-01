@@ -107,7 +107,7 @@ public sealed class StatementQueryTool : ToolBase<StatementQueryRequest, Stateme
         CancellationToken cancellationToken)
     {
         var semantic = await _store.SemanticSearchAsync(new SemanticQuery { Text = semanticQuery, TopK = topK }, cancellationToken).ConfigureAwait(false);
-        var semanticByFqn = semantic.ToDictionary(h => h.Fqn, h => h.Score, StringComparer.Ordinal);
+        var semanticByFqn = semantic.Hits.ToDictionary(h => h.Fqn, h => h.Score, StringComparer.Ordinal);
         return [.. hits
             .Select(h => semanticByFqn.TryGetValue(h.ParentFqn, out var score) ? h with { Score = score } : h)
             .OrderByDescending(h => h.Score ?? 0)];

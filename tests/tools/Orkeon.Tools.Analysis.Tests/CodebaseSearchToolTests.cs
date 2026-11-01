@@ -214,4 +214,25 @@ public class CodebaseSearchToolTests
         Assert.True(capped.Truncated);
         Assert.False(underCap.Truncated);
     }
+
+
+    [Trait("BR", "#280")]
+    [Fact]
+    public async Task StoreShouldSayPreFilterCapped_WhenThePrefilterMatchesMoreNodesThanItKeeps()
+    {
+        var classes = Enumerable.Range(0, InMemoryRaggableStore.MaxNodes + 1)
+            .Select(i => TestGraph.Symbol($"/src/c{i:D4}.ts::Widget{i:D4}", $"/src/c{i:D4}.ts", kind: UniversalNodeKind.Class))
+            .ToList();
+        var store = TestGraph.Store(classes, []);
+
+        var capped = await store.SemanticSearchAsync(
+            new SemanticQuery { Text = "widget", PreFilter = new NodeQuery { Kinds = [UniversalNodeKind.Class], Take = int.MaxValue } },
+            CancellationToken.None);
+        var underCap = await store.SemanticSearchAsync(
+            new SemanticQuery { Text = "widget", PreFilter = new NodeQuery { Kinds = [UniversalNodeKind.Interface], Take = int.MaxValue } },
+            CancellationToken.None);
+
+        Assert.True(capped.PreFilterCapped);
+        Assert.False(underCap.PreFilterCapped);
+    }
 }

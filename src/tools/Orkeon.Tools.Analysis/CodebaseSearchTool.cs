@@ -10,9 +10,6 @@ namespace Orkeon.Tools.Analysis;
 
 public sealed class CodebaseSearchTool : ToolBase<CodebaseSearchRequest, CodebaseSearchResponse>
 {
-    /// <summary>The most nodes the kind/package/language/level prefilter keeps (the store's query cap).</summary>
-    internal const int PreFilterCap = InMemoryRaggableStore.MaxNodes;
-
     private readonly IRaggableStore _store;
     private readonly IndexFreshnessService? _freshness;
 
@@ -55,8 +52,8 @@ public sealed class CodebaseSearchTool : ToolBase<CodebaseSearchRequest, Codebas
                 PreFilter = preFilter,
                 Mode = request.Mode,
             };
-            var hits = await _store.SemanticSearchAsync(query, cancellationToken).ConfigureAwait(false);
-            var preFilterCapped = await IsPreFilterCappedAsync(preFilter, cancellationToken).ConfigureAwait(false);
+            var result = await _store.SemanticSearchAsync(query, cancellationToken).ConfigureAwait(false);
+            var hits = result.Hits;
 
             var page = hits.Take(topK).ToList();
             var shaped = request.IncludeSignature
@@ -66,7 +63,8 @@ public sealed class CodebaseSearchTool : ToolBase<CodebaseSearchRequest, Codebas
             {
                 Hits = [.. shaped],
                 TotalCandidates = page.Count,
-                Truncated = hits.Count > topK || preFilterCapped,
+                // The store says when the prefilter kept only the first of the nodes it matched (#280).
+                Truncated = hits.Count > topK || result.PreFilterCapped,
                 RefreshedFiles = refreshed,
             };
         }
@@ -86,18 +84,8 @@ public sealed class CodebaseSearchTool : ToolBase<CodebaseSearchRequest, Codebas
             Kinds = request.FilterKinds.IsDefaultOrEmpty ? null : request.FilterKinds,
             Languages = request.FilterLanguages.IsDefaultOrEmpty ? null : request.FilterLanguages,
             Packages = request.FilterPackages.IsDefaultOrEmpty ? null : request.FilterPackages,
-            Take = PreFilterCap,
+            // As many candidates as the store keeps; SemanticSearchResult.PreFilterCapped says when it cut them.
+            Take = int.MaxValue,
         };
-    }
-
-    /// <summary>
-    /// True when more nodes match the prefilter than it keeps: the search then ran over the first
-    /// <see cref="PreFilterCap"/> of them only, which <c>truncated</c> must say.
-    /// </summary>
-    private async Task<bool> IsPreFilterCappedAsync(NodeQuery? preFilter, CancellationToken cancellationToken)
-    {
-        if (preFilter is null) return false;
-        var beyond = await _store.QueryAsync(preFilter with { Skip = PreFilterCap, Take = 1 }, cancellationToken).ConfigureAwait(false);
-        return beyond.Count > 0;
     }
 }

@@ -108,7 +108,7 @@ public class EdgeListToolTests
             [TestGraph.Edge(a, b, EdgeKind.Extends), TestGraph.Edge(c, a, EdgeKind.Extends), TestGraph.Edge(d, c, EdgeKind.Extends)]));
 
         var page = await tool.ExecuteTypedForTest(
-            new EdgeListRequest { EdgeKinds = TestGraph.Arr("extends"), RootFqn = "/src/a.ts" },
+            new EdgeListRequest { EdgeKinds = TestGraph.Arr("inherits"), RootFqn = "/src/a.ts" },
             CancellationToken.None);
 
         Assert.Equal(2, page.Total);
@@ -173,5 +173,46 @@ public class EdgeListToolTests
         Assert.Contains("page_size", tool.ValidateTypedForTest(
             new EdgeListRequest { EdgeKinds = TestGraph.Arr("calls"), PageSize = EdgeListRequest.MaxPageSize + 1 }), StringComparison.Ordinal);
         Assert.Null(tool.ValidateTypedForTest(new EdgeListRequest { EdgeKinds = TestGraph.Arr("calls") }));
+    }
+
+
+    [Trait("BR", "#280")]
+    [Fact]
+    public async Task ShouldStopAtTheNamespaceBoundary_WhenRootFqnNamesANamespace()
+    {
+        var baseType = TestGraph.Symbol("/r/b.cs::Orkeon.Base", "/r/b.cs", kind: UniversalNodeKind.Class, language: "csharp");
+        var foo = TestGraph.Symbol("/r/d.cs::Orkeon.Domain.Foo", "/r/d.cs", kind: UniversalNodeKind.Class, language: "csharp");
+        var fooTests = TestGraph.Symbol("/r/t.cs::Orkeon.DomainTests.FooTests", "/r/t.cs", kind: UniversalNodeKind.Class, language: "csharp");
+        using var tool = new EdgeListTool(TestGraph.Store(
+            [baseType, foo, fooTests],
+            [TestGraph.Edge(foo, baseType, EdgeKind.Extends), TestGraph.Edge(fooTests, baseType, EdgeKind.Extends)]));
+
+        var page = await tool.ExecuteTypedForTest(
+            new EdgeListRequest { EdgeKinds = TestGraph.Arr("inherits"), RootFqn = "Orkeon.Domain" },
+            CancellationToken.None);
+
+        Assert.Equal(1, page.Total);
+        Assert.Equal(["/r/d.cs::Orkeon.Domain.Foo"], page.Edges.Select(e => e.From));
+    }
+
+    [Trait("BR", "#280")]
+    [Fact]
+    public async Task ShouldFindTheEdgesOfTheTypesOfANamespace_WhenRootFqnIsANamespaceNode()
+    {
+        var baseType = TestGraph.Symbol("/r/A/Base.cs::Base", "/r/A/Base.cs", kind: UniversalNodeKind.Class, language: "csharp");
+        var beta = TestGraph.Symbol("/r/B/Options.cs::Beta", "/r/B/Options.cs", kind: UniversalNodeKind.Namespace, language: "csharp");
+        var options = TestGraph.Symbol("/r/B/Options.cs::Options", "/r/B/Options.cs", kind: UniversalNodeKind.Class, language: "csharp");
+        var gamma = TestGraph.Symbol("/r/G/G.cs::Gamma", "/r/G/G.cs", kind: UniversalNodeKind.Namespace, language: "csharp");
+        var g = TestGraph.Symbol("/r/G/G.cs::G", "/r/G/G.cs", kind: UniversalNodeKind.Class, language: "csharp");
+        using var tool = new EdgeListTool(TestGraph.Store(
+            [baseType, beta, options, gamma, g],
+            [TestGraph.Edge(options, baseType, EdgeKind.Extends), TestGraph.Edge(g, baseType, EdgeKind.Extends)]));
+
+        var page = await tool.ExecuteTypedForTest(
+            new EdgeListRequest { EdgeKinds = TestGraph.Arr("inherits"), RootFqn = beta.Fqn },
+            CancellationToken.None);
+
+        Assert.Equal(1, page.Total);
+        Assert.Equal(["/r/B/Options.cs::Options"], page.Edges.Select(e => e.From));
     }
 }

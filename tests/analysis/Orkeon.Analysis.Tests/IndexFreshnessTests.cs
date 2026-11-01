@@ -205,8 +205,8 @@ public class IndexFreshnessServiceTests
             Assert.Contains(after.Edges, e => ReferenceEquals(e, importEdge));
             Assert.Equal(1, result.FilesParsed);
             Assert.Equal(after.Nodes.Count, result.TotalNodeCount);
-            var cHits = await store.SemanticSearchAsync(
-                new SemanticQuery { Text = "other", Mode = SearchMode.Lexical }, CancellationToken.None);
+            var cHits = (await store.SemanticSearchAsync(
+                new SemanticQuery { Text = "other", Mode = SearchMode.Lexical }, CancellationToken.None)).Hits;
             Assert.NotEmpty(cHits);
         }
         finally { Directory.Delete(dir, recursive: true); }
@@ -292,8 +292,8 @@ public class IndexFreshnessServiceTests
             new FakeFileSystemService());
 
         await service.EnsureFreshAsync(CancellationToken.None);
-        var hits = await store.SemanticSearchAsync(
-            new SemanticQuery { Text = "root", TopK = 3 }, CancellationToken.None);
+        var hits = (await store.SemanticSearchAsync(
+            new SemanticQuery { Text = "root", TopK = 3 }, CancellationToken.None)).Hits;
 
         Assert.NotEmpty(hits); // the L0 node matches lexically — the index still serves
     }

@@ -286,4 +286,20 @@ public class DependencyGraphBuilderTests
         var edge = Assert.Single(edges, e => e.Kind == EdgeKind.Calls && e.ToId == helper.Id);
         Assert.Equal(module.Id, edge.FromId);
     }
+
+
+    [Trait("BR", "#280")]
+    [Fact]
+    public async Task ShouldResolveTheGlobalType_WhenAnotherNamespaceDeclaresTheSameName()
+    {
+        var (nodes, edges) = await AdapterHarness.GraphAsync(
+            new CSharpAdapter(),
+            ("/r/Global.cs", "public class Options { }\n"),
+            ("/r/Alpha.cs", "namespace Alpha;\npublic class Options { }\n"),
+            ("/r/Gamma.cs", "namespace Gamma;\npublic class G : Options { }\n"));
+
+        var g = nodes.Single(n => n.Name == "G");
+        var extends = Assert.Single(edges, e => e.Kind == EdgeKind.Extends && e.FromId == g.Id);
+        Assert.Equal("/r/Global.cs", nodes.Single(n => n.Id == extends.ToId).VirtualFilePath);
+    }
 }

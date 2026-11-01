@@ -48,8 +48,8 @@ public class EmbeddingDimensionPropagationTests
             queryEmbedder: (_, __) => Task.FromResult<ReadOnlyMemory<float>?>(queryVec));
 
         // Act
-        var hits = await store.SemanticSearchAsync(
-            new SemanticQuery { Text = "anything", TopK = 3 }, CancellationToken.None);
+        var hits = (await store.SemanticSearchAsync(
+            new SemanticQuery { Text = "anything", TopK = 3 }, CancellationToken.None)).Hits;
 
         // Assert — 3 hits, ranked by descending score, all scores in [0, 1].
         Assert.Equal(3, hits.Count);

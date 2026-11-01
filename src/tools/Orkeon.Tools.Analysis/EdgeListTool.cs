@@ -30,7 +30,8 @@ public sealed class EdgeListTool : ToolBase<EdgeListRequest, EdgeListResponse>
     public override string Description =>
         "Which edges of these kinds exist across the whole index? Lists every edge of edge_kinds (required), from and to as "
         + "FQNs with their ids, in a stable order, page_size at a time (200, up to 1000), with total and the next_cursor to pass "
-        + "back as cursor until it is null; root_fqn keeps the edges touching one node. For the edges among the nodes of a scope "
+        + "back as cursor until it is null; root_fqn keeps the edges with an end at or under one node (a package or file by path, "
+        + "a type or member by FQN, a namespace by its files and name). For the edges among the nodes of a scope "
         + "with its cycles, dependency_graph; for the neighbourhood of one symbol, sub_graph.";
 
     /// <summary>Declared access class for permission gates.</summary>
@@ -53,13 +54,11 @@ public sealed class EdgeListTool : ToolBase<EdgeListRequest, EdgeListResponse>
 
         async Task<EdgeListResponse> ExecuteCoreAsync()
         {
-            var error = ValidateTypedRequest(request);
-            if (error is not null) throw new ArgumentException(error, nameof(request));
             var kinds = GraphKindNames.ParseEdgeKinds(request.EdgeKinds);
             var after = DecodeCursor(request.Cursor);
             var mask = EdgeKind.None;
             foreach (var kind in kinds) mask |= kind;
-            var root = await ResolveRootAsync(request.RootFqn, cancellationToken).ConfigureAwait(false);
+            var root = string.IsNullOrEmpty(request.RootFqn) ? null : request.RootFqn;
 
             var page = await _store.ListEdgesAsync(
                 new EdgeListQuery { Kinds = mask, RootFqn = root, After = after, Take = request.PageSize },
@@ -79,14 +78,6 @@ public sealed class EdgeListTool : ToolBase<EdgeListRequest, EdgeListResponse>
                 Total = page.Total,
             };
         }
-    }
-
-    /// <summary>A node id or FQN the store knows becomes that node's FQN; any other text stays a plain prefix.</summary>
-    private async Task<string?> ResolveRootAsync(string? rootFqn, CancellationToken cancellationToken)
-    {
-        if (string.IsNullOrEmpty(rootFqn)) return null;
-        var root = await _store.GetAsync(rootFqn, cancellationToken).ConfigureAwait(false);
-        return root is { Fqn.Length: > 0 } ? root.Fqn : rootFqn;
     }
 
     internal static string EncodeCursor(EdgeListKey key)

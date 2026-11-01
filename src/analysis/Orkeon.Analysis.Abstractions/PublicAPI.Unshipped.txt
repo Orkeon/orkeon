@@ -186,3 +186,20 @@ static Orkeon.Analysis.Abstractions.DTOs.Tools.EdgeListRequest.operator !=(Orkeo
 static Orkeon.Analysis.Abstractions.DTOs.Tools.EdgeListRequest.operator ==(Orkeon.Analysis.Abstractions.DTOs.Tools.EdgeListRequest? left, Orkeon.Analysis.Abstractions.DTOs.Tools.EdgeListRequest? right) -> bool
 static Orkeon.Analysis.Abstractions.DTOs.Tools.EdgeListResponse.operator !=(Orkeon.Analysis.Abstractions.DTOs.Tools.EdgeListResponse? left, Orkeon.Analysis.Abstractions.DTOs.Tools.EdgeListResponse? right) -> bool
 static Orkeon.Analysis.Abstractions.DTOs.Tools.EdgeListResponse.operator ==(Orkeon.Analysis.Abstractions.DTOs.Tools.EdgeListResponse? left, Orkeon.Analysis.Abstractions.DTOs.Tools.EdgeListResponse? right) -> bool
+Orkeon.Analysis.Abstractions.DTOs.Queries.NodeQuery.RootFqn.get -> string?
+Orkeon.Analysis.Abstractions.DTOs.Queries.NodeQuery.RootFqn.init -> void
+Orkeon.Analysis.Abstractions.DTOs.Responses.SemanticSearchResult
+Orkeon.Analysis.Abstractions.DTOs.Responses.SemanticSearchResult.<Clone>$() -> Orkeon.Analysis.Abstractions.DTOs.Responses.SemanticSearchResult!
+Orkeon.Analysis.Abstractions.DTOs.Responses.SemanticSearchResult.SemanticSearchResult() -> void
+Orkeon.Analysis.Abstractions.DTOs.Responses.SemanticSearchResult.Equals(Orkeon.Analysis.Abstractions.DTOs.Responses.SemanticSearchResult? other) -> bool
+Orkeon.Analysis.Abstractions.DTOs.Responses.SemanticSearchResult.Hits.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Analysis.Abstractions.DTOs.Responses.SearchHit!>!
+Orkeon.Analysis.Abstractions.DTOs.Responses.SemanticSearchResult.Hits.init -> void
+Orkeon.Analysis.Abstractions.DTOs.Responses.SemanticSearchResult.PreFilterCapped.get -> bool
+Orkeon.Analysis.Abstractions.DTOs.Responses.SemanticSearchResult.PreFilterCapped.init -> void
+Orkeon.Analysis.Abstractions.Interfaces.IRaggableStore.SemanticSearchAsync(Orkeon.Analysis.Abstractions.DTOs.Queries.SemanticQuery! query, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<Orkeon.Analysis.Abstractions.DTOs.Responses.SemanticSearchResult!>!
+*REMOVED*Orkeon.Analysis.Abstractions.Interfaces.IRaggableStore.SemanticSearchAsync(Orkeon.Analysis.Abstractions.DTOs.Queries.SemanticQuery! query, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Orkeon.Analysis.Abstractions.DTOs.Responses.SearchHit!>!>!
+override Orkeon.Analysis.Abstractions.DTOs.Responses.SemanticSearchResult.Equals(object? obj) -> bool
+override Orkeon.Analysis.Abstractions.DTOs.Responses.SemanticSearchResult.GetHashCode() -> int
+override Orkeon.Analysis.Abstractions.DTOs.Responses.SemanticSearchResult.ToString() -> string!
+static Orkeon.Analysis.Abstractions.DTOs.Responses.SemanticSearchResult.operator !=(Orkeon.Analysis.Abstractions.DTOs.Responses.SemanticSearchResult? left, Orkeon.Analysis.Abstractions.DTOs.Responses.SemanticSearchResult? right) -> bool
+static Orkeon.Analysis.Abstractions.DTOs.Responses.SemanticSearchResult.operator ==(Orkeon.Analysis.Abstractions.DTOs.Responses.SemanticSearchResult? left, Orkeon.Analysis.Abstractions.DTOs.Responses.SemanticSearchResult? right) -> bool

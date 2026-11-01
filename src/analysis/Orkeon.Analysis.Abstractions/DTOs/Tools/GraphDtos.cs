@@ -60,7 +60,7 @@ public sealed record DependencyGraphRequest
     [FieldSchema(Description = "Keep the edges whose target is outside the scope (an external package); false drops them.", IsRequired = false, Default = false)]
     public bool IncludeExternal { get; init; }
 
-    [FieldSchema(Description = "Keep only the nodes whose FQN starts with this one (a package, a namespace).", IsRequired = false)]
+    [FieldSchema(Description = "Keep only the nodes at or under this node (a package or folder by path, a namespace by its files and name, a type by FQN); a node id, an FQN or a path.", IsRequired = false)]
     public string? RootFqn { get; init; }
 
     [FieldSchema(Description = "Most nodes returned (default 200); truncated says when more exist.", IsRequired = false, Default = 200)]

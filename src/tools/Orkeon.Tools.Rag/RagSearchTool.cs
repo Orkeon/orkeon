@@ -158,7 +158,7 @@ public class RagSearchTool : ToolBase<RagSearchRequest, RagSearchResponse>
             Text = text,
             TopK = topK,
         };
-        var hits = await _raggableStore!.SemanticSearchAsync(semantic, ct).ConfigureAwait(false);
+        var hits = (await _raggableStore!.SemanticSearchAsync(semantic, ct).ConfigureAwait(false)).Hits;
         return hits
             .Select(h => (h.Fqn, h.SummaryShort ?? h.Signature ?? string.Empty, h.Score))
             .ToList();

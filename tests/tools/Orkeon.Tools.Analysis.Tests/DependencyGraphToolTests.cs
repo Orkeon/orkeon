@@ -373,4 +373,26 @@ public class DependencyGraphToolTests
         Assert.False(schema.Parameters!["edge_kinds"].Required);
         Assert.False(schema.Parameters["node_kinds"].Required);
     }
+
+
+    [Trait("BR", "#280")]
+    [Fact]
+    public async Task ShouldReturnTheRootsNodes_WhenTheyLieAfterTheFirstPageOfTheScope()
+    {
+        var others = Enumerable.Range(0, 5).Select(i => TestGraph.Package($"root::p{i:D3}", $"/src/p{i:D3}")).ToList();
+        var zz = TestGraph.Package("root::zz", "/zz");
+        var zzA = TestGraph.Package("root::zz::a", "/zz/a");
+        var zzB = TestGraph.Package("root::zz::b", "/zz/b");
+        using var tool = new DependencyGraphTool(TestGraph.Store([.. others, zz, zzA, zzB], []));
+
+        var cut = await tool.ExecuteTypedForTest(
+            new DependencyGraphRequest { Scope = NodeLevel.L1_Package, RootFqn = "root::zz", MaxNodes = 2 }, CancellationToken.None);
+        var whole = await tool.ExecuteTypedForTest(
+            new DependencyGraphRequest { Scope = NodeLevel.L1_Package, RootFqn = "root::zz", MaxNodes = 3 }, CancellationToken.None);
+
+        Assert.Equal(["root::zz", "root::zz::a"], cut.Nodes.Select(n => n.Fqn));
+        Assert.True(cut.Truncated);
+        Assert.Equal(3, whole.Nodes.Length);
+        Assert.False(whole.Truncated);
+    }
 }

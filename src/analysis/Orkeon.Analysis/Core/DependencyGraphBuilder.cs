@@ -401,8 +401,9 @@ public sealed partial class DependencyGraphBuilder
     /// be told. In order: a candidate of the owner's file; the one declared in the closest named scope enclosing
     /// the owner (its namespace, or a namespace or type containing it), a candidate with no named scope never
     /// enclosing anything; the one a file the owner's file imports declares (a relative import, a C#
-    /// <c>using</c> of its namespace); the only type declaring the name. Otherwise no edge, which beats an edge to
-    /// the wrong type. Declarations of one C# namespace (a partial type) are one type, the first by FQN; in a
+    /// <c>using</c> of its namespace); the only candidate of the owner's language declared in the global namespace
+    /// (no named scope at all, visible from everywhere); the only type declaring the name. Otherwise no edge, which
+    /// beats an edge to the wrong type. Declarations of one C# namespace (a partial type) are one type, the first by FQN; in a
     /// module language (TypeScript, Python, Go...) two files declaring the name declare two types.
     /// </summary>
     private static RaggableNode? ResolveByShortName(
@@ -433,6 +434,13 @@ public sealed partial class DependencyGraphBuilder
 
         var imported = scoped.Where(c => importedFiles.Contains(c.Node.VirtualFilePath)).ToList();
         if (imported.Count > 0) return OnlyType(imported);
+
+        // A type with no named scope is visible from every namespace of its language: the only one wins over the
+        // namespaced homonyms that do not enclose the owner.
+        var global = scoped
+            .Where(c => c.Scope.Length == 0 && string.Equals(c.Node.Language, owner.Language, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+        if (global.Count > 0) return OnlyType(global);
 
         return OnlyType(scoped);
     }

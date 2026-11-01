@@ -26,11 +26,11 @@ public sealed class RecordingRaggableStore : IRaggableStore
         _hits = hits;
     }
 
-    public Task<IReadOnlyList<SearchHit>> SemanticSearchAsync(SemanticQuery query, CancellationToken ct)
+    public Task<SemanticSearchResult> SemanticSearchAsync(SemanticQuery query, CancellationToken ct)
     {
         SemanticCalls++;
         LastQuery = query;
-        return Task.FromResult(_hits);
+        return Task.FromResult(new SemanticSearchResult { Hits = _hits });
     }
 
     public Task<RaggableNode?> GetAsync(string fqn, CancellationToken ct) => Task.FromResult<RaggableNode?>(null);

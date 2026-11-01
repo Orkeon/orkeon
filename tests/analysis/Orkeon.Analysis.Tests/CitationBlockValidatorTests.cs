@@ -45,7 +45,7 @@ internal sealed class StubRaggableStore : IRaggableStore
     public Task<CallPath?> ShortestPathAsync(ShortestPathQuery query, CancellationToken ct) => throw new NotImplementedException();
     public Task<IReadOnlyList<Cycle>> FindCyclesAsync(CycleQuery query, CancellationToken ct) => throw new NotImplementedException();
     public Task<EdgeListPage> ListEdgesAsync(EdgeListQuery query, CancellationToken ct) => throw new NotImplementedException();
-    public Task<IReadOnlyList<SearchHit>> SemanticSearchAsync(SemanticQuery query, CancellationToken ct) => throw new NotImplementedException();
+    public Task<SemanticSearchResult> SemanticSearchAsync(SemanticQuery query, CancellationToken ct) => throw new NotImplementedException();
     public Task<IReadOnlyList<ComplexityEntry>> TopComplexityAsync(ComplexityQuery query, CancellationToken ct) => throw new NotImplementedException();
     public Task<IReadOnlyList<CentralityEntry>> TopCentralityAsync(CentralityQuery query, CancellationToken ct) => throw new NotImplementedException();
     public IReadOnlyList<IndexedRoot> GetIndexedRoots() => throw new NotImplementedException();

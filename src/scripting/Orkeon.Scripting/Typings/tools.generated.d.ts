@@ -115,7 +115,7 @@ declare global {
             level?: "L0_Monorepo" | "L1_Package" | "L2_Module" | "L3_Symbol" | "L4_Statement";
             /** Most entries returned (default 200); truncated says when more exist. */
             max_entries?: number;
-            /** Keep only the entries under this FQN (a package, a folder). */
+            /** Keep only the entries at or under this node (a package or folder by path, a namespace by its files and name, a type by FQN); a node id, an FQN or a path. */
             root_fqn?: string | null;
         }, ctx?: ExecutionContext): Promise<{
             readonly entries: readonly { readonly children_count?: number; readonly cyclomatic?: number; readonly fqn: string; readonly kind: string; readonly language?: string; readonly lo_c?: number; readonly name: string; }[];
@@ -241,7 +241,7 @@ declare global {
             max_nodes?: number;
             /** Restrict nodes to these kinds, by name: file, project, namespace, type, member, doc_section, test. Empty keeps every node of the scope. */
             node_kinds?: readonly string[];
-            /** Keep only the nodes whose FQN starts with this one (a package, a namespace). */
+            /** Keep only the nodes at or under this node (a package or folder by path, a namespace by its files and name, a type by FQN); a node id, an FQN or a path. */
             root_fqn?: string | null;
             /** Level of the nodes: L1_Package (default), L2_Module or L3_Symbol. */
             scope?: "L0_Monorepo" | "L1_Package" | "L2_Module" | "L3_Symbol" | "L4_Statement";
@@ -353,7 +353,7 @@ declare global {
             readonly success: boolean;
         }>;
 
-        /** `edge_list` - Which edges of these kinds exist across the whole index? Lists every edge of edge_kinds (required), from and to as FQNs with their ids, in a stable order, page_size at a time (200, up to 1000), with total and the next_cursor to pass back as cursor until it is null; root_fqn keeps the edges touching one node. For the edges among the nodes of a scope with its cycles, dependency_graph; for the neighbourhood of one symbol, sub_graph. */
+        /** `edge_list` - Which edges of these kinds exist across the whole index? Lists every edge of edge_kinds (required), from and to as FQNs with their ids, in a stable order, page_size at a time (200, up to 1000), with total and the next_cursor to pass back as cursor until it is null; root_fqn keeps the edges with an end at or under one node (a package or file by path, a type or member by FQN, a namespace by its files and name). For the edges among the nodes of a scope with its cycles, dependency_graph; for the neighbourhood of one symbol, sub_graph. */
         edgeList(input: {
             /** The next_cursor of the previous page; omit it for the first page. */
             cursor?: string | null;
@@ -361,7 +361,7 @@ declare global {
             edge_kinds: readonly string[];
             /** Edges per page, 1 to 1000 (default 200). */
             page_size?: number;
-            /** Keep only the edges whose source or target FQN starts with this prefix (a file, a namespace, a type). */
+            /** Keep only the edges with an end at or under this node: a package or file (by path), a namespace (its files and name), a type or member (by FQN); a node id, an FQN or a path. */
             root_fqn?: string | null;
         }, ctx?: ExecutionContext): Promise<{
             readonly edges: readonly { readonly from: string; readonly from_id: string; readonly kind: string; readonly to: string; readonly to_id: string; }[];
@@ -1301,7 +1301,6 @@ declare global {
             retain_count?: number;
         }, ctx?: ExecutionContext): Promise<{
             readonly kept_from: number;
-            readonly kept_from_role?: string;
             readonly removed_count: number;
             readonly retained_count: number;
         }>;

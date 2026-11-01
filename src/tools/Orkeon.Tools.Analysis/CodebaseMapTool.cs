@@ -43,34 +43,17 @@ public sealed class CodebaseMapTool : ToolBase<CodebaseMapRequest, CodebaseMapRe
                 await _freshness.EnsureFreshAsync(cancellationToken).ConfigureAwait(false);
             // One entry past the page: truncated says that more entries exist, never that the page is full (#283).
             var maxEntries = Math.Max(1, request.MaxEntries);
-            var query = new NodeQuery { Level = request.Level, Take = maxEntries + 1 };
+            // The root goes into the query (a package or a folder by path, a namespace by its files, a type by FQN):
+            // the page and truncated then describe the root's subset, not the first page of the whole level.
+            var query = new NodeQuery
+            {
+                Level = request.Level,
+                RootFqn = string.IsNullOrEmpty(request.RootFqn) ? null : request.RootFqn,
+                Take = maxEntries + 1,
+            };
             var nodes = await _store.QueryAsync(query, cancellationToken).ConfigureAwait(false);
             var truncated = nodes.Count > maxEntries;
             if (truncated) nodes = [.. nodes.Take(maxEntries)];
-
-            if (!string.IsNullOrEmpty(request.RootFqn))
-            {
-                var root = await _store.GetAsync(request.RootFqn, cancellationToken).ConfigureAwait(false);
-                if (root is not null)
-                {
-                    // Scope by VirtualFilePath prefix rather than FQN prefix: L1 package FQN ends in
-                    // "::name" while L2/L3 FQN embed the virtual path, so Fqn.StartsWith never matched
-                    // across levels. Virtual paths always use '/' so the comparison is platform-stable.
-                    var rootPath = root.VirtualFilePath;
-                    if (string.IsNullOrEmpty(rootPath))
-                    {
-                        nodes = [.. nodes.Where(n => n.Fqn.StartsWith(root.Fqn, StringComparison.Ordinal))];
-                    }
-                    else
-                    {
-                        var prefix = rootPath.TrimEnd('/');
-                        nodes = [.. nodes.Where(n =>
-                            !string.IsNullOrEmpty(n.VirtualFilePath) &&
-                            (n.VirtualFilePath.Equals(prefix, StringComparison.Ordinal)
-                             || n.VirtualFilePath.StartsWith(prefix + "/", StringComparison.Ordinal)))];
-                    }
-                }
-            }
 
             var entries = nodes.Select(n => MapEntry(n, request.IncludeMetrics)).ToImmutableArray();
             var totals = BuildTotals(nodes);

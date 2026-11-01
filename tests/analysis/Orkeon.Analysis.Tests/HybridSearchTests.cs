@@ -245,9 +245,9 @@ public class StoreConcurrencyTests
         {
             do
             {
-                var hits = await store.SemanticSearchAsync(
+                var hits = (await store.SemanticSearchAsync(
                     new SemanticQuery { Text = "symbol", TopK = 10 },
-                    CancellationToken.None);
+                    CancellationToken.None)).Hits;
                 widestPage = Math.Max(widestPage, hits.Count);
                 searches++;
             }

@@ -183,7 +183,7 @@ public class RaggableTreeServiceCollectionExtensionsTests
             Text = "hello",
             TopK = 5,
         };
-        var hits = await store.SemanticSearchAsync(query, CancellationToken.None);
+        var hits = (await store.SemanticSearchAsync(query, CancellationToken.None)).Hits;
 
         Assert.Empty(hits);
         Assert.Equal(1, StubEmbeddingProvider.InvocationCount);
