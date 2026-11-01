@@ -231,7 +231,7 @@ declare global {
             include_dot?: boolean;
             /** Keep the edges whose target is outside the scope (an external package); false drops them. */
             include_external?: boolean;
-            /** Add a Mermaid flowchart of the nodes and edges (mermaid_flowchart); leave it false when only the data is needed. */
+            /** Add a Mermaid flowchart of the nodes and edges (mermaid_flowchart), for a human reader; false by default: the data alone answers an agent. */
             include_mermaid?: boolean;
             /** Most members returned per cycle. member_count keeps the full size. */
             max_cycle_members?: number;
@@ -258,7 +258,7 @@ declare global {
 
         /** `directory_read` - List directory contents including files and subdirectories. Supports recursive listing and glob pattern filtering. */
         directoryRead(input: {
-            /** Maximum number of entries to return (default: 500). Use a smaller value to avoid overloading context windows. */
+            /** Maximum number of entries to return (default: 200); truncated says when the directory holds more. Use a smaller value to avoid overloading context windows. */
             max_results?: number;
             /** The directory path to list */
             path: string;
@@ -1478,7 +1478,7 @@ declare global {
             direction?: "Forward" | "Backward" | "Both";
             /** Edge kinds to follow, by name: contains, calls, imports, inherits, tests, documents, project_depends. Legacy enum names (Imports, Extends, Implements...) are still accepted. */
             edge_kinds?: readonly string[];
-            /** Add a Mermaid flowchart of the nodes and edges (mermaid_flowchart); leave it false when only the data is needed. */
+            /** Add a Mermaid flowchart of the nodes and edges (mermaid_flowchart), for a human reader; false by default: the data alone answers an agent. */
             include_mermaid?: boolean;
             /** Most nodes returned (default 100); truncated says when the expansion stopped before its depth. */
             max_nodes?: number;

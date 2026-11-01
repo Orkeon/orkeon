@@ -38,7 +38,7 @@ public sealed class DependencyGraphTool : ToolBase<DependencyGraphRequest, Depen
         async Task<DependencyGraphResponse> ExecuteCoreAsync()
         {
             var edgeKinds = GraphKindNames.ParseEdgeKinds(request.EdgeKinds);
-            var nodes = await ResolveNodesAsync(request, cancellationToken).ConfigureAwait(false);
+            var (nodes, truncated) = await ResolveNodesAsync(request, cancellationToken).ConfigureAwait(false);
             var kindMask = ResolveKindMask(edgeKinds);
             // The cycles follow the kinds the edges follow: an empty list means imports here, never every kind.
             ImmutableArray<EdgeKind> cycleKinds = edgeKinds.IsDefaultOrEmpty ? [EdgeKind.Imports] : edgeKinds;
@@ -55,7 +55,6 @@ public sealed class DependencyGraphTool : ToolBase<DependencyGraphRequest, Depen
 
             var cycles = await _store.FindCyclesAsync(new CycleQuery { Scope = request.Scope, EdgeKinds = cycleKinds }, cancellationToken).ConfigureAwait(false);
             var metrics = BuildMetrics(graphNodes, graphEdges, cycles.Count);
-            var truncated = nodes.Count >= request.MaxNodes;
             var (graphCycles, cyclesTruncated) = BoundCycles(cycles, kindMask, request.MaxCycles, request.MaxCycleMembers);
 
             return new DependencyGraphResponse
@@ -72,27 +71,35 @@ public sealed class DependencyGraphTool : ToolBase<DependencyGraphRequest, Depen
         }
     }
 
-    private async Task<IReadOnlyList<RaggableNode>> ResolveNodesAsync(DependencyGraphRequest request, CancellationToken cancellationToken)
+    /// <summary>
+    /// The nodes of the page and whether the scope holds more: one node past <c>max_nodes</c> is asked for,
+    /// so that <c>truncated</c> says that more nodes exist, never that the page is full (#283).
+    /// </summary>
+    private async Task<(IReadOnlyList<RaggableNode> Nodes, bool Truncated)> ResolveNodesAsync(DependencyGraphRequest request, CancellationToken cancellationToken)
     {
+        var maxNodes = Math.Max(1, request.MaxNodes);
+        var probe = maxNodes + 1;
         IReadOnlyList<RaggableNode> nodes;
         if (request.NodeKinds.IsDefaultOrEmpty)
         {
             nodes = await _store.QueryAsync(
-                new NodeQuery { Level = request.Scope, Take = Math.Max(1, request.MaxNodes) },
+                new NodeQuery { Level = request.Scope, Take = probe },
                 cancellationToken).ConfigureAwait(false);
         }
         else
         {
-            var take = Math.Max(1, request.MaxNodes);
             var found = new Dictionary<string, RaggableNode>(StringComparer.Ordinal);
             foreach (var query in GraphKindNames.ParseNodeQueries(request.NodeKinds))
             {
-                var batch = await _store.QueryAsync(query with { Level = request.Scope, Take = take }, cancellationToken).ConfigureAwait(false);
+                var batch = await _store.QueryAsync(query with { Level = request.Scope, Take = probe }, cancellationToken).ConfigureAwait(false);
                 foreach (var n in batch) found.TryAdd(n.Id, n);
             }
 
-            nodes = [.. found.Values.Take(take)];
+            nodes = [.. found.Values.Take(probe)];
         }
+
+        var truncated = nodes.Count > maxNodes;
+        if (truncated) nodes = [.. nodes.Take(maxNodes)];
 
         if (!string.IsNullOrEmpty(request.RootFqn))
         {
@@ -103,7 +110,7 @@ public sealed class DependencyGraphTool : ToolBase<DependencyGraphRequest, Depen
             }
         }
 
-        return nodes;
+        return (nodes, truncated);
     }
 
     /// <summary>

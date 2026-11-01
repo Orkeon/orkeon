@@ -86,6 +86,23 @@ public class CodebaseMapToolTests
         Assert.Equal(10, entry.LoC);
     }
 
+    [Trait("BR", "#283")]
+    [Fact]
+    public async Task ShouldNotSayTruncated_WhenTheLevelHoldsExactlyMaxEntries()
+    {
+        var monorepo = TestGraph.Monorepo();
+        var a = TestGraph.Module("/src/a.ts");
+        var b = TestGraph.Module("/src/b.ts");
+        TestGraph.Link(monorepo, a, b);
+        using var tool = new CodebaseMapTool(TestGraph.Store([monorepo, a, b], []));
+
+        var resp = await tool.ExecuteTypedForTest(
+            new CodebaseMapRequest { Level = NodeLevel.L2_Module, MaxEntries = 2 }, CancellationToken.None);
+
+        Assert.Equal(2, resp.Entries.Length);
+        Assert.False(resp.Truncated);
+    }
+
     [Fact]
     public async Task Truncates_when_more_nodes_than_max_entries()
     {

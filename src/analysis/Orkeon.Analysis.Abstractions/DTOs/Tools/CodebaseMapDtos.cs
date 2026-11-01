@@ -21,9 +21,12 @@ public sealed record CodebaseMapRequest
 public sealed record CodebaseMapResponse
 {
     public required NodeLevel Level { get; init; }
-    public required ImmutableArray<MapEntry> Entries { get; init; }
-    public required CodebaseTotals Totals { get; init; }
+
+    /// <summary>True when the level holds more entries than <c>max_entries</c> returned.</summary>
     public bool Truncated { get; init; }
+
+    public required CodebaseTotals Totals { get; init; }
+    public required ImmutableArray<MapEntry> Entries { get; init; }
 }
 
 public sealed record MapEntry

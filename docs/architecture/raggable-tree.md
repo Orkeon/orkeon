@@ -137,7 +137,7 @@ Ranges are UTF-8 **byte** offsets (`NodeRange.StartByte`/`EndByte`), like the ot
 | `symbol_detail` | Detail of a symbol (signature, doc, callers, callees) | `{ "fqn": "app::UserService::create" }` |
 | `symbol_source` | Source code excerpt (signature, body, full span) | `{ "fqn": "...", "mode": "SignatureAndBody" }` |
 | `codebase_search` | Hybrid search — embedding + BM25 fused (see [below](#hybrid-search)) | `{ "query": "session expiration", "top_k": 10 }` |
-| `dependency_graph` | Level-scoped dependency graph (L1/L2/L3), Mermaid/DOT rendering | `{ "scope": "L2_Module", "edge_kinds": ["Imports", "Calls"] }` |
+| `dependency_graph` | Level-scoped dependency graph (L1/L2/L3); Mermaid/DOT rendering on `include_mermaid` / `include_dot` (off by default) | `{ "scope": "L2_Module", "edge_kinds": ["Imports", "Calls"] }` |
 | `sub_graph` | BFS expansion around seeds | `{ "seeds": ["pkg::X"], "depth": 3 }` |
 | `edge_list` | Every edge of the given kinds in the whole index, paginated, ends as FQNs | `{ "edge_kinds": ["inherits"], "page_size": 500 }` |
 | `flow_trace` | Call paths between two FQNs | `{ "from": "A", "to": "B", "max_paths": 5 }` |

@@ -220,7 +220,7 @@ turn is replayed in the provider's own tool protocol — the assistant turn with
 one `tool` result per call, a permission refusal or a tool error included — whether the
 provider answers in the OpenAI shape (most providers, Ollama included) or with the Anthropic
 Messages body. A result is cut once, at the framework's bound
-(`AgentDefaults.ResolveMaxToolResultLength`: 4 000 characters by default; per-tool overrides: `file_read` 32 000, `node_read` 256 000, `shell_command` 10 000): by the
+(`AgentDefaults.ResolveMaxToolResultLength`: 4 000 characters by default; per-tool overrides: `file_read` 32 000, `node_read` 256 000, `shell_command` 10 000, and 12 000 for the analysis tools that answer with a graph or a page: `dependency_graph`, `sub_graph`, `edge_list`, `flow_trace`, `impact_analysis`, `codebase_map`, `package_summary`, `symbol_detail`, `codebase_search`, `structural_search`, `structural_rewrite`, `affected_tests`): by the
 host's tool invocation pipeline when it has one, by `act` otherwise. A turn the provider failed
 resolves `output` to `<undefined-llm:<the provider's error>>`, as `complete` does. A call a stage of the host's decision profile blocks is not a provider failure: `complete`, `chat`, `extract`, `decide`, `act` and a `stream` iteration reject with a `DecisionBlockedError` (`errorType: "DecisionBlocked"`, `profile`, `stage`, `risk` for a guard, `reason`), so a crew can tell the user which stage refused the request; uncaught, it fails the run with the `DecisionBlockedException`. A name in `.tools([...])` that no tool of the host
 answers to (compared case-insensitively) is not skipped: `act` rejects with an

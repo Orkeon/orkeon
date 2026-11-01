@@ -22,11 +22,14 @@ public sealed record PackageSummaryResponse
 {
     public required string Fqn { get; init; }
     public string? Name { get; init; }
+
+    /// <summary>True when a list below was cut at <c>max_items</c>.</summary>
+    public bool Truncated { get; init; }
+
     public int FileCount { get; init; }
     public int SymbolCount { get; init; }
     public ImmutableArray<string> EntryPoints { get; init; } = [];
     public ImmutableArray<string> PublicExports { get; init; } = [];
     public ImmutableArray<string> Dependencies { get; init; } = [];
     public string? SummaryShort { get; init; }
-    public bool Truncated { get; init; }
 }

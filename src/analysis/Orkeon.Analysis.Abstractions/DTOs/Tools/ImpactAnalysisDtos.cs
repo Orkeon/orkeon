@@ -22,9 +22,12 @@ public sealed record ImpactAnalysisRequest
 public sealed record ImpactAnalysisResponse
 {
     public required string Target { get; init; }
+
+    /// <summary>True when the expansion stopped at <c>max_nodes</c>: the impact lists are not complete.</summary>
+    public bool Truncated { get; init; }
+
+    public required ImmutableDictionary<string, int> ByPackage { get; init; }
     public required ImmutableArray<string> DirectImpact { get; init; }
     public required ImmutableArray<string> TransitiveImpact { get; init; }
-    public required ImmutableDictionary<string, int> ByPackage { get; init; }
     public required ImmutableArray<CompactNode> TopCallers { get; init; }
-    public bool Truncated { get; init; }
 }

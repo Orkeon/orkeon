@@ -29,8 +29,11 @@ public sealed record FlowTraceRequest
     public int MaxPaths { get; init; } = 20;
 }
 
+/// <summary>Serialised in declaration order: <c>truncated</c> before the paths (#283).</summary>
 public sealed record FlowTraceResponse
 {
-    public required ImmutableArray<CallPath> Paths { get; init; }
+    /// <summary>True when more paths exist than <c>max_paths</c> returned.</summary>
     public bool Truncated { get; init; }
+
+    public required ImmutableArray<CallPath> Paths { get; init; }
 }

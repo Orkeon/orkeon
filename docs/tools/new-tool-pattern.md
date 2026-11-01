@@ -47,6 +47,16 @@ generate the JSON schema exposed to the LLM (`ToolSchemaGenerator`, `Orkeon.Doma
 - **Returns are opt-in by attribute:** when at least one property of `TResponse` carries
   `[ReturnSchema]`, only the annotated properties are returned to the agent; when none does,
   every property is.
+- **A response is serialised in declaration order, and the pipeline cuts it from the end** (at
+  `AgentDefaults.ResolveMaxToolResultLength`: 4 000 characters unless the tool is listed in
+  `MaxToolResultLengthOverrides`). Declare `truncated`, a cursor, a total and the counts
+  before the bulky collections, and a rendering (`mermaid_flowchart`, `dot`) last, so a cut
+  result still says what it is (#283). A rendering for a human reader is off by default
+  (`include_mermaid: false`).
+- **`truncated` has one meaning: more results exist than were returned.** A tool that pages a
+  list asks the store for one item past its bound and answers `truncated: hits.Count > bound`
+  with the page cut to the bound; a page that is exactly full is not truncated (#283). Test
+  both: "exactly `max` results: false" and "one more: true".
 
 ### `[FieldSchema]` attribute (on TRequest)
 

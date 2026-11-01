@@ -54,18 +54,18 @@ public sealed record EdgeListItem
     public required string ToId { get; init; }
 }
 
-/// <summary>The response of <c>edge_list</c>.</summary>
+/// <summary>The response of <c>edge_list</c>, serialised in declaration order: the total and the cursor before the page (#283).</summary>
 public sealed record EdgeListResponse
 {
-    /// <summary>The edges of this page, ordered by source FQN, then target FQN, then kind.</summary>
-    [JsonPropertyName("edges")]
-    public required ImmutableArray<EdgeListItem> Edges { get; init; }
+    /// <summary>How many edges match the kinds and the root over the whole index, every page counted.</summary>
+    [JsonPropertyName("total")]
+    public required int Total { get; init; }
 
     /// <summary>The cursor of the next page, to pass back as <c>cursor</c>; null on the last page.</summary>
     [JsonPropertyName("next_cursor")]
     public string? NextCursor { get; init; }
 
-    /// <summary>How many edges match the kinds and the root over the whole index, every page counted.</summary>
-    [JsonPropertyName("total")]
-    public required int Total { get; init; }
+    /// <summary>The edges of this page, ordered by source FQN, then target FQN, then kind.</summary>
+    [JsonPropertyName("edges")]
+    public required ImmutableArray<EdgeListItem> Edges { get; init; }
 }

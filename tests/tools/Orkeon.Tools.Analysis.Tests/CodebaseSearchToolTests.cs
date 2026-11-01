@@ -166,6 +166,35 @@ public class CodebaseSearchToolTests
         finally { Directory.Delete(dir, recursive: true); }
     }
 
+    [Trait("BR", "#283")]
+    [Fact]
+    public async Task ShouldNotSayTruncated_WhenExactlyTopKHitsMatch()
+    {
+        var symbols = Enumerable.Range(0, 3).Select(i => TestGraph.Symbol($"/src::handle{i}", "/src/a.ts")).ToList();
+        using var tool = new CodebaseSearchTool(TestGraph.Store(symbols, []));
+
+        var resp = await tool.ExecuteTypedForTest(
+            new CodebaseSearchRequest { Query = "handle", TopK = 3 }, CancellationToken.None);
+
+        Assert.Equal(3, resp.Hits.Length);
+        Assert.False(resp.Truncated);
+    }
+
+    [Trait("BR", "#283")]
+    [Fact]
+    public async Task ShouldSayTruncatedAndKeepTopKHits_WhenOneMoreHitMatches()
+    {
+        var symbols = Enumerable.Range(0, 4).Select(i => TestGraph.Symbol($"/src::handle{i}", "/src/a.ts")).ToList();
+        using var tool = new CodebaseSearchTool(TestGraph.Store(symbols, []));
+
+        var resp = await tool.ExecuteTypedForTest(
+            new CodebaseSearchRequest { Query = "handle", TopK = 3 }, CancellationToken.None);
+
+        Assert.Equal(3, resp.Hits.Length);
+        Assert.Equal(3, resp.TotalCandidates);
+        Assert.True(resp.Truncated);
+    }
+
     [Trait("BR", "#280")]
     [Fact]
     public async Task ShouldSayTruncated_WhenTheKindPrefilterMatchesMoreNodesThanItKeeps()

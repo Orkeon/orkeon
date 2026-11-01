@@ -41,8 +41,12 @@ public sealed class CodebaseMapTool : ToolBase<CodebaseMapRequest, CodebaseMapRe
             // Lazy freshness (PLAN B3): a map drawn over stale files misleads silently.
             if (_freshness is not null)
                 await _freshness.EnsureFreshAsync(cancellationToken).ConfigureAwait(false);
-            var query = new NodeQuery { Level = request.Level, Take = Math.Max(1, request.MaxEntries) };
+            // One entry past the page: truncated says that more entries exist, never that the page is full (#283).
+            var maxEntries = Math.Max(1, request.MaxEntries);
+            var query = new NodeQuery { Level = request.Level, Take = maxEntries + 1 };
             var nodes = await _store.QueryAsync(query, cancellationToken).ConfigureAwait(false);
+            var truncated = nodes.Count > maxEntries;
+            if (truncated) nodes = [.. nodes.Take(maxEntries)];
 
             if (!string.IsNullOrEmpty(request.RootFqn))
             {
@@ -70,7 +74,6 @@ public sealed class CodebaseMapTool : ToolBase<CodebaseMapRequest, CodebaseMapRe
 
             var entries = nodes.Select(n => MapEntry(n, request.IncludeMetrics)).ToImmutableArray();
             var totals = BuildTotals(nodes);
-            var truncated = nodes.Count >= request.MaxEntries;
             return new CodebaseMapResponse
             {
                 Level = request.Level,

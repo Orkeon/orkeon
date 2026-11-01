@@ -23,10 +23,13 @@ public sealed record SymbolSourceResponse
     public required int StartLine { get; init; }
     public required int EndLine { get; init; }
     public required string Language { get; init; }
+
+    /// <summary>True when the source was cut at the tool's bound.</summary>
+    public bool Truncated { get; init; }
+
     public required string Source { get; init; }
     public required string Sha256 { get; init; }
     public required bool Stable { get; init; }
-    public bool Truncated { get; init; }
 
     public required string Fqn { get; init; }
     public required string ShortSha { get; init; }

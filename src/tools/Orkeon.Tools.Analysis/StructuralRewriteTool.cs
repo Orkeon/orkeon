@@ -46,9 +46,9 @@ public sealed record StructuralRewriteFileDto
 
 public sealed record StructuralRewriteResponse
 {
-    [JsonPropertyName("files")] public required ImmutableList<StructuralRewriteFileDto> Files { get; init; }
     [JsonPropertyName("truncated")] public required bool Truncated { get; init; }
     [JsonPropertyName("files_scanned")] public required int FilesScanned { get; init; }
+    [JsonPropertyName("files")] public required ImmutableList<StructuralRewriteFileDto> Files { get; init; }
 }
 
 public sealed class StructuralRewriteTool : FileToolBase<StructuralRewriteRequest, StructuralRewriteResponse>

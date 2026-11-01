@@ -50,6 +50,17 @@ servent à générer automatiquement le schéma JSON exposé au LLM (`ToolSchema
 - **Les retours sont opt-in par attribut** : dès qu'une propriété de `TResponse` porte
   `[ReturnSchema]`, seules les propriétés annotées reviennent à l'agent ; quand aucune ne le
   porte, toutes reviennent.
+- **Une réponse est sérialisée dans l'ordre de déclaration, et le pipeline la coupe par la
+  fin** (à `AgentDefaults.ResolveMaxToolResultLength` : 4 000 caractères sauf si l'outil est
+  listé dans `MaxToolResultLengthOverrides`). On déclare `truncated`, un curseur, un total et
+  les compteurs avant les collections volumineuses, et un rendu (`mermaid_flowchart`, `dot`)
+  en dernier, pour qu'un résultat coupé dise encore ce qu'il est (#283). Un rendu destiné à un
+  lecteur humain est désactivé par défaut (`include_mermaid: false`).
+- **`truncated` a un seul sens : il existe plus de résultats que ceux renvoyés.** Un outil qui
+  pagine une liste demande au store un élément au-delà de sa borne et répond
+  `truncated: hits.Count > borne`, la page coupée à la borne ; une page exactement pleine
+  n'est pas tronquée (#283). On teste les deux cas : « exactement `max` résultats : false »
+  et « un de plus : true ».
 
 ### Attribut `[FieldSchema]` (sur TRequest)
 

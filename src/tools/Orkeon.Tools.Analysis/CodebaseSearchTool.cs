@@ -45,10 +45,12 @@ public sealed class CodebaseSearchTool : ToolBase<CodebaseSearchRequest, Codebas
                 : await _freshness.EnsureFreshAsync(cancellationToken).ConfigureAwait(false);
 
             var preFilter = BuildPreFilter(request);
+            // One hit past the page: truncated says that more hits match, never that the page is full (#283).
+            var topK = Math.Max(1, request.TopK);
             var query = new SemanticQuery
             {
                 Text = request.Query,
-                TopK = request.TopK,
+                TopK = topK + 1,
                 MinScore = request.MinScore,
                 PreFilter = preFilter,
                 Mode = request.Mode,
@@ -56,14 +58,15 @@ public sealed class CodebaseSearchTool : ToolBase<CodebaseSearchRequest, Codebas
             var hits = await _store.SemanticSearchAsync(query, cancellationToken).ConfigureAwait(false);
             var preFilterCapped = await IsPreFilterCappedAsync(preFilter, cancellationToken).ConfigureAwait(false);
 
+            var page = hits.Take(topK).ToList();
             var shaped = request.IncludeSignature
-                ? hits
-                : hits.Select(h => h with { Signature = null });
+                ? page
+                : page.Select(h => h with { Signature = null });
             return new CodebaseSearchResponse
             {
                 Hits = [.. shaped],
-                TotalCandidates = hits.Count,
-                Truncated = hits.Count >= request.TopK || preFilterCapped,
+                TotalCandidates = page.Count,
+                Truncated = hits.Count > topK || preFilterCapped,
                 RefreshedFiles = refreshed,
             };
         }

@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — a cut analysis result still says what it is, and `truncated` has one meaning (#283) **[breaking]**
+
+- Every analysis response declares `truncated`, `cycles_truncated`, `next_cursor`, `total` and the counts before its bulky collections, and `mermaid_flowchart` / `dot` last: the pipeline cuts a result from the end, so the model kept reading a cut `dependency_graph` or `edge_list` as a complete one. A test serialises `dependency_graph` and `sub_graph` through the real tool path and asserts the key order.
+- `include_mermaid` defaults to false on `dependency_graph` and `sub_graph` **[breaking]**: the rendering is for a human reader and doubled the result; a caller that wants it passes `include_mermaid: true`.
+- `AgentDefaults.MaxToolResultLengthOverrides` bounds `dependency_graph`, `sub_graph`, `edge_list`, `flow_trace`, `impact_analysis`, `codebase_map`, `package_summary`, `symbol_detail`, `codebase_search`, `structural_search`, `structural_rewrite` and `affected_tests` at 12 000 characters (`AgentDefaults.AnalysisToolResultLength`) instead of 4 000.
+- `directory_read` returns 200 entries by default instead of 500 **[breaking]**.
+- `truncated` means "more results exist than were returned" everywhere: `codebase_search`, `flow_trace`, `statement_query`, `dependency_graph` and `codebase_map` said true on a page that was exactly full; they now ask the store for one item past the bound. The rule is in `docs/tools/new-tool-pattern.md`.
+
 ### Fixed — every analysis tool publishes its parameter schema, and the typings are rendered from it (#282)
 
 - `ToolSchemaGenerator` keeps the request properties carrying `[FieldSchema]` alone, and the analysis DTOs carried almost none: the model received `sub_graph` without `seeds` nor `direction`, `symbol_detail` without `expand`, `codebase_search` without `query`, `flow_trace`, `impact_analysis`, `codebase_map`, `package_summary`, `symbol_source`, `statement_query`, `complexity_report`, `index_codebase`, `incremental_reindex`, `is_path_indexed`, `affected_tests`, `batch_anchors`, `access_cost`, `documented_in`, `documents_of`, `structural_search` (`language`, `paths`, `glob`, `max_results`, `max_files`) and `structural_rewrite` with no parameter at all; `session_store`, `session_snip` and `progress_report` were in the same case. Every request property now carries `[FieldSchema]` with its description, default and, for a C# enum, its names (`direction`, `scope`, `level`, `mode`, `metric`); `seeds`, `query`, `from`, `target`, `fqn`, `root_path`, `virtual_path` and `label` are required.

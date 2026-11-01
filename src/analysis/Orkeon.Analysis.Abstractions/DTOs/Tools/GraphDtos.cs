@@ -74,29 +74,36 @@ public sealed record DependencyGraphRequest
     [JsonPropertyName("max_cycle_members")]
     public int MaxCycleMembers { get; init; } = 50;
 
-    [FieldSchema(Description = "Add a Mermaid flowchart of the nodes and edges (mermaid_flowchart); leave it false when only the data is needed.", IsRequired = false, Default = true)]
-    public bool IncludeMermaid { get; init; } = true;
+    [FieldSchema(Description = "Add a Mermaid flowchart of the nodes and edges (mermaid_flowchart), for a human reader; false by default: the data alone answers an agent.", IsRequired = false, Default = false)]
+    public bool IncludeMermaid { get; init; }
 
     [FieldSchema(Description = "Add a Graphviz DOT rendering (dot).", IsRequired = false, Default = false)]
     public bool IncludeDot { get; init; }
 }
 
+/// <summary>
+/// Serialised in declaration order: the flags and the counts first, so that a result the pipeline cuts
+/// at its bound still tells the model whether more nodes exist; the renderings last (#283).
+/// </summary>
 public sealed record DependencyGraphResponse
 {
-    public required ImmutableArray<GraphNode> Nodes { get; init; }
-    public required ImmutableArray<GraphEdge> Edges { get; init; }
-    public required GraphMetrics Metrics { get; init; }
-    public string? MermaidFlowchart { get; init; }
-    public string? Dot { get; init; }
+    /// <summary>True when the scope holds more nodes than <c>max_nodes</c>: the page is not the whole scope.</summary>
     public bool Truncated { get; init; }
+
+    /// <summary>True when <see cref="Cycles"/> was cut by <c>max_cycles</c>, or a cycle's members by <c>max_cycle_members</c>.</summary>
+    [JsonPropertyName("cycles_truncated")]
+    public bool CyclesTruncated { get; init; }
+
+    public required GraphMetrics Metrics { get; init; }
 
     /// <summary>The cycles of the whole scope (not only of the nodes returned), the largest first.</summary>
     [JsonPropertyName("cycles")]
     public ImmutableArray<GraphCycle> Cycles { get; init; } = [];
 
-    /// <summary>True when <see cref="Cycles"/> was cut by <c>max_cycles</c>, or a cycle's members by <c>max_cycle_members</c>.</summary>
-    [JsonPropertyName("cycles_truncated")]
-    public bool CyclesTruncated { get; init; }
+    public required ImmutableArray<GraphNode> Nodes { get; init; }
+    public required ImmutableArray<GraphEdge> Edges { get; init; }
+    public string? MermaidFlowchart { get; init; }
+    public string? Dot { get; init; }
 }
 
 public sealed record SubGraphRequest
@@ -119,14 +126,17 @@ public sealed record SubGraphRequest
     [FieldSchema(Description = "Most nodes returned (default 100); truncated says when the expansion stopped before its depth.", IsRequired = false, Default = 100)]
     public int MaxNodes { get; init; } = 100;
 
-    [FieldSchema(Description = "Add a Mermaid flowchart of the nodes and edges (mermaid_flowchart); leave it false when only the data is needed.", IsRequired = false, Default = true)]
-    public bool IncludeMermaid { get; init; } = true;
+    [FieldSchema(Description = "Add a Mermaid flowchart of the nodes and edges (mermaid_flowchart), for a human reader; false by default: the data alone answers an agent.", IsRequired = false, Default = false)]
+    public bool IncludeMermaid { get; init; }
 }
 
+/// <summary>Serialised in declaration order: <c>truncated</c> first, the rendering last (#283).</summary>
 public sealed record SubGraphResponse
 {
+    /// <summary>True when the expansion stopped at <c>max_nodes</c> before reaching its depth.</summary>
+    public bool Truncated { get; init; }
+
     public required ImmutableArray<GraphNode> Nodes { get; init; }
     public required ImmutableArray<GraphEdge> Edges { get; init; }
     public string? MermaidFlowchart { get; init; }
-    public bool Truncated { get; init; }
 }

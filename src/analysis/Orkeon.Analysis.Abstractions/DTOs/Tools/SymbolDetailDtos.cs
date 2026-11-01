@@ -32,6 +32,10 @@ public sealed record SymbolDetailResponse
     public string? Name { get; init; }
     public UniversalNodeKind? Kind { get; init; }
     public NodeLevel? Level { get; init; }
+
+    /// <summary>True when <see cref="Members"/> was cut at <c>max_children</c>.</summary>
+    public bool Truncated { get; init; }
+
     public string? Signature { get; init; }
     public string? DocComment { get; init; }
     public string? SummaryShort { get; init; }
@@ -53,5 +57,4 @@ public sealed record SymbolDetailResponse
     public ImmutableArray<CompactNode> TopCallers { get; init; } = [];
     public ImmutableArray<CompactNode> TopCallees { get; init; } = [];
     public ImmutableArray<StatementNode> Statements { get; init; } = [];
-    public bool Truncated { get; init; }
 }

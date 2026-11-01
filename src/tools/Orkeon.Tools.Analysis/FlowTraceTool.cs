@@ -45,6 +45,7 @@ public sealed class FlowTraceTool : ToolBase<FlowTraceRequest, FlowTraceResponse
             var parsed = GraphKindNames.ParseEdgeKinds(request.EdgeKinds);
             ImmutableArray<EdgeKind> edgeKinds = parsed.IsDefaultOrEmpty ? [EdgeKind.Calls] : parsed;
             if (string.IsNullOrEmpty(request.From)) return new FlowTraceResponse { Paths = [] };
+            var maxPaths = Math.Max(1, request.MaxPaths);
 
             if (!request.IncludeAllPaths && !string.IsNullOrEmpty(request.To))
             {
@@ -69,13 +70,14 @@ public sealed class FlowTraceTool : ToolBase<FlowTraceRequest, FlowTraceResponse
                     EdgeKinds = edgeKinds,
                     Direction = request.Direction,
                     MaxDepth = request.MaxDepth,
-                    MaxPaths = request.MaxPaths,
+                    // One path past the page: truncated says that more paths exist, never that the page is full (#283).
+                    MaxPaths = maxPaths + 1,
                 },
                 cancellationToken).ConfigureAwait(false);
             return new FlowTraceResponse
             {
-                Paths = [.. all],
-                Truncated = all.Count >= request.MaxPaths,
+                Paths = [.. all.Take(maxPaths)],
+                Truncated = all.Count > maxPaths,
             };
         }
     }

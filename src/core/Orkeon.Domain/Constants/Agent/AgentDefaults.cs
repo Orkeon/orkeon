@@ -65,6 +65,9 @@ public static class AgentDefaults
     /// (typically 5–20 KB Markdown). The default 4000-char cap forces re-read loops and
     /// pushes models into "fight the truncation" failure modes (cf. round 30 trpc).
     /// Listed tools get a wider cap; unlisted tools fall back to the default.
+    /// The analysis tools answer with a graph, a search page or a diff whose JSON
+    /// seldom fits 4 000 characters; they declare <c>truncated</c> and the counts
+    /// before the bulky collections, so a cut result still says what it is (#283).
     /// </summary>
     public static readonly IReadOnlyDictionary<string, int> MaxToolResultLengthOverrides =
         new Dictionary<string, int>(System.StringComparer.OrdinalIgnoreCase)
@@ -72,7 +75,22 @@ public static class AgentDefaults
             ["file_read"] = 32_000,
             ["node_read"] = 256_000,
             ["shell_command"] = 10_000,
+            ["dependency_graph"] = AnalysisToolResultLength,
+            ["sub_graph"] = AnalysisToolResultLength,
+            ["edge_list"] = AnalysisToolResultLength,
+            ["flow_trace"] = AnalysisToolResultLength,
+            ["impact_analysis"] = AnalysisToolResultLength,
+            ["codebase_map"] = AnalysisToolResultLength,
+            ["package_summary"] = AnalysisToolResultLength,
+            ["symbol_detail"] = AnalysisToolResultLength,
+            ["codebase_search"] = AnalysisToolResultLength,
+            ["structural_search"] = AnalysisToolResultLength,
+            ["structural_rewrite"] = AnalysisToolResultLength,
+            ["affected_tests"] = AnalysisToolResultLength,
         };
+
+    /// <summary>The bound of a result of an analysis tool listed in <see cref="MaxToolResultLengthOverrides"/>.</summary>
+    public const int AnalysisToolResultLength = 12_000;
 
     /// <summary>
     /// Resolves the effective tool-result truncation cap for a given tool name.

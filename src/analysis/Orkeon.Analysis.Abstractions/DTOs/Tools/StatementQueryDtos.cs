@@ -30,8 +30,11 @@ public sealed record StatementHit
     public double? Score { get; init; }
 }
 
+/// <summary>Serialised in declaration order: <c>truncated</c> before the hits (#283).</summary>
 public sealed record StatementQueryResponse
 {
-    public required ImmutableArray<StatementHit> Hits { get; init; }
+    /// <summary>True when more statements match than <c>top_k</c> returned.</summary>
     public bool Truncated { get; init; }
+
+    public required ImmutableArray<StatementHit> Hits { get; init; }
 }

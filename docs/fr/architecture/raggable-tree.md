@@ -134,7 +134,7 @@ Les plages sont des offsets en **octets** UTF-8 (`NodeRange.StartByte`/`EndByte`
 | `symbol_detail` | Détail d'un symbole (signature, doc, callers, callees) | `{ "fqn": "app::UserService::create" }` |
 | `symbol_source` | Extrait du code source (signature, body, span complet) | `{ "fqn": "...", "mode": "SignatureAndBody" }` |
 | `codebase_search` | Recherche hybride — embedding + BM25 fusionnés (voir [plus bas](#recherche-hybride)) | `{ "query": "session expiration", "top_k": 10 }` |
-| `dependency_graph` | Graphe de dépendances à une portée (L1/L2/L3), rendu Mermaid/DOT | `{ "scope": "L2_Module", "edge_kinds": ["Imports", "Calls"] }` |
+| `dependency_graph` | Graphe de dépendances à une portée (L1/L2/L3) ; rendu Mermaid/DOT sur `include_mermaid` / `include_dot` (désactivés par défaut) | `{ "scope": "L2_Module", "edge_kinds": ["Imports", "Calls"] }` |
 | `sub_graph` | Expansion BFS autour de seeds | `{ "seeds": ["pkg::X"], "depth": 3 }` |
 | `edge_list` | Toutes les arêtes des genres donnés dans l'index entier, paginées, extrémités en FQN | `{ "edge_kinds": ["inherits"], "page_size": 500 }` |
 | `flow_trace` | Chemins d'appel entre deux FQN | `{ "from": "A", "to": "B", "max_paths": 5 }` |

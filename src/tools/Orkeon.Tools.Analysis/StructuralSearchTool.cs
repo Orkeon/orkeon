@@ -44,9 +44,9 @@ public sealed record StructuralMatchDto
 
 public sealed record StructuralSearchResponse
 {
-    [JsonPropertyName("matches")] public required ImmutableList<StructuralMatchDto> Matches { get; init; }
     [JsonPropertyName("truncated")] public required bool Truncated { get; init; }
     [JsonPropertyName("files_scanned")] public required int FilesScanned { get; init; }
+    [JsonPropertyName("matches")] public required ImmutableList<StructuralMatchDto> Matches { get; init; }
 }
 
 public sealed class StructuralSearchTool : ToolBase<StructuralSearchRequest, StructuralSearchResponse>

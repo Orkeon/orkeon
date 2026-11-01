@@ -229,7 +229,7 @@ protocole d'outils du fournisseur — le tour de l'assistant avec ses appels, pu
 `tool` par appel, refus de permission ou erreur d'outil compris —, que le fournisseur réponde
 au format OpenAI (la plupart des fournisseurs, Ollama compris) ou avec le corps Messages
 d'Anthropic. Un résultat est coupé une fois, à la borne du framework
-(`AgentDefaults.ResolveMaxToolResultLength` : 4 000 caractères par défaut ; surcharges par outil : `file_read` 32 000, `node_read` 256 000, `shell_command` 10 000) : par
+(`AgentDefaults.ResolveMaxToolResultLength` : 4 000 caractères par défaut ; surcharges par outil : `file_read` 32 000, `node_read` 256 000, `shell_command` 10 000, et 12 000 pour les outils d'analyse qui répondent par un graphe ou une page : `dependency_graph`, `sub_graph`, `edge_list`, `flow_trace`, `impact_analysis`, `codebase_map`, `package_summary`, `symbol_detail`, `codebase_search`, `structural_search`, `structural_rewrite`, `affected_tests`) : par
 le pipeline d'invocation d'outils de l'hôte quand il en a un, par `act` sinon. Un tour en échec
 chez le fournisseur résout `output` en `<undefined-llm:<l'erreur du fournisseur>>`, comme
 `complete`. Un appel qu'une étape du profil de décision de l'hôte bloque n'est pas une panne du
