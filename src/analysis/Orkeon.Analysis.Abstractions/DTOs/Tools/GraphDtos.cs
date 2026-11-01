@@ -22,7 +22,8 @@ public sealed record GraphEdge
 
 /// <summary>
 /// Metrics of a dependency graph. <see cref="NodeCount"/>, <see cref="EdgeCount"/> and the fan figures cover the
-/// nodes returned (capped by <c>max_nodes</c>); <see cref="CycleCount"/> covers the whole scope.
+/// nodes returned (selected by <c>max_nodes</c>, <c>root_fqn</c> and <c>node_kinds</c>); <see cref="CycleCount"/>
+/// covers the whole scope.
 /// </summary>
 public sealed record GraphMetrics(int NodeCount, int EdgeCount, int CycleCount, double AvgFanIn, double AvgFanOut);
 
@@ -37,8 +38,12 @@ public sealed record GraphCycle
     [JsonPropertyName("member_count")]
     public required int MemberCount { get; init; }
 
+    /// <summary>
+    /// The edge kinds followed to find the cycle, as enum names (<c>Imports</c>, <c>Imports, Calls</c>): every kind of
+    /// <c>edge_kinds</c>, imports when it is empty. A string, since the response serializer writes a flags enum as a number.
+    /// </summary>
     [JsonPropertyName("edge_kind")]
-    public required EdgeKind EdgeKind { get; init; }
+    public required string EdgeKind { get; init; }
 }
 
 public sealed record DependencyGraphRequest

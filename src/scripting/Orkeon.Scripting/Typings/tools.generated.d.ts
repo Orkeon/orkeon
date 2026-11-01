@@ -196,7 +196,7 @@ declare global {
             readonly tables: readonly { readonly columns: readonly { readonly data_type: string; readonly default_value?: string; readonly is_nullable: boolean; readonly is_primary_key: boolean; readonly max_length?: number; readonly name: string; }[]; readonly name: string; readonly row_count_estimate?: number; readonly schema?: string; }[];
         }>;
 
-        /** `dependency_graph` - Dependency graph at a given scope (L1 packages, L2 modules, L3 symbols). nodes, edges, node_count and edge_count cover the nodes returned (capped by max_nodes); cycles and cycle_count cover the whole scope, each cycle naming its members as FQNs. */
+        /** `dependency_graph` - Dependency graph at a given scope (L1 packages, L2 modules, L3 symbols). nodes, edges, node_count and edge_count cover the nodes returned (selected by max_nodes, root_fqn and node_kinds); cycles and cycle_count cover the whole scope, each cycle naming its members as FQNs. */
         dependencyGraph(input?: {
             /** Edge kinds to follow, by name: contains, calls, imports, inherits, tests, documents, project_depends. Legacy enum names (Imports, Extends, Implements...) are still accepted. */
             edge_kinds?: readonly string[];

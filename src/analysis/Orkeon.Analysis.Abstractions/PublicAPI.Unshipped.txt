@@ -41,7 +41,7 @@ Orkeon.Analysis.Abstractions.DTOs.Tools.DependencyGraphResponse.CyclesTruncated.
 Orkeon.Analysis.Abstractions.DTOs.Tools.DependencyGraphResponse.CyclesTruncated.init -> void
 Orkeon.Analysis.Abstractions.DTOs.Tools.GraphCycle
 Orkeon.Analysis.Abstractions.DTOs.Tools.GraphCycle.<Clone>$() -> Orkeon.Analysis.Abstractions.DTOs.Tools.GraphCycle!
-Orkeon.Analysis.Abstractions.DTOs.Tools.GraphCycle.EdgeKind.get -> Orkeon.Analysis.Abstractions.EdgeKind
+Orkeon.Analysis.Abstractions.DTOs.Tools.GraphCycle.EdgeKind.get -> string!
 Orkeon.Analysis.Abstractions.DTOs.Tools.GraphCycle.EdgeKind.init -> void
 Orkeon.Analysis.Abstractions.DTOs.Tools.GraphCycle.Equals(Orkeon.Analysis.Abstractions.DTOs.Tools.GraphCycle? other) -> bool
 Orkeon.Analysis.Abstractions.DTOs.Tools.GraphCycle.Fqns.get -> System.Collections.Immutable.ImmutableArray<string!>

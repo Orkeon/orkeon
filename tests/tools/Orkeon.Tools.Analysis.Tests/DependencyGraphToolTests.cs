@@ -195,7 +195,7 @@ public class DependencyGraphToolTests
         var cycle = Assert.Single(resp.Cycles);
         Assert.Equal(["/src/a.ts", "/src/b.ts"], cycle.Fqns.ToArray());
         Assert.Equal(2, cycle.MemberCount);
-        Assert.Equal(EdgeKind.Imports, cycle.EdgeKind);
+        Assert.Equal("Imports", cycle.EdgeKind);
         Assert.Equal(1, resp.Metrics.CycleCount);
         Assert.False(resp.CyclesTruncated);
     }
@@ -229,6 +229,48 @@ public class DependencyGraphToolTests
         Assert.Equal(3, resp.Cycles[0].MemberCount);
         Assert.Equal(2, resp.Cycles[0].Fqns.Length);
         Assert.Equal(2, resp.Cycles[1].MemberCount);
+    }
+
+    [Fact]
+    public async Task ShouldFollowImportsForCycles_WhenEdgeKindsEmpty()
+    {
+        var a = TestGraph.Module("/src/a.ts");
+        var b = TestGraph.Module("/src/b.ts");
+        var c = TestGraph.Module("/src/c.ts");
+        var store = TestGraph.Store(
+            [a, b, c],
+            [
+                TestGraph.Edge(a, b, EdgeKind.Imports), TestGraph.Edge(b, a, EdgeKind.Imports),
+                TestGraph.Edge(b, c, EdgeKind.Calls), TestGraph.Edge(c, b, EdgeKind.Calls),
+            ]);
+        using var tool = new DependencyGraphTool(store);
+
+        var resp = await tool.ExecuteTypedForTest(
+            new DependencyGraphRequest { Scope = NodeLevel.L2_Module, EdgeKinds = [] },
+            CancellationToken.None);
+
+        // the graph follows imports only, so the cycles do too: the calls between b and c form no cycle
+        Assert.All(resp.Edges, e => Assert.Equal(EdgeKind.Imports, e.Kind));
+        var cycle = Assert.Single(resp.Cycles);
+        Assert.Equal(["/src/a.ts", "/src/b.ts"], cycle.Fqns.ToArray());
+        Assert.Equal("Imports", cycle.EdgeKind);
+    }
+
+    [Fact]
+    public async Task ShouldLabelCycleWithEveryKindFollowed_WhenSeveralEdgeKindsGiven()
+    {
+        var a = TestGraph.Module("/src/a.ts");
+        var b = TestGraph.Module("/src/b.ts");
+        var store = TestGraph.Store(
+            [a, b],
+            [TestGraph.Edge(a, b, EdgeKind.Imports), TestGraph.Edge(b, a, EdgeKind.Calls)]);
+        using var tool = new DependencyGraphTool(store);
+
+        var resp = await tool.ExecuteTypedForTest(
+            new DependencyGraphRequest { Scope = NodeLevel.L2_Module, EdgeKinds = TestGraph.Arr("imports", "calls") },
+            CancellationToken.None);
+
+        Assert.Equal("Imports, Calls", Assert.Single(resp.Cycles).EdgeKind);
     }
 
     [Fact]
