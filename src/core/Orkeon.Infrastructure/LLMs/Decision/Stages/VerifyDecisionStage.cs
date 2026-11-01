@@ -83,7 +83,7 @@ public sealed class VerifyDecisionStage : IDecisionStage
         var decision = await _model.DecideAsync(new DecisionRequest
         {
             State = DecisionStageState.OfExchange(messages, response),
-            Questions = ImmutableDictionary<string, DecisionQuestion>.Empty.Add(Question, new NoulQuestion
+            Questions = ImmutableDictionary.Create<string, DecisionQuestion>().Add(Question, new NoulQuestion
             {
                 Instructions = JsonValue.Create(Instructions),
                 Criteria = new NoulCriteria { True = JsonValue.Create(_criterion) },
