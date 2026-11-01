@@ -195,7 +195,7 @@ public class DependencyGraphToolTests
         var cycle = Assert.Single(resp.Cycles);
         Assert.Equal(["/src/a.ts", "/src/b.ts"], cycle.Fqns.ToArray());
         Assert.Equal(2, cycle.MemberCount);
-        Assert.Equal("Imports", cycle.EdgeKind);
+        Assert.Equal(EdgeKind.Imports, cycle.EdgeKind);
         Assert.Equal(1, resp.Metrics.CycleCount);
         Assert.False(resp.CyclesTruncated);
     }
@@ -253,7 +253,7 @@ public class DependencyGraphToolTests
         Assert.All(resp.Edges, e => Assert.Equal(EdgeKind.Imports, e.Kind));
         var cycle = Assert.Single(resp.Cycles);
         Assert.Equal(["/src/a.ts", "/src/b.ts"], cycle.Fqns.ToArray());
-        Assert.Equal("Imports", cycle.EdgeKind);
+        Assert.Equal(EdgeKind.Imports, cycle.EdgeKind);
     }
 
     [Fact]
@@ -270,7 +270,7 @@ public class DependencyGraphToolTests
             new DependencyGraphRequest { Scope = NodeLevel.L2_Module, EdgeKinds = TestGraph.Arr("imports", "calls") },
             CancellationToken.None);
 
-        Assert.Equal("Imports, Calls", Assert.Single(resp.Cycles).EdgeKind);
+        Assert.Equal(EdgeKind.Imports | EdgeKind.Calls, Assert.Single(resp.Cycles).EdgeKind);
     }
 
     [Fact]

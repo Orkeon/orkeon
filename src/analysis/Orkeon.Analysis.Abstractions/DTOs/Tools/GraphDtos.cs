@@ -39,11 +39,11 @@ public sealed record GraphCycle
     public required int MemberCount { get; init; }
 
     /// <summary>
-    /// The edge kinds followed to find the cycle, as enum names (<c>Imports</c>, <c>Imports, Calls</c>): every kind of
-    /// <c>edge_kinds</c>, imports when it is empty. A string, since the response serializer writes a flags enum as a number.
+    /// The edge kinds followed to find the cycle: every kind of <c>edge_kinds</c>, imports when it is empty. On the wire,
+    /// the names <c>edge_kinds</c> takes, joined by <c>", "</c> (<c>imports</c>, <c>imports, calls</c>).
     /// </summary>
     [JsonPropertyName("edge_kind")]
-    public required string EdgeKind { get; init; }
+    public required EdgeKind EdgeKind { get; init; }
 }
 
 public sealed record DependencyGraphRequest

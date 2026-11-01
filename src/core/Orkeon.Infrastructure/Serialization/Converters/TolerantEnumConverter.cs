@@ -5,8 +5,9 @@ namespace Orkeon.Infrastructure.Serialization.Converters;
 
 /// <summary>
 /// Factory that installs a <see cref="TolerantEnumConverter{TEnum}"/> for every
-/// non-flags enum encountered during deserialization, unless a more specific
-/// converter is already registered ahead of this one in the options.
+/// non-flags enum, and a flags converter (snake_case names joined by <c>", "</c>)
+/// for every <see cref="FlagsAttribute"/> enum, unless a more specific converter
+/// is already registered ahead of this one in the options.
 /// </summary>
 /// <remarks>
 /// Replaces the default <see cref="JsonStringEnumConverter"/> with one that:
@@ -29,19 +30,19 @@ public sealed class TolerantEnumConverterFactory : JsonConverterFactory
     public override bool CanConvert(Type typeToConvert)
     {
         ArgumentNullException.ThrowIfNull(typeToConvert);
-        if (!typeToConvert.IsEnum)
-            return false;
-        // Leave [Flags] enums to the more specific Immutable array / flags
-        // converters already registered; flags parsing with comma-separated
-        // strings requires different tolerance semantics.
-        return typeToConvert.GetCustomAttributes(typeof(FlagsAttribute), inherit: false).Length == 0;
+        return typeToConvert.IsEnum;
     }
 
     /// <inheritdoc />
     public override JsonConverter CreateConverter(Type typeToConvert, JsonSerializerOptions options)
     {
-        var converterType = typeof(TolerantEnumConverter<>).MakeGenericType(typeToConvert);
-        return (JsonConverter)Activator.CreateInstance(converterType)!;
+        ArgumentNullException.ThrowIfNull(typeToConvert);
+        // A [Flags] enum names its combinations (TolerantFlagsEnumConverter); without it, System.Text.Json would
+        // write the number while the typings promise a string (#274).
+        var converter = typeToConvert.IsDefined(typeof(FlagsAttribute), inherit: false)
+            ? typeof(TolerantFlagsEnumConverter<>)
+            : typeof(TolerantEnumConverter<>);
+        return (JsonConverter)Activator.CreateInstance(converter.MakeGenericType(typeToConvert))!;
     }
 }
 

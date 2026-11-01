@@ -36,7 +36,7 @@ public sealed class JsonComponentSerializer : IComponentSerializer
             // non-flags enums: it accepts case/underscore variants and, on failure,
             // throws a JsonException listing the valid values so LLM agents can
             // self-correct (vs the previous opaque "could not be converted" error).
-            // Flags enums fall through to the EdgeKind-specific converter below.
+            // Flags enums get snake_case names joined by ", " (TolerantFlagsEnumConverter, #274).
             new TolerantEnumConverterFactory(),
             new BoolTolerantConverter(),
             new IntTolerantConverter(),
