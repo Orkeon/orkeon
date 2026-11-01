@@ -504,7 +504,7 @@ recherche dans les logs, `Ctrl+↑` / `Ctrl+↓` redimensionnent, `F2` / `Maj+F2
 détail dans les logs, `F3` retour à la ligne, `↓` (depuis la dernière ligne
 du prompt) ou `F4` liste des tâches, `Ctrl+C` copie la sélection,
 `Ctrl+V` et le clic droit collent dans la saisie, `Ctrl+Q` quitte (il demande d'abord confirmation
-tant qu'un tour s'exécute). `orkeon-repl`
+tant qu'un tour s'exécute). Aucune vue de texte n'ouvre de menu contextuel : un clic droit colle, rien d'autre. `orkeon-repl`
 choisit cette console avec `--ui` ([référence du CLI](../reference/cli.md#orkeon-repl--la-console-interactive-séparée)).
 
 **Touches sur le prompt.** `Échap` efface le brouillon ; un second `Échap` aussitôt après (toute

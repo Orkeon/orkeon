@@ -1,4 +1,6 @@
+using Orkeon.Cli.TerminalGui.Hosting;
 using Orkeon.Cli.TerminalGui.Layout;
+using Orkeon.Cli.TerminalGui.Tests.Doubles;
 using Terminal.Gui.App;
 using Terminal.Gui.Input;
 using Terminal.Gui.Views;
@@ -51,4 +53,37 @@ public sealed class MouseClipboardTests : IDisposable
         Assert.True(TuiClipboard.TryGetText(out var text));
         Assert.Equal("alpha beta", text);
     }
+
+#pragma warning disable CS0618 // Terminal.Gui legacy static Application: the mouse reaches the views through it
+    [Theory]
+    [Trait("BR", "CH-11")]
+    [InlineData(MouseFlags.RightButtonClicked)]
+    [InlineData(MouseFlags.RightButtonPressed)]
+    [InlineData(MouseFlags.LeftButtonReleased | MouseFlags.Ctrl)]
+    public void No_context_menu_opens_in_the_repl_input(MouseFlags flags)
+    {
+        // Terminal.Gui's TextView carries a PopoverMenu (cut, copy, paste...) opened by a right click
+        // and Ctrl+click: in the REPL it flashed open and closed against the right-click paste.
+        TuiClipboard.TerminalWriter = new StringWriter();
+        Application.Init(driverName: "ansi");
+        try
+        {
+            using var top = new SplitPaneToplevel(new TerminalGuiOptions(), InlineDispatcher.Instance);
+            Application.Begin(top);
+            var input = top.Repl.Input;
+            // Past the placeholder label, which covers the start of an empty input.
+            var at = input.FrameToScreen().Location;
+            at.X += 70;
+
+            Application.Mouse.RaiseMouseEvent(new Mouse { Flags = flags, ScreenPosition = at, Position = at });
+
+            Assert.False(input.ContextMenu?.Visible ?? false);
+            Assert.False(Application.Popovers?.GetActivePopover() is { Visible: true });
+        }
+        finally
+        {
+            Application.Shutdown();
+        }
+    }
+#pragma warning restore CS0618
 }

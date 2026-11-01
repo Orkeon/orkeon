@@ -490,7 +490,7 @@ user quits.
 drawer, `Ctrl+R` REPL pane, `Ctrl+L` / `Ctrl+K` clear the logs / the REPL, `Ctrl+F` find in the logs,
 `Ctrl+↑` / `Ctrl+↓` resize, `F2` / `Shift+F2` more / less log detail, `F3` wrap, `↓` (from the
 prompt's last row) or `F4` tasks list, `Ctrl+C` copy the selection, `Ctrl+V` and right-click paste into the input, `Ctrl+Q` quit
-(it asks first while a turn runs). `orkeon-repl` picks this console with `--ui` ([CLI reference](../reference/cli.md#orkeon-repl--the-separate-interactive-console)).
+(it asks first while a turn runs). No text view opens a context menu: a right click pastes, nothing else. `orkeon-repl` picks this console with `--ui` ([CLI reference](../reference/cli.md#orkeon-repl--the-separate-interactive-console)).
 
 **Keys on the prompt.** `Esc` clears the draft; a second `Esc` right after it (any other key in
 between disarms the pair, and it arms on an empty draft too) interrupts the turn submitted from the
