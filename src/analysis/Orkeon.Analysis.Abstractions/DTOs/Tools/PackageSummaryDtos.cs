@@ -1,12 +1,20 @@
 using System.Collections.Immutable;
+using Orkeon.Domain.Attributes;
 
 namespace Orkeon.Analysis.Abstractions.DTOs.Tools;
 
 public sealed record PackageSummaryRequest
 {
+    [FieldSchema(Description = "FQN of the package (an entry of codebase_map at L1_Package).", IsRequired = true)]
     public string Fqn { get; init; } = "";
+
+    [FieldSchema(Description = "Return the public exports of the package.", IsRequired = false, Default = true)]
     public bool IncludePublicExports { get; init; } = true;
+
+    [FieldSchema(Description = "Return the packages this one depends on.", IsRequired = false, Default = true)]
     public bool IncludeDependencies { get; init; } = true;
+
+    [FieldSchema(Description = "Most exports returned (default 50); truncated says when more exist.", IsRequired = false, Default = 50)]
     public int MaxExports { get; init; } = 50;
 }
 

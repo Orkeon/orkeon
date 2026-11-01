@@ -33,7 +33,14 @@ and `[ReturnSchema]` attributes (`Orkeon.Domain.Attributes`) are used to automat
 generate the JSON schema exposed to the LLM (`ToolSchemaGenerator`, `Orkeon.Domain.Tools`).
 
 - **Only a property carrying `[FieldSchema]` is a parameter.** A property without it is
-  invisible to the LLM (it keeps its C# default).
+  invisible to the LLM (it keeps its C# default). A guard in `Orkeon.Hosting.Tests`
+  (`BuiltInToolSchemaTests`, #282) reads every tool a run registers and fails, naming the tool
+  and the property, when a public settable property of a typed request is not in the published
+  `Schema.Parameters`: annotate the property, there is no allowlist. The TypeScript typings
+  (`Typings/tools.generated.d.ts`) are rendered from that same schema, so a script sees exactly
+  what the model sees. A C# enum property is published with its names (`direction`:
+  `Forward`, `Backward`, `Both`, read case-insensitively); a `[Flags]` enum (`expand`) is a free
+  string whose description lists the names, one or several joined by commas.
 - **Parameter names are the property names in snake_case** (`TargetLanguage` →
   `target_language`), both in the schema and in the deserializer. A `[JsonPropertyName]`
   must therefore spell the same snake_case name, or the schema and the binding disagree.

@@ -20,10 +20,15 @@ public sealed record StructuralSearchRequest
     [JsonPropertyName("rule")] public System.Text.Json.JsonElement? Rule { get; init; }
     [FieldSchema(Description = "Virtual path of a YAML rule file (id, language, rule, message, severity, fix) under a mounted root.", Example = "/workspace/rules/no-log.yml", IsRequired = false)]
     [JsonPropertyName("rule_file")] public string? RuleFile { get; init; }
+    [FieldSchema(Description = "Language of the pattern and of the files searched (csharp, typescript, python, markdown...). Required with pattern or rule; a rule_file names its own.", IsRequired = false, Example = "csharp")]
     [JsonPropertyName("language")] public string Language { get; init; } = "";
+    [FieldSchema(Description = "Virtual paths of the files or folders searched; empty searches the mounted roots.", ItemsType = "string", IsRequired = false)]
     [JsonPropertyName("paths")] public ImmutableList<string> Paths { get; init; } = ImmutableList<string>.Empty;
+    [FieldSchema(Description = "Glob kept among the candidate files (**/*.cs).", IsRequired = false)]
     [JsonPropertyName("glob")] public string? Glob { get; init; }
+    [FieldSchema(Description = "Most matches returned (default 100); truncated says when more exist.", IsRequired = false, Default = 100)]
     [JsonPropertyName("max_results")] public int MaxResults { get; init; } = 100;
+    [FieldSchema(Description = "Most files scanned (default 500); truncated says when more were candidates.", IsRequired = false, Default = 500)]
     [JsonPropertyName("max_files")] public int MaxFiles { get; init; } = 500;
 }
 

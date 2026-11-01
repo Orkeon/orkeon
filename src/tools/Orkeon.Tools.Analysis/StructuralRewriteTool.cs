@@ -5,6 +5,7 @@ using Orkeon.Analysis.Abstractions.Interfaces;
 using Orkeon.Analysis.Core.Editing;
 using Orkeon.Analysis.Core.Structural;
 using Orkeon.Analysis.TreeSitter;
+using Orkeon.Domain.Attributes;
 using Orkeon.Domain.FileSystem;
 using Orkeon.Domain.Tools;
 using Orkeon.Tools.Abstractions.Base;
@@ -13,14 +14,23 @@ namespace Orkeon.Tools.Analysis;
 
 public sealed record StructuralRewriteRequest
 {
+    [FieldSchema(Description = "Structural rule object, as structural_search takes it. Give exactly one of pattern, rule or rule_file.", IsRequired = false)]
     [JsonPropertyName("rule")] public System.Text.Json.JsonElement? Rule { get; init; }
+    [FieldSchema(Description = "Virtual path of a YAML rule file (id, language, rule, fix) under a mounted root.", IsRequired = false, Example = "/workspace/rules/no-log.yml")]
     [JsonPropertyName("rule_file")] public string? RuleFile { get; init; }
+    [FieldSchema(Description = "Code pattern with $NAME / $$$NAME metavariables, as structural_search takes it.", IsRequired = false, Example = "Log.Write($X)")]
     [JsonPropertyName("pattern")] public string? Pattern { get; init; }
+    [FieldSchema(Description = "Language of the pattern and of the files rewritten (csharp, typescript, python...). Required with pattern or rule; a rule_file names its own.", IsRequired = false, Example = "csharp")]
     [JsonPropertyName("language")] public string Language { get; init; } = "";
+    [FieldSchema(Description = "Replacement template; $NAME and $$$NAME are substituted by their captures. Required with pattern or rule; a rule_file carries its own.", IsRequired = false, Example = "Logger.Info($X)")]
     [JsonPropertyName("fix")] public string? Fix { get; init; }
+    [FieldSchema(Description = "Virtual paths of the files or folders rewritten; empty takes the mounted roots.", ItemsType = "string", IsRequired = false)]
     [JsonPropertyName("paths")] public ImmutableList<string> Paths { get; init; } = ImmutableList<string>.Empty;
+    [FieldSchema(Description = "Glob kept among the candidate files (**/*.cs).", IsRequired = false)]
     [JsonPropertyName("glob")] public string? Glob { get; init; }
+    [FieldSchema(Description = "true (default) returns the diffs without writing; false writes the files.", IsRequired = false, Default = true)]
     [JsonPropertyName("dry_run")] public bool DryRun { get; init; } = true;
+    [FieldSchema(Description = "Most files scanned (default 500); truncated says when more were candidates.", IsRequired = false, Default = 500)]
     [JsonPropertyName("max_files")] public int MaxFiles { get; init; } = 500;
 }
 

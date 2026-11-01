@@ -34,7 +34,16 @@ servent à générer automatiquement le schéma JSON exposé au LLM (`ToolSchema
 `Orkeon.Domain.Tools`).
 
 - **Seule une propriété portant `[FieldSchema]` est un paramètre.** Une propriété sans
-  l'attribut est invisible pour le LLM (elle garde sa valeur C# par défaut).
+  l'attribut est invisible pour le LLM (elle garde sa valeur C# par défaut). Un garde dans
+  `Orkeon.Hosting.Tests` (`BuiltInToolSchemaTests`, #282) lit chaque outil qu'une exécution
+  enregistre et échoue, en nommant l'outil et la propriété, quand une propriété publique
+  modifiable d'une requête typée n'est pas dans les `Schema.Parameters` publiés : on annote la
+  propriété, il n'y a pas de liste d'exceptions. Les typages TypeScript
+  (`Typings/tools.generated.d.ts`) sont rendus depuis ce même schéma : un script voit exactement
+  ce que le modèle voit. Une propriété enum C# est publiée avec ses noms (`direction` :
+  `Forward`, `Backward`, `Both`, lus sans tenir compte de la casse) ; un enum `[Flags]`
+  (`expand`) est une chaîne libre dont la description liste les noms, un ou plusieurs séparés
+  par des virgules.
 - **Les noms de paramètres sont les noms de propriétés en snake_case** (`TargetLanguage` →
   `target_language`), dans le schéma comme dans le désérialiseur. Un `[JsonPropertyName]`
   doit donc épeler le même nom snake_case, sinon le schéma et la liaison divergent.

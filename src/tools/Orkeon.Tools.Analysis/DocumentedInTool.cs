@@ -3,6 +3,7 @@ using System.Text.Json.Serialization;
 using Microsoft.Extensions.Logging;
 using Orkeon.Analysis.Abstractions.Interfaces;
 using Orkeon.Analysis.Core;
+using Orkeon.Domain.Attributes;
 using Orkeon.Domain.Tools;
 using Orkeon.Tools.Abstractions.Base;
 
@@ -42,6 +43,7 @@ public sealed class DocumentedInTool : ToolBase<DocumentedInRequest, DocumentedI
 
 public sealed record DocumentedInRequest
 {
+    [FieldSchema(Description = "FQN of the symbol.", IsRequired = true)]
     [JsonPropertyName("fqn")]
     public string Fqn { get; init; } = string.Empty;
 }

@@ -1,13 +1,16 @@
 using Orkeon.Analysis.TreeSitter;
 using Orkeon.Domain.Tools.Protocol;
 using Orkeon.Tests.Shared.FileSystem;
+using Orkeon.Tools.Analysis.Tests.Doubles;
 
 namespace Orkeon.Tools.Analysis.Tests;
 
 /// <summary>
-/// The five structural tools publish a parameter schema generated from their request record, as the file
-/// tools do (#210): the model reads the arguments from the schema, not from the description alone, and a
-/// call missing a required argument is refused before the tool runs, with the argument's name.
+/// The structural tools, the structural search and rewrite, affected_tests and edge_list publish a parameter
+/// schema generated from their request record, as the file tools do (#210, #282): the model reads the arguments
+/// from the schema, not from the description alone, and a call missing a required argument is refused before
+/// the tool runs, with the argument's name. The whole catalogue is guarded by <c>BuiltInToolSchemaTests</c>
+/// (Orkeon.Hosting.Tests).
 /// </summary>
 public sealed class StructuralToolSchemaTests : IDisposable
 {

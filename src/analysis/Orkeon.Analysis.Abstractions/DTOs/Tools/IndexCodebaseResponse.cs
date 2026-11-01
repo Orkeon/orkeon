@@ -1,5 +1,6 @@
 using System.Collections.Immutable;
 using System.Text.Json.Serialization;
+using Orkeon.Domain.Attributes;
 
 namespace Orkeon.Analysis.Abstractions.DTOs.Tools;
 
@@ -89,10 +90,21 @@ public sealed record IndexFilterStats
 
 public sealed record IncrementalReindexRequest
 {
+    [FieldSchema(Description = "Virtual path of the indexed root.", IsRequired = true)]
     public string RootPath { get; init; } = "";
+
+    [FieldSchema(Description = "Virtual paths of the files to reindex; omit them to take the files changed between from_commit and to_commit.", ItemsType = "string", IsRequired = false)]
     public ImmutableArray<string> ChangedFiles { get; init; } = [];
+
+    [FieldSchema(Description = "Commit the diff starts from when changed_files is omitted.", IsRequired = false)]
     public string? FromCommit { get; init; }
+
+    [FieldSchema(Description = "Commit the diff ends at (default HEAD).", IsRequired = false)]
     public string? ToCommit { get; init; }
+
+    [FieldSchema(Description = "Languages reindexed; empty keeps every supported language.", ItemsType = "string", IsRequired = false)]
     public ImmutableArray<string> Languages { get; init; } = [];
+
+    [FieldSchema(Description = "Ask the LLM for a summary of each symbol while reindexing (slow).", IsRequired = false, Default = false)]
     public bool EnrichWithLlm { get; init; }
 }

@@ -8,6 +8,7 @@ using Orkeon.Analysis.Abstractions.DTOs.Tools;
 using Orkeon.Analysis.Abstractions.Interfaces;
 using Orkeon.Analysis.Abstractions.Models;
 using Orkeon.Analysis.Core;
+using Orkeon.Domain.Attributes;
 using Orkeon.Domain.Tools;
 using Orkeon.Tools.Abstractions.Base;
 
@@ -92,15 +93,19 @@ public sealed class AccessCostTool : ToolBase<AccessCostRequest, AccessCostRespo
 
 public sealed record AccessCostRequest
 {
+    [FieldSchema(Description = "FQNs of the members to cost.", ItemsType = "string", IsRequired = false)]
     [JsonPropertyName("fqns")]
     public ImmutableList<string>? Fqns { get; init; }
 
+    [FieldSchema(Description = "Virtual paths of changed files whose members are costed.", ItemsType = "string", IsRequired = false)]
     [JsonPropertyName("changed_files")]
     public ImmutableList<string>? ChangedFiles { get; init; }
 
+    [FieldSchema(Description = "Regex of the receiver names that count as a port access; the default list when omitted.", IsRequired = false)]
     [JsonPropertyName("receivers")]
     public string? Receivers { get; init; }
 
+    [FieldSchema(Description = "FQN prefixes the members are kept under.", ItemsType = "string", IsRequired = false)]
     [JsonPropertyName("roots")]
     public ImmutableList<string>? Roots { get; init; }
 }

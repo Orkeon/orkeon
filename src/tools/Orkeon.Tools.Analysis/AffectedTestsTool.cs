@@ -3,6 +3,7 @@ using System.Text.Json.Serialization;
 using Microsoft.Extensions.Logging;
 using Orkeon.Analysis.Abstractions.Interfaces;
 using Orkeon.Analysis.Core;
+using Orkeon.Domain.Attributes;
 using Orkeon.Domain.Tools;
 using Orkeon.Tools.Abstractions.Base;
 
@@ -49,9 +50,11 @@ public sealed class AffectedTestsTool : ToolBase<AffectedTestsRequest, AffectedT
 
 public sealed record AffectedTestsRequest
 {
+    [FieldSchema(Description = "Virtual paths of the changed files; omit them to read the diff against base and the working tree.", ItemsType = "string", IsRequired = false)]
     [JsonPropertyName("changed_files")]
     public ImmutableList<string>? ChangedFiles { get; init; }
 
+    [FieldSchema(Description = "Commit the diff is taken from when changed_files is omitted (default HEAD).", IsRequired = false)]
     [JsonPropertyName("base")]
     public string? Base { get; init; }
 }

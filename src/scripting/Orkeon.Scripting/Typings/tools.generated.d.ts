@@ -1,8 +1,8 @@
 // Orkeon Scripting DSL - built-in tools, GENERATED: do not edit (#125).
-// Written by BuiltInToolTypings from every tool a run registers: the input from the request
-// record of a ToolBase<TReq, TRes> (its JSON names, its required members), else from the
-// tool's schema. Keys are the tool's own snake_case names, as the binding hands the object
-// to the tool. A result is the response record's members the tool hands back, a member the
+// Written by BuiltInToolTypings from every tool a run registers: the input from the schema
+// the tool publishes (its parameters, required flags, types, enums and descriptions), the
+// same the model reads; `| null` where the request record takes a null. Keys are the tool's
+// own snake_case names, as the binding hands the object to the tool. A result is the response record's members the tool hands back, a member the
 // serializer drops when null optional; `unknown` for a tool without a response record. The
 // e-mail and drive families are declared by hand in tools.d.ts.
 // Regenerate after a tool change:
@@ -13,9 +13,13 @@ declare global {
     interface OrkeonBuiltInTools {
         /** `access_cost` - Port-access cost of members, mirroring the access-cost.py script. */
         accessCost(input?: {
+            /** Virtual paths of changed files whose members are costed. */
             changed_files?: readonly string[] | null;
+            /** FQNs of the members to cost. */
             fqns?: readonly string[] | null;
+            /** Regex of the receiver names that count as a port access; the default list when omitted. */
             receivers?: string | null;
+            /** FQN prefixes the members are kept under. */
             roots?: readonly string[] | null;
         }, ctx?: ExecutionContext): Promise<{
             readonly errors: readonly string[];
@@ -24,7 +28,9 @@ declare global {
 
         /** `affected_tests` - Test projects and classes reached through the graph by changed files. */
         affectedTests(input?: {
+            /** Commit the diff is taken from when changed_files is omitted (default HEAD). */
             base?: string | null;
+            /** Virtual paths of the changed files; omit them to read the diff against base and the working tree. */
             changed_files?: readonly string[] | null;
         }, ctx?: ExecutionContext): Promise<{
             readonly all: boolean;
@@ -48,7 +54,7 @@ declare global {
             /** Cypher or SQL query to execute */
             query: string;
             /** Query language: Cypher (default) or Sql */
-            query_language?: string;
+            query_language?: "Cypher" | "Sql";
             /** Username for ArcadeDB authentication */
             username?: string | null;
         }, ctx?: ExecutionContext): Promise<{
@@ -62,11 +68,16 @@ declare global {
         }>;
 
         /** `batch_anchors` - Closure of anchors (contains, callers, tests) and overlap of two anchor sets. */
-        batchAnchors(input?: {
+        batchAnchors(input: {
+            /** First anchor set (overlap): {fqns: [...], files: [...]}. */
             a?: Record<string, unknown> | null;
-            action?: string;
+            /** closure expands fqns and files to the nodes they contain, their callers and their tests; overlap intersects the closures of a and b. */
+            action: "closure" | "overlap";
+            /** Second anchor set (overlap): {fqns: [...], files: [...]}. */
             b?: Record<string, unknown> | null;
+            /** Virtual paths of files to expand (closure). */
             files?: readonly string[] | null;
+            /** FQNs to expand (closure). */
             fqns?: readonly string[] | null;
         }, ctx?: ExecutionContext): Promise<{
             readonly disjoint: boolean;
@@ -98,9 +109,13 @@ declare global {
 
         /** `codebase_map` - Structural map of the codebase at a given zoom level (L0-L3). */
         codebaseMap(input?: {
+            /** Add children_count, cyclomatic and loc to each entry. */
             include_metrics?: boolean;
-            level?: string;
+            /** Level of the entries: L0_Monorepo, L1_Package (default), L2_Module or L3_Symbol. */
+            level?: "L0_Monorepo" | "L1_Package" | "L2_Module" | "L3_Symbol" | "L4_Statement";
+            /** Most entries returned (default 200); truncated says when more exist. */
             max_entries?: number;
+            /** Keep only the entries under this FQN (a package, a folder). */
             root_fqn?: string | null;
         }, ctx?: ExecutionContext): Promise<{
             readonly entries: readonly { readonly children_count?: number; readonly cyclomatic?: number; readonly fqn: string; readonly kind: string; readonly language?: string; readonly lo_c?: number; readonly name: string; }[];
@@ -110,15 +125,24 @@ declare global {
         }>;
 
         /** `codebase_search` - Hybrid (vector + BM25) search over the codebase. Returns ranked hits with FQN, score and match origin. */
-        codebaseSearch(input?: {
+        codebaseSearch(input: {
+            /** Keep only these node kinds: Class, Interface, Method, Function, Property, Enum, Record, Module, Package... Empty keeps every kind. */
             filter_kinds?: readonly string[];
+            /** Keep only the symbols of these languages (csharp, typescript, python...). */
             filter_languages?: readonly string[];
+            /** Keep only the symbols of these packages (FQN prefixes). */
             filter_packages?: readonly string[];
+            /** Return the signature of each hit. */
             include_signature?: boolean;
+            /** Levels searched: L1_Package, L2_Module, L3_Symbol, L4_Statement; empty searches every level. */
             levels?: readonly string[];
+            /** Drop the hits scored under this value (0 keeps every hit). */
             min_score?: number;
-            mode?: string;
-            query?: string;
+            /** Ranking: Hybrid (default, vector and BM25 fused), Vector (embedding only), Lexical (BM25 only). */
+            mode?: "Hybrid" | "Vector" | "Lexical";
+            /** A symbol name, or words describing what the code does. */
+            query: string;
+            /** Most hits returned (default 10); truncated says when more match. */
             top_k?: number;
         }, ctx?: ExecutionContext): Promise<{
             readonly hits: readonly { readonly fqn: string; readonly match_origin: string; readonly score: number; readonly signature?: string; readonly summary_short?: string; }[];
@@ -129,8 +153,11 @@ declare global {
 
         /** `complexity_report` - Top-N methods by complexity (Cyclomatic, NestingDepth, FanOut, LoC, Callers) with median and P95. */
         complexityReport(input?: {
-            metric?: string;
+            /** Metric ranked: Cyclomatic (default), NestingDepth, FanOut, LoC, Callers. */
+            metric?: "Cyclomatic" | "NestingDepth" | "FanOut" | "LoC" | "Callers";
+            /** Keep only the symbols under this FQN. */
             root_fqn?: string | null;
+            /** How many symbols are listed, the highest first (default 20). */
             top_n?: number;
         }, ctx?: ExecutionContext): Promise<{
             readonly evaluated_count: number;
@@ -185,7 +212,7 @@ declare global {
             /** ADO.NET provider name: Microsoft.Data.SqlClient, Npgsql, MySqlConnector, or Microsoft.Data.Sqlite */
             provider_name: string;
             /** Schema scope: Tables (default), Columns, Indexes, ForeignKeys, or All */
-            schema_scope?: string;
+            schema_scope?: "Tables" | "Columns" | "Indexes" | "ForeignKeys" | "All";
             /** Optional table name filter with wildcard support (e.g. 'user*', '*order*') */
             table_filter?: string | null;
         }, ctx?: ExecutionContext): Promise<{
@@ -200,18 +227,24 @@ declare global {
         dependencyGraph(input?: {
             /** Edge kinds to follow, by name: contains, calls, imports, inherits, tests, documents, project_depends. Legacy enum names (Imports, Extends, Implements...) are still accepted. */
             edge_kinds?: readonly string[];
+            /** Add a Graphviz DOT rendering (dot). */
             include_dot?: boolean;
+            /** Keep the edges whose target is outside the scope (an external package); false drops them. */
             include_external?: boolean;
+            /** Add a Mermaid flowchart of the nodes and edges (mermaid_flowchart); leave it false when only the data is needed. */
             include_mermaid?: boolean;
             /** Most members returned per cycle. member_count keeps the full size. */
             max_cycle_members?: number;
             /** Most cycles returned, the largest first. cycle_count keeps the full count. */
             max_cycles?: number;
+            /** Most nodes returned (default 200); truncated says when more exist. */
             max_nodes?: number;
             /** Restrict nodes to these kinds, by name: file, project, namespace, type, member, doc_section, test. Empty keeps every node of the scope. */
             node_kinds?: readonly string[];
+            /** Keep only the nodes whose FQN starts with this one (a package, a namespace). */
             root_fqn?: string | null;
-            scope?: string;
+            /** Level of the nodes: L1_Package (default), L2_Module or L3_Symbol. */
+            scope?: "L0_Monorepo" | "L1_Package" | "L2_Module" | "L3_Symbol" | "L4_Statement";
         }, ctx?: ExecutionContext): Promise<{
             readonly cycles: readonly { readonly edge_kind: string; readonly fqns: readonly string[]; readonly member_count: number; }[];
             readonly cycles_truncated: boolean;
@@ -272,16 +305,18 @@ declare global {
         }>;
 
         /** `documented_in` - Markdown sections that document a symbol. */
-        documentedIn(input?: {
-            fqn?: string;
+        documentedIn(input: {
+            /** FQN of the symbol. */
+            fqn: string;
         }, ctx?: ExecutionContext): Promise<{
             readonly sections: readonly { readonly heading_path: string; readonly path: string; readonly start_line: number; }[];
             readonly unresolved: readonly string[];
         }>;
 
         /** `documents_of` - Symbols documented by the sections of a Markdown file. */
-        documentsOf(input?: {
-            path?: string;
+        documentsOf(input: {
+            /** Virtual path of the Markdown file. */
+            path: string;
         }, ctx?: ExecutionContext): Promise<{
             readonly symbols: readonly { readonly file: string; readonly fqn: string; readonly heading_path: string; readonly kind: string; }[];
             readonly unresolved: readonly string[];
@@ -411,14 +446,20 @@ declare global {
         }>;
 
         /** `flow_trace` - Trace call flow from a symbol (optionally to a target) within a depth budget. */
-        flowTrace(input?: {
-            direction?: string;
+        flowTrace(input: {
+            /** Forward follows calls out of from; Backward follows them into from; Both. */
+            direction?: "Forward" | "Backward" | "Both";
             /** Edge kinds to follow, by name: contains, calls, imports, inherits, tests, documents, project_depends. Legacy enum names (Imports, Extends, Implements...) are still accepted. Empty follows calls. */
             edge_kinds?: readonly string[];
-            from?: string;
+            /** FQN the paths start from. */
+            from: string;
+            /** With to: every path up to max_paths instead of the shortest one. */
             include_all_paths?: boolean;
+            /** Most hops per path (default 4). */
             max_depth?: number;
+            /** Most paths returned (default 20); truncated says when more exist. */
             max_paths?: number;
+            /** FQN the paths must reach; omit it to list every path from the start. */
             to?: string | null;
         }, ctx?: ExecutionContext): Promise<{
             readonly paths: readonly { readonly call_sites: readonly { readonly end_line: number; readonly sha256: string; readonly start_line: number; readonly virtual_file_path: string; }[]; readonly fqns: readonly string[]; readonly length: number; }[];
@@ -485,7 +526,7 @@ declare global {
             /** Endpoint URI for the graph database (Bolt URI for ArcadeDB, WebSocket URI for JanusGraph) */
             endpoint: string;
             /** Graph database type: ArcadeDB or JanusGraph */
-            graph_type: string;
+            graph_type: "ArcadeDB" | "JanusGraph";
             /** Password for authentication */
             password?: string | null;
             /** Username for authentication */
@@ -592,11 +633,15 @@ declare global {
         }>;
 
         /** `impact_analysis` - Who is affected if we change this symbol? Direct + transitive callers, grouped by package. */
-        impactAnalysis(input?: {
-            direction?: string;
+        impactAnalysis(input: {
+            /** Backward (default) lists what depends on target; Forward what target depends on; Both. */
+            direction?: "Forward" | "Backward" | "Both";
+            /** Most hops followed for the transitive impact (default 3). */
             max_depth?: number;
+            /** Most symbols visited (default 500); truncated says when the walk stopped early. */
             max_nodes?: number;
-            target?: string;
+            /** FQN of the symbol about to change. */
+            target: string;
         }, ctx?: ExecutionContext): Promise<{
             readonly by_package: Record<string, number>;
             readonly direct_impact: readonly string[];
@@ -607,12 +652,18 @@ declare global {
         }>;
 
         /** `incremental_reindex` - Reindex only files changed since a prior commit or from an explicit list. Cost is proportional to the changed files, not the repository: one file of 2 000 lines reindexes in under 2 s. */
-        incrementalReindex(input?: {
+        incrementalReindex(input: {
+            /** Virtual paths of the files to reindex; omit them to take the files changed between from_commit and to_commit. */
             changed_files?: readonly string[];
+            /** Ask the LLM for a summary of each symbol while reindexing (slow). */
             enrich_with_llm?: boolean;
+            /** Commit the diff starts from when changed_files is omitted. */
             from_commit?: string | null;
+            /** Languages reindexed; empty keeps every supported language. */
             languages?: readonly string[];
-            root_path?: string;
+            /** Virtual path of the indexed root. */
+            root_path: string;
+            /** Commit the diff ends at (default HEAD). */
             to_commit?: string | null;
         }, ctx?: ExecutionContext): Promise<{
             readonly cache: string;
@@ -629,15 +680,24 @@ declare global {
         }>;
 
         /** `index_codebase` - Scan the codebase and build the full RaggableTree index, reusing the one saved by an earlier session when the host wires the cache. */
-        indexCodebase(input?: {
+        indexCodebase(input: {
+            /** Identifier of the embedding model the host wires (default text-embedding-3-small). */
             embedding_model?: string;
+            /** Ask the LLM for a summary of each symbol while indexing (slow). */
             enrich_with_llm?: boolean;
+            /** Folder names skipped (default: node_modules, dist, .git, bin, obj). */
             exclude?: readonly string[];
+            /** Languages indexed (csharp, typescript, python...); empty indexes every supported language. */
             languages?: readonly string[];
+            /** How many files are parsed at once; 0 (default) uses one per processor. */
             max_parallelism?: number;
+            /** Skip the files git ignores (.gitignore, .git/info/exclude). */
             respect_gitignore?: boolean;
+            /** Name substituted for the root path as the prefix of every FQN; empty keeps the path. */
             root_alias?: string;
-            root_path?: string;
+            /** Virtual path of the root to index (a mounted folder). */
+            root_path: string;
+            /** Reload the index saved by an earlier call when the host wires the cache; false rebuilds from scratch. */
             use_cache?: boolean;
         }, ctx?: ExecutionContext): Promise<{
             readonly cache: string;
@@ -661,8 +721,9 @@ declare global {
         }>;
 
         /** `is_path_indexed` - Check whether a virtual path is covered by any indexed root (longest match wins). */
-        isPathIndexed(input?: {
-            virtual_path?: string;
+        isPathIndexed(input: {
+            /** Virtual path of the file or folder to check. */
+            virtual_path: string;
         }, ctx?: ExecutionContext): Promise<{
             readonly indexed: boolean;
             readonly indexed_at?: string;
@@ -693,7 +754,7 @@ declare global {
             /** The JSON string to process */
             input: string;
             /** The operation to perform: parse, query, or format */
-            operation: string;
+            operation: "Parse" | "Query" | "Format";
             /** Dot-notation path for query operation (e.g., 'data.items[0].name') */
             query?: string | null;
         }, ctx?: ExecutionContext): Promise<{
@@ -740,7 +801,7 @@ declare global {
             /** SQL query to execute */
             query: string;
             /** Type of query: Select (returns rows), Execute (returns affected rows count), or Scalar (returns single value) */
-            query_type?: string;
+            query_type?: "Select" | "Execute" | "Scalar";
             /** Query timeout in seconds */
             timeout_seconds?: number;
         }, ctx?: ExecutionContext): Promise<{
@@ -810,7 +871,7 @@ declare global {
             /** Maximum number of documents to return (default 100) */
             limit?: number;
             /** Operation to perform: Find, Aggregate, InsertOne, UpdateOne, DeleteOne, Count, Distinct */
-            operation: string;
+            operation: "Find" | "Aggregate" | "InsertOne" | "UpdateOne" | "DeleteOne" | "Count" | "Distinct";
             /** JSON array of pipeline stages for Aggregate operations */
             pipeline?: string | null;
             /** JSON projection document for Find operations */
@@ -860,7 +921,7 @@ declare global {
             /** SQL query to execute */
             query: string;
             /** Type of query: Select (returns rows), Execute (returns affected rows count), or Scalar (returns single value) */
-            query_type?: string;
+            query_type?: "Select" | "Execute" | "Scalar";
             /** Query timeout in seconds */
             timeout_seconds?: number;
         }, ctx?: ExecutionContext): Promise<{
@@ -956,10 +1017,14 @@ declare global {
         }>;
 
         /** `package_summary` - Details about a package (L1): file count, symbol count, exports, dependencies. */
-        packageSummary(input?: {
-            fqn?: string;
+        packageSummary(input: {
+            /** FQN of the package (an entry of codebase_map at L1_Package). */
+            fqn: string;
+            /** Return the packages this one depends on. */
             include_dependencies?: boolean;
+            /** Return the public exports of the package. */
             include_public_exports?: boolean;
+            /** Most exports returned (default 50); truncated says when more exist. */
             max_exports?: number;
         }, ctx?: ExecutionContext): Promise<{
             readonly dependencies: readonly string[];
@@ -1036,7 +1101,7 @@ declare global {
             /** SQL query to execute */
             query: string;
             /** Type of query: Select (returns rows), Execute (returns affected rows count), or Scalar (returns single value) */
-            query_type?: string;
+            query_type?: "Select" | "Execute" | "Scalar";
             /** Query timeout in seconds */
             timeout_seconds?: number;
         }, ctx?: ExecutionContext): Promise<{
@@ -1052,12 +1117,18 @@ declare global {
         }>;
 
         /** `progress_report` - Report the progress of a long-running scripted operation (label, step/total or percent, message). */
-        progressReport(input?: {
+        progressReport(input: {
+            /** true ends the operation and releases its slot. */
             done?: boolean;
-            label?: string;
+            /** Headline of the running operation. */
+            label: string;
+            /** Current phase, one line. */
             message?: string | null;
+            /** Completion ratio in [0, 100], when the operation can measure one. */
             percent?: number | null;
+            /** Current step, 1-based, for a step-wise operation. */
             step?: number | null;
+            /** Total step count, when known. */
             total?: number | null;
         }, ctx?: ExecutionContext): Promise<{
             readonly acknowledged: boolean;
@@ -1083,13 +1154,20 @@ declare global {
         }>;
 
         /** `rag_eval` - Evaluate a RAG knowledge collection against a golden dataset (YAML): recall@k, precision@k, MRR, groundedness and answer-relevance (judge mode labelled: llm or heuristic). Writes markdown/JSON reports and returns the aggregate summary. */
-        ragEval(input?: {
+        ragEval(input: {
+            /** Collection to evaluate (default: the dataset's collection; for a dataset without corpus, the configured default collection; else 'rag-eval-{dataset name}') */
             collection?: string | null;
-            compare?: unknown;
-            dataset?: string;
+            /** Comma-separated profiles to compare (e.g. 'fast,balanced,quality'); overrides 'profile' */
+            compare?: string | null;
+            /** Virtual path of the golden dataset YAML (e.g. '/workspace/examples/rag/eval/golden.yaml') */
+            dataset: string;
+            /** Metric cutoff for recall@k / precision@k (default: 5) */
             k?: number;
+            /** Profile to evaluate (default: 'default') */
             profile?: string | null;
+            /** Force a full corpus reindex before evaluating (required after an embedding model change) */
             reindex?: boolean;
+            /** Judge generation with the configured LLM (falls back to the deterministic heuristic, always labelled) */
             use_llm_judge?: boolean;
         }, ctx?: ExecutionContext): Promise<{
             readonly cases: readonly { readonly case_id: string; readonly profile: string; readonly recall_at_k?: number; readonly reciprocal_rank?: number; }[];
@@ -1112,9 +1190,12 @@ declare global {
         }, ctx?: ExecutionContext): Promise<unknown>;
 
         /** `rag_search` - Search knowledge bases and retrieve answers grounded in documents. Use this when you need factual information from the agent's knowledge sources. */
-        ragSearch(input?: {
+        ragSearch(input: {
+            /** Optional collection selector (default: the configured default collection; 'raggable-tree' for the code index) */
             collection?: string | null;
-            question?: string;
+            /** The question to search for in knowledge bases */
+            question: string;
+            /** Number of relevant chunks to retrieve (default: 3) */
             top_k?: number;
         }, ctx?: ExecutionContext): Promise<{
             readonly answer: string;
@@ -1147,7 +1228,7 @@ declare global {
             /** SQL query to execute */
             query: string;
             /** Type of query: Select (returns rows), Execute (returns affected rows count), or Scalar (returns single value) */
-            query_type?: string;
+            query_type?: "Select" | "Execute" | "Scalar";
             /** Query timeout in seconds */
             timeout_seconds?: number;
         }, ctx?: ExecutionContext): Promise<{
@@ -1216,6 +1297,7 @@ declare global {
 
         /** `session_snip` - Immediately truncate the conversation to the head message plus the last retain_count turns, without analysis; a turn is a user request with the tool traces and the answer that follow it, so the cut never splits one. */
         sessionSnip(input?: {
+            /** Number of recent turns to keep (default 3); a turn is a user request with the tool traces and the answer that follow it. */
             retain_count?: number;
         }, ctx?: ExecutionContext): Promise<{
             readonly kept_from: number;
@@ -1237,17 +1319,29 @@ declare global {
 
         /** `session_store` - Read, write, append to, truncate, and annotate the current session conversation buffer and metadata; get_state reads one key or several (keys), set_state writes one (key, value) or several (values) and removes several (keys). */
         sessionStore(input?: {
+            /** Content of the message append_message adds. */
             content?: string | null;
+            /** State key for get_state / set_state. */
             key?: string | null;
+            /** Several state keys: read in one call by get_state (the answer is values), removed in one call by set_state. */
             keys?: readonly string[] | null;
+            /** New buffer contents for write_messages: {role, content, timestamp} each. */
             messages?: readonly unknown[] | null;
+            /** Note text for append_note. */
             note?: string | null;
-            operation?: string;
+            /** What to do with the session. */
+            operation?: "read_messages" | "write_messages" | "append_message" | "append_note" | "get_metadata" | "set_title" | "truncate" | "reset" | "get_state" | "set_state";
+            /** Number of recent turns to keep for truncate (default 3); a turn is a user request with the tool traces and the answer that follow it. */
             retain_count?: number;
+            /** Role of the message append_message adds: user, assistant, system or note. */
             role?: string | null;
+            /** Timestamp of the message append_message adds, as write_messages takes it. */
             timestamp?: string | null;
+            /** Title for set_title. */
             title?: string | null;
+            /** State value for set_state; null removes the key. */
             value?: string | null;
+            /** Several state entries for set_state, written in one call. */
             values?: Record<string, string> | null;
         }, ctx?: ExecutionContext): Promise<{
             readonly messages?: readonly unknown[];
@@ -1296,7 +1390,7 @@ declare global {
             /** SQL query to execute */
             query: string;
             /** Type of query: Select (returns rows), Execute (returns affected rows count), or Scalar (returns single value) */
-            query_type?: string;
+            query_type?: "Select" | "Execute" | "Scalar";
             /** Query timeout in seconds */
             timeout_seconds?: number;
         }, ctx?: ExecutionContext): Promise<{
@@ -1313,9 +1407,13 @@ declare global {
 
         /** `statement_query` - Query L4 statements by kind, parent FQN, or semantic similarity. */
         statementQuery(input?: {
+            /** Statement kinds kept: If, For, While, Return, Throw, FunctionCall, MethodCall, Await, TryCatch, Assignment, VariableDecl... Empty keeps every kind. */
             kinds?: readonly string[];
+            /** FQNs of the symbols whose statements are listed; empty scans every indexed symbol. */
             parent_fqns?: readonly string[];
+            /** Words describing the statements wanted; ranks the hits by similarity. */
             semantic_query?: string | null;
+            /** Most hits returned (default 50); truncated says when more exist. */
             top_k?: number;
         }, ctx?: ExecutionContext): Promise<{
             readonly hits: readonly { readonly condition?: string; readonly end_line?: number; readonly expression?: string; readonly kind: string; readonly parent_fqn: string; readonly score?: number; readonly start_line: number; readonly statement_id: string; }[];
@@ -1324,14 +1422,23 @@ declare global {
 
         /** `structural_rewrite` - Applies a rule's fix template to the matching files; dry run by default. */
         structuralRewrite(input?: {
+            /** true (default) returns the diffs without writing; false writes the files. */
             dry_run?: boolean;
+            /** Replacement template; $NAME and $$$NAME are substituted by their captures. Required with pattern or rule; a rule_file carries its own. */
             fix?: string | null;
+            /** Glob kept among the candidate files (**\/*.cs). */
             glob?: string | null;
+            /** Language of the pattern and of the files rewritten (csharp, typescript, python...). Required with pattern or rule; a rule_file names its own. */
             language?: string;
+            /** Most files scanned (default 500); truncated says when more were candidates. */
             max_files?: number;
+            /** Virtual paths of the files or folders rewritten; empty takes the mounted roots. */
             paths?: readonly string[];
+            /** Code pattern with $NAME / $$$NAME metavariables, as structural_search takes it. */
             pattern?: string | null;
+            /** Structural rule object, as structural_search takes it. Give exactly one of pattern, rule or rule_file. */
             rule?: unknown;
+            /** Virtual path of a YAML rule file (id, language, rule, fix) under a mounted root. */
             rule_file?: string | null;
         }, ctx?: ExecutionContext): Promise<{
             readonly files: readonly { readonly applied: number; readonly diff: string; readonly matches: number; readonly path: string; readonly refused_reason?: string; readonly skipped: readonly string[]; }[];
@@ -1341,10 +1448,15 @@ declare global {
 
         /** `structural_search` - Searches the files of one language (any tree-sitter grammar Orkeon loads, or Markdown) for a code pattern parsed with the target grammar: $NAME matches one node and captures its text, $$$NAME matches zero or more sibling nodes. Returns path, line, column, text, captures and the enclosing symbol of each match. */
         structuralSearch(input?: {
+            /** Glob kept among the candidate files (**\/*.cs). */
             glob?: string | null;
+            /** Language of the pattern and of the files searched (csharp, typescript, python, markdown...). Required with pattern or rule; a rule_file names its own. */
             language?: string;
+            /** Most files scanned (default 500); truncated says when more were candidates. */
             max_files?: number;
+            /** Most matches returned (default 100); truncated says when more exist. */
             max_results?: number;
+            /** Virtual paths of the files or folders searched; empty searches the mounted roots. */
             paths?: readonly string[];
             /** Code pattern with $NAME / $$$NAME metavariables. Give exactly one of pattern, rule or rule_file. */
             pattern?: string | null;
@@ -1359,16 +1471,21 @@ declare global {
         }>;
 
         /** `sub_graph` - Sub-graph expansion around seeds, bounded by depth and node count. */
-        subGraph(input?: {
+        subGraph(input: {
+            /** How many hops from the seeds (default 2). */
             depth?: number;
-            direction?: string;
+            /** Forward follows the edges from the seeds (what X calls, what X extends); Backward follows them into the seeds (who calls X, who extends X); Both. */
+            direction?: "Forward" | "Backward" | "Both";
             /** Edge kinds to follow, by name: contains, calls, imports, inherits, tests, documents, project_depends. Legacy enum names (Imports, Extends, Implements...) are still accepted. */
             edge_kinds?: readonly string[];
+            /** Add a Mermaid flowchart of the nodes and edges (mermaid_flowchart); leave it false when only the data is needed. */
             include_mermaid?: boolean;
+            /** Most nodes returned (default 100); truncated says when the expansion stopped before its depth. */
             max_nodes?: number;
             /** Keep only expanded nodes of these kinds, by name: file, project, namespace, type, member, doc_section, test. Empty keeps every node. */
             node_kinds?: readonly string[];
-            seeds?: readonly string[];
+            /** FQNs (or node ids) to expand from; a hit of codebase_search is one. */
+            seeds: readonly string[];
         }, ctx?: ExecutionContext): Promise<{
             readonly edges: readonly { readonly from: string; readonly kind: string; readonly to: string; }[];
             readonly mermaid_flowchart?: string;
@@ -1377,12 +1494,18 @@ declare global {
         }>;
 
         /** `symbol_detail` - Expanded detail for an L3 symbol: signature, doc, body metrics, members, callers, callees, statements; under expand inheritance, what it extends and implements and what derives from or implements it (derived_by, implemented_by), as FQNs. */
-        symbolDetail(input?: {
+        symbolDetail(input: {
+            /** What to expand, one name or several joined by commas: Members, Inheritance (extends, implements, derived_by, implemented_by), Callers, Callees, PublicExports, Statements, Decorators, ParentChain, All; None by default. */
             expand?: string;
-            fqn?: string;
+            /** FQN of the symbol (a hit of codebase_search). */
+            fqn: string;
+            /** Return the body metrics (lines, cyclomatic complexity). */
             include_body_metrics?: boolean;
+            /** Return the doc comment. */
             include_doc?: boolean;
+            /** Return the signature. */
             include_signature?: boolean;
+            /** Most members returned under Members (default 50); truncated says when more exist. */
             max_children?: number;
         }, ctx?: ExecutionContext): Promise<{
             readonly body?: { readonly await_count: number; readonly branch_count: number; readonly call_count: number; readonly closure_count: number; readonly cyclomatic_complexity: number; readonly early_return_count: number; readonly is_partial: boolean; readonly loop_count: number; readonly max_depth: number; readonly statement_count: number; readonly try_catch_count: number; };
@@ -1405,10 +1528,14 @@ declare global {
         }>;
 
         /** `symbol_source` - Deterministic source citation for a symbol. Returns file path, lines, code, SHA-256, and stable flag. */
-        symbolSource(input?: {
-            fqn?: string;
+        symbolSource(input: {
+            /** FQN of the symbol to cite. */
+            fqn: string;
+            /** Most lines returned (default 40); truncated says when the span is longer. */
             max_lines?: number;
-            mode?: string;
+            /** Span cited: SignatureOnly, SignatureAndDoc, SignatureAndBody (default), FullSpan, StatementSpan (with statement_id). */
+            mode?: "SignatureOnly" | "SignatureAndDoc" | "SignatureAndBody" | "FullSpan" | "StatementSpan";
+            /** Id of one statement (from statement_query) to cite under StatementSpan. */
             statement_id?: string | null;
         }, ctx?: ExecutionContext): Promise<{
             readonly end_line: number;
@@ -1528,7 +1655,7 @@ declare global {
             /** Output file path for the .xlsx */
             file_path: string;
             /** Sheets to write (each with name, headers, rows) */
-            sheets: readonly { readonly headers?: readonly string[]; readonly name: string; readonly rows?: readonly (readonly string[])[]; }[];
+            sheets: readonly { readonly headers?: readonly string[]; readonly name: string; readonly rows?: readonly (readonly unknown[])[]; }[];
         }, ctx?: ExecutionContext): Promise<{
             readonly file_path: string;
             readonly file_size: number;
@@ -1541,7 +1668,7 @@ declare global {
             /** File path to an XML file, or an XML string */
             input: string;
             /** Operation to perform: Parse or Query */
-            operation?: string;
+            operation?: "Parse" | "Query";
             /** Optional XPath expression to query specific elements */
             xpath?: string | null;
         }, ctx?: ExecutionContext): Promise<{

@@ -3,6 +3,7 @@ using System.Text.Json.Serialization;
 using Microsoft.Extensions.Logging;
 using Orkeon.Analysis.Abstractions.Interfaces;
 using Orkeon.Analysis.Core;
+using Orkeon.Domain.Attributes;
 using Orkeon.Domain.Tools;
 using Orkeon.Tools.Abstractions.Base;
 
@@ -38,6 +39,7 @@ public sealed class DocumentsOfTool : ToolBase<DocumentsOfRequest, DocumentsOfRe
 
 public sealed record DocumentsOfRequest
 {
+    [FieldSchema(Description = "Virtual path of the Markdown file.", IsRequired = true)]
     [JsonPropertyName("path")]
     public string Path { get; init; } = string.Empty;
 }

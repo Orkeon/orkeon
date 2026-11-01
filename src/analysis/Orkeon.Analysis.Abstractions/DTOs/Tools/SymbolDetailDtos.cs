@@ -1,16 +1,28 @@
 using System.Collections.Immutable;
 using System.Text.Json.Serialization;
 using Orkeon.Analysis.Abstractions.Models;
+using Orkeon.Domain.Attributes;
 
 namespace Orkeon.Analysis.Abstractions.DTOs.Tools;
 
 public sealed record SymbolDetailRequest
 {
+    [FieldSchema(Description = "FQN of the symbol (a hit of codebase_search).", IsRequired = true)]
     public string Fqn { get; init; } = "";
+
+    [FieldSchema(Description = "What to expand, one name or several joined by commas: Members, Inheritance (extends, implements, derived_by, implemented_by), Callers, Callees, PublicExports, Statements, Decorators, ParentChain, All; None by default.", IsRequired = false, Default = "None")]
     public ExpandModes Expand { get; init; } = ExpandModes.None;
+
+    [FieldSchema(Description = "Return the signature.", IsRequired = false, Default = true)]
     public bool IncludeSignature { get; init; } = true;
+
+    [FieldSchema(Description = "Return the doc comment.", IsRequired = false, Default = true)]
     public bool IncludeDoc { get; init; } = true;
+
+    [FieldSchema(Description = "Return the body metrics (lines, cyclomatic complexity).", IsRequired = false, Default = false)]
     public bool IncludeBodyMetrics { get; init; }
+
+    [FieldSchema(Description = "Most members returned under Members (default 50); truncated says when more exist.", IsRequired = false, Default = 50)]
     public int MaxChildren { get; init; } = 50;
 }
 

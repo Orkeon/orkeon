@@ -12,11 +12,13 @@ namespace Orkeon.Scripting.Bindings;
 
 /// <summary>
 /// Writes <c>Typings/tools.generated.d.ts</c>: one member per built-in tool in <c>OrkeonBuiltInTools</c>,
-/// the interface <c>OrkeonTools</c> extends (#125). Its input is typed from the request record the tool
-/// deserializes - its <c>[JsonPropertyName]</c> names and its required members - or from its
-/// <see cref="IBaseTool.Schema"/> when it reads its parameters itself. A parameter renamed or removed on the .NET side changes the declaration, and the
-/// test that pins the file fails until it is regenerated. A result is typed from the response record
-/// the same way, by the names its serializer writes.
+/// the interface <c>OrkeonTools</c> extends (#125). Its input is typed from the tool's published
+/// <see cref="IBaseTool.Schema"/> - the parameters, their required flag, types, enums and descriptions
+/// the model reads (#282): a request property without <c>[FieldSchema]</c> is absent here as it is
+/// for the model - with <c>| null</c> read on the request record for an optional nullable member. A
+/// parameter renamed or removed on the .NET side changes the declaration, and the test that pins
+/// the file fails until it is regenerated. A result is typed from the response record, by the names
+/// its serializer writes.
 /// </summary>
 /// <remarks>
 /// The e-mail and drive families keep their hand-written declarations in <c>tools.d.ts</c>: their own
@@ -39,10 +41,10 @@ internal static partial class BuiltInToolTypings
         var sb = new StringBuilder();
         sb.Append("""
             // Orkeon Scripting DSL - built-in tools, GENERATED: do not edit (#125).
-            // Written by BuiltInToolTypings from every tool a run registers: the input from the request
-            // record of a ToolBase<TReq, TRes> (its JSON names, its required members), else from the
-            // tool's schema. Keys are the tool's own snake_case names, as the binding hands the object
-            // to the tool. A result is the response record's members the tool hands back, a member the
+            // Written by BuiltInToolTypings from every tool a run registers: the input from the schema
+            // the tool publishes (its parameters, required flags, types, enums and descriptions), the
+            // same the model reads; `| null` where the request record takes a null. Keys are the tool's
+            // own snake_case names, as the binding hands the object to the tool. A result is the response record's members the tool hands back, a member the
             // serializer drops when null optional; `unknown` for a tool without a response record. The
             // e-mail and drive families are declared by hand in tools.d.ts.
             // Regenerate after a tool change:
@@ -82,7 +84,7 @@ internal static partial class BuiltInToolTypings
     private static void AppendMember(StringBuilder sb, IBaseTool tool)
     {
         var execute = TypedExecute(tool);
-        var fields = (execute is not null ? FieldsOf(execute.GetParameters()[0].ParameterType) : FieldsOf(tool.Schema))
+        var fields = FieldsOf(tool.Schema, execute?.GetParameters()[0].ParameterType)
             .OrderBy(f => f.Name, StringComparer.Ordinal)
             .ToList();
         var optional = fields.All(f => !f.Required);
@@ -179,40 +181,30 @@ internal static partial class BuiltInToolTypings
     }
 
     /// <summary>
-    /// The fields of a request record as the tool deserializes it: the <c>[JsonPropertyName]</c> name,
-    /// else the snake_case of the property; required when the member is <c>required</c> or
-    /// <c>[JsonRequired]</c> (deserialization refuses the call without it), or when its
-    /// <c>[FieldSchema]</c> makes it required (the schema check refuses it first); <c>| null</c> when an
-    /// optional member is nullable. A required member never takes null: the schema check lets a null
-    /// through as present, and the tool then refuses it (<c>web_scrape</c>: "URL cannot be empty"). A
-    /// result needs no <c>| null</c>: the serializer drops a null member.
+    /// The fields of a tool's input, read from its published schema: the parameter's name, whether a
+    /// call must pass it, its type (an enum or enum map as the literal union, an array of records by
+    /// their item properties) and its description, exactly as the model reads them. <c>| null</c> is
+    /// added for an optional parameter whose member of <paramref name="request"/> is nullable
+    /// (<c>SessionStoreRequest.Value</c>: null removes the key); a required member never takes null.
     /// </summary>
-    private static IEnumerable<Field> FieldsOf(Type request)
+    private static IEnumerable<Field> FieldsOf(ToolSchema schema, Type? request)
     {
-        foreach (var property in request.GetProperties(BindingFlags.Public | BindingFlags.Instance))
+        var nullable = request is null ? null : NullableNamesOf(request);
+        foreach (var (name, parameter) in schema.Parameters ?? [])
         {
-            if (property.SetMethod is not { IsPublic: true } || property.GetIndexParameters().Length > 0
-                || property.GetCustomAttribute<JsonIgnoreAttribute>() is { Condition: JsonIgnoreCondition.Always })
-                continue;
-
-            var schema = property.GetCustomAttribute<FieldSchemaAttribute>();
-            var name = SerializedName(property);
-            var required = property.IsDefined(typeof(RequiredMemberAttribute), inherit: false)
-                || property.IsDefined(typeof(JsonRequiredAttribute), inherit: false)
-                || (schema is not null && (schema.Required ?? ToolSchemaGenerator.InferRequired(property)));
-            var type = schema?.Enum is { Length: > 0 } choices
-                ? string.Join(" | ", choices.Select(c => JsonSerializer.Serialize(c)))
-                : TypeOf(property.PropertyType);
-            // unknown already takes null.
-            if (!required && type != "unknown" && IsNullable(property))
+            var type = TypeOf(parameter);
+            if (!parameter.Required && type != "unknown" && nullable is not null && nullable.Contains(name))
                 type += " | null";
-            yield return new Field(name, required, type, schema?.Description);
+            yield return new Field(name, parameter.Required, type, parameter.Description);
         }
     }
 
-    /// <summary>The fields a tool that reads its parameters itself declares in its schema.</summary>
-    private static IEnumerable<Field> FieldsOf(ToolSchema schema) =>
-        (schema.Parameters ?? []).Select(p => new Field(p.Key, p.Value.Required, TypeOf(p.Value), p.Value.Description));
+    /// <summary>The serialized names of the nullable members of a request record.</summary>
+    private static HashSet<string> NullableNamesOf(Type request) =>
+        request.GetProperties(BindingFlags.Public | BindingFlags.Instance)
+            .Where(p => p.SetMethod is { IsPublic: true } && p.GetIndexParameters().Length == 0 && IsNullable(p))
+            .Select(SerializedName)
+            .ToHashSet(StringComparer.Ordinal);
 
     /// <summary>
     /// Whether the member takes a JSON <c>null</c>: a <see cref="Nullable{T}"/>, or a reference type
@@ -293,15 +285,30 @@ internal static partial class BuiltInToolTypings
         return ScalarType(schemaType);
     }
 
+    /// <summary>
+    /// The TypeScript type of a published parameter: a dictionary by its values, an enum map (a C# enum)
+    /// or a flat enum as the literal union of its names, an array of records by their item properties
+    /// (#210), else the scalar of its JSON type.
+    /// </summary>
     private static string TypeOf(ParameterSchema schema)
     {
         if (schema.Values is { } values)
             return $"Record<string, {TypeOf(values)}>";
+        if (schema.EnumMap is { Count: > 0 } names)
+            return string.Join(" | ", names.Keys.Select(n => JsonSerializer.Serialize(n)));
         if (schema.Enum is { Count: > 0 } choices)
             return string.Join(" | ", choices.Select(c => JsonSerializer.Serialize(c)));
-        return schema.Type == "array"
-            ? $"readonly {Parenthesize(ScalarType(schema.ItemsType))}[]"
-            : ScalarType(schema.Type);
+        if (schema.Type == "array")
+        {
+            var item = schema.ItemProperties is { Count: > 0 } properties
+                ? "{ " + string.Join(" ", properties
+                    .OrderBy(p => p.Key, StringComparer.Ordinal)
+                    .Select(p => $"readonly {PropertyName(p.Key)}{(p.Value.Required ? "" : "?")}: {TypeOf(p.Value)};")) + " }"
+                : ScalarType(schema.ItemsType);
+            return $"readonly {Parenthesize(item)}[]";
+        }
+
+        return ScalarType(schema.Type);
     }
 
     private const int MaxRecordDepth = 4;

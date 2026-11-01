@@ -1,5 +1,6 @@
 using System.Text.Json.Serialization;
 using Orkeon.Application.Interfaces.Ports;
+using Orkeon.Domain.Attributes;
 using Orkeon.Domain.Tools;
 using Orkeon.Tools.Abstractions.Base;
 
@@ -9,6 +10,7 @@ namespace Orkeon.Infrastructure.Tools;
 public sealed class SessionSnipRequest
 {
     /// <summary>Number of recent turns to keep; a turn is a user request with the tool traces and the answer that follow it.</summary>
+    [FieldSchema(Description = "Number of recent turns to keep (default 3); a turn is a user request with the tool traces and the answer that follow it.", IsRequired = false, Default = 3)]
     [JsonPropertyName("retain_count")]
     public int RetainCount { get; set; } = 3;
 }

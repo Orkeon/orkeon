@@ -254,8 +254,10 @@ public static class ToolSchemaGenerator
         {
             enumValues = attr.Enum.Cast<object>().ToList();
         }
-        else if (underlying.IsEnum)
+        else if (underlying.IsEnum && !underlying.IsDefined(typeof(FlagsAttribute), inherit: false))
         {
+            // A [Flags] enum takes one name or several joined by commas (ExpandModes "Members, Callers"), which an
+            // enum map would refuse: it stays a free string, its description naming the members.
             enumMap = GetEnumValues(underlying);
         }
 

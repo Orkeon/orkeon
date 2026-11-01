@@ -48,6 +48,7 @@ public sealed record GraphCycle
 
 public sealed record DependencyGraphRequest
 {
+    [FieldSchema(Description = "Level of the nodes: L1_Package (default), L2_Module or L3_Symbol.", IsRequired = false, Default = "L1_Package")]
     public NodeLevel Scope { get; init; } = NodeLevel.L1_Package;
     [FieldSchema(Description = "Edge kinds to follow, by name: contains, calls, imports, inherits, tests, documents, project_depends. Legacy enum names (Imports, Extends, Implements...) are still accepted.", ItemsType = "string", IsRequired = false)]
     [JsonPropertyName("edge_kinds")]
@@ -56,8 +57,13 @@ public sealed record DependencyGraphRequest
     [FieldSchema(Description = "Restrict nodes to these kinds, by name: file, project, namespace, type, member, doc_section, test. Empty keeps every node of the scope.", ItemsType = "string", IsRequired = false)]
     [JsonPropertyName("node_kinds")]
     public ImmutableArray<string> NodeKinds { get; init; } = [];
+    [FieldSchema(Description = "Keep the edges whose target is outside the scope (an external package); false drops them.", IsRequired = false, Default = false)]
     public bool IncludeExternal { get; init; }
+
+    [FieldSchema(Description = "Keep only the nodes whose FQN starts with this one (a package, a namespace).", IsRequired = false)]
     public string? RootFqn { get; init; }
+
+    [FieldSchema(Description = "Most nodes returned (default 200); truncated says when more exist.", IsRequired = false, Default = 200)]
     public int MaxNodes { get; init; } = 200;
 
     [FieldSchema(Description = "Most cycles returned, the largest first. cycle_count keeps the full count.", IsRequired = false)]
@@ -68,7 +74,10 @@ public sealed record DependencyGraphRequest
     [JsonPropertyName("max_cycle_members")]
     public int MaxCycleMembers { get; init; } = 50;
 
+    [FieldSchema(Description = "Add a Mermaid flowchart of the nodes and edges (mermaid_flowchart); leave it false when only the data is needed.", IsRequired = false, Default = true)]
     public bool IncludeMermaid { get; init; } = true;
+
+    [FieldSchema(Description = "Add a Graphviz DOT rendering (dot).", IsRequired = false, Default = false)]
     public bool IncludeDot { get; init; }
 }
 
@@ -92,6 +101,7 @@ public sealed record DependencyGraphResponse
 
 public sealed record SubGraphRequest
 {
+    [FieldSchema(Description = "FQNs (or node ids) to expand from; a hit of codebase_search is one.", ItemsType = "string", IsRequired = true)]
     public ImmutableArray<string> Seeds { get; init; } = [];
     [FieldSchema(Description = "Edge kinds to follow, by name: contains, calls, imports, inherits, tests, documents, project_depends. Legacy enum names (Imports, Extends, Implements...) are still accepted.", ItemsType = "string", IsRequired = false)]
     [JsonPropertyName("edge_kinds")]
@@ -100,9 +110,16 @@ public sealed record SubGraphRequest
     [FieldSchema(Description = "Keep only expanded nodes of these kinds, by name: file, project, namespace, type, member, doc_section, test. Empty keeps every node.", ItemsType = "string", IsRequired = false)]
     [JsonPropertyName("node_kinds")]
     public ImmutableArray<string> NodeKinds { get; init; } = [];
+    [FieldSchema(Description = "How many hops from the seeds (default 2).", IsRequired = false, Default = 2)]
     public int Depth { get; init; } = 2;
+
+    [FieldSchema(Description = "Forward follows the edges from the seeds (what X calls, what X extends); Backward follows them into the seeds (who calls X, who extends X); Both.", IsRequired = false, Default = "Forward")]
     public Direction Direction { get; init; } = Direction.Forward;
+
+    [FieldSchema(Description = "Most nodes returned (default 100); truncated says when the expansion stopped before its depth.", IsRequired = false, Default = 100)]
     public int MaxNodes { get; init; } = 100;
+
+    [FieldSchema(Description = "Add a Mermaid flowchart of the nodes and edges (mermaid_flowchart); leave it false when only the data is needed.", IsRequired = false, Default = true)]
     public bool IncludeMermaid { get; init; } = true;
 }
 
