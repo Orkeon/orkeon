@@ -20,7 +20,26 @@ public sealed record GraphEdge
     public required EdgeKind Kind { get; init; }
 }
 
+/// <summary>
+/// Metrics of a dependency graph. <see cref="NodeCount"/>, <see cref="EdgeCount"/> and the fan figures cover the
+/// nodes returned (capped by <c>max_nodes</c>); <see cref="CycleCount"/> covers the whole scope.
+/// </summary>
 public sealed record GraphMetrics(int NodeCount, int EdgeCount, int CycleCount, double AvgFanIn, double AvgFanOut);
+
+/// <summary>One cycle (a strongly connected component) of a dependency graph, over the whole scope.</summary>
+public sealed record GraphCycle
+{
+    /// <summary>The members, as FQNs (the form of <see cref="GraphNode.Fqn"/>), sorted, capped by <c>max_cycle_members</c>.</summary>
+    [JsonPropertyName("fqns")]
+    public required ImmutableArray<string> Fqns { get; init; }
+
+    /// <summary>The number of members before the cap.</summary>
+    [JsonPropertyName("member_count")]
+    public required int MemberCount { get; init; }
+
+    [JsonPropertyName("edge_kind")]
+    public required EdgeKind EdgeKind { get; init; }
+}
 
 public sealed record DependencyGraphRequest
 {
@@ -35,6 +54,15 @@ public sealed record DependencyGraphRequest
     public bool IncludeExternal { get; init; }
     public string? RootFqn { get; init; }
     public int MaxNodes { get; init; } = 200;
+
+    [FieldSchema(Description = "Most cycles returned, the largest first. cycle_count keeps the full count.", IsRequired = false)]
+    [JsonPropertyName("max_cycles")]
+    public int MaxCycles { get; init; } = 20;
+
+    [FieldSchema(Description = "Most members returned per cycle. member_count keeps the full size.", IsRequired = false)]
+    [JsonPropertyName("max_cycle_members")]
+    public int MaxCycleMembers { get; init; } = 50;
+
     public bool IncludeMermaid { get; init; } = true;
     public bool IncludeDot { get; init; }
 }
@@ -47,6 +75,14 @@ public sealed record DependencyGraphResponse
     public string? MermaidFlowchart { get; init; }
     public string? Dot { get; init; }
     public bool Truncated { get; init; }
+
+    /// <summary>The cycles of the whole scope (not only of the nodes returned), the largest first.</summary>
+    [JsonPropertyName("cycles")]
+    public ImmutableArray<GraphCycle> Cycles { get; init; } = [];
+
+    /// <summary>True when <see cref="Cycles"/> was cut by <c>max_cycles</c>, or a cycle's members by <c>max_cycle_members</c>.</summary>
+    [JsonPropertyName("cycles_truncated")]
+    public bool CyclesTruncated { get; init; }
 }
 
 public sealed record SubGraphRequest

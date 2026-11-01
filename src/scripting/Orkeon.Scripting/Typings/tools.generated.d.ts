@@ -196,19 +196,25 @@ declare global {
             readonly tables: readonly { readonly columns: readonly { readonly data_type: string; readonly default_value?: string; readonly is_nullable: boolean; readonly is_primary_key: boolean; readonly max_length?: number; readonly name: string; }[]; readonly name: string; readonly row_count_estimate?: number; readonly schema?: string; }[];
         }>;
 
-        /** `dependency_graph` - Dependency graph at a given scope (L1 packages, L2 modules, L3 symbols). */
+        /** `dependency_graph` - Dependency graph at a given scope (L1 packages, L2 modules, L3 symbols). nodes, edges, node_count and edge_count cover the nodes returned (capped by max_nodes); cycles and cycle_count cover the whole scope, each cycle naming its members as FQNs. */
         dependencyGraph(input?: {
             /** Edge kinds to follow, by name: contains, calls, imports, inherits, tests, documents, project_depends. Legacy enum names (Imports, Extends, Implements...) are still accepted. */
             edge_kinds?: readonly string[];
             include_dot?: boolean;
             include_external?: boolean;
             include_mermaid?: boolean;
+            /** Most members returned per cycle. member_count keeps the full size. */
+            max_cycle_members?: number;
+            /** Most cycles returned, the largest first. cycle_count keeps the full count. */
+            max_cycles?: number;
             max_nodes?: number;
             /** Restrict nodes to these kinds, by name: file, project, namespace, type, member, doc_section, test. Empty keeps every node of the scope. */
             node_kinds?: readonly string[];
             root_fqn?: string | null;
             scope?: string;
         }, ctx?: ExecutionContext): Promise<{
+            readonly cycles: readonly { readonly edge_kind: string; readonly fqns: readonly string[]; readonly member_count: number; }[];
+            readonly cycles_truncated: boolean;
             readonly dot?: string;
             readonly edges: readonly { readonly from: string; readonly kind: string; readonly to: string; }[];
             readonly mermaid_flowchart?: string;

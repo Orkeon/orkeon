@@ -2,6 +2,7 @@ using System.Collections.Immutable;
 using Microsoft.Extensions.Logging;
 using Orkeon.Analysis.Abstractions;
 using Orkeon.Analysis.Abstractions.DTOs.Queries;
+using Orkeon.Analysis.Abstractions.DTOs.Responses;
 using Orkeon.Analysis.Abstractions.DTOs.Tools;
 using Orkeon.Analysis.Abstractions.Interfaces;
 using Orkeon.Analysis.Abstractions.Models;
@@ -21,7 +22,10 @@ public sealed class DependencyGraphTool : ToolBase<DependencyGraphRequest, Depen
     }
 
     public override string Name => "dependency_graph";
-    public override string Description => "Dependency graph at a given scope (L1 packages, L2 modules, L3 symbols).";
+    public override string Description =>
+        "Dependency graph at a given scope (L1 packages, L2 modules, L3 symbols). nodes, edges, node_count and edge_count "
+        + "cover the nodes returned (capped by max_nodes); cycles and cycle_count cover the whole scope, each cycle naming "
+        + "its members as FQNs.";
 
     /// <summary>Declared access class for permission gates.</summary>
     public override ToolAccess Access => ToolAccess.Read;
@@ -50,6 +54,7 @@ public sealed class DependencyGraphTool : ToolBase<DependencyGraphRequest, Depen
             var cycles = await _store.FindCyclesAsync(new CycleQuery { Scope = request.Scope, EdgeKinds = edgeKinds }, cancellationToken).ConfigureAwait(false);
             var metrics = BuildMetrics(graphNodes, graphEdges, cycles.Count);
             var truncated = nodes.Count >= request.MaxNodes;
+            var (graphCycles, cyclesTruncated) = BoundCycles(cycles, request.MaxCycles, request.MaxCycleMembers);
 
             return new DependencyGraphResponse
             {
@@ -59,6 +64,8 @@ public sealed class DependencyGraphTool : ToolBase<DependencyGraphRequest, Depen
                 MermaidFlowchart = request.IncludeMermaid ? MermaidGenerator.ToFlowchart(graphNodes, graphEdges) : null,
                 Dot = request.IncludeDot ? MermaidGenerator.ToDot(graphNodes, graphEdges) : null,
                 Truncated = truncated,
+                Cycles = graphCycles,
+                CyclesTruncated = cyclesTruncated,
             };
         }
     }
@@ -95,6 +102,35 @@ public sealed class DependencyGraphTool : ToolBase<DependencyGraphRequest, Depen
         }
 
         return nodes;
+    }
+
+    /// <summary>
+    /// Orders the cycles largest first (then by first member), keeps <paramref name="maxCycles"/> of them and
+    /// <paramref name="maxMembers"/> sorted members of each.
+    /// </summary>
+    private static (ImmutableArray<GraphCycle> Cycles, bool Truncated) BoundCycles(
+        IReadOnlyList<Cycle> cycles, int maxCycles, int maxMembers)
+    {
+        var cycleCap = Math.Max(0, maxCycles);
+        var memberCap = Math.Max(1, maxMembers);
+        var truncated = cycles.Count > cycleCap;
+        var bounded = cycles
+            .Select(c => (Cycle: c, Sorted: c.Fqns.Order(StringComparer.Ordinal).ToImmutableArray()))
+            .OrderByDescending(x => x.Sorted.Length)
+            .ThenBy(x => x.Sorted.FirstOrDefault(), StringComparer.Ordinal)
+            .Take(cycleCap)
+            .Select(x =>
+            {
+                if (x.Sorted.Length > memberCap) truncated = true;
+                return new GraphCycle
+                {
+                    Fqns = [.. x.Sorted.Take(memberCap)],
+                    MemberCount = x.Sorted.Length,
+                    EdgeKind = x.Cycle.EdgeKind,
+                };
+            })
+            .ToImmutableArray();
+        return (bounded, truncated);
     }
 
     private static EdgeKind ResolveKindMask(ImmutableArray<EdgeKind> edgeKinds)

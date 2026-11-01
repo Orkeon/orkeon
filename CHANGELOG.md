@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — `dependency_graph` names the members of each cycle (#272)
+
+- The response carries `cycles`: each strongly connected component of the scope as `{ fqns, member_count, edge_kind }`, the largest first, members as sorted FQNs. Until now only `metrics.cycle_count` reached the caller, which could not say where the cycles were.
+- The list is bounded: `max_cycles` (default 20) caps the cycles, `max_cycle_members` (default 50) the members of each, `member_count` keeps a cycle's size and `cycles_truncated` says whether either cap cut the list. `metrics.cycle_count` keeps the full count.
+- The tool description and the `GraphMetrics` doc comment say which figures cover what: `cycles` and `cycle_count` the whole scope, `node_count` and `edge_count` the nodes returned (capped by `max_nodes`).
+
 ### Fixed — decision profiles in an agent loop: `verify` judges answers, questions carry instructions, a block reaches scripts typed (#267, #268, #269, #270)
 
 - A `verify` stage lets a response that calls tools pass unjudged: in an agent loop each step escalated, since a tool call does not answer the request yet (#267). `Steps: "all"` judges the steps too; `final` is the default.

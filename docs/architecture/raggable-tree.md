@@ -432,6 +432,7 @@ The node tools and the structural tools read a file in any grammar of `LanguageR
 
 - `edge_kinds` and `node_kinds` of `dependency_graph` and `sub_graph` take the lowercase workflow names. Legacy enum names (`Imports`) are still accepted, case-insensitively. An unknown name is refused, naming it. Responses keep the enum names.
 - When `node_kinds` is given, `dependency_graph` still honours `Scope`: the kinds and tags go into the node query, and `MaxNodes` bounds the result.
+- `dependency_graph` names its cycles: `cycles` lists each strongly connected component of the scope as `{ fqns, member_count, edge_kind }`, the largest first, with members as FQNs (the form of `nodes[].fqn`). `max_cycles` (default 20) and `max_cycle_members` (default 50) bound the list, `cycles_truncated` says whether either cut it, and `metrics.cycle_count` keeps the full count. `cycles` and `cycle_count` cover the whole scope; `node_count` and `edge_count` cover the nodes returned, which `max_nodes` caps.
 
 ### How the graph is built
 
