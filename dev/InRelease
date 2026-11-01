@@ -3,17 +3,17 @@ Hash: SHA256
 
 Acquire-By-Hash: yes
 Architectures: amd64 arm64
-Date: Sat, 31 Oct 2026 08:15:48 +0000
+Date: Sun, 01 Nov 2026 06:08:14 +0000
 Label: Orkeon
 Origin: Orkeon
 Suite: raw/apt/dev
 SHA256:
- f2ebf6965dddfc782569c7a7565628cbb3df38c0aec3e5d23786903f23f68876            10717 Packages
- 55e02b11556a08c431b0c9dd2f8f5d79718115b18761fddf03256bdcf8b60e0e             1599 Packages.gz
+ bfa2ad8d5691f1fc60ce0b5befe039dbd78086dd6e40c2b1168df31866e64744            10717 Packages
+ 1cf2b5ec34928a7b0626f1d0498d0bd14a39f4d36f6f3bd675c166788ff1ba2f             1602 Packages.gz
 -----BEGIN PGP SIGNATURE-----
 
-iHUEARYIAB0WIQQkW17He9f1I1sDcl66SPNTiGp7UgUCauWjtQAKCRC6SPNTiGp7
-Uh5YAQCwaQ9LvAlrEYMxabxwAyNWSkalQ9Y7WNtDvZbt1gCiiQEArYKVfJlEu3j8
-ypEOkSLq78F2064aruL1U3O6fR8SWgs=
-=BysX
+iHUEARYIAB0WIQQkW17He9f1I1sDcl66SPNTiGp7UgUCaubXTgAKCRC6SPNTiGp7
+UrdWAP9bvnQJMyAaiD1Ne7fvVPwJiryEzR9CpQ0vSw5N0A8O0gD/T/MJI4Ei2ute
+W6+KpCxRtgx/jznfvyMWt3ekr9F9uQ4=
+=HHHZ
 -----END PGP SIGNATURE-----
