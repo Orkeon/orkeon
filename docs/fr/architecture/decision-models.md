@@ -6,7 +6,7 @@
 
 Un modèle de décision répond à des questions typées sur un état, avec des probabilités calibrées,
 et n'écrit aucun texte. Orkeon l'atteint par le port `IDecisionModel` (`Orkeon.Application`) ; le
-premier adaptateur est **TypeSafe**, qui sert le modèle « System One » **Jev** (`jev-latest`). Le
+adaptateur sert trois fournisseurs de décision sur le protocole « System One » : **TypeSafe** (Jev), **Liquid** (d1) et **Kev**. Le
 modèle juge et le code d'Orkeon agit : il bloque, route ou escalade un appel, classe des
 passages, ou remet une décision à un agent
 ([ADR-015](../adr/ADR-015-model-provider-categories-and-decision-stages.md)).
@@ -33,19 +33,30 @@ Une `DecisionRequest` porte :
 Une réponse `choice`, `score` ou `box` porte aussi une `confidence`. Un `DecisionRequestValidator` refuse un jeu de questions
 vide, un `choice` de plus de 255 options, un `score` de plus de dix niveaux, et une `box` sans images.
 
-## TypeSafe
+## Fournisseurs de décision
+
+Trois fournisseurs servent le même protocole « System One » : **TypeSafe** (modèle Jev), **Liquid**
+(modèle d1) et **Kev**. Un seul client, `SystemOneDecisionModel`, les sert par trois descripteurs ;
+la requête est `POST <BaseUrl>/systemone` avec `model`, `state` et `questions`, la réponse porte
+`answers` et `usage`.
+
+| Fournisseur | Adresse par défaut | Modèle par défaut | Variable de clé | Section |
+|-------------|--------------------|-------------------|-----------------|---------|
+| `typesafe` | `https://api.typesafe.ai/v1` | `jev-latest` | `TYPESAFE_API_KEY`, obligatoire | `Orkeon:TypeSafe` |
+| `liquid` | `https://api.liquid.ai/decisions/v1` | `d1.1` (ou `d1-ultra`) | `LIQUID_API_KEY`, obligatoire | `Orkeon:Liquid` |
+| `kev` | `http://127.0.0.1:8009/v1` | `kev-latest` | `KEV_API_KEY`, facultative : envoyée si donnée, sinon l'appel est sans authentification | `Orkeon:Kev` |
 
 ```csharp
-services.AddOrkeonTypeSafe(configuration);
+services.AddOrkeonDecisionProvider(configuration);
 ```
 
-Les trois binaires livrés (`orkeon run`, `orkeon-host` et `orkeon-repl`) l'appellent eux-mêmes quand
-leurs réglages portent une section `Orkeon:TypeSafe` ou que `TYPESAFE_API_KEY` est définie, et
+Les trois binaires livrés (`orkeon run`, `orkeon-host` et `orkeon-repl`) l'appellent eux-mêmes, et
 `AddOrkeonDecisionProfiles` dans tous les cas ; un hôte écrit en C# appelle les deux.
 
 ```json
 {
   "Orkeon": {
+    "Decision": { "Provider": "typesafe" },
     "TypeSafe": {
       "Model": "jev-latest",
       "TimeoutSeconds": 30,
@@ -55,25 +66,63 @@ leurs réglages portent une section `Orkeon:TypeSafe` ou que `TYPESAFE_API_KEY` 
 }
 ```
 
-- **La clé** se lit dans `Orkeon:TypeSafe:ApiKey`, puis dans la variable que nomme `ApiKeyEnvVar`
-  (`TYPESAFE_API_KEY` par défaut), dans le processus puis dans la portée utilisateur. Elle
-  n'apparaît jamais dans un log, une erreur ou un appel de tool.
-- **`BaseUrl`** vaut par défaut `https://api.typesafe.ai/v1` ; les requêtes vont vers
-  `POST <BaseUrl>/systemone`.
-- **Les erreurs** deviennent une `DecisionModelException` : un 422 cite le champ fautif, un 401
-  nomme la variable de clé, un 400 `max_tokens_exceeded` nomme la limite (et suggère `longContext`
-  quand la requête ne l'a pas demandé), un 413 ou un 415 dit ce que la requête a dépassé. Un 429, un 5xx (529 compris), un 408 ou une erreur réseau est
-  réessayé avec un backoff exponentiel, jusqu'à `MaxRetries` fois ; chaque tentative a son propre
-  `TimeoutSeconds`. Chaque erreur cite l'identifiant que TypeSafe a donné à la requête
-  (`x-typesafe-request-id`) quand la réponse le porte. Un `usage` sans compteurs de tokens est
-  mesuré à zéro, pas refusé.
+### Le fournisseur actif
+
+L'hôte démarre avec un **fournisseur actif**, ou aucun.
+
+- **Nommé** : `Orkeon:Decision:Provider` vaut `typesafe`, `liquid` ou `kev` (sans tenir compte de
+  la casse ; une valeur vide compte comme non nommé). Toute autre valeur refuse le démarrage, en
+  listant les noms valides.
+- **Déduit**, quand il n'est pas nommé : l'unique fournisseur hébergé (TypeSafe ou Liquid) qui a
+  une section de réglages (une clé présente sous `Orkeon`, même vide, compte). Quand aucun n'a de
+  section, celui dont la variable de clé est définie. Une section l'emporte sur une clé seule : ce
+  fournisseur-là est alors ignoré.
+- **Refusé** : les deux sections présentes, ou aucune section et les deux clés définies ; le message
+  nomme les deux fournisseurs et `Orkeon:Decision:Provider`.
+- **Aucun** : rien de présent, aucun modèle de décision n'est enregistré.
+- **Kev** n'est jamais déduit, seulement nommé. Une section `Orkeon:Kev` sans
+  `Orkeon:Decision:Provider` est signalée dans le log de démarrage (quand aucun fournisseur n'est nommé, l'avertissement
+  nomme `Orkeon:Decision:Provider`) (une ligne de log, pas un avis de réglages).
+
+Le log de démarrage nomme le fournisseur actif, le modèle, l'adresse et `named` ou `deduced`.
+Chaque section de fournisseur présente qui n'est pas l'active est nommée dans un avertissement (une
+clé seule dans l'environnement n'est pas signalée). `--no-decision` (une exécution sans décisions)
+vaut pour tous les fournisseurs.
+
+### Clés, adresses et erreurs
+
+- **La clé** se donne de trois façons : la variable par défaut, une variable nommée dans
+  `ApiKeyEnvVar`, ou `ApiKey` dans la section du fournisseur. Elle n'apparaît jamais dans un log,
+  une erreur ou un appel de tool. Un fournisseur hébergé démarre sans sa clé ; la première décision
+  sans elle échoue, n'est pas réessayée, et nomme la variable ou le réglage.
+- **`BaseUrl`** remplace l'adresse par défaut. Une adresse Kev exige un schéma `http` ou `https`,
+  refusée au démarrage sinon (le message nomme `Orkeon:Kev:BaseUrl`). Une clé Kev configurée vers
+  une adresse `http` non locale est refusée au démarrage (local : `localhost`, `127.0.0.0/8` et
+  `::1` ; `https` convient).
+- **Les erreurs** deviennent une `DecisionModelException` : un 401 ou 403 donne le message de clé ;
+  un autre 4xx sauf 429 est non transitoire et cite le message du fournisseur (un 422 cite le champ
+  fautif, un 400 `max_tokens_exceeded` nomme la limite et suggère `longContext` quand la requête ne
+  l'a pas demandé, un 413 ou un 415 dit ce que la requête a dépassé). Un 429, un 5xx (529 compris),
+  un 408 ou une adresse injoignable est réessayé avec un backoff exponentiel, jusqu'à `MaxRetries`
+  fois, chaque tentative avec son propre `TimeoutSeconds` ; puis il échoue en nommant le
+  fournisseur, et l'adresse seulement quand elle était injoignable ou n'a pas répondu à temps (un 429, 5xx ou 408
+  persistant donne `<Nom> answered <statut> : ...`, sans adresse). Un `usage` sans compteurs de tokens est mesuré à zéro, pas refusé.
 - **Les en-têtes « danger zone »** se posent selon la requête : `TypeSafe-Danger-Zone-Images`
   quand elle porte des images ou une question `box`, `TypeSafe-Danger-Zone-Long-Context` quand
   `LongContext` est posé.
-- **L'usage** est compté une seule fois, comme `decision` (`LlmUsageOperations.Decision`) :
-  TypeSafe ne facture que les tokens d'entrée.
+- **Questions** : Orkeon envoie chaque question et le modèle par appel tels qu'écrits. Kev, et d1
+  servi par llama.cpp, n'acceptent que les questions oui/non, `choice` et `score`.
+- **L'usage** est compté une seule fois, comme `decision` (`LlmUsageOperations.Decision`), pour le
+  fournisseur actif ; Orkeon ne calcule aucun coût.
 
-`AddOrkeonTypeSafe` enregistre aussi la garde d'entrée et le tool `system_one_decide`.
+### Les poids ouverts de d1
+
+Orkeon ne sert pas lui-même les poids de d1. Servis derrière Kev ou un autre serveur local
+compatible System One, ils s'utilisent comme Kev, avec l'adresse de ce serveur dans
+`Orkeon:Kev:BaseUrl`. Un d1 servi par llama.cpp n'accepte que les questions oui/non, `choice` et
+`score`.
+
+`AddOrkeonDecisionProvider` enregistre aussi la garde d'entrée et le tool `system_one_decide`.
 
 ## Des étapes de décision autour d'un appel au LLM
 
@@ -108,7 +157,7 @@ states nothing the request does not support. »
 ### Configuration
 
 ```csharp
-services.AddOrkeonTypeSafe(configuration);
+services.AddOrkeonDecisionProvider(configuration);
 services.AddOrkeonDecisionProfiles(configuration);
 ```
 
@@ -253,8 +302,8 @@ confiance non fini et des niveaux de score répétés, et `TaskCondition.Holds` 
 ### Le circuit de décision et le repli
 
 Le **circuit de décision** dit si les tâches de décision interrogent le modèle. Il est actif quand un
-modèle de décision est configuré (dans les binaires livrés, quand `Orkeon:TypeSafe` ou
-`TYPESAFE_API_KEY` est défini) et que `Orkeon:Decision:Enabled` vaut `true` (son défaut), et coupé
+modèle de décision est configuré (dans les binaires livrés, quand un fournisseur actif est
+nommé ou déduit) et que `Orkeon:Decision:Enabled` vaut `true` (son défaut), et coupé
 quand :
 
 - aucun modèle de décision n'est configuré ;
@@ -287,11 +336,15 @@ seule, jamais de lui-même.
 
 ## Usages secondaires
 
-- **Garde d'entrée** — `TypeSafeInputGuard` rejoint le pipeline de gardiens de l'agent en phase
-  `Input` quand `Orkeon:TypeSafe:Guard:Enabled` vaut true. Ses `Risks` valent par défaut
+- **Garde d'entrée** — `DecisionInputGuard` rejoint le pipeline de gardiens de l'agent en phase
+  `Input` quand `Orkeon:Decision:Guard:Enabled` vaut true. La garde a sa propre section,
+  `Orkeon:Decision:Guard` (`Enabled`, seuils, `Risks`) ; elle vérifie par le fournisseur actif et
+  signe ses verdicts du nom de ce fournisseur. Un fichier de réglages qui porte encore un
+  bloc `Guard` sous `Orkeon:TypeSafe` est refusé au démarrage, avec un message qui nomme
+  `Orkeon:Decision:Guard`. Ses `Risks` valent par défaut
   `prompt_injection` et `data_exfiltration`, `BlockThreshold` 0,8, `WarnThreshold` 0,5 ; elle
   avertit sur une panne, ou bloque avec `FailClosed`.
-- **Reranker RAG** — `rerank.kind: decision` (alias `typesafe`) pose un `noul` par passage dans
+- **Reranker RAG** — `rerank.kind: decision` pose un `noul` par passage dans
   une seule requête, les passages coupés à 4 000 caractères, et les classe par probabilité.
 - **Tool** — `system_one_decide` permet à un agent de poser des questions `choice`, `score` et
   `noul` ([Inventaire des outils](../tools/inventory.md)) ; `box` est refusé.

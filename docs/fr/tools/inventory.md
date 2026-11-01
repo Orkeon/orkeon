@@ -64,11 +64,11 @@ celui ci-dessus — est ce que le YAML référence.
 | `token_budget` | `TokenBudgetTool` | Taille de la fenêtre de contexte, tokens consommés et ce qui les remplit (`used_tokens_by_kind` : `system`, `user`, `assistant`, `tool`, `other`), budget disponible |
 | `memory_store` | `MemoryStoreTool` | Lister/ajouter/supprimer/lire des mémoires typées (user/project/feedback/reference) |
 
-## Tool de décision (`Orkeon.Infrastructure`) — `AddOrkeonTypeSafe(configuration)`
+## Tool de décision (`Orkeon.Infrastructure`) — `AddOrkeonDecisionProvider(configuration)`
 
 | Tool | Classe | Cas d'usage | Exemple d'appel |
 |-------|--------|-------------|-----------------|
-| `system_one_decide` | `SystemOneDecideTool` | Poser au modèle de décision configuré (Jev de TypeSafe, voir [Modèles de décision](../architecture/decision-models.md)) des questions typées sur un état : `choice`, `score` ou `noul`, chaque réponse avec ses probabilités calibrées et une confiance ; les questions `box` sont refusées (les images ne passent pas par un appel de tool) et la clé d'API n'apparaît jamais dans la requête | `{ "state": { "ticket": "Refund not received" }, "questions": { "urgent": { "type": "noul", "instructions": "Does the customer need an answer today?", "criteria": { "true": "An answer is needed today", "false": "It can wait" } } } }` |
+| `system_one_decide` | `SystemOneDecideTool` | Poser au fournisseur de décision actif (TypeSafe, Liquid ou Kev, voir [Modèles de décision](../architecture/decision-models.md)) des questions typées sur un état : `choice`, `score` ou `noul`, chaque réponse avec ses probabilités calibrées et une confiance ; les questions `box` sont refusées (les images ne passent pas par un appel de tool) et la clé d'API n'apparaît jamais dans la requête | `{ "state": { "ticket": "Refund not received" }, "questions": { "urgent": { "type": "noul", "instructions": "Does the customer need an answer today?", "criteria": { "true": "An answer is needed today", "false": "It can wait" } } } }` |
 
 ## Tools fichiers (`Orkeon.Tools.FileSystem`) — `AddOrkeonFileSystemTools()`
 
@@ -524,7 +524,7 @@ correspondance alphabétique complète :
 | `sub_graph` | `SubGraphTool` | `Orkeon.Tools.Analysis` |
 | `symbol_detail` | `SymbolDetailTool` | `Orkeon.Tools.Analysis` |
 | `symbol_source` | `SymbolSourceTool` | `Orkeon.Tools.Analysis` |
-| `system_one_decide` | `SystemOneDecideTool` | `Orkeon.Infrastructure` (opt-in, `AddOrkeonTypeSafe`) |
+| `system_one_decide` | `SystemOneDecideTool` | `Orkeon.Infrastructure` (opt-in, `AddOrkeonDecisionProvider`) |
 | `token_budget` | `TokenBudgetTool` | `Orkeon.Infrastructure` |
 | `txt_search` | `TxtSearchTool` | `Orkeon.Tools.Data` |
 | `wait_for_event` | `WaitForEventTool` | `Orkeon.Tools.EventHub` |

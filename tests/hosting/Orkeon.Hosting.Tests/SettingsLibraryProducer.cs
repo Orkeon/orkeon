@@ -55,7 +55,20 @@ internal static class SettingsLibraryProducer
 
             try
             {
-                method.Invoke(null, arguments);
+                // A provider registration is called once per provider, so each section is declared.
+                var descriptorAt = Array.FindIndex(arguments, argument => argument is Orkeon.Infrastructure.Decision.SystemOne.DecisionProviderDescriptor);
+                if (descriptorAt < 0)
+                {
+                    method.Invoke(null, arguments);
+                }
+                else
+                {
+                    foreach (var descriptor in Orkeon.Infrastructure.Decision.SystemOne.DecisionProviderDescriptor.All)
+                    {
+                        arguments[descriptorAt] = descriptor;
+                        method.Invoke(null, arguments);
+                    }
+                }
             }
             catch (TargetInvocationException ex)
             {
@@ -168,6 +181,8 @@ internal static class SettingsLibraryProducer
                 arguments[index] = nothing;
             else if (parameter.ParameterType == typeof(string))
                 arguments[index] = "catalogue";
+            else if (parameter.ParameterType == typeof(Orkeon.Infrastructure.Decision.SystemOne.DecisionProviderDescriptor))
+                arguments[index] = Orkeon.Infrastructure.Decision.SystemOne.DecisionProviderDescriptor.TypeSafe;
             else
                 return null;
         }

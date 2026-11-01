@@ -2,7 +2,7 @@
 
 # LLM Providers
 
-The providers on this page serve the `Generation` category. Embedding, reranking and decision providers (TypeSafe) are listed in [Model providers](./model-providers.md); a decision model judges an LLM call through a decision profile ([Decision models](./decision-models.md)).
+The providers on this page serve the `Generation` category. Embedding, reranking and decision providers (TypeSafe, Liquid, Kev) are listed in [Model providers](./model-providers.md); a decision model judges an LLM call through a decision profile ([Decision models](./decision-models.md)).
 
 `HttpLlmProviderBase` (`Orkeon.Infrastructure.LLMs.Base`) provides the abstract base for all LLM providers. It integrates HTTP handling (`IHttpClientFactory`), the Polly retry policies, and JSON serialization.
 

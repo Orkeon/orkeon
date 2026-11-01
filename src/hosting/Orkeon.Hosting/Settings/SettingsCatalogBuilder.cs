@@ -191,7 +191,7 @@ internal static class SettingsCatalogBuilder
     private static List<SettingsCatalogEntry> Entries(SettingsSource source, string description, SettingsDocumentation documentation)
     {
         if (source.Shape != typeof(RagOptions))
-            return Walked(source, Instance(source.Shape), description, documentation);
+            return Walked(source, Instance(source.Shape, source.Path), description, documentation);
 
         var defaultProfile = RagProfilePresets.Parse(RagDefaults.DefaultProfile);
         var entries = Walked(source, RagProfilePresets.Create(defaultProfile), description, documentation);
@@ -251,7 +251,7 @@ internal static class SettingsCatalogBuilder
             .GetType("Orkeon.Tools.Drive.Configuration.DriveToolsOptions");
 
     /// <summary>A new instance of <paramref name="type"/>, whose property values are the defaults, or null when it has none.</summary>
-    private static object? Instance(Type type)
+    private static object? Instance(Type type, string? section = null)
     {
         var target = Nullable.GetUnderlyingType(type) ?? type;
         if (target.IsAbstract || target.IsInterface || target.IsValueType || target == typeof(string)
@@ -269,7 +269,14 @@ internal static class SettingsCatalogBuilder
 
         try
         {
-            return constructor.Invoke(null);
+            var created = constructor.Invoke(null);
+
+            // A provider's options start blank; the registration fills them from the descriptor.
+            if (created is Orkeon.Infrastructure.Decision.SystemOne.SystemOneProviderOptions providerOptions)
+                Orkeon.Infrastructure.Decision.SystemOne.DecisionProviderDescriptor.All
+                    .FirstOrDefault(d => string.Equals(d.Section, section, StringComparison.OrdinalIgnoreCase))?.ApplyDefaults(providerOptions);
+
+            return created;
         }
         catch (Exception ex) when (ex is TargetInvocationException or MemberAccessException or NotSupportedException)
         {

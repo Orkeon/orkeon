@@ -35,6 +35,27 @@
       "description": "The `Orkeon:Decision:Enabled` switch of the decision circuit."
     },
     {
+      "path": "Orkeon:Decision:Guard",
+      "category": "models",
+      "hosts": [],
+      "registration": "AddOrkeonDecisionProvider",
+      "description": "The `Orkeon:Decision:Guard` section: the guardian that judges an agent's input with the decision model, in the `Input` phase, beside the built-in input guard."
+    },
+    {
+      "path": "Orkeon:Kev",
+      "category": "models",
+      "hosts": [],
+      "registration": "AddOrkeonDecisionProvider",
+      "description": "How `SystemOneDecisionModel` reaches a System One provider."
+    },
+    {
+      "path": "Orkeon:Liquid",
+      "category": "models",
+      "hosts": [],
+      "registration": "AddOrkeonDecisionProvider",
+      "description": "How `SystemOneDecisionModel` reaches a System One provider."
+    },
+    {
       "path": "Orkeon:TokenCounter",
       "category": "models",
       "hosts": [],
@@ -45,8 +66,8 @@
       "path": "Orkeon:TypeSafe",
       "category": "models",
       "hosts": [],
-      "registration": "AddOrkeonTypeSafe",
-      "description": "The `Orkeon:TypeSafe` section: how `TypeSafeDecisionModel` reaches the TypeSafe System One API."
+      "registration": "AddOrkeonDecisionProvider",
+      "description": "How `SystemOneDecisionModel` reaches a System One provider."
     },
     {
       "path": "RateLimiting",
@@ -921,6 +942,130 @@
       "description": "The profile a call goes to when no stage routes it; `default` is the `Llm` section."
     },
     {
+      "path": "Orkeon:Decision:Provider",
+      "section": "Orkeon:Decision",
+      "type": "string",
+      "description": "The decision provider: `typesafe`, `liquid` or `kev`; empty deduces it."
+    },
+    {
+      "path": "Orkeon:Decision:Guard:BlockThreshold",
+      "section": "Orkeon:Decision:Guard",
+      "type": "number",
+      "default": 0.8,
+      "description": "The probability at or over which a risk blocks the input."
+    },
+    {
+      "path": "Orkeon:Decision:Guard:Enabled",
+      "section": "Orkeon:Decision:Guard",
+      "type": "boolean",
+      "default": false,
+      "description": "Whether the guard runs; off by default."
+    },
+    {
+      "path": "Orkeon:Decision:Guard:FailClosed",
+      "section": "Orkeon:Decision:Guard",
+      "type": "boolean",
+      "default": false,
+      "description": "Whether an unreachable decision model blocks the input; false warns and lets it in."
+    },
+    {
+      "path": "Orkeon:Decision:Guard:Risks:<name>",
+      "section": "Orkeon:Decision:Guard",
+      "type": "string",
+      "description": "The risks detected, each with what it is; empty takes the default risks."
+    },
+    {
+      "path": "Orkeon:Decision:Guard:WarnThreshold",
+      "section": "Orkeon:Decision:Guard",
+      "type": "number",
+      "default": 0.5,
+      "description": "The probability at or over which a risk is a warning."
+    },
+    {
+      "path": "Orkeon:Kev:ApiKey",
+      "section": "Orkeon:Kev",
+      "type": "string",
+      "secret": true,
+      "description": "The API key."
+    },
+    {
+      "path": "Orkeon:Kev:ApiKeyEnvVar",
+      "section": "Orkeon:Kev",
+      "type": "string",
+      "default": "KEV_API_KEY",
+      "description": "The environment variable read when `ApiKey` is empty."
+    },
+    {
+      "path": "Orkeon:Kev:BaseUrl",
+      "section": "Orkeon:Kev",
+      "type": "uri",
+      "default": "http://127.0.0.1:8009/v1",
+      "description": "The API root."
+    },
+    {
+      "path": "Orkeon:Kev:MaxRetries",
+      "section": "Orkeon:Kev",
+      "type": "integer",
+      "default": 3,
+      "description": "The retries."
+    },
+    {
+      "path": "Orkeon:Kev:Model",
+      "section": "Orkeon:Kev",
+      "type": "string",
+      "default": "kev-latest",
+      "description": "The default model."
+    },
+    {
+      "path": "Orkeon:Kev:TimeoutSeconds",
+      "section": "Orkeon:Kev",
+      "type": "integer",
+      "default": 30,
+      "description": "The HTTP timeout of one attempt, in seconds."
+    },
+    {
+      "path": "Orkeon:Liquid:ApiKey",
+      "section": "Orkeon:Liquid",
+      "type": "string",
+      "secret": true,
+      "description": "The API key."
+    },
+    {
+      "path": "Orkeon:Liquid:ApiKeyEnvVar",
+      "section": "Orkeon:Liquid",
+      "type": "string",
+      "default": "LIQUID_API_KEY",
+      "description": "The environment variable read when `ApiKey` is empty."
+    },
+    {
+      "path": "Orkeon:Liquid:BaseUrl",
+      "section": "Orkeon:Liquid",
+      "type": "uri",
+      "default": "https://api.liquid.ai/decisions/v1",
+      "description": "The API root."
+    },
+    {
+      "path": "Orkeon:Liquid:MaxRetries",
+      "section": "Orkeon:Liquid",
+      "type": "integer",
+      "default": 3,
+      "description": "The retries."
+    },
+    {
+      "path": "Orkeon:Liquid:Model",
+      "section": "Orkeon:Liquid",
+      "type": "string",
+      "default": "d1.1",
+      "description": "The default model."
+    },
+    {
+      "path": "Orkeon:Liquid:TimeoutSeconds",
+      "section": "Orkeon:Liquid",
+      "type": "integer",
+      "default": 30,
+      "description": "The HTTP timeout of one attempt, in seconds."
+    },
+    {
       "path": "Orkeon:TokenCounter:CharsPerToken",
       "section": "Orkeon:TokenCounter",
       "type": "number",
@@ -953,7 +1098,7 @@
       "section": "Orkeon:TypeSafe",
       "type": "string",
       "secret": true,
-      "description": "The API key. Discouraged in a settings file: leave it empty and set the variable `ApiKeyEnvVar` names."
+      "description": "The API key."
     },
     {
       "path": "Orkeon:TypeSafe:ApiKeyEnvVar",
@@ -967,55 +1112,21 @@
       "section": "Orkeon:TypeSafe",
       "type": "uri",
       "default": "https://api.typesafe.ai/v1",
-      "description": "The API root; `/systemone` is appended to it."
-    },
-    {
-      "path": "Orkeon:TypeSafe:Guard:BlockThreshold",
-      "section": "Orkeon:TypeSafe",
-      "type": "number",
-      "default": 0.8,
-      "description": "The probability at or over which a risk blocks the input."
-    },
-    {
-      "path": "Orkeon:TypeSafe:Guard:Enabled",
-      "section": "Orkeon:TypeSafe",
-      "type": "boolean",
-      "default": false,
-      "description": "Whether the guard runs; off by default."
-    },
-    {
-      "path": "Orkeon:TypeSafe:Guard:FailClosed",
-      "section": "Orkeon:TypeSafe",
-      "type": "boolean",
-      "default": false,
-      "description": "Whether an unreachable decision model blocks the input; false warns and lets it in."
-    },
-    {
-      "path": "Orkeon:TypeSafe:Guard:Risks:<name>",
-      "section": "Orkeon:TypeSafe",
-      "type": "string",
-      "description": "The risks detected, each with what it is; empty takes `TypeSafeInputGuard.DefaultRisks`."
-    },
-    {
-      "path": "Orkeon:TypeSafe:Guard:WarnThreshold",
-      "section": "Orkeon:TypeSafe",
-      "type": "number",
-      "default": 0.5,
-      "description": "The probability at or over which a risk is a warning."
+      "description": "The API root."
     },
     {
       "path": "Orkeon:TypeSafe:MaxRetries",
       "section": "Orkeon:TypeSafe",
       "type": "integer",
       "default": 3,
-      "description": "The retries after a 429, a 529, another 5xx or a network error."
+      "description": "The retries."
     },
     {
       "path": "Orkeon:TypeSafe:Model",
       "section": "Orkeon:TypeSafe",
       "type": "string",
       "default": "jev-latest",
-      "description": "The model a request naming none runs on."
+      "description": "The default model."
     },
     {
       "path": "Orkeon:TypeSafe:TimeoutSeconds",

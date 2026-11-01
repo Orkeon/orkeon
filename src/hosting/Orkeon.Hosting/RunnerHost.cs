@@ -184,6 +184,7 @@ public static partial class RunnerHost
             WarnIfTokensUnavailable(host, decisions);
             AnnounceSettingsNotices(host.Services, OperatorWarning(host.Services));
             WarnIfLlmNotConfigured(host, decisions.ElectedLlmProfile);
+            LogDecisionProvider(host);
             ActivateTelemetry(host);
             return host;
         }
@@ -612,6 +613,42 @@ public static partial class RunnerHost
         RunnerOperatorLog.Warn(operatorLogger, "WARNING: " + LlmNotConfiguredMessage);
         LogLlmNotConfigured(logger);
     }
+
+    /// <summary>
+    /// The active decision provider, its model and address, how it was chosen, and one warning per
+    /// provider section the choice ignores, even when no provider is active. Says nothing when no choice is registered.
+    /// </summary>
+    private static void LogDecisionProvider(IHost host)
+    {
+        var choice = host.Services.GetService<Orkeon.Infrastructure.Decision.SystemOne.DecisionProviderChoice>();
+        if (choice is null)
+            return;
+
+        var logger = host.Services.GetRequiredService<ILoggerFactory>().CreateLogger("Orkeon.Hosting.RunnerHost");
+        var named = choice.HasProvider && choice.How == Orkeon.Infrastructure.Decision.SystemOne.DecisionProviderSelection.Named;
+        if (choice.Provider is { } provider)
+        {
+            var options = host.Services.GetRequiredService<Microsoft.Extensions.Options.IOptions<Orkeon.Infrastructure.Decision.SystemOne.SystemOneProviderOptions>>().Value;
+            var how = named ? "named" : "deduced";
+            var address = options.BaseUrl.ToString();
+            LogDecisionProviderActive(logger, provider.Key, options.Model, address, how);
+        }
+
+        var active = choice.Provider?.Key ?? "none";
+        foreach (var section in choice.IgnoredSections)
+        {
+            var hint = section == Orkeon.Infrastructure.Decision.SystemOne.DecisionProviderDescriptor.Kev.Section && !named
+                ? " Kev is never deduced: name it with Orkeon:Decision:Provider."
+                : string.Empty;
+            LogDecisionSectionIgnored(logger, section, active, hint);
+        }
+    }
+
+    [LoggerMessage(EventId = 61, Level = LogLevel.Information, Message = "Decision provider {Provider}: model {Model}, address {Address}, {How}")]
+    private static partial void LogDecisionProviderActive(ILogger logger, string provider, string model, string address, string how);
+
+    [LoggerMessage(EventId = 62, Level = LogLevel.Warning, Message = "{Section} is ignored: the active decision provider is {Provider}.{Hint}")]
+    private static partial void LogDecisionSectionIgnored(ILogger logger, string section, string provider, string hint);
 
     /// <summary>
     /// A <c>custom</c> address with no path, once per section offered: logger and operator channel (stderr), by the
@@ -1587,26 +1624,42 @@ public static partial class RunnerHost
     }
 
     /// <summary>
-    /// The decision models of a shipped host (ADR-015, ADR-016). TypeSafe is registered when the
-    /// settings hold an <c>Orkeon:TypeSafe</c> section or <c>TYPESAFE_API_KEY</c> is set: the
-    /// decision circuit is then on, <c>orkeon run --no-decision</c> turns it off for a run, and a
-    /// decision task whose key is missing fails as any task does. Without either, no decision
-    /// model exists, the circuit is off and every decision task answers from its fallback. The
-    /// decision profiles of <c>Orkeon:Decision:Profiles</c> are registered either way, and fail
-    /// at their first use when no model is registered. <c>orkeon-repl</c> registers both the same way.
+    /// The decision models of a shipped host (ADR-015, ADR-016). Only the active provider, named by
+    /// <c>Orkeon:Decision:Provider</c> or deduced from its section or API key variable, is registered
+    /// for every decision use: the decision circuit is then on and <c>orkeon run --no-decision</c>
+    /// turns it off for a run. Without one, no decision model exists, the circuit is off and every
+    /// decision task answers from its fallback. A refused choice refuses the start. The decision
+    /// profiles of <c>Orkeon:Decision:Profiles</c> are registered either way, and fail at their first
+    /// use when no model is registered. <c>orkeon-repl</c> registers both the same way.
     /// </summary>
     /// <param name="context">The host builder context.</param>
     /// <param name="services">The service collection.</param>
-    internal static void RegisterDecisionModels(HostBuilderContext context, IServiceCollection services)
+    /// <param name="environment">The environment reader; null reads the process environment.</param>
+    internal static void RegisterDecisionModels(HostBuilderContext context, IServiceCollection services, Func<string, string?>? environment = null)
     {
         ArgumentNullException.ThrowIfNull(context);
         ArgumentNullException.ThrowIfNull(services);
-        var typeSafeSection = Orkeon.Infrastructure.Decision.TypeSafe.TypeSafeOptions.SectionName;
-        var configured = context.Configuration.GetSection(Microsoft.Extensions.Configuration.ConfigurationPath.GetParentPath(typeSafeSection)!).GetChildren()
-                .Any(c => string.Equals(c.Key, Microsoft.Extensions.Configuration.ConfigurationPath.GetSectionKey(typeSafeSection), StringComparison.OrdinalIgnoreCase))
-            || !string.IsNullOrEmpty(Environment.GetEnvironmentVariable(Orkeon.Constants.Llm.DecisionProviderDefaults.TypeSafeApiKeyVariable));
-        if (configured)
-            Orkeon.Infrastructure.Decision.TypeSafe.TypeSafeServiceCollectionExtensions.AddOrkeonTypeSafe(services, context.Configuration);
+        Orkeon.Infrastructure.Decision.SystemOne.DecisionProviderChoice choice;
+        try
+        {
+            choice = Orkeon.Infrastructure.Decision.SystemOne.DecisionProviderChoice.Resolve(
+                context.Configuration, environment ?? Environment.GetEnvironmentVariable);
+        }
+        catch (InvalidOperationException ex)
+        {
+            throw new RunnerSettingsException(ex.Message);
+        }
+
+        services.AddSingleton(choice);
+        if (choice.HasProvider)
+            Orkeon.Infrastructure.Decision.SystemOne.DecisionProviderServiceCollectionExtensions.AddOrkeonDecisionProvider(
+                services, context.Configuration, choice.Provider!);
+
+        // The host reads every provider section: the active one to bind it, the others to ignore it
+        // with a warning at start.
+        foreach (var other in Orkeon.Infrastructure.Decision.SystemOne.DecisionProviderDescriptor.All.Where(d => d != choice.Provider))
+            Orkeon.Application.Configuration.SettingsDeclarationExtensions.DeclareSettingsShape(
+                services, other.Section, typeof(Orkeon.Infrastructure.Decision.SystemOne.SystemOneProviderOptions));
         Orkeon.Infrastructure.LLMs.Decision.DecisionProfileServiceCollectionExtensions.AddOrkeonDecisionProfiles(services, context.Configuration);
     }
 

@@ -64,11 +64,11 @@ what YAML references.
 | `token_budget` | `TokenBudgetTool` | Context window size, used tokens and what fills them (`used_tokens_by_kind`: `system`, `user`, `assistant`, `tool`, `other`), available budget |
 | `memory_store` | `MemoryStoreTool` | List/add/delete/get typed memories (user/project/feedback/reference) |
 
-## Decision tool (`Orkeon.Infrastructure`) — `AddOrkeonTypeSafe(configuration)`
+## Decision tool (`Orkeon.Infrastructure`) — `AddOrkeonDecisionProvider(configuration)`
 
 | Tool | Class | Use case | Call example |
 |-------|--------|-------------|-----------------|
-| `system_one_decide` | `SystemOneDecideTool` | Ask the configured decision model (TypeSafe Jev, see [Decision models](../architecture/decision-models.md)) typed questions about a state: `choice`, `score` or `noul`, each answer with calibrated probabilities and a confidence; `box` questions are refused (images do not travel through a tool call) and the API key never appears in the request | `{ "state": { "ticket": "Refund not received" }, "questions": { "urgent": { "type": "noul", "instructions": "Does the customer need an answer today?", "criteria": { "true": "An answer is needed today", "false": "It can wait" } } } }` |
+| `system_one_decide` | `SystemOneDecideTool` | Ask the active decision provider (TypeSafe, Liquid or Kev, see [Decision models](../architecture/decision-models.md)) typed questions about a state: `choice`, `score` or `noul`, each answer with calibrated probabilities and a confidence; `box` questions are refused (images do not travel through a tool call) and the API key never appears in the request | `{ "state": { "ticket": "Refund not received" }, "questions": { "urgent": { "type": "noul", "instructions": "Does the customer need an answer today?", "criteria": { "true": "An answer is needed today", "false": "It can wait" } } } }` |
 
 ## File tools (`Orkeon.Tools.FileSystem`) — `AddOrkeonFileSystemTools()`
 
@@ -515,7 +515,7 @@ The exact name to use in the YAML `tools:` section is the value of the tool clas
 | `sub_graph` | `SubGraphTool` | `Orkeon.Tools.Analysis` |
 | `symbol_detail` | `SymbolDetailTool` | `Orkeon.Tools.Analysis` |
 | `symbol_source` | `SymbolSourceTool` | `Orkeon.Tools.Analysis` |
-| `system_one_decide` | `SystemOneDecideTool` | `Orkeon.Infrastructure` (opt-in, `AddOrkeonTypeSafe`) |
+| `system_one_decide` | `SystemOneDecideTool` | `Orkeon.Infrastructure` (opt-in, `AddOrkeonDecisionProvider`) |
 | `token_budget` | `TokenBudgetTool` | `Orkeon.Infrastructure` |
 | `txt_search` | `TxtSearchTool` | `Orkeon.Tools.Data` |
 | `wait_for_event` | `WaitForEventTool` | `Orkeon.Tools.EventHub` |

@@ -317,8 +317,8 @@ static class Program
         // MCP:Servers, as the runners read it: registered when servers are declared, connected by the
         // runner before it loads the commands (ScriptedCommandsRunner.OnStartAsync).
         Orkeon.Hosting.RunnerHost.RegisterMcp(context, services);
-        // The decision models, as the runners register them: TypeSafe when Orkeon:TypeSafe or
-        // TYPESAFE_API_KEY is set, the decision profiles either way.
+        // The decision models, as the runners register them: the active decision provider (the guard and
+        // the model follow it), the decision profiles either way.
         Orkeon.Hosting.RunnerHost.RegisterDecisionModels(context, services);
         // --llm-log / --llm-log-path: the exchange log orkeon run writes, on the folder mounted above.
         if (scriptedOpts.ResolvedLlmLogPath is not null)
