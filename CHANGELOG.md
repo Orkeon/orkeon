@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — `session_snip` keeps whole turns: `retain_count` counts turns, not messages (#287) **[breaking]**
+
+- `session_snip` documented `retain_count` as a number of recent exchanges and kept that many messages: asking for 5 exchanges kept 5 messages, and the cut could fall between a request and its answer or between a tool trace and the answer that used it. `retain_count` (default 3, unchanged) now counts turns; a turn starts at a `user` message and owns the `tool`, `assistant` and `note` messages that follow it. The head message is still kept on its own; a buffer holding fewer turns than asked, or no `user` message, is left untouched; `retain_count: 0` keeps the head alone. The `truncate` operation of `session_store` follows the same rule.
+- The response gains `kept_from` (index, in the buffer before the cut, of the first message kept after the head; `-1` when nothing was removed or the head alone was kept) and `kept_from_role` (its role; absent when `kept_from` is `-1`).
+- **[breaking]** `ISessionBufferService.Truncate(int retainTurns)` answers a `SessionTruncation` record (`RemovedCount`, `KeptFromIndex`, `KeptFromRole`) instead of an `int`; `InMemorySessionBufferService`, `FileSessionBufferService` and every other implementation follow.
+
 ### Added — `edge_list` lists every edge of the given kinds across the whole index, paginated; the inheritance graph is complete and resolved (#280) **[breaking]**
 
 - New analysis tool `edge_list` (the 121st built-in tool, the 29th of `AddRaggableTreeTools`): `edge_kinds` (required, workflow names), optional `root_fqn`, `cursor` and `page_size` (default 200, at most 1000). It walks the whole index, unlike `dependency_graph` whose `max_nodes` bounds the nodes before the edges are collected, and answers `edges: [{ from, to, kind, from_id, to_id }]` (ends as FQNs and node ids), `next_cursor` (null on the last page) and `total`. Edges come in a stable order (source FQN, target FQN, kind, edge id) and the cursor resumes after the last edge returned. `IRaggableStore` gains `ListEdgesAsync(EdgeListQuery, CancellationToken)`, answered with an `EdgeListPage`: an implementation outside the repository adds it. Registered with the other read tools (`ModePermissionGate`, the Studio catalog, the standard tool manifest).

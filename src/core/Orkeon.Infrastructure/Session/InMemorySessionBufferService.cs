@@ -130,30 +130,47 @@ public sealed class InMemorySessionBufferService : ISessionBufferService
     }
 
     /// <inheritdoc />
-    public int Truncate(int retainCount)
+    public SessionTruncation Truncate(int retainTurns)
     {
-        if (retainCount < 0) retainCount = 0;
+        if (retainTurns < 0) retainTurns = 0;
         lock (_gate)
         {
             var total = _messages.Count;
-            if (total == 0) return 0;
+            if (total == 0) return Untouched;
 
-            // Keep the head message (system/context anchor) + the last `retainCount` messages.
-            var keepTail = Math.Min(retainCount, total);
-            var headKept = total > keepTail ? 1 : 0; // only keep a distinct head when it isn't already in the tail window
-            var kept = Math.Min(total, headKept + keepTail);
-            if (kept >= total) return 0;
+            // The kept tail starts at the N-th user message counted from the end; fewer user
+            // messages than asked means fewer turns than asked, and nothing is removed.
+            var tailStart = total;
+            var turnsFound = 0;
+            for (var i = total - 1; i >= 0 && turnsFound < retainTurns; i--)
+            {
+                if (!IsTurnStart(_messages[i])) continue;
+                turnsFound++;
+                tailStart = i;
+            }
+            if (turnsFound < retainTurns) return Untouched;
 
-            var head = headKept == 1 ? _messages[0] : null;
-            var tail = _messages.GetRange(total - keepTail, keepTail);
+            // Keep the head message (system/context anchor) on its own when it is not already in the tail.
+            var removeFrom = 1;
+            if (tailStart <= removeFrom) return Untouched;
 
-            _messages.Clear();
-            if (head is not null) _messages.Add(head);
-            _messages.AddRange(tail);
+            // retainTurns 0 keeps the head alone: there is no kept tail to point at.
+            var keptFrom = tailStart < total ? _messages[tailStart] : null;
+            _messages.RemoveRange(removeFrom, tailStart - removeFrom);
 
-            return total - _messages.Count;
+            return new SessionTruncation
+            {
+                RemovedCount = total - _messages.Count,
+                KeptFromIndex = keptFrom is null ? -1 : tailStart,
+                KeptFromRole = keptFrom?.Role,
+            };
         }
     }
+
+    private static readonly SessionTruncation Untouched = new() { RemovedCount = 0, KeptFromIndex = -1, KeptFromRole = null };
+
+    private static bool IsTurnStart(SessionMessage message) =>
+        string.Equals(message.Role, "user", StringComparison.OrdinalIgnoreCase);
 
     /// <inheritdoc />
     public int Reset()

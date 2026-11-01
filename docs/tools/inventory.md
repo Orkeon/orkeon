@@ -57,8 +57,8 @@ what YAML references.
 
 | Tool | Class | Use case |
 |-------|--------|-------------|
-| `session_store` | `SessionStoreTool` | Read/write/truncate/annotate the session buffer and its metadata; `append_message` adds one message without rewriting the buffer, `get_state` reads one `key` or several `keys`, `set_state` writes one `key` or several `values` and removes several `keys`; a multi-key write is all or nothing, a `values` / `keys` overlap or a `key` / `value` mixed with `values` / `keys` is refused, and in `plan` mode only the reads (`get_state`, `read_messages`, `get_metadata`) are admitted |
-| `session_snip` | `SessionSnipTool` | Immediately truncate the conversation to a minimal window |
+| `session_store` | `SessionStoreTool` | Read/write/truncate/annotate the session buffer and its metadata; `truncate` keeps the head plus the last `retain_count` turns, as `session_snip` does, `append_message` adds one message without rewriting the buffer, `get_state` reads one `key` or several `keys`, `set_state` writes one `key` or several `values` and removes several `keys`; a multi-key write is all or nothing, a `values` / `keys` overlap or a `key` / `value` mixed with `values` / `keys` is refused, and in `plan` mode only the reads (`get_state`, `read_messages`, `get_metadata`) are admitted |
+| `session_snip` | `SessionSnipTool` | Immediately truncate the conversation to the head message plus the last `retain_count` turns (default 3); a turn is a user request with the tool traces and the answer that follow it, so the cut never splits one; `kept_from` / `kept_from_role` name the first message kept (`-1` / absent when nothing was removed or the head alone was kept) |
 | `session_stats` | `SessionStatsTool` | Full session telemetry: messages, tokens, cost, call totals |
 | `session_cost` | `SessionCostTool` | Cumulative session cost in USD with a per-model breakdown |
 | `token_budget` | `TokenBudgetTool` | Context window size, used tokens and what fills them (`used_tokens_by_kind`: `system`, `user`, `assistant`, `tool`, `other`), available budget |

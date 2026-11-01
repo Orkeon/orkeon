@@ -169,7 +169,12 @@ tour en texte libre, de sorte qu'un script de démarrage puisse nommer le travai
 
 `AddOrkeonSessionTools()` les expose aux scripts sous forme de six outils — `session_store`,
 `session_snip`, `token_budget`, `memory_store`, `session_cost`, `session_stats` — catalogués
-avec les autres dans [l'inventaire des outils](../tools/inventory.md).
+avec les autres dans [l'inventaire des outils](../tools/inventory.md). `ISessionBufferService.Truncate`,
+derrière `session_snip` et l'opération `truncate` de `session_store`, compte des tours, pas des
+messages : un tour commence à un message `user` et possède les messages `tool`, `assistant` et `note`
+qui le suivent, de sorte qu'une coupe ne sépare jamais une requête de sa réponse ni une trace d'outil
+de la réponse qui l'a utilisée. Il répond un `SessionTruncation` (`RemovedCount`, `KeptFromIndex`,
+`KeptFromRole`), et un buffer qui contient moins de tours que demandé reste intact.
 
 ## Les outils dans les commandes (`tools.*` dans `.cmd.ts`)
 

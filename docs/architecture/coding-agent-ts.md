@@ -161,7 +161,12 @@ so a start-up script can name the open work. A failing script is logged and neve
 
 `AddOrkeonSessionTools()` exposes them to scripts as six tools — `session_store`,
 `session_snip`, `token_budget`, `memory_store`, `session_cost`, `session_stats` — catalogued
-with everything else in [the tool inventory](../tools/inventory.md).
+with everything else in [the tool inventory](../tools/inventory.md). `ISessionBufferService.Truncate`,
+behind `session_snip` and the `truncate` operation of `session_store`, counts turns, not messages: a
+turn starts at a `user` message and owns the `tool`, `assistant` and `note` messages that follow it,
+so a cut never separates a request from its answer or a tool trace from the answer that used it. It
+answers a `SessionTruncation` (`RemovedCount`, `KeptFromIndex`, `KeptFromRole`), and a buffer holding
+fewer turns than asked is left untouched.
 
 ## Tools in commands (`tools.*` in `.cmd.ts`)
 

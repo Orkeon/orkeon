@@ -37,7 +37,7 @@ public sealed class SessionStoreRequest
     [JsonPropertyName("title")]
     public string? Title { get; set; }
 
-    /// <summary>Number of recent messages to keep for truncate.</summary>
+    /// <summary>Number of recent turns to keep for truncate; a turn is a user request with the tool traces and the answer that follow it.</summary>
     [JsonPropertyName("retain_count")]
     public int RetainCount { get; set; } = 3;
 
@@ -136,7 +136,7 @@ public sealed class SessionStoreTool : ToolBase<SessionStoreRequest, SessionStor
             "append_note" => new SessionStoreResponse { Success = _buffer.AppendNote(request.Note ?? "") },
             "get_metadata" => new SessionStoreResponse { Success = true, Metadata = _buffer.GetMetadata() },
             "set_title" => new SessionStoreResponse { Success = _buffer.SetTitle(request.Title ?? "") },
-            "truncate" => new SessionStoreResponse { Success = true, RemovedCount = _buffer.Truncate(request.RetainCount) },
+            "truncate" => new SessionStoreResponse { Success = true, RemovedCount = _buffer.Truncate(request.RetainCount).RemovedCount },
             "reset" => new SessionStoreResponse { Success = true, RemovedCount = _buffer.Reset() },
             "get_state" => GetState(request),
             "set_state" => SetState(request),

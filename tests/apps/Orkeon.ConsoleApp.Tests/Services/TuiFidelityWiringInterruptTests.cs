@@ -119,7 +119,7 @@ public sealed class TuiFidelityWiringInterruptTests
         public void AppendMessage(SessionMessage message) { }
         public SessionMetadata GetMetadata() => new() { SessionId = "s" };
         public bool SetTitle(string title) => false;
-        public int Truncate(int retainCount) => 0;
+        public SessionTruncation Truncate(int retainTurns) => new() { RemovedCount = 0, KeptFromIndex = -1, KeptFromRole = null };
         public int Reset() => 0;
         public int EstimateTokenCount() => 0;
         public string? GetState(string key) => _state.GetValueOrDefault(key);

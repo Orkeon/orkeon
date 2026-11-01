@@ -277,3 +277,11 @@ Orkeon.Infrastructure.LLMs.Decision.Stages.DecisionVerifySteps.Final = 0 -> Orke
 Orkeon.Infrastructure.LLMs.Decision.Stages.VerifyDecisionStage.Steps.get -> Orkeon.Infrastructure.LLMs.Decision.Stages.DecisionVerifySteps
 const Orkeon.Infrastructure.LLMs.Decision.Stages.GuardDecisionStage.Instructions = "Does the text match the following description?" -> string!
 const Orkeon.Infrastructure.LLMs.Decision.Stages.VerifyDecisionStage.Instructions = "Does the response meet the following criterion?" -> string!
+*REMOVED*Orkeon.Infrastructure.Session.FileSessionBufferService.Truncate(int retainCount) -> int
+*REMOVED*Orkeon.Infrastructure.Session.InMemorySessionBufferService.Truncate(int retainCount) -> int
+Orkeon.Infrastructure.Session.FileSessionBufferService.Truncate(int retainTurns) -> Orkeon.Application.Interfaces.Ports.SessionTruncation!
+Orkeon.Infrastructure.Session.InMemorySessionBufferService.Truncate(int retainTurns) -> Orkeon.Application.Interfaces.Ports.SessionTruncation!
+Orkeon.Infrastructure.Tools.SessionSnipResponse.KeptFrom.get -> int
+Orkeon.Infrastructure.Tools.SessionSnipResponse.KeptFrom.set -> void
+Orkeon.Infrastructure.Tools.SessionSnipResponse.KeptFromRole.get -> string?
+Orkeon.Infrastructure.Tools.SessionSnipResponse.KeptFromRole.set -> void

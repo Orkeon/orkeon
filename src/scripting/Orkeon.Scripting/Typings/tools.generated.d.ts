@@ -1208,10 +1208,12 @@ declare global {
             readonly total_tokens: number;
         }>;
 
-        /** `session_snip` - Immediately truncate the conversation to a minimal window without analysis. */
+        /** `session_snip` - Immediately truncate the conversation to the head message plus the last retain_count turns, without analysis; a turn is a user request with the tool traces and the answer that follow it, so the cut never splits one. */
         sessionSnip(input?: {
             retain_count?: number;
         }, ctx?: ExecutionContext): Promise<{
+            readonly kept_from: number;
+            readonly kept_from_role?: string;
             readonly removed_count: number;
             readonly retained_count: number;
         }>;

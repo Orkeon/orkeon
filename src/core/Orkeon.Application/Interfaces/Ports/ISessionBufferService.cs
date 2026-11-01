@@ -30,8 +30,15 @@ public interface ISessionBufferService
     /// <summary>Sets the session title; returns whether it was applied.</summary>
     bool SetTitle(string title);
 
-    /// <summary>Keeps the head message plus the last <paramref name="retainCount"/> messages; returns the number removed.</summary>
-    int Truncate(int retainCount);
+    /// <summary>
+    /// Keeps the head message plus the last <paramref name="retainTurns"/> turns. A turn starts at a
+    /// <c>user</c> message and owns every message that follows it (tool traces, the answer, notes)
+    /// until the next <c>user</c> message, so a cut never falls between a request and its answer.
+    /// The head (index 0) is kept on its own when it is not already inside the kept tail. A buffer
+    /// holding fewer turns than asked, or no <c>user</c> message at all, is left untouched; a negative
+    /// <paramref name="retainTurns"/> counts as 0 (the head alone is kept).
+    /// </summary>
+    SessionTruncation Truncate(int retainTurns);
 
     /// <summary>Clears the buffer; returns the number removed.</summary>
     int Reset();
@@ -58,10 +65,26 @@ public interface ISessionBufferService
     void SetStates(IReadOnlyDictionary<string, string?> values);
 }
 
+/// <summary>The outcome of <see cref="ISessionBufferService.Truncate"/>.</summary>
+public sealed record SessionTruncation
+{
+    /// <summary>Messages removed; 0 when the buffer was left untouched.</summary>
+    public required int RemovedCount { get; init; }
+
+    /// <summary>
+    /// Index, in the buffer as it was before the cut, of the first message of the kept tail;
+    /// -1 when nothing was removed or when the head alone was kept.
+    /// </summary>
+    public required int KeptFromIndex { get; init; }
+
+    /// <summary>Role of the message at <see cref="KeptFromIndex"/>; null when <see cref="KeptFromIndex"/> is -1.</summary>
+    public required string? KeptFromRole { get; init; }
+}
+
 /// <summary>A single conversation message in the session buffer.</summary>
 public sealed record SessionMessage
 {
-    /// <summary>Role of the speaker: <c>user</c> / <c>assistant</c> / <c>system</c> / <c>note</c>.</summary>
+    /// <summary>Role of the speaker: <c>user</c> / <c>assistant</c> / <c>system</c> / <c>note</c> / <c>tool</c>.</summary>
     public required string Role { get; init; }
 
     /// <summary>Message text.</summary>
