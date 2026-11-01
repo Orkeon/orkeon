@@ -10,11 +10,15 @@ namespace Orkeon.Infrastructure.Serialization.Converters;
 /// a string whose content is a JSON-encoded array (<c>"[\"Calls\"]"</c> — a quirk
 /// observed with MiniMax-M2 via the Anthropic-compatible tool-use endpoint),
 /// and null/undefined coerced to <see cref="ImmutableArray{TEnum}.Empty"/>.
-/// Enum parsing is case-insensitive. Writes as a JSON array of camelCase strings.
+/// Enum parsing is case-insensitive. Writes as a JSON array of camelCase strings; the elements of a
+/// <see cref="FlagsAttribute"/> enum take the form of <see cref="FlagsEnumNames{TEnum}"/> (<c>project_depends</c>),
+/// the form a scalar of that enum takes.
 /// </summary>
 public sealed class ImmutableArrayEnumTolerantConverter<TEnum> : JsonConverter<ImmutableArray<TEnum>>
     where TEnum : struct, Enum
 {
+    private static readonly bool IsFlags = typeof(TEnum).IsDefined(typeof(FlagsAttribute), inherit: false);
+
     /// <inheritdoc />
     public override ImmutableArray<TEnum> Read(
         ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
@@ -91,6 +95,8 @@ public sealed class ImmutableArrayEnumTolerantConverter<TEnum> : JsonConverter<I
 
     private static TEnum ParseEnumName(string raw)
     {
+        if (IsFlags)
+            return FlagsEnumNames<TEnum>.TryParse(raw, out var flags) ? flags : throw FlagsEnumNames<TEnum>.InvalidValue(raw);
         if (Enum.TryParse<TEnum>(raw, ignoreCase: true, out var parsed))
             return parsed;
         throw new JsonException($"'{raw}' is not a valid {typeof(TEnum).Name} value.");
@@ -98,7 +104,9 @@ public sealed class ImmutableArrayEnumTolerantConverter<TEnum> : JsonConverter<I
 
     private static TEnum ParseEnumNumber(long value)
     {
-        if (Enum.IsDefined(typeof(TEnum), (int)value))
+        if (IsFlags && FlagsEnumNames<TEnum>.TryFromNumber(value, out var flags))
+            return flags;
+        if (!IsFlags && Enum.IsDefined(typeof(TEnum), (int)value))
             return (TEnum)Enum.ToObject(typeof(TEnum), value);
         throw new JsonException($"Numeric value '{value}' is not a valid {typeof(TEnum).Name} member.");
     }
@@ -110,6 +118,11 @@ public sealed class ImmutableArrayEnumTolerantConverter<TEnum> : JsonConverter<I
         writer.WriteStartArray();
         foreach (var item in value)
         {
+            if (IsFlags)
+            {
+                writer.WriteStringValue(FlagsEnumNames<TEnum>.Format(item));
+                continue;
+            }
             var name = Enum.GetName<TEnum>(item) ?? item.ToString();
             writer.WriteStringValue(JsonNamingPolicy.CamelCase.ConvertName(name));
         }
@@ -122,15 +135,13 @@ public sealed class ImmutableArrayEnumTolerantConverter<TEnum> : JsonConverter<I
         {
             var raw = reader.GetString()
                 ?? throw new JsonException($"Null string while parsing {typeof(TEnum).Name} element.");
-            if (Enum.TryParse<TEnum>(raw, ignoreCase: true, out var parsed))
-                return parsed;
-            throw new JsonException($"'{raw}' is not a valid {typeof(TEnum).Name} value.");
+            return ParseEnumName(raw);
         }
 
         if (reader.TokenType == JsonTokenType.Number)
         {
-            if (reader.TryGetInt64(out var n) && Enum.IsDefined(typeof(TEnum), (int)n))
-                return (TEnum)Enum.ToObject(typeof(TEnum), n);
+            if (reader.TryGetInt64(out var n))
+                return ParseEnumNumber(n);
             throw new JsonException($"Numeric value is not a valid {typeof(TEnum).Name} member.");
         }
 

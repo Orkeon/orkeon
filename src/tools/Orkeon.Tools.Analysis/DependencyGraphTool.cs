@@ -124,12 +124,11 @@ public sealed class DependencyGraphTool : ToolBase<DependencyGraphRequest, Depen
             .ToList();
 
         var truncated = cycles.Count > kept.Count || kept.Exists(members => members.Length > memberCap);
-        var kindNames = kindMask.ToString();
         var bounded = kept.Select(members => new GraphCycle
         {
             Fqns = [.. members.Take(memberCap)],
             MemberCount = members.Length,
-            EdgeKind = kindNames,
+            EdgeKind = kindMask,
         }).ToImmutableArray();
         return (bounded, truncated);
     }

@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — a `[Flags]` enum of a tool request or response is written and read by name (#274) **[breaking]**
+
+- `edges[].kind` of `dependency_graph` and `sub_graph` was a number (`1`, `3`) while the typings say `string`: a script comparing it to a name never matched. Every scalar `[Flags]` enum now goes over the wire as its snake_case member names, joined by `, ` for a combination (`imports`, `project_depends`, `imports, calls`); for `EdgeKind` these are the names `edge_kinds` takes. A value that is itself a named member keeps that name (`ExpandModes.All` is `all`).
+- Reading is tolerant: case, `_`, `-` and spaces inside a name are ignored, a combination is separated by `,` or `|` or given as an array, and a number whose bits all belong to members is still accepted. `symbol_detail` now takes `expand: "members"` or `"callers, callees"`, which failed with a `JsonException`; an unknown name lists the valid ones.
+- An `ImmutableArray<EdgeKind>` writes the same names (`project_depends`, was `projectDepends`).
+- `GraphCycle.EdgeKind` (`cycles[].edge_kind`) is an `EdgeKind` again, not a `string`; on the wire `imports, calls` (was `Imports, Calls`). Persisted RaggableTree graphs are untouched: `RaggableTreeSerializer` keeps its own options.
+
 ### Added — `dependency_graph` names the members of each cycle (#272)
 
 - The response carries `cycles`: each strongly connected component of the scope as `{ fqns, member_count, edge_kind }`, the largest first, members as sorted FQNs. Until now only `metrics.cycle_count` reached the caller, which could not say where the cycles were.
