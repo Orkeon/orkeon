@@ -255,6 +255,7 @@ public static class ToolCatalog
             new("codebase_search"),
             new("dependency_graph"),
             new("sub_graph"),
+            new("edge_list"),
             new("flow_trace"),
             new("impact_analysis"),
             new("complexity_report"),

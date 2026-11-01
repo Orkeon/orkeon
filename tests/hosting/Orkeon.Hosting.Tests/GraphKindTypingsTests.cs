@@ -55,6 +55,29 @@ public sealed class GraphKindTypingsTests
         }
     }
 
+    [Trait("BR", "#280")]
+    [Fact]
+    public async Task ShouldListEveryEdgeKindName_WhenEdgeListAndFlowTraceTypingsGenerated()
+    {
+        var path = Path.Combine(RepositoryRoot(), "src", "scripting", "Orkeon.Scripting", "Typings", "tools.generated.d.ts");
+        var text = (await File.ReadAllTextAsync(path, TestContext.Current.CancellationToken)).ReplaceLineEndings("\n");
+
+        foreach (var (tool, required) in new[] { ("edge_list", true), ("flow_trace", false) })
+        {
+            var start = text.IndexOf($"/** `{tool}`", StringComparison.Ordinal);
+            Assert.True(start >= 0, $"{tool} is missing from the typings");
+            var block = text[start..text.IndexOf("}>;", start, StringComparison.Ordinal)];
+
+            Assert.True(
+                Regex.IsMatch(block, required ? @"(?<!\w)edge_kinds:" : @"(?<!\w)edge_kinds\?:"),
+                $"{tool} typings do not declare edge_kinds as expected.");
+            foreach (var name in EdgeNames)
+                Assert.True(
+                    Regex.IsMatch(block, $@"(?<!\w){Regex.Escape(name)}(?!\w)"),
+                    $"{tool} typings do not mention the kind name '{name}'.");
+        }
+    }
+
     private static string RepositoryRoot([CallerFilePath] string thisFile = "") =>
         Path.GetFullPath(Path.Combine(Path.GetDirectoryName(thisFile)!, "..", "..", ".."));
 }

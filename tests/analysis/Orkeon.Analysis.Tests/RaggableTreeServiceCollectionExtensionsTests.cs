@@ -322,7 +322,7 @@ public class RaggableTreeServiceCollectionExtensionsTests
     [Trait("BR", "RT-35")]
     [Trait("BR", "RT-32")]
     [Trait("BR", "RT-42")]
-    public void AddRaggableTreeTools_registers_all_twenty_eight_tools()
+    public void AddRaggableTreeTools_registers_all_twenty_nine_tools()
     {
         var services = new ServiceCollection();
         services.AddSingleton<IFileSystemService>(new FakeFileSystemService());
@@ -332,11 +332,12 @@ public class RaggableTreeServiceCollectionExtensionsTests
         using var provider = services.BuildServiceProvider();
         var tools = provider.GetServices<IBaseTool>().ToList();
 
-        Assert.Equal(28, tools.Count);
+        Assert.Equal(29, tools.Count);
         Assert.Contains(tools, t => t is CodebaseMapTool);
         Assert.Contains(tools, t => t is CodebaseSearchTool);
         Assert.Contains(tools, t => t is ComplexityReportTool);
         Assert.Contains(tools, t => t is DependencyGraphTool);
+        Assert.Contains(tools, t => t is EdgeListTool);
         Assert.Contains(tools, t => t is FlowTraceTool);
         Assert.Contains(tools, t => t is ImpactAnalysisTool);
         Assert.Contains(tools, t => t is PackageSummaryTool);

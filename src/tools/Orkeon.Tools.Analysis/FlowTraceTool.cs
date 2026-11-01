@@ -1,5 +1,6 @@
 using System.Collections.Immutable;
 using Microsoft.Extensions.Logging;
+using Orkeon.Analysis.Abstractions;
 using Orkeon.Analysis.Abstractions.DTOs.Queries;
 using Orkeon.Analysis.Abstractions.DTOs.Responses;
 using Orkeon.Analysis.Abstractions.DTOs.Tools;
@@ -40,6 +41,9 @@ public sealed class FlowTraceTool : ToolBase<FlowTraceRequest, FlowTraceResponse
             // Lazy freshness (PLAN B3): trace edges of the CURRENT code, not the indexed past.
             if (_freshness is not null)
                 await _freshness.EnsureFreshAsync(cancellationToken).ConfigureAwait(false);
+            // The same names as dependency_graph and sub_graph: inherits follows extends and implements.
+            var parsed = GraphKindNames.ParseEdgeKinds(request.EdgeKinds);
+            ImmutableArray<EdgeKind> edgeKinds = parsed.IsDefaultOrEmpty ? [EdgeKind.Calls] : parsed;
             if (string.IsNullOrEmpty(request.From)) return new FlowTraceResponse { Paths = [] };
 
             if (!request.IncludeAllPaths && !string.IsNullOrEmpty(request.To))
@@ -49,7 +53,7 @@ public sealed class FlowTraceTool : ToolBase<FlowTraceRequest, FlowTraceResponse
                     {
                         From = request.From,
                         To = request.To,
-                        EdgeKinds = request.EdgeKinds,
+                        EdgeKinds = edgeKinds,
                         Direction = request.Direction,
                     },
                     cancellationToken).ConfigureAwait(false);
@@ -62,7 +66,7 @@ public sealed class FlowTraceTool : ToolBase<FlowTraceRequest, FlowTraceResponse
                 {
                     From = request.From,
                     To = request.To,
-                    EdgeKinds = request.EdgeKinds,
+                    EdgeKinds = edgeKinds,
                     Direction = request.Direction,
                     MaxDepth = request.MaxDepth,
                     MaxPaths = request.MaxPaths,

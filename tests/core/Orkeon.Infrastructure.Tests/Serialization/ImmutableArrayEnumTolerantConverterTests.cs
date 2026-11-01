@@ -121,6 +121,21 @@ public class ImmutableArrayEnumTolerantConverterTests
 
         Assert.NotNull(request);
         Assert.Equal("pkg::Module::fn", request!.From);
-        Assert.Equal(new[] { EdgeKind.Calls, EdgeKind.Imports }, request.EdgeKinds);
+        // edge_kinds is a list of names since #280, parsed by GraphKindNames as dependency_graph and sub_graph do.
+        Assert.Equal(["Calls", "Imports"], request.EdgeKinds.AsEnumerable());
+        Assert.Equal(new[] { EdgeKind.Calls, EdgeKind.Imports }, GraphKindNames.ParseEdgeKinds(request.EdgeKinds));
+    }
+
+    [Fact]
+    public void ShouldReadInheritsAlias_WhenFlowTraceRequestNamesIt()
+    {
+        const string payload = """
+        { "from": "pkg::Module::Type", "edge_kinds": "inherits" }
+        """;
+
+        var request = JsonSerializer.Deserialize<FlowTraceRequest>(payload, Options);
+
+        Assert.NotNull(request);
+        Assert.Equal(new[] { EdgeKind.Extends | EdgeKind.Implements }, GraphKindNames.ParseEdgeKinds(request!.EdgeKinds));
     }
 }

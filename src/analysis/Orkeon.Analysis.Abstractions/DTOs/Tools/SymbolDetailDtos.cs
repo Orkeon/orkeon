@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using System.Text.Json.Serialization;
 using Orkeon.Analysis.Abstractions.Models;
 
 namespace Orkeon.Analysis.Abstractions.DTOs.Tools;
@@ -24,8 +25,19 @@ public sealed record SymbolDetailResponse
     public string? SummaryShort { get; init; }
     public BodyMetrics? Body { get; init; }
     public ImmutableArray<CompactNode> Members { get; init; } = [];
+    /// <summary>Under <c>expand: inheritance</c>, the FQNs this symbol extends.</summary>
     public ImmutableArray<string> Extends { get; init; } = [];
+
+    /// <summary>Under <c>expand: inheritance</c>, the FQNs this symbol implements.</summary>
     public ImmutableArray<string> Implements { get; init; } = [];
+
+    /// <summary>Under <c>expand: inheritance</c>, the FQNs of the symbols that extend this one.</summary>
+    [JsonPropertyName("derived_by")]
+    public ImmutableArray<string> DerivedBy { get; init; } = [];
+
+    /// <summary>Under <c>expand: inheritance</c>, the FQNs of the symbols that implement this one.</summary>
+    [JsonPropertyName("implemented_by")]
+    public ImmutableArray<string> ImplementedBy { get; init; } = [];
     public ImmutableArray<CompactNode> TopCallers { get; init; } = [];
     public ImmutableArray<CompactNode> TopCallees { get; init; } = [];
     public ImmutableArray<StatementNode> Statements { get; init; } = [];

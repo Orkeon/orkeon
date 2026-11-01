@@ -83,4 +83,36 @@ public class FlowTraceToolTests
         Assert.Equal(3, path.Fqns.Length);
         Assert.Equal(c.Id, path.Fqns[^1]);
     }
+
+    [Trait("BR", "#280")]
+    [Fact]
+    public async Task ShouldFollowExtendsAndImplements_WhenEdgeKindsNamesInherits()
+    {
+        var leaf = TestGraph.Symbol("/src::Leaf", "/src/a.ts", kind: UniversalNodeKind.Class);
+        var middle = TestGraph.Symbol("/src::Middle", "/src/a.ts", kind: UniversalNodeKind.Class);
+        var root = TestGraph.Symbol("/src::IRoot", "/src/a.ts", kind: UniversalNodeKind.Interface);
+        var store = TestGraph.Store(
+            [leaf, middle, root],
+            [TestGraph.Edge(leaf, middle, EdgeKind.Extends), TestGraph.Edge(middle, root, EdgeKind.Implements)]);
+        using var tool = new FlowTraceTool(store);
+
+        var resp = await tool.ExecuteTypedForTest(
+            new FlowTraceRequest { From = "/src::Leaf", To = "/src::IRoot", EdgeKinds = TestGraph.Arr("inherits") },
+            CancellationToken.None);
+
+        var path = Assert.Single(resp.Paths);
+        Assert.Equal([leaf.Id, middle.Id, root.Id], path.Fqns);
+    }
+
+    [Fact]
+    public async Task ShouldRefuseUnknownEdgeKindByName_WhenTracing()
+    {
+        using var tool = new FlowTraceTool(TestGraph.Store([], []));
+
+        var ex = await Assert.ThrowsAnyAsync<ArgumentException>(() => tool.ExecuteTypedForTest(
+            new FlowTraceRequest { From = "/src::a", EdgeKinds = TestGraph.Arr("nonsense") },
+            CancellationToken.None));
+
+        Assert.Contains("nonsense", ex.Message, StringComparison.Ordinal);
+    }
 }

@@ -114,7 +114,7 @@ public sealed partial class DependencyGraphBuilder
         EdgeSet edges,
         List<UnresolvedRef> unresolvedCalls,
         ImportScope scope,
-        Dictionary<string, List<RaggableNode>> byShortName,
+        ShortNameIndex byShortName,
         QueryCache queries,
         string filePath,
         RaggableNode moduleNode,
@@ -123,8 +123,10 @@ public sealed partial class DependencyGraphBuilder
         using var parsed = _pool.Parse(ctx.Source, ctx.Adapter.LanguageName);
         var language = parsed.Tree.Language;
 
+        var importsStart = edges.Edges.Count;
         CollectImports(edges, scope, filePath, moduleNode, ctx, parsed.Root, queries.Get(language, ctx.Adapter.LanguageName, ctx.Adapter.ImportQuery));
-        CollectInheritance(edges, byShortName, ctx, parsed.Root, queries.Get(language, ctx.Adapter.LanguageName, ctx.Adapter.InheritanceQuery));
+        var importedFiles = ImportedFiles(edges.Edges, importsStart, moduleNode, scope.Index);
+        CollectInheritance(edges, byShortName, importedFiles, ctx, parsed.Root, queries.Get(language, ctx.Adapter.LanguageName, ctx.Adapter.InheritanceQuery));
         CollectCalls(unresolvedCalls, ctx, moduleNode, parsed.Root, queries.Get(language, ctx.Adapter.LanguageName, ctx.Adapter.CallQuery));
     }
 
@@ -184,9 +186,29 @@ public sealed partial class DependencyGraphBuilder
         return ResolveInIndex(resolved, index);
     }
 
+    /// <summary>
+    /// The files the module's import edges reach: the edges <see cref="CollectImports"/> just added, from
+    /// <paramref name="start"/> on (a relative import, a Go or Rust module, a C# <c>using</c> of a namespace
+    /// reaches the files declaring the types the file names).
+    /// </summary>
+    private static HashSet<string> ImportedFiles(
+        List<RaggableEdge> edges, int start, RaggableNode moduleNode, Dictionary<string, RaggableNode> index)
+    {
+        var files = new HashSet<string>(StringComparer.Ordinal);
+        for (var i = start; i < edges.Count; i++)
+        {
+            var edge = edges[i];
+            if (edge.Kind != EdgeKind.Imports || edge.FromId != moduleNode.Id) continue;
+            if (index.TryGetValue(edge.ToId, out var target) && !string.IsNullOrEmpty(target.VirtualFilePath))
+                files.Add(target.VirtualFilePath);
+        }
+        return files;
+    }
+
     private static void CollectInheritance(
         EdgeSet edges,
-        Dictionary<string, List<RaggableNode>> byShortName,
+        ShortNameIndex byShortName,
+        HashSet<string> importedFiles,
         FileContext ctx,
         TsNode root,
         TsQuery? query)
@@ -200,10 +222,11 @@ public sealed partial class DependencyGraphBuilder
                 if (ownerSymbol is null) continue;
                 foreach (var name in ExtractTypeNames(clause))
                 {
-                    var target = ResolveByShortName(name, byShortName, ownerSymbol.VirtualFilePath);
+                    var target = ResolveByShortName(name, byShortName, ownerSymbol, importedFiles);
                     if (target is null) continue;
                     if (ownerSymbol.Id == target.Id) continue;
-                    edges.TryAdd($"{ownerSymbol.Id}→{target.Id}:{kind}", ownerSymbol.Id, target.Id, kind);
+                    var edgeKind = InheritanceKind(kind, ownerSymbol, target);
+                    edges.TryAdd($"{ownerSymbol.Id}→{target.Id}:{edgeKind}", ownerSymbol.Id, target.Id, edgeKind);
                 }
             }
         }
@@ -328,32 +351,147 @@ public sealed partial class DependencyGraphBuilder
         return index;
     }
 
-    private static Dictionary<string, List<RaggableNode>> BuildShortNameIndex(
+    private static ShortNameIndex BuildShortNameIndex(
         Dictionary<string, RaggableNode> index)
     {
-        var map = new Dictionary<string, List<RaggableNode>>(StringComparer.Ordinal);
+        var result = new ShortNameIndex();
         // A node sits in the index under its FQN and its id: keep its first occurrence.
         var seen = new HashSet<RaggableNode>(ReferenceEqualityComparer.Instance);
         foreach (var node in index.Values)
         {
             if (node.Level != NodeLevel.L3_Symbol || !seen.Add(node)) continue;
-            if (!map.TryGetValue(node.Name, out var bucket))
+            Add(result.ByName, node.Name, node);
+            if (node.EffectiveKind == UniversalNodeKind.Namespace) Add(result.NamespacesByFile, node.VirtualFilePath, node);
+        }
+        return result;
+
+        static void Add(Dictionary<string, List<RaggableNode>> map, string key, RaggableNode node)
+        {
+            if (!map.TryGetValue(key, out var bucket))
             {
                 bucket = [];
-                map[node.Name] = bucket;
+                map[key] = bucket;
             }
             bucket.Add(node);
         }
-        return map;
     }
 
+    /// <summary>The L3 symbols by short name, and the namespace declarations of each file.</summary>
+    private sealed class ShortNameIndex
+    {
+        public Dictionary<string, List<RaggableNode>> ByName { get; } = new(StringComparer.Ordinal);
+        public Dictionary<string, List<RaggableNode>> NamespacesByFile { get; } = new(StringComparer.Ordinal);
+    }
+
+    /// <summary>
+    /// The kind of an inheritance edge. A grammar that lists every base in one clause (C#'s <c>base_list</c>)
+    /// captures it as <c>extends</c>: a class, struct or record naming an interface implements it, as Java's
+    /// <c>implements</c> and TypeScript's <c>implements</c> say; an interface naming an interface extends it, as
+    /// both languages say too.
+    /// </summary>
+    internal static EdgeKind InheritanceKind(EdgeKind captured, RaggableNode owner, RaggableNode target)
+        => captured == EdgeKind.Extends
+            && target.EffectiveKind == UniversalNodeKind.Interface
+            && owner.EffectiveKind != UniversalNodeKind.Interface
+                ? EdgeKind.Implements
+                : captured;
+
+    /// <summary>
+    /// The type a short name in an inheritance clause of <paramref name="owner"/> denotes, or null when it cannot
+    /// be told. In order: a candidate of the owner's file; the one declared in the closest named scope enclosing
+    /// the owner (its namespace, or a namespace or type containing it), a candidate with no named scope never
+    /// enclosing anything; the one a file the owner's file imports declares (a relative import, a C#
+    /// <c>using</c> of its namespace); the only type declaring the name. Otherwise no edge, which beats an edge to
+    /// the wrong type. Declarations of one C# namespace (a partial type) are one type, the first by FQN; in a
+    /// module language (TypeScript, Python, Go...) two files declaring the name declare two types.
+    /// </summary>
     private static RaggableNode? ResolveByShortName(
         string name,
-        Dictionary<string, List<RaggableNode>> index,
-        string currentVirtualFilePath)
+        ShortNameIndex index,
+        RaggableNode owner,
+        HashSet<string> importedFiles)
     {
-        if (!index.TryGetValue(name, out var candidates) || candidates.Count == 0) return null;
-        return candidates.FirstOrDefault(c => c.VirtualFilePath == currentVirtualFilePath) ?? candidates[0];
+        if (!index.ByName.TryGetValue(name, out var candidates) || candidates.Count == 0) return null;
+        if (candidates.Count == 1) return candidates[0];
+
+        var sameLanguage = candidates.Where(c => string.Equals(c.Language, owner.Language, StringComparison.OrdinalIgnoreCase)).ToList();
+        var pool = (sameLanguage.Count > 0 ? sameLanguage : candidates)
+            .OrderBy(c => c.Fqn, StringComparer.Ordinal)
+            .ThenBy(c => c.Id, StringComparer.Ordinal)
+            .ToList();
+
+        var sameFile = pool.Find(c => c.VirtualFilePath == owner.VirtualFilePath);
+        if (sameFile is not null) return sameFile;
+
+        var ownerScope = ScopeOf(owner, index, includeSelf: true);
+        var scoped = pool.Select(c => (Node: c, Scope: ScopeOf(c, index, includeSelf: false))).ToList();
+        var enclosing = scoped
+            .Where(c => c.Scope.Length > 0 && IsPrefix(c.Scope, ownerScope))
+            .OrderByDescending(c => c.Scope.Length)
+            .FirstOrDefault();
+        if (enclosing.Node is not null) return enclosing.Node;
+
+        var imported = scoped.Where(c => importedFiles.Contains(c.Node.VirtualFilePath)).ToList();
+        if (imported.Count > 0) return OnlyType(imported);
+
+        return OnlyType(scoped);
+    }
+
+    /// <summary>The first candidate when they all declare one type, else null.</summary>
+    private static RaggableNode? OnlyType(List<(RaggableNode Node, string[] Scope)> candidates)
+    {
+        var types = candidates.Select(c => TypeKey(c.Node, c.Scope)).Distinct(StringComparer.Ordinal).Count();
+        return types == 1 ? candidates[0].Node : null;
+    }
+
+    // C# declarations of one namespace are one type (a partial type, even across files); in a module language a
+    // type belongs to its file.
+    private static string TypeKey(RaggableNode node, string[] scope)
+        => string.Equals(node.Language, "csharp", StringComparison.OrdinalIgnoreCase)
+            ? string.Join('.', scope)
+            : node.VirtualFilePath + "::" + string.Join('.', scope);
+
+    /// <summary>
+    /// The names of the scopes declaring <paramref name="node"/> (namespaces, enclosing types), outermost first:
+    /// its FQN past the file path, split at <c>::</c> and <c>.</c>, without its own name unless asked. A namespace
+    /// declared for the whole file (C#'s <c>namespace X;</c>) encloses no node, so it comes first when it precedes
+    /// the node.
+    /// </summary>
+    private static string[] ScopeOf(RaggableNode node, ShortNameIndex index, bool includeSelf)
+    {
+        var fqn = node.Fqn;
+        var filePrefix = node.VirtualFilePath + "::";
+        if (!string.IsNullOrEmpty(node.VirtualFilePath) && fqn.StartsWith(filePrefix, StringComparison.Ordinal))
+            fqn = fqn[filePrefix.Length..];
+        var parts = fqn.Split(Separators, StringSplitOptions.RemoveEmptyEntries);
+        if (!includeSelf && parts.Length > 0) parts = parts[..^1];
+
+        if (node.EffectiveKind == UniversalNodeKind.Namespace
+            || !index.NamespacesByFile.TryGetValue(node.VirtualFilePath, out var namespaces))
+        {
+            return parts;
+        }
+
+        var fileScoped = namespaces
+            // A block namespace holds its members (and sits in their FQN already); a file-wide one has no block.
+            .Where(n => n.ChildrenIds.Count == 0 && !n.SourceSnippet.Contains('{', StringComparison.Ordinal) && n.Range.EndByte <= node.Range.StartByte)
+            .OrderByDescending(n => n.Range.StartByte)
+            .FirstOrDefault();
+        return fileScoped is null
+            ? parts
+            : [.. fileScoped.Name.Split(Separators, StringSplitOptions.RemoveEmptyEntries), .. parts];
+    }
+
+    private static readonly string[] Separators = ["::", "."];
+
+    private static bool IsPrefix(string[] prefix, string[] of)
+    {
+        if (prefix.Length > of.Length) return false;
+        for (var i = 0; i < prefix.Length; i++)
+        {
+            if (!string.Equals(prefix[i], of[i], StringComparison.Ordinal)) return false;
+        }
+        return true;
     }
 
     private static RaggableNode? FindEnclosingSymbol(TsNode target, IReadOnlyList<RaggableNode> nodes)

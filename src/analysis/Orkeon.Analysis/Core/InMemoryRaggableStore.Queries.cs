@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using Orkeon.Analysis.Abstractions;
 using Orkeon.Analysis.Abstractions.DTOs.Queries;
 using Orkeon.Analysis.Abstractions.DTOs.Responses;
@@ -158,6 +159,79 @@ public sealed partial class InMemoryRaggableStore
             }
             return edges;
         }));
+    }
+
+    public Task<EdgeListPage> ListEdgesAsync(EdgeListQuery query, CancellationToken ct)
+    {
+        ArgumentNullException.ThrowIfNull(query);
+        return Task.FromResult(ReadLocked(() => ListEdgesLocked(query, ct)));
+    }
+
+    private EdgeListPage ListEdgesLocked(EdgeListQuery query, CancellationToken ct)
+    {
+        var take = Math.Clamp(query.Take, 1, MaxNodes);
+        var root = string.IsNullOrEmpty(query.RootFqn) ? null : query.RootFqn;
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+        var matching = new List<ListedEdge>();
+        foreach (var bucket in _edgesBySource.Values)
+        {
+            ct.ThrowIfCancellationRequested();
+            foreach (var edge in bucket)
+            {
+                if (query.Kinds != EdgeKind.None && (query.Kinds & edge.Kind) == EdgeKind.None) continue;
+                if (!seen.Add(edge.Id)) continue;
+                var listed = new ListedEdge
+                {
+                    Id = edge.Id,
+                    FromId = edge.FromId,
+                    FromFqn = FqnOrId(edge.FromId),
+                    ToId = edge.ToId,
+                    ToFqn = FqnOrId(edge.ToId),
+                    Kind = edge.Kind,
+                };
+                if (root is not null
+                    && !listed.FromFqn.StartsWith(root, StringComparison.Ordinal)
+                    && !listed.ToFqn.StartsWith(root, StringComparison.Ordinal)) continue;
+                matching.Add(listed);
+            }
+        }
+
+        matching.Sort((x, y) => CompareEdgeKeys(x.Key, y.Key));
+        var start = 0;
+        if (query.After is { } after)
+        {
+            // The first edge strictly after the key: an edge removed since the previous page moves nothing.
+            var low = 0;
+            var high = matching.Count;
+            while (low < high)
+            {
+                var mid = (low + high) / 2;
+                if (CompareEdgeKeys(matching[mid].Key, after) <= 0) low = mid + 1;
+                else high = mid;
+            }
+            start = low;
+        }
+
+        var page = matching.Skip(start).Take(take).ToImmutableArray();
+        return new EdgeListPage
+        {
+            Edges = page,
+            Total = matching.Count,
+            HasMore = start + page.Length < matching.Count,
+        };
+    }
+
+    private string FqnOrId(string id)
+        => Resolve(id) is { Fqn.Length: > 0 } node ? node.Fqn : id;
+
+    private static int CompareEdgeKeys(EdgeListKey x, EdgeListKey y)
+    {
+        var c = string.CompareOrdinal(x.FromFqn, y.FromFqn);
+        if (c != 0) return c;
+        c = string.CompareOrdinal(x.ToFqn, y.ToFqn);
+        if (c != 0) return c;
+        c = ((int)x.Kind).CompareTo((int)y.Kind);
+        return c != 0 ? c : string.CompareOrdinal(x.EdgeId, y.EdgeId);
     }
 
     public Task<SubGraph> ExpandAsync(ExpandQuery query, CancellationToken ct)

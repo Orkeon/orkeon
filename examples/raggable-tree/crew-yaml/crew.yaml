@@ -48,6 +48,7 @@ agents:
       - flow_trace
       - impact_analysis
       - sub_graph
+      - edge_list
       - statement_query
 
 tasks:

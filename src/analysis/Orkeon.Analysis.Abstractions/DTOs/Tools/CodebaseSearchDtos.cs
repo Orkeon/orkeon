@@ -26,6 +26,11 @@ public sealed record CodebaseSearchResponse
 {
     public required ImmutableArray<SearchHit> Hits { get; init; }
     public int TotalCandidates { get; init; }
+
+    /// <summary>
+    /// True when <c>top_k</c> hits were returned (more may exist), or when a <c>filter_*</c> or <c>levels</c>
+    /// prefilter matched more nodes than it keeps, so the search did not see every node of those kinds.
+    /// </summary>
     public bool Truncated { get; init; }
 
     /// <summary>

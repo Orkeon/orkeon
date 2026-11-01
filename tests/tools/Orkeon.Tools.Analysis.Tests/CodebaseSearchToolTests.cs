@@ -165,4 +165,24 @@ public class CodebaseSearchToolTests
         }
         finally { Directory.Delete(dir, recursive: true); }
     }
+
+    [Trait("BR", "#280")]
+    [Fact]
+    public async Task ShouldSayTruncated_WhenTheKindPrefilterMatchesMoreNodesThanItKeeps()
+    {
+        var classes = Enumerable.Range(0, InMemoryRaggableStore.MaxNodes + 1)
+            .Select(i => TestGraph.Symbol($"/src/c{i:D4}.ts::Widget{i:D4}", $"/src/c{i:D4}.ts", kind: UniversalNodeKind.Class))
+            .ToList();
+        using var tool = new CodebaseSearchTool(TestGraph.Store(classes, []));
+
+        var capped = await tool.ExecuteTypedForTest(
+            new CodebaseSearchRequest { Query = "nothing matches this", TopK = 5, FilterKinds = [UniversalNodeKind.Class] },
+            CancellationToken.None);
+        var underCap = await tool.ExecuteTypedForTest(
+            new CodebaseSearchRequest { Query = "nothing matches this", TopK = 5, FilterKinds = [UniversalNodeKind.Interface] },
+            CancellationToken.None);
+
+        Assert.True(capped.Truncated);
+        Assert.False(underCap.Truncated);
+    }
 }

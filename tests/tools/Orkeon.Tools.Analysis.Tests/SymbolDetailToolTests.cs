@@ -122,4 +122,54 @@ public class SymbolDetailToolTests
         Assert.Null(resp.Signature);
         Assert.Null(resp.DocComment);
     }
+
+    [Trait("BR", "#280")]
+    [Fact]
+    public async Task ShouldListBothDirectionsAsFqns_WhenInheritanceIsExpanded()
+    {
+        var shape = TestGraph.Symbol("/src/s.ts::IShape", "/src/s.ts", kind: UniversalNodeKind.Interface);
+        var baseClass = TestGraph.Symbol("/src/s.ts::ShapeBase", "/src/s.ts", kind: UniversalNodeKind.Class);
+        var circle = TestGraph.Symbol("/src/c.ts::Circle", "/src/c.ts", kind: UniversalNodeKind.Class);
+        var square = TestGraph.Symbol("/src/q.ts::Square", "/src/q.ts", kind: UniversalNodeKind.Class);
+        var store = TestGraph.Store(
+            [shape, baseClass, circle, square],
+            [
+                TestGraph.Edge(baseClass, shape, EdgeKind.Implements),
+                TestGraph.Edge(circle, baseClass, EdgeKind.Extends),
+                TestGraph.Edge(square, baseClass, EdgeKind.Extends),
+            ]);
+        using var tool = new SymbolDetailTool(store);
+
+        var resp = await tool.ExecuteTypedForTest(
+            new SymbolDetailRequest { Fqn = "/src/s.ts::ShapeBase", Expand = ExpandModes.Inheritance },
+            CancellationToken.None);
+        var iface = await tool.ExecuteTypedForTest(
+            new SymbolDetailRequest { Fqn = "/src/s.ts::IShape", Expand = ExpandModes.Inheritance },
+            CancellationToken.None);
+        var leaf = await tool.ExecuteTypedForTest(
+            new SymbolDetailRequest { Fqn = "/src/c.ts::Circle", Expand = ExpandModes.Inheritance },
+            CancellationToken.None);
+
+        // Edges hold node ids: every list gives FQNs.
+        Assert.Equal(["/src/s.ts::IShape"], resp.Implements);
+        Assert.Empty(resp.Extends);
+        Assert.Equal(["/src/c.ts::Circle", "/src/q.ts::Square"], resp.DerivedBy.Order(StringComparer.Ordinal));
+        Assert.Empty(resp.ImplementedBy);
+        Assert.Equal(["/src/s.ts::ShapeBase"], iface.ImplementedBy);
+        Assert.Equal(["/src/s.ts::ShapeBase"], leaf.Extends);
+        Assert.Empty(leaf.DerivedBy);
+    }
+
+    [Fact]
+    public async Task ShouldLeaveInheritanceEmpty_WhenNotExpanded()
+    {
+        var baseClass = TestGraph.Symbol("/src/s.ts::ShapeBase", "/src/s.ts", kind: UniversalNodeKind.Class);
+        var circle = TestGraph.Symbol("/src/c.ts::Circle", "/src/c.ts", kind: UniversalNodeKind.Class);
+        using var tool = new SymbolDetailTool(TestGraph.Store([baseClass, circle], [TestGraph.Edge(circle, baseClass, EdgeKind.Extends)]));
+
+        var resp = await tool.ExecuteTypedForTest(new SymbolDetailRequest { Fqn = "/src/s.ts::ShapeBase" }, CancellationToken.None);
+
+        Assert.Empty(resp.DerivedBy);
+        Assert.Empty(resp.Extends);
+    }
 }

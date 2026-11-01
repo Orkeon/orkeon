@@ -4,7 +4,7 @@
 
 # RaggableTree
 
-Multi-language semantic graph of the source code: Tree-sitter parsing, embedding enrichment, vector storage, and exposure to agents through 28 tools. Replaces raw file reading with a structured index offering five stratified node levels (L0 monorepo → L1 package → L2 module → L3 symbol → L4 statement) plus the edge layer between them.
+Multi-language semantic graph of the source code: Tree-sitter parsing, embedding enrichment, vector storage, and exposure to agents through 29 tools. Replaces raw file reading with a structured index offering five stratified node levels (L0 monorepo → L1 package → L2 module → L3 symbol → L4 statement) plus the edge layer between them.
 
 ## Overview
 
@@ -44,7 +44,7 @@ services.AddRaggableTree(new RaggableTreeOptions
 {
     Embedding = new EmbeddingOptions { Provider = EmbeddingProviderKind.OpenAI, ApiKey = apiKey },
 });
-services.AddRaggableTreeTools();   // the 28 agent tools (Orkeon.Tools.Analysis)
+services.AddRaggableTreeTools();   // the 29 agent tools (Orkeon.Tools.Analysis)
 ```
 
 `AddRaggableTree` (`Orkeon.Analysis.DependencyInjection`) registers the twelve
@@ -106,7 +106,7 @@ All fields are immutable `record` types in `Orkeon.Analysis.DependencyInjection.
 
 1. **Discovery** (`IFileSystemDiscoverer`) — recursive traversal, package detection via markers (`package.json`, `*.csproj`, `pyproject.toml`, `go.mod`, `Cargo.toml`, `pom.xml`, `build.gradle`, `build.gradle.kts`, `composer.json`, `Gemfile`, `CMakeLists.txt`), exclusion via patterns and the ignore files of the tree as git applies them (`.git/info/exclude`, the root `.gitignore`, each nested `.gitignore` for the paths under its folder). A file the file system policy refuses to read (a mount right, a blocked extension) is skipped and counted, never a failure of the whole build: `index_codebase` reports it in `filter_stats.excluded_by_policy` and `filter_stats.excluded_by_policy_paths`.
 2. **Parse + Extract** (`UniversalSemanticMapper` + `ILanguageAdapter`) — Tree-sitter parse → application of the adapter's queries → L2 (module) and L3 (symbol) nodes with `Fqn`, `Signature`, `SourceSnippet`, `Sha256`; L4 statements (`StatementExtractor`), extracted on every build. Files are read and parsed `max_parallelism` at a time, then merged one after the other in discovery order, so the index (nodes, edges, their order, `IndexId`) is the same whatever the degree. `incremental_reindex` parses its changed files one after the other.
-3. **Dependency resolution** (`DependencyGraphBuilder` + `IReferenceResolver`) — resolution of imports, calls, inheritance, implementations into edges (`EdgeKind.Imports`, `Calls`, `Extends`, `Implements`). Unresolved FQNs become `UnresolvedRef`.
+3. **Dependency resolution** (`DependencyGraphBuilder` + `IReferenceResolver`) — resolution of imports, calls, inheritance, implementations into edges (`EdgeKind.Imports`, `Calls`, `Extends`, `Implements`). Unresolved FQNs become `UnresolvedRef`. A C# base list draws `Implements` toward an interface and `Extends` toward a class, as in Java and TypeScript. A base named by its short name, when several types declare it, resolves in this order: the declaration in the owner's file; the one in the nearest named scope enclosing the owner (its namespace, or a namespace or type containing it; a declaration outside any namespace or type encloses nothing); the one in a file the owner's file imports (a relative import, a Go or Rust module, a C# `using` of its namespace); the only type left. Otherwise no edge is drawn: two namespaces, neither enclosing nor used, or two modules, neither imported, leave the base unlinked. The declarations of one C# namespace count as one type (a partial type); in a module language (TypeScript, Python, Go...) each file declares its own.
 4. **Fingerprinting** (`IFrameworkFingerprinter`) — application of per-decorator/annotation rules (NestJS, Angular, ASP.NET, Flask, FastAPI): placing tags such as `http-endpoint`, `guard`, `service` on the relevant nodes.
 5. **Enrichment** — optionally an LLM summary (`INodeSummarizer`, when the call sets `enrich_with_llm` and a summarizer is registered), composition of the `EmbeddingText` (`IEmbeddingTextComposer`), then batch embedding (`IEmbeddingProvider`, skipped when none is registered).
 6. **Persistence** — the tree lives in `InMemoryRaggableStore` (`index_codebase` replaces its content), which also answers every query. When an `IVectorStoreProvider` is registered, `IndexAsync` additionally receives a mirror of the embeddings — no shipped host registers one (`MemoryProviderVectorStoreAdapter`, `Orkeon.Analysis.Vectors`, adapts any `IMemoryProvider` for a host that wants it), and nothing reads that mirror back. Between sessions, `index_codebase` saves the tree in a SQLite database, `<root>/.orkeon/cache/raggable-tree/index.db` (see [Index cache](#index-cache)).
@@ -139,6 +139,7 @@ Ranges are UTF-8 **byte** offsets (`NodeRange.StartByte`/`EndByte`), like the ot
 | `codebase_search` | Hybrid search — embedding + BM25 fused (see [below](#hybrid-search)) | `{ "query": "session expiration", "top_k": 10 }` |
 | `dependency_graph` | Level-scoped dependency graph (L1/L2/L3), Mermaid/DOT rendering | `{ "scope": "L2_Module", "edge_kinds": ["Imports", "Calls"] }` |
 | `sub_graph` | BFS expansion around seeds | `{ "seeds": ["pkg::X"], "depth": 3 }` |
+| `edge_list` | Every edge of the given kinds in the whole index, paginated, ends as FQNs | `{ "edge_kinds": ["inherits"], "page_size": 500 }` |
 | `flow_trace` | Call paths between two FQNs | `{ "from": "A", "to": "B", "max_paths": 5 }` |
 | `impact_analysis` | Transitive impacts of a change | `{ "target": "...", "direction": "Backward" }` |
 | `complexity_report` | Top-N by metric (`Cyclomatic`, `NestingDepth`, `FanOut`, `LoC`, `Callers`) | `{ "metric": "Cyclomatic", "top_n": 20 }` |
@@ -157,7 +158,7 @@ Ranges are UTF-8 **byte** offsets (`NodeRange.StartByte`/`EndByte`), like the ot
 | `documented_in` | Markdown sections that document a symbol | `{ "fqn": "Demo.Calc" }` |
 | `documents_of` | Symbols documented by the sections of a Markdown file | `{ "path": "/workspace/docs/calc.md" }` |
 
-The 28 tools are registered via `AddRaggableTreeTools` (`Orkeon.Tools.Analysis.DependencyInjection.RaggableToolsExtensions`).
+The 29 tools are registered via `AddRaggableTreeTools` (`Orkeon.Tools.Analysis.DependencyInjection.RaggableToolsExtensions`).
 
 `index_codebase` carries the build knobs per call (`IndexCodebaseRequest`):
 `root_path` (required, a virtual path), `languages` (empty = auto-detect),
@@ -430,7 +431,11 @@ The node tools and the structural tools read a file in any grammar of `LanguageR
 
 ### Using the names
 
-- `edge_kinds` and `node_kinds` of `dependency_graph` and `sub_graph` take the lowercase workflow names. Legacy enum names (`Imports`) are still accepted, case-insensitively. An unknown name is refused, naming it. Responses write a kind in the same lowercase form, so a script can send back what it read: `edges[].kind` is `imports`, `project_depends`, `extends` or `implements` (an edge is one or the other, never `inherits`), and a combination joins its names with `, ` (`imports, calls`). Every scalar `[Flags]` enum of a tool request or response takes this form (snake_case member names joined by `, `): `symbol_detail` takes `expand: "members"` or `"callers, callees"`, and a number is still read.
+- `edge_kinds` and `node_kinds` of `dependency_graph` and `sub_graph`, and `edge_kinds` of `flow_trace` and `edge_list`, take the lowercase workflow names. Legacy enum names (`Imports`) are still accepted, case-insensitively. An unknown name is refused, naming it. Responses write a kind in the same lowercase form, so a script can send back what it read: `edges[].kind` is `imports`, `project_depends`, `extends` or `implements` (an edge is one or the other, never `inherits`), and a combination joins its names with `, ` (`imports, calls`). Every scalar `[Flags]` enum of a tool request or response takes this form (snake_case member names joined by `, `): `symbol_detail` takes `expand: "members"` or `"callers, callees"`, and a number is still read.
+- `edge_list` walks the whole index, unlike `dependency_graph`, whose `max_nodes` bounds the nodes before the edges are collected: every base class of a codebase is `edge_kinds: ["inherits"]`. Its edges are ordered by source FQN, target FQN, kind and edge id; `next_cursor` (null on the last page) resumes after the last edge returned, so a page is neither repeated nor skipped when the index has not changed. `total` counts every matching edge, `root_fqn` keeps the edges whose source or target FQN starts with it, and `page_size` goes up to 1000 (default 200). `from`/`to` are FQNs, `from_id`/`to_id` the node ids `dependency_graph` writes; an end outside the index keeps its id in both.
+- `symbol_detail` with `expand: "inheritance"` lists `extends` and `implements` as FQNs, and what points back at the symbol: `derived_by` (the types that extend it) and `implemented_by` (the types that implement it).
+- `flow_trace` follows `calls` when `edge_kinds` is empty; `inherits` follows both `extends` and `implements`.
+- `codebase_search` sets `truncated` when it returned `top_k` hits, and also when its kind or language prefilter matched more than the 1000 nodes it ranks.
 - When `node_kinds` is given, `dependency_graph` still honours `Scope`: the kinds and tags go into the node query, and `MaxNodes` bounds the result.
 - `dependency_graph` names its cycles: `cycles` lists each strongly connected component of the scope as `{ fqns, member_count, edge_kind }`, the largest first, with members as FQNs (the form of `nodes[].fqn`). `max_cycles` (default 20) and `max_cycle_members` (default 50) bound the list, `cycles_truncated` says whether either cut it, and `metrics.cycle_count` keeps the full count. The cycles follow the same edge kinds as `edges` (imports when `edge_kinds` is empty), and `edge_kind` names all of them (`imports, calls`). `cycles` and `cycle_count` cover the whole scope; `node_count` and `edge_count` cover the nodes returned, which `max_nodes`, `root_fqn` and `node_kinds` select.
 

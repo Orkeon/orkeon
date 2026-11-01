@@ -97,3 +97,4 @@ static Orkeon.Analysis.Core.Cache.RaggableTreeCacheEntry.operator !=(Orkeon.Anal
 static Orkeon.Analysis.Core.Cache.RaggableTreeCacheEntry.operator ==(Orkeon.Analysis.Core.Cache.RaggableTreeCacheEntry? left, Orkeon.Analysis.Core.Cache.RaggableTreeCacheEntry? right) -> bool
 static Orkeon.Analysis.Core.RaggableTreeBuilder.DiscoveryRequestOf(string! virtualRoot, Orkeon.Analysis.Abstractions.DTOs.Tools.IndexCodebaseRequest! opts) -> Orkeon.Analysis.Abstractions.Interfaces.DiscoveryRequest!
 const Orkeon.Analysis.Core.Cache.RaggableTreeCache.MaxEntries = 3 -> int
+Orkeon.Analysis.Core.InMemoryRaggableStore.ListEdgesAsync(Orkeon.Analysis.Abstractions.DTOs.Queries.EdgeListQuery! query, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<Orkeon.Analysis.Abstractions.DTOs.Responses.EdgeListPage!>!

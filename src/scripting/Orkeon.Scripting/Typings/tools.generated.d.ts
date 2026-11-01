@@ -318,6 +318,22 @@ declare global {
             readonly success: boolean;
         }>;
 
+        /** `edge_list` - Every edge of the given kinds in the whole index, paginated: from and to as FQNs, kind, total, and next_cursor to pass back as cursor until it is null. Every base class: the targets of edge_kinds ["inherits"]. */
+        edgeList(input: {
+            /** The next_cursor of the previous page; omit it for the first page. */
+            cursor?: string | null;
+            /** Edge kinds to list, by name: contains, calls, imports, inherits, tests, documents, project_depends. Legacy enum names (Imports, Extends, Implements...) are still accepted. inherits lists both extends and implements edges. */
+            edge_kinds: readonly string[];
+            /** Edges per page, 1 to 1000 (default 200). */
+            page_size?: number;
+            /** Keep only the edges whose source or target FQN starts with this prefix (a file, a namespace, a type). */
+            root_fqn?: string | null;
+        }, ctx?: ExecutionContext): Promise<{
+            readonly edges: readonly { readonly from: string; readonly from_id: string; readonly kind: string; readonly to: string; readonly to_id: string; }[];
+            readonly next_cursor?: string;
+            readonly total: number;
+        }>;
+
         /** `edit_batch` - Applies node_replace, node_insert and idempotent intent operations over several files as one transaction. Each operation is {kind, path, selector, text} plus expected_hash (required, node_replace only) or position (node_insert: 'inside', 'before' or 'after'). An intent operation is {kind, path} with kind ensure_using / ensure_import (name, module for TypeScript or JavaScript) or ensure_field / ensure_member (selector of the type, text): it adds the line or member only when absent and reports applied false when it was already there. Operations on one file apply in order, each on the bytes the previous one produced. validate 'parse' (default) refuses the batch when an operation introduces a parse error; 'build' also runs dotnet build on the project above the edited files and restores every file when it is red. On any failure all files are left as they were. */
         editBatch(input: {
             /** The operations, applied as one transaction; those on one file apply in order, each on the bytes the previous one produced. */
@@ -397,6 +413,7 @@ declare global {
         /** `flow_trace` - Trace call flow from a symbol (optionally to a target) within a depth budget. */
         flowTrace(input?: {
             direction?: string;
+            /** Edge kinds to follow, by name: contains, calls, imports, inherits, tests, documents, project_depends. Legacy enum names (Imports, Extends, Implements...) are still accepted. Empty follows calls. */
             edge_kinds?: readonly string[];
             from?: string;
             include_all_paths?: boolean;
@@ -1351,7 +1368,7 @@ declare global {
             readonly truncated: boolean;
         }>;
 
-        /** `symbol_detail` - Expanded detail for an L3 symbol: signature, doc, body metrics, members, callers, callees, statements. */
+        /** `symbol_detail` - Expanded detail for an L3 symbol: signature, doc, body metrics, members, callers, callees, statements; under expand inheritance, what it extends and implements and what derives from or implements it (derived_by, implemented_by), as FQNs. */
         symbolDetail(input?: {
             expand?: string;
             fqn?: string;
@@ -1361,9 +1378,11 @@ declare global {
             max_children?: number;
         }, ctx?: ExecutionContext): Promise<{
             readonly body?: { readonly await_count: number; readonly branch_count: number; readonly call_count: number; readonly closure_count: number; readonly cyclomatic_complexity: number; readonly early_return_count: number; readonly is_partial: boolean; readonly loop_count: number; readonly max_depth: number; readonly statement_count: number; readonly try_catch_count: number; };
+            readonly derived_by: readonly string[];
             readonly doc_comment?: string;
             readonly extends: readonly string[];
             readonly fqn: string;
+            readonly implemented_by: readonly string[];
             readonly implements: readonly string[];
             readonly kind?: string;
             readonly level?: string;

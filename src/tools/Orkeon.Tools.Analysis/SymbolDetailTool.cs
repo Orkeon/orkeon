@@ -21,7 +21,9 @@ public sealed class SymbolDetailTool : ToolBase<SymbolDetailRequest, SymbolDetai
     }
 
     public override string Name => "symbol_detail";
-    public override string Description => "Expanded detail for an L3 symbol: signature, doc, body metrics, members, callers, callees, statements.";
+    public override string Description =>
+        "Expanded detail for an L3 symbol: signature, doc, body metrics, members, callers, callees, statements; under "
+        + "expand inheritance, what it extends and implements and what derives from or implements it (derived_by, implemented_by), as FQNs.";
 
     /// <summary>Declared access class for permission gates.</summary>
     public override ToolAccess Access => ToolAccess.Read;
@@ -40,7 +42,7 @@ public sealed class SymbolDetailTool : ToolBase<SymbolDetailRequest, SymbolDetai
             var maxChildren = Math.Clamp(request.MaxChildren, 1, 200);
 
             var (members, truncated) = await LoadMembersAsync(node, expand, maxChildren, cancellationToken).ConfigureAwait(false);
-            var (extends, implements) = await LoadInheritanceAsync(node, expand, cancellationToken).ConfigureAwait(false);
+            var inheritance = await LoadInheritanceAsync(node, expand, cancellationToken).ConfigureAwait(false);
 
             var callers = expand.HasFlag(ExpandModes.Callers)
                 ? await ResolveCompactAsync(node.CalledByIds, cancellationToken).ConfigureAwait(false)
@@ -63,8 +65,10 @@ public sealed class SymbolDetailTool : ToolBase<SymbolDetailRequest, SymbolDetai
                 SummaryShort = node.SemanticSummary,
                 Body = request.IncludeBodyMetrics ? node.Body : null,
                 Members = members,
-                Extends = extends,
-                Implements = implements,
+                Extends = inheritance.Extends,
+                Implements = inheritance.Implements,
+                DerivedBy = inheritance.DerivedBy,
+                ImplementedBy = inheritance.ImplementedBy,
                 TopCallers = callers,
                 TopCallees = callees,
                 Statements = statements,
@@ -84,17 +88,49 @@ public sealed class SymbolDetailTool : ToolBase<SymbolDetailRequest, SymbolDetai
         return ([.. children.Select(ToCompact)], truncated);
     }
 
-    private async Task<(ImmutableArray<string> Extends, ImmutableArray<string> Implements)> LoadInheritanceAsync(
+    /// <summary>
+    /// Both directions of the inheritance edges, as FQNs: an edge holds node ids, which every list resolves to the
+    /// FQN of the node (an id no node holds, an external target, stays as it is).
+    /// </summary>
+    private async Task<Inheritance> LoadInheritanceAsync(
         RaggableNode node, ExpandModes expand, CancellationToken cancellationToken)
     {
-        if (!expand.HasFlag(ExpandModes.Inheritance)) return ([], []);
+        if (!expand.HasFlag(ExpandModes.Inheritance)) return new Inheritance([], [], [], []);
 
-        var parents = await _store.GetEdgesAsync(node.Fqn, EdgeKind.Extends, Direction.Forward, cancellationToken).ConfigureAwait(false);
-        ImmutableArray<string> extends = [.. parents.Select(e => e.ToId).Distinct(StringComparer.Ordinal)];
-        var impls = await _store.GetEdgesAsync(node.Fqn, EdgeKind.Implements, Direction.Forward, cancellationToken).ConfigureAwait(false);
-        ImmutableArray<string> implements = [.. impls.Select(e => e.ToId).Distinct(StringComparer.Ordinal)];
-        return (extends, implements);
+        // The id, not the FQN: two partial declarations share an FQN, never an id.
+        var key = string.IsNullOrEmpty(node.Id) ? node.Fqn : node.Id;
+        var outgoing = await _store.GetEdgesAsync(key, EdgeKind.Extends | EdgeKind.Implements, Direction.Forward, cancellationToken).ConfigureAwait(false);
+        var incoming = await _store.GetEdgesAsync(key, EdgeKind.Extends | EdgeKind.Implements, Direction.Backward, cancellationToken).ConfigureAwait(false);
+
+        return new Inheritance(
+            await ToFqnsAsync(outgoing.Where(e => e.Kind == EdgeKind.Extends).Select(e => e.ToId), cancellationToken).ConfigureAwait(false),
+            await ToFqnsAsync(outgoing.Where(e => e.Kind == EdgeKind.Implements).Select(e => e.ToId), cancellationToken).ConfigureAwait(false),
+            await ToFqnsAsync(incoming.Where(e => e.Kind == EdgeKind.Extends).Select(e => e.FromId), cancellationToken).ConfigureAwait(false),
+            await ToFqnsAsync(incoming.Where(e => e.Kind == EdgeKind.Implements).Select(e => e.FromId), cancellationToken).ConfigureAwait(false));
     }
+
+    private async Task<ImmutableArray<string>> ToFqnsAsync(IEnumerable<string> ids, CancellationToken cancellationToken)
+    {
+        var distinct = ids.Distinct(StringComparer.Ordinal).ToList();
+        if (distinct.Count == 0) return [];
+
+        var nodes = await _store.GetManyAsync(distinct, cancellationToken).ConfigureAwait(false);
+        var fqnByKey = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (var n in nodes)
+        {
+            if (string.IsNullOrEmpty(n.Fqn)) continue;
+            fqnByKey.TryAdd(n.Id, n.Fqn);
+            fqnByKey.TryAdd(n.Fqn, n.Fqn);
+        }
+
+        return [.. distinct.Select(id => fqnByKey.GetValueOrDefault(id, id)).Distinct(StringComparer.Ordinal)];
+    }
+
+    private sealed record Inheritance(
+        ImmutableArray<string> Extends,
+        ImmutableArray<string> Implements,
+        ImmutableArray<string> DerivedBy,
+        ImmutableArray<string> ImplementedBy);
 
     private async Task<ImmutableArray<StatementNode>> LoadStatementsAsync(
         RaggableNode node, ExpandModes expand, CancellationToken cancellationToken)

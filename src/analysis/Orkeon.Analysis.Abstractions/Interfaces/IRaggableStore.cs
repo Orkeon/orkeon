@@ -30,6 +30,16 @@ public interface IRaggableStore
     Task<int> GetNodeCountAsync(CancellationToken ct);
 
     Task<IReadOnlyList<RaggableEdge>> GetEdgesAsync(string fqn, EdgeKind kinds, Direction dir, CancellationToken ct);
+
+    /// <summary>
+    /// Lists every edge of the store whose kind is in <see cref="EdgeListQuery.Kinds"/>, one page at a time, in a
+    /// deterministic order (<see cref="EdgeListKey"/>): unlike a node query followed by <see cref="GetEdgesAsync"/>,
+    /// it walks the whole graph, whatever its size.
+    /// </summary>
+    /// <param name="query">The kinds, the optional FQN prefix, the key to resume after and the page size.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The page, the total of matching edges and whether more follow.</returns>
+    Task<EdgeListPage> ListEdgesAsync(EdgeListQuery query, CancellationToken ct);
     Task<SubGraph> ExpandAsync(ExpandQuery query, CancellationToken ct);
     Task<IReadOnlyList<CallPath>> FindAllPathsAsync(PathQuery query, CancellationToken ct);
     Task<CallPath?> ShortestPathAsync(ShortestPathQuery query, CancellationToken ct);

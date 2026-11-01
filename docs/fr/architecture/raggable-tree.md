@@ -4,7 +4,7 @@
 
 # RaggableTree
 
-Graphe sémantique multi-langage du code source : parsing Tree-sitter, enrichissement embeddings, stockage vectoriel, et exposition aux agents via 19 tools. Remplace la lecture de fichiers brute par un index structuré à cinq niveaux stratifiés (L0 monorepo → L1 package → L2 module → L3 symbole → L4 statement) plus la couche d'arêtes entre eux.
+Graphe sémantique multi-langage du code source : parsing Tree-sitter, enrichissement embeddings, stockage vectoriel, et exposition aux agents via 29 tools. Remplace la lecture de fichiers brute par un index structuré à cinq niveaux stratifiés (L0 monorepo → L1 package → L2 module → L3 symbole → L4 statement) plus la couche d'arêtes entre eux.
 
 ## Vue d'ensemble
 
@@ -44,7 +44,7 @@ services.AddRaggableTree(new RaggableTreeOptions
 {
     Embedding = new EmbeddingOptions { Provider = EmbeddingProviderKind.OpenAI, ApiKey = apiKey },
 });
-services.AddRaggableTreeTools();   // les 28 tools agents (Orkeon.Tools.Analysis)
+services.AddRaggableTreeTools();   // les 29 tools agents (Orkeon.Tools.Analysis)
 ```
 
 `AddRaggableTree` (`Orkeon.Analysis.DependencyInjection`) enregistre les douze
@@ -103,7 +103,7 @@ Tous les champs sont des `record` immuables dans `Orkeon.Analysis.DependencyInje
 
 1. **Discovery** (`IFileSystemDiscoverer`) — parcours récursif, détection de packages via markers (`package.json`, `*.csproj`, `pyproject.toml`, `go.mod`, `Cargo.toml`, `pom.xml`, `build.gradle`, `build.gradle.kts`, `composer.json`, `Gemfile`, `CMakeLists.txt`), exclusion via patterns et les fichiers d'ignorance de l'arbre tels que git les applique (`.git/info/exclude`, le `.gitignore` racine, chaque `.gitignore` imbriqué pour les chemins sous son dossier). Un fichier dont la politique du système de fichiers refuse la lecture (un droit de montage, une extension bloquée) est écarté et compté, jamais un échec de toute la construction : `index_codebase` le signale dans `filter_stats.excluded_by_policy` et `filter_stats.excluded_by_policy_paths`.
 2. **Parse + Extract** (`UniversalSemanticMapper` + `ILanguageAdapter`) — Tree-sitter parse → application des queries de l'adaptateur → nœuds L2 (module) et L3 (symbole) avec `Fqn`, `Signature`, `SourceSnippet`, `Sha256` ; statements L4 (`StatementExtractor`), extraits à chaque construction. Les fichiers sont lus et analysés `max_parallelism` à la fois, puis fusionnés un par un dans l'ordre de découverte : l'index (nœuds, arêtes, leur ordre, `IndexId`) est le même quel que soit le degré. `incremental_reindex` analyse ses fichiers modifiés l'un après l'autre.
-3. **Dependency resolution** (`DependencyGraphBuilder` + `IReferenceResolver`) — résolution des imports, appels, héritage, implémentations en arêtes (`EdgeKind.Imports`, `Calls`, `Extends`, `Implements`). Les FQN non résolus deviennent des `UnresolvedRef`.
+3. **Dependency resolution** (`DependencyGraphBuilder` + `IReferenceResolver`) — résolution des imports, appels, héritage, implémentations en arêtes (`EdgeKind.Imports`, `Calls`, `Extends`, `Implements`). Les FQN non résolus deviennent des `UnresolvedRef`. Une liste de bases C# trace `Implements` vers une interface et `Extends` vers une classe, comme en Java et en TypeScript. Une base nommée par son nom court, quand plusieurs types le déclarent, se résout dans cet ordre : la déclaration du fichier du propriétaire ; celle de la portée nommée la plus proche qui englobe le propriétaire (son espace de noms, ou un espace de noms ou un type qui le contient ; une déclaration hors de tout espace de noms ou type n'englobe rien) ; celle d'un fichier qu'importe le fichier du propriétaire (un import relatif, un module Go ou Rust, un `using` C# de son espace de noms) ; le seul type restant. Sinon aucune arête n'est tracée : deux espaces de noms dont aucun n'englobe le propriétaire ni n'est utilisé, ou deux modules dont aucun n'est importé, laissent la base sans lien. Les déclarations d'un même espace de noms C# comptent pour un seul type (un type partiel) ; dans un langage à modules (TypeScript, Python, Go...) chaque fichier déclare le sien.
 4. **Fingerprinting** (`IFrameworkFingerprinter`) — application des règles par décorateur/annotation (NestJS, Angular, ASP.NET, Flask, FastAPI) : pose de tags comme `http-endpoint`, `guard`, `service` sur les nœuds concernés.
 5. **Enrichissement** — optionnellement un résumé LLM (`INodeSummarizer`, quand l'appel positionne `enrich_with_llm` et qu'un summarizer est enregistré), composition du `EmbeddingText` (`IEmbeddingTextComposer`), puis embedding batch (`IEmbeddingProvider`, sauté quand aucun n'est enregistré).
 6. **Persistance** — l'arbre vit dans `InMemoryRaggableStore` (`index_codebase` en remplace le contenu), qui répond aussi à toutes les requêtes. Quand un `IVectorStoreProvider` est enregistré, `IndexAsync` reçoit en plus un miroir des embeddings — aucun hôte livré n'en enregistre (`MemoryProviderVectorStoreAdapter`, `Orkeon.Analysis.Vectors`, adapte n'importe quel `IMemoryProvider` pour un hôte qui le souhaite), et rien ne relit ce miroir. Entre les sessions, `index_codebase` enregistre l'arbre dans une base SQLite, `<root>/.orkeon/cache/raggable-tree/index.db` (voir [Cache d'index](#cache-dindex)).
@@ -136,6 +136,7 @@ Les plages sont des offsets en **octets** UTF-8 (`NodeRange.StartByte`/`EndByte`
 | `codebase_search` | Recherche hybride — embedding + BM25 fusionnés (voir [plus bas](#recherche-hybride)) | `{ "query": "session expiration", "top_k": 10 }` |
 | `dependency_graph` | Graphe de dépendances à une portée (L1/L2/L3), rendu Mermaid/DOT | `{ "scope": "L2_Module", "edge_kinds": ["Imports", "Calls"] }` |
 | `sub_graph` | Expansion BFS autour de seeds | `{ "seeds": ["pkg::X"], "depth": 3 }` |
+| `edge_list` | Toutes les arêtes des genres donnés dans l'index entier, paginées, extrémités en FQN | `{ "edge_kinds": ["inherits"], "page_size": 500 }` |
 | `flow_trace` | Chemins d'appel entre deux FQN | `{ "from": "A", "to": "B", "max_paths": 5 }` |
 | `impact_analysis` | Impacts transitifs d'un changement | `{ "target": "...", "direction": "Backward" }` |
 | `complexity_report` | Top-N par métrique (`Cyclomatic`, `NestingDepth`, `FanOut`, `LoC`, `Callers`) | `{ "metric": "Cyclomatic", "top_n": 20 }` |
@@ -154,7 +155,7 @@ Les plages sont des offsets en **octets** UTF-8 (`NodeRange.StartByte`/`EndByte`
 | `documented_in` | Sections Markdown qui documentent un symbole | `{ "fqn": "Demo.Calc" }` |
 | `documents_of` | Symboles documentés par les sections d'un fichier Markdown | `{ "path": "/workspace/docs/calc.md" }` |
 
-Les 28 tools sont enregistrés via `AddRaggableTreeTools` (`Orkeon.Tools.Analysis.DependencyInjection.RaggableToolsExtensions`).
+Les 29 tools sont enregistrés via `AddRaggableTreeTools` (`Orkeon.Tools.Analysis.DependencyInjection.RaggableToolsExtensions`).
 
 `index_codebase` porte les réglages de construction à chaque appel
 (`IndexCodebaseRequest`) : `root_path` (obligatoire, un chemin virtuel), `languages`
@@ -440,7 +441,11 @@ Les outils de nœuds et les outils structurels lisent un fichier dans toute gram
 
 ### Utiliser les noms
 
-- `edge_kinds` et `node_kinds` de `dependency_graph` et `sub_graph` prennent les noms de workflow en minuscules. Les noms d'énumération historiques (`Imports`) restent acceptés, sans tenir compte de la casse. Un nom inconnu est refusé, en le nommant. Les réponses écrivent un genre sous la même forme en minuscules, si bien qu'un script peut renvoyer ce qu'il a lu : `edges[].kind` vaut `imports`, `project_depends`, `extends` ou `implements` (une arête est l'un ou l'autre, jamais `inherits`), et une combinaison joint ses noms par `, ` (`imports, calls`). Toute énumération `[Flags]` scalaire d'une requête ou d'une réponse d'outil prend cette forme (noms des membres en snake_case joints par `, `) : `symbol_detail` prend `expand: "members"` ou `"callers, callees"`, et un nombre reste lu.
+- `edge_kinds` et `node_kinds` de `dependency_graph` et `sub_graph`, ainsi que `edge_kinds` de `flow_trace` et `edge_list`, prennent les noms de workflow en minuscules. Les noms d'énumération historiques (`Imports`) restent acceptés, sans tenir compte de la casse. Un nom inconnu est refusé, en le nommant. Les réponses écrivent un genre sous la même forme en minuscules, si bien qu'un script peut renvoyer ce qu'il a lu : `edges[].kind` vaut `imports`, `project_depends`, `extends` ou `implements` (une arête est l'un ou l'autre, jamais `inherits`), et une combinaison joint ses noms par `, ` (`imports, calls`). Toute énumération `[Flags]` scalaire d'une requête ou d'une réponse d'outil prend cette forme (noms des membres en snake_case joints par `, `) : `symbol_detail` prend `expand: "members"` ou `"callers, callees"`, et un nombre reste lu.
+- `edge_list` parcourt l'index entier, contrairement à `dependency_graph`, dont `max_nodes` borne les nœuds avant que les arêtes soient collectées : toutes les classes de base d'une codebase, c'est `edge_kinds: ["inherits"]`. Ses arêtes sont triées par FQN source, FQN cible, genre et id d'arête ; `next_cursor` (null sur la dernière page) reprend après la dernière arête renvoyée, si bien qu'aucune page n'est répétée ni sautée tant que l'index ne change pas. `total` compte toutes les arêtes retenues, `root_fqn` garde les arêtes dont le FQN source ou cible commence par lui, et `page_size` va jusqu'à 1000 (200 par défaut). `from`/`to` sont des FQN, `from_id`/`to_id` les ids de nœud qu'écrit `dependency_graph` ; une extrémité hors de l'index garde son id dans les deux.
+- `symbol_detail` avec `expand: "inheritance"` liste `extends` et `implements` en FQN, et ce qui pointe vers le symbole : `derived_by` (les types qui l'étendent) et `implemented_by` (les types qui l'implémentent).
+- `flow_trace` suit `calls` quand `edge_kinds` est vide ; `inherits` suit à la fois `extends` et `implements`.
+- `codebase_search` met `truncated` quand il a renvoyé `top_k` résultats, et aussi quand son préfiltre de genre ou de langage a retenu plus que les 1000 nœuds qu'il classe.
 - Quand `node_kinds` est donné, `dependency_graph` respecte toujours `Scope` : les genres et les tags passent dans la requête de nœuds, et `MaxNodes` borne le résultat.
 - `dependency_graph` nomme ses cycles : `cycles` liste chaque composante fortement connexe de la portée sous la forme `{ fqns, member_count, edge_kind }`, la plus grande d'abord, les membres en FQN (la forme de `nodes[].fqn`). `max_cycles` (20 par défaut) et `max_cycle_members` (50 par défaut) bornent la liste, `cycles_truncated` dit si l'un des deux l'a coupée, et `metrics.cycle_count` garde le compte complet. Les cycles suivent les mêmes genres d'arêtes que `edges` (les imports quand `edge_kinds` est vide), et `edge_kind` les nomme tous (`imports, calls`). `cycles` et `cycle_count` couvrent toute la portée ; `node_count` et `edge_count` couvrent les nœuds renvoyés, que `max_nodes`, `root_fqn` et `node_kinds` sélectionnent.
 

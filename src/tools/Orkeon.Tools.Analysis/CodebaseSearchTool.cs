@@ -10,6 +10,9 @@ namespace Orkeon.Tools.Analysis;
 
 public sealed class CodebaseSearchTool : ToolBase<CodebaseSearchRequest, CodebaseSearchResponse>
 {
+    /// <summary>The most nodes the kind/package/language/level prefilter keeps (the store's query cap).</summary>
+    internal const int PreFilterCap = InMemoryRaggableStore.MaxNodes;
+
     private readonly IRaggableStore _store;
     private readonly IndexFreshnessService? _freshness;
 
@@ -41,15 +44,17 @@ public sealed class CodebaseSearchTool : ToolBase<CodebaseSearchRequest, Codebas
                 ? 0
                 : await _freshness.EnsureFreshAsync(cancellationToken).ConfigureAwait(false);
 
+            var preFilter = BuildPreFilter(request);
             var query = new SemanticQuery
             {
                 Text = request.Query,
                 TopK = request.TopK,
                 MinScore = request.MinScore,
-                PreFilter = BuildPreFilter(request),
+                PreFilter = preFilter,
                 Mode = request.Mode,
             };
             var hits = await _store.SemanticSearchAsync(query, cancellationToken).ConfigureAwait(false);
+            var preFilterCapped = await IsPreFilterCappedAsync(preFilter, cancellationToken).ConfigureAwait(false);
 
             var shaped = request.IncludeSignature
                 ? hits
@@ -58,7 +63,7 @@ public sealed class CodebaseSearchTool : ToolBase<CodebaseSearchRequest, Codebas
             {
                 Hits = [.. shaped],
                 TotalCandidates = hits.Count,
-                Truncated = hits.Count >= request.TopK,
+                Truncated = hits.Count >= request.TopK || preFilterCapped,
                 RefreshedFiles = refreshed,
             };
         }
@@ -78,7 +83,18 @@ public sealed class CodebaseSearchTool : ToolBase<CodebaseSearchRequest, Codebas
             Kinds = request.FilterKinds.IsDefaultOrEmpty ? null : request.FilterKinds,
             Languages = request.FilterLanguages.IsDefaultOrEmpty ? null : request.FilterLanguages,
             Packages = request.FilterPackages.IsDefaultOrEmpty ? null : request.FilterPackages,
-            Take = 1000,
+            Take = PreFilterCap,
         };
+    }
+
+    /// <summary>
+    /// True when more nodes match the prefilter than it keeps: the search then ran over the first
+    /// <see cref="PreFilterCap"/> of them only, which <c>truncated</c> must say.
+    /// </summary>
+    private async Task<bool> IsPreFilterCappedAsync(NodeQuery? preFilter, CancellationToken cancellationToken)
+    {
+        if (preFilter is null) return false;
+        var beyond = await _store.QueryAsync(preFilter with { Skip = PreFilterCap, Take = 1 }, cancellationToken).ConfigureAwait(false);
+        return beyond.Count > 0;
     }
 }

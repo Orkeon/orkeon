@@ -45,6 +45,140 @@ public class DependencyGraphBuilderTests
     }
 
     [Fact]
+    public async Task ShouldDrawImplements_WhenACSharpClassNamesAnInterfaceInItsBaseList()
+    {
+        const string source = """
+            namespace Demo;
+            public interface IShape { }
+            public interface IDrawable : IShape { }
+            public abstract class ShapeBase { }
+            public class Circle : ShapeBase, IDrawable { }
+            public struct Point : IShape { }
+            public record Size : IShape;
+            """;
+        var (nodes, edges) = await AdapterHarness.GraphAsync(new CSharpAdapter(), ("/r/Shapes.cs", source));
+
+        Assert.True(AdapterHarness.HasEdge(nodes, edges, EdgeKind.Extends, "Circle", "ShapeBase"));
+        Assert.True(AdapterHarness.HasEdge(nodes, edges, EdgeKind.Implements, "Circle", "IDrawable"));
+        Assert.True(AdapterHarness.HasEdge(nodes, edges, EdgeKind.Implements, "Point", "IShape"));
+        Assert.True(AdapterHarness.HasEdge(nodes, edges, EdgeKind.Implements, "Size", "IShape"));
+        // An interface naming an interface extends it, as in Java and TypeScript.
+        Assert.True(AdapterHarness.HasEdge(nodes, edges, EdgeKind.Extends, "IDrawable", "IShape"));
+        Assert.False(AdapterHarness.HasEdge(nodes, edges, EdgeKind.Extends, "Circle", "IDrawable"));
+        Assert.Contains(nodes.Single(n => n.Name == "IDrawable").Id, nodes.Single(n => n.Name == "Circle").ImplementsIds);
+    }
+
+    [Fact]
+    public async Task ShouldLinkTheBaseOfTheOwnersNamespace_WhenTwoNamespacesDeclareTheShortName()
+    {
+        var (nodes, edges) = await AdapterHarness.GraphAsync(
+            new CSharpAdapter(),
+            ("/r/A/Options.cs", "namespace Alpha;\npublic class Options { }\n"),
+            ("/r/B/Options.cs", "namespace Beta;\npublic class Options { }\n"),
+            ("/r/B/Derived.cs", "namespace Beta;\npublic class BetaOptions : Options { }\n"),
+            ("/r/B/Inner/Nested.cs", "namespace Beta.Inner;\npublic class InnerOptions : Options { }\n"));
+
+        string TargetFile(string from) => nodes.Single(n => n.Id == edges.Single(e => e.Kind == EdgeKind.Extends
+            && nodes.Single(f => f.Id == e.FromId).Name == from).ToId).VirtualFilePath;
+        Assert.Equal("/r/B/Options.cs", TargetFile("BetaOptions"));
+        // Beta.Inner sits inside Beta: the enclosing namespace's type is the one C# resolves.
+        Assert.Equal("/r/B/Options.cs", TargetFile("InnerOptions"));
+    }
+
+    [Fact]
+    public async Task ShouldLinkTheBaseOfTheOwnersNamespace_WhenNamespacesAreBlocks()
+    {
+        var (nodes, edges) = await AdapterHarness.GraphAsync(
+            new CSharpAdapter(),
+            ("/r/A.cs", "namespace Alpha { public class Options { } }\nnamespace Beta { public class Options { } }\n"),
+            ("/r/B.cs", "namespace Other { }\nnamespace Beta { public class BetaOptions : Options { } }\n"));
+
+        var edge = Assert.Single(edges, e => e.Kind == EdgeKind.Extends);
+        Assert.EndsWith("Beta::Options", nodes.Single(n => n.Id == edge.ToId).Fqn, StringComparison.Ordinal);
+    }
+
+    [Trait("BR", "#280")]
+    [Fact]
+    public async Task ShouldDrawNoEdge_WhenTwoNamespacesDeclareTheShortNameAndNoneIsEnclosingOrUsed()
+    {
+        var (nodes, edges) = await AdapterHarness.GraphAsync(
+            new CSharpAdapter(),
+            ("/r/A/Options.cs", "namespace Alpha;\npublic class Options { }\n"),
+            ("/r/B/Options.cs", "namespace Beta;\npublic class Options { }\n"),
+            ("/r/C/Consumer.cs", "namespace Gamma;\npublic class GammaOptions : Options { }\n"));
+
+        var owner = nodes.Single(n => n.Name == "GammaOptions");
+        Assert.DoesNotContain(edges, e => e.FromId == owner.Id && e.Kind is EdgeKind.Extends or EdgeKind.Implements);
+    }
+
+    [Trait("BR", "#280")]
+    [Fact]
+    public async Task ShouldLinkTheBaseOfTheUsedNamespace_WhenTwoNamespacesDeclareTheShortName()
+    {
+        var (nodes, edges) = await AdapterHarness.GraphAsync(
+            new CSharpAdapter(),
+            ("/r/A/Options.cs", "namespace Alpha;\npublic class Options { }\n"),
+            ("/r/B/Options.cs", "namespace Beta;\npublic class Options { }\n"),
+            ("/r/C/Consumer.cs", "using Beta;\nnamespace Gamma;\npublic class GammaOptions : Options { }\n"));
+
+        var owner = nodes.Single(n => n.Name == "GammaOptions");
+        var edge = Assert.Single(edges, e => e.FromId == owner.Id && e.Kind == EdgeKind.Extends);
+        Assert.Equal("/r/B/Options.cs", nodes.Single(n => n.Id == edge.ToId).VirtualFilePath);
+    }
+
+    [Trait("BR", "#280")]
+    [Fact]
+    public async Task ShouldLinkTheImportedBase_WhenTwoModulesDeclareTheShortName()
+    {
+        var (nodes, edges) = await BuildAsync(
+            ("/r/a.ts", "export class Base { }\n"),
+            ("/r/b.ts", "export class Base { }\n"),
+            ("/r/c.ts", "import { Base } from './b';\nexport class Derived extends Base { }\n"));
+
+        var owner = nodes.Single(n => n.Name == "Derived");
+        var edge = Assert.Single(edges, e => e.FromId == owner.Id && e.Kind == EdgeKind.Extends);
+        Assert.Equal("/r/b.ts::Base", nodes.Single(n => n.Id == edge.ToId).Fqn);
+    }
+
+    [Trait("BR", "#280")]
+    [Fact]
+    public async Task ShouldDrawNoEdge_WhenTwoModulesDeclareTheShortNameAndNeitherIsImported()
+    {
+        var (nodes, edges) = await BuildAsync(
+            ("/r/a.ts", "export class Base { }\n"),
+            ("/r/b.ts", "export class Base { }\n"),
+            ("/r/c.ts", "import { Other } from './d';\nexport class Derived extends Base { }\n"),
+            ("/r/d.ts", "export class Other { }\n"));
+
+        var owner = nodes.Single(n => n.Name == "Derived");
+        Assert.DoesNotContain(edges, e => e.FromId == owner.Id && e.Kind is EdgeKind.Extends or EdgeKind.Implements);
+    }
+
+    [Trait("BR", "#280")]
+    [Fact]
+    public async Task ShouldLinkTheOnlyDeclaration_WhenOneModuleDeclaresTheShortName()
+    {
+        var (nodes, edges) = await BuildAsync(
+            ("/r/a.ts", "export class Base { }\n"),
+            ("/r/c.ts", "export class Derived extends Base { }\n"));
+
+        var owner = nodes.Single(n => n.Name == "Derived");
+        var edge = Assert.Single(edges, e => e.FromId == owner.Id && e.Kind == EdgeKind.Extends);
+        Assert.Equal("/r/a.ts::Base", nodes.Single(n => n.Id == edge.ToId).Fqn);
+    }
+
+    [Fact]
+    public async Task ShouldLinkTheOnlyDeclaration_WhenOneNamespaceDeclaresTheShortName()
+    {
+        var (nodes, edges) = await AdapterHarness.GraphAsync(
+            new CSharpAdapter(),
+            ("/r/A/Options.cs", "namespace Alpha;\npublic class Options { }\n"),
+            ("/r/C/Consumer.cs", "using Alpha;\nnamespace Gamma;\npublic class GammaOptions : Options { }\n"));
+
+        Assert.True(AdapterHarness.HasEdge(nodes, edges, EdgeKind.Extends, "GammaOptions", "Options"));
+    }
+
+    [Fact]
     public async Task Adds_extends_edge()
     {
         var (_, edges) = await BuildAsync(("/r/a.ts", TestFixtures.Inheritance));

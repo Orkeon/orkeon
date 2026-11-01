@@ -1,4 +1,6 @@
 using System.Collections.Immutable;
+using System.Text.Json.Serialization;
+using Orkeon.Domain.Attributes;
 using Orkeon.Analysis.Abstractions.DTOs.Responses;
 
 namespace Orkeon.Analysis.Abstractions.DTOs.Tools;
@@ -9,7 +11,10 @@ public sealed record FlowTraceRequest
     public string? To { get; init; }
     public Direction Direction { get; init; } = Direction.Forward;
     public int MaxDepth { get; init; } = 4;
-    public ImmutableArray<EdgeKind> EdgeKinds { get; init; } = [EdgeKind.Calls];
+
+    [FieldSchema(Description = "Edge kinds to follow, by name: contains, calls, imports, inherits, tests, documents, project_depends. Legacy enum names (Imports, Extends, Implements...) are still accepted. Empty follows calls.", ItemsType = "string", IsRequired = false)]
+    [JsonPropertyName("edge_kinds")]
+    public ImmutableArray<string> EdgeKinds { get; init; } = ["calls"];
     public bool IncludeAllPaths { get; init; }
     public int MaxPaths { get; init; } = 20;
 }
