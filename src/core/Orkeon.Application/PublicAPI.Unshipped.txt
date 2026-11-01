@@ -345,8 +345,6 @@ Orkeon.Application.Interfaces.Ports.SessionTruncation
 Orkeon.Application.Interfaces.Ports.SessionTruncation.Equals(Orkeon.Application.Interfaces.Ports.SessionTruncation? other) -> bool
 Orkeon.Application.Interfaces.Ports.SessionTruncation.KeptFromIndex.get -> int
 Orkeon.Application.Interfaces.Ports.SessionTruncation.KeptFromIndex.init -> void
-Orkeon.Application.Interfaces.Ports.SessionTruncation.KeptFromRole.get -> string?
-Orkeon.Application.Interfaces.Ports.SessionTruncation.KeptFromRole.init -> void
 Orkeon.Application.Interfaces.Ports.SessionTruncation.RemovedCount.get -> int
 Orkeon.Application.Interfaces.Ports.SessionTruncation.RemovedCount.init -> void
 Orkeon.Application.Interfaces.Ports.SessionTruncation.SessionTruncation() -> void

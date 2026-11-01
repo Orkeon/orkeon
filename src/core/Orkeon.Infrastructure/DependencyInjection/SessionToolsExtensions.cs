@@ -69,8 +69,9 @@ public static class SessionToolsExtensions
 
         // The typed memory of memory_store: one memory.json per project when Orkeon:Cli:Memory:Persist is on (the
         // REPL's default), the in-memory store otherwise (#286). Bound and judged at the host's start like the session.
+        // The root matters only when the memory is written to disk: an in-memory store needs none (#286).
         services.AddOrkeonSettings<CategoryMemoryOptions>(CategoryMemoryOptions.SectionName)
-            .ValidateSettings(o => string.IsNullOrWhiteSpace(o.RootDirectory)
+            .ValidateSettings(o => o.Persist && string.IsNullOrWhiteSpace(o.RootDirectory)
                 ? $"{CategoryMemoryOptions.SectionName}:RootDirectory must not be empty."
                 : null);
         services.TryAddSingleton<ICategoryMemoryStore>(sp =>

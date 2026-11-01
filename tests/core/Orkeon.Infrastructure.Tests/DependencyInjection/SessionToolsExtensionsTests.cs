@@ -244,4 +244,14 @@ public sealed class SessionToolsExtensionsTests
         Assert.Throws<Microsoft.Extensions.Options.OptionsValidationException>(
             () => sp.GetRequiredService<IScriptAgentMemoryStore>());
     }
+
+
+    [Fact]
+    [Trait("BR", "#286")]
+    public void ShouldStart_WhenCliMemoryRootIsEmptyButPersistIsOff()
+    {
+        using var sp = MemoryProvider(MemoryFs(), ("Orkeon:Cli:Memory:Persist", "false"), ("Orkeon:Cli:Memory:RootDirectory", ""));
+
+        Assert.IsType<Orkeon.Infrastructure.Memory.InMemoryCategoryMemoryStore>(sp.GetRequiredService<ICategoryMemoryStore>());
+    }
 }

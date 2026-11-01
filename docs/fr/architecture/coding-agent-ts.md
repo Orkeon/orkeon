@@ -183,7 +183,7 @@ derrière `session_snip` et l'opération `truncate` de `session_store`, compte d
 messages : un tour commence à un message `user` et possède les messages `tool`, `assistant` et `note`
 qui le suivent, de sorte qu'une coupe ne sépare jamais une requête de sa réponse ni une trace d'outil
 de la réponse qui l'a utilisée. Il répond un `SessionTruncation` (`RemovedCount`, `KeptFromIndex`,
-`KeptFromRole`), et un buffer qui contient moins de tours que demandé reste intact.
+qui pointe toujours un message `user` ou vaut `-1`), et un buffer qui contient moins de tours que demandé reste intact.
 
 ## Les outils dans les commandes (`tools.*` dans `.cmd.ts`)
 

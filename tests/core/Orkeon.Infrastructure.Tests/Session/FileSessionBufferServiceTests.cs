@@ -84,7 +84,6 @@ public sealed class FileSessionBufferServiceTests
 
         Assert.Equal(3, cut.RemovedCount);
         Assert.Equal(4, cut.KeptFromIndex);
-        Assert.Equal("user", cut.KeptFromRole);
         var reloaded = NewService(fs);
         await reloaded.LoadAsync(ProjectA, TestContext.Current.CancellationToken);
         Assert.Equal(["S", "q2", "t2", "a2"], reloaded.GetMessages().Select(m => m.Content));

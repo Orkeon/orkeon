@@ -72,13 +72,11 @@ public sealed record SessionTruncation
     public required int RemovedCount { get; init; }
 
     /// <summary>
-    /// Index, in the buffer as it was before the cut, of the first message of the kept tail;
-    /// -1 when nothing was removed or when the head alone was kept.
+    /// Index, in the buffer as it was before the cut, of the first message of the kept tail, always a
+    /// <c>user</c> message since a kept tail starts at a turn; -1 when nothing was removed or when the
+    /// head alone was kept.
     /// </summary>
     public required int KeptFromIndex { get; init; }
-
-    /// <summary>Role of the message at <see cref="KeptFromIndex"/>; null when <see cref="KeptFromIndex"/> is -1.</summary>
-    public required string? KeptFromRole { get; init; }
 }
 
 /// <summary>A single conversation message in the session buffer.</summary>

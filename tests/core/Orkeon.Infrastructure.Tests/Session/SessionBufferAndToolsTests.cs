@@ -60,7 +60,6 @@ public sealed class SessionBufferAndToolsTests
         Assert.Equal("6", kept[4].Content);
         Assert.Equal(2, cut.RemovedCount);
         Assert.Equal(3, cut.KeptFromIndex);
-        Assert.Equal("user", cut.KeptFromRole);
     }
 
     [Fact]
@@ -81,7 +80,6 @@ public sealed class SessionBufferAndToolsTests
         Assert.Equal(["S", "3", "t3a", "t3b", "4", "5", "t5", "n5", "6"], kept.Select(m => m.Content));
         Assert.Equal(3, cut.RemovedCount);
         Assert.Equal(4, cut.KeptFromIndex);
-        Assert.Equal("user", cut.KeptFromRole);
     }
 
     [Fact]
@@ -98,7 +96,6 @@ public sealed class SessionBufferAndToolsTests
         Assert.Equal(5, buffer.MessageCount);
         Assert.Equal(0, cut.RemovedCount);
         Assert.Equal(-1, cut.KeptFromIndex);
-        Assert.Null(cut.KeptFromRole);
     }
 
     [Fact]
@@ -115,7 +112,6 @@ public sealed class SessionBufferAndToolsTests
         Assert.Equal(5, buffer.MessageCount);
         Assert.Equal(0, cut.RemovedCount);
         Assert.Equal(-1, cut.KeptFromIndex);
-        Assert.Null(cut.KeptFromRole);
     }
 
     [Fact]
@@ -134,7 +130,6 @@ public sealed class SessionBufferAndToolsTests
         Assert.Equal("S", kept[0].Content);
         Assert.Equal(3, cut.RemovedCount);
         Assert.Equal(-1, cut.KeptFromIndex);
-        Assert.Null(cut.KeptFromRole);
     }
 
     [Fact]
@@ -459,7 +454,7 @@ public sealed class SessionBufferAndToolsTests
         Assert.Equal(3, Convert.ToInt32(dict["removed_count"]));
         Assert.Equal(4, Convert.ToInt32(dict["retained_count"]));
         Assert.Equal(4, Convert.ToInt32(dict["kept_from"]));
-        Assert.Equal("user", dict["kept_from_role"]);
+        Assert.False(dict.ContainsKey("kept_from_role"));   // kept_from always points at a user message
     }
 
     [Fact]
@@ -478,7 +473,6 @@ public sealed class SessionBufferAndToolsTests
         Assert.Equal(0, Convert.ToInt32(dict["removed_count"]));
         Assert.Equal(3, Convert.ToInt32(dict["retained_count"]));
         Assert.Equal(-1, Convert.ToInt32(dict["kept_from"]));
-        Assert.False(dict.ContainsKey("kept_from_role"));   // a null role is left off the wire
     }
 
     // ── SessionStatsTool ────────────────────────────────────────────────────

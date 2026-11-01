@@ -26,13 +26,9 @@ public sealed class SessionSnipResponse
     [JsonPropertyName("retained_count")]
     public int RetainedCount { get; set; }
 
-    /// <summary>Index, in the buffer before the cut, of the first message of the kept tail; -1 when nothing was removed or when the head alone was kept.</summary>
+    /// <summary>Index, in the buffer before the cut, of the first message of the kept tail, always a user message; -1 when nothing was removed or when the head alone was kept.</summary>
     [JsonPropertyName("kept_from")]
     public int KeptFrom { get; set; }
-
-    /// <summary>Role of the message at <see cref="KeptFrom"/>; null when <see cref="KeptFrom"/> is -1.</summary>
-    [JsonPropertyName("kept_from_role")]
-    public string? KeptFromRole { get; set; }
 }
 
 /// <summary>
@@ -70,7 +66,6 @@ public sealed class SessionSnipTool : ToolBase<SessionSnipRequest, SessionSnipRe
             RemovedCount = cut.RemovedCount,
             RetainedCount = _buffer.MessageCount,
             KeptFrom = cut.KeptFromIndex,
-            KeptFromRole = cut.KeptFromRole,
         });
     }
 }

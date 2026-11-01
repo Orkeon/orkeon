@@ -283,8 +283,6 @@ Orkeon.Infrastructure.Session.FileSessionBufferService.Truncate(int retainTurns)
 Orkeon.Infrastructure.Session.InMemorySessionBufferService.Truncate(int retainTurns) -> Orkeon.Application.Interfaces.Ports.SessionTruncation!
 Orkeon.Infrastructure.Tools.SessionSnipResponse.KeptFrom.get -> int
 Orkeon.Infrastructure.Tools.SessionSnipResponse.KeptFrom.set -> void
-Orkeon.Infrastructure.Tools.SessionSnipResponse.KeptFromRole.get -> string?
-Orkeon.Infrastructure.Tools.SessionSnipResponse.KeptFromRole.set -> void
 *REMOVED*Orkeon.Infrastructure.Memory.InMemoryCategoryMemoryStore.ListAsync(string? category, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Orkeon.Application.Interfaces.Ports.MemoryEntry!>!>!
 Orkeon.Infrastructure.Memory.InMemoryCategoryMemoryStore.ListAsync(string? category, bool newestFirst, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Orkeon.Application.Interfaces.Ports.MemoryEntry!>!>!
 Orkeon.Infrastructure.Memory.InMemoryCategoryMemoryStore.ReplaceAsync(int id, string! content, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<bool>!

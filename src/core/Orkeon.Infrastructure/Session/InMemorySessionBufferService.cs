@@ -162,12 +162,11 @@ public sealed class InMemorySessionBufferService : ISessionBufferService
             {
                 RemovedCount = total - _messages.Count,
                 KeptFromIndex = keptFrom is null ? -1 : tailStart,
-                KeptFromRole = keptFrom?.Role,
             };
         }
     }
 
-    private static readonly SessionTruncation Untouched = new() { RemovedCount = 0, KeptFromIndex = -1, KeptFromRole = null };
+    private static readonly SessionTruncation Untouched = new() { RemovedCount = 0, KeptFromIndex = -1 };
 
     private static bool IsTurnStart(SessionMessage message) =>
         string.Equals(message.Role, "user", StringComparison.OrdinalIgnoreCase);

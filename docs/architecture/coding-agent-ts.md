@@ -173,7 +173,7 @@ with everything else in [the tool inventory](../tools/inventory.md). `ISessionBu
 behind `session_snip` and the `truncate` operation of `session_store`, counts turns, not messages: a
 turn starts at a `user` message and owns the `tool`, `assistant` and `note` messages that follow it,
 so a cut never separates a request from its answer or a tool trace from the answer that used it. It
-answers a `SessionTruncation` (`RemovedCount`, `KeptFromIndex`, `KeptFromRole`), and a buffer holding
+answers a `SessionTruncation` (`RemovedCount`, `KeptFromIndex`, which always points at a `user` message or is `-1`), and a buffer holding
 fewer turns than asked is left untouched.
 
 ## Tools in commands (`tools.*` in `.cmd.ts`)
