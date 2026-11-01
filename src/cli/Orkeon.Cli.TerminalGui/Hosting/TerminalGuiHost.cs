@@ -178,19 +178,21 @@ public sealed class TerminalGuiHost : IAsyncDisposable
 
         // Ctrl+C only copies (Ctrl+Shift+C lands here too: a terminal whose copy shortcut it is
         // passes it on while the TUI holds the mouse, so it has no selection of its own). With a
-        // selection in the focused pane it goes to the clipboard; the transcript is not focusable,
-        // so its mouse selection is looked at next; without either the hint names the key that
-        // interrupts the turn.
+        // selection in the focused pane it goes to the clipboard; the navigation names the REPL
+        // pane rather than its field over SSH, so the field is asked next unless a modal owns the
+        // keyboard; the transcript is not focusable, so its mouse selection is looked at last;
+        // without any the hint names the key that interrupts the turn.
         var focused = Application.Navigation?.GetFocused();
-        diag?.Invoke($"Ctrl+C focused={focused?.GetType().Name ?? "<none>"} selection={focused switch
-        {
-            Terminal.Gui.Views.TextView t => t.SelectedText?.Length ?? 0,
-            Terminal.Gui.Views.TextField f => f.SelectedText?.Length ?? 0,
-            _ => -1,
-        }}");
+        diag?.Invoke($"Ctrl+C focused={focused?.GetType().Name ?? "<none>"}");
         if (Layout.PaneClipboard.CopySelection(focused))
         {
             diag?.Invoke("Ctrl+C → copied focused selection to clipboard");
+            return;
+        }
+
+        if (!Layout.ModalFocus.IsActive(focused) && repl.CopyInputSelection())
+        {
+            diag?.Invoke("Ctrl+C → copied input selection to clipboard");
             return;
         }
 

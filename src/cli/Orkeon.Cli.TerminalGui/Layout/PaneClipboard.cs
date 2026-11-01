@@ -104,6 +104,21 @@ internal static class PaneClipboard
         if (!TuiClipboard.TryGetText(out var text))
             return false;
 
+        return InsertText(input, text);
+    }
+
+    /// <summary>
+    /// Inserts <paramref name="text"/> into <paramref name="input"/> at the caret, the way
+    /// <see cref="PasteInto"/> does with the clipboard: the path of a paste the terminal delivers
+    /// itself (bracketed paste), whose text never transits through a clipboard the TUI can read.
+    /// No-op (returns false) for a read-only input or empty text.
+    /// </summary>
+    public static bool InsertText(TextView input, string? text)
+    {
+        ArgumentNullException.ThrowIfNull(input);
+        if (input.ReadOnly || string.IsNullOrEmpty(text))
+            return false;
+
         var pasted = text.Replace("\r\n", "\n", StringComparison.Ordinal);
         var lines = input.Text.Replace("\r\n", "\n", StringComparison.Ordinal).Split('\n');
         var row = Math.Clamp(input.CurrentRow, 0, lines.Length - 1);

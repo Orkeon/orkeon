@@ -657,6 +657,31 @@ public sealed class ReplPaneView : View, ITaskListNavigator
     }
 
     /// <summary>
+    /// Inserts a text the terminal pasted itself (bracketed paste: Ctrl+Shift+V, Shift+Insert, a
+    /// right-click of the terminal) into the field, as <see cref="PasteClipboard"/> does with the
+    /// clipboard. Terminal.Gui dispatches the paste to the focused view: over SSH that is this pane
+    /// rather than its field, and a plain view drops the text.
+    /// </summary>
+    /// <returns>True when something was inserted.</returns>
+    internal bool PasteText(string? text)
+    {
+        if (string.IsNullOrEmpty(text)) return false;
+        if (_navigation.State == InputNavigationState.List)
+            Apply(_navigation.Handle(InputNavigationKey.Paste, BuildContext()));
+        return PaneClipboard.InsertText(_input, text);
+    }
+
+    /// <inheritdoc />
+    protected override bool OnPaste(string text) => PasteText(text);
+
+    /// <summary>
+    /// Copies the field's selection to the clipboard: the host's Ctrl+C handler asks the navigation
+    /// for the focused view, which over SSH is this pane and not the field, so the selection a
+    /// Shift+arrow made in the field is read here. False without a selection.
+    /// </summary>
+    internal bool CopyInputSelection() => PaneClipboard.CopySelection(_input);
+
+    /// <summary>
     /// Copies the transcript's mouse selection to the clipboard: the transcript takes no focus, so the
     /// host's copy key falls back to it when the focused view has no selection of its own.
     /// </summary>

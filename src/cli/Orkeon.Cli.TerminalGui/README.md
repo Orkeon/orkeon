@@ -66,8 +66,9 @@ or an SSH session has no xclip/X11 and no `powershell.exe`):
   `Ctrl+V` is an application-level key handler: it pastes into the input
   whichever view has focus, and stands down while a modal dialog has focus.
 - **Paste from the host OS** when the container cannot read the host clipboard:
-  use the **terminal's own paste** — `Ctrl+Shift+V` (or the terminal's menu) —
-  which arrives as bracketed paste and is inserted natively by Terminal.Gui.
+  use the **terminal's own paste** — `Ctrl+Shift+V`, `Shift+Insert` (or the
+  terminal's menu) — which arrives as bracketed paste; the REPL pane forwards it
+  to the input at the caret whichever view Terminal.Gui reports as focused.
 - **Select with the terminal instead of the TUI**: hold **Shift** while
   dragging — the terminal bypasses mouse tracking and its native
   `Ctrl+Shift+C` copies without involving the app at all.
@@ -310,8 +311,10 @@ TUI_DIAG=1 dotnet run --project src/apps/Orkeon.ConsoleApp
 
 You'll see each lifecycle step (`Main entered`, `Host.Build()`,
 `AddOrkeonCliTerminalGui`, `Application.Init`, `Application.Run`, status bar
-attach, `Ctrl+C captured`, …). Use `TUI_DRIVER=ansi|dotnet|windows` to
-override the driver pick.
+attach, `Ctrl+C captured`, …), every modified key and bracketed paste the
+driver delivers, the focused view at `Ctrl+C`, and the surfaces each copy
+reached (OS clipboard, OSC 52) and each paste read from. Use
+`TUI_DRIVER=ansi|dotnet|windows` to override the driver pick.
 
 ## Known limitations
 
