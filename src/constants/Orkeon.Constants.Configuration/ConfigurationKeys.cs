@@ -80,6 +80,12 @@ public static class ConfigurationKeys
     /// <summary>The virtual directory holding one folder of persisted session per project.</summary>
     public const string CliSessionSessionsDirectory = "Orkeon:Cli:Session:SessionsDirectory";
 
+    /// <summary>Whether the typed memory of <c>memory_store</c> is persisted per project and read again at the next start.</summary>
+    public const string CliMemoryPersist = "Orkeon:Cli:Memory:Persist";
+
+    /// <summary>The virtual directory holding one <c>memory.json</c> of typed memory per project.</summary>
+    public const string CliMemoryRootDirectory = "Orkeon:Cli:Memory:RootDirectory";
+
     /// <summary>
     /// The LLM section, at the configuration ROOT rather than under <c>Orkeon:</c> - the one
     /// section that is, for historical reasons the settings files already carry. Read by the

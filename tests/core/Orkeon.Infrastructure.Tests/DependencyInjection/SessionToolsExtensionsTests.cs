@@ -192,6 +192,50 @@ public sealed class SessionToolsExtensionsTests
     }
 
     [Fact]
+    public async Task ShouldResolveFileCategoryMemoryStore_WhenCliMemoryPersistIsOn()
+    {
+        var fs = MemoryFs();
+        using var sp = MemoryProvider(fs, ("Orkeon:Cli:Memory:Persist", "true"));
+
+        var store = sp.GetRequiredService<ICategoryMemoryStore>();
+        var file = Assert.IsType<Orkeon.Infrastructure.Memory.FileCategoryMemoryStore>(store);
+        Assert.StartsWith("/workspace/.orkeon/memory/", file.FilePath, StringComparison.Ordinal);
+        Assert.EndsWith("/memory.json", file.FilePath, StringComparison.Ordinal);
+        Assert.Same(store, sp.GetRequiredService<ICategoryMemoryStore>());
+
+        await store.AddAsync("project", "x", TestContext.Current.CancellationToken);
+        Assert.Equal(file.FilePath, Assert.Single(await PathsUnderAsync(fs, "/workspace/.orkeon/memory")));
+    }
+
+    [Fact]
+    public void ShouldResolveFileCategoryMemoryStoreUnderTheConfiguredRoot_WhenCliMemoryRootIsSet()
+    {
+        using var sp = MemoryProvider(MemoryFs(), ("Orkeon:Cli:Memory:Persist", "true"), ("Orkeon:Cli:Memory:RootDirectory", "/custom/typed"));
+
+        var file = Assert.IsType<Orkeon.Infrastructure.Memory.FileCategoryMemoryStore>(sp.GetRequiredService<ICategoryMemoryStore>());
+        Assert.StartsWith("/custom/typed/", file.FilePath, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ShouldResolveInMemoryCategoryMemoryStore_WhenCliMemoryPersistIsOffOrAbsent()
+    {
+        using var absent = MemoryProvider(MemoryFs());
+        Assert.IsType<Orkeon.Infrastructure.Memory.InMemoryCategoryMemoryStore>(absent.GetRequiredService<ICategoryMemoryStore>());
+
+        using var off = MemoryProvider(MemoryFs(), ("Orkeon:Cli:Memory:Persist", "false"));
+        Assert.IsType<Orkeon.Infrastructure.Memory.InMemoryCategoryMemoryStore>(off.GetRequiredService<ICategoryMemoryStore>());
+    }
+
+    [Fact]
+    public void ShouldRefuseStart_WhenCliMemoryRootIsEmpty()
+    {
+        using var sp = MemoryProvider(MemoryFs(), ("Orkeon:Cli:Memory:Persist", "true"), ("Orkeon:Cli:Memory:RootDirectory", ""));
+
+        Assert.Throws<Microsoft.Extensions.Options.OptionsValidationException>(
+            () => sp.GetRequiredService<ICategoryMemoryStore>());
+    }
+
+    [Fact]
     [Trait("BR", "R7")]
     public void ShouldRefuseStart_WhenAgentMemoryRootIsEmpty()
     {

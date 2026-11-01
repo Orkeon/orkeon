@@ -775,11 +775,17 @@ declare global {
             readonly total_chunks: number;
         }>;
 
-        /** `memory_store` - List, add, delete, and get typed memory entries (user/project/feedback/reference). */
+        /** `memory_store` - List, add, replace, delete, and get typed memory entries (user/project/feedback/reference). add returns the entry's id; every entry carries created_at; replace retires a stale fact in place, keeping its id; list takes newest_first. */
         memoryStore(input?: {
+            /** Category of the entry for add, filter for list (user / project / feedback / reference); add defaults to user, list to every category. */
             category?: string | null;
+            /** The fact to keep, for add and replace. */
             content?: string | null;
+            /** Entry id for get, replace and delete: what add returned. */
             id?: number;
+            /** For list: true orders the entries newest first (created_at descending, then id descending); false, the default, keeps the order they were added in. */
+            newest_first?: boolean;
+            /** Operation: list (entries, each with id, category, content and created_at), add (returns the new id), replace (retires a stale fact in place: same id and category, new content and created_at), delete, get. */
             operation?: string;
         }, ctx?: ExecutionContext): Promise<{
             readonly entries?: readonly unknown[];

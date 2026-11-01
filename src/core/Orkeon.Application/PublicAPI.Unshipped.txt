@@ -356,3 +356,6 @@ override Orkeon.Application.Interfaces.Ports.SessionTruncation.GetHashCode() -> 
 override Orkeon.Application.Interfaces.Ports.SessionTruncation.ToString() -> string!
 static Orkeon.Application.Interfaces.Ports.SessionTruncation.operator !=(Orkeon.Application.Interfaces.Ports.SessionTruncation? left, Orkeon.Application.Interfaces.Ports.SessionTruncation? right) -> bool
 static Orkeon.Application.Interfaces.Ports.SessionTruncation.operator ==(Orkeon.Application.Interfaces.Ports.SessionTruncation? left, Orkeon.Application.Interfaces.Ports.SessionTruncation? right) -> bool
+*REMOVED*Orkeon.Application.Interfaces.Ports.ICategoryMemoryStore.ListAsync(string? category, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Orkeon.Application.Interfaces.Ports.MemoryEntry!>!>!
+Orkeon.Application.Interfaces.Ports.ICategoryMemoryStore.ListAsync(string? category, bool newestFirst, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Orkeon.Application.Interfaces.Ports.MemoryEntry!>!>!
+Orkeon.Application.Interfaces.Ports.ICategoryMemoryStore.ReplaceAsync(int id, string! content, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<bool>!

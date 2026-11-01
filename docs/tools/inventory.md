@@ -62,7 +62,7 @@ what YAML references.
 | `session_stats` | `SessionStatsTool` | Full session telemetry: messages, tokens, cost, call totals |
 | `session_cost` | `SessionCostTool` | Cumulative session cost in USD with a per-model breakdown |
 | `token_budget` | `TokenBudgetTool` | Context window size, used tokens and what fills them (`used_tokens_by_kind`: `system`, `user`, `assistant`, `tool`, `other`), available budget |
-| `memory_store` | `MemoryStoreTool` | List/add/delete/get typed memories (user/project/feedback/reference) |
+| `memory_store` | `MemoryStoreTool` | List/add/replace/delete/get typed memories (user/project/feedback/reference): `add` returns the entry's `id`, every entry carries `created_at`, `list` takes `newest_first`, `replace` retires a stale fact in place (same `id` and category). Kept per project in `<Orkeon:Cli:Memory:RootDirectory>/<project slug>/memory.json` when `Orkeon:Cli:Memory:Persist` is on (the REPL's default); in memory otherwise |
 
 ## Decision tool (`Orkeon.Infrastructure`) — `AddOrkeonDecisionProvider(configuration)`
 

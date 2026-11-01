@@ -417,6 +417,13 @@
       "description": "Whether the interactive console prints a model's answer as it arrives."
     },
     {
+      "path": "Orkeon:Cli:Memory",
+      "category": "scripts-and-console",
+      "hosts": [],
+      "registration": "AddOrkeonSessionTools",
+      "description": "The `Orkeon:Cli:Memory` section: whether the typed memory behind `memory_store` outlives the process, and where it is kept."
+    },
+    {
       "path": "Orkeon:Cli:ScriptCommands",
       "category": "scripts-and-console",
       "hosts": [],
@@ -3038,6 +3045,20 @@
       "type": "boolean",
       "default": false,
       "description": "Whether each piece of an answer is written to the console as the model sends it, instead of the whole answer at its end."
+    },
+    {
+      "path": "Orkeon:Cli:Memory:Persist",
+      "section": "Orkeon:Cli:Memory",
+      "type": "boolean",
+      "default": false,
+      "description": "Whether the typed memory (`memory_store`: user, project, feedback and reference entries) is kept per project under `RootDirectory` and read again at the next start; off unless a host turns it on, and the REPL turns it on when the key is absent. Off, the entries live in memory and die with the process."
+    },
+    {
+      "path": "Orkeon:Cli:Memory:RootDirectory",
+      "section": "Orkeon:Cli:Memory",
+      "type": "string",
+      "default": "/workspace/.orkeon/memory",
+      "description": "Virtual directory holding one `memory.json` per project, in the project's folder of the sessions."
     },
     {
       "path": "Orkeon:Cli:ScriptCommands:ContinueOnConflict",

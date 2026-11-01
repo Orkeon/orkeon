@@ -39,6 +39,7 @@ public static class SettingsSections
         "Orkeon:ChromaDb",
         "Orkeon:Cli",
         "Orkeon:Cli:ConsoleStreaming",
+        "Orkeon:Cli:Memory",
         "Orkeon:Cli:ScriptCommands",
         "Orkeon:Cli:ScriptHost",
         "Orkeon:Cli:Session",

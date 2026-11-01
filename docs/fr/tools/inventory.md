@@ -62,7 +62,7 @@ celui ci-dessus — est ce que le YAML référence.
 | `session_stats` | `SessionStatsTool` | Télémétrie complète de session : messages, tokens, coût, totaux d'appels |
 | `session_cost` | `SessionCostTool` | Coût cumulé de la session en USD avec ventilation par modèle |
 | `token_budget` | `TokenBudgetTool` | Taille de la fenêtre de contexte, tokens consommés et ce qui les remplit (`used_tokens_by_kind` : `system`, `user`, `assistant`, `tool`, `other`), budget disponible |
-| `memory_store` | `MemoryStoreTool` | Lister/ajouter/supprimer/lire des mémoires typées (user/project/feedback/reference) |
+| `memory_store` | `MemoryStoreTool` | Lister/ajouter/remplacer/supprimer/lire des mémoires typées (user/project/feedback/reference) : `add` renvoie l'`id` de l'entrée, chaque entrée porte `created_at`, `list` prend `newest_first`, `replace` retire un fait périmé sur place (même `id` et même catégorie). Conservées par projet dans `<Orkeon:Cli:Memory:RootDirectory>/<slug du projet>/memory.json` quand `Orkeon:Cli:Memory:Persist` est actif (défaut du REPL) ; en mémoire sinon |
 
 ## Tool de décision (`Orkeon.Infrastructure`) — `AddOrkeonDecisionProvider(configuration)`
 

@@ -144,6 +144,28 @@ public sealed class ReplStartupTests : IDisposable
     /// The REPL registers the <c>human_input</c> tool, answered through the read loop (ReplHumanInputProvider) (the deadline
     /// decorator wraps it under its inner key).
     /// </summary>
+    /// <summary>
+    /// The REPL keeps the typed memory of <c>memory_store</c> per project unless the settings say otherwise (#286),
+    /// as it keeps its session: absent, <c>Orkeon:Cli:Memory:Persist</c> reads as on and the file store is resolved.
+    /// </summary>
+    [Fact]
+    public void ShouldPersistTypedMemory_WhenTheKeyIsAbsent_AndNot_WhenItIsOff()
+    {
+        var launch = Start("""{ "Orkeon": { "Cli": { "Tui": { "SpinnerVerbs": [ "thinking" ] } } } }""");
+        using var host = launch.Host;
+        Assert.NotNull(host);
+        Assert.True(host.Services.GetRequiredService<Microsoft.Extensions.Options.IOptions<Orkeon.Infrastructure.Memory.CategoryMemoryOptions>>().Value.Persist);
+        Assert.IsType<Orkeon.Infrastructure.Memory.FileCategoryMemoryStore>(
+            host.Services.GetRequiredService<Orkeon.Application.Interfaces.Ports.ICategoryMemoryStore>());
+
+        var off = Start("""{ "Orkeon": { "Cli": { "Memory": { "Persist": false } } } }""");
+        using var offHost = off.Host;
+        Assert.NotNull(offHost);
+        Assert.Equal(0, off.ExitCode);
+        Assert.IsType<Orkeon.Infrastructure.Memory.InMemoryCategoryMemoryStore>(
+            offHost.Services.GetRequiredService<Orkeon.Application.Interfaces.Ports.ICategoryMemoryStore>());
+    }
+
     [Fact]
     [Trait("BR", "RT-08")]
     public void ShouldRegisterHumanInputTool_WhenReplPrepared()
