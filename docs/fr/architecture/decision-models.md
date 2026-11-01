@@ -367,7 +367,11 @@ seule, jamais de lui-même.
 ## Limites
 
 - Les étapes de requête n'interrogent que le dernier message utilisateur ; une décision sur toute
-  la conversation demande une étape personnalisée.
+  la conversation demande une étape personnalisée. Une requête envoyée dans un long message
+  utilisateur (contexte, historique, puis la requête) est jugée avec tout ce message, et le
+  contexte en dilue le risque : un script passe ce contexte à `ctx.llm.act` comme
+  `ActOptions.context`, un message utilisateur à part devant le prompt, et les étapes jugent et
+  routent sur le prompt seul (#276).
 - Chaque phase d'étape coûte un aller-retour vers le modèle de décision, et un rappel coûte un
   appel LLM de plus.
 - Le contexte de Jev est borné par requête et par question : un état long ou de nombreux passages

@@ -93,6 +93,12 @@ policy travelled with user-level authority, and the providers' native system han
 (Anthropic top-level `system`, `cache_control`) never fired. A conversation-level system
 message wins over `LlmConfig.SystemMessage` on every provider.
 
+`ActOptions.context` seeds the per-turn context (memory, repository state, earlier turns) as a
+user message of its own, after `system` and before the prompt. The prompt stays the last user
+message, the one the `guard` and `route` stages of a decision profile judge, so the context
+cannot dilute the risk of the request (#276); and `system` stays the same from turn to turn,
+keeping its prompt-cache hit.
+
 **Parallel read-class tool calls.** The tool calls of one model turn that are read-class — the
 tool declares `Access` `Read` **and** its name is on the explicit allow-list (`file_read`,
 `directory_read`, `directory_search`, `count_pattern`, `glob`, `grep`, `rag_search`, `codebase_*`,

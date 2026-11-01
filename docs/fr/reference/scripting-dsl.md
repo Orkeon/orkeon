@@ -225,7 +225,10 @@ insensible à la casse) n'est pas sauté : `act` rejette par une `UnknownToolErr
 (`agentName`, `toolNames`, `availableTools`) avant tout appel au modèle — le pendant procédural
 de l'échec de chargement que la forme déclarative obtient pour le même nom ; un handler
 `onError` la lit comme `validation`. `ActOptions.system` sème un vrai message `role:"system"` qui persiste à chaque
-itération ; sans lui, `act()` envoie un seul message utilisateur. `permissionMode`
+itération ; sans lui, `act()` envoie un seul message utilisateur. `ActOptions.context` sème un
+message utilisateur à part entre `system` et le prompt : le prompt reste le dernier message
+utilisateur, la requête que jugent les étapes `guard` et `route` d'un profil de décision, et le
+contexte ne peut plus en diluer le risque (#276). `permissionMode`
 (`default`, `acceptEdits`, `bypassPermissions`, `plan`, `dontAsk`) est vérifié auprès de la porte de
 permissions de l'hôte à chaque appel d'outil, quand l'hôte en a enregistré une : un appel pour
 lequel le mode demande attend l'opérateur quand l'hôte a un canal d'approbation (`orkeon-repl` en

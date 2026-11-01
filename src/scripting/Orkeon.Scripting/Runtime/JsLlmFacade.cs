@@ -816,6 +816,11 @@ public sealed partial class JsLlmFacade
                 Messages.Add(LlmMessage.System(system));
             if (facade._instance is { } instance)
                 Messages.AddRange(instance.Seed);
+            // The context goes in a user message of its own, before the prompt: the prompt stays the
+            // last user message, the request the decision stages judge and route on (#276), and the
+            // system message keeps its prompt-cache prefix while the context changes on every call.
+            if (ResolveContext(options) is { } context)
+                Messages.Add(new LlmMessage { Role = "user", Content = context });
             Messages.Add(new LlmMessage { Role = "user", Content = prompt });
 
             // One reader (the pump), one writer (the streaming continuation), never bounded:
@@ -1775,6 +1780,17 @@ public sealed partial class JsLlmFacade
     {
         if (options is null || options.IsUndefined() || options.IsNull()) return null;
         var raw = options.Get("system");
+        return raw.IsString() && !string.IsNullOrWhiteSpace(raw.AsString()) ? raw.AsString() : null;
+    }
+
+    /// <summary>
+    /// Reads the <c>context</c> act option: the text seeded as a user message of its own before the
+    /// prompt. <c>null</c> when absent or blank.
+    /// </summary>
+    private static string? ResolveContext(JsValue? options)
+    {
+        if (options is null || options.IsUndefined() || options.IsNull()) return null;
+        var raw = options.Get("context");
         return raw.IsString() && !string.IsNullOrWhiteSpace(raw.AsString()) ? raw.AsString() : null;
     }
 

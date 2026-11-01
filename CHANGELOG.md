@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — `ctx.llm.act` takes its context apart from the request, so a decision guard judges the request alone (#276)
+
+- `ActOptions.context` is seeded as a user message of its own, after `system` and before the prompt. The prompt stays the last user message, the request the `guard` and `route` stages of a decision profile judge: an application that sent context, history and request in one message had the whole block judged, and the context diluted the risk (a prompt injection measured at 0.83 alone fell to 0.42 behind 1.3 KB of context, under a harmless request's 0.30 band). `system` no longer has to carry a context that changes every turn, and keeps its prompt-cache hit.
+- `DecisionInputGuard` still judges an agent's whole input in a crew: the context of a task can carry an indirect injection itself.
+
 ### Fixed — a `[Flags]` enum of a tool request or response is written and read by name (#274) **[breaking]**
 
 - `edges[].kind` of `dependency_graph` and `sub_graph` was a number (`1`, `3`) while the typings say `string`: a script comparing it to a name never matched. Every scalar `[Flags]` enum now goes over the wire as its snake_case member names, joined by `, ` for a combination (`imports`, `project_depends`, `imports, calls`); for `EdgeKind` these are the names `edge_kinds` takes. A value that is itself a named member keeps that name (`ExpandModes.All` is `all`).
