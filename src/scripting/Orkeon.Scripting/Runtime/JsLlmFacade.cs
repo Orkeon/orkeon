@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Text.Json;
 using System.Threading.Channels;
 using Orkeon.Application.Crew.Execution;
+using Orkeon.Application.Decision;
 using Orkeon.Constants.Llm;
 using Jint;
 using Jint.Native;
@@ -163,7 +164,29 @@ public sealed partial class JsLlmFacade
         activity.SetTag(GenAiAttributes.UsageOutputTokens, response.CompletionTokens);
     }
 
-    public Func<string, JsValue?, Task<string>> complete => async (prompt, options) =>
+    /// <summary>
+    /// <c>complete</c> as the script calls it: <see cref="CompleteAsync"/> behind the async bridge, so a
+    /// call a decision stage blocked rejects with a <c>DecisionBlockedError</c>, not a wrapped CLR
+    /// exception (#269). <c>chat</c>, <c>extract</c>, <c>decide</c> and <c>stream</c> do the same.
+    /// </summary>
+    public JsValue complete => _completeJs ??= JsHostError.BridgeAsync(_engine, CompleteAsync);
+
+    /// <summary><c>chat</c> as the script calls it: <see cref="ChatAsync"/> behind the async bridge.</summary>
+    public JsValue chat => _chatJs ??= JsHostError.BridgeAsync(_engine, ChatAsync);
+
+    /// <summary><c>extract</c> as the script calls it: <see cref="ExtractAsync"/> behind the async bridge.</summary>
+    public JsValue extract => _extractJs ??= JsHostError.BridgeAsync(_engine, ExtractAsync);
+
+    /// <summary><c>decide</c> as the script calls it: <see cref="DecideAsync"/> behind the async bridge.</summary>
+    public JsValue decide => _decideJs ??= JsHostError.BridgeAsync(_engine, DecideAsync);
+
+    private JsValue? _completeJs;
+    private JsValue? _chatJs;
+    private JsValue? _extractJs;
+    private JsValue? _decideJs;
+
+    /// <summary>The CLR side of <c>complete</c>: one prompt, the rendered answer.</summary>
+    internal Func<string, JsValue?, Task<string>> CompleteAsync => async (prompt, options) =>
     {
         using var activity = StartChatActivity("complete");
         activity?.SetTag("orkeon.llm.prompt.length", prompt.Length);
@@ -189,12 +212,24 @@ public sealed partial class JsLlmFacade
     /// <param name="response">The provider's answer.</param>
     private static string RenderAnswer(LlmResponse response)
     {
+        ThrowIfBlocked(response);
         if (!string.IsNullOrEmpty(response.Content))
             return response.Content;
 
         return ProviderErrorOf(response) is { } error
             ? $"<undefined-llm:{error}>"
             : response.Content;
+    }
+
+    /// <summary>
+    /// A call a decision stage blocked is a decision, not a provider failure: it throws a
+    /// <see cref="DecisionBlockedException"/>, which the script receives as a
+    /// <c>DecisionBlockedError</c> carrying the profile, the stage and the risk (#269).
+    /// </summary>
+    private static void ThrowIfBlocked(LlmResponse? response)
+    {
+        if (response is not null && DecisionBlockedException.FromResponse(response) is { } blocked)
+            throw blocked;
     }
 
     /// <summary>The provider's own error sentence, when the response carries one.</summary>
@@ -210,13 +245,15 @@ public sealed partial class JsLlmFacade
     // Every async surface below resolves a CLR object, never a JsValue built here: the
     // continuation after ConfigureAwait(false) is on a thread-pool thread, and only the
     // engine's own event loop may convert it. See IteratorResult for the incident.
-    public Func<JsValue, JsValue?, Task<object>> chat => async (messages, options) =>
+    /// <summary>The CLR side of <c>chat</c>: a message list, the answer with its usage.</summary>
+    internal Func<JsValue, JsValue?, Task<object>> ChatAsync => async (messages, options) =>
     {
         var msgs = ToMessages(messages);
         if (_provider is null)
             return new { content = $"<undefined-llm:chat:{msgs.Length} msgs>", tokensUsed = 0 };
         using var usage = BeginUsageScope("chat");
         var resp = await _provider.ChatAsync(msgs, ConfigFrom(options), _ct).ConfigureAwait(false);
+        ThrowIfBlocked(resp);
         return new
         {
             content = resp.Content,
@@ -269,7 +306,10 @@ public sealed partial class JsLlmFacade
         // `usage` / `reasoningChunks` are getters onto the CLR observations object,
         // so the script reads them when IT is executing (after the loop) instead of
         // the stream calling into the engine from another thread.
-        return _engine.Invoke(JsTrampolineFactories.StreamIterable.For(_engine), next, ret, observations);
+        // `next` goes through the async bridge: a stream a decision stage blocked rejects with a
+        // DecisionBlockedError, as `complete` does.
+        return _engine.Invoke(JsTrampolineFactories.StreamIterable.For(_engine),
+            JsHostError.BridgeAsync(_engine, next), JsValue.FromObject(_engine, ret), JsValue.FromObject(_engine, observations));
     }
 
     /// <summary>
@@ -437,6 +477,7 @@ public sealed partial class JsLlmFacade
                             LogReasoningProgress(observations.reasoningChunks);
                         break;
                     case LlmStreamEventKind.Completed:
+                        ThrowIfBlocked(ev.FinalResponse);
                         observations.usage = ToStreamUsage(ev.FinalResponse);
                         break;
                     default:
@@ -488,7 +529,8 @@ public sealed partial class JsLlmFacade
         };
     }
 
-    public Func<string, JsValue, JsValue?, Task<object?>> extract => async (prompt, schema, options) =>
+    /// <summary>The CLR side of <c>extract</c>.</summary>
+    internal Func<string, JsValue, JsValue?, Task<object?>> ExtractAsync => async (prompt, schema, options) =>
     {
         if (_provider is null)
         {
@@ -505,6 +547,7 @@ public sealed partial class JsLlmFacade
         var fullPrompt = AugmentExtractPrompt(prompt, schema);
         using var usage = BeginUsageScope("extract");
         var resp = await _provider.GenerateAsync(fullPrompt, ConfigForExtract(options), _ct).ConfigureAwait(false);
+        ThrowIfBlocked(resp);
         var content = StripJsonFences(resp.Content);
         try
         {
@@ -580,7 +623,8 @@ public sealed partial class JsLlmFacade
         return (lastFence >= 0 ? body[..lastFence] : body).Trim();
     }
 
-    public Func<string, JsValue, JsValue?, Task<string>> decide => async (prompt, choices, options) =>
+    /// <summary>The CLR side of <c>decide</c>.</summary>
+    internal Func<string, JsValue, JsValue?, Task<string>> DecideAsync => async (prompt, choices, options) =>
     {
         var allowed = ToStringArray(choices);
         if (allowed.Length == 0)
@@ -590,6 +634,7 @@ public sealed partial class JsLlmFacade
         var resp = _provider is null
             ? new LlmResponse { Content = allowed[0] }
             : await _provider.GenerateAsync(decidePrompt, ConfigFrom(options), _ct).ConfigureAwait(false);
+        ThrowIfBlocked(resp);
         var picked = allowed.FirstOrDefault(c =>
             resp.Content.Trim().StartsWith(c, StringComparison.OrdinalIgnoreCase));
         if (picked is null)

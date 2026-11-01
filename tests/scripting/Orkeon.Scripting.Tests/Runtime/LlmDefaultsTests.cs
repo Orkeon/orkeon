@@ -62,7 +62,7 @@ public sealed class LlmDefaultsTests
         Assert.Equal(string.Empty, def.model);
 
         using var engine = new Engine(options => options.Constraints.PromiseTimeout = HangGuards.EnginePromise);
-        await new JsLlmFacade(engine, provider, TestContext.Current.CancellationToken).complete("hello", null);
+        await new JsLlmFacade(engine, provider, TestContext.Current.CancellationToken).CompleteAsync("hello", null);
 
         using var sent = JsonDocument.Parse(Assert.Single(handler.Bodies));
         Assert.Equal(LlmProviderDefaultModels.DeepSeek, sent.RootElement.GetProperty("model").GetString());

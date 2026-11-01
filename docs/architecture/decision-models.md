@@ -148,6 +148,21 @@ Three stages ship:
 The default `verify` criterion is "The response addresses the request, is coherent, and states
 nothing the request does not support."
 
+A `verify` judges answers, not the steps towards them: in an agent loop, a response that calls
+tools (an OpenAI `tool_calls`, an Anthropic `tool_use` block) passes unjudged. `Steps: "all"`
+judges those steps too; `final` is the default.
+
+Every question carries `instructions` with its criterion: a `guard` asks "Does the text match the
+following description?" with the risk's description, a `verify` "Does the response meet the
+following criterion?" with `Criterion`. A System One server built on Liquid's reference code
+refuses a question without them.
+
+A blocked response carries, besides `error` and `error_type`, the metadata `decision_profile`,
+`decision_stage`, `decision_risk` (a `guard` only) and `decision_reason`;
+`DecisionBlockedException.FromResponse` reads them back. A text stream (`GenerateStreamingAsync`)
+throws that exception instead. A script receives a block as a `DecisionBlockedError`
+([scripting DSL](../reference/scripting-dsl.md)).
+
 ### Configuration
 
 ```csharp

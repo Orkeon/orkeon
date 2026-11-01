@@ -23,7 +23,7 @@ public sealed class LlmNamespaceBindingResponseFormatTests
         var facade = new JsLlmFacade(engine, provider, CancellationToken.None);
 
         var opts = await engine.EvaluateAsync("({ responseFormat: 'json_object' })", cancellationToken: TestContext.Current.CancellationToken);
-        await facade.complete("Return as json", opts);
+        await facade.CompleteAsync("Return as json", opts);
 
         Assert.NotNull(provider.LastConfig);
         Assert.NotNull(provider.LastConfig!.ResponseFormat);
@@ -40,7 +40,7 @@ public sealed class LlmNamespaceBindingResponseFormatTests
 
         var msgs = await engine.EvaluateAsync("[{role:'user', content:'hi json'}]", cancellationToken: TestContext.Current.CancellationToken);
         var opts = await engine.EvaluateAsync("({ responseFormat: 'json_object' })", cancellationToken: TestContext.Current.CancellationToken);
-        await facade.chat(msgs, opts);
+        await facade.ChatAsync(msgs, opts);
 
         Assert.NotNull(provider.LastConfig?.ResponseFormat);
         Assert.Equal("json_object", provider.LastConfig!.ResponseFormat!.Type);
@@ -54,7 +54,7 @@ public sealed class LlmNamespaceBindingResponseFormatTests
         provider.RespondWith(new LlmResponse { Content = "ok" });
         var facade = new JsLlmFacade(engine, provider, CancellationToken.None);
 
-        await facade.complete("p", null);
+        await facade.CompleteAsync("p", null);
 
         // No opts → no config injection (ConfigFrom returns null → provider receives null config)
         Assert.Null(provider.LastConfig?.ResponseFormat);

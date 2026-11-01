@@ -57,7 +57,7 @@ public sealed class JsLlmFacadeUsageMeteringTests
         var provider = new ScriptedProvider(WithUsage("ok", 100, 20));
         var facade = Facade(engine, provider, sink);
 
-        await facade.complete("hello", null);
+        await facade.CompleteAsync("hello", null);
 
         var e = Assert.Single(sink.Events);
         Assert.Equal("complete", e.OperationType);
@@ -78,9 +78,9 @@ public sealed class JsLlmFacadeUsageMeteringTests
         var provider = new ScriptedProvider(WithUsage("chatted", 10, 1), WithUsage("{\"a\":1}", 10, 2), WithUsage("yes", 10, 3));
         var facade = Facade(engine, provider, sink);
 
-        await facade.chat(Evaluate(engine, "([{ role: \"user\", content: \"hi\" }])"), null);
-        await facade.extract("shape this", Jint.Native.JsValue.Undefined, null);
-        await facade.decide("pick", Evaluate(engine, "([\"yes\", \"no\"])"), null);
+        await facade.ChatAsync(Evaluate(engine, "([{ role: \"user\", content: \"hi\" }])"), null);
+        await facade.ExtractAsync("shape this", Jint.Native.JsValue.Undefined, null);
+        await facade.DecideAsync("pick", Evaluate(engine, "([\"yes\", \"no\"])"), null);
 
         string[] expected = ["chat", "extract", "decide"];
         Assert.Equal(expected, sink.Events.Select(e => e.OperationType));
@@ -156,7 +156,7 @@ public sealed class JsLlmFacadeUsageMeteringTests
         var facade = Facade(engine, new ScriptedProvider(WithUsage("this is not JSON", 80, 8)), sink);
 
         await Assert.ThrowsAsync<InvalidOperationException>(
-            () => facade.extract("shape this", Jint.Native.JsValue.Undefined, null));
+            () => facade.ExtractAsync("shape this", Jint.Native.JsValue.Undefined, null));
 
         var e = Assert.Single(sink.Events);
         Assert.Equal("extract", e.OperationType);
@@ -173,7 +173,7 @@ public sealed class JsLlmFacadeUsageMeteringTests
         var facade = Facade(engine, new ScriptedProvider(WithUsage("ok", 1, 1)), sink);
 
         using (LlmUsageScope.Begin(LlmUsageOperations.Agent, taskId: "task-9"))
-            await facade.complete("hello", null);
+            await facade.CompleteAsync("hello", null);
 
         var e = Assert.Single(sink.Events);
         Assert.Equal("complete", e.OperationType);

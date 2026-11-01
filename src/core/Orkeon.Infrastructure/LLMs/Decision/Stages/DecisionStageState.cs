@@ -1,3 +1,4 @@
+using System.Text.Json;
 using System.Text.Json.Nodes;
 using Orkeon.Domain.Constants.Llm;
 using Orkeon.Domain.SharedKernel.ValueObjects;
@@ -28,4 +29,42 @@ internal static class DecisionStageState
         ["request"] = Request(messages),
         ["response"] = response.Content,
     };
+
+    /// <summary>
+    /// Whether <paramref name="response"/> calls tools: an OpenAI chat body with a non-empty
+    /// <c>choices[0].message.tool_calls</c>, or an Anthropic Messages body with a <c>tool_use</c>
+    /// block in <c>content[]</c> — the two shapes every provider returns or synthesizes. A
+    /// response with no body, or a body that cannot be read, calls none.
+    /// </summary>
+    public static bool CallsTools(LlmResponse response)
+    {
+        if (string.IsNullOrEmpty(response.RawResponseBody))
+            return false;
+        try
+        {
+            using var doc = JsonDocument.Parse(response.RawResponseBody);
+            var root = doc.RootElement;
+            if (root.ValueKind != JsonValueKind.Object)
+                return false;
+            if (root.TryGetProperty("choices", out var choices)
+                && choices.ValueKind == JsonValueKind.Array && choices.GetArrayLength() > 0
+                && choices[0].ValueKind == JsonValueKind.Object
+                && choices[0].TryGetProperty("message", out var message)
+                && message.ValueKind == JsonValueKind.Object
+                && message.TryGetProperty("tool_calls", out var calls)
+                && calls.ValueKind == JsonValueKind.Array)
+                return calls.GetArrayLength() > 0;
+            if (root.TryGetProperty("content", out var content) && content.ValueKind == JsonValueKind.Array)
+                return content.EnumerateArray().Any(block =>
+                    block.ValueKind == JsonValueKind.Object
+                    && block.TryGetProperty("type", out var type)
+                    && type.ValueKind == JsonValueKind.String
+                    && type.ValueEquals("tool_use"));
+            return false;
+        }
+        catch (JsonException)
+        {
+            return false;
+        }
+    }
 }

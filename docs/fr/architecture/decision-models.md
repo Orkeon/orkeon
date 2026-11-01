@@ -154,6 +154,21 @@ Trois étapes sont livrées :
 Le critère par défaut de `verify` est « The response addresses the request, is coherent, and
 states nothing the request does not support. »
 
+Une étape `verify` juge des réponses, pas les étapes qui y mènent : dans une boucle d'agent, une
+réponse qui appelle des outils (un `tool_calls` OpenAI, un bloc `tool_use` Anthropic) passe sans
+être jugée. `Steps: "all"` juge aussi ces étapes ; `final` est le défaut.
+
+Chaque question porte des `instructions` avec son critère : une étape `guard` demande « Does the
+text match the following description? » avec la description du risque, une étape `verify` « Does
+the response meet the following criterion? » avec `Criterion`. Un serveur System One bâti sur le
+code de référence de Liquid refuse une question qui n'en a pas.
+
+Une réponse bloquée porte, outre `error` et `error_type`, les métadonnées `decision_profile`,
+`decision_stage`, `decision_risk` (une étape `guard` seulement) et `decision_reason` ;
+`DecisionBlockedException.FromResponse` les relit. Un flux de texte (`GenerateStreamingAsync`)
+lève cette exception à la place. Un script reçoit un blocage comme une `DecisionBlockedError`
+([DSL de scripting](../reference/scripting-dsl.md)).
+
 ### Configuration
 
 ```csharp

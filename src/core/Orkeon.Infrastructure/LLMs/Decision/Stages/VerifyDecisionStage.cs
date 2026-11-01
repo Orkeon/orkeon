@@ -12,7 +12,9 @@ namespace Orkeon.Infrastructure.LLMs.Decision.Stages;
 /// <c>verify</c>: one yes-or-no question on the answer — by default, does it address the request,
 /// coherently and without invention. Under <see cref="MinProbability"/> the conversation is
 /// escalated to a stronger profile: the cascade, a cheap model first and the strong one only when
-/// the answer does not hold.
+/// the answer does not hold. In an agent loop, a response that calls tools is a step towards
+/// the answer, not the answer: it passes unjudged unless <see cref="Steps"/> is
+/// <see cref="DecisionVerifySteps.All"/>.
 /// </summary>
 public sealed class VerifyDecisionStage : IDecisionStage
 {
@@ -23,6 +25,12 @@ public sealed class VerifyDecisionStage : IDecisionStage
     public const string DefaultCriterion =
         "The response addresses the request, is coherent, and states nothing the request does not support.";
 
+    /// <summary>
+    /// The instructions the question carries with its criterion: a System One server built on
+    /// Liquid's reference code refuses a question without them.
+    /// </summary>
+    public const string Instructions = "Does the response meet the following criterion?";
+
     private readonly IDecisionModel _model;
     private readonly string _criterion;
 
@@ -31,7 +39,13 @@ public sealed class VerifyDecisionStage : IDecisionStage
     /// <param name="escalateTo">The profile an answer that does not hold is sent to.</param>
     /// <param name="minProbability">The probability under which the answer does not hold.</param>
     /// <param name="criterion">What a good answer is; null takes <see cref="DefaultCriterion"/>.</param>
-    public VerifyDecisionStage(IDecisionModel model, string escalateTo, double minProbability = 0.5, string? criterion = null)
+    /// <param name="steps">Which responses are judged: the final answers only, or the tool-call steps too.</param>
+    public VerifyDecisionStage(
+        IDecisionModel model,
+        string escalateTo,
+        double minProbability = 0.5,
+        string? criterion = null,
+        DecisionVerifySteps steps = DecisionVerifySteps.Final)
     {
         ArgumentNullException.ThrowIfNull(model);
         ArgumentException.ThrowIfNullOrWhiteSpace(escalateTo);
@@ -39,6 +53,7 @@ public sealed class VerifyDecisionStage : IDecisionStage
         EscalateTo = escalateTo.Trim();
         MinProbability = minProbability;
         _criterion = string.IsNullOrWhiteSpace(criterion) ? DefaultCriterion : criterion;
+        Steps = steps;
     }
 
     /// <inheritdoc />
@@ -50,6 +65,9 @@ public sealed class VerifyDecisionStage : IDecisionStage
     /// <summary>The probability under which the answer does not hold.</summary>
     public double MinProbability { get; }
 
+    /// <summary>Which responses are judged: the final answers only (the default), or the tool-call steps too.</summary>
+    public DecisionVerifySteps Steps { get; }
+
     /// <inheritdoc />
     public Task<DecisionVerdict> OnRequestAsync(LlmMessage[] messages, CancellationToken cancellationToken = default) =>
         Task.FromResult(DecisionVerdict.Continue);
@@ -59,11 +77,15 @@ public sealed class VerifyDecisionStage : IDecisionStage
     {
         ArgumentNullException.ThrowIfNull(messages);
         ArgumentNullException.ThrowIfNull(response);
+        if (Steps == DecisionVerifySteps.Final && DecisionStageState.CallsTools(response))
+            return DecisionVerdict.Continue;
+
         var decision = await _model.DecideAsync(new DecisionRequest
         {
             State = DecisionStageState.OfExchange(messages, response),
-            Questions = ImmutableDictionary<string, DecisionQuestion>.Empty.Add(Question, new NoulQuestion
+            Questions = ImmutableDictionary.Create<string, DecisionQuestion>().Add(Question, new NoulQuestion
             {
+                Instructions = JsonValue.Create(Instructions),
                 Criteria = new NoulCriteria { True = JsonValue.Create(_criterion) },
             }),
         }, cancellationToken).ConfigureAwait(false);

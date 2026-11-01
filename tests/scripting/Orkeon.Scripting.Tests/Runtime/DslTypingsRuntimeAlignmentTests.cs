@@ -273,7 +273,7 @@ public sealed class DslTypingsRuntimeAlignmentTests
             ["ScriptVersionMismatchError", "AgentAlreadyInCrewError", "AgentNotInCrewError",
              "AgentNotInThisCrewError", "DuplicateAgentNameError", "RecursiveAgentInvocationError",
              "WaiterKickedError", "ReceiveTimeoutError", "StateMutationOutsideWithError",
-             "BudgetExhaustedError", "UnknownToolError"]
+             "BudgetExhaustedError", "UnknownToolError", "DecisionBlockedError"]
                 .filter(n => !(typeof globalThis[n] === "function" && new globalThis[n]("m") instanceof Error
                     && new globalThis[n]("m").name === n))
                 .join(",");

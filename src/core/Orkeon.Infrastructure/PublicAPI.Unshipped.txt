@@ -106,7 +106,7 @@ Orkeon.Infrastructure.LLMs.Decision.Stages.VerifyDecisionStage.MinProbability.ge
 Orkeon.Infrastructure.LLMs.Decision.Stages.VerifyDecisionStage.Name.get -> string!
 Orkeon.Infrastructure.LLMs.Decision.Stages.VerifyDecisionStage.OnRequestAsync(Orkeon.Domain.SharedKernel.ValueObjects.LlmMessage![]! messages, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Application.Decision.DecisionVerdict!>!
 Orkeon.Infrastructure.LLMs.Decision.Stages.VerifyDecisionStage.OnResponseAsync(Orkeon.Domain.SharedKernel.ValueObjects.LlmMessage![]! messages, Orkeon.Domain.SharedKernel.ValueObjects.LlmResponse! response, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Application.Decision.DecisionVerdict!>!
-Orkeon.Infrastructure.LLMs.Decision.Stages.VerifyDecisionStage.VerifyDecisionStage(Orkeon.Application.Interfaces.Ports.IDecisionModel! model, string! escalateTo, double minProbability = 0.5, string? criterion = null) -> void
+Orkeon.Infrastructure.LLMs.Decision.Stages.VerifyDecisionStage.VerifyDecisionStage(Orkeon.Application.Interfaces.Ports.IDecisionModel! model, string! escalateTo, double minProbability = 0.5, string? criterion = null, Orkeon.Infrastructure.LLMs.Decision.Stages.DecisionVerifySteps steps = Orkeon.Infrastructure.LLMs.Decision.Stages.DecisionVerifySteps.Final) -> void
 Orkeon.Infrastructure.Tools.SystemOneDecideRequest
 Orkeon.Infrastructure.Tools.SystemOneDecideRequest.Model.get -> string?
 Orkeon.Infrastructure.Tools.SystemOneDecideRequest.Model.set -> void
@@ -269,3 +269,11 @@ static Orkeon.Infrastructure.Decision.SystemOne.DecisionProviderChoice.None.get 
 static Orkeon.Infrastructure.Decision.SystemOne.DecisionProviderChoice.operator ==(Orkeon.Infrastructure.Decision.SystemOne.DecisionProviderChoice? left, Orkeon.Infrastructure.Decision.SystemOne.DecisionProviderChoice? right) -> bool
 static Orkeon.Infrastructure.Decision.SystemOne.DecisionProviderChoice.operator !=(Orkeon.Infrastructure.Decision.SystemOne.DecisionProviderChoice? left, Orkeon.Infrastructure.Decision.SystemOne.DecisionProviderChoice? right) -> bool
 static Orkeon.Infrastructure.Decision.SystemOne.DecisionProviderChoice.Resolve(Microsoft.Extensions.Configuration.IConfiguration! configuration, System.Func<string!, string?>! environment) -> Orkeon.Infrastructure.Decision.SystemOne.DecisionProviderChoice!
+Orkeon.Infrastructure.LLMs.Decision.DecisionStageOptions.Steps.get -> string?
+Orkeon.Infrastructure.LLMs.Decision.DecisionStageOptions.Steps.set -> void
+Orkeon.Infrastructure.LLMs.Decision.Stages.DecisionVerifySteps
+Orkeon.Infrastructure.LLMs.Decision.Stages.DecisionVerifySteps.All = 1 -> Orkeon.Infrastructure.LLMs.Decision.Stages.DecisionVerifySteps
+Orkeon.Infrastructure.LLMs.Decision.Stages.DecisionVerifySteps.Final = 0 -> Orkeon.Infrastructure.LLMs.Decision.Stages.DecisionVerifySteps
+Orkeon.Infrastructure.LLMs.Decision.Stages.VerifyDecisionStage.Steps.get -> Orkeon.Infrastructure.LLMs.Decision.Stages.DecisionVerifySteps
+const Orkeon.Infrastructure.LLMs.Decision.Stages.GuardDecisionStage.Instructions = "Does the text match the following description?" -> string!
+const Orkeon.Infrastructure.LLMs.Decision.Stages.VerifyDecisionStage.Instructions = "Does the response meet the following criterion?" -> string!

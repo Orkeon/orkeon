@@ -107,6 +107,27 @@ declare global {
     }
 
     /**
+     * Thrown by `ctx.llm.complete`, `chat`, `extract`, `decide`, `act` and a `stream` iteration
+     * when a stage of the host's decision profile blocks the model call (a guard matched a risk,
+     * or a fail-closed stage failed). A decision, not a provider failure: a crew can tell the
+     * user which stage blocked the request instead of failing the run.
+     */
+    class DecisionBlockedError extends Error implements HostError {
+        /** Always `"DecisionBlocked"`, the provider's error type. */
+        readonly errorType: "DecisionBlocked";
+        /** The decision profile that blocked the call. */
+        readonly profile: string;
+        /** The stage that blocked it, e.g. `"guard"`. */
+        readonly stage: string;
+        /** The risk a guard matched, e.g. `"prompt_injection"`; absent for another stage. */
+        readonly risk?: string;
+        /** Why the stage blocked the call. */
+        readonly reason?: string;
+        readonly clrType?: string;
+        readonly clr?: unknown;
+    }
+
+    /**
      * The code an `onError` handler reads on `err.code` — exactly the codes the runtime's
      * mapper produces (`ErrorCodeMapper`).
      */
@@ -118,6 +139,7 @@ declare global {
         | "state_mutation"
         | "agent_not_in_crew"
         | "validation"
+        | "decision_blocked"
         | "unknown";
 }
 

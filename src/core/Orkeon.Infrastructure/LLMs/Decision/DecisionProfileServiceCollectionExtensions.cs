@@ -96,6 +96,7 @@ public static class DecisionProfileServiceCollectionExtensions
             case VerifyKind:
                 Named(options, path + ":EscalateTo", stage.EscalateTo, required: true);
                 Probability(path + ":MinProbability", stage.MinProbability);
+                ParseSteps(path, stage.Steps);
                 break;
             default:
                 throw new InvalidOperationException(
@@ -149,6 +150,13 @@ public static class DecisionProfileServiceCollectionExtensions
                 ? parsed
                 : throw new InvalidOperationException($"{path}:Phase: '{phase}' is not request, response or both.");
 
+    private static DecisionVerifySteps ParseSteps(string path, string? steps) =>
+        string.IsNullOrWhiteSpace(steps)
+            ? DecisionVerifySteps.Final
+            : Enum.TryParse<DecisionVerifySteps>(steps.Trim(), ignoreCase: true, out var parsed) && Enum.IsDefined(parsed)
+                ? parsed
+                : throw new InvalidOperationException($"{path}:Steps: '{steps}' is not final or all.");
+
     private static DecisionLlmProvider Build(IServiceProvider services, string name, DecisionProfileOptions profile)
     {
         var path = $"{DecisionProfilesOptions.SectionName}:Profiles:{name}";
@@ -190,7 +198,8 @@ public static class DecisionProfileServiceCollectionExtensions
                     break;
                 case VerifyKind:
                     Resolve(stage.EscalateTo!.Trim());
-                    response.Add(new VerifyDecisionStage(model, stage.EscalateTo, stage.MinProbability, stage.Criterion));
+                    response.Add(new VerifyDecisionStage(
+                        model, stage.EscalateTo, stage.MinProbability, stage.Criterion, ParseSteps(stagePath, stage.Steps)));
                     break;
             }
         }

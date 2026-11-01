@@ -50,7 +50,7 @@ internal static class JsHostError
         "ScriptVersionMismatchError", "AgentAlreadyInCrewError", "AgentNotInCrewError",
         "AgentNotInThisCrewError", "DuplicateAgentNameError", "RecursiveAgentInvocationError",
         "WaiterKickedError", "ReceiveTimeoutError", "StateMutationOutsideWithError", "BudgetExhaustedError",
-        "UnknownToolError",
+        "UnknownToolError", "DecisionBlockedError",
     ];
 
     private static readonly string ErrorClassNamesJson = System.Text.Json.JsonSerializer.Serialize(ErrorClassNames);
@@ -118,8 +118,25 @@ internal static class JsHostError
         StateMutationOutsideWithException s => ("StateMutationOutsideWithError", [("propertyName", s.PropertyName)]),
         BudgetExhaustedException b => ("BudgetExhaustedError", [("dimension", CamelCase(b.Dimension.ToString()))]),
         UnknownToolException u => ("UnknownToolError", [("agentName", u.AgentName), ("toolNames", u.ToolNames), ("availableTools", u.AvailableTools)]),
+        Orkeon.Application.Decision.DecisionBlockedException d => ("DecisionBlockedError", DecisionBlockedFields(d)),
         _ => null,
     };
+
+    /// <summary>A block's fields; the risk and the reason only when the stage gave them.</summary>
+    private static (string Key, object Value)[] DecisionBlockedFields(Orkeon.Application.Decision.DecisionBlockedException blocked)
+    {
+        var fields = new List<(string Key, object Value)>
+        {
+            ("errorType", Orkeon.Application.Decision.DecisionBlockedException.ErrorType),
+            ("profile", blocked.Profile),
+            ("stage", blocked.Stage),
+        };
+        if (blocked.Risk is not null)
+            fields.Add(("risk", blocked.Risk));
+        if (blocked.Reason is not null)
+            fields.Add(("reason", blocked.Reason));
+        return [.. fields];
+    }
 
     private static string CamelCase(string name)
         => name.Length == 0 ? name : char.ToLower(name[0], CultureInfo.InvariantCulture) + name[1..];

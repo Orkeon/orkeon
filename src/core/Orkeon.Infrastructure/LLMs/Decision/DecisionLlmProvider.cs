@@ -32,10 +32,10 @@ namespace Orkeon.Infrastructure.LLMs.Decision;
 public sealed partial class DecisionLlmProvider : ILlmProvider, IStreamingLlmProvider
 {
     /// <summary>The <see cref="LlmResponse.ErrorType"/> of a call a stage blocked.</summary>
-    public const string BlockedErrorType = "DecisionBlocked";
+    public const string BlockedErrorType = DecisionBlockedException.ErrorType;
 
     /// <summary>The metadata key naming the stage that blocked a call.</summary>
-    public const string StageMetadataKey = "decision_stage";
+    public const string StageMetadataKey = DecisionBlockedException.StageMetadataKey;
 
     private readonly string _profile;
     private readonly ILlmProvider _target;
@@ -268,7 +268,10 @@ public sealed partial class DecisionLlmProvider : ILlmProvider, IStreamingLlmPro
 
         if (verdict.Kind != DecisionVerdictKind.Continue)
         {
-            LogVerdict(_profile, stage.Name, verdict.Kind, verdict.Profile, verdict.Reason);
+            if (verdict.Profile is null)
+                LogVerdict(_profile, stage.Name, verdict.Kind, verdict.Reason);
+            else
+                LogVerdictTo(_profile, stage.Name, verdict.Kind, verdict.Profile, verdict.Reason);
             await AuditAsync(stage, verdict, cancellationToken).ConfigureAwait(false);
         }
 
@@ -321,21 +324,29 @@ public sealed partial class DecisionLlmProvider : ILlmProvider, IStreamingLlmPro
         _ => "decision.continue",
     };
 
-    private LlmResponse Blocked(IDecisionStage stage, DecisionVerdict verdict) => new()
+    private LlmResponse Blocked(IDecisionStage stage, DecisionVerdict verdict)
     {
-        Content = string.Empty,
-        Metadata = new Dictionary<string, object>
+        var metadata = new Dictionary<string, object>
         {
             [LlmResponseMetadataKeys.Error] = $"Blocked by the decision stage '{stage.Name}' of profile '{_profile}': {verdict.Reason}",
             [LlmResponseMetadataKeys.ErrorType] = BlockedErrorType,
+            [DecisionBlockedException.ProfileMetadataKey] = _profile,
             [StageMetadataKey] = stage.Name,
-        },
-    };
+        };
+        if (verdict.Risk is not null)
+            metadata[DecisionBlockedException.RiskMetadataKey] = verdict.Risk;
+        if (verdict.Reason is not null)
+            metadata[DecisionBlockedException.ReasonMetadataKey] = verdict.Reason;
+        return new LlmResponse { Content = string.Empty, Metadata = metadata };
+    }
 
-    private static InvalidOperationException Refusal(LlmResponse blocked) => new(blocked.Error);
+    private static DecisionBlockedException Refusal(LlmResponse blocked) => DecisionBlockedException.FromResponse(blocked)!;
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Decision profile {Profile}: stage {Stage} decided {Verdict} ({Reason})")]
+    private partial void LogVerdict(string profile, string stage, DecisionVerdictKind verdict, string? reason);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Decision profile {Profile}: stage {Stage} decided {Verdict} {To} ({Reason})")]
-    private partial void LogVerdict(string profile, string stage, DecisionVerdictKind verdict, string? to, string? reason);
+    private partial void LogVerdictTo(string profile, string stage, DecisionVerdictKind verdict, string to, string? reason);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Decision profile {Profile}: stage {Stage} failed; the call goes on (fail-open)")]
     private partial void LogStageFailedOpen(Exception exception, string profile, string stage);

@@ -217,7 +217,10 @@ d'Anthropic. Un résultat est coupé une fois, à la borne du framework
 (`AgentDefaults.ResolveMaxToolResultLength` : 4 000 caractères par défaut ; surcharges par outil : `file_read` 32 000, `node_read` 256 000, `shell_command` 10 000) : par
 le pipeline d'invocation d'outils de l'hôte quand il en a un, par `act` sinon. Un tour en échec
 chez le fournisseur résout `output` en `<undefined-llm:<l'erreur du fournisseur>>`, comme
-`complete`. Un nom de `.tools([...])` auquel aucun outil de l'hôte ne répond (comparaison
+`complete`. Un appel qu'une étape du profil de décision de l'hôte bloque n'est pas une panne du
+fournisseur : `complete`, `chat`, `extract`, `decide`, `act` et une itération de `stream` rejettent
+par une `DecisionBlockedError` (`errorType: "DecisionBlocked"`, `profile`, `stage`, `risk` pour une
+étape `guard`, `reason`), et une équipe peut dire à l'utilisateur quelle étape a refusé la requête ; non interceptée, elle fait échouer le run avec la `DecisionBlockedException`. Un nom de `.tools([...])` auquel aucun outil de l'hôte ne répond (comparaison
 insensible à la casse) n'est pas sauté : `act` rejette par une `UnknownToolError`
 (`agentName`, `toolNames`, `availableTools`) avant tout appel au modèle — le pendant procédural
 de l'échec de chargement que la forme déclarative obtient pour le même nom ; un handler
@@ -276,7 +279,7 @@ Un échec côté hôte parvient au script comme une instance de la classe que d�
 .NET) et `clr` (l'exception). Un échec sans classe déclarée est un simple `Error` qui porte ces
 deux mêmes propriétés. Un gestionnaire `onError` reçoit `{ code, message, exception, attempt,
 agent: { id, name } }` et le contexte ; `code` vaut `rate_limit`, `network`, `timeout`,
-`receive_timeout`, `state_mutation`, `agent_not_in_crew`, `validation` ou `unknown`.
+`receive_timeout`, `state_mutation`, `agent_not_in_crew`, `validation`, `decision_blocked` ou `unknown`.
 
 ## Les espaces de noms
 
