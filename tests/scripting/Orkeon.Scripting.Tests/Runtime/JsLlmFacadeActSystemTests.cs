@@ -115,6 +115,52 @@ public sealed class JsLlmFacadeActSystemTests
         Assert.Equal("c1", turn2[3].ToolCallId);
     }
 
+    [Fact]
+    [Trait("BR", "276")]
+    public async Task Context_option_seeds_a_user_message_before_the_prompt()
+    {
+        // The prompt stays the last user message: the request a decision profile judges and
+        // routes on. The system message comes first and does not change with the context.
+        using var engine = new Engine(options => options.Constraints.PromiseTimeout = HangGuards.EnginePromise);
+        var tool = new EchoTool("probe_tool");
+        var provider = new MessageCapturingProvider(new[]
+        {
+            new LlmResponse { Content = "", RawResponseBody = ToolCallBody("probe_tool", "{}") },
+            new LlmResponse { Content = "final", RawResponseBody = null },
+        });
+        var facade = new JsLlmFacade(engine, provider, CancellationToken.None, new IBaseTool[] { tool });
+
+        var options = EvalOptions(engine, "({ system: \"stay on task\", context: \"## Context\\n- branch: main\" })");
+        await facade.ActAsync(engine, "go", options);
+
+        var turn1 = provider.MessagesPerCall[0];
+        Assert.Equal("system,user,user", string.Join(",", turn1.Select(m => m.Role)));
+        Assert.Equal("stay on task", turn1[0].Content);
+        Assert.Equal("## Context\n- branch: main", turn1[1].Content);
+        Assert.Equal("go", turn1[2].Content);
+        var turn2 = provider.MessagesPerCall[1];
+        Assert.Equal("system,user,user,assistant,tool", string.Join(",", turn2.Select(m => m.Role)));
+        Assert.Equal("go", turn2.Last(m => m.Role == "user").Content);
+    }
+
+    [Fact]
+    [Trait("BR", "276")]
+    public async Task Blank_context_is_treated_as_absent()
+    {
+        using var engine = new Engine(options => options.Constraints.PromiseTimeout = HangGuards.EnginePromise);
+        var provider = new MessageCapturingProvider(new[]
+        {
+            new LlmResponse { Content = "done", RawResponseBody = null },
+        });
+        var facade = new JsLlmFacade(engine, provider, CancellationToken.None, Array.Empty<IBaseTool>());
+
+        var options = EvalOptions(engine, "({ context: \"  \" })");
+        await facade.ActAsync(engine, "hello", options);
+
+        var only = Assert.Single(provider.MessagesPerCall[0]);
+        Assert.Equal("hello", only.Content);
+    }
+
     // ── fakes ────────────────────────────────────────────────────────────────
 
     private sealed class MessageCapturingProvider : ILlmProvider

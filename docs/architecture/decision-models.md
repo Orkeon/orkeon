@@ -355,7 +355,10 @@ never on its own.
 ## Limits
 
 - The request stages ask about the last user message only; a decision over the whole
-  conversation needs a custom stage.
+  conversation needs a custom stage. A request sent inside a long user message (context,
+  history, then the request) is judged with all of it, and the context dilutes its risk: a
+  script passes that context to `ctx.llm.act` as `ActOptions.context`, a user message of its own
+  before the prompt, and the stages judge and route on the prompt alone (#276).
 - Each stage phase costs one round trip to the decision model, and a re-call costs one more LLM
   call.
 - Jev's context is bounded per request and per question: a long state or many passages in the

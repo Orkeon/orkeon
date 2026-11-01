@@ -96,6 +96,12 @@ utilisateur, et la gestion native du system des fournisseurs (Anthropic `system`
 niveau, `cache_control`) ne se déclenchait jamais. Un message system au niveau conversation
 l'emporte sur `LlmConfig.SystemMessage` chez tous les fournisseurs.
 
+`ActOptions.context` sème le contexte du tour (mémoire, état du dépôt, tours précédents) comme
+un message utilisateur à part, après `system` et devant le prompt. Le prompt reste le dernier
+message utilisateur, celui que jugent les étapes `guard` et `route` d'un profil de décision : le
+contexte ne peut plus diluer le risque de la requête (#276) ; et `system` reste le même d'un tour
+à l'autre, ce qui garde son accès au cache de prompt.
+
 **Appels d'outils en lecture, en parallèle.** Les appels d'outils d'un même tour du modèle qui
 sont de classe lecture — l'outil déclare l'`Access` `Read` **et** son nom figure sur la liste
 d'autorisation explicite (`file_read`, `directory_read`, `directory_search`, `count_pattern`,

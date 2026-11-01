@@ -214,6 +214,9 @@ answers to (compared case-insensitively) is not skipped: `act` rejects with an
 procedural twin of the load failure the declarative shape gets for the same name; an `onError`
 handler reads it as `validation`. `ActOptions.system` seeds a real `role:"system"` message that
 persists across every iteration; without it `act()` sends a single user message.
+`ActOptions.context` seeds a user message of its own between `system` and the prompt: the prompt
+stays the last user message, the request a decision profile's `guard` and `route` stages judge,
+so the context cannot dilute its risk (#276).
 `permissionMode` (`default`, `acceptEdits`, `bypassPermissions`, `plan`, `dontAsk`) is checked against the
 host's permission gate on each tool call, when the host registered one: a call the mode asks
 about waits for the operator when the host has an approval channel (`orkeon-repl` has one), and
