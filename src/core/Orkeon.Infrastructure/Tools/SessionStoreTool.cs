@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Orkeon.Application.Interfaces.Ports;
+using Orkeon.Domain.Attributes;
 using Orkeon.Domain.Tools;
 using Orkeon.Tools.Abstractions.Base;
 
@@ -10,50 +11,62 @@ namespace Orkeon.Infrastructure.Tools;
 public sealed class SessionStoreRequest
 {
     /// <summary>Operation: read_messages / write_messages / append_message / append_note / get_metadata / set_title / truncate / reset / get_state / set_state.</summary>
+    [FieldSchema(Description = "What to do with the session.", Enum = new[] { "read_messages", "write_messages", "append_message", "append_note", "get_metadata", "set_title", "truncate", "reset", "get_state", "set_state" }, IsRequired = false, Default = "read_messages")]
     [JsonPropertyName("operation")]
     public string Operation { get; set; } = "read_messages";
 
     /// <summary>Role of the message append_message adds (user, assistant, system, note).</summary>
+    [FieldSchema(Description = "Role of the message append_message adds: user, assistant, system or note.", IsRequired = false)]
     [JsonPropertyName("role")]
     public string? Role { get; set; }
 
     /// <summary>Content of the message append_message adds.</summary>
+    [FieldSchema(Description = "Content of the message append_message adds.", IsRequired = false)]
     [JsonPropertyName("content")]
     public string? Content { get; set; }
 
     /// <summary>Optional timestamp of the message append_message adds, as write_messages takes it.</summary>
+    [FieldSchema(Description = "Timestamp of the message append_message adds, as write_messages takes it.", IsRequired = false)]
     [JsonPropertyName("timestamp")]
     public string? Timestamp { get; set; }
 
     /// <summary>New buffer contents for write_messages.</summary>
+    [FieldSchema(Description = "New buffer contents for write_messages: {role, content, timestamp} each.", IsRequired = false)]
     [JsonPropertyName("messages")]
     public IReadOnlyList<object>? Messages { get; set; }
 
     /// <summary>Note text for append_note.</summary>
+    [FieldSchema(Description = "Note text for append_note.", IsRequired = false)]
     [JsonPropertyName("note")]
     public string? Note { get; set; }
 
     /// <summary>Title for set_title.</summary>
+    [FieldSchema(Description = "Title for set_title.", IsRequired = false)]
     [JsonPropertyName("title")]
     public string? Title { get; set; }
 
-    /// <summary>Number of recent messages to keep for truncate.</summary>
+    /// <summary>Number of recent turns to keep for truncate; a turn is a user request with the tool traces and the answer that follow it.</summary>
+    [FieldSchema(Description = "Number of recent turns to keep for truncate (default 3); a turn is a user request with the tool traces and the answer that follow it.", IsRequired = false, Default = 3)]
     [JsonPropertyName("retain_count")]
     public int RetainCount { get; set; } = 3;
 
     /// <summary>State key for get_state / set_state (session-scoped key/value bag).</summary>
+    [FieldSchema(Description = "State key for get_state / set_state.", IsRequired = false)]
     [JsonPropertyName("key")]
     public string? Key { get; set; }
 
     /// <summary>State value for set_state; null removes the key.</summary>
+    [FieldSchema(Description = "State value for set_state; null removes the key.", IsRequired = false)]
     [JsonPropertyName("value")]
     public string? Value { get; set; }
 
     /// <summary>Several state keys: read in one call by get_state (the answer is values), removed in one call by set_state.</summary>
+    [FieldSchema(Description = "Several state keys: read in one call by get_state (the answer is values), removed in one call by set_state.", ItemsType = "string", IsRequired = false)]
     [JsonPropertyName("keys")]
     public IReadOnlyList<string>? Keys { get; set; }
 
     /// <summary>Several state entries for set_state, written in one call (the tool pipeline drops a null value: a key is removed through keys).</summary>
+    [FieldSchema(Description = "Several state entries for set_state, written in one call.", IsRequired = false)]
     [JsonPropertyName("values")]
     public IReadOnlyDictionary<string, string>? Values { get; set; }
 }
@@ -136,7 +149,7 @@ public sealed class SessionStoreTool : ToolBase<SessionStoreRequest, SessionStor
             "append_note" => new SessionStoreResponse { Success = _buffer.AppendNote(request.Note ?? "") },
             "get_metadata" => new SessionStoreResponse { Success = true, Metadata = _buffer.GetMetadata() },
             "set_title" => new SessionStoreResponse { Success = _buffer.SetTitle(request.Title ?? "") },
-            "truncate" => new SessionStoreResponse { Success = true, RemovedCount = _buffer.Truncate(request.RetainCount) },
+            "truncate" => new SessionStoreResponse { Success = true, RemovedCount = _buffer.Truncate(request.RetainCount).RemovedCount },
             "reset" => new SessionStoreResponse { Success = true, RemovedCount = _buffer.Reset() },
             "get_state" => GetState(request),
             "set_state" => SetState(request),

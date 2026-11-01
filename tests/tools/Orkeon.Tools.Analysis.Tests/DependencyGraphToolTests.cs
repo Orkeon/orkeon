@@ -1,10 +1,71 @@
 using Orkeon.Analysis.Abstractions;
 using Orkeon.Analysis.Abstractions.DTOs.Tools;
+using Orkeon.Domain.Tools.Protocol;
 
 namespace Orkeon.Tools.Analysis.Tests;
 
 public class DependencyGraphToolTests
 {
+    private static Orkeon.Analysis.Core.InMemoryRaggableStore PackagesStore(int count)
+    {
+        var packages = Enumerable.Range(0, count).Select(i => TestGraph.Package($"root::p{i:D3}", $"/src/p{i:D3}")).ToList();
+        return TestGraph.Store(packages, []);
+    }
+
+    [Trait("BR", "#283")]
+    [Fact]
+    public async Task ShouldSerialiseTruncatedAndTheCountsBeforeTheNodes_WhenCalledThroughTheToolPath()
+    {
+        var pkgA = TestGraph.Package("root::a", "/src/a");
+        var pkgB = TestGraph.Package("root::b", "/src/b");
+        using var tool = new DependencyGraphTool(TestGraph.Store([pkgA, pkgB], [TestGraph.Edge(pkgA, pkgB, EdgeKind.Imports)]));
+
+        var response = await tool.CallAsync(
+            new ToolCallRequest("dependency_graph", new Dictionary<string, object?> { ["scope"] = "L1_Package", ["include_mermaid"] = true }),
+            TestContext.Current.CancellationToken);
+
+        Assert.True(response.Success, response.Error);
+        var keys = Assert.IsType<Dictionary<string, object?>>(response.Result).Keys.ToList();
+        Assert.Equal(["truncated", "cycles_truncated", "metrics", "cycles", "nodes", "edges", "mermaid_flowchart"], keys);
+    }
+
+    [Trait("BR", "#283")]
+    [Fact]
+    public async Task ShouldLeaveMermaidOut_WhenIncludeMermaidIsNotAsked()
+    {
+        using var tool = new DependencyGraphTool(PackagesStore(2));
+
+        var resp = await tool.ExecuteTypedForTest(new DependencyGraphRequest { Scope = NodeLevel.L1_Package }, CancellationToken.None);
+
+        Assert.Null(resp.MermaidFlowchart);
+    }
+
+    [Trait("BR", "#283")]
+    [Fact]
+    public async Task ShouldNotSayTruncated_WhenTheScopeHoldsExactlyMaxNodes()
+    {
+        using var tool = new DependencyGraphTool(PackagesStore(3));
+
+        var resp = await tool.ExecuteTypedForTest(
+            new DependencyGraphRequest { Scope = NodeLevel.L1_Package, MaxNodes = 3 }, CancellationToken.None);
+
+        Assert.Equal(3, resp.Nodes.Length);
+        Assert.False(resp.Truncated);
+    }
+
+    [Trait("BR", "#283")]
+    [Fact]
+    public async Task ShouldSayTruncated_WhenTheScopeHoldsOneNodeMoreThanMaxNodes()
+    {
+        using var tool = new DependencyGraphTool(PackagesStore(4));
+
+        var resp = await tool.ExecuteTypedForTest(
+            new DependencyGraphRequest { Scope = NodeLevel.L1_Package, MaxNodes = 3 }, CancellationToken.None);
+
+        Assert.Equal(3, resp.Nodes.Length);
+        Assert.True(resp.Truncated);
+    }
+
     [Fact]
     public void Has_stable_tool_contract()
     {
@@ -311,5 +372,27 @@ public class DependencyGraphToolTests
 
         Assert.False(schema.Parameters!["edge_kinds"].Required);
         Assert.False(schema.Parameters["node_kinds"].Required);
+    }
+
+
+    [Trait("BR", "#280")]
+    [Fact]
+    public async Task ShouldReturnTheRootsNodes_WhenTheyLieAfterTheFirstPageOfTheScope()
+    {
+        var others = Enumerable.Range(0, 5).Select(i => TestGraph.Package($"root::p{i:D3}", $"/src/p{i:D3}")).ToList();
+        var zz = TestGraph.Package("root::zz", "/zz");
+        var zzA = TestGraph.Package("root::zz::a", "/zz/a");
+        var zzB = TestGraph.Package("root::zz::b", "/zz/b");
+        using var tool = new DependencyGraphTool(TestGraph.Store([.. others, zz, zzA, zzB], []));
+
+        var cut = await tool.ExecuteTypedForTest(
+            new DependencyGraphRequest { Scope = NodeLevel.L1_Package, RootFqn = "root::zz", MaxNodes = 2 }, CancellationToken.None);
+        var whole = await tool.ExecuteTypedForTest(
+            new DependencyGraphRequest { Scope = NodeLevel.L1_Package, RootFqn = "root::zz", MaxNodes = 3 }, CancellationToken.None);
+
+        Assert.Equal(["root::zz", "root::zz::a"], cut.Nodes.Select(n => n.Fqn));
+        Assert.True(cut.Truncated);
+        Assert.Equal(3, whole.Nodes.Length);
+        Assert.False(whole.Truncated);
     }
 }

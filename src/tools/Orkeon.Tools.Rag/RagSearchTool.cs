@@ -39,8 +39,9 @@ public class RagSearchTool : ToolBase<RagSearchRequest, RagSearchResponse>
 
     /// <inheritdoc />
     public override string Description =>
-        "Search knowledge bases and retrieve answers grounded in documents. " +
-        "Use this when you need factual information from the agent's knowledge sources.";
+        "What do the ingested documents say about this? Searches the knowledge collections rag_ingest filled (documents, "
+        + "pages, notes) and returns an answer grounded in the top_k most relevant chunks (3), with their citations. "
+        + "For the code of the workspace, codebase_search, grep and file_read; rag_search knows only what was ingested.";
 
     /// <summary>Querying the index changes nothing: a read for the permission gate (#126).</summary>
     public override ToolAccess Access => ToolAccess.Read;
@@ -62,7 +63,7 @@ public class RagSearchTool : ToolBase<RagSearchRequest, RagSearchResponse>
                 Default: 3),
             ["collection"] = new ParameterSchema(
                 "string",
-                "Optional collection selector (default: the configured default collection; 'raggable-tree' for the code index)",
+                "Collection to search, as rag_ingest named it (default: the configured default collection)",
                 Required: false)
         });
 
@@ -157,7 +158,7 @@ public class RagSearchTool : ToolBase<RagSearchRequest, RagSearchResponse>
             Text = text,
             TopK = topK,
         };
-        var hits = await _raggableStore!.SemanticSearchAsync(semantic, ct).ConfigureAwait(false);
+        var hits = (await _raggableStore!.SemanticSearchAsync(semantic, ct).ConfigureAwait(false)).Hits;
         return hits
             .Select(h => (h.Fqn, h.SummaryShort ?? h.Signature ?? string.Empty, h.Score))
             .ToList();

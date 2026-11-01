@@ -85,7 +85,8 @@ public sealed class DirectoryReadToolWarningTests : IDisposable
         public Task<IReadOnlyList<CallPath>> FindAllPathsAsync(PathQuery query, CancellationToken ct) => Task.FromResult<IReadOnlyList<CallPath>>([]);
         public Task<CallPath?> ShortestPathAsync(ShortestPathQuery query, CancellationToken ct) => Task.FromResult<CallPath?>(null);
         public Task<IReadOnlyList<Cycle>> FindCyclesAsync(CycleQuery query, CancellationToken ct) => Task.FromResult<IReadOnlyList<Cycle>>([]);
-        public Task<IReadOnlyList<SearchHit>> SemanticSearchAsync(SemanticQuery query, CancellationToken ct) => Task.FromResult<IReadOnlyList<SearchHit>>([]);
+        public Task<EdgeListPage> ListEdgesAsync(EdgeListQuery query, CancellationToken ct) => Task.FromResult(new EdgeListPage { Edges = [], Total = 0 });
+        public Task<SemanticSearchResult> SemanticSearchAsync(SemanticQuery query, CancellationToken ct) => Task.FromResult(new SemanticSearchResult { Hits = [] });
         public Task<SourceSlice?> GetSourceAsync(string fqn, SourceMode mode, CancellationToken ct) => Task.FromResult<SourceSlice?>(null);
         public Task<IReadOnlyList<ComplexityEntry>> TopComplexityAsync(ComplexityQuery query, CancellationToken ct) => Task.FromResult<IReadOnlyList<ComplexityEntry>>([]);
         public Task<IReadOnlyList<CentralityEntry>> TopCentralityAsync(CentralityQuery query, CancellationToken ct) => Task.FromResult<IReadOnlyList<CentralityEntry>>([]);

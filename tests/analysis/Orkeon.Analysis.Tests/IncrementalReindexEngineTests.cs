@@ -426,10 +426,10 @@ public class IncrementalReindexEngineTests
 
             Assert.Equal(1, result.FilesParsed);
             var quokka = result.Tree.Nodes.First(n => n.VirtualFilePath == guide && n.Name == "Quokka");
-            var fresh = await store.SemanticSearchAsync(
-                new SemanticQuery { Text = "Quokka", Mode = SearchMode.Lexical }, CancellationToken.None);
-            var stale = await store.SemanticSearchAsync(
-                new SemanticQuery { Text = "Zebra", Mode = SearchMode.Lexical }, CancellationToken.None);
+            var fresh = (await store.SemanticSearchAsync(
+                new SemanticQuery { Text = "Quokka", Mode = SearchMode.Lexical }, CancellationToken.None)).Hits;
+            var stale = (await store.SemanticSearchAsync(
+                new SemanticQuery { Text = "Zebra", Mode = SearchMode.Lexical }, CancellationToken.None)).Hits;
             Assert.Contains(fresh, h => h.Fqn == quokka.Fqn);
             Assert.Empty(stale);
         }

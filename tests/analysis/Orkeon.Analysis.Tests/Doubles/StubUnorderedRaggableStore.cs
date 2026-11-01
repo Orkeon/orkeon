@@ -29,7 +29,8 @@ internal sealed class StubUnorderedRaggableStore : IRaggableStore
     public Task<IReadOnlyList<CallPath>> FindAllPathsAsync(PathQuery query, CancellationToken ct) => throw new NotSupportedException();
     public Task<CallPath?> ShortestPathAsync(ShortestPathQuery query, CancellationToken ct) => throw new NotSupportedException();
     public Task<IReadOnlyList<Cycle>> FindCyclesAsync(CycleQuery query, CancellationToken ct) => throw new NotSupportedException();
-    public Task<IReadOnlyList<SearchHit>> SemanticSearchAsync(SemanticQuery query, CancellationToken ct) => throw new NotSupportedException();
+    public Task<EdgeListPage> ListEdgesAsync(EdgeListQuery query, CancellationToken ct) => throw new NotSupportedException();
+    public Task<SemanticSearchResult> SemanticSearchAsync(SemanticQuery query, CancellationToken ct) => throw new NotSupportedException();
     public Task<SourceSlice?> GetSourceAsync(string fqn, SourceMode mode, CancellationToken ct) => throw new NotSupportedException();
     public Task<IReadOnlyList<ComplexityEntry>> TopComplexityAsync(ComplexityQuery query, CancellationToken ct) => throw new NotSupportedException();
     public Task<IReadOnlyList<CentralityEntry>> TopCentralityAsync(CentralityQuery query, CancellationToken ct) => throw new NotSupportedException();

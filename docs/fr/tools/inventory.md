@@ -4,7 +4,7 @@
 
 # Inventaire des tools Orkeon
 
-Cette page est le catalogue de référence des **120 classes de tools intégrées**. La règle
+Cette page est le catalogue de référence des **121 classes de tools intégrées**. La règle
 de comptage est celle qu'applique `scripts/check-doc-claims.py` : chaque fichier
 `*Tool.cs` sous `src/`, sauf l'interface (`IBaseTool.cs`) et l'infrastructure non-tool
 qui matche le glob (`MockTool.cs`, `JsTool.cs`, `ObservedTool.cs`, `AIAgentTool.cs`). Le même script
@@ -33,7 +33,7 @@ celui ci-dessus — est ce que le YAML référence.
 | Tool | Classe | Enregistrement | Cas d'usage | Exemple d'appel |
 |-------|--------|------|-------------|-----------------|
 | `semantic_search` | `SearchTool` | `AddSemanticSearchTool()` (`Orkeon.Hosting`, opt-in — `orkeon run` l'appelle pour un crew YAML) | Recherche sémantique par embeddings dans les mémoires | `{ "query": "customer churn patterns", "top_k": 5 }` |
-| `rag_search` | `RagSearchTool` | `AddOrkeonRag(config)` + `AddOrkeonRagTools()` (`Orkeon.Tools.Rag`) — tout hôte runner appelle les deux | Recherche RAG dans les bases de connaissances de l'agent via `IRagPipeline`. Résultat typé (`answer`, `citations[]`) ; paramètre structuré `question` uniquement — l'ancienne entrée en chaîne brute est supprimée (**cassant**, idem pour `rag_eval` avec `dataset`) | `{ "question": "What is our return policy?", "top_k": 3 }` |
+| `rag_search` | `RagSearchTool` | `AddOrkeonRag(config)` + `AddOrkeonRagTools()` (`Orkeon.Tools.Rag`) — tout hôte runner appelle les deux | Recherche RAG dans les collections remplies par `rag_ingest` (jamais l'index du code : `codebase_search`) via `IRagPipeline`. Résultat typé (`answer`, `citations[]`) ; paramètre structuré `question` uniquement — l'ancienne entrée en chaîne brute est supprimée (**cassant**, idem pour `rag_eval` avec `dataset`) | `{ "question": "What is our return policy?", "top_k": 3 }` |
 | `rag_ingest` | `RagIngestTool` | Même opt-in que `rag_search` | Ingestion incrémentale dans une collection RAG (pilotée par manifeste — les sources inchangées coûtent 0 embedding) | `{ "collection": "docs", "sources": ["/kb/**/*.md"], "reindex": false }` |
 | `rag_eval` | `RagEvalTool` | Même opt-in que `rag_search` | Évaluer une collection contre un dataset doré YAML : recall@k, precision@k, MRR, groundedness. Résultat typé (`metrics[]`, `cases[]`, `reports`) | `{ "collection": "docs", "dataset": "/kb/eval/golden.yaml" }` |
 
@@ -57,12 +57,12 @@ celui ci-dessus — est ce que le YAML référence.
 
 | Tool | Classe | Cas d'usage |
 |-------|--------|-------------|
-| `session_store` | `SessionStoreTool` | Lire/écrire/tronquer/annoter le buffer de session et ses métadonnées ; `append_message` ajoute un message sans réécrire le buffer, `get_state` lit une `key` ou plusieurs `keys`, `set_state` écrit une `key` ou plusieurs `values` et supprime plusieurs `keys` ; une écriture multi-clés est tout ou rien, un recouvrement `values` / `keys` ou une `key` / `value` mêlée à `values` / `keys` est refusé, et en mode `plan` seules les lectures (`get_state`, `read_messages`, `get_metadata`) sont admises |
-| `session_snip` | `SessionSnipTool` | Tronquer immédiatement la conversation à une fenêtre minimale |
+| `session_store` | `SessionStoreTool` | Lire/écrire/tronquer/annoter le buffer de session et ses métadonnées ; `truncate` garde la tête plus les `retain_count` derniers tours, comme `session_snip`, `append_message` ajoute un message sans réécrire le buffer, `get_state` lit une `key` ou plusieurs `keys`, `set_state` écrit une `key` ou plusieurs `values` et supprime plusieurs `keys` ; une écriture multi-clés est tout ou rien, un recouvrement `values` / `keys` ou une `key` / `value` mêlée à `values` / `keys` est refusé, et en mode `plan` seules les lectures (`get_state`, `read_messages`, `get_metadata`) sont admises |
+| `session_snip` | `SessionSnipTool` | Tronquer immédiatement la conversation au message de tête plus les `retain_count` derniers tours (3 par défaut) ; un tour est une requête utilisateur avec les traces d'outils et la réponse qui la suivent, la coupe n'en scinde donc jamais un ; `kept_from` est l'index du premier message conservé, toujours un message utilisateur (`-1` quand rien n'a été retiré ou que seule la tête est gardée) |
 | `session_stats` | `SessionStatsTool` | Télémétrie complète de session : messages, tokens, coût, totaux d'appels |
 | `session_cost` | `SessionCostTool` | Coût cumulé de la session en USD avec ventilation par modèle |
 | `token_budget` | `TokenBudgetTool` | Taille de la fenêtre de contexte, tokens consommés et ce qui les remplit (`used_tokens_by_kind` : `system`, `user`, `assistant`, `tool`, `other`), budget disponible |
-| `memory_store` | `MemoryStoreTool` | Lister/ajouter/supprimer/lire des mémoires typées (user/project/feedback/reference) |
+| `memory_store` | `MemoryStoreTool` | Lister/ajouter/remplacer/supprimer/lire des mémoires typées (user/project/feedback/reference) : `add` renvoie l'`id` de l'entrée, chaque entrée porte `created_at`, `list` prend `newest_first`, `replace` retire un fait périmé sur place (même `id` et même catégorie). Conservées par projet dans `<Orkeon:Cli:Memory:RootDirectory>/<slug du projet>/memory.json` quand `Orkeon:Cli:Memory:Persist` est actif (défaut du REPL) ; en mémoire sinon |
 
 ## Tool de décision (`Orkeon.Infrastructure`) — `AddOrkeonDecisionProvider(configuration)`
 
@@ -82,12 +82,12 @@ pour `node_outline`, `node_read`, `structural_search`, `structural_rewrite`, `tx
 
 | Tool | Classe | Base | Cas d'usage | Exemple d'appel |
 |-------|--------|------|-------------|-----------------|
-| `file_read` | `FileReadTool` | `FileToolBase<FileReadRequest, FileReadResponse>` | Lire le contenu d'un fichier (texte, JSON, XML et assimilés — un message `.eml` passe par `email_parser`) | `{ "path": "/data/report.txt" }` |
-| `file_write` | `FileWriteTool` | `FileToolBase<FileWriteRequest, FileWriteResponse>` | Écrire du contenu dans un fichier, en créant les dossiers si nécessaire | `{ "path": "/output/result.txt", "content": "Analysis complete.", "append": false }` |
-| `edit_file` | `EditFileTool` | `FileToolBase<EditFileRequest, EditFileResponse>` | Remplacer une chaîne dans un fichier lorsqu'elle n'apparaît qu'une fois | `{ "path": "/workspace/a.txt", "old_string": "foo", "new_string": "bar" }` |
-| `directory_read` | `DirectoryReadTool` | `FileToolBase<DirectoryReadRequest, DirectoryReadResponse>` | Lister le contenu d'un répertoire avec filtrage glob et récursion | `{ "path": "/data", "pattern": "*.csv", "recursive": true }` |
+| `file_read` | `FileReadTool` | `FileToolBase<FileReadRequest, FileReadResponse>` | Lire un fichier texte entier ou par plage de lignes (`offset`, `limit` ; `has_more` en cas de coupure) ; un symbole passe par `node_read`, une recherche par `grep` | `{ "path": "/data/report.txt" }` |
+| `file_write` | `FileWriteTool` | `FileToolBase<FileWriteRequest, FileWriteResponse>` | Écrire tout le contenu d'un fichier, en créant les dossiers si nécessaire (`append` ajoute à la fin) ; une modification dans un fichier passe par `edit_file` | `{ "path": "/output/result.txt", "content": "Analysis complete.", "append": false }` |
+| `edit_file` | `EditFileTool` | `FileToolBase<EditFileRequest, EditFileResponse>` | Remplacer une chaîne dans un fichier lorsqu'elle n'apparaît qu'une fois, ou chaque occurrence avec `replace_all` | `{ "path": "/workspace/a.txt", "old_string": "foo", "new_string": "bar" }` |
+| `directory_read` | `DirectoryReadTool` | `FileToolBase<DirectoryReadRequest, DirectoryReadResponse>` | Lister le contenu d'un répertoire avec filtrage glob et récursion, au plus `max_results` entrées (200 ; `truncated` quand le dossier en contient plus) | `{ "path": "/data", "pattern": "*.csv", "recursive": true }` |
 | `directory_search` | `DirectorySearchTool` | `ToolBase<DirectorySearchRequest, DirectorySearchResponse>` | Recherche sémantique RAG dans les fichiers d'un répertoire (collection éphémère — exige le sous-système RAG à l'appel, voir ci-dessous) | `{ "path": "/docs", "query": "deployment instructions", "file_patterns": "*.md;*.txt" }` |
-| `count_pattern` | `CountPatternTool` | `FileToolBase<CountPatternRequest, CountPatternResponse>` | Compte déterministe des occurrences d'un motif regex dans un fichier (aucune estimation LLM) | `{ "path": "/data/log.txt", "patterns": ["ERROR", "WARN"] }` |
+| `count_pattern` | `CountPatternTool` | `FileToolBase<CountPatternRequest, CountPatternResponse>` | Compte déterministe des occurrences de chaque motif regex dans un fichier (aucune estimation LLM) ; sur une arborescence, `grep` avec `output_mode: "count"` | `{ "path": "/data/log.txt", "patterns": ["ERROR", "WARN"] }` |
 | `glob` | `GlobTool` | `FileToolBase<GlobRequest, GlobResponse>` | Fichiers correspondant à un motif sous une racine montée, bornés par `max_results` (`pattern` relatif à `path`). Classe Read | `{ "path": "/workspace", "pattern": "**/*.cs", "max_results": 100 }` |
 | `grep` | `GrepTool` | `FileToolBase<GrepRequest, GrepResponse>` | Recherche regex ligne à ligne renvoyant `path:line:text`, bornée par `max_results` / `max_files`, fichiers binaires ou de plus de 1 Mio ignorés, délai par correspondance ; `glob` filtre relatif à `path`. Chaque réponse porte `total_matches`, `files_matched`, `scan_complete` (faux quand un fichier de plus de 1 Mio n'a pas été lu, que le budget de temps est épuisé ou que `max_files` a coupé le scan) et `truncated` (vrai quand une liste ou les comptes sont coupés) ; `output_mode: "count"` supprime les lignes de résultat et renvoie les comptes par fichier, si bien qu'une question « combien » sur une arborescence tient en un appel. Le mode `hits`, par défaut, lit tous les fichiers candidats jusqu'à `max_files` ou au budget de 20 s, même une fois `max_results` atteint, pour que `total_matches` reste exact ; une grande arborescence peut finir `timed_out` ou `truncated`. Classe Read | `{ "path": "/workspace", "pattern": "TODO", "glob": "**/*.cs" }` |
 
@@ -228,7 +228,7 @@ pour les deux fournisseurs, modèle de sécurité et commandes `orkeon drive` :
 
 ## Tools d'analyse de codebase (`Orkeon.Tools.Analysis`) — `AddRaggableTreeTools()`
 
-Vingt-huit tools sur le graphe sémantique de code RaggableTree — le guide complet est
+Vingt-neuf tools sur le graphe sémantique de code RaggableTree — le guide complet est
 [RaggableTree](../architecture/raggable-tree.md).
 
 | Tool | Classe | Cas d'usage |
@@ -237,15 +237,16 @@ Vingt-huit tools sur le graphe sémantique de code RaggableTree — le guide com
 | `incremental_reindex` | `IncrementalReindexTool` | Réindexer seulement les fichiers modifiés depuis un commit ou une liste explicite |
 | `index_status` | `IndexStatusTool` | Lister chaque racine virtuelle actuellement indexée |
 | `is_path_indexed` | `IsPathIndexedTool` | Vérifier si un chemin virtuel est couvert par une racine indexée |
-| `codebase_map` | `CodebaseMapTool` | Carte structurelle de la codebase à un niveau de zoom donné (L0–L3) |
-| `package_summary` | `PackageSummaryTool` | Détails d'un package (L1) : comptes fichiers/symboles, exports, dépendances |
-| `symbol_detail` | `SymbolDetailTool` | Détail étendu d'un symbole L3 : signature, doc, métriques, membres, appelants/appelés |
+| `codebase_map` | `CodebaseMapTool` | Carte structurelle de la codebase à un niveau (L1 par défaut, L0–L3), au plus `max_entries` (200), `truncated` quand il en existe plus |
+| `package_summary` | `PackageSummaryTool` | Détails d'un package (L1) : comptes fichiers/symboles, points d'entrée, exports (au plus `max_exports`, 50), dépendances |
+| `symbol_detail` | `SymbolDetailTool` | Détail étendu d'un symbole L3 : signature, doc, métriques, membres, appelants/appelés ; `expand: "inheritance"` donne `extends`, `implements`, `derived_by` et `implemented_by` en FQN |
 | `symbol_source` | `SymbolSourceTool` | Citation de source déterministe : chemin, lignes, code, SHA-256, drapeau de stabilité |
-| `codebase_search` | `CodebaseSearchTool` | Recherche hybride (vecteur + BM25) avec résultats classés et cités |
-| `dependency_graph` | `DependencyGraphTool` | Graphe de dépendances à une portée (packages L1, modules L2, symboles L3) |
-| `sub_graph` | `SubGraphTool` | Expansion de sous-graphe autour de graines, bornée en profondeur et en nœuds |
-| `flow_trace` | `FlowTraceTool` | Tracer le flux d'appels depuis un symbole dans un budget de profondeur |
-| `impact_analysis` | `ImpactAnalysisTool` | Appelants directs et transitifs affectés par la modification d'un symbole |
+| `codebase_search` | `CodebaseSearchTool` | Recherche hybride (vecteur + BM25) avec résultats classés et cités, au plus `top_k` (10), `truncated` quand il en existe plus |
+| `dependency_graph` | `DependencyGraphTool` | Graphe de dépendances à une portée (packages L1, modules L2, symboles L3) : au plus `max_nodes` nœuds (200), `truncated` quand la portée en contient plus, les cycles de toute la portée ; `include_mermaid` / `include_dot` désactivés par défaut |
+| `sub_graph` | `SubGraphTool` | Expansion de sous-graphe autour de graines, Forward ou Backward, bornée par `depth` et `max_nodes` (100) ; `include_mermaid` désactivé par défaut |
+| `edge_list` | `EdgeListTool` | Toutes les arêtes des `edge_kinds` donnés (obligatoire) de l'index entier, dans un ordre stable et paginées (`cursor`, `page_size` jusqu'à 1000), chaque extrémité en FQN et en id, éventuellement restreintes aux arêtes dont une extrémité est `root_fqn` ou se trouve sous lui (un paquet ou un fichier par chemin, un type par FQN, un espace de noms par ses fichiers et son nom) ; `total` et `next_cursor`. Classe Read |
+| `flow_trace` | `FlowTraceTool` | Tracer le flux d'appels depuis un symbole, le plus court chemin vers une cible ou tous les chemins dans `max_depth` et `max_paths` (20) ; `edge_kinds` prend les noms de workflow (`calls` par défaut, `inherits`) |
+| `impact_analysis` | `ImpactAnalysisTool` | Appelants directs et transitifs affectés par la modification d'un symbole, comptés par package, au plus `max_nodes` visités (500) |
 | `complexity_report` | `ComplexityReportTool` | Top-N des méthodes par métriques de complexité, avec médiane/P95 |
 | `access_cost` | `AccessCostTool` | Coût d'accès aux ports des membres choisis par `fqns` ou `changed_files` (par défaut : les changements de l'arbre de travail), restreint à `roots` ; `receivers` remplace la regex des récepteurs de ports. Classe lecture |
 | `documents_of` | `DocumentsOfTool` | Symboles documentés par les sections d'un fichier Markdown (`path`). Classe Read |
@@ -278,7 +279,7 @@ Vingt-huit tools sur le graphe sémantique de code RaggableTree — le guide com
 
 ## Hors catalogue
 
-Délibérément **hors** des 120 classes de tools intégrées :
+Délibérément **hors** des 121 classes de tools intégrées :
 
 - `brief_submit` / `blueprint_submit` — internes à la commande `orkeon forge`
   (`ForgeSubmission.cs`, `Orkeon.Scripting.Cli`) ; les agents du moteur les utilisent,
@@ -301,7 +302,7 @@ le nombre qu'affichent le README et l'index de la documentation, vérifié par
 | Package | Classes de tools |
 |---------|--------------|
 | `Orkeon.Tools.Data` | 22 |
-| `Orkeon.Tools.Analysis` (RaggableTree — voir [son guide](../architecture/raggable-tree.md)) | 28 |
+| `Orkeon.Tools.Analysis` (RaggableTree — voir [son guide](../architecture/raggable-tree.md)) | 29 |
 | `Orkeon.Tools.Email` (voir [son guide](../guides/email.md)) | 13 |
 | `Orkeon.Tools.Drive` (voir [son guide](../guides/drive.md)) | 11 |
 | `Orkeon.Infrastructure` (collaboration, session, sandbox, entrée humaine, `semantic_search`, `system_one_decide`) | 13 |
@@ -310,7 +311,7 @@ le nombre qu'affichent le README et l'index de la documentation, vérifié par
 | `Orkeon.Tools.FileSystem` | 8 |
 | `Orkeon.Tools.Rag` | 3 |
 | `Orkeon.Tools.Abstractions` / `Orkeon.Tools.Code` / `Orkeon.Tools.Embeddings.Local` / `Orkeon.Cli.Commands.Scripting` / `Orkeon.Scripting` | 1 chacun |
-| **Total** | **120** |
+| **Total** | **121** |
 
 ## Disponibilité par racine de composition
 
@@ -330,7 +331,7 @@ d'`orkeon run --list-tools` et sert ses outils à un client MCP, `human_input` �
 | E-mail (13) — les tools de boîte aux lettres refusent tout appel tant qu'aucun compte n'est déclaré sous `Orkeon:Tools:Email` | ✅ (jetons OAuth sous la racine interne `/credentials`) | ✅ comptes à mot de passe seulement — le REPL ne tient aucun magasin de jetons, un compte OAuth y est refusé |
 | Drive (11) — chaque tool sauf `drive_accounts` refuse tout appel tant qu'un compte n'est pas déclaré sous `Orkeon:Tools:Drive` et connecté | ✅ (jetons OAuth sous la racine interne `/credentials`) | enregistrés, mais chaque compte y est refusé : tous se connectent en OAuth, et le REPL ne tient aucun magasin de jetons |
 | EventHub (7) | ✅ | ❌ |
-| Analysis (28) | ✅ (sauf `RaggableTree:Enabled` = `false`) | ✅ |
+| Analysis (29) | ✅ (sauf `RaggableTree:Enabled` = `false`) | ✅ |
 | `local_embed_text` | ✅ tant que RaggableTree est actif avec son provider d'embeddings local par défaut | ✅ |
 | RAG (`rag_search`, `rag_ingest`, `rag_eval`) | ✅ enregistrés par tout hôte `RunnerHost` — `orkeon run` sous toutes ses formes, `orkeon-host`, `orkeon mcp serve` —, avec le reranker ONNX : un agent YAML qui en liste un le reçoit, un script les atteint par `tools.ragSearch` et `rag.*` | ✅ enregistrés, avec le reranker ONNX : un agent YAML qui en liste un le reçoit |
 | `web_search`, `cache_search` | ✅ | ❌ |
@@ -396,7 +397,7 @@ services.AddOrkeonInMemoryEventHub();
 services.AddOrkeonEventHubTools();     // les 7 tools du hub d'événements
 services.AddOrkeonEmailTools(configuration); // les 13 tools email_* ; ceux de boîte aux lettres demandent un compte déclaré
 services.AddOrkeonDriveTools(configuration); // les 11 tools drive_* ; ils demandent un compte déclaré et connecté
-services.AddRaggableTreeTools();       // les 28 tools d'analyse
+services.AddRaggableTreeTools();       // les 29 tools d'analyse
 services.AddOrkeonLocalEmbeddings();   // local_embed_text
 services.AddSemanticSearchTool();      // semantic_search (l'extension vit dans Orkeon.Hosting)
 services.AddOrkeonWebSearchTool();     // web_search
@@ -462,6 +463,7 @@ correspondance alphabétique complète :
 | `email_send` | `EmailSendTool` | `Orkeon.Tools.Email` |
 | `file_read` | `FileReadTool` | `Orkeon.Tools.FileSystem` |
 | `file_write` | `FileWriteTool` | `Orkeon.Tools.FileSystem` |
+| `edge_list` | `EdgeListTool` | `Orkeon.Tools.Analysis` |
 | `edit_batch` | `EditBatchTool` | `Orkeon.Tools.Analysis` |
 | `edit_file` | `EditFileTool` | `Orkeon.Tools.FileSystem` |
 | `flow_trace` | `FlowTraceTool` | `Orkeon.Tools.Analysis` |

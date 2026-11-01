@@ -197,6 +197,20 @@ any other value is refused with `effort must be low|medium|high|xhigh|max`) and 
 `onToolResult`, `waitFor`). There is no per-call provider, temperature or token cap, and no `signal` — the call
 already observes the context's.
 
+`chat` takes a bare message array or `{ messages: [...] }`. `extract(prompt, schema, opts)` takes
+the same forms as its first argument, the caller's turns sent in order, plus a prompt string; its
+options add `system`, sent as the first message with the JSON instruction appended to it, so the
+user content goes untouched. Without `system`, the instruction is appended to the prompt or to the
+last user message. A re-ask carries the refused answer as an assistant turn (#285):
+
+```ts
+const again = await ctx.llm.extract<Invoice>({ messages: [
+    { role: "user", content: prompt },
+    { role: "assistant", content: refused },
+    { role: "user", content: "That is not JSON. Answer with the object only." },
+] }, schema, { system: "You extract invoices." });
+```
+
 `act` is the LLM ⇄ tool-call loop: it offers the model the built-ins the agent selected with
 `.tools([...])` and its `withAutonomousTool` instances — whose `execute` runs in the script,
 on the engine's own thread — until the model stops asking or `maxIterations` (default 10,
@@ -206,7 +220,7 @@ turn is replayed in the provider's own tool protocol — the assistant turn with
 one `tool` result per call, a permission refusal or a tool error included — whether the
 provider answers in the OpenAI shape (most providers, Ollama included) or with the Anthropic
 Messages body. A result is cut once, at the framework's bound
-(`AgentDefaults.ResolveMaxToolResultLength`: 4 000 characters by default; per-tool overrides: `file_read` 32 000, `node_read` 256 000, `shell_command` 10 000): by the
+(`AgentDefaults.ResolveMaxToolResultLength`: 4 000 characters by default; per-tool overrides: `file_read` 32 000, `node_read` 256 000, `shell_command` 10 000, and 12 000 for the analysis tools that answer with a graph or a page: `dependency_graph`, `sub_graph`, `edge_list`, `flow_trace`, `impact_analysis`, `codebase_map`, `package_summary`, `symbol_detail`, `codebase_search`, `structural_search`, `structural_rewrite`, `affected_tests`): by the
 host's tool invocation pipeline when it has one, by `act` otherwise. A turn the provider failed
 resolves `output` to `<undefined-llm:<the provider's error>>`, as `complete` does. A call a stage of the host's decision profile blocks is not a provider failure: `complete`, `chat`, `extract`, `decide`, `act` and a `stream` iteration reject with a `DecisionBlockedError` (`errorType: "DecisionBlocked"`, `profile`, `stage`, `risk` for a guard, `reason`), so a crew can tell the user which stage refused the request; uncaught, it fails the run with the `DecisionBlockedException`. A name in `.tools([...])` that no tool of the host
 answers to (compared case-insensitively) is not skipped: `act` rejects with an

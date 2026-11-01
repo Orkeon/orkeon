@@ -159,7 +159,7 @@ public sealed class GrepTool : FileToolBase<GrepRequest, GrepResponse>
     public override string Name => "grep";
 
     /// <inheritdoc />
-    public override string Description => "Search the lines of text files under a mounted directory (path) with a regex; glob filters files relative to path. Binary, unreadable and over-1-MiB files are skipped; regex timeout, max_results and max_files bound the scan. Returns path:line:text hits plus total_matches and files_matched, or with output_mode \"count\" the counts alone (a \"how many\" question takes one call).";
+    public override string Description => "Which files contain this text? Searches the lines of the text files under path with a regex, glob filtering the files relative to path, and returns path:line:text hits with total_matches and files_matched; output_mode \"count\" returns the counts alone, so a \"how many\" question takes one call. At most max_results hits (200) over max_files files (2000) within a 20 s budget; binary and over-1-MiB files are skipped; truncated and scan_complete say when the scan was cut. To find files by name, glob; to search code by structure, structural_search; to search by meaning, codebase_search.";
 
     /// <summary>Declared access class for permission gates.</summary>
     public override ToolAccess Access => ToolAccess.Read;

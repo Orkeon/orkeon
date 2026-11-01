@@ -339,3 +339,21 @@ const Orkeon.Application.Decision.DecisionBlockedException.RiskMetadataKey = "de
 const Orkeon.Application.Decision.DecisionBlockedException.ReasonMetadataKey = "decision_reason" -> string!
 Orkeon.Application.Decision.DecisionVerdict.Risk.get -> string?
 Orkeon.Application.Decision.DecisionVerdict.Risk.init -> void
+*REMOVED*Orkeon.Application.Interfaces.Ports.ISessionBufferService.Truncate(int retainCount) -> int
+Orkeon.Application.Interfaces.Ports.ISessionBufferService.Truncate(int retainTurns) -> Orkeon.Application.Interfaces.Ports.SessionTruncation!
+Orkeon.Application.Interfaces.Ports.SessionTruncation
+Orkeon.Application.Interfaces.Ports.SessionTruncation.Equals(Orkeon.Application.Interfaces.Ports.SessionTruncation? other) -> bool
+Orkeon.Application.Interfaces.Ports.SessionTruncation.KeptFromIndex.get -> int
+Orkeon.Application.Interfaces.Ports.SessionTruncation.KeptFromIndex.init -> void
+Orkeon.Application.Interfaces.Ports.SessionTruncation.RemovedCount.get -> int
+Orkeon.Application.Interfaces.Ports.SessionTruncation.RemovedCount.init -> void
+Orkeon.Application.Interfaces.Ports.SessionTruncation.SessionTruncation() -> void
+Orkeon.Application.Interfaces.Ports.SessionTruncation.<Clone>$() -> Orkeon.Application.Interfaces.Ports.SessionTruncation!
+override Orkeon.Application.Interfaces.Ports.SessionTruncation.Equals(object? obj) -> bool
+override Orkeon.Application.Interfaces.Ports.SessionTruncation.GetHashCode() -> int
+override Orkeon.Application.Interfaces.Ports.SessionTruncation.ToString() -> string!
+static Orkeon.Application.Interfaces.Ports.SessionTruncation.operator !=(Orkeon.Application.Interfaces.Ports.SessionTruncation? left, Orkeon.Application.Interfaces.Ports.SessionTruncation? right) -> bool
+static Orkeon.Application.Interfaces.Ports.SessionTruncation.operator ==(Orkeon.Application.Interfaces.Ports.SessionTruncation? left, Orkeon.Application.Interfaces.Ports.SessionTruncation? right) -> bool
+*REMOVED*Orkeon.Application.Interfaces.Ports.ICategoryMemoryStore.ListAsync(string? category, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Orkeon.Application.Interfaces.Ports.MemoryEntry!>!>!
+Orkeon.Application.Interfaces.Ports.ICategoryMemoryStore.ListAsync(string? category, bool newestFirst, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Orkeon.Application.Interfaces.Ports.MemoryEntry!>!>!
+Orkeon.Application.Interfaces.Ports.ICategoryMemoryStore.ReplaceAsync(int id, string! content, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<bool>!

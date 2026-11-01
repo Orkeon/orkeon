@@ -3,6 +3,7 @@ using System.Text.Json.Serialization;
 using Microsoft.Extensions.Logging;
 using Orkeon.Analysis.Abstractions.Interfaces;
 using Orkeon.Analysis.Core;
+using Orkeon.Domain.Attributes;
 using Orkeon.Domain.Tools;
 using Orkeon.Tools.Abstractions.Base;
 
@@ -20,7 +21,7 @@ public sealed class AffectedTestsTool : ToolBase<AffectedTestsRequest, AffectedT
     }
 
     public override string Name => "affected_tests";
-    public override string Description => "Test projects and classes reached through the graph by changed files.";
+    public override string Description => "Which tests cover this change? Returns the test projects and test classes the graph reaches from changed_files, or from the diff of the working tree against base (HEAD by default), with the changed files it could not resolve; all is true when the set could not be bounded and every test should run. For the symbols the change affects, impact_analysis.";
     public override ToolAccess Access => ToolAccess.Read;
 
     protected override async Task<AffectedTestsResponse> ExecuteTypedAsync(AffectedTestsRequest request, CancellationToken cancellationToken)
@@ -49,9 +50,11 @@ public sealed class AffectedTestsTool : ToolBase<AffectedTestsRequest, AffectedT
 
 public sealed record AffectedTestsRequest
 {
+    [FieldSchema(Description = "Virtual paths of the changed files; omit them to read the diff against base and the working tree.", ItemsType = "string", IsRequired = false)]
     [JsonPropertyName("changed_files")]
     public ImmutableList<string>? ChangedFiles { get; init; }
 
+    [FieldSchema(Description = "Commit the diff is taken from when changed_files is omitted (default HEAD).", IsRequired = false)]
     [JsonPropertyName("base")]
     public string? Base { get; init; }
 }

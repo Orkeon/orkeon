@@ -204,6 +204,21 @@ toute autre valeur est refusée avec `effort must be low|medium|high|xhigh|max`)
 `onToolResult`, `waitFor`). Il n'y a ni fournisseur, ni température, ni plafond de
 jetons par appel, et pas de `signal` — l'appel observe déjà celui du contexte.
 
+`chat` prend un tableau de messages nu ou `{ messages: [...] }`. `extract(prompt, schema, opts)`
+prend les mêmes formes en premier argument, les tours de l'appelant envoyés dans l'ordre, en plus
+d'une chaîne de prompt ; ses options ajoutent `system`, envoyé en premier message avec l'instruction
+JSON ajoutée à sa suite, de sorte que le contenu utilisateur part intact. Sans `system`,
+l'instruction est ajoutée au prompt ou au dernier message utilisateur. Une relance porte la réponse
+refusée comme tour assistant (#285) :
+
+```ts
+const again = await ctx.llm.extract<Invoice>({ messages: [
+    { role: "user", content: prompt },
+    { role: "assistant", content: refused },
+    { role: "user", content: "That is not JSON. Answer with the object only." },
+] }, schema, { system: "You extract invoices." });
+```
+
 `act` est la boucle LLM ⇄ appels d'outils : elle propose au modèle les outils intégrés que
 l'agent a choisis avec `.tools([...])` et ses instances `withAutonomousTool` — dont le
 `execute` s'exécute dans le script, sur le fil du moteur — jusqu'à ce que le modèle cesse de
@@ -214,7 +229,7 @@ protocole d'outils du fournisseur — le tour de l'assistant avec ses appels, pu
 `tool` par appel, refus de permission ou erreur d'outil compris —, que le fournisseur réponde
 au format OpenAI (la plupart des fournisseurs, Ollama compris) ou avec le corps Messages
 d'Anthropic. Un résultat est coupé une fois, à la borne du framework
-(`AgentDefaults.ResolveMaxToolResultLength` : 4 000 caractères par défaut ; surcharges par outil : `file_read` 32 000, `node_read` 256 000, `shell_command` 10 000) : par
+(`AgentDefaults.ResolveMaxToolResultLength` : 4 000 caractères par défaut ; surcharges par outil : `file_read` 32 000, `node_read` 256 000, `shell_command` 10 000, et 12 000 pour les outils d'analyse qui répondent par un graphe ou une page : `dependency_graph`, `sub_graph`, `edge_list`, `flow_trace`, `impact_analysis`, `codebase_map`, `package_summary`, `symbol_detail`, `codebase_search`, `structural_search`, `structural_rewrite`, `affected_tests`) : par
 le pipeline d'invocation d'outils de l'hôte quand il en a un, par `act` sinon. Un tour en échec
 chez le fournisseur résout `output` en `<undefined-llm:<l'erreur du fournisseur>>`, comme
 `complete`. Un appel qu'une étape du profil de décision de l'hôte bloque n'est pas une panne du

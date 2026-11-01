@@ -13,6 +13,7 @@
     "MCP:Server",
     "Memory",
     "Orkeon:ChromaDb",
+    "Orkeon:Cli:Memory",
     "Orkeon:Cli:Session",
     "Orkeon:CodeSandbox",
     "Orkeon:CodeSandbox:Docker",

@@ -43,7 +43,8 @@ declare global {
          * iteration do; uncaught, it fails the run.
          */
         complete(prompt: string, opts?: LlmCallOptions): Promise<string>;
-        chat(messages: readonly Message[], opts?: LlmCallOptions): Promise<ChatResponse>;
+        /** A conversation, the answer. Takes a bare message array or `{ messages: [...] }`. */
+        chat(messages: readonly Message[] | MessageList, opts?: LlmCallOptions): Promise<ChatResponse>;
         /**
          * Streams the completion chunk by chunk: `for await (const c of
          * ctx.llm.stream(prompt))`. Takes a PROMPT, not a message array — the
@@ -59,7 +60,24 @@ declare global {
          * find it there.
          */
         stream(prompt: string, opts?: LlmCallOptions): LlmStream;
-        extract<T>(prompt: string, schema: JsonSchema, opts?: LlmCallOptions): Promise<T>;
+        /**
+         * Structured JSON matching `schema`. A prompt string, or the forms `chat` takes: a message
+         * array or `{ messages: [...] }`, the caller's turns sent in order, so a re-ask can carry the
+         * refused answer as an assistant turn:
+         *
+         * ```ts
+         * const again = await ctx.llm.extract<Invoice>({ messages: [
+         *     { role: "user", content: prompt },
+         *     { role: "assistant", content: refused },
+         *     { role: "user", content: "That is not JSON. Answer with the object only." },
+         * ] }, schema, { system });
+         * ```
+         *
+         * The JSON instruction rides on `opts.system` when given, else on the last user message (or on
+         * the prompt). The schema goes as a `json_schema` constraint when the provider validates one,
+         * as `json_object` otherwise; an explicit `responseFormat` wins, `"text"` included.
+         */
+        extract<T>(prompt: string | readonly Message[] | MessageList, schema: JsonSchema, opts?: ExtractOptions): Promise<T>;
         decide<T extends string>(prompt: string, choices: readonly T[], opts?: LlmCallOptions): Promise<T>;
         embed(text: string | readonly string[], opts?: LlmCallOptions): Promise<readonly number[][]>;
         /**
@@ -103,6 +121,20 @@ declare global {
          * agent's own. `{}` turns caching off for the call.
          */
         cache?: LlmCacheOptions;
+    }
+
+    /** The object form of a conversation: `{ messages: [...] }`. */
+    interface MessageList {
+        readonly messages: readonly Message[];
+    }
+
+    interface ExtractOptions extends LlmCallOptions {
+        /**
+         * System prompt sent as the first message; the JSON instruction is appended to it and the
+         * user content is sent untouched. Omitted: the instruction is appended to the prompt (or to
+         * the last user message of the messages form).
+         */
+        system?: string;
     }
 
     /**

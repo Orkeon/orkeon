@@ -38,17 +38,18 @@ public sealed class StatementQueryTool : ToolBase<StatementQueryRequest, Stateme
             var kinds = request.Kinds.IsDefaultOrEmpty ? null : new HashSet<StatementKind>(request.Kinds);
             var topK = Math.Max(1, request.TopK);
 
-            var hits = await CollectHitsAsync(parents, kinds, topK, cancellationToken).ConfigureAwait(false);
+            // One hit past the page: truncated says that more statements match, never that the page is full (#283).
+            var hits = await CollectHitsAsync(parents, kinds, topK + 1, cancellationToken).ConfigureAwait(false);
 
             if (!string.IsNullOrEmpty(request.SemanticQuery))
             {
-                hits = await RankBySemanticScoreAsync(hits, request.SemanticQuery, topK, cancellationToken).ConfigureAwait(false);
+                hits = await RankBySemanticScoreAsync(hits, request.SemanticQuery, topK + 1, cancellationToken).ConfigureAwait(false);
             }
 
             return new StatementQueryResponse
             {
                 Hits = [.. hits.Take(topK)],
-                Truncated = hits.Count >= topK,
+                Truncated = hits.Count > topK,
             };
         }
     }
@@ -106,7 +107,7 @@ public sealed class StatementQueryTool : ToolBase<StatementQueryRequest, Stateme
         CancellationToken cancellationToken)
     {
         var semantic = await _store.SemanticSearchAsync(new SemanticQuery { Text = semanticQuery, TopK = topK }, cancellationToken).ConfigureAwait(false);
-        var semanticByFqn = semantic.ToDictionary(h => h.Fqn, h => h.Score, StringComparer.Ordinal);
+        var semanticByFqn = semantic.Hits.ToDictionary(h => h.Fqn, h => h.Score, StringComparer.Ordinal);
         return [.. hits
             .Select(h => semanticByFqn.TryGetValue(h.ParentFqn, out var score) ? h with { Score = score } : h)
             .OrderByDescending(h => h.Score ?? 0)];

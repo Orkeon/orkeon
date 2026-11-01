@@ -3,6 +3,7 @@ using System.Text.Json.Serialization;
 using Microsoft.Extensions.Logging;
 using Orkeon.Analysis.Abstractions.Interfaces;
 using Orkeon.Analysis.Core;
+using Orkeon.Domain.Attributes;
 using Orkeon.Domain.Tools;
 using Orkeon.Tools.Abstractions.Base;
 
@@ -60,18 +61,23 @@ public sealed record AnchorSet
 
 public sealed record BatchAnchorsRequest
 {
+    [FieldSchema(Description = "closure expands fqns and files to the nodes they contain, their callers and their tests; overlap intersects the closures of a and b.", Enum = new[] { "closure", "overlap" }, IsRequired = true)]
     [JsonPropertyName("action")]
     public string Action { get; init; } = string.Empty;
 
+    [FieldSchema(Description = "FQNs to expand (closure).", ItemsType = "string", IsRequired = false)]
     [JsonPropertyName("fqns")]
     public ImmutableList<string>? Fqns { get; init; }
 
+    [FieldSchema(Description = "Virtual paths of files to expand (closure).", ItemsType = "string", IsRequired = false)]
     [JsonPropertyName("files")]
     public ImmutableList<string>? Files { get; init; }
 
+    [FieldSchema(Description = "First anchor set (overlap): {fqns: [...], files: [...]}.", IsRequired = false)]
     [JsonPropertyName("a")]
     public AnchorSet? A { get; init; }
 
+    [FieldSchema(Description = "Second anchor set (overlap): {fqns: [...], files: [...]}.", IsRequired = false)]
     [JsonPropertyName("b")]
     public AnchorSet? B { get; init; }
 }

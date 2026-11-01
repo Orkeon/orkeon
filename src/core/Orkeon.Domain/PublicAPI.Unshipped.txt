@@ -184,3 +184,4 @@ Orkeon.Domain.SharedKernel.ValueObjects.LlmMessage.RawThinkingBlocks.init -> voi
 static Orkeon.Domain.SharedKernel.ValueObjects.LlmThinkingConfig.ValidateEffort(string! effort) -> string!
 Orkeon.Domain.SharedKernel.ValueObjects.LlmResponse.CacheWrite1hTokens.get -> int?
 Orkeon.Domain.SharedKernel.ValueObjects.LlmResponse.CacheWrite1hTokens.init -> void
+const Orkeon.Domain.Constants.Agent.AgentDefaults.AnalysisToolResultLength = 12000 -> int

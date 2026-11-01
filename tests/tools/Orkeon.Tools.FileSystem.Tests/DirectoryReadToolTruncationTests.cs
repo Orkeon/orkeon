@@ -82,7 +82,7 @@ public sealed class DirectoryReadToolTruncationTests : IDisposable
         var dict = await CallAsync(new Dictionary<string, object?>
         {
             [ParamPath] = _testDir,
-            ["max_results"] = 0 // falls back to DefaultMaxResults (500)
+            ["max_results"] = 0 // falls back to DefaultMaxResults (200)
         });
 
         Assert.False((bool)dict["truncated"]!);

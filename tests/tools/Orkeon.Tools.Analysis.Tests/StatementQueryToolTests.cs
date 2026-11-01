@@ -43,6 +43,40 @@ public class StatementQueryToolTests
         Assert.All(resp.Hits, h => Assert.Equal("/src::handle", h.ParentFqn));
     }
 
+    private static StatementQueryTool WithStatements(int count)
+    {
+        var sym = TestGraph.Symbol("/src::handle", "/src/a.ts");
+        for (var i = 0; i < count; i++)
+            sym.StatementsMutable.Add(TestGraph.Statement($"s{i}", sym.Id, StatementKind.Return, i + 2));
+        return new StatementQueryTool(TestGraph.Store([sym], []));
+    }
+
+    [Trait("BR", "#283")]
+    [Fact]
+    public async Task ShouldNotSayTruncated_WhenExactlyTopKStatementsMatch()
+    {
+        using var tool = WithStatements(3);
+
+        var resp = await tool.ExecuteTypedForTest(
+            new StatementQueryRequest { ParentFqns = TestGraph.Arr("/src::handle"), TopK = 3 }, CancellationToken.None);
+
+        Assert.Equal(3, resp.Hits.Length);
+        Assert.False(resp.Truncated);
+    }
+
+    [Trait("BR", "#283")]
+    [Fact]
+    public async Task ShouldSayTruncatedAndKeepTopKHits_WhenOneMoreStatementMatches()
+    {
+        using var tool = WithStatements(4);
+
+        var resp = await tool.ExecuteTypedForTest(
+            new StatementQueryRequest { ParentFqns = TestGraph.Arr("/src::handle"), TopK = 3 }, CancellationToken.None);
+
+        Assert.Equal(3, resp.Hits.Length);
+        Assert.True(resp.Truncated);
+    }
+
     [Fact]
     public async Task Filters_statements_by_kind()
     {

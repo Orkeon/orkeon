@@ -1,5 +1,6 @@
 using System.Text.Json.Serialization;
 using Orkeon.Cli.Commands.Scripting.Dispatch;
+using Orkeon.Domain.Attributes;
 using Orkeon.Domain.Tools;
 using Orkeon.Tools.Abstractions.Base;
 
@@ -9,26 +10,32 @@ namespace Orkeon.Cli.Commands.Scripting.Progress;
 public sealed class ProgressReportRequest
 {
     /// <summary>Headline of the running operation, e.g. "Compacting conversation".</summary>
+    [FieldSchema(Description = "Headline of the running operation.", IsRequired = true, Example = "Compacting conversation")]
     [JsonPropertyName("label")]
     public string Label { get; set; } = "";
 
     /// <summary>Current step (1-based) for step-wise operations.</summary>
+    [FieldSchema(Description = "Current step, 1-based, for a step-wise operation.", IsRequired = false)]
     [JsonPropertyName("step")]
     public int? Step { get; set; }
 
     /// <summary>Total step count, when known.</summary>
+    [FieldSchema(Description = "Total step count, when known.", IsRequired = false)]
     [JsonPropertyName("total")]
     public int? Total { get; set; }
 
     /// <summary>Completion ratio in [0, 100], for operations that can measure one.</summary>
+    [FieldSchema(Description = "Completion ratio in [0, 100], when the operation can measure one.", IsRequired = false)]
     [JsonPropertyName("percent")]
     public double? Percent { get; set; }
 
     /// <summary>Free-form current-phase line, e.g. "extracting memories".</summary>
+    [FieldSchema(Description = "Current phase, one line.", IsRequired = false, Example = "extracting memories")]
     [JsonPropertyName("message")]
     public string? Message { get; set; }
 
     /// <summary>True finalises the operation: the broker slot is released.</summary>
+    [FieldSchema(Description = "true ends the operation and releases its slot.", IsRequired = false, Default = false)]
     [JsonPropertyName("done")]
     public bool Done { get; set; }
 }

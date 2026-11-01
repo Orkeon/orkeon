@@ -32,8 +32,9 @@ public class RagIngestTool : IBaseTool
 
     /// <inheritdoc />
     public string Description =>
-        "Ingest documents into a knowledge collection so they become searchable via rag_search. " +
-        "Accepts file paths, glob patterns and http(s) addresses; unchanged sources are skipped (incremental).";
+        "Makes documents searchable by rag_search: ingests the sources (virtual file paths, glob patterns, http(s) addresses) "
+        + "into a named collection, chunked and embedded. Incremental: a source unchanged since its last ingestion costs nothing, "
+        + "unless reindex is true. Returns a report: sources added, unchanged, re-ingested and pruned, chunks created and embedded.";
 
     /// <summary>
     /// Ingestion writes into the knowledge index, a store other runs read, never into the workspace: an

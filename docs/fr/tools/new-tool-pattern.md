@@ -34,13 +34,33 @@ servent à générer automatiquement le schéma JSON exposé au LLM (`ToolSchema
 `Orkeon.Domain.Tools`).
 
 - **Seule une propriété portant `[FieldSchema]` est un paramètre.** Une propriété sans
-  l'attribut est invisible pour le LLM (elle garde sa valeur C# par défaut).
+  l'attribut est invisible pour le LLM (elle garde sa valeur C# par défaut). Un garde dans
+  `Orkeon.Hosting.Tests` (`BuiltInToolSchemaTests`, #282) lit chaque outil qu'une exécution
+  enregistre et échoue, en nommant l'outil et la propriété, quand une propriété publique
+  modifiable d'une requête typée n'est pas dans les `Schema.Parameters` publiés : on annote la
+  propriété, il n'y a pas de liste d'exceptions. Les typages TypeScript
+  (`Typings/tools.generated.d.ts`) sont rendus depuis ce même schéma : un script voit exactement
+  ce que le modèle voit. Une propriété enum C# est publiée avec ses noms (`direction` :
+  `Forward`, `Backward`, `Both`, lus sans tenir compte de la casse) ; un enum `[Flags]`
+  (`expand`) est une chaîne libre dont la description liste les noms, un ou plusieurs séparés
+  par des virgules.
 - **Les noms de paramètres sont les noms de propriétés en snake_case** (`TargetLanguage` →
   `target_language`), dans le schéma comme dans le désérialiseur. Un `[JsonPropertyName]`
   doit donc épeler le même nom snake_case, sinon le schéma et la liaison divergent.
 - **Les retours sont opt-in par attribut** : dès qu'une propriété de `TResponse` porte
   `[ReturnSchema]`, seules les propriétés annotées reviennent à l'agent ; quand aucune ne le
   porte, toutes reviennent.
+- **Une réponse est sérialisée dans l'ordre de déclaration, et le pipeline la coupe par la
+  fin** (à `AgentDefaults.ResolveMaxToolResultLength` : 4 000 caractères sauf si l'outil est
+  listé dans `MaxToolResultLengthOverrides`). On déclare `truncated`, un curseur, un total et
+  les compteurs avant les collections volumineuses, et un rendu (`mermaid_flowchart`, `dot`)
+  en dernier, pour qu'un résultat coupé dise encore ce qu'il est (#283). Un rendu destiné à un
+  lecteur humain est désactivé par défaut (`include_mermaid: false`).
+- **`truncated` a un seul sens : il existe plus de résultats que ceux renvoyés.** Un outil qui
+  pagine une liste demande au store un élément au-delà de sa borne et répond
+  `truncated: hits.Count > borne`, la page coupée à la borne ; une page exactement pleine
+  n'est pas tronquée (#283). On teste les deux cas : « exactement `max` résultats : false »
+  et « un de plus : true ».
 
 ### Attribut `[FieldSchema]` (sur TRequest)
 

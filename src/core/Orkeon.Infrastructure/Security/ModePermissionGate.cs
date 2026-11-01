@@ -36,7 +36,7 @@ public sealed class ModePermissionGate : IPermissionGate
         "session_store", "session_snip", "session_cost", "session_stats", "token_budget",
         "memory_store", "local_embed_text", "is_path_indexed", "statement_query",
         "complexity_report", "dependency_graph", "flow_trace", "impact_analysis",
-        "package_summary", "sub_graph", "access_cost", "node_outline", "node_read",
+        "package_summary", "sub_graph", "edge_list", "access_cost", "node_outline", "node_read",
         "structural_search", "glob", "grep", "affected_tests", "batch_anchors",
         "documented_in", "documents_of",
     };

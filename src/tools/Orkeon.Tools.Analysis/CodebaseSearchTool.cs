@@ -23,7 +23,7 @@ public sealed class CodebaseSearchTool : ToolBase<CodebaseSearchRequest, Codebas
     }
 
     public override string Name => "codebase_search";
-    public override string Description => "Hybrid (vector + BM25) search over the codebase. Returns ranked hits with FQN, score and match origin.";
+    public override string Description => "Where in the codebase is this concept handled? Searches the indexed symbols by meaning (vector) and by words (BM25) and returns at most top_k hits (10) ranked, each with its FQN, score and match origin; truncated says when more match. The FQN of a hit feeds symbol_detail, sub_graph and impact_analysis. For an exact text, grep; for a code shape, structural_search.";
 
     /// <summary>Declared access class for permission gates.</summary>
     public override ToolAccess Access => ToolAccess.Read;
@@ -41,24 +41,30 @@ public sealed class CodebaseSearchTool : ToolBase<CodebaseSearchRequest, Codebas
                 ? 0
                 : await _freshness.EnsureFreshAsync(cancellationToken).ConfigureAwait(false);
 
+            var preFilter = BuildPreFilter(request);
+            // One hit past the page: truncated says that more hits match, never that the page is full (#283).
+            var topK = Math.Max(1, request.TopK);
             var query = new SemanticQuery
             {
                 Text = request.Query,
-                TopK = request.TopK,
+                TopK = topK + 1,
                 MinScore = request.MinScore,
-                PreFilter = BuildPreFilter(request),
+                PreFilter = preFilter,
                 Mode = request.Mode,
             };
-            var hits = await _store.SemanticSearchAsync(query, cancellationToken).ConfigureAwait(false);
+            var result = await _store.SemanticSearchAsync(query, cancellationToken).ConfigureAwait(false);
+            var hits = result.Hits;
 
+            var page = hits.Take(topK).ToList();
             var shaped = request.IncludeSignature
-                ? hits
-                : hits.Select(h => h with { Signature = null });
+                ? page
+                : page.Select(h => h with { Signature = null });
             return new CodebaseSearchResponse
             {
                 Hits = [.. shaped],
-                TotalCandidates = hits.Count,
-                Truncated = hits.Count >= request.TopK,
+                TotalCandidates = page.Count,
+                // The store says when the prefilter kept only the first of the nodes it matched (#280).
+                Truncated = hits.Count > topK || result.PreFilterCapped,
                 RefreshedFiles = refreshed,
             };
         }
@@ -78,7 +84,8 @@ public sealed class CodebaseSearchTool : ToolBase<CodebaseSearchRequest, Codebas
             Kinds = request.FilterKinds.IsDefaultOrEmpty ? null : request.FilterKinds,
             Languages = request.FilterLanguages.IsDefaultOrEmpty ? null : request.FilterLanguages,
             Packages = request.FilterPackages.IsDefaultOrEmpty ? null : request.FilterPackages,
-            Take = 1000,
+            // As many candidates as the store keeps; SemanticSearchResult.PreFilterCapped says when it cut them.
+            Take = int.MaxValue,
         };
     }
 }

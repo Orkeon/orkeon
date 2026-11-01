@@ -982,7 +982,7 @@ public sealed class ShellCommandToolTests : IDisposable
     }
 
     [Theory]
-    [InlineData("action", "launch", "Unknown action 'launch'")]
+    [InlineData("action", "launch", "Parameter 'action' must be one of: run, start_job, job_status, job_tail")]
     [InlineData("timeout_seconds", 0, "Timeout must be greater than 0")]
     public async Task ShouldRefuseTheCall_WhenAFieldIsOutOfRange(string field, object value, string expected)
     {

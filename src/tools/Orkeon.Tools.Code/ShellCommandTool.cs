@@ -52,7 +52,8 @@ public sealed record ShellCommandRequest
         Description = "run (default): run the command and wait; start_job: start it detached, output to a log file; job_status: running or exit code of a job; job_tail: last lines of a job's log",
         IsRequired = false,
         Default = "run",
-        Example = "start_job")]
+        Example = "start_job",
+        Enum = new[] { ShellCommandTool.RunAction, ShellCommandTool.StartJobAction, ShellCommandTool.JobStatusAction, ShellCommandTool.JobTailAction })]
     public string Action { get; init; } = ShellCommandTool.RunAction;
 
     /// <summary>Gets the id of the job to inspect, for <c>job_status</c> and <c>job_tail</c>.</summary>
@@ -179,7 +180,7 @@ public sealed record ShellCommandResponse : Orkeon.Domain.Tools.IBoundedToolResp
 /// </remarks>
 [ToolContract("shell_command",
     Name = "shell_command",
-    Description = "Execute shell commands with security controls. Supports allowlist/blocklist, timeout, and output capture.",
+    Description = "Runs a shell command in the working directory and returns its exit code, stdout and stderr, cut at 10 000 characters; a command the allowlist or blocklist refuses is not run. action run (default) waits up to timeout seconds; start_job starts it detached and returns a job_id, which job_status and job_tail read later in the same run. To read or search files, file_read, grep and glob cost less than cat and find.",
     Category = "Code Operations")]
 public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellCommandResponse>
 {
@@ -250,9 +251,9 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
     /// <summary>The lines <c>job_tail</c> returns when the request names none.</summary>
     public const int DefaultTailLines = 50;
 
-    private const string StartJobAction = "start_job";
-    private const string JobStatusAction = "job_status";
-    private const string JobTailAction = "job_tail";
+    internal const string StartJobAction = "start_job";
+    internal const string JobStatusAction = "job_status";
+    internal const string JobTailAction = "job_tail";
     private const int MaxTailLines = 500;
     private const int MaxTailBytes = 64 * 1024;
 

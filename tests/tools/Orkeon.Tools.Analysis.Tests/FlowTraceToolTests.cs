@@ -40,6 +40,42 @@ public class FlowTraceToolTests
         Assert.Empty(resp.Paths);
     }
 
+    /// <summary>One path a -> m_i -> t per middle symbol: <paramref name="paths"/> distinct call paths from a to t.</summary>
+    private static FlowTraceTool FanOut(int paths)
+    {
+        var a = TestGraph.Symbol("/src::a", "/src/a.ts");
+        var t = TestGraph.Symbol("/src::t", "/src/a.ts");
+        var middles = Enumerable.Range(0, paths).Select(i => TestGraph.Symbol($"/src::m{i}", "/src/a.ts")).ToList();
+        var edges = middles.SelectMany(m => new[] { TestGraph.Edge(a, m, EdgeKind.Calls), TestGraph.Edge(m, t, EdgeKind.Calls) }).ToList();
+        return new FlowTraceTool(TestGraph.Store([a, t, .. middles], edges));
+    }
+
+    [Trait("BR", "#283")]
+    [Fact]
+    public async Task ShouldNotSayTruncated_WhenExactlyMaxPathsExist()
+    {
+        using var tool = FanOut(3);
+
+        var resp = await tool.ExecuteTypedForTest(
+            new FlowTraceRequest { From = "/src::a", To = "/src::t", IncludeAllPaths = true, MaxPaths = 3 }, CancellationToken.None);
+
+        Assert.Equal(3, resp.Paths.Length);
+        Assert.False(resp.Truncated);
+    }
+
+    [Trait("BR", "#283")]
+    [Fact]
+    public async Task ShouldSayTruncatedAndKeepMaxPaths_WhenOneMorePathExists()
+    {
+        using var tool = FanOut(4);
+
+        var resp = await tool.ExecuteTypedForTest(
+            new FlowTraceRequest { From = "/src::a", To = "/src::t", IncludeAllPaths = true, MaxPaths = 3 }, CancellationToken.None);
+
+        Assert.Equal(3, resp.Paths.Length);
+        Assert.True(resp.Truncated);
+    }
+
     [Fact]
     public async Task Traces_shortest_call_path_from_caller_to_callee()
     {
@@ -82,5 +118,37 @@ public class FlowTraceToolTests
         var path = Assert.Single(resp.Paths);
         Assert.Equal(3, path.Fqns.Length);
         Assert.Equal(c.Id, path.Fqns[^1]);
+    }
+
+    [Trait("BR", "#280")]
+    [Fact]
+    public async Task ShouldFollowExtendsAndImplements_WhenEdgeKindsNamesInherits()
+    {
+        var leaf = TestGraph.Symbol("/src::Leaf", "/src/a.ts", kind: UniversalNodeKind.Class);
+        var middle = TestGraph.Symbol("/src::Middle", "/src/a.ts", kind: UniversalNodeKind.Class);
+        var root = TestGraph.Symbol("/src::IRoot", "/src/a.ts", kind: UniversalNodeKind.Interface);
+        var store = TestGraph.Store(
+            [leaf, middle, root],
+            [TestGraph.Edge(leaf, middle, EdgeKind.Extends), TestGraph.Edge(middle, root, EdgeKind.Implements)]);
+        using var tool = new FlowTraceTool(store);
+
+        var resp = await tool.ExecuteTypedForTest(
+            new FlowTraceRequest { From = "/src::Leaf", To = "/src::IRoot", EdgeKinds = TestGraph.Arr("inherits") },
+            CancellationToken.None);
+
+        var path = Assert.Single(resp.Paths);
+        Assert.Equal([leaf.Id, middle.Id, root.Id], path.Fqns);
+    }
+
+    [Fact]
+    public async Task ShouldRefuseUnknownEdgeKindByName_WhenTracing()
+    {
+        using var tool = new FlowTraceTool(TestGraph.Store([], []));
+
+        var ex = await Assert.ThrowsAnyAsync<ArgumentException>(() => tool.ExecuteTypedForTest(
+            new FlowTraceRequest { From = "/src::a", EdgeKinds = TestGraph.Arr("nonsense") },
+            CancellationToken.None));
+
+        Assert.Contains("nonsense", ex.Message, StringComparison.Ordinal);
     }
 }

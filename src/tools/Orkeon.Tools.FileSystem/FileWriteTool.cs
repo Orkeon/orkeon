@@ -95,7 +95,7 @@ public partial class FileWriteTool : FileToolBase<FileWriteRequest, FileWriteRes
     public override string Name => "file_write";
 
     /// <inheritdoc />
-    public override string Description => "Write content to files. Can create new files or overwrite existing ones. Creates directories if needed.";
+    public override string Description => "Writes content to a file by virtual path, creating the file and its folders, replacing the content unless append is true. For a change inside an existing file, edit_file; the whole content is written, so a large file goes through edit_file rather than a rewrite.";
 
     /// <summary>Declared access class for permission gates.</summary>
     public override ToolAccess Access => ToolAccess.Edit;

@@ -61,7 +61,7 @@ public class ToolsBatch2Tests
         var store = BuildSyntheticStore();
         using var tool = new SubGraphTool(store);
         var resp = await tool.ExecuteTypedForTest(
-            new SubGraphRequest { Seeds = ["a"], EdgeKinds = ["calls"], Depth = 2 },
+            new SubGraphRequest { Seeds = ["a"], EdgeKinds = ["calls"], Depth = 2, IncludeMermaid = true },
             CancellationToken.None);
         Assert.Contains(resp.Nodes, n => n.Fqn == "a" && n.IsSeed);
         Assert.Contains(resp.Nodes, n => n.Fqn == "c");

@@ -88,7 +88,7 @@ public sealed class EditFileTool : FileToolBase<EditFileRequest, EditFileRespons
     public override string Name => "edit_file";
 
     /// <inheritdoc />
-    public override string Description => "Replace a string in a file when it occurs exactly once.";
+    public override string Description => "Replaces old_string by new_string in a file: refused when old_string is absent or occurs more than once, unless replace_all is true, which replaces every occurrence. Read the file first (file_read) to copy the exact text; to rewrite a whole file, file_write.";
 
     /// <summary>Declared access class for permission gates.</summary>
     public override ToolAccess Access => ToolAccess.Edit;

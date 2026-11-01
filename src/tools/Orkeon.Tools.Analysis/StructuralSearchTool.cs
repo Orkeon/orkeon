@@ -20,10 +20,15 @@ public sealed record StructuralSearchRequest
     [JsonPropertyName("rule")] public System.Text.Json.JsonElement? Rule { get; init; }
     [FieldSchema(Description = "Virtual path of a YAML rule file (id, language, rule, message, severity, fix) under a mounted root.", Example = "/workspace/rules/no-log.yml", IsRequired = false)]
     [JsonPropertyName("rule_file")] public string? RuleFile { get; init; }
+    [FieldSchema(Description = "Language of the pattern and of the files searched (csharp, typescript, python, markdown...). Required with pattern or rule; a rule_file names its own.", IsRequired = false, Example = "csharp")]
     [JsonPropertyName("language")] public string Language { get; init; } = "";
+    [FieldSchema(Description = "Virtual paths of the files or folders searched; empty searches the mounted roots.", ItemsType = "string", IsRequired = false)]
     [JsonPropertyName("paths")] public ImmutableList<string> Paths { get; init; } = ImmutableList<string>.Empty;
+    [FieldSchema(Description = "Glob kept among the candidate files (**/*.cs).", IsRequired = false)]
     [JsonPropertyName("glob")] public string? Glob { get; init; }
+    [FieldSchema(Description = "Most matches returned (default 100); truncated says when more exist.", IsRequired = false, Default = 100)]
     [JsonPropertyName("max_results")] public int MaxResults { get; init; } = 100;
+    [FieldSchema(Description = "Most files scanned (default 500); truncated says when more were candidates.", IsRequired = false, Default = 500)]
     [JsonPropertyName("max_files")] public int MaxFiles { get; init; } = 500;
 }
 
@@ -39,9 +44,9 @@ public sealed record StructuralMatchDto
 
 public sealed record StructuralSearchResponse
 {
-    [JsonPropertyName("matches")] public required ImmutableList<StructuralMatchDto> Matches { get; init; }
     [JsonPropertyName("truncated")] public required bool Truncated { get; init; }
     [JsonPropertyName("files_scanned")] public required int FilesScanned { get; init; }
+    [JsonPropertyName("matches")] public required ImmutableList<StructuralMatchDto> Matches { get; init; }
 }
 
 public sealed class StructuralSearchTool : ToolBase<StructuralSearchRequest, StructuralSearchResponse>
@@ -57,10 +62,11 @@ public sealed class StructuralSearchTool : ToolBase<StructuralSearchRequest, Str
 
     public override string Name => "structural_search";
     public override string Description =>
-        "Searches the files of one language (any tree-sitter grammar Orkeon loads, or Markdown) for a code pattern parsed with the "
-        + "target grammar: $NAME matches one node and "
-        + "captures its text, $$$NAME matches zero or more sibling nodes. Returns path, line, column, text, captures and the "
-        + "enclosing symbol of each match.";
+        "Where does this code shape occur? Searches the files of one language (any tree-sitter grammar Orkeon loads, or Markdown) "
+        + "for a pattern parsed with that grammar: $NAME matches one node and captures its text, $$$NAME zero or more sibling nodes; "
+        + "a rule object or a YAML rule_file constrains the match further. Returns path, line, column, text, captures and the "
+        + "enclosing symbol of each match, at most max_results matches (100) over max_files files (500), truncated when cut. "
+        + "For a plain text, grep; to change the matches, structural_rewrite.";
     public override ToolAccess Access => ToolAccess.Read;
 
     protected override string? ValidateTypedRequest(StructuralSearchRequest request)

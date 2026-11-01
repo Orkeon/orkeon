@@ -30,6 +30,7 @@ drive_read
 drive_search
 drive_share
 drive_upload
+edge_list
 edit_batch
 email_accounts
 email_create_folder

@@ -86,6 +86,23 @@ public class CodebaseMapToolTests
         Assert.Equal(10, entry.LoC);
     }
 
+    [Trait("BR", "#283")]
+    [Fact]
+    public async Task ShouldNotSayTruncated_WhenTheLevelHoldsExactlyMaxEntries()
+    {
+        var monorepo = TestGraph.Monorepo();
+        var a = TestGraph.Module("/src/a.ts");
+        var b = TestGraph.Module("/src/b.ts");
+        TestGraph.Link(monorepo, a, b);
+        using var tool = new CodebaseMapTool(TestGraph.Store([monorepo, a, b], []));
+
+        var resp = await tool.ExecuteTypedForTest(
+            new CodebaseMapRequest { Level = NodeLevel.L2_Module, MaxEntries = 2 }, CancellationToken.None);
+
+        Assert.Equal(2, resp.Entries.Length);
+        Assert.False(resp.Truncated);
+    }
+
     [Fact]
     public async Task Truncates_when_more_nodes_than_max_entries()
     {
@@ -102,5 +119,27 @@ public class CodebaseMapToolTests
 
         Assert.Single(resp.Entries);
         Assert.True(resp.Truncated);
+    }
+
+
+    [Trait("BR", "#280")]
+    [Fact]
+    public async Task ShouldReturnTheRootsEntries_WhenTheyLieAfterTheFirstPageOfTheLevel()
+    {
+        var others = Enumerable.Range(0, 5).Select(i => TestGraph.Module($"/a/m{i}.ts")).ToList();
+        var zz = TestGraph.Package("root::zz", "/zz");
+        var x = TestGraph.Module("/zz/x.ts");
+        var y = TestGraph.Module("/zz/y.ts");
+        using var tool = new CodebaseMapTool(TestGraph.Store([.. others, zz, x, y], []));
+
+        var cut = await tool.ExecuteTypedForTest(
+            new CodebaseMapRequest { Level = NodeLevel.L2_Module, RootFqn = "root::zz", MaxEntries = 1 }, CancellationToken.None);
+        var whole = await tool.ExecuteTypedForTest(
+            new CodebaseMapRequest { Level = NodeLevel.L2_Module, RootFqn = "root::zz", MaxEntries = 2 }, CancellationToken.None);
+
+        Assert.Equal(["/zz/x.ts"], cut.Entries.Select(e => e.Fqn));
+        Assert.True(cut.Truncated);
+        Assert.Equal(["/zz/x.ts", "/zz/y.ts"], whole.Entries.Select(e => e.Fqn));
+        Assert.False(whole.Truncated);
     }
 }

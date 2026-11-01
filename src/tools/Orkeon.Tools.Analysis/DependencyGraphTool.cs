@@ -23,9 +23,10 @@ public sealed class DependencyGraphTool : ToolBase<DependencyGraphRequest, Depen
 
     public override string Name => "dependency_graph";
     public override string Description =>
-        "Dependency graph at a given scope (L1 packages, L2 modules, L3 symbols). nodes, edges, node_count and edge_count "
-        + "cover the nodes returned (selected by max_nodes, root_fqn and node_kinds); cycles and cycle_count cover the whole scope, each cycle naming "
-        + "its members as FQNs.";
+        "What depends on what at this scope? Returns the nodes and the edges of the given edge_kinds (imports by default) among "
+        + "the packages (L1_Package), modules (L2_Module) or symbols (L3_Symbol) of the scope, at most max_nodes nodes (200) selected "
+        + "by root_fqn and node_kinds, truncated when the scope holds more; cycles and cycle_count cover the whole scope, each cycle "
+        + "naming its members as FQNs. For every edge of a kind across the index, edge_list; for the neighbourhood of a symbol, sub_graph.";
 
     /// <summary>Declared access class for permission gates.</summary>
     public override ToolAccess Access => ToolAccess.Read;
@@ -38,7 +39,7 @@ public sealed class DependencyGraphTool : ToolBase<DependencyGraphRequest, Depen
         async Task<DependencyGraphResponse> ExecuteCoreAsync()
         {
             var edgeKinds = GraphKindNames.ParseEdgeKinds(request.EdgeKinds);
-            var nodes = await ResolveNodesAsync(request, cancellationToken).ConfigureAwait(false);
+            var (nodes, truncated) = await ResolveNodesAsync(request, cancellationToken).ConfigureAwait(false);
             var kindMask = ResolveKindMask(edgeKinds);
             // The cycles follow the kinds the edges follow: an empty list means imports here, never every kind.
             ImmutableArray<EdgeKind> cycleKinds = edgeKinds.IsDefaultOrEmpty ? [EdgeKind.Imports] : edgeKinds;
@@ -55,7 +56,6 @@ public sealed class DependencyGraphTool : ToolBase<DependencyGraphRequest, Depen
 
             var cycles = await _store.FindCyclesAsync(new CycleQuery { Scope = request.Scope, EdgeKinds = cycleKinds }, cancellationToken).ConfigureAwait(false);
             var metrics = BuildMetrics(graphNodes, graphEdges, cycles.Count);
-            var truncated = nodes.Count >= request.MaxNodes;
             var (graphCycles, cyclesTruncated) = BoundCycles(cycles, kindMask, request.MaxCycles, request.MaxCycleMembers);
 
             return new DependencyGraphResponse
@@ -72,38 +72,38 @@ public sealed class DependencyGraphTool : ToolBase<DependencyGraphRequest, Depen
         }
     }
 
-    private async Task<IReadOnlyList<RaggableNode>> ResolveNodesAsync(DependencyGraphRequest request, CancellationToken cancellationToken)
+    /// <summary>
+    /// The nodes of the page and whether the scope holds more: one node past <c>max_nodes</c> is asked for,
+    /// so that <c>truncated</c> says that more nodes exist, never that the page is full (#283).
+    /// </summary>
+    private async Task<(IReadOnlyList<RaggableNode> Nodes, bool Truncated)> ResolveNodesAsync(DependencyGraphRequest request, CancellationToken cancellationToken)
     {
+        var maxNodes = Math.Max(1, request.MaxNodes);
+        var probe = maxNodes + 1;
+        // The root goes into the query: the page and truncated then describe the root's subset, not the whole scope.
+        var root = string.IsNullOrEmpty(request.RootFqn) ? null : request.RootFqn;
         IReadOnlyList<RaggableNode> nodes;
         if (request.NodeKinds.IsDefaultOrEmpty)
         {
             nodes = await _store.QueryAsync(
-                new NodeQuery { Level = request.Scope, Take = Math.Max(1, request.MaxNodes) },
+                new NodeQuery { Level = request.Scope, RootFqn = root, Take = probe },
                 cancellationToken).ConfigureAwait(false);
         }
         else
         {
-            var take = Math.Max(1, request.MaxNodes);
             var found = new Dictionary<string, RaggableNode>(StringComparer.Ordinal);
             foreach (var query in GraphKindNames.ParseNodeQueries(request.NodeKinds))
             {
-                var batch = await _store.QueryAsync(query with { Level = request.Scope, Take = take }, cancellationToken).ConfigureAwait(false);
+                var batch = await _store.QueryAsync(query with { Level = request.Scope, RootFqn = root, Take = probe }, cancellationToken).ConfigureAwait(false);
                 foreach (var n in batch) found.TryAdd(n.Id, n);
             }
 
-            nodes = [.. found.Values.Take(take)];
+            nodes = [.. found.Values.Take(probe)];
         }
 
-        if (!string.IsNullOrEmpty(request.RootFqn))
-        {
-            var root = await _store.GetAsync(request.RootFqn, cancellationToken).ConfigureAwait(false);
-            if (root is not null)
-            {
-                nodes = [.. nodes.Where(n => n.Fqn.StartsWith(root.Fqn, StringComparison.Ordinal))];
-            }
-        }
-
-        return nodes;
+        var truncated = nodes.Count > maxNodes;
+        if (truncated) nodes = [.. nodes.Take(maxNodes)];
+        return (nodes, truncated);
     }
 
     /// <summary>

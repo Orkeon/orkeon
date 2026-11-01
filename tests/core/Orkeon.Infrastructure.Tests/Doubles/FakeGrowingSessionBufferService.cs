@@ -42,7 +42,7 @@ public sealed class FakeGrowingSessionBufferService : ISessionBufferService
     public bool SetTitle(string title) => _inner.SetTitle(title);
 
     /// <inheritdoc />
-    public int Truncate(int retainCount) => _inner.Truncate(retainCount);
+    public SessionTruncation Truncate(int retainTurns) => _inner.Truncate(retainTurns);
 
     /// <inheritdoc />
     public int Reset() => _inner.Reset();

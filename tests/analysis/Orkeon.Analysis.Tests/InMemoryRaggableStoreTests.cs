@@ -252,9 +252,9 @@ public class InMemoryRaggableStoreTests
         ]);
         try
         {
-            var hits = await store.SemanticSearchAsync(
+            var hits = (await store.SemanticSearchAsync(
                 new SemanticQuery { Text = "user service", TopK = 5 },
-                CancellationToken.None);
+                CancellationToken.None)).Hits;
             Assert.NotEmpty(hits);
             Assert.All(hits, h => Assert.Equal("bm25", h.MatchOrigin));
         }
@@ -271,9 +271,9 @@ public class InMemoryRaggableStoreTests
         ]);
         try
         {
-            var hits = await store.SemanticSearchAsync(
+            var hits = (await store.SemanticSearchAsync(
                 new SemanticQuery { Text = "user service", TopK = 5, Mode = SearchMode.Vector },
-                CancellationToken.None);
+                CancellationToken.None)).Hits;
             Assert.Empty(hits);
         }
         finally { Directory.Delete(dir, recursive: true); }
@@ -294,9 +294,9 @@ public class InMemoryRaggableStoreTests
             => Task.FromResult<ReadOnlyMemory<float>?>(UnitEmbedding);
 
         var store = new InMemoryRaggableStore(nodes, [], new FakeFileSystemService(), Embed);
-        var hits = await store.SemanticSearchAsync(
+        var hits = (await store.SemanticSearchAsync(
             new SemanticQuery { Text = "x", TopK = 500 },
-            CancellationToken.None);
+            CancellationToken.None)).Hits;
         Assert.True(hits.Count <= InMemoryRaggableStore.MaxTopK);
     }
 

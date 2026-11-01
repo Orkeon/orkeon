@@ -42,23 +42,108 @@ public sealed class SessionBufferAndToolsTests
     }
 
     [Fact]
-    public void Truncate_keeps_head_plus_last_n()
+    public void Truncate_keeps_head_plus_last_n_turns()
     {
         var buffer = new InMemorySessionBufferService();
         buffer.ReplaceMessages(new[]
         {
             Msg("system", "S"), Msg("user", "1"), Msg("assistant", "2"),
-            Msg("user", "3"), Msg("assistant", "4"),
+            Msg("user", "3"), Msg("assistant", "4"), Msg("user", "5"), Msg("assistant", "6"),
         });
 
-        var removed = buffer.Truncate(retainCount: 2);
+        var cut = buffer.Truncate(retainTurns: 2);
 
         var kept = buffer.GetMessages();
-        Assert.Equal(3, kept.Count);              // head + last 2
+        Assert.Equal(5, kept.Count);              // head + last 2 turns
         Assert.Equal("system", kept[0].Role);     // head preserved
         Assert.Equal("3", kept[1].Content);
-        Assert.Equal("4", kept[2].Content);
-        Assert.Equal(2, removed);
+        Assert.Equal("6", kept[4].Content);
+        Assert.Equal(2, cut.RemovedCount);
+        Assert.Equal(3, cut.KeptFromIndex);
+    }
+
+    [Fact]
+    public void Truncate_between_turns_keeps_the_tool_traces_of_the_kept_turns()
+    {
+        var buffer = new InMemorySessionBufferService();
+        buffer.ReplaceMessages(new[]
+        {
+            Msg("system", "S"),
+            Msg("user", "1"), Msg("tool", "t1"), Msg("assistant", "2"),
+            Msg("user", "3"), Msg("tool", "t3a"), Msg("tool", "t3b"), Msg("assistant", "4"),
+            Msg("user", "5"), Msg("tool", "t5"), Msg("note", "n5"), Msg("assistant", "6"),
+        });
+
+        var cut = buffer.Truncate(retainTurns: 2);
+
+        var kept = buffer.GetMessages();
+        Assert.Equal(["S", "3", "t3a", "t3b", "4", "5", "t5", "n5", "6"], kept.Select(m => m.Content));
+        Assert.Equal(3, cut.RemovedCount);
+        Assert.Equal(4, cut.KeptFromIndex);
+    }
+
+    [Fact]
+    public void Truncate_removes_nothing_when_fewer_turns_than_asked()
+    {
+        var buffer = new InMemorySessionBufferService();
+        buffer.ReplaceMessages(new[]
+        {
+            Msg("system", "S"), Msg("user", "1"), Msg("assistant", "2"), Msg("user", "3"), Msg("assistant", "4"),
+        });
+
+        var cut = buffer.Truncate(retainTurns: 3);
+
+        Assert.Equal(5, buffer.MessageCount);
+        Assert.Equal(0, cut.RemovedCount);
+        Assert.Equal(-1, cut.KeptFromIndex);
+    }
+
+    [Fact]
+    public void Truncate_removes_nothing_when_the_buffer_has_no_user_message()
+    {
+        var buffer = new InMemorySessionBufferService();
+        buffer.ReplaceMessages(new[]
+        {
+            Msg("system", "S"), Msg("assistant", "a"), Msg("tool", "t"), Msg("assistant", "b"), Msg("note", "n"),
+        });
+
+        var cut = buffer.Truncate(retainTurns: 1);
+
+        Assert.Equal(5, buffer.MessageCount);
+        Assert.Equal(0, cut.RemovedCount);
+        Assert.Equal(-1, cut.KeptFromIndex);
+    }
+
+    [Fact]
+    public void Truncate_zero_keeps_the_head_only()
+    {
+        var buffer = new InMemorySessionBufferService();
+        buffer.ReplaceMessages(new[]
+        {
+            Msg("system", "S"), Msg("user", "1"), Msg("tool", "t"), Msg("assistant", "2"),
+        });
+
+        var cut = buffer.Truncate(retainTurns: 0);
+
+        var kept = buffer.GetMessages();
+        Assert.Single(kept);
+        Assert.Equal("S", kept[0].Content);
+        Assert.Equal(3, cut.RemovedCount);
+        Assert.Equal(-1, cut.KeptFromIndex);
+    }
+
+    [Fact]
+    public void Truncate_negative_counts_as_zero_and_a_head_inside_the_tail_is_not_duplicated()
+    {
+        var buffer = new InMemorySessionBufferService();
+        buffer.ReplaceMessages(new[] { Msg("user", "1"), Msg("assistant", "2") });
+
+        Assert.Equal(0, buffer.Truncate(retainTurns: 1).RemovedCount);   // the head starts the kept turn
+        Assert.Equal(2, buffer.MessageCount);
+
+        var cut = buffer.Truncate(retainTurns: -4);
+        Assert.Equal(1, cut.RemovedCount);
+        Assert.Equal(["1"], buffer.GetMessages().Select(m => m.Content));
     }
 
     [Fact]
@@ -118,7 +203,7 @@ public sealed class SessionBufferAndToolsTests
 
         // Message rewrites (compaction) must not touch the state bag.
         buffer.ReplaceMessages(new[] { Msg("user", "a") });
-        buffer.Truncate(retainCount: 0);
+        buffer.Truncate(retainTurns: 0);
         Assert.Equal("2", buffer.GetState("autocompact_failures"));
 
         buffer.SetState("autocompact_failures", null);
@@ -169,7 +254,7 @@ public sealed class SessionBufferAndToolsTests
     public async Task SessionStore_truncate_reports_removed_count()
     {
         var buffer = new InMemorySessionBufferService();
-        buffer.ReplaceMessages(Enumerable.Range(0, 6).Select(i => Msg("user", i.ToString())).ToArray());
+        buffer.ReplaceMessages(Enumerable.Range(0, 6).Select(i => Msg(i % 2 == 0 ? "user" : "assistant", i.ToString())).ToArray());
         using var tool = new SessionStoreTool(buffer);
 
         var resp = await tool.CallAsync(new ToolCallRequest("session_store", new Dictionary<string, object?>
@@ -179,7 +264,7 @@ public sealed class SessionBufferAndToolsTests
         }), TestContext.Current.CancellationToken);
 
         var dict = ResultDict(resp);
-        Assert.Equal(3, Convert.ToInt32(dict["removed_count"]));   // 6 → head + 2
+        Assert.Equal(1, Convert.ToInt32(dict["removed_count"]));   // 3 turns of 2 -> head + last 2 turns
     }
 
     [Fact]
@@ -348,10 +433,15 @@ public sealed class SessionBufferAndToolsTests
     // ── SessionSnipTool ─────────────────────────────────────────────────────
 
     [Fact]
-    public async Task SessionSnip_truncates_to_window()
+    public async Task SessionSnip_truncates_to_the_last_turns_and_names_the_kept_tail()
     {
         var buffer = new InMemorySessionBufferService();
-        buffer.ReplaceMessages(Enumerable.Range(0, 5).Select(i => Msg("user", i.ToString())).ToArray());
+        buffer.ReplaceMessages(new[]
+        {
+            Msg("system", "S"),
+            Msg("user", "1"), Msg("tool", "t1"), Msg("assistant", "2"),
+            Msg("user", "3"), Msg("tool", "t3"), Msg("assistant", "4"),
+        });
         using var tool = new SessionSnipTool(buffer);
 
         var resp = await tool.CallAsync(new ToolCallRequest("session_snip", new Dictionary<string, object?>
@@ -360,9 +450,29 @@ public sealed class SessionBufferAndToolsTests
         }), TestContext.Current.CancellationToken);
 
         var dict = ResultDict(resp);
-        Assert.Equal(2, buffer.MessageCount);                            // head + 1
+        Assert.Equal(["S", "3", "t3", "4"], buffer.GetMessages().Select(m => m.Content));   // head + 1 whole turn
         Assert.Equal(3, Convert.ToInt32(dict["removed_count"]));
-        Assert.Equal(2, Convert.ToInt32(dict["retained_count"]));
+        Assert.Equal(4, Convert.ToInt32(dict["retained_count"]));
+        Assert.Equal(4, Convert.ToInt32(dict["kept_from"]));
+        Assert.False(dict.ContainsKey("kept_from_role"));   // kept_from always points at a user message
+    }
+
+    [Fact]
+    public async Task SessionSnip_reports_no_kept_tail_when_nothing_is_removed()
+    {
+        var buffer = new InMemorySessionBufferService();
+        buffer.ReplaceMessages(new[] { Msg("system", "S"), Msg("user", "1"), Msg("assistant", "2") });
+        using var tool = new SessionSnipTool(buffer);
+
+        var resp = await tool.CallAsync(new ToolCallRequest("session_snip", new Dictionary<string, object?>
+        {
+            ["retain_count"] = 3,
+        }), TestContext.Current.CancellationToken);
+
+        var dict = ResultDict(resp);
+        Assert.Equal(0, Convert.ToInt32(dict["removed_count"]));
+        Assert.Equal(3, Convert.ToInt32(dict["retained_count"]));
+        Assert.Equal(-1, Convert.ToInt32(dict["kept_from"]));
     }
 
     // ── SessionStatsTool ────────────────────────────────────────────────────

@@ -1,1 +1,3 @@
 #nullable enable
+const Orkeon.Constants.Configuration.ConfigurationKeys.CliMemoryPersist = "Orkeon:Cli:Memory:Persist" -> string!
+const Orkeon.Constants.Configuration.ConfigurationKeys.CliMemoryRootDirectory = "Orkeon:Cli:Memory:RootDirectory" -> string!

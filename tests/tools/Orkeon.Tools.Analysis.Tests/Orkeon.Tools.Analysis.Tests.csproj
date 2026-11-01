@@ -21,6 +21,7 @@
     <ProjectReference Include="..\..\..\src\tools\Orkeon.Tools.Analysis\Orkeon.Tools.Analysis.csproj" />
     <ProjectReference Include="..\..\..\src\analysis\Orkeon.Analysis\Orkeon.Analysis.csproj" />
     <ProjectReference Include="..\..\..\src\analysis\Orkeon.Analysis.Abstractions\Orkeon.Analysis.Abstractions.csproj" />
+    <ProjectReference Include="..\..\..\src\core\Orkeon.Infrastructure\Orkeon.Infrastructure.csproj" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\shared\Orkeon.Tests.Shared\Orkeon.Tests.Shared.csproj" />

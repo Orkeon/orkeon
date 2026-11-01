@@ -64,6 +64,33 @@ public sealed class FileSessionBufferServiceTests
 
     [Fact]
     [Trait("BR", "RT-14")]
+    public async Task ShouldTruncateWholeTurns_AndPersistTheCut()
+    {
+        var fs = NewFs();
+        var svc = NewService(fs);
+        await svc.LoadAsync(ProjectA, TestContext.Current.CancellationToken);
+        svc.ReplaceMessages([
+            new SessionMessage { Role = "system", Content = "S" },
+            new SessionMessage { Role = "user", Content = "q1" },
+            new SessionMessage { Role = "tool", Content = "t1" },
+            new SessionMessage { Role = "assistant", Content = "a1" },
+            new SessionMessage { Role = "user", Content = "q2" },
+            new SessionMessage { Role = "tool", Content = "t2" },
+            new SessionMessage { Role = "assistant", Content = "a2" },
+        ]);
+
+        var cut = svc.Truncate(1);
+        await svc.SaveAsync(TestContext.Current.CancellationToken);
+
+        Assert.Equal(3, cut.RemovedCount);
+        Assert.Equal(4, cut.KeptFromIndex);
+        var reloaded = NewService(fs);
+        await reloaded.LoadAsync(ProjectA, TestContext.Current.CancellationToken);
+        Assert.Equal(["S", "q2", "t2", "a2"], reloaded.GetMessages().Select(m => m.Content));
+    }
+
+    [Fact]
+    [Trait("BR", "RT-14")]
     public async Task ShouldReloadLastSession_WhenServiceStartsOnSameProject()
     {
         var fs = NewFs();

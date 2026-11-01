@@ -32,6 +32,9 @@ public sealed class StubLlmProvider : ILlmProvider
     /// </summary>
     public LlmConfig? BaseConfig { get; init; }
 
+    /// <summary>What the stub declares it can do; <see cref="LlmProviderCapabilities.Unknown"/> by default.</summary>
+    public LlmProviderCapabilities Capabilities { get; init; } = LlmProviderCapabilities.Unknown;
+
     /// <summary>Configures the response returned by <see cref="GenerateAsync"/>.</summary>
     public StubLlmProvider RespondTo(Func<string, LlmResponse> responder)
     {

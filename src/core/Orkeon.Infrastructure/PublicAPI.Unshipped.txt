@@ -277,3 +277,29 @@ Orkeon.Infrastructure.LLMs.Decision.Stages.DecisionVerifySteps.Final = 0 -> Orke
 Orkeon.Infrastructure.LLMs.Decision.Stages.VerifyDecisionStage.Steps.get -> Orkeon.Infrastructure.LLMs.Decision.Stages.DecisionVerifySteps
 const Orkeon.Infrastructure.LLMs.Decision.Stages.GuardDecisionStage.Instructions = "Does the text match the following description?" -> string!
 const Orkeon.Infrastructure.LLMs.Decision.Stages.VerifyDecisionStage.Instructions = "Does the response meet the following criterion?" -> string!
+*REMOVED*Orkeon.Infrastructure.Session.FileSessionBufferService.Truncate(int retainCount) -> int
+*REMOVED*Orkeon.Infrastructure.Session.InMemorySessionBufferService.Truncate(int retainCount) -> int
+Orkeon.Infrastructure.Session.FileSessionBufferService.Truncate(int retainTurns) -> Orkeon.Application.Interfaces.Ports.SessionTruncation!
+Orkeon.Infrastructure.Session.InMemorySessionBufferService.Truncate(int retainTurns) -> Orkeon.Application.Interfaces.Ports.SessionTruncation!
+Orkeon.Infrastructure.Tools.SessionSnipResponse.KeptFrom.get -> int
+Orkeon.Infrastructure.Tools.SessionSnipResponse.KeptFrom.set -> void
+*REMOVED*Orkeon.Infrastructure.Memory.InMemoryCategoryMemoryStore.ListAsync(string? category, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Orkeon.Application.Interfaces.Ports.MemoryEntry!>!>!
+Orkeon.Infrastructure.Memory.InMemoryCategoryMemoryStore.ListAsync(string? category, bool newestFirst, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Orkeon.Application.Interfaces.Ports.MemoryEntry!>!>!
+Orkeon.Infrastructure.Memory.InMemoryCategoryMemoryStore.ReplaceAsync(int id, string! content, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<bool>!
+Orkeon.Infrastructure.Memory.CategoryMemoryOptions
+Orkeon.Infrastructure.Memory.CategoryMemoryOptions.CategoryMemoryOptions() -> void
+Orkeon.Infrastructure.Memory.CategoryMemoryOptions.Persist.get -> bool
+Orkeon.Infrastructure.Memory.CategoryMemoryOptions.Persist.set -> void
+Orkeon.Infrastructure.Memory.CategoryMemoryOptions.RootDirectory.get -> string!
+Orkeon.Infrastructure.Memory.CategoryMemoryOptions.RootDirectory.set -> void
+const Orkeon.Infrastructure.Memory.CategoryMemoryOptions.SectionName = "Orkeon:Cli:Memory" -> string!
+Orkeon.Infrastructure.Memory.FileCategoryMemoryStore
+Orkeon.Infrastructure.Memory.FileCategoryMemoryStore.FileCategoryMemoryStore(Orkeon.Domain.FileSystem.IFileSystemService! fileSystem, string! rootDirectory) -> void
+Orkeon.Infrastructure.Memory.FileCategoryMemoryStore.FilePath.get -> string!
+Orkeon.Infrastructure.Memory.FileCategoryMemoryStore.ListAsync(string? category, bool newestFirst, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Orkeon.Application.Interfaces.Ports.MemoryEntry!>!>!
+Orkeon.Infrastructure.Memory.FileCategoryMemoryStore.AddAsync(string! category, string! content, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<int>!
+Orkeon.Infrastructure.Memory.FileCategoryMemoryStore.ReplaceAsync(int id, string! content, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<bool>!
+Orkeon.Infrastructure.Memory.FileCategoryMemoryStore.DeleteAsync(int id, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<bool>!
+Orkeon.Infrastructure.Memory.FileCategoryMemoryStore.GetAsync(int id, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<Orkeon.Application.Interfaces.Ports.MemoryEntry?>!
+Orkeon.Infrastructure.Tools.MemoryStoreRequest.NewestFirst.get -> bool
+Orkeon.Infrastructure.Tools.MemoryStoreRequest.NewestFirst.set -> void

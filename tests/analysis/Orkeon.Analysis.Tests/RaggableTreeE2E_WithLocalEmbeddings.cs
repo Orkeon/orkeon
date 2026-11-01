@@ -108,9 +108,9 @@ public class RaggableTreeE2E_WithLocalEmbeddings
             Assert.True(result.EmbeddingStats.NodesEmbedded > 0);
 
             // 4) Semantic search returns ≥ 1 result with non-zero cosine score.
-            var hits = await store.SemanticSearchAsync(
+            var hits = (await store.SemanticSearchAsync(
                 new SemanticQuery { Text = "export function foo", TopK = 5 },
-                CancellationToken.None);
+                CancellationToken.None)).Hits;
 
             Assert.NotEmpty(hits);
             Assert.True(hits[0].Score > 0,

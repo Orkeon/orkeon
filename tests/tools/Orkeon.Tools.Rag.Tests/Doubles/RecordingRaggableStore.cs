@@ -26,11 +26,11 @@ public sealed class RecordingRaggableStore : IRaggableStore
         _hits = hits;
     }
 
-    public Task<IReadOnlyList<SearchHit>> SemanticSearchAsync(SemanticQuery query, CancellationToken ct)
+    public Task<SemanticSearchResult> SemanticSearchAsync(SemanticQuery query, CancellationToken ct)
     {
         SemanticCalls++;
         LastQuery = query;
-        return Task.FromResult(_hits);
+        return Task.FromResult(new SemanticSearchResult { Hits = _hits });
     }
 
     public Task<RaggableNode?> GetAsync(string fqn, CancellationToken ct) => Task.FromResult<RaggableNode?>(null);
@@ -46,6 +46,7 @@ public sealed class RecordingRaggableStore : IRaggableStore
     public Task<IReadOnlyList<CallPath>> FindAllPathsAsync(PathQuery query, CancellationToken ct) => Task.FromResult<IReadOnlyList<CallPath>>([]);
     public Task<CallPath?> ShortestPathAsync(ShortestPathQuery query, CancellationToken ct) => Task.FromResult<CallPath?>(null);
     public Task<IReadOnlyList<Cycle>> FindCyclesAsync(CycleQuery query, CancellationToken ct) => Task.FromResult<IReadOnlyList<Cycle>>([]);
+    public Task<EdgeListPage> ListEdgesAsync(EdgeListQuery query, CancellationToken ct) => Task.FromResult(new EdgeListPage { Edges = [], Total = 0 });
     public Task<SourceSlice?> GetSourceAsync(string fqn, SourceMode mode, CancellationToken ct) => Task.FromResult<SourceSlice?>(null);
     public Task<IReadOnlyList<ComplexityEntry>> TopComplexityAsync(ComplexityQuery query, CancellationToken ct) => Task.FromResult<IReadOnlyList<ComplexityEntry>>([]);
     public Task<IReadOnlyList<CentralityEntry>> TopCentralityAsync(CentralityQuery query, CancellationToken ct) => Task.FromResult<IReadOnlyList<CentralityEntry>>([]);

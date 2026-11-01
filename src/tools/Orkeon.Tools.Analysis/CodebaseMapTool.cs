@@ -26,7 +26,7 @@ public sealed class CodebaseMapTool : ToolBase<CodebaseMapRequest, CodebaseMapRe
     }
 
     public override string Name => "codebase_map";
-    public override string Description => "Structural map of the codebase at a given zoom level (L0-L3).";
+    public override string Description => "What is the shape of this codebase? Lists the entries of one level (L1_Package by default, L2_Module, L3_Symbol) with their kind and path, under root_fqn when given, at most max_entries (200), truncated when more exist; include_metrics adds counts and complexity. The FQN of an entry feeds package_summary and symbol_detail.";
 
     /// <summary>Declared access class for permission gates.</summary>
     public override ToolAccess Access => ToolAccess.Read;
@@ -41,36 +41,22 @@ public sealed class CodebaseMapTool : ToolBase<CodebaseMapRequest, CodebaseMapRe
             // Lazy freshness (PLAN B3): a map drawn over stale files misleads silently.
             if (_freshness is not null)
                 await _freshness.EnsureFreshAsync(cancellationToken).ConfigureAwait(false);
-            var query = new NodeQuery { Level = request.Level, Take = Math.Max(1, request.MaxEntries) };
-            var nodes = await _store.QueryAsync(query, cancellationToken).ConfigureAwait(false);
-
-            if (!string.IsNullOrEmpty(request.RootFqn))
+            // One entry past the page: truncated says that more entries exist, never that the page is full (#283).
+            var maxEntries = Math.Max(1, request.MaxEntries);
+            // The root goes into the query (a package or a folder by path, a namespace by its files, a type by FQN):
+            // the page and truncated then describe the root's subset, not the first page of the whole level.
+            var query = new NodeQuery
             {
-                var root = await _store.GetAsync(request.RootFqn, cancellationToken).ConfigureAwait(false);
-                if (root is not null)
-                {
-                    // Scope by VirtualFilePath prefix rather than FQN prefix: L1 package FQN ends in
-                    // "::name" while L2/L3 FQN embed the virtual path, so Fqn.StartsWith never matched
-                    // across levels. Virtual paths always use '/' so the comparison is platform-stable.
-                    var rootPath = root.VirtualFilePath;
-                    if (string.IsNullOrEmpty(rootPath))
-                    {
-                        nodes = [.. nodes.Where(n => n.Fqn.StartsWith(root.Fqn, StringComparison.Ordinal))];
-                    }
-                    else
-                    {
-                        var prefix = rootPath.TrimEnd('/');
-                        nodes = [.. nodes.Where(n =>
-                            !string.IsNullOrEmpty(n.VirtualFilePath) &&
-                            (n.VirtualFilePath.Equals(prefix, StringComparison.Ordinal)
-                             || n.VirtualFilePath.StartsWith(prefix + "/", StringComparison.Ordinal)))];
-                    }
-                }
-            }
+                Level = request.Level,
+                RootFqn = string.IsNullOrEmpty(request.RootFqn) ? null : request.RootFqn,
+                Take = maxEntries + 1,
+            };
+            var nodes = await _store.QueryAsync(query, cancellationToken).ConfigureAwait(false);
+            var truncated = nodes.Count > maxEntries;
+            if (truncated) nodes = [.. nodes.Take(maxEntries)];
 
             var entries = nodes.Select(n => MapEntry(n, request.IncludeMetrics)).ToImmutableArray();
             var totals = BuildTotals(nodes);
-            var truncated = nodes.Count >= request.MaxEntries;
             return new CodebaseMapResponse
             {
                 Level = request.Level,

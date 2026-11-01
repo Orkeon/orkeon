@@ -240,7 +240,8 @@ public class CodebaseContextProviderTests
         public Task<IReadOnlyList<Abstractions.DTOs.Responses.CallPath>> FindAllPathsAsync(Abstractions.DTOs.Queries.PathQuery query, CancellationToken ct) => Task.FromResult<IReadOnlyList<Abstractions.DTOs.Responses.CallPath>>([]);
         public Task<Abstractions.DTOs.Responses.CallPath?> ShortestPathAsync(Abstractions.DTOs.Queries.ShortestPathQuery query, CancellationToken ct) => Task.FromResult<Abstractions.DTOs.Responses.CallPath?>(null);
         public Task<IReadOnlyList<Abstractions.DTOs.Responses.Cycle>> FindCyclesAsync(Abstractions.DTOs.Queries.CycleQuery query, CancellationToken ct) => Task.FromResult<IReadOnlyList<Abstractions.DTOs.Responses.Cycle>>([]);
-        public Task<IReadOnlyList<Abstractions.DTOs.Responses.SearchHit>> SemanticSearchAsync(Abstractions.DTOs.Queries.SemanticQuery query, CancellationToken ct) => Task.FromResult<IReadOnlyList<Abstractions.DTOs.Responses.SearchHit>>([]);
+        public Task<Abstractions.DTOs.Responses.EdgeListPage> ListEdgesAsync(Abstractions.DTOs.Queries.EdgeListQuery query, CancellationToken ct) => Task.FromResult(new Abstractions.DTOs.Responses.EdgeListPage { Edges = [], Total = 0 });
+        public Task<Abstractions.DTOs.Responses.SemanticSearchResult> SemanticSearchAsync(Abstractions.DTOs.Queries.SemanticQuery query, CancellationToken ct) => Task.FromResult(new Abstractions.DTOs.Responses.SemanticSearchResult { Hits = [] });
         public Task<Abstractions.DTOs.Responses.SourceSlice?> GetSourceAsync(string fqn, SourceMode mode, CancellationToken ct) => Task.FromResult<Abstractions.DTOs.Responses.SourceSlice?>(null);
 
         private static RaggableNode MakeNode(string id, NodeLevel level, string language) => new()

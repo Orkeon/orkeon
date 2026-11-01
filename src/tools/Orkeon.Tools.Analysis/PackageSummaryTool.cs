@@ -25,7 +25,7 @@ public sealed class PackageSummaryTool : ToolBase<PackageSummaryRequest, Package
     }
 
     public override string Name => "package_summary";
-    public override string Description => "Details about a package (L1): file count, symbol count, exports, dependencies.";
+    public override string Description => "What is in this package? Returns the file and symbol counts of one package by FQN (an L1_Package entry of codebase_map), its entry points, its public exports and the packages it depends on, at most max_exports exports (50), truncated when the list was cut. For the dependency edges between packages, dependency_graph.";
 
     /// <summary>Declared access class for permission gates.</summary>
     public override ToolAccess Access => ToolAccess.Read;

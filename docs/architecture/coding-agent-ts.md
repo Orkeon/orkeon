@@ -141,7 +141,8 @@ Three ports carry what a conversation needs to survive between runs:
 - **`ISessionBufferService`** (singleton) — the conversation buffer: messages, metadata,
   head+tail truncation, token estimate. Pivot of the loop and the session commands.
 - **`ICategoryMemoryStore`** — typed memory CRUD over four categories
-  (user/project/feedback/reference).
+  (user/project/feedback/reference): `ListAsync(category, newestFirst)`, `AddAsync` (returns the id),
+  `ReplaceAsync(id, content)` (same id and category, `CreatedAt` set again), `DeleteAsync`, `GetAsync`.
 - **`ICostBudgetManager`** — cumulative cost/token/call telemetry.
 
 ### Durable session and start-up script
@@ -154,6 +155,13 @@ physical workspace root the REPL mounts as `/workspace`; the file is read once a
 without re-validation, and written after each turn and when the REPL exits. A corrupt file starts an empty session.
 `session_store` reads the rehydrated buffer like any other.
 
+The typed memory of `memory_store` survives the same way. With `Orkeon:Cli:Memory:Persist` on (the
+REPL's default when the key is unset), `FileCategoryMemoryStore` keeps the entries of each project at
+`<Orkeon:Cli:Memory:RootDirectory>/<project>-<hash>/memory.json` — the same project slug as the session
+file, so the two sit side by side. The file is read at the first access and written after every `add`,
+`replace` or `delete`; the next id is written with the entries, so an id is never reused after a delete.
+Off, `InMemoryCategoryMemoryStore` holds the entries for the life of the process.
+
 `Orkeon:Cli:Session:StartScript` names a script run once after the host is built: an `.ork.ts`
 through the script host, any other file as a shell script. Its stdout, path and source are stored in
 the state bag under `SessionStateKeys.SessionStartOutput` and prepended to the first free-text turn,
@@ -161,7 +169,12 @@ so a start-up script can name the open work. A failing script is logged and neve
 
 `AddOrkeonSessionTools()` exposes them to scripts as six tools — `session_store`,
 `session_snip`, `token_budget`, `memory_store`, `session_cost`, `session_stats` — catalogued
-with everything else in [the tool inventory](../tools/inventory.md).
+with everything else in [the tool inventory](../tools/inventory.md). `ISessionBufferService.Truncate`,
+behind `session_snip` and the `truncate` operation of `session_store`, counts turns, not messages: a
+turn starts at a `user` message and owns the `tool`, `assistant` and `note` messages that follow it,
+so a cut never separates a request from its answer or a tool trace from the answer that used it. It
+answers a `SessionTruncation` (`RemovedCount`, `KeptFromIndex`, which always points at a `user` message or is `-1`), and a buffer holding
+fewer turns than asked is left untouched.
 
 ## Tools in commands (`tools.*` in `.cmd.ts`)
 

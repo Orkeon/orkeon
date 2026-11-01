@@ -165,4 +165,74 @@ public class CodebaseSearchToolTests
         }
         finally { Directory.Delete(dir, recursive: true); }
     }
+
+    [Trait("BR", "#283")]
+    [Fact]
+    public async Task ShouldNotSayTruncated_WhenExactlyTopKHitsMatch()
+    {
+        var symbols = Enumerable.Range(0, 3).Select(i => TestGraph.Symbol($"/src::handle{i}", "/src/a.ts")).ToList();
+        using var tool = new CodebaseSearchTool(TestGraph.Store(symbols, []));
+
+        var resp = await tool.ExecuteTypedForTest(
+            new CodebaseSearchRequest { Query = "handle", TopK = 3 }, CancellationToken.None);
+
+        Assert.Equal(3, resp.Hits.Length);
+        Assert.False(resp.Truncated);
+    }
+
+    [Trait("BR", "#283")]
+    [Fact]
+    public async Task ShouldSayTruncatedAndKeepTopKHits_WhenOneMoreHitMatches()
+    {
+        var symbols = Enumerable.Range(0, 4).Select(i => TestGraph.Symbol($"/src::handle{i}", "/src/a.ts")).ToList();
+        using var tool = new CodebaseSearchTool(TestGraph.Store(symbols, []));
+
+        var resp = await tool.ExecuteTypedForTest(
+            new CodebaseSearchRequest { Query = "handle", TopK = 3 }, CancellationToken.None);
+
+        Assert.Equal(3, resp.Hits.Length);
+        Assert.Equal(3, resp.TotalCandidates);
+        Assert.True(resp.Truncated);
+    }
+
+    [Trait("BR", "#280")]
+    [Fact]
+    public async Task ShouldSayTruncated_WhenTheKindPrefilterMatchesMoreNodesThanItKeeps()
+    {
+        var classes = Enumerable.Range(0, InMemoryRaggableStore.MaxNodes + 1)
+            .Select(i => TestGraph.Symbol($"/src/c{i:D4}.ts::Widget{i:D4}", $"/src/c{i:D4}.ts", kind: UniversalNodeKind.Class))
+            .ToList();
+        using var tool = new CodebaseSearchTool(TestGraph.Store(classes, []));
+
+        var capped = await tool.ExecuteTypedForTest(
+            new CodebaseSearchRequest { Query = "nothing matches this", TopK = 5, FilterKinds = [UniversalNodeKind.Class] },
+            CancellationToken.None);
+        var underCap = await tool.ExecuteTypedForTest(
+            new CodebaseSearchRequest { Query = "nothing matches this", TopK = 5, FilterKinds = [UniversalNodeKind.Interface] },
+            CancellationToken.None);
+
+        Assert.True(capped.Truncated);
+        Assert.False(underCap.Truncated);
+    }
+
+
+    [Trait("BR", "#280")]
+    [Fact]
+    public async Task StoreShouldSayPreFilterCapped_WhenThePrefilterMatchesMoreNodesThanItKeeps()
+    {
+        var classes = Enumerable.Range(0, InMemoryRaggableStore.MaxNodes + 1)
+            .Select(i => TestGraph.Symbol($"/src/c{i:D4}.ts::Widget{i:D4}", $"/src/c{i:D4}.ts", kind: UniversalNodeKind.Class))
+            .ToList();
+        var store = TestGraph.Store(classes, []);
+
+        var capped = await store.SemanticSearchAsync(
+            new SemanticQuery { Text = "widget", PreFilter = new NodeQuery { Kinds = [UniversalNodeKind.Class], Take = int.MaxValue } },
+            CancellationToken.None);
+        var underCap = await store.SemanticSearchAsync(
+            new SemanticQuery { Text = "widget", PreFilter = new NodeQuery { Kinds = [UniversalNodeKind.Interface], Take = int.MaxValue } },
+            CancellationToken.None);
+
+        Assert.True(capped.PreFilterCapped);
+        Assert.False(underCap.PreFilterCapped);
+    }
 }

@@ -148,7 +148,8 @@ Trois ports portent ce qu'une conversation doit conserver entre deux exécutions
 - **`ISessionBufferService`** (singleton) — le tampon de conversation : messages, métadonnées,
   troncature tête+queue, estimation de tokens. Pivot de la boucle et des commandes de session.
 - **`ICategoryMemoryStore`** — CRUD mémoire typé sur quatre catégories
-  (user/project/feedback/reference).
+  (user/project/feedback/reference) : `ListAsync(category, newestFirst)`, `AddAsync` (renvoie l'id),
+  `ReplaceAsync(id, content)` (même id et même catégorie, `CreatedAt` remis à jour), `DeleteAsync`, `GetAsync`.
 - **`ICostBudgetManager`** — télémétrie cumulée coût/tokens/appels.
 
 ### Session durable et script de démarrage
@@ -161,6 +162,14 @@ physique de l'espace de travail que le REPL monte en `/workspace` ; le fichier e
 démarrage, réhydraté sans revalidation, et écrit après chaque tour et à la sortie du REPL. Un fichier corrompu démarre une
 session vide. `session_store` lit le tampon réhydraté comme n'importe quel autre.
 
+La mémoire typée de `memory_store` survit de la même façon. Avec `Orkeon:Cli:Memory:Persist` activé
+(valeur par défaut du REPL quand la clé est absente), `FileCategoryMemoryStore` conserve les entrées de
+chaque projet dans `<Orkeon:Cli:Memory:RootDirectory>/<projet>-<hash>/memory.json` — le même slug de
+projet que le fichier de session, les deux sont donc côte à côte. Le fichier est lu au premier accès et
+écrit après chaque `add`, `replace` ou `delete` ; l'id suivant est écrit avec les entrées, un id n'est
+donc jamais réutilisé après une suppression. Désactivé, `InMemoryCategoryMemoryStore` garde les entrées
+le temps du processus.
+
 `Orkeon:Cli:Session:StartScript` désigne un script exécuté une fois, l'hôte construit : un `.ork.ts`
 via l'hôte de scripts, tout autre fichier comme script shell. Sa sortie standard, son chemin et sa
 source sont stockés dans l'état sous `SessionStateKeys.SessionStartOutput` et placés avant le premier
@@ -169,7 +178,12 @@ tour en texte libre, de sorte qu'un script de démarrage puisse nommer le travai
 
 `AddOrkeonSessionTools()` les expose aux scripts sous forme de six outils — `session_store`,
 `session_snip`, `token_budget`, `memory_store`, `session_cost`, `session_stats` — catalogués
-avec les autres dans [l'inventaire des outils](../tools/inventory.md).
+avec les autres dans [l'inventaire des outils](../tools/inventory.md). `ISessionBufferService.Truncate`,
+derrière `session_snip` et l'opération `truncate` de `session_store`, compte des tours, pas des
+messages : un tour commence à un message `user` et possède les messages `tool`, `assistant` et `note`
+qui le suivent, de sorte qu'une coupe ne sépare jamais une requête de sa réponse ni une trace d'outil
+de la réponse qui l'a utilisée. Il répond un `SessionTruncation` (`RemovedCount`, `KeptFromIndex`,
+qui pointe toujours un message `user` ou vaut `-1`), et un buffer qui contient moins de tours que demandé reste intact.
 
 ## Les outils dans les commandes (`tools.*` dans `.cmd.ts`)
 

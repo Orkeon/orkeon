@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using Orkeon.Domain.Attributes;
 
 namespace Orkeon.Analysis.Abstractions.DTOs.Tools;
 
@@ -24,6 +25,7 @@ public sealed record IndexedRootDto(
 
 public sealed record IsPathIndexedRequest
 {
+    [FieldSchema(Description = "Virtual path of the file or folder to check.", IsRequired = true)]
     public string VirtualPath { get; init; } = "";
 }
 

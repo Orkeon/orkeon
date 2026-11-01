@@ -1,5 +1,6 @@
 using System.Collections.Immutable;
 using Microsoft.Extensions.Logging;
+using Orkeon.Analysis.Abstractions;
 using Orkeon.Analysis.Abstractions.DTOs.Queries;
 using Orkeon.Analysis.Abstractions.DTOs.Responses;
 using Orkeon.Analysis.Abstractions.DTOs.Tools;
@@ -25,7 +26,7 @@ public sealed class FlowTraceTool : ToolBase<FlowTraceRequest, FlowTraceResponse
     }
 
     public override string Name => "flow_trace";
-    public override string Description => "Trace call flow from a symbol (optionally to a target) within a depth budget.";
+    public override string Description => "How does control get from this symbol to that one? Returns the shortest call path from from to to, or with include_all_paths every path up to max_depth hops and max_paths paths (20), truncated when more exist; without to, the paths from from. edge_kinds takes calls by default. For the neighbourhood of one symbol, sub_graph.";
 
     /// <summary>Declared access class for permission gates.</summary>
     public override ToolAccess Access => ToolAccess.Read;
@@ -40,7 +41,11 @@ public sealed class FlowTraceTool : ToolBase<FlowTraceRequest, FlowTraceResponse
             // Lazy freshness (PLAN B3): trace edges of the CURRENT code, not the indexed past.
             if (_freshness is not null)
                 await _freshness.EnsureFreshAsync(cancellationToken).ConfigureAwait(false);
+            // The same names as dependency_graph and sub_graph: inherits follows extends and implements.
+            var parsed = GraphKindNames.ParseEdgeKinds(request.EdgeKinds);
+            ImmutableArray<EdgeKind> edgeKinds = parsed.IsDefaultOrEmpty ? [EdgeKind.Calls] : parsed;
             if (string.IsNullOrEmpty(request.From)) return new FlowTraceResponse { Paths = [] };
+            var maxPaths = Math.Max(1, request.MaxPaths);
 
             if (!request.IncludeAllPaths && !string.IsNullOrEmpty(request.To))
             {
@@ -49,7 +54,7 @@ public sealed class FlowTraceTool : ToolBase<FlowTraceRequest, FlowTraceResponse
                     {
                         From = request.From,
                         To = request.To,
-                        EdgeKinds = request.EdgeKinds,
+                        EdgeKinds = edgeKinds,
                         Direction = request.Direction,
                     },
                     cancellationToken).ConfigureAwait(false);
@@ -62,16 +67,17 @@ public sealed class FlowTraceTool : ToolBase<FlowTraceRequest, FlowTraceResponse
                 {
                     From = request.From,
                     To = request.To,
-                    EdgeKinds = request.EdgeKinds,
+                    EdgeKinds = edgeKinds,
                     Direction = request.Direction,
                     MaxDepth = request.MaxDepth,
-                    MaxPaths = request.MaxPaths,
+                    // One path past the page: truncated says that more paths exist, never that the page is full (#283).
+                    MaxPaths = maxPaths + 1,
                 },
                 cancellationToken).ConfigureAwait(false);
             return new FlowTraceResponse
             {
-                Paths = [.. all],
-                Truncated = all.Count >= request.MaxPaths,
+                Paths = [.. all.Take(maxPaths)],
+                Truncated = all.Count > maxPaths,
             };
         }
     }

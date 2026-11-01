@@ -25,9 +25,9 @@ public record DirectoryReadRequest
     [FieldSchema(Description = "Glob pattern to filter results (e.g., '*.cs', '*.txt')", IsRequired = false, Example = "*.cs")]
     public string Pattern { get; init; } = "*";
 
-    /// <summary>Maximum number of entries to return (default: 500). Prevents context window overflow on large directories.</summary>
-    [FieldSchema(Description = "Maximum number of entries to return (default: 500). Use a smaller value to avoid overloading context windows.", IsRequired = false, Example = 500, Default = 500)]
-    public int MaxResults { get; init; } = 500;
+    /// <summary>Maximum number of entries to return (default: 200). Prevents context window overflow on large directories.</summary>
+    [FieldSchema(Description = "Maximum number of entries to return (default: 200); truncated says when the directory holds more. Use a smaller value to avoid overloading context windows.", IsRequired = false, Example = 200, Default = 200)]
+    public int MaxResults { get; init; } = 200;
 }
 
 /// <summary>Represents a single file or directory entry returned by the directory_read tool.</summary>
@@ -91,7 +91,7 @@ public record DirectoryReadResponse
 /// </summary>
 [ToolContract("directory_read",
     Name = "directory_read",
-    Description = "List directory contents including files and subdirectories. Supports recursive listing and glob pattern filtering.",
+    Description = "What is in this folder? Lists the files and sub-folders of a directory, recursive on request, filtered by a glob pattern, at most max_results entries (200 by default; truncated says when the folder holds more). To find files by name across a tree, glob; to find files by content, grep.",
     Category = "File System")]
 public partial class DirectoryReadTool : FileToolBase<DirectoryReadRequest, DirectoryReadResponse>
 {
@@ -127,7 +127,7 @@ public partial class DirectoryReadTool : FileToolBase<DirectoryReadRequest, Dire
     }
 
     /// <summary>Default maximum entries when not specified by caller.</summary>
-    private const int DefaultMaxResults = 500;
+    private const int DefaultMaxResults = 200;
 
     /// <summary>Absolute hard limit to prevent context window overflow regardless of caller request.</summary>
     private const int HardMaxResults = 2000;

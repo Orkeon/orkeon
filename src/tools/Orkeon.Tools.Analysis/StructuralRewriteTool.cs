@@ -5,6 +5,7 @@ using Orkeon.Analysis.Abstractions.Interfaces;
 using Orkeon.Analysis.Core.Editing;
 using Orkeon.Analysis.Core.Structural;
 using Orkeon.Analysis.TreeSitter;
+using Orkeon.Domain.Attributes;
 using Orkeon.Domain.FileSystem;
 using Orkeon.Domain.Tools;
 using Orkeon.Tools.Abstractions.Base;
@@ -13,14 +14,23 @@ namespace Orkeon.Tools.Analysis;
 
 public sealed record StructuralRewriteRequest
 {
+    [FieldSchema(Description = "Structural rule object, as structural_search takes it. Give exactly one of pattern, rule or rule_file.", IsRequired = false)]
     [JsonPropertyName("rule")] public System.Text.Json.JsonElement? Rule { get; init; }
+    [FieldSchema(Description = "Virtual path of a YAML rule file (id, language, rule, fix) under a mounted root.", IsRequired = false, Example = "/workspace/rules/no-log.yml")]
     [JsonPropertyName("rule_file")] public string? RuleFile { get; init; }
+    [FieldSchema(Description = "Code pattern with $NAME / $$$NAME metavariables, as structural_search takes it.", IsRequired = false, Example = "Log.Write($X)")]
     [JsonPropertyName("pattern")] public string? Pattern { get; init; }
+    [FieldSchema(Description = "Language of the pattern and of the files rewritten (csharp, typescript, python...). Required with pattern or rule; a rule_file names its own.", IsRequired = false, Example = "csharp")]
     [JsonPropertyName("language")] public string Language { get; init; } = "";
+    [FieldSchema(Description = "Replacement template; $NAME and $$$NAME are substituted by their captures. Required with pattern or rule; a rule_file carries its own.", IsRequired = false, Example = "Logger.Info($X)")]
     [JsonPropertyName("fix")] public string? Fix { get; init; }
+    [FieldSchema(Description = "Virtual paths of the files or folders rewritten; empty takes the mounted roots.", ItemsType = "string", IsRequired = false)]
     [JsonPropertyName("paths")] public ImmutableList<string> Paths { get; init; } = ImmutableList<string>.Empty;
+    [FieldSchema(Description = "Glob kept among the candidate files (**/*.cs).", IsRequired = false)]
     [JsonPropertyName("glob")] public string? Glob { get; init; }
+    [FieldSchema(Description = "true (default) returns the diffs without writing; false writes the files.", IsRequired = false, Default = true)]
     [JsonPropertyName("dry_run")] public bool DryRun { get; init; } = true;
+    [FieldSchema(Description = "Most files scanned (default 500); truncated says when more were candidates.", IsRequired = false, Default = 500)]
     [JsonPropertyName("max_files")] public int MaxFiles { get; init; } = 500;
 }
 
@@ -36,9 +46,9 @@ public sealed record StructuralRewriteFileDto
 
 public sealed record StructuralRewriteResponse
 {
-    [JsonPropertyName("files")] public required ImmutableList<StructuralRewriteFileDto> Files { get; init; }
     [JsonPropertyName("truncated")] public required bool Truncated { get; init; }
     [JsonPropertyName("files_scanned")] public required int FilesScanned { get; init; }
+    [JsonPropertyName("files")] public required ImmutableList<StructuralRewriteFileDto> Files { get; init; }
 }
 
 public sealed class StructuralRewriteTool : FileToolBase<StructuralRewriteRequest, StructuralRewriteResponse>
@@ -56,7 +66,7 @@ public sealed class StructuralRewriteTool : FileToolBase<StructuralRewriteReques
     }
 
     public override string Name => "structural_rewrite";
-    public override string Description => "Applies a rule's fix template to the matching files; dry run by default.";
+    public override string Description => "Rewrites every node a pattern or rule matches with its fix template, over the files of one language: a dry run by default, returning the per-file diff; dry_run false writes the files. A file whose rewrite no longer parses is refused alone; at most max_files files (500), truncated when cut. To preview the matches first, structural_search; for one replacement by text, edit_file.";
     public override ToolAccess Access => ToolAccess.Edit;
 
     protected override string? ValidateTypedRequest(StructuralRewriteRequest request)

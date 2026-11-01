@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using Orkeon.Analysis.Abstractions;
 using Orkeon.Analysis.Abstractions.DTOs.Queries;
 using Orkeon.Analysis.Abstractions.DTOs.Responses;
@@ -63,10 +64,14 @@ public sealed partial class InMemoryRaggableStore
     public Task<IReadOnlyList<RaggableNode>> QueryAsync(NodeQuery query, CancellationToken ct)
     {
         ArgumentNullException.ThrowIfNull(query);
-        return Task.FromResult(ReadLocked<IReadOnlyList<RaggableNode>>(() => QueryLocked(query)));
+        return Task.FromResult(ReadLocked<IReadOnlyList<RaggableNode>>(() => QueryLocked(query).Nodes));
     }
 
-    private List<RaggableNode> QueryLocked(NodeQuery query)
+    /// <summary>
+    /// The page of <paramref name="query"/> in FQN order and whether nodes matched past it (its <c>Take</c>, once
+    /// clamped to <see cref="MaxNodes"/>, cut the matches).
+    /// </summary>
+    private (List<RaggableNode> Nodes, bool Clamped) QueryLocked(NodeQuery query)
     {
         IEnumerable<RaggableNode> q = _nodesById.Values;
 
@@ -78,6 +83,11 @@ public sealed partial class InMemoryRaggableStore
             q = q.Where(n => packages.Any(p => n.Fqn.Contains(p, StringComparison.Ordinal)));
         }
         if (!string.IsNullOrEmpty(query.ParentId)) q = q.Where(n => n.ParentId == query.ParentId);
+        if (!string.IsNullOrEmpty(query.RootFqn))
+        {
+            var scope = RootScope.Resolve(query.RootFqn, this);
+            q = q.Where(n => scope.Contains(n, n.Fqn));
+        }
         if (query.Tags is { Count: > 0 } tags)
         {
             q = q.Where(n => tags.All(t => n.Tags.TryGetValue(t.Key, out var v) && string.Equals(v, t.Value, StringComparison.Ordinal)));
@@ -88,8 +98,82 @@ public sealed partial class InMemoryRaggableStore
         }
 
         var skip = Math.Max(0, query.Skip);
-        var take = Math.Clamp(query.Take, 1, 1000);
-        return q.OrderBy(n => n.Fqn, StringComparer.Ordinal).Skip(skip).Take(take).ToList();
+        var take = Math.Clamp(query.Take, 1, MaxNodes);
+        // One node past the page says whether the take cut the matches.
+        var page = q.OrderBy(n => n.Fqn, StringComparer.Ordinal).Skip(skip).Take(take + 1).ToList();
+        var clamped = page.Count > take;
+        if (clamped) page.RemoveAt(take);
+        return (page, clamped);
+    }
+
+    /// <summary>
+    /// What "at or under a root" means for <see cref="NodeQuery.RootFqn"/> and <see cref="EdgeListQuery.RootFqn"/>:
+    /// a package or a file by its path (a <c>/</c> boundary); a type or a member by its FQN (a <c>.</c>, <c>::</c> or
+    /// <c>/</c> boundary); a namespace by the files of every node declaring it plus its name as a prefix of the symbol
+    /// part of an FQN; a text no node holds as a path and as an FQN prefix, both with a boundary.
+    /// </summary>
+    private sealed class RootScope
+    {
+        private string? _path;
+        private string? _fqn;
+        private string? _symbolPrefix;
+        private HashSet<string>? _files;
+
+        public static RootScope Resolve(string root, InMemoryRaggableStore store)
+        {
+            var node = store.Resolve(root);
+            if (node is null)
+                return new RootScope { _path = root.TrimEnd('/'), _fqn = root, _symbolPrefix = SymbolPart(root) };
+            if (node.EffectiveKind == UniversalNodeKind.Namespace)
+            {
+                var name = SymbolPart(node.Fqn);
+                var files = new HashSet<string>(StringComparer.Ordinal);
+                foreach (var n in store._nodesById.Values)
+                {
+                    if (n.EffectiveKind == UniversalNodeKind.Namespace && !string.IsNullOrEmpty(n.VirtualFilePath)
+                        && string.Equals(SymbolPart(n.Fqn), name, StringComparison.Ordinal))
+                    {
+                        files.Add(n.VirtualFilePath);
+                    }
+                }
+                return new RootScope { _symbolPrefix = name, _files = files };
+            }
+            if (node.Level is NodeLevel.L0_Monorepo or NodeLevel.L1_Package or NodeLevel.L2_Module)
+            {
+                return string.IsNullOrEmpty(node.VirtualFilePath)
+                    ? new RootScope { _fqn = node.Fqn }
+                    : new RootScope { _path = node.VirtualFilePath.TrimEnd('/') };
+            }
+            return new RootScope { _fqn = node.Fqn };
+        }
+
+        /// <summary><paramref name="node"/> (null for an end outside the index) with <paramref name="fqn"/> is at or under the root.</summary>
+        public bool Contains(RaggableNode? node, string fqn)
+        {
+            if (_path is not null && node is not null && UnderPath(node.VirtualFilePath, _path)) return true;
+            if (_fqn is not null && UnderFqn(fqn, _fqn)) return true;
+            if (_symbolPrefix is not null && UnderFqn(SymbolPart(fqn), _symbolPrefix)) return true;
+            return _files is not null && node is not null && _files.Contains(node.VirtualFilePath);
+        }
+
+        private static string SymbolPart(string fqn)
+        {
+            var at = fqn.IndexOf("::", StringComparison.Ordinal);
+            return at < 0 ? fqn : fqn[(at + 2)..];
+        }
+
+        private static bool UnderPath(string path, string prefix)
+            => path.Length >= prefix.Length
+               && path.StartsWith(prefix, StringComparison.Ordinal)
+               && (path.Length == prefix.Length || path[prefix.Length] == '/');
+
+        private static bool UnderFqn(string fqn, string prefix)
+        {
+            if (!fqn.StartsWith(prefix, StringComparison.Ordinal)) return false;
+            if (fqn.Length == prefix.Length) return true;
+            var next = fqn[prefix.Length];
+            return next is '.' or '/' || fqn.AsSpan(prefix.Length).StartsWith("::", StringComparison.Ordinal);
+        }
     }
 
     public Task<IReadOnlyList<RaggableNode>> GetChildrenAsync(string parentId, CancellationToken ct)
@@ -160,6 +244,86 @@ public sealed partial class InMemoryRaggableStore
         }));
     }
 
+    public Task<EdgeListPage> ListEdgesAsync(EdgeListQuery query, CancellationToken ct)
+    {
+        ArgumentNullException.ThrowIfNull(query);
+        return Task.FromResult(ReadLocked(() => ListEdgesLocked(query, ct)));
+    }
+
+    private EdgeListPage ListEdgesLocked(EdgeListQuery query, CancellationToken ct)
+    {
+        var take = Math.Clamp(query.Take, 1, MaxNodes);
+        var scope = string.IsNullOrEmpty(query.RootFqn) ? null : RootScope.Resolve(query.RootFqn, this);
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+        var matching = new List<ListedEdge>();
+        foreach (var bucket in _edgesBySource.Values)
+        {
+            ct.ThrowIfCancellationRequested();
+            foreach (var edge in bucket)
+            {
+                if (query.Kinds != EdgeKind.None && (query.Kinds & edge.Kind) == EdgeKind.None) continue;
+                if (!seen.Add(edge.Id)) continue;
+                var from = Resolve(edge.FromId);
+                var to = Resolve(edge.ToId);
+                var fromFqn = from is { Fqn.Length: > 0 } ? from.Fqn : edge.FromId;
+                var toFqn = to is { Fqn.Length: > 0 } ? to.Fqn : edge.ToId;
+                if (scope is not null && !scope.Contains(from, fromFqn) && !scope.Contains(to, toFqn)) continue;
+                matching.Add(new ListedEdge
+                {
+                    Id = edge.Id,
+                    FromId = edge.FromId,
+                    FromFqn = fromFqn,
+                    ToId = edge.ToId,
+                    ToFqn = toFqn,
+                    Kind = edge.Kind,
+                });
+            }
+        }
+
+        matching.Sort(CompareEdges);
+        var start = 0;
+        if (query.After is { } after)
+        {
+            // The first edge strictly after the key: an edge removed since the previous page moves nothing.
+            var low = 0;
+            var high = matching.Count;
+            while (low < high)
+            {
+                var mid = (low + high) / 2;
+                if (CompareToKey(matching[mid], after) <= 0) low = mid + 1;
+                else high = mid;
+            }
+            start = low;
+        }
+
+        var page = matching.GetRange(start, Math.Min(take, matching.Count - start)).ToImmutableArray();
+        return new EdgeListPage
+        {
+            Edges = page,
+            Total = matching.Count,
+            HasMore = start + page.Length < matching.Count,
+        };
+    }
+
+    /// <summary>The order of <see cref="EdgeListKey"/>, read off the edges without building a key.</summary>
+    private static int CompareEdges(ListedEdge x, ListedEdge y)
+        => Compare(x.FromFqn, x.ToFqn, x.Kind, x.Id, y.FromFqn, y.ToFqn, y.Kind, y.Id);
+
+    private static int CompareToKey(ListedEdge x, EdgeListKey key)
+        => Compare(x.FromFqn, x.ToFqn, x.Kind, x.Id, key.FromFqn, key.ToFqn, key.Kind, key.EdgeId);
+
+    private static int Compare(
+        string xFrom, string xTo, EdgeKind xKind, string xId,
+        string yFrom, string yTo, EdgeKind yKind, string yId)
+    {
+        var c = string.CompareOrdinal(xFrom, yFrom);
+        if (c != 0) return c;
+        c = string.CompareOrdinal(xTo, yTo);
+        if (c != 0) return c;
+        c = ((int)xKind).CompareTo((int)yKind);
+        return c != 0 ? c : string.CompareOrdinal(xId, yId);
+    }
+
     public Task<SubGraph> ExpandAsync(ExpandQuery query, CancellationToken ct)
         => Task.FromResult(ReadLocked(() => _graph.Expand(query, ct)));
 
@@ -172,13 +336,13 @@ public sealed partial class InMemoryRaggableStore
     public Task<IReadOnlyList<Cycle>> FindCyclesAsync(CycleQuery query, CancellationToken ct)
         => Task.FromResult(ReadLocked(() => _graph.FindCycles(query, ct)));
 
-    public Task<IReadOnlyList<SearchHit>> SemanticSearchAsync(SemanticQuery query, CancellationToken ct)
+    public Task<SemanticSearchResult> SemanticSearchAsync(SemanticQuery query, CancellationToken ct)
     {
         ArgumentNullException.ThrowIfNull(query);
         return SemanticSearchCoreAsync(query, ct);
     }
 
-    private async Task<IReadOnlyList<SearchHit>> SemanticSearchCoreAsync(SemanticQuery query, CancellationToken ct)
+    private async Task<SemanticSearchResult> SemanticSearchCoreAsync(SemanticQuery query, CancellationToken ct)
     {
         var topK = Math.Clamp(query.TopK, 1, MaxTopK);
 
@@ -193,16 +357,25 @@ public sealed partial class InMemoryRaggableStore
         // Vector mode with no embedder used to return [] SILENTLY — a configured-out
         // embedder made every search look like an empty codebase. Hybrid degrades to
         // lexical instead; explicit Vector keeps the historical contract.
-        if (query.Mode == SearchMode.Vector && !hasVector) return [];
+        if (query.Mode == SearchMode.Vector && !hasVector) return new SemanticSearchResult { Hits = [] };
 
-        HashSet<string>? allowed = null;
-        if (query.PreFilter is not null)
+        return ReadLocked(() =>
         {
-            var filtered = await QueryAsync(query.PreFilter, ct).ConfigureAwait(false);
-            allowed = new HashSet<string>(filtered.Select(n => n.Id), StringComparer.Ordinal);
-        }
+            HashSet<string>? allowed = null;
+            var capped = false;
+            if (query.PreFilter is not null)
+            {
+                var (filtered, clamped) = QueryLocked(query.PreFilter);
+                allowed = new HashSet<string>(filtered.Select(n => n.Id), StringComparer.Ordinal);
+                capped = clamped;
+            }
 
-        return ReadLocked(() => SearchLocked(query, topK, hasVector ? queryVec!.Value : null, allowed));
+            return new SemanticSearchResult
+            {
+                Hits = SearchLocked(query, topK, hasVector ? queryVec!.Value : null, allowed),
+                PreFilterCapped = capped,
+            };
+        });
     }
 
     private IReadOnlyList<SearchHit> SearchLocked(
