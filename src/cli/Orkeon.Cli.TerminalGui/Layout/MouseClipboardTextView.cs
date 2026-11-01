@@ -13,6 +13,9 @@ namespace Orkeon.Cli.TerminalGui.Layout;
 ///   <item>Auto-copies the current selection to the OS clipboard on left-button release.</item>
 ///   <item>Renders the selection in inverse video (foreground/background swap) so the
 ///   user gets the standard terminal-style visual feedback during drag-select.</item>
+///   <item>Opens no context menu: the native <see cref="TextView.ContextMenu"/> (a right click,
+///   Ctrl+click, its key) flashed open against the application-wide right-click paste
+///   (<see cref="MouseClipboardBehavior"/>).</item>
 /// </list>
 /// The native v2 drag-select logic is preserved (we call <c>base.OnMouseEvent</c> first);
 /// we only add the auto-copy hook and override the selection color.
@@ -35,6 +38,12 @@ public sealed class MouseClipboardTextView : TextView
     private static readonly Color SelectionFg = new(ColorName16.Black);
     private static readonly Color SelectionBg = new(ColorName16.White);
     internal static readonly Attribute SelectionAttribute = new(in SelectionFg, in SelectionBg);
+
+    /// <summary>
+    /// Initializes a new instance: the native context menu command does nothing, whichever
+    /// binding raises it (Ctrl+click, the menu's key).
+    /// </summary>
+    public MouseClipboardTextView() => AddCommand(Command.Context, () => true);
 
     /// <summary>Raised when this view consumed a key itself, so <c>KeyDown</c> subscribers never see it.</summary>
     internal event EventHandler? KeyConsumed;
@@ -73,6 +82,9 @@ public sealed class MouseClipboardTextView : TextView
     protected override bool OnMouseEvent(Mouse mouse)
     {
         ArgumentNullException.ThrowIfNull(mouse);
+        // A right button never reaches the native handler, which opens the context menu: the
+        // application-wide right-click paste has already run, ahead of the views.
+        if (IsRightButton(mouse.Flags)) return true;
         var handled = base.OnMouseEvent(mouse);
 
         if (mouse.Flags.HasFlag(MouseFlags.LeftButtonReleased)
@@ -85,6 +97,10 @@ public sealed class MouseClipboardTextView : TextView
 
         return handled;
     }
+
+    private static bool IsRightButton(MouseFlags flags) =>
+        (flags & (MouseFlags.RightButtonPressed | MouseFlags.RightButtonReleased | MouseFlags.RightButtonClicked
+            | MouseFlags.RightButtonDoubleClicked | MouseFlags.RightButtonTripleClicked)) != 0;
 
     /// <summary>
     /// Per-cell attribute of the unselected text: <c>(row, column)</c> of the text model to the
