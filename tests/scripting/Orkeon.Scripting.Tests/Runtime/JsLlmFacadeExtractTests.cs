@@ -114,7 +114,7 @@ public sealed class JsLlmFacadeExtractTests
     }
 
     [Fact]
-    public async Task Schema_goes_as_json_schema_when_the_provider_validates_one()
+    public async Task Schema_goes_as_a_non_strict_json_schema_when_the_provider_validates_one()
     {
         var (engine, provider) = NewFacade(out var facade, ResponseFormatSupport.JsonSchema);
 
@@ -123,7 +123,7 @@ public sealed class JsLlmFacadeExtractTests
         var format = provider.LastConfig!.ResponseFormat!;
         Assert.Equal("json_schema", format.Type);
         Assert.Equal("extract", format.Schema!.Name);
-        Assert.True(format.Schema.Strict);
+        Assert.False(format.Schema.Strict);
         Assert.Contains("\"name\"", format.Schema.Schema, StringComparison.Ordinal);
     }
 

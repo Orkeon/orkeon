@@ -145,8 +145,10 @@ const res = await ctx.llm.complete(
 celui de l'hôte, ou celui du profil de l'hôte que nomme `llm.profile(...)` ; `.llm(...)` règle le
 modèle. Un format de réponse est vérifié contre le fournisseur sur lequel l'agent tourne vraiment. `withResponseSchema(name, schema, strict?)` prend un objet
 littéral ou une chaîne JSON et implique `json_schema`. `ctx.llm.extract(prompt, schema)` envoie le
-schéma comme contrainte `json_schema` (nom `extract`, strict) quand le fournisseur en valide une
-(`ResponseFormatSupport.JsonSchema`), et demande `json_object` sinon ; un `responseFormat`
+schéma comme contrainte `json_schema` (nom `extract`, `strict: false`, car un schéma écrit à la main
+porte rarement le `additionalProperties: false` et le `required` complet qu'exige un schéma strict)
+quand le fournisseur en valide une (`ResponseFormatSupport.JsonSchema`), et demande `json_object`
+sinon ; un `responseFormat`
 explicite sur l'appel l'emporte, `"text"` compris.
 
 ## Surface fluent C#

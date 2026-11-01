@@ -627,7 +627,9 @@ public sealed partial class JsLlmFacade
     /// <c>text</c> included). Otherwise a schema object goes as a <c>json_schema</c> constraint
     /// when the provider validates one (<see cref="ResponseFormatSupport.JsonSchema"/>), and the
     /// format falls back to <c>json_object</c>; a provider that honours no format is left to the
-    /// prompted instruction, as before.
+    /// prompted instruction, as before. The caller's schema goes with <c>strict = false</c>: a
+    /// strict schema needs <c>additionalProperties: false</c> and a full <c>required</c> on every
+    /// object, which a hand-written extract schema rarely carries.
     /// </summary>
     private LlmConfig ConfigForExtract(JsValue? options, JsValue? schema)
     {
@@ -637,7 +639,7 @@ public sealed partial class JsLlmFacade
         var schemaJson = TryDescribeSchema(schema);
         var support = _provider?.Capabilities.ResponseFormat ?? ResponseFormatSupport.None;
         if (schemaJson is not null && support >= ResponseFormatSupport.JsonSchema)
-            return cfg with { ResponseFormat = LlmResponseFormat.JsonSchema("extract", schemaJson) };
+            return cfg with { ResponseFormat = LlmResponseFormat.JsonSchema("extract", schemaJson, strict: false) };
         return cfg with { ResponseFormat = LlmResponseFormat.JsonObject() };
     }
 

@@ -144,8 +144,9 @@ const res = await ctx.llm.complete(
 the host's, or the one of the host profile `llm.profile(...)` names; `.llm(...)` sets the model.
 A response format is checked against the provider the agent actually runs on. `withResponseSchema(name, schema, strict?)` takes an object
 literal or a JSON string and implies `json_schema`. `ctx.llm.extract(prompt, schema)` sends the
-schema as a `json_schema` constraint (name `extract`, strict) when the provider validates one
-(`ResponseFormatSupport.JsonSchema`), and asks for `json_object` otherwise; an explicit
+schema as a `json_schema` constraint (name `extract`, `strict: false`, since a hand-written schema
+rarely carries the `additionalProperties: false` and full `required` a strict one needs) when the
+provider validates one (`ResponseFormatSupport.JsonSchema`), and asks for `json_object` otherwise; an explicit
 `responseFormat` on the call wins, `"text"` included.
 
 ## C# fluent surface
