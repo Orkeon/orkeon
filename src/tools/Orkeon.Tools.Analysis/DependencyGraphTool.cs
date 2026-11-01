@@ -2,6 +2,7 @@ using System.Collections.Immutable;
 using Microsoft.Extensions.Logging;
 using Orkeon.Analysis.Abstractions;
 using Orkeon.Analysis.Abstractions.DTOs.Queries;
+using Orkeon.Analysis.Abstractions.DTOs.Responses;
 using Orkeon.Analysis.Abstractions.DTOs.Tools;
 using Orkeon.Analysis.Abstractions.Interfaces;
 using Orkeon.Analysis.Abstractions.Models;
@@ -21,7 +22,10 @@ public sealed class DependencyGraphTool : ToolBase<DependencyGraphRequest, Depen
     }
 
     public override string Name => "dependency_graph";
-    public override string Description => "Dependency graph at a given scope (L1 packages, L2 modules, L3 symbols).";
+    public override string Description =>
+        "Dependency graph at a given scope (L1 packages, L2 modules, L3 symbols). nodes, edges, node_count and edge_count "
+        + "cover the nodes returned (selected by max_nodes, root_fqn and node_kinds); cycles and cycle_count cover the whole scope, each cycle naming "
+        + "its members as FQNs.";
 
     /// <summary>Declared access class for permission gates.</summary>
     public override ToolAccess Access => ToolAccess.Read;
@@ -36,6 +40,8 @@ public sealed class DependencyGraphTool : ToolBase<DependencyGraphRequest, Depen
             var edgeKinds = GraphKindNames.ParseEdgeKinds(request.EdgeKinds);
             var nodes = await ResolveNodesAsync(request, cancellationToken).ConfigureAwait(false);
             var kindMask = ResolveKindMask(edgeKinds);
+            // The cycles follow the kinds the edges follow: an empty list means imports here, never every kind.
+            ImmutableArray<EdgeKind> cycleKinds = edgeKinds.IsDefaultOrEmpty ? [EdgeKind.Imports] : edgeKinds;
             var edges = await CollectEdgesAsync(request, nodes, kindMask, cancellationToken).ConfigureAwait(false);
 
             var graphNodes = nodes.Select(n => new GraphNode
@@ -47,9 +53,10 @@ public sealed class DependencyGraphTool : ToolBase<DependencyGraphRequest, Depen
             }).ToImmutableArray();
             var graphEdges = edges.ToImmutableArray();
 
-            var cycles = await _store.FindCyclesAsync(new CycleQuery { Scope = request.Scope, EdgeKinds = edgeKinds }, cancellationToken).ConfigureAwait(false);
+            var cycles = await _store.FindCyclesAsync(new CycleQuery { Scope = request.Scope, EdgeKinds = cycleKinds }, cancellationToken).ConfigureAwait(false);
             var metrics = BuildMetrics(graphNodes, graphEdges, cycles.Count);
             var truncated = nodes.Count >= request.MaxNodes;
+            var (graphCycles, cyclesTruncated) = BoundCycles(cycles, kindMask, request.MaxCycles, request.MaxCycleMembers);
 
             return new DependencyGraphResponse
             {
@@ -59,6 +66,8 @@ public sealed class DependencyGraphTool : ToolBase<DependencyGraphRequest, Depen
                 MermaidFlowchart = request.IncludeMermaid ? MermaidGenerator.ToFlowchart(graphNodes, graphEdges) : null,
                 Dot = request.IncludeDot ? MermaidGenerator.ToDot(graphNodes, graphEdges) : null,
                 Truncated = truncated,
+                Cycles = graphCycles,
+                CyclesTruncated = cyclesTruncated,
             };
         }
     }
@@ -95,6 +104,34 @@ public sealed class DependencyGraphTool : ToolBase<DependencyGraphRequest, Depen
         }
 
         return nodes;
+    }
+
+    /// <summary>
+    /// Orders the cycles largest first (then by first member), keeps <paramref name="maxCycles"/> of them and
+    /// <paramref name="maxMembers"/> sorted members of each. Each cycle carries <paramref name="kindMask"/>, the
+    /// kinds followed to find it: <see cref="Cycle.EdgeKind"/> holds only the first of them.
+    /// </summary>
+    private static (ImmutableArray<GraphCycle> Cycles, bool Truncated) BoundCycles(
+        IReadOnlyList<Cycle> cycles, EdgeKind kindMask, int maxCycles, int maxMembers)
+    {
+        var cycleCap = Math.Max(0, maxCycles);
+        var memberCap = Math.Max(1, maxMembers);
+        var kept = cycles
+            .Select(c => c.Fqns.Order(StringComparer.Ordinal).ToImmutableArray())
+            .OrderByDescending(members => members.Length)
+            .ThenBy(members => members.FirstOrDefault(), StringComparer.Ordinal)
+            .Take(cycleCap)
+            .ToList();
+
+        var truncated = cycles.Count > kept.Count || kept.Exists(members => members.Length > memberCap);
+        var kindNames = kindMask.ToString();
+        var bounded = kept.Select(members => new GraphCycle
+        {
+            Fqns = [.. members.Take(memberCap)],
+            MemberCount = members.Length,
+            EdgeKind = kindNames,
+        }).ToImmutableArray();
+        return (bounded, truncated);
     }
 
     private static EdgeKind ResolveKindMask(ImmutableArray<EdgeKind> edgeKinds)
