@@ -181,7 +181,14 @@ public sealed class TerminalGuiHost : IAsyncDisposable
         // selection in the focused pane it goes to the clipboard; the transcript is not focusable,
         // so its mouse selection is looked at next; without either the hint names the key that
         // interrupts the turn.
-        if (Layout.PaneClipboard.CopySelection(Application.Navigation?.GetFocused()))
+        var focused = Application.Navigation?.GetFocused();
+        diag?.Invoke($"Ctrl+C focused={focused?.GetType().Name ?? "<none>"} selection={focused switch
+        {
+            Terminal.Gui.Views.TextView t => t.SelectedText?.Length ?? 0,
+            Terminal.Gui.Views.TextField f => f.SelectedText?.Length ?? 0,
+            _ => -1,
+        }}");
+        if (Layout.PaneClipboard.CopySelection(focused))
         {
             diag?.Invoke("Ctrl+C → copied focused selection to clipboard");
             return;
@@ -240,6 +247,24 @@ public sealed class TerminalGuiHost : IAsyncDisposable
 
         EventHandler<Terminal.Gui.Input.Key> ctrlVHandler = (_, key) => HandleCtrlV(key, _toplevel!.Repl);
         Application.KeyDown += ctrlVHandler;
+        EventHandler<Terminal.Gui.Input.Key>? keyDiag = null;
+        EventHandler<Terminal.Gui.Input.PasteEventArgs>? pasteDiag = null;
+        if (DiagEnabled)
+        {
+            // Modified keys and bracketed pastes as the driver delivers them: tells a paste that never
+            // arrives from one the focused view drops, and a Shift+arrow the terminal folds into a
+            // plain arrow from one the view ignores.
+            keyDiag = (_, key) =>
+            {
+                if (key.IsShift || key.IsCtrl || key.IsAlt)
+                    Diag($"KeyDown {key} (code={key.KeyCode}, shift={key.IsShift}, ctrl={key.IsCtrl})");
+            };
+            pasteDiag = (_, e) => Diag($"Paste event: {e.Text.Length} chars, focused={Application.Navigation?.GetFocused()?.GetType().Name ?? "<none>"}");
+            Application.KeyDown += keyDiag;
+            if (Application.Instance is { } app) app.Paste += pasteDiag;
+            Layout.TuiClipboard.Diagnostics = Diag;
+            Diag($"OS clipboard supported={Application.Clipboard?.IsSupported.ToString() ?? "<null>"}");
+        }
         try
         {
             // Blocks the calling thread (the runner's main thread) until RequestStop fires.
@@ -255,6 +280,9 @@ public sealed class TerminalGuiHost : IAsyncDisposable
         finally
         {
             Application.KeyDown -= ctrlVHandler;
+            if (keyDiag is not null) Application.KeyDown -= keyDiag;
+            if (pasteDiag is not null && Application.Instance is { } app) app.Paste -= pasteDiag;
+            Layout.TuiClipboard.Diagnostics = null;
             await linkedCts.CancelAsync().ConfigureAwait(false);
             // The runner is likely blocked in one of two places when Ctrl+Q fires:
             //   (a) IConsoleAdapter.ReadLine() — sync-over-async wrapper around
