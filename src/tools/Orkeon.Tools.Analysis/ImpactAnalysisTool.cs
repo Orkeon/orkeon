@@ -22,7 +22,7 @@ public sealed class ImpactAnalysisTool : ToolBase<ImpactAnalysisRequest, ImpactA
     }
 
     public override string Name => "impact_analysis";
-    public override string Description => "Who is affected if we change this symbol? Direct + transitive callers, grouped by package.";
+    public override string Description => "Who is affected if this symbol changes? Returns the direct and transitive dependents of target (callers by default; Forward lists what it depends on) up to max_depth hops, counted by package, with the top callers; at most max_nodes symbols are visited (500), truncated when the walk stopped early. For the tests to run after the change, affected_tests.";
 
     /// <summary>Declared access class for permission gates.</summary>
     public override ToolAccess Access => ToolAccess.Read;

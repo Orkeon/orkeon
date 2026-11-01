@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — every tool description says what question it answers, which tool is next and where it stops (#284)
+
+- The descriptions of `file_read`, `file_write`, `edit_file`, `directory_read`, `grep`, `glob`, `shell_command`, `count_pattern`, `codebase_search`, `symbol_detail`, `sub_graph`, `flow_trace`, `impact_analysis`, `dependency_graph`, `codebase_map`, `package_summary`, `structural_search`, `structural_rewrite`, `affected_tests`, `edge_list`, `node_read`, `rag_search` and `rag_ingest` open with the question the tool answers, name the neighbouring tool for the adjacent need and state the bound (`max_results`, `top_k`, `max_nodes`, `max_paths`, the 10 000-character cut of `shell_command`). `file_read` no longer sends `.eml` files to `email_parser`; `edit_file` says that `replace_all` lifts the "exactly once" rule; `rag_search` no longer offers `'raggable-tree'` as a collection, so a code question goes to `codebase_search` and never to RAG.
+- `shell_command.action` publishes its values (`run`, `start_job`, `job_status`, `job_tail`) as an enum.
+- `docs/tools/inventory.md` follows the descriptions.
+
 ### Fixed — a cut analysis result still says what it is, and `truncated` has one meaning (#283) **[breaking]**
 
 - Every analysis response declares `truncated`, `cycles_truncated`, `next_cursor`, `total` and the counts before its bulky collections, and `mermaid_flowchart` / `dot` last: the pipeline cuts a result from the end, so the model kept reading a cut `dependency_graph` or `edge_list` as a complete one. A test serialises `dependency_graph` and `sub_graph` through the real tool path and asserts the key order.

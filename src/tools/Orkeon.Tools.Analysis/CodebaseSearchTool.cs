@@ -26,7 +26,7 @@ public sealed class CodebaseSearchTool : ToolBase<CodebaseSearchRequest, Codebas
     }
 
     public override string Name => "codebase_search";
-    public override string Description => "Hybrid (vector + BM25) search over the codebase. Returns ranked hits with FQN, score and match origin.";
+    public override string Description => "Where in the codebase is this concept handled? Searches the indexed symbols by meaning (vector) and by words (BM25) and returns at most top_k hits (10) ranked, each with its FQN, score and match origin; truncated says when more match. The FQN of a hit feeds symbol_detail, sub_graph and impact_analysis. For an exact text, grep; for a code shape, structural_search.";
 
     /// <summary>Declared access class for permission gates.</summary>
     public override ToolAccess Access => ToolAccess.Read;

@@ -26,7 +26,7 @@ public sealed class CodebaseMapTool : ToolBase<CodebaseMapRequest, CodebaseMapRe
     }
 
     public override string Name => "codebase_map";
-    public override string Description => "Structural map of the codebase at a given zoom level (L0-L3).";
+    public override string Description => "What is the shape of this codebase? Lists the entries of one level (L1_Package by default, L2_Module, L3_Symbol) with their kind and path, under root_fqn when given, at most max_entries (200), truncated when more exist; include_metrics adds counts and complexity. The FQN of an entry feeds package_summary and symbol_detail.";
 
     /// <summary>Declared access class for permission gates.</summary>
     public override ToolAccess Access => ToolAccess.Read;

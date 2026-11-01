@@ -26,7 +26,7 @@ public sealed class FlowTraceTool : ToolBase<FlowTraceRequest, FlowTraceResponse
     }
 
     public override string Name => "flow_trace";
-    public override string Description => "Trace call flow from a symbol (optionally to a target) within a depth budget.";
+    public override string Description => "How does control get from this symbol to that one? Returns the shortest call path from from to to, or with include_all_paths every path up to max_depth hops and max_paths paths (20), truncated when more exist; without to, the paths from from. edge_kinds takes calls by default. For the neighbourhood of one symbol, sub_graph.";
 
     /// <summary>Declared access class for permission gates.</summary>
     public override ToolAccess Access => ToolAccess.Read;

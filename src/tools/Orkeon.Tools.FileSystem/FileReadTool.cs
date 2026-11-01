@@ -109,7 +109,7 @@ public partial class FileReadTool : FileToolBase<FileReadRequest, FileReadRespon
     public override string Name => "file_read";
 
     /// <inheritdoc />
-    public override string Description => "Read content from files: text, JSON, XML and the like. Parse .eml e-mail files with email_parser.";
+    public override string Description => "What does this file say? Reads a text file (source, JSON, XML, Markdown...) by virtual path, whole or by line range with offset and limit; has_more says when the range or max_length cut it. To read one symbol of a source file, node_read; to find which file holds a text, grep.";
 
     /// <summary>Declared access class for permission gates.</summary>
     public override ToolAccess Access => ToolAccess.Read;

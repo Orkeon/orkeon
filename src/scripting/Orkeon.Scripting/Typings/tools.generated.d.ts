@@ -26,7 +26,7 @@ declare global {
             readonly report?: { readonly cost: { readonly lambdas: number; readonly loops: number; readonly memory_filters: number; readonly reads: number; readonly writes: number; }; readonly members: readonly { readonly cost: { readonly lambdas: number; readonly loops: number; readonly memory_filters: number; readonly reads: number; readonly writes: number; }; readonly in_memory_filters: readonly { readonly line: number; readonly method: string; }[]; readonly member: string; readonly port_calls: readonly { readonly in_lambda: boolean; readonly in_loop: boolean; readonly line: number; readonly method: string; readonly receiver: string; }[]; }[]; };
         }>;
 
-        /** `affected_tests` - Test projects and classes reached through the graph by changed files. */
+        /** `affected_tests` - Which tests cover this change? Returns the test projects and test classes the graph reaches from changed_files, or from the diff of the working tree against base (HEAD by default), with the changed files it could not resolve; all is true when the set could not be bounded and every test should run. For the symbols the change affects, impact_analysis. */
         affectedTests(input?: {
             /** Commit the diff is taken from when changed_files is omitted (default HEAD). */
             base?: string | null;
@@ -107,7 +107,7 @@ declare global {
             readonly query: string;
         }>;
 
-        /** `codebase_map` - Structural map of the codebase at a given zoom level (L0-L3). */
+        /** `codebase_map` - What is the shape of this codebase? Lists the entries of one level (L1_Package by default, L2_Module, L3_Symbol) with their kind and path, under root_fqn when given, at most max_entries (200), truncated when more exist; include_metrics adds counts and complexity. The FQN of an entry feeds package_summary and symbol_detail. */
         codebaseMap(input?: {
             /** Add children_count, cyclomatic and loc to each entry. */
             include_metrics?: boolean;
@@ -124,7 +124,7 @@ declare global {
             readonly truncated: boolean;
         }>;
 
-        /** `codebase_search` - Hybrid (vector + BM25) search over the codebase. Returns ranked hits with FQN, score and match origin. */
+        /** `codebase_search` - Where in the codebase is this concept handled? Searches the indexed symbols by meaning (vector) and by words (BM25) and returns at most top_k hits (10) ranked, each with its FQN, score and match origin; truncated says when more match. The FQN of a hit feeds symbol_detail, sub_graph and impact_analysis. For an exact text, grep; for a code shape, structural_search. */
         codebaseSearch(input: {
             /** Keep only these node kinds: Class, Interface, Method, Function, Property, Enum, Record, Module, Package... Empty keeps every kind. */
             filter_kinds?: readonly string[];
@@ -167,7 +167,7 @@ declare global {
             readonly top: readonly { readonly fqn: string; readonly metric: string; readonly value: number; }[];
         }>;
 
-        /** `count_pattern` - Count regex occurrences in a file (deterministic, per-pattern). Use when verification requires exact counts rather than LLM estimation. */
+        /** `count_pattern` - How many times does each pattern occur in this file? Counts the matches of each regex over the whole file, independently and exactly, for a check that must not rest on an estimate; distinct counts the unique matched strings instead. One file per call; to count over a tree, grep with output_mode "count". */
         countPattern(input: {
             /** Count unique matched substrings instead of raw matches */
             distinct_matches?: boolean;
@@ -223,7 +223,7 @@ declare global {
             readonly tables: readonly { readonly columns: readonly { readonly data_type: string; readonly default_value?: string; readonly is_nullable: boolean; readonly is_primary_key: boolean; readonly max_length?: number; readonly name: string; }[]; readonly name: string; readonly row_count_estimate?: number; readonly schema?: string; }[];
         }>;
 
-        /** `dependency_graph` - Dependency graph at a given scope (L1 packages, L2 modules, L3 symbols). nodes, edges, node_count and edge_count cover the nodes returned (selected by max_nodes, root_fqn and node_kinds); cycles and cycle_count cover the whole scope, each cycle naming its members as FQNs. */
+        /** `dependency_graph` - What depends on what at this scope? Returns the nodes and the edges of the given edge_kinds (imports by default) among the packages (L1_Package), modules (L2_Module) or symbols (L3_Symbol) of the scope, at most max_nodes nodes (200) selected by root_fqn and node_kinds, truncated when the scope holds more; cycles and cycle_count cover the whole scope, each cycle naming its members as FQNs. For every edge of a kind across the index, edge_list; for the neighbourhood of a symbol, sub_graph. */
         dependencyGraph(input?: {
             /** Edge kinds to follow, by name: contains, calls, imports, inherits, tests, documents, project_depends. Legacy enum names (Imports, Extends, Implements...) are still accepted. */
             edge_kinds?: readonly string[];
@@ -256,7 +256,7 @@ declare global {
             readonly truncated: boolean;
         }>;
 
-        /** `directory_read` - List directory contents including files and subdirectories. Supports recursive listing and glob pattern filtering. */
+        /** `directory_read` - What is in this folder? Lists the files and sub-folders of a directory, recursive on request, filtered by a glob pattern, at most max_results entries (200 by default; truncated says when the folder holds more). To find files by name across a tree, glob; to find files by content, grep. */
         directoryRead(input: {
             /** Maximum number of entries to return (default: 200); truncated says when the directory holds more. Use a smaller value to avoid overloading context windows. */
             max_results?: number;
@@ -353,7 +353,7 @@ declare global {
             readonly success: boolean;
         }>;
 
-        /** `edge_list` - Every edge of the given kinds in the whole index, paginated: from and to as FQNs, kind, total, and next_cursor to pass back as cursor until it is null. Every base class: the targets of edge_kinds ["inherits"]. */
+        /** `edge_list` - Which edges of these kinds exist across the whole index? Lists every edge of edge_kinds (required), from and to as FQNs with their ids, in a stable order, page_size at a time (200, up to 1000), with total and the next_cursor to pass back as cursor until it is null; root_fqn keeps the edges touching one node. For the edges among the nodes of a scope with its cycles, dependency_graph; for the neighbourhood of one symbol, sub_graph. */
         edgeList(input: {
             /** The next_cursor of the previous page; omit it for the first page. */
             cursor?: string | null;
@@ -380,7 +380,7 @@ declare global {
             readonly validation: string;
         }>;
 
-        /** `edit_file` - Replace a string in a file when it occurs exactly once. */
+        /** `edit_file` - Replaces old_string by new_string in a file: refused when old_string is absent or occurs more than once, unless replace_all is true, which replaces every occurrence. Read the file first (file_read) to copy the exact text; to rewrite a whole file, file_write. */
         editFile(input: {
             /** Create a backup before writing */
             create_backup?: boolean;
@@ -401,7 +401,7 @@ declare global {
             readonly success: boolean;
         }>;
 
-        /** `file_read` - Read content from files: text, JSON, XML and the like. Parse .eml e-mail files with email_parser. */
+        /** `file_read` - What does this file say? Reads a text file (source, JSON, XML, Markdown...) by virtual path, whole or by line range with offset and limit; has_more says when the range or max_length cut it. To read one symbol of a source file, node_read; to find which file holds a text, grep. */
         fileRead(input: {
             /** The text encoding to use (default: UTF-8) */
             encoding?: "UTF-8" | "ASCII" | "Unicode" | "UTF-32";
@@ -425,7 +425,7 @@ declare global {
             readonly truncated: boolean;
         }>;
 
-        /** `file_write` - Write content to files. Can create new files or overwrite existing ones. Creates directories if needed. */
+        /** `file_write` - Writes content to a file by virtual path, creating the file and its folders, replacing the content unless append is true. For a change inside an existing file, edit_file; the whole content is written, so a large file goes through edit_file rather than a rewrite. */
         fileWrite(input: {
             /** Whether to append to the file instead of overwriting (default: false) */
             append?: boolean;
@@ -445,7 +445,7 @@ declare global {
             readonly success: boolean;
         }>;
 
-        /** `flow_trace` - Trace call flow from a symbol (optionally to a target) within a depth budget. */
+        /** `flow_trace` - How does control get from this symbol to that one? Returns the shortest call path from from to to, or with include_all_paths every path up to max_depth hops and max_paths paths (20), truncated when more exist; without to, the paths from from. edge_kinds takes calls by default. For the neighbourhood of one symbol, sub_graph. */
         flowTrace(input: {
             /** Forward follows calls out of from; Backward follows them into from; Both. */
             direction?: "Forward" | "Backward" | "Both";
@@ -506,7 +506,7 @@ declare global {
             readonly total_count: number;
         }>;
 
-        /** `glob` - Expand a wildcard pattern (relative to a mounted directory) and list the matching file paths, sorted and capped. */
+        /** `glob` - Which files match this name pattern? Expands a wildcard pattern (**\/*.cs, src/**\/test_*.py) relative to path and returns the matching virtual paths, sorted, at most max_results (200). To find files by content, grep; to list one folder, directory_read. */
         glob(input: {
             /** Maximum number of paths returned (default: 200) */
             max_results?: number;
@@ -539,7 +539,7 @@ declare global {
             readonly vertex_labels: readonly { readonly count_estimate?: number; readonly label: string; readonly properties: readonly string[]; }[];
         }>;
 
-        /** `grep` - Search the lines of text files under a mounted directory (path) with a regex; glob filters files relative to path. Binary, unreadable and over-1-MiB files are skipped; regex timeout, max_results and max_files bound the scan. Returns path:line:text hits plus total_matches and files_matched, or with output_mode "count" the counts alone (a "how many" question takes one call). */
+        /** `grep` - Which files contain this text? Searches the lines of the text files under path with a regex, glob filtering the files relative to path, and returns path:line:text hits with total_matches and files_matched; output_mode "count" returns the counts alone, so a "how many" question takes one call. At most max_results hits (200) over max_files files (2000) within a 20 s budget; binary and over-1-MiB files are skipped; truncated and scan_complete say when the scan was cut. To find files by name, glob; to search code by structure, structural_search; to search by meaning, codebase_search. */
         grep(input: {
             /** Case-insensitive matching */
             case_insensitive?: boolean;
@@ -632,7 +632,7 @@ declare global {
             readonly model: string;
         }>;
 
-        /** `impact_analysis` - Who is affected if we change this symbol? Direct + transitive callers, grouped by package. */
+        /** `impact_analysis` - Who is affected if this symbol changes? Returns the direct and transitive dependents of target (callers by default; Forward lists what it depends on) up to max_depth hops, counted by package, with the top callers; at most max_nodes symbols are visited (500), truncated when the walk stopped early. For the tests to run after the change, affected_tests. */
         impactAnalysis(input: {
             /** Backward (default) lists what depends on target; Forward what target depends on; Both. */
             direction?: "Forward" | "Backward" | "Both";
@@ -983,7 +983,7 @@ declare global {
             readonly members: readonly { readonly end_byte: number; readonly end_line: number; readonly kind: string; readonly selector: string; readonly start_byte: number; readonly start_line: number; }[];
         }>;
 
-        /** `node_read` - Reads one member of a file by selector: text, range and SHA-256, uncut. */
+        /** `node_read` - What is the text of this member? Reads one member of a source file by selector (Ns.Type.Member(paramTypes)) or one section of a Markdown file and returns its text uncut, with its leading comments and attributes, its line range and its SHA-256 for node_replace. To list the selectors of a file, node_outline; for a whole file, file_read. */
         nodeRead(input: {
             /** Path of the file holding the member, absolute under a mounted root or relative to the working root. */
             path: string;
@@ -1016,7 +1016,7 @@ declare global {
             readonly range: { readonly end_byte: number; readonly end_line: number; readonly start_byte: number; readonly start_line: number; };
         }>;
 
-        /** `package_summary` - Details about a package (L1): file count, symbol count, exports, dependencies. */
+        /** `package_summary` - What is in this package? Returns the file and symbol counts of one package by FQN (an L1_Package entry of codebase_map), its entry points, its public exports and the packages it depends on, at most max_exports exports (50), truncated when the list was cut. For the dependency edges between packages, dependency_graph. */
         packageSummary(input: {
             /** FQN of the package (an entry of codebase_map at L1_Package). */
             fqn: string;
@@ -1175,7 +1175,7 @@ declare global {
             readonly reports: readonly string[];
         }>;
 
-        /** `rag_ingest` - Ingest documents into a knowledge collection so they become searchable via rag_search. Accepts file paths, glob patterns and http(s) addresses; unchanged sources are skipped (incremental). */
+        /** `rag_ingest` - Makes documents searchable by rag_search: ingests the sources (virtual file paths, glob patterns, http(s) addresses) into a named collection, chunked and embedded. Incremental: a source unchanged since its last ingestion costs nothing, unless reindex is true. Returns a report: sources added, unchanged, re-ingested and pruned, chunks created and embedded. */
         ragIngest(input: {
             /** Optional chunking strategy name (recursive, sentence, structural, semantic); pipeline default when omitted */
             chunking_strategy?: string;
@@ -1189,9 +1189,9 @@ declare global {
             sources: readonly unknown[];
         }, ctx?: ExecutionContext): Promise<unknown>;
 
-        /** `rag_search` - Search knowledge bases and retrieve answers grounded in documents. Use this when you need factual information from the agent's knowledge sources. */
+        /** `rag_search` - What do the ingested documents say about this? Searches the knowledge collections rag_ingest filled (documents, pages, notes) and returns an answer grounded in the top_k most relevant chunks (3), with their citations. For the code of the workspace, codebase_search, grep and file_read; rag_search knows only what was ingested. */
         ragSearch(input: {
-            /** Optional collection selector (default: the configured default collection; 'raggable-tree' for the code index) */
+            /** Collection to search, as rag_ingest named it (default: the configured default collection) */
             collection?: string | null;
             /** The question to search for in knowledge bases */
             question: string;
@@ -1352,10 +1352,10 @@ declare global {
             readonly values?: Record<string, string>;
         }>;
 
-        /** `shell_command` - Execute shell commands with security controls. Supports allowlist/blocklist, timeout, and output capture. */
+        /** `shell_command` - Runs a shell command in the working directory and returns its exit code, stdout and stderr, cut at 10 000 characters; a command the allowlist or blocklist refuses is not run. action run (default) waits up to timeout seconds; start_job starts it detached and returns a job_id, which job_status and job_tail read later in the same run. To read or search files, file_read, grep and glob cost less than cat and find. */
         shellCommand(input: {
             /** run (default): run the command and wait; start_job: start it detached, output to a log file; job_status: running or exit code of a job; job_tail: last lines of a job's log */
-            action?: string;
+            action?: "run" | "start_job" | "job_status" | "job_tail";
             /** Shell command to execute; required by the run and start_job actions */
             command: string;
             /** Id returned by start_job, for job_status and job_tail */
@@ -1420,7 +1420,7 @@ declare global {
             readonly truncated: boolean;
         }>;
 
-        /** `structural_rewrite` - Applies a rule's fix template to the matching files; dry run by default. */
+        /** `structural_rewrite` - Rewrites every node a pattern or rule matches with its fix template, over the files of one language: a dry run by default, returning the per-file diff; dry_run false writes the files. A file whose rewrite no longer parses is refused alone; at most max_files files (500), truncated when cut. To preview the matches first, structural_search; for one replacement by text, edit_file. */
         structuralRewrite(input?: {
             /** true (default) returns the diffs without writing; false writes the files. */
             dry_run?: boolean;
@@ -1446,7 +1446,7 @@ declare global {
             readonly truncated: boolean;
         }>;
 
-        /** `structural_search` - Searches the files of one language (any tree-sitter grammar Orkeon loads, or Markdown) for a code pattern parsed with the target grammar: $NAME matches one node and captures its text, $$$NAME matches zero or more sibling nodes. Returns path, line, column, text, captures and the enclosing symbol of each match. */
+        /** `structural_search` - Where does this code shape occur? Searches the files of one language (any tree-sitter grammar Orkeon loads, or Markdown) for a pattern parsed with that grammar: $NAME matches one node and captures its text, $$$NAME zero or more sibling nodes; a rule object or a YAML rule_file constrains the match further. Returns path, line, column, text, captures and the enclosing symbol of each match, at most max_results matches (100) over max_files files (500), truncated when cut. For a plain text, grep; to change the matches, structural_rewrite. */
         structuralSearch(input?: {
             /** Glob kept among the candidate files (**\/*.cs). */
             glob?: string | null;
@@ -1470,7 +1470,7 @@ declare global {
             readonly truncated: boolean;
         }>;
 
-        /** `sub_graph` - Sub-graph expansion around seeds, bounded by depth and node count. */
+        /** `sub_graph` - What surrounds these symbols? Expands the graph from the seeds (FQNs) along edge_kinds, Forward (what they call or extend) or Backward (who calls or extends them), up to depth hops and max_nodes nodes (100); truncated says when the expansion stopped early. For the whole graph at a scope, dependency_graph; for the paths between two symbols, flow_trace. */
         subGraph(input: {
             /** How many hops from the seeds (default 2). */
             depth?: number;
@@ -1493,7 +1493,7 @@ declare global {
             readonly truncated: boolean;
         }>;
 
-        /** `symbol_detail` - Expanded detail for an L3 symbol: signature, doc, body metrics, members, callers, callees, statements; under expand inheritance, what it extends and implements and what derives from or implements it (derived_by, implemented_by), as FQNs. */
+        /** `symbol_detail` - What is this symbol? Returns the signature, doc comment and body metrics of one symbol by FQN (a hit of codebase_search), and on expand its members (at most max_children, 50), callers, callees, statements and inheritance: what it extends and implements, and what derives from or implements it (derived_by, implemented_by), as FQNs. For the source text, node_read or symbol_source; for who is affected by changing it, impact_analysis. */
         symbolDetail(input: {
             /** What to expand, one name or several joined by commas: Members, Inheritance (extends, implements, derived_by, implemented_by), Callers, Callees, PublicExports, Statements, Decorators, ParentChain, All; None by default. */
             expand?: string;

@@ -20,7 +20,7 @@ public sealed class SubGraphTool : ToolBase<SubGraphRequest, SubGraphResponse>
     }
 
     public override string Name => "sub_graph";
-    public override string Description => "Sub-graph expansion around seeds, bounded by depth and node count.";
+    public override string Description => "What surrounds these symbols? Expands the graph from the seeds (FQNs) along edge_kinds, Forward (what they call or extend) or Backward (who calls or extends them), up to depth hops and max_nodes nodes (100); truncated says when the expansion stopped early. For the whole graph at a scope, dependency_graph; for the paths between two symbols, flow_trace.";
 
     /// <summary>Declared access class for permission gates.</summary>
     public override ToolAccess Access => ToolAccess.Read;

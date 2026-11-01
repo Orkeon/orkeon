@@ -22,8 +22,10 @@ public sealed class SymbolDetailTool : ToolBase<SymbolDetailRequest, SymbolDetai
 
     public override string Name => "symbol_detail";
     public override string Description =>
-        "Expanded detail for an L3 symbol: signature, doc, body metrics, members, callers, callees, statements; under "
-        + "expand inheritance, what it extends and implements and what derives from or implements it (derived_by, implemented_by), as FQNs.";
+        "What is this symbol? Returns the signature, doc comment and body metrics of one symbol by FQN (a hit of codebase_search), "
+        + "and on expand its members (at most max_children, 50), callers, callees, statements and inheritance: what it extends and "
+        + "implements, and what derives from or implements it (derived_by, implemented_by), as FQNs. For the source text, "
+        + "node_read or symbol_source; for who is affected by changing it, impact_analysis.";
 
     /// <summary>Declared access class for permission gates.</summary>
     public override ToolAccess Access => ToolAccess.Read;

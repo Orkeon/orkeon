@@ -21,7 +21,7 @@ public sealed class AffectedTestsTool : ToolBase<AffectedTestsRequest, AffectedT
     }
 
     public override string Name => "affected_tests";
-    public override string Description => "Test projects and classes reached through the graph by changed files.";
+    public override string Description => "Which tests cover this change? Returns the test projects and test classes the graph reaches from changed_files, or from the diff of the working tree against base (HEAD by default), with the changed files it could not resolve; all is true when the set could not be bounded and every test should run. For the symbols the change affects, impact_analysis.";
     public override ToolAccess Access => ToolAccess.Read;
 
     protected override async Task<AffectedTestsResponse> ExecuteTypedAsync(AffectedTestsRequest request, CancellationToken cancellationToken)

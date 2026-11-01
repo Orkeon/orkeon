@@ -62,10 +62,11 @@ public sealed class StructuralSearchTool : ToolBase<StructuralSearchRequest, Str
 
     public override string Name => "structural_search";
     public override string Description =>
-        "Searches the files of one language (any tree-sitter grammar Orkeon loads, or Markdown) for a code pattern parsed with the "
-        + "target grammar: $NAME matches one node and "
-        + "captures its text, $$$NAME matches zero or more sibling nodes. Returns path, line, column, text, captures and the "
-        + "enclosing symbol of each match.";
+        "Where does this code shape occur? Searches the files of one language (any tree-sitter grammar Orkeon loads, or Markdown) "
+        + "for a pattern parsed with that grammar: $NAME matches one node and captures its text, $$$NAME zero or more sibling nodes; "
+        + "a rule object or a YAML rule_file constrains the match further. Returns path, line, column, text, captures and the "
+        + "enclosing symbol of each match, at most max_results matches (100) over max_files files (500), truncated when cut. "
+        + "For a plain text, grep; to change the matches, structural_rewrite.";
     public override ToolAccess Access => ToolAccess.Read;
 
     protected override string? ValidateTypedRequest(StructuralSearchRequest request)

@@ -23,9 +23,10 @@ public sealed class DependencyGraphTool : ToolBase<DependencyGraphRequest, Depen
 
     public override string Name => "dependency_graph";
     public override string Description =>
-        "Dependency graph at a given scope (L1 packages, L2 modules, L3 symbols). nodes, edges, node_count and edge_count "
-        + "cover the nodes returned (selected by max_nodes, root_fqn and node_kinds); cycles and cycle_count cover the whole scope, each cycle naming "
-        + "its members as FQNs.";
+        "What depends on what at this scope? Returns the nodes and the edges of the given edge_kinds (imports by default) among "
+        + "the packages (L1_Package), modules (L2_Module) or symbols (L3_Symbol) of the scope, at most max_nodes nodes (200) selected "
+        + "by root_fqn and node_kinds, truncated when the scope holds more; cycles and cycle_count cover the whole scope, each cycle "
+        + "naming its members as FQNs. For every edge of a kind across the index, edge_list; for the neighbourhood of a symbol, sub_graph.";
 
     /// <summary>Declared access class for permission gates.</summary>
     public override ToolAccess Access => ToolAccess.Read;

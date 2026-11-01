@@ -91,7 +91,7 @@ public record DirectoryReadResponse
 /// </summary>
 [ToolContract("directory_read",
     Name = "directory_read",
-    Description = "List directory contents including files and subdirectories. Supports recursive listing and glob pattern filtering.",
+    Description = "What is in this folder? Lists the files and sub-folders of a directory, recursive on request, filtered by a glob pattern, at most max_results entries (200 by default; truncated says when the folder holds more). To find files by name across a tree, glob; to find files by content, grep.",
     Category = "File System")]
 public partial class DirectoryReadTool : FileToolBase<DirectoryReadRequest, DirectoryReadResponse>
 {

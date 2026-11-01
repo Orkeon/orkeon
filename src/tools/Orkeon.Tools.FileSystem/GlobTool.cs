@@ -54,7 +54,7 @@ public sealed class GlobTool : FileToolBase<GlobRequest, GlobResponse>
     public override string Name => "glob";
 
     /// <inheritdoc />
-    public override string Description => "Expand a wildcard pattern (relative to a mounted directory) and list the matching file paths, sorted and capped.";
+    public override string Description => "Which files match this name pattern? Expands a wildcard pattern (**/*.cs, src/**/test_*.py) relative to path and returns the matching virtual paths, sorted, at most max_results (200). To find files by content, grep; to list one folder, directory_read.";
 
     /// <summary>Declared access class for permission gates.</summary>
     public override ToolAccess Access => ToolAccess.Read;

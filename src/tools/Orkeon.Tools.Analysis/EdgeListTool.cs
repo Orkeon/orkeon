@@ -28,8 +28,10 @@ public sealed class EdgeListTool : ToolBase<EdgeListRequest, EdgeListResponse>
 
     public override string Name => "edge_list";
     public override string Description =>
-        "Every edge of the given kinds in the whole index, paginated: from and to as FQNs, kind, total, and next_cursor "
-        + "to pass back as cursor until it is null. Every base class: the targets of edge_kinds [\"inherits\"].";
+        "Which edges of these kinds exist across the whole index? Lists every edge of edge_kinds (required), from and to as "
+        + "FQNs with their ids, in a stable order, page_size at a time (200, up to 1000), with total and the next_cursor to pass "
+        + "back as cursor until it is null; root_fqn keeps the edges touching one node. For the edges among the nodes of a scope "
+        + "with its cycles, dependency_graph; for the neighbourhood of one symbol, sub_graph.";
 
     /// <summary>Declared access class for permission gates.</summary>
     public override ToolAccess Access => ToolAccess.Read;

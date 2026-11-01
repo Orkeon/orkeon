@@ -46,7 +46,7 @@ public sealed class NodeReadTool : ToolBase<NodeReadRequest, NodeReadResponse>
     }
 
     public override string Name => "node_read";
-    public override string Description => "Reads one member of a file by selector: text, range and SHA-256, uncut.";
+    public override string Description => "What is the text of this member? Reads one member of a source file by selector (Ns.Type.Member(paramTypes)) or one section of a Markdown file and returns its text uncut, with its leading comments and attributes, its line range and its SHA-256 for node_replace. To list the selectors of a file, node_outline; for a whole file, file_read.";
     public override ToolAccess Access => ToolAccess.Read;
 
     // A missing path is named as such: the empty extension used to surface as

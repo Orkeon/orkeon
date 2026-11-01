@@ -66,7 +66,7 @@ public sealed class StructuralRewriteTool : FileToolBase<StructuralRewriteReques
     }
 
     public override string Name => "structural_rewrite";
-    public override string Description => "Applies a rule's fix template to the matching files; dry run by default.";
+    public override string Description => "Rewrites every node a pattern or rule matches with its fix template, over the files of one language: a dry run by default, returning the per-file diff; dry_run false writes the files. A file whose rewrite no longer parses is refused alone; at most max_files files (500), truncated when cut. To preview the matches first, structural_search; for one replacement by text, edit_file.";
     public override ToolAccess Access => ToolAccess.Edit;
 
     protected override string? ValidateTypedRequest(StructuralRewriteRequest request)

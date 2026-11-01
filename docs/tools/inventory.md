@@ -33,7 +33,7 @@ what YAML references.
 | Tool | Class | Registration | Use case | Call example |
 |-------|--------|------|-------------|-----------------|
 | `semantic_search` | `SearchTool` | `AddSemanticSearchTool()` (`Orkeon.Hosting`, opt-in — `orkeon run` calls it for a YAML crew) | Embedding-based semantic search across memories | `{ "query": "customer churn patterns", "top_k": 5 }` |
-| `rag_search` | `RagSearchTool` | `AddOrkeonRag(config)` + `AddOrkeonRagTools()` (`Orkeon.Tools.Rag`) — every runner host calls both | RAG search in the agent's knowledge bases over `IRagPipeline`. Typed result (`answer`, `citations[]`); structured `question` parameter only — the legacy raw-string entry is removed (**breaking**, same for `rag_eval` with `dataset`) | `{ "question": "What is our return policy?", "top_k": 3 }` |
+| `rag_search` | `RagSearchTool` | `AddOrkeonRag(config)` + `AddOrkeonRagTools()` (`Orkeon.Tools.Rag`) — every runner host calls both | RAG search in the collections `rag_ingest` filled (never the code index: `codebase_search`) over `IRagPipeline`. Typed result (`answer`, `citations[]`); structured `question` parameter only — the legacy raw-string entry is removed (**breaking**, same for `rag_eval` with `dataset`) | `{ "question": "What is our return policy?", "top_k": 3 }` |
 | `rag_ingest` | `RagIngestTool` | Same opt-in as `rag_search` | Incremental ingestion into a RAG collection (manifest-driven — unchanged sources cost 0 embeddings) | `{ "collection": "docs", "sources": ["/kb/**/*.md"], "reindex": false }` |
 | `rag_eval` | `RagEvalTool` | Same opt-in as `rag_search` | Evaluate a collection against a golden YAML dataset: recall@k, precision@k, MRR, groundedness. Typed result (`metrics[]`, `cases[]`, `reports`) | `{ "collection": "docs", "dataset": "/kb/eval/golden.yaml" }` |
 
@@ -81,12 +81,12 @@ outside the agent's root is refused before any I/O — the same holds for `node_
 
 | Tool | Class | Base | Use case | Call example |
 |-------|--------|------|-------------|-----------------|
-| `file_read` | `FileReadTool` | `FileToolBase<FileReadRequest, FileReadResponse>` | Read the content of a file (text, JSON, XML and the like — an `.eml` message goes to `email_parser`) | `{ "path": "/data/report.txt" }` |
-| `file_write` | `FileWriteTool` | `FileToolBase<FileWriteRequest, FileWriteResponse>` | Write content to a file, creating folders if necessary | `{ "path": "/output/result.txt", "content": "Analysis complete.", "append": false }` |
-| `edit_file` | `EditFileTool` | `FileToolBase<EditFileRequest, EditFileResponse>` | Replace a string in a file when it occurs exactly once | `{ "path": "/workspace/a.txt", "old_string": "foo", "new_string": "bar" }` |
-| `directory_read` | `DirectoryReadTool` | `FileToolBase<DirectoryReadRequest, DirectoryReadResponse>` | List the contents of a directory with glob filtering and recursion | `{ "path": "/data", "pattern": "*.csv", "recursive": true }` |
+| `file_read` | `FileReadTool` | `FileToolBase<FileReadRequest, FileReadResponse>` | Read a text file whole or by line range (`offset`, `limit`; `has_more` when cut); one symbol goes through `node_read`, a search through `grep` | `{ "path": "/data/report.txt" }` |
+| `file_write` | `FileWriteTool` | `FileToolBase<FileWriteRequest, FileWriteResponse>` | Write the whole content of a file, creating folders if necessary (`append` adds to it); a change inside a file goes through `edit_file` | `{ "path": "/output/result.txt", "content": "Analysis complete.", "append": false }` |
+| `edit_file` | `EditFileTool` | `FileToolBase<EditFileRequest, EditFileResponse>` | Replace a string in a file when it occurs exactly once, or every occurrence with `replace_all` | `{ "path": "/workspace/a.txt", "old_string": "foo", "new_string": "bar" }` |
+| `directory_read` | `DirectoryReadTool` | `FileToolBase<DirectoryReadRequest, DirectoryReadResponse>` | List the contents of a directory with glob filtering and recursion, at most `max_results` entries (200; `truncated` when the folder holds more) | `{ "path": "/data", "pattern": "*.csv", "recursive": true }` |
 | `directory_search` | `DirectorySearchTool` | `ToolBase<DirectorySearchRequest, DirectorySearchResponse>` | RAG semantic search across the files of a directory (ephemeral collection — needs the RAG subsystem at call time, see below) | `{ "path": "/docs", "query": "deployment instructions", "file_patterns": "*.md;*.txt" }` |
-| `count_pattern` | `CountPatternTool` | `FileToolBase<CountPatternRequest, CountPatternResponse>` | Deterministic regex occurrence count per pattern in a file (no LLM guessing) | `{ "path": "/data/log.txt", "patterns": ["ERROR", "WARN"] }` |
+| `count_pattern` | `CountPatternTool` | `FileToolBase<CountPatternRequest, CountPatternResponse>` | Deterministic regex occurrence count per pattern in one file (no LLM guessing); over a tree, `grep` with `output_mode: "count"` | `{ "path": "/data/log.txt", "patterns": ["ERROR", "WARN"] }` |
 | `glob` | `GlobTool` | `FileToolBase<GlobRequest, GlobResponse>` | Files matching a pattern under a mounted root, capped by `max_results` (`pattern` relative to `path`). Read-class | `{ "path": "/workspace", "pattern": "**/*.cs", "max_results": 100 }` |
 | `grep` | `GrepTool` | `FileToolBase<GrepRequest, GrepResponse>` | Line-by-line regex search returning `path:line:text`, capped by `max_results` / `max_files`, binary and over-1-MiB files skipped, per-match timeout; `glob` is a filter relative to `path`. Every answer carries `total_matches`, `files_matched` and `scan_complete` (false when a file over 1 MiB was left unread, the time budget ran out or `max_files` cut the scan) and `truncated` (true when a list or the counts were cut); `output_mode: "count"` drops the hit lines and returns the per-file counts instead, so a "how many" question over a tree takes one call. The default `hits` mode reads every candidate file up to `max_files` or the 20 s budget, even once `max_results` is reached, so that `total_matches` stays exact; a wide tree can end `timed_out` or `truncated`. Read-class | `{ "path": "/workspace", "pattern": "TODO", "glob": "**/*.cs" }` |
 
@@ -231,16 +231,16 @@ Twenty-nine tools over the RaggableTree semantic code graph — the full guide i
 | `incremental_reindex` | `IncrementalReindexTool` | Reindex only the files changed since a commit or an explicit list |
 | `index_status` | `IndexStatusTool` | List every virtual root currently indexed |
 | `is_path_indexed` | `IsPathIndexedTool` | Check whether a virtual path is covered by an indexed root |
-| `codebase_map` | `CodebaseMapTool` | Structural map of the codebase at a given zoom level (L0–L3) |
-| `package_summary` | `PackageSummaryTool` | Package (L1) details: file/symbol counts, exports, dependencies |
+| `codebase_map` | `CodebaseMapTool` | Structural map of the codebase at one level (L1 by default, L0–L3), at most `max_entries` (200), `truncated` when more exist |
+| `package_summary` | `PackageSummaryTool` | Package (L1) details: file/symbol counts, entry points, exports (at most `max_exports`, 50), dependencies |
 | `symbol_detail` | `SymbolDetailTool` | Expanded L3 symbol detail: signature, doc, metrics, members, callers/callees; `expand: "inheritance"` gives `extends`, `implements`, `derived_by` and `implemented_by` as FQNs |
 | `symbol_source` | `SymbolSourceTool` | Deterministic source citation: path, lines, code, SHA-256, stable flag |
-| `codebase_search` | `CodebaseSearchTool` | Hybrid (vector + BM25) search with ranked, cited hits |
-| `dependency_graph` | `DependencyGraphTool` | Dependency graph at a scope (L1 packages, L2 modules, L3 symbols) |
-| `sub_graph` | `SubGraphTool` | Sub-graph expansion around seeds, bounded by depth and node count |
+| `codebase_search` | `CodebaseSearchTool` | Hybrid (vector + BM25) search with ranked, cited hits, at most `top_k` (10), `truncated` when more match |
+| `dependency_graph` | `DependencyGraphTool` | Dependency graph at a scope (L1 packages, L2 modules, L3 symbols): at most `max_nodes` nodes (200), `truncated` when the scope holds more, the cycles of the whole scope; `include_mermaid` / `include_dot` off by default |
+| `sub_graph` | `SubGraphTool` | Sub-graph expansion around seeds, Forward or Backward, bounded by `depth` and `max_nodes` (100); `include_mermaid` off by default |
 | `edge_list` | `EdgeListTool` | Every edge of the given `edge_kinds` (required) in the whole index, in a stable order and paginated (`cursor`, `page_size` up to 1000), each end as FQN and id, optionally kept to the edges touching `root_fqn`; `total` and `next_cursor`. Read-class |
-| `flow_trace` | `FlowTraceTool` | Trace the call flow from a symbol within a depth budget; `edge_kinds` takes the workflow names (`calls` by default, `inherits`) |
-| `impact_analysis` | `ImpactAnalysisTool` | Direct and transitive callers affected by changing a symbol |
+| `flow_trace` | `FlowTraceTool` | Trace the call flow from a symbol, the shortest path to a target or every path within `max_depth` and `max_paths` (20); `edge_kinds` takes the workflow names (`calls` by default, `inherits`) |
+| `impact_analysis` | `ImpactAnalysisTool` | Direct and transitive callers affected by changing a symbol, counted by package, at most `max_nodes` visited (500) |
 | `complexity_report` | `ComplexityReportTool` | Top-N methods by complexity metrics, with median/P95 |
 | `statement_query` | `StatementQueryTool` | Query L4 statements by kind, parent FQN, or semantic similarity |
 | `access_cost` | `AccessCostTool` | Port-access cost of members selected by `fqns` or `changed_files` (default: the working-tree changes), restricted to `roots`; `receivers` overrides the port-receiver regex. Read-class |
