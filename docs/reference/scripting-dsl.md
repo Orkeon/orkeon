@@ -197,6 +197,20 @@ any other value is refused with `effort must be low|medium|high|xhigh|max`) and 
 `onToolResult`, `waitFor`). There is no per-call provider, temperature or token cap, and no `signal` — the call
 already observes the context's.
 
+`chat` takes a bare message array or `{ messages: [...] }`. `extract(prompt, schema, opts)` takes
+the same forms as its first argument, the caller's turns sent in order, plus a prompt string; its
+options add `system`, sent as the first message with the JSON instruction appended to it, so the
+user content goes untouched. Without `system`, the instruction is appended to the prompt or to the
+last user message. A re-ask carries the refused answer as an assistant turn (#285):
+
+```ts
+const again = await ctx.llm.extract<Invoice>({ messages: [
+    { role: "user", content: prompt },
+    { role: "assistant", content: refused },
+    { role: "user", content: "That is not JSON. Answer with the object only." },
+] }, schema, { system: "You extract invoices." });
+```
+
 `act` is the LLM ⇄ tool-call loop: it offers the model the built-ins the agent selected with
 `.tools([...])` and its `withAutonomousTool` instances — whose `execute` runs in the script,
 on the engine's own thread — until the model stops asking or `maxIterations` (default 10,

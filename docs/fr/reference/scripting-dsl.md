@@ -204,6 +204,21 @@ toute autre valeur est refusée avec `effort must be low|medium|high|xhigh|max`)
 `onToolResult`, `waitFor`). Il n'y a ni fournisseur, ni température, ni plafond de
 jetons par appel, et pas de `signal` — l'appel observe déjà celui du contexte.
 
+`chat` prend un tableau de messages nu ou `{ messages: [...] }`. `extract(prompt, schema, opts)`
+prend les mêmes formes en premier argument, les tours de l'appelant envoyés dans l'ordre, en plus
+d'une chaîne de prompt ; ses options ajoutent `system`, envoyé en premier message avec l'instruction
+JSON ajoutée à sa suite, de sorte que le contenu utilisateur part intact. Sans `system`,
+l'instruction est ajoutée au prompt ou au dernier message utilisateur. Une relance porte la réponse
+refusée comme tour assistant (#285) :
+
+```ts
+const again = await ctx.llm.extract<Invoice>({ messages: [
+    { role: "user", content: prompt },
+    { role: "assistant", content: refused },
+    { role: "user", content: "That is not JSON. Answer with the object only." },
+] }, schema, { system: "You extract invoices." });
+```
+
 `act` est la boucle LLM ⇄ appels d'outils : elle propose au modèle les outils intégrés que
 l'agent a choisis avec `.tools([...])` et ses instances `withAutonomousTool` — dont le
 `execute` s'exécute dans le script, sur le fil du moteur — jusqu'à ce que le modèle cesse de

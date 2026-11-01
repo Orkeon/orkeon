@@ -529,8 +529,12 @@ public sealed partial class JsLlmFacade
         };
     }
 
-    /// <summary>The CLR side of <c>extract</c>.</summary>
-    internal Func<string, JsValue, JsValue?, Task<object?>> ExtractAsync => async (prompt, schema, options) =>
+    /// <summary>
+    /// The CLR side of <c>extract</c>. The first argument is a prompt string, a message array
+    /// or an object carrying a <c>messages</c> array (the forms <c>chat</c> takes), so a re-ask
+    /// can carry the refused answer as an assistant turn (#285).
+    /// </summary>
+    internal Func<JsValue, JsValue, JsValue?, Task<object?>> ExtractAsync => async (prompt, schema, options) =>
     {
         if (_provider is null)
         {
@@ -539,14 +543,19 @@ public sealed partial class JsLlmFacade
         }
 
         // extract's contract is "return structured JSON". Three things make that reliable instead
-        // of best-effort: (1) the schema arg — previously ignored — is folded into the prompt so the
-        // model knows the target shape; (2) response_format defaults to json_object (unless the caller
-        // explicitly asked for text), so OpenAI-compatible providers (DeepSeek/OpenAI/Grok/…) emit raw
-        // JSON; (3) the reply is stripped of ```json fences before parsing, tolerating models that wrap
-        // the object anyway. Without these, any prose/markdown reply threw and aborted the whole crew.
-        var fullPrompt = AugmentExtractPrompt(prompt, schema);
+        // of best-effort: (1) the schema arg is folded into the instruction so the model knows the
+        // target shape, and sent as a json_schema constraint when the provider validates one;
+        // (2) response_format defaults to json_object otherwise (unless the caller explicitly asked
+        // for text), so OpenAI-compatible providers (DeepSeek/OpenAI/Grok/...) emit raw JSON; (3) the
+        // reply is stripped of ```json fences before parsing, tolerating models that wrap the object
+        // anyway. Without these, any prose/markdown reply threw and aborted the whole crew.
+        var instruction = ExtractInstruction(schema);
+        var system = ResolveSystem(options);
+        var cfg = ConfigForExtract(options, schema);
         using var usage = BeginUsageScope("extract");
-        var resp = await _provider.GenerateAsync(fullPrompt, ConfigForExtract(options), _ct).ConfigureAwait(false);
+        var resp = prompt.IsString() && system is null
+            ? await _provider.GenerateAsync(Append(prompt.AsString(), instruction), cfg, _ct).ConfigureAwait(false)
+            : await _provider.ChatAsync(ExtractMessages(prompt, system, instruction), cfg, _ct).ConfigureAwait(false);
         ThrowIfBlocked(resp);
         var content = StripJsonFences(resp.Content);
         try
@@ -562,16 +571,41 @@ public sealed partial class JsLlmFacade
     };
 
     /// <summary>
-    /// Appends the requested JSON shape (when a schema object is supplied) plus a strict
-    /// "JSON only, no prose, no fences" instruction to the caller's prompt.
+    /// The strict "JSON only, no prose, no fences" instruction, with the requested JSON shape when
+    /// a schema object is supplied. Appended to the prompt, to the <c>system</c> option or to the
+    /// last user message, so the caller's own text is sent untouched.
     /// </summary>
-    private static string AugmentExtractPrompt(string prompt, JsValue? schema)
+    private static string ExtractInstruction(JsValue? schema)
     {
         var schemaText = TryDescribeSchema(schema);
         return schemaText is null
-            ? prompt + "\n\nRespond with ONLY a valid JSON object — no prose, no markdown code fences."
-            : prompt + "\n\nRespond with ONLY a valid JSON object matching this schema — no prose, no " +
-                       $"markdown code fences:\n{schemaText}";
+            ? "Respond with ONLY a valid JSON object — no prose, no markdown code fences."
+            : "Respond with ONLY a valid JSON object matching this schema — no prose, no " +
+              $"markdown code fences:\n{schemaText}";
+    }
+
+    private static string Append(string text, string instruction) => text + "\n\n" + instruction;
+
+    /// <summary>
+    /// The conversation of a messages-form or system-form <c>extract</c>: the caller's turns in
+    /// order (a prompt string is one user message). With <paramref name="system"/> the instruction
+    /// rides on a leading system message; otherwise it is appended to the last user message, or
+    /// carried by a leading system message when there is none.
+    /// </summary>
+    private static LlmMessage[] ExtractMessages(JsValue prompt, string? system, string instruction)
+    {
+        LlmMessage[] turns = prompt.IsString()
+            ? [new LlmMessage { Role = "user", Content = prompt.AsString() }]
+            : ToMessages(prompt);
+        if (system is not null)
+            return [new LlmMessage { Role = "system", Content = Append(system, instruction) }, .. turns];
+
+        var lastUser = Array.FindLastIndex(turns, m => string.Equals(m.Role, "user", StringComparison.OrdinalIgnoreCase));
+        if (lastUser < 0)
+            return [new LlmMessage { Role = "system", Content = instruction }, .. turns];
+        var result = (LlmMessage[])turns.Clone();
+        result[lastUser] = turns[lastUser] with { Content = Append(turns[lastUser].Content, instruction) };
+        return result;
     }
 
     private static string? TryDescribeSchema(JsValue? schema)
@@ -589,15 +623,22 @@ public sealed partial class JsLlmFacade
     }
 
     /// <summary>
-    /// Builds the config for <c>extract</c>: caller options win, but the response format defaults to
-    /// <c>json_object</c> unless the caller explicitly forced <c>text</c>.
+    /// Builds the config for <c>extract</c>: caller options win (an explicit <c>responseFormat</c>,
+    /// <c>text</c> included). Otherwise a schema object goes as a <c>json_schema</c> constraint
+    /// when the provider validates one (<see cref="ResponseFormatSupport.JsonSchema"/>), and the
+    /// format falls back to <c>json_object</c>; a provider that honours no format is left to the
+    /// prompted instruction, as before.
     /// </summary>
-    private LlmConfig ConfigForExtract(JsValue? options)
+    private LlmConfig ConfigForExtract(JsValue? options, JsValue? schema)
     {
         var cfg = ConfigFrom(options) ?? _provider?.BaseConfig ?? LlmConfig.OnProfile();
         if (cfg.ResponseFormat is not null || CallerForcedText(options))
             return cfg;
-        return cfg with { ResponseFormat = new LlmResponseFormat { Type = "json_object" } };
+        var schemaJson = TryDescribeSchema(schema);
+        var support = _provider?.Capabilities.ResponseFormat ?? ResponseFormatSupport.None;
+        if (schemaJson is not null && support >= ResponseFormatSupport.JsonSchema)
+            return cfg with { ResponseFormat = LlmResponseFormat.JsonSchema("extract", schemaJson) };
+        return cfg with { ResponseFormat = LlmResponseFormat.JsonObject() };
     }
 
     private static bool CallerForcedText(JsValue? options)
@@ -1889,8 +1930,14 @@ public sealed partial class JsLlmFacade
         LlmConfig Inherited() => _provider?.BaseConfig ?? LlmConfig.OnProfile();
     }
 
+    /// <summary>
+    /// The message list of a <c>chat</c> or <c>extract</c> call: a bare array, or an object
+    /// carrying a <c>messages</c> array (<c>{ messages: [...] }</c> used to yield zero messages).
+    /// </summary>
     private static LlmMessage[] ToMessages(JsValue messages)
     {
+        if (messages is not Jint.Native.Array.ArrayInstance && messages.IsObject())
+            messages = messages.Get("messages");
         if (messages is not Jint.Native.Array.ArrayInstance arr)
             return Array.Empty<LlmMessage>();
         var len = (int)Jint.Runtime.TypeConverter.ToInteger(arr.Get("length"));

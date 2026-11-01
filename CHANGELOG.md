@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — `ctx.llm.extract` takes a `system` option, a messages form for a re-ask, and sends the schema as `json_schema` (#285)
+
+- `extract` took a prompt string alone, appended its JSON instruction to it and always asked for `json_object`: no system prompt, no way to re-ask with the refused answer, and a provider validating a JSON Schema never received it. The first argument is now a prompt string, a message array or `{ messages: [...] }` (the forms `chat` takes), the caller's turns sent in order through `ChatAsync`. The new `system` option goes first as a `system` message carrying the JSON instruction, so the user content is sent untouched; without it the instruction is appended to the prompt (unchanged, `GenerateAsync`) or to the last user message of the messages form (to a leading system message when there is none).
+- When a schema object is given and the provider declares `ResponseFormatSupport.JsonSchema`, the call sets `LlmResponseFormat.JsonSchema("extract", schema)`; otherwise `json_object` as before. An explicit `responseFormat` on the call still wins, `"text"` included. Usage is metered under `extract` as before.
+- `chat({ messages: [...] })` sent an empty conversation: the object form is read as the bare array is. Typings: `MessageList`, `ExtractOptions`, overloads of `chat` and `extract`.
+
 ### Added — `memory_store` keeps its typed memory per project across restarts (#286) **[breaking]**
 
 - The typed memory behind `memory_store` (user, project, feedback and reference entries) was held in `InMemoryCategoryMemoryStore` and died with the process. New `FileCategoryMemoryStore` keeps it at `<Orkeon:Cli:Memory:RootDirectory>/<project slug>/memory.json` (default root `/workspace/.orkeon/memory`), under the same project slug as the session file; read at the first access, written after every mutation, with a persisted next id so an id is never reused after a delete; a missing or empty file is an empty store, an unreadable one is refused and left untouched. New section `Orkeon:Cli:Memory` (`Persist`, default off; `RootDirectory`, must not be blank), bound and judged at the host's start; `AddOrkeonSessionTools` resolves the file store when `Persist` is on and the in-memory one otherwise; the REPL turns `Persist` on when the key is absent, as it does for the session.
