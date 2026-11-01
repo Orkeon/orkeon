@@ -75,6 +75,8 @@ public static class SettingsSections
         "Orkeon:Sqlite",
         "Orkeon:TokenCounter",
         "Orkeon:TypeSafe",
+        "Orkeon:Liquid",
+        "Orkeon:Kev",
         "Orkeon:Tools",
         "Orkeon:Tools:Drive",
         "Orkeon:Tools:Email",

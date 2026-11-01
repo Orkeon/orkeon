@@ -15,7 +15,9 @@ internal static class GoModuleFile
         {
             if (!package.Tags.TryGetValue("marker", out var marker) || marker != "go") continue;
             var path = $"{package.VirtualFilePath.Replace('\\', '/').TrimEnd('/')}/go.mod";
-            var content = await fileSystem.TryReadAllTextAsync(path, ct).ConfigureAwait(false);
+            string? content;
+            try { content = await fileSystem.TryReadAllTextAsync(path, ct).ConfigureAwait(false); }
+            catch (FileAccessDeniedException) { content = null; }
             var modulePath = content is null ? null : ModulePathOf(content);
             if (!string.IsNullOrEmpty(modulePath)) package.TagsMutable[DependencyGraphBuilder.GoModuleTag] = modulePath;
         }

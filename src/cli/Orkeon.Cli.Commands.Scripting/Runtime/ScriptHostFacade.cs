@@ -69,9 +69,11 @@ public sealed partial class ScriptHostFacade
     /// <exception cref="TimeoutException">
     /// The crew did not complete within <see cref="ScriptHostFacadeOptions.RunCrewTimeout"/>.
     /// </exception>
+    /// <exception cref="ExclusiveLaunchRefusedException">The same crew runs through an exclusive <c>runCrewAsync</c>.</exception>
     // Assumed-blocking by design — audited (ANT-007/ANT-010, round-02); see docs/architecture/scripting.md.
     public CrewRunOutput runCrew(string name, JsValue? input = null)
     {
+        _dispatch?.ThrowIfExclusivelyHeld($"crew:{SanitizeName(name)}");
         var configured = _options.RunCrewTimeout;
         var timeout = configured > TimeSpan.Zero ? configured : Timeout.InfiniteTimeSpan;
         var inputsJson = ToInputsJson(input);
@@ -222,7 +224,7 @@ public sealed partial class ScriptHostFacade
 
     private static bool ReadExclusive(JsValue exclusive)
     {
-        if (exclusive.IsUndefined() || exclusive.IsNull())
+        if (exclusive.IsUndefined())
             return false;
         if (exclusive.IsBoolean())
             return exclusive.AsBoolean();

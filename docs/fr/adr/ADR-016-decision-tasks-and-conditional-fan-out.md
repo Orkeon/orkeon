@@ -34,7 +34,7 @@ d'un modèle sans qu'un agent écrive un texte que la tâche suivante devait ana
    tâche de décision ou un `when` avec l'un d'eux est refusé au chargement, et un équipage construit
    en C# qui les atteint échoue avant sa première tâche.
 5. **Le circuit peut être coupé.** Sans modèle de décision configuré (les binaires livrés inscrivent
-   TypeSafe quand `Orkeon:TypeSafe` ou `TYPESAFE_API_KEY` est défini), quand `Orkeon:Decision:Enabled`
+   le fournisseur de décision actif, nommé ou déduit), quand `Orkeon:Decision:Enabled`
    vaut `false`, ou avec `orkeon run --no-decision`, une tâche de décision n'émet aucune requête et répond par son `fallback` ; son
    événement `task.completed` porte `defaulted: true` et les conditions s'évaluent sur cette
    réponse. Une requête en échec n'est jamais transformée en repli.
@@ -43,6 +43,10 @@ d'un modèle sans qu'un agent écrive un texte que la tâche suivante devait ana
    `Defaulted`, `IsDecision` et `DecisionAnswers` ; les consoles et le `RunProgressModel` de Studio
    les montrent. `TaskCompletedEvent.AgentId` est nullable, une tâche de décision n'ayant pas
    d'agent.
+
+   > Amendement 2026-10-31 : la raison d'un saut est lue par le JSONL du run et par le `RunProgressModel` de Studio, pas par « les consoles » ; le nom de question `defaulted` est réservé.
+
+   > Amendement 2026-10-31 : le modèle de décision derrière une tâche de décision peut être TypeSafe, Liquid ou Kev ; la tâche, son circuit et son repli ne changent pas.
 
 ## Conséquences
 

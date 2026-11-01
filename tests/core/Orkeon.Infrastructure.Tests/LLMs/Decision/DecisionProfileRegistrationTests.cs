@@ -93,7 +93,7 @@ public class DecisionProfileRegistrationTests
 
         var ex = Assert.ThrowsAny<Exception>(() => container.GetRequiredService<ILlmProfileRegistry>().Resolve("triage").Provider);
 
-        Assert.Contains("AddOrkeonTypeSafe", ex.ToString(), StringComparison.Ordinal);
+        Assert.Contains("AddOrkeonDecisionProvider", ex.ToString(), StringComparison.Ordinal);
     }
 
     [Theory]

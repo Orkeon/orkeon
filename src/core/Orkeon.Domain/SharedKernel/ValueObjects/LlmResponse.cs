@@ -23,6 +23,8 @@ public sealed record LlmResponse
     public int? CacheMissTokens { get; init; }
     /// <summary>Gets the number of prompt tokens written to the provider's prompt cache (Anthropic's <c>cache_creation_input_tokens</c>).</summary>
     public int? CacheWriteTokens { get; init; }
+    /// <summary>Gets the share of <see cref="CacheWriteTokens"/> written at the one-hour TTL (Anthropic's <c>cache_creation.ephemeral_1h_input_tokens</c>).</summary>
+    public int? CacheWrite1hTokens { get; init; }
     /// <summary>
     /// Gets the normalized prompt-cache hit ratio — <c>hit / (hit + miss)</c> per DeepSeek guideline §6.5 —
     /// or <see langword="null"/> when the provider reports no cache token breakdown. Monitor this:
@@ -177,6 +179,13 @@ public sealed record LlmMessage
     /// (<c>{id, function: {name, arguments}}</c>). A provider replaying it accepts both shapes.
     /// </summary>
     public string? RawToolCalls { get; init; }
+
+    /// <summary>
+    /// Gets the signed Anthropic <c>thinking</c> and <c>redacted_thinking</c> blocks of an assistant turn,
+    /// a JSON array kept as received and uninterpreted. Anthropic replays it unchanged before
+    /// <c>tool_use</c>; other providers ignore it.
+    /// </summary>
+    public string? RawThinkingBlocks { get; init; }
 
     /// <summary>
     /// Gets the reasoning trace produced by thinking-mode models (e.g. DeepSeek R1, DeepSeek V4 in

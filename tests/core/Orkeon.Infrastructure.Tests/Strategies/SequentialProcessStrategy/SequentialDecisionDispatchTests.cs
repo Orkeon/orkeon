@@ -22,6 +22,7 @@ public sealed class SequentialDecisionDispatchTests : IDisposable
     private readonly MockAgentExecutionService _executionService = new();
     private readonly MockMemoryScope _memoryScope = new();
     private readonly FakeDecisionModel _model = new();
+    private readonly MockCrewExecutionHook _hook = new();
 
     public SequentialDecisionDispatchTests()
     {
@@ -91,6 +92,43 @@ public sealed class SequentialDecisionDispatchTests : IDisposable
         Assert.Equal(stored.Output, Assert.Single(seen));
     }
 
+    [Fact]
+    [Trait("BR", "R-02")]
+    [Trait("BR", "R-29")]
+    public async System.Threading.Tasks.Task ShouldRecordFailedOutput_WhenSequentialDecisionFails()
+    {
+        _model.Failure = new InvalidOperationException("model down");
+        var decide = DecisionTask();
+        var (crew, strategy) = Build([decide]);
+
+        var output = await strategy.ExecuteSequentialAsync(
+            crew, cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.False(output.Success);
+        var stored = Assert.Single(output.TaskOutputs);
+        Assert.Equal(decide.Id, stored.TaskId);
+        Assert.False(stored.Success);
+        Assert.Equal(TaskStatus.Failed, decide.Status);
+    }
+
+    [Fact]
+    [Trait("BR", "R-26")]
+    public async System.Threading.Tasks.Task ShouldMarkSnapshotAsDecision_WhenDecisionFails()
+    {
+        _model.Failure = new InvalidOperationException("model down");
+        var decide = DecisionTask();
+        var (crew, strategy) = Build([decide]);
+
+        var output = await strategy.ExecuteSequentialAsync(
+            crew, cancellationToken: TestContext.Current.CancellationToken);
+
+        var snapshot = Assert.Single(_hook.CompletedTasks, s => s.TaskId == decide.Id.ToString());
+        Assert.False(snapshot.Success);
+        Assert.True(snapshot.IsDecision);
+        var stored = Assert.Single(output.TaskOutputs);
+        Assert.Equal("Task failed: model down", stored.RawOutput);
+    }
+
     private static CrewTask DecisionTask() =>
         new CrewTaskBuilder().Description("Decide").ExpectedOutput("An outcome")
             .WithDecision(TaskDecision.Create(
@@ -121,7 +159,8 @@ public sealed class SequentialDecisionDispatchTests : IDisposable
                 DecisionRunner = runner,
             },
             delegation,
-            NullLogger<SequentialProcessStrategy>.Instance);
+            NullLogger<SequentialProcessStrategy>.Instance,
+            _hook);
 
         return (builder.Build(), strategy);
     }

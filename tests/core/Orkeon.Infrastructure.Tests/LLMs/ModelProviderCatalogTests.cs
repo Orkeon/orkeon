@@ -68,4 +68,27 @@ public sealed class ModelProviderCatalogTests
         Assert.Equal("TYPESAFE_API_KEY", typeSafe.ApiKeyVariable);
         Assert.Equal("https://api.typesafe.ai/v1", typeSafe.DefaultBaseUrl);
     }
+
+    [Fact]
+    [Trait("BR", "UC-01")]
+    public void ShouldListKeyVariableAndEndpoint_WhenLiquid()
+    {
+        var liquid = ModelProviderCatalog.Find(DecisionProviderKeys.Liquid);
+
+        Assert.NotNull(liquid);
+        Assert.Equal("LIQUID_API_KEY", liquid.ApiKeyVariable);
+        Assert.Equal("https://api.liquid.ai/decisions/v1", liquid.DefaultBaseUrl);
+        Assert.True(liquid.Serves(ModelProviderCategory.Decision));
+    }
+
+    [Fact]
+    [Trait("BR", "UC-02")]
+    public void ShouldListNoKeyVariable_WhenKev()
+    {
+        var kev = ModelProviderCatalog.Find(DecisionProviderKeys.Kev);
+
+        Assert.NotNull(kev);
+        Assert.Null(kev.ApiKeyVariable);
+        Assert.Equal("http://127.0.0.1:8009/v1", kev.DefaultBaseUrl);
+    }
 }

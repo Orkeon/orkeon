@@ -44,8 +44,7 @@ public static class RagRerankingExtensions
                 DecisionModelReranker.RerankerName,
                 () => new DecisionModelReranker(sp.GetService<IDecisionModel>()
                     ?? throw new InvalidOperationException(
-                        "The 'decision' reranker needs a decision model: call AddOrkeonTypeSafe (section Orkeon:TypeSafe).")),
-                DecisionModelReranker.TypeSafeAlias);
+                        "The 'decision' reranker needs a decision model: name a provider in Orkeon:Decision:Provider, or call AddOrkeonDecisionProvider.")));
 
             foreach (var registrar in sp.GetServices<IRerankerRegistrar>())
             {

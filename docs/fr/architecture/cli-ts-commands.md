@@ -374,10 +374,13 @@ defineAsyncCommand({
   en nommant l'instance en cours — `crew 'code-review' already running (ticket t2)`. La
   vérification et le lancement sont une seule étape : deux lignes tapées dans le même tick,
   ou une chaîne de `completed`, ne peuvent pas passer toutes les deux. Le crew est libre de
-  nouveau dès que son instance se termine, échoue ou est annulée (un `completed` qui le
-  relance est admis ; une exécution annulée s'arrête à son prochain point d'annulation
-  coopératif, si bien que sa dernière étape peut chevaucher le lancement suivant). Un lancement sans l'option n'est ni refusé ni compté ; un `exclusive`
-  non booléen est une erreur de script. Contrairement à `maxConcurrent` ci-dessous, elle
+  nouveau quand son travail a réellement fini : l'instance se termine, échoue, ou une
+  exécution annulée atteint son prochain point d'annulation coopératif et s'arrête (un
+  `completed` qui le relance est admis). `cancel()` seul ne le libère pas : un
+  relancement exclusif est refusé tant que le travail annulé n'a pas fini, si bien que
+  deux exécutions ne se chevauchent jamais. Un `runCrew` synchrone d'un crew tenu par un
+  `runCrewAsync` exclusif est refusé de la même façon. Un lancement sans l'option n'est ni
+  refusé ni compté ; un `exclusive` qui n'est ni absent ni booléen (`null` compris) est une erreur de script. Contrairement à `maxConcurrent` ci-dessous, elle
   borne le crew, pas la commande : un alias de la commande qui ne lance rien répond pendant
   l'exécution. Les deux options se combinent (`{ chain: "continue", exclusive: true }`).
 

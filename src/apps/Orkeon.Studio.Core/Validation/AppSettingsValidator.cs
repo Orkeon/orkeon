@@ -486,6 +486,8 @@ public sealed class AppSettingsValidator
         }
 
         ValidateEndpointReading(section, sectionPath, messages);
+        ValidateCache(section, sectionPath, messages);
+        ValidateThinkingEffort(section, sectionPath, messages);
 
         if (Child(section, ConfigurationKeys.LlmApiKeyEnvVar) is JsonValue referenceNode
             && !LlmSection.IsVariableName(AppSettingsDocument.ReadString(referenceNode)))
@@ -497,6 +499,55 @@ public sealed class AppSettingsValidator
                 $"{sectionPath}:{ConfigurationKeys.LlmApiKeyEnvVar}"));
         }
 
+    }
+
+    /// <summary>
+    /// <c>Cache:Ttl</c> of a section of the <c>Llm</c> shape, judged by the Domain's
+    /// <see cref="LlmCacheConfig.Request"/> as the run reads it: a lifetime other than <c>5m</c> or
+    /// <c>1h</c>, or one set with no breakpoint marked, is an error at <c>Cache:Ttl</c>.
+    /// </summary>
+    private static void ValidateCache(JsonObject section, string sectionPath, List<ValidationMessage> messages)
+    {
+        if (Child(section, "Cache:Ttl") is not JsonValue ttlNode
+            || AppSettingsDocument.ReadString(ttlNode)?.Trim() is not { Length: > 0 } ttl)
+        {
+            return;
+        }
+
+        var systemPrompt = Child(section, "Cache:SystemPrompt") is { } s && AppSettingsDocument.ReadBoolean(s) == true;
+        var tools = Child(section, "Cache:Tools") is { } t && AppSettingsDocument.ReadBoolean(t) == true;
+        try
+        {
+            LlmCacheConfig.Request(systemPrompt, tools, ttl);
+        }
+        catch (ArgumentException ex)
+        {
+            messages.Add(ValidationMessage.Error(
+                ValidationCodes.InvalidFieldType, ex.Message, $"{sectionPath}:Cache:Ttl"));
+        }
+    }
+
+    /// <summary>
+    /// <c>Thinking:Effort</c> of a section of the <c>Llm</c> shape, judged by the Domain's
+    /// <see cref="LlmThinkingConfig.ValidateEffort"/>: an unknown or mis-cased level is an error.
+    /// </summary>
+    private static void ValidateThinkingEffort(JsonObject section, string sectionPath, List<ValidationMessage> messages)
+    {
+        if (Child(section, "Thinking:Effort") is not JsonValue effortNode
+            || AppSettingsDocument.ReadString(effortNode) is not { Length: > 0 } effort)
+        {
+            return;
+        }
+
+        try
+        {
+            LlmThinkingConfig.ValidateEffort(effort);
+        }
+        catch (ArgumentException ex)
+        {
+            messages.Add(ValidationMessage.Error(
+                ValidationCodes.InvalidFieldType, ex.Message, $"{sectionPath}:Thinking:Effort"));
+        }
     }
 
     /// <summary>

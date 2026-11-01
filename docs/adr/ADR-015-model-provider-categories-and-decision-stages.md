@@ -27,9 +27,10 @@ categories. Jev fits none of these contracts: forcing it behind `ILlmProvider` w
    interface, and there is no common base. `ModelProviderCatalog` lists every remote provider
    with its categories, its key variable and its default endpoint. A provider serving several
    categories (OpenAI, Ollama) appears once.
-2. **`Decision` has its own port**, `IDecisionModel` (`DecideAsync`, `ListModelsAsync`), with
+2. **`Decision` has its own port**, `IDecisionModel` (`DecideAsync`), with
    typed DTOs: polymorphic questions (`choice`, `score`, `noul`, `box`) and answers.
-   `TypeSafeDecisionModel` is its first adapter, opt-in through `AddOrkeonTypeSafe`. The count of
+   `SystemOneDecisionModel` is its adapter for the System One providers, opt-in through
+   `AddOrkeonDecisionProvider`. The count of
    LLM providers stays at 16.
 3. **The main use is a decision stage around an LLM call.** `DecisionLlmProvider` is an
    `ILlmProvider` decorator that runs stages before and after the call it wraps. A stage
@@ -45,8 +46,12 @@ categories. Jev fits none of these contracts: forcing it behind `ILlmProvider` w
 5. **When the decision model fails, the call goes on** with a warning (fail-open), unless the
    profile sets `FailClosed`, in which case it is blocked.
 6. **The other uses are secondary** and reuse the same port: the agent input guard
-   `TypeSafeInputGuard`, the RAG reranker `decision` (alias `typesafe`) and the tool
+   `DecisionInputGuard`, the RAG reranker `decision` and the tool
    `system_one_decide`.
+
+   > Amendment 2026-10-31: `IDecisionModel.ListModelsAsync` removed (no caller).
+
+   > Amendment 2026-10-31: the `Decision` category gains providers, Liquid and Kev beside TypeSafe, all behind `IDecisionModel` and served by `SystemOneDecisionModel`; the host names or deduces one active provider. The shape of the category does not change.
 
 ## Consequences
 

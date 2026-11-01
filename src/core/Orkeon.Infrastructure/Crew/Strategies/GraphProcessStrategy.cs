@@ -118,9 +118,6 @@ public sealed partial class GraphProcessStrategy : IProcessStrategy
 
         // Load agents
         var agents = await LoadAgentsAsync(crew).ConfigureAwait(false);
-        if (agents.Count == 0 && crew.Tasks.Count > 0)
-            throw new InvalidOperationException("No agents available for graph execution.");
-
         foreach (var agent in agents)
         {
             _delegationProvider.RegisterAgentEntity(agent);
@@ -140,6 +137,10 @@ public sealed partial class GraphProcessStrategy : IProcessStrategy
             if (await _taskRepository.GetByIdAsync(id, cancellationToken).ConfigureAwait(false) is { } found)
                 loaded.Add(found);
         }
+
+        // Only a task an agent runs needs one: a crew of decisions runs with none.
+        if (agents.Count == 0 && loaded.Any(t => !t.IsDecision))
+            throw new InvalidOperationException("No agents available for graph execution.");
 
         // Once, before any task: a decision task that could not answer fails the run at its door.
         var faults = DecisionPreflight.Check(loaded, _decisionRunner);
@@ -298,7 +299,7 @@ public sealed partial class GraphProcessStrategy : IProcessStrategy
                     CacheHitTokens = usage.CacheHit,
                     CacheMissTokens = usage.CacheMiss,
                     Defaulted = result.TaskId is { } id && (state.Outcome.DecisionOf(id)?.IsDefaulted ?? false),
-                }, result);
+                }, result, state.CrewTasks.Any(t => t.Id == result.TaskId && t.IsDecision));
             snapshots.Add(snapshot);
             await _hooks.TaskCompletedAsync(snapshot).ConfigureAwait(false);
         }
@@ -372,7 +373,7 @@ public sealed partial class GraphProcessStrategy : IProcessStrategy
         var agent = task.IsDecision
             ? null
             : await _agentSelector
-                .ForTaskAsync(task, state.Agents, state.AgentIndex++, ct)
+                .ForTaskAsync(task, state.Agents, state.AgentIndex, ct)
                 .ConfigureAwait(false);
         var role = agent?.Role.Value ?? DecisionDispatch.Role;
 
@@ -402,6 +403,10 @@ public sealed partial class GraphProcessStrategy : IProcessStrategy
             return state;
         }
 
+        // The round-robin cursor moves only for a task an agent runs.
+        if (agent is not null)
+            state.AgentIndex++;
+
         // Completions are reported when the graph settles (NotifyResultsAsync); the start is
         // the one per-task moment this mode can announce live.
         await _hooks.TaskStartedAsync(
@@ -423,7 +428,7 @@ public sealed partial class GraphProcessStrategy : IProcessStrategy
         return state;
     }
 
-    /// <summary>A decision task answered by the decision runner from the outputs so far: no agent, no memory, no tokens.</summary>
+    /// <summary>A decision task answered by the decision runner from the outputs so far: no agent, no memory; the tokens the decision model reports are tallied.</summary>
     private Task<TaskResult> RunDecisionTaskAsync(CrewGraphState state, Orkeon.Domain.Task.CrewTask task, CancellationToken ct) =>
         _decisions is null
             ? throw new InvalidOperationException($"Task {task.Id} is a decision task and the strategy has no decision runner.")

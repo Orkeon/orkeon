@@ -19,9 +19,6 @@ public sealed class DecisionModelReranker : IReranker
     /// <summary>The name a pipeline's <c>rerank.kind</c> uses.</summary>
     public const string RerankerName = "decision";
 
-    /// <summary>The alias naming the provider.</summary>
-    public const string TypeSafeAlias = "typesafe";
-
     /// <summary>Value stamped on <see cref="ScoredChunk.ScoreOrigin"/>.</summary>
     public const string ScoreOrigin = "decision-rerank";
 

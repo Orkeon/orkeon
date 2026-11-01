@@ -11,7 +11,4 @@ internal sealed class FakeDecisionModel : IDecisionModel
 
     public Task<DecisionResponse> DecideAsync(DecisionRequest request, CancellationToken cancellationToken = default)
         => throw new NotSupportedException();
-
-    public Task<ImmutableList<DecisionModelDto>> ListModelsAsync(CancellationToken cancellationToken = default)
-        => Task.FromResult(ImmutableList<DecisionModelDto>.Empty);
 }

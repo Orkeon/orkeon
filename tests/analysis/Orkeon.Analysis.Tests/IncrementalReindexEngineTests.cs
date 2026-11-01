@@ -875,6 +875,34 @@ public class IncrementalReindexEngineTests
         finally { Directory.Delete(dir, recursive: true); }
     }
 
+    [Fact]
+    [Trait("BR", "R-04")]
+    public async Task ShouldNotReparseFile_WhenIncrementalChangeIsIgnored()
+    {
+        var dir = await TestFixtures.WriteDirectoryAsync([
+            ("src/a.ts", "export class A { run(): number { return 1; } }"),
+            ("src/b.ts", "export class B { run(): number { return 2; } }"),
+        ]);
+        try
+        {
+            var (tree, _) = await BuildInitialAsync(dir);
+            await File.WriteAllTextAsync(Path.Combine(dir, ".gitignore"), "src/b.ts\n", TestContext.Current.CancellationToken);
+            await File.WriteAllTextAsync(
+                Path.Combine(dir, "src", "b.ts"), "export class B { run(): number { return 77; } }", TestContext.Current.CancellationToken);
+            var engine = new IncrementalReindexEngine(new TypeScriptAdapter(), TestFixtures.CreateFs(dir));
+
+            var result = await engine.ReindexAsync(
+                tree, TestFixtures.TestVirtualRoot, [$"{TestFixtures.TestVirtualRoot}/src/b.ts"],
+                new IndexCodebaseRequest { RootPath = TestFixtures.TestVirtualRoot },
+                CancellationToken.None);
+
+            Assert.Equal(0, result.FilesParsed);
+            Assert.DoesNotContain(result.Tree.Nodes, n => n.Name == "B" && n.Level == NodeLevel.L3_Symbol);
+            Assert.Contains(result.Tree.Nodes, n => n.Name == "A" && n.Level == NodeLevel.L3_Symbol);
+        }
+        finally { Directory.Delete(dir, recursive: true); }
+    }
+
     private static async Task<(RaggableTree Tree, string IndexId)> BuildInitialAsync(string dir)
     {
         var fs = TestFixtures.CreateFs(dir);

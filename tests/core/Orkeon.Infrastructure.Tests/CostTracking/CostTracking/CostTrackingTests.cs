@@ -279,6 +279,37 @@ public class CostBudgetManagerTests
             NullLogger<CostBudgetManager>.Instance);
     }
 
+    [Trait("BR", "R-42")]
+    [Fact]
+    public void ShouldPriceOpus45_WhenModelIdIsDated()
+    {
+        var pricing = _pricingRegistry.TryGetPricing("claude-opus-4-5-20251101");
+
+        Assert.NotNull(pricing);
+        Assert.Equal(5.00m, pricing.PromptPricePerMillion);
+        Assert.Equal(25.00m, pricing.CompletionPricePerMillion);
+        Assert.Equal(6.25m, pricing.CacheWritePricePerMillion);
+        Assert.Equal(0.50m, pricing.CacheReadPricePerMillion);
+    }
+
+    [Trait("BR", "R-47")]
+    [Fact]
+    public void ShouldCostOneHourCacheWriteAtTwiceInput_WhenUsageReportsEphemeral1h()
+    {
+        // claude-sonnet-4: input 3.00 -> 5-minute write 3.75, one-hour write 6.00 per MTok.
+        var result = _sut.RecordUsage(new CostUsageEvent
+        {
+            Model = "claude-sonnet-4",
+            PromptTokens = 10_000,
+            CompletionTokens = 0,
+            CacheWriteTokens = 10_000,
+            CacheWrite1hTokens = 4_000
+        });
+
+        // 6000 * 3.75 + 4000 * 6.00 = 46500 per million
+        Assert.Equal(0.0465m, result.Cost);
+    }
+
     /// <summary>#257 - a Haiku 5.5 call is priced, and its cache tokens at the cache rates, not the prompt rate.</summary>
     [Trait("BR", "CH-257")]
     [Fact]

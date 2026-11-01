@@ -6,7 +6,7 @@
 
 A decision model answers typed questions about a state, with calibrated probabilities, and
 writes no text. Orkeon reaches one through the `IDecisionModel` port (`Orkeon.Application`); the
-first adapter is **TypeSafe**, which serves the "System One" model **Jev** (`jev-latest`). The
+adapter serves three decision providers on the "System One" wire: **TypeSafe** (Jev), **Liquid** (d1) and **Kev**. The
 model judges and Orkeon's code acts: it blocks, routes or escalates a call, ranks passages, or
 hands a decision to an agent
 ([ADR-015](../adr/ADR-015-model-provider-categories-and-decision-stages.md)).
@@ -14,7 +14,7 @@ hands a decision to an agent
 ## The port
 
 `IDecisionModel.DecideAsync(DecisionRequest, ct)` sends one request and returns a
-`DecisionResponse`; `ListModelsAsync(ct)` lists the models the provider serves.
+`DecisionResponse`.
 
 A `DecisionRequest` carries:
 
@@ -33,19 +33,30 @@ A `DecisionRequest` carries:
 A `choice`, `score` or `box` answer also carries a `confidence`. A `DecisionRequestValidator` refuses an empty question
 set, a `choice` of more than 255 options, a `score` of more than ten levels, and a `box` without images.
 
-## TypeSafe
+## Decision providers
+
+Three providers serve the same "System One" wire: **TypeSafe** (model Jev), **Liquid** (model d1)
+and **Kev**. One client, `SystemOneDecisionModel`, serves them through three descriptors; the
+request is `POST <BaseUrl>/systemone` with `model`, `state` and `questions`, the answer carries
+`answers` and `usage`.
+
+| Provider | Default address | Default model | Key variable | Section |
+|----------|-----------------|---------------|--------------|---------|
+| `typesafe` | `https://api.typesafe.ai/v1` | `jev-latest` | `TYPESAFE_API_KEY`, required | `Orkeon:TypeSafe` |
+| `liquid` | `https://api.liquid.ai/decisions/v1` | `d1.1` (or `d1-ultra`) | `LIQUID_API_KEY`, required | `Orkeon:Liquid` |
+| `kev` | `http://127.0.0.1:8009/v1` | `kev-latest` | `KEV_API_KEY`, optional: sent when given, otherwise the call is unauthenticated | `Orkeon:Kev` |
 
 ```csharp
-services.AddOrkeonTypeSafe(configuration);
+services.AddOrkeonDecisionProvider(configuration);
 ```
 
-The three shipped binaries (`orkeon run`, `orkeon-host` and `orkeon-repl`) call it themselves when their
-settings hold an `Orkeon:TypeSafe` section or `TYPESAFE_API_KEY` is set, and `AddOrkeonDecisionProfiles`
-in every case; a host written in C# calls both.
+The three shipped binaries (`orkeon run`, `orkeon-host` and `orkeon-repl`) call it themselves, and
+`AddOrkeonDecisionProfiles` in every case; a host written in C# calls both.
 
 ```json
 {
   "Orkeon": {
+    "Decision": { "Provider": "typesafe" },
     "TypeSafe": {
       "Model": "jev-latest",
       "TimeoutSeconds": 30,
@@ -55,23 +66,58 @@ in every case; a host written in C# calls both.
 }
 ```
 
-- **The key** is read from `Orkeon:TypeSafe:ApiKey`, then from the variable `ApiKeyEnvVar`
-  names (`TYPESAFE_API_KEY` by default), in the process and then in the user scope. It never
-  appears in a log, an error or a tool call.
-- **`BaseUrl`** defaults to `https://api.typesafe.ai/v1`; requests go to `POST <BaseUrl>/systemone`
-  and `GET <BaseUrl>/models`.
-- **Errors** become a `DecisionModelException`: a 422 cites the field at fault, a 401 names the
-  key variable, a 400 `max_tokens_exceeded` names the limit (and suggests `longContext` when the
-  request did not ask for it), a 413 or 415 says what the request exceeded. A 429 or a 529 is retried with an
-  exponential backoff, up to `MaxRetries` times; each attempt has its own `TimeoutSeconds`. Every
-  error cites the id TypeSafe gave the request (`x-typesafe-request-id`) when the answer carries one.
+### The active provider
+
+The host starts with one **active provider**, or none.
+
+- **Named**: `Orkeon:Decision:Provider` is `typesafe`, `liquid` or `kev` (case-insensitive; a blank
+  value counts as not named). Any other value refuses the start, with the valid names listed.
+- **Deduced**, when it is not named: the one hosted provider (TypeSafe or Liquid) that has a
+  settings section (a key present under `Orkeon`, even an empty one, counts). When neither has a
+  section, the one whose key variable is set. A section outweighs a bare key: that provider is
+  then ignored.
+- **Refused**: both sections present, or no section and both keys set; the message names both
+  providers and `Orkeon:Decision:Provider`.
+- **None**: nothing present, no decision model is registered.
+- **Kev** is never deduced, only named. An `Orkeon:Kev` section without `Orkeon:Decision:Provider`
+  is warned in the start log (when no provider is named, the warning names `Orkeon:Decision:Provider`) (a log line, not a settings notice).
+
+The start log names the active provider, the model, the address and `named` or `deduced`. Every
+provider section present that is not the active one is named in a warning (a bare environment key
+is not reported). `--no-decision` (a run without decisions) holds for every provider.
+
+### Keys, addresses and errors
+
+- **The key** is given three ways: the default variable, a variable named in `ApiKeyEnvVar`, or
+  `ApiKey` in the provider's section. It never appears in a log, an error or a tool call. A hosted
+  provider starts without its key; the first decision without it fails, is not retried, and names
+  the variable or the setting.
+- **`BaseUrl`** overrides the default address. A Kev address needs an `http` or `https` scheme,
+  refused at start otherwise (the message names `Orkeon:Kev:BaseUrl`). A configured Kev key towards a
+  non-local `http` address is refused at start (local is `localhost`, `127.0.0.0/8` and `::1`;
+  `https` is fine).
+- **Errors** become a `DecisionModelException`: a 401 or 403 gives the key message; another 4xx
+  except 429 is non-transient and quotes the provider's message (a 422 cites the field at fault, a
+  400 `max_tokens_exceeded` names the limit and suggests `longContext` when the request did not
+  ask for it, a 413 or 415 says what the request exceeded). A 429, a 5xx (529 included), a 408 or
+  an unreachable address is retried with an exponential backoff, up to `MaxRetries` times, each
+  attempt with its own `TimeoutSeconds`; then it fails naming the provider, and the address only when it was unreachable or did not
+  answer in time (a persistent 429, 5xx or 408 gives `<Name> answered <status>: ...`, with no address).
   A `usage` without token counts is metered as zero, not refused.
 - **The danger-zone headers** are set from the request: `TypeSafe-Danger-Zone-Images` when it
   carries images or a `box` question, `TypeSafe-Danger-Zone-Long-Context` when `LongContext` is set.
-- **Usage** is metered once, as `decision` (`LlmUsageOperations.Decision`): TypeSafe bills
-  input tokens only.
+- **Questions**: Orkeon sends every question and the per-call model as written. Kev, and d1 served
+  by llama.cpp, accept only yes/no, `choice` and `score` questions.
+- **Usage** is metered once, as `decision` (`LlmUsageOperations.Decision`) against the active
+  provider; Orkeon computes no cost.
 
-`AddOrkeonTypeSafe` also registers the input guard and the `system_one_decide` tool.
+### The open d1 weights
+
+Orkeon does not serve the d1 weights itself. Served behind Kev or another System One-compatible
+local server, they are used as Kev, with that server's address in `Orkeon:Kev:BaseUrl`. A d1 served
+by llama.cpp takes only yes/no, `choice` and `score` questions.
+
+`AddOrkeonDecisionProvider` also registers the input guard and the `system_one_decide` tool.
 
 ## Decision stages around an LLM call
 
@@ -105,7 +151,7 @@ nothing the request does not support."
 ### Configuration
 
 ```csharp
-services.AddOrkeonTypeSafe(configuration);
+services.AddOrkeonDecisionProvider(configuration);
 services.AddOrkeonDecisionProfiles(configuration);
 ```
 
@@ -190,11 +236,16 @@ calibrated answer instead of an LLM call. The syntax is in the
 
 - A decision task has no agent, no tool and no memory, and writes no text. Its output is the
   answers as compact JSON, so that a later LLM task reads them as context: for each question the
-  `chosen` option, the `score` or the `probability` of a yes-no, the `probabilities` and the
-  `confidence`, plus `"defaulted": true` when the fallback answered.
+  `chosen` option (a choice only), the `score` or the `probability` of a yes-no, the `probabilities` and the
+  `confidence`, plus `"defaulted": true` when the fallback answered (`defaulted` is a reserved key: no question may take that name). A score question has one form: its
+  answers are keyed by level position and it carries no `chosen`, the fallback included. A dependency
+  that was retried is read at its last successful output, else at its last attempt. The task's
+  `TokensUsed` is the usage the model reports.
+- A crew made of decision tasks only is admitted with no agent. A skipped task takes no agent turn in
+  round-robin.
 - The task sends its state and **all its questions in one request**. The state is the output of
   each task it depends on that ran, labelled with the task's key, or only the tasks `state` lists.
-  The only repeats are the adapter's retries of that same request on a 429 or a 529.
+  The only repeats are the adapter's retries of that same request on a 429, a 5xx, a 408 or a network error.
 - The request is metered once, as `decision`, like every request to the model; a defaulted task
   makes no request and counts nothing.
 - A process that retries a failed task (Graph) retries a failed decision task as a new evaluation,
@@ -223,7 +274,7 @@ hold for it to run; the clauses are listed in the
 - **`otherwise`.** It holds exactly when no sibling condition on that decision task holds on the
   answers, a confidence under the floor included; whether a sibling then ran or was skipped for
   another reason does not matter.
-- A skipped task is reported by the consoles as skipped, with its reason (see
+- A skipped task is reported as skipped by the run's JSONL and by Studio, with its reason (see
   [the run event bus](./run-event-bus.md)).
 
 ### Failure
@@ -232,12 +283,16 @@ A decision the model cannot make is a **failed task**, not a skip and not a fall
 refused the request (state over its limit, key refused, rate limit or overload after the retries) or
 is unavailable. The task fails with the reason; the tasks that depend on it, `otherwise` tasks
 included, are skipped as for any failed task, and the crew's rule for a failed task applies. The
-key is in no message.
+key is in no message. The failure is recorded as a failed output marked as a decision, with its
+cause, and the exception is logged. An answer outside the options (a choice not among those asked)
+fails the task, non-transiently: it is not retried. `Parallel` and `Graph` stop the dependants of a
+failed or cancelled decision. The domain refuses a non-finite confidence floor and repeated score
+levels, and `TaskCondition.Holds` is false for an `otherwise` clause (its rule is the one above).
 
 ### The decision circuit and the fallback
 
 The **decision circuit** says whether decision tasks ask the model. It is on when a decision model is
-configured (in the shipped binaries, when `Orkeon:TypeSafe` or `TYPESAFE_API_KEY` is set) and
+configured (in the shipped binaries, when an active provider is named or deduced) and
 `Orkeon:Decision:Enabled` is `true` (its default), and off when:
 
 - no decision model is configured;
@@ -248,7 +303,7 @@ configured (in the shipped binaries, when `Orkeon:TypeSafe` or `TYPESAFE_API_KEY
 A failed request never turns the circuit off: that is a failed task.
 
 With the circuit off, every decision task answers by its **fallback**, without a request, and is
-marked **defaulted** (`defaulted` in the task's event). Its status stays completed.
+marked **defaulted** (`defaulted` in the task's event; the question name `defaulted` is reserved for that reason). Its status stays completed.
 
 - With explicit `fallback` answers, the chosen answer carries a confidence of 1 and a probability of
   1: the conditions on it hold as if the model had answered with full confidence. A question left out
@@ -270,11 +325,14 @@ never on its own.
 
 ## Secondary uses
 
-- **Input guard** — `TypeSafeInputGuard` joins the agent's guardian pipeline in the `Input` phase
-  when `Orkeon:TypeSafe:Guard:Enabled` is true. Its `Risks` default to `prompt_injection` and
-  `data_exfiltration`, `BlockThreshold` to 0.8, `WarnThreshold` to 0.5; it warns on a failure,
-  or blocks with `FailClosed`.
-- **RAG reranker** — `rerank.kind: decision` (alias `typesafe`) asks one `noul` per passage in a
+- **Input guard** — `DecisionInputGuard` joins the agent's guardian pipeline in the `Input` phase
+  when `Orkeon:Decision:Guard:Enabled` is true. The guard has its own section, `Orkeon:Decision:Guard`
+  (`Enabled`, thresholds, `Risks`); it checks through the active provider and signs its verdicts with
+  that provider's name. Its `Risks` default to `prompt_injection` and `data_exfiltration`,
+  `BlockThreshold` to 0.8, `WarnThreshold` to 0.5; it warns on a failure, or blocks with
+  `FailClosed`. A settings file still holding a `Guard` block under `Orkeon:TypeSafe` is refused at start, with a
+  message naming `Orkeon:Decision:Guard`.
+- **RAG reranker** — `rerank.kind: decision` asks one `noul` per passage in a
   single request, passages cut at 4,000 characters, and orders them by probability.
 - **Tool** — `system_one_decide` lets an agent ask `choice`, `score` and `noul` questions
   ([Tool inventory](../tools/inventory.md)); `box` is refused.

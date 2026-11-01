@@ -127,7 +127,7 @@ Orkeon.Cli.Commands.Scripting.Dispatch.CommandDispatchService.get(string! ticket
 Orkeon.Cli.Commands.Scripting.Dispatch.CommandDispatchService.list() -> System.Collections.Generic.IReadOnlyList<Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstanceView!>!
 Orkeon.Cli.Commands.Scripting.Dispatch.CommandDispatchService.list(Jint.Native.JsValue? filter) -> System.Collections.Generic.IReadOnlyList<Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstanceView!>!
 Orkeon.Cli.Commands.Scripting.Dispatch.CommandDispatchService.post(string! agent, string! intent, string! payload) -> string!
-Orkeon.Cli.Commands.Scripting.Dispatch.CommandDispatchService.postWork(string! label, string! target, System.Func<System.Threading.CancellationToken, System.Threading.Tasks.Task<Orkeon.Cli.Commands.Scripting.Dispatch.CommandResponse!>!>! work, bool continueChain = false, bool exclusive = false) -> string!
+Orkeon.Cli.Commands.Scripting.Dispatch.CommandDispatchService.postWork(string! label, string! target, System.Func<System.Threading.CancellationToken, System.Threading.Tasks.Task<Orkeon.Cli.Commands.Scripting.Dispatch.CommandResponse!>!>! work, bool continueChain = false) -> string!
 Orkeon.Cli.Commands.Scripting.Dispatch.CommandDispatchService.request(string! agent, string! intent, string! payload) -> Orkeon.Cli.Commands.Scripting.Dispatch.CommandResponse!
 Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstance
 Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstance.AddTokens(long count) -> void

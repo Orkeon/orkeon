@@ -26,6 +26,7 @@ and refuses the echo rather than misfile your mail (see below).
 | `11-await-before-run.ork.ts` | A file read as the first top-level await, `crew.run()` as the second |
 | `12-events-async-handlers.ork.ts` | Topic handlers that await the LLM, then two crews run in sequence |
 | `13-email-triage.ork.ts` | `tools.email*` on a real mailbox: files unread mail by kind, drafts the replies for a human to send |
+| `14-decision-and-when.ork.ts` | A decision task (`choice`, `score`, `fallback`, `minConfidence`) and `when(...)` fan-out tasks, `"otherwise"` included |
 
 Every file above is the **procedural** shape — it runs its crew(s) with `await crew.run()`
 (`08-rag` has no crew and only exercises `rag.*`; `12` runs two in sequence) and never assigns

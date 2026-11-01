@@ -230,6 +230,75 @@ public sealed class GrepToolTests : IDisposable
     }
 
     [Fact]
+    [Trait("BR", "R-52")]
+    public async Task ShouldReportTruncated_WhenCountModeCutsCountsAtMaxResults()
+    {
+        Put("/workspace/proj/a.txt", "needle\n");
+        Put("/workspace/proj/b.txt", "needle\n");
+
+        var res = Ok(await GrepAsync("needle", "/workspace/proj", max: 1, mode: "count"));
+
+        Assert.Single(res.Counts);
+        Assert.Equal(2, res.FilesMatched);
+        Assert.True(res.Truncated);
+    }
+
+    [Fact]
+    [Trait("BR", "R-52")]
+    public async Task ShouldReportTruncated_WhenCountModeCutsCountsAtMaxTotalChars()
+    {
+        for (var i = 0; i < 120; i++)
+            Put($"/workspace/proj/{new string('f', 200)}{i:D3}.txt", "needle\n");
+
+        var res = Ok(await GrepAsync("needle", "/workspace/proj", max: 1000, maxFiles: 1000, mode: "count"));
+
+        Assert.Equal(120, res.FilesMatched);
+        Assert.True(res.Counts.Count < 120);
+        Assert.True(res.Truncated);
+    }
+
+    [Fact]
+    [Trait("BR", "R-51")]
+    public async Task ShouldReportScanIncomplete_WhenLargeFileIsSkipped()
+    {
+        _fs.AddFile("/workspace/proj/big.txt", [.. "needle\n"u8, .. new byte[1_048_577]]);
+        Put("/workspace/proj/small.txt", "needle\n");
+
+        var res = Ok(await GrepAsync("needle", "/workspace/proj"));
+
+        Assert.Equal(1, res.Skipped);
+        Assert.False(res.ScanComplete);
+    }
+
+    [Fact]
+    [Trait("BR", "R-56")]
+    public async Task ShouldReportScanIncomplete_WhenTotalBudgetRunsOut()
+    {
+        Put("/workspace/proj/a.txt", "needle\n");
+        Put("/workspace/proj/b.txt", "needle\n");
+        using var tool = new GrepTool(_fs, new StubPathValidator().AllowAll(), totalBudget: TimeSpan.Zero);
+
+        var res = Ok(await GrepAsync(tool, "needle", "/workspace/proj"));
+
+        Assert.False(res.ScanComplete);
+        Assert.True(res.Truncated);
+    }
+
+    [Fact]
+    [Trait("BR", "R-51")]
+    public async Task ShouldReportScanComplete_WhenOnlyBinaryFileIsSkipped()
+    {
+        Put("/workspace/proj/a.txt", "needle\n");
+        _fs.AddFile("/workspace/proj/bin.dat", [.. "needle"u8, 0, .. "x"u8]);
+
+        var res = Ok(await GrepAsync("needle", "/workspace/proj"));
+
+        Assert.Equal(1, res.Scanned);
+        Assert.Equal([new Hit("/workspace/proj/a.txt", 1, "needle")], res.Hits);
+        Assert.True(res.ScanComplete);
+    }
+
+    [Fact]
     [Trait("BR", "RT-09b")]
     public async Task ShouldDecodeBomAndUtf16_WhenFileHasBom()
     {
@@ -510,6 +579,7 @@ public sealed class GrepToolTests : IDisposable
 
     [Fact]
     [Trait("BR", "RT-09b")]
+    [Trait("BR", "R-52")]
     public async Task ShouldCapPerFileCountsButNotTotals_WhenCountModeExceedsMaxResults()
     {
         for (var i = 0; i < 5; i++) Put($"/workspace/proj/f{i}.txt", string.Concat(Enumerable.Repeat("needle\n", i + 1)));
@@ -520,7 +590,7 @@ public sealed class GrepToolTests : IDisposable
         Assert.Equal(5, res.FilesMatched);
         Assert.Equal([new FileCount("/workspace/proj/f4.txt", 5), new FileCount("/workspace/proj/f3.txt", 4)], res.Counts);
         Assert.True(res.ScanComplete);
-        Assert.False(res.Truncated);
+        Assert.True(res.Truncated);
     }
 
     [Fact]

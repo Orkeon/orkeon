@@ -96,6 +96,7 @@ public sealed class FileSystemDiscoverer : IFileSystemDiscoverer
             Files = files.ToImmutable(),
             Packages = packages.ToImmutable(),
             RootPath = ctx.VirtualRoot,
+            IgnoreFileContents = stats.IgnoreFileTexts.ToImmutableDictionary(kv => kv.Path, kv => kv.Text, StringComparer.Ordinal),
             FilterStats = stats.Snapshot(),
         };
     }
@@ -184,6 +185,7 @@ public sealed class FileSystemDiscoverer : IFileSystemDiscoverer
         var ignore = ctx.RespectGitignore
             ? await IgnoreFiles.LoadAsync(_fs, ctx.VirtualRoot, gitignores, ct).ConfigureAwait(false)
             : null;
+        if (ignore is not null) stats.IgnoreFileTexts.AddRange(ignore.Contents.Select(kv => (kv.Key, kv.Value)));
         foreach (var entry in walked)
         {
             if (ignore is not null && ignore.IsIgnored(entry.Relative))
@@ -317,6 +319,7 @@ public sealed class FileSystemDiscoverer : IFileSystemDiscoverer
 
     private sealed class FilterStatsAccumulator
     {
+        public readonly List<(string Path, string Text)> IgnoreFileTexts = [];
         public int ExcludedByExcludeSet;
         public int ExcludedByGitignore;
         public int ExcludedByLanguage;

@@ -56,13 +56,14 @@ public sealed class DecisionTaskRunner
         try
         {
             var response = await _model!.DecideAsync(BuildRequest(decision, inputs), ct).ConfigureAwait(false);
-            return Succeeded(ToOutcome(decision, response), started);
+            return Succeeded(ToOutcome(decision, response), started, response.Usage.InputTokens ?? 0, response.Usage.OutputTokens ?? 0);
         }
         catch (DecisionModelException ex)
         {
             // Cancellation is not caught: the strategies record an interruption, never a failed task.
-            LogFailed(_logger, ex.Message, null);
-            return new TaskResult(false, string.Empty, null, [], Stopwatch.GetElapsedTime(started), ex.Message);
+            var reason = ex.InnerException is null ? ex.Message : $"{ex.Message}: {ex.InnerException.Message}";
+            LogFailed(_logger, reason, ex);
+            return new TaskResult(false, string.Empty, null, [], Stopwatch.GetElapsedTime(started), reason);
         }
     }
 
@@ -116,7 +117,10 @@ public sealed class DecisionTaskRunner
 
     private static DecisionAnswerValue ToValue(DecisionQuestionSpec question, DecisionAnswer answer) => (question, answer) switch
     {
-        (ChoiceQuestionSpec, ChoiceAnswer c) => new DecisionAnswerValue { Chosen = c.Choice, Confidence = c.Confidence, Probabilities = c.Probabilities },
+        (ChoiceQuestionSpec choice, ChoiceAnswer c) when choice.Options.ContainsKey(c.Choice) =>
+            new DecisionAnswerValue { Chosen = c.Choice, Confidence = c.Confidence, Probabilities = c.Probabilities },
+        (ChoiceQuestionSpec, ChoiceAnswer c) => throw new DecisionModelException(
+            $"The decision model answered question '{question.Name}' with '{c.Choice}', which is not one of its options.", null, isTransient: false),
         (ScoreQuestionSpec, ScoreAnswer s) => new DecisionAnswerValue { Score = s.Score, Confidence = s.Confidence, Probabilities = s.Probabilities },
         (YesNoQuestionSpec, NoulAnswer n) => new DecisionAnswerValue
         {
@@ -144,6 +148,11 @@ public sealed class DecisionTaskRunner
         _ => "noul",
     };
 
-    private static TaskResult Succeeded(DecisionOutcome outcome, long started) =>
-        new(true, outcome.ToCompactJson(), null, [], Stopwatch.GetElapsedTime(started)) { Decision = outcome };
+    private static TaskResult Succeeded(DecisionOutcome outcome, long started, int inputTokens = 0, int outputTokens = 0) =>
+        new(true, outcome.ToCompactJson(), null, [], Stopwatch.GetElapsedTime(started), null, inputTokens + outputTokens)
+        {
+            Decision = outcome,
+            PromptTokens = inputTokens,
+            CompletionTokens = outputTokens,
+        };
 }

@@ -57,18 +57,18 @@ what YAML references.
 
 | Tool | Class | Use case |
 |-------|--------|-------------|
-| `session_store` | `SessionStoreTool` | Read/write/truncate/annotate the session buffer and its metadata; `append_message` adds one message without rewriting the buffer, `get_state` reads one `key` or several `keys`, `set_state` writes one `key` or several `values` and removes several `keys` |
+| `session_store` | `SessionStoreTool` | Read/write/truncate/annotate the session buffer and its metadata; `append_message` adds one message without rewriting the buffer, `get_state` reads one `key` or several `keys`, `set_state` writes one `key` or several `values` and removes several `keys`; a multi-key write is all or nothing, a `values` / `keys` overlap or a `key` / `value` mixed with `values` / `keys` is refused, and in `plan` mode only the reads (`get_state`, `read_messages`, `get_metadata`) are admitted |
 | `session_snip` | `SessionSnipTool` | Immediately truncate the conversation to a minimal window |
 | `session_stats` | `SessionStatsTool` | Full session telemetry: messages, tokens, cost, call totals |
 | `session_cost` | `SessionCostTool` | Cumulative session cost in USD with a per-model breakdown |
 | `token_budget` | `TokenBudgetTool` | Context window size, used tokens and what fills them (`used_tokens_by_kind`: `system`, `user`, `assistant`, `tool`, `other`), available budget |
 | `memory_store` | `MemoryStoreTool` | List/add/delete/get typed memories (user/project/feedback/reference) |
 
-## Decision tool (`Orkeon.Infrastructure`) — `AddOrkeonTypeSafe(configuration)`
+## Decision tool (`Orkeon.Infrastructure`) — `AddOrkeonDecisionProvider(configuration)`
 
 | Tool | Class | Use case | Call example |
 |-------|--------|-------------|-----------------|
-| `system_one_decide` | `SystemOneDecideTool` | Ask the configured decision model (TypeSafe Jev, see [Decision models](../architecture/decision-models.md)) typed questions about a state: `choice`, `score` or `noul`, each answer with calibrated probabilities and a confidence; `box` questions are refused (images do not travel through a tool call) and the API key never appears in the request | `{ "state": { "ticket": "Refund not received" }, "questions": { "urgent": { "type": "noul", "instructions": "Does the customer need an answer today?", "criteria": { "true": "An answer is needed today", "false": "It can wait" } } } }` |
+| `system_one_decide` | `SystemOneDecideTool` | Ask the active decision provider (TypeSafe, Liquid or Kev, see [Decision models](../architecture/decision-models.md)) typed questions about a state: `choice`, `score` or `noul`, each answer with calibrated probabilities and a confidence; `box` questions are refused (images do not travel through a tool call) and the API key never appears in the request | `{ "state": { "ticket": "Refund not received" }, "questions": { "urgent": { "type": "noul", "instructions": "Does the customer need an answer today?", "criteria": { "true": "An answer is needed today", "false": "It can wait" } } } }` |
 
 ## File tools (`Orkeon.Tools.FileSystem`) — `AddOrkeonFileSystemTools()`
 
@@ -88,7 +88,7 @@ outside the agent's root is refused before any I/O — the same holds for `node_
 | `directory_search` | `DirectorySearchTool` | `ToolBase<DirectorySearchRequest, DirectorySearchResponse>` | RAG semantic search across the files of a directory (ephemeral collection — needs the RAG subsystem at call time, see below) | `{ "path": "/docs", "query": "deployment instructions", "file_patterns": "*.md;*.txt" }` |
 | `count_pattern` | `CountPatternTool` | `FileToolBase<CountPatternRequest, CountPatternResponse>` | Deterministic regex occurrence count per pattern in a file (no LLM guessing) | `{ "path": "/data/log.txt", "patterns": ["ERROR", "WARN"] }` |
 | `glob` | `GlobTool` | `FileToolBase<GlobRequest, GlobResponse>` | Files matching a pattern under a mounted root, capped by `max_results` (`pattern` relative to `path`). Read-class | `{ "path": "/workspace", "pattern": "**/*.cs", "max_results": 100 }` |
-| `grep` | `GrepTool` | `FileToolBase<GrepRequest, GrepResponse>` | Line-by-line regex search returning `path:line:text`, capped by `max_results` / `max_files`, binary and over-1-MiB files skipped, per-match timeout; `glob` is a filter relative to `path`. Every answer carries `total_matches`, `files_matched` and `scan_complete`; `output_mode: "count"` drops the hit lines and returns the per-file counts instead, so a "how many" question over a tree takes one call. Read-class | `{ "path": "/workspace", "pattern": "TODO", "glob": "**/*.cs" }` |
+| `grep` | `GrepTool` | `FileToolBase<GrepRequest, GrepResponse>` | Line-by-line regex search returning `path:line:text`, capped by `max_results` / `max_files`, binary and over-1-MiB files skipped, per-match timeout; `glob` is a filter relative to `path`. Every answer carries `total_matches`, `files_matched` and `scan_complete` (false when a file over 1 MiB was left unread, the time budget ran out or `max_files` cut the scan) and `truncated` (true when a list or the counts were cut); `output_mode: "count"` drops the hit lines and returns the per-file counts instead, so a "how many" question over a tree takes one call. The default `hits` mode reads every candidate file up to `max_files` or the 20 s budget, even once `max_results` is reached, so that `total_matches` stays exact; a wide tree can end `timed_out` or `truncated`. Read-class | `{ "path": "/workspace", "pattern": "TODO", "glob": "**/*.cs" }` |
 
 `directory_search` — like `txt_search`, `mdx_search` and `pdf_search` below — searches through the
 RAG subsystem's ephemeral collections: the extension registers and constructs it without one,
@@ -227,7 +227,7 @@ Twenty-eight tools over the RaggableTree semantic code graph — the full guide 
 
 | Tool | Class | Use case |
 |-------|--------|-------------|
-| `index_codebase` | `IndexCodebaseTool` | Scan the codebase and build the full RaggableTree index |
+| `index_codebase` | `IndexCodebaseTool` | Scan the codebase and build the full RaggableTree index; reloads the saved index from the cache (`use_cache`, default true; `false` rebuilds), parses `max_parallelism` files at once (0 = one per processor) |
 | `incremental_reindex` | `IncrementalReindexTool` | Reindex only the files changed since a commit or an explicit list |
 | `index_status` | `IndexStatusTool` | List every virtual root currently indexed |
 | `is_path_indexed` | `IsPathIndexedTool` | Check whether a virtual path is covered by an indexed root |
@@ -515,7 +515,7 @@ The exact name to use in the YAML `tools:` section is the value of the tool clas
 | `sub_graph` | `SubGraphTool` | `Orkeon.Tools.Analysis` |
 | `symbol_detail` | `SymbolDetailTool` | `Orkeon.Tools.Analysis` |
 | `symbol_source` | `SymbolSourceTool` | `Orkeon.Tools.Analysis` |
-| `system_one_decide` | `SystemOneDecideTool` | `Orkeon.Infrastructure` (opt-in, `AddOrkeonTypeSafe`) |
+| `system_one_decide` | `SystemOneDecideTool` | `Orkeon.Infrastructure` (opt-in, `AddOrkeonDecisionProvider`) |
 | `token_budget` | `TokenBudgetTool` | `Orkeon.Infrastructure` |
 | `txt_search` | `TxtSearchTool` | `Orkeon.Tools.Data` |
 | `wait_for_event` | `WaitForEventTool` | `Orkeon.Tools.EventHub` |

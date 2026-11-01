@@ -30,6 +30,19 @@ public sealed record LlmThinkingConfig
     public static readonly IReadOnlyList<string> ThreeLevels = ["low", "medium", "high"];
 
     /// <summary>
+    /// Returns <paramref name="effort"/> when it is exactly one of <see cref="Levels"/> (case-sensitive);
+    /// throws <see cref="ArgumentException"/> otherwise, never falling back to a default level.
+    /// </summary>
+    public static string ValidateEffort(string effort)
+    {
+        if (effort is null || Array.IndexOf(s_levels, effort) < 0)
+            throw new ArgumentException(
+                $"Unknown thinking effort '{effort}': expected one of {string.Join(", ", s_levels)} (lower case).",
+                nameof(effort));
+        return effort;
+    }
+
+    /// <summary>
     /// The level a provider whose field knows <paramref name="known"/> sends for <paramref name="asked"/>:
     /// the level itself when known, else the highest known level below it (the lowest known one when none
     /// is). The provider that lowers a level reports it (LLM-02): an option is never silently changed.

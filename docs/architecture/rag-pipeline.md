@@ -274,7 +274,7 @@ The `rerank` stage narrows `CandidateK` candidates (default 50) to `TopN`
 | `none` (`noop`) | `NoopReranker` | Truncation in retrieval order |
 | `llm` (`listwise`) | `LlmListwiseReranker` | One listwise chat call; tolerant parsing (a malformed answer keeps the retrieval order); the built-in alternative when the ONNX package is absent — select it explicitly |
 | `onnx` (`cross-encoder`) | `Orkeon.Rag.Onnx` | ms-marco-MiniLM-L-6-v2 cross-encoder, int8 weights embedded, fully offline; `AddOrkeonOnnxReranker()` |
-| `decision` (`typesafe`) | `DecisionModelReranker` | One request to the host's decision model: the query and every passage as the state, one yes-or-no question per passage, the score being the probability of a yes; a passage is cut at 4000 characters. Needs `AddOrkeonTypeSafe` (section `Orkeon:TypeSafe`), otherwise resolving it throws `InvalidOperationException` |
+| `decision` | `DecisionModelReranker` | One request to the host's decision model: the query and every passage as the state, one yes-or-no question per passage, the score being the probability of a yes; a passage is cut at 4000 characters. Needs an active decision provider (`AddOrkeonDecisionProvider`), otherwise resolving it throws `InvalidOperationException` |
 
 Hosts contribute rerankers through `IRerankerRegistrar` — registered in DI,
 applied when the singleton `RerankerFactory` is built, registration order

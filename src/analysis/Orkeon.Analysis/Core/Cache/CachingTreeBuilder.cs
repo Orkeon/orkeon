@@ -171,9 +171,15 @@ public sealed partial class CachingTreeBuilder
         var hashes = new Dictionary<string, string>(StringComparer.Ordinal);
         foreach (var package in discovery.Packages)
         {
-            var text = await _fs.TryReadAllTextAsync($"{root}/{package.MarkerPath}", ct).ConfigureAwait(false);
+            string? text;
+            try { text = await _fs.TryReadAllTextAsync($"{root}/{package.MarkerPath}", ct).ConfigureAwait(false); }
+            catch (FileAccessDeniedException) { text = null; }
             hashes[package.MarkerPath] = text is null ? "" : Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(text)));
         }
+        // An ignore file is a marker too: a change to what is ignored rebuilds the whole tree. The cache's own
+        // .gitignore is written by the save, so it is no input of the tree.
+        foreach (var (path, text) in discovery.IgnoreFileContents.Where(kv => !kv.Key.StartsWith(RaggableTreeCache.CacheDirectory + "/", StringComparison.Ordinal)))
+            hashes[$"ignore:{path}"] = Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(text)));
         return hashes;
     }
 

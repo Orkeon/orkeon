@@ -1,4 +1,3 @@
-using System.Collections.Immutable;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Text;
@@ -14,16 +13,16 @@ using Orkeon.Infrastructure.LLMs.Profiles;
 using Orkeon.Infrastructure.Resilience;
 using Polly;
 
-namespace Orkeon.Infrastructure.Decision.TypeSafe;
+namespace Orkeon.Infrastructure.Decision.SystemOne;
 
 /// <summary>
-/// <see cref="IDecisionModel"/> over the TypeSafe System One API (<c>POST /systemone</c>,
-/// <c>GET /models</c>). A request is validated before it is sent; a 429, a 529 or a network
-/// error is retried with the LLM retry policy; each answered request is metered as a
-/// <see cref="LlmUsageOperations.Decision"/> call. An error names what to fix, cites TypeSafe's
-/// request id when the answer carries one, and never carries the key.
+/// <see cref="IDecisionModel"/> over a System One provider (<c>POST /systemone</c>), described by a
+/// <see cref="DecisionProviderDescriptor"/>. A request is validated before it is sent; a 429, a 5xx or a
+/// network error is retried with the LLM retry policy; each answered request is metered as a
+/// <see cref="LlmUsageOperations.Decision"/> call. An error names the provider, cites its request id
+/// when the answer carries one, and never carries the key.
 /// </summary>
-public sealed partial class TypeSafeDecisionModel : IDecisionModel
+public sealed partial class SystemOneDecisionModel : IDecisionModel
 {
     /// <summary>The header that admits images and box questions.</summary>
     public const string ImagesHeader = "TypeSafe-Danger-Zone-Images";
@@ -31,46 +30,52 @@ public sealed partial class TypeSafeDecisionModel : IDecisionModel
     /// <summary>The header that raises both context limits.</summary>
     public const string LongContextHeader = "TypeSafe-Danger-Zone-Long-Context";
 
-    /// <summary>The response header that carries the id TypeSafe gave the request, cited by every error.</summary>
+    /// <summary>The response header that carries the request id.</summary>
     public const string RequestIdHeader = "x-typesafe-request-id";
 
     private static readonly DecisionRequestValidator s_validator = new();
 
+    private readonly DecisionProviderDescriptor _provider;
     private readonly IHttpClientFactory _httpClientFactory;
-    private readonly TypeSafeOptions _options;
-    private readonly ILogger<TypeSafeDecisionModel> _logger;
+    private readonly SystemOneProviderOptions _options;
+    private readonly ILogger<SystemOneDecisionModel> _logger;
     private readonly ILlmUsageSink? _usageSink;
     private readonly IAsyncPolicy<HttpResponseMessage> _policy;
     private readonly LlmKeyEnvironment _keyEnvironment;
 
-    /// <summary>Initializes a new instance of <see cref="TypeSafeDecisionModel"/>.</summary>
-    /// <param name="httpClientFactory">Creates the client named after this class.</param>
-    /// <param name="options">The <c>Orkeon:TypeSafe</c> section.</param>
+    /// <summary>Initializes a new instance of <see cref="SystemOneDecisionModel"/>.</summary>
+    /// <param name="provider">The provider.</param>
+    /// <param name="httpClientFactory">The client factory.</param>
+    /// <param name="options">The options.</param>
     /// <param name="logger">The logger.</param>
-    /// <param name="usageSink">Receives the tokens of each answered request; null meters nothing.</param>
-    /// <param name="policy">The retry policy; null takes the LLM one with <see cref="TypeSafeOptions.MaxRetries"/>.</param>
-    public TypeSafeDecisionModel(
+    /// <param name="usageSink">The usage sink.</param>
+    /// <param name="policy">The retry policy.</param>
+    public SystemOneDecisionModel(
+        DecisionProviderDescriptor provider,
         IHttpClientFactory httpClientFactory,
-        IOptions<TypeSafeOptions> options,
-        ILogger<TypeSafeDecisionModel> logger,
+        IOptions<SystemOneProviderOptions> options,
+        ILogger<SystemOneDecisionModel> logger,
         ILlmUsageSink? usageSink = null,
         IAsyncPolicy<HttpResponseMessage>? policy = null)
-        : this(httpClientFactory, options, logger, usageSink, policy, LlmKeyEnvironment.Machine)
+        : this(provider, httpClientFactory, options, logger, usageSink, policy, LlmKeyEnvironment.Machine)
     {
     }
 
-    internal TypeSafeDecisionModel(
+    internal SystemOneDecisionModel(
+        DecisionProviderDescriptor provider,
         IHttpClientFactory httpClientFactory,
-        IOptions<TypeSafeOptions> options,
-        ILogger<TypeSafeDecisionModel> logger,
+        IOptions<SystemOneProviderOptions> options,
+        ILogger<SystemOneDecisionModel> logger,
         ILlmUsageSink? usageSink,
         IAsyncPolicy<HttpResponseMessage>? policy,
         LlmKeyEnvironment keyEnvironment)
     {
+        ArgumentNullException.ThrowIfNull(provider);
         ArgumentNullException.ThrowIfNull(httpClientFactory);
         ArgumentNullException.ThrowIfNull(options);
         ArgumentNullException.ThrowIfNull(logger);
         ArgumentNullException.ThrowIfNull(keyEnvironment);
+        _provider = provider;
         _httpClientFactory = httpClientFactory;
         _options = options.Value;
         _logger = logger;
@@ -80,7 +85,7 @@ public sealed partial class TypeSafeDecisionModel : IDecisionModel
     }
 
     /// <inheritdoc />
-    public string Name => DecisionProviderKeys.TypeSafe;
+    public string Name => _provider.Key;
 
     /// <inheritdoc />
     public async Task<DecisionResponse> DecideAsync(DecisionRequest request, CancellationToken cancellationToken = default)
@@ -93,8 +98,6 @@ public sealed partial class TypeSafeDecisionModel : IDecisionModel
         var sent = request with { Model = string.IsNullOrWhiteSpace(request.Model) ? _options.Model : request.Model };
         var body = JsonSerializer.Serialize(sent);
         var response = await SendAsync(
-            HttpMethod.Post,
-            "systemone",
             body,
             message =>
             {
@@ -108,29 +111,21 @@ public sealed partial class TypeSafeDecisionModel : IDecisionModel
 
         var decision = Deserialize<DecisionResponse>(response, "systemone");
         if (decision.Answers is null || decision.Usage is null || string.IsNullOrEmpty(decision.Model))
-            throw new DecisionModelException("TypeSafe returned a body without answers, usage or model on /systemone.", null, isTransient: false);
+            throw new DecisionModelException($"{_provider.DisplayName} returned a body without answers, usage or model on /systemone.", null, isTransient: false);
         Meter(decision);
         return decision;
     }
 
-    /// <inheritdoc />
-    public async Task<ImmutableList<DecisionModelDto>> ListModelsAsync(CancellationToken cancellationToken = default)
-    {
-        var response = await SendAsync(HttpMethod.Get, "models", null, null, cancellationToken).ConfigureAwait(false);
-        return Deserialize<ModelList>(response, "models").Models;
-    }
-
     private async Task<string> SendAsync(
-        HttpMethod method,
-        string path,
-        string? body,
+        string body,
         Action<HttpRequestMessage>? decorate,
         CancellationToken cancellationToken,
         bool longContext = false)
     {
         var key = ResolveApiKey();
-        var uri = new Uri(_options.BaseUrl.AbsoluteUri.TrimEnd('/') + "/" + path);
-        var client = _httpClientFactory.CreateClient(nameof(TypeSafeDecisionModel));
+        var uri = new Uri(_options.BaseUrl.AbsoluteUri.TrimEnd('/') + "/systemone");
+        var address = _options.BaseUrl.GetLeftPart(UriPartial.Path);
+        var client = _httpClientFactory.CreateClient(nameof(SystemOneDecisionModel));
         // A bound per attempt rather than HttpClient.Timeout: a factory may hand back a client
         // that has already sent, whose Timeout can no longer be set.
         var attemptTimeout = TimeSpan.FromSeconds(Math.Max(1, _options.TimeoutSeconds));
@@ -143,23 +138,23 @@ public sealed partial class TypeSafeDecisionModel : IDecisionModel
                 using var attempt = CancellationTokenSource.CreateLinkedTokenSource(ct);
                 attempt.CancelAfter(attemptTimeout);
                 // One message per attempt: a sent HttpRequestMessage cannot be sent again.
-                using var message = new HttpRequestMessage(method, uri);
-                message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", key);
+                using var message = new HttpRequestMessage(HttpMethod.Post, uri);
+                if (key is not null)
+                    message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", key);
                 message.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
-                if (body is not null)
-                    message.Content = new StringContent(body, Encoding.UTF8, "application/json");
+                message.Content = new StringContent(body, Encoding.UTF8, "application/json");
                 decorate?.Invoke(message);
                 return await client.SendAsync(message, attempt.Token).ConfigureAwait(false);
             }, cancellationToken).ConfigureAwait(false);
         }
         catch (HttpRequestException ex)
         {
-            throw new DecisionModelException($"TypeSafe could not be reached at {uri.Host}: {ex.Message}", null, isTransient: true, ex);
+            throw new DecisionModelException($"{Name} could not be reached at {address}: {ex.Message}", null, isTransient: true, ex);
         }
         catch (OperationCanceledException ex) when (!cancellationToken.IsCancellationRequested)
         {
             throw new DecisionModelException(
-                $"TypeSafe did not answer within {_options.TimeoutSeconds} s ({TypeSafeOptions.SectionName}:TimeoutSeconds).",
+                $"{Name} did not answer within {_options.TimeoutSeconds} s at {address} ({_provider.Section}:TimeoutSeconds).",
                 null, isTransient: true, ex);
         }
 
@@ -173,12 +168,12 @@ public sealed partial class TypeSafeDecisionModel : IDecisionModel
         }
     }
 
-    private string ResolveApiKey()
+    private string? ResolveApiKey()
     {
         if (!string.IsNullOrWhiteSpace(_options.ApiKey))
             return _options.ApiKey.Trim();
         var variable = string.IsNullOrWhiteSpace(_options.ApiKeyEnvVar)
-            ? DecisionProviderDefaults.TypeSafeApiKeyVariable
+            ? _provider.DefaultApiKeyVariable
             : _options.ApiKeyEnvVar.Trim();
         var key = _keyEnvironment.Process(variable);
         if (string.IsNullOrWhiteSpace(key))
@@ -193,33 +188,32 @@ public sealed partial class TypeSafeDecisionModel : IDecisionModel
             }
         }
 
-        return string.IsNullOrWhiteSpace(key)
+        if (!string.IsNullOrWhiteSpace(key))
+            return key.Trim();
+        return _provider.KeyRequired
             ? throw new DecisionModelException(
-                $"No TypeSafe API key: set the environment variable {variable}, or {TypeSafeOptions.SectionName}:ApiKey.",
+                $"No {Name} API key: set the environment variable {variable}, or {_provider.Section}:ApiKey.",
                 null, isTransient: false)
-            : key.Trim();
+            : null;
     }
 
-    private static DecisionModelException Failure(HttpStatusCode status, string body, bool longContext, string? requestId)
+    private DecisionModelException Failure(HttpStatusCode status, string body, bool longContext, string? requestId)
     {
         var code = (int)status;
         var detail = Detail(body);
         var message = code switch
         {
             400 when body.Contains("max_tokens_exceeded", StringComparison.Ordinal) => longContext
-                ? $"TypeSafe refused the request: the state is over the model's long context limit ({Orkeon.Constants.Llm.DecisionLimits.LongContextTokens} tokens)."
-                : $"TypeSafe refused the request: the state is over the model's context limit ({Orkeon.Constants.Llm.DecisionLimits.StandardContextTokens} tokens); set long context on the task to use {Orkeon.Constants.Llm.DecisionLimits.LongContextTokens}.",
-            400 => $"TypeSafe refused the request (400): {detail}",
-            401 => $"TypeSafe refused the API key (401): check {DecisionProviderDefaults.TypeSafeApiKeyVariable} or {TypeSafeOptions.SectionName}:ApiKey.",
-            413 => "TypeSafe refused the request (413): the body is over 32 MiB.",
-            415 => "TypeSafe refused the request encoding (415).",
-            422 => $"TypeSafe found the request invalid (422): {detail}",
-            429 => "TypeSafe rate limit reached (429) after the retries.",
-            529 => "TypeSafe is overloaded (529) after the retries.",
-            _ => $"TypeSafe answered {code}: {detail}",
+                ? $"{Name} refused the request: the state is over the model's long context limit ({DecisionLimits.LongContextTokens} tokens)."
+                : $"{Name} refused the request: the state is over the model's context limit ({DecisionLimits.StandardContextTokens} tokens); set long context on the task to use {DecisionLimits.LongContextTokens}.",
+            401 or 403 => $"{Name} refused the key: set {_options.ApiKeyEnvVar} or {_provider.Section}:ApiKey.",
+            429 => $"{Name} rate limit reached (429) after the retries.",
+            529 => $"{Name} is overloaded (529) after the retries.",
+            >= 400 and < 500 => $"{Name} refused the request: {detail}",
+            _ => $"{Name} answered {code}: {detail}",
         };
         if (!string.IsNullOrWhiteSpace(requestId))
-            message += $" (TypeSafe request {requestId.Trim()})";
+            message += $" ({_provider.DisplayName} request {requestId.Trim()})";
         return new DecisionModelException(message, code, isTransient: code is 429 or >= 500);
     }
 
@@ -251,16 +245,16 @@ public sealed partial class TypeSafeDecisionModel : IDecisionModel
         return body.Length > 300 ? body[..300] + "…" : body;
     }
 
-    private static T Deserialize<T>(string body, string path)
+    private T Deserialize<T>(string body, string path)
     {
         try
         {
             return JsonSerializer.Deserialize<T>(body)
-                ?? throw new DecisionModelException($"TypeSafe returned an empty body on /{path}.", null, isTransient: false);
+                ?? throw new DecisionModelException($"{_provider.DisplayName} returned an empty body on /{path}.", null, isTransient: false);
         }
         catch (JsonException ex)
         {
-            throw new DecisionModelException($"TypeSafe returned an unreadable body on /{path}: {ex.Message}", null, isTransient: false, ex);
+            throw new DecisionModelException($"{_provider.DisplayName} returned an unreadable body on /{path}: {ex.Message}", null, isTransient: false, ex);
         }
     }
 
@@ -269,7 +263,7 @@ public sealed partial class TypeSafeDecisionModel : IDecisionModel
     private void Meter(DecisionResponse response)
     {
         // A usage without counts (the SDKs accept it) is metered as zero rather than refused.
-        LogDecisionAnswered(response.Model, response.Answers.Count, response.Usage.InputTokens ?? 0);
+        LogDecisionAnswered(Name, response.Model, response.Answers.Count, response.Usage.InputTokens ?? 0);
         if (_usageSink is null)
             return;
         var attribution = LlmUsageScope.Current;
@@ -293,12 +287,6 @@ public sealed partial class TypeSafeDecisionModel : IDecisionModel
         }
     }
 
-    [LoggerMessage(Level = LogLevel.Debug, Message = "TypeSafe {Model} answered {Questions} question(s) for {InputTokens} input tokens")]
-    private partial void LogDecisionAnswered(string model, int questions, int inputTokens);
-
-    private sealed record ModelList
-    {
-        [System.Text.Json.Serialization.JsonPropertyName("models")]
-        public ImmutableList<DecisionModelDto> Models { get; init; } = [];
-    }
+    [LoggerMessage(Level = LogLevel.Debug, Message = "{Provider} {Model} answered {Questions} question(s) for {InputTokens} input tokens")]
+    private partial void LogDecisionAnswered(string provider, string model, int questions, int inputTokens);
 }

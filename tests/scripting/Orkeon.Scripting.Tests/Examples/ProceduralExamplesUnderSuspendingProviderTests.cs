@@ -63,6 +63,7 @@ public sealed class ProceduralExamplesUnderSuspendingProviderTests
         "10-inputs-and-memory.ork.ts",
         "11-await-before-run.ork.ts",
         "12-events-async-handlers.ork.ts",
+        "14-decision-and-when.ork.ts",
     ];
 
     public static TheoryData<string> ProceduralExamples

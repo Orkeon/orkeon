@@ -53,6 +53,9 @@ public interface ISessionBufferService
     /// Writes a session-scoped state value; <see langword="null"/> removes the key.
     /// </summary>
     void SetState(string key, string? value);
+
+    /// <summary>Writes several state values under one lock, all or nothing; a <see langword="null"/> value removes its key.</summary>
+    void SetStates(IReadOnlyDictionary<string, string?> values);
 }
 
 /// <summary>A single conversation message in the session buffer.</summary>

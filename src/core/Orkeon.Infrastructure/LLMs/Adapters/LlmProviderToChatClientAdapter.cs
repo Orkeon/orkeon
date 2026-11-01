@@ -8,6 +8,7 @@ using Orkeon.Domain.SharedKernel.ValueObjects;
 using Orkeon.Domain.SharedKernel;
 using Orkeon.Domain.Tools.Protocol;
 using Orkeon.Infrastructure.CostTracking;
+using Orkeon.Infrastructure.LLMs.Base;
 
 namespace Orkeon.Infrastructure.LLMs.Adapters;
 
@@ -46,7 +47,10 @@ public sealed class LlmProviderToChatClientAdapter : IChatClient
     {
         ArgumentNullException.ThrowIfNull(provider);
         _provider = provider;
-        _baseLlmConfig = baseLlmConfig;
+        // The host default Llm:Cache marks nothing on a provider that caches implicitly (as HttpLlmProviderBase.HostConfig).
+        _baseLlmConfig = baseLlmConfig is { Cache: not null } && !provider.Capabilities.ExplicitPromptCaching
+            ? baseLlmConfig with { Cache = null }
+            : baseLlmConfig;
         _textFallbackParser = textFallbackParser;
         _nativeToolCallParser = nativeToolCallParser;
     }

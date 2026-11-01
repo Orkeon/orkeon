@@ -82,7 +82,7 @@ agents:
       topP: float         # Nucleus sampling, sent whatever its value — omitted = the profile's, else none is sent (Mistral writes 1)
       thinking:           # Reasoning control (capability-gated per provider)
         enabled: bool
-        effort: string    # "low" | "medium" | "high" | "xhigh" | "max" (a provider sends the nearest level its field knows)
+        effort: string    # "low" | "medium" | "high" | "xhigh" | "max", exact case — any other value fails the load (a provider sends the nearest level its field knows)
         budget_tokens: int # Honoured by Qwen only; other providers warn
       responseFormat: string # "text" (= provider default) | "json_object" | "json_schema" — any other value is forwarded as-is with a warning
       responseSchema:     # With responseFormat: json_schema (a schema alone implies json_schema)
@@ -92,7 +92,7 @@ agents:
       cache:              # Explicit prompt caching (Anthropic); off unless a breakpoint is asked
         system: bool      # default: false
         tools: bool       # default: false
-        ttl: string       # e.g. "1h"; omitted = vendor default
+        ttl: string       # "5m" | "1h"; omitted = vendor default. Without system or tools it caches nothing and fails the load
     guardrails:           # Operational rules injected into the agent's system prompt (optional)
       preset: string      # "analysis" | "strict" | "creative" — any other name fails the load
       header: string      # Section header — used only without a preset (every preset brings its own)

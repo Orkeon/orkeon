@@ -365,10 +365,13 @@ defineAsyncCommand({
   same crew is not terminal, the call throws before any LLM call, naming the running
   instance — `crew 'code-review' already running (ticket t2)`. The check and the launch
   are one step, so two lines typed in the same tick, or a `completed` chain, cannot both
-  pass. The crew is free again as soon as its instance completes, fails or is cancelled
-  (a `completed` that relaunches it is admitted; a cancelled run stops at its next
-  cooperative checkpoint, so its last step may overlap the next launch). A launch without the option is neither
-  refused nor counted; a non-boolean `exclusive` is a script error. Unlike
+  pass. The crew is free again when its work has really ended — the instance completes,
+  fails, or a cancelled run reaches its next cooperative checkpoint and stops (a
+  `completed` that relaunches it is admitted). `cancel()` alone does not free it: an
+  exclusive relaunch is refused until the cancelled work has finished, so two runs never
+  overlap. A synchronous `runCrew` of a crew held by an exclusive `runCrewAsync` is refused
+  the same way. A launch without the option is neither
+  refused nor counted; an `exclusive` that is neither absent nor a boolean (`null` included) is a script error. Unlike
   `maxConcurrent` below, it bounds the crew, not the command: an alias of the command
   that launches nothing answers during the run. Both options combine
   (`{ chain: "continue", exclusive: true }`).

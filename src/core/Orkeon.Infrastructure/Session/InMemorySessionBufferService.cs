@@ -176,6 +176,21 @@ public sealed class InMemorySessionBufferService : ISessionBufferService
     }
 
     /// <inheritdoc />
+    public void SetStates(IReadOnlyDictionary<string, string?> values)
+    {
+        ArgumentNullException.ThrowIfNull(values);
+        lock (_gate)
+        {
+            foreach (var (key, value) in values)
+            {
+                if (string.IsNullOrWhiteSpace(key)) continue;
+                if (value is null) _state.Remove(key);
+                else _state[key] = value;
+            }
+        }
+    }
+
+    /// <inheritdoc />
     public void SetState(string key, string? value)
     {
         if (string.IsNullOrWhiteSpace(key)) return;

@@ -221,7 +221,7 @@ public sealed partial class CommandDispatchService
     /// <param name="exclusive">
     /// <see langword="true"/>: refused while another exclusive launch of the same <paramref name="target"/> is not
     /// terminal (#239). The check and the registration are one step, so two launches in the same tick cannot both
-    /// pass; the target is free again as soon as its holder completes, fails or is cancelled. A launch without the
+    /// pass; the target is free again when the holder's work has ended (completed, failed, or stopped after cancel()). A launch without the
     /// flag is neither refused nor counted.
     /// </param>
     /// <exception cref="ChainDepthExceededException">The depth reached <c>MaxChainDepth</c> on a launch that climbs.</exception>
@@ -238,6 +238,17 @@ public sealed partial class CommandDispatchService
             : _registry.Register(command, CommandInstanceKind.Async, target ?? string.Empty, label ?? string.Empty, Guid.NewGuid());
         instance.Depth = depth;
         scope?.Capture(instance);
+        if (exclusive)
+        {
+            // The release is the work's own finally, before the instance turns terminal: a `completed` that relaunches finds the target free.
+            var exclusiveTarget = target ?? string.Empty;
+            var inner = work;
+            work = async ct =>
+            {
+                try { return await inner(ct).ConfigureAwait(false); }
+                finally { ReleaseExclusive(exclusiveTarget, instance); }
+            };
+        }
 
         var cts = scope?.Timeout is { } t ? new CancellationTokenSource(t) : new CancellationTokenSource();
         _asyncCts[instance.Ticket] = cts;
@@ -311,13 +322,33 @@ public sealed partial class CommandDispatchService
         };
     }
 
-    /// <summary>Registers an instance of <paramref name="target"/> unless a non-terminal exclusive holder has it.</summary>
-    /// <exception cref="ExclusiveLaunchRefusedException">The holder of <paramref name="target"/> is not terminal.</exception>
+    /// <summary>Refuses when an exclusive launch of <paramref name="target"/> still holds it (its work has not ended).</summary>
+    /// <exception cref="ExclusiveLaunchRefusedException">An exclusive launch of <paramref name="target"/> still runs.</exception>
+    internal void ThrowIfExclusivelyHeld(string target)
+    {
+        lock (_exclusiveGate)
+        {
+            if (_exclusive.TryGetValue(target, out var holder))
+                throw new ExclusiveLaunchRefusedException(target, holder.Ticket);
+        }
+    }
+
+    private void ReleaseExclusive(string target, CommandInstance instance)
+    {
+        lock (_exclusiveGate)
+        {
+            if (_exclusive.TryGetValue(target, out var holder) && ReferenceEquals(holder, instance))
+                _exclusive.Remove(target);
+        }
+    }
+
+    /// <summary>Registers an instance of <paramref name="target"/> unless an exclusive holder has it.</summary>
+    /// <exception cref="ExclusiveLaunchRefusedException">The holder of <paramref name="target"/> has not ended.</exception>
     private CommandInstance RegisterExclusive(string command, string target, string label)
     {
         lock (_exclusiveGate)
         {
-            if (_exclusive.TryGetValue(target, out var holder) && !holder.IsTerminal)
+            if (_exclusive.TryGetValue(target, out var holder))
                 throw new ExclusiveLaunchRefusedException(target, holder.Ticket);
             var instance = _registry.Register(command, CommandInstanceKind.Async, target, label, Guid.NewGuid());
             _exclusive[target] = instance;

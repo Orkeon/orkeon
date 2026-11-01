@@ -192,7 +192,8 @@ public sealed class RaggableTreeBuilder
         var graphBuildersByGroup = new Dictionary<string, DependencyGraphBuilder>(StringComparer.OrdinalIgnoreCase);
         var files = discovery.Files;
         var extracted = new ExtractedFile?[files.Length];
-        var fileIndex = 0;
+        var progressGate = new object();
+        var reportedFiles = 0;
         var parallelism = new ParallelOptions
         {
             MaxDegreeOfParallelism = opts.MaxParallelism == 0 ? Environment.ProcessorCount : opts.MaxParallelism,
@@ -200,7 +201,15 @@ public sealed class RaggableTreeBuilder
         };
         await Parallel.ForEachAsync(Enumerable.Range(0, files.Length), parallelism, async (i, token) =>
         {
-            _buildProgress?.Report(new IndexBuildProgress(IndexBuildPhase.Parse, Interlocked.Increment(ref fileIndex), files.Length));
+            // The count and its report share one lock: values reach the sink in increasing order, each once.
+            if (_buildProgress is not null)
+            {
+                lock (progressGate)
+                {
+                    _buildProgress.Report(new IndexBuildProgress(IndexBuildPhase.Parse, ++reportedFiles, files.Length));
+                }
+            }
+
             extracted[i] = await ExtractFileAsync(files[i], token).ConfigureAwait(false);
         }).ConfigureAwait(false);
         foreach (var file in extracted)

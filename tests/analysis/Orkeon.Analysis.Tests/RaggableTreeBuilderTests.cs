@@ -320,6 +320,26 @@ public class RaggableTreeBuilderTests
     }
 
     [Fact]
+    [Trait("BR", "R-39")]
+    public async Task ShouldReportMonotonicParseProgress_WhenWorkersRunInParallel()
+    {
+        var dir = await TestFixtures.WriteDirectoryAsync([.. ParallelFixture()]);
+        try
+        {
+            using var progress = new GatedIndexBuildProgress();
+            await BuildAsync(dir, 4, CancellationToken.None, progress);
+
+            var parse = progress.Reports.Where(r => r.Phase == IndexBuildPhase.Parse).Select(r => r.Current).ToList();
+            Assert.True(parse.Count >= 2);
+            Assert.Equal(parse.Order(), parse);
+        }
+        finally
+        {
+            Directory.Delete(dir, recursive: true);
+        }
+    }
+
+    [Fact]
     public async Task Negative_max_parallelism_is_refused()
     {
         var dir = await TestFixtures.WriteDirectoryAsync([("src/user.ts", TestFixtures.SimpleClass)]);

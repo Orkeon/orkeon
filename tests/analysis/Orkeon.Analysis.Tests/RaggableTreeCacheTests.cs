@@ -290,6 +290,42 @@ public class RaggableTreeCacheTests
         finally { Directory.Delete(root, recursive: true); }
     }
 
+    [Fact]
+    [Trait("BR", "R-36")]
+    public async Task ShouldKeepDatabase_WhenSaveHitsBusyDatabase()
+    {
+        var root = await TestFixtures.WriteDirectoryAsync([("a.ts", "export const a = 1;")]);
+        try
+        {
+            var cache = BuildCache(root);
+            await cache.SaveAsync(TestFixtures.TestVirtualRoot, Entry("idx-1", Tree(("a1", "/src/a.ts"))), CancellationToken.None);
+            Assert.Equal(1L, Scalar(root, "SELECT count(*) FROM node_runs"));
+
+            using (var locker = new SqliteConnection($"Data Source={DatabasePath(root)};Pooling=False"))
+            {
+                await locker.OpenAsync(TestContext.Current.CancellationToken);
+                using var begin = locker.CreateCommand();
+                begin.CommandText = "BEGIN EXCLUSIVE";
+                await begin.ExecuteNonQueryAsync(TestContext.Current.CancellationToken);
+
+                var saved = await cache.SaveAsync(TestFixtures.TestVirtualRoot,
+                    Entry("idx-2", Tree(("a1", "/src/a.ts"), ("b1", "/src/b.ts"))), CancellationToken.None);
+
+                Assert.False(saved);
+                Assert.True(File.Exists(DatabasePath(root)));
+                using var rollback = locker.CreateCommand();
+                rollback.CommandText = "ROLLBACK";
+                await rollback.ExecuteNonQueryAsync(TestContext.Current.CancellationToken);
+            }
+
+            Assert.Equal(1L, Scalar(root, "SELECT count(*) FROM node_runs"));
+            var loaded = await cache.LoadAsync(TestFixtures.TestVirtualRoot, Key, CancellationToken.None);
+            Assert.NotNull(loaded);
+            Assert.Equal("idx-1", loaded.IndexId);
+        }
+        finally { Directory.Delete(root, recursive: true); }
+    }
+
     // ----- Helpers -----
 
     private static RaggableTreeCache BuildCache(string dir) => new(TestFixtures.CreateFs(dir));

@@ -224,6 +224,9 @@ public sealed class RaggableTreeCache : IRaggableTreeCache
         return SaveCoreAsync(rootPath, entry, ct);
     }
 
+    private const int SqliteCorrupt = 11;
+    private const int SqliteNotADatabase = 26;
+
     private async Task<bool> SaveCoreAsync(string rootPath, RaggableTreeCacheEntry entry, CancellationToken ct)
     {
         var paths = PathsOf(rootPath);
@@ -238,9 +241,9 @@ public sealed class RaggableTreeCache : IRaggableTreeCache
             {
                 await WriteEntryAsync(physical, entry, ct).ConfigureAwait(false);
             }
-            catch (SqliteException)
+            catch (SqliteException ex) when (ex.SqliteErrorCode is SqliteCorrupt or SqliteNotADatabase)
             {
-                // A database that is not one, or is damaged, is deleted and written again once.
+                // A database that is not one, or is damaged, is deleted and written again once; a busy one is kept.
                 await DeleteDatabaseAsync(paths, ct).ConfigureAwait(false);
                 await WriteEntryAsync(physical, entry, ct).ConfigureAwait(false);
             }

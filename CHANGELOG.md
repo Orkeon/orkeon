@@ -7,6 +7,103 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — the decision model serves three providers (TypeSafe, Liquid, Kev); the TypeSafe-only names go **[breaking]** (UC-01, UC-02, UC-03)
+
+The decision model is no longer TypeSafe's alone. One client, `SystemOneDecisionModel`, serves TypeSafe, Liquid and Kev on the same System One wire, through three provider descriptors. The host starts with one active provider, named by `Orkeon:Decision:Provider` or deduced from the settings, logs it, and refuses the ambiguous or unsafe cases at start. The input guard moves to its own section, `Orkeon:Decision:Guard`, and signs its verdicts with the active provider's name. Consumers rename:
+
+| Before | After |
+|--------|-------|
+| `AddOrkeonTypeSafe` | `AddOrkeonDecisionProvider` |
+| `TypeSafeDecisionModel` | `SystemOneDecisionModel` |
+| `TypeSafeOptions` | `SystemOneProviderOptions` |
+| `TypeSafeInputGuard` | `DecisionInputGuard` |
+| `Orkeon:TypeSafe:Guard:*` | `Orkeon:Decision:Guard:*` |
+| reranker alias `typesafe` | removed: use `decision` |
+
+A settings file still holding `Orkeon:TypeSafe:Guard:*` is refused at start, with a message naming `Orkeon:Decision:Guard`.
+
+Added: the Liquid provider (`Orkeon:Liquid`, `LIQUID_API_KEY`, model `d1.1` or `d1-ultra`), the Kev provider (`Orkeon:Kev`, `KEV_API_KEY` optional, default address `http://127.0.0.1:8009/v1`, never deduced), and `Orkeon:Decision:Provider` (`typesafe`, `liquid` or `kev`). Both hosted sections, or no section and both keys, refuse the start; a Kev address without an `http`/`https` scheme, or a Kev key towards a non-local `http` address, is refused too. The open d1 weights served behind Kev or another System One-compatible local server are used as Kev.
+
+### Changed — `IDecisionModel.ListModelsAsync` removed **[breaking]** (R-68, D8)
+
+`IDecisionModel.ListModelsAsync` is removed from the port and from `TypeSafeDecisionModel`: nothing called it. The unused `DecisionModelDto` goes with it. Consumers drop the override.
+
+### Fixed — documentation closes on what F1-F8 ship; an empty `Orkeon:TypeSafe` section registers the decision model (R-16, R-57, R-59 to R-65, R-72, R-74, R-75)
+
+A present-but-empty `Orkeon:TypeSafe` section now registers the decision model (R-64). The doc corrections: the Anthropic price list and cache tariffs
+(R-57), the decision-model pages (retry set, reader of a jump's reason, reserved question name `defaulted`, R-63, R-65, R-75), ADR-015 and ADR-016 amendments, and
+the RaggableTree tool count gate in `scripts/check-doc-claims.py` (R-61).
+
+### Fixed — the scripting DSL refuses ill-formed decision and `when` forms at load; a decision-and-`when` example ships (R-03, R-28, R-30, R-31, R-32, R-34)
+
+**Breaking**: a second `.when()` on one task throws an `InvalidScriptException` naming the task; a non-array `state`, a non-object `fallback` and a non-string `choice` value, `score` entry or `fallback` value are refused at load naming the task and the key; two tasks with the same name are refused at load. A task without `.name()` is keyed by its full description (truncation is display only). `task.d.ts` documents `fallback` as strings and the decision model (`IDecisionModel`), and `examples/scripting/14-decision-and-when.ork.ts` shows a decision with `when` fan-out.
+
+### Fixed — rate-limit wait, effort and cache refusals at load, Anthropic cost grid (R-09, R-40, R-41, R-42, R-43, R-44, R-45, R-47, R-58)
+
+`retry-after-ms` now takes priority over `Retry-After` and is then compared with the reset headers (the longer wins);
+a value beyond the window raises `LlmRateLimitException`, never `OverflowException`. A thinking `effort` outside
+`low`, `medium`, `high`, `xhigh`, `max` (exact case) refuses the load in the YAML mapper and in `Llm:Thinking`
+(`LlmThinkingConfig.ValidateEffort`) instead of falling back to `low`; the per-model effort table is deferred
+(`docs/reference/limitations.md`). A cache `ttl` without `system` or `tools` is refused by the YAML block as the script
+and `Llm:Cache` already did, and the Studio settings validator checks `Llm:Cache:Ttl` and `Llm:Thinking:Effort` with the same domain rules
+(`LlmCacheConfig.Request` throws). The chat client adapter drops a host `Llm:Cache` for a provider whose cache is implicit, so
+`orkeon run` no longer logs a `cache_ttl` warning on every OpenAI call. `claude-opus-4-5` (dated ids included) is priced at the
+official 5 / 25 $/M instead of the `claude-opus-4` prefix's 15 / 75, and the 1-hour share of a cache write
+(`usage.cache_creation.ephemeral_1h_input_tokens`) is read by `AnthropicLlmProvider`, buffered and streamed, and costed at 2x
+the prompt rate: `LlmResponse.CacheWrite1hTokens` and `CostUsageEvent.CacheWrite1hTokens` are new (additive).
+
+### Fixed — an exclusive launch stays exclusive until its work ends; the host-work memory exclusion holds (R-12, R-48, R-49, R-53, R-54, R-55, R-73)
+
+`cancel()` no longer frees an exclusive crew: the target is released when the work really stops (the `finally` of
+`postWork`), so a relaunch right after a `cancel()` is refused until the cancelled run has finished. A synchronous
+`runCrew` of a crew held by an exclusive `runCrewAsync` is refused with `ExclusiveLaunchRefusedException` like a second
+`runCrewAsync`, and `exclusive: null` is a script error (the option is a boolean or absent). The
+exclusion of host-tool work from `MemoryLimitBytes` is closed on every exit of its scope, exception included, survives
+nesting and `Reset()`, and belongs to the thread that opened it; the documentation now says that only the execution of a
+host tool is outside the limit, not the rest of `ctx.llm.act`. The `postWork` signature change of #239 is declared as a
+break (`PublicAPI.Unshipped.txt`).
+
+### Fixed — Anthropic replays the signed thinking blocks of a tool-call turn, and a malformed tool call is named (R-08, R-46)
+
+An assistant turn that held `thinking` or `redacted_thinking` blocks and `tool_use` calls was replayed without the
+thinking blocks, which Anthropic rejects when extended thinking is on. `NativeToolCallTranscript.AssistantTurn` now
+keeps them raw, buffered or streamed, in the new `LlmMessage.RawThinkingBlocks`, and `AnthropicLlmProvider` re-emits
+them unchanged and first. A replayed tool call without `id`, `name` or an object `arguments` raises an
+`InvalidOperationException` naming its index, its name and the field, instead of a bare `KeyNotFoundException`.
+
+### Fixed — decision tasks: retried dependencies, failure record, answer validation, skipped turns
+
+A Graph decision reads the last successful output of a retried dependency, else its last attempt. A failing decision
+is recorded as a failed output marked as a decision, with its cause, and the exception is logged. The model's answer
+is validated: a choice outside the options fails the task non-transiently. The output has one form: score answers are
+keyed by level position and carry no `chosen`, the fallback included; `TokensUsed` is the usage the model reports.
+The domain refuses a non-finite confidence floor and repeated score levels, and `TaskCondition.Holds` is false for an
+`otherwise` clause. A skipped task takes no agent turn in round-robin, a crew of decision tasks only is admitted with
+no agent, and a failed or cancelled decision stops its dependants in `Parallel` and `Graph`. `CrewExecutionEvent`,
+the `KickoffStreamingAsync` stream, gains `IsDecision` and `DecisionAnswers`, and the documentation of `Skipped` and
+`SkipReason` cites the `when` condition.
+
+### Fixed — RaggableTree index: gitignore translation, ignore files in the cache, Go importers, SQLite busy (R-04..R-07, R-35..R-39)
+
+`respect_gitignore` now follows gitignore(5): `**/` covers zero directories, a final `/**` covers all the content, a `/`
+at the start or in the middle anchors the pattern, an escaped trailing space is kept; POSIX classes such as
+`[[:alpha:]]` stay unsupported. Nested `.gitignore` files and `.git/info/exclude` enter the cache validity markers (a
+change forces a full rebuild) and the incremental path skips ignored paths. After a refresh, unchanged Go importers of
+a package that gains a file are re-resolved. A Rust `use super::*` inside an inline `mod` no longer draws a wrong
+import edge. Only `SQLITE_CORRUPT` / `SQLITE_NOTADB` erase the cache database: a busy or locked base abandons the save
+and keeps it. A refused `go.mod` or package marker read counts as absent, and parallel Parse progress is monotonic.
+`DiscoveryResult` (`Orkeon.Analysis.Abstractions`) gains `IgnoreFileContents`.
+
+### Fixed — `session_store` access per operation, atomic multi-key writes; `grep` completeness flags (R-10, R-11, R-50, R-51, R-52, R-56)
+
+`SessionStoreTool` declared the same access for every operation, so `plan` mode admitted `set_state`, `append_message`,
+`reset` and `truncate`: reads (`get_state`, `read_messages`, `get_metadata`) now declare `Read`, every write declares a
+write access and is denied in `plan` mode. `set_state` with several `values` / `keys` goes through the new
+`ISessionBufferService.SetStates(IReadOnlyDictionary<string, string?>)`, which changes every key under the buffer's one lock
+(all or nothing; **breaking** for any other implementation of the port, which must add the method); a `values` / `keys`
+overlap, or `key` / `value` mixed with `values` / `keys`, is refused with the keys named. `grep`: `truncated` is true when
+count mode cuts its counts, and `scan_complete` is false when a file over 1 MiB was skipped.
+
 ### Added — `session_store` reads several keys, writes several, appends one message (#263)
 
 A script paid one `session_store` call per state key it read, and two calls carrying the whole buffer for every
@@ -24,8 +121,10 @@ A "how many" question over a tree took one `grep` call per file, or a hit list f
 `total_matches`, `files_matched` and `counts`, the per-file counts highest first, cut to `max_results` entries. In
 both modes `total_matches` and `files_matched` are returned, and `scan_complete` says whether every candidate file was
 scanned to its end: reaching `max_results` no longer stops the scan, only `max_files` or a timeout does, so a total
-read with `scan_complete: true` is exact even when the hits were cut. `truncated` keeps saying when hits or files were
-left out.
+read with `scan_complete: true` is exact even when the hits were cut. `truncated` says when hits, files or counts were
+left out (count mode cutting its counts at `max_results` or at the character budget reports it too, and `scan_complete` is
+false when a file over 1 MiB was skipped). The default `hits` mode keeps scanning to `max_files` or to the 20 s budget
+even after `max_results` is reached, so a wide tree can end `timed_out` or `truncated`.
 
 ### Fixed — Anthropic pricing: Haiku 5.x priced, the prompt cache at its own rates (#257)
 
@@ -35,8 +134,7 @@ prompt rate on every token. Every Anthropic entry now carries both rates (a writ
 at 0.1x, or the vendor's own figure: 0.20 $/M on Opus 5.5 and Sonnet 5.5, 0.25 $/M on Fable 5.1), `claude-haiku-5`
 is priced at 0.10 / 0.50, and `claude-opus-5-5` (4 / 20) and `claude-opus-4-6`, `-4-7`, `-4-8` (5 / 25) get their
 own entries since the `claude-opus-5` and `claude-opus-4` prefixes overcharged them. The write rate is the
-5-minute TTL's: the usage event carries no TTL, so a 1-hour write (2x) is costed at the 5-minute rate, as
-`docs/architecture/llm-providers.md` says.
+5-minute TTL's, 1.25x; the 1-hour share of a write is costed at 2x since the rc.6 review (R-47, below).
 
 ### Added — a script agent can request the prompt cache (#254)
 
@@ -47,7 +145,7 @@ request Anthropic's `cache_control` breakpoints as the YAML `llm.cache:` block d
 The typings declare `LlmCacheOptions`. The YAML `ttl` is now validated too: a value other than `5m` or `1h` is refused
 when the crew loads instead of reaching the vendor.
 
-### Changed — an unreported cache or reasoning count is null, not 0 (#254)
+### Changed — an unreported cache or reasoning count is null, not 0 **[breaking]** (#254)
 
 `ModelUsage.CacheReadTokens`, `CacheWriteTokens` and `ReasoningTokens` are `long?`: null when no call reported them,
 the sum of the reported ones otherwise (null + 5 = 5, `ModelUsage.SumReported`). The same holds for
@@ -68,7 +166,7 @@ A per-call `orkeon:cache_ttl` on an agent with no cache configuration placed no 
 nothing. The chat client adapter now treats it as the request: it marks the system prompt with that TTL. A provider
 that cannot write a TTL keeps logging the structured unhonoured-option warning (event 110, `cache_ttl`).
 
-### Added — a host default prompt cache, `Llm:Cache` (#254)
+### Added — a host default prompt cache, `Llm:Cache` **[breaking]** (#254)
 
 `Llm:Cache:SystemPrompt`, `Llm:Cache:Tools` and `Llm:Cache:Ttl` (and `Llm:Profiles:<name>:Cache:*`) set the cache
 every agent asks for when it sets none of its own. They are validated through `LlmCacheConfig.Request`: a `Ttl` other
@@ -88,7 +186,7 @@ A script agent's `.cache(...)` and `.effort(...)` (or the `cache`/`effort` of th
 reached its declarative calls only: the procedural `ctx.llm.complete(...)`/`chat(...)` calls ran without them. They
 now run with both, a call's own `effort` or `cache` winning.
 
-### Changed — the crew pipeline's cache counts are null when unreported (#254)
+### Changed — the crew pipeline's cache counts are null when unreported **[breaking]** (#254)
 
 The cache counts carried from the agent loop to the crew result stay null when no call reported them, as
 `ModelUsage.SumReported` does, instead of reading 0: `AgentLoopResult`, `TaskResult`, `TaskExecutionSnapshot`, the
@@ -102,7 +200,7 @@ count, never 0. This pipeline carries no reasoning count.
 | `TaskExecutionSnapshot.CacheHitTokens` / `CacheMissTokens`, `CrewExecutionSnapshot.TotalCacheHitTokens` / `TotalCacheMissTokens` : `long` | `long?` |
 | `CrewGraphState.CacheHitTokensUsed` / `CacheMissTokensUsed` : `long`; `AddResultUsage(int, long, long)` | `long?`; `AddResultUsage(int, long?, long?)` |
 
-### Added — an index cache between sessions (`index_codebase` `use_cache`)
+### Added — an index cache between sessions (`index_codebase` `use_cache`) (#244)
 
 `AddRaggableTree` now registers `CachingTreeBuilder`, and `index_codebase` saves the index under
 `<root>/.orkeon/cache/raggable-tree/index.db`, a SQLite database in a folder holding its own `.gitignore`. The nodes are
@@ -137,6 +235,21 @@ under the module path of a `go.mod` (read through the VFS, tagged `go_module` on
 current one start from the current module, and any other first segment goes to `ext::cargo::<crate>`. An incremental
 refresh rebuilds the import edges of the files it parses again with the same rules.
 
+### Fixed — the index reads every ignore file of the tree (#258)
+
+`index_codebase` applied the root `.gitignore` alone: a folder named only in `.git/info/exclude` (a package cache
+checked out beside the sources) or in a nested `.gitignore` was walked and parsed. With `respect_gitignore` (the
+default) the discovery now applies the ignore files as git does — `.git/info/exclude`, the root `.gitignore`, then
+each nested `.gitignore` for the paths under its folder, the last matching pattern deciding and a deeper file over a
+shallower one. A nested `.gitignore` whose own folder is ignored is not read.
+
+### Fixed — `package_summary` entry points by exact name, `.gitignore` character classes (#249, #250, #251)
+
+`package_summary` takes a module as an entry point only when its file name without extension is exactly `main`,
+`__main__`, `program` or `index` (#249). Its `dependencies` come from the `Imports` edges of the package's modules,
+mapped to the packages holding their targets (#250). The `.gitignore` matcher honours character classes (`[abc]`,
+`[a-z]`, `[!abc]`, `[^abc]`) and the backslash escape; a `[` with no closing `]` stays literal (#251).
+
 ### Fixed — a host tool no longer counts against a script's memory limit (#247)
 
 Jint's `LimitMemory` reads the allocation counter of the engine's thread, and a tool whose async method completes
@@ -166,13 +279,13 @@ On Anthropic, every `ctx.llm.act` turn and crew agent turn that called a tool fa
 (`{id, function: {name, arguments}}`), while `NativeToolCallTranscript` stores Anthropic `tool_use` blocks as received.
 The replay now accepts both shapes, and the property documents them.
 
-### Fixed — `incremental_reindex` keeps the unresolved calls of the files it does not reparse
+### Fixed — `incremental_reindex` keeps the unresolved calls of the files it does not reparse (#244)
 
 `IncrementalReindexEngine` dropped every `Calls` edge to an `ext::unresolved::*` target whose caller sat in an unchanged
 file, so a refresh lost them (3129 of 11868 edges on one repository). They are kept now, and the one a reindexed file
 makes resolvable (a newly defined function) is replaced by the resolved edge: a refresh gives the edges of a full build.
 
-### Changed — the dependency graph of an index builds in seconds, not minutes
+### Changed — the dependency graph of an index builds in seconds, not minutes (#244)
 
 `DependencyGraphBuilder` rebuilt the short-name symbol table for every file, checked each new edge against every edge
 already found, compiled its tree-sitter queries once per file, and looked an unresolved call target up by scanning every
@@ -180,7 +293,7 @@ node. It now builds the table and compiles the queries once per resolution and c
 through a dictionary. On Orkeon's own `src` (3166 files, 45107 nodes, 62758 edges) a full `index_codebase` build drops from
 221 s to 15 s; the tree is byte-for-byte the same (same edges in the same order, same links and tags, same `IndexId`).
 
-### Added — parallel index build (`index_codebase` `max_parallelism`)
+### Added — parallel index build (`index_codebase` `max_parallelism`) (#243)
 
 `index_codebase` reads and parses files `max_parallelism` at a time (`IndexCodebaseRequest.MaxParallelism`): `0`, the
 default, uses one per processor, `1` parses them one after the other as before, and a negative value is refused with a
@@ -197,13 +310,6 @@ levels its field knows, `LlmProviderCapabilities.EffortLevels` (`low`, `medium`,
 Anthropic and OpenRouter; `max` without `xhigh` for DeepSeek and Z.ai), and sends, for a level it does not know, the highest
 declared level below it (`LlmThinkingConfig.EffortFor`) with a warning naming both (event 112), never a silent
 change. The typings of `LlmConfigOverrides` now declare `effort`.
-### Fixed — the index reads every ignore file of the tree
-
-`index_codebase` applied the root `.gitignore` alone: a folder named only in `.git/info/exclude` (a package cache
-checked out beside the sources) or in a nested `.gitignore` was walked and parsed. With `respect_gitignore` (the
-default) the discovery now applies the ignore files as git does — `.git/info/exclude`, the root `.gitignore`, then
-each nested `.gitignore` for the paths under its folder, the last matching pattern deciding and a deeper file over a
-shallower one. A nested `.gitignore` whose own folder is ignored is not read.
 
 ### Added — model provider categories and TypeSafe decision models (ADR-015)
 
@@ -211,7 +317,7 @@ Model providers now come in four categories (`ModelProviderCategory`: `Generatio
 `Decision`), listed with their key variable and endpoint in `ModelProviderCatalog` (`Orkeon.Constants.Llm`). The new
 `Decision` category has its own port, `IDecisionModel` (`Orkeon.Application`), with typed `choice`, `score`, `noul` and
 `box` questions and their answers; `AddOrkeonTypeSafe(configuration)` binds `Orkeon:TypeSafe` and serves TypeSafe's Jev
-(`jev-latest`, key in `TYPESAFE_API_KEY`, 429 and 529 retried, usage metered as `decision`, errors citing TypeSafe's
+(`jev-latest`, key in `TYPESAFE_API_KEY`, 429, 5xx, 408 and network errors retried, usage metered as `decision`, errors citing TypeSafe's
 request id). TypeSafe is not an LLM
 provider: the count stays at 16. The three shipped binaries (`orkeon run`, `orkeon-host`, `orkeon-repl`) call it when
 their settings hold `Orkeon:TypeSafe` or `TYPESAFE_API_KEY` is set. `AddOrkeonDecisionProfiles(configuration)`, which
@@ -234,18 +340,24 @@ Hierarchical, Consensual and Autonomous refuse them on load, and fail before the
 reaches them. `orkeon run --no-decision` (or `Orkeon:Decision:Enabled=false`, or no decision model) switches the decision
 circuit off: decision tasks answer from their `fallback`; a question the model leaves unanswered fails the task. The `task.completed` event gains `skipReason`,
 `defaulted`, `isDecision` and `decision` (the answers as compact JSON), `TaskExecutionSnapshot` gains `SkipReason`,
-`Defaulted`, `IsDecision` and `DecisionAnswers`, and the run consoles and Studio's `RunProgressModel` show the skip
+`Defaulted`, `IsDecision` and `DecisionAnswers`, and the run's JSONL and Studio's `RunProgressModel` show the skip
 reason, the defaulted flag and the decision answers. See [ADR-016](docs/adr/ADR-016-decision-tasks-and-conditional-fan-out.md)
 and [Decision models](docs/architecture/decision-models.md).
 
-### Added — an exclusive crew launch (#239)
+### Added — an exclusive crew launch **[breaking]** (#239)
 
 `script-host.runCrewAsync(name, input, { exclusive: true })` refuses a crew whose previous exclusive launch is still
 running, before any LLM call, with a JS throw naming its ticket (`crew 'code-review' already running (ticket t2)`). The
 check and the registration of the instance are one step (`CommandDispatchService.postWork(..., exclusive: true)`,
 `ExclusiveLaunchRefusedException`); the crew is free again once that instance completes, fails or is cancelled. A
 command that launches such a crew no longer needs `maxConcurrent`, which also blocked its aliases. See
-[scripted commands](docs/architecture/cli-ts-commands.md).
+[scripted commands](docs/architecture/cli-ts-commands.md). Migration: the public `CommandDispatchService.postWork` gains
+a trailing `bool exclusive = false` parameter and its previous signature (rc.6) is removed, with no overload; a host that
+calls it recompiles, and a host that binds it by reflection passes the new argument.
+
+| Before (rc.6) | After |
+|---|---|
+| `postWork(label, target, work, bool continueChain = false)` | `postWork(label, target, work, bool continueChain = false, bool exclusive = false)` |
 
 ### Changed — `TaskCompletedEvent.AgentId` is nullable; `ParallelProcessStrategy` takes `CrewStrategyDependencies` **[breaking]**
 
@@ -265,7 +377,9 @@ constructing `ParallelProcessStrategy` passes a `CrewStrategyDependencies`.
 
 `RateLimitResetHeaders` reads the `retry-after-ms` header (milliseconds) that OpenAI and TypeSafe send beside
 `Retry-After`, so a 429 announcing a sub-second window is waited out for that window instead of the whole second
-`Retry-After` rounds it up to; the longest header still wins, a value that is not a finite number is ignored.
+`Retry-After` rounds it up to. `retry-after-ms` replaces `Retry-After`, the longest of it and the reset headers wins,
+a value that is not a finite number is ignored, and a finite value beyond the window fails with `LlmRateLimitException`
+(R-09, R-43).
 
 ### Fixed — the `orkeon-runners` image builds again
 
@@ -1989,6 +2103,7 @@ and entered in its transparency log (Rekor). The publication matrix said the sam
 - The token-free API query decodes the statements with `jq` and prints the builder and the
   commit; the Release's SBOM and `publish.yml`'s are told apart; a table opens the page with
   the check for each kind of file.
+
 ### Fixed — a run is a trace **[breaking]**
 
 A run now emits one trace: `crew.run` for the crew, `task.run` per task, `memory.recall` and
@@ -6782,6 +6897,7 @@ topic, EN and FR together.
   Studio suites alike.
 
 <!-- STUDIO-29 -->
+
 ### Changed — `cost.updated` carries the ↑/↓ split and the vendor's real cost while the run goes (STUDIO-29)
 
 - **The split no longer waits for the end.** Every `cost.updated` of `orkeon run --events
@@ -6841,6 +6957,7 @@ accumulated since rc.3 move from `PublicAPI.Unshipped.txt` to `PublicAPI.Shipped
 across the twelve projects that carried them.
 
 <!-- SonarQube campaign of 2026-09-21 -->
+
 ### Fixed — a host without an `Llm` section runs on the echo provider again
 
 - **The fallback the warning announces is the fallback the run gets.** Since LLM-11 a call
@@ -6874,6 +6991,7 @@ across the twelve projects that carried them.
   YamlDotNet-populated probe, the vendors' key-console URLs).
 
 <!-- Studio — owner report of 2026-09-21 -->
+
 ### Fixed — Studio: My teams and the wizard — a discarded session resets the wizard, « Modify » reaches it at the first click
 
 - **A session deleted under « Sessions in progress » no longer lives on in the wizard.**
@@ -6907,6 +7025,7 @@ across the twelve projects that carried them.
   line instead of a discarded task.
 
 <!-- LLM-10 / LLM-08 -->
+
 ### Fixed — Together's context window is no longer sent as the output cap (LLM-10, campaign of 2026-09-21)
 
 - **`TogetherAiLlmProvider` sends the 4096 fallback again, not the model's window.** LLM-10
@@ -6930,6 +7049,7 @@ across the twelve projects that carried them.
   are in `docs/reference/llm-providers-comparison.md`, per-model table.
 
 <!-- FORGE-09 -->
+
 ### Added — « Modify » without a session: `orkeon forge reopen <team-folder>` rebuilds one from the team's files (FORGE-09)
 
 - **A promoted team no longer needs its forge session to be modified.** `orkeon forge reopen
@@ -6966,6 +7086,7 @@ across the twelve projects that carried them.
   resolve a `--mount-id` against the declared list the same way.
 
 <!-- VFS-90 -->
+
 ### Added — every settings mount carries a ULID; a crew names the entries it uses (`mounts:`), two entries may share a root, and `--mount-id` selects one for the run (VFS-90)
 
 - **A mount has an identity.** An entry of `Orkeon:FileSystem:Mounts` may carry a
@@ -7027,6 +7148,7 @@ across the twelve projects that carried them.
   the unit and fast suites are green.
 
 <!-- LLM-11 -->
+
 ### Fixed — a timed-out LLM call is a failed call, not an empty answer; the sequential mode skips the dependents of a failed task; Studio pins the thinking switch and a reasoning-model timeout (LLM-11)
 
 - **A call the provider never answered fails the task with the provider's reason.** On the
@@ -7070,6 +7192,7 @@ across the twelve projects that carried them.
   that brought it.
 
 <!-- STUDIO-22 -->
+
 ### Fixed — Studio: the limits tab shows the engine's defaults as watermarks, and its switches take one click (STUDIO-22)
 
 - **Every empty field of « Settings › Limits & index » now names the engine's default as a
@@ -7086,6 +7209,7 @@ across the twelve projects that carried them.
   the key. A guard refuses any nullable boolean on a section form.
 
 <!-- STUDIO-21 -->
+
 ### Added — Studio: Tools and MCP settings tabs; `orkeon run` connects the MCP servers the settings declare (STUDIO-21)
 
 - **`orkeon run` honours the `MCP` section.** Until now the section was bound by nobody: the
@@ -7117,6 +7241,7 @@ across the twelve projects that carried them.
   languages.
 
 <!-- T-31 / T-32 -->
+
 ### Changed — Studio: editable fields look editable, multi-line fields are five lines (T-31, T-32)
 
 - **A field says «you can type here» (T-31).** Every input — text box, password box, combo
@@ -7139,6 +7264,7 @@ across the twelve projects that carried them.
   The hard `MinHeight`/`MaxHeight` those fields carried are gone with the change.
 
 <!-- STUDIO-20 -->
+
 ### Changed — Studio: adopting a team ends the wizard at a blank step 1; the saved card is gone (STUDIO-20)
 
 - **« Save to my teams » ends the tunnel.** On a successful promotion the wizard goes back to a
@@ -7160,6 +7286,7 @@ across the twelve projects that carried them.
   in the sidecar, on the team card and in the team's `schedule/` folder.
 
 <!-- STUDIO-19 -->
+
 ### Changed — Studio: « Allow a folder » opens the OS folder dialog directly; the in-app picker modal is gone (STUDIO-19)
 
 - **The « Allow a folder » modal is deleted** — path field and Browse, the one-level tree with
@@ -7181,6 +7308,7 @@ across the twelve projects that carried them.
   consumer, the tree.
 
 <!-- STUDIO-18 -->
+
 ### Fixed — Studio opens on the per-user settings file (STUDIO-18)
 
 - **The window loads `%APPDATA%\Orkeon\appsettings.json` at startup** (`$XDG_CONFIG_HOME/Orkeon/appsettings.json`
@@ -7201,6 +7329,7 @@ across the twelve projects that carried them.
   the shell does, as the real window does.
 
 <!-- LLM-10 -->
+
 ### Changed — the output cap defaults to the model's documented maximum, not 4096 (LLM-10)
 
 - **`LlmConfig.MaxTokens` is a pin, nullable, null by default.** Nothing pinned means the
@@ -7235,6 +7364,7 @@ across the twelve projects that carried them.
   YAML exporter writes `maxTokens` only when pinned.
 
 <!-- STUDIO-17 -->
+
 ### Added — Studio: the Run screen shows the task in progress, pulses while it runs, stamps its journal and starts each launch clean (STUDIO-17)
 
 - **`task.started` joins the run event stream** (`orkeon run --events jsonl`): every
@@ -7268,6 +7398,7 @@ across the twelve projects that carried them.
   *Max tokens* field; the journal now says so at the moment it happens.
 
 <!-- LLM catalogue review 2026-09-19 -->
+
 ### Changed — the DeepSeek default follows the vendor's rename, vendor prices refreshed, catalogues reviewed (2026-09-19)
 
 - **`LlmProviderDefaultModels.DeepSeek` is `deepseek-flash`.** DeepSeek retired V4 Flash and
@@ -7297,6 +7428,7 @@ across the twelve projects that carried them.
   tools + thinking models. Nothing new for chat at Mistral and xAI.
 
 <!-- STUDIO-14 -->
+
 ### Added — team folders travel with the team, and the forge trial reads where the documents are (STUDIO-14, lots 0 and 1)
 
 - `orkeon forge … --read <dir>` (new session and `resume`): the trial mounts `<dir>` as
@@ -7323,6 +7455,7 @@ across the twelve projects that carried them.
   (Later / InsideTeam / ExistingFolders — the wizard entry below).
 
 <!-- STUDIO-14 recette -->
+
 ### Fixed — the forge trial no longer refuses a settings file that names `/output` or `/workspace` (STUDIO-14, owner recette)
 
 - `orkeon forge` refused any settings file whose `Orkeon:FileSystem:Mounts` named
@@ -7338,6 +7471,7 @@ across the twelve projects that carried them.
   stderr. `RunnerVirtualRoots.ForgeReserved` is removed.
 
 <!-- STUDIO-14 settings -->
+
 ### Added — Studio: Settings › Authorized folders lists each team's own folders, read-only (STUDIO-14, lot 6)
 
 - A team's own folders (`./input`, `./output`…) are vouched for by living inside the team
@@ -7356,6 +7490,7 @@ across the twelve projects that carried them.
   `reglages-dossiers`.
 
 <!-- STUDIO-14 wizard -->
+
 ### Added — Studio wizard: where the folders live, asked at step 1; « Create inside the team »; the trial reads the chosen folder; « Open the folder » (STUDIO-14, lots 2–5 and 8)
 
 - Step 1 « Describe » gains a fourth question, « Where are your folders? », with three chips
@@ -7448,6 +7583,7 @@ across the twelve projects that carried them.
   `reglages-dossiers-selection` now selects the writable mount.
 
 <!-- LLM-09 -->
+
 ### Added — OpenRouter and Mammouth AI, the fifteenth and sixteenth providers — two aggregators, the one exception to the scope freeze (LLM-09)
 
 The scope freeze said "no 15th provider — point `Orkeon:Llm:BaseUrl` at the endpoint", and
@@ -7508,6 +7644,7 @@ as the status when it is an HTTP one. Secrets in the vendor's message are redact
 `"error": null` on a healthy chunk is not an error.
 
 <!-- STUDIO-15 -->
+
 ### Changed — a `--mount` is placed by virtual root against the settings (STUDIO-15, STUDIO-12 C3/C4)
 
 - **`RunnerHost` places every `--mount` by virtual root.** On a root the declared
@@ -7592,6 +7729,7 @@ technical journal only the expert mode displays.
   `Stopping_the_engine_raises_no_failure_card`.
 
 <!-- STUDIO-12 -->
+
 ### Fixed — the team journey on a real crew: order, empty answers, single-file teams (STUDIO-12)
 
 - **Task order follows `dependencies`, in every layout.** Without a plan, the sequential

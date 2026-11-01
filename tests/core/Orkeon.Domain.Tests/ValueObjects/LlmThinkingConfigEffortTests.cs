@@ -38,6 +38,28 @@ public class LlmThinkingConfigEffortTests
         Assert.Equal("medium", LlmThinkingConfig.EffortFor("low", ["medium", "high"]));
     }
 
+    [Theory]
+    [Trait("BR", "R-41")]
+    [InlineData("low")]
+    [InlineData("medium")]
+    [InlineData("high")]
+    [InlineData("xhigh")]
+    [InlineData("max")]
+    public void ShouldAcceptEveryDeclaredLevel_WhenEffortIsParsed(string effort)
+    {
+        Assert.Equal(effort, LlmThinkingConfig.ValidateEffort(effort));
+    }
+
+    [Theory]
+    [Trait("BR", "R-41")]
+    [InlineData("High")]
+    [InlineData("extreme")]
+    public void ShouldRefuseEffort_WhenLevelIsUnknownOrMiscased(string effort)
+    {
+        var ex = Assert.Throws<ArgumentException>(() => LlmThinkingConfig.ValidateEffort(effort));
+        Assert.Contains(effort, ex.Message);
+    }
+
     [Fact]
     public void ShouldDefaultTheDeclaredLevelsToThree()
     {

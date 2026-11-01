@@ -58,6 +58,9 @@ public sealed record DiscoveryResult
     public required ImmutableArray<DetectedPackage> Packages { get; init; }
     public required string RootPath { get; init; }
 
+    /// <summary>The content of each ignore file that governed the discovery (the exclude file, each <c>.gitignore</c> read), by path under the root; empty when ignore rules are not respected.</summary>
+    public ImmutableDictionary<string, string> IgnoreFileContents { get; init; } = ImmutableDictionary<string, string>.Empty;
+
     /// <summary>
     /// Diagnostic counters describing why entries discovered by the underlying
     /// filesystem enumeration were dropped before reaching <see cref="Files"/>.

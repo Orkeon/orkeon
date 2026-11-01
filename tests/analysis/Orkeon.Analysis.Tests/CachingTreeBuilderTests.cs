@@ -287,6 +287,26 @@ public class CachingTreeBuilderTests
     }
 
     [Fact]
+    [Trait("BR", "R-04")]
+    public async Task ShouldDropNewlyIgnoredFiles_WhenGitignoreChangesBetweenBuilds()
+    {
+        var dir = await FixtureAsync();
+        try
+        {
+            var fs = TestFixtures.CreateFs(dir);
+            var first = await Caching(fs).BuildAsync(TestFixtures.TestVirtualRoot, Request, CancellationToken.None);
+            Assert.Contains(first.Build.Tree.Nodes, n => n.VirtualFilePath.EndsWith("/src/d.ts", StringComparison.Ordinal));
+            await File.WriteAllTextAsync(Path.Combine(dir, ".gitignore"), "src/d.ts\n", TestContext.Current.CancellationToken);
+
+            var second = await Caching(fs).BuildAsync(TestFixtures.TestVirtualRoot, Request, CancellationToken.None);
+
+            Assert.DoesNotContain(second.Build.Tree.Nodes, n => n.VirtualFilePath.EndsWith("/src/d.ts", StringComparison.Ordinal));
+            Assert.Contains(second.Build.Tree.Nodes, n => n.VirtualFilePath.EndsWith("/src/a.ts", StringComparison.Ordinal));
+        }
+        finally { Directory.Delete(dir, recursive: true); }
+    }
+
+    [Fact]
     public void ShouldDescribeTheEmbeddingSize_InTheEnvironment()
     {
         var adapters = new ILanguageAdapter[] { new TypeScriptAdapter() };
@@ -298,6 +318,46 @@ public class CachingTreeBuilderTests
         Assert.NotEqual(small, large);
         Assert.NotEqual(small, none);
         Assert.Contains("adapter:typescript:", none, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    [Trait("BR", "R-37")]
+    public async Task ShouldIndexWithoutModulePath_WhenGoModIsRefusedByFileSystem()
+    {
+        var dir = await TestFixtures.WriteDirectoryAsync([
+            ("go.mod", "module example.com/app\n\ngo 1.22\n"),
+            ("src/a.ts", "export function a() { return 1; }\n"),
+        ]);
+        try
+        {
+            var fs = new Doubles.FakeCountingFileSystemService(TestFixtures.CreateFs(dir));
+            fs.DeniedTextReadPaths.Add($"{TestFixtures.TestVirtualRoot}/go.mod");
+
+            var built = await new RaggableTreeBuilder(new TypeScriptAdapter(), fs)
+                .BuildAsync(TestFixtures.TestVirtualRoot, Request, CancellationToken.None);
+
+            Assert.Contains(built.Tree.Nodes, n => n.VirtualFilePath.EndsWith("/src/a.ts", StringComparison.Ordinal));
+            Assert.DoesNotContain(built.Tree.Nodes, n => n.Tags.ContainsKey(DependencyGraphBuilder.GoModuleTag));
+        }
+        finally { Directory.Delete(dir, recursive: true); }
+    }
+
+    [Fact]
+    [Trait("BR", "R-37")]
+    public async Task ShouldBuildTree_WhenPackageMarkerIsRefusedByFileSystem()
+    {
+        var dir = await FixtureAsync();
+        try
+        {
+            var fs = new Doubles.FakeCountingFileSystemService(TestFixtures.CreateFs(dir));
+            fs.DeniedTextReadPaths.Add($"{TestFixtures.TestVirtualRoot}/package.json");
+
+            var result = await Caching(fs).BuildAsync(TestFixtures.TestVirtualRoot, Request, CancellationToken.None);
+
+            Assert.Equal(IndexCacheOutcome.Miss, result.Outcome);
+            Assert.Contains(result.Build.Tree.Nodes, n => n.VirtualFilePath.EndsWith("/src/a.ts", StringComparison.Ordinal));
+        }
+        finally { Directory.Delete(dir, recursive: true); }
     }
 
     private static CachingTreeBuilder Caching(IFileSystemService fs, string environment = "test") => new(

@@ -505,6 +505,7 @@ public sealed class MeteredLlmProvider : ILlmProvider, IStreamingLlmProvider
             CacheHitTokens = response.CacheHitTokens,
             CacheMissTokens = response.CacheMissTokens,
             CacheWriteTokens = response.CacheWriteTokens,
+            CacheWrite1hTokens = response.CacheWrite1hTokens ?? 0,
             ReasoningTokens = ReasoningTokensOf(response),
             Estimated = !counted,
             // What the vendor billed, as billed — null when it billed nothing in its answer,

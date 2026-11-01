@@ -96,6 +96,7 @@ public sealed class IncrementalReindexEngine
         var started = Stopwatch.GetTimestamp();
         var root = virtualRoot.TrimEnd('/');
         var changedVirtual = NormalizeChangedPaths(changedFilePaths, root);
+        changedVirtual.UnionWith(GoImportersOfChangedPackages(currentTree, changedVirtual));
 
         var (keptNodes, removedNodeIds) = PartitionNodes(currentTree, changedVirtual);
         var removedIds = new HashSet<string>(removedNodeIds, StringComparer.Ordinal);
@@ -112,10 +113,13 @@ public sealed class IncrementalReindexEngine
         var reusedFileCount = unchangedNodes.Select(n => n.VirtualFilePath).Distinct(StringComparer.Ordinal).Count();
 
         var parsed = new ChangedFiles();
+        var ignore = opts.RespectGitignore
+            ? await IgnoreFiles.LoadAsync(_fileSystem, root, GitignoreCandidates(changedVirtual, root), ct).ConfigureAwait(false)
+            : null;
         foreach (var path in changedVirtual)
         {
             ct.ThrowIfCancellationRequested();
-            await ParseChangedFileAsync(path, root, opts, packageNodes, monorepo, parsed, ct).ConfigureAwait(false);
+            await ParseChangedFileAsync(path, root, opts, ignore, packageNodes, monorepo, parsed, ct).ConfigureAwait(false);
         }
 
         var newNodes = parsed.NewNodes;
@@ -206,16 +210,32 @@ public sealed class IncrementalReindexEngine
         };
     }
 
-    // A changed file of an indexed language is read and mapped; one that is excluded, unsupported or gone is skipped.
+    // The .gitignore files that can govern a changed path: one per folder from the root down to the file's own.
+    private static IEnumerable<string> GitignoreCandidates(IEnumerable<string> changedVirtual, string root)
+    {
+        var folders = new HashSet<string>(StringComparer.Ordinal) { string.Empty };
+        foreach (var path in changedVirtual)
+        {
+            var relative = path.StartsWith(root + "/", StringComparison.Ordinal) ? path[(root.Length + 1)..] : path;
+            var parts = relative.Split('/');
+            for (var depth = 1; depth < parts.Length; depth++)
+                folders.Add(string.Join('/', parts[..depth]));
+        }
+        return folders.Select(f => f.Length == 0 ? ".gitignore" : $"{f}/.gitignore");
+    }
+
+    // A changed file of an indexed language is read and mapped; one that is excluded, ignored, unsupported or gone is skipped.
     private async Task ParseChangedFileAsync(
         string path,
         string root,
         IndexCodebaseRequest opts,
+        IgnoreFiles? ignore,
         List<RaggableNode> packageNodes,
         RaggableNode monorepo,
         ChangedFiles parsed,
         CancellationToken ct)
     {
+        if (ignore is not null && path.StartsWith(root + "/", StringComparison.Ordinal) && ignore.IsIgnored(path[(root.Length + 1)..])) return;
         var language = FileSystemDiscoverer.IndexableLanguage(root, path, opts.Exclude, opts.Languages);
         if (language is null) return;
         var isMarkdown = language == RaggableTreeBuilder.MarkdownLanguage;
@@ -447,6 +467,34 @@ public sealed class IncrementalReindexEngine
             }
         }
     }
+
+    // A Go import edge reaches every file of the imported package: when a package gains or loses a file, the
+    // files importing it are re-resolved with the changed ones.
+    private static IEnumerable<string> GoImportersOfChangedPackages(RaggableTree tree, HashSet<string> changed)
+    {
+        var changedGo = changed.Where(p => p.EndsWith(".go", StringComparison.Ordinal)).ToList();
+        if (changedGo.Count == 0) return [];
+        var knownFiles = tree.Nodes
+            .Where(n => n.Level == NodeLevel.L2_Module && n.Language == "go")
+            .Select(n => n.VirtualFilePath)
+            .ToHashSet(StringComparer.Ordinal);
+        var dirs = changedGo.Where(p => !knownFiles.Contains(p)).Select(DirectoryOf).ToHashSet(StringComparer.Ordinal);
+        if (dirs.Count == 0) return [];
+        var packageModules = tree.Nodes
+            .Where(n => n.Level == NodeLevel.L2_Module && n.Language == "go" && dirs.Contains(DirectoryOf(n.VirtualFilePath)))
+            .Select(n => n.Id)
+            .ToHashSet(StringComparer.Ordinal);
+        if (packageModules.Count == 0) return [];
+        var importerModules = tree.Edges
+            .Where(e => e.Kind == EdgeKind.Imports && packageModules.Contains(e.ToId))
+            .Select(e => e.FromId)
+            .ToHashSet(StringComparer.Ordinal);
+        return tree.Nodes
+            .Where(n => n.Level == NodeLevel.L2_Module && importerModules.Contains(n.Id))
+            .Select(n => n.VirtualFilePath);
+    }
+
+    private static string DirectoryOf(string path) => path[..Math.Max(path.LastIndexOf('/'), 0)];
 
     private static HashSet<string> NormalizeChangedPaths(IReadOnlyList<string> paths, string rootVirtual)
     {

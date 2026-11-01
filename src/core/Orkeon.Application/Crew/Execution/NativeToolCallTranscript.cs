@@ -27,8 +27,32 @@ public static class NativeToolCallTranscript
             Role = "assistant",
             Content = response.Content ?? "",
             RawToolCalls = RawToolCalls(responseBody),
+            RawThinkingBlocks = RawThinkingBlocks(responseBody),
             ReasoningContent = ReasoningContent(response),
         };
+    }
+
+    /// <summary>
+    /// The Anthropic <c>thinking</c> and <c>redacted_thinking</c> blocks as received, in order, as a JSON
+    /// array: signed, so replayed unchanged. Null when the body holds none.
+    /// </summary>
+    private static string? RawThinkingBlocks(JsonElement root)
+    {
+        if (root.ValueKind != JsonValueKind.Object ||
+            !root.TryGetProperty("content", out var contentArray) ||
+            contentArray.ValueKind != JsonValueKind.Array)
+            return null;
+
+        var blocks = new List<string>();
+        foreach (var block in contentArray.EnumerateArray())
+        {
+            if (block.ValueKind == JsonValueKind.Object &&
+                block.TryGetProperty("type", out var t) && t.ValueKind == JsonValueKind.String &&
+                t.GetString() is "thinking" or "redacted_thinking")
+                blocks.Add(block.GetRawText());
+        }
+
+        return blocks.Count > 0 ? "[" + string.Join(",", blocks) + "]" : null;
     }
 
     private static string RawToolCalls(JsonElement root)

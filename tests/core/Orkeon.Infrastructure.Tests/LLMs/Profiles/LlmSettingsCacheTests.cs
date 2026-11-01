@@ -59,4 +59,16 @@ public sealed class LlmSettingsCacheTests
         Assert.Contains("Llm:Cache:Ttl", ex.Message, StringComparison.Ordinal);
         Assert.Contains(reason, ex.Message, StringComparison.Ordinal);
     }
+
+    [Fact]
+    [Trait("BR", "R-41")]
+    [Trait("BR", "R-40")]
+    public void ShouldRefuseSettings_WhenLlmThinkingEffortIsUnknown()
+    {
+        var config = Configuration(("Llm:Model", "m"), ("Llm:Thinking:Effort", "extreme"));
+
+        var ex = Assert.ThrowsAny<Exception>(() => LlmSettings.ReadDefault(config));
+
+        Assert.Contains("extreme", ex.ToString(), StringComparison.Ordinal);
+    }
 }

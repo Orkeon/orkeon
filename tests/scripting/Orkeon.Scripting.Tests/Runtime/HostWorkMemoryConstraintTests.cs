@@ -65,6 +65,103 @@ public sealed class HostWorkMemoryConstraintTests
         });
     }
 
+    [Fact]
+    [Trait("BR", "R-55")]
+    public void ShouldCloseWindow_WhenHostToolThrowsInsideScope()
+    {
+        OnNewThread(() =>
+        {
+            var constraint = new HostWorkMemoryConstraint(Limit);
+            constraint.Reset();
+
+            var scope = constraint.ExcludeHostWork();
+            using (scope)
+            {
+                Assert.Throws<InvalidOperationException>(FailingHostTool);
+            }
+            // a second end of the same scope (a cleanup path run twice) must not widen the window
+            scope.Dispose();
+            constraint.Check();
+            Allocate(TenMegabytes);
+            Allocate(TenMegabytes);
+
+            Assert.Throws<MemoryLimitExceededException>(constraint.Check);
+        });
+    }
+
+    [Fact]
+    [Trait("BR", "R-55")]
+    public void ShouldKeepWindowOpen_WhenScopesNestUntilOuterEnds()
+    {
+        OnNewThread(() =>
+        {
+            var constraint = new HostWorkMemoryConstraint(Limit);
+            constraint.Reset();
+
+            using (constraint.ExcludeHostWork())
+            {
+                using (constraint.ExcludeHostWork())
+                    Allocate(TenMegabytes);
+                for (var i = 0; i < 5; i++) Allocate(TenMegabytes);
+
+                // the inner scope ended, the outer is still open: these bytes are not counted
+                constraint.Check();
+            }
+            constraint.Check();
+        });
+    }
+
+    [Fact]
+    [Trait("BR", "R-55")]
+    public void ShouldKeepExclusion_WhenResetRunsInsideScope()
+    {
+        OnNewThread(() =>
+        {
+            var constraint = new HostWorkMemoryConstraint(Limit);
+            constraint.Reset();
+
+            using (constraint.ExcludeHostWork())
+            {
+                constraint.Reset();
+                for (var i = 0; i < 6; i++) Allocate(TenMegabytes);
+                constraint.Check();
+            }
+
+            constraint.Check();
+            for (var i = 0; i < 6; i++) Allocate(TenMegabytes);
+
+            Assert.Throws<MemoryLimitExceededException>(constraint.Check);
+        });
+    }
+
+    [Fact]
+    [Trait("BR", "R-54")]
+    public void ShouldCountMemory_WhenCheckRunsOnAnotherThreadThanScope()
+    {
+        OnNewThread(() =>
+        {
+            var constraint = new HostWorkMemoryConstraint(Limit);
+            constraint.Reset();
+
+            using (constraint.ExcludeHostWork())
+            {
+                for (var i = 0; i < 6; i++) Allocate(TenMegabytes);
+                OnNewThread(constraint.Check);
+                constraint.Check();
+            }
+            Allocate(TenMegabytes);
+            Allocate(TenMegabytes);
+
+            Assert.Throws<MemoryLimitExceededException>(constraint.Check);
+        });
+    }
+
+    private static void FailingHostTool()
+    {
+        for (var i = 0; i < 6; i++) Allocate(TenMegabytes);
+        throw new InvalidOperationException("host tool failed");
+    }
+
     private static void Allocate(int bytes) => GC.KeepAlive(new byte[bytes]);
 
     // A dedicated thread, so each step reads a counter of its own.

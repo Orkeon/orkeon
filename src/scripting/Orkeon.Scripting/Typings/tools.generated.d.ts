@@ -485,7 +485,7 @@ declare global {
             max_files?: number;
             /** Maximum number of hits (default: 200) */
             max_results?: number;
-            /** hits: one path:line:text per match (default). count: no hit lines, only total_matches, files_matched and the per-file counts (the max_results highest) */
+            /** hits: one path:line:text per match (default); the scan is not stopped by max_results, it reads up to max_files or the 20 s budget, so a wide search can come back timed_out or truncated. count: no hit lines, only total_matches, files_matched and the per-file counts (the max_results highest) */
             output_mode?: "hits" | "count";
             /** Root directory searched (virtual path, a mounted directory inside the agent root) */
             path: string;

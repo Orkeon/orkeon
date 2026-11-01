@@ -512,4 +512,33 @@ public sealed class AppSettingsValidatorTests
 
         Assert.Equal(ValidationCodes.MountsEmpty, Assert.Single(messages).Code);
     }
+
+    [Fact]
+    [Trait("BR", "R-58")]
+    public void ShouldRejectSettings_WhenLlmCacheTtlIsInvalid()
+    {
+        var document = AppSettingsDocument.Parse(
+            """{ "Llm": { "Model": "m", "Cache": { "Ttl": "2h" } } }""");
+
+        var messages = Validator().Validate(document);
+
+        Assert.Contains(messages, m => m.Severity == ValidationSeverity.Error && m.Path == "Llm:Cache:Ttl");
+    }
+
+    [Theory]
+    [Trait("BR", "R-41")]
+    [InlineData("extreme")]
+    [InlineData("High")]
+    public void ShouldRejectSettings_WhenLlmThinkingEffortIsUnknown(string effort)
+    {
+        var document = AppSettingsDocument.Parse(
+            "{ \"Llm\": { \"Model\": \"m\", \"Thinking\": { \"Effort\": \"" + effort + "\" } } }");
+
+        var messages = Validator().Validate(document);
+
+        Assert.Contains(messages, m => m.Severity == ValidationSeverity.Error && m.Path == "Llm:Thinking:Effort");
+        var valid = AppSettingsDocument.Parse(
+            """{ "Llm": { "Model": "m", "Thinking": { "Effort": "high" } } }""");
+        Assert.DoesNotContain(Validator().Validate(valid), m => m.Path == "Llm:Thinking:Effort");
+    }
 }

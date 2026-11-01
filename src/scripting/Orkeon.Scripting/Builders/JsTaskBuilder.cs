@@ -194,6 +194,8 @@ public sealed class JsTaskBuilder
             throw new InvalidScriptException(".when(task, clauses) requires the name of a decision task.");
         if (clauses is null || !(clauses.IsObject() || clauses.IsString()))
             throw new InvalidScriptException(".when(task, clauses) expects a clause object or \"otherwise\".");
+        if (_whenTask is not null)
+            throw new InvalidScriptException($".when(task, clauses) is called twice on task '{(string.IsNullOrWhiteSpace(_name) ? _description : _name)}': a task has one condition.");
         _whenTask = decisionTask;
         _whenSpec = clauses.ToObject();
         return this;
@@ -235,7 +237,7 @@ public sealed class JsTaskBuilder
             HumanInput = _humanInput,
             AsyncExecution = _asyncExecution,
             Tools = _tools,
-            Key = _name,
+            Key = string.IsNullOrWhiteSpace(_name) ? _description : _name,
             DecisionSpec = _decisionSpec,
             WhenTask = _whenTask,
             WhenSpec = _whenSpec,

@@ -64,6 +64,25 @@ public sealed class LlmVendorCostTests
     }
 
     [Fact]
+    [Trait("BR", "R-47")]
+    public async Task ShouldPassOneHourShareToCostEvent_WhenMeteredProviderRecordsUsage()
+    {
+        var sink = new MockLlmUsageSink();
+        var mock = new MockLlmProvider();
+        var metered = MeteredLlmProvider.Wrap(mock, sink);
+        mock.SetGenerateResult(new LlmResponse
+        {
+            Content = "ok", Model = "m", PromptTokens = 10010, CompletionTokens = 5, TokensUsed = 10015,
+            CacheWriteTokens = 10000, CacheWrite1hTokens = 4000,
+        });
+
+        await metered.GenerateAsync("p", cancellationToken: TestContext.Current.CancellationToken);
+
+        var recorded = Assert.Single(sink.Recorded);
+        Assert.Equal(4000, recorded.CacheWrite1hTokens);
+    }
+
+    [Fact]
     [Trait("BR", "RT-12")]
     public void ShouldPriceCacheWriteAndRead_WhenPricingDeclaresCacheRates()
     {

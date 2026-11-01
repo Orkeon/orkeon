@@ -57,5 +57,23 @@ public sealed class FakeGrowingSessionBufferService : ISessionBufferService
     public string? GetState(string key) => _inner.GetState(key);
 
     /// <inheritdoc />
-    public void SetState(string key, string? value) => _inner.SetState(key, value);
+    public void SetState(string key, string? value)
+    {
+        SetStateCalls++;
+        _inner.SetState(key, value);
+    }
+
+    /// <summary>The single-key writes received so far.</summary>
+    public int SetStateCalls { get; private set; }
+
+    /// <summary>The multi-key writes received so far.</summary>
+    public int SetStatesCalls { get; private set; }
+
+    /// <inheritdoc />
+    public void SetStates(IReadOnlyDictionary<string, string?> values)
+    {
+        SetStatesCalls++;
+        foreach (var (key, value) in values)
+            _inner.SetState(key, value);
+    }
 }

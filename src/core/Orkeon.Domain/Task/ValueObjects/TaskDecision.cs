@@ -57,8 +57,8 @@ public sealed class TaskDecision
             throw new ArgumentException($"A question cannot be named '{DecisionOutcome.DefaultedKey}': the decision output reserves that key.", nameof(questions));
 
         var floor = confidenceFloor ?? DecisionLimits.DefaultConfidenceFloor;
-        if (floor is < 0 or > 1)
-            throw new ArgumentOutOfRangeException(nameof(confidenceFloor), "The confidence floor lies in [0, 1].");
+        if (!double.IsFinite(floor) || floor is < 0 or > 1)
+            throw new ArgumentOutOfRangeException(nameof(confidenceFloor), "The confidence floor must be a finite number in [0, 1].");
 
         var answers = (fallback ?? ImmutableDictionary<string, string>.Empty).ToImmutableDictionary();
         foreach (var (question, answer) in answers)
@@ -105,9 +105,14 @@ public sealed class TaskDecision
         };
         return question switch
         {
-            // The score the model answers is the weighted position on the levels (BR-03): the
-            // fallback answers the position of its level on that same scale.
-            ScoreQuestionSpec score => answer with { Score = score.Levels.ToList().IndexOf(chosen) },
+            // A score answer is keyed by position and has no chosen option, as the model's is (BR-03).
+            ScoreQuestionSpec score => new DecisionAnswerValue
+            {
+                Score = score.Levels.ToList().IndexOf(chosen),
+                Confidence = 1,
+                Probabilities = score.Levels.Select((level, i) => (i, level))
+                    .ToDictionary(p => p.i.ToString(System.Globalization.CultureInfo.InvariantCulture), p => p.level == chosen ? 1.0 : 0.0),
+            },
             YesNoQuestionSpec => answer with { Probability = chosen == "yes" ? 1 : 0 },
             _ => answer,
         };

@@ -50,7 +50,7 @@ public sealed class JsTask
     /// <summary>Task-level tools (names or <see cref="JsTool"/> instances) captured by <c>taskBuilder().tools(...)</c>.</summary>
     internal IReadOnlyList<JsValue> Tools { get; }
 
-    /// <summary>The name given by <c>.name()</c>, or null.</summary>
+    /// <summary>The name given by <c>.name()</c>, else the full description.</summary>
     internal string? Key { get; }
 
     /// <summary>Plain data of <c>.decision({...})</c>, or null.</summary>

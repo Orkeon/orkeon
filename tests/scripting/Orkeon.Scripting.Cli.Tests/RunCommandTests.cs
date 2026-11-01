@@ -280,6 +280,51 @@ public sealed class RunCommandTests
         Assert.False(probe.Seen.Enabled);
     }
 
+    [Theory]
+    [Trait("BR", "BR-16")]
+    [InlineData("liquid", "Liquid")]
+    [InlineData("kev", "Kev")]
+    public async Task ShouldSwitchCircuitOff_WhenNoDecisionIsGivenWithAnyProvider(string provider, string section)
+    {
+        var json = "{\"Orkeon\":{\"Decision\":{\"Enabled\":true,\"Provider\":\"" + provider + "\"},"
+            + "\"" + section + "\":{\"Model\":\"test-model\"}}}";
+
+        var controlRegistered = false;
+
+        using var scratch = new ScriptScratch();
+        var script = scratch.WriteScript("nd.ork.ts", ResultOne);
+        var settings = scratch.WriteFile("appsettings.json", json);
+        using var console = new TestConsole();
+        DecisionCircuit? seen = null;
+        var modelRegistered = false;
+
+        var exit = await RunCommand.ExecuteAsync(console, new RunCommandOptions
+        {
+            ScriptPath = script,
+            SettingsPath = settings,
+            NoDecision = true,
+            ConfigureTestServices = (ctx, services) =>
+            {
+                modelRegistered = services.Any(d => d.ServiceType == typeof(IDecisionModel));
+                // Control: the real registration on this configuration makes an IDecisionModel available.
+                var control = new ServiceCollection();
+                Orkeon.Hosting.RunnerHost.RegisterDecisionModels(ctx, control, _ => null);
+                controlRegistered = control.Any(d => d.ServiceType == typeof(IDecisionModel));
+                services.AddSingleton<Microsoft.Extensions.Logging.ILoggerFactory>(sp =>
+                {
+                    seen = sp.GetRequiredService<DecisionCircuit>();
+                    return new Microsoft.Extensions.Logging.LoggerFactory();
+                });
+            },
+        });
+
+        Assert.Equal(Program.ExitOk, exit);
+        Assert.True(controlRegistered);
+        Assert.True(modelRegistered);
+        Assert.NotNull(seen);
+        Assert.False(seen.Enabled);
+    }
+
     [Fact]
     [Trait("BR", "UC-04")]
     public async Task ShouldSwitchCircuitOff_WhenYamlCrewRunsWithNoDecisionOption()

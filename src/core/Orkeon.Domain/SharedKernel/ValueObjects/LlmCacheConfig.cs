@@ -69,13 +69,20 @@ public sealed record LlmCacheConfig
     /// The configuration, or null when it asks for no breakpoint: caching stays off unless it was
     /// actually requested.
     /// </returns>
-    /// <exception cref="ArgumentException">The lifetime is not one of <see cref="Ttls"/>.</exception>
+    /// <exception cref="ArgumentException">The lifetime is not one of <see cref="Ttls"/>, or is set with no breakpoint.</exception>
     public static LlmCacheConfig? Request(bool systemPrompt, bool tools, string? ttl)
     {
         if (ttl is not null && !Ttls.Contains(ttl, StringComparer.Ordinal))
         {
             throw new ArgumentException(
                 $"cache ttl must be {string.Join(" or ", Ttls)}, not '{ttl}'; leave it out for the vendor default.",
+                nameof(ttl));
+        }
+
+        if (ttl is not null && !systemPrompt && !tools)
+        {
+            throw new ArgumentException(
+                "cache ttl caches nothing on its own: mark the system prompt or the tools as well.",
                 nameof(ttl));
         }
 

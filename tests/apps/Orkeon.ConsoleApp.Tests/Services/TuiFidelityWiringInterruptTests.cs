@@ -127,6 +127,10 @@ public sealed class TuiFidelityWiringInterruptTests
         {
             if (value is null) _state.Remove(key); else _state[key] = value;
         }
+        public void SetStates(IReadOnlyDictionary<string, string?> values)
+        {
+            foreach (var (key, value) in values) SetState(key, value);
+        }
     }
 
     private static (TuiIntegration Integration, LlmRetryProgressObserver Observer, ISessionBufferService Buffer) WiredWitness(string? configModel)

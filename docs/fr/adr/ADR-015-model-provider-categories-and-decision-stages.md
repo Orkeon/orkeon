@@ -28,9 +28,10 @@ chaque vérification de capacité devrait l'exclure.
    contrat : chacune garde son interface, sans base commune. `ModelProviderCatalog` liste chaque
    fournisseur distant avec ses catégories, sa variable de clé et son endpoint par défaut. Un
    fournisseur qui sert plusieurs catégories (OpenAI, Ollama) n'y figure qu'une fois.
-2. **`Decision` a son propre port**, `IDecisionModel` (`DecideAsync`, `ListModelsAsync`), avec des
+2. **`Decision` a son propre port**, `IDecisionModel` (`DecideAsync`), avec des
    DTO typés : des questions polymorphes (`choice`, `score`, `noul`, `box`) et leurs réponses.
-   `TypeSafeDecisionModel` en est le premier adaptateur, opt-in via `AddOrkeonTypeSafe`. Le compte
+   `SystemOneDecisionModel` en est l'adaptateur pour les fournisseurs System One, opt-in via
+   `AddOrkeonDecisionProvider`. Le compte
    des fournisseurs LLM reste à 16.
 3. **L'usage principal est une étape de décision autour d'un appel au LLM.** `DecisionLlmProvider`
    est un décorateur `ILlmProvider` qui exécute des étapes avant et après l'appel qu'il enveloppe.
@@ -46,8 +47,12 @@ chaque vérification de capacité devrait l'exclure.
 5. **Quand le modèle de décision échoue, l'appel continue** avec un avertissement (fail-open),
    sauf si le profil pose `FailClosed` : il est alors bloqué.
 6. **Les autres usages sont secondaires** et réutilisent le même port : la garde d'entrée des
-   agents `TypeSafeInputGuard`, le reranker RAG `decision` (alias `typesafe`) et le tool
+   agents `DecisionInputGuard`, le reranker RAG `decision` et le tool
    `system_one_decide`.
+
+   > Amendement 2026-10-31 : `IDecisionModel.ListModelsAsync` supprimée (aucun appelant).
+
+   > Amendement 2026-10-31 : la catégorie `Decision` gagne des fournisseurs, Liquid et Kev à côté de TypeSafe, tous derrière `IDecisionModel` et servis par `SystemOneDecisionModel` ; l'hôte nomme ou déduit un fournisseur actif. La forme de la catégorie ne change pas.
 
 ## Conséquences
 

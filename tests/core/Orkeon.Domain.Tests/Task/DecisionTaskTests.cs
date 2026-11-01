@@ -273,6 +273,7 @@ public class DecisionTaskTests
     [Theory]
     [Trait("BR", "BR-03")]
     [Trait("BR", "BR-12")]
+    [Trait("BR", "R-18")]
     [InlineData("low", 0.0)]
     [InlineData("mid", 1.0)]
     [InlineData("high", 2.0)]
@@ -285,7 +286,7 @@ public class DecisionTaskTests
         var answer = decision.FallbackOutcome().Answers["urgency"];
 
         Assert.Equal(expected, answer.Score);
-        Assert.Equal(level, answer.Chosen);
+        Assert.Null(answer.Chosen);
     }
 
     [Fact]
@@ -296,5 +297,27 @@ public class DecisionTaskTests
             TaskDecision.Create([YesNoQuestionSpec.Create(DecisionOutcome.DefaultedKey, "Is it?")]));
 
         Assert.Contains("'defaulted'", ex.Message);
+    }
+
+    [Theory]
+    [Trait("BR", "R-17")]
+    [InlineData(double.NaN)]
+    [InlineData(double.PositiveInfinity)]
+    [InlineData(double.NegativeInfinity)]
+    public void ShouldRefuseDecision_WhenConfidenceFloorIsNaN(double floor)
+    {
+        var ex = Assert.ThrowsAny<ArgumentException>(() => OneQuestion(floor: floor));
+
+        Assert.Contains("finite", ex.Message);
+    }
+
+    [Fact]
+    [Trait("BR", "R-21")]
+    public void ShouldRefuseScoreQuestion_WhenLevelsRepeat()
+    {
+        var ex = Assert.ThrowsAny<ArgumentException>(() =>
+            ScoreQuestionSpec.Create("urgency", "Rate", ["low", "mid", "low"]));
+
+        Assert.Contains("'low'", ex.Message);
     }
 }

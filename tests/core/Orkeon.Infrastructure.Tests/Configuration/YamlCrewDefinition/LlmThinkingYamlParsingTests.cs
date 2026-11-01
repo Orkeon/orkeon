@@ -127,4 +127,53 @@ agents:
         var agent = Assert.Single(config.Agents);
         Assert.Null(agent.LlmConfig!.Thinking);
     }
+
+    [Fact]
+    [Trait("BR", "R-41")]
+    public async Task ShouldRefuseYamlCrew_WhenThinkingEffortIsUnknown()
+    {
+        var loader = BuildLoader();
+        var yaml = """
+name: c
+goal: g
+agents:
+  a:
+    role: a
+    goal: g
+    llm:
+      model: deepseek-v4-flash
+      thinking:
+        enabled: true
+        effort: extreme
+""";
+
+        var ex = await Assert.ThrowsAnyAsync<Exception>(
+            () => loader.LoadFromStringAsync(yaml, TestContext.Current.CancellationToken));
+
+        Assert.Contains("extreme", ex.ToString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    [Trait("BR", "R-45")]
+    public async Task ShouldRefuseYamlCrew_WhenCacheHasTtlOnly()
+    {
+        var loader = BuildLoader();
+        var yaml = """
+name: c
+goal: g
+agents:
+  a:
+    role: a
+    goal: g
+    llm:
+      model: deepseek-v4-flash
+      cache:
+        ttl: 1h
+""";
+
+        var ex = await Assert.ThrowsAnyAsync<Exception>(
+            () => loader.LoadFromStringAsync(yaml, TestContext.Current.CancellationToken));
+
+        Assert.Contains("ttl", ex.ToString(), StringComparison.Ordinal);
+    }
 }

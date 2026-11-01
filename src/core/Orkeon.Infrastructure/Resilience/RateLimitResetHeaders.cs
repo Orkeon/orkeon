@@ -17,7 +17,7 @@ public sealed partial class RateLimitResetHeaders
     private static readonly string[] _durationHeaders =
         ["x-ratelimit-reset-requests", "x-ratelimit-reset-tokens"];
 
-    private static readonly string[] _millisecondHeaders = ["retry-after-ms"];
+    private const string _millisecondHeader = "retry-after-ms";
 
     /// <summary>The reason reported to retry observers while a rate-limit window is waited out.</summary>
     public const string Reason = "rate-limit window";
@@ -39,8 +39,9 @@ public sealed partial class RateLimitResetHeaders
                 longest = value < TimeSpan.Zero ? TimeSpan.Zero : value;
         }
 
+        var retryAfterMs = ParseMilliseconds(headers);
         var retryAfter = headers.RetryAfter;
-        Offer(retryAfter?.Delta ?? (retryAfter?.Date - now));
+        Offer(retryAfterMs ?? retryAfter?.Delta ?? (retryAfter?.Date - now));
 
         foreach (var name in _rfc3339Headers)
         {
@@ -53,14 +54,6 @@ public sealed partial class RateLimitResetHeaders
         {
             if (TryFirstValue(headers, name, out var raw))
                 Offer(ParseDuration(raw));
-        }
-
-        foreach (var name in _millisecondHeaders)
-        {
-            if (TryFirstValue(headers, name, out var raw)
-                && double.TryParse(raw, NumberStyles.Float, CultureInfo.InvariantCulture, out var milliseconds)
-                && double.IsFinite(milliseconds))
-                Offer(TimeSpan.FromMilliseconds(milliseconds));
         }
 
         return new RateLimitResetHeaders(longest);
@@ -82,6 +75,18 @@ public sealed partial class RateLimitResetHeaders
                 $"LLM {Reason} of {announced} exceeds the maximum wait of {maximum} (Llm:MaxRateLimitWait).",
                 announced);
         return window;
+    }
+
+    /// <summary>Reads <c>retry-after-ms</c>, which outranks <c>Retry-After</c>; a value beyond <see cref="TimeSpan.MaxValue"/> saturates.</summary>
+    private static TimeSpan? ParseMilliseconds(HttpResponseHeaders headers)
+    {
+        if (!TryFirstValue(headers, _millisecondHeader, out var raw)
+            || !double.TryParse(raw, NumberStyles.Float, CultureInfo.InvariantCulture, out var milliseconds)
+            || double.IsNaN(milliseconds))
+            return null;
+        return milliseconds >= TimeSpan.MaxValue.TotalMilliseconds ? TimeSpan.MaxValue
+            : milliseconds <= TimeSpan.MinValue.TotalMilliseconds ? TimeSpan.Zero
+            : TimeSpan.FromMilliseconds(milliseconds);
     }
 
     private static bool TryFirstValue(HttpResponseHeaders headers, string name, out string value)

@@ -65,16 +65,6 @@ Orkeon.Application.Decision.DTOs.DecisionImage.Format.get -> string!
 Orkeon.Application.Decision.DTOs.DecisionImage.Format.init -> void
 Orkeon.Application.Decision.DTOs.DecisionImage.Type.get -> string!
 Orkeon.Application.Decision.DTOs.DecisionImage.Type.init -> void
-Orkeon.Application.Decision.DTOs.DecisionModelDto
-Orkeon.Application.Decision.DTOs.DecisionModelDto.<Clone>$() -> Orkeon.Application.Decision.DTOs.DecisionModelDto!
-Orkeon.Application.Decision.DTOs.DecisionModelDto.DecisionModelDto() -> void
-Orkeon.Application.Decision.DTOs.DecisionModelDto.Description.get -> string!
-Orkeon.Application.Decision.DTOs.DecisionModelDto.Description.init -> void
-Orkeon.Application.Decision.DTOs.DecisionModelDto.Equals(Orkeon.Application.Decision.DTOs.DecisionModelDto? other) -> bool
-Orkeon.Application.Decision.DTOs.DecisionModelDto.Name.get -> string!
-Orkeon.Application.Decision.DTOs.DecisionModelDto.Name.init -> void
-Orkeon.Application.Decision.DTOs.DecisionModelDto.ReleaseDate.get -> string!
-Orkeon.Application.Decision.DTOs.DecisionModelDto.ReleaseDate.init -> void
 Orkeon.Application.Decision.DTOs.DecisionQuestion
 Orkeon.Application.Decision.DTOs.DecisionQuestion.DecisionQuestion() -> void
 Orkeon.Application.Decision.DTOs.DecisionQuestion.DecisionQuestion(Orkeon.Application.Decision.DTOs.DecisionQuestion! original) -> void
@@ -175,7 +165,6 @@ Orkeon.Application.Decision.DecisionVerdict.Reason.get -> string?
 Orkeon.Application.Decision.DecisionVerdict.Reason.init -> void
 Orkeon.Application.Interfaces.Ports.IDecisionModel
 Orkeon.Application.Interfaces.Ports.IDecisionModel.DecideAsync(Orkeon.Application.Decision.DTOs.DecisionRequest! request, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Application.Decision.DTOs.DecisionResponse!>!
-Orkeon.Application.Interfaces.Ports.IDecisionModel.ListModelsAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Immutable.ImmutableList<Orkeon.Application.Decision.DTOs.DecisionModelDto!>!>!
 Orkeon.Application.Interfaces.Ports.IDecisionModel.Name.get -> string!
 Orkeon.Application.Interfaces.Ports.IDecisionStage
 Orkeon.Application.Interfaces.Ports.IDecisionStage.Name.get -> string!
@@ -183,6 +172,10 @@ Orkeon.Application.Interfaces.Ports.IDecisionStage.OnRequestAsync(Orkeon.Domain.
 Orkeon.Application.Interfaces.Ports.IDecisionStage.OnResponseAsync(Orkeon.Domain.SharedKernel.ValueObjects.LlmMessage![]! messages, Orkeon.Domain.SharedKernel.ValueObjects.LlmResponse! response, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Application.Decision.DecisionVerdict!>!
 Orkeon.Application.Interfaces.Services.CrewExecutionEvent.Defaulted.get -> bool
 Orkeon.Application.Interfaces.Services.CrewExecutionEvent.Defaulted.init -> void
+Orkeon.Application.Interfaces.Services.CrewExecutionEvent.IsDecision.get -> bool
+Orkeon.Application.Interfaces.Services.CrewExecutionEvent.IsDecision.init -> void
+Orkeon.Application.Interfaces.Services.CrewExecutionEvent.DecisionAnswers.get -> string?
+Orkeon.Application.Interfaces.Services.CrewExecutionEvent.DecisionAnswers.init -> void
 Orkeon.Application.Interfaces.Services.TaskResult.Decision.get -> Orkeon.Domain.Task.ValueObjects.DecisionOutcome?
 Orkeon.Application.Interfaces.Services.TaskResult.Decision.init -> void
 abstract Orkeon.Application.Decision.DTOs.DecisionAnswer.<Clone>$() -> Orkeon.Application.Decision.DTOs.DecisionAnswer!
@@ -216,9 +209,6 @@ override Orkeon.Application.Decision.DTOs.DecisionAnswer.ToString() -> string!
 override Orkeon.Application.Decision.DTOs.DecisionImage.Equals(object? obj) -> bool
 override Orkeon.Application.Decision.DTOs.DecisionImage.GetHashCode() -> int
 override Orkeon.Application.Decision.DTOs.DecisionImage.ToString() -> string!
-override Orkeon.Application.Decision.DTOs.DecisionModelDto.Equals(object? obj) -> bool
-override Orkeon.Application.Decision.DTOs.DecisionModelDto.GetHashCode() -> int
-override Orkeon.Application.Decision.DTOs.DecisionModelDto.ToString() -> string!
 override Orkeon.Application.Decision.DTOs.DecisionQuestion.Equals(object? obj) -> bool
 override Orkeon.Application.Decision.DTOs.DecisionQuestion.GetHashCode() -> int
 override Orkeon.Application.Decision.DTOs.DecisionQuestion.ToString() -> string!
@@ -279,8 +269,6 @@ static Orkeon.Application.Decision.DTOs.DecisionAnswer.operator !=(Orkeon.Applic
 static Orkeon.Application.Decision.DTOs.DecisionAnswer.operator ==(Orkeon.Application.Decision.DTOs.DecisionAnswer? left, Orkeon.Application.Decision.DTOs.DecisionAnswer? right) -> bool
 static Orkeon.Application.Decision.DTOs.DecisionImage.operator !=(Orkeon.Application.Decision.DTOs.DecisionImage? left, Orkeon.Application.Decision.DTOs.DecisionImage? right) -> bool
 static Orkeon.Application.Decision.DTOs.DecisionImage.operator ==(Orkeon.Application.Decision.DTOs.DecisionImage? left, Orkeon.Application.Decision.DTOs.DecisionImage? right) -> bool
-static Orkeon.Application.Decision.DTOs.DecisionModelDto.operator !=(Orkeon.Application.Decision.DTOs.DecisionModelDto? left, Orkeon.Application.Decision.DTOs.DecisionModelDto? right) -> bool
-static Orkeon.Application.Decision.DTOs.DecisionModelDto.operator ==(Orkeon.Application.Decision.DTOs.DecisionModelDto? left, Orkeon.Application.Decision.DTOs.DecisionModelDto? right) -> bool
 static Orkeon.Application.Decision.DTOs.DecisionQuestion.operator !=(Orkeon.Application.Decision.DTOs.DecisionQuestion? left, Orkeon.Application.Decision.DTOs.DecisionQuestion? right) -> bool
 static Orkeon.Application.Decision.DTOs.DecisionQuestion.operator ==(Orkeon.Application.Decision.DTOs.DecisionQuestion? left, Orkeon.Application.Decision.DTOs.DecisionQuestion? right) -> bool
 static Orkeon.Application.Decision.DTOs.DecisionRequest.operator !=(Orkeon.Application.Decision.DTOs.DecisionRequest? left, Orkeon.Application.Decision.DTOs.DecisionRequest? right) -> bool
@@ -331,3 +319,6 @@ Orkeon.Application.Crew.TaskExecutionSnapshot.CacheMissTokens.get -> long?
 Orkeon.Application.Interfaces.Services.TaskResult.CacheHitTokens.get -> long?
 Orkeon.Application.Interfaces.Services.TaskResult.CacheMissTokens.get -> long?
 Orkeon.Application.Interfaces.Ports.ISessionBufferService.AppendMessage(Orkeon.Application.Interfaces.Ports.SessionMessage! message) -> void
+Orkeon.Application.Interfaces.Ports.ISessionBufferService.SetStates(System.Collections.Generic.IReadOnlyDictionary<string!, string?>! values) -> void
+Orkeon.Application.Interfaces.Ports.CostUsageEvent.CacheWrite1hTokens.get -> int
+Orkeon.Application.Interfaces.Ports.CostUsageEvent.CacheWrite1hTokens.init -> void

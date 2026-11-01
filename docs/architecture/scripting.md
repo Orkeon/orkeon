@@ -141,7 +141,7 @@ the call starts (one `ActSession` per call):
   (`LlmConfig.Thinking`, enabled with that effort). The same `effort` is accepted by the other `ctx.llm`
   calls, by `LlmConfig.with({...})` (`llm.default_.with({ effort })`) and by `agentBuilder().effort(level)`; any other value is refused with
   `effort must be low|medium|high|xhigh|max`. Anthropic takes the five levels; a provider whose field knows
-  fewer (its declared `EffortLevels`: three for OpenAI's `reasoning_effort` and Ollama's `think`) sends the
+  fewer (its declared `EffortLevels`: three for OpenAI's `reasoning_effort` and Ollama's `think`; `low`, `medium`, `high` and `max` for DeepSeek and Z.ai; all five for Anthropic and OpenRouter) sends the
   highest level it knows below the one asked, and logs a warning saying so, never a silent change.
   The prompt cache is requested the same way on an agent, `agentBuilder().cache({ systemPrompt: true, tools: true,
   ttl: "1h" })` or `llm.default_.with({ cache: { systemPrompt: true } })`, mapped onto the YAML `cache:` block
@@ -377,7 +377,7 @@ The sandbox limits are read from `Orkeon:Scripting:Limits` (`ScriptingLimitsOpti
 
 | Key | Default | Meaning |
 |---|---|---|
-| `MemoryLimitBytes` | `104857600` (100 MB) | Jint memory ceiling. What a host tool the script calls (`tools.*`, `ctx.llm.act`) allocates on the engine thread is left out: its own work is not counted. `orkeon run --memory-limit-mb` overrides it for a procedural script; `0` or less disables it. |
+| `MemoryLimitBytes` | `104857600` (100 MB) | Jint memory ceiling. What a host tool the script calls (`tools.*`, or a tool call made by `ctx.llm.act`) allocates on the engine thread is left out: only the execution of the tool is outside the limit, not the rest of `ctx.llm.act`. The exclusion is closed on any exit from the tool call (an exception included), holds across nesting and `Reset()`, and belongs to the thread that opened it. `orkeon run --memory-limit-mb` overrides it for a procedural script; `0` or less disables it. |
 | `RecursionLimit` | `64` | Maximum JavaScript call depth. |
 | `ExecutionTimeout` | `00:00:30` | Wall-clock bound of one evaluation — a whole script, or a whole CLR-driven crew run; the permission gate's decisions are not counted. |
 

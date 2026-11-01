@@ -32,7 +32,9 @@ internal sealed class DecisionDispatch
         foreach (var dependency in task.Dependencies)
         {
             var named = crewTasks.FirstOrDefault(t => t.Id == dependency);
-            var produced = previousOutputs.FirstOrDefault(o => o.TaskId == dependency.Value.ToString());
+            // The last successful attempt of the dependency, else its last attempt: a retry that recovered wins over the failure before it.
+            var attempts = previousOutputs.Where(o => o.TaskId == dependency.Value.ToString()).ToList();
+            var produced = attempts.LastOrDefault(o => o.Success) ?? attempts.LastOrDefault();
             if (named is not null && produced is not null)
                 inputs.Add((DecisionPreflight.NameOf(named), produced.Content));
         }

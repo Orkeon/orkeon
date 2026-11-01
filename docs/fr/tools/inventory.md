@@ -57,18 +57,18 @@ celui ci-dessus — est ce que le YAML référence.
 
 | Tool | Classe | Cas d'usage |
 |-------|--------|-------------|
-| `session_store` | `SessionStoreTool` | Lire/écrire/tronquer/annoter le buffer de session et ses métadonnées ; `append_message` ajoute un message sans réécrire le buffer, `get_state` lit une `key` ou plusieurs `keys`, `set_state` écrit une `key` ou plusieurs `values` et supprime plusieurs `keys` |
+| `session_store` | `SessionStoreTool` | Lire/écrire/tronquer/annoter le buffer de session et ses métadonnées ; `append_message` ajoute un message sans réécrire le buffer, `get_state` lit une `key` ou plusieurs `keys`, `set_state` écrit une `key` ou plusieurs `values` et supprime plusieurs `keys` ; une écriture multi-clés est tout ou rien, un recouvrement `values` / `keys` ou une `key` / `value` mêlée à `values` / `keys` est refusé, et en mode `plan` seules les lectures (`get_state`, `read_messages`, `get_metadata`) sont admises |
 | `session_snip` | `SessionSnipTool` | Tronquer immédiatement la conversation à une fenêtre minimale |
 | `session_stats` | `SessionStatsTool` | Télémétrie complète de session : messages, tokens, coût, totaux d'appels |
 | `session_cost` | `SessionCostTool` | Coût cumulé de la session en USD avec ventilation par modèle |
 | `token_budget` | `TokenBudgetTool` | Taille de la fenêtre de contexte, tokens consommés et ce qui les remplit (`used_tokens_by_kind` : `system`, `user`, `assistant`, `tool`, `other`), budget disponible |
 | `memory_store` | `MemoryStoreTool` | Lister/ajouter/supprimer/lire des mémoires typées (user/project/feedback/reference) |
 
-## Tool de décision (`Orkeon.Infrastructure`) — `AddOrkeonTypeSafe(configuration)`
+## Tool de décision (`Orkeon.Infrastructure`) — `AddOrkeonDecisionProvider(configuration)`
 
 | Tool | Classe | Cas d'usage | Exemple d'appel |
 |-------|--------|-------------|-----------------|
-| `system_one_decide` | `SystemOneDecideTool` | Poser au modèle de décision configuré (Jev de TypeSafe, voir [Modèles de décision](../architecture/decision-models.md)) des questions typées sur un état : `choice`, `score` ou `noul`, chaque réponse avec ses probabilités calibrées et une confiance ; les questions `box` sont refusées (les images ne passent pas par un appel de tool) et la clé d'API n'apparaît jamais dans la requête | `{ "state": { "ticket": "Refund not received" }, "questions": { "urgent": { "type": "noul", "instructions": "Does the customer need an answer today?", "criteria": { "true": "An answer is needed today", "false": "It can wait" } } } }` |
+| `system_one_decide` | `SystemOneDecideTool` | Poser au fournisseur de décision actif (TypeSafe, Liquid ou Kev, voir [Modèles de décision](../architecture/decision-models.md)) des questions typées sur un état : `choice`, `score` ou `noul`, chaque réponse avec ses probabilités calibrées et une confiance ; les questions `box` sont refusées (les images ne passent pas par un appel de tool) et la clé d'API n'apparaît jamais dans la requête | `{ "state": { "ticket": "Refund not received" }, "questions": { "urgent": { "type": "noul", "instructions": "Does the customer need an answer today?", "criteria": { "true": "An answer is needed today", "false": "It can wait" } } } }` |
 
 ## Tools fichiers (`Orkeon.Tools.FileSystem`) — `AddOrkeonFileSystemTools()`
 
@@ -89,7 +89,7 @@ pour `node_outline`, `node_read`, `structural_search`, `structural_rewrite`, `tx
 | `directory_search` | `DirectorySearchTool` | `ToolBase<DirectorySearchRequest, DirectorySearchResponse>` | Recherche sémantique RAG dans les fichiers d'un répertoire (collection éphémère — exige le sous-système RAG à l'appel, voir ci-dessous) | `{ "path": "/docs", "query": "deployment instructions", "file_patterns": "*.md;*.txt" }` |
 | `count_pattern` | `CountPatternTool` | `FileToolBase<CountPatternRequest, CountPatternResponse>` | Compte déterministe des occurrences d'un motif regex dans un fichier (aucune estimation LLM) | `{ "path": "/data/log.txt", "patterns": ["ERROR", "WARN"] }` |
 | `glob` | `GlobTool` | `FileToolBase<GlobRequest, GlobResponse>` | Fichiers correspondant à un motif sous une racine montée, bornés par `max_results` (`pattern` relatif à `path`). Classe Read | `{ "path": "/workspace", "pattern": "**/*.cs", "max_results": 100 }` |
-| `grep` | `GrepTool` | `FileToolBase<GrepRequest, GrepResponse>` | Recherche regex ligne à ligne renvoyant `path:line:text`, bornée par `max_results` / `max_files`, fichiers binaires ou de plus de 1 Mio ignorés, délai par correspondance ; `glob` filtre relatif à `path`. Chaque réponse porte `total_matches`, `files_matched` et `scan_complete` ; `output_mode: "count"` supprime les lignes de résultat et renvoie les comptes par fichier, si bien qu'une question « combien » sur une arborescence tient en un appel. Classe Read | `{ "path": "/workspace", "pattern": "TODO", "glob": "**/*.cs" }` |
+| `grep` | `GrepTool` | `FileToolBase<GrepRequest, GrepResponse>` | Recherche regex ligne à ligne renvoyant `path:line:text`, bornée par `max_results` / `max_files`, fichiers binaires ou de plus de 1 Mio ignorés, délai par correspondance ; `glob` filtre relatif à `path`. Chaque réponse porte `total_matches`, `files_matched`, `scan_complete` (faux quand un fichier de plus de 1 Mio n'a pas été lu, que le budget de temps est épuisé ou que `max_files` a coupé le scan) et `truncated` (vrai quand une liste ou les comptes sont coupés) ; `output_mode: "count"` supprime les lignes de résultat et renvoie les comptes par fichier, si bien qu'une question « combien » sur une arborescence tient en un appel. Le mode `hits`, par défaut, lit tous les fichiers candidats jusqu'à `max_files` ou au budget de 20 s, même une fois `max_results` atteint, pour que `total_matches` reste exact ; une grande arborescence peut finir `timed_out` ou `truncated`. Classe Read | `{ "path": "/workspace", "pattern": "TODO", "glob": "**/*.cs" }` |
 
 `directory_search` — comme `txt_search`, `mdx_search` et `pdf_search` plus bas — cherche au travers
 des collections éphémères du sous-système RAG : l'extension l'enregistre et le construit sans lui,
@@ -233,7 +233,7 @@ Vingt-huit tools sur le graphe sémantique de code RaggableTree — le guide com
 
 | Tool | Classe | Cas d'usage |
 |-------|--------|-------------|
-| `index_codebase` | `IndexCodebaseTool` | Scanner la codebase et construire l'index RaggableTree complet |
+| `index_codebase` | `IndexCodebaseTool` | Scanner la codebase et construire l'index RaggableTree complet ; recharge l'index sauvegardé depuis le cache (`use_cache`, vrai par défaut ; `false` reconstruit), analyse `max_parallelism` fichiers à la fois (0 = un par processeur) |
 | `incremental_reindex` | `IncrementalReindexTool` | Réindexer seulement les fichiers modifiés depuis un commit ou une liste explicite |
 | `index_status` | `IndexStatusTool` | Lister chaque racine virtuelle actuellement indexée |
 | `is_path_indexed` | `IsPathIndexedTool` | Vérifier si un chemin virtuel est couvert par une racine indexée |
@@ -524,7 +524,7 @@ correspondance alphabétique complète :
 | `sub_graph` | `SubGraphTool` | `Orkeon.Tools.Analysis` |
 | `symbol_detail` | `SymbolDetailTool` | `Orkeon.Tools.Analysis` |
 | `symbol_source` | `SymbolSourceTool` | `Orkeon.Tools.Analysis` |
-| `system_one_decide` | `SystemOneDecideTool` | `Orkeon.Infrastructure` (opt-in, `AddOrkeonTypeSafe`) |
+| `system_one_decide` | `SystemOneDecideTool` | `Orkeon.Infrastructure` (opt-in, `AddOrkeonDecisionProvider`) |
 | `token_budget` | `TokenBudgetTool` | `Orkeon.Infrastructure` |
 | `txt_search` | `TxtSearchTool` | `Orkeon.Tools.Data` |
 | `wait_for_event` | `WaitForEventTool` | `Orkeon.Tools.EventHub` |

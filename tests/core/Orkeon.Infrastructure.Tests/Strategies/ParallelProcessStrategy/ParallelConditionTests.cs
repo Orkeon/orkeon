@@ -16,6 +16,7 @@ using Orkeon.Infrastructure.Crew.Strategies;
 using Orkeon.Infrastructure.Persistence.Agent;
 using Orkeon.Infrastructure.Persistence.Task;
 using Orkeon.Infrastructure.Tests.Doubles;
+using DomainAgent = Orkeon.Domain.Agent.Agent;
 using DomainCrew = Orkeon.Domain.Crew.Crew;
 using TaskStatus = Orkeon.Domain.Task.ValueObjects.TaskStatus;
 
@@ -26,6 +27,8 @@ public sealed class ParallelConditionTests : IDisposable
     private readonly MockAgentExecutionService _executionService = new();
     private readonly MockMemoryScope _memoryScope = new();
     private readonly FakeDecisionModel _model = new();
+    private readonly List<DomainAgent> _agents = [];
+    private readonly Dictionary<TaskId, DomainAgent> _agentOf = [];
     private readonly MockCrewExecutionHook _hook = new();
     private readonly List<TaskId> _ran = [];
     private readonly Dictionary<TaskId, SimpleExecutionContext> _contexts = [];
@@ -34,12 +37,13 @@ public sealed class ParallelConditionTests : IDisposable
     public ParallelConditionTests()
     {
         Answer("a");
-        _executionService.SetExecuteFunc((_, task, context, _) =>
+        _executionService.SetExecuteFunc((agent, task, context, _) =>
         {
             lock (_gate)
             {
                 _ran.Add(task.TaskId);
                 _contexts[task.TaskId] = context;
+                _agentOf[task.TaskId] = agent;
             }
             return new TaskResult(true, "out-" + task.TaskId, null, [], TimeSpan.Zero);
         });
@@ -206,8 +210,79 @@ public sealed class ParallelConditionTests : IDisposable
         Assert.Null(plainSnapshot.DecisionAnswers);
     }
 
-    private static System.Threading.Tasks.Task<Orkeon.Domain.Crew.CrewOutput> RunAsync(ParallelProcessStrategy strategy, DomainCrew crew) =>
-        strategy.ExecuteParallelAsync(crew, cancellationToken: TestContext.Current.CancellationToken);
+    [Fact]
+    [Trait("BR", "R-24")]
+    public async System.Threading.Tasks.Task ShouldGiveNextAgentToNextRunTask_WhenConditionSkipsTask()
+    {
+        var decide = DecisionTask("Decide", null);
+        var skipped = Conditioned("Skipped branch", decide, OneOf(decide, "b"));
+        var run = Conditioned("Run branch", decide, OneOf(decide, "a"));
+        var (crew, strategy) = Build([decide, skipped, run], DecisionCircuit.On, agentCount: 2);
+
+        var output = await RunAsync(strategy, crew);
+
+        Assert.True(output.Success, output.Error);
+        Assert.Equal([run.Id], _ran);
+        Assert.Equal(_agents[0].Id, _agentOf[run.Id].Id);
+    }
+
+    [Fact]
+    [Trait("BR", "R-27")]
+    public async System.Threading.Tasks.Task ShouldRunCrew_WhenEveryTaskIsADecision()
+    {
+        var decide = DecisionTask("Decide", null);
+        var (crew, strategy) = Build([decide], DecisionCircuit.On, agentCount: 0);
+
+        var output = await RunAsync(strategy, crew);
+
+        Assert.True(output.Success, output.Error);
+        Assert.Single(_model.Requests);
+        Assert.Equal(TaskStatus.Completed, decide.Status);
+        Assert.Equal(0, _executionService.ExecuteTaskCallCount);
+    }
+
+    [Fact]
+    [Trait("BR", "R-29")]
+    public async System.Threading.Tasks.Task ShouldSkipDependants_WhenParallelDecisionFails()
+    {
+        _model.Failure = new InvalidOperationException("model down");
+        var decide = DecisionTask("Decide", null);
+        var branch = Conditioned("Branch", decide, OneOf(decide, "a"));
+        var (crew, strategy) = Build([decide, branch], DecisionCircuit.On);
+
+        var output = await RunAsync(strategy, crew);
+
+        Assert.Empty(_ran);
+        Assert.Equal(TaskStatus.Failed, decide.Status);
+        Assert.NotEqual(TaskStatus.Completed, branch.Status);
+        Assert.False(output.Success);
+    }
+
+    [Fact]
+    [Trait("BR", "R-29")]
+    public async System.Threading.Tasks.Task ShouldStopWithoutRunningBranches_WhenCancelledDuringDecision()
+    {
+        using var cts = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
+        _model.RespondAsync = async (_, ct) =>
+        {
+            await cts.CancelAsync();
+            await System.Threading.Tasks.Task.Delay(Timeout.Infinite, ct);
+            throw new InvalidOperationException("unreachable");
+        };
+        var decide = DecisionTask("Decide", null);
+        var branch = Conditioned("Branch", decide, OneOf(decide, "a"));
+        var (crew, strategy) = Build([decide, branch], DecisionCircuit.On);
+
+        var thrown = await Record.ExceptionAsync(() => RunAsync(strategy, crew, cts.Token));
+
+        Assert.True(thrown is null or OperationCanceledException, thrown?.ToString());
+        Assert.Empty(_ran);
+        Assert.NotEqual(TaskStatus.Completed, branch.Status);
+        Assert.NotEqual(TaskStatus.Completed, decide.Status);
+    }
+
+    private static System.Threading.Tasks.Task<Orkeon.Domain.Crew.CrewOutput> RunAsync(ParallelProcessStrategy strategy, DomainCrew crew, CancellationToken? token = null) =>
+        strategy.ExecuteParallelAsync(crew, cancellationToken: token ?? TestContext.Current.CancellationToken);
 
     private void Answer(string choice) =>
         _model.Respond = request => new DecisionResponse
@@ -236,17 +311,22 @@ public sealed class ParallelConditionTests : IDisposable
     private static CrewTask Conditioned(string name, CrewTask decide, TaskCondition condition) =>
         new CrewTaskBuilder().Description(name).ExpectedOutput(name).When(decide.Id, condition).Build();
 
-    private (DomainCrew Crew, ParallelProcessStrategy Strategy) Build(IReadOnlyList<CrewTask> tasks, DecisionCircuit circuit)
+    private (DomainCrew Crew, ParallelProcessStrategy Strategy) Build(IReadOnlyList<CrewTask> tasks, DecisionCircuit circuit, int agentCount = 1)
     {
-        var agent = new AgentBuilder().Role("Worker").Goal("Work").Backstory("Works").Build();
+        _agents.Clear();
+        for (var i = 0; i < agentCount; i++)
+            _agents.Add(new AgentBuilder().Role("Worker " + i).Goal("Work").Backstory("Works").Build());
         var unitOfWork = new NullUnitOfWork();
         var taskRepository = new InMemoryTaskRepository(unitOfWork);
         var agentRepository = new InMemoryAgentRepository(unitOfWork);
         foreach (var task in tasks)
             taskRepository.AddAsync(task).GetAwaiter().GetResult();
-        agentRepository.AddAsync(agent).GetAwaiter().GetResult();
+        foreach (var agent in _agents)
+            agentRepository.AddAsync(agent).GetAwaiter().GetResult();
 
-        var builder = new CrewBuilder().Goal("Pipeline").Parallel().WithAgent(agent);
+        var builder = new CrewBuilder().Goal("Pipeline").Parallel();
+        foreach (var agent in _agents)
+            builder.WithAgent(agent);
         foreach (var task in tasks)
             builder.WithTask(task);
 

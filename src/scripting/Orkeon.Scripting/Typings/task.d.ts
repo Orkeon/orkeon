@@ -63,13 +63,19 @@ declare global {
          */
         deliverable(spec: TaskDeliverableSpec): this;
         /**
-         * Makes this task a decision task: it asks the LLM the listed questions and records the
-         * answers, which later tasks branch on with `when`.
+         * Makes this task a decision task: it queries the configured decision model
+         * (`IDecisionModel`) with the listed questions and records the answers, which later
+         * tasks branch on with `when`. Refused at load, naming the task and the key: a `state`
+         * that is not an array, a `fallback` that is not an object or holds a non-string value,
+         * a `choice` value or a `score` entry that is not a string. Two tasks with the same
+         * `name` are refused; a task without `.name()` is keyed by its full description
+         * (truncation is display only).
          */
         decision(spec: DecisionSpec): this;
         /**
          * Runs this task only when the named decision task's answers match `clauses`, or
-         * (`"otherwise"`) when no other task gated on that decision matches.
+         * (`"otherwise"`) when no other task gated on that decision matches. A task takes one
+         * `.when()`: a second call throws an `InvalidScriptException` naming the task.
          */
         when(decisionTask: string, clauses: WhenClauses | "otherwise"): this;
         build(): Task<TIn, TOut>;
@@ -84,7 +90,7 @@ declare global {
         state?: string[];
         /** Ask the long-context model. */
         longContext?: boolean;
-        /** Question name to the answer given when the decision circuit is off (`--no-decision`, `Orkeon:Decision:Enabled=false`, no model). */
+        /** Question name to the answer (a string, anything else is refused at load) given when the decision circuit is off (`--no-decision`, `Orkeon:Decision:Enabled=false`, no model). */
         fallback?: Record<string, string>;
     }
 
