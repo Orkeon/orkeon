@@ -1,73 +1,5 @@
 Package: orkeon
 Architecture: amd64
-Version: 1.0.0~rc.6.dev.499
-Priority: optional
-Section: devel
-Maintainer: Orkeon Contributors <arion@orkeon.org>
-Installed-Size: 341340
-Depends: libicu78 | libicu77 | libicu76 | libicu74 | libicu72 | libicu70, libssl3t64 | libssl3, zlib1g, libgcc-s1, libc6 (>= 2.34), ca-certificates, bubblewrap
-Recommends: orkeon-archive-keyring
-Filename: releases/download/apt-dev/orkeon_1.0.0-rc.6.dev.499_amd64.deb
-Size: 101346694
-SHA256: 4c7ef794adbfbd136caabaa16d1fe43d55f79cda14b4997066b778aef28d73ae
-Homepage: https://github.com/Orkeon/orkeon
-Description: multi-agent AI orchestration framework and CLI
- Orkeon builds teams of LLM agents that collaborate on a goal: sequential,
- hierarchical, parallel, consensual, graph and autonomous orchestration, a
- tool system, memory providers and a retrieval-augmented generation pipeline.
- .
- The orkeon command line tool can run TypeScript-scripted crews (orkeon run),
- ingest, search and evaluate a RAG corpus (orkeon rag ingest / rag search /
- rag eval), scaffold a new workspace (orkeon init) and diagnose an install
- (orkeon doctor).
- .
- The package also ships orkeon-repl, the interactive console: it drives agents,
- crews and tools from a terminal and runs the TypeScript-scripted commands
- (*.cmd.ts) that the orkeon command line tool does not run.
- .
- It ships the Orkeon Studio console apps too: orkeon-studio-config
- (guided appsettings editor) and orkeon-studio-run (crew launcher with live
- logs), both built on Terminal.Gui.
- .
- This package is self-contained: the .NET runtime and the esbuild toolchain
- ship inside it, so no .NET installation or third-party repository is needed.
-
-Package: orkeon
-Architecture: arm64
-Version: 1.0.0~rc.6.dev.499
-Priority: optional
-Section: devel
-Maintainer: Orkeon Contributors <arion@orkeon.org>
-Installed-Size: 343096
-Depends: libicu78 | libicu77 | libicu76 | libicu74 | libicu72 | libicu70, libssl3t64 | libssl3, zlib1g, libgcc-s1, libc6 (>= 2.34), ca-certificates, bubblewrap
-Recommends: orkeon-archive-keyring
-Filename: releases/download/apt-dev/orkeon_1.0.0-rc.6.dev.499_arm64.deb
-Size: 97824580
-SHA256: b81b542977d55dd7f61d213554f5533e28f4ad2512b57892f8215d51ba0c48ca
-Homepage: https://github.com/Orkeon/orkeon
-Description: multi-agent AI orchestration framework and CLI
- Orkeon builds teams of LLM agents that collaborate on a goal: sequential,
- hierarchical, parallel, consensual, graph and autonomous orchestration, a
- tool system, memory providers and a retrieval-augmented generation pipeline.
- .
- The orkeon command line tool can run TypeScript-scripted crews (orkeon run),
- ingest, search and evaluate a RAG corpus (orkeon rag ingest / rag search /
- rag eval), scaffold a new workspace (orkeon init) and diagnose an install
- (orkeon doctor).
- .
- The package also ships orkeon-repl, the interactive console: it drives agents,
- crews and tools from a terminal and runs the TypeScript-scripted commands
- (*.cmd.ts) that the orkeon command line tool does not run.
- .
- It ships the Orkeon Studio console apps too: orkeon-studio-config
- (guided appsettings editor) and orkeon-studio-run (crew launcher with live
- logs), both built on Terminal.Gui.
- .
- This package is self-contained: the .NET runtime and the esbuild toolchain
- ship inside it, so no .NET installation or third-party repository is needed.
-
-Package: orkeon
-Architecture: amd64
 Version: 1.0.0~rc.6.dev.502
 Priority: optional
 Section: devel
@@ -180,6 +112,74 @@ Recommends: orkeon-archive-keyring
 Filename: releases/download/apt-dev/orkeon_1.0.0-rc.6.dev.504_arm64.deb
 Size: 97834284
 SHA256: 1a67673900be22715280e49308c17d3aff22c68b50d0a81b38618410a40b02e3
+Homepage: https://github.com/Orkeon/orkeon
+Description: multi-agent AI orchestration framework and CLI
+ Orkeon builds teams of LLM agents that collaborate on a goal: sequential,
+ hierarchical, parallel, consensual, graph and autonomous orchestration, a
+ tool system, memory providers and a retrieval-augmented generation pipeline.
+ .
+ The orkeon command line tool can run TypeScript-scripted crews (orkeon run),
+ ingest, search and evaluate a RAG corpus (orkeon rag ingest / rag search /
+ rag eval), scaffold a new workspace (orkeon init) and diagnose an install
+ (orkeon doctor).
+ .
+ The package also ships orkeon-repl, the interactive console: it drives agents,
+ crews and tools from a terminal and runs the TypeScript-scripted commands
+ (*.cmd.ts) that the orkeon command line tool does not run.
+ .
+ It ships the Orkeon Studio console apps too: orkeon-studio-config
+ (guided appsettings editor) and orkeon-studio-run (crew launcher with live
+ logs), both built on Terminal.Gui.
+ .
+ This package is self-contained: the .NET runtime and the esbuild toolchain
+ ship inside it, so no .NET installation or third-party repository is needed.
+
+Package: orkeon
+Architecture: amd64
+Version: 1.0.0~rc.6.dev.506
+Priority: optional
+Section: devel
+Maintainer: Orkeon Contributors <arion@orkeon.org>
+Installed-Size: 341356
+Depends: libicu78 | libicu77 | libicu76 | libicu74 | libicu72 | libicu70, libssl3t64 | libssl3, zlib1g, libgcc-s1, libc6 (>= 2.34), ca-certificates, bubblewrap
+Recommends: orkeon-archive-keyring
+Filename: releases/download/apt-dev/orkeon_1.0.0-rc.6.dev.506_amd64.deb
+Size: 101351358
+SHA256: f750f3f48f230334c1491642911d6352b85fe80d203d30fcc83b5c3d9c3215f8
+Homepage: https://github.com/Orkeon/orkeon
+Description: multi-agent AI orchestration framework and CLI
+ Orkeon builds teams of LLM agents that collaborate on a goal: sequential,
+ hierarchical, parallel, consensual, graph and autonomous orchestration, a
+ tool system, memory providers and a retrieval-augmented generation pipeline.
+ .
+ The orkeon command line tool can run TypeScript-scripted crews (orkeon run),
+ ingest, search and evaluate a RAG corpus (orkeon rag ingest / rag search /
+ rag eval), scaffold a new workspace (orkeon init) and diagnose an install
+ (orkeon doctor).
+ .
+ The package also ships orkeon-repl, the interactive console: it drives agents,
+ crews and tools from a terminal and runs the TypeScript-scripted commands
+ (*.cmd.ts) that the orkeon command line tool does not run.
+ .
+ It ships the Orkeon Studio console apps too: orkeon-studio-config
+ (guided appsettings editor) and orkeon-studio-run (crew launcher with live
+ logs), both built on Terminal.Gui.
+ .
+ This package is self-contained: the .NET runtime and the esbuild toolchain
+ ship inside it, so no .NET installation or third-party repository is needed.
+
+Package: orkeon
+Architecture: arm64
+Version: 1.0.0~rc.6.dev.506
+Priority: optional
+Section: devel
+Maintainer: Orkeon Contributors <arion@orkeon.org>
+Installed-Size: 343112
+Depends: libicu78 | libicu77 | libicu76 | libicu74 | libicu72 | libicu70, libssl3t64 | libssl3, zlib1g, libgcc-s1, libc6 (>= 2.34), ca-certificates, bubblewrap
+Recommends: orkeon-archive-keyring
+Filename: releases/download/apt-dev/orkeon_1.0.0-rc.6.dev.506_arm64.deb
+Size: 98160888
+SHA256: 9d071192c1464ee38ff0e04d96de6d21593de2d7e236c3f29f0377f4d1e25859
 Homepage: https://github.com/Orkeon/orkeon
 Description: multi-agent AI orchestration framework and CLI
  Orkeon builds teams of LLM agents that collaborate on a goal: sequential,
