@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — `orkeon typings` writes an `orkeon.d.ts` that TypeScript parses (#288)
+
+- The build copies `Typings/*.d.ts` into the roll-up byte for byte (an inline MSBuild task instead of `ReadLinesFromFile`/`WriteLinesToFile`): a line no longer travels as an MSBuild item, whose backslashes Linux turned into slashes, so the `*\/` escape of a doc comment (`**\/*.cs`) no longer becomes `*//` and closes the comment early. Blank lines of the sources are kept too. The target is skipped when no typings file changed (`Inputs`/`Outputs`). Three tests read the embedded roll-up: equal to the sources byte for byte, parsed by esbuild, and `scripts/check-scripting-typings.sh` typechecks the built roll-up with tsc (`--rollup` in CI after the build).
+
 ### Fixed — every tool description says what question it answers, which tool is next and where it stops (#284)
 
 - The descriptions of `file_read`, `file_write`, `edit_file`, `directory_read`, `grep`, `glob`, `shell_command`, `count_pattern`, `codebase_search`, `symbol_detail`, `sub_graph`, `flow_trace`, `impact_analysis`, `dependency_graph`, `codebase_map`, `package_summary`, `structural_search`, `structural_rewrite`, `affected_tests`, `edge_list`, `node_read`, `rag_search` and `rag_ingest` open with the question the tool answers, name the neighbouring tool for the adjacent need and state the bound (`max_results`, `top_k`, `max_nodes`, `max_paths`, the 10 000-character cut of `shell_command`). `file_read` no longer sends `.eml` files to `email_parser`; `edit_file` says that `replace_all` lifts the "exactly once" rule; `rag_search` no longer offers `'raggable-tree'` as a collection, so a code question goes to `codebase_search` and never to RAG.

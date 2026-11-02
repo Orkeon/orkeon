@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# Typecheck every shipped .ork.ts example against the shipped Typings/*.d.ts, and every shipped
-# .cmd.ts command against orkeon-cli.d.ts.
+# Typecheck every shipped .ork.ts example against the shipped Typings/*.d.ts, every shipped
+# .cmd.ts command against orkeon-cli.d.ts, and the built orkeon.d.ts roll-up when a build has
+# produced it (`--rollup`: that check alone, required).
 #
 # WHY THIS EXISTS. The typings and the runtime are written in two different languages and
 # nothing tied them together. Between them they had drifted six times, and every drift was
@@ -46,6 +47,35 @@ fi
 
 trap 'rm -rf "$WORK"' EXIT
 mkdir -p "$WORK/typings" "$WORK/tree"
+
+# The roll-up the build embeds (#288): the file `orkeon typings` writes is NOT the sources, it is
+# what GenerateRollupDts made of them, and that step once turned `*\/` into `*//`. When a build
+# has produced it, it is typechecked on its own; `--rollup` checks it alone and fails when no
+# build has run (CI runs that after `dotnet build`).
+ROLLUP="$(ls -1 "$ROOT"/src/scripting/Orkeon.Scripting/bin/*/net10.0/dist/orkeon.d.ts 2>/dev/null | head -n 1 || true)"
+check_rollup() {
+    if [ -z "$ROLLUP" ]; then
+        echo "check-scripting-typings: no built orkeon.d.ts roll-up under src/scripting/Orkeon.Scripting/bin/ (run dotnet build first)."
+        return 1
+    fi
+    printf '{ "extends": "%s", "files": ["%s"] }' "$TOOLDIR/tsconfig.base.json" "$ROLLUP" > "$WORK/rollup.tsconfig.json"
+    if ! out=$("$TSC" --project "$WORK/rollup.tsconfig.json" 2>&1); then
+        echo "FAIL ${ROLLUP#"$ROOT"/}"
+        echo "$out" | sed 's|^|  |'
+        echo "check-scripting-typings: the built orkeon.d.ts roll-up does not typecheck; the sources may, see GenerateRollupDts."
+        return 1
+    fi
+    echo "check-scripting-typings: the built roll-up ${ROLLUP#"$ROOT"/} typechecks."
+}
+if [ "${1:-}" = "--rollup" ]; then
+    check_rollup
+    exit $?
+fi
+if [ -n "$ROLLUP" ]; then
+    check_rollup || exit 1
+else
+    echo "check-scripting-typings: no built orkeon.d.ts roll-up, sources only (dotnet build produces it)."
+fi
 cp "$TYPINGS"/*.d.ts "$WORK/typings/"
 cp "$CLI_TYPINGS" "$WORK/orkeon-cli.d.ts"
 

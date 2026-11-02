@@ -22,31 +22,76 @@
        embed it (logical name `Orkeon.Scripting.Typings.orkeon.d.ts`): the `orkeon` tool writes it
        next to a project (`orkeon typings`), so a dotnet-tool user gets the typings without a clone.
        Load order: errors.d.ts first (types referenced elsewhere), then the rest alphabetically.
-       WriteOnlyWhenDifferent keeps incremental builds incremental. -->
-  <Target Name="GenerateRollupDts" BeforeTargets="BeforeBuild">
-    <ItemGroup>
-      <DtsFirst Include="Typings/errors.d.ts" />
-      <DtsRest Include="Typings/*.d.ts" Exclude="Typings/errors.d.ts" />
-    </ItemGroup>
-    <ReadLinesFromFile File="%(DtsFirst.Identity)">
-      <Output TaskParameter="Lines" ItemName="DtsLinesFirst" />
-    </ReadLinesFromFile>
-    <ReadLinesFromFile File="%(DtsRest.Identity)">
-      <Output TaskParameter="Lines" ItemName="DtsLinesRest" />
-    </ReadLinesFromFile>
-    <ItemGroup>
-      <DtsBanner Include="// Orkeon Scripting DSL v1.0 - TypeScript declarations" />
-      <DtsBanner Include="// Generated from src/scripting/Orkeon.Scripting/Typings/%2A.d.ts" />
-      <DtsBanner Include="// DO NOT EDIT - regenerate with `orkeon typings` (or `dotnet build src/scripting/Orkeon.Scripting` in a clone)" />
-    </ItemGroup>
+       #288: the files are copied as text, byte for byte, by the inline task below. Lines must not
+       travel as MSBuild items: an item identity has its backslashes turned into slashes on Linux,
+       which made the `*\/` escape of a doc comment `*//` and closed the comment early.
+       The file is rewritten only when its content changes, so incremental builds stay incremental. -->
+  <UsingTask TaskName="OrkeonConcatenateTypings"
+             TaskFactory="RoslynCodeTaskFactory"
+             AssemblyFile="$(MSBuildToolsPath)/Microsoft.Build.Tasks.Core.dll">
+    <ParameterGroup>
+      <Sources ParameterType="Microsoft.Build.Framework.ITaskItem[]" Required="true" />
+      <OutputFile ParameterType="System.String" Required="true" />
+    </ParameterGroup>
+    <Task>
+      <Using Namespace="System.IO" />
+      <Using Namespace="System.Text" />
+      <Code Type="Fragment" Language="cs"><![CDATA[
+        var text = new StringBuilder();
+        text.Append("// Orkeon Scripting DSL v1.0 - TypeScript declarations\n");
+        text.Append("// Generated from src/scripting/Orkeon.Scripting/Typings/*.d.ts\n");
+        text.Append("// DO NOT EDIT - regenerate with `orkeon typings` (or `dotnet build src/scripting/Orkeon.Scripting` in a clone)\n");
+        foreach (var source in Sources)
+        {
+            var path = source.GetMetadata("FullPath");
+            if (!File.Exists(path))
+            {
+                Log.LogError("Typings source not found: {0} (the load order of GenerateRollupDts names it).", path);
+                return false;
+            }
+            var content = File.ReadAllText(path);
+            text.Append(content);
+            if (content.Length > 0 && content[content.Length - 1] != '\n') text.Append('\n');
+        }
+        var rollup = text.ToString();
+        if (!File.Exists(OutputFile) || File.ReadAllText(OutputFile) != rollup)
+        {
+            File.WriteAllText(OutputFile, rollup, new UTF8Encoding(false));
+        }
+        else
+        {
+            // Same content: the output must still become newer than the inputs, or the
+            // target's Inputs/Outputs would run it again at every build.
+            File.SetLastWriteTimeUtc(OutputFile, DateTime.UtcNow);
+        }
+      ]]></Code>
+    </Task>
+  </UsingTask>
+
+  <ItemGroup>
+    <DtsFirst Include="Typings/errors.d.ts" />
+    <DtsRest Include="Typings/*.d.ts" Exclude="Typings/errors.d.ts" />
+  </ItemGroup>
+  <!-- $(IntermediateOutputPath) is set by the SDK targets, after this file is evaluated: the path is
+       resolved in a target, which runs before the Inputs/Outputs of its dependants are compared. -->
+  <Target Name="ResolveRollupDtsPath">
     <PropertyGroup>
       <_OrkeonRollupDts>$(IntermediateOutputPath)orkeon.d.ts</_OrkeonRollupDts>
     </PropertyGroup>
+  </Target>
+
+  <!-- Inputs/Outputs: when no typings file changed, MSBuild skips the target and the inline task is
+       neither compiled nor run. The resource is attached by the sibling target below, which has no
+       Inputs/Outputs: an item declared inside a skipped target is never created. -->
+  <Target Name="GenerateRollupDts"
+          DependsOnTargets="ResolveRollupDtsPath"
+          Inputs="@(DtsFirst);@(DtsRest)"
+          Outputs="$(_OrkeonRollupDts)">
     <MakeDir Directories="$(IntermediateOutputPath)" />
-    <WriteLinesToFile File="$(_OrkeonRollupDts)"
-                      Lines="@(DtsBanner);@(DtsLinesFirst);@(DtsLinesRest)"
-                      Overwrite="true"
-                      WriteOnlyWhenDifferent="true" />
+    <OrkeonConcatenateTypings Sources="@(DtsFirst);@(DtsRest)" OutputFile="$(_OrkeonRollupDts)" />
+  </Target>
+
+  <Target Name="EmbedRollupDts" BeforeTargets="BeforeBuild" DependsOnTargets="GenerateRollupDts">
     <ItemGroup>
       <EmbeddedResource Include="$(_OrkeonRollupDts)" LogicalName="Orkeon.Scripting.Typings.orkeon.d.ts" />
       <FileWrites Include="$(_OrkeonRollupDts)" />
