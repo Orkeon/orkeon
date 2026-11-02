@@ -43,7 +43,13 @@
         text.Append("// DO NOT EDIT - regenerate with `orkeon typings` (or `dotnet build src/scripting/Orkeon.Scripting` in a clone)\n");
         foreach (var source in Sources)
         {
-            var content = File.ReadAllText(source.GetMetadata("FullPath"));
+            var path = source.GetMetadata("FullPath");
+            if (!File.Exists(path))
+            {
+                Log.LogError("Typings source not found: {0} (the load order of GenerateRollupDts names it).", path);
+                return false;
+            }
+            var content = File.ReadAllText(path);
             text.Append(content);
             if (content.Length > 0 && content[content.Length - 1] != '\n') text.Append('\n');
         }
@@ -52,20 +58,40 @@
         {
             File.WriteAllText(OutputFile, rollup, new UTF8Encoding(false));
         }
+        else
+        {
+            // Same content: the output must still become newer than the inputs, or the
+            // target's Inputs/Outputs would run it again at every build.
+            File.SetLastWriteTimeUtc(OutputFile, DateTime.UtcNow);
+        }
       ]]></Code>
     </Task>
   </UsingTask>
 
-  <Target Name="GenerateRollupDts" BeforeTargets="BeforeBuild">
-    <ItemGroup>
-      <DtsFirst Include="Typings/errors.d.ts" />
-      <DtsRest Include="Typings/*.d.ts" Exclude="Typings/errors.d.ts" />
-    </ItemGroup>
+  <ItemGroup>
+    <DtsFirst Include="Typings/errors.d.ts" />
+    <DtsRest Include="Typings/*.d.ts" Exclude="Typings/errors.d.ts" />
+  </ItemGroup>
+  <!-- $(IntermediateOutputPath) is set by the SDK targets, after this file is evaluated: the path is
+       resolved in a target, which runs before the Inputs/Outputs of its dependants are compared. -->
+  <Target Name="ResolveRollupDtsPath">
     <PropertyGroup>
       <_OrkeonRollupDts>$(IntermediateOutputPath)orkeon.d.ts</_OrkeonRollupDts>
     </PropertyGroup>
+  </Target>
+
+  <!-- Inputs/Outputs: when no typings file changed, MSBuild skips the target and the inline task is
+       neither compiled nor run. The resource is attached by the sibling target below, which has no
+       Inputs/Outputs: an item declared inside a skipped target is never created. -->
+  <Target Name="GenerateRollupDts"
+          DependsOnTargets="ResolveRollupDtsPath"
+          Inputs="@(DtsFirst);@(DtsRest)"
+          Outputs="$(_OrkeonRollupDts)">
     <MakeDir Directories="$(IntermediateOutputPath)" />
     <OrkeonConcatenateTypings Sources="@(DtsFirst);@(DtsRest)" OutputFile="$(_OrkeonRollupDts)" />
+  </Target>
+
+  <Target Name="EmbedRollupDts" BeforeTargets="BeforeBuild" DependsOnTargets="GenerateRollupDts">
     <ItemGroup>
       <EmbeddedResource Include="$(_OrkeonRollupDts)" LogicalName="Orkeon.Scripting.Typings.orkeon.d.ts" />
       <FileWrites Include="$(_OrkeonRollupDts)" />

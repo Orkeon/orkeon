@@ -165,7 +165,7 @@ public sealed partial class TypingsParseTests
         Assert.NotEmpty(Directory.EnumerateFiles(TypingsDirectory(), "*.d.ts"));
     }
 
-    private static string TypingsDirectory()
+    internal static string TypingsDirectory()
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);
         while (directory is not null)
