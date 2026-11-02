@@ -31,6 +31,30 @@ public sealed class RollupDtsTests
         Assert.Contains("RagIngestReport", content);
     }
 
+    /// <summary>
+    /// #288: the roll-up embedded in the assembly carries the typings byte for byte. When it went
+    /// through MSBuild items, the backslash of a doc comment's <c>*\/</c> escape became a slash on
+    /// Linux, and <c>*//</c> closed the comment early: tsc refused the file.
+    /// </summary>
+    [Fact]
+    public void Embedded_rollup_keeps_doc_comment_escapes()
+    {
+        using var stream = typeof(ScriptHost).Assembly.GetManifestResourceStream("Orkeon.Scripting.Typings.orkeon.d.ts");
+        Assert.NotNull(stream);
+        using var reader = new StreamReader(stream);
+        var lines = reader.ReadToEnd().Split('\n');
+
+        Assert.DoesNotContain(lines, line => line.Contains("*//", StringComparison.Ordinal));
+        foreach (var line in lines)
+        {
+            var trimmed = line.Trim();
+            if (!trimmed.StartsWith("/**", StringComparison.Ordinal)) continue;
+            var close = trimmed.IndexOf("*/", 2, StringComparison.Ordinal);
+            Assert.True(close < 0 || close == trimmed.Length - 2, $"A doc comment closes before its end: {trimmed}");
+        }
+        Assert.Contains(lines, line => line.Contains("**\\/*.cs", StringComparison.Ordinal));
+    }
+
     private static string? ResolveRollupPath()
     {
         var dir = new DirectoryInfo(AppContext.BaseDirectory);
