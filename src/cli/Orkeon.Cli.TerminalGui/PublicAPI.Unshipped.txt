@@ -7,6 +7,8 @@ Orkeon.Cli.TerminalGui.Hosting.TuiIntegration.ApprovalsChanged -> System.EventHa
 Orkeon.Cli.TerminalGui.Hosting.TuiIntegration.NotifyApprovalsChanged() -> void
 Orkeon.Cli.TerminalGui.Hosting.TuiIntegration.ToolActivity.get -> Orkeon.Cli.Abstractions.Console.ToolActivityFeed?
 Orkeon.Cli.TerminalGui.Hosting.TuiIntegration.ToolActivity.set -> void
+Orkeon.Cli.TerminalGui.Layout.GlyphSet.Box.get -> string!
+Orkeon.Cli.TerminalGui.Layout.GlyphSet.Box.init -> void
 Orkeon.Cli.TerminalGui.Layout.GlyphSet.SideBar.get -> string!
 Orkeon.Cli.TerminalGui.Layout.GlyphSet.SideBar.init -> void
 Orkeon.Cli.TerminalGui.Layout.GlyphSet.Sideways.get -> string!
@@ -19,6 +21,7 @@ Orkeon.Cli.TerminalGui.Layout.PaletteRole.FileRef = 12 -> Orkeon.Cli.TerminalGui
 Orkeon.Cli.TerminalGui.Layout.PaletteRole.PanelRule = 13 -> Orkeon.Cli.TerminalGui.Layout.PaletteRole
 Orkeon.Cli.TerminalGui.Layout.PaletteRole.RemovedWord = 10 -> Orkeon.Cli.TerminalGui.Layout.PaletteRole
 Orkeon.Cli.TerminalGui.Layout.PaletteRole.UserBar = 6 -> Orkeon.Cli.TerminalGui.Layout.PaletteRole
+Orkeon.Cli.TerminalGui.Layout.ReplPaneView.AppendStream(string! text) -> void
 Orkeon.Cli.TerminalGui.Layout.ReplPaneView.ChooseAsync(Orkeon.Cli.Abstractions.Console.ConsoleChoiceRequest! request, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<Orkeon.Cli.Abstractions.Console.ConsoleChoiceAnswer?>!
 Orkeon.Cli.TerminalGui.Layout.ReplPaneView.Finished(Orkeon.Cli.Abstractions.Console.ToolCallFinished! toolCall) -> void
 Orkeon.Cli.TerminalGui.Layout.ReplPaneView.Started(Orkeon.Cli.Abstractions.Console.ToolCallStarted! toolCall) -> void

@@ -9,7 +9,7 @@ public class BlockRendererTests
     public void A_final_line_break_opens_no_line()
     {
         // Act
-        var lines = BlockRenderer.Render(ConsoleBlockKind.Markdown, "a\nb\n");
+        var lines = BlockRenderer.Render(ConsoleBlockKind.Markdown, "a\nb\n", GlyphSet.Ascii, 80);
 
         // Assert
         Assert.Equal(["a", "b"], lines.Select(l => l.Text));
@@ -21,7 +21,7 @@ public class BlockRendererTests
     public void A_changed_diff_line_is_painted_over_its_whole_row(string line, PaletteRole role)
     {
         // Act
-        var lines = BlockRenderer.Render(ConsoleBlockKind.Diff, line);
+        var lines = BlockRenderer.Render(ConsoleBlockKind.Diff, line, GlyphSet.Ascii, 80);
 
         // Assert
         Assert.Equal(role, lines[0].RowRole);
@@ -34,7 +34,7 @@ public class BlockRendererTests
     public void A_diff_header_is_dim_and_not_read_as_a_change(string line)
     {
         // Act
-        var lines = BlockRenderer.Render(ConsoleBlockKind.Diff, line);
+        var lines = BlockRenderer.Render(ConsoleBlockKind.Diff, line, GlyphSet.Ascii, 80);
 
         // Assert
         Assert.Null(lines[0].RowRole);
@@ -45,7 +45,7 @@ public class BlockRendererTests
     public void Markdown_keeps_its_source_as_it_is_for_now()
     {
         // Act
-        var lines = BlockRenderer.Render(ConsoleBlockKind.Markdown, "+ item");
+        var lines = BlockRenderer.Render(ConsoleBlockKind.Markdown, "+ item", GlyphSet.Ascii, 80);
 
         // Assert
         Assert.Null(lines[0].RowRole);

@@ -50,14 +50,14 @@ public sealed class TerminalGuiConsoleAdapter : IConsoleAdapter, IThreadedConsol
     public void WriteStream(string text)
     {
         ArgumentNullException.ThrowIfNull(text);
-        _repl.AppendOutput(text);
+        _repl.AppendStream(text);
     }
 
     /// <inheritdoc />
     public void WriteBlock(ConsoleBlockKind kind, string text)
     {
         ArgumentNullException.ThrowIfNull(text);
-        _repl.AppendStyled(BlockRenderer.Render(kind, text));
+        _repl.AppendStyled(BlockRenderer.Render(kind, text, _repl.Glyphs, _repl.TranscriptWidth));
     }
 
     /// <inheritdoc />

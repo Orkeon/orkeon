@@ -87,6 +87,9 @@ internal sealed class TranscriptBuffer
 
     // The last line is the empty line Append opened after a final \n: not counted until written to.
     private bool _openTail;
+
+    // The last entry is an unfinished line of a stream: the next ReplacePartial takes it back.
+    private bool _partial;
     private int _width;
     private bool _wrap = true;
 
@@ -184,6 +187,7 @@ internal sealed class TranscriptBuffer
     {
         ArgumentNullException.ThrowIfNull(text);
         if (text.Length == 0) return;
+        _partial = false;
         var normalized = text.Replace("\r\n", "\n", StringComparison.Ordinal);
         var start = 0;
         var first = true;
@@ -218,6 +222,7 @@ internal sealed class TranscriptBuffer
     public void AppendLines(IEnumerable<string> lines)
     {
         ArgumentNullException.ThrowIfNull(lines);
+        _partial = false;
         PromoteOpenTail();
         foreach (var line in lines)
         {
@@ -235,6 +240,7 @@ internal sealed class TranscriptBuffer
     {
         ArgumentNullException.ThrowIfNull(lines);
         if (lines.Count == 0) return;
+        _partial = false;
         var first = 0;
         if (_openTail)
         {
@@ -244,6 +250,43 @@ internal sealed class TranscriptBuffer
         for (var i = first; i < lines.Count; i++) AddLine(Checked(lines[i]).Text, unit: true, lines[i]);
         AddLine(string.Empty, unit: false);
         _openTail = true;
+        Trim();
+    }
+
+    /// <summary>
+    /// Replaces the unfinished line of a stream, when one is shown, with the lines that finish it and the
+    /// unfinished line that follows them. Any other write in between makes that line a line like any other.
+    /// </summary>
+    public void ReplacePartial(IReadOnlyList<TranscriptLine> lines, string partial)
+    {
+        ArgumentNullException.ThrowIfNull(lines);
+        ArgumentNullException.ThrowIfNull(partial);
+        if (_partial)
+        {
+            var entry = _items[^1];
+            entry.Text = string.Empty;
+            entry.Style = null;
+            Wrap(entry, resumeFrom: -1);
+            if (entry.Unit)
+            {
+                entry.Unit = false;
+                _units--;
+            }
+            _openTail = true;
+            _partial = false;
+        }
+        AppendStyled(lines);
+        if (partial.Length == 0) return;
+        if (_openTail)
+        {
+            ExtendLast(partial);
+            PromoteOpenTail();
+        }
+        else
+        {
+            AddLine(partial, unit: true);
+        }
+        _partial = true;
         Trim();
     }
 
@@ -267,6 +310,7 @@ internal sealed class TranscriptBuffer
 
     public void Clear()
     {
+        _partial = false;
         _firstLineId += Held;
         _items.Clear();
         _widest.Clear();

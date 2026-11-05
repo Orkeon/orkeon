@@ -26,6 +26,7 @@ public sealed class ReplPaneView : View, ITaskListNavigator, IToolActivityObserv
     private readonly ThreadScreens _screens;
     private readonly AppendCoalescer<TranscriptWrite> _transcriptWrites;
     private readonly CommandResultIndent _commandResult;
+    private readonly Dictionary<TranscriptView, MarkdownStream> _markdown = [];
     private string? _commandResultThread;
 
     // A write to a thread's screen; a null Text is a clear of that screen.
@@ -33,6 +34,8 @@ public sealed class ReplPaneView : View, ITaskListNavigator, IToolActivityObserv
     private readonly record struct TranscriptWrite(string? Thread, string? Text, bool Attention = false)
     {
         public IReadOnlyList<TranscriptLine>? Lines { get; init; }
+
+        public bool Stream { get; init; }
 
         public CommandResultScope Scope { get; init; }
 
@@ -295,6 +298,16 @@ public sealed class ReplPaneView : View, ITaskListNavigator, IToolActivityObserv
         _transcriptWrites.Post(new TranscriptWrite(ConsoleThread.Current, text));
     }
 
+    /// <summary>Writes a piece of an assistant's reply: markdown, styled as each of its lines ends.</summary>
+    public void AppendStream(string text)
+    {
+        ArgumentNullException.ThrowIfNull(text);
+        _transcriptWrites.Post(new TranscriptWrite(ConsoleThread.Current, text) { Stream = true });
+    }
+
+    /// <summary>The columns of the screen shown; zero while unknown.</summary>
+    internal int TranscriptWidth => _screens.Displayed.WrapWidth;
+
     // UI thread: applies a burst of transcript writes in posting order, each to its thread's screen
     // (a null Text is a clear of that screen). A view follows the tail on its own while it sticks to
     // the end; a user who scrolled up stays put.
@@ -327,6 +340,9 @@ public sealed class ReplPaneView : View, ITaskListNavigator, IToolActivityObserv
             if (write.Then is { } then)
             {
                 FoldStepOnto(write.Thread, screen);
+                foreach (var target in _markdown.Keys.ToList())
+                    FlushMarkdown(target);
+                _markdown.Clear();
                 foreach (var (target, builder) in pending)
                 {
                     if (builder.Length == 0) continue;
@@ -352,6 +368,7 @@ public sealed class ReplPaneView : View, ITaskListNavigator, IToolActivityObserv
             if (write.Text is null)
             {
                 if (pending.TryGetValue(screen, out var cleared)) cleared.Clear();
+                _markdown.Remove(screen);
                 screen.Clear();
                 _steps.Remove(ThreadKey(write.Thread));
                 _lastSteps.Remove(ThreadKey(write.Thread));
@@ -360,6 +377,12 @@ public sealed class ReplPaneView : View, ITaskListNavigator, IToolActivityObserv
             }
             if (!string.IsNullOrWhiteSpace(write.Text)) FoldStepOnto(write.Thread, screen);
             var inCommand = !write.Attention && write.Thread == _commandResultThread;
+            if (write.Stream)
+            {
+                FlushText(screen);
+                ShowStream(screen, write.Text, inCommand);
+                continue;
+            }
             Enqueue(screen, inCommand ? _commandResult.Apply(write.Text) : write.Text);
             if (write.Attention && !ReferenceEquals(screen, _screens.Displayed))
                 Enqueue(_screens.Displayed, write.Text);
@@ -370,6 +393,12 @@ public sealed class ReplPaneView : View, ITaskListNavigator, IToolActivityObserv
 
         // What the batch holds for this screen goes first: the order of the writes is the order shown.
         void FlushPending(TranscriptView target)
+        {
+            FlushMarkdown(target);
+            FlushText(target);
+        }
+
+        void FlushText(TranscriptView target)
         {
             if (!pending.TryGetValue(target, out var earlier) || earlier.Length == 0) return;
             target.Append(earlier.ToString());
@@ -391,10 +420,38 @@ public sealed class ReplPaneView : View, ITaskListNavigator, IToolActivityObserv
 
         void Enqueue(TranscriptView target, string text)
         {
+            FlushMarkdown(target);
             if (!pending.TryGetValue(target, out var builder))
                 pending[target] = builder = new System.Text.StringBuilder();
             builder.Append(text);
         }
+    }
+
+    private void ShowStream(TranscriptView screen, string text, bool underCommand)
+    {
+        if (!_markdown.TryGetValue(screen, out var stream))
+            _markdown[screen] = stream = new MarkdownStream(_glyphs);
+        stream.UnderCommand = underCommand;
+        var head = underCommand ? _commandResult.Next : string.Empty;
+        var (lines, partial) = stream.Write(text, screen.WrapWidth - TerminalText.Columns(head));
+        ShowMarkdown(screen, stream, lines, partial);
+    }
+
+    private void FlushMarkdown(TranscriptView screen)
+    {
+        if (!_markdown.TryGetValue(screen, out var stream) || stream.IsEmpty) return;
+        var head = stream.UnderCommand ? _commandResult.Next : string.Empty;
+        ShowMarkdown(screen, stream, stream.Flush(screen.WrapWidth - TerminalText.Columns(head)), string.Empty);
+    }
+
+    private void ShowMarkdown(TranscriptView screen, MarkdownStream stream, IReadOnlyList<TranscriptLine> lines, string partial)
+    {
+        if (stream.UnderCommand)
+        {
+            lines = _commandResult.Apply(lines);
+            if (partial.Length > 0) partial = _commandResult.Next + partial;
+        }
+        screen.ReplacePartial(lines, partial);
     }
 
     /// <inheritdoc />

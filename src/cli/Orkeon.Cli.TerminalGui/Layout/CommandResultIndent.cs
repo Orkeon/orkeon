@@ -20,6 +20,36 @@ internal sealed class CommandResultIndent(GlyphSet glyphs)
         _lineStart = active;
     }
 
+    /// <summary>What the next line opens with; nothing when no result is in flight.</summary>
+    public string Next => !_active ? string.Empty : _elbowDue ? _first : _next;
+
+    /// <summary>The styled lines to show for <paramref name="lines"/>; the lines themselves when no result is in flight.</summary>
+    public IReadOnlyList<TranscriptLine> Apply(IReadOnlyList<TranscriptLine> lines)
+    {
+        ArgumentNullException.ThrowIfNull(lines);
+        if (!_active) return lines;
+        var indented = new List<TranscriptLine>(lines.Count);
+        foreach (var line in lines)
+        {
+            if (line.Text.Length == 0)
+            {
+                indented.Add(line);
+                continue;
+            }
+            var head = Next;
+            _elbowDue = false;
+            indented.Add(line with
+            {
+                Text = head + line.Text,
+                Runs = [.. line.Runs.Select(r => r with { Start = r.Start + head.Length })],
+                HangingIndent = line.HangingIndent + _next.Length,
+                CopySource = line.CopySource ?? line.Text,
+            });
+        }
+        _lineStart = true;
+        return indented;
+    }
+
     /// <summary>The text to show for <paramref name="text"/>; the text itself when no result is in flight.</summary>
     public string Apply(string text)
     {

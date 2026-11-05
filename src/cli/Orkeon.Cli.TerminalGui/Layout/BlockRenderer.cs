@@ -6,13 +6,18 @@ namespace Orkeon.Cli.TerminalGui.Layout;
 internal static class BlockRenderer
 {
     /// <summary>The lines of <paramref name="text"/>, a final line break opening none.</summary>
-    public static IReadOnlyList<TranscriptLine> Render(ConsoleBlockKind kind, string text)
+    public static IReadOnlyList<TranscriptLine> Render(ConsoleBlockKind kind, string text, GlyphSet glyphs, int width)
     {
         ArgumentNullException.ThrowIfNull(text);
         var normalized = text.Replace("\r\n", "\n", StringComparison.Ordinal);
         if (normalized.EndsWith('\n')) normalized = normalized[..^1];
-        return kind == ConsoleBlockKind.Diff
-            ? DiffRenderer.Unified(normalized)
-            : [.. normalized.Split('\n').Select(line => new TranscriptLine(line))];
+        if (kind == ConsoleBlockKind.Diff) return DiffRenderer.Unified(normalized);
+
+        var markdown = new MarkdownLines(glyphs);
+        var lines = new List<TranscriptLine>();
+        foreach (var line in normalized.Split('\n'))
+            lines.AddRange(markdown.Feed(line, width));
+        lines.AddRange(markdown.Flush(width));
+        return lines;
     }
 }

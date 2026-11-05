@@ -7,9 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Added — the calls of each step
+### Added — markdown in the transcript
+
+- In the split-pane console, an assistant's reply and `ctx.writeBlock` markdown show as text: headings, bold, italics, code, links, lists, quotes and tables in a box. A line is styled when it ends, a table when it is complete. Copying a whole line gives back its markdown.
+
+### Added — what a tool call changed
 
 - **Terminal**: a call to `edit_file` or `file_write` shows what it changed in the transcript: numbered rows on red and green lines, the changed words marked, and the counts on the step's summary. `ctx.writeBlock` patches get the same painting. What the model receives does not change.
+
+### Added — the calls of each step
+
 - In the split-pane console, the rows above the status line count the calls of the current step and list the latest ones with what they work on, a failed call marked. When the step ends, one line stays in the transcript (`Read 1 file, ran 2 shell commands`), and ctrl+o on an empty prompt lists the calls of the last one. Only the argument named for each tool reaches the screen; the model's input and the run's stream do not change.
 
 ### Added — a menu of commands above the prompt

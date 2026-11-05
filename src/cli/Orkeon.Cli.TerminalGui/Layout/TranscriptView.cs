@@ -103,6 +103,16 @@ internal sealed class TranscriptView : View
         ContentChanged();
     }
 
+    /// <summary>Replaces the unfinished line of a stream with the lines that finish it and the next unfinished one.</summary>
+    public void ReplacePartial(IReadOnlyList<TranscriptLine> lines, string partial)
+    {
+        _buffer.ReplacePartial(lines, partial);
+        ContentChanged();
+    }
+
+    /// <summary>The columns a line has before it wraps; zero while unknown.</summary>
+    public int WrapWidth => _buffer.Width;
+
     /// <summary>Empties the transcript; the view sticks to its (new) tail again.</summary>
     public void Clear()
     {
