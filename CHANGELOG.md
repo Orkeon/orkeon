@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — the split-pane console keeps a streamed `>` and counts the tools of `ctx.llm.act`
+
+- A streamed delta ending in `>` (`Map<string>`) was read as a prompt and left the transcript for the prompt label. A console now offers `IStreamConsole.WriteStream`, which `ConsoleLlmDeltaSink` prefers over `Write`: a token is never taken for a prompt. `Write` and its heuristic stay for what the runner writes.
+- `ctx.llm.act` opens one `execute_tool` span on the `Orkeon.Scripting` source per call the model makes, so the activity sentence (`Read 1 file, edited 2 files`) and the status line's `tool` state cover a prompt's turn, which they missed. Tool spans now carry their tags from their start, which `ToolActivityAggregator.HasOpenToolCall` needs: it never read true.
+
 ### Fixed — `orkeon typings` writes an `orkeon.d.ts` that TypeScript parses (#288)
 
 - The build copies `Typings/*.d.ts` into the roll-up byte for byte (an inline MSBuild task instead of `ReadLinesFromFile`/`WriteLinesToFile`): a line no longer travels as an MSBuild item, whose backslashes Linux turned into slashes, so the `*\/` escape of a doc comment (`**\/*.cs`) no longer becomes `*//` and closes the comment early. Blank lines of the sources are kept too. The target is skipped when no typings file changed (`Inputs`/`Outputs`). Three tests read the embedded roll-up: equal to the sources byte for byte, parsed by esbuild, and `scripts/check-scripting-typings.sh` typechecks the built roll-up with tsc (`--rollup` in CI after the build).

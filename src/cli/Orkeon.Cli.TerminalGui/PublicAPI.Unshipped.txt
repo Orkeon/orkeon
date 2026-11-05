@@ -1,1 +1,2 @@
 #nullable enable
+Orkeon.Cli.TerminalGui.Console.TerminalGuiConsoleAdapter.WriteStream(string! text) -> void

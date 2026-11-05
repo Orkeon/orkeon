@@ -427,6 +427,21 @@ public sealed class ReplayConsoleAdapterTests : IDisposable
     }
 
     [Fact]
+    public void ShouldForwardStreamedText_WhenReplayDecoratesStreamConsole()
+    {
+        // Arrange
+        var inner = new FakeThreadedConsole();
+        var over = Assert.IsType<IStreamConsole>(new ReplayConsoleAdapter(inner, _gate), exactMatch: false);
+
+        // Act
+        over.WriteStream("Map<string>");
+
+        // Assert
+        Assert.Equal(["Map<string>"], inner.Streamed);
+        Assert.Empty(inner.PlainLines);
+    }
+
+    [Fact]
     public async Task ShouldAnswerNotRunningAndKeepTheInputClosed_AfterTheRunEnded()
     {
         _replay.TryStart(Lines("/help"), closeInputAtEnd: true);

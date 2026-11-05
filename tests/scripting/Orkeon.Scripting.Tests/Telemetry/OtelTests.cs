@@ -142,6 +142,33 @@ public sealed class OtelTests
         finally { listener.Dispose(); }
     }
 
+    [Fact]
+    public async Task tool_call_span_carries_its_tool_tags_when_it_starts()
+    {
+        // Arrange
+        const string toolName = "otel_started_tags_tool";
+        var started = new List<string?>();
+        using var listener = new ActivityListener
+        {
+            ShouldListenTo = src => src.Name == ScriptingActivitySource.Name,
+            Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllData,
+            ActivityStarted = a =>
+            {
+                if (a.OperationName.EndsWith(toolName, StringComparison.Ordinal))
+                    lock (started) started.Add(a.GetTagItem("gen_ai.tool.name")?.ToString());
+            },
+        };
+        ActivitySource.AddActivityListener(listener);
+        var tool = new StubBaseTool(toolName).RespondWithSuccess("ok");
+        var engine = new JsEngineFactory(builtInTools: [(Orkeon.Domain.Tools.IBaseTool)tool]).Create();
+
+        // Act
+        await Task.Run(() => engine.Evaluate("tools.otelStartedTagsTool({})").UnwrapIfPromise());
+
+        // Assert
+        Assert.Equal([toolName], started);
+    }
+
     /// <summary>
     /// Two runs interleaved on one drainer stop their spans in an order that leaves the thread's
     /// <see cref="Activity.Current"/> on a span the other run already stopped — every later span would

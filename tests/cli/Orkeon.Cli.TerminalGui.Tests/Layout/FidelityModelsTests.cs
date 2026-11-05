@@ -437,6 +437,35 @@ public class ToolActivityAggregatorTests
     }
 
     [Fact]
+    public void An_open_tool_span_tagged_from_its_start_is_an_open_tool_call()
+    {
+        // Arrange
+        using var aggregator = new ToolActivityAggregator();
+        using var source = new System.Diagnostics.ActivitySource("Orkeon.Scripting");
+        System.Collections.Generic.KeyValuePair<string, object?>[] tags =
+        [
+            new("gen_ai.operation.name", "execute_tool"),
+            new("gen_ai.tool.name", "file_read"),
+        ];
+
+        // Act
+        using var span = source.StartActivity("execute_tool file_read", System.Diagnostics.ActivityKind.Internal, parentContext: default, tags: tags);
+
+        // Assert
+        Assert.True(aggregator.HasOpenToolCall);
+    }
+
+    [Fact]
+    public void An_edit_reads_as_an_edit_in_the_sentence()
+    {
+        // Act
+        var sentence = ToolActivityAggregator.ComposeSentence([Kv("edit_file", 2), Kv("file_read", 1)]);
+
+        // Assert
+        Assert.Equal("Read 1 file, edited 2 files", sentence);
+    }
+
+    [Fact]
     public void Live_listener_counts_stopped_tool_spans_and_drains_once()
     {
         using var aggregator = new ToolActivityAggregator();

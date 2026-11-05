@@ -46,6 +46,23 @@ public class TerminalGuiConsoleAdapterTests
         Assert.Equal("regular output", repl.CurrentHistory);
     }
 
+    [Theory]
+    [InlineData("Map<string>")]
+    [InlineData("a -> ")]
+    [InlineData(">")]
+    public void WriteStream_keeps_a_delta_ending_like_a_prompt_in_the_history(string delta)
+    {
+        // Arrange
+        var (adapter, repl) = Create();
+
+        // Act
+        adapter.WriteStream(delta);
+
+        // Assert
+        Assert.Equal("❯ ", repl.CurrentPromptPrefix);
+        Assert.Equal(delta, repl.CurrentHistory);
+    }
+
     [Fact]
     public void WriteLine_appends_with_newline()
     {

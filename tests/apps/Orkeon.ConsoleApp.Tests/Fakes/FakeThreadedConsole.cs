@@ -3,7 +3,7 @@ using Orkeon.Cli.Abstractions.Console;
 namespace Orkeon.ConsoleApp.Tests.Fakes;
 
 /// <summary>Records the thread-aware writes it receives; <see cref="SeparatesThreads"/> is set by the test.</summary>
-internal sealed class FakeThreadedConsole : IConsoleAdapter, IThreadedConsole
+internal sealed class FakeThreadedConsole : IConsoleAdapter, IThreadedConsole, IStreamConsole
 {
     public bool SeparatesThreads { get; set; }
 
@@ -12,6 +12,10 @@ internal sealed class FakeThreadedConsole : IConsoleAdapter, IThreadedConsole
     public List<(string? Thread, string Text)> Attentions { get; } = [];
 
     public List<string> PlainLines { get; } = [];
+
+    public List<string> Streamed { get; } = [];
+
+    public void WriteStream(string text) => Streamed.Add(text);
 
     public void Write(string text) => PlainLines.Add(text);
 

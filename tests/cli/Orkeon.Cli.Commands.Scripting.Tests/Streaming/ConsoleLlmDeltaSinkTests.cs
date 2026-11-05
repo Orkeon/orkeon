@@ -34,6 +34,21 @@ public sealed class ConsoleLlmDeltaSinkTests
     }
 
     [Fact]
+    public void A_foreground_delta_goes_through_the_stream_of_a_console_that_has_one()
+    {
+        // Arrange
+        var console = new FakeStreamConsole();
+        var sink = new ConsoleLlmDeltaSink(console);
+
+        // Act
+        sink.OnDelta("Map<string>");
+
+        // Assert
+        Assert.Equal("Map<string>", console.Streamed);
+        Assert.Empty(console.Written);
+    }
+
+    [Fact]
     public void The_foreground_turn_streams_as_it_arrives()
     {
         var console = new ScriptedTestConsole();

@@ -29,10 +29,9 @@ public enum TranscriptKind
 /// column — the exact discipline of the reference captures.
 /// </summary>
 /// <remarks>
-/// Rendering is text-only: a <c>TextView</c> paints one attribute for its whole buffer, so
-/// per-glyph color (white vs green bullet) is not reachable with this widget. The structure
-/// is faithful; the bullet colors are an accepted residue until the transcript becomes a
-/// custom-drawn view — a known limitation rather than a silent drop.
+/// Rendering is text-only: <see cref="TranscriptBuffer"/> stores plain lines, so per-glyph
+/// colour (white vs green bullet) waits for styles in that buffer; <see cref="TranscriptView"/>
+/// already draws its rows itself.
 /// </remarks>
 public static class TranscriptModel
 {

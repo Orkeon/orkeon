@@ -25,7 +25,7 @@ namespace Orkeon.Cli.TerminalGui.Console;
 ///   contract unchanged.
 /// </para>
 /// </remarks>
-public sealed class TerminalGuiConsoleAdapter : IConsoleAdapter, IThreadedConsole
+public sealed class TerminalGuiConsoleAdapter : IConsoleAdapter, IThreadedConsole, IStreamConsole
 {
     private readonly ReplPaneView _repl;
 
@@ -46,6 +46,12 @@ public sealed class TerminalGuiConsoleAdapter : IConsoleAdapter, IThreadedConsol
     }
 
     public void WriteLine(string text) => _repl.AppendOutputLine(text);
+
+    public void WriteStream(string text)
+    {
+        ArgumentNullException.ThrowIfNull(text);
+        _repl.AppendOutput(text);
+    }
 
     public bool SeparatesThreads => true;
 

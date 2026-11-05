@@ -91,7 +91,10 @@ public sealed class ConsoleLlmDeltaSink : ILlmDeltaSink
     {
         lock (_lock)
         {
-            _console.Write(delta);
+            if (_console is IStreamConsole stream)
+                stream.WriteStream(delta);
+            else
+                _console.Write(delta);
             _inlineMidLine = !delta.EndsWith('\n');
             if (!_inlineMidLine)
                 Release();

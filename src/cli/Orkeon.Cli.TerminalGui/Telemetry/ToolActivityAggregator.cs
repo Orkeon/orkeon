@@ -96,14 +96,16 @@ public sealed class ToolActivityAggregator : IDisposable
         "file_read" => 0,
         "directory_read" or "directory_search" => 1,
         "file_write" => 2,
-        "shell_command" => 3,
-        _ => 4,
+        "edit_file" => 3,
+        "shell_command" => 4,
+        _ => 5,
     };
 
     private static string Phrase(string tool, int n) => tool switch
     {
         "file_read" => $"read {n} file{Plural(n)}",
         "file_write" => $"wrote {n} file{Plural(n)}",
+        "edit_file" => $"edited {n} file{Plural(n)}",
         "directory_read" => $"listed {n} director{(n == 1 ? "y" : "ies")}",
         "directory_search" => $"searched {n} director{(n == 1 ? "y" : "ies")}",
         "shell_command" => $"ran {n} shell command{Plural(n)}",

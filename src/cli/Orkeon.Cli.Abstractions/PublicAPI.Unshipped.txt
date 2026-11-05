@@ -1,1 +1,3 @@
 #nullable enable
+Orkeon.Cli.Abstractions.Console.IStreamConsole
+Orkeon.Cli.Abstractions.Console.IStreamConsole.WriteStream(string! text) -> void
