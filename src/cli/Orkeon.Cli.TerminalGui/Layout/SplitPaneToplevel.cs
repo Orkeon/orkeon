@@ -47,7 +47,8 @@ public sealed class SplitPaneToplevel : Window
 
         Agents.RowsChanged += (_, _) => ApplyLayout();
         // A task launched or finished between two polls leaves its line in the transcript.
-        Agents.TranscriptSink = line => Repl.AppendThreadLine(null, line);
+        Agents.TranscriptSink = line => Repl.AppendThreadLines(null, [Agents.StyledLine(line)]);
+        Agents.ToolCalls = Repl.ToolCallsOf;
 
         // ↓ from the prompt reaches the tasks list, whose keys come back to the prompt's
         // navigation machine; the hint bar shows that machine's affordance and recipient.

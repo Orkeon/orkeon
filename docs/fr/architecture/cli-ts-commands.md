@@ -180,6 +180,8 @@ interface CommandRuntimeContext {
   write(text: string): void;
   writeLine(text: string): void;
   writeBlock(spec: { kind: "markdown" | "diff"; text: string }): void; // stylé par la console à deux volets, lignes simples ailleurs
+  readonly theme: "dark" | "light" | "none" | null
+  setTheme(name: "dark" | "light" | "none"): boolean
   clear(): void;
 
   prompt(spec: PromptSpec): Promise<string | boolean>;
@@ -781,6 +783,14 @@ for (const c of usage.byCommand) ctx.writeLine(`[${c.ticket}] ${c.name}: ${c.pro
 **Le changement d'un appel.** Pour `edit_file` et `file_write`, le décorateur lit le fichier avant et après l'appel et remet à l'écran un `ToolCallDiff` (`LineDiff`, une comparaison par lignes) : le transcript montre le fichier et ses compteurs, des lignes numérotées sur fond rouge ou vert, les mots changés dans une teinte plus forte et des points de suspension entre deux changements éloignés, jusqu'à 80 lignes. La comparaison sert à l'écran seul : ce que reçoit le modèle ne change pas, rien n'est lu tant qu'aucun écran n'écoute, et un fichier de plus de 1 Mio, binaire ou illisible montre l'appel sans son changement. Un autre écrivain qui touche le fichier pendant l'appel se voit dans le diff. `ctx.writeBlock({kind:"diff"})` peint de la même façon un patch unifié, avec les numéros lus sur les lignes `@@` ; copier une ligne entière redonne la ligne du patch.
 
 **Markdown.** Le flux d'un assistant et `ctx.writeBlock({kind:"markdown"})` sont lus une ligne terminée à la fois (`MarkdownLines`, Markdig pour l'intérieur d'une ligne) : titres, gras, italique, code en ligne, liens, listes, citations, filets, blocs de code et tableaux. La ligne en cours d'écriture s'affiche telle qu'elle arrive et est remplacée quand elle se termine : un marqueur peut donc apparaître un instant avant d'être lu. Un tableau attend la ligne qui le termine, puis se dessine dans un cadre, ou se lit rangée par rangée si l'écran est trop étroit ; au-delà de 200 rangées, un nouveau bloc commence. Une emphase ouverte sur deux lignes reste telle qu'elle est écrite. Copier une ligne entière redonne son markdown ; en copier une partie donne ce qui est affiché. Le flux n'atteint l'écran que si `Orkeon:Cli:ConsoleStreaming:Enabled` est actif ; ce qu'une commande écrit avec `ctx.writeLine` n'est pas lu comme du markdown.
+
+**Les tâches dans le fil.** Les tâches apparues dans une même lecture de la liste forment un groupe, `● 3 agents launched (↓ to manage)` puis une ligne `├─`/`└─` par tâche ; une tâche seule garde ses deux lignes. Une ligne de fin dit ce que la tâche a consommé, outils, jetons et temps, quand c'est connu, et son glyphe dit comment elle a fini.
+
+**Loin de la fin.** Un transcript remonté dessine `↓ more below (click or ctrl+end)` sur sa dernière ligne et, une fois sorti de l'écran le prompt auquel répondent les lignes, ce prompt sur sa première ligne. Les deux sont dessinés par-dessus les lignes, sans faire partie du texte : ni la sélection ni la copie ne les voient, et remonter d'une ligne de plus montre celle qu'ils couvrent.
+
+**La barre.** `context N%` est ce qu'a envoyé le dernier appel au modèle du tour du prompt, rapporté à `Orkeon:Cli:Session:ContextWindowTokens` ; sans ce réglage, ou avant un appel, l'entrée est absente. Elle reste discrète jusqu'à 79 %, en alerte dès 80 %, en erreur dès 95 %. Sur un prompt vide, `?` liste les touches.
+
+**Palettes.** `Orkeon:Cli:Tui:Theme` nomme la palette au démarrage : `Dark`, `Light` ou `None`, les couleurs du terminal, gras et italique conservés. Omis, `None` si `NO_COLOR` est défini, sinon `Dark` : un réglage l'emporte sur la variable, comme le demande no-color.org. La palette n'est pas détectée depuis le terminal. `ctx.setTheme("light")` la change pour la session, écran compris, et répond false sur une console sans palettes ; `ctx.theme` la nomme.
 
 ## Matrice de support TypeScript (esbuild → Jint)
 

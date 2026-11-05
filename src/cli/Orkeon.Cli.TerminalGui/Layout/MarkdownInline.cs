@@ -7,7 +7,7 @@ namespace Orkeon.Cli.TerminalGui.Layout;
 /// <summary>Pure reading of one line of markdown: the text it shows and the styles over it.</summary>
 internal static class MarkdownInline
 {
-    private static readonly char[] Markers = ['*', '_', '`', '[', '<', '&', '\\', '!'];
+    private static readonly System.Buffers.SearchValues<char> Markers = System.Buffers.SearchValues.Create("*_`[<&\\!");
 
     /// <summary>
     /// The text <paramref name="source"/> shows. What is not a plain paragraph once read (a stray block marker)

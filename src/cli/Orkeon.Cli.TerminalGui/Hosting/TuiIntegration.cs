@@ -97,6 +97,9 @@ public sealed class TuiIntegration
     /// <summary>Cumulated session tokens (real usage, cost tracker). Null ⇒ segment omitted.</summary>
     public Func<long?>? SessionTokens { get; set; }
 
+    /// <summary>The share of the context window the last prompt of the turn filled, 0 to 100. Null ⇒ segment omitted.</summary>
+    public Func<int?>? ContextPercent { get; set; }
+
     /// <summary>Rows for the agents pane. Null/empty ⇒ pane collapses to zero rows.</summary>
     public Func<IReadOnlyList<AgentRowInfo>>? AgentRows { get; set; }
 

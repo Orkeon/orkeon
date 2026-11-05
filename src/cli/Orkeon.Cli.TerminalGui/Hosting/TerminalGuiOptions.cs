@@ -52,6 +52,9 @@ public sealed record TerminalGuiOptions
     /// </summary>
     public BannerInfo? Banner { get; init; }
 
+    /// <summary>The palette to start in. Null: none when <c>NO_COLOR</c> is set, else the dark one.</summary>
+    public Orkeon.Cli.Abstractions.Console.ConsoleTheme? Theme { get; init; }
+
     /// <summary>Unicode-vs-ASCII marker policy. Default <see cref="GlyphMode.Auto"/>.</summary>
     public GlyphMode Glyphs { get; init; } = GlyphMode.Auto;
 

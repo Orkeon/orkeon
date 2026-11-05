@@ -89,6 +89,8 @@ public sealed class TerminalGuiHost : IAsyncDisposable
         {
             Diag($"Init skipped — Driver already set: {Application.Driver?.GetType().FullName}");
         }
+        // Before the views: a label takes its colours when it is built.
+        Layout.SchemeFactory.StartIn(_options.Theme);
         _toplevel = new SplitPaneToplevel(_options);
 
         // Tell the .NET runtime to treat Ctrl+C as a regular keystroke instead of

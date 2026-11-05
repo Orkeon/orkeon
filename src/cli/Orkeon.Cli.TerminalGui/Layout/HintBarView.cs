@@ -107,6 +107,15 @@ public sealed class HintBarView : View
         {
             witness = null;
         }
+        int? context;
+        try
+        {
+            context = _integration?.ContextPercent?.Invoke();
+        }
+        catch
+        {
+            context = null;
+        }
         var running = IsTurnRunning(_runner, _integration);
         var tasks = _agentsAvailable && (_agentsHasRows?.Invoke() ?? true);
         var navigation = _navigation?.Invoke();
@@ -115,7 +124,8 @@ public sealed class HintBarView : View
             mode,
             running,
             tasks,
-            taskListFocused: navigation?.State == InputNavigationState.List);
+            taskListFocused: navigation?.State == InputNavigationState.List,
+            contextPercent: context);
 
         _dispatcher.Invoke(() =>
         {

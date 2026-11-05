@@ -442,6 +442,9 @@ static class Program
                 // Banner content comes from the configuration this host actually loaded —
                 // the TUI layer cannot (and must not) probe the LLM section itself.
                 Banner = Orkeon.ConsoleApp.Services.TuiFidelityWiring.BuildBannerInfo(context.Configuration),
+                Theme = Enum.TryParse<Orkeon.Cli.Abstractions.Console.ConsoleTheme>(context.Configuration[$"{TuiSection}:Theme"], ignoreCase: true, out var theme)
+                    ? theme
+                    : null,
                 // Boot-time spinner verbs (appsettings). The live /config layer, read via
                 // TuiIntegration.SpinnerVerbs, wins over this when set.
                 SpinnerVerbs = context.Configuration.GetSection($"{TuiSection}:SpinnerVerbs")
@@ -467,6 +470,9 @@ static class Program
         /// Left out or empty, the console's own list.
         /// </summary>
         public List<string>? SpinnerVerbs { get; set; }
+
+        /// <summary>The palette the console starts in. Left out: none when NO_COLOR is set, else the dark one.</summary>
+        public Orkeon.Cli.Abstractions.Console.ConsoleTheme? Theme { get; set; }
     }
 
     static void ConfigureLogging(IServiceCollection services, UiMode effectiveUi, ScriptedCommandsCliOptions scriptedOpts)

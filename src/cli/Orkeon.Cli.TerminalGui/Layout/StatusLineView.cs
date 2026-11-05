@@ -51,10 +51,16 @@ public sealed class StatusLineView : View
         // Two attributes: the spinner glyph and verb in the accent, the parenthesis dim.
         // No hot key: a tool's name holds underscores, and a label would eat the first one.
         _head = new Label { X = 0, Y = 0, Height = 1, Text = string.Empty, HotKeySpecifier = NoHotKey };
-        _head.SetScheme(SchemeFactory.Accent());
         _tail = new Label { X = Pos.Right(_head), Y = 0, Width = Dim.Fill(), Height = 1, Text = string.Empty, HotKeySpecifier = NoHotKey };
-        _tail.SetScheme(SchemeFactory.Dim());
+        ApplyTheme();
         Add(_head, _tail);
+    }
+
+    /// <summary>Takes the colours of the palette in force.</summary>
+    internal void ApplyTheme()
+    {
+        _head.SetScheme(SchemeFactory.Accent());
+        _tail.SetScheme(SchemeFactory.Dim());
     }
 
     /// <summary>Whether a panel is asking the question that waits: the line then goes on saying what the turn does.</summary>

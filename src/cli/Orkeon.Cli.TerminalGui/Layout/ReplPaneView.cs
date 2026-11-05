@@ -60,6 +60,7 @@ public sealed class ReplPaneView : View, ITaskListNavigator, IToolActivityObserv
     private readonly RuleChipView _ruleChip;
     private readonly RuleChipView _bottomRule;
     private readonly IUiDispatcher _dispatcher;
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<string, int> _toolCalls = new(StringComparer.Ordinal);
     private readonly GlyphSet _glyphs;
 
     // Rows reserved between the transcript and the prompt: spinner line + top separator.
@@ -156,6 +157,7 @@ public sealed class ReplPaneView : View, ITaskListNavigator, IToolActivityObserv
             // hooks via TranscriptView regardless of focus state.
             screen.CanFocus = false;
             screen.SetScheme(SchemeFactory.Pane());
+            screen.Glyphs = _glyphs;
         });
         _transcriptWrites = new AppendCoalescer<TranscriptWrite>(dispatcher, ApplyTranscriptWrites);
         _commandResult = new CommandResultIndent(_glyphs);
@@ -188,7 +190,6 @@ public sealed class ReplPaneView : View, ITaskListNavigator, IToolActivityObserv
             Height = 1,
             Text = $"{_glyphs.Prompt} ",
         };
-        _promptLabel.SetScheme(SchemeFactory.Uniform(SchemeFactory.Attr(PaletteRole.Accent, bold: true)));
         _input = new MouseClipboardTextView
         {
             X = Pos.Right(_promptLabel),
@@ -251,7 +252,7 @@ public sealed class ReplPaneView : View, ITaskListNavigator, IToolActivityObserv
             Text = PlaceholderText,
             CanFocus = false,
         };
-        _placeholder.SetScheme(SchemeFactory.Uniform(SchemeFactory.Attr(PaletteRole.Dim, italic: true)));
+        ApplyLabelSchemes();
 
         _panelView.KeyHandler = HandlePanelKey;
         Add(_screens.Main, _statusLine, _ruleChip, _promptLabel, _input, _placeholder, _bottomRule, _panelView, _menuView, _stepView);
@@ -303,6 +304,21 @@ public sealed class ReplPaneView : View, ITaskListNavigator, IToolActivityObserv
     {
         ArgumentNullException.ThrowIfNull(text);
         _transcriptWrites.Post(new TranscriptWrite(ConsoleThread.Current, text) { Stream = true });
+    }
+
+    /// <summary>Paints the layout in <paramref name="theme"/> from now on.</summary>
+    internal void ApplyTheme(ConsoleTheme theme) => _dispatcher.Invoke(() =>
+    {
+        SchemeFactory.Theme = theme;
+        ApplyLabelSchemes();
+        _statusLine.ApplyTheme();
+        (SuperView ?? this).SetNeedsDraw();
+    });
+
+    private void ApplyLabelSchemes()
+    {
+        _promptLabel.SetScheme(SchemeFactory.Uniform(SchemeFactory.Attr(PaletteRole.Accent, bold: true)));
+        _placeholder.SetScheme(SchemeFactory.Uniform(SchemeFactory.Attr(PaletteRole.Dim, italic: true)));
     }
 
     /// <summary>The columns of the screen shown; zero while unknown.</summary>
@@ -458,6 +474,7 @@ public sealed class ReplPaneView : View, ITaskListNavigator, IToolActivityObserv
     public void Started(ToolCallStarted toolCall)
     {
         ArgumentNullException.ThrowIfNull(toolCall);
+        if (toolCall.Thread is { } thread) _toolCalls.AddOrUpdate(thread, 1, (_, calls) => calls + 1);
         _transcriptWrites.Post(new TranscriptWrite(toolCall.Thread, null) { CallStarted = toolCall });
     }
 
@@ -536,6 +553,13 @@ public sealed class ReplPaneView : View, ITaskListNavigator, IToolActivityObserv
     /// <summary>Writes <paramref name="text"/> as a line of <paramref name="thread"/>'s screen (null is main).</summary>
     internal void AppendThreadLine(string? thread, string text)
         => _transcriptWrites.Post(new TranscriptWrite(thread, (text ?? string.Empty) + "\n"));
+
+    /// <summary>Writes styled lines on <paramref name="thread"/>'s screen (null is main).</summary>
+    internal void AppendThreadLines(string? thread, IReadOnlyList<TranscriptLine> lines)
+        => _transcriptWrites.Post(new TranscriptWrite(thread, null) { Lines = lines });
+
+    /// <summary>The tool calls <paramref name="thread"/> started so far.</summary>
+    internal int ToolCallsOf(string thread) => _toolCalls.GetValueOrDefault(thread);
 
     /// <summary>Writes an attention line on the displayed screen and in <paramref name="thread"/>'s own, once when they are the same.</summary>
     internal void AppendAttentionLine(string? thread, string text)
@@ -623,7 +647,7 @@ public sealed class ReplPaneView : View, ITaskListNavigator, IToolActivityObserv
     private void SyncPlaceholder()
         => _placeholder.Visible = _panelRows == 0 && string.IsNullOrEmpty(_input.Text);
 
-    private const string PlaceholderText = "Message… (/ for commands, @ for files)";
+    private const string PlaceholderText = "Message… (/ for commands, @ for files, ? for shortcuts)";
 
     /// <summary>The status line band (bound by the host to the runner + integration).</summary>
     public StatusLineView StatusLine => _statusLine;
@@ -889,6 +913,22 @@ public sealed class ReplPaneView : View, ITaskListNavigator, IToolActivityObserv
         if (HandleSlashMenuKey(key))
         {
             key.Handled = true;
+            return;
+        }
+
+        // Away from the tail, Ctrl+End comes back to it; at the tail it stays the draft's.
+        if (key.KeyCode == (KeyCode.End | KeyCode.CtrlMask) && _screens.Displayed.ChipText is not null)
+        {
+            key.Handled = true;
+            _screens.Displayed.MoveEnd();
+            return;
+        }
+
+        // On an empty prompt, ? shows the shortcuts instead of starting a message.
+        if (PrintableText(key) == "?" && string.IsNullOrEmpty(_input.Text) && _navigation.State != InputNavigationState.List)
+        {
+            key.Handled = true;
+            AppendThreadLines(_screens.DisplayedThread, ShortcutsHelp.Lines(_glyphs));
             return;
         }
 

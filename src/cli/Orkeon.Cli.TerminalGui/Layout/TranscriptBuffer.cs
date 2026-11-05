@@ -319,6 +319,22 @@ internal sealed class TranscriptBuffer
         _openTail = false;
     }
 
+    /// <summary>
+    /// The first line of the nearest block painted in <paramref name="role"/> that starts above
+    /// <paramref name="row"/>; null when none did, or when that block is what the row shows first.
+    /// </summary>
+    public string? LineAbove(int row, PaletteRole role)
+    {
+        if (row < 0 || row >= RowCount) return null;
+        var index = IndexOfRow(row);
+        var startsThere = _items[index].FirstRow - _items[_head].FirstRow == row;
+        if (startsThere) index--;
+        while (index >= _head && _items[index].Style?.RowRole != role) index--;
+        if (index < _head) return null;
+        while (index > _head && _items[index - 1].Style?.RowRole == role) index--;
+        return _items[index].Text;
+    }
+
     /// <summary>The row at <paramref name="row"/> (0-based in the content), or null past the end.</summary>
     public TranscriptRow? GetRow(int row)
     {

@@ -176,6 +176,8 @@ interface CommandRuntimeContext {
   write(text: string): void;
   writeLine(text: string): void;
   writeBlock(spec: { kind: "markdown" | "diff"; text: string }): void; // styled by the split-pane console, plain lines elsewhere
+  readonly theme: "dark" | "light" | "none" | null
+  setTheme(name: "dark" | "light" | "none"): boolean
   clear(): void;
 
   prompt(spec: PromptSpec): Promise<string | boolean>;
@@ -749,6 +751,14 @@ for (const c of usage.byCommand) ctx.writeLine(`[${c.ticket}] ${c.name}: ${c.pro
 **The change of a call.** For `edit_file` and `file_write` the decorator reads the file before and after the call and hands the screen a `ToolCallDiff` (`LineDiff`, a comparison by lines): the transcript shows the file with its counts, numbered rows on a red or green line, the words that changed in a stronger shade and an ellipsis between distant changes, up to 80 rows. The comparison is for the screen alone: what the model receives does not change, nothing is read while no screen listens, and a file over 1 MiB, a binary one or an unreadable one shows the call without its change. Another writer touching the file during the call shows in the diff. `ctx.writeBlock({kind:"diff"})` paints a unified patch the same way, its numbers read from the `@@` lines; copying a whole line gives back the patch's line.
 
 **Markdown.** An assistant's stream and `ctx.writeBlock({kind:"markdown"})` are read one finished line at a time (`MarkdownLines`, Markdig for what is inside a line): headings, bold, italics, inline code, links, lists, quotes, rules, code fences and tables. The line being written shows as it arrives and is replaced when it ends, so a marker can flash before it is read. A table is held until the line that ends it, then drawn in a box, or read row by row when the screen is too narrow; a run of more than 200 rows starts a new block. An emphasis left open across two lines stays as written. Copying a whole line gives back its markdown; copying part of one gives what is displayed. The stream only reaches the screen when `Orkeon:Cli:ConsoleStreaming:Enabled` is set; what a command writes with `ctx.writeLine` is not read as markdown.
+
+**Tasks in the thread.** Tasks that appear in one poll of the list read as one group, `● 3 agents launched (↓ to manage)` then a `├─`/`└─` row per task; a lone task keeps its two lines. An end line says what the task used, tools, tokens and time, when they are known, and its glyph says how it ended.
+
+**Away from the tail.** A transcript scrolled up draws `↓ more below (click or ctrl+end)` on its last row and, once the prompt that the rows answer has left the screen, that prompt on its first row. Both are drawn over the rows, in no way part of the text: a selection and a copy never see them, and scrolling one row further shows the row under them.
+
+**The bar.** `context N%` is what the latest model call of the prompt's turn sent, against `Orkeon:Cli:Session:ContextWindowTokens`; without that setting, or before a call, the entry is absent. It stays dim up to 79%, alert from 80%, error from 95%. On an empty prompt, `?` lists the keys.
+
+**Palettes.** `Orkeon:Cli:Tui:Theme` names the palette at the start: `Dark`, `Light` or `None`, the terminal's own colours with bold and italic kept. Left out, `None` when `NO_COLOR` is set, else `Dark`: a setting wins over the variable, as no-color.org asks. The palette is not detected from the terminal. `ctx.setTheme("light")` changes it for the session, what is on screen included, and answers false on a console without palettes; `ctx.theme` names it.
 
 ## TypeScript support matrix (esbuild → Jint)
 

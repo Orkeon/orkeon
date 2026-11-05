@@ -132,6 +132,9 @@ internal sealed class TranscriptView : View
         FollowTail();
     }
 
+    private bool OnChip(Point point)
+        => ChipText is { } chip && point.Y == Viewport.Height - 1 && point.X >= Viewport.Width - TerminalText.Columns(chip) - 1;
+
     private bool AtEnd => Viewport.Y >= _buffer.RowCount - Viewport.Height;
 
     // Applies the stick-to-the-end state; a no-op while the view has no height yet.
@@ -186,8 +189,38 @@ internal sealed class TranscriptView : View
             if (_buffer.GetRow(Viewport.Y + y) is not { } row) continue;
             DrawRow(y, row, width, normal, selection);
         }
+        DrawOverlays(width);
         return true;
     }
+
+    // Away from the tail, the view says what it is under and how to come back; a row lost under either
+    // comes back by scrolling one row further.
+    private void DrawOverlays(int width)
+    {
+        if (ChipText is { } chip && width > TerminalText.Columns(chip) && Viewport.Height > 0)
+        {
+            SetAttribute(SchemeFactory.Attr(PaletteRole.Accent, bold: true));
+            Move(width - TerminalText.Columns(chip) - 1, Viewport.Height - 1);
+            AddStr(chip);
+        }
+        if (PromptHeader is { } header && Viewport.Height > 1)
+        {
+            SetAttribute(SchemeFactory.Attr(PaletteRole.UserBar));
+            Move(0, 0);
+            AddStr(new string(' ', Math.Max(0, width)));
+            Move(0, 0);
+            AddStr(TerminalText.Truncate(header, Math.Max(0, width), Glyphs.Ellipsis));
+        }
+    }
+
+    /// <summary>The markers drawn over the rows.</summary>
+    internal GlyphSet Glyphs { get; set; } = GlyphSet.Unicode;
+
+    /// <summary>The way back to the tail, drawn at the foot of the view; null at the tail.</summary>
+    internal string? ChipText => _followTail || AtEnd ? null : $"{Glyphs.Down} more below (click or ctrl+end)";
+
+    /// <summary>The prompt the rows shown answer, once it has scrolled off; null at the tail or with it on screen.</summary>
+    internal string? PromptHeader => _followTail ? null : _buffer.LineAbove(Viewport.Y, PaletteRole.UserBar);
 
     private void DrawRow(int y, TranscriptRow row, int width, Attribute normal, (TranscriptPosition From, TranscriptPosition To)? selection)
     {
@@ -243,6 +276,12 @@ internal sealed class TranscriptView : View
         if (flags.HasFlag(MouseFlags.WheeledDown)) return Scroll(WheelRows);
 
         var point = mouse.Position ?? Point.Empty;
+        if (flags.HasFlag(MouseFlags.LeftButtonPressed) && !_dragging && OnChip(point))
+        {
+            MoveEnd();
+            SetNeedsDraw();
+            return true;
+        }
         var position = _buffer.HitTest(Viewport.Y + point.Y, Viewport.X + point.X);
         // The view holds the mouse while dragging: a report above or below it comes with a row
         // outside the viewport, and the selection then scrolls instead of stopping at the edge.

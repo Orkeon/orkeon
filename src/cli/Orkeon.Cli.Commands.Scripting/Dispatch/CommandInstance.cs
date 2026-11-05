@@ -145,7 +145,13 @@ public sealed class CommandInstance
         }
         while (!ReferenceEquals(Interlocked.CompareExchange(ref _usage, next, current), current));
         AddTokens(usage.PromptTokens + (long)usage.CompletionTokens);
+        if (usage.PromptTokens > 0) Volatile.Write(ref _lastPromptTokens, usage.PromptTokens);
     }
+
+    /// <summary>What the latest model call of this instance sent, in tokens: how full its context is. Zero before any.</summary>
+    public long LastPromptTokens => Volatile.Read(ref _lastPromptTokens);
+
+    private long _lastPromptTokens;
 
     /// <summary>The usage credited through <see cref="AddUsage"/> so far.</summary>
     public CommandInstanceUsage Usage => Volatile.Read(ref _usage);

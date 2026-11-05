@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — tasks in the thread, palettes and the way back
+
+- In the split-pane console, tasks launched together read as one group with a branch per task, and the end line of a task says its tools, tokens and time, its glyph coloured by how it ended.
+- A transcript scrolled up offers the way back (`↓ more below`, by a click or Ctrl+End) and recalls on its first row the prompt that has left the screen.
+- The bar under the prompt shows `context N%`, the last model call against `Orkeon:Cli:Session:ContextWindowTokens`; it is absent without that setting. `?` on an empty prompt lists the keys.
+- **Palettes**: the setting `Orkeon:Cli:Tui:Theme` (`Dark`, `Light`, `None`), `NO_COLOR` when it is left out, and `ctx.setTheme` / `ctx.theme` to change it for the session.
+
 ### Added — markdown in the transcript
 
 - In the split-pane console, an assistant's reply and `ctx.writeBlock` markdown show as text: headings, bold, italics, code, links, lists, quotes and tables in a box. A line is styled when it ends, a table when it is complete. Copying a whole line gives back its markdown.

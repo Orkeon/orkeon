@@ -183,6 +183,14 @@ export interface CommandRuntimeContext {
    * shows `text` as plain lines. The caller hands over the source, never a colour.
    */
   writeBlock(spec: { kind: "markdown" | "diff"; text: string }): void;
+  /** The console's palette; null on a console without palettes. */
+  readonly theme: "dark" | "light" | "none" | null;
+  /**
+   * Paints the console in a palette, what is already on screen included. Returns false on a console without
+   * palettes, which stays as it is. The choice lasts for the session: the start palette is the setting
+   * `Orkeon:Cli:Tui:Theme`.
+   */
+  setTheme(name: "dark" | "light" | "none"): boolean;
   clear(): void;
 
   /**

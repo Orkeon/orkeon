@@ -1,3 +1,4 @@
+using Orkeon.Cli.Abstractions.Console;
 using Terminal.Gui.Drawing;
 using Attribute = Terminal.Gui.Drawing.Attribute;
 
@@ -71,13 +72,26 @@ public static class SchemeFactory
     /// <summary>The terminal's announcement of its colour depth (not in the Orkeon variables catalog: a terminal standard).</summary>
     private const string ColorTermVariable = "COLORTERM";
 
+    /// <summary>The convention that asks a program for no colour, whatever its value but an empty one (no-color.org).</summary>
+    private const string NoColorVariable = "NO_COLOR";
+
     private static readonly Color Default = Color.None;
 
     // Selection keeps explicit colours: a reversed pair of "terminal defaults" would be invisible.
     private static readonly Color SelectionFg = new(ColorName16.Black);
     private static readonly Color SelectionBg = new(ColorName16.White);
 
-    private static readonly bool TrueColorTerminal = IsTrueColor(ReadColorTerm());
+    private static readonly bool TrueColorTerminal = IsTrueColor(ReadVariable(ColorTermVariable));
+
+    /// <summary>The palette the attributes of this terminal are read in; only the UI thread changes it.</summary>
+    internal static ConsoleTheme Theme { get; set; } = ResolveTheme(null, ReadVariable(NoColorVariable));
+
+    /// <summary>The palette to start with: the one a setting names, else none when <c>NO_COLOR</c> asks for it, else the dark one.</summary>
+    public static ConsoleTheme ResolveTheme(ConsoleTheme? setting, string? noColor)
+        => setting ?? (string.IsNullOrEmpty(noColor) ? ConsoleTheme.Dark : ConsoleTheme.None);
+
+    /// <summary>Starts this terminal in the palette <paramref name="setting"/> names, or as its environment asks.</summary>
+    internal static void StartIn(ConsoleTheme? setting) => Theme = ResolveTheme(setting, ReadVariable(NoColorVariable));
 
     /// <summary>True when <c>COLORTERM</c> announces 24-bit colour (<c>truecolor</c> or <c>24bit</c>).</summary>
     public static bool IsTrueColor(string? colorTerm)
@@ -87,8 +101,54 @@ public static class SchemeFactory
             || value.Equals("24bit", StringComparison.OrdinalIgnoreCase);
     }
 
-    /// <summary>The foreground colour of <paramref name="role"/> at the given colour depth.</summary>
-    public static Color Foreground(PaletteRole role, bool trueColor) => role switch
+    /// <summary>The foreground colour of <paramref name="role"/> at the given colour depth, in the dark palette.</summary>
+    public static Color Foreground(PaletteRole role, bool trueColor) => Foreground(role, trueColor, ConsoleTheme.Dark);
+
+    /// <summary>The foreground colour of <paramref name="role"/> at the given colour depth, in <paramref name="theme"/>.</summary>
+    public static Color Foreground(PaletteRole role, bool trueColor, ConsoleTheme theme) => theme switch
+    {
+        ConsoleTheme.None => Default,
+        ConsoleTheme.Light => LightForeground(role, trueColor),
+        _ => DarkForeground(role, trueColor),
+    };
+
+    /// <summary>The background of <paramref name="role"/> in the dark palette: the terminal's own, except for the roles of <see cref="HasBackground"/>.</summary>
+    public static Color Background(PaletteRole role, bool trueColor) => Background(role, trueColor, ConsoleTheme.Dark);
+
+    /// <summary>The background of <paramref name="role"/> in <paramref name="theme"/>: the terminal's own, except for the roles of <see cref="HasBackground"/>.</summary>
+    public static Color Background(PaletteRole role, bool trueColor, ConsoleTheme theme) => theme switch
+    {
+        ConsoleTheme.None => Default,
+        ConsoleTheme.Light => LightBackground(role, trueColor),
+        _ => DarkBackground(role, trueColor),
+    };
+
+    private static Color LightForeground(PaletteRole role, bool trueColor) => role switch
+    {
+        PaletteRole.Dim => trueColor ? new Color(0x6a, 0x6a, 0x6a) : new Color(ColorName16.DarkGray),
+        PaletteRole.Accent => trueColor ? new Color(0xc0, 0x42, 0x2a) : new Color(ColorName16.Red),
+        PaletteRole.Ok => trueColor ? new Color(0x1a, 0x7f, 0x37) : new Color(ColorName16.Green),
+        PaletteRole.Alert => trueColor ? new Color(0x9a, 0x67, 0x00) : new Color(ColorName16.Yellow),
+        PaletteRole.Error => trueColor ? new Color(0xcf, 0x22, 0x2e) : new Color(ColorName16.Red),
+        PaletteRole.UserBar or PaletteRole.DiffAdded or PaletteRole.DiffRemoved or PaletteRole.AddedWord or PaletteRole.RemovedWord
+            => trueColor ? new Color(0x1f, 0x1f, 0x1f) : new Color(ColorName16.Black),
+        PaletteRole.Code => trueColor ? new Color(0x05, 0x50, 0xae) : new Color(ColorName16.Blue),
+        PaletteRole.FileRef => trueColor ? new Color(0x09, 0x69, 0xda) : new Color(ColorName16.Blue),
+        PaletteRole.PanelRule => trueColor ? new Color(0xb0, 0xb0, 0xb0) : new Color(ColorName16.Gray),
+        _ => Default,
+    };
+
+    private static Color LightBackground(PaletteRole role, bool trueColor) => role switch
+    {
+        PaletteRole.UserBar => trueColor ? new Color(0xe8, 0xe8, 0xe8) : new Color(ColorName16.Gray),
+        PaletteRole.DiffAdded => trueColor ? new Color(0xd8, 0xf5, 0xdd) : new Color(ColorName16.BrightGreen),
+        PaletteRole.DiffRemoved => trueColor ? new Color(0xfb, 0xdc, 0xdc) : new Color(ColorName16.BrightRed),
+        PaletteRole.AddedWord => trueColor ? new Color(0xa6, 0xe9, 0xb5) : new Color(ColorName16.Green),
+        PaletteRole.RemovedWord => trueColor ? new Color(0xf5, 0xae, 0xb0) : new Color(ColorName16.Red),
+        _ => Default,
+    };
+
+    private static Color DarkForeground(PaletteRole role, bool trueColor) => role switch
     {
         PaletteRole.Dim => trueColor ? new Color(0x8a, 0x8a, 0x8a) : new Color(ColorName16.DarkGray),
         PaletteRole.Accent => trueColor ? new Color(0xe8, 0x65, 0x4a) : new Color(ColorName16.BrightRed),
@@ -105,8 +165,7 @@ public static class SchemeFactory
         _ => Default,
     };
 
-    /// <summary>The background of <paramref name="role"/>: the terminal's own, except for the roles of <see cref="HasBackground"/>.</summary>
-    public static Color Background(PaletteRole role, bool trueColor) => role switch
+    private static Color DarkBackground(PaletteRole role, bool trueColor) => role switch
     {
         PaletteRole.UserBar => trueColor ? new Color(0x3a, 0x3a, 0x3a) : new Color(ColorName16.DarkGray),
         PaletteRole.DiffAdded => trueColor ? new Color(0x12, 0x3d, 0x22) : new Color(ColorName16.Green),
@@ -127,26 +186,34 @@ public static class SchemeFactory
     /// plain text.
     /// </summary>
     public static Attribute Cell(PaletteRole? row, PaletteRole role, bool trueColor, bool bold, bool italic)
+        => Cell(row, role, trueColor, ConsoleTheme.Dark, bold, italic);
+
+    /// <summary>As <see cref="Cell(PaletteRole?, PaletteRole, bool, bool, bool)"/>, in <paramref name="theme"/>.</summary>
+    public static Attribute Cell(PaletteRole? row, PaletteRole role, bool trueColor, ConsoleTheme theme, bool bold, bool italic)
     {
-        var fg = role == PaletteRole.Normal && row is { } plainOn ? Foreground(plainOn, trueColor) : Foreground(role, trueColor);
-        var bg = !HasBackground(role) && row is { } paintedOn ? Background(paintedOn, trueColor) : Background(role, trueColor);
+        var fg = role == PaletteRole.Normal && row is { } plainOn ? Foreground(plainOn, trueColor, theme) : Foreground(role, trueColor, theme);
+        var bg = !HasBackground(role) && row is { } paintedOn ? Background(paintedOn, trueColor, theme) : Background(role, trueColor, theme);
         var style = (bold ? TextStyle.Bold : TextStyle.None) | (italic ? TextStyle.Italic : TextStyle.None);
         return new Attribute(in fg, in bg, in style);
     }
 
     /// <summary>As <see cref="Cell(PaletteRole?, PaletteRole, bool, bool, bool)"/>, at this terminal's depth.</summary>
     internal static Attribute Cell(PaletteRole? row, PaletteRole role, bool bold, bool italic)
-        => Cell(row, role, TrueColorTerminal, bold, italic);
+        => Cell(row, role, TrueColorTerminal, Theme, bold, italic);
 
     /// <summary>The attribute of <paramref name="role"/> at this terminal's depth, on its background (the terminal's for most roles).</summary>
     public static Attribute Attr(PaletteRole role, bool bold = false, bool italic = false)
-        => Attr(role, TrueColorTerminal, bold, italic);
+        => Attr(role, TrueColorTerminal, Theme, bold, italic);
 
-    /// <summary>The attribute of <paramref name="role"/> at an explicit depth, on its background (the terminal's for most roles).</summary>
+    /// <summary>The attribute of <paramref name="role"/> at an explicit depth in the dark palette, on its background (the terminal's for most roles).</summary>
     public static Attribute Attr(PaletteRole role, bool trueColor, bool bold, bool italic)
+        => Attr(role, trueColor, ConsoleTheme.Dark, bold, italic);
+
+    /// <summary>The attribute of <paramref name="role"/> at an explicit depth in <paramref name="theme"/>, on its background (the terminal's for most roles).</summary>
+    public static Attribute Attr(PaletteRole role, bool trueColor, ConsoleTheme theme, bool bold, bool italic)
     {
-        var fg = Foreground(role, trueColor);
-        var bg = Background(role, trueColor);
+        var fg = Foreground(role, trueColor, theme);
+        var bg = Background(role, trueColor, theme);
         var style = (bold ? TextStyle.Bold : TextStyle.None) | (italic ? TextStyle.Italic : TextStyle.None);
         return new Attribute(in fg, in bg, in style);
     }
@@ -193,11 +260,11 @@ public static class SchemeFactory
         Disabled = attr,
     };
 
-    private static string? ReadColorTerm()
+    private static string? ReadVariable(string name)
     {
         try
         {
-            return Environment.GetEnvironmentVariable(ColorTermVariable);
+            return Environment.GetEnvironmentVariable(name);
         }
         catch (System.Security.SecurityException)
         {

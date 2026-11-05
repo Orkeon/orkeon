@@ -30,7 +30,7 @@ internal enum ReplayInterrupt
 /// </list>
 /// With no replay running, every member delegates to the real console.
 /// </summary>
-internal sealed class ReplayConsoleAdapter : IConsoleAdapter, IThreadedConsole, IStreamConsole, IBlockConsole, IChoiceConsole, ICommandOutcomeObserver
+internal sealed class ReplayConsoleAdapter : IConsoleAdapter, IThreadedConsole, IStreamConsole, IBlockConsole, IThemeConsole, IChoiceConsole, ICommandOutcomeObserver
 {
     /// <summary>The exit code of a replay whose every line passed.</summary>
     public const int PassedExitCode = 0;
@@ -253,6 +253,15 @@ internal sealed class ReplayConsoleAdapter : IConsoleAdapter, IThreadedConsole, 
         => _inner is IChoiceConsole panels
             ? panels.ChooseAsync(request, cancellationToken)
             : throw new InvalidOperationException("The console wrapped has no panels: read CanChoose first.");
+
+    /// <inheritdoc />
+    public ConsoleTheme Theme => _inner is IThemeConsole themed ? themed.Theme : ConsoleTheme.None;
+
+    /// <inheritdoc />
+    public void SetTheme(ConsoleTheme theme)
+    {
+        if (_inner is IThemeConsole themed) themed.SetTheme(theme);
+    }
 
     /// <inheritdoc />
     public void WriteBlock(ConsoleBlockKind kind, string text)

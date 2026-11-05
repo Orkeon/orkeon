@@ -47,12 +47,14 @@ public static class HintBarModel
     /// <param name="commandRunning">True while the prompt's turn runs.</param>
     /// <param name="tasksAvailable">True while the tasks list has a task other than <c>main</c>.</param>
     /// <param name="taskListFocused">True while the tasks list has focus.</param>
+    /// <param name="contextPercent">The share of the context window the last prompt filled; null when unknown.</param>
     internal static IReadOnlyList<RowSegment> Segments(
         GlyphSet glyphs,
         string? permissionMode,
         bool commandRunning,
         bool tasksAvailable,
-        bool taskListFocused = false)
+        bool taskListFocused = false,
+        int? contextPercent = null)
     {
         ArgumentNullException.ThrowIfNull(glyphs);
         var entries = new List<RowSegment>(4);
@@ -67,6 +69,8 @@ public static class HintBarModel
             entries.Add(new RowSegment(
                 $"{glyphs.Chevrons} {PostureLabel(mode)} (shift+tab to cycle)",
                 IsLoudPosture(mode) ? PaletteRole.Alert : PaletteRole.Dim));
+            // Before the hints: the bar is cut on the right when narrow, and the keys can be read elsewhere (?).
+            if (contextPercent is { } used) entries.Add(new RowSegment($"context {used}%", ContextRole(used)));
             if (commandRunning) entries.Add(new RowSegment("esc esc to interrupt", PaletteRole.Dim));
             entries.Add(new RowSegment("ctrl+g logs", PaletteRole.Dim));
             if (tasksAvailable) entries.Add(new RowSegment($"{glyphs.Down} tasks", PaletteRole.Dim));
@@ -80,6 +84,14 @@ public static class HintBarModel
         }
         return segments;
     }
+
+    /// <summary>The context stays dim until it is worth a look: alert from 80%, error from 95%.</summary>
+    internal static PaletteRole ContextRole(int percent) => percent switch
+    {
+        >= 95 => PaletteRole.Error,
+        >= 80 => PaletteRole.Alert,
+        _ => PaletteRole.Dim,
+    };
 
     /// <summary>
     /// The readable label of a permission mode: <c>bypass permissions on</c>,

@@ -93,6 +93,34 @@ public sealed class CommandRuntimeContext
         else _console.WriteLine(text.EndsWith('\n') ? text[..^1] : text);
     }
 
+    /// <summary>The palette of the console, <c>"dark"</c>, <c>"light"</c> or <c>"none"</c>; null on a console without palettes.</summary>
+    public string? theme => _console is IThemeConsole themed ? ThemeName(themed.Theme) : null;
+
+    /// <summary>
+    /// Paints the console in the palette named <c>"dark"</c>, <c>"light"</c> or <c>"none"</c>, what is on screen
+    /// included. Returns false on a console without palettes, which stays as it is.
+    /// </summary>
+    public bool setTheme(string name)
+    {
+        var palette = name switch
+        {
+            "dark" => ConsoleTheme.Dark,
+            "light" => ConsoleTheme.Light,
+            "none" => ConsoleTheme.None,
+            _ => throw new ArgumentException("ctx.setTheme(name): name must be \"dark\", \"light\" or \"none\"."),
+        };
+        if (_console is not IThemeConsole themed) return false;
+        themed.SetTheme(palette);
+        return true;
+    }
+
+    private static string ThemeName(ConsoleTheme palette) => palette switch
+    {
+        ConsoleTheme.Light => "light",
+        ConsoleTheme.None => "none",
+        _ => "dark",
+    };
+
     /// <summary>Clear the console / logs pane.</summary>
     public void clear() => _console.Clear();
 

@@ -25,7 +25,7 @@ namespace Orkeon.Cli.TerminalGui.Console;
 ///   contract unchanged.
 /// </para>
 /// </remarks>
-public sealed class TerminalGuiConsoleAdapter : IConsoleAdapter, IThreadedConsole, IStreamConsole, IBlockConsole, IChoiceConsole
+public sealed class TerminalGuiConsoleAdapter : IConsoleAdapter, IThreadedConsole, IStreamConsole, IBlockConsole, IChoiceConsole, IThemeConsole
 {
     private readonly ReplPaneView _repl;
 
@@ -33,6 +33,12 @@ public sealed class TerminalGuiConsoleAdapter : IConsoleAdapter, IThreadedConsol
     {
         _repl = repl ?? throw new ArgumentNullException(nameof(repl));
     }
+
+    /// <inheritdoc />
+    public ConsoleTheme Theme => SchemeFactory.Theme;
+
+    /// <inheritdoc />
+    public void SetTheme(ConsoleTheme theme) => _repl.ApplyTheme(theme);
 
     public void Write(string text)
     {

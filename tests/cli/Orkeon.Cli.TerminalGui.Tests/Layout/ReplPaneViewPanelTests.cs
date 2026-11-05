@@ -364,7 +364,7 @@ public sealed class ReplPaneViewPanelTests
     }
 
     [Fact]
-    public void Disposing_the_pane_ends_the_requests_still_open()
+    public async Task Disposing_the_pane_ends_the_requests_still_open()
     {
         // Arrange
         var pane = CreatePane();
@@ -374,6 +374,6 @@ public sealed class ReplPaneViewPanelTests
         pane.Dispose();
 
         // Assert
-        Assert.True(answer.IsCompleted);
+        Assert.Null(await answer);
     }
 }

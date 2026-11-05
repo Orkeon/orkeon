@@ -13,6 +13,8 @@
 *REMOVED*Orkeon.Cli.Commands.Scripting.Runtime.ScriptUsageReport.cacheWriteTokens.get -> long
 *REMOVED*Orkeon.Cli.Commands.Scripting.Runtime.ScriptUsageReport.reasoningTokens.get -> long
 Orkeon.Cli.Commands.Scripting.Dispatch.CommandDispatchService.postWork(string! label, string! target, System.Func<System.Threading.CancellationToken, System.Threading.Tasks.Task<Orkeon.Cli.Commands.Scripting.Dispatch.CommandResponse!>!>! work, bool continueChain = false, bool exclusive = false) -> string!
+Orkeon.Cli.Commands.Scripting.Dispatch.CommandDispatchService.PromptTurnContextTokens() -> long
+Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstance.LastPromptTokens.get -> long
 Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstanceUsage.CacheHitTokens.get -> long?
 Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstanceUsage.CacheWriteTokens.get -> long?
 Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstanceUsage.ReasoningTokens.get -> long?
@@ -28,6 +30,8 @@ Orkeon.Cli.Commands.Scripting.Progress.ToolActivityPipeline.InvokeAsync(Orkeon.A
 Orkeon.Cli.Commands.Scripting.Progress.ToolActivityPipeline.ToolActivityPipeline(Orkeon.Application.Interfaces.Security.IToolInvocationPipeline! inner, Orkeon.Cli.Abstractions.Console.ToolActivityFeed! feed, Orkeon.Domain.FileSystem.IFileSystemService! files) -> void
 Orkeon.Cli.Commands.Scripting.Progress.ToolCallSubject
 Orkeon.Cli.Commands.Scripting.Runtime.CommandRuntimeContext.interactive.get -> bool
+Orkeon.Cli.Commands.Scripting.Runtime.CommandRuntimeContext.setTheme(string! name) -> bool
+Orkeon.Cli.Commands.Scripting.Runtime.CommandRuntimeContext.theme.get -> string?
 Orkeon.Cli.Commands.Scripting.Runtime.CommandRuntimeContext.writeBlock(Jint.Native.JsValue! spec) -> void
 Orkeon.Cli.Commands.Scripting.Runtime.ScriptCommandUsage.cacheHitTokens.get -> long?
 Orkeon.Cli.Commands.Scripting.Runtime.ScriptCommandUsage.cacheWriteTokens.get -> long?

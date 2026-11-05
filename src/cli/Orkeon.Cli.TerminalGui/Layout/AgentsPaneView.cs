@@ -124,6 +124,16 @@ public sealed class AgentsPaneView : View
     /// <summary>Receives the transcript lines of tasks launched or finished between two polls.</summary>
     internal Action<string>? TranscriptSink { get; set; }
 
+    /// <summary>The tool calls a ticket made so far, for the end line of a task; null when nothing counts them.</summary>
+    internal Func<string, int>? ToolCalls
+    {
+        get => _tracker.ToolCalls;
+        set => _tracker.ToolCalls = value;
+    }
+
+    /// <summary>A transcript line of the tasks with its display.</summary>
+    internal TranscriptLine StyledLine(string line) => _tracker.Styled(line);
+
     /// <summary>Wires the row source and starts the 1 Hz poll.</summary>
     public void Bind(TuiIntegration integration)
     {

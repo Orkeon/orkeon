@@ -44,6 +44,10 @@ internal static class TuiFidelityWiring
     /// </summary>
     private static readonly string[] ModeCycle = ["default", "acceptEdits", "plan", "bypassPermissions"];
 
+    /// <summary>The share of <paramref name="window"/> that <paramref name="tokens"/> fill, at most 100; null when either is unknown.</summary>
+    internal static int? ContextPercent(long tokens, long window)
+        => tokens <= 0 || window <= 0 ? null : (int)Math.Min(100, tokens * 100 / window);
+
     /// <summary>Builds the banner from what the host actually knows. Empty parts are omitted.</summary>
     public static BannerInfo BuildBannerInfo(IConfiguration configuration)
     {
@@ -169,6 +173,18 @@ internal static class TuiFidelityWiring
 
         if (cost is not null)
             integration.SessionTokens = () => cost.GetReport().TotalTokens;
+
+        if (dispatch is not null
+            && long.TryParse(services.GetService<IConfiguration>()?[ConfigurationKeys.CliSessionContextWindowTokens], out var contextWindow))
+        {
+            // A new prompt shows the last figure until its first call answers.
+            var contextTokens = 0L;
+            integration.ContextPercent = () =>
+            {
+                if (dispatch.PromptTurnContextTokens() is > 0 and var latest) contextTokens = latest;
+                return ContextPercent(contextTokens, contextWindow);
+            };
+        }
 
         if (dispatch is not null)
         {
