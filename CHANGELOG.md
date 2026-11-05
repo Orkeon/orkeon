@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — a scripted command may wait longer than ten seconds
+
+- A `defineCommand` handler still pending after ten seconds failed with Jint's promise timeout while it kept running. When it was waiting on `ctx.prompt`, that read stayed open and the next read of the split-pane REPL crashed the process (`A ReadLineAsync is already in progress`). The command profile now leaves cancellation as the only bound on a wait (`ScriptingLimitsOptions.PromiseTimeout`), and the `ExecutionTimeout` clock stops while a prompt waits for its answer.
+
 ### Added — the split-pane transcript paints what it shows
 
 - A submitted entry sits on a grey bar; what a slash command writes hangs under its echo, on an elbow; a turn of ten seconds or more closes on a dim line with its time and tokens. A copy of a whole prompt line returns what was typed. [ADR-017](docs/adr/ADR-017-transcript-display-model.md).

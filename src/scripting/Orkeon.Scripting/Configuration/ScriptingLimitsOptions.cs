@@ -96,4 +96,11 @@ public sealed record ScriptingLimitsOptions
     /// raises the limit.
     /// </remarks>
     public TimeSpan ExecutionTimeout { get; init; } = TimeSpan.FromSeconds(30);
+
+    /// <summary>
+    /// How long a host waiting for a script's promise gives it before the wait is rejected, the script never seeing
+    /// the rejection. Default: none set, the engine's ten seconds; a negative one (-00:00:00.001) leaves cancellation
+    /// as the only bound, which a scripted command needs since it waits for a model or an operator.
+    /// </summary>
+    public TimeSpan? PromiseTimeout { get; init; }
 }

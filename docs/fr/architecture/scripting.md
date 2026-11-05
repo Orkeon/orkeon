@@ -388,8 +388,9 @@ désormais une règle, que les reproducteurs de
   attend sous `HangGuards.EnginePromise` (2 minutes, `Orkeon.Tests.Shared.Timing`) : posée sur
   chaque lambda d'options `new Engine` d'un test, et, pour les moteurs que construisent la
   fabrique et `ScriptHost`, une fois par projet de tests par un `[ModuleInitializer]` sur
-  `JsEngineFactory.PromiseTimeout` (interne). Le défaut du produit ne change pas (celui de
-  Jint). Le balayage `TestEngineHangGuardTests` échoue sur un moteur de test sans garde.
+  `JsEngineFactory.PromiseTimeout` (interne). Le profil des commandes fixe
+  `ScriptingLimitsOptions.PromiseTimeout` à l'infini, car l'hôte d'une commande attend avec
+  `UnwrapIfPromiseAsync`, qui l'applique ; les autres moteurs du produit gardent le défaut de Jint. Le balayage `TestEngineHangGuardTests` échoue sur un moteur de test sans garde.
 
 ## Configuration et chaîne d'outils
 

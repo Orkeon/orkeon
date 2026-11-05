@@ -769,7 +769,8 @@ for (const c of usage.byCommand) ctx.writeLine(`[${c.ticket}] ${c.name}: ${c.pro
 - **Jint n'est pas thread-safe.** Le runner sérialise les invocations ; un
   `SemaphoreSlim` protège chaque moteur défensivement.
 - **Limites de sandbox (profil CLI)** : 64 Mo de mémoire, 100 de récursion max,
-  5 min d'exécution. Surcharge via `Orkeon:Cli:ScriptCommands:Limits`.
+  5 min d'exécution. Surcharge via `Orkeon:Cli:ScriptCommands:Limits`. Attendre la réponse à `ctx.prompt` ne
+  compte pas comme de l'exécution, et l'attente d'un handler n'a pas de limite propre : annuler la commande y met fin.
 - **Politique de conflit** : le premier script gagne, par ordre ordinal des
   chemins ; le second est journalisé en Warning. Basculez
   `ContinueOnConflict=false` pour échouer vite.

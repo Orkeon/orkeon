@@ -22,6 +22,30 @@ public sealed class CommandRuntimeContextTests
         return (engine, console, ctx);
     }
 
+    private static Engine BuildEngine(Func<Engine> create) => create();
+
+    private static Jint.Native.JsValue TextSpec(Engine engine) => engine.Evaluate("({ type: 'text', message: 'name' })");
+
+    [Fact]
+    public async Task ShouldStopTheExecutionClock_WhileAPromptWaitsForItsAnswer()
+    {
+        // Arrange
+        using var engine = BuildEngine(new Orkeon.Scripting.JsEngineFactory().Create);
+        var console = new ScriptedTestConsole();
+        var ctx = new CommandRuntimeContext(engine, console, new CommandMeta("deploy", "deploy prod"), TestContext.Current.CancellationToken, NullLogger.Instance, ScriptServiceLocator.Empty);
+        var clock = engine.Constraints.Find<Orkeon.Scripting.Runtime.PausableTimeConstraint>()!;
+
+        // Act
+        var answer = ctx.prompt(TextSpec(engine));
+        var pausedWhileWaiting = clock.IsPaused;
+        console.EnqueueLine("alice");
+        await answer;
+
+        // Assert
+        Assert.True(pausedWhileWaiting);
+        Assert.False(clock.IsPaused);
+    }
+
     [Fact]
     public void Write_and_writeLine_forward_to_console()
     {

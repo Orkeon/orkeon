@@ -2,6 +2,7 @@ using Jint;
 using Jint.Native;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using Orkeon.Scripting;
 using Orkeon.Cli.Abstractions.Console;
 using Orkeon.Cli.Commands.Scripting.Progress;
 
@@ -96,7 +97,12 @@ public sealed class CommandRuntimeContext
     public void clear() => _console.Clear();
 
     /// <summary>Block until the user answers a prompt described by <paramref name="spec"/>.</summary>
-    public Task<JsValue> prompt(JsValue spec) => PromptDispatcher.RunAsync(_engine, _console, spec, _ct);
+    public async Task<JsValue> prompt(JsValue spec)
+    {
+        // The operator's time is not the script's: an answer may take longer than ExecutionTimeout.
+        using var paused = JsEngineFactory.PauseExecutionClock(_engine);
+        return await PromptDispatcher.RunAsync(_engine, _console, spec, _ct).ConfigureAwait(false);
+    }
 
     /// <summary>Open a progress reporter with an optional total step count.</summary>
     public ProgressHandle progress(JsValue spec)

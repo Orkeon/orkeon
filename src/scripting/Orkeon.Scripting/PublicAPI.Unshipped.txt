@@ -11,3 +11,6 @@ Orkeon.Scripting.Runtime.JsLlmFacade.complete.get -> Jint.Native.JsValue!
 Orkeon.Scripting.Runtime.JsLlmFacade.decide.get -> Jint.Native.JsValue!
 *REMOVED*Orkeon.Scripting.Runtime.JsLlmFacade.extract.get -> System.Func<string!, Jint.Native.JsValue!, Jint.Native.JsValue?, System.Threading.Tasks.Task<object?>!>!
 Orkeon.Scripting.Runtime.JsLlmFacade.extract.get -> Jint.Native.JsValue!
+Orkeon.Scripting.Configuration.ScriptingLimitsOptions.PromiseTimeout.get -> System.TimeSpan?
+Orkeon.Scripting.Configuration.ScriptingLimitsOptions.PromiseTimeout.init -> void
+static Orkeon.Scripting.JsEngineFactory.PauseExecutionClock(Jint.Engine! engine) -> System.IDisposable?

@@ -14,6 +14,19 @@ public sealed class CliScriptLimitsOptionsTests
     }
 
     [Fact]
+    public void ShouldLeaveCancellationAsTheOnlyBoundOnAWait_WhenProjected()
+    {
+        // Arrange
+        var sut = new CliScriptLimitsOptions();
+
+        // Act
+        var projected = sut.ToScriptingLimits();
+
+        // Assert
+        Assert.Equal(Timeout.InfiniteTimeSpan, projected.PromiseTimeout);
+    }
+
+    [Fact]
     public void ToScriptingLimits_projects_all_fields()
     {
         var sut = new CliScriptLimitsOptions

@@ -139,9 +139,20 @@ public sealed class JsEngineFactory
     /// </summary>
     internal static TimeSpan? PromiseTimeout { get; set; }
 
-    private static void ApplyPromiseTimeout(Jint.Options options)
+    /// <summary>
+    /// Stops the engine's <see cref="ScriptingLimitsOptions.ExecutionTimeout"/> clock until the returned handle is
+    /// disposed, for a wait that belongs to the operator (a question the script asked). Null on an engine with no
+    /// such clock.
+    /// </summary>
+    public static IDisposable? PauseExecutionClock(Engine engine)
     {
-        if (PromiseTimeout is { } timeout)
+        ArgumentNullException.ThrowIfNull(engine);
+        return engine.Constraints.Find<Runtime.PausableTimeConstraint>()?.Pause();
+    }
+
+    private void ApplyPromiseTimeout(Jint.Options options)
+    {
+        if ((_limits.PromiseTimeout ?? PromiseTimeout) is { } timeout)
         {
             options.Constraints.PromiseTimeout = timeout;
         }
