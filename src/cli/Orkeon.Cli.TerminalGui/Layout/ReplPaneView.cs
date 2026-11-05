@@ -21,7 +21,7 @@ namespace Orkeon.Cli.TerminalGui.Layout;
 /// and the console adapter still routes it here by heuristic — only the RENDERING maps
 /// it to the prompt glyph, so the plain (non-TUI) mode stays byte-exact (PLAN §2.1).
 /// </remarks>
-public sealed class ReplPaneView : View, ITaskListNavigator
+public sealed class ReplPaneView : View, ITaskListNavigator, IToolActivityObserver
 {
     private readonly ThreadScreens _screens;
     private readonly AppendCoalescer<TranscriptWrite> _transcriptWrites;
@@ -35,6 +35,13 @@ public sealed class ReplPaneView : View, ITaskListNavigator
         public IReadOnlyList<TranscriptLine>? Lines { get; init; }
 
         public CommandResultScope Scope { get; init; }
+
+        public ToolCallStarted? CallStarted { get; init; }
+
+        public ToolCallFinished? CallFinished { get; init; }
+
+        /// <summary>Runs on the UI thread once what came before is on the screen and the thread's step folded.</summary>
+        public Action? Then { get; init; }
     }
 
     private enum CommandResultScope
@@ -92,6 +99,14 @@ public sealed class ReplPaneView : View, ITaskListNavigator
 
     // The menu of commands above the prompt. The field keeps the focus: this view only paints it.
     private readonly InlinePanelView _menuView = new() { CanFocus = false };
+
+    // The calls of the step under way, by thread, shown above the status line; what the last one left, for ctrl+o.
+    private const int MaxStepRows = 5;
+    private const string MainThreadKey = "";
+    private readonly InlinePanelView _stepView = new() { CanFocus = false };
+    private readonly Dictionary<string, StepActivityModel> _steps = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, FoldedStep> _lastSteps = new(StringComparer.Ordinal);
+    private int _stepRows;
     private IReplCommandCatalog? _catalog;
     private SlashMenuModel? _menu;
     private int _menuRows;
@@ -236,11 +251,12 @@ public sealed class ReplPaneView : View, ITaskListNavigator
         _placeholder.SetScheme(SchemeFactory.Uniform(SchemeFactory.Attr(PaletteRole.Dim, italic: true)));
 
         _panelView.KeyHandler = HandlePanelKey;
-        Add(_screens.Main, _statusLine, _ruleChip, _promptLabel, _input, _placeholder, _bottomRule, _panelView, _menuView);
+        Add(_screens.Main, _statusLine, _ruleChip, _promptLabel, _input, _placeholder, _bottomRule, _panelView, _menuView, _stepView);
         FrameChanged += (_, _) =>
         {
             if (_panelRows > 0) SyncPanel();
             else if (_menuRows > 0) LayOutSlashMenu();
+            SyncStepArea();
         };
 
         // Force initial focus on the input field once the view is laid out, otherwise
@@ -285,9 +301,34 @@ public sealed class ReplPaneView : View, ITaskListNavigator
     private void ApplyTranscriptWrites(IReadOnlyList<TranscriptWrite> writes)
     {
         var pending = new Dictionary<TranscriptView, System.Text.StringBuilder>();
+        var stepsChanged = false;
         foreach (var write in writes)
         {
+            if (write.CallStarted is { } started)
+            {
+                StepOf(write.Thread).Start(started);
+                stepsChanged = true;
+                continue;
+            }
+            if (write.CallFinished is { } finished)
+            {
+                StepOf(write.Thread).Finish(finished);
+                stepsChanged = true;
+                continue;
+            }
             var screen = _screens.For(write.Thread);
+            if (write.Then is { } then)
+            {
+                FoldStepOnto(write.Thread, screen);
+                foreach (var (target, builder) in pending)
+                {
+                    if (builder.Length == 0) continue;
+                    target.Append(builder.ToString());
+                    builder.Clear();
+                }
+                then();
+                continue;
+            }
             if (write.Scope != CommandResultScope.None)
             {
                 _commandResult.Reset(write.Scope == CommandResultScope.Begin);
@@ -296,12 +337,8 @@ public sealed class ReplPaneView : View, ITaskListNavigator
             }
             if (write.Lines is { } lines)
             {
-                // What the batch holds for this screen goes first: the order of the writes is the order shown.
-                if (pending.TryGetValue(screen, out var earlier) && earlier.Length > 0)
-                {
-                    screen.Append(earlier.ToString());
-                    earlier.Clear();
-                }
+                FoldStepOnto(write.Thread, screen);
+                FlushPending(screen);
                 screen.AppendStyled(lines);
                 continue;
             }
@@ -309,8 +346,12 @@ public sealed class ReplPaneView : View, ITaskListNavigator
             {
                 if (pending.TryGetValue(screen, out var cleared)) cleared.Clear();
                 screen.Clear();
+                _steps.Remove(ThreadKey(write.Thread));
+                _lastSteps.Remove(ThreadKey(write.Thread));
+                stepsChanged = true;
                 continue;
             }
+            if (!string.IsNullOrWhiteSpace(write.Text)) FoldStepOnto(write.Thread, screen);
             var inCommand = !write.Attention && write.Thread == _commandResultThread;
             Enqueue(screen, inCommand ? _commandResult.Apply(write.Text) : write.Text);
             if (write.Attention && !ReferenceEquals(screen, _screens.Displayed))
@@ -318,6 +359,28 @@ public sealed class ReplPaneView : View, ITaskListNavigator
         }
         foreach (var (screen, builder) in pending)
             if (builder.Length > 0) screen.Append(builder.ToString());
+        if (stepsChanged) SyncStepArea();
+
+        // What the batch holds for this screen goes first: the order of the writes is the order shown.
+        void FlushPending(TranscriptView target)
+        {
+            if (!pending.TryGetValue(target, out var earlier) || earlier.Length == 0) return;
+            target.Append(earlier.ToString());
+            earlier.Clear();
+        }
+
+        // A step ends with what comes after it, once none of its calls runs any more.
+        void FoldStepOnto(string? thread, TranscriptView target)
+        {
+            var key = ThreadKey(thread);
+            if (!_steps.TryGetValue(key, out var step) || step.IsEmpty || step.HasOpenCall) return;
+            var folded = step.Fold();
+            _lastSteps[key] = folded;
+            stepsChanged = true;
+            FlushPending(target);
+            target.AppendStyled([folded.Summary]);
+            StepFolded?.Invoke(folded.Counts);
+        }
 
         void Enqueue(TranscriptView target, string text)
         {
@@ -326,6 +389,76 @@ public sealed class ReplPaneView : View, ITaskListNavigator
             builder.Append(text);
         }
     }
+
+    /// <inheritdoc />
+    public void Started(ToolCallStarted toolCall)
+    {
+        ArgumentNullException.ThrowIfNull(toolCall);
+        _transcriptWrites.Post(new TranscriptWrite(toolCall.Thread, null) { CallStarted = toolCall });
+    }
+
+    /// <inheritdoc />
+    public void Finished(ToolCallFinished toolCall)
+    {
+        ArgumentNullException.ThrowIfNull(toolCall);
+        _transcriptWrites.Post(new TranscriptWrite(toolCall.Thread, null) { CallFinished = toolCall });
+    }
+
+    /// <summary>Raised on the UI thread when a step folds, with how many calls of each tool it reported.</summary>
+    internal event Action<IReadOnlyDictionary<string, int>>? StepFolded;
+
+    /// <summary>Folds the main screen's step behind what has been written, then runs <paramref name="then"/>.</summary>
+    internal void AfterSteps(Action then)
+    {
+        ArgumentNullException.ThrowIfNull(then);
+        _transcriptWrites.Post(new TranscriptWrite(null, null) { Then = then });
+    }
+
+    private static string ThreadKey(string? thread) => thread ?? MainThreadKey;
+
+    private StepActivityModel StepOf(string? thread)
+    {
+        var key = ThreadKey(thread);
+        if (!_steps.TryGetValue(key, out var step)) _steps[key] = step = new StepActivityModel(_glyphs);
+        return step;
+    }
+
+    // UI thread: the area above the status line follows the step of the screen displayed. A panel has the room to itself.
+    private void SyncStepArea()
+    {
+        if (_panelRows > 0)
+        {
+            _stepRows = 0;
+            _stepView.Visible = false;
+            return;
+        }
+        var step = _steps.GetValueOrDefault(ThreadKey(_screens.DisplayedThread));
+        var width = Viewport.Width > 0 ? Viewport.Width : 80;
+        var height = Viewport.Height > 0 ? Viewport.Height : 24;
+        var room = height - _inputRows - _menuRows - BandRows - BelowRows - MinTranscriptRows;
+        var rows = step?.Rows(width, Math.Min(MaxStepRows, room)).Count ?? 0;
+        _stepView.Model = step;
+        _stepView.Visible = rows > 0;
+        _stepView.SetNeedsDraw();
+        if (rows == _stepRows) return;
+        _stepRows = rows;
+        ApplyInputLayout();
+    }
+
+    // Ctrl+O on an empty prompt: the calls the last step stood for, once. With text, it stays a new line.
+    private bool ShowLastStep()
+    {
+        var thread = _screens.DisplayedThread;
+        if (!_lastSteps.Remove(ThreadKey(thread), out var folded) || folded.Details.Count == 0) return false;
+        _transcriptWrites.Post(new TranscriptWrite(thread, null) { Lines = folded.Details });
+        return true;
+    }
+
+    /// <summary>Test accessor: the rows of the step area.</summary>
+    internal int StepRows => _stepRows;
+
+    /// <summary>Test accessor: the text of the screen displayed.</summary>
+    internal string DisplayedText => _screens.Displayed.TranscriptText;
 
     /// <summary>Appends lines that carry their display, in order with the writes around them.</summary>
     internal void AppendStyled(IReadOnlyList<TranscriptLine> lines)
@@ -416,10 +549,11 @@ public sealed class ReplPaneView : View, ITaskListNavigator
     {
         Remove(previous);
         var screen = _screens.Displayed;
-        screen.Height = Dim.Fill(_panelRows > 0 ? _panelRows + 1 : _inputRows + _menuRows + BandRows + BelowRows);
+        screen.Height = Dim.Fill(_panelRows > 0 ? _panelRows + 1 : _inputRows + _menuRows + _stepRows + BandRows + BelowRows);
         Add(screen);
         screen.SetRelativeLayout(GetContentSize());
         screen.MoveEnd();
+        SyncStepArea();
     }
 
     private void SyncPlaceholder()
@@ -568,6 +702,7 @@ public sealed class ReplPaneView : View, ITaskListNavigator
             _panelView.Visible = false;
             SetPromptVisible(true);
             ApplyInputLayout();
+            SyncStepArea();
             SyncPlaceholder();
             _input.SetFocus();
             SetNeedsLayout();
@@ -587,6 +722,7 @@ public sealed class ReplPaneView : View, ITaskListNavigator
         if (opening)
         {
             CloseSlashMenu();
+            SyncStepArea();
             SetPromptVisible(false);
             _panelView.Visible = true;
             _panelView.SetFocus();
@@ -756,6 +892,7 @@ public sealed class ReplPaneView : View, ITaskListNavigator
                 PaneClipboard.PasteInto(_input);
                 return true;
             case KeyCode.O:
+                if (string.IsNullOrEmpty(_input.Text) && ShowLastStep()) return true;
                 _input.InsertText("\n");
                 return true;
             default:
@@ -1058,7 +1195,9 @@ public sealed class ReplPaneView : View, ITaskListNavigator
     private void ApplyInputLayout()
     {
         var rows = _inputRows;
-        _screens.Displayed.Height = Dim.Fill(rows + _menuRows + BandRows + BelowRows);
+        _screens.Displayed.Height = Dim.Fill(rows + _menuRows + _stepRows + BandRows + BelowRows);
+        _stepView.Y = Pos.AnchorEnd(rows + _menuRows + _stepRows + BandRows + BelowRows);
+        _stepView.Height = _stepRows;
         _statusLine.Y = Pos.AnchorEnd(rows + _menuRows + BandRows + BelowRows);
         _menuView.Y = Pos.AnchorEnd(rows + _menuRows + 1 + BelowRows);
         _menuView.Height = _menuRows;
@@ -1379,6 +1518,7 @@ public sealed class ReplPaneView : View, ITaskListNavigator
             _approvalPanel = null;
             _panelView.Dispose();
             _menuView.Dispose();
+            _stepView.Dispose();
             _screens.DisposeScreens();
             _statusLine.Dispose();
             _ruleChip.Dispose();

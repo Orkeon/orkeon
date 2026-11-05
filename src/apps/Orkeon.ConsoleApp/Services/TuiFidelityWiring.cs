@@ -143,6 +143,7 @@ internal static class TuiFidelityWiring
         var buffer = services.GetService<ISessionBufferService>();
         var cost = services.GetService<ICostBudgetManager>();
         var dispatch = services.GetService<CommandDispatchService>();
+        integration.ToolActivity = services.GetService<Orkeon.Cli.Abstractions.Console.ToolActivityFeed>();
         var approvals = services.GetService<IToolApprovalWatch>();
         if (approvals is not null)
         {

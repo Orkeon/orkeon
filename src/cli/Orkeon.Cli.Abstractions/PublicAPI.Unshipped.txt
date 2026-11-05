@@ -70,6 +70,11 @@ Orkeon.Cli.Abstractions.Console.IReplCommandCatalog
 Orkeon.Cli.Abstractions.Console.IReplCommandCatalog.ListCommands() -> System.Collections.Generic.IReadOnlyList<Orkeon.Cli.Abstractions.Console.ReplCommandEntry!>!
 Orkeon.Cli.Abstractions.Console.IStreamConsole
 Orkeon.Cli.Abstractions.Console.IStreamConsole.WriteStream(string! text) -> void
+Orkeon.Cli.Abstractions.Console.IToolActivityObserver
+Orkeon.Cli.Abstractions.Console.IToolActivityObserver.Finished(Orkeon.Cli.Abstractions.Console.ToolCallFinished! toolCall) -> void
+Orkeon.Cli.Abstractions.Console.IToolActivityObserver.Finished(Orkeon.Cli.Abstractions.Console.ToolCallFinished! toolCall) -> void
+Orkeon.Cli.Abstractions.Console.IToolActivityObserver.Started(Orkeon.Cli.Abstractions.Console.ToolCallStarted! toolCall) -> void
+Orkeon.Cli.Abstractions.Console.IToolActivityObserver.Started(Orkeon.Cli.Abstractions.Console.ToolCallStarted! toolCall) -> void
 Orkeon.Cli.Abstractions.Console.ReplCommandEntry
 Orkeon.Cli.Abstractions.Console.ReplCommandEntry.<Clone>$() -> Orkeon.Cli.Abstractions.Console.ReplCommandEntry!
 Orkeon.Cli.Abstractions.Console.ReplCommandEntry.Aliases.get -> System.Collections.Generic.IReadOnlyList<string!>!
@@ -81,6 +86,34 @@ Orkeon.Cli.Abstractions.Console.ReplCommandEntry.Equals(Orkeon.Cli.Abstractions.
 Orkeon.Cli.Abstractions.Console.ReplCommandEntry.Name.get -> string!
 Orkeon.Cli.Abstractions.Console.ReplCommandEntry.Name.init -> void
 Orkeon.Cli.Abstractions.Console.ReplCommandEntry.ReplCommandEntry(string! Name, string! Description) -> void
+Orkeon.Cli.Abstractions.Console.ToolActivityFeed
+Orkeon.Cli.Abstractions.Console.ToolActivityFeed.Observer.get -> Orkeon.Cli.Abstractions.Console.IToolActivityObserver?
+Orkeon.Cli.Abstractions.Console.ToolActivityFeed.Observer.set -> void
+Orkeon.Cli.Abstractions.Console.ToolActivityFeed.ToolActivityFeed() -> void
+Orkeon.Cli.Abstractions.Console.ToolCallFinished
+Orkeon.Cli.Abstractions.Console.ToolCallFinished.<Clone>$() -> Orkeon.Cli.Abstractions.Console.ToolCallFinished!
+Orkeon.Cli.Abstractions.Console.ToolCallFinished.Deconstruct(out long Id, out string? Thread, out bool Succeeded) -> void
+Orkeon.Cli.Abstractions.Console.ToolCallFinished.Equals(Orkeon.Cli.Abstractions.Console.ToolCallFinished? other) -> bool
+Orkeon.Cli.Abstractions.Console.ToolCallFinished.Id.get -> long
+Orkeon.Cli.Abstractions.Console.ToolCallFinished.Id.init -> void
+Orkeon.Cli.Abstractions.Console.ToolCallFinished.Succeeded.get -> bool
+Orkeon.Cli.Abstractions.Console.ToolCallFinished.Succeeded.init -> void
+Orkeon.Cli.Abstractions.Console.ToolCallFinished.Thread.get -> string?
+Orkeon.Cli.Abstractions.Console.ToolCallFinished.Thread.init -> void
+Orkeon.Cli.Abstractions.Console.ToolCallFinished.ToolCallFinished(long Id, string? Thread, bool Succeeded) -> void
+Orkeon.Cli.Abstractions.Console.ToolCallStarted
+Orkeon.Cli.Abstractions.Console.ToolCallStarted.<Clone>$() -> Orkeon.Cli.Abstractions.Console.ToolCallStarted!
+Orkeon.Cli.Abstractions.Console.ToolCallStarted.Deconstruct(out long Id, out string! Tool, out string? Thread) -> void
+Orkeon.Cli.Abstractions.Console.ToolCallStarted.Equals(Orkeon.Cli.Abstractions.Console.ToolCallStarted? other) -> bool
+Orkeon.Cli.Abstractions.Console.ToolCallStarted.Id.get -> long
+Orkeon.Cli.Abstractions.Console.ToolCallStarted.Id.init -> void
+Orkeon.Cli.Abstractions.Console.ToolCallStarted.Subject.get -> string!
+Orkeon.Cli.Abstractions.Console.ToolCallStarted.Subject.init -> void
+Orkeon.Cli.Abstractions.Console.ToolCallStarted.Thread.get -> string?
+Orkeon.Cli.Abstractions.Console.ToolCallStarted.Thread.init -> void
+Orkeon.Cli.Abstractions.Console.ToolCallStarted.Tool.get -> string!
+Orkeon.Cli.Abstractions.Console.ToolCallStarted.Tool.init -> void
+Orkeon.Cli.Abstractions.Console.ToolCallStarted.ToolCallStarted(long Id, string! Tool, string? Thread) -> void
 Orkeon.Cli.Abstractions.Runners.PendingToolApproval.Reason.get -> string?
 Orkeon.Cli.Abstractions.Runners.PendingToolApproval.Reason.init -> void
 override Orkeon.Cli.Abstractions.Console.ConsoleChoice.Equals(object? obj) -> bool
@@ -98,6 +131,12 @@ override Orkeon.Cli.Abstractions.Console.ConsoleChoiceRequest.ToString() -> stri
 override Orkeon.Cli.Abstractions.Console.ReplCommandEntry.Equals(object? obj) -> bool
 override Orkeon.Cli.Abstractions.Console.ReplCommandEntry.GetHashCode() -> int
 override Orkeon.Cli.Abstractions.Console.ReplCommandEntry.ToString() -> string!
+override Orkeon.Cli.Abstractions.Console.ToolCallFinished.Equals(object? obj) -> bool
+override Orkeon.Cli.Abstractions.Console.ToolCallFinished.GetHashCode() -> int
+override Orkeon.Cli.Abstractions.Console.ToolCallFinished.ToString() -> string!
+override Orkeon.Cli.Abstractions.Console.ToolCallStarted.Equals(object? obj) -> bool
+override Orkeon.Cli.Abstractions.Console.ToolCallStarted.GetHashCode() -> int
+override Orkeon.Cli.Abstractions.Console.ToolCallStarted.ToString() -> string!
 static Orkeon.Cli.Abstractions.Console.ConsoleChoice.operator !=(Orkeon.Cli.Abstractions.Console.ConsoleChoice? left, Orkeon.Cli.Abstractions.Console.ConsoleChoice? right) -> bool
 static Orkeon.Cli.Abstractions.Console.ConsoleChoice.operator ==(Orkeon.Cli.Abstractions.Console.ConsoleChoice? left, Orkeon.Cli.Abstractions.Console.ConsoleChoice? right) -> bool
 static Orkeon.Cli.Abstractions.Console.ConsoleChoiceAnswer.operator !=(Orkeon.Cli.Abstractions.Console.ConsoleChoiceAnswer? left, Orkeon.Cli.Abstractions.Console.ConsoleChoiceAnswer? right) -> bool
@@ -108,3 +147,7 @@ static Orkeon.Cli.Abstractions.Console.ConsoleChoiceRequest.operator !=(Orkeon.C
 static Orkeon.Cli.Abstractions.Console.ConsoleChoiceRequest.operator ==(Orkeon.Cli.Abstractions.Console.ConsoleChoiceRequest? left, Orkeon.Cli.Abstractions.Console.ConsoleChoiceRequest? right) -> bool
 static Orkeon.Cli.Abstractions.Console.ReplCommandEntry.operator !=(Orkeon.Cli.Abstractions.Console.ReplCommandEntry? left, Orkeon.Cli.Abstractions.Console.ReplCommandEntry? right) -> bool
 static Orkeon.Cli.Abstractions.Console.ReplCommandEntry.operator ==(Orkeon.Cli.Abstractions.Console.ReplCommandEntry? left, Orkeon.Cli.Abstractions.Console.ReplCommandEntry? right) -> bool
+static Orkeon.Cli.Abstractions.Console.ToolCallFinished.operator !=(Orkeon.Cli.Abstractions.Console.ToolCallFinished? left, Orkeon.Cli.Abstractions.Console.ToolCallFinished? right) -> bool
+static Orkeon.Cli.Abstractions.Console.ToolCallFinished.operator ==(Orkeon.Cli.Abstractions.Console.ToolCallFinished? left, Orkeon.Cli.Abstractions.Console.ToolCallFinished? right) -> bool
+static Orkeon.Cli.Abstractions.Console.ToolCallStarted.operator !=(Orkeon.Cli.Abstractions.Console.ToolCallStarted? left, Orkeon.Cli.Abstractions.Console.ToolCallStarted? right) -> bool
+static Orkeon.Cli.Abstractions.Console.ToolCallStarted.operator ==(Orkeon.Cli.Abstractions.Console.ToolCallStarted? left, Orkeon.Cli.Abstractions.Console.ToolCallStarted? right) -> bool

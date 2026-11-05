@@ -744,6 +744,8 @@ for (const m of usage.byModel) ctx.writeLine(`${m.model}: ${m.promptTokens} in (
 for (const c of usage.byCommand) ctx.writeLine(`[${c.ticket}] ${c.name}: ${c.promptTokens + c.completionTokens} tokens, ${c.cost ?? "n/a"}`);
 ```
 
+**The calls of a step.** While a turn calls tools, the rows above the status line count the calls of the step and list the latest ones (`$ command`, `Read path`), each with what it works on: the host's invocation point tells the console through a `ToolActivityFeed`, and only the argument named for that tool reaches the screen, never what an edit writes nor the arguments of a tool not listed (`ToolCallSubject`). A step ends with the next text on its screen once none of its calls runs, or with the turn: its rows give way to one line in the transcript, `Read 1 file, ran 2 shell commands`. On an empty prompt, ctrl+o lists the calls of the last step once; with text in the prompt it stays a new line. Each thread has its step, shown with its screen, and a panel has the room to itself.
+
 ## TypeScript support matrix (esbuild → Jint)
 
 | Feature                                         | Support |

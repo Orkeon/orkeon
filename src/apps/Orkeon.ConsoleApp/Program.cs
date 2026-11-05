@@ -306,6 +306,7 @@ static class Program
         ConfigureLogging(services, effectiveUi, scriptedOpts);
 
         services.AddOrkeonApplication();
+        Orkeon.Cli.Commands.Scripting.Progress.ToolActivityPipeline.Decorate(services);
         // Register the real LLM provider from the `Llm` config section BEFORE the infrastructure
         // defaults: AddOrkeonInfrastructure() only TryAdds a provider built from LlmConfig.OnProfile()
         // (no key, default OpenAI endpoint), which makes ctx.llm.act silently no-op. Binding the

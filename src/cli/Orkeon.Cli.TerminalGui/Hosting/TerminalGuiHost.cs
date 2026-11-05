@@ -331,7 +331,10 @@ public sealed class TerminalGuiHost : IAsyncDisposable
         if (_integration.AgentRows is not null)
             top.Agents.Bind(_integration);
 
-        top.Repl.StatusLine.TurnCompleted += (_, _) =>
+        if (_integration.ToolActivity is { } feed)
+            feed.Observer = top.Repl;
+        top.Repl.StepFolded += _toolActivity.Settle;
+        top.Repl.StatusLine.TurnCompleted += (_, _) => top.Repl.AfterSteps(() =>
         {
             var sentence = _toolActivity.DrainSentence();
             var glyphs = Layout.GlyphSet.Resolve(_options.Glyphs, OutputEncodingIsUtf8());
@@ -343,7 +346,7 @@ public sealed class TerminalGuiHost : IAsyncDisposable
             if (Layout.TranscriptModel.TurnEnd(glyphs, top.Repl.StatusLine.LastTurnElapsed, top.Repl.StatusLine.LastTurnTokens) is { } closing)
                 top.Repl.AppendStyled([closing]);
             top.Repl.RuleChip.Refresh();
-        };
+        });
     }
 
     /// <summary>Writes the startup banner into the transcript, once (PLAN phase 2).</summary>
@@ -390,6 +393,7 @@ public sealed class TerminalGuiHost : IAsyncDisposable
         // owned Terminal.Gui view tree (and its disposable children) is released.
         _toplevel?.Dispose();
         _toplevel = null;
+        if (_integration.ToolActivity is { } feed) feed.Observer = null;
         _toolActivity.Dispose();
         return ValueTask.CompletedTask;
     }

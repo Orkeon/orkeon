@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — the calls of each step
+
+- In the split-pane console, the rows above the status line count the calls of the current step and list the latest ones with what they work on, a failed call marked. When the step ends, one line stays in the transcript (`Read 1 file, ran 2 shell commands`), and ctrl+o on an empty prompt lists the calls of the last one. Only the argument named for each tool reaches the screen; the model's input and the run's stream do not change.
+
 ### Added — a menu of commands above the prompt
 
 - In the split-pane console, a `/` at the start of the prompt opens a menu of the commands with their descriptions, which typing narrows (a name that starts with the text first, then an alias, then a name that holds it). The arrows walk it, Tab fills the command in, Enter runs it, Esc leaves it and keeps the text without arming the interrupt. A line recalled from the history does not open it, and Tab keeps its completion elsewhere. A completion source offers it by implementing `IReplCommandCatalog`.

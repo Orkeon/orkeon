@@ -70,6 +70,14 @@ public sealed class ToolActivityAggregator : IDisposable
         return ComposeSentence(snapshot);
     }
 
+    /// <summary>Takes out of the next sentence the calls a folded step has already reported.</summary>
+    public void Settle(IReadOnlyDictionary<string, int> reported)
+    {
+        ArgumentNullException.ThrowIfNull(reported);
+        foreach (var (tool, n) in reported)
+            _counts.AddOrUpdate(tool, 0, (_, count) => Math.Max(0, count - n));
+    }
+
     /// <summary>
     /// Pure sentence composition, exposed for tests. Known tools get the reference's
     /// verb phrasing; anything else reads <c>used &lt;tool&gt; ×N</c> — a truthful generic

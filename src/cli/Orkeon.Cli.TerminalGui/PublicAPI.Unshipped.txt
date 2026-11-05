@@ -5,6 +5,8 @@ Orkeon.Cli.TerminalGui.Console.TerminalGuiConsoleAdapter.WriteBlock(Orkeon.Cli.A
 Orkeon.Cli.TerminalGui.Console.TerminalGuiConsoleAdapter.WriteStream(string! text) -> void
 Orkeon.Cli.TerminalGui.Hosting.TuiIntegration.ApprovalsChanged -> System.EventHandler?
 Orkeon.Cli.TerminalGui.Hosting.TuiIntegration.NotifyApprovalsChanged() -> void
+Orkeon.Cli.TerminalGui.Hosting.TuiIntegration.ToolActivity.get -> Orkeon.Cli.Abstractions.Console.ToolActivityFeed?
+Orkeon.Cli.TerminalGui.Hosting.TuiIntegration.ToolActivity.set -> void
 Orkeon.Cli.TerminalGui.Layout.GlyphSet.SideBar.get -> string!
 Orkeon.Cli.TerminalGui.Layout.GlyphSet.SideBar.init -> void
 Orkeon.Cli.TerminalGui.Layout.GlyphSet.Sideways.get -> string!
@@ -18,6 +20,9 @@ Orkeon.Cli.TerminalGui.Layout.PaletteRole.PanelRule = 13 -> Orkeon.Cli.TerminalG
 Orkeon.Cli.TerminalGui.Layout.PaletteRole.RemovedWord = 10 -> Orkeon.Cli.TerminalGui.Layout.PaletteRole
 Orkeon.Cli.TerminalGui.Layout.PaletteRole.UserBar = 6 -> Orkeon.Cli.TerminalGui.Layout.PaletteRole
 Orkeon.Cli.TerminalGui.Layout.ReplPaneView.ChooseAsync(Orkeon.Cli.Abstractions.Console.ConsoleChoiceRequest! request, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<Orkeon.Cli.Abstractions.Console.ConsoleChoiceAnswer?>!
+Orkeon.Cli.TerminalGui.Layout.ReplPaneView.Finished(Orkeon.Cli.Abstractions.Console.ToolCallFinished! toolCall) -> void
+Orkeon.Cli.TerminalGui.Layout.ReplPaneView.Started(Orkeon.Cli.Abstractions.Console.ToolCallStarted! toolCall) -> void
+Orkeon.Cli.TerminalGui.Telemetry.ToolActivityAggregator.Settle(System.Collections.Generic.IReadOnlyDictionary<string!, int>! reported) -> void
 static Orkeon.Cli.TerminalGui.Layout.SchemeFactory.Background(Orkeon.Cli.TerminalGui.Layout.PaletteRole role, bool trueColor) -> Terminal.Gui.Drawing.Color
 static Orkeon.Cli.TerminalGui.Layout.SchemeFactory.Cell(Orkeon.Cli.TerminalGui.Layout.PaletteRole? row, Orkeon.Cli.TerminalGui.Layout.PaletteRole role, bool trueColor, bool bold, bool italic) -> Terminal.Gui.Drawing.Attribute
 static Orkeon.Cli.TerminalGui.Layout.SchemeFactory.HasBackground(Orkeon.Cli.TerminalGui.Layout.PaletteRole role) -> bool

@@ -776,6 +776,8 @@ for (const m of usage.byModel) ctx.writeLine(`${m.model}: ${m.promptTokens} in (
 for (const c of usage.byCommand) ctx.writeLine(`[${c.ticket}] ${c.name}: ${c.promptTokens + c.completionTokens} tokens, ${c.cost ?? "n/a"}`);
 ```
 
+**Les appels d'une étape.** Pendant qu'un tour appelle des outils, les lignes au-dessus de la ligne d'état comptent les appels de l'étape et listent les derniers (`$ commande`, `Read chemin`), chacun avec ce sur quoi il travaille : le point d'invocation de l'hôte prévient la console par un `ToolActivityFeed`, et seul l'argument désigné pour cet outil atteint l'écran, jamais ce qu'une édition écrit ni les arguments d'un outil non listé (`ToolCallSubject`). Une étape finit avec le texte suivant de son écran une fois qu'aucun de ses appels ne tourne, ou avec le tour : ses lignes laissent place à une ligne du transcript, `Read 1 file, ran 2 shell commands`. Sur une saisie vide, ctrl+o liste une fois les appels de la dernière étape ; avec du texte dans la saisie, il reste un retour à la ligne. Chaque fil a son étape, affichée avec son écran, et un panneau garde la place pour lui.
+
 ## Matrice de support TypeScript (esbuild → Jint)
 
 | Fonctionnalité                                  | Support |

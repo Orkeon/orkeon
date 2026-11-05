@@ -23,6 +23,10 @@ Orkeon.Cli.Commands.Scripting.Dispatch.ExclusiveLaunchRefusedException.Exclusive
 Orkeon.Cli.Commands.Scripting.Dispatch.ExclusiveLaunchRefusedException.ExclusiveLaunchRefusedException(string! target, string! ticket) -> void
 Orkeon.Cli.Commands.Scripting.Dispatch.ExclusiveLaunchRefusedException.Target.get -> string?
 Orkeon.Cli.Commands.Scripting.Dispatch.ExclusiveLaunchRefusedException.Ticket.get -> string?
+Orkeon.Cli.Commands.Scripting.Progress.ToolActivityPipeline
+Orkeon.Cli.Commands.Scripting.Progress.ToolActivityPipeline.InvokeAsync(Orkeon.Application.Interfaces.Security.ToolInvocation! invocation, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Application.Interfaces.Security.ToolInvocationResult!>!
+Orkeon.Cli.Commands.Scripting.Progress.ToolActivityPipeline.ToolActivityPipeline(Orkeon.Application.Interfaces.Security.IToolInvocationPipeline! inner, Orkeon.Cli.Abstractions.Console.ToolActivityFeed! feed) -> void
+Orkeon.Cli.Commands.Scripting.Progress.ToolCallSubject
 Orkeon.Cli.Commands.Scripting.Runtime.CommandRuntimeContext.interactive.get -> bool
 Orkeon.Cli.Commands.Scripting.Runtime.CommandRuntimeContext.writeBlock(Jint.Native.JsValue! spec) -> void
 Orkeon.Cli.Commands.Scripting.Runtime.ScriptCommandUsage.cacheHitTokens.get -> long?
@@ -35,4 +39,6 @@ Orkeon.Cli.Commands.Scripting.Runtime.ScriptUsageReport.cacheHitTokens.get -> lo
 Orkeon.Cli.Commands.Scripting.Runtime.ScriptUsageReport.cacheWriteTokens.get -> long?
 Orkeon.Cli.Commands.Scripting.Runtime.ScriptUsageReport.reasoningTokens.get -> long?
 override Orkeon.Cli.Commands.Scripting.Dispatch.ExclusiveLaunchRefusedException.GetObjectData(System.Runtime.Serialization.SerializationInfo! info, System.Runtime.Serialization.StreamingContext context) -> void
+static Orkeon.Cli.Commands.Scripting.Progress.ToolActivityPipeline.Decorate(Microsoft.Extensions.DependencyInjection.IServiceCollection! services) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
+static Orkeon.Cli.Commands.Scripting.Progress.ToolCallSubject.Of(string! tool, System.Collections.Generic.IReadOnlyDictionary<string!, object?>! arguments) -> string!
 static Orkeon.Cli.Commands.Scripting.Runtime.PromptDispatcher.PanelsOf(Orkeon.Cli.Abstractions.Console.IConsoleAdapter! console) -> Orkeon.Cli.Abstractions.Console.IChoiceConsole?

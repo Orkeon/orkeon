@@ -150,6 +150,9 @@ public sealed class TuiIntegration
     /// </summary>
     public Func<IReadOnlyList<Orkeon.Cli.Abstractions.Runners.PendingToolApproval>>? PendingApprovals { get; set; }
 
+    /// <summary>Where the session's tool calls can be heard; null shows none of them.</summary>
+    public Orkeon.Cli.Abstractions.Console.ToolActivityFeed? ToolActivity { get; set; }
+
     /// <summary>Raised when a question of <see cref="PendingApprovals"/> is asked, answered or withdrawn.</summary>
     public event EventHandler? ApprovalsChanged;
 
