@@ -5,7 +5,8 @@ namespace Orkeon.Cli.TerminalGui.Layout;
 
 /// <summary>
 /// The semantic colour roles of the layout. Main text carries no colour (<see cref="Normal"/>),
-/// secondary information is <see cref="Dim"/>, and a line holds at most one vivid role.
+/// secondary information is <see cref="Dim"/>, and a line of the layout holds at most one vivid role. Only
+/// the roles of rendered content (a prompt's bar, a diff) paint a background: see ADR-017.
 /// </summary>
 public enum PaletteRole
 {
@@ -26,13 +27,38 @@ public enum PaletteRole
 
     /// <summary>Red: a failed or cancelled task, an unavailable model.</summary>
     Error,
+
+    /// <summary>The grey bar under what the operator submitted. Carries its own background and foreground.</summary>
+    UserBar,
+
+    /// <summary>The background of an added diff line. Carries its own background and foreground.</summary>
+    DiffAdded,
+
+    /// <summary>The background of a removed diff line. Carries its own background and foreground.</summary>
+    DiffRemoved,
+
+    /// <summary>The words changed on an added line, stronger than <see cref="DiffAdded"/>.</summary>
+    AddedWord,
+
+    /// <summary>The words changed on a removed line, stronger than <see cref="DiffRemoved"/>.</summary>
+    RemovedWord,
+
+    /// <summary>Inline code in rendered text.</summary>
+    Code,
+
+    /// <summary>A file named in rendered text.</summary>
+    FileRef,
+
+    /// <summary>The rules that frame a panel or a table.</summary>
+    PanelRule,
 }
 
 /// <summary>
 /// Builds the <see cref="Scheme"/>s and attributes of the layout from the semantic
-/// <see cref="PaletteRole"/>s. Every attribute keeps the terminal's own background
-/// (<see cref="Color.None"/>) — the layout no longer paints a fixed background over the
-/// user's theme.
+/// <see cref="PaletteRole"/>s. The layout keeps the terminal's own background
+/// (<see cref="Color.None"/>) and paints no fixed background over the user's theme. The roles with a
+/// background mark content (<see cref="HasBackground"/>) and set their foreground with it, so they read
+/// the same on a dark and on a light terminal.
 /// </summary>
 /// <remarks>
 /// Colour depth: a terminal that announces 24-bit colour through <c>COLORTERM</c>
@@ -69,18 +95,58 @@ public static class SchemeFactory
         PaletteRole.Ok => trueColor ? new Color(0x3f, 0xb9, 0x50) : new Color(ColorName16.Green),
         PaletteRole.Alert => trueColor ? new Color(0xd4, 0xa7, 0x2c) : new Color(ColorName16.Yellow),
         PaletteRole.Error => trueColor ? new Color(0xf8, 0x51, 0x49) : new Color(ColorName16.Red),
+        PaletteRole.UserBar or PaletteRole.DiffAdded or PaletteRole.DiffRemoved
+            => trueColor ? new Color(0xe8, 0xe8, 0xe8) : new Color(ColorName16.White),
+        PaletteRole.AddedWord or PaletteRole.RemovedWord
+            => trueColor ? new Color(0xff, 0xff, 0xff) : new Color(ColorName16.Black),
+        PaletteRole.Code => trueColor ? new Color(0x8f, 0xb4, 0xe8) : new Color(ColorName16.Cyan),
+        PaletteRole.FileRef => trueColor ? new Color(0x5c, 0xa8, 0xf0) : new Color(ColorName16.BrightBlue),
+        PaletteRole.PanelRule => trueColor ? new Color(0x5f, 0x5f, 0x5f) : new Color(ColorName16.DarkGray),
         _ => Default,
     };
 
-    /// <summary>The attribute of <paramref name="role"/> on the terminal's background, at this terminal's depth.</summary>
+    /// <summary>The background of <paramref name="role"/>: the terminal's own, except for the roles of <see cref="HasBackground"/>.</summary>
+    public static Color Background(PaletteRole role, bool trueColor) => role switch
+    {
+        PaletteRole.UserBar => trueColor ? new Color(0x3a, 0x3a, 0x3a) : new Color(ColorName16.DarkGray),
+        PaletteRole.DiffAdded => trueColor ? new Color(0x12, 0x3d, 0x22) : new Color(ColorName16.Green),
+        PaletteRole.DiffRemoved => trueColor ? new Color(0x4d, 0x1a, 0x1e) : new Color(ColorName16.Red),
+        PaletteRole.AddedWord => trueColor ? new Color(0x1f, 0x74, 0x3c) : new Color(ColorName16.BrightGreen),
+        PaletteRole.RemovedWord => trueColor ? new Color(0x93, 0x2f, 0x35) : new Color(ColorName16.BrightRed),
+        _ => Default,
+    };
+
+    /// <summary>Whether <paramref name="role"/> paints its own background.</summary>
+    public static bool HasBackground(PaletteRole role)
+        => role is PaletteRole.UserBar or PaletteRole.DiffAdded or PaletteRole.DiffRemoved
+            or PaletteRole.AddedWord or PaletteRole.RemovedWord;
+
+    /// <summary>
+    /// The attribute of a char in <paramref name="role"/> on a row painted in <paramref name="row"/>: the
+    /// background of the role when it has one, else the row's; the foreground of the role, the row's for
+    /// plain text.
+    /// </summary>
+    public static Attribute Cell(PaletteRole? row, PaletteRole role, bool trueColor, bool bold, bool italic)
+    {
+        var fg = role == PaletteRole.Normal && row is { } plainOn ? Foreground(plainOn, trueColor) : Foreground(role, trueColor);
+        var bg = !HasBackground(role) && row is { } paintedOn ? Background(paintedOn, trueColor) : Background(role, trueColor);
+        var style = (bold ? TextStyle.Bold : TextStyle.None) | (italic ? TextStyle.Italic : TextStyle.None);
+        return new Attribute(in fg, in bg, in style);
+    }
+
+    /// <summary>As <see cref="Cell(PaletteRole?, PaletteRole, bool, bool, bool)"/>, at this terminal's depth.</summary>
+    internal static Attribute Cell(PaletteRole? row, PaletteRole role, bool bold, bool italic)
+        => Cell(row, role, TrueColorTerminal, bold, italic);
+
+    /// <summary>The attribute of <paramref name="role"/> at this terminal's depth, on its background (the terminal's for most roles).</summary>
     public static Attribute Attr(PaletteRole role, bool bold = false, bool italic = false)
         => Attr(role, TrueColorTerminal, bold, italic);
 
-    /// <summary>The attribute of <paramref name="role"/> on the terminal's background, at an explicit depth.</summary>
+    /// <summary>The attribute of <paramref name="role"/> at an explicit depth, on its background (the terminal's for most roles).</summary>
     public static Attribute Attr(PaletteRole role, bool trueColor, bool bold, bool italic)
     {
         var fg = Foreground(role, trueColor);
-        var bg = Default;
+        var bg = Background(role, trueColor);
         var style = (bold ? TextStyle.Bold : TextStyle.None) | (italic ? TextStyle.Italic : TextStyle.None);
         return new Attribute(in fg, in bg, in style);
     }

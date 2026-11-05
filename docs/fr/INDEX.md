@@ -43,6 +43,7 @@ Donner une boîte aux lettres aux agents est l'une des fonctionnalités les plus
 | [ADR-014 — le confinement du shell par défaut](./adr/ADR-014-shell-confinement-by-default.md) | Pourquoi `shell_command` est confiné par plateforme par défaut, coupé dans les conteneurs, et tourne dans une session shell par exécution d'agent |
 | [ADR-015 — les catégories de fournisseurs de modèles et les étapes de décision](./adr/ADR-015-model-provider-categories-and-decision-stages.md) | Pourquoi les fournisseurs de modèles se rangent en catégories (génération, embedding, reranking, décision), pourquoi les fournisseurs de décision (TypeSafe, Liquid, Kev) ont leur propre port `IDecisionModel`, et pourquoi une étape de décision juge un appel au LLM sans le réécrire |
 | [ADR-016 — les tâches de décision et l'éclatement conditionnel](./adr/ADR-016-decision-tasks-and-conditional-fan-out.md) | Pourquoi une tâche de décision répond sans agent, pourquoi une condition `when` fait ignorer une tâche au lieu de la faire échouer, et quels processus les prennent en charge |
+| [ADR-017 — le modèle d'affichage du transcript](./adr/ADR-017-transcript-display-model.md) | Pourquoi le transcript peint sur un texte qui reste la seule source, pourquoi seul le contenu peint un fond, et pourquoi un script ne choisit jamais de couleur |
 
 ### Architecture
 

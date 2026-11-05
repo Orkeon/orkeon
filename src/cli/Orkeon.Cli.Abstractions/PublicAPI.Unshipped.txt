@@ -1,3 +1,8 @@
 #nullable enable
 Orkeon.Cli.Abstractions.Console.IStreamConsole
 Orkeon.Cli.Abstractions.Console.IStreamConsole.WriteStream(string! text) -> void
+Orkeon.Cli.Abstractions.Console.ConsoleBlockKind
+Orkeon.Cli.Abstractions.Console.ConsoleBlockKind.Diff = 1 -> Orkeon.Cli.Abstractions.Console.ConsoleBlockKind
+Orkeon.Cli.Abstractions.Console.ConsoleBlockKind.Markdown = 0 -> Orkeon.Cli.Abstractions.Console.ConsoleBlockKind
+Orkeon.Cli.Abstractions.Console.IBlockConsole
+Orkeon.Cli.Abstractions.Console.IBlockConsole.WriteBlock(Orkeon.Cli.Abstractions.Console.ConsoleBlockKind kind, string! text) -> void

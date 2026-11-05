@@ -1,6 +1,7 @@
 using Orkeon.Tests.Shared.Timing;
 using Jint;
 using Microsoft.Extensions.Logging.Abstractions;
+using Orkeon.Cli.Abstractions.Console;
 using Orkeon.Cli.Commands.Scripting.Runtime;
 using Orkeon.Cli.Commands.Scripting.Tests.Fixtures;
 
@@ -28,6 +29,50 @@ public sealed class CommandRuntimeContextTests
         ctx.write("Hello, ");
         ctx.writeLine("World");
         Assert.Equal("Hello, World" + Environment.NewLine, console.Output);
+    }
+
+    private static Jint.Native.JsValue Block(Engine engine, string kind, string text)
+        => engine.Evaluate($"({{ kind: {System.Text.Json.JsonSerializer.Serialize(kind)}, text: {System.Text.Json.JsonSerializer.Serialize(text)} }})");
+
+    [Fact]
+    public void WriteBlock_hands_the_kind_and_the_source_to_a_block_console()
+    {
+        // Arrange
+        using var engine = new Engine(options => options.Constraints.PromiseTimeout = HangGuards.EnginePromise);
+        var console = new ScriptedBlockConsole();
+        var ctx = new CommandRuntimeContext(engine, console, new CommandMeta("deploy", "deploy prod"), TestContext.Current.CancellationToken, NullLogger.Instance, ScriptServiceLocator.Empty);
+
+        // Act
+        ctx.writeBlock(Block(engine, "diff", "+added"));
+
+        // Assert
+        Assert.Equal([(ConsoleBlockKind.Diff, "+added")], console.Blocks);
+    }
+
+    [Fact]
+    public void WriteBlock_writes_the_source_as_plain_lines_on_any_other_console()
+    {
+        // Arrange
+        var (engine, console, ctx) = Build(TestContext.Current.CancellationToken);
+
+        // Act
+        ctx.writeBlock(Block(engine, "markdown", "# title\n"));
+
+        // Assert
+        Assert.Equal("# title" + Environment.NewLine, console.Output);
+    }
+
+    [Fact]
+    public void WriteBlock_refuses_an_unknown_kind()
+    {
+        // Arrange
+        var (engine, _, ctx) = Build(TestContext.Current.CancellationToken);
+
+        // Act
+        var refused = Record.Exception(() => ctx.writeBlock(Block(engine, "html", "x")));
+
+        // Assert
+        Assert.IsType<ArgumentException>(refused);
     }
 
     [Fact]

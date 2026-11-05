@@ -30,7 +30,7 @@ internal enum ReplayInterrupt
 /// </list>
 /// With no replay running, every member delegates to the real console.
 /// </summary>
-internal sealed class ReplayConsoleAdapter : IConsoleAdapter, IThreadedConsole, IStreamConsole, ICommandOutcomeObserver
+internal sealed class ReplayConsoleAdapter : IConsoleAdapter, IThreadedConsole, IStreamConsole, IBlockConsole, ICommandOutcomeObserver
 {
     /// <summary>The exit code of a replay whose every line passed.</summary>
     public const int PassedExitCode = 0;
@@ -233,6 +233,15 @@ internal sealed class ReplayConsoleAdapter : IConsoleAdapter, IThreadedConsole, 
             stream.WriteStream(text);
         else
             _inner.Write(text);
+    }
+
+    /// <inheritdoc />
+    public void WriteBlock(ConsoleBlockKind kind, string text)
+    {
+        if (_inner is IBlockConsole blocks)
+            blocks.WriteBlock(kind, text);
+        else
+            _inner.WriteLine(text);
     }
 
     /// <inheritdoc />

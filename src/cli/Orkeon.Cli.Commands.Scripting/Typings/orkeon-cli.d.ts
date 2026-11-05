@@ -178,6 +178,11 @@ export interface CommandRuntimeContext {
 
   write(text: string): void;
   writeLine(text: string): void;
+  /**
+   * Writes a typed block on lines of its own. The split-pane console styles it; any other console
+   * shows `text` as plain lines. The caller hands over the source, never a colour.
+   */
+  writeBlock(spec: { kind: "markdown" | "diff"; text: string }): void;
   clear(): void;
 
   prompt(spec: PromptSpec): Promise<PromptResult>;

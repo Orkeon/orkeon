@@ -1,2 +1,14 @@
 #nullable enable
 Orkeon.Cli.TerminalGui.Console.TerminalGuiConsoleAdapter.WriteStream(string! text) -> void
+Orkeon.Cli.TerminalGui.Console.TerminalGuiConsoleAdapter.WriteBlock(Orkeon.Cli.Abstractions.Console.ConsoleBlockKind kind, string! text) -> void
+Orkeon.Cli.TerminalGui.Layout.PaletteRole.AddedWord = 9 -> Orkeon.Cli.TerminalGui.Layout.PaletteRole
+Orkeon.Cli.TerminalGui.Layout.PaletteRole.Code = 11 -> Orkeon.Cli.TerminalGui.Layout.PaletteRole
+Orkeon.Cli.TerminalGui.Layout.PaletteRole.DiffAdded = 7 -> Orkeon.Cli.TerminalGui.Layout.PaletteRole
+Orkeon.Cli.TerminalGui.Layout.PaletteRole.DiffRemoved = 8 -> Orkeon.Cli.TerminalGui.Layout.PaletteRole
+Orkeon.Cli.TerminalGui.Layout.PaletteRole.FileRef = 12 -> Orkeon.Cli.TerminalGui.Layout.PaletteRole
+Orkeon.Cli.TerminalGui.Layout.PaletteRole.PanelRule = 13 -> Orkeon.Cli.TerminalGui.Layout.PaletteRole
+Orkeon.Cli.TerminalGui.Layout.PaletteRole.RemovedWord = 10 -> Orkeon.Cli.TerminalGui.Layout.PaletteRole
+Orkeon.Cli.TerminalGui.Layout.PaletteRole.UserBar = 6 -> Orkeon.Cli.TerminalGui.Layout.PaletteRole
+static Orkeon.Cli.TerminalGui.Layout.SchemeFactory.Background(Orkeon.Cli.TerminalGui.Layout.PaletteRole role, bool trueColor) -> Terminal.Gui.Drawing.Color
+static Orkeon.Cli.TerminalGui.Layout.SchemeFactory.Cell(Orkeon.Cli.TerminalGui.Layout.PaletteRole? row, Orkeon.Cli.TerminalGui.Layout.PaletteRole role, bool trueColor, bool bold, bool italic) -> Terminal.Gui.Drawing.Attribute
+static Orkeon.Cli.TerminalGui.Layout.SchemeFactory.HasBackground(Orkeon.Cli.TerminalGui.Layout.PaletteRole role) -> bool

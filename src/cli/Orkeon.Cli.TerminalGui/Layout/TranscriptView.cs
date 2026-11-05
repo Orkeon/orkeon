@@ -96,6 +96,13 @@ internal sealed class TranscriptView : View
         ContentChanged();
     }
 
+    /// <summary>Appends lines that carry their display; stream text written next starts on its own line.</summary>
+    public void AppendStyled(IReadOnlyList<TranscriptLine> lines)
+    {
+        _buffer.AppendStyled(lines);
+        ContentChanged();
+    }
+
     /// <summary>Empties the transcript; the view sticks to its (new) tail again.</summary>
     public void Clear()
     {
@@ -177,21 +184,43 @@ internal sealed class TranscriptView : View
         var skip = _wordWrap ? 0 : Viewport.X;
         var column = 0;
         var offset = row.Start;
+        var runs = new RunCursor(row.Runs, row.RowRole, normal);
+        if (row.RowRole is { } rowRole)
+        {
+            SetAttribute(SchemeFactory.Attr(rowRole));
+            Move(0, y);
+            AddStr(new string(' ', Math.Max(0, width)));
+        }
         foreach (var grapheme in GraphemeHelper.GetGraphemes(row.Text[row.Start..row.End]))
         {
             // A tab is drawn as the blanks up to the next stop of its row.
-            var w = _buffer.ColumnsAt(grapheme, column);
-            var at = column - skip;
+            var w = _buffer.ColumnsAt(grapheme, column, row.Indent);
+            var at = column + row.Indent - skip;
             column += w;
             var position = new TranscriptPosition(row.Line, offset);
+            var attribute = runs.At(offset);
             offset += grapheme.Length;
             if (at < 0) continue;
             if (at + w > width) break;
             var selected = selection is { } range
                 && position.CompareTo(range.From) >= 0 && position.CompareTo(range.To) < 0;
-            SetAttribute(selected ? MouseClipboardTextView.SelectionAttribute : normal);
+            SetAttribute(selected ? MouseClipboardTextView.SelectionAttribute : attribute);
             Move(at, y);
             AddStr(grapheme == "\t" ? new string(' ', w) : grapheme);
+        }
+    }
+
+    // The attribute of each offset of a row, read in increasing order: the runs are sorted.
+    private struct RunCursor(IReadOnlyList<TranscriptRun> runs, PaletteRole? rowRole, Attribute normal)
+    {
+        private int _next;
+
+        public Attribute At(int offset)
+        {
+            while (_next < runs.Count && runs[_next].End <= offset) _next++;
+            if (_next < runs.Count && runs[_next].Start <= offset)
+                return SchemeFactory.Cell(rowRole, runs[_next].Role, runs[_next].Bold, runs[_next].Italic);
+            return rowRole is { } role ? SchemeFactory.Attr(role) : normal;
         }
     }
 

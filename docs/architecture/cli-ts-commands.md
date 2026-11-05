@@ -175,6 +175,7 @@ interface CommandRuntimeContext {
 
   write(text: string): void;
   writeLine(text: string): void;
+  writeBlock(spec: { kind: "markdown" | "diff"; text: string }): void; // styled by the split-pane console, plain lines elsewhere
   clear(): void;
 
   prompt(spec: PromptSpec): Promise<string | boolean>;
@@ -491,6 +492,11 @@ drawer, `Ctrl+R` REPL pane, `Ctrl+L` / `Ctrl+K` clear the logs / the REPL, `Ctrl
 `Ctrl+↑` / `Ctrl+↓` resize, `F2` / `Shift+F2` more / less log detail, `F3` wrap, `↓` (from the
 prompt's last row) or `F4` tasks list, `Ctrl+C` copy the selection, `Ctrl+V` and right-click paste into the input, `Ctrl+Q` quit
 (it asks first while a turn runs). No text view opens a context menu: a right click pastes, nothing else. `orkeon-repl` picks this console with `--ui` ([CLI reference](../reference/cli.md#orkeon-repl--the-separate-interactive-console)).
+
+**What the transcript shows.** A submitted entry sits on a grey bar after a blank row, the prompt marker
+on its first line; a copy of a whole line returns what was typed. What a slash command writes hangs under
+its echo, on an elbow, until the console reads again. A turn of ten seconds or more closes on a dim line
+with its time and tokens. The display model is in [ADR-017](../adr/ADR-017-transcript-display-model.md).
 
 **Keys on the prompt.** `Esc` clears the draft; a second `Esc` right after it (any other key in
 between disarms the pair, and it arms on an empty draft too) interrupts the turn submitted from the

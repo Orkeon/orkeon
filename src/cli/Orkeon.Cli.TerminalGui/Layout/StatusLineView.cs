@@ -57,6 +57,12 @@ public sealed class StatusLineView : View
     /// <summary>Raised on the running→idle transition — the transcript flushes tool activity on it.</summary>
     public event EventHandler? TurnCompleted;
 
+    /// <summary>How long the turn that last completed ran, as seen when <see cref="TurnCompleted"/> is raised.</summary>
+    internal TimeSpan LastTurnElapsed { get; private set; }
+
+    /// <summary>The tokens of the turn that last completed; null when the session reports none.</summary>
+    internal long? LastTurnTokens { get; private set; }
+
     /// <summary>Wires the sources and starts the 1 Hz refresh. Safe to call repeatedly.</summary>
     public void Bind(IInteractiveRunner runner, TuiIntegration? integration, ToolActivityAggregator? activity)
     {
@@ -97,6 +103,8 @@ public sealed class StatusLineView : View
         }
         if (!running && _wasRunning)
         {
+            LastTurnElapsed = _turnStartedAt is { } startedAt ? _clock.GetUtcNow().UtcDateTime - startedAt : TimeSpan.Zero;
+            LastTurnTokens = ReadSessionTokens() is { } spent ? Math.Max(0, spent - _tokensAtTurnStart) : null;
             _turnStartedAt = null;
             _deltasFlowing = false;
             TurnCompleted?.Invoke(this, EventArgs.Empty);

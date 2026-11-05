@@ -334,12 +334,14 @@ public sealed class TerminalGuiHost : IAsyncDisposable
         top.Repl.StatusLine.TurnCompleted += (_, _) =>
         {
             var sentence = _toolActivity.DrainSentence();
+            var glyphs = Layout.GlyphSet.Resolve(_options.Glyphs, OutputEncodingIsUtf8());
             if (sentence.Length > 0)
             {
-                var glyphs = Layout.GlyphSet.Resolve(_options.Glyphs, OutputEncodingIsUtf8());
                 foreach (var line in Layout.TranscriptModel.Render(glyphs, Layout.TranscriptKind.ToolActivity, sentence))
                     top.Repl.AppendOutputLine(line);
             }
+            if (Layout.TranscriptModel.TurnEnd(glyphs, top.Repl.StatusLine.LastTurnElapsed, top.Repl.StatusLine.LastTurnTokens) is { } closing)
+                top.Repl.AppendStyled([closing]);
             top.Repl.RuleChip.Refresh();
         };
     }

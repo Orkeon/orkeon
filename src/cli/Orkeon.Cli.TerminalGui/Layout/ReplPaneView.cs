@@ -25,9 +25,24 @@ public sealed class ReplPaneView : View, ITaskListNavigator
 {
     private readonly ThreadScreens _screens;
     private readonly AppendCoalescer<TranscriptWrite> _transcriptWrites;
+    private readonly CommandResultIndent _commandResult;
+    private string? _commandResultThread;
 
     // A write to a thread's screen; a null Text is a clear of that screen.
-    private readonly record struct TranscriptWrite(string? Thread, string? Text, bool Attention = false);
+    // A write carries text, styled lines or a change of the command in flight; none of the three clears the screen.
+    private readonly record struct TranscriptWrite(string? Thread, string? Text, bool Attention = false)
+    {
+        public IReadOnlyList<TranscriptLine>? Lines { get; init; }
+
+        public CommandResultScope Scope { get; init; }
+    }
+
+    private enum CommandResultScope
+    {
+        None,
+        Begin,
+        End,
+    }
     private readonly Label _promptLabel;
     private readonly Label _placeholder;
     private readonly MouseClipboardTextView _input;
@@ -108,6 +123,7 @@ public sealed class ReplPaneView : View, ITaskListNavigator
             screen.SetScheme(SchemeFactory.Pane());
         });
         _transcriptWrites = new AppendCoalescer<TranscriptWrite>(dispatcher, ApplyTranscriptWrites);
+        _commandResult = new CommandResultIndent(_glyphs);
 
         // The two bands of the interactive cluster, in the captures' order: status
         // line, then the rule carrying the right-aligned context chip, then the prompt.
@@ -243,13 +259,31 @@ public sealed class ReplPaneView : View, ITaskListNavigator
         foreach (var write in writes)
         {
             var screen = _screens.For(write.Thread);
+            if (write.Scope != CommandResultScope.None)
+            {
+                _commandResult.Reset(write.Scope == CommandResultScope.Begin);
+                _commandResultThread = write.Thread;
+                continue;
+            }
+            if (write.Lines is { } lines)
+            {
+                // What the batch holds for this screen goes first: the order of the writes is the order shown.
+                if (pending.TryGetValue(screen, out var earlier) && earlier.Length > 0)
+                {
+                    screen.Append(earlier.ToString());
+                    earlier.Clear();
+                }
+                screen.AppendStyled(lines);
+                continue;
+            }
             if (write.Text is null)
             {
                 if (pending.TryGetValue(screen, out var cleared)) cleared.Clear();
                 screen.Clear();
                 continue;
             }
-            Enqueue(screen, write.Text);
+            var inCommand = !write.Attention && write.Thread == _commandResultThread;
+            Enqueue(screen, inCommand ? _commandResult.Apply(write.Text) : write.Text);
             if (write.Attention && !ReferenceEquals(screen, _screens.Displayed))
                 Enqueue(_screens.Displayed, write.Text);
         }
@@ -262,6 +296,13 @@ public sealed class ReplPaneView : View, ITaskListNavigator
                 pending[target] = builder = new System.Text.StringBuilder();
             builder.Append(text);
         }
+    }
+
+    /// <summary>Appends lines that carry their display, in order with the writes around them.</summary>
+    internal void AppendStyled(IReadOnlyList<TranscriptLine> lines)
+    {
+        ArgumentNullException.ThrowIfNull(lines);
+        _transcriptWrites.Post(new TranscriptWrite(ConsoleThread.Current, null) { Lines = lines });
     }
 
     public void AppendOutputLine(string text) => AppendOutput((text ?? string.Empty) + "\n");
@@ -402,6 +443,8 @@ public sealed class ReplPaneView : View, ITaskListNavigator
     /// </summary>
     public Task<string?> ReadLineAsync(CancellationToken ct)
     {
+        // The console reads again: the command echoed last has said what it had to say.
+        _transcriptWrites.Post(new TranscriptWrite(null, null) { Scope = CommandResultScope.End });
         var tcs = new TaskCompletionSource<string?>(TaskCreationOptions.RunContinuationsAsynchronously);
         lock (_gate)
         {
@@ -884,13 +927,15 @@ public sealed class ReplPaneView : View, ITaskListNavigator
 
     /// <summary>
     /// Echoes the just-submitted entry into the read-only history pane above the prompt, the way a
-    /// terminal keeps typed commands in its scrollback. The text is echoed verbatim (no prompt
-    /// prefix), each logical line on its own row.
+    /// terminal keeps typed commands in its scrollback: each logical line on a bar of its own
+    /// (<see cref="TranscriptModel.UserPrompt"/>). What a slash command then writes hangs under it, until
+    /// the console reads again (<see cref="CommandResultIndent"/>).
     /// </summary>
     private void EchoSubmittedLine(string text)
     {
-        foreach (var line in text.Split('\n'))
-            AppendOutputLine(line);
+        AppendStyled(TranscriptModel.UserPrompt(_glyphs, text));
+        var scope = text.StartsWith('/') ? CommandResultScope.Begin : CommandResultScope.End;
+        _transcriptWrites.Post(new TranscriptWrite(ConsoleThread.Current, null) { Scope = scope });
     }
 
     /// <summary>

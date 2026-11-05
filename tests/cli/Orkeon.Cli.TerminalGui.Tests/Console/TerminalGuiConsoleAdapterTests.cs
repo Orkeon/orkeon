@@ -64,6 +64,20 @@ public class TerminalGuiConsoleAdapterTests
     }
 
     [Fact]
+    public void WriteBlock_paints_a_diff_in_the_history()
+    {
+        // Arrange
+        var (adapter, repl) = Create();
+
+        // Act
+        adapter.WriteBlock(ConsoleBlockKind.Diff, "+added\n");
+
+        // Assert
+        Assert.Equal("+added\n", repl.CurrentHistory);
+        Assert.Equal(PaletteRole.DiffAdded, repl.Transcript.GetRow(0)!.Value.RowRole);
+    }
+
+    [Fact]
     public void WriteLine_appends_with_newline()
     {
         var (adapter, repl) = Create();

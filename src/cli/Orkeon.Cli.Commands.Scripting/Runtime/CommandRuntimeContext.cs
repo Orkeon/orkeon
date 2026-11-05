@@ -68,6 +68,30 @@ public sealed class CommandRuntimeContext
     /// <summary>Write a line to the console.</summary>
     public void writeLine(string text) => _console.WriteLine(text ?? string.Empty);
 
+    /// <summary>
+    /// Write a typed block, <c>{ kind: "markdown" | "diff", text }</c>, on lines of its own: styled by a
+    /// console able to, as plain lines by any other.
+    /// </summary>
+    public void writeBlock(JsValue spec)
+    {
+        if (spec is null || !spec.IsObject())
+            throw new ArgumentException("ctx.writeBlock(spec): spec must be an object with { kind, text }.");
+        var obj = spec.AsObject();
+        var textValue = obj.Get("text");
+        if (!textValue.IsString())
+            throw new ArgumentException("ctx.writeBlock(spec): 'text' must be a string.");
+        var kindValue = obj.Get("kind");
+        var kind = (kindValue.IsString() ? kindValue.AsString() : null) switch
+        {
+            "markdown" => ConsoleBlockKind.Markdown,
+            "diff" => ConsoleBlockKind.Diff,
+            _ => throw new ArgumentException("ctx.writeBlock(spec): 'kind' must be \"markdown\" or \"diff\"."),
+        };
+        var text = textValue.AsString();
+        if (_console is IBlockConsole blocks) blocks.WriteBlock(kind, text);
+        else _console.WriteLine(text.EndsWith('\n') ? text[..^1] : text);
+    }
+
     /// <summary>Clear the console / logs pane.</summary>
     public void clear() => _console.Clear();
 

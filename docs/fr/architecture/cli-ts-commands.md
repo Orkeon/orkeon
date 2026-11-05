@@ -179,6 +179,7 @@ interface CommandRuntimeContext {
 
   write(text: string): void;
   writeLine(text: string): void;
+  writeBlock(spec: { kind: "markdown" | "diff"; text: string }): void; // stylé par la console à deux volets, lignes simples ailleurs
   clear(): void;
 
   prompt(spec: PromptSpec): Promise<string | boolean>;
@@ -506,6 +507,12 @@ du prompt) ou `F4` liste des tâches, `Ctrl+C` copie la sélection,
 `Ctrl+V` et le clic droit collent dans la saisie, `Ctrl+Q` quitte (il demande d'abord confirmation
 tant qu'un tour s'exécute). Aucune vue de texte n'ouvre de menu contextuel : un clic droit colle, rien d'autre. `orkeon-repl`
 choisit cette console avec `--ui` ([référence du CLI](../reference/cli.md#orkeon-repl--la-console-interactive-séparée)).
+
+**Ce que montre le transcript.** Une entrée soumise s'affiche sur une barre grise après une rangée vide,
+le marqueur de prompt sur sa première ligne ; la copie d'une ligne entière rend ce qui a été tapé. Ce
+qu'écrit une commande slash pend sous son rappel, sur un coude, jusqu'à ce que la console lise de nouveau.
+Un tour de dix secondes ou plus se ferme sur une ligne atténuée avec son temps et ses jetons. Le modèle
+d'affichage est dans l'[ADR-017](../adr/ADR-017-transcript-display-model.md).
 
 **Touches sur le prompt.** `Échap` efface le brouillon ; un second `Échap` aussitôt après (toute
 autre touche entre les deux désarme la paire, et elle s'arme aussi sur un brouillon vide)

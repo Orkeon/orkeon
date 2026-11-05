@@ -120,6 +120,27 @@ public class StatusLineViewTests
     }
 
     [Fact]
+    public void ShouldKeepTheTimeAndTokensOfTheTurn_WhenItCompletes()
+    {
+        // Arrange
+        long tokens = 500;
+        using var view = CreateView();
+        view.Bind(_runner, new TuiIntegration { SessionTokens = () => tokens }, null);
+        _runner.Running = true;
+        view.Refresh();
+        _clock.Advance(TimeSpan.FromSeconds(30));
+        tokens = 1_700;
+        _runner.Running = false;
+
+        // Act
+        view.Refresh();
+
+        // Assert
+        Assert.Equal(TimeSpan.FromSeconds(30), view.LastTurnElapsed);
+        Assert.Equal(1_200, view.LastTurnTokens);
+    }
+
+    [Fact]
     public void ShouldRaiseTurnCompletedAndClear_WhenRunningTurnEnds()
     {
         using var view = CreateView();

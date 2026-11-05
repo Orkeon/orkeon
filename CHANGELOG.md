@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — the split-pane transcript paints what it shows
+
+- A submitted entry sits on a grey bar; what a slash command writes hangs under its echo, on an elbow; a turn of ten seconds or more closes on a dim line with its time and tokens. A copy of a whole prompt line returns what was typed. [ADR-017](docs/adr/ADR-017-transcript-display-model.md).
+- `ctx.writeBlock({ kind: "markdown" | "diff", text })` hands a typed block to a console able to style it (`IBlockConsole`); any other console writes the source as plain lines. Changed diff lines are painted over their whole row; markdown stays its source for now.
+
 ### Fixed — the split-pane console keeps a streamed `>` and counts the tools of `ctx.llm.act`
 
 - A streamed delta ending in `>` (`Map<string>`) was read as a prompt and left the transcript for the prompt label. A console now offers `IStreamConsole.WriteStream`, which `ConsoleLlmDeltaSink` prefers over `Write`: a token is never taken for a prompt. `Write` and its heuristic stay for what the runner writes.
