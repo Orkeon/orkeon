@@ -89,6 +89,13 @@ public sealed class ReplPaneView : View, ITaskListNavigator
     // Painted in place of the prompt rows; _panelRows is 0 while none is open.
     private const int MinTranscriptRows = 3;
     private readonly InlinePanelView _panelView = new();
+
+    // The menu of commands above the prompt. The field keeps the focus: this view only paints it.
+    private readonly InlinePanelView _menuView = new() { CanFocus = false };
+    private IReplCommandCatalog? _catalog;
+    private SlashMenuModel? _menu;
+    private int _menuRows;
+    private bool _menuDismissed;
     private readonly List<OpenPanel> _promptPanels = [];
     private OpenPanel? _approvalPanel;
     private long? _approvalSettledId;
@@ -195,11 +202,16 @@ public sealed class ReplPaneView : View, ITaskListNavigator
         {
             SyncInputHeight();
             SyncPlaceholder();
-            if (_applyingNavigation) return;
+            if (_applyingNavigation)
+            {
+                CloseSlashMenu();
+                return;
+            }
             // Text that lands in the field while the list holds the keys (a paste path the host
             // missed, a writer of its own) ends the list first: the field keeps what it now shows.
             if (_navigation.State == InputNavigationState.List) Apply(_navigation.OnFieldFocused());
             _navigation.OnTextEdited(CurrentInput);
+            SyncSlashMenu();
         };
         // The list state follows the real focus: the field taking it back by any way the machine did
         // not order (a mouse click, a focus move) leaves the list with the field's text and caret as
@@ -224,8 +236,12 @@ public sealed class ReplPaneView : View, ITaskListNavigator
         _placeholder.SetScheme(SchemeFactory.Uniform(SchemeFactory.Attr(PaletteRole.Dim, italic: true)));
 
         _panelView.KeyHandler = HandlePanelKey;
-        Add(_screens.Main, _statusLine, _ruleChip, _promptLabel, _input, _placeholder, _bottomRule, _panelView);
-        FrameChanged += (_, _) => { if (_panelRows > 0) SyncPanel(); };
+        Add(_screens.Main, _statusLine, _ruleChip, _promptLabel, _input, _placeholder, _bottomRule, _panelView, _menuView);
+        FrameChanged += (_, _) =>
+        {
+            if (_panelRows > 0) SyncPanel();
+            else if (_menuRows > 0) LayOutSlashMenu();
+        };
 
         // Force initial focus on the input field once the view is laid out, otherwise
         // Terminal.Gui defaults to the first focusable child (which would skip past
@@ -254,6 +270,7 @@ public sealed class ReplPaneView : View, ITaskListNavigator
     {
         ArgumentNullException.ThrowIfNull(assist);
         _assist = assist;
+        _catalog = assist as IReplCommandCatalog;
     }
 
     public void AppendOutput(string text)
@@ -399,7 +416,7 @@ public sealed class ReplPaneView : View, ITaskListNavigator
     {
         Remove(previous);
         var screen = _screens.Displayed;
-        screen.Height = Dim.Fill(_panelRows > 0 ? _panelRows + 1 : _inputRows + BandRows + BelowRows);
+        screen.Height = Dim.Fill(_panelRows > 0 ? _panelRows + 1 : _inputRows + _menuRows + BandRows + BelowRows);
         Add(screen);
         screen.SetRelativeLayout(GetContentSize());
         screen.MoveEnd();
@@ -569,6 +586,7 @@ public sealed class ReplPaneView : View, ITaskListNavigator
         _screens.Displayed.Height = Dim.Fill(rows + 1);
         if (opening)
         {
+            CloseSlashMenu();
             SetPromptVisible(false);
             _panelView.Visible = true;
             _panelView.SetFocus();
@@ -667,6 +685,12 @@ public sealed class ReplPaneView : View, ITaskListNavigator
         // Notify external listeners first (TerminalGuiConsoleAdapter.ReadKey relies on this).
         KeyCaptured?.Invoke(this, new KeyCapturedEventArgs(key));
         if (key.Handled) return;
+
+        if (HandleSlashMenuKey(key))
+        {
+            key.Handled = true;
+            return;
+        }
 
         var bare = PaneClipboard.BareKey(key);
 
@@ -1034,8 +1058,10 @@ public sealed class ReplPaneView : View, ITaskListNavigator
     private void ApplyInputLayout()
     {
         var rows = _inputRows;
-        _screens.Displayed.Height = Dim.Fill(rows + BandRows + BelowRows);
-        _statusLine.Y = Pos.AnchorEnd(rows + BandRows + BelowRows);
+        _screens.Displayed.Height = Dim.Fill(rows + _menuRows + BandRows + BelowRows);
+        _statusLine.Y = Pos.AnchorEnd(rows + _menuRows + BandRows + BelowRows);
+        _menuView.Y = Pos.AnchorEnd(rows + _menuRows + 1 + BelowRows);
+        _menuView.Height = _menuRows;
         _ruleChip.Y = Pos.AnchorEnd(rows + 1 + BelowRows);
         _promptLabel.Y = Pos.AnchorEnd(rows + BelowRows);
         _placeholder.Y = Pos.AnchorEnd(rows + BelowRows);
@@ -1174,6 +1200,88 @@ public sealed class ReplPaneView : View, ITaskListNavigator
         _input.InsertionPoint = new Point(outcome.NewLeft.Length, row);
     }
 
+    /// <summary>
+    /// Opens, filters or closes the menu after an edit of the operator's: a recalled line never gets here. Esc
+    /// keeps it closed for as long as the text stays a command.
+    /// </summary>
+    private void SyncSlashMenu()
+    {
+        var query = SlashMenuModel.QueryOf(CurrentInput);
+        if (query is null) _menuDismissed = false;
+        if (query is null || _menuDismissed || _catalog is null || _panelRows > 0)
+        {
+            CloseSlashMenu();
+            return;
+        }
+
+        _menu ??= new SlashMenuModel(_catalog.ListCommands(), _glyphs);
+        _menu.Filter(query);
+        if (_menu.MatchCount == 0)
+        {
+            CloseSlashMenu();
+            return;
+        }
+        LayOutSlashMenu();
+    }
+
+    private void LayOutSlashMenu()
+    {
+        if (_menu is null) return;
+        var width = Viewport.Width > 0 ? Viewport.Width : 80;
+        var height = Viewport.Height > 0 ? Viewport.Height : 24;
+        var room = Math.Max(1, height - _inputRows - BandRows - BelowRows - MinTranscriptRows);
+        var rows = _menu.Rows(width, room).Count;
+        _menuView.Model = _menu;
+        _menuView.Visible = true;
+        _menuView.SetNeedsDraw();
+        if (rows == _menuRows) return;
+        _menuRows = rows;
+        ApplyInputLayout();
+    }
+
+    private void CloseSlashMenu()
+    {
+        _menu = null;
+        if (_menuRows == 0) return;
+        _menuRows = 0;
+        _menuView.Model = null;
+        _menuView.Visible = false;
+        if (_panelRows == 0) ApplyInputLayout();
+    }
+
+    /// <summary>What an open menu does with a key: the arrows walk it, Tab fills the command in, Enter runs it, Esc leaves it.</summary>
+    private bool HandleSlashMenuKey(Key key)
+    {
+        if (_menu is not { } menu) return false;
+        switch (key.KeyCode)
+        {
+            case KeyCode.CursorUp:
+                menu.Move(-1);
+                break;
+            case KeyCode.CursorDown:
+                menu.Move(1);
+                break;
+            case KeyCode.Tab:
+                CurrentInput = $"/{menu.SelectedName} ";
+                break;
+            case KeyCode.Enter:
+                var name = menu.SelectedName;
+                CurrentInput = $"/{name}";
+                CloseSlashMenu();
+                Navigate(InputNavigationKey.Enter, key);
+                break;
+            case KeyCode.Esc:
+                _menuDismissed = true;
+                CloseSlashMenu();
+                break;
+            default:
+                return false;
+        }
+        _escapeArmed = false;
+        _menuView.SetNeedsDraw();
+        return true;
+    }
+
     /// <summary>Writes the field without reporting a user edit to the navigation machine.</summary>
     private void SetInputText(string value)
     {
@@ -1205,6 +1313,12 @@ public sealed class ReplPaneView : View, ITaskListNavigator
         registration.Dispose();
         snapshot!.TrySetResult(value);
     }
+
+    /// <summary>Test accessor: the menu of commands open above the prompt.</summary>
+    internal SlashMenuModel? OpenSlashMenu => _menu;
+
+    /// <summary>Test accessor: the rows the menu takes.</summary>
+    internal int SlashMenuRows => _menuRows;
 
     /// <summary>Test-only accessor for the prompt label text.</summary>
     internal string CurrentPromptPrefix => _promptLabel.Text;
@@ -1264,6 +1378,7 @@ public sealed class ReplPaneView : View, ITaskListNavigator
             _promptPanels.Clear();
             _approvalPanel = null;
             _panelView.Dispose();
+            _menuView.Dispose();
             _screens.DisposeScreens();
             _statusLine.Dispose();
             _ruleChip.Dispose();

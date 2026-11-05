@@ -66,8 +66,21 @@ Orkeon.Cli.Abstractions.Console.IBlockConsole.WriteBlock(Orkeon.Cli.Abstractions
 Orkeon.Cli.Abstractions.Console.IChoiceConsole
 Orkeon.Cli.Abstractions.Console.IChoiceConsole.CanChoose.get -> bool
 Orkeon.Cli.Abstractions.Console.IChoiceConsole.ChooseAsync(Orkeon.Cli.Abstractions.Console.ConsoleChoiceRequest! request, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Orkeon.Cli.Abstractions.Console.ConsoleChoiceAnswer?>!
+Orkeon.Cli.Abstractions.Console.IReplCommandCatalog
+Orkeon.Cli.Abstractions.Console.IReplCommandCatalog.ListCommands() -> System.Collections.Generic.IReadOnlyList<Orkeon.Cli.Abstractions.Console.ReplCommandEntry!>!
 Orkeon.Cli.Abstractions.Console.IStreamConsole
 Orkeon.Cli.Abstractions.Console.IStreamConsole.WriteStream(string! text) -> void
+Orkeon.Cli.Abstractions.Console.ReplCommandEntry
+Orkeon.Cli.Abstractions.Console.ReplCommandEntry.<Clone>$() -> Orkeon.Cli.Abstractions.Console.ReplCommandEntry!
+Orkeon.Cli.Abstractions.Console.ReplCommandEntry.Aliases.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Orkeon.Cli.Abstractions.Console.ReplCommandEntry.Aliases.init -> void
+Orkeon.Cli.Abstractions.Console.ReplCommandEntry.Deconstruct(out string! Name, out string! Description) -> void
+Orkeon.Cli.Abstractions.Console.ReplCommandEntry.Description.get -> string!
+Orkeon.Cli.Abstractions.Console.ReplCommandEntry.Description.init -> void
+Orkeon.Cli.Abstractions.Console.ReplCommandEntry.Equals(Orkeon.Cli.Abstractions.Console.ReplCommandEntry? other) -> bool
+Orkeon.Cli.Abstractions.Console.ReplCommandEntry.Name.get -> string!
+Orkeon.Cli.Abstractions.Console.ReplCommandEntry.Name.init -> void
+Orkeon.Cli.Abstractions.Console.ReplCommandEntry.ReplCommandEntry(string! Name, string! Description) -> void
 Orkeon.Cli.Abstractions.Runners.PendingToolApproval.Reason.get -> string?
 Orkeon.Cli.Abstractions.Runners.PendingToolApproval.Reason.init -> void
 override Orkeon.Cli.Abstractions.Console.ConsoleChoice.Equals(object? obj) -> bool
@@ -82,6 +95,9 @@ override Orkeon.Cli.Abstractions.Console.ConsoleChoiceControl.ToString() -> stri
 override Orkeon.Cli.Abstractions.Console.ConsoleChoiceRequest.Equals(object? obj) -> bool
 override Orkeon.Cli.Abstractions.Console.ConsoleChoiceRequest.GetHashCode() -> int
 override Orkeon.Cli.Abstractions.Console.ConsoleChoiceRequest.ToString() -> string!
+override Orkeon.Cli.Abstractions.Console.ReplCommandEntry.Equals(object? obj) -> bool
+override Orkeon.Cli.Abstractions.Console.ReplCommandEntry.GetHashCode() -> int
+override Orkeon.Cli.Abstractions.Console.ReplCommandEntry.ToString() -> string!
 static Orkeon.Cli.Abstractions.Console.ConsoleChoice.operator !=(Orkeon.Cli.Abstractions.Console.ConsoleChoice? left, Orkeon.Cli.Abstractions.Console.ConsoleChoice? right) -> bool
 static Orkeon.Cli.Abstractions.Console.ConsoleChoice.operator ==(Orkeon.Cli.Abstractions.Console.ConsoleChoice? left, Orkeon.Cli.Abstractions.Console.ConsoleChoice? right) -> bool
 static Orkeon.Cli.Abstractions.Console.ConsoleChoiceAnswer.operator !=(Orkeon.Cli.Abstractions.Console.ConsoleChoiceAnswer? left, Orkeon.Cli.Abstractions.Console.ConsoleChoiceAnswer? right) -> bool
@@ -90,3 +106,5 @@ static Orkeon.Cli.Abstractions.Console.ConsoleChoiceControl.operator !=(Orkeon.C
 static Orkeon.Cli.Abstractions.Console.ConsoleChoiceControl.operator ==(Orkeon.Cli.Abstractions.Console.ConsoleChoiceControl? left, Orkeon.Cli.Abstractions.Console.ConsoleChoiceControl? right) -> bool
 static Orkeon.Cli.Abstractions.Console.ConsoleChoiceRequest.operator !=(Orkeon.Cli.Abstractions.Console.ConsoleChoiceRequest? left, Orkeon.Cli.Abstractions.Console.ConsoleChoiceRequest? right) -> bool
 static Orkeon.Cli.Abstractions.Console.ConsoleChoiceRequest.operator ==(Orkeon.Cli.Abstractions.Console.ConsoleChoiceRequest? left, Orkeon.Cli.Abstractions.Console.ConsoleChoiceRequest? right) -> bool
+static Orkeon.Cli.Abstractions.Console.ReplCommandEntry.operator !=(Orkeon.Cli.Abstractions.Console.ReplCommandEntry? left, Orkeon.Cli.Abstractions.Console.ReplCommandEntry? right) -> bool
+static Orkeon.Cli.Abstractions.Console.ReplCommandEntry.operator ==(Orkeon.Cli.Abstractions.Console.ReplCommandEntry? left, Orkeon.Cli.Abstractions.Console.ReplCommandEntry? right) -> bool

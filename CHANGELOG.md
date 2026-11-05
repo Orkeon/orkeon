@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — a menu of commands above the prompt
+
+- In the split-pane console, a `/` at the start of the prompt opens a menu of the commands with their descriptions, which typing narrows (a name that starts with the text first, then an alias, then a name that holds it). The arrows walk it, Tab fills the command in, Enter runs it, Esc leaves it and keeps the text without arming the interrupt. A line recalled from the history does not open it, and Tab keeps its completion elsewhere. A completion source offers it by implementing `IReplCommandCatalog`.
+
 ### Added — a selection panel for `ctx.prompt` and tool approvals
 
 - In the split-pane console, `ctx.prompt` opens a panel for `select` and `confirm` in place of the prompt rows: a numbered list that moves with the arrows or a digit, the value in force marked, a value adjusted with the side arrows, Enter to answer, Esc to leave. The draft and the history wait behind it. A choice may be an object (`value`, `label`, `description`, `hint`, `current`); `title`, `description`, `keys`, `control`, `cancellable` and `detailed` describe the panel. `ctx.interactive` says whether it opens: the plain console and a replay keep the numbered lines and read the same answers.

@@ -6,7 +6,7 @@ namespace Orkeon.Cli.TerminalGui.Layout;
 /// The selection panel, without a terminal: which option is selected, what the sideways control holds, and the
 /// rows it paints for a width and a height. The pane translates keys into its methods and paints its rows.
 /// </summary>
-internal sealed class InlinePanelModel
+internal sealed class InlinePanelModel : IPanelRows
 {
     private const int MaxVisibleChoices = 10;
     private const int MinVisibleChoices = 3;

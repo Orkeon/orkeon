@@ -516,7 +516,10 @@ await tui.RunAsync(provider.GetRequiredService<MyRunner>(), CancellationToken.No
 `AddOrkeonCliTerminalGui` remplace la console par un écran Terminal.Gui v2 : le REPL l'occupe, et
 un tiroir de logs (`Ctrl+G`) reçoit les lignes de journal qui sinon s'entremêleraient avec
 l'invite. Il enregistre `TerminalGuiHost`, remplace `IConsoleAdapter` par l'adaptateur posé sur
-le volet REPL (la complétion Tab est branchée quand l'hôte enregistre un `IReplInputAssist`), et
+le volet REPL (la complétion Tab est branchée quand l'hôte enregistre un `IReplInputAssist` ; quand cette source
+est aussi un `IReplCommandCatalog`, un `/` en début de saisie ouvre au-dessus un menu des commandes, que la frappe
+restreint : les flèches le parcourent, Tab complète la commande, Entrée l'exécute, Esc le quitte en gardant le texte
+tapé, et une ligne rappelée de l'historique ne l'ouvre jamais), et
 remplace **tous** les `ILoggerProvider` par `TerminalGuiLoggerProvider` — un logger console
 écrirait dans l'écran que Terminal.Gui possède. Le fournisseur est aussi publié pour tout le
 processus (`AmbientLoggerProvider`), si bien qu'un hôte construit à l'intérieur d'une commande

@@ -5,7 +5,7 @@ using Terminal.Gui.ViewBase;
 namespace Orkeon.Cli.TerminalGui.Layout;
 
 /// <summary>
-/// Paints an <see cref="InlinePanelModel"/> in place of the prompt rows and hands the keys it gets to the pane, which
+/// Paints rows of the bottom of the pane, a panel in place of the prompt or the menu above it, and hands the keys it gets to the pane, which
 /// owns what they mean. Holds no state of its own beyond the model it is showing.
 /// </summary>
 internal sealed class InlinePanelView : View
@@ -20,7 +20,7 @@ internal sealed class InlinePanelView : View
     }
 
     /// <summary>The panel shown; null while none is open.</summary>
-    public InlinePanelModel? Model { get; set; }
+    public IPanelRows? Model { get; set; }
 
     /// <summary>What the pane does with a key; true when it took it.</summary>
     public Func<Key, bool>? KeyHandler { get; set; }

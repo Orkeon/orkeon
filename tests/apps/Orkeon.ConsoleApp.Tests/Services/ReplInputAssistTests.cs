@@ -67,6 +67,19 @@ public sealed class ReplInputAssistTests : IDisposable
         Assert.Contains("exit", results);
     }
 
+    [Fact]
+    public void ListCommands_gives_each_command_its_description()
+    {
+        // Arrange
+        var assist = NewAssist();
+
+        // Act
+        var help = assist.ListCommands().Single(c => c.Name == "help");
+
+        // Assert
+        Assert.Equal("Show available commands", help.Description);
+    }
+
     public void Dispose()
     {
         try { Directory.Delete(_tempDir, recursive: true); }

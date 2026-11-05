@@ -505,7 +505,10 @@ await tui.RunAsync(provider.GetRequiredService<MyRunner>(), CancellationToken.No
 `AddOrkeonCliTerminalGui` swaps the console for a Terminal.Gui v2 screen: the REPL fills it, and
 a logs drawer (`Ctrl+G`) takes the log lines that would otherwise interleave with the prompt.
 It registers `TerminalGuiHost`, replaces `IConsoleAdapter` with the adapter over the REPL pane
-(Tab completion is wired when the host registers an `IReplInputAssist`), and replaces **every**
+(Tab completion is wired when the host registers an `IReplInputAssist`; when that source is also an
+`IReplCommandCatalog`, a `/` at the start of the prompt opens a menu of the commands above it, which typing
+narrows: the arrows walk it, Tab fills the command in, Enter runs it, Esc leaves it and the text as typed, and a
+line recalled from the history never opens it), and replaces **every**
 `ILoggerProvider` with `TerminalGuiLoggerProvider` — a console logger would write into the
 screen Terminal.Gui owns. The provider is also published process-wide
 (`AmbientLoggerProvider`), so a host built inside a command logs into the same pane. Call it
