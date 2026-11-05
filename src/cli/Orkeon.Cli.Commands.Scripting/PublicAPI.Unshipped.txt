@@ -1,4 +1,21 @@
 #nullable enable
+*REMOVED*Orkeon.Cli.Commands.Scripting.Dispatch.CommandDispatchService.postWork(string! label, string! target, System.Func<System.Threading.CancellationToken, System.Threading.Tasks.Task<Orkeon.Cli.Commands.Scripting.Dispatch.CommandResponse!>!>! work, bool continueChain = false) -> string!
+*REMOVED*Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstanceUsage.CacheHitTokens.get -> long
+*REMOVED*Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstanceUsage.CacheWriteTokens.get -> long
+*REMOVED*Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstanceUsage.ReasoningTokens.get -> long
+*REMOVED*Orkeon.Cli.Commands.Scripting.Runtime.ScriptCommandUsage.cacheHitTokens.get -> long
+*REMOVED*Orkeon.Cli.Commands.Scripting.Runtime.ScriptCommandUsage.cacheWriteTokens.get -> long
+*REMOVED*Orkeon.Cli.Commands.Scripting.Runtime.ScriptCommandUsage.reasoningTokens.get -> long
+*REMOVED*Orkeon.Cli.Commands.Scripting.Runtime.ScriptModelUsage.cacheHitTokens.get -> long
+*REMOVED*Orkeon.Cli.Commands.Scripting.Runtime.ScriptModelUsage.cacheWriteTokens.get -> long
+*REMOVED*Orkeon.Cli.Commands.Scripting.Runtime.ScriptModelUsage.reasoningTokens.get -> long
+*REMOVED*Orkeon.Cli.Commands.Scripting.Runtime.ScriptUsageReport.cacheHitTokens.get -> long
+*REMOVED*Orkeon.Cli.Commands.Scripting.Runtime.ScriptUsageReport.cacheWriteTokens.get -> long
+*REMOVED*Orkeon.Cli.Commands.Scripting.Runtime.ScriptUsageReport.reasoningTokens.get -> long
+Orkeon.Cli.Commands.Scripting.Dispatch.CommandDispatchService.postWork(string! label, string! target, System.Func<System.Threading.CancellationToken, System.Threading.Tasks.Task<Orkeon.Cli.Commands.Scripting.Dispatch.CommandResponse!>!>! work, bool continueChain = false, bool exclusive = false) -> string!
+Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstanceUsage.CacheHitTokens.get -> long?
+Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstanceUsage.CacheWriteTokens.get -> long?
+Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstanceUsage.ReasoningTokens.get -> long?
 Orkeon.Cli.Commands.Scripting.Dispatch.ExclusiveLaunchRefusedException
 Orkeon.Cli.Commands.Scripting.Dispatch.ExclusiveLaunchRefusedException.ExclusiveLaunchRefusedException() -> void
 Orkeon.Cli.Commands.Scripting.Dispatch.ExclusiveLaunchRefusedException.ExclusiveLaunchRefusedException(string! message) -> void
@@ -6,31 +23,16 @@ Orkeon.Cli.Commands.Scripting.Dispatch.ExclusiveLaunchRefusedException.Exclusive
 Orkeon.Cli.Commands.Scripting.Dispatch.ExclusiveLaunchRefusedException.ExclusiveLaunchRefusedException(string! target, string! ticket) -> void
 Orkeon.Cli.Commands.Scripting.Dispatch.ExclusiveLaunchRefusedException.Target.get -> string?
 Orkeon.Cli.Commands.Scripting.Dispatch.ExclusiveLaunchRefusedException.Ticket.get -> string?
-override Orkeon.Cli.Commands.Scripting.Dispatch.ExclusiveLaunchRefusedException.GetObjectData(System.Runtime.Serialization.SerializationInfo! info, System.Runtime.Serialization.StreamingContext context) -> void
-*REMOVED*Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstanceUsage.CacheHitTokens.get -> long
-Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstanceUsage.CacheHitTokens.get -> long?
-*REMOVED*Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstanceUsage.CacheWriteTokens.get -> long
-Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstanceUsage.CacheWriteTokens.get -> long?
-*REMOVED*Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstanceUsage.ReasoningTokens.get -> long
-Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstanceUsage.ReasoningTokens.get -> long?
-*REMOVED*Orkeon.Cli.Commands.Scripting.Runtime.ScriptCommandUsage.cacheHitTokens.get -> long
-Orkeon.Cli.Commands.Scripting.Runtime.ScriptCommandUsage.cacheHitTokens.get -> long?
-*REMOVED*Orkeon.Cli.Commands.Scripting.Runtime.ScriptCommandUsage.cacheWriteTokens.get -> long
-Orkeon.Cli.Commands.Scripting.Runtime.ScriptCommandUsage.cacheWriteTokens.get -> long?
-*REMOVED*Orkeon.Cli.Commands.Scripting.Runtime.ScriptCommandUsage.reasoningTokens.get -> long
-Orkeon.Cli.Commands.Scripting.Runtime.ScriptCommandUsage.reasoningTokens.get -> long?
-*REMOVED*Orkeon.Cli.Commands.Scripting.Runtime.ScriptModelUsage.cacheHitTokens.get -> long
-Orkeon.Cli.Commands.Scripting.Runtime.ScriptModelUsage.cacheHitTokens.get -> long?
-*REMOVED*Orkeon.Cli.Commands.Scripting.Runtime.ScriptModelUsage.cacheWriteTokens.get -> long
-Orkeon.Cli.Commands.Scripting.Runtime.ScriptModelUsage.cacheWriteTokens.get -> long?
-*REMOVED*Orkeon.Cli.Commands.Scripting.Runtime.ScriptModelUsage.reasoningTokens.get -> long
-Orkeon.Cli.Commands.Scripting.Runtime.ScriptModelUsage.reasoningTokens.get -> long?
-*REMOVED*Orkeon.Cli.Commands.Scripting.Runtime.ScriptUsageReport.cacheHitTokens.get -> long
-Orkeon.Cli.Commands.Scripting.Runtime.ScriptUsageReport.cacheHitTokens.get -> long?
-*REMOVED*Orkeon.Cli.Commands.Scripting.Runtime.ScriptUsageReport.cacheWriteTokens.get -> long
-Orkeon.Cli.Commands.Scripting.Runtime.ScriptUsageReport.cacheWriteTokens.get -> long?
-*REMOVED*Orkeon.Cli.Commands.Scripting.Runtime.ScriptUsageReport.reasoningTokens.get -> long
-Orkeon.Cli.Commands.Scripting.Runtime.ScriptUsageReport.reasoningTokens.get -> long?
-*REMOVED*Orkeon.Cli.Commands.Scripting.Dispatch.CommandDispatchService.postWork(string! label, string! target, System.Func<System.Threading.CancellationToken, System.Threading.Tasks.Task<Orkeon.Cli.Commands.Scripting.Dispatch.CommandResponse!>!>! work, bool continueChain = false) -> string!
-Orkeon.Cli.Commands.Scripting.Dispatch.CommandDispatchService.postWork(string! label, string! target, System.Func<System.Threading.CancellationToken, System.Threading.Tasks.Task<Orkeon.Cli.Commands.Scripting.Dispatch.CommandResponse!>!>! work, bool continueChain = false, bool exclusive = false) -> string!
+Orkeon.Cli.Commands.Scripting.Runtime.CommandRuntimeContext.interactive.get -> bool
 Orkeon.Cli.Commands.Scripting.Runtime.CommandRuntimeContext.writeBlock(Jint.Native.JsValue! spec) -> void
+Orkeon.Cli.Commands.Scripting.Runtime.ScriptCommandUsage.cacheHitTokens.get -> long?
+Orkeon.Cli.Commands.Scripting.Runtime.ScriptCommandUsage.cacheWriteTokens.get -> long?
+Orkeon.Cli.Commands.Scripting.Runtime.ScriptCommandUsage.reasoningTokens.get -> long?
+Orkeon.Cli.Commands.Scripting.Runtime.ScriptModelUsage.cacheHitTokens.get -> long?
+Orkeon.Cli.Commands.Scripting.Runtime.ScriptModelUsage.cacheWriteTokens.get -> long?
+Orkeon.Cli.Commands.Scripting.Runtime.ScriptModelUsage.reasoningTokens.get -> long?
+Orkeon.Cli.Commands.Scripting.Runtime.ScriptUsageReport.cacheHitTokens.get -> long?
+Orkeon.Cli.Commands.Scripting.Runtime.ScriptUsageReport.cacheWriteTokens.get -> long?
+Orkeon.Cli.Commands.Scripting.Runtime.ScriptUsageReport.reasoningTokens.get -> long?
+override Orkeon.Cli.Commands.Scripting.Dispatch.ExclusiveLaunchRefusedException.GetObjectData(System.Runtime.Serialization.SerializationInfo! info, System.Runtime.Serialization.StreamingContext context) -> void
+static Orkeon.Cli.Commands.Scripting.Runtime.PromptDispatcher.PanelsOf(Orkeon.Cli.Abstractions.Console.IConsoleAdapter! console) -> Orkeon.Cli.Abstractions.Console.IChoiceConsole?

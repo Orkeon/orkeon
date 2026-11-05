@@ -216,6 +216,36 @@ const name   = await ctx.prompt({ type: "text", message: "Name?" });
 const pwd    = await ctx.prompt({ type: "password", message: "Password:" });
 ```
 
+Sur une console à panneaux, `ctx.interactive` vaut true, et `select` et `confirm` ouvrent un panneau de
+sélection à la place des lignes de saisie : les flèches ou un chiffre déplacent la sélection, Entrée répond,
+et le brouillon, l'historique et la liste des tâches attendent derrière. Esc répond `null` à un `select` et
+la valeur par défaut à un `confirm`. Ailleurs (la console simple, un rejeu, une lecture pendant qu'un crew
+tient la console), ils restent des lignes numérotées, et un script lit donc la même réponse partout. Une
+commande qui prend sa valeur en argument vérifie `ctx.interactive` avant d'ouvrir un panneau sans argument.
+
+Un choix est une chaîne, à la fois sa valeur et son libellé, ou un objet. Un `select` prend aussi ce que le
+panneau peint autour des options :
+
+```typescript
+const picked = await ctx.prompt({
+  type: "select",
+  message: "Model?",
+  title: "Select model",
+  description: "Applies to this session",
+  keys: "Enter to set · Esc to cancel",          // à la place de la ligne de touches par défaut
+  cancellable: true,                             // false : Esc ne quitte pas le panneau
+  detailed: true,                                // répond { value, control } plutôt que la valeur
+  control: { label: "effort", values: ["low", "high"], value: "high" },  // les flèches latérales l'ajustent
+  choices: [
+    { value: "a", label: "Alpha", description: "alignée après le libellé", hint: "visible quand sélectionné", current: true },
+    "beta",
+  ],
+});
+```
+
+`current` marque la valeur en vigueur et ouvre le panneau dessus, `default` ayant la priorité. Sur des
+lignes tapées, un contrôle répond la valeur sur laquelle il s'est ouvert, car rien ne l'y ajuste.
+
 ### Annulation
 
 `ctx.signal` est le `CancellationToken` .NET brut exposé par Jint. Les propriétés
@@ -635,8 +665,10 @@ enregistre un canal d'approbation (`AddConsoleToolApproval`) : un appel pour leq
 est soumis à l'opérateur, dont la ligne suivante y répond. Venu d'un crew lancé par `runCrewAsync`,
 la boucle de lecture lui remet cette ligne (`IReplLineInterceptor`) avant de résoudre une commande ;
 venu d'un crew lancé par `runCrew`, qui tient la boucle, l'appel en attente lit lui-même la réponse,
-et le temps mis à répondre ne compte pas dans `RunCrewTimeout`. Une commande passe le mode de la
-session à `act` dans `permissionMode` ; elle ne gère pas la question elle-même. Voir
+et le temps mis à répondre ne compte pas dans `RunCrewTimeout`. Dans la console à volets, la question
+ouvre un panneau : ses options livrent cette même ligne (`y`, `s` ou `n`), Esc refuse, et `/` rend la
+question à la saisie pour qu'une commande passe d'abord, la ligne de statut la posant alors. Une commande
+passe le mode de la session à `act` dans `permissionMode` ; elle ne gère pas la question elle-même. Voir
 [la référence du CLI](../reference/cli.md#orkeon-repl--la-console-interactive-séparée).
 
 **Règles de session.** Le contrôle lit les règles d'autorisation et de refus de la session avant le

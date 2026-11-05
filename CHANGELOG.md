@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — a selection panel for `ctx.prompt` and tool approvals
+
+- In the split-pane console, `ctx.prompt` opens a panel for `select` and `confirm` in place of the prompt rows: a numbered list that moves with the arrows or a digit, the value in force marked, a value adjusted with the side arrows, Enter to answer, Esc to leave. The draft and the history wait behind it. A choice may be an object (`value`, `label`, `description`, `hint`, `current`); `title`, `description`, `keys`, `control`, `cancellable` and `detailed` describe the panel. `ctx.interactive` says whether it opens: the plain console and a replay keep the numbered lines and read the same answers.
+- A `select` left with Esc answers `null`, so `PromptResult` now includes `null` **[breaking for a script that type-checks it]**.
+- A tool approval opens the same panel: its options deliver the `y`, `s` or `n` line the channel reads, Esc denies, `/` hands it to the prompt, and it passes before a panel already open. The status line stops repeating a question its panel asks.
+
+### Fixed — the status line shows the whole name of a tool
+
+- The first underscore of a line was read as a hot key: `file_write` showed as `filewrite`.
+
 ### Fixed — a scripted command may wait longer than ten seconds
 
 - A `defineCommand` handler still pending after ten seconds failed with Jint's promise timeout while it kept running. When it was waiting on `ctx.prompt`, that read stayed open and the next read of the split-pane REPL crashed the process (`A ReadLineAsync is already in progress`). The command profile now leaves cancellation as the only bound on a wait (`ScriptingLimitsOptions.PromiseTimeout`), and the `ExecutionTimeout` clock stops while a prompt waits for its answer.

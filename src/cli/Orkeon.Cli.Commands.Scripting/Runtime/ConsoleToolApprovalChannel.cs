@@ -69,7 +69,7 @@ internal sealed class ConsoleToolApprovalChannel : IToolApprovalChannel, IReplLi
         get
         {
             lock (_gate)
-                return [.. _queue.Select(p => new PendingToolApproval(p.Request.ToolName, FormatArguments(p.Request), p.Origin?.Ticket, p.Origin?.Name) { Id = p.Id })];
+                return [.. _queue.Select(p => new PendingToolApproval(p.Request.ToolName, FormatArguments(p.Request), p.Origin?.Ticket, p.Origin?.Name) { Id = p.Id, Reason = p.Request.Reason })];
         }
     }
 

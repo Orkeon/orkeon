@@ -129,6 +129,12 @@ public sealed class HintBarView : View
     protected override bool OnDrawingContent(DrawContext? context)
     {
         SegmentPainter.Paint(this, 0, _left);
+        // The witness keeps a margin on its right: a long line must not show through it.
+        if (Viewport.Width > 0)
+        {
+            Move(Viewport.Width - 1, 0);
+            AddStr(" ");
+        }
         return true;
     }
 

@@ -14,6 +14,43 @@ public class StatusLineViewTests
         => new(new TerminalGuiOptions { SpinnerVerbs = bootVerbs }, InlineDispatcher.Instance, _clock);
 
     [Fact]
+    public void An_underscore_of_a_tool_name_is_painted()
+    {
+        // Arrange
+        var integration = new TuiIntegration
+        {
+            PendingApprovals = () => [new Orkeon.Cli.Abstractions.Runners.PendingToolApproval("file_write", "{}", null, null)],
+        };
+        using var view = CreateView();
+        view.Bind(_runner, integration, null);
+
+        // Act
+        view.Refresh();
+
+        // Assert
+        Assert.Equal("? A tool call asks to run file_write…", view.HeadPainted);
+    }
+
+    [Fact]
+    public void The_line_leaves_the_question_to_the_panel_that_asks_it()
+    {
+        // Arrange
+        var integration = new TuiIntegration
+        {
+            PendingApprovals = () => [new Orkeon.Cli.Abstractions.Runners.PendingToolApproval("read", "{}", null, null)],
+        };
+        using var view = CreateView();
+        view.Bind(_runner, integration, null);
+        view.QuestionOnPanel = true;
+
+        // Act
+        view.Refresh();
+
+        // Assert
+        Assert.Equal(string.Empty, view.CurrentText);
+    }
+
+    [Fact]
     public void ShouldThrow_WhenOptionsOrRunnerAreNull()
     {
         Assert.Throws<ArgumentNullException>(() => new StatusLineView(null!, InlineDispatcher.Instance, _clock));

@@ -185,7 +185,14 @@ export interface CommandRuntimeContext {
   writeBlock(spec: { kind: "markdown" | "diff"; text: string }): void;
   clear(): void;
 
+  /**
+   * Asks the operator. On a console with panels (`interactive`) `select` and `confirm` open one, and Esc answers
+   * `null` to a `select` and the default to a `confirm`; elsewhere they are numbered lines.
+   */
+  prompt(spec: SelectPromptSpec & { detailed: true }): Promise<PromptChoiceAnswer | null>;
   prompt(spec: PromptSpec): Promise<PromptResult>;
+  /** Whether `prompt` asks a choice with a panel; a replay and a plain console answer false. */
+  readonly interactive: boolean;
   progress(spec: { total?: number; label: string }): ProgressHandle;
   table<T extends object>(rows: readonly T[], columns?: readonly (keyof T)[]): void;
 
@@ -221,10 +228,44 @@ export type CommandSignal = CancellationTokenLike;
 export type PromptSpec =
   | { type: "text"; message: string; default?: string }
   | { type: "confirm"; message: string; default?: boolean }
-  | { type: "select"; message: string; choices: readonly string[]; default?: string }
+  | SelectPromptSpec
   | { type: "password"; message: string };
 
-export type PromptResult = string | boolean;
+export interface SelectPromptSpec {
+  type: "select";
+  message: string;
+  /** A string is its own value and label. */
+  choices: readonly (string | PromptChoice)[];
+  default?: string;
+  title?: string;
+  description?: string;
+  /** The line of keys under the options, in place of the default one. */
+  keys?: string;
+  /** A value adjusted with the side arrows; read it with `detailed: true`. */
+  control?: { label: string; values: readonly string[]; value?: string };
+  /** False: Esc does not leave the panel. Default: true. */
+  cancellable?: boolean;
+  /** True: the answer is a `PromptChoiceAnswer` rather than the value alone. */
+  detailed?: boolean;
+}
+
+export interface PromptChoice {
+  value: string;
+  label?: string;
+  /** Aligned in a column after the label. */
+  description?: string;
+  /** Shown only while the option is selected. */
+  hint?: string;
+  /** The value in force, marked in the list and selected on opening. */
+  current?: boolean;
+}
+
+export interface PromptChoiceAnswer {
+  readonly value: string;
+  readonly control: string | null;
+}
+
+export type PromptResult = string | boolean | null;
 
 export interface ProgressHandle {
   advance(label?: string): void;

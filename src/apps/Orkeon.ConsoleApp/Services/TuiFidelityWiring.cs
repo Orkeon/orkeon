@@ -145,7 +145,10 @@ internal static class TuiFidelityWiring
         var dispatch = services.GetService<CommandDispatchService>();
         var approvals = services.GetService<IToolApprovalWatch>();
         if (approvals is not null)
+        {
             integration.PendingApprovals = () => approvals.Pending;
+            approvals.PendingChanged += (_, _) => integration.NotifyApprovalsChanged();
+        }
 
         if (buffer is not null)
         {

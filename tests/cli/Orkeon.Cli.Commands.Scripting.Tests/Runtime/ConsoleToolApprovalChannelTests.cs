@@ -52,7 +52,7 @@ public sealed class ConsoleToolApprovalChannelTests : IDisposable
         Assert.Contains("? [t1] dev-batches: tool 'shell_command' requires approval", _console.Output, StringComparison.Ordinal);
         Assert.Equal("approve shell_command for [t1]? [y] once / [s] session / [n] no > ", channel.PromptOverride);
         var pending = Assert.Single(channel.Pending);
-        Assert.Equal(new Orkeon.Cli.Abstractions.Runners.PendingToolApproval("shell_command", "{\"command\":\"npm test\"}", "t1", "dev-batches") { Id = pending.Id }, pending);
+        Assert.Equal(new Orkeon.Cli.Abstractions.Runners.PendingToolApproval("shell_command", "{\"command\":\"npm test\"}", "t1", "dev-batches") { Id = pending.Id, Reason = pending.Reason }, pending);
         Assert.True(pending.Id > 0);
     }
 

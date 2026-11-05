@@ -149,4 +149,10 @@ public sealed class TuiIntegration
     /// (#194). Null or empty ⇒ nothing waits.
     /// </summary>
     public Func<IReadOnlyList<Orkeon.Cli.Abstractions.Runners.PendingToolApproval>>? PendingApprovals { get; set; }
+
+    /// <summary>Raised when a question of <see cref="PendingApprovals"/> is asked, answered or withdrawn.</summary>
+    public event EventHandler? ApprovalsChanged;
+
+    /// <summary>Says that <see cref="PendingApprovals"/> changed: the prompt opens or closes its panel.</summary>
+    public void NotifyApprovalsChanged() => ApprovalsChanged?.Invoke(this, EventArgs.Empty);
 }

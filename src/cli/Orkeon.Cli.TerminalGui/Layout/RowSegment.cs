@@ -35,12 +35,12 @@ internal static class SegmentPainter
         foreach (var segment in segments)
         {
             if (x >= width) break;
-            var text = segment.Text.Length > width - x ? segment.Text[..(width - x)] : segment.Text;
+            var text = TerminalText.TakeColumns(segment.Text, width - x);
             if (text.Length == 0) continue;
             view.SetAttribute(SchemeFactory.Attr(segment.Role, segment.Bold, segment.Italic));
             view.Move(x, y);
             view.AddStr(text);
-            x += text.Length;
+            x += TerminalText.Columns(text);
         }
     }
 }

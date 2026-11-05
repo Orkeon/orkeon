@@ -30,7 +30,7 @@ internal enum ReplayInterrupt
 /// </list>
 /// With no replay running, every member delegates to the real console.
 /// </summary>
-internal sealed class ReplayConsoleAdapter : IConsoleAdapter, IThreadedConsole, IStreamConsole, IBlockConsole, ICommandOutcomeObserver
+internal sealed class ReplayConsoleAdapter : IConsoleAdapter, IThreadedConsole, IStreamConsole, IBlockConsole, IChoiceConsole, ICommandOutcomeObserver
 {
     /// <summary>The exit code of a replay whose every line passed.</summary>
     public const int PassedExitCode = 0;
@@ -234,6 +234,25 @@ internal sealed class ReplayConsoleAdapter : IConsoleAdapter, IThreadedConsole, 
         else
             _inner.Write(text);
     }
+
+    /// <inheritdoc />
+    public bool CanChoose
+    {
+        get
+        {
+            lock (_lock)
+            {
+                if (_run is not null || _inputClosed) return false;
+            }
+            return _inner is IChoiceConsole { CanChoose: true };
+        }
+    }
+
+    /// <inheritdoc />
+    public Task<ConsoleChoiceAnswer?> ChooseAsync(ConsoleChoiceRequest request, CancellationToken cancellationToken)
+        => _inner is IChoiceConsole panels
+            ? panels.ChooseAsync(request, cancellationToken)
+            : throw new InvalidOperationException("The console wrapped has no panels: read CanChoose first.");
 
     /// <inheritdoc />
     public void WriteBlock(ConsoleBlockKind kind, string text)

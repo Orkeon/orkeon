@@ -25,7 +25,7 @@ namespace Orkeon.Cli.TerminalGui.Console;
 ///   contract unchanged.
 /// </para>
 /// </remarks>
-public sealed class TerminalGuiConsoleAdapter : IConsoleAdapter, IThreadedConsole, IStreamConsole, IBlockConsole
+public sealed class TerminalGuiConsoleAdapter : IConsoleAdapter, IThreadedConsole, IStreamConsole, IBlockConsole, IChoiceConsole
 {
     private readonly ReplPaneView _repl;
 
@@ -59,6 +59,13 @@ public sealed class TerminalGuiConsoleAdapter : IConsoleAdapter, IThreadedConsol
         ArgumentNullException.ThrowIfNull(text);
         _repl.AppendStyled(BlockRenderer.Render(kind, text));
     }
+
+    /// <inheritdoc />
+    public bool CanChoose => true;
+
+    /// <inheritdoc />
+    public Task<ConsoleChoiceAnswer?> ChooseAsync(ConsoleChoiceRequest request, CancellationToken cancellationToken)
+        => _repl.ChooseAsync(request, cancellationToken);
 
     public bool SeparatesThreads => true;
 

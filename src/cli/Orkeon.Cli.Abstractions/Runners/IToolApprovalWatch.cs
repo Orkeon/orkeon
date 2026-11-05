@@ -28,4 +28,7 @@ public sealed record PendingToolApproval(string ToolName, string Arguments, stri
     /// two questions alike in every other field still differ by it. 0 when the source gives none.
     /// </summary>
     public long Id { get; init; }
+
+    /// <summary>Why the gate asks, when it says.</summary>
+    public string? Reason { get; init; }
 }

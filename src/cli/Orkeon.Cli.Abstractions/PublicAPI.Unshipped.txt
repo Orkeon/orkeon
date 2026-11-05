@@ -1,8 +1,92 @@
 #nullable enable
-Orkeon.Cli.Abstractions.Console.IStreamConsole
-Orkeon.Cli.Abstractions.Console.IStreamConsole.WriteStream(string! text) -> void
 Orkeon.Cli.Abstractions.Console.ConsoleBlockKind
 Orkeon.Cli.Abstractions.Console.ConsoleBlockKind.Diff = 1 -> Orkeon.Cli.Abstractions.Console.ConsoleBlockKind
 Orkeon.Cli.Abstractions.Console.ConsoleBlockKind.Markdown = 0 -> Orkeon.Cli.Abstractions.Console.ConsoleBlockKind
+Orkeon.Cli.Abstractions.Console.ConsoleChoice
+Orkeon.Cli.Abstractions.Console.ConsoleChoice.<Clone>$() -> Orkeon.Cli.Abstractions.Console.ConsoleChoice!
+Orkeon.Cli.Abstractions.Console.ConsoleChoice.ConsoleChoice(string! Value, string! Label) -> void
+Orkeon.Cli.Abstractions.Console.ConsoleChoice.Deconstruct(out string! Value, out string! Label) -> void
+Orkeon.Cli.Abstractions.Console.ConsoleChoice.Description.get -> string?
+Orkeon.Cli.Abstractions.Console.ConsoleChoice.Description.init -> void
+Orkeon.Cli.Abstractions.Console.ConsoleChoice.Equals(Orkeon.Cli.Abstractions.Console.ConsoleChoice? other) -> bool
+Orkeon.Cli.Abstractions.Console.ConsoleChoice.Hint.get -> string?
+Orkeon.Cli.Abstractions.Console.ConsoleChoice.Hint.init -> void
+Orkeon.Cli.Abstractions.Console.ConsoleChoice.IsCurrent.get -> bool
+Orkeon.Cli.Abstractions.Console.ConsoleChoice.IsCurrent.init -> void
+Orkeon.Cli.Abstractions.Console.ConsoleChoice.Label.get -> string!
+Orkeon.Cli.Abstractions.Console.ConsoleChoice.Label.init -> void
+Orkeon.Cli.Abstractions.Console.ConsoleChoice.Shortcut.get -> string?
+Orkeon.Cli.Abstractions.Console.ConsoleChoice.Shortcut.init -> void
+Orkeon.Cli.Abstractions.Console.ConsoleChoice.Value.get -> string!
+Orkeon.Cli.Abstractions.Console.ConsoleChoice.Value.init -> void
+Orkeon.Cli.Abstractions.Console.ConsoleChoiceAnswer
+Orkeon.Cli.Abstractions.Console.ConsoleChoiceAnswer.<Clone>$() -> Orkeon.Cli.Abstractions.Console.ConsoleChoiceAnswer!
+Orkeon.Cli.Abstractions.Console.ConsoleChoiceAnswer.ConsoleChoiceAnswer(string! Value, string? ControlValue) -> void
+Orkeon.Cli.Abstractions.Console.ConsoleChoiceAnswer.ControlValue.get -> string?
+Orkeon.Cli.Abstractions.Console.ConsoleChoiceAnswer.ControlValue.init -> void
+Orkeon.Cli.Abstractions.Console.ConsoleChoiceAnswer.Deconstruct(out string! Value, out string? ControlValue) -> void
+Orkeon.Cli.Abstractions.Console.ConsoleChoiceAnswer.Equals(Orkeon.Cli.Abstractions.Console.ConsoleChoiceAnswer? other) -> bool
+Orkeon.Cli.Abstractions.Console.ConsoleChoiceAnswer.Value.get -> string!
+Orkeon.Cli.Abstractions.Console.ConsoleChoiceAnswer.Value.init -> void
+Orkeon.Cli.Abstractions.Console.ConsoleChoiceControl
+Orkeon.Cli.Abstractions.Console.ConsoleChoiceControl.<Clone>$() -> Orkeon.Cli.Abstractions.Console.ConsoleChoiceControl!
+Orkeon.Cli.Abstractions.Console.ConsoleChoiceControl.ConsoleChoiceControl(string! Label, System.Collections.Generic.IReadOnlyList<string!>! Values, string! Value) -> void
+Orkeon.Cli.Abstractions.Console.ConsoleChoiceControl.Deconstruct(out string! Label, out System.Collections.Generic.IReadOnlyList<string!>! Values, out string! Value) -> void
+Orkeon.Cli.Abstractions.Console.ConsoleChoiceControl.Equals(Orkeon.Cli.Abstractions.Console.ConsoleChoiceControl? other) -> bool
+Orkeon.Cli.Abstractions.Console.ConsoleChoiceControl.Label.get -> string!
+Orkeon.Cli.Abstractions.Console.ConsoleChoiceControl.Label.init -> void
+Orkeon.Cli.Abstractions.Console.ConsoleChoiceControl.Value.get -> string!
+Orkeon.Cli.Abstractions.Console.ConsoleChoiceControl.Value.init -> void
+Orkeon.Cli.Abstractions.Console.ConsoleChoiceControl.Values.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Orkeon.Cli.Abstractions.Console.ConsoleChoiceControl.Values.init -> void
+Orkeon.Cli.Abstractions.Console.ConsoleChoiceRequest
+Orkeon.Cli.Abstractions.Console.ConsoleChoiceRequest.<Clone>$() -> Orkeon.Cli.Abstractions.Console.ConsoleChoiceRequest!
+Orkeon.Cli.Abstractions.Console.ConsoleChoiceRequest.Cancellable.get -> bool
+Orkeon.Cli.Abstractions.Console.ConsoleChoiceRequest.Cancellable.init -> void
+Orkeon.Cli.Abstractions.Console.ConsoleChoiceRequest.Choices.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Cli.Abstractions.Console.ConsoleChoice!>!
+Orkeon.Cli.Abstractions.Console.ConsoleChoiceRequest.Choices.init -> void
+Orkeon.Cli.Abstractions.Console.ConsoleChoiceRequest.ConsoleChoiceRequest() -> void
+Orkeon.Cli.Abstractions.Console.ConsoleChoiceRequest.Control.get -> Orkeon.Cli.Abstractions.Console.ConsoleChoiceControl?
+Orkeon.Cli.Abstractions.Console.ConsoleChoiceRequest.Control.init -> void
+Orkeon.Cli.Abstractions.Console.ConsoleChoiceRequest.DefaultValue.get -> string?
+Orkeon.Cli.Abstractions.Console.ConsoleChoiceRequest.DefaultValue.init -> void
+Orkeon.Cli.Abstractions.Console.ConsoleChoiceRequest.Description.get -> string?
+Orkeon.Cli.Abstractions.Console.ConsoleChoiceRequest.Description.init -> void
+Orkeon.Cli.Abstractions.Console.ConsoleChoiceRequest.Detail.get -> string?
+Orkeon.Cli.Abstractions.Console.ConsoleChoiceRequest.Detail.init -> void
+Orkeon.Cli.Abstractions.Console.ConsoleChoiceRequest.Equals(Orkeon.Cli.Abstractions.Console.ConsoleChoiceRequest? other) -> bool
+Orkeon.Cli.Abstractions.Console.ConsoleChoiceRequest.Keys.get -> string?
+Orkeon.Cli.Abstractions.Console.ConsoleChoiceRequest.Keys.init -> void
+Orkeon.Cli.Abstractions.Console.ConsoleChoiceRequest.Question.get -> string?
+Orkeon.Cli.Abstractions.Console.ConsoleChoiceRequest.Question.init -> void
+Orkeon.Cli.Abstractions.Console.ConsoleChoiceRequest.Title.get -> string?
+Orkeon.Cli.Abstractions.Console.ConsoleChoiceRequest.Title.init -> void
 Orkeon.Cli.Abstractions.Console.IBlockConsole
 Orkeon.Cli.Abstractions.Console.IBlockConsole.WriteBlock(Orkeon.Cli.Abstractions.Console.ConsoleBlockKind kind, string! text) -> void
+Orkeon.Cli.Abstractions.Console.IChoiceConsole
+Orkeon.Cli.Abstractions.Console.IChoiceConsole.CanChoose.get -> bool
+Orkeon.Cli.Abstractions.Console.IChoiceConsole.ChooseAsync(Orkeon.Cli.Abstractions.Console.ConsoleChoiceRequest! request, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Orkeon.Cli.Abstractions.Console.ConsoleChoiceAnswer?>!
+Orkeon.Cli.Abstractions.Console.IStreamConsole
+Orkeon.Cli.Abstractions.Console.IStreamConsole.WriteStream(string! text) -> void
+Orkeon.Cli.Abstractions.Runners.PendingToolApproval.Reason.get -> string?
+Orkeon.Cli.Abstractions.Runners.PendingToolApproval.Reason.init -> void
+override Orkeon.Cli.Abstractions.Console.ConsoleChoice.Equals(object? obj) -> bool
+override Orkeon.Cli.Abstractions.Console.ConsoleChoice.GetHashCode() -> int
+override Orkeon.Cli.Abstractions.Console.ConsoleChoice.ToString() -> string!
+override Orkeon.Cli.Abstractions.Console.ConsoleChoiceAnswer.Equals(object? obj) -> bool
+override Orkeon.Cli.Abstractions.Console.ConsoleChoiceAnswer.GetHashCode() -> int
+override Orkeon.Cli.Abstractions.Console.ConsoleChoiceAnswer.ToString() -> string!
+override Orkeon.Cli.Abstractions.Console.ConsoleChoiceControl.Equals(object? obj) -> bool
+override Orkeon.Cli.Abstractions.Console.ConsoleChoiceControl.GetHashCode() -> int
+override Orkeon.Cli.Abstractions.Console.ConsoleChoiceControl.ToString() -> string!
+override Orkeon.Cli.Abstractions.Console.ConsoleChoiceRequest.Equals(object? obj) -> bool
+override Orkeon.Cli.Abstractions.Console.ConsoleChoiceRequest.GetHashCode() -> int
+override Orkeon.Cli.Abstractions.Console.ConsoleChoiceRequest.ToString() -> string!
+static Orkeon.Cli.Abstractions.Console.ConsoleChoice.operator !=(Orkeon.Cli.Abstractions.Console.ConsoleChoice? left, Orkeon.Cli.Abstractions.Console.ConsoleChoice? right) -> bool
+static Orkeon.Cli.Abstractions.Console.ConsoleChoice.operator ==(Orkeon.Cli.Abstractions.Console.ConsoleChoice? left, Orkeon.Cli.Abstractions.Console.ConsoleChoice? right) -> bool
+static Orkeon.Cli.Abstractions.Console.ConsoleChoiceAnswer.operator !=(Orkeon.Cli.Abstractions.Console.ConsoleChoiceAnswer? left, Orkeon.Cli.Abstractions.Console.ConsoleChoiceAnswer? right) -> bool
+static Orkeon.Cli.Abstractions.Console.ConsoleChoiceAnswer.operator ==(Orkeon.Cli.Abstractions.Console.ConsoleChoiceAnswer? left, Orkeon.Cli.Abstractions.Console.ConsoleChoiceAnswer? right) -> bool
+static Orkeon.Cli.Abstractions.Console.ConsoleChoiceControl.operator !=(Orkeon.Cli.Abstractions.Console.ConsoleChoiceControl? left, Orkeon.Cli.Abstractions.Console.ConsoleChoiceControl? right) -> bool
+static Orkeon.Cli.Abstractions.Console.ConsoleChoiceControl.operator ==(Orkeon.Cli.Abstractions.Console.ConsoleChoiceControl? left, Orkeon.Cli.Abstractions.Console.ConsoleChoiceControl? right) -> bool
+static Orkeon.Cli.Abstractions.Console.ConsoleChoiceRequest.operator !=(Orkeon.Cli.Abstractions.Console.ConsoleChoiceRequest? left, Orkeon.Cli.Abstractions.Console.ConsoleChoiceRequest? right) -> bool
+static Orkeon.Cli.Abstractions.Console.ConsoleChoiceRequest.operator ==(Orkeon.Cli.Abstractions.Console.ConsoleChoiceRequest? left, Orkeon.Cli.Abstractions.Console.ConsoleChoiceRequest? right) -> bool

@@ -85,6 +85,16 @@ public sealed class ReplPaneView : View, ITaskListNavigator
     // consecutive Escape; any other key disarms it. A single Escape is swallowed so it never quits.
     private bool _escapeArmed;
 
+    // The selection panels: a prompt's own, newest last, and the tool approval that passes before them.
+    // Painted in place of the prompt rows; _panelRows is 0 while none is open.
+    private const int MinTranscriptRows = 3;
+    private readonly InlinePanelView _panelView = new();
+    private readonly List<OpenPanel> _promptPanels = [];
+    private OpenPanel? _approvalPanel;
+    private long? _approvalSettledId;
+    private int _panelRows;
+    private EventHandler? _approvalsChanged;
+
     // Caps 3/4 — completion source for "/cmd" and "@path" tokens. Null ⇒ Tab is inert.
     private IReplInputAssist? _assist;
 
@@ -213,7 +223,9 @@ public sealed class ReplPaneView : View, ITaskListNavigator
         };
         _placeholder.SetScheme(SchemeFactory.Uniform(SchemeFactory.Attr(PaletteRole.Dim, italic: true)));
 
-        Add(_screens.Main, _statusLine, _ruleChip, _promptLabel, _input, _placeholder, _bottomRule);
+        _panelView.KeyHandler = HandlePanelKey;
+        Add(_screens.Main, _statusLine, _ruleChip, _promptLabel, _input, _placeholder, _bottomRule, _panelView);
+        FrameChanged += (_, _) => { if (_panelRows > 0) SyncPanel(); };
 
         // Force initial focus on the input field once the view is laid out, otherwise
         // Terminal.Gui defaults to the first focusable child (which would skip past
@@ -358,7 +370,10 @@ public sealed class ReplPaneView : View, ITaskListNavigator
     internal void BindIntegration(TuiIntegration integration)
     {
         ArgumentNullException.ThrowIfNull(integration);
+        if (_integration is not null && _approvalsChanged is not null) _integration.ApprovalsChanged -= _approvalsChanged;
         _integration = integration;
+        _approvalsChanged = (_, _) => _dispatcher.Invoke(SyncApprovals);
+        integration.ApprovalsChanged += _approvalsChanged;
     }
 
     /// <summary>The placeholder the field shows for the current recipient.</summary>
@@ -384,14 +399,14 @@ public sealed class ReplPaneView : View, ITaskListNavigator
     {
         Remove(previous);
         var screen = _screens.Displayed;
-        screen.Height = Dim.Fill(_inputRows + BandRows + BelowRows);
+        screen.Height = Dim.Fill(_panelRows > 0 ? _panelRows + 1 : _inputRows + BandRows + BelowRows);
         Add(screen);
         screen.SetRelativeLayout(GetContentSize());
         screen.MoveEnd();
     }
 
     private void SyncPlaceholder()
-        => _placeholder.Visible = string.IsNullOrEmpty(_input.Text);
+        => _placeholder.Visible = _panelRows == 0 && string.IsNullOrEmpty(_input.Text);
 
     private const string PlaceholderText = "Message… (/ for commands, @ for files)";
 
@@ -462,8 +477,193 @@ public sealed class ReplPaneView : View, ITaskListNavigator
         return tcs.Task;
     }
 
+    /// <summary>
+    /// Asks <paramref name="request"/> with a panel in place of the prompt rows. Completes with the answer, or with
+    /// null when Esc left it or <paramref name="ct"/> closed it. The draft, the history and the tasks list wait
+    /// behind it. Several may be open: the newest has the keys, and a tool approval passes before them all.
+    /// </summary>
+    public async Task<ConsoleChoiceAnswer?> ChooseAsync(ConsoleChoiceRequest request, CancellationToken ct)
+    {
+        var model = new InlinePanelModel(request, _glyphs);
+        var answer = new TaskCompletionSource<ConsoleChoiceAnswer?>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var panel = new OpenPanel(model, a => answer.TrySetResult(a));
+        using var registration = ct.Register(() => _dispatcher.Invoke(() => ClosePanel(panel, null)));
+        _dispatcher.Invoke(() =>
+        {
+            if (ct.IsCancellationRequested)
+            {
+                answer.TrySetResult(null);
+                return;
+            }
+            _promptPanels.Add(panel);
+            SyncPanel();
+        });
+        return await answer.Task.ConfigureAwait(false);
+    }
+
+    private OpenPanel? ActivePanel => _approvalPanel ?? (_promptPanels.Count > 0 ? _promptPanels[^1] : null);
+
+    private void ClosePanel(OpenPanel panel, ConsoleChoiceAnswer? answer)
+    {
+        if (ReferenceEquals(panel, _approvalPanel)) _approvalPanel = null;
+        else if (!_promptPanels.Remove(panel)) return;
+        panel.Settle(answer);
+        SyncPanel();
+    }
+
+    /// <summary>
+    /// Opens the panel of the question that waits first, and closes one whose question is gone. A question answered
+    /// or handed to the prompt (<c>/</c>) stays closed: the status line keeps asking it.
+    /// </summary>
+    private void SyncApprovals()
+    {
+        var pending = _integration?.PendingApprovals?.Invoke();
+        if (pending is not [var first, ..])
+        {
+            _approvalSettledId = null;
+            _approvalPanel = null;
+            SyncPanel();
+            return;
+        }
+        if (_approvalPanel?.ApprovalId == first.Id || _approvalSettledId == first.Id) return;
+
+        _approvalPanel = new OpenPanel(
+            new InlinePanelModel(ApprovalPanelRequest.For(first, pending.Count, _glyphs), _glyphs),
+            answer =>
+            {
+                _approvalSettledId = first.Id;
+                DeliverOrBuffer(answer?.Value ?? "n");
+            },
+            first.Id);
+        SyncPanel();
+    }
+
+    /// <summary>Lays the pane out for the panel that has the keys, or back for the prompt when none is left.</summary>
+    private void SyncPanel()
+    {
+        var panel = ActivePanel;
+        _statusLine.QuestionOnPanel = _approvalPanel is not null;
+        if (panel is null)
+        {
+            if (_panelRows == 0) return;
+            _panelRows = 0;
+            _panelView.Model = null;
+            _panelView.Visible = false;
+            SetPromptVisible(true);
+            ApplyInputLayout();
+            SyncPlaceholder();
+            _input.SetFocus();
+            SetNeedsLayout();
+            return;
+        }
+
+        var width = Viewport.Width > 0 ? Viewport.Width : 80;
+        var height = Viewport.Height > 0 ? Viewport.Height : 24;
+        var rows = panel.Model.Rows(width, Math.Max(1, height - 1 - MinTranscriptRows)).Count;
+        var opening = _panelRows == 0;
+        _panelRows = rows;
+        _panelView.Model = panel.Model;
+        _panelView.Y = Pos.AnchorEnd(rows);
+        _panelView.Height = rows;
+        _statusLine.Y = Pos.AnchorEnd(rows + 1);
+        _screens.Displayed.Height = Dim.Fill(rows + 1);
+        if (opening)
+        {
+            SetPromptVisible(false);
+            _panelView.Visible = true;
+            _panelView.SetFocus();
+        }
+        _panelView.SetNeedsDraw();
+        SetNeedsLayout();
+    }
+
+    private void SetPromptVisible(bool visible)
+    {
+        _ruleChip.Visible = visible;
+        _promptLabel.Visible = visible;
+        _input.Visible = visible;
+        _placeholder.Visible = visible;
+        _bottomRule.Visible = visible;
+    }
+
+    /// <summary>What an open panel does with a key; false lets a Ctrl or Alt chord go on to the host.</summary>
+    private bool HandlePanelKey(Key key)
+    {
+        if (ActivePanel is not { } panel) return false;
+        if (key.IsCtrl || key.IsAlt) return false;
+
+        var bare = PaneClipboard.BareKey(key);
+        if (bare == KeyCode.Esc)
+        {
+            HandlePanelEscape(panel);
+            return true;
+        }
+        _escapeArmed = false;
+
+        switch (key.KeyCode)
+        {
+            case KeyCode.CursorUp: panel.Model.Move(-1); break;
+            case KeyCode.CursorDown: panel.Model.Move(1); break;
+            case KeyCode.CursorLeft: panel.Model.AdjustControl(-1); break;
+            case KeyCode.CursorRight: panel.Model.AdjustControl(1); break;
+            case KeyCode.Enter:
+                ClosePanel(panel, panel.Model.Answer);
+                return true;
+            default:
+                if (PrintableText(key) is { } text) HandlePanelText(panel, text);
+                break;
+        }
+        _panelView.SetNeedsDraw();
+        return true;
+    }
+
+    // Esc leaves a panel that may be left. One that may not keeps the prompt's pair: Esc Esc interrupts its command.
+    private void HandlePanelEscape(OpenPanel panel)
+    {
+        if (panel.Model.Cancellable)
+        {
+            _escapeArmed = false;
+            ClosePanel(panel, null);
+            return;
+        }
+        if (_escapeArmed)
+        {
+            _escapeArmed = false;
+            InterruptRequested?.Invoke(this, EventArgs.Empty);
+            return;
+        }
+        _escapeArmed = true;
+    }
+
+    private void HandlePanelText(OpenPanel panel, string text)
+    {
+        if (text == "/" && ReferenceEquals(panel, _approvalPanel))
+        {
+            _approvalSettledId = panel.ApprovalId;
+            _approvalPanel = null;
+            SyncPanel();
+            if (_panelRows == 0) _input.InsertText(text);
+            return;
+        }
+        if (int.TryParse(text, System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out var number))
+        {
+            panel.Model.SelectNumber(number);
+            return;
+        }
+        panel.Model.SelectShortcut(text);
+    }
+
+    /// <summary>One panel waiting for its answer, and the question it stands for when it is a tool approval.</summary>
+    private sealed record OpenPanel(InlinePanelModel Model, Action<ConsoleChoiceAnswer?> Settle, long? ApprovalId = null);
+
     private void OnInputKeyDown(object? sender, Key key)
     {
+        if (HandlePanelKey(key))
+        {
+            key.Handled = true;
+            return;
+        }
+
         // Notify external listeners first (TerminalGuiConsoleAdapter.ReadKey relies on this).
         KeyCaptured?.Invoke(this, new KeyCapturedEventArgs(key));
         if (key.Handled) return;
@@ -828,7 +1028,12 @@ public sealed class ReplPaneView : View, ITaskListNavigator
         var rows = Math.Clamp(VisualRowCount(), 1, MaxInputRows);
         if (rows == _inputRows) return;
         _inputRows = rows;
+        if (_panelRows == 0) ApplyInputLayout();
+    }
 
+    private void ApplyInputLayout()
+    {
+        var rows = _inputRows;
         _screens.Displayed.Height = Dim.Fill(rows + BandRows + BelowRows);
         _statusLine.Y = Pos.AnchorEnd(rows + BandRows + BelowRows);
         _ruleChip.Y = Pos.AnchorEnd(rows + 1 + BelowRows);
@@ -1036,6 +1241,12 @@ public sealed class ReplPaneView : View, ITaskListNavigator
     /// <summary>Test-only accessor for the transcript view (its viewport and follow state).</summary>
     internal TranscriptView HistoryView => _screens.Displayed;
 
+    /// <summary>Test-only accessor for the panel that has the keys.</summary>
+    internal InlinePanelModel? OpenPanelModel => ActivePanel?.Model;
+
+    /// <summary>Test-only: asks the pane to read the tool approvals again, as their change does.</summary>
+    internal void RaiseApprovalsChanged() => SyncApprovals();
+
     /// <summary>Test-only: simulate a key press on the input field.</summary>
     internal void RaiseKeyDown(Key key) => OnInputKeyDown(this, key);
 
@@ -1048,6 +1259,11 @@ public sealed class ReplPaneView : View, ITaskListNavigator
             // IsDisposed guard makes these explicit calls idempotent no-ops, so disposing
             // here keeps the owned fields released even if a future refactor stops Add()-ing them.
             _pendingReadCancellation.Dispose();
+            if (_integration is not null && _approvalsChanged is not null) _integration.ApprovalsChanged -= _approvalsChanged;
+            foreach (var panel in _promptPanels) panel.Settle(null);
+            _promptPanels.Clear();
+            _approvalPanel = null;
+            _panelView.Dispose();
             _screens.DisposeScreens();
             _statusLine.Dispose();
             _ruleChip.Dispose();

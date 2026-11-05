@@ -213,6 +213,36 @@ const name   = await ctx.prompt({ type: "text", message: "Name?" });
 const pwd    = await ctx.prompt({ type: "password", message: "Password:" });
 ```
 
+On a console with panels, `ctx.interactive` is true and `select` and `confirm` open a selection panel in
+place of the prompt rows: arrows or a digit move the selection, Enter answers, and the draft, the history
+and the tasks list wait behind it. Esc answers `null` to a `select` and the default to a `confirm`. Elsewhere
+(the plain console, a replay, a read while a crew holds the console) they stay numbered lines, so
+a script reads the same answer everywhere. A command that takes its value as an argument checks
+`ctx.interactive` before opening a panel without one.
+
+A choice is a string, its own value and label, or an object. A `select` also takes what the panel
+paints around the options:
+
+```typescript
+const picked = await ctx.prompt({
+  type: "select",
+  message: "Model?",
+  title: "Select model",
+  description: "Applies to this session",
+  keys: "Enter to set · Esc to cancel",          // in place of the default line of keys
+  cancellable: true,                             // false: Esc does not leave the panel
+  detailed: true,                                // answer { value, control } rather than the value
+  control: { label: "effort", values: ["low", "high"], value: "high" },  // side arrows adjust it
+  choices: [
+    { value: "a", label: "Alpha", description: "aligned after the label", hint: "shown while selected", current: true },
+    "beta",
+  ],
+});
+```
+
+`current` marks the value in force and opens the panel on it, `default` taking precedence. On typed
+lines a control answers the value it opened on, since nothing adjusts it there.
+
 ### Cancellation
 
 `ctx.signal` is the raw .NET `CancellationToken` exposed by Jint. Properties
@@ -611,8 +641,10 @@ the `Llm:Model` setting.
 answers it. From a crew launched with `runCrewAsync`, the read loop hands that line over
 (`IReplLineInterceptor`) before resolving any command; from a crew launched with `runCrew`, which
 holds the loop, the waiting call reads the answer itself, and the time taken to answer does not
-count in `RunCrewTimeout`. A command passes the session's mode to `act` as `permissionMode`; it
-does not handle the question itself. See
+count in `RunCrewTimeout`. In the split-pane console the question opens a panel: its options deliver
+that same line (`y`, `s` or `n`), Esc denies, and `/` hands the question to the prompt so a command
+can run first, the status line then asking it. A command passes the session's mode to `act` as
+`permissionMode`; it does not handle the question itself. See
 [the CLI reference](../reference/cli.md#orkeon-repl--the-separate-interactive-console).
 
 **Session rules.** The gate reads the session's allow and deny rules before the mode

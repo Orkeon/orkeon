@@ -96,6 +96,9 @@ public sealed class CommandRuntimeContext
     /// <summary>Clear the console / logs pane.</summary>
     public void clear() => _console.Clear();
 
+    /// <summary>Whether <see cref="prompt"/> asks a choice with a panel, so a command may open one without an argument.</summary>
+    public bool interactive => PromptDispatcher.PanelsOf(_console) is not null;
+
     /// <summary>Block until the user answers a prompt described by <paramref name="spec"/>.</summary>
     public async Task<JsValue> prompt(JsValue spec)
     {
