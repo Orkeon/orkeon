@@ -14,7 +14,11 @@ public sealed record ToolCallStarted(long Id, string Tool, string? Thread)
 /// <param name="Id">The <see cref="ToolCallStarted.Id"/> of the call.</param>
 /// <param name="Thread">The screen the call belongs to; null is the main one.</param>
 /// <param name="Succeeded">False when the tool failed, threw or was refused.</param>
-public sealed record ToolCallFinished(long Id, string? Thread, bool Succeeded);
+public sealed record ToolCallFinished(long Id, string? Thread, bool Succeeded)
+{
+    /// <summary>What the call changed in a file; null when it changed none or the change cannot be shown.</summary>
+    public ToolCallDiff? Diff { get; init; }
+}
 
 /// <summary>Hears the tool calls of the session, on the thread that makes them.</summary>
 public interface IToolActivityObserver

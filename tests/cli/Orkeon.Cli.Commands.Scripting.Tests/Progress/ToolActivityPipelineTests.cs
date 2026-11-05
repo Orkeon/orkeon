@@ -1,3 +1,4 @@
+using Orkeon.Tests.Shared.FileSystem;
 using Orkeon.Application.Interfaces.Security;
 using Orkeon.Cli.Abstractions.Console;
 using Orkeon.Cli.Commands.Scripting.Progress;
@@ -20,7 +21,7 @@ public sealed class ToolActivityPipelineTests : IDisposable
         // Arrange
         var observer = new FakeToolActivityObserver();
         var inner = new FakeToolInvocationPipeline { OnInvoke = () => observer.Seen.Add("tool") };
-        var pipeline = new ToolActivityPipeline(inner, new ToolActivityFeed { Observer = observer });
+        var pipeline = new ToolActivityPipeline(inner, new ToolActivityFeed { Observer = observer }, new PassThroughFileSystemService());
 
         // Act
         await pipeline.InvokeAsync(Invocation(), TestContext.Current.CancellationToken);
@@ -35,7 +36,7 @@ public sealed class ToolActivityPipelineTests : IDisposable
         // Arrange
         var observer = new FakeToolActivityObserver();
         var inner = new FakeToolInvocationPipeline { Success = false };
-        var pipeline = new ToolActivityPipeline(inner, new ToolActivityFeed { Observer = observer });
+        var pipeline = new ToolActivityPipeline(inner, new ToolActivityFeed { Observer = observer }, new PassThroughFileSystemService());
 
         // Act
         await pipeline.InvokeAsync(Invocation(), TestContext.Current.CancellationToken);
@@ -50,7 +51,7 @@ public sealed class ToolActivityPipelineTests : IDisposable
         // Arrange
         var observer = new FakeToolActivityObserver();
         var inner = new FakeToolInvocationPipeline { OnInvoke = () => throw new InvalidOperationException("boom") };
-        var pipeline = new ToolActivityPipeline(inner, new ToolActivityFeed { Observer = observer });
+        var pipeline = new ToolActivityPipeline(inner, new ToolActivityFeed { Observer = observer }, new PassThroughFileSystemService());
 
         // Act
         await Record.ExceptionAsync(() => pipeline.InvokeAsync(Invocation(), TestContext.Current.CancellationToken));
@@ -64,7 +65,7 @@ public sealed class ToolActivityPipelineTests : IDisposable
     {
         // Arrange
         var inner = new FakeToolInvocationPipeline();
-        var pipeline = new ToolActivityPipeline(inner, new ToolActivityFeed());
+        var pipeline = new ToolActivityPipeline(inner, new ToolActivityFeed(), new PassThroughFileSystemService());
 
         // Act
         await pipeline.InvokeAsync(Invocation(), TestContext.Current.CancellationToken);
@@ -78,7 +79,7 @@ public sealed class ToolActivityPipelineTests : IDisposable
     {
         // Arrange
         var observer = new FakeToolActivityObserver();
-        var pipeline = new ToolActivityPipeline(new FakeToolInvocationPipeline(), new ToolActivityFeed { Observer = observer });
+        var pipeline = new ToolActivityPipeline(new FakeToolInvocationPipeline(), new ToolActivityFeed { Observer = observer }, new PassThroughFileSystemService());
         await pipeline.InvokeAsync(Invocation(), TestContext.Current.CancellationToken);
 
         // Act

@@ -25,6 +25,8 @@ internal sealed partial class StepActivityModel : IPanelRows
         public string Subject { get; } = subject;
         public bool Open { get; set; } = true;
         public bool Failed { get; set; }
+        public int Added { get; set; }
+        public int Removed { get; set; }
     }
 
     public StepActivityModel(GlyphSet glyphs)
@@ -53,6 +55,8 @@ internal sealed partial class StepActivityModel : IPanelRows
         if (_calls.Find(c => c.Id == call.Id) is not { } found) return;
         found.Open = false;
         found.Failed = !call.Succeeded;
+        found.Added = call.Diff?.Added ?? 0;
+        found.Removed = call.Diff?.Removed ?? 0;
     }
 
     /// <inheritdoc />
@@ -77,8 +81,9 @@ internal sealed partial class StepActivityModel : IPanelRows
         for (var i = 0; i < _calls.Count; i++)
             details.Add(DetailLine(_calls[i], i == 0 ? $"  {_glyphs.Elbow} " : TreeIndent));
 
+        var summary = WithChanges(CountLine("  " + Sentence(counts)), _calls.Sum(c => c.Added), _calls.Sum(c => c.Removed));
         _calls.Clear();
-        return new FoldedStep(CountLine("  " + Sentence(counts)), details, counts);
+        return new FoldedStep(summary, details, counts);
     }
 
     private static string Sentence(IReadOnlyDictionary<string, int> counts)
@@ -94,6 +99,23 @@ internal sealed partial class StepActivityModel : IPanelRows
         foreach (var run in CountRuns(text))
             segments.Add(new RowSegment(text.Substring(run.Start, run.Length), PaletteRole.Dim, run.Bold));
         return segments;
+    }
+
+    /// <summary>The line followed by the lines the step added and removed, when it changed any.</summary>
+    private static TranscriptLine WithChanges(TranscriptLine line, int added, int removed)
+    {
+        if (added == 0 && removed == 0) return line;
+        var plus = $" +{added}";
+        var minus = $" -{removed}";
+        return new TranscriptLine(line.Text + plus + minus)
+        {
+            Runs =
+            [
+                .. line.Runs,
+                new TranscriptRun(line.Text.Length, plus.Length, PaletteRole.Ok),
+                new TranscriptRun(line.Text.Length + plus.Length, minus.Length, PaletteRole.Error),
+            ],
+        };
     }
 
     /// <summary>A dim line whose numbers stand out.</summary>

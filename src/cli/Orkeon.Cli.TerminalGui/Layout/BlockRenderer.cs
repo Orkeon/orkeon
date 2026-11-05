@@ -11,20 +11,8 @@ internal static class BlockRenderer
         ArgumentNullException.ThrowIfNull(text);
         var normalized = text.Replace("\r\n", "\n", StringComparison.Ordinal);
         if (normalized.EndsWith('\n')) normalized = normalized[..^1];
-        var lines = normalized.Split('\n');
         return kind == ConsoleBlockKind.Diff
-            ? [.. lines.Select(DiffLine)]
-            : [.. lines.Select(line => new TranscriptLine(line))];
-    }
-
-    private static TranscriptLine DiffLine(string line)
-    {
-        if (line.StartsWith("+++", StringComparison.Ordinal) || line.StartsWith("---", StringComparison.Ordinal)
-            || line.StartsWith("diff ", StringComparison.Ordinal) || line.StartsWith("index ", StringComparison.Ordinal))
-            return TranscriptLine.InRole(line, PaletteRole.Dim);
-        if (line.StartsWith("@@", StringComparison.Ordinal)) return TranscriptLine.InRole(line, PaletteRole.Code);
-        if (line.StartsWith('+')) return new TranscriptLine(line) { RowRole = PaletteRole.DiffAdded };
-        if (line.StartsWith('-')) return new TranscriptLine(line) { RowRole = PaletteRole.DiffRemoved };
-        return new TranscriptLine(line);
+            ? DiffRenderer.Unified(normalized)
+            : [.. normalized.Split('\n').Select(line => new TranscriptLine(line))];
     }
 }

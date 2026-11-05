@@ -9,11 +9,17 @@ internal sealed class FakeToolActivityObserver : IToolActivityObserver
 
     public List<long> StartedIds { get; } = [];
 
+    public ToolCallFinished? LastFinished { get; private set; }
+
     public void Started(ToolCallStarted toolCall)
     {
         Seen.Add("started");
         StartedIds.Add(toolCall.Id);
     }
 
-    public void Finished(ToolCallFinished toolCall) => Seen.Add($"finished:{toolCall.Succeeded}");
+    public void Finished(ToolCallFinished toolCall)
+    {
+        Seen.Add($"finished:{toolCall.Succeeded}");
+        LastFinished = toolCall;
+    }
 }

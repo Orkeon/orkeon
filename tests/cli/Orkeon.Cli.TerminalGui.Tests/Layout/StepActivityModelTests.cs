@@ -200,4 +200,33 @@ public sealed class StepActivityModelTests
         // Assert
         Assert.True(step.IsEmpty);
     }
+
+    [Fact]
+    public void The_folded_step_counts_the_lines_it_changed()
+    {
+        // Arrange
+        var step = StepWith(("edit_file", "a.cs"));
+        var diff = new ToolCallDiff("a.cs", LineDiff.Compute("a\n", "b\nc\n"));
+        step.Finish(new ToolCallFinished(1, null, true) { Diff = diff });
+
+        // Act
+        var folded = step.Fold();
+
+        // Assert
+        Assert.EndsWith(" +2 -1", folded!.Summary.Text);
+    }
+
+    [Fact]
+    public void A_step_that_changed_nothing_shows_no_counts()
+    {
+        // Arrange
+        var step = StepWith(("file_read", "a.cs"));
+        step.Finish(new ToolCallFinished(1, null, true));
+
+        // Act
+        var folded = step.Fold();
+
+        // Assert
+        Assert.DoesNotContain("+", folded!.Summary.Text, StringComparison.Ordinal);
+    }
 }

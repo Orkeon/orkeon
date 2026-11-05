@@ -220,4 +220,34 @@ public sealed class ReplPaneViewStepTests
         // Assert
         Assert.Equal(2, pane.StepRows);
     }
+
+    [Fact]
+    public void A_change_shows_in_the_transcript_as_the_call_ends()
+    {
+        // Arrange
+        using var pane = CreatePane();
+        pane.Started(new ToolCallStarted(1, "edit_file", null) { Subject = "a.cs" });
+        var diff = new ToolCallDiff("a.cs", LineDiff.Compute("old\n", "new\n"));
+
+        // Act
+        pane.Finished(new ToolCallFinished(1, null, true) { Diff = diff });
+
+        // Assert
+        Assert.Contains("+ new", pane.DisplayedText, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void A_change_does_not_end_the_step()
+    {
+        // Arrange
+        using var pane = CreatePane();
+        pane.Started(new ToolCallStarted(1, "edit_file", null) { Subject = "a.cs" });
+        var diff = new ToolCallDiff("a.cs", LineDiff.Compute("old\n", "new\n"));
+
+        // Act
+        pane.Finished(new ToolCallFinished(1, null, true) { Diff = diff });
+
+        // Assert
+        Assert.True(pane.StepRows > 0);
+    }
 }

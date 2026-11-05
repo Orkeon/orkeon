@@ -25,7 +25,7 @@ Orkeon.Cli.Commands.Scripting.Dispatch.ExclusiveLaunchRefusedException.Target.ge
 Orkeon.Cli.Commands.Scripting.Dispatch.ExclusiveLaunchRefusedException.Ticket.get -> string?
 Orkeon.Cli.Commands.Scripting.Progress.ToolActivityPipeline
 Orkeon.Cli.Commands.Scripting.Progress.ToolActivityPipeline.InvokeAsync(Orkeon.Application.Interfaces.Security.ToolInvocation! invocation, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Application.Interfaces.Security.ToolInvocationResult!>!
-Orkeon.Cli.Commands.Scripting.Progress.ToolActivityPipeline.ToolActivityPipeline(Orkeon.Application.Interfaces.Security.IToolInvocationPipeline! inner, Orkeon.Cli.Abstractions.Console.ToolActivityFeed! feed) -> void
+Orkeon.Cli.Commands.Scripting.Progress.ToolActivityPipeline.ToolActivityPipeline(Orkeon.Application.Interfaces.Security.IToolInvocationPipeline! inner, Orkeon.Cli.Abstractions.Console.ToolActivityFeed! feed, Orkeon.Domain.FileSystem.IFileSystemService! files) -> void
 Orkeon.Cli.Commands.Scripting.Progress.ToolCallSubject
 Orkeon.Cli.Commands.Scripting.Runtime.CommandRuntimeContext.interactive.get -> bool
 Orkeon.Cli.Commands.Scripting.Runtime.CommandRuntimeContext.writeBlock(Jint.Native.JsValue! spec) -> void

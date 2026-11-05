@@ -314,6 +314,13 @@ public sealed class ReplPaneView : View, ITaskListNavigator, IToolActivityObserv
             {
                 StepOf(write.Thread).Finish(finished);
                 stepsChanged = true;
+                if (finished.Diff is { } diff)
+                {
+                    // A change shows where it happens; it does not end the step.
+                    var target = _screens.For(write.Thread);
+                    FlushPending(target);
+                    target.AppendStyled(DiffRenderer.ForCall(diff, _glyphs));
+                }
                 continue;
             }
             var screen = _screens.For(write.Thread);
