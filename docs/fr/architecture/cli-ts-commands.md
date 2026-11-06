@@ -400,10 +400,13 @@ defineAsyncCommand({
   premier saut est de profondeur 1), et un `post` monte toujours. Toute autre valeur de
   `chain` est une erreur de script.
 - **Un crew qui est la conversation : `{ onMain: true }`.** `runCrewAsync(name, input, { onMain: true })` fait du crew la
-  conversation plutôt qu'une tâche à côté. Dans la console à volets, ce qu'il écrit, ses appels et ses approbations arrivent sur
-  l'écran `main`, il n'a ni ligne dans la liste ni ligne de lancement, et sa ligne de fin n'apparaît que s'il a échoué ou a été annulé ;
-  `Échap Échap` l'interrompt avec le tour de l'invite, sans ligne de fin ni appel de `completed`, et `ps` et `get` en rendent toujours compte (`onMain` sur la vue). Une valeur ni
-  absente ni booléenne lève une exception.
+  conversation plutôt qu'une tâche à côté. Dans la console à volets, ce qu'il écrit, texte diffusé compris, ses appels et ses
+  approbations arrivent sur l'écran `main`, sans ligne dans la liste ni ligne de lancement ; la console simple écrit son texte
+  sans préfixe de ticket, et dans les deux ses approbations ne nomment aucune tâche. Sa ligne de fin n'apparaît que s'il a échoué
+  ou si son jeton a expiré. `Échap Échap` l'interrompt quoi qu'on ait tapé depuis son lancement, car il reste dans le tour de
+  l'invite ; une annulation demandée, par ces touches ou par `cancel`, n'écrit pas de ligne de fin et n'appelle pas `completed`.
+  Le fil principal porte une seule conversation : lancé pendant qu'un autre crew `onMain` tourne, le crew est une tâche ordinaire à
+  côté. `ps` et `get` en rendent toujours compte (`onMain` sur la vue). Une valeur ni absente ni booléenne lève une exception.
 - **Un crew qui ne doit pas tourner deux fois : `{ exclusive: true }`.** Un crew qui ne
   doit pas tourner deux fois à la fois (une revue, l'écrivain d'un magasin partagé) est
   lancé par `runCrewAsync(name, input, { exclusive: true })` : tant qu'un autre lancement

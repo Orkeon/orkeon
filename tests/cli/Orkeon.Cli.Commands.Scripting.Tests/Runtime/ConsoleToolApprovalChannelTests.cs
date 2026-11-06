@@ -78,8 +78,7 @@ public sealed class ConsoleToolApprovalChannelTests : IDisposable
     public async Task ShouldNameNoTask_WhenTheQuestionComesFromWorkOnMain()
     {
         var instance = new Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstanceRegistry().Register(
-            "assistant", Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstanceKind.Async, "crew:main-loop", "main-loop", Guid.NewGuid());
-        instance.OnMain = true;
+            "assistant", Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstanceKind.Async, "crew:main-loop", "main-loop", Guid.NewGuid(), onMain: true);
 
         await Task.Run(() =>
         {

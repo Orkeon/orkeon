@@ -163,6 +163,27 @@ public sealed class ConsoleLlmDeltaSinkTests
         Assert.Equal("[t2] a" + NL + "[t2 task-1] b" + NL + "c\n" + NL, console.Output);
     }
 
+    [Fact]
+    public void A_turn_of_work_on_main_carries_no_ticket()
+    {
+        var console = new ScriptedTestConsole();
+        var sink = new ConsoleLlmDeltaSink(console);
+        ProgressAmbient.CurrentInstance = new CommandInstance("t2", "talk", CommandInstanceKind.Async, "agent", "intent", Guid.NewGuid(), DateTimeOffset.UtcNow) { OnMain = true };
+        ILlmDeltaSink turn;
+        try
+        {
+            turn = sink.BeginTurn(null);
+        }
+        finally
+        {
+            ProgressAmbient.CurrentInstance = null;
+        }
+
+        turn.OnDelta("a\n");
+
+        Assert.Equal("a\n", console.Output);
+    }
+
     private static ILlmDeltaSink BeginUnderTicket(ConsoleLlmDeltaSink sink, string? label)
     {
         var instance = new CommandInstance("t1", "review", CommandInstanceKind.Async, "agent", "intent", Guid.NewGuid(), DateTimeOffset.UtcNow);

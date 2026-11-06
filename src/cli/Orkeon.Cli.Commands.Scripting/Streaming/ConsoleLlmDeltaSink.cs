@@ -43,7 +43,8 @@ public sealed class ConsoleLlmDeltaSink : ILlmDeltaSink
     /// <param name="label">What the turn belongs to as the caller knows it; null when it knows nothing.</param>
     public ILlmDeltaSink BeginTurn(string? label)
     {
-        var ticket = ProgressAmbient.CurrentInstance?.Ticket;
+        // Work on the main thread is the conversation: its turns stream like the prompt's own, under no ticket.
+        var ticket = ProgressAmbient.CurrentInstance is { OnMain: false } instance ? instance.Ticket : null;
         var separate = _console is IThreadedConsole { SeparatesThreads: true };
         var parts = new[] { separate ? null : ticket, label }
             .Where(static p => !string.IsNullOrWhiteSpace(p));

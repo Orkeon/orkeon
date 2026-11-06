@@ -259,8 +259,8 @@ public sealed partial class ScriptCommand : IInteractiveCommand
                     // the ticket names the task the line is about.
                     var view = settled.Snapshot();
                     // Work on the main thread that ended well has nothing to report (its reply is there), nor has
-                    // work interrupted there (the console said so when the keys were pressed).
-                    if (!view.onMain || view.state is not ("done" or "cancelled"))
+                    // work interrupted there on request. A token that expired on its own is reported like a failure.
+                    if (!view.onMain || (view.state != "done" && !IsInterrupted(settled)))
                     {
                         var mark = view.state == "done" ? "✓" : "✗";
                         console.WriteLine($"  {mark} [{view.ticket}] {view.name} → {view.targetAgent}: {view.state}");
@@ -360,6 +360,9 @@ public sealed partial class ScriptCommand : IInteractiveCommand
         }
     }
 
+    private static bool IsInterrupted(CommandInstance instance)
+        => instance is { OnMain: true, CancelRequested: true, State: CommandInstanceState.Cancelled };
+
     private async Task DrainOneAsync(IConsoleAdapter console, PendingCompletion item, CancellationToken ct)
     {
         _admissionOf.TryGetValue(item.Instance, out var admission);
@@ -368,7 +371,7 @@ public sealed partial class ScriptCommand : IInteractiveCommand
             if (item.Completed is null) return;
 
             var view = item.Instance.Snapshot();
-            if (view is { onMain: true, state: "cancelled" }) return;
+            if (IsInterrupted(item.Instance)) return;
 
             var response = view.result ?? new CommandResponse(view.targetAgent, view.intent, success: false, payload: string.Empty, error: view.error);
             var resultVal = JsValue.FromObject(_engine, response);

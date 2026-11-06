@@ -178,8 +178,9 @@ public sealed partial class ScriptHostFacade
                     success: output.ok,
                     payload: output.summary ?? string.Empty,
                     error: output.error)
-                // A background run writes nothing in the foreground: the completed callback prints the payload.
-                { streamed = false };
+                // A background run writes nothing in the foreground, so its completed callback prints the payload;
+                // a run on the main thread has streamed its turns there.
+                { streamed = output.streamed };
             });
         }
         catch (ChainDepthExceededException refused)

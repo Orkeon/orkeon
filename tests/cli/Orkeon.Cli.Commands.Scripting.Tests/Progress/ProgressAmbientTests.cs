@@ -52,8 +52,7 @@ public sealed class ProgressAmbientTests
     public async Task The_console_thread_is_the_ticket_unless_the_work_is_on_main(bool onMain, string? expected)
     {
         var instance = new Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstanceRegistry().Register(
-            "c", Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstanceKind.Async, "crew:c", "c", Guid.NewGuid());
-        instance.OnMain = onMain;
+            "c", Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstanceKind.Async, "crew:c", "c", Guid.NewGuid(), onMain);
 
         var thread = await Task.Run(() =>
         {

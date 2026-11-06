@@ -71,6 +71,17 @@ public sealed class ScriptCommandOnMainCompletionTests : IDisposable
     }
 
     [Fact]
+    public async Task ShouldWriteTheEndLineAndRunCompleted_WhenTheTokenOfWorkOnMainExpiresOnItsOwn()
+    {
+        await LaunchFirstAsync();
+
+        _host.Gate("first").TrySetException(new OperationCanceledException());
+        await WaitForLineAsync("completed:False:");
+
+        Assert.True(HasEndLine);
+    }
+
+    [Fact]
     public async Task ShouldWriteNothing_WhenWorkOnMainIsInterrupted()
     {
         var command = await LaunchFirstAsync();

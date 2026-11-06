@@ -55,6 +55,22 @@ public sealed class InlineStreamReceiptTests
     }
 
     [Fact]
+    public async Task ShouldRecordStreamedOnTheMainThread_WhenTheTurnIsOfWorkOnMain()
+    {
+        var console = new FakeThreadedConsole();
+        var sink = new ConsoleLlmDeltaSink(console);
+        var instance = new CommandInstance("t3", "talk", CommandInstanceKind.Async, "agent", "intent", Guid.NewGuid(), DateTimeOffset.UtcNow) { OnMain = true };
+
+        var receipt = await RunInOwnFlow(() =>
+        {
+            ProgressAmbient.CurrentInstance = instance;
+            StreamTurn(sink, label: null, "answer");
+        });
+
+        Assert.True(receipt.Streamed);
+    }
+
+    [Fact]
     public async Task ShouldRecordNotStreamed_WhenABackgroundTurnWritesOnItsOwnThread()
     {
         var console = new FakeThreadedConsole();

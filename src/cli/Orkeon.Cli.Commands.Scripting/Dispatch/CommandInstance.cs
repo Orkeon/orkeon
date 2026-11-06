@@ -39,7 +39,16 @@ public sealed class CommandInstance
     internal int Depth { get; set; }
 
     /// <summary>The work belongs to the main thread of the console: it writes there and is no task of the list.</summary>
-    internal bool OnMain { get; set; }
+    internal bool OnMain { get; init; }
+
+    /// <summary>Somebody asked for this cancellation through <c>cancel</c>, as opposed to a token that expired on its own.</summary>
+    internal bool CancelRequested
+    {
+        get => Volatile.Read(ref _cancelRequested);
+        set => Volatile.Write(ref _cancelRequested, value);
+    }
+
+    private bool _cancelRequested;
 
     internal CommandInstance(
         string ticket,
