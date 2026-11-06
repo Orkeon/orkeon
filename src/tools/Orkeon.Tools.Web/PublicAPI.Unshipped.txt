@@ -1,1 +1,19 @@
 #nullable enable
+Orkeon.Tools.Web.FirefoxToolOptions
+Orkeon.Tools.Web.FirefoxToolOptions.CommandTimeoutSeconds.get -> int
+Orkeon.Tools.Web.FirefoxToolOptions.CommandTimeoutSeconds.set -> void
+Orkeon.Tools.Web.FirefoxToolOptions.ExecutablePath.get -> string?
+Orkeon.Tools.Web.FirefoxToolOptions.ExecutablePath.set -> void
+Orkeon.Tools.Web.FirefoxToolOptions.FirefoxToolOptions() -> void
+Orkeon.Tools.Web.FirefoxToolOptions.Headless.get -> bool
+Orkeon.Tools.Web.FirefoxToolOptions.Headless.set -> void
+Orkeon.Tools.Web.FirefoxToolOptions.MaxNodes.get -> int
+Orkeon.Tools.Web.FirefoxToolOptions.MaxNodes.set -> void
+Orkeon.Tools.Web.FirefoxToolOptions.MaxTextLength.get -> int
+Orkeon.Tools.Web.FirefoxToolOptions.MaxTextLength.set -> void
+Orkeon.Tools.Web.FirefoxToolOptions.ProfileRoot.get -> string?
+Orkeon.Tools.Web.FirefoxToolOptions.ProfileRoot.set -> void
+Orkeon.Tools.Web.FirefoxToolOptions.StartupTimeoutSeconds.get -> int
+Orkeon.Tools.Web.FirefoxToolOptions.StartupTimeoutSeconds.set -> void
+const Orkeon.Tools.Web.FirefoxToolOptions.SectionName = "Orkeon:Tools:Firefox" -> string!
+static Orkeon.Tools.Web.FirefoxToolOptions.From(Microsoft.Extensions.Configuration.IConfiguration? configuration) -> Orkeon.Tools.Web.FirefoxToolOptions!
