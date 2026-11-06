@@ -393,6 +393,11 @@ defineAsyncCommand({
   `completed` (a `dispatch`, a handler) the option changes nothing: the launch takes the
   depth it takes without it (a first hop is depth 1), and a `post` always climbs. Any
   other `chain` value is a script error.
+- **A crew that is the conversation: `{ onMain: true }`.** `runCrewAsync(name, input, { onMain: true })` makes the crew the
+  conversation rather than a task beside it. In the split-pane console what it writes, its calls and its approvals land on the
+  `main` screen, it has no row in the list and no launch line, and its end line shows only when it failed or was cancelled;
+  `Esc Esc` interrupts it as part of the prompt's turn, an interruption that writes no end line and runs no `completed`, and `ps` and `get` still report it (`onMain` on the view). A value that is
+  neither absent nor a boolean throws.
 - **A crew that must not run twice: `{ exclusive: true }`.** A crew that must not run
   twice at a time (a review, the writer of a shared store) is launched with
   `runCrewAsync(name, input, { exclusive: true })`: while another exclusive launch of the

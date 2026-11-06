@@ -23,6 +23,45 @@ public sealed class TuiFidelityWiringAgentRowsTests
         Assert.Empty(TuiFidelityWiring.BuildAgentRows(NewDispatch()));
     }
 
+    private static System.Threading.Tasks.Task<CommandResponse> Held(TaskCompletionSource<CommandResponse> gate, CancellationToken _) => gate.Task;
+
+    [Fact]
+    public void Work_on_the_main_thread_alone_leaves_the_pane_empty()
+    {
+        var dispatch = NewDispatch();
+        var gate = new TaskCompletionSource<CommandResponse>();
+        dispatch.postWork("main-loop", "crew:main-loop", ct => Held(gate, ct), onMain: true);
+
+        var rows = TuiFidelityWiring.BuildAgentRows(dispatch);
+
+        Assert.Empty(rows);
+    }
+
+    [Fact]
+    public void A_task_beside_work_on_the_main_thread_brings_main_in_with_its_own_row_only()
+    {
+        var dispatch = NewDispatch();
+        var gate = new TaskCompletionSource<CommandResponse>();
+        dispatch.postWork("main-loop", "crew:main-loop", ct => Held(gate, ct), onMain: true);
+        var task = dispatch.postWork("review", "crew:review", ct => Held(gate, ct));
+
+        var rows = TuiFidelityWiring.BuildAgentRows(dispatch);
+
+        Assert.Equal(["main", task], rows.Select(r => r.Ticket ?? r.Name).ToArray());
+    }
+
+    [Fact]
+    public async Task Work_on_the_main_thread_that_ended_is_no_finished_task()
+    {
+        var dispatch = NewDispatch();
+        var ticket = dispatch.postWork("main-loop", "crew:main-loop", _ => throw new InvalidOperationException("boom"), onMain: true);
+        while (dispatch.get(ticket)!.state == "running") await System.Threading.Tasks.Task.Yield();
+
+        var rows = TuiFidelityWiring.BuildFinishedAgentRows(dispatch);
+
+        Assert.Empty(rows);
+    }
+
     [Fact]
     public void A_running_instance_brings_main_in_filled_and_renders_hollow_itself()
     {

@@ -352,7 +352,8 @@ internal static class TuiFidelityWiring
     /// <summary>
     /// The tasks rows, mirroring the reference's contract: LIVE work only. <c>main</c> comes
     /// first — and appears only while at least one task runs; with nothing delegated the list
-    /// is empty and collapses — then one row per running or dispatched async instance, in
+    /// is empty and collapses, <c>main</c> being implied — then one row per running or dispatched async instance
+    /// that is not on the main thread (<c>{ onMain: true }</c>), in
     /// creation order (oldest first, so a row never moves under the cursor). Each row carries
     /// its state (<c>running</c> ⇒ running, <c>dispatched</c> ⇒ idle; <c>main</c> runs while the
     /// prompt's turn does). Finished tasks leave the list immediately — <c>idle</c> means
@@ -361,7 +362,7 @@ internal static class TuiFidelityWiring
     /// </summary>
     internal static List<AgentRowInfo> BuildAgentRows(CommandDispatchService dispatch, IReadOnlyList<PendingToolApproval>? approvals = null)
     {
-        var instances = dispatch.list().Where(IsRunning).ToList();
+        var instances = dispatch.list().Where(v => IsRunning(v) && !v.onMain).ToList();
         if (instances.Count == 0) return [];
 
         var rows = new List<AgentRowInfo>(instances.Count + 1)
@@ -405,11 +406,11 @@ internal static class TuiFidelityWiring
     /// The background tasks that ended and the registry still retains, oldest end first, with
     /// their final state (done, failed, cancelled) and duration: the tasks list's transcript lines
     /// read them, so a task that starts and ends between two polls is still reported, and a
-    /// failure reads as one. Sync requests and rejected launches are not tasks of the list.
+    /// failure reads as one. Sync requests, rejected launches and work on the main thread are not tasks of the list.
     /// </summary>
     internal static List<AgentRowInfo> BuildFinishedAgentRows(CommandDispatchService dispatch) =>
         dispatch.list()
-            .Where(v => v.kind == "async" && v.state is "done" or "failed" or "cancelled")
+            .Where(v => v.kind == "async" && !v.onMain && v.state is "done" or "failed" or "cancelled")
             .OrderBy(v => v.completedAt ?? v.startedAt, StringComparer.Ordinal)
             .ThenBy(v => v.ticket.Length)
             .ThenBy(v => v.ticket, StringComparer.Ordinal)

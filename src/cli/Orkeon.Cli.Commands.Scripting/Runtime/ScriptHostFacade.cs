@@ -153,9 +153,10 @@ public sealed partial class ScriptHostFacade
     /// <c>completed(result)</c>. The <c>result.payload</c> is the crew's summary. For long workflows.
     /// <paramref name="options"/> may carry <c>{ chain: "continue" }</c>: from the <c>completed</c> of the same
     /// command, the new instance keeps the parent's chain depth instead of climbing one
-    /// (<see cref="CommandDispatchService.postWork(string, string, Func{CancellationToken, Task{CommandResponse}}, bool, bool)"/>).
+    /// (<see cref="CommandDispatchService.postWork(string, string, Func{CancellationToken, Task{CommandResponse}}, bool, bool, bool)"/>).
     /// It may also carry <c>{ exclusive: true }</c>: refused, before any LLM call, while another exclusive launch of the
     /// same crew runs, as a JS throw naming the running ticket (<c>crew 'code-review' already running (ticket t2)</c>).
+    /// With <c>{ onMain: true }</c> the crew writes on the console's main thread and is no task of its list.
     /// </summary>
     public string runCrewAsync(string name, JsValue? input = null, JsValue? options = null)
     {
@@ -165,10 +166,10 @@ public sealed partial class ScriptHostFacade
 
         var safeName = SanitizeName(name);
         var inputsJson = ToInputsJson(input);
-        var (continueChain, exclusive) = ReadLaunchOptions(options);
+        var (continueChain, exclusive, onMain) = ReadLaunchOptions(options);
         try
         {
-            return _dispatch.postWork(safeName, $"crew:{safeName}", continueChain: continueChain, exclusive: exclusive, work: async ct =>
+            return _dispatch.postWork(safeName, $"crew:{safeName}", continueChain: continueChain, exclusive: exclusive, onMain: onMain, work: async ct =>
             {
                 var output = await RunCrewCoreAsync(safeName, inputsJson, ct).ConfigureAwait(false);
                 return new CommandResponse(
@@ -200,17 +201,17 @@ public sealed partial class ScriptHostFacade
     // ---- internals ------------------------------------------------------------------------
 
     /// <summary>
-    /// Reads <c>options.chain</c> (absent, or <c>"continue"</c>) and <c>options.exclusive</c> (absent, or a boolean);
+    /// Reads <c>options.chain</c> (absent, or <c>"continue"</c>), <c>options.exclusive</c> and <c>options.onMain</c> (absent, or a boolean);
     /// any other value is a script error.
     /// </summary>
-    private static (bool ContinueChain, bool Exclusive) ReadLaunchOptions(JsValue? options)
+    private static (bool ContinueChain, bool Exclusive, bool OnMain) ReadLaunchOptions(JsValue? options)
     {
         if (options is null || options.IsUndefined() || options.IsNull())
-            return (false, false);
+            return (false, false, false);
         if (!options.IsObject())
             throw new Jint.Runtime.JavaScriptException(new JsString("script-host.runCrewAsync: options must be an object, e.g. { chain: \"continue\" } or { exclusive: true }."));
         var source = options.AsObject();
-        return (ReadContinueChain(source.Get("chain")), ReadExclusive(source.Get("exclusive")));
+        return (ReadContinueChain(source.Get("chain")), ReadFlag("exclusive", source.Get("exclusive")), ReadFlag("onMain", source.Get("onMain")));
     }
 
     private static bool ReadContinueChain(JsValue chain)
@@ -222,13 +223,13 @@ public sealed partial class ScriptHostFacade
         throw new Jint.Runtime.JavaScriptException(new JsString($"script-host.runCrewAsync: unknown chain mode '{chain}' (expected \"continue\")."));
     }
 
-    private static bool ReadExclusive(JsValue exclusive)
+    private static bool ReadFlag(string name, JsValue flag)
     {
-        if (exclusive.IsUndefined())
+        if (flag.IsUndefined())
             return false;
-        if (exclusive.IsBoolean())
-            return exclusive.AsBoolean();
-        throw new Jint.Runtime.JavaScriptException(new JsString($"script-host.runCrewAsync: exclusive must be a boolean, not '{exclusive}'."));
+        if (flag.IsBoolean())
+            return flag.AsBoolean();
+        throw new Jint.Runtime.JavaScriptException(new JsString($"script-host.runCrewAsync: {name} must be a boolean, not '{flag}'."));
     }
 
     /// <summary>

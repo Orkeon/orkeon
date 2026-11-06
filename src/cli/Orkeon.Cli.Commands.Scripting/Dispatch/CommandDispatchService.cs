@@ -228,10 +228,14 @@ public sealed partial class CommandDispatchService
     /// pass; the target is free again when the holder's work has ended (completed, failed, or stopped after cancel()). A launch without the
     /// flag is neither refused nor counted.
     /// </param>
+    /// <param name="onMain">
+    /// <see langword="true"/>: the work belongs to the main thread of the console. What it writes lands there, and the
+    /// console's list of tasks leaves it out.
+    /// </param>
     /// <exception cref="ChainDepthExceededException">The depth reached <c>MaxChainDepth</c> on a launch that climbs.</exception>
     /// <exception cref="ExclusiveLaunchRefusedException">An exclusive launch of <paramref name="target"/> still runs.</exception>
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Fire-and-forget host-work fault barrier: a background work failure is logged and recorded on the instance so it cannot crash the detached task; cancellation marks the instance cancelled.")]
-    public string postWork(string label, string target, Func<CancellationToken, Task<CommandResponse>> work, bool continueChain = false, bool exclusive = false)
+    public string postWork(string label, string target, Func<CancellationToken, Task<CommandResponse>> work, bool continueChain = false, bool exclusive = false, bool onMain = false)
     {
         ArgumentNullException.ThrowIfNull(work);
         var scope = _ambient.Value;
@@ -241,6 +245,7 @@ public sealed partial class CommandDispatchService
             ? RegisterExclusive(command, target ?? string.Empty, label ?? string.Empty)
             : _registry.Register(command, CommandInstanceKind.Async, target ?? string.Empty, label ?? string.Empty, Guid.NewGuid());
         instance.Depth = depth;
+        instance.OnMain = onMain;
         scope?.Capture(instance);
         if (exclusive)
         {

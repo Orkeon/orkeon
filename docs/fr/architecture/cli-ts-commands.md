@@ -399,6 +399,11 @@ defineAsyncCommand({
   l'option ne change rien : le lancement prend la profondeur qu'il prendrait sans elle (un
   premier saut est de profondeur 1), et un `post` monte toujours. Toute autre valeur de
   `chain` est une erreur de script.
+- **Un crew qui est la conversation : `{ onMain: true }`.** `runCrewAsync(name, input, { onMain: true })` fait du crew la
+  conversation plutôt qu'une tâche à côté. Dans la console à volets, ce qu'il écrit, ses appels et ses approbations arrivent sur
+  l'écran `main`, il n'a ni ligne dans la liste ni ligne de lancement, et sa ligne de fin n'apparaît que s'il a échoué ou a été annulé ;
+  `Échap Échap` l'interrompt avec le tour de l'invite, sans ligne de fin ni appel de `completed`, et `ps` et `get` en rendent toujours compte (`onMain` sur la vue). Une valeur ni
+  absente ni booléenne lève une exception.
 - **Un crew qui ne doit pas tourner deux fois : `{ exclusive: true }`.** Un crew qui ne
   doit pas tourner deux fois à la fois (une revue, l'écrivain d'un magasin partagé) est
   lancé par `runCrewAsync(name, input, { exclusive: true })` : tant qu'un autre lancement

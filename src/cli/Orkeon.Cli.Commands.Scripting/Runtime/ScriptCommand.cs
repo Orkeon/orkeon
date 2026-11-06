@@ -258,8 +258,13 @@ public sealed partial class ScriptCommand : IInteractiveCommand
                     // for the next pump (design §4.3). Thread-safe vs the engine: console only. On main,
                     // the ticket names the task the line is about.
                     var view = settled.Snapshot();
-                    var mark = view.state == "done" ? "✓" : "✗";
-                    console.WriteLine($"  {mark} [{view.ticket}] {view.name} → {view.targetAgent}: {view.state}");
+                    // Work on the main thread that ended well has nothing to report (its reply is there), nor has
+                    // work interrupted there (the console said so when the keys were pressed).
+                    if (!view.onMain || view.state is not ("done" or "cancelled"))
+                    {
+                        var mark = view.state == "done" ? "✓" : "✗";
+                        console.WriteLine($"  {mark} [{view.ticket}] {view.name} → {view.targetAgent}: {view.state}");
+                    }
 
                     // Push-render: run the JS completed(result) callback now, instead of deferring
                     // it to this command's next invocation. Off the pool thread, serialised on the
@@ -363,6 +368,8 @@ public sealed partial class ScriptCommand : IInteractiveCommand
             if (item.Completed is null) return;
 
             var view = item.Instance.Snapshot();
+            if (view is { onMain: true, state: "cancelled" }) return;
+
             var response = view.result ?? new CommandResponse(view.targetAgent, view.intent, success: false, payload: string.Empty, error: view.error);
             var resultVal = JsValue.FromObject(_engine, response);
             var launchInput = item.Instance.LaunchInput ?? _descriptor.Name;

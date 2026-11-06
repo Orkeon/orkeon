@@ -45,4 +45,22 @@ public sealed class ProgressAmbientTests
             ConsoleThread.Current = null;
         }
     }
+
+    [Theory]
+    [InlineData(false, "T")]
+    [InlineData(true, null)]
+    public async Task The_console_thread_is_the_ticket_unless_the_work_is_on_main(bool onMain, string? expected)
+    {
+        var instance = new Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstanceRegistry().Register(
+            "c", Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstanceKind.Async, "crew:c", "c", Guid.NewGuid());
+        instance.OnMain = onMain;
+
+        var thread = await Task.Run(() =>
+        {
+            ProgressAmbient.CurrentInstance = instance;
+            return ConsoleThread.Current;
+        });
+
+        Assert.Equal(expected is null ? null : instance.Ticket, thread);
+    }
 }

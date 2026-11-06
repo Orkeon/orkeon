@@ -11,7 +11,8 @@ internal readonly record struct CommandInstanceIdentity(
     string Kind,
     string TargetAgent,
     string Intent,
-    string CorrelationId);
+    string CorrelationId,
+    bool OnMain = false);
 
 /// <summary>
 /// Lifecycle/outcome of a command instance at snapshot time: state token, timing, and the
@@ -44,6 +45,7 @@ public sealed class CommandInstanceView
         this.targetAgent = identity.TargetAgent;
         this.intent = identity.Intent;
         this.correlationId = identity.CorrelationId;
+        this.onMain = identity.OnMain;
         this.state = lifecycle.State;
         this.startedAt = lifecycle.StartedAt.ToString("O");
         this.completedAt = lifecycle.CompletedAt?.ToString("O");
@@ -71,6 +73,9 @@ public sealed class CommandInstanceView
 
     /// <summary>Channel correlation id (host-side completion key).</summary>
     public string correlationId { get; }
+
+    /// <summary>Launched with <c>{ onMain: true }</c>: the work writes on the main thread and is no task of the list.</summary>
+    public bool onMain { get; }
 
     /// <summary>Lowercase lifecycle token: running/done/failed/cancelled/rejected.</summary>
     public string state { get; }

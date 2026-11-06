@@ -27,7 +27,7 @@ public static class ProgressAmbient
         set
         {
             _current.Value = value;
-            ConsoleThread.Current = value?.Ticket;
+            ConsoleThread.Current = value is { OnMain: false } ? value.Ticket : null;
         }
     }
 }

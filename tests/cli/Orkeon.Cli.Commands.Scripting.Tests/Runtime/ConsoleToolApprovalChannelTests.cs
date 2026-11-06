@@ -75,6 +75,23 @@ public sealed class ConsoleToolApprovalChannelTests : IDisposable
     }
 
     [Fact]
+    public async Task ShouldNameNoTask_WhenTheQuestionComesFromWorkOnMain()
+    {
+        var instance = new Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstanceRegistry().Register(
+            "assistant", Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstanceKind.Async, "crew:main-loop", "main-loop", Guid.NewGuid());
+        instance.OnMain = true;
+
+        await Task.Run(() =>
+        {
+            Orkeon.Cli.Commands.Scripting.Progress.ProgressAmbient.CurrentInstance = instance;
+            _ = new Orkeon.Application.Services.Security.SerialisingToolApprovalChannel(_channel).RequestAsync(Request(), Ct);
+        }, Ct);
+
+        Assert.Null(Assert.Single(_channel.Pending).Ticket);
+        Assert.DoesNotContain($"[{instance.Ticket}]", _console.Output, StringComparison.Ordinal);
+    }
+
+    [Fact]
     [Trait("BR", "CH-02")]
     public void ShouldAskTheWholeQuestionAgain_WhenTheLineIsNoAnswer()
     {

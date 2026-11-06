@@ -339,7 +339,8 @@ public sealed class TerminalGuiHost : IAsyncDisposable
         {
             var sentence = _toolActivity.DrainSentence();
             var glyphs = Layout.GlyphSet.Resolve(_options.Glyphs, OutputEncodingIsUtf8());
-            if (sentence.Length > 0)
+            // With the calls fed to the steps, the sentence counts only what scripts call on their own account.
+            if (sentence.Length > 0 && _integration.ToolActivity is null)
             {
                 foreach (var line in Layout.TranscriptModel.Render(glyphs, Layout.TranscriptKind.ToolActivity, sentence))
                     top.Repl.AppendOutputLine(line);

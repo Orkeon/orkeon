@@ -38,6 +38,9 @@ public sealed class CommandInstance
     /// <summary>Chain depth: 0 for a user-launched instance, parent depth + 1 for one launched from a <c>completed</c> handler.</summary>
     internal int Depth { get; set; }
 
+    /// <summary>The work belongs to the main thread of the console: it writes there and is no task of the list.</summary>
+    internal bool OnMain { get; set; }
+
     internal CommandInstance(
         string ticket,
         string name,
@@ -237,7 +240,8 @@ public sealed class CommandInstance
                     Kind: Kind.ToToken(),
                     TargetAgent: TargetAgent,
                     Intent: Intent,
-                    CorrelationId: CorrelationId.ToString()),
+                    CorrelationId: CorrelationId.ToString(),
+                    OnMain: OnMain),
                 new CommandInstanceLifecycle(
                     State: _state.ToToken(),
                     StartedAt: StartedAt,

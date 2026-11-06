@@ -36,8 +36,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - A `select` left with Esc answers `null`, so `PromptResult` now includes `null` **[breaking for a script that type-checks it]**.
 - A tool approval opens the same panel, on Yes, so Enter straight allows that call once: its options answer that question by its id (`y`, `s` or `n`) and never reach a read as a line, Esc denies, `/` or a letter no option carries hands it to the prompt with the letters typed so far, and it passes before a panel already open. The status line stops repeating a question its panel asks.
 
-### Changed — a task that ended leaves the list
+### Changed — a task that ended leaves the list, and a crew can be the conversation
 
+- `runCrewAsync` takes `{ onMain: true }`: in the split-pane console the crew writes its text, calls, diffs and approvals on the `main` screen, with no row in the list. It writes no end line unless it failed, and an interruption runs no `completed`.
+- The `main` row shows only beside another task.
+- The turn's summary line (`Read 20 files, used session_store ×15…`) is gone from the split-pane console: it counted only what scripts call on their own account, the model's calls being in the steps.
 - In the split-pane console, a task that ended no longer stays listed under the prompt: it leaves at the next poll, with its screen, and its end line stays in `main`. Only the task whose screen is being read stays, until the prompt returns to `main`.
 
 ### Fixed — the status line shows the whole name of a tool

@@ -38,5 +38,12 @@ internal sealed class GatedScriptHost
             await Gate(name).Task.WaitAsync(ct).ConfigureAwait(false);
             return new CommandResponse(name, name, true, name + "-out", null);
         });
+
+    public string runOnMain(string name)
+        => _service.postWork(name, "crew:" + name, async ct =>
+        {
+            await Gate(name).Task.WaitAsync(ct).ConfigureAwait(false);
+            return new CommandResponse(name, name, true, name + "-out", null);
+        }, onMain: true);
 }
 #pragma warning restore IDE1006
