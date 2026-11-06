@@ -38,6 +38,10 @@ demander un sans rien savoir des couleurs.
 - Les sorties simple et de replay ne changent pas : `--ui plain` montre la même source qu'avant.
 - Rendre un bloc coûte le temps du rendu sur le fil d'interface, à chaque bloc écrit.
 - Une sélection partielle d'une ligne rendue copie le texte rendu, pas la source.
+- Les palettes sont venues après cette décision : `Orkeon:Cli:Tui:Theme` et `ctx.setTheme` nomment celle en
+  usage (`Dark`, `Light`, ou `None`, les couleurs du terminal), et `SchemeFactory` lit chaque rôle dans
+  celle-ci. La palette est nommée, jamais détectée, donc les décisions 2 et 4 tiennent : un script ne donne
+  toujours aucune couleur.
 
 ## Solutions écartées
 

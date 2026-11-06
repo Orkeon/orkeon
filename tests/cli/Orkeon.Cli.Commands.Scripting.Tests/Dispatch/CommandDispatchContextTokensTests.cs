@@ -39,6 +39,26 @@ public sealed class CommandDispatchContextTokensTests
     }
 
     [Fact]
+    public void An_earlier_instance_calling_after_a_later_one_gives_the_context()
+    {
+        // Arrange
+        var service = NewService();
+        using var scope = service.BeginCommand("a", CancellationToken.None, timeout: null, promptLine: "/a");
+        var main = PostIdle(service);
+        var worker = PostIdle(service);
+        _registry.Get(main)!.AddUsage(new CostUsageEvent { PromptTokens = 900 }, null);
+        _registry.Get(worker)!.AddUsage(new CostUsageEvent { PromptTokens = 30 }, null);
+
+        // Act
+        _registry.Get(main)!.AddUsage(new CostUsageEvent { PromptTokens = 910 }, null);
+
+        // Assert
+        Assert.Equal(910, service.PromptTurnContextTokens());
+        service.cancel(main);
+        service.cancel(worker);
+    }
+
+    [Fact]
     public void A_call_without_a_prompt_figure_leaves_the_context_as_it_is()
     {
         // Arrange

@@ -160,7 +160,7 @@ public sealed class OtelTests
         };
         ActivitySource.AddActivityListener(listener);
         var tool = new StubBaseTool(toolName).RespondWithSuccess("ok");
-        var engine = new JsEngineFactory(builtInTools: [(Orkeon.Domain.Tools.IBaseTool)tool]).Create();
+        var engine = new JsEngineFactory(builtInTools: [tool]).Create();
 
         // Act
         await Task.Run(() => engine.Evaluate("tools.otelStartedTagsTool({})").UnwrapIfPromise());

@@ -11,8 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - In the split-pane console, tasks launched together read as one group with a branch per task, and the end line of a task says its tools, tokens and time, its glyph coloured by how it ended.
 - A transcript scrolled up offers the way back (`↓ more below`, by a click or Ctrl+End) and recalls on its first row the prompt that has left the screen.
-- The bar under the prompt shows `context N%`, the last model call against `Orkeon:Cli:Session:ContextWindowTokens`; it is absent without that setting. `?` on an empty prompt lists the keys, except while a script's `ctx.prompt` reads.
-- **Palettes**: the setting `Orkeon:Cli:Tui:Theme` (`Dark`, `Light`, `None`), `NO_COLOR` when it is left out, and `ctx.setTheme` / `ctx.theme` to change it for the session. A value that names no palette is refused at the start.
+- The bar under the prompt shows `context N%`: what the latest model call of the turn sent, against `Orkeon:Cli:Session:ContextWindowTokens` (`200000` when unset, as for `token_budget`). It is absent before any call and leaves when the session is emptied. `?` on an empty prompt lists the keys, except while a script's `ctx.prompt` reads.
+- **Palettes**: the setting `Orkeon:Cli:Tui:Theme` (`Dark`, `Light`, `None`), `NO_COLOR` when it is left out, and `ctx.setTheme` / `ctx.theme` to change it for the session. A value that names no palette is refused at the start. A selection follows the palette.
 
 ### Added — markdown in the transcript
 
@@ -20,11 +20,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added — what a tool call changed
 
-- **Terminal**: a call to `edit_file` or `file_write` shows what it changed in the transcript: numbered rows on red and green lines, the changed words marked, and the counts on the step's summary. `ctx.writeBlock` patches get the same painting. What the model receives does not change.
+- **Terminal**: a call to `edit_file` or `file_write` shows what it changed in the transcript: numbered rows on red and green lines, the changed words marked, and the counts on the step's summary. `ctx.writeBlock` patches get the same painting. What the model receives does not change. The change is read from the path the tool reads, under the agent run's root; a file over 1 MiB, a binary or unreadable one, or an entry that is not a regular file (a FIFO, a device) shows the call without its change, and an observer that throws leaves the call and its result alone.
 
 ### Added — the calls of each step
 
-- In the split-pane console, the rows above the status line count the calls of the current step and list the latest ones with what they work on, a failed call marked. When the step ends, one line stays in the transcript (`Read 1 file, ran 2 shell commands`), and ctrl+o on an empty prompt lists the calls of the last one. Only the argument named for each tool reaches the screen; the model's input and the run's stream do not change.
+- In the split-pane console, the rows above the status line count the calls of the current step and list the latest ones with what they work on, a failed call marked. When the step ends, with the next text or with its task or turn even on a call still open, one line stays in the transcript (`Read 1 file, ran 2 shell commands`), and ctrl+o on an empty prompt lists the calls of the last one. Only the argument named for each tool reaches the screen; the model's input and the run's stream do not change. The activity sentence counts only the calls no step shows.
 
 ### Added — a menu of commands above the prompt
 
@@ -43,13 +43,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed — a scripted command may wait longer than ten seconds
 
 - A `defineCommand` handler still pending after ten seconds failed with Jint's promise timeout while it kept running. When it was waiting on `ctx.prompt`, that read stayed open and the next read of the split-pane REPL crashed the process (`A ReadLineAsync is already in progress`). The command profile now leaves cancellation as the only bound on a wait (`ScriptingLimitsOptions.PromiseTimeout`), and the `ExecutionTimeout` clock stops while a prompt waits for its answer.
-- A `completed` whose promise never settles held its file's engine for good. Cancelling the invocation that waits for that engine (Esc Esc, Ctrl+C) now ends the wait, and `ctx.signal` in a `completed` follows it.
-- A tool call's change in the split-pane console is read from the path the tool reads, under the agent run's root, and a file over the cap or an entry of no length (a FIFO, a device) is no longer opened for it. An observer that throws no longer stops the call or replaces its result. A step folds when its task or turn ends, even on a call still open, and the activity sentence counts only the calls no step shows.
+- With that bound gone, a `completed` whose promise never settles keeps its file's engine: cancelling the invocation that waits for that engine (Esc Esc, Ctrl+C) ends the wait, and `ctx.signal` in a `completed` follows it.
 
 ### Added — the split-pane transcript paints what it shows
 
 - A submitted entry sits on a grey bar; what a slash command writes hangs under its echo, on an elbow; a turn of ten seconds or more closes on a dim line with its time and tokens. A copy of a whole prompt line returns what was typed. [ADR-017](docs/adr/ADR-017-transcript-display-model.md).
-- `ctx.writeBlock({ kind: "markdown" | "diff", text })` hands a typed block to a console able to style it (`IBlockConsole`); any other console writes the source as plain lines. Changed diff lines are painted over their whole row; markdown stays its source for now.
+- `ctx.writeBlock({ kind: "markdown" | "diff", text })` hands a typed block to a console able to style it (`IBlockConsole`); any other console writes the source as plain lines.
 
 ### Fixed — the split-pane console keeps a streamed `>` and counts the tools of `ctx.llm.act`
 

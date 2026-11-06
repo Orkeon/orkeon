@@ -3,6 +3,7 @@ using System.Reflection;
 using System.Text.Json;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using Orkeon.Application.Interfaces.Ports;
 using Orkeon.Cli.Abstractions;
 using Orkeon.Cli.Abstractions.Runners;
@@ -11,6 +12,7 @@ using Orkeon.Cli.Commands.Scripting.Progress;
 using Orkeon.Cli.TerminalGui.Hosting;
 using Orkeon.Cli.TerminalGui.Layout;
 using Orkeon.Domain.FileSystem;
+using Orkeon.Infrastructure.Session;
 
 namespace Orkeon.ConsoleApp.Services;
 
@@ -175,13 +177,18 @@ internal static class TuiFidelityWiring
         if (cost is not null)
             integration.SessionTokens = () => cost.GetReport().TotalTokens;
 
-        if (dispatch is not null
-            && long.TryParse(services.GetService<IConfiguration>()?[ConfigurationKeys.CliSessionContextWindowTokens], out var contextWindow))
+        if (dispatch is not null)
         {
-            // A new prompt shows the last figure until its first call answers.
+            // The window token_budget reports: unset is the session's default. A new prompt shows the last figure until its first call answers.
+            var contextWindow = services.GetService<IOptions<CliSessionOptions>>()?.Value.ContextWindowTokens ?? CliSessionOptions.DefaultContextWindowTokens;
             var contextTokens = 0L;
+            var sessionHeldMessages = false;
             integration.ContextPercent = () =>
             {
+                // A session emptied (a /clear that resets it) no longer holds what the figure measured.
+                var sessionHoldsMessages = buffer?.MessageCount > 0;
+                if (sessionHeldMessages && !sessionHoldsMessages) contextTokens = 0;
+                sessionHeldMessages = sessionHoldsMessages;
                 if (dispatch.PromptTurnContextTokens() is > 0 and var latest) contextTokens = latest;
                 return ContextPercent(contextTokens, contextWindow);
             };

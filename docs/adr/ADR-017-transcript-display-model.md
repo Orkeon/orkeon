@@ -36,6 +36,9 @@ needs backgrounds, and a script needs a way to ask for one without knowing about
 - Plain and replay output do not change: `--ui plain` shows the same source as before.
 - Rendering a block costs the renderer's time on the UI thread, for each block written.
 - A partial selection across a rendered line copies the rendered text, not the source.
+- Palettes came after this decision: `Orkeon:Cli:Tui:Theme` and `ctx.setTheme` name the one in use (`Dark`,
+  `Light`, or `None`, the terminal's own colours), and `SchemeFactory` reads each role in it. The palette is
+  named, never detected, so decisions 2 and 4 hold: a script still hands over no colour.
 
 ## Alternatives rejected
 

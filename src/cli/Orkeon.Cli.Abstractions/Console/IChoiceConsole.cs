@@ -70,8 +70,7 @@ public sealed record ConsoleChoiceAnswer(string Value, string? ControlValue);
 public interface IChoiceConsole
 {
     /// <summary>
-    /// Whether a panel can be asked right now. A decorator answers for what it wraps, and a replay answers false
-    /// while it runs: its answers are the lines it reads.
+    /// Whether a panel can be asked right now. A replay answers false while it runs: its answers are the lines it reads.
     /// </summary>
     bool CanChoose { get; }
 

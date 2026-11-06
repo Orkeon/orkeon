@@ -104,7 +104,7 @@ public sealed partial class CommandDispatchService
 
     /// <summary>What the latest model call of the latest prompt scope sent, in tokens; zero before any.</summary>
     public long PromptTurnContextTokens()
-        => _promptScope?.Turn.Select(i => i.LastPromptTokens).LastOrDefault(tokens => tokens > 0) ?? 0;
+        => _promptScope?.Turn.MaxBy(i => i.LastPromptCall)?.LastPromptTokens ?? 0;
 
     // ---- JS surface -----------------------------------------------------------------------
 

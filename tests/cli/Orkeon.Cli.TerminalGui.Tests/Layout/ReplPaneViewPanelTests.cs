@@ -3,6 +3,7 @@ using Orkeon.Cli.Abstractions.Runners;
 using Orkeon.Cli.TerminalGui.Hosting;
 using Orkeon.Cli.TerminalGui.Layout;
 using Orkeon.Cli.TerminalGui.Tests.Doubles;
+using Orkeon.Cli.TerminalGui.Tests.Fixtures;
 using Orkeon.Tests.Shared.Timing;
 using Terminal.Gui.Drivers;
 using Terminal.Gui.Input;
@@ -19,33 +20,6 @@ public sealed class ReplPaneViewPanelTests
         Choices = [new("a", "A"), new("b", "B")],
         Cancellable = cancellable,
     };
-
-    private static PendingToolApproval Approval(long id) => new("run_command", "{}", null, null) { Id = id };
-
-    private static (ReplPaneView Pane, List<PendingToolApproval> Pending) PaneWithApprovals()
-    {
-        var pane = CreatePane();
-        var pending = new List<PendingToolApproval>();
-        pane.BindIntegration(new TuiIntegration { PendingApprovals = () => pending });
-        return (pane, pending);
-    }
-
-    private static (ReplPaneView Pane, List<PendingToolApproval> Pending, List<(long Id, string Answer)> Answers) PaneRecordingAnswers()
-    {
-        var pane = CreatePane();
-        var pending = new List<PendingToolApproval>();
-        var answers = new List<(long Id, string Answer)>();
-        pane.BindIntegration(new TuiIntegration
-        {
-            PendingApprovals = () => pending,
-            AnswerApproval = (id, answer) =>
-            {
-                answers.Add((id, answer));
-                return true;
-            },
-        });
-        return (pane, pending, answers);
-    }
 
     [Fact]
     public void An_open_panel_takes_the_place_of_the_prompt()
@@ -185,9 +159,9 @@ public sealed class ReplPaneViewPanelTests
     public void A_question_opens_a_panel()
     {
         // Arrange
-        var (pane, pending) = PaneWithApprovals();
-        using var owned = pane;
-        pending.Add(Approval(1));
+        using var approvals = new ApprovalPaneFixture();
+        var pane = approvals.Pane;
+        approvals.Ask(1);
 
         // Act
         pane.RaiseApprovalsChanged();
@@ -200,11 +174,11 @@ public sealed class ReplPaneViewPanelTests
     public void A_question_passes_before_a_panel_already_open()
     {
         // Arrange
-        var (pane, pending) = PaneWithApprovals();
-        using var owned = pane;
+        using var approvals = new ApprovalPaneFixture();
+        var pane = approvals.Pane;
         var choice = new ConsoleChoiceRequest { Choices = [new("c", "C")] };
         _ = pane.ChooseAsync(choice, CancellationToken.None);
-        pending.Add(Approval(1));
+        approvals.Ask(1);
 
         // Act
         pane.RaiseApprovalsChanged();
@@ -217,10 +191,10 @@ public sealed class ReplPaneViewPanelTests
     public async Task The_panel_under_a_question_gets_the_keys_back_once_it_is_answered()
     {
         // Arrange
-        var (pane, pending) = PaneWithApprovals();
-        using var owned = pane;
+        using var approvals = new ApprovalPaneFixture();
+        var pane = approvals.Pane;
         var choice = pane.ChooseAsync(new ConsoleChoiceRequest { Choices = [new("c", "C")] }, CancellationToken.None);
-        pending.Add(Approval(1));
+        approvals.Ask(1);
         pane.RaiseApprovalsChanged();
         pane.RaiseKeyDown(Key.Enter);
 
@@ -235,9 +209,9 @@ public sealed class ReplPaneViewPanelTests
     public void Answering_a_question_settles_it_by_its_id()
     {
         // Arrange
-        var (pane, pending, answers) = PaneRecordingAnswers();
-        using var owned = pane;
-        pending.Add(Approval(7));
+        using var approvals = new ApprovalPaneFixture();
+        var pane = approvals.Pane;
+        approvals.Ask(7);
         pane.RaiseApprovalsChanged();
         pane.RaiseKeyDown(new Key('s'));
 
@@ -245,49 +219,49 @@ public sealed class ReplPaneViewPanelTests
         pane.RaiseKeyDown(Key.Enter);
 
         // Assert
-        Assert.Equal([(7L, "s")], answers);
+        Assert.Equal([(7L, "s")], approvals.Answers);
     }
 
     [Fact]
     public void Esc_on_a_question_denies_it()
     {
         // Arrange
-        var (pane, pending, answers) = PaneRecordingAnswers();
-        using var owned = pane;
-        pending.Add(Approval(7));
+        using var approvals = new ApprovalPaneFixture();
+        var pane = approvals.Pane;
+        approvals.Ask(7);
         pane.RaiseApprovalsChanged();
 
         // Act
         pane.RaiseKeyDown(Key.Esc);
 
         // Assert
-        Assert.Equal([(7L, "n")], answers);
+        Assert.Equal([(7L, "n")], approvals.Answers);
     }
 
     [Fact]
     public void Enter_straight_on_a_question_denies_it()
     {
         // Arrange
-        var (pane, pending, answers) = PaneRecordingAnswers();
-        using var owned = pane;
-        pending.Add(Approval(7));
+        using var approvals = new ApprovalPaneFixture();
+        var pane = approvals.Pane;
+        approvals.Ask(7);
         pane.RaiseApprovalsChanged();
 
         // Act
         pane.RaiseKeyDown(Key.Enter);
 
         // Assert
-        Assert.Equal([(7L, "n")], answers);
+        Assert.Equal([(7L, "n")], approvals.Answers);
     }
 
     [Fact]
     public async Task An_answer_on_a_panel_does_not_reach_a_read_open_on_the_prompt()
     {
         // Arrange
-        var (pane, pending, _) = PaneRecordingAnswers();
-        using var owned = pane;
+        using var approvals = new ApprovalPaneFixture();
+        var pane = approvals.Pane;
         var read = pane.ReadLineAsync(CancellationToken.None);
-        pending.Add(Approval(1));
+        approvals.Ask(1);
         pane.RaiseApprovalsChanged();
         pane.RaiseKeyDown(Key.Enter);
         pane.CurrentInput = "typed";
@@ -303,9 +277,9 @@ public sealed class ReplPaneViewPanelTests
     public async Task An_answer_on_a_panel_is_not_kept_for_a_later_read()
     {
         // Arrange
-        var (pane, pending, _) = PaneRecordingAnswers();
-        using var owned = pane;
-        pending.Add(Approval(1));
+        using var approvals = new ApprovalPaneFixture();
+        var pane = approvals.Pane;
+        approvals.Ask(1);
         pane.RaiseApprovalsChanged();
         pane.RaiseKeyDown(Key.Enter);
         var read = pane.ReadLineAsync(CancellationToken.None);
@@ -321,9 +295,9 @@ public sealed class ReplPaneViewPanelTests
     public void A_question_answered_does_not_open_again_before_the_channel_has_read_it()
     {
         // Arrange
-        var (pane, pending) = PaneWithApprovals();
-        using var owned = pane;
-        pending.Add(Approval(1));
+        using var approvals = new ApprovalPaneFixture();
+        var pane = approvals.Pane;
+        approvals.Ask(1);
         pane.RaiseApprovalsChanged();
         pane.RaiseKeyDown(Key.Enter);
 
@@ -338,12 +312,12 @@ public sealed class ReplPaneViewPanelTests
     public void The_next_question_opens_its_own_panel()
     {
         // Arrange
-        var (pane, pending) = PaneWithApprovals();
-        using var owned = pane;
-        pending.Add(Approval(1));
+        using var approvals = new ApprovalPaneFixture();
+        var pane = approvals.Pane;
+        approvals.Ask(1);
         pane.RaiseApprovalsChanged();
         pane.RaiseKeyDown(Key.Enter);
-        pending[0] = Approval(2);
+        approvals.ReplaceQuestion(2);
 
         // Act
         pane.RaiseApprovalsChanged();
@@ -356,9 +330,9 @@ public sealed class ReplPaneViewPanelTests
     public void The_status_line_leaves_a_question_to_its_panel()
     {
         // Arrange
-        var (pane, pending) = PaneWithApprovals();
-        using var owned = pane;
-        pending.Add(Approval(1));
+        using var approvals = new ApprovalPaneFixture();
+        var pane = approvals.Pane;
+        approvals.Ask(1);
 
         // Act
         pane.RaiseApprovalsChanged();
@@ -371,9 +345,9 @@ public sealed class ReplPaneViewPanelTests
     public void The_status_line_asks_again_once_the_question_is_handed_to_the_prompt()
     {
         // Arrange
-        var (pane, pending) = PaneWithApprovals();
-        using var owned = pane;
-        pending.Add(Approval(1));
+        using var approvals = new ApprovalPaneFixture();
+        var pane = approvals.Pane;
+        approvals.Ask(1);
         pane.RaiseApprovalsChanged();
 
         // Act
@@ -387,11 +361,11 @@ public sealed class ReplPaneViewPanelTests
     public void A_question_withdrawn_closes_its_panel()
     {
         // Arrange
-        var (pane, pending) = PaneWithApprovals();
-        using var owned = pane;
-        pending.Add(Approval(1));
+        using var approvals = new ApprovalPaneFixture();
+        var pane = approvals.Pane;
+        approvals.Ask(1);
         pane.RaiseApprovalsChanged();
-        pending.Clear();
+        approvals.WithdrawQuestions();
 
         // Act
         pane.RaiseApprovalsChanged();
@@ -404,9 +378,9 @@ public sealed class ReplPaneViewPanelTests
     public void A_slash_hands_the_question_to_the_prompt_with_the_slash_typed()
     {
         // Arrange
-        var (pane, pending) = PaneWithApprovals();
-        using var owned = pane;
-        pending.Add(Approval(1));
+        using var approvals = new ApprovalPaneFixture();
+        var pane = approvals.Pane;
+        approvals.Ask(1);
         pane.RaiseApprovalsChanged();
 
         // Act
@@ -420,9 +394,9 @@ public sealed class ReplPaneViewPanelTests
     public void A_question_handed_to_the_prompt_stays_there()
     {
         // Arrange
-        var (pane, pending) = PaneWithApprovals();
-        using var owned = pane;
-        pending.Add(Approval(1));
+        using var approvals = new ApprovalPaneFixture();
+        var pane = approvals.Pane;
+        approvals.Ask(1);
         pane.RaiseApprovalsChanged();
         pane.RaiseKeyDown(new Key('/'));
 
@@ -437,7 +411,7 @@ public sealed class ReplPaneViewPanelTests
     public async Task Disposing_the_pane_ends_the_requests_still_open()
     {
         // Arrange
-        var pane = CreatePane();
+        using var pane = CreatePane();
         var answer = pane.ChooseAsync(TwoChoices(), CancellationToken.None);
 
         // Act
@@ -451,9 +425,9 @@ public sealed class ReplPaneViewPanelTests
     public void A_letter_no_option_carries_hands_the_question_to_the_prompt()
     {
         // Arrange
-        var (pane, pending) = PaneWithApprovals();
-        using var owned = pane;
-        pending.Add(Approval(1));
+        using var approvals = new ApprovalPaneFixture();
+        var pane = approvals.Pane;
+        approvals.Ask(1);
         pane.RaiseApprovalsChanged();
 
         // Act
@@ -467,9 +441,9 @@ public sealed class ReplPaneViewPanelTests
     public void The_letters_typed_before_the_one_no_option_carries_follow_to_the_prompt()
     {
         // Arrange
-        var (pane, pending) = PaneWithApprovals();
-        using var owned = pane;
-        pending.Add(Approval(1));
+        using var approvals = new ApprovalPaneFixture();
+        var pane = approvals.Pane;
+        approvals.Ask(1);
         pane.RaiseApprovalsChanged();
         pane.RaiseKeyDown(new Key('s'));
 
@@ -484,9 +458,9 @@ public sealed class ReplPaneViewPanelTests
     public void A_word_finished_on_a_panel_does_not_answer_with_its_first_letter()
     {
         // Arrange
-        var (pane, pending, answers) = PaneRecordingAnswers();
-        using var owned = pane;
-        pending.Add(Approval(1));
+        using var approvals = new ApprovalPaneFixture();
+        var pane = approvals.Pane;
+        approvals.Ask(1);
         pane.RaiseApprovalsChanged();
         pane.RaiseKeyDown(new Key('s'));
         pane.RaiseKeyDown(new Key('e'));
@@ -495,16 +469,16 @@ public sealed class ReplPaneViewPanelTests
         pane.RaiseKeyDown(Key.Enter);
 
         // Assert
-        Assert.Empty(answers);
+        Assert.Empty(approvals.Answers);
     }
 
     [Fact]
     public void A_digit_no_option_carries_hands_the_question_to_the_prompt()
     {
         // Arrange
-        var (pane, pending) = PaneWithApprovals();
-        using var owned = pane;
-        pending.Add(Approval(1));
+        using var approvals = new ApprovalPaneFixture();
+        var pane = approvals.Pane;
+        approvals.Ask(1);
         pane.RaiseApprovalsChanged();
 
         // Act
@@ -561,7 +535,7 @@ public sealed class ReplPaneViewPanelTests
     public async Task A_request_made_after_the_pane_is_disposed_ends_at_once()
     {
         // Arrange
-        var pane = CreatePane();
+        using var pane = CreatePane();
         pane.Dispose();
 
         // Act
