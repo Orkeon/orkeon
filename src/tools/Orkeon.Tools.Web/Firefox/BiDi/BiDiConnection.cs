@@ -116,11 +116,9 @@ internal sealed partial class BiDiConnection : IAsyncDisposable
         _closed = true;
         foreach (var id in _pending.Keys)
         {
-            if (_pending.TryRemove(id, out var completion))
-            {
-                completion.TrySetException(new BiDiException(
-                    BiDiException.ConnectionClosed, "the browser closed the connection before answering.", failure));
-            }
+            _pending.TryRemove(id, out var completion);
+            completion?.TrySetException(new BiDiException(
+                BiDiException.ConnectionClosed, "the browser closed the connection before answering.", failure));
         }
     }
 

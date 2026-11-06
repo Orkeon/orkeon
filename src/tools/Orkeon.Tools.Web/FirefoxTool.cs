@@ -593,8 +593,8 @@ public sealed partial class FirefoxTool : ToolBase<FirefoxRequest, FirefoxRespon
             page = await CurrentAsync(session, cancellationToken).ConfigureAwait(false);
 
         var root = under is null ? null : page.Node(under);
-        var kinds = !string.IsNullOrWhiteSpace(request.Kind) && s_kinds.TryGetValue(request.Kind.Trim(), out var kind)
-            ? (UniversalNodeKind[])[kind]
+        UniversalNodeKind[] kinds = !string.IsNullOrWhiteSpace(request.Kind) && s_kinds.TryGetValue(request.Kind.Trim(), out var kind)
+            ? [kind]
             : [.. s_kinds.Values];
         var found = await page.Store.QueryAsync(
             new NodeQuery { Kinds = [.. kinds], Take = FirefoxSession.MaxElements + 1 }, cancellationToken).ConfigureAwait(false);
@@ -680,11 +680,9 @@ public sealed partial class FirefoxTool : ToolBase<FirefoxRequest, FirefoxRespon
         var hits = new List<FirefoxHit>();
         var seen = new HashSet<string>(StringComparer.Ordinal);
         var most = Math.Min(request.MaxNodes ?? DefaultHits, MaxHits);
-        foreach (var candidate in found.Results.OrderByDescending(scored => scored.Score))
+        foreach (var candidate in found.Results.Where(scored => scored.Chunk.Metadata.ContainsKey(ElementKey)).OrderByDescending(scored => scored.Score))
         {
-            if (!candidate.Chunk.Metadata.TryGetValue(ElementKey, out var element))
-                continue;
-
+            var element = candidate.Chunk.Metadata[ElementKey];
             var nodeId = element == PageItself
                 ? page.RootId
                 : int.TryParse(element, NumberStyles.None, CultureInfo.InvariantCulture, out var index) && index < page.Outline.Elements.Count

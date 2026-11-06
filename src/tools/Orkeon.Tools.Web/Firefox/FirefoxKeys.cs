@@ -72,10 +72,8 @@ internal static class FirefoxKeys
     public static IEnumerable<string> Typing(string text)
     {
         ArgumentNullException.ThrowIfNull(text);
-        foreach (var rune in text.EnumerateRunes())
+        foreach (var rune in text.EnumerateRunes().Where(rune => rune.Value != '\r'))
         {
-            if (rune.Value == '\r')
-                continue;
             yield return rune.Value switch
             {
                 '\n' => Enter,

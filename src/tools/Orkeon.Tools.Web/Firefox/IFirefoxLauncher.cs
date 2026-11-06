@@ -5,6 +5,7 @@ namespace Orkeon.Tools.Web.Firefox;
 /// <summary>Starts a browser on a profile and opens the WebDriver BiDi channel to it.</summary>
 internal interface IFirefoxLauncher
 {
+    /// <summary>Starts a browser on <paramref name="profile"/> and opens its WebDriver BiDi channel.</summary>
     /// <exception cref="FirefoxException">Firefox is not installed, did not start, or the profile is missing or held by another Firefox.</exception>
     Task<IFirefoxBrowser> LaunchAsync(FirefoxProfileChoice profile, CancellationToken cancellationToken);
 }

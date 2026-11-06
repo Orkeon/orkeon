@@ -303,7 +303,7 @@ public class PageOutlineMapperTests
         var controls = await store.QueryAsync(new NodeQuery { Kinds = [UniversalNodeKind.Control] }, ct);
         var underOther = await store.QueryAsync(new NodeQuery { RootFqn = At(tree, 2).Id }, ct);
         var buttons = await store.QueryAsync(
-            new NodeQuery { Tags = ImmutableDictionary<string, string>.Empty.Add("role", "button") }, ct);
+            new NodeQuery { Tags = new Dictionary<string, string> { ["role"] = "button" }.ToImmutableDictionary() }, ct);
         var children = await store.GetChildrenAsync(At(tree, 3).Id, ct);
 
         Assert.Equal(tree.Nodes.Select(n => n.Id), all.Select(n => n.Id));

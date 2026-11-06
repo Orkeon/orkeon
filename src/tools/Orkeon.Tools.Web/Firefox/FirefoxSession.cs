@@ -398,7 +398,7 @@ internal sealed partial class FirefoxSession : IAsyncDisposable
         var activity = Interlocked.Read(ref _activity);
         await ReachAsync(FocusScript, sharedId, cancellationToken).ConfigureAwait(false);
         var keys = text.Length == 0 ? [FirefoxKeys.Backspace] : FirefoxKeys.Typing(text);
-        await PressKeysAsync(keys.Select(key => (IReadOnlyList<string>)[key]), cancellationToken).ConfigureAwait(false);
+        await PressKeysAsync(keys.Select<string, IReadOnlyList<string>>(key => [key]), cancellationToken).ConfigureAwait(false);
         await SettleAsync(activity, changedFrom: null, cancellationToken).ConfigureAwait(false);
     }
 

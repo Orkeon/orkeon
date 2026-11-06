@@ -123,9 +123,8 @@ internal sealed class FirefoxProfile
 
         string? sectionName = null, path = null;
         var relative = true;
-        foreach (var raw in ini.Split('\n'))
+        foreach (var line in ini.Split('\n').Select(raw => raw.Trim()))
         {
-            var line = raw.Trim();
             if (line.StartsWith('[') && line.EndsWith(']'))
             {
                 if (Matches(sectionName, path, relative, iniFolder, name) is { } found)
@@ -248,10 +247,8 @@ internal sealed class FirefoxProfile
             Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
             Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
             OperatingSystem.IsWindows(), OperatingSystem.IsMacOS());
-        foreach (var ini in candidates)
+        foreach (var ini in candidates.Where(File.Exists))
         {
-            if (!File.Exists(ini))
-                continue;
             if (FindInProfilesIni(File.ReadAllText(ini), Path.GetDirectoryName(ini)!, name) is { } directory)
                 return directory;
         }

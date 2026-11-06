@@ -5,7 +5,7 @@
 // Element keys: k kind (0 heading, 1 region, 2 link, 3 control), r role, n accessible name, l heading
 // level, c index of the enclosing region (-1 none), t text (a heading: its section; a control: its
 // value, never a password), h link target, a id attribute, v 0 when not rendered visibly.
-(maxElements, maxSectionText, maxPageText) => {
+(maxElements, maxSectionText, maxPageText) => { // codeql[js/useless-expression] the function the browser calls, not a statement
   const SKIPPED = new Set(['SCRIPT', 'STYLE', 'NOSCRIPT', 'TEMPLATE', 'HEAD']);
   const REGION_TAGS = {
     NAV: 'navigation', MAIN: 'main', ASIDE: 'complementary', HEADER: 'banner', FOOTER: 'contentinfo',
