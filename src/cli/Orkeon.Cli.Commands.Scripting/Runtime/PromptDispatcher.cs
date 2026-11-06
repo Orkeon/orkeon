@@ -150,8 +150,8 @@ public static class PromptDispatcher
         var request = new ConsoleChoiceRequest
         {
             Question = message,
-            // No unless the script says Yes: Enter answers what a plain console answers for an empty line.
-            DefaultValue = defaultValue == true ? "yes" : "no",
+            // Yes unless the script says No. Without a default, Esc and a plain console's empty line still answer No.
+            DefaultValue = defaultValue == false ? "no" : "yes",
             Keys = $"Enter to confirm, Esc answers {(defaultValue == true ? "Yes" : "No")}",
             Choices =
             [

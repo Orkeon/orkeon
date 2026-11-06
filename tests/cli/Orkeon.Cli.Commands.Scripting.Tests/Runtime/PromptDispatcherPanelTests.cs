@@ -256,7 +256,7 @@ public sealed class PromptDispatcherPanelTests : IDisposable
     }
 
     [Fact]
-    public async Task A_confirm_without_a_default_opens_on_No()
+    public async Task A_confirm_without_a_default_opens_on_Yes()
     {
         // Arrange
         var console = new FakeChoiceConsole();
@@ -265,7 +265,20 @@ public sealed class PromptDispatcherPanelTests : IDisposable
         await Run(console, "{type:'confirm',message:'Sure?'}");
 
         // Assert
-        Assert.Equal("no", console.Request!.DefaultValue);
+        Assert.Equal("yes", console.Request!.DefaultValue);
+    }
+
+    [Fact]
+    public async Task A_confirm_without_a_default_left_with_Esc_answers_No()
+    {
+        // Arrange
+        var console = new FakeChoiceConsole { Answer = null };
+
+        // Act
+        var result = await Run(console, "{type:'confirm',message:'Sure?'}");
+
+        // Assert
+        Assert.False(result.AsBoolean());
     }
 
     [Theory]

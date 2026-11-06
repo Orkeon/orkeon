@@ -23,8 +23,8 @@ internal static class ApprovalPanelRequest
             Description = approval.Reason,
             Detail = approval.Arguments,
             Question = waiting > 1 ? $"Allow this call? ({waiting} waiting)" : "Allow this call?",
-            // No answers a line finished by habit: allowing takes a move of the operator's.
-            DefaultValue = "n",
+            // Enter straight allows this call only; allowing for the session and denying each take a move or Esc.
+            DefaultValue = "y",
             Choices =
             [
                 new ConsoleChoice("y", "Yes") { Shortcut = "y" },

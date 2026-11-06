@@ -221,8 +221,7 @@ const pwd    = await ctx.prompt({ type: "password", message: "Password:" });
 Sur une console à panneaux, `ctx.interactive` vaut true, et `select` et `confirm` ouvrent un panneau de
 sélection à la place des lignes de saisie : les flèches ou un chiffre déplacent la sélection, Entrée répond,
 et le brouillon, l'historique et la liste des tâches attendent derrière. Esc répond `null` à un `select` et
-la valeur par défaut à un `confirm`, qui s'ouvre sur Non sauf si sa valeur par défaut est true : Entrée répond
-alors ce que répond une ligne vide sur la console simple. Ailleurs (la console simple, un rejeu), ils restent des lignes numérotées, et un script lit donc la même réponse partout. Une
+la valeur par défaut à un `confirm`, qui s'ouvre sur Oui sauf si sa valeur par défaut est false. Sans valeur par défaut, Entrée répond Oui, tandis qu'Esc et une ligne vide sur la console simple répondent Non. Ailleurs (la console simple, un rejeu), ils restent des lignes numérotées, et un script lit donc la même réponse partout. Une
 commande qui prend sa valeur en argument vérifie `ctx.interactive` avant d'ouvrir un panneau sans argument.
 
 Un choix est une chaîne, à la fois sa valeur et son libellé, ou un objet. Un `select` prend aussi ce que le
@@ -671,7 +670,7 @@ est soumis à l'opérateur, dont la ligne suivante y répond. Venu d'un crew lan
 la boucle de lecture lui remet cette ligne (`IReplLineInterceptor`) avant de résoudre une commande ;
 venu d'un crew lancé par `runCrew`, qui tient la boucle, l'appel en attente lit lui-même la réponse,
 et le temps mis à répondre ne compte pas dans `RunCrewTimeout`. Dans la console à volets, la question
-ouvre un panneau sur Non : ses options répondent à cette question par son identifiant (`y`, `s` ou `n`) et
+ouvre un panneau sur Oui, et Entrée seul autorise donc cet appel une fois : ses options répondent à cette question par son identifiant (`y`, `s` ou `n`) et
 n'arrivent jamais à une lecture comme une ligne, Esc refuse, et `/`, ou une lettre qu'aucune option ne porte,
 rend la question à la saisie avec les lettres déjà tapées, pour qu'une commande passe d'abord, la ligne de
 statut la posant alors. Une commande

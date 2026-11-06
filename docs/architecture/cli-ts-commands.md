@@ -218,7 +218,7 @@ const pwd    = await ctx.prompt({ type: "password", message: "Password:" });
 On a console with panels, `ctx.interactive` is true and `select` and `confirm` open a selection panel in
 place of the prompt rows: arrows or a digit move the selection, Enter answers, and the draft, the history
 and the tasks list wait behind it. Esc answers `null` to a `select` and the default to a `confirm`, which opens on
-No unless its default is true: Enter then answers what an empty line answers on the plain console. Elsewhere
+Yes unless its default is false. Without a default, Enter answers Yes while Esc, and an empty line on the plain console, answer No. Elsewhere
 (the plain console, a replay) they stay numbered lines, so
 a script reads the same answer everywhere. A command that takes its value as an argument checks
 `ctx.interactive` before opening a panel without one.
@@ -647,7 +647,7 @@ the `Llm:Model` setting.
 answers it. From a crew launched with `runCrewAsync`, the read loop hands that line over
 (`IReplLineInterceptor`) before resolving any command; from a crew launched with `runCrew`, which
 holds the loop, the waiting call reads the answer itself, and the time taken to answer does not
-count in `RunCrewTimeout`. In the split-pane console the question opens a panel on No: its options
+count in `RunCrewTimeout`. In the split-pane console the question opens a panel on Yes, so Enter straight allows that call once: its options
 answer that question by its id (`y`, `s` or `n`) and never reach a read as a line, Esc denies, and `/`, or a
 letter no option carries, hands the question to the prompt with the letters typed so far, so a command
 can run first, the status line then asking it. A command passes the session's mode to `act` as

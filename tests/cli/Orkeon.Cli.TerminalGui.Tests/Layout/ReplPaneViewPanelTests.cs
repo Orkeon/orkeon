@@ -167,7 +167,7 @@ public sealed class ReplPaneViewPanelTests
         pane.RaiseApprovalsChanged();
 
         // Assert
-        Assert.Equal("n", pane.OpenPanelModel!.Answer.Value);
+        Assert.Equal("y", pane.OpenPanelModel!.Answer.Value);
     }
 
     [Fact]
@@ -184,7 +184,7 @@ public sealed class ReplPaneViewPanelTests
         pane.RaiseApprovalsChanged();
 
         // Assert
-        Assert.Equal("n", pane.OpenPanelModel!.Answer.Value);
+        Assert.Equal("y", pane.OpenPanelModel!.Answer.Value);
     }
 
     [Fact]
@@ -239,7 +239,7 @@ public sealed class ReplPaneViewPanelTests
     }
 
     [Fact]
-    public void Enter_straight_on_a_question_denies_it()
+    public void Enter_straight_on_a_question_allows_it_once()
     {
         // Arrange
         using var approvals = new ApprovalPaneFixture();
@@ -251,7 +251,7 @@ public sealed class ReplPaneViewPanelTests
         pane.RaiseKeyDown(Key.Enter);
 
         // Assert
-        Assert.Equal([(7L, "n")], approvals.Answers);
+        Assert.Equal([(7L, "y")], approvals.Answers);
     }
 
     [Fact]
