@@ -123,6 +123,12 @@ internal sealed class FakeFirefoxBrowser : IFirefoxBrowser
     /// <summary>When set, a click that leads elsewhere announces its navigation and does not end it.</summary>
     public bool HoldLoad { get; set; }
 
+    /// <summary>
+    /// When set, a history traversal loads its page again, with a load event. By default the page is
+    /// restored from the history cache, as Firefox does: its navigation is announced and never ended.
+    /// </summary>
+    public bool TraversalLoads { get; set; }
+
     /// <summary>What a script evaluates to; an exception answer when it returns null.</summary>
     public Func<string, JsonObject?> Script { get; set; } = _ => new JsonObject { ["type"] = "undefined" };
 
@@ -170,6 +176,10 @@ internal sealed class FakeFirefoxBrowser : IFirefoxBrowser
         if (_history.Count < 2)
             throw new FakeBiDiError("no such history entry", "History entry with delta -1 not found");
         _history.RemoveAt(_history.Count - 1);
+        var navigation = $"n{++_navigations}";
+        Emit("browsingContext.navigationStarted", new JsonObject { ["navigation"] = navigation, ["url"] = Url });
+        if (TraversalLoads)
+            Emit("browsingContext.load", new JsonObject { ["navigation"] = navigation, ["url"] = Url });
         return [];
     }
 

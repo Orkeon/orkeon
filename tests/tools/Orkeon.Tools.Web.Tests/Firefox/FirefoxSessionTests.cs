@@ -364,10 +364,14 @@ public class FirefoxSessionTests : FirefoxSessionTestBase
         await Assert.ThrowsAsync<FirefoxException>(() => session.ScreenshotAsync(Ct));
     }
 
-    [Fact]
-    public async Task Should_GoBackToThePageBefore()
+    // Firefox restores the page from its history cache: the navigation is announced, and no load ends it.
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Should_GoBackToThePageBefore(bool loadedAgain)
     {
-        await using var session = await OpenAsync();
+        await using var session = await OpenAsync(new FirefoxToolOptions { CommandTimeoutSeconds = 600 });
+        Browser.TraversalLoads = loadedAgain;
         await session.NavigateAsync(Home, Ct);
         await session.NavigateAsync(Docs, Ct);
         await session.SnapshotAsync(Ct);
@@ -377,6 +381,21 @@ public class FirefoxSessionTests : FirefoxSessionTestBase
         Assert.Equal(-1, Wire.ParamsOf("browsingContext.traverseHistory")[0]["delta"]!.GetValue<int>());
         Assert.Equal(Home, (await session.ReadStateAsync(Ct)).Url);
         Assert.Null(session.Page);
+        Assert.False(session.NavigationPending);
+    }
+
+    [Fact]
+    public async Task Should_GiveUpOnANavigationThatNeverEnds_AndNotHoldTheNextAction()
+    {
+        await using var session = await OpenAsync(new FirefoxToolOptions { CommandTimeoutSeconds = 1 });
+        await session.NavigateAsync(Home, Ct);
+        var link = (await session.SnapshotAsync(Ct)).SharedId("p1#1");
+        Browser.ClickLeadsTo[link] = Docs;
+        Browser.HoldLoad = true;
+
+        await session.ClickAsync(link, Ct);
+
+        Assert.False(session.NavigationPending);
     }
 
     [Fact]

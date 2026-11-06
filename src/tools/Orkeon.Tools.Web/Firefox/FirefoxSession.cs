@@ -90,6 +90,9 @@ internal sealed partial class FirefoxSession : IAsyncDisposable
     private readonly Lock _navigation = new();
     private string _context = string.Empty;
     private string? _pendingNavigation;
+    private string? _pendingTarget;
+    private string? _pendingOrigin;
+    private volatile string? _lastUrl;
     private long _activity;
     private int _generation;
     private int _disposed;
@@ -183,6 +186,16 @@ internal sealed partial class FirefoxSession : IAsyncDisposable
             ["delta"] = -1,
         }, cancellationToken).ConfigureAwait(false);
         await SettleAsync(activity, before.Url, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary><c>true</c> while a navigation the browser announced has not ended.</summary>
+    public bool NavigationPending
+    {
+        get
+        {
+            lock (_navigation)
+                return _pendingNavigation is not null;
+        }
     }
 
     /// <summary>The address and the title of the page shown now.</summary>
@@ -491,13 +504,14 @@ internal sealed partial class FirefoxSession : IAsyncDisposable
         {
             var elapsed = Stopwatch.GetElapsedTime(started);
             if (elapsed >= _commandTimeout)
+            {
+                // Given up on: a navigation that never ends must not hold the next actions as well.
+                lock (_navigation)
+                    _pendingNavigation = null;
                 return null;
+            }
 
-            bool pending;
-            lock (_navigation)
-                pending = _pendingNavigation is not null;
-
-            if (!pending && await TryReadStateAsync(cancellationToken).ConfigureAwait(false) is { Loaded: true } state)
+            if (await TryReadStateAsync(cancellationToken).ConfigureAwait(false) is { Loaded: true } state && !StillNavigating(state))
             {
                 var moved = Interlocked.Read(ref _activity) != activityBefore;
                 if (moved || elapsed >= quiet
@@ -508,6 +522,28 @@ internal sealed partial class FirefoxSession : IAsyncDisposable
             }
 
             await Task.Delay(_timings.PollInterval, cancellationToken).ConfigureAwait(false);
+        }
+    }
+
+    /// <summary>
+    /// Whether the navigation announced is still under way, <paramref name="shown"/> being the loaded
+    /// page. A page restored from the history cache (<c>back</c> to a page left a moment ago) is
+    /// announced and never reported loaded: its navigation has ended once the page shown is the one
+    /// announced, when that is another address than the one left.
+    /// </summary>
+    private bool StillNavigating(PageState shown)
+    {
+        lock (_navigation)
+        {
+            if (_pendingNavigation is not null
+                && _pendingTarget is { Length: > 0 } target
+                && !string.Equals(target, _pendingOrigin, StringComparison.Ordinal)
+                && string.Equals(shown.Url, target, StringComparison.Ordinal))
+            {
+                _pendingNavigation = null;
+            }
+
+            return _pendingNavigation is not null;
         }
     }
 
@@ -535,9 +571,11 @@ internal sealed partial class FirefoxSession : IAsyncDisposable
 
         try
         {
-            return JsonSerializer.Deserialize<string[]>(json) is [var url, var title, var ready]
-                ? new PageState(url, title, string.Equals(ready, "complete", StringComparison.Ordinal))
-                : null;
+            if (JsonSerializer.Deserialize<string[]>(json) is not [var url, var title, var ready])
+                return null;
+
+            _lastUrl = url;
+            return new PageState(url, title, string.Equals(ready, "complete", StringComparison.Ordinal));
         }
         catch (JsonException)
         {
@@ -582,7 +620,12 @@ internal sealed partial class FirefoxSession : IAsyncDisposable
         {
             case "browsingContext.navigationStarted":
                 lock (_navigation)
+                {
                     _pendingNavigation = navigation ?? string.Empty;
+                    _pendingTarget = parameters["url"] is JsonValue target && target.TryGetValue<string>(out var url) ? url : null;
+                    _pendingOrigin = _lastUrl;
+                }
+
                 Interlocked.Increment(ref _activity);
                 break;
 

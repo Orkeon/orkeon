@@ -142,7 +142,7 @@ internal sealed partial class FirefoxProcessLauncher : IFirefoxLauncher
     }
 
     [SuppressVfsCompliance("OUT-OF-SCOPE: probes the host for the Firefox program, as the docker sandbox probes for docker; not a VFS path.")]
-    private string? LocateOnHost()
+    internal string? LocateOnHost()
     {
         // OUT-OF-SCOPE: binary discovery on the host, not a VFS mount.
         string[] known = OperatingSystem.IsWindows()
