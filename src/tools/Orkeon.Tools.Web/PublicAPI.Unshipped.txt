@@ -89,7 +89,6 @@ Orkeon.Tools.Web.FirefoxResponse.Url.init -> void
 Orkeon.Tools.Web.FirefoxResponse.Value.get -> string?
 Orkeon.Tools.Web.FirefoxResponse.Value.init -> void
 Orkeon.Tools.Web.FirefoxTool
-Orkeon.Tools.Web.FirefoxTool.FirefoxTool(Orkeon.Tools.Web.FirefoxToolOptions! options, Orkeon.Domain.FileSystem.IFileSystemService! fileSystem, Orkeon.Domain.Tools.Security.IUrlValidator? urlValidator = null, Microsoft.Extensions.Logging.ILogger? logger = null) -> void
 override Orkeon.Tools.Web.FirefoxNode.Equals(object? obj) -> bool
 override Orkeon.Tools.Web.FirefoxNode.GetHashCode() -> int
 override Orkeon.Tools.Web.FirefoxNode.ToString() -> string!
@@ -107,3 +106,25 @@ static Orkeon.Tools.Web.FirefoxRequest.operator !=(Orkeon.Tools.Web.FirefoxReque
 static Orkeon.Tools.Web.FirefoxRequest.operator ==(Orkeon.Tools.Web.FirefoxRequest? left, Orkeon.Tools.Web.FirefoxRequest? right) -> bool
 static Orkeon.Tools.Web.FirefoxResponse.operator !=(Orkeon.Tools.Web.FirefoxResponse? left, Orkeon.Tools.Web.FirefoxResponse? right) -> bool
 static Orkeon.Tools.Web.FirefoxResponse.operator ==(Orkeon.Tools.Web.FirefoxResponse? left, Orkeon.Tools.Web.FirefoxResponse? right) -> bool
+Orkeon.Tools.Web.FirefoxHit
+Orkeon.Tools.Web.FirefoxHit.<Clone>$() -> Orkeon.Tools.Web.FirefoxHit!
+Orkeon.Tools.Web.FirefoxHit.Equals(Orkeon.Tools.Web.FirefoxHit? other) -> bool
+Orkeon.Tools.Web.FirefoxHit.Excerpt.get -> string!
+Orkeon.Tools.Web.FirefoxHit.Excerpt.init -> void
+Orkeon.Tools.Web.FirefoxHit.FirefoxHit() -> void
+Orkeon.Tools.Web.FirefoxHit.Name.get -> string!
+Orkeon.Tools.Web.FirefoxHit.Name.init -> void
+Orkeon.Tools.Web.FirefoxHit.NodeId.get -> string!
+Orkeon.Tools.Web.FirefoxHit.NodeId.init -> void
+Orkeon.Tools.Web.FirefoxHit.Score.get -> double
+Orkeon.Tools.Web.FirefoxHit.Score.init -> void
+Orkeon.Tools.Web.FirefoxRequest.Query.get -> string?
+Orkeon.Tools.Web.FirefoxRequest.Query.init -> void
+Orkeon.Tools.Web.FirefoxResponse.Hits.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Tools.Web.FirefoxHit!>!
+Orkeon.Tools.Web.FirefoxResponse.Hits.init -> void
+Orkeon.Tools.Web.FirefoxTool.FirefoxTool(Orkeon.Tools.Web.FirefoxToolOptions! options, Orkeon.Domain.FileSystem.IFileSystemService! fileSystem, Orkeon.Domain.Tools.Security.IUrlValidator? urlValidator = null, Orkeon.Rag.Abstractions.Interfaces.IEphemeralCollectionSearch? search = null, Microsoft.Extensions.Logging.ILogger? logger = null) -> void
+override Orkeon.Tools.Web.FirefoxHit.Equals(object? obj) -> bool
+override Orkeon.Tools.Web.FirefoxHit.GetHashCode() -> int
+override Orkeon.Tools.Web.FirefoxHit.ToString() -> string!
+static Orkeon.Tools.Web.FirefoxHit.operator !=(Orkeon.Tools.Web.FirefoxHit? left, Orkeon.Tools.Web.FirefoxHit? right) -> bool
+static Orkeon.Tools.Web.FirefoxHit.operator ==(Orkeon.Tools.Web.FirefoxHit? left, Orkeon.Tools.Web.FirefoxHit? right) -> bool

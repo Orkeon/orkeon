@@ -20,7 +20,10 @@ public class FirefoxToolTests : FirefoxSessionTestBase
 
     private FakeFirefoxBrowser Browser => Launcher.Last;
 
-    private FirefoxTool Tool() => new(Launcher, _options, _files, _policy, logger: null, Timings);
+    private readonly FakeEphemeralCollectionSearch _search = new();
+
+    private FirefoxTool Tool(bool withSearch = true) =>
+        new(Launcher, _options, _files, _policy, withSearch ? _search : null, logger: null, Timings);
 
     private static async Task<ToolCallResponse> CallAsync(FirefoxTool tool, string? action, params (string Name, object? Value)[] arguments)
     {
@@ -73,7 +76,7 @@ public class FirefoxToolTests : FirefoxSessionTestBase
 
         // The schema of the tool lists its actions: the framework refuses another one before the tool runs.
         Assert.Equal(
-            "Parameter 'action' must be one of: navigate, back, snapshot, read, find, click, type, press, evaluate, screenshot, close",
+            "Parameter 'action' must be one of: navigate, back, snapshot, read, find, search, click, type, press, evaluate, screenshot, close",
             result.Error);
     }
 
@@ -89,6 +92,7 @@ public class FirefoxToolTests : FirefoxSessionTestBase
     [InlineData("press", "key", "Bogus", "'Bogus' is not a key. Enter, Tab")]
     [InlineData("evaluate", null, null, "script is required for action 'evaluate'")]
     [InlineData("screenshot", null, null, "save_to_path is required for action 'screenshot'")]
+    [InlineData("search", null, null, "query is required for action 'search'")]
     [InlineData("find", "kind", "image", "Parameter 'kind' must be one of: section, link, control")]
     [InlineData("snapshot", "max_nodes", 0, "max_nodes must be greater than 0")]
     [InlineData("snapshot", "offset", -1, "offset must not be negative")]
@@ -386,6 +390,115 @@ public class FirefoxToolTests : FirefoxSessionTestBase
         Assert.Equal(["p1#3", "p1#4"], Ids(section));
         Assert.Equal("Welcome to the example.", page["text"]!.GetValue<string>());
         Assert.Equal(["p1#0", "p1#2"], Ids(page));
+    }
+
+    private static string[] Hits(JsonObject body) =>
+        [.. body["hits"]!.AsArray().Select(hit => $"{hit!["node_id"]} {hit["score"]} {hit["name"]}: {hit["excerpt"]}")];
+
+    /// <summary>What names and fills each source of a search: its location, then its options in order.</summary>
+    private static string[] Identity(Orkeon.Rag.Abstractions.Models.EphemeralSearchRequest request) =>
+        [.. request.Sources.Select(source =>
+            $"{source.Location}|{string.Join('|', source.Options.OrderBy(o => o.Key, StringComparer.Ordinal).Select(o => $"{o.Key}={o.Value}"))}")];
+
+    [Fact]
+    public async Task Should_FindTheSectionsClosestInMeaningToAQuery()
+    {
+        _search.Scores["Install"] = 0.9128;
+        _search.Scores["Welcome"] = 0.4;
+        await using var run = AgentRunScope.Begin("agent-1");
+        using var tool = Tool();
+        await CallAsync(tool, "navigate", ("url", Home));
+
+        var body = Body(await CallAsync(tool, "search", ("query", " how do I set it up? ")));
+
+        Assert.Equal(
+            [
+                "p1#2 0.913 Guide: Guide\nInstall it.",
+                "p1#page 0.4 Example: Example\nWelcome to the example.",
+            ],
+            Hits(body));
+        var request = Assert.Single(_search.Requests);
+        Assert.Equal("how do I set it up?", request.Query);
+        Assert.Equal("firefox", request.CollectionPrefix);
+        Assert.Equal([$"{Home}#page", $"{Home}#2"], request.Sources.Select(source => source.Location));
+        Assert.Equal(1, OutlineReads());
+    }
+
+    [Fact]
+    public async Task Should_NameASourceByItsPlaceInThePage_SoThatAPageReadAgainIsNotEmbeddedAgain()
+    {
+        _search.Scores["Install"] = 0.9;
+        await using var run = AgentRunScope.Begin("agent-1");
+        using var tool = Tool();
+        await CallAsync(tool, "navigate", ("url", Home));
+        await CallAsync(tool, "search", ("query", "install"));
+        await CallAsync(tool, "snapshot");
+
+        var body = Body(await CallAsync(tool, "search", ("query", "install")));
+
+        Assert.Equal(["p2#2 0.9 Guide: Guide\nInstall it."], Hits(body));
+        Assert.Equal(Identity(_search.Requests[0]), Identity(_search.Requests[1]));
+        Assert.Equal([$"{Home}#page|content=Example\nWelcome to the example.|meta.element=page", $"{Home}#2|content=Guide\nInstall it.|meta.element=2"], Identity(_search.Requests[1]));
+    }
+
+    [Fact]
+    public async Task Should_KeepTheBestPassageOfASection_AndNoMoreHitsThanAsked()
+    {
+        _search.Scores["Install"] = 0.5;
+        _search.Scores["Guide"] = 0.8;
+        _search.Scores["Welcome"] = 0.7;
+        await using var run = AgentRunScope.Begin("agent-1");
+        using var tool = Tool();
+        await CallAsync(tool, "navigate", ("url", Home));
+
+        var all = Body(await CallAsync(tool, "search", ("query", "guide")));
+        var one = Body(await CallAsync(tool, "search", ("query", "guide"), ("max_nodes", 1)));
+
+        Assert.Equal(["p1#2 0.8 Guide: Guide\nInstall it.", "p1#page 0.7 Example: Example\nWelcome to the example."], Hits(all));
+        Assert.Equal(["p1#2 0.8 Guide: Guide\nInstall it."], Hits(one));
+    }
+
+    [Fact]
+    public async Task Should_SearchNothing_When_ThePageHoldsNoText()
+    {
+        await using var run = AgentRunScope.Begin("agent-1");
+        using var tool = Tool();
+
+        var body = Body(await CallAsync(tool, "search", ("query", "anything")));
+
+        Assert.Empty(Hits(body));
+        Assert.Empty(_search.Requests);
+    }
+
+    [Fact]
+    public async Task Should_SayHowToGoOn_When_TheHostHasNoSemanticSearch()
+    {
+        await using var run = AgentRunScope.Begin("agent-1");
+        using var tool = Tool(withSearch: false);
+        await CallAsync(tool, "navigate", ("url", Home));
+
+        var result = await CallAsync(tool, "search", ("query", "install"));
+        var body = Body(await CallAsync(tool, "find", ("name", "guide")));
+
+        Assert.False(result.Success);
+        Assert.Equal("search needs the RAG subsystem, which this host does not provide: use find and read instead.", result.Error);
+        Assert.Equal(["p1#2"], Ids(body));
+        Assert.False(Assert.Single(Launcher.Browsers).Disposed);
+    }
+
+    [Fact]
+    public async Task Should_KeepTheBrowser_When_TheSearchFails()
+    {
+        _search.Failure = new InvalidOperationException("Ephemeral RAG search is not configured.");
+        await using var run = AgentRunScope.Begin("agent-1");
+        using var tool = Tool();
+        await CallAsync(tool, "navigate", ("url", Home));
+
+        var result = await CallAsync(tool, "search", ("query", "install"));
+
+        Assert.False(result.Success);
+        Assert.Equal("The page could not be searched (Ephemeral RAG search is not configured.): use find and read instead.", result.Error);
+        Assert.False(Assert.Single(Launcher.Browsers).Disposed);
     }
 
     [Fact]

@@ -1,4 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
+using System.Collections.Immutable;
 using System.Globalization;
 using System.Text.Json.Serialization;
 using Microsoft.Extensions.Logging;
@@ -10,6 +11,9 @@ using Orkeon.Domain.Attributes;
 using Orkeon.Domain.FileSystem;
 using Orkeon.Domain.Tools;
 using Orkeon.Domain.Tools.Security;
+using Orkeon.Rag.Abstractions.Interfaces;
+using Orkeon.Rag.Abstractions.Models;
+using Orkeon.Rag.Loaders;
 using Orkeon.Tools.Abstractions.Base;
 using Orkeon.Tools.Abstractions.Security;
 using Orkeon.Tools.Web.Firefox;
@@ -22,10 +26,11 @@ public sealed record FirefoxRequest
     /// <summary>Gets the action to perform.</summary>
     [FieldSchema(
         Description = "What to do: navigate (url), back, snapshot (the outline of the page: sections, links, controls, each with a node id), " +
-            "read (the text of the page, or of node_id), find (nodes by kind and name, under node_id), click (node_id), type (node_id, text), " +
+            "read (the text of the page, or of node_id), find (nodes by kind and name, under node_id), search (query: the sections of the page closest in meaning), " +
+            "click (node_id), type (node_id, text), " +
             "press (key), evaluate (script), screenshot (save_to_path), close",
         IsRequired = true,
-        Enum = ["navigate", "back", "snapshot", "read", "find", "click", "type", "press", "evaluate", "screenshot", "close"])]
+        Enum = ["navigate", "back", "snapshot", "read", "find", "search", "click", "type", "press", "evaluate", "screenshot", "close"])]
     public string Action { get; init; } = "";
 
     /// <summary>Gets the address <c>navigate</c> opens.</summary>
@@ -53,6 +58,10 @@ public sealed record FirefoxRequest
     [FieldSchema(Description = "find: only nodes whose name holds this text, whatever the case", IsRequired = false)]
     public string? Name { get; init; }
 
+    /// <summary>Gets what <c>search</c> looks for.</summary>
+    [FieldSchema(Description = "search: what to look for in the page, in plain words; the sections closest in meaning are returned", IsRequired = false)]
+    public string? Query { get; init; }
+
     /// <summary>Gets the script <c>evaluate</c> runs.</summary>
     [FieldSchema(Description = "evaluate: a JavaScript expression run in the page; its value is returned, a promise is awaited", IsRequired = false)]
     public string? Script { get; init; }
@@ -62,7 +71,7 @@ public sealed record FirefoxRequest
     public string? SaveToPath { get; init; }
 
     /// <summary>Gets the most nodes a listing returns.</summary>
-    [FieldSchema(Description = "snapshot, find: the most nodes to return (the default is set by the host, 200 at most)", IsRequired = false)]
+    [FieldSchema(Description = "snapshot, find: the most nodes to return (the default is set by the host, 200 at most); search: the most hits (5 by default, 20 at most)", IsRequired = false)]
     public int? MaxNodes { get; init; }
 
     /// <summary>Gets what a listing or a reading skips.</summary>
@@ -111,6 +120,10 @@ public sealed record FirefoxResponse : IBoundedToolResponse
     [ReturnSchema(Description = "read: the text of the page or of the node")]
     public string? Text { get; init; }
 
+    /// <summary>Gets the sections of the page closest in meaning to the query.</summary>
+    [ReturnSchema(Description = "search: the sections closest in meaning to the query, best first: node_id (read it, or find under it), score, name, excerpt")]
+    public IReadOnlyList<FirefoxHit> Hits { get; init; } = [];
+
     /// <summary>Gets the virtual path the screenshot was written to.</summary>
     [ReturnSchema(Description = "screenshot: the virtual path of the image written")]
     public string? SavedPath { get; init; }
@@ -150,6 +163,22 @@ public sealed record FirefoxNode
     public string Text { get; init; } = "";
 }
 
+/// <summary>One section of a page a semantic search found.</summary>
+public sealed record FirefoxHit
+{
+    /// <summary>Gets the id of the node of the section: <c>read</c> it, or <c>find</c> under it.</summary>
+    public string NodeId { get; init; } = "";
+
+    /// <summary>Gets how close the section is to the query, from 0 to 1.</summary>
+    public double Score { get; init; }
+
+    /// <summary>Gets the heading of the section; the title of the page for the text before its first heading.</summary>
+    public string Name { get; init; } = "";
+
+    /// <summary>Gets the passage of the section that matched.</summary>
+    public string Excerpt { get; init; } = "";
+}
+
 /// <summary>
 /// Drives a Firefox of its own: opens pages, reads them as a semantic graph whose node ids are the
 /// handles to click and type, runs scripts and captures the screen. One browser per agent run, started
@@ -158,7 +187,7 @@ public sealed record FirefoxNode
 [ToolContract("firefox",
     Name = "firefox",
     Description = "Drive a Firefox browser: open a page (navigate), read it as an outline of sections, links and controls (snapshot, find, read), " +
-        "then act on a node by its id (click, type), press keys, run a script (evaluate) or save a screenshot. " +
+        "find its sections by meaning (search), then act on a node by its id (click, type), press keys, run a script (evaluate) or save a screenshot. " +
         "The browser stays open between calls of the same run; close ends it.",
     Category = "Web Operations")]
 public sealed partial class FirefoxTool : ToolBase<FirefoxRequest, FirefoxResponse>
@@ -168,6 +197,7 @@ public sealed partial class FirefoxTool : ToolBase<FirefoxRequest, FirefoxRespon
     internal const string Snapshot = "snapshot";
     internal const string Read = "read";
     internal const string Find = "find";
+    internal const string Search = "search";
     internal const string Click = "click";
     internal const string TypeText = "type";
     internal const string Press = "press";
@@ -181,15 +211,25 @@ public sealed partial class FirefoxTool : ToolBase<FirefoxRequest, FirefoxRespon
     private const string Blank = "about:blank";
     private const int MaxNameLength = 100;
     private const int MaxNodeTextLength = 120;
+    private const int MaxExcerptLength = 300;
+    private const int DefaultHits = 5;
+    private const int MaxHits = 20;
+
+    /// <summary>Chunks asked of the search: more than the hits wanted, since one section may hold several.</summary>
+    private const int Candidates = 40;
+
+    /// <summary>Metadata of a searched source: the position of its element in the page, <c>page</c> for the page itself.</summary>
+    private const string ElementKey = "element";
+    private const string PageItself = "page";
 
     private static readonly string[] s_actions =
-        [Navigate, Back, Snapshot, Read, Find, Click, TypeText, Press, Evaluate, Screenshot, Close];
+        [Navigate, Back, Snapshot, Read, Find, Search, Click, TypeText, Press, Evaluate, Screenshot, Close];
 
     // The actions that only look at the web. Every other one, a missing or unknown one included, acts
     // on a page - or, for screenshot, writes a file.
     private static readonly HashSet<string> s_readActions = new(StringComparer.OrdinalIgnoreCase)
     {
-        Navigate, Back, Snapshot, Read, Find,
+        Navigate, Back, Snapshot, Read, Find, Search,
     };
 
     private static readonly Dictionary<string, UniversalNodeKind> s_kinds = new(StringComparer.OrdinalIgnoreCase)
@@ -203,21 +243,25 @@ public sealed partial class FirefoxTool : ToolBase<FirefoxRequest, FirefoxRespon
     private readonly FirefoxToolOptions _options;
     private readonly IFileSystemService _fileSystem;
     private readonly IUrlValidator? _urlValidator;
+    private readonly IEphemeralCollectionSearch? _search;
 
     /// <summary>Initializes a new instance of <see cref="FirefoxTool"/> that starts the Firefox installed on the host.</summary>
     /// <param name="options">Where Firefox is, whether it shows a window, and the limits of an answer.</param>
     /// <param name="fileSystem">The virtual file system screenshots are written through.</param>
     /// <param name="urlValidator">The policy of the addresses the browser may open; the fail-closed default guard when <see langword="null"/>.</param>
+    /// <param name="search">The semantic search of the RAG subsystem; without it every action works but <c>search</c>.</param>
     /// <param name="logger">Optional logger instance.</param>
     public FirefoxTool(
-        FirefoxToolOptions options, IFileSystemService fileSystem, IUrlValidator? urlValidator = null, ILogger? logger = null)
-        : this(new FirefoxProcessLauncher(options, logger), options, fileSystem, urlValidator, logger)
+        FirefoxToolOptions options, IFileSystemService fileSystem, IUrlValidator? urlValidator = null,
+        IEphemeralCollectionSearch? search = null, ILogger? logger = null)
+        : this(new FirefoxProcessLauncher(options, logger), options, fileSystem, urlValidator, search, logger)
     {
     }
 
     internal FirefoxTool(
         IFirefoxLauncher launcher, FirefoxToolOptions options, IFileSystemService fileSystem,
-        IUrlValidator? urlValidator = null, ILogger? logger = null, FirefoxSessionTimings? timings = null)
+        IUrlValidator? urlValidator = null, IEphemeralCollectionSearch? search = null,
+        ILogger? logger = null, FirefoxSessionTimings? timings = null)
         : base(logger)
     {
         ArgumentNullException.ThrowIfNull(options);
@@ -225,6 +269,7 @@ public sealed partial class FirefoxTool : ToolBase<FirefoxRequest, FirefoxRespon
         _options = options;
         _fileSystem = fileSystem;
         _urlValidator = urlValidator;
+        _search = search;
         _sessions = new FirefoxSessionManager(launcher, options, fileSystem, logger, timings);
     }
 
@@ -235,8 +280,8 @@ public sealed partial class FirefoxTool : ToolBase<FirefoxRequest, FirefoxRespon
     public override ToolAccess Access => ToolAccess.Execute;
 
     /// <summary>
-    /// <see cref="ToolAccess.Read"/> for <c>navigate</c>, <c>back</c>, <c>snapshot</c>, <c>read</c> and
-    /// <c>find</c>; <see cref="ToolAccess.Edit"/> for <c>screenshot</c>, which writes a file;
+    /// <see cref="ToolAccess.Read"/> for <c>navigate</c>, <c>back</c>, <c>snapshot</c>, <c>read</c>,
+    /// <c>find</c> and <c>search</c>; <see cref="ToolAccess.Edit"/> for <c>screenshot</c>, which writes a file;
     /// <see cref="ToolAccess.Execute"/> for <c>click</c>, <c>type</c>, <c>press</c>, <c>evaluate</c>,
     /// <c>close</c> and any unknown or missing action (fail-closed).
     /// </summary>
@@ -280,6 +325,7 @@ public sealed partial class FirefoxTool : ToolBase<FirefoxRequest, FirefoxRespon
                 ? "key is required for action 'press'"
                 : FirefoxKeys.TryParse(request.Key, out _) ? null : $"'{request.Key}' is not a key. {FirefoxKeys.Names}",
             Evaluate => Missing(request.Script, "script", action),
+            Search => Missing(request.Query, "query", action),
             Screenshot => Missing(request.SaveToPath, "save_to_path", action),
             Find => string.IsNullOrWhiteSpace(request.Kind) || s_kinds.ContainsKey(request.Kind.Trim())
                 ? null
@@ -382,6 +428,7 @@ public sealed partial class FirefoxTool : ToolBase<FirefoxRequest, FirefoxRespon
             Snapshot => await ListAsync(session, request, fresh: true, cancellationToken).ConfigureAwait(false),
             Find => await ListAsync(session, request, fresh: false, cancellationToken).ConfigureAwait(false),
             Read => await ReadAsync(session, request, cancellationToken).ConfigureAwait(false),
+            Search => await SearchAsync(session, request, cancellationToken).ConfigureAwait(false),
             Screenshot => await CaptureAsync(session, request.SaveToPath!.Trim(), cancellationToken).ConfigureAwait(false),
             Navigate or Back => await ListAsync(session, new FirefoxRequest(), fresh: true, cancellationToken).ConfigureAwait(false),
             // An action in the page that opened another one: its outline comes with the answer, since
@@ -514,6 +561,104 @@ public sealed partial class FirefoxTool : ToolBase<FirefoxRequest, FirefoxRespon
             Truncated = moreText || shown.Count > most,
         };
     }
+
+    /// <summary>
+    /// The sections of the page closest in meaning to the query. Each section with text is one source
+    /// of an ephemeral RAG collection, named by the position of its element: a hit gives back the node
+    /// of the graph to read or to look under.
+    /// </summary>
+    private async Task<FirefoxResponse> SearchAsync(FirefoxSession session, FirefoxRequest request, CancellationToken cancellationToken)
+    {
+        if (_search is null)
+            throw new FirefoxException("search needs the RAG subsystem, which this host does not provide: use find and read instead.");
+
+        var page = await CurrentAsync(session, cancellationToken).ConfigureAwait(false);
+        var sources = Sources(page);
+        if (sources.IsEmpty)
+            return new FirefoxResponse();
+
+        EphemeralSearchResult found;
+        try
+        {
+            found = await _search.SearchAsync(
+                new EphemeralSearchRequest
+                {
+                    Sources = sources,
+                    Query = request.Query!.Trim(),
+                    TopK = Candidates,
+                    CollectionPrefix = Name,
+                },
+                cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            // No embedding provider, a store that is down: the browser is not at fault and stays open.
+            LogSearchFailed(_logger, ex);
+            throw new FirefoxException($"The page could not be searched ({ex.Message}): use find and read instead.", ex);
+        }
+
+        var hits = new List<FirefoxHit>();
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+        var most = Math.Min(request.MaxNodes ?? DefaultHits, MaxHits);
+        foreach (var candidate in found.Results.OrderByDescending(scored => scored.Score))
+        {
+            if (!candidate.Chunk.Metadata.TryGetValue(ElementKey, out var element))
+                continue;
+
+            var nodeId = element == PageItself
+                ? page.RootId
+                : int.TryParse(element, NumberStyles.None, CultureInfo.InvariantCulture, out var index) && index < page.Outline.Elements.Count
+                    ? PageOutlineMapper.NodeId(page.Outline.Path, index)
+                    : null;
+            if (nodeId is null || !seen.Add(nodeId))
+                continue;
+
+            hits.Add(new FirefoxHit
+            {
+                NodeId = nodeId,
+                Score = Math.Round(candidate.Score, 3),
+                Name = Cut(page.Node(nodeId).Name, MaxNameLength),
+                Excerpt = Cut(candidate.Chunk.Content, MaxExcerptLength),
+            });
+            if (hits.Count == most)
+                break;
+        }
+
+        return new FirefoxResponse { Hits = hits };
+    }
+
+    /// <summary>
+    /// What a search reads: the text before the first heading, then each section that holds text. A
+    /// source is named by the address of the page and the position of its element - not by its node
+    /// id, which changes at every snapshot - so a page read twice is embedded once.
+    /// </summary>
+    private static ImmutableList<SourceDescriptor> Sources(PageSnapshot page)
+    {
+        var sources = ImmutableList.CreateBuilder<SourceDescriptor>();
+        if (!string.IsNullOrWhiteSpace(page.Outline.Text))
+            sources.Add(Source(page, PageItself, $"{page.Title}\n{page.Outline.Text}"));
+
+        for (var index = 0; index < page.Outline.Elements.Count; index++)
+        {
+            var element = page.Outline.Elements[index];
+            if (element.Kind is PageElementKind.Heading or PageElementKind.Region && element.Visible && !string.IsNullOrWhiteSpace(element.Text))
+                sources.Add(Source(page, index.ToString(CultureInfo.InvariantCulture), $"{element.Name}\n{element.Text}"));
+        }
+
+        return sources.ToImmutable();
+    }
+
+    private static SourceDescriptor Source(PageSnapshot page, string element, string content) => new()
+    {
+        Location = $"{page.Url}#{element}",
+        Kind = InlineTextLoader.TextKind,
+        Options = ImmutableDictionary<string, string>.Empty
+            .Add(InlineTextLoader.ContentOptionKey, content)
+            .Add(InlineTextLoader.MetadataOptionPrefix + ElementKey, element),
+    };
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "firefox: the search of the page failed")]
+    private static partial void LogSearchFailed(ILogger logger, Exception exception);
 
     /// <summary>Writes the image of the visible part of the page through the virtual file system.</summary>
     private async Task<FirefoxResponse> CaptureAsync(FirefoxSession session, string saveToPath, CancellationToken cancellationToken)

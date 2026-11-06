@@ -165,6 +165,7 @@ public sealed class WebToolAccessTests
     [InlineData("snapshot")]
     [InlineData("read")]
     [InlineData("find")]
+    [InlineData("search")]
     [InlineData("SNAPSHOT")]
     public void FirefoxShouldClassifyAnActionThatOnlyLooksAsRead(string action)
     {
