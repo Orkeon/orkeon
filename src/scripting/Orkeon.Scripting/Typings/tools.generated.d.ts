@@ -461,6 +461,8 @@ declare global {
             node_id?: string | null;
             /** snapshot, find: nodes to skip, to read the next part of a listing; read: characters to skip */
             offset?: number | null;
+            /** The profile the browser starts with, at the first action of a run: disposable, or a profile name the host allows; a browser already open keeps its profile */
+            profile?: string | null;
             /** search: what to look for in the page, in plain words; the sections closest in meaning are returned */
             query?: string | null;
             /** screenshot: the virtual path the PNG image of the visible part of the page is written to (/output/page.png) */
@@ -479,6 +481,7 @@ declare global {
             readonly error?: string;
             readonly hits: readonly { readonly excerpt: string; readonly name: string; readonly node_id: string; readonly score: number; }[];
             readonly nodes: readonly { readonly id: string; readonly kind: string; readonly name: string; readonly parent_id?: string; readonly role: string; readonly text: string; }[];
+            readonly profile?: string;
             readonly saved_path?: string;
             readonly success: boolean;
             readonly tab?: string;

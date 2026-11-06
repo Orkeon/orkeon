@@ -523,7 +523,7 @@ public class FirefoxSessionTests : FirefoxSessionTestBase
     public async Task Should_ShareABrowserBetweenSessions_WhichClosesWithTheLast()
     {
         var options = new FirefoxToolOptions();
-        var browser = await FirefoxBrowser.OpenAsync(Launcher, options, Timings, logger: null, Ct);
+        var browser = await FirefoxBrowser.OpenAsync(Launcher, FirefoxProfileChoice.Disposable, options, Timings, logger: null, Ct);
         var first = await FirefoxSession.AttachAsync(browser, options, new Orkeon.Tests.Shared.FileSystem.FakeFileSystemService(), logger: null, Ct);
         var second = await FirefoxSession.AttachAsync(browser, options, new Orkeon.Tests.Shared.FileSystem.FakeFileSystemService(), logger: null, Ct);
         await first.NavigateAsync(Home, Ct);

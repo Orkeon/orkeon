@@ -34,7 +34,7 @@ public abstract class FirefoxSessionTestBase
     internal static CancellationToken Ct => TestContext.Current.CancellationToken;
 
     internal Task<FirefoxSession> OpenAsync(FirefoxToolOptions? options = null) =>
-        FirefoxSession.OpenAsync(Launcher, options ?? new FirefoxToolOptions(), new FakeFileSystemService(), Timings, logger: null, Ct);
+        FirefoxSession.OpenAsync(Launcher, FirefoxProfileChoice.Disposable, options ?? new FirefoxToolOptions(), new FakeFileSystemService(), Timings, logger: null, Ct);
 
     internal FirefoxSessionManager Manager(FirefoxToolOptions? options = null) =>
         new(Launcher, options ?? new FirefoxToolOptions(), new FakeFileSystemService(), logger: null, Timings);

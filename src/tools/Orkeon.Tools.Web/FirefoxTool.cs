@@ -82,6 +82,10 @@ public sealed record FirefoxRequest
     /// <summary>Gets the tab <c>switch_tab</c> drives from now on, or <c>close_tab</c> closes.</summary>
     [FieldSchema(Description = "switch_tab, close_tab: the handle of a tab of this agent (t1, t2), as tabs lists them", IsRequired = false)]
     public string? Tab { get; init; }
+
+    /// <summary>Gets the profile the browser of this run starts with.</summary>
+    [FieldSchema(Description = "The profile the browser starts with, at the first action of a run: disposable, or a profile name the host allows; a browser already open keeps its profile", IsRequired = false)]
+    public string? Profile { get; init; }
 }
 
 /// <summary>Strongly-typed response for <see cref="FirefoxTool"/>.</summary>
@@ -148,6 +152,10 @@ public sealed record FirefoxResponse : IBoundedToolResponse
     /// <summary>Gets the tabs of the agent.</summary>
     [ReturnSchema(Description = "tabs: the tabs of this agent, in the order they were opened: id, url, title, current")]
     public IReadOnlyList<FirefoxTabInfo> Tabs { get; init; } = [];
+
+    /// <summary>Gets the profile the browser runs with.</summary>
+    [ReturnSchema(Description = "The profile the browser runs with: disposable, or its name")]
+    public string? Profile { get; init; }
 
     /// <summary>The tool bounds what it returns itself: the nodes by <c>max_nodes</c>, the text by the host's limit.</summary>
     [JsonIgnore]
@@ -280,6 +288,7 @@ public sealed partial class FirefoxTool : ToolBase<FirefoxRequest, FirefoxRespon
 
     private readonly FirefoxSessionManager _sessions;
     private readonly FirefoxToolOptions _options;
+    private readonly FirefoxProfilePolicy _profiles;
     private readonly IFileSystemService _fileSystem;
     private readonly IUrlValidator? _urlValidator;
     private readonly IEphemeralCollectionSearch? _search;
@@ -309,7 +318,16 @@ public sealed partial class FirefoxTool : ToolBase<FirefoxRequest, FirefoxRespon
         _fileSystem = fileSystem;
         _urlValidator = urlValidator;
         _search = search;
+        _profiles = new FirefoxProfilePolicy(options);
         _sessions = new FirefoxSessionManager(launcher, options, fileSystem, logger, timings);
+    }
+
+    /// <inheritdoc/>
+    protected override void Dispose(bool disposing)
+    {
+        if (disposing)
+            _sessions.Dispose();
+        base.Dispose(disposing);
     }
 
     /// <summary>
@@ -396,8 +414,10 @@ public sealed partial class FirefoxTool : ToolBase<FirefoxRequest, FirefoxRespon
                     throw new FirefoxException($"'{url}' was not opened: {refusal}.");
             }
 
+            // Refused before any browser starts, as well: a profile the host forbids costs no Firefox.
+            var profile = _profiles.Resolve(request.Profile);
             return await _sessions
-                .UseAsync((session, ct) => RunAsync(session, action, request, ct), cancellationToken)
+                .UseAsync(profile, named: !string.IsNullOrWhiteSpace(request.Profile), (session, ct) => RunAsync(session, action, request, ct), cancellationToken)
                 .ConfigureAwait(false);
         }
         catch (Exception ex) when (ex is IExpectedToolError)
@@ -500,6 +520,7 @@ public sealed partial class FirefoxTool : ToolBase<FirefoxRequest, FirefoxRespon
             Value = value,
             Dialogs = session.TakeDialogs(),
             Tab = session.CurrentTab,
+            Profile = session.Browser.Profile.Name,
         };
     }
 

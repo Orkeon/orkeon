@@ -2,11 +2,11 @@ using Orkeon.Tools.Web.Firefox.BiDi;
 
 namespace Orkeon.Tools.Web.Firefox;
 
-/// <summary>Starts a browser and opens the WebDriver BiDi channel to it.</summary>
+/// <summary>Starts a browser on a profile and opens the WebDriver BiDi channel to it.</summary>
 internal interface IFirefoxLauncher
 {
-    /// <exception cref="FirefoxException">Firefox is not installed, or did not start.</exception>
-    Task<IFirefoxBrowser> LaunchAsync(CancellationToken cancellationToken);
+    /// <exception cref="FirefoxException">Firefox is not installed, did not start, or the profile is missing or held by another Firefox.</exception>
+    Task<IFirefoxBrowser> LaunchAsync(FirefoxProfileChoice profile, CancellationToken cancellationToken);
 }
 
 /// <summary>
@@ -20,4 +20,7 @@ internal interface IFirefoxBrowser : IAsyncDisposable
 
     /// <summary><c>true</c> when the browser runs without a window.</summary>
     bool Headless { get; }
+
+    /// <summary>The profile the browser runs with.</summary>
+    FirefoxProfileChoice Profile { get; }
 }

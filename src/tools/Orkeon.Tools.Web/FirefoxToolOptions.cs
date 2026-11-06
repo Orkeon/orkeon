@@ -1,3 +1,4 @@
+using System.Collections.ObjectModel;
 using System.Globalization;
 using Microsoft.Extensions.Configuration;
 
@@ -31,6 +32,33 @@ public sealed class FirefoxToolOptions
     /// </summary>
     public string? ProfileRoot { get; set; }
 
+    /// <summary>
+    /// The profile a browser starts with when the agent names none: `disposable` (the default, a fresh
+    /// folder removed when the browser closes), the name of a profile of the Firefox installed on the
+    /// host (`profiles.ini`), or the path of a profile folder. A named profile is used in place, with
+    /// its cookies and sessions, and never removed; a profile another Firefox holds open is refused.
+    /// </summary>
+    public string? Profile { get; set; }
+
+    /// <summary>
+    /// The profiles an agent may name with the `profile` argument, beside `disposable` and `Profile`.
+    /// Empty: an agent names no other profile. A name in `DeniedProfiles` stays refused.
+    /// </summary>
+    public Collection<string> AllowedProfiles { get; } = [];
+
+    /// <summary>
+    /// The profiles no browser ever starts with, whether an agent names one or `Profile` does: the
+    /// operator's own profiles, for instance.
+    /// </summary>
+    public Collection<string> DeniedProfiles { get; } = [];
+
+    /// <summary>
+    /// `true` shares one browser per profile between the agent runs of the host: each run drives tabs
+    /// of its own in it, and the browser closes when the last run leaves it. The default gives each
+    /// run a browser of its own.
+    /// </summary>
+    public bool SharedInstance { get; set; }
+
     /// <summary>Seconds Firefox is given to start and open its remote protocol.</summary>
     public int StartupTimeoutSeconds { get; set; } = 30;
 
@@ -57,8 +85,15 @@ public sealed class FirefoxToolOptions
 
         options.ExecutablePath = Text(section[nameof(ExecutablePath)]);
         options.ProfileRoot = Text(section[nameof(ProfileRoot)]);
+        options.Profile = Text(section[nameof(Profile)]);
+        foreach (var name in Names(section.GetSection(nameof(AllowedProfiles))))
+            options.AllowedProfiles.Add(name);
+        foreach (var name in Names(section.GetSection(nameof(DeniedProfiles))))
+            options.DeniedProfiles.Add(name);
         if (bool.TryParse(section[nameof(Headless)], out var headless))
             options.Headless = headless;
+        if (bool.TryParse(section[nameof(SharedInstance)], out var shared))
+            options.SharedInstance = shared;
         options.StartupTimeoutSeconds = Positive(section[nameof(StartupTimeoutSeconds)], options.StartupTimeoutSeconds);
         options.CommandTimeoutSeconds = Positive(section[nameof(CommandTimeoutSeconds)], options.CommandTimeoutSeconds);
         options.MaxNodes = Positive(section[nameof(MaxNodes)], options.MaxNodes);
@@ -67,6 +102,15 @@ public sealed class FirefoxToolOptions
     }
 
     private static string? Text(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+
+    /// <summary>The names of a list section (`:0`, `:1`...), or of one value holding them separated by commas or semicolons.</summary>
+    private static IEnumerable<string> Names(IConfigurationSection section)
+    {
+        var values = section.GetChildren().Select(child => child.Value).ToList();
+        if (values.Count == 0 && section.Value is { } single)
+            values = [.. single.Split([',', ';'])];
+        return values.Select(Text).OfType<string>().Distinct(StringComparer.OrdinalIgnoreCase);
+    }
 
     private static int Positive(string? value, int fallback) =>
         int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsed) && parsed > 0 ? parsed : fallback;

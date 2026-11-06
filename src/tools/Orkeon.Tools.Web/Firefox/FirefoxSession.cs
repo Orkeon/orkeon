@@ -151,17 +151,17 @@ internal sealed partial class FirefoxSession : IAsyncDisposable
     /// </summary>
     public string? CheckedUrl { get; set; }
 
-    /// <summary>Starts a browser of its own and opens a session on the tab it shows.</summary>
-    /// <exception cref="FirefoxException">Firefox is not installed, or did not start.</exception>
+    /// <summary>Starts a browser of its own on <paramref name="profile"/> and opens a session on the tab it shows.</summary>
+    /// <exception cref="FirefoxException">Firefox is not installed, did not start, or the profile is missing or held.</exception>
     /// <exception cref="BiDiException">The browser refused the session.</exception>
     [SuppressMessage("Reliability", "CA2000", Justification = "The browser is handed to the session returned, which closes it as its last session; an attach that fails disposes it.")]
     public static async Task<FirefoxSession> OpenAsync(
-        IFirefoxLauncher launcher, FirefoxToolOptions options, IFileSystemService fileSystem,
+        IFirefoxLauncher launcher, FirefoxProfileChoice profile, FirefoxToolOptions options, IFileSystemService fileSystem,
         FirefoxSessionTimings? timings, ILogger? logger, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(options);
 
-        var browser = await FirefoxBrowser.OpenAsync(launcher, options, timings, logger, cancellationToken).ConfigureAwait(false);
+        var browser = await FirefoxBrowser.OpenAsync(launcher, profile, options, timings, logger, cancellationToken).ConfigureAwait(false);
         try
         {
             return await AttachAsync(browser, options, fileSystem, logger, cancellationToken).ConfigureAwait(false);
@@ -175,22 +175,51 @@ internal sealed partial class FirefoxSession : IAsyncDisposable
 
     /// <summary>
     /// Opens a session in a running browser, on the tab it started with when no session took it yet,
-    /// else on a new tab. The browser closes when its last session is disposed.
+    /// else on a new tab. The browser closes when its last session is disposed, unless an owner keeps it.
     /// </summary>
+    /// <exception cref="FirefoxException">The browser is closing.</exception>
     /// <exception cref="BiDiException">The browser could not open a tab.</exception>
     public static async Task<FirefoxSession> AttachAsync(
         FirefoxBrowser browser, FirefoxToolOptions options, IFileSystemService fileSystem, ILogger? logger,
         CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(browser);
+        var session = Attach(browser, options, fileSystem, logger);
+        await session.OpenFirstTabAsync(cancellationToken).ConfigureAwait(false);
+        return session;
+    }
+
+    /// <summary>
+    /// Registers a session in a running browser, without a tab yet: <see cref="OpenFirstTabAsync"/> gives
+    /// it one. An owner that guards the browser's lifetime under a lock attaches here, then opens the tab
+    /// outside it.
+    /// </summary>
+    /// <exception cref="FirefoxException">The browser is closing.</exception>
+    public static FirefoxSession Attach(FirefoxBrowser browser, FirefoxToolOptions options, IFileSystemService fileSystem, ILogger? logger)
+    {
+        ArgumentNullException.ThrowIfNull(browser);
         ArgumentNullException.ThrowIfNull(options);
         ArgumentNullException.ThrowIfNull(fileSystem);
 
         var session = new FirefoxSession(browser, fileSystem, TimeSpan.FromSeconds(options.CommandTimeoutSeconds), logger);
-        var context = browser.TakeFirstTab() ?? await browser.CreateTabAsync(cancellationToken).ConfigureAwait(false);
-        session.AddTab(context, drive: true);
         browser.Attach(session);
         return session;
+    }
+
+    /// <summary>Gives a session just attached its first tab: the one the browser started with, else a new one.</summary>
+    /// <exception cref="BiDiException">The browser could not open a tab.</exception>
+    public async Task OpenFirstTabAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            var context = _browser.TakeFirstTab() ?? await _browser.CreateTabAsync(cancellationToken).ConfigureAwait(false);
+            AddTab(context, drive: true);
+        }
+        catch
+        {
+            await DisposeAsync().ConfigureAwait(false);
+            throw;
+        }
     }
 
     /// <summary>The tabs of the session, where each is, and which one is driven.</summary>
@@ -437,11 +466,8 @@ internal sealed partial class FirefoxSession : IAsyncDisposable
             return;
 
         Page = null;
-        if (_browser.Detach(this))
-        {
-            await _browser.DisposeAsync().ConfigureAwait(false);
+        if (await _browser.ReleaseAsync(this).ConfigureAwait(false))
             return;
-        }
 
         FirefoxTab[] tabs;
         lock (_navigation)

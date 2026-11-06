@@ -18,6 +18,10 @@ public class FirefoxToolOptionsTests
             Assert.False(options.Headless);
             Assert.Null(options.ExecutablePath);
             Assert.Null(options.ProfileRoot);
+            Assert.Null(options.Profile);
+            Assert.Empty(options.AllowedProfiles);
+            Assert.Empty(options.DeniedProfiles);
+            Assert.False(options.SharedInstance);
             Assert.Equal(30, options.StartupTimeoutSeconds);
             Assert.Equal(30, options.CommandTimeoutSeconds);
             Assert.Equal(40, options.MaxNodes);
@@ -32,6 +36,12 @@ public class FirefoxToolOptionsTests
             ("ExecutablePath", " /opt/firefox/firefox "),
             ("Headless", "true"),
             ("ProfileRoot", "/var/tmp/profiles"),
+            ("Profile", " work "),
+            ("AllowedProfiles:0", "research"),
+            ("AllowedProfiles:1", " Work "),
+            ("AllowedProfiles:2", "research"),
+            ("DeniedProfiles", "default; personal"),
+            ("SharedInstance", "true"),
             ("StartupTimeoutSeconds", "90"),
             ("CommandTimeoutSeconds", "45"),
             ("MaxNodes", "25"),
@@ -40,6 +50,10 @@ public class FirefoxToolOptionsTests
         Assert.Equal("/opt/firefox/firefox", options.ExecutablePath);
         Assert.True(options.Headless);
         Assert.Equal("/var/tmp/profiles", options.ProfileRoot);
+        Assert.Equal("work", options.Profile);
+        Assert.Equal(["research", "Work"], options.AllowedProfiles);
+        Assert.Equal(["default", "personal"], options.DeniedProfiles);
+        Assert.True(options.SharedInstance);
         Assert.Equal(90, options.StartupTimeoutSeconds);
         Assert.Equal(45, options.CommandTimeoutSeconds);
         Assert.Equal(25, options.MaxNodes);

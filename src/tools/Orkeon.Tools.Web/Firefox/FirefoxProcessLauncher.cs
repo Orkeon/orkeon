@@ -93,8 +93,9 @@ internal sealed partial class FirefoxProcessLauncher : IFirefoxLauncher
     }
 
     [SuppressMessage("Reliability", "CA2000", Justification = "The process and the channel are handed to the browser returned, which ends them; a start that fails ends them in the catch below.")]
-    public async Task<IFirefoxBrowser> LaunchAsync(CancellationToken cancellationToken)
+    public async Task<IFirefoxBrowser> LaunchAsync(FirefoxProfileChoice profile, CancellationToken cancellationToken)
     {
+        ArgumentNullException.ThrowIfNull(profile);
         var executable = LocateOnHost()
             ?? throw new FirefoxException(string.IsNullOrWhiteSpace(_options.ExecutablePath)
                 ? $"Firefox was not found on this machine: install it, or set {FirefoxToolOptions.SectionName}:{nameof(FirefoxToolOptions.ExecutablePath)}."
@@ -104,13 +105,15 @@ internal sealed partial class FirefoxProcessLauncher : IFirefoxLauncher
         if (headless && !_options.Headless && _logger is not null)
             LogHeadlessFallback(_logger);
 
-        var profile = FirefoxProfile.Create(FirefoxProfile.ResolveRoot(_options.ProfileRoot));
+        var folder = profile.IsDisposable
+            ? FirefoxProfile.Create(FirefoxProfile.ResolveRoot(_options.ProfileRoot))
+            : FirefoxProfile.Open(profile.Name);
         Process? process = null;
         try
         {
             var startup = TimeSpan.FromSeconds(_options.StartupTimeoutSeconds);
             var announced = new TaskCompletionSource<Uri>(TaskCreationOptions.RunContinuationsAsynchronously);
-            process = Start(executable, BuildArguments(profile.Directory, headless), announced);
+            process = Start(executable, BuildArguments(folder.Directory, headless), announced);
 
             Uri endpoint;
             try
@@ -127,7 +130,7 @@ internal sealed partial class FirefoxProcessLauncher : IFirefoxLauncher
             {
                 var transport = await WebSocketBiDiTransport.ConnectAsync(BiDiEndpoint.Session(endpoint), cancellationToken)
                     .ConfigureAwait(false);
-                return new Browser(process, profile, transport, headless, ExitGrace);
+                return new Browser(process, folder, profile, transport, headless, ExitGrace);
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
@@ -136,7 +139,7 @@ internal sealed partial class FirefoxProcessLauncher : IFirefoxLauncher
         }
         catch
         {
-            await StopAsync(process, profile, TimeSpan.Zero).ConfigureAwait(false);
+            await StopAsync(process, folder, TimeSpan.Zero).ConfigureAwait(false);
             throw;
         }
     }
@@ -293,13 +296,15 @@ internal sealed partial class FirefoxProcessLauncher : IFirefoxLauncher
     private static partial void LogHeadlessFallback(ILogger logger);
 
     private sealed class Browser(
-        Process process, FirefoxProfile profile, IBiDiTransport transport, bool headless, TimeSpan exitGrace) : IFirefoxBrowser
+        Process process, FirefoxProfile folder, FirefoxProfileChoice profile, IBiDiTransport transport, bool headless, TimeSpan exitGrace) : IFirefoxBrowser
     {
         private int _disposed;
 
         public IBiDiTransport Transport { get; } = transport;
 
         public bool Headless { get; } = headless;
+
+        public FirefoxProfileChoice Profile { get; } = profile;
 
         public async ValueTask DisposeAsync()
         {
@@ -308,7 +313,7 @@ internal sealed partial class FirefoxProcessLauncher : IFirefoxLauncher
 
             // The channel is closed first when its owner did not: a browser nobody talks to has no use.
             await Transport.DisposeAsync().ConfigureAwait(false);
-            await StopAsync(process, profile, exitGrace).ConfigureAwait(false);
+            await StopAsync(process, folder, exitGrace).ConfigureAwait(false);
         }
     }
 }

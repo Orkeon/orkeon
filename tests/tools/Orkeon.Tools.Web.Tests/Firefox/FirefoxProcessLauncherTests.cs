@@ -108,7 +108,7 @@ public sealed class FirefoxProcessLauncherTests : IDisposable
             ProfileRoot = Profiles(),
         });
 
-        var error = await Assert.ThrowsAsync<FirefoxException>(() => launcher.LaunchAsync(Ct));
+        var error = await Assert.ThrowsAsync<FirefoxException>(() => launcher.LaunchAsync(FirefoxProfileChoice.Disposable, Ct));
 
         Assert.Contains("Orkeon:Tools:Firefox:ExecutablePath", error.Message, StringComparison.Ordinal);
         Assert.False(Directory.Exists(Profiles()));
@@ -133,7 +133,7 @@ public sealed class FirefoxProcessLauncherTests : IDisposable
             ExitGrace = TimeSpan.FromMilliseconds(50),
         };
 
-        var running = await launcher.LaunchAsync(Ct);
+        var running = await launcher.LaunchAsync(FirefoxProfileChoice.Disposable, Ct);
         try
         {
             Assert.True(running.Headless);
@@ -166,7 +166,7 @@ public sealed class FirefoxProcessLauncherTests : IDisposable
             """);
         var launcher = new FirefoxProcessLauncher(new FirefoxToolOptions { ExecutablePath = browser, ProfileRoot = Profiles() });
 
-        var error = await Assert.ThrowsAsync<FirefoxException>(() => launcher.LaunchAsync(Ct));
+        var error = await Assert.ThrowsAsync<FirefoxException>(() => launcher.LaunchAsync(FirefoxProfileChoice.Disposable, Ct));
 
         Assert.Contains("exit code 3", error.Message, StringComparison.Ordinal);
         Assert.Contains("no DISPLAY environment variable specified", error.Message, StringComparison.Ordinal);
@@ -185,7 +185,7 @@ public sealed class FirefoxProcessLauncherTests : IDisposable
         var launcher = new FirefoxProcessLauncher(
             new FirefoxToolOptions { ExecutablePath = browser, ProfileRoot = Profiles(), StartupTimeoutSeconds = 1 });
 
-        var error = await Assert.ThrowsAsync<FirefoxException>(() => launcher.LaunchAsync(Ct));
+        var error = await Assert.ThrowsAsync<FirefoxException>(() => launcher.LaunchAsync(FirefoxProfileChoice.Disposable, Ct));
 
         Assert.Contains("did not open its remote protocol", error.Message, StringComparison.Ordinal);
         var pid = int.Parse(await File.ReadAllTextAsync(pidFile, Ct), System.Globalization.CultureInfo.InvariantCulture);
@@ -204,7 +204,7 @@ public sealed class FirefoxProcessLauncherTests : IDisposable
             """);
         var launcher = new FirefoxProcessLauncher(new FirefoxToolOptions { ExecutablePath = browser, ProfileRoot = Profiles() });
 
-        var error = await Assert.ThrowsAsync<FirefoxException>(() => launcher.LaunchAsync(Ct));
+        var error = await Assert.ThrowsAsync<FirefoxException>(() => launcher.LaunchAsync(FirefoxProfileChoice.Disposable, Ct));
 
         Assert.Contains("connection to Firefox", error.Message, StringComparison.Ordinal);
         Assert.Empty(Directory.GetDirectories(Profiles()));

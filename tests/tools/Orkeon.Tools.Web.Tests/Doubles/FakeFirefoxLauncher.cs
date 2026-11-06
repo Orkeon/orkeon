@@ -18,13 +18,17 @@ internal sealed class FakeFirefoxLauncher : IFirefoxLauncher
 
     public FakeFirefoxBrowser Last => Browsers[^1];
 
-    public Task<IFirefoxBrowser> LaunchAsync(CancellationToken cancellationToken)
+    /// <summary>The profile of each launch, in order.</summary>
+    public List<string> Profiles { get; } = [];
+
+    public Task<IFirefoxBrowser> LaunchAsync(FirefoxProfileChoice profile, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
+        lock (Browsers) Profiles.Add(profile.Name);
         if (LaunchFailure is not null)
             throw LaunchFailure;
 
-        var browser = new FakeFirefoxBrowser();
+        var browser = new FakeFirefoxBrowser { Profile = profile };
         Configure?.Invoke(browser);
         lock (Browsers) Browsers.Add(browser);
         return Task.FromResult<IFirefoxBrowser>(browser);
@@ -105,6 +109,8 @@ internal sealed class FakeFirefoxBrowser : IFirefoxBrowser
     public IBiDiTransport Transport => Wire;
 
     public bool Headless { get; set; }
+
+    public FirefoxProfileChoice Profile { get; set; } = FirefoxProfileChoice.Disposable;
 
     public bool Disposed { get; private set; }
 

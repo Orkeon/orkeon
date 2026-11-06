@@ -749,4 +749,47 @@ public class FirefoxToolTests : FirefoxSessionTestBase
         Assert.Equal(["tab-2"], Browser.Tabs);
         Assert.False(Browser.Disposed);
     }
+
+    [Fact]
+    public async Task Should_StartNoBrowser_When_TheProfileIsNotOneTheHostAllows()
+    {
+        _options.AllowedProfiles.Add("research");
+        using var tool = Tool();
+
+        var result = await CallAsync(tool, "navigate", ("url", Home), ("profile", "default"));
+
+        Assert.False(result.Success);
+        Assert.Equal("'default' is not a profile this host lets an agent name (Orkeon:Tools:Firefox:AllowedProfiles): disposable, research.", result.Error);
+        Assert.Empty(Launcher.Browsers);
+    }
+
+    [Fact]
+    public async Task Should_StartTheBrowserOnTheProfileNamed_AndSayItInEveryAnswer()
+    {
+        _options.AllowedProfiles.Add("research");
+        await using var run = AgentRunScope.Begin("agent-1");
+        using var tool = Tool();
+
+        var first = Body(await CallAsync(tool, "navigate", ("url", Home), ("profile", "Research")));
+        var next = Body(await CallAsync(tool, "snapshot"));
+        var other = await CallAsync(tool, "navigate", ("url", Docs), ("profile", "disposable"));
+
+        Assert.Equal("Research", first["profile"]!.GetValue<string>());
+        Assert.Equal("Research", next["profile"]!.GetValue<string>());
+        Assert.False(other.Success);
+        Assert.Equal("The browser of this run runs with the profile 'Research': close it before opening one with 'disposable'.", other.Error);
+        Assert.Equal(["Research"], Launcher.Profiles);
+    }
+
+    [Fact]
+    public async Task Should_StartTheBrowserOnTheHostsProfile_When_TheAgentNamesNone()
+    {
+        _options.Profile = "work";
+        using var tool = Tool();
+
+        var body = Body(await CallAsync(tool, "navigate", ("url", Home)));
+
+        Assert.Equal("work", body["profile"]!.GetValue<string>());
+        Assert.Equal(["work"], Launcher.Profiles);
+    }
 }
