@@ -445,10 +445,10 @@ declare global {
             readonly success: boolean;
         }>;
 
-        /** `firefox` - Drive a Firefox browser: open a page (navigate), read it as an outline of sections, links and controls (snapshot, find, read), find its sections by meaning (search), then act on a node by its id (click, type), press keys, run a script (evaluate) or save a screenshot. The browser stays open between calls of the same run; close ends it. */
+        /** `firefox` - Drive a Firefox browser: open a page (navigate), read it as an outline of sections, links and controls (snapshot, find, read), find its sections by meaning (search), then act on a node by its id (click, type), press keys, run a script (evaluate) or save a screenshot. Tabs of its own are opened, listed, switched and closed (new_tab, tabs, switch_tab, close_tab). The browser stays open between calls of the same run; close ends it. */
         firefox(input: {
-            /** What to do: navigate (url), back, snapshot (the outline of the page: sections, links, controls, each with a node id), read (the text of the page, or of node_id), find (nodes by kind and name, under node_id), search (query: the sections of the page closest in meaning), click (node_id), type (node_id, text), press (key), evaluate (script), screenshot (save_to_path), close */
-            action: "navigate" | "back" | "snapshot" | "read" | "find" | "search" | "click" | "type" | "press" | "evaluate" | "screenshot" | "close";
+            /** What to do: navigate (url), back, snapshot (the outline of the page: sections, links, controls, each with a node id), read (the text of the page, or of node_id), find (nodes by kind and name, under node_id), search (query: the sections of the page closest in meaning), click (node_id), type (node_id, text), press (key), evaluate (script), screenshot (save_to_path), tabs (the tabs of this agent), new_tab (url, optional), switch_tab (tab), close_tab (tab, the current one by default), close */
+            action: "navigate" | "back" | "snapshot" | "read" | "find" | "search" | "click" | "type" | "press" | "evaluate" | "screenshot" | "tabs" | "new_tab" | "switch_tab" | "close_tab" | "close";
             /** press: a key or a chord on the focused element - Enter, Tab, Escape, ArrowDown, PageDown, a, Control+a, Shift+Tab */
             key?: string | null;
             /** find: only nodes of this kind */
@@ -467,9 +467,11 @@ declare global {
             save_to_path?: string | null;
             /** evaluate: a JavaScript expression run in the page; its value is returned, a promise is awaited */
             script?: string | null;
+            /** switch_tab, close_tab: the handle of a tab of this agent (t1, t2), as tabs lists them */
+            tab?: string | null;
             /** type: the text that replaces what the element holds; a line feed presses Enter. Never a secret: the text goes through the conversation */
             text?: string | null;
-            /** navigate: the http or https address to open */
+            /** navigate, new_tab: the http or https address to open */
             url?: string | null;
         }, ctx?: ExecutionContext): Promise<{
             readonly action: string;
@@ -479,6 +481,8 @@ declare global {
             readonly nodes: readonly { readonly id: string; readonly kind: string; readonly name: string; readonly parent_id?: string; readonly role: string; readonly text: string; }[];
             readonly saved_path?: string;
             readonly success: boolean;
+            readonly tab?: string;
+            readonly tabs: readonly { readonly current: boolean; readonly id: string; readonly title: string; readonly url: string; }[];
             readonly text?: string;
             readonly title?: string;
             readonly total_nodes?: number;

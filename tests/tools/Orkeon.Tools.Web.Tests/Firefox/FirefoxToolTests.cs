@@ -76,7 +76,7 @@ public class FirefoxToolTests : FirefoxSessionTestBase
 
         // The schema of the tool lists its actions: the framework refuses another one before the tool runs.
         Assert.Equal(
-            "Parameter 'action' must be one of: navigate, back, snapshot, read, find, search, click, type, press, evaluate, screenshot, close",
+            "Parameter 'action' must be one of: navigate, back, snapshot, read, find, search, click, type, press, evaluate, screenshot, tabs, new_tab, switch_tab, close_tab, close",
             result.Error);
     }
 
@@ -92,6 +92,8 @@ public class FirefoxToolTests : FirefoxSessionTestBase
     [InlineData("press", "key", "Bogus", "'Bogus' is not a key. Enter, Tab")]
     [InlineData("evaluate", null, null, "script is required for action 'evaluate'")]
     [InlineData("screenshot", null, null, "save_to_path is required for action 'screenshot'")]
+    [InlineData("switch_tab", null, null, "tab is required for action 'switch_tab'")]
+    [InlineData("new_tab", "url", "ftp://example.test/", "is not an absolute http or https address")]
     [InlineData("search", null, null, "query is required for action 'search'")]
     [InlineData("find", "kind", "image", "Parameter 'kind' must be one of: section, link, control")]
     [InlineData("snapshot", "max_nodes", 0, "max_nodes must be greater than 0")]
@@ -669,5 +671,82 @@ public class FirefoxToolTests : FirefoxSessionTestBase
         Assert.Equal(2, Launcher.Browsers.Count);
         Assert.True(Launcher.Browsers[0].Disposed);
         Assert.False(Launcher.Browsers[1].Disposed);
+    }
+
+    [Fact]
+    public async Task Should_OpenATab_ListTheTabs_AndSayWhichOneEveryAnswerDrives()
+    {
+        await using var run = AgentRunScope.Begin("agent-1");
+        using var tool = Tool();
+        var first = Body(await CallAsync(tool, "navigate", ("url", Home)));
+
+        var opened = Body(await CallAsync(tool, "new_tab", ("url", Docs)));
+        var tabs = Body(await CallAsync(tool, "tabs"));
+        var switched = Body(await CallAsync(tool, "switch_tab", ("tab", "t1")));
+
+        Assert.Equal("t1", first["tab"]!.GetValue<string>());
+        Assert.Equal("t2", opened["tab"]!.GetValue<string>());
+        Assert.Equal(Docs, opened["url"]!.GetValue<string>());
+        Assert.Equal("Docs", opened["title"]!.GetValue<string>());
+        Assert.Equal(
+            ["t1 https://example.test/ Example false", "t2 https://example.test/docs Docs true"],
+            tabs["tabs"]!.AsArray().Select(tab => $"{tab!["id"]} {tab["url"]} {tab["title"]} {tab["current"]}"));
+        Assert.Equal("t1", switched["tab"]!.GetValue<string>());
+        Assert.Equal(Home, switched["url"]!.GetValue<string>());
+        Assert.Equal("Example", switched["title"]!.GetValue<string>());
+        Assert.Equal(["tab-1"], Browser.Activated);
+        Assert.Single(Launcher.Browsers);
+    }
+
+    [Fact]
+    public async Task Should_OpenABlankTab_When_NewTabNamesNoAddress()
+    {
+        await using var run = AgentRunScope.Begin("agent-1");
+        using var tool = Tool();
+        await CallAsync(tool, "navigate", ("url", Home));
+
+        var opened = Body(await CallAsync(tool, "new_tab"));
+
+        Assert.Equal("t2", opened["tab"]!.GetValue<string>());
+        Assert.Equal("about:blank", opened["url"]!.GetValue<string>());
+        Assert.Equal(["tab-1", "tab-2"], Browser.Tabs);
+    }
+
+    [Fact]
+    public async Task Should_StartNoBrowser_When_NewTabNamesARefusedAddress()
+    {
+        _policy.RefusedHosts.Add("intranet.test");
+        using var tool = Tool();
+
+        var result = await CallAsync(tool, "new_tab", ("url", $"{Intranet}admin"));
+
+        Assert.False(result.Success);
+        Assert.Contains("was not opened", result.Error, StringComparison.Ordinal);
+        Assert.Empty(Launcher.Browsers);
+    }
+
+    [Fact]
+    public async Task Should_CloseATab_TheCurrentOneByDefault_AndKeepTheLast()
+    {
+        await using var run = AgentRunScope.Begin("agent-1");
+        using var tool = Tool();
+        await CallAsync(tool, "navigate", ("url", Home));
+        await CallAsync(tool, "new_tab", ("url", Docs));
+        await CallAsync(tool, "new_tab");
+
+        var closed = Body(await CallAsync(tool, "close_tab"));
+        var named = Body(await CallAsync(tool, "close_tab", ("tab", "t1")));
+        var last = await CallAsync(tool, "close_tab");
+        var unknown = await CallAsync(tool, "switch_tab", ("tab", "t9"));
+
+        Assert.Equal("t2", closed["tab"]!.GetValue<string>());
+        Assert.Equal(Docs, closed["url"]!.GetValue<string>());
+        Assert.Equal("t2", named["tab"]!.GetValue<string>());
+        Assert.False(last.Success);
+        Assert.Contains("'t2' is the last tab of this agent", last.Error, StringComparison.Ordinal);
+        Assert.False(unknown.Success);
+        Assert.Contains("'t9' is not a tab of this agent", unknown.Error, StringComparison.Ordinal);
+        Assert.Equal(["tab-2"], Browser.Tabs);
+        Assert.False(Browser.Disposed);
     }
 }

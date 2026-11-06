@@ -166,6 +166,9 @@ public sealed class WebToolAccessTests
     [InlineData("read")]
     [InlineData("find")]
     [InlineData("search")]
+    [InlineData("tabs")]
+    [InlineData("new_tab")]
+    [InlineData("switch_tab")]
     [InlineData("SNAPSHOT")]
     public void FirefoxShouldClassifyAnActionThatOnlyLooksAsRead(string action)
     {
@@ -191,6 +194,7 @@ public sealed class WebToolAccessTests
     [InlineData("type")]
     [InlineData("press")]
     [InlineData("evaluate")]
+    [InlineData("close_tab")]
     [InlineData("close")]
     [InlineData("scroll")]
     [InlineData("")]

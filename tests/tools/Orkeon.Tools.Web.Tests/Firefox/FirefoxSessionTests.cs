@@ -426,18 +426,127 @@ public class FirefoxSessionTests : FirefoxSessionTestBase
     }
 
     [Fact]
-    public async Task Should_FollowTheTabALinkOpened()
+    public async Task Should_FollowTheTabALinkOpened_AndNotOneOpenedElsewhere()
     {
         await using var session = await OpenAsync();
 
         Browser.Emit("browsingContext.contextCreated", new JsonObject { ["context"] = "frame-1", ["parent"] = FakeFirefoxBrowser.Tab, ["originalOpener"] = FakeFirefoxBrowser.Tab });
-        Browser.Emit("browsingContext.contextCreated", new JsonObject { ["context"] = "tab-user", ["originalOpener"] = null });
-        Browser.Emit("browsingContext.contextCreated", new JsonObject { ["context"] = "tab-2", ["originalOpener"] = FakeFirefoxBrowser.Tab });
+        Browser.OpenTab();
+        Browser.OpenTab(opener: "tab-of-another-agent");
+        var opened = Browser.OpenTab(opener: FakeFirefoxBrowser.Tab);
         // The answer to this command comes after the events on the channel: they were all read.
         await session.ReadStateAsync(Ct);
         await session.NavigateAsync(Docs, Ct);
 
-        Assert.Equal("tab-2", Wire.ParamsOf("browsingContext.navigate")[0]["context"]!.GetValue<string>());
+        Assert.Equal(opened, Wire.ParamsOf("browsingContext.navigate")[0]["context"]!.GetValue<string>());
+        Assert.Equal("t2", session.CurrentTab);
+        Assert.Equal(["t1", "t2"], (await session.ListTabsAsync(Ct)).Select(tab => tab.Handle));
+    }
+
+    [Fact]
+    public async Task Should_OpenATab_ListThem_AndSwitchBetweenThem()
+    {
+        await using var session = await OpenAsync();
+        await session.NavigateAsync(Home, Ct);
+
+        var handle = await session.NewTabAsync(Ct);
+        await session.NavigateAsync(Docs, Ct);
+        var tabs = await session.ListTabsAsync(Ct);
+
+        Assert.Equal("t2", handle);
+        Assert.Equal(handle, session.CurrentTab);
+        Assert.Equal([new TabState("t1", Home, "Example", false), new TabState("t2", Docs, "Docs", true)], tabs);
+        Assert.Equal(["tab-1", "tab-2"], Browser.Tabs);
+        Assert.False(Wire.ParamsOf("browsingContext.create")[0]["background"]!.GetValue<bool>());
+
+        await session.SwitchTabAsync("T1", Ct);
+
+        Assert.Equal("t1", session.CurrentTab);
+        Assert.Equal(["tab-1"], Browser.Activated);
+        Assert.Equal(Home, (await session.ReadStateAsync(Ct)).Url);
+        Assert.Null(session.Page);
+    }
+
+    [Fact]
+    public async Task Should_CloseATab_AndDriveTheOneBeforeIt()
+    {
+        await using var session = await OpenAsync();
+        await session.NewTabAsync(Ct);
+        await session.NewTabAsync(Ct);
+
+        await session.CloseTabAsync(null, Ct);
+        Assert.Equal("t2", session.CurrentTab);
+
+        await session.CloseTabAsync("t1", Ct);
+        Assert.Equal("t2", session.CurrentTab);
+        Assert.Equal(["tab-2"], Browser.Tabs);
+
+        var refused = await Assert.ThrowsAsync<FirefoxException>(() => session.CloseTabAsync("t2", Ct));
+        Assert.Contains("last tab", refused.Message, StringComparison.Ordinal);
+        var unknown = await Assert.ThrowsAsync<FirefoxException>(() => session.SwitchTabAsync("t9", Ct));
+        Assert.Contains("'t9' is not a tab", unknown.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Should_DropTheTabsTheUserCloses_AndSaySoWhenNoneIsLeft()
+    {
+        await using var session = await OpenAsync();
+        await session.NewTabAsync(Ct);
+
+        Browser.CloseTab("tab-2");
+        await session.ReadStateAsync(Ct);
+        Assert.Equal("t1", session.CurrentTab);
+
+        Browser.CloseTab("tab-1");
+        await Polling.WaitUntilAsync(() => session.CurrentTab is null);
+
+        var error = await Assert.ThrowsAsync<FirefoxException>(() => session.NavigateAsync(Home, Ct));
+        Assert.Contains("Every tab of this agent was closed", error.Message, StringComparison.Ordinal);
+        Assert.Equal("t3", await session.NewTabAsync(Ct));
+        await session.NavigateAsync(Home, Ct);
+    }
+
+    [Fact]
+    public async Task Should_DismissTheDialogOfATabItDoesNotDrive()
+    {
+        await using var session = await OpenAsync();
+        await session.NewTabAsync(Ct);
+
+        Browser.Emit("browsingContext.userPromptOpened", new JsonObject { ["context"] = "tab-1", ["type"] = "alert", ["message"] = "Still here" });
+        await Polling.WaitUntilAsync(() => Wire.Methods.Contains("browsingContext.handleUserPrompt"));
+
+        Assert.Equal("tab-1", Wire.ParamsOf("browsingContext.handleUserPrompt")[0]["context"]!.GetValue<string>());
+        Assert.Equal(["alert: Still here"], session.TakeDialogs());
+    }
+
+    [Fact]
+    public async Task Should_ShareABrowserBetweenSessions_WhichClosesWithTheLast()
+    {
+        var options = new FirefoxToolOptions();
+        var browser = await FirefoxBrowser.OpenAsync(Launcher, options, Timings, logger: null, Ct);
+        var first = await FirefoxSession.AttachAsync(browser, options, new Orkeon.Tests.Shared.FileSystem.FakeFileSystemService(), logger: null, Ct);
+        var second = await FirefoxSession.AttachAsync(browser, options, new Orkeon.Tests.Shared.FileSystem.FakeFileSystemService(), logger: null, Ct);
+        await first.NavigateAsync(Home, Ct);
+        await second.NavigateAsync(Docs, Ct);
+
+        // The events of one session's tab are not the other's.
+        Browser.Emit("browsingContext.navigationStarted", new JsonObject { ["context"] = "tab-2", ["navigation"] = "n9", ["url"] = Home });
+        await first.ReadStateAsync(Ct);
+        Assert.False(first.NavigationPending);
+        Assert.Equal(2, browser.SessionCount);
+        Assert.Equal([Home, Docs], Browser.Tabs.Select(Browser.UrlOf));
+
+        await first.DisposeAsync();
+
+        Assert.True(browser.IsAlive);
+        Assert.Equal(["tab-2"], Browser.Tabs);
+        Assert.Equal(Docs, (await second.ReadStateAsync(Ct)).Url);
+
+        await second.DisposeAsync();
+
+        Assert.False(browser.IsAlive);
+        Assert.True(Browser.Disposed);
+        Assert.Single(Wire.Methods, "browser.close");
     }
 
     [Fact]

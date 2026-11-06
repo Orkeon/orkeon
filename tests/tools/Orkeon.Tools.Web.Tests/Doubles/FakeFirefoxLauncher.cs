@@ -69,22 +69,28 @@ internal sealed class FakePage
 
 /// <summary>
 /// A browser that answers WebDriver BiDi as Firefox does, over a <see cref="FakeBiDiTransport"/>: it
-/// serves the <see cref="Pages"/> it was given, keeps a history, and records every command in
-/// <see cref="Wire"/>.
+/// serves the <see cref="Pages"/> it was given, keeps a history per tab, opens and closes tabs, and
+/// records every command in <see cref="Wire"/>.
 /// </summary>
 internal sealed class FakeFirefoxBrowser : IFirefoxBrowser
 {
     public const string Tab = "tab-1";
 
-    private readonly List<string> _history = ["about:blank"];
+    private readonly Dictionary<string, List<string>> _histories = new(StringComparer.Ordinal) { [Tab] = ["about:blank"] };
+    private readonly List<string> _tabs = [Tab];
     private int _navigations;
+    private int _created = 1;
 
     public FakeFirefoxBrowser()
     {
         Wire.Handlers["session.new"] = _ => new JsonObject { ["sessionId"] = "s1", ["capabilities"] = new JsonObject { ["browserName"] = "firefox" } };
-        Wire.Handlers["browsingContext.getTree"] = _ => new JsonObject
+        Wire.Handlers["browsingContext.getTree"] = Tree;
+        Wire.Handlers["browsingContext.create"] = Create;
+        Wire.Handlers["browsingContext.close"] = Close;
+        Wire.Handlers["browsingContext.activate"] = parameters =>
         {
-            ["contexts"] = new JsonArray(new JsonObject { ["context"] = Tab, ["url"] = Url, ["children"] = new JsonArray() }),
+            Activated.Add(ContextOf(parameters));
+            return [];
         };
         Wire.Handlers["browsingContext.navigate"] = Navigate;
         Wire.Handlers["browsingContext.traverseHistory"] = Traverse;
@@ -134,19 +140,55 @@ internal sealed class FakeFirefoxBrowser : IFirefoxBrowser
 
     public byte[] Screenshot { get; set; } = [0x89, 0x50, 0x4E, 0x47];
 
-    public string Url => _history[^1];
+    /// <summary>The address the first tab shows.</summary>
+    public string Url => UrlOf(Tab);
 
     public string ReadyState { get; set; } = "complete";
+
+    /// <summary>The tabs open, in the order they were opened.</summary>
+    public IReadOnlyList<string> Tabs => _tabs;
+
+    /// <summary>The tabs brought in front, in order.</summary>
+    public List<string> Activated { get; } = [];
 
     /// <summary>The reference the browser gives element <paramref name="index"/> of the page at <paramref name="url"/>.</summary>
     public static string Reference(string url, int index) => $"{url}#node-{index}";
 
-    /// <summary>Sends an event of the tab, as Firefox would.</summary>
+    /// <summary>The address a tab shows; an empty one for a tab that is gone.</summary>
+    public string UrlOf(string context) => _histories.TryGetValue(context, out var history) ? history[^1] : string.Empty;
+
+    /// <summary>Sends an event of the first tab (or of <c>context</c> in <paramref name="parameters"/>), as Firefox would.</summary>
     public void Emit(string method, JsonObject? parameters = null)
     {
         parameters ??= [];
         if (!parameters.ContainsKey("context")) parameters["context"] = Tab;
         Wire.Push(new JsonObject { ["type"] = "event", ["method"] = method, ["params"] = parameters }.ToJsonString());
+    }
+
+    /// <summary>Opens a tab as the user would, or as a link with <c>target=_blank</c> of <paramref name="opener"/> would.</summary>
+    public string OpenTab(string? opener = null)
+    {
+        var context = $"tab-{++_created}";
+        _histories[context] = ["about:blank"];
+        _tabs.Add(context);
+        Emit("browsingContext.contextCreated", new JsonObject
+        {
+            ["context"] = context,
+            ["url"] = "about:blank",
+            ["children"] = new JsonArray(),
+            ["parent"] = null,
+            ["originalOpener"] = opener,
+        });
+        return context;
+    }
+
+    /// <summary>Closes a tab as the user would.</summary>
+    public void CloseTab(string context)
+    {
+        if (!_tabs.Remove(context))
+            return;
+        _histories.Remove(context);
+        Emit("browsingContext.contextDestroyed", new JsonObject { ["context"] = context, ["url"] = "about:blank", ["children"] = new JsonArray(), ["parent"] = null });
     }
 
     /// <summary>Ends the navigation a held click announced.</summary>
@@ -162,32 +204,74 @@ internal sealed class FakeFirefoxBrowser : IFirefoxBrowser
         return Wire.DisposeAsync();
     }
 
-    private FakePage Page => Pages.TryGetValue(Url, out var page) ? page : new FakePage();
+    private static string ContextOf(JsonObject parameters) =>
+        parameters["context"]?.GetValue<string>() ?? parameters["target"]?["context"]?.GetValue<string>() ?? Tab;
+
+    private FakePage PageOf(string context) => Pages.TryGetValue(UrlOf(context), out var page) ? page : new FakePage();
+
+    private List<string> HistoryOf(string context) =>
+        _histories.TryGetValue(context, out var history)
+            ? history
+            : throw new FakeBiDiError("no such frame", $"Browsing context with id {context} not found");
+
+    private JsonObject Tree(JsonObject parameters)
+    {
+        var root = parameters["root"]?.GetValue<string>();
+        var contexts = new JsonArray();
+        foreach (var tab in root is null ? _tabs : [root])
+        {
+            HistoryOf(tab);
+            contexts.Add(new JsonObject { ["context"] = tab, ["url"] = UrlOf(tab), ["children"] = new JsonArray(), ["parent"] = null });
+        }
+
+        return new JsonObject { ["contexts"] = contexts };
+    }
+
+    private JsonObject Create(JsonObject parameters)
+    {
+        var context = OpenTab();
+        return new JsonObject { ["context"] = context };
+    }
+
+    private JsonObject Close(JsonObject parameters)
+    {
+        var context = ContextOf(parameters);
+        HistoryOf(context);
+        CloseTab(context);
+        return [];
+    }
 
     private JsonObject Navigate(JsonObject parameters)
     {
+        var context = ContextOf(parameters);
         var url = parameters["url"]!.GetValue<string>();
-        _history.Add(Redirects.GetValueOrDefault(url, url));
-        return new JsonObject { ["navigation"] = $"n{++_navigations}", ["url"] = Url };
+        HistoryOf(context).Add(Redirects.GetValueOrDefault(url, url));
+        return new JsonObject { ["navigation"] = $"n{++_navigations}", ["url"] = UrlOf(context) };
     }
 
     private JsonObject Traverse(JsonObject parameters)
     {
-        if (_history.Count < 2)
+        var context = ContextOf(parameters);
+        var history = HistoryOf(context);
+        if (history.Count < 2)
             throw new FakeBiDiError("no such history entry", "History entry with delta -1 not found");
-        _history.RemoveAt(_history.Count - 1);
+        history.RemoveAt(history.Count - 1);
         var navigation = $"n{++_navigations}";
-        Emit("browsingContext.navigationStarted", new JsonObject { ["navigation"] = navigation, ["url"] = Url });
+        Emit("browsingContext.navigationStarted", new JsonObject { ["context"] = context, ["navigation"] = navigation, ["url"] = UrlOf(context) });
         if (TraversalLoads)
-            Emit("browsingContext.load", new JsonObject { ["navigation"] = navigation, ["url"] = Url });
+            Emit("browsingContext.load", new JsonObject { ["context"] = context, ["navigation"] = navigation, ["url"] = UrlOf(context) });
         return [];
     }
 
     private JsonObject Evaluate(JsonObject parameters)
     {
+        var context = ContextOf(parameters);
         var expression = parameters["expression"]!.GetValue<string>();
         if (expression.Contains("document.readyState", StringComparison.Ordinal))
-            return Success(new JsonObject { ["type"] = "string", ["value"] = JsonSerializer.Serialize(new[] { Url, Page.Title, ReadyState }) });
+        {
+            HistoryOf(context);
+            return Success(new JsonObject { ["type"] = "string", ["value"] = JsonSerializer.Serialize(new[] { UrlOf(context), PageOf(context).Title, ReadyState }) });
+        }
 
         return Script(expression) is { } value
             ? Success(value)
@@ -196,13 +280,15 @@ internal sealed class FakeFirefoxBrowser : IFirefoxBrowser
 
     private JsonObject CallFunction(JsonObject parameters)
     {
+        var context = ContextOf(parameters);
         var function = parameters["functionDeclaration"]!.GetValue<string>();
         if (function.Contains("maxElements", StringComparison.Ordinal))
         {
-            var page = Page;
+            var url = UrlOf(context);
+            var page = PageOf(context);
             var outline = new JsonObject
             {
-                ["url"] = Url,
+                ["url"] = url,
                 ["title"] = page.Title,
                 ["lead"] = page.Lead,
                 ["text"] = page.Text,
@@ -212,7 +298,7 @@ internal sealed class FakeFirefoxBrowser : IFirefoxBrowser
             };
             var items = new JsonArray(new JsonObject { ["type"] = "string", ["value"] = outline.ToJsonString() });
             for (var i = 0; i < page.Elements.Count; i++)
-                items.Add(new JsonObject { ["type"] = "node", ["sharedId"] = Reference(Url, i) });
+                items.Add(new JsonObject { ["type"] = "node", ["sharedId"] = Reference(url, i) });
             return Success(new JsonObject { ["type"] = "array", ["value"] = items });
         }
 
@@ -220,7 +306,7 @@ internal sealed class FakeFirefoxBrowser : IFirefoxBrowser
         if (reference is not null && Unknown.Contains(reference))
             throw new FakeBiDiError("no such node", $"The node with the reference {reference} is not known");
         if (reference is not null && function.Contains("el.click()", StringComparison.Ordinal))
-            Follow(reference);
+            Follow(context, reference);
         return Success(new JsonObject { ["type"] = "boolean", ["value"] = reference is null || !Detached.Contains(reference) });
     }
 
@@ -232,22 +318,22 @@ internal sealed class FakeFirefoxBrowser : IFirefoxBrowser
         if (PointerFailure is not null)
             throw new FakeBiDiError(PointerFailure, "the pointer could not reach the element");
 
-        Follow(source["actions"]![0]!["origin"]!["element"]!["sharedId"]!.GetValue<string>());
+        Follow(ContextOf(parameters), source["actions"]![0]!["origin"]!["element"]!["sharedId"]!.GetValue<string>());
         return [];
     }
 
-    private void Follow(string reference)
+    private void Follow(string context, string reference)
     {
         if (!ClickLeadsTo.TryGetValue(reference, out var target))
             return;
 
-        _history.Add(target);
+        HistoryOf(context).Add(target);
         var navigation = $"n{++_navigations}";
-        Emit("browsingContext.navigationStarted", new JsonObject { ["navigation"] = navigation, ["url"] = target });
+        Emit("browsingContext.navigationStarted", new JsonObject { ["context"] = context, ["navigation"] = navigation, ["url"] = target });
         if (HoldLoad)
             ReadyState = "loading";
         else
-            Emit("browsingContext.load", new JsonObject { ["navigation"] = navigation, ["url"] = target });
+            Emit("browsingContext.load", new JsonObject { ["context"] = context, ["navigation"] = navigation, ["url"] = target });
     }
 
     private static JsonObject Success(JsonObject value) => new() { ["type"] = "success", ["result"] = value };

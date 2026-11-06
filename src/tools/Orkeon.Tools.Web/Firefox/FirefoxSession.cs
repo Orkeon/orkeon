@@ -32,10 +32,16 @@ internal sealed record FirefoxSessionTimings
 /// <summary>Where the browser is: the address and the title of the page shown.</summary>
 internal sealed record PageState(string Url, string Title, bool Loaded);
 
+/// <summary>One tab of a session: the handle the agent knows it by, and the context id the browser does.</summary>
+internal sealed record FirefoxTab(string Handle, string Context);
+
+/// <summary>A tab as listed to the agent: its handle, where it is, and whether it is the one driven.</summary>
+internal sealed record TabState(string Handle, string Url, string Title, bool Current);
+
 /// <summary>
-/// One browser and the tab an agent drives in it: the WebDriver BiDi commands of each action, the wait
-/// for the page an action leaves for, and the last snapshot of the page. Not thread-safe: its slot runs
-/// one action at a time.
+/// The tabs an agent drives in a browser: the WebDriver BiDi commands of each action, the wait for the
+/// page an action leaves for, and the last snapshot of the page shown. One tab is driven at a time;
+/// the others keep their pages. Not thread-safe: its slot runs one action at a time.
 /// </summary>
 internal sealed partial class FirefoxSession : IAsyncDisposable
 {
@@ -80,15 +86,16 @@ internal sealed partial class FirefoxSession : IAsyncDisposable
 
     private static readonly Lazy<string> s_outlineScript = new(LoadOutlineScript);
 
-    private readonly IFirefoxBrowser _browser;
-    private readonly BiDiConnection _connection;
+    private readonly FirefoxBrowser _browser;
     private readonly IFileSystemService _fileSystem;
     private readonly FirefoxSessionTimings _timings;
     private readonly TimeSpan _commandTimeout;
     private readonly ILogger? _logger;
     private readonly ConcurrentQueue<string> _dialogs = new();
     private readonly Lock _navigation = new();
-    private string _context = string.Empty;
+    private readonly List<FirefoxTab> _tabs = [];
+    private int _tabCount;
+    private string? _context;
     private string? _pendingNavigation;
     private string? _pendingTarget;
     private string? _pendingOrigin;
@@ -98,20 +105,30 @@ internal sealed partial class FirefoxSession : IAsyncDisposable
     private int _disposed;
     private bool _pageIsCurrent;
 
-    private FirefoxSession(
-        IFirefoxBrowser browser, BiDiConnection connection, IFileSystemService fileSystem,
-        TimeSpan commandTimeout, FirefoxSessionTimings timings, ILogger? logger)
+    private FirefoxSession(FirefoxBrowser browser, IFileSystemService fileSystem, TimeSpan commandTimeout, ILogger? logger)
     {
         _browser = browser;
-        _connection = connection;
         _fileSystem = fileSystem;
         _commandTimeout = commandTimeout;
-        _timings = timings;
+        _timings = browser.Timings;
         _logger = logger;
     }
 
     /// <summary><c>false</c> once the browser has gone: closed by the user, crashed, or disposed.</summary>
-    public bool IsAlive => _disposed == 0 && !_connection.IsClosed;
+    public bool IsAlive => _disposed == 0 && _browser.IsAlive;
+
+    /// <summary>The browser the session drives tabs in.</summary>
+    public FirefoxBrowser Browser => _browser;
+
+    /// <summary>The handle of the tab driven now; <c>null</c> once every tab of the session was closed in the browser.</summary>
+    public string? CurrentTab
+    {
+        get
+        {
+            lock (_navigation)
+                return _context is null ? null : _tabs.Find(tab => tab.Context == _context)?.Handle;
+        }
+    }
 
     /// <summary><c>true</c> when the browser runs without a window.</summary>
     public bool Headless => _browser.Headless;
@@ -134,32 +151,108 @@ internal sealed partial class FirefoxSession : IAsyncDisposable
     /// </summary>
     public string? CheckedUrl { get; set; }
 
-    /// <summary>Starts a browser and opens its session on the tab it shows.</summary>
+    /// <summary>Starts a browser of its own and opens a session on the tab it shows.</summary>
     /// <exception cref="FirefoxException">Firefox is not installed, or did not start.</exception>
     /// <exception cref="BiDiException">The browser refused the session.</exception>
-    [SuppressMessage("Reliability", "CA2000", Justification = "The connection is handed to the session returned, which disposes it; a start that fails disposes the session.")]
+    [SuppressMessage("Reliability", "CA2000", Justification = "The browser is handed to the session returned, which closes it as its last session; an attach that fails disposes it.")]
     public static async Task<FirefoxSession> OpenAsync(
         IFirefoxLauncher launcher, FirefoxToolOptions options, IFileSystemService fileSystem,
         FirefoxSessionTimings? timings, ILogger? logger, CancellationToken cancellationToken)
     {
-        ArgumentNullException.ThrowIfNull(launcher);
         ArgumentNullException.ThrowIfNull(options);
-        ArgumentNullException.ThrowIfNull(fileSystem);
 
-        var browser = await launcher.LaunchAsync(cancellationToken).ConfigureAwait(false);
-        var commandTimeout = TimeSpan.FromSeconds(options.CommandTimeoutSeconds);
-        var connection = new BiDiConnection(browser.Transport, commandTimeout, logger);
-        var session = new FirefoxSession(browser, connection, fileSystem, commandTimeout, timings ?? FirefoxSessionTimings.Default, logger);
+        var browser = await FirefoxBrowser.OpenAsync(launcher, options, timings, logger, cancellationToken).ConfigureAwait(false);
         try
         {
-            await session.StartAsync(cancellationToken).ConfigureAwait(false);
-            return session;
+            return await AttachAsync(browser, options, fileSystem, logger, cancellationToken).ConfigureAwait(false);
         }
         catch
         {
-            await session.DisposeAsync().ConfigureAwait(false);
+            await browser.DisposeAsync().ConfigureAwait(false);
             throw;
         }
+    }
+
+    /// <summary>
+    /// Opens a session in a running browser, on the tab it started with when no session took it yet,
+    /// else on a new tab. The browser closes when its last session is disposed.
+    /// </summary>
+    /// <exception cref="BiDiException">The browser could not open a tab.</exception>
+    public static async Task<FirefoxSession> AttachAsync(
+        FirefoxBrowser browser, FirefoxToolOptions options, IFileSystemService fileSystem, ILogger? logger,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(browser);
+        ArgumentNullException.ThrowIfNull(options);
+        ArgumentNullException.ThrowIfNull(fileSystem);
+
+        var session = new FirefoxSession(browser, fileSystem, TimeSpan.FromSeconds(options.CommandTimeoutSeconds), logger);
+        var context = browser.TakeFirstTab() ?? await browser.CreateTabAsync(cancellationToken).ConfigureAwait(false);
+        session.AddTab(context, drive: true);
+        browser.Attach(session);
+        return session;
+    }
+
+    /// <summary>The tabs of the session, where each is, and which one is driven.</summary>
+    public async Task<IReadOnlyList<TabState>> ListTabsAsync(CancellationToken cancellationToken)
+    {
+        FirefoxTab[] tabs;
+        string? current;
+        lock (_navigation)
+        {
+            tabs = [.. _tabs];
+            current = _context;
+        }
+
+        var listed = new List<TabState>(tabs.Length);
+        foreach (var tab in tabs)
+        {
+            var state = await TryReadStateAsync(tab.Context, cancellationToken).ConfigureAwait(false);
+            listed.Add(new TabState(
+                tab.Handle,
+                state?.Url ?? await ReadUrlAsync(tab.Context, cancellationToken).ConfigureAwait(false),
+                state?.Title ?? string.Empty,
+                tab.Context == current));
+        }
+
+        return listed;
+    }
+
+    /// <summary>Opens a tab of its own, shown in front, and drives it from now on.</summary>
+    public async Task<string> NewTabAsync(CancellationToken cancellationToken)
+    {
+        var context = await _browser.CreateTabAsync(cancellationToken).ConfigureAwait(false);
+        return AddTab(context, drive: true);
+    }
+
+    /// <summary>Drives the tab <paramref name="handle"/> from now on, shown in front of the others.</summary>
+    /// <exception cref="FirefoxException">No tab of the session has that handle.</exception>
+    public async Task SwitchTabAsync(string handle, CancellationToken cancellationToken)
+    {
+        var tab = TabOf(handle);
+        Drive(tab.Context);
+        await _browser.ActivateAsync(tab.Context, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Closes the tab <paramref name="handle"/>, or the one driven when <c>null</c>. The tab driven, when
+    /// it is the one closed, becomes the one before it. The last tab is not closed: the browser is.
+    /// </summary>
+    /// <exception cref="FirefoxException">No tab of the session has that handle, or it is the last one.</exception>
+    public async Task CloseTabAsync(string? handle, CancellationToken cancellationToken)
+    {
+        FirefoxTab tab;
+        lock (_navigation)
+        {
+            tab = handle is null
+                ? _tabs.Find(candidate => candidate.Context == _context) ?? throw NoTab()
+                : TabOf(handle);
+            if (_tabs.Count == 1)
+                throw new FirefoxException($"'{tab.Handle}' is the last tab of this agent: it is not closed, close ends the browser.");
+        }
+
+        await _browser.CloseTabAsync(tab.Context, cancellationToken).ConfigureAwait(false);
+        ForgetTab(tab.Context);
     }
 
     /// <summary>Loads <paramref name="url"/> and waits for the page.</summary>
@@ -168,7 +261,7 @@ internal sealed partial class FirefoxSession : IAsyncDisposable
         Page = null;
         await SendAsync("browsingContext.navigate", new JsonObject
         {
-            ["context"] = _context,
+            ["context"] = Context,
             ["url"] = url,
             ["wait"] = "complete",
         }, cancellationToken).ConfigureAwait(false);
@@ -182,7 +275,7 @@ internal sealed partial class FirefoxSession : IAsyncDisposable
         Page = null;
         await SendAsync("browsingContext.traverseHistory", new JsonObject
         {
-            ["context"] = _context,
+            ["context"] = Context,
             ["delta"] = -1,
         }, cancellationToken).ConfigureAwait(false);
         await SettleAsync(activity, before.Url, cancellationToken).ConfigureAwait(false);
@@ -232,7 +325,7 @@ internal sealed partial class FirefoxSession : IAsyncDisposable
         {
             await SendAsync("input.performActions", new JsonObject
             {
-                ["context"] = _context,
+                ["context"] = Context,
                 ["actions"] = new JsonArray(new JsonObject
                 {
                     ["type"] = "pointer",
@@ -296,7 +389,7 @@ internal sealed partial class FirefoxSession : IAsyncDisposable
         var answer = await SendAsync("script.evaluate", new JsonObject
         {
             ["expression"] = script,
-            ["target"] = new JsonObject { ["context"] = _context },
+            ["target"] = new JsonObject { ["context"] = Context },
             ["awaitPromise"] = true,
             ["resultOwnership"] = "none",
             ["userActivation"] = true,
@@ -312,7 +405,7 @@ internal sealed partial class FirefoxSession : IAsyncDisposable
     {
         var answer = await SendAsync("browsingContext.captureScreenshot", new JsonObject
         {
-            ["context"] = _context,
+            ["context"] = Context,
             ["origin"] = "viewport",
         }, cancellationToken).ConfigureAwait(false);
         try
@@ -334,28 +427,204 @@ internal sealed partial class FirefoxSession : IAsyncDisposable
         return said;
     }
 
+    /// <summary>
+    /// Leaves the browser: closes it when this was its last session, else closes the tabs of the session
+    /// alone, the other sessions keeping theirs.
+    /// </summary>
     public async ValueTask DisposeAsync()
     {
         if (Interlocked.Exchange(ref _disposed, 1) != 0)
             return;
 
         Page = null;
-        if (!_connection.IsClosed)
+        if (_browser.Detach(this))
         {
+            await _browser.DisposeAsync().ConfigureAwait(false);
+            return;
+        }
+
+        FirefoxTab[] tabs;
+        lock (_navigation)
+        {
+            tabs = [.. _tabs];
+            _tabs.Clear();
+            _context = null;
+        }
+
+        foreach (var tab in tabs)
+        {
+            if (!_browser.IsAlive)
+                return;
             try
             {
-                // A browser asked to close leaves by itself; one that does not answer is killed below.
-                await _connection.SendAsync("browser.close", null, CancellationToken.None)
-                    .WaitAsync(_timings.CloseWait).ConfigureAwait(false);
+                await _browser.CloseTabAsync(tab.Context, CancellationToken.None).WaitAsync(_timings.CloseWait).ConfigureAwait(false);
             }
             catch (Exception ex) when (ex is BiDiException or TimeoutException)
             {
-                // Gone already, or deaf.
+                // The browser left, or does not answer: nothing more to close here.
             }
         }
+    }
 
-        await _connection.DisposeAsync().ConfigureAwait(false);
-        await _browser.DisposeAsync().ConfigureAwait(false);
+    /// <summary>Runs on the receive loop of the browser's connection: never waits for a command.</summary>
+    internal void OnEvent(string method, JsonObject parameters)
+    {
+        var context = parameters["context"] is JsonValue value && value.TryGetValue<string>(out var id) ? id : null;
+        if (context is null)
+            return;
+
+        if (method == "browsingContext.contextCreated")
+        {
+            // A link of one of the session's tabs opened a tab of its own: the agent follows it, as a
+            // user's eyes would. A tab another session, or the user, opened is not the agent's.
+            var opener = parameters["originalOpener"] is JsonValue described && described.TryGetValue<string>(out var by) ? by : null;
+            if (parameters["parent"] is null && opener is not null && IsOwn(opener))
+                AddTab(context, drive: true);
+            return;
+        }
+
+        if (method == "browsingContext.contextDestroyed")
+        {
+            if (IsOwn(context))
+                ForgetTab(context);
+            return;
+        }
+
+        if (!IsOwn(context))
+            return;
+
+        if (method == "browsingContext.userPromptOpened")
+        {
+            // A dialog freezes its tab, driven or not.
+            DismissDialog(context, parameters);
+            return;
+        }
+
+        lock (_navigation)
+        {
+            if (context != _context)
+                return;
+        }
+
+        var navigation = parameters["navigation"] is JsonValue numbered && numbered.TryGetValue<string>(out var number) ? number : null;
+        switch (method)
+        {
+            case "browsingContext.navigationStarted":
+                lock (_navigation)
+                {
+                    _pendingNavigation = navigation ?? string.Empty;
+                    _pendingTarget = parameters["url"] is JsonValue target && target.TryGetValue<string>(out var url) ? url : null;
+                    _pendingOrigin = _lastUrl;
+                }
+
+                Interlocked.Increment(ref _activity);
+                break;
+
+            case "browsingContext.load":
+            case "browsingContext.navigationFailed":
+            case "browsingContext.navigationAborted":
+            case "browsingContext.downloadWillBegin":
+                lock (_navigation)
+                {
+                    // The end of a navigation another one replaced is not the end of the pending one.
+                    if (_pendingNavigation is not null && (navigation is null || _pendingNavigation.Length == 0 || _pendingNavigation == navigation))
+                        _pendingNavigation = null;
+                }
+
+                Interlocked.Increment(ref _activity);
+                break;
+
+            case "browsingContext.fragmentNavigated":
+            case "browsingContext.historyUpdated":
+                Interlocked.Increment(ref _activity);
+                break;
+        }
+    }
+
+    /// <summary>The context of the tab driven.</summary>
+    /// <exception cref="FirefoxException">Every tab of the session was closed in the browser.</exception>
+    private string Context
+    {
+        get
+        {
+            lock (_navigation)
+                return _context ?? throw NoTab();
+        }
+    }
+
+    private static FirefoxException NoTab() =>
+        new("Every tab of this agent was closed in the browser: new_tab opens one, close ends the browser.");
+
+    private bool IsOwn(string context)
+    {
+        lock (_navigation)
+            return _tabs.Exists(tab => tab.Context == context);
+    }
+
+    private FirefoxTab TabOf(string handle)
+    {
+        lock (_navigation)
+        {
+            return _tabs.Find(tab => string.Equals(tab.Handle, handle, StringComparison.OrdinalIgnoreCase))
+                ?? throw new FirefoxException($"'{handle}' is not a tab of this agent: tabs lists them.");
+        }
+    }
+
+    /// <summary>Registers a tab of the session and returns its handle; <paramref name="drive"/> makes it the one driven.</summary>
+    private string AddTab(string context, bool drive)
+    {
+        lock (_navigation)
+        {
+            var handle = $"t{++_tabCount}";
+            _tabs.Add(new FirefoxTab(handle, context));
+            if (drive)
+                Drive(context);
+            return handle;
+        }
+    }
+
+    /// <summary>Drives <paramref name="context"/> from now on: the page shown is another one, nothing is known of it yet.</summary>
+    private void Drive(string context)
+    {
+        lock (_navigation)
+        {
+            if (_context == context)
+                return;
+            _context = context;
+            _pendingNavigation = null;
+            _pendingTarget = null;
+            _pendingOrigin = null;
+            _lastUrl = null;
+        }
+
+        Page = null;
+        _pageIsCurrent = false;
+        CheckedUrl = null;
+        Interlocked.Increment(ref _activity);
+    }
+
+    /// <summary>Drops a tab that is gone; the one driven, when it was that tab, becomes the one before it.</summary>
+    private void ForgetTab(string context)
+    {
+        string? next = null;
+        lock (_navigation)
+        {
+            var index = _tabs.FindIndex(tab => tab.Context == context);
+            if (index < 0)
+                return;
+            _tabs.RemoveAt(index);
+            if (_context != context)
+                return;
+            _context = null;
+            if (_tabs.Count > 0)
+                next = _tabs[Math.Max(0, index - 1)].Context;
+        }
+
+        Page = null;
+        _pageIsCurrent = false;
+        CheckedUrl = null;
+        if (next is not null)
+            Drive(next);
     }
 
     private static string LoadOutlineScript()
@@ -383,33 +652,15 @@ internal sealed partial class FirefoxSession : IAsyncDisposable
         return answer["result"] as JsonObject ?? [];
     }
 
-    private async Task StartAsync(CancellationToken cancellationToken)
-    {
-        await SendAsync("session.new", new JsonObject
-        {
-            ["capabilities"] = new JsonObject { ["alwaysMatch"] = new JsonObject { ["acceptInsecureCerts"] = false } },
-        }, cancellationToken).ConfigureAwait(false);
-
-        var tree = await SendAsync("browsingContext.getTree", new JsonObject { ["maxDepth"] = 0 }, cancellationToken).ConfigureAwait(false);
-        _context = (tree["contexts"] as JsonArray)?.FirstOrDefault()?["context"]?.GetValue<string>()
-            ?? throw new FirefoxException("Firefox started without a tab to drive.");
-
-        _connection.EventReceived = OnEvent;
-        await SendAsync("session.subscribe", new JsonObject
-        {
-            ["events"] = new JsonArray("browsingContext"),
-        }, cancellationToken).ConfigureAwait(false);
-    }
-
     private Task<JsonObject> SendAsync(string method, JsonObject parameters, CancellationToken cancellationToken) =>
-        _connection.SendAsync(method, parameters, cancellationToken);
+        _browser.SendAsync(method, parameters, cancellationToken);
 
     private async Task<JsonObject> CallFunctionAsync(string function, JsonArray arguments, CancellationToken cancellationToken)
     {
         var answer = await SendAsync("script.callFunction", new JsonObject
         {
             ["functionDeclaration"] = function,
-            ["target"] = new JsonObject { ["context"] = _context },
+            ["target"] = new JsonObject { ["context"] = Context },
             ["arguments"] = arguments,
             ["awaitPromise"] = false,
             ["resultOwnership"] = "none",
@@ -455,7 +706,7 @@ internal sealed partial class FirefoxSession : IAsyncDisposable
 
         await SendAsync("input.performActions", new JsonObject
         {
-            ["context"] = _context,
+            ["context"] = Context,
             ["actions"] = new JsonArray(new JsonObject { ["type"] = "key", ["id"] = "keyboard", ["actions"] = actions }),
         }, cancellationToken).ConfigureAwait(false);
         await ReleaseAsync(cancellationToken).ConfigureAwait(false);
@@ -465,7 +716,7 @@ internal sealed partial class FirefoxSession : IAsyncDisposable
     {
         try
         {
-            await SendAsync("input.releaseActions", new JsonObject { ["context"] = _context }, cancellationToken).ConfigureAwait(false);
+            await SendAsync("input.releaseActions", new JsonObject { ["context"] = Context }, cancellationToken).ConfigureAwait(false);
         }
         catch (BiDiException ex) when (ex.Code is not (BiDiException.ConnectionClosed or BiDiException.Timeout))
         {
@@ -547,8 +798,17 @@ internal sealed partial class FirefoxSession : IAsyncDisposable
         }
     }
 
-    /// <summary>The state of the page, or <c>null</c> while it cannot be asked: its document is being replaced.</summary>
+    /// <summary>The state of the page driven, or <c>null</c> while it cannot be asked: its document is being replaced.</summary>
     private async Task<PageState?> TryReadStateAsync(CancellationToken cancellationToken)
+    {
+        var state = await TryReadStateAsync(Context, cancellationToken).ConfigureAwait(false);
+        if (state is not null)
+            _lastUrl = state.Url;
+        return state;
+    }
+
+    /// <summary>The state of the page of a tab, or <c>null</c> while it cannot be asked.</summary>
+    private async Task<PageState?> TryReadStateAsync(string context, CancellationToken cancellationToken)
     {
         JsonObject answer;
         try
@@ -556,7 +816,7 @@ internal sealed partial class FirefoxSession : IAsyncDisposable
             answer = await SendAsync("script.evaluate", new JsonObject
             {
                 ["expression"] = StateExpression,
-                ["target"] = new JsonObject { ["context"] = _context },
+                ["target"] = new JsonObject { ["context"] = context },
                 ["awaitPromise"] = false,
                 ["resultOwnership"] = "none",
             }, cancellationToken).ConfigureAwait(false);
@@ -574,7 +834,6 @@ internal sealed partial class FirefoxSession : IAsyncDisposable
             if (JsonSerializer.Deserialize<string[]>(json) is not [var url, var title, var ready])
                 return null;
 
-            _lastUrl = url;
             return new PageState(url, title, string.Equals(ready, "complete", StringComparison.Ordinal));
         }
         catch (JsonException)
@@ -583,79 +842,20 @@ internal sealed partial class FirefoxSession : IAsyncDisposable
         }
     }
 
-    private async Task<string> ReadUrlAsync(CancellationToken cancellationToken)
+    private Task<string> ReadUrlAsync(CancellationToken cancellationToken) => ReadUrlAsync(Context, cancellationToken);
+
+    private async Task<string> ReadUrlAsync(string context, CancellationToken cancellationToken)
     {
         var tree = await SendAsync("browsingContext.getTree", new JsonObject
         {
-            ["root"] = _context,
+            ["root"] = context,
             ["maxDepth"] = 0,
         }, cancellationToken).ConfigureAwait(false);
         return (tree["contexts"] as JsonArray)?.FirstOrDefault()?["url"]?.GetValue<string>() ?? string.Empty;
     }
 
-    /// <summary>Runs on the receive loop of the connection: never waits for a command.</summary>
-    private void OnEvent(string method, JsonObject parameters)
-    {
-        var context = parameters["context"] is JsonValue value && value.TryGetValue<string>(out var id) ? id : null;
-        if (method == "browsingContext.contextCreated")
-        {
-            // A link opened a tab of its own: the agent follows it, as a user's eyes would.
-            if (context is not null && context != _context && parameters["parent"] is null
-                && parameters["originalOpener"] is not null)
-            {
-                _context = context;
-                lock (_navigation)
-                    _pendingNavigation = null;
-                Interlocked.Increment(ref _activity);
-            }
-
-            return;
-        }
-
-        if (context != _context)
-            return;
-
-        var navigation = parameters["navigation"] is JsonValue described && described.TryGetValue<string>(out var number) ? number : null;
-        switch (method)
-        {
-            case "browsingContext.navigationStarted":
-                lock (_navigation)
-                {
-                    _pendingNavigation = navigation ?? string.Empty;
-                    _pendingTarget = parameters["url"] is JsonValue target && target.TryGetValue<string>(out var url) ? url : null;
-                    _pendingOrigin = _lastUrl;
-                }
-
-                Interlocked.Increment(ref _activity);
-                break;
-
-            case "browsingContext.load":
-            case "browsingContext.navigationFailed":
-            case "browsingContext.navigationAborted":
-            case "browsingContext.downloadWillBegin":
-                lock (_navigation)
-                {
-                    // The end of a navigation another one replaced is not the end of the pending one.
-                    if (_pendingNavigation is not null && (navigation is null || _pendingNavigation.Length == 0 || _pendingNavigation == navigation))
-                        _pendingNavigation = null;
-                }
-
-                Interlocked.Increment(ref _activity);
-                break;
-
-            case "browsingContext.fragmentNavigated":
-            case "browsingContext.historyUpdated":
-                Interlocked.Increment(ref _activity);
-                break;
-
-            case "browsingContext.userPromptOpened":
-                DismissDialog(parameters);
-                break;
-        }
-    }
-
     /// <summary>A dialog freezes the page until it is answered: it is dismissed, and what it said is kept for the agent.</summary>
-    private void DismissDialog(JsonObject parameters)
+    private void DismissDialog(string context, JsonObject parameters)
     {
         var type = parameters["type"] is JsonValue kind && kind.TryGetValue<string>(out var name) ? name : "alert";
         var message = parameters["message"] is JsonValue said && said.TryGetValue<string>(out var text) ? text : string.Empty;
@@ -672,7 +872,7 @@ internal sealed partial class FirefoxSession : IAsyncDisposable
             {
                 await SendAsync("browsingContext.handleUserPrompt", new JsonObject
                 {
-                    ["context"] = _context,
+                    ["context"] = context,
                     ["accept"] = accept,
                 }, CancellationToken.None).ConfigureAwait(false);
             }

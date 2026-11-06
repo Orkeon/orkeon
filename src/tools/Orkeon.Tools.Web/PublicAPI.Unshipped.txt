@@ -128,3 +128,26 @@ override Orkeon.Tools.Web.FirefoxHit.GetHashCode() -> int
 override Orkeon.Tools.Web.FirefoxHit.ToString() -> string!
 static Orkeon.Tools.Web.FirefoxHit.operator !=(Orkeon.Tools.Web.FirefoxHit? left, Orkeon.Tools.Web.FirefoxHit? right) -> bool
 static Orkeon.Tools.Web.FirefoxHit.operator ==(Orkeon.Tools.Web.FirefoxHit? left, Orkeon.Tools.Web.FirefoxHit? right) -> bool
+Orkeon.Tools.Web.FirefoxRequest.Tab.get -> string?
+Orkeon.Tools.Web.FirefoxRequest.Tab.init -> void
+Orkeon.Tools.Web.FirefoxResponse.Tab.get -> string?
+Orkeon.Tools.Web.FirefoxResponse.Tab.init -> void
+Orkeon.Tools.Web.FirefoxResponse.Tabs.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Tools.Web.FirefoxTabInfo!>!
+Orkeon.Tools.Web.FirefoxResponse.Tabs.init -> void
+Orkeon.Tools.Web.FirefoxTabInfo
+Orkeon.Tools.Web.FirefoxTabInfo.<Clone>$() -> Orkeon.Tools.Web.FirefoxTabInfo!
+Orkeon.Tools.Web.FirefoxTabInfo.Current.get -> bool
+Orkeon.Tools.Web.FirefoxTabInfo.Current.init -> void
+Orkeon.Tools.Web.FirefoxTabInfo.Equals(Orkeon.Tools.Web.FirefoxTabInfo? other) -> bool
+Orkeon.Tools.Web.FirefoxTabInfo.FirefoxTabInfo() -> void
+Orkeon.Tools.Web.FirefoxTabInfo.Id.get -> string!
+Orkeon.Tools.Web.FirefoxTabInfo.Id.init -> void
+Orkeon.Tools.Web.FirefoxTabInfo.Title.get -> string!
+Orkeon.Tools.Web.FirefoxTabInfo.Title.init -> void
+Orkeon.Tools.Web.FirefoxTabInfo.Url.get -> string!
+Orkeon.Tools.Web.FirefoxTabInfo.Url.init -> void
+override Orkeon.Tools.Web.FirefoxTabInfo.Equals(object? obj) -> bool
+override Orkeon.Tools.Web.FirefoxTabInfo.GetHashCode() -> int
+override Orkeon.Tools.Web.FirefoxTabInfo.ToString() -> string!
+static Orkeon.Tools.Web.FirefoxTabInfo.operator !=(Orkeon.Tools.Web.FirefoxTabInfo? left, Orkeon.Tools.Web.FirefoxTabInfo? right) -> bool
+static Orkeon.Tools.Web.FirefoxTabInfo.operator ==(Orkeon.Tools.Web.FirefoxTabInfo? left, Orkeon.Tools.Web.FirefoxTabInfo? right) -> bool

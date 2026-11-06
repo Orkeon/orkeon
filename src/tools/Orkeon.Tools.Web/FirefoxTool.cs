@@ -28,13 +28,14 @@ public sealed record FirefoxRequest
         Description = "What to do: navigate (url), back, snapshot (the outline of the page: sections, links, controls, each with a node id), " +
             "read (the text of the page, or of node_id), find (nodes by kind and name, under node_id), search (query: the sections of the page closest in meaning), " +
             "click (node_id), type (node_id, text), " +
-            "press (key), evaluate (script), screenshot (save_to_path), close",
+            "press (key), evaluate (script), screenshot (save_to_path), " +
+            "tabs (the tabs of this agent), new_tab (url, optional), switch_tab (tab), close_tab (tab, the current one by default), close",
         IsRequired = true,
-        Enum = ["navigate", "back", "snapshot", "read", "find", "search", "click", "type", "press", "evaluate", "screenshot", "close"])]
+        Enum = ["navigate", "back", "snapshot", "read", "find", "search", "click", "type", "press", "evaluate", "screenshot", "tabs", "new_tab", "switch_tab", "close_tab", "close"])]
     public string Action { get; init; } = "";
 
-    /// <summary>Gets the address <c>navigate</c> opens.</summary>
-    [FieldSchema(Description = "navigate: the http or https address to open", IsRequired = false)]
+    /// <summary>Gets the address <c>navigate</c> or <c>new_tab</c> opens.</summary>
+    [FieldSchema(Description = "navigate, new_tab: the http or https address to open", IsRequired = false)]
     [SuppressMessage("Design", "CA1056:URI-like properties should not be strings", Justification = "What the model wrote: the tool validates it, and says why when it is not an address.")]
     public string? Url { get; init; }
 
@@ -77,6 +78,10 @@ public sealed record FirefoxRequest
     /// <summary>Gets what a listing or a reading skips.</summary>
     [FieldSchema(Description = "snapshot, find: nodes to skip, to read the next part of a listing; read: characters to skip", IsRequired = false)]
     public int? Offset { get; init; }
+
+    /// <summary>Gets the tab <c>switch_tab</c> drives from now on, or <c>close_tab</c> closes.</summary>
+    [FieldSchema(Description = "switch_tab, close_tab: the handle of a tab of this agent (t1, t2), as tabs lists them", IsRequired = false)]
+    public string? Tab { get; init; }
 }
 
 /// <summary>Strongly-typed response for <see cref="FirefoxTool"/>.</summary>
@@ -136,6 +141,14 @@ public sealed record FirefoxResponse : IBoundedToolResponse
     [ReturnSchema(Description = "What the dialogs the page opened said (alert, confirm, prompt); they were dismissed")]
     public IReadOnlyList<string> Dialogs { get; init; } = [];
 
+    /// <summary>Gets the handle of the tab the actions drive now.</summary>
+    [ReturnSchema(Description = "The tab the actions drive now (t1, t2): the one a link opened, or the one switched to")]
+    public string? Tab { get; init; }
+
+    /// <summary>Gets the tabs of the agent.</summary>
+    [ReturnSchema(Description = "tabs: the tabs of this agent, in the order they were opened: id, url, title, current")]
+    public IReadOnlyList<FirefoxTabInfo> Tabs { get; init; } = [];
+
     /// <summary>The tool bounds what it returns itself: the nodes by <c>max_nodes</c>, the text by the host's limit.</summary>
     [JsonIgnore]
     public bool AlreadyBounded => true;
@@ -163,6 +176,27 @@ public sealed record FirefoxNode
     public string Text { get; init; } = "";
 }
 
+/// <summary>One tab of the agent, as <c>tabs</c> lists it.</summary>
+public sealed record FirefoxTabInfo
+{
+    /// <summary>Gets the handle of the tab.</summary>
+    [ReturnSchema(Description = "Handle of the tab, taken by switch_tab and close_tab")]
+    public required string Id { get; init; }
+
+    /// <summary>Gets the address the tab shows.</summary>
+    [ReturnSchema(Description = "Address the tab shows")]
+    [SuppressMessage("Design", "CA1056:URI-like properties should not be strings", Justification = "The address as the browser reports it, serialized for the model.")]
+    public required string Url { get; init; }
+
+    /// <summary>Gets the title of the page the tab shows.</summary>
+    [ReturnSchema(Description = "Title of the page the tab shows")]
+    public required string Title { get; init; }
+
+    /// <summary>Gets whether the tab is the one the actions drive.</summary>
+    [ReturnSchema(Description = "True for the tab the actions drive now")]
+    public bool Current { get; init; }
+}
+
 /// <summary>One section of a page a semantic search found.</summary>
 public sealed record FirefoxHit
 {
@@ -188,6 +222,7 @@ public sealed record FirefoxHit
     Name = "firefox",
     Description = "Drive a Firefox browser: open a page (navigate), read it as an outline of sections, links and controls (snapshot, find, read), " +
         "find its sections by meaning (search), then act on a node by its id (click, type), press keys, run a script (evaluate) or save a screenshot. " +
+        "Tabs of its own are opened, listed, switched and closed (new_tab, tabs, switch_tab, close_tab). " +
         "The browser stays open between calls of the same run; close ends it.",
     Category = "Web Operations")]
 public sealed partial class FirefoxTool : ToolBase<FirefoxRequest, FirefoxResponse>
@@ -203,6 +238,10 @@ public sealed partial class FirefoxTool : ToolBase<FirefoxRequest, FirefoxRespon
     internal const string Press = "press";
     internal const string Evaluate = "evaluate";
     internal const string Screenshot = "screenshot";
+    internal const string Tabs = "tabs";
+    internal const string NewTab = "new_tab";
+    internal const string SwitchTab = "switch_tab";
+    internal const string CloseTab = "close_tab";
     internal const string Close = "close";
 
     /// <summary>The most nodes one answer lists, whatever <c>max_nodes</c> asks.</summary>
@@ -223,13 +262,13 @@ public sealed partial class FirefoxTool : ToolBase<FirefoxRequest, FirefoxRespon
     private const string PageItself = "page";
 
     private static readonly string[] s_actions =
-        [Navigate, Back, Snapshot, Read, Find, Search, Click, TypeText, Press, Evaluate, Screenshot, Close];
+        [Navigate, Back, Snapshot, Read, Find, Search, Click, TypeText, Press, Evaluate, Screenshot, Tabs, NewTab, SwitchTab, CloseTab, Close];
 
-    // The actions that only look at the web. Every other one, a missing or unknown one included, acts
-    // on a page - or, for screenshot, writes a file.
+    // The actions that only look at the web - opening or choosing a tab shows a page, as navigate does.
+    // Every other one, a missing or unknown one included, acts on a page - or, for screenshot, writes a file.
     private static readonly HashSet<string> s_readActions = new(StringComparer.OrdinalIgnoreCase)
     {
-        Navigate, Back, Snapshot, Read, Find, Search,
+        Navigate, Back, Snapshot, Read, Find, Search, Tabs, NewTab, SwitchTab,
     };
 
     private static readonly Dictionary<string, UniversalNodeKind> s_kinds = new(StringComparer.OrdinalIgnoreCase)
@@ -281,9 +320,9 @@ public sealed partial class FirefoxTool : ToolBase<FirefoxRequest, FirefoxRespon
 
     /// <summary>
     /// <see cref="ToolAccess.Read"/> for <c>navigate</c>, <c>back</c>, <c>snapshot</c>, <c>read</c>,
-    /// <c>find</c> and <c>search</c>; <see cref="ToolAccess.Edit"/> for <c>screenshot</c>, which writes a file;
-    /// <see cref="ToolAccess.Execute"/> for <c>click</c>, <c>type</c>, <c>press</c>, <c>evaluate</c>,
-    /// <c>close</c> and any unknown or missing action (fail-closed).
+    /// <c>find</c>, <c>search</c>, <c>tabs</c>, <c>new_tab</c> and <c>switch_tab</c>; <see cref="ToolAccess.Edit"/>
+    /// for <c>screenshot</c>, which writes a file; <see cref="ToolAccess.Execute"/> for <c>click</c>, <c>type</c>,
+    /// <c>press</c>, <c>evaluate</c>, <c>close_tab</c>, <c>close</c> and any unknown or missing action (fail-closed).
     /// </summary>
     /// <param name="arguments">Arguments the model supplied for the call.</param>
     /// <returns>The access class of this call.</returns>
@@ -319,6 +358,8 @@ public sealed partial class FirefoxTool : ToolBase<FirefoxRequest, FirefoxRespon
         return action switch
         {
             Navigate => InvalidUrl(request.Url),
+            NewTab => string.IsNullOrWhiteSpace(request.Url) ? null : InvalidUrl(request.Url),
+            SwitchTab => Missing(request.Tab, "tab", action),
             Click => Missing(request.NodeId, "node_id", action),
             TypeText => Missing(request.NodeId, "node_id", action) ?? (request.Text is null ? "text is required for action 'type'" : null),
             Press => string.IsNullOrEmpty(request.Key)
@@ -347,10 +388,10 @@ public sealed partial class FirefoxTool : ToolBase<FirefoxRequest, FirefoxRespon
                 return new FirefoxResponse { Action = action, Success = true, Value = closed ? "The browser was closed." : "No browser was open." };
             }
 
-            if (action == Navigate)
+            if (action is Navigate or NewTab && !string.IsNullOrWhiteSpace(request.Url))
             {
                 // Refused before any browser starts: an address the policy forbids costs no Firefox.
-                var url = request.Url!.Trim();
+                var url = request.Url.Trim();
                 if (await RefusalAsync(url, cancellationToken).ConfigureAwait(false) is { } refusal)
                     throw new FirefoxException($"'{url}' was not opened: {refusal}.");
             }
@@ -388,12 +429,24 @@ public sealed partial class FirefoxTool : ToolBase<FirefoxRequest, FirefoxRespon
     {
         // What the browser shows was left there by an earlier action - or by the page itself, since: it
         // is checked before anything is read from it or done in it.
-        var state = action == Navigate ? null : await GuardAsync(session, cancellationToken).ConfigureAwait(false);
+        var state = action is Navigate or NewTab or SwitchTab ? null : await GuardAsync(session, cancellationToken).ConfigureAwait(false);
         string? value = null;
         switch (action)
         {
             case Navigate:
                 await session.NavigateAsync(request.Url!.Trim(), cancellationToken).ConfigureAwait(false);
+                state = null;
+                break;
+            case NewTab:
+                await session.NewTabAsync(cancellationToken).ConfigureAwait(false);
+                if (!string.IsNullOrWhiteSpace(request.Url))
+                    await session.NavigateAsync(request.Url.Trim(), cancellationToken).ConfigureAwait(false);
+                break;
+            case SwitchTab:
+                await session.SwitchTabAsync(request.Tab!.Trim(), cancellationToken).ConfigureAwait(false);
+                break;
+            case CloseTab:
+                await session.CloseTabAsync(string.IsNullOrWhiteSpace(request.Tab) ? null : request.Tab.Trim(), cancellationToken).ConfigureAwait(false);
                 state = null;
                 break;
             case Back:
@@ -430,6 +483,7 @@ public sealed partial class FirefoxTool : ToolBase<FirefoxRequest, FirefoxRespon
             Read => await ReadAsync(session, request, cancellationToken).ConfigureAwait(false),
             Search => await SearchAsync(session, request, cancellationToken).ConfigureAwait(false),
             Screenshot => await CaptureAsync(session, request.SaveToPath!.Trim(), cancellationToken).ConfigureAwait(false),
+            Tabs => new FirefoxResponse { Tabs = await TabsAsync(session, cancellationToken).ConfigureAwait(false) },
             Navigate or Back => await ListAsync(session, new FirefoxRequest(), fresh: true, cancellationToken).ConfigureAwait(false),
             // An action in the page that opened another one: its outline comes with the answer, since
             // the node ids the agent holds name the page it left.
@@ -445,8 +499,13 @@ public sealed partial class FirefoxTool : ToolBase<FirefoxRequest, FirefoxRespon
             Title = state.Title,
             Value = value,
             Dialogs = session.TakeDialogs(),
+            Tab = session.CurrentTab,
         };
     }
+
+    private static async Task<IReadOnlyList<FirefoxTabInfo>> TabsAsync(FirefoxSession session, CancellationToken cancellationToken) =>
+        [.. (await session.ListTabsAsync(cancellationToken).ConfigureAwait(false))
+            .Select(tab => new FirefoxTabInfo { Id = tab.Handle, Url = tab.Url, Title = tab.Title, Current = tab.Current })];
 
     /// <summary>
     /// The page the browser shows, once its address passed the policy. A page that does not is left

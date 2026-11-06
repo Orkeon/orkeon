@@ -19,6 +19,9 @@ internal sealed class BiDiException : Exception, IExpectedToolError
     /// <summary>Code the browser gives a command that names an element the page no longer holds.</summary>
     public const string NoSuchNode = "no such node";
 
+    /// <summary>Code the browser gives a command that names a tab or frame it no longer holds.</summary>
+    public const string NoSuchFrame = "no such frame";
+
     public BiDiException(string code, string message, Exception? innerException = null)
         : base(string.IsNullOrEmpty(message) ? code : $"{code}: {message}", innerException)
     {
