@@ -399,6 +399,14 @@ defineAsyncCommand({
   l'option ne change rien : le lancement prend la profondeur qu'il prendrait sans elle (un
   premier saut est de profondeur 1), et un `post` monte toujours. Toute autre valeur de
   `chain` est une erreur de script.
+- **Un crew qui est la conversation : `{ onMain: true }`.** `runCrewAsync(name, input, { onMain: true })` fait du crew la
+  conversation plutôt qu'une tâche à côté. Dans la console à volets, ce qu'il écrit, texte diffusé compris, ses appels et ses
+  approbations arrivent sur l'écran `main`, sans ligne dans la liste ni ligne de lancement ; la console simple écrit son texte
+  sans préfixe de ticket, et dans les deux ses approbations ne nomment aucune tâche. Sa ligne de fin n'apparaît que s'il a échoué
+  ou si son jeton a expiré. `Échap Échap` l'interrompt quoi qu'on ait tapé depuis son lancement, car il reste dans le tour de
+  l'invite ; une annulation demandée, par ces touches ou par `cancel`, n'écrit pas de ligne de fin et n'appelle pas `completed`.
+  Le fil principal porte une seule conversation : lancé pendant qu'un autre crew `onMain` tourne, le crew est une tâche ordinaire à
+  côté. `ps` et `get` en rendent toujours compte (`onMain` sur la vue). Une valeur ni absente ni booléenne lève une exception.
 - **Un crew qui ne doit pas tourner deux fois : `{ exclusive: true }`.** Un crew qui ne
   doit pas tourner deux fois à la fois (une revue, l'écrivain d'un magasin partagé) est
   lancé par `runCrewAsync(name, input, { exclusive: true })` : tant qu'un autre lancement
@@ -605,8 +613,8 @@ tâches. La barre d'état est indentée de deux colonnes et joint ses parties pa
 mode de permission (`⏵⏵ bypass permissions on (shift+tab to cycle)`, en jaune pour
 `bypassPermissions`, `dontAsk` et `acceptEdits`, atténué sinon), les aides, et `↓ tasks` tant
 qu'une tâche autre que `main` existe ; depuis la liste elle affiche `↑/↓ select · enter view` seul.
-La liste montre `main` d'abord, puis les tâches vivantes dans l'ordre de création, puis les tâches
-terminées dans l'ordre de création, et `main` reste listée tant que l'une des tâches, vivante ou terminée,
+La liste montre `main` d'abord, puis les tâches vivantes dans l'ordre de création, puis la tâche
+terminée à laquelle l'invite s'adresse, s'il y en a une, et `main` reste listée tant qu'une tâche
 est listée : le `❯` de l'accent en
 colonne 0 tant que la liste a le focus, `●` pour le destinataire et `◯` pour les autres (vert en
 cours, rouge en échec ou annulée, atténué sinon ; une ligne terminée est atténuée, sa phrase d'activité
@@ -626,11 +634,11 @@ commande vont sur `main`, la ligne de fin gardant son ticket, qui y nomme la tâ
 agissent sur l'écran affiché ; `Échap Échap` interrompt toujours le tour de l'invite, quel que soit l'écran
 affiché, sa ligne `Interrupted` arrivant sur `main`. Une ligne d'attention, comme une question d'approbation
 d'outil, s'affiche sur l'écran affiché quelle que soit la tâche qui demande, et est enregistrée une fois
-dans l'écran de la tâche qui demande. Dans la console à volets, les tâches terminées restent listées jusqu'à ce que
-l'hôte les oublie, avec leur écran : une tâche qui se termine garde sa ligne, son écran et, si elle était
-destinataire, le destinataire ; ligne et écran partent ensemble quand `TuiIntegration.FinishedAgentRows` ne
-rend plus la tâche. Un sondage dont le flux des terminées échoue garde les lignes terminées de la
-dernière lecture réussie : une panne n'est pas l'hôte qui oublie une tâche. Entre deux sondages, une nouvelle tâche
+dans l'écran de la tâche qui demande. Dans la console à volets, une tâche qui se termine quitte la liste au sondage suivant,
+et son écran avec elle : ce qu'elle y a écrit ne se relit plus, et `ps`/`inspect` en rendent toujours compte. L'exception
+est la tâche en cours de lecture : destinataire, elle garde sa ligne, son écran et le destinataire, jusqu'à ce que le
+destinataire change ou que `TuiIntegration.FinishedAgentRows` ne rende plus la tâche. Un sondage dont le flux des
+terminées échoue garde la ligne terminée du destinataire de la dernière lecture réussie : une panne n'est pas l'hôte qui oublie une tâche. Entre deux sondages, une nouvelle tâche
 imprime `● <nom>(<intention>)` puis `⎿  Backgrounded agent (↓ tasks)` dans le transcript, et une
 tâche terminée `● Agent "<nom>" finished · <durée>`, `✗ Agent "<nom>" failed · <durée>` ou
 `⊘ Agent "<nom>" cancelled · <durée>` : l'état final vient du `TuiIntegration.FinishedAgentRows` de

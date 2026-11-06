@@ -40,6 +40,7 @@ public sealed partial class CommandDispatchService
     // Per-instance CTS for detached async work, so cancel(ticket) can interrupt an in-flight
     // post without affecting the (already-returned) REPL command's token.
     private readonly ConcurrentDictionary<string, CancellationTokenSource> _asyncCts = new(StringComparer.Ordinal);
+    private readonly Lock _mainThreadGate = new();
 
     // The instance holding each target launched exclusively (#239): the holder releases it as it turns terminal.
     private readonly Dictionary<string, CommandInstance> _exclusive = new(StringComparer.Ordinal);
@@ -99,8 +100,15 @@ public sealed partial class CommandDispatchService
     }
 
     /// <summary>Tickets of the latest prompt scope that are still running.</summary>
+    /// <remarks>Work on the main thread stays in the turn whatever was typed since: it has no row to reach it by.</remarks>
     public IReadOnlyList<string> PromptTurnTickets()
-        => _promptScope?.Turn.Select(i => _registry.Get(i.Ticket)).Where(i => i is { State: CommandInstanceState.Running }).Select(i => i!.Ticket).ToList() ?? new List<string>();
+    {
+        var turn = _promptScope?.Turn.Select(i => _registry.Get(i.Ticket)).Where(i => i is { State: CommandInstanceState.Running }).Select(i => i!.Ticket) ?? [];
+        return [.. turn.Union(RunningOnMain())];
+    }
+
+    private IEnumerable<string> RunningOnMain()
+        => _registry.List(new CommandInstanceFilter(CommandInstanceState.Running)).Where(v => v.onMain).Select(v => v.ticket);
 
     /// <summary>What the latest model call of the latest prompt scope sent, in tokens; zero before any.</summary>
     public long PromptTurnContextTokens()
@@ -228,18 +236,30 @@ public sealed partial class CommandDispatchService
     /// pass; the target is free again when the holder's work has ended (completed, failed, or stopped after cancel()). A launch without the
     /// flag is neither refused nor counted.
     /// </param>
+    /// <param name="onMain">
+    /// <see langword="true"/>: the work belongs to the main thread of the console. What it writes lands there, and the
+    /// console's list of tasks leaves it out. The main thread holds one conversation at a time: while one runs, this
+    /// work is an ordinary task beside it.
+    /// </param>
     /// <exception cref="ChainDepthExceededException">The depth reached <c>MaxChainDepth</c> on a launch that climbs.</exception>
     /// <exception cref="ExclusiveLaunchRefusedException">An exclusive launch of <paramref name="target"/> still runs.</exception>
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Fire-and-forget host-work fault barrier: a background work failure is logged and recorded on the instance so it cannot crash the detached task; cancellation marks the instance cancelled.")]
-    public string postWork(string label, string target, Func<CancellationToken, Task<CommandResponse>> work, bool continueChain = false, bool exclusive = false)
+    public string postWork(string label, string target, Func<CancellationToken, Task<CommandResponse>> work, bool continueChain = false, bool exclusive = false, bool onMain = false)
     {
         ArgumentNullException.ThrowIfNull(work);
         var scope = _ambient.Value;
         var command = scope?.CommandName ?? label ?? "postWork";
         var depth = ChainDepthOf(scope, command, continueChain);
-        var instance = exclusive
-            ? RegisterExclusive(command, target ?? string.Empty, label ?? string.Empty)
-            : _registry.Register(command, CommandInstanceKind.Async, target ?? string.Empty, label ?? string.Empty, Guid.NewGuid());
+        CommandInstance instance;
+        // The check and the registration are one step, and the instance is published already marked: a poll of the
+        // list never sees it as a task, and two launches in the same tick cannot both take the main thread.
+        lock (_mainThreadGate)
+        {
+            var mainThread = onMain && !RunningOnMain().Any();
+            instance = exclusive
+                ? RegisterExclusive(command, target ?? string.Empty, label ?? string.Empty, mainThread)
+                : _registry.Register(command, CommandInstanceKind.Async, target ?? string.Empty, label ?? string.Empty, Guid.NewGuid(), mainThread);
+        }
         instance.Depth = depth;
         scope?.Capture(instance);
         if (exclusive)
@@ -303,6 +323,7 @@ public sealed partial class CommandDispatchService
     {
         var instance = _registry.Get(ticket);
         if (instance is null || instance.IsTerminal) return false;
+        instance.CancelRequested = true;
         if (_asyncCts.TryGetValue(ticket, out var cts))
         {
             try { cts.Cancel(); } catch (ObjectDisposedException) { /* completed concurrently */ }
@@ -348,13 +369,13 @@ public sealed partial class CommandDispatchService
 
     /// <summary>Registers an instance of <paramref name="target"/> unless an exclusive holder has it.</summary>
     /// <exception cref="ExclusiveLaunchRefusedException">The holder of <paramref name="target"/> has not ended.</exception>
-    private CommandInstance RegisterExclusive(string command, string target, string label)
+    private CommandInstance RegisterExclusive(string command, string target, string label, bool onMain)
     {
         lock (_exclusiveGate)
         {
             if (_exclusive.TryGetValue(target, out var holder))
                 throw new ExclusiveLaunchRefusedException(target, holder.Ticket);
-            var instance = _registry.Register(command, CommandInstanceKind.Async, target, label, Guid.NewGuid());
+            var instance = _registry.Register(command, CommandInstanceKind.Async, target, label, Guid.NewGuid(), onMain);
             _exclusive[target] = instance;
             return instance;
         }

@@ -35,6 +35,16 @@ public sealed class CommandInstanceRegistry
         string targetAgent,
         string intent,
         Guid correlationId)
+        => Register(name, kind, targetAgent, intent, correlationId, onMain: false);
+
+    /// <summary>Registers a new running instance, on the main thread of the console or not.</summary>
+    internal CommandInstance Register(
+        string name,
+        CommandInstanceKind kind,
+        string targetAgent,
+        string intent,
+        Guid correlationId,
+        bool onMain)
     {
         var ticket = "t" + Interlocked.Increment(ref _ticketSeq);
         Interlocked.Increment(ref _inFlight);
@@ -42,6 +52,7 @@ public sealed class CommandInstanceRegistry
             ticket, name ?? string.Empty, kind, targetAgent ?? string.Empty,
             intent ?? string.Empty, correlationId, DateTimeOffset.UtcNow)
         {
+            OnMain = onMain,
             // Evict once an instance reaches a terminal state — otherwise the most recently
             // completed entry would never trigger the budget check.
             TerminalObserver = settled =>

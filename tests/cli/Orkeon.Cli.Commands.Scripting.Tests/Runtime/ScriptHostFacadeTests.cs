@@ -341,6 +341,47 @@ public sealed class ScriptHostFacadeTests : IDisposable
     }
 
     [Fact]
+    public void RunCrewAsync_onMain_that_is_not_a_boolean_is_a_script_error()
+    {
+        var facade = BuildFacade(NewDispatch());
+
+        var refused = Assert.Throws<Jint.Runtime.JavaScriptException>(
+            () => facade.runCrewAsync("review", options: JsObject("{ onMain: 'yes' }")));
+
+        Assert.Equal("script-host.runCrewAsync: onMain must be a boolean, not 'yes'.", refused.Message);
+    }
+
+    [Theory]
+    [InlineData("{ onMain: true }", true)]
+    [InlineData("{ exclusive: true }", false)]
+    public void RunCrewAsync_marks_the_instance_only_when_onMain_is_asked(string options, bool expected)
+    {
+        WriteCrew("review", "\"reviewed\";");
+        var dispatch = NewDispatch();
+        var facade = BuildFacade(dispatch);
+
+        var ticket = facade.runCrewAsync("review", options: JsObject(options));
+
+        Assert.Equal(expected, dispatch.get(ticket)!.onMain);
+    }
+
+    [Theory]
+    [InlineData(true, true)]
+    [InlineData(false, false)]
+    public async Task RunCrewAsync_reports_streamed_only_for_work_on_main(bool onMain, bool expected)
+    {
+        WriteCrew("talk", "tools.streamTurn({}); \"the answer\";");
+        var console = new ScriptedTestConsole();
+        var dispatch = NewDispatch();
+        var facade = BuildFacade(dispatch, tool: StreamingTool(new ConsoleLlmDeltaSink(console), label: null, "the answer"));
+
+        var ticket = facade.runCrewAsync("talk", options: JsObject(onMain ? "{ onMain: true }" : "{}"));
+        await Orkeon.Cli.Commands.Scripting.Tests.Dispatch.ChainHarness.WaitUntil(() => dispatch.get(ticket)!.state != "running");
+
+        Assert.Equal(expected, dispatch.get(ticket)!.result!.streamed);
+    }
+
+    [Fact]
     [Trait("BR", "#239")]
     public void RunCrewAsync_exclusive_that_is_not_a_boolean_is_a_script_error()
     {

@@ -127,6 +127,8 @@ export interface CommandInstanceView {
   readonly intent: string;
   readonly correlationId: string;
   readonly state: CommandInstanceState;
+  /** Launched with `{ onMain: true }`: it writes on the main screen and is no task of the list. */
+  readonly onMain: boolean;
   readonly startedAt: string;
   readonly completedAt?: string;
   readonly elapsedMs: number;
@@ -362,6 +364,14 @@ export interface CrewLaunchOptions {
    * is neither refused nor counted. Boolean or absent: any other value, an explicit `null` included, throws.
    */
   exclusive?: boolean;
+  /**
+   * `true`: the crew is the conversation itself rather than a task beside it. In the split-pane console what it
+   * writes, its calls and its approvals land on the main screen, and the list of tasks leaves it out; `ps` and `get`
+   * still report it. Its end line shows only when it failed or its token expired; cancelled on request, it writes no
+   * end line and its `completed` does not run. While another `onMain` crew runs, this one is an ordinary task beside
+   * it. Boolean or absent: any other value throws.
+   */
+  onMain?: boolean;
 }
 
 /**

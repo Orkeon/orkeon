@@ -78,9 +78,9 @@ public class AgentsPaneViewTests
     private static AgentRowInfo EndedRow(string name, string ticket, TaskRowState state = TaskRowState.Done, int seconds = 135)
         => new() { Name = name, Ticket = ticket, Elapsed = TimeSpan.FromSeconds(seconds), State = state };
 
-    private static AgentsPaneView PaneWith(IReadOnlyList<AgentRowInfo> live, IReadOnlyList<AgentRowInfo> ended)
+    private static AgentsPaneView PaneWith(IReadOnlyList<AgentRowInfo> live, IReadOnlyList<AgentRowInfo> ended, string? recipient = null)
     {
-        var pane = new AgentsPaneView(new TerminalGuiOptions(), InlineDispatcher.Instance);
+        var pane = new AgentsPaneView(new TerminalGuiOptions(), InlineDispatcher.Instance) { Navigator = new StubTaskListNavigator { RecipientTicket = recipient } };
         pane.Bind(new TuiIntegration { AgentRows = () => live, FinishedAgentRows = () => ended });
         pane.Refresh();
         return pane;
@@ -89,32 +89,56 @@ public class AgentsPaneViewTests
     [Fact]
     [Trait("BR", "BR-07")]
     [Trait("BR", "A5")]
-    public void ShouldListEndedTaskAfterLiveOnes_WhenHostRetainsIt()
+    public void ShouldLeaveEndedTaskOutOfTheList_WhenOtherTasksAreLive()
     {
         using var pane = PaneWith(
             [new AgentRowInfo { Name = "main", IsActive = true }, new AgentRowInfo { Name = "live", Ticket = "T-2" }],
             [EndedRow("done", "T-1")]);
 
-        Assert.Equal(["main", "live", "done"], pane.Rows.Select(r => r.Name).ToArray());
+        Assert.Equal(["main", "live"], pane.Rows.Select(r => r.Name).ToArray());
+    }
+
+    [Theory]
+    [Trait("BR", "BR-07")]
+    [InlineData(TaskRowState.Done)]
+    [InlineData(TaskRowState.Failed)]
+    [InlineData(TaskRowState.Cancelled)]
+    public void ShouldEmptyTheList_WhenOnlyEndedTasksRemain(TaskRowState state)
+    {
+        using var pane = PaneWith([], [EndedRow("done", "T-1", state)]);
+
+        Assert.Empty(pane.Rows);
+    }
+
+    [Fact]
+    [Trait("BR", "BR-07")]
+    public void ShouldKeepEndedTaskAfterLiveOnes_WhenItIsTheRecipient()
+    {
+        using var pane = PaneWith(
+            [new AgentRowInfo { Name = "main", IsActive = true }, new AgentRowInfo { Name = "live", Ticket = "T-2" }],
+            [EndedRow("read", "T-1"), EndedRow("other", "T-3")],
+            recipient: "T-1");
+
+        Assert.Equal(["main", "live", "read"], pane.Rows.Select(r => r.Name).ToArray());
     }
 
     [Fact]
     [Trait("BR", "BR-07")]
     [Trait("BR", "A5")]
-    public void ShouldListMainRow_WhenOnlyEndedTasksRemain()
+    public void ShouldListMainRow_WhenOnlyTheEndedRecipientRemains()
     {
-        using var pane = PaneWith([], [EndedRow("done", "T-1")]);
+        using var pane = PaneWith([], [EndedRow("read", "T-1")], recipient: "T-1");
 
-        Assert.Equal(["main", "done"], pane.Rows.Select(r => r.Name).ToArray());
+        Assert.Equal(["main", "read"], pane.Rows.Select(r => r.Name).ToArray());
     }
 
     [Theory]
     [Trait("BR", "BR-07")]
     [InlineData(true, TaskRowState.Running)]
     [InlineData(false, TaskRowState.Idle)]
-    public void ShouldGiveMainThePromptTurnState_WhenOnlyEndedTasksRemain(bool turnRunning, TaskRowState expected)
+    public void ShouldGiveMainThePromptTurnState_WhenOnlyTheEndedRecipientRemains(bool turnRunning, TaskRowState expected)
     {
-        using var pane = new AgentsPaneView(new TerminalGuiOptions(), InlineDispatcher.Instance);
+        using var pane = new AgentsPaneView(new TerminalGuiOptions(), InlineDispatcher.Instance) { Navigator = new StubTaskListNavigator { RecipientTicket = "T-1" } };
         pane.Bind(new TuiIntegration
         {
             AgentRows = () => [],
@@ -144,7 +168,7 @@ public class AgentsPaneViewTests
     public void ShouldKeepEndedRowsOfLastRead_WhenEndedFeedFaults()
     {
         var fail = false;
-        using var pane = new AgentsPaneView(new TerminalGuiOptions(), InlineDispatcher.Instance);
+        using var pane = new AgentsPaneView(new TerminalGuiOptions(), InlineDispatcher.Instance) { Navigator = new StubTaskListNavigator { RecipientTicket = "T-1" } };
         pane.Bind(new TuiIntegration
         {
             AgentRows = () => [new AgentRowInfo { Name = "main", IsActive = true }],
@@ -167,12 +191,11 @@ public class AgentsPaneViewTests
     [Fact]
     [Trait("BR", "BR-07")]
     [Trait("BR", "UC-05")]
-    public void ShouldListTaskAndKeepItsScreen_WhenItStartedAndEndedBetweenPolls()
+    public void ShouldNotListTask_WhenItStartedAndEndedBetweenPolls()
     {
         using var pane = PaneWith([new AgentRowInfo { Name = "main", IsActive = true }], [EndedRow("quick", "T-9", seconds: 2)]);
 
-        var row = Assert.Single(pane.Rows, r => r.Ticket == "T-9");
-        Assert.Equal(TaskRowState.Done, row.State);
+        Assert.DoesNotContain(pane.Rows, r => r.Ticket == "T-9");
     }
 
     [Fact]

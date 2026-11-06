@@ -258,8 +258,13 @@ public sealed partial class ScriptCommand : IInteractiveCommand
                     // for the next pump (design §4.3). Thread-safe vs the engine: console only. On main,
                     // the ticket names the task the line is about.
                     var view = settled.Snapshot();
-                    var mark = view.state == "done" ? "✓" : "✗";
-                    console.WriteLine($"  {mark} [{view.ticket}] {view.name} → {view.targetAgent}: {view.state}");
+                    // Work on the main thread that ended well has nothing to report (its reply is there), nor has
+                    // work interrupted there on request. A token that expired on its own is reported like a failure.
+                    if (!view.onMain || (view.state != "done" && !IsInterrupted(settled)))
+                    {
+                        var mark = view.state == "done" ? "✓" : "✗";
+                        console.WriteLine($"  {mark} [{view.ticket}] {view.name} → {view.targetAgent}: {view.state}");
+                    }
 
                     // Push-render: run the JS completed(result) callback now, instead of deferring
                     // it to this command's next invocation. Off the pool thread, serialised on the
@@ -355,6 +360,9 @@ public sealed partial class ScriptCommand : IInteractiveCommand
         }
     }
 
+    private static bool IsInterrupted(CommandInstance instance)
+        => instance is { OnMain: true, CancelRequested: true, State: CommandInstanceState.Cancelled };
+
     private async Task DrainOneAsync(IConsoleAdapter console, PendingCompletion item, CancellationToken ct)
     {
         _admissionOf.TryGetValue(item.Instance, out var admission);
@@ -363,6 +371,8 @@ public sealed partial class ScriptCommand : IInteractiveCommand
             if (item.Completed is null) return;
 
             var view = item.Instance.Snapshot();
+            if (IsInterrupted(item.Instance)) return;
+
             var response = view.result ?? new CommandResponse(view.targetAgent, view.intent, success: false, payload: string.Empty, error: view.error);
             var resultVal = JsValue.FromObject(_engine, response);
             var launchInput = item.Instance.LaunchInput ?? _descriptor.Name;

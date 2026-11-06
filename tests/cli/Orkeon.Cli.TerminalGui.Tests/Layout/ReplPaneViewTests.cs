@@ -1598,6 +1598,52 @@ public class ReplPaneViewTests
 
     [Fact]
     [Trait("BR", "BR-08")]
+    public void ShouldDropRowAndScreen_WhenTaskEndsWithoutBeingRead()
+    {
+        // Arrange
+        var (top, rows) = CreateTopWithTasks();
+        using var owner = top;
+        top.Repl.AppendThreadLine("T-1", "worker output");
+        top.Agents.Refresh();
+        rows.Rows.RemoveAt(1);
+        rows.Ended.Add(new AgentRowInfo { Name = "worker@crew", Ticket = "T-1", State = TaskRowState.Done });
+
+        // Act
+        top.Agents.Refresh();
+
+        // Assert
+        Assert.DoesNotContain(top.Agents.Rows, row => row.Ticket == "T-1");
+        Assert.Equal(string.Empty, top.Repl.ThreadText("T-1"));
+    }
+
+    [Fact]
+    [Trait("BR", "BR-08")]
+    public void ShouldDropRowAndScreen_WhenPromptLeavesAnEndedRecipient()
+    {
+        // Arrange
+        var (top, rows) = CreateTopWithTasks();
+        using var owner = top;
+        top.Repl.AppendThreadLine("T-1", "worker output");
+        MakeT1Recipient(top);
+        rows.Rows.RemoveAt(1);
+        rows.Ended.Add(new AgentRowInfo { Name = "worker@crew", Ticket = "T-1", State = TaskRowState.Done });
+        top.Agents.Refresh();
+        top.Repl.RaiseKeyDown(new Key(KeyCode.CursorDown));
+        top.Agents.NewKeyDownEvent(Key.CursorUp);
+        top.Agents.NewKeyDownEvent(Key.CursorUp);
+        top.Agents.NewKeyDownEvent(Key.Esc);
+        Assert.Null(top.Repl.Navigation.RecipientTicket);
+
+        // Act
+        top.Agents.Refresh();
+
+        // Assert
+        Assert.DoesNotContain(top.Agents.Rows, row => row.Ticket == "T-1");
+        Assert.Equal(string.Empty, top.Repl.ThreadText("T-1"));
+    }
+
+    [Fact]
+    [Trait("BR", "BR-08")]
     public void ShouldDiscardHiddenScreen_WhenHostForgetsTask()
     {
         var (top, rows) = CreateTopWithTasks();

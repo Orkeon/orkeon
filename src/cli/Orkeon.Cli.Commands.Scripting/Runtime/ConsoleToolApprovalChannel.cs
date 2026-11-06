@@ -41,7 +41,7 @@ internal sealed class ConsoleToolApprovalChannel : IToolApprovalChannel, IReplLi
     /// The REPL's console, resolved at the first question: the TUI's adapter initialises the terminal when it is resolved.
     /// </param>
     /// <param name="origin">
-    /// The background task of the asking flow, ticket and name; null outside a task. Defaults to the dispatch's
+    /// The background task of the asking flow, ticket and name; null outside a task, and for work on the main thread. Defaults to the dispatch's
     /// ambient instance (<see cref="ProgressAmbient.CurrentInstance"/>).
     /// </param>
     public ConsoleToolApprovalChannel(Func<IConsoleAdapter> console, Func<(string Ticket, string Name)?>? origin = null)
@@ -52,7 +52,7 @@ internal sealed class ConsoleToolApprovalChannel : IToolApprovalChannel, IReplLi
     }
 
     private static (string Ticket, string Name)? AmbientTask()
-        => ProgressAmbient.CurrentInstance is { } instance ? (instance.Ticket, instance.Name) : null;
+        => ProgressAmbient.CurrentInstance is { OnMain: false } instance ? (instance.Ticket, instance.Name) : null;
 
     /// <inheritdoc />
     public string? PromptOverride

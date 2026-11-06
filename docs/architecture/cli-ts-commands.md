@@ -393,6 +393,14 @@ defineAsyncCommand({
   `completed` (a `dispatch`, a handler) the option changes nothing: the launch takes the
   depth it takes without it (a first hop is depth 1), and a `post` always climbs. Any
   other `chain` value is a script error.
+- **A crew that is the conversation: `{ onMain: true }`.** `runCrewAsync(name, input, { onMain: true })` makes the crew the
+  conversation rather than a task beside it. In the split-pane console what it writes, streamed text included, its calls and its
+  approvals land on the `main` screen, with no row in the list and no launch line; the plain console writes its text with no
+  ticket prefix, and its approvals name no task in either. Its end line shows only when it failed or its token expired. `Esc Esc`
+  interrupts it whatever was typed since it started, because it stays in the prompt's turn; a cancel on request, by those keys
+  or by `cancel`, writes no end line and runs no `completed`. The main thread holds one conversation: launched while another
+  `onMain` crew runs, the crew is an ordinary task beside it. `ps` and `get` still report it (`onMain` on the view). A value that
+  is neither absent nor a boolean throws.
 - **A crew that must not run twice: `{ exclusive: true }`.** A crew that must not run
   twice at a time (a review, the writer of a shared store) is launched with
   `runCrewAsync(name, input, { exclusive: true })`: while another exclusive launch of the
@@ -584,8 +592,8 @@ italic), a bare rule, the status bar, a blank line and the tasks list. The statu
 by two columns and joins its parts with a dim ` · `: the permission mode (`⏵⏵ bypass permissions on
 (shift+tab to cycle)`, yellow for `bypassPermissions`, `dontAsk` and `acceptEdits`, dim otherwise),
 the hints, and `↓ tasks` while a task other than `main` exists; from the list it reads
-`↑/↓ select · enter view` alone. The list shows `main` first, then the live tasks in creation order, then the ended tasks in
-creation order, and `main` stays listed while any task, live or ended, is listed: the
+`↑/↓ select · enter view` alone. The list shows `main` first, then the live tasks in creation order, then the ended task the prompt is
+addressed to, if any, and `main` stays listed while any task is listed: the
 accent `❯` in column 0 while the list has focus, `●` for the recipient and `◯` for the others
 (green while running, red when failed or cancelled, dim otherwise; an ended row is dim and its
 activity phrase reads the outcome, `✔ finished`, `✗ failed` or `⊘ cancelled`, its metrics the final
@@ -605,10 +613,11 @@ keeping its ticket, which names the task there. Copy, the mouse
 selection and word wrap (one state for every screen) act on the displayed screen; `Esc Esc` still
 interrupts the prompt's turn whatever screen is displayed, its `Interrupted` line landing on `main`. An
 attention line, such as a tool-call question, shows on the displayed screen whichever task asks and is
-recorded once in the asking task's screen. In the split-pane console, ended tasks stay listed until
-the host forgets them, with their screen: a task that ends keeps its row, its screen and, as the recipient, the recipient;
-row and screen leave together when `TuiIntegration.FinishedAgentRows` no longer returns the task. A
-poll whose ended feed fails keeps the ended rows of the last successful read: a fault is not the
+recorded once in the asking task's screen. In the split-pane console, a task that ends leaves the list at the next
+poll, and its screen with it: what it wrote there can no longer be read, and `ps`/`inspect` still report it. The
+exception is the task being read: as the recipient it keeps its row, its screen and the recipient, until the recipient
+moves away or `TuiIntegration.FinishedAgentRows` no longer returns the task. A
+poll whose ended feed fails keeps the recipient's ended row of the last successful read: a fault is not the
 host forgetting a task. Between two polls, a new task prints `● <name>(<intent>)` then
 `⎿  Backgrounded agent (↓ tasks)` in the transcript, and a task that ended
 `● Agent "<name>" finished · <duration>`, `✗ Agent "<name>" failed · <duration>` or
