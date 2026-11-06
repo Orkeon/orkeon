@@ -257,3 +257,4 @@ jobs:
           $text = $out -join "`n"
           if ($code -ne 0) { throw "install-from-source.ps1 -WhatIf exited ${code} (expected 0: every prerequisite is on this runner)." }
           if ($text -notmatch 'Would run:' -or $text -notmatch '-NoArchive' -or $text -notmatch 'install\.ps1 -InstallDir') { throw 'install-from-source.ps1 -WhatIf did not print the two commands it would run.' }
+          if ($text -notmatch '-AppSet full to add it') { throw 'install-from-source.ps1 -WhatIf did not say how to add the REPL.' }

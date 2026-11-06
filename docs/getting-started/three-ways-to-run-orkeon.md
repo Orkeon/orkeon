@@ -50,12 +50,12 @@ What the machine needs depends on how far you go:
 | To… | You need |
 |---|---|
 | **Run an example** (`dotnet run`, above) | the **.NET 10 SDK**, 10.0.300 or later (`dotnet --version`; `global.json` pins it), and **git**. The first build restores its packages from nuget.org |
-| **Build an installer archive** from the clone (`scripts/package-installers.sh`, or `scripts/package-installers.ps1` on Windows), or [install what you just cloned](#install-what-you-just-cloned), which builds one and checks all of this first | the two above, plus: **Python 3** — `python3` on the `PATH`, `python` on Windows (the Microsoft Store alias of that name does not count); **`tar`**; network access to **nuget.org** and to **`registry.npmjs.org`**, where the script fetches the esbuild binary it bundles. On Windows the script needs **PowerShell 7** (`pwsh`): Windows PowerShell 5.1, the one installed with the system, stops on it. On Linux the script also calls `curl`, `openssl` and `sha256sum` |
+| **Build an installer archive** from the clone (`scripts/package-installers.sh`, or `scripts/package-installers.ps1` on Windows), or [install what you just cloned](#install-from-source), which builds one and checks all of this first | the two above, plus: **Python 3** — `python3` on the `PATH`, `python` on Windows (the Microsoft Store alias of that name does not count); **`tar`**; network access to **nuget.org** and to **`registry.npmjs.org`**, where the script fetches the esbuild binary it bundles. On Windows the script needs **PowerShell 7** (`pwsh`): Windows PowerShell 5.1, the one installed with the system, stops on it. On Linux the script also calls `curl`, `openssl` and `sha256sum` |
 
 An archive built this way is installed like a downloaded one — see
 [Release binary](#2-release-binary) below, its Windows prerequisites included.
 
-### Install what you just cloned
+### Install from source
 
 `dotnet run` runs the CLI from the clone. To have the `orkeon` you built on your `PATH` —
 the installation a release archive makes, at the version of your checkout — one command,
@@ -100,6 +100,26 @@ installs it with the archive's own installer: `%LOCALAPPDATA%\Programs\Orkeon` o
   carries on.
 - A shallow clone (`git clone --depth 1`) works. The private maintainer submodules are not
   needed, and not touched.
+
+### Install the REPL from source
+
+`orkeon-repl`, the interactive console, is a separate program. Whether the script installs
+it depends on your system:
+
+| System | Command, from the clone | |
+|---|---|---|
+| Windows | `.\scripts\install-from-source.ps1 -AppSet full` | the default set leaves the REPL out |
+| Linux | `./scripts/install-from-source.sh` | the default set has it |
+| macOS | `./scripts/install-from-source.sh --app-set full` | the default set leaves the REPL out |
+
+The full set publishes every launcher, the service host included, so it takes longer to
+build. The default set stays without the REPL on Windows and macOS because the MSI and the
+Homebrew formula are built from it. On Windows and macOS, the script reminds you of this
+option when it ends.
+
+On Windows the installer puts its `bin` folder on your `PATH`. On Linux and macOS, add
+`--modify-path` if `~/.local/bin` is not already there. Then open a new terminal and start
+`orkeon-repl`. It has no `--version`: it opens its console directly.
 
 ---
 
@@ -644,7 +664,7 @@ names the channel this install came through and the command that updates it.
 | The apt repository | `sudo apt update && sudo apt upgrade` |
 | A downloaded Debian package | `sudo apt install ./orkeon_<version>_amd64.deb` (`_arm64.deb` on ARM) — or move to the [apt repository](../guides/install-with-apt.md), which updates by itself |
 | Container | `docker pull ghcr.io/orkeon/orkeon-runners` — `:latest` moves with each release |
-| From source | `git pull`; the next `dotnet run` rebuilds. An installation made [from the clone](#install-what-you-just-cloned): `git pull`, then run `scripts/install-from-source` again |
+| From source | `git pull`; the next `dotnet run` rebuilds. An installation made [from the clone](#install-from-source): `git pull`, then run `scripts/install-from-source` again |
 
 `orkeon --version` then prints the version that runs: `orkeon <version>`. An install made before `orkeon doctor` learned to name its channel answers `unknown` there until it is updated once.
 

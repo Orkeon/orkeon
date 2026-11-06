@@ -157,6 +157,22 @@ check "full set: exits 0" exits 0
 check "full set: the packager is asked for it" says "--app-set full "
 check "full set: the tree is the multi-app one" says "/_stage/orkeon-$version-"
 check "the prefix and --modify-path reach install.sh" says "/install.sh --prefix /opt/orkeon --modify-path"
+check "full set: no word about adding the REPL" silent_on "to add it."
+
+# The cli set leaves the REPL out on macOS only; the system is the one uname answers.
+fake_uname() { # <dir> <kernel> <machine>
+  rm -f "$1/uname"
+  printf '#!/bin/sh\ncase "$1" in -s) echo %s ;; -m) echo %s ;; esac\n' "$2" "$3" > "$1/uname"
+  chmod +x "$1/uname"
+}
+macos="$work/path-macos"; cp -R "$all" "$macos"; fake_uname "$macos" Darwin arm64
+linux="$work/path-linux"; cp -R "$all" "$linux"; fake_uname "$linux" Linux x86_64
+run "$macos" --dry-run
+check "macOS, cli set: says how to add the REPL" says "--app-set full to add it."
+run "$macos" --dry-run --app-set full
+check "macOS, full set: no word about adding the REPL" silent_on "to add it."
+run "$linux" --dry-run
+check "Linux, cli set: no word about adding the REPL" silent_on "to add it."
 
 # --- 5. --uninstall builds nothing and needs nothing --------------------------------------------
 echo "# --uninstall"

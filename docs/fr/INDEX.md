@@ -14,7 +14,7 @@ La documentation est organisée en 7 sections thématiques.
 
 | Fichier | Description |
 |---------|-------------|
-| [Trois façons d'exécuter Orkeon](./getting-started/three-ways-to-run-orkeon.md) | Page centrale : depuis les sources vs binaire de release vs conteneur — prérequis, commandes, canaux d'installation par OS et tableau comparatif ; la mise à jour, vers la dernière release ou vers le dernier `main` (canal dev) |
+| [Trois façons d'exécuter Orkeon](./getting-started/three-ways-to-run-orkeon.md) | Page centrale : depuis les sources vs binaire de release vs conteneur — prérequis, commandes, canaux d'installation par OS et tableau comparatif ; l'installation depuis les sources, REPL compris ; la mise à jour, vers la dernière release ou vers le dernier `main` (canal dev) |
 | [Exécuter votre premier exemple (depuis les sources)](./getting-started/run-your-first-example.md) | Première exécution de bout en bout : prérequis, matrice de profils LLM, la commande complète, chaque flag du runner, résolution des settings, dépannage |
 | [Vue d'ensemble](./getting-started/overview.md) | Architecture, concepts fondamentaux (Agent, Task, Tool, Crew), YAML vs Fluent Builder |
 | [Bootstrap et exécution](./getting-started/bootstrap.md) | Packages, câblage DI d'un hôte embarquant Orkeon (modèle, montages VFS, registre d'outils), exécution d'une Crew, modes batch/streaming/fire-and-forget |

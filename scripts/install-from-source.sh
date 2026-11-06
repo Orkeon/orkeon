@@ -24,8 +24,9 @@
 #   scripts/install-from-source.sh [--app-set cli|full] [--prefix DIR] [--modify-path]
 #                                  [--uninstall] [--dry-run]
 #
-# --app-set      cli (the default): the `orkeon` CLI and, on Linux, the two Orkeon
-#                Studio terminal apps. full: every launcher (the REPL, the service host).
+# --app-set      cli (the default): the `orkeon` CLI and, on Linux, the REPL and the two
+#                Orkeon Studio terminal apps. full: every launcher (the service host, and
+#                the REPL on macOS).
 # --prefix       where install.sh installs. Default: ~/.local (no sudo needed).
 # --modify-path  passed to install.sh: appends <prefix>/bin to your shell rc files.
 # --uninstall    removes what is installed under --prefix. Builds nothing.
@@ -150,6 +151,13 @@ PACK=(bash "$REPO_ROOT/scripts/package-installers.sh" --app-set "$APP_SET" --rid
 INSTALL=(sh "$TREE/install.sh" --prefix "$PREFIX")
 [[ "$MODIFY_PATH" -eq 1 ]] && INSTALL+=(--modify-path)
 
+# The cli set has the REPL on Linux only (cli_set_includes in package-installers.sh).
+say_how_to_get_the_repl() {
+  if [[ "$APP_SET" == "cli" && "$RID" != linux-* ]]; then
+    echo "The REPL (orkeon-repl) is not in this set on macOS: run this script again with --app-set full to add it."
+  fi
+}
+
 echo "Orkeon $VERSION, from the sources in $REPO_ROOT ($APP_SET set, $RID)."
 
 # Debian and Ubuntu have a shorter way to the same builds: said, never imposed.
@@ -162,6 +170,7 @@ if [[ "$DRY_RUN" -eq 1 ]]; then
   echo "Prerequisites: all present. --dry-run: nothing is built, nothing is installed. Would run:"
   echo "  ${PACK[*]}"
   echo "  ${INSTALL[*]}"
+  say_how_to_get_the_repl
   exit 0
 fi
 
@@ -196,3 +205,4 @@ echo
 echo "Orkeon $VERSION is installed from the sources (channel: source)."
 echo "Open a new terminal, then: orkeon --version"
 echo "After a 'git pull', run this script again: it replaces the installation."
+say_how_to_get_the_repl

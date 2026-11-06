@@ -189,6 +189,8 @@ $out = Join-Path $RepoRoot 'artifacts\installers'
 $tree = Join-Path $out "_stage\$packagePrefix-$version-$rid"
 $packager = Join-Path $PSScriptRoot 'package-installers.ps1'
 $installer = Join-Path $tree 'install.ps1'
+# The cli set has the REPL on Linux only (Test-CliSetIncludes in package-installers.ps1).
+$replHint = 'The REPL (orkeon-repl) is not in this set on Windows: run this script again with -AppSet full to add it.'
 
 Write-Host "Orkeon $version, from the sources in $RepoRoot ($AppSet set, $rid)."
 
@@ -196,6 +198,7 @@ if ($WhatIf) {
     Write-Host 'Prerequisites: all present. -WhatIf: nothing is built, nothing is installed. Would run:'
     Write-Host "  $packager -AppSet $AppSet -Rids $rid -Version $version -Out `"$out`" -NoArchive"
     Write-Host "  $installer -InstallDir `"$InstallDir`""
+    if ($AppSet -eq 'cli') { Write-Host $replHint }
     exit 0
 }
 
@@ -236,3 +239,4 @@ Write-Host ''
 Write-Host "Orkeon $version is installed from the sources (channel: source)."
 Write-Host 'Open a new terminal, then: orkeon --version'
 Write-Host "After a 'git pull', run this script again: it replaces the installation."
+if ($AppSet -eq 'cli') { Write-Host $replHint }
