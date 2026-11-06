@@ -14,6 +14,8 @@ public static class HintBarModel
 
     private const string NoModel = "no model";
 
+    private const string CycleHint = "(shift+tab to cycle)";
+
     /// <summary>The witness text: the model's name, cut to <see cref="WitnessMaxWidth"/> columns with the glyph set's ellipsis, or "no model".</summary>
     public static string Witness(ModelWitnessInfo? info, GlyphSet glyphs)
     {
@@ -66,11 +68,19 @@ public static class HintBarModel
         else
         {
             var mode = string.IsNullOrWhiteSpace(permissionMode) ? "default" : permissionMode.Trim();
-            entries.Add(new RowSegment(
-                $"{glyphs.Chevrons} {PostureLabel(mode)} (shift+tab to cycle)",
-                IsLoudPosture(mode) ? PaletteRole.Alert : PaletteRole.Dim));
+            var posture = $"{glyphs.Chevrons} {PostureLabel(mode)}";
+            var postureRole = IsLoudPosture(mode) ? PaletteRole.Alert : PaletteRole.Dim;
             // Before the hints: the bar is cut on the right when narrow, and the keys can be read elsewhere (?).
-            if (contextPercent is { } used) entries.Add(new RowSegment($"context {used}%", ContextRole(used)));
+            if (contextPercent is { } used)
+            {
+                entries.Add(new RowSegment(posture, postureRole));
+                entries.Add(new RowSegment($"context {used}%", ContextRole(used)));
+                entries.Add(new RowSegment(CycleHint, PaletteRole.Dim));
+            }
+            else
+            {
+                entries.Add(new RowSegment($"{posture} {CycleHint}", postureRole));
+            }
             if (commandRunning) entries.Add(new RowSegment("esc esc to interrupt", PaletteRole.Dim));
             entries.Add(new RowSegment("ctrl+g logs", PaletteRole.Dim));
             if (tasksAvailable) entries.Add(new RowSegment($"{glyphs.Down} tasks", PaletteRole.Dim));

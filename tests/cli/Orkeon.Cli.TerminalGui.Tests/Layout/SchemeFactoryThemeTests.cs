@@ -101,4 +101,34 @@ public sealed class SchemeFactoryThemeTests
         // Assert
         Assert.Equal((Color.None, Color.None), (cell.Foreground, cell.Background));
     }
+
+    [Fact]
+    public void In_sixteen_colours_the_light_palette_tells_the_accent_from_an_error()
+    {
+        // Act
+        var accent = SchemeFactory.Foreground(PaletteRole.Accent, false, ConsoleTheme.Light);
+
+        // Assert
+        Assert.NotEqual(SchemeFactory.Foreground(PaletteRole.Error, false, ConsoleTheme.Light), accent);
+    }
+
+    [Fact]
+    public void In_sixteen_colours_the_light_palette_gives_no_yellow_to_an_alert()
+    {
+        // Act
+        var alert = SchemeFactory.Foreground(PaletteRole.Alert, false, ConsoleTheme.Light);
+
+        // Assert
+        Assert.NotEqual(new Color(ColorName16.Yellow), alert);
+    }
+
+    [Fact]
+    public void In_sixteen_colours_the_light_palette_keeps_the_accent_apart_from_the_alert()
+    {
+        // Act
+        var accent = SchemeFactory.Foreground(PaletteRole.Accent, false, ConsoleTheme.Light);
+
+        // Assert
+        Assert.NotEqual(SchemeFactory.Foreground(PaletteRole.Alert, false, ConsoleTheme.Light), accent);
+    }
 }

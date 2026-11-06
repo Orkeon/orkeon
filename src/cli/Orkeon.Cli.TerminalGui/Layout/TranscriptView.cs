@@ -132,8 +132,10 @@ internal sealed class TranscriptView : View
         FollowTail();
     }
 
+    // Where DrawOverlays draws the chip, and only when it does.
     private bool OnChip(Point point)
-        => ChipText is { } chip && point.Y == Viewport.Height - 1 && point.X >= Viewport.Width - TerminalText.Columns(chip) - 1;
+        => ChipText is { } chip && Viewport.Width > TerminalText.Columns(chip) && point.Y == Viewport.Height - 1
+            && point.X >= Viewport.Width - TerminalText.Columns(chip) - 1 && point.X < Viewport.Width - 1;
 
     private bool AtEnd => Viewport.Y >= _buffer.RowCount - Viewport.Height;
 

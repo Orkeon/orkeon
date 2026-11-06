@@ -99,17 +99,23 @@ public sealed class MarkdownLinesTests
         Assert.Equal("csharp", lines[0].Text);
     }
 
-    [Fact]
-    public void A_copy_of_a_fence_gives_back_the_source()
+    private static string Copied(string source)
     {
-        // Arrange
-        const string source = "```\nx\n```";
+        var buffer = new TranscriptBuffer(100);
+        buffer.AppendStyled(Rendered(source));
+        return buffer.GetText(buffer.Start, buffer.End).TrimEnd('\n');
+    }
 
+    [Theory]
+    [InlineData("```\nx\n```")]
+    [InlineData("```\n```")]
+    public void A_copy_of_a_fence_gives_back_the_source(string source)
+    {
         // Act
-        var lines = Rendered(source);
+        var copied = Copied(source);
 
         // Assert
-        Assert.Equal(source, string.Join("\n", lines.Select(l => l.CopySource)));
+        Assert.Equal(source, copied);
     }
 
     [Fact]
@@ -246,5 +252,73 @@ public sealed class MarkdownLinesTests
 
         // Assert
         Assert.Equal("  **x**", lines[0].Text);
+    }
+
+    [Fact]
+    public void A_backtick_in_the_info_string_opens_no_fence()
+    {
+        // Act
+        var lines = Rendered("```ls -la``` lists files\nnext");
+
+        // Assert
+        Assert.Equal(["ls -la lists files", "next"], lines.Select(l => l.Text));
+    }
+
+    [Fact]
+    public void A_tilde_fence_may_hold_a_backtick_in_its_info_string()
+    {
+        // Act
+        var lines = Rendered("~~~a`b\ncode");
+
+        // Assert
+        Assert.Equal(["a`b", "  code"], lines.Select(l => l.Text));
+    }
+
+    [Theory]
+    [InlineData("## Notes on C#", "Notes on C#")]
+    [InlineData("## Title ##", "Title")]
+    [InlineData("## #", "")]
+    public void A_closing_hash_run_is_one_after_a_space(string source, string shown)
+    {
+        // Act
+        var line = Assert.Single(Rendered(source));
+
+        // Assert
+        Assert.Equal(shown, line.Text);
+    }
+
+    [Fact]
+    public void A_too_wide_table_with_no_row_still_shows_its_header()
+    {
+        // Act
+        var lines = Rendered("| aaaaaaaaaa | bbbbbbbbbb |\n|---|---|", width: 10);
+
+        // Assert
+        Assert.Equal(["aaaaaaaaaa", "bbbbbbbbbb"], lines.Select(l => l.Text));
+    }
+
+    [Fact]
+    public void A_delimiter_with_another_cell_count_than_the_header_makes_no_table()
+    {
+        // Act
+        var lines = Rendered("a | b\n---");
+
+        // Assert
+        Assert.Equal(("a | b", "---"), (lines[0].Text, lines[1].CopySource));
+    }
+
+    [Fact]
+    public void A_copy_of_the_first_code_line_gives_that_line_alone()
+    {
+        // Arrange
+        var buffer = new TranscriptBuffer(100);
+        buffer.AppendStyled(Rendered("```\ncode\n```"));
+        var line = buffer.Start.Line;
+
+        // Act
+        var copied = buffer.GetText(new TranscriptPosition(line, 0), new TranscriptPosition(line, "  code".Length));
+
+        // Assert
+        Assert.Equal("code", copied);
     }
 }

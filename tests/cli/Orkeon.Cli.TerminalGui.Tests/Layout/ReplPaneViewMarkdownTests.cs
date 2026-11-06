@@ -90,4 +90,95 @@ public sealed class ReplPaneViewMarkdownTests
         // Assert
         Assert.Equal(string.Empty, pane.DisplayedText);
     }
+
+    [Theory]
+    [InlineData("&#10;")]
+    [InlineData("&NewLine;")]
+    public void A_decoded_line_break_stays_on_its_line(string entity)
+    {
+        // Arrange
+        using var pane = CreatePane();
+
+        // Act
+        pane.AppendStream($"use {entity} here\n");
+
+        // Assert
+        Assert.Equal("use   here\n", pane.DisplayedText);
+    }
+
+    private static void StreamIn(ReplPaneView pane, string thread, string text)
+    {
+        var previous = Orkeon.Cli.Abstractions.Console.ConsoleThread.Current;
+        try
+        {
+            Orkeon.Cli.Abstractions.Console.ConsoleThread.Current = thread;
+            pane.AppendStream(text);
+        }
+        finally
+        {
+            Orkeon.Cli.Abstractions.Console.ConsoleThread.Current = previous;
+        }
+    }
+
+    [Fact]
+    public void The_end_of_the_main_turn_leaves_the_fence_of_a_thread_still_streaming_open()
+    {
+        // Arrange
+        using var pane = CreatePane();
+        StreamIn(pane, "T-1", "```\ncode\n");
+        pane.AfterSteps(() => { });
+
+        // Act
+        StreamIn(pane, "T-1", "```\n**after**\n");
+
+        // Assert
+        Assert.Equal("  code\n\nafter\n", pane.ThreadText("T-1"));
+    }
+
+    [Fact]
+    public void The_end_of_the_main_turn_leaves_the_line_a_thread_is_writing_unfinished()
+    {
+        // Arrange
+        using var pane = CreatePane();
+        StreamIn(pane, "T-1", "**par");
+        pane.AfterSteps(() => { });
+
+        // Act
+        StreamIn(pane, "T-1", "tial**\n");
+
+        // Assert
+        Assert.Equal("partial\n", pane.ThreadText("T-1"));
+    }
+
+    [Fact]
+    public void The_end_of_a_task_finishes_what_its_stream_holds()
+    {
+        // Arrange
+        using var pane = CreatePane();
+        StreamIn(pane, "T-1", "**a**");
+
+        // Act
+        ((ITaskListNavigator)pane).RowsRefreshed([new AgentRowInfo { Name = "w@c", Ticket = "T-1", State = TaskRowState.Done }]);
+
+        // Assert
+        Assert.Equal("a\n", pane.ThreadText("T-1"));
+    }
+
+    [Fact]
+    public void A_command_result_in_flight_keeps_its_elbow_when_the_console_reads_again()
+    {
+        // Arrange
+        using var pane = CreatePane();
+        var read = pane.ReadLineAsync(CancellationToken.None);
+        pane.CurrentInput = "/x";
+        pane.RaiseKeyDown(new Terminal.Gui.Input.Key(Terminal.Gui.Drivers.KeyCode.Enter));
+        pane.AppendStream("**a**");
+
+        // Act
+        var next = pane.ReadLineAsync(CancellationToken.None);
+        pane.AppendOutput("next\n");
+
+        // Assert
+        Assert.Contains("⎿  a\n", pane.DisplayedText, StringComparison.Ordinal);
+    }
 }

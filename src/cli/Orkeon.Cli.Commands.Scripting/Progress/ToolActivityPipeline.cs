@@ -81,8 +81,9 @@ public sealed class ToolActivityPipeline : IToolInvocationPipeline
             if (succeeded && before is not null)
             {
                 var after = await ReadForDiffAsync(path!, cancellationToken).ConfigureAwait(false);
-                if (after is not null && after != before)
-                    diff = new ToolCallDiff(subject, LineDiff.Compute(before, after));
+                // Line endings alone change no row: nothing to show.
+                if (after is not null && after != before && LineDiff.Compute(before, after) is { Count: > 0 } rows)
+                    diff = new ToolCallDiff(subject, rows);
             }
             return result;
         }

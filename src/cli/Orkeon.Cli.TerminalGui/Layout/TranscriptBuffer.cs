@@ -88,8 +88,10 @@ internal sealed class TranscriptBuffer
     // The last line is the empty line Append opened after a final \n: not counted until written to.
     private bool _openTail;
 
-    // The last entry is an unfinished line of a stream: the next ReplacePartial takes it back.
+    // The last entry is an unfinished line of a stream: the next ReplacePartial takes it back. Its width stays out
+    // of _widest, which only knows lines that grow, until another write makes it a line like any other.
     private bool _partial;
+    private int _partialColumns;
     private int _width;
     private bool _wrap = true;
 
@@ -127,7 +129,7 @@ internal sealed class TranscriptBuffer
     }
 
     /// <summary>Widest line held, in columns (the content width when the wrap is off).</summary>
-    public int MaxColumns => _widest.First?.Value.Columns ?? 0;
+    public int MaxColumns => Math.Max(_widest.First?.Value.Columns ?? 0, _partialColumns);
 
     /// <summary>Work counter: characters wrapped since construction (a line wrapped twice counts twice).</summary>
     public long CharactersWrapped { get; private set; }
@@ -187,7 +189,7 @@ internal sealed class TranscriptBuffer
     {
         ArgumentNullException.ThrowIfNull(text);
         if (text.Length == 0) return;
-        _partial = false;
+        SettlePartial();
         var normalized = text.Replace("\r\n", "\n", StringComparison.Ordinal);
         var start = 0;
         var first = true;
@@ -222,7 +224,7 @@ internal sealed class TranscriptBuffer
     public void AppendLines(IEnumerable<string> lines)
     {
         ArgumentNullException.ThrowIfNull(lines);
-        _partial = false;
+        SettlePartial();
         PromoteOpenTail();
         foreach (var line in lines)
         {
@@ -240,14 +242,14 @@ internal sealed class TranscriptBuffer
     {
         ArgumentNullException.ThrowIfNull(lines);
         if (lines.Count == 0) return;
-        _partial = false;
+        SettlePartial();
         var first = 0;
         if (_openTail)
         {
             FillOpenTail(lines[0]);
             first = 1;
         }
-        for (var i = first; i < lines.Count; i++) AddLine(Checked(lines[i]).Text, unit: true, lines[i]);
+        for (var i = first; i < lines.Count; i++) AddLine(OnOneRow(lines[i].Text), unit: true, lines[i]);
         AddLine(string.Empty, unit: false);
         _openTail = true;
         Trim();
@@ -261,6 +263,17 @@ internal sealed class TranscriptBuffer
     {
         ArgumentNullException.ThrowIfNull(lines);
         ArgumentNullException.ThrowIfNull(partial);
+        partial = OnOneRow(partial);
+        if (_partial && lines.Count == 0 && partial.Length > 0 && partial.StartsWith(_items[^1].Text, StringComparison.Ordinal))
+        {
+            // The line goes on: only what it adds is wrapped, not all of it at each delta.
+            var grown = _items[^1];
+            var from = grown.Text.Length;
+            grown.Text = partial;
+            Wrap(grown, resumeFrom: from);
+            _partialColumns = grown.Columns;
+            return;
+        }
         if (_partial)
         {
             var entry = _items[^1];
@@ -274,34 +287,28 @@ internal sealed class TranscriptBuffer
             }
             _openTail = true;
             _partial = false;
+            _partialColumns = 0;
         }
         AppendStyled(lines);
         if (partial.Length == 0) return;
-        if (_openTail)
-        {
-            ExtendLast(partial);
-            PromoteOpenTail();
-        }
-        else
-        {
-            AddLine(partial, unit: true);
-        }
+        if (_openTail) PromoteOpenTail();
+        else AddLine(string.Empty, unit: true);
+        var tail = _items[^1];
+        tail.Text = partial;
+        Wrap(tail, resumeFrom: -1);
         _partial = true;
+        _partialColumns = tail.Columns;
         Trim();
     }
 
-    private static TranscriptLine Checked(TranscriptLine line)
-    {
-        ArgumentNullException.ThrowIfNull(line);
-        if (line.Text.Contains('\n', StringComparison.Ordinal))
-            throw new ArgumentException("A transcript line holds no line break.", nameof(line));
-        return line;
-    }
+    // A line holds no line break, whoever wrote it (a decoded entity, a task's description): each reads as a blank,
+    // so the runs keep their offsets and a text never takes the UI loop down.
+    private static string OnOneRow(string text) => text.Replace('\n', ' ').Replace('\r', ' ');
 
     private void FillOpenTail(TranscriptLine line)
     {
         var entry = _items[^1];
-        entry.Text = Checked(line).Text;
+        entry.Text = OnOneRow(line.Text);
         entry.Style = line;
         Wrap(entry, resumeFrom: -1);
         PromoteOpenTail();
@@ -311,6 +318,7 @@ internal sealed class TranscriptBuffer
     public void Clear()
     {
         _partial = false;
+        _partialColumns = 0;
         _firstLineId += Held;
         _items.Clear();
         _widest.Clear();
@@ -328,6 +336,8 @@ internal sealed class TranscriptBuffer
         if (row < 0 || row >= RowCount) return null;
         var index = IndexOfRow(row);
         var startsThere = _items[index].FirstRow - _items[_head].FirstRow == row;
+        var opensBlock = _items[index].Style?.RowRole == role && (index == _head || _items[index - 1].Style?.RowRole != role);
+        if (startsThere && opensBlock) return null;
         if (startsThere) index--;
         while (index >= _head && _items[index].Style?.RowRole != role) index--;
         if (index < _head) return null;
@@ -388,14 +398,20 @@ internal sealed class TranscriptBuffer
         var (from, to) = a.CompareTo(b) <= 0 ? (Clamp(a), Clamp(b)) : (Clamp(b), Clamp(a));
         if (from.CompareTo(to) == 0) return string.Empty;
         var builder = new System.Text.StringBuilder();
+        var opened = false;
         for (var line = from.Line; line <= to.Line; line++)
         {
             var entry = _items[(int)(line - _firstLineId) + _head];
             var text = entry.Text;
             var start = line == from.Line ? Math.Min(from.Offset, text.Length) : 0;
             var end = line == to.Line ? Math.Min(to.Offset, text.Length) : text.Length;
-            if (line > from.Line) builder.Append('\n');
-            if (entry.Style?.CopySource is { } source && start == 0 && end == text.Length) builder.Append(source);
+            var whole = start == 0 && end == text.Length;
+            // What is only drawn (a table's border) has no line in a copy.
+            if (whole && text.Length > 0 && entry.Style?.CopySource is { Length: 0 }) continue;
+            if (opened) builder.Append('\n');
+            opened = true;
+            if (whole && from.Line < to.Line && entry.Style?.CopyLead is { } lead) builder.Append(lead).Append('\n');
+            if (entry.Style?.CopySource is { } source && whole) builder.Append(source);
             else if (end > start) builder.Append(text, start, end - start);
         }
         return builder.ToString();
@@ -411,6 +427,14 @@ internal sealed class TranscriptBuffer
     }
 
     private int EffectiveWidth => _wrap && _width > 0 ? _width : 0;
+
+    // Any other write makes the unfinished line a line like any other: its width now counts for good.
+    private void SettlePartial()
+    {
+        if (_partial) TrackWidth(_firstLineId + Held - 1, _items[^1].Columns);
+        _partial = false;
+        _partialColumns = 0;
+    }
 
     private void PromoteOpenTail()
     {
@@ -481,7 +505,8 @@ internal sealed class TranscriptBuffer
             entry.FirstRow = row;
             Wrap(entry, resumeFrom: -1);
             row += entry.RowStarts.Count;
-            TrackWidth(_firstLineId + i - _head, entry.Columns);
+            if (_partial && i == _items.Count - 1) _partialColumns = entry.Columns;
+            else TrackWidth(_firstLineId + i - _head, entry.Columns);
         }
     }
 
@@ -571,11 +596,13 @@ internal sealed class TranscriptBuffer
             if (isSpace && overflows) w = columns < rowWidth ? rowWidth - columns : 0;
             else if (overflows && columns > 0)
             {
-                // The word carried over must fit the row it lands on, narrower when the line hangs.
-                if (breakAt > starts[^1] && Measure(text, breakAt, index) <= width - hang)
+                // The word carried over and the grapheme that carried it must fit the row they land on,
+                // narrower when the line hangs.
+                var carried = breakAt > starts[^1] ? Measure(text, breakAt, index) : 0;
+                if (breakAt > starts[^1] && carried + ColumnsOf(grapheme, carried) <= width - hang)
                 {
                     starts.Add(breakAt);
-                    columns = Measure(text, breakAt, index);
+                    columns = carried;
                 }
                 else
                 {

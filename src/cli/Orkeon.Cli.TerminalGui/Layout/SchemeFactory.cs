@@ -78,13 +78,18 @@ public static class SchemeFactory
     private static readonly Color Default = Color.None;
 
     // Selection keeps explicit colours: a reversed pair of "terminal defaults" would be invisible.
-    private static readonly Color SelectionFg = new(ColorName16.Black);
-    private static readonly Color SelectionBg = new(ColorName16.White);
+    private static readonly Color SelectionDark = new(ColorName16.Black);
+    private static readonly Color SelectionLight = new(ColorName16.White);
 
     private static readonly bool TrueColorTerminal = IsTrueColor(ReadVariable(ColorTermVariable));
 
     /// <summary>The palette the attributes of this terminal are read in; only the UI thread changes it.</summary>
     internal static ConsoleTheme Theme { get; set; } = ResolveTheme(null, ReadVariable(NoColorVariable));
+
+    /// <summary>A selection in the palette in use: against the terminal's background, so black on a light palette.</summary>
+    internal static Attribute Selection => Theme == ConsoleTheme.Light
+        ? new Attribute(in SelectionLight, in SelectionDark)
+        : new Attribute(in SelectionDark, in SelectionLight);
 
     /// <summary>The palette to start with: the one a setting names, else none when <c>NO_COLOR</c> asks for it, else the dark one.</summary>
     public static ConsoleTheme ResolveTheme(ConsoleTheme? setting, string? noColor)
@@ -126,9 +131,9 @@ public static class SchemeFactory
     private static Color LightForeground(PaletteRole role, bool trueColor) => role switch
     {
         PaletteRole.Dim => trueColor ? new Color(0x6a, 0x6a, 0x6a) : new Color(ColorName16.DarkGray),
-        PaletteRole.Accent => trueColor ? new Color(0xc0, 0x42, 0x2a) : new Color(ColorName16.Red),
+        PaletteRole.Accent => trueColor ? new Color(0xc0, 0x42, 0x2a) : new Color(ColorName16.Cyan),
         PaletteRole.Ok => trueColor ? new Color(0x1a, 0x7f, 0x37) : new Color(ColorName16.Green),
-        PaletteRole.Alert => trueColor ? new Color(0x9a, 0x67, 0x00) : new Color(ColorName16.Yellow),
+        PaletteRole.Alert => trueColor ? new Color(0x9a, 0x67, 0x00) : new Color(ColorName16.Magenta),
         PaletteRole.Error => trueColor ? new Color(0xcf, 0x22, 0x2e) : new Color(ColorName16.Red),
         PaletteRole.UserBar or PaletteRole.DiffAdded or PaletteRole.DiffRemoved or PaletteRole.AddedWord or PaletteRole.RemovedWord
             => trueColor ? new Color(0x1f, 0x1f, 0x1f) : new Color(ColorName16.Black),
@@ -254,7 +259,7 @@ public static class SchemeFactory
         HotFocus = attr,
         Active = attr,
         HotActive = attr,
-        Highlight = new Attribute(in SelectionFg, in SelectionBg),
+        Highlight = Selection,
         Editable = attr,
         ReadOnly = attr,
         Disabled = attr,

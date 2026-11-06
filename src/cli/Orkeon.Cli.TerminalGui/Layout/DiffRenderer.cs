@@ -51,15 +51,21 @@ internal static partial class DiffRenderer
         var source = text.Split('\n');
         var parsed = new List<(DiffRow? Row, string Raw)>(source.Length);
         int oldLine = 0, newLine = 0;
+
+        // The lines the hunk still announces: until they are read, a line like "+++i;" or "--- x" is a change.
+        int oldLeft = 0, newLeft = 0;
         foreach (var raw in source)
         {
-            if (IsFileHeader(raw) || raw.StartsWith("@@", StringComparison.Ordinal))
+            var inHunk = raw.StartsWith('+') ? newLeft > 0 : raw.StartsWith('-') && oldLeft > 0;
+            if ((IsFileHeader(raw) && !inHunk) || raw.StartsWith("@@", StringComparison.Ordinal))
             {
                 var hunk = Hunk().Match(raw);
                 if (hunk.Success)
                 {
                     oldLine = int.Parse(hunk.Groups[1].Value, CultureInfo.InvariantCulture);
-                    newLine = int.Parse(hunk.Groups[2].Value, CultureInfo.InvariantCulture);
+                    newLine = int.Parse(hunk.Groups[3].Value, CultureInfo.InvariantCulture);
+                    oldLeft = Announced(hunk.Groups[2]);
+                    newLeft = Announced(hunk.Groups[4]);
                 }
                 parsed.Add((null, raw));
             }
@@ -67,17 +73,21 @@ internal static partial class DiffRenderer
             {
                 parsed.Add((new DiffRow(DiffRowKind.Added, null, Number(newLine), raw[1..]), raw));
                 if (newLine > 0) newLine++;
+                newLeft--;
             }
             else if (raw.StartsWith('-'))
             {
                 parsed.Add((new DiffRow(DiffRowKind.Removed, Number(oldLine), null, raw[1..]), raw));
                 if (oldLine > 0) oldLine++;
+                oldLeft--;
             }
             else if (newLine > 0 && raw.StartsWith(' '))
             {
                 parsed.Add((new DiffRow(DiffRowKind.Context, Number(oldLine), Number(newLine), raw[1..]), raw));
                 oldLine++;
                 newLine++;
+                oldLeft--;
+                newLeft--;
             }
             else
             {
@@ -103,6 +113,9 @@ internal static partial class DiffRenderer
     }
 
     private static int? Number(int line) => line > 0 ? line : null;
+
+    // A hunk's count left out means one line.
+    private static int Announced(Group count) => count.Success ? int.Parse(count.Value, CultureInfo.InvariantCulture) : 1;
 
     private static bool IsFileHeader(string line)
         => line.StartsWith("+++", StringComparison.Ordinal) || line.StartsWith("---", StringComparison.Ordinal)
@@ -232,9 +245,9 @@ internal static partial class DiffRenderer
         return spans;
     }
 
-    [GeneratedRegex(@"^@@ -(\d+)(?:,\d+)? \+(\d+)")]
+    [GeneratedRegex(@"^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))?")]
     private static partial Regex Hunk();
 
-    [GeneratedRegex(@"\w+|\s+|.", RegexOptions.Singleline)]
+    [GeneratedRegex(@"\w+|\s+|[\uD800-\uDBFF][\uDC00-\uDFFF]|.", RegexOptions.Singleline)]
     private static partial Regex Token();
 }

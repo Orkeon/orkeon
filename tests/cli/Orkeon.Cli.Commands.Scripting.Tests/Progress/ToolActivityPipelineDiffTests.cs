@@ -199,4 +199,20 @@ public sealed class ToolActivityPipelineDiffTests : IDisposable
         // Assert
         Assert.Equal(0, files.ReadBytesCalls);
     }
+
+    [Theory]
+    [InlineData("a\r\nb\r\n", "a\nb\n")]
+    [InlineData("a\nb\n", "a\nb")]
+    public async Task A_change_of_line_endings_alone_shows_no_diff(string before, string after)
+    {
+        // Arrange
+        var path = File_("a.txt");
+        await File.WriteAllTextAsync(path, before, TestContext.Current.CancellationToken);
+
+        // Act
+        var finished = await Run("edit_file", path, () => File.WriteAllText(path, after));
+
+        // Assert
+        Assert.Null(finished.Diff);
+    }
 }

@@ -75,19 +75,6 @@ public class TranscriptBufferStyledTests
     }
 
     [Fact]
-    public void A_line_break_in_a_styled_line_is_refused()
-    {
-        // Arrange
-        var buffer = Buffer();
-
-        // Act
-        var refused = Record.Exception(() => buffer.AppendStyled([new TranscriptLine("a\nb")]));
-
-        // Assert
-        Assert.IsType<ArgumentException>(refused);
-    }
-
-    [Fact]
     public void A_row_gives_its_runs_and_its_row_role()
     {
         // Arrange
@@ -218,5 +205,80 @@ public class TranscriptBufferStyledTests
         Assert.Equal("abcdefgh", RowText(buffer, 1));
         Assert.Equal(0, buffer.GetRow(1)!.Value.Indent);
         Assert.Empty(buffer.GetRow(1)!.Value.Runs);
+    }
+
+    [Theory]
+    [InlineData("a\nb", "a b")]
+    [InlineData("a\rb", "a b")]
+    [InlineData("a\r\nb", "a  b")]
+    public void A_line_break_in_a_styled_line_reads_as_a_blank(string text, string shown)
+    {
+        // Arrange
+        var buffer = Buffer();
+
+        // Act
+        buffer.AppendStyled([new TranscriptLine("first"), new TranscriptLine(text)]);
+
+        // Assert
+        Assert.Equal($"first\n{shown}\n", buffer.Text);
+    }
+
+    [Fact]
+    public void A_line_break_in_a_styled_line_that_takes_the_open_line_reads_as_a_blank()
+    {
+        // Arrange
+        var buffer = Buffer();
+        buffer.Append("first\n");
+
+        // Act
+        buffer.AppendStyled([new TranscriptLine("a\nb")]);
+
+        // Assert
+        Assert.Equal("first\na b\n", buffer.Text);
+    }
+
+    [Fact]
+    public void A_copy_of_a_styled_line_with_a_line_break_gives_back_its_source()
+    {
+        // Arrange
+        var buffer = Buffer();
+        buffer.AppendStyled([new TranscriptLine("a\nb") { CopySource = "a&#10;b" }]);
+        var line = buffer.Start.Line;
+
+        // Act
+        var copied = buffer.GetText(new TranscriptPosition(line, 0), new TranscriptPosition(line, 3));
+
+        // Assert
+        Assert.Equal("a&#10;b", copied);
+    }
+
+    [Fact]
+    public void A_carried_word_leaves_room_for_the_grapheme_that_carried_it()
+    {
+        // Arrange
+        var buffer = Buffer(width: 10);
+
+        // Act
+        buffer.AppendStyled([new TranscriptLine("  abcdefghij") { HangingIndent = 2 }]);
+
+        // Assert
+        Assert.Equal(("  abcdefgh", "ij"), (RowText(buffer, 0), RowText(buffer, 1)));
+    }
+
+    [Fact]
+    public void A_copied_table_holds_no_line_for_its_borders()
+    {
+        // Arrange
+        const string table = "| a |\n|---|\n| b |";
+        var markdown = new MarkdownLines(GlyphSet.Ascii);
+        var buffer = Buffer(width: 80);
+        foreach (var line in table.Split('\n')) buffer.AppendStyled(markdown.Feed(line, 80));
+        buffer.AppendStyled(markdown.Flush(80));
+
+        // Act
+        var copied = buffer.GetText(buffer.Start, buffer.End);
+
+        // Assert
+        Assert.Equal(table + "\n", copied);
     }
 }

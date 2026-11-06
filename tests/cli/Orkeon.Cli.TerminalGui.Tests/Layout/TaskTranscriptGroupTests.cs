@@ -120,4 +120,33 @@ public sealed class TaskTranscriptGroupTests
         // Assert
         Assert.Equal(new TranscriptRun(0, text.Length, PaletteRole.Dim), Assert.Single(line.Runs));
     }
+
+    [Fact]
+    public void A_launch_with_a_line_break_in_its_description_reaches_the_transcript_on_one_line()
+    {
+        // Arrange
+        var tracker = new TaskTranscriptTracker(GlyphSet.Ascii);
+        var row = Task("1", "reads\nwrites");
+        var buffer = new TranscriptBuffer(10);
+
+        // Act
+        buffer.AppendStyled([.. tracker.LaunchedLines(row).Select(tracker.Styled)]);
+
+        // Assert
+        Assert.Contains("w1(reads writes)", buffer.Text, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void A_group_with_a_line_break_in_a_description_reaches_the_transcript_on_one_line()
+    {
+        // Arrange
+        var tracker = new TaskTranscriptTracker(GlyphSet.Ascii);
+        var buffer = new TranscriptBuffer(10);
+
+        // Act
+        buffer.AppendStyled([.. tracker.GroupLines([Task("1", "reads\nwrites"), Task("2")]).Select(tracker.Styled)]);
+
+        // Assert
+        Assert.Contains("w1(reads writes)", buffer.Text, StringComparison.Ordinal);
+    }
 }

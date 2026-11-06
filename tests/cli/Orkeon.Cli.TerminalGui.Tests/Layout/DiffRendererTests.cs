@@ -196,4 +196,53 @@ public sealed class DiffRendererTests
         // Assert
         Assert.Equal(("+added", PaletteRole.DiffAdded), (lines[0].Text, lines[0].RowRole));
     }
+
+    [Theory]
+    [InlineData("@@ -1,1 +1,2 @@\n a\n+++i;", 2, "  2 + ++i;", PaletteRole.DiffAdded)]
+    [InlineData("@@ -1,2 +1,1 @@\n a\n--- comment", 2, "  2 - -- comment", PaletteRole.DiffRemoved)]
+    [InlineData("@@ -1,2 +1,1 @@\n a\n----", 2, "  2 - ---", PaletteRole.DiffRemoved)]
+    public void A_line_of_a_hunk_is_never_read_as_a_file_header(string patch, int index, string text, PaletteRole role)
+    {
+        // Act
+        var line = DiffRenderer.Unified(patch)[index];
+
+        // Assert
+        Assert.Equal((text, role), (line.Text, line.RowRole));
+    }
+
+    [Fact]
+    public void A_line_of_a_hunk_like_a_file_header_keeps_the_numbers_after_it()
+    {
+        // Arrange
+        const string patch = "@@ -5 +5,3 @@\n+++i;\n+j;\n ctx";
+
+        // Act
+        var lines = DiffRenderer.Unified(patch);
+
+        // Assert
+        Assert.Equal(["@@ -5 +5,3 @@", "  5 + ++i;", "  6 + j;", "  7   ctx"], lines.Select(l => l.Text));
+    }
+
+    [Fact]
+    public void A_file_header_after_a_finished_hunk_stays_a_file_header()
+    {
+        // Arrange
+        const string patch = "@@ -1 +1 @@\n-a\n+b\n--- a/next\n+++ b/next";
+
+        // Act
+        var lines = DiffRenderer.Unified(patch);
+
+        // Assert
+        Assert.Equal(["--- a/next", "+++ b/next"], lines.Skip(3).Select(l => l.Text));
+    }
+
+    [Fact]
+    public void A_changed_emoji_sharing_its_high_surrogate_is_marked_whole()
+    {
+        // Act
+        var lines = Rendered("some common text \U0001F600\n", "some common text \U0001F601\n");
+
+        // Assert
+        Assert.Equal("\U0001F601", Marked(lines[1], PaletteRole.AddedWord));
+    }
 }

@@ -372,14 +372,16 @@ public sealed class ReplPaneView : View, ITaskListNavigator, IToolActivityObserv
             if (write.EndsSteps)
             {
                 FoldStepOnto(write.Thread, screen, workEnded: true);
+                FlushMarkdown(screen);
+                _markdown.Remove(screen);
                 continue;
             }
             if (write.Then is { } then)
             {
                 FoldStepOnto(write.Thread, screen, workEnded: true);
-                foreach (var target in _markdown.Keys.ToList())
-                    FlushMarkdown(target);
-                _markdown.Clear();
+                // The turn that ended is this screen's: a thread still streaming keeps its line and its fence.
+                FlushMarkdown(screen);
+                _markdown.Remove(screen);
                 foreach (var (target, builder) in pending)
                 {
                     if (builder.Length == 0) continue;
@@ -391,6 +393,9 @@ public sealed class ReplPaneView : View, ITaskListNavigator, IToolActivityObserv
             }
             if (write.Scope != CommandResultScope.None)
             {
+                // What is held belongs to the result it was written under.
+                FlushPending(_screens.For(_commandResultThread));
+                FlushPending(screen);
                 _commandResult.Reset(write.Scope == CommandResultScope.Begin);
                 _commandResultThread = write.Thread;
                 continue;
@@ -1344,7 +1349,8 @@ public sealed class ReplPaneView : View, ITaskListNavigator, IToolActivityObserv
         foreach (var row in rows)
         {
             if (row is { Ticket: { } ticket, State: TaskRowState.Done or TaskRowState.Failed or TaskRowState.Cancelled }
-                && _steps.TryGetValue(ThreadKey(ticket), out var step) && !step.IsEmpty)
+                && ((_steps.TryGetValue(ThreadKey(ticket), out var step) && !step.IsEmpty)
+                    || (_screens.Tickets.Contains(ticket, StringComparer.Ordinal) && _markdown.ContainsKey(_screens.For(ticket)))))
                 _transcriptWrites.Post(new TranscriptWrite(ticket, null) { EndsSteps = true });
         }
         var previous = _screens.Displayed;
@@ -1353,6 +1359,7 @@ public sealed class ReplPaneView : View, ITaskListNavigator, IToolActivityObserv
             SwapDisplayed(previous);
             previous.Dispose();
         }
+        foreach (var gone in _markdown.Keys.Where(screen => !_screens.Holds(screen)).ToList()) _markdown.Remove(gone);
         if (action.DepartedRecipient is { } departed && recipient is not null && !_screens.Tickets.Contains(recipient, StringComparer.Ordinal))
             AppendOutputLine(DepartedRecipientLine(_glyphs, departed));
     }

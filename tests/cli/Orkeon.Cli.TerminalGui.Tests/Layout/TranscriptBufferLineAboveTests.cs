@@ -65,4 +65,30 @@ public sealed class TranscriptBufferLineAboveTests
         // Assert
         Assert.Equal("new", line);
     }
+
+    [Fact]
+    public void A_prompt_that_opens_the_view_is_not_covered_by_the_one_before()
+    {
+        // Arrange
+        var buffer = Buffer(Bar("old"), new TranscriptLine("reply"), Bar("new"), new TranscriptLine("more"));
+
+        // Act
+        var line = buffer.LineAbove(2, PaletteRole.UserBar);
+
+        // Assert
+        Assert.Null(line);
+    }
+
+    [Fact]
+    public void The_second_line_of_a_block_on_top_recalls_the_first()
+    {
+        // Arrange
+        var buffer = Buffer(Bar("one"), Bar("two"), new TranscriptLine("reply"));
+
+        // Act
+        var line = buffer.LineAbove(1, PaletteRole.UserBar);
+
+        // Assert
+        Assert.Equal("one", line);
+    }
 }

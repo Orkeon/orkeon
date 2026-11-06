@@ -99,4 +99,62 @@ public sealed class TranscriptViewOverlayTests
         // Assert
         Assert.Null(header);
     }
+
+    private static TranscriptView ScrolledUp(int width)
+    {
+        var view = new TranscriptView(1000) { Frame = new System.Drawing.Rectangle(0, 0, width, 5) };
+        view.Layout();
+        view.AppendLines(Enumerable.Range(0, 20).Select(i => $"answer {i}"));
+        view.Viewport = view.Viewport with { Y = 3 };
+        return view;
+    }
+
+    private static Terminal.Gui.Input.Mouse Press(int x, int y) => new()
+    {
+        Flags = Terminal.Gui.Input.MouseFlags.LeftButtonPressed,
+        Position = new System.Drawing.Point(x, y),
+        ScreenPosition = new System.Drawing.Point(x, 10 + y),
+    };
+
+    [Fact]
+    public void A_click_right_of_the_way_back_stays_where_it_is()
+    {
+        // Arrange
+        using var view = ScrolledUp(40);
+
+        // Act
+        view.NewMouseEvent(Press(view.Viewport.Width - 1, 4));
+
+        // Assert
+        Assert.NotNull(view.ChipText);
+    }
+
+    [Fact]
+    public void A_click_on_the_way_back_returns_to_the_tail()
+    {
+        // Arrange
+        using var view = ScrolledUp(40);
+
+        // Act
+        view.NewMouseEvent(Press(20, 4));
+
+        // Assert
+        Assert.Null(view.ChipText);
+    }
+
+    [Theory]
+    [InlineData(20, 0)]
+    [InlineData(20, 19)]
+    [InlineData(40, 0)]
+    public void A_click_where_the_way_back_is_not_drawn_stays_where_it_is(int width, int column)
+    {
+        // Arrange
+        using var view = ScrolledUp(width);
+
+        // Act
+        view.NewMouseEvent(Press(column, 4));
+
+        // Assert
+        Assert.NotNull(view.ChipText);
+    }
 }

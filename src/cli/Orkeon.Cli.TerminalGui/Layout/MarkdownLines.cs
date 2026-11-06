@@ -67,7 +67,7 @@ internal sealed partial class MarkdownLines(GlyphSet glyphs)
         if (_header is { } header)
         {
             _header = null;
-            if (IsDelimiter(line))
+            if (IsDelimiter(line, header))
             {
                 _table = new PendingTable(header, line);
                 return output;
@@ -119,15 +119,19 @@ internal sealed partial class MarkdownLines(GlyphSet glyphs)
             && closing.Groups[1].Length >= fence.Length && closing.Groups[2].Value.Trim().Length == 0)
         {
             _fence = null;
-            _fenceOpening = null;
-            output.Add(new TranscriptLine(string.Empty) { CopySource = line });
+            output.Add(new TranscriptLine(string.Empty) { CopySource = line, CopyLead = TakeFenceOpening() });
             return;
         }
 
-        var source = _fenceOpening is null ? line : _fenceOpening + "\n" + line;
-        _fenceOpening = null;
         var shown = CodeIndent + line.Replace("\t", "    ", StringComparison.Ordinal);
-        output.Add(TranscriptLine.InRole(shown, PaletteRole.Code) with { CopySource = source, HangingIndent = CodeIndent.Length });
+        output.Add(TranscriptLine.InRole(shown, PaletteRole.Code) with { CopySource = line, CopyLead = TakeFenceOpening(), HangingIndent = CodeIndent.Length });
+    }
+
+    private string? TakeFenceOpening()
+    {
+        var opening = _fenceOpening;
+        _fenceOpening = null;
+        return opening;
     }
 
     private TranscriptLine Block(string line, int width)
@@ -184,11 +188,11 @@ internal sealed partial class MarkdownLines(GlyphSet glyphs)
     private static List<TranscriptRun> Shifted(IReadOnlyList<TranscriptRun> runs, int by)
         => [.. runs.Select(r => r with { Start = r.Start + by })];
 
-    private static bool IsDelimiter(string line)
+    private static bool IsDelimiter(string line, string header)
     {
         if (!line.Contains('-', StringComparison.Ordinal)) return false;
         var cells = Cells(line);
-        return cells.Count > 0 && cells.TrueForAll(c => DelimiterCell().IsMatch(c));
+        return cells.Count == Cells(header).Count && cells.Count > 0 && cells.TrueForAll(c => DelimiterCell().IsMatch(c));
     }
 
     // The cells of a row: a bar that is escaped or inside a code span does not cut one.
@@ -293,6 +297,8 @@ internal sealed partial class MarkdownLines(GlyphSet glyphs)
         List<List<(string Text, IReadOnlyList<TranscriptRun> Runs)>> body)
     {
         var lines = new List<TranscriptLine>();
+        if (body.Count == 0)
+            lines.AddRange(header.Select(c => new TranscriptLine(c.Text) { Runs = c.Runs }));
         for (var r = 0; r < body.Count; r++)
         {
             if (r > 0) lines.Add(new TranscriptLine(string.Empty));
@@ -310,13 +316,13 @@ internal sealed partial class MarkdownLines(GlyphSet glyphs)
         return lines;
     }
 
-    [GeneratedRegex(@"^\s{0,3}(`{3,}|~{3,})(.*)$")]
+    [GeneratedRegex(@"^\s{0,3}(`{3,}(?=[^`]*$)|~{3,})(.*)$")]
     private static partial Regex FenceLine();
 
     [GeneratedRegex(@"^\s{0,3}([-*_])(\s*\1){2,}\s*$")]
     private static partial Regex Rule();
 
-    [GeneratedRegex(@"^\s{0,3}#{1,6}\s+(.*?)\s*#*\s*$")]
+    [GeneratedRegex(@"^\s{0,3}#{1,6}\s+(.*?)(?:\s*(?<=\s)#+)?\s*$")]
     private static partial Regex Heading();
 
     [GeneratedRegex(@"^\s{0,3}>\s?(.*)$")]

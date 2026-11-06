@@ -26,6 +26,9 @@ internal sealed record TranscriptLine(string Text)
     /// <summary>What a copy of the whole line returns instead of <see cref="Text"/>; a part of the line copies what is shown.</summary>
     public string? CopySource { get; init; }
 
+    /// <summary>A line of the source with no row of its own (a fence's opening): a copy that goes past this line returns it first.</summary>
+    public string? CopyLead { get; init; }
+
     /// <summary>A line painted in one role.</summary>
     public static TranscriptLine InRole(string text, PaletteRole role)
         => new(text) { Runs = text.Length == 0 ? [] : [new TranscriptRun(0, text.Length, role)] };
