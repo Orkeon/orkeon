@@ -245,7 +245,16 @@ internal sealed partial class FirefoxProcessLauncher : IFirefoxLauncher
         if (announced.Task.IsCompleted)
             return;
 
-        await Task.WhenAny(errorsRead, Task.Delay(TimeSpan.FromSeconds(1))).ConfigureAwait(false);
+        // WaitAsync rather than WhenAny + Delay: a Delay that lost the race keeps its timer (CA2027).
+        try
+        {
+            await errorsRead.WaitAsync(TimeSpan.FromSeconds(1)).ConfigureAwait(false);
+        }
+        catch (TimeoutException)
+        {
+            // The stream is still open: what arrived is enough.
+        }
+
         string said;
         lock (tail)
             said = string.Join(" | ", tail);
