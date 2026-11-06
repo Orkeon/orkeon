@@ -584,8 +584,8 @@ italic), a bare rule, the status bar, a blank line and the tasks list. The statu
 by two columns and joins its parts with a dim ` · `: the permission mode (`⏵⏵ bypass permissions on
 (shift+tab to cycle)`, yellow for `bypassPermissions`, `dontAsk` and `acceptEdits`, dim otherwise),
 the hints, and `↓ tasks` while a task other than `main` exists; from the list it reads
-`↑/↓ select · enter view` alone. The list shows `main` first, then the live tasks in creation order, then the ended tasks in
-creation order, and `main` stays listed while any task, live or ended, is listed: the
+`↑/↓ select · enter view` alone. The list shows `main` first, then the live tasks in creation order, then the ended task the prompt is
+addressed to, if any, and `main` stays listed while any task is listed: the
 accent `❯` in column 0 while the list has focus, `●` for the recipient and `◯` for the others
 (green while running, red when failed or cancelled, dim otherwise; an ended row is dim and its
 activity phrase reads the outcome, `✔ finished`, `✗ failed` or `⊘ cancelled`, its metrics the final
@@ -605,10 +605,11 @@ keeping its ticket, which names the task there. Copy, the mouse
 selection and word wrap (one state for every screen) act on the displayed screen; `Esc Esc` still
 interrupts the prompt's turn whatever screen is displayed, its `Interrupted` line landing on `main`. An
 attention line, such as a tool-call question, shows on the displayed screen whichever task asks and is
-recorded once in the asking task's screen. In the split-pane console, ended tasks stay listed until
-the host forgets them, with their screen: a task that ends keeps its row, its screen and, as the recipient, the recipient;
-row and screen leave together when `TuiIntegration.FinishedAgentRows` no longer returns the task. A
-poll whose ended feed fails keeps the ended rows of the last successful read: a fault is not the
+recorded once in the asking task's screen. In the split-pane console, a task that ends leaves the list at the next
+poll, and its screen with it: what it wrote there can no longer be read, and `ps`/`inspect` still report it. The
+exception is the task being read: as the recipient it keeps its row, its screen and the recipient, until the recipient
+moves away or `TuiIntegration.FinishedAgentRows` no longer returns the task. A
+poll whose ended feed fails keeps the recipient's ended row of the last successful read: a fault is not the
 host forgetting a task. Between two polls, a new task prints `● <name>(<intent>)` then
 `⎿  Backgrounded agent (↓ tasks)` in the transcript, and a task that ended
 `● Agent "<name>" finished · <duration>`, `✗ Agent "<name>" failed · <duration>` or

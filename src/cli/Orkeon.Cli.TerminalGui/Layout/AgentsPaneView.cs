@@ -349,7 +349,10 @@ public sealed class AgentsPaneView : View
 
         var hasFeed = TryReadFinished(out var finished);
         if (hasFeed) _lastFinished = finished;
-        _rows = AgentsPaneModel.ComposeListRows(rows, hasFeed ? finished : _lastFinished, turnRunning).ToList();
+        // An ended task leaves the list, and its screen with it, unless that screen is the one being read.
+        var reading = Navigator?.RecipientTicket;
+        var endedListed = (hasFeed ? finished : _lastFinished).Where(row => reading is not null && row.Ticket == reading).ToList();
+        _rows = AgentsPaneModel.ComposeListRows(rows, endedListed, turnRunning).ToList();
         if (TranscriptSink is { } sink)
         {
             foreach (var line in _tracker.Observe(rows, hasFeed ? finished : null)) sink(line);

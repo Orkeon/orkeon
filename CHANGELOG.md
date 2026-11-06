@@ -36,6 +36,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - A `select` left with Esc answers `null`, so `PromptResult` now includes `null` **[breaking for a script that type-checks it]**.
 - A tool approval opens the same panel, on Yes, so Enter straight allows that call once: its options answer that question by its id (`y`, `s` or `n`) and never reach a read as a line, Esc denies, `/` or a letter no option carries hands it to the prompt with the letters typed so far, and it passes before a panel already open. The status line stops repeating a question its panel asks.
 
+### Changed — a task that ended leaves the list
+
+- In the split-pane console, a task that ended no longer stays listed under the prompt: it leaves at the next poll, with its screen, and its end line stays in `main`. Only the task whose screen is being read stays, until the prompt returns to `main`.
+
 ### Fixed — the status line shows the whole name of a tool
 
 - The first underscore of a line was read as a hot key: `file_write` showed as `filewrite`.

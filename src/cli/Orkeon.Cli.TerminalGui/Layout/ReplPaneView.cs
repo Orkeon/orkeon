@@ -1354,12 +1354,18 @@ public sealed class ReplPaneView : View, ITaskListNavigator, IToolActivityObserv
                 _transcriptWrites.Post(new TranscriptWrite(ticket, null) { EndsSteps = true });
         }
         var previous = _screens.Displayed;
+        var openBefore = _screens.Tickets.ToList();
         if (_screens.DiscardAbsent([.. rows.Select(row => row.Ticket).OfType<string>()]))
         {
             SwapDisplayed(previous);
             previous.Dispose();
         }
         foreach (var gone in _markdown.Keys.Where(screen => !_screens.Holds(screen)).ToList()) _markdown.Remove(gone);
+        foreach (var gone in openBefore.Except(_screens.Tickets, StringComparer.Ordinal))
+        {
+            _steps.Remove(gone);
+            _lastSteps.Remove(gone);
+        }
         if (action.DepartedRecipient is { } departed && recipient is not null && !_screens.Tickets.Contains(recipient, StringComparer.Ordinal))
             AppendOutputLine(DepartedRecipientLine(_glyphs, departed));
     }
