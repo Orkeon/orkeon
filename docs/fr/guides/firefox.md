@@ -15,10 +15,14 @@ dans la page par le sens, exécute un script et enregistre une capture d'écran.
 leur JavaScript : ce que `web_scrape` ne voit pas, `firefox` le voit.
 
 - **Un navigateur par exécution d'agent.** Firefox démarre à la première action de l'exécution,
-  dans un dossier de profil à lui, garde sa page d'une action à la suivante et se ferme avec
-  l'exécution ; le profil est alors supprimé. Des agents qui s'exécutent côte à côte ont chacun
-  leur navigateur. Hors de toute exécution, une action reçoit un navigateur à elle, fermé juste
-  après.
+  garde ses pages d'une action à la suivante et se ferme avec l'exécution. Des agents qui
+  s'exécutent côte à côte ont chacun leur navigateur, ou en partagent un avec des onglets à eux
+  quand l'hôte le dit (`SharedInstance`). Hors de toute exécution, une action reçoit un
+  navigateur à elle, fermé juste après.
+- **Un profil jetable** par défaut : un dossier neuf, supprimé à la fermeture du navigateur.
+  L'hôte peut démarrer le navigateur sur un profil du Firefox installé sur la machine à la place,
+  et nommer les profils qu'un agent peut demander et ceux qu'aucun navigateur n'utilise jamais
+  ([Profils](#profils)).
 - **La fenêtre est visible** par défaut — l'opérateur voit ce que fait l'agent. `Headless` la
   cache ; une machine sans affichage démarre de toute façon sans fenêtre, avec un avertissement
   dans le journal.
@@ -64,12 +68,28 @@ exécutions.
 | `type` | `node_id`, `text` | Execute | Remplace ce qu'un champ contient ; un saut de ligne presse Entrée |
 | `press` | `key` | Execute | Une touche ou un accord sur l'élément qui a le focus : `Enter`, `Tab`, `Control+a` |
 | `evaluate` | `script` | Execute | Une expression JavaScript exécutée dans la page ; une promesse est attendue |
+| `tabs` | — | Read | Les onglets de l'agent, dans l'ordre d'ouverture : id, `url`, `title`, `current` |
+| `new_tab` | `url` | Read | Ouvre un onglet, sur `url` quand elle est donnée, et le pilote désormais |
+| `switch_tab` | `tab` | Read | Pilote désormais l'onglet `tab` (`t1`, `t2`), affiché devant les autres |
+| `close_tab` | `tab` | Execute | Ferme un onglet, le courant par défaut ; le dernier onglet n'est jamais fermé (`close` est là pour ça) |
 | `close` | — | Execute | Ferme le navigateur de l'exécution ; l'action suivante en démarre un nouveau |
 
-Chaque réponse porte l'action, l'`url` et le `title` de la page affichée, et `dialogs` : les
-boîtes `alert`, `confirm` et `prompt` que la page a ouvertes pendant l'action, fermées pour que
-la page ne se fige jamais (une question `beforeunload` est acceptée : partir était ce que l'agent
-demandait).
+Chaque réponse porte l'action, l'`url` et le `title` de la page affichée, `tab`, la poignée de
+l'onglet que les actions pilotent désormais, `profile`, celui avec lequel le navigateur tourne,
+et `dialogs` : les boîtes `alert`, `confirm` et `prompt` que la page a ouvertes pendant l'action,
+fermées pour que la page ne se fige jamais (une question `beforeunload` est acceptée : partir
+était ce que l'agent demandait).
+
+Chaque action accepte un `profile` facultatif : il compte à la première action d'une exécution,
+quand le navigateur démarre ; un navigateur déjà ouvert garde son profil, et une action qui en
+nomme un autre est refusée jusqu'à `close`.
+
+### Onglets
+
+Un agent pilote un onglet à la fois et ne voit que les siens : ceux qu'il a ouverts avec
+`new_tab`, et ceux qu'un lien d'une de ses pages a ouverts — l'agent suit un tel onglet, comme
+le feraient les yeux d'un utilisateur. Un onglet ouvert par l'utilisateur ou par un autre agent
+n'est jamais listé, lu ni fermé. `close_tab` sur l'onglet piloté ramène l'agent au précédent.
 
 ### Identifiants de nœuds
 
@@ -111,9 +131,47 @@ page.
   il lit tout résultat d'outil. Le Guardian de l'hôte s'applique à ce que l'agent dit et fait
   ensuite.
 
+## Profils
+
+Un navigateur démarre sur l'un de trois genres de profil, et le `profile` de la réponse dit lequel :
+
+- **`disposable`**, par défaut : un dossier neuf sous `ProfileRoot`, avec les préférences d'un
+  premier démarrage silencieux, supprimé à la fermeture du navigateur. Rien ne survit au navigateur.
+- **Un profil du Firefox installé sur l'hôte**, par le nom que `profiles.ini` lui donne
+  (`about:profiles` les montre) : utilisé sur place, avec ses cookies, ses sessions, ses extensions
+  et son historique, et jamais supprimé. L'agent voit ce que voit l'utilisateur du profil, connecté
+  là où il l'est : donnez à un agent un profil fait pour lui, jamais celui de l'opérateur. Un
+  profil qu'un autre Firefox tient ouvert est refusé : fermez ce Firefox, ou prenez un autre profil.
+- **Un dossier de profil**, par son chemin : la même chose, pour un profil que `profiles.ini` ne
+  liste pas.
+
+Qui choisit : `Orkeon:Tools:Firefox:Profile` nomme le profil sur lequel un navigateur démarre
+quand l'agent n'en nomme aucun. Un agent peut nommer `disposable`, ce profil, ou l'un de
+`AllowedProfiles` — rien d'autre. `DeniedProfiles` l'emporte sur tous : un profil qui y figure ne
+démarre aucun navigateur, qui que ce soit qui le demande. Les noms sont comparés sans égard à la
+casse.
+
+```json
+"Orkeon": { "Tools": { "Firefox": {
+  "Profile": "agent-work",
+  "AllowedProfiles": ["agent-reviews"],
+  "DeniedProfiles": ["default", "default-release"]
+} } }
+```
+
+## Un navigateur pour plusieurs exécutions
+
+Par défaut, chaque exécution d'agent a son propre navigateur. `SharedInstance: true` donne à
+l'hôte un navigateur par profil, partagé entre les exécutions qui l'utilisent : chacune y pilote
+ses propres onglets, ne voit qu'eux, et le navigateur se ferme quand la dernière exécution le
+quitte — ou quand l'hôte s'arrête. `close` ferme les onglets de l'exécution qui l'appelle, pas le
+navigateur que les autres partagent. C'est un profil nommé qui rend le partage utile : plusieurs
+agents sur une même session connectée, côte à côte.
+
 ## Réglages
 
 `Orkeon:Tools:Firefox` — voir la [référence de configuration](../reference/configuration.md#orkeontoolsfirefox) :
-`ExecutablePath`, `Headless`, `ProfileRoot`, `StartupTimeoutSeconds`, `CommandTimeoutSeconds`,
-`MaxNodes`, `MaxTextLength`. Quand Firefox est un snap, la racine de profil par défaut est
+`ExecutablePath`, `Headless`, `Profile`, `AllowedProfiles`, `DeniedProfiles`, `SharedInstance`,
+`ProfileRoot`, `StartupTimeoutSeconds`, `CommandTimeoutSeconds`, `MaxNodes`, `MaxTextLength`.
+Quand Firefox est un snap, la racine de profil par défaut est
 `~/snap/firefox/common/orkeon/profiles` : un snap ne lit pas le dossier temporaire du système.

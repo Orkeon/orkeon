@@ -20,7 +20,7 @@ internal sealed class FirefoxProfile
 
     // remote.active-protocols 1: WebDriver BiDi alone, no CDP. The others keep a fresh profile quiet:
     // no first-run pages, no default-browser question, no telemetry, no update, no saved password.
-    private const string Preferences = """
+    internal const string Preferences = """
         user_pref("remote.active-protocols", 1);
         user_pref("browser.shell.checkDefaultBrowser", false);
         user_pref("browser.aboutwelcome.enabled", false);

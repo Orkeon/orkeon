@@ -168,6 +168,123 @@ public sealed class FirefoxToolIntegrationTests : IDisposable
         Assert.Equal("The browser was closed.", Text(closed, "value"));
     }
 
+    [Fact]
+    public async Task Should_OpenListSwitchAndCloseTabsOfItsOwn()
+    {
+        using var tool = Tool();
+        await using var run = AgentRunScope.Begin("agent-1");
+        var home = await CallAsync(tool, "navigate", ("url", Home));
+        Assert.Equal("t1", Text(home, "tab"));
+
+        var opened = await CallAsync(tool, "new_tab", ("url", Home + "second"));
+        Assert.Equal("t2", Text(opened, "tab"));
+        Assert.Equal("Second page", Text(opened, "title"));
+
+        var listed = (await CallAsync(tool, "tabs"))["tabs"]!.AsArray();
+        Assert.Equal(["t1", "t2"], listed.Select(tab => Text(tab!.AsObject(), "id")));
+        Assert.Equal([false, true], listed.Select(tab => tab!["current"]!.GetValue<bool>()));
+
+        var switched = await CallAsync(tool, "switch_tab", ("tab", "t1"));
+        Assert.Equal(Home, Text(switched, "url"));
+        Assert.Contains("section h1 Welcome", Lines(await CallAsync(tool, "snapshot")));
+
+        var closed = await CallAsync(tool, "close_tab", ("tab", "t2"));
+        Assert.Equal("t1", Text(closed, "tab"));
+        Assert.Single((await CallAsync(tool, "tabs"))["tabs"]!.AsArray());
+
+        var refused = await CallRawAsync(tool, "close_tab");
+        Assert.False(refused["success"]!.GetValue<bool>());
+        Assert.Contains("last tab", Text(refused, "error"), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Should_StartOnTheProfileFolderNamed_AndLeaveItInPlace()
+    {
+        var folder = NamedProfileFolder();
+        try
+        {
+            _options.AllowedProfiles.Add(folder);
+            using var tool = Tool();
+            await using var run = AgentRunScope.Begin("agent-1");
+
+            var page = await CallAsync(tool, "navigate", ("url", Home), ("profile", folder));
+            Assert.Equal(folder, Text(page, "profile"));
+            Assert.Equal("Orkeon test page", Text(page, "title"));
+
+            var other = await CallRawAsync(tool, "snapshot", ("profile", "disposable"));
+            Assert.False(other["success"]!.GetValue<bool>());
+            Assert.Contains("close it before", Text(other, "error"), StringComparison.Ordinal);
+
+            await CallAsync(tool, "close");
+            Assert.True(Directory.Exists(folder));
+            Assert.True(File.Exists(Path.Combine(folder, "prefs.js")));
+        }
+        finally
+        {
+            Directory.Delete(folder, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task Should_ShareOneBrowserOnTheProfileBetweenRuns_EachOnItsOwnTabs()
+    {
+        // Firefox locks a profile: two runs on one named profile succeed together only in one browser.
+        var folder = NamedProfileFolder();
+        try
+        {
+            _options.Profile = folder;
+            _options.SharedInstance = true;
+            using var tool = Tool();
+
+            var ready = new TaskCompletionSource();
+            var first = Task.Run(async () =>
+            {
+                await using var run = AgentRunScope.Begin("agent-1");
+                var page = await CallAsync(tool, "navigate", ("url", Home));
+                Assert.Equal(folder, Text(page, "profile"));
+                await CallAsync(tool, "new_tab", ("url", Home + "third"));
+                ready.SetResult();
+                return (await CallAsync(tool, "tabs"))["tabs"]!.AsArray().Count;
+            });
+            var second = Task.Run(async () =>
+            {
+                await using var run = AgentRunScope.Begin("agent-2");
+                var page = await CallAsync(tool, "navigate", ("url", Home + "second"));
+                Assert.Equal(folder, Text(page, "profile"));
+                await ready.Task.WaitAsync(Ct);
+                var tabs = (await CallAsync(tool, "tabs"))["tabs"]!.AsArray();
+                Assert.Equal(Home + "second", Text(Assert.Single(tabs)!.AsObject(), "url"));
+                return tabs.Count;
+            });
+
+            Assert.Equal(2, await first);
+            Assert.Equal(1, await second);
+        }
+        finally
+        {
+            Directory.Delete(folder, recursive: true);
+        }
+    }
+
+    /// <summary>A profile folder of its own, with the preferences of a quiet first run, where the snap can read it.</summary>
+    private static string NamedProfileFolder()
+    {
+        var folder = Path.Combine(FirefoxProfile.ResolveRoot(null), "named-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(folder);
+        File.WriteAllText(Path.Combine(folder, "user.js"), FirefoxProfile.Preferences);
+        return folder;
+    }
+
+    private static async Task<JsonObject> CallRawAsync(FirefoxTool tool, string action, params (string Name, object? Value)[] arguments)
+    {
+        var parameters = new Dictionary<string, object?> { ["action"] = action };
+        foreach (var (name, value) in arguments)
+            parameters[name] = value;
+
+        var response = await tool.CallAsync(new ToolCallRequest(ToolName: "firefox", Parameters: parameters), Ct);
+        return Assert.IsType<JsonObject>(JsonSerializer.SerializeToNode(response.Result));
+    }
+
     /// <summary>Three pages on a loopback port: the home page, and two that only carry a heading.</summary>
     private sealed class PageServer : IDisposable
     {
