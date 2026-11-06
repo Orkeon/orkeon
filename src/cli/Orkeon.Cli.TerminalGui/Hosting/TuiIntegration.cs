@@ -97,6 +97,9 @@ public sealed class TuiIntegration
     /// <summary>Cumulated session tokens (real usage, cost tracker). Null ⇒ segment omitted.</summary>
     public Func<long?>? SessionTokens { get; set; }
 
+    /// <summary>The share of the context window the last prompt of the turn filled, 0 to 100. Null ⇒ segment omitted.</summary>
+    public Func<int?>? ContextPercent { get; set; }
+
     /// <summary>Rows for the agents pane. Null/empty ⇒ pane collapses to zero rows.</summary>
     public Func<IReadOnlyList<AgentRowInfo>>? AgentRows { get; set; }
 
@@ -149,4 +152,16 @@ public sealed class TuiIntegration
     /// (#194). Null or empty ⇒ nothing waits.
     /// </summary>
     public Func<IReadOnlyList<Orkeon.Cli.Abstractions.Runners.PendingToolApproval>>? PendingApprovals { get; set; }
+
+    /// <summary>Answers a question by its id, as <see cref="Orkeon.Cli.Abstractions.Runners.IToolApprovalWatch.TryAnswer"/> does.</summary>
+    public Func<long, string, bool>? AnswerApproval { get; set; }
+
+    /// <summary>Where the session's tool calls can be heard; null shows none of them.</summary>
+    public Orkeon.Cli.Abstractions.Console.ToolActivityFeed? ToolActivity { get; set; }
+
+    /// <summary>Raised when a question of <see cref="PendingApprovals"/> is asked, answered or withdrawn.</summary>
+    public event EventHandler? ApprovalsChanged;
+
+    /// <summary>Says that <see cref="PendingApprovals"/> changed: the prompt opens or closes its panel.</summary>
+    public void NotifyApprovalsChanged() => ApprovalsChanged?.Invoke(this, EventArgs.Empty);
 }

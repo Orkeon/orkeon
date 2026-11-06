@@ -25,7 +25,7 @@ namespace Orkeon.Cli.TerminalGui.Console;
 ///   contract unchanged.
 /// </para>
 /// </remarks>
-public sealed class TerminalGuiConsoleAdapter : IConsoleAdapter, IThreadedConsole
+public sealed class TerminalGuiConsoleAdapter : IConsoleAdapter, IThreadedConsole, IStreamConsole, IBlockConsole, IChoiceConsole, IThemeConsole
 {
     private readonly ReplPaneView _repl;
 
@@ -33,6 +33,15 @@ public sealed class TerminalGuiConsoleAdapter : IConsoleAdapter, IThreadedConsol
     {
         _repl = repl ?? throw new ArgumentNullException(nameof(repl));
     }
+
+    /// <inheritdoc />
+    public bool HasPalette => true;
+
+    /// <inheritdoc />
+    public ConsoleTheme Theme => _repl.Theme;
+
+    /// <inheritdoc />
+    public void SetTheme(ConsoleTheme theme) => _repl.ApplyTheme(theme);
 
     public void Write(string text)
     {
@@ -46,6 +55,39 @@ public sealed class TerminalGuiConsoleAdapter : IConsoleAdapter, IThreadedConsol
     }
 
     public void WriteLine(string text) => _repl.AppendOutputLine(text);
+
+    public void WriteStream(string text)
+    {
+        ArgumentNullException.ThrowIfNull(text);
+        _repl.AppendStream(text);
+    }
+
+    /// <inheritdoc />
+    public void WriteBlock(ConsoleBlockKind kind, string text)
+    {
+        ArgumentNullException.ThrowIfNull(text);
+        _repl.AppendStyled(BlockRenderer.Render(kind, text, _repl.Glyphs, _repl.TranscriptWidth));
+    }
+
+    /// <inheritdoc />
+    public bool CanChoose => true;
+
+    /// <inheritdoc />
+    public Task<ConsoleChoiceAnswer?> ChooseAsync(ConsoleChoiceRequest request, CancellationToken cancellationToken)
+        => _repl.ChooseAsync(request, cancellationToken);
+
+    /// <inheritdoc />
+    public async Task<string?> ReadAnswerAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            return await _repl.ReadAnswerAsync(cancellationToken).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+            return null;
+        }
+    }
 
     public bool SeparatesThreads => true;
 

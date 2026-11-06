@@ -3,6 +3,7 @@ using System.Reflection;
 using System.Text.Json;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using Orkeon.Application.Interfaces.Ports;
 using Orkeon.Cli.Abstractions;
 using Orkeon.Cli.Abstractions.Runners;
@@ -11,6 +12,7 @@ using Orkeon.Cli.Commands.Scripting.Progress;
 using Orkeon.Cli.TerminalGui.Hosting;
 using Orkeon.Cli.TerminalGui.Layout;
 using Orkeon.Domain.FileSystem;
+using Orkeon.Infrastructure.Session;
 
 namespace Orkeon.ConsoleApp.Services;
 
@@ -43,6 +45,10 @@ internal static class TuiFidelityWiring
     /// name only. The modes themselves are specified on <see cref="Orkeon.Infrastructure.Security.ModePermissionGate"/>.
     /// </summary>
     private static readonly string[] ModeCycle = ["default", "acceptEdits", "plan", "bypassPermissions"];
+
+    /// <summary>The share of <paramref name="window"/> that <paramref name="tokens"/> fill, at most 100; null when either is unknown.</summary>
+    internal static int? ContextPercent(long tokens, long window)
+        => tokens <= 0 || window <= 0 ? null : (int)Math.Min(100, tokens * 100 / window);
 
     /// <summary>Builds the banner from what the host actually knows. Empty parts are omitted.</summary>
     public static BannerInfo BuildBannerInfo(IConfiguration configuration)
@@ -143,9 +149,14 @@ internal static class TuiFidelityWiring
         var buffer = services.GetService<ISessionBufferService>();
         var cost = services.GetService<ICostBudgetManager>();
         var dispatch = services.GetService<CommandDispatchService>();
+        integration.ToolActivity = services.GetService<Orkeon.Cli.Abstractions.Console.ToolActivityFeed>();
         var approvals = services.GetService<IToolApprovalWatch>();
         if (approvals is not null)
+        {
             integration.PendingApprovals = () => approvals.Pending;
+            integration.AnswerApproval = approvals.TryAnswer;
+            approvals.PendingChanged += (_, _) => integration.NotifyApprovalsChanged();
+        }
 
         if (buffer is not null)
         {
@@ -165,6 +176,23 @@ internal static class TuiFidelityWiring
 
         if (cost is not null)
             integration.SessionTokens = () => cost.GetReport().TotalTokens;
+
+        if (dispatch is not null)
+        {
+            // The window token_budget reports: unset is the session's default. A new prompt shows the last figure until its first call answers.
+            var contextWindow = services.GetService<IOptions<CliSessionOptions>>()?.Value.ContextWindowTokens ?? CliSessionOptions.DefaultContextWindowTokens;
+            var contextTokens = 0L;
+            var sessionHeldMessages = false;
+            integration.ContextPercent = () =>
+            {
+                // A session emptied (a /clear that resets it) no longer holds what the figure measured.
+                var sessionHoldsMessages = buffer?.MessageCount > 0;
+                if (sessionHeldMessages && !sessionHoldsMessages) contextTokens = 0;
+                sessionHeldMessages = sessionHoldsMessages;
+                if (dispatch.PromptTurnContextTokens() is > 0 and var latest) contextTokens = latest;
+                return ContextPercent(contextTokens, contextWindow);
+            };
+        }
 
         if (dispatch is not null)
         {

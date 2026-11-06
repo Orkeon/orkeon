@@ -306,6 +306,7 @@ static class Program
         ConfigureLogging(services, effectiveUi, scriptedOpts);
 
         services.AddOrkeonApplication();
+        Orkeon.Cli.Commands.Scripting.Progress.ToolActivityPipeline.Decorate(services);
         // Register the real LLM provider from the `Llm` config section BEFORE the infrastructure
         // defaults: AddOrkeonInfrastructure() only TryAdds a provider built from LlmConfig.OnProfile()
         // (no key, default OpenAI endpoint), which makes ctx.llm.act silently no-op. Binding the
@@ -428,8 +429,11 @@ static class Program
         services.AddScriptHostCrewMounts(scriptedOpts.CrewDirs);
         services.AddSingleton<ScriptedCommandsRunner>();
 
-        // Orkeon:Cli:Tui, read raw below: its keys are judged at the start (GAP-40).
-        services.DeclareSettingsShape(TuiSection, typeof(TuiSettingsShape));
+        // Orkeon:Cli:Tui, read raw below: its keys and its palette are judged at the start (GAP-40).
+        services.AddSingleton(new Orkeon.Application.Configuration.SettingsDeclaration(
+            TuiSection,
+            typeof(TuiSettingsShape),
+            provider => Orkeon.ConsoleApp.Services.TuiThemeSetting.Judge(provider, $"{TuiSection}:Theme")));
         if (effectiveUi == UiMode.Tui)
         {
             services.AddOrkeonCliTerminalGui(new TerminalGuiOptions
@@ -441,6 +445,7 @@ static class Program
                 // Banner content comes from the configuration this host actually loaded —
                 // the TUI layer cannot (and must not) probe the LLM section itself.
                 Banner = Orkeon.ConsoleApp.Services.TuiFidelityWiring.BuildBannerInfo(context.Configuration),
+                Theme = Orkeon.ConsoleApp.Services.TuiThemeSetting.Parse(context.Configuration[$"{TuiSection}:Theme"]),
                 // Boot-time spinner verbs (appsettings). The live /config layer, read via
                 // TuiIntegration.SpinnerVerbs, wins over this when set.
                 SpinnerVerbs = context.Configuration.GetSection($"{TuiSection}:SpinnerVerbs")
@@ -466,6 +471,9 @@ static class Program
         /// Left out or empty, the console's own list.
         /// </summary>
         public List<string>? SpinnerVerbs { get; set; }
+
+        /// <summary>The palette the console starts in. Left out: none when NO_COLOR is set, else the dark one.</summary>
+        public Orkeon.Cli.Abstractions.Console.ConsoleTheme? Theme { get; set; }
     }
 
     static void ConfigureLogging(IServiceCollection services, UiMode effectiveUi, ScriptedCommandsCliOptions scriptedOpts)

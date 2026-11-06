@@ -102,6 +102,10 @@ public sealed partial class CommandDispatchService
     public IReadOnlyList<string> PromptTurnTickets()
         => _promptScope?.Turn.Select(i => _registry.Get(i.Ticket)).Where(i => i is { State: CommandInstanceState.Running }).Select(i => i!.Ticket).ToList() ?? new List<string>();
 
+    /// <summary>What the latest model call of the latest prompt scope sent, in tokens; zero before any.</summary>
+    public long PromptTurnContextTokens()
+        => _promptScope?.Turn.MaxBy(i => i.LastPromptCall)?.LastPromptTokens ?? 0;
+
     // ---- JS surface -----------------------------------------------------------------------
 
     /// <summary>

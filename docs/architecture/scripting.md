@@ -367,7 +367,8 @@ pin it:
   `HangGuards.EnginePromise` (2 minutes, `Orkeon.Tests.Shared.Timing`): set on each `new Engine`
   options lambda of a test, and, for the engines the factory and `ScriptHost` build, once per
   test project by a `[ModuleInitializer]` on the internal `JsEngineFactory.PromiseTimeout`. The
-  product default is unchanged (Jint's). The sweep `TestEngineHangGuardTests` fails a test engine
+  command profile sets `ScriptingLimitsOptions.PromiseTimeout` to infinite, since a command's host awaits with
+  `UnwrapIfPromiseAsync`, which applies it; other product engines keep Jint's default. The sweep `TestEngineHangGuardTests` fails a test engine
   that carries no guard.
 
 ## Configuration and toolchain

@@ -95,12 +95,23 @@ public sealed partial class ScriptCommand : IInteractiveCommand
         activity?.SetTag(CliScriptingTags.CommandSource, $"script:{_descriptor.SourceVirtualPath}");
         activity?.SetTag(CliScriptingTags.CommandName, _descriptor.Name);
 
-        await _engineLock.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            await _engineLock.WaitAsync(cancellationToken).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+            // The operator gave up waiting for the engine: a completed() that holds it, waiting for a promise only
+            // cancellation bounds, gives it back. No other key reaches a drain, which no command runs.
+            _drainQueue.CancelDrain();
+            throw;
+        }
+
         try
         {
             // Pump point: replay this command's async completions that settled since its last
             // invocation (design §4.3) — under the lock, on the engine thread.
-            await DrainCompletionsAsync(context.Console).ConfigureAwait(false);
+            await DrainCompletionsAsync(context.Console, cancellationToken).ConfigureAwait(false);
 
             // Parse args once; both sync handlers and async dispatch receive the same shape.
             if (!TryBuildArgs(context, out var argsObj, out var argsError))
@@ -282,8 +293,12 @@ public sealed partial class ScriptCommand : IInteractiveCommand
         try
         {
             await _engineLock.WaitAsync().ConfigureAwait(false);
-            try { await DrainCompletionsAsync(console).ConfigureAwait(false); }
-            finally { _engineLock.Release(); }
+            try { await DrainCompletionsAsync(console, _drainQueue.BeginDrain()).ConfigureAwait(false); }
+            finally
+            {
+                _drainQueue.EndDrain();
+                _engineLock.Release();
+            }
         }
         catch (Exception ex)
         {
@@ -320,7 +335,7 @@ public sealed partial class ScriptCommand : IInteractiveCommand
         }
     }
 
-    private async Task DrainCompletionsAsync(IConsoleAdapter console)
+    private async Task DrainCompletionsAsync(IConsoleAdapter console, CancellationToken ct)
     {
         // Only this command's completions: a sibling of the same file pumps its own (they share the queue).
         var pending = _drainQueue.DrainFor(_descriptor.Name);
@@ -330,7 +345,7 @@ public sealed partial class ScriptCommand : IInteractiveCommand
         try
         {
             while (next < pending.Count)
-                await DrainOneAsync(console, pending[next++]).ConfigureAwait(false);
+                await DrainOneAsync(console, pending[next++], ct).ConfigureAwait(false);
         }
         finally
         {
@@ -340,7 +355,7 @@ public sealed partial class ScriptCommand : IInteractiveCommand
         }
     }
 
-    private async Task DrainOneAsync(IConsoleAdapter console, PendingCompletion item)
+    private async Task DrainOneAsync(IConsoleAdapter console, PendingCompletion item, CancellationToken ct)
     {
         _admissionOf.TryGetValue(item.Instance, out var admission);
         try
@@ -351,7 +366,7 @@ public sealed partial class ScriptCommand : IInteractiveCommand
             var response = view.result ?? new CommandResponse(view.targetAgent, view.intent, success: false, payload: string.Empty, error: view.error);
             var resultVal = JsValue.FromObject(_engine, response);
             var launchInput = item.Instance.LaunchInput ?? _descriptor.Name;
-            var ctxObj = PushContext(console, launchInput, CancellationToken.None);
+            var ctxObj = PushContext(console, launchInput, ct);
 
             // A completed() may launch more async work (runCrewAsync): give it an ambient scope of
             // this command so the new instances are captured and wired to drain like any dispatch.
@@ -361,7 +376,7 @@ public sealed partial class ScriptCommand : IInteractiveCommand
                 var r = _engine.Invoke(item.Completed, new[] { resultVal, ctxObj });
                 // Same pending-promise rule as dispatch: an async completed() must finish
                 // its body now, not at some future engine pump.
-                if (r.IsPromise()) await r.UnwrapIfPromiseAsync(CancellationToken.None).ConfigureAwait(false);
+                if (r.IsPromise()) await r.UnwrapIfPromiseAsync(ct).ConfigureAwait(false);
             }
             catch (Jint.Runtime.JavaScriptException jsEx)
             {

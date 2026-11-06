@@ -14,6 +14,43 @@ public class StatusLineViewTests
         => new(new TerminalGuiOptions { SpinnerVerbs = bootVerbs }, InlineDispatcher.Instance, _clock);
 
     [Fact]
+    public void An_underscore_of_a_tool_name_is_painted()
+    {
+        // Arrange
+        var integration = new TuiIntegration
+        {
+            PendingApprovals = () => [new Orkeon.Cli.Abstractions.Runners.PendingToolApproval("file_write", "{}", null, null)],
+        };
+        using var view = CreateView();
+        view.Bind(_runner, integration, null);
+
+        // Act
+        view.Refresh();
+
+        // Assert
+        Assert.Equal("? A tool call asks to run file_write…", view.HeadPainted);
+    }
+
+    [Fact]
+    public void The_line_leaves_the_question_to_the_panel_that_asks_it()
+    {
+        // Arrange
+        var integration = new TuiIntegration
+        {
+            PendingApprovals = () => [new Orkeon.Cli.Abstractions.Runners.PendingToolApproval("read", "{}", null, null)],
+        };
+        using var view = CreateView();
+        view.Bind(_runner, integration, null);
+        view.QuestionOnPanel = true;
+
+        // Act
+        view.Refresh();
+
+        // Assert
+        Assert.Equal(string.Empty, view.CurrentText);
+    }
+
+    [Fact]
     public void ShouldThrow_WhenOptionsOrRunnerAreNull()
     {
         Assert.Throws<ArgumentNullException>(() => new StatusLineView(null!, InlineDispatcher.Instance, _clock));
@@ -117,6 +154,27 @@ public class StatusLineViewTests
         Assert.Contains("Booting", view.CurrentText);
         Assert.Contains("streaming", view.CurrentText);
         Assert.DoesNotContain("tokens", view.CurrentText);
+    }
+
+    [Fact]
+    public void ShouldKeepTheTimeAndTokensOfTheTurn_WhenItCompletes()
+    {
+        // Arrange
+        long tokens = 500;
+        using var view = CreateView();
+        view.Bind(_runner, new TuiIntegration { SessionTokens = () => tokens }, null);
+        _runner.Running = true;
+        view.Refresh();
+        _clock.Advance(TimeSpan.FromSeconds(30));
+        tokens = 1_700;
+        _runner.Running = false;
+
+        // Act
+        view.Refresh();
+
+        // Assert
+        Assert.Equal(TimeSpan.FromSeconds(30), view.LastTurnElapsed);
+        Assert.Equal(1_200, view.LastTurnTokens);
     }
 
     [Fact]

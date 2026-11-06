@@ -2,6 +2,7 @@ using Jint;
 using Jint.Native;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using Orkeon.Scripting;
 using Orkeon.Cli.Abstractions.Console;
 using Orkeon.Cli.Commands.Scripting.Progress;
 
@@ -68,11 +69,71 @@ public sealed class CommandRuntimeContext
     /// <summary>Write a line to the console.</summary>
     public void writeLine(string text) => _console.WriteLine(text ?? string.Empty);
 
+    /// <summary>
+    /// Write a typed block, <c>{ kind: "markdown" | "diff", text }</c>, on lines of its own: styled by a
+    /// console able to, as plain lines by any other.
+    /// </summary>
+    public void writeBlock(JsValue spec)
+    {
+        if (spec is null || !spec.IsObject())
+            throw new ArgumentException("ctx.writeBlock(spec): spec must be an object with { kind, text }.");
+        var obj = spec.AsObject();
+        var textValue = obj.Get("text");
+        if (!textValue.IsString())
+            throw new ArgumentException("ctx.writeBlock(spec): 'text' must be a string.");
+        var kindValue = obj.Get("kind");
+        var kind = (kindValue.IsString() ? kindValue.AsString() : null) switch
+        {
+            "markdown" => ConsoleBlockKind.Markdown,
+            "diff" => ConsoleBlockKind.Diff,
+            _ => throw new ArgumentException("ctx.writeBlock(spec): 'kind' must be \"markdown\" or \"diff\"."),
+        };
+        var text = textValue.AsString();
+        if (_console is IBlockConsole blocks) blocks.WriteBlock(kind, text);
+        else _console.WriteLine(text.EndsWith('\n') ? text[..^1] : text);
+    }
+
+    /// <summary>The palette of the console, <c>"dark"</c>, <c>"light"</c> or <c>"none"</c>; null on a console without palettes.</summary>
+    public string? theme => _console is IThemeConsole { HasPalette: true } themed ? ThemeName(themed.Theme) : null;
+
+    /// <summary>
+    /// Paints the console in the palette named <c>"dark"</c>, <c>"light"</c> or <c>"none"</c>, what is on screen
+    /// included. Returns false on a console without palettes, which stays as it is.
+    /// </summary>
+    public bool setTheme(string name)
+    {
+        var palette = name switch
+        {
+            "dark" => ConsoleTheme.Dark,
+            "light" => ConsoleTheme.Light,
+            "none" => ConsoleTheme.None,
+            _ => throw new ArgumentException("ctx.setTheme(name): name must be \"dark\", \"light\" or \"none\"."),
+        };
+        if (_console is not IThemeConsole { HasPalette: true } themed) return false;
+        themed.SetTheme(palette);
+        return true;
+    }
+
+    private static string ThemeName(ConsoleTheme palette) => palette switch
+    {
+        ConsoleTheme.Light => "light",
+        ConsoleTheme.None => "none",
+        _ => "dark",
+    };
+
     /// <summary>Clear the console / logs pane.</summary>
     public void clear() => _console.Clear();
 
+    /// <summary>Whether <see cref="prompt"/> asks a choice with a panel, so a command may open one without an argument.</summary>
+    public bool interactive => PromptDispatcher.PanelsOf(_console) is not null;
+
     /// <summary>Block until the user answers a prompt described by <paramref name="spec"/>.</summary>
-    public Task<JsValue> prompt(JsValue spec) => PromptDispatcher.RunAsync(_engine, _console, spec, _ct);
+    public async Task<JsValue> prompt(JsValue spec)
+    {
+        // The operator's time is not the script's: an answer may take longer than ExecutionTimeout.
+        using var paused = JsEngineFactory.PauseExecutionClock(_engine);
+        return await PromptDispatcher.RunAsync(_engine, _console, spec, _ct).ConfigureAwait(false);
+    }
 
     /// <summary>Open a progress reporter with an optional total step count.</summary>
     public ProgressHandle progress(JsValue spec)

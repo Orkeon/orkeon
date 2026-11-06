@@ -81,7 +81,8 @@ Color scheme: `Orkeon.Cli.TerminalGui.Layout.SchemeFactory` builds the schemes
 from semantic roles (`PaletteRole`): Normal (the terminal's own foreground),
 Dim, Accent, Ok, Alert and Error, plus bold and italic. Every attribute keeps the
 terminal's background (`Color.None`), so the console follows the user's theme;
-only the selection keeps explicit black on white. A terminal announcing 24-bit
+only the selection keeps explicit colours (white on black in `Light`, else black
+on white). A terminal announcing 24-bit
 colour through `COLORTERM` (`truecolor` or `24bit`) gets an RGB palette, any
 other a named 16-colour one. Main text carries no colour and a line holds at most
 one vivid role (the model witness keeps its own availability colour).

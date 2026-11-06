@@ -38,5 +38,7 @@ public sealed record CliScriptLimitsOptions
         MemoryLimitBytes = MemoryLimitBytes,
         RecursionLimit = RecursionLimit,
         ExecutionTimeout = ExecutionTimeout,
+        // A handler awaits a model or an operator for as long as it takes; Esc-Esc or Ctrl+C ends the wait.
+        PromiseTimeout = Timeout.InfiniteTimeSpan,
     };
 }

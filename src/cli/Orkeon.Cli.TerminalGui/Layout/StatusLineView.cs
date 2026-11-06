@@ -15,6 +15,8 @@ namespace Orkeon.Cli.TerminalGui.Layout;
 /// </summary>
 public sealed class StatusLineView : View
 {
+    private static readonly System.Text.Rune NoHotKey = new('\xffff');
+
     private readonly Label _head;
     private readonly Label _tail;
     private readonly IUiDispatcher _dispatcher;
@@ -47,15 +49,31 @@ public sealed class StatusLineView : View
         Width = Dim.Fill();
         SetScheme(SchemeFactory.Pane());
         // Two attributes: the spinner glyph and verb in the accent, the parenthesis dim.
-        _head = new Label { X = 0, Y = 0, Height = 1, Text = string.Empty };
-        _head.SetScheme(SchemeFactory.Accent());
-        _tail = new Label { X = Pos.Right(_head), Y = 0, Width = Dim.Fill(), Height = 1, Text = string.Empty };
-        _tail.SetScheme(SchemeFactory.Dim());
+        // No hot key: a tool's name holds underscores, and a label would eat the first one.
+        _head = new Label { X = 0, Y = 0, Height = 1, Text = string.Empty, HotKeySpecifier = NoHotKey };
+        _tail = new Label { X = Pos.Right(_head), Y = 0, Width = Dim.Fill(), Height = 1, Text = string.Empty, HotKeySpecifier = NoHotKey };
+        ApplyTheme();
         Add(_head, _tail);
     }
 
+    /// <summary>Takes the colours of the palette in force.</summary>
+    internal void ApplyTheme()
+    {
+        _head.SetScheme(SchemeFactory.Accent());
+        _tail.SetScheme(SchemeFactory.Dim());
+    }
+
+    /// <summary>Whether a panel is asking the question that waits: the line then goes on saying what the turn does.</summary>
+    internal bool QuestionOnPanel { get; set; }
+
     /// <summary>Raised on the running→idle transition — the transcript flushes tool activity on it.</summary>
     public event EventHandler? TurnCompleted;
+
+    /// <summary>How long the turn that last completed ran, as seen when <see cref="TurnCompleted"/> is raised.</summary>
+    internal TimeSpan LastTurnElapsed { get; private set; }
+
+    /// <summary>The tokens of the turn that last completed; null when the session reports none.</summary>
+    internal long? LastTurnTokens { get; private set; }
 
     /// <summary>Wires the sources and starts the 1 Hz refresh. Safe to call repeatedly.</summary>
     public void Bind(IInteractiveRunner runner, TuiIntegration? integration, ToolActivityAggregator? activity)
@@ -78,6 +96,9 @@ public sealed class StatusLineView : View
         _dispatcher.Invoke(() => Show(text));
     }
 
+    /// <summary>Test accessor: the text the head label paints, once its formatter has read it.</summary>
+    internal string HeadPainted => _head.TextFormatter.Text;
+
     private void Show(string text)
     {
         var (head, tail) = StatusLineFormatter.SplitHead(text);
@@ -97,6 +118,8 @@ public sealed class StatusLineView : View
         }
         if (!running && _wasRunning)
         {
+            LastTurnElapsed = _turnStartedAt is { } startedAt ? _clock.GetUtcNow().UtcDateTime - startedAt : TimeSpan.Zero;
+            LastTurnTokens = ReadSessionTokens() is { } spent ? Math.Max(0, spent - _tokensAtTurnStart) : null;
             _turnStartedAt = null;
             _deltasFlowing = false;
             TurnCompleted?.Invoke(this, EventArgs.Empty);
@@ -105,7 +128,7 @@ public sealed class StatusLineView : View
 
         // A question waiting for the operator wins over everything: whichever task asked it,
         // the main view says so, and the next y, s or n typed at the prompt answers it (#194).
-        if (ReadPendingApprovals() is [var first, ..] pending)
+        if (!QuestionOnPanel && ReadPendingApprovals() is [var first, ..] pending)
             return StatusLineFormatter.ComposeApproval(_glyphs, first, pending.Count);
 
         // A live progress snapshot wins over the generic turn readout — and also covers

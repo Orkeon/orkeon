@@ -73,6 +73,17 @@
       "type": "list of string",
       "default": [],
       "description": "The verbs the status line cycles through while the model works (\"Thinking\", \"Reading\"…). Left out or empty, the console's own list."
+    },
+    {
+      "path": "Orkeon:Cli:Tui:Theme",
+      "section": "Orkeon:Cli:Tui",
+      "type": "enum",
+      "values": [
+        "Dark",
+        "Light",
+        "None"
+      ],
+      "description": "The palette the console starts in. Left out: none when NO_COLOR is set, else the dark one."
     }
   ]
 }

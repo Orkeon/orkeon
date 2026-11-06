@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Jint;
 using Orkeon.Application.Interfaces.Security;
 using Orkeon.Domain.Constants.Agent;
@@ -49,6 +50,38 @@ public sealed class JsLlmFacadeActTests
         Assert.Equal(2, provider.ChatCalls);
         // The provider must have received the tool schema on the tool-calling turn.
         Assert.True(provider.LastConfigHadTools);
+    }
+
+    [Fact]
+    public async Task Act_opens_a_tool_span_for_each_call_the_model_makes()
+    {
+        // Arrange
+        const string toolName = "act_span_probe_tool";
+        var names = new List<string?>();
+        using var listener = new ActivityListener
+        {
+            ShouldListenTo = src => src.Name == Orkeon.Scripting.Telemetry.ScriptingActivitySource.Name,
+            Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllData,
+            ActivityStarted = a =>
+            {
+                if (a.OperationName.EndsWith(toolName, StringComparison.Ordinal))
+                    lock (names) names.Add(a.GetTagItem("gen_ai.tool.name")?.ToString());
+            },
+        };
+        ActivitySource.AddActivityListener(listener);
+        using var engine = new Engine(options => options.Constraints.PromiseTimeout = HangGuards.EnginePromise);
+        var provider = new SequencedProvider(new[]
+        {
+            new LlmResponse { Content = "", RawResponseBody = ToolCallBody(toolName, "{}") },
+            new LlmResponse { Content = "done", RawResponseBody = null },
+        });
+        var facade = new JsLlmFacade(engine, provider, CancellationToken.None, new IBaseTool[] { new RecordingTool(toolName) });
+
+        // Act
+        await facade.ActAsync(engine, "call it", null);
+
+        // Assert
+        Assert.Equal([toolName], names);
     }
 
     [Fact]

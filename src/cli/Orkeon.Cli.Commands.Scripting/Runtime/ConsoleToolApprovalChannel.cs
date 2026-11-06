@@ -12,7 +12,8 @@ namespace Orkeon.Cli.Commands.Scripting.Runtime;
 /// over through <see cref="IReplLineInterceptor"/>, so the loop stays the console's only reader. One question is shown
 /// at a time, the others wait their turn. <c>y</c> allows the call, <c>s</c> allows the tool for the rest of the
 /// session, <c>n</c> refuses; a line starting with <c>/</c> is left to the loop (a command runs, the question waits),
-/// any other line asks the whole question again. A question names the background task that asks it, and
+/// any other line asks the whole question again. A view that shows a question answers it by its id
+/// (<see cref="TryAnswer"/>), outside the lines. A question names the background task that asks it, and
 /// <see cref="Pending"/> lets the status line and the tasks list show it wherever the operator looks (#194).
 /// Cancelling the crew withdraws its question; disposing the channel, at the REPL's end,
 /// refuses every question still waiting. While a command holds the loop waiting for a crew (<c>runCrew</c>), that
@@ -69,7 +70,7 @@ internal sealed class ConsoleToolApprovalChannel : IToolApprovalChannel, IReplLi
         get
         {
             lock (_gate)
-                return [.. _queue.Select(p => new PendingToolApproval(p.Request.ToolName, FormatArguments(p.Request), p.Origin?.Ticket, p.Origin?.Name) { Id = p.Id })];
+                return [.. _queue.Select(p => new PendingToolApproval(p.Request.ToolName, FormatArguments(p.Request), p.Origin?.Ticket, p.Origin?.Name) { Id = p.Id, Reason = p.Request.Reason })];
         }
     }
 
@@ -107,7 +108,7 @@ internal sealed class ConsoleToolApprovalChannel : IToolApprovalChannel, IReplLi
     public bool TryConsume(string line)
     {
         ArgumentNullException.ThrowIfNull(line);
-        var answered = new List<PendingApproval>();
+        List<PendingApproval> answered;
         ToolApprovalDecision decision;
         lock (_gate)
         {
@@ -128,34 +129,65 @@ internal sealed class ConsoleToolApprovalChannel : IToolApprovalChannel, IReplLi
             }
 
             decision = parsed.Value;
-            var toolName = head.Value.Request.ToolName;
-            _queue.RemoveFirst();
-            answered.Add(head.Value);
-            if (decision == ToolApprovalDecision.AllowForSession)
-            {
-                // The other questions about the same tool are answered by the same approval.
-                _allowedForSession.Add(toolName);
-                for (var node = _queue.First; node is not null;)
-                {
-                    var next = node.Next;
-                    if (string.Equals(node.Value.Request.ToolName, toolName, StringComparison.OrdinalIgnoreCase))
-                    {
-                        _queue.Remove(node);
-                        answered.Add(node.Value);
-                    }
-
-                    node = next;
-                }
-            }
-
-            Record(head.Value, Outcome(toolName, decision));
-            if (_queue.First is { } nextQuestion)
-                Ask(nextQuestion.Value, withPrompt: false);
+            answered = Decide(head.Value, decision);
         }
 
+        Announce(answered, decision);
+        return true;
+    }
+
+    // Called under the lock, on the question that waits first: the questions it settles, itself first.
+    private List<PendingApproval> Decide(PendingApproval head, ToolApprovalDecision decision)
+    {
+        var answered = new List<PendingApproval> { head };
+        var toolName = head.Request.ToolName;
+        _queue.RemoveFirst();
+        if (decision == ToolApprovalDecision.AllowForSession)
+        {
+            // The other questions about the same tool are answered by the same approval.
+            _allowedForSession.Add(toolName);
+            for (var node = _queue.First; node is not null;)
+            {
+                var next = node.Next;
+                if (string.Equals(node.Value.Request.ToolName, toolName, StringComparison.OrdinalIgnoreCase))
+                {
+                    _queue.Remove(node);
+                    answered.Add(node.Value);
+                }
+
+                node = next;
+            }
+        }
+
+        Record(head, Outcome(toolName, decision));
+        if (_queue.First is { } nextQuestion)
+            Ask(nextQuestion.Value, withPrompt: false);
+        return answered;
+    }
+
+    private void Announce(List<PendingApproval> answered, ToolApprovalDecision decision)
+    {
         foreach (var pending in answered)
             pending.Settle(decision);
         RaisePendingChanged();
+    }
+
+    /// <inheritdoc />
+    public bool TryAnswer(long id, string answer)
+    {
+        ArgumentNullException.ThrowIfNull(answer);
+        List<PendingApproval> answered;
+        ToolApprovalDecision decision;
+        lock (_gate)
+        {
+            if (_queue.First is not { } head || head.Value.Id != id || ParseAnswer(answer.Trim()) is not { } parsed)
+                return false;
+
+            decision = parsed;
+            answered = Decide(head.Value, decision);
+        }
+
+        Announce(answered, decision);
         return true;
     }
 
@@ -177,10 +209,12 @@ internal sealed class ConsoleToolApprovalChannel : IToolApprovalChannel, IReplLi
     /// <returns>True when a line was read.</returns>
     public bool AnswerFromConsole()
     {
+        PendingApproval question;
         lock (_gate)
         {
             if (_queue.First is not { } head)
                 return false;
+            question = head.Value;
             if (!_promptShown)
             {
                 Console.Write(PromptFor(head.Value));
@@ -189,7 +223,8 @@ internal sealed class ConsoleToolApprovalChannel : IToolApprovalChannel, IReplLi
         }
 
         // Outside the lock: the read blocks until the operator answers, and a crew may ask meanwhile.
-        var line = Console.ReadLine() ?? "n";
+        if (ReadLineUnlessSettled(question) is not { } line)
+            return true;
         if (!TryConsume(line))
         {
             lock (_gate)
@@ -202,6 +237,26 @@ internal sealed class ConsoleToolApprovalChannel : IToolApprovalChannel, IReplLi
         }
 
         return true;
+    }
+
+    // A console with panels settles the question by its id while the line is awaited: the read then stops, and null
+    // says that no line was read. The end of the input reads as a refusal.
+    private string? ReadLineUnlessSettled(PendingApproval question)
+        => PromptDispatcher.PanelsOf(Console) is null
+            ? Console.ReadLine() ?? "n"
+            : ReadLineUnlessSettledAsync(question).GetAwaiter().GetResult();
+
+    private async Task<string?> ReadLineUnlessSettledAsync(PendingApproval question)
+    {
+        using var stop = new CancellationTokenSource();
+        var read = Console.ReadLineAsync(stop.Token);
+        await Task.WhenAny(read, question.Completion.Task).ConfigureAwait(false);
+        var settled = !read.IsCompleted;
+        if (settled)
+            await stop.CancelAsync().ConfigureAwait(false);
+
+        var line = await read.ConfigureAwait(false);
+        return settled ? null : line ?? "n";
     }
 
     /// <summary>Refuses every question still waiting; later requests are refused at once.</summary>

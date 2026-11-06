@@ -179,6 +179,9 @@ interface CommandRuntimeContext {
 
   write(text: string): void;
   writeLine(text: string): void;
+  writeBlock(spec: { kind: "markdown" | "diff"; text: string }): void; // stylé par la console à deux volets, lignes simples ailleurs
+  readonly theme: "dark" | "light" | "none" | null
+  setTheme(name: "dark" | "light" | "none"): boolean
   clear(): void;
 
   prompt(spec: PromptSpec): Promise<string | boolean>;
@@ -214,6 +217,35 @@ const ok     = await ctx.prompt({ type: "confirm", message: "Proceed?", default:
 const name   = await ctx.prompt({ type: "text", message: "Name?" });
 const pwd    = await ctx.prompt({ type: "password", message: "Password:" });
 ```
+
+Sur une console à panneaux, `ctx.interactive` vaut true, et `select` et `confirm` ouvrent un panneau de
+sélection à la place des lignes de saisie : les flèches ou un chiffre déplacent la sélection, Entrée répond,
+et le brouillon, l'historique et la liste des tâches attendent derrière. Esc répond `null` à un `select` et
+la valeur par défaut à un `confirm`, qui s'ouvre sur Oui sauf si sa valeur par défaut est false. Sans valeur par défaut, Entrée répond Oui, tandis qu'Esc et une ligne vide sur la console simple répondent Non. Ailleurs (la console simple, un rejeu), ils restent des lignes numérotées, et un script lit donc la même réponse partout. Une
+commande qui prend sa valeur en argument vérifie `ctx.interactive` avant d'ouvrir un panneau sans argument.
+
+Un choix est une chaîne, à la fois sa valeur et son libellé, ou un objet. Un `select` prend aussi ce que le
+panneau peint autour des options :
+
+```typescript
+const picked = await ctx.prompt({
+  type: "select",
+  message: "Model?",
+  title: "Select model",
+  description: "Applies to this session",
+  keys: "Enter to set · Esc to cancel",          // à la place de la ligne de touches par défaut
+  cancellable: true,                             // false : Esc ne quitte pas le panneau
+  detailed: true,                                // répond { value, control } plutôt que la valeur
+  control: { label: "effort", values: ["low", "high"], value: "high" },  // les flèches latérales l'ajustent
+  choices: [
+    { value: "a", label: "Alpha", description: "alignée après le libellé", hint: "visible quand sélectionné", current: true },
+    "beta",
+  ],
+});
+```
+
+`current` marque la valeur en vigueur et ouvre le panneau dessus, `default` ayant la priorité. Sur des
+lignes tapées, un contrôle répond la valeur sur laquelle il s'est ouvert, car rien ne l'y ajuste.
 
 ### Annulation
 
@@ -485,7 +517,10 @@ await tui.RunAsync(provider.GetRequiredService<MyRunner>(), CancellationToken.No
 `AddOrkeonCliTerminalGui` remplace la console par un écran Terminal.Gui v2 : le REPL l'occupe, et
 un tiroir de logs (`Ctrl+G`) reçoit les lignes de journal qui sinon s'entremêleraient avec
 l'invite. Il enregistre `TerminalGuiHost`, remplace `IConsoleAdapter` par l'adaptateur posé sur
-le volet REPL (la complétion Tab est branchée quand l'hôte enregistre un `IReplInputAssist`), et
+le volet REPL (la complétion Tab est branchée quand l'hôte enregistre un `IReplInputAssist` ; quand cette source
+est aussi un `IReplCommandCatalog`, un `/` en début de saisie ouvre au-dessus un menu des commandes, que la frappe
+restreint : les flèches le parcourent, Tab complète la commande, Entrée l'exécute, Esc le quitte en gardant le texte
+tapé, et une ligne rappelée de l'historique ne l'ouvre jamais), et
 remplace **tous** les `ILoggerProvider` par `TerminalGuiLoggerProvider` — un logger console
 écrirait dans l'écran que Terminal.Gui possède. Le fournisseur est aussi publié pour tout le
 processus (`AmbientLoggerProvider`), si bien qu'un hôte construit à l'intérieur d'une commande
@@ -506,6 +541,12 @@ du prompt) ou `F4` liste des tâches, `Ctrl+C` copie la sélection,
 `Ctrl+V` et le clic droit collent dans la saisie, `Ctrl+Q` quitte (il demande d'abord confirmation
 tant qu'un tour s'exécute). Aucune vue de texte n'ouvre de menu contextuel : un clic droit colle, rien d'autre. `orkeon-repl`
 choisit cette console avec `--ui` ([référence du CLI](../reference/cli.md#orkeon-repl--la-console-interactive-séparée)).
+
+**Ce que montre le transcript.** Une entrée soumise s'affiche sur une barre grise après une rangée vide,
+le marqueur de prompt sur sa première ligne ; la copie d'une ligne entière rend ce qui a été tapé. Ce
+qu'écrit une commande slash pend sous son rappel, sur un coude, jusqu'à ce que la console lise de nouveau.
+Un tour de dix secondes ou plus se ferme sur une ligne atténuée avec son temps et ses jetons. Le modèle
+d'affichage est dans l'[ADR-017](../adr/ADR-017-transcript-display-model.md).
 
 **Touches sur le prompt.** `Échap` efface le brouillon ; un second `Échap` aussitôt après (toute
 autre touche entre les deux désarme la paire, et elle s'arme aussi sur un brouillon vide)
@@ -628,8 +669,12 @@ enregistre un canal d'approbation (`AddConsoleToolApproval`) : un appel pour leq
 est soumis à l'opérateur, dont la ligne suivante y répond. Venu d'un crew lancé par `runCrewAsync`,
 la boucle de lecture lui remet cette ligne (`IReplLineInterceptor`) avant de résoudre une commande ;
 venu d'un crew lancé par `runCrew`, qui tient la boucle, l'appel en attente lit lui-même la réponse,
-et le temps mis à répondre ne compte pas dans `RunCrewTimeout`. Une commande passe le mode de la
-session à `act` dans `permissionMode` ; elle ne gère pas la question elle-même. Voir
+et le temps mis à répondre ne compte pas dans `RunCrewTimeout`. Dans la console à volets, la question
+ouvre un panneau sur Oui, et Entrée seul autorise donc cet appel une fois : ses options répondent à cette question par son identifiant (`y`, `s` ou `n`) et
+n'arrivent jamais à une lecture comme une ligne, Esc refuse, et `/`, ou une lettre qu'aucune option ne porte,
+rend la question à la saisie avec les lettres déjà tapées, pour qu'une commande passe d'abord, la ligne de
+statut la posant alors. Une commande
+passe le mode de la session à `act` dans `permissionMode` ; elle ne gère pas la question elle-même. Voir
 [la référence du CLI](../reference/cli.md#orkeon-repl--la-console-interactive-séparée).
 
 **Règles de session.** Le contrôle lit les règles d'autorisation et de refus de la session avant le
@@ -734,6 +779,20 @@ for (const m of usage.byModel) ctx.writeLine(`${m.model}: ${m.promptTokens} in (
 for (const c of usage.byCommand) ctx.writeLine(`[${c.ticket}] ${c.name}: ${c.promptTokens + c.completionTokens} tokens, ${c.cost ?? "n/a"}`);
 ```
 
+**Les appels d'une étape.** Pendant qu'un tour appelle des outils, les lignes au-dessus de la ligne d'état comptent les appels de l'étape et listent les derniers (`$ commande`, `Read chemin`), chacun avec ce sur quoi il travaille : le point d'invocation de l'hôte prévient la console par un `ToolActivityFeed`, et seul l'argument désigné pour cet outil atteint l'écran, jamais ce qu'une édition écrit ni les arguments d'un outil non listé (`ToolCallSubject`). Une étape finit avec le texte suivant de son écran une fois qu'aucun de ses appels ne tourne, ou avec sa tâche ou son tour, même sur un appel encore ouvert : ses lignes laissent place à une ligne du transcript, `Read 1 file, ran 2 shell commands`. Sur une saisie vide, ctrl+o liste une fois les appels de la dernière étape ; avec du texte dans la saisie, il reste un retour à la ligne. Chaque fil a son étape, affichée avec son écran, et un panneau garde la place pour lui.
+
+**Le changement d'un appel.** Pour `edit_file` et `file_write`, le décorateur lit le fichier avant et après l'appel et remet à l'écran un `ToolCallDiff` (`LineDiff`, une comparaison par lignes) : le transcript montre le fichier et ses compteurs, des lignes numérotées sur fond rouge ou vert, les mots changés dans une teinte plus forte et des points de suspension entre deux changements éloignés, jusqu'à 80 lignes. La comparaison sert à l'écran seul : ce que reçoit le modèle ne change pas, rien n'est lu tant qu'aucun écran n'écoute, et un fichier de plus de 1 Mio, binaire ou illisible, ou une entrée qui n'est pas un fichier ordinaire, montre l'appel sans son changement. Un autre écrivain qui touche le fichier pendant l'appel se voit dans le diff. `ctx.writeBlock({kind:"diff"})` peint de la même façon un patch unifié, avec les numéros lus sur les lignes `@@` ; copier une ligne entière redonne la ligne du patch.
+
+**Markdown.** Le flux d'un assistant et `ctx.writeBlock({kind:"markdown"})` sont lus une ligne terminée à la fois (`MarkdownLines`, Markdig pour l'intérieur d'une ligne) : titres, gras, italique, code en ligne, liens, listes, citations, filets, blocs de code et tableaux. La ligne en cours d'écriture s'affiche telle qu'elle arrive et est remplacée quand elle se termine : un marqueur peut donc apparaître un instant avant d'être lu. Un tableau attend la ligne qui le termine, puis se dessine dans un cadre, ou se lit rangée par rangée si l'écran est trop étroit ; au-delà de 200 rangées, un nouveau bloc commence. Une emphase ouverte sur deux lignes reste telle qu'elle est écrite. Copier une ligne entière redonne son markdown ; en copier une partie donne ce qui est affiché. Le flux n'atteint l'écran que si `Orkeon:Cli:ConsoleStreaming:Enabled` est actif ; ce qu'une commande écrit avec `ctx.writeLine` n'est pas lu comme du markdown.
+
+**Les tâches dans le fil.** Les tâches apparues dans une même lecture de la liste forment un groupe, `● 3 agents launched (↓ to manage)` puis une ligne `├─`/`└─` par tâche ; une tâche seule garde ses deux lignes. Une ligne de fin dit ce que la tâche a consommé, outils, jetons et temps, quand c'est connu, et son glyphe dit comment elle a fini.
+
+**Loin de la fin.** Un transcript remonté dessine `↓ more below (click or ctrl+end)` sur sa dernière ligne et, une fois sorti de l'écran le prompt auquel répondent les lignes, ce prompt sur sa première ligne. Les deux sont dessinés par-dessus les lignes, sans faire partie du texte : ni la sélection ni la copie ne les voient, et remonter d'une ligne de plus montre celle qu'ils couvrent.
+
+**La barre.** `context N%` est ce qu'a envoyé le dernier appel au modèle du tour du prompt, quelle que soit l'instance de commande du tour qui l'a fait, rapporté à `Orkeon:Cli:Session:ContextWindowTokens`, `200000` sans ce réglage, la fenêtre que rapporte `token_budget`. Avant tout appel, l'entrée est absente ; un nouveau prompt garde le dernier chiffre jusqu'à la réponse de son premier appel, et une session vidée (un `/clear` qui réinitialise le tampon) le retire. Elle reste discrète jusqu'à 79 %, en alerte dès 80 %, en erreur dès 95 %. Sur un prompt vide, `?` liste les touches ; pendant qu'un `ctx.prompt` de script lit, c'est un caractère comme un autre.
+
+**Palettes.** `Orkeon:Cli:Tui:Theme` nomme la palette au démarrage : `Dark`, `Light` ou `None`, les couleurs du terminal, gras et italique conservés. Omis, `None` si `NO_COLOR` est défini, sinon `Dark` : un réglage l'emporte sur la variable, comme le demande no-color.org. Toute autre valeur, un nombre compris, est refusée au démarrage. La palette n'est pas détectée depuis le terminal. `ctx.setTheme("light")` la change pour la session, écran compris, et répond false sur une console sans palettes ; `ctx.theme` la nomme.
+
 ## Matrice de support TypeScript (esbuild → Jint)
 
 | Fonctionnalité                                  | Support |
@@ -762,7 +821,8 @@ for (const c of usage.byCommand) ctx.writeLine(`[${c.ticket}] ${c.name}: ${c.pro
 - **Jint n'est pas thread-safe.** Le runner sérialise les invocations ; un
   `SemaphoreSlim` protège chaque moteur défensivement.
 - **Limites de sandbox (profil CLI)** : 64 Mo de mémoire, 100 de récursion max,
-  5 min d'exécution. Surcharge via `Orkeon:Cli:ScriptCommands:Limits`.
+  5 min d'exécution. Surcharge via `Orkeon:Cli:ScriptCommands:Limits`. Attendre la réponse à `ctx.prompt` ne
+  compte pas comme de l'exécution, et l'attente d'un handler n'a pas de limite propre : annuler la commande y met fin.
 - **Politique de conflit** : le premier script gagne, par ordre ordinal des
   chemins ; le second est journalisé en Warning. Basculez
   `ContinueOnConflict=false` pour échouer vite.

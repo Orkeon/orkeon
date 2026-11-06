@@ -138,6 +138,67 @@ public sealed class PromptDispatcherTests : IDisposable
     }
 
     [Fact]
+    public async Task Select_prompt_refuses_a_spec_without_choices()
+    {
+        // Arrange
+        var console = new ScriptedTestConsole();
+        var spec = Spec(new { type = "select", message = "Pick:", choices = Array.Empty<string>() });
+
+        // Act
+        var error = await Assert.ThrowsAsync<ArgumentException>(() => PromptDispatcher.RunAsync(_engine, console, spec, CancellationToken.None));
+
+        // Assert
+        Assert.Contains("non-empty array", error.Message, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    public async Task Select_prompt_throws_on_an_empty_line_without_a_default(string line)
+    {
+        // Arrange
+        var console = new ScriptedTestConsole();
+        console.EnqueueLine(line);
+        var spec = Spec(new { type = "select", message = "Pick:", choices = AbChoices });
+
+        // Act
+        var error = await Assert.ThrowsAsync<InvalidOperationException>(() => PromptDispatcher.RunAsync(_engine, console, spec, CancellationToken.None));
+
+        // Assert
+        Assert.Contains("no selection and no default", error.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Select_prompt_throws_on_an_empty_line_when_the_default_names_no_choice()
+    {
+        // Arrange
+        var console = new ScriptedTestConsole();
+        console.EnqueueLine("");
+        var spec = Spec(new { type = "select", message = "Pick:", choices = AbChoices, @default = "zzz" });
+
+        // Act
+        var error = await Assert.ThrowsAsync<InvalidOperationException>(() => PromptDispatcher.RunAsync(_engine, console, spec, CancellationToken.None));
+
+        // Assert
+        Assert.Contains("no selection and no default", error.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Select_prompt_throws_on_an_index_past_the_last_choice()
+    {
+        // Arrange
+        var console = new ScriptedTestConsole();
+        console.EnqueueLine("2");
+        var spec = Spec(new { type = "select", message = "Pick:", choices = AbChoices });
+
+        // Act
+        var error = await Assert.ThrowsAsync<InvalidOperationException>(() => PromptDispatcher.RunAsync(_engine, console, spec, CancellationToken.None));
+
+        // Assert
+        Assert.Contains("'2' is not a valid choice", error.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task Password_prompt_returns_user_input()
     {
         var console = new ScriptedTestConsole();

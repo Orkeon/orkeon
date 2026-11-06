@@ -3,6 +3,7 @@ using Orkeon.Cli.TerminalGui.Hosting;
 using Orkeon.Cli.TerminalGui.Layout;
 using Terminal.Gui.Drivers;
 using Terminal.Gui.Input;
+using Orkeon.Cli.TerminalGui.Tests.Doubles;
 
 namespace Orkeon.Cli.TerminalGui.Tests.Layout;
 
@@ -35,6 +36,93 @@ public class ReplPaneViewTests
         pane.RaiseKeyDown(new Key(KeyCode.Enter));
         var result = await task;
         Assert.Equal("verify 4", result);
+    }
+
+    [Fact]
+    public void Styled_lines_keep_their_place_among_the_writes_around_them()
+    {
+        // Arrange
+        var dispatcher = new FakeUiDispatcher();
+        using var pane = new ReplPaneView(new TerminalGuiOptions(), dispatcher);
+
+        // Act
+        pane.AppendOutputLine("before");
+        pane.AppendStyled([new TranscriptLine("styled")]);
+        pane.AppendOutputLine("after");
+        dispatcher.RunPending();
+
+        // Assert
+        Assert.Equal("before\nstyled\nafter\n", pane.HistoryView.TranscriptText);
+    }
+
+    [Fact]
+    public async Task A_submitted_prompt_is_echoed_on_a_bar()
+    {
+        // Arrange
+        using var pane = CreatePane();
+        var read = pane.ReadLineAsync(CancellationToken.None);
+        pane.CurrentInput = "hello";
+
+        // Act
+        pane.RaiseKeyDown(new Key(KeyCode.Enter));
+        await read;
+
+        // Assert
+        Assert.Equal("\n❯ hello\n", pane.HistoryView.TranscriptText);
+        Assert.Equal(PaletteRole.UserBar, pane.Transcript.GetRow(1)!.Value.RowRole);
+    }
+
+    [Fact]
+    public async Task What_a_slash_command_writes_hangs_under_its_echo()
+    {
+        // Arrange
+        using var pane = CreatePane();
+        var read = pane.ReadLineAsync(CancellationToken.None);
+        pane.CurrentInput = "/help";
+        pane.RaiseKeyDown(new Key(KeyCode.Enter));
+        await read;
+
+        // Act
+        pane.AppendOutputLine("one");
+        pane.AppendOutputLine("two");
+
+        // Assert
+        Assert.Equal("\n❯ /help\n  ⎿  one\n     two\n", pane.HistoryView.TranscriptText);
+    }
+
+    [Fact]
+    public async Task What_follows_a_plain_prompt_does_not_hang()
+    {
+        // Arrange
+        using var pane = CreatePane();
+        var read = pane.ReadLineAsync(CancellationToken.None);
+        pane.CurrentInput = "hello";
+        pane.RaiseKeyDown(new Key(KeyCode.Enter));
+        await read;
+
+        // Act
+        pane.AppendOutputLine("answer");
+
+        // Assert
+        Assert.Equal("\n❯ hello\nanswer\n", pane.HistoryView.TranscriptText);
+    }
+
+    [Fact]
+    public async Task A_new_read_ends_the_result_of_the_command_before_it()
+    {
+        // Arrange
+        using var pane = CreatePane();
+        var read = pane.ReadLineAsync(CancellationToken.None);
+        pane.CurrentInput = "/help";
+        pane.RaiseKeyDown(new Key(KeyCode.Enter));
+        await read;
+        _ = pane.ReadLineAsync(CancellationToken.None);
+
+        // Act
+        pane.AppendOutputLine("later");
+
+        // Assert
+        Assert.Equal("\n❯ /help\nlater\n", pane.HistoryView.TranscriptText);
     }
 
     [Fact]
@@ -332,7 +420,7 @@ public class ReplPaneViewTests
         Submit(pane, "verify 4");
 
         // Echoed without the prompt prefix — just the typed text.
-        Assert.Equal("verify 4\n", pane.CurrentHistory);
+        Assert.Equal("\n❯ verify 4\n", pane.CurrentHistory);
     }
 
     [Fact]
@@ -345,7 +433,7 @@ public class ReplPaneViewTests
         pane.Input.InsertText("second");
         pane.RaiseKeyDown(new Key(KeyCode.Enter));  // submit
 
-        Assert.Equal("first\nsecond\n", pane.CurrentHistory);
+        Assert.Equal("\n❯ first\n  second\n", pane.CurrentHistory);
     }
 
     [Fact]
@@ -1618,5 +1706,51 @@ public class ReplPaneViewTests
     {
         Assert.Equal("Message @worker...", ReplPaneView.RecipientPlaceholder("worker", "base", GlyphSet.Ascii));
         Assert.Equal("Message @worker…", ReplPaneView.RecipientPlaceholder("worker", "base", GlyphSet.Unicode));
+    }
+
+    [Fact]
+    public void Entering_the_list_takes_the_keys_from_an_open_panel()
+    {
+        // Arrange
+        var (top, _) = CreateTopWithTasks();
+        using var owner = top;
+        _ = top.Repl.ChooseAsync(new ConsoleChoiceRequest { Choices = [new("a", "A")] }, CancellationToken.None);
+
+        // Act
+        top.Agents.EnterSelectionMode();
+
+        // Assert
+        Assert.Equal((false, true), (top.Repl.PanelHasFocus, top.Agents.HasFocus));
+    }
+
+    [Fact]
+    public void Leaving_the_list_gives_the_keys_back_to_an_open_panel()
+    {
+        // Arrange
+        var (top, _) = CreateTopWithTasks();
+        using var owner = top;
+        _ = top.Repl.ChooseAsync(new ConsoleChoiceRequest { Choices = [new("a", "A")] }, CancellationToken.None);
+        top.Agents.EnterSelectionMode();
+        top.Agents.ExitSelectionMode();
+
+        // Act
+        top.Repl.Input?.SetFocus(); // What GlobalKeyBindings does on SelectionExited.
+
+        // Assert
+        Assert.True(top.Repl.PanelHasFocus);
+    }
+
+    [Fact]
+    public void The_palette_asked_reads_back_before_the_loop_paints_it()
+    {
+        // Arrange
+        using var pane = new ReplPaneView(new TerminalGuiOptions(), new FakeUiDispatcher());
+        var console = new Orkeon.Cli.TerminalGui.Console.TerminalGuiConsoleAdapter(pane);
+
+        // Act
+        console.SetTheme(ConsoleTheme.Light);
+
+        // Assert
+        Assert.Equal(ConsoleTheme.Light, console.Theme);
     }
 }

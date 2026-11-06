@@ -107,6 +107,15 @@ public sealed class HintBarView : View
         {
             witness = null;
         }
+        int? context;
+        try
+        {
+            context = _integration?.ContextPercent?.Invoke();
+        }
+        catch
+        {
+            context = null;
+        }
         var running = IsTurnRunning(_runner, _integration);
         var tasks = _agentsAvailable && (_agentsHasRows?.Invoke() ?? true);
         var navigation = _navigation?.Invoke();
@@ -115,7 +124,8 @@ public sealed class HintBarView : View
             mode,
             running,
             tasks,
-            taskListFocused: navigation?.State == InputNavigationState.List);
+            taskListFocused: navigation?.State == InputNavigationState.List,
+            contextPercent: context);
 
         _dispatcher.Invoke(() =>
         {
@@ -129,6 +139,12 @@ public sealed class HintBarView : View
     protected override bool OnDrawingContent(DrawContext? context)
     {
         SegmentPainter.Paint(this, 0, _left);
+        // The witness keeps a margin on its right: a long line must not show through it.
+        if (Viewport.Width > 0)
+        {
+            Move(Viewport.Width - 1, 0);
+            AddStr(" ");
+        }
         return true;
     }
 

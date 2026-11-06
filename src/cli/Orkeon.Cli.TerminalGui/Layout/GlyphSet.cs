@@ -80,6 +80,15 @@ public sealed record GlyphSet
     /// <summary>Ellipsis ending a cut name, phrase or metric block (`…`).</summary>
     public required string Ellipsis { get; init; }
 
+    /// <summary>Side bar setting a verbatim text apart in a panel (`│`).</summary>
+    public required string SideBar { get; init; }
+
+    /// <summary>The keys of a value a panel adjusts sideways (`←/→`).</summary>
+    public required string Sideways { get; init; }
+
+    /// <summary>The cells of a table's box: corners and crossings by row, then the horizontal and the vertical.</summary>
+    public required string Box { get; init; }
+
     /// <summary>The Unicode variant — what the reference captures show.</summary>
     public static GlyphSet Unicode { get; } = new()
     {
@@ -101,6 +110,9 @@ public sealed record GlyphSet
         Elbow = "⎿",
         Up = "↑",
         Ellipsis = "…",
+        SideBar = "│",
+        Sideways = "←/→",
+        Box = "┌┬┐├┼┤└┴┘─│",
     };
 
     /// <summary>The ASCII fallback — every marker stays one column wide and 7-bit.</summary>
@@ -124,6 +136,9 @@ public sealed record GlyphSet
         Elbow = "|",
         Up = "^",
         Ellipsis = "...",
+        SideBar = "|",
+        Sideways = "</>",
+        Box = "+++++++++-|",
     };
 
     /// <summary>Resolves the set for a mode and an observed UTF-8 capability.</summary>

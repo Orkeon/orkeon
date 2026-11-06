@@ -141,4 +141,17 @@ public sealed partial class ScriptServiceLocatorTests
 
         throw new FileNotFoundException("orkeon-cli.d.ts not found above the test base directory.");
     }
+
+    [Fact]
+    public void A_detailed_flag_known_only_at_run_time_is_typed_as_either_answer()
+    {
+        // Arrange
+        var typings = CliTypings();
+
+        // Act
+        var declared = typings.Contains("prompt(spec: SelectPromptSpec & { detailed: boolean }): Promise<PromptChoiceAnswer | string | null>;", StringComparison.Ordinal);
+
+        // Assert
+        Assert.True(declared, "orkeon-cli.d.ts does not type a select whose detailed flag is a boolean.");
+    }
 }

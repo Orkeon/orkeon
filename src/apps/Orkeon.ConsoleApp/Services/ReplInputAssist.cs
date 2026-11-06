@@ -11,7 +11,7 @@ namespace Orkeon.ConsoleApp.Services;
 /// registries and <c>@path</c> tokens from the virtual file system (rooted at <c>/workspace</c>).
 /// Wired into <see cref="Orkeon.Cli.TerminalGui.Layout.ReplPaneView"/> by the TUI bootstrap.
 /// </summary>
-internal sealed class ReplInputAssist : IReplInputAssist
+internal sealed class ReplInputAssist : IReplInputAssist, IReplCommandCatalog
 {
     /// <summary>Virtual root that a bare <c>@leaf</c> (no slash) is resolved against.</summary>
     private const string WorkspaceRoot = "/workspace";
@@ -47,6 +47,22 @@ internal sealed class ReplInputAssist : IReplInputAssist
             }
         }
         return names.ToList();
+    }
+
+    /// <inheritdoc />
+    public IReadOnlyList<ReplCommandEntry> ListCommands()
+    {
+        // A scripted command wins over a default of the same name, as it does when a line is resolved.
+        var entries = new Dictionary<string, ReplCommandEntry>(StringComparer.OrdinalIgnoreCase);
+        foreach (var registry in new IInteractiveCommandRegistry[] { _scripts, _defaults })
+        {
+            foreach (var cmd in registry.Commands)
+            {
+                if (!string.IsNullOrEmpty(cmd.Name))
+                    entries.TryAdd(cmd.Name, new ReplCommandEntry(cmd.Name, cmd.Description) { Aliases = cmd.Aliases });
+            }
+        }
+        return [.. entries.Values];
     }
 
     /// <inheritdoc />

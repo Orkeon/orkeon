@@ -29,15 +29,13 @@ namespace Orkeon.Cli.TerminalGui.Layout;
 /// <para>
 /// Selection color: <see cref="TextView.OnDrawSelectionColor"/> default uses
 /// <see cref="Scheme.Focus"/> which in <c>SchemeFactory.Pane()</c> is
-/// BrightCyan-on-Black — visually weak. We override to use an explicit black-on-white
-/// inverse-video attribute that is unmistakable.
+/// BrightCyan-on-Black — visually weak. We override to use an explicit inverse-video
+/// attribute that follows the palette (<see cref="SchemeFactory.Selection"/>) and is unmistakable.
 /// </para>
 /// </remarks>
 public sealed class MouseClipboardTextView : TextView
 {
-    private static readonly Color SelectionFg = new(ColorName16.Black);
-    private static readonly Color SelectionBg = new(ColorName16.White);
-    internal static readonly Attribute SelectionAttribute = new(in SelectionFg, in SelectionBg);
+    internal static Attribute SelectionAttribute => SchemeFactory.Selection;
 
     /// <summary>
     /// Initializes a new instance: the native context menu command does nothing, whichever

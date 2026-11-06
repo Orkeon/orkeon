@@ -21,13 +21,41 @@ namespace Orkeon.Cli.TerminalGui.Layout;
 /// and the console adapter still routes it here by heuristic — only the RENDERING maps
 /// it to the prompt glyph, so the plain (non-TUI) mode stays byte-exact (PLAN §2.1).
 /// </remarks>
-public sealed class ReplPaneView : View, ITaskListNavigator
+public sealed class ReplPaneView : View, ITaskListNavigator, IToolActivityObserver
 {
     private readonly ThreadScreens _screens;
     private readonly AppendCoalescer<TranscriptWrite> _transcriptWrites;
+    private readonly CommandResultIndent _commandResult;
+    private readonly Dictionary<TranscriptView, MarkdownStream> _markdown = [];
+    private string? _commandResultThread;
 
     // A write to a thread's screen; a null Text is a clear of that screen.
-    private readonly record struct TranscriptWrite(string? Thread, string? Text, bool Attention = false);
+    // A write carries text, styled lines or a change of the command in flight; none of the three clears the screen.
+    private readonly record struct TranscriptWrite(string? Thread, string? Text, bool Attention = false)
+    {
+        public IReadOnlyList<TranscriptLine>? Lines { get; init; }
+
+        public bool Stream { get; init; }
+
+        public CommandResultScope Scope { get; init; }
+
+        public ToolCallStarted? CallStarted { get; init; }
+
+        public ToolCallFinished? CallFinished { get; init; }
+
+        /// <summary>The thread's work is over: its step folds, whatever is still open in it.</summary>
+        public bool EndsSteps { get; init; }
+
+        /// <summary>Runs on the UI thread once what came before is on the screen and the thread's step folded.</summary>
+        public Action? Then { get; init; }
+    }
+
+    private enum CommandResultScope
+    {
+        None,
+        Begin,
+        End,
+    }
     private readonly Label _promptLabel;
     private readonly Label _placeholder;
     private readonly MouseClipboardTextView _input;
@@ -35,6 +63,7 @@ public sealed class ReplPaneView : View, ITaskListNavigator
     private readonly RuleChipView _ruleChip;
     private readonly RuleChipView _bottomRule;
     private readonly IUiDispatcher _dispatcher;
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<string, int> _toolCalls = new(StringComparer.Ordinal);
     private readonly GlyphSet _glyphs;
 
     // Rows reserved between the transcript and the prompt: spinner line + top separator.
@@ -69,6 +98,35 @@ public sealed class ReplPaneView : View, ITaskListNavigator
     // Double-Escape clears the draft. Armed by the first Escape, fired (and reset) by a second
     // consecutive Escape; any other key disarms it. A single Escape is swallowed so it never quits.
     private bool _escapeArmed;
+
+    // The selection panels: a prompt's own, newest last, and the tool approval that passes before them.
+    // Painted in place of the prompt rows; _panelRows is 0 while none is open.
+    private const int MinTranscriptRows = 3;
+    private readonly InlinePanelView _panelView = new();
+
+    // The menu of commands above the prompt. The field keeps the focus: this view only paints it.
+    private readonly InlinePanelView _menuView = new() { CanFocus = false };
+
+    // The calls of the step under way, by thread, shown above the status line; what the last one left, for ctrl+o.
+    private const int MaxStepRows = 5;
+    private const string MainThreadKey = "";
+    private readonly InlinePanelView _stepView = new() { CanFocus = false };
+    private readonly Dictionary<string, StepActivityModel> _steps = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, FoldedStep> _lastSteps = new(StringComparer.Ordinal);
+    private int _stepRows;
+    private IReplCommandCatalog? _catalog;
+    private SlashMenuModel? _menu;
+    private int _menuRows;
+    private bool _menuDismissed;
+    private ConsoleTheme? _themeAsked;
+    private Task<string?>? _scriptRead;
+    private readonly List<TaskCompletionSource<ConsoleChoiceAnswer?>> _openAnswers = [];
+    private bool _stopped;
+    private readonly List<OpenPanel> _promptPanels = [];
+    private OpenPanel? _approvalPanel;
+    private long? _approvalSettledId;
+    private int _panelRows;
+    private EventHandler? _approvalsChanged;
 
     // Caps 3/4 — completion source for "/cmd" and "@path" tokens. Null ⇒ Tab is inert.
     private IReplInputAssist? _assist;
@@ -106,8 +164,10 @@ public sealed class ReplPaneView : View, ITaskListNavigator
             // hooks via TranscriptView regardless of focus state.
             screen.CanFocus = false;
             screen.SetScheme(SchemeFactory.Pane());
+            screen.Glyphs = _glyphs;
         });
         _transcriptWrites = new AppendCoalescer<TranscriptWrite>(dispatcher, ApplyTranscriptWrites);
+        _commandResult = new CommandResultIndent(_glyphs);
 
         // The two bands of the interactive cluster, in the captures' order: status
         // line, then the rule carrying the right-aligned context chip, then the prompt.
@@ -137,7 +197,6 @@ public sealed class ReplPaneView : View, ITaskListNavigator
             Height = 1,
             Text = $"{_glyphs.Prompt} ",
         };
-        _promptLabel.SetScheme(SchemeFactory.Uniform(SchemeFactory.Attr(PaletteRole.Accent, bold: true)));
         _input = new MouseClipboardTextView
         {
             X = Pos.Right(_promptLabel),
@@ -169,11 +228,17 @@ public sealed class ReplPaneView : View, ITaskListNavigator
         {
             SyncInputHeight();
             SyncPlaceholder();
-            if (_applyingNavigation) return;
+            if (_applyingNavigation)
+            {
+                if (SlashMenuModel.QueryOf(CurrentInput) is null) _menuDismissed = false;
+                CloseSlashMenu();
+                return;
+            }
             // Text that lands in the field while the list holds the keys (a paste path the host
             // missed, a writer of its own) ends the list first: the field keeps what it now shows.
             if (_navigation.State == InputNavigationState.List) Apply(_navigation.OnFieldFocused());
             _navigation.OnTextEdited(CurrentInput);
+            SyncSlashMenu();
         };
         // The list state follows the real focus: the field taking it back by any way the machine did
         // not order (a mouse click, a focus move) leaves the list with the field's text and caret as
@@ -195,9 +260,16 @@ public sealed class ReplPaneView : View, ITaskListNavigator
             Text = PlaceholderText,
             CanFocus = false,
         };
-        _placeholder.SetScheme(SchemeFactory.Uniform(SchemeFactory.Attr(PaletteRole.Dim, italic: true)));
+        ApplyLabelSchemes();
 
-        Add(_screens.Main, _statusLine, _ruleChip, _promptLabel, _input, _placeholder, _bottomRule);
+        _panelView.KeyHandler = HandlePanelKey;
+        Add(_screens.Main, _statusLine, _ruleChip, _promptLabel, _input, _placeholder, _bottomRule, _panelView, _menuView, _stepView);
+        FrameChanged += (_, _) =>
+        {
+            if (_panelRows > 0) SyncPanel();
+            else if (_menuRows > 0) LayOutSlashMenu();
+            SyncStepArea();
+        };
 
         // Force initial focus on the input field once the view is laid out, otherwise
         // Terminal.Gui defaults to the first focusable child (which would skip past
@@ -226,6 +298,7 @@ public sealed class ReplPaneView : View, ITaskListNavigator
     {
         ArgumentNullException.ThrowIfNull(assist);
         _assist = assist;
+        _catalog = assist as IReplCommandCatalog;
     }
 
     public void AppendOutput(string text)
@@ -234,34 +307,268 @@ public sealed class ReplPaneView : View, ITaskListNavigator
         _transcriptWrites.Post(new TranscriptWrite(ConsoleThread.Current, text));
     }
 
+    /// <summary>Writes a piece of an assistant's reply: markdown, styled as each of its lines ends.</summary>
+    public void AppendStream(string text)
+    {
+        ArgumentNullException.ThrowIfNull(text);
+        _transcriptWrites.Post(new TranscriptWrite(ConsoleThread.Current, text) { Stream = true });
+    }
+
+    /// <summary>The palette in force.</summary>
+    /// <summary>The palette in force, or the one just asked for while the UI thread has yet to paint it.</summary>
+    internal ConsoleTheme Theme => _themeAsked ?? SchemeFactory.Theme;
+
+    /// <summary>Paints the layout in <paramref name="theme"/> from now on.</summary>
+    internal void ApplyTheme(ConsoleTheme theme)
+    {
+        _themeAsked = theme;
+        _dispatcher.Invoke(() =>
+        {
+            SchemeFactory.Theme = theme;
+            ApplyLabelSchemes();
+            _statusLine.ApplyTheme();
+            (SuperView ?? this).SetNeedsDraw();
+        });
+    }
+
+    private void ApplyLabelSchemes()
+    {
+        _promptLabel.SetScheme(SchemeFactory.Uniform(SchemeFactory.Attr(PaletteRole.Accent, bold: true)));
+        _placeholder.SetScheme(SchemeFactory.Uniform(SchemeFactory.Attr(PaletteRole.Dim, italic: true)));
+    }
+
+    /// <summary>The columns of the screen shown; zero while unknown.</summary>
+    internal int TranscriptWidth => _screens.Displayed.WrapWidth;
+
     // UI thread: applies a burst of transcript writes in posting order, each to its thread's screen
     // (a null Text is a clear of that screen). A view follows the tail on its own while it sticks to
     // the end; a user who scrolled up stays put.
     private void ApplyTranscriptWrites(IReadOnlyList<TranscriptWrite> writes)
     {
         var pending = new Dictionary<TranscriptView, System.Text.StringBuilder>();
+        var stepsChanged = false;
         foreach (var write in writes)
         {
+            if (write.CallStarted is { } started)
+            {
+                StepOf(write.Thread).Start(started);
+                stepsChanged = true;
+                continue;
+            }
+            if (write.CallFinished is { } finished)
+            {
+                StepOf(write.Thread).Finish(finished);
+                stepsChanged = true;
+                if (finished.Diff is { } diff)
+                {
+                    // A change shows where it happens; it does not end the step.
+                    var target = _screens.For(write.Thread);
+                    FlushPending(target);
+                    target.AppendStyled(DiffRenderer.ForCall(diff, _glyphs));
+                }
+                continue;
+            }
             var screen = _screens.For(write.Thread);
+            if (write.EndsSteps)
+            {
+                FoldStepOnto(write.Thread, screen, workEnded: true);
+                FlushMarkdown(screen);
+                _markdown.Remove(screen);
+                continue;
+            }
+            if (write.Then is { } then)
+            {
+                FoldStepOnto(write.Thread, screen, workEnded: true);
+                // The turn that ended is this screen's: a thread still streaming keeps its line and its fence.
+                FlushMarkdown(screen);
+                _markdown.Remove(screen);
+                foreach (var (target, builder) in pending)
+                {
+                    if (builder.Length == 0) continue;
+                    target.Append(builder.ToString());
+                    builder.Clear();
+                }
+                then();
+                continue;
+            }
+            if (write.Scope != CommandResultScope.None)
+            {
+                // What is held belongs to the result it was written under.
+                FlushPending(_screens.For(_commandResultThread));
+                FlushPending(screen);
+                _commandResult.Reset(write.Scope == CommandResultScope.Begin);
+                _commandResultThread = write.Thread;
+                continue;
+            }
+            if (write.Lines is { } lines)
+            {
+                FoldStepOnto(write.Thread, screen);
+                FlushPending(screen);
+                screen.AppendStyled(lines);
+                continue;
+            }
             if (write.Text is null)
             {
                 if (pending.TryGetValue(screen, out var cleared)) cleared.Clear();
+                _markdown.Remove(screen);
                 screen.Clear();
+                _steps.Remove(ThreadKey(write.Thread));
+                _lastSteps.Remove(ThreadKey(write.Thread));
+                stepsChanged = true;
                 continue;
             }
-            Enqueue(screen, write.Text);
+            if (!string.IsNullOrWhiteSpace(write.Text)) FoldStepOnto(write.Thread, screen);
+            var inCommand = !write.Attention && write.Thread == _commandResultThread;
+            if (write.Stream)
+            {
+                FlushText(screen);
+                ShowStream(screen, write.Text, inCommand);
+                continue;
+            }
+            Enqueue(screen, inCommand ? _commandResult.Apply(write.Text) : write.Text);
             if (write.Attention && !ReferenceEquals(screen, _screens.Displayed))
                 Enqueue(_screens.Displayed, write.Text);
         }
         foreach (var (screen, builder) in pending)
             if (builder.Length > 0) screen.Append(builder.ToString());
+        if (stepsChanged) SyncStepArea();
+
+        // What the batch holds for this screen goes first: the order of the writes is the order shown.
+        void FlushPending(TranscriptView target)
+        {
+            FlushMarkdown(target);
+            FlushText(target);
+        }
+
+        void FlushText(TranscriptView target)
+        {
+            if (!pending.TryGetValue(target, out var earlier) || earlier.Length == 0) return;
+            target.Append(earlier.ToString());
+            earlier.Clear();
+        }
+
+        // A step ends with what comes after it, once none of its calls runs any more, or with the work it belongs to
+        // (a tool that ignored its cancellation stays open for good, and a call that ends late is ignored).
+        void FoldStepOnto(string? thread, TranscriptView target, bool workEnded = false)
+        {
+            var key = ThreadKey(thread);
+            if (!_steps.TryGetValue(key, out var step) || step.IsEmpty || (step.HasOpenCall && !workEnded)) return;
+            var folded = step.Fold();
+            _lastSteps[key] = folded;
+            stepsChanged = true;
+            FlushPending(target);
+            target.AppendStyled([folded.Summary]);
+        }
 
         void Enqueue(TranscriptView target, string text)
         {
+            FlushMarkdown(target);
             if (!pending.TryGetValue(target, out var builder))
                 pending[target] = builder = new System.Text.StringBuilder();
             builder.Append(text);
         }
+    }
+
+    private void ShowStream(TranscriptView screen, string text, bool underCommand)
+    {
+        if (!_markdown.TryGetValue(screen, out var stream))
+            _markdown[screen] = stream = new MarkdownStream(_glyphs);
+        stream.UnderCommand = underCommand;
+        var head = underCommand ? _commandResult.Next : string.Empty;
+        var (lines, partial) = stream.Write(text, screen.WrapWidth - TerminalText.Columns(head));
+        ShowMarkdown(screen, stream, lines, partial);
+    }
+
+    private void FlushMarkdown(TranscriptView screen)
+    {
+        if (!_markdown.TryGetValue(screen, out var stream) || stream.IsEmpty) return;
+        var head = stream.UnderCommand ? _commandResult.Next : string.Empty;
+        ShowMarkdown(screen, stream, stream.Flush(screen.WrapWidth - TerminalText.Columns(head)), string.Empty);
+    }
+
+    private void ShowMarkdown(TranscriptView screen, MarkdownStream stream, IReadOnlyList<TranscriptLine> lines, string partial)
+    {
+        if (stream.UnderCommand)
+        {
+            lines = _commandResult.Apply(lines);
+            if (partial.Length > 0) partial = _commandResult.Next + partial;
+        }
+        screen.ReplacePartial(lines, partial);
+    }
+
+    /// <inheritdoc />
+    public void Started(ToolCallStarted toolCall)
+    {
+        ArgumentNullException.ThrowIfNull(toolCall);
+        if (toolCall.Thread is { } thread) _toolCalls.AddOrUpdate(thread, 1, (_, calls) => calls + 1);
+        _transcriptWrites.Post(new TranscriptWrite(toolCall.Thread, null) { CallStarted = toolCall });
+    }
+
+    /// <inheritdoc />
+    public void Finished(ToolCallFinished toolCall)
+    {
+        ArgumentNullException.ThrowIfNull(toolCall);
+        _transcriptWrites.Post(new TranscriptWrite(toolCall.Thread, null) { CallFinished = toolCall });
+    }
+
+    /// <summary>Folds the main screen's step behind what has been written, then runs <paramref name="then"/>.</summary>
+    internal void AfterSteps(Action then)
+    {
+        ArgumentNullException.ThrowIfNull(then);
+        _transcriptWrites.Post(new TranscriptWrite(null, null) { Then = then });
+    }
+
+    private static string ThreadKey(string? thread) => thread ?? MainThreadKey;
+
+    private StepActivityModel StepOf(string? thread)
+    {
+        var key = ThreadKey(thread);
+        if (!_steps.TryGetValue(key, out var step)) _steps[key] = step = new StepActivityModel(_glyphs);
+        return step;
+    }
+
+    // UI thread: the area above the status line follows the step of the screen displayed. A panel has the room to itself.
+    private void SyncStepArea()
+    {
+        if (_panelRows > 0)
+        {
+            _stepRows = 0;
+            _stepView.Visible = false;
+            return;
+        }
+        var step = _steps.GetValueOrDefault(ThreadKey(_screens.DisplayedThread));
+        var width = Viewport.Width > 0 ? Viewport.Width : 80;
+        var height = Viewport.Height > 0 ? Viewport.Height : 24;
+        var room = height - _inputRows - _menuRows - BandRows - BelowRows - MinTranscriptRows;
+        var rows = step?.Rows(width, Math.Min(MaxStepRows, room)).Count ?? 0;
+        _stepView.Model = step;
+        _stepView.Visible = rows > 0;
+        _stepView.SetNeedsDraw();
+        if (rows == _stepRows) return;
+        _stepRows = rows;
+        ApplyInputLayout();
+    }
+
+    // Ctrl+O on an empty prompt: the calls the last step stood for, once. With text, it stays a new line.
+    private bool ShowLastStep()
+    {
+        var thread = _screens.DisplayedThread;
+        if (!_lastSteps.Remove(ThreadKey(thread), out var folded) || folded.Details.Count == 0) return false;
+        _transcriptWrites.Post(new TranscriptWrite(thread, null) { Lines = folded.Details });
+        return true;
+    }
+
+    /// <summary>Test accessor: the rows of the step area.</summary>
+    internal int StepRows => _stepRows;
+
+    /// <summary>Test accessor: the text of the screen displayed.</summary>
+    internal string DisplayedText => _screens.Displayed.TranscriptText;
+
+    /// <summary>Appends lines that carry their display, in order with the writes around them.</summary>
+    internal void AppendStyled(IReadOnlyList<TranscriptLine> lines)
+    {
+        ArgumentNullException.ThrowIfNull(lines);
+        _transcriptWrites.Post(new TranscriptWrite(ConsoleThread.Current, null) { Lines = lines });
     }
 
     public void AppendOutputLine(string text) => AppendOutput((text ?? string.Empty) + "\n");
@@ -269,6 +576,13 @@ public sealed class ReplPaneView : View, ITaskListNavigator
     /// <summary>Writes <paramref name="text"/> as a line of <paramref name="thread"/>'s screen (null is main).</summary>
     internal void AppendThreadLine(string? thread, string text)
         => _transcriptWrites.Post(new TranscriptWrite(thread, (text ?? string.Empty) + "\n"));
+
+    /// <summary>Writes styled lines on <paramref name="thread"/>'s screen (null is main).</summary>
+    internal void AppendThreadLines(string? thread, IReadOnlyList<TranscriptLine> lines)
+        => _transcriptWrites.Post(new TranscriptWrite(thread, null) { Lines = lines });
+
+    /// <summary>The tool calls <paramref name="thread"/> started so far.</summary>
+    internal int ToolCallsOf(string thread) => _toolCalls.GetValueOrDefault(thread);
 
     /// <summary>Writes an attention line on the displayed screen and in <paramref name="thread"/>'s own, once when they are the same.</summary>
     internal void AppendAttentionLine(string? thread, string text)
@@ -317,7 +631,10 @@ public sealed class ReplPaneView : View, ITaskListNavigator
     internal void BindIntegration(TuiIntegration integration)
     {
         ArgumentNullException.ThrowIfNull(integration);
+        if (_integration is not null && _approvalsChanged is not null) _integration.ApprovalsChanged -= _approvalsChanged;
         _integration = integration;
+        _approvalsChanged = (_, _) => _dispatcher.Invoke(SyncApprovals);
+        integration.ApprovalsChanged += _approvalsChanged;
     }
 
     /// <summary>The placeholder the field shows for the current recipient.</summary>
@@ -343,16 +660,17 @@ public sealed class ReplPaneView : View, ITaskListNavigator
     {
         Remove(previous);
         var screen = _screens.Displayed;
-        screen.Height = Dim.Fill(_inputRows + BandRows + BelowRows);
+        screen.Height = Dim.Fill(_panelRows > 0 ? _panelRows + 1 : _inputRows + _menuRows + _stepRows + BandRows + BelowRows);
         Add(screen);
         screen.SetRelativeLayout(GetContentSize());
         screen.MoveEnd();
+        SyncStepArea();
     }
 
     private void SyncPlaceholder()
-        => _placeholder.Visible = string.IsNullOrEmpty(_input.Text);
+        => _placeholder.Visible = _panelRows == 0 && string.IsNullOrEmpty(_input.Text);
 
-    private const string PlaceholderText = "Message… (/ for commands, @ for files)";
+    private const string PlaceholderText = "Message… (/ for commands, @ for files, ? for shortcuts)";
 
     /// <summary>The status line band (bound by the host to the runner + integration).</summary>
     public StatusLineView StatusLine => _statusLine;
@@ -391,9 +709,26 @@ public sealed class ReplPaneView : View, ITaskListNavigator
     /// Called by <see cref="Orkeon.Cli.TerminalGui.Hosting.TerminalGuiHost"/> when the
     /// UI loop is stopping (Ctrl+Q, parent cancellation), so the runner's blocked
     /// <c>Console.ReadLine()</c> returns <c>null</c> and its REPL loop can exit cleanly
-    /// instead of hanging forever waiting for input that will never come.
+    /// instead of hanging forever waiting for input that will never come. The loop no longer runs what is posted to
+    /// it, so a panel still open ends here too, and a later one with null at once.
     /// </summary>
-    public void CancelPendingRead() => CompletePendingRead(null, null);
+    public void CancelPendingRead()
+    {
+        CompletePendingRead(null, null);
+        EndOpenAnswers();
+    }
+
+    private void EndOpenAnswers()
+    {
+        TaskCompletionSource<ConsoleChoiceAnswer?>[] open;
+        lock (_gate)
+        {
+            _stopped = true;
+            open = [.. _openAnswers];
+            _openAnswers.Clear();
+        }
+        foreach (var answer in open) answer.TrySetResult(null);
+    }
 
     /// <summary>
     /// Returns when the user submits a line (Enter), or null on cancellation.
@@ -402,6 +737,8 @@ public sealed class ReplPaneView : View, ITaskListNavigator
     /// </summary>
     public Task<string?> ReadLineAsync(CancellationToken ct)
     {
+        // The console reads again: the command echoed last has said what it had to say.
+        _transcriptWrites.Post(new TranscriptWrite(null, null) { Scope = CommandResultScope.End });
         var tcs = new TaskCompletionSource<string?>(TaskCreationOptions.RunContinuationsAsynchronously);
         lock (_gate)
         {
@@ -419,11 +756,266 @@ public sealed class ReplPaneView : View, ITaskListNavigator
         return tcs.Task;
     }
 
+    /// <summary>A read for a script's own question (<c>ctx.prompt</c>): what the operator types there is its answer.</summary>
+    public Task<string?> ReadAnswerAsync(CancellationToken ct)
+    {
+        var read = ReadLineAsync(ct);
+        lock (_gate) _scriptRead = read;
+        return read;
+    }
+
+    private bool ScriptReads
+    {
+        get
+        {
+            lock (_gate) return _pendingRead is { } pending && ReferenceEquals(pending.Task, _scriptRead);
+        }
+    }
+
+    /// <summary>
+    /// Asks <paramref name="request"/> with a panel in place of the prompt rows. Completes with the answer, or with
+    /// null when Esc left it or <paramref name="ct"/> closed it. The draft, the history and the tasks list wait
+    /// behind it. Several may be open: the newest has the keys, and a tool approval passes before them all.
+    /// </summary>
+    public async Task<ConsoleChoiceAnswer?> ChooseAsync(ConsoleChoiceRequest request, CancellationToken ct)
+    {
+        var model = new InlinePanelModel(request, _glyphs);
+        var answer = new TaskCompletionSource<ConsoleChoiceAnswer?>(TaskCreationOptions.RunContinuationsAsynchronously);
+        lock (_gate)
+        {
+            if (_stopped) return null;
+            _openAnswers.Add(answer);
+        }
+        var panel = new OpenPanel(model, a => answer.TrySetResult(a));
+        using var registration = ct.Register(() =>
+        {
+            // First: the loop may have stopped, and what is posted to it then never runs.
+            answer.TrySetResult(null);
+            _dispatcher.Invoke(() => ClosePanel(panel, null));
+        });
+        _dispatcher.Invoke(() =>
+        {
+            if (ct.IsCancellationRequested || answer.Task.IsCompleted)
+            {
+                answer.TrySetResult(null);
+                return;
+            }
+            _promptPanels.Add(panel);
+            SyncPanel();
+        });
+        try
+        {
+            return await answer.Task.ConfigureAwait(false);
+        }
+        finally
+        {
+            lock (_gate) _openAnswers.Remove(answer);
+        }
+    }
+
+    private OpenPanel? ActivePanel => _approvalPanel ?? (_promptPanels.Count > 0 ? _promptPanels[^1] : null);
+
+    private void ClosePanel(OpenPanel panel, ConsoleChoiceAnswer? answer)
+    {
+        if (ReferenceEquals(panel, _approvalPanel)) _approvalPanel = null;
+        else if (!_promptPanels.Remove(panel)) return;
+        panel.Settle(answer);
+        SyncPanel();
+    }
+
+    /// <summary>
+    /// Opens the panel of the question that waits first, and closes one whose question is gone. A question answered
+    /// or handed to the prompt (<c>/</c>) stays closed: the status line keeps asking it.
+    /// </summary>
+    private void SyncApprovals()
+    {
+        var pending = _integration?.PendingApprovals?.Invoke();
+        if (pending is not [var first, ..])
+        {
+            _approvalSettledId = null;
+            _approvalPanel = null;
+            SyncPanel();
+            return;
+        }
+        if (_approvalPanel?.ApprovalId == first.Id || _approvalSettledId == first.Id) return;
+
+        _approvalPanel = new OpenPanel(
+            new InlinePanelModel(ApprovalPanelRequest.For(first, pending.Count, _glyphs), _glyphs),
+            answer =>
+            {
+                _approvalSettledId = first.Id;
+                _integration?.AnswerApproval?.Invoke(first.Id, answer?.Value ?? "n");
+            },
+            first.Id);
+        SyncPanel();
+    }
+
+    /// <summary>Lays the pane out for the panel that has the keys, or back for the prompt when none is left.</summary>
+    private void SyncPanel()
+    {
+        var panel = ActivePanel;
+        _statusLine.QuestionOnPanel = _approvalPanel is not null;
+        if (panel is null)
+        {
+            if (_panelRows == 0) return;
+            _panelRows = 0;
+            _panelView.Model = null;
+            _panelView.Visible = false;
+            SetPromptVisible(true);
+            ApplyInputLayout();
+            SyncStepArea();
+            SyncPlaceholder();
+            _input.SetFocus();
+            SetNeedsLayout();
+            return;
+        }
+
+        var width = Viewport.Width > 0 ? Viewport.Width : 80;
+        var height = Viewport.Height > 0 ? Viewport.Height : 24;
+        var rows = panel.Model.Rows(width, Math.Max(1, height - 1 - MinTranscriptRows)).Count;
+        var opening = _panelRows == 0;
+        _panelRows = rows;
+        _panelView.Model = panel.Model;
+        _panelView.Y = Pos.AnchorEnd(rows);
+        _panelView.Height = rows;
+        _statusLine.Y = Pos.AnchorEnd(rows + 1);
+        _screens.Displayed.Height = Dim.Fill(rows + 1);
+        if (opening)
+        {
+            _escapeArmed = false;
+            CloseSlashMenu();
+            SyncStepArea();
+            SetPromptVisible(false);
+            _panelView.Visible = true;
+            _panelView.SetFocus();
+        }
+        _panelView.SetNeedsDraw();
+        SetNeedsLayout();
+    }
+
+    private void SetPromptVisible(bool visible)
+    {
+        _ruleChip.Visible = visible;
+        _promptLabel.Visible = visible;
+        _input.Visible = visible;
+        _placeholder.Visible = visible;
+        _bottomRule.Visible = visible;
+    }
+
+    /// <summary>What an open panel does with a key; false lets a Ctrl or Alt chord go on to the host.</summary>
+    private bool HandlePanelKey(Key key)
+    {
+        if (ActivePanel is not { } panel) return false;
+        if (key.IsCtrl || key.IsAlt) return false;
+
+        var bare = PaneClipboard.BareKey(key);
+        if (bare == KeyCode.Esc)
+        {
+            HandlePanelEscape(panel);
+            return true;
+        }
+        _escapeArmed = false;
+        if (PrintableText(key) is null) panel.Typed = string.Empty;
+
+        switch (key.KeyCode)
+        {
+            case KeyCode.CursorUp: panel.Model.Move(-1); break;
+            case KeyCode.CursorDown: panel.Model.Move(1); break;
+            case KeyCode.CursorLeft: panel.Model.AdjustControl(-1); break;
+            case KeyCode.CursorRight: panel.Model.AdjustControl(1); break;
+            case KeyCode.Enter:
+                ClosePanel(panel, panel.Model.Answer);
+                return true;
+            default:
+                if (PrintableText(key) is { } text) HandlePanelText(panel, text);
+                break;
+        }
+        _panelView.SetNeedsDraw();
+        return true;
+    }
+
+    // Esc leaves a panel that may be left. One that may not keeps the prompt's pair: Esc Esc interrupts its command.
+    private void HandlePanelEscape(OpenPanel panel)
+    {
+        if (panel.Model.Cancellable)
+        {
+            _escapeArmed = false;
+            ClosePanel(panel, null);
+            return;
+        }
+        if (_escapeArmed)
+        {
+            _escapeArmed = false;
+            InterruptRequested?.Invoke(this, EventArgs.Empty);
+            return;
+        }
+        _escapeArmed = true;
+    }
+
+    // Text moves the selection and never answers. On a question, text that selects nothing was meant for the prompt
+    // (a line being finished, a word): it goes there with the letters typed before it, and Enter then answers nothing.
+    private void HandlePanelText(OpenPanel panel, string text)
+    {
+        if (!ReferenceEquals(panel, _approvalPanel))
+        {
+            SelectByText(panel, text);
+            return;
+        }
+        panel.Typed += text;
+        if (text != "/" && SelectByText(panel, text)) return;
+        _approvalSettledId = panel.ApprovalId;
+        _approvalPanel = null;
+        SyncPanel();
+        if (_panelRows == 0) _input.InsertText(panel.Typed);
+    }
+
+    private static bool SelectByText(OpenPanel panel, string text)
+        => int.TryParse(text, System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out var number)
+            ? panel.Model.SelectNumber(number)
+            : panel.Model.SelectShortcut(text);
+
+    /// <summary>One panel waiting for its answer, and the question it stands for when it is a tool approval.</summary>
+    private sealed record OpenPanel(InlinePanelModel Model, Action<ConsoleChoiceAnswer?> Settle, long? ApprovalId = null)
+    {
+        /// <summary>The letters typed in a row, what a question hands to the prompt.</summary>
+        public string Typed { get; set; } = string.Empty;
+    }
+
     private void OnInputKeyDown(object? sender, Key key)
     {
+        if (HandlePanelKey(key))
+        {
+            key.Handled = true;
+            return;
+        }
+
         // Notify external listeners first (TerminalGuiConsoleAdapter.ReadKey relies on this).
         KeyCaptured?.Invoke(this, new KeyCapturedEventArgs(key));
         if (key.Handled) return;
+
+        if (HandleSlashMenuKey(key))
+        {
+            key.Handled = true;
+            return;
+        }
+
+        // Away from the tail, Ctrl+End comes back to it; at the tail it stays the draft's.
+        if (key.KeyCode == (KeyCode.End | KeyCode.CtrlMask) && _screens.Displayed.ChipText is not null)
+        {
+            key.Handled = true;
+            _escapeArmed = false;
+            _screens.Displayed.MoveEnd();
+            return;
+        }
+
+        // On an empty prompt, ? shows the shortcuts instead of starting a message; a script's read keeps it as text.
+        if (PrintableText(key) == "?" && string.IsNullOrEmpty(_input.Text) && _navigation.State != InputNavigationState.List && !ScriptReads)
+        {
+            key.Handled = true;
+            _escapeArmed = false;
+            AppendThreadLines(_screens.DisplayedThread, ShortcutsHelp.Lines(_glyphs));
+            return;
+        }
 
         var bare = PaneClipboard.BareKey(key);
 
@@ -489,6 +1081,7 @@ public sealed class ReplPaneView : View, ITaskListNavigator
                 PaneClipboard.PasteInto(_input);
                 return true;
             case KeyCode.O:
+                if (string.IsNullOrEmpty(_input.Text) && ShowLastStep()) return true;
                 _input.InsertText("\n");
                 return true;
             default:
@@ -752,12 +1345,21 @@ public sealed class ReplPaneView : View, ITaskListNavigator
         var action = _navigation.OnRowsChanged(rows);
         if (action.Kind != InputNavigationActionKind.None || !string.Equals(recipient, _navigation.RecipientTicket, StringComparison.Ordinal))
             Apply(action);
+        // A task that ended on a call has no later text to fold its step.
+        foreach (var row in rows)
+        {
+            if (row is { Ticket: { } ticket, State: TaskRowState.Done or TaskRowState.Failed or TaskRowState.Cancelled }
+                && ((_steps.TryGetValue(ThreadKey(ticket), out var step) && !step.IsEmpty)
+                    || (_screens.Tickets.Contains(ticket, StringComparer.Ordinal) && _markdown.ContainsKey(_screens.For(ticket)))))
+                _transcriptWrites.Post(new TranscriptWrite(ticket, null) { EndsSteps = true });
+        }
         var previous = _screens.Displayed;
         if (_screens.DiscardAbsent([.. rows.Select(row => row.Ticket).OfType<string>()]))
         {
             SwapDisplayed(previous);
             previous.Dispose();
         }
+        foreach (var gone in _markdown.Keys.Where(screen => !_screens.Holds(screen)).ToList()) _markdown.Remove(gone);
         if (action.DepartedRecipient is { } departed && recipient is not null && !_screens.Tickets.Contains(recipient, StringComparer.Ordinal))
             AppendOutputLine(DepartedRecipientLine(_glyphs, departed));
     }
@@ -785,9 +1387,18 @@ public sealed class ReplPaneView : View, ITaskListNavigator
         var rows = Math.Clamp(VisualRowCount(), 1, MaxInputRows);
         if (rows == _inputRows) return;
         _inputRows = rows;
+        if (_panelRows == 0) ApplyInputLayout();
+    }
 
-        _screens.Displayed.Height = Dim.Fill(rows + BandRows + BelowRows);
-        _statusLine.Y = Pos.AnchorEnd(rows + BandRows + BelowRows);
+    private void ApplyInputLayout()
+    {
+        var rows = _inputRows;
+        _screens.Displayed.Height = Dim.Fill(rows + _menuRows + _stepRows + BandRows + BelowRows);
+        _stepView.Y = Pos.AnchorEnd(rows + _menuRows + _stepRows + BandRows + BelowRows);
+        _stepView.Height = _stepRows;
+        _statusLine.Y = Pos.AnchorEnd(rows + _menuRows + BandRows + BelowRows);
+        _menuView.Y = Pos.AnchorEnd(rows + _menuRows + 1 + BelowRows);
+        _menuView.Height = _menuRows;
         _ruleChip.Y = Pos.AnchorEnd(rows + 1 + BelowRows);
         _promptLabel.Y = Pos.AnchorEnd(rows + BelowRows);
         _placeholder.Y = Pos.AnchorEnd(rows + BelowRows);
@@ -884,13 +1495,15 @@ public sealed class ReplPaneView : View, ITaskListNavigator
 
     /// <summary>
     /// Echoes the just-submitted entry into the read-only history pane above the prompt, the way a
-    /// terminal keeps typed commands in its scrollback. The text is echoed verbatim (no prompt
-    /// prefix), each logical line on its own row.
+    /// terminal keeps typed commands in its scrollback: each logical line on a bar of its own
+    /// (<see cref="TranscriptModel.UserPrompt"/>). What a slash command then writes hangs under it, until
+    /// the console reads again (<see cref="CommandResultIndent"/>).
     /// </summary>
     private void EchoSubmittedLine(string text)
     {
-        foreach (var line in text.Split('\n'))
-            AppendOutputLine(line);
+        AppendStyled(TranscriptModel.UserPrompt(_glyphs, text));
+        var scope = text.StartsWith('/') ? CommandResultScope.Begin : CommandResultScope.End;
+        _transcriptWrites.Post(new TranscriptWrite(ConsoleThread.Current, null) { Scope = scope });
     }
 
     /// <summary>
@@ -924,6 +1537,88 @@ public sealed class ReplPaneView : View, ITaskListNavigator
         _input.InsertionPoint = new Point(outcome.NewLeft.Length, row);
     }
 
+    /// <summary>
+    /// Opens, filters or closes the menu after an edit of the operator's: a recalled line never gets here. Esc
+    /// keeps it closed for as long as the text stays a command.
+    /// </summary>
+    private void SyncSlashMenu()
+    {
+        var query = SlashMenuModel.QueryOf(CurrentInput);
+        if (query is null) _menuDismissed = false;
+        if (query is null || _menuDismissed || _catalog is null || _panelRows > 0)
+        {
+            CloseSlashMenu();
+            return;
+        }
+
+        _menu ??= new SlashMenuModel(_catalog.ListCommands(), _glyphs);
+        _menu.Filter(query);
+        if (_menu.MatchCount == 0)
+        {
+            CloseSlashMenu();
+            return;
+        }
+        LayOutSlashMenu();
+    }
+
+    private void LayOutSlashMenu()
+    {
+        if (_menu is null) return;
+        var width = Viewport.Width > 0 ? Viewport.Width : 80;
+        var height = Viewport.Height > 0 ? Viewport.Height : 24;
+        var room = Math.Max(1, height - _inputRows - BandRows - BelowRows - MinTranscriptRows);
+        var rows = _menu.Rows(width, room).Count;
+        _menuView.Model = _menu;
+        _menuView.Visible = true;
+        _menuView.SetNeedsDraw();
+        if (rows == _menuRows) return;
+        _menuRows = rows;
+        ApplyInputLayout();
+    }
+
+    private void CloseSlashMenu()
+    {
+        _menu = null;
+        if (_menuRows == 0) return;
+        _menuRows = 0;
+        _menuView.Model = null;
+        _menuView.Visible = false;
+        if (_panelRows == 0) ApplyInputLayout();
+    }
+
+    /// <summary>What an open menu does with a key: the arrows walk it, Tab fills the command in, Enter runs it, Esc leaves it.</summary>
+    private bool HandleSlashMenuKey(Key key)
+    {
+        if (_menu is not { } menu) return false;
+        switch (key.KeyCode)
+        {
+            case KeyCode.CursorUp:
+                menu.Move(-1);
+                break;
+            case KeyCode.CursorDown:
+                menu.Move(1);
+                break;
+            case KeyCode.Tab:
+                CurrentInput = $"/{menu.SelectedName} ";
+                break;
+            case KeyCode.Enter:
+                var name = menu.SelectedName;
+                CurrentInput = $"/{name}";
+                CloseSlashMenu();
+                Navigate(InputNavigationKey.Enter, key);
+                break;
+            case KeyCode.Esc:
+                _menuDismissed = true;
+                CloseSlashMenu();
+                break;
+            default:
+                return false;
+        }
+        _escapeArmed = false;
+        _menuView.SetNeedsDraw();
+        return true;
+    }
+
     /// <summary>Writes the field without reporting a user edit to the navigation machine.</summary>
     private void SetInputText(string value)
     {
@@ -955,6 +1650,15 @@ public sealed class ReplPaneView : View, ITaskListNavigator
         registration.Dispose();
         snapshot!.TrySetResult(value);
     }
+
+    /// <summary>Test accessor: whether the open panel holds the focus.</summary>
+    internal bool PanelHasFocus => _panelView.HasFocus;
+
+    /// <summary>Test accessor: the menu of commands open above the prompt.</summary>
+    internal SlashMenuModel? OpenSlashMenu => _menu;
+
+    /// <summary>Test accessor: the rows the menu takes.</summary>
+    internal int SlashMenuRows => _menuRows;
 
     /// <summary>Test-only accessor for the prompt label text.</summary>
     internal string CurrentPromptPrefix => _promptLabel.Text;
@@ -991,6 +1695,12 @@ public sealed class ReplPaneView : View, ITaskListNavigator
     /// <summary>Test-only accessor for the transcript view (its viewport and follow state).</summary>
     internal TranscriptView HistoryView => _screens.Displayed;
 
+    /// <summary>Test-only accessor for the panel that has the keys.</summary>
+    internal InlinePanelModel? OpenPanelModel => ActivePanel?.Model;
+
+    /// <summary>Test-only: asks the pane to read the tool approvals again, as their change does.</summary>
+    internal void RaiseApprovalsChanged() => SyncApprovals();
+
     /// <summary>Test-only: simulate a key press on the input field.</summary>
     internal void RaiseKeyDown(Key key) => OnInputKeyDown(this, key);
 
@@ -1003,6 +1713,14 @@ public sealed class ReplPaneView : View, ITaskListNavigator
             // IsDisposed guard makes these explicit calls idempotent no-ops, so disposing
             // here keeps the owned fields released even if a future refactor stops Add()-ing them.
             _pendingReadCancellation.Dispose();
+            if (_integration is not null && _approvalsChanged is not null) _integration.ApprovalsChanged -= _approvalsChanged;
+            EndOpenAnswers();
+            foreach (var panel in _promptPanels) panel.Settle(null);
+            _promptPanels.Clear();
+            _approvalPanel = null;
+            _panelView.Dispose();
+            _menuView.Dispose();
+            _stepView.Dispose();
             _screens.DisposeScreens();
             _statusLine.Dispose();
             _ruleChip.Dispose();

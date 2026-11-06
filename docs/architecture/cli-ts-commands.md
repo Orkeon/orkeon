@@ -175,6 +175,9 @@ interface CommandRuntimeContext {
 
   write(text: string): void;
   writeLine(text: string): void;
+  writeBlock(spec: { kind: "markdown" | "diff"; text: string }): void; // styled by the split-pane console, plain lines elsewhere
+  readonly theme: "dark" | "light" | "none" | null
+  setTheme(name: "dark" | "light" | "none"): boolean
   clear(): void;
 
   prompt(spec: PromptSpec): Promise<string | boolean>;
@@ -211,6 +214,37 @@ const ok     = await ctx.prompt({ type: "confirm", message: "Proceed?", default:
 const name   = await ctx.prompt({ type: "text", message: "Name?" });
 const pwd    = await ctx.prompt({ type: "password", message: "Password:" });
 ```
+
+On a console with panels, `ctx.interactive` is true and `select` and `confirm` open a selection panel in
+place of the prompt rows: arrows or a digit move the selection, Enter answers, and the draft, the history
+and the tasks list wait behind it. Esc answers `null` to a `select` and the default to a `confirm`, which opens on
+Yes unless its default is false. Without a default, Enter answers Yes while Esc, and an empty line on the plain console, answer No. Elsewhere
+(the plain console, a replay) they stay numbered lines, so
+a script reads the same answer everywhere. A command that takes its value as an argument checks
+`ctx.interactive` before opening a panel without one.
+
+A choice is a string, its own value and label, or an object. A `select` also takes what the panel
+paints around the options:
+
+```typescript
+const picked = await ctx.prompt({
+  type: "select",
+  message: "Model?",
+  title: "Select model",
+  description: "Applies to this session",
+  keys: "Enter to set · Esc to cancel",          // in place of the default line of keys
+  cancellable: true,                             // false: Esc does not leave the panel
+  detailed: true,                                // answer { value, control } rather than the value
+  control: { label: "effort", values: ["low", "high"], value: "high" },  // side arrows adjust it
+  choices: [
+    { value: "a", label: "Alpha", description: "aligned after the label", hint: "shown while selected", current: true },
+    "beta",
+  ],
+});
+```
+
+`current` marks the value in force and opens the panel on it, `default` taking precedence. On typed
+lines a control answers the value it opened on, since nothing adjusts it there.
 
 ### Cancellation
 
@@ -474,7 +508,10 @@ await tui.RunAsync(provider.GetRequiredService<MyRunner>(), CancellationToken.No
 `AddOrkeonCliTerminalGui` swaps the console for a Terminal.Gui v2 screen: the REPL fills it, and
 a logs drawer (`Ctrl+G`) takes the log lines that would otherwise interleave with the prompt.
 It registers `TerminalGuiHost`, replaces `IConsoleAdapter` with the adapter over the REPL pane
-(Tab completion is wired when the host registers an `IReplInputAssist`), and replaces **every**
+(Tab completion is wired when the host registers an `IReplInputAssist`; when that source is also an
+`IReplCommandCatalog`, a `/` at the start of the prompt opens a menu of the commands above it, which typing
+narrows: the arrows walk it, Tab fills the command in, Enter runs it, Esc leaves it and the text as typed, and a
+line recalled from the history never opens it), and replaces **every**
 `ILoggerProvider` with `TerminalGuiLoggerProvider` — a console logger would write into the
 screen Terminal.Gui owns. The provider is also published process-wide
 (`AmbientLoggerProvider`), so a host built inside a command logs into the same pane. Call it
@@ -491,6 +528,11 @@ drawer, `Ctrl+R` REPL pane, `Ctrl+L` / `Ctrl+K` clear the logs / the REPL, `Ctrl
 `Ctrl+↑` / `Ctrl+↓` resize, `F2` / `Shift+F2` more / less log detail, `F3` wrap, `↓` (from the
 prompt's last row) or `F4` tasks list, `Ctrl+C` copy the selection, `Ctrl+V` and right-click paste into the input, `Ctrl+Q` quit
 (it asks first while a turn runs). No text view opens a context menu: a right click pastes, nothing else. `orkeon-repl` picks this console with `--ui` ([CLI reference](../reference/cli.md#orkeon-repl--the-separate-interactive-console)).
+
+**What the transcript shows.** A submitted entry sits on a grey bar after a blank row, the prompt marker
+on its first line; a copy of a whole line returns what was typed. What a slash command writes hangs under
+its echo, on an elbow, until the console reads again. A turn of ten seconds or more closes on a dim line
+with its time and tokens. The display model is in [ADR-017](../adr/ADR-017-transcript-display-model.md).
 
 **Keys on the prompt.** `Esc` clears the draft; a second `Esc` right after it (any other key in
 between disarms the pair, and it arms on an empty draft too) interrupts the turn submitted from the
@@ -605,8 +647,11 @@ the `Llm:Model` setting.
 answers it. From a crew launched with `runCrewAsync`, the read loop hands that line over
 (`IReplLineInterceptor`) before resolving any command; from a crew launched with `runCrew`, which
 holds the loop, the waiting call reads the answer itself, and the time taken to answer does not
-count in `RunCrewTimeout`. A command passes the session's mode to `act` as `permissionMode`; it
-does not handle the question itself. See
+count in `RunCrewTimeout`. In the split-pane console the question opens a panel on Yes, so Enter straight allows that call once: its options
+answer that question by its id (`y`, `s` or `n`) and never reach a read as a line, Esc denies, and `/`, or a
+letter no option carries, hands the question to the prompt with the letters typed so far, so a command
+can run first, the status line then asking it. A command passes the session's mode to `act` as
+`permissionMode`; it does not handle the question itself. See
 [the CLI reference](../reference/cli.md#orkeon-repl--the-separate-interactive-console).
 
 **Session rules.** The gate reads the session's allow and deny rules before the mode
@@ -703,6 +748,20 @@ for (const m of usage.byModel) ctx.writeLine(`${m.model}: ${m.promptTokens} in (
 for (const c of usage.byCommand) ctx.writeLine(`[${c.ticket}] ${c.name}: ${c.promptTokens + c.completionTokens} tokens, ${c.cost ?? "n/a"}`);
 ```
 
+**The calls of a step.** While a turn calls tools, the rows above the status line count the calls of the step and list the latest ones (`$ command`, `Read path`), each with what it works on: the host's invocation point tells the console through a `ToolActivityFeed`, and only the argument named for that tool reaches the screen, never what an edit writes nor the arguments of a tool not listed (`ToolCallSubject`). A step ends with the next text on its screen once none of its calls runs, or with its task or turn, even on a call still open: its rows give way to one line in the transcript, `Read 1 file, ran 2 shell commands`. On an empty prompt, ctrl+o lists the calls of the last step once; with text in the prompt it stays a new line. Each thread has its step, shown with its screen, and a panel has the room to itself.
+
+**The change of a call.** For `edit_file` and `file_write` the decorator reads the file before and after the call and hands the screen a `ToolCallDiff` (`LineDiff`, a comparison by lines): the transcript shows the file with its counts, numbered rows on a red or green line, the words that changed in a stronger shade and an ellipsis between distant changes, up to 80 rows. The comparison is for the screen alone: what the model receives does not change, nothing is read while no screen listens, and a file over 1 MiB, a binary one, an unreadable one or an entry that is not a regular file shows the call without its change. Another writer touching the file during the call shows in the diff. `ctx.writeBlock({kind:"diff"})` paints a unified patch the same way, its numbers read from the `@@` lines; copying a whole line gives back the patch's line.
+
+**Markdown.** An assistant's stream and `ctx.writeBlock({kind:"markdown"})` are read one finished line at a time (`MarkdownLines`, Markdig for what is inside a line): headings, bold, italics, inline code, links, lists, quotes, rules, code fences and tables. The line being written shows as it arrives and is replaced when it ends, so a marker can flash before it is read. A table is held until the line that ends it, then drawn in a box, or read row by row when the screen is too narrow; a run of more than 200 rows starts a new block. An emphasis left open across two lines stays as written. Copying a whole line gives back its markdown; copying part of one gives what is displayed. The stream only reaches the screen when `Orkeon:Cli:ConsoleStreaming:Enabled` is set; what a command writes with `ctx.writeLine` is not read as markdown.
+
+**Tasks in the thread.** Tasks that appear in one poll of the list read as one group, `● 3 agents launched (↓ to manage)` then a `├─`/`└─` row per task; a lone task keeps its two lines. An end line says what the task used, tools, tokens and time, when they are known, and its glyph says how it ended.
+
+**Away from the tail.** A transcript scrolled up draws `↓ more below (click or ctrl+end)` on its last row and, once the prompt that the rows answer has left the screen, that prompt on its first row. Both are drawn over the rows, in no way part of the text: a selection and a copy never see them, and scrolling one row further shows the row under them.
+
+**The bar.** `context N%` is what the latest model call of the prompt's turn sent, whichever command instance of the turn made it, against `Orkeon:Cli:Session:ContextWindowTokens`, `200000` when unset, the window `token_budget` reports. Before any call the entry is absent; a new prompt keeps the last figure until its first call answers, and a session emptied (a `/clear` that resets the buffer) drops it. It stays dim up to 79%, alert from 80%, error from 95%. On an empty prompt, `?` lists the keys; while a script's `ctx.prompt` reads, it is text like any other.
+
+**Palettes.** `Orkeon:Cli:Tui:Theme` names the palette at the start: `Dark`, `Light` or `None`, the terminal's own colours with bold and italic kept. Left out, `None` when `NO_COLOR` is set, else `Dark`: a setting wins over the variable, as no-color.org asks. Any other value, a number included, is refused at the start. The palette is not detected from the terminal. `ctx.setTheme("light")` changes it for the session, what is on screen included, and answers false on a console without palettes; `ctx.theme` names it.
+
 ## TypeScript support matrix (esbuild → Jint)
 
 | Feature                                         | Support |
@@ -731,7 +790,8 @@ for (const c of usage.byCommand) ctx.writeLine(`[${c.ticket}] ${c.name}: ${c.pro
 - **Jint is not thread-safe.** The runner serialises invocations; a
   `SemaphoreSlim` guards each engine defensively.
 - **Sandbox limits (CLI profile)**: 64 MB memory, 100 max recursion, 5 min
-  execution. Override via `Orkeon:Cli:ScriptCommands:Limits`.
+  execution. Override via `Orkeon:Cli:ScriptCommands:Limits`. Waiting for an answer to `ctx.prompt` does
+  not count as execution, and a handler's wait has no limit of its own: cancelling the command ends it.
 - **Conflict policy**: first script wins by ordinal path order; the second is
   logged at Warning. Toggle `ContinueOnConflict=false` to fail fast.
 - **VFS only.** Scripts read disk through `ctx.services.get("fs")` — no

@@ -427,6 +427,35 @@ public sealed class ReplayConsoleAdapterTests : IDisposable
     }
 
     [Fact]
+    public void ShouldForwardABlock_WhenReplayDecoratesBlockConsole()
+    {
+        // Arrange
+        var inner = new FakeThreadedConsole();
+        var over = new ReplayConsoleAdapter(inner, _gate);
+
+        // Act
+        over.WriteBlock(ConsoleBlockKind.Diff, "+added");
+
+        // Assert
+        Assert.Equal([(ConsoleBlockKind.Diff, "+added")], inner.Blocks);
+    }
+
+    [Fact]
+    public void ShouldForwardStreamedText_WhenReplayDecoratesStreamConsole()
+    {
+        // Arrange
+        var inner = new FakeThreadedConsole();
+        var over = Assert.IsType<IStreamConsole>(new ReplayConsoleAdapter(inner, _gate), exactMatch: false);
+
+        // Act
+        over.WriteStream("Map<string>");
+
+        // Assert
+        Assert.Equal(["Map<string>"], inner.Streamed);
+        Assert.Empty(inner.PlainLines);
+    }
+
+    [Fact]
     public async Task ShouldAnswerNotRunningAndKeepTheInputClosed_AfterTheRunEnded()
     {
         _replay.TryStart(Lines("/help"), closeInputAtEnd: true);

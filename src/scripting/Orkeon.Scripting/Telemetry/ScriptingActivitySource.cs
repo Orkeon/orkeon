@@ -28,4 +28,19 @@ public static class ScriptingActivitySource
 
     /// <summary>Span name for a tool call.</summary>
     public const string ToolCallSpan = GenAiAttributes.OperationExecuteTool;
+
+    /// <summary>
+    /// Starts the span of one tool call, its tool tags set from the start: a listener's
+    /// <c>ActivityStarted</c> runs inside <c>StartActivity</c>, before any later <c>SetTag</c>.
+    /// </summary>
+    internal static Activity? StartToolCall(string toolName) =>
+        Instance.StartActivity(
+            GenAiAttributes.SpanName(ToolCallSpan, toolName),
+            ActivityKind.Internal,
+            parentContext: default,
+            tags:
+            [
+                new(GenAiAttributes.OperationName, GenAiAttributes.OperationExecuteTool),
+                new(GenAiAttributes.ToolName, toolName),
+            ]);
 }

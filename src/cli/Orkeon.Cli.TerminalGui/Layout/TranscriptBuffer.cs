@@ -11,7 +11,21 @@ internal readonly record struct TranscriptPosition(long Line, int Offset) : ICom
 }
 
 /// <summary>One display row: the line it belongs to and the char range of that line it shows.</summary>
-internal readonly record struct TranscriptRow(long Line, string Text, int Start, int End);
+/// <remarks>
+/// The display comes with it: <see cref="Indent"/> blank columns before the text, the runs of the whole line,
+/// and the role painted over the row.
+/// </remarks>
+internal readonly record struct TranscriptRow(long Line, string Text, int Start, int End)
+{
+    /// <summary>Blank columns before the text of this row (a hanging indent).</summary>
+    public int Indent { get; init; }
+
+    /// <summary>The styled runs of the whole line, sorted; char offsets are the line's.</summary>
+    public IReadOnlyList<TranscriptRun> Runs { get; init; } = [];
+
+    /// <summary>The role painted over the whole row.</summary>
+    public PaletteRole? RowRole { get; init; }
+}
 
 /// <summary>
 /// Line-based, bounded model of a read-only transcript (issue #196). Appending wraps only the lines
@@ -28,6 +42,8 @@ internal readonly record struct TranscriptRow(long Line, string Text, int Start,
 /// (an entry with several lines is kept or dropped whole); the empty line opened after a final
 /// <c>\n</c> does not count. A tab advances to the next multiple of <see cref="TabWidth"/> columns of its
 /// row, as the <c>TextView</c> it replaces drew it; positions and copies keep the tab itself.
+/// <see cref="AppendStyled"/> adds lines that carry their display (<see cref="TranscriptLine"/>); the text of a
+/// line stays what the wrap, the positions and the trim work on, whatever is painted over it.
 /// Not thread-safe: the owning view touches it on the UI thread only.
 /// </remarks>
 internal sealed class TranscriptBuffer
@@ -35,9 +51,15 @@ internal sealed class TranscriptBuffer
     /// <summary>Columns between two tab stops (the <c>TextView</c> default).</summary>
     public const int TabWidth = 4;
 
+    // A hanging indent is dropped when it would leave a continuation row narrower than this.
+    private const int MinContinuationColumns = 8;
+
     private sealed class Entry
     {
         public string Text = string.Empty;
+
+        // The display of a styled line; null for every line of the stream.
+        public TranscriptLine? Style;
         public readonly List<int> RowStarts = [0];
         public long FirstRow;
         public int Columns;
@@ -65,6 +87,11 @@ internal sealed class TranscriptBuffer
 
     // The last line is the empty line Append opened after a final \n: not counted until written to.
     private bool _openTail;
+
+    // The last entry is an unfinished line of a stream: the next ReplacePartial takes it back. Its width stays out
+    // of _widest, which only knows lines that grow, until another write makes it a line like any other.
+    private bool _partial;
+    private int _partialColumns;
     private int _width;
     private bool _wrap = true;
 
@@ -102,7 +129,7 @@ internal sealed class TranscriptBuffer
     }
 
     /// <summary>Widest line held, in columns (the content width when the wrap is off).</summary>
-    public int MaxColumns => _widest.First?.Value.Columns ?? 0;
+    public int MaxColumns => Math.Max(_widest.First?.Value.Columns ?? 0, _partialColumns);
 
     /// <summary>Work counter: characters wrapped since construction (a line wrapped twice counts twice).</summary>
     public long CharactersWrapped { get; private set; }
@@ -136,10 +163,13 @@ internal sealed class TranscriptBuffer
     /// <see cref="ColumnsOf"/>, except that with the wrap on a tab whose stop lies past the row end is
     /// clipped to the columns left on its row. Wrapping, drawing and hit-testing all measure with it.
     /// </summary>
-    public int ColumnsAt(string grapheme, int column)
+    /// <param name="grapheme">The grapheme measured.</param>
+    /// <param name="column">Its column in the row's text.</param>
+    /// <param name="indent">The blank columns before the row's text.</param>
+    public int ColumnsAt(string grapheme, int column, int indent = 0)
     {
         var w = ColumnsOf(grapheme, column);
-        var width = EffectiveWidth;
+        var width = EffectiveWidth > 0 ? EffectiveWidth - indent : 0;
         return grapheme == "\t" && width > 0 && column < width && column + w > width ? width - column : w;
     }
 
@@ -159,6 +189,7 @@ internal sealed class TranscriptBuffer
     {
         ArgumentNullException.ThrowIfNull(text);
         if (text.Length == 0) return;
+        SettlePartial();
         var normalized = text.Replace("\r\n", "\n", StringComparison.Ordinal);
         var start = 0;
         var first = true;
@@ -193,6 +224,7 @@ internal sealed class TranscriptBuffer
     public void AppendLines(IEnumerable<string> lines)
     {
         ArgumentNullException.ThrowIfNull(lines);
+        SettlePartial();
         PromoteOpenTail();
         foreach (var line in lines)
         {
@@ -202,14 +234,115 @@ internal sealed class TranscriptBuffer
         Trim();
     }
 
+    /// <summary>
+    /// Appends lines that carry their display. They take the open empty line, so no blank row is left
+    /// before them, and they leave a new one: stream text written next starts on its own line.
+    /// </summary>
+    public void AppendStyled(IReadOnlyList<TranscriptLine> lines)
+    {
+        ArgumentNullException.ThrowIfNull(lines);
+        if (lines.Count == 0) return;
+        SettlePartial();
+        var first = 0;
+        if (_openTail)
+        {
+            FillOpenTail(lines[0]);
+            first = 1;
+        }
+        for (var i = first; i < lines.Count; i++) AddLine(OnOneRow(lines[i].Text), unit: true, lines[i]);
+        AddLine(string.Empty, unit: false);
+        _openTail = true;
+        Trim();
+    }
+
+    /// <summary>
+    /// Replaces the unfinished line of a stream, when one is shown, with the lines that finish it and the
+    /// unfinished line that follows them. Any other write in between makes that line a line like any other.
+    /// </summary>
+    public void ReplacePartial(IReadOnlyList<TranscriptLine> lines, string partial)
+    {
+        ArgumentNullException.ThrowIfNull(lines);
+        ArgumentNullException.ThrowIfNull(partial);
+        partial = OnOneRow(partial);
+        if (_partial && lines.Count == 0 && partial.Length > 0 && partial.StartsWith(_items[^1].Text, StringComparison.Ordinal))
+        {
+            // The line goes on: only what it adds is wrapped, not all of it at each delta.
+            var grown = _items[^1];
+            var from = grown.Text.Length;
+            grown.Text = partial;
+            Wrap(grown, resumeFrom: from);
+            _partialColumns = grown.Columns;
+            return;
+        }
+        if (_partial)
+        {
+            var entry = _items[^1];
+            entry.Text = string.Empty;
+            entry.Style = null;
+            Wrap(entry, resumeFrom: -1);
+            if (entry.Unit)
+            {
+                entry.Unit = false;
+                _units--;
+            }
+            _openTail = true;
+            _partial = false;
+            _partialColumns = 0;
+        }
+        AppendStyled(lines);
+        if (partial.Length == 0) return;
+        if (_openTail) PromoteOpenTail();
+        else AddLine(string.Empty, unit: true);
+        var tail = _items[^1];
+        tail.Text = partial;
+        Wrap(tail, resumeFrom: -1);
+        _partial = true;
+        _partialColumns = tail.Columns;
+        Trim();
+    }
+
+    // A line holds no line break, whoever wrote it (a decoded entity, a task's description): each reads as a blank,
+    // so the runs keep their offsets and a text never takes the UI loop down.
+    private static string OnOneRow(string text) => text.Replace('\n', ' ').Replace('\r', ' ');
+
+    private void FillOpenTail(TranscriptLine line)
+    {
+        var entry = _items[^1];
+        entry.Text = OnOneRow(line.Text);
+        entry.Style = line;
+        Wrap(entry, resumeFrom: -1);
+        PromoteOpenTail();
+        TrackWidth(_firstLineId + Held - 1, entry.Columns);
+    }
+
     public void Clear()
     {
+        _partial = false;
+        _partialColumns = 0;
         _firstLineId += Held;
         _items.Clear();
         _widest.Clear();
         _head = 0;
         _units = 0;
         _openTail = false;
+    }
+
+    /// <summary>
+    /// The first line of the nearest block painted in <paramref name="role"/> that starts above
+    /// <paramref name="row"/>; null when none did, or when that block is what the row shows first.
+    /// </summary>
+    public string? LineAbove(int row, PaletteRole role)
+    {
+        if (row < 0 || row >= RowCount) return null;
+        var index = IndexOfRow(row);
+        var startsThere = _items[index].FirstRow - _items[_head].FirstRow == row;
+        var opensBlock = _items[index].Style?.RowRole == role && (index == _head || _items[index - 1].Style?.RowRole != role);
+        if (startsThere && opensBlock) return null;
+        if (startsThere) index--;
+        while (index >= _head && _items[index].Style?.RowRole != role) index--;
+        if (index < _head) return null;
+        while (index > _head && _items[index - 1].Style?.RowRole == role) index--;
+        return _items[index].Text;
     }
 
     /// <summary>The row at <paramref name="row"/> (0-based in the content), or null past the end.</summary>
@@ -221,7 +354,12 @@ internal sealed class TranscriptBuffer
         var local = (int)(_items[_head].FirstRow + row - entry.FirstRow);
         var start = entry.RowStarts[local];
         var end = local + 1 < entry.RowStarts.Count ? entry.RowStarts[local + 1] : entry.Text.Length;
-        return new TranscriptRow(_firstLineId + index - _head, entry.Text, start, end);
+        return new TranscriptRow(_firstLineId + index - _head, entry.Text, start, end)
+        {
+            Indent = local > 0 ? HangOf(entry) : 0,
+            Runs = entry.Style?.Runs ?? [],
+            RowRole = entry.Style?.RowRole,
+        };
     }
 
     /// <summary>The position under <paramref name="column"/> of <paramref name="row"/>, clamped to the content.</summary>
@@ -233,10 +371,11 @@ internal sealed class TranscriptBuffer
         var slice = GetRow(row)!.Value;
         var offset = slice.Start;
         var columns = 0;
+        var textColumn = column - slice.Indent;
         foreach (var grapheme in GraphemeHelper.GetGraphemes(slice.Text[slice.Start..slice.End]))
         {
-            var width = ColumnsAt(grapheme, columns);
-            if (columns + width > column) break;
+            var width = ColumnsAt(grapheme, columns, slice.Indent);
+            if (columns + width > textColumn) break;
             columns += width;
             offset += grapheme.Length;
         }
@@ -259,13 +398,21 @@ internal sealed class TranscriptBuffer
         var (from, to) = a.CompareTo(b) <= 0 ? (Clamp(a), Clamp(b)) : (Clamp(b), Clamp(a));
         if (from.CompareTo(to) == 0) return string.Empty;
         var builder = new System.Text.StringBuilder();
+        var opened = false;
         for (var line = from.Line; line <= to.Line; line++)
         {
-            var text = _items[(int)(line - _firstLineId) + _head].Text;
+            var entry = _items[(int)(line - _firstLineId) + _head];
+            var text = entry.Text;
             var start = line == from.Line ? Math.Min(from.Offset, text.Length) : 0;
             var end = line == to.Line ? Math.Min(to.Offset, text.Length) : text.Length;
-            if (line > from.Line) builder.Append('\n');
-            if (end > start) builder.Append(text, start, end - start);
+            var whole = start == 0 && end == text.Length;
+            // What is only drawn (a table's border) has no line in a copy.
+            if (whole && text.Length > 0 && entry.Style?.CopySource is { Length: 0 }) continue;
+            if (opened) builder.Append('\n');
+            opened = true;
+            if (whole && from.Line < to.Line && entry.Style?.CopyLead is { } lead) builder.Append(lead).Append('\n');
+            if (entry.Style?.CopySource is { } source && whole) builder.Append(source);
+            else if (end > start) builder.Append(text, start, end - start);
         }
         return builder.ToString();
     }
@@ -281,6 +428,14 @@ internal sealed class TranscriptBuffer
 
     private int EffectiveWidth => _wrap && _width > 0 ? _width : 0;
 
+    // Any other write makes the unfinished line a line like any other: its width now counts for good.
+    private void SettlePartial()
+    {
+        if (_partial) TrackWidth(_firstLineId + Held - 1, _items[^1].Columns);
+        _partial = false;
+        _partialColumns = 0;
+    }
+
     private void PromoteOpenTail()
     {
         if (!_openTail) return;
@@ -289,9 +444,9 @@ internal sealed class TranscriptBuffer
         _units++;
     }
 
-    private void AddLine(string text, bool unit)
+    private void AddLine(string text, bool unit, TranscriptLine? style = null)
     {
-        var entry = new Entry { Text = text, Unit = unit };
+        var entry = new Entry { Text = text, Unit = unit, Style = style };
         entry.FirstRow = Held == 0 ? 0 : _items[^1].FirstRow + _items[^1].RowStarts.Count;
         Wrap(entry, resumeFrom: -1);
         _items.Add(entry);
@@ -350,7 +505,8 @@ internal sealed class TranscriptBuffer
             entry.FirstRow = row;
             Wrap(entry, resumeFrom: -1);
             row += entry.RowStarts.Count;
-            TrackWidth(_firstLineId + i - _head, entry.Columns);
+            if (_partial && i == _items.Count - 1) _partialColumns = entry.Columns;
+            else TrackWidth(_firstLineId + i - _head, entry.Columns);
         }
     }
 
@@ -375,6 +531,12 @@ internal sealed class TranscriptBuffer
         return columns;
     }
 
+    private int HangOf(Entry entry)
+    {
+        var hang = entry.Style?.HangingIndent ?? 0;
+        return EffectiveWidth >= hang + MinContinuationColumns ? hang : 0;
+    }
+
     // Word wrap of one line: break after the last space that fits, else hard-break at the width.
     // resumeFrom >= 0 is the length the line had before an extension: the rows before its last one
     // cannot change, so only that row and the new text are wrapped again (with the wrap off there is
@@ -383,6 +545,7 @@ internal sealed class TranscriptBuffer
     {
         var text = entry.Text;
         var width = EffectiveWidth;
+        var hang = HangOf(entry);
         if (resumeFrom >= 0 && width == 0)
         {
             // Resume at the start of the previous last grapheme: the new text may extend it.
@@ -425,17 +588,21 @@ internal sealed class TranscriptBuffer
             }
             var w = ColumnsOf(grapheme, columns);
             var isSpace = grapheme is " " or "\t";
-            var overflows = width > 0 && columns + w > width;
+            var rowWidth = starts.Count > 1 ? width - hang : width;
+            var overflows = width > 0 && columns + w > rowWidth;
             // A space or a tab that overflows from the row end hangs there (clipped when drawn)
             // instead of opening the next row with a blank. A tab that overflows before the row end
             // is clipped to the columns left (ColumnsAt), so what follows it opens the next row.
-            if (isSpace && overflows) w = columns < width ? width - columns : 0;
+            if (isSpace && overflows) w = columns < rowWidth ? rowWidth - columns : 0;
             else if (overflows && columns > 0)
             {
-                if (breakAt > starts[^1])
+                // The word carried over and the grapheme that carried it must fit the row they land on,
+                // narrower when the line hangs.
+                var carried = breakAt > starts[^1] ? Measure(text, breakAt, index) : 0;
+                if (breakAt > starts[^1] && carried + ColumnsOf(grapheme, carried) <= width - hang)
                 {
                     starts.Add(breakAt);
-                    columns = Measure(text, breakAt, index);
+                    columns = carried;
                 }
                 else
                 {
@@ -446,7 +613,8 @@ internal sealed class TranscriptBuffer
                 w = ColumnsOf(grapheme, columns);
             }
             columns += w;
-            if (columns > peak) peak = columns;
+            var reached = columns + (starts.Count > 1 ? hang : 0);
+            if (reached > peak) peak = reached;
             index += grapheme.Length;
             if (isSpace) breakAt = index;
         }

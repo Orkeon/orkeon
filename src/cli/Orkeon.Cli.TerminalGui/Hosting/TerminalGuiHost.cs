@@ -89,6 +89,8 @@ public sealed class TerminalGuiHost : IAsyncDisposable
         {
             Diag($"Init skipped — Driver already set: {Application.Driver?.GetType().FullName}");
         }
+        // Before the views: a label takes its colours when it is built.
+        Layout.SchemeFactory.StartIn(_options.Theme);
         _toplevel = new SplitPaneToplevel(_options);
 
         // Tell the .NET runtime to treat Ctrl+C as a regular keystroke instead of
@@ -331,17 +333,21 @@ public sealed class TerminalGuiHost : IAsyncDisposable
         if (_integration.AgentRows is not null)
             top.Agents.Bind(_integration);
 
-        top.Repl.StatusLine.TurnCompleted += (_, _) =>
+        if (_integration.ToolActivity is { } feed)
+            feed.Observer = top.Repl;
+        top.Repl.StatusLine.TurnCompleted += (_, _) => top.Repl.AfterSteps(() =>
         {
             var sentence = _toolActivity.DrainSentence();
+            var glyphs = Layout.GlyphSet.Resolve(_options.Glyphs, OutputEncodingIsUtf8());
             if (sentence.Length > 0)
             {
-                var glyphs = Layout.GlyphSet.Resolve(_options.Glyphs, OutputEncodingIsUtf8());
                 foreach (var line in Layout.TranscriptModel.Render(glyphs, Layout.TranscriptKind.ToolActivity, sentence))
                     top.Repl.AppendOutputLine(line);
             }
+            if (Layout.TranscriptModel.TurnEnd(glyphs, top.Repl.StatusLine.LastTurnElapsed, top.Repl.StatusLine.LastTurnTokens) is { } closing)
+                top.Repl.AppendStyled([closing]);
             top.Repl.RuleChip.Refresh();
-        };
+        });
     }
 
     /// <summary>Writes the startup banner into the transcript, once (PLAN phase 2).</summary>
@@ -388,6 +394,7 @@ public sealed class TerminalGuiHost : IAsyncDisposable
         // owned Terminal.Gui view tree (and its disposable children) is released.
         _toplevel?.Dispose();
         _toplevel = null;
+        if (_integration.ToolActivity is { } feed) feed.Observer = null;
         _toolActivity.Dispose();
         return ValueTask.CompletedTask;
     }

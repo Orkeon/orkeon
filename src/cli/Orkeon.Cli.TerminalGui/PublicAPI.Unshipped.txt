@@ -1,1 +1,46 @@
 #nullable enable
+Orkeon.Cli.TerminalGui.Console.TerminalGuiConsoleAdapter.CanChoose.get -> bool
+Orkeon.Cli.TerminalGui.Console.TerminalGuiConsoleAdapter.ChooseAsync(Orkeon.Cli.Abstractions.Console.ConsoleChoiceRequest! request, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Orkeon.Cli.Abstractions.Console.ConsoleChoiceAnswer?>!
+Orkeon.Cli.TerminalGui.Console.TerminalGuiConsoleAdapter.SetTheme(Orkeon.Cli.Abstractions.Console.ConsoleTheme theme) -> void
+Orkeon.Cli.TerminalGui.Console.TerminalGuiConsoleAdapter.Theme.get -> Orkeon.Cli.Abstractions.Console.ConsoleTheme
+Orkeon.Cli.TerminalGui.Console.TerminalGuiConsoleAdapter.WriteBlock(Orkeon.Cli.Abstractions.Console.ConsoleBlockKind kind, string! text) -> void
+Orkeon.Cli.TerminalGui.Console.TerminalGuiConsoleAdapter.WriteStream(string! text) -> void
+Orkeon.Cli.TerminalGui.Hosting.TerminalGuiOptions.Theme.get -> Orkeon.Cli.Abstractions.Console.ConsoleTheme?
+Orkeon.Cli.TerminalGui.Hosting.TerminalGuiOptions.Theme.init -> void
+Orkeon.Cli.TerminalGui.Hosting.TuiIntegration.AnswerApproval.get -> System.Func<long, string!, bool>?
+Orkeon.Cli.TerminalGui.Hosting.TuiIntegration.AnswerApproval.set -> void
+Orkeon.Cli.TerminalGui.Hosting.TuiIntegration.ApprovalsChanged -> System.EventHandler?
+Orkeon.Cli.TerminalGui.Hosting.TuiIntegration.ContextPercent.get -> System.Func<int?>?
+Orkeon.Cli.TerminalGui.Hosting.TuiIntegration.ContextPercent.set -> void
+Orkeon.Cli.TerminalGui.Hosting.TuiIntegration.NotifyApprovalsChanged() -> void
+Orkeon.Cli.TerminalGui.Hosting.TuiIntegration.ToolActivity.get -> Orkeon.Cli.Abstractions.Console.ToolActivityFeed?
+Orkeon.Cli.TerminalGui.Hosting.TuiIntegration.ToolActivity.set -> void
+Orkeon.Cli.TerminalGui.Layout.GlyphSet.Box.get -> string!
+Orkeon.Cli.TerminalGui.Layout.GlyphSet.Box.init -> void
+Orkeon.Cli.TerminalGui.Layout.GlyphSet.SideBar.get -> string!
+Orkeon.Cli.TerminalGui.Layout.GlyphSet.SideBar.init -> void
+Orkeon.Cli.TerminalGui.Layout.GlyphSet.Sideways.get -> string!
+Orkeon.Cli.TerminalGui.Layout.GlyphSet.Sideways.init -> void
+Orkeon.Cli.TerminalGui.Layout.PaletteRole.AddedWord = 9 -> Orkeon.Cli.TerminalGui.Layout.PaletteRole
+Orkeon.Cli.TerminalGui.Layout.PaletteRole.Code = 11 -> Orkeon.Cli.TerminalGui.Layout.PaletteRole
+Orkeon.Cli.TerminalGui.Layout.PaletteRole.DiffAdded = 7 -> Orkeon.Cli.TerminalGui.Layout.PaletteRole
+Orkeon.Cli.TerminalGui.Layout.PaletteRole.DiffRemoved = 8 -> Orkeon.Cli.TerminalGui.Layout.PaletteRole
+Orkeon.Cli.TerminalGui.Layout.PaletteRole.FileRef = 12 -> Orkeon.Cli.TerminalGui.Layout.PaletteRole
+Orkeon.Cli.TerminalGui.Layout.PaletteRole.PanelRule = 13 -> Orkeon.Cli.TerminalGui.Layout.PaletteRole
+Orkeon.Cli.TerminalGui.Layout.PaletteRole.RemovedWord = 10 -> Orkeon.Cli.TerminalGui.Layout.PaletteRole
+Orkeon.Cli.TerminalGui.Layout.PaletteRole.UserBar = 6 -> Orkeon.Cli.TerminalGui.Layout.PaletteRole
+Orkeon.Cli.TerminalGui.Layout.ReplPaneView.AppendStream(string! text) -> void
+Orkeon.Cli.TerminalGui.Layout.ReplPaneView.ChooseAsync(Orkeon.Cli.Abstractions.Console.ConsoleChoiceRequest! request, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<Orkeon.Cli.Abstractions.Console.ConsoleChoiceAnswer?>!
+Orkeon.Cli.TerminalGui.Layout.ReplPaneView.Finished(Orkeon.Cli.Abstractions.Console.ToolCallFinished! toolCall) -> void
+Orkeon.Cli.TerminalGui.Layout.ReplPaneView.Started(Orkeon.Cli.Abstractions.Console.ToolCallStarted! toolCall) -> void
+static Orkeon.Cli.TerminalGui.Layout.SchemeFactory.Attr(Orkeon.Cli.TerminalGui.Layout.PaletteRole role, bool trueColor, Orkeon.Cli.Abstractions.Console.ConsoleTheme theme, bool bold, bool italic) -> Terminal.Gui.Drawing.Attribute
+static Orkeon.Cli.TerminalGui.Layout.SchemeFactory.Background(Orkeon.Cli.TerminalGui.Layout.PaletteRole role, bool trueColor) -> Terminal.Gui.Drawing.Color
+static Orkeon.Cli.TerminalGui.Layout.SchemeFactory.Background(Orkeon.Cli.TerminalGui.Layout.PaletteRole role, bool trueColor, Orkeon.Cli.Abstractions.Console.ConsoleTheme theme) -> Terminal.Gui.Drawing.Color
+static Orkeon.Cli.TerminalGui.Layout.SchemeFactory.Cell(Orkeon.Cli.TerminalGui.Layout.PaletteRole? row, Orkeon.Cli.TerminalGui.Layout.PaletteRole role, bool trueColor, bool bold, bool italic) -> Terminal.Gui.Drawing.Attribute
+static Orkeon.Cli.TerminalGui.Layout.SchemeFactory.Cell(Orkeon.Cli.TerminalGui.Layout.PaletteRole? row, Orkeon.Cli.TerminalGui.Layout.PaletteRole role, bool trueColor, Orkeon.Cli.Abstractions.Console.ConsoleTheme theme, bool bold, bool italic) -> Terminal.Gui.Drawing.Attribute
+static Orkeon.Cli.TerminalGui.Layout.SchemeFactory.Foreground(Orkeon.Cli.TerminalGui.Layout.PaletteRole role, bool trueColor, Orkeon.Cli.Abstractions.Console.ConsoleTheme theme) -> Terminal.Gui.Drawing.Color
+static Orkeon.Cli.TerminalGui.Layout.SchemeFactory.HasBackground(Orkeon.Cli.TerminalGui.Layout.PaletteRole role) -> bool
+static Orkeon.Cli.TerminalGui.Layout.SchemeFactory.ResolveTheme(Orkeon.Cli.Abstractions.Console.ConsoleTheme? setting, string? noColor) -> Orkeon.Cli.Abstractions.Console.ConsoleTheme
+Orkeon.Cli.TerminalGui.Layout.ReplPaneView.ReadAnswerAsync(System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<string?>!
+Orkeon.Cli.TerminalGui.Console.TerminalGuiConsoleAdapter.HasPalette.get -> bool
+Orkeon.Cli.TerminalGui.Console.TerminalGuiConsoleAdapter.ReadAnswerAsync(System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<string?>!

@@ -7,6 +7,8 @@ namespace Orkeon.Cli.TerminalGui.Layout;
 /// task sent to the background (<c>● worker@crew(checks the design)</c> then
 /// <c>  ⎿  Backgrounded agent (↓ tasks)</c>), a task that ended says how
 /// (<c>● Agent "worker@crew" finished · 2m 15s</c>, <c>✗ … failed · …</c>, <c>⊘ … cancelled · …</c>).
+/// Tasks that appear in one poll read as one group: <c>● 3 agents launched (↓ to manage)</c> then a
+/// row per task. An end line says what the task used, when it is known.
 /// Pure: the rows and the ended tasks come in, the lines go out; the list's view writes them.
 /// </summary>
 /// <remarks>
@@ -23,6 +25,9 @@ internal sealed class TaskTranscriptTracker
     private readonly List<AgentRowInfo> _known = [];
     private readonly HashSet<string> _reported = new(StringComparer.Ordinal);
     private bool _baselined;
+
+    /// <summary>The tool calls a ticket made so far; null when nothing counts them.</summary>
+    internal Func<string, int>? ToolCalls { get; set; }
 
     public TaskTranscriptTracker(GlyphSet glyphs)
     {
@@ -62,8 +67,8 @@ internal sealed class TaskTranscriptTracker
             lines.Add(FinishedLine(end));
             _reported.Add(end.Ticket!);
         }
-        foreach (var added in current.Where(r => !_known.Exists(k => SameTicket(r, k))))
-            lines.AddRange(LaunchedLines(added));
+        var added = current.Where(r => !_known.Exists(k => SameTicket(r, k))).ToList();
+        lines.AddRange(added.Count == 1 ? LaunchedLines(added[0]) : GroupLines(added));
 
         // The feed is bounded by the host's retention: forget what it no longer holds.
         if (finished is not null) _reported.RemoveWhere(t => !ended.Exists(f => string.Equals(f.Ticket, t, StringComparison.Ordinal)));
@@ -80,7 +85,12 @@ internal sealed class TaskTranscriptTracker
     internal string FinishedLine(AgentRowInfo row)
     {
         ArgumentNullException.ThrowIfNull(row);
-        var duration = row.Elapsed is { } e ? $" {_glyphs.Dot} {StatusLineFormatter.FormatElapsed(e)}" : string.Empty;
+        var used = new List<string>(3);
+        if (row.Ticket is { } ticket && ToolCalls?.Invoke(ticket) is > 0 and var calls)
+            used.Add(calls == 1 ? "1 tool" : $"{calls} tools");
+        if (row.Tokens is > 0 and var tokens) used.Add(StatusLineFormatter.FormatTokens(tokens));
+        if (row.Elapsed is { } e) used.Add(StatusLineFormatter.FormatElapsed(e));
+        var duration = string.Concat(used.Select(part => $" {_glyphs.Dot} {part}"));
         var (glyph, outcome) = row.State switch
         {
             TaskRowState.Failed => (_glyphs.Cross, "failed"),
@@ -100,6 +110,45 @@ internal sealed class TaskTranscriptTracker
             $"{_glyphs.Bullet} {row.Name}{intent}",
             $"{TranscriptModel.Indent}{_glyphs.Elbow}  Backgrounded agent ({_glyphs.Down} tasks)",
         ];
+    }
+
+    /// <summary><c>● 3 agents launched (↓ to manage)</c> then a branch per task; nothing for no task.</summary>
+    internal IReadOnlyList<string> GroupLines(IReadOnlyList<AgentRowInfo> rows)
+    {
+        ArgumentNullException.ThrowIfNull(rows);
+        if (rows.Count == 0) return [];
+        var rule = _glyphs.Box[9];
+        var lines = new List<string>(rows.Count + 1) { $"{_glyphs.Bullet} {rows.Count} agents launched ({_glyphs.Down} to manage)" };
+        for (var i = 0; i < rows.Count; i++)
+        {
+            var branch = i < rows.Count - 1 ? _glyphs.Box[3] : _glyphs.Box[6];
+            var intent = string.IsNullOrWhiteSpace(rows[i].Description) ? string.Empty : $"({rows[i].Description.Trim()})";
+            lines.Add($"{TranscriptModel.Indent}{branch}{rule} {rows[i].Name}{intent}");
+        }
+        return lines;
+    }
+
+    /// <summary>
+    /// A line of this tracker with its display: an end line's glyph says how the task ended, the rest of a
+    /// launch but its first line is secondary.
+    /// </summary>
+    internal TranscriptLine Styled(string line)
+    {
+        ArgumentNullException.ThrowIfNull(line);
+        if (line.StartsWith(TranscriptModel.Indent, StringComparison.Ordinal))
+        {
+            // The branch or the elbow is dim; a task's name on a branch stays in the main colour.
+            var elbow = line.AsSpan(TranscriptModel.Indent.Length).StartsWith(_glyphs.Elbow, StringComparison.Ordinal);
+            var dim = elbow ? line.Length : line.IndexOf(' ', TranscriptModel.Indent.Length);
+            return new TranscriptLine(line) { Runs = [new TranscriptRun(0, dim < 0 ? line.Length : dim, PaletteRole.Dim)] };
+        }
+        var role =
+            line.StartsWith(_glyphs.Cross, StringComparison.Ordinal) ? PaletteRole.Error
+            : line.StartsWith(_glyphs.Slashed, StringComparison.Ordinal) ? PaletteRole.Dim
+            : line.Contains("\" finished", StringComparison.Ordinal) ? PaletteRole.Ok
+            : PaletteRole.Accent;
+        var glyph = line.IndexOf(' ', StringComparison.Ordinal);
+        return new TranscriptLine(line) { Runs = [new TranscriptRun(0, glyph < 0 ? line.Length : glyph, role)] };
     }
 
     private static bool SameTicket(AgentRowInfo a, AgentRowInfo b)

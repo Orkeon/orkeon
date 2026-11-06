@@ -24,6 +24,8 @@ public sealed class ToolActivityAggregator : IDisposable
     private const string OperationTag = "gen_ai.operation.name";
     private const string ExecuteToolOperation = "execute_tool";
     private const string ToolNameTag = "gen_ai.tool.name";
+    // Set by the scripted commands' ToolActivityPipeline on a call a step of the transcript shows.
+    private const string ReportedTag = "orkeon.tool.reported";
 
     private readonly ConcurrentDictionary<string, int> _counts = new(StringComparer.Ordinal);
     private readonly ActivityListener _listener;
@@ -44,6 +46,7 @@ public sealed class ToolActivityAggregator : IDisposable
             {
                 if (!IsToolSpan(activity)) return;
                 Interlocked.Decrement(ref _openToolSpans);
+                if (activity.GetTagItem(ReportedTag) is not null) return;
                 var tool = activity.GetTagItem(ToolNameTag)?.ToString();
                 if (!string.IsNullOrEmpty(tool))
                     _counts.AddOrUpdate(tool, 1, static (_, n) => n + 1);
@@ -96,14 +99,16 @@ public sealed class ToolActivityAggregator : IDisposable
         "file_read" => 0,
         "directory_read" or "directory_search" => 1,
         "file_write" => 2,
-        "shell_command" => 3,
-        _ => 4,
+        "edit_file" => 3,
+        "shell_command" => 4,
+        _ => 5,
     };
 
     private static string Phrase(string tool, int n) => tool switch
     {
         "file_read" => $"read {n} file{Plural(n)}",
         "file_write" => $"wrote {n} file{Plural(n)}",
+        "edit_file" => $"edited {n} file{Plural(n)}",
         "directory_read" => $"listed {n} director{(n == 1 ? "y" : "ies")}",
         "directory_search" => $"searched {n} director{(n == 1 ? "y" : "ies")}",
         "shell_command" => $"ran {n} shell command{Plural(n)}",

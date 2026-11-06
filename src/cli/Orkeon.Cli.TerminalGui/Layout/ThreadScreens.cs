@@ -47,6 +47,9 @@ internal sealed class ThreadScreens
         return screen;
     }
 
+    /// <summary>Whether <paramref name="screen"/> is one of the screens still open.</summary>
+    public bool Holds(TranscriptView screen) => ReferenceEquals(screen, Main) || _tasks.ContainsValue(screen);
+
     /// <summary>Makes the screen of <paramref name="thread"/> the displayed one, opening it; true when the displayed screen changed.</summary>
     public bool Show(string? thread)
     {

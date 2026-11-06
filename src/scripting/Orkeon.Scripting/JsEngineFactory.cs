@@ -135,13 +135,25 @@ public sealed class JsEngineFactory
 
     /// <summary>
     /// The <c>PromiseTimeout</c> every engine <see cref="Create"/> builds is given. Test-side guard only:
-    /// the product leaves it null, which keeps Jint's default.
+    /// the product leaves it null, which keeps Jint's default. It bounds an engine whose limits leave none.
     /// </summary>
     internal static TimeSpan? PromiseTimeout { get; set; }
 
-    private static void ApplyPromiseTimeout(Jint.Options options)
+    /// <summary>
+    /// Stops the engine's <see cref="ScriptingLimitsOptions.ExecutionTimeout"/> clock until the returned handle is
+    /// disposed, for a wait that belongs to the operator (a question the script asked). Null on an engine with no
+    /// such clock.
+    /// </summary>
+    public static IDisposable? PauseExecutionClock(Engine engine)
     {
-        if (PromiseTimeout is { } timeout)
+        ArgumentNullException.ThrowIfNull(engine);
+        return engine.Constraints.Find<Runtime.PausableTimeConstraint>()?.Pause();
+    }
+
+    private void ApplyPromiseTimeout(Jint.Options options)
+    {
+        var limit = _limits.PromiseTimeout;
+        if ((limit is null || limit < TimeSpan.Zero ? PromiseTimeout ?? limit : limit) is { } timeout)
         {
             options.Constraints.PromiseTimeout = timeout;
         }

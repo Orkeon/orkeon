@@ -96,6 +96,23 @@ internal sealed class TranscriptView : View
         ContentChanged();
     }
 
+    /// <summary>Appends lines that carry their display; stream text written next starts on its own line.</summary>
+    public void AppendStyled(IReadOnlyList<TranscriptLine> lines)
+    {
+        _buffer.AppendStyled(lines);
+        ContentChanged();
+    }
+
+    /// <summary>Replaces the unfinished line of a stream with the lines that finish it and the next unfinished one.</summary>
+    public void ReplacePartial(IReadOnlyList<TranscriptLine> lines, string partial)
+    {
+        _buffer.ReplacePartial(lines, partial);
+        ContentChanged();
+    }
+
+    /// <summary>The columns a line has before it wraps; zero while unknown.</summary>
+    public int WrapWidth => _buffer.Width;
+
     /// <summary>Empties the transcript; the view sticks to its (new) tail again.</summary>
     public void Clear()
     {
@@ -114,6 +131,11 @@ internal sealed class TranscriptView : View
         _followTail = true;
         FollowTail();
     }
+
+    // Where DrawOverlays draws the chip, and only when it does.
+    private bool OnChip(Point point)
+        => ChipText is { } chip && Viewport.Width > TerminalText.Columns(chip) && point.Y == Viewport.Height - 1
+            && point.X >= Viewport.Width - TerminalText.Columns(chip) - 1 && point.X < Viewport.Width - 1;
 
     private bool AtEnd => Viewport.Y >= _buffer.RowCount - Viewport.Height;
 
@@ -169,29 +191,81 @@ internal sealed class TranscriptView : View
             if (_buffer.GetRow(Viewport.Y + y) is not { } row) continue;
             DrawRow(y, row, width, normal, selection);
         }
+        DrawOverlays(width);
         return true;
     }
+
+    // Away from the tail, the view says what it is under and how to come back; a row lost under either
+    // comes back by scrolling one row further.
+    private void DrawOverlays(int width)
+    {
+        if (ChipText is { } chip && width > TerminalText.Columns(chip) && Viewport.Height > 0)
+        {
+            SetAttribute(SchemeFactory.Attr(PaletteRole.Accent, bold: true));
+            Move(width - TerminalText.Columns(chip) - 1, Viewport.Height - 1);
+            AddStr(chip);
+        }
+        if (PromptHeader is { } header && Viewport.Height > 1)
+        {
+            SetAttribute(SchemeFactory.Attr(PaletteRole.UserBar));
+            Move(0, 0);
+            AddStr(new string(' ', Math.Max(0, width)));
+            Move(0, 0);
+            AddStr(TerminalText.Truncate(header, Math.Max(0, width), Glyphs.Ellipsis));
+        }
+    }
+
+    /// <summary>The markers drawn over the rows.</summary>
+    internal GlyphSet Glyphs { get; set; } = GlyphSet.Unicode;
+
+    /// <summary>The way back to the tail, drawn at the foot of the view; null at the tail.</summary>
+    internal string? ChipText => _followTail || AtEnd ? null : $"{Glyphs.Down} more below (click or ctrl+end)";
+
+    /// <summary>The prompt the rows shown answer, once it has scrolled off; null at the tail or with it on screen.</summary>
+    internal string? PromptHeader => _followTail ? null : _buffer.LineAbove(Viewport.Y, PaletteRole.UserBar);
 
     private void DrawRow(int y, TranscriptRow row, int width, Attribute normal, (TranscriptPosition From, TranscriptPosition To)? selection)
     {
         var skip = _wordWrap ? 0 : Viewport.X;
         var column = 0;
         var offset = row.Start;
+        var runs = new RunCursor(row.Runs, row.RowRole, normal);
+        if (row.RowRole is { } rowRole)
+        {
+            SetAttribute(SchemeFactory.Attr(rowRole));
+            Move(0, y);
+            AddStr(new string(' ', Math.Max(0, width)));
+        }
         foreach (var grapheme in GraphemeHelper.GetGraphemes(row.Text[row.Start..row.End]))
         {
             // A tab is drawn as the blanks up to the next stop of its row.
-            var w = _buffer.ColumnsAt(grapheme, column);
-            var at = column - skip;
+            var w = _buffer.ColumnsAt(grapheme, column, row.Indent);
+            var at = column + row.Indent - skip;
             column += w;
             var position = new TranscriptPosition(row.Line, offset);
+            var attribute = runs.At(offset);
             offset += grapheme.Length;
             if (at < 0) continue;
             if (at + w > width) break;
             var selected = selection is { } range
                 && position.CompareTo(range.From) >= 0 && position.CompareTo(range.To) < 0;
-            SetAttribute(selected ? MouseClipboardTextView.SelectionAttribute : normal);
+            SetAttribute(selected ? MouseClipboardTextView.SelectionAttribute : attribute);
             Move(at, y);
             AddStr(grapheme == "\t" ? new string(' ', w) : grapheme);
+        }
+    }
+
+    // The attribute of each offset of a row, read in increasing order: the runs are sorted.
+    private struct RunCursor(IReadOnlyList<TranscriptRun> runs, PaletteRole? rowRole, Attribute normal)
+    {
+        private int _next;
+
+        public Attribute At(int offset)
+        {
+            while (_next < runs.Count && runs[_next].End <= offset) _next++;
+            if (_next < runs.Count && runs[_next].Start <= offset)
+                return SchemeFactory.Cell(rowRole, runs[_next].Role, runs[_next].Bold, runs[_next].Italic);
+            return rowRole is { } role ? SchemeFactory.Attr(role) : normal;
         }
     }
 
@@ -204,6 +278,12 @@ internal sealed class TranscriptView : View
         if (flags.HasFlag(MouseFlags.WheeledDown)) return Scroll(WheelRows);
 
         var point = mouse.Position ?? Point.Empty;
+        if (flags.HasFlag(MouseFlags.LeftButtonPressed) && !_dragging && OnChip(point))
+        {
+            MoveEnd();
+            SetNeedsDraw();
+            return true;
+        }
         var position = _buffer.HitTest(Viewport.Y + point.Y, Viewport.X + point.X);
         // The view holds the mouse while dragging: a report above or below it comes with a row
         // outside the viewport, and the selection then scrolls instead of stopping at the edge.

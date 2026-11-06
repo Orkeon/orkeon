@@ -1651,6 +1651,7 @@ public sealed partial class JsLlmFacade
     {
         if (tool is null)
             return NotAvailable(name);
+        using var activity = Orkeon.Scripting.Telemetry.ScriptingActivitySource.StartToolCall(tool.Name);
         try
         {
             // The loop reaches here on the engine thread when the model call completed synchronously:

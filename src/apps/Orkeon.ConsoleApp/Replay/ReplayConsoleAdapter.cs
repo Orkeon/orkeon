@@ -30,7 +30,7 @@ internal enum ReplayInterrupt
 /// </list>
 /// With no replay running, every member delegates to the real console.
 /// </summary>
-internal sealed class ReplayConsoleAdapter : IConsoleAdapter, IThreadedConsole, ICommandOutcomeObserver
+internal sealed class ReplayConsoleAdapter : IConsoleAdapter, IThreadedConsole, IStreamConsole, IBlockConsole, IThemeConsole, IChoiceConsole, ICommandOutcomeObserver
 {
     /// <summary>The exit code of a replay whose every line passed.</summary>
     public const int PassedExitCode = 0;
@@ -225,6 +225,59 @@ internal sealed class ReplayConsoleAdapter : IConsoleAdapter, IThreadedConsole, 
 
     /// <inheritdoc />
     public void Write(string text) => _inner.Write(text);
+
+    /// <inheritdoc />
+    public void WriteStream(string text)
+    {
+        if (_inner is IStreamConsole stream)
+            stream.WriteStream(text);
+        else
+            _inner.Write(text);
+    }
+
+    /// <inheritdoc />
+    public bool CanChoose
+    {
+        get
+        {
+            lock (_lock)
+            {
+                if (_run is not null || _inputClosed) return false;
+            }
+            return _inner is IChoiceConsole { CanChoose: true };
+        }
+    }
+
+    /// <inheritdoc />
+    public Task<ConsoleChoiceAnswer?> ChooseAsync(ConsoleChoiceRequest request, CancellationToken cancellationToken)
+        => _inner is IChoiceConsole panels
+            ? panels.ChooseAsync(request, cancellationToken)
+            : throw new InvalidOperationException("The console wrapped has no panels: read CanChoose first.");
+
+    /// <inheritdoc />
+    public bool HasPalette => _inner is IThemeConsole { HasPalette: true };
+
+    /// <inheritdoc />
+    public Task<string?> ReadAnswerAsync(CancellationToken cancellationToken)
+        => CanChoose && _inner is IChoiceConsole panels ? panels.ReadAnswerAsync(cancellationToken) : ReadLineAsync(cancellationToken);
+
+    /// <inheritdoc />
+    public ConsoleTheme Theme => _inner is IThemeConsole themed ? themed.Theme : ConsoleTheme.None;
+
+    /// <inheritdoc />
+    public void SetTheme(ConsoleTheme theme)
+    {
+        if (_inner is IThemeConsole themed) themed.SetTheme(theme);
+    }
+
+    /// <inheritdoc />
+    public void WriteBlock(ConsoleBlockKind kind, string text)
+    {
+        if (_inner is IBlockConsole blocks)
+            blocks.WriteBlock(kind, text);
+        else
+            _inner.WriteLine(text.EndsWith('\n') ? text[..^1] : text);
+    }
 
     /// <inheritdoc />
     public void WriteLine(string text) => _inner.WriteLine(text);
