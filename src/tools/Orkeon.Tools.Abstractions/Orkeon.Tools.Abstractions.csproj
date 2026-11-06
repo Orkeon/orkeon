@@ -20,6 +20,8 @@
     <InternalsVisibleTo Include="Orkeon.Tools.Email.Tests" />
     <InternalsVisibleTo Include="Orkeon.Tools.Drive" />
     <InternalsVisibleTo Include="Orkeon.Tools.Drive.Tests" />
+    <!-- The firefox tool is no HTTP tool, and checks the pages its browser lands on with the same fail-closed guard. -->
+    <InternalsVisibleTo Include="Orkeon.Tools.Web" />
     <!-- STUDIO-65: the Studio drift tests read the OAuth settings the e-mail resolver derives. -->
     <InternalsVisibleTo Include="Orkeon.Studio.Core.Tests" />
   </ItemGroup>

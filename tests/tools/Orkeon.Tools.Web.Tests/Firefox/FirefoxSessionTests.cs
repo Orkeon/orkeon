@@ -125,18 +125,50 @@ public class FirefoxSessionTests : FirefoxSessionTestBase
     }
 
     [Fact]
-    public async Task Should_ForgetTheSnapshot_When_ThePageMayHaveChanged()
+    public async Task Should_ForgetTheSnapshot_When_TheBrowserShowsAnotherPage()
     {
         await using var session = await OpenAsync();
         await session.NavigateAsync(Home, Ct);
+        await session.SnapshotAsync(Ct);
+        var current = session.PageIsCurrent;
 
-        await session.SnapshotAsync(Ct);
         await session.NavigateAsync(Docs, Ct);
-        var afterNavigate = session.Page;
-        await session.SnapshotAsync(Ct);
+
+        Assert.True(current);
+        Assert.Null(session.Page);
+        Assert.False(session.PageIsCurrent);
+    }
+
+    [Fact]
+    public async Task Should_KeepTheSnapshot_AndSayItIsNoLongerCurrent_When_AnActionLeftThePageWhereItWas()
+    {
+        await using var session = await OpenAsync();
+        await session.NavigateAsync(Home, Ct);
+        var page = await session.SnapshotAsync(Ct);
+
         await session.PressAsync(["a"], Ct);
 
-        Assert.Null(afterNavigate);
+        // The node ids still name the elements of the page; what they hold may have changed.
+        Assert.Same(page, session.Page);
+        Assert.False(session.PageIsCurrent);
+    }
+
+    [Fact]
+    public async Task Should_ForgetTheSnapshot_When_AScriptLoadsThePageAgain()
+    {
+        await using var session = await OpenAsync();
+        await session.NavigateAsync(Home, Ct);
+        await session.SnapshotAsync(Ct);
+        Browser.Script = _ =>
+        {
+            Browser.Emit("browsingContext.navigationStarted", new JsonObject { ["navigation"] = "reload-1", ["url"] = Home });
+            Browser.Emit("browsingContext.load", new JsonObject { ["navigation"] = "reload-1", ["url"] = Home });
+            return new JsonObject { ["type"] = "undefined" };
+        };
+
+        await session.EvaluateAsync("location.reload()", Ct);
+
+        // The same address, another document: the elements the snapshot names are gone.
         Assert.Null(session.Page);
     }
 
@@ -256,7 +288,8 @@ public class FirefoxSessionTests : FirefoxSessionTestBase
         Assert.Equal(field, focus["arguments"]![0]!["sharedId"]!.GetValue<string>());
         Assert.Equal(["down:a", "up:a", "down:b", "up:b", "down:", "up:"], Keys(LastKeys()));
         Assert.Equal("input.releaseActions", Wire.Methods[Wire.Methods.ToList().LastIndexOf("input.performActions") + 1]);
-        Assert.Null(session.Page);
+        Assert.NotNull(session.Page);
+        Assert.False(session.PageIsCurrent);
     }
 
     [Fact]

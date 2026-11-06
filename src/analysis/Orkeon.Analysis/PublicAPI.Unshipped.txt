@@ -156,3 +156,6 @@ static Orkeon.Analysis.Adapters.PageOutlineMapper.NodeId(string! path, int index
 static Orkeon.Analysis.Adapters.PageOutlineMapper.RootId(string! path) -> string!
 Orkeon.Analysis.Adapters.PageOutline.Text.get -> string!
 Orkeon.Analysis.Adapters.PageOutline.Text.init -> void
+const Orkeon.Analysis.Adapters.PageOutlineMapper.HiddenTag = "hidden" -> string!
+const Orkeon.Analysis.Adapters.PageOutlineMapper.LevelTag = "level" -> string!
+const Orkeon.Analysis.Adapters.PageOutlineMapper.RoleTag = "role" -> string!

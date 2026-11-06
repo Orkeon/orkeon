@@ -93,6 +93,7 @@ internal sealed partial class FirefoxSession : IAsyncDisposable
     private long _activity;
     private int _generation;
     private int _disposed;
+    private bool _pageIsCurrent;
 
     private FirefoxSession(
         IFirefoxBrowser browser, BiDiConnection connection, IFileSystemService fileSystem,
@@ -112,8 +113,23 @@ internal sealed partial class FirefoxSession : IAsyncDisposable
     /// <summary><c>true</c> when the browser runs without a window.</summary>
     public bool Headless => _browser.Headless;
 
-    /// <summary>The last snapshot of the page, or <c>null</c> when the page changed since.</summary>
+    /// <summary>
+    /// The last snapshot of the page, or <c>null</c> once the tab shows another page: its node ids
+    /// name elements as long as the page is the same, whatever the actions made in it.
+    /// </summary>
     public PageSnapshot? Page { get; private set; }
+
+    /// <summary>
+    /// <c>true</c> while no action ran since <see cref="Page"/> was read: what it holds is what the
+    /// browser shows. An action in the page keeps the snapshot and its ids, not this.
+    /// </summary>
+    public bool PageIsCurrent => Page is not null && _pageIsCurrent;
+
+    /// <summary>
+    /// The address of the page its user last checked against a policy of its own. The session only
+    /// keeps it, so that a page already checked is not checked again at each action.
+    /// </summary>
+    public string? CheckedUrl { get; set; }
 
     /// <summary>Starts a browser and opens its session on the tab it shows.</summary>
     /// <exception cref="FirefoxException">Firefox is not installed, or did not start.</exception>
@@ -189,6 +205,7 @@ internal sealed partial class FirefoxSession : IAsyncDisposable
             .Select(item => item?["sharedId"] is JsonValue id && id.TryGetValue<string>(out var sharedId) ? sharedId : null)
             .ToImmutableArray();
         Page = PageSnapshot.Parse(json, sharedIds, ++_generation, _fileSystem);
+        _pageIsCurrent = true;
         return Page;
     }
 
@@ -452,32 +469,41 @@ internal sealed partial class FirefoxSession : IAsyncDisposable
     /// </summary>
     private async Task SettleAsync(long activityBefore, string? changedFrom, CancellationToken cancellationToken)
     {
-        Page = null;
+        _pageIsCurrent = false;
+        var state = await WaitForPageAsync(activityBefore, changedFrom, cancellationToken).ConfigureAwait(false);
+
+        // Another page, or the same one loaded again: the elements the snapshot names are gone.
+        if (Page is { } page
+            && (state is null
+                || Interlocked.Read(ref _activity) != activityBefore
+                || !string.Equals(state.Url, page.Url, StringComparison.Ordinal)))
+        {
+            Page = null;
+        }
+    }
+
+    /// <summary>The page once it has settled, or <c>null</c> when it was still loading at the command timeout.</summary>
+    private async Task<PageState?> WaitForPageAsync(long activityBefore, string? changedFrom, CancellationToken cancellationToken)
+    {
         var started = Stopwatch.GetTimestamp();
         var quiet = changedFrom is null ? _timings.NavigationGrace : _timings.TraversalWait;
         while (true)
         {
             var elapsed = Stopwatch.GetElapsedTime(started);
             if (elapsed >= _commandTimeout)
-                return;
+                return null;
 
             bool pending;
             lock (_navigation)
                 pending = _pendingNavigation is not null;
 
-            if (!pending)
+            if (!pending && await TryReadStateAsync(cancellationToken).ConfigureAwait(false) is { Loaded: true } state)
             {
                 var moved = Interlocked.Read(ref _activity) != activityBefore;
-                if (moved || elapsed >= quiet)
+                if (moved || elapsed >= quiet
+                    || (changedFrom is not null && !string.Equals(state.Url, changedFrom, StringComparison.Ordinal)))
                 {
-                    if (await TryReadStateAsync(cancellationToken).ConfigureAwait(false) is { Loaded: true })
-                        return;
-                }
-                else if (changedFrom is not null
-                    && await TryReadStateAsync(cancellationToken).ConfigureAwait(false) is { Loaded: true } state
-                    && !string.Equals(state.Url, changedFrom, StringComparison.Ordinal))
-                {
-                    return;
+                    return state;
                 }
             }
 

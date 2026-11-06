@@ -31,10 +31,13 @@ public static class PageOutlineMapper
     /// <summary>Language of every node of a page.</summary>
     public const string Language = "html";
 
-    private const string RoleTag = "role";
-    private const string LevelTag = "level";
+    /// <summary>Tag holding the role of an element: <c>navigation</c>, <c>button</c>, <c>textbox</c>.</summary>
+    public const string RoleTag = "role";
+    /// <summary>Tag holding the level of a heading, from 1 to 6.</summary>
+    public const string LevelTag = "level";
     private const string AnchorTag = "anchor";
-    private const string HiddenTag = "hidden";
+    /// <summary>Tag of an element the page does not show.</summary>
+    public const string HiddenTag = "hidden";
     private const string TargetPrefix = "target:";
     private const string ResolvedPrefix = "resolved:";
     private const int MinHeadingLevel = 1;

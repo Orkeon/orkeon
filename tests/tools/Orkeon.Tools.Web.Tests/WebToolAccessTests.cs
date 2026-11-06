@@ -1,11 +1,12 @@
 using System.Text.Json;
 using Orkeon.Domain.Tools;
+using Orkeon.Tests.Shared.FileSystem;
 using Orkeon.Tools.Web.Tests.Doubles;
 
 namespace Orkeon.Tools.Web.Tests;
 
 /// <summary>
-/// #219 - the access class of one call of <c>github</c> and <c>http_api</c>, decided from its arguments
+/// #219 - the access class of one call of <c>github</c>, <c>http_api</c> and <c>firefox</c>, decided from its arguments
 /// (<see cref="IBaseTool.AccessFor"/>), and the static class of <c>web_search</c>.
 /// </summary>
 public sealed class WebToolAccessTests
@@ -156,6 +157,60 @@ public sealed class WebToolAccessTests
         IBaseTool tool = search;
 
         Assert.Equal(ToolAccess.Read, tool.Access);
+    }
+
+    [Theory]
+    [InlineData("navigate")]
+    [InlineData("back")]
+    [InlineData("snapshot")]
+    [InlineData("read")]
+    [InlineData("find")]
+    [InlineData("SNAPSHOT")]
+    public void FirefoxShouldClassifyAnActionThatOnlyLooksAsRead(string action)
+    {
+        using var firefox = new FirefoxTool(new FirefoxToolOptions(), new FakeFileSystemService());
+        IBaseTool tool = firefox;
+
+        Assert.Equal(ToolAccess.Read, tool.AccessFor(Args("action", action)));
+        Assert.Equal(ToolAccess.Read, tool.AccessFor(JsonArgs("action", action)));
+    }
+
+    [Fact]
+    public void FirefoxShouldClassifyAScreenshotAsEdit()
+    {
+        using var firefox = new FirefoxTool(new FirefoxToolOptions(), new FakeFileSystemService());
+        IBaseTool tool = firefox;
+
+        Assert.Equal(ToolAccess.Edit, tool.AccessFor(Args("action", "screenshot")));
+        Assert.Equal(ToolAccess.Edit, tool.AccessFor(JsonArgs("action", "Screenshot")));
+    }
+
+    [Theory]
+    [InlineData("click")]
+    [InlineData("type")]
+    [InlineData("press")]
+    [InlineData("evaluate")]
+    [InlineData("close")]
+    [InlineData("scroll")]
+    [InlineData("")]
+    public void FirefoxShouldClassifyAnActionInThePageAndAnUnknownOneAsExecute(string action)
+    {
+        using var firefox = new FirefoxTool(new FirefoxToolOptions(), new FakeFileSystemService());
+        IBaseTool tool = firefox;
+
+        Assert.Equal(ToolAccess.Execute, tool.AccessFor(Args("action", action)));
+        Assert.Equal(ToolAccess.Execute, tool.AccessFor(JsonArgs("action", action)));
+    }
+
+    [Fact]
+    public void FirefoxShouldFailClosedWithoutAnAction()
+    {
+        using var firefox = new FirefoxTool(new FirefoxToolOptions(), new FakeFileSystemService());
+        IBaseTool tool = firefox;
+
+        Assert.Equal(ToolAccess.Execute, tool.Access);
+        Assert.Equal(ToolAccess.Execute, tool.AccessFor(new Dictionary<string, object?>()));
+        Assert.Equal(ToolAccess.Execute, tool.AccessFor(Args("action", null)));
     }
 
     private static Dictionary<string, object?> Args(string name, string? value) => new() { [name] = value };
