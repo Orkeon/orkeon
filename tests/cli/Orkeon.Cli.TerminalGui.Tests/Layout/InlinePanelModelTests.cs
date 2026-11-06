@@ -363,4 +363,30 @@ public sealed class InlinePanelModelTests
         // Assert
         Assert.Equal(new string('-', 12), rows[0]);
     }
+
+    [Fact]
+    public void A_terminal_too_short_for_the_chrome_still_names_what_is_asked()
+    {
+        // Arrange
+        var model = Model(new ConsoleChoiceRequest { Title = "run_command", Description = "why", Detail = "{}", Choices = Choices(3) });
+
+        // Act
+        var rows = Texts(model, maxRows: 5);
+
+        // Assert
+        Assert.Equal(["run_command", "why"], rows.Take(2));
+    }
+
+    [Fact]
+    public void A_terminal_too_short_for_the_chrome_keeps_every_option_before_the_title()
+    {
+        // Arrange
+        var model = Model(new ConsoleChoiceRequest { Title = "run_command", Choices = Choices(3) });
+
+        // Act
+        var rows = Texts(model, maxRows: 3);
+
+        // Assert
+        Assert.DoesNotContain("run_command", rows);
+    }
 }

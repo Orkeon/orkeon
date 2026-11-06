@@ -198,6 +198,7 @@ export interface CommandRuntimeContext {
    * `null` to a `select` and the default to a `confirm`; elsewhere they are numbered lines.
    */
   prompt(spec: SelectPromptSpec & { detailed: true }): Promise<PromptChoiceAnswer | null>;
+  prompt(spec: SelectPromptSpec & { detailed: boolean }): Promise<PromptChoiceAnswer | string | null>;
   prompt(spec: PromptSpec): Promise<PromptResult>;
   /** Whether `prompt` asks a choice with a panel; a replay and a plain console answer false. */
   readonly interactive: boolean;

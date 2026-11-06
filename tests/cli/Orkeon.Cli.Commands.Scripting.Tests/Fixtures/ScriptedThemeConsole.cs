@@ -5,6 +5,8 @@ namespace Orkeon.Cli.Commands.Scripting.Tests.Fixtures;
 /// <summary>A console with palettes: keeps the one it is asked for, and writes nothing anywhere.</summary>
 internal sealed class ScriptedThemeConsole : IConsoleAdapter, IThemeConsole
 {
+    public bool HasPalette { get; set; } = true;
+
     public ConsoleTheme Theme { get; private set; } = ConsoleTheme.Dark;
 
     public void SetTheme(ConsoleTheme theme) => Theme = theme;

@@ -217,7 +217,8 @@ const pwd    = await ctx.prompt({ type: "password", message: "Password:" });
 
 On a console with panels, `ctx.interactive` is true and `select` and `confirm` open a selection panel in
 place of the prompt rows: arrows or a digit move the selection, Enter answers, and the draft, the history
-and the tasks list wait behind it. Esc answers `null` to a `select` and the default to a `confirm`. Elsewhere
+and the tasks list wait behind it. Esc answers `null` to a `select` and the default to a `confirm`, which opens on
+No unless its default is true: Enter then answers what an empty line answers on the plain console. Elsewhere
 (the plain console, a replay, a read while a crew holds the console) they stay numbered lines, so
 a script reads the same answer everywhere. A command that takes its value as an argument checks
 `ctx.interactive` before opening a panel without one.
@@ -646,8 +647,9 @@ the `Llm:Model` setting.
 answers it. From a crew launched with `runCrewAsync`, the read loop hands that line over
 (`IReplLineInterceptor`) before resolving any command; from a crew launched with `runCrew`, which
 holds the loop, the waiting call reads the answer itself, and the time taken to answer does not
-count in `RunCrewTimeout`. In the split-pane console the question opens a panel: its options deliver
-that same line (`y`, `s` or `n`), Esc denies, and `/` hands the question to the prompt so a command
+count in `RunCrewTimeout`. In the split-pane console the question opens a panel on No: its options
+answer that question by its id (`y`, `s` or `n`) and never reach a read as a line, Esc denies, and `/`, or a
+letter no option carries, hands the question to the prompt with the letters typed so far, so a command
 can run first, the status line then asking it. A command passes the session's mode to `act` as
 `permissionMode`; it does not handle the question itself. See
 [the CLI reference](../reference/cli.md#orkeon-repl--the-separate-interactive-console).
@@ -756,9 +758,9 @@ for (const c of usage.byCommand) ctx.writeLine(`[${c.ticket}] ${c.name}: ${c.pro
 
 **Away from the tail.** A transcript scrolled up draws `↓ more below (click or ctrl+end)` on its last row and, once the prompt that the rows answer has left the screen, that prompt on its first row. Both are drawn over the rows, in no way part of the text: a selection and a copy never see them, and scrolling one row further shows the row under them.
 
-**The bar.** `context N%` is what the latest model call of the prompt's turn sent, against `Orkeon:Cli:Session:ContextWindowTokens`; without that setting, or before a call, the entry is absent. It stays dim up to 79%, alert from 80%, error from 95%. On an empty prompt, `?` lists the keys.
+**The bar.** `context N%` is what the latest model call of the prompt's turn sent, against `Orkeon:Cli:Session:ContextWindowTokens`; without that setting, or before a call, the entry is absent. It stays dim up to 79%, alert from 80%, error from 95%. On an empty prompt, `?` lists the keys; while a script's `ctx.prompt` reads, it is text like any other.
 
-**Palettes.** `Orkeon:Cli:Tui:Theme` names the palette at the start: `Dark`, `Light` or `None`, the terminal's own colours with bold and italic kept. Left out, `None` when `NO_COLOR` is set, else `Dark`: a setting wins over the variable, as no-color.org asks. The palette is not detected from the terminal. `ctx.setTheme("light")` changes it for the session, what is on screen included, and answers false on a console without palettes; `ctx.theme` names it.
+**Palettes.** `Orkeon:Cli:Tui:Theme` names the palette at the start: `Dark`, `Light` or `None`, the terminal's own colours with bold and italic kept. Left out, `None` when `NO_COLOR` is set, else `Dark`: a setting wins over the variable, as no-color.org asks. Any other value, a number included, is refused at the start. The palette is not detected from the terminal. `ctx.setTheme("light")` changes it for the session, what is on screen included, and answers false on a console without palettes; `ctx.theme` names it.
 
 ## TypeScript support matrix (esbuild → Jint)
 

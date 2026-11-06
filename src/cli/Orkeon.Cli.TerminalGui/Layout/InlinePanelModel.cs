@@ -51,9 +51,12 @@ internal sealed class InlinePanelModel : IPanelRows
     /// Selects the option numbered <paramref name="number"/> (from 1) without answering: text typed ahead of a
     /// panel that just opened never answers it. A number no option carries changes nothing.
     /// </summary>
-    public void SelectNumber(int number)
+    /// <returns>True when an option carries that number.</returns>
+    public bool SelectNumber(int number)
     {
-        if (number >= 1 && number <= _request.Choices.Count) Selected = number - 1;
+        if (number < 1 || number > _request.Choices.Count) return false;
+        Selected = number - 1;
+        return true;
     }
 
     /// <summary>Selects the option <paramref name="letter"/> is the shortcut of, without answering.</summary>
@@ -79,7 +82,8 @@ internal sealed class InlinePanelModel : IPanelRows
 
     /// <summary>
     /// The rows of the panel for <paramref name="width"/> columns and at most <paramref name="maxRows"/> rows: the
-    /// list shrinks first, and when even that does not fit the panel is the options alone.
+    /// list shrinks first, and when even that does not fit the panel is the options, under as much of what it asks
+    /// as the rows left hold.
     /// </summary>
     public IReadOnlyList<IReadOnlyList<RowSegment>> Rows(int width, int maxRows)
     {
@@ -92,7 +96,12 @@ internal sealed class InlinePanelModel : IPanelRows
         if (overflow > 0) visible = Math.Max(Math.Min(count, MinVisibleChoices), visible - overflow);
 
         if (head.Count + ListHeight(visible) + tail.Count > maxRows)
-            return ListRows(width, ListThatFits(maxRows));
+        {
+            var fitting = ListThatFits(maxRows);
+            // Past the rule, without the blank rows: the words only.
+            var words = head.Skip(1).Where(row => row.Count > 0).Take(maxRows - ListHeight(fitting));
+            return [.. words, .. ListRows(width, fitting)];
+        }
 
         var rows = new List<IReadOnlyList<RowSegment>>(head);
         rows.AddRange(ListRows(width, visible));

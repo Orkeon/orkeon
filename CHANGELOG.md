@@ -11,8 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - In the split-pane console, tasks launched together read as one group with a branch per task, and the end line of a task says its tools, tokens and time, its glyph coloured by how it ended.
 - A transcript scrolled up offers the way back (`↓ more below`, by a click or Ctrl+End) and recalls on its first row the prompt that has left the screen.
-- The bar under the prompt shows `context N%`, the last model call against `Orkeon:Cli:Session:ContextWindowTokens`; it is absent without that setting. `?` on an empty prompt lists the keys.
-- **Palettes**: the setting `Orkeon:Cli:Tui:Theme` (`Dark`, `Light`, `None`), `NO_COLOR` when it is left out, and `ctx.setTheme` / `ctx.theme` to change it for the session.
+- The bar under the prompt shows `context N%`, the last model call against `Orkeon:Cli:Session:ContextWindowTokens`; it is absent without that setting. `?` on an empty prompt lists the keys, except while a script's `ctx.prompt` reads.
+- **Palettes**: the setting `Orkeon:Cli:Tui:Theme` (`Dark`, `Light`, `None`), `NO_COLOR` when it is left out, and `ctx.setTheme` / `ctx.theme` to change it for the session. A value that names no palette is refused at the start.
 
 ### Added — markdown in the transcript
 
@@ -32,9 +32,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added — a selection panel for `ctx.prompt` and tool approvals
 
-- In the split-pane console, `ctx.prompt` opens a panel for `select` and `confirm` in place of the prompt rows: a numbered list that moves with the arrows or a digit, the value in force marked, a value adjusted with the side arrows, Enter to answer, Esc to leave. The draft and the history wait behind it. A choice may be an object (`value`, `label`, `description`, `hint`, `current`); `title`, `description`, `keys`, `control`, `cancellable` and `detailed` describe the panel. `ctx.interactive` says whether it opens: the plain console and a replay keep the numbered lines and read the same answers.
+- In the split-pane console, `ctx.prompt` opens a panel for `select` and `confirm` in place of the prompt rows: a numbered list that moves with the arrows or a digit, the value in force marked, a value adjusted with the side arrows, Enter to answer, Esc to leave. A `confirm` opens on No unless its default is true, and its key line says what Esc answers. The draft and the history wait behind it. A choice may be an object (`value`, `label`, `description`, `hint`, `current`); `title`, `description`, `keys`, `control`, `cancellable` and `detailed` describe the panel. `ctx.interactive` says whether it opens: the plain console and a replay keep the numbered lines and read the same answers.
 - A `select` left with Esc answers `null`, so `PromptResult` now includes `null` **[breaking for a script that type-checks it]**.
-- A tool approval opens the same panel: its options deliver the `y`, `s` or `n` line the channel reads, Esc denies, `/` hands it to the prompt, and it passes before a panel already open. The status line stops repeating a question its panel asks.
+- A tool approval opens the same panel, on No: its options answer that question by its id (`y`, `s` or `n`) and never reach a read as a line, Esc denies, `/` or a letter no option carries hands it to the prompt with the letters typed so far, and it passes before a panel already open. The status line stops repeating a question its panel asks.
 
 ### Fixed — the status line shows the whole name of a tool
 

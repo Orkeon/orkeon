@@ -429,8 +429,11 @@ static class Program
         services.AddScriptHostCrewMounts(scriptedOpts.CrewDirs);
         services.AddSingleton<ScriptedCommandsRunner>();
 
-        // Orkeon:Cli:Tui, read raw below: its keys are judged at the start (GAP-40).
-        services.DeclareSettingsShape(TuiSection, typeof(TuiSettingsShape));
+        // Orkeon:Cli:Tui, read raw below: its keys and its palette are judged at the start (GAP-40).
+        services.AddSingleton(new Orkeon.Application.Configuration.SettingsDeclaration(
+            TuiSection,
+            typeof(TuiSettingsShape),
+            provider => Orkeon.ConsoleApp.Services.TuiThemeSetting.Judge(provider, $"{TuiSection}:Theme")));
         if (effectiveUi == UiMode.Tui)
         {
             services.AddOrkeonCliTerminalGui(new TerminalGuiOptions
@@ -442,9 +445,7 @@ static class Program
                 // Banner content comes from the configuration this host actually loaded —
                 // the TUI layer cannot (and must not) probe the LLM section itself.
                 Banner = Orkeon.ConsoleApp.Services.TuiFidelityWiring.BuildBannerInfo(context.Configuration),
-                Theme = Enum.TryParse<Orkeon.Cli.Abstractions.Console.ConsoleTheme>(context.Configuration[$"{TuiSection}:Theme"], ignoreCase: true, out var theme)
-                    ? theme
-                    : null,
+                Theme = Orkeon.ConsoleApp.Services.TuiThemeSetting.Parse(context.Configuration[$"{TuiSection}:Theme"]),
                 // Boot-time spinner verbs (appsettings). The live /config layer, read via
                 // TuiIntegration.SpinnerVerbs, wins over this when set.
                 SpinnerVerbs = context.Configuration.GetSection($"{TuiSection}:SpinnerVerbs")

@@ -94,7 +94,7 @@ public sealed class CommandRuntimeContext
     }
 
     /// <summary>The palette of the console, <c>"dark"</c>, <c>"light"</c> or <c>"none"</c>; null on a console without palettes.</summary>
-    public string? theme => _console is IThemeConsole themed ? ThemeName(themed.Theme) : null;
+    public string? theme => _console is IThemeConsole { HasPalette: true } themed ? ThemeName(themed.Theme) : null;
 
     /// <summary>
     /// Paints the console in the palette named <c>"dark"</c>, <c>"light"</c> or <c>"none"</c>, what is on screen
@@ -109,7 +109,7 @@ public sealed class CommandRuntimeContext
             "none" => ConsoleTheme.None,
             _ => throw new ArgumentException("ctx.setTheme(name): name must be \"dark\", \"light\" or \"none\"."),
         };
-        if (_console is not IThemeConsole themed) return false;
+        if (_console is not IThemeConsole { HasPalette: true } themed) return false;
         themed.SetTheme(palette);
         return true;
     }

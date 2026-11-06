@@ -255,6 +255,13 @@ internal sealed class ReplayConsoleAdapter : IConsoleAdapter, IThreadedConsole, 
             : throw new InvalidOperationException("The console wrapped has no panels: read CanChoose first.");
 
     /// <inheritdoc />
+    public bool HasPalette => _inner is IThemeConsole { HasPalette: true };
+
+    /// <inheritdoc />
+    public Task<string?> ReadAnswerAsync(CancellationToken cancellationToken)
+        => CanChoose && _inner is IChoiceConsole panels ? panels.ReadAnswerAsync(cancellationToken) : ReadLineAsync(cancellationToken);
+
+    /// <inheritdoc />
     public ConsoleTheme Theme => _inner is IThemeConsole themed ? themed.Theme : ConsoleTheme.None;
 
     /// <inheritdoc />
@@ -269,7 +276,7 @@ internal sealed class ReplayConsoleAdapter : IConsoleAdapter, IThreadedConsole, 
         if (_inner is IBlockConsole blocks)
             blocks.WriteBlock(kind, text);
         else
-            _inner.WriteLine(text);
+            _inner.WriteLine(text.EndsWith('\n') ? text[..^1] : text);
     }
 
     /// <inheritdoc />

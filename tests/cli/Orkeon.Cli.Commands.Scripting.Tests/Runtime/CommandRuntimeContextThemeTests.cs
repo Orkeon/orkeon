@@ -88,4 +88,19 @@ public sealed class CommandRuntimeContextThemeTests
         // Assert
         Assert.Null(name);
     }
+
+    [Fact]
+    public void A_decorator_over_a_console_without_palettes_reads_as_having_none()
+    {
+        // Arrange
+        using var engine = NewEngine();
+        var console = new ScriptedThemeConsole { HasPalette = false };
+        var ctx = Context(engine, console);
+
+        // Act
+        var changed = ctx.setTheme("light");
+
+        // Assert
+        Assert.Equal((false, null, ConsoleTheme.Dark), (changed, ctx.theme, console.Theme));
+    }
 }

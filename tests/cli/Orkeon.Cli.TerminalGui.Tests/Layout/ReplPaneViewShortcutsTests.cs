@@ -98,4 +98,55 @@ public sealed class ReplPaneViewShortcutsTests
         // Assert
         Assert.False(key.Handled);
     }
+
+    [Fact]
+    public async Task A_question_mark_belongs_to_the_answer_while_a_script_reads()
+    {
+        // Arrange
+        using var pane = CreatePane();
+        var read = pane.ReadAnswerAsync(CancellationToken.None);
+        var key = new Key('?');
+
+        // Act
+        pane.RaiseKeyDown(key);
+
+        // Assert
+        Assert.False(key.Handled);
+        pane.CancelPendingRead();
+        Assert.Null(await read);
+    }
+
+    [Fact]
+    public async Task A_question_mark_shows_the_shortcuts_while_the_loop_reads()
+    {
+        // Arrange
+        using var pane = CreatePane();
+        var read = pane.ReadLineAsync(CancellationToken.None);
+        var key = new Key('?');
+
+        // Act
+        pane.RaiseKeyDown(key);
+
+        // Assert
+        Assert.True(key.Handled);
+        pane.CancelPendingRead();
+        Assert.Null(await read);
+    }
+
+    [Fact]
+    public void A_question_mark_between_two_Esc_keeps_them_from_interrupting()
+    {
+        // Arrange
+        using var pane = CreatePane();
+        var interrupts = 0;
+        pane.InterruptRequested += (_, _) => interrupts++;
+        pane.RaiseKeyDown(Key.Esc);
+        pane.RaiseKeyDown(new Key('?'));
+
+        // Act
+        pane.RaiseKeyDown(Key.Esc);
+
+        // Assert
+        Assert.Equal(0, interrupts);
+    }
 }

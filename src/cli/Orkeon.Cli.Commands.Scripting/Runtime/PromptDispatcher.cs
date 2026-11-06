@@ -150,7 +150,9 @@ public static class PromptDispatcher
         var request = new ConsoleChoiceRequest
         {
             Question = message,
-            DefaultValue = defaultValue == false ? "no" : "yes",
+            // No unless the script says Yes: Enter answers what a plain console answers for an empty line.
+            DefaultValue = defaultValue == true ? "yes" : "no",
+            Keys = $"Enter to confirm, Esc answers {(defaultValue == true ? "Yes" : "No")}",
             Choices =
             [
                 new ConsoleChoice("yes", "Yes") { Shortcut = "y" },
@@ -231,7 +233,12 @@ public static class PromptDispatcher
     private static async Task<string?> ReadLineAsync(IConsoleAdapter console, CancellationToken ct)
     {
         // A console with panels has a read that cancels: nothing stays open behind a cancelled prompt.
-        if (PanelsOf(console) is not null) return await console.ReadLineAsync(ct).ConfigureAwait(false);
+        if (PanelsOf(console) is { } panels)
+        {
+            var line = await panels.ReadAnswerAsync(ct).ConfigureAwait(false);
+            ct.ThrowIfCancellationRequested();
+            return line;
+        }
 
         // Task.Run frees the calling thread; the underlying adapter's ReadLine remains
         // blocked until either the user submits or the adapter closes its input.
@@ -297,6 +304,7 @@ public static class PromptDispatcher
         var list = new List<string>((int)array.Length);
         for (uint i = 0; i < array.Length; i++)
             list.Add(array.Get(i).ToString());
-        return new ConsoleChoiceControl(GetString(obj, "label") ?? string.Empty, list, GetString(obj, "value") ?? list[0]);
+        var value = GetString(obj, "value");
+        return new ConsoleChoiceControl(GetString(obj, "label") ?? string.Empty, list, value is not null && list.Contains(value) ? value : list[0]);
     }
 }

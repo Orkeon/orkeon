@@ -221,7 +221,8 @@ const pwd    = await ctx.prompt({ type: "password", message: "Password:" });
 Sur une console à panneaux, `ctx.interactive` vaut true, et `select` et `confirm` ouvrent un panneau de
 sélection à la place des lignes de saisie : les flèches ou un chiffre déplacent la sélection, Entrée répond,
 et le brouillon, l'historique et la liste des tâches attendent derrière. Esc répond `null` à un `select` et
-la valeur par défaut à un `confirm`. Ailleurs (la console simple, un rejeu, une lecture pendant qu'un crew
+la valeur par défaut à un `confirm`, qui s'ouvre sur Non sauf si sa valeur par défaut est true : Entrée répond
+alors ce que répond une ligne vide sur la console simple. Ailleurs (la console simple, un rejeu, une lecture pendant qu'un crew
 tient la console), ils restent des lignes numérotées, et un script lit donc la même réponse partout. Une
 commande qui prend sa valeur en argument vérifie `ctx.interactive` avant d'ouvrir un panneau sans argument.
 
@@ -671,8 +672,10 @@ est soumis à l'opérateur, dont la ligne suivante y répond. Venu d'un crew lan
 la boucle de lecture lui remet cette ligne (`IReplLineInterceptor`) avant de résoudre une commande ;
 venu d'un crew lancé par `runCrew`, qui tient la boucle, l'appel en attente lit lui-même la réponse,
 et le temps mis à répondre ne compte pas dans `RunCrewTimeout`. Dans la console à volets, la question
-ouvre un panneau : ses options livrent cette même ligne (`y`, `s` ou `n`), Esc refuse, et `/` rend la
-question à la saisie pour qu'une commande passe d'abord, la ligne de statut la posant alors. Une commande
+ouvre un panneau sur Non : ses options répondent à cette question par son identifiant (`y`, `s` ou `n`) et
+n'arrivent jamais à une lecture comme une ligne, Esc refuse, et `/`, ou une lettre qu'aucune option ne porte,
+rend la question à la saisie avec les lettres déjà tapées, pour qu'une commande passe d'abord, la ligne de
+statut la posant alors. Une commande
 passe le mode de la session à `act` dans `permissionMode` ; elle ne gère pas la question elle-même. Voir
 [la référence du CLI](../reference/cli.md#orkeon-repl--la-console-interactive-séparée).
 
@@ -788,9 +791,9 @@ for (const c of usage.byCommand) ctx.writeLine(`[${c.ticket}] ${c.name}: ${c.pro
 
 **Loin de la fin.** Un transcript remonté dessine `↓ more below (click or ctrl+end)` sur sa dernière ligne et, une fois sorti de l'écran le prompt auquel répondent les lignes, ce prompt sur sa première ligne. Les deux sont dessinés par-dessus les lignes, sans faire partie du texte : ni la sélection ni la copie ne les voient, et remonter d'une ligne de plus montre celle qu'ils couvrent.
 
-**La barre.** `context N%` est ce qu'a envoyé le dernier appel au modèle du tour du prompt, rapporté à `Orkeon:Cli:Session:ContextWindowTokens` ; sans ce réglage, ou avant un appel, l'entrée est absente. Elle reste discrète jusqu'à 79 %, en alerte dès 80 %, en erreur dès 95 %. Sur un prompt vide, `?` liste les touches.
+**La barre.** `context N%` est ce qu'a envoyé le dernier appel au modèle du tour du prompt, rapporté à `Orkeon:Cli:Session:ContextWindowTokens` ; sans ce réglage, ou avant un appel, l'entrée est absente. Elle reste discrète jusqu'à 79 %, en alerte dès 80 %, en erreur dès 95 %. Sur un prompt vide, `?` liste les touches ; pendant qu'un `ctx.prompt` de script lit, c'est un caractère comme un autre.
 
-**Palettes.** `Orkeon:Cli:Tui:Theme` nomme la palette au démarrage : `Dark`, `Light` ou `None`, les couleurs du terminal, gras et italique conservés. Omis, `None` si `NO_COLOR` est défini, sinon `Dark` : un réglage l'emporte sur la variable, comme le demande no-color.org. La palette n'est pas détectée depuis le terminal. `ctx.setTheme("light")` la change pour la session, écran compris, et répond false sur une console sans palettes ; `ctx.theme` la nomme.
+**Palettes.** `Orkeon:Cli:Tui:Theme` nomme la palette au démarrage : `Dark`, `Light` ou `None`, les couleurs du terminal, gras et italique conservés. Omis, `None` si `NO_COLOR` est défini, sinon `Dark` : un réglage l'emporte sur la variable, comme le demande no-color.org. Toute autre valeur, un nombre compris, est refusée au démarrage. La palette n'est pas détectée depuis le terminal. `ctx.setTheme("light")` la change pour la session, écran compris, et répond false sur une console sans palettes ; `ctx.theme` la nomme.
 
 ## Matrice de support TypeScript (esbuild → Jint)
 

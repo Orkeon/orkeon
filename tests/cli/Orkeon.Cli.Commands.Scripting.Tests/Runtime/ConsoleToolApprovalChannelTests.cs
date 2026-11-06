@@ -3,6 +3,7 @@ using Orkeon.Application.Interfaces.Security;
 using Orkeon.Cli.Commands.Scripting.Runtime;
 using Orkeon.Cli.Commands.Scripting.Tests.Doubles;
 using Orkeon.Cli.Commands.Scripting.Tests.Fixtures;
+using Orkeon.Tests.Shared.Timing;
 
 namespace Orkeon.Cli.Commands.Scripting.Tests.Runtime;
 
@@ -481,5 +482,112 @@ public sealed class ConsoleToolApprovalChannelTests : IDisposable
         Assert.Equal(
             ("t1", "  approval for shell_command withdrawn: its run was cancelled"),
             Assert.Single(console.Lines));
+    }
+
+    [Fact]
+    public async Task An_answer_by_id_settles_the_question_shown()
+    {
+        // Arrange
+        var decision = _channel.RequestAsync(Request(), Ct);
+        var id = _channel.Pending[0].Id;
+
+        // Act
+        var answered = _channel.TryAnswer(id, "y");
+
+        // Assert
+        Assert.True(answered);
+        Assert.Equal(ToolApprovalDecision.AllowOnce, await decision);
+    }
+
+    [Fact]
+    public async Task An_answer_for_the_session_by_id_settles_the_questions_about_that_tool()
+    {
+        // Arrange
+        var first = _channel.RequestAsync(Request(), Ct);
+        var second = _channel.RequestAsync(Request(), Ct);
+
+        // Act
+        _channel.TryAnswer(_channel.Pending[0].Id, "s");
+
+        // Assert
+        Assert.Equal(ToolApprovalDecision.AllowForSession, await second.WaitAsync(HangGuards.EnginePromise, Ct));
+        Assert.Equal(ToolApprovalDecision.AllowForSession, await first.WaitAsync(HangGuards.EnginePromise, Ct));
+    }
+
+    [Fact]
+    public void An_answer_for_another_id_settles_nothing()
+    {
+        // Arrange
+        _ = _channel.RequestAsync(Request(), Ct);
+        var id = _channel.Pending[0].Id;
+
+        // Act
+        var answered = _channel.TryAnswer(id + 1, "y");
+
+        // Assert
+        Assert.Equal((false, 1), (answered, _channel.Pending.Count));
+    }
+
+    [Fact]
+    public void An_answer_for_a_question_that_waits_behind_the_first_settles_nothing()
+    {
+        // Arrange
+        _ = _channel.RequestAsync(Request(), Ct);
+        _ = _channel.RequestAsync(Request("other_tool"), Ct);
+        var behind = _channel.Pending[1].Id;
+
+        // Act
+        var answered = _channel.TryAnswer(behind, "y");
+
+        // Assert
+        Assert.Equal((false, 2), (answered, _channel.Pending.Count));
+    }
+
+    [Fact]
+    public void An_answer_that_is_none_of_the_three_settles_nothing()
+    {
+        // Arrange
+        _ = _channel.RequestAsync(Request(), Ct);
+        var id = _channel.Pending[0].Id;
+
+        // Act
+        var answered = _channel.TryAnswer(id, "/help");
+
+        // Assert
+        Assert.Equal((false, 1), (answered, _channel.Pending.Count));
+    }
+
+    [Fact]
+    public async Task A_command_waiting_on_a_console_with_panels_stops_reading_once_the_panel_has_answered()
+    {
+        // Arrange
+        var console = new FakeChoiceConsole { HoldReads = true, Line = "n" };
+        using var channel = new ConsoleToolApprovalChannel(() => console);
+        var decision = channel.RequestAsync(Request(), Ct);
+        var id = channel.Pending[0].Id;
+        var answering = Task.Run(channel.AnswerFromConsole, Ct);
+        await console.ReadStarted.Task.WaitAsync(HangGuards.EnginePromise, Ct);
+
+        // Act
+        channel.TryAnswer(id, "y");
+
+        // Assert
+        await answering.WaitAsync(HangGuards.EnginePromise, Ct);
+        Assert.Equal(ToolApprovalDecision.AllowOnce, await decision);
+    }
+
+    [Fact]
+    public async Task A_command_waiting_on_a_console_with_panels_takes_a_line_typed_at_the_prompt()
+    {
+        // Arrange
+        var console = new FakeChoiceConsole { Line = "y" };
+        using var channel = new ConsoleToolApprovalChannel(() => console);
+        var decision = channel.RequestAsync(Request(), Ct);
+
+        // Act
+        channel.AnswerFromConsole();
+
+        // Assert
+        Assert.Equal(ToolApprovalDecision.AllowOnce, await decision);
     }
 }

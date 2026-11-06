@@ -16,6 +16,9 @@ public enum ConsoleTheme
 /// <summary>A console whose palette can change while it runs. A console without this capability has no palette.</summary>
 public interface IThemeConsole
 {
+    /// <summary>False for a decorator over a console without palettes: it reads as a console without this capability.</summary>
+    bool HasPalette { get; }
+
     /// <summary>The palette in force.</summary>
     ConsoleTheme Theme { get; }
 

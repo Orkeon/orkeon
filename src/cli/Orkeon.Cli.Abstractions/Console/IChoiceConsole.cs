@@ -80,4 +80,10 @@ public interface IChoiceConsole
     /// without one. Cancelling <paramref name="cancellationToken"/> closes the panel.
     /// </summary>
     Task<ConsoleChoiceAnswer?> ChooseAsync(ConsoleChoiceRequest request, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Reads the line a script's own question waits for: every character typed is its answer, none is a shortcut of
+    /// the prompt. Completes with null when <paramref name="cancellationToken"/> cancels.
+    /// </summary>
+    Task<string?> ReadAnswerAsync(CancellationToken cancellationToken);
 }

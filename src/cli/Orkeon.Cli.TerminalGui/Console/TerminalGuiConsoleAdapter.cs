@@ -35,7 +35,10 @@ public sealed class TerminalGuiConsoleAdapter : IConsoleAdapter, IThreadedConsol
     }
 
     /// <inheritdoc />
-    public ConsoleTheme Theme => SchemeFactory.Theme;
+    public bool HasPalette => true;
+
+    /// <inheritdoc />
+    public ConsoleTheme Theme => _repl.Theme;
 
     /// <inheritdoc />
     public void SetTheme(ConsoleTheme theme) => _repl.ApplyTheme(theme);
@@ -72,6 +75,19 @@ public sealed class TerminalGuiConsoleAdapter : IConsoleAdapter, IThreadedConsol
     /// <inheritdoc />
     public Task<ConsoleChoiceAnswer?> ChooseAsync(ConsoleChoiceRequest request, CancellationToken cancellationToken)
         => _repl.ChooseAsync(request, cancellationToken);
+
+    /// <inheritdoc />
+    public async Task<string?> ReadAnswerAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            return await _repl.ReadAnswerAsync(cancellationToken).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+            return null;
+        }
+    }
 
     public bool SeparatesThreads => true;
 

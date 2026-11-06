@@ -2,6 +2,8 @@ using Orkeon.Cli.Abstractions.Console;
 using Orkeon.Cli.Abstractions.Runners;
 using Orkeon.Cli.TerminalGui.Hosting;
 using Orkeon.Cli.TerminalGui.Layout;
+using Orkeon.Cli.TerminalGui.Tests.Doubles;
+using Orkeon.Tests.Shared.Timing;
 using Terminal.Gui.Drivers;
 using Terminal.Gui.Input;
 using Xunit;
@@ -26,6 +28,23 @@ public sealed class ReplPaneViewPanelTests
         var pending = new List<PendingToolApproval>();
         pane.BindIntegration(new TuiIntegration { PendingApprovals = () => pending });
         return (pane, pending);
+    }
+
+    private static (ReplPaneView Pane, List<PendingToolApproval> Pending, List<(long Id, string Answer)> Answers) PaneRecordingAnswers()
+    {
+        var pane = CreatePane();
+        var pending = new List<PendingToolApproval>();
+        var answers = new List<(long Id, string Answer)>();
+        pane.BindIntegration(new TuiIntegration
+        {
+            PendingApprovals = () => pending,
+            AnswerApproval = (id, answer) =>
+            {
+                answers.Add((id, answer));
+                return true;
+            },
+        });
+        return (pane, pending, answers);
     }
 
     [Fact]
@@ -174,7 +193,7 @@ public sealed class ReplPaneViewPanelTests
         pane.RaiseApprovalsChanged();
 
         // Assert
-        Assert.Equal("y", pane.OpenPanelModel!.Answer.Value);
+        Assert.Equal("n", pane.OpenPanelModel!.Answer.Value);
     }
 
     [Fact]
@@ -191,7 +210,7 @@ public sealed class ReplPaneViewPanelTests
         pane.RaiseApprovalsChanged();
 
         // Assert
-        Assert.Equal("y", pane.OpenPanelModel!.Answer.Value);
+        Assert.Equal("n", pane.OpenPanelModel!.Answer.Value);
     }
 
     [Fact]
@@ -213,13 +232,12 @@ public sealed class ReplPaneViewPanelTests
     }
 
     [Fact]
-    public async Task Answering_a_question_delivers_the_line_the_channel_reads()
+    public void Answering_a_question_settles_it_by_its_id()
     {
         // Arrange
-        var (pane, pending) = PaneWithApprovals();
+        var (pane, pending, answers) = PaneRecordingAnswers();
         using var owned = pane;
-        var read = pane.ReadLineAsync(CancellationToken.None);
-        pending.Add(Approval(1));
+        pending.Add(Approval(7));
         pane.RaiseApprovalsChanged();
         pane.RaiseKeyDown(new Key('s'));
 
@@ -227,24 +245,76 @@ public sealed class ReplPaneViewPanelTests
         pane.RaiseKeyDown(Key.Enter);
 
         // Assert
-        Assert.Equal("s", await read);
+        Assert.Equal([(7L, "s")], answers);
     }
 
     [Fact]
-    public async Task Esc_on_a_question_denies_it()
+    public void Esc_on_a_question_denies_it()
     {
         // Arrange
-        var (pane, pending) = PaneWithApprovals();
+        var (pane, pending, answers) = PaneRecordingAnswers();
         using var owned = pane;
-        var read = pane.ReadLineAsync(CancellationToken.None);
-        pending.Add(Approval(1));
+        pending.Add(Approval(7));
         pane.RaiseApprovalsChanged();
 
         // Act
         pane.RaiseKeyDown(Key.Esc);
 
         // Assert
-        Assert.Equal("n", await read);
+        Assert.Equal([(7L, "n")], answers);
+    }
+
+    [Fact]
+    public void Enter_straight_on_a_question_denies_it()
+    {
+        // Arrange
+        var (pane, pending, answers) = PaneRecordingAnswers();
+        using var owned = pane;
+        pending.Add(Approval(7));
+        pane.RaiseApprovalsChanged();
+
+        // Act
+        pane.RaiseKeyDown(Key.Enter);
+
+        // Assert
+        Assert.Equal([(7L, "n")], answers);
+    }
+
+    [Fact]
+    public async Task An_answer_on_a_panel_does_not_reach_a_read_open_on_the_prompt()
+    {
+        // Arrange
+        var (pane, pending, _) = PaneRecordingAnswers();
+        using var owned = pane;
+        var read = pane.ReadLineAsync(CancellationToken.None);
+        pending.Add(Approval(1));
+        pane.RaiseApprovalsChanged();
+        pane.RaiseKeyDown(Key.Enter);
+        pane.CurrentInput = "typed";
+
+        // Act
+        pane.RaiseKeyDown(Key.Enter);
+
+        // Assert
+        Assert.Equal("typed", await read);
+    }
+
+    [Fact]
+    public async Task An_answer_on_a_panel_is_not_kept_for_a_later_read()
+    {
+        // Arrange
+        var (pane, pending, _) = PaneRecordingAnswers();
+        using var owned = pane;
+        pending.Add(Approval(1));
+        pane.RaiseApprovalsChanged();
+        pane.RaiseKeyDown(Key.Enter);
+        var read = pane.ReadLineAsync(CancellationToken.None);
+
+        // Act
+        pane.CancelPendingRead();
+
+        // Assert
+        Assert.Null(await read);
     }
 
     [Fact]
@@ -375,5 +445,146 @@ public sealed class ReplPaneViewPanelTests
 
         // Assert
         Assert.Null(await answer);
+    }
+
+    [Fact]
+    public void A_letter_no_option_carries_hands_the_question_to_the_prompt()
+    {
+        // Arrange
+        var (pane, pending) = PaneWithApprovals();
+        using var owned = pane;
+        pending.Add(Approval(1));
+        pane.RaiseApprovalsChanged();
+
+        // Act
+        pane.RaiseKeyDown(new Key('l'));
+
+        // Assert
+        Assert.Equal((null, "l"), (pane.OpenPanelModel, pane.CurrentInput));
+    }
+
+    [Fact]
+    public void The_letters_typed_before_the_one_no_option_carries_follow_to_the_prompt()
+    {
+        // Arrange
+        var (pane, pending) = PaneWithApprovals();
+        using var owned = pane;
+        pending.Add(Approval(1));
+        pane.RaiseApprovalsChanged();
+        pane.RaiseKeyDown(new Key('s'));
+
+        // Act
+        pane.RaiseKeyDown(new Key('e'));
+
+        // Assert
+        Assert.Equal((null, "se"), (pane.OpenPanelModel, pane.CurrentInput));
+    }
+
+    [Fact]
+    public void A_word_finished_on_a_panel_does_not_answer_with_its_first_letter()
+    {
+        // Arrange
+        var (pane, pending, answers) = PaneRecordingAnswers();
+        using var owned = pane;
+        pending.Add(Approval(1));
+        pane.RaiseApprovalsChanged();
+        pane.RaiseKeyDown(new Key('s'));
+        pane.RaiseKeyDown(new Key('e'));
+
+        // Act
+        pane.RaiseKeyDown(Key.Enter);
+
+        // Assert
+        Assert.Empty(answers);
+    }
+
+    [Fact]
+    public void A_digit_no_option_carries_hands_the_question_to_the_prompt()
+    {
+        // Arrange
+        var (pane, pending) = PaneWithApprovals();
+        using var owned = pane;
+        pending.Add(Approval(1));
+        pane.RaiseApprovalsChanged();
+
+        // Act
+        pane.RaiseKeyDown(new Key('7'));
+
+        // Assert
+        Assert.Equal((null, "7"), (pane.OpenPanelModel, pane.CurrentInput));
+    }
+
+    [Fact]
+    public void A_letter_no_option_carries_leaves_the_panel_of_a_script_open()
+    {
+        // Arrange
+        using var pane = CreatePane();
+        _ = pane.ChooseAsync(TwoChoices(), CancellationToken.None);
+
+        // Act
+        pane.RaiseKeyDown(new Key('z'));
+
+        // Assert
+        Assert.NotNull(pane.OpenPanelModel);
+    }
+
+    [Fact]
+    public async Task A_cancelled_request_ends_though_the_loop_no_longer_runs()
+    {
+        // Arrange
+        using var pane = new ReplPaneView(new TerminalGuiOptions(), new FakeUiDispatcher());
+        using var cts = new CancellationTokenSource();
+        var answer = pane.ChooseAsync(TwoChoices(), cts.Token);
+
+        // Act
+        await cts.CancelAsync();
+
+        // Assert
+        Assert.Null(await answer.WaitAsync(HangGuards.EnginePromise, TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
+    public async Task Stopping_the_reads_ends_the_requests_still_open()
+    {
+        // Arrange
+        using var pane = new ReplPaneView(new TerminalGuiOptions(), new FakeUiDispatcher());
+        var answer = pane.ChooseAsync(TwoChoices(), CancellationToken.None);
+
+        // Act
+        pane.CancelPendingRead();
+
+        // Assert
+        Assert.Null(await answer.WaitAsync(HangGuards.EnginePromise, TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
+    public async Task A_request_made_after_the_pane_is_disposed_ends_at_once()
+    {
+        // Arrange
+        var pane = CreatePane();
+        pane.Dispose();
+
+        // Act
+        var answer = pane.ChooseAsync(TwoChoices(), CancellationToken.None);
+
+        // Assert
+        Assert.Null(await answer.WaitAsync(HangGuards.EnginePromise, TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
+    public void An_Esc_before_a_panel_does_not_arm_its_interrupt()
+    {
+        // Arrange
+        using var pane = CreatePane();
+        var interrupts = 0;
+        pane.InterruptRequested += (_, _) => interrupts++;
+        pane.RaiseKeyDown(Key.Esc);
+        _ = pane.ChooseAsync(TwoChoices(cancellable: false), CancellationToken.None);
+
+        // Act
+        pane.RaiseKeyDown(Key.Esc);
+
+        // Assert
+        Assert.Equal(0, interrupts);
     }
 }

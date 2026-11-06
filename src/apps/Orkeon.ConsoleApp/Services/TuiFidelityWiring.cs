@@ -152,6 +152,7 @@ internal static class TuiFidelityWiring
         if (approvals is not null)
         {
             integration.PendingApprovals = () => approvals.Pending;
+            integration.AnswerApproval = approvals.TryAnswer;
             approvals.PendingChanged += (_, _) => integration.NotifyApprovalsChanged();
         }
 

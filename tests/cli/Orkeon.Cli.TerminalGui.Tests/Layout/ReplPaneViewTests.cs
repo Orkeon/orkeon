@@ -1707,4 +1707,50 @@ public class ReplPaneViewTests
         Assert.Equal("Message @worker...", ReplPaneView.RecipientPlaceholder("worker", "base", GlyphSet.Ascii));
         Assert.Equal("Message @worker…", ReplPaneView.RecipientPlaceholder("worker", "base", GlyphSet.Unicode));
     }
+
+    [Fact]
+    public void Entering_the_list_takes_the_keys_from_an_open_panel()
+    {
+        // Arrange
+        var (top, _) = CreateTopWithTasks();
+        using var owner = top;
+        _ = top.Repl.ChooseAsync(new ConsoleChoiceRequest { Choices = [new("a", "A")] }, CancellationToken.None);
+
+        // Act
+        top.Agents.EnterSelectionMode();
+
+        // Assert
+        Assert.Equal((false, true), (top.Repl.PanelHasFocus, top.Agents.HasFocus));
+    }
+
+    [Fact]
+    public void Leaving_the_list_gives_the_keys_back_to_an_open_panel()
+    {
+        // Arrange
+        var (top, _) = CreateTopWithTasks();
+        using var owner = top;
+        _ = top.Repl.ChooseAsync(new ConsoleChoiceRequest { Choices = [new("a", "A")] }, CancellationToken.None);
+        top.Agents.EnterSelectionMode();
+        top.Agents.ExitSelectionMode();
+
+        // Act
+        top.Repl.Input?.SetFocus(); // What GlobalKeyBindings does on SelectionExited.
+
+        // Assert
+        Assert.True(top.Repl.PanelHasFocus);
+    }
+
+    [Fact]
+    public void The_palette_asked_reads_back_before_the_loop_paints_it()
+    {
+        // Arrange
+        using var pane = new ReplPaneView(new TerminalGuiOptions(), new FakeUiDispatcher());
+        var console = new Orkeon.Cli.TerminalGui.Console.TerminalGuiConsoleAdapter(pane);
+
+        // Act
+        console.SetTheme(ConsoleTheme.Light);
+
+        // Assert
+        Assert.Equal(ConsoleTheme.Light, console.Theme);
+    }
 }

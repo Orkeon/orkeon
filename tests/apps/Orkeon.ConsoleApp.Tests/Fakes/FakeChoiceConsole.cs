@@ -11,6 +11,15 @@ internal sealed class FakeChoiceConsole : IConsoleAdapter, IChoiceConsole
 
     public ConsoleChoiceRequest? Request { get; private set; }
 
+    /// <summary>The reads made for a script's own question.</summary>
+    public int AnswerReads { get; private set; }
+
+    public Task<string?> ReadAnswerAsync(CancellationToken cancellationToken)
+    {
+        AnswerReads++;
+        return Task.FromResult<string?>(null);
+    }
+
     public Task<ConsoleChoiceAnswer?> ChooseAsync(ConsoleChoiceRequest request, CancellationToken cancellationToken)
     {
         Request = request;

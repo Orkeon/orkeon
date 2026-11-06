@@ -254,4 +254,76 @@ public sealed class PromptDispatcherPanelTests : IDisposable
         // Assert
         Assert.IsType<ArgumentException>(error);
     }
+
+    [Fact]
+    public async Task A_confirm_without_a_default_opens_on_No()
+    {
+        // Arrange
+        var console = new FakeChoiceConsole();
+
+        // Act
+        await Run(console, "{type:'confirm',message:'Sure?'}");
+
+        // Assert
+        Assert.Equal("no", console.Request!.DefaultValue);
+    }
+
+    [Theory]
+    [InlineData("{type:'confirm',message:'Sure?',default:true}", "Esc answers Yes")]
+    [InlineData("{type:'confirm',message:'Sure?',default:false}", "Esc answers No")]
+    [InlineData("{type:'confirm',message:'Sure?'}", "Esc answers No")]
+    public async Task A_confirm_says_what_Esc_answers(string spec, string expected)
+    {
+        // Arrange
+        var console = new FakeChoiceConsole();
+
+        // Act
+        await Run(console, spec);
+
+        // Assert
+        Assert.Contains(expected, console.Request!.Keys, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("{type:'text',message:'m'}")]
+    [InlineData("{type:'password',message:'m'}")]
+    public async Task A_text_prompt_cancelled_is_seen_as_a_cancellation(string spec)
+    {
+        // Arrange
+        var console = new FakeChoiceConsole();
+        using var cts = new CancellationTokenSource();
+        await cts.CancelAsync();
+
+        // Act
+        var thrown = await Record.ExceptionAsync(() => PromptDispatcher.RunAsync(_engine, console, Spec(spec), cts.Token));
+
+        // Assert
+        Assert.IsType<OperationCanceledException>(thrown, exactMatch: false);
+    }
+
+    [Fact]
+    public async Task A_text_prompt_reads_an_answer_rather_than_a_line_of_the_loop()
+    {
+        // Arrange
+        var console = new FakeChoiceConsole { Line = "hello" };
+
+        // Act
+        await Run(console, "{type:'text',message:'m'}");
+
+        // Assert
+        Assert.Equal(1, console.AnswerReads);
+    }
+
+    [Fact]
+    public async Task A_control_value_outside_its_values_answers_the_first_one_on_numbered_lines()
+    {
+        // Arrange
+        var console = new FakeChoiceConsole { CanChoose = false, Line = "a" };
+
+        // Act
+        var result = await Run(console, "{type:'select',message:'m',detailed:true,choices:['a'],control:{values:['x','y'],value:'z'}}");
+
+        // Assert
+        Assert.Equal("x", result.AsObject().Get("control").AsString());
+    }
 }

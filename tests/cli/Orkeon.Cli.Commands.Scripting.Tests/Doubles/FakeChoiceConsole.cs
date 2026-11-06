@@ -22,6 +22,15 @@ internal sealed class FakeChoiceConsole : IConsoleAdapter, IChoiceConsole
     /// <summary>The reads that went through the cancellable <see cref="ReadLineAsync"/>.</summary>
     public int CancellableReads { get; private set; }
 
+    /// <summary>The reads made for a script's own question.</summary>
+    public int AnswerReads { get; private set; }
+
+    /// <summary>When true, a cancellable read stays open until its token cancels, then answers null.</summary>
+    public bool HoldReads { get; set; }
+
+    /// <summary>Completes at the first read of either kind.</summary>
+    public TaskCompletionSource ReadStarted { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
     public Task<ConsoleChoiceAnswer?> ChooseAsync(ConsoleChoiceRequest request, CancellationToken cancellationToken)
     {
         Request = request;
@@ -31,7 +40,17 @@ internal sealed class FakeChoiceConsole : IConsoleAdapter, IChoiceConsole
     public Task<string?> ReadLineAsync(CancellationToken cancellationToken = default)
     {
         CancellableReads++;
-        return Task.FromResult(Line);
+        ReadStarted.TrySetResult();
+        if (!HoldReads) return Task.FromResult(Line);
+        var held = new TaskCompletionSource<string?>(TaskCreationOptions.RunContinuationsAsynchronously);
+        cancellationToken.Register(() => held.TrySetResult(null));
+        return held.Task;
+    }
+
+    public Task<string?> ReadAnswerAsync(CancellationToken cancellationToken)
+    {
+        AnswerReads++;
+        return ReadLineAsync(cancellationToken);
     }
 
     public void Write(string text)
@@ -45,6 +64,7 @@ internal sealed class FakeChoiceConsole : IConsoleAdapter, IChoiceConsole
     public string? ReadLine()
     {
         BlockingReads++;
+        ReadStarted.TrySetResult();
         return Line;
     }
 

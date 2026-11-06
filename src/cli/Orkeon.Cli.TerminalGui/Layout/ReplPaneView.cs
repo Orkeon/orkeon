@@ -118,6 +118,10 @@ public sealed class ReplPaneView : View, ITaskListNavigator, IToolActivityObserv
     private SlashMenuModel? _menu;
     private int _menuRows;
     private bool _menuDismissed;
+    private ConsoleTheme? _themeAsked;
+    private Task<string?>? _scriptRead;
+    private readonly List<TaskCompletionSource<ConsoleChoiceAnswer?>> _openAnswers = [];
+    private bool _stopped;
     private readonly List<OpenPanel> _promptPanels = [];
     private OpenPanel? _approvalPanel;
     private long? _approvalSettledId;
@@ -226,6 +230,7 @@ public sealed class ReplPaneView : View, ITaskListNavigator, IToolActivityObserv
             SyncPlaceholder();
             if (_applyingNavigation)
             {
+                if (SlashMenuModel.QueryOf(CurrentInput) is null) _menuDismissed = false;
                 CloseSlashMenu();
                 return;
             }
@@ -309,14 +314,22 @@ public sealed class ReplPaneView : View, ITaskListNavigator, IToolActivityObserv
         _transcriptWrites.Post(new TranscriptWrite(ConsoleThread.Current, text) { Stream = true });
     }
 
+    /// <summary>The palette in force.</summary>
+    /// <summary>The palette in force, or the one just asked for while the UI thread has yet to paint it.</summary>
+    internal ConsoleTheme Theme => _themeAsked ?? SchemeFactory.Theme;
+
     /// <summary>Paints the layout in <paramref name="theme"/> from now on.</summary>
-    internal void ApplyTheme(ConsoleTheme theme) => _dispatcher.Invoke(() =>
+    internal void ApplyTheme(ConsoleTheme theme)
     {
-        SchemeFactory.Theme = theme;
-        ApplyLabelSchemes();
-        _statusLine.ApplyTheme();
-        (SuperView ?? this).SetNeedsDraw();
-    });
+        _themeAsked = theme;
+        _dispatcher.Invoke(() =>
+        {
+            SchemeFactory.Theme = theme;
+            ApplyLabelSchemes();
+            _statusLine.ApplyTheme();
+            (SuperView ?? this).SetNeedsDraw();
+        });
+    }
 
     private void ApplyLabelSchemes()
     {
@@ -691,9 +704,26 @@ public sealed class ReplPaneView : View, ITaskListNavigator, IToolActivityObserv
     /// Called by <see cref="Orkeon.Cli.TerminalGui.Hosting.TerminalGuiHost"/> when the
     /// UI loop is stopping (Ctrl+Q, parent cancellation), so the runner's blocked
     /// <c>Console.ReadLine()</c> returns <c>null</c> and its REPL loop can exit cleanly
-    /// instead of hanging forever waiting for input that will never come.
+    /// instead of hanging forever waiting for input that will never come. The loop no longer runs what is posted to
+    /// it, so a panel still open ends here too, and a later one with null at once.
     /// </summary>
-    public void CancelPendingRead() => CompletePendingRead(null, null);
+    public void CancelPendingRead()
+    {
+        CompletePendingRead(null, null);
+        EndOpenAnswers();
+    }
+
+    private void EndOpenAnswers()
+    {
+        TaskCompletionSource<ConsoleChoiceAnswer?>[] open;
+        lock (_gate)
+        {
+            _stopped = true;
+            open = [.. _openAnswers];
+            _openAnswers.Clear();
+        }
+        foreach (var answer in open) answer.TrySetResult(null);
+    }
 
     /// <summary>
     /// Returns when the user submits a line (Enter), or null on cancellation.
@@ -721,6 +751,22 @@ public sealed class ReplPaneView : View, ITaskListNavigator, IToolActivityObserv
         return tcs.Task;
     }
 
+    /// <summary>A read for a script's own question (<c>ctx.prompt</c>): what the operator types there is its answer.</summary>
+    public Task<string?> ReadAnswerAsync(CancellationToken ct)
+    {
+        var read = ReadLineAsync(ct);
+        lock (_gate) _scriptRead = read;
+        return read;
+    }
+
+    private bool ScriptReads
+    {
+        get
+        {
+            lock (_gate) return _pendingRead is { } pending && ReferenceEquals(pending.Task, _scriptRead);
+        }
+    }
+
     /// <summary>
     /// Asks <paramref name="request"/> with a panel in place of the prompt rows. Completes with the answer, or with
     /// null when Esc left it or <paramref name="ct"/> closed it. The draft, the history and the tasks list wait
@@ -730,11 +776,21 @@ public sealed class ReplPaneView : View, ITaskListNavigator, IToolActivityObserv
     {
         var model = new InlinePanelModel(request, _glyphs);
         var answer = new TaskCompletionSource<ConsoleChoiceAnswer?>(TaskCreationOptions.RunContinuationsAsynchronously);
+        lock (_gate)
+        {
+            if (_stopped) return null;
+            _openAnswers.Add(answer);
+        }
         var panel = new OpenPanel(model, a => answer.TrySetResult(a));
-        using var registration = ct.Register(() => _dispatcher.Invoke(() => ClosePanel(panel, null)));
+        using var registration = ct.Register(() =>
+        {
+            // First: the loop may have stopped, and what is posted to it then never runs.
+            answer.TrySetResult(null);
+            _dispatcher.Invoke(() => ClosePanel(panel, null));
+        });
         _dispatcher.Invoke(() =>
         {
-            if (ct.IsCancellationRequested)
+            if (ct.IsCancellationRequested || answer.Task.IsCompleted)
             {
                 answer.TrySetResult(null);
                 return;
@@ -742,7 +798,14 @@ public sealed class ReplPaneView : View, ITaskListNavigator, IToolActivityObserv
             _promptPanels.Add(panel);
             SyncPanel();
         });
-        return await answer.Task.ConfigureAwait(false);
+        try
+        {
+            return await answer.Task.ConfigureAwait(false);
+        }
+        finally
+        {
+            lock (_gate) _openAnswers.Remove(answer);
+        }
     }
 
     private OpenPanel? ActivePanel => _approvalPanel ?? (_promptPanels.Count > 0 ? _promptPanels[^1] : null);
@@ -776,7 +839,7 @@ public sealed class ReplPaneView : View, ITaskListNavigator, IToolActivityObserv
             answer =>
             {
                 _approvalSettledId = first.Id;
-                DeliverOrBuffer(answer?.Value ?? "n");
+                _integration?.AnswerApproval?.Invoke(first.Id, answer?.Value ?? "n");
             },
             first.Id);
         SyncPanel();
@@ -814,6 +877,7 @@ public sealed class ReplPaneView : View, ITaskListNavigator, IToolActivityObserv
         _screens.Displayed.Height = Dim.Fill(rows + 1);
         if (opening)
         {
+            _escapeArmed = false;
             CloseSlashMenu();
             SyncStepArea();
             SetPromptVisible(false);
@@ -846,6 +910,7 @@ public sealed class ReplPaneView : View, ITaskListNavigator, IToolActivityObserv
             return true;
         }
         _escapeArmed = false;
+        if (PrintableText(key) is null) panel.Typed = string.Empty;
 
         switch (key.KeyCode)
         {
@@ -882,26 +947,34 @@ public sealed class ReplPaneView : View, ITaskListNavigator, IToolActivityObserv
         _escapeArmed = true;
     }
 
+    // Text moves the selection and never answers. On a question, text that selects nothing was meant for the prompt
+    // (a line being finished, a word): it goes there with the letters typed before it, and Enter then answers nothing.
     private void HandlePanelText(OpenPanel panel, string text)
     {
-        if (text == "/" && ReferenceEquals(panel, _approvalPanel))
+        if (!ReferenceEquals(panel, _approvalPanel))
         {
-            _approvalSettledId = panel.ApprovalId;
-            _approvalPanel = null;
-            SyncPanel();
-            if (_panelRows == 0) _input.InsertText(text);
+            SelectByText(panel, text);
             return;
         }
-        if (int.TryParse(text, System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out var number))
-        {
-            panel.Model.SelectNumber(number);
-            return;
-        }
-        panel.Model.SelectShortcut(text);
+        panel.Typed += text;
+        if (text != "/" && SelectByText(panel, text)) return;
+        _approvalSettledId = panel.ApprovalId;
+        _approvalPanel = null;
+        SyncPanel();
+        if (_panelRows == 0) _input.InsertText(panel.Typed);
     }
 
+    private static bool SelectByText(OpenPanel panel, string text)
+        => int.TryParse(text, System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out var number)
+            ? panel.Model.SelectNumber(number)
+            : panel.Model.SelectShortcut(text);
+
     /// <summary>One panel waiting for its answer, and the question it stands for when it is a tool approval.</summary>
-    private sealed record OpenPanel(InlinePanelModel Model, Action<ConsoleChoiceAnswer?> Settle, long? ApprovalId = null);
+    private sealed record OpenPanel(InlinePanelModel Model, Action<ConsoleChoiceAnswer?> Settle, long? ApprovalId = null)
+    {
+        /// <summary>The letters typed in a row, what a question hands to the prompt.</summary>
+        public string Typed { get; set; } = string.Empty;
+    }
 
     private void OnInputKeyDown(object? sender, Key key)
     {
@@ -925,14 +998,16 @@ public sealed class ReplPaneView : View, ITaskListNavigator, IToolActivityObserv
         if (key.KeyCode == (KeyCode.End | KeyCode.CtrlMask) && _screens.Displayed.ChipText is not null)
         {
             key.Handled = true;
+            _escapeArmed = false;
             _screens.Displayed.MoveEnd();
             return;
         }
 
-        // On an empty prompt, ? shows the shortcuts instead of starting a message.
-        if (PrintableText(key) == "?" && string.IsNullOrEmpty(_input.Text) && _navigation.State != InputNavigationState.List)
+        // On an empty prompt, ? shows the shortcuts instead of starting a message; a script's read keeps it as text.
+        if (PrintableText(key) == "?" && string.IsNullOrEmpty(_input.Text) && _navigation.State != InputNavigationState.List && !ScriptReads)
         {
             key.Handled = true;
+            _escapeArmed = false;
             AppendThreadLines(_screens.DisplayedThread, ShortcutsHelp.Lines(_glyphs));
             return;
         }
@@ -1569,6 +1644,9 @@ public sealed class ReplPaneView : View, ITaskListNavigator, IToolActivityObserv
         snapshot!.TrySetResult(value);
     }
 
+    /// <summary>Test accessor: whether the open panel holds the focus.</summary>
+    internal bool PanelHasFocus => _panelView.HasFocus;
+
     /// <summary>Test accessor: the menu of commands open above the prompt.</summary>
     internal SlashMenuModel? OpenSlashMenu => _menu;
 
@@ -1629,6 +1707,7 @@ public sealed class ReplPaneView : View, ITaskListNavigator, IToolActivityObserv
             // here keeps the owned fields released even if a future refactor stops Add()-ing them.
             _pendingReadCancellation.Dispose();
             if (_integration is not null && _approvalsChanged is not null) _integration.ApprovalsChanged -= _approvalsChanged;
+            EndOpenAnswers();
             foreach (var panel in _promptPanels) panel.Settle(null);
             _promptPanels.Clear();
             _approvalPanel = null;

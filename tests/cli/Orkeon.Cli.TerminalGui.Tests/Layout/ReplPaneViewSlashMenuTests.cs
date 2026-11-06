@@ -294,4 +294,38 @@ public sealed class ReplPaneViewSlashMenuTests
         // Assert
         Assert.NotNull(pane.OpenSlashMenu);
     }
+
+    [Fact]
+    public void The_menu_opens_again_after_a_dismissed_command_was_submitted()
+    {
+        // Arrange
+        var (pane, _) = CreatePane();
+        using var owned = pane;
+        pane.CurrentInput = "/";
+        pane.RaiseKeyDown(Key.Esc);
+        pane.RaiseKeyDown(Key.Enter);
+
+        // Act
+        pane.CurrentInput = "/";
+
+        // Assert
+        Assert.Equal(3, pane.SlashMenuRows);
+    }
+
+    [Fact]
+    public void The_menu_opens_again_after_a_dismissed_command_was_cleared()
+    {
+        // Arrange
+        var (pane, _) = CreatePane();
+        using var owned = pane;
+        pane.CurrentInput = "/";
+        pane.RaiseKeyDown(Key.Esc);
+        pane.RaiseKeyDown(Key.Esc);
+
+        // Act
+        pane.CurrentInput = "/";
+
+        // Assert
+        Assert.Equal(3, pane.SlashMenuRows);
+    }
 }

@@ -73,4 +73,45 @@ public sealed class ReplayConsoleAdapterChoiceTests : IDisposable
         // Assert
         Assert.Equal(("a", request), (answer!.Value, inner.Request));
     }
+
+    [Fact]
+    public void A_console_without_palettes_has_none_behind_the_decorator()
+    {
+        // Arrange
+        var replay = Over(new FakeConsoleAdapter());
+
+        // Act
+        var hasPalette = replay.HasPalette;
+
+        // Assert
+        Assert.False(hasPalette);
+    }
+
+    [Fact]
+    public void A_block_ending_its_line_adds_no_blank_line_on_a_console_without_blocks()
+    {
+        // Arrange
+        var inner = new FakeConsoleAdapter();
+        var replay = Over(inner);
+
+        // Act
+        replay.WriteBlock(ConsoleBlockKind.Markdown, "text\n");
+
+        // Assert
+        Assert.Equal(["text"], inner.Lines);
+    }
+
+    [Fact]
+    public async Task A_read_for_a_script_reaches_the_panels_behind_the_decorator()
+    {
+        // Arrange
+        var inner = new FakeChoiceConsole();
+        var replay = Over(inner);
+
+        // Act
+        await replay.ReadAnswerAsync(TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.Equal(1, inner.AnswerReads);
+    }
 }

@@ -200,3 +200,6 @@ static Orkeon.Cli.Abstractions.Console.ToolCallStarted.operator !=(Orkeon.Cli.Ab
 static Orkeon.Cli.Abstractions.Console.ToolCallStarted.operator ==(Orkeon.Cli.Abstractions.Console.ToolCallStarted? left, Orkeon.Cli.Abstractions.Console.ToolCallStarted? right) -> bool
 ~override Orkeon.Cli.Abstractions.Console.DiffRow.Equals(object obj) -> bool
 ~override Orkeon.Cli.Abstractions.Console.DiffRow.ToString() -> string
+Orkeon.Cli.Abstractions.Runners.IToolApprovalWatch.TryAnswer(long id, string! answer) -> bool
+Orkeon.Cli.Abstractions.Console.IChoiceConsole.ReadAnswerAsync(System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<string?>!
+Orkeon.Cli.Abstractions.Console.IThemeConsole.HasPalette.get -> bool

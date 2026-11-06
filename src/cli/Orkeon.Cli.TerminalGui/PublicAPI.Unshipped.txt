@@ -7,6 +7,8 @@ Orkeon.Cli.TerminalGui.Console.TerminalGuiConsoleAdapter.WriteBlock(Orkeon.Cli.A
 Orkeon.Cli.TerminalGui.Console.TerminalGuiConsoleAdapter.WriteStream(string! text) -> void
 Orkeon.Cli.TerminalGui.Hosting.TerminalGuiOptions.Theme.get -> Orkeon.Cli.Abstractions.Console.ConsoleTheme?
 Orkeon.Cli.TerminalGui.Hosting.TerminalGuiOptions.Theme.init -> void
+Orkeon.Cli.TerminalGui.Hosting.TuiIntegration.AnswerApproval.get -> System.Func<long, string!, bool>?
+Orkeon.Cli.TerminalGui.Hosting.TuiIntegration.AnswerApproval.set -> void
 Orkeon.Cli.TerminalGui.Hosting.TuiIntegration.ApprovalsChanged -> System.EventHandler?
 Orkeon.Cli.TerminalGui.Hosting.TuiIntegration.ContextPercent.get -> System.Func<int?>?
 Orkeon.Cli.TerminalGui.Hosting.TuiIntegration.ContextPercent.set -> void
@@ -39,3 +41,6 @@ static Orkeon.Cli.TerminalGui.Layout.SchemeFactory.Cell(Orkeon.Cli.TerminalGui.L
 static Orkeon.Cli.TerminalGui.Layout.SchemeFactory.Foreground(Orkeon.Cli.TerminalGui.Layout.PaletteRole role, bool trueColor, Orkeon.Cli.Abstractions.Console.ConsoleTheme theme) -> Terminal.Gui.Drawing.Color
 static Orkeon.Cli.TerminalGui.Layout.SchemeFactory.HasBackground(Orkeon.Cli.TerminalGui.Layout.PaletteRole role) -> bool
 static Orkeon.Cli.TerminalGui.Layout.SchemeFactory.ResolveTheme(Orkeon.Cli.Abstractions.Console.ConsoleTheme? setting, string? noColor) -> Orkeon.Cli.Abstractions.Console.ConsoleTheme
+Orkeon.Cli.TerminalGui.Layout.ReplPaneView.ReadAnswerAsync(System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<string?>!
+Orkeon.Cli.TerminalGui.Console.TerminalGuiConsoleAdapter.HasPalette.get -> bool
+Orkeon.Cli.TerminalGui.Console.TerminalGuiConsoleAdapter.ReadAnswerAsync(System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<string?>!
