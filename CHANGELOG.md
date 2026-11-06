@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — a browser for the agents
+
+- **`firefox`**, a built-in tool of `Orkeon.Tools.Web` (122 tool classes): the Firefox installed on the machine, driven over WebDriver BiDi on a WebSocket — no driver, no vendor package, no browser download. One `action` argument: `navigate`, `back`, `snapshot`, `read`, `find`, `search`, `click`, `type`, `press`, `evaluate`, `screenshot`, `close`; the reading actions pass in `plan` mode, `screenshot` is an edit, the others executions. A page is read as a semantic graph (`PageOutlineMapper` in `Orkeon.Analysis`, the new `UniversalNodeKind.Control`) in a `RaggableTree` of its own, whose node ids (`p2#7`) the next actions take; `search` embeds the sections of the page as an ephemeral RAG collection and names the section each hit belongs to. One browser per agent run, in a profile of its own, closed with the run; the window is visible unless `Orkeon:Tools:Firefox:Headless` is set or the machine has no display. Every address, the ones a click lands on included, goes through the host's URL policy. Guide: `docs/guides/firefox.md`.
+
 ### Added — tasks in the thread, palettes and the way back
 
 - In the split-pane console, tasks launched together read as one group with a branch per task, and the end line of a task says its tools, tokens and time, its glyph coloured by how it ended.
