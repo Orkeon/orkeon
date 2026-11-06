@@ -21,7 +21,10 @@ public enum UniversalNodeKind
     Section,
     CodeFence,
     Link,
-    FrontMatter
+    FrontMatter,
+
+    /// <summary>An interactive element of a web page (button, text box, check box, list): see <c>PageOutlineMapper</c>.</summary>
+    Control
 }
 
 [SuppressMessage("Naming", "CA1707", Justification = "The L<n>_ prefix encodes the graph stratification ordinal and is part of the public JSON serialization contract (e.g. \"L3_Symbol\"); renaming would break persisted RaggableTree data and round-tripping.")]

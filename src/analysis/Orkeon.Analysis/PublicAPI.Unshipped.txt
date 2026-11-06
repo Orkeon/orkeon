@@ -100,3 +100,57 @@ const Orkeon.Analysis.Core.Cache.RaggableTreeCache.MaxEntries = 3 -> int
 Orkeon.Analysis.Core.InMemoryRaggableStore.ListEdgesAsync(Orkeon.Analysis.Abstractions.DTOs.Queries.EdgeListQuery! query, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<Orkeon.Analysis.Abstractions.DTOs.Responses.EdgeListPage!>!
 Orkeon.Analysis.Core.InMemoryRaggableStore.SemanticSearchAsync(Orkeon.Analysis.Abstractions.DTOs.Queries.SemanticQuery! query, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<Orkeon.Analysis.Abstractions.DTOs.Responses.SemanticSearchResult!>!
 *REMOVED*Orkeon.Analysis.Core.InMemoryRaggableStore.SemanticSearchAsync(Orkeon.Analysis.Abstractions.DTOs.Queries.SemanticQuery! query, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Orkeon.Analysis.Abstractions.DTOs.Responses.SearchHit!>!>!
+Orkeon.Analysis.Adapters.PageElement
+Orkeon.Analysis.Adapters.PageElement.<Clone>$() -> Orkeon.Analysis.Adapters.PageElement!
+Orkeon.Analysis.Adapters.PageElement.Anchor.get -> string?
+Orkeon.Analysis.Adapters.PageElement.Anchor.init -> void
+Orkeon.Analysis.Adapters.PageElement.Container.get -> int
+Orkeon.Analysis.Adapters.PageElement.Container.init -> void
+Orkeon.Analysis.Adapters.PageElement.Equals(Orkeon.Analysis.Adapters.PageElement? other) -> bool
+Orkeon.Analysis.Adapters.PageElement.Kind.get -> Orkeon.Analysis.Adapters.PageElementKind
+Orkeon.Analysis.Adapters.PageElement.Kind.init -> void
+Orkeon.Analysis.Adapters.PageElement.Level.get -> int
+Orkeon.Analysis.Adapters.PageElement.Level.init -> void
+Orkeon.Analysis.Adapters.PageElement.Name.get -> string!
+Orkeon.Analysis.Adapters.PageElement.Name.init -> void
+Orkeon.Analysis.Adapters.PageElement.PageElement() -> void
+Orkeon.Analysis.Adapters.PageElement.Role.get -> string!
+Orkeon.Analysis.Adapters.PageElement.Role.init -> void
+Orkeon.Analysis.Adapters.PageElement.Target.get -> string?
+Orkeon.Analysis.Adapters.PageElement.Target.init -> void
+Orkeon.Analysis.Adapters.PageElement.Text.get -> string!
+Orkeon.Analysis.Adapters.PageElement.Text.init -> void
+Orkeon.Analysis.Adapters.PageElement.Visible.get -> bool
+Orkeon.Analysis.Adapters.PageElement.Visible.init -> void
+Orkeon.Analysis.Adapters.PageElementKind
+Orkeon.Analysis.Adapters.PageElementKind.Control = 3 -> Orkeon.Analysis.Adapters.PageElementKind
+Orkeon.Analysis.Adapters.PageElementKind.Heading = 0 -> Orkeon.Analysis.Adapters.PageElementKind
+Orkeon.Analysis.Adapters.PageElementKind.Link = 2 -> Orkeon.Analysis.Adapters.PageElementKind
+Orkeon.Analysis.Adapters.PageElementKind.Region = 1 -> Orkeon.Analysis.Adapters.PageElementKind
+Orkeon.Analysis.Adapters.PageOutline
+Orkeon.Analysis.Adapters.PageOutline.<Clone>$() -> Orkeon.Analysis.Adapters.PageOutline!
+Orkeon.Analysis.Adapters.PageOutline.Elements.get -> System.Collections.Immutable.ImmutableList<Orkeon.Analysis.Adapters.PageElement!>!
+Orkeon.Analysis.Adapters.PageOutline.Elements.init -> void
+Orkeon.Analysis.Adapters.PageOutline.Equals(Orkeon.Analysis.Adapters.PageOutline? other) -> bool
+Orkeon.Analysis.Adapters.PageOutline.Location.get -> string!
+Orkeon.Analysis.Adapters.PageOutline.Location.init -> void
+Orkeon.Analysis.Adapters.PageOutline.PageOutline() -> void
+Orkeon.Analysis.Adapters.PageOutline.Path.get -> string!
+Orkeon.Analysis.Adapters.PageOutline.Path.init -> void
+Orkeon.Analysis.Adapters.PageOutline.Title.get -> string!
+Orkeon.Analysis.Adapters.PageOutline.Title.init -> void
+Orkeon.Analysis.Adapters.PageOutlineMapper
+const Orkeon.Analysis.Adapters.PageOutlineMapper.Language = "html" -> string!
+override Orkeon.Analysis.Adapters.PageElement.Equals(object? obj) -> bool
+override Orkeon.Analysis.Adapters.PageElement.GetHashCode() -> int
+override Orkeon.Analysis.Adapters.PageElement.ToString() -> string!
+override Orkeon.Analysis.Adapters.PageOutline.Equals(object? obj) -> bool
+override Orkeon.Analysis.Adapters.PageOutline.GetHashCode() -> int
+override Orkeon.Analysis.Adapters.PageOutline.ToString() -> string!
+static Orkeon.Analysis.Adapters.PageElement.operator !=(Orkeon.Analysis.Adapters.PageElement? left, Orkeon.Analysis.Adapters.PageElement? right) -> bool
+static Orkeon.Analysis.Adapters.PageElement.operator ==(Orkeon.Analysis.Adapters.PageElement? left, Orkeon.Analysis.Adapters.PageElement? right) -> bool
+static Orkeon.Analysis.Adapters.PageOutline.operator !=(Orkeon.Analysis.Adapters.PageOutline? left, Orkeon.Analysis.Adapters.PageOutline? right) -> bool
+static Orkeon.Analysis.Adapters.PageOutline.operator ==(Orkeon.Analysis.Adapters.PageOutline? left, Orkeon.Analysis.Adapters.PageOutline? right) -> bool
+static Orkeon.Analysis.Adapters.PageOutlineMapper.Map(Orkeon.Analysis.Adapters.PageOutline! outline) -> Orkeon.Analysis.Abstractions.Models.RaggableTree!
+static Orkeon.Analysis.Adapters.PageOutlineMapper.NodeId(string! path, int index) -> string!
+static Orkeon.Analysis.Adapters.PageOutlineMapper.RootId(string! path) -> string!
