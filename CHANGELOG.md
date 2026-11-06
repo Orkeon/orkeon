@@ -43,6 +43,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The turn's summary line (`Read 20 files, used session_store ×15…`) is gone from the split-pane console: it counted only what scripts call on their own account, the model's calls being in the steps.
 - In the split-pane console, a task that ended no longer stays listed under the prompt: it leaves at the next poll, with its screen, and its end line stays in `main`. Only the task whose screen is being read stays, until the prompt returns to `main`.
 
+### Changed — installing the REPL from source is documented, and the script says how
+
+- `install-from-source` run with the default set on Windows or macOS now ends by saying that `-AppSet full` / `--app-set full` adds `orkeon-repl`, which that set leaves out.
+- The READMEs, the docs index and the CLI reference lead to the install script; [Three ways to run Orkeon](docs/getting-started/three-ways-to-run-orkeon.md) gains the section "Install the REPL from source", and "Install what you just cloned" is now "Install from source".
+
 ### Fixed — the status line shows the whole name of a tool
 
 - The first underscore of a line was read as a hot key: `file_write` showed as `filewrite`.
@@ -2755,7 +2760,7 @@ tree, run its installer.
   pass it; CI never does.
 - `orkeon doctor` tells a `source` installation to `git pull` and run the script again.
 - Docs (EN, FR): *Install what you just cloned* in
-  [three ways to run Orkeon](docs/getting-started/three-ways-to-run-orkeon.md#install-what-you-just-cloned),
+  [three ways to run Orkeon](docs/getting-started/three-ways-to-run-orkeon.md#install-from-source),
   referred to by the prerequisites table, the update table, the README and
   `CONTRIBUTING.md`.
 

@@ -96,7 +96,7 @@ L'équipe que vous composez dans Studio est le YAML que le CLI exécute, et l'é
 | **macOS** — CLI | L'archive `osx-arm64` / `osx-x64` depuis les releases, puis `./install.sh`. |
 | **Conteneur** | `docker run -it --rm -e ORKEON_RUNNER=shell ghcr.io/orkeon/orkeon-runners` — les exemples embarqués. |
 | **Dans votre application .NET** | `dotnet add package Orkeon --prerelease` (+ `Orkeon.Tools` pour les outils intégrés). |
-| **Depuis les sources** | `git clone` **sans** `--recursive` (les sous-modules privés du mainteneur ne servent à rien de public), puis `dotnet build Orkeon.sln` — [Depuis les sources](docs/fr/getting-started/three-ways-to-run-orkeon.md#1-depuis-les-sources). |
+| **Depuis les sources** | `git clone` **sans** `--recursive` (les sous-modules privés du mainteneur ne servent à rien de public), puis `dotnet build Orkeon.sln` — [Depuis les sources](docs/fr/getting-started/three-ways-to-run-orkeon.md#1-depuis-les-sources). Pour mettre ce que vous avez compilé sur votre `PATH` : `scripts/install-from-source.ps1` sous Windows, `scripts/install-from-source.sh` sous Linux et macOS — [Installer depuis les sources](docs/fr/getting-started/three-ways-to-run-orkeon.md#installer-depuis-les-sources), [avec le REPL](docs/fr/getting-started/three-ways-to-run-orkeon.md#installer-le-repl-depuis-les-sources). |
 
 Puis `orkeon init` pour choisir un fournisseur et un modèle ; `orkeon doctor` quand quelque chose cloche. Sommes de contrôle, attestations signées, mises à jour : [Trois façons d'exécuter Orkeon](docs/fr/getting-started/three-ways-to-run-orkeon.md) · [Vérifier ce que vous installez](docs/fr/guides/verify-what-you-install.md).
 

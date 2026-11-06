@@ -96,7 +96,7 @@ The team you compose in Studio is the YAML the CLI runs, and the crew your own .
 | **macOS** — CLI | The `osx-arm64` / `osx-x64` tarball from the releases, then `./install.sh`. |
 | **Container** | `docker run -it --rm -e ORKEON_RUNNER=shell ghcr.io/orkeon/orkeon-runners` — the examples bundled. |
 | **In your .NET app** | `dotnet add package Orkeon --prerelease` (+ `Orkeon.Tools` for the built-in tools). |
-| **From source** | `git clone` **without** `--recursive` (the private maintainer submodules are not needed by anything public), then `dotnet build Orkeon.sln` — [From source](docs/getting-started/three-ways-to-run-orkeon.md#1-from-source). |
+| **From source** | `git clone` **without** `--recursive` (the private maintainer submodules are not needed by anything public), then `dotnet build Orkeon.sln` — [From source](docs/getting-started/three-ways-to-run-orkeon.md#1-from-source). To put what you built on your `PATH`: `scripts/install-from-source.ps1` on Windows, `scripts/install-from-source.sh` on Linux and macOS — [Install from source](docs/getting-started/three-ways-to-run-orkeon.md#install-from-source), [with the REPL](docs/getting-started/three-ways-to-run-orkeon.md#install-the-repl-from-source). |
 
 Then `orkeon init` to pick a provider and a model; `orkeon doctor` when something looks off. Checksums, signed attestations, updates: [Three ways to run Orkeon](docs/getting-started/three-ways-to-run-orkeon.md) · [Verify what you install](docs/guides/verify-what-you-install.md).
 

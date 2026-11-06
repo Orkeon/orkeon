@@ -51,12 +51,12 @@ Ce qu'il faut sur le poste dépend de jusqu'où vous allez :
 | Pour… | Il vous faut |
 |---|---|
 | **Lancer un exemple** (`dotnet run`, ci-dessus) | le **SDK .NET 10**, 10.0.300 ou plus récent (`dotnet --version` ; `global.json` l'épingle), et **git**. Le premier build restaure ses paquets depuis nuget.org |
-| **Construire une archive d'installation** depuis le clone (`scripts/package-installers.sh`, ou `scripts/package-installers.ps1` sous Windows), ou [installer ce que vous venez de cloner](#installer-ce-que-vous-venez-de-cloner), qui en construit une et vérifie tout cela d'abord | les deux ci-dessus, plus : **Python 3** — `python3` sur le `PATH`, `python` sous Windows (l'alias du Microsoft Store qui porte ce nom ne compte pas) ; **`tar`** ; un accès réseau à **nuget.org** et à **`registry.npmjs.org`**, où le script va chercher le binaire esbuild qu'il embarque. Sous Windows, le script exige **PowerShell 7** (`pwsh`) : Windows PowerShell 5.1, celui qui est installé avec le système, s'y arrête. Sous Linux, le script appelle aussi `curl`, `openssl` et `sha256sum` |
+| **Construire une archive d'installation** depuis le clone (`scripts/package-installers.sh`, ou `scripts/package-installers.ps1` sous Windows), ou [installer ce que vous venez de cloner](#installer-depuis-les-sources), qui en construit une et vérifie tout cela d'abord | les deux ci-dessus, plus : **Python 3** — `python3` sur le `PATH`, `python` sous Windows (l'alias du Microsoft Store qui porte ce nom ne compte pas) ; **`tar`** ; un accès réseau à **nuget.org** et à **`registry.npmjs.org`**, où le script va chercher le binaire esbuild qu'il embarque. Sous Windows, le script exige **PowerShell 7** (`pwsh`) : Windows PowerShell 5.1, celui qui est installé avec le système, s'y arrête. Sous Linux, le script appelle aussi `curl`, `openssl` et `sha256sum` |
 
 Une archive construite ainsi s'installe comme une archive téléchargée — voir
 [Binaire de release](#2-binaire-de-release) plus bas, prérequis Windows compris.
 
-### Installer ce que vous venez de cloner
+### Installer depuis les sources
 
 `dotnet run` lance le CLI depuis le clone. Pour avoir sur votre `PATH` l'`orkeon` que vous
 avez compilé — l'installation que fait une archive de release, à la version de votre
@@ -101,6 +101,26 @@ ailleurs.
   les builds de `main` sans rien compiler sur votre poste. Le script le dit, et continue.
 - Un clone superficiel (`git clone --depth 1`) convient. Les sous-modules privés des
   mainteneurs ne sont ni nécessaires ni touchés.
+
+### Installer le REPL depuis les sources
+
+`orkeon-repl`, la console interactive, est un programme distinct. Son installation par le
+script dépend de votre système :
+
+| Système | Commande, depuis le clone | |
+|---|---|---|
+| Windows | `.\scripts\install-from-source.ps1 -AppSet full` | le jeu par défaut ne contient pas le REPL |
+| Linux | `./scripts/install-from-source.sh` | le jeu par défaut le contient |
+| macOS | `./scripts/install-from-source.sh --app-set full` | le jeu par défaut ne contient pas le REPL |
+
+Le jeu complet publie tous les launchers, l'hôte de service compris : sa compilation prend
+donc plus de temps. Le jeu par défaut reste sans le REPL sous Windows et macOS parce que le
+MSI et la formule Homebrew sont construits à partir de lui. Sous Windows et macOS, le script
+rappelle cette option à la fin de son exécution.
+
+Sous Windows, l'installeur ajoute son dossier `bin` à votre `PATH`. Sous Linux et macOS,
+ajoutez `--modify-path` si `~/.local/bin` n'y est pas déjà. Ouvrez ensuite un nouveau
+terminal et lancez `orkeon-repl`. Il n'a pas de `--version` : il ouvre directement sa console.
 
 ---
 
@@ -678,7 +698,7 @@ un script.
 | Le dépôt apt | `sudo apt update && sudo apt upgrade` |
 | Un paquet Debian téléchargé | `sudo apt install ./orkeon_<version>_amd64.deb` (`_arm64.deb` sur ARM) — ou passer au [dépôt apt](../guides/install-with-apt.md), qui se met à jour seul |
 | Conteneur | `docker pull ghcr.io/orkeon/orkeon-runners` — `:latest` avance à chaque release |
-| Depuis les sources | `git pull` ; le prochain `dotnet run` recompile. Une installation faite [depuis le clone](#installer-ce-que-vous-venez-de-cloner) : `git pull`, puis relancer `scripts/install-from-source` |
+| Depuis les sources | `git pull` ; le prochain `dotnet run` recompile. Une installation faite [depuis le clone](#installer-depuis-les-sources) : `git pull`, puis relancer `scripts/install-from-source` |
 
 `orkeon --version` affiche ensuite la version qui tourne : `orkeon <version>`. Une installation faite avant qu'`orkeon doctor` sache nommer son canal y répond `unknown` jusqu'à sa prochaine mise à jour.
 

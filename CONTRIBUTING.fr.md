@@ -82,7 +82,7 @@ dotnet test Orkeon.sln --no-build --filter "Category!=Integration&Category!=Slow
 > (`.\scripts\install-from-source.ps1` sous Windows, depuis PowerShell 7) met sur votre
 > `PATH` l'`orkeon` de votre checkout, comme l'installe une archive de release, et nomme
 > chaque prérequis manquant avant de compiler quoi que ce soit — voir
-> [Installer ce que vous venez de cloner](docs/fr/getting-started/three-ways-to-run-orkeon.md#installer-ce-que-vous-venez-de-cloner).
+> [Installer depuis les sources](docs/fr/getting-started/three-ways-to-run-orkeon.md#installer-depuis-les-sources).
 > Relancez-le après un `git pull`.
 
 > **Note** — ce dépôt déclare des **sous-modules privés des mainteneurs** :

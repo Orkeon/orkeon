@@ -14,7 +14,7 @@ The documentation is organized into 7 thematic sections.
 
 | File | Description |
 |------|-------------|
-| [Three ways to run Orkeon](./getting-started/three-ways-to-run-orkeon.md) | Hub page: from source vs. release binary vs. container — prerequisites, commands, and a comparison table; how to update, to the latest release or to the latest `main` (dev channel) |
+| [Three ways to run Orkeon](./getting-started/three-ways-to-run-orkeon.md) | Hub page: from source vs. release binary vs. container — prerequisites, commands, and a comparison table; installing from source, the REPL included; how to update, to the latest release or to the latest `main` (dev channel) |
 | [Run your first example (from source)](./getting-started/run-your-first-example.md) | End-to-end first run: prerequisites, LLM profile matrix, the full crew command, every runner flag, settings resolution, troubleshooting |
 | [Overview](./getting-started/overview.md) | Architecture, core concepts (Agent, Task, Tool, Crew), YAML vs Fluent Builder |
 | [Bootstrap and execution](./getting-started/bootstrap.md) | Packages, DI wiring for an embedding host (model, VFS mounts, tool registry), running a Crew, batch/streaming/fire-and-forget modes |
