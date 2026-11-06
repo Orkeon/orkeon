@@ -55,9 +55,10 @@ public static class PageOutlineMapper
         var elements = outline.Elements;
         var root = Create(
             RootId(outline.Path), UniversalNodeKind.Module, NodeLevel.L2_Module, outline.Path,
-            string.IsNullOrWhiteSpace(outline.Title) ? outline.Location : outline.Title, outline.Title, line: 0);
+            string.IsNullOrWhiteSpace(outline.Title) ? outline.Location : outline.Title, outline.Text, line: 0);
         root.Fqn = outline.Path;
         root.Signature = outline.Location;
+        root.EmbeddingText = string.IsNullOrEmpty(outline.Text) ? outline.Title : $"{outline.Title}\n{outline.Text}";
 
         var nodes = new List<RaggableNode>(elements.Count + 1) { root };
         var edges = new List<RaggableEdge>(elements.Count);

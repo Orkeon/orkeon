@@ -7,8 +7,8 @@ namespace Orkeon.Tools.Web.Firefox.BiDi;
 
 /// <summary>
 /// A WebDriver BiDi connection: numbers each command, hands its answer back to the caller that sent it,
-/// and turns an error answer into a <see cref="BiDiException"/>. Events are not subscribed to and are
-/// dropped. Commands may be sent concurrently.
+/// and turns an error answer into a <see cref="BiDiException"/>. An event the session subscribed to
+/// goes to <see cref="EventReceived"/>. Commands may be sent concurrently.
 /// </summary>
 internal sealed partial class BiDiConnection : IAsyncDisposable
 {
@@ -30,6 +30,12 @@ internal sealed partial class BiDiConnection : IAsyncDisposable
         _logger = logger;
         _receiveLoop = Task.Run(ReceiveLoopAsync);
     }
+
+    /// <summary>
+    /// Called with the method and the parameters of each event, on the receive loop: it must return at
+    /// once and never wait for a command of this connection.
+    /// </summary>
+    public Action<string, JsonObject>? EventReceived { get; set; }
 
     /// <summary><c>true</c> once the browser closed the channel or the connection was disposed.</summary>
     public bool IsClosed => _closed;
@@ -131,12 +137,25 @@ internal sealed partial class BiDiConnection : IAsyncDisposable
             return;
         }
 
+        if (envelope is null)
+            return;
+
         // An event carries no id; an error may carry a null one: neither answers a command.
-        if (envelope?["id"] is not JsonValue idValue || !idValue.TryGetValue<long>(out var id)
-            || !_pending.TryRemove(id, out var completion))
+        if (envelope["id"] is not JsonValue idValue || !idValue.TryGetValue<long>(out var id))
         {
+            if (EventReceived is { } handler
+                && string.Equals(envelope["type"]?.GetValue<string>(), "event", StringComparison.Ordinal)
+                && envelope["method"] is JsonValue method && method.TryGetValue<string>(out var name)
+                && envelope["params"] is JsonObject parameters)
+            {
+                handler(name, parameters);
+            }
+
             return;
         }
+
+        if (!_pending.TryRemove(id, out var completion))
+            return;
 
         if (string.Equals(envelope["type"]?.GetValue<string>(), "error", StringComparison.Ordinal))
         {

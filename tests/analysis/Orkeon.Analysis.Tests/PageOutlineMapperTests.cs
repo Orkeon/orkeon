@@ -80,6 +80,32 @@ public class PageOutlineMapperTests
     }
 
     [Fact]
+    public void Should_KeepOnThePageNodeTheTextNoHeadingHolds()
+    {
+        var tree = PageOutlineMapper.Map(new PageOutline
+        {
+            Path = Path,
+            Location = "https://example.test/a",
+            Title = "Example",
+            Text = "What comes before the first heading.",
+            Elements = [],
+        });
+
+        var root = Assert.Single(tree.Nodes);
+        Assert.Equal("What comes before the first heading.", root.SourceSnippet);
+        Assert.Equal("Example\nWhat comes before the first heading.", root.EmbeddingText);
+    }
+
+    [Fact]
+    public void Should_EmbedThePageByItsTitle_When_NoTextComesBeforeItsHeadings()
+    {
+        var root = Assert.Single(Map().Nodes);
+
+        Assert.Equal(string.Empty, root.SourceSnippet);
+        Assert.Equal("Example", root.EmbeddingText);
+    }
+
+    [Fact]
     public void Should_NameThePageAfterItsUrl_When_ItHasNoTitle()
     {
         var tree = PageOutlineMapper.Map(new PageOutline { Path = Path, Location = "https://example.test/a", Elements = [] });

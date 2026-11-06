@@ -70,6 +70,9 @@ public sealed record PageOutline
     /// <summary>Title of the page.</summary>
     public string Title { get; init; } = string.Empty;
 
+    /// <summary>The text of the page no heading holds: what comes before the first one. Kept by the root node.</summary>
+    public string Text { get; init; } = string.Empty;
+
     /// <summary>The elements of the page, in document order.</summary>
     public required ImmutableList<PageElement> Elements { get; init; }
 }

@@ -154,3 +154,5 @@ static Orkeon.Analysis.Adapters.PageOutline.operator ==(Orkeon.Analysis.Adapters
 static Orkeon.Analysis.Adapters.PageOutlineMapper.Map(Orkeon.Analysis.Adapters.PageOutline! outline) -> Orkeon.Analysis.Abstractions.Models.RaggableTree!
 static Orkeon.Analysis.Adapters.PageOutlineMapper.NodeId(string! path, int index) -> string!
 static Orkeon.Analysis.Adapters.PageOutlineMapper.RootId(string! path) -> string!
+Orkeon.Analysis.Adapters.PageOutline.Text.get -> string!
+Orkeon.Analysis.Adapters.PageOutline.Text.init -> void

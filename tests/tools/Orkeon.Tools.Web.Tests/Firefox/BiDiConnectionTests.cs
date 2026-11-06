@@ -78,6 +78,31 @@ public class BiDiConnectionTests
     }
 
     [Fact]
+    public async Task Should_HandEventsToTheListener_InTheOrderTheyCome()
+    {
+        await using var transport = new FakeBiDiTransport { AutoAnswer = false };
+        await using var connection = new BiDiConnection(transport, NeverReached);
+        var seen = new List<string>();
+        connection.EventReceived = (method, parameters) =>
+        {
+            lock (seen) seen.Add($"{method} {parameters["url"]?.GetValue<string>()}");
+        };
+
+        var pending = connection.SendAsync("a", null, Ct);
+        await NextCommandAsync(transport, 1);
+        transport.Push("""{"type":"event","method":"browsingContext.navigationStarted","params":{"url":"https://example.test/"}}""");
+        transport.Push("""{"type":"event","method":"browsingContext.load","params":{}}""");
+        transport.Push("""{"type":"event","params":{"url":"no method"}}""");
+        transport.Push("""{"type":"event","method":"browsingContext.domContentLoaded"}""");
+        transport.Push("""{"type":"success","id":1,"result":{}}""");
+        await pending;
+
+        // The answer came after the events on the same channel: both were handed over before it.
+        lock (seen)
+            Assert.Equal(["browsingContext.navigationStarted https://example.test/", "browsingContext.load "], seen);
+    }
+
+    [Fact]
     public async Task Should_DropEventsUnknownIdsAndUnreadableMessages()
     {
         await using var transport = new FakeBiDiTransport { AutoAnswer = false };
