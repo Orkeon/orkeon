@@ -4,7 +4,7 @@
 
 # Inventaire des tools Orkeon
 
-Cette page est le catalogue de référence des **121 classes de tools intégrées**. La règle
+Cette page est le catalogue de référence des **122 classes de tools intégrées**. La règle
 de comptage est celle qu'applique `scripts/check-doc-claims.py` : chaque fichier
 `*Tool.cs` sous `src/`, sauf l'interface (`IBaseTool.cs`) et l'infrastructure non-tool
 qui matche le glob (`MockTool.cs`, `JsTool.cs`, `ObservedTool.cs`, `AIAgentTool.cs`). Le même script
@@ -128,7 +128,7 @@ mais une recherche échoue à l'appel avec un message explicite tant que l'hôte
 
 ## Tools web (`Orkeon.Tools.Web`)
 
-`AddOrkeonWebTools()` enregistre les cinq premiers ; chacun des autres a sa propre
+`AddOrkeonWebTools()` enregistre les six premiers ; chacun des autres a sa propre
 extension opt-in parce qu'il exige une clé ou un service support supplémentaire. Les clés
 ne voyagent pas toutes de la même façon : les clés Tavily et OpenAI sont des secrets résolus à
 l'appel, les jetons Brave et Slack sont remis à leur extension par l'hôte. Aucun tool ne prend
@@ -144,6 +144,7 @@ redirections.
 | `scrape_element` | `ScrapeElementTool` | `AddOrkeonWebTools()` | Scraping ciblé d'éléments DOM via sélecteurs CSS (texte, HTML, attributs) |
 | `github` | `GitHubTool` | `AddOrkeonWebTools()` — le jeton est lu à l'enregistrement dans `Orkeon:Tools:GitHub:Token`, la variable que nomme `Orkeon:Tools:GitHub:TokenVariable` (par défaut `GITHUB_TOKEN`), puis `GH_TOKEN` ; sans jeton les appels sont anonymes, les actions d'écriture refusées et la description dit où le poser ([configuration](../reference/configuration.md#orkeontoolsgithub)) | API GitHub v3 (`action` : `list_issues`, `create_issue`, `get_pr`, `search_repos`, `get_repo`, `create_pr`). `create_pr` prend `base`, `head`, `title` et un `body` optionnel, et renvoie l'URL de la pull request dans le `url` de son unique élément de résultat ; elle exige un jeton avec droit d'écriture sur les pull requests. Pour la permission gate, `list_issues`, `get_pr`, `search_repos` et `get_repo` sont des lectures (autorisées en `plan`), `create_issue`, `create_pr` et une action inconnue des exécutions |
 | `image_generation` | `ImageGenerationTool` | `AddOrkeonWebTools()` (exige un `IFileSystemService` et un `ISecretProvider`) — le secret `OPENAI_API_KEY` est résolu à l'appel (par défaut la variable d'environnement `ORKEON_OPENAI_API_KEY`, puis `Secrets:OPENAI_API_KEY`) ; sans lui un appel échoue en nommant le secret | Génération d'images via l'API OpenAI DALL-E, enregistrables sous un chemin virtuel (`save_to_path`) |
+| `firefox` | `FirefoxTool` | `AddOrkeonWebTools()` (exige un `IFileSystemService`) — Firefox doit être installé sur l'hôte ; il démarre au premier appel d'une exécution d'agent, dans un profil à lui, et se ferme avec elle ([configuration](../reference/configuration.md#orkeontoolsfirefox)) | Pilote un navigateur Firefox par WebDriver BiDi (`action` : `navigate`, `back`, `snapshot`, `read`, `find`, `search`, `click`, `type`, `press`, `evaluate`, `screenshot`, `close`). `snapshot` rend la page comme un plan de sections, de liens et de contrôles lu dans son graphe sémantique ; chaque nœud porte un identifiant (`p2#7`) que prennent `click`, `type`, `read` et `find`. `search` rend les sections les plus proches par le sens d'une `query` par la recherche RAG éphémère (une erreur sans le sous-système RAG). `screenshot` écrit un PNG sous un chemin virtuel (`save_to_path`). Chaque adresse que le navigateur affiche est vérifiée par la garde SSRF. Pour la permission gate, `navigate`, `back`, `snapshot`, `read`, `find` et `search` sont des lectures (autorisées en `plan`), `screenshot` une édition, `click`, `type`, `press`, `evaluate`, `close` et une action inconnue des exécutions |
 | `web_search` | `WebSearchTool` | `AddOrkeonWebSearchTool()` — le secret `TAVILY_API_KEY` est résolu à l'appel via `ISecretProvider` (par défaut la variable d'environnement `ORKEON_TAVILY_API_KEY`, puis `Secrets:TAVILY_API_KEY` en configuration) | Recherche web via l'API Tavily Search |
 | `brave_search` | `BraveSearchTool` | `AddOrkeonBraveSearchTool(apiKey)` — `orkeon run` ne le câble que si `BRAVE_API_KEY` est posée | Recherche web via l'API Brave Search |
 | `slack_send_message` | `SlackTool` | `AddOrkeonSlackTool(botToken)` — aucune racine livrée ne l'appelle (opt-in hôte pur) | Envoyer des messages vers des canaux/utilisateurs Slack via la Web API |
@@ -279,7 +280,7 @@ Vingt-neuf tools sur le graphe sémantique de code RaggableTree — le guide com
 
 ## Hors catalogue
 
-Délibérément **hors** des 121 classes de tools intégrées :
+Délibérément **hors** des 122 classes de tools intégrées :
 
 - `brief_submit` / `blueprint_submit` — internes à la commande `orkeon forge`
   (`ForgeSubmission.cs`, `Orkeon.Scripting.Cli`) ; les agents du moteur les utilisent,
@@ -306,12 +307,12 @@ le nombre qu'affichent le README et l'index de la documentation, vérifié par
 | `Orkeon.Tools.Email` (voir [son guide](../guides/email.md)) | 13 |
 | `Orkeon.Tools.Drive` (voir [son guide](../guides/drive.md)) | 11 |
 | `Orkeon.Infrastructure` (collaboration, session, sandbox, entrée humaine, `semantic_search`, `system_one_decide`) | 13 |
-| `Orkeon.Tools.Web` | 10 |
+| `Orkeon.Tools.Web` | 11 |
 | `Orkeon.Tools.EventHub` | 7 |
 | `Orkeon.Tools.FileSystem` | 8 |
 | `Orkeon.Tools.Rag` | 3 |
 | `Orkeon.Tools.Abstractions` / `Orkeon.Tools.Code` / `Orkeon.Tools.Embeddings.Local` / `Orkeon.Cli.Commands.Scripting` / `Orkeon.Scripting` | 1 chacun |
-| **Total** | **121** |
+| **Total** | **122** |
 
 ## Disponibilité par racine de composition
 
@@ -327,7 +328,7 @@ d'`orkeon run --list-tools` et sert ses outils à un client MCP, `human_input` �
 
 | Suite / tool | `orkeon run` (CLI) | `orkeon-repl` (ConsoleApp) |
 |---|---|---|
-| FileSystem (8), Data (22), Web cœur (5), `shell_command`, `list_mounts`, session (6) | ✅ | ✅ |
+| FileSystem (8), Data (22), Web cœur (6), `shell_command`, `list_mounts`, session (6) | ✅ | ✅ |
 | E-mail (13) — les tools de boîte aux lettres refusent tout appel tant qu'aucun compte n'est déclaré sous `Orkeon:Tools:Email` | ✅ (jetons OAuth sous la racine interne `/credentials`) | ✅ comptes à mot de passe seulement — le REPL ne tient aucun magasin de jetons, un compte OAuth y est refusé |
 | Drive (11) — chaque tool sauf `drive_accounts` refuse tout appel tant qu'un compte n'est pas déclaré sous `Orkeon:Tools:Drive` et connecté | ✅ (jetons OAuth sous la racine interne `/credentials`) | enregistrés, mais chaque compte y est refusé : tous se connectent en OAuth, et le REPL ne tient aucun magasin de jetons |
 | EventHub (7) | ✅ | ❌ |
@@ -389,7 +390,7 @@ extensions DI (chaque table ci-dessus nomme celle qui possède ses tools) :
 ```csharp
 services.AddOrkeonFileSystemTools();   // file_read, file_write, edit_file, directory_read, directory_search, count_pattern, glob, grep
 services.AddOrkeonDataTools();         // les 22 tools de données (relationnel + MongoDB + graphe chaînés en interne)
-services.AddOrkeonWebTools();          // http_api, web_scrape, scrape_element, github, image_generation
+services.AddOrkeonWebTools();          // http_api, web_scrape, scrape_element, github, image_generation, firefox
 services.AddOrkeonCodeTools();         // shell_command
 services.AddOrkeonAbstractionTools();  // list_mounts
 services.AddOrkeonSessionTools();      // session_store, session_snip, session_stats, session_cost, token_budget, memory_store
@@ -466,6 +467,7 @@ correspondance alphabétique complète :
 | `edge_list` | `EdgeListTool` | `Orkeon.Tools.Analysis` |
 | `edit_batch` | `EditBatchTool` | `Orkeon.Tools.Analysis` |
 | `edit_file` | `EditFileTool` | `Orkeon.Tools.FileSystem` |
+| `firefox` | `FirefoxTool` | `Orkeon.Tools.Web` |
 | `flow_trace` | `FlowTraceTool` | `Orkeon.Tools.Analysis` |
 | `get_last_value` | `GetLastValueTool` | `Orkeon.Tools.EventHub` |
 | `github` | `GitHubTool` | `Orkeon.Tools.Web` |

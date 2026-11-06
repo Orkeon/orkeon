@@ -349,6 +349,13 @@
       "description": "The `Orkeon:Tools:Email` section, bound by `EmailOptionsBinder`. Nothing here is validated at bind time, and binding never throws: an account is checked when a tool or a command first uses it, so a broken e-mail section never breaks a crew that sends no mail."
     },
     {
+      "path": "Orkeon:Tools:Firefox",
+      "category": "tools",
+      "hosts": [],
+      "registration": "AddOrkeonWebTools",
+      "description": "The `Orkeon:Tools:Firefox` section: how the `firefox` tool starts its browser and how much of a page one answer carries. Read once when the tool is registered."
+    },
+    {
       "path": "Orkeon:Tools:GitHub",
       "category": "tools",
       "hosts": [],
@@ -2745,6 +2752,53 @@
       "type": "boolean",
       "default": false,
       "description": "When true, a message the prompt-injection detector rejects has its body withheld. Off by default: the detector was tuned on web pages, and newsletters trip it."
+    },
+    {
+      "path": "Orkeon:Tools:Firefox:CommandTimeoutSeconds",
+      "section": "Orkeon:Tools:Firefox",
+      "type": "integer",
+      "default": 30,
+      "description": "Seconds one browser command (a page load, a script, a click) is given to answer."
+    },
+    {
+      "path": "Orkeon:Tools:Firefox:ExecutablePath",
+      "section": "Orkeon:Tools:Firefox",
+      "type": "string",
+      "description": "Path of the Firefox program, or its name on the PATH. Not set: `firefox` on the PATH, then the usual install folder of the platform."
+    },
+    {
+      "path": "Orkeon:Tools:Firefox:Headless",
+      "section": "Orkeon:Tools:Firefox",
+      "type": "boolean",
+      "default": false,
+      "description": "`true` starts Firefox without a window. The default shows the window; under Linux with neither `DISPLAY` nor `WAYLAND_DISPLAY` the browser starts headless anyway, and a warning says so."
+    },
+    {
+      "path": "Orkeon:Tools:Firefox:MaxNodes",
+      "section": "Orkeon:Tools:Firefox",
+      "type": "integer",
+      "default": 40,
+      "description": "Most nodes one `snapshot` or `find` answer lists; the rest is read with `offset`."
+    },
+    {
+      "path": "Orkeon:Tools:Firefox:MaxTextLength",
+      "section": "Orkeon:Tools:Firefox",
+      "type": "integer",
+      "default": 3000,
+      "description": "Most characters of page text one `read` answer carries."
+    },
+    {
+      "path": "Orkeon:Tools:Firefox:ProfileRoot",
+      "section": "Orkeon:Tools:Firefox",
+      "type": "string",
+      "description": "Folder under which each browser gets its own profile folder, removed when the browser closes. Not set: `~/snap/firefox/common/orkeon/profiles` when Firefox is a snap (a snap cannot read the system's temp folder), else `orkeon-firefox` under the system's temp folder."
+    },
+    {
+      "path": "Orkeon:Tools:Firefox:StartupTimeoutSeconds",
+      "section": "Orkeon:Tools:Firefox",
+      "type": "integer",
+      "default": 30,
+      "description": "Seconds Firefox is given to start and open its remote protocol."
     },
     {
       "path": "Orkeon:Tools:GitHub:Token",

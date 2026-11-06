@@ -114,6 +114,9 @@ public sealed class BuiltInToolAccessTests : IDisposable
     [InlineData("github", "action", "get_pr", "create_pr")]
     [InlineData("http_api", "method", "GET", "POST")]
     [InlineData("http_api", "method", "head", "DELETE")]
+    [InlineData("firefox", "action", "navigate", "click")]
+    [InlineData("firefox", "action", "snapshot", "evaluate")]
+    [InlineData("firefox", "action", "search", "type")]
     public async Task ShouldAllowTheReadCallAndRefuseTheWriteCallInPlan(string name, string key, string read, string write)
     {
         var tool = Assert.Single(await RegisteredToolsAsync(), t => t.Name == name);

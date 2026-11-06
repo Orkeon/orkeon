@@ -4,7 +4,7 @@
 
 # Orkeon tool inventory
 
-This page is the reference catalogue of the **121 built-in tool classes**. The counting
+This page is the reference catalogue of the **122 built-in tool classes**. The counting
 rule is the one `scripts/check-doc-claims.py` enforces: every `*Tool.cs` file under
 `src/` except the interface (`IBaseTool.cs`) and the non-tool infrastructure that
 matches the glob (`MockTool.cs`, `JsTool.cs`, `ObservedTool.cs`, `AIAgentTool.cs`). The same script
@@ -127,7 +127,7 @@ but a search fails at call time with an actionable message until the host calls
 
 ## Web tools (`Orkeon.Tools.Web`)
 
-`AddOrkeonWebTools()` registers the first five; each of the others has its own opt-in
+`AddOrkeonWebTools()` registers the first six; each of the others has its own opt-in
 extension because it needs a key or an extra backing service. The keys do not travel the
 same way: the Tavily and OpenAI keys are secrets resolved at call time, the Brave and Slack
 tokens are handed to their extension by the host. No tool takes a secret as a call argument —
@@ -141,6 +141,7 @@ without a registered `IUrlValidator`) and a named client that refuses redirects.
 | `scrape_element` | `ScrapeElementTool` | `AddOrkeonWebTools()` | Targeted scraping of DOM elements via CSS selectors (text, HTML, attributes) |
 | `github` | `GitHubTool` | `AddOrkeonWebTools()` — the token is read at registration from `Orkeon:Tools:GitHub:Token`, the variable `Orkeon:Tools:GitHub:TokenVariable` names (default `GITHUB_TOKEN`), then `GH_TOKEN`; without one the calls are anonymous, write actions are refused and the description says where to set it ([configuration](../reference/configuration.md#orkeontoolsgithub)) | GitHub API v3 (`action`: `list_issues`, `create_issue`, `get_pr`, `search_repos`, `get_repo`, `create_pr`). `create_pr` takes `base`, `head`, `title` and an optional `body`, and returns the pull-request URL in the `url` of its single result item; it needs a token with pull-request write scope. For the permission gate, `list_issues`, `get_pr`, `search_repos` and `get_repo` are reads (allowed in `plan`), `create_issue`, `create_pr` and an unknown action executions |
 | `image_generation` | `ImageGenerationTool` | `AddOrkeonWebTools()` (needs an `IFileSystemService` and an `ISecretProvider`) — the secret `OPENAI_API_KEY` is resolved at call time (by default the `ORKEON_OPENAI_API_KEY` environment variable, then `Secrets:OPENAI_API_KEY`); without it a call fails naming the secret | Image generation via the OpenAI DALL-E API, optionally saved under a virtual path (`save_to_path`) |
+| `firefox` | `FirefoxTool` | `AddOrkeonWebTools()` (needs an `IFileSystemService`) — Firefox must be installed on the host; it starts at the first call of an agent run, in a profile of its own, and closes with the run ([configuration](../reference/configuration.md#orkeontoolsfirefox)) | Drive a Firefox browser over WebDriver BiDi (`action`: `navigate`, `back`, `snapshot`, `read`, `find`, `search`, `click`, `type`, `press`, `evaluate`, `screenshot`, `close`). `snapshot` returns the page as an outline of sections, links and controls read from its semantic graph; each node carries an id (`p2#7`) that `click`, `type`, `read` and `find` take. `search` returns the sections closest in meaning to a `query` through the ephemeral RAG search (an error without the RAG subsystem). `screenshot` writes a PNG under a virtual path (`save_to_path`). Every address the browser shows is checked by the SSRF guard. For the permission gate, `navigate`, `back`, `snapshot`, `read`, `find` and `search` are reads (allowed in `plan`), `screenshot` an edit, `click`, `type`, `press`, `evaluate`, `close` and an unknown action executions |
 | `web_search` | `WebSearchTool` | `AddOrkeonWebSearchTool()` — the secret `TAVILY_API_KEY` is resolved at call time through `ISecretProvider` (by default the `ORKEON_TAVILY_API_KEY` environment variable, then `Secrets:TAVILY_API_KEY` in configuration) | Web search via the Tavily Search API |
 | `brave_search` | `BraveSearchTool` | `AddOrkeonBraveSearchTool(apiKey)` — `orkeon run` wires it only when `BRAVE_API_KEY` is set | Web search via the Brave Search API |
 | `slack_send_message` | `SlackTool` | `AddOrkeonSlackTool(botToken)` — no shipped root calls it (pure host opt-in) | Send messages to Slack channels/users via the Web API |
@@ -273,7 +274,7 @@ Twenty-nine tools over the RaggableTree semantic code graph — the full guide i
 
 ## Outside the catalogue
 
-Deliberately **not** part of the 121 built-in tool classes:
+Deliberately **not** part of the 122 built-in tool classes:
 
 - `brief_submit` / `blueprint_submit` — internal to the `orkeon forge` command
   (`ForgeSubmission.cs`, `Orkeon.Scripting.Cli`); the engine's own agents use them, a
@@ -299,12 +300,12 @@ number the README and the documentation index state, checked by
 | `Orkeon.Tools.Email` (see [its guide](../guides/email.md)) | 13 |
 | `Orkeon.Tools.Drive` (see [its guide](../guides/drive.md)) | 11 |
 | `Orkeon.Infrastructure` (collaboration, session, sandbox, human input, `semantic_search`, `system_one_decide`) | 13 |
-| `Orkeon.Tools.Web` | 10 |
+| `Orkeon.Tools.Web` | 11 |
 | `Orkeon.Tools.EventHub` | 7 |
 | `Orkeon.Tools.FileSystem` | 8 |
 | `Orkeon.Tools.Rag` | 3 |
 | `Orkeon.Tools.Abstractions` / `Orkeon.Tools.Code` / `Orkeon.Tools.Embeddings.Local` / `Orkeon.Cli.Commands.Scripting` / `Orkeon.Scripting` | 1 each |
-| **Total** | **121** |
+| **Total** | **122** |
 
 ## Availability by composition root
 
@@ -320,7 +321,7 @@ and serves its tools to an MCP client, `human_input` aside — see
 
 | Suite / tool | `orkeon run` (CLI) | `orkeon-repl` (ConsoleApp) |
 |---|---|---|
-| FileSystem (8), Data (22), Web core (5), `shell_command`, `list_mounts`, session (6) | ✅ | ✅ |
+| FileSystem (8), Data (22), Web core (6), `shell_command`, `list_mounts`, session (6) | ✅ | ✅ |
 | E-mail (13) — the mailbox tools refuse every call until an account is declared under `Orkeon:Tools:Email` | ✅ (OAuth tokens under the internal `/credentials` root) | ✅ password accounts only — the REPL keeps no token store, so an OAuth account is refused |
 | Drive (11) — every tool but `drive_accounts` refuses each call until an account is declared under `Orkeon:Tools:Drive` and signed in | ✅ (OAuth tokens under the internal `/credentials` root) | registered, but every account is refused: all sign in with OAuth, and the REPL keeps no token store |
 | EventHub (7) | ✅ | ❌ |
@@ -381,7 +382,7 @@ Tools are registered in `IToolRegistry` at application startup via the DI extens
 ```csharp
 services.AddOrkeonFileSystemTools();   // file_read, file_write, edit_file, directory_read, directory_search, count_pattern, glob, grep
 services.AddOrkeonDataTools();         // the 22 data tools (relational + MongoDB + graph chained internally)
-services.AddOrkeonWebTools();          // http_api, web_scrape, scrape_element, github, image_generation
+services.AddOrkeonWebTools();          // http_api, web_scrape, scrape_element, github, image_generation, firefox
 services.AddOrkeonCodeTools();         // shell_command
 services.AddOrkeonAbstractionTools();  // list_mounts
 services.AddOrkeonSessionTools();      // session_store, session_snip, session_stats, session_cost, token_budget, memory_store
@@ -457,6 +458,7 @@ The exact name to use in the YAML `tools:` section is the value of the tool clas
 | `edge_list` | `EdgeListTool` | `Orkeon.Tools.Analysis` |
 | `edit_batch` | `EditBatchTool` | `Orkeon.Tools.Analysis` |
 | `edit_file` | `EditFileTool` | `Orkeon.Tools.FileSystem` |
+| `firefox` | `FirefoxTool` | `Orkeon.Tools.Web` |
 | `flow_trace` | `FlowTraceTool` | `Orkeon.Tools.Analysis` |
 | `get_last_value` | `GetLastValueTool` | `Orkeon.Tools.EventHub` |
 | `github` | `GitHubTool` | `Orkeon.Tools.Web` |

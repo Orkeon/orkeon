@@ -5,6 +5,8 @@ using Orkeon.Application.Interfaces.Security;
 using Orkeon.Domain.Memory;
 using Orkeon.Domain.Tools;
 using Orkeon.Domain.Tools.Security;
+using Orkeon.Rag.Abstractions.Interfaces;
+using Orkeon.Rag.DependencyInjection;
 using Orkeon.Tools.Abstractions.Security;
 
 
@@ -22,18 +24,25 @@ public static class WebToolExtensions
     public const string HttpClientName = "orkeon.web-tools";
 
     /// <summary>
-    /// Adds web tools (HttpApi, WebScrape, GitHub) to the service collection.
+    /// Adds web tools (HttpApi, WebScrape, GitHub, Firefox) to the service collection.
     /// When <see cref="IUrlValidator"/> and <see cref="HttpHeaderSanitizer"/> are registered,
     /// HttpApiTool will use them for SSRF protection and header sanitization.
     /// Use <see cref="AddOrkeonWebSearchTool"/> to register the WebSearch tool separately (requires ISecretProvider).
     /// For Slack tools, use <see cref="AddOrkeonSlackTool"/> and <see cref="AddOrkeonSlackReadTool"/>.
     /// The GitHub tool's token is read once, when the tool is built, from
     /// <see cref="GitHubToolOptions.ResolveToken"/> (setting, then environment).
+    /// The Firefox tool starts no browser until an agent calls it; its <c>search</c> action goes
+    /// through the ephemeral RAG search, registered here, and answers an error when the host has
+    /// no RAG subsystem.
     /// </summary>
     public static IServiceCollection AddOrkeonWebTools(this IServiceCollection services)
     {
         RegisterWebToolsHttpClient(services);
         services.DeclareSettingsShape(GitHubToolOptions.SectionName, typeof(GitHubToolOptions));
+        services.DeclareSettingsShape(FirefoxToolOptions.SectionName, typeof(FirefoxToolOptions));
+
+        // Shared ephemeral-collection search engine behind the firefox search action (TryAdd, idempotent).
+        services.AddOrkeonEphemeralSearch();
         services.AddTransient<IBaseTool>(CreateHttpApiTool);
         // WebScrapeTool: prefers the RAG-enabled ctor when IEmbeddingService and
         // IMemoryProvider are available. Always wires the IUrlValidator (SSRF) when
@@ -44,6 +53,7 @@ public static class WebToolExtensions
         services.AddTransient<IBaseTool>(CreateScrapeElementTool);
         services.AddTransient<IBaseTool>(CreateGitHubTool);
         services.AddTransient<IBaseTool>(CreateImageGenerationTool);
+        services.AddTransient<IBaseTool>(CreateFirefoxTool);
         return services;
     }
 
@@ -142,6 +152,21 @@ public static class WebToolExtensions
         return urlValidator is not null && headerSanitizer is not null
             ? new ScrapeElementTool(urlValidator, headerSanitizer, httpClient, logger)
             : new ScrapeElementTool(httpClient, logger);
+    }
+
+    private static IBaseTool CreateFirefoxTool(IServiceProvider sp)
+    {
+        var fileSystem = sp.GetService<Orkeon.Domain.FileSystem.IFileSystemService>()
+            ?? throw new InvalidOperationException(
+                $"{nameof(FirefoxTool)} requires an {nameof(Orkeon.Domain.FileSystem.IFileSystemService)} to be registered.");
+
+        // Tools are transient; the browser is not: it belongs to the agent run, whichever instance asks.
+        return new FirefoxTool(
+            FirefoxToolOptions.From(sp.GetService<IConfiguration>()),
+            fileSystem,
+            sp.GetService<IUrlValidator>(),
+            sp.GetService<IEphemeralCollectionSearch>(),
+            sp.GetService<Microsoft.Extensions.Logging.ILogger<FirefoxTool>>());
     }
 
     private static IBaseTool CreateImageGenerationTool(IServiceProvider sp)

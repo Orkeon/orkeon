@@ -445,6 +445,48 @@ declare global {
             readonly success: boolean;
         }>;
 
+        /** `firefox` - Drive a Firefox browser: open a page (navigate), read it as an outline of sections, links and controls (snapshot, find, read), find its sections by meaning (search), then act on a node by its id (click, type), press keys, run a script (evaluate) or save a screenshot. The browser stays open between calls of the same run; close ends it. */
+        firefox(input: {
+            /** What to do: navigate (url), back, snapshot (the outline of the page: sections, links, controls, each with a node id), read (the text of the page, or of node_id), find (nodes by kind and name, under node_id), search (query: the sections of the page closest in meaning), click (node_id), type (node_id, text), press (key), evaluate (script), screenshot (save_to_path), close */
+            action: "navigate" | "back" | "snapshot" | "read" | "find" | "search" | "click" | "type" | "press" | "evaluate" | "screenshot" | "close";
+            /** press: a key or a chord on the focused element - Enter, Tab, Escape, ArrowDown, PageDown, a, Control+a, Shift+Tab */
+            key?: string | null;
+            /** find: only nodes of this kind */
+            kind?: "section" | "link" | "control" | null;
+            /** snapshot, find: the most nodes to return (the default is set by the host, 200 at most); search: the most hits (5 by default, 20 at most) */
+            max_nodes?: number | null;
+            /** find: only nodes whose name holds this text, whatever the case */
+            name?: string | null;
+            /** A node id returned by snapshot or find (p1#12). click, type: the element; read: the node to read; find: search under this node */
+            node_id?: string | null;
+            /** snapshot, find: nodes to skip, to read the next part of a listing; read: characters to skip */
+            offset?: number | null;
+            /** search: what to look for in the page, in plain words; the sections closest in meaning are returned */
+            query?: string | null;
+            /** screenshot: the virtual path the PNG image of the visible part of the page is written to (/output/page.png) */
+            save_to_path?: string | null;
+            /** evaluate: a JavaScript expression run in the page; its value is returned, a promise is awaited */
+            script?: string | null;
+            /** type: the text that replaces what the element holds; a line feed presses Enter. Never a secret: the text goes through the conversation */
+            text?: string | null;
+            /** navigate: the http or https address to open */
+            url?: string | null;
+        }, ctx?: ExecutionContext): Promise<{
+            readonly action: string;
+            readonly dialogs: readonly string[];
+            readonly error?: string;
+            readonly hits: readonly { readonly excerpt: string; readonly name: string; readonly node_id: string; readonly score: number; }[];
+            readonly nodes: readonly { readonly id: string; readonly kind: string; readonly name: string; readonly parent_id?: string; readonly role: string; readonly text: string; }[];
+            readonly saved_path?: string;
+            readonly success: boolean;
+            readonly text?: string;
+            readonly title?: string;
+            readonly total_nodes?: number;
+            readonly truncated: boolean;
+            readonly url?: string;
+            readonly value?: string;
+        }>;
+
         /** `flow_trace` - How does control get from this symbol to that one? Returns the shortest call path from from to to, or with include_all_paths every path up to max_depth hops and max_paths paths (20), truncated when more exist; without to, the paths from from. edge_kinds takes calls by default. For the neighbourhood of one symbol, sub_graph. */
         flowTrace(input: {
             /** Forward follows calls out of from; Backward follows them into from; Both. */
