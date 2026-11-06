@@ -203,3 +203,4 @@ override Orkeon.Analysis.Abstractions.DTOs.Responses.SemanticSearchResult.GetHas
 override Orkeon.Analysis.Abstractions.DTOs.Responses.SemanticSearchResult.ToString() -> string!
 static Orkeon.Analysis.Abstractions.DTOs.Responses.SemanticSearchResult.operator !=(Orkeon.Analysis.Abstractions.DTOs.Responses.SemanticSearchResult? left, Orkeon.Analysis.Abstractions.DTOs.Responses.SemanticSearchResult? right) -> bool
 static Orkeon.Analysis.Abstractions.DTOs.Responses.SemanticSearchResult.operator ==(Orkeon.Analysis.Abstractions.DTOs.Responses.SemanticSearchResult? left, Orkeon.Analysis.Abstractions.DTOs.Responses.SemanticSearchResult? right) -> bool
+Orkeon.Analysis.Abstractions.UniversalNodeKind.Control = 26 -> Orkeon.Analysis.Abstractions.UniversalNodeKind

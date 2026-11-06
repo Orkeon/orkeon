@@ -200,13 +200,13 @@ qu'elle accepte quand leur liste est fermée, et son sens.
 | [RAG](#rag) | [`Orkeon:Rag`](#orkeonrag), [`Orkeon:Rag:Ingestion`](#orkeonragingestion), [`Orkeon:Rag:QueryRouting`](#orkeonragqueryrouting), [`Orkeon:Rag:Retrieval:Hybrid`](#orkeonragretrievalhybrid), [`Orkeon:Rag:WebFallback`](#orkeonragwebfallback) | 34 |
 | [Fichiers et bac à sable](#fichiers-et-bac-à-sable) | [`Orkeon:CodeSandbox`](#orkeoncodesandbox), [`Orkeon:CodeSandbox:Docker`](#orkeoncodesandboxdocker), [`Orkeon:FileSystem`](#orkeonfilesystem), [`Orkeon:Sandbox`](#orkeonsandbox), [`PathSecurity`](#pathsecurity) | 33 |
 | [Sécurité](#sécurité) | [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:Guardian`](#orkeonguardian), [`Orkeon:Security:PermissionGate`](#orkeonsecuritypermissiongate), [`Secrets`](#secrets), [`Security:Audit`](#securityaudit), [`Security:Prompt`](#securityprompt), [`Security:ToolResults`](#securitytoolresults), [`Security:Url`](#securityurl), [`Security:Vault`](#securityvault) | 31 |
-| [Outils](#outils) | [`BRAVE_API_KEY`](#brave_api_key), [`MCP`](#mcp), [`MCP:Server`](#mcpserver), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Tools:Drive`](#orkeontoolsdrive), [`Orkeon:Tools:Email`](#orkeontoolsemail), [`Orkeon:Tools:GitHub`](#orkeontoolsgithub), [`Orkeon:Tools:ResultLimits`](#orkeontoolsresultlimits), [`Orkeon:Tools:Shell`](#orkeontoolsshell), [`Plugins`](#plugins), [`RaggableTree`](#raggabletree) | 77 |
+| [Outils](#outils) | [`BRAVE_API_KEY`](#brave_api_key), [`MCP`](#mcp), [`MCP:Server`](#mcpserver), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Tools:Drive`](#orkeontoolsdrive), [`Orkeon:Tools:Email`](#orkeontoolsemail), [`Orkeon:Tools:Firefox`](#orkeontoolsfirefox), [`Orkeon:Tools:GitHub`](#orkeontoolsgithub), [`Orkeon:Tools:ResultLimits`](#orkeontoolsresultlimits), [`Orkeon:Tools:Shell`](#orkeontoolsshell), [`Plugins`](#plugins), [`RaggableTree`](#raggabletree) | 88 |
 | [Orchestration et persistance](#orchestration-et-persistance) | [`Orkeon:Checkpointing`](#orkeoncheckpointing), [`Orkeon:Consensus`](#orkeonconsensus), [`Orkeon:CrewFactory`](#orkeoncrewfactory), [`Orkeon:ExecutionState:Persistence`](#orkeonexecutionstatepersistence) | 16 |
 | [Scripts et console](#scripts-et-console) | [`Orkeon:Cli:ConsoleStreaming`](#orkeoncliconsolestreaming), [`Orkeon:Cli:Memory`](#orkeonclimemory), [`Orkeon:Cli:ScriptCommands`](#orkeoncliscriptcommands), [`Orkeon:Cli:ScriptHost`](#orkeoncliscripthost), [`Orkeon:Cli:Session`](#orkeonclisession), [`Orkeon:Cli:Tui`](#orkeonclitui), [`Orkeon:Scripting:AgentInstances`](#orkeonscriptingagentinstances), [`Orkeon:Scripting:AgentMemory`](#orkeonscriptingagentmemory), [`Orkeon:Scripting:Limits`](#orkeonscriptinglimits), [`Orkeon:Scripting:Toolchain`](#orkeonscriptingtoolchain) | 32 |
 | [Hôte de service et A2A](#hôte-de-service-et-a2a) | [`A2A`](#a2a), [`A2A:Security`](#a2asecurity), [`A2A:Security:AzureAD`](#a2asecurityazuread), [`A2A:Security:Oidc`](#a2asecurityoidc), [`Orkeon:Host`](#orkeonhost), [`Orkeon:Host:Discord`](#orkeonhostdiscord) | 46 |
 | [Observabilité](#observabilité) | [`Logging`](#logging), [`Orkeon:Monitoring`](#orkeonmonitoring), [`Telemetry`](#telemetry) | 8 |
 
-78 sections, 441 clés. Lues par aucun binaire livré, seulement par un hôte écrit en C# (10) : [`Evaluation`](#evaluation), [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:CognitiveMemory`](#orkeoncognitivememory), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Checkpointing`](#orkeoncheckpointing), [`Orkeon:ExecutionState:Persistence`](#orkeonexecutionstatepersistence), [`Orkeon:Monitoring`](#orkeonmonitoring).
+79 sections, 452 clés. Lues par aucun binaire livré, seulement par un hôte écrit en C# (10) : [`Evaluation`](#evaluation), [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:CognitiveMemory`](#orkeoncognitivememory), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Checkpointing`](#orkeoncheckpointing), [`Orkeon:ExecutionState:Persistence`](#orkeonexecutionstatepersistence), [`Orkeon:Monitoring`](#orkeonmonitoring).
 <!-- /settings-index -->
 
 Lire un tableau :
@@ -1696,6 +1696,34 @@ les journaux de l'outil.
 |---|---|---|---|
 | `Token` | chaîne, secret | — | Jeton d'accès personnel GitHub que l'outil envoie comme bearer. Le garder hors d'un fichier versionné (`appsettings.local.json`, ou plutôt la variable d'environnement). Non renseigné : la variable que nomme `TokenVariable`, puis `GH_TOKEN`. |
 | `TokenVariable` | chaîne | `"GITHUB_TOKEN"` | Nom de la variable d'environnement qui contient le jeton quand `Token` est vide ; `GH_TOKEN` est lue après elle. |
+<!-- /settings -->
+
+### `Orkeon:Tools:Firefox`
+
+Lue une fois par `AddOrkeonWebTools` quand l'outil `firefox` est enregistré. L'outil pilote un
+Firefox à lui par WebDriver BiDi : le navigateur démarre à la première action d'une exécution
+d'agent, avec un dossier de profil qu'aucun autre navigateur n'utilise, garde sa page d'une action à
+la suivante et se ferme avec l'exécution — le profil est alors supprimé. Firefox lui-même n'est pas
+livré : c'est celui qui est installé sur la machine. La fenêtre est visible sauf si `Headless` vaut
+`true` ou si la machine n'a pas d'affichage. Ce que l'outil ne fait pas est listé dans
+[Limitations connues](limitations.md).
+
+<!-- settings:Orkeon:Tools:Firefox -->
+**Lue par** : `orkeon`, `orkeon-host`, `orkeon-repl`.
+
+| Clé | Type | Défaut | Sens |
+|---|---|---|---|
+| `AllowedProfiles` | liste de chaînes | `[]` | Profils qu'un agent peut nommer avec l'argument `profile`, en plus de `disposable` et de `Profile`. Vide : un agent n'en nomme aucun autre. Un nom présent dans `DeniedProfiles` reste refusé. |
+| `CommandTimeoutSeconds` | entier | `30` | Secondes laissées à une commande du navigateur (un chargement de page, un script, un clic) pour répondre. |
+| `DeniedProfiles` | liste de chaînes | `[]` | Profils avec lesquels aucun navigateur ne démarre jamais, qu'un agent en nomme un ou que `Profile` le fasse : les profils personnels de l'opérateur, par exemple. |
+| `ExecutablePath` | chaîne | — | Chemin du programme Firefox, ou son nom sur le PATH. Non renseigné : `firefox` sur le PATH, puis le dossier d'installation habituel de la plateforme. |
+| `Headless` | booléen | `false` | `true` démarre Firefox sans fenêtre. Par défaut la fenêtre est visible ; sous Linux sans `DISPLAY` ni `WAYLAND_DISPLAY`, le navigateur démarre quand même sans fenêtre, et un avertissement le dit. |
+| `MaxNodes` | entier | `40` | Nombre maximal de nœuds que liste une réponse de `snapshot` ou de `find` ; le reste se lit avec `offset`. |
+| `MaxTextLength` | entier | `3000` | Nombre maximal de caractères de texte de page que porte une réponse de `read`. |
+| `Profile` | chaîne | — | Profil avec lequel un navigateur démarre quand l'agent n'en nomme aucun : `disposable` (par défaut, un dossier neuf supprimé à la fermeture du navigateur), le nom d'un profil du Firefox installé sur l'hôte (`profiles.ini`), ou le chemin d'un dossier de profil. Un profil nommé est utilisé sur place, avec ses cookies et ses sessions, et jamais supprimé ; un profil qu'un autre Firefox tient ouvert est refusé. |
+| `ProfileRoot` | chaîne | — | Dossier sous lequel chaque navigateur reçoit son propre dossier de profil, supprimé à la fermeture du navigateur. Non renseigné : `~/snap/firefox/common/orkeon/profiles` quand Firefox est un snap (un snap ne lit pas le dossier temporaire du système), sinon `orkeon-firefox` sous le dossier temporaire du système. |
+| `SharedInstance` | booléen | `false` | `true` partage un navigateur par profil entre les exécutions d'agents de l'hôte : chaque exécution y pilote ses propres onglets, et le navigateur se ferme quand la dernière exécution le quitte. Par défaut, chaque exécution a son propre navigateur. |
+| `StartupTimeoutSeconds` | entier | `30` | Secondes laissées à Firefox pour démarrer et ouvrir son protocole distant. |
 <!-- /settings -->
 
 ### `MCP`

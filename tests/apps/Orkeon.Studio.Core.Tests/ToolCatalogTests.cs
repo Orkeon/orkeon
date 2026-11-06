@@ -18,13 +18,13 @@ namespace Orkeon.Studio.Core.Tests;
 public sealed partial class ToolCatalogTests
 {
     /// <summary>
-    /// The <c>orkeon run</c> column, counted by hand from the matrix: Web core 5, search 5
+    /// The <c>orkeon run</c> column, counted by hand from the matrix: Web core 6 (firefox joined), search 5
     /// (web_search, brave_search, cache_search, semantic_search, local_embed_text), files 6 (edit_file joined),
     /// data 22, e-mail 13 (the twelve account tools and email_parser, which left the files
     /// family), drive 11, shell_command, session 6, EventHub 7, Analysis 19, collaboration 3
     /// (human_input and the two per-agent coworker tools), list_mounts.
     /// </summary>
-    private const int ToolsARunExposes = 111;
+    private const int ToolsARunExposes = 112;
 
     /// <summary>The one e-mail tool that works on a file rather than on an account.</summary>
     private const string EmailParser = "email_parser";

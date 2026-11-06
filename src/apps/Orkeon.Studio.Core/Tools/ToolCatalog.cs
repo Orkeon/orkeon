@@ -135,6 +135,7 @@ public static class ToolCatalog
             new("scrape_element"),
             new("github"),
             new("image_generation", ToolRequirement.StoredKey, OpenAiImageKeyEnv),
+            new("firefox"),
         ]),
         new(SearchFamily,
         [

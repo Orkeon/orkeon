@@ -21,6 +21,15 @@
     <ProjectReference Include="..\..\core\Orkeon.Application\Orkeon.Application.csproj" />
     <ProjectReference Include="..\..\rag\Orkeon.Rag.Abstractions\Orkeon.Rag.Abstractions.csproj" />
     <ProjectReference Include="..\..\rag\Orkeon.Rag\Orkeon.Rag.csproj" />
+    <!-- ADR-005: the firefox tool keeps the graph of the visited page in its own InMemoryRaggableStore. -->
+    <ProjectReference Include="..\..\analysis\Orkeon.Analysis\Orkeon.Analysis.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="Orkeon.Tools.Web.Tests" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- The script the firefox tool runs in the page to read its outline. -->
+    <EmbeddedResource Include="Firefox\page-outline.js" LogicalName="Orkeon.Tools.Web.Firefox.page-outline.js" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="HtmlAgilityPack" />

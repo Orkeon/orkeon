@@ -31,6 +31,30 @@ public class WebToolExtensionsTests
         Assert.Contains(tools, t => t is ScrapeElementTool);
         Assert.Contains(tools, t => t is GitHubTool);
         Assert.Contains(tools, t => t is ImageGenerationTool);
+        Assert.Contains(tools, t => t is FirefoxTool);
+    }
+
+    [Fact]
+    public async Task AddOrkeonWebTools_RegistersFirefox_WhichRefusesALoopbackPageBeforeAnyBrowserStarts()
+    {
+        var services = new ServiceCollection();
+        services.AddSingleton<IFileSystemService>(new FakeFileSystemService());
+        services.AddSingleton<Orkeon.Application.Interfaces.Security.ISecretProvider>(new MockSecretProvider());
+        services.AddOrkeonWebTools();
+        using var sp = services.BuildServiceProvider();
+
+        var firefox = sp.GetServices<IBaseTool>().OfType<FirefoxTool>().Single();
+        var refused = await firefox.CallAsync(
+            new Orkeon.Domain.Tools.Protocol.ToolCallRequest(
+                ToolName: "firefox",
+                Parameters: new Dictionary<string, object?> { ["action"] = "navigate", ["url"] = "http://127.0.0.1:9/" }),
+            TestContext.Current.CancellationToken);
+
+        // Registered and built without a browser, a display or the RAG subsystem; with no URL policy
+        // registered the fail-closed guard applies, and refuses a loopback address before Firefox starts.
+        Assert.Equal("firefox", firefox.Name);
+        Assert.False(refused.Success);
+        Assert.Contains("was not opened", refused.Error, StringComparison.Ordinal);
     }
 
     [Fact]

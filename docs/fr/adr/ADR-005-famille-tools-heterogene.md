@@ -66,3 +66,7 @@ seulement » (`Domain`, `Tools.Abstractions`, `Analysis.Abstractions`).
 ## Amendement (2026-10-29)
 
 `Tools.Drive` ([ADR-013](./ADR-013-drive-tool-family.md)) référence `Domain`, `Tools.Abstractions`, `Orkeon.Constants.Configuration` et le `Orkeon.Rag` concret ; il atteint donc `Application` de façon transitive via `Orkeon.Rag`, comme `Tools.Web` et `Tools.Email`.
+
+## Amendement (2026-11-06)
+
+`Tools.Web` référence aussi le `Orkeon.Analysis` concret : l'outil `firefox` lit une page comme un graphe sémantique, dans un `InMemoryRaggableStore` à lui par page (jamais l'index de code de l'hôte), et la projection du plan d'une page vit dans `Orkeon.Analysis` (`PageOutlineMapper`), à côté des autres mappers, parce que les mutateurs d'un nœud du graphe lui sont internes. `Orkeon.Analysis` fait déjà partie du paquet `Orkeon` : la fermeture des paquets est inchangée.

@@ -138,6 +138,7 @@ public static class SettingsCategories
             ["Orkeon:Tools:ResultLimits"] = Tools,
             ["Orkeon:Tools:Drive"] = Tools,
             ["Orkeon:Tools:GitHub"] = Tools,
+            ["Orkeon:Tools:Firefox"] = Tools,
             ["MCP"] = Tools,
             ["RaggableTree"] = Tools,
             [EnvironmentVariableNames.BraveApiKey] = Tools,

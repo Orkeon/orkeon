@@ -81,6 +81,7 @@ public static class SettingsSections
         "Orkeon:Tools",
         "Orkeon:Tools:Drive",
         "Orkeon:Tools:Email",
+        "Orkeon:Tools:Firefox",
         "Orkeon:Tools:GitHub",
         "Orkeon:Tools:ResultLimits",
         "Orkeon:Tools:Shell",

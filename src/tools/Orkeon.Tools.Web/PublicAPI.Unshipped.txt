@@ -1,1 +1,163 @@
 #nullable enable
+Orkeon.Tools.Web.FirefoxToolOptions
+Orkeon.Tools.Web.FirefoxToolOptions.CommandTimeoutSeconds.get -> int
+Orkeon.Tools.Web.FirefoxToolOptions.CommandTimeoutSeconds.set -> void
+Orkeon.Tools.Web.FirefoxToolOptions.ExecutablePath.get -> string?
+Orkeon.Tools.Web.FirefoxToolOptions.ExecutablePath.set -> void
+Orkeon.Tools.Web.FirefoxToolOptions.FirefoxToolOptions() -> void
+Orkeon.Tools.Web.FirefoxToolOptions.Headless.get -> bool
+Orkeon.Tools.Web.FirefoxToolOptions.Headless.set -> void
+Orkeon.Tools.Web.FirefoxToolOptions.MaxNodes.get -> int
+Orkeon.Tools.Web.FirefoxToolOptions.MaxNodes.set -> void
+Orkeon.Tools.Web.FirefoxToolOptions.MaxTextLength.get -> int
+Orkeon.Tools.Web.FirefoxToolOptions.MaxTextLength.set -> void
+Orkeon.Tools.Web.FirefoxToolOptions.ProfileRoot.get -> string?
+Orkeon.Tools.Web.FirefoxToolOptions.ProfileRoot.set -> void
+Orkeon.Tools.Web.FirefoxToolOptions.StartupTimeoutSeconds.get -> int
+Orkeon.Tools.Web.FirefoxToolOptions.StartupTimeoutSeconds.set -> void
+const Orkeon.Tools.Web.FirefoxToolOptions.SectionName = "Orkeon:Tools:Firefox" -> string!
+static Orkeon.Tools.Web.FirefoxToolOptions.From(Microsoft.Extensions.Configuration.IConfiguration? configuration) -> Orkeon.Tools.Web.FirefoxToolOptions!
+Orkeon.Tools.Web.FirefoxNode
+Orkeon.Tools.Web.FirefoxNode.<Clone>$() -> Orkeon.Tools.Web.FirefoxNode!
+Orkeon.Tools.Web.FirefoxNode.Equals(Orkeon.Tools.Web.FirefoxNode? other) -> bool
+Orkeon.Tools.Web.FirefoxNode.FirefoxNode() -> void
+Orkeon.Tools.Web.FirefoxNode.Id.get -> string!
+Orkeon.Tools.Web.FirefoxNode.Id.init -> void
+Orkeon.Tools.Web.FirefoxNode.Kind.get -> string!
+Orkeon.Tools.Web.FirefoxNode.Kind.init -> void
+Orkeon.Tools.Web.FirefoxNode.Name.get -> string!
+Orkeon.Tools.Web.FirefoxNode.Name.init -> void
+Orkeon.Tools.Web.FirefoxNode.ParentId.get -> string?
+Orkeon.Tools.Web.FirefoxNode.ParentId.init -> void
+Orkeon.Tools.Web.FirefoxNode.Role.get -> string!
+Orkeon.Tools.Web.FirefoxNode.Role.init -> void
+Orkeon.Tools.Web.FirefoxNode.Text.get -> string!
+Orkeon.Tools.Web.FirefoxNode.Text.init -> void
+Orkeon.Tools.Web.FirefoxRequest
+Orkeon.Tools.Web.FirefoxRequest.<Clone>$() -> Orkeon.Tools.Web.FirefoxRequest!
+Orkeon.Tools.Web.FirefoxRequest.Action.get -> string!
+Orkeon.Tools.Web.FirefoxRequest.Action.init -> void
+Orkeon.Tools.Web.FirefoxRequest.Equals(Orkeon.Tools.Web.FirefoxRequest? other) -> bool
+Orkeon.Tools.Web.FirefoxRequest.FirefoxRequest() -> void
+Orkeon.Tools.Web.FirefoxRequest.Key.get -> string?
+Orkeon.Tools.Web.FirefoxRequest.Key.init -> void
+Orkeon.Tools.Web.FirefoxRequest.Kind.get -> string?
+Orkeon.Tools.Web.FirefoxRequest.Kind.init -> void
+Orkeon.Tools.Web.FirefoxRequest.MaxNodes.get -> int?
+Orkeon.Tools.Web.FirefoxRequest.MaxNodes.init -> void
+Orkeon.Tools.Web.FirefoxRequest.Name.get -> string?
+Orkeon.Tools.Web.FirefoxRequest.Name.init -> void
+Orkeon.Tools.Web.FirefoxRequest.NodeId.get -> string?
+Orkeon.Tools.Web.FirefoxRequest.NodeId.init -> void
+Orkeon.Tools.Web.FirefoxRequest.Offset.get -> int?
+Orkeon.Tools.Web.FirefoxRequest.Offset.init -> void
+Orkeon.Tools.Web.FirefoxRequest.SaveToPath.get -> string?
+Orkeon.Tools.Web.FirefoxRequest.SaveToPath.init -> void
+Orkeon.Tools.Web.FirefoxRequest.Script.get -> string?
+Orkeon.Tools.Web.FirefoxRequest.Script.init -> void
+Orkeon.Tools.Web.FirefoxRequest.Text.get -> string?
+Orkeon.Tools.Web.FirefoxRequest.Text.init -> void
+Orkeon.Tools.Web.FirefoxRequest.Url.get -> string?
+Orkeon.Tools.Web.FirefoxRequest.Url.init -> void
+Orkeon.Tools.Web.FirefoxResponse
+Orkeon.Tools.Web.FirefoxResponse.<Clone>$() -> Orkeon.Tools.Web.FirefoxResponse!
+Orkeon.Tools.Web.FirefoxResponse.Action.get -> string!
+Orkeon.Tools.Web.FirefoxResponse.Action.init -> void
+Orkeon.Tools.Web.FirefoxResponse.AlreadyBounded.get -> bool
+Orkeon.Tools.Web.FirefoxResponse.Dialogs.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Orkeon.Tools.Web.FirefoxResponse.Dialogs.init -> void
+Orkeon.Tools.Web.FirefoxResponse.Equals(Orkeon.Tools.Web.FirefoxResponse? other) -> bool
+Orkeon.Tools.Web.FirefoxResponse.Error.get -> string?
+Orkeon.Tools.Web.FirefoxResponse.Error.init -> void
+Orkeon.Tools.Web.FirefoxResponse.FirefoxResponse() -> void
+Orkeon.Tools.Web.FirefoxResponse.Nodes.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Tools.Web.FirefoxNode!>!
+Orkeon.Tools.Web.FirefoxResponse.Nodes.init -> void
+Orkeon.Tools.Web.FirefoxResponse.SavedPath.get -> string?
+Orkeon.Tools.Web.FirefoxResponse.SavedPath.init -> void
+Orkeon.Tools.Web.FirefoxResponse.Success.get -> bool
+Orkeon.Tools.Web.FirefoxResponse.Success.init -> void
+Orkeon.Tools.Web.FirefoxResponse.Text.get -> string?
+Orkeon.Tools.Web.FirefoxResponse.Text.init -> void
+Orkeon.Tools.Web.FirefoxResponse.Title.get -> string?
+Orkeon.Tools.Web.FirefoxResponse.Title.init -> void
+Orkeon.Tools.Web.FirefoxResponse.TotalNodes.get -> int?
+Orkeon.Tools.Web.FirefoxResponse.TotalNodes.init -> void
+Orkeon.Tools.Web.FirefoxResponse.Truncated.get -> bool
+Orkeon.Tools.Web.FirefoxResponse.Truncated.init -> void
+Orkeon.Tools.Web.FirefoxResponse.Url.get -> string?
+Orkeon.Tools.Web.FirefoxResponse.Url.init -> void
+Orkeon.Tools.Web.FirefoxResponse.Value.get -> string?
+Orkeon.Tools.Web.FirefoxResponse.Value.init -> void
+Orkeon.Tools.Web.FirefoxTool
+override Orkeon.Tools.Web.FirefoxNode.Equals(object? obj) -> bool
+override Orkeon.Tools.Web.FirefoxNode.GetHashCode() -> int
+override Orkeon.Tools.Web.FirefoxNode.ToString() -> string!
+override Orkeon.Tools.Web.FirefoxRequest.Equals(object? obj) -> bool
+override Orkeon.Tools.Web.FirefoxRequest.GetHashCode() -> int
+override Orkeon.Tools.Web.FirefoxRequest.ToString() -> string!
+override Orkeon.Tools.Web.FirefoxResponse.Equals(object? obj) -> bool
+override Orkeon.Tools.Web.FirefoxResponse.GetHashCode() -> int
+override Orkeon.Tools.Web.FirefoxResponse.ToString() -> string!
+override Orkeon.Tools.Web.FirefoxTool.Access.get -> Orkeon.Domain.Tools.ToolAccess
+override Orkeon.Tools.Web.FirefoxTool.AccessFor(System.Collections.Generic.IReadOnlyDictionary<string!, object?>! arguments) -> Orkeon.Domain.Tools.ToolAccess
+static Orkeon.Tools.Web.FirefoxNode.operator !=(Orkeon.Tools.Web.FirefoxNode? left, Orkeon.Tools.Web.FirefoxNode? right) -> bool
+static Orkeon.Tools.Web.FirefoxNode.operator ==(Orkeon.Tools.Web.FirefoxNode? left, Orkeon.Tools.Web.FirefoxNode? right) -> bool
+static Orkeon.Tools.Web.FirefoxRequest.operator !=(Orkeon.Tools.Web.FirefoxRequest? left, Orkeon.Tools.Web.FirefoxRequest? right) -> bool
+static Orkeon.Tools.Web.FirefoxRequest.operator ==(Orkeon.Tools.Web.FirefoxRequest? left, Orkeon.Tools.Web.FirefoxRequest? right) -> bool
+static Orkeon.Tools.Web.FirefoxResponse.operator !=(Orkeon.Tools.Web.FirefoxResponse? left, Orkeon.Tools.Web.FirefoxResponse? right) -> bool
+static Orkeon.Tools.Web.FirefoxResponse.operator ==(Orkeon.Tools.Web.FirefoxResponse? left, Orkeon.Tools.Web.FirefoxResponse? right) -> bool
+Orkeon.Tools.Web.FirefoxHit
+Orkeon.Tools.Web.FirefoxHit.<Clone>$() -> Orkeon.Tools.Web.FirefoxHit!
+Orkeon.Tools.Web.FirefoxHit.Equals(Orkeon.Tools.Web.FirefoxHit? other) -> bool
+Orkeon.Tools.Web.FirefoxHit.Excerpt.get -> string!
+Orkeon.Tools.Web.FirefoxHit.Excerpt.init -> void
+Orkeon.Tools.Web.FirefoxHit.FirefoxHit() -> void
+Orkeon.Tools.Web.FirefoxHit.Name.get -> string!
+Orkeon.Tools.Web.FirefoxHit.Name.init -> void
+Orkeon.Tools.Web.FirefoxHit.NodeId.get -> string!
+Orkeon.Tools.Web.FirefoxHit.NodeId.init -> void
+Orkeon.Tools.Web.FirefoxHit.Score.get -> double
+Orkeon.Tools.Web.FirefoxHit.Score.init -> void
+Orkeon.Tools.Web.FirefoxRequest.Query.get -> string?
+Orkeon.Tools.Web.FirefoxRequest.Query.init -> void
+Orkeon.Tools.Web.FirefoxResponse.Hits.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Tools.Web.FirefoxHit!>!
+Orkeon.Tools.Web.FirefoxResponse.Hits.init -> void
+Orkeon.Tools.Web.FirefoxTool.FirefoxTool(Orkeon.Tools.Web.FirefoxToolOptions! options, Orkeon.Domain.FileSystem.IFileSystemService! fileSystem, Orkeon.Domain.Tools.Security.IUrlValidator? urlValidator = null, Orkeon.Rag.Abstractions.Interfaces.IEphemeralCollectionSearch? search = null, Microsoft.Extensions.Logging.ILogger? logger = null) -> void
+override Orkeon.Tools.Web.FirefoxHit.Equals(object? obj) -> bool
+override Orkeon.Tools.Web.FirefoxHit.GetHashCode() -> int
+override Orkeon.Tools.Web.FirefoxHit.ToString() -> string!
+static Orkeon.Tools.Web.FirefoxHit.operator !=(Orkeon.Tools.Web.FirefoxHit? left, Orkeon.Tools.Web.FirefoxHit? right) -> bool
+static Orkeon.Tools.Web.FirefoxHit.operator ==(Orkeon.Tools.Web.FirefoxHit? left, Orkeon.Tools.Web.FirefoxHit? right) -> bool
+Orkeon.Tools.Web.FirefoxRequest.Tab.get -> string?
+Orkeon.Tools.Web.FirefoxRequest.Tab.init -> void
+Orkeon.Tools.Web.FirefoxResponse.Tab.get -> string?
+Orkeon.Tools.Web.FirefoxResponse.Tab.init -> void
+Orkeon.Tools.Web.FirefoxResponse.Tabs.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Tools.Web.FirefoxTabInfo!>!
+Orkeon.Tools.Web.FirefoxResponse.Tabs.init -> void
+Orkeon.Tools.Web.FirefoxTabInfo
+Orkeon.Tools.Web.FirefoxTabInfo.<Clone>$() -> Orkeon.Tools.Web.FirefoxTabInfo!
+Orkeon.Tools.Web.FirefoxTabInfo.Current.get -> bool
+Orkeon.Tools.Web.FirefoxTabInfo.Current.init -> void
+Orkeon.Tools.Web.FirefoxTabInfo.Equals(Orkeon.Tools.Web.FirefoxTabInfo? other) -> bool
+Orkeon.Tools.Web.FirefoxTabInfo.FirefoxTabInfo() -> void
+Orkeon.Tools.Web.FirefoxTabInfo.Id.get -> string!
+Orkeon.Tools.Web.FirefoxTabInfo.Id.init -> void
+Orkeon.Tools.Web.FirefoxTabInfo.Title.get -> string!
+Orkeon.Tools.Web.FirefoxTabInfo.Title.init -> void
+Orkeon.Tools.Web.FirefoxTabInfo.Url.get -> string!
+Orkeon.Tools.Web.FirefoxTabInfo.Url.init -> void
+override Orkeon.Tools.Web.FirefoxTabInfo.Equals(object? obj) -> bool
+override Orkeon.Tools.Web.FirefoxTabInfo.GetHashCode() -> int
+override Orkeon.Tools.Web.FirefoxTabInfo.ToString() -> string!
+static Orkeon.Tools.Web.FirefoxTabInfo.operator !=(Orkeon.Tools.Web.FirefoxTabInfo? left, Orkeon.Tools.Web.FirefoxTabInfo? right) -> bool
+static Orkeon.Tools.Web.FirefoxTabInfo.operator ==(Orkeon.Tools.Web.FirefoxTabInfo? left, Orkeon.Tools.Web.FirefoxTabInfo? right) -> bool
+Orkeon.Tools.Web.FirefoxRequest.Profile.get -> string?
+Orkeon.Tools.Web.FirefoxRequest.Profile.init -> void
+Orkeon.Tools.Web.FirefoxResponse.Profile.get -> string?
+Orkeon.Tools.Web.FirefoxResponse.Profile.init -> void
+Orkeon.Tools.Web.FirefoxToolOptions.Profile.get -> string?
+Orkeon.Tools.Web.FirefoxToolOptions.Profile.set -> void
+Orkeon.Tools.Web.FirefoxToolOptions.AllowedProfiles.get -> System.Collections.ObjectModel.Collection<string!>!
+Orkeon.Tools.Web.FirefoxToolOptions.DeniedProfiles.get -> System.Collections.ObjectModel.Collection<string!>!
+Orkeon.Tools.Web.FirefoxToolOptions.SharedInstance.get -> bool
+Orkeon.Tools.Web.FirefoxToolOptions.SharedInstance.set -> void
