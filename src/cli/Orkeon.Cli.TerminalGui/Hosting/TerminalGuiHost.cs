@@ -335,7 +335,6 @@ public sealed class TerminalGuiHost : IAsyncDisposable
 
         if (_integration.ToolActivity is { } feed)
             feed.Observer = top.Repl;
-        top.Repl.StepFolded += _toolActivity.Settle;
         top.Repl.StatusLine.TurnCompleted += (_, _) => top.Repl.AfterSteps(() =>
         {
             var sentence = _toolActivity.DrainSentence();

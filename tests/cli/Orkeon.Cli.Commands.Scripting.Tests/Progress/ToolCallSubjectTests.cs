@@ -22,7 +22,7 @@ public sealed class ToolCallSubjectTests
     public void A_value_the_model_sent_as_json_is_read()
     {
         // Arrange
-        var arguments = new Dictionary<string, object?> { ["path"] = JsonDocument.Parse("\"a.cs\"").RootElement };
+        var arguments = new Dictionary<string, object?> { ["path"] = JsonElement.Parse("\"a.cs\"") };
 
         // Act
         var subject = ToolCallSubject.Of("file_read", arguments);

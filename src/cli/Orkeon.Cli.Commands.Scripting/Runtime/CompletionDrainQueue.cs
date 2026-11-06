@@ -16,10 +16,42 @@ namespace Orkeon.Cli.Commands.Scripting.Runtime;
 /// Thread-safe: every access holds one lock.
 /// </remarks>
 [System.Diagnostics.CodeAnalysis.SuppressMessage("Naming", "CA1711:Identifiers should not have incorrect suffix", Justification = "The type is a genuine FIFO queue abstraction (enqueue/drain) and the 'Queue' suffix accurately describes its semantics; it is not intended to derive from System.Collections.Queue.")]
+[System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1001:Types that own disposable fields should be disposable", Justification = "The source lives from BeginDrain to the EndDrain every drain runs in a finally: nothing outlives the drain.")]
 public sealed class CompletionDrainQueue
 {
     private readonly List<PendingCompletion> _pending = new();
     private readonly Lock _lock = new();
+    private CancellationTokenSource? _drain;
+
+    /// <summary>
+    /// Opens the wait of a drain that holds the engine with no command behind it, and returns the token that ends it
+    /// (<see cref="CancelDrain"/>); <see cref="EndDrain"/> closes it.
+    /// </summary>
+    internal CancellationToken BeginDrain()
+    {
+        lock (_lock)
+        {
+            _drain = new CancellationTokenSource();
+            return _drain.Token;
+        }
+    }
+
+    /// <summary>Closes the wait <see cref="BeginDrain"/> opened.</summary>
+    internal void EndDrain()
+    {
+        lock (_lock)
+        {
+            _drain?.Dispose();
+            _drain = null;
+        }
+    }
+
+    /// <summary>Ends the wait of the drain that holds the engine, when one does; what it runs is not run under the lock.</summary>
+    internal void CancelDrain()
+    {
+        lock (_lock)
+            _ = _drain?.CancelAsync();
+    }
 
     /// <summary>Enqueue a terminal instance + its (optional) <c>completed</c> callback.</summary>
     public void Enqueue(JsValue? completed, CommandInstance instance)

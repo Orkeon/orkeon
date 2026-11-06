@@ -128,23 +128,6 @@ public sealed class ReplPaneViewStepTests
     }
 
     [Fact]
-    public void A_fold_reports_what_it_counted()
-    {
-        // Arrange
-        using var pane = CreatePane();
-        IReadOnlyDictionary<string, int>? reported = null;
-        pane.StepFolded += counts => reported = counts;
-        pane.Started(Read(1));
-        pane.Finished(new ToolCallFinished(1, null, Succeeded: true));
-
-        // Act
-        pane.AfterSteps(() => { });
-
-        // Assert
-        Assert.Equal(1, reported!["file_read"]);
-    }
-
-    [Fact]
     public void Ctrl_o_on_an_empty_prompt_lists_the_calls_of_the_last_step()
     {
         // Arrange
@@ -249,5 +232,49 @@ public sealed class ReplPaneViewStepTests
 
         // Assert
         Assert.True(pane.StepRows > 0);
+    }
+
+    [Fact]
+    public void A_turn_that_ends_folds_the_call_a_tool_left_open()
+    {
+        // Arrange
+        using var pane = CreatePane();
+        pane.Started(Read(1));
+
+        // Act
+        pane.AfterSteps(() => { });
+
+        // Assert
+        Assert.Equal(0, pane.StepRows);
+    }
+
+    [Fact]
+    public void A_task_that_ended_on_a_call_folds_its_step()
+    {
+        // Arrange
+        using var pane = CreatePane();
+        pane.Started(Read(1, "T-1"));
+        pane.Finished(new ToolCallFinished(1, "T-1", Succeeded: true));
+
+        // Act
+        ((ITaskListNavigator)pane).RowsRefreshed([new AgentRowInfo { Name = "w@c", Ticket = "T-1", State = TaskRowState.Done }]);
+
+        // Assert
+        Assert.Contains("Read 1 file", pane.ThreadText("T-1"), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void A_task_still_running_keeps_its_step()
+    {
+        // Arrange
+        using var pane = CreatePane();
+        pane.Started(Read(1, "T-1"));
+        pane.Finished(new ToolCallFinished(1, "T-1", Succeeded: true));
+
+        // Act
+        ((ITaskListNavigator)pane).RowsRefreshed([new AgentRowInfo { Name = "w@c", Ticket = "T-1", State = TaskRowState.Running }]);
+
+        // Assert
+        Assert.DoesNotContain("Read 1 file", pane.ThreadText("T-1"), StringComparison.Ordinal);
     }
 }

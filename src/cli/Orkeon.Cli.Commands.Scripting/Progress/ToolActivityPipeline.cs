@@ -1,7 +1,10 @@
+using System.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 using Orkeon.Application.Interfaces.Security;
 using Orkeon.Cli.Abstractions.Console;
+using Orkeon.Constants.Llm;
 using Orkeon.Domain.FileSystem;
+using Orkeon.Tools.Abstractions.Security;
 
 namespace Orkeon.Cli.Commands.Scripting.Progress;
 
@@ -20,6 +23,9 @@ public sealed class ToolActivityPipeline : IToolInvocationPipeline
 
     // A larger file shows the call's line without its change.
     private const int MaxComparedBytes = 1024 * 1024;
+
+    // On a call's span: a step shows this call, so the turn's sentence does not count it again (ToolActivityAggregator).
+    private const string ReportedTag = "orkeon.tool.reported";
 
     /// <summary>Wraps <paramref name="inner"/>; <paramref name="files"/> reads what a call changes.</summary>
     public ToolActivityPipeline(IToolInvocationPipeline inner, ToolActivityFeed feed, IFileSystemService files)
@@ -59,9 +65,13 @@ public sealed class ToolActivityPipeline : IToolInvocationPipeline
         var thread = ConsoleThread.Current;
         var tool = invocation.Tool.Name;
         var subject = ToolCallSubject.Of(tool, invocation.Arguments);
-        observer.Started(new ToolCallStarted(id, tool, thread) { Subject = subject });
-        var compared = tool is "edit_file" or "file_write" && subject.Length > 0;
-        var before = compared ? await ReadForDiffAsync(subject, cancellationToken).ConfigureAwait(false) : null;
+        if (Activity.Current is { } span && Equals(span.GetTagItem(GenAiAttributes.ToolName), tool))
+            span.SetTag(ReportedTag, true);
+        Tell(() => observer.Started(new ToolCallStarted(id, tool, thread) { Subject = subject }));
+        var path = tool is "edit_file" or "file_write" && ToolCallSubject.PathOf(invocation.Arguments) is { Length: > 0 } written
+            ? WorkingDirectoryResolver.Absolutize(written, _files)
+            : null;
+        var before = path is null ? null : await ReadForDiffAsync(path, cancellationToken).ConfigureAwait(false);
         var succeeded = false;
         ToolCallDiff? diff = null;
         try
@@ -69,30 +79,44 @@ public sealed class ToolActivityPipeline : IToolInvocationPipeline
             var result = await _inner.InvokeAsync(invocation, cancellationToken).ConfigureAwait(false);
             succeeded = result.Success;
             if (succeeded && before is not null)
-                diff = await DiffAfterAsync(subject, before, cancellationToken).ConfigureAwait(false);
+            {
+                var after = await ReadForDiffAsync(path!, cancellationToken).ConfigureAwait(false);
+                if (after is not null && after != before)
+                    diff = new ToolCallDiff(subject, LineDiff.Compute(before, after));
+            }
             return result;
         }
         finally
         {
-            observer.Finished(new ToolCallFinished(id, thread, succeeded) { Diff = diff });
+            Tell(() => observer.Finished(new ToolCallFinished(id, thread, succeeded) { Diff = diff }));
         }
     }
 
-    private async System.Threading.Tasks.Task<ToolCallDiff?> DiffAfterAsync(string path, string before, CancellationToken cancellationToken)
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "A display must not fail the tool call it describes.")]
+    private static void Tell(Action observer)
     {
-        var after = await ReadForDiffAsync(path, cancellationToken).ConfigureAwait(false);
-        if (after is null || after == before) return null;
-        return new ToolCallDiff(path, LineDiff.Compute(before, after));
+        try
+        {
+            observer();
+        }
+        catch (Exception)
+        {
+            // The call goes on without its line.
+        }
     }
 
-    // The text of a file, empty when there is none yet; null when it cannot be shown: too large, binary, unreadable.
+    // The text of a file, empty when there is none yet; null when it cannot be shown: too large, binary, a link,
+    // unreadable. Measured before it is opened: an entry of no length is not read at all, which keeps a FIFO or a
+    // device, opened in a call nothing can cancel, out of it.
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "A display must not fail the tool call it describes.")]
     private async System.Threading.Tasks.Task<string?> ReadForDiffAsync(string path, CancellationToken cancellationToken)
     {
         try
         {
-            var virtualPath = path.StartsWith('/') ? path : "/workspace/" + path;
-            var bytes = await _files.TryReadAllBytesAsync(virtualPath, cancellationToken).ConfigureAwait(false);
+            var entry = await _files.TryGetEntryAsync(path, cancellationToken).ConfigureAwait(false);
+            if (entry is { Kind: not VirtualEntryKind.File } or { SizeBytes: > MaxComparedBytes }) return null;
+            if (entry is { SizeBytes: 0 }) return string.Empty;
+            var bytes = await _files.TryReadAllBytesAsync(path, cancellationToken).ConfigureAwait(false);
             if (bytes is null) return string.Empty;
             if (bytes.Length > MaxComparedBytes || Array.IndexOf(bytes, (byte)0) >= 0) return null;
             return System.Text.Encoding.UTF8.GetString(bytes);

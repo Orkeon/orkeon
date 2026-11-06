@@ -29,6 +29,10 @@ public static class ToolCallSubject
         return string.Empty;
     }
 
+    /// <summary>The path a file tool received, as it reads it; null when the call names none.</summary>
+    internal static string? PathOf(IReadOnlyDictionary<string, object?> arguments)
+        => arguments.TryGetValue("path", out var value) ? Text(value) : null;
+
     private static string? Text(object? value) => value switch
     {
         string text => text,

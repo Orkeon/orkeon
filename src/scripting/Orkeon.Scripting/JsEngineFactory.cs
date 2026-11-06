@@ -135,7 +135,7 @@ public sealed class JsEngineFactory
 
     /// <summary>
     /// The <c>PromiseTimeout</c> every engine <see cref="Create"/> builds is given. Test-side guard only:
-    /// the product leaves it null, which keeps Jint's default.
+    /// the product leaves it null, which keeps Jint's default. It bounds an engine whose limits leave none.
     /// </summary>
     internal static TimeSpan? PromiseTimeout { get; set; }
 
@@ -152,7 +152,8 @@ public sealed class JsEngineFactory
 
     private void ApplyPromiseTimeout(Jint.Options options)
     {
-        if ((_limits.PromiseTimeout ?? PromiseTimeout) is { } timeout)
+        var limit = _limits.PromiseTimeout;
+        if ((limit is null || limit < TimeSpan.Zero ? PromiseTimeout ?? limit : limit) is { } timeout)
         {
             options.Constraints.PromiseTimeout = timeout;
         }

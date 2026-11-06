@@ -176,19 +176,6 @@ public sealed class StepActivityModelTests
     }
 
     [Fact]
-    public void Folding_counts_the_calls_by_tool()
-    {
-        // Arrange
-        var step = StepWith(("shell_command", "ls"), ("shell_command", "pwd"));
-
-        // Act
-        var folded = step.Fold();
-
-        // Assert
-        Assert.Equal(2, folded.Counts["shell_command"]);
-    }
-
-    [Fact]
     public void Folding_empties_the_step()
     {
         // Arrange

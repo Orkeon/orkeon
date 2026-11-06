@@ -11,14 +11,20 @@ internal sealed class FakeToolActivityObserver : IToolActivityObserver
 
     public ToolCallFinished? LastFinished { get; private set; }
 
+    public bool ThrowOnStarted { get; set; }
+
+    public bool ThrowOnFinished { get; set; }
+
     public void Started(ToolCallStarted toolCall)
     {
+        if (ThrowOnStarted) throw new InvalidOperationException("started");
         Seen.Add("started");
         StartedIds.Add(toolCall.Id);
     }
 
     public void Finished(ToolCallFinished toolCall)
     {
+        if (ThrowOnFinished) throw new InvalidOperationException("finished");
         Seen.Add($"finished:{toolCall.Succeeded}");
         LastFinished = toolCall;
     }

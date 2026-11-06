@@ -14,6 +14,7 @@ public sealed class CountingDiscoveryFileSystemService : IFileSystemService
 {
     private readonly IFileSystemService _inner;
     private int _enumerateCalls;
+    private int _readBytesCalls;
 
     public CountingDiscoveryFileSystemService(IFileSystemService inner)
     {
@@ -23,6 +24,9 @@ public sealed class CountingDiscoveryFileSystemService : IFileSystemService
 
     /// <summary>Number of <see cref="EnumerateFilesAsync"/> invocations.</summary>
     public int EnumerateCalls => Volatile.Read(ref _enumerateCalls);
+
+    /// <summary>Number of <see cref="TryReadAllBytesAsync"/> invocations.</summary>
+    public int ReadBytesCalls => Volatile.Read(ref _readBytesCalls);
 
     public IAsyncEnumerable<VirtualFileEntry> EnumerateFilesAsync(
         string virtualRoot, VirtualEnumerationOptions? options, CancellationToken ct)
@@ -42,7 +46,10 @@ public sealed class CountingDiscoveryFileSystemService : IFileSystemService
         => _inner.OpenReadStreamAsync(virtualPath, ct);
 
     public Task<byte[]?> TryReadAllBytesAsync(string virtualPath, CancellationToken ct)
-        => _inner.TryReadAllBytesAsync(virtualPath, ct);
+    {
+        Interlocked.Increment(ref _readBytesCalls);
+        return _inner.TryReadAllBytesAsync(virtualPath, ct);
+    }
 
     public Task<string?> TryReadAllTextAsync(string virtualPath, CancellationToken ct)
         => _inner.TryReadAllTextAsync(virtualPath, ct);

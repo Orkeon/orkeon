@@ -43,6 +43,9 @@ public sealed class ReplPaneView : View, ITaskListNavigator, IToolActivityObserv
 
         public ToolCallFinished? CallFinished { get; init; }
 
+        /// <summary>The thread's work is over: its step folds, whatever is still open in it.</summary>
+        public bool EndsSteps { get; init; }
+
         /// <summary>Runs on the UI thread once what came before is on the screen and the thread's step folded.</summary>
         public Action? Then { get; init; }
     }
@@ -353,9 +356,14 @@ public sealed class ReplPaneView : View, ITaskListNavigator, IToolActivityObserv
                 continue;
             }
             var screen = _screens.For(write.Thread);
+            if (write.EndsSteps)
+            {
+                FoldStepOnto(write.Thread, screen, workEnded: true);
+                continue;
+            }
             if (write.Then is { } then)
             {
-                FoldStepOnto(write.Thread, screen);
+                FoldStepOnto(write.Thread, screen, workEnded: true);
                 foreach (var target in _markdown.Keys.ToList())
                     FlushMarkdown(target);
                 _markdown.Clear();
@@ -421,17 +429,17 @@ public sealed class ReplPaneView : View, ITaskListNavigator, IToolActivityObserv
             earlier.Clear();
         }
 
-        // A step ends with what comes after it, once none of its calls runs any more.
-        void FoldStepOnto(string? thread, TranscriptView target)
+        // A step ends with what comes after it, once none of its calls runs any more, or with the work it belongs to
+        // (a tool that ignored its cancellation stays open for good, and a call that ends late is ignored).
+        void FoldStepOnto(string? thread, TranscriptView target, bool workEnded = false)
         {
             var key = ThreadKey(thread);
-            if (!_steps.TryGetValue(key, out var step) || step.IsEmpty || step.HasOpenCall) return;
+            if (!_steps.TryGetValue(key, out var step) || step.IsEmpty || (step.HasOpenCall && !workEnded)) return;
             var folded = step.Fold();
             _lastSteps[key] = folded;
             stepsChanged = true;
             FlushPending(target);
             target.AppendStyled([folded.Summary]);
-            StepFolded?.Invoke(folded.Counts);
         }
 
         void Enqueue(TranscriptView target, string text)
@@ -484,9 +492,6 @@ public sealed class ReplPaneView : View, ITaskListNavigator, IToolActivityObserv
         ArgumentNullException.ThrowIfNull(toolCall);
         _transcriptWrites.Post(new TranscriptWrite(toolCall.Thread, null) { CallFinished = toolCall });
     }
-
-    /// <summary>Raised on the UI thread when a step folds, with how many calls of each tool it reported.</summary>
-    internal event Action<IReadOnlyDictionary<string, int>>? StepFolded;
 
     /// <summary>Folds the main screen's step behind what has been written, then runs <paramref name="then"/>.</summary>
     internal void AfterSteps(Action then)
@@ -1260,6 +1265,13 @@ public sealed class ReplPaneView : View, ITaskListNavigator, IToolActivityObserv
         var action = _navigation.OnRowsChanged(rows);
         if (action.Kind != InputNavigationActionKind.None || !string.Equals(recipient, _navigation.RecipientTicket, StringComparison.Ordinal))
             Apply(action);
+        // A task that ended on a call has no later text to fold its step.
+        foreach (var row in rows)
+        {
+            if (row is { Ticket: { } ticket, State: TaskRowState.Done or TaskRowState.Failed or TaskRowState.Cancelled }
+                && _steps.TryGetValue(ThreadKey(ticket), out var step) && !step.IsEmpty)
+                _transcriptWrites.Post(new TranscriptWrite(ticket, null) { EndsSteps = true });
+        }
         var previous = _screens.Displayed;
         if (_screens.DiscardAbsent([.. rows.Select(row => row.Ticket).OfType<string>()]))
         {

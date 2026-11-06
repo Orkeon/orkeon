@@ -4,9 +4,8 @@ using Orkeon.Cli.TerminalGui.Telemetry;
 
 namespace Orkeon.Cli.TerminalGui.Layout;
 
-/// <summary>What an ended step leaves in the transcript: one line, the calls it stands for, and how many of each.</summary>
-internal sealed record FoldedStep(
-    TranscriptLine Summary, IReadOnlyList<TranscriptLine> Details, IReadOnlyDictionary<string, int> Counts);
+/// <summary>What an ended step leaves in the transcript: one line and the calls it stands for.</summary>
+internal sealed record FoldedStep(TranscriptLine Summary, IReadOnlyList<TranscriptLine> Details);
 
 /// <summary>
 /// The tool calls of the current step: the rows shown while they run, a running count over the latest ones, and
@@ -83,7 +82,7 @@ internal sealed partial class StepActivityModel : IPanelRows
 
         var summary = WithChanges(CountLine("  " + Sentence(counts)), _calls.Sum(c => c.Added), _calls.Sum(c => c.Removed));
         _calls.Clear();
-        return new FoldedStep(summary, details, counts);
+        return new FoldedStep(summary, details);
     }
 
     private static string Sentence(IReadOnlyDictionary<string, int> counts)

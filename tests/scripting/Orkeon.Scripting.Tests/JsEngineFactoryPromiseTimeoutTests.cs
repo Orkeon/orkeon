@@ -37,6 +37,21 @@ public sealed class JsEngineFactoryPromiseTimeoutTests
         Assert.Equal(limit, PromiseTimeoutOf(engine));
     }
 
+    [Fact]
+    public void ShouldKeepTheGuard_WhenTheLimitsLeaveCancellationAsTheOnlyBound()
+    {
+        // Arrange
+        JsEngineFactory.PromiseTimeout = HangGuards.EnginePromise;
+        var factory = new JsEngineFactory(Microsoft.Extensions.Options.Options.Create(
+            new Orkeon.Scripting.Configuration.ScriptingLimitsOptions { PromiseTimeout = Timeout.InfiniteTimeSpan }));
+
+        // Act
+        var engine = Build(factory.Create);
+
+        // Assert
+        Assert.Equal(HangGuards.EnginePromise, PromiseTimeoutOf(engine));
+    }
+
     /// <summary>Jint 4.16 keeps <c>Engine.Options</c> internal: read it by reflection.</summary>
     private static TimeSpan PromiseTimeoutOf(Engine engine)
     {

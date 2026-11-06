@@ -24,6 +24,8 @@ public sealed class ToolActivityAggregator : IDisposable
     private const string OperationTag = "gen_ai.operation.name";
     private const string ExecuteToolOperation = "execute_tool";
     private const string ToolNameTag = "gen_ai.tool.name";
+    // Set by the scripted commands' ToolActivityPipeline on a call a step of the transcript shows.
+    private const string ReportedTag = "orkeon.tool.reported";
 
     private readonly ConcurrentDictionary<string, int> _counts = new(StringComparer.Ordinal);
     private readonly ActivityListener _listener;
@@ -44,6 +46,7 @@ public sealed class ToolActivityAggregator : IDisposable
             {
                 if (!IsToolSpan(activity)) return;
                 Interlocked.Decrement(ref _openToolSpans);
+                if (activity.GetTagItem(ReportedTag) is not null) return;
                 var tool = activity.GetTagItem(ToolNameTag)?.ToString();
                 if (!string.IsNullOrEmpty(tool))
                     _counts.AddOrUpdate(tool, 1, static (_, n) => n + 1);
@@ -68,14 +71,6 @@ public sealed class ToolActivityAggregator : IDisposable
                 snapshot.Add(new(key, n));
         }
         return ComposeSentence(snapshot);
-    }
-
-    /// <summary>Takes out of the next sentence the calls a folded step has already reported.</summary>
-    public void Settle(IReadOnlyDictionary<string, int> reported)
-    {
-        ArgumentNullException.ThrowIfNull(reported);
-        foreach (var (tool, n) in reported)
-            _counts.AddOrUpdate(tool, 0, (_, count) => Math.Max(0, count - n));
     }
 
     /// <summary>

@@ -43,6 +43,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed — a scripted command may wait longer than ten seconds
 
 - A `defineCommand` handler still pending after ten seconds failed with Jint's promise timeout while it kept running. When it was waiting on `ctx.prompt`, that read stayed open and the next read of the split-pane REPL crashed the process (`A ReadLineAsync is already in progress`). The command profile now leaves cancellation as the only bound on a wait (`ScriptingLimitsOptions.PromiseTimeout`), and the `ExecutionTimeout` clock stops while a prompt waits for its answer.
+- A `completed` whose promise never settles held its file's engine for good. Cancelling the invocation that waits for that engine (Esc Esc, Ctrl+C) now ends the wait, and `ctx.signal` in a `completed` follows it.
+- A tool call's change in the split-pane console is read from the path the tool reads, under the agent run's root, and a file over the cap or an entry of no length (a FIFO, a device) is no longer opened for it. An observer that throws no longer stops the call or replaces its result. A step folds when its task or turn ends, even on a call still open, and the activity sentence counts only the calls no step shows.
 
 ### Added — the split-pane transcript paints what it shows
 
