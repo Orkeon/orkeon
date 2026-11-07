@@ -310,3 +310,47 @@ Orkeon.Infrastructure.Tools.MemoryStoreRequest.NewestFirst.set -> void
 *REMOVED*Orkeon.Infrastructure.Serialization.Converters.ImmutableArrayEnumTolerantConverter<TEnum>.ImmutableArrayEnumTolerantConverter() -> void
 *REMOVED*override Orkeon.Infrastructure.Serialization.Converters.ImmutableArrayEnumTolerantConverter<TEnum>.Read(ref System.Text.Json.Utf8JsonReader reader, System.Type! typeToConvert, System.Text.Json.JsonSerializerOptions! options) -> System.Collections.Immutable.ImmutableArray<TEnum>
 *REMOVED*override Orkeon.Infrastructure.Serialization.Converters.ImmutableArrayEnumTolerantConverter<TEnum>.Write(System.Text.Json.Utf8JsonWriter! writer, System.Collections.Immutable.ImmutableArray<TEnum> value, System.Text.Json.JsonSerializerOptions! options) -> void
+[ORKEXP004]Orkeon.Infrastructure.MCP.Auth.IMcpRequestAuthenticator
+[ORKEXP004]Orkeon.Infrastructure.MCP.Auth.IMcpRequestAuthenticator.ApplyAsync(System.Net.Http.HttpRequestMessage! request, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask
+[ORKEXP004]Orkeon.Infrastructure.MCP.Auth.McpServerConfigurationException
+[ORKEXP004]Orkeon.Infrastructure.MCP.Auth.McpServerConfigurationException.Key.get -> string!
+[ORKEXP004]Orkeon.Infrastructure.MCP.Auth.McpServerConfigurationException.McpServerConfigurationException(string! key, string! message) -> void
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpAuthConfig
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpAuthConfig.McpAuthConfig() -> void
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpAuthConfig.PasswordEnv.get -> string?
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpAuthConfig.PasswordEnv.set -> void
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpAuthConfig.TokenEnv.get -> string?
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpAuthConfig.TokenEnv.set -> void
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpAuthConfig.Type.get -> Orkeon.Infrastructure.MCP.McpAuthType
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpAuthConfig.Type.set -> void
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpAuthConfig.UserEnv.get -> string?
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpAuthConfig.UserEnv.set -> void
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpAuthType
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpAuthType.Basic = 2 -> Orkeon.Infrastructure.MCP.McpAuthType
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpAuthType.Bearer = 1 -> Orkeon.Infrastructure.MCP.McpAuthType
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpAuthType.None = 0 -> Orkeon.Infrastructure.MCP.McpAuthType
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpCallTimeoutException
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpCallTimeoutException.McpCallTimeoutException(string! toolName, System.TimeSpan timeout) -> void
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpCallTimeoutException.Timeout.get -> System.TimeSpan
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpCallTimeoutException.ToolName.get -> string!
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpServerConfig.Auth.get -> Orkeon.Infrastructure.MCP.McpAuthConfig!
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpServerConfig.CallTimeout.get -> System.TimeSpan
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpServerConfig.CallTimeout.set -> void
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpServerConfig.Headers.get -> System.Collections.Generic.Dictionary<string!, string!>!
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpServerConfig.Tools.get -> Orkeon.Infrastructure.MCP.McpToolFilterConfig!
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpServerStatus.UnmatchedToolFilters.get -> System.Collections.Generic.IReadOnlyList<string!>!
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpServerStatus.UnmatchedToolFilters.init -> void
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpToolAdapter.McpToolAdapter(Orkeon.Infrastructure.MCP.McpToolDefinition! definition, Orkeon.Infrastructure.MCP.McpClient! client, bool trustAnnotations = false, System.TimeSpan? callTimeout = null) -> void
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpToolFilterConfig
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpToolFilterConfig.Allow.get -> System.Collections.ObjectModel.Collection<string!>!
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpToolFilterConfig.Deny.get -> System.Collections.ObjectModel.Collection<string!>!
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpToolFilterConfig.McpToolFilterConfig() -> void
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpToolProvider.ConnectServerAsync(string! serverId, Orkeon.Infrastructure.MCP.IMcpTransport! transport, Orkeon.Infrastructure.MCP.McpServerConfig! config, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpToolProvider.McpToolProvider(Orkeon.Domain.Tools.IToolRegistry! toolRegistry, Microsoft.Extensions.Logging.ILoggerFactory? loggerFactory = null, System.Net.Http.IHttpClientFactory? httpClientFactory = null) -> void
+[ORKEXP004]Orkeon.Infrastructure.MCP.SseMcpTransport.SseMcpTransport(System.Uri! url, System.Net.Http.HttpClient? httpClient = null, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.MCP.SseMcpTransport!>? logger = null, Orkeon.Infrastructure.MCP.Auth.IMcpRequestAuthenticator? authenticator = null) -> void
+[ORKEXP004]const Orkeon.Infrastructure.MCP.McpServiceExtensions.HttpClientName = "orkeon-mcp" -> string!
+*REMOVED*[ORKEXP004]Orkeon.Infrastructure.MCP.McpToolAdapter.McpToolAdapter(Orkeon.Infrastructure.MCP.McpToolDefinition! definition, Orkeon.Infrastructure.MCP.McpClient! client, bool trustAnnotations = false) -> void
+*REMOVED*[ORKEXP004]Orkeon.Infrastructure.MCP.McpToolProvider.McpToolProvider(Orkeon.Domain.Tools.IToolRegistry! toolRegistry, Microsoft.Extensions.Logging.ILoggerFactory? loggerFactory = null) -> void
+*REMOVED*[ORKEXP004]Orkeon.Infrastructure.MCP.SseMcpTransport.SseMcpTransport(System.Uri! url, System.Net.Http.HttpClient? httpClient = null, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.MCP.SseMcpTransport!>? logger = null) -> void
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpServerConfig.ConnectTimeout.get -> System.TimeSpan
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpServerConfig.ConnectTimeout.set -> void

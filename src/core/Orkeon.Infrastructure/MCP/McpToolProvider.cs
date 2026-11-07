@@ -2,6 +2,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using System.Collections.Concurrent;
 using Orkeon.Domain.Tools;
+using Orkeon.Infrastructure.MCP.Auth;
 using System.Diagnostics.CodeAnalysis;
 
 namespace Orkeon.Infrastructure.MCP;
@@ -16,6 +17,7 @@ public sealed partial class McpToolProvider : IAsyncDisposable, IDisposable
     private readonly IToolRegistry _toolRegistry;
     private readonly ILogger _logger;
     private readonly ILoggerFactory? _loggerFactory;
+    private readonly IHttpClientFactory? _httpClientFactory;
     private readonly ConcurrentDictionary<string, McpClientEntry> _clients = new();
     private bool _disposed;
 
@@ -24,18 +26,25 @@ public sealed partial class McpToolProvider : IAsyncDisposable, IDisposable
         IMcpTransport Transport,
         List<string> RegisteredToolNames,
         List<string> RejectedToolNames,
-        McpServerCapabilities? Capabilities);
+        McpServerCapabilities? Capabilities,
+        List<string> UnmatchedToolFilters);
 
     /// <summary>Initializes a new instance of <see cref="McpToolProvider"/>.</summary>
     /// <param name="toolRegistry">The tool registry to register MCP tools into.</param>
     /// <param name="loggerFactory">Optional logger factory.</param>
+    /// <param name="httpClientFactory">
+    /// Optional factory of the shared <see cref="McpServiceExtensions.HttpClientName"/> client the SSE
+    /// transports use; without it each transport owns a client.
+    /// </param>
     public McpToolProvider(
         IToolRegistry toolRegistry,
-        ILoggerFactory? loggerFactory = null)
+        ILoggerFactory? loggerFactory = null,
+        IHttpClientFactory? httpClientFactory = null)
     {
         ArgumentNullException.ThrowIfNull(toolRegistry);
         _toolRegistry = toolRegistry;
         _loggerFactory = loggerFactory;
+        _httpClientFactory = httpClientFactory;
         _logger = loggerFactory?.CreateLogger<McpToolProvider>() ?? NullLogger<McpToolProvider>.Instance;
     }
 
@@ -61,12 +70,16 @@ public sealed partial class McpToolProvider : IAsyncDisposable, IDisposable
 
             // SSE URL presence and transport-type validity are checked eagerly in
             // ConnectServerAsync, before the async state machine starts.
+            // Validated before anything starts: a refused configuration names its key and spawns nothing.
+            var authenticator = McpRequestAuthenticators.Create(serverId, config);
             IMcpTransport transport = config.Transport switch
             {
                 McpTransportType.Stdio => new StdioMcpTransport(config,
                     _loggerFactory?.CreateLogger<StdioMcpTransport>(), serverId),
                 McpTransportType.Sse => new SseMcpTransport(config.Url!,
-                    logger: _loggerFactory?.CreateLogger<SseMcpTransport>()),
+                    _httpClientFactory?.CreateClient(McpServiceExtensions.HttpClientName),
+                    _loggerFactory?.CreateLogger<SseMcpTransport>(),
+                    authenticator),
                 _ => throw new InvalidOperationException($"Unknown transport type: {config.Transport}")
             };
 
@@ -74,13 +87,44 @@ public sealed partial class McpToolProvider : IAsyncDisposable, IDisposable
 
             try
             {
-                await ConnectAndRegisterAsync(serverId, client, transport, config.TrustAnnotations, ct).ConfigureAwait(false);
+                await ConnectAndRegisterAsync(serverId, client, transport, config.TrustAnnotations, config, ct).ConfigureAwait(false);
             }
             catch
             {
                 await client.DisposeAsync().ConfigureAwait(false);
                 throw;
             }
+        }
+    }
+
+    /// <summary>
+    /// Connects to an MCP server over an externally-provided transport, applying the rest of
+    /// <paramref name="config"/>: <c>Tools</c> filter, <c>CallTimeout</c> and <c>TrustAnnotations</c>.
+    /// </summary>
+    /// <param name="serverId">The server's identifier.</param>
+    /// <param name="transport">The transport to the server.</param>
+    /// <param name="config">The server's settings; its transport fields are not used.</param>
+    /// <param name="ct">The cancellation token.</param>
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Reliability", "CA2000",
+        Justification = "Ownership of the client passes to _clients in ConnectAndRegisterAsync, disposed by DisconnectServerAsync; on failure the catch path here disposes it.")]
+    public async Task ConnectServerAsync(
+        string serverId, IMcpTransport transport, McpServerConfig config, CancellationToken ct = default)
+    {
+        ArgumentNullException.ThrowIfNull(transport);
+        ArgumentNullException.ThrowIfNull(config);
+        if (_clients.ContainsKey(serverId))
+            throw new InvalidOperationException($"Server '{serverId}' is already connected.");
+        _ = McpRequestAuthenticators.Create(serverId, config);
+
+        var client = new McpClient(transport, _loggerFactory?.CreateLogger<McpClient>());
+        try
+        {
+            await ConnectAndRegisterAsync(serverId, client, transport, config.TrustAnnotations, config, ct).ConfigureAwait(false);
+        }
+        catch
+        {
+            await client.DisposeAsync().ConfigureAwait(false);
+            throw;
         }
     }
 
@@ -107,7 +151,7 @@ public sealed partial class McpToolProvider : IAsyncDisposable, IDisposable
 
         try
         {
-            await ConnectAndRegisterAsync(serverId, client, transport, trustAnnotations, ct).ConfigureAwait(false);
+            await ConnectAndRegisterAsync(serverId, client, transport, trustAnnotations, null, ct).ConfigureAwait(false);
         }
         catch
         {
@@ -124,17 +168,36 @@ public sealed partial class McpToolProvider : IAsyncDisposable, IDisposable
     /// tool that held the name keeps it.
     /// </summary>
     private async Task ConnectAndRegisterAsync(
-        string serverId, McpClient client, IMcpTransport transport, bool trustAnnotations, CancellationToken ct)
+        string serverId, McpClient client, IMcpTransport transport, bool trustAnnotations, McpServerConfig? config, CancellationToken ct)
     {
-        // Dual-era connection: server/discover probe, legacy initialize fallback.
-        await client.ConnectAsync(ct).ConfigureAwait(false);
-        var tools = await client.ListToolsAsync(ct).ConfigureAwait(false);
+        // Dual-era connection: server/discover probe, legacy initialize fallback. A configured server
+        // answers within its ConnectTimeout, whoever connects it: the shared HTTP client has no timeout.
+        using var guard = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        if (config is not null)
+            guard.CancelAfter(config.ConnectTimeout);
+
+        IReadOnlyList<McpToolDefinition> tools;
+        try
+        {
+            await client.ConnectAsync(guard.Token).ConfigureAwait(false);
+            tools = await client.ListToolsAsync(guard.Token).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) when (!ct.IsCancellationRequested && config is not null)
+        {
+            throw new TimeoutException(
+                $"MCP server '{serverId}' gave no answer within {config.ConnectTimeout.TotalSeconds:0.###} s (MCP:Servers:{serverId}:ConnectTimeout).");
+        }
+
+        // The filter runs before registration: a tool it removes never reaches the registry.
+        var (kept, unmatched) = McpToolFilter.Apply(tools, config?.Tools);
+        foreach (var entry in unmatched)
+            LogMcpToolFilterUnmatched(entry, serverId);
 
         var registeredNames = new List<string>();
         var rejectedNames = new List<string>();
-        foreach (var toolDef in tools)
+        foreach (var toolDef in kept)
         {
-            var adapter = new McpToolAdapter(toolDef, client, trustAnnotations);
+            var adapter = new McpToolAdapter(toolDef, client, trustAnnotations, config?.CallTimeout);
             if (await _toolRegistry.RegisterToolAsync(adapter).ConfigureAwait(false))
             {
                 registeredNames.Add(toolDef.Name);
@@ -148,7 +211,7 @@ public sealed partial class McpToolProvider : IAsyncDisposable, IDisposable
         }
 
         _clients[serverId] = new McpClientEntry(
-            client, transport, registeredNames, rejectedNames, client.Capabilities);
+            client, transport, registeredNames, rejectedNames, client.Capabilities, unmatched);
 
         LogConnectedToMcpServer(serverId, registeredNames.Count);
     }
@@ -181,7 +244,8 @@ public sealed partial class McpToolProvider : IAsyncDisposable, IDisposable
             ServerId = kvp.Key,
             IsConnected = kvp.Value.Transport.IsConnected,
             Capabilities = kvp.Value.Capabilities,
-            RejectedToolNames = kvp.Value.RejectedToolNames.AsReadOnly()
+            RejectedToolNames = kvp.Value.RejectedToolNames.AsReadOnly(),
+            UnmatchedToolFilters = kvp.Value.UnmatchedToolFilters.AsReadOnly()
         }).ToList();
     }
 
@@ -221,6 +285,9 @@ public sealed partial class McpToolProvider : IAsyncDisposable, IDisposable
 
     [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Error, Message = "The tool '{Name}' of MCP server '{ServerId}' collides with an already-registered tool and was not registered; the registered tool keeps the name")]
     private partial void LogMcpToolNameCollision(string name, string serverId);
+
+    [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Warning, Message = "The Tools filter entry '{Entry}' of MCP server '{ServerId}' matches no tool the server lists")]
+    private partial void LogMcpToolFilterUnmatched(string entry, string serverId);
 
     [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Information, Message = "Connected to MCP server '{ServerId}' with {ToolCount} tools")]
     private partial void LogConnectedToMcpServer(string serverId, int toolCount);

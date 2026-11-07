@@ -125,16 +125,51 @@ aucun modèle de ressource ni de prompt à servir, donc `resources/*` et `prompt
         "Args": [ "-y", "@modelcontextprotocol/server-filesystem", "/srv/data" ],
         "Env": { "NODE_ENV": "production" }
       },
-      "search": { "Transport": "Sse", "Url": "https://mcp.example.com/mcp" }
+      "search": {
+        "Transport": "Sse",
+        "Url": "https://mcp.example.com/mcp",
+        "Auth": { "Type": "Bearer", "TokenEnv": "SEARCH_MCP_TOKEN" },
+        "Headers": { "X-Tenant": "env:SEARCH_MCP_TENANT" },
+        "Tools": { "Allow": [ "search", "fetch" ], "Deny": [ "fetch" ] },
+        "CallTimeout": "00:00:30"
+      }
     },
     "Server": { "Name": "Orkeon", "Version": "1.0.0" }
   }
 }
 ```
 
-Le client se présente comme `Orkeon` `1.0.0`. Le transport HTTP n'envoie aucun en-tête
-`Authorization` : un serveur protégé par authentification est hors de portée (voir les
-limites plus bas).
+Le client se présente comme `Orkeon` `1.0.0`.
+
+**Authentification, filtre et délai par serveur (FWK-03).** Chaque `MCP:Servers:<id>` accepte :
+
+- `Auth` : `Type` vaut `None` (défaut), `Bearer` (`Authorization: Bearer`, le jeton lu dans la variable que
+  nomme `TokenEnv`) ou `Basic` (`UserEnv` et `PasswordEnv`). Les variables sont lues à chaque requête :
+  un jeton renouvelé ne demande aucun redémarrage. Aucun identifiant n'est jamais écrit dans les réglages.
+- `Headers` : en-têtes HTTP supplémentaires, chacun une valeur littérale ou `env:VAR`. Un en-tête
+  `Authorization` y est refusé : utilisez `Auth`.
+- `Tools` : `Allow` (vide, tous les outils sont gardés) puis `Deny`, appliqués avant que les outils
+  n'atteignent le registre ; un nom présent dans les deux est refusé. Une entrée qui ne correspond à aucun
+  outil listé par le serveur est signalée par un avertissement (et dans `McpServerStatus.UnmatchedToolFilters`).
+- `CallTimeout` : durée maximale d'un appel d'outil, 60 secondes par défaut. Un serveur muet termine
+  l'appel en erreur d'outil (`McpCallTimeoutException`, `error_type` dans les métadonnées de la réponse) ;
+  l'annulation par l'appelant n'est pas un délai dépassé. Une durée non positive est refusée ; la borne ne
+  peut pas être désactivée.
+- `ConnectTimeout` : durée maximale de la poignée de main et de la liste des outils, 30 secondes par défaut,
+  quel que soit l'appelant. Un serveur resté muet fait échouer la connexion avec une erreur qui nomme
+  `MCP:Servers:<id>:ConnectTimeout`.
+
+`Headers` et `Auth` valent pour le transport HTTP (`Sse`) ; sur un serveur `Stdio` ils sont refusés, jamais
+ignorés en silence. Un serveur dont la configuration est invalide (un en-tête `Authorization` littéral, une
+variable d'environnement absente, `Auth:Type` sans nom de variable, un délai non positif, `Auth` ou `Headers`
+sur un serveur `Stdio`) est écarté au démarrage avec une erreur qui nomme la clé des réglages, jamais une valeur, et le run continue
+sans ses outils. Tous les serveurs partagent un `HttpClient` enregistré sous le nom `orkeon-mcp`
+(`McpServiceExtensions.HttpClientName`) ; il est exclu du journal d'échanges LLM, si bien que ni le trafic ni
+les identifiants n'y sont écrits. Les identifiants sont appliqués par requête par un
+`IMcpRequestAuthenticator`, et non portés par le client ; une variable vide au moment d'une requête fait
+échouer cette requête avec la même erreur nommant la clé, au lieu de l'envoyer sans authentification. Le
+client ne suit aucune redirection HTTP : une réponse `3xx` est un échec, si bien que les en-têtes statiques
+et les identifiants n'atteignent jamais un autre hôte que celui configuré.
 
 **Rien n'est développé dans la section.** `Command`, `Args` et `Env` passent tels qu'ils sont écrits, et le
 serveur hérite de l'environnement où tourne Orkeon : une référence `${NOM}` ou `%NOM%` dans `Command`,

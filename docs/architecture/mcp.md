@@ -120,16 +120,50 @@ The `AddOrkeonInfrastructure(IConfiguration)` overload calls `AddOrkeonMcp` itse
         "Args": [ "-y", "@modelcontextprotocol/server-filesystem", "/srv/data" ],
         "Env": { "NODE_ENV": "production" }
       },
-      "search": { "Transport": "Sse", "Url": "https://mcp.example.com/mcp" }
+      "search": {
+        "Transport": "Sse",
+        "Url": "https://mcp.example.com/mcp",
+        "Auth": { "Type": "Bearer", "TokenEnv": "SEARCH_MCP_TOKEN" },
+        "Headers": { "X-Tenant": "env:SEARCH_MCP_TENANT" },
+        "Tools": { "Allow": [ "search", "fetch" ], "Deny": [ "fetch" ] },
+        "CallTimeout": "00:00:30"
+      }
     },
     "Server": { "Name": "Orkeon", "Version": "1.0.0" }
   }
 }
 ```
 
-The client introduces itself as `Orkeon` `1.0.0`. The HTTP transport sends no
-`Authorization` header, so a server behind authentication is out of reach (see the
-limitations below).
+The client introduces itself as `Orkeon` `1.0.0`.
+
+**Per-server authentication, filter and timeout (FWK-03).** Each `MCP:Servers:<id>` accepts:
+
+- `Auth`: `Type` is `None` (default), `Bearer` (`Authorization: Bearer`, the token read from the variable
+  `TokenEnv` names) or `Basic` (`UserEnv` and `PasswordEnv`). The variables are read on every request, so
+  a rotated token needs no restart. No credential is ever written in the settings.
+- `Headers`: extra HTTP headers, each a literal value or `env:VAR`. An `Authorization` header is refused
+  here: use `Auth`.
+- `Tools`: `Allow` (empty keeps every tool) then `Deny`, applied before the tools reach the registry;
+  a name in both is denied. An entry that matches no tool the server lists is reported as a warning
+  (and in `McpServerStatus.UnmatchedToolFilters`).
+- `CallTimeout`: how long one tool call may take, 60 seconds by default. A silent server ends the call
+  as a tool error (`McpCallTimeoutException`, `error_type` in the response metadata); a caller's own
+  cancellation is not a timeout. A duration that is not positive is refused; there is no way to switch the
+  bound off.
+- `ConnectTimeout`: how long the handshake and the tool listing may take, 30 seconds by default, whoever
+  connects the server. A server that stays silent fails the connection with an error naming
+  `MCP:Servers:<id>:ConnectTimeout`.
+
+Headers and `Auth` apply to the HTTP (`Sse`) transport; on a `Stdio` server they are refused, never silently
+dropped. A server whose configuration is invalid (a literal `Authorization` header, an absent environment
+variable, `Auth:Type` without its variable name, a non-positive timeout, `Auth` or `Headers` on a `Stdio` server) is set aside
+at startup with an error that names the settings key, never a value, and the run goes on without its tools.
+All servers share one `HttpClient` registered as `orkeon-mcp` (`McpServiceExtensions.HttpClientName`); it
+is excluded from the LLM exchange log, so neither the traffic nor the credentials are written there.
+The credentials are applied per request by an `IMcpRequestAuthenticator`, not carried by the client; a
+variable that is empty when a request is made fails that request with the same key-naming error instead of
+sending it unauthenticated. The client follows no HTTP redirect: a `3xx` answer is a failure, so the static
+headers and credentials never reach a host other than the configured one.
 
 **Nothing is expanded in the section.** `Command`, `Args` and `Env` pass as written, and the
 server inherits the environment Orkeon runs in: a `${NAME}` or `%NAME%` reference in `Command`,

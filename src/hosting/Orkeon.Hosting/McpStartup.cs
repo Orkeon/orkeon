@@ -27,12 +27,6 @@ namespace Orkeon.Hosting;
 internal static partial class McpStartup
 {
     /// <summary>
-    /// How long one server gets to start and answer the handshake. A server that hangs must
-    /// not hang the run: past this, it is reported like a server that failed.
-    /// </summary>
-    internal static readonly TimeSpan ConnectTimeout = TimeSpan.FromSeconds(30);
-
-    /// <summary>
     /// Whether the settings declare at least one MCP server and do not switch MCP off. This is
     /// the one gate: without it the section is bound by nobody, and a run is exactly what it
     /// was before MCP reached the runners.
@@ -81,16 +75,11 @@ internal static partial class McpStartup
         foreach (var (serverId, config) in servers)
         {
             ct.ThrowIfCancellationRequested();
-            using var guard = CancellationTokenSource.CreateLinkedTokenSource(ct);
-            guard.CancelAfter(ConnectTimeout);
             try
             {
-                await provider.ConnectServerAsync(serverId, config, guard.Token).ConfigureAwait(false);
+                // The provider bounds the handshake with the server's own ConnectTimeout.
+                await provider.ConnectServerAsync(serverId, config, ct).ConfigureAwait(false);
                 ReportCollisions(provider, operatorLogger, serverId);
-            }
-            catch (OperationCanceledException) when (!ct.IsCancellationRequested)
-            {
-                Report(logger, operatorLogger, serverId, $"no answer within {ConnectTimeout.TotalSeconds:0} s");
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
@@ -112,6 +101,13 @@ internal static partial class McpStartup
             RunnerOperatorLog.Warn(
                 operatorLogger,
                 $"The tool '{name}' of MCP server '{serverId}' collides with an already-registered tool and was not registered.");
+        }
+
+        foreach (var entry in status?.UnmatchedToolFilters ?? [])
+        {
+            RunnerOperatorLog.Warn(
+                operatorLogger,
+                $"The MCP:Servers:{serverId}:Tools entry '{entry}' matches no tool the server lists.");
         }
     }
 

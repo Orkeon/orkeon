@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Logging;
 using System.Text.Json;
 using Orkeon.Infrastructure.Constants.Llm;
+using Orkeon.Infrastructure.MCP.Auth;
 using System.Diagnostics.CodeAnalysis;
 
 namespace Orkeon.Infrastructure.MCP;
@@ -19,6 +20,7 @@ public class SseMcpTransport : IMcpTransport
     private readonly Uri _url;
     private readonly HttpClient _httpClient;
     private readonly bool _ownsHttpClient;
+    private readonly IMcpRequestAuthenticator? _authenticator;
     private volatile bool _isConnected;
 
     /// <inheritdoc />
@@ -28,12 +30,15 @@ public class SseMcpTransport : IMcpTransport
     /// <param name="url">The HTTP endpoint URL for the MCP server.</param>
     /// <param name="httpClient">Optional HTTP client to use.</param>
     /// <param name="logger">Optional logger.</param>
+    /// <param name="authenticator">Optional authenticator applied to every request.</param>
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Reliability", "CA2000",
         Justification = "Ownership of the self-created HttpClient is transferred to the _httpClient field (_ownsHttpClient=true) and disposed in DisposeAsync; the HttpClient in turn owns and disposes the SocketsHttpHandler.")]
-    public SseMcpTransport(Uri url, HttpClient? httpClient = null, ILogger<SseMcpTransport>? logger = null)
+    public SseMcpTransport(Uri url, HttpClient? httpClient = null, ILogger<SseMcpTransport>? logger = null,
+        IMcpRequestAuthenticator? authenticator = null)
     {
         ArgumentNullException.ThrowIfNull(url);
         _url = url;
+        _authenticator = authenticator;
 
         if (httpClient != null)
         {
@@ -76,6 +81,8 @@ public class SseMcpTransport : IMcpTransport
                 Content = new StringContent(json, System.Text.Encoding.UTF8, HttpDefaults.JsonContentType)
             };
             AddMcpHeaders(message, request);
+            if (_authenticator is not null)
+                await _authenticator.ApplyAsync(message, ct).ConfigureAwait(false);
 
             var httpResponse = await _httpClient.SendAsync(message, ct).ConfigureAwait(false);
             httpResponse.EnsureSuccessStatusCode();
@@ -114,6 +121,8 @@ public class SseMcpTransport : IMcpTransport
                 Content = new StringContent(json, System.Text.Encoding.UTF8, HttpDefaults.JsonContentType)
             };
             message.Headers.TryAddWithoutValidation(McpProtocol.MethodHeader, notification.Method);
+            if (_authenticator is not null)
+                await _authenticator.ApplyAsync(message, ct).ConfigureAwait(false);
 
             var httpResponse = await _httpClient.SendAsync(message, ct).ConfigureAwait(false);
             httpResponse.EnsureSuccessStatusCode();

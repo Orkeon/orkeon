@@ -2376,6 +2376,43 @@
       "description": "Command-line arguments for the server process."
     },
     {
+      "path": "MCP:Servers:<name>:Auth:PasswordEnv",
+      "section": "MCP",
+      "type": "string",
+      "description": "The environment variable holding the basic-auth password."
+    },
+    {
+      "path": "MCP:Servers:<name>:Auth:TokenEnv",
+      "section": "MCP",
+      "type": "string",
+      "description": "The environment variable holding the bearer token."
+    },
+    {
+      "path": "MCP:Servers:<name>:Auth:Type",
+      "section": "MCP",
+      "type": "enum",
+      "default": "None",
+      "values": [
+        "None",
+        "Bearer",
+        "Basic"
+      ],
+      "description": "The authentication scheme."
+    },
+    {
+      "path": "MCP:Servers:<name>:Auth:UserEnv",
+      "section": "MCP",
+      "type": "string",
+      "description": "The environment variable holding the basic-auth user name."
+    },
+    {
+      "path": "MCP:Servers:<name>:CallTimeout",
+      "section": "MCP",
+      "type": "duration",
+      "default": "00:01:00",
+      "description": "How long one tool call may take before it ends as a tool error. 60 seconds by default."
+    },
+    {
       "path": "MCP:Servers:<name>:Command",
       "section": "MCP",
       "type": "string",
@@ -2383,10 +2420,37 @@
       "description": "Command to launch the MCP server process (for stdio transport)."
     },
     {
+      "path": "MCP:Servers:<name>:ConnectTimeout",
+      "section": "MCP",
+      "type": "duration",
+      "default": "00:00:30",
+      "description": "How long the handshake and the tool listing of this server may take before the connection fails. 30 seconds by default; a value that is not positive is refused."
+    },
+    {
       "path": "MCP:Servers:<name>:Env:<name>",
       "section": "MCP",
       "type": "string",
       "description": "Environment variables for the server process."
+    },
+    {
+      "path": "MCP:Servers:<name>:Headers:<name>",
+      "section": "MCP",
+      "type": "string",
+      "description": "Extra HTTP headers (SSE transport) sent on every request: a literal value, or `env:VAR` to read it from an environment variable when the server is connected. An `Authorization` header is refused here; credentials go through `Auth`."
+    },
+    {
+      "path": "MCP:Servers:<name>:Tools:Allow",
+      "section": "MCP",
+      "type": "list of string",
+      "default": [],
+      "description": "Tool names to register; empty means all."
+    },
+    {
+      "path": "MCP:Servers:<name>:Tools:Deny",
+      "section": "MCP",
+      "type": "list of string",
+      "default": [],
+      "description": "Tool names never registered, applied after `Allow`."
     },
     {
       "path": "MCP:Servers:<name>:Transport",

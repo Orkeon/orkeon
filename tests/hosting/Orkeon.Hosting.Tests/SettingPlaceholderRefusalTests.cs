@@ -197,6 +197,9 @@ public sealed class SettingPlaceholderRefusalTests : IDisposable
     /// <summary>Why a sensitive-looking property needs no entry of the list.</summary>
     private static readonly Dictionary<string, string> s_excluded = new(StringComparer.OrdinalIgnoreCase)
     {
+        ["MCP:Servers:*:Auth:TokenEnv"] = "The name of the environment variable that holds the bearer token, not the token: the credential is never written in the settings.",
+        ["MCP:Servers:*:Auth:UserEnv"] = "The name of the environment variable that holds the basic-auth user name, not the user name.",
+        ["MCP:Servers:*:Auth:PasswordEnv"] = "The name of the environment variable that holds the basic-auth password, not the password.",
         ["Orkeon:TokenCounter:CharsPerToken"] = "A number of characters per token: it holds no credential, address or command.",
     };
 

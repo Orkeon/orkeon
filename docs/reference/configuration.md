@@ -186,13 +186,13 @@ closed list, and what it means.
 | [RAG](#rag) | [`Orkeon:Rag`](#orkeonrag), [`Orkeon:Rag:Ingestion`](#orkeonragingestion), [`Orkeon:Rag:QueryRouting`](#orkeonragqueryrouting), [`Orkeon:Rag:Retrieval:Hybrid`](#orkeonragretrievalhybrid), [`Orkeon:Rag:WebFallback`](#orkeonragwebfallback) | 34 |
 | [Files and sandbox](#files-and-sandbox) | [`Orkeon:CodeSandbox`](#orkeoncodesandbox), [`Orkeon:CodeSandbox:Docker`](#orkeoncodesandboxdocker), [`Orkeon:FileSystem`](#orkeonfilesystem), [`Orkeon:Sandbox`](#orkeonsandbox), [`PathSecurity`](#pathsecurity) | 33 |
 | [Security](#security) | [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:Guardian`](#orkeonguardian), [`Orkeon:Security:PermissionGate`](#orkeonsecuritypermissiongate), [`Secrets`](#secrets), [`Security:Audit`](#securityaudit), [`Security:Prompt`](#securityprompt), [`Security:ToolResults`](#securitytoolresults), [`Security:Url`](#securityurl), [`Security:Vault`](#securityvault) | 31 |
-| [Tools](#tools) | [`BRAVE_API_KEY`](#brave_api_key), [`MCP`](#mcp), [`MCP:Server`](#mcpserver), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Tools:Drive`](#orkeontoolsdrive), [`Orkeon:Tools:Email`](#orkeontoolsemail), [`Orkeon:Tools:Firefox`](#orkeontoolsfirefox), [`Orkeon:Tools:GitHub`](#orkeontoolsgithub), [`Orkeon:Tools:ResultLimits`](#orkeontoolsresultlimits), [`Orkeon:Tools:Shell`](#orkeontoolsshell), [`Plugins`](#plugins), [`RaggableTree`](#raggabletree) | 89 |
+| [Tools](#tools) | [`BRAVE_API_KEY`](#brave_api_key), [`MCP`](#mcp), [`MCP:Server`](#mcpserver), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Tools:Drive`](#orkeontoolsdrive), [`Orkeon:Tools:Email`](#orkeontoolsemail), [`Orkeon:Tools:Firefox`](#orkeontoolsfirefox), [`Orkeon:Tools:GitHub`](#orkeontoolsgithub), [`Orkeon:Tools:ResultLimits`](#orkeontoolsresultlimits), [`Orkeon:Tools:Shell`](#orkeontoolsshell), [`Plugins`](#plugins), [`RaggableTree`](#raggabletree) | 98 |
 | [Orchestration and persistence](#orchestration-and-persistence) | [`Orkeon:Checkpointing`](#orkeoncheckpointing), [`Orkeon:Consensus`](#orkeonconsensus), [`Orkeon:CrewFactory`](#orkeoncrewfactory), [`Orkeon:ExecutionState:Persistence`](#orkeonexecutionstatepersistence) | 16 |
 | [Scripts and console](#scripts-and-console) | [`Orkeon:Cli:ConsoleStreaming`](#orkeoncliconsolestreaming), [`Orkeon:Cli:Memory`](#orkeonclimemory), [`Orkeon:Cli:ScriptCommands`](#orkeoncliscriptcommands), [`Orkeon:Cli:ScriptHost`](#orkeoncliscripthost), [`Orkeon:Cli:Session`](#orkeonclisession), [`Orkeon:Cli:Tui`](#orkeonclitui), [`Orkeon:Scripting:AgentInstances`](#orkeonscriptingagentinstances), [`Orkeon:Scripting:AgentMemory`](#orkeonscriptingagentmemory), [`Orkeon:Scripting:Limits`](#orkeonscriptinglimits), [`Orkeon:Scripting:Toolchain`](#orkeonscriptingtoolchain) | 32 |
 | [Service host and A2A](#service-host-and-a2a) | [`A2A`](#a2a), [`A2A:Security`](#a2asecurity), [`A2A:Security:AzureAD`](#a2asecurityazuread), [`A2A:Security:Oidc`](#a2asecurityoidc), [`Orkeon:Host`](#orkeonhost), [`Orkeon:Host:Discord`](#orkeonhostdiscord) | 46 |
 | [Observability](#observability) | [`Logging`](#logging), [`Orkeon:Monitoring`](#orkeonmonitoring), [`Telemetry`](#telemetry) | 8 |
 
-79 sections, 453 keys. Read by no shipped binary, only by a host written in C# (10): [`Evaluation`](#evaluation), [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:CognitiveMemory`](#orkeoncognitivememory), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Checkpointing`](#orkeoncheckpointing), [`Orkeon:ExecutionState:Persistence`](#orkeonexecutionstatepersistence), [`Orkeon:Monitoring`](#orkeonmonitoring).
+79 sections, 462 keys. Read by no shipped binary, only by a host written in C# (10): [`Evaluation`](#evaluation), [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:CognitiveMemory`](#orkeoncognitivememory), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Checkpointing`](#orkeoncheckpointing), [`Orkeon:ExecutionState:Persistence`](#orkeonexecutionstatepersistence), [`Orkeon:Monitoring`](#orkeonmonitoring).
 <!-- /settings-index -->
 
 How to read a table:
@@ -1682,8 +1682,17 @@ loads (STUDIO-21), by `orkeon-host` once at startup, before its first message (G
 |---|---|---|---|---|
 | `Enabled` | boolean | `true` |  | Whether MCP is enabled at all. |
 | `Servers:<name>:Args` | list of string | `[]` |  | Command-line arguments for the server process. |
+| `Servers:<name>:Auth:PasswordEnv` | string | — |  | The environment variable holding the basic-auth password. |
+| `Servers:<name>:Auth:TokenEnv` | string | — |  | The environment variable holding the bearer token. |
+| `Servers:<name>:Auth:Type` | enum | `"None"` | `None`, `Bearer`, `Basic` | The authentication scheme. |
+| `Servers:<name>:Auth:UserEnv` | string | — |  | The environment variable holding the basic-auth user name. |
+| `Servers:<name>:CallTimeout` | duration | `"00:01:00"` |  | How long one tool call may take before it ends as a tool error. 60 seconds by default. |
 | `Servers:<name>:Command` | string | `""` |  | Command to launch the MCP server process (for stdio transport). |
+| `Servers:<name>:ConnectTimeout` | duration | `"00:00:30"` |  | How long the handshake and the tool listing of this server may take before the connection fails. 30 seconds by default; a value that is not positive is refused. |
 | `Servers:<name>:Env:<name>` | string | — |  | Environment variables for the server process. |
+| `Servers:<name>:Headers:<name>` | string | — |  | Extra HTTP headers (SSE transport) sent on every request: a literal value, or `env:VAR` to read it from an environment variable when the server is connected. An `Authorization` header is refused here; credentials go through `Auth`. |
+| `Servers:<name>:Tools:Allow` | list of string | `[]` |  | Tool names to register; empty means all. |
+| `Servers:<name>:Tools:Deny` | list of string | `[]` |  | Tool names never registered, applied after `Allow`. |
 | `Servers:<name>:Transport` | enum | `"Stdio"` | `Stdio`, `Sse` | Transport type to use. |
 | `Servers:<name>:TrustAnnotations` | boolean | `false` |  | Whether the permission gate takes this server's tool annotations at their word: a tool marked readOnlyHint is then a read, which plan mode lets run. Off by default: an untrusted server could label a destructive tool read-only, so its tools stay classified fail-closed. |
 | `Servers:<name>:Url` | uri | — |  | URL endpoint for SSE transport. |

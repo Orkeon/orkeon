@@ -13,6 +13,12 @@ namespace Orkeon.Infrastructure.MCP;
 [Experimental("ORKEXP004", UrlFormat = "https://github.com/Orkeon/orkeon/blob/main/docs/reference/experimental-apis.md")]
 public static class McpServiceExtensions
 {
+    /// <summary>
+    /// The name of the HTTP client every MCP server shares. It is excluded from the LLM exchange log
+    /// (<c>LlmExchangeLogExclusion</c>): its traffic carries credentials and is not an LLM exchange.
+    /// </summary>
+    public const string HttpClientName = "orkeon-mcp";
+
     /// <summary>The section bound to <see cref="McpServerOptions"/>: <c>MCP:Server</c>.</summary>
     internal const string ServerSection = ConfigurationKeys.McpSection + ":Server";
 
@@ -32,6 +38,15 @@ public static class McpServiceExtensions
         services.AddOptions<McpOptions>()
             .Bind(section)
             .DeclareSettings(ConfigurationKeys.McpSection);
+        // No client-wide timeout: each tool call is bounded by the server's CallTimeout.
+        // No redirect either: the static headers and credentials go to the configured host only.
+        services.AddHttpClient(HttpClientName, client => client.Timeout = Timeout.InfiniteTimeSpan)
+            .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler
+            {
+                AllowAutoRedirect = false,
+                PooledConnectionLifetime = TimeSpan.FromMinutes(2),
+            });
+        services.AddSingleton(new Orkeon.Domain.Tools.LlmExchangeLogExclusion(HttpClientName));
         services.AddSingleton<McpToolProvider>();
         return services;
     }

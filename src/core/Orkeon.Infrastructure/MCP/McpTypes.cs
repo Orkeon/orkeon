@@ -1,3 +1,4 @@
+using System.Collections.ObjectModel;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Diagnostics.CodeAnalysis;
@@ -54,6 +55,93 @@ public class McpServerConfig
     /// label a destructive tool read-only, so its tools stay classified fail-closed.
     /// </summary>
     public bool TrustAnnotations { get; set; }
+
+    /// <summary>
+    /// Extra HTTP headers (SSE transport) sent on every request: a literal value, or <c>env:VAR</c> to read
+    /// it from an environment variable when the server is connected. An <c>Authorization</c> header is
+    /// refused here; credentials go through <see cref="Auth"/>.
+    /// </summary>
+    public Dictionary<string, string> Headers { get; } = [];
+
+    /// <summary>Credentials sent with every request, read from the environment (SSE transport).</summary>
+    public McpAuthConfig Auth { get; } = new();
+
+    /// <summary>Which of the server's tools are registered.</summary>
+    public McpToolFilterConfig Tools { get; } = new();
+
+    /// <summary>How long one tool call may take before it ends as a tool error. 60 seconds by default.</summary>
+    public TimeSpan CallTimeout { get; set; } = TimeSpan.FromSeconds(60);
+
+    /// <summary>
+    /// How long the handshake and the tool listing of this server may take before the connection fails.
+    /// 30 seconds by default; a value that is not positive is refused.
+    /// </summary>
+    public TimeSpan ConnectTimeout { get; set; } = TimeSpan.FromSeconds(30);
+}
+
+/// <summary>How a server authenticates the client.</summary>
+[Experimental("ORKEXP004", UrlFormat = "https://github.com/Orkeon/orkeon/blob/main/docs/reference/experimental-apis.md")]
+public enum McpAuthType
+{
+    /// <summary>No credential.</summary>
+    None,
+
+    /// <summary><c>Authorization: Bearer</c>, the token read from <see cref="McpAuthConfig.TokenEnv"/>.</summary>
+    Bearer,
+
+    /// <summary><c>Authorization: Basic</c>, from <see cref="McpAuthConfig.UserEnv"/> and <see cref="McpAuthConfig.PasswordEnv"/>.</summary>
+    Basic
+}
+
+/// <summary>The <c>Auth</c> block of a server: the names of the environment variables that hold the credentials.</summary>
+[Experimental("ORKEXP004", UrlFormat = "https://github.com/Orkeon/orkeon/blob/main/docs/reference/experimental-apis.md")]
+public class McpAuthConfig
+{
+    /// <summary>The authentication scheme.</summary>
+    public McpAuthType Type { get; set; } = McpAuthType.None;
+
+    /// <summary>The environment variable holding the bearer token.</summary>
+    public string? TokenEnv { get; set; }
+
+    /// <summary>The environment variable holding the basic-auth user name.</summary>
+    public string? UserEnv { get; set; }
+
+    /// <summary>The environment variable holding the basic-auth password.</summary>
+    public string? PasswordEnv { get; set; }
+}
+
+/// <summary>
+/// The <c>Tools</c> block of a server. An empty <see cref="Allow"/> keeps every tool; <see cref="Deny"/>
+/// then removes names, so a name in both is denied.
+/// </summary>
+[Experimental("ORKEXP004", UrlFormat = "https://github.com/Orkeon/orkeon/blob/main/docs/reference/experimental-apis.md")]
+public class McpToolFilterConfig
+{
+    /// <summary>Tool names to register; empty means all.</summary>
+    public Collection<string> Allow { get; } = [];
+
+    /// <summary>Tool names never registered, applied after <see cref="Allow"/>.</summary>
+    public Collection<string> Deny { get; } = [];
+}
+
+/// <summary>A tool call that outlived <see cref="McpServerConfig.CallTimeout"/>.</summary>
+[Experimental("ORKEXP004", UrlFormat = "https://github.com/Orkeon/orkeon/blob/main/docs/reference/experimental-apis.md")]
+[SuppressMessage("Design", "CA1032", Justification = "Raised only by this library with a settings key; the standard constructors would build an exception without one.")]
+public sealed class McpCallTimeoutException : TimeoutException
+{
+    /// <summary>Creates the exception for <paramref name="toolName"/>.</summary>
+    public McpCallTimeoutException(string toolName, TimeSpan timeout)
+        : base($"The MCP tool '{toolName}' gave no answer within {timeout.TotalSeconds:0.###} s (MCP CallTimeout).")
+    {
+        ToolName = toolName;
+        Timeout = timeout;
+    }
+
+    /// <summary>The tool that did not answer.</summary>
+    public string ToolName { get; }
+
+    /// <summary>The delay it was given.</summary>
+    public TimeSpan Timeout { get; }
 }
 
 /// <summary>
@@ -235,6 +323,12 @@ public class McpServerStatus
     /// tool already holds the name (a built-in tool, a script tool, or another server's tool).
     /// </summary>
     public IReadOnlyList<string> RejectedToolNames { get; init; } = [];
+
+    /// <summary>
+    /// Gets the <c>Tools:Allow</c> / <c>Tools:Deny</c> entries that matched no tool of the server, as
+    /// <c>Allow:name</c> or <c>Deny:name</c>: likely a typo.
+    /// </summary>
+    public IReadOnlyList<string> UnmatchedToolFilters { get; init; } = [];
 }
 
 /// <summary>

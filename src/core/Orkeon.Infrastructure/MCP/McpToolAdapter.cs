@@ -44,6 +44,7 @@ public class McpToolAdapter : IBaseTool
     };
 
     private readonly bool _trustAnnotations;
+    private readonly TimeSpan? _callTimeout;
 
     /// <summary>Initializes a new instance of <see cref="McpToolAdapter"/>.</summary>
     /// <param name="definition">The MCP tool definition.</param>
@@ -52,13 +53,17 @@ public class McpToolAdapter : IBaseTool
     /// Whether the server's <c>annotations</c> decide <see cref="Access"/>; <see langword="false"/> (the
     /// default) leaves every tool of the server at <see cref="ToolAccess.Unspecified"/>.
     /// </param>
-    public McpToolAdapter(McpToolDefinition definition, McpClient client, bool trustAnnotations = false)
+    /// <param name="callTimeout">
+    /// How long one call may take (<see cref="McpServerConfig.CallTimeout"/>); <see langword="null"/> for no bound.
+    /// </param>
+    public McpToolAdapter(McpToolDefinition definition, McpClient client, bool trustAnnotations = false, TimeSpan? callTimeout = null)
     {
         ArgumentNullException.ThrowIfNull(definition);
         _definition = definition;
         ArgumentNullException.ThrowIfNull(client);
         _client = client;
         _trustAnnotations = trustAnnotations;
+        _callTimeout = callTimeout is { } t && t > TimeSpan.Zero ? t : null;
         _schema = ConvertToToolSchema(definition);
     }
 
@@ -77,7 +82,21 @@ public class McpToolAdapter : IBaseTool
                 arguments = JsonElement.Parse(json);
             }
 
-            var result = await _client.CallToolAsync(_definition.Name, arguments, cancellationToken).ConfigureAwait(false);
+            using var linked = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            if (_callTimeout is { } timeout)
+                linked.CancelAfter(timeout);
+
+            McpToolCallResult result;
+            try
+            {
+                result = await _client.CallToolAsync(_definition.Name, arguments, linked.Token).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested && _callTimeout is not null)
+            {
+                var timedOut = new McpCallTimeoutException(_definition.Name, _callTimeout.Value);
+                return new ToolCallResponse(false, null, timedOut.Message,
+                    new Dictionary<string, object?> { ["error_type"] = nameof(McpCallTimeoutException) });
+            }
 
             if (result.IsError == true)
             {
