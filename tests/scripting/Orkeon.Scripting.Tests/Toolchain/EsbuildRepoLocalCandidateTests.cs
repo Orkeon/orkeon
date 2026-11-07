@@ -16,7 +16,7 @@ public class EsbuildRepoLocalCandidateTests
     private static readonly string[] KnownArchitectures = ["x64", "arm64", "ia32"];
 
     [Fact]
-    public void Candidates_AlwaysIncludeLegacyEsbuildBinPath()
+    public void Candidates_AlwaysIncludeMainPackageEsbuildBinPath()
     {
         var candidates = EsbuildTranspiler.BuildRepoLocalCandidates(
             binaryName: "esbuild",
@@ -66,9 +66,9 @@ public class EsbuildRepoLocalCandidateTests
     }
 
     [Fact]
-    public void Candidates_WhenPlatformIsUnknown_OnlyEmitLegacyPath()
+    public void Candidates_WhenPlatformIsUnknown_OnlyEmitMainPackagePath()
     {
-        // The legacy path must still be probed so the resolver works on platforms we don't
+        // The main-package path must still be probed so the resolver works on platforms we don't
         // map to an RID (it gives operators a graceful path forward via a hand-placed copy).
         var candidates = EsbuildTranspiler.BuildRepoLocalCandidates(
             binaryName: "esbuild",
@@ -88,10 +88,10 @@ public class EsbuildRepoLocalCandidateTests
     {
         var candidates = EsbuildTranspiler.BuildRepoLocalCandidates(binaryName, rid, windowsLayout);
 
-        // The platform-namespaced probe should always be present in addition to the legacy one.
+        // The platform-namespaced probe should always be present in addition to the main-package one.
         Assert.Equal(2, candidates.Count);
         // Platform-namespaced path comes FIRST so the native binary is preferred over
-        // the legacy JS shim (the latter has `#!/usr/bin/env node` and breaks without Node).
+        // the main-package JS wrapper (the latter has `#!/usr/bin/env node` and breaks without Node).
         var platformProbe = candidates[0];
 
         Assert.Equal("@esbuild", platformProbe[3]);
@@ -112,14 +112,14 @@ public class EsbuildRepoLocalCandidateTests
     }
 
     /// <summary>
-    /// Regression: on a Linux/WSL host without Node, the legacy
+    /// Regression: on a Linux/WSL host without Node, the main-package
     /// <c>esbuild/bin/esbuild</c> wrapper (a <c>#!/usr/bin/env node</c> script) was
     /// resolved first and failed with "/usr/bin/env: 'node': No such file or directory".
     /// The platform-namespaced native binary must take precedence so the toolchain is
     /// Node-independent.
     /// </summary>
     [Fact]
-    public void Candidates_PlatformNamespaced_TakesPrecedenceOverLegacyShim()
+    public void Candidates_PlatformNamespaced_TakesPrecedenceOverMainPackageWrapper()
     {
         var candidates = EsbuildTranspiler.BuildRepoLocalCandidates(
             binaryName: "esbuild",
@@ -128,7 +128,7 @@ public class EsbuildRepoLocalCandidateTests
 
         Assert.Equal(2, candidates.Count);
         Assert.Equal("@esbuild", candidates[0][3]);
-        Assert.Equal("esbuild", candidates[1][3]); // legacy bucket
+        Assert.Equal("esbuild", candidates[1][3]); // main-package bucket
         Assert.Equal("bin", candidates[1][4]);
     }
 

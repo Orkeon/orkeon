@@ -212,9 +212,6 @@ export interface CommandRuntimeContext {
    * (CLR convention preserved through reflection):
    *   if (ctx.signal.IsCancellationRequested) return ctx.continue("cancelled");
    *   ctx.signal.ThrowIfCancellationRequested();
-   *
-   * The `aborted` / `throwIfAborted` aliases on `CommandSignal` are a TypeScript-only
-   * documentation convenience; at runtime, use the PascalCase members.
    */
   readonly signal: CommandSignal;
 

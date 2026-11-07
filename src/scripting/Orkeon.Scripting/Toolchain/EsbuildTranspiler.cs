@@ -216,10 +216,10 @@ public sealed partial class EsbuildTranspiler : IScriptTranspiler, IDisposable
             return bundled;
 
         // 4) Repo-local checked-in copy: walk up from the runtime base directory looking
-        //    for both the legacy `node_modules/esbuild/bin/{binaryName}` layout AND the
+        //    for both the main-package `node_modules/esbuild/bin/{binaryName}` layout AND the
         //    modern platform-namespaced `node_modules/@esbuild/{rid}/[bin/]{binaryName}`
-        //    layout. The legacy path is what older esbuild installs (and Linux native
-        //    installs that copy the binary directly) ship; the platform-namespaced path
+        //    layout. The main-package path is what the npm `esbuild` package ships (a Node
+        //    wrapper, or the native binary copied over it by the install); the platform-namespaced path
         //    is what npm produces on Windows (`@esbuild/win32-x64/esbuild.exe`, no `bin/`
         //    subdir) and on macOS/Linux for newer esbuild releases.
         var repoLocal = FindRepoLocalEsbuild(binaryName);
@@ -243,7 +243,7 @@ public sealed partial class EsbuildTranspiler : IScriptTranspiler, IDisposable
             "env 'ORKEON_ESBUILD_PATH', " +
             $"bundled '{bundled}', " +
             $"repo-local 'tools/scripting-esbuild/node_modules/' " +
-            $"(probed legacy 'esbuild/bin/{binaryName}' and platform-namespaced '@esbuild/{ridHint}/...'), " +
+            $"(probed main-package 'esbuild/bin/{binaryName}' and platform-namespaced '@esbuild/{ridHint}/...'), " +
             "PATH lookup. " +
             "Install esbuild ('npm install -g esbuild' -- the orkeon dotnet tool does not ship it) or set the binary path explicitly.");
     }
@@ -287,7 +287,7 @@ public sealed partial class EsbuildTranspiler : IScriptTranspiler, IDisposable
     /// <param name="platformRid">
     /// The esbuild platform package RID (e.g. <c>win32-x64</c>, <c>linux-x64</c>,
     /// <c>darwin-arm64</c>), or <see langword="null"/> if the current platform cannot be
-    /// resolved — in which case only the legacy layout is probed.
+    /// resolved — in which case only the main-package layout is probed.
     /// </param>
     /// <param name="windowsPackageLayout">
     /// <see langword="true"/> when the npm package places the binary at the package root
@@ -313,7 +313,7 @@ public sealed partial class EsbuildTranspiler : IScriptTranspiler, IDisposable
             candidates.Add(rooted.ToArray());
         }
 
-        // FALLBACK layout — legacy wrapper. NOTE: on POSIX, this file is a
+        // FALLBACK layout — main-package wrapper. NOTE: on POSIX, this file is a
         // Node.js shim ("#!/usr/bin/env node ...") that re-execs the native
         // binary, so it requires Node to be installed. We probe it only after
         // the platform-namespaced binary to avoid breaking hosts without Node.

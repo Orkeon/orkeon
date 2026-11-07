@@ -143,9 +143,8 @@ public static class JsCrewConfigurationAdapter
             Goal = builder.AgentGoal ?? string.Empty,
             Backstory = builder.AgentBackstoryText ?? string.Empty,
             // .tools(["file_read", ...]) is the canonical YAML-parity surface —
-            // names resolve through IToolRegistry at runtime. Strings passed through
-            // .withAutonomousTool(...) are accepted for backward compatibility, and
-            // JsTool INSTANCES now contribute their names too: the loader registers
+            // names resolve through IToolRegistry at runtime. .withAutonomousTool(...)
+            // takes tool INSTANCES only, and they contribute their names too: the loader registers
             // the instances with the runtime registry before the crew is created
             // (CollectScriptTools), so the names resolve like any built-in (EX-01).
             Tools = CollectAgentToolNames(builder),
@@ -212,9 +211,9 @@ public static class JsCrewConfigurationAdapter
             Dependencies = deps,
             // .deliverable({...}) is the YAML-parity surface — produces a full
             // TaskDeliverable contract (path + source + format + schema). When absent,
-            // the legacy .expect({...}) JSON-schema is captured in Context for
-            // observability (the orchestrator doesn't currently validate against it,
-            // matching the YAML "no deliverable block" behavior).
+            // the .expect({...}) JSON-schema is captured in Context["expect_schema"]; the
+            // hierarchical manager puts it in its prompt (the orchestrator does not validate
+            // against it, matching the YAML "no deliverable block" behavior).
             Deliverable = MapDeliverable(jsTask.DeliverableSpec),
             Context = ExtractTaskContext(jsTask),
             LlmOverride = BuildTaskLlmOverride(jsTask),
