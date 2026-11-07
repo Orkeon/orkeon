@@ -164,9 +164,7 @@ public sealed class LlmLoggingStreamingTests
         factory.SetDefaultClient(client);
         var tool = new ToolSchema("lookup_weather", "Weather of a city",
             new Dictionary<string, ParameterSchema> { ["city"] = new("string", "The city", true) });
-#pragma warning disable CS0618 // LlmConfig.ApiKey
         var config = LlmConfig.Create("deepseek-chat") with { MaxRetries = 0, ApiKey = "sk-test", Tools = [tool] };
-#pragma warning restore CS0618
         using var provider = new DeepSeekLlmProvider(
             config, factory, Policy.NoOpAsync<HttpResponseMessage>(), NullLogger<DeepSeekLlmProvider>.Instance);
 
@@ -328,9 +326,7 @@ public sealed class LlmLoggingStreamingTests
         using var factory = new MockHttpClientFactory();
         factory.SetDefaultClient(client);
         // Any non-empty placeholder takes the streamed path.
-#pragma warning disable CS0618 // LlmConfig.ApiKey
         var config = LlmConfig.Create("deepseek-chat") with { MaxRetries = 0, ApiKey = nameof(usageJsons) };
-#pragma warning restore CS0618
         using var provider = new DeepSeekLlmProvider(
             config, factory, Policy.NoOpAsync<HttpResponseMessage>(), NullLogger<DeepSeekLlmProvider>.Instance);
 

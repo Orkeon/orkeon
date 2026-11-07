@@ -196,7 +196,8 @@ public class RaggableTreeE2ETests
                 TestFixtures.SimpleClass + "\nexport const EXTRA = 42;\n", TestContext.Current.CancellationToken);
             var changedVirtual = $"{TestFixtures.TestVirtualRoot}/src/a.ts";
 
-            using var reindex = new IncrementalReindexTool(store, Factory);
+            using var freshness = new IndexFreshnessService(store, () => new IncrementalReindexEngine(new TypeScriptAdapter(), fs), fs);
+            using var reindex = new IncrementalReindexTool(freshness);
             var resp = await reindex.ExecuteTypedForTest(
                 new IncrementalReindexRequest
                 {

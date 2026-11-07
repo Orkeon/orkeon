@@ -5,8 +5,6 @@ using Orkeon.Infrastructure.LLMs;
 using static Orkeon.Tests.Shared.Constants.TestLlmConstants;
 using static Orkeon.Tests.Shared.Constants.TestUrlConstants;
 
-#pragma warning disable CS0618 // Testing obsolete APIs
-
 namespace Orkeon.Infrastructure.Tests.LLMs;
 
 public class LlmProviderFactoryTests
@@ -624,5 +622,3 @@ public class LlmProviderFactoryTests
 
     #endregion
 }
-
-#pragma warning restore CS0618

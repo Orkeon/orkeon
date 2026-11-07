@@ -17,9 +17,6 @@ public sealed class WebPageLoader : IDocumentLoader
     /// <summary><see cref="SourceDescriptor.Kind"/> hints accepted by this loader.</summary>
     public const string UrlKind = "url";
 
-    /// <summary>Legacy alias of <see cref="UrlKind"/> (the old loader's SupportedType).</summary>
-    public const string WebKind = "web";
-
     private readonly HttpClient _httpClient;
     private readonly IUrlValidator? _urlValidator;
 
@@ -43,10 +40,9 @@ public sealed class WebPageLoader : IDocumentLoader
         if (source is null || string.IsNullOrWhiteSpace(source.Location))
             return false;
 
-        // Honor the loader hint: only claim url/web-kind (or unhinted) sources.
+        // Honor the loader hint: only claim url-kind (or unhinted) sources.
         if (source.Kind is not null
-            && !string.Equals(source.Kind, UrlKind, StringComparison.OrdinalIgnoreCase)
-            && !string.Equals(source.Kind, WebKind, StringComparison.OrdinalIgnoreCase))
+            && !string.Equals(source.Kind, UrlKind, StringComparison.OrdinalIgnoreCase))
         {
             return false;
         }

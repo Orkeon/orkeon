@@ -27,12 +27,13 @@ public class AgentStepTests
         var step = AgentStep.CreateSuccess(
             output: output,
             structuredOutput: structuredOutput,
-            agentId: agentId,
-            taskId: taskId,
-            action: action,
-            input: input,
-            toolsUsed: toolsUsed,
-            context: context);
+            info: new AgentStepInfo(
+                AgentId: agentId,
+                TaskId: taskId,
+                Action: action,
+                Input: input,
+                ToolsUsed: toolsUsed,
+                Context: context));
 
         // Assert
         Assert.NotNull(step);
@@ -61,7 +62,7 @@ public class AgentStepTests
         var output = "Simple output";
 
         // Act
-        var step = AgentStep.CreateSuccess(output, null);
+        var step = AgentStep.CreateSuccess(output, null, new AgentStepInfo());
 
         // Assert
         Assert.NotNull(step);
@@ -158,7 +159,7 @@ public class AgentStepTests
         // Arrange & Act — the step can last no longer than the time around its creation: a bound
         // the test reads, not one it guesses (GAP-41)
         var before = DateTime.UtcNow;
-        var step = AgentStep.CreateSuccess("output", null);
+        var step = AgentStep.CreateSuccess("output", null, new AgentStepInfo());
         var after = DateTime.UtcNow;
 
         // Assert
@@ -170,7 +171,7 @@ public class AgentStepTests
     {
         // Arrange
         var toolsList = new List<string> { "Tool1", "Tool2" };
-        var step = AgentStep.CreateSuccess("output", null, toolsUsed: toolsList);
+        var step = AgentStep.CreateSuccess("output", null, new AgentStepInfo(ToolsUsed: toolsList));
 
         // Act & Assert
         Assert.IsType<System.Collections.ObjectModel.ReadOnlyCollection<string>>(step.ToolsUsed);
@@ -194,8 +195,8 @@ public class AgentStepTests
 
         // Note: We can't create truly equal AgentSteps because they have unique IDs
         // and timestamps, but we can test that the equality considers all components
-        var step1 = AgentStep.CreateSuccess(output, null, agentId, taskId, action, input);
-        var step2 = AgentStep.CreateSuccess(output, null, agentId, taskId, action, input);
+        var step1 = AgentStep.CreateSuccess(output, null, new AgentStepInfo(agentId, taskId, action, input));
+        var step2 = AgentStep.CreateSuccess(output, null, new AgentStepInfo(agentId, taskId, action, input));
 
         // Act & Assert
         Assert.NotEqual(step1, step2); // Different due to unique IDs
@@ -206,7 +207,7 @@ public class AgentStepTests
     public void ShouldBeConsistent_WhenCallingGetHashCode()
     {
         // Arrange
-        var step = AgentStep.CreateSuccess("output", null);
+        var step = AgentStep.CreateSuccess("output", null, new AgentStepInfo());
 
         // Act
         var hash1 = step.GetHashCode();
@@ -236,7 +237,7 @@ public class AgentStepTests
         };
 
         // Act
-        var step = AgentStep.CreateSuccess("Processed successfully", structuredOutput);
+        var step = AgentStep.CreateSuccess("Processed successfully", structuredOutput, new AgentStepInfo());
 
         // Assert
         Assert.NotNull(step.StructuredOutput);
@@ -269,9 +270,9 @@ public class AgentStepTests
             "The final result is 42");
 
         // Act
-        var thoughtStep = AgentStep.CreateSuccess("Thought recorded", null, context: thoughtContext);
-        var delegationStep = AgentStep.CreateSuccess("Delegated", null, context: delegationContext);
-        var finalStep = AgentStep.CreateSuccess("42", null, context: finalAnswerContext);
+        var thoughtStep = AgentStep.CreateSuccess("Thought recorded", null, new AgentStepInfo(Context: thoughtContext));
+        var delegationStep = AgentStep.CreateSuccess("Delegated", null, new AgentStepInfo(Context: delegationContext));
+        var finalStep = AgentStep.CreateSuccess("42", null, new AgentStepInfo(Context: finalAnswerContext));
 
         // Assert
         Assert.Equal("think", thoughtStep.Context.Action);
@@ -285,7 +286,7 @@ public class AgentStepTests
         // Arrange & Act
         var beforeCreation = DateTime.UtcNow;
         ClockAdvance.Tick(); // Deterministic clock advance (R5.6)
-        var step = AgentStep.CreateSuccess("output", null);
+        var step = AgentStep.CreateSuccess("output", null, new AgentStepInfo());
         ClockAdvance.Tick(); // Deterministic clock advance (R5.6)
         var afterCreation = DateTime.UtcNow;
 

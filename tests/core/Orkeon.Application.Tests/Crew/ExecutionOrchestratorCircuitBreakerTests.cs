@@ -1,3 +1,4 @@
+using Orkeon.Application.Crew.Execution;
 using Microsoft.Extensions.AI;
 using Orkeon.Application.Crew;
 using Orkeon.Domain.Constants.Agent;
@@ -23,7 +24,7 @@ public class ExecutionOrchestratorCircuitBreakerTests
             new(ChatRole.Tool, "Error: Parameter 'path' has invalid type")
         };
 
-        var result = ExecutionOrchestrator.ExtractLastToolError((IReadOnlyList<ChatMessage>)messages);
+        var result = ConversationPolicy.ExtractLastToolError((IReadOnlyList<ChatMessage>)messages);
 
         Assert.NotNull(result);
         Assert.Equal("Error: Parameter 'path' has invalid type", result);
@@ -39,7 +40,7 @@ public class ExecutionOrchestratorCircuitBreakerTests
             new(ChatRole.Tool, "File contents: hello world")
         };
 
-        var result = ExecutionOrchestrator.ExtractLastToolError((IReadOnlyList<ChatMessage>)messages);
+        var result = ConversationPolicy.ExtractLastToolError((IReadOnlyList<ChatMessage>)messages);
 
         Assert.Null(result);
     }
@@ -49,7 +50,7 @@ public class ExecutionOrchestratorCircuitBreakerTests
     {
         var messages = new List<ChatMessage>();
 
-        var result = ExecutionOrchestrator.ExtractLastToolError((IReadOnlyList<ChatMessage>)messages);
+        var result = ConversationPolicy.ExtractLastToolError((IReadOnlyList<ChatMessage>)messages);
 
         Assert.Null(result);
     }
@@ -63,7 +64,7 @@ public class ExecutionOrchestratorCircuitBreakerTests
             new(ChatRole.Tool, [new FunctionResultContent("call-1", "Error: Tool not available")])
         };
 
-        var result = ExecutionOrchestrator.ExtractLastToolError((IReadOnlyList<ChatMessage>)messages);
+        var result = ConversationPolicy.ExtractLastToolError((IReadOnlyList<ChatMessage>)messages);
 
         Assert.NotNull(result);
         Assert.Equal("Error: Tool not available", result);
@@ -78,7 +79,7 @@ public class ExecutionOrchestratorCircuitBreakerTests
             new(ChatRole.Tool, [new FunctionResultContent("call-1", "Some successful result")])
         };
 
-        var result = ExecutionOrchestrator.ExtractLastToolError((IReadOnlyList<ChatMessage>)messages);
+        var result = ConversationPolicy.ExtractLastToolError((IReadOnlyList<ChatMessage>)messages);
 
         Assert.Null(result);
     }
@@ -93,7 +94,7 @@ public class ExecutionOrchestratorCircuitBreakerTests
             new(ChatRole.Assistant, "Assistant response")
         };
 
-        var result = ExecutionOrchestrator.ExtractLastToolError((IReadOnlyList<ChatMessage>)messages);
+        var result = ConversationPolicy.ExtractLastToolError((IReadOnlyList<ChatMessage>)messages);
 
         Assert.Null(result);
     }
@@ -108,7 +109,7 @@ public class ExecutionOrchestratorCircuitBreakerTests
             new(ChatRole.Tool, "Successful result")
         };
 
-        var result = ExecutionOrchestrator.ExtractLastToolError((IReadOnlyList<ChatMessage>)messages);
+        var result = ConversationPolicy.ExtractLastToolError((IReadOnlyList<ChatMessage>)messages);
 
         Assert.Null(result);
     }
@@ -124,7 +125,7 @@ public class ExecutionOrchestratorCircuitBreakerTests
             new() { Role = "tool", Content = "Error: Unknown tool: fake_tool" }
         };
 
-        var result = ExecutionOrchestrator.ExtractLastToolError((IReadOnlyList<LlmMessage>)messages);
+        var result = ConversationPolicy.ExtractLastToolError((IReadOnlyList<LlmMessage>)messages);
 
         Assert.NotNull(result);
         Assert.Equal("Error: Unknown tool: fake_tool", result);
@@ -139,7 +140,7 @@ public class ExecutionOrchestratorCircuitBreakerTests
             new() { Role = "tool", Content = "File read successfully" }
         };
 
-        var result = ExecutionOrchestrator.ExtractLastToolError((IReadOnlyList<LlmMessage>)messages);
+        var result = ConversationPolicy.ExtractLastToolError((IReadOnlyList<LlmMessage>)messages);
 
         Assert.Null(result);
     }
@@ -149,7 +150,7 @@ public class ExecutionOrchestratorCircuitBreakerTests
     {
         var messages = new List<LlmMessage>();
 
-        var result = ExecutionOrchestrator.ExtractLastToolError((IReadOnlyList<LlmMessage>)messages);
+        var result = ConversationPolicy.ExtractLastToolError((IReadOnlyList<LlmMessage>)messages);
 
         Assert.Null(result);
     }
@@ -165,7 +166,7 @@ public class ExecutionOrchestratorCircuitBreakerTests
             [Tool directory_read error]: Permission denied
             """;
 
-        var result = ExecutionOrchestrator.ExtractLastToolErrorFromText(text);
+        var result = ConversationPolicy.ExtractLastToolErrorFromText(text);
 
         Assert.NotNull(result);
         Assert.Contains("[Tool directory_read error]:", result);
@@ -179,7 +180,7 @@ public class ExecutionOrchestratorCircuitBreakerTests
             [Tool file_read result]: Error: Parameter 'path' has invalid type
             """;
 
-        var result = ExecutionOrchestrator.ExtractLastToolErrorFromText(text);
+        var result = ConversationPolicy.ExtractLastToolErrorFromText(text);
 
         Assert.NotNull(result);
         Assert.Contains("Error: Parameter 'path' has invalid type", result);
@@ -194,7 +195,7 @@ public class ExecutionOrchestratorCircuitBreakerTests
             Continue working on the task.
             """;
 
-        var result = ExecutionOrchestrator.ExtractLastToolErrorFromText(text);
+        var result = ConversationPolicy.ExtractLastToolErrorFromText(text);
 
         Assert.Null(result);
     }
@@ -202,14 +203,14 @@ public class ExecutionOrchestratorCircuitBreakerTests
     [Fact]
     public void ExtractLastToolErrorFromText_EmptyText_ReturnsNull()
     {
-        var result = ExecutionOrchestrator.ExtractLastToolErrorFromText("");
+        var result = ConversationPolicy.ExtractLastToolErrorFromText("");
         Assert.Null(result);
     }
 
     [Fact]
     public void ExtractLastToolErrorFromText_NullText_ReturnsNull()
     {
-        var result = ExecutionOrchestrator.ExtractLastToolErrorFromText(null!);
+        var result = ConversationPolicy.ExtractLastToolErrorFromText(null!);
         Assert.Null(result);
     }
 
@@ -250,7 +251,7 @@ public class ExecutionOrchestratorCircuitBreakerTests
             // Add an error tool message
             messages.Add(new ChatMessage(ChatRole.Tool, errorMessage));
 
-            var extracted = ExecutionOrchestrator.ExtractLastToolError((IReadOnlyList<ChatMessage>)messages);
+            var extracted = ConversationPolicy.ExtractLastToolError((IReadOnlyList<ChatMessage>)messages);
             Assert.Equal(errorMessage, extracted);
 
             if (extracted == lastError)
@@ -314,7 +315,7 @@ public class ExecutionOrchestratorCircuitBreakerTests
         {
             messages.Clear();
             messages.Add(new ChatMessage(ChatRole.Tool, errorMsg));
-            var extracted = ExecutionOrchestrator.ExtractLastToolError((IReadOnlyList<ChatMessage>)messages);
+            var extracted = ConversationPolicy.ExtractLastToolError((IReadOnlyList<ChatMessage>)messages);
             if (extracted == lastError) consecutiveCount++;
             else { lastError = extracted; consecutiveCount = 1; }
         }
@@ -323,7 +324,7 @@ public class ExecutionOrchestratorCircuitBreakerTests
         // Success resets
         messages.Clear();
         messages.Add(new ChatMessage(ChatRole.Tool, "File contents: OK"));
-        var successExtracted = ExecutionOrchestrator.ExtractLastToolError((IReadOnlyList<ChatMessage>)messages);
+        var successExtracted = ConversationPolicy.ExtractLastToolError((IReadOnlyList<ChatMessage>)messages);
         Assert.Null(successExtracted);
         // Simulate reset
         lastError = null;
@@ -332,7 +333,7 @@ public class ExecutionOrchestratorCircuitBreakerTests
         // Another error — counter should be 1, not 3
         messages.Clear();
         messages.Add(new ChatMessage(ChatRole.Tool, errorMsg));
-        var newExtracted = ExecutionOrchestrator.ExtractLastToolError((IReadOnlyList<ChatMessage>)messages);
+        var newExtracted = ConversationPolicy.ExtractLastToolError((IReadOnlyList<ChatMessage>)messages);
         if (newExtracted == lastError) consecutiveCount++;
         else { lastError = newExtracted; consecutiveCount = 1; }
 

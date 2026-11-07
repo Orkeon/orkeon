@@ -142,7 +142,7 @@ public sealed class ContainerLifetimeTests : IDisposable
     /// <c>IPathValidator</c> answers WHETHER. Mounting <c>/sandbox</c> in every registry
     /// fixed step one and left step two denying it — the session directory lives under the
     /// temp directory while the validator's workspace root defaults to the current one — so
-    /// <c>DockerSandbox.CreateDirectoryAsync</c> and <c>ProcessIsolationSandbox</c>, whose
+    /// <c>DockerSandbox.CreateDirectoryAsync</c> and <c>HostProcessRunner</c>, whose
     /// run directory is the first thing they create, kept failing on the first
     /// agent-generated snippet. Only the message changed: "No mount found for virtual path
     /// '/sandbox/…'" became "Path is outside the allowed workspace directory".

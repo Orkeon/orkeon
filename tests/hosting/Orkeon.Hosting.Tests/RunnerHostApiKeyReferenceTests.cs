@@ -86,11 +86,9 @@ public sealed class RunnerHostApiKeyReferenceTests : IDisposable
         {
             var profiles = host.Services.GetRequiredService<ILlmProfileRegistry>();
 
-#pragma warning disable CS0618 // ApiKey is the field every provider reads.
             Assert.Equal(Key, profiles.Resolve("z-ai").Provider.BaseConfig!.ApiKey);
             Assert.Equal("sk-inline-key", profiles.Resolve("inline").Provider.BaseConfig!.ApiKey);
             Assert.Null(profiles.Resolve("unset").Provider.BaseConfig!.ApiKey);
-#pragma warning restore CS0618
         }
 
         Assert.NotEmpty(logs.Entries);

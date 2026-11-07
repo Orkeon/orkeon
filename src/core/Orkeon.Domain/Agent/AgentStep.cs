@@ -103,26 +103,6 @@ public sealed record AgentStep
     }
 
     /// <summary>
-    /// Creates a successful agent step.
-    /// Convenience overload that delegates to <see cref="CreateSuccess(string, object?, AgentStepInfo)"/>.
-    /// </summary>
-#pragma warning disable S107 // Backward-compatible overload; use CreateSuccess(string, object?, AgentStepInfo) instead
-    public static AgentStep CreateSuccess(
-        string output,
-        object? structuredOutput,
-        AgentId? agentId = null,
-        TaskId? taskId = null,
-        string action = "",
-        string input = "",
-        IReadOnlyList<string>? toolsUsed = null,
-        AgentStepContext? context = null)
-#pragma warning restore S107
-    {
-        return CreateSuccess(output, structuredOutput,
-            new AgentStepInfo(agentId, taskId, action, input, toolsUsed, context));
-    }
-
-    /// <summary>
     /// Creates a failed agent step using grouped step info.
     /// </summary>
     public static AgentStep Failed(string error, AgentStepInfo info)

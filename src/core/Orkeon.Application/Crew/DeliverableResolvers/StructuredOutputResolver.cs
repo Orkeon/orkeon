@@ -395,13 +395,6 @@ public sealed partial class StructuredOutputResolver : IDeliverableResolver
     };
 
     /// <summary>
-    /// Back-compat shim: returns the first extracted JSON candidate without parsing.
-    /// New code should call <see cref="EnumerateJsonCandidates"/> and try each candidate.
-    /// </summary>
-    internal static string? ExtractJsonPayload(string text)
-        => EnumerateJsonCandidates(text, JsonRootKind.Any).FirstOrDefault();
-
-    /// <summary>
     /// Yields JSON candidate substrings extracted from a free-form assistant message,
     /// in the order they should be tried. Handles raw JSON (starts with <c>{</c> or
     /// <c>[</c>), markdown code fences (<c>```json … ```</c>), and prose-wrapped

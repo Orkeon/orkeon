@@ -3,8 +3,6 @@ using Orkeon.Domain.SharedKernel.ValueObjects;
 using static Orkeon.Tests.Shared.Constants.TestLlmConstants;
 using static Orkeon.Tests.Shared.Constants.TestUrlConstants;
 
-#pragma warning disable CS0618 // Testing obsolete APIs
-
 namespace Orkeon.Domain.Tests.Interfaces;
 
 public class ILlmProviderTests
@@ -247,11 +245,7 @@ public class ILlmProviderTests
             {
                 Role = "assistant",
                 Content = "I'll check the weather for you.",
-                FunctionCallInfo = new FunctionCallInfo("get_weather", new Dictionary<string, object>
-                {
-                    ["location"] = "Paris",
-                    ["unit"] = "celsius"
-                })
+                RawToolCalls = "[{\"id\":\"call_1\",\"type\":\"function\",\"function\":{\"name\":\"get_weather\",\"arguments\":\"{\\\"location\\\":\\\"Paris\\\"}\"}}]"
             }
         };
 
@@ -259,8 +253,8 @@ public class ILlmProviderTests
             chatFunc: (msgs, config, ct) =>
             {
                 var msg = msgs[0];
-                Assert.NotNull(msg.FunctionCallInfo);
-                Assert.Equal("get_weather", msg.FunctionCallInfo.Name);
+                Assert.NotNull(msg.RawToolCalls);
+                Assert.Contains("get_weather", msg.RawToolCalls);
 
                 return System.Threading.Tasks.Task.FromResult(new LlmResponse
                 {
@@ -284,7 +278,7 @@ public class ILlmProviderTests
         {
             new LlmMessage { Role = "user", Content = "Test message" }
         };
-        var config = LlmConfig.Gpt35Turbo(TestApiKey) with
+        var config = LlmConfig.Create(ModelGpt35Turbo, TestApiKey) with
         {
             Temperature = 0.5,
             MaxTokens = 1000
@@ -337,7 +331,7 @@ public class ILlmProviderTests
         // Arrange
         var provider = new TestLlmProvider();
         var gpt4Config = LlmConfig.WithDefaultModel("api-key-1");
-        var gpt35Config = LlmConfig.Gpt35Turbo("api-key-2");
+        var gpt35Config = LlmConfig.Create(ModelGpt35Turbo, "api-key-2");
         var claudeConfig = LlmConfig.Claude("api-key-3");
         var ollamaConfig = LlmConfig.Ollama(ModelMistral);
 
@@ -530,7 +524,7 @@ public class ILlmProviderTests
         // Arrange & Act
         var defaultConfig = LlmConfig.OnProfile();
         var gpt4Config = LlmConfig.WithDefaultModel("key1");
-        var gpt35Config = LlmConfig.Gpt35Turbo("key2");
+        var gpt35Config = LlmConfig.Create(ModelGpt35Turbo, "key2");
         var claudeConfig = LlmConfig.Claude("key3");
         var ollamaConfig = LlmConfig.Ollama(ModelMistral);
 
@@ -552,5 +546,3 @@ public class ILlmProviderTests
         Assert.Equal(new Uri(EndpointOllamaDefault), ollamaConfig.BaseUrl);
     }
 }
-
-#pragma warning restore CS0618

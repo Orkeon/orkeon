@@ -659,18 +659,6 @@ public class ExecutionContextTests
     }
 
     [Fact]
-    public void ShouldReturnContent_WhenUsingTaskOutputUsingRawOutput()
-    {
-        // Arrange & Act
-        var output = new TaskOutput(
-            TaskId1, AgentId1, "Raw content", DateTime.UtcNow, true, TimeSpan.Zero);
-
-        // Assert
-        Assert.Equal("Raw content", output.RawOutput);
-        Assert.Equal(output.Content, output.RawOutput);
-    }
-
-    [Fact]
     public void ShouldUseEmptyList_WhenUsingTaskOutputWithNullToolsUsed()
     {
         // Arrange & Act

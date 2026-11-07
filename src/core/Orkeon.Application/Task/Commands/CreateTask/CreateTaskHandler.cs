@@ -52,7 +52,8 @@ public partial class CreateTaskHandler : ICommandHandler<CreateTaskCommand, Task
             // Assign agent if provided (format already validated by CreateTaskCommandValidator)
             if (!string.IsNullOrWhiteSpace(command.AgentId))
             {
-                var agentId = AgentId.From(Guid.Parse(command.AgentId));
+                if (!CreateTaskAgentId.TryParse(command.AgentId, out var agentId))
+                    throw new ArgumentException($"AgentId '{command.AgentId}' is not a valid agent id.", nameof(command));
                 task.AssignTo(agentId);
                 LogAgentAssigned(command.AgentId);
             }

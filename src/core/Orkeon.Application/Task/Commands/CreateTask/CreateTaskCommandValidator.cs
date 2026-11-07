@@ -31,9 +31,9 @@ public sealed class CreateTaskCommandValidator : ICommandValidator<CreateTaskCom
             errors.Add("ExpectedOutput must not exceed 2000 characters.");
         }
 
-        if (!string.IsNullOrWhiteSpace(command.AgentId) && !Guid.TryParse(command.AgentId, out _))
+        if (!string.IsNullOrWhiteSpace(command.AgentId) && !CreateTaskAgentId.TryParse(command.AgentId, out _))
         {
-            errors.Add($"AgentId '{command.AgentId}' is not a valid GUID format.");
+            errors.Add($"AgentId '{command.AgentId}' is not a valid agent id (a ULID or a GUID).");
         }
 
         return new ValidationResult(errors.Count == 0, errors);

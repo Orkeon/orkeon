@@ -128,9 +128,7 @@ public sealed class LlmProfileRegistryTests
         var claude = profiles[0].Config;
         Assert.Equal("claude-sonnet-5", claude.Model);
         Assert.Equal(new Uri("https://api.anthropic.com/v1"), claude.BaseUrl);
-#pragma warning disable CS0618
         Assert.Equal("sk-ant", claude.ApiKey);
-#pragma warning restore CS0618
         Assert.Equal(0.2, Assert.NotNull(claude.Temperature), precision: 3);
         Assert.Equal(2048, claude.MaxTokens);
         Assert.True(claude.Thinking!.Enabled);

@@ -300,10 +300,7 @@ public record TaskOutput(
     DateTime CompletedAt,
     bool Success,
     TimeSpan ExecutionTime,
-    IReadOnlyList<ToolUsage>? ToolsUsed = null)
-{
-    public string RawOutput => Content;              // Alias of Content
-}
+    IReadOnlyList<ToolUsage>? ToolsUsed = null);
 ```
 
 ## Alternative execution modes

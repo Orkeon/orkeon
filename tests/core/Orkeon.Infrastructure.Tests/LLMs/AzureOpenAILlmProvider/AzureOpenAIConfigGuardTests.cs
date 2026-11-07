@@ -2,8 +2,6 @@ using Orkeon.Domain.SharedKernel.ValueObjects;
 using Orkeon.Infrastructure.LLMs;
 using Orkeon.Infrastructure.Tests.TestDoubles;
 
-#pragma warning disable CS0618 // LlmConfig.ApiKey is obsolete but is what the guard reads.
-
 namespace Orkeon.Infrastructure.Tests.LLMs;
 
 /// <summary>

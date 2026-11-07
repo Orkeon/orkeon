@@ -1,3 +1,4 @@
+using Orkeon.Application.Crew.Execution;
 using Microsoft.Extensions.AI;
 using Orkeon.Application.Crew;
 
@@ -15,7 +16,7 @@ public class ExecutionOrchestratorMissingToolTests
     [Fact]
     public void BuildMissingToolMessage_UsesToolRole()
     {
-        var message = ExecutionOrchestrator.BuildMissingToolMessage("call-42", "grep");
+        var message = ChatToolDispatcher.BuildMissingToolMessage("call-42", "grep");
 
         Assert.Equal(ChatRole.Tool, message.Role);
     }
@@ -23,7 +24,7 @@ public class ExecutionOrchestratorMissingToolTests
     [Fact]
     public void BuildMissingToolMessage_WrapsFunctionResultContentWithCallId()
     {
-        var message = ExecutionOrchestrator.BuildMissingToolMessage("call-42", "grep");
+        var message = ChatToolDispatcher.BuildMissingToolMessage("call-42", "grep");
 
         var result = Assert.IsType<FunctionResultContent>(Assert.Single(message.Contents));
         Assert.Equal("call-42", result.CallId);
@@ -32,7 +33,7 @@ public class ExecutionOrchestratorMissingToolTests
     [Fact]
     public void BuildMissingToolMessage_IncludesToolNameInErrorPayload()
     {
-        var message = ExecutionOrchestrator.BuildMissingToolMessage("call-42", "grep");
+        var message = ChatToolDispatcher.BuildMissingToolMessage("call-42", "grep");
 
         var result = Assert.IsType<FunctionResultContent>(message.Contents[0]);
         Assert.Contains("grep", result.Result?.ToString() ?? string.Empty);
@@ -47,10 +48,10 @@ public class ExecutionOrchestratorMissingToolTests
         var messages = new List<ChatMessage>
         {
             new(ChatRole.User, "Use the grep tool"),
-            ExecutionOrchestrator.BuildMissingToolMessage("call-1", "grep")
+            ChatToolDispatcher.BuildMissingToolMessage("call-1", "grep")
         };
 
-        var error = ExecutionOrchestrator.ExtractLastToolError((IReadOnlyList<ChatMessage>)messages);
+        var error = ConversationPolicy.ExtractLastToolError((IReadOnlyList<ChatMessage>)messages);
 
         Assert.NotNull(error);
         Assert.Contains("grep", error);

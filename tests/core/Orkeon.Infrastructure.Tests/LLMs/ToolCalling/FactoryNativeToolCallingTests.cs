@@ -49,7 +49,6 @@ public class FactoryNativeToolCallingTests
         {"response":"pong","done":true,"total_duration":100,"eval_duration":50}
         """;
 
-#pragma warning disable CS0618 // LlmConfig.ApiKey is obsolete but still the factory-facing surface
     private static LlmConfig CreateAzureConfig(IReadOnlyList<ToolSchema>? tools = null)
     {
         return LlmConfig.Create("gpt-4", "test-api-key-fake") with
@@ -71,7 +70,6 @@ public class FactoryNativeToolCallingTests
             TimeoutSeconds = 10
         };
     }
-#pragma warning restore CS0618
 
     private static LlmProviderFactory CreateFactory(TestHttpClientFactory httpClientFactory)
         => new(httpClientFactory, NullLoggerFactory.Instance);

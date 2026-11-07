@@ -58,7 +58,7 @@ Exemptions par dossier (`s_exemptFolderSegments`) :
 
 Exemptions par fichier (`s_exemptFileSuffixes`) — chacune porte un marqueur inline `EXCEPTION-…` / `OUT-OF-SCOPE` :
 - `Sandbox/SandboxSession.cs` — mounts enregistrés avant la DI (`EXCEPTION-BOOTSTRAP`)
-- `Sandbox/ProcessIsolationSandbox.cs`, `Sandbox/DockerSandbox.cs` — sondage de binaires hôte (`OUT-OF-SCOPE`)
+- `Sandbox/HostProcessRunner.cs`, `Sandbox/DockerSandbox.cs` — sondage de binaires hôte (`OUT-OF-SCOPE`)
 - `Security/PathValidator.cs` — la résolution symlink/realpath est son rôle
 
 Tout autre fichier légitimement « brut » s'appuie sur un `[SuppressVfsCompliance]` étroit au site d'usage plutôt qu'une exemption par chemin (voir les exceptions permanentes ratifiées ci-dessous).
@@ -100,7 +100,7 @@ Ces accès ne peuvent pas passer par le VFS par nature et sont **définitivement
 |---|---|---|---|
 | Implémentation VFS | `Domain/FileSystem/*`, `Infrastructure/FileSystem/*` | (l'abstraction) | C'*est* le VFS |
 | Bootstrap (pré-DI) | `SandboxSession`, ConsoleApp `Cli*MountBootstrapper`, `Hosting/Runner*`, `Hosting/CrewMountDeclarations` (pré-lit le bloc `mounts:` d'une crew, VFS-90) | `EXCEPTION-BOOTSTRAP` | Lisent appsettings + montent avant que le VFS existe. Couvre le *provisionnement* d'un montage, jamais l'exposition d'un chemin physique comme chemin virtuel — voir [ADR-008](../adr/ADR-008-virtual-paths-are-the-only-currency.md) |
-| Sondage hôte | `DockerSandbox`, `ProcessIsolationSandbox`, `ProcessGitDiffProvider` | `OUT-OF-SCOPE` | Découvrent `docker`/`dotnet`/`git` sur le PATH, jamais un mount |
+| Sondage hôte | `DockerSandbox`, `HostProcessRunner`, `ProcessGitDiffProvider` | `OUT-OF-SCOPE` | Découvrent `docker`/`dotnet`/`git` sur le PATH, jamais un mount |
 | Toolchain | `Scripting/Toolchain/EsbuildTranspiler.cs` | `OUT-OF-SCOPE` | Localise le binaire `esbuild` + fichiers temp de transpilation ; chaîne d'outils hôte |
 | Applications hôtes (pré-DI) | `orkeon-host` (`CrewHostService`, `HostCrewMounts`, `HostStartup`), `Hosting/CrewDirectoryLayout`, le point d'entrée `orkeon` (`Orkeon.Scripting.Cli`, à l'échelle de l'assembly), le `Program` du REPL | `EXCEPTION-BOOTSTRAP` | Valident ou classent les chemins de crew, de script et de settings fournis par l'opérateur avant qu'aucun mount n'existe |
 | Orkeon Studio | `Orkeon.Studio.Core` / `.Run` / `.Wpf` (fichier de settings, équipes, profils de modèles, historique des lancements, sélecteurs de dossiers, sessions de forge) | `EXCEPTION-BOOTSTRAP` | Studio est une application hôte : il édite les fichiers et dossiers de l'utilisateur, jamais les chemins virtuels d'une crew |

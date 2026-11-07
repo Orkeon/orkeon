@@ -69,7 +69,6 @@ public abstract class E2ETestBase : IDisposable
         LlmConfig config;
         if (UseOpenAi)
         {
-#pragma warning disable CS0618
             config = LlmConfig.Create(model) with
             {
                 ApiKey = OpenAiApiKey,
@@ -77,7 +76,6 @@ public abstract class E2ETestBase : IDisposable
                 Temperature = 0.1,
                 TimeoutSeconds = 60
             };
-#pragma warning restore CS0618
         }
         else
         {

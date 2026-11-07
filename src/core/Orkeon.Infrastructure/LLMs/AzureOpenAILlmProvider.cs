@@ -109,12 +109,10 @@ public partial class AzureOpenAILlmProvider : OpenAICompatibleProviderBase
         // Azure uses api-key header instead of Bearer token
         client.DefaultRequestHeaders.Authorization = null;
 
-#pragma warning disable CS0618 // Type or member is obsolete
         if (!string.IsNullOrEmpty(config.ApiKey))
         {
             client.DefaultRequestHeaders.Add(HttpDefaults.AzureApiKeyHeader, config.ApiKey);
         }
-#pragma warning restore CS0618
     }
 
     /// <inheritdoc />
@@ -354,9 +352,7 @@ public partial class AzureOpenAILlmProvider : OpenAICompatibleProviderBase
     /// </remarks>
     private static string? MissingRequirement(LlmConfig effectiveConfig)
     {
-#pragma warning disable CS0618 // Type or member is obsolete
         if (string.IsNullOrEmpty(effectiveConfig.ApiKey))
-#pragma warning restore CS0618
         {
             return RequirementApiKey;
         }

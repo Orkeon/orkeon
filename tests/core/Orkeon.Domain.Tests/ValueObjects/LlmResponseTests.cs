@@ -146,18 +146,14 @@ public class LlmResponseTests
         Assert.Equal(string.Empty, message.Role);
         Assert.Equal(string.Empty, message.Content);
         Assert.Null(message.Name);
-        Assert.Null(message.FunctionCallInfo);
+        Assert.Null(message.RawToolCalls);
     }
 
     [Fact]
     public void ShouldSetValues_WhenUsingLlmMessageWithRecordExpression()
     {
         // Arrange
-        var arguments = new Dictionary<string, object>
-        {
-            { "location", "London" },
-            { "unit", "celsius" }
-        };
+        const string toolCalls = "[{\"id\":\"call_1\",\"type\":\"function\",\"function\":{\"name\":\"get_weather\",\"arguments\":\"{\\\"location\\\":\\\"London\\\"}\"}}]";
 
         // Act — use 'with' to derive a new record
         var message = new LlmMessage() with
@@ -165,17 +161,14 @@ public class LlmResponseTests
             Role = "assistant",
             Content = "I'll check the weather for you",
             Name = "weather_bot",
-            FunctionCallInfo = new FunctionCallInfo("get_weather", arguments)
+            RawToolCalls = toolCalls
         };
 
         // Assert
         Assert.Equal("assistant", message.Role);
         Assert.Equal("I'll check the weather for you", message.Content);
         Assert.Equal("weather_bot", message.Name);
-        Assert.NotNull(message.FunctionCallInfo);
-        Assert.Equal("get_weather", message.FunctionCallInfo.Name);
-        Assert.Equal("London", message.FunctionCallInfo.GetArgument<string>("location"));
-        Assert.Equal("celsius", message.FunctionCallInfo.GetArgument<string>("unit"));
+        Assert.Equal(toolCalls, message.RawToolCalls);
     }
 
     [Fact]
@@ -193,7 +186,7 @@ public class LlmResponseTests
         Assert.Equal("user", message.Role);
         Assert.Equal("What's the weather like?", message.Content);
         Assert.Equal("john_doe", message.Name);
-        Assert.Null(message.FunctionCallInfo);
+        Assert.Null(message.RawToolCalls);
     }
 
     [Fact]
@@ -211,31 +204,6 @@ public class LlmResponseTests
         Assert.Equal("assistant", assistantMessage.Role);
         Assert.Equal("function", functionMessage.Role);
         Assert.Equal("get_weather", functionMessage.Name);
-    }
-
-    [Fact]
-    public void ShouldWithComplexData_WhenUsingLlmMessageUsingFunctionCallInfo()
-    {
-        // Arrange
-        var arguments = new Dictionary<string, object>
-        {
-            { "data", Int12345 },
-            { "operation", "sum" },
-            { "options", new { parallel = true, timeout = 30 } }
-        };
-
-        // Act
-        var message = new LlmMessage
-        {
-            Role = "assistant",
-            Content = "",
-            FunctionCallInfo = new FunctionCallInfo("process_data", arguments)
-        };
-
-        // Assert
-        Assert.NotNull(message.FunctionCallInfo);
-        Assert.Equal("process_data", message.FunctionCallInfo.Name);
-        Assert.Equal(3, message.FunctionCallInfo.Arguments.Count);
     }
 
     #endregion
@@ -372,11 +340,7 @@ public class LlmResponseTests
             {
                 Role = "assistant",
                 Content = "",
-                FunctionCallInfo = new FunctionCallInfo("get_weather", new Dictionary<string, object>
-            {
-                { "location", "London" },
-                { "unit", "celsius" }
-            })
+                RawToolCalls = "[{\"id\":\"call_1\",\"type\":\"function\",\"function\":{\"name\":\"get_weather\",\"arguments\":\"{}\"}}]"
             },
 
             // Function returns result
@@ -407,7 +371,7 @@ public class LlmResponseTests
 
         // Assert
         Assert.Equal(4, messages.Count);
-        Assert.NotNull(messages[1].FunctionCallInfo);
+        Assert.Contains("get_weather", messages[1].RawToolCalls);
         Assert.Equal("function", messages[2].Role);
         Assert.Contains("18", response.Content);
     }
@@ -474,20 +438,6 @@ public class LlmResponseTests
 
         // Assert
         Assert.Equal(longModelName, response.Model);
-    }
-
-    [Fact]
-    public void ShouldNullFunctionCallInfo_WhenUsingEdgeCase()
-    {
-        // Act
-        var message = new LlmMessage
-        {
-            Role = "assistant",
-            FunctionCallInfo = null
-        };
-
-        // Assert
-        Assert.Null(message.FunctionCallInfo);
     }
 
     [Fact]

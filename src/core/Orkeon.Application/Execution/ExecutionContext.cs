@@ -208,10 +208,5 @@ public record TaskOutput(
 {
     /// <summary>Tools Used.</summary>
     public IReadOnlyList<Orkeon.Domain.Tools.ToolUsage> ToolsUsed { get; init; } = ToolsUsed ?? Array.Empty<Orkeon.Domain.Tools.ToolUsage>();
-
-    /// <summary>
-    /// Alias for Content to maintain compatibility with existing code.
-    /// </summary>
-    public string RawOutput => Content;
 }
 

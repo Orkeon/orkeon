@@ -9,8 +9,6 @@ using static Orkeon.Tests.Shared.Constants.TestLlmConstants;
 using static Orkeon.Tests.Shared.Constants.TestDataConstants;
 using static Orkeon.Tests.Shared.Constants.TestTimingConstants;
 
-#pragma warning disable CS0618 // Testing obsolete APIs
-
 namespace Orkeon.Infrastructure.Tests.LLMs;
 
 public sealed class HttpLlmProviderBaseTests : IDisposable
@@ -738,5 +736,3 @@ public sealed class HttpLlmProviderBaseTests : IDisposable
         GC.SuppressFinalize(this);
     }
 }
-
-#pragma warning restore CS0618

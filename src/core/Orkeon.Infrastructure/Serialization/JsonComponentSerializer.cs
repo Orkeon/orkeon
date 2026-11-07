@@ -45,7 +45,6 @@ public sealed class JsonComponentSerializer : IComponentSerializer
             new DoubleInvariantConverter(),
             new RawObjectConverter(),
             new UriTolerantConverter(),
-            new ImmutableArrayEnumTolerantConverter<EdgeKind>(),
             new ImmutableArrayStringTolerantConverter()
         }
     };

@@ -298,8 +298,8 @@ public class CrewExecutionStateManagerTests
         var crewId = CrewId.Create();
         var snapshot = new ExecutionSnapshot(
             id, crewId,
-            ExecutionState.Running, 0.6, "task-A", null,
-            DateTime.UtcNow, null, ExecutionMetadata.Empty);
+            new ExecutionStatusInfo(ExecutionState.Running, 0.6, "task-A", null),
+            new ExecutionTiming(DateTime.UtcNow, null), ExecutionMetadata.Empty);
 
         // Assert
         Assert.Equal(id, snapshot.Id);

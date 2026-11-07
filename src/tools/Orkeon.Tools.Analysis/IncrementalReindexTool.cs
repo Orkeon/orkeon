@@ -11,22 +11,16 @@ namespace Orkeon.Tools.Analysis;
 
 public sealed class IncrementalReindexTool : ToolBase<IncrementalReindexRequest, IndexCodebaseResponse>
 {
-    private readonly InMemoryRaggableStore _store;
-    private readonly Func<RaggableTreeBuilder> _builderFactory;
+    private readonly IndexFreshnessService _freshness;
     private readonly IGitDiffProvider? _gitDiff;
-    private readonly IndexFreshnessService? _freshness;
 
     public IncrementalReindexTool(
-        InMemoryRaggableStore store,
-        Func<RaggableTreeBuilder> builderFactory,
+        IndexFreshnessService freshness,
         IGitDiffProvider? gitDiff = null,
-        ILogger<IncrementalReindexTool>? logger = null,
-        IndexFreshnessService? freshness = null) : base(logger)
+        ILogger<IncrementalReindexTool>? logger = null) : base(logger)
     {
-        _store = store ?? throw new ArgumentNullException(nameof(store));
-        _builderFactory = builderFactory ?? throw new ArgumentNullException(nameof(builderFactory));
+        _freshness = freshness ?? throw new ArgumentNullException(nameof(freshness));
         _gitDiff = gitDiff;
-        _freshness = freshness;
     }
 
     public override string Name => "incremental_reindex";
@@ -71,59 +65,19 @@ public sealed class IncrementalReindexTool : ToolBase<IncrementalReindexRequest,
                 })
                 .ToList();
 
-            // Engine path (the fix for a review finding): this tool used to run a FULL
-            // RaggableTreeBuilder.BuildAsync over the root — re-parsing and re-embedding
-            // the whole workspace — and cherry-pick the changed nodes from the result.
-            // O(repo) per call, while IncrementalReindexEngine (written for exactly this
-            // job) had zero production consumers. The freshness service runs the engine:
-            // unchanged nodes are REUSED, only the changed files are re-parsed.
-            if (_freshness is not null)
-            {
-                var engineResult = await _freshness.RefreshPathsAsync(
-                    virtualChanged, request.RootPath, cancellationToken).ConfigureAwait(false);
-                stopwatch.Stop();
-                return new IndexCodebaseResponse
-                {
-                    IndexId = engineResult.IndexId,
-                    NodeCount = engineResult.TotalNodeCount,
-                    EdgeCount = engineResult.TotalEdgeCount,
-                    FileCount = engineResult.FilesParsed,
-                    Elapsed = engineResult.Elapsed,
-                    Errors = ImmutableArray<string>.Empty,
-                };
-            }
-
-            // Legacy fallback (no freshness service wired — standalone/test hosts):
-            // the historical full-build + cherry-pick.
-            _store.RemoveFilesAndDescendants(virtualChanged);
-
-            var builder = _builderFactory();
-            var indexRequest = new IndexCodebaseRequest
-            {
-                RootPath = request.RootPath,
-                Languages = request.Languages,
-                EnrichWithLlm = request.EnrichWithLlm,
-            };
-            var buildResult = await builder.BuildAsync(request.RootPath, indexRequest, cancellationToken).ConfigureAwait(false);
-
-            var changedSet = new HashSet<string>(virtualChanged, StringComparer.Ordinal);
-            var freshNodes = buildResult.Tree.Nodes.Where(n => changedSet.Contains(n.VirtualFilePath)).ToList();
-            _store.AddNodes(freshNodes);
-
-            var survivorIds = new HashSet<string>(freshNodes.Select(n => n.Id), StringComparer.Ordinal);
-            var freshEdges = buildResult.Tree.Edges
-                .Where(e => survivorIds.Contains(e.FromId) || survivorIds.Contains(e.ToId))
-                .ToList();
-            _store.AddEdges(freshEdges);
-
+            // The freshness service runs IncrementalReindexEngine: unchanged nodes are
+            // reused and only the changed files are re-parsed, so the cost follows the
+            // changed files, not the repository.
+            var engineResult = await _freshness.RefreshPathsAsync(
+                virtualChanged, request.RootPath, cancellationToken).ConfigureAwait(false);
             stopwatch.Stop();
             return new IndexCodebaseResponse
             {
-                IndexId = buildResult.IndexId,
-                NodeCount = freshNodes.Count,
-                EdgeCount = freshEdges.Count,
-                FileCount = virtualChanged.Count,
-                Elapsed = stopwatch.Elapsed,
+                IndexId = engineResult.IndexId,
+                NodeCount = engineResult.TotalNodeCount,
+                EdgeCount = engineResult.TotalEdgeCount,
+                FileCount = engineResult.FilesParsed,
+                Elapsed = engineResult.Elapsed,
                 Errors = ImmutableArray<string>.Empty,
             };
         }

@@ -357,3 +357,217 @@ static Orkeon.Application.Interfaces.Ports.SessionTruncation.operator ==(Orkeon.
 *REMOVED*Orkeon.Application.Interfaces.Ports.ICategoryMemoryStore.ListAsync(string? category, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Orkeon.Application.Interfaces.Ports.MemoryEntry!>!>!
 Orkeon.Application.Interfaces.Ports.ICategoryMemoryStore.ListAsync(string? category, bool newestFirst, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Orkeon.Application.Interfaces.Ports.MemoryEntry!>!>!
 Orkeon.Application.Interfaces.Ports.ICategoryMemoryStore.ReplaceAsync(int id, string! content, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<bool>!
+*REMOVED*Orkeon.Application.Agent.AgentExecutionService.AgentExecutionService(Microsoft.Extensions.Logging.ILogger<Orkeon.Application.Agent.AgentExecutionService!>! logger, Orkeon.Application.Interfaces.Services.IExecutionOrchestrator! executionOrchestrator, Orkeon.Application.Interfaces.Services.ICallbackOrchestrator! callbackOrchestrator, Orkeon.Application.Interfaces.Services.IMemoryCoordinator! memoryCoordinator, Orkeon.Application.Interfaces.Ports.IPerformanceMetrics? performanceMetrics = null, Orkeon.Application.EventHub.IEventHubCallerContext? hubCallerContext = null, Orkeon.Domain.FileSystem.IFileSystemService! fileSystem = null) -> void
+*REMOVED*Orkeon.Application.Interfaces.Ports.AgentMetrics
+*REMOVED*Orkeon.Application.Interfaces.Ports.AgentMetrics.AgentId.get -> string!
+*REMOVED*Orkeon.Application.Interfaces.Ports.AgentMetrics.AgentId.init -> void
+*REMOVED*Orkeon.Application.Interfaces.Ports.AgentMetrics.AgentMetrics(Orkeon.Application.Interfaces.Ports.AgentMetrics! original) -> void
+*REMOVED*Orkeon.Application.Interfaces.Ports.AgentMetrics.AgentMetrics(string! AgentId, int TotalTasks, int SuccessfulTasks, int FailedTasks, Orkeon.Application.Interfaces.Ports.DurationStatistics! ExecutionDurations) -> void
+*REMOVED*Orkeon.Application.Interfaces.Ports.AgentMetrics.AvgExecutionTime.get -> System.TimeSpan
+*REMOVED*Orkeon.Application.Interfaces.Ports.AgentMetrics.Deconstruct(out string! AgentId, out int TotalTasks, out int SuccessfulTasks, out int FailedTasks, out Orkeon.Application.Interfaces.Ports.DurationStatistics! ExecutionDurations) -> void
+*REMOVED*Orkeon.Application.Interfaces.Ports.AgentMetrics.ExecutionDurations.get -> Orkeon.Application.Interfaces.Ports.DurationStatistics!
+*REMOVED*Orkeon.Application.Interfaces.Ports.AgentMetrics.ExecutionDurations.init -> void
+*REMOVED*Orkeon.Application.Interfaces.Ports.AgentMetrics.FailedTasks.get -> int
+*REMOVED*Orkeon.Application.Interfaces.Ports.AgentMetrics.FailedTasks.init -> void
+*REMOVED*Orkeon.Application.Interfaces.Ports.AgentMetrics.MaxExecutionTime.get -> System.TimeSpan
+*REMOVED*Orkeon.Application.Interfaces.Ports.AgentMetrics.MinExecutionTime.get -> System.TimeSpan
+*REMOVED*Orkeon.Application.Interfaces.Ports.AgentMetrics.P95ExecutionTime.get -> System.TimeSpan
+*REMOVED*Orkeon.Application.Interfaces.Ports.AgentMetrics.P99ExecutionTime.get -> System.TimeSpan
+*REMOVED*Orkeon.Application.Interfaces.Ports.AgentMetrics.SuccessfulTasks.get -> int
+*REMOVED*Orkeon.Application.Interfaces.Ports.AgentMetrics.SuccessfulTasks.init -> void
+*REMOVED*Orkeon.Application.Interfaces.Ports.AgentMetrics.TotalExecutionTime.get -> System.TimeSpan
+*REMOVED*Orkeon.Application.Interfaces.Ports.AgentMetrics.TotalTasks.get -> int
+*REMOVED*Orkeon.Application.Interfaces.Ports.AgentMetrics.TotalTasks.init -> void
+*REMOVED*Orkeon.Application.Interfaces.Ports.DurationStatistics
+*REMOVED*Orkeon.Application.Interfaces.Ports.DurationStatistics.Avg.get -> System.TimeSpan
+*REMOVED*Orkeon.Application.Interfaces.Ports.DurationStatistics.Avg.init -> void
+*REMOVED*Orkeon.Application.Interfaces.Ports.DurationStatistics.Deconstruct(out System.TimeSpan Total, out System.TimeSpan Min, out System.TimeSpan Max, out System.TimeSpan Avg, out System.TimeSpan P95, out System.TimeSpan P99) -> void
+*REMOVED*Orkeon.Application.Interfaces.Ports.DurationStatistics.DurationStatistics(Orkeon.Application.Interfaces.Ports.DurationStatistics! original) -> void
+*REMOVED*Orkeon.Application.Interfaces.Ports.DurationStatistics.DurationStatistics(System.TimeSpan Total, System.TimeSpan Min, System.TimeSpan Max, System.TimeSpan Avg, System.TimeSpan P95, System.TimeSpan P99) -> void
+*REMOVED*Orkeon.Application.Interfaces.Ports.DurationStatistics.Max.get -> System.TimeSpan
+*REMOVED*Orkeon.Application.Interfaces.Ports.DurationStatistics.Max.init -> void
+*REMOVED*Orkeon.Application.Interfaces.Ports.DurationStatistics.Min.get -> System.TimeSpan
+*REMOVED*Orkeon.Application.Interfaces.Ports.DurationStatistics.Min.init -> void
+*REMOVED*Orkeon.Application.Interfaces.Ports.DurationStatistics.P95.get -> System.TimeSpan
+*REMOVED*Orkeon.Application.Interfaces.Ports.DurationStatistics.P95.init -> void
+*REMOVED*Orkeon.Application.Interfaces.Ports.DurationStatistics.P99.get -> System.TimeSpan
+*REMOVED*Orkeon.Application.Interfaces.Ports.DurationStatistics.P99.init -> void
+*REMOVED*Orkeon.Application.Interfaces.Ports.DurationStatistics.Total.get -> System.TimeSpan
+*REMOVED*Orkeon.Application.Interfaces.Ports.DurationStatistics.Total.init -> void
+*REMOVED*Orkeon.Application.Interfaces.Ports.IPerformanceMetrics
+*REMOVED*Orkeon.Application.Interfaces.Ports.IPerformanceMetrics.ExportToCsvAsync(System.DateTime from, System.DateTime toDate) -> System.Threading.Tasks.Task<string!>!
+*REMOVED*Orkeon.Application.Interfaces.Ports.IPerformanceMetrics.ExportToJsonAsync(System.DateTime from, System.DateTime toDate) -> System.Threading.Tasks.Task<string!>!
+*REMOVED*Orkeon.Application.Interfaces.Ports.IPerformanceMetrics.GenerateReportAsync(System.DateTime from, System.DateTime toDate) -> System.Threading.Tasks.Task<Orkeon.Application.Interfaces.Ports.PerformanceReport!>!
+*REMOVED*Orkeon.Application.Interfaces.Ports.IPerformanceMetrics.RecordLlmCall(string! provider, System.TimeSpan duration, int tokenCount) -> void
+*REMOVED*Orkeon.Application.Interfaces.Ports.IPerformanceMetrics.RecordMemoryOperation(string! operation, System.TimeSpan duration, int itemCount) -> void
+*REMOVED*Orkeon.Application.Interfaces.Ports.IPerformanceMetrics.RecordTaskExecution(string! agentId, string! taskId, System.TimeSpan duration, bool success) -> void
+*REMOVED*Orkeon.Application.Interfaces.Ports.IPerformanceMetrics.RecordToolUsage(string! agentId, string! toolName, System.TimeSpan duration) -> void
+*REMOVED*Orkeon.Application.Interfaces.Ports.LlmMetrics
+*REMOVED*Orkeon.Application.Interfaces.Ports.LlmMetrics.Deconstruct(out long TotalCalls, out long TotalTokens, out System.TimeSpan TotalDuration, out System.Collections.Generic.Dictionary<string!, Orkeon.Application.Interfaces.Ports.ProviderMetrics!>! ProviderBreakdown) -> void
+*REMOVED*Orkeon.Application.Interfaces.Ports.LlmMetrics.LlmMetrics(Orkeon.Application.Interfaces.Ports.LlmMetrics! original) -> void
+*REMOVED*Orkeon.Application.Interfaces.Ports.LlmMetrics.LlmMetrics(long TotalCalls, long TotalTokens, System.TimeSpan TotalDuration, System.Collections.Generic.Dictionary<string!, Orkeon.Application.Interfaces.Ports.ProviderMetrics!>! ProviderBreakdown) -> void
+*REMOVED*Orkeon.Application.Interfaces.Ports.LlmMetrics.ProviderBreakdown.get -> System.Collections.Generic.Dictionary<string!, Orkeon.Application.Interfaces.Ports.ProviderMetrics!>!
+*REMOVED*Orkeon.Application.Interfaces.Ports.LlmMetrics.ProviderBreakdown.init -> void
+*REMOVED*Orkeon.Application.Interfaces.Ports.LlmMetrics.TotalCalls.get -> long
+*REMOVED*Orkeon.Application.Interfaces.Ports.LlmMetrics.TotalCalls.init -> void
+*REMOVED*Orkeon.Application.Interfaces.Ports.LlmMetrics.TotalDuration.get -> System.TimeSpan
+*REMOVED*Orkeon.Application.Interfaces.Ports.LlmMetrics.TotalDuration.init -> void
+*REMOVED*Orkeon.Application.Interfaces.Ports.LlmMetrics.TotalTokens.get -> long
+*REMOVED*Orkeon.Application.Interfaces.Ports.LlmMetrics.TotalTokens.init -> void
+*REMOVED*Orkeon.Application.Interfaces.Ports.MemoryMetrics
+*REMOVED*Orkeon.Application.Interfaces.Ports.MemoryMetrics.Deconstruct(out long TotalOperations, out long TotalItems, out System.TimeSpan TotalDuration, out System.Collections.Generic.Dictionary<string!, Orkeon.Application.Interfaces.Ports.OperationMetrics!>! OperationBreakdown) -> void
+*REMOVED*Orkeon.Application.Interfaces.Ports.MemoryMetrics.MemoryMetrics(Orkeon.Application.Interfaces.Ports.MemoryMetrics! original) -> void
+*REMOVED*Orkeon.Application.Interfaces.Ports.MemoryMetrics.MemoryMetrics(long TotalOperations, long TotalItems, System.TimeSpan TotalDuration, System.Collections.Generic.Dictionary<string!, Orkeon.Application.Interfaces.Ports.OperationMetrics!>! OperationBreakdown) -> void
+*REMOVED*Orkeon.Application.Interfaces.Ports.MemoryMetrics.OperationBreakdown.get -> System.Collections.Generic.Dictionary<string!, Orkeon.Application.Interfaces.Ports.OperationMetrics!>!
+*REMOVED*Orkeon.Application.Interfaces.Ports.MemoryMetrics.OperationBreakdown.init -> void
+*REMOVED*Orkeon.Application.Interfaces.Ports.MemoryMetrics.TotalDuration.get -> System.TimeSpan
+*REMOVED*Orkeon.Application.Interfaces.Ports.MemoryMetrics.TotalDuration.init -> void
+*REMOVED*Orkeon.Application.Interfaces.Ports.MemoryMetrics.TotalItems.get -> long
+*REMOVED*Orkeon.Application.Interfaces.Ports.MemoryMetrics.TotalItems.init -> void
+*REMOVED*Orkeon.Application.Interfaces.Ports.MemoryMetrics.TotalOperations.get -> long
+*REMOVED*Orkeon.Application.Interfaces.Ports.MemoryMetrics.TotalOperations.init -> void
+*REMOVED*Orkeon.Application.Interfaces.Ports.OperationMetrics
+*REMOVED*Orkeon.Application.Interfaces.Ports.OperationMetrics.AvgDuration.get -> System.TimeSpan
+*REMOVED*Orkeon.Application.Interfaces.Ports.OperationMetrics.AvgDuration.init -> void
+*REMOVED*Orkeon.Application.Interfaces.Ports.OperationMetrics.Count.get -> long
+*REMOVED*Orkeon.Application.Interfaces.Ports.OperationMetrics.Count.init -> void
+*REMOVED*Orkeon.Application.Interfaces.Ports.OperationMetrics.Deconstruct(out string! Operation, out long Count, out long ItemCount, out System.TimeSpan TotalDuration, out System.TimeSpan AvgDuration) -> void
+*REMOVED*Orkeon.Application.Interfaces.Ports.OperationMetrics.ItemCount.get -> long
+*REMOVED*Orkeon.Application.Interfaces.Ports.OperationMetrics.ItemCount.init -> void
+*REMOVED*Orkeon.Application.Interfaces.Ports.OperationMetrics.Operation.get -> string!
+*REMOVED*Orkeon.Application.Interfaces.Ports.OperationMetrics.Operation.init -> void
+*REMOVED*Orkeon.Application.Interfaces.Ports.OperationMetrics.OperationMetrics(Orkeon.Application.Interfaces.Ports.OperationMetrics! original) -> void
+*REMOVED*Orkeon.Application.Interfaces.Ports.OperationMetrics.OperationMetrics(string! Operation, long Count, long ItemCount, System.TimeSpan TotalDuration, System.TimeSpan AvgDuration) -> void
+*REMOVED*Orkeon.Application.Interfaces.Ports.OperationMetrics.TotalDuration.get -> System.TimeSpan
+*REMOVED*Orkeon.Application.Interfaces.Ports.OperationMetrics.TotalDuration.init -> void
+*REMOVED*Orkeon.Application.Interfaces.Ports.PerformanceReport
+*REMOVED*Orkeon.Application.Interfaces.Ports.PerformanceReport.AgentMetrics.get -> System.Collections.Generic.Dictionary<string!, Orkeon.Application.Interfaces.Ports.AgentMetrics!>!
+*REMOVED*Orkeon.Application.Interfaces.Ports.PerformanceReport.AgentMetrics.init -> void
+*REMOVED*Orkeon.Application.Interfaces.Ports.PerformanceReport.Deconstruct(out System.Collections.Generic.Dictionary<string!, Orkeon.Application.Interfaces.Ports.AgentMetrics!>! AgentMetrics, out System.Collections.Generic.Dictionary<string!, Orkeon.Application.Interfaces.Ports.ToolMetrics!>! ToolMetrics, out Orkeon.Application.Interfaces.Ports.MemoryMetrics! MemoryMetrics, out Orkeon.Application.Interfaces.Ports.LlmMetrics! LlmMetrics, out System.TimeSpan TotalDuration) -> void
+*REMOVED*Orkeon.Application.Interfaces.Ports.PerformanceReport.LlmMetrics.get -> Orkeon.Application.Interfaces.Ports.LlmMetrics!
+*REMOVED*Orkeon.Application.Interfaces.Ports.PerformanceReport.LlmMetrics.init -> void
+*REMOVED*Orkeon.Application.Interfaces.Ports.PerformanceReport.MemoryMetrics.get -> Orkeon.Application.Interfaces.Ports.MemoryMetrics!
+*REMOVED*Orkeon.Application.Interfaces.Ports.PerformanceReport.MemoryMetrics.init -> void
+*REMOVED*Orkeon.Application.Interfaces.Ports.PerformanceReport.PerformanceReport(Orkeon.Application.Interfaces.Ports.PerformanceReport! original) -> void
+*REMOVED*Orkeon.Application.Interfaces.Ports.PerformanceReport.PerformanceReport(System.Collections.Generic.Dictionary<string!, Orkeon.Application.Interfaces.Ports.AgentMetrics!>! AgentMetrics, System.Collections.Generic.Dictionary<string!, Orkeon.Application.Interfaces.Ports.ToolMetrics!>! ToolMetrics, Orkeon.Application.Interfaces.Ports.MemoryMetrics! MemoryMetrics, Orkeon.Application.Interfaces.Ports.LlmMetrics! LlmMetrics, System.TimeSpan TotalDuration) -> void
+*REMOVED*Orkeon.Application.Interfaces.Ports.PerformanceReport.ToolMetrics.get -> System.Collections.Generic.Dictionary<string!, Orkeon.Application.Interfaces.Ports.ToolMetrics!>!
+*REMOVED*Orkeon.Application.Interfaces.Ports.PerformanceReport.ToolMetrics.init -> void
+*REMOVED*Orkeon.Application.Interfaces.Ports.PerformanceReport.TotalDuration.get -> System.TimeSpan
+*REMOVED*Orkeon.Application.Interfaces.Ports.PerformanceReport.TotalDuration.init -> void
+*REMOVED*Orkeon.Application.Interfaces.Ports.ProviderMetrics
+*REMOVED*Orkeon.Application.Interfaces.Ports.ProviderMetrics.AvgDuration.get -> System.TimeSpan
+*REMOVED*Orkeon.Application.Interfaces.Ports.ProviderMetrics.AvgDuration.init -> void
+*REMOVED*Orkeon.Application.Interfaces.Ports.ProviderMetrics.CallCount.get -> long
+*REMOVED*Orkeon.Application.Interfaces.Ports.ProviderMetrics.CallCount.init -> void
+*REMOVED*Orkeon.Application.Interfaces.Ports.ProviderMetrics.Deconstruct(out string! Provider, out long CallCount, out long TokenCount, out System.TimeSpan TotalDuration, out System.TimeSpan AvgDuration, out double TokensPerSecond) -> void
+*REMOVED*Orkeon.Application.Interfaces.Ports.ProviderMetrics.Provider.get -> string!
+*REMOVED*Orkeon.Application.Interfaces.Ports.ProviderMetrics.Provider.init -> void
+*REMOVED*Orkeon.Application.Interfaces.Ports.ProviderMetrics.ProviderMetrics(Orkeon.Application.Interfaces.Ports.ProviderMetrics! original) -> void
+*REMOVED*Orkeon.Application.Interfaces.Ports.ProviderMetrics.ProviderMetrics(string! Provider, long CallCount, long TokenCount, System.TimeSpan TotalDuration, System.TimeSpan AvgDuration, double TokensPerSecond) -> void
+*REMOVED*Orkeon.Application.Interfaces.Ports.ProviderMetrics.TokenCount.get -> long
+*REMOVED*Orkeon.Application.Interfaces.Ports.ProviderMetrics.TokenCount.init -> void
+*REMOVED*Orkeon.Application.Interfaces.Ports.ProviderMetrics.TokensPerSecond.get -> double
+*REMOVED*Orkeon.Application.Interfaces.Ports.ProviderMetrics.TokensPerSecond.init -> void
+*REMOVED*Orkeon.Application.Interfaces.Ports.ProviderMetrics.TotalDuration.get -> System.TimeSpan
+*REMOVED*Orkeon.Application.Interfaces.Ports.ProviderMetrics.TotalDuration.init -> void
+*REMOVED*Orkeon.Application.Interfaces.Ports.ToolMetrics
+*REMOVED*Orkeon.Application.Interfaces.Ports.ToolMetrics.AvgDuration.get -> System.TimeSpan
+*REMOVED*Orkeon.Application.Interfaces.Ports.ToolMetrics.Deconstruct(out string! ToolName, out int TotalCalls, out Orkeon.Application.Interfaces.Ports.DurationStatistics! Durations) -> void
+*REMOVED*Orkeon.Application.Interfaces.Ports.ToolMetrics.Durations.get -> Orkeon.Application.Interfaces.Ports.DurationStatistics!
+*REMOVED*Orkeon.Application.Interfaces.Ports.ToolMetrics.Durations.init -> void
+*REMOVED*Orkeon.Application.Interfaces.Ports.ToolMetrics.MaxDuration.get -> System.TimeSpan
+*REMOVED*Orkeon.Application.Interfaces.Ports.ToolMetrics.MinDuration.get -> System.TimeSpan
+*REMOVED*Orkeon.Application.Interfaces.Ports.ToolMetrics.P95Duration.get -> System.TimeSpan
+*REMOVED*Orkeon.Application.Interfaces.Ports.ToolMetrics.P99Duration.get -> System.TimeSpan
+*REMOVED*Orkeon.Application.Interfaces.Ports.ToolMetrics.ToolMetrics(Orkeon.Application.Interfaces.Ports.ToolMetrics! original) -> void
+*REMOVED*Orkeon.Application.Interfaces.Ports.ToolMetrics.ToolMetrics(string! ToolName, int TotalCalls, Orkeon.Application.Interfaces.Ports.DurationStatistics! Durations) -> void
+*REMOVED*Orkeon.Application.Interfaces.Ports.ToolMetrics.ToolName.get -> string!
+*REMOVED*Orkeon.Application.Interfaces.Ports.ToolMetrics.ToolName.init -> void
+*REMOVED*Orkeon.Application.Interfaces.Ports.ToolMetrics.TotalCalls.get -> int
+*REMOVED*Orkeon.Application.Interfaces.Ports.ToolMetrics.TotalCalls.init -> void
+*REMOVED*Orkeon.Application.Interfaces.Ports.ToolMetrics.TotalDuration.get -> System.TimeSpan
+*REMOVED*Orkeon.Application.Services.Monitoring.PerformanceMetricsCollector
+*REMOVED*Orkeon.Application.Services.Monitoring.PerformanceMetricsCollector.ExportToCsvAsync(System.DateTime from, System.DateTime toDate) -> System.Threading.Tasks.Task<string!>!
+*REMOVED*Orkeon.Application.Services.Monitoring.PerformanceMetricsCollector.ExportToJsonAsync(System.DateTime from, System.DateTime toDate) -> System.Threading.Tasks.Task<string!>!
+*REMOVED*Orkeon.Application.Services.Monitoring.PerformanceMetricsCollector.GenerateReportAsync(System.DateTime from, System.DateTime toDate) -> System.Threading.Tasks.Task<Orkeon.Application.Interfaces.Ports.PerformanceReport!>!
+*REMOVED*Orkeon.Application.Services.Monitoring.PerformanceMetricsCollector.PerformanceMetricsCollector(Microsoft.Extensions.Logging.ILogger<Orkeon.Application.Services.Monitoring.PerformanceMetricsCollector!>? logger = null) -> void
+*REMOVED*Orkeon.Application.Services.Monitoring.PerformanceMetricsCollector.RecordLlmCall(string! provider, System.TimeSpan duration, int tokenCount) -> void
+*REMOVED*Orkeon.Application.Services.Monitoring.PerformanceMetricsCollector.RecordMemoryOperation(string! operation, System.TimeSpan duration, int itemCount) -> void
+*REMOVED*Orkeon.Application.Services.Monitoring.PerformanceMetricsCollector.RecordTaskExecution(string! agentId, string! taskId, System.TimeSpan duration, bool success) -> void
+*REMOVED*Orkeon.Application.Services.Monitoring.PerformanceMetricsCollector.RecordToolUsage(string! agentId, string! toolName, System.TimeSpan duration) -> void
+*REMOVED*override Orkeon.Application.Interfaces.Ports.AgentMetrics.Equals(object? obj) -> bool
+*REMOVED*override Orkeon.Application.Interfaces.Ports.AgentMetrics.GetHashCode() -> int
+*REMOVED*override Orkeon.Application.Interfaces.Ports.AgentMetrics.ToString() -> string!
+*REMOVED*override Orkeon.Application.Interfaces.Ports.DurationStatistics.Equals(object? obj) -> bool
+*REMOVED*override Orkeon.Application.Interfaces.Ports.DurationStatistics.GetHashCode() -> int
+*REMOVED*override Orkeon.Application.Interfaces.Ports.DurationStatistics.ToString() -> string!
+*REMOVED*override Orkeon.Application.Interfaces.Ports.LlmMetrics.Equals(object? obj) -> bool
+*REMOVED*override Orkeon.Application.Interfaces.Ports.LlmMetrics.GetHashCode() -> int
+*REMOVED*override Orkeon.Application.Interfaces.Ports.LlmMetrics.ToString() -> string!
+*REMOVED*override Orkeon.Application.Interfaces.Ports.MemoryMetrics.Equals(object? obj) -> bool
+*REMOVED*override Orkeon.Application.Interfaces.Ports.MemoryMetrics.GetHashCode() -> int
+*REMOVED*override Orkeon.Application.Interfaces.Ports.MemoryMetrics.ToString() -> string!
+*REMOVED*override Orkeon.Application.Interfaces.Ports.OperationMetrics.Equals(object? obj) -> bool
+*REMOVED*override Orkeon.Application.Interfaces.Ports.OperationMetrics.GetHashCode() -> int
+*REMOVED*override Orkeon.Application.Interfaces.Ports.OperationMetrics.ToString() -> string!
+*REMOVED*override Orkeon.Application.Interfaces.Ports.PerformanceReport.Equals(object? obj) -> bool
+*REMOVED*override Orkeon.Application.Interfaces.Ports.PerformanceReport.GetHashCode() -> int
+*REMOVED*override Orkeon.Application.Interfaces.Ports.PerformanceReport.ToString() -> string!
+*REMOVED*override Orkeon.Application.Interfaces.Ports.ProviderMetrics.Equals(object? obj) -> bool
+*REMOVED*override Orkeon.Application.Interfaces.Ports.ProviderMetrics.GetHashCode() -> int
+*REMOVED*override Orkeon.Application.Interfaces.Ports.ProviderMetrics.ToString() -> string!
+*REMOVED*override Orkeon.Application.Interfaces.Ports.ToolMetrics.Equals(object? obj) -> bool
+*REMOVED*override Orkeon.Application.Interfaces.Ports.ToolMetrics.GetHashCode() -> int
+*REMOVED*override Orkeon.Application.Interfaces.Ports.ToolMetrics.ToString() -> string!
+*REMOVED*static Orkeon.Application.Interfaces.Ports.AgentMetrics.operator !=(Orkeon.Application.Interfaces.Ports.AgentMetrics? left, Orkeon.Application.Interfaces.Ports.AgentMetrics? right) -> bool
+*REMOVED*static Orkeon.Application.Interfaces.Ports.AgentMetrics.operator ==(Orkeon.Application.Interfaces.Ports.AgentMetrics? left, Orkeon.Application.Interfaces.Ports.AgentMetrics? right) -> bool
+*REMOVED*static Orkeon.Application.Interfaces.Ports.DurationStatistics.operator !=(Orkeon.Application.Interfaces.Ports.DurationStatistics? left, Orkeon.Application.Interfaces.Ports.DurationStatistics? right) -> bool
+*REMOVED*static Orkeon.Application.Interfaces.Ports.DurationStatistics.operator ==(Orkeon.Application.Interfaces.Ports.DurationStatistics? left, Orkeon.Application.Interfaces.Ports.DurationStatistics? right) -> bool
+*REMOVED*static Orkeon.Application.Interfaces.Ports.LlmMetrics.operator !=(Orkeon.Application.Interfaces.Ports.LlmMetrics? left, Orkeon.Application.Interfaces.Ports.LlmMetrics? right) -> bool
+*REMOVED*static Orkeon.Application.Interfaces.Ports.LlmMetrics.operator ==(Orkeon.Application.Interfaces.Ports.LlmMetrics? left, Orkeon.Application.Interfaces.Ports.LlmMetrics? right) -> bool
+*REMOVED*static Orkeon.Application.Interfaces.Ports.MemoryMetrics.operator !=(Orkeon.Application.Interfaces.Ports.MemoryMetrics? left, Orkeon.Application.Interfaces.Ports.MemoryMetrics? right) -> bool
+*REMOVED*static Orkeon.Application.Interfaces.Ports.MemoryMetrics.operator ==(Orkeon.Application.Interfaces.Ports.MemoryMetrics? left, Orkeon.Application.Interfaces.Ports.MemoryMetrics? right) -> bool
+*REMOVED*static Orkeon.Application.Interfaces.Ports.OperationMetrics.operator !=(Orkeon.Application.Interfaces.Ports.OperationMetrics? left, Orkeon.Application.Interfaces.Ports.OperationMetrics? right) -> bool
+*REMOVED*static Orkeon.Application.Interfaces.Ports.OperationMetrics.operator ==(Orkeon.Application.Interfaces.Ports.OperationMetrics? left, Orkeon.Application.Interfaces.Ports.OperationMetrics? right) -> bool
+*REMOVED*static Orkeon.Application.Interfaces.Ports.PerformanceReport.operator !=(Orkeon.Application.Interfaces.Ports.PerformanceReport? left, Orkeon.Application.Interfaces.Ports.PerformanceReport? right) -> bool
+*REMOVED*static Orkeon.Application.Interfaces.Ports.PerformanceReport.operator ==(Orkeon.Application.Interfaces.Ports.PerformanceReport? left, Orkeon.Application.Interfaces.Ports.PerformanceReport? right) -> bool
+*REMOVED*static Orkeon.Application.Interfaces.Ports.ProviderMetrics.operator !=(Orkeon.Application.Interfaces.Ports.ProviderMetrics? left, Orkeon.Application.Interfaces.Ports.ProviderMetrics? right) -> bool
+*REMOVED*static Orkeon.Application.Interfaces.Ports.ProviderMetrics.operator ==(Orkeon.Application.Interfaces.Ports.ProviderMetrics? left, Orkeon.Application.Interfaces.Ports.ProviderMetrics? right) -> bool
+*REMOVED*static Orkeon.Application.Interfaces.Ports.ToolMetrics.operator !=(Orkeon.Application.Interfaces.Ports.ToolMetrics? left, Orkeon.Application.Interfaces.Ports.ToolMetrics? right) -> bool
+*REMOVED*static Orkeon.Application.Interfaces.Ports.ToolMetrics.operator ==(Orkeon.Application.Interfaces.Ports.ToolMetrics? left, Orkeon.Application.Interfaces.Ports.ToolMetrics? right) -> bool
+*REMOVED*static readonly Orkeon.Application.Interfaces.Ports.DurationStatistics.Zero -> Orkeon.Application.Interfaces.Ports.DurationStatistics!
+*REMOVED*virtual Orkeon.Application.Interfaces.Ports.AgentMetrics.<Clone>$() -> Orkeon.Application.Interfaces.Ports.AgentMetrics!
+*REMOVED*virtual Orkeon.Application.Interfaces.Ports.AgentMetrics.EqualityContract.get -> System.Type!
+*REMOVED*virtual Orkeon.Application.Interfaces.Ports.AgentMetrics.Equals(Orkeon.Application.Interfaces.Ports.AgentMetrics? other) -> bool
+*REMOVED*virtual Orkeon.Application.Interfaces.Ports.AgentMetrics.PrintMembers(System.Text.StringBuilder! builder) -> bool
+*REMOVED*virtual Orkeon.Application.Interfaces.Ports.DurationStatistics.<Clone>$() -> Orkeon.Application.Interfaces.Ports.DurationStatistics!
+*REMOVED*virtual Orkeon.Application.Interfaces.Ports.DurationStatistics.EqualityContract.get -> System.Type!
+*REMOVED*virtual Orkeon.Application.Interfaces.Ports.DurationStatistics.Equals(Orkeon.Application.Interfaces.Ports.DurationStatistics? other) -> bool
+*REMOVED*virtual Orkeon.Application.Interfaces.Ports.DurationStatistics.PrintMembers(System.Text.StringBuilder! builder) -> bool
+*REMOVED*virtual Orkeon.Application.Interfaces.Ports.LlmMetrics.<Clone>$() -> Orkeon.Application.Interfaces.Ports.LlmMetrics!
+*REMOVED*virtual Orkeon.Application.Interfaces.Ports.LlmMetrics.EqualityContract.get -> System.Type!
+*REMOVED*virtual Orkeon.Application.Interfaces.Ports.LlmMetrics.Equals(Orkeon.Application.Interfaces.Ports.LlmMetrics? other) -> bool
+*REMOVED*virtual Orkeon.Application.Interfaces.Ports.LlmMetrics.PrintMembers(System.Text.StringBuilder! builder) -> bool
+*REMOVED*virtual Orkeon.Application.Interfaces.Ports.MemoryMetrics.<Clone>$() -> Orkeon.Application.Interfaces.Ports.MemoryMetrics!
+*REMOVED*virtual Orkeon.Application.Interfaces.Ports.MemoryMetrics.EqualityContract.get -> System.Type!
+*REMOVED*virtual Orkeon.Application.Interfaces.Ports.MemoryMetrics.Equals(Orkeon.Application.Interfaces.Ports.MemoryMetrics? other) -> bool
+*REMOVED*virtual Orkeon.Application.Interfaces.Ports.MemoryMetrics.PrintMembers(System.Text.StringBuilder! builder) -> bool
+*REMOVED*virtual Orkeon.Application.Interfaces.Ports.OperationMetrics.<Clone>$() -> Orkeon.Application.Interfaces.Ports.OperationMetrics!
+*REMOVED*virtual Orkeon.Application.Interfaces.Ports.OperationMetrics.EqualityContract.get -> System.Type!
+*REMOVED*virtual Orkeon.Application.Interfaces.Ports.OperationMetrics.Equals(Orkeon.Application.Interfaces.Ports.OperationMetrics? other) -> bool
+*REMOVED*virtual Orkeon.Application.Interfaces.Ports.OperationMetrics.PrintMembers(System.Text.StringBuilder! builder) -> bool
+*REMOVED*virtual Orkeon.Application.Interfaces.Ports.PerformanceReport.<Clone>$() -> Orkeon.Application.Interfaces.Ports.PerformanceReport!
+*REMOVED*virtual Orkeon.Application.Interfaces.Ports.PerformanceReport.EqualityContract.get -> System.Type!
+*REMOVED*virtual Orkeon.Application.Interfaces.Ports.PerformanceReport.Equals(Orkeon.Application.Interfaces.Ports.PerformanceReport? other) -> bool
+*REMOVED*virtual Orkeon.Application.Interfaces.Ports.PerformanceReport.PrintMembers(System.Text.StringBuilder! builder) -> bool
+*REMOVED*virtual Orkeon.Application.Interfaces.Ports.ProviderMetrics.<Clone>$() -> Orkeon.Application.Interfaces.Ports.ProviderMetrics!
+*REMOVED*virtual Orkeon.Application.Interfaces.Ports.ProviderMetrics.EqualityContract.get -> System.Type!
+*REMOVED*virtual Orkeon.Application.Interfaces.Ports.ProviderMetrics.Equals(Orkeon.Application.Interfaces.Ports.ProviderMetrics? other) -> bool
+*REMOVED*virtual Orkeon.Application.Interfaces.Ports.ProviderMetrics.PrintMembers(System.Text.StringBuilder! builder) -> bool
+*REMOVED*virtual Orkeon.Application.Interfaces.Ports.ToolMetrics.<Clone>$() -> Orkeon.Application.Interfaces.Ports.ToolMetrics!
+*REMOVED*virtual Orkeon.Application.Interfaces.Ports.ToolMetrics.EqualityContract.get -> System.Type!
+*REMOVED*virtual Orkeon.Application.Interfaces.Ports.ToolMetrics.Equals(Orkeon.Application.Interfaces.Ports.ToolMetrics? other) -> bool
+*REMOVED*virtual Orkeon.Application.Interfaces.Ports.ToolMetrics.PrintMembers(System.Text.StringBuilder! builder) -> bool
+Orkeon.Application.Agent.AgentExecutionService.AgentExecutionService(Microsoft.Extensions.Logging.ILogger<Orkeon.Application.Agent.AgentExecutionService!>! logger, Orkeon.Application.Interfaces.Services.IExecutionOrchestrator! executionOrchestrator, Orkeon.Application.Interfaces.Services.ICallbackOrchestrator! callbackOrchestrator, Orkeon.Application.Interfaces.Services.IMemoryCoordinator! memoryCoordinator, Orkeon.Application.EventHub.IEventHubCallerContext? hubCallerContext = null, Orkeon.Domain.FileSystem.IFileSystemService! fileSystem = null) -> void
+*REMOVED*Orkeon.Application.Execution.TaskOutput.RawOutput.get -> string!
+*REMOVED*Orkeon.Application.Interfaces.Services.ExecutionSnapshot.ExecutionSnapshot(Orkeon.Application.Interfaces.Services.ExecutionId! Id, Orkeon.Domain.Common.CrewId! CrewId, Orkeon.Application.Interfaces.Services.ExecutionState Status, double Progress, string? CurrentTask, string? Error, System.DateTime StartTime, System.DateTime? EndTime, Orkeon.Application.Execution.ExecutionMetadata! Metadata) -> void

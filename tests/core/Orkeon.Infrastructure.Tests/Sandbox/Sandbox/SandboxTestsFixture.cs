@@ -181,9 +181,9 @@ public sealed class SecureCodeInterpreterToolTestsFixture : IAsyncDisposable
 
 #endregion
 
-#region ProcessIsolationSandbox Fixture
+#region HostProcessRunner Fixture
 
-public sealed class ProcessIsolationSandboxTestsFixture : IDisposable
+public sealed class HostProcessRunnerTestsFixture : IDisposable
 {
     private SandboxOptions _options = new()
     {
@@ -198,7 +198,7 @@ public sealed class ProcessIsolationSandboxTestsFixture : IDisposable
     /// </summary>
     private readonly string _physicalSandboxRoot;
 
-    public ProcessIsolationSandboxTestsFixture()
+    public HostProcessRunnerTestsFixture()
     {
         _physicalSandboxRoot = Path.Combine(
             Path.GetTempPath(),
@@ -215,13 +215,13 @@ public sealed class ProcessIsolationSandboxTestsFixture : IDisposable
 
     // --- Fluent configuration ---
 
-    public ProcessIsolationSandboxTestsFixture WithTimeoutSeconds(int seconds)
+    public HostProcessRunnerTestsFixture WithTimeoutSeconds(int seconds)
     {
         _options.TimeoutSeconds = seconds;
         return this;
     }
 
-    public ProcessIsolationSandboxTestsFixture WithMaxMemoryBytes(long bytes)
+    public HostProcessRunnerTestsFixture WithMaxMemoryBytes(long bytes)
     {
         _options.MaxMemoryBytes = bytes;
         return this;
@@ -230,7 +230,7 @@ public sealed class ProcessIsolationSandboxTestsFixture : IDisposable
     // --- Build / Execution ---
 
     /// <summary>
-    /// Builds a <see cref="ProcessIsolationSandbox"/> wired to a real
+    /// Builds a <see cref="HostProcessRunner"/> wired to a real
     /// <see cref="DiskBackedFileSystemService"/> mounted at <c>/sandbox</c>.
     /// </summary>
     public HostProcessRunner Build()
@@ -439,7 +439,7 @@ public sealed class SandboxDependencyInjectionTestsFixture : IDisposable
         services.AddLogging();
 
         // Register a DiskBackedFileSystemService so IFileSystemService is available
-        // for ProcessIsolationSandbox (and DockerSandbox if needed).
+        // for HostProcessRunner (and DockerSandbox if needed).
         IFileSystemService fs = new DiskBackedFileSystemService(_physicalSandboxRoot, "/sandbox");
         services.AddSingleton(fs);
 

@@ -53,7 +53,8 @@ public class AdminToolsTests
             await File.WriteAllTextAsync(Path.Combine(dir, "src/a.ts"),
                 TestFixtures.SimpleClass + "\nexport const EXTRA = 1;\n", TestContext.Current.CancellationToken);
 
-            using var reindexTool = new IncrementalReindexTool(store, Factory);
+            using var freshness = new IndexFreshnessService(store, () => new IncrementalReindexEngine(new TypeScriptAdapter(), fs), fs);
+            using var reindexTool = new IncrementalReindexTool(freshness);
             var resp = await reindexTool.ExecuteTypedForTest(
                 new IncrementalReindexRequest
                 {
@@ -74,8 +75,8 @@ public class AdminToolsTests
         {
             var fs = TestFixtures.CreateFs(dir);
             var store = new InMemoryRaggableStore([], [], new FakeFileSystemService());
-            RaggableTreeBuilder Factory() => new(new TypeScriptAdapter(), fs);
-            using var tool = new IncrementalReindexTool(store, Factory);
+            using var freshness = new IndexFreshnessService(store, () => new IncrementalReindexEngine(new TypeScriptAdapter(), fs), fs);
+            using var tool = new IncrementalReindexTool(freshness);
             var resp = await tool.ExecuteTypedForTest(
                 new IncrementalReindexRequest { RootPath = TestFixtures.TestVirtualRoot, ChangedFiles = [] },
                 CancellationToken.None);

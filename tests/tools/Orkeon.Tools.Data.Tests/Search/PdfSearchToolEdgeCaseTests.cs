@@ -162,25 +162,6 @@ public sealed class PdfSearchToolEdgeCaseTests : IDisposable
     // ── Internal helper coverage ─────────────────────────────────────
 
     [Fact]
-    public void ChunkText_ShouldSplitLongParagraphsBySentence()
-    {
-        var sentences = string.Join(" ", Enumerable.Range(0, 20)
-            .Select(i => $"This is sentence number {i} and it has some length to it."));
-
-        var chunks = PdfSearchTool.ChunkText(sentences, 100);
-
-        Assert.True(chunks.Count > 1, "long text should produce multiple chunks");
-        Assert.All(chunks, c => Assert.False(string.IsNullOrWhiteSpace(c)));
-    }
-
-    [Fact]
-    public void ChunkText_ShouldReturnEmpty_ForBlankInput()
-    {
-        var chunks = PdfSearchTool.ChunkText("   \n\n   ", 500);
-        Assert.Empty(chunks);
-    }
-
-    [Fact]
     public void CosineSimilarity_ShouldReturnOne_ForIdenticalVectors()
     {
         var v = new[] { 1f, 2f, 3f };

@@ -56,27 +56,6 @@ public sealed record LlmMetadata : ValueObjectRecord
     }
 
     /// <summary>
-    /// Deconstruct for backward compatibility with positional record syntax.
-    /// </summary>
-    public void Deconstruct(
-        out string? error,
-        out int? tokensUsed,
-        out int? tokensLimit,
-        out TimeSpan? responseTime,
-        out string? model,
-        out double? temperature,
-        out Dictionary<string, string>? customFields)
-    {
-        error = Error;
-        tokensUsed = TokensUsed;
-        tokensLimit = TokensLimit;
-        responseTime = ResponseTime;
-        model = Model;
-        temperature = Temperature;
-        customFields = CustomFields;
-    }
-
-    /// <summary>
     /// Creates a new <see cref="LlmMetadata"/> instance.
     /// </summary>
     public static LlmMetadata Create(

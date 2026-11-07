@@ -522,7 +522,7 @@ public abstract partial class FileToolBase<TRequest, TResponse> : FileToolBase
 
 ### Sérialisation : snake_case et coercition de types
 
-Le `JsonComponentSerializer` (`Orkeon.Infrastructure.Serialization`) utilise `JsonNamingPolicy.SnakeCaseLower` et inclut 10 convertisseurs tolérants pour gérer les valeurs YAML qui arrivent sous forme de strings — les six ci-dessous plus `TolerantEnumConverterFactory` (noms d'enum reconnus sans tenir compte de la casse, un nom inconnu répondu avec la liste des noms valides), `UriTolerantConverter`, `ImmutableArrayEnumTolerantConverter<EdgeKind>` et `ImmutableArrayStringTolerantConverter` :
+Le `JsonComponentSerializer` (`Orkeon.Infrastructure.Serialization`) utilise `JsonNamingPolicy.SnakeCaseLower` et inclut 9 convertisseurs tolérants pour gérer les valeurs YAML qui arrivent sous forme de strings — les six ci-dessous plus `TolerantEnumConverterFactory` (noms d'enum reconnus sans tenir compte de la casse, un nom inconnu répondu avec la liste des noms valides), `UriTolerantConverter` et `ImmutableArrayStringTolerantConverter` :
 
 - `BoolTolerantConverter` : `"true"`/`"false"` (quelle que soit la casse), `"1"`/`"0"` et les nombres (non nul → `true`) ; `"yes"` n'est **pas** accepté
 - `IntTolerantConverter` : `"42"` → `42`

@@ -150,9 +150,7 @@ public sealed class LlmProviderFactory : ILlmProviderFactory
     private static string InferProviderType(LlmConfig config)
     {
         var baseUrl = config.BaseUrl?.ToString();
-#pragma warning disable CS0618 // Type or member is obsolete
         var reading = LlmEndpointReading.Of(baseUrl, config.Model, config.ApiKey);
-#pragma warning restore CS0618
         if (reading.Notice == LlmEndpointNotice.Refused)
             throw new NotSupportedException(RefusalMessage(config.BaseUrl?.OriginalString, reading.ProviderKey));
 

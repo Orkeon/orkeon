@@ -53,7 +53,7 @@ public static class FileSystemServiceRegistration
         //     WHETHER — and its workspace root defaults to the current directory, while the
         //     session root lives under the temp directory. Mounting /sandbox without this
         //     moved the failure rather than fixing it: the first call of every code execution
-        //     (DockerSandbox and ProcessIsolationSandbox both create their run directory
+        //     (DockerSandbox and HostProcessRunner both create their run directory
         //     before anything else) stopped saying "No mount found for '/sandbox/…'" and
         //     started saying "Path is outside the allowed workspace directory". No flag could
         //     rescue it either — --allow-external-mounts whitelists the CLI and internal mount

@@ -47,25 +47,6 @@ public sealed record AgentStepContext : ValueObjectRecord
     }
 
     /// <summary>
-    /// Deconstruct for backward compatibility with positional record syntax.
-    /// </summary>
-    public void Deconstruct(
-        out string thought,
-        out string action,
-        out string actionInput,
-        out string observation,
-        out ToolCall? toolCall,
-        out StepMetadata metadata)
-    {
-        thought = Thought;
-        action = Action;
-        actionInput = ActionInput;
-        observation = Observation;
-        toolCall = ToolCall;
-        metadata = Metadata;
-    }
-
-    /// <summary>
     /// Creates a new <see cref="AgentStepContext"/> with validation.
     /// </summary>
     public static AgentStepContext Create(
@@ -218,25 +199,6 @@ public sealed record StepMetadata : ValueObjectRecord
         this.Error = Error;
         this.Model = Model;
         this.Temperature = Temperature;
-    }
-
-    /// <summary>
-    /// Deconstruct for backward compatibility with positional record syntax.
-    /// </summary>
-    public void Deconstruct(
-        out DateTime timestamp,
-        out TimeSpan duration,
-        out int tokensUsed,
-        out string? error,
-        out string? model,
-        out double? temperature)
-    {
-        timestamp = Timestamp;
-        duration = Duration;
-        tokensUsed = TokensUsed;
-        error = Error;
-        model = Model;
-        temperature = Temperature;
     }
 
     /// <summary>

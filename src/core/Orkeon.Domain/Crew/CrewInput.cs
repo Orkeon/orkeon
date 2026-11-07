@@ -18,11 +18,6 @@ public sealed record CrewInput
     public CrewVariables Variables { get; init; }
 
     /// <summary>
-    /// Gets the input parameters (legacy support).
-    /// </summary>
-    public Dictionary<string, object> Parameters => Variables.ToDictionary();
-
-    /// <summary>
     /// Gets any additional metadata.
     /// </summary>
     public CrewMetadata Metadata { get; init; }

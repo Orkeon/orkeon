@@ -77,9 +77,7 @@ public class LlmProviderFactoryRoutingTests
     [Fact]
     public void ShouldRouteToGrok_WhenOnlyTheApiKeyPrefixSaysXai()
     {
-#pragma warning disable CS0618 // ApiKey kept for inference-path coverage
         var config = LlmConfig.Create("custom-model") with { ApiKey = "xai-test-not-a-real-key" };
-#pragma warning restore CS0618
         Assert.Equal("grok", CreateFactory().Create(config).Name);
     }
 

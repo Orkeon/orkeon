@@ -175,33 +175,6 @@ public class LlmMetadataTests
         Assert.Contains("0.8", result);
     }
 
-    [Fact]
-    public void ShouldReturnAllValues_WhenUsingDeconstruct()
-    {
-        // Arrange
-        var customFields = new Dictionary<string, string> { { "test", "value" } };
-        var metadata = new LlmMetadata(
-            Error: "test error",
-            TokensUsed: 500,
-            TokensLimit: 1000,
-            ResponseTime: TimeSpan.FromSeconds(3),
-            Model: ModelGpt4,
-            Temperature: 0.9,
-            CustomFields: customFields);
-
-        // Act
-        var (error, tokensUsed, tokensLimit, responseTime, model, temperature, fields) = metadata;
-
-        // Assert
-        Assert.Equal("test error", error);
-        Assert.Equal(500, tokensUsed);
-        Assert.Equal(1000, tokensLimit);
-        Assert.Equal(TimeSpan.FromSeconds(3), responseTime);
-        Assert.Equal(ModelGpt4, model);
-        Assert.Equal(0.9, temperature);
-        Assert.Equal(customFields, fields);
-    }
-
     #endregion
 
     #region Scenario Tests

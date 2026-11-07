@@ -23,7 +23,7 @@ public abstract class EntityId<TEntityId> : TypedId, IEntityId
         return new TEntityId { Value = value };
     }
 
-    /// <summary>Creates an identifier from a Guid (migration helper).</summary>
+    /// <summary>Creates an identifier from a Guid: the same 128 bits as the ULID.</summary>
     public static TEntityId From(Guid value) => From(new Ulid(value));
 
     /// <summary>Creates an identifier from a string representation.</summary>
@@ -32,7 +32,7 @@ public abstract class EntityId<TEntityId> : TypedId, IEntityId
     // Equality (incl. cross-type guard) is fully provided by TypedId; no IEquatable<EntityId<T>>
     // is declared here to avoid CA1067 (a redundant equatable contract without an Equals(object) override).
 
-    /// <summary>Implicit conversion to Guid for backward compatibility.</summary>
+    /// <summary>Implicit conversion to the Guid that carries the same 128 bits as the ULID.</summary>
     public static implicit operator Guid(EntityId<TEntityId> id)
     {
         ArgumentNullException.ThrowIfNull(id);

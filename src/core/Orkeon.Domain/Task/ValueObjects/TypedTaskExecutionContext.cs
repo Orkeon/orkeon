@@ -47,25 +47,6 @@ public sealed record TypedTaskExecutionContext : ValueObjectRecord
     }
 
     /// <summary>
-    /// Deconstruct for backward compatibility with positional record syntax.
-    /// </summary>
-    public void Deconstruct(
-        out TaskId taskId,
-        out AgentId executingAgent,
-        out TaskVariables variables,
-        out ImmutableArray<TaskOutput> previousOutputs,
-        out ExecutionMetadata metadata,
-        out ImmutableArray<ToolCall> toolCalls)
-    {
-        taskId = TaskId;
-        executingAgent = ExecutingAgent;
-        variables = Variables;
-        previousOutputs = PreviousOutputs;
-        metadata = Metadata;
-        toolCalls = ToolCalls;
-    }
-
-    /// <summary>
     /// Creates a new execution context for a task.
     /// </summary>
     public static TypedTaskExecutionContext Create(

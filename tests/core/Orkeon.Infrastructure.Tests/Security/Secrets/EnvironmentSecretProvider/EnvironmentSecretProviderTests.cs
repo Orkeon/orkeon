@@ -1,5 +1,3 @@
-#pragma warning disable CS0618 // Obsolete member usage
-
 using EnvironmentSecretProviderSut = Orkeon.Infrastructure.Security.Secrets.EnvironmentSecretProvider;
 
 namespace Orkeon.Infrastructure.Tests.Security.Secrets;

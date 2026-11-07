@@ -267,34 +267,6 @@ public class AgentSelectionResultTests
 
     #endregion
 
-    #region Backward Compatibility Tests
-
-    [Fact]
-    public void ShouldReturnSelectedAgentId_WhenUsingSelectedAgent()
-    {
-        // Arrange
-        var agentId = AgentId.Create();
-        var result = AgentSelectionResult.Create(agentId, true);
-
-        // Act & Assert
-        Assert.Equal(agentId, result.SelectedAgent);
-        Assert.Equal(result.SelectedAgentId, result.SelectedAgent);
-    }
-
-    [Fact]
-    public void ShouldReturnConfidenceScore_WhenScoring()
-    {
-        // Arrange
-        var confidence = 0.88;
-        var result = AgentSelectionResult.Create(AgentId.Create(), true, confidenceScore: confidence);
-
-        // Act & Assert
-        Assert.Equal(confidence, result.Score);
-        Assert.Equal(result.ConfidenceScore, result.Score);
-    }
-
-    #endregion
-
     #region Record Equality Tests
 
     [Fact]

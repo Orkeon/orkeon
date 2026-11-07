@@ -60,17 +60,12 @@ public class TolerantEnumConverterTests
         Assert.Contains("L4_Statement", ex.Message);
     }
 
-    [Fact]
-    public void Read_NumericValue_Parses()
+    [Theory]
+    [InlineData("1")]
+    [InlineData("42")]
+    public void Read_Number_IsRefusedWithValidNames(string json)
     {
-        // Ordinal 1 = L1_Package (second member, zero-based).
-        Assert.Equal(NodeLevel.L1_Package, ReadNodeLevel("1"));
-    }
-
-    [Fact]
-    public void Read_NumericOutOfRange_ThrowsWithValidNames()
-    {
-        var ex = Assert.Throws<JsonException>(() => ReadNodeLevel("42"));
+        var ex = Assert.Throws<JsonException>(() => ReadNodeLevel(json));
         Assert.Contains("L1_Package", ex.Message);
         Assert.Contains("L4_Statement", ex.Message);
     }
@@ -97,8 +92,8 @@ public class TolerantEnumConverterTests
     [Fact]
     public void Read_FlagsEnum_StillUsesItsOwnConverter()
     {
-        // EdgeKind is [Flags] — the factory skips it, ImmutableArray<EdgeKind>
-        // still goes through ImmutableArrayEnumTolerantConverter.
+        // EdgeKind is [Flags]: each element of an ImmutableArray<EdgeKind> is read
+        // by TolerantFlagsEnumConverter, not by the non-flags tolerant converter.
         var result = JsonSerializer.Deserialize<System.Collections.Immutable.ImmutableArray<EdgeKind>>(
             "[\"Calls\"]", Options);
         Assert.Equal(new[] { EdgeKind.Calls }, result);

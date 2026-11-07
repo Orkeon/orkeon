@@ -24,26 +24,16 @@ public static class TerminalGuiServiceCollectionExtensions
     /// <c>SplitPaneToplevel</c>/<c>LogsPaneView</c>/<c>ReplPaneView</c> directly as singletons
     /// would let the container resolve them before <c>Application.Init</c>, crashing the driver.
     /// </remarks>
+    /// <param name="services">The service collection to register into.</param>
+    /// <param name="options">
+    /// The console options, built with an object initializer (<c>TerminalGuiOptions</c> has
+    /// <c>init</c>-only properties); <see langword="null"/> uses the defaults.
+    /// </param>
     public static IServiceCollection AddOrkeonCliTerminalGui(
         this IServiceCollection services,
-        Action<TerminalGuiOptions>? configure = null)
+        TerminalGuiOptions? options = null)
     {
-        var options = new TerminalGuiOptions();
-        configure?.Invoke(options);
-        return services.AddOrkeonCliTerminalGui(options);
-    }
-
-    /// <summary>
-    /// Overload taking a prebuilt <see cref="TerminalGuiOptions"/>. Preferred over the
-    /// <see cref="Action{T}"/> overload because <c>TerminalGuiOptions</c> uses <c>init</c>-only
-    /// properties, which cannot be mutated from inside a configure callback — build the record
-    /// with an object initializer and pass it here instead.
-    /// </summary>
-    public static IServiceCollection AddOrkeonCliTerminalGui(
-        this IServiceCollection services,
-        TerminalGuiOptions options)
-    {
-        ArgumentNullException.ThrowIfNull(options);
+        options ??= new TerminalGuiOptions();
 
         // Idempotency guard: detect a prior registration and exit early.
         if (services.Any(d => d.ServiceType == typeof(TerminalGuiHost)))
@@ -108,7 +98,7 @@ public static class TerminalGuiServiceCollectionExtensions
     /// <see cref="ILoggerProvider"/> registration so console-style providers don't
     /// write to the same stdout that Terminal.Gui has commandeered for the alt-screen
     /// buffer. Call this in your runner's <c>ConfigureLogging</c> WHEN you also call
-    /// <see cref="AddOrkeonCliTerminalGui(IServiceCollection, Action{TerminalGuiOptions})"/>. The Terminal.Gui logger is registered
+    /// <see cref="AddOrkeonCliTerminalGui(IServiceCollection, TerminalGuiOptions)"/>. The Terminal.Gui logger is registered
     /// separately via the service-collection extension above (after this clear runs).
     /// </summary>
     /// <remarks>

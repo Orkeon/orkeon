@@ -1,3 +1,4 @@
+using Orkeon.Domain.Common;
 using Orkeon.Application.Task.Commands.CreateTask;
 
 namespace Orkeon.Application.Tests.Validation;
@@ -143,6 +144,17 @@ public class CreateTaskCommandValidatorTests
     public void ShouldPass_WhenAgentIdIsValidGuid()
     {
         var agentId = Guid.NewGuid().ToString();
+        var command = new CreateTaskCommand("Analyze data", "A detailed report", agentId);
+
+        var result = _validator.Validate(command);
+
+        Assert.True(result.IsValid);
+    }
+
+    [Fact]
+    public void ShouldPass_WhenAgentIdIsUlid()
+    {
+        var agentId = AgentId.Create().ToString();
         var command = new CreateTaskCommand("Analyze data", "A detailed report", agentId);
 
         var result = _validator.Validate(command);

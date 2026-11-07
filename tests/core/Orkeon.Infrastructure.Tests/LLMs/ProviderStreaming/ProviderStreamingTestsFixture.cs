@@ -1,8 +1,6 @@
 using Polly;
 using Orkeon.Infrastructure.Tests.Doubles;
 
-#pragma warning disable CS0618 // Testing obsolete APIs
-
 namespace Orkeon.Infrastructure.Tests.LLMs;
 
 public sealed class ProviderStreamingTestsFixture : IDisposable
@@ -28,8 +26,6 @@ public sealed class ProviderStreamingTestsFixture : IDisposable
 
     public MockHttpClientFactory GetHttpClientFactory() => _httpClientFactory;
     public IAsyncPolicy<HttpResponseMessage> GetNoOpPolicy() => _noOpPolicy;
-
-#pragma warning restore CS0618
 
     public void Dispose()
     {

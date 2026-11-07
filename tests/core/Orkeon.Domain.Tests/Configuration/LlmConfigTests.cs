@@ -3,8 +3,6 @@ using Orkeon.Domain.SharedKernel.ValueObjects;
 using static Orkeon.Tests.Shared.Constants.TestLlmConstants;
 using static Orkeon.Tests.Shared.Constants.TestUrlConstants;
 
-#pragma warning disable CS0618 // Testing obsolete APIs
-
 namespace Orkeon.Domain.Tests.Configuration;
 
 /// <summary>
@@ -365,7 +363,7 @@ public class LlmConfigTests
     }
 
     [Fact]
-    public void ShouldReturnGpt4Configuration_WhenUsingLlmConfigUsingGpt4()
+    public void ShouldReturnDefaultModelConfiguration_WhenUsingWithDefaultModel()
     {
         // Act
         var config = LlmConfig.WithDefaultModel();
@@ -377,7 +375,7 @@ public class LlmConfigTests
     }
 
     [Fact]
-    public void ShouldSetApiKey_WhenUsingLlmConfigUsingGpt4WithApiKey()
+    public void ShouldSetApiKey_WhenUsingWithDefaultModelWithApiKey()
     {
         // Act
         var config = LlmConfig.WithDefaultModel("test-gpt4-key");
@@ -386,30 +384,6 @@ public class LlmConfigTests
         Assert.NotNull(config);
         Assert.Equal(ModelDefault, config.Model);
         Assert.Equal("test-gpt4-key", config.ApiKey);
-    }
-
-    [Fact]
-    public void ShouldReturnGpt35TurboConfiguration_WhenUsingLlmConfigUsingGpt35Turbo()
-    {
-        // Act
-        var config = LlmConfig.Gpt35Turbo();
-
-        // Assert
-        Assert.NotNull(config);
-        Assert.Equal(ModelGpt35Turbo, config.Model);
-        Assert.Null(config.ApiKey);
-    }
-
-    [Fact]
-    public void ShouldSetApiKey_WhenUsingLlmConfigUsingGpt35TurboWithApiKey()
-    {
-        // Act
-        var config = LlmConfig.Gpt35Turbo("test-gpt35-key");
-
-        // Assert
-        Assert.NotNull(config);
-        Assert.Equal(ModelGpt35Turbo, config.Model);
-        Assert.Equal("test-gpt35-key", config.ApiKey);
     }
 
     [Fact]
@@ -487,7 +461,7 @@ public class LlmConfigTests
     {
         // Act
         var gpt4 = LlmConfig.WithDefaultModel("key");
-        var gpt35 = LlmConfig.Gpt35Turbo("key");
+        var gpt35 = LlmConfig.Create(ModelGpt35Turbo, "key");
 
         // Assert
         Assert.Equal(ModelDefault, gpt4.Model);
@@ -830,5 +804,3 @@ public class LlmConfigTests
 
     #endregion
 }
-
-#pragma warning restore CS0618

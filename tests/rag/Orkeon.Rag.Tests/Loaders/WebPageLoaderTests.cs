@@ -87,7 +87,7 @@ public sealed class WebPageLoaderTests : IDisposable
     public void CanLoad_HonorsTheKindHint()
     {
         Assert.True(_loader.CanLoad(new SourceDescriptor { Location = "https://example.com", Kind = "url" }));
-        Assert.True(_loader.CanLoad(new SourceDescriptor { Location = "https://example.com", Kind = "web" }));
+        Assert.False(_loader.CanLoad(new SourceDescriptor { Location = "https://example.com", Kind = "web" }));
         Assert.False(_loader.CanLoad(new SourceDescriptor { Location = "https://example.com", Kind = "file" }));
     }
 

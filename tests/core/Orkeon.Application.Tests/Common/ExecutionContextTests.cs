@@ -411,23 +411,6 @@ public sealed class ExecutionContextTests : IDisposable
     }
 
     [Fact]
-    public void ShouldReturnContent_WhenUsingTaskOutputUsingRawOutput()
-    {
-        // Arrange
-        var output = new TaskOutput(
-            "task1",
-            "agent1",
-            TestContent,
-            DateTime.UtcNow,
-            true,
-            TimeSpan.FromSeconds(1));
-
-        // Act & Assert
-        Assert.Equal(TestContent, output.Content);
-        Assert.Equal(TestContent, output.RawOutput);
-    }
-
-    [Fact]
     public void ShouldInitializeList_WhenUsingTaskOutputWithToolsUsed()
     {
         // Arrange

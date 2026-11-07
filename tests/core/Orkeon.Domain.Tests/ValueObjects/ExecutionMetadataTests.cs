@@ -27,11 +27,8 @@ public class ExecutionMetadataTests
 
         // Act
         var metadata = new ExecutionMetadata(
-            startedAt,
-            completedAt,
-            maxExecutionTime,
-            executionId,
-            parentExecutionId,
+            new ExecutionTimingInfo(startedAt, completedAt, maxExecutionTime),
+            new ExecutionIdentityInfo(executionId, parentExecutionId),
             retryCount,
             lastError,
             tags,
@@ -56,11 +53,8 @@ public class ExecutionMetadataTests
         var startedAt = DateTime.UtcNow;
         var completedAt = startedAt.AddMinutes(5.5);
         var metadata = new ExecutionMetadata(
-            startedAt,
-            completedAt,
-            null,
-            "exec-123",
-            null,
+            new ExecutionTimingInfo(startedAt, completedAt, null),
+            new ExecutionIdentityInfo("exec-123", null),
             0,
             null,
             [],
@@ -79,11 +73,8 @@ public class ExecutionMetadataTests
     {
         // Arrange
         var metadata = new ExecutionMetadata(
-            DateTime.UtcNow,
-            null, // Not completed
-            null,
-            "exec-123",
-            null,
+            new ExecutionTimingInfo(DateTime.UtcNow, null, null), // Not completed
+            new ExecutionIdentityInfo("exec-123", null),
             0,
             null,
             [],
@@ -101,11 +92,8 @@ public class ExecutionMetadataTests
     {
         // Arrange
         var metadata = new ExecutionMetadata(
-            DateTime.UtcNow,
-            DateTime.UtcNow.AddMinutes(1),
-            null,
-            "exec-123",
-            null,
+            new ExecutionTimingInfo(DateTime.UtcNow, DateTime.UtcNow.AddMinutes(1), null),
+            new ExecutionIdentityInfo("exec-123", null),
             0,
             null,
             [],
@@ -120,11 +108,8 @@ public class ExecutionMetadataTests
     {
         // Arrange
         var metadata = new ExecutionMetadata(
-            DateTime.UtcNow,
-            null,
-            null,
-            "exec-123",
-            null,
+            new ExecutionTimingInfo(DateTime.UtcNow, null, null),
+            new ExecutionIdentityInfo("exec-123", null),
             0,
             null,
             [],
@@ -143,11 +128,8 @@ public class ExecutionMetadataTests
         var maxExecutionTime = TimeoutExtended;
 
         var metadata = new ExecutionMetadata(
-            startedAt,
-            completedAt,
-            maxExecutionTime,
-            "exec-123",
-            null,
+            new ExecutionTimingInfo(startedAt, completedAt, maxExecutionTime),
+            new ExecutionIdentityInfo("exec-123", null),
             0,
             null,
             [],
@@ -166,11 +148,8 @@ public class ExecutionMetadataTests
         var maxExecutionTime = TimeoutExtended;
 
         var metadata = new ExecutionMetadata(
-            startedAt,
-            completedAt,
-            maxExecutionTime,
-            "exec-123",
-            null,
+            new ExecutionTimingInfo(startedAt, completedAt, maxExecutionTime),
+            new ExecutionIdentityInfo("exec-123", null),
             0,
             null,
             [],
@@ -188,11 +167,8 @@ public class ExecutionMetadataTests
         var completedAt = startedAt.AddHours(1);
 
         var metadata = new ExecutionMetadata(
-            startedAt,
-            completedAt,
-            null, // No max execution time
-            "exec-123",
-            null,
+            new ExecutionTimingInfo(startedAt, completedAt, null), // No max execution time
+            new ExecutionIdentityInfo("exec-123", null),
             0,
             null,
             [],
@@ -207,11 +183,8 @@ public class ExecutionMetadataTests
     {
         // Arrange
         var metadata = new ExecutionMetadata(
-            DateTime.UtcNow,
-            null, // Not completed
-            TimeoutExtended,
-            "exec-123",
-            null,
+            new ExecutionTimingInfo(DateTime.UtcNow, null, TimeoutExtended), // Not completed
+            new ExecutionIdentityInfo("exec-123", null),
             0,
             null,
             [],
@@ -381,9 +354,11 @@ public class ExecutionMetadataTests
         var props = ImmutableDictionary<string, object>.Empty.Add("prop", 123);
 
         var metadata1 = new ExecutionMetadata(
-            startedAt, null, null, "exec-123", null, 0, null, tags, props);
+            new ExecutionTimingInfo(startedAt, null, null),
+            new ExecutionIdentityInfo("exec-123", null), 0, null, tags, props);
         var metadata2 = new ExecutionMetadata(
-            startedAt, null, null, "exec-123", null, 0, null, tags, props);
+            new ExecutionTimingInfo(startedAt, null, null),
+            new ExecutionIdentityInfo("exec-123", null), 0, null, tags, props);
 
         // Act & Assert
         Assert.Equal(metadata1, metadata2);
@@ -484,11 +459,8 @@ public class ExecutionMetadataTests
         var maxExecutionTime = TimeoutStandard;
 
         var metadata = new ExecutionMetadata(
-            startedAt,
-            completedAt,
-            maxExecutionTime,
-            "exec-timeout",
-            null,
+            new ExecutionTimingInfo(startedAt, completedAt, maxExecutionTime),
+            new ExecutionIdentityInfo("exec-timeout", null),
             3,
             "Execution timed out",
             [],

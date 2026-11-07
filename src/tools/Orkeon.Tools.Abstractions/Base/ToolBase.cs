@@ -220,9 +220,9 @@ public abstract partial class ToolBase : IBaseTool
     }
 
     /// <summary>
-    /// Executes the tool with the given input (legacy method that converts to new protocol).
+    /// Executes the tool with a single string input, converted to a protocol request for <see cref="CallAsync"/>.
     /// </summary>
-    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Service-boundary fault barrier: any failure in the legacy input adaptation or tool execution is converted to an error ToolResult so one tool call cannot crash the agent loop.")]
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Service-boundary fault barrier: any failure in the string input adaptation or tool execution is converted to an error ToolResult so one tool call cannot crash the agent loop.")]
     public async Task<ToolResult> ExecuteAsync(string input, CancellationToken cancellationToken = default)
     {
         try
@@ -245,19 +245,6 @@ public abstract partial class ToolBase : IBaseTool
     /// Core execution logic to be implemented by derived classes using the new protocol.
     /// </summary>
     protected abstract Task<ProtocolToolCallResponse> ExecuteCoreAsync(ProtocolToolCallRequest request, CancellationToken cancellationToken);
-
-    /// <summary>
-    /// Legacy core execution logic - default implementation converts to new protocol.
-    /// </summary>
-    protected virtual async Task<ToolResult> ExecuteCoreAsync(string input, CancellationToken cancellationToken)
-    {
-        // Convert to new protocol and execute
-        var parameters = new Dictionary<string, object?> { ["input"] = input };
-        var request = new ProtocolToolCallRequest(Name, parameters);
-        var response = await ExecuteCoreAsync(request, cancellationToken).ConfigureAwait(false);
-
-        return ToolProtocolAdapter.ConvertToToolResult(response);
-    }
 
     private ProtocolToolCallRequest ReadMapParameters(ProtocolToolCallRequest request)
     {

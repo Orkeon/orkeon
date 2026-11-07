@@ -578,7 +578,5 @@ internal static class InitCommand
         return true;
     }
 
-#pragma warning disable CS0618 // ApiKey is the field every provider reads.
     private static string? ApiKeyOf(LlmConfig config) => config.ApiKey;
-#pragma warning restore CS0618
 }

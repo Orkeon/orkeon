@@ -4,8 +4,6 @@ using Orkeon.Domain.SharedKernel.ValueObjects;
 using Orkeon.Infrastructure.LLMs;
 using System.Diagnostics.CodeAnalysis;
 
-#pragma warning disable CS0618 // Testing obsolete ApiKey API
-
 namespace Orkeon.Infrastructure.Tests.CovToolCalling;
 
 public class CovToolCalling_LlmProviderFactoryTests
@@ -125,5 +123,3 @@ public class CovToolCalling_LlmProviderFactoryTests
         Assert.IsType<LlmProviderAdapter>(provider);
     }
 }
-
-#pragma warning restore CS0618

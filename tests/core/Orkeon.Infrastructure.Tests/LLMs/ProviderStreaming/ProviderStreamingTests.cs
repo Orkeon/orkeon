@@ -9,8 +9,6 @@ using Orkeon.Infrastructure.Tests.Doubles;
 using static Orkeon.Tests.Shared.Constants.TestLlmConstants;
 using static Orkeon.Tests.Shared.Constants.TestUrlConstants;
 
-#pragma warning disable CS0618 // Testing obsolete APIs
-
 namespace Orkeon.Infrastructure.Tests.LLMs;
 
 public sealed class ProviderStreamingTests : IDisposable
@@ -392,5 +390,3 @@ public sealed class ProviderStreamingTests : IDisposable
         GC.SuppressFinalize(this);
     }
 }
-
-#pragma warning restore CS0618
