@@ -192,7 +192,8 @@ l'hôte, ce qui convient à une console à un seul opérateur — un agent qui r
 précédent s'est arrêté, une page que l'utilisateur lit entre deux exécutions — pas à des agents
 qui naviguent côte à côte. Pour ceux-là, `SharedInstance` reste la réponse, et les deux se
 combinent : chaque exécution ne voit toujours que ses propres onglets, qui se ferment avec elle,
-et la fenêtre reste ouverte pour la suivante sur un onglet vierge.
+et la fenêtre reste ouverte pour la suivante sur un onglet vierge ; si l'utilisateur ferme cet
+onglet, l'exécution suivante en ouvre un à elle.
 
 ```json
 { "Orkeon": { "Tools": { "Firefox": { "Lifetime": "host" } } } }

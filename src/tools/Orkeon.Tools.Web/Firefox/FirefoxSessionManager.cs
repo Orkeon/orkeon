@@ -90,9 +90,17 @@ internal sealed class FirefoxSessionManager : IDisposable
         if (_host is not null)
         {
             // The host's session of the profile, the run bound to it from its first action on.
-            var target = BindingOf()?.Bind(profile, named, IsOpen) ?? profile;
-            var kept = await HostSlotOf(target).UseAsync(target, named: false, OpenAsync, operation, cancellationToken).ConfigureAwait(false);
-            return kept ?? throw new ObjectDisposedException(nameof(FirefoxSessionManager));
+            var binding = BindingOf();
+            var target = binding?.Bind(profile, named, IsOpen) ?? profile;
+            try
+            {
+                var kept = await HostSlotOf(target).UseAsync(target, named: false, OpenAsync, operation, cancellationToken).ConfigureAwait(false);
+                return kept ?? throw new ObjectDisposedException(nameof(FirefoxSessionManager));
+            }
+            finally
+            {
+                binding?.Release();
+            }
         }
 
         var slot = SlotOf();
@@ -220,17 +228,21 @@ internal sealed class FirefoxSessionManager : IDisposable
 
     /// <summary>
     /// The profile a run is bound to under the host's lifetime: the one its first action named, or the
-    /// default; released by <c>close</c>, or when the host's browser of that profile has gone.
+    /// default; released by <c>close</c>, or when the host's browser of that profile has gone and no
+    /// action of the run is on its way to it.
     /// </summary>
     private sealed class FirefoxRunBinding : IAsyncDisposable
     {
         private readonly Lock _sync = new();
         private FirefoxProfileChoice? _profile;
+        private int _inFlight;
 
         /// <summary>
         /// The profile an action goes to: the run's, or <paramref name="profile"/> when the run has none
         /// yet, which binds the run to it. When <paramref name="named"/> names another profile than the
-        /// run's, the action is refused while the run's browser is open.
+        /// run's, the action is refused while the run's browser is open, or while another action of the
+        /// run is on its way to it (two actions at once must not open two browsers). Every call is paired
+        /// with <see cref="Release"/>.
         /// </summary>
         /// <exception cref="FirefoxException">Another profile was named while the run's browser is open.</exception>
         public FirefoxProfileChoice Bind(FirefoxProfileChoice profile, bool named, Func<FirefoxProfileChoice, bool> isOpen)
@@ -240,14 +252,26 @@ internal sealed class FirefoxSessionManager : IDisposable
                 if (_profile is { } bound)
                 {
                     if (!named || bound.Same(profile))
+                    {
+                        _inFlight++;
                         return bound;
-                    if (isOpen(bound))
+                    }
+
+                    if (_inFlight > 0 || isOpen(bound))
                         throw Refusal(bound, profile);
                 }
 
                 _profile = profile;
+                _inFlight++;
                 return profile;
             }
+        }
+
+        /// <summary>The action <see cref="Bind"/> admitted is over.</summary>
+        public void Release()
+        {
+            lock (_sync)
+                _inFlight--;
         }
 
         /// <summary>The profile <c>close</c> addresses - the run's, else <paramref name="profile"/> - the run unbound from it.</summary>
@@ -257,7 +281,7 @@ internal sealed class FirefoxSessionManager : IDisposable
             lock (_sync)
             {
                 var bound = _profile;
-                if (bound is not null && named && !bound.Same(profile) && isOpen(bound))
+                if (bound is not null && named && !bound.Same(profile) && (_inFlight > 0 || isOpen(bound)))
                     throw Refusal(bound, profile);
 
                 _profile = null;

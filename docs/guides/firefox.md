@@ -175,7 +175,7 @@ browser is shared by every run of the host, which fits a console with one operat
 that picks up where the last one left, a page the user reads between two runs — not agents that
 browse side by side. For those, `SharedInstance` stays the answer, and the two combine: each run
 still sees tabs of its own, which close with the run, and the window stays open for the next one
-on a blank tab.
+on a blank tab; should the user close that tab, the next run opens one of its own.
 
 ```json
 { "Orkeon": { "Tools": { "Firefox": { "Lifetime": "host" } } } }

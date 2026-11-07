@@ -89,7 +89,20 @@ internal sealed class FirefoxBrowser : IAsyncDisposable
     public Task<JsonObject> SendAsync(string method, JsonObject? parameters, CancellationToken cancellationToken) =>
         _connection.SendAsync(method, parameters, cancellationToken);
 
-    /// <summary>The tab Firefox opened at start, handed to the first session that asks; <c>null</c> after that.</summary>
+    /// <summary><c>true</c> while the browser holds a tab for the next session: the one it opened at start, or the blank one that kept the window.</summary>
+    public bool HoldsFirstTab
+    {
+        get
+        {
+            lock (_sync)
+                return _firstTab is not null;
+        }
+    }
+
+    /// <summary>
+    /// The tab Firefox opened at start, or the blank one that kept the window, handed to the first
+    /// session that asks; <c>null</c> after that, or once the user closed it.
+    /// </summary>
     public string? TakeFirstTab()
     {
         lock (_sync)
@@ -232,7 +245,12 @@ internal sealed class FirefoxBrowser : IAsyncDisposable
     {
         FirefoxSession[] sessions;
         lock (_sync)
+        {
+            // The tab kept for the next session, closed by the user: that session opens one of its own.
+            if (method == "browsingContext.contextDestroyed" && _firstTab is not null && parameters["context"]?.GetValue<string>() == _firstTab)
+                _firstTab = null;
             sessions = [.. _sessions];
+        }
         foreach (var session in sessions)
             session.OnEvent(method, parameters);
     }
