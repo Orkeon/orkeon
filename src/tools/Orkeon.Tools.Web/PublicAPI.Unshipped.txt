@@ -1,4 +1,7 @@
 #nullable enable
+Orkeon.Tools.Web.FirefoxBrowserLifetime
+Orkeon.Tools.Web.FirefoxBrowserLifetime.Host = 1 -> Orkeon.Tools.Web.FirefoxBrowserLifetime
+Orkeon.Tools.Web.FirefoxBrowserLifetime.Run = 0 -> Orkeon.Tools.Web.FirefoxBrowserLifetime
 Orkeon.Tools.Web.FirefoxToolOptions
 Orkeon.Tools.Web.FirefoxToolOptions.CommandTimeoutSeconds.get -> int
 Orkeon.Tools.Web.FirefoxToolOptions.CommandTimeoutSeconds.set -> void
@@ -7,6 +10,8 @@ Orkeon.Tools.Web.FirefoxToolOptions.ExecutablePath.set -> void
 Orkeon.Tools.Web.FirefoxToolOptions.FirefoxToolOptions() -> void
 Orkeon.Tools.Web.FirefoxToolOptions.Headless.get -> bool
 Orkeon.Tools.Web.FirefoxToolOptions.Headless.set -> void
+Orkeon.Tools.Web.FirefoxToolOptions.Lifetime.get -> Orkeon.Tools.Web.FirefoxBrowserLifetime
+Orkeon.Tools.Web.FirefoxToolOptions.Lifetime.set -> void
 Orkeon.Tools.Web.FirefoxToolOptions.MaxNodes.get -> int
 Orkeon.Tools.Web.FirefoxToolOptions.MaxNodes.set -> void
 Orkeon.Tools.Web.FirefoxToolOptions.MaxTextLength.get -> int

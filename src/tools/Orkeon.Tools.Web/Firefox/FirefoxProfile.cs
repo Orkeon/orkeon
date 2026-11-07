@@ -18,6 +18,12 @@ internal sealed class FirefoxProfile
     /// <summary>The folder a Firefox snap may write under the user's home: its temp folder is private.</summary>
     internal const string SnapCommon = "snap/firefox/common";
 
+    /// <summary>
+    /// How old a disposable folder no Firefox holds must be to count as left behind: a browser locks its
+    /// folder within its startup timeout, so a younger one may be starting still.
+    /// </summary>
+    internal static readonly TimeSpan StaleAge = TimeSpan.FromMinutes(10);
+
     // remote.active-protocols 1: WebDriver BiDi alone, no CDP. The others keep a fresh profile quiet:
     // no first-run pages, no default-browser question, no telemetry, no update, no saved password.
     internal const string Preferences = """
@@ -162,11 +168,15 @@ internal sealed class FirefoxProfile
             : null;
     }
 
-    /// <summary>Creates a new disposable profile folder under <paramref name="root"/>.</summary>
+    /// <summary>
+    /// Creates a new disposable profile folder under <paramref name="root"/>, once the folders a browser
+    /// no longer holds there - what a host that was killed left behind - are removed.
+    /// </summary>
     /// <exception cref="FirefoxException">The folder could not be created.</exception>
     public static FirefoxProfile Create(string root)
     {
         ArgumentException.ThrowIfNullOrEmpty(root);
+        RemoveStale(root, StaleAge);
 
         // OUT-OF-SCOPE: host folder of the browser process, not a VFS path.
         var directory = Path.Combine(root, Guid.NewGuid().ToString("N"));
@@ -208,6 +218,53 @@ internal sealed class FirefoxProfile
 
         return new FirefoxProfile(name, directory, disposable: false);
     }
+
+    /// <summary>
+    /// Removes the disposable profile folders under <paramref name="root"/> that no running Firefox holds
+    /// and that are older than <paramref name="minimumAge"/>: the folders of a host that was killed with
+    /// its browsers. A folder just created, whose browser has not locked it yet, is left alone, as is
+    /// anything that is not a disposable profile of the tool: a folder named like one but without the
+    /// <c>user.js</c> <see cref="Create"/> writes is not ours. Best effort.
+    /// </summary>
+    [SuppressMessage("Design", "CA1031", Justification = "Best-effort cleanup: a folder that cannot be read or removed is left for the next start.")]
+    public static void RemoveStale(string root, TimeSpan minimumAge)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(root);
+
+        // OUT-OF-SCOPE: host folder of the browser process, not a VFS path.
+        try
+        {
+            if (!System.IO.Directory.Exists(root))
+                return;
+            var cutoff = DateTime.UtcNow - minimumAge;
+            foreach (var directory in System.IO.Directory.EnumerateDirectories(root))
+            {
+                if (!IsDisposableName(Path.GetFileName(directory))
+                    || !File.Exists(Path.Combine(directory, "user.js"))
+                    || System.IO.Directory.GetLastWriteTimeUtc(directory) > cutoff
+                    || LockedBy(directory) is not null)
+                {
+                    continue;
+                }
+
+                try
+                {
+                    System.IO.Directory.Delete(directory, recursive: true);
+                }
+                catch (Exception)
+                {
+                    // Held for an instant, or not ours to remove: left for the next start.
+                }
+            }
+        }
+        catch (Exception)
+        {
+            // A root that cannot be listed has nothing to clean.
+        }
+    }
+
+    /// <summary>Whether a folder name is one <see cref="Create"/> gives: a GUID without dashes.</summary>
+    private static bool IsDisposableName(string name) => name.Length == 32 && name.All(Uri.IsHexDigit);
 
     /// <summary>Removes a disposable profile folder once the browser has ended; a named one is left as it is. Best effort.</summary>
     [SuppressMessage("Design", "CA1031", Justification = "Best-effort cleanup: a profile left behind is only the files of a closed browser.")]

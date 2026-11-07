@@ -792,4 +792,46 @@ public class FirefoxToolTests : FirefoxSessionTestBase
         Assert.Equal("work", body["profile"]!.GetValue<string>());
         Assert.Equal(["work"], Launcher.Profiles);
     }
+
+    [Fact]
+    public async Task Should_ShowTheNextRunTheTabsTheLastOneLeft_When_TheHostKeepsTheBrowser()
+    {
+        _options.Lifetime = FirefoxBrowserLifetime.Host;
+        using var tool = Tool();
+
+        await using (AgentRunScope.Begin("agent-1"))
+        {
+            await CallAsync(tool, "navigate", ("url", Home));
+            await CallAsync(tool, "new_tab", ("url", Docs));
+        }
+
+        JsonObject tabs;
+        await using (AgentRunScope.Begin("agent-2"))
+            tabs = Body(await CallAsync(tool, "tabs"));
+
+        Assert.Equal(2, tabs["tabs"]!.AsArray().Count);
+        Assert.Equal(Docs, tabs["url"]!.GetValue<string>());
+        Assert.Equal("t2", tabs["tab"]!.GetValue<string>());
+        Assert.False(Browser.Disposed);
+        Assert.DoesNotContain("browser.close", Browser.Wire.Methods);
+        Assert.Single(Launcher.Browsers);
+    }
+
+    [Fact]
+    public async Task Should_CloseTheHostsBrowserOfTheProfileNamed_OutsideAnyRun()
+    {
+        _options.Lifetime = FirefoxBrowserLifetime.Host;
+        _options.AllowedProfiles.Add("research");
+        using var tool = Tool();
+        await CallAsync(tool, "navigate", ("url", Home), ("profile", "research"));
+        await CallAsync(tool, "navigate", ("url", Home));
+
+        var closed = Body(await CallAsync(tool, "close", ("profile", "research")));
+        var again = Body(await CallAsync(tool, "close", ("profile", "research")));
+
+        Assert.Equal("The browser was closed.", closed["value"]!.GetValue<string>());
+        Assert.Equal("No browser was open.", again["value"]!.GetValue<string>());
+        Assert.True(Launcher.Browsers[0].Disposed);
+        Assert.False(Launcher.Browsers[1].Disposed);
+    }
 }

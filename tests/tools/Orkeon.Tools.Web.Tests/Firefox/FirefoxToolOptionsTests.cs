@@ -22,6 +22,7 @@ public class FirefoxToolOptionsTests
             Assert.Empty(options.AllowedProfiles);
             Assert.Empty(options.DeniedProfiles);
             Assert.False(options.SharedInstance);
+            Assert.Equal(FirefoxBrowserLifetime.Run, options.Lifetime);
             Assert.Equal(30, options.StartupTimeoutSeconds);
             Assert.Equal(30, options.CommandTimeoutSeconds);
             Assert.Equal(40, options.MaxNodes);
@@ -42,6 +43,7 @@ public class FirefoxToolOptionsTests
             ("AllowedProfiles:2", "research"),
             ("DeniedProfiles", "default; personal"),
             ("SharedInstance", "true"),
+            ("Lifetime", "host"),
             ("StartupTimeoutSeconds", "90"),
             ("CommandTimeoutSeconds", "45"),
             ("MaxNodes", "25"),
@@ -54,6 +56,7 @@ public class FirefoxToolOptionsTests
         Assert.Equal(["research", "Work"], options.AllowedProfiles);
         Assert.Equal(["default", "personal"], options.DeniedProfiles);
         Assert.True(options.SharedInstance);
+        Assert.Equal(FirefoxBrowserLifetime.Host, options.Lifetime);
         Assert.Equal(90, options.StartupTimeoutSeconds);
         Assert.Equal(45, options.CommandTimeoutSeconds);
         Assert.Equal(25, options.MaxNodes);
@@ -66,12 +69,14 @@ public class FirefoxToolOptionsTests
         var options = FirefoxToolOptions.From(Configuration(
             ("ExecutablePath", "  "),
             ("Headless", "maybe"),
+            ("Lifetime", "7"),
             ("StartupTimeoutSeconds", "soon"),
             ("CommandTimeoutSeconds", "0"),
             ("MaxNodes", "-3")));
 
         Assert.Null(options.ExecutablePath);
         Assert.False(options.Headless);
+        Assert.Equal(FirefoxBrowserLifetime.Run, options.Lifetime);
         Assert.Equal(30, options.StartupTimeoutSeconds);
         Assert.Equal(30, options.CommandTimeoutSeconds);
         Assert.Equal(40, options.MaxNodes);
