@@ -400,24 +400,25 @@ public sealed partial class FirefoxTool : ToolBase<FirefoxRequest, FirefoxRespon
         var action = Canonical(request.Action) ?? request.Action;
         try
         {
+            // Refused before any browser starts: a profile the host forbids costs no Firefox.
+            var profile = _profiles.Resolve(request.Profile);
+            var named = !string.IsNullOrWhiteSpace(request.Profile);
             if (action == Close)
             {
-                var closed = await _sessions.CloseAsync(cancellationToken).ConfigureAwait(false);
+                var closed = await _sessions.CloseAsync(profile, named, cancellationToken).ConfigureAwait(false);
                 return new FirefoxResponse { Action = action, Success = true, Value = closed ? "The browser was closed." : "No browser was open." };
             }
 
             if (action is Navigate or NewTab && !string.IsNullOrWhiteSpace(request.Url))
             {
-                // Refused before any browser starts: an address the policy forbids costs no Firefox.
+                // Refused before any browser starts, as well: an address the policy forbids costs no Firefox.
                 var url = request.Url.Trim();
                 if (await RefusalAsync(url, cancellationToken).ConfigureAwait(false) is { } refusal)
                     throw new FirefoxException($"'{url}' was not opened: {refusal}.");
             }
 
-            // Refused before any browser starts, as well: a profile the host forbids costs no Firefox.
-            var profile = _profiles.Resolve(request.Profile);
             return await _sessions
-                .UseAsync(profile, named: !string.IsNullOrWhiteSpace(request.Profile), (session, ct) => RunAsync(session, action, request, ct), cancellationToken)
+                .UseAsync(profile, named, (session, ct) => RunAsync(session, action, request, ct), cancellationToken)
                 .ConfigureAwait(false);
         }
         catch (Exception ex) when (ex is IExpectedToolError)

@@ -59,6 +59,13 @@ public sealed class FirefoxToolOptions
     /// </summary>
     public bool SharedInstance { get; set; }
 
+    /// <summary>
+    /// How long a browser lives: `Run` (the default) closes it with the agent run that started it;
+    /// `Host` keeps it open, with its tabs and its profile, from one run to the next - one browser per
+    /// profile - until `close`, the user closes the window, or the host stops. Case ignored.
+    /// </summary>
+    public FirefoxBrowserLifetime Lifetime { get; set; }
+
     /// <summary>Seconds Firefox is given to start and open its remote protocol.</summary>
     public int StartupTimeoutSeconds { get; set; } = 30;
 
@@ -94,6 +101,8 @@ public sealed class FirefoxToolOptions
             options.Headless = headless;
         if (bool.TryParse(section[nameof(SharedInstance)], out var shared))
             options.SharedInstance = shared;
+        if (Enum.TryParse<FirefoxBrowserLifetime>(section[nameof(Lifetime)], ignoreCase: true, out var lifetime) && Enum.IsDefined(lifetime))
+            options.Lifetime = lifetime;
         options.StartupTimeoutSeconds = Positive(section[nameof(StartupTimeoutSeconds)], options.StartupTimeoutSeconds);
         options.CommandTimeoutSeconds = Positive(section[nameof(CommandTimeoutSeconds)], options.CommandTimeoutSeconds);
         options.MaxNodes = Positive(section[nameof(MaxNodes)], options.MaxNodes);

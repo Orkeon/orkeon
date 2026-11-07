@@ -18,7 +18,9 @@ leur JavaScript : ce que `web_scrape` ne voit pas, `firefox` le voit.
   garde ses pages d'une action à la suivante et se ferme avec l'exécution. Des agents qui
   s'exécutent côte à côte ont chacun leur navigateur, ou en partagent un avec des onglets à eux
   quand l'hôte le dit (`SharedInstance`). Hors de toute exécution, une action reçoit un
-  navigateur à elle, fermé juste après.
+  navigateur à elle, fermé juste après. Un hôte qui veut que le navigateur survive à
+  l'exécution le garde avec `Lifetime: host`
+  ([ci-dessous](#un-navigateur-qui-survit-à-lexécution)).
 - **Un profil jetable** par défaut : un dossier neuf, supprimé à la fermeture du navigateur.
   L'hôte peut démarrer le navigateur sur un profil du Firefox installé sur la machine à la place,
   et nommer les profils qu'un agent peut demander et ceux qu'aucun navigateur n'utilise jamais
@@ -72,7 +74,7 @@ exécutions.
 | `new_tab` | `url` | Read | Ouvre un onglet, sur `url` quand elle est donnée, et le pilote désormais |
 | `switch_tab` | `tab` | Read | Pilote désormais l'onglet `tab` (`t1`, `t2`), affiché devant les autres |
 | `close_tab` | `tab` | Execute | Ferme un onglet, le courant par défaut ; le dernier onglet n'est jamais fermé (`close` est là pour ça) |
-| `close` | — | Execute | Ferme le navigateur de l'exécution ; l'action suivante en démarre un nouveau |
+| `close` | `profile` | Execute | Ferme le navigateur de l'exécution ; l'action suivante en démarre un nouveau. Sous `Lifetime: host`, hors de toute exécution, ferme le navigateur de l'hôte du profil `profile` |
 
 Chaque réponse porte l'action, l'`url` et le `title` de la page affichée, `tab`, la poignée de
 l'onglet que les actions pilotent désormais, `profile`, celui avec lequel le navigateur tourne,
@@ -82,7 +84,9 @@ fermées pour que la page ne se fige jamais (une question `beforeunload` est acc
 
 Chaque action accepte un `profile` facultatif : il compte à la première action d'une exécution,
 quand le navigateur démarre ; un navigateur déjà ouvert garde son profil, et une action qui en
-nomme un autre est refusée jusqu'à `close`.
+nomme un autre est refusée jusqu'à `close`. La règle tient sous `Lifetime: host` : l'exécution
+est liée au profil de sa première action, et une action sans `profile` va à ce navigateur, quel
+que soit le profil par défaut de l'hôte.
 
 ### Onglets
 
@@ -168,10 +172,38 @@ quitte — ou quand l'hôte s'arrête. `close` ferme les onglets de l'exécution
 navigateur que les autres partagent. C'est un profil nommé qui rend le partage utile : plusieurs
 agents sur une même session connectée, côte à côte.
 
+## Un navigateur qui survit à l'exécution
+
+`Lifetime: host` garde le navigateur une fois l'exécution terminée : sa fenêtre, ses onglets et
+son profil - le jetable compris - restent comme la dernière action les a laissés, et l'exécution
+suivante, ou une action hors de toute exécution, les retrouve. Un navigateur par profil : une
+action nomme avec `profile` le navigateur qu'elle vise, ou reçoit celui du profil par défaut de
+l'hôte. Le navigateur se ferme quand un agent appelle `close`, quand l'utilisateur ferme la
+fenêtre, ou quand l'hôte s'arrête ; le dossier jetable part avec lui. Un navigateur que
+l'utilisateur a fermé, ou qui est mort, est remarqué à l'action suivante, qui en démarre un
+nouveau.
+
+Des exécutions qui se chevauchent sur un même profil mettent leurs actions en file sur son
+navigateur, une à la fois : le navigateur de l'hôte est partagé par toutes les exécutions de
+l'hôte, ce qui convient à une console à un seul opérateur - un agent qui reprend là où le
+précédent s'est arrêté, une page que l'utilisateur lit entre deux exécutions - pas à des agents
+qui naviguent côte à côte. Pour ceux-là, `SharedInstance` reste la réponse, et les deux se
+combinent : les onglets d'une exécution se ferment avec elle, la fenêtre reste ouverte pour la
+suivante sur un onglet vierge.
+
+```json
+{ "Orkeon": { "Tools": { "Firefox": { "Lifetime": "host" } } } }
+```
+
+Dans une exécution, `close` ferme le navigateur de l'exécution, comme toujours ; hors de toute
+exécution - une console, un script - `close` avec un `profile` ferme le navigateur de l'hôte de
+ce profil, celui du profil par défaut sans. À chaque démarrage, l'outil supprime les dossiers
+jetables sous `ProfileRoot` qu'aucun Firefox ne tient plus.
+
 ## Réglages
 
 `Orkeon:Tools:Firefox` — voir la [référence de configuration](../reference/configuration.md#orkeontoolsfirefox) :
 `ExecutablePath`, `Headless`, `Profile`, `AllowedProfiles`, `DeniedProfiles`, `SharedInstance`,
-`ProfileRoot`, `StartupTimeoutSeconds`, `CommandTimeoutSeconds`, `MaxNodes`, `MaxTextLength`.
-Quand Firefox est un snap, la racine de profil par défaut est
+`Lifetime`, `ProfileRoot`, `StartupTimeoutSeconds`, `CommandTimeoutSeconds`, `MaxNodes`,
+`MaxTextLength`. Quand Firefox est un snap, la racine de profil par défaut est
 `~/snap/firefox/common/orkeon/profiles` : un snap ne lit pas le dossier temporaire du système.

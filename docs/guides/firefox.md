@@ -16,7 +16,9 @@ saves a screenshot. Pages run their JavaScript: what `web_scrape` cannot see, `f
 - **One browser per agent run.** Firefox starts at the run's first action, keeps its pages
   from one action to the next, and closes with the run. Agents running side by side have their
   own browsers, or share one with tabs of their own when the host says so (`SharedInstance`).
-  Outside any run, an action gets a browser of its own, closed right after it.
+  Outside any run, an action gets a browser of its own, closed right after it. A host that
+  wants the browser to outlive the run keeps it with `Lifetime: host`
+  ([below](#a-browser-that-outlives-the-run)).
 - **A disposable profile** by default: a fresh folder, removed when the browser closes. The
   host may start the browser on a profile of the Firefox installed on the machine instead, and
   name the profiles an agent may ask for and the ones no browser ever uses
@@ -66,7 +68,7 @@ reading actions pass in `plan` mode, `screenshot` is an edit, the others are exe
 | `new_tab` | `url` | Read | Opens a tab, on `url` when given, and drives it from now on |
 | `switch_tab` | `tab` | Read | Drives the tab `tab` (`t1`, `t2`) from now on, shown in front of the others |
 | `close_tab` | `tab` | Execute | Closes a tab, the current one by default; the last tab is never closed (`close` is for that) |
-| `close` | — | Execute | Closes the run's browser; the next action starts a new one |
+| `close` | `profile` | Execute | Closes the run's browser; the next action starts a new one. Under `Lifetime: host`, outside any run, closes the host's browser of `profile` |
 
 Every answer carries the action, `url` and `title` of the page shown, `tab`, the handle of the
 tab the actions drive now, `profile`, the one the browser runs with, and `dialogs`: the
@@ -75,7 +77,9 @@ never freezes (a `beforeunload` question is accepted: leaving was what the agent
 
 Every action takes an optional `profile`: it counts at the first action of a run, when the
 browser starts; a browser already open keeps its profile, and an action that names another one
-is refused until `close`.
+is refused until `close`. The rule holds under `Lifetime: host`: the run is bound to the profile
+of its first action, and an action without `profile` goes to that browser, whatever the host's
+default.
 
 ### Tabs
 
@@ -154,10 +158,34 @@ sees only those, and the browser closes when the last run leaves it — or when 
 `close` closes the tabs of the run that calls it, not the browser the other runs share. A named
 profile is what makes sharing useful: several agents on one signed-in session, side by side.
 
+## A browser that outlives the run
+
+`Lifetime: host` keeps the browser once the run ends: its window, its tabs and its profile - the
+disposable one included - stay as the last action left them, and the next run, or an action
+outside any run, finds them. One browser per profile: an action names the browser it addresses
+with `profile`, or gets the host's default. The browser closes when an agent calls `close`,
+when the user closes the window, or when the host stops; the disposable folder goes with it. A
+browser the user closed, or that has died, is noticed at the next action, which starts a new one.
+
+Runs that overlap on one profile queue their actions on its browser, one at a time: the host's
+browser is shared by every run of the host, which fits a console with one operator - an agent
+that picks up where the last one left, a page the user reads between two runs - not agents that
+browse side by side. For those, `SharedInstance` stays the answer, and the two combine: the tabs
+of a run close with the run, the window stays open for the next one on a blank tab.
+
+```json
+{ "Orkeon": { "Tools": { "Firefox": { "Lifetime": "host" } } } }
+```
+
+Inside a run, `close` closes the run's browser, as always; outside any run - a console, a
+script - `close` with a `profile` closes the host's browser of that profile, the default's
+without. On every start, the tool removes the disposable folders under `ProfileRoot` that no
+Firefox holds any more.
+
 ## Settings
 
 `Orkeon:Tools:Firefox` — see the [configuration reference](../reference/configuration.md#orkeontoolsfirefox):
 `ExecutablePath`, `Headless`, `Profile`, `AllowedProfiles`, `DeniedProfiles`, `SharedInstance`,
-`ProfileRoot`, `StartupTimeoutSeconds`, `CommandTimeoutSeconds`, `MaxNodes`, `MaxTextLength`.
-When Firefox is a snap, the default profile root is `~/snap/firefox/common/orkeon/profiles`: a
+`Lifetime`, `ProfileRoot`, `StartupTimeoutSeconds`, `CommandTimeoutSeconds`, `MaxNodes`,
+`MaxTextLength`. When Firefox is a snap, the default profile root is `~/snap/firefox/common/orkeon/profiles`: a
 snap cannot read the system's temp folder.

@@ -2788,6 +2788,17 @@
       "description": "`true` starts Firefox without a window. The default shows the window; under Linux with neither `DISPLAY` nor `WAYLAND_DISPLAY` the browser starts headless anyway, and a warning says so."
     },
     {
+      "path": "Orkeon:Tools:Firefox:Lifetime",
+      "section": "Orkeon:Tools:Firefox",
+      "type": "enum",
+      "default": "Run",
+      "values": [
+        "Run",
+        "Host"
+      ],
+      "description": "How long a browser lives: `Run` (the default) closes it with the agent run that started it; `Host` keeps it open, with its tabs and its profile, from one run to the next - one browser per profile - until `close`, the user closes the window, or the host stops. Case ignored."
+    },
+    {
       "path": "Orkeon:Tools:Firefox:MaxNodes",
       "section": "Orkeon:Tools:Firefox",
       "type": "integer",

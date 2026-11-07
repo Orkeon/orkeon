@@ -40,7 +40,7 @@ public class FirefoxSessionManagerTests : FirefoxSessionTestBase
         using var manager = Manager();
 
         await using (AgentRunScope.Begin("agent-1"))
-            Assert.False(await manager.CloseAsync(Ct));
+            Assert.False(await manager.CloseAsync(FirefoxProfileChoice.Disposable, false, Ct));
 
         Assert.Empty(Launcher.Browsers);
     }
@@ -116,7 +116,7 @@ public class FirefoxSessionManagerTests : FirefoxSessionTestBase
         Assert.NotSame(first, second);
         Assert.Equal(2, Launcher.Browsers.Count);
         Assert.All(Launcher.Browsers, browser => Assert.True(browser.Disposed));
-        Assert.False(await manager.CloseAsync(Ct));
+        Assert.False(await manager.CloseAsync(FirefoxProfileChoice.Disposable, false, Ct));
     }
 
     [Fact]
@@ -235,9 +235,9 @@ public class FirefoxSessionManagerTests : FirefoxSessionTestBase
         {
             var first = await manager.UseAsync(FirefoxProfileChoice.Disposable, false, Same, Ct);
 
-            Assert.True(await manager.CloseAsync(Ct));
+            Assert.True(await manager.CloseAsync(FirefoxProfileChoice.Disposable, false, Ct));
             Assert.True(Launcher.Browsers[0].Disposed);
-            Assert.False(await manager.CloseAsync(Ct));
+            Assert.False(await manager.CloseAsync(FirefoxProfileChoice.Disposable, false, Ct));
 
             var second = await manager.UseAsync(FirefoxProfileChoice.Disposable, false, Same, Ct);
 
@@ -276,7 +276,7 @@ public class FirefoxSessionManagerTests : FirefoxSessionTestBase
         var unnamed = await manager.UseAsync(FirefoxProfileChoice.Disposable, false, Same, Ct);
         var same = await manager.UseAsync(new FirefoxProfileChoice("WORK"), true, Same, Ct);
         var error = await Assert.ThrowsAsync<FirefoxException>(() => manager.UseAsync(FirefoxProfileChoice.Disposable, true, Same, Ct));
-        await manager.CloseAsync(Ct);
+        await manager.CloseAsync(FirefoxProfileChoice.Disposable, false, Ct);
         var next = await manager.UseAsync(FirefoxProfileChoice.Disposable, true, Same, Ct);
 
         Assert.Same(first, unnamed);
@@ -377,5 +377,185 @@ public class FirefoxSessionManagerTests : FirefoxSessionTestBase
         Assert.Equal(Home, url);
         Assert.True(Assert.Single(Launcher.Browsers).Disposed);
         Assert.Equal(0, manager.Pool!.BrowserCount);
+    }
+
+    [Fact]
+    public async Task Should_KeepTheHostsBrowserAcrossRuns_AndCloseItWithTheManager()
+    {
+        using var manager = Manager(new FirefoxToolOptions { Lifetime = FirefoxBrowserLifetime.Host });
+        FirefoxSession first, second;
+
+        await using (AgentRunScope.Begin("agent-1"))
+        {
+            first = await manager.UseAsync(FirefoxProfileChoice.Disposable, false, async (session, ct) =>
+            {
+                await session.NavigateAsync(Home, ct);
+                return session;
+            }, Ct);
+        }
+
+        var browser = Assert.Single(Launcher.Browsers);
+        Assert.False(browser.Disposed);
+        await using (AgentRunScope.Begin("agent-2"))
+            second = await manager.UseAsync(FirefoxProfileChoice.Disposable, false, Same, Ct);
+
+        Assert.Same(first, second);
+        Assert.Equal(Home, (await second.ReadStateAsync(Ct)).Url);
+        Assert.Equal(1, manager.HostBrowserCount);
+        Assert.False(browser.Disposed);
+
+        manager.Dispose();
+
+        Assert.True(browser.Disposed);
+        Assert.Contains("browser.close", browser.Wire.Methods);
+        Assert.Equal(0, manager.HostBrowserCount);
+        Assert.Single(Launcher.Browsers);
+    }
+
+    [Fact]
+    public async Task Should_AttachACallOutsideAnyRunToTheHostsBrowser()
+    {
+        using var manager = Manager(new FirefoxToolOptions { Lifetime = FirefoxBrowserLifetime.Host });
+
+        var first = await manager.UseAsync(FirefoxProfileChoice.Disposable, false, Same, Ct);
+        var second = await manager.UseAsync(FirefoxProfileChoice.Disposable, false, Same, Ct);
+
+        Assert.Same(first, second);
+        Assert.True(second.IsAlive);
+        Assert.False(Assert.Single(Launcher.Browsers).Disposed);
+    }
+
+    [Fact]
+    public async Task Should_BindARunToTheProfileOfItsFirstAction_UntilClose_When_TheHostKeepsTheBrowsers()
+    {
+        using var manager = Manager(new FirefoxToolOptions { Lifetime = FirefoxBrowserLifetime.Host });
+        var work = new FirefoxProfileChoice("work");
+        await using var run = AgentRunScope.Begin("agent-1");
+
+        var first = await manager.UseAsync(work, true, Same, Ct);
+        var unnamed = await manager.UseAsync(FirefoxProfileChoice.Disposable, false, Same, Ct);
+        var error = await Assert.ThrowsAsync<FirefoxException>(() => manager.UseAsync(FirefoxProfileChoice.Disposable, true, Same, Ct));
+        var closeOther = await Assert.ThrowsAsync<FirefoxException>(() => manager.CloseAsync(FirefoxProfileChoice.Disposable, true, Ct));
+        var closed = await manager.CloseAsync(FirefoxProfileChoice.Disposable, false, Ct);
+        var next = await manager.UseAsync(FirefoxProfileChoice.Disposable, false, Same, Ct);
+
+        Assert.Same(first, unnamed);
+        Assert.Equal("The browser of this run runs with the profile 'work': close it before opening one with 'disposable'.", error.Message);
+        Assert.Equal(error.Message, closeOther.Message);
+        Assert.True(closed);
+        Assert.True(Launcher.Browsers[0].Disposed);
+        Assert.Equal("disposable", next.Browser.Profile.Name);
+        Assert.Equal(["work", "disposable"], Launcher.Profiles);
+    }
+
+    [Fact]
+    public async Task Should_LetARunNameAnotherProfile_When_TheHostsBrowserOfItsOwnHasGone()
+    {
+        using var manager = Manager(new FirefoxToolOptions { Lifetime = FirefoxBrowserLifetime.Host });
+        await using var run = AgentRunScope.Begin("agent-1");
+
+        var first = await manager.UseAsync(FirefoxProfileChoice.Disposable, false, Same, Ct);
+        Launcher.Last.Wire.Close();
+        await Polling.WaitUntilAsync(() => !first.IsAlive);
+        var second = await manager.UseAsync(new FirefoxProfileChoice("work"), true, Same, Ct);
+        manager.Dispose();
+
+        Assert.Equal("work", second.Browser.Profile.Name);
+        Assert.Equal(["disposable", "work"], Launcher.Profiles);
+        Assert.All(Launcher.Browsers, browser => Assert.True(browser.Disposed));
+    }
+
+    [Fact]
+    public async Task Should_CloseTheHostsBrowserOfTheProfileNamed_OutsideAnyRun()
+    {
+        using var manager = Manager(new FirefoxToolOptions { Lifetime = FirefoxBrowserLifetime.Host });
+        var work = new FirefoxProfileChoice("work");
+        await manager.UseAsync(work, true, Same, Ct);
+        await manager.UseAsync(FirefoxProfileChoice.Disposable, false, Same, Ct);
+
+        var closed = await manager.CloseAsync(work, true, Ct);
+        var again = await manager.CloseAsync(work, true, Ct);
+
+        Assert.True(closed);
+        Assert.False(again);
+        Assert.True(Launcher.Browsers[0].Disposed);
+        Assert.False(Launcher.Browsers[1].Disposed);
+        Assert.Equal(1, manager.HostBrowserCount);
+    }
+
+    [Fact]
+    public async Task Should_QueueTheActionsOfOverlappingRunsOnTheHostsBrowser()
+    {
+        using var manager = Manager(new FirefoxToolOptions { Lifetime = FirefoxBrowserLifetime.Host });
+        var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var firstIn = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var secondIn = false;
+
+        var first = Task.Run(async () =>
+        {
+            await using var run = AgentRunScope.Begin("agent-1");
+            return await manager.UseAsync(FirefoxProfileChoice.Disposable, false, async (session, ct) =>
+            {
+                firstIn.TrySetResult();
+                await release.Task.WaitAsync(ct);
+                return "first";
+            }, Ct);
+        }, Ct);
+        await firstIn.Task.WaitAsync(Ct);
+        var second = Task.Run(async () =>
+        {
+            await using var run = AgentRunScope.Begin("agent-2");
+            return await manager.UseAsync(FirefoxProfileChoice.Disposable, false, (session, ct) =>
+            {
+                Volatile.Write(ref secondIn, true);
+                return Task.FromResult("second");
+            }, Ct);
+        }, Ct);
+        var enteredWhileTheFirstRan = Volatile.Read(ref secondIn);
+        release.TrySetResult();
+
+        Assert.Equal(["first", "second"], await Task.WhenAll(first, second));
+        Assert.False(enteredWhileTheFirstRan);
+        Assert.Single(Launcher.Browsers);
+    }
+
+    [Fact]
+    public async Task Should_KeepTheSharedWindowOpenForTheNextRun_When_TheHostKeepsTheBrowsers()
+    {
+        using var manager = Manager(new FirefoxToolOptions { SharedInstance = true, Lifetime = FirefoxBrowserLifetime.Host });
+        FirefoxSession first, second;
+
+        await using (AgentRunScope.Begin("agent-1"))
+        {
+            first = await manager.UseAsync(FirefoxProfileChoice.Disposable, false, async (session, ct) =>
+            {
+                await session.NewTabAsync(ct);
+                return session;
+            }, Ct);
+        }
+
+        // The run's tabs went with the run; a blank one of the browser's own keeps the window.
+        var browser = Assert.Single(Launcher.Browsers);
+        Assert.False(browser.Disposed);
+        Assert.Equal(["tab-3"], browser.Tabs);
+        Assert.Equal(1, manager.Pool!.BrowserCount);
+
+        await using (AgentRunScope.Begin("agent-2"))
+        {
+            second = await manager.UseAsync(FirefoxProfileChoice.Disposable, false, (session, _) =>
+            {
+                Assert.Equal(["tab-3"], browser.Tabs);
+                return Task.FromResult(session);
+            }, Ct);
+        }
+
+        var closed = await manager.CloseAsync(FirefoxProfileChoice.Disposable, false, Ct);
+
+        Assert.NotSame(first, second);
+        Assert.Same(first.Browser, second.Browser);
+        Assert.True(closed);
+        Assert.True(browser.Disposed);
+        Assert.Equal(0, manager.Pool!.BrowserCount);
+        Assert.Single(Launcher.Browsers);
     }
 }

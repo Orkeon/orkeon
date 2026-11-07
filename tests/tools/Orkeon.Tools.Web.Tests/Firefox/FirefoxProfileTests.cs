@@ -160,4 +160,36 @@ public sealed class FirefoxProfileTests : IDisposable
         Assert.Contains($"is open in another Firefox (process {Environment.ProcessId})", error.Message, StringComparison.Ordinal);
         Assert.Equal(stale, opened.Directory);
     }
+
+    [Fact]
+    public void Should_RemoveTheDisposableFoldersNoFirefoxHolds_AndLeaveTheRest()
+    {
+        Assert.SkipWhen(OperatingSystem.IsWindows(), "The Unix lock is a symbolic link naming the process.");
+        var old = DateTime.UtcNow.AddHours(-1);
+        string Folder(string name, bool aged)
+        {
+            var directory = Directory.CreateDirectory(Path.Combine(_root.FullName, name)).FullName;
+            if (aged)
+                Directory.SetLastWriteTimeUtc(directory, old);
+            return directory;
+        }
+
+        var stale = Folder(Guid.NewGuid().ToString("N"), aged: true);
+        File.CreateSymbolicLink(Path.Combine(stale, "lock"), "127.0.0.1:+2147483646");
+        Directory.SetLastWriteTimeUtc(stale, old);
+        var unlocked = Folder(Guid.NewGuid().ToString("N"), aged: true);
+        var held = Folder(Guid.NewGuid().ToString("N"), aged: true);
+        File.CreateSymbolicLink(Path.Combine(held, "lock"), $"127.0.0.1:+{Environment.ProcessId}");
+        Directory.SetLastWriteTimeUtc(held, old);
+        var young = Folder(Guid.NewGuid().ToString("N"), aged: false);
+        var named = Folder("agent-work", aged: true);
+
+        FirefoxProfile.RemoveStale(_root.FullName, FirefoxProfile.StaleAge);
+
+        Assert.False(Directory.Exists(stale));
+        Assert.False(Directory.Exists(unlocked));
+        Assert.True(Directory.Exists(held));
+        Assert.True(Directory.Exists(young));
+        Assert.True(Directory.Exists(named));
+    }
 }

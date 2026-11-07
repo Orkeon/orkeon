@@ -39,10 +39,11 @@ internal sealed class FirefoxBrowser : IAsyncDisposable
     public FirefoxProfileChoice Profile => _process.Profile;
 
     /// <summary>
-    /// What happens when the last session leaves: the browser closes, unless an owner set this to keep
-    /// it (a shared browser) and close it itself.
+    /// What happens when the last session leaves: the browser closes, unless an owner set this to decide
+    /// (a shared browser). The owner answers <c>true</c> when it closed the browser, <c>false</c> when it
+    /// keeps it open: the session then closes its own tabs.
     /// </summary>
-    public Func<FirefoxBrowser, ValueTask>? Released { get; set; }
+    public Func<FirefoxBrowser, ValueTask<bool>>? Released { get; set; }
 
     /// <summary>How long a session waits for a page to react.</summary>
     public FirefoxSessionTimings Timings => _timings;
@@ -124,6 +125,23 @@ internal sealed class FirefoxBrowser : IAsyncDisposable
         }
     }
 
+    /// <summary>
+    /// Opens a blank tab that keeps the window open once the tabs of the session leaving close, and
+    /// hands it to the next session as its first tab. Nothing when the browser already holds one.
+    /// </summary>
+    public async Task KeepOpenAsync(CancellationToken cancellationToken)
+    {
+        lock (_sync)
+        {
+            if (_firstTab is not null)
+                return;
+        }
+
+        var tab = await CreateTabAsync(cancellationToken).ConfigureAwait(false);
+        lock (_sync)
+            _firstTab = tab;
+    }
+
     /// <summary>Brings a tab in front of the others.</summary>
     public Task ActivateAsync(string context, CancellationToken cancellationToken) =>
         SendAsync("browsingContext.activate", new JsonObject { ["context"] = context }, cancellationToken);
@@ -142,8 +160,8 @@ internal sealed class FirefoxBrowser : IAsyncDisposable
 
     /// <summary>
     /// Unregisters a session. The last one to leave closes the browser, or hands it to
-    /// <see cref="Released"/>, and gets <c>true</c>: its tabs went with the browser. A session that never
-    /// attached changes nothing.
+    /// <see cref="Released"/>, and gets <c>true</c> when its tabs went with the browser; <c>false</c> when
+    /// the browser stays and the session closes its tabs itself. A session that never attached changes nothing.
     /// </summary>
     public async ValueTask<bool> ReleaseAsync(FirefoxSession session)
     {
@@ -158,9 +176,8 @@ internal sealed class FirefoxBrowser : IAsyncDisposable
         if (!last)
             return false;
         if (Released is { } released)
-            await released(this).ConfigureAwait(false);
-        else
-            await DisposeAsync().ConfigureAwait(false);
+            return await released(this).ConfigureAwait(false);
+        await DisposeAsync().ConfigureAwait(false);
         return true;
     }
 
