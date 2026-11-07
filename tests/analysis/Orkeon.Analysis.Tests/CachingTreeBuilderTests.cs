@@ -321,6 +321,18 @@ public class CachingTreeBuilderTests
     }
 
     [Fact]
+    public void ShouldDescribeTheEmbeddingModel_InTheEnvironment()
+    {
+        var adapters = new ILanguageAdapter[] { new TypeScriptAdapter() };
+
+        var local = CachingTreeBuilder.DescribeEnvironment(adapters, [], null, new Doubles.StubEmbeddingProvider { Size = 384, Model = "bge-micro-v2" });
+        var other = CachingTreeBuilder.DescribeEnvironment(adapters, [], null, new Doubles.StubEmbeddingProvider { Size = 384, Model = "all-minilm" });
+
+        Assert.NotEqual(local, other);
+        Assert.Contains(":384:bge-micro-v2", local, StringComparison.Ordinal);
+    }
+
+    [Fact]
     [Trait("BR", "R-37")]
     public async Task ShouldIndexWithoutModulePath_WhenGoModIsRefusedByFileSystem()
     {

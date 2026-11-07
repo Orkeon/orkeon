@@ -13,7 +13,7 @@ public sealed record EdgeListRequest
     /// <summary>The most edges per page.</summary>
     public const int MaxPageSize = 1000;
 
-    [FieldSchema(Description = "Edge kinds to list, by name: contains, calls, imports, inherits, tests, documents, project_depends. Legacy enum names (Imports, Extends, Implements...) are still accepted. inherits lists both extends and implements edges.", ItemsType = "string", IsRequired = true)]
+    [FieldSchema(Description = "Edge kinds to list, by name: contains, calls, imports, inherits, extends, implements, tests, documents, project_depends, case-insensitively; inherits is extends and implements together.", ItemsType = "string", IsRequired = true)]
     [JsonPropertyName("edge_kinds")]
     public ImmutableArray<string> EdgeKinds { get; init; } = [];
 

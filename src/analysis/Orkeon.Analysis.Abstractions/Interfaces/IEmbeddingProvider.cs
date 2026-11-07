@@ -9,6 +9,12 @@ public interface IEmbeddingProvider
 {
     int Dimensions { get; }
 
+    /// <summary>
+    /// The name of the model that computes the embeddings (<c>bge-micro-v2</c>, <c>text-embedding-3-small</c>…),
+    /// recorded with an index and its cache; <see langword="null"/> when the provider does not name it.
+    /// </summary>
+    string? ModelName => null;
+
     Task<IReadOnlyList<ReadOnlyMemory<float>>> EmbedBatchAsync(
         IReadOnlyList<string> texts,
         CancellationToken ct);

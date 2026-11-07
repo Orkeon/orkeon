@@ -15,6 +15,14 @@ public sealed class LocalEmbeddingProviderTests
         new(new FakeFileSystemService(), new LocalEmbeddingOptions());
 
     [Fact]
+    public void ModelName_IsTheEmbeddedModel_WhenNoModelPath()
+    {
+        using var provider = CreateDefaultProvider();
+
+        Assert.Equal("bge-micro-v2", provider.ModelName);
+    }
+
+    [Fact]
     public async Task EmbedBatch_Empty_ReturnsEmpty()
     {
         using var provider = CreateDefaultProvider();

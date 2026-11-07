@@ -30,6 +30,9 @@ namespace Orkeon.Tools.Embeddings.Local;
 /// </remarks>
 public sealed class LocalEmbeddingProvider : IEmbeddingProvider, IDisposable
 {
+    /// <summary>The name of the model embedded in the package.</summary>
+    public const string EmbeddedModelName = "bge-micro-v2";
+
     private readonly LocalEmbedder _embedder;
     private readonly LocalEmbeddingOptions _options;
     private readonly Lazy<int> _dimensions;
@@ -124,6 +127,12 @@ public sealed class LocalEmbeddingProvider : IEmbeddingProvider, IDisposable
             return _dimensions.Value;
         }
     }
+
+    /// <summary>
+    /// <c>bge-micro-v2</c> for the embedded model; the virtual path of
+    /// <see cref="LocalEmbeddingOptions.ModelPath"/> when one is set.
+    /// </summary>
+    public string ModelName => string.IsNullOrEmpty(_options.ModelPath) ? EmbeddedModelName : _options.ModelPath;
 
     /// <inheritdoc />
     /// <exception cref="ObjectDisposedException">The provider has been disposed.</exception>

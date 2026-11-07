@@ -7,7 +7,11 @@ public sealed class StubEmbeddingProvider : IEmbeddingProvider
 {
     public int Size = 2;
 
+    public string? Model;
+
     public int Dimensions => Size;
+
+    public string? ModelName => Model;
 
     public Task<IReadOnlyList<ReadOnlyMemory<float>>> EmbedBatchAsync(IReadOnlyList<string> texts, CancellationToken ct)
     {

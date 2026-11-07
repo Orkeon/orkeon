@@ -19,7 +19,7 @@ public sealed record FlowTraceRequest
     [FieldSchema(Description = "Most hops per path (default 4).", IsRequired = false, Default = 4)]
     public int MaxDepth { get; init; } = 4;
 
-    [FieldSchema(Description = "Edge kinds to follow, by name: contains, calls, imports, inherits, tests, documents, project_depends. Legacy enum names (Imports, Extends, Implements...) are still accepted. Empty follows calls.", ItemsType = "string", IsRequired = false)]
+    [FieldSchema(Description = "Edge kinds to follow, by name: contains, calls, imports, inherits, extends, implements, tests, documents, project_depends, case-insensitively; inherits is extends and implements together. Empty follows calls.", ItemsType = "string", IsRequired = false)]
     [JsonPropertyName("edge_kinds")]
     public ImmutableArray<string> EdgeKinds { get; init; } = ["calls"];
     [FieldSchema(Description = "With to: every path up to max_paths instead of the shortest one.", IsRequired = false, Default = false)]

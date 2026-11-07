@@ -137,7 +137,7 @@ Ranges are UTF-8 **byte** offsets (`NodeRange.StartByte`/`EndByte`), like the ot
 | `symbol_detail` | Detail of a symbol (signature, doc, callers, callees) | `{ "fqn": "app::UserService::create" }` |
 | `symbol_source` | Source code excerpt (signature, body, full span) | `{ "fqn": "...", "mode": "SignatureAndBody" }` |
 | `codebase_search` | Hybrid search — embedding + BM25 fused (see [below](#hybrid-search)) | `{ "query": "session expiration", "top_k": 10 }` |
-| `dependency_graph` | Level-scoped dependency graph (L1/L2/L3); Mermaid/DOT rendering on `include_mermaid` / `include_dot` (off by default) | `{ "scope": "L2_Module", "edge_kinds": ["Imports", "Calls"] }` |
+| `dependency_graph` | Level-scoped dependency graph (L1/L2/L3); Mermaid/DOT rendering on `include_mermaid` / `include_dot` (off by default) | `{ "scope": "L2_Module", "edge_kinds": ["imports", "calls"] }` |
 | `sub_graph` | BFS expansion around seeds | `{ "seeds": ["pkg::X"], "depth": 3 }` |
 | `edge_list` | Every edge of the given kinds in the whole index, paginated, ends as FQNs | `{ "edge_kinds": ["inherits"], "page_size": 500 }` |
 | `flow_trace` | Call paths between two FQNs | `{ "from": "A", "to": "B", "max_paths": 5 }` |
@@ -192,7 +192,7 @@ it back and answers `cache`:
 The key covers what shapes the tree beyond the files: the options (`languages`, `exclude`,
 `respect_gitignore`, `root_alias`, `enrich_with_llm`, `embedding_model`, not
 `max_parallelism`), the Analysis assembly version, the serializer version, and the adapters,
-fingerprinters, summarizer and embedder (with its dimension) the host wires. A changed key
+fingerprinters, summarizer and embedder (with its dimension and the model it names, `bge-micro-v2` for the local one) the host wires. A changed key
 is a miss. The ignore files (every nested `.gitignore` and `.git/info/exclude`) are validity markers like the package markers: a change in one forces a full rebuild, and the incremental path skips ignored paths. A root the process cannot write is indexed without a cache. Only a corrupt or non-database file (`SQLITE_CORRUPT`, `SQLITE_NOTADB`) erases the cache database; a busy or locked database abandons the save and keeps the base.
 
 #### Database schema
@@ -413,6 +413,8 @@ The node tools and the structural tools read a file in any grammar of `LanguageR
 | `calls` | `Calls` |
 | `imports` | `Imports` |
 | `inherits` | `Extends` + `Implements` |
+| `extends` | `Extends` |
+| `implements` | `Implements` |
 | `tests` | `Tests` |
 | `documents` | `Documents` |
 | `project_depends` | `ProjectDepends` |
@@ -431,7 +433,7 @@ The node tools and the structural tools read a file in any grammar of `LanguageR
 
 ### Using the names
 
-- `edge_kinds` and `node_kinds` of `dependency_graph` and `sub_graph`, and `edge_kinds` of `flow_trace` and `edge_list`, take the lowercase workflow names. Legacy enum names (`Imports`) are still accepted, case-insensitively. An unknown name is refused, naming it. Responses write a kind in the same lowercase form, so a script can send back what it read: `edges[].kind` is `imports`, `project_depends`, `extends` or `implements` (an edge is one or the other, never `inherits`), and a combination joins its names with `, ` (`imports, calls`). Every scalar `[Flags]` enum of a tool request or response takes this form (snake_case member names joined by `, `): `symbol_detail` takes `expand: "members"` or `"callers, callees"`; a number is refused.
+- `edge_kinds` and `node_kinds` of `dependency_graph` and `sub_graph`, and `edge_kinds` of `flow_trace` and `edge_list`, take the lowercase workflow names, case-insensitively (`Imports` is `imports`). An unknown name is refused, naming it. Responses write a kind in the same lowercase form, so a script can send back what it read: `edges[].kind` is `imports`, `project_depends`, `extends` or `implements` (an edge is one or the other, never `inherits`), and a combination joins its names with `, ` (`imports, calls`). Every scalar `[Flags]` enum of a tool request or response takes this form (snake_case member names joined by `, `): `symbol_detail` takes `expand: "members"` or `"callers, callees"`; a number is refused.
 - `edge_list` walks the whole index, unlike `dependency_graph`, whose `max_nodes` bounds the nodes before the edges are collected: every base class of a codebase is `edge_kinds: ["inherits"]`. Its edges are ordered by source FQN, target FQN, kind and edge id; `next_cursor` (null on the last page) resumes after the last edge returned, so a page is neither repeated nor skipped when the index has not changed. `total` counts every matching edge, `root_fqn` keeps the edges with an end at or under one node (a package or file by path, a type or member by FQN with a boundary, a namespace by its files and name), and `page_size` goes up to 1000 (default 200). `from`/`to` are FQNs, `from_id`/`to_id` the node ids `dependency_graph` writes; an end outside the index keeps its id in both.
 - `symbol_detail` with `expand: "inheritance"` lists `extends` and `implements` as FQNs, and what points back at the symbol: `derived_by` (the types that extend it) and `implemented_by` (the types that implement it).
 - `flow_trace` follows `calls` when `edge_kinds` is empty; `inherits` follows both `extends` and `implements`.

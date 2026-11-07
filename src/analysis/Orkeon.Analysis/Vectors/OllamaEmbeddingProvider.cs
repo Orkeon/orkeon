@@ -54,6 +54,9 @@ public sealed class OllamaEmbeddingProvider : IEmbeddingProvider, IDisposable
 
     public int Dimensions => _options.Dimensions;
 
+    /// <summary>The model the requests name.</summary>
+    public string ModelName => _options.Model;
+
     public Task<IReadOnlyList<ReadOnlyMemory<float>>> EmbedBatchAsync(
         IReadOnlyList<string> texts,
         CancellationToken ct)

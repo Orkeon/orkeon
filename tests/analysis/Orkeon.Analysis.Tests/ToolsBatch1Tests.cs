@@ -327,7 +327,8 @@ public class ToolsBatch1Tests
 
     private static async Task<BuildResult> BuildWithEmbedderAsync(
         (string Path, string Content)[] files,
-        IEmbeddingProvider? embedder)
+        IEmbeddingProvider? embedder,
+        string embeddingModel = "text-embedding-3-small")
     {
         var dir = await TestFixtures.WriteDirectoryAsync(files);
         try
@@ -343,7 +344,7 @@ public class ToolsBatch1Tests
                 new RaggableEnrichmentServices { Embedder = embedder });
             return await builder.BuildAsync(
                 TestFixtures.TestVirtualRoot,
-                new IndexCodebaseRequest { RootPath = TestFixtures.TestVirtualRoot },
+                new IndexCodebaseRequest { RootPath = TestFixtures.TestVirtualRoot, EmbeddingModel = embeddingModel },
                 CancellationToken.None);
         }
         finally
@@ -369,6 +370,34 @@ public class ToolsBatch1Tests
     }
 
     [Fact]
+    public async Task IndexCodebase_records_the_model_the_provider_names()
+    {
+        var stubEmbedder = new StubEmbeddingProvider(dimensions: 3, vector: [1f, 0f, 0f]) { ModelName = "bge-micro-v2" };
+        var result = await BuildWithEmbedderAsync(
+        [
+            ("package.json", TestFixtures.PackageJson),
+            ("src/a.ts", TestFixtures.SimpleClass),
+        ], stubEmbedder, embeddingModel: "text-embedding-3-small");
+
+        Assert.NotNull(result.EmbeddingStats);
+        Assert.Equal("bge-micro-v2", result.EmbeddingStats!.Model);
+    }
+
+    [Fact]
+    public async Task IndexCodebase_records_the_requested_model_when_the_provider_names_none()
+    {
+        var stubEmbedder = new StubEmbeddingProvider(dimensions: 3, vector: [1f, 0f, 0f]);
+        var result = await BuildWithEmbedderAsync(
+        [
+            ("package.json", TestFixtures.PackageJson),
+            ("src/a.ts", TestFixtures.SimpleClass),
+        ], stubEmbedder, embeddingModel: "custom-model");
+
+        Assert.NotNull(result.EmbeddingStats);
+        Assert.Equal("custom-model", result.EmbeddingStats!.Model);
+    }
+
+    [Fact]
     public async Task IndexCodebase_without_embedder_returns_null_stats()
     {
         var result = await BuildWithEmbedderAsync(
@@ -385,6 +414,7 @@ public class ToolsBatch1Tests
     {
         private readonly float[] _vector;
         public int Dimensions { get; }
+        public string? ModelName { get; init; }
 
         public StubEmbeddingProvider(int dimensions, float[] vector)
         {

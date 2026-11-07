@@ -76,7 +76,7 @@ public sealed partial class CachingTreeBuilder
         _logger = logger ?? (ILogger)NullLogger.Instance;
     }
 
-    /// <summary>The environment string of a host: the type of every component that shapes a tree, and the embedding size.</summary>
+    /// <summary>The environment string of a host: the type of every component that shapes a tree, and the embedding size and model.</summary>
     public static string DescribeEnvironment(
         IEnumerable<ILanguageAdapter> adapters,
         IEnumerable<IFrameworkFingerprinter> fingerprinters,
@@ -89,7 +89,7 @@ public sealed partial class CachingTreeBuilder
         parts.AddRange(adapters.Select(a => $"adapter:{a.LanguageName}:{a.GetType().FullName}").Order(StringComparer.Ordinal));
         parts.AddRange(fingerprinters.Select(f => $"fingerprinter:{f.GetType().FullName}").Order(StringComparer.Ordinal));
         parts.Add($"summarizer:{summarizer?.GetType().FullName}");
-        parts.Add(embedder is null ? "embedder:" : $"embedder:{embedder.GetType().FullName}:{embedder.Dimensions}");
+        parts.Add(embedder is null ? "embedder:" : $"embedder:{embedder.GetType().FullName}:{embedder.Dimensions}:{embedder.ModelName}");
         return string.Join('\n', parts);
     }
 

@@ -321,7 +321,7 @@ public sealed class RaggableTreeBuilder
         return new EmbeddingStats
         {
             Provider = string.IsNullOrEmpty(providerName) ? "Unknown" : providerName,
-            Model = opts.EmbeddingModel ?? "",
+            Model = _embedder.ModelName ?? opts.EmbeddingModel ?? "",
             Dimensions = _embedder.Dimensions,
             NodesEmbedded = nodesEmbedded,
             NodesSkipped = nodesSkipped < 0 ? 0 : nodesSkipped,
