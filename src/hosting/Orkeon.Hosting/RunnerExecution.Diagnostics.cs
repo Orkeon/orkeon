@@ -152,6 +152,7 @@ public static partial class RunnerExecution
                     // human_input is silently absent from --list-tools.
                     services.AddOrkeonHumanInput();
                     services.AddSingleton(console);
+                    RunnerHost.RegisterMcpLoginInteraction(services, console);
                     configureServices?.Invoke(ctx, services);
                 },
                 console.ErrorOutput,

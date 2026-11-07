@@ -1,4 +1,12 @@
+using Orkeon.Tools.Abstractions.Auth;
+
 namespace Orkeon.Infrastructure.MCP.Auth;
+
+/// <summary>What an OAuth server needs from the host: the token endpoint's HTTP client, the person to show a device code to, the clock.</summary>
+/// <param name="HttpClientFactory">Builds the <c>orkeon-mcp-oauth</c> client.</param>
+/// <param name="Interaction">Shows a device sign-in code; null in a host without a terminal (<c>orkeon-host</c>).</param>
+/// <param name="Time">The clock of the token expiry.</param>
+internal sealed record McpOAuthServices(IHttpClientFactory? HttpClientFactory, IOAuthLoginInteraction? Interaction, TimeProvider Time);
 
 /// <summary>Validates a server's headers and auth settings and builds its request authenticator.</summary>
 internal static class McpRequestAuthenticators
@@ -10,7 +18,7 @@ internal static class McpRequestAuthenticators
     /// declares no header and no auth.
     /// </summary>
     /// <exception cref="McpServerConfigurationException">The configuration is invalid; the key is named.</exception>
-    public static IMcpRequestAuthenticator? Create(string serverId, McpServerConfig config, Func<string, string?>? environment = null)
+    public static IMcpRequestAuthenticator? Create(string serverId, McpServerConfig config, Func<string, string?>? environment = null, McpOAuthServices? oauth = null)
     {
         ArgumentNullException.ThrowIfNull(config);
         environment ??= Environment.GetEnvironmentVariable;
@@ -66,6 +74,10 @@ internal static class McpRequestAuthenticators
                     passwordKey, Checked(passwordKey, auth.PasswordEnv, environment),
                     environment));
                 break;
+            case McpAuthType.OAuth2ClientCredentials:
+            case McpAuthType.OAuth2Device:
+                links.Add(CreateOAuth(serverId, prefix, auth, environment, oauth));
+                break;
             default:
                 throw new McpServerConfigurationException($"{prefix}:Auth:Type", $"{prefix}:Auth:Type '{auth.Type}' is not supported.");
         }
@@ -76,6 +88,62 @@ internal static class McpRequestAuthenticators
             1 => links[0],
             _ => new ChainedMcpRequestAuthenticator(links),
         };
+    }
+
+    private static OAuthMcpAuthenticator CreateOAuth(
+        string serverId, string prefix, McpAuthConfig auth, Func<string, string?> environment, McpOAuthServices? oauth)
+    {
+        var device = auth.Type == McpAuthType.OAuth2Device;
+        var typeName = device ? "oauth2-device" : "oauth2-client-credentials";
+        var tokenEndpoint = Endpoint($"{prefix}:Auth:TokenUrl", auth.TokenUrl);
+        Uri? deviceEndpoint = device ? Endpoint($"{prefix}:Auth:DeviceAuthorizationUrl", auth.DeviceAuthorizationUrl) : null;
+        if (string.IsNullOrWhiteSpace(auth.ClientId))
+            throw new McpServerConfigurationException($"{prefix}:Auth:ClientId", $"{prefix}:Auth:ClientId must name the OAuth client.");
+
+        var secretKey = $"{prefix}:Auth:ClientSecretEnv";
+        var secretVariable = device && string.IsNullOrWhiteSpace(auth.ClientSecretEnv)
+            ? null
+            : Checked(secretKey, auth.ClientSecretEnv, environment);
+
+        if (device && oauth?.Interaction is null)
+        {
+            throw new McpServerConfigurationException($"{prefix}:Auth:Type",
+                $"{prefix}:Auth:Type '{typeName}' is refused for MCP server '{serverId}': this host has no terminal to show the sign-in code on; run it with orkeon run or the REPL.");
+        }
+
+        if (oauth?.HttpClientFactory is null)
+        {
+            throw new McpServerConfigurationException($"{prefix}:Auth:Type",
+                $"{prefix}:Auth:Type '{typeName}' needs an HTTP client factory for MCP server '{serverId}'.");
+        }
+
+        var settings = new OAuthSettings
+        {
+            ClientId = auth.ClientId,
+            ClientSecretEnvVar = secretVariable,
+            Flow = device ? OAuthFlow.DeviceCode : OAuthFlow.ClientCredentials,
+            TokenEndpoint = tokenEndpoint,
+            DeviceCodeEndpoint = deviceEndpoint,
+            Scopes = [.. auth.Scopes],
+            Audience = string.IsNullOrWhiteSpace(auth.Audience) ? null : auth.Audience,
+        };
+        var client = new OAuth2Client(oauth.HttpClientFactory.CreateClient(McpServiceExtensions.OAuthHttpClientName), oauth.Time);
+        return new OAuthMcpAuthenticator(serverId, client, settings, secretVariable, environment, oauth.Interaction, oauth.Time);
+    }
+
+    /// <summary>An absolute address, HTTPS or loopback HTTP: a credential is never posted in clear to another host.</summary>
+    private static Uri Endpoint(string key, Uri? value)
+    {
+        if (value is null)
+            throw new McpServerConfigurationException(key, $"{key} must give the address of the endpoint.");
+        var uri = value;
+        if (!uri.IsAbsoluteUri
+            || !(uri.Scheme == Uri.UriSchemeHttps || (uri.Scheme == Uri.UriSchemeHttp && uri.IsLoopback)))
+        {
+            throw new McpServerConfigurationException(key, $"{key} must be an absolute https address (http only on loopback).");
+        }
+
+        return uri;
     }
 
     /// <summary>The variable name, once the key names one and it holds a value.</summary>

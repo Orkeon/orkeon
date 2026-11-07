@@ -243,6 +243,13 @@ strangers and acts on a real mailbox, so its defense does not rest on the model'
   class, a 1-pixel font or white on white is not detected, and a plain-text part — what the
   agent reads when there is one — is not compared with the HTML. The default policy flags;
   `Screening:WithholdRejected` withholds the body of a rejected message.
+- **MCP OAuth tokens never reach the disk or the log (FWK-16).** An MCP server in `oauth2-client-credentials`
+  or `oauth2-device` is signed in by `OAuthMcpAuthenticator`: the client secret is read from an environment
+  variable on every token request, the access and refresh tokens are held in memory only, and the token endpoint
+  is reached through the `orkeon-mcp-oauth` client, which is kept out of the LLM exchange log. The secret and
+  the tokens are scrubbed from every error and log line, even when the identity provider echoes them; a token
+  endpoint must be `https` (loopback `http` excepted). `orkeon-host` has no terminal and refuses the device flow
+  ([MCP integration](./mcp.md)).
 - **Tokens stay out of the agents' reach.** OAuth tokens are written by `orkeon email login`
   into the internal root `/credentials`, mounted only when an OAuth account is declared and
   reached through `PrivilegedFileSystemAccess`, which no agent-facing tool resolves

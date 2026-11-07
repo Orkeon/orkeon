@@ -212,20 +212,42 @@ public partial class StreamableHttpMcpTransport : IMcpTransport
         return response;
     }
 
+    /// <summary>
+    /// One POST. A 401 asks the authenticator for a new credential; when it has one, the request is sent again,
+    /// once: a second 401 is the answer. Requests refused together share the one renewal the authenticator makes.
+    /// </summary>
     private async Task<HttpResponseMessage> PostOnceAsync(string json, string method, JsonElement? parameters, CancellationToken ct)
     {
-        using var message = new HttpRequestMessage(HttpMethod.Post, _url)
+        var retried = false;
+        while (true)
         {
-            Content = new StringContent(json, System.Text.Encoding.UTF8, HttpDefaults.JsonContentType)
-        };
-        message.Headers.TryAddWithoutValidation("Accept", $"{HttpDefaults.JsonContentType}, {SseMediaType}");
-        AddMcpHeaders(message, method, parameters);
-        if (_authenticator is not null)
-            await _authenticator.ApplyAsync(message, ct).ConfigureAwait(false);
+            string? credential;
+            HttpResponseMessage response;
+            using (var message = new HttpRequestMessage(HttpMethod.Post, _url)
+            {
+                Content = new StringContent(json, System.Text.Encoding.UTF8, HttpDefaults.JsonContentType)
+            })
+            {
+                message.Headers.TryAddWithoutValidation("Accept", $"{HttpDefaults.JsonContentType}, {SseMediaType}");
+                AddMcpHeaders(message, method, parameters);
+                if (_authenticator is not null)
+                    await _authenticator.ApplyAsync(message, ct).ConfigureAwait(false);
+                credential = message.Headers.Authorization?.ToString();
 
-        var response = await _httpClient.SendAsync(message, HttpCompletionOption.ResponseHeadersRead, ct).ConfigureAwait(false);
-        CaptureSession(response);
-        return response;
+                response = await _httpClient.SendAsync(message, HttpCompletionOption.ResponseHeadersRead, ct).ConfigureAwait(false);
+            }
+
+            if (response.StatusCode == HttpStatusCode.Unauthorized && !retried && _authenticator is not null
+                && await _authenticator.HandleUnauthorizedAsync(credential, ct).ConfigureAwait(false))
+            {
+                response.Dispose();
+                retried = true;
+                continue;
+            }
+
+            CaptureSession(response);
+            return response;
+        }
     }
 
     private void CaptureSession(HttpResponseMessage response)
@@ -445,6 +467,7 @@ public partial class StreamableHttpMcpTransport : IMcpTransport
     {
         var attempt = 0;
         var reinitializations = 0;
+        var unauthorizedRetried = false;
         var opened = false;
         while (!ct.IsCancellationRequested)
         {
@@ -462,8 +485,24 @@ public partial class StreamableHttpMcpTransport : IMcpTransport
                     message.Headers.TryAddWithoutValidation("Last-Event-ID", lastEventId);
                 if (_authenticator is not null)
                     await _authenticator.ApplyAsync(message, ct).ConfigureAwait(false);
+                var credential = message.Headers.Authorization?.ToString();
 
                 using var response = await _httpClient.SendAsync(message, HttpCompletionOption.ResponseHeadersRead, ct).ConfigureAwait(false);
+                if (response.StatusCode == HttpStatusCode.Unauthorized && _authenticator is not null)
+                {
+                    // A refused credential is renewed and the stream opens again at once, once in a row: a server
+                    // that refuses the new one too is backed off like any other failure.
+                    if (!unauthorizedRetried && await _authenticator.HandleUnauthorizedAsync(credential, ct).ConfigureAwait(false))
+                    {
+                        unauthorizedRetried = true;
+                        continue;
+                    }
+                }
+                else
+                {
+                    unauthorizedRetried = false;
+                }
+
                 if (response.StatusCode is HttpStatusCode.MethodNotAllowed or HttpStatusCode.NotImplemented)
                 {
                     LogNoGetStream(_url);
@@ -538,6 +577,9 @@ public partial class StreamableHttpMcpTransport : IMcpTransport
             {
                 return;
             }
+
+            // The token may have expired during the wait: the next 401 is renewed again.
+            unauthorizedRetried = false;
         }
     }
 

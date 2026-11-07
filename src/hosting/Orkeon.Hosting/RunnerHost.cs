@@ -1798,6 +1798,17 @@ public static partial class RunnerHost
     }
 
     /// <summary>
+    /// Lets an <c>oauth2-device</c> MCP server show its sign-in code on <paramref name="console"/> (FWK-16). Called by
+    /// <c>orkeon run</c> and the REPL; <c>orkeon-host</c> never calls it, so it refuses such a server at start.
+    /// </summary>
+    internal static void RegisterMcpLoginInteraction(IServiceCollection services, IRunnerConsole console)
+    {
+        ArgumentNullException.ThrowIfNull(services);
+        ArgumentNullException.ThrowIfNull(console);
+        services.AddSingleton<Orkeon.Tools.Abstractions.Auth.IOAuthLoginInteraction>(new McpConsoleLoginInteraction(console));
+    }
+
+    /// <summary>
     /// Declares <c>Orkeon:Tools:Shell</c>, which <c>AddOrkeonCodeTools</c> binds and validates at
     /// start (GAP-40): its values and its keys are judged with every section's. The REPL declares it
     /// the same way.

@@ -8,4 +8,12 @@ internal sealed class ChainedMcpRequestAuthenticator(IReadOnlyList<IMcpRequestAu
         foreach (var link in links)
             await link.ApplyAsync(request, ct).ConfigureAwait(false);
     }
+
+    public async ValueTask<bool> HandleUnauthorizedAsync(string? rejectedCredential, CancellationToken ct = default)
+    {
+        var renewed = false;
+        foreach (var link in links)
+            renewed |= await link.HandleUnauthorizedAsync(rejectedCredential, ct).ConfigureAwait(false);
+        return renewed;
+    }
 }

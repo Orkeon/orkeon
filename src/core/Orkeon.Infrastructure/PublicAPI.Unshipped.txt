@@ -328,7 +328,7 @@ Orkeon.Infrastructure.Tools.MemoryStoreRequest.NewestFirst.set -> void
 [ORKEXP004]Orkeon.Infrastructure.MCP.McpToolFilterConfig.Deny.get -> System.Collections.ObjectModel.Collection<string!>!
 [ORKEXP004]Orkeon.Infrastructure.MCP.McpToolFilterConfig.McpToolFilterConfig() -> void
 [ORKEXP004]Orkeon.Infrastructure.MCP.McpToolProvider.ConnectServerAsync(string! serverId, Orkeon.Infrastructure.MCP.IMcpTransport! transport, Orkeon.Infrastructure.MCP.McpServerConfig! config, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
-[ORKEXP004]Orkeon.Infrastructure.MCP.McpToolProvider.McpToolProvider(Orkeon.Domain.Tools.IToolRegistry! toolRegistry, Microsoft.Extensions.Logging.ILoggerFactory? loggerFactory = null, System.Net.Http.IHttpClientFactory? httpClientFactory = null, System.TimeProvider? timeProvider = null) -> void
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpToolProvider.McpToolProvider(Orkeon.Domain.Tools.IToolRegistry! toolRegistry, Microsoft.Extensions.Logging.ILoggerFactory? loggerFactory = null, System.Net.Http.IHttpClientFactory? httpClientFactory = null, System.TimeProvider? timeProvider = null, Orkeon.Tools.Abstractions.Auth.IOAuthLoginInteraction? loginInteraction = null) -> void
 [ORKEXP004]const Orkeon.Infrastructure.MCP.McpServiceExtensions.HttpClientName = "orkeon-mcp" -> string!
 *REMOVED*[ORKEXP004]Orkeon.Infrastructure.MCP.McpToolAdapter.McpToolAdapter(Orkeon.Infrastructure.MCP.McpToolDefinition! definition, Orkeon.Infrastructure.MCP.McpClient! client, bool trustAnnotations = false) -> void
 *REMOVED*[ORKEXP004]Orkeon.Infrastructure.MCP.McpToolProvider.McpToolProvider(Orkeon.Domain.Tools.IToolRegistry! toolRegistry, Microsoft.Extensions.Logging.ILoggerFactory? loggerFactory = null) -> void
@@ -638,3 +638,19 @@ static Orkeon.Infrastructure.Evaluation.ReportExporter.ToJson(Orkeon.Application
 static Orkeon.Infrastructure.Evaluation.ReportExporter.ToJson(Orkeon.Infrastructure.Evaluation.ComparisonResult! comparison) -> string!
 static Orkeon.Infrastructure.Evaluation.ReportExporter.ReadComparableReport(string! json) -> Orkeon.Application.Evaluation.BenchmarkReport!
 [ORKEXP007]static Orkeon.Infrastructure.Runs.RedactingRunEventSink.Redact(System.Text.Json.Nodes.JsonNode? node) -> System.Text.Json.Nodes.JsonNode?
+
+[ORKEXP004]Orkeon.Infrastructure.MCP.Auth.IMcpRequestAuthenticator.HandleUnauthorizedAsync(string? rejectedCredential, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask<bool>
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpAuthConfig.Audience.get -> string?
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpAuthConfig.Audience.set -> void
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpAuthConfig.ClientId.get -> string?
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpAuthConfig.ClientId.set -> void
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpAuthConfig.ClientSecretEnv.get -> string?
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpAuthConfig.ClientSecretEnv.set -> void
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpAuthConfig.DeviceAuthorizationUrl.get -> System.Uri?
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpAuthConfig.DeviceAuthorizationUrl.set -> void
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpAuthConfig.Scopes.get -> System.Collections.ObjectModel.Collection<string!>!
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpAuthConfig.TokenUrl.get -> System.Uri?
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpAuthConfig.TokenUrl.set -> void
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpAuthType.OAuth2ClientCredentials = 3 -> Orkeon.Infrastructure.MCP.McpAuthType
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpAuthType.OAuth2Device = 4 -> Orkeon.Infrastructure.MCP.McpAuthType
+[ORKEXP004]const Orkeon.Infrastructure.MCP.McpServiceExtensions.OAuthHttpClientName = "orkeon-mcp-oauth" -> string!

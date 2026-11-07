@@ -185,13 +185,13 @@ closed list, and what it means.
 | [RAG](#rag) | [`Orkeon:Rag`](#orkeonrag), [`Orkeon:Rag:Ingestion`](#orkeonragingestion), [`Orkeon:Rag:QueryRouting`](#orkeonragqueryrouting), [`Orkeon:Rag:Retrieval:Hybrid`](#orkeonragretrievalhybrid), [`Orkeon:Rag:WebFallback`](#orkeonragwebfallback) | 34 |
 | [Files and sandbox](#files-and-sandbox) | [`Orkeon:CodeSandbox`](#orkeoncodesandbox), [`Orkeon:CodeSandbox:Docker`](#orkeoncodesandboxdocker), [`Orkeon:FileSystem`](#orkeonfilesystem), [`Orkeon:Sandbox`](#orkeonsandbox), [`PathSecurity`](#pathsecurity) | 33 |
 | [Security](#security) | [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:Guardian`](#orkeonguardian), [`Orkeon:Security:PermissionGate`](#orkeonsecuritypermissiongate), [`Secrets`](#secrets), [`Security:Audit`](#securityaudit), [`Security:Prompt`](#securityprompt), [`Security:ToolResults`](#securitytoolresults), [`Security:Url`](#securityurl), [`Security:Vault`](#securityvault) | 40 |
-| [Tools](#tools) | [`BRAVE_API_KEY`](#brave_api_key), [`MCP`](#mcp), [`MCP:Server`](#mcpserver), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Tools:Drive`](#orkeontoolsdrive), [`Orkeon:Tools:Email`](#orkeontoolsemail), [`Orkeon:Tools:Firefox`](#orkeontoolsfirefox), [`Orkeon:Tools:GitHub`](#orkeontoolsgithub), [`Orkeon:Tools:ResultLimits`](#orkeontoolsresultlimits), [`Orkeon:Tools:Shell`](#orkeontoolsshell), [`Plugins`](#plugins), [`RaggableTree`](#raggabletree) | 102 |
+| [Tools](#tools) | [`BRAVE_API_KEY`](#brave_api_key), [`MCP`](#mcp), [`MCP:Server`](#mcpserver), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Tools:Drive`](#orkeontoolsdrive), [`Orkeon:Tools:Email`](#orkeontoolsemail), [`Orkeon:Tools:Firefox`](#orkeontoolsfirefox), [`Orkeon:Tools:GitHub`](#orkeontoolsgithub), [`Orkeon:Tools:ResultLimits`](#orkeontoolsresultlimits), [`Orkeon:Tools:Shell`](#orkeontoolsshell), [`Plugins`](#plugins), [`RaggableTree`](#raggabletree) | 108 |
 | [Orchestration and persistence](#orchestration-and-persistence) | [`Orkeon:Checkpointing`](#orkeoncheckpointing), [`Orkeon:Consensus`](#orkeonconsensus), [`Orkeon:CrewFactory`](#orkeoncrewfactory), [`Orkeon:ExecutionState:Persistence`](#orkeonexecutionstatepersistence), [`Orkeon:RunHistory`](#orkeonrunhistory) | 25 |
 | [Scripts and console](#scripts-and-console) | [`Orkeon:Cli:ConsoleStreaming`](#orkeoncliconsolestreaming), [`Orkeon:Cli:Memory`](#orkeonclimemory), [`Orkeon:Cli:ScriptCommands`](#orkeoncliscriptcommands), [`Orkeon:Cli:ScriptHost`](#orkeoncliscripthost), [`Orkeon:Cli:Session`](#orkeonclisession), [`Orkeon:Cli:Tui`](#orkeonclitui), [`Orkeon:Scripting:AgentInstances`](#orkeonscriptingagentinstances), [`Orkeon:Scripting:AgentMemory`](#orkeonscriptingagentmemory), [`Orkeon:Scripting:Limits`](#orkeonscriptinglimits), [`Orkeon:Scripting:Toolchain`](#orkeonscriptingtoolchain) | 32 |
 | [Service host and A2A](#service-host-and-a2a) | [`A2A`](#a2a), [`A2A:Security`](#a2asecurity), [`A2A:Security:AzureAD`](#a2asecurityazuread), [`A2A:Security:Oidc`](#a2asecurityoidc), [`Orkeon:Host`](#orkeonhost), [`Orkeon:Host:Discord`](#orkeonhostdiscord) | 46 |
 | [Observability](#observability) | [`Logging`](#logging), [`Orkeon:Monitoring`](#orkeonmonitoring), [`Telemetry`](#telemetry) | 8 |
 
-79 sections, 491 keys. Read by no shipped binary, only by a host written in C# (7): [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:CognitiveMemory`](#orkeoncognitivememory), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Monitoring`](#orkeonmonitoring).
+79 sections, 497 keys. Read by no shipped binary, only by a host written in C# (7): [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:CognitiveMemory`](#orkeoncognitivememory), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Monitoring`](#orkeonmonitoring).
 <!-- /settings-index -->
 
 How to read a table:
@@ -1695,9 +1695,15 @@ loads (STUDIO-21), by `orkeon-host` once at startup, before its first message (G
 |---|---|---|---|---|
 | `Enabled` | boolean | `true` |  | Whether MCP is enabled at all. |
 | `Servers:<name>:Args` | list of string | `[]` |  | Command-line arguments for the server process. |
+| `Servers:<name>:Auth:Audience` | string | — |  | The OAuth audience the token is issued for, when the provider asks for one. |
+| `Servers:<name>:Auth:ClientId` | string | — |  | The OAuth client id. |
+| `Servers:<name>:Auth:ClientSecretEnv` | string | — |  | The environment variable holding the OAuth client secret (required for client credentials, optional for the device flow). |
+| `Servers:<name>:Auth:DeviceAuthorizationUrl` | uri | — |  | The OAuth device authorization endpoint (`oauth2-device`). |
 | `Servers:<name>:Auth:PasswordEnv` | string | — |  | The environment variable holding the basic-auth password. |
+| `Servers:<name>:Auth:Scopes` | list of string | `[]` |  | The OAuth scopes requested; none by default. |
 | `Servers:<name>:Auth:TokenEnv` | string | — |  | The environment variable holding the bearer token. |
-| `Servers:<name>:Auth:Type` | enum | `"None"` | `None`, `Bearer`, `Basic` | The authentication scheme. |
+| `Servers:<name>:Auth:TokenUrl` | uri | — |  | The OAuth token endpoint (`oauth2-client-credentials`, `oauth2-device`): HTTPS, or HTTP on loopback. |
+| `Servers:<name>:Auth:Type` | enum | `"None"` | `None`, `Bearer`, `Basic`, `OAuth2ClientCredentials`, `OAuth2Device` | The authentication scheme, each with the keys it needs: `None`; `Bearer` (`TokenEnv`); `Basic` (`UserEnv`, `PasswordEnv`); `oauth2-client-credentials` (`TokenUrl`, `ClientId`, `ClientSecretEnv`; optional `Scopes`, `Audience`); `oauth2-device` (`TokenUrl`, `DeviceAuthorizationUrl`, `ClientId`; optional `ClientSecretEnv`, `Scopes`, `Audience`; refused by `orkeon-host`, which has no terminal). Accepted spellings, exactly: `None`, `none`, `Bearer`, `bearer`, `Basic`, `basic`, `OAuth2ClientCredentials`, `oauth2-client-credentials`, `OAuth2Device`, `oauth2-device`. |
 | `Servers:<name>:Auth:UserEnv` | string | — |  | The environment variable holding the basic-auth user name. |
 | `Servers:<name>:CallTimeout` | duration | `"00:01:00"` |  | How long one tool call may take before it ends as a tool error. 60 seconds by default. |
 | `Servers:<name>:Command` | string | `""` |  | Command to launch the MCP server process (for stdio transport). |

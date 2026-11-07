@@ -261,6 +261,14 @@ jugement du modèle.
   sont pas détectés, et une partie texte brut — ce que lit l'agent quand il y en a une — n'est
   pas comparée au HTML. La politique par défaut signale ; `Screening:WithholdRejected` retient le
   corps d'un message rejeté.
+- **Les jetons OAuth MCP n'atteignent ni le disque ni le journal (FWK-16).** Un serveur MCP en
+  `oauth2-client-credentials` ou `oauth2-device` est connecté par `OAuthMcpAuthenticator` : le secret du client est
+  lu dans une variable d'environnement à chaque demande de jeton, les jetons d'accès et de rafraîchissement ne
+  vivent qu'en mémoire, et le point de terminaison de jeton est joint par le client `orkeon-mcp-oauth`, exclu du
+  journal d'échanges LLM. Le secret et les jetons sont masqués de chaque erreur et ligne de log, même quand le
+  fournisseur d'identité les renvoie en écho ; un point de terminaison de jeton est en `https` (le `http` de la
+  boucle locale excepté). `orkeon-host` n'a pas de terminal et refuse le device flow
+  ([Intégration MCP](./mcp.md)).
 - **Les jetons restent hors de portée des agents.** Les jetons OAuth sont écrits par
   `orkeon email login` dans la racine interne `/credentials`, montée seulement quand un compte
   OAuth est déclaré et atteinte par `PrivilegedFileSystemAccess`, qu'aucun outil destiné aux

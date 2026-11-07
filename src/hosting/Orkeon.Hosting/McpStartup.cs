@@ -71,6 +71,7 @@ internal static partial class McpStartup
         var logger = loggerFactory.CreateLogger("Orkeon.Hosting.McpStartup");
         var operatorLogger = RunnerOperatorLog.Create(loggerFactory);
         var servers = services.GetRequiredService<IOptions<McpOptions>>().Value.Servers;
+        ReportUnreadableServers(services, servers, logger, operatorLogger);
 
         foreach (var (serverId, config) in servers)
         {
@@ -85,6 +86,39 @@ internal static partial class McpStartup
             {
                 Report(logger, operatorLogger, serverId, ex.Message);
             }
+        }
+    }
+
+    /// <summary>
+    /// A server whose settings the binder cannot convert (a misspelt <c>Auth:Type</c>, a bad duration) is dropped from
+    /// the bound options without a word: it is read again alone, which does throw, and the reason is reported with the
+    /// server's name, so a typo costs one clear line and not a server that silently never connects.
+    /// </summary>
+    [SuppressMessage("Design", "CA1031", Justification = "Whatever the binder throws on one server's settings is that server's reason to be set aside.")]
+    private static void ReportUnreadableServers(
+        IServiceProvider services, Dictionary<string, McpServerConfig> bound, ILogger logger, ILogger operatorLogger)
+    {
+        var section = services.GetService<IConfiguration>()?.GetSection(ConfigurationKeys.McpSection).GetSection("Servers");
+        if (section is null)
+            return;
+
+        foreach (var child in section.GetChildren())
+        {
+            if (bound.ContainsKey(child.Key))
+                continue;
+
+            string reason;
+            try
+            {
+                _ = child.Get<McpServerConfig>();
+                reason = "its settings could not be read";
+            }
+            catch (Exception ex)
+            {
+                reason = ex.InnerException?.Message ?? ex.Message;
+            }
+
+            Report(logger, operatorLogger, child.Key, $"MCP:Servers:{child.Key} was set aside: {reason}");
         }
     }
 

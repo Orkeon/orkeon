@@ -49,6 +49,7 @@ public static class SettingPlaceholders
         string[] values =
         [
             "MCP:Servers:*:Command", "MCP:Servers:*:Args:*", "MCP:Servers:*:Url",
+            "MCP:Servers:*:Auth:TokenUrl", "MCP:Servers:*:Auth:DeviceAuthorizationUrl",
             "Orkeon:Redis:ConnectionString", "Orkeon:Sqlite:ConnectionString", "Orkeon:Checkpointing:ConnectionString",
             "RaggableTree:Embedding:ApiKey", "Orkeon:Pinecone:ApiKey", "Orkeon:LanceDb:ApiKey",
             "Llm:BaseUrl", "Llm:Profiles:*:BaseUrl", "RaggableTree:Embedding:BaseUrl", "Orkeon:ChromaDb:BaseUrl",
@@ -61,7 +62,7 @@ public static class SettingPlaceholders
         [
             "Llm:ApiKeyEnvVar", "Llm:Profiles:*:ApiKeyEnvVar", "Orkeon:Rag:WebFallback:ApiKeyEnvVar",
             "Orkeon:Host:Discord:TokenEnvironmentVariable", "A2A:Security:ApiKeySecretNames:*", "Orkeon:Encryption:SecretName",
-            "Orkeon:Tools:GitHub:TokenVariable",
+            "Orkeon:Tools:GitHub:TokenVariable", "MCP:Servers:*:Auth:ClientSecretEnv",
             "Orkeon:TypeSafe:ApiKeyEnvVar", "Orkeon:Liquid:ApiKeyEnvVar", "Orkeon:Kev:ApiKeyEnvVar",
         ];
         List<SettingPlaceholderSetting> list =

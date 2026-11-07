@@ -45,6 +45,18 @@ public sealed class ReplMcpAndPluginsTests : IDisposable
             .Any(directory => File.Exists(Path.Combine(directory, OperatingSystem.IsWindows() ? "node.exe" : "node")));
 
     [Fact]
+    public void The_REPL_registers_the_interaction_an_oauth2_device_server_shows_its_code_through()
+    {
+        using var host = Start("""
+            { "MCP": { "Servers": { "tracker": { "Transport": "Sse", "Url": "http://127.0.0.1:9/mcp/",
+              "Auth": { "Type": "oauth2-device", "ClientId": "orkeon-cli",
+                        "TokenUrl": "https://idp.example.test/token", "DeviceAuthorizationUrl": "https://idp.example.test/device" } } } } }
+            """);
+
+        Assert.NotNull(host.Services.GetService<Orkeon.Tools.Abstractions.Auth.IOAuthLoginInteraction>());
+    }
+
+    [Fact]
     public async Task An_MCP_servers_tool_reaches_the_tools_namespace_of_the_scripts()
     {
         Assert.SkipUnless(NodeIsOnPath(), "The stdio MCP server of this test runs on node, which is not on PATH.");

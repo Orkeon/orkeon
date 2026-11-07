@@ -19,6 +19,7 @@ public sealed partial class McpToolProvider : IAsyncDisposable, IDisposable
     private readonly ILogger _logger;
     private readonly ILoggerFactory? _loggerFactory;
     private readonly IHttpClientFactory? _httpClientFactory;
+    private readonly Orkeon.Tools.Abstractions.Auth.IOAuthLoginInteraction? _loginInteraction;
     private readonly ConcurrentDictionary<string, McpClientEntry> _clients = new();
     private readonly TimeProvider _time;
     private bool _disposed;
@@ -254,19 +255,27 @@ public sealed partial class McpToolProvider : IAsyncDisposable, IDisposable
     /// transports use; without it each transport owns a client.
     /// </param>
     /// <param name="timeProvider">The clock of the <c>tools/list_changed</c> debounce; the system clock by default.</param>
+    /// <param name="loginInteraction">
+    /// Shows the sign-in code of an <c>oauth2-device</c> server to a person; absent in a host without a terminal,
+    /// which then refuses such a server.
+    /// </param>
     public McpToolProvider(
         IToolRegistry toolRegistry,
         ILoggerFactory? loggerFactory = null,
         IHttpClientFactory? httpClientFactory = null,
-        TimeProvider? timeProvider = null)
+        TimeProvider? timeProvider = null,
+        Orkeon.Tools.Abstractions.Auth.IOAuthLoginInteraction? loginInteraction = null)
     {
         _time = timeProvider ?? TimeProvider.System;
+        _loginInteraction = loginInteraction;
         ArgumentNullException.ThrowIfNull(toolRegistry);
         _toolRegistry = toolRegistry;
         _loggerFactory = loggerFactory;
         _httpClientFactory = httpClientFactory;
         _logger = loggerFactory?.CreateLogger<McpToolProvider>() ?? NullLogger<McpToolProvider>.Instance;
     }
+
+    private McpOAuthServices OAuthServices() => new(_httpClientFactory, _loginInteraction, _time);
 
     /// <summary>
     /// Connects to an MCP server, discovers its tools, and registers them in the tool registry.
@@ -291,7 +300,7 @@ public sealed partial class McpToolProvider : IAsyncDisposable, IDisposable
             // SSE URL presence and transport-type validity are checked eagerly in
             // ConnectServerAsync, before the async state machine starts.
             // Validated before anything starts: a refused configuration names its key and spawns nothing.
-            var authenticator = McpRequestAuthenticators.Create(serverId, config);
+            var authenticator = McpRequestAuthenticators.Create(serverId, config, null, OAuthServices());
             IMcpTransport transport = config.Transport switch
             {
                 McpTransportType.Stdio => new StdioMcpTransport(config,
@@ -334,7 +343,7 @@ public sealed partial class McpToolProvider : IAsyncDisposable, IDisposable
         ArgumentNullException.ThrowIfNull(config);
         if (_clients.ContainsKey(serverId))
             throw new InvalidOperationException($"Server '{serverId}' is already connected.");
-        _ = McpRequestAuthenticators.Create(serverId, config);
+        (McpRequestAuthenticators.Create(serverId, config, null, OAuthServices()) as IDisposable)?.Dispose();
 
         var client = new McpClient(transport, _loggerFactory?.CreateLogger<McpClient>());
         try

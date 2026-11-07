@@ -162,6 +162,43 @@ Le client se présente comme `Orkeon` `1.0.0`.
   quel que soit l'appelant. Un serveur resté muet fait échouer la connexion avec une erreur qui nomme
   `MCP:Servers:<id>:ConnectTimeout`.
 
+**OAuth 2.0 (FWK-16).** `Auth:Type` accepte aussi `oauth2-client-credentials` et `oauth2-device`
+(`OAuth2ClientCredentials` et `OAuth2Device` sont lus aussi). Les graphies acceptées de `Auth:Type` sont exactement `None`, `none`, `Bearer`, `bearer`, `Basic`, `basic`, `OAuth2ClientCredentials`, `oauth2-client-credentials`, `OAuth2Device` et `oauth2-device` ; toute autre, un nombre compris, est refusée avec cette liste, avec ces clés :
+
+```json
+"Auth": {
+  "Type": "oauth2-client-credentials",
+  "TokenUrl": "https://idp.example.com/oauth/token",
+  "ClientId": "orkeon-agent",
+  "ClientSecretEnv": "TRACKER_OAUTH_CLIENT_KEY",
+  "Scopes": [ "tools.call" ],
+  "Audience": "https://mcp.example.com"
+}
+```
+
+- `TokenUrl` (et `DeviceAuthorizationUrl` pour le device flow) doit être une adresse `https` absolue, ou `http`
+  sur la boucle locale : un identifiant n'est jamais posté en clair vers un autre hôte. `ClientId` est
+  obligatoire ; `ClientSecretEnv` nomme la variable qui porte le secret du client (obligatoire pour les client
+  credentials, facultative pour le device flow) et se vérifie au démarrage puis à chaque demande de jeton.
+  `Scopes` et `Audience` sont facultatifs.
+- Le jeton d'accès vit **en mémoire seulement** et n'est jamais écrit sur disque. Il est renouvelé 60 secondes
+  avant son expiration. Quand le serveur répond `401`, la requête repart **une fois** avec un nouveau jeton ; un
+  second `401` est la réponse (l'appel échoue, rien ne boucle). Les requêtes refusées ensemble partagent un
+  seul renouvellement. Le flux `GET`, quand le serveur en offre un, se rouvre aussitôt après un renouvellement,
+  une fois de suite, puis temporise.
+- `oauth2-device` affiche une adresse de vérification et un code sur le terminal du run (stderr) et attend la
+  personne ; les renouvellements suivants utilisent le jeton de rafraîchissement émis par le fournisseur, et ne
+  redemandent un code que s'il est refusé. Disponible dans `orkeon run` et la REPL, qui enregistrent une
+  `IOAuthLoginInteraction` sur leur console. **`orkeon-host` n'en enregistre aucune** : un serveur en
+  `oauth2-device` y est écarté au démarrage avec une erreur qui le nomme ; utilisez `oauth2-client-credentials`.
+- Le point de terminaison de jeton est joint par son propre `HttpClient`, enregistré sous le nom `orkeon-mcp-oauth`
+  (`McpServiceExtensions.OAuthHttpClientName`), proxy et délai par défaut, sans redirection, exclu du journal
+  d'échanges LLM. Le secret du client et les jetons ne sont jamais écrits dans une erreur ni une ligne de log :
+  ce que le fournisseur d'identité renvoie en écho est masqué.
+- Un serveur dont les réglages sont illisibles (un `Auth:Type` mal écrit, une durée invalide) est écarté au démarrage avec une ligne qui le nomme et en donne la raison ; les graphies acceptées de `Auth:Type` y sont listées.
+- Non pris en charge : la découverte de ressource protégée (RFC 9728) et l'enregistrement dynamique de client
+  (DCR) ; les points de terminaison sont des réglages.
+
 `Headers` et `Auth` valent pour le transport HTTP (`Sse`) ; sur un serveur `Stdio` ils sont refusés, jamais
 ignorés en silence. Un serveur dont la configuration est invalide (un en-tête `Authorization` littéral, une
 variable d'environnement absente, `Auth:Type` sans nom de variable, un délai non positif, `Auth` ou `Headers`
@@ -385,7 +422,7 @@ changelog :
 - **Pas de requêtes multi-aller-retour (MRTR)** — un résultat intermédiaire moderne
   `input_required` remonte comme une erreur d'outil explicite, jamais comme des données
   partielles.
-- **Pas d'autorisation MCP (OAuth)**.
+- **OAuth se limite aux client credentials et au device flow (FWK-16)** — pas de flux authorization-code, pas de découverte de ressource protégée (RFC 9728), pas d'enregistrement dynamique de client (DCR) ; le device flow demande un hôte avec terminal (pas `orkeon-host`) ; les jetons ne sont jamais persistés, une connexion device est redemandée au run suivant.
 - **HTTP+SSE 2024-11-05 non supporté** — le transport à endpoint de messages séparé est refusé ; Streamable HTTP est le transport HTTP. L'interop contre le serveur de référence tourne chaque nuit (`McpReferenceServerInteropTests`, [Interop MCP](../guides/mcp-interop.md)).
 - **`2025-03-26` exclue** (batching JSON-RPC obligatoire).
 - **Le serveur ne parle que stdio** (`orkeon mcp serve`, ou `RunStdioAsync` /

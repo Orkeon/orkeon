@@ -81,6 +81,7 @@ public class McpServerConfig
 
 /// <summary>How a server authenticates the client.</summary>
 [Experimental("ORKEXP004", UrlFormat = "https://github.com/Orkeon/orkeon/blob/main/docs/reference/experimental-apis.md")]
+[System.ComponentModel.TypeConverter(typeof(McpAuthTypeConverter))]
 public enum McpAuthType
 {
     /// <summary>No credential.</summary>
@@ -90,14 +91,68 @@ public enum McpAuthType
     Bearer,
 
     /// <summary><c>Authorization: Basic</c>, from <see cref="McpAuthConfig.UserEnv"/> and <see cref="McpAuthConfig.PasswordEnv"/>.</summary>
-    Basic
+    Basic,
+
+    /// <summary>
+    /// OAuth 2.0 client credentials grant (<c>oauth2-client-credentials</c>): the client signs in as itself at
+    /// <see cref="McpAuthConfig.TokenUrl"/>, its secret read from <see cref="McpAuthConfig.ClientSecretEnv"/>.
+    /// </summary>
+    OAuth2ClientCredentials,
+
+    /// <summary>
+    /// OAuth 2.0 device authorization grant (<c>oauth2-device</c>): a person signs in on another device; needs a host
+    /// that can show the code (<c>orkeon run</c>, the REPL), not <c>orkeon-host</c>.
+    /// </summary>
+    OAuth2Device
+}
+
+/// <summary>
+/// Reads the <c>Auth.Type</c> of the settings from a closed list of spellings: each member's name, and its lower-case
+/// kebab form (<c>oauth2-device</c>). Anything else, a number included, is refused with the list.
+/// </summary>
+internal sealed class McpAuthTypeConverter : System.ComponentModel.EnumConverter
+{
+    private static readonly Dictionary<string, McpAuthType> Spellings = new(StringComparer.Ordinal)
+    {
+        ["None"] = McpAuthType.None,
+        ["none"] = McpAuthType.None,
+        ["Bearer"] = McpAuthType.Bearer,
+        ["bearer"] = McpAuthType.Bearer,
+        ["Basic"] = McpAuthType.Basic,
+        ["basic"] = McpAuthType.Basic,
+        ["OAuth2ClientCredentials"] = McpAuthType.OAuth2ClientCredentials,
+        ["oauth2-client-credentials"] = McpAuthType.OAuth2ClientCredentials,
+        ["OAuth2Device"] = McpAuthType.OAuth2Device,
+        ["oauth2-device"] = McpAuthType.OAuth2Device,
+    };
+
+    public McpAuthTypeConverter() : base(typeof(McpAuthType))
+    {
+    }
+
+    public override object? ConvertFrom(System.ComponentModel.ITypeDescriptorContext? context, System.Globalization.CultureInfo? culture, object value)
+    {
+        if (value is not string text)
+            return base.ConvertFrom(context, culture, value);
+        if (Spellings.TryGetValue(text, out var type))
+            return type;
+
+        throw new FormatException(
+            $"'{text}' is not an MCP Auth:Type. Accepted: {string.Join(", ", Spellings.Keys.OrderBy(k => k, StringComparer.Ordinal))}.");
+    }
 }
 
 /// <summary>The <c>Auth</c> block of a server: the names of the environment variables that hold the credentials.</summary>
 [Experimental("ORKEXP004", UrlFormat = "https://github.com/Orkeon/orkeon/blob/main/docs/reference/experimental-apis.md")]
 public class McpAuthConfig
 {
-    /// <summary>The authentication scheme.</summary>
+    /// <summary>
+    /// The authentication scheme, each with the keys it needs: <c>None</c>; <c>Bearer</c> (<c>TokenEnv</c>); <c>Basic</c>
+    /// (<c>UserEnv</c>, <c>PasswordEnv</c>); <c>oauth2-client-credentials</c> (<c>TokenUrl</c>, <c>ClientId</c>,
+    /// <c>ClientSecretEnv</c>; optional <c>Scopes</c>, <c>Audience</c>); <c>oauth2-device</c> (<c>TokenUrl</c>,
+    /// <c>DeviceAuthorizationUrl</c>, <c>ClientId</c>; optional <c>ClientSecretEnv</c>, <c>Scopes</c>, <c>Audience</c>;
+    /// refused by <c>orkeon-host</c>, which has no terminal). Accepted spellings, exactly: <c>None</c>, <c>none</c>, <c>Bearer</c>, <c>bearer</c>, <c>Basic</c>, <c>basic</c>, <c>OAuth2ClientCredentials</c>, <c>oauth2-client-credentials</c>, <c>OAuth2Device</c>, <c>oauth2-device</c>.
+    /// </summary>
     public McpAuthType Type { get; set; } = McpAuthType.None;
 
     /// <summary>The environment variable holding the bearer token.</summary>
@@ -108,6 +163,24 @@ public class McpAuthConfig
 
     /// <summary>The environment variable holding the basic-auth password.</summary>
     public string? PasswordEnv { get; set; }
+
+    /// <summary>The OAuth token endpoint (<c>oauth2-client-credentials</c>, <c>oauth2-device</c>): HTTPS, or HTTP on loopback.</summary>
+    public Uri? TokenUrl { get; set; }
+
+    /// <summary>The OAuth device authorization endpoint (<c>oauth2-device</c>).</summary>
+    public Uri? DeviceAuthorizationUrl { get; set; }
+
+    /// <summary>The OAuth client id.</summary>
+    public string? ClientId { get; set; }
+
+    /// <summary>The environment variable holding the OAuth client secret (required for client credentials, optional for the device flow).</summary>
+    public string? ClientSecretEnv { get; set; }
+
+    /// <summary>The OAuth scopes requested; none by default.</summary>
+    public Collection<string> Scopes { get; } = [];
+
+    /// <summary>The OAuth audience the token is issued for, when the provider asks for one.</summary>
+    public string? Audience { get; set; }
 }
 
 /// <summary>

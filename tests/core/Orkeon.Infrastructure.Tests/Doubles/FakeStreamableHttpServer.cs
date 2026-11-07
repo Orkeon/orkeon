@@ -35,6 +35,9 @@ internal sealed class FakeStreamableHttpServer : IAsyncDisposable
         _loop = Task.Run(ServeAsync);
     }
 
+    /// <summary>Decides, from the verb and the Authorization header, whether a request is let in; a refused one gets 401.</summary>
+    public Func<string, string?, bool>? Authorize { get; set; }
+
     public Uri Url { get; }
 
     public string[] Tools { get; set; }
@@ -177,6 +180,13 @@ internal sealed class FakeStreamableHttpServer : IAsyncDisposable
             _listenFrames = listenFrames = Channel.CreateUnbounded<string?>();
         lock (_gate)
             _seen.Add(new Seen(request.HttpMethod, method, session, request.Headers["Last-Event-ID"], request.Headers["MCP-Protocol-Version"], body));
+
+        if (Authorize is { } authorize && !authorize(request.HttpMethod, request.Headers["Authorization"]))
+        {
+            response.StatusCode = 401;
+            response.Headers["WWW-Authenticate"] = "Bearer";
+            return;
+        }
 
         if (request.HttpMethod == "DELETE")
         {

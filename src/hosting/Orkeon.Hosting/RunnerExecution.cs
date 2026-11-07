@@ -173,6 +173,7 @@ public static partial class RunnerExecution
                     // The runner's console, before the caller's services: the operator channel
                     // writes on it (RunnerOperatorLog), a caller may still replace it.
                     services.AddSingleton(opts.RunnerConsole);
+                    RunnerHost.RegisterMcpLoginInteraction(services, opts.RunnerConsole);
                     configureServices?.Invoke(ctx, services);
                     // After the caller's own provider is in, so the deadline decorator wraps it.
                     services.DecorateHumanInputWithDeadline();

@@ -73,6 +73,41 @@ public sealed class RunnerHostMcpTests : IDisposable
         Assert.Contains("MCP:EnableServer is not a setting", ex.Message, StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// FWK-16: an <c>Auth:Type</c> that is not one of the listed spellings sets the server aside with a line that
+    /// names it, the key and the accepted spellings: the binder alone would drop the server without a word.
+    /// </summary>
+    [Theory]
+    [InlineData("OAUTH2DEVICE")]
+    [InlineData("o-auth2-device")]
+    [InlineData("3")]
+    public async Task An_unlisted_Auth_Type_sets_the_server_aside_and_lists_the_accepted_spellings(string type)
+    {
+        var settings = Settings($$"""
+            { "MCP": { "Servers": { "tracker": { "Transport": "Sse", "Url": "https://mcp.example.test/", "Auth": { "Type": "{{type}}" } } } } }
+            """);
+        using var logs = new CapturingLoggerProvider();
+        using var stderr = new StringWriter();
+        var original = Console.Error;
+        Console.SetError(stderr);
+        try
+        {
+            using var host = RunnerHost.Build(settings, Mounts(), configureLogging: (_, b) => b.AddProvider(logs));
+
+            await McpStartup.ConnectConfiguredServersAsync(host, CancellationToken.None);
+
+            var error = Assert.Single(logs.Entries, e => e.Level == LogLevel.Error && e.Message.Contains("'tracker'", StringComparison.Ordinal));
+            Assert.Contains("MCP:Servers:tracker", error.Message, StringComparison.Ordinal);
+            Assert.Contains($"'{type}' is not an MCP Auth:Type", error.Message, StringComparison.Ordinal);
+            Assert.Contains("oauth2-device", error.Message, StringComparison.Ordinal);
+            Assert.Contains("oauth2-client-credentials", stderr.ToString(), StringComparison.Ordinal);
+        }
+        finally
+        {
+            Console.SetError(original);
+        }
+    }
+
     [Fact]
     public async Task A_server_that_cannot_start_is_reported_and_the_run_goes_on()
     {

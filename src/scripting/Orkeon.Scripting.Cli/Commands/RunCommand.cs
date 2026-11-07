@@ -852,6 +852,7 @@ internal static partial class RunCommand
             configureServices: (ctx, services) =>
             {
                 services.AddSingleton(console);
+                RunnerHost.RegisterMcpLoginInteraction(services, console);
 
                 // RAG-03/C3: scripts get the first-class `rag.*` namespace plus the
                 // auto-exposed tools.ragSearch / tools.ragIngest — the subsystem and its

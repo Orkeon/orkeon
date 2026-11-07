@@ -2489,16 +2489,53 @@
       "description": "Command-line arguments for the server process."
     },
     {
+      "path": "MCP:Servers:<name>:Auth:Audience",
+      "section": "MCP",
+      "type": "string",
+      "description": "The OAuth audience the token is issued for, when the provider asks for one."
+    },
+    {
+      "path": "MCP:Servers:<name>:Auth:ClientId",
+      "section": "MCP",
+      "type": "string",
+      "description": "The OAuth client id."
+    },
+    {
+      "path": "MCP:Servers:<name>:Auth:ClientSecretEnv",
+      "section": "MCP",
+      "type": "string",
+      "description": "The environment variable holding the OAuth client secret (required for client credentials, optional for the device flow)."
+    },
+    {
+      "path": "MCP:Servers:<name>:Auth:DeviceAuthorizationUrl",
+      "section": "MCP",
+      "type": "uri",
+      "description": "The OAuth device authorization endpoint (`oauth2-device`)."
+    },
+    {
       "path": "MCP:Servers:<name>:Auth:PasswordEnv",
       "section": "MCP",
       "type": "string",
       "description": "The environment variable holding the basic-auth password."
     },
     {
+      "path": "MCP:Servers:<name>:Auth:Scopes",
+      "section": "MCP",
+      "type": "list of string",
+      "default": [],
+      "description": "The OAuth scopes requested; none by default."
+    },
+    {
       "path": "MCP:Servers:<name>:Auth:TokenEnv",
       "section": "MCP",
       "type": "string",
       "description": "The environment variable holding the bearer token."
+    },
+    {
+      "path": "MCP:Servers:<name>:Auth:TokenUrl",
+      "section": "MCP",
+      "type": "uri",
+      "description": "The OAuth token endpoint (`oauth2-client-credentials`, `oauth2-device`): HTTPS, or HTTP on loopback."
     },
     {
       "path": "MCP:Servers:<name>:Auth:Type",
@@ -2508,9 +2545,11 @@
       "values": [
         "None",
         "Bearer",
-        "Basic"
+        "Basic",
+        "OAuth2ClientCredentials",
+        "OAuth2Device"
       ],
-      "description": "The authentication scheme."
+      "description": "The authentication scheme, each with the keys it needs: `None`; `Bearer` (`TokenEnv`); `Basic` (`UserEnv`, `PasswordEnv`); `oauth2-client-credentials` (`TokenUrl`, `ClientId`, `ClientSecretEnv`; optional `Scopes`, `Audience`); `oauth2-device` (`TokenUrl`, `DeviceAuthorizationUrl`, `ClientId`; optional `ClientSecretEnv`, `Scopes`, `Audience`; refused by `orkeon-host`, which has no terminal). Accepted spellings, exactly: `None`, `none`, `Bearer`, `bearer`, `Basic`, `basic`, `OAuth2ClientCredentials`, `oauth2-client-credentials`, `OAuth2Device`, `oauth2-device`."
     },
     {
       "path": "MCP:Servers:<name>:Auth:UserEnv",
