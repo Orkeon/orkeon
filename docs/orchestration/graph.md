@@ -10,7 +10,7 @@ Orkeon provides a typed state graph engine (`StateGraph<TState>`) in the Domain 
 
 The engine serves two audiences:
 
-- **The Graph process mode** — `process: graph` in YAML (or `ProcessType.Graph`) runs the crew through `GraphProcessStrategy`, which builds a fixed two-node graph: execute the next task, then route (retry the failed tasks, loop, or end). It is configured by the `graphConfig` block.
+- **The Graph process mode** — `process: graph` in YAML (or `ProcessType.Graph`) runs the crew through `GraphProcessStrategy`, which builds one node per task, chained in execution order (a node whose task failed with retries left loops on itself). It is configured by the `graphConfig` block.
 - **Your own C# workflows** — build any `StateGraph<TState>` with your own nodes and conditional edges, compile it and run it.
 
 ### Positioning relative to the other strategies
@@ -40,7 +40,7 @@ The engine components live in `Orkeon.Domain.Graph`:
 | `ConditionalEdge<TState>` (internal) | Edge with a routing function `Func<TState, string>` — built via `AddConditionalEdge` |
 | `GraphRunner<TState>` | Execution engine with circuit breaker and observability (`RunAsync`) |
 | `GraphExecutionResult<TState>` | Result: `FinalState`, `Trace`, `TotalTransitions`, `Duration` |
-| `NodeCompletedEventArgs<TState>`, `GraphCircuitBrokenEventArgs` | Payloads of `OnNodeCompleted` / `OnCircuitBroken` |
+| `NodeEnteredEventArgs`, `NodeCompletedEventArgs<TState>`, `GraphCircuitBrokenEventArgs` | Payloads of `OnNodeEntered` / `OnNodeCompleted` / `OnCircuitBroken` |
 | `GraphCircuitBrokenException` | Exception thrown when the circuit breaker trips (`NodeName`, `TransitionCount`, `Trace`) |
 
 `TState` must be a reference type (`where TState : class`); nodes usually mutate and return the same instance. `new StateGraph<TState>()` without a policy uses `CircuitBreakerPolicy.Strict`.
@@ -77,18 +77,16 @@ The engine components live in `Orkeon.Domain.Graph`:
 ## Graph topology
 
 ```
-START ──► [execute_task] ──► [route] ──┬──► [execute_task]   (tasks pending, or a failed one put back first)
-                                       │
-                                       └──► END              (nothing left)
+START ──► [first] ──► [second] ──► … ──► [last] ──► END
+              ▲  │
+              └──┘   (the task failed with retries left: the node is visited again)
 ```
 
-The `execute_task` node dequeues the next task (in the order resolved from the plan or the declared `dependencies`), picks its agent — the task's `agent:` when declared, otherwise the configured selector (round-robin by default, see [agent selection](./process-types.md#who-runs-a-task-that-names-no-agent)) — executes it and accumulates the result into `CrewGraphState`. Agents with `allowDelegation: true` receive the delegation tools.
+A crew in the Graph process builds one node per task (ADR-018). A node's id is its task's name (the task id when the name is missing or taken), the nodes are chained in the order resolved from the plan or the declared `dependencies`, and the last one leads to END. A crew with no task goes from START to END.
 
-The `route` node inspects the state:
+A node picks its agent — the task's `agent:` when declared, otherwise the configured selector (round-robin by default, see [agent selection](./process-types.md#who-runs-a-task-that-names-no-agent)) — executes the task and accumulates the result into `CrewGraphState`. Agents with `allowDelegation: true` receive the delegation tools. A task skipped by its dependencies or its `when` condition still passes through its node.
 
-- If the task just run failed with retries left → puts it back at the head of the queue, so it is retried before the next task, and loops back
-- If tasks remain in the queue → loops back to `execute_task`
-- Otherwise → routes to END
+The edge out of a node is conditional: if the task just run failed with retries left, it leads back to the same node, so the task is retried before the next one runs; otherwise it leads to the next node, or to END.
 
 The crew's output is the last result produced. A task still failing after its retries stays in the outputs as failed and **fails the crew**, as in every mode: `Success = false`, an error naming it, a `Failed` hook, exit code 2. The tasks that depend on it are **skipped**. Because a failed task is retried before the next one runs, a dependant only ever sees a dependency that succeeded or gave up.
 
@@ -106,12 +104,12 @@ The circuit breaker is built into `GraphRunner<TState>` and checks three conditi
 
 The StateGraph reuses `CircuitBreakerPolicy` from `Orkeon.Domain.Common.StateMachine` (the same record as the FSM); its `StateTimeout` and `UseDegradedMode` are not used by the graph runner.
 
-In the Graph mode, each task attempt is one visit of `execute_task` (and one of `route`), so:
+In the Graph mode, each task attempt is one visit of the task's node, so:
 
-- `MaxStateVisits` caps the number of **task attempts** in the whole run;
-- `MaxTransitions` caps them at half its value (two node executions per attempt).
+- `MaxStateVisits` caps the **attempts of one task** (a task's first run and its retries);
+- `MaxTransitions` caps the node executions of the whole run: every attempt of every task.
 
-Without an explicit `maxStateVisits` / `maxTransitions`, both are **computed from the crew**: `tasks × (1 + maxRetryCycles)` visits — the most a crew can make, every task spending all its retries — and `2 × visits + 1` transitions. A healthy crew is never cut short whatever its size; a real loop still trips the breaker. An explicit value in `graphConfig` wins. `MaxTotalDuration` stays the preset's — 10 minutes under Strict, the default — a cost bound `maxTotalDurationSeconds` overrides. When a condition is violated, a `GraphCircuitBrokenException` is thrown with the complete trace; `GraphProcessStrategy` catches it and returns a failed `CrewOutput` ("Graph execution stopped by circuit breaker: …") that keeps the outputs and the token usage produced so far.
+Without an explicit `maxStateVisits` / `maxTransitions`, both are **computed from the crew**: `tasks × (1 + maxRetryCycles)` visits — a loose bound, since no single node can make more than `1 + maxRetryCycles` — and `2 × visits + 1` transitions. A healthy crew is never cut short whatever its size; a real loop still trips the breaker. An explicit value in `graphConfig` wins. `MaxTotalDuration` stays the preset's — 10 minutes under Strict, the default — a cost bound `maxTotalDurationSeconds` overrides. When a condition is violated, a `GraphCircuitBrokenException` is thrown with the complete trace; `GraphProcessStrategy` catches it and returns a failed `CrewOutput` ("Graph execution stopped by circuit breaker: …") that keeps the outputs and the token usage produced so far.
 
 ### Presets
 
@@ -123,14 +121,19 @@ The preset supplies what is not computed — the total duration first. Its visit
 | `Default` | 100 | 10 | 30 min |
 | `Permissive` | 1000 | 50 | 2 h |
 
+### Limit of the topology checks
+
+Both engines check the shape of a graph with `GraphTopologyValidator` when it is built (ADR-018). One limit: an edge whose targets are unknown, a script's function edge or a `StateGraph` conditional edge declared without `possibleTargets`, is assumed to reach END **and every declared node**. This goes beyond ADR-018 3.6, which only says such an edge reaches END. Once a function edge is reachable from START, the orphan check and the no-path-to-END check are therefore inert for the graph: they cannot find a node it would never reach, because the edge might lead to it. The checks that stay exact are the unknown ids, the nodes with no outgoing edge, the reserved or repeated ids and the fixed-edge rule. Declare `possibleTargets` on a conditional edge to keep the full checks.
+
 ### Observability
 
-The `GraphRunner<TState>` exposes two events:
+The `GraphRunner<TState>` exposes three events:
 
+- `OnNodeEntered`: raised when a node is about to run, after the breaker let it through, with `NodeEnteredEventArgs` (`NodeName`, `Visit`: how many times the node has been entered, this entry included). It is the source of the `graph.node.entered` run event
 - `OnNodeCompleted`: raised after each node, with `NodeCompletedEventArgs<TState>` (`NodeName`, `State`, `TransitionOrdinal`, `TraceSnapshot`)
 - `OnCircuitBroken`: raised when the circuit trips, with `GraphCircuitBrokenEventArgs` (`Reason`, `NodeName`, `TransitionCount`, `Trace`)
 
-`GraphProcessStrategy` subscribes to both for structured logging (source-generated `LoggerMessage`). A graph's nodes are not tasks: the strategy announces each task start live through `ICrewExecutionHook`, and reports the task completions when the graph settles.
+`GraphProcessStrategy` subscribes to both for structured logging (source-generated `LoggerMessage`). The strategy also tells the host's `IGraphNodeObserver`, if one is registered, each node entered (`GraphNodeEntered`: the node, its visit, the task id); `orkeon run --events jsonl` writes it as a [`graph.node.entered`](../architecture/run-event-bus.md) line. The strategy announces each task start live through `ICrewExecutionHook`, and reports the task completions when the graph settles.
 
 ## Controlled retry
 
@@ -142,8 +145,8 @@ The `GraphProcessStrategy` adds a retry mechanism on top of the circuit breaker:
 
 How it works:
 
-1. When a task fails, its counter in `RetryCounts` increases; while it stays ≤ `MaxRetryCycles`, the task goes to `FailedTaskIds`
-2. The `route` node moves it back to the **head** of `PendingTaskIds`: it is retried before the next task runs
+1. When a task fails, its counter in `RetryCounts` increases; while it stays ≤ `MaxRetryCycles`, the node asks for a retry
+2. The node's edge leads back to the same node: the task is retried before the next task runs
 3. A task whose counter exceeds `MaxRetryCycles` is abandoned: its failed output stays, it fails the crew, and its dependants are skipped
 4. Every attempt is recorded (one output and one usage entry per attempt), and counts against the circuit breaker
 

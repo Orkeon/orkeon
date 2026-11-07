@@ -104,8 +104,8 @@ type by type.
 #### `process("graph")` is not `stateGraph`
 
 They are different facilities with a shared word. `process("graph")` runs the crew on the
-**domain's** graph strategy: a fixed `agent_execute → route_decision` loop with a circuit
-breaker, tuned by `GraphConfig`. `stateGraph({ nodes, edges })` is the topology **you**
+**domain's** graph strategy: one node per task, chained in execution order, a node looping on itself
+to retry its task, with a circuit breaker tuned by `GraphConfig`. `stateGraph({ nodes, edges })` is the topology **you**
 draw, and it runs when you call `.run()` on it — from an agent `.body()`, so procedurally.
 
 `crewBuilder().graph(g)` used to blur the two: it accepted a `stateGraph`, stored it in a
@@ -350,6 +350,21 @@ An edge is a node name, `END`, or a function of the state returning one (a condi
 `Permissive`) or the individual `maxTransitions`, `maxStateVisits`, `maxRetryCycles` and
 `maxTotalDurationSeconds` — exceeding a count throws, running out of time cancels the run. `runStream(state)` yields each hop
 (`{ fromNode, toNode, state }`) for `for await`.
+
+`stateGraph(...)` checks the graph's shape when it is built, with the validator the Domain engine
+and the crew's graph share (ADR-018), and reports **every** fault in one `InvalidScriptException`: an edge from or to
+an undeclared node, a node with no outgoing edge, a node nothing reaches (an orphan), no path from `START` to `END`, a node
+that cannot reach `END`. A function edge cannot be read before it runs, so it is assumed to be able to lead anywhere,
+`END` included. Each time the loop enters a node, a `graph.node.entered` event goes to the host
+(`orkeon run --events jsonl` writes it).
+
+Defaults, when `graphConfig` is absent: 200 transitions, no bound on the visits of one node, no bound on revisits (`maxRetryCycles`) and no duration
+bound; a `circuitBreakerPreset` replaces all four. (The Domain engine alone takes the Strict policy, 50 transitions and 5
+visits, and a bare `CircuitBreakerPolicy` is 100 and 10: the defaults differ per engine and stay as they are.)
+`maxStateVisits` is the Domain's `MaxStateVisits`: a node entered more often than that trips the breaker.
+`maxRetryCycles` counts, over the whole run, the entries into a node already entered once; on a graph that loops on **one** node,
+`maxRetryCycles: k` and `maxStateVisits: k + 1` are the same bound (the node runs k + 1 times, the next entry throws), which
+`GraphBudgetParityTests` pins on both engines. With several nodes it stays a different, run-wide bound.
 
 `TState` cannot be inferred from the node bodies — a node both takes and returns the state,
 so inference is circular — and falls back to `Record<string, unknown>`. Annotate the call

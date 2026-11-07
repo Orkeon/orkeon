@@ -504,14 +504,13 @@ The voting mechanism is **selectable via configuration**: `Orkeon:Consensus:Voti
 
 ### Principle
 
-The crew runs through a **typed state graph** (`StateGraph<CrewGraphState>`) with a fixed topology: `execute_task` runs the next pending task, `route` puts a failed task that still has retries left back at the head of the queue — it is retried before the next task runs — and loops back while work remains. A **3-mechanism circuit breaker** bounds the loop. Conditional edges and arbitrary topologies are available through the Domain `StateGraph<TState>` API in C#; the YAML mode does not declare its own graph.
+The crew runs through a **typed state graph** (`StateGraph<CrewGraphState>`) with one node per task (ADR-018): the nodes are chained in execution order, and a node whose task failed with retries left loops on itself — the task is retried before the next one runs. A **3-mechanism circuit breaker** bounds the loop. Conditional edges and arbitrary topologies are available through the Domain `StateGraph<TState>` API in C#; the YAML mode does not declare its own graph.
 
 ### Internal mechanism
 
 ```
-START ──→ execute_task ──→ route ──┬── tasks pending (or failed with retries left) ──→ execute_task
-                                   │
-                                   └── nothing left ──→ END
+START ──→ task 1 ──→ task 2 ──→ … ──→ last task ──→ END
+            ↺ a task that failed with retries left loops on its own node
 ```
 
 **Key classes**:
@@ -525,8 +524,6 @@ START ──→ execute_task ──→ route ──┬── tasks pending (or f
 
 | Property | Type | Description |
 |-----------|------|-------------|
-| `PendingTaskIds` | `Queue<TaskId>` | Remaining tasks to execute |
-| `FailedTaskIds` | `Queue<TaskId>` | Failed tasks the `route` node puts back at the head of the queue |
 | `RetryCounts` | `Dictionary<string, int>` | Per-task retry counter |
 | `MaxRetryCycles` | `int` | Retries per failed task (required; filled from `graphConfig.maxRetryCycles`, else the strategy's `MaxRetryCycles`, 2 by default) |
 | `ApplicationOutputs` / `DomainResults` | `IReadOnlyList<…>` | Accumulated outputs, one per attempt |
@@ -543,7 +540,7 @@ START ──→ execute_task ──→ route ──┬── tasks pending (or f
 | `MaxStateVisits` (visits of one node) | tasks × (1 + `maxRetryCycles`) | 5 | 10 | 50 |
 | `MaxTotalDuration` | the preset's (10 min under Strict) | 10 min | 30 min | 2 h |
 
-Every task attempt is one visit of `execute_task` (and one of `route`). Without an explicit `maxStateVisits` / `maxTransitions`, both are **computed from the crew**: `tasks × (1 + maxRetryCycles)` visits — the most a crew can make, every task spending all its retries — and twice that plus one transitions, so a healthy crew is never cut short whatever its size, and a real loop still trips the breaker. An explicit value wins; the preset (`circuitBreakerPreset`, Strict when absent) then only supplies what is not computed, the total duration first. The FSM's fourth mechanism, the per-state timeout, is not checked by the graph runner. A tripped breaker returns a failed `CrewOutput` ("Graph execution stopped by circuit breaker: …") with the outputs produced so far.
+Every task attempt is one visit of the task's node. Without an explicit `maxStateVisits` / `maxTransitions`, both are **computed from the crew**: `tasks × (1 + maxRetryCycles)` visits — a loose bound: no single node can be visited more than `1 + maxRetryCycles` times — and twice that plus one transitions, so a healthy crew is never cut short whatever its size, and a real loop still trips the breaker. An explicit value wins; the preset (`circuitBreakerPreset`, Strict when absent) then only supplies what is not computed, the total duration first. The FSM's fourth mechanism, the per-state timeout, is not checked by the graph runner. A tripped breaker returns a failed `CrewOutput` ("Graph execution stopped by circuit breaker: …") with the outputs produced so far.
 
 ### YAML configuration
 
@@ -564,7 +561,7 @@ graphConfig:
 
 - **Built-in retry**: a failed task is retried before the next one runs, up to `maxRetryCycles`
 - **Safety**: a circuit breaker bounds executions, visits and duration
-- **Observability**: `OnNodeCompleted` / `OnCircuitBroken` events, logged by the strategy
+- **Observability**: `OnNodeEntered` / `OnNodeCompleted` / `OnCircuitBroken` events, logged by the strategy; a `graph.node.entered` run event per node entered
 - **Bounds sized to the crew**: visits and transitions computed from the task count and the retries
 
 ### Drawbacks

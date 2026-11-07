@@ -20,6 +20,7 @@ public sealed class JsEngineFactory
     private readonly Orkeon.Domain.SharedKernel.ILlmProvider? _llmProvider;
     private readonly Orkeon.Application.Interfaces.Security.IPermissionGate? _permissionGate;
     private readonly Orkeon.Application.Interfaces.Ports.ILlmDeltaSink? _deltaSink;
+    private readonly Orkeon.Domain.Graph.IGraphNodeObserver? _graphObserver;
     private readonly Orkeon.Application.Interfaces.Security.IToolInvocationPipeline? _toolInvocation;
     private readonly Orkeon.Application.Interfaces.Ports.IScriptAgentMemoryStore? _agentMemoryStore;
     private readonly Orkeon.Domain.Tools.ToolResultLimitsOptions? _toolLimits;
@@ -67,6 +68,7 @@ public sealed class JsEngineFactory
         _llmProvider = llmProvider;
         _permissionGate = hostPorts?.PermissionGate;
         _deltaSink = hostPorts?.DeltaSink;
+        _graphObserver = hostPorts?.GraphObserver;
         _toolInvocation = hostPorts?.ToolInvocation;
         _agentMemoryStore = hostPorts?.AgentMemoryStore;
         _toolLimits = hostPorts?.ToolLimits;
@@ -218,7 +220,7 @@ public sealed class JsEngineFactory
         RagNamespaceBinding.Register(engine, _ragBackend, _scriptLogger);
         ErrorActionBinding.Register(engine);
         StateMachineBinding.Register(engine);
-        StateGraphBinding.Register(engine);
+        StateGraphBinding.Register(engine, _graphObserver);
         if (testProvider is not null)
             TestNamespaceBinding.Register(engine, testProvider);
 

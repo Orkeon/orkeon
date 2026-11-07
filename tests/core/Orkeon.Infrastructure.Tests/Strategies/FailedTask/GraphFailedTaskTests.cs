@@ -99,9 +99,11 @@ public sealed class GraphFailedTaskTests : IDisposable
     [Fact]
     public async Task An_explicit_maxStateVisits_still_wins_over_the_computed_bound()
     {
-        var tasks = Enumerable.Range(1, 3).Select(i => _fixture.Task($"task {i}")).ToArray();
+        // One node per task (ADR-018): the bound is on the visits of a node, and only a retry revisits one.
+        var flaky = _fixture.Task("flaky");
+        _fixture.Fail("flaky", "always");
 
-        var output = await RunAsync(tasks, new GraphConfig { MaxStateVisits = 2 });
+        var output = await RunAsync([flaky], new GraphConfig { MaxStateVisits = 2 });
 
         Assert.False(output.Success);
         Assert.Contains("circuit breaker", output.Error, StringComparison.OrdinalIgnoreCase);

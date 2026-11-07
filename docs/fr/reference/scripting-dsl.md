@@ -108,8 +108,8 @@ dans l'ordre où ils ont tourné, `output` étant ce que le corps a rendu. Rien 
 #### `process("graph")` n'est pas `stateGraph`
 
 Deux dispositifs différents qui partagent un mot. `process("graph")` exécute la crew sur la
-stratégie graphe **du domaine** : une boucle fixe `agent_execute → route_decision` avec
-disjoncteur, réglée par `GraphConfig`. `stateGraph({ nodes, edges })` est la topologie que
+stratégie graphe **du domaine** : un nœud par tâche, enchaînés dans l'ordre d'exécution, un nœud
+rebouclant sur lui-même pour relancer sa tâche, avec un disjoncteur réglé par `GraphConfig`. `stateGraph({ nodes, edges })` est la topologie que
 **vous** dessinez, et elle s'exécute quand vous appelez `.run()` dessus — depuis un `.body()`
 d'agent, donc en procédural.
 
@@ -370,6 +370,21 @@ conditionnelle). `graphConfig` borne chaque `run(state)` : `circuitBreakerPreset
 `maxRetryCycles` et `maxTotalDurationSeconds` — dépasser un compte lève une erreur, manquer de
 temps annule le run. `runStream(state)` produit chaque saut (`{ fromNode, toNode, state }`)
 pour un `for await`.
+
+`stateGraph(...)` vérifie la forme du graphe à sa construction, avec le validateur que partagent le moteur du
+Domain et le graphe d'une crew (ADR-018), et signale **toutes** les fautes dans une seule `InvalidScriptException` : une arête depuis ou
+vers un nœud non déclaré, un nœud sans arête sortante, un nœud que rien n'atteint (un orphelin), aucun chemin de `START` à `END`,
+un nœud qui ne peut pas atteindre `END`. Une arête fonction ne se lit pas avant de s'exécuter : on suppose qu'elle peut mener
+n'importe où, `END` compris. Chaque fois que la boucle entre dans un nœud, un événement `graph.node.entered` part vers l'hôte
+(`orkeon run --events jsonl` l'écrit).
+
+Défauts, quand `graphConfig` est absent : 200 transitions, aucune borne sur les visites d'un nœud, aucune borne sur les revisites (`maxRetryCycles`) et
+aucune borne de durée ; un `circuitBreakerPreset` remplace les quatre. (Le moteur du Domain seul prend la politique Strict, 50 transitions
+et 5 visites, et un `CircuitBreakerPolicy` nu vaut 100 et 10 : les défauts diffèrent selon le moteur et restent tels quels.)
+`maxStateVisits` est le `MaxStateVisits` du Domain : un nœud entré plus souvent déclenche le disjoncteur.
+`maxRetryCycles` compte, sur tout le run, les entrées dans un nœud déjà entré une fois ; sur un graphe qui boucle sur **un seul** nœud,
+`maxRetryCycles: k` et `maxStateVisits: k + 1` sont la même borne (le nœud s'exécute k + 1 fois, l'entrée suivante lève), ce que
+`GraphBudgetParityTests` fixe sur les deux moteurs. Avec plusieurs nœuds, c'est une autre borne, globale au run.
 
 `TState` ne peut pas être inféré depuis les corps de nœuds — un nœud prend et rend l'état,
 l'inférence est donc circulaire — et retombe sur `Record<string, unknown>`. Annotez l'appel

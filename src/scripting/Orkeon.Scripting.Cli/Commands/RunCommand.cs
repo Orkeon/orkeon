@@ -890,6 +890,7 @@ internal static partial class RunCommand
             {
                 PermissionGate = permissionGate,
                 DeltaSink = deltaSink,
+                GraphObserver = host.Services.GetService<Orkeon.Domain.Graph.IGraphNodeObserver>(),
                 // GAP-09: allowed ctx.llm.act calls go through the same guarded point as a crew's.
                 ToolInvocation = host.Services.GetService<Orkeon.Application.Interfaces.Security.IToolInvocationPipeline>(),
                 // GAP-17: llm.profile(name) picks among the host's Llm:Profiles.

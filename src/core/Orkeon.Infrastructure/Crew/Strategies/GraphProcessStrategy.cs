@@ -26,10 +26,9 @@ namespace Orkeon.Infrastructure.Crew.Strategies;
 /// with conditional edges and controlled cycles for crew execution.
 ///
 /// Graph topology:
-/// START → agent_execute → route_decision →(loop back to agent_execute OR → END)
+/// START → task 1 → task 2 → … → END (one node per task, ADR-018)
 ///
-/// The route_decision node inspects the accumulated state to decide
-/// whether to loop (e.g., retry failed tasks, handle delegation) or finish.
+/// A node whose task failed with retries left loops on itself.
 /// Cycle protection is enforced by <see cref="CircuitBreakerPolicy"/>.
 /// </summary>
 public sealed partial class GraphProcessStrategy : IProcessStrategy
@@ -41,6 +40,7 @@ public sealed partial class GraphProcessStrategy : IProcessStrategy
     private readonly CrewHookDispatcher _hooks;
     private readonly AgentDelegationToolsProvider _delegationProvider;
     private readonly ILogger<GraphProcessStrategy> _logger;
+    private readonly IGraphNodeObserver? _graphObserver;
     private readonly TaskAgentSelector _agentSelector;
     private readonly TaskLifecycle _lifecycle;
     private readonly Orkeon.Application.Crew.Execution.DecisionTaskRunner? _decisionRunner;
@@ -49,7 +49,7 @@ public sealed partial class GraphProcessStrategy : IProcessStrategy
     /// <summary>
     /// Circuit breaker policy used as-is when the crew carries no <see cref="Domain.Configuration.GraphConfig"/>.
     /// Null — the default — sizes the breaker from the
-    /// crew instead: <c>tasks × (1 + maxRetryCycles)</c> visits of <c>execute_task</c> and twice
+    /// crew instead: <c>tasks × (1 + maxRetryCycles)</c> visits of the busiest node and twice
     /// that plus one transitions, on the Strict preset's duration (GAP-03). A fixed preset used
     /// to cap every crew: Strict's five visits failed any healthy crew of six tasks. Per-crew
     /// config, when present, takes precedence and is resolved off the crew at execution time —
@@ -71,13 +71,16 @@ public sealed partial class GraphProcessStrategy : IProcessStrategy
     /// <param name="logger">The logger.</param>
     /// <param name="hook">Optional crew execution hook. May be null (BUS-03).</param>
     /// <param name="agentSelector">Who runs a task that names no agent. Null means round-robin.</param>
+    /// <param name="graphObserver">Told each time a node is entered (<c>graph.node.entered</c>). May be null.</param>
     public GraphProcessStrategy(
         CrewStrategyDependencies dependencies,
         AgentDelegationToolsProvider delegationProvider,
         ILogger<GraphProcessStrategy> logger,
         ICrewExecutionHook? hook = null,
-        TaskAgentSelector? agentSelector = null)
+        TaskAgentSelector? agentSelector = null,
+        IGraphNodeObserver? graphObserver = null)
     {
+        _graphObserver = graphObserver;
         ArgumentNullException.ThrowIfNull(dependencies);
         _taskRepository = dependencies.TaskRepository;
         _agentRepository = dependencies.AgentRepository;
@@ -159,7 +162,6 @@ public sealed partial class GraphProcessStrategy : IProcessStrategy
         {
             CrewId = crew.Id,
             Agents = agents,
-            PendingTaskIds = new Queue<TaskId>(taskIds),
             Variables = variables,
             TotalTokensUsed = 0,
             RetryCounts = new Dictionary<string, int>(),
@@ -171,10 +173,14 @@ public sealed partial class GraphProcessStrategy : IProcessStrategy
         };
 
         // Build and compile the state graph
-        var graph = BuildCrewGraph(initialState, effectivePolicy);
+        var (graph, nodeTasks) = BuildCrewGraph(initialState, effectivePolicy, taskIds);
         var runner = graph.Compile();
 
         // Wire up observability
+        runner.OnNodeEntered += (_, args) =>
+            _graphObserver?.NodeEntered(new GraphNodeEntered(
+                args.NodeName, args.Visit, nodeTasks.TryGetValue(args.NodeName, out var enteredTask) ? enteredTask.Value.ToString() : null));
+
         runner.OnNodeCompleted += (_, args) =>
         {
             LogNodeCompleted(args.NodeName, args.TransitionOrdinal);
@@ -319,56 +325,71 @@ public sealed partial class GraphProcessStrategy : IProcessStrategy
             .Build();
 
     /// <summary>
-    /// Builds the LangGraph-style state graph for crew execution.
+    /// Builds the state graph of a crew with no <c>graph:</c> block (ADR-018, point 7): one node per
+    /// task, its id the task's key (the task id when the key is missing or repeated), chained in the
+    /// order the crew runs its tasks, the last one leading to END.
     ///
     /// Topology:
-    ///   START → execute_task → route → [execute_task | END]
+    ///   START → first → second → … → last → END
     ///
-    /// The "route" node checks if there are pending tasks or failed tasks to retry.
+    /// A node whose task failed with retries left loops on itself, so a retry is one more visit of
+    /// the node and the circuit breaker bounds it like any cycle. This keeps the retry the crew-level
+    /// <c>maxRetryCycles</c> gave until the task's own <c>retry:</c> (FWK-15) replaces it.
     /// </summary>
-    private StateGraph<CrewGraphState> BuildCrewGraph(CrewGraphState initialState, CircuitBreakerPolicy policy)
+    private (StateGraph<CrewGraphState> Graph, IReadOnlyDictionary<string, TaskId> NodeTasks) BuildCrewGraph(
+        CrewGraphState initialState, CircuitBreakerPolicy policy, IReadOnlyList<TaskId> taskIds)
     {
         _delegationProvider.UpdateExecutionContext(
             initialState.Context with { PreviousOutputs = initialState.ApplicationOutputs });
 
         var graph = new StateGraph<CrewGraphState>(policy);
+        var nodeTasks = new Dictionary<string, TaskId>(StringComparer.Ordinal);
+        var order = new List<string>(taskIds.Count);
+        foreach (var taskId in taskIds)
+        {
+            var task = initialState.CrewTasks.FirstOrDefault(t => t.Id == taskId);
+            if (task is null)
+            {
+                LogTaskNotFound(taskId);
+                continue;
+            }
 
-        // Node: execute_task — delegates the heavy lifting to a dedicated method
-        // to keep this builder's cognitive complexity low.
-        graph.AddNode("execute_task", ExecuteTaskNodeAsync);
+            var nodeId = NodeIdOf(task, nodeTasks);
+            nodeTasks[nodeId] = taskId;
+            order.Add(nodeId);
+            graph.AddNode(nodeId, (state, ct) => ExecuteTaskNodeAsync(state, task, ct));
+        }
 
-        // Node: route — decides whether to continue executing or finish.
-        graph.AddNode("route", RouteNodeAsync);
+        const string end = StateGraph<CrewGraphState>.EndNode;
+        graph.AddEdge(StateGraph<CrewGraphState>.StartNode, order.Count > 0 ? order[0] : end);
+        for (var i = 0; i < order.Count; i++)
+        {
+            var self = order[i];
+            var next = i + 1 < order.Count ? order[i + 1] : end;
+            graph.AddConditionalEdge(self, state => state.TakeRetryRequest() ? self : next, [self, next]);
+        }
 
-        // Edges
-        graph.AddEdge(StateGraph<CrewGraphState>.StartNode, "execute_task");
-        graph.AddEdge("execute_task", "route");
+        return (graph, nodeTasks);
+    }
 
-        graph.AddConditionalEdge("route",
-            SelectNextNodeFromRoute,
-            ["execute_task", StateGraph<CrewGraphState>.EndNode]);
-
-        return graph;
+    private static string NodeIdOf(Orkeon.Domain.Task.CrewTask task, Dictionary<string, TaskId> taken)
+    {
+        var key = task.Key;
+        var usable = !string.IsNullOrWhiteSpace(key)
+            && key is not (StateGraph<CrewGraphState>.StartNode or StateGraph<CrewGraphState>.EndNode)
+            && !taken.ContainsKey(key);
+        return usable ? key! : task.Id.Value.ToString();
     }
 
     /// <summary>
-    /// Executes the next pending task in the state queue (graph node body).
-    /// This is the core transition logic of the execute_task node.
+    /// Runs one task (graph node body): the dependency and condition gates, then the agent or the
+    /// decision runner, then the outputs and the verdict on a failure.
     /// </summary>
-    private async Task<CrewGraphState> ExecuteTaskNodeAsync(CrewGraphState state, CancellationToken ct)
+    private async Task<CrewGraphState> ExecuteTaskNodeAsync(
+        CrewGraphState state, Orkeon.Domain.Task.CrewTask task, CancellationToken ct)
     {
-        if (state.PendingTaskIds.Count == 0)
-            return state; // Nothing to do, will route to END
-
-        var taskId = state.PendingTaskIds.Dequeue();
+        var taskId = task.Id;
         LogExecutingTask(taskId);
-
-        var task = state.CrewTasks.FirstOrDefault(t => t.Id == taskId);
-        if (task == null)
-        {
-            LogTaskNotFound(taskId);
-            return state;
-        }
 
         var agent = task.IsDecision
             ? null
@@ -378,7 +399,7 @@ public sealed partial class GraphProcessStrategy : IProcessStrategy
         var role = agent?.Role.Value ?? DecisionDispatch.Role;
 
         // A task depending on one that did not succeed is skipped, as in Sequential (GAP-03).
-        // A failed task is retried before the next task runs (see RouteNodeAsync), so by the
+        // A failed task is retried before the next task runs (its node loops), so by the
         // time a dependant is dequeued its dependency has either succeeded or given up.
         if (state.Outcome.BlockingDependency(task) is { } blockedBy)
         {
@@ -517,7 +538,7 @@ public sealed partial class GraphProcessStrategy : IProcessStrategy
 
         if (nextAttempt <= state.MaxRetryCycles)
         {
-            state.FailedTaskIds.Enqueue(taskId);
+            state.RetryRequested = true;
             LogTaskFailedWillRetry(taskId, nextAttempt, state.MaxRetryCycles);
         }
         else
@@ -527,43 +548,12 @@ public sealed partial class GraphProcessStrategy : IProcessStrategy
         }
     }
 
-    /// <summary>
-    /// Route node body: puts a failed task with retries left back at the head of the queue,
-    /// so it is retried before the next task runs. Retries used to wait until the queue was
-    /// empty, and a task depending on the failed one ran in between on its failed output; now a
-    /// dependant only ever sees a dependency that succeeded or gave up (GAP-03).
-    /// </summary>
-    private Task<CrewGraphState> RouteNodeAsync(CrewGraphState state, CancellationToken _)
-    {
-        if (state.FailedTaskIds.Count > 0)
-        {
-            LogPromotingFailedTasks(state.FailedTaskIds.Count);
-            var remaining = state.PendingTaskIds.ToArray();
-            state.PendingTaskIds.Clear();
-            while (state.FailedTaskIds.Count > 0)
-                state.PendingTaskIds.Enqueue(state.FailedTaskIds.Dequeue());
-            foreach (var pending in remaining)
-                state.PendingTaskIds.Enqueue(pending);
-        }
-
-        return Task.FromResult(state);
-    }
-
-    /// <summary>
-    /// Conditional edge evaluator for the route node: decides whether to loop
-    /// back into execution or complete the graph traversal.
-    /// </summary>
-    private static string SelectNextNodeFromRoute(CrewGraphState state)
-        => state.PendingTaskIds.Count > 0
-            ? "execute_task"
-            : StateGraph<CrewGraphState>.EndNode;
-
     #region Helpers
 
     /// <summary>
     /// The breaker of this run. An explicit <c>maxStateVisits</c> / <c>maxTransitions</c> in
     /// <c>graphConfig</c> wins; otherwise both are computed from the crew, since every attempt of
-    /// a task is one visit of <c>execute_task</c> and one of <c>route</c>:
+    /// a task is one visit of its node:
     /// <c>tasks × (1 + maxRetryCycles)</c> visits and twice that plus one transitions. The breaker
     /// keeps its job — stopping a real loop — without capping the size of a healthy crew. The
     /// duration stays the preset's (10 min under Strict), a cost choice
@@ -578,7 +568,7 @@ public sealed partial class GraphProcessStrategy : IProcessStrategy
         var explicitVisits = crew.GraphConfig?.MaxStateVisits;
         var explicitTransitions = crew.GraphConfig?.MaxTransitions;
 
-        // An empty crew still visits execute_task once on its way to END. Clamped so the
+        // An empty crew still gets one visit of bound. Clamped so the
         // transition bound never overflows.
         var visits = (int)Math.Min(
             (long)Math.Max(1, taskCount) * (1 + Math.Max(0, maxRetryCycles)),
@@ -669,9 +659,6 @@ public sealed partial class GraphProcessStrategy : IProcessStrategy
     [LoggerMessage(Level = LogLevel.Warning, Message = "Task {TaskId} ({AgentRole}) skipped: it depends on task {DependencyId}, which did not succeed")]
     private partial void LogTaskSkippedAfterDependency(TaskId taskId, string agentRole, TaskId dependencyId);
 
-    [LoggerMessage(Level = LogLevel.Debug, Message = "Retrying {Count} failed task(s) before the next pending one")]
-    private partial void LogPromotingFailedTasks(int count);
-
     #endregion
 }
 
@@ -690,11 +677,16 @@ public sealed class CrewGraphState
     /// <summary>Available agents.</summary>
     public required IReadOnlyList<DomainAgent> Agents { get; init; }
 
-    /// <summary>Tasks remaining to execute.</summary>
-    public required Queue<TaskId> PendingTaskIds { get; init; }
+    /// <summary>Set by a node whose task failed with retries left; the node's edge reads it and loops back.</summary>
+    internal bool RetryRequested { get; set; }
 
-    /// <summary>Tasks that failed and are eligible for retry.</summary>
-    public Queue<TaskId> FailedTaskIds { get; init; } = new();
+    /// <summary>Reads and clears <see cref="RetryRequested"/>.</summary>
+    internal bool TakeRetryRequest()
+    {
+        var requested = RetryRequested;
+        RetryRequested = false;
+        return requested;
+    }
 
     /// <summary>Input variables for template interpolation.</summary>
     public required Dictionary<string, string> Variables { get; init; }

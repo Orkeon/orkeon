@@ -49,6 +49,12 @@ public sealed record ScriptingHostPorts
     /// </summary>
     public Orkeon.Domain.FileSystem.IFileSystemService? FileSystem { get; init; }
 
+    /// <summary>
+    /// Told each time a script's <c>stateGraph</c> enters a node (<c>graph.node.entered</c>, ADR-018).
+    /// Null = nobody watches.
+    /// </summary>
+    public Orkeon.Domain.Graph.IGraphNodeObserver? GraphObserver { get; init; }
+
     /// <summary>The transcript caps of an agent instance. Null keeps the defaults.</summary>
     public Orkeon.Scripting.Configuration.ScriptAgentInstanceOptions? AgentInstances { get; init; }
 }

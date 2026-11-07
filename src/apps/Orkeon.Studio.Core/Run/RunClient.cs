@@ -59,6 +59,12 @@ public static class RunEventKinds
 
     /// <summary>Something the run's hub relayed to this process.</summary>
     public const string HubMessage = Orkeon.Constants.Protocol.RunEventKinds.HubMessage;
+
+    /// <summary>A profile's fallback took over from a failing model; carries the profile, the two models and the reason.</summary>
+    public const string LlmFallback = Orkeon.Constants.Protocol.RunEventKinds.LlmFallback;
+
+    /// <summary>A graph engine entered a node; carries the node, its visit and the task or graph.</summary>
+    public const string GraphNodeEntered = Orkeon.Constants.Protocol.RunEventKinds.GraphNodeEntered;
 }
 
 /// <summary>

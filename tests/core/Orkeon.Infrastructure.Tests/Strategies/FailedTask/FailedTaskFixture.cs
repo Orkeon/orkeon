@@ -72,6 +72,9 @@ internal sealed class FailedTaskFixture : IDisposable
         return task;
     }
 
+    /// <summary>Stores a task a test built itself (with a key, say).</summary>
+    public void Register(CrewTask task) => _tasks.AddAsync(task).GetAwaiter().GetResult();
+
     /// <summary>Every attempt at <paramref name="name"/> fails with <paramref name="error"/>.</summary>
     public void Fail(string name, string error) => _failures[name] = error;
 

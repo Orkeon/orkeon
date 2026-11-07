@@ -98,33 +98,27 @@ public sealed class StateGraph<TState> where TState : class
     /// <exception cref="InvalidOperationException">If the graph is invalid (missing start edge, unreachable nodes, etc.).</exception>
     public GraphRunner<TState> Compile()
     {
-        // Validate: START must have an outgoing edge
-        if (!_edges.ContainsKey(StartNode))
-            throw new InvalidOperationException("Graph must have an edge from START. Use AddEdge(StartNode, \"first_node\").");
-
-        // Validate: every node must have an outgoing edge
-        foreach (var nodeName in _nodes.Keys)
-        {
-            if (!_edges.ContainsKey(nodeName))
-                throw new InvalidOperationException($"Node '{nodeName}' has no outgoing edge. Add an edge or route to END.");
-        }
-
-        // Validate: fixed edge targets must exist
-        foreach (var (from, edge) in _edges)
-        {
-            if (edge is FixedEdge<TState> fixedEdge)
-            {
-                var target = fixedEdge.Target;
-                if (target != EndNode && !_nodes.ContainsKey(target))
-                    throw new InvalidOperationException($"Edge from '{from}' targets unknown node '{target}'.");
-            }
-        }
+        // One validator for every shape fault, shared with the script engine, the YAML mapper and the export.
+        var faults = GraphTopologyValidator.Validate(Describe());
+        if (faults.Count > 0)
+            throw new InvalidOperationException("Graph is invalid: " + string.Join(" ", faults));
 
         return new GraphRunner<TState>(
             new Dictionary<string, GraphNode<TState>>(_nodes),
             new Dictionary<string, IGraphEdge<TState>>(_edges),
             _circuitPolicy);
     }
+
+    private GraphTopology Describe() => new(
+        StartNode,
+        EndNode,
+        [.. _nodes.Keys],
+        [.. _edges.Select(pair => pair.Value switch
+        {
+            FixedEdge<TState> fixedEdge => new GraphEdgeDescription(pair.Key, [fixedEdge.Target], IsFixed: true),
+            ConditionalEdge<TState> conditional => new GraphEdgeDescription(pair.Key, conditional.PossibleTargets, IsFixed: false),
+            _ => new GraphEdgeDescription(pair.Key, null, IsFixed: false),
+        })]);
 
     private void ValidateEdgeEndpoints(string from, string to)
     {

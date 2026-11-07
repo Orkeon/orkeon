@@ -3,10 +3,10 @@
 # Demonstrates: process: "graph" with retry loops for flaky tasks and automatic circuit breaker protection
 #
 # Graph topology:
-#   START -> execute_task -> route -> [execute_task (retry) | END]
+#   START -> task 1 -> task 2 -> ... -> last task -> END
 #
-# The route node checks if there are pending or failed-but-retryable tasks.
-# Failed tasks are re-enqueued up to maxRetryCycles times.
+# One node per task, named after the task. A task that failed with retries left
+# loops on its own node, up to maxRetryCycles times.
 # The circuit breaker trips if the graph exceeds maxTransitions or maxStateVisits.
 
 name: "graph-orchestration-demo"

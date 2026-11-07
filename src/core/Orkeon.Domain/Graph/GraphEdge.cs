@@ -38,6 +38,9 @@ internal sealed class ConditionalEdge<TState> : IGraphEdge<TState> where TState 
         _possibleTargets = possibleTargets;
     }
 
+    /// <summary>The declared targets, or null when the edge declared none.</summary>
+    public IReadOnlyList<string>? PossibleTargets => _possibleTargets;
+
     public string Resolve(TState state)
     {
         var target = _router(state);

@@ -505,14 +505,13 @@ Le mécanisme de vote est **sélectionnable par configuration** : `Orkeon:Consen
 
 ### Principe
 
-La crew s'exécute à travers un **graphe d'états typé** (`StateGraph<CrewGraphState>`) à topologie fixe : `execute_task` exécute la prochaine tâche en attente, `route` remet une tâche échouée qui a encore des retries en tête de file — elle est relancée avant la tâche suivante — et reboucle tant qu'il reste du travail. Un **circuit breaker à 3 mécanismes** borne la boucle. Les arêtes conditionnelles et les topologies arbitraires sont disponibles via l'API Domain `StateGraph<TState>` en C# ; le mode YAML ne déclare pas son propre graphe.
+La crew s'exécute à travers un **graphe d'états typé** (`StateGraph<CrewGraphState>`) à un nœud par tâche (ADR-018) : les nœuds sont enchaînés dans l'ordre d'exécution, et un nœud dont la tâche a échoué avec des retries restants reboucle sur lui-même — la tâche est relancée avant la suivante. Un **circuit breaker à 3 mécanismes** borne la boucle. Les arêtes conditionnelles et les topologies arbitraires sont disponibles via l'API Domain `StateGraph<TState>` en C# ; le mode YAML ne déclare pas son propre graphe.
 
 ### Mécanisme interne
 
 ```
-START ──→ execute_task ──→ route ──┬── tâches en attente (ou échouées avec retries restants) ──→ execute_task
-                                   │
-                                   └── plus rien ──→ END
+START ──→ tâche 1 ──→ tâche 2 ──→ … ──→ dernière tâche ──→ END
+            ↺ une tâche échouée avec des retries restants reboucle sur son propre nœud
 ```
 
 **Classes clés** :
@@ -526,8 +525,6 @@ START ──→ execute_task ──→ route ──┬── tâches en attente 
 
 | Propriété | Type | Description |
 |-----------|------|-------------|
-| `PendingTaskIds` | `Queue<TaskId>` | Tâches restant à exécuter |
-| `FailedTaskIds` | `Queue<TaskId>` | Tâches échouées que le nœud `route` remet en tête de file |
 | `RetryCounts` | `Dictionary<string, int>` | Compteur de retries par tâche |
 | `MaxRetryCycles` | `int` | Retries par tâche échouée (obligatoire ; rempli depuis `graphConfig.maxRetryCycles`, sinon depuis `MaxRetryCycles` de la stratégie, 2 par défaut) |
 | `ApplicationOutputs` / `DomainResults` | `IReadOnlyList<…>` | Sorties accumulées, une par tentative |
@@ -544,7 +541,7 @@ START ──→ execute_task ──→ route ──┬── tâches en attente 
 | `MaxStateVisits` (visites d'un nœud) | tâches × (1 + `maxRetryCycles`) | 5 | 10 | 50 |
 | `MaxTotalDuration` | celle du preset (10 min en Strict) | 10 min | 30 min | 2 h |
 
-Chaque tentative de tâche est une visite de `execute_task` (et une de `route`). Sans `maxStateVisits` / `maxTransitions` explicites, les deux sont **calculés depuis la crew** : `tâches × (1 + maxRetryCycles)` visites — le maximum qu'une crew peut faire, chaque tâche épuisant ses retries — et deux fois plus une transitions ; une crew saine n'est donc jamais coupée, quelle que soit sa taille, et une vraie boucle déclenche encore le disjoncteur. Une valeur explicite l'emporte ; le preset (`circuitBreakerPreset`, Strict par défaut) ne fournit plus que ce qui n'est pas calculé, à commencer par la durée totale. Le quatrième mécanisme de la FSM, le timeout par état, n'est pas vérifié par le runner du graphe. Un disjoncteur déclenché renvoie un `CrewOutput` en échec (« Graph execution stopped by circuit breaker: … ») avec les sorties produites jusque-là.
+Chaque tentative de tâche est une visite du nœud de la tâche. Sans `maxStateVisits` / `maxTransitions` explicites, les deux sont **calculés depuis la crew** : `tâches × (1 + maxRetryCycles)` visites — une borne large : aucun nœud ne peut être visité plus de `1 + maxRetryCycles` fois — et deux fois plus une transitions ; une crew saine n'est donc jamais coupée, quelle que soit sa taille, et une vraie boucle déclenche encore le disjoncteur. Une valeur explicite l'emporte ; le preset (`circuitBreakerPreset`, Strict par défaut) ne fournit plus que ce qui n'est pas calculé, à commencer par la durée totale. Le quatrième mécanisme de la FSM, le timeout par état, n'est pas vérifié par le runner du graphe. Un disjoncteur déclenché renvoie un `CrewOutput` en échec (« Graph execution stopped by circuit breaker: … ») avec les sorties produites jusque-là.
 
 ### Configuration YAML
 
@@ -565,7 +562,7 @@ graphConfig:
 
 - **Retry intégré** : une tâche échouée est relancée avant la suivante, jusqu'à `maxRetryCycles`
 - **Sûreté** : un circuit breaker borne les exécutions, les visites et la durée
-- **Observabilité** : événements `OnNodeCompleted` / `OnCircuitBroken`, journalisés par la stratégie
+- **Observabilité** : événements `OnNodeEntered` / `OnNodeCompleted` / `OnCircuitBroken`, journalisés par la stratégie ; un événement de run `graph.node.entered` par nœud entré
 - **Bornes à la taille de la crew** : visites et transitions calculées depuis le nombre de tâches et les retries
 
 ### Inconvénients

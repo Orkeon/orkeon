@@ -38,3 +38,6 @@ Orkeon.Scripting.Testing.TestOverrideLlmProvider.SupportsStreaming.get -> bool
 Orkeon.Scripting.Testing.TestOverrideLlmProvider.StreamsNatively.get -> bool
 Orkeon.Scripting.Testing.TestOverrideLlmProvider.GenerateStreamingAsync(string! prompt, Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig? config = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Collections.Generic.IAsyncEnumerable<string!>!
 Orkeon.Scripting.Testing.TestOverrideLlmProvider.ChatStreamingAsync(Orkeon.Domain.SharedKernel.ValueObjects.LlmMessage![]! messages, Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig? config = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Collections.Generic.IAsyncEnumerable<Orkeon.Domain.SharedKernel.ValueObjects.LlmStreamEvent!>!
+Orkeon.Scripting.ScriptingHostPorts.GraphObserver.get -> Orkeon.Domain.Graph.IGraphNodeObserver?
+Orkeon.Scripting.ScriptingHostPorts.GraphObserver.init -> void
+static Orkeon.Scripting.Bindings.StateGraphBinding.Register(Jint.Engine! engine, Orkeon.Domain.Graph.IGraphNodeObserver? observer) -> void

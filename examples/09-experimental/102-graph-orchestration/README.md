@@ -5,17 +5,16 @@
 This example showcases the **LangGraph-style state graph orchestrator** introduced in Orkeon, which provides:
 
 - **Typed state graph**: A `StateGraph<CrewGraphState>` flows typed state through nodes instead of relying on implicit sequential ordering.
-- **Conditional routing**: The `route` node inspects accumulated state to decide whether to continue, retry, or finish.
-- **Controlled retry cycles**: Failed tasks are automatically re-enqueued up to `maxRetryCycles` times.
+- **One node per task**: each task is a node of the graph, named after the task and chained in execution order.
+- **Controlled retry cycles**: A failed task's node loops on itself, up to `maxRetryCycles` times.
 - **Circuit breaker protection**: Prevents infinite loops via `CircuitBreakerPolicy` (max transitions, max node visits, max duration).
-- **Full observability**: `OnNodeCompleted` and `OnCircuitBroken` events fire at each step for logging/telemetry.
+- **Full observability**: `OnNodeEntered`, `OnNodeCompleted` and `OnCircuitBroken` events fire at each step for logging/telemetry, and `orkeon run --events jsonl` streams a `graph.node.entered` line per node.
 
 ## Graph topology
 
 ```
-START --> execute_task --> route --+--> execute_task  (if pending/retry)
-                                  |
-                                  +--> END           (if all done)
+START --> task 1 --> task 2 --> ... --> last task --> END
+            (a task that failed with retries left loops on its own node)
 ```
 
 ## YAML configuration

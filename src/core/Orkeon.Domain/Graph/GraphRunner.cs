@@ -29,6 +29,9 @@ public sealed class GraphRunner<TState> where TState : class
     /// </summary>
     public event EventHandler<NodeCompletedEventArgs<TState>>? OnNodeCompleted;
 
+    /// <summary>Raised when a node is about to run, after the breaker let it through.</summary>
+    public event EventHandler<NodeEnteredEventArgs>? OnNodeEntered;
+
     /// <summary>
     /// Raised when the circuit breaker trips (too many transitions, cycles, or timeout).
     /// </summary>
@@ -78,6 +81,7 @@ public sealed class GraphRunner<TState> where TState : class
             }
 
             // Execute the node
+            OnNodeEntered?.Invoke(this, new NodeEnteredEventArgs(currentNodeName, tracker.VisitsOf(currentNodeName)));
             if (!_nodes.TryGetValue(currentNodeName, out var node))
                 throw new InvalidOperationException($"Node '{currentNodeName}' not found in the compiled graph.");
 
@@ -125,6 +129,8 @@ public sealed class GraphRunner<TState> where TState : class
         public ExecutionTracker(CircuitBreakerPolicy policy) => _policy = policy;
 
         public void RecordTransition() => _transitionCount++;
+
+        public int VisitsOf(string nodeName) => _visitCounts.TryGetValue(nodeName, out var count) ? count : 0;
 
         public void RecordVisit(string nodeName)
         {
@@ -184,6 +190,22 @@ public sealed class NodeCompletedEventArgs<TState> : EventArgs where TState : cl
         State = state;
         TransitionOrdinal = transitionOrdinal;
         TraceSnapshot = trace;
+    }
+}
+
+/// <summary>Event args raised when a node is about to run.</summary>
+public sealed class NodeEnteredEventArgs : EventArgs
+{
+    /// <summary>The node about to run.</summary>
+    public string NodeName { get; }
+    /// <summary>How many times the node has been entered, this entry included.</summary>
+    public int Visit { get; }
+
+    /// <summary>Creates a new <see cref="NodeEnteredEventArgs"/>.</summary>
+    public NodeEnteredEventArgs(string nodeName, int visit)
+    {
+        NodeName = nodeName;
+        Visit = visit;
     }
 }
 

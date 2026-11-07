@@ -90,6 +90,12 @@ public static class RunEventKinds
     public const string HubMessage = "hub.message";
 
     /// <summary>
+    /// A graph engine is about to run a node: <c>node</c> and <c>visit</c>, plus <c>task</c> for a
+    /// crew's graph and <c>graph</c> (its name) for a script's <c>stateGraph</c> (ADR-018).
+    /// </summary>
+    public const string GraphNodeEntered = "graph.node.entered";
+
+    /// <summary>
     /// Every kind, so a consumer can assert it handles them all rather than discovering a gap
     /// as an event that silently never arrives.
     /// </summary>
@@ -97,6 +103,6 @@ public static class RunEventKinds
     [
         RunStarted, TaskStarted, TaskCompleted, CostUpdated, LlmDelta, RunFinished, Error,
         InputNeeded, InputGiven, ToolCalled, ToolReturned, DelegationStarted,
-        AgentSpawned, HubMessage, LlmCallStarted, LlmCallProgress, LlmCallFinished, LlmFallback,
+        AgentSpawned, HubMessage, LlmCallStarted, LlmCallProgress, LlmCallFinished, LlmFallback, GraphNodeEntered,
     ];
 }

@@ -16,15 +16,21 @@ public static class StateGraphBinding
     public const string GlobalName = "stateGraph";
 
     /// <summary>Adds <c>stateGraph</c>, <c>START</c>, <c>END</c> to <paramref name="engine"/>.</summary>
-    public static void Register(Engine engine)
+    public static void Register(Engine engine) => Register(engine, observer: null);
+
+    /// <summary>
+    /// Adds <c>stateGraph</c>, <c>START</c>, <c>END</c> to <paramref name="engine"/>; each graph it builds
+    /// tells <paramref name="observer"/> every node it enters.
+    /// </summary>
+    public static void Register(Engine engine, Orkeon.Domain.Graph.IGraphNodeObserver? observer)
     {
         ArgumentNullException.ThrowIfNull(engine);
         engine.SetValue("START", GraphSentinels.Start);
         engine.SetValue("END", GraphSentinels.End);
-        engine.SetValue(GlobalName, new Func<JsValue, JsStateGraph>(literal => Build(engine, literal)));
+        engine.SetValue(GlobalName, new Func<JsValue, JsStateGraph>(literal => Build(engine, literal, observer)));
     }
 
-    private static JsStateGraph Build(Engine engine, JsValue literal)
+    private static JsStateGraph Build(Engine engine, JsValue literal, Orkeon.Domain.Graph.IGraphNodeObserver? observer)
     {
         if (literal is null || !literal.IsObject())
             throw new InvalidScriptException("stateGraph() expects a literal { name, nodes, edges }.");
@@ -55,8 +61,10 @@ public static class StateGraphBinding
         if (!edges.ContainsKey(GraphSentinels.Start))
             throw new InvalidScriptException("stateGraph literal must declare an edge from START.");
 
-        ValidateEdgeTargets(nodes, edges);
-        ValidateReachability(edges);
+        // One validator for every topology fault, the one the Domain engine and the YAML mapper call.
+        var faults = Orkeon.Domain.Graph.GraphTopologyValidator.Validate(Describe(nodes, edges));
+        if (faults.Count > 0)
+            throw new InvalidScriptException($"stateGraph '{nameVal.AsString()}' has an invalid topology: {string.Join(' ', faults)}");
 
         var config = ParseConfig(literal.Get("graphConfig"));
 
@@ -67,53 +75,22 @@ public static class StateGraphBinding
             ? null
             : () => brokerHolder.CurrentCt;
 
-        return new JsStateGraph(engine, nameVal.AsString(), nodes, edges, config, ambientCt);
+        return new JsStateGraph(engine, nameVal.AsString(), nodes, edges, config, ambientCt, observer);
     }
 
-    private static void ValidateEdgeTargets(
-        Dictionary<string, JsValue> nodes, Dictionary<string, JsValue> edges)
-    {
-        foreach (var (from, edge) in edges)
-        {
-            if (!edge.IsString()) continue; // conditional edges validated at run-time
-            var target = edge.AsString();
-            if (target == GraphSentinels.End) continue;
-            if (!nodes.ContainsKey(target))
-                throw new InvalidScriptException(
-                    $"stateGraph edge from '{from}' targets undeclared node '{target}'.");
-        }
-    }
-
-    private static void ValidateReachability(Dictionary<string, JsValue> edges)
-    {
-        // BFS from START following only string edges. Conditional (function) edges are
-        // assumed potentially reachable — too imprecise to evaluate statically. We do not
-        // require a static path from every node, only that END is reachable from START.
-        var visited = new HashSet<string>(StringComparer.Ordinal) { GraphSentinels.Start };
-        var queue = new Queue<string>();
-        queue.Enqueue(GraphSentinels.Start);
-        var endReachable = false;
-
-        while (queue.Count > 0)
-        {
-            var node = queue.Dequeue();
-            if (!edges.TryGetValue(node, out var edge)) continue;
-            if (!edge.IsString())
-            {
-                // Conditional edge: we can't know where it points; conservatively assume
-                // END is reachable from here.
-                endReachable = true;
-                continue;
-            }
-            var target = edge.AsString();
-            if (target == GraphSentinels.End) { endReachable = true; continue; }
-            if (visited.Add(target)) queue.Enqueue(target);
-        }
-
-        if (!endReachable)
-            throw new InvalidScriptException(
-                "stateGraph has no path from START to END.");
-    }
+    /// <summary>
+    /// The neutral shape the validator reads. A string edge is fixed; a function edge, whose targets
+    /// are only known when it runs, has none declared.
+    /// </summary>
+    private static Orkeon.Domain.Graph.GraphTopology Describe(
+        Dictionary<string, JsValue> nodes, Dictionary<string, JsValue> edges) =>
+        new(
+            GraphSentinels.Start,
+            GraphSentinels.End,
+            [.. nodes.Keys],
+            [.. edges.Select(pair => pair.Value.IsString()
+                ? new Orkeon.Domain.Graph.GraphEdgeDescription(pair.Key, [pair.Value.AsString()], IsFixed: true)
+                : new Orkeon.Domain.Graph.GraphEdgeDescription(pair.Key, null, IsFixed: false))]);
 
     private static JsGraphConfig ParseConfig(JsValue cfg)
     {

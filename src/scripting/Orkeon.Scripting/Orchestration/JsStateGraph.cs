@@ -109,6 +109,7 @@ public sealed class JsStateGraph
     private readonly Dictionary<string, JsValue> _edges;
     private readonly JsGraphConfig _config;
     private readonly Func<CancellationToken>? _ambientCt;
+    private readonly Orkeon.Domain.Graph.IGraphNodeObserver? _observer;
     private JsValue? _trampolines;
 
     public string name { get; }
@@ -119,8 +120,10 @@ public sealed class JsStateGraph
         Dictionary<string, JsValue> nodes,
         Dictionary<string, JsValue> edges,
         JsGraphConfig config,
-        Func<CancellationToken>? ambientCt = null)
+        Func<CancellationToken>? ambientCt = null,
+        Orkeon.Domain.Graph.IGraphNodeObserver? observer = null)
     {
+        _observer = observer;
         _engine = engine;
         this.name = name;
         _nodes = nodes;
@@ -205,6 +208,8 @@ public sealed class JsStateGraph
         if (visitCount > _config.MaxStateVisits)
             throw new InvalidOperationException(
                 $"stateGraph '{name}' node '{current}' exceeded maxStateVisits={_config.MaxStateVisits}.");
+
+        _observer?.NodeEntered(new Orkeon.Domain.Graph.GraphNodeEntered(current, visitCount, Task: null, Graph: name));
     }
 
     /// <summary>

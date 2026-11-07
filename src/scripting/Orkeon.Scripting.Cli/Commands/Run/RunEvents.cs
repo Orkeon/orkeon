@@ -71,6 +71,9 @@ internal static class RunEventKinds
 
     /// <summary>The team grew at runtime - the autonomous mode's most opaque moment.</summary>
     public const string AgentSpawned = Orkeon.Constants.Protocol.RunEventKinds.AgentSpawned;
+
+    /// <summary>See <see cref="Orkeon.Constants.Protocol.RunEventKinds.GraphNodeEntered"/>.</summary>
+    public const string GraphNodeEntered = Orkeon.Constants.Protocol.RunEventKinds.GraphNodeEntered;
 }
 
 /// <summary>
@@ -87,7 +90,7 @@ internal static class RunEventKinds
 /// observing a run must not change its outcome.
 /// </para>
 /// </summary>
-internal sealed class RunEventObserver : ICrewExecutionHook, ILlmUsageSink, ILlmDeltaSink
+internal sealed class RunEventObserver : ICrewExecutionHook, ILlmUsageSink, ILlmDeltaSink, Orkeon.Domain.Graph.IGraphNodeObserver
 {
     private readonly OrkeonEventWriter _events;
     private readonly ICrewExecutionHook? _inner;
@@ -152,6 +155,24 @@ internal sealed class RunEventObserver : ICrewExecutionHook, ILlmUsageSink, ILlm
     public long? EstimatedTokens
     {
         get { lock (_gate) { return _estimatedTokens > 0 ? _estimatedTokens : null; } }
+    }
+
+    /// <summary>
+    /// A graph engine, a crew's or a script's, is about to run a node: <c>node</c> and <c>visit</c>, and
+    /// <c>task</c> or <c>graph</c> when the engine has one to name.
+    /// </summary>
+    public void NodeEntered(Orkeon.Domain.Graph.GraphNodeEntered entered)
+    {
+        ArgumentNullException.ThrowIfNull(entered);
+        _events.Emit(
+            RunEventKinds.GraphNodeEntered,
+            new
+            {
+                node = entered.Node,
+                visit = entered.Visit,
+                task = entered.Task,
+                graph = entered.Graph,
+            });
     }
 
     /// <inheritdoc />

@@ -159,6 +159,7 @@ internal sealed class ObservedRunContext : IAsyncDisposable
         });
         services.AddSingleton<ICrewExecutionHook>(sp => sp.GetRequiredService<RunEventObserver>());
         services.AddSingleton<ILlmUsageSink>(sp => sp.GetRequiredService<RunEventObserver>());
+        services.AddSingleton<Orkeon.Domain.Graph.IGraphNodeObserver>(sp => sp.GetRequiredService<RunEventObserver>());
         services.AddSingleton<ILlmCallObserver>(_ => new RunEventsLlmCallObserver(_events, TimeProvider.System));
         services.AddSingleton<ILlmFallbackObserver>(_ => new RunEventsLlmFallbackObserver(_events));
 

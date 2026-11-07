@@ -247,3 +247,64 @@ static Orkeon.Domain.Security.PermissionModes.ToWireName(this Orkeon.Domain.Secu
 static Orkeon.Domain.Security.PermissionModes.TryParse(string? name, out Orkeon.Domain.Security.PermissionMode mode) -> bool
 Orkeon.Domain.Tools.IToolRegistry.ReplaceToolAsync(Orkeon.Domain.Tools.IBaseTool! current, Orkeon.Domain.Tools.IBaseTool! replacement) -> System.Threading.Tasks.Task<bool>!
 Orkeon.Domain.Task.ICrewTask.Key.get -> string?
+Orkeon.Domain.Graph.GraphEdgeDescription
+Orkeon.Domain.Graph.GraphEdgeDescription.<Clone>$() -> Orkeon.Domain.Graph.GraphEdgeDescription!
+Orkeon.Domain.Graph.GraphEdgeDescription.Deconstruct(out string! From, out System.Collections.Generic.IReadOnlyList<string!>? Targets, out bool IsFixed) -> void
+Orkeon.Domain.Graph.GraphEdgeDescription.Equals(Orkeon.Domain.Graph.GraphEdgeDescription? other) -> bool
+Orkeon.Domain.Graph.GraphEdgeDescription.From.get -> string!
+Orkeon.Domain.Graph.GraphEdgeDescription.From.init -> void
+Orkeon.Domain.Graph.GraphEdgeDescription.GraphEdgeDescription(string! From, System.Collections.Generic.IReadOnlyList<string!>? Targets, bool IsFixed) -> void
+Orkeon.Domain.Graph.GraphEdgeDescription.IsFixed.get -> bool
+Orkeon.Domain.Graph.GraphEdgeDescription.IsFixed.init -> void
+Orkeon.Domain.Graph.GraphEdgeDescription.Targets.get -> System.Collections.Generic.IReadOnlyList<string!>?
+Orkeon.Domain.Graph.GraphEdgeDescription.Targets.init -> void
+Orkeon.Domain.Graph.GraphNodeEntered
+Orkeon.Domain.Graph.GraphNodeEntered.<Clone>$() -> Orkeon.Domain.Graph.GraphNodeEntered!
+Orkeon.Domain.Graph.GraphNodeEntered.Deconstruct(out string! Node, out int Visit, out string? Task, out string? Graph) -> void
+Orkeon.Domain.Graph.GraphNodeEntered.Equals(Orkeon.Domain.Graph.GraphNodeEntered? other) -> bool
+Orkeon.Domain.Graph.GraphNodeEntered.Graph.get -> string?
+Orkeon.Domain.Graph.GraphNodeEntered.Graph.init -> void
+Orkeon.Domain.Graph.GraphNodeEntered.GraphNodeEntered(string! Node, int Visit, string? Task = null, string? Graph = null) -> void
+Orkeon.Domain.Graph.GraphNodeEntered.Node.get -> string!
+Orkeon.Domain.Graph.GraphNodeEntered.Node.init -> void
+Orkeon.Domain.Graph.GraphNodeEntered.Task.get -> string?
+Orkeon.Domain.Graph.GraphNodeEntered.Task.init -> void
+Orkeon.Domain.Graph.GraphNodeEntered.Visit.get -> int
+Orkeon.Domain.Graph.GraphNodeEntered.Visit.init -> void
+Orkeon.Domain.Graph.GraphRunner<TState>.OnNodeEntered -> System.EventHandler<Orkeon.Domain.Graph.NodeEnteredEventArgs!>?
+Orkeon.Domain.Graph.GraphTopology
+Orkeon.Domain.Graph.GraphTopology.<Clone>$() -> Orkeon.Domain.Graph.GraphTopology!
+Orkeon.Domain.Graph.GraphTopology.Deconstruct(out string! StartId, out string! EndId, out System.Collections.Generic.IReadOnlyList<string!>! Nodes, out System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Graph.GraphEdgeDescription!>! Edges) -> void
+Orkeon.Domain.Graph.GraphTopology.Edges.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Graph.GraphEdgeDescription!>!
+Orkeon.Domain.Graph.GraphTopology.Edges.init -> void
+Orkeon.Domain.Graph.GraphTopology.EndId.get -> string!
+Orkeon.Domain.Graph.GraphTopology.EndId.init -> void
+Orkeon.Domain.Graph.GraphTopology.Equals(Orkeon.Domain.Graph.GraphTopology? other) -> bool
+Orkeon.Domain.Graph.GraphTopology.GraphTopology(string! StartId, string! EndId, System.Collections.Generic.IReadOnlyList<string!>! Nodes, System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Graph.GraphEdgeDescription!>! Edges) -> void
+Orkeon.Domain.Graph.GraphTopology.Nodes.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Orkeon.Domain.Graph.GraphTopology.Nodes.init -> void
+Orkeon.Domain.Graph.GraphTopology.StartId.get -> string!
+Orkeon.Domain.Graph.GraphTopology.StartId.init -> void
+Orkeon.Domain.Graph.GraphTopologyValidator
+Orkeon.Domain.Graph.IGraphNodeObserver
+Orkeon.Domain.Graph.IGraphNodeObserver.NodeEntered(Orkeon.Domain.Graph.GraphNodeEntered! entered) -> void
+Orkeon.Domain.Graph.NodeEnteredEventArgs
+Orkeon.Domain.Graph.NodeEnteredEventArgs.NodeEnteredEventArgs(string! nodeName, int visit) -> void
+Orkeon.Domain.Graph.NodeEnteredEventArgs.NodeName.get -> string!
+Orkeon.Domain.Graph.NodeEnteredEventArgs.Visit.get -> int
+override Orkeon.Domain.Graph.GraphEdgeDescription.Equals(object? obj) -> bool
+override Orkeon.Domain.Graph.GraphEdgeDescription.GetHashCode() -> int
+override Orkeon.Domain.Graph.GraphEdgeDescription.ToString() -> string!
+override Orkeon.Domain.Graph.GraphNodeEntered.Equals(object? obj) -> bool
+override Orkeon.Domain.Graph.GraphNodeEntered.GetHashCode() -> int
+override Orkeon.Domain.Graph.GraphNodeEntered.ToString() -> string!
+override Orkeon.Domain.Graph.GraphTopology.Equals(object? obj) -> bool
+override Orkeon.Domain.Graph.GraphTopology.GetHashCode() -> int
+override Orkeon.Domain.Graph.GraphTopology.ToString() -> string!
+static Orkeon.Domain.Graph.GraphEdgeDescription.operator !=(Orkeon.Domain.Graph.GraphEdgeDescription? left, Orkeon.Domain.Graph.GraphEdgeDescription? right) -> bool
+static Orkeon.Domain.Graph.GraphEdgeDescription.operator ==(Orkeon.Domain.Graph.GraphEdgeDescription? left, Orkeon.Domain.Graph.GraphEdgeDescription? right) -> bool
+static Orkeon.Domain.Graph.GraphNodeEntered.operator !=(Orkeon.Domain.Graph.GraphNodeEntered? left, Orkeon.Domain.Graph.GraphNodeEntered? right) -> bool
+static Orkeon.Domain.Graph.GraphNodeEntered.operator ==(Orkeon.Domain.Graph.GraphNodeEntered? left, Orkeon.Domain.Graph.GraphNodeEntered? right) -> bool
+static Orkeon.Domain.Graph.GraphTopology.operator !=(Orkeon.Domain.Graph.GraphTopology? left, Orkeon.Domain.Graph.GraphTopology? right) -> bool
+static Orkeon.Domain.Graph.GraphTopology.operator ==(Orkeon.Domain.Graph.GraphTopology? left, Orkeon.Domain.Graph.GraphTopology? right) -> bool
+static Orkeon.Domain.Graph.GraphTopologyValidator.Validate(Orkeon.Domain.Graph.GraphTopology! topology) -> System.Collections.Generic.IReadOnlyList<string!>!
