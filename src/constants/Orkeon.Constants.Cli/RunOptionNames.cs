@@ -64,6 +64,9 @@ public static class RunOptionNames
     /// <summary>Validate the definition and exit without running it.</summary>
     public const string Validate = "validate";
 
+    /// <summary>Resumes a checkpointed run: <c>--resume &lt;id&gt;|latest</c>.</summary>
+    public const string Resume = "resume";
+
     /// <summary>List the tools the host would register, then exit.</summary>
     public const string ListTools = "list-tools";
 

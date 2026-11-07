@@ -498,12 +498,25 @@ Aucun attribut ne porte l'identifiant d'un crew, d'une tâche ou d'un agent.
   checkpoint, le `correlationId` des événements que `orkeon run --events` écrit, et l'id que rend le
   kickoff sans attente. `KickoffOptions.ExecutionId` le transmet (reprise, hôte) ; `IRunScope.Current` le
   montre à chaque décorateur et observateur que le run atteint. La clé de crew d'une session
-  (`SessionState.CrewKey`) est le nom de la crew sauf si `KickoffOptions.CrewKey` la nomme (nom et chemin
-  virtuel du fichier), pour qu'un nouveau processus retrouve une session : les ids d'une crew et de ses
-  tâches sont régénérés à chaque chargement.
-  Pas encore unifiés : l'id de tâche A2A et celui de l'API (FWK-14), et la clé de crew tant que l'hôte ne
-  passe pas nom et chemin (FWK-07). Un run lancé dans un autre entre dans son propre scope : son
-  identifiant remplace celui du run extérieur pendant sa durée.
+  (`SessionState.CrewKey`) est le nom de la crew sauf si `KickoffOptions.CrewKey` la nomme ; `orkeon run` et
+  `orkeon-host` la nomment avec le nom de la crew, le chemin virtuel de son fichier et une empreinte
+  du chemin complet du fichier, pour qu'un nouveau processus retrouve une session quels que soient les ids
+  de la crew et de ses tâches, régénérés à chaque chargement.
+  Pas encore unifiés : l'id de tâche A2A et celui de l'API (FWK-14). Un run lancé dans un autre entre dans
+  son propre scope : son identifiant remplace celui du run extérieur pendant sa durée.
+- **Checkpoint par tâche et `--resume`** (FWK-07) : chaque tâche qu'un run de crew termine est écrite dans la
+  session de checkpoint à sa fin, par un décorateur d'`IAgentExecutionService` que tous les modes
+  d'orchestration traversent (sequential, parallel, hierarchical, graph, autonomous, consensual), sous la
+  clé `"{TaskKey}#{n}"` : `TaskKey` est le nom de la tâche dans la définition de la crew, `n` l'ordinal de
+  l'invocation de cette clé dans le run (une révision Hierarchical ou un retry Graph est `#2`). Une tâche qui
+  échoue ou lève n'est pas checkpointée ; un checkpoint impossible à écrire fait échouer la tâche.
+  `orkeon run <crew> --resume <id>|latest` continue le run `<id>` (l'id qu'imprime un run échoué :
+  `Run <id> did not complete. Resume it ...`), ou le dernier run de ce fichier de crew qui n'est pas terminé (et pas encore marqué `Running` : `latest` ne reprend pas un run qui peut être vivant dans un autre processus, le magasin ne tient aucun bail ; nommer son id pour le reprendre) : le run
+  garde son id, les tâches qu'il avait terminées reviennent du checkpoint (`task.completed` porte
+  `resumed: true`, aucun modèle n'est interrogé), les autres s'exécutent. Avec sa sortie, un checkpoint garde une empreinte de la tâche (description, sortie attendue, agent, dépendances) : une tâche modifiée depuis est rejouée avec chaque tâche qui la suit, et un avertissement la nomme. Il demande
+  `Orkeon:Checkpointing:Enabled=true` et est refusé avec `--validate`, avec `--list-tools`, sur un `.ork.ts`
+  procédural et, avec `--events`, sans id de run explicite. Dans un hôte écrit en C#, passer
+  `KickoffOptions.Resume` (`"latest"` ou l'id). Les noms de tâche sont uniques dans une crew.
 - **Rôle** : persistance durable des états d'exécution de crew
   (`ScopedCrewExecutionStateManager`) dans un state store de checkpointing
   (`IStateStore`) : chaque transition (création, mise à jour, complétion, archivage)

@@ -6,3 +6,7 @@ Orkeon.Hosting.RunnerMountPlan.LlmMockResponses.init -> void
 Orkeon.Hosting.RunnerOptionsBase.LlmMock.get -> string?
 Orkeon.Hosting.RunnerOptionsBase.LlmMock.set -> void
 Orkeon.Hosting.RunnerOptionsBase.ResolvedLlmMockPath.get -> string?
+Orkeon.Hosting.RunnerOptionsBase.Resume.get -> string?
+Orkeon.Hosting.RunnerOptionsBase.Resume.set -> void
+Orkeon.Hosting.RunnerOptionsBase.WorkingDirectory.get -> string?
+Orkeon.Hosting.RunnerOptionsBase.WorkingDirectory.set -> void

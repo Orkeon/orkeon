@@ -223,7 +223,11 @@ internal sealed partial class CrewRunner : ICrewRunner
                 ? Application.Interfaces.Services.CrewInput.WithStringVariables(prompt, variables)
                 : Application.Interfaces.Services.CrewInput.Empty(prompt);
             var output = await orchestrator
-                .KickoffAsync(crew.Id, input, run.Cancellation.Token)
+                .KickoffAsync(
+                    crew.Id,
+                    input,
+                    new Application.Interfaces.Services.KickoffOptions { CrewKey = RunnerRunIdentity.CrewKey(crew.Name, mapped ?? hosted.Path, hosted.Path) },
+                    run.Cancellation.Token)
                 .ConfigureAwait(false);
 
             // KickoffAsync never throws — its fault barrier converts everything into an

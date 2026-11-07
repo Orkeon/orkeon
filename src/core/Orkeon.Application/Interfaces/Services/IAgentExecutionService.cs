@@ -146,6 +146,12 @@ public record TaskResult(
         ImmutableArray<TaskAmbiguousFqn>.Empty;
 
     /// <summary>
+    /// Gets whether this result was read back from the checkpoint of a resumed run instead of being
+    /// produced: no model was asked anything for it.
+    /// </summary>
+    public bool Resumed { get; init; }
+
+    /// <summary>
     /// Cumulative prompt-side tokens consumed during the task, when the provider
     /// reports the prompt/completion split. 0 when the split is unavailable —
     /// <see cref="TaskResult.TokensUsed"/> remains the authoritative total.
@@ -182,4 +188,20 @@ public record TaskResult<TOutput>(
     TOutput? StructuredOutput,
     IReadOnlyList<ToolUsage> ToolsUsed,
     TimeSpan ExecutionTime,
-    string? Error = null) where TOutput : class;
+    string? Error = null) where TOutput : class
+{
+    /// <summary>Gets whether this result was read back from the checkpoint of a resumed run instead of being produced.</summary>
+    public bool Resumed { get; init; }
+
+    /// <summary>Gets the tokens the task consumed, or zero when not tracked.</summary>
+    public int TokensUsed { get; init; }
+
+    /// <summary>Gets the prompt tokens of the task, or 0 when the split is unavailable.</summary>
+    public int PromptTokens { get; init; }
+
+    /// <summary>Gets the completion tokens of the task, or 0 when the split is unavailable.</summary>
+    public int CompletionTokens { get; init; }
+
+    /// <summary>Gets the number of agent-loop iterations the task used.</summary>
+    public int IterationsUsed { get; init; }
+}

@@ -626,13 +626,10 @@ Orkeon.Application.Interfaces.Services.RunScope
 Orkeon.Application.Interfaces.Services.RunScope.<Clone>$() -> Orkeon.Application.Interfaces.Services.RunScope!
 Orkeon.Application.Interfaces.Services.RunScope.CrewKey.get -> string!
 Orkeon.Application.Interfaces.Services.RunScope.CrewKey.init -> void
-Orkeon.Application.Interfaces.Services.RunScope.Deconstruct(out Orkeon.Application.Interfaces.Services.ExecutionId! ExecutionId, out string! CrewKey, out string? Resume) -> void
 Orkeon.Application.Interfaces.Services.RunScope.Equals(Orkeon.Application.Interfaces.Services.RunScope? other) -> bool
 Orkeon.Application.Interfaces.Services.RunScope.ExecutionId.get -> Orkeon.Application.Interfaces.Services.ExecutionId!
 Orkeon.Application.Interfaces.Services.RunScope.ExecutionId.init -> void
-Orkeon.Application.Interfaces.Services.RunScope.Resume.get -> string?
 Orkeon.Application.Interfaces.Services.RunScope.Resume.init -> void
-Orkeon.Application.Interfaces.Services.RunScope.RunScope(Orkeon.Application.Interfaces.Services.ExecutionId! ExecutionId, string! CrewKey, string? Resume = null) -> void
 Orkeon.Application.Services.Checkpointing.CheckpointManager.GetLatestCheckpointAsync(string! crewKey, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Application.Interfaces.Checkpointing.SessionState?>!
 Orkeon.Application.Services.Checkpointing.CheckpointManager.StartSessionAsync(Orkeon.Application.Interfaces.Services.ExecutionId! executionId, string! crewKey, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<string!>!
 Orkeon.Application.Services.Checkpointing.ResumeEngine.CanResumeAsync(string! crewKey, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<bool>!
@@ -663,3 +660,43 @@ Orkeon.Application.Interfaces.Security.ToolInvocationCaller.WaitScope.get -> Sys
 Orkeon.Application.Interfaces.Security.ToolInvocationCaller.WaitScope.init -> void
 Orkeon.Application.Services.Security.ToolInvocationPipeline.GatesPermissions.get -> bool
 Orkeon.Application.Execution.StepNotifyingToolInvocationPipeline.GatesPermissions.get -> bool
+Orkeon.Application.Interfaces.Checkpointing.ResumeOptions.ExecutionId.get -> string?
+Orkeon.Application.Interfaces.Checkpointing.ResumeOptions.ExecutionId.init -> void
+Orkeon.Application.Interfaces.Services.ResumePlan
+Orkeon.Application.Interfaces.Services.ResumePlan.<Clone>$() -> Orkeon.Application.Interfaces.Services.ResumePlan!
+Orkeon.Application.Interfaces.Services.ResumePlan.CompletedOutputs.get -> System.Collections.Generic.IReadOnlyDictionary<string!, string?>!
+Orkeon.Application.Interfaces.Services.ResumePlan.CompletedOutputs.init -> void
+Orkeon.Application.Interfaces.Services.ResumePlan.Deconstruct(out string! SessionId, out System.Collections.Generic.IReadOnlyDictionary<string!, string?>! CompletedOutputs) -> void
+Orkeon.Application.Interfaces.Services.ResumePlan.Equals(Orkeon.Application.Interfaces.Services.ResumePlan? other) -> bool
+Orkeon.Application.Interfaces.Services.ResumePlan.ResumePlan(string! SessionId, System.Collections.Generic.IReadOnlyDictionary<string!, string?>! CompletedOutputs) -> void
+Orkeon.Application.Interfaces.Services.ResumePlan.SessionId.get -> string!
+Orkeon.Application.Interfaces.Services.ResumePlan.SessionId.init -> void
+Orkeon.Application.Interfaces.Services.RunScope.Deconstruct(out Orkeon.Application.Interfaces.Services.ExecutionId! ExecutionId, out string! CrewKey, out Orkeon.Application.Interfaces.Services.ResumePlan? Resume) -> void
+Orkeon.Application.Interfaces.Services.RunScope.Resume.get -> Orkeon.Application.Interfaces.Services.ResumePlan?
+Orkeon.Application.Interfaces.Services.RunScope.RunScope(Orkeon.Application.Interfaces.Services.ExecutionId! ExecutionId, string! CrewKey, Orkeon.Application.Interfaces.Services.ResumePlan? Resume = null) -> void
+Orkeon.Application.Interfaces.Services.TaskResult.Resumed.get -> bool
+Orkeon.Application.Interfaces.Services.TaskResult.Resumed.init -> void
+override Orkeon.Application.Interfaces.Services.ResumePlan.Equals(object? obj) -> bool
+override Orkeon.Application.Interfaces.Services.ResumePlan.GetHashCode() -> int
+override Orkeon.Application.Interfaces.Services.ResumePlan.ToString() -> string!
+static Orkeon.Application.Interfaces.Services.ResumePlan.operator !=(Orkeon.Application.Interfaces.Services.ResumePlan? left, Orkeon.Application.Interfaces.Services.ResumePlan? right) -> bool
+static Orkeon.Application.Interfaces.Services.ResumePlan.operator ==(Orkeon.Application.Interfaces.Services.ResumePlan? left, Orkeon.Application.Interfaces.Services.ResumePlan? right) -> bool
+*REMOVED*Orkeon.Application.Interfaces.Checkpointing.ResumeResult.ResumeFromIndex.get -> int
+*REMOVED*Orkeon.Application.Interfaces.Checkpointing.ResumeResult.ResumeFromIndex.init -> void
+Orkeon.Application.Interfaces.Services.CrewOutput.ExecutionId.get -> string?
+Orkeon.Application.Interfaces.Services.CrewOutput.ExecutionId.init -> void
+Orkeon.Application.Crew.TaskExecutionSnapshot.Resumed.get -> bool
+Orkeon.Application.Crew.TaskExecutionSnapshot.Resumed.init -> void
+Orkeon.Application.Interfaces.Checkpointing.ResumeResult.Refusal.get -> string?
+Orkeon.Application.Interfaces.Checkpointing.ResumeResult.Refusal.init -> void
+Orkeon.Application.Interfaces.Services.ResumePlan.ResumedTaskIds.get -> System.Collections.Concurrent.ConcurrentDictionary<string!, byte>!
+Orkeon.Application.Interfaces.Services.TaskResult<TOutput>.CompletionTokens.get -> int
+Orkeon.Application.Interfaces.Services.TaskResult<TOutput>.CompletionTokens.init -> void
+Orkeon.Application.Interfaces.Services.TaskResult<TOutput>.IterationsUsed.get -> int
+Orkeon.Application.Interfaces.Services.TaskResult<TOutput>.IterationsUsed.init -> void
+Orkeon.Application.Interfaces.Services.TaskResult<TOutput>.PromptTokens.get -> int
+Orkeon.Application.Interfaces.Services.TaskResult<TOutput>.PromptTokens.init -> void
+Orkeon.Application.Interfaces.Services.TaskResult<TOutput>.Resumed.get -> bool
+Orkeon.Application.Interfaces.Services.TaskResult<TOutput>.Resumed.init -> void
+Orkeon.Application.Interfaces.Services.TaskResult<TOutput>.TokensUsed.get -> int
+Orkeon.Application.Interfaces.Services.TaskResult<TOutput>.TokensUsed.init -> void

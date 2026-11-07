@@ -144,6 +144,7 @@ public static partial class RunnerExecution
                 {
                     CliMounts = cliMounts,
                     InternalMounts = internalMounts,
+                    WorkingDirectory = opts.WorkingDirectory,
                     InputDirectories = inputDirectories,
                     SelectedMountIds = selection.SelectedMountIds,
                     CrewMountReferences = selection.CrewMountReferences,
@@ -861,6 +862,14 @@ public static partial class RunnerExecution
         {
         // Diagnostic modes short-circuit the kickoff: --list-tools dumps the runtime tool
         // registry (no crew), --validate loads the crew strictly but never probes the LLM.
+        if (opts.Resume is not null && (opts.Validate || opts.ListTools))
+        {
+            await opts.RunnerConsole.ErrorOutput.WriteLineAsync(
+                $"ERROR: --resume cannot be combined with {(opts.Validate ? "--validate" : "--list-tools")}: that mode runs nothing, so there is no run to resume.")
+                .ConfigureAwait(false);
+            return 1;
+        }
+
         if (opts.ListTools)
             return await RunListToolsAsync(opts, loggerCategory, configureServices).ConfigureAwait(false);
         if (opts.Validate)
@@ -960,6 +969,14 @@ public static partial class RunnerExecution
         var console = opts.RunnerConsole;
         RunnerLogging.LogMounts(bootstrap.CliMounts, logger);
 
+        if (opts.Resume is not null && !CheckpointingEnabled(host))
+        {
+            await console.ErrorOutput.WriteLineAsync(
+                "ERROR: --resume needs Orkeon:Checkpointing:Enabled=true in the settings: without a checkpoint store nothing of an earlier run is kept to resume.")
+                .ConfigureAwait(false);
+            return (1, null);
+        }
+
         LogLoadingCrew(logger, bootstrap.ConfigPath);
 
         // The MCP tools must be in the registry before the crew resolves its tools (STUDIO-21):
@@ -1003,13 +1020,23 @@ public static partial class RunnerExecution
             return (2, null);
 
         LogKickingOffCrew(logger, crew.Goal);
-        var output = RunnerRunIdentity.Ambient(scope.ServiceProvider) is { } identity
-            ? await orchestrator.KickoffAsync(crew.Id, input, identity, ct).ConfigureAwait(false)
-            : await orchestrator.KickoffAsync(crew.Id, input, ct).ConfigureAwait(false);
+        var output = await orchestrator.KickoffAsync(
+            crew.Id,
+            input,
+            RunnerRunIdentity.For(scope.ServiceProvider, crew.Name, bootstrap.VirtualConfigPath, bootstrap.ConfigPath, opts.Resume),
+            ct).ConfigureAwait(false);
 
         PrintCrewOutput(output, opts.MachineReadableStdout ? console.ErrorOutput : console.Output);
         if (!output.Succeeded)
         {
+            // A run that left a checkpoint session can be taken up again: say by what id.
+            if (output.ExecutionId is { Length: > 0 } runId && CheckpointingEnabled(host))
+            {
+                await console.ErrorOutput.WriteLineAsync(
+                    $"Run {runId} did not complete. Resume it, its finished tasks kept, with: orkeon run {opts.ConfigPath} --resume {runId}")
+                    .ConfigureAwait(false);
+            }
+
             // The crew ran and failed: exit 2, the reason handed back so the caller writes it
             // as the last stderr line once the host — and its console logger queue — is
             // disposed. KickoffAsync never throws, so this exit code was 0 for every crew
@@ -1019,6 +1046,10 @@ public static partial class RunnerExecution
 
         return (0, null);
     }
+
+    /// <summary>Whether the host keeps checkpoints (<c>Orkeon:Checkpointing:Enabled</c>): what a run needs to be resumed.</summary>
+    private static bool CheckpointingEnabled(IHost host) =>
+        host.Services.GetService<Microsoft.Extensions.Options.IOptions<Orkeon.Infrastructure.Checkpointing.CheckpointingOptions>>()?.Value.Enabled == true;
 
     /// <summary>
     /// Builds the <see cref="CrewInput"/> for a one-shot kickoff from the parsed CLI variables

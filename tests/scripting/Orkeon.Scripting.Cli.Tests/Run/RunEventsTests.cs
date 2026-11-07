@@ -200,6 +200,20 @@ public sealed class RunEventsTests : IDisposable
     }
 
     [Fact]
+    [Trait("BR", "FWK-07")]
+    public async Task ShouldEmitResumed_WhenTaskCompletedFromACheckpoint()
+    {
+        var observer = new RunEventObserver(Writer(), inner: null, stream: false);
+
+        await observer.OnTaskCompletedAsync(Snapshot("write", "Writer") with { Resumed = true }, TestContext.Current.CancellationToken);
+        await observer.OnTaskCompletedAsync(Snapshot("check", "Writer"), TestContext.Current.CancellationToken);
+
+        var events = Events();
+        Assert.True(events[0].GetProperty("resumed").GetBoolean());
+        Assert.False(events[1].GetProperty("resumed").GetBoolean());
+    }
+
+    [Fact]
     [Trait("BR", "UC-03")]
     public async Task ShouldEmitDecisionAnswersAsOutput_WhenDecisionTaskCompleted()
     {

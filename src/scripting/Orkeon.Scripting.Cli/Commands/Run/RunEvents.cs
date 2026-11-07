@@ -186,6 +186,7 @@ internal sealed class RunEventObserver : ICrewExecutionHook, ILlmUsageSink, ILlm
                 agentRole = snapshot.AgentRole,
                 success = snapshot.Success,
                 skipped = snapshot.Skipped,
+                resumed = snapshot.Resumed,
                 durationMs = (long)snapshot.Duration.TotalMilliseconds,
                 tokens = snapshot.TokensUsed,
                 toolCalls = snapshot.ToolCallCount,

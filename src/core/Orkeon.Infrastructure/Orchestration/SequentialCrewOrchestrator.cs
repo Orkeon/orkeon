@@ -39,6 +39,7 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
     private readonly IProcessStrategyFactory _processStrategyFactory;
     private readonly IAgentRepository? _agentRepository;
     private readonly ICheckpointManager? _checkpointManager;
+    private readonly IResumeEngine? _resumeEngine;
     private readonly IExecutionPlanParser _executionPlanParser;
     private readonly IDomainEventDispatcher _domainEventDispatcher;
     private readonly Orkeon.Application.Memory.CrewMemoryProviderRegistry? _memoryProviderRegistry;
@@ -88,7 +89,8 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
         Orkeon.Application.Interfaces.Ports.ILlmUsageSink? usageSink = null,
         Orkeon.Application.Interfaces.Security.ILlmRateLimiter? rateLimiter = null,
         TimeProvider? timeProvider = null,
-        IRunScope? runScope = null)
+        IRunScope? runScope = null,
+        IResumeEngine? resumeEngine = null)
 #pragma warning restore S107
     {
         ArgumentNullException.ThrowIfNull(crewRepository);
@@ -115,6 +117,7 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
         _rateLimiter = rateLimiter;
         _time = timeProvider ?? TimeProvider.System;
         _runScope = runScope;
+        _resumeEngine = resumeEngine;
     }
 
     /// <summary>
@@ -181,6 +184,7 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
         LogOrchestratingCrewExecution(crewId);
 
         string? sessionId = null;
+        string? runId = null;
         Orkeon.Domain.Crew.Crew? crew = null;
         CrewOutput output;
         Exception? cause = null;
@@ -210,7 +214,14 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
                 // task for the API and A2A (FWK-01), and it is visible to every decorator.
                 var executionId = options?.ExecutionId ?? ExecutionId.New();
                 var crewKey = options?.CrewKey is { Length: > 0 } named && !string.IsNullOrWhiteSpace(named) ? named : crew.Name ?? crewId.ToString();
-                runIdentity = _runScope?.Enter(new RunScope(executionId, crewKey, options?.Resume));
+
+                // A resumed run is the run it resumes: it takes the id of that run's session, which it
+                // continues, and carries the outputs of the tasks that session completed.
+                var resumePlan = await PlanResumeAsync(options?.Resume, crewKey, cancellationToken).ConfigureAwait(false);
+                if (resumePlan is not null)
+                    executionId = ExecutionId.From(resumePlan.SessionId);
+                runId = executionId.ToString();
+                runIdentity = _runScope?.Enter(new RunScope(executionId, crewKey, resumePlan));
 
                 // Start checkpoint session if checkpoint manager is available
                 if (_checkpointManager != null)
@@ -236,10 +247,17 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
                     () => ExecuteAndCompleteAsync(crew, processStrategy, input, cancellationToken))
                     .ConfigureAwait(false);
 
-                // Checkpoint each task output
+                // The tasks were checkpointed as they completed (CheckpointingAgentExecutionService): the
+                // session ends here, completed when the crew succeeded, failed, and so resumable, when not.
                 if (_checkpointManager != null && sessionId != null)
                 {
-                    await CheckpointTaskOutputsAsync(sessionId, domainOutput, cancellationToken).ConfigureAwait(false);
+                    if (domainOutput.Success)
+                        await _checkpointManager.CompleteSessionAsync(sessionId, cancellationToken).ConfigureAwait(false);
+                    else
+                        await _checkpointManager.MarkFailedAsync(
+                            sessionId, "crew-execution",
+                            new InvalidOperationException(RunFailureReason(crew, domainOutput.Error)),
+                            CancellationToken.None).ConfigureAwait(false);
                 }
 
                 stopwatch.Stop();
@@ -288,7 +306,7 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
                 await ReportUnreportedFailureAsync(crewId, startedAt, output, cause, end).ConfigureAwait(false);
             }
 
-            return output;
+            return output with { ExecutionId = runId };
         }
         finally
         {
@@ -598,20 +616,34 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
         return line.Length <= max ? line : string.Concat(line.AsSpan(0, max), "…");
     }
 
-    private async System.Threading.Tasks.Task CheckpointTaskOutputsAsync(
-        string sessionId,
-        DomainCrewOutput domainOutput,
-        CancellationToken cancellationToken)
+    /// <summary>
+    /// What a <c>Resume</c> request resumes: the checkpoint session of this crew it names (or its latest
+    /// unfinished one for <c>latest</c>) and the outputs that session completed. Null for a fresh run.
+    /// </summary>
+    private async System.Threading.Tasks.Task<ResumePlan?> PlanResumeAsync(
+        string? request, string crewKey, CancellationToken cancellationToken)
     {
-        foreach (var taskOutput in domainOutput.TaskOutputs ?? Enumerable.Empty<Domain.Task.ValueObjects.TaskOutput>())
+        if (string.IsNullOrWhiteSpace(request))
+            return null;
+
+        if (_resumeEngine is null || _checkpointManager is null)
+            throw new InvalidOperationException("A run can be resumed only when checkpointing is available (Orkeon:Checkpointing:Enabled).");
+
+        var named = string.Equals(request, "latest", StringComparison.OrdinalIgnoreCase) ? null : request.Trim();
+        var resumed = await _resumeEngine
+            .ResumeAsync(crewKey, new ResumeOptions { ExecutionId = named }, cancellationToken)
+            .ConfigureAwait(false);
+        if (resumed.Refusal is { } refusal)
+            throw new InvalidOperationException(refusal);
+
+        if (resumed.SessionId.Length == 0)
         {
-            await _checkpointManager!.CheckpointAsync(
-                sessionId,
-                taskOutput.TaskId?.ToString() ?? Guid.NewGuid().ToString(),
-                taskOutput.Output,
-                cancellationToken).ConfigureAwait(false);
+            throw new InvalidOperationException(named is null
+                ? $"Nothing to resume: crew '{crewKey}' has no unfinished run."
+                : $"Nothing to resume: run {named} is not an unfinished run of crew '{crewKey}'.");
         }
-        await _checkpointManager!.CompleteSessionAsync(sessionId, cancellationToken).ConfigureAwait(false);
+
+        return new ResumePlan(resumed.SessionId, resumed.CompletedOutputs);
     }
 
     private static async System.Threading.Tasks.Task<DomainCrewOutput> ExecuteDomainStrategyAsync(

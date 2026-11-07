@@ -184,6 +184,12 @@ public record CrewOutput(
     /// it as its last stderr line and exits non-zero on it (STUDIO-12 C5a).
     /// </summary>
     public string? Error { get; init; }
+
+    /// <summary>
+    /// Gets the identifier of the run that produced this output, its <see cref="Orkeon.Application.Interfaces.Services.ExecutionId"/>
+    /// in string form: the id a failed run is resumed by. Null when the run never got an identity.
+    /// </summary>
+    public string? ExecutionId { get; init; }
 }
 
 /// <summary>

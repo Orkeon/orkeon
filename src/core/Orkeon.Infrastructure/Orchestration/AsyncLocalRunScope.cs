@@ -16,6 +16,9 @@ public sealed class AsyncLocalRunScope : IRunScope
 {
     private static readonly AsyncLocal<RunScope?> Slot = new();
 
+    /// <summary>The run in flight on this control flow, for code that has no <see cref="IRunScope"/> to ask.</summary>
+    internal static RunScope? Ambient => Slot.Value;
+
     /// <inheritdoc />
     public RunScope? Current => Slot.Value;
 

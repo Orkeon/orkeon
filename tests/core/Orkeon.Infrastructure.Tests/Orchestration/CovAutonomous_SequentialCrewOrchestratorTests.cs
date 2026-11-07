@@ -218,11 +218,11 @@ public sealed class CovAutonomous_SequentialCrewOrchestratorTests
         /// <summary>Every session started, with the run identity visible at that moment.</summary>
         public List<(ExecutionId Id, string CrewKey, RunScope? Scope)> Starts { get; } = [];
 
-        /// <summary>The run identity visible when each task output was checkpointed (after a yield).</summary>
+        /// <summary>The run identity visible when a task output was checkpointed, or the session completed (after a yield).</summary>
         public List<RunScope?> ScopesAtCheckpoint { get; } = [];
         public async Task CheckpointAsync(string sessionId, string taskId, string? output, CancellationToken ct = default) { await Task.Yield(); lock (Gate) { CheckpointCount++; ScopesAtCheckpoint.Add(Scope?.Current); } }
         public Task MarkFailedAsync(string sessionId, string taskId, Exception ex, CancellationToken ct = default) { MarkFailedCount++; return Task.CompletedTask; }
-        public Task CompleteSessionAsync(string sessionId, CancellationToken ct = default) { CompleteCount++; return Task.CompletedTask; }
+        public async Task CompleteSessionAsync(string sessionId, CancellationToken ct = default) { await Task.Yield(); lock (Gate) { CompleteCount++; ScopesAtCheckpoint.Add(Scope?.Current); } }
         public Task<SessionState?> GetLatestCheckpointAsync(string crewId, CancellationToken ct = default) => Task.FromResult<SessionState?>(null);
         public Task<IReadOnlyList<VersionSummary>> GetHistoryAsync(string sessionId, int? limit = null, CancellationToken ct = default) => Task.FromResult<IReadOnlyList<VersionSummary>>([]);
         public Task<SessionState?> RestoreToVersionAsync(string sessionId, string versionId, CancellationToken ct = default) => Task.FromResult<SessionState?>(null);
@@ -429,7 +429,9 @@ public sealed class CovAutonomous_SequentialCrewOrchestratorTests
         await h.Orchestrator.KickoffAsync(crew.Id, Input(), TestContext.Current.CancellationToken);
 
         Assert.Equal(1, h.Checkpoint!.StartCount);
-        Assert.True(h.Checkpoint.CheckpointCount >= 1);
+        // The tasks are checkpointed as they end, by the execution service's decorator (FWK-07): the
+        // orchestrator itself starts the session and completes it.
+        Assert.Equal(0, h.Checkpoint.CheckpointCount);
         Assert.Equal(1, h.Checkpoint.CompleteCount);
     }
 

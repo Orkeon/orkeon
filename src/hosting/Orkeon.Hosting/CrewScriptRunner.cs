@@ -181,9 +181,11 @@ public sealed class CrewScriptRunner : ICrewScriptRunner
         }
 
         var orchestrator = scope.ServiceProvider.GetRequiredService<ICrewOrchestrationService>();
-        var output = RunnerRunIdentity.Ambient(scope.ServiceProvider) is { } identity
-            ? await orchestrator.KickoffAsync(crew.Id, input ?? CrewInput.Empty(), identity, cancellationToken).ConfigureAwait(false)
-            : await orchestrator.KickoffAsync(crew.Id, input ?? CrewInput.Empty(), cancellationToken).ConfigureAwait(false);
+        var output = await orchestrator.KickoffAsync(
+            crew.Id,
+            input ?? CrewInput.Empty(),
+            RunnerRunIdentity.For(scope.ServiceProvider, crew.Name, bootstrap.VirtualConfigPath, bootstrap.ConfigPath, resume: null),
+            cancellationToken).ConfigureAwait(false);
 
         // The orchestrator reports a run cancelled once the crew started as a failed output, in
         // every process mode (its kickoff catches the cancellation like any failure). The runner's

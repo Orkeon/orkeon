@@ -190,6 +190,12 @@ internal sealed class RunCommandOptions : CliOptions
                        "'VALIDATION OK/FAILED: <config> ...' and exits 0 (ok) or non-zero (failed).")]
         public bool Validate { get; set; }
 
+        [Option(RunOptionNames.Resume, Required = false, Default = null,
+            HelpText = "Resume the checkpointed run <id> of this crew, or 'latest' for its most recent unfinished run: " +
+                       "the tasks it had completed are not run again. Needs Orkeon:Checkpointing:Enabled; " +
+                       "refused with --validate. With --events, name the run id (latest is refused).")]
+        public string? Resume { get; set; }
+
         /// <summary>
         /// Build the host and print the sorted runtime tool registry (one name per line), then exit.
         /// Mirrors the standard runner's <c>--list-tools</c>; no crew is loaded, so the crew path
@@ -212,6 +218,9 @@ internal sealed class RunCommandOptions : CliOptions
         /// double — a counting rate limiter — is the one the host resolves.
         /// </summary>
         internal Action<Microsoft.Extensions.Hosting.HostBuilderContext, IServiceCollection>? ConfigureTestServices { get; set; }
+
+        /// <summary>The folder <c>./.orkeon/state</c> is resolved against: null, the process's working directory. Set by tests.</summary>
+        internal string? WorkingDirectory { get; set; }
 }
 
 /// <summary>
@@ -307,7 +316,40 @@ internal static partial class RunCommand
             return Program.ExitScriptError;
         }
 
+        // A resumed run is the run it resumes: the stream carries that run's id from run.started on, so
+        // it has to be named before the host starts. 'latest' is only known once the store is read.
+        if (options.Resume is not null && options.EmitsEvents && !IsRunId(options.Resume))
+        {
+            await console.ErrorOutput.WriteLineAsync(
+                $"orkeon run: --resume '{options.Resume}' with --events needs the run id the failed run printed (a 26-character id), not 'latest': the stream carries the run's id from its first line.")
+                .ConfigureAwait(false);
+            return Program.ExitScriptError;
+        }
+
         return null;
+    }
+
+    /// <summary>The id of the run a stream describes: the one resumed when it names one, else a new one.</summary>
+    private static Orkeon.Application.Interfaces.Services.ExecutionId RunIdOf(RunCommandOptions options) =>
+        options.Resume is { } resume && IsRunId(resume)
+            ? Orkeon.Application.Interfaces.Services.ExecutionId.From(resume)
+            : Orkeon.Application.Interfaces.Services.ExecutionId.New();
+
+    private static bool IsRunId(string value)
+    {
+        try
+        {
+            _ = Orkeon.Application.Interfaces.Services.ExecutionId.From(value);
+            return true;
+        }
+        catch (ArgumentException)
+        {
+            return false;
+        }
+        catch (FormatException)
+        {
+            return false;
+        }
     }
 
     /// <summary>
@@ -422,6 +464,16 @@ internal static partial class RunCommand
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Top-level CLI fault barrier: after cancellation, file-not-found and esbuild errors are handled specifically, any other unexpected failure is converted to a runtime-error exit code so the tool reports cleanly instead of crashing with a stack trace.")]
     private static async Task<int> RunProceduralScriptAsync(IRunnerConsole console, RunCommandOptions options)
     {
+        // A script that runs its crew itself (`await crew.run()`) is a program, not a crew definition: its
+        // tasks are not named by a file the host loads again, so there is nothing to resume it from.
+        if (options.Resume is not null)
+        {
+            await console.ErrorOutput.WriteLineAsync(
+                "orkeon run: --resume applies to a crew definition (a .yaml crew, or a .ork.ts that ends with `globalThis.crew = crew`); " +
+                "a script that runs its crew itself with `crew.run()` cannot be resumed.").ConfigureAwait(false);
+            return Program.ExitScriptError;
+        }
+
         using var cts = new CancellationTokenSource();
         using var interrupt = console.OnInterrupt(() =>
         {
@@ -439,7 +491,7 @@ internal static partial class RunCommand
             // The run's one identity, opened before run.started: every line of the stream carries it.
             var runScope = new Orkeon.Infrastructure.Orchestration.AsyncLocalRunScope();
             runIdentity = runScope.Enter(new Orkeon.Application.Interfaces.Services.RunScope(
-                Orkeon.Application.Interfaces.Services.ExecutionId.New(), options.ScriptPath ?? "run"));
+                RunIdOf(options), options.ScriptPath ?? "run"));
             var events = new Events.OrkeonEventWriter(console.Output) { RunScope = runScope };
             events.Emit(Run.RunEventKinds.RunStarted, new
             {
@@ -595,7 +647,7 @@ internal static partial class RunCommand
         // The run's one identity, opened before run.started: every line of the stream carries it.
         var runScope = new Orkeon.Infrastructure.Orchestration.AsyncLocalRunScope();
         using var runIdentity = runScope.Enter(new Orkeon.Application.Interfaces.Services.RunScope(
-            Orkeon.Application.Interfaces.Services.ExecutionId.New(), options.ScriptPath ?? "run"));
+            RunIdOf(options), options.ScriptPath ?? "run"));
         var events = new Events.OrkeonEventWriter(console.Output) { RunScope = runScope };
         events.Emit(Run.RunEventKinds.RunStarted, new
         {
@@ -673,6 +725,8 @@ internal static partial class RunCommand
             InitialContext = options.InitialContext,
             Validate = options.Validate,
             ListTools = options.ListTools,
+            Resume = options.Resume,
+            WorkingDirectory = options.WorkingDirectory,
         };
 
     private static int ReportEsbuildNotFound(TextWriter error, EsbuildNotFoundException ex)

@@ -133,6 +133,21 @@ public abstract class RunnerOptionsBase
     public bool Validate { get; set; }
 
     /// <summary>
+    /// The folder <c>./.orkeon/state</c> (the checkpoint store's) is resolved against; null: the process's
+    /// working directory. Not a command-line option: a command that embeds a runner, or a test, sets it.
+    /// </summary>
+    public string? WorkingDirectory { get; set; }
+
+    /// <summary>
+    /// Resumes the checkpointed run <c>&lt;id&gt;</c> of this crew (or <c>latest</c>, its most recent
+    /// unfinished one) instead of starting a new one: the tasks it had completed are not run again.
+    /// </summary>
+    [Option(RunOptionNames.Resume, Required = false, Default = null,
+        HelpText = "Resume the checkpointed run <id> of this crew, or 'latest' for its most recent unfinished run: " +
+                   "tasks it had completed are not run again. Needs Orkeon:Checkpointing:Enabled; refused with --validate.")]
+    public string? Resume { get; set; }
+
+    /// <summary>
     /// True when stdout carries a machine protocol (an `--events` run): the human summary —
     /// the crew's final output, duration, tokens — is then written to stderr instead. A
     /// banner between two JSONL documents is a parser error on the client, and the terminal

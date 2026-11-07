@@ -486,11 +486,23 @@ No attribute carries an id of a crew, task or agent.
   `correlationId` of the events `orkeon run --events` writes, and the id the no-wait kickoff returns.
   `KickoffOptions.ExecutionId` hands it in (resume, host); `IRunScope.Current` shows it to every
   decorator and observer the run reaches. The crew key of a session (`SessionState.CrewKey`) is the
-  crew's name unless `KickoffOptions.CrewKey` names it (name and virtual path of the file), so that a
-  session can be found again by a new process: the ids of a crew and its tasks are regenerated at each load.
-  Not unified yet: the A2A task id and the API's (FWK-14), and the crew key until the host passes name and
-  path (FWK-07). A run kicked off inside another one enters its own scope: its identifier overrides the
-  outer one for its length.
+  crew's name unless `KickoffOptions.CrewKey` names it; `orkeon run` and `orkeon-host` name it with the
+  crew's name, the virtual path of its file and a digest of the file's full path, so that a session
+  can be found again by a new process whatever the ids of the crew and its tasks, regenerated at each load.
+  Not unified yet: the A2A task id and the API's (FWK-14). A run kicked off inside another one enters its
+  own scope: its identifier overrides the outer one for its length.
+- **Checkpoint per task and `--resume`** (FWK-07): each task a crew run completes is written to the
+  checkpoint session as it ends, by a decorator of `IAgentExecutionService` that every orchestration mode
+  goes through (sequential, parallel, hierarchical, graph, autonomous, consensual), under the key
+  `"{TaskKey}#{n}"`: `TaskKey` is the task's name in the crew definition, `n` the ordinal of that key's
+  invocation in the run (a Hierarchical revision or a Graph retry is `#2`). A task that fails or throws is
+  not checkpointed; a checkpoint that cannot be written fails the task. `orkeon run <crew> --resume <id>|latest`
+  continues the run `<id>` (the id a failed run prints: `Run <id> did not complete. Resume it ...`), or the
+  latest run of that crew file that is not completed (and not still marked `Running`: `latest` does not take over a run that may be alive in another process, the store holds no lease; name its id to take it over): the run keeps its id, the tasks it had completed come back from
+  the checkpoint (`task.completed` carries `resumed: true`, and no model is asked), the others run. Next to its output a checkpoint keeps a fingerprint of the task (description, expected output, agent, dependencies): a task edited since is run again with every task after it, and one warning names it. It needs
+  `Orkeon:Checkpointing:Enabled=true` and is refused with `--validate`, with `--list-tools`, on a procedural
+  `.ork.ts` and, with `--events`, without an explicit run id. In a host written in C#, pass
+  `KickoffOptions.Resume` (`"latest"` or the id). Task names are unique in a crew.
 - **Role**: durable persistence of crew execution states
   (`ScopedCrewExecutionStateManager`) in a checkpointing state store
   (`IStateStore`): every transition (creation, update, completion, archiving)

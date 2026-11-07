@@ -78,6 +78,14 @@ internal sealed partial class CrewHookDispatcher
     internal async Task TaskCompletedAsync(TaskExecutionSnapshot snapshot, CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(snapshot);
+
+        // A task a resumed run answered from its checkpoint (FWK-07) is reported as such, in every mode:
+        // the decorator that answered it noted its id on the run.
+        if (!snapshot.Resumed
+            && Orkeon.Infrastructure.Orchestration.AsyncLocalRunScope.Ambient?.Resume?.ResumedTaskIds.ContainsKey(snapshot.TaskId) == true)
+        {
+            snapshot = snapshot with { Resumed = true };
+        }
         CrewStreamScope.Write(new CrewExecutionEvent
         {
             Kind = RunEventKinds.TaskCompleted,

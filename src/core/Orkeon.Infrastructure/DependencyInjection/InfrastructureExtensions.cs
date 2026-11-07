@@ -415,6 +415,24 @@ public static class InfrastructureExtensions
         return services;
     }
 
+    /// <summary>
+    /// The execution service the strategies run their tasks through: the registered one, wrapped so that
+    /// each task a run completes is checkpointed and a resumed run's completed tasks are answered from
+    /// its checkpoints (FWK-07). Every mode takes its service from <see cref="Crew.Strategies.CrewStrategyDependencies"/>,
+    /// so decorating here covers the six; calls made outside a run (scripts, delegation) are not touched.
+    /// </summary>
+    private static Orkeon.Application.Interfaces.Services.IAgentExecutionService CheckpointedExecutionService(IServiceProvider sp)
+    {
+        var inner = sp.GetRequiredService<Orkeon.Application.Interfaces.Services.IAgentExecutionService>();
+        var runScope = sp.GetService<Orkeon.Application.Interfaces.Services.IRunScope>();
+        var checkpoints = sp.GetService<Orkeon.Application.Interfaces.Checkpointing.ICheckpointManager>();
+        return runScope is null || checkpoints is null
+            ? inner
+            : new Checkpointing.CheckpointingAgentExecutionService(
+                inner, runScope, checkpoints, sp.GetRequiredService<ILogger<Checkpointing.CheckpointingAgentExecutionService>>(),
+                sp.GetService<Orkeon.Domain.Task.ITaskRepository>());
+    }
+
     private static IServiceCollection AddOrkeonRepositoriesAndStrategies(this IServiceCollection services)
     {
         // Agent delegation provider (scoped — one instance per crew execution)
@@ -431,7 +449,7 @@ public static class InfrastructureExtensions
         services.TryAddScoped<Crew.Strategies.CrewStrategyDependencies>(sp => new Crew.Strategies.CrewStrategyDependencies(
             sp.GetRequiredService<Orkeon.Domain.Task.ITaskRepository>(),
             sp.GetRequiredService<Orkeon.Domain.Agent.IAgentRepository>(),
-            sp.GetRequiredService<Orkeon.Application.Interfaces.Services.IAgentExecutionService>(),
+            CheckpointedExecutionService(sp),
             sp.GetRequiredService<Orkeon.Application.Interfaces.Ports.IMemoryScope>(),
             sp.GetService<Orkeon.Domain.SharedKernel.Events.IDomainEventDispatcher>())
         {
@@ -440,7 +458,10 @@ public static class InfrastructureExtensions
 
         // Add Process Strategies
         services.AddScoped<SequentialProcessStrategy>();
-        services.AddScoped<HierarchicalProcessStrategy>();
+        // The one strategy that takes the execution service itself rather than the shared dependencies:
+        // it is handed the checkpointed one like the others (FWK-07).
+        services.AddScoped<HierarchicalProcessStrategy>(sp =>
+            ActivatorUtilities.CreateInstance<HierarchicalProcessStrategy>(sp, CheckpointedExecutionService(sp)));
         services.AddScoped<ParallelProcessStrategy>();
         services.AddScoped<GraphProcessStrategy>();
         services.AddScoped<AutonomousProcessStrategy>();

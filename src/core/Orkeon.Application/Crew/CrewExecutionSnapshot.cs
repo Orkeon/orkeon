@@ -68,6 +68,12 @@ public sealed record TaskExecutionSnapshot
     /// </summary>
     public bool Skipped { get; init; }
 
+    /// <summary>
+    /// True when the task was not run: its result was read back from the checkpoint of the run being
+    /// resumed (FWK-07), so no model was asked anything for it.
+    /// </summary>
+    public bool Resumed { get; init; }
+
     /// <summary>Why the task was skipped (the failed dependency or the <c>when</c> condition) — null unless <see cref="Skipped"/>.</summary>
     public string? SkipReason { get; init; }
 

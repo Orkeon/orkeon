@@ -45,6 +45,12 @@ public interface ICrewTask
     /// <summary>Gets whether this task requires human input.</summary>
     bool HumanInput { get; }
 
+    /// <summary>
+    /// Gets the key this task was declared with (its name in the crew definition), or null when it has
+    /// none: the stable name a checkpoint keeps it under, where <see cref="TaskId"/> is new at every load.
+    /// </summary>
+    string? Key => null;
+
     /// <summary>Assigns this task to an agent.</summary>
     /// <param name="agentId">The agent identifier to assign to.</param>
     void AssignTo(AgentId agentId);
