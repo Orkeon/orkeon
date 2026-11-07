@@ -56,23 +56,6 @@ public static class ToolSchemaGenerator
     }
 
     /// <summary>
-    /// Generates returns dictionary from a TResponse type (backward-compatible convenience method).
-    /// For full output including type definitions, use GenerateReturnsWithTypes instead.
-    /// </summary>
-    public static Dictionary<string, object?> GenerateReturns<TResponse>() where TResponse : class
-    {
-        return GenerateReturnsWithTypes<TResponse>().Returns;
-    }
-
-    /// <summary>
-    /// Generates returns dictionary from a response type (backward-compatible convenience method).
-    /// </summary>
-    public static Dictionary<string, object?> GenerateReturns(Type responseType)
-    {
-        return GenerateReturnsWithTypes(responseType).Returns;
-    }
-
-    /// <summary>
     /// Maps a C# type to its JSON Schema type string; null for a free value
     /// (<see cref="object"/>, JsonNode, JsonElement), which accepts any JSON value.
     /// </summary>

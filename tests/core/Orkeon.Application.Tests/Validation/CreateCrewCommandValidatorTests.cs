@@ -1,4 +1,5 @@
 using Orkeon.Application.Crew.Commands.CreateCrew;
+using Orkeon.Domain.Common;
 using Orkeon.Domain.SharedKernel.ValueObjects;
 
 namespace Orkeon.Application.Tests.Validation;
@@ -126,6 +127,34 @@ public class CreateCrewCommandValidatorTests
         var result = _validator.Validate(command);
 
         Assert.True(result.IsValid);
+    }
+
+    [Fact]
+    public void ShouldPass_WhenAgentIdsAreUlids()
+    {
+        var agentIds = new List<string> { AgentId.Create().ToString(), AgentId.Create().ToString() };
+        var command = new CreateCrewCommand("Dev Team", "Build software", ProcessType.Sequential, agentIds);
+
+        var result = _validator.Validate(command);
+
+        Assert.True(result.IsValid);
+    }
+
+    [Theory]
+    [InlineData("01ARZ3NDEKTSV4RRFFQ69G5FA!")]
+    [InlineData("ZZZZZZZZZZZZZZZZZZZZZZZZZZ")]
+    [InlineData("01ARZ3NDEKTSV4RRFFQ69G5FA")]
+    [InlineData("00000000000000000000000000")]
+    [InlineData("00000000-0000-0000-0000-000000000000")]
+    public void ShouldFail_WhenAgentIdsContainANonAgentId(string agentId)
+    {
+        var agentIds = new List<string> { AgentId.Create().ToString(), agentId };
+        var command = new CreateCrewCommand("Dev Team", "Build software", ProcessType.Sequential, agentIds);
+
+        var result = _validator.Validate(command);
+
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Errors, e => e.Contains(agentId));
     }
 
     [Fact]

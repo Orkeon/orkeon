@@ -30,7 +30,7 @@ public sealed record CrewDirectoryInspection(bool IsCrewDirectory, string? Error
 /// <list type="bullet">
 ///   <item><description><b>per-entity</b> — <c>config.yaml</c> (or <c>crew.yaml</c>) plus an
 ///   <c>agents/</c> and/or <c>tasks/</c> sub-directory of one file per entity;</description></item>
-///   <item><description><b>flat</b> — the legacy triplet <c>crew.yaml</c> + <c>agents.yaml</c> +
+///   <item><description><b>flat</b> — the triplet <c>crew.yaml</c> + <c>agents.yaml</c> +
 ///   <c>tasks.yaml</c>.</description></item>
 /// </list>
 /// A directory whose <c>crew/</c> sub-folder holds one of those layouts — the team folder
@@ -56,7 +56,7 @@ public static class CrewDirectoryLayout
     /// <summary>Sub-directory names that select the per-entity layout.</summary>
     private static readonly string[] EntityFolders = ["agents", "tasks"];
 
-    /// <summary>File names that make up the flat legacy layout (all three required).</summary>
+    /// <summary>File names that make up the flat layout (all three required).</summary>
     private static readonly IReadOnlyList<string> FlatFiles = ConventionalNames.FlatCrewLayoutFiles;
 
     /// <summary>Suffixes of the scripting entry points that would make a directory ambiguous.</summary>

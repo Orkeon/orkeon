@@ -48,7 +48,7 @@ public interface IBaseTool
     Task<ToolCallResponse> CallAsync(Protocol.ToolCallRequest request, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Executes the tool with the given input (legacy method for compatibility).
+    /// Executes the tool with a single string input, converted to a protocol call.
     /// </summary>
     /// <param name="input">The input for the tool.</param>
     /// <param name="cancellationToken">Cancellation token.</param>

@@ -50,7 +50,7 @@ public sealed record DependencyGraphRequest
 {
     [FieldSchema(Description = "Level of the nodes: L1_Package (default), L2_Module or L3_Symbol.", IsRequired = false, Default = "L1_Package")]
     public NodeLevel Scope { get; init; } = NodeLevel.L1_Package;
-    [FieldSchema(Description = "Edge kinds to follow, by name: contains, calls, imports, inherits, tests, documents, project_depends. Legacy enum names (Imports, Extends, Implements...) are still accepted.", ItemsType = "string", IsRequired = false)]
+    [FieldSchema(Description = "Edge kinds to follow, by name: contains, calls, imports, inherits, extends, implements, tests, documents, project_depends, case-insensitively; inherits is extends and implements together.", ItemsType = "string", IsRequired = false)]
     [JsonPropertyName("edge_kinds")]
     public ImmutableArray<string> EdgeKinds { get; init; } = ["imports"];
 
@@ -110,7 +110,7 @@ public sealed record SubGraphRequest
 {
     [FieldSchema(Description = "FQNs (or node ids) to expand from; a hit of codebase_search is one.", ItemsType = "string", IsRequired = true)]
     public ImmutableArray<string> Seeds { get; init; } = [];
-    [FieldSchema(Description = "Edge kinds to follow, by name: contains, calls, imports, inherits, tests, documents, project_depends. Legacy enum names (Imports, Extends, Implements...) are still accepted.", ItemsType = "string", IsRequired = false)]
+    [FieldSchema(Description = "Edge kinds to follow, by name: contains, calls, imports, inherits, extends, implements, tests, documents, project_depends, case-insensitively; inherits is extends and implements together.", ItemsType = "string", IsRequired = false)]
     [JsonPropertyName("edge_kinds")]
     public ImmutableArray<string> EdgeKinds { get; init; } = ["calls"];
 

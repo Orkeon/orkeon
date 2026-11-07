@@ -56,7 +56,7 @@ Folder exemptions (`s_exemptFolderSegments`):
 
 Per-file exemptions (`s_exemptFileSuffixes`) — each carries inline `EXCEPTION-…` / `OUT-OF-SCOPE` markers:
 - `Sandbox/SandboxSession.cs` — mounts registered before DI (`EXCEPTION-BOOTSTRAP`)
-- `Sandbox/ProcessIsolationSandbox.cs`, `Sandbox/DockerSandbox.cs` — host-binary probing (`OUT-OF-SCOPE`)
+- `Sandbox/HostProcessRunner.cs`, `Sandbox/DockerSandbox.cs` — host-binary probing (`OUT-OF-SCOPE`)
 - `Security/PathValidator.cs` — symlink/realpath resolution is its core job
 
 Every other legitimately-raw file relies on a narrow `[SuppressVfsCompliance]` at the use site rather than a path exemption (see the ratified permanent exceptions below).
@@ -98,7 +98,7 @@ These accesses cannot go through the VFS by nature and are **permanently** allow
 |---|---|---|---|
 | VFS implementation | `Domain/FileSystem/*`, `Infrastructure/FileSystem/*` | (the abstraction) | It *is* the VFS |
 | Bootstrap (pre-DI) | `SandboxSession`, ConsoleApp `Cli*MountBootstrapper`, `Hosting/Runner*`, `Hosting/CrewMountDeclarations` (pre-reads a crew's `mounts:` block, VFS-90) | `EXCEPTION-BOOTSTRAP` | Read appsettings + mount before the VFS exists. Covers *provisioning* a mount, never exposing a physical path as a virtual one — see [ADR-008](../adr/ADR-008-virtual-paths-are-the-only-currency.md) |
-| Host probing | `DockerSandbox`, `ProcessIsolationSandbox`, `ProcessGitDiffProvider` | `OUT-OF-SCOPE` | Discover `docker`/`dotnet`/`git` on PATH, never a mount |
+| Host probing | `DockerSandbox`, `HostProcessRunner`, `ProcessGitDiffProvider` | `OUT-OF-SCOPE` | Discover `docker`/`dotnet`/`git` on PATH, never a mount |
 | Toolchain | `Scripting/Toolchain/EsbuildTranspiler.cs` | `OUT-OF-SCOPE` | Locates the `esbuild` binary + transpile temp files; host toolchain |
 | Host applications (pre-DI) | `orkeon-host` (`CrewHostService`, `HostCrewMounts`, `HostStartup`), `Hosting/CrewDirectoryLayout`, the `orkeon` entrypoint (`Orkeon.Scripting.Cli`, assembly-wide), the REPL's `Program` | `EXCEPTION-BOOTSTRAP` | Validate or classify operator-supplied crew, script and settings paths before any mount exists |
 | Orkeon Studio | `Orkeon.Studio.Core` / `.Run` / `.Wpf` (settings file, teams, model profiles, launch history, folder pickers, forge sessions) | `EXCEPTION-BOOTSTRAP` | Studio is a host application: it edits the user's own files and folders, never a crew's virtual paths |

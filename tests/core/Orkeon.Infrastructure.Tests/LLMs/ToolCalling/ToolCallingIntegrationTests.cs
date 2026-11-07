@@ -56,7 +56,6 @@ public class ToolCallingIntegrationTests
 
     private static LlmConfig CreateConfig(IReadOnlyList<ToolSchema>? tools = null, ToolCallMode toolMode = ToolCallMode.Auto)
     {
-#pragma warning disable CS0618 // Type or member is obsolete
         return LlmConfig.Create("gpt-4", "test-api-key-fake") with
         {
             BaseUrl = new Uri("https://api.openai.com/v1"),
@@ -64,7 +63,6 @@ public class ToolCallingIntegrationTests
             ToolMode = toolMode,
             TimeoutSeconds = 10
         };
-#pragma warning restore CS0618
     }
 
     private static OpenAIToolCallingStrategy CreateStrategy()

@@ -1,3 +1,4 @@
+using Orkeon.Application.Crew.Execution;
 using Microsoft.Extensions.AI;
 using Orkeon.Application.Crew;
 using Orkeon.Domain.Constants.Agent;
@@ -6,7 +7,7 @@ using Orkeon.Domain.SharedKernel.ValueObjects;
 namespace Orkeon.Application.Tests.Crew;
 
 /// <summary>
-/// Tests for context window management in ExecutionOrchestrator:
+/// Tests for context window management in <see cref="ConversationPolicy"/>:
 /// sliding window trimming and tool result truncation.
 /// </summary>
 public class ExecutionOrchestratorContextManagementTests
@@ -27,7 +28,7 @@ public class ExecutionOrchestratorContextManagementTests
         var originalCount = messages.Count;
 
         // Act
-        ExecutionOrchestrator.TrimConversationHistory(messages, 10);
+        ConversationPolicy.TrimConversationHistory(messages, 10);
 
         // Assert
         Assert.Equal(originalCount, messages.Count);
@@ -48,7 +49,7 @@ public class ExecutionOrchestratorContextManagementTests
         };
 
         // Act
-        ExecutionOrchestrator.TrimConversationHistory(messages, 6);
+        ConversationPolicy.TrimConversationHistory(messages, 6);
 
         // Assert
         Assert.Equal(6, messages.Count);
@@ -63,7 +64,7 @@ public class ExecutionOrchestratorContextManagementTests
         var messages = BuildLargeConversation(systemContent, userContent, 30);
 
         // Act
-        ExecutionOrchestrator.TrimConversationHistory(messages, 10);
+        ConversationPolicy.TrimConversationHistory(messages, 10);
 
         // Assert
         Assert.Equal(systemContent, messages[0].Text);
@@ -89,7 +90,7 @@ public class ExecutionOrchestratorContextManagementTests
         }
 
         // Act — trim to 10 messages: system + user + summary + 7 recent
-        ExecutionOrchestrator.TrimConversationHistory(messages, 10);
+        ConversationPolicy.TrimConversationHistory(messages, 10);
 
         // Assert — the last message should be the most recent tool result
         var lastMsg = messages[^1];
@@ -107,7 +108,7 @@ public class ExecutionOrchestratorContextManagementTests
         var messages = BuildLargeConversation("System", "User", 30);
 
         // Act
-        ExecutionOrchestrator.TrimConversationHistory(messages, 10);
+        ConversationPolicy.TrimConversationHistory(messages, 10);
 
         // Assert — third message (index 2) should be the trim notice as user role
         Assert.Equal(ChatRole.User, messages[2].Role);
@@ -122,7 +123,7 @@ public class ExecutionOrchestratorContextManagementTests
         var messages = BuildLargeConversation("System", "User", 50);
 
         // Act
-        ExecutionOrchestrator.TrimConversationHistory(messages, AgentDefaults.MaxContextMessages);
+        ConversationPolicy.TrimConversationHistory(messages, AgentDefaults.MaxContextMessages);
 
         // Assert
         Assert.True(messages.Count <= AgentDefaults.MaxContextMessages);
@@ -136,7 +137,7 @@ public class ExecutionOrchestratorContextManagementTests
         var originalCount = messages.Count; // 42
 
         // Act — trim to 10
-        ExecutionOrchestrator.TrimConversationHistory(messages, 10);
+        ConversationPolicy.TrimConversationHistory(messages, 10);
 
         // Assert — trimmed count should be original - maxMessages = 32
         var expectedTrimmedCount = originalCount - 10;
@@ -158,7 +159,7 @@ public class ExecutionOrchestratorContextManagementTests
         var originalCount = messages.Count;
 
         // Act
-        ExecutionOrchestrator.TrimConversationHistory(messages, 10);
+        ConversationPolicy.TrimConversationHistory(messages, 10);
 
         // Assert
         Assert.Equal(originalCount, messages.Count);
@@ -171,7 +172,7 @@ public class ExecutionOrchestratorContextManagementTests
         var messages = BuildLargeLlmConversation("System prompt", "User task", 30);
 
         // Act
-        ExecutionOrchestrator.TrimConversationHistory(messages, 10);
+        ConversationPolicy.TrimConversationHistory(messages, 10);
 
         // Assert
         Assert.Equal("system", messages[0].Role);
@@ -187,7 +188,7 @@ public class ExecutionOrchestratorContextManagementTests
         var messages = BuildLargeLlmConversation("System", "User", 30);
 
         // Act
-        ExecutionOrchestrator.TrimConversationHistory(messages, 10);
+        ConversationPolicy.TrimConversationHistory(messages, 10);
 
         // Assert — trim notice uses user role to avoid overwriting system prompt
         Assert.Equal("user", messages[2].Role);
@@ -201,7 +202,7 @@ public class ExecutionOrchestratorContextManagementTests
         var messages = BuildLargeLlmConversation("System", "User", 50);
 
         // Act
-        ExecutionOrchestrator.TrimConversationHistory(messages, AgentDefaults.MaxContextMessages);
+        ConversationPolicy.TrimConversationHistory(messages, AgentDefaults.MaxContextMessages);
 
         // Assert
         Assert.True(messages.Count <= AgentDefaults.MaxContextMessages);
@@ -229,7 +230,7 @@ public class ExecutionOrchestratorContextManagementTests
 
         // Act — trim to 10: keepCount = 7, skip 28 -> starts at index 28
         // Index 28 is a Tool message from batch-2 -> must be dropped
-        ExecutionOrchestrator.TrimConversationHistory(messages, 10);
+        ConversationPolicy.TrimConversationHistory(messages, 10);
 
         // Assert — no tool message should appear before the first assistant message (after header)
         var afterHeader = messages.Skip(3).ToList(); // skip system + user + trim notice
@@ -256,7 +257,7 @@ public class ExecutionOrchestratorContextManagementTests
         }
 
         // Act
-        ExecutionOrchestrator.TrimConversationHistory(messages, 10);
+        ConversationPolicy.TrimConversationHistory(messages, 10);
 
         // Assert — no orphan tool message at start of recent messages
         var afterHeader = messages.Skip(3).ToList();
@@ -275,7 +276,7 @@ public class ExecutionOrchestratorContextManagementTests
         var shortResult = "File content: hello world";
 
         // Act
-        var output = ExecutionOrchestrator.TruncateToolResult(shortResult, AgentDefaults.MaxToolResultLength);
+        var output = ConversationPolicy.TruncateToolResult(shortResult, AgentDefaults.MaxToolResultLength);
 
         // Assert
         Assert.Equal(shortResult, output);
@@ -288,7 +289,7 @@ public class ExecutionOrchestratorContextManagementTests
         var exactResult = new string('x', AgentDefaults.MaxToolResultLength);
 
         // Act
-        var output = ExecutionOrchestrator.TruncateToolResult(exactResult, AgentDefaults.MaxToolResultLength);
+        var output = ConversationPolicy.TruncateToolResult(exactResult, AgentDefaults.MaxToolResultLength);
 
         // Assert
         Assert.Equal(exactResult, output);
@@ -301,7 +302,7 @@ public class ExecutionOrchestratorContextManagementTests
         var longResult = new string('A', 10_000);
 
         // Act
-        var output = ExecutionOrchestrator.TruncateToolResult(longResult, AgentDefaults.MaxToolResultLength);
+        var output = ConversationPolicy.TruncateToolResult(longResult, AgentDefaults.MaxToolResultLength);
 
         // Assert
         Assert.True(output.Length < longResult.Length);
@@ -318,7 +319,7 @@ public class ExecutionOrchestratorContextManagementTests
         var expectedOmitted = totalLength - AgentDefaults.MaxToolResultLength;
 
         // Act
-        var output = ExecutionOrchestrator.TruncateToolResult(longResult, AgentDefaults.MaxToolResultLength);
+        var output = ConversationPolicy.TruncateToolResult(longResult, AgentDefaults.MaxToolResultLength);
 
         // Assert
         Assert.Contains($"{expectedOmitted} chars omitted", output);
@@ -331,7 +332,7 @@ public class ExecutionOrchestratorContextManagementTests
         var longResult = new string('C', 10_000);
 
         // Act
-        var output = ExecutionOrchestrator.TruncateToolResult(longResult, AgentDefaults.MaxToolResultLength);
+        var output = ConversationPolicy.TruncateToolResult(longResult, AgentDefaults.MaxToolResultLength);
 
         // Assert
         Assert.Contains("Use more specific parameters to narrow results", output);

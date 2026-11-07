@@ -40,27 +40,6 @@ public sealed class RunnerHostRaggableTreeTests
         Assert.Equal(EmbeddingProviderKind.None, options.Embedding.Provider);
     }
 
-    [Theory]
-    [InlineData("Exclude:0", "vendor")]
-    [InlineData("RootAlias", "app")]
-    [InlineData("IndexMode", "Live")]
-    [InlineData("EnrichWithLlm", "true")]
-    [InlineData("IncludeStatements", "true")]
-    public void A_retired_key_fails_the_host_and_names_the_key(string key, string value)
-    {
-        var configuration = Settings(new()
-        {
-            ["RaggableTree:Embedding:Provider"] = "None",
-            ["RaggableTree:" + key] = value,
-        });
-
-        var ex = Assert.Throws<InvalidOperationException>(() => Register(configuration));
-
-        var name = key.Split(':')[0];
-        Assert.Contains("RaggableTree:" + name, ex.Message, StringComparison.Ordinal);
-        Assert.Contains("index_codebase", ex.Message, StringComparison.Ordinal);
-    }
-
     /// <summary>
     /// GAP-40, decision 4 — a value of <c>Embedding</c> the host cannot read refuses the start: a
     /// provider written wrong ran the local embeddings, a number the enum parser took as well, and a

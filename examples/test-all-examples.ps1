@@ -82,7 +82,7 @@ else {
         Get-ChildItem -Path $searchPath -Filter "config.yaml" -Recurse -File
         Get-ChildItem -Path $searchPath -Filter "main.ork.ts" -Recurse -File
     )
-    $excluded = "(^|[\\/])(_legacy|_shared|runners|\.vs|\.orkeon|bin|obj|node_modules)([\\/]|$)"
+    $excluded = "(^|[\\/])(\.vs|\.orkeon|bin|obj|node_modules)([\\/]|$)"
     $exampleDirs = @(
         $crewFiles |
             ForEach-Object { $_.Directory.FullName.Substring($searchPath.Length).TrimStart("\", "/") } |

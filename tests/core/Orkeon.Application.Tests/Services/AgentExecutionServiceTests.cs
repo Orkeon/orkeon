@@ -29,7 +29,6 @@ public sealed class AgentExecutionServiceTests : IDisposable
     private readonly TestExecutionOrchestrator _executionOrchestrator;
     private readonly TestCallbackOrchestrator _callbackOrchestrator;
     private readonly TestMemoryCoordinator _memoryCoordinator;
-    private readonly TestPerformanceMetrics _performanceMetrics;
     private readonly AgentExecutionService _service;
     private readonly DomainAgent _testAgent;
     private readonly DomainTask _testTask;
@@ -42,14 +41,12 @@ public sealed class AgentExecutionServiceTests : IDisposable
         _executionOrchestrator = new TestExecutionOrchestrator();
         _callbackOrchestrator = new TestCallbackOrchestrator();
         _memoryCoordinator = new TestMemoryCoordinator();
-        _performanceMetrics = new TestPerformanceMetrics();
 
         _service = new AgentExecutionService(
             _logger,
             _executionOrchestrator,
             _callbackOrchestrator,
-            _memoryCoordinator,
-            _performanceMetrics);
+            _memoryCoordinator);
 
         _testAgent = DomainAgent.Create(
             AgentRole.From("Test Agent"),
@@ -162,10 +159,6 @@ public sealed class AgentExecutionServiceTests : IDisposable
         // Verify memory was stored
         Assert.True(_memoryCoordinator.TaskResultStored);
         Assert.Equal("Test output", _memoryCoordinator.LastStoredResult);
-
-        // Verify metrics were recorded
-        Assert.True(_performanceMetrics.TaskExecutionRecorded);
-        Assert.True(_performanceMetrics.LastSuccess);
     }
 
     [Fact]
@@ -325,10 +318,6 @@ public sealed class AgentExecutionServiceTests : IDisposable
         // Assert
         Assert.True(result.Success);
         Assert.Empty(result.Output);
-
-        // Verify metrics were still recorded even with empty output
-        Assert.True(_performanceMetrics.TaskExecutionRecorded);
-        Assert.True(_performanceMetrics.LastSuccess);
     }
 
     [Fact]
@@ -383,7 +372,6 @@ public sealed class AgentExecutionServiceTests : IDisposable
         // Assert
         Assert.True(result.Success);
         Assert.Equal(TimeoutStandard, result.ExecutionTime);
-        Assert.True(_performanceMetrics.TaskExecutionRecorded);
     }
 
     [Fact]
@@ -455,7 +443,7 @@ public sealed class AgentExecutionServiceTests : IDisposable
         _disposables.Add(memory);
         var memoryLog = new Fixtures.TestLogger<MemoryCoordinator>();
         var coordinator = new MemoryCoordinator(memoryLog, memory, registry, embedder);
-        return (new AgentExecutionService(_logger, _executionOrchestrator, _callbackOrchestrator, coordinator, _performanceMetrics), memoryLog);
+        return (new AgentExecutionService(_logger, _executionOrchestrator, _callbackOrchestrator, coordinator), memoryLog);
     }
 
     [Fact]
@@ -707,45 +695,6 @@ internal class TestMemoryCoordinator : IMemoryCoordinator
         TaskResultStored = true;
         LastStoredResult = output;
         return System.Threading.Tasks.Task.CompletedTask;
-    }
-}
-
-internal class TestPerformanceMetrics : IPerformanceMetrics
-{
-    public bool TaskExecutionRecorded { get; private set; }
-    public bool LastSuccess { get; private set; }
-
-    public void RecordTaskExecution(string agentId, string taskId,
-        TimeSpan duration, bool success)
-    {
-        TaskExecutionRecorded = true;
-        LastSuccess = success;
-    }
-
-    public void RecordToolUsage(string agentId, string toolName, TimeSpan duration) { }
-
-    public void RecordMemoryOperation(string operation, TimeSpan duration, int itemCount) { }
-
-    public void RecordLlmCall(string provider, TimeSpan duration, int tokenCount) { }
-
-    public System.Threading.Tasks.Task<PerformanceReport> GenerateReportAsync(DateTime from, DateTime to)
-    {
-        return System.Threading.Tasks.Task.FromResult(new PerformanceReport(
-            [],
-            [],
-            new MemoryMetrics(0, 0, TimeSpan.Zero, []),
-            new LlmMetrics(0, 0, TimeSpan.Zero, []),
-            TimeSpan.Zero));
-    }
-
-    public System.Threading.Tasks.Task<string> ExportToJsonAsync(DateTime from, DateTime to)
-    {
-        return System.Threading.Tasks.Task.FromResult("{}");
-    }
-
-    public System.Threading.Tasks.Task<string> ExportToCsvAsync(DateTime from, DateTime to)
-    {
-        return System.Threading.Tasks.Task.FromResult("");
     }
 }
 

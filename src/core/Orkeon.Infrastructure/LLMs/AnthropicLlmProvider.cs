@@ -103,12 +103,10 @@ public partial class AnthropicLlmProvider : HttpLlmProviderBase
         // Anthropic uses x-api-key header instead of Bearer token
         client.DefaultRequestHeaders.Authorization = null;
 
-#pragma warning disable CS0618 // Type or member is obsolete
         if (!string.IsNullOrEmpty(config.ApiKey))
         {
             client.DefaultRequestHeaders.Add(HttpDefaults.AnthropicApiKeyHeader, config.ApiKey);
         }
-#pragma warning restore CS0618
 
         client.DefaultRequestHeaders.Add(HttpDefaults.AnthropicVersionHeader, ApiVersion);
 
@@ -129,9 +127,7 @@ public partial class AnthropicLlmProvider : HttpLlmProviderBase
     {
         var effectiveConfig = EffectiveConfig(config);
 
-#pragma warning disable CS0618 // Type or member is obsolete
         if (string.IsNullOrEmpty(effectiveConfig.ApiKey))
-#pragma warning restore CS0618
         {
             return new LlmResponse
             {
@@ -255,9 +251,7 @@ public partial class AnthropicLlmProvider : HttpLlmProviderBase
 
         var effectiveConfig = EffectiveConfig(config);
 
-#pragma warning disable CS0618 // Type or member is obsolete
         if (string.IsNullOrEmpty(effectiveConfig.ApiKey))
-#pragma warning restore CS0618
         {
             return BuildApiKeyMissingResponse();
         }
@@ -762,10 +756,8 @@ public partial class AnthropicLlmProvider : HttpLlmProviderBase
 
         // Same reason as the OpenAI-compatible path: an empty sequence must mean the model had
         // nothing to say, never that this provider was never able to ask.
-#pragma warning disable CS0618 // Type or member is obsolete
         if (string.IsNullOrEmpty(effectiveConfig.ApiKey))
             throw NotConfiguredForStreaming("Anthropic");
-#pragma warning restore CS0618
 
         // Do NOT use 'using' — factory-managed clients must not be disposed.
         var client = CreateHttpClient(effectiveConfig);
@@ -867,9 +859,7 @@ public partial class AnthropicLlmProvider : HttpLlmProviderBase
         ArgumentNullException.ThrowIfNull(messages);
         var effectiveConfig = EffectiveConfig(config);
 
-#pragma warning disable CS0618 // Type or member is obsolete
         if (string.IsNullOrEmpty(effectiveConfig.ApiKey))
-#pragma warning restore CS0618
         {
             yield return LlmStreamEvent.Complete(BuildApiKeyMissingResponse());
             yield break;

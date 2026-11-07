@@ -311,9 +311,7 @@ internal static class DoctorCommand
         }
     }
 
-#pragma warning disable CS0618 // ApiKey is the field every provider reads.
     private static string? ApiKeyOf(LlmConfig config) => config.ApiKey;
-#pragma warning restore CS0618
 
     private static string? Blank(string? value) => string.IsNullOrWhiteSpace(value) ? null : value;
 

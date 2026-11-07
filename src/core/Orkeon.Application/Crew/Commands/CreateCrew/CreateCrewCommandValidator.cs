@@ -1,3 +1,4 @@
+using Orkeon.Application.Common;
 using Orkeon.Application.Validation;
 
 namespace Orkeon.Application.Crew.Commands.CreateCrew;
@@ -31,9 +32,9 @@ public sealed class CreateCrewCommandValidator : ICommandValidator<CreateCrewCom
         {
             foreach (var agentId in command.AgentIds)
             {
-                if (!Guid.TryParse(agentId, out _))
+                if (!AgentIdText.TryParse(agentId, out _))
                 {
-                    errors.Add($"Agent ID '{agentId}' is not a valid GUID format.");
+                    errors.Add($"Agent ID '{agentId}' is not a valid agent id (a ULID or a GUID).");
                 }
             }
         }

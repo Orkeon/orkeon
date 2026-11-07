@@ -225,7 +225,7 @@ declare global {
 
         /** `dependency_graph` - What depends on what at this scope? Returns the nodes and the edges of the given edge_kinds (imports by default) among the packages (L1_Package), modules (L2_Module) or symbols (L3_Symbol) of the scope, at most max_nodes nodes (200) selected by root_fqn and node_kinds, truncated when the scope holds more; cycles and cycle_count cover the whole scope, each cycle naming its members as FQNs. For every edge of a kind across the index, edge_list; for the neighbourhood of a symbol, sub_graph. */
         dependencyGraph(input?: {
-            /** Edge kinds to follow, by name: contains, calls, imports, inherits, tests, documents, project_depends. Legacy enum names (Imports, Extends, Implements...) are still accepted. */
+            /** Edge kinds to follow, by name: contains, calls, imports, inherits, extends, implements, tests, documents, project_depends, case-insensitively; inherits is extends and implements together. */
             edge_kinds?: readonly string[];
             /** Add a Graphviz DOT rendering (dot). */
             include_dot?: boolean;
@@ -357,7 +357,7 @@ declare global {
         edgeList(input: {
             /** The next_cursor of the previous page; omit it for the first page. */
             cursor?: string | null;
-            /** Edge kinds to list, by name: contains, calls, imports, inherits, tests, documents, project_depends. Legacy enum names (Imports, Extends, Implements...) are still accepted. inherits lists both extends and implements edges. */
+            /** Edge kinds to list, by name: contains, calls, imports, inherits, extends, implements, tests, documents, project_depends, case-insensitively; inherits is extends and implements together. */
             edge_kinds: readonly string[];
             /** Edges per page, 1 to 1000 (default 200). */
             page_size?: number;
@@ -498,7 +498,7 @@ declare global {
         flowTrace(input: {
             /** Forward follows calls out of from; Backward follows them into from; Both. */
             direction?: "Forward" | "Backward" | "Both";
-            /** Edge kinds to follow, by name: contains, calls, imports, inherits, tests, documents, project_depends. Legacy enum names (Imports, Extends, Implements...) are still accepted. Empty follows calls. */
+            /** Edge kinds to follow, by name: contains, calls, imports, inherits, extends, implements, tests, documents, project_depends, case-insensitively; inherits is extends and implements together. Empty follows calls. */
             edge_kinds?: readonly string[];
             /** FQN the paths start from. */
             from: string;
@@ -704,12 +704,8 @@ declare global {
         incrementalReindex(input: {
             /** Virtual paths of the files to reindex; omit them to take the files changed between from_commit and to_commit. */
             changed_files?: readonly string[];
-            /** Ask the LLM for a summary of each symbol while reindexing (slow). */
-            enrich_with_llm?: boolean;
             /** Commit the diff starts from when changed_files is omitted. */
             from_commit?: string | null;
-            /** Languages reindexed; empty keeps every supported language. */
-            languages?: readonly string[];
             /** Virtual path of the indexed root. */
             root_path: string;
             /** Commit the diff ends at (default HEAD). */
@@ -730,7 +726,7 @@ declare global {
 
         /** `index_codebase` - Scan the codebase and build the full RaggableTree index, reusing the one saved by an earlier session when the host wires the cache. */
         indexCodebase(input: {
-            /** Identifier of the embedding model the host wires (default text-embedding-3-small). */
+            /** Embedding model to record when the host's provider does not name its own (default text-embedding-3-small). */
             embedding_model?: string;
             /** Ask the LLM for a summary of each symbol while indexing (slow). */
             enrich_with_llm?: boolean;
@@ -1524,7 +1520,7 @@ declare global {
             depth?: number;
             /** Forward follows the edges from the seeds (what X calls, what X extends); Backward follows them into the seeds (who calls X, who extends X); Both. */
             direction?: "Forward" | "Backward" | "Both";
-            /** Edge kinds to follow, by name: contains, calls, imports, inherits, tests, documents, project_depends. Legacy enum names (Imports, Extends, Implements...) are still accepted. */
+            /** Edge kinds to follow, by name: contains, calls, imports, inherits, extends, implements, tests, documents, project_depends, case-insensitively; inherits is extends and implements together. */
             edge_kinds?: readonly string[];
             /** Add a Mermaid flowchart of the nodes and edges (mermaid_flowchart), for a human reader; false by default: the data alone answers an agent. */
             include_mermaid?: boolean;

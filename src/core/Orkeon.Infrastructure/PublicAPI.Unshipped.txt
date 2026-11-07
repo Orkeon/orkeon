@@ -303,3 +303,10 @@ Orkeon.Infrastructure.Memory.FileCategoryMemoryStore.DeleteAsync(int id, System.
 Orkeon.Infrastructure.Memory.FileCategoryMemoryStore.GetAsync(int id, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<Orkeon.Application.Interfaces.Ports.MemoryEntry?>!
 Orkeon.Infrastructure.Tools.MemoryStoreRequest.NewestFirst.get -> bool
 Orkeon.Infrastructure.Tools.MemoryStoreRequest.NewestFirst.set -> void
+*REMOVED*Orkeon.Infrastructure.Sandbox.ProcessIsolationSandbox
+*REMOVED*Orkeon.Infrastructure.Sandbox.ProcessIsolationSandbox.ProcessIsolationSandbox(Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.Sandbox.HostProcessRunner!>! logger, Microsoft.Extensions.Options.IOptions<Orkeon.Infrastructure.Sandbox.SandboxOptions!>! options, Orkeon.Domain.FileSystem.IFileSystemService! fs) -> void
+*REMOVED*static Orkeon.Infrastructure.Security.TokenBudgetTracker.EstimateCost(int promptTokens, int completionTokens, string! model) -> decimal
+*REMOVED*Orkeon.Infrastructure.Serialization.Converters.ImmutableArrayEnumTolerantConverter<TEnum>
+*REMOVED*Orkeon.Infrastructure.Serialization.Converters.ImmutableArrayEnumTolerantConverter<TEnum>.ImmutableArrayEnumTolerantConverter() -> void
+*REMOVED*override Orkeon.Infrastructure.Serialization.Converters.ImmutableArrayEnumTolerantConverter<TEnum>.Read(ref System.Text.Json.Utf8JsonReader reader, System.Type! typeToConvert, System.Text.Json.JsonSerializerOptions! options) -> System.Collections.Immutable.ImmutableArray<TEnum>
+*REMOVED*override Orkeon.Infrastructure.Serialization.Converters.ImmutableArrayEnumTolerantConverter<TEnum>.Write(System.Text.Json.Utf8JsonWriter! writer, System.Collections.Immutable.ImmutableArray<TEnum> value, System.Text.Json.JsonSerializerOptions! options) -> void

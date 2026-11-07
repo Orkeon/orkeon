@@ -1,4 +1,3 @@
-using System.Globalization;
 using Orkeon.Domain.Constants.Llm;
 using Orkeon.Domain.SharedKernel.ValueObjects.Content;
 
@@ -66,94 +65,6 @@ public sealed record LlmResponse
 }
 
 /// <summary>
-/// Strongly typed representation of a function call in an LLM message.
-/// </summary>
-public sealed class FunctionCallInfo
-{
-    /// <summary>
-    /// The name of the function to call.
-    /// </summary>
-    public string Name { get; }
-
-    /// <summary>
-    /// The arguments for the function call.
-    /// </summary>
-    public Dictionary<string, object> Arguments { get; }
-
-    /// <summary>Initializes a new <see cref="FunctionCallInfo"/>.</summary>
-    /// <param name="name">The function name to call.</param>
-    /// <param name="arguments">The function call arguments, or <see langword="null"/> for none.</param>
-    public FunctionCallInfo(string name, Dictionary<string, object>? arguments = null)
-    {
-        ArgumentNullException.ThrowIfNull(name);
-        Name = name;
-        Arguments = arguments ?? [];
-    }
-
-    /// <summary>
-    /// Gets a typed argument value.
-    /// </summary>
-    public T? GetArgument<T>(string key)
-    {
-        if (!Arguments.TryGetValue(key, out var value))
-            return default;
-
-        if (value is T typed)
-            return typed;
-
-        try
-        {
-            return (T)Convert.ChangeType(value, typeof(T), CultureInfo.InvariantCulture);
-        }
-        catch (Exception ex) when (ex is InvalidCastException or FormatException or OverflowException or ArgumentException)
-        {
-            return default;
-        }
-    }
-
-    /// <summary>
-    /// Converts to a dictionary for backward compatibility.
-    /// </summary>
-    public Dictionary<string, object> ToDictionary()
-    {
-        var result = new Dictionary<string, object>
-        {
-            ["name"] = Name,
-            ["arguments"] = Arguments
-        };
-        return result;
-    }
-
-    /// <summary>
-    /// Creates a FunctionCallInfo from a dictionary (backward compatibility).
-    /// </summary>
-    public static FunctionCallInfo? FromDictionary(Dictionary<string, object>? dictionary)
-    {
-        if (dictionary == null || dictionary.Count == 0)
-            return null;
-
-        var name = dictionary.TryGetValue("name", out var nameObj) && nameObj is string nameStr
-            ? nameStr
-            : string.Empty;
-
-        Dictionary<string, object>? arguments = null;
-        if (dictionary.TryGetValue("arguments", out var argsObj))
-        {
-            if (argsObj is Dictionary<string, object> argsDict)
-            {
-                arguments = argsDict;
-            }
-            else if (argsObj is IDictionary<string, object> iDict)
-            {
-                arguments = new Dictionary<string, object>(iDict);
-            }
-        }
-
-        return new FunctionCallInfo(name, arguments);
-    }
-}
-
-/// <summary>
 /// Represents a message in a conversation with a language model.
 /// </summary>
 public sealed record LlmMessage
@@ -164,11 +75,6 @@ public sealed record LlmMessage
     public string Content { get; init; } = string.Empty;
     /// <summary>Gets the optional name of the message sender.</summary>
     public string? Name { get; init; }
-
-    /// <summary>
-    /// Strongly typed function call information.
-    /// </summary>
-    public FunctionCallInfo? FunctionCallInfo { get; init; }
 
     /// <summary>Gets tool call-related metadata for multi-turn tool calling.</summary>
     public string? ToolCallId { get; init; }

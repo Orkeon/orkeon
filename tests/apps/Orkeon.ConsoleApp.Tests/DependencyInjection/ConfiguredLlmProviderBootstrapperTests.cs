@@ -119,9 +119,7 @@ public sealed class ConfiguredLlmProviderBootstrapperTests
                 ("Llm:Model", "deepseek-v4-flash"),
                 ("Llm:ApiKeyEnvVar", variable));
 
-#pragma warning disable CS0618 // ApiKey is the field every provider reads.
             Assert.Equal("sk-repl-reference", config.ApiKey);
-#pragma warning restore CS0618
         }
         finally
         {

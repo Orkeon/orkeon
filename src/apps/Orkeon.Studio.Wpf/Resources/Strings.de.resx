@@ -644,7 +644,7 @@
     <value>Gemeinsames appsettings-Verzeichnis</value>
   </data>
   <data name="Studio.Settings.Step3Desc" xml:space="preserve">
-    <value>appsettings/{0}, gesucht durch Aufsteigen vom Team-Verzeichnis aus (der alte Ort _shared/ wird noch eine Version lang akzeptiert).</value>
+    <value>appsettings/{0}, gesucht durch Aufsteigen vom Team-Verzeichnis aus.</value>
   </data>
   <data name="Studio.Settings.Step4Title" xml:space="preserve">
     <value>Globale Datei pro Benutzer</value>

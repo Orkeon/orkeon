@@ -34,8 +34,7 @@ internal sealed record SettingsNoticeHint(string Sentence, IReadOnlyList<string>
 /// rules, the names it holds among them, run; then <see cref="IStartupValidator"/> catches whatever a
 /// registration validated without declaring;</item>
 /// <item>the section names under the containers of <see cref="SettingsSections"/>;</item>
-/// <item>the keys of every declared section, against the shapes its readers declared, the retired keys
-/// with their migration — and, under those keys, a number the binder reads as a float or a double that
+/// <item>the keys of every declared section, against the shapes its readers declared — and, under those keys, a number the binder reads as a float or a double that
 /// is not finite, which it takes without a word.</item>
 /// </list>
 /// Nothing is built but the options and the named factories, which hold functions: no store, provider,
@@ -76,38 +75,6 @@ internal static class SettingsValidation
                 "Data-loss prevention is not active: what this host screens is set by Security:Prompt and Security:ToolResults.",
                 ["Security:Prompt", "Security:ToolResults"]),
         };
-
-    /// <summary>
-    /// The keys GAP-08 removed, with what replaces them: still read as absent, they are refused with
-    /// the migration the changelog gave rather than as an unknown key.
-    /// </summary>
-    private static readonly Dictionary<string, string> s_retiredKeys = new(StringComparer.OrdinalIgnoreCase)
-    {
-        ["Memory:ConnectionString"] =
-            "Memory:ConnectionString is not a setting any more: a memory provider is connected from its own section. " +
-            "Move it to the section of the provider it was for — Orkeon:Redis:ConnectionString, " +
-            "Orkeon:Sqlite:ConnectionString, Orkeon:ChromaDb:BaseUrl or Orkeon:LanceDb:Endpoint.",
-        ["Orkeon:Rag:ConnectionString"] =
-            "Orkeon:Rag:ConnectionString is not a setting any more: the RAG store is connected from the section of " +
-            "the provider Orkeon:Rag:Provider names. Move it there — Orkeon:Sqlite:ConnectionString for sqlite, " +
-            "Orkeon:Redis:ConnectionString for redis, Orkeon:ChromaDb:BaseUrl, Orkeon:LanceDb:Endpoint.",
-        ["Orkeon:Rag:ProviderOptions"] =
-            "Orkeon:Rag:ProviderOptions is not a setting any more: the RAG store is connected from the section of " +
-            "the provider Orkeon:Rag:Provider names. Move its keys there — Orkeon:Redis, Orkeon:Sqlite, " +
-            "Orkeon:ChromaDb, Orkeon:Pinecone or Orkeon:LanceDb.",
-        ["Orkeon:TypeSafe:Guard"] =
-            "Orkeon:TypeSafe:Guard is not a setting any more: the input guard has its own section, " +
-            "Orkeon:Decision:Guard; move its keys there.",
-        ["Orkeon:Pinecone:Environment"] =
-            "Orkeon:Pinecone:Environment is not a setting any more: write Orkeon:Pinecone:Host, the host the Pinecone " +
-            "console shows, or remove it and let the provider look the host up.",
-    };
-
-    /// <summary>
-    /// The retired keys, each with the sentence that refuses it: what a guard of the settings files
-    /// nobody starts — the examples, the blocks of the documentation — refuses in the same words.
-    /// </summary>
-    internal static IReadOnlyDictionary<string, string> RetiredKeys => s_retiredKeys;
 
     /// <summary>The seven levels a <c>LogLevel</c> key takes.</summary>
     private static readonly string[] s_logLevels = Enum.GetNames<LogLevel>();
@@ -408,12 +375,6 @@ internal static class SettingsValidation
     {
         foreach (var child in section.GetChildren())
         {
-            if (s_retiredKeys.TryGetValue(child.Path, out var migration))
-            {
-                yield return migration;
-                continue;
-            }
-
             if (shape.Child(child.Key) is { } below)
             {
                 if (IsNotFinite(child.Value, below.Number))

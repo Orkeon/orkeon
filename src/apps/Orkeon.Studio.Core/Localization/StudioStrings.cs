@@ -3177,8 +3177,7 @@ public sealed class EnglishStudioStrings : IStudioStrings
             "{0} in the directory holding the crew configuration.",
         [StudioStringKeys.ResolutionStep3Title] = "Shared appsettings directory",
         [StudioStringKeys.ResolutionStep3Description] =
-            "appsettings/{0}, searched by walking up from the crew directory " +
-            "(the legacy _shared/ location is still accepted for one release).",
+            "appsettings/{0}, searched by walking up from the crew directory.",
         [StudioStringKeys.ResolutionStep4Title] = "Global per-user file",
         [StudioStringKeys.ResolutionStep4Description] =
             "The file written by `orkeon init`: %APPDATA%\\Orkeon\\appsettings.json on Windows, " +

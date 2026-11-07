@@ -249,9 +249,7 @@ public class OpenAICompatibleProviderBaseTests
     public async Task ShouldUseDefaultModel_WhenGenerateAsyncWithNoModelInConfig()
     {
         // Arrange — a configuration that names no model (GAP-18: empty, never OpenAI's default)
-#pragma warning disable CS0618
         var effectiveConfig = LlmConfig.OnProfile() with { ApiKey = TestApiKey };
-#pragma warning restore CS0618
 
         var responseContent = JsonSerializer.Serialize(new
         {

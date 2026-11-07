@@ -6,13 +6,13 @@ using ProtocolToolCallResponse = Orkeon.Domain.Tools.Protocol.ToolCallResponse;
 namespace Orkeon.Tools.Abstractions.Base;
 
 /// <summary>
-/// Handles protocol conversion between legacy string-based input and the new JSON protocol.
+/// Handles protocol conversion between string input and the JSON protocol.
 /// Extracted from ToolBase to follow Single Responsibility Principle.
 /// </summary>
 internal static class ToolProtocolAdapter
 {
     /// <summary>
-    /// Converts a legacy string input to a ToolCallRequest.
+    /// Converts a string input to a ToolCallRequest.
     /// </summary>
     public static ProtocolToolCallRequest ConvertToRequest(string toolName, string input)
     {
@@ -45,7 +45,7 @@ internal static class ToolProtocolAdapter
     }
 
     /// <summary>
-    /// Converts a ToolCallResponse to a legacy ToolResult.
+    /// Converts a ToolCallResponse to a ToolResult.
     /// </summary>
     public static ToolResult ConvertToToolResult(ProtocolToolCallResponse response)
     {

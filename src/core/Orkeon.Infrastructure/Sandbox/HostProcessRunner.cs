@@ -814,24 +814,3 @@ public partial class HostProcessRunner : ICodeSandbox
     private partial void LogFailedToCleanUpSandbox(Exception ex, object RunDir);
 
 }
-
-/// <summary>
-/// Obsolete alias for <see cref="HostProcessRunner"/>. The previous name
-/// "ProcessIsolationSandbox" wrongly suggested OS-level isolation, which this type does NOT provide.
-/// Kept transitionally for source compatibility; use <see cref="HostProcessRunner"/> instead.
-/// </summary>
-[Obsolete("Renamed to HostProcessRunner: this type provides NO OS isolation (no namespaces/seccomp/chroot/network isolation). Use HostProcessRunner for trusted code, or DockerSandbox for untrusted/LLM code.")]
-public sealed class ProcessIsolationSandbox : HostProcessRunner
-{
-    /// <summary>Initializes a new instance of the obsolete <see cref="ProcessIsolationSandbox"/> alias.</summary>
-    /// <param name="logger">The logger.</param>
-    /// <param name="options">Sandbox configuration options.</param>
-    /// <param name="fs">The virtual file system service used to create and clean up run directories.</param>
-    public ProcessIsolationSandbox(
-        ILogger<HostProcessRunner> logger,
-        IOptions<SandboxOptions> options,
-        IFileSystemService fs)
-        : base(logger, options, fs)
-    {
-    }
-}

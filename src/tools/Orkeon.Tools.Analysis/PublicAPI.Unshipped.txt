@@ -6,3 +6,5 @@ Orkeon.Tools.Analysis.EdgeListTool.EdgeListTool(Orkeon.Analysis.Abstractions.Int
 override Orkeon.Tools.Analysis.EdgeListTool.Access.get -> Orkeon.Domain.Tools.ToolAccess
 override Orkeon.Tools.Analysis.EdgeListTool.Description.get -> string!
 override Orkeon.Tools.Analysis.EdgeListTool.Name.get -> string!
+*REMOVED*Orkeon.Tools.Analysis.IncrementalReindexTool.IncrementalReindexTool(Orkeon.Analysis.Core.InMemoryRaggableStore! store, System.Func<Orkeon.Analysis.Core.RaggableTreeBuilder!>! builderFactory, Orkeon.Analysis.Abstractions.Interfaces.IGitDiffProvider? gitDiff = null, Microsoft.Extensions.Logging.ILogger<Orkeon.Tools.Analysis.IncrementalReindexTool!>? logger = null, Orkeon.Analysis.Core.IndexFreshnessService? freshness = null) -> void
+Orkeon.Tools.Analysis.IncrementalReindexTool.IncrementalReindexTool(Orkeon.Analysis.Core.IndexFreshnessService! freshness, Orkeon.Analysis.Abstractions.Interfaces.IGitDiffProvider? gitDiff = null, Microsoft.Extensions.Logging.ILogger<Orkeon.Tools.Analysis.IncrementalReindexTool!>? logger = null) -> void

@@ -42,7 +42,7 @@ public partial class ScopedCrewExecutionStateManager : ICrewExecutionStateManage
     /// <param name="logger">Logger.</param>
     /// <param name="persistenceOptions">
     /// Optional durable-persistence options. When omitted (or <c>Enabled = false</c>),
-    /// states are kept in memory only — the historical, backward-compatible behavior.
+    /// states are kept in memory only.
     /// </param>
     /// <param name="clock">
     /// Optional clock used to compute expiry cutoffs. Defaults to

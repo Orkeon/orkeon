@@ -170,9 +170,7 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
     {
         var effectiveConfig = EffectiveConfig(config);
 
-#pragma warning disable CS0618 // Type or member is obsolete
         if (string.IsNullOrEmpty(effectiveConfig.ApiKey))
-#pragma warning restore CS0618
         {
             return CreateMissingApiKeyResponse($"{ProviderDisplayName} API key is required");
         }
@@ -246,10 +244,8 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
         // normally, which the buffered path reports as "API key is required". One provider, two
         // answers, and the quiet one is the one a script sees. It fails now, like every other
         // request this provider cannot send.
-#pragma warning disable CS0618 // Type or member is obsolete
         if (string.IsNullOrEmpty(effectiveConfig.ApiKey))
             throw NotConfiguredForStreaming(ProviderDisplayName);
-#pragma warning restore CS0618
 
         // Do NOT use 'using' — factory-managed clients must not be disposed.
         var client = CreateHttpClient(effectiveConfig);
@@ -361,9 +357,7 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
     {
         var effectiveConfig = EffectiveConfig(config);
 
-#pragma warning disable CS0618 // Type or member is obsolete
         var missingKey = string.IsNullOrEmpty(effectiveConfig.ApiKey);
-#pragma warning restore CS0618
         if (missingKey)
         {
             // Buffered fallback produces the standard missing-key error response.
@@ -1029,10 +1023,8 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
             return await base.ChatAsync(messages!, effectiveConfig, cancellationToken).ConfigureAwait(false);
         }
 
-#pragma warning disable CS0618 // Type or member is obsolete
         if (string.IsNullOrEmpty(effectiveConfig.ApiKey))
             return CreateMissingApiKeyResponse($"{ProviderDisplayName} API key is required");
-#pragma warning restore CS0618
 
         try
         {

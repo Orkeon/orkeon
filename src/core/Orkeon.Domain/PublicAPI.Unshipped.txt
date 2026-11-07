@@ -185,3 +185,48 @@ static Orkeon.Domain.SharedKernel.ValueObjects.LlmThinkingConfig.ValidateEffort(
 Orkeon.Domain.SharedKernel.ValueObjects.LlmResponse.CacheWrite1hTokens.get -> int?
 Orkeon.Domain.SharedKernel.ValueObjects.LlmResponse.CacheWrite1hTokens.init -> void
 const Orkeon.Domain.Constants.Agent.AgentDefaults.AnalysisToolResultLength = 12000 -> int
+*REMOVED*static Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig.Gpt35Turbo(string? apiKey = null) -> Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig!
+*REMOVED*static Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig.Gpt35TurboWithSecret(string! apiKeySecretName = "OPENAI_API_KEY") -> Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig!
+*REMOVED*static Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig.Gpt4(string? apiKey = null) -> Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig!
+*REMOVED*static Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig.Gpt4WithSecret(string! apiKeySecretName = "OPENAI_API_KEY") -> Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig!
+*REMOVED*static Orkeon.Domain.Tools.ToolSchemaGenerator.GenerateReturns(System.Type! responseType) -> System.Collections.Generic.Dictionary<string!, object?>!
+*REMOVED*static Orkeon.Domain.Tools.ToolSchemaGenerator.GenerateReturns<TResponse>() -> System.Collections.Generic.Dictionary<string!, object?>!
+*REMOVED*Orkeon.Domain.Agent.ValueObjects.AgentSelectionResult.Score.get -> double
+*REMOVED*Orkeon.Domain.Agent.ValueObjects.AgentSelectionResult.SelectedAgent.get -> Orkeon.Domain.Common.AgentId?
+*REMOVED*Orkeon.Domain.Crew.CrewInput.Parameters.get -> System.Collections.Generic.Dictionary<string!, object!>!
+*REMOVED*Orkeon.Domain.Common.Identity<T>
+*REMOVED*Orkeon.Domain.Common.Identity<T>.Deconstruct(out System.Guid Value) -> void
+*REMOVED*Orkeon.Domain.Common.Identity<T>.Identity() -> void
+*REMOVED*Orkeon.Domain.Common.Identity<T>.Identity(System.Guid Value) -> void
+*REMOVED*Orkeon.Domain.Common.Identity<T>.ToGuid() -> System.Guid
+*REMOVED*Orkeon.Domain.Common.Identity<T>.Value.get -> System.Guid
+*REMOVED*Orkeon.Domain.Common.Identity<T>.Value.init -> void
+*REMOVED*override Orkeon.Domain.Common.Identity<T>.Equals(object? obj) -> bool
+*REMOVED*override Orkeon.Domain.Common.Identity<T>.GetHashCode() -> int
+*REMOVED*override Orkeon.Domain.Common.Identity<T>.ToString() -> string!
+*REMOVED*static Orkeon.Domain.Common.Identity<T>.Create() -> T!
+*REMOVED*static Orkeon.Domain.Common.Identity<T>.From(System.Guid value) -> T!
+*REMOVED*static Orkeon.Domain.Common.Identity<T>.implicit operator System.Guid(Orkeon.Domain.Common.Identity<T!>! id) -> System.Guid
+*REMOVED*static Orkeon.Domain.Common.Identity<T>.implicit operator string!(Orkeon.Domain.Common.Identity<T!>! id) -> string!
+*REMOVED*virtual Orkeon.Domain.Common.Identity<T>.EqualityContract.get -> System.Type!
+*REMOVED*virtual Orkeon.Domain.Common.Identity<T>.PrintMembers(System.Text.StringBuilder! builder) -> bool
+*REMOVED*~Orkeon.Domain.Common.Identity<T>.Identity(Orkeon.Domain.Common.Identity<T>! original) -> void
+*REMOVED*~abstract Orkeon.Domain.Common.Identity<T>.<Clone>$() -> Orkeon.Domain.Common.Identity<T>!
+*REMOVED*~static Orkeon.Domain.Common.Identity<T>.operator !=(Orkeon.Domain.Common.Identity<T>? left, Orkeon.Domain.Common.Identity<T>? right) -> bool
+*REMOVED*~static Orkeon.Domain.Common.Identity<T>.operator ==(Orkeon.Domain.Common.Identity<T>? left, Orkeon.Domain.Common.Identity<T>? right) -> bool
+*REMOVED*~virtual Orkeon.Domain.Common.Identity<T>.Equals(Orkeon.Domain.Common.Identity<T>? other) -> bool
+*REMOVED*Orkeon.Domain.Agent.ValueObjects.AgentStepContext.Deconstruct(out string! thought, out string! action, out string! actionInput, out string! observation, out Orkeon.Domain.SharedKernel.ValueObjects.ToolCall? toolCall, out Orkeon.Domain.Agent.ValueObjects.StepMetadata! metadata) -> void
+*REMOVED*Orkeon.Domain.SharedKernel.ValueObjects.LlmMetadata.Deconstruct(out string? error, out int? tokensUsed, out int? tokensLimit, out System.TimeSpan? responseTime, out string? model, out double? temperature, out System.Collections.Generic.Dictionary<string!, string!>? customFields) -> void
+*REMOVED*Orkeon.Domain.Task.ValueObjects.TypedTaskExecutionContext.Deconstruct(out Orkeon.Domain.Common.TaskId! taskId, out Orkeon.Domain.Common.AgentId! executingAgent, out Orkeon.Domain.Task.ValueObjects.TaskVariables! variables, out System.Collections.Immutable.ImmutableArray<Orkeon.Domain.Task.ValueObjects.TaskOutput!> previousOutputs, out Orkeon.Domain.SharedKernel.ValueObjects.ExecutionMetadata! metadata, out System.Collections.Immutable.ImmutableArray<Orkeon.Domain.SharedKernel.ValueObjects.ToolCall!> toolCalls) -> void
+*REMOVED*Orkeon.Domain.Agent.ValueObjects.StepMetadata.Deconstruct(out System.DateTime timestamp, out System.TimeSpan duration, out int tokensUsed, out string? error, out string? model, out double? temperature) -> void
+*REMOVED*Orkeon.Domain.SharedKernel.ValueObjects.FunctionCallInfo
+*REMOVED*Orkeon.Domain.SharedKernel.ValueObjects.FunctionCallInfo.Arguments.get -> System.Collections.Generic.Dictionary<string!, object!>!
+*REMOVED*Orkeon.Domain.SharedKernel.ValueObjects.FunctionCallInfo.FunctionCallInfo(string! name, System.Collections.Generic.Dictionary<string!, object!>? arguments = null) -> void
+*REMOVED*Orkeon.Domain.SharedKernel.ValueObjects.FunctionCallInfo.GetArgument<T>(string! key) -> T?
+*REMOVED*Orkeon.Domain.SharedKernel.ValueObjects.FunctionCallInfo.Name.get -> string!
+*REMOVED*Orkeon.Domain.SharedKernel.ValueObjects.FunctionCallInfo.ToDictionary() -> System.Collections.Generic.Dictionary<string!, object!>!
+*REMOVED*Orkeon.Domain.SharedKernel.ValueObjects.LlmMessage.FunctionCallInfo.get -> Orkeon.Domain.SharedKernel.ValueObjects.FunctionCallInfo?
+*REMOVED*Orkeon.Domain.SharedKernel.ValueObjects.LlmMessage.FunctionCallInfo.init -> void
+*REMOVED*static Orkeon.Domain.SharedKernel.ValueObjects.FunctionCallInfo.FromDictionary(System.Collections.Generic.Dictionary<string!, object!>? dictionary) -> Orkeon.Domain.SharedKernel.ValueObjects.FunctionCallInfo?
+*REMOVED*Orkeon.Domain.SharedKernel.ValueObjects.ExecutionMetadata.ExecutionMetadata(System.DateTime StartedAt, System.DateTime? CompletedAt, System.TimeSpan? MaxExecutionTime, string! ExecutionId, string? ParentExecutionId, int RetryCount, string? LastError, System.Collections.Immutable.ImmutableDictionary<string!, string!>! Tags, System.Collections.Immutable.ImmutableDictionary<string!, object!>! CustomProperties) -> void
+*REMOVED*static Orkeon.Domain.Agent.AgentStep.CreateSuccess(string! output, object? structuredOutput, Orkeon.Domain.Common.AgentId? agentId = null, Orkeon.Domain.Common.TaskId? taskId = null, string! action = "", string! input = "", System.Collections.Generic.IReadOnlyList<string!>? toolsUsed = null, Orkeon.Domain.Agent.ValueObjects.AgentStepContext? context = null) -> Orkeon.Domain.Agent.AgentStep!

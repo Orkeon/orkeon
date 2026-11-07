@@ -354,9 +354,7 @@ seule, jamais de lui-même.
 - **Garde d'entrée** — `DecisionInputGuard` rejoint le pipeline de gardiens de l'agent en phase
   `Input` quand `Orkeon:Decision:Guard:Enabled` vaut true. La garde a sa propre section,
   `Orkeon:Decision:Guard` (`Enabled`, seuils, `Risks`) ; elle vérifie par le fournisseur actif et
-  signe ses verdicts du nom de ce fournisseur. Un fichier de réglages qui porte encore un
-  bloc `Guard` sous `Orkeon:TypeSafe` est refusé au démarrage, avec un message qui nomme
-  `Orkeon:Decision:Guard`. Ses `Risks` valent par défaut
+  signe ses verdicts du nom de ce fournisseur. Ses `Risks` valent par défaut
   `prompt_injection` et `data_exfiltration`, `BlockThreshold` 0,8, `WarnThreshold` 0,5 ; elle
   avertit sur une panne, ou bloque avec `FailClosed`.
 - **Reranker RAG** — `rerank.kind: decision` pose un `noul` par passage dans

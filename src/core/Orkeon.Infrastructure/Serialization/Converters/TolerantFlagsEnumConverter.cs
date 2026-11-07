@@ -11,7 +11,7 @@ namespace Orkeon.Infrastructure.Serialization.Converters;
 /// </summary>
 /// <remarks>
 /// Reading is tolerant: case, underscores, hyphens and spaces inside a name are ignored, the names of a
-/// combination are separated by <c>,</c> or <c>|</c>, and a number is accepted when every bit belongs to a member.
+/// combination are separated by <c>,</c> or <c>|</c>. A number is refused: the wire carries names only.
 /// </remarks>
 internal static class FlagsEnumNames<TEnum>
     where TEnum : struct, Enum
@@ -26,8 +26,6 @@ internal static class FlagsEnumNames<TEnum>
         .Where(p => p.Key != 0 && (p.Key & (p.Key - 1)) == 0)
         .OrderBy(p => p.Key)
         .Select(p => (p.Key, p.Value))];
-
-    private static readonly ulong AllBits = NameByBits.Keys.Aggregate(0UL, (acc, b) => acc | b);
 
     private static readonly Dictionary<string, ulong> BitsByAlias = BuildAliases();
 
@@ -60,21 +58,12 @@ internal static class FlagsEnumNames<TEnum>
         {
             if (BitsByAlias.TryGetValue(Normalize(token), out var named))
                 bits |= named;
-            else if (long.TryParse(token, NumberStyles.Integer, CultureInfo.InvariantCulture, out var n) && TryFromNumber(n, out var numeric))
-                bits |= ToBits(numeric);
             else
                 return false;
         }
 
         value = FromBits(bits);
         return true;
-    }
-
-    public static bool TryFromNumber(long number, out TEnum value)
-    {
-        var bits = unchecked((ulong)number);
-        value = FromBits(bits);
-        return (bits & ~AllBits) == 0;
     }
 
     public static JsonException InvalidValue(string raw) =>
@@ -119,7 +108,7 @@ internal static class FlagsEnumNames<TEnum>
 
 /// <summary>
 /// String converter for a scalar <see cref="FlagsAttribute"/> enum, in the form <see cref="FlagsEnumNames{TEnum}"/>
-/// gives. Reads a string, a number, or an array of names or numbers (their union).
+/// gives. Reads a string, or an array of names (their union).
 /// </summary>
 internal sealed class TolerantFlagsEnumConverter<TEnum> : JsonConverter<TEnum>
     where TEnum : struct, Enum
@@ -130,7 +119,6 @@ internal sealed class TolerantFlagsEnumConverter<TEnum> : JsonConverter<TEnum>
         switch (reader.TokenType)
         {
             case JsonTokenType.String:
-            case JsonTokenType.Number:
                 return ReadOne(ref reader);
 
             case JsonTokenType.StartArray:
@@ -146,7 +134,7 @@ internal sealed class TolerantFlagsEnumConverter<TEnum> : JsonConverter<TEnum>
             }
 
             default:
-                throw new JsonException($"Cannot convert token '{reader.TokenType}' to {typeof(TEnum).Name}.");
+                throw new JsonException($"Cannot convert token '{reader.TokenType}' to {typeof(TEnum).Name}. Valid values: {FlagsEnumNames<TEnum>.ValidNames}.");
         }
     }
 
@@ -165,13 +153,6 @@ internal sealed class TolerantFlagsEnumConverter<TEnum> : JsonConverter<TEnum>
             return FlagsEnumNames<TEnum>.TryParse(raw, out var parsed) ? parsed : throw FlagsEnumNames<TEnum>.InvalidValue(raw);
         }
 
-        if (reader.TokenType == JsonTokenType.Number)
-        {
-            if (reader.TryGetInt64(out var n) && FlagsEnumNames<TEnum>.TryFromNumber(n, out var numeric))
-                return numeric;
-            throw new JsonException($"Numeric value is not a valid {typeof(TEnum).Name}. Valid values: {FlagsEnumNames<TEnum>.ValidNames}.");
-        }
-
-        throw new JsonException($"Cannot convert token '{reader.TokenType}' to {typeof(TEnum).Name}.");
+        throw new JsonException($"Cannot convert token '{reader.TokenType}' to {typeof(TEnum).Name}. Valid values: {FlagsEnumNames<TEnum>.ValidNames}.");
     }
 }

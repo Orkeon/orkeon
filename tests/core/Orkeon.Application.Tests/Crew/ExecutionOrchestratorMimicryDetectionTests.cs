@@ -1,10 +1,11 @@
+using Orkeon.Application.Crew.Execution;
 using Orkeon.Application.Crew;
 
 namespace Orkeon.Application.Tests.Crew;
 
 /// <summary>
-/// Pins <see cref="ExecutionOrchestrator.IsToolCallMimicry"/> and the wording of
-/// <see cref="ExecutionOrchestrator.BuildFinalAnswerNudge"/>. Both exist to defuse the
+/// Pins <see cref="FinalAnswerPolicy.IsToolCallMimicry"/> and the wording of
+/// <see cref="FinalAnswerPolicy.BuildFinalAnswerNudge"/>. Both exist to defuse the
 /// round-36 / round-37 failure mode where a DeepSeek thinking-mode agent that exhausts
 /// its iteration budget echoes its native tool-call markup
 /// (<c>&lt;｜｜DSML｜｜tool_calls&gt;…&lt;｜｜DSML｜｜invoke name="…"&gt;…</c>) as the
@@ -22,27 +23,27 @@ public class ExecutionOrchestratorMimicryDetectionTests
             "</｜｜DSML｜｜invoke>\n" +
             "</｜｜DSML｜｜tool_calls>";
 
-        Assert.True(ExecutionOrchestrator.IsToolCallMimicry(dsml));
+        Assert.True(FinalAnswerPolicy.IsToolCallMimicry(dsml));
     }
 
     [Fact]
     public void IsToolCallMimicry_DetectsBareInvokeOpening()
     {
-        Assert.True(ExecutionOrchestrator.IsToolCallMimicry(
+        Assert.True(FinalAnswerPolicy.IsToolCallMimicry(
             "<invoke name=\"codebase_search\"><parameter name=\"q\">x</parameter></invoke>"));
     }
 
     [Fact]
     public void IsToolCallMimicry_DetectsBareToolCallsTag()
     {
-        Assert.True(ExecutionOrchestrator.IsToolCallMimicry(
+        Assert.True(FinalAnswerPolicy.IsToolCallMimicry(
             "<tool_calls><invoke name=\"x\"/></tool_calls>"));
     }
 
     [Fact]
     public void IsToolCallMimicry_AcceptsLeadingWhitespace()
     {
-        Assert.True(ExecutionOrchestrator.IsToolCallMimicry(
+        Assert.True(FinalAnswerPolicy.IsToolCallMimicry(
             "   \n\t<｜｜DSML｜｜tool_calls>"));
     }
 
@@ -54,13 +55,13 @@ public class ExecutionOrchestratorMimicryDetectionTests
     [InlineData("   ")]
     public void IsToolCallMimicry_AcceptsValidDeliverables(string text)
     {
-        Assert.False(ExecutionOrchestrator.IsToolCallMimicry(text));
+        Assert.False(FinalAnswerPolicy.IsToolCallMimicry(text));
     }
 
     [Fact]
     public void BuildFinalAnswerNudge_FirstPass_ForbidsToolCallMarkup()
     {
-        var msg = ExecutionOrchestrator.BuildFinalAnswerNudge(escalated: false);
+        var msg = FinalAnswerPolicy.BuildFinalAnswerNudge(escalated: false);
 
         Assert.Contains("plain Markdown", msg, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("DSML", msg, StringComparison.Ordinal);
@@ -70,7 +71,7 @@ public class ExecutionOrchestratorMimicryDetectionTests
     [Fact]
     public void BuildFinalAnswerNudge_Escalated_PinsTheFirstCharacter()
     {
-        var msg = ExecutionOrchestrator.BuildFinalAnswerNudge(escalated: true);
+        var msg = FinalAnswerPolicy.BuildFinalAnswerNudge(escalated: true);
 
         // Escalation must reference the prior failure mode and force a syntactic anchor.
         Assert.Contains("DSML", msg, StringComparison.Ordinal);
@@ -81,8 +82,8 @@ public class ExecutionOrchestratorMimicryDetectionTests
     [Fact]
     public void BuildFinalAnswerNudge_FirstAndEscalatedDiffer()
     {
-        var first = ExecutionOrchestrator.BuildFinalAnswerNudge(escalated: false);
-        var second = ExecutionOrchestrator.BuildFinalAnswerNudge(escalated: true);
+        var first = FinalAnswerPolicy.BuildFinalAnswerNudge(escalated: false);
+        var second = FinalAnswerPolicy.BuildFinalAnswerNudge(escalated: true);
         Assert.NotEqual(first, second);
     }
 }

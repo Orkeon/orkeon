@@ -211,7 +211,7 @@ public partial class HttpApiTool : HttpToolBase<HttpApiRequest, HttpApiResponse>
     {
     }
 
-    /// <summary>Initializes a new instance of <see cref="HttpApiTool"/> without SSRF protection (legacy).</summary>
+    /// <summary>Initializes a new instance of <see cref="HttpApiTool"/> without an <see cref="IUrlValidator"/>: URLs go through the fail-closed default SSRF guard.</summary>
     /// <param name="httpClient">Optional <see cref="HttpClient"/> to use for HTTP requests.</param>
     /// <param name="logger">Optional logger instance.</param>
     public HttpApiTool(HttpClient? httpClient = null, ILogger<HttpApiTool>? logger = null)

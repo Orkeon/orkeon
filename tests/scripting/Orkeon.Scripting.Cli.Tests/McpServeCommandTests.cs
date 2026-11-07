@@ -7,8 +7,7 @@ namespace Orkeon.Scripting.Cli.Tests;
 /// GAP-24 — <c>orkeon mcp serve</c> driven the way an MCP client drives it: JSON-RPC messages
 /// written to its stdin, one per line, the answers read back from its stdout, which carries
 /// nothing else. The host is built for real over a settings file in a scratch directory, the
-/// way <c>orkeon run --list-tools</c> builds it. Until this verb, no shipped binary started the
-/// server: <c>MCP:EnableServer</c> registered it, and nothing ever resolved it.
+/// way <c>orkeon run --list-tools</c> builds it.
 /// </summary>
 [Collection(CliCollection.Name)]
 public sealed class McpServeCommandTests
@@ -181,17 +180,16 @@ public sealed class McpServeCommandTests
     }
 
     [Fact]
-    public async Task A_settings_file_that_still_enables_the_server_is_refused_naming_the_verb()
+    public async Task A_settings_file_with_an_unknown_key_is_refused_on_stderr_and_leaves_stdout_to_the_protocol()
     {
         using var scratch = new ScriptScratch();
-        var settings = scratch.WriteFile("appsettings.json", """{ "MCP": { "EnableServer": true } }""");
+        var settings = scratch.WriteFile("appsettings.json", """{ "MCP": { "Enabld": true } }""");
         using var console = new TestConsole(stdin: ListTools + "\n");
 
         var exit = await Program.DispatchAsync(console, ["mcp", "serve", "--settings", settings]);
 
         Assert.Equal(Program.ExitScriptError, exit);
-        Assert.Contains("MCP:EnableServer", console.Stderr, StringComparison.Ordinal);
-        Assert.Contains("orkeon mcp serve", console.Stderr, StringComparison.Ordinal);
+        Assert.Contains("MCP:Enabld", console.Stderr, StringComparison.Ordinal);
         Assert.Empty(console.Stdout);
     }
 

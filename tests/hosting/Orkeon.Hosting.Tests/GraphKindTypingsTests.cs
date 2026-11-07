@@ -9,7 +9,7 @@ namespace Orkeon.Hosting.Tests;
 public sealed class GraphKindTypingsTests
 {
     private static readonly string[] EdgeNames =
-        ["contains", "calls", "imports", "inherits", "tests", "documents", "project_depends"];
+        ["contains", "calls", "imports", "inherits", "extends", "implements", "tests", "documents", "project_depends"];
 
     private static readonly string[] NodeNames =
         ["file", "project", "namespace", "type", "member", "doc_section", "test"];

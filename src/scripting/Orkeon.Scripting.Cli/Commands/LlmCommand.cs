@@ -344,9 +344,7 @@ internal static class LlmCommand
             ? LlmConfig.OnProfile()
             : LlmConfig.Create(model!);
 
-#pragma warning disable CS0618 // The probe talks to the provider directly, with no secret store.
         config = config with { ApiKey = apiKey };
-#pragma warning restore CS0618
 
         // LlmConfig defaults to 30 seconds and the provider hands that straight to HttpClient,
         // overriding whatever the factory set. A cold Ollama model spends longer than that just

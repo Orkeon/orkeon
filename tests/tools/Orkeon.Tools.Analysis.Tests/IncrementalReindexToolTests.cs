@@ -9,14 +9,17 @@ namespace Orkeon.Tools.Analysis.Tests;
 public class IncrementalReindexToolTests
 {
     // When no files changed (empty explicit list and no git diff provider), the
-    // tool short-circuits to an "unchanged" result without touching the builder.
-    private static Func<RaggableTreeBuilder> ThrowingFactory =>
-        () => throw new InvalidOperationException("builder must not be invoked when nothing changed");
+    // tool short-circuits to an "unchanged" result without touching the engine.
+    private static IndexFreshnessService ThrowingFreshness() => new(
+        TestGraph.Store([], []),
+        () => throw new InvalidOperationException("engine must not be invoked when nothing changed"),
+        new FakeFileSystemService());
 
     [Fact]
     public void Has_stable_tool_contract()
     {
-        using var tool = new IncrementalReindexTool(TestGraph.Store([], []), ThrowingFactory);
+        using var freshness = ThrowingFreshness();
+        using var tool = new IncrementalReindexTool(freshness);
         Assert.Equal("incremental_reindex", tool.Name);
         Assert.False(string.IsNullOrWhiteSpace(tool.Description));
     }
@@ -24,7 +27,8 @@ public class IncrementalReindexToolTests
     [Fact]
     public async Task Returns_unchanged_when_no_changed_files_and_no_git_diff()
     {
-        using var tool = new IncrementalReindexTool(TestGraph.Store([], []), ThrowingFactory);
+        using var freshness = ThrowingFreshness();
+        using var tool = new IncrementalReindexTool(freshness);
 
         var resp = await tool.ExecuteTypedForTest(
             new IncrementalReindexRequest { RootPath = "/src" },
@@ -38,7 +42,8 @@ public class IncrementalReindexToolTests
     [Fact]
     public async Task Returns_unchanged_when_commits_are_set_but_no_git_diff_provider()
     {
-        using var tool = new IncrementalReindexTool(TestGraph.Store([], []), ThrowingFactory, gitDiff: null);
+        using var freshness = ThrowingFreshness();
+        using var tool = new IncrementalReindexTool(freshness, gitDiff: null);
 
         var resp = await tool.ExecuteTypedForTest(
             new IncrementalReindexRequest
@@ -68,7 +73,7 @@ public class IncrementalReindexToolTests
         fs.AddFile("/src/a.ts", "export class A { run(): number { return 99; } }");
 
         using var freshness = new IndexFreshnessService(store, () => new IncrementalReindexEngine(new TypeScriptAdapter(), fs), fs);
-        using var tool = new IncrementalReindexTool(store, ThrowingFactory, freshness: freshness);
+        using var tool = new IncrementalReindexTool(freshness);
 
         var resp = await tool.ExecuteTypedForTest(
             new IncrementalReindexRequest { RootPath = "/src", ChangedFiles = ["/src/a.ts"] },

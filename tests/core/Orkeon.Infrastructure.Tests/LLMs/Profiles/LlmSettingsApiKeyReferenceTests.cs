@@ -32,9 +32,7 @@ public sealed class LlmSettingsApiKeyReferenceTests
 
     private static readonly LlmKeyEnvironment Empty = Environment();
 
-#pragma warning disable CS0618 // ApiKey is the field every provider reads.
     private static string? KeyOf(LlmConfig config) => config.ApiKey;
-#pragma warning restore CS0618
 
     // ── the reference resolves ──────────────────────────────────────────────
 

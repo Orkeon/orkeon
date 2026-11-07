@@ -1,6 +1,6 @@
 # Usage: .\examples\run-example.ps1 <category/example> [-Settings path\to\appsettings.json]
 # Ex:    .\examples\run-example.ps1 01-enterprise/01-research-assistant
-# Ex:    .\examples\run-example.ps1 01-enterprise/01-research-assistant -Settings examples\_shared\appsettings.docker.json
+# Ex:    .\examples\run-example.ps1 01-enterprise/01-research-assistant -Settings examples\appsettings\appsettings.local.json
 param(
     [Parameter(Mandatory=$true, Position=0)]
     [string]$ExamplePath,

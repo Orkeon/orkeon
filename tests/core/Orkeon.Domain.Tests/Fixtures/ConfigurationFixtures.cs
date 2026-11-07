@@ -3,8 +3,6 @@ using Orkeon.Domain.SharedKernel.ValueObjects;
 using Orkeon.Domain.Common;
 using static Orkeon.Tests.Shared.Constants.TestLlmConstants;
 
-#pragma warning disable CS0618 // Testing obsolete APIs
-
 namespace Orkeon.Domain.Tests.Fixtures;
 
 /// <summary>
@@ -213,5 +211,3 @@ public static class ConfigurationFixtures
             ];
     }
 }
-
-#pragma warning restore CS0618

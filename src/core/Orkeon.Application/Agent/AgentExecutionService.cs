@@ -21,7 +21,6 @@ namespace Orkeon.Application.Agent
         private readonly IExecutionOrchestrator _executionOrchestrator;
         private readonly ICallbackOrchestrator _callbackOrchestrator;
         private readonly IMemoryCoordinator _memoryCoordinator;
-        private readonly IPerformanceMetrics? _performanceMetrics;
         private readonly EventHub.IEventHubCallerContext? _hubCallerContext;
         private readonly Orkeon.Domain.FileSystem.IFileSystemService _fileSystem;
 
@@ -44,7 +43,6 @@ namespace Orkeon.Application.Agent
             IExecutionOrchestrator executionOrchestrator,
             ICallbackOrchestrator callbackOrchestrator,
             IMemoryCoordinator memoryCoordinator,
-            IPerformanceMetrics? performanceMetrics = null,
             EventHub.IEventHubCallerContext? hubCallerContext = null,
             Orkeon.Domain.FileSystem.IFileSystemService fileSystem = null!)
         {
@@ -56,7 +54,6 @@ namespace Orkeon.Application.Agent
             _callbackOrchestrator = callbackOrchestrator;
             ArgumentNullException.ThrowIfNull(memoryCoordinator);
             _memoryCoordinator = memoryCoordinator;
-            _performanceMetrics = performanceMetrics;
             _hubCallerContext = hubCallerContext;
             _fileSystem = fileSystem;
         }
@@ -170,13 +167,6 @@ namespace Orkeon.Application.Agent
                         domainTask,
                         runContext,
                         cancellationToken).ConfigureAwait(false);
-
-                    // Record metrics
-                    _performanceMetrics?.RecordTaskExecution(
-                        agent.Role,
-                        task.TaskId.Value.ToString(),
-                        result.ExecutionTime,
-                        result.Success);
 
                     // Store result in memory if successful — unless the run is not the task's result (a
                     // consensual candidate, a hierarchical attempt, a ballot: the context says so, GAP-20,

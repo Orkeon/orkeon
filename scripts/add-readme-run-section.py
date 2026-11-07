@@ -13,8 +13,8 @@ Design goals
 * **Idempotent** — the generated block is wrapped in sentinel comments; a second run
   regenerates an identical block and rewrites nothing.
 * **Non-destructive** — a *simple* existing ``## Run`` section (a single ``orkeon run`` /
-  legacy command) is upgraded in place; a *curated* run section (mounts, ``###``
-  sub-steps, or a legacy ``examples/runners/*`` command) is left untouched and reported so
+  command) is upgraded in place; a *curated* run section (mounts or ``###``
+  sub-steps) is left untouched and reported so
   it can be handled by hand.
 * **Language-aware** — French READMEs get a ``## Lancer`` section, English ones ``## Run it``.
 
@@ -177,9 +177,6 @@ def section_is_curated(section_lines: list[str]) -> bool:
         return True
     if "src/apps" in text:
         return True
-    # Any legacy examples/runners/* reference is hand-curated now — leave it for manual review.
-    if re.search(r"examples/runners/[\w-]+", text):
-        return True
     # Has no recognizable launch command at all -> treat as curated/ambiguous, don't clobber.
     if not any(tok in text for tok in ("orkeon run", "dotnet run")):
         return True
@@ -230,7 +227,7 @@ def process(readme: Path, result: Result, write: bool) -> None:
         end_idx = find_section_span(lines, header_idx)
         section = lines[header_idx:end_idx]
         if section_is_curated(section):
-            reason = "curated run section (mount / sub-steps / legacy runner)"
+            reason = "curated run section (mount / sub-steps)"
             result.special_skipped.append((rel, reason))
             return
         # Simple section -> replace in place.

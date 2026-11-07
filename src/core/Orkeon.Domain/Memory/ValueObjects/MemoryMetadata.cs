@@ -28,7 +28,7 @@ public sealed record MemoryMetadata : ValueObjectRecord
     /// <summary>Gets custom properties, or <see langword="null"/> if none.</summary>
     public Dictionary<string, string>? CustomProperties { get; init; }
 
-    // Backward-compatible accessors
+    // Flat accessors over Access
     /// <summary>When the memory was created.</summary>
     public DateTime CreatedAt => Access.CreatedAt;
     /// <summary>When the memory was last accessed.</summary>
@@ -58,7 +58,7 @@ public sealed record MemoryMetadata : ValueObjectRecord
     /// <summary>
     /// Creates a new <see cref="MemoryMetadata"/> instance.
     /// </summary>
-#pragma warning disable S107 // Backward-compatible overload; prefer Create(MemoryAccessInfo, ...) instead
+#pragma warning disable S107 // Many parameters by design: the flat form is the one callers use
     public static MemoryMetadata Create(
         DateTime createdAt,
         DateTime? lastAccessedAt,

@@ -268,7 +268,7 @@ public sealed class SystemIoUsageAnalyzer : DiagnosticAnalyzer
     {
         // Sandbox bootstrap + host-binary/SDK probing (carry EXCEPTION-BOOTSTRAP / OUT-OF-SCOPE).
         "/core/Orkeon.Infrastructure/Sandbox/SandboxSession.cs",
-        "/core/Orkeon.Infrastructure/Sandbox/ProcessIsolationSandbox.cs",
+        "/core/Orkeon.Infrastructure/Sandbox/HostProcessRunner.cs",
         "/core/Orkeon.Infrastructure/Sandbox/DockerSandbox.cs",
         // Path-validation primitive (symlink/realpath resolution is its core job).
         "/core/Orkeon.Infrastructure/Security/PathValidator.cs",

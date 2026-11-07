@@ -9,7 +9,7 @@ namespace Orkeon.Studio.Core.Targets;
 ///   <item><description>a file, by extension — the same test as <c>RunCommand.IsYamlConfig</c>
 ///   for YAML, the scripting suffixes otherwise;</description></item>
 ///   <item><description>a directory holding a multi-file YAML crew — an <c>agents/</c> or
-///   <c>tasks/</c> sub-folder, or the flat legacy triplet <c>crew.yaml</c> + <c>agents.yaml</c>
+///   <c>tasks/</c> sub-folder, or the flat triplet <c>crew.yaml</c> + <c>agents.yaml</c>
 ///   + <c>tasks.yaml</c>. Both forms are what <c>CrewDirectoryLayout.Inspect</c> accepts, and
 ///   they are what the CLI will run when handed the directory;</description></item>
 ///   <item><description>a directory holding <c>crew.ork.ts</c> — the scripting convention
@@ -57,7 +57,7 @@ public sealed class RunTargetDetector
     public const string CompiledScriptSuffix = ".ork.js";
 
     /// <summary>
-    /// The flat legacy YAML layout: all three files must be present for the directory to be
+    /// The flat YAML layout: all three files must be present for the directory to be
     /// one (mirrors <c>CrewDirectoryLayout.FlatFiles</c>).
     /// </summary>
     public static IReadOnlyList<string> FlatLayoutFileNames { get; } =
@@ -88,7 +88,7 @@ public sealed class RunTargetDetector
     private static readonly string[] PreferredCrewFileNames = ["crew.yaml", "config.yaml"];
 
     /// <summary>
-    /// The entity files of the flat legacy layout. One of them next to a <c>crew.yaml</c> is
+    /// The entity files of the flat layout. One of them next to a <c>crew.yaml</c> is
     /// an incomplete triplet, not a single-file crew: that <c>crew.yaml</c> carries only the
     /// settings, and running it alone would load an empty crew.
     /// </summary>
@@ -351,7 +351,7 @@ public sealed class RunTargetDetector
 
     /// <summary>
     /// The paths identifying a multi-file YAML crew: the per-entity sub-folders when there
-    /// are any, else the flat legacy triplet when all three files are present. Empty when the
+    /// are any, else the flat triplet when all three files are present. Empty when the
     /// directory carries no YAML layout at all.
     /// </summary>
     private List<string> FindYamlLayoutMarkers(string directory)

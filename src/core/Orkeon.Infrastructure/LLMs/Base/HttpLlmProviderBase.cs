@@ -232,13 +232,11 @@ public abstract partial class HttpLlmProviderBase : ILlmProvider, IStreamingLlmP
         try
         {
             // Simple authorization header setup
-#pragma warning disable CS0618 // Type or member is obsolete
             if (!string.IsNullOrEmpty(effectiveConfig.ApiKey))
             {
                 client.DefaultRequestHeaders.Authorization =
                     new AuthenticationHeaderValue("Bearer", effectiveConfig.ApiKey);
             }
-#pragma warning restore CS0618
 
             // The call's timeout, else this provider's (Llm:TimeoutSeconds), else 30 s.
             client.Timeout = TimeSpan.FromSeconds(effectiveConfig.ResolveTimeoutSeconds());
@@ -536,9 +534,7 @@ public abstract partial class HttpLlmProviderBase : ILlmProvider, IStreamingLlmP
     {
         get
         {
-#pragma warning disable CS0618 // ApiKey is the field every provider guard reads today.
             return !RequiresApiKey || !string.IsNullOrEmpty(Config.ApiKey);
-#pragma warning restore CS0618
         }
     }
 

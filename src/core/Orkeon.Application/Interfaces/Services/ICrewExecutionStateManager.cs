@@ -271,12 +271,8 @@ public class CrewExecutionState
             return new ExecutionSnapshot(
                 Id,
                 CrewId,
-                _status,
-                _progress,
-                _currentTask,
-                _error,
-                StartTime,
-                EndTime,
+                new ExecutionStatusInfo(_status, _progress, _currentTask, _error),
+                new ExecutionTiming(StartTime, EndTime),
                 _metadata);
         }
     }
@@ -310,7 +306,7 @@ public record ExecutionSnapshot(
     ExecutionTiming Timing,
     ExecutionMetadata Metadata)
 {
-    // Backward-compatible accessors
+    // Flat accessors
     /// <summary>Current execution state.</summary>
     public ExecutionState Status => StatusInfo.Status;
     /// <summary>Execution progress (0.0 to 1.0).</summary>
@@ -323,26 +319,4 @@ public record ExecutionSnapshot(
     public DateTime StartTime => Timing.StartTime;
     /// <summary>When the execution ended (null if still running).</summary>
     public DateTime? EndTime => Timing.EndTime;
-
-    /// <summary>
-    /// Initializes a new instance of <see cref="ExecutionSnapshot"/> for backward compatibility.
-    /// </summary>
-#pragma warning disable S107 // Backward-compatible overload; use primary constructor with ExecutionStatusInfo and ExecutionTiming instead
-    public ExecutionSnapshot(
-        ExecutionId Id,
-        CrewId CrewId,
-        ExecutionState Status,
-        double Progress,
-        string? CurrentTask,
-        string? Error,
-        DateTime StartTime,
-        DateTime? EndTime,
-        ExecutionMetadata Metadata)
-        : this(Id, CrewId,
-            new ExecutionStatusInfo(Status, Progress, CurrentTask, Error),
-            new ExecutionTiming(StartTime, EndTime),
-            Metadata)
-    {
-    }
-#pragma warning restore S107
 }

@@ -15,7 +15,7 @@ builds and hands on.
 and runs on every project under `src/`. It reports any reference to a member of `System.Console`
 (call, property, event, method group), judged on the **resolved symbol**:
 `using static System.Console; WriteLine(...)` is reported, and a property named `Console` whose type
-is `IConsoleAdapter` is not. Text inside a string literal (the program `ProcessIsolationSandbox`
+is `IConsoleAdapter` is not. Text inside a string literal (the program `HostProcessRunner`
 writes for a child process) is not a reference and is not reported.
 
 `.editorconfig` sets it to `error` under `[src/**.cs]`. Tests (`/tests/`) and examples

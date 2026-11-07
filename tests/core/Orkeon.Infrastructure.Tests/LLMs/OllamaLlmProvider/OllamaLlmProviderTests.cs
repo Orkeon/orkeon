@@ -8,8 +8,6 @@ using static Orkeon.Tests.Shared.Constants.TestLlmConstants;
 using static Orkeon.Tests.Shared.Constants.TestDataConstants;
 using static Orkeon.Tests.Shared.Constants.TestUrlConstants;
 
-#pragma warning disable CS0618 // Testing obsolete APIs
-
 namespace Orkeon.Infrastructure.Tests.LLMs;
 
 // OLLAMA_BASE_URL is process-wide: this class never runs beside another test touching it.
@@ -1142,5 +1140,3 @@ public class OllamaLlmProviderTests
         Assert.Contains("\\\\", requestContent);
     }
 }
-
-#pragma warning restore CS0618

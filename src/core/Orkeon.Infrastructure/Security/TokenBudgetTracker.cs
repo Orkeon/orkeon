@@ -111,15 +111,6 @@ public partial class TokenBudgetTracker : ITokenBudgetTracker
     }
 
     /// <summary>
-    /// Estimates cost based on model name and token counts.
-    /// When a <see cref="IModelPricingRegistry"/> is provided, it is used as the single source of truth
-    /// (prices stored as $/million tokens and converted to per-token cost here).
-    /// Falls back to built-in approximate rates when no registry is available.
-    /// </summary>
-    public static decimal EstimateCost(int promptTokens, int completionTokens, string model)
-        => EstimateCost(promptTokens, completionTokens, model, null);
-
-    /// <summary>
     /// Estimates cost using the provided <see cref="IModelPricingRegistry"/> as the source of truth,
     /// or falls back to built-in approximate rates when the registry is null or has no entry for the model.
     /// </summary>
@@ -139,8 +130,7 @@ public partial class TokenBudgetTracker : ITokenBudgetTracker
             }
         }
 
-        // Fallback: built-in approximate per-1K rates (kept for backward compatibility
-        // when no registry is injected)
+        // Fallback when no registry is injected: built-in approximate per-1K rates
         var (promptRate, completionRate) = GetFallbackRatesPerThousand(model);
         return (promptTokens * promptRate / 1000m) + (completionTokens * completionRate / 1000m);
     }

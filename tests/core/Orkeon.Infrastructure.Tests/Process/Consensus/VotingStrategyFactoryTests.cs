@@ -104,7 +104,7 @@ public class VotingStrategyFactoryTests
     [Fact]
     public void ShouldResolveMajorityStrategy_WhenNothingConfigured()
     {
-        // Backward-compatible default: the historical MajorityVotingStrategy.
+        // Default: MajorityVotingStrategy.
         using var provider = BuildProvider(configuredMechanism: null);
 
         var strategy = provider.GetRequiredService<IVotingStrategy>();

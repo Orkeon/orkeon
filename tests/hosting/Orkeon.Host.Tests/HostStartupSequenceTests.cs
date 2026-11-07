@@ -59,7 +59,7 @@ public sealed class HostStartupSequenceTests : IDisposable
     private HostLaunch Prepare(string settings) => HostStartup.Prepare(["--settings", settings], _failures.Report);
 
     [Fact]
-    public void A_retired_runner_key_is_reported_and_exits_78()
+    public void A_runner_key_the_section_does_not_carry_is_reported_and_exits_78()
     {
         var launch = Prepare(Settings(raggableTree: """, "Exclude": ["bin"]"""));
 

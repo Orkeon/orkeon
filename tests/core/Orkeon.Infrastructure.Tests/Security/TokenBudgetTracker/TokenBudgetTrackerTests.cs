@@ -91,7 +91,7 @@ public class TokenBudgetTrackerTests
     public void ShouldCalculateCorrectRates_WhenModelIsGpt4()
     {
         // gpt-4: $0.03/1K prompt, $0.06/1K completion
-        var cost = TokenBudgetTrackerSut.EstimateCost(1000, 1000, ModelGpt4);
+        var cost = TokenBudgetTrackerSut.EstimateCost(1000, 1000, ModelGpt4, registry: null);
         Assert.Equal(0.09m, cost); // 0.03 + 0.06
     }
 
@@ -99,7 +99,7 @@ public class TokenBudgetTrackerTests
     public void ShouldCalculateCorrectRates_WhenModelIsClaude3Opus()
     {
         // claude-3-opus: $0.015/1K prompt, $0.075/1K completion
-        var cost = TokenBudgetTrackerSut.EstimateCost(1000, 1000, "claude-3-opus");
+        var cost = TokenBudgetTrackerSut.EstimateCost(1000, 1000, "claude-3-opus", registry: null);
         Assert.Equal(0.09m, cost); // 0.015 + 0.075
     }
 

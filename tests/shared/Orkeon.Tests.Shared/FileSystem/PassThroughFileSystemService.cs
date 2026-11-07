@@ -6,9 +6,8 @@ namespace Orkeon.Tests.Shared.FileSystem;
 
 /// <summary>
 /// Test helper that treats every input path as both virtual <em>and</em> physical and
-/// delegates I/O straight to <see cref="System.IO"/>. Used by legacy tool tests that
-/// previously relied on <c>Mock&lt;IFileSystemService&gt;</c> with simple
-/// "<c>Path.GetFullPath(path)</c>" responses. The optional <paramref name="pathValidator"/>
+/// delegates I/O straight to <see cref="System.IO"/>. Used by tool tests that need
+/// simple "<c>Path.GetFullPath(path)</c>" responses. The optional <paramref name="pathValidator"/>
 /// constructor argument lets tests plug in custom denial logic (e.g. traversal blocking).
 /// </summary>
 public sealed class PassThroughFileSystemService : IFileSystemService

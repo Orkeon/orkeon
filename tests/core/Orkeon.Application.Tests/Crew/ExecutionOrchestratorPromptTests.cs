@@ -1,3 +1,4 @@
+using Orkeon.Application.Crew.Execution;
 using System.Text;
 using Orkeon.Application.Crew;
 using Orkeon.Domain.Agent;
@@ -26,7 +27,7 @@ public class ExecutionOrchestratorPromptTests
         var prompt = new StringBuilder();
 
         // Act
-        ExecutionOrchestrator.AppendToolsSection(prompt, agent, supportsNativeToolCalling: true);
+        AgentPromptComposer.AppendToolsSection(prompt, agent.Tools, supportsNativeToolCalling: true);
 
         // Assert
         var result = prompt.ToString();
@@ -47,7 +48,7 @@ public class ExecutionOrchestratorPromptTests
         var prompt = new StringBuilder();
 
         // Act
-        ExecutionOrchestrator.AppendToolsSection(prompt, agent, supportsNativeToolCalling: false);
+        AgentPromptComposer.AppendToolsSection(prompt, agent.Tools, supportsNativeToolCalling: false);
 
         // Assert
         var result = prompt.ToString();
@@ -71,7 +72,7 @@ public class ExecutionOrchestratorPromptTests
         var prompt = new StringBuilder();
 
         // Act
-        ExecutionOrchestrator.AppendToolsSection(prompt, agent, supportsNativeToolCalling);
+        AgentPromptComposer.AppendToolsSection(prompt, agent.Tools, supportsNativeToolCalling);
 
         // Assert
         var result = prompt.ToString();
@@ -94,7 +95,7 @@ public class ExecutionOrchestratorPromptTests
         var prompt = new StringBuilder();
 
         // Act
-        ExecutionOrchestrator.AppendToolsSection(prompt, agent, supportsNativeToolCalling);
+        AgentPromptComposer.AppendToolsSection(prompt, agent.Tools, supportsNativeToolCalling);
 
         // Assert
         Assert.Equal(string.Empty, prompt.ToString());
@@ -112,7 +113,7 @@ public class ExecutionOrchestratorPromptTests
         var prompt = new StringBuilder();
 
         // Act
-        ExecutionOrchestrator.AppendToolsSection(prompt, agent, supportsNativeToolCalling: true);
+        AgentPromptComposer.AppendToolsSection(prompt, agent.Tools, supportsNativeToolCalling: true);
 
         // Assert
         var result = prompt.ToString();
@@ -137,7 +138,7 @@ public class ExecutionOrchestratorPromptTests
         var agent = new AgentBuilder().Role("R").Goal("G").WithTool(tool).Build();
         var prompt = new StringBuilder();
 
-        ExecutionOrchestrator.AppendToolsSection(prompt, agent, supportsNativeToolCalling: true);
+        AgentPromptComposer.AppendToolsSection(prompt, agent.Tools, supportsNativeToolCalling: true);
 
         var result = prompt.ToString();
         Assert.Contains("Required: query", result);
@@ -159,7 +160,7 @@ public class ExecutionOrchestratorPromptTests
         var agent = new AgentBuilder().Role("R").Goal("G").WithTool(tool).Build();
         var prompt = new StringBuilder();
 
-        ExecutionOrchestrator.AppendToolsSection(prompt, agent, supportsNativeToolCalling: true);
+        AgentPromptComposer.AppendToolsSection(prompt, agent.Tools, supportsNativeToolCalling: true);
 
         var result = prompt.ToString();
         Assert.Contains("Optional: format (default: json)", result);
@@ -176,7 +177,7 @@ public class ExecutionOrchestratorPromptTests
         var agent = new AgentBuilder().Role("R").Goal("G").WithTool(tool).Build();
         var prompt = new StringBuilder();
 
-        ExecutionOrchestrator.AppendToolsSection(prompt, agent, supportsNativeToolCalling: true);
+        AgentPromptComposer.AppendToolsSection(prompt, agent.Tools, supportsNativeToolCalling: true);
 
         var result = prompt.ToString();
         Assert.Contains("ping", result);
@@ -199,7 +200,7 @@ public class ExecutionOrchestratorPromptTests
         var agent = new AgentBuilder().Role("R").Goal("G").WithTool(tool).Build();
         var prompt = new StringBuilder();
 
-        ExecutionOrchestrator.AppendToolsSection(prompt, agent, supportsNativeToolCalling: true);
+        AgentPromptComposer.AppendToolsSection(prompt, agent.Tools, supportsNativeToolCalling: true);
 
         var result = prompt.ToString();
         Assert.Contains("Optional: timeout", result);

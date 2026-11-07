@@ -8,7 +8,6 @@ using Orkeon.Application.Agent;
 using Orkeon.Application.Crew;
 using Orkeon.Application.Memory;
 using Orkeon.Application.Services.Memory;
-using Orkeon.Application.Services.Monitoring;
 using Orkeon.Application.Validation;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -48,9 +47,6 @@ public static class ServiceCollectionExtensions
         services.RegisterExecutionOrchestrator();
         services.AddScoped<ICallbackOrchestrator, CallbackOrchestrator>();
         services.AddScoped<IMemoryCoordinator, MemoryCoordinator>();
-#pragma warning disable CS0618 // Type or member is obsolete
-        services.AddSingleton<Interfaces.Ports.IPerformanceMetrics, PerformanceMetricsCollector>();
-#pragma warning restore CS0618
 
         // Memory services
         services.AddSingleton<Memory.CrewMemoryProviderRegistry>();

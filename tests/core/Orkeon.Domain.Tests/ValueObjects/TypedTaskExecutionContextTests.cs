@@ -442,31 +442,6 @@ public class TypedTaskExecutionContextTests
         Assert.Contains("ExecutingAgent", result);
     }
 
-    [Fact]
-    public void ShouldReturnAllComponents_WhenUsingDeconstruct()
-    {
-        // Arrange
-        var taskId = TaskId.From(Guid.NewGuid());
-        var agentId = AgentId.From(Guid.NewGuid());
-        var variables = TaskVariables.CreateBuilder().AddInt("count", 10).Build();
-        var outputs = ImmutableArray.Create(TaskOutput.Text("test"));
-        var toolCalls = ImmutableArray.Create(ToolCall.Create("TestTool", ToolArguments.Empty));
-        var metadata = ExecutionMetadata.CreateNew();
-
-        var context = new TypedTaskExecutionContext(taskId, agentId, variables, outputs, metadata, toolCalls);
-
-        // Act
-        var (tId, agent, vars, prevOutputs, meta, tools) = context;
-
-        // Assert
-        Assert.Equal(taskId, tId);
-        Assert.Equal(agentId, agent);
-        Assert.Same(variables, vars);
-        Assert.True(outputs.SequenceEqual(prevOutputs));
-        Assert.Same(metadata, meta);
-        Assert.True(toolCalls.SequenceEqual(tools));
-    }
-
     #endregion
 
     #region ExecutionMetadata Tests

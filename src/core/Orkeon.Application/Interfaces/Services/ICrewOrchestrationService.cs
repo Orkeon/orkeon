@@ -92,8 +92,8 @@ public sealed class CrewExecutionId : Orkeon.Domain.Common.TypedId
 /// <summary>
 /// Input for crew execution.
 /// Variables holds user-supplied key/value pairs used for template interpolation.
-/// In snake_case crew YAML these are always strings; the <c>object</c> variant is kept for
-/// backward compatibility but new code should prefer <see cref="WithStringVariables"/>.
+/// The positional constructor takes <c>object</c> values; crew YAML only ever carries strings,
+/// which <see cref="WithStringVariables"/> takes directly.
 /// </summary>
 public record CrewInput(
     string? InitialContext,

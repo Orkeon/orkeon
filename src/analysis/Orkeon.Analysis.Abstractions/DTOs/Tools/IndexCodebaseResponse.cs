@@ -101,10 +101,4 @@ public sealed record IncrementalReindexRequest
 
     [FieldSchema(Description = "Commit the diff ends at (default HEAD).", IsRequired = false)]
     public string? ToCommit { get; init; }
-
-    [FieldSchema(Description = "Languages reindexed; empty keeps every supported language.", ItemsType = "string", IsRequired = false)]
-    public ImmutableArray<string> Languages { get; init; } = [];
-
-    [FieldSchema(Description = "Ask the LLM for a summary of each symbol while reindexing (slow).", IsRequired = false, Default = false)]
-    public bool EnrichWithLlm { get; init; }
 }

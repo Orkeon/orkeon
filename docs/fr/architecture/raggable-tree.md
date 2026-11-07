@@ -134,7 +134,7 @@ Les plages sont des offsets en **octets** UTF-8 (`NodeRange.StartByte`/`EndByte`
 | `symbol_detail` | Détail d'un symbole (signature, doc, callers, callees) | `{ "fqn": "app::UserService::create" }` |
 | `symbol_source` | Extrait du code source (signature, body, span complet) | `{ "fqn": "...", "mode": "SignatureAndBody" }` |
 | `codebase_search` | Recherche hybride — embedding + BM25 fusionnés (voir [plus bas](#recherche-hybride)) | `{ "query": "session expiration", "top_k": 10 }` |
-| `dependency_graph` | Graphe de dépendances à une portée (L1/L2/L3) ; rendu Mermaid/DOT sur `include_mermaid` / `include_dot` (désactivés par défaut) | `{ "scope": "L2_Module", "edge_kinds": ["Imports", "Calls"] }` |
+| `dependency_graph` | Graphe de dépendances à une portée (L1/L2/L3) ; rendu Mermaid/DOT sur `include_mermaid` / `include_dot` (désactivés par défaut) | `{ "scope": "L2_Module", "edge_kinds": ["imports", "calls"] }` |
 | `sub_graph` | Expansion BFS autour de seeds | `{ "seeds": ["pkg::X"], "depth": 3 }` |
 | `edge_list` | Toutes les arêtes des genres donnés dans l'index entier, paginées, extrémités en FQN | `{ "edge_kinds": ["inherits"], "page_size": 500 }` |
 | `flow_trace` | Chemins d'appel entre deux FQN | `{ "from": "A", "to": "B", "max_paths": 5 }` |
@@ -167,7 +167,7 @@ FQN), `embedding_model`, `max_parallelism` (combien de fichiers sont lus et anal
 négative est refusée) et `use_cache` (défaut `true` ; `false` reconstruit tout, puis
 enregistre) — exactement ce que lit la construction. Les statements sont
 toujours extraits, et un argument que la requête ne déclare pas est ignoré.
-`incremental_reindex` accepte les mêmes `root_path`, `languages` et `enrich_with_llm`.
+`incremental_reindex` accepte le même `root_path`, plus `changed_files` ou `from_commit`/`to_commit`.
 
 ### Cache d'index
 
@@ -188,7 +188,7 @@ l'heure d'écriture de chaque fichier indexé et le SHA-256 de chaque marqueur d
 La clé couvre ce qui façonne l'arbre au-delà des fichiers : les options (`languages`,
 `exclude`, `respect_gitignore`, `root_alias`, `enrich_with_llm`, `embedding_model`, pas
 `max_parallelism`), la version de l'assembly Analysis, celle du sérialiseur, et les
-adaptateurs, fingerprinters, résumeur et embedder (avec sa dimension) que l'hôte câble.
+adaptateurs, fingerprinters, résumeur et embedder (avec sa dimension et le modèle qu'il nomme, `bge-micro-v2` pour le local) que l'hôte câble.
 Une clé changée est un miss. Les fichiers d'ignore (chaque `.gitignore` imbriqué et `.git/info/exclude`) sont des marqueurs de validité comme les marqueurs de package : un changement force une reconstruction complète, et le chemin incrémental saute les chemins ignorés. Une racine que le processus ne peut pas écrire est indexée
 sans cache. Seul un fichier corrompu ou qui n'est pas une base (`SQLITE_CORRUPT`, `SQLITE_NOTADB`) efface la base du cache ; une base occupée ou verrouillée abandonne l'enregistrement et garde la base.
 
@@ -423,6 +423,8 @@ Les outils de nœuds et les outils structurels lisent un fichier dans toute gram
 | `calls` | `Calls` |
 | `imports` | `Imports` |
 | `inherits` | `Extends` + `Implements` |
+| `extends` | `Extends` |
+| `implements` | `Implements` |
 | `tests` | `Tests` |
 | `documents` | `Documents` |
 | `project_depends` | `ProjectDepends` |
@@ -441,7 +443,7 @@ Les outils de nœuds et les outils structurels lisent un fichier dans toute gram
 
 ### Utiliser les noms
 
-- `edge_kinds` et `node_kinds` de `dependency_graph` et `sub_graph`, ainsi que `edge_kinds` de `flow_trace` et `edge_list`, prennent les noms de workflow en minuscules. Les noms d'énumération historiques (`Imports`) restent acceptés, sans tenir compte de la casse. Un nom inconnu est refusé, en le nommant. Les réponses écrivent un genre sous la même forme en minuscules, si bien qu'un script peut renvoyer ce qu'il a lu : `edges[].kind` vaut `imports`, `project_depends`, `extends` ou `implements` (une arête est l'un ou l'autre, jamais `inherits`), et une combinaison joint ses noms par `, ` (`imports, calls`). Toute énumération `[Flags]` scalaire d'une requête ou d'une réponse d'outil prend cette forme (noms des membres en snake_case joints par `, `) : `symbol_detail` prend `expand: "members"` ou `"callers, callees"`, et un nombre reste lu.
+- `edge_kinds` et `node_kinds` de `dependency_graph` et `sub_graph`, ainsi que `edge_kinds` de `flow_trace` et `edge_list`, prennent les noms de workflow en minuscules, sans tenir compte de la casse (`Imports` vaut `imports`). Un nom inconnu est refusé, en le nommant. Les réponses écrivent un genre sous la même forme en minuscules, si bien qu'un script peut renvoyer ce qu'il a lu : `edges[].kind` vaut `imports`, `project_depends`, `extends` ou `implements` (une arête est l'un ou l'autre, jamais `inherits`), et une combinaison joint ses noms par `, ` (`imports, calls`). Toute énumération `[Flags]` scalaire d'une requête ou d'une réponse d'outil prend cette forme (noms des membres en snake_case joints par `, `) : `symbol_detail` prend `expand: "members"` ou `"callers, callees"` ; un nombre est refusé.
 - `edge_list` parcourt l'index entier, contrairement à `dependency_graph`, dont `max_nodes` borne les nœuds avant que les arêtes soient collectées : toutes les classes de base d'une codebase, c'est `edge_kinds: ["inherits"]`. Ses arêtes sont triées par FQN source, FQN cible, genre et id d'arête ; `next_cursor` (null sur la dernière page) reprend après la dernière arête renvoyée, si bien qu'aucune page n'est répétée ni sautée tant que l'index ne change pas. `total` compte toutes les arêtes retenues, `root_fqn` garde les arêtes dont une extrémité est ce nœud ou se trouve sous lui (un paquet ou un fichier par chemin, un type ou un membre par FQN avec frontière, un espace de noms par ses fichiers et son nom), et `page_size` va jusqu'à 1000 (200 par défaut). `from`/`to` sont des FQN, `from_id`/`to_id` les ids de nœud qu'écrit `dependency_graph` ; une extrémité hors de l'index garde son id dans les deux.
 - `symbol_detail` avec `expand: "inheritance"` liste `extends` et `implements` en FQN, et ce qui pointe vers le symbole : `derived_by` (les types qui l'étendent) et `implemented_by` (les types qui l'implémentent).
 - `flow_trace` suit `calls` quand `edge_kinds` est vide ; `inherits` suit à la fois `extends` et `implements`.

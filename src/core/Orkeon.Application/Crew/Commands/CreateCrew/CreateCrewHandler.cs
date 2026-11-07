@@ -1,3 +1,4 @@
+using Orkeon.Application.Common;
 using Orkeon.Application.Common.CQRS;
 using Orkeon.Application.Crew.DTOs;
 using Orkeon.Domain.Common;
@@ -50,12 +51,13 @@ public partial class CreateCrewHandler : ICommandHandler<CreateCrewCommand, Crew
                 processType: command.ProcessType,
                 verbose: false);
 
-            // Add agents if provided (validator guarantees all IDs are valid GUIDs)
+            // Add agents if provided (format already validated by CreateCrewCommandValidator)
             if (command.AgentIds?.Count > 0)
             {
                 foreach (var agentIdStr in command.AgentIds)
                 {
-                    var agentId = AgentId.From(Guid.Parse(agentIdStr));
+                    if (!AgentIdText.TryParse(agentIdStr, out var agentId))
+                        throw new ArgumentException($"Agent ID '{agentIdStr}' is not a valid agent id.", nameof(command));
                     crew.AddAgent(agentId);
                 }
             }

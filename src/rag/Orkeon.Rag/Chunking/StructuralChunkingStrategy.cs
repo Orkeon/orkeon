@@ -12,8 +12,8 @@ namespace Orkeon.Rag.Chunking;
 /// <see cref="ChunkingStrategyBase.HeadingMetadataKey"/>.
 /// </summary>
 /// <remarks>
-/// Canonical port of the historical <c>MdxSearchTool.ChunkByHeadings</c> heading-aware
-/// chunker (RAG-02/C3 consolidation), extended with exact global offsets.
+/// The heading-aware chunker of the RAG subsystem, with exact global offsets: the search
+/// tools chunk their documents through it.
 /// </remarks>
 public sealed class StructuralChunkingStrategy : ChunkingStrategyBase
 {

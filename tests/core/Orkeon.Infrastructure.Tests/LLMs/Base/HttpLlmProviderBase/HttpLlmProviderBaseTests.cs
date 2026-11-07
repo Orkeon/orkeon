@@ -8,8 +8,6 @@ using Orkeon.Infrastructure.LLMs.Base;
 using static Orkeon.Tests.Shared.Constants.TestLlmConstants;
 using static Orkeon.Tests.Shared.Constants.TestDataConstants;
 
-#pragma warning disable CS0618 // Testing obsolete APIs
-
 namespace Orkeon.Infrastructure.Tests.LLMs.Base;
 
 public sealed class HttpLlmProviderBaseTests : IDisposable
@@ -896,5 +894,3 @@ internal class LogEntry
     public string Message { get; set; } = string.Empty;
     public Exception? Exception { get; set; }
 }
-
-#pragma warning restore CS0618

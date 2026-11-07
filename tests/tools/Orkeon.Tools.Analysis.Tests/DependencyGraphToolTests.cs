@@ -168,7 +168,7 @@ public class DependencyGraphToolTests
 
     [Trait("BR", "RT-33")]
     [Fact]
-    public async Task ShouldAcceptLegacyEdgeKindName_WhenDependencyGraphAsksImports()
+    public async Task ShouldIgnoreTheCaseOfEdgeKindNames_WhenDependencyGraphAsksImports()
     {
         var pkgA = TestGraph.Package("root::a", "/src/a");
         var pkgB = TestGraph.Package("root::b", "/src/b");
@@ -190,6 +190,34 @@ public class DependencyGraphToolTests
 
         var edge = Assert.Single(resp.Edges);
         Assert.Equal(EdgeKind.Imports, edge.Kind);
+    }
+
+    [Trait("BR", "RT-33")]
+    [Theory]
+    [InlineData("extends", EdgeKind.Extends)]
+    [InlineData("implements", EdgeKind.Implements)]
+    public async Task ShouldFollowOneInheritanceKind_WhenDependencyGraphAsksItByName(string name, EdgeKind expected)
+    {
+        var pkgA = TestGraph.Package("root::a", "/src/a");
+        var pkgB = TestGraph.Package("root::b", "/src/b");
+        var store = TestGraph.Store(
+            [pkgA, pkgB],
+            [
+                TestGraph.Edge(pkgA, pkgB, EdgeKind.Extends),
+                TestGraph.Edge(pkgA, pkgB, EdgeKind.Implements),
+            ]);
+        using var tool = new DependencyGraphTool(store);
+
+        var resp = await tool.ExecuteTypedForTest(
+            new DependencyGraphRequest
+            {
+                Scope = NodeLevel.L1_Package,
+                EdgeKinds = TestGraph.Arr(name),
+            },
+            CancellationToken.None);
+
+        var edge = Assert.Single(resp.Edges);
+        Assert.Equal(expected, edge.Kind);
     }
 
     [Trait("BR", "RT-33")]

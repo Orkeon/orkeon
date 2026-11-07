@@ -7,8 +7,6 @@ using System.Net;
 using System.Text;
 using System.Text.Json;
 
-#pragma warning disable CS0618 // Testing obsolete APIs (LlmConfig.ApiKey)
-
 namespace Orkeon.Infrastructure.Tests.LLMs;
 
 /// <summary>

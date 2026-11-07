@@ -25,17 +25,13 @@ public sealed class JsLlmFacadeCallConfigTests
 
     private static StubLlmProvider Configured() => new()
     {
-#pragma warning disable CS0618 // Direct ApiKey: this is exactly the field the defect dropped.
         BaseConfig = LlmConfig.Create("boot-model", Key) with { BaseUrl = Endpoint, TimeoutSeconds = 120 },
-#pragma warning restore CS0618
     };
 
     private static void AssertCredentialsSurvived(LlmConfig? config)
     {
         Assert.NotNull(config);
-#pragma warning disable CS0618
         Assert.Equal(Key, config!.ApiKey);
-#pragma warning restore CS0618
         Assert.Equal(Endpoint, config.BaseUrl);
         Assert.Equal(120, config.TimeoutSeconds);
     }

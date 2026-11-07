@@ -28,8 +28,7 @@ public class CrewInputTests
         Assert.NotNull(input);
         Assert.Equal(initialContext, input.InitialContext);
         Assert.NotNull(input.Variables);
-        Assert.NotNull(input.Parameters);
-        Assert.Equal(3, input.Parameters.Count);
+        Assert.Equal(3, input.Variables.ToDictionary().Count);
         Assert.Equal(metadata, input.Metadata);
         Assert.True(input.CreatedAt <= DateTime.UtcNow);
     }
@@ -46,8 +45,7 @@ public class CrewInputTests
         // Assert
         Assert.Equal(initialContext, input.InitialContext);
         Assert.NotNull(input.Variables);
-        Assert.NotNull(input.Parameters);
-        Assert.Empty(input.Parameters);
+        Assert.Empty(input.Variables.ToDictionary());
         Assert.Equal(CrewMetadata.Empty, input.Metadata);
     }
 
@@ -297,7 +295,7 @@ public class CrewInputTests
     }
 
     [Fact]
-    public void ShouldReturnDictionaryFromVariables_WhenUsingParameters()
+    public void ShouldReturnDictionaryFromVariables_WhenConstructedWithParameters()
     {
         // Arrange
         var parameters = new Dictionary<string, object>
@@ -309,7 +307,7 @@ public class CrewInputTests
         var input = new CrewInput("context", parameters);
 
         // Act
-        var result = input.Parameters;
+        var result = input.Variables.ToDictionary();
 
         // Assert
         Assert.NotNull(result);

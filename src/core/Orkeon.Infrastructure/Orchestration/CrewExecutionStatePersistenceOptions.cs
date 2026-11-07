@@ -5,8 +5,8 @@ namespace Orkeon.Infrastructure.Orchestration;
 /// (<c>ScopedCrewExecutionStateManager</c> → <c>IStateStore</c>).
 /// </summary>
 /// <remarks>
-/// Disabled by default (backward compatible: states live in memory only, no crash
-/// recovery). When <see cref="Enabled"/> is <see langword="true"/> and an
+/// Disabled by default: states live in memory only, no crash
+/// recovery. When <see cref="Enabled"/> is <see langword="true"/> and an
 /// <c>IStateStore</c> is registered (see <c>CheckpointingExtensions</c> —
 /// <c>AddOrkeonCheckpointing</c> / <c>AddOrkeonSqliteCheckpointing</c> /
 /// <c>AddOrkeonPostgresCheckpointing</c>), every state transition is persisted and

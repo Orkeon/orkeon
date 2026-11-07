@@ -8,8 +8,6 @@ using Polly;
 using System.Net;
 using System.Text;
 
-#pragma warning disable CS0618 // Testing obsolete APIs (LlmConfig.ApiKey)
-
 namespace Orkeon.Infrastructure.Tests.LLMs.Base;
 
 /// <summary>

@@ -175,7 +175,7 @@ public static partial class RunnerExecution
         }
         catch (RunnerSettingsException ex)
         {
-            // A setting the host refuses — a retired key, an unconvertible value, an unreadable
+            // A setting the host refuses — an unknown key, an unconvertible value, an unreadable
             // file, an address that is none — is the operator's to fix: the sentence as the last
             // stderr line, exit 1 (GAP-35). It used to escape as an unhandled exception: a stack,
             // a core dump, and on an --events run a stream that never closed.
@@ -256,7 +256,7 @@ public static partial class RunnerExecution
         var configPath = Path.GetFullPath(opts.ConfigPath);
 
         // A crew target is either a single file (.yaml / .ork.ts) or a directory holding a
-        // multi-file crew (config.yaml + agents/ + tasks/, or the flat legacy triplet) — at its
+        // multi-file crew (config.yaml + agents/ + tasks/, or the flat triplet) — at its
         // root, or under its crew/ sub-folder, which then wins over whatever the root holds
         // (STUDIO-59). The directory form is classified here so an ambiguous or empty directory
         // reports its own diagnostic instead of the generic "config file not found".
@@ -278,7 +278,7 @@ public static partial class RunnerExecution
         // operator named, or its parent) keeps the VFS surface as narrow as it is for a
         // single-file crew, and anchors appsettings resolution inside the crew: for a promoted
         // team the chain starts at crew/, so a settings file kept at the team folder's root is not
-        // found — only crew/appsettings.json and an appsettings/ (or _shared/) folder above it —
+        // found — only crew/appsettings.json and an appsettings/ folder above it —
         // and the workshop's launchers pass --settings.
         if (inspection.IsCrewDirectory)
             configPath = Path.TrimEndingDirectorySeparator(inspection.CrewRoot!);

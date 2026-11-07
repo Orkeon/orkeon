@@ -12,7 +12,7 @@ namespace Orkeon.Infrastructure.Consensus;
 /// The mechanism is typically configured via
 /// <c>Orkeon:Consensus:VotingOptions:ConsensusType</c>
 /// (<see cref="ConsensualProcessOptions.VotingOptions"/>). <see cref="ConsensusType.Majority"/>
-/// is the backward-compatible default.
+/// is the default.
 /// </remarks>
 public sealed class VotingStrategyFactory : IVotingStrategyFactory
 {
@@ -36,7 +36,7 @@ public sealed class VotingStrategyFactory : IVotingStrategyFactory
         ConsensusType.Unanimity => new UnanimityVotingStrategy(),
         ConsensusType.WeightedConsensus => new WeightedConsensusStrategy(_options.RoleWeights),
         ConsensusType.BordaCount => new BordaCountStrategy(),
-        // Majority is both the explicit mechanism and the fallback (backward-compatible default).
+        // Majority is both the explicit mechanism and the default.
         _ => new MajorityVotingStrategy()
     };
 }

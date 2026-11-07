@@ -1,3 +1,4 @@
+using Orkeon.Domain.Common;
 using Orkeon.Application.Task.Commands.CreateTask;
 using Orkeon.Application.Task.DTOs;
 using Orkeon.Application.Tests.Doubles;
@@ -59,6 +60,24 @@ public sealed class CreateTaskHandlerTests
         var storedTask = _repository.StoredTasks[0];
         Assert.Equal("Write unit tests", storedTask.Description.Value);
         Assert.Equal("All tests passing", storedTask.ExpectedOutput.Value);
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task ShouldAssignTheAgent_WhenAgentIdIsUlid()
+    {
+        // Arrange: the ULID text is the form AgentId prints.
+        var agentId = AgentId.Create();
+        var command = new CreateTaskCommand(
+            Description: "Review pull request",
+            ExpectedOutput: "Approved or feedback provided",
+            AgentId: agentId.ToString());
+
+        // Act
+        var result = await _handler.HandleAsync(command, CancellationToken.None);
+
+        // Assert
+        Assert.Equal(agentId.ToString(), result.AssignedAgent);
+        Assert.Equal(agentId, _repository.StoredTasks[0].AssignedAgent);
     }
 
     [Fact]

@@ -54,7 +54,6 @@ public class TolerantFlagsEnumConverterTests
     [InlineData("\"imports, calls\"", EdgeKind.Imports | EdgeKind.Calls)]
     [InlineData("\"Imports|Calls\"", EdgeKind.Imports | EdgeKind.Calls)]
     [InlineData("[\"imports\",\"calls\"]", EdgeKind.Imports | EdgeKind.Calls)]
-    [InlineData("3", EdgeKind.Imports | EdgeKind.Calls)]
     [InlineData("\"none\"", EdgeKind.None)]
     public void ShouldReadEdgeKind_WhenNameCaseOrSeparatorVaries(string json, EdgeKind expected)
     {
@@ -79,10 +78,14 @@ public class TolerantFlagsEnumConverterTests
         Assert.Contains("project_depends", ex.Message, StringComparison.Ordinal);
     }
 
-    [Fact]
-    public void ShouldThrow_WhenNumberHasUnknownBit()
+    [Theory]
+    [InlineData("3")]
+    [InlineData("256")]
+    [InlineData("[1,2]")]
+    public void ShouldRefuse_WhenEdgeKindIsANumber(string json)
     {
-        Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<EdgeKind>("256", Options));
+        var ex = Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<EdgeKind>(json, Options));
+        Assert.Contains("project_depends", ex.Message, StringComparison.Ordinal);
     }
 
     [Theory]

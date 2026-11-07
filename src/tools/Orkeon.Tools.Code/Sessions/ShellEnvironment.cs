@@ -30,7 +30,7 @@ internal static partial class ShellEnvironment
     /// (<c>cat /proc/self/environ</c>, <c>set</c>) would otherwise read them straight back into the
     /// model's context.
     /// <para>
-    /// Twin of <c>ProcessIsolationSandbox.ConfigureRestrictedEnvironment</c>
+    /// Twin of <c>HostProcessRunner.ConfigureRestrictedEnvironment</c>
     /// (<c>src/core/Orkeon.Infrastructure/Sandbox</c>), which does the same for the code sandbox. The
     /// list is duplicated rather than shared: a tool project cannot reference Infrastructure, and the
     /// shared kernel it could go through (<c>Orkeon.Tools.Abstractions</c>) has no process-execution

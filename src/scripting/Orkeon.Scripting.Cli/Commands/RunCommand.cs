@@ -320,7 +320,7 @@ internal static partial class RunCommand
         }
 
         // A crew can also be a DIRECTORY holding a multi-file YAML definition (config.yaml +
-        // agents/ + tasks/, or the flat legacy triplet) — at its root, or under its crew/
+        // agents/ + tasks/, or the flat triplet) — at its root, or under its crew/
         // sub-folder, which wins over the root (STUDIO-59); the shared runner then loads the
         // definition the inspection designates. Classify it before every other branch —
         // including --validate — so an ambiguous or layout-less directory reports the layout

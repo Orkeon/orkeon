@@ -1,3 +1,4 @@
+using Orkeon.Application.Crew.Execution;
 using Microsoft.Extensions.AI;
 using Orkeon.Application.Crew;
 using Orkeon.Domain.Tools.Protocol;
@@ -6,7 +7,7 @@ namespace Orkeon.Application.Tests.Crew;
 
 /// <summary>
 /// Validates the ChatOptions shape used for the empty-final-message retry tour
-/// (<see cref="ExecutionOrchestrator.CloneForToolFreeRetry"/>). The retry MUST force
+/// (<see cref="FinalAnswerPolicy.CloneForToolFreeRetry"/>). The retry MUST force
 /// tool_choice=none and strip the tool schema payload so the model is obliged to
 /// produce text rather than more tool calls.
 /// </summary>
@@ -39,7 +40,7 @@ public class ExecutionOrchestratorEmptyRetryTests
     {
         var source = BuildSourceOptions();
 
-        var retry = ExecutionOrchestrator.CloneForToolFreeRetry(source);
+        var retry = FinalAnswerPolicy.CloneForToolFreeRetry(source);
 
         Assert.NotNull(retry.Tools);
         Assert.Empty(retry.Tools!);
@@ -51,7 +52,7 @@ public class ExecutionOrchestratorEmptyRetryTests
     {
         var source = BuildSourceOptions();
 
-        var retry = ExecutionOrchestrator.CloneForToolFreeRetry(source);
+        var retry = FinalAnswerPolicy.CloneForToolFreeRetry(source);
 
         Assert.Equal(0.2f, retry.Temperature);
         Assert.Equal(4096, retry.MaxOutputTokens);
@@ -68,7 +69,7 @@ public class ExecutionOrchestratorEmptyRetryTests
     {
         var source = BuildSourceOptions();
 
-        var retry = ExecutionOrchestrator.CloneForToolFreeRetry(source);
+        var retry = FinalAnswerPolicy.CloneForToolFreeRetry(source);
 
         Assert.NotNull(retry.AdditionalProperties);
         Assert.False(retry.AdditionalProperties!.ContainsKey("orkeon:tool_schemas"));
@@ -87,7 +88,7 @@ public class ExecutionOrchestratorEmptyRetryTests
             AdditionalProperties = null,
         };
 
-        var retry = ExecutionOrchestrator.CloneForToolFreeRetry(source);
+        var retry = FinalAnswerPolicy.CloneForToolFreeRetry(source);
 
         Assert.Null(retry.AdditionalProperties);
         Assert.Same(ChatToolMode.None, retry.ToolMode);

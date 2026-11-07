@@ -465,12 +465,12 @@ public class ToolSchemaGeneratorTests
         Assert.Equal("int32", schema.Parameters["max_results"].Format);
     }
 
-    // ── GenerateReturns tests ───────────────────────────────────────
+    // ── GenerateReturnsWithTypes(...).Returns tests ───────────────────────────────────
 
     [Fact]
     public void ShouldIncluded_WhenGeneratingReturnsReturnSchemaProperties()
     {
-        var returns = ToolSchemaGenerator.GenerateReturns<TestResponse>();
+        var returns = ToolSchemaGenerator.GenerateReturnsWithTypes<TestResponse>().Returns;
 
         Assert.True(returns.ContainsKey("success"));
         Assert.True(returns.ContainsKey("result"));
@@ -480,7 +480,7 @@ public class ToolSchemaGeneratorTests
     [Fact]
     public void ShouldExcluded_WhenGeneratingReturnsPropertiesWithoutReturnSchema()
     {
-        var returns = ToolSchemaGenerator.GenerateReturns<TestResponse>();
+        var returns = ToolSchemaGenerator.GenerateReturnsWithTypes<TestResponse>().Returns;
 
         Assert.False(returns.ContainsKey("internal"));
     }
@@ -488,7 +488,7 @@ public class ToolSchemaGeneratorTests
     [Fact]
     public void ShouldCorrectly_WhenGeneratingReturnsTypeInferred()
     {
-        var returns = ToolSchemaGenerator.GenerateReturns<TestResponse>();
+        var returns = ToolSchemaGenerator.GenerateReturnsWithTypes<TestResponse>().Returns;
 
         var success = (Dictionary<string, object?>)returns["success"]!;
         Assert.Equal("boolean", success["type"]);
@@ -503,7 +503,7 @@ public class ToolSchemaGeneratorTests
     [Fact]
     public void ShouldIncluded_WhenGeneratingReturnsDescription()
     {
-        var returns = ToolSchemaGenerator.GenerateReturns<TestResponse>();
+        var returns = ToolSchemaGenerator.GenerateReturnsWithTypes<TestResponse>().Returns;
 
         var success = (Dictionary<string, object?>)returns["success"]!;
         Assert.Equal("Whether it succeeded", success["description"]);
@@ -512,7 +512,7 @@ public class ToolSchemaGeneratorTests
     [Fact]
     public void ShouldWhenApplicable_WhenGeneratingReturnsFormatIncluded()
     {
-        var returns = ToolSchemaGenerator.GenerateReturns<TestResponse>();
+        var returns = ToolSchemaGenerator.GenerateReturnsWithTypes<TestResponse>().Returns;
 
         var count = (Dictionary<string, object?>)returns["count"]!;
         Assert.Equal("int32", count["format"]);
@@ -557,8 +557,8 @@ public class ToolSchemaGeneratorTests
     [Fact]
     public void ShouldReturnSameReference_WhenGeneratingReturnsWithSameTypeTwice()
     {
-        var returns1 = ToolSchemaGenerator.GenerateReturns<TestResponse>();
-        var returns2 = ToolSchemaGenerator.GenerateReturns<TestResponse>();
+        var returns1 = ToolSchemaGenerator.GenerateReturnsWithTypes<TestResponse>().Returns;
+        var returns2 = ToolSchemaGenerator.GenerateReturnsWithTypes<TestResponse>().Returns;
 
         Assert.Same(returns1, returns2);
     }

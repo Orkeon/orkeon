@@ -93,7 +93,7 @@ public sealed record TaskOutput : ValueObjectRecord
     /// Convenience constructor that delegates to <see cref="TaskOutput(TaskOutputInfo)"/>.
     /// </summary>
     /// <exception cref="ArgumentException">Thrown when rawOutput is null or empty.</exception>
-#pragma warning disable S107 // Backward-compatible constructor; use TaskOutput(TaskOutputInfo) instead
+#pragma warning disable S107 // Many parameters by design: the flat form is the one callers use
     private TaskOutput(
         string rawOutput,
         string format = "text",
@@ -128,7 +128,7 @@ public sealed record TaskOutput : ValueObjectRecord
     /// <summary>
     /// Creates a new TaskOutput with the specified parameters.
     /// </summary>
-#pragma warning disable S107 // Factory method wraps backward-compatible constructor
+#pragma warning disable S107 // Many parameters by design: the flat form is the one callers use
     public static TaskOutput Create(
         string rawOutput,
         string format = "text",

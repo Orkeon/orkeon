@@ -159,3 +159,5 @@ Orkeon.Analysis.Adapters.PageOutline.Text.init -> void
 const Orkeon.Analysis.Adapters.PageOutlineMapper.HiddenTag = "hidden" -> string!
 const Orkeon.Analysis.Adapters.PageOutlineMapper.LevelTag = "level" -> string!
 const Orkeon.Analysis.Adapters.PageOutlineMapper.RoleTag = "role" -> string!
+Orkeon.Analysis.Vectors.OllamaEmbeddingProvider.ModelName.get -> string!
+Orkeon.Analysis.Vectors.OpenAIEmbeddingProvider.ModelName.get -> string!

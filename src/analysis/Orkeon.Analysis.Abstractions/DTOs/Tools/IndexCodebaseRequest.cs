@@ -23,14 +23,13 @@ public sealed record IndexCodebaseRequest
     public bool EnrichWithLlm { get; init; }
 
     /// <summary>
-    /// Embedding model identifier. Default is the OpenAI <c>text-embedding-3-small</c>
-    /// model (1536 dims) for backward compatibility. When using a different provider
-    /// (Ollama <c>nomic-embed-text</c>, local <c>bge-micro-v2</c>, etc.) callers must
-    /// provide the matching model identifier explicitly. The actual embedding dimension
-    /// is exposed at runtime by <c>IEmbeddingProvider.Dimensions</c> — this field is a
-    /// hint only and is not used to size buffers.
+    /// Embedding model identifier, recorded with the index only when the host's embedding
+    /// provider does not name its own model (<c>IEmbeddingProvider.ModelName</c>): the OpenAI,
+    /// Ollama and local (<c>bge-micro-v2</c>) providers name theirs, which wins. The actual
+    /// embedding dimension is exposed at runtime by <c>IEmbeddingProvider.Dimensions</c>: this
+    /// field is not used to size buffers.
     /// </summary>
-    [FieldSchema(Description = "Identifier of the embedding model the host wires (default text-embedding-3-small).", IsRequired = false, Default = "text-embedding-3-small")]
+    [FieldSchema(Description = "Embedding model to record when the host's provider does not name its own (default text-embedding-3-small).", IsRequired = false, Default = "text-embedding-3-small")]
     public string EmbeddingModel { get; init; } = "text-embedding-3-small";
 
     /// <summary>

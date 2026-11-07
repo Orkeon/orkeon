@@ -1,5 +1,3 @@
-#pragma warning disable CS0618 // Obsolete member usage
-
 using Orkeon.Application.Interfaces.Security;
 using Orkeon.Infrastructure.Security.Secrets;
 

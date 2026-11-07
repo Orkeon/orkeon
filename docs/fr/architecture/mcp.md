@@ -106,11 +106,8 @@ en singleton. Il n'enregistre aucun serveur : c'est `AddOrkeonMcpServer` qui enr
 outil par son `IToolInvocationPipeline` — `AddOrkeonInfrastructure()` et
 `AddOrkeonApplication()` enregistrent les deux. Enregistrer n'est pas servir : l'hôte lance
 `RunStdioAsync` — ce que fait `orkeon mcp serve` — ou `ProcessRequestAsync` lui-même.
-**`MCP:EnableServer` n'existe plus (GAP-24) :** il enregistrait un serveur qu'aucun binaire
-livré ne résolvait, si bien que l'écrire ne donnait rien. Une section qui le porte encore,
-`true` ou `false`, est refusée au démarrage — par les deux extensions et par chaque runner bâti
-sur `RunnerHost`, serveurs déclarés ou non — avec un message qui nomme ce qui l'a remplacé ;
-retirez la clé. Le serveur n'expose que des outils — Orkeon n'a
+Aucun réglage ne démarre le serveur (GAP-24) : la section `MCP` ne porte aucune clé de ce genre, et
+chaque runner bâti sur `RunnerHost` refuse une clé inconnue au démarrage, serveurs déclarés ou non. Le serveur n'expose que des outils — Orkeon n'a
 aucun modèle de ressource ni de prompt à servir, donc `resources/*` et `prompts/*` répondent
 `Method not found`, et aucune option ne prétend le contraire (les options inertes
 `ExposeResources`/`ExposePrompts` ont été supprimées, GAP-11). La surcharge
@@ -243,7 +240,7 @@ réponses sur son stdout, une par ligne ; fermer stdin arrête le serveur.
   va sur stderr — là où un client MCP enregistre la sortie d'un serveur —, de même que
   `--help` et les erreurs d'usage.
 - **Codes de sortie** : `0` le client a fermé le flux (ou `--help`) ; `1` une erreur d'usage,
-  un réglage refusé (`MCP:EnableServer`, un montage déclaré par les réglages qui ne peut pas
+  un réglage refusé (une clé inconnue, un montage déclaré par les réglages qui ne peut pas
   être monté, tout autre réglage que refuse l'hôte des runners — une ligne `ERROR:` le nomme),
   un nom de `--tools` que l'hôte n'a pas, un serveur lancé par un autre (plus bas) ; `2` une
   erreur inattendue. Ctrl+C termine le processus.

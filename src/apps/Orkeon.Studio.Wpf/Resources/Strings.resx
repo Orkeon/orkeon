@@ -252,7 +252,7 @@
   <data name="Studio.Settings.Step2Title" xml:space="preserve"><value>Next to the crew</value></data>
   <data name="Studio.Settings.Step2Desc" xml:space="preserve"><value>{0} in the directory holding the crew configuration.</value></data>
   <data name="Studio.Settings.Step3Title" xml:space="preserve"><value>Shared appsettings directory</value></data>
-  <data name="Studio.Settings.Step3Desc" xml:space="preserve"><value>appsettings/{0}, searched by walking up from the crew directory (the legacy _shared/ location is still accepted for one release).</value></data>
+  <data name="Studio.Settings.Step3Desc" xml:space="preserve"><value>appsettings/{0}, searched by walking up from the crew directory.</value></data>
   <data name="Studio.Settings.Step4Title" xml:space="preserve"><value>Global per-user file</value></data>
   <data name="Studio.Settings.Step4Desc" xml:space="preserve"><value>The file written by `orkeon init`: %APPDATA%\Orkeon\appsettings.json on Windows, $XDG_CONFIG_HOME/Orkeon/appsettings.json (else ~/.config/Orkeon/appsettings.json) elsewhere.</value></data>
   <data name="Studio.Settings.RightsReadOnly" xml:space="preserve"><value>Read only</value></data>

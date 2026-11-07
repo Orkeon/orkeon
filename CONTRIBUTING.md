@@ -390,8 +390,11 @@ matter of opinion — it is **recorded in the repository** and enforced at build
 - **A breaking change is any edit or removal of a line in `PublicAPI.Shipped.txt`.**
   It requires a major version bump (a minor is acceptable only before 1.0), a
   `*REMOVED*` entry in the API file, and a CHANGELOG entry that says so plainly.
-- **Deprecation window**: nothing public is removed without shipping `[Obsolete]` for
-  at least one minor version first, with the replacement named in the message.
+- **Deprecation window (from 1.0)**: once 1.0 ships, nothing public is removed without
+  shipping `[Obsolete]` for at least one minor version first, with the replacement named
+  in the message. During the `1.0.0-rc.*` line, compatibility shims are removed directly,
+  with no `[Obsolete]` step: each removal gets a `*REMOVED*` line in the API file and a
+  `**[breaking]**` CHANGELOG entry with a migration note.
 - **`[Experimental]` surfaces are outside this commitment.** A2A, Autonomous
   orchestration, corrective RAG and the MCP integration carry
   `[Experimental("ORKEXP00x")]` diagnostics: referencing them is a compile error you

@@ -624,11 +624,11 @@ public sealed class SecureCodeInterpreterToolTests : IAsyncDisposable
 
 #endregion
 
-#region ProcessIsolationSandbox Tests
+#region HostProcessRunner Tests
 
-public sealed class ProcessIsolationSandboxTests : IDisposable
+public sealed class HostProcessRunnerTests : IDisposable
 {
-    private readonly ProcessIsolationSandboxTestsFixture _fixture = new();
+    private readonly HostProcessRunnerTestsFixture _fixture = new();
 
     [Fact]
     public void ShouldReportCorrectCapabilities_WhenAccessingProcessSandbox()

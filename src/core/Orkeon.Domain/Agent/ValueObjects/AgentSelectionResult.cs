@@ -98,11 +98,6 @@ public record AgentSelectionResult
     /// <summary>Gets a value indicating whether this result has a low confidence score (&lt; 0.5).</summary>
     public bool IsLowConfidence => ConfidenceScore < LowConfidenceThreshold;
 
-    /// <summary>Gets the selected agent identifier (backward compatibility alias for <see cref="SelectedAgentId"/>).</summary>
-    public AgentId? SelectedAgent => SelectedAgentId;
-    /// <summary>Gets the confidence score (backward compatibility alias for <see cref="ConfidenceScore"/>).</summary>
-    public double Score => ConfidenceScore;
-
     /// <inheritdoc />
     public virtual bool Equals(AgentSelectionResult? other)
     {

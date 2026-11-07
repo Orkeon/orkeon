@@ -224,8 +224,7 @@ public static partial class ToolsNamespaceBinding
                 return s;
             // NB: IDictionary<string, object?> and IDictionary<string, object> are the
             // same type at runtime (nullability annotations are erased), so this single
-            // case covers both shapes the legacy if-chain attempted to distinguish; the
-            // second if-branch in the original was dead for the same reason.
+            // case covers both shapes.
             case IDictionary<string, object?> nullableDict:
                 return UnwrapNullableDictionary(nullableDict);
             case IEnumerable list:

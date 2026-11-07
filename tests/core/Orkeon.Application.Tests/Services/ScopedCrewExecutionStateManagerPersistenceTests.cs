@@ -243,7 +243,7 @@ public sealed class ScopedCrewExecutionStateManagerPersistenceTests : IDisposabl
         Assert.DoesNotContain(active, s => s.Id == completed);
     }
 
-    // ── Backward-compatible default ─────────────────────────────────────────
+    // ── Default: in memory only ─────────────────────────────────────────
 
     [Fact]
     public async System.Threading.Tasks.Task ShouldNotPersist_WhenPersistenceNotConfigured()

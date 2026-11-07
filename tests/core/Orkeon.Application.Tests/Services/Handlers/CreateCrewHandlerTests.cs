@@ -67,6 +67,34 @@ public sealed class CreateCrewHandlerTests
     }
 
     [Fact]
+    public async System.Threading.Tasks.Task ShouldAddAgents_WhenIdsAreUlids()
+    {
+        var command = new CreateCrewCommand(
+            Name: "Dev Team",
+            Goal: "Build software",
+            ProcessType: DomainProcessType.Sequential,
+            AgentIds: [Orkeon.Domain.Common.AgentId.Create().ToString(), Orkeon.Domain.Common.AgentId.Create().ToString()]);
+
+        await _handler.HandleAsync(command, CancellationToken.None);
+
+        Assert.Equal(2, _repository.StoredCrews[0].Agents.Count);
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task ShouldThrowArgumentException_WhenAgentIdIsEmptyGuid()
+    {
+        var command = new CreateCrewCommand(
+            Name: "Dev Team",
+            Goal: "Build software",
+            ProcessType: DomainProcessType.Sequential,
+            AgentIds: [Guid.Empty.ToString()]);
+
+        await Assert.ThrowsAsync<ArgumentException>(
+            () => _handler.HandleAsync(command, CancellationToken.None));
+        Assert.Empty(_repository.StoredCrews);
+    }
+
+    [Fact]
     public async System.Threading.Tasks.Task ShouldMapProcessType_WhenSequentialSpecified()
     {
         // Arrange

@@ -8,7 +8,6 @@ using Orkeon.Domain.Memory;
 using Orkeon.Rag.Abstractions.Interfaces;
 using Orkeon.Rag.Abstractions.Models;
 using Orkeon.Rag.Abstractions.Options;
-using Orkeon.Rag.Chunking;
 using Orkeon.Rag.Loaders;
 using Orkeon.Tools.Abstractions.Base;
 using UglyToad.PdfPig;
@@ -228,19 +227,6 @@ public partial class PdfSearchTool : ToolBase<PdfSearchRequest, PdfSearchRespons
         }
         result.Sort();
         return result;
-    }
-
-    /// <summary>
-    /// Splits text into chunks of approximately the given size using the canonical RAG
-    /// recursive strategy (RAG-02/C3 consolidation): paragraph boundaries first, then
-    /// sentences, words, and characters as needed. Kept as the reference implementation
-    /// of the tool's chunking behavior (the runtime path delegates to the same strategy
-    /// by name).
-    /// </summary>
-    internal static List<string> ChunkText(string text, int chunkSize)
-    {
-        var chunks = new RecursiveChunkingStrategy().ChunkText(text, chunkSize);
-        return [.. chunks.Select(c => c.Content)];
     }
 
     /// <summary>

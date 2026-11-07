@@ -44,21 +44,6 @@ public class TerminalGuiServiceCollectionExtensionsTests
     }
 
     [Fact]
-    public void AddOrkeonCliTerminalGui_with_configure_action_applies_options()
-    {
-        var services = new ServiceCollection();
-        services.AddOrkeonCliTerminalGui(o =>
-        {
-            o = o with { InitialSplitRatio = 0.7, LogsBufferCapacity = 123 };
-            // Note: TerminalGuiOptions is a record with init-only props,
-            // so configure must mutate via the registered instance OR be designed differently.
-            // Caller pattern documented as "use the options instance directly".
-        });
-        // Verify that a TerminalGuiOptions instance is registered.
-        Assert.Contains(services, d => d.ServiceType == typeof(TerminalGuiOptions));
-    }
-
-    [Fact]
     public void AddOrkeonCliTerminalGui_called_twice_does_not_double_register()
     {
         var services = new ServiceCollection();
@@ -85,9 +70,12 @@ public class TerminalGuiServiceCollectionExtensionsTests
     }
 
     [Fact]
-    public void ShouldThrow_WhenOptionsInstanceIsNull()
+    public void ShouldRegisterDefaultOptions_WhenOptionsInstanceIsNull()
     {
-        Assert.Throws<ArgumentNullException>(() => new ServiceCollection().AddOrkeonCliTerminalGui((TerminalGuiOptions)null!));
+        var services = new ServiceCollection();
+        services.AddOrkeonCliTerminalGui(null);
+        var descriptor = Assert.Single(services, d => d.ServiceType == typeof(TerminalGuiOptions));
+        Assert.Equal(new TerminalGuiOptions(), descriptor.ImplementationInstance);
     }
 
     private sealed class StubConsoleAdapter : IConsoleAdapter

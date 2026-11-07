@@ -1,7 +1,5 @@
 using System.Net;
 
-#pragma warning disable CS0618 // Testing obsolete APIs
-
 namespace Orkeon.Infrastructure.Tests.LLMs;
 
 public class OllamaLlmProviderTestsFixture
@@ -60,5 +58,4 @@ public class OllamaLlmProviderTestsFixture
     public Exception? GetExceptionToThrow() => _exceptionToThrow;
     public int GetDelayMs() => _delayMs;
 
-#pragma warning restore CS0618
 }

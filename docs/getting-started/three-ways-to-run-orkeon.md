@@ -382,14 +382,14 @@ orkeon run path/to/config.yaml \
 Settings are resolved in order: `--settings`, then `appsettings.json` sitting
 next to the config file, then — walking up the parent directories — an
 `appsettings/appsettings.json` sub-directory at each level (the shared examples
-profile matrix; `_shared/appsettings.json` stays a deprecated fallback), then the
+profile matrix), then the
 global per-user file written by `orkeon init`, then `ORKEON_*` environment
 variables alone.
 
 **A crew can also be a directory**. Point `orkeon run` at a
 folder holding a multi-file crew — `config.yaml` for the crew settings, one agent
 per file under `agents/`, one task per file under `tasks/`, each file name being
-the entity id — and it loads exactly like a single YAML file. The legacy flat
+the entity id — and it loads exactly like a single YAML file. The flat
 triplet (`crew.yaml` + `agents.yaml` + `tasks.yaml`) is accepted too, and every
 option behaves identically on a directory (`--settings`, `-V/--var`,
 `--initial-context`, `--mount`, `--validate`, `--verbose`, `--llm-log`):

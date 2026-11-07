@@ -83,6 +83,8 @@ internal static class UseCaseLocalModel
     {
         public int Dimensions => model.Dimensions;
 
+        public string? ModelName => model.ModelName;
+
         public Task<IReadOnlyList<ReadOnlyMemory<float>>> EmbedBatchAsync(IReadOnlyList<string> texts, CancellationToken ct) =>
             model.EmbedBatchAsync(texts, ct);
 

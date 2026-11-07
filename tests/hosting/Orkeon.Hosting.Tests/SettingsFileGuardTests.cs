@@ -4,7 +4,7 @@ namespace Orkeon.Hosting.Tests;
 
 /// <summary>
 /// The guard the settings files and the blocks of the documentation go through: it refuses what the
-/// start validation refuses — a key no section carries, a value its key cannot take, a retired key —
+/// start validation refuses — a key no section carries, a value its key cannot take —
 /// on a text nobody starts, against everything Orkeon reads.
 /// </summary>
 public sealed class SettingsFileGuardTests
@@ -71,12 +71,11 @@ public sealed class SettingsFileGuardTests
     }
 
     [Fact]
-    public void A_retired_key_is_refused_with_its_migration()
+    public void A_key_no_section_carries_is_refused_as_unknown()
     {
         var problem = Assert.Single(Problems("""{ "Memory": { "Provider": "sqlite", "ConnectionString": "Data Source=memory.db" } }"""));
 
-        Assert.StartsWith("Memory:ConnectionString is not a setting any more: ", problem, StringComparison.Ordinal);
-        Assert.Contains("Orkeon:Sqlite:ConnectionString", problem, StringComparison.Ordinal);
+        Assert.StartsWith("Memory:ConnectionString is not a setting: ", problem, StringComparison.Ordinal);
     }
 
     [Theory]

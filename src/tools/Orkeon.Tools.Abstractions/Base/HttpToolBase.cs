@@ -9,7 +9,8 @@ namespace Orkeon.Tools.Abstractions.Base;
 
 /// <summary>
 /// Base class for tools that make HTTP requests.
-/// Supports optional SSRF protection via IUrlValidator and header sanitization.
+/// Validates URLs against SSRF through an injected IUrlValidator, or a fail-closed default guard
+/// when none is given, and sanitizes headers.
 /// </summary>
 public abstract class HttpToolBase : ToolBase
 {
@@ -65,7 +66,8 @@ public abstract class HttpToolBase : ToolBase
     }
 
     /// <summary>
-    /// Legacy constructor for backward compatibility (no SSRF protection).
+    /// Constructor with an optional injected HttpClient and no IUrlValidator: URLs go through the
+    /// fail-closed default SSRF guard (see <see cref="ValidateUrlAsync"/>).
     /// When no HttpClient is provided, uses a shared static instance instead of creating a new one,
     /// to avoid socket exhaustion.
     /// </summary>

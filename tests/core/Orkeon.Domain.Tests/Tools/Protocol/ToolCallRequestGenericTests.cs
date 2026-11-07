@@ -344,7 +344,7 @@ public class ToolCallRequestGenericTests
 
     #endregion
 
-    #region Backward compatibility
+    #region Conversion to the untyped request
 
     [Fact]
     public void ShouldRemainFullyFunctional_WhenUsingNonGenericToolCallRequest()

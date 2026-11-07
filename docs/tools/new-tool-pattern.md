@@ -513,7 +513,7 @@ public abstract partial class FileToolBase<TRequest, TResponse> : FileToolBase
 
 ### Serialization: snake_case and type coercion
 
-The `JsonComponentSerializer` (`Orkeon.Infrastructure.Serialization`) uses `JsonNamingPolicy.SnakeCaseLower` and includes 10 tolerant converters to handle YAML values arriving as strings — the six below plus `TolerantEnumConverterFactory` (enum names matched case-insensitively, an unknown name answered with the list of valid ones), `UriTolerantConverter`, `ImmutableArrayEnumTolerantConverter<EdgeKind>` and `ImmutableArrayStringTolerantConverter`:
+The `JsonComponentSerializer` (`Orkeon.Infrastructure.Serialization`) uses `JsonNamingPolicy.SnakeCaseLower` and includes 9 tolerant converters to handle YAML values arriving as strings — the six below plus `TolerantEnumConverterFactory` (enum names matched case-insensitively, an unknown name answered with the list of valid ones), `UriTolerantConverter` and `ImmutableArrayStringTolerantConverter`:
 
 - `BoolTolerantConverter`: `"true"`/`"false"` (any case), `"1"`/`"0"` and numbers (non-zero → `true`); `"yes"` is **not** accepted
 - `IntTolerantConverter`: `"42"` → `42`

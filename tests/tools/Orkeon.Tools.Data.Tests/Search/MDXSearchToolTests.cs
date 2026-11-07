@@ -228,31 +228,6 @@ public sealed class MDXSearchToolTests : IDisposable
         Assert.Contains("API_KEY", topContent);
     }
 
-    [Fact]
-    public void ChunkByHeadings_ShouldSplitAtHeadingBoundaries()
-    {
-        var markdown = "# Intro\n\nSome text.\n\n## Section A\n\nContent A.\n\n## Section B\n\nContent B.";
-        var chunks = MdxSearchTool.ChunkByHeadings(markdown, maxChunkSize: 5000);
-
-        Assert.True(chunks.Count >= 3, $"Expected at least 3 heading-based chunks, got {chunks.Count}");
-        Assert.Contains("# Intro", chunks[0].Text);
-        Assert.Contains("## Section A", chunks[1].Text);
-        Assert.Contains("## Section B", chunks[2].Text);
-    }
-
-    [Fact]
-    public void ChunkByHeadings_ShouldSubSplitLargeSections()
-    {
-        // Build a single heading section that exceeds the chunk size
-        var longBody = string.Join(". ",
-            Enumerable.Range(1, 40).Select(i => $"Sentence number {i} in this long section"));
-        var markdown = $"## Large Section\n\n{longBody}";
-
-        var chunks = MdxSearchTool.ChunkByHeadings(markdown, maxChunkSize: 200);
-
-        Assert.True(chunks.Count > 1, $"Expected sub-splitting of large section, got {chunks.Count} chunk(s)");
-    }
-
     // ── PreprocessContent (frontmatter, import and export stripping) ──
 
     /// <summary>Exposes the protected preprocessing step of the tool.</summary>

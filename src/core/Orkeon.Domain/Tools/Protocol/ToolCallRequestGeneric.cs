@@ -6,8 +6,8 @@ namespace Orkeon.Domain.Tools.Protocol;
 /// <summary>
 /// Strongly-typed wrapper around <see cref="ToolCallRequest"/> that deserializes the
 /// <see cref="ToolCallRequest.Parameters"/> dictionary into a <typeparamref name="TParameters"/> instance.
-/// Provides seamless conversion to/from the non-generic <see cref="ToolCallRequest"/>,
-/// preserving full backward compatibility with the existing tool-call pipeline.
+/// Converts to and from the non-generic <see cref="ToolCallRequest"/> the tool-call pipeline
+/// carries.
 /// </summary>
 /// <typeparam name="TParameters">
 /// The strongly-typed parameters model. Must have a parameterless constructor so that

@@ -24,14 +24,12 @@ public sealed class LlmProviderMeteringPathTests
     private const string OpenAiAnswer =
         """{"id":"chatcmpl-1","object":"chat.completion","model":"gpt-4o-mini","choices":[{"index":0,"message":{"role":"assistant","content":"hello"},"finish_reason":"stop"}],"usage":{"prompt_tokens":12,"completion_tokens":3,"total_tokens":15}}""";
 
-#pragma warning disable CS0618 // ApiKey is the direct-from-config credential path the providers still read.
     private static LlmConfig OpenAiConfig() => LlmConfig.Create("gpt-4o-mini") with
     {
         ApiKey = "sk-test",
         BaseUrl = new Uri("https://api.openai.com/v1"),
         CallMode = LlmCallMode.Buffer,
     };
-#pragma warning restore CS0618
 
     private static MockHttpClientFactory VendorAnswering(out MockHttpMessageHandler handler)
     {

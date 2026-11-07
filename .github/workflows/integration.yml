@@ -49,14 +49,17 @@ jobs:
         # + NuGet cache + the Testcontainers images (mssql alone unpacks to ~2.5 GB)
         # need more headroom than the historical short list provided. None of the
         # trees below is used by this job (dotnet lives in /usr/share/dotnet, and
-        # the runner's actions ship their own Node in externals/).
+        # the runner's actions ship their own Node in externals/). The runner's
+        # Firefox (/usr/lib/firefox, behind the /usr/bin/firefox link) stays: the
+        # `firefox` tool's integration suite drives it (#294 - the 2026-11-07 run
+        # removed it and the seven Firefox tests failed on a dangling link).
         run: |
           echo "Before:"; df -h / | tail -1
           sudo rm -rf /usr/local/lib/android /opt/ghc /usr/local/.ghcup /usr/share/swift \
             /opt/hostedtoolcache /usr/lib/jvm /usr/lib/google-cloud-sdk /opt/az /usr/share/az_* \
             /usr/share/miniconda /usr/local/julia* /usr/local/lib/node_modules \
             /usr/local/share/powershell /opt/microsoft/powershell /usr/local/share/chromium \
-            /opt/google/chrome /usr/lib/firefox
+            /opt/google/chrome
           sudo docker image prune --all --force >/dev/null 2>&1 || true
           sudo apt-get clean >/dev/null 2>&1 || true
           echo "After:"; df -h / | tail -1
@@ -86,6 +89,15 @@ jobs:
           bwrap --unshare-all --die-with-parent --new-session --ro-bind / / \
             --proc /proc --dev /dev --tmpfs /tmp -- true
           echo "bubblewrap confines a process on this runner."
+      # The Firefox suite (tests/tools/Orkeon.Tools.Web.Tests/Firefox/FirefoxToolIntegrationTests.cs)
+      # SKIPS when the launcher finds no Firefox, so a runner image that drops the browser
+      # would make a green night that never drove it. The probe runs the binary itself:
+      # a link left without its target (what the disk cleanup above used to do) fails here,
+      # not seven tests further down.
+      - name: Check that Firefox starts
+        run: |
+          firefox --version
+          echo "Firefox starts on this runner: the firefox tool's integration suite will run."
       - name: Run Integration + Slow suites (Testcontainers)
         env:
           # Floor on the number of tests the run must report. The nightly executes ~99

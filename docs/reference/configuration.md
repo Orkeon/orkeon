@@ -20,7 +20,7 @@ reaches the OpenTelemetry exporter through them ([telemetry](./hosting.md#teleme
 1. **One resolved `appsettings.json`** — resolution chain (`RunnerSettings.ResolveSettingsPath`):
    explicit `--settings <path>` → `appsettings.json` next to the crew config →
    `appsettings/appsettings.json` walking up the directory tree (`examples/appsettings/appsettings.json`
-   in this repository; `_shared/appsettings.json` is a deprecated fallback) → the global
+   in this repository) → the global
    per-user config written by `orkeon init`. No file found ⇒ environment variables only.
 2. **Environment variables with the `ORKEON_` prefix** (`AddEnvironmentVariables("ORKEON_")`,
    for every host and for `orkeon doctor`). Standard .NET mapping: `__` separates levels —
@@ -117,9 +117,7 @@ refusals on the same file, one `runner-settings` row each. What is refused:
   any case.
 - **A key** no section carries, against the shape its readers declare — the readers of one section
   together, a sub-section another reader declares included: `Orkeon:Guardian:Enabeld`,
-  `Llm:Provider` (nothing reads it: the provider follows from `BaseUrl` and the model). A key GAP-08
-  removed — `Memory:ConnectionString`, `Orkeon:Rag:ConnectionString`, `Orkeon:Rag:ProviderOptions`,
-  `Orkeon:Pinecone:Environment` — is refused with its migration. The refusal of an unknown key ends on the command that lists the
+  `Llm:Provider` (nothing reads it: the provider follows from `BaseUrl` and the model). The refusal of an unknown key ends on the command that lists the
   keys of its section — `` `orkeon settings Orkeon:Guardian` lists its keys ``. A section name under `Orkeon:` and
   under the groups `Orkeon:Cli`, `Orkeon:Tools`, `Orkeon:Scripting`, `Orkeon:Security` and `Security`
   must be one Orkeon reads (`SettingsSections`); the refusal proposes the closest
@@ -748,7 +746,7 @@ warned as ignored in the start log (with a hint to name it when no provider is n
 
 The agent input guard, registered with the decision model by `AddOrkeonDecisionProvider`: it judges
 the input with that model, in the `Input` phase, beside the built-in guard, through the active provider; its verdicts are signed with that provider's
-name. This section is the guard's own: a `Guard` block left under `Orkeon:TypeSafe` is refused at start. Off unless `Enabled`. See
+name. Off unless `Enabled`. See
 [Decision models](../architecture/decision-models.md).
 
 <!-- settings:Orkeon:Decision:Guard -->
@@ -1667,8 +1665,8 @@ not do is listed in [Known limitations](limitations.md).
 
 ### `MCP`
 
-MCP client connections (`MCP:Servers:<name>`) and the switch `MCP:Enabled`. `MCP:EnableServer` is
-removed: a section that still carries it is refused at startup, naming `orkeon mcp serve` (GAP-24).
+MCP client connections (`MCP:Servers:<name>`) and the switch `MCP:Enabled`. No setting starts an
+MCP server (GAP-24): a key the section does not carry is refused at startup like any unknown key.
 Read by `RunnerHost` (`orkeon run`, `orkeon-host`, `orkeon mcp serve`) when `MCP:Servers` declares
 at least one server and `MCP:Enabled` is not `false` — the servers are connected before the crew
 loads (STUDIO-21), by `orkeon-host` once at startup, before its first message (GAP-11), and by
@@ -2157,10 +2155,7 @@ Logs, traces and metrics.
 ### `Telemetry`
 
 OpenTelemetry export. `OtlpEndpoint` is an `http://` or `https://` address, refused by its key
-otherwise; the standard `OTEL_EXPORTER_OTLP_ENDPOINT` also works in the runners. `ExportToConsole`
-and `PrometheusEndpoint` are removed and refused, naming the OTLP collector that replaces them:
-the console exporter wrote on the stdout a program reads, and nothing served Prometheus (GAP-35).
-Read by `AddOrkeonTelemetry(configuration)` — called by `AddOrkeonInfrastructure(configuration)`
+otherwise; the standard `OTEL_EXPORTER_OTLP_ENDPOINT` also works in the runners. Read by `AddOrkeonTelemetry(configuration)` — called by `AddOrkeonInfrastructure(configuration)`
 and `RunnerHost`.
 
 <!-- settings:Telemetry -->

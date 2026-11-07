@@ -644,7 +644,7 @@
     <value>共享 appsettings 目录</value>
   </data>
   <data name="Studio.Settings.Step3Desc" xml:space="preserve">
-    <value>appsettings/{0}，从团队目录逐级向上查找（旧的 _shared/ 位置还会再兼容一个版本）。</value>
+    <value>appsettings/{0}，从团队目录逐级向上查找。</value>
   </data>
   <data name="Studio.Settings.Step4Title" xml:space="preserve">
     <value>每用户全局文件</value>

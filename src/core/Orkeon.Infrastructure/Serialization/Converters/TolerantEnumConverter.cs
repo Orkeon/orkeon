@@ -103,16 +103,9 @@ public sealed class TolerantEnumConverter<TEnum> : JsonConverter<TEnum>
             throw InvalidValueException(raw);
         }
 
-        if (reader.TokenType == JsonTokenType.Number)
-        {
-            if (reader.TryGetInt64(out var n) && Enum.IsDefined(typeof(TEnum), (int)n))
-                return (TEnum)Enum.ToObject(typeof(TEnum), n);
-            throw new JsonException(
-                $"Numeric value is not a valid {typeof(TEnum).Name} member. Valid values: {string.Join(", ", ValidNames)}.");
-        }
-
+        // A number is refused: the wire carries names only.
         throw new JsonException(
-            $"Cannot convert token '{reader.TokenType}' to {typeof(TEnum).Name}.");
+            $"Cannot convert token '{reader.TokenType}' to {typeof(TEnum).Name}. Valid values: {string.Join(", ", ValidNames)}.");
     }
 
     /// <inheritdoc />

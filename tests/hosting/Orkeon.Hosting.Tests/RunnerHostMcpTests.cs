@@ -57,21 +57,20 @@ public sealed class RunnerHostMcpTests : IDisposable
     }
 
     /// <summary>
-    /// GAP-24: <c>MCP:EnableServer</c> registered a server no runner ever started. The key is
-    /// gone, and a settings file that still writes it — servers declared or not, true or false —
-    /// is refused at startup with the verb that serves instead, never ignored.
+    /// GAP-24: no setting starts an MCP server. A settings file that writes <c>MCP:EnableServer</c> —
+    /// servers declared or not, true or false — is refused at startup as a key the section does not
+    /// carry, never ignored.
     /// </summary>
     [Theory]
     [InlineData("""{ "MCP": { "EnableServer": true } }""")]
     [InlineData("""{ "MCP": { "EnableServer": false, "Servers": { "demo": { "Command": "demo-mcp" } } } }""")]
-    public void A_settings_file_that_still_writes_EnableServer_is_refused_naming_the_verb(string json)
+    public void A_settings_file_that_writes_EnableServer_is_refused_as_an_unknown_key(string json)
     {
         var settings = Settings(json);
 
         var ex = Assert.Throws<RunnerSettingsException>(() => RunnerHost.Build(settings, Mounts()));
 
-        Assert.Contains("MCP:EnableServer", ex.Message, StringComparison.Ordinal);
-        Assert.Contains("orkeon mcp serve", ex.Message, StringComparison.Ordinal);
+        Assert.Contains("MCP:EnableServer is not a setting", ex.Message, StringComparison.Ordinal);
     }
 
     [Fact]

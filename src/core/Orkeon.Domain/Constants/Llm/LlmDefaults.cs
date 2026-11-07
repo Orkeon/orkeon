@@ -59,7 +59,7 @@ public static class LlmDefaults
     public const string DefaultModelName = LlmProviderDefaultModels.OpenAI;
 
     /// <summary>
-    /// Legacy LLM model name (GPT-3.5 Turbo) kept for backward compatibility.
+    /// The GPT-3.5 Turbo model name, still priced by the model pricing registry.
     /// </summary>
     public const string LegacyModelName = "gpt-3.5-turbo";
 }

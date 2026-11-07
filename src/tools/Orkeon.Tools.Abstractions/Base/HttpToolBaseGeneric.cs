@@ -63,7 +63,8 @@ public abstract partial class HttpToolBase<TRequest, TResponse> : HttpToolBase
         : base(httpClientFactory, urlValidator, headerSanitizer, logger) { }
 
     /// <summary>
-    /// Initializes a new instance of <see cref="HttpToolBase{TRequest, TResponse}"/> without SSRF protection.
+    /// Initializes a new instance of <see cref="HttpToolBase{TRequest, TResponse}"/> without an IUrlValidator:
+    /// URLs go through the fail-closed default SSRF guard of the base class.
     /// When no HttpClient is provided, uses a shared static instance to avoid socket exhaustion.
     /// </summary>
     /// <param name="httpClient">Optional pre-configured HTTP client.</param>

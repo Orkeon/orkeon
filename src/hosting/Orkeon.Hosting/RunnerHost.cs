@@ -363,7 +363,7 @@ public static partial class RunnerHost
     /// What <c>orkeon doctor</c> asks (GAP-40): the start validation of the host <c>orkeon run</c>
     /// builds on <paramref name="settingsPath"/> with <paramref name="configureServices"/> — no crew,
     /// no command-line mount, no MCP connection —, every refusal at once. A refusal the build itself
-    /// raises (a key retired, a file it cannot read, a log level) stops it and is the only one, as a
+    /// raises (a file it cannot read, a log level) stops it and is the only one, as a
     /// run reports it. The host is disposed: nothing is printed, no telemetry starts.
     /// </summary>
     /// <param name="settingsPath">The settings file a run would read, or null.</param>
@@ -1670,8 +1670,7 @@ public static partial class RunnerHost
     /// <c>MCP:Servers</c>, or <c>MCP:Enabled = false</c>, registers nothing — exactly the
     /// surface every run had before — and the servers are connected by
     /// <see cref="McpStartup"/>, not by a hosted service, because the runners never start the
-    /// host. A section that still carries the removed <c>MCP:EnableServer</c> fails the host
-    /// first, servers declared or not (GAP-24). <c>AddOrkeonMcp</c> binds the section and has it
+    /// host. <c>AddOrkeonMcp</c> binds the section and has it
     /// judged at the host's start (GAP-40) — a server's <c>Transport</c> the binder cannot convert
     /// refuses the start, not the connection step that <c>--list-tools</c> and <c>orkeon-host</c>
     /// take before anything else. Its keys, and those of <c>MCP:Server</c> that <c>orkeon mcp
@@ -1680,7 +1679,6 @@ public static partial class RunnerHost
     /// </summary>
     internal static void RegisterMcp(HostBuilderContext context, IServiceCollection services)
     {
-        McpStartup.RefuseServerSwitch(context.Configuration);
         services.DeclareSettingsShape(ConfigurationKeys.McpSection, typeof(McpOptions));
         services.DeclareSettingsShape($"{ConfigurationKeys.McpSection}:Server", typeof(McpServerOptions));
         if (!McpStartup.IsConfigured(context.Configuration))
@@ -1878,9 +1876,6 @@ public static partial class RunnerHost
         }
     }
 
-    /// <summary>The only keys of the <c>RaggableTree</c> section (GAP-15).</summary>
-    private static readonly string[] s_raggableTreeKeys = ["Enabled", "Embedding"];
-
     internal static void RegisterRaggableTree(
         HostBuilderContext context,
         IServiceCollection services)
@@ -1890,14 +1885,6 @@ public static partial class RunnerHost
         // languages, exclusions, root alias, LLM enrichment — is set per index_codebase call by
         // the crew/agent, never pinned a priori by the host.
         var section = context.Configuration.GetSection("RaggableTree");
-        var retired = section.GetChildren()
-            .Select(c => c.Key)
-            .FirstOrDefault(k => !s_raggableTreeKeys.Contains(k, StringComparer.OrdinalIgnoreCase));
-        if (retired is not null)
-            throw new InvalidOperationException(
-                $"RaggableTree:{retired} is not a setting: the RaggableTree section carries only " +
-                "Enabled and Embedding. What an index covers (exclude, root_alias, enrich_with_llm, " +
-                "languages) is an argument of each index_codebase call. Remove the key.");
 
         // The keys under Embedding are judged with every declared section's (GAP-40), and its
         // values read strictly here, the section enabled or not: a provider written wrong ran the

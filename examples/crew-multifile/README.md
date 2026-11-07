@@ -43,5 +43,5 @@ Every `orkeon run` option behaves the same on a directory as on a single file
   resolved by a silent precedence, as is a directory that also holds a scripting entry
   point — any `*.ork.ts` or `*.ork.js` sitting directly in it, whatever the file is
   called.
-- The flat legacy triplet (`crew.yaml` + `agents.yaml` + `tasks.yaml`) still loads
+- The flat triplet (`crew.yaml` + `agents.yaml` + `tasks.yaml`) still loads
   from a directory too.

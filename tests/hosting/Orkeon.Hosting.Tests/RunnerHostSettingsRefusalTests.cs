@@ -8,7 +8,7 @@ namespace Orkeon.Hosting.Tests;
 /// GAP-35 — every setting <see cref="RunnerHost.Build"/> refuses comes out as one type,
 /// <see cref="RunnerSettingsException"/>, whose message names the key — or the file and the
 /// place in it. The entry points translate that type (exit 1 for <c>orkeon</c>, 78 for
-/// <c>orkeon-host</c>); before, a retired key, an unconvertible value, an unreadable file or a
+/// <c>orkeon-host</c>); before, an unknown key, an unconvertible value, an unreadable file or a
 /// malformed address each left the build as its own exception, and most of them crashed the
 /// program. The refusals the host already raised — invalid <c>Llm:Profiles</c>, an unknown
 /// <c>Orkeon:Rag:LlmProfile</c>, <c>MCP:EnableServer</c>, mounts — are held by their own classes.
@@ -112,7 +112,7 @@ public sealed class RunnerHostSettingsRefusalTests : IDisposable
         { "RedisMemoryOptions", "Orkeon:Redis:KeyPrefx", "orkeon:", "Orkeon:Redis:KeyPrefx" },
         { "SqliteMemoryOptions", "Orkeon:Sqlite:DefaultTopK", "ten", "Orkeon:Sqlite:DefaultTopK" },
         { "ChromaDbOptions", "Orkeon:ChromaDb:DefaultTopK", "ten", "Orkeon:ChromaDb:DefaultTopK" },
-        { "PineconeOptions", "Orkeon:Pinecone:Environment", "us-east1-gcp", "Orkeon:Pinecone:Host" },
+        { "PineconeOptions", "Orkeon:Pinecone:Environment", "us-east1-gcp", "Orkeon:Pinecone:Environment" },
         { "LanceDbOptions", "Orkeon:LanceDb:EmbeddingDimension", "auto", "Orkeon:LanceDb:EmbeddingDimension" },
         { "CrewMemoryOptions", "Orkeon:CrewMemory:RecallLimit", "all", "Orkeon:CrewMemory:RecallLimit" },
         { "MemorySectionOptions", "Memory:Provider", "redsi", "Memory:Provider" },
@@ -310,22 +310,19 @@ public sealed class RunnerHostSettingsRefusalTests : IDisposable
     [InlineData("""{ "RaggableTree": { "Enabled": false }, "Telemetry": { "ExportToConsole": true } }""", "Telemetry:ExportToConsole")]
     [InlineData("""{ "RaggableTree": { "Enabled": false }, "Telemetry": { "ExportToConsole": false } }""", "Telemetry:ExportToConsole")]
     [InlineData("""{ "RaggableTree": { "Enabled": false }, "Telemetry": { "PrometheusEndpoint": true } }""", "Telemetry:PrometheusEndpoint")]
-    public void A_removed_telemetry_key_is_refused_naming_what_replaces_it(string json, string key)
+    public void A_telemetry_key_the_section_does_not_carry_is_refused_by_its_name(string json, string key)
     {
         var error = Refusal(json);
 
-        Assert.Contains(key, error.Message, StringComparison.Ordinal);
-        Assert.Contains("Telemetry:OtlpEndpoint", error.Message, StringComparison.Ordinal);
-        Assert.Contains("OTEL_EXPORTER_OTLP_ENDPOINT", error.Message, StringComparison.Ordinal);
+        Assert.Contains($"{key} is not a setting", error.Message, StringComparison.Ordinal);
     }
 
     [Fact]
     [Trait("BR", "BR-13")]
-    public void ShouldRefuseNamingTheNewPlace_WhenTheGuardIsUnderTypeSafe()
+    public void ShouldRefuseAsAnUnknownKey_WhenTheGuardIsUnderTypeSafe()
     {
         var error = Assert.Throws<RunnerSettingsException>(() => RunnerHost.Build(OneSetting("Orkeon:TypeSafe:Guard:Enabled", "true"), Mounted()));
 
-        Assert.Contains("Orkeon:TypeSafe:Guard", error.Message, StringComparison.Ordinal);
-        Assert.Contains("Orkeon:Decision:Guard", error.Message, StringComparison.Ordinal);
+        Assert.Contains("Orkeon:TypeSafe:Guard is not a setting", error.Message, StringComparison.Ordinal);
     }
 }

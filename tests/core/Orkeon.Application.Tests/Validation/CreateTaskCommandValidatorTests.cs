@@ -1,3 +1,4 @@
+using Orkeon.Domain.Common;
 using Orkeon.Application.Task.Commands.CreateTask;
 
 namespace Orkeon.Application.Tests.Validation;
@@ -148,6 +149,44 @@ public class CreateTaskCommandValidatorTests
         var result = _validator.Validate(command);
 
         Assert.True(result.IsValid);
+    }
+
+    [Fact]
+    public void ShouldPass_WhenAgentIdIsUlid()
+    {
+        var agentId = AgentId.Create().ToString();
+        var command = new CreateTaskCommand("Analyze data", "A detailed report", agentId);
+
+        var result = _validator.Validate(command);
+
+        Assert.True(result.IsValid);
+    }
+
+    [Fact]
+    public void ShouldPass_WhenAgentIdIsLowercaseUlid()
+    {
+        var agentId = AgentId.Create().ToString().ToLowerInvariant();
+        var command = new CreateTaskCommand("Analyze data", "A detailed report", agentId);
+
+        var result = _validator.Validate(command);
+
+        Assert.True(result.IsValid);
+    }
+
+    [Theory]
+    [InlineData("01ARZ3NDEKTSV4RRFFQ69G5FA!")]
+    [InlineData("ZZZZZZZZZZZZZZZZZZZZZZZZZZ")]
+    [InlineData("01ARZ3NDEKTSV4RRFFQ69G5FA")]
+    [InlineData("00000000000000000000000000")]
+    [InlineData("00000000-0000-0000-0000-000000000000")]
+    public void ShouldFail_WhenAgentIdIsNotAnAgentId(string agentId)
+    {
+        var command = new CreateTaskCommand("Analyze data", "A detailed report", agentId);
+
+        var result = _validator.Validate(command);
+
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Errors, e => e.Contains(agentId));
     }
 
     [Fact]

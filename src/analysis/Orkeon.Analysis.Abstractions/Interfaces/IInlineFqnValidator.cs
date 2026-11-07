@@ -51,17 +51,6 @@ public sealed record InlineFqnValidationResult
     public ImmutableArray<AmbiguousFqn> Ambiguous { get; init; } =
         ImmutableArray<AmbiguousFqn>.Empty;
 
-    /// <summary>
-    /// Backward-compatible positional constructor — keeps existing call sites compiling.
-    /// </summary>
-    public InlineFqnValidationResult(
-        ImmutableArray<string> ExtractedFqns,
-        ImmutableArray<string> UnknownFqns)
-    {
-        this.ExtractedFqns = ExtractedFqns;
-        this.UnknownFqns = UnknownFqns;
-    }
-
     /// <summary>Default constructor for <c>with</c>-init initialization.</summary>
     public InlineFqnValidationResult() { }
 }

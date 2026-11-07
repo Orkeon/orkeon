@@ -6,7 +6,8 @@ namespace Orkeon.Analysis.Abstractions;
 
 /// <summary>
 /// The lowercase workflow names <c>edge_kinds</c> and <c>node_kinds</c> take in the graph tools, and their mapping
-/// to <see cref="EdgeKind"/> and to graph nodes. Legacy <see cref="EdgeKind"/> member names stay accepted.
+/// to <see cref="EdgeKind"/> and to graph nodes, case-insensitively. <c>inherits</c> is <c>extends</c> and
+/// <c>implements</c> together; the edge names are the ones a response writes in <c>edges[].kind</c>.
 /// </summary>
 public static class GraphKindNames
 {
@@ -18,6 +19,8 @@ public static class GraphKindNames
         ["calls"] = EdgeKind.Calls,
         ["imports"] = EdgeKind.Imports,
         ["inherits"] = EdgeKind.Extends | EdgeKind.Implements,
+        ["extends"] = EdgeKind.Extends,
+        ["implements"] = EdgeKind.Implements,
         ["tests"] = EdgeKind.Tests,
         ["documents"] = EdgeKind.Documents,
         ["project_depends"] = EdgeKind.ProjectDepends,
@@ -45,20 +48,17 @@ public static class GraphKindNames
 
     /// <summary>The workflow edge names, in documentation order.</summary>
     public static ImmutableArray<string> EdgeKindNames { get; } =
-        ["contains", "calls", "imports", "inherits", "tests", "documents", "project_depends"];
+        ["contains", "calls", "imports", "inherits", "extends", "implements", "tests", "documents", "project_depends"];
 
     /// <summary>The workflow node names, in documentation order.</summary>
     public static ImmutableArray<string> NodeKindNames { get; } =
         ["file", "project", "namespace", "type", "member", "doc_section", "test"];
 
-    /// <summary>Parses a workflow name or a legacy <see cref="EdgeKind"/> member name, case-insensitively.</summary>
+    /// <summary>Parses a workflow edge name, case-insensitively.</summary>
     public static bool TryParseEdgeKind(string? name, out EdgeKind kind)
     {
         kind = EdgeKind.None;
-        if (string.IsNullOrWhiteSpace(name)) return false;
-        if (EdgeByName.TryGetValue(name, out kind)) return true;
-        var legacy = Enum.GetNames<EdgeKind>().FirstOrDefault(n => n != nameof(EdgeKind.None) && string.Equals(n, name, StringComparison.OrdinalIgnoreCase));
-        return legacy is not null && Enum.TryParse(legacy, out kind);
+        return !string.IsNullOrWhiteSpace(name) && EdgeByName.TryGetValue(name, out kind);
     }
 
     /// <summary>Parses a workflow node name into the predicate a node must satisfy.</summary>

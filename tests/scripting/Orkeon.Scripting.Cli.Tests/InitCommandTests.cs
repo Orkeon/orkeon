@@ -292,9 +292,7 @@ public sealed class InitCommandTests
         var config = LlmConfig.Create(llm.GetProperty("Model").GetString()!) with
         {
             BaseUrl = new Uri(llm.GetProperty("BaseUrl").GetString()!),
-#pragma warning disable CS0618 // pinning test drives the factory directly, no secret store
             ApiKey = "test-key",
-#pragma warning restore CS0618
         };
 
         using var httpFactory = new CliHttpClientFactory();

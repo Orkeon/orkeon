@@ -5,8 +5,6 @@ using static Orkeon.Tests.Shared.Constants.TestLlmConstants;
 using static Orkeon.Tests.Shared.Constants.TestAgentConstants;
 using static Orkeon.Tests.Shared.Constants.TestToolConstants;
 
-#pragma warning disable CS0618 // Testing obsolete APIs
-
 namespace Orkeon.Domain.Tests.Configuration;
 
 /// <summary>
@@ -449,7 +447,7 @@ public class CrewConfigurationTests
             Role = "QA Tester",
             Goal = "Ensure software quality",
             Tools = ["TestFramework", "BugTracker"],
-            LlmConfig = LlmConfig.Gpt35Turbo("test-key")
+            LlmConfig = LlmConfig.Create(ModelGpt35Turbo, "test-key")
         };
 
         var task1 = new TaskConfiguration
@@ -720,5 +718,3 @@ public class CrewConfigurationTests
 
     #endregion
 }
-
-#pragma warning restore CS0618

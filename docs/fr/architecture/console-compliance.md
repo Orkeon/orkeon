@@ -16,7 +16,7 @@ et s'applique à tous les projets de `src/`. Il signale toute référence à un 
 `System.Console` (appel, propriété, événement, groupe de méthodes), jugée sur le **symbole résolu** :
 `using static System.Console; WriteLine(...)` est signalé, une propriété nommée `Console` de type
 `IConsoleAdapter` ne l'est pas. Un texte dans une chaîne littérale (le programme que
-`ProcessIsolationSandbox` écrit pour un processus enfant) n'est pas une référence et n'est pas signalé.
+`HostProcessRunner` écrit pour un processus enfant) n'est pas une référence et n'est pas signalé.
 
 `.editorconfig` la place en `error` sous `[src/**.cs]`. Les tests (`/tests/`) et les exemples
 (`/examples/`) en sont exemptés.

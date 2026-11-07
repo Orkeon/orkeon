@@ -65,29 +65,7 @@ public sealed record ExecutionMetadata : ValueObjectRecord
         this.CustomProperties = CustomProperties;
     }
 
-    /// <summary>
-    /// Convenience constructor for backward compatibility.
-    /// </summary>
-#pragma warning disable S107 // Backward-compatible overload; use primary constructor with ExecutionTimingInfo and ExecutionIdentityInfo instead
-    public ExecutionMetadata(
-        DateTime StartedAt,
-        DateTime? CompletedAt,
-        TimeSpan? MaxExecutionTime,
-        string ExecutionId,
-        string? ParentExecutionId,
-        int RetryCount,
-        string? LastError,
-        ImmutableDictionary<string, string> Tags,
-        ImmutableDictionary<string, object> CustomProperties)
-        : this(
-            new ExecutionTimingInfo(StartedAt, CompletedAt, MaxExecutionTime),
-            new ExecutionIdentityInfo(ExecutionId, ParentExecutionId),
-            RetryCount, LastError, Tags, CustomProperties)
-    {
-    }
-#pragma warning restore S107
-
-    // Backward-compatible accessors
+    // Flat accessors
     /// <summary>When the execution started.</summary>
     public DateTime StartedAt => Timing.StartedAt;
     /// <summary>When the execution completed (null if still running).</summary>
