@@ -77,10 +77,11 @@ exécutions.
 | `close` | `profile` | Execute | Ferme le navigateur de l'exécution ; l'action suivante en démarre un nouveau. Hors de toute exécution, sous `Lifetime: host`, ferme le navigateur de l'hôte du profil `profile`, celui du profil par défaut sans (`profile` ne compte que là) |
 
 Chaque réponse porte l'action, l'`url` et le `title` de la page affichée, `tab`, la poignée de
-l'onglet que les actions pilotent désormais, `profile`, celui avec lequel le navigateur tourne,
-et `dialogs` : les boîtes `alert`, `confirm` et `prompt` que la page a ouvertes pendant l'action,
-fermées pour que la page ne se fige jamais (une question `beforeunload` est acceptée : partir
-était ce que l'agent demandait).
+l'onglet que les actions pilotent désormais, et `profile`, celui avec lequel le navigateur
+tourne. `dialogs` l'accompagne quand la page a ouvert des boîtes `alert`, `confirm` ou `prompt`
+pendant l'action : ce qu'elles disaient, fermées pour que la page ne se fige jamais (une question
+`beforeunload` est acceptée : partir était ce que l'agent demandait). Les listes qu'une action n'a
+pas produites - `nodes`, `hits`, `tabs` - sont absentes de sa réponse, jamais vides.
 
 Chaque action accepte un `profile` facultatif : il compte à la première action d'une exécution,
 quand le navigateur démarre ; un navigateur déjà ouvert garde son profil, et une action qui en
