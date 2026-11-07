@@ -51,6 +51,23 @@ public class MockToolRegistry : IToolRegistry
         if (!_toolsById.Remove(toolId, out var removed))
             return Task.FromResult(false);
         _toolsByName.Remove(removed.Name);
+        OnUnregistered?.Invoke(toolId);
+        return Task.FromResult(true);
+    }
+
+    /// <summary>Called right after a tool left the registry through <see cref="UnregisterToolAsync"/>: a test looks the name up there to see the gap.</summary>
+    public Action<string>? OnUnregistered { get; set; }
+
+    public int ReplaceToolCallCount { get; private set; }
+
+    public Task<bool> ReplaceToolAsync(IBaseTool current, IBaseTool replacement)
+    {
+        ReplaceToolCallCount++;
+        if (!_toolsByName.TryGetValue(current.Name, out var holder) || !ReferenceEquals(holder, current))
+            return Task.FromResult(false);
+        // One step: the name is never absent.
+        _toolsById[current.Name] = replacement;
+        _toolsByName[current.Name] = replacement;
         return Task.FromResult(true);
     }
 

@@ -11,6 +11,13 @@ public class MockMcpTransport : IMcpTransport
     private JsonRpcResponse _sendRequestResult = new() { Jsonrpc = "2.0", Id = JsonSerializer.SerializeToElement(1) };
     private Func<JsonRpcRequest, CancellationToken, Task<JsonRpcResponse>>? _sendRequestFunc;
     private bool _isConnected;
+    private readonly System.Threading.Channels.Channel<JsonRpcNotification> _notifications =
+        // The bound and the policy of the real transports: a flood evicts the oldest notification.
+        System.Threading.Channels.Channel.CreateBounded<JsonRpcNotification>(
+            new System.Threading.Channels.BoundedChannelOptions(256)
+            {
+                FullMode = System.Threading.Channels.BoundedChannelFullMode.DropOldest,
+            });
 
     // --- Tracking ---
     public int ConnectCallCount { get; private set; }
@@ -23,6 +30,13 @@ public class MockMcpTransport : IMcpTransport
 
     // --- Configuration ---
     public bool IsConnected => _isConnected;
+
+    /// <summary>The server-to-client notifications; <see cref="PushNotification"/> feeds it.</summary>
+    public System.Threading.Channels.ChannelReader<JsonRpcNotification> Notifications => _notifications.Reader;
+
+    /// <summary>Makes the fake server send a notification to the client.</summary>
+    public void PushNotification(string method) =>
+        _notifications.Writer.TryWrite(new JsonRpcNotification { Method = method });
 
     public void SetConnected(bool connected) => _isConnected = connected;
 
@@ -87,6 +101,7 @@ public class MockMcpTransport : IMcpTransport
     {
         DisposeCallCount++;
         _isConnected = false;
+        _notifications.Writer.TryComplete();
         GC.SuppressFinalize(this);
         return ValueTask.CompletedTask;
     }

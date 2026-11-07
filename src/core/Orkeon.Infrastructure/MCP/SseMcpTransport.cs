@@ -15,16 +15,24 @@ namespace Orkeon.Infrastructure.MCP;
 /// not consumed.
 /// </summary>
 [Experimental("ORKEXP004", UrlFormat = "https://github.com/Orkeon/orkeon/blob/main/docs/reference/experimental-apis.md")]
-public class SseMcpTransport : IMcpTransport
+public partial class SseMcpTransport : IMcpTransport
 {
     private readonly Uri _url;
     private readonly HttpClient _httpClient;
     private readonly bool _ownsHttpClient;
     private readonly IMcpRequestAuthenticator? _authenticator;
     private volatile bool _isConnected;
+    private readonly ILogger _logger;
+    private readonly System.Threading.Channels.Channel<JsonRpcNotification> _notifications;
 
     /// <inheritdoc />
     public bool IsConnected => _isConnected;
+
+    /// <summary>
+    /// The notifications the server sent ahead of the final message of an SSE-framed answer. The
+    /// transport opens no stream of its own, so a server that only notifies on one is not heard.
+    /// </summary>
+    public System.Threading.Channels.ChannelReader<JsonRpcNotification> Notifications => _notifications.Reader;
 
     /// <summary>Initializes a new instance of <see cref="SseMcpTransport"/>.</summary>
     /// <param name="url">The HTTP endpoint URL for the MCP server.</param>
@@ -39,6 +47,13 @@ public class SseMcpTransport : IMcpTransport
         ArgumentNullException.ThrowIfNull(url);
         _url = url;
         _authenticator = authenticator;
+        _logger = (ILogger?)logger ?? Microsoft.Extensions.Logging.Abstractions.NullLogger.Instance;
+        _notifications = System.Threading.Channels.Channel.CreateBounded<JsonRpcNotification>(
+            new System.Threading.Channels.BoundedChannelOptions(StdioMcpTransport.NotificationCapacity)
+            {
+                FullMode = System.Threading.Channels.BoundedChannelFullMode.DropOldest,
+            },
+            dropped => LogNotificationDropped(dropped.Method, url));
 
         if (httpClient != null)
         {
@@ -88,7 +103,7 @@ public class SseMcpTransport : IMcpTransport
             httpResponse.EnsureSuccessStatusCode();
 
             var responseBody = await httpResponse.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
-            var responseJson = UnwrapSsePayload(httpResponse.Content.Headers.ContentType?.MediaType, responseBody);
+            var responseJson = UnwrapSsePayload(httpResponse.Content.Headers.ContentType?.MediaType, responseBody, request.Method);
             var response = JsonSerializer.Deserialize<JsonRpcResponse>(responseJson);
 
             if (response == null)
@@ -153,29 +168,72 @@ public class SseMcpTransport : IMcpTransport
 
     /// <summary>
     /// When the server framed its answer as an SSE stream, extracts the last
-    /// `data:` payload (the final JSON-RPC message of the request's stream);
-    /// plain JSON bodies pass through untouched.
+    /// `data:` payload (the final JSON-RPC message of the request's stream) and hands the frames with
+    /// a method and no id to <see cref="Notifications"/>; plain JSON bodies pass through untouched.
     /// </summary>
-    private static string UnwrapSsePayload(string? mediaType, string body)
+    private string UnwrapSsePayload(string? mediaType, string body, string requestMethod)
     {
         if (!string.Equals(mediaType, "text/event-stream", StringComparison.OrdinalIgnoreCase))
             return body;
 
         string? lastData = null;
+        var sawNotification = false;
         foreach (var rawLine in body.Split('\n'))
         {
             var line = rawLine.TrimEnd('\r');
-            if (line.StartsWith("data:", StringComparison.Ordinal))
-                lastData = line["data:".Length..].TrimStart();
+            if (!line.StartsWith("data:", StringComparison.Ordinal))
+                continue;
+
+            var data = line["data:".Length..].TrimStart();
+            if (TryReadNotification(data) is { } notification)
+            {
+                _notifications.Writer.TryWrite(notification);
+                sawNotification = true;
+            }
+            else
+            {
+                lastData = data;
+            }
+        }
+
+        if (lastData is null && sawNotification)
+        {
+            throw new InvalidOperationException(
+                $"The server answered {requestMethod} with notifications only: its stream ended without the response to the request.");
         }
 
         return lastData ?? body;
     }
 
+    private static JsonRpcNotification? TryReadNotification(string data)
+    {
+        try
+        {
+            using var document = JsonDocument.Parse(data);
+            var root = document.RootElement;
+            if (root.ValueKind == JsonValueKind.Object &&
+                root.TryGetProperty("method", out var method) && method.ValueKind == JsonValueKind.String &&
+                !root.TryGetProperty("id", out _))
+            {
+                return JsonSerializer.Deserialize<JsonRpcNotification>(data);
+            }
+        }
+        catch (JsonException)
+        {
+            // Not a JSON-RPC frame: left to the response deserializer, which names the failure.
+        }
+
+        return null;
+    }
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "MCP server '{Url}' sent more notifications than the client reads: the oldest ('{Method}') was dropped")]
+    private partial void LogNotificationDropped(string method, Uri url);
+
     /// <inheritdoc />
     public ValueTask DisposeAsync()
     {
         _isConnected = false;
+        _notifications.Writer.TryComplete();
 
         if (_ownsHttpClient)
         {

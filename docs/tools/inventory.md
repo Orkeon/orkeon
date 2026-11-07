@@ -4,7 +4,7 @@
 
 # Orkeon tool inventory
 
-This page is the reference catalogue of the **123 built-in tool classes**. The counting
+This page is the reference catalogue of the **124 built-in tool classes**. The counting
 rule is the one `scripts/check-doc-claims.py` enforces: every `*Tool.cs` file under
 `src/` except the interface (`IBaseTool.cs`) and the non-tool infrastructure that
 matches the glob (`MockTool.cs`, `JsTool.cs`, `ObservedTool.cs`, `AIAgentTool.cs`). The same script
@@ -70,6 +70,12 @@ what YAML references.
 | Tool | Class | Use case | Call example |
 |-------|--------|-------------|-----------------|
 | `system_one_decide` | `SystemOneDecideTool` | Ask the active decision provider (TypeSafe, Liquid or Kev, see [Decision models](../architecture/decision-models.md)) typed questions about a state: `choice`, `score` or `noul`, each answer with calibrated probabilities and a confidence; `box` questions are refused (images do not travel through a tool call) and the API key never appears in the request | `{ "state": { "ticket": "Refund not received" }, "questions": { "urgent": { "type": "noul", "instructions": "Does the customer need an answer today?", "criteria": { "true": "An answer is needed today", "false": "It can wait" } } } }` |
+
+## MCP tool (`Orkeon.Infrastructure`) — `AddOrkeonMcp(configuration)`
+
+| Tool | Class | Use case | Call example |
+|-------|--------|-------------|-----------------|
+| `mcp_prompt_get` | `McpPromptGetTool` | Get a prompt template of a connected MCP server (`prompts/get`), its arguments filled in; without `name`, list the prompts the server offers. The text is data returned by the server, not an instruction | `{"server": "docs", "name": "review", "arguments": {"lang": "C#"}}` |
 
 ## File tools (`Orkeon.Tools.FileSystem`) — `AddOrkeonFileSystemTools()`
 
@@ -275,7 +281,7 @@ Twenty-nine tools over the RaggableTree semantic code graph — the full guide i
 
 ## Outside the catalogue
 
-Deliberately **not** part of the 123 built-in tool classes:
+Deliberately **not** part of the 124 built-in tool classes:
 
 - `brief_submit` / `blueprint_submit` — internal to the `orkeon forge` command
   (`ForgeSubmission.cs`, `Orkeon.Scripting.Cli`); the engine's own agents use them, a
@@ -300,13 +306,13 @@ number the README and the documentation index state, checked by
 | `Orkeon.Tools.Analysis` (RaggableTree — see [its guide](../architecture/raggable-tree.md)) | 29 |
 | `Orkeon.Tools.Email` (see [its guide](../guides/email.md)) | 13 |
 | `Orkeon.Tools.Drive` (see [its guide](../guides/drive.md)) | 11 |
-| `Orkeon.Infrastructure` (collaboration, session, sandbox, human input, `semantic_search`, `system_one_decide`, `memory_recall`) | 14 |
+| `Orkeon.Infrastructure` (collaboration, session, sandbox, human input, `semantic_search`, `system_one_decide`, `memory_recall`, `mcp_prompt_get`) | 15 |
 | `Orkeon.Tools.Web` | 11 |
 | `Orkeon.Tools.EventHub` | 7 |
 | `Orkeon.Tools.FileSystem` | 8 |
 | `Orkeon.Tools.Rag` | 3 |
 | `Orkeon.Tools.Abstractions` / `Orkeon.Tools.Code` / `Orkeon.Tools.Embeddings.Local` / `Orkeon.Cli.Commands.Scripting` / `Orkeon.Scripting` | 1 each |
-| **Total** | **123** |
+| **Total** | **124** |
 
 ## Availability by composition root
 
@@ -479,6 +485,7 @@ The exact name to use in the YAML `tools:` section is the value of the tool clas
 | `list_mounts` | `ListMountsTool` | `Orkeon.Tools.Abstractions` |
 | `local_embed_text` | `LocalEmbedTool` | `Orkeon.Tools.Embeddings.Local` |
 | `mariadb_query` | `MariaDbDatabaseTool` | `Orkeon.Tools.Data` |
+| `mcp_prompt_get` | `McpPromptGetTool` | `Orkeon.Infrastructure` |
 | `mdx_search` | `MdxSearchTool` | `Orkeon.Tools.Data` |
 | `memory_store` | `MemoryStoreTool` | `Orkeon.Infrastructure` |
 | `memory_recall` | `MemoryRecallTool` | Recall what the crew of the call remembers (`query`, `limit`), ranked by composite score; opt-in (`Orkeon:CognitiveMemory:Enabled`), held only by a crew with `memory: true` |

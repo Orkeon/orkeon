@@ -356,6 +356,10 @@ public class McpToolListResult
     [JsonPropertyName("tools")]
     public IReadOnlyList<McpToolDefinition> Tools { get; init; } = [];
 
+    /// <summary>Gets the opaque cursor of the next page, absent on the last one.</summary>
+    [JsonPropertyName("nextCursor")]
+    public string? NextCursor { get; init; }
+
     /// <summary>Gets or sets the result type ("complete"; absent on legacy servers, to be treated as complete).</summary>
     [JsonPropertyName("resultType")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
@@ -386,6 +390,10 @@ public class McpResourceListResult
     /// <summary>Gets the list of available resources.</summary>
     [JsonPropertyName("resources")]
     public IReadOnlyList<McpResource> Resources { get; init; } = [];
+
+    /// <summary>Gets the opaque cursor of the next page, absent on the last one.</summary>
+    [JsonPropertyName("nextCursor")]
+    public string? NextCursor { get; init; }
 }
 
 /// <summary>
@@ -476,4 +484,77 @@ public class McpDiscoverResult
     [JsonPropertyName("_meta")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public JsonElement? Meta { get; set; }
+}
+
+/// <summary>An argument a prompt template takes.</summary>
+[Experimental("ORKEXP004", UrlFormat = "https://github.com/Orkeon/orkeon/blob/main/docs/reference/experimental-apis.md")]
+public class McpPromptArgument
+{
+    /// <summary>Gets or sets the argument name.</summary>
+    [JsonPropertyName("name")]
+    public string Name { get; set; } = "";
+
+    /// <summary>Gets or sets what the argument is for.</summary>
+    [JsonPropertyName("description")]
+    public string? Description { get; set; }
+
+    /// <summary>Gets or sets whether the server needs the argument.</summary>
+    [JsonPropertyName("required")]
+    public bool Required { get; set; }
+}
+
+/// <summary>A prompt template a server offers (<c>prompts/list</c>).</summary>
+[Experimental("ORKEXP004", UrlFormat = "https://github.com/Orkeon/orkeon/blob/main/docs/reference/experimental-apis.md")]
+public class McpPrompt
+{
+    /// <summary>Gets or sets the prompt name.</summary>
+    [JsonPropertyName("name")]
+    public string Name { get; set; } = "";
+
+    /// <summary>Gets or sets what the prompt does.</summary>
+    [JsonPropertyName("description")]
+    public string? Description { get; set; }
+
+    /// <summary>Gets the arguments the prompt takes.</summary>
+    [JsonPropertyName("arguments")]
+    public IReadOnlyList<McpPromptArgument> Arguments { get; init; } = [];
+}
+
+/// <summary>One message of a prompt (<c>prompts/get</c>).</summary>
+[Experimental("ORKEXP004", UrlFormat = "https://github.com/Orkeon/orkeon/blob/main/docs/reference/experimental-apis.md")]
+public class McpPromptMessage
+{
+    /// <summary>Gets or sets the speaker: <c>user</c> or <c>assistant</c>.</summary>
+    [JsonPropertyName("role")]
+    public string Role { get; set; } = "user";
+
+    /// <summary>Gets or sets the content block of the message.</summary>
+    [JsonPropertyName("content")]
+    public McpContent Content { get; set; } = new();
+}
+
+/// <summary>Result of <c>prompts/list</c>: one page.</summary>
+[Experimental("ORKEXP004", UrlFormat = "https://github.com/Orkeon/orkeon/blob/main/docs/reference/experimental-apis.md")]
+public class McpPromptListResult
+{
+    /// <summary>Gets the prompts of the page.</summary>
+    [JsonPropertyName("prompts")]
+    public IReadOnlyList<McpPrompt> Prompts { get; init; } = [];
+
+    /// <summary>Gets the opaque cursor of the next page, absent on the last one.</summary>
+    [JsonPropertyName("nextCursor")]
+    public string? NextCursor { get; init; }
+}
+
+/// <summary>Result of <c>prompts/get</c>.</summary>
+[Experimental("ORKEXP004", UrlFormat = "https://github.com/Orkeon/orkeon/blob/main/docs/reference/experimental-apis.md")]
+public class McpPromptGetResult
+{
+    /// <summary>Gets or sets what the prompt does.</summary>
+    [JsonPropertyName("description")]
+    public string? Description { get; set; }
+
+    /// <summary>Gets the messages of the prompt, its arguments filled in.</summary>
+    [JsonPropertyName("messages")]
+    public IReadOnlyList<McpPromptMessage> Messages { get; init; } = [];
 }

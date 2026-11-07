@@ -17,6 +17,12 @@ public partial class McpClient : IAsyncDisposable
     private const string ClientName = "Orkeon";
     private const string ClientVersion = "1.0.0";
 
+    /// <summary>The most pages one listing follows: a server whose cursor never ends fails the listing.</summary>
+    internal const int MaxPages = 100;
+
+    /// <summary>The most items one listing gathers over its pages: past it the server is flooding the client, and the listing fails.</summary>
+    internal const int MaxItems = 10_000;
+
     private readonly IMcpTransport _transport;
     private readonly ILogger _logger;
     private int _nextId;
@@ -192,16 +198,37 @@ public partial class McpClient : IAsyncDisposable
     {
         EnsureReady();
 
-        var response = await SendAsync("tools/list", null, ct).ConfigureAwait(false);
+        return await PageAllAsync("tools/list", (McpToolListResult r) => (r.Tools, r.NextCursor), ct).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Lists the prompts of the MCP server, following the cursor of every page.
+    /// </summary>
+    public async Task<IReadOnlyList<McpPrompt>> ListPromptsAsync(CancellationToken ct = default)
+    {
+        EnsureReady();
+        return await PageAllAsync("prompts/list", (McpPromptListResult r) => (r.Prompts, r.NextCursor), ct).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Gets a prompt of the server, its <paramref name="arguments"/> filled in.
+    /// </summary>
+    public async Task<McpPromptGetResult> GetPromptAsync(
+        string name, IReadOnlyDictionary<string, string>? arguments = null, CancellationToken ct = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(name);
+        EnsureReady();
+
+        var response = await SendAsync("prompts/get", new { name, arguments = arguments ?? new Dictionary<string, string>() }, ct)
+            .ConfigureAwait(false);
 
         if (response.Error != null)
         {
             throw new InvalidOperationException(
-                $"tools/list failed: [{response.Error.Code}] {response.Error.Message}");
+                $"prompts/get failed: [{response.Error.Code}] {response.Error.Message}");
         }
 
-        var result = DeserializeResult<McpToolListResult>(response);
-        return result.Tools;
+        return DeserializeResult<McpPromptGetResult>(response);
     }
 
     /// <summary>
@@ -258,16 +285,7 @@ public partial class McpClient : IAsyncDisposable
     {
         EnsureReady();
 
-        var response = await SendAsync("resources/list", null, ct).ConfigureAwait(false);
-
-        if (response.Error != null)
-        {
-            throw new InvalidOperationException(
-                $"resources/list failed: [{response.Error.Code}] {response.Error.Message}");
-        }
-
-        var result = DeserializeResult<McpResourceListResult>(response);
-        return result.Resources;
+        return await PageAllAsync("resources/list", (McpResourceListResult r) => (r.Resources, r.NextCursor), ct).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -319,6 +337,43 @@ public partial class McpClient : IAsyncDisposable
         }
 
         return response;
+    }
+
+    /// <summary>
+    /// Reads every page of a listing: sends <paramref name="method"/> with the cursor of the page before
+    /// it, until a page names no next cursor. At most <see cref="MaxPages"/> pages — past it the server
+    /// is not paging, it is looping, and the listing fails rather than grow without end.
+    /// </summary>
+    private async Task<IReadOnlyList<TItem>> PageAllAsync<TPage, TItem>(
+        string method, Func<TPage, (IReadOnlyList<TItem> Items, string? NextCursor)> read, CancellationToken ct)
+        where TPage : new()
+    {
+        var all = new List<TItem>();
+        string? cursor = null;
+        for (var page = 0; page < MaxPages; page++)
+        {
+            var response = await SendAsync(method, cursor is null ? null : new { cursor }, ct).ConfigureAwait(false);
+            if (response.Error != null)
+            {
+                throw new InvalidOperationException(
+                    $"{method} failed: [{response.Error.Code}] {response.Error.Message}");
+            }
+
+            var (items, next) = read(DeserializeResult<TPage>(response));
+            all.AddRange(items);
+            if (all.Count > MaxItems)
+            {
+                throw new InvalidOperationException(
+                    $"{method} returned more than {MaxItems} items over {page + 1} pages: the listing is cut off rather than grow without end.");
+            }
+
+            if (string.IsNullOrEmpty(next))
+                return all;
+            cursor = next;
+        }
+
+        throw new InvalidOperationException(
+            $"{method} still had a next page after {MaxPages} pages: the server's cursor never ends.");
     }
 
     private JsonRpcRequest CreateRequest(string method, object? parameters = null)

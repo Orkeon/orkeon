@@ -346,7 +346,7 @@ Orkeon.Infrastructure.Tools.MemoryStoreRequest.NewestFirst.set -> void
 [ORKEXP004]Orkeon.Infrastructure.MCP.McpToolFilterConfig.Deny.get -> System.Collections.ObjectModel.Collection<string!>!
 [ORKEXP004]Orkeon.Infrastructure.MCP.McpToolFilterConfig.McpToolFilterConfig() -> void
 [ORKEXP004]Orkeon.Infrastructure.MCP.McpToolProvider.ConnectServerAsync(string! serverId, Orkeon.Infrastructure.MCP.IMcpTransport! transport, Orkeon.Infrastructure.MCP.McpServerConfig! config, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
-[ORKEXP004]Orkeon.Infrastructure.MCP.McpToolProvider.McpToolProvider(Orkeon.Domain.Tools.IToolRegistry! toolRegistry, Microsoft.Extensions.Logging.ILoggerFactory? loggerFactory = null, System.Net.Http.IHttpClientFactory? httpClientFactory = null) -> void
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpToolProvider.McpToolProvider(Orkeon.Domain.Tools.IToolRegistry! toolRegistry, Microsoft.Extensions.Logging.ILoggerFactory? loggerFactory = null, System.Net.Http.IHttpClientFactory? httpClientFactory = null, System.TimeProvider? timeProvider = null) -> void
 [ORKEXP004]Orkeon.Infrastructure.MCP.SseMcpTransport.SseMcpTransport(System.Uri! url, System.Net.Http.HttpClient? httpClient = null, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.MCP.SseMcpTransport!>? logger = null, Orkeon.Infrastructure.MCP.Auth.IMcpRequestAuthenticator? authenticator = null) -> void
 [ORKEXP004]const Orkeon.Infrastructure.MCP.McpServiceExtensions.HttpClientName = "orkeon-mcp" -> string!
 *REMOVED*[ORKEXP004]Orkeon.Infrastructure.MCP.McpToolAdapter.McpToolAdapter(Orkeon.Infrastructure.MCP.McpToolDefinition! definition, Orkeon.Infrastructure.MCP.McpClient! client, bool trustAnnotations = false) -> void
@@ -439,3 +439,83 @@ Orkeon.Infrastructure.LLMs.Mock.JsonlMockLlmProvider.SupportsStreaming.get -> bo
 Orkeon.Infrastructure.LLMs.LlmProviderFactory.LlmProviderFactory(System.Net.Http.IHttpClientFactory! httpClientFactory, Microsoft.Extensions.Logging.ILoggerFactory! loggerFactory, Orkeon.Domain.FileSystem.IFileSystemService! fileSystem, Orkeon.Application.Interfaces.Ports.ILlmUsageSink? usageSink = null, Orkeon.Application.Interfaces.Security.ILlmRateLimiter? rateLimiter = null, Orkeon.Application.Interfaces.Ports.ILlmCallObserver? callObserver = null, Orkeon.Domain.SharedKernel.ITokenCounter? tokenCounter = null) -> void
 static Orkeon.Infrastructure.LLMs.LlmProviderFactory.WithoutMounts(System.Net.Http.IHttpClientFactory! httpClientFactory, Microsoft.Extensions.Logging.ILoggerFactory! loggerFactory) -> Orkeon.Infrastructure.LLMs.LlmProviderFactory!
 Orkeon.Infrastructure.LLMs.Mock.JsonlMockLlmProvider.Capabilities.get -> Orkeon.Domain.SharedKernel.ValueObjects.LlmProviderCapabilities!
+Orkeon.Infrastructure.MCP.McpPromptGetRequest
+Orkeon.Infrastructure.MCP.McpPromptGetRequest.Arguments.get -> System.Collections.Generic.IReadOnlyDictionary<string!, string!>?
+Orkeon.Infrastructure.MCP.McpPromptGetRequest.Arguments.init -> void
+Orkeon.Infrastructure.MCP.McpPromptGetRequest.McpPromptGetRequest() -> void
+Orkeon.Infrastructure.MCP.McpPromptGetRequest.Name.get -> string?
+Orkeon.Infrastructure.MCP.McpPromptGetRequest.Name.init -> void
+Orkeon.Infrastructure.MCP.McpPromptGetRequest.Server.get -> string!
+Orkeon.Infrastructure.MCP.McpPromptGetRequest.Server.init -> void
+Orkeon.Infrastructure.MCP.McpPromptGetResponse
+Orkeon.Infrastructure.MCP.McpPromptGetResponse.Description.get -> string?
+Orkeon.Infrastructure.MCP.McpPromptGetResponse.Description.init -> void
+Orkeon.Infrastructure.MCP.McpPromptGetResponse.McpPromptGetResponse() -> void
+Orkeon.Infrastructure.MCP.McpPromptGetResponse.Messages.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Infrastructure.MCP.McpPromptTextMessage!>!
+Orkeon.Infrastructure.MCP.McpPromptGetResponse.Messages.init -> void
+Orkeon.Infrastructure.MCP.McpPromptGetResponse.Prompts.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Infrastructure.MCP.McpPromptSummary!>!
+Orkeon.Infrastructure.MCP.McpPromptGetResponse.Prompts.init -> void
+Orkeon.Infrastructure.MCP.McpPromptGetTool
+Orkeon.Infrastructure.MCP.McpPromptGetTool.McpPromptGetTool(Orkeon.Infrastructure.MCP.McpToolProvider! provider) -> void
+Orkeon.Infrastructure.MCP.McpPromptGetTool.McpPromptGetTool(System.Func<Orkeon.Infrastructure.MCP.McpToolProvider!>! provider) -> void
+Orkeon.Infrastructure.MCP.McpPromptSummary
+Orkeon.Infrastructure.MCP.McpPromptSummary.Arguments.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Orkeon.Infrastructure.MCP.McpPromptSummary.Arguments.init -> void
+Orkeon.Infrastructure.MCP.McpPromptSummary.Description.get -> string?
+Orkeon.Infrastructure.MCP.McpPromptSummary.Description.init -> void
+Orkeon.Infrastructure.MCP.McpPromptSummary.McpPromptSummary() -> void
+Orkeon.Infrastructure.MCP.McpPromptSummary.Name.get -> string!
+Orkeon.Infrastructure.MCP.McpPromptSummary.Name.init -> void
+Orkeon.Infrastructure.MCP.McpPromptTextMessage
+Orkeon.Infrastructure.MCP.McpPromptTextMessage.McpPromptTextMessage() -> void
+Orkeon.Infrastructure.MCP.McpPromptTextMessage.Role.get -> string!
+Orkeon.Infrastructure.MCP.McpPromptTextMessage.Role.init -> void
+Orkeon.Infrastructure.MCP.McpPromptTextMessage.Text.get -> string!
+Orkeon.Infrastructure.MCP.McpPromptTextMessage.Text.init -> void
+[ORKEXP004]Orkeon.Infrastructure.MCP.IMcpTransport.Notifications.get -> System.Threading.Channels.ChannelReader<Orkeon.Infrastructure.MCP.JsonRpcNotification!>!
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpClient.GetPromptAsync(string! name, System.Collections.Generic.IReadOnlyDictionary<string!, string!>? arguments = null, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Infrastructure.MCP.McpPromptGetResult!>!
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpClient.ListPromptsAsync(System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Orkeon.Infrastructure.MCP.McpPrompt!>!>!
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpPrompt
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpPrompt.Arguments.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Infrastructure.MCP.McpPromptArgument!>!
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpPrompt.Arguments.init -> void
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpPrompt.Description.get -> string?
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpPrompt.Description.set -> void
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpPrompt.McpPrompt() -> void
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpPrompt.Name.get -> string!
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpPrompt.Name.set -> void
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpPromptArgument
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpPromptArgument.Description.get -> string?
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpPromptArgument.Description.set -> void
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpPromptArgument.McpPromptArgument() -> void
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpPromptArgument.Name.get -> string!
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpPromptArgument.Name.set -> void
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpPromptArgument.Required.get -> bool
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpPromptArgument.Required.set -> void
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpPromptGetResult
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpPromptGetResult.Description.get -> string?
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpPromptGetResult.Description.set -> void
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpPromptGetResult.McpPromptGetResult() -> void
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpPromptGetResult.Messages.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Infrastructure.MCP.McpPromptMessage!>!
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpPromptGetResult.Messages.init -> void
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpPromptListResult
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpPromptListResult.McpPromptListResult() -> void
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpPromptListResult.NextCursor.get -> string?
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpPromptListResult.NextCursor.init -> void
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpPromptListResult.Prompts.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Infrastructure.MCP.McpPrompt!>!
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpPromptListResult.Prompts.init -> void
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpPromptMessage
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpPromptMessage.Content.get -> Orkeon.Infrastructure.MCP.McpContent!
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpPromptMessage.Content.set -> void
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpPromptMessage.McpPromptMessage() -> void
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpPromptMessage.Role.get -> string!
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpPromptMessage.Role.set -> void
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpResourceListResult.NextCursor.get -> string?
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpResourceListResult.NextCursor.init -> void
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpToolListResult.NextCursor.get -> string?
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpToolListResult.NextCursor.init -> void
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpToolProvider.GetPromptAsync(string! serverId, string! name, System.Collections.Generic.IReadOnlyDictionary<string!, string!>? arguments = null, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Infrastructure.MCP.McpPromptGetResult!>!
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpToolProvider.ListPromptsAsync(string! serverId, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Orkeon.Infrastructure.MCP.McpPrompt!>!>!
+[ORKEXP004]Orkeon.Infrastructure.MCP.SseMcpTransport.Notifications.get -> System.Threading.Channels.ChannelReader<Orkeon.Infrastructure.MCP.JsonRpcNotification!>!
+[ORKEXP004]Orkeon.Infrastructure.MCP.StdioMcpTransport.Notifications.get -> System.Threading.Channels.ChannelReader<Orkeon.Infrastructure.MCP.JsonRpcNotification!>!
+override Orkeon.Infrastructure.MCP.McpPromptGetTool.Access.get -> Orkeon.Domain.Tools.ToolAccess
+Orkeon.Infrastructure.Tools.ToolRegistry.ReplaceToolAsync(Orkeon.Domain.Tools.IBaseTool! current, Orkeon.Domain.Tools.IBaseTool! replacement) -> System.Threading.Tasks.Task<bool>!

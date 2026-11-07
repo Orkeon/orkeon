@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using System.Collections.Concurrent;
+using System.Text.Json;
 using Orkeon.Domain.Tools;
 using Orkeon.Infrastructure.MCP.Auth;
 using System.Diagnostics.CodeAnalysis;
@@ -19,15 +20,145 @@ public sealed partial class McpToolProvider : IAsyncDisposable, IDisposable
     private readonly ILoggerFactory? _loggerFactory;
     private readonly IHttpClientFactory? _httpClientFactory;
     private readonly ConcurrentDictionary<string, McpClientEntry> _clients = new();
+    private readonly TimeProvider _time;
     private bool _disposed;
 
-    private sealed record McpClientEntry(
-        McpClient Client,
-        IMcpTransport Transport,
-        List<string> RegisteredToolNames,
-        List<string> RejectedToolNames,
-        McpServerCapabilities? Capabilities,
-        List<string> UnmatchedToolFilters);
+    /// <summary>The method of the notification that tells the client a server's tool list changed.</summary>
+    private const string ToolListChangedMethod = "notifications/tools/list_changed";
+
+    /// <summary>
+    /// How long the client waits after a <c>tools/list_changed</c> before listing again: the notifications
+    /// that arrive in the meantime are answered by that one listing.
+    /// </summary>
+    internal static readonly TimeSpan ToolListDebounce = TimeSpan.FromMilliseconds(500);
+
+    private sealed record RegisteredTool(IBaseTool Adapter, string Fingerprint);
+
+    /// <summary>One connected server: its client, the tools it registered, and the watch of its notifications.</summary>
+    private sealed class McpClientEntry(McpClient client, IMcpTransport transport, McpServerCapabilities? capabilities)
+    {
+        private readonly object _state = new();
+        private readonly Dictionary<string, RegisteredTool> _tools = [];
+        private readonly List<string> _rejected = [];
+        private List<string> _unmatched = [];
+        private long _notifications;
+        private long _resyncs;
+        private int _dirty;
+
+        public McpClient Client { get; } = client;
+
+        public IMcpTransport Transport { get; } = transport;
+
+        public McpServerCapabilities? Capabilities { get; } = capabilities;
+
+        /// <summary>The server's settings; null for a server connected without them.</summary>
+        public McpServerConfig? Config { get; init; }
+
+        public bool TrustAnnotations { get; init; }
+
+        /// <summary>One re-synchronisation at a time per server.</summary>
+        public SemaphoreSlim Gate { get; } = new(1, 1);
+
+        /// <summary>Cancelled when the server is disconnected: ends the watch of its notifications.</summary>
+        public CancellationTokenSource Stop { get; } = new();
+
+        /// <summary>Woken by the reader each time the server says its tool list changed.</summary>
+        public SemaphoreSlim Wake { get; } = new(0, 1);
+
+        public Task Reader { get; set; } = Task.CompletedTask;
+
+        public Task Watcher { get; set; } = Task.CompletedTask;
+
+        public long NotificationsSeen => Interlocked.Read(ref _notifications);
+
+        public long Resyncs => Interlocked.Read(ref _resyncs);
+
+        public bool IsDirty => Volatile.Read(ref _dirty) == 1;
+
+        /// <summary>A <c>tools/list_changed</c> was read: a listing is owed, whatever else arrives.</summary>
+        public void MarkChanged()
+        {
+            Interlocked.Increment(ref _notifications);
+            Volatile.Write(ref _dirty, 1);
+            try
+            {
+                Wake.Release();
+            }
+            catch (SemaphoreFullException)
+            {
+                // A wake-up is already pending: the watcher will see the flag.
+            }
+        }
+
+        /// <summary>The listing about to be made answers every notification read so far.</summary>
+        public void ClearDirty() => Volatile.Write(ref _dirty, 0);
+
+        public void CountResync() => Interlocked.Increment(ref _resyncs);
+
+        public List<KeyValuePair<string, RegisteredTool>> SnapshotTools()
+        {
+            lock (_state)
+                return [.. _tools];
+        }
+
+        public bool Holds(string name)
+        {
+            lock (_state)
+                return _tools.ContainsKey(name);
+        }
+
+        public void Remember(string name, IBaseTool adapter, string fingerprint)
+        {
+            lock (_state)
+            {
+                _tools[name] = new RegisteredTool(adapter, fingerprint);
+                _rejected.Remove(name);
+            }
+        }
+
+        public void Forget(string name)
+        {
+            lock (_state)
+                _tools.Remove(name);
+        }
+
+        /// <summary>Notes a name another tool holds; true when it was not noted yet.</summary>
+        public bool Reject(string name)
+        {
+            lock (_state)
+            {
+                if (_rejected.Contains(name))
+                    return false;
+                _rejected.Add(name);
+                return true;
+            }
+        }
+
+        /// <summary>Forgets the rejected names the server no longer lists.</summary>
+        public void KeepRejected(IReadOnlyCollection<string> listed)
+        {
+            lock (_state)
+                _rejected.RemoveAll(name => !listed.Contains(name));
+        }
+
+        public void SetUnmatched(IEnumerable<string> unmatched)
+        {
+            lock (_state)
+                _unmatched = [.. unmatched];
+        }
+
+        public string[] ToolNames()
+        {
+            lock (_state)
+                return [.. _tools.Keys];
+        }
+
+        public (string[] Rejected, string[] Unmatched) Snapshot()
+        {
+            lock (_state)
+                return ([.. _rejected], [.. _unmatched]);
+        }
+    }
 
     /// <summary>Initializes a new instance of <see cref="McpToolProvider"/>.</summary>
     /// <param name="toolRegistry">The tool registry to register MCP tools into.</param>
@@ -36,11 +167,14 @@ public sealed partial class McpToolProvider : IAsyncDisposable, IDisposable
     /// Optional factory of the shared <see cref="McpServiceExtensions.HttpClientName"/> client the SSE
     /// transports use; without it each transport owns a client.
     /// </param>
+    /// <param name="timeProvider">The clock of the <c>tools/list_changed</c> debounce; the system clock by default.</param>
     public McpToolProvider(
         IToolRegistry toolRegistry,
         ILoggerFactory? loggerFactory = null,
-        IHttpClientFactory? httpClientFactory = null)
+        IHttpClientFactory? httpClientFactory = null,
+        TimeProvider? timeProvider = null)
     {
+        _time = timeProvider ?? TimeProvider.System;
         ArgumentNullException.ThrowIfNull(toolRegistry);
         _toolRegistry = toolRegistry;
         _loggerFactory = loggerFactory;
@@ -193,27 +327,200 @@ public sealed partial class McpToolProvider : IAsyncDisposable, IDisposable
         foreach (var entry in unmatched)
             LogMcpToolFilterUnmatched(entry, serverId);
 
-        var registeredNames = new List<string>();
-        var rejectedNames = new List<string>();
-        foreach (var toolDef in kept)
+        var clientEntry = new McpClientEntry(client, transport, client.Capabilities)
         {
-            var adapter = new McpToolAdapter(toolDef, client, trustAnnotations, config?.CallTimeout);
-            if (await _toolRegistry.RegisterToolAsync(adapter).ConfigureAwait(false))
+            Config = config,
+            TrustAnnotations = trustAnnotations,
+        };
+        clientEntry.SetUnmatched(unmatched);
+        try
+        {
+            foreach (var toolDef in kept)
             {
-                registeredNames.Add(toolDef.Name);
-                LogRegisteredMcpTool(toolDef.Name, serverId);
-            }
-            else
-            {
-                rejectedNames.Add(toolDef.Name);
-                LogMcpToolNameCollision(toolDef.Name, serverId);
+                var adapter = new McpToolAdapter(toolDef, client, trustAnnotations, config?.CallTimeout);
+                if (await _toolRegistry.RegisterToolAsync(adapter).ConfigureAwait(false))
+                {
+                    clientEntry.Remember(toolDef.Name, adapter, Fingerprint(toolDef));
+                    LogRegisteredMcpTool(toolDef.Name, serverId);
+                }
+                else
+                {
+                    clientEntry.Reject(toolDef.Name);
+                    LogMcpToolNameCollision(toolDef.Name, serverId);
+                }
             }
         }
+        catch
+        {
+            // The connection fails: the tools it registered so far leave with it.
+            foreach (var name in clientEntry.ToolNames())
+                await _toolRegistry.UnregisterToolAsync(name).ConfigureAwait(false);
+            throw;
+        }
 
-        _clients[serverId] = new McpClientEntry(
-            client, transport, registeredNames, rejectedNames, client.Capabilities, unmatched);
+        _clients[serverId] = clientEntry;
+        clientEntry.Reader = Task.Run(() => ReadNotificationsAsync(clientEntry), CancellationToken.None);
+        clientEntry.Watcher = Task.Run(() => WatchToolListAsync(serverId, clientEntry), CancellationToken.None);
 
-        LogConnectedToMcpServer(serverId, registeredNames.Count);
+        var toolCount = clientEntry.ToolNames().Length;
+        LogConnectedToMcpServer(serverId, toolCount);
+    }
+
+    /// <summary>Lists the prompts of a connected server.</summary>
+    /// <param name="serverId">The server's identifier.</param>
+    /// <param name="ct">The cancellation token.</param>
+    /// <exception cref="InvalidOperationException">The server is not connected.</exception>
+    public Task<IReadOnlyList<McpPrompt>> ListPromptsAsync(string serverId, CancellationToken ct = default) =>
+        ClientOf(serverId).ListPromptsAsync(ct);
+
+    /// <summary>Gets a prompt of a connected server, its arguments filled in.</summary>
+    /// <param name="serverId">The server's identifier.</param>
+    /// <param name="name">The prompt's name.</param>
+    /// <param name="arguments">The prompt's arguments.</param>
+    /// <param name="ct">The cancellation token.</param>
+    /// <exception cref="InvalidOperationException">The server is not connected.</exception>
+    public Task<McpPromptGetResult> GetPromptAsync(
+        string serverId, string name, IReadOnlyDictionary<string, string>? arguments = null, CancellationToken ct = default) =>
+        ClientOf(serverId).GetPromptAsync(name, arguments, ct);
+
+    /// <summary>
+    /// What the watch of a server's tool list has done: the <c>tools/list_changed</c> notifications read,
+    /// and the re-listings finished (failed ones included). For the tests, which wait on it instead of a clock.
+    /// </summary>
+    internal (long Notifications, long Resyncs) ToolListActivity(string serverId) =>
+        _clients.TryGetValue(serverId, out var entry) ? (entry.NotificationsSeen, entry.Resyncs) : (0, 0);
+
+    private McpClient ClientOf(string serverId) =>
+        _clients.TryGetValue(serverId, out var entry)
+            ? entry.Client
+            : throw new InvalidOperationException($"MCP server '{serverId}' is not connected.");
+
+    private static string Fingerprint(McpToolDefinition definition) => JsonSerializer.Serialize(definition);
+
+    /// <summary>
+    /// Reads the notifications of one server as they arrive, and nothing else: a <c>tools/list_changed</c>
+    /// marks the server dirty. The channel they come through is bounded and drops its oldest entry, so a
+    /// reader that waited out a debounce or a listing could find the one that mattered gone; this one
+    /// never waits.
+    /// </summary>
+    private static async Task ReadNotificationsAsync(McpClientEntry entry)
+    {
+        try
+        {
+            await foreach (var notification in entry.Transport.Notifications.ReadAllAsync(entry.Stop.Token).ConfigureAwait(false))
+            {
+                if (notification.Method == ToolListChangedMethod)
+                    entry.MarkChanged();
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // The server was disconnected.
+        }
+    }
+
+    /// <summary>
+    /// Lists a server's tools again whenever it is dirty: after <see cref="ToolListDebounce"/> — the
+    /// notifications that arrive during the wait are answered by the one listing — and again if the server
+    /// said it changed while the listing was running, until no notification is left unanswered.
+    /// </summary>
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Fault barrier of a background watch: a failed re-synchronisation is logged and the server keeps the tools it had.")]
+    private async Task WatchToolListAsync(string serverId, McpClientEntry entry)
+    {
+        var ct = entry.Stop.Token;
+        try
+        {
+            while (true)
+            {
+                await entry.Wake.WaitAsync(ct).ConfigureAwait(false);
+                while (entry.IsDirty)
+                {
+                    await Task.Delay(ToolListDebounce, _time, ct).ConfigureAwait(false);
+                    entry.ClearDirty();
+                    try
+                    {
+                        await ResyncToolsAsync(serverId, entry, ct).ConfigureAwait(false);
+                    }
+                    catch (Exception ex) when (ex is not OperationCanceledException)
+                    {
+                        LogMcpToolResyncFailed(ex, serverId);
+                    }
+                    finally
+                    {
+                        entry.CountResync();
+                    }
+                }
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // The server was disconnected.
+        }
+    }
+
+    /// <summary>
+    /// Lists the server's tools again and brings the registry to what it lists, one tool at a time, the
+    /// server's entry following each registry step: a tool it dropped is unregistered; a tool whose
+    /// definition changed is swapped for a new adapter in one registry step, so its name never stops
+    /// resolving; a new tool is registered; a name another tool holds is left to that tool and warned
+    /// about as <c>mcp.tool.rejected</c>. The tool instances a task in progress already holds are not
+    /// touched: only the next task to resolve its tools sees the change.
+    /// </summary>
+    private async Task ResyncToolsAsync(string serverId, McpClientEntry entry, CancellationToken ct)
+    {
+        await entry.Gate.WaitAsync(ct).ConfigureAwait(false);
+        try
+        {
+            using var guard = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            if (entry.Config is not null)
+                guard.CancelAfter(entry.Config.ConnectTimeout);
+            var listed = await entry.Client.ListToolsAsync(guard.Token).ConfigureAwait(false);
+            var (kept, unmatched) = McpToolFilter.Apply(listed, entry.Config?.Tools);
+
+            var current = new Dictionary<string, McpToolDefinition>();
+            foreach (var definition in kept)
+                current.TryAdd(definition.Name, definition);
+
+            foreach (var (name, held) in entry.SnapshotTools())
+            {
+                if (!current.TryGetValue(name, out var definition))
+                {
+                    await _toolRegistry.UnregisterToolAsync(name).ConfigureAwait(false);
+                    entry.Forget(name);
+                }
+                else if (held.Fingerprint != Fingerprint(definition))
+                {
+                    var adapter = new McpToolAdapter(definition, entry.Client, entry.TrustAnnotations, entry.Config?.CallTimeout);
+                    if (await _toolRegistry.ReplaceToolAsync(held.Adapter, adapter).ConfigureAwait(false))
+                        entry.Remember(name, adapter, Fingerprint(definition));
+                    else
+                        entry.Forget(name); // the registry no longer holds our instance: the name is registered afresh below
+                }
+            }
+
+            entry.KeepRejected(current.Keys);
+            foreach (var (name, definition) in current)
+            {
+                if (entry.Holds(name))
+                    continue;
+                var adapter = new McpToolAdapter(definition, entry.Client, entry.TrustAnnotations, entry.Config?.CallTimeout);
+                if (await _toolRegistry.RegisterToolAsync(adapter).ConfigureAwait(false))
+                {
+                    entry.Remember(name, adapter, Fingerprint(definition));
+                    LogRegisteredMcpTool(name, serverId);
+                }
+                else if (entry.Reject(name))
+                {
+                    LogMcpToolRejected(name, serverId);
+                }
+            }
+
+            entry.SetUnmatched(unmatched);
+        }
+        finally
+        {
+            entry.Gate.Release();
+        }
     }
 
     /// <summary>
@@ -224,12 +531,20 @@ public sealed partial class McpToolProvider : IAsyncDisposable, IDisposable
         if (!_clients.TryRemove(serverId, out var entry))
             return;
 
-        foreach (var toolName in entry.RegisteredToolNames)
+        // The watch ends first: a re-synchronisation must not register tools of a server being left.
+        await entry.Stop.CancelAsync().ConfigureAwait(false);
+        await entry.Reader.ConfigureAwait(false);
+        await entry.Watcher.ConfigureAwait(false);
+
+        foreach (var toolName in entry.ToolNames())
         {
             await _toolRegistry.UnregisterToolAsync(toolName).ConfigureAwait(false);
         }
 
         await entry.Client.DisposeAsync().ConfigureAwait(false);
+        entry.Stop.Dispose();
+        entry.Gate.Dispose();
+        entry.Wake.Dispose();
 
         LogDisconnectedFromMcpServer(serverId);
     }
@@ -239,13 +554,17 @@ public sealed partial class McpToolProvider : IAsyncDisposable, IDisposable
     /// </summary>
     public IReadOnlyList<McpServerStatus> GetServerStatuses()
     {
-        return _clients.Select(kvp => new McpServerStatus
+        return _clients.Select(kvp =>
         {
-            ServerId = kvp.Key,
-            IsConnected = kvp.Value.Transport.IsConnected,
-            Capabilities = kvp.Value.Capabilities,
-            RejectedToolNames = kvp.Value.RejectedToolNames.AsReadOnly(),
-            UnmatchedToolFilters = kvp.Value.UnmatchedToolFilters.AsReadOnly()
+            var (rejected, unmatched) = kvp.Value.Snapshot();
+            return new McpServerStatus
+            {
+                ServerId = kvp.Key,
+                IsConnected = kvp.Value.Transport.IsConnected,
+                Capabilities = kvp.Value.Capabilities,
+                RejectedToolNames = rejected,
+                UnmatchedToolFilters = unmatched,
+            };
         }).ToList();
     }
 
@@ -285,6 +604,12 @@ public sealed partial class McpToolProvider : IAsyncDisposable, IDisposable
 
     [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Error, Message = "The tool '{Name}' of MCP server '{ServerId}' collides with an already-registered tool and was not registered; the registered tool keeps the name")]
     private partial void LogMcpToolNameCollision(string name, string serverId);
+
+    [LoggerMessage(EventName = "mcp.tool.rejected", Level = Microsoft.Extensions.Logging.LogLevel.Warning, Message = "The tool '{Name}' of MCP server '{ServerId}' now collides with an already-registered tool and is ignored; the registered tool keeps the name")]
+    private partial void LogMcpToolRejected(string name, string serverId);
+
+    [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Warning, Message = "MCP server '{ServerId}' changed its tool list and the client could not list it again; the tools registered so far stay")]
+    private partial void LogMcpToolResyncFailed(Exception exception, string serverId);
 
     [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Warning, Message = "The Tools filter entry '{Entry}' of MCP server '{ServerId}' matches no tool the server lists")]
     private partial void LogMcpToolFilterUnmatched(string entry, string serverId);

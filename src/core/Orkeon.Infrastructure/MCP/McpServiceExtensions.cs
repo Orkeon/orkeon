@@ -48,6 +48,9 @@ public static class McpServiceExtensions
             });
         services.AddSingleton(new Orkeon.Domain.Tools.LlmExchangeLogExclusion(HttpClientName));
         services.AddSingleton<McpToolProvider>();
+        // The provider needs the registry, which needs every tool: the tool reaches the provider at call time.
+        services.AddSingleton<Orkeon.Domain.Tools.IBaseTool>(
+            sp => new McpPromptGetTool(() => sp.GetRequiredService<McpToolProvider>()));
         return services;
     }
 

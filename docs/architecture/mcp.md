@@ -299,12 +299,39 @@ entry, or declare both servers in the client. `orkeon run` and `orkeon-host` set
 and can use an `orkeon mcp serve` started on other settings. Like `ORKEON_DEBUG`, the variable
 is also read by the `ORKEON_` configuration layer, as a key (`MCP_SERVE`) no setting is.
 
+## Notifications, pagination and prompts (the client)
+
+- **Pagination.** `tools/list`, `resources/list` and `prompts/list` follow `nextCursor` until a page names none
+  (`McpClient.ListToolsAsync`, `ListResourcesAsync`, `ListPromptsAsync`). A server whose cursor never ends fails
+  the listing after 100 pages, or after 10 000 items, (`InvalidOperationException`) instead of growing it without end.
+- **Notifications.** A frame without an `id` is no longer dropped: `IMcpTransport.Notifications` is a
+  `ChannelReader<JsonRpcNotification>` (256 entries, `DropOldest`, one warning per dropped entry). The stdio
+  transport feeds it from the server's stdout; the HTTP transport feeds it with the notifications that precede the
+  final message of an SSE-framed answer, and opens no stream of its own (no `subscriptions/listen`). A request the
+  server sends to the client (`sampling/createMessage`, `roots/list`, `elicitation/create`) is answered `-32601`
+  on stdio: the client offers none of them.
+- **`notifications/tools/list_changed`.** `McpToolProvider` watches each connected server. After a 500 ms wait
+  (the notifications that arrive meanwhile are absorbed) it lists the tools again, applies the server's `Tools`
+  filter, unregisters the tools the server dropped, swaps the ones whose definition changed for a new adapter in one registry step (`IToolRegistry.ReplaceToolAsync`: the name never stops resolving), and registers the new ones. A name
+  another tool holds (a built-in, a script tool, another server's) is left to it and warned about as
+  `mcp.tool.rejected`; `McpServerStatus.RejectedToolNames` names it. A task already running keeps the tool
+  instances it was given: only the crew built afterwards sees the new set. The notifications are read as they arrive, so a flood of other frames cannot push a `list_changed` out of the bounded channel; one that arrives during a re-listing triggers another. A failed re-listing keeps the tools
+  registered so far and is logged.
+- **Prompts.** `McpClient.ListPromptsAsync` and `GetPromptAsync(name, arguments)` speak `prompts/*`. The built-in
+  tool `mcp_prompt_get` (`server`, `name`, `arguments`) hands a prompt to an agent, or lists the server's prompts
+  when `name` is empty; it is registered by `AddOrkeonMcp`. **The prompt text is untrusted content of the
+  server and a prompt-injection vector**: it reaches the model as the result of a tool call, nothing more, and
+  a server can put instructions in it. The tool declares `ToolAccess.Read`, so the permission gate lets the call
+  through without asking, in every mode: connect only servers you trust, or keep the tool out of the `tools:` of
+  an agent that must not read their prompts.
+
 ## Honest limitations
 
 Aligned with [Known limitations](../reference/limitations.md) and the PUB-07 changelog
 entry:
 
-- **No `subscriptions/listen`** — server-push change notifications are not consumed.
+- **No `subscriptions/listen`** — the HTTP client opens no server stream, so a server that notifies only on one is not heard; the stdio client hears every notification.
+- **No sampling, roots or elicitation** — a server request for them is answered `-32601`: sampling would make Orkeon call an LLM for the server outside the budget, guard and cost of a run; roots would expose physical paths (VFS rule); elicitation waits for durable human-in-the-loop.
 - **No multi-round-trip requests (MRTR)** — a modern `input_required` interim result is
   surfaced as an explicit tool error, never as partial data.
 - **No MCP authorization (OAuth)**.

@@ -58,6 +58,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **[breaking]** `LlmProviderFactory`'s constructor takes an `IFileSystemService` as its third parameter (the mock provider reads its responses file through it): `new LlmProviderFactory(httpClientFactory, loggerFactory, fileSystem, ...)`. The container registers it over the privileged view of the file system. `LlmProviderFactory.WithoutMounts(...)` builds one for a tool that only looks at a provider (`orkeon doctor`, `orkeon llm probe`).
 - **[breaking]** `Llm:Provider` and `Llm:Responses` (and the same keys of each profile) are now read; `Provider` other than `mock` is refused at load.
 
+### Added — notifications, pagination and prompts for the MCP client (FWK-10)
+
+- `tools/list`, `resources/list` and `prompts/list` follow `nextCursor` (100 pages at most, then `InvalidOperationException`); a server that paginates is no longer truncated.
+- A frame of the server without an `id` reaches `IMcpTransport.Notifications` instead of being dropped (bounded channel of 256, `DropOldest`, with a warning); a request of the server to the client is answered `-32601`.
+- `notifications/tools/list_changed`: `McpToolProvider` lists the tools again after 500 ms, unregisters the tools the server dropped, registers the new ones, and ignores a name another tool holds with the warning `mcp.tool.rejected`. A task in progress keeps its tools.
+- `McpClient.ListPromptsAsync` and `GetPromptAsync`, `McpToolProvider.ListPromptsAsync` and `GetPromptAsync`, and the built-in tool **`mcp_prompt_get`** (`Orkeon.Infrastructure`, 124 tool classes), registered by `AddOrkeonMcp`.
+- `IToolRegistry` gains `ReplaceToolAsync(current, replacement)`, an atomic swap (a default implementation unregisters then registers); `ToolRegistry` overrides it.
+- **[breaking]** `IMcpTransport` (experimental, `ORKEXP004`) gains `Notifications`; `McpToolProvider` takes an optional `TimeProvider` as its last constructor argument. Sampling, roots and elicitation stay out: a server request for them is answered `-32601`.
+
 ### Changed — compatibility shims removed **[breaking]**
 
 The `1.0.0-rc.*` line removes compatibility shims directly, with no `[Obsolete]` step (`CONTRIBUTING.md`, "Deprecation window (from 1.0)"): every shim an audit of the repository confirmed is gone, each public removal has its `*REMOVED*` line in the API file of its project, and the table below gives the migration. The shims the audit kept (the flat crew triplet, the `HttpToolBase` constructors without a validator, `IStateStore`'s default methods, the MCP protocol eras) are documented as current forms.

@@ -245,3 +245,4 @@ Orkeon.Domain.Security.PermissionMode.Plan = 3 -> Orkeon.Domain.Security.Permiss
 Orkeon.Domain.Security.PermissionModes
 static Orkeon.Domain.Security.PermissionModes.ToWireName(this Orkeon.Domain.Security.PermissionMode mode) -> string!
 static Orkeon.Domain.Security.PermissionModes.TryParse(string? name, out Orkeon.Domain.Security.PermissionMode mode) -> bool
+Orkeon.Domain.Tools.IToolRegistry.ReplaceToolAsync(Orkeon.Domain.Tools.IBaseTool! current, Orkeon.Domain.Tools.IBaseTool! replacement) -> System.Threading.Tasks.Task<bool>!

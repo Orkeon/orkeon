@@ -310,13 +310,41 @@ utiliser un `orkeon mcp serve` lancé sur d'autres réglages. Comme `ORKEON_DEBU
 est aussi lue par la couche de configuration `ORKEON_`, comme une clé (`MCP_SERVE`) qui n'est
 aucun réglage.
 
+## Notifications, pagination et prompts (le client)
+
+- **Pagination.** `tools/list`, `resources/list` et `prompts/list` suivent `nextCursor` jusqu'à une page qui n'en
+  nomme aucun (`McpClient.ListToolsAsync`, `ListResourcesAsync`, `ListPromptsAsync`). Un serveur dont le curseur
+  ne finit jamais fait échouer la liste au bout de 100 pages, ou de 10 000 éléments, (`InvalidOperationException`) au lieu de la laisser
+  grossir sans fin.
+- **Notifications.** Une trame sans `id` n'est plus jetée : `IMcpTransport.Notifications` est un
+  `ChannelReader<JsonRpcNotification>` (256 entrées, `DropOldest`, un avertissement par entrée perdue). Le
+  transport stdio l'alimente depuis la sortie du serveur ; le transport HTTP, avec les notifications qui précèdent
+  le message final d'une réponse encadrée en SSE, et n'ouvre aucun flux propre (pas de `subscriptions/listen`).
+  Une requête que le serveur envoie au client (`sampling/createMessage`, `roots/list`, `elicitation/create`)
+  reçoit `-32601` sur stdio : le client n'en offre aucune.
+- **`notifications/tools/list_changed`.** `McpToolProvider` surveille chaque serveur connecté. Après une attente
+  de 500 ms (les notifications arrivées entre-temps sont absorbées) il liste de nouveau les outils, applique le
+  filtre `Tools` du serveur, désenregistre les outils que le serveur a retirés, remplace ceux dont la définition a changé par un nouvel adaptateur en une seule étape du registre (`IToolRegistry.ReplaceToolAsync` : le nom ne cesse jamais de se résoudre), et
+  enregistre les nouveaux. Un nom qu'un autre outil détient (un intégré, un outil de script, l'outil d'un autre
+  serveur) lui reste et est signalé par l'avertissement `mcp.tool.rejected` ; `McpServerStatus.RejectedToolNames`
+  le nomme. Une tâche déjà en cours garde les instances d'outils qu'elle a reçues : seule la crew construite
+  ensuite voit le nouvel ensemble. Les notifications sont lues dès leur arrivée : un flot d'autres trames ne peut pas chasser un `list_changed` du canal borné, et un `list_changed` arrivé pendant une nouvelle liste en déclenche une autre. Une nouvelle liste qui échoue garde les outils enregistrés jusque-là et est
+  journalisée.
+- **Prompts.** `McpClient.ListPromptsAsync` et `GetPromptAsync(name, arguments)` parlent `prompts/*`. L'outil
+  intégré `mcp_prompt_get` (`server`, `name`, `arguments`) remet un prompt à un agent, ou liste les prompts du
+  serveur quand `name` est vide ; `AddOrkeonMcp` l'enregistre. **Le texte d'un prompt est un contenu non fiable du
+  serveur et un vecteur d'injection de prompt** : il arrive au modèle comme résultat d'un appel d'outil, rien de
+  plus, et un serveur peut y mettre des instructions. L'outil déclare `ToolAccess.Read` : le gardien des
+  permissions laisse donc passer l'appel sans demander, dans tous les modes. Ne connectez que des serveurs de
+  confiance, ou gardez l'outil hors des `tools:` d'un agent qui ne doit pas lire leurs prompts.
+
 ## Limites honnêtes
 
 Alignées sur [Limitations connues](../reference/limitations.md) et l'entrée PUB-07 du
 changelog :
 
-- **Pas de `subscriptions/listen`** — les notifications de changement poussées par le
-  serveur ne sont pas consommées.
+- **Pas de `subscriptions/listen`** — le client HTTP n'ouvre aucun flux serveur : un serveur qui ne notifie que sur un tel flux n'est pas entendu ; le client stdio entend chaque notification.
+- **Ni sampling, ni roots, ni elicitation** — une requête du serveur pour l'un d'eux reçoit `-32601` : le sampling ferait appeler un LLM par Orkeon pour le serveur hors du budget, du gardien et du coût d'un run ; les roots exposeraient des chemins physiques (règle VFS) ; l'elicitation attend le human-in-the-loop durable.
 - **Pas de requêtes multi-aller-retour (MRTR)** — un résultat intermédiaire moderne
   `input_required` remonte comme une erreur d'outil explicite, jamais comme des données
   partielles.

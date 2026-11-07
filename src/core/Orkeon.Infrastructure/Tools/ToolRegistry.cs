@@ -53,6 +53,17 @@ public sealed class ToolRegistry : IToolRegistry
     }
 
     /// <inheritdoc />
+    public Task<bool> ReplaceToolAsync(IBaseTool current, IBaseTool replacement)
+    {
+        ArgumentNullException.ThrowIfNull(current);
+        ArgumentNullException.ThrowIfNull(replacement);
+        if (!string.Equals(current.Name, replacement.Name, StringComparison.OrdinalIgnoreCase))
+            throw new ArgumentException("A replacement carries the name of the tool it replaces.", nameof(replacement));
+        // One compare-and-swap: a reader finds the old instance or the new one, never a gap.
+        return Task.FromResult(_tools.TryUpdate(current.Name, replacement, current));
+    }
+
+    /// <inheritdoc />
     public Task<bool> UnregisterToolAsync(string toolId)
         => Task.FromResult(_tools.TryRemove(toolId, out _));
 
