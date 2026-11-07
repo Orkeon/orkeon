@@ -532,9 +532,9 @@ public class FirefoxToolTests : FirefoxSessionTestBase
         var typed = Body(await CallAsync(tool, "type", ("node_id", "p1#3"), ("text", "orkeon")));
         var clicked = Body(await CallAsync(tool, "click", ("node_id", "p1#4")));
 
-        Assert.Empty(Ids(typed));
+        Assert.False(typed.ContainsKey("nodes"));
         Assert.Equal(Home, typed["url"]!.GetValue<string>());
-        Assert.Empty(Ids(clicked));
+        Assert.False(clicked.ContainsKey("nodes"));
         var keys = Browser.Wire.ParamsOf("input.performActions").First(p => p["actions"]![0]!["type"]!.GetValue<string>() == "key");
         Assert.Equal(
             "orkeon",
@@ -607,6 +607,21 @@ public class FirefoxToolTests : FirefoxSessionTestBase
         Assert.False(thrown.Success);
         Assert.Contains("nope is not defined", thrown.Error, StringComparison.Ordinal);
         Assert.False(Assert.Single(Launcher.Browsers).Disposed);
+    }
+
+    [Fact]
+    public async Task Should_LeaveOutTheListsTheActionDidNotProduce()
+    {
+        await using var run = AgentRunScope.Begin("agent-1");
+        using var tool = Tool();
+
+        var navigated = Body(await CallAsync(tool, "navigate", ("url", Home)));
+        var tabs = Body(await CallAsync(tool, "tabs"));
+
+        // The outline comes with navigate; an empty tabs, hits or dialogs would read as "none" where none was asked.
+        Assert.True(navigated.ContainsKey("nodes"));
+        Assert.Equal(["action", "success", "url", "title", "truncated", "total_nodes", "nodes", "tab", "profile"], navigated.Select(pair => pair.Key));
+        Assert.Equal(["action", "success", "url", "title", "truncated", "tab", "tabs", "profile"], tabs.Select(pair => pair.Key));
     }
 
     [Fact]

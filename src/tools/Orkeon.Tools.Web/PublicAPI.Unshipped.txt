@@ -69,13 +69,13 @@ Orkeon.Tools.Web.FirefoxResponse.<Clone>$() -> Orkeon.Tools.Web.FirefoxResponse!
 Orkeon.Tools.Web.FirefoxResponse.Action.get -> string!
 Orkeon.Tools.Web.FirefoxResponse.Action.init -> void
 Orkeon.Tools.Web.FirefoxResponse.AlreadyBounded.get -> bool
-Orkeon.Tools.Web.FirefoxResponse.Dialogs.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Orkeon.Tools.Web.FirefoxResponse.Dialogs.get -> System.Collections.Generic.IReadOnlyList<string!>?
 Orkeon.Tools.Web.FirefoxResponse.Dialogs.init -> void
 Orkeon.Tools.Web.FirefoxResponse.Equals(Orkeon.Tools.Web.FirefoxResponse? other) -> bool
 Orkeon.Tools.Web.FirefoxResponse.Error.get -> string?
 Orkeon.Tools.Web.FirefoxResponse.Error.init -> void
 Orkeon.Tools.Web.FirefoxResponse.FirefoxResponse() -> void
-Orkeon.Tools.Web.FirefoxResponse.Nodes.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Tools.Web.FirefoxNode!>!
+Orkeon.Tools.Web.FirefoxResponse.Nodes.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Tools.Web.FirefoxNode!>?
 Orkeon.Tools.Web.FirefoxResponse.Nodes.init -> void
 Orkeon.Tools.Web.FirefoxResponse.SavedPath.get -> string?
 Orkeon.Tools.Web.FirefoxResponse.SavedPath.init -> void
@@ -125,7 +125,7 @@ Orkeon.Tools.Web.FirefoxHit.Score.get -> double
 Orkeon.Tools.Web.FirefoxHit.Score.init -> void
 Orkeon.Tools.Web.FirefoxRequest.Query.get -> string?
 Orkeon.Tools.Web.FirefoxRequest.Query.init -> void
-Orkeon.Tools.Web.FirefoxResponse.Hits.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Tools.Web.FirefoxHit!>!
+Orkeon.Tools.Web.FirefoxResponse.Hits.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Tools.Web.FirefoxHit!>?
 Orkeon.Tools.Web.FirefoxResponse.Hits.init -> void
 Orkeon.Tools.Web.FirefoxTool.FirefoxTool(Orkeon.Tools.Web.FirefoxToolOptions! options, Orkeon.Domain.FileSystem.IFileSystemService! fileSystem, Orkeon.Domain.Tools.Security.IUrlValidator? urlValidator = null, Orkeon.Rag.Abstractions.Interfaces.IEphemeralCollectionSearch? search = null, Microsoft.Extensions.Logging.ILogger? logger = null) -> void
 override Orkeon.Tools.Web.FirefoxHit.Equals(object? obj) -> bool
@@ -137,7 +137,7 @@ Orkeon.Tools.Web.FirefoxRequest.Tab.get -> string?
 Orkeon.Tools.Web.FirefoxRequest.Tab.init -> void
 Orkeon.Tools.Web.FirefoxResponse.Tab.get -> string?
 Orkeon.Tools.Web.FirefoxResponse.Tab.init -> void
-Orkeon.Tools.Web.FirefoxResponse.Tabs.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Tools.Web.FirefoxTabInfo!>!
+Orkeon.Tools.Web.FirefoxResponse.Tabs.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Tools.Web.FirefoxTabInfo!>?
 Orkeon.Tools.Web.FirefoxResponse.Tabs.init -> void
 Orkeon.Tools.Web.FirefoxTabInfo
 Orkeon.Tools.Web.FirefoxTabInfo.<Clone>$() -> Orkeon.Tools.Web.FirefoxTabInfo!

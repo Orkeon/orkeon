@@ -122,8 +122,8 @@ public sealed record FirefoxResponse : IBoundedToolResponse
 
     /// <summary>Gets the nodes of the page the action returns.</summary>
     [ReturnSchema(Description = "Nodes of the page: id, kind (section, link, control), role, name, parent_id (the section or region that holds it), text (the start of a section's text, the target of a link, the value of a control). " +
-        "Returned by snapshot and find, and by any action that opened another page: earlier node ids no longer apply then")]
-    public IReadOnlyList<FirefoxNode> Nodes { get; init; } = [];
+        "Returned by snapshot and find, and by any action that opened another page: earlier node ids no longer apply then. Absent otherwise")]
+    public IReadOnlyList<FirefoxNode>? Nodes { get; init; }
 
     /// <summary>Gets the text the action read.</summary>
     [ReturnSchema(Description = "read: the text of the page or of the node")]
@@ -131,7 +131,7 @@ public sealed record FirefoxResponse : IBoundedToolResponse
 
     /// <summary>Gets the sections of the page closest in meaning to the query.</summary>
     [ReturnSchema(Description = "search: the sections closest in meaning to the query, best first: node_id (read it, or find under it), score, name, excerpt")]
-    public IReadOnlyList<FirefoxHit> Hits { get; init; } = [];
+    public IReadOnlyList<FirefoxHit>? Hits { get; init; }
 
     /// <summary>Gets the virtual path the screenshot was written to.</summary>
     [ReturnSchema(Description = "screenshot: the virtual path of the image written")]
@@ -142,8 +142,8 @@ public sealed record FirefoxResponse : IBoundedToolResponse
     public string? Value { get; init; }
 
     /// <summary>Gets what the dialogs the page opened said.</summary>
-    [ReturnSchema(Description = "What the dialogs the page opened said (alert, confirm, prompt); they were dismissed")]
-    public IReadOnlyList<string> Dialogs { get; init; } = [];
+    [ReturnSchema(Description = "What the dialogs the page opened during the action said (alert, confirm, prompt); they were dismissed. Absent when none opened")]
+    public IReadOnlyList<string>? Dialogs { get; init; }
 
     /// <summary>Gets the handle of the tab the actions drive now.</summary>
     [ReturnSchema(Description = "The tab the actions drive now (t1, t2): the one a link opened, or the one switched to")]
@@ -151,7 +151,7 @@ public sealed record FirefoxResponse : IBoundedToolResponse
 
     /// <summary>Gets the tabs of the agent.</summary>
     [ReturnSchema(Description = "tabs: the tabs of this agent, in the order they were opened: id, url, title, current")]
-    public IReadOnlyList<FirefoxTabInfo> Tabs { get; init; } = [];
+    public IReadOnlyList<FirefoxTabInfo>? Tabs { get; init; }
 
     /// <summary>Gets the profile the browser runs with.</summary>
     [ReturnSchema(Description = "The profile the browser runs with: disposable, or its name")]
@@ -540,7 +540,7 @@ public sealed partial class FirefoxTool : ToolBase<FirefoxRequest, FirefoxRespon
             Url = state.Url,
             Title = state.Title,
             Value = value,
-            Dialogs = session.TakeDialogs(),
+            Dialogs = session.TakeDialogs() is { Count: > 0 } dialogs ? dialogs : null,
             Tab = session.CurrentTab,
             Profile = session.Browser.Profile.Name,
         };
@@ -677,7 +677,7 @@ public sealed partial class FirefoxTool : ToolBase<FirefoxRequest, FirefoxRespon
         var page = await CurrentAsync(session, cancellationToken).ConfigureAwait(false);
         var sources = Sources(page);
         if (sources.IsEmpty)
-            return new FirefoxResponse();
+            return new FirefoxResponse { Hits = [] };
 
         EphemeralSearchResult found;
         try

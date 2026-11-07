@@ -477,15 +477,15 @@ declare global {
             url?: string | null;
         }, ctx?: ExecutionContext): Promise<{
             readonly action: string;
-            readonly dialogs: readonly string[];
+            readonly dialogs?: readonly string[];
             readonly error?: string;
-            readonly hits: readonly { readonly excerpt: string; readonly name: string; readonly node_id: string; readonly score: number; }[];
-            readonly nodes: readonly { readonly id: string; readonly kind: string; readonly name: string; readonly parent_id?: string; readonly role: string; readonly text: string; }[];
+            readonly hits?: readonly { readonly excerpt: string; readonly name: string; readonly node_id: string; readonly score: number; }[];
+            readonly nodes?: readonly { readonly id: string; readonly kind: string; readonly name: string; readonly parent_id?: string; readonly role: string; readonly text: string; }[];
             readonly profile?: string;
             readonly saved_path?: string;
             readonly success: boolean;
             readonly tab?: string;
-            readonly tabs: readonly { readonly current: boolean; readonly id: string; readonly title: string; readonly url: string; }[];
+            readonly tabs?: readonly { readonly current: boolean; readonly id: string; readonly title: string; readonly url: string; }[];
             readonly text?: string;
             readonly title?: string;
             readonly total_nodes?: number;

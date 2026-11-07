@@ -71,9 +71,11 @@ reading actions pass in `plan` mode, `screenshot` is an edit, the others are exe
 | `close` | `profile` | Execute | Closes the run's browser; the next action starts a new one. Outside any run, under `Lifetime: host`, closes the host's browser of `profile`, the default's without (`profile` counts there only) |
 
 Every answer carries the action, `url` and `title` of the page shown, `tab`, the handle of the
-tab the actions drive now, `profile`, the one the browser runs with, and `dialogs`: the
-`alert`, `confirm` and `prompt` boxes the page opened during the action, dismissed so the page
-never freezes (a `beforeunload` question is accepted: leaving was what the agent asked for).
+tab the actions drive now, and `profile`, the one the browser runs with. `dialogs` comes with
+it when the page opened `alert`, `confirm` or `prompt` boxes during the action: what they said,
+dismissed so the page never freezes (a `beforeunload` question is accepted: leaving was what the
+agent asked for). The lists an action did not produce - `nodes`, `hits`, `tabs` - are absent from
+its answer, never empty.
 
 Every action takes an optional `profile`: it counts at the first action of a run, when the
 browser starts; a browser already open keeps its profile, and an action that names another one
