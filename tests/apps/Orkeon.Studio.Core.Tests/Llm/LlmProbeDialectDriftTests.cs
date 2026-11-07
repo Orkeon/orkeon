@@ -45,7 +45,7 @@ public sealed class LlmProbeDialectDriftTests
     [MemberData(nameof(Endpoints))]
     public void The_probes_thinking_level_is_the_one_the_provider_declares(string endpoint)
     {
-        var factory = new LlmProviderFactory(new OneClientFactory(), NullLoggerFactory.Instance);
+        var factory = new LlmProviderFactory(new OneClientFactory(), NullLoggerFactory.Instance, new Orkeon.Tests.Shared.FileSystem.FakeFileSystemService());
         var built = factory.Create(LlmConfig.Create("probe-model", "k") with { BaseUrl = new Uri(endpoint) });
         var declared = built is LlmProviderAdapter adapter
             ? adapter.UnderlyingProvider.Capabilities

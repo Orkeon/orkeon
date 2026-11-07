@@ -48,6 +48,11 @@ public sealed partial class TypingsRuntimeParityTests
         ["PublishedEvent"] = typeof(JsPublishedEvent),
         ["CrewResult"] = typeof(JsCrewResult),
         ["TaskResult"] = typeof(JsTaskResult),
+        ["namespace test"] = typeof(Orkeon.Scripting.Testing.JsTestNamespace),
+        ["MockLlmHandle"] = typeof(Orkeon.Scripting.Testing.JsMockLlmHandle),
+        ["MockLlmExpectation"] = typeof(Orkeon.Scripting.Testing.JsMockLlmExpectationBuilder),
+        ["MockToolHandle"] = typeof(Orkeon.Scripting.Testing.JsMockToolHandle),
+        ["MockToolExpectation"] = typeof(Orkeon.Scripting.Testing.JsMockToolExpectationBuilder),
     };
 
     public static TheoryData<string> Pairs() => new(s_pairs.Keys.Order(StringComparer.Ordinal));

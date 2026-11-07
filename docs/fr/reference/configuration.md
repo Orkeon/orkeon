@@ -126,8 +126,7 @@ une ligne qui nomme la clé — code de sortie `1` pour `orkeon` et `orkeon-repl
   `Information`, `Warning`, `Error`, `Critical`, `None`, sans tenir compte de la casse.
 - **Une clé** qu'aucune section ne porte, contre la forme que déclarent ses lecteurs — les lecteurs
   d'une même section ensemble, une sous-section qu'un autre lecteur déclare comprise :
-  `Orkeon:Guardian:Enabeld`, `Llm:Provider` (rien ne la lit : le fournisseur se déduit de `BaseUrl`
-  et du modèle). Le refus d'une clé inconnue se termine par la commande qui liste les
+  `Orkeon:Guardian:Enabeld`, `Llm:Modle`. Le refus d'une clé inconnue se termine par la commande qui liste les
   clés de sa section — `` `orkeon settings Orkeon:Guardian` lists its keys ``. Un nom de section sous `Orkeon:` et sous les groupes `Orkeon:Cli`,
   `Orkeon:Tools`, `Orkeon:Scripting`, `Orkeon:Security` et `Security` doit être l'une de celles
   qu'Orkeon lit (`SettingsSections`) ; le refus propose la plus proche (`Orkeon:Guardain` →
@@ -191,7 +190,7 @@ qu'elle accepte quand leur liste est fermée, et son sens.
 <!-- settings-index -->
 | Catégorie | Sections | Clés |
 |---|---|---|
-| [Modèles](#modèles) | [`Evaluation`](#evaluation), [`Llm`](#llm), [`LlmLogging`](#llmlogging), [`Orkeon:CostTracking`](#orkeoncosttracking), [`Orkeon:Decision`](#orkeondecision), [`Orkeon:Decision:Guard`](#orkeondecisionguard), [`Orkeon:Kev`](#orkeonkev), [`Orkeon:Liquid`](#orkeonliquid), [`Orkeon:TokenCounter`](#orkeontokencounter), [`Orkeon:TypeSafe`](#orkeontypesafe) | 95 |
+| [Modèles](#modèles) | [`Evaluation`](#evaluation), [`Llm`](#llm), [`LlmLogging`](#llmlogging), [`Orkeon:CostTracking`](#orkeoncosttracking), [`Orkeon:Decision`](#orkeondecision), [`Orkeon:Decision:Guard`](#orkeondecisionguard), [`Orkeon:Kev`](#orkeonkev), [`Orkeon:Liquid`](#orkeonliquid), [`Orkeon:TokenCounter`](#orkeontokencounter), [`Orkeon:TypeSafe`](#orkeontypesafe) | 99 |
 | [Débit et budgets](#débit-et-budgets) | [`RateLimiting`](#ratelimiting), [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting) | 11 |
 | [Mémoire et vecteurs](#mémoire-et-vecteurs) | [`Memory`](#memory), [`Orkeon:ChromaDb`](#orkeonchromadb), [`Orkeon:CognitiveMemory`](#orkeoncognitivememory), [`Orkeon:CrewMemory`](#orkeoncrewmemory), [`Orkeon:EmbeddingCache`](#orkeonembeddingcache), [`Orkeon:Embeddings`](#orkeonembeddings), [`Orkeon:Encryption`](#orkeonencryption), [`Orkeon:LanceDb`](#orkeonlancedb), [`Orkeon:Pinecone`](#orkeonpinecone), [`Orkeon:Redis`](#orkeonredis), [`Orkeon:Sqlite`](#orkeonsqlite), [`Orkeon:VectorSearch`](#orkeonvectorsearch) | 64 |
 | [RAG](#rag) | [`Orkeon:Rag`](#orkeonrag), [`Orkeon:Rag:Ingestion`](#orkeonragingestion), [`Orkeon:Rag:QueryRouting`](#orkeonragqueryrouting), [`Orkeon:Rag:Retrieval:Hybrid`](#orkeonragretrievalhybrid), [`Orkeon:Rag:WebFallback`](#orkeonragwebfallback) | 34 |
@@ -203,7 +202,7 @@ qu'elle accepte quand leur liste est fermée, et son sens.
 | [Hôte de service et A2A](#hôte-de-service-et-a2a) | [`A2A`](#a2a), [`A2A:Security`](#a2asecurity), [`A2A:Security:AzureAD`](#a2asecurityazuread), [`A2A:Security:Oidc`](#a2asecurityoidc), [`Orkeon:Host`](#orkeonhost), [`Orkeon:Host:Discord`](#orkeonhostdiscord) | 46 |
 | [Observabilité](#observabilité) | [`Logging`](#logging), [`Orkeon:Monitoring`](#orkeonmonitoring), [`Telemetry`](#telemetry) | 8 |
 
-79 sections, 472 clés. Lues par aucun binaire livré, seulement par un hôte écrit en C# (8) : [`Evaluation`](#evaluation), [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:CognitiveMemory`](#orkeoncognitivememory), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Monitoring`](#orkeonmonitoring).
+79 sections, 476 clés. Lues par aucun binaire livré, seulement par un hôte écrit en C# (8) : [`Evaluation`](#evaluation), [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:CognitiveMemory`](#orkeoncognitivememory), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Monitoring`](#orkeonmonitoring).
 <!-- /settings-index -->
 
 Lire un tableau :
@@ -312,11 +311,15 @@ avec ses propres clés.
 | `Profiles:<nom>:MaxRetries` | entier | `10` | Combien de fois un appel qui échoue sur une erreur passagère est retenté ; `0` ne retente jamais. |
 | `Profiles:<nom>:MaxTokens` | entier | — | Le plus grand nombre de tokens qu'une réponse peut contenir : un épinglage. Omise, une requête porte le maximum documenté de son modèle, et 4096 pour un modèle que le catalogue ne connaît pas. |
 | `Profiles:<nom>:Model` | chaîne | — | Le nom du modèle. Omis, le fournisseur utilise son propre modèle par défaut. |
+| `Profiles:<nom>:Provider` | chaîne | — | `mock`, la seule valeur : le fournisseur hors ligne qui répond depuis le fichier JSONL que nomme `Responses`. Omise, le fournisseur découle de `BaseUrl`, du nom du modèle et de la clé. |
+| `Profiles:<nom>:Responses` | chaîne | — | Avec `Provider: mock`, le chemin virtuel du fichier JSONL — un objet `{match, regex?, content, toolCalls?}` par ligne — dont le fournisseur mock tire ses réponses. |
 | `Profiles:<nom>:StreamIdleSeconds` | entier | — | La plus longue absence de réponse tolérée entre deux fragments d'une réponse en flux, en secondes. Omise, rien ne la borne : `TimeoutSeconds` seule borne l'appel entier, en flux ou non. Un modèle qui réfléchit avant d'écrire peut rester silencieux un moment : ne la fixez qu'au-dessus de ce silence, ou coupez sa réflexion. |
 | `Profiles:<nom>:Temperature` | nombre | — | La température d'échantillonnage. Omise, aucune n'est envoyée et le modèle applique la sienne. |
 | `Profiles:<nom>:Thinking:Effort` | chaîne | — | L'intensité de sa réflexion, dans les mots du fournisseur (`low`, `medium`, `high`…). Omise, celle du fournisseur. |
 | `Profiles:<nom>:Thinking:Enabled` | booléen | — | Si le modèle réfléchit avant de répondre. Omise, le comportement propre du fournisseur. |
 | `Profiles:<nom>:TimeoutSeconds` | entier | `30` | La durée maximale d'un appel, en secondes. Trop courte à son défaut pour un modèle qui réfléchit avant de répondre : écrivez 600 pour un tel modèle, ou coupez sa réflexion. |
+| `Provider` | chaîne | — | `mock`, la seule valeur : le fournisseur hors ligne qui répond depuis le fichier JSONL que nomme `Responses`. Omise, le fournisseur découle de `BaseUrl`, du nom du modèle et de la clé. |
+| `Responses` | chaîne | — | Avec `Provider: mock`, le chemin virtuel du fichier JSONL — un objet `{match, regex?, content, toolCalls?}` par ligne — dont le fournisseur mock tire ses réponses. |
 | `StreamIdleSeconds` | entier | — | La plus longue absence de réponse tolérée entre deux fragments d'une réponse en flux, en secondes. Omise, rien ne la borne : `TimeoutSeconds` seule borne l'appel entier, en flux ou non. Un modèle qui réfléchit avant d'écrire peut rester silencieux un moment : ne la fixez qu'au-dessus de ce silence, ou coupez sa réflexion. |
 | `Temperature` | nombre | — | La température d'échantillonnage. Omise, aucune n'est envoyée et le modèle applique la sienne. |
 | `Thinking:Effort` | chaîne | — | L'intensité de sa réflexion, dans les mots du fournisseur (`low`, `medium`, `high`…). Omise, celle du fournisseur. |
@@ -371,6 +374,10 @@ accomplie). Épinglez-le quand le modèle n'est pas au catalogue ou pour un plaf
 un profil de modèle Studio l'épingle en `ORKEON_Llm__MaxTokens`, et l'éditeur de profil dit ce
 qu'un champ vide signifie pour le modèle choisi. Un plafond du catalogue que le point d'accès
 refuse est rejoué une fois sans le champ, avec un avertissement qui nomme le modèle.
+
+#### `Provider: mock` répond depuis un fichier
+
+Un profil — ou la section `Llm` elle-même — écrit `"Provider": "mock", "Responses": "/llm-mock/answers.jsonl"` ne construit aucun fournisseur d'éditeur : il répond depuis un fichier JSONL lu par le système de fichiers virtuel, un objet `{"match", "regex"?, "content", "toolCalls"?}` par ligne (la première ligne dont `match` convient au prompt l'emporte ; voir [`orkeon run --llm-mock`](./cli.md#orkeon-run)). Il ne fait aucun appel réseau : une crew YAML ou un script `.ork.ts` tourne hors ligne avec la même sortie à chaque fois. `mock` est la seule valeur que prend `Provider` ; sinon le fournisseur découle de `BaseUrl`, du nom du modèle et de la clé. `Responses` y est obligatoire. `orkeon run --llm-mock <fichier>` écrit les deux clés pour chaque profil de l'exécution. Le mock n'est pas l'un des seize fournisseurs : c'est un double de test.
 
 #### `Grammar` est pour un serveur compatible llama.cpp
 

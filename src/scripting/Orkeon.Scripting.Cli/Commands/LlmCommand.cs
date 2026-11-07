@@ -231,7 +231,7 @@ internal static class LlmCommand
         var config = BuildConfig(options, apiKey);
 
         using var httpClientFactory = new CliHttpClientFactory();
-        var factory = new LlmProviderFactory(httpClientFactory, NullLoggerFactory.Instance);
+        var factory = LlmProviderFactory.WithoutMounts(httpClientFactory, NullLoggerFactory.Instance);
         var adapter = factory.Create(options.Provider, config);
         if (adapter is not LlmProviderAdapter typed)
         {

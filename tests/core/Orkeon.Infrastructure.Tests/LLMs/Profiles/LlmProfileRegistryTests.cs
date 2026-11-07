@@ -265,6 +265,7 @@ public sealed class LlmProfileRegistryTests
         var services = new ServiceCollection();
         services.AddLogging();
         services.AddHttpClient();
+        services.AddSingleton<Orkeon.Domain.FileSystem.IFileSystemService, Orkeon.Tests.Shared.FileSystem.FakeFileSystemService>();
         services.AddSingleton<Application.Interfaces.Ports.ILlmProviderFactory, LlmProviderFactory>();
         services.AddOrkeonLlmProfiles(Configuration(
             ("Llm:Profiles:claude:BaseUrl", "https://api.anthropic.com/v1"),

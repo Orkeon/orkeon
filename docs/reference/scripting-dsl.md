@@ -288,8 +288,24 @@ name } }` and the context; `code` is one of `rate_limit`, `network`, `timeout`,
 | `llm` | The model settings `agentBuilder().llm(...)` takes (declarative shape). `llm.default_` — a value, not a function — is the host's provider on its configured model (an empty `model` when the host configures none: the agent then runs on that provider's own default, never on OpenAI's), or the `<undefined-llm>` echo when the host has none; `llm.model(name, overrides?)` is the same provider on another model; `llm.profile(name, overrides?)` is one of the host's named profiles (`Llm:Profiles:<name>`) on its own model — an agent configured with it runs its turns and its `ctx.llm` calls on that provider, and a name the host does not offer throws, listing the known ones (`"default"` is `llm.default_`). `with({ model, temperature, maxTokens, responseFormat, effort, cache })` returns a copy, keeps the profile, and refuses any other key. There is no per-vendor factory: a script picks among the providers the host configured, by profile name. |
 | `tools` | The host's built-in tools, called from a body: `tools.fileRead({ path })`, the snake_case name camelCased. `tools.generated.d.ts` declares the input and the result of every built-in tool a run registers, written from its request and response records (the tool's own snake_case keys: `tools.fileRead({ path, max_length })`), so a misspelled parameter fails the type check; `tools.d.ts` declares the e-mail and drive families by hand. A plugin or MCP tool is reachable the same way, untyped. |
 | `rag` | `rag.ingest({ collection, sources, chunkingStrategy?, reindex?, prune? })`, `rag.query(question, { collection, profile?, topN? })` (a grounded answer with citations) and `rag.retrieve(...)` (the same passages, no generation). Needs a host that registered the RAG subsystem (`AddOrkeonRag`); bound in `orkeon run`, the REPL and the daemon host alike. |
+| `test` | Only under `orkeon run --test`: the mocks and assertions of the script ([below](#the-test-namespace-orkeon-run---test)). |
 | `ErrorAction` | The factories an `onError` handler returns: `fail()`, `skip()`, `fallback(value)`, `retry({ delay?, max? })`. Anything else is treated as `fail()`. |
 | `stateMachine`, `stateGraph`, `START`, `END` | Below. |
+
+## The `test` namespace (`orkeon run --test`)
+
+`orkeon run --test` binds the global `test` (declared in `Typings/test.d.ts`); without the flag a script has none, and a reference to it is a `ReferenceError`. Under the flag the host's configured model — or the `--llm-mock` file — stays behind the mock: a prompt an expectation of `test.mockLlm` fits is answered by it, any other prompt goes to the configured provider. One provider is shared by `ctx.llm`, the crews of the script and the namespace, so an expectation registered in the script is the one a call meets.
+
+```ts
+test.mockLlm.when("weather").respond("sunny");        // a string to look for, or { prompt: /regex/ }
+test.mockTool("lookup").when({ city: "Paris" }).respond({ temp: 21 });
+
+await crew.run();
+test.assertLlmCalled({ times: 1, with: "weather" });
+test.assertToolCalled("lookup");
+```
+
+From .NET, `MockLlmProvider` and `MockTool` (`Orkeon.Scripting.Testing`) take the same expectations through `When(string | Regex).Respond(...)`; `TestOverrideLlmProvider` is the provider that puts them in front of a configured one.
 
 ## `stateMachine` and `stateGraph`
 

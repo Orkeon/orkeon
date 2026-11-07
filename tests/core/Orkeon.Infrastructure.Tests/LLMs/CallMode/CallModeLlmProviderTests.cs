@@ -177,6 +177,7 @@ public sealed class CallModeLlmProviderTests
         var services = new ServiceCollection();
         services.AddLogging();
         services.AddHttpClient();
+        services.AddSingleton<Orkeon.Domain.FileSystem.IFileSystemService, Orkeon.Tests.Shared.FileSystem.FakeFileSystemService>();
         services.AddSingleton<ILlmProviderFactory, LlmProviderFactory>();
         services.AddOrkeonLlmProfiles(configuration);
         await using var container = services.BuildServiceProvider();

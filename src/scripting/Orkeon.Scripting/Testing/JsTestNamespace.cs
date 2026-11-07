@@ -25,8 +25,20 @@ public sealed class JsTestNamespace
 
     /// <summary>Creates an empty namespace with a fresh mock provider and no registered tools.</summary>
     public JsTestNamespace()
+        : this(new MockLlmProvider())
     {
-        Llm = new MockLlmProvider();
+    }
+
+    /// <summary>
+    /// Creates an empty namespace over <paramref name="llm"/>: the mock of the run's
+    /// <see cref="TestOverrideLlmProvider"/>, so an expectation a script registers is the one the run's
+    /// calls meet.
+    /// </summary>
+    /// <param name="llm">The mock the expectations and assertions work on.</param>
+    public JsTestNamespace(MockLlmProvider llm)
+    {
+        ArgumentNullException.ThrowIfNull(llm);
+        Llm = llm;
         mockLlm = new JsMockLlmHandle(Llm);
         mockTool = name =>
         {

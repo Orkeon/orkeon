@@ -49,6 +49,12 @@ public static class RunOptionNames
     /// <summary>Where the exchange log files land.</summary>
     public const string LlmLogPath = "llm-log-path";
 
+    /// <summary>Answer every LLM call from a JSONL responses file, offline.</summary>
+    public const string LlmMock = "llm-mock";
+
+    /// <summary>Bind the global <c>test</c> namespace (<c>test.mockLlm</c>, <c>test.mockTool</c>) in a script.</summary>
+    public const string Test = "test";
+
     /// <summary>A template variable, <c>name=value</c>.</summary>
     public const string Var = "var";
 

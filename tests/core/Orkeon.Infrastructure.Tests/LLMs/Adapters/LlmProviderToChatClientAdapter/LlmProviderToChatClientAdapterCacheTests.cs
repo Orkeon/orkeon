@@ -36,7 +36,7 @@ public sealed class LlmProviderToChatClientAdapterCacheTests
         var hostConfig = LlmConfig.Create("gpt-5.6-sol", TestApiKey)
             with { Cache = LlmCacheConfig.SystemPrompt() with { Ttl = "1h" } };
         using var loggers = new SharedLoggerFactory(logger);
-        var providerFactory = new LlmProviderFactory(factory, loggers);
+        var providerFactory = new LlmProviderFactory(factory, loggers, new Orkeon.Tests.Shared.FileSystem.FakeFileSystemService());
         var basic = providerFactory.Create(hostConfig);
         var wrapped = Assert.IsType<LlmProviderAdapter>(basic);
         using var adapter = new LlmProviderToChatClientAdapter(wrapped.UnderlyingProvider, hostConfig);

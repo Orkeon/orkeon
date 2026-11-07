@@ -88,6 +88,7 @@ public static partial class RunnerExecution
 
         var cliMounts = opts.Mounts.ToList();
         var llmLogPath = opts.ResolvedLlmLogPath;
+        var llmMockPath = opts.ResolvedLlmMockPath;
 
         // The crew's own mounts: block, read raw before any host: it is one of the inputs that
         // decide which settings entries the host mounts (VFS-90), and the loader that reads it
@@ -105,11 +106,13 @@ public static partial class RunnerExecution
             : OfferedMountSelectors.All;
         var error = opts.RunnerConsole.ErrorOutput;
 
-        if (!EnsureVirtualRootsAreUnique(cliMounts, layers, target.SettingsPath, error)
+        if (!RunnerLlmMock.EnsureReadable(llmMockPath, error)
+            || !RunnerLlmMock.EnsureSeparateFrom(llmMockPath, target.ConfigDir, error)
+            || !EnsureVirtualRootsAreUnique(cliMounts, layers, target.SettingsPath, error)
             || !EnsureExternalMountsAllowed(opts, target.IsScript ? null : target.ConfigDir, llmLogPath, error)
             || !EnsureReservedRootsAreFree(
                 cliMounts, layers, error,
-                target.VirtualRoot, RunnerVirtualRoots.LlmLogs, RunnerVirtualRoots.Sandbox, RunnerVirtualRoots.State)
+                target.VirtualRoot, RunnerVirtualRoots.LlmLogs, RunnerVirtualRoots.LlmMock, RunnerVirtualRoots.Sandbox, RunnerVirtualRoots.State)
             || !EnsureMountSelectionIsResolvable(
                 cliMounts, opts.MountIds, crewMounts, new MountLayers(layers, target.SettingsPath), offered, error, out var selection)
             || !EnsureMountSourcesExist(cliMounts, layers, selection, error)
@@ -127,7 +130,8 @@ public static partial class RunnerExecution
 
         cliMounts.Insert(0, $"{FileSystemMount.Quote(target.ConfigDir)}:{target.VirtualRoot}:ro");
 
-        var internalMounts = RunnerLlmLog.CreateMounts(llmLogPath);
+        IReadOnlyList<string> internalMounts = [.. RunnerLlmLog.CreateMounts(llmLogPath), .. RunnerLlmMock.CreateMounts(llmMockPath)];
+        IReadOnlyList<string> inputDirectories = [.. (target.IsScript ? new[] { target.ConfigDir } : []), .. RunnerLlmMock.InputDirectories(llmMockPath)];
         var verbosity = Math.Clamp(opts.Verbose, 0, 2);
         var outputMountPath = DetectOutputMountPath(cliMounts);
 
@@ -140,11 +144,12 @@ public static partial class RunnerExecution
                 {
                     CliMounts = cliMounts,
                     InternalMounts = internalMounts,
-                    InputDirectories = target.IsScript ? [target.ConfigDir] : [],
+                    InputDirectories = inputDirectories,
                     SelectedMountIds = selection.SelectedMountIds,
                     CrewMountReferences = selection.CrewMountReferences,
                     AllowExternalMounts = opts.EffectiveAllowExternalMounts,
                     LlmLogVirtualPath = llmLogPath != null ? RunnerVirtualRoots.LlmLogs : null,
+                    LlmMockResponses = RunnerLlmMock.VirtualPath(llmMockPath),
                 },
                 configureLogging: configureLogging ?? (verbosity > 0
                     ? (ctx, b) => ConfigureVerboseLogging(b, verbosity, ctx.Configuration)
@@ -1153,7 +1158,13 @@ public static partial class RunnerExecution
     /// </summary>
     private static string? ResolveConfiguredLlmEndpoint(IHost host)
     {
-        var url = host.Services.GetService<IConfiguration>()?["Llm:BaseUrl"];
+        var configuration = host.Services.GetService<IConfiguration>();
+        // The mock provider (--llm-mock) has no endpoint: whatever address the settings still carry
+        // is never dialled, so it is neither probed nor named in a diagnostic.
+        if (string.Equals(configuration?["Llm:Provider"], Orkeon.Constants.Llm.LlmProviderKeys.Mock, StringComparison.OrdinalIgnoreCase))
+            return null;
+
+        var url = configuration?["Llm:BaseUrl"];
         return string.IsNullOrWhiteSpace(url) ? null : url;
     }
 

@@ -1,0 +1,4 @@
+{"match": "^Task:\\s+Evaluate the submission's content quality", "regex": true, "content": "Content grade: 16/20, accurate and well evidenced."}
+{"match": "^Task:\\s+Evaluate the submission's formal quality", "regex": true, "content": "Form grade: 14/20, clear structure and a few style slips."}
+{"match": "^Task:\\s+Evaluate the submission's methodological rigor", "regex": true, "content": "Methodology grade: 15/20, sound design and a thin discussion of limits."}
+{"match": "^Task:\\s+Consolidate the three independent grading reports", "regex": true, "content": "Final grade: 15/20, consolidated from the content, form and methodology reports."}

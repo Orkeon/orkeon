@@ -11,7 +11,7 @@ namespace Orkeon.Infrastructure.LLMs.Profiles;
 /// The keys of the <c>Llm</c> section, which <see cref="LlmSettings"/> reads raw (GAP-40): the
 /// default profile's, its named profiles under <c>Profiles</c>, and <c>AvailableModels</c>, which the
 /// session tools read. Declared by <c>AddOrkeonLlmProfiles</c>, so a key the section does not carry —
-/// <c>Llm:Provider</c>, which nothing reads — refuses the host's start, naming it. A key
+/// <c>Llm:Providr</c>, a typo — refuses the host's start, naming it. A key
 /// <see cref="LlmSettings"/> starts to read is added here. Nothing binds it: its properties are the
 /// keys, and their values on a new instance the defaults <see cref="LlmSettings"/> and the provider
 /// apply to a key left out, each named where it is defined.
@@ -39,6 +39,19 @@ internal class LlmProfileShape
     /// address of the provider the model's name or the key points to.
     /// </summary>
     public string? BaseUrl { get; set; }
+
+    /// <summary>
+    /// <c>mock</c>, the only value: the offline provider that answers from the JSONL file
+    /// <c>Responses</c> names. Left out, the provider follows from <c>BaseUrl</c>, the model's name
+    /// and the key.
+    /// </summary>
+    public string? Provider { get; set; }
+
+    /// <summary>
+    /// With <c>Provider: mock</c>, the virtual path of the JSONL file — one <c>{match, regex?, content,
+    /// toolCalls?}</c> object per line — the mock provider answers from.
+    /// </summary>
+    public string? Responses { get; set; }
 
     /// <summary>The API key, in clear text. Prefer <c>ApiKeyEnvVar</c>: a key written here is in the settings file.</summary>
     public string? ApiKey { get; set; }

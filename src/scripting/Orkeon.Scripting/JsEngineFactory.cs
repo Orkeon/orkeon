@@ -29,6 +29,15 @@ public sealed class JsEngineFactory
     private readonly Orkeon.Application.Interfaces.Ports.ILlmProfileRegistry? _llmProfiles;
 
     /// <summary>
+    /// Whether the engines this factory builds carry the global <c>test</c> namespace
+    /// (<c>test.mockLlm</c>, <c>test.mockTool</c>, <c>test.assert*</c>), which <c>orkeon run --test</c> turns on.
+    /// The configured provider is then wrapped in a <see cref="Testing.TestOverrideLlmProvider"/>: an
+    /// expectation of <c>test.mockLlm</c> answers before the profile does. Off by default: a script run
+    /// without <c>--test</c> has no <c>test</c> global.
+    /// </summary>
+    public bool EnableTestNamespace { get; init; }
+
+    /// <summary>
     /// Creates a factory that builds engines respecting <paramref name="limits"/>.
     /// </summary>
     /// <param name="limits">Sandbox limits applied to every engine this factory builds.</param>
@@ -183,11 +192,16 @@ public sealed class JsEngineFactory
 
         // Register globals exposed to every script. Bindings are added incrementally as
         // builders land (SCR-03..SCR-06).
+        // Under --test one override wraps the configured provider and is shared by the crews, ctx.llm
+        // and the test namespace: an expectation the script registers is the one a call meets.
+        var testProvider = EnableTestNamespace ? new Testing.TestOverrideLlmProvider(_llmProvider) : null;
+        Orkeon.Domain.SharedKernel.ILlmProvider? llmProvider = testProvider ?? _llmProvider;
+
         AgentBuilderBinding.Register(engine);
         CrewBuilderBinding.Register(engine, new CrewBuilderBinding.CrewBuilderServices
         {
             Logger = _scriptLogger,
-            LlmProvider = _llmProvider,
+            LlmProvider = llmProvider,
             BuiltInTools = _builtInTools,
             PermissionGate = _permissionGate,
             DeltaSink = _deltaSink,
@@ -199,12 +213,14 @@ public sealed class JsEngineFactory
         });
         TaskBuilderBinding.Register(engine);
         ToolBuilderBinding.Register(engine);
-        LlmNamespaceBinding.Register(engine, _scriptLogger, _llmProvider, _llmProfiles);
+        LlmNamespaceBinding.Register(engine, _scriptLogger, llmProvider, _llmProfiles);
         ToolsNamespaceBinding.Register(engine, _builtInTools ?? Array.Empty<IBaseTool>(), _scriptLogger);
         RagNamespaceBinding.Register(engine, _ragBackend, _scriptLogger);
         ErrorActionBinding.Register(engine);
         StateMachineBinding.Register(engine);
         StateGraphBinding.Register(engine);
+        if (testProvider is not null)
+            TestNamespaceBinding.Register(engine, testProvider);
 
         return engine;
     }

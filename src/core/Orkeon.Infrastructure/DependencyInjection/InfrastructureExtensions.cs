@@ -144,6 +144,26 @@ public static class InfrastructureExtensions
         sp.GetService<FileSystem.PrivilegedFileSystemAccess>()?.FileSystem
         ?? sp.GetRequiredService<IFileSystemService>();
 
+    /// <summary>
+    /// The file system the LLM provider factory hands the mock provider: the privileged view, else the
+    /// plain service. A container with no file system, or one whose mounts are not configured yet (the
+    /// registry refuses to build without one), gets a file system with no mount, so the factory still
+    /// builds every vendor provider; only a <c>mock</c> profile then finds its file missing.
+    /// </summary>
+    private static IFileSystemService FileSystemForLlmProviders(IServiceProvider sp)
+    {
+        try
+        {
+            return sp.GetService<FileSystem.PrivilegedFileSystemAccess>()?.FileSystem
+                ?? sp.GetService<IFileSystemService>()
+                ?? LlmProviderFactory.MountlessFileSystem();
+        }
+        catch (InvalidOperationException)
+        {
+            return LlmProviderFactory.MountlessFileSystem();
+        }
+    }
+
     private static IServiceCollection AddOrkeonCorePlumbing(this IServiceCollection services)
     {
         // Add path security options (configurable via appsettings.json "PathSecurity" section)
@@ -173,7 +193,17 @@ public static class InfrastructureExtensions
     private static IServiceCollection AddOrkeonLlmAndMemoryBaseline(this IServiceCollection services)
     {
         // Add LLM providers
-        services.AddSingleton<ILlmProviderFactory, LlmProviderFactory>();
+        // The mock provider reads its responses file from the /llm-mock internal mount: the factory takes
+        // the privileged view of the file system, the one a component that reads an internal root uses.
+        // A container composed without a file system still builds every vendor provider.
+        services.AddSingleton<ILlmProviderFactory>(sp => new LlmProviderFactory(
+            sp.GetRequiredService<IHttpClientFactory>(),
+            sp.GetRequiredService<ILoggerFactory>(),
+            FileSystemForLlmProviders(sp),
+            sp.GetService<ILlmUsageSink>(),
+            sp.GetService<ILlmRateLimiter>(),
+            sp.GetService<ILlmCallObserver>(),
+            sp.GetService<ITokenCounter>()));
 
         // The host's named LLM profiles (GAP-17): the default provider plus every profile
         // registered by AddOrkeonLlmProfile(s). Always present, so a crew naming a profile the

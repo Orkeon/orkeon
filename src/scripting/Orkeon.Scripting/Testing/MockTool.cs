@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using Orkeon.Domain.Tools;
 using ToolCallRequest = Orkeon.Domain.Tools.Protocol.ToolCallRequest;
 using ToolCallResponse = Orkeon.Domain.Tools.Protocol.ToolCallResponse;
@@ -42,6 +43,31 @@ public sealed class MockTool : IBaseTool
     internal void AddExpectation(Func<ToolCallRequest, bool> matcher, object? response)
         => _expectations.Add((matcher, response));
 
+    /// <summary>
+    /// Starts an expectation for calls with a parameter whose text contains <paramref name="contains"/>
+    /// (case ignored). Complete it with <see cref="MockToolExpectationBuilder.Respond(object?)"/>; the
+    /// first expectation that fits a call answers it.
+    /// </summary>
+    /// <param name="contains">The text to look for in the parameter values.</param>
+    public MockToolExpectationBuilder When(string contains)
+    {
+        ArgumentNullException.ThrowIfNull(contains);
+        return new MockToolExpectationBuilder(this, request => request.Parameters.Values.Any(
+            v => v?.ToString()?.Contains(contains, StringComparison.OrdinalIgnoreCase) == true));
+    }
+
+    /// <summary>
+    /// Starts an expectation for calls with a parameter whose text <paramref name="pattern"/> matches.
+    /// Complete it with <see cref="MockToolExpectationBuilder.Respond(object?)"/>.
+    /// </summary>
+    /// <param name="pattern">The pattern the parameter values are tested against.</param>
+    public MockToolExpectationBuilder When(Regex pattern)
+    {
+        ArgumentNullException.ThrowIfNull(pattern);
+        return new MockToolExpectationBuilder(this, request => request.Parameters.Values.Any(
+            v => v?.ToString() is { } text && pattern.IsMatch(text)));
+    }
+
     /// <inheritdoc />
     public Task<ToolCallResponse> CallAsync(ToolCallRequest request, CancellationToken cancellationToken = default)
     {
@@ -57,4 +83,28 @@ public sealed class MockTool : IBaseTool
 
     /// <inheritdoc />
     public bool ValidateInput(string input) => true;
+}
+
+/// <summary>
+/// Opens an expectation on a <see cref="MockTool"/> (<see cref="MockTool.When(string)"/>).
+/// </summary>
+public sealed class MockToolExpectationBuilder
+{
+    private readonly MockTool _tool;
+    private readonly Func<ToolCallRequest, bool> _matcher;
+
+    internal MockToolExpectationBuilder(MockTool tool, Func<ToolCallRequest, bool> matcher)
+    {
+        _tool = tool;
+        _matcher = matcher;
+    }
+
+    /// <summary>Registers <paramref name="response"/> as what the tool returns for the matched calls.</summary>
+    /// <param name="response">The value the tool answers with.</param>
+    /// <returns>The tool, to chain another <c>When</c>.</returns>
+    public MockTool Respond(object? response)
+    {
+        _tool.AddExpectation(_matcher, response);
+        return _tool;
+    }
 }

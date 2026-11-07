@@ -87,7 +87,7 @@ public class LlmProviderFactoryTests
         using var loggerFactory = new TestLoggerFactory();
 
         // Act
-        var factory = new LlmProviderFactory(httpClientFactory, loggerFactory);
+        var factory = new LlmProviderFactory(httpClientFactory, loggerFactory, new Orkeon.Tests.Shared.FileSystem.FakeFileSystemService());
 
         // Assert
         Assert.NotNull(factory);
@@ -101,7 +101,7 @@ public class LlmProviderFactoryTests
 
         // Act & Assert
         var exception = Assert.Throws<ArgumentNullException>(
-            () => new LlmProviderFactory(null!, loggerFactory));
+            () => new LlmProviderFactory(null!, loggerFactory, new Orkeon.Tests.Shared.FileSystem.FakeFileSystemService()));
         Assert.Equal("httpClientFactory", exception.ParamName);
     }
 
@@ -113,7 +113,7 @@ public class LlmProviderFactoryTests
 
         // Act & Assert
         var exception = Assert.Throws<ArgumentNullException>(
-            () => new LlmProviderFactory(httpClientFactory, null!));
+            () => new LlmProviderFactory(httpClientFactory, null!, new Orkeon.Tests.Shared.FileSystem.FakeFileSystemService()));
         Assert.Equal("loggerFactory", exception.ParamName);
     }
 
@@ -127,7 +127,7 @@ public class LlmProviderFactoryTests
         // Arrange
         var httpClientFactory = new TestHttpClientFactory();
         using var loggerFactory = new TestLoggerFactory();
-        var factory = new LlmProviderFactory(httpClientFactory, loggerFactory);
+        var factory = new LlmProviderFactory(httpClientFactory, loggerFactory, new Orkeon.Tests.Shared.FileSystem.FakeFileSystemService());
 
         var config = LlmConfig.Create(ModelLlama2) with { BaseUrl = new Uri(EndpointOllamaDefault) };
 
@@ -145,7 +145,7 @@ public class LlmProviderFactoryTests
         // Arrange
         var httpClientFactory = new TestHttpClientFactory();
         using var loggerFactory = new TestLoggerFactory();
-        var factory = new LlmProviderFactory(httpClientFactory, loggerFactory);
+        var factory = new LlmProviderFactory(httpClientFactory, loggerFactory, new Orkeon.Tests.Shared.FileSystem.FakeFileSystemService());
 
         var config = LlmConfig.Create(ModelGpt4);
 
@@ -163,7 +163,7 @@ public class LlmProviderFactoryTests
         // Arrange
         var httpClientFactory = new TestHttpClientFactory();
         using var loggerFactory = new TestLoggerFactory();
-        var factory = new LlmProviderFactory(httpClientFactory, loggerFactory);
+        var factory = new LlmProviderFactory(httpClientFactory, loggerFactory, new Orkeon.Tests.Shared.FileSystem.FakeFileSystemService());
 
         var config = LlmConfig.Create("claude-3-opus");
 
@@ -181,7 +181,7 @@ public class LlmProviderFactoryTests
         // Arrange
         var httpClientFactory = new TestHttpClientFactory();
         using var loggerFactory = new TestLoggerFactory();
-        var factory = new LlmProviderFactory(httpClientFactory, loggerFactory);
+        var factory = new LlmProviderFactory(httpClientFactory, loggerFactory, new Orkeon.Tests.Shared.FileSystem.FakeFileSystemService());
 
         // Act & Assert
         var exception = Assert.Throws<ArgumentNullException>(() => factory.Create(null!));
@@ -198,7 +198,7 @@ public class LlmProviderFactoryTests
         // Arrange
         var httpClientFactory = new TestHttpClientFactory();
         using var loggerFactory = new TestLoggerFactory();
-        var factory = new LlmProviderFactory(httpClientFactory, loggerFactory);
+        var factory = new LlmProviderFactory(httpClientFactory, loggerFactory, new Orkeon.Tests.Shared.FileSystem.FakeFileSystemService());
 
         var config = LlmConfig.Create("any-model");
 
@@ -216,7 +216,7 @@ public class LlmProviderFactoryTests
         // Arrange
         var httpClientFactory = new TestHttpClientFactory();
         using var loggerFactory = new TestLoggerFactory();
-        var factory = new LlmProviderFactory(httpClientFactory, loggerFactory);
+        var factory = new LlmProviderFactory(httpClientFactory, loggerFactory, new Orkeon.Tests.Shared.FileSystem.FakeFileSystemService());
 
         var config = LlmConfig.Create("any-model");
 
@@ -234,7 +234,7 @@ public class LlmProviderFactoryTests
         // Arrange
         var httpClientFactory = new TestHttpClientFactory();
         using var loggerFactory = new TestLoggerFactory();
-        var factory = new LlmProviderFactory(httpClientFactory, loggerFactory);
+        var factory = new LlmProviderFactory(httpClientFactory, loggerFactory, new Orkeon.Tests.Shared.FileSystem.FakeFileSystemService());
 
         var config = LlmConfig.Create("claude");
 
@@ -252,7 +252,7 @@ public class LlmProviderFactoryTests
         // Arrange
         var httpClientFactory = new TestHttpClientFactory();
         using var loggerFactory = new TestLoggerFactory();
-        var factory = new LlmProviderFactory(httpClientFactory, loggerFactory);
+        var factory = new LlmProviderFactory(httpClientFactory, loggerFactory, new Orkeon.Tests.Shared.FileSystem.FakeFileSystemService());
 
         var config = LlmConfig.Create("mistral-large-latest");
 
@@ -274,7 +274,7 @@ public class LlmProviderFactoryTests
         // Arrange
         var httpClientFactory = new TestHttpClientFactory();
         using var loggerFactory = new TestLoggerFactory();
-        var factory = new LlmProviderFactory(httpClientFactory, loggerFactory);
+        var factory = new LlmProviderFactory(httpClientFactory, loggerFactory, new Orkeon.Tests.Shared.FileSystem.FakeFileSystemService());
 
         var config = LlmConfig.Create("model");
 
@@ -290,7 +290,7 @@ public class LlmProviderFactoryTests
         // Arrange
         var httpClientFactory = new TestHttpClientFactory();
         using var loggerFactory = new TestLoggerFactory();
-        var factory = new LlmProviderFactory(httpClientFactory, loggerFactory);
+        var factory = new LlmProviderFactory(httpClientFactory, loggerFactory, new Orkeon.Tests.Shared.FileSystem.FakeFileSystemService());
 
         var config = LlmConfig.Create("model");
 
@@ -306,7 +306,7 @@ public class LlmProviderFactoryTests
         // Arrange
         var httpClientFactory = new TestHttpClientFactory();
         using var loggerFactory = new TestLoggerFactory();
-        var factory = new LlmProviderFactory(httpClientFactory, loggerFactory);
+        var factory = new LlmProviderFactory(httpClientFactory, loggerFactory, new Orkeon.Tests.Shared.FileSystem.FakeFileSystemService());
 
         var config = LlmConfig.Create("model");
 
@@ -322,7 +322,7 @@ public class LlmProviderFactoryTests
         // Arrange
         var httpClientFactory = new TestHttpClientFactory();
         using var loggerFactory = new TestLoggerFactory();
-        var factory = new LlmProviderFactory(httpClientFactory, loggerFactory);
+        var factory = new LlmProviderFactory(httpClientFactory, loggerFactory, new Orkeon.Tests.Shared.FileSystem.FakeFileSystemService());
 
         var config = LlmConfig.Create("model");
 
@@ -338,7 +338,7 @@ public class LlmProviderFactoryTests
         // Arrange
         var httpClientFactory = new TestHttpClientFactory();
         using var loggerFactory = new TestLoggerFactory();
-        var factory = new LlmProviderFactory(httpClientFactory, loggerFactory);
+        var factory = new LlmProviderFactory(httpClientFactory, loggerFactory, new Orkeon.Tests.Shared.FileSystem.FakeFileSystemService());
 
         // Act & Assert
         var exception = Assert.Throws<ArgumentNullException>(
@@ -359,7 +359,7 @@ public class LlmProviderFactoryTests
         // Arrange
         var httpClientFactory = new TestHttpClientFactory();
         using var loggerFactory = new TestLoggerFactory();
-        var factory = new LlmProviderFactory(httpClientFactory, loggerFactory);
+        var factory = new LlmProviderFactory(httpClientFactory, loggerFactory, new Orkeon.Tests.Shared.FileSystem.FakeFileSystemService());
 
         var config = LlmConfig.Create("model");
 
@@ -387,7 +387,7 @@ public class LlmProviderFactoryTests
     public void ShouldAssertTheBuiltProvider_WhereOnlyNotNullWasChecked(string model, string? baseUrl, string expectedName)
     {
         using var loggerFactory = new TestLoggerFactory();
-        var factory = new LlmProviderFactory(new TestHttpClientFactory(), loggerFactory);
+        var factory = new LlmProviderFactory(new TestHttpClientFactory(), loggerFactory, new Orkeon.Tests.Shared.FileSystem.FakeFileSystemService());
         var config = LlmConfig.Create(model) with { BaseUrl = baseUrl is null ? null : new Uri(baseUrl) };
 
         Assert.Equal(expectedName, factory.Create(config).Name, ignoreCase: true);
@@ -403,7 +403,7 @@ public class LlmProviderFactoryTests
         // Arrange
         var httpClientFactory = new TestHttpClientFactory();
         using var loggerFactory = new TestLoggerFactory();
-        var factory = new LlmProviderFactory(httpClientFactory, loggerFactory);
+        var factory = new LlmProviderFactory(httpClientFactory, loggerFactory, new Orkeon.Tests.Shared.FileSystem.FakeFileSystemService());
         var config = LlmConfig.Create(ModelGpt4);
 
         // Act
@@ -422,7 +422,7 @@ public class LlmProviderFactoryTests
         // Arrange
         var httpClientFactory = new TestHttpClientFactory();
         using var loggerFactory = new TestLoggerFactory();
-        var factory = new LlmProviderFactory(httpClientFactory, loggerFactory);
+        var factory = new LlmProviderFactory(httpClientFactory, loggerFactory, new Orkeon.Tests.Shared.FileSystem.FakeFileSystemService());
 
         var config1 = LlmConfig.Create(ModelGpt4);
         var config2 = LlmConfig.Create(ModelLlama2) with { BaseUrl = new Uri(EndpointOllamaDefault) };
@@ -443,7 +443,7 @@ public class LlmProviderFactoryTests
         // Arrange
         var httpClientFactory = new TestHttpClientFactory();
         using var loggerFactory = new TestLoggerFactory();
-        var factory = new LlmProviderFactory(httpClientFactory, loggerFactory);
+        var factory = new LlmProviderFactory(httpClientFactory, loggerFactory, new Orkeon.Tests.Shared.FileSystem.FakeFileSystemService());
 
         var config = LlmConfig.Create(ModelGpt4) with
         {
@@ -465,7 +465,7 @@ public class LlmProviderFactoryTests
         // Arrange
         var httpClientFactory = new TestHttpClientFactory();
         using var loggerFactory = new TestLoggerFactory();
-        var factory = new LlmProviderFactory(httpClientFactory, loggerFactory);
+        var factory = new LlmProviderFactory(httpClientFactory, loggerFactory, new Orkeon.Tests.Shared.FileSystem.FakeFileSystemService());
 
         var longModelName = new string('a', 1000);
         var config = LlmConfig.Create(longModelName);
@@ -483,7 +483,7 @@ public class LlmProviderFactoryTests
         // Arrange
         var httpClientFactory = new TestHttpClientFactory();
         using var loggerFactory = new TestLoggerFactory();
-        var factory = new LlmProviderFactory(httpClientFactory, loggerFactory);
+        var factory = new LlmProviderFactory(httpClientFactory, loggerFactory, new Orkeon.Tests.Shared.FileSystem.FakeFileSystemService());
 
         var config = LlmConfig.Create("model-with-special@#$%^&*()_+characters");
 
@@ -500,7 +500,7 @@ public class LlmProviderFactoryTests
         // Arrange
         var httpClientFactory = new TestHttpClientFactory();
         using var loggerFactory = new TestLoggerFactory();
-        var factory = new LlmProviderFactory(httpClientFactory, loggerFactory);
+        var factory = new LlmProviderFactory(httpClientFactory, loggerFactory, new Orkeon.Tests.Shared.FileSystem.FakeFileSystemService());
 
         var config = LlmConfig.Create("模型-мадэль-モデル");
 
@@ -521,7 +521,7 @@ public class LlmProviderFactoryTests
         // Arrange
         var httpClientFactory = new TestHttpClientFactory();
         using var loggerFactory = new TestLoggerFactory();
-        var factory = new LlmProviderFactory(httpClientFactory, loggerFactory);
+        var factory = new LlmProviderFactory(httpClientFactory, loggerFactory, new Orkeon.Tests.Shared.FileSystem.FakeFileSystemService());
 
         var config = LlmConfig.Create(model);
 
@@ -541,7 +541,7 @@ public class LlmProviderFactoryTests
         // Arrange
         var httpClientFactory = new TestHttpClientFactory();
         using var loggerFactory = new TestLoggerFactory();
-        var factory = new LlmProviderFactory(httpClientFactory, loggerFactory);
+        var factory = new LlmProviderFactory(httpClientFactory, loggerFactory, new Orkeon.Tests.Shared.FileSystem.FakeFileSystemService());
 
         var config = LlmConfig.Create(ModelGpt4) with
         {
@@ -575,7 +575,7 @@ public class LlmProviderFactoryTests
         // Arrange
         var httpClientFactory = new TestHttpClientFactory();
         using var loggerFactory = new TestLoggerFactory();
-        var factory = new LlmProviderFactory(httpClientFactory, loggerFactory);
+        var factory = new LlmProviderFactory(httpClientFactory, loggerFactory, new Orkeon.Tests.Shared.FileSystem.FakeFileSystemService());
 
         var config = LlmConfig.Create("LLaMa2") with { BaseUrl = new Uri(EndpointOllamaDefault) };
 
@@ -592,7 +592,7 @@ public class LlmProviderFactoryTests
         // Arrange
         var httpClientFactory = new TestHttpClientFactory();
         using var loggerFactory = new TestLoggerFactory();
-        var factory = new LlmProviderFactory(httpClientFactory, loggerFactory);
+        var factory = new LlmProviderFactory(httpClientFactory, loggerFactory, new Orkeon.Tests.Shared.FileSystem.FakeFileSystemService());
 
         var config = LlmConfig.Create("model") with { BaseUrl = new Uri("http://localhost:8080/api") };
 
@@ -609,7 +609,7 @@ public class LlmProviderFactoryTests
         // Arrange
         var httpClientFactory = new TestHttpClientFactory();
         using var loggerFactory = new TestLoggerFactory();
-        var factory = new LlmProviderFactory(httpClientFactory, loggerFactory);
+        var factory = new LlmProviderFactory(httpClientFactory, loggerFactory, new Orkeon.Tests.Shared.FileSystem.FakeFileSystemService());
 
         var config = LlmConfig.Create("model") with { BaseUrl = new Uri("https://secure-ollama:11434") };
 

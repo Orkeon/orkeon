@@ -1,0 +1,5 @@
+{"match": "You are casting a ballot", "content": "{\"ranking\": [\"A\", \"B\", \"C\", \"D\", \"E\", \"F\"], \"abstain\": false, \"confidence\": 0.9, \"justification\": \"The mock voter ranks the candidates in the order offered.\"}"}
+{"match": "^Task:\\s+Create a set of exam questions", "regex": true, "content": "Draft: ten questions covering the stated learning objectives."}
+{"match": "^Task:\\s+Classify each question by Bloom", "regex": true, "content": "Taxonomy: four recall, three application, three analysis questions."}
+{"match": "^Task:\\s+Calibrate question difficulty", "regex": true, "content": "Calibration: the ten questions span easy to hard on the benchmark scale."}
+{"match": "^Task:\\s+Review all questions for clarity", "regex": true, "content": "Clarity review: two questions reworded, no bias found."}

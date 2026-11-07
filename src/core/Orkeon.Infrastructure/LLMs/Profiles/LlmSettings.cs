@@ -205,10 +205,39 @@ public static class LlmSettings
         if (ReadInt(section, "MaxRetries", strict) is { } maxRetries)
             config = config with { MaxRetries = Math.Max(0, maxRetries) };
 
+        config = ReadMock(section, config);
+
         // Absent = ResilienceDefaults.DefaultMaxRateLimitWait.
         return ReadTimeSpan(section, "MaxRateLimitWait", strict) is { } maxRateLimitWait
             ? config with { MaxRateLimitWait = maxRateLimitWait }
             : config;
+    }
+
+    /// <summary>
+    /// <c>Provider: mock</c> with <c>Responses</c>, the virtual path of the JSONL file the offline
+    /// provider answers from. <c>mock</c> is the only value <c>Provider</c> takes; a provider
+    /// otherwise follows from <c>BaseUrl</c>, the model's name and the key.
+    /// </summary>
+    private static LlmConfig ReadMock(IConfigurationSection section, LlmConfig config)
+    {
+        var provider = section[Orkeon.Infrastructure.LLMs.Mock.MockProviderSettings.ProviderKey];
+        var responses = section[Orkeon.Infrastructure.LLMs.Mock.MockProviderSettings.ResponsesKey];
+        if (string.IsNullOrWhiteSpace(provider))
+            return config;
+
+        if (!string.Equals(provider, Orkeon.Constants.Llm.LlmProviderKeys.Mock, StringComparison.OrdinalIgnoreCase))
+            throw new InvalidOperationException(
+                $"{section.Path}:Provider: '{provider}' is not a provider key; the only value is 'mock'. "
+                + "Leave Provider out and the provider follows from BaseUrl, the model's name and the key.");
+
+        if (string.IsNullOrWhiteSpace(responses))
+            throw new InvalidOperationException(
+                $"{section.Path}:Responses: the mock provider needs the virtual path of its JSONL responses file.");
+
+        var profile = string.Equals(section.Path, ConfigurationKeys.LlmSection, StringComparison.OrdinalIgnoreCase)
+            ? "default"
+            : section.Key;
+        return Orkeon.Infrastructure.LLMs.Mock.MockProviderSettings.Apply(config, responses, profile);
     }
 
     private enum ApiKeySource

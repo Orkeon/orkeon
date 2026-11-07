@@ -306,8 +306,24 @@ agent: { id, name } }` et le contexte ; `code` vaut `rate_limit`, `network`, `ti
 | `llm` | Les réglages de modèle que prend `agentBuilder().llm(...)` (forme déclarative). `llm.default_` — une valeur, pas une fonction — est le fournisseur de l'hôte sur son modèle configuré (un `model` vide quand l'hôte n'en configure aucun : l'agent tourne alors sur le modèle par défaut de ce fournisseur, jamais sur celui d'OpenAI), ou l'écho `<undefined-llm>` quand l'hôte n'en a pas ; `llm.model(name, overrides?)` est le même fournisseur sur un autre modèle ; `llm.profile(name, overrides?)` est l'un des profils nommés de l'hôte (`Llm:Profiles:<nom>`) sur son propre modèle — un agent configuré avec lui fait ses tours et ses appels `ctx.llm` sur ce fournisseur, et un nom que l'hôte n'offre pas lève une erreur qui liste les profils connus (`"default"` est `llm.default_`). `with({ model, temperature, maxTokens, responseFormat, effort, cache })` rend une copie, garde le profil et refuse toute autre clé. Il n'y a pas de fabrique par vendeur : un script choisit parmi les fournisseurs que l'hôte a configurés, par nom de profil. |
 | `tools` | Les outils intégrés de l'hôte, appelés depuis un `body` : `tools.fileRead({ path })`, le nom snake_case passé en camelCase. `tools.generated.d.ts` déclare l'entrée et le résultat de chaque outil intégré qu'un run enregistre, écrits depuis ses records de requête et de réponse (les clés snake_case de l'outil : `tools.fileRead({ path, max_length })`), si bien qu'un paramètre mal orthographié échoue au contrôle de types ; `tools.d.ts` déclare à la main les familles e-mail et drive. Un outil de plugin ou MCP s'atteint de la même façon, sans type. |
 | `rag` | `rag.ingest({ collection, sources, chunkingStrategy?, reindex?, prune? })`, `rag.query(question, { collection, profile?, topN? })` (une réponse ancrée avec citations) et `rag.retrieve(...)` (les mêmes passages, sans génération). Demande un hôte qui a enregistré le sous-système RAG (`AddOrkeonRag`) ; liée dans `orkeon run`, le REPL et l'hôte daemon. |
+| `test` | Seulement sous `orkeon run --test` : les mocks et assertions du script ([plus bas](#lespace-de-noms-test-orkeon-run---test)). |
 | `ErrorAction` | Les fabriques qu'un gestionnaire `onError` retourne : `fail()`, `skip()`, `fallback(value)`, `retry({ delay?, max? })`. Tout le reste vaut `fail()`. |
 | `stateMachine`, `stateGraph`, `START`, `END` | Ci-dessous. |
+
+## L'espace de noms `test` (`orkeon run --test`)
+
+`orkeon run --test` lie le global `test` (déclaré dans `Typings/test.d.ts`) ; sans le drapeau, un script n'en a pas, et s'y référer est une `ReferenceError`. Sous le drapeau, le modèle configuré par l'hôte — ou le fichier de `--llm-mock` — reste derrière le mock : un prompt que couvre une attente de `test.mockLlm` reçoit sa réponse, tout autre prompt va au fournisseur configuré. Un seul fournisseur est partagé par `ctx.llm`, les crews du script et l'espace de noms : une attente enregistrée dans le script est celle que rencontre un appel.
+
+```ts
+test.mockLlm.when("météo").respond("ensoleillé");      // un texte à chercher, ou { prompt: /regex/ }
+test.mockTool("lookup").when({ city: "Paris" }).respond({ temp: 21 });
+
+await crew.run();
+test.assertLlmCalled({ times: 1, with: "météo" });
+test.assertToolCalled("lookup");
+```
+
+Depuis .NET, `MockLlmProvider` et `MockTool` (`Orkeon.Scripting.Testing`) prennent les mêmes attentes par `When(string | Regex).Respond(...)` ; `TestOverrideLlmProvider` est le fournisseur qui les place devant un fournisseur configuré.
 
 ## `stateMachine` et `stateGraph`
 

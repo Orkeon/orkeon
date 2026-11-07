@@ -1,0 +1,4 @@
+{"match": "^Task:\\s+Search and scrape the web", "regex": true, "content": "Collected: five records on the topic, one with a missing field."}
+{"match": "^Task:\\s+Validate the collected data", "regex": true, "content": "Validated: four clean records after removing one duplicate."}
+{"match": "^Task:\\s+Analyze the validated dataset", "regex": true, "content": "Insights: two trends and one anomaly, each with a confidence score."}
+{"match": "^Task:\\s+Write a final executive report", "regex": true, "content": "Executive report: three findings and two prioritized recommendations."}

@@ -103,6 +103,13 @@ public static class LlmProviderKeys
     /// </summary>
     public const string DockerModelRunner = "docker-model-runner";
 
+    /// <summary>
+    /// The offline provider that answers from a JSONL file (<c>Provider: mock</c>, <c>Responses</c>
+    /// naming the file). Not a vendor: it is not one of <see cref="All"/>'s sixteen, and no
+    /// detector reports it.
+    /// </summary>
+    public const string Mock = "mock";
+
     /// <summary>Reported by a detector when no base URL is configured at all.</summary>
     public const string None = "none";
 

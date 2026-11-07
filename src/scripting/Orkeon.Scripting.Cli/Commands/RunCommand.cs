@@ -79,6 +79,20 @@ internal sealed class RunCommandOptions : CliOptions
                        + "An id the settings do not define is refused, listing the ones they do.")]
         public string? LlmProfile { get; set; }
 
+        /// <summary>A JSONL responses file the run answers every LLM call from, offline.</summary>
+        [Option(RunOptionNames.LlmMock, Required = false, Default = null,
+            HelpText = "Answer every LLM call from this JSONL file instead of a model, offline and deterministic: "
+                       + "one {\"match\", \"regex\"?, \"content\", \"toolCalls\"?} object per line, the first line that matches "
+                       + "the prompt wins. Every LLM profile of the run becomes Provider: mock reading this file. "
+                       + "The file's folder is mounted read-only at /llm-mock.")]
+        public string? LlmMock { get; set; }
+
+        /// <summary>Binds the global <c>test</c> namespace in a script.</summary>
+        [Option(RunOptionNames.Test, Required = false, Default = false,
+            HelpText = "Bind the global `test` (test.mockLlm, test.mockTool, test.assertLlmCalled...) in a script. "
+                       + "An expectation of test.mockLlm answers before the configured LLM; without --test there is no `test`.")]
+        public bool Test { get; set; }
+
         /// <summary>Switches the decision circuit off for this run, whatever the configuration says.</summary>
         [Option("no-decision", Required = false, Default = false,
             HelpText = "Switch the decision circuit off for this run, even when Orkeon:Decision:Enabled is true: "
@@ -338,20 +352,30 @@ internal static partial class RunCommand
 
             // Same shared one-shot runner as a .yaml crew — it owns --validate, the mounts and
             // the exit codes, so every option behaves identically on a directory and on a file.
+            if (await RefuseTestSwitchAsync(console, options, "a crew directory").ConfigureAwait(false) is { } refusedDirectory)
+                return refusedDirectory;
             return await RunViaSharedRunnerAsync(console, options).ConfigureAwait(false);
         }
 
         // --validate is a crew-load concern (YAML or .ork.ts crew definition): the shared runner
         // loads the crew strictly and never probes the LLM, dispatching on the config extension.
         if (options.Validate)
+        {
+            if (await RefuseTestSwitchAsync(console, options, "a validation run").ConfigureAwait(false) is { } refusedValidation)
+                return refusedValidation;
             return await RunViaSharedRunnerAsync(console, options).ConfigureAwait(false);
+        }
 
         // Dispatch by extension BEFORE any script-specific setup (esbuild, /script:ro mount).
         // YAML crews delegate entirely to the shared one-shot runner — the same code path the
         // standalone standard runner uses — so a single published `orkeon` tool runs both
         // crew.ork.ts and crew.yaml without the consumer having to compile a runner.
         if (IsYamlConfig(options.ScriptPath))
+        {
+            if (await RefuseTestSwitchAsync(console, options, "a YAML crew").ConfigureAwait(false) is { } refusedYaml)
+                return refusedYaml;
             return await RunViaSharedRunnerAsync(console, options).ConfigureAwait(false);
+        }
 
         // A .ork.ts that hands its crew off via `globalThis.crew = …` is a DECLARATIVE
         // crew definition, not a procedural script: it runs through the same shared
@@ -363,11 +387,31 @@ internal static partial class RunCommand
         if (RunnerExecution.IsScriptedCrewDefinition(options.ScriptPath)
             && await DeclaresCrewHandoffAsync(options.ScriptPath).ConfigureAwait(false))
         {
+            if (await RefuseTestSwitchAsync(console, options, "a declarative script").ConfigureAwait(false) is { } refusedScript)
+                return refusedScript;
             await WarnAboutScriptOnlyOptionsAsync(console, options).ConfigureAwait(false);
             return await RunViaSharedRunnerAsync(console, options).ConfigureAwait(false);
         }
 
         return null;
+    }
+
+    /// <summary>
+    /// <c>--test</c> binds the global <c>test</c> in a procedural script's engine. A YAML crew, a crew
+    /// directory, a declarative script (which only hands its crew to the host) and a validation run
+    /// have no such engine: the switch would do nothing, so it is refused, with the exit code of a bad
+    /// invocation, rather than ignored.
+    /// </summary>
+    /// <returns>The exit code when the switch is refused; null when it is not set.</returns>
+    private static async Task<int?> RefuseTestSwitchAsync(IRunnerConsole console, RunCommandOptions options, string target)
+    {
+        if (!options.Test)
+            return null;
+
+        await console.ErrorOutput.WriteLineAsync(
+            $"orkeon run: --test binds the global `test` in a procedural .ork.ts script, and {target} is not one: "
+            + "the switch would do nothing. Remove --test, or run a procedural script.").ConfigureAwait(false);
+        return Program.ExitScriptError;
     }
 
     /// <summary>
@@ -624,6 +668,7 @@ internal static partial class RunCommand
             Verbose = options.Verbose,
             LlmLogEnabled = options.LlmLogEnabled,
             LlmLogPath = options.LlmLogPath,
+            LlmMock = options.LlmMock,
             Variables = options.Variables,
             InitialContext = options.InitialContext,
             Validate = options.Validate,
@@ -682,6 +727,10 @@ internal static partial class RunCommand
 
         var cliMounts = options.Mounts.ToList();
         var llmLogPath = options.ResolvedLlmLogPath;
+        var llmMockPath = RunnerLlmMock.ResolvePath(options.LlmMock);
+        if (!RunnerLlmMock.EnsureReadable(llmMockPath, console.ErrorOutput)
+            || !RunnerLlmMock.EnsureSeparateFrom(llmMockPath, scriptDir, console.ErrorOutput))
+            return Program.ExitScriptError;
 
         var cwd = Directory.GetCurrentDirectory();
         var selection = await MountConfigurationIsValidAsync(console, options, cliMounts, settingsPath, llmLogPath, cwd)
@@ -699,7 +748,7 @@ internal static partial class RunCommand
         // an "allowed-external" mount regardless of cwd because the script is the input.
         cliMounts.Insert(0, $"{FileSystemMount.Quote(scriptDir)}:{RunnerVirtualRoots.Script}:ro");
         // The exchange log is infrastructure — reachable by the VFS, invisible to agents.
-        var internalMounts = RunnerLlmLog.CreateMounts(llmLogPath);
+        IReadOnlyList<string> internalMounts = [.. RunnerLlmLog.CreateMounts(llmLogPath), .. RunnerLlmMock.CreateMounts(llmMockPath)];
         var verbosity = Math.Clamp(options.Verbose, 0, 2);
 
         using var host = RunnerHost.Build(
@@ -709,11 +758,12 @@ internal static partial class RunCommand
                 CliMounts = cliMounts,
                 InternalMounts = internalMounts,
                 // The script is the input: its folder is read without the flag.
-                InputDirectories = [scriptDir],
+                InputDirectories = [scriptDir, .. RunnerLlmMock.InputDirectories(llmMockPath)],
                 SelectedMountIds = selection.SelectedMountIds,
                 CrewMountReferences = selection.CrewMountReferences,
                 AllowExternalMounts = options.EffectiveAllowExternalMounts,
                 LlmLogVirtualPath = llmLogPath != null ? RunnerVirtualRoots.LlmLogs : null,
+                LlmMockResponses = RunnerLlmMock.VirtualPath(llmMockPath),
             },
             configureLogging: verbosity > 0
                 ? (ctx, b) => RunnerExecution.ConfigureVerboseLogging(b, verbosity, ctx.Configuration)
@@ -795,7 +845,11 @@ internal static partial class RunCommand
                 // RT-06: a script agent's .workingRoot(...) is checked against these mounts.
                 FileSystem = fileSystem,
             },
-            ragBackend: ragBackend);
+            ragBackend: ragBackend)
+        {
+            // --test: the global `test` and the override over the configured provider.
+            EnableTestNamespace = options.Test,
+        };
 
         // ScriptHost stores but does not own/dispose the transpiler, so we keep ownership
         // here and dispose it when this method returns (after RunFromFileAsync completes).
@@ -856,7 +910,7 @@ internal static partial class RunCommand
 
         if (!RunnerExecution.EnsureReservedRootsAreFree(
                 cliMounts, settingsPath, console.ErrorOutput,
-                RunnerVirtualRoots.Script, RunnerVirtualRoots.LlmLogs, RunnerVirtualRoots.Sandbox))
+                RunnerVirtualRoots.Script, RunnerVirtualRoots.LlmLogs, RunnerVirtualRoots.LlmMock, RunnerVirtualRoots.Sandbox))
         {
             return null;
         }

@@ -93,7 +93,7 @@ public class HuggingFaceRoutingTests
     [Fact]
     public void ShouldRefuseTheDeepSeekAnthropicEndpoint_WithAnActionableMessage()
     {
-        var factory = new LlmProviderFactory(new TestHttpClientFactory(), NullLoggerFactory.Instance);
+        var factory = new LlmProviderFactory(new TestHttpClientFactory(), NullLoggerFactory.Instance, new Orkeon.Tests.Shared.FileSystem.FakeFileSystemService());
         var config = LlmConfig.Create("deepseek-v4-flash", TestApiKey) with
         {
             BaseUrl = new Uri("https://api.deepseek.com/anthropic"),
@@ -108,7 +108,7 @@ public class HuggingFaceRoutingTests
     [Fact]
     public void ShouldStillAcceptTheStandardDeepSeekEndpoint()
     {
-        var factory = new LlmProviderFactory(new TestHttpClientFactory(), NullLoggerFactory.Instance);
+        var factory = new LlmProviderFactory(new TestHttpClientFactory(), NullLoggerFactory.Instance, new Orkeon.Tests.Shared.FileSystem.FakeFileSystemService());
         var config = LlmConfig.Create("deepseek-v4-flash", TestApiKey) with
         {
             BaseUrl = new Uri("https://api.deepseek.com"),

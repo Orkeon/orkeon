@@ -77,6 +77,9 @@ public sealed partial class LlmProviderMeteringGuardTests
         [nameof(MeteredLlmProvider)] = "The meter itself.",
         [nameof(TracedLlmProvider)] = "The chat span of a call, applied with the meter by LlmProviderEntrance to a provider already obtained on the path (CH-08).",
         [nameof(RateLimitedLlmProvider)] = "The host's limiter, applied with the meter by LlmProviderEntrance to a provider already obtained on the path (GAP-38).",
+        ["TestOverrideLlmProvider"] = "The provider of an `orkeon run --test` script: it wraps the configured provider, already "
+            + "obtained on the path, and answers from the script's `test.mockLlm` expectations before it; a call it forwards "
+            + "is counted by that provider's meter (FWK-02).",
         ["DecisionLlmProvider"] = "A decision profile: it forwards each call to profiles the registry resolved, already metered, "
             + "and is itself registered through AddOrkeonLlmProfile; the meter nearest the model counts the call once.",
     };
@@ -90,6 +93,8 @@ public sealed partial class LlmProviderMeteringGuardTests
         {
             [("MockLlmProvider", "src/scripting/Orkeon.Scripting/Testing/JsTestNamespace.cs")] =
                 "The double `orkeon test` hands a script under test: it answers from expectations and calls no model.",
+            [("MockLlmProvider", "src/scripting/Orkeon.Scripting/Testing/TestOverrideLlmProvider.cs")] =
+                "The double of the `test.mockLlm` expectations under `orkeon run --test`: it answers from them and calls no model.",
             [("AIAgentLlmProvider", "src/interop/Orkeon.Interop.AgentFramework/AgentBuilderExtensions.cs")] =
                 "Built by WithAgentFrameworkAgent and handed to AgentBuilder.WithLlm: the agent's own provider "
                 + "(Agent.Llm), metered where the run resolves it — LlmProfileRegistry.ForProvider for the agent's turns, "

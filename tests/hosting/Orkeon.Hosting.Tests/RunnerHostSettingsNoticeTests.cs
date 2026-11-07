@@ -272,7 +272,7 @@ public sealed class RunnerHostSettingsNoticeTests : IDisposable
 
     /// <summary>An unknown key's refusal ends on the verb that lists the keys of its section.</summary>
     [Theory]
-    [InlineData("Llm:Provider", "`orkeon settings Llm` lists its keys.")]
+    [InlineData("Llm:Modle", "`orkeon settings Llm` lists its keys.")]
     [InlineData("Llm:Profiles:a:Modle", "`orkeon settings Llm` lists its keys.")]
     [InlineData("Orkeon:Guardian:Enabeld", "`orkeon settings Orkeon:Guardian` lists its keys.")]
     [InlineData("Orkeon:CodeSandbox:Docker:PullImage", "`orkeon settings Orkeon:CodeSandbox:Docker` lists its keys.")]

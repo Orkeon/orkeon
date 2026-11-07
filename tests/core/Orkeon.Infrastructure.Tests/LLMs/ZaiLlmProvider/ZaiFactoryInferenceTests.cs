@@ -15,7 +15,7 @@ public class ZaiFactoryInferenceTests
     private static LlmProviderAdapter CreateVia(Func<LlmProviderFactory, LlmProviderAdapter> create)
     {
         var httpClientFactory = new TestHttpClientFactory();
-        var factory = new LlmProviderFactory(httpClientFactory, NullLoggerFactory.Instance);
+        var factory = new LlmProviderFactory(httpClientFactory, NullLoggerFactory.Instance, new Orkeon.Tests.Shared.FileSystem.FakeFileSystemService());
         return create(factory);
     }
 

@@ -97,6 +97,16 @@ public abstract class RunnerOptionsBase
     public string? LlmLogPath { get; set; }
 
     /// <summary>
+    /// A JSONL responses file the run answers every LLM call from, offline (<c>--llm-mock</c>).
+    /// </summary>
+    [Option(RunOptionNames.LlmMock, Required = false, Default = null,
+        HelpText = "Answer every LLM call from this JSONL file instead of a model, offline and deterministic: "
+                   + "one {\"match\", \"regex\"?, \"content\", \"toolCalls\"?} object per line, the first line that matches "
+                   + "the prompt wins. Every LLM profile of the run becomes Provider: mock reading this file. "
+                   + "The file's folder is mounted read-only at /llm-mock.")]
+    public string? LlmMock { get; set; }
+
+    /// <summary>
     /// KEY=VALUE variables forwarded to CrewInput. Several go space-separated after ONE flag,
     /// like <see cref="Mounts"/> — the parser refuses a repeated option.
     /// </summary>
@@ -149,6 +159,9 @@ public abstract class RunnerOptionsBase
     {
         get => RunnerLlmLog.ResolvePath(LlmLogEnabled, LlmLogPath);
     }
+
+    /// <summary>The full physical path of the <c>--llm-mock</c> file, or null when the option is off.</summary>
+    public string? ResolvedLlmMockPath => RunnerLlmMock.ResolvePath(LlmMock);
 
     /// <summary>
     /// Parses <c>--var KEY=VALUE</c> entries into a dictionary. Returns an empty dict

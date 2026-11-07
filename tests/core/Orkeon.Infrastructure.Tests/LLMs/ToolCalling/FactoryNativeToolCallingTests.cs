@@ -72,7 +72,7 @@ public class FactoryNativeToolCallingTests
     }
 
     private static LlmProviderFactory CreateFactory(TestHttpClientFactory httpClientFactory)
-        => new(httpClientFactory, NullLoggerFactory.Instance);
+        => new(httpClientFactory, NullLoggerFactory.Instance, new Orkeon.Tests.Shared.FileSystem.FakeFileSystemService());
 
     private static async Task<(Uri Uri, string Body)> ReadSingleCapturedRequestAsync(TestHttpMessageHandler handler)
     {

@@ -268,7 +268,7 @@ internal static class DoctorCommand
         try
         {
             using var httpFactory = new CliHttpClientFactory();
-            var factory = new LlmProviderFactory(httpFactory, NullLoggerFactory.Instance);
+            var factory = LlmProviderFactory.WithoutMounts(httpFactory, NullLoggerFactory.Instance);
             if (factory.Create(settings) is LlmProviderAdapter adapter)
             {
                 var typeName = MeteredLlmProvider.Unwrap(adapter.UnderlyingProvider).GetType().Name;

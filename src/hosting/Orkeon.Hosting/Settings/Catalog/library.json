@@ -696,6 +696,18 @@
       "description": "The model's name. Left out, the provider runs its own default model."
     },
     {
+      "path": "Llm:Profiles:<name>:Provider",
+      "section": "Llm",
+      "type": "string",
+      "description": "`mock`, the only value: the offline provider that answers from the JSONL file `Responses` names. Left out, the provider follows from `BaseUrl`, the model's name and the key."
+    },
+    {
+      "path": "Llm:Profiles:<name>:Responses",
+      "section": "Llm",
+      "type": "string",
+      "description": "With `Provider: mock`, the virtual path of the JSONL file — one `{match, regex?, content, toolCalls?}` object per line — the mock provider answers from."
+    },
+    {
       "path": "Llm:Profiles:<name>:StreamIdleSeconds",
       "section": "Llm",
       "type": "integer",
@@ -725,6 +737,18 @@
       "type": "integer",
       "default": 30,
       "description": "How long one call may take, in seconds. Too short at its default for a model that thinks before it answers: write 600 for one, or turn its thinking off."
+    },
+    {
+      "path": "Llm:Provider",
+      "section": "Llm",
+      "type": "string",
+      "description": "`mock`, the only value: the offline provider that answers from the JSONL file `Responses` names. Left out, the provider follows from `BaseUrl`, the model's name and the key."
+    },
+    {
+      "path": "Llm:Responses",
+      "section": "Llm",
+      "type": "string",
+      "description": "With `Provider: mock`, the virtual path of the JSONL file — one `{match, regex?, content, toolCalls?}` object per line — the mock provider answers from."
     },
     {
       "path": "Llm:StreamIdleSeconds",

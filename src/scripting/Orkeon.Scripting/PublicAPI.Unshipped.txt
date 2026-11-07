@@ -14,3 +14,27 @@ Orkeon.Scripting.Runtime.JsLlmFacade.extract.get -> Jint.Native.JsValue!
 Orkeon.Scripting.Configuration.ScriptingLimitsOptions.PromiseTimeout.get -> System.TimeSpan?
 Orkeon.Scripting.Configuration.ScriptingLimitsOptions.PromiseTimeout.init -> void
 static Orkeon.Scripting.JsEngineFactory.PauseExecutionClock(Jint.Engine! engine) -> System.IDisposable?
+Orkeon.Scripting.Testing.TestOverrideLlmProvider
+Orkeon.Scripting.Testing.TestOverrideLlmProvider.BaseConfig.get -> Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig?
+Orkeon.Scripting.Testing.TestOverrideLlmProvider.Capabilities.get -> Orkeon.Domain.SharedKernel.ValueObjects.LlmProviderCapabilities!
+Orkeon.Scripting.Testing.TestOverrideLlmProvider.ChatAsync(Orkeon.Domain.SharedKernel.ValueObjects.LlmMessage![]! messages, Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig? config = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Domain.SharedKernel.ValueObjects.LlmResponse!>!
+Orkeon.Scripting.Testing.TestOverrideLlmProvider.GenerateAsync(string! prompt, Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig? config = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Domain.SharedKernel.ValueObjects.LlmResponse!>!
+Orkeon.Scripting.Testing.TestOverrideLlmProvider.Mock.get -> Orkeon.Scripting.Testing.MockLlmProvider!
+Orkeon.Scripting.Testing.TestOverrideLlmProvider.Name.get -> string!
+Orkeon.Scripting.Testing.TestOverrideLlmProvider.TestOverrideLlmProvider(Orkeon.Domain.SharedKernel.ILlmProvider? inner) -> void
+Orkeon.Scripting.Testing.MockLlmExpectationBuilder
+Orkeon.Scripting.Testing.MockLlmExpectationBuilder.Respond(string! content) -> Orkeon.Scripting.Testing.MockLlmProvider!
+Orkeon.Scripting.Testing.MockLlmProvider.When(string! contains) -> Orkeon.Scripting.Testing.MockLlmExpectationBuilder!
+Orkeon.Scripting.Testing.MockLlmProvider.When(System.Text.RegularExpressions.Regex! pattern) -> Orkeon.Scripting.Testing.MockLlmExpectationBuilder!
+Orkeon.Scripting.Testing.MockToolExpectationBuilder
+Orkeon.Scripting.Testing.MockToolExpectationBuilder.Respond(object? response) -> Orkeon.Scripting.Testing.MockTool!
+Orkeon.Scripting.Testing.MockTool.When(string! contains) -> Orkeon.Scripting.Testing.MockToolExpectationBuilder!
+Orkeon.Scripting.Testing.MockTool.When(System.Text.RegularExpressions.Regex! pattern) -> Orkeon.Scripting.Testing.MockToolExpectationBuilder!
+Orkeon.Scripting.Testing.JsTestNamespace.JsTestNamespace(Orkeon.Scripting.Testing.MockLlmProvider! llm) -> void
+Orkeon.Scripting.JsEngineFactory.EnableTestNamespace.get -> bool
+Orkeon.Scripting.JsEngineFactory.EnableTestNamespace.init -> void
+static Orkeon.Scripting.Bindings.TestNamespaceBinding.Register(Jint.Engine! engine, Orkeon.Scripting.Testing.TestOverrideLlmProvider? provider) -> Orkeon.Scripting.Testing.JsTestNamespace!
+Orkeon.Scripting.Testing.TestOverrideLlmProvider.SupportsStreaming.get -> bool
+Orkeon.Scripting.Testing.TestOverrideLlmProvider.StreamsNatively.get -> bool
+Orkeon.Scripting.Testing.TestOverrideLlmProvider.GenerateStreamingAsync(string! prompt, Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig? config = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Collections.Generic.IAsyncEnumerable<string!>!
+Orkeon.Scripting.Testing.TestOverrideLlmProvider.ChatStreamingAsync(Orkeon.Domain.SharedKernel.ValueObjects.LlmMessage![]! messages, Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig? config = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Collections.Generic.IAsyncEnumerable<Orkeon.Domain.SharedKernel.ValueObjects.LlmStreamEvent!>!

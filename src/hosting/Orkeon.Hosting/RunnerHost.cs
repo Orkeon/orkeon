@@ -104,6 +104,13 @@ public sealed record RunnerMountPlan
     public IReadOnlyList<MountReference> CrewMountReferences { get; init; } = [];
 
     /// <summary>
+    /// When non-null, every LLM profile of the run — the default and each named one — becomes
+    /// <c>Provider: mock</c> reading this <b>virtual</b> JSONL file (<c>--llm-mock</c>); the caller is
+    /// responsible for having mounted its folder (<see cref="RunnerVirtualRoots.LlmMock"/>).
+    /// </summary>
+    public string? LlmMockResponses { get; init; }
+
+    /// <summary>
     /// When non-null, enables LLM exchange logging under this <b>virtual</b> path — the caller
     /// is responsible for having mounted it (the runners pass
     /// <see cref="RunnerVirtualRoots.LlmLogs"/> in <see cref="InternalMounts"/>). All HTTP
@@ -936,6 +943,7 @@ public static partial class RunnerHost
         using var declared = DeclaredConfiguration.Snapshot(builder);
 
         ElectLlmProfile(overrides, declared, llmProfile, decisions);
+        ApplyLlmMock(overrides, declared, mounts.LlmMockResponses);
 
         var placement = PlaceMounts(overrides, declared, mounts, settingsPath, decisions);
 
@@ -1135,6 +1143,28 @@ public static partial class RunnerHost
         static bool IsProfilesKey(string key) =>
             string.Equals(key, ConfigurationKeys.LlmProfiles, StringComparison.OrdinalIgnoreCase)
             || key.StartsWith(ConfigurationKeys.LlmProfiles + ConfigurationPath.KeyDelimiter, StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// <c>--llm-mock</c>: the default <c>Llm</c> section and every declared profile become
+    /// <c>Provider: mock</c> over <paramref name="responses"/>, laid over the settings and the election.
+    /// </summary>
+    private static void ApplyLlmMock(Dictionary<string, string?> overrides, DeclaredConfiguration declared, string? responses)
+    {
+        if (responses is null)
+            return;
+
+        var llm = ConfigurationKeys.LlmSection;
+        overrides[$"{llm}:Provider"] = Orkeon.Constants.Llm.LlmProviderKeys.Mock;
+        overrides[$"{llm}:Responses"] = responses;
+        if (declared.Section(llm) is not { } section)
+            return;
+
+        foreach (var profile in section.GetSection(ConfigurationKeys.LlmProfiles).GetChildren())
+        {
+            overrides[$"{llm}:{ConfigurationKeys.LlmProfiles}:{profile.Key}:Provider"] = Orkeon.Constants.Llm.LlmProviderKeys.Mock;
+            overrides[$"{llm}:{ConfigurationKeys.LlmProfiles}:{profile.Key}:Responses"] = responses;
+        }
     }
 
     /// <summary>

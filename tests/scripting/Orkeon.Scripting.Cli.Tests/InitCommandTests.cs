@@ -296,7 +296,7 @@ public sealed class InitCommandTests
         };
 
         using var httpFactory = new CliHttpClientFactory();
-        var factory = new LlmProviderFactory(httpFactory, NullLoggerFactory.Instance);
+        var factory = new LlmProviderFactory(httpFactory, NullLoggerFactory.Instance, new Orkeon.Tests.Shared.FileSystem.FakeFileSystemService());
         var created = factory.Create(config);
 
         var adapter = Assert.IsType<LlmProviderAdapter>(created);
