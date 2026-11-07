@@ -821,7 +821,14 @@ public static class InfrastructureExtensions
     /// </summary>
     public static IServiceCollection AddOrkeonGuardian(this IServiceCollection services)
     {
-        services.AddOrkeonSettings<GuardianOptions>("Orkeon:Guardian");
+        services.TryAddEnumerable(ServiceDescriptor.Singleton<IValidateOptions<GuardianOptions>, GuardianLlmPhasesValidator>());
+        services.AddOrkeonSettings<GuardianOptions>("Orkeon:Guardian")
+            .Validate(
+                o => o.Llm.BlockThreshold is >= 0 and <= 1 && o.Llm.WarnThreshold is >= 0 and <= 1,
+                $"{GuardianLlmOptions.SectionName}:BlockThreshold and WarnThreshold: probabilities in [0, 1].")
+            .Validate(
+                o => o.Llm.MaxContentChars > 0,
+                $"{GuardianLlmOptions.SectionName}:MaxContentChars: one character or more.");
 
         // Policy engine (singleton) - uses the default policy from options
         services.TryAddSingleton<GuardianPolicyEngine>(sp =>
@@ -848,9 +855,22 @@ public static class InfrastructureExtensions
                 return pipeline;
 
             pipeline.AddGuard(GuardPhase.Input, sp.GetRequiredService<InputGuard>());
-            // The decision model's input guard, beside the built-in one (AddOrkeonDecisionProvider).
-            if (sp.GetService<DecisionInputGuard>() is { Enabled: true } decisionGuard)
-                pipeline.AddGuard(GuardPhase.Input, decisionGuard);
+            // The LLM judge, beside the built-in guards: the decision model judges the input and the
+            // output of a task (Orkeon:Guardian:Llm, off by default). Enabled without a decision model
+            // is a refusal to start: a judge that cannot judge must not leave the phase unguarded.
+            if (options.Llm.Enabled)
+            {
+                var model = sp.GetService<Orkeon.Application.Interfaces.Ports.IDecisionModel>()
+                    ?? throw new InvalidOperationException(
+                        $"{GuardianLlmOptions.SectionName}:Enabled is true but no decision model is registered: " +
+                        "call AddOrkeonDecisionProvider, or turn the LLM judge off.");
+                var judge = new LlmJudgeGuard(model, Options.Create(options.Llm), sp.GetRequiredService<ILogger<LlmJudgeGuard>>(), auditLogger);
+                foreach (var phase in new[] { GuardPhase.Input, GuardPhase.Output })
+                {
+                    if (options.Llm.Judges(phase))
+                        pipeline.AddGuard(phase, judge);
+                }
+            }
             pipeline.AddGuard(GuardPhase.ToolExecution, sp.GetRequiredService<ToolGuard>());
             pipeline.AddGuard(GuardPhase.Delegation, sp.GetRequiredService<DelegationGuard>());
 

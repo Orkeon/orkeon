@@ -851,3 +851,8 @@ Orkeon.Application.Interfaces.Ports.ILlmFallbackObserver.FallbackTaken(string! p
 [ORKEXP007]Orkeon.Application.Runs.RunProcessIdentity.RunProcessIdentity(int Pid, string! Host, System.DateTimeOffset? StartedAt) -> void
 [ORKEXP007]static Orkeon.Application.Runs.RunProcessIdentity.Current.get -> Orkeon.Application.Runs.RunProcessIdentity!
 [ORKEXP007]Orkeon.Application.Runs.IRunProcessProbe.IsAlive(int pid, System.DateTimeOffset? startedAt) -> bool
+Orkeon.Application.Interfaces.Security.GuardPhase.Output = 3 -> Orkeon.Application.Interfaces.Security.GuardPhase
+Orkeon.Application.Services.Security.GuardianPolicy.OutputGuardEnabled.get -> bool
+Orkeon.Application.Services.Security.GuardianPolicy.OutputGuardEnabled.set -> void
+Orkeon.Application.Interfaces.Security.IGuardianPipeline.IsPhaseGuarded(Orkeon.Application.Interfaces.Security.GuardPhase phase) -> bool
+Orkeon.Application.Services.Security.GuardianPipeline.IsPhaseGuarded(Orkeon.Application.Interfaces.Security.GuardPhase phase) -> bool

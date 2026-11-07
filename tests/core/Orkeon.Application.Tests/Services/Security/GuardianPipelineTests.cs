@@ -94,6 +94,26 @@ public class GuardianPipelineTests
     }
 
     [Fact]
+    public void ReportsAPhaseGuarded_OnlyWhenItIsEnabledAndHoldsAGuard()
+    {
+        var pipeline = BuildPipeline(new GuardianPolicy { OutputGuardEnabled = true });
+
+        Assert.False(pipeline.IsPhaseGuarded(GuardPhase.Output));
+        pipeline.AddGuard(GuardPhase.Output, ScriptedGuardian.Allowing());
+        Assert.True(pipeline.IsPhaseGuarded(GuardPhase.Output));
+        Assert.False(pipeline.IsPhaseGuarded(GuardPhase.Input));
+    }
+
+    [Fact]
+    public void ReportsAPhaseUnguarded_WhenThePolicyDisablesIt()
+    {
+        var pipeline = BuildPipeline(new GuardianPolicy { OutputGuardEnabled = false });
+        pipeline.AddGuard(GuardPhase.Output, ScriptedGuardian.Allowing());
+
+        Assert.False(pipeline.IsPhaseGuarded(GuardPhase.Output));
+    }
+
+    [Fact]
     public async System.Threading.Tasks.Task Allows_WhenNoGuardIsRegisteredForThePhase()
     {
         var pipeline = BuildPipeline();

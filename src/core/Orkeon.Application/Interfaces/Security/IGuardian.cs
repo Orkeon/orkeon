@@ -10,7 +10,9 @@ public enum GuardPhase
     /// <summary>A tool call, before the tool runs.</summary>
     ToolExecution,
     /// <summary>A delegation (<c>delegate_work_to_coworker</c>, <c>ask_question_to_coworker</c>), before it runs.</summary>
-    Delegation
+    Delegation,
+    /// <summary>The output of a task, once validated and before it is kept (memory, deliverable, <c>task.completed</c>).</summary>
+    Output
 }
 
 /// <summary>
@@ -140,4 +142,13 @@ public interface IGuardianPipeline
     /// one guardian blocks; otherwise the aggregated warnings, or an allow.
     /// </summary>
     System.Threading.Tasks.Task<GuardResult> ExecuteAsync(GuardContext context, CancellationToken ct = default);
+
+    /// <summary>
+    /// Whether a guardian runs in <paramref name="phase"/>: the phase is enabled by the policy and at
+    /// least one guardian is registered for it. The orchestrator holds a task's streamed deltas back
+    /// while its output phase is guarded. A pipeline that does not say reports false.
+    /// </summary>
+    /// <param name="phase">The phase.</param>
+    /// <returns>True when a check of that phase can refuse.</returns>
+    bool IsPhaseGuarded(GuardPhase phase) => false;
 }

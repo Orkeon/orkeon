@@ -45,9 +45,10 @@ chaque vérification de capacité devrait l'exclure.
    se former ; l'hôte refuse un profil de décision nommé comme cible à sa construction, et un
    profil LLM qui n'existe pas à la première résolution du profil de décision.
 5. **Quand le modèle de décision échoue, l'appel continue** avec un avertissement (fail-open),
-   sauf si le profil pose `FailClosed` : il est alors bloqué.
-6. **Les autres usages sont secondaires** et réutilisent le même port : la garde d'entrée des
-   agents `DecisionInputGuard`, le reranker RAG `decision` et le tool
+   sauf si le profil pose `FailClosed` : il est alors bloqué. C'est la règle d'un *profil* de
+   décision ; le juge LLM du gardien suit le défaut inverse (voir l'amendement du 2026-11-08 plus bas).
+6. **Les autres usages sont secondaires** et réutilisent le même port : le juge LLM du gardien
+   `LlmJudgeGuard` (l'entrée de l'agent et la sortie d'une tâche), le reranker RAG `decision` et le tool
    `system_one_decide`.
 
    > Amendement 2026-10-31 : `IDecisionModel.ListModelsAsync` supprimée (aucun appelant).
@@ -66,8 +67,28 @@ chaque vérification de capacité devrait l'exclure.
   conversation demande une étape personnalisée.
 - Le compteur compte un appel de décision comme un usage `decision`, une seule fois, dans
   l'adaptateur.
-- Le `GuardPhase` du pipeline d'agent n'a pas de phase `Output` ; le filtrage des sorties passe
-  par une étape de réponse d'un profil de décision ([Limites connues](../reference/limitations.md)).
+- Depuis l'amendement du 2026-11-08, le `GuardPhase` du pipeline d'agent a une phase `Output`, portée
+  par le juge LLM ; une étape de réponse d'un profil de décision juge toujours la réponse au sein d'un
+  appel ([Limites connues](../reference/limitations.md)).
+
+## Amendement du 2026-11-08 (FWK-19) : le juge LLM du gardien
+
+- `GuardPhase.Output` existe : la sortie d'une tâche, une fois validée, est jugée avant le livrable,
+  la mémoire et `task.completed`. `DecisionInputGuard` est devenu `LlmJudgeGuard`, qui juge les phases
+  `Input` et `Output` par l'unique `IDecisionModel` (pas de clé `Profile` propre), sous
+  `Orkeon:Guardian:Llm`. `Orkeon:Decision:Guard` a disparu.
+- Le défaut du juge est **fail-closed** sur les deux phases quand il est activé (`FailMode: Closed`) :
+  un texte que le modèle n'a pas pu juger est refusé. `FailMode: Open` le laisse passer avec un
+  avertissement ; les deux modes auditent `guardian.judge.unavailable`. Le juge est coupé par défaut (un appel de
+  modèle par phase).
+- Tant que la phase de sortie est gardée, les deltas streamés d'une tâche sont retenus jusqu'au jugement et abandonnés s'il bloque : une sortie bloquée n'est jamais streamée. Un texte long est jugé sur sa tête et sa queue (la moitié de `MaxContentChars` chacune) ; le milieu n'est pas jugé. La phase couvre les tâches de crew, pas `ctx.llm.act`.
+- Les validateurs d'une sortie en corrigent la forme ; le juge en décide la politique. Ils ne
+  fusionnent pas.
+- Le juge tourne une fois par appel, hors de la chaîne de repli des profils (FWK-05) : un refus est un
+  échec de tâche, jamais une raison de passer à un autre profil. Un appel que le fournisseur n'a
+  jamais répondu n'a pas de sortie et n'est pas jugé.
+- Le filtrage de sortie par une étape de réponse d'un profil de décision reste possible mais ne porte
+  plus la phase de sortie du pipeline.
 
 ## Alternatives examinées
 

@@ -30,6 +30,11 @@ internal sealed class FakeGuardianPipeline : IGuardianPipeline
 
     public List<GuardContext> Contexts { get; } = [];
 
+    /// <summary>The phases <see cref="IsPhaseGuarded"/> reports as guarded.</summary>
+    public HashSet<GuardPhase> Guarded { get; } = [];
+
+    public bool IsPhaseGuarded(GuardPhase phase) => Guarded.Contains(phase);
+
     public System.Threading.Tasks.Task<GuardResult> ExecuteAsync(GuardContext context, CancellationToken ct = default)
     {
         Contexts.Add(context);

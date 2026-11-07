@@ -687,7 +687,22 @@ internal sealed class ChatClientAgentLoop
         var sank = false;
         // The turn's own sink, labelled with the task (#211): the tasks of a parallel wave stream at once,
         // and the host keeps their output apart.
-        var turn = _deltaSink?.BeginTurn(taskId);
+        // While the task's output phase is guarded the deltas are held until the guardian has judged the
+        // output (OutputHold): a blocked output is never streamed nor rendered.
+        var hold = OutputHold.Current;
+        ILlmDeltaSink? turn = null;
+        var turnOpened = false;
+        ILlmDeltaSink? Turn()
+        {
+            if (!turnOpened)
+            {
+                turn = _deltaSink?.BeginTurn(taskId);
+                turnOpened = true;
+            }
+
+            return turn;
+        }
+
         await foreach (var update in _chatClient.GetStreamingResponseAsync(messages, options, cancellationToken).ConfigureAwait(false))
         {
             updates.Add(update);
@@ -695,24 +710,35 @@ internal sealed class ChatClientAgentLoop
             if (string.IsNullOrEmpty(text))
                 continue;
 
-            CrewStreamScope.Write(new CrewExecutionEvent
+            void Emit()
             {
-                Kind = RunEventKinds.LlmDelta,
-                TaskId = taskId,
-                AgentRole = agentRole,
-                Text = text,
-            });
-            if (turn is not null)
-            {
-                turn.OnDelta(text);
-                sank = true;
+                CrewStreamScope.Write(new CrewExecutionEvent
+                {
+                    Kind = RunEventKinds.LlmDelta,
+                    TaskId = taskId,
+                    AgentRole = agentRole,
+                    Text = text,
+                });
+                Turn()?.OnDelta(text);
             }
+
+            if (hold is null)
+                Emit();
+            else
+                hold.Hold(Emit);
+            if (_deltaSink is not null)
+                sank = true;
         }
 
         // The sink's turn boundary, only after a turn that rendered something: a turn that only
         // called tools leaves the console as it was.
         if (sank)
-            turn!.OnTurnCompleted();
+        {
+            if (hold is null)
+                Turn()!.OnTurnCompleted();
+            else
+                hold.Hold(() => Turn()!.OnTurnCompleted());
+        }
 
         return updates.ToChatResponse();
     }

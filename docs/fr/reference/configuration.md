@@ -190,19 +190,19 @@ qu'elle accepte quand leur liste est fermée, et son sens.
 <!-- settings-index -->
 | Catégorie | Sections | Clés |
 |---|---|---|
-| [Modèles](#modèles) | [`Evaluation`](#evaluation), [`Llm`](#llm), [`LlmLogging`](#llmlogging), [`Orkeon:CostTracking`](#orkeoncosttracking), [`Orkeon:Decision`](#orkeondecision), [`Orkeon:Decision:Guard`](#orkeondecisionguard), [`Orkeon:Kev`](#orkeonkev), [`Orkeon:Liquid`](#orkeonliquid), [`Orkeon:TokenCounter`](#orkeontokencounter), [`Orkeon:TypeSafe`](#orkeontypesafe) | 101 |
+| [Modèles](#modèles) | [`Evaluation`](#evaluation), [`Llm`](#llm), [`LlmLogging`](#llmlogging), [`Orkeon:CostTracking`](#orkeoncosttracking), [`Orkeon:Decision`](#orkeondecision), [`Orkeon:Kev`](#orkeonkev), [`Orkeon:Liquid`](#orkeonliquid), [`Orkeon:TokenCounter`](#orkeontokencounter), [`Orkeon:TypeSafe`](#orkeontypesafe) | 96 |
 | [Débit et budgets](#débit-et-budgets) | [`RateLimiting`](#ratelimiting), [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting) | 11 |
 | [Mémoire et vecteurs](#mémoire-et-vecteurs) | [`Memory`](#memory), [`Orkeon:ChromaDb`](#orkeonchromadb), [`Orkeon:CognitiveMemory`](#orkeoncognitivememory), [`Orkeon:CrewMemory`](#orkeoncrewmemory), [`Orkeon:EmbeddingCache`](#orkeonembeddingcache), [`Orkeon:Embeddings`](#orkeonembeddings), [`Orkeon:Encryption`](#orkeonencryption), [`Orkeon:LanceDb`](#orkeonlancedb), [`Orkeon:Pinecone`](#orkeonpinecone), [`Orkeon:Redis`](#orkeonredis), [`Orkeon:Sqlite`](#orkeonsqlite), [`Orkeon:VectorSearch`](#orkeonvectorsearch) | 64 |
 | [RAG](#rag) | [`Orkeon:Rag`](#orkeonrag), [`Orkeon:Rag:Ingestion`](#orkeonragingestion), [`Orkeon:Rag:QueryRouting`](#orkeonragqueryrouting), [`Orkeon:Rag:Retrieval:Hybrid`](#orkeonragretrievalhybrid), [`Orkeon:Rag:WebFallback`](#orkeonragwebfallback) | 34 |
 | [Fichiers et bac à sable](#fichiers-et-bac-à-sable) | [`Orkeon:CodeSandbox`](#orkeoncodesandbox), [`Orkeon:CodeSandbox:Docker`](#orkeoncodesandboxdocker), [`Orkeon:FileSystem`](#orkeonfilesystem), [`Orkeon:Sandbox`](#orkeonsandbox), [`PathSecurity`](#pathsecurity) | 33 |
-| [Sécurité](#sécurité) | [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:Guardian`](#orkeonguardian), [`Orkeon:Security:PermissionGate`](#orkeonsecuritypermissiongate), [`Secrets`](#secrets), [`Security:Audit`](#securityaudit), [`Security:Prompt`](#securityprompt), [`Security:ToolResults`](#securitytoolresults), [`Security:Url`](#securityurl), [`Security:Vault`](#securityvault) | 32 |
+| [Sécurité](#sécurité) | [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:Guardian`](#orkeonguardian), [`Orkeon:Security:PermissionGate`](#orkeonsecuritypermissiongate), [`Secrets`](#secrets), [`Security:Audit`](#securityaudit), [`Security:Prompt`](#securityprompt), [`Security:ToolResults`](#securitytoolresults), [`Security:Url`](#securityurl), [`Security:Vault`](#securityvault) | 40 |
 | [Outils](#outils) | [`BRAVE_API_KEY`](#brave_api_key), [`MCP`](#mcp), [`MCP:Server`](#mcpserver), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Tools:Drive`](#orkeontoolsdrive), [`Orkeon:Tools:Email`](#orkeontoolsemail), [`Orkeon:Tools:Firefox`](#orkeontoolsfirefox), [`Orkeon:Tools:GitHub`](#orkeontoolsgithub), [`Orkeon:Tools:ResultLimits`](#orkeontoolsresultlimits), [`Orkeon:Tools:Shell`](#orkeontoolsshell), [`Plugins`](#plugins), [`RaggableTree`](#raggabletree) | 98 |
 | [Orchestration et persistance](#orchestration-et-persistance) | [`Orkeon:Checkpointing`](#orkeoncheckpointing), [`Orkeon:Consensus`](#orkeonconsensus), [`Orkeon:CrewFactory`](#orkeoncrewfactory), [`Orkeon:ExecutionState:Persistence`](#orkeonexecutionstatepersistence), [`Orkeon:RunHistory`](#orkeonrunhistory) | 25 |
 | [Scripts et console](#scripts-et-console) | [`Orkeon:Cli:ConsoleStreaming`](#orkeoncliconsolestreaming), [`Orkeon:Cli:Memory`](#orkeonclimemory), [`Orkeon:Cli:ScriptCommands`](#orkeoncliscriptcommands), [`Orkeon:Cli:ScriptHost`](#orkeoncliscripthost), [`Orkeon:Cli:Session`](#orkeonclisession), [`Orkeon:Cli:Tui`](#orkeonclitui), [`Orkeon:Scripting:AgentInstances`](#orkeonscriptingagentinstances), [`Orkeon:Scripting:AgentMemory`](#orkeonscriptingagentmemory), [`Orkeon:Scripting:Limits`](#orkeonscriptinglimits), [`Orkeon:Scripting:Toolchain`](#orkeonscriptingtoolchain) | 32 |
 | [Hôte de service et A2A](#hôte-de-service-et-a2a) | [`A2A`](#a2a), [`A2A:Security`](#a2asecurity), [`A2A:Security:AzureAD`](#a2asecurityazuread), [`A2A:Security:Oidc`](#a2asecurityoidc), [`Orkeon:Host`](#orkeonhost), [`Orkeon:Host:Discord`](#orkeonhostdiscord) | 46 |
 | [Observabilité](#observabilité) | [`Logging`](#logging), [`Orkeon:Monitoring`](#orkeonmonitoring), [`Telemetry`](#telemetry) | 8 |
 
-80 sections, 484 clés. Lues par aucun binaire livré, seulement par un hôte écrit en C# (8) : [`Evaluation`](#evaluation), [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:CognitiveMemory`](#orkeoncognitivememory), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Monitoring`](#orkeonmonitoring).
+79 sections, 487 clés. Lues par aucun binaire livré, seulement par un hôte écrit en C# (8) : [`Evaluation`](#evaluation), [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:CognitiveMemory`](#orkeoncognitivememory), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Monitoring`](#orkeonmonitoring).
 <!-- /settings-index -->
 
 Lire un tableau :
@@ -695,8 +695,8 @@ second appel n'enregistre aucun évaluateur deux fois).
 
 Le fournisseur de décision TypeSafe (modèle Jev, clé requise), lié par `AddOrkeonDecisionProvider(configuration, provider)`, que les trois
 binaires livrés appellent quand il est le fournisseur actif (un seul est actif à la fois, voir [`Orkeon:Decision`](#orkeondecision)) : cette section est présente — même vide, `TypeSafe: {}` compte — ou `TYPESAFE_API_KEY` est définie, ou `Orkeon:Decision:Provider` vaut `typesafe` : la clé,
-l'endpoint, le modèle par défaut, le délai et les nouvelles tentatives de chaque appel, (la garde d'entrée des agents est
-[`Orkeon:Decision:Guard`](#orkeondecisionguard)). Voir [Modèles de décision](../architecture/decision-models.md).
+l'endpoint, le modèle par défaut, le délai et les nouvelles tentatives de chaque appel (le juge LLM du gardien est
+[`Orkeon:Guardian:Llm`](#orkeonguardian)). Voir [Modèles de décision](../architecture/decision-models.md).
 
 <!-- settings:Orkeon:TypeSafe -->
 **Lue par** : `orkeon`, `orkeon-host`, `orkeon-repl`.
@@ -786,25 +786,6 @@ sections présentes, ou aucune section et les deux clés définies, sont refusé
 | `Profiles:<nom>:Stages:<i>:WarnThreshold` | nombre | `0.3` | La probabilité à partir de laquelle une étape `guard` journalise un avertissement. |
 | `Profiles:<nom>:Target` | chaîne | `""` | Le profil où va un appel qu'aucune étape ne route ; `default` est la section `Llm`. |
 | `Provider` | chaîne | — | Le fournisseur de décision actif : `typesafe`, `liquid` ou `kev` ; vide, il se déduit des sections et des clés. |
-<!-- /settings -->
-
-### `Orkeon:Decision:Guard`
-
-La garde d'entrée des agents, enregistrée avec le modèle de décision par `AddOrkeonDecisionProvider` :
-elle juge l'entrée avec ce modèle, dans la phase `Input`, à côté de la garde intégrée, par le fournisseur actif ; ses verdicts sont signés de son nom.
-Coupée sauf `Enabled`. Voir
-[Modèles de décision](../architecture/decision-models.md).
-
-<!-- settings:Orkeon:Decision:Guard -->
-**Lue par** : `orkeon`, `orkeon-host`, `orkeon-repl`.
-
-| Clé | Type | Défaut | Sens |
-|---|---|---|---|
-| `BlockThreshold` | nombre | `0.8` | La probabilité à partir de laquelle un risque bloque l'entrée. |
-| `Enabled` | booléen | `false` | Si la garde tourne ; coupée par défaut. |
-| `FailClosed` | booléen | `false` | Si un modèle de décision injoignable bloque l'entrée ; false avertit et la laisse passer. |
-| `Risks:<nom>` | chaîne | — | Les risques détectés, chacun avec ce qu'il est ; vide, les risques par défaut s'appliquent. |
-| `WarnThreshold` | nombre | `0.5` | La probabilité à partir de laquelle un risque est un avertissement. |
 <!-- /settings -->
 
 ## Débit et budgets
@@ -1374,17 +1355,30 @@ viennent les secrets. Le récit est dans [Sécurité](../architecture/security.m
 Le pipeline de gardes : `GuardianPipeline` joue la phase d'entrée de chaque tour d'agent, et les
 phases outil et délégation de chaque appel d'outil. Actif par défaut, enregistré par
 `AddOrkeonInfrastructure()`.
+La sous-section `Llm` ajoute un juge LLM, coupé par défaut : le modèle de décision juge l'entrée et la
+sortie d'une tâche (`Phases`), un risque à `BlockThreshold` ou au-dessus bloque, et quand le modèle ne
+répond pas `FailMode` tranche : `Closed` (défaut) refuse, `Open` laisse passer le texte ; les deux auditent
+`guardian.judge.unavailable`. Tant que la phase de sortie est gardée, le streaming d'une tâche attend le jugement. Il demande un modèle de décision (`AddOrkeonDecisionProvider`) ; activé
+sans lui, l'hôte refuse de démarrer.
 
 <!-- settings:Orkeon:Guardian -->
 **Lue par** : `orkeon`, `orkeon-host`, `orkeon-repl`.
 
-| Clé | Type | Défaut | Sens |
-|---|---|---|---|
-| `DefaultPolicy:DelegationGuardEnabled` | booléen | `true` | Si la phase de délégation (profondeur, auto-délégation, cycles) s'exécute. |
-| `DefaultPolicy:InputGuardEnabled` | booléen | `true` | Si la phase d'entrée (filtrage anti-injection de l'invite utilisateur composée) s'exécute. |
-| `DefaultPolicy:MaxDelegationDepth` | entier | `5` | Combien de délégations synchrones peuvent s'emboîter avant que la suivante ne soit bloquée. |
-| `DefaultPolicy:ToolGuardEnabled` | booléen | `true` | Si la phase outil (traversée de chemin, SSRF et injection SQL dans les arguments d'outil) s'exécute. |
-| `Enabled` | booléen | `true` | Si le guardian s'exécute. À false, aucun guardian n'est enregistré dans le pipeline : les tours d'agent ne sont filtrés ni en entrée ni sur les appels d'outils. |
+| Clé | Type | Défaut | Valeurs | Sens |
+|---|---|---|---|---|
+| `DefaultPolicy:DelegationGuardEnabled` | booléen | `true` |  | Si la phase de délégation (profondeur, auto-délégation, cycles) s'exécute. |
+| `DefaultPolicy:InputGuardEnabled` | booléen | `true` |  | Si la phase d'entrée (filtrage anti-injection de l'invite utilisateur composée) s'exécute. |
+| `DefaultPolicy:MaxDelegationDepth` | entier | `5` |  | Combien de délégations synchrones peuvent s'emboîter avant que la suivante ne soit bloquée. |
+| `DefaultPolicy:OutputGuardEnabled` | booléen | `true` |  | Si la phase de sortie s'exécute. Sa seule garde est le juge LLM, lui-même coupé sauf `Orkeon:Guardian:Llm:Enabled`. |
+| `DefaultPolicy:ToolGuardEnabled` | booléen | `true` |  | Si la phase outil (traversée de chemin, SSRF et injection SQL dans les arguments d'outil) s'exécute. |
+| `Enabled` | booléen | `true` |  | Si le guardian s'exécute. À false, aucun guardian n'est enregistré dans le pipeline : les tours d'agent ne sont filtrés ni en entrée ni sur les appels d'outils. |
+| `Llm:BlockThreshold` | nombre | `0.8` |  | La probabilité à partir de laquelle un risque bloque le texte. |
+| `Llm:Enabled` | booléen | `false` |  | Si le juge tourne ; coupé par défaut (il coûte un appel de modèle par phase). |
+| `Llm:FailMode` | énumération | `"Closed"` | `Closed`, `Open` | Ce qui se passe quand le modèle de décision ne peut pas juger : `Closed` (défaut) refuse, `Open` laisse passer le texte ; les deux auditent `guardian.judge.unavailable`. |
+| `Llm:MaxContentChars` | entier | `8000` |  | Les caractères d'un texte que le juge lit : un texte plus long est jugé sur la première et la dernière moitié de ce budget, ce qui est entre n'est pas jugé, et la coupe est auditée. |
+| `Llm:Phases` | liste d'énumérations | `[]` | `Input`, `Output` | Les phases jugées, `Input` et/ou `Output` ; vide, les deux. Toute autre valeur est refusée au démarrage (les phases d'outil et de délégation sont vérifiées par des règles, pas par un modèle). |
+| `Llm:Risks:<nom>` | chaîne | — |  | Les risques détectés, chacun avec ce qu'il est ; vide, les risques par défaut s'appliquent. |
+| `Llm:WarnThreshold` | nombre | `0.5` |  | La probabilité à partir de laquelle un risque est un avertissement. |
 <!-- /settings -->
 
 ### `Security:Prompt`

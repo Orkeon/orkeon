@@ -227,24 +227,6 @@ override Orkeon.Infrastructure.Decision.SystemOne.DecisionProviderDescriptor.Get
 override Orkeon.Infrastructure.Decision.SystemOne.DecisionProviderDescriptor.ToString() -> string!
 static Orkeon.Infrastructure.Decision.SystemOne.DecisionProviderDescriptor.operator ==(Orkeon.Infrastructure.Decision.SystemOne.DecisionProviderDescriptor? left, Orkeon.Infrastructure.Decision.SystemOne.DecisionProviderDescriptor? right) -> bool
 static Orkeon.Infrastructure.Decision.SystemOne.DecisionProviderDescriptor.operator !=(Orkeon.Infrastructure.Decision.SystemOne.DecisionProviderDescriptor? left, Orkeon.Infrastructure.Decision.SystemOne.DecisionProviderDescriptor? right) -> bool
-Orkeon.Infrastructure.Decision.DecisionGuardOptions
-Orkeon.Infrastructure.Decision.DecisionGuardOptions.BlockThreshold.get -> double
-Orkeon.Infrastructure.Decision.DecisionGuardOptions.BlockThreshold.set -> void
-Orkeon.Infrastructure.Decision.DecisionGuardOptions.DecisionGuardOptions() -> void
-Orkeon.Infrastructure.Decision.DecisionGuardOptions.Enabled.get -> bool
-Orkeon.Infrastructure.Decision.DecisionGuardOptions.Enabled.set -> void
-Orkeon.Infrastructure.Decision.DecisionGuardOptions.FailClosed.get -> bool
-Orkeon.Infrastructure.Decision.DecisionGuardOptions.FailClosed.set -> void
-Orkeon.Infrastructure.Decision.DecisionGuardOptions.Risks.get -> System.Collections.Generic.Dictionary<string!, string!>!
-Orkeon.Infrastructure.Decision.DecisionGuardOptions.Risks.init -> void
-Orkeon.Infrastructure.Decision.DecisionGuardOptions.WarnThreshold.get -> double
-Orkeon.Infrastructure.Decision.DecisionGuardOptions.WarnThreshold.set -> void
-Orkeon.Infrastructure.Decision.DecisionInputGuard
-Orkeon.Infrastructure.Decision.DecisionInputGuard.CheckAsync(Orkeon.Application.Interfaces.Security.GuardContext! context, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Application.Interfaces.Security.GuardResult!>!
-Orkeon.Infrastructure.Decision.DecisionInputGuard.DecisionInputGuard(Orkeon.Application.Interfaces.Ports.IDecisionModel! model, Microsoft.Extensions.Options.IOptions<Orkeon.Infrastructure.Decision.DecisionGuardOptions!>! options, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.Decision.DecisionInputGuard!>! logger) -> void
-Orkeon.Infrastructure.Decision.DecisionInputGuard.Enabled.get -> bool
-const Orkeon.Infrastructure.Decision.DecisionGuardOptions.SectionName = "Orkeon:Decision:Guard" -> string!
-static readonly Orkeon.Infrastructure.Decision.DecisionInputGuard.DefaultRisks -> System.Collections.Immutable.ImmutableDictionary<string!, string!>!
 Orkeon.Infrastructure.Decision.SystemOne.DecisionProviderChoice
 Orkeon.Infrastructure.Decision.SystemOne.DecisionProviderChoice.<Clone>$() -> Orkeon.Infrastructure.Decision.SystemOne.DecisionProviderChoice!
 Orkeon.Infrastructure.Decision.SystemOne.DecisionProviderChoice.DecisionProviderChoice() -> void
@@ -584,3 +566,36 @@ Orkeon.Infrastructure.Crew.Strategies.GraphProcessStrategy.GraphProcessStrategy(
 [ORKEXP007]Orkeon.Infrastructure.Runs.SqliteRunEventSink.SqliteRunEventSink(Orkeon.Domain.FileSystem.IFileSystemService! fileSystem, Orkeon.Application.Runs.RunHistoryOptions! options, System.TimeProvider! time, Orkeon.Application.Runs.RunProcessIdentity? identity = null, Orkeon.Application.Runs.IRunProcessProbe? probe = null) -> void
 [ORKEXP007]Orkeon.Infrastructure.Runs.RedactingRunEventSink.RedactingRunEventSink(Orkeon.Application.Runs.IRunEventSink! inner) -> void
 [ORKEXP007]Orkeon.Infrastructure.Runs.RedactingRunEventSink.WriteAsync(Orkeon.Application.Runs.RunEvent! runEvent, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+Orkeon.Infrastructure.Decision.GuardianJudgeFailMode
+Orkeon.Infrastructure.Decision.GuardianJudgeFailMode.Closed = 0 -> Orkeon.Infrastructure.Decision.GuardianJudgeFailMode
+Orkeon.Infrastructure.Decision.GuardianJudgeFailMode.Open = 1 -> Orkeon.Infrastructure.Decision.GuardianJudgeFailMode
+Orkeon.Infrastructure.Decision.GuardianLlmOptions
+Orkeon.Infrastructure.Decision.GuardianLlmOptions.BlockThreshold.get -> double
+Orkeon.Infrastructure.Decision.GuardianLlmOptions.BlockThreshold.set -> void
+Orkeon.Infrastructure.Decision.GuardianLlmOptions.Enabled.get -> bool
+Orkeon.Infrastructure.Decision.GuardianLlmOptions.Enabled.set -> void
+Orkeon.Infrastructure.Decision.GuardianLlmOptions.FailMode.get -> Orkeon.Infrastructure.Decision.GuardianJudgeFailMode
+Orkeon.Infrastructure.Decision.GuardianLlmOptions.FailMode.set -> void
+Orkeon.Infrastructure.Decision.GuardianLlmOptions.GuardianLlmOptions() -> void
+Orkeon.Infrastructure.Decision.GuardianLlmOptions.Judges(Orkeon.Application.Interfaces.Security.GuardPhase phase) -> bool
+Orkeon.Infrastructure.Decision.GuardianLlmOptions.MaxContentChars.get -> int
+Orkeon.Infrastructure.Decision.GuardianLlmOptions.MaxContentChars.set -> void
+Orkeon.Infrastructure.Decision.GuardianLlmOptions.Phases.get -> System.Collections.ObjectModel.Collection<Orkeon.Infrastructure.Decision.GuardianJudgePhase>!
+Orkeon.Infrastructure.Decision.GuardianLlmOptions.Phases.init -> void
+Orkeon.Infrastructure.Decision.GuardianLlmOptions.Risks.get -> System.Collections.Generic.Dictionary<string!, string!>!
+Orkeon.Infrastructure.Decision.GuardianLlmOptions.Risks.init -> void
+Orkeon.Infrastructure.Decision.GuardianLlmOptions.WarnThreshold.get -> double
+Orkeon.Infrastructure.Decision.GuardianLlmOptions.WarnThreshold.set -> void
+Orkeon.Infrastructure.Decision.LlmJudgeGuard
+Orkeon.Infrastructure.Decision.LlmJudgeGuard.CheckAsync(Orkeon.Application.Interfaces.Security.GuardContext! context, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Application.Interfaces.Security.GuardResult!>!
+Orkeon.Infrastructure.Decision.LlmJudgeGuard.Enabled.get -> bool
+Orkeon.Infrastructure.Decision.LlmJudgeGuard.LlmJudgeGuard(Orkeon.Application.Interfaces.Ports.IDecisionModel! model, Microsoft.Extensions.Options.IOptions<Orkeon.Infrastructure.Decision.GuardianLlmOptions!>! options, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.Decision.LlmJudgeGuard!>! logger, Orkeon.Application.Interfaces.Security.IAuditLogger? auditLogger = null) -> void
+const Orkeon.Infrastructure.Decision.GuardianLlmOptions.SectionName = "Orkeon:Guardian:Llm" -> string!
+static readonly Orkeon.Infrastructure.Decision.LlmJudgeGuard.DefaultRisks -> System.Collections.Immutable.ImmutableDictionary<string!, string!>!
+Orkeon.Infrastructure.Configuration.GuardianOptions.Llm.get -> Orkeon.Infrastructure.Decision.GuardianLlmOptions!
+Orkeon.Infrastructure.Configuration.GuardianOptions.Llm.set -> void
+const Orkeon.Infrastructure.Decision.LlmJudgeGuard.UnavailableThreatType = "guardian.judge.unavailable" -> string!
+const Orkeon.Infrastructure.Decision.LlmJudgeGuard.TruncatedThreatType = "guardian.judge.truncated" -> string!
+Orkeon.Infrastructure.Decision.GuardianJudgePhase
+Orkeon.Infrastructure.Decision.GuardianJudgePhase.Input = 0 -> Orkeon.Infrastructure.Decision.GuardianJudgePhase
+Orkeon.Infrastructure.Decision.GuardianJudgePhase.Output = 1 -> Orkeon.Infrastructure.Decision.GuardianJudgePhase

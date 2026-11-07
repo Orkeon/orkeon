@@ -18,4 +18,7 @@ public class GuardianOptions
 
     /// <summary>Gets or sets the default guardian policy (which phases run, maximum delegation depth).</summary>
     public GuardianPolicy DefaultPolicy { get; set; } = new();
+
+    /// <summary>Gets or sets the LLM judge (<c>Orkeon:Guardian:Llm</c>): input and output judged by the decision model; off by default.</summary>
+    public Orkeon.Infrastructure.Decision.GuardianLlmOptions Llm { get; set; } = new();
 }

@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — an LLM judge on a task's input and output (FWK-19)
+
+- **`Orkeon:Guardian:Llm`** (`Enabled`, `Phases`, `BlockThreshold`, `WarnThreshold`, `Risks`, `FailMode`, `MaxContentChars`) turns on `LlmJudgeGuard`, which asks the decision model (`IDecisionModel`, no profile of its own) one question per risk on an agent's input and on a task's output. Off by default: it costs a model call per phase.
+- **`GuardPhase.Output`** joins `Input`, `ToolExecution` and `Delegation`, with `GuardianPolicy.OutputGuardEnabled` (default true). `ExecutionOrchestrator` runs it on the validated output, before the deliverable, the memory and `task.completed`: a block fails the task (`GuardianBlocked`, `Blocked by Guardian (output): <reason>`) and nothing is kept. A call that ended `LlmCallFailed` has no output and is not judged. The judge runs once per call, outside the profile fallback chain: a refusal never makes a profile fail over.
+- `FailMode: Closed` (default) refuses a text the model could not judge; `Open` lets it in with a warning. Both audit `guardian.judge.unavailable`. A text longer than `MaxContentChars` (8000) is judged on its first and last half of that budget, with a marker between them: what lies between is not judged, and the cut is audited as `guardian.judge.truncated`.
+- While the output phase is guarded, a task's streamed deltas (`llm.delta`, the host's `ILlmDeltaSink`) are held until the guardian has judged the output: released when it allows it, dropped when it blocks it, so a blocked output reaches neither the stream, the console nor the run history. Streaming is delayed until the judgement; `IGuardianPipeline.IsPhaseGuarded` tells the orchestrator when.
+- A host that enables the judge without a decision model is refused at start, and so is a `Phases` value other than `Input` or `Output` (`ToolExecution` and `Delegation` are checked by rules).
+- The output phase covers crew tasks (`ExecuteTaskCoreAsync`) only: a scripted `ctx.llm.act` crosses the input phase but its answer is not judged.
+- **[breaking]** `DecisionInputGuard` is renamed `LlmJudgeGuard`, `DecisionGuardOptions` is merged into `GuardianLlmOptions` and the section `Orkeon:Decision:Guard` moves to `Orkeon:Guardian:Llm`; and the default when the judge is on is now fail-closed (it was fail-open). ADR-015 is amended (2026-11-08).
+
+  | Before | After |
+  |---|---|
+  | `DecisionInputGuard` | `LlmJudgeGuard` |
+  | `DecisionGuardOptions` | `GuardianLlmOptions` (under `GuardianOptions.Llm`) |
+  | `Orkeon:Decision:Guard:*` | `Orkeon:Guardian:Llm:*` |
+  | `Orkeon:Decision:Guard:FailClosed: false` (default) | `Orkeon:Guardian:Llm:FailMode: Open` |
+  | `Orkeon:Decision:Guard:FailClosed: true` | `Orkeon:Guardian:Llm:FailMode: Closed` (the new default) |
+
 ### Added — a profile that fails over to another (FWK-05)
 
 - **`Llm:Profiles:<name>:Fallback: [b, c]`** (and `FallbackBudgetSeconds`) names the profiles a call moves to when `<name>` fails in a way a retry cannot cure: a transport error, a 5xx, a 429 once `Llm:MaxRetries` is spent, a timeout. A 4xx, a blocked content and a failure nothing is known about are the answer and move nothing. `FallbackLlmProvider` is the outermost link, above profiles already assembled, so each keeps its call mode and the meter and the trace name the provider that answered; a stream moves on only before its first delta; an exhausted chain answers with one error naming every profile (`ErrorType` `FallbackExhausted`). Unknown names, self-references and cycles refuse `LlmProfileRegistry`'s construction; a fallback with fewer `LlmProviderCapabilities` logs one warning. `LlmFailureClassifier` is the one classification, and `ResiliencePolicies` takes its retryable statuses from it (no change of behaviour). Code: `AddOrkeonLlmProfile(name, provider, baseConfig, fallback)` and `LlmProfileRegistration.Fallback` / `FallbackBudget`. Guide: `docs/architecture/llm-providers.md#profile-fallback`.

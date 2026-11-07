@@ -133,6 +133,10 @@ internal static partial class ExecutionLog
     [LoggerMessage(Level = LogLevel.Error, Message = "Agent [{AgentRole}]: the Guardian blocked the input of task {TaskId} before any LLM call; the task fails — {Reason}")]
     internal static partial void LogInputBlocked(ILogger logger, object agentRole, object taskId, string reason);
 
+    // FWK-19 — the guardian's output phase refused the task's validated output; nothing is kept.
+    [LoggerMessage(Level = LogLevel.Error, Message = "Agent [{AgentRole}]: the Guardian blocked the output of task {TaskId}; the task fails and the output is not kept — {Reason}")]
+    internal static partial void LogOutputBlocked(ILogger logger, object agentRole, object taskId, string reason);
+
     // GAP-34 — the task falls on a provider that runs its own tools while it holds Orkeon's; no provider was called.
     [LoggerMessage(Level = LogLevel.Error, Message = "Agent [{AgentRole}]: task {TaskId} holds Orkeon tools its provider would never call; the task fails before any LLM call — {Reason}")]
     internal static partial void LogOwnToolsRefused(ILogger logger, object agentRole, object taskId, string reason);

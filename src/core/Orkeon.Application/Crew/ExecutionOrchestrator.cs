@@ -479,6 +479,11 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
 
                 var validationContext = OutputValidationCoordinator.BuildOutputValidationContext(task);
 
+                // While the output phase is guarded, what the turns stream is held until the guardian has
+                // judged the output (FWK-19): released when it allows it, dropped when it blocks it.
+                OutputHold? outputHold = null;
+                using var outputHoldScope = Guardian?.IsPhaseGuarded(GuardPhase.Output) == true ? OutputHold.Begin(out outputHold) : null;
+
                 var loopResult = await ExecuteWithProviderAsync(
                     new ExecutionInvocationContext(
                         Agent: agent,
@@ -506,6 +511,40 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
 
                 // Unescape literal \n sequences that LLMs frequently emit in text output
                 var finalOutput = ToolCallTextParser.UnescapeLlmText(validatedOutput);
+
+                // Output phase (FWK-19): the validators corrected the form, the guardian judges the
+                // policy — before the deliverable is written, the memory kept or task.completed raised.
+                // A call the provider never answered has no output to judge. A refusal is a readable
+                // task failure, not a provider failure: a profile never fails over on it.
+                if (loopResult.ExitReason != AgentExitReason.LlmCallFailed)
+                {
+                    var outputVerdict = await CheckOutputAsync(agent, context, finalOutput, taskToken).ConfigureAwait(false);
+                    if (outputVerdict is { IsAllowed: false })
+                    {
+                        outputHold?.Drop();
+                        var reason = $"Blocked by Guardian (output): {outputVerdict.Reason}";
+                        ExecutionLog.LogOutputBlocked(_logger, agent.Role, task.Id, outputVerdict.Reason ?? "");
+                        return new TaskResult(
+                            Success: false,
+                            Output: string.Empty,
+                            StructuredOutput: null,
+                            ToolsUsed: toolsUsed,
+                            ExecutionTime: DateTime.UtcNow - startTime,
+                            Error: reason)
+                        {
+                            ExitReason = AgentExitReason.GuardianBlocked,
+                            IterationsUsed = loopResult.IterationsUsed,
+                            LastError = reason,
+                        };
+                    }
+
+                    outputHold?.Release();
+                }
+                else
+                {
+                    // A failed call has no output to judge, and what it streamed was never judged either.
+                    outputHold?.Drop();
+                }
 
                 // Framework-managed deliverable persistence (Solution A / B).
                 // Legacy tasks with Deliverable == null or Source == ToolCall keep the existing
@@ -578,6 +617,28 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
             AgentRole = agent.Role.Value,
             CrewId = context.CrewId.ToString(),
             Content = userPrompt,
+        }, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Runs the guardian's output phase on a task's validated output; null when no guardian is set.
+    /// </summary>
+    private async System.Threading.Tasks.Task<GuardResult?> CheckOutputAsync(
+        DomainAgent agent,
+        SimpleExecutionContext context,
+        string output,
+        CancellationToken cancellationToken)
+    {
+        if (Guardian is null)
+            return null;
+
+        return await Guardian.ExecuteAsync(new GuardContext
+        {
+            Phase = GuardPhase.Output,
+            AgentId = agent.Id.ToString(),
+            AgentRole = agent.Role.Value,
+            CrewId = context.CrewId.ToString(),
+            Content = output,
         }, cancellationToken).ConfigureAwait(false);
     }
 

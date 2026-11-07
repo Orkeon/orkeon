@@ -340,12 +340,21 @@ never on its own.
 
 ## Secondary uses
 
-- **Input guard** — `DecisionInputGuard` joins the agent's guardian pipeline in the `Input` phase
-  when `Orkeon:Decision:Guard:Enabled` is true. The guard has its own section, `Orkeon:Decision:Guard`
-  (`Enabled`, thresholds, `Risks`); it checks through the active provider and signs its verdicts with
-  that provider's name. Its `Risks` default to `prompt_injection` and `data_exfiltration`,
-  `BlockThreshold` to 0.8, `WarnThreshold` to 0.5; it warns on a failure, or blocks with
-  `FailClosed`.
+- **LLM judge** — `LlmJudgeGuard` joins the agent's guardian pipeline in the `Input` and `Output`
+  phases when `Orkeon:Guardian:Llm:Enabled` is true. It judges through the one `IDecisionModel` (the
+  active provider; the guard has no profile of its own) and signs its verdicts with that provider's
+  name. Its section is `Orkeon:Guardian:Llm` (`Enabled`, `Phases`, thresholds, `Risks`, `FailMode`,
+  `MaxContentChars`); `Risks` default to `prompt_injection` and `data_exfiltration`, `BlockThreshold` to
+  0.8, `WarnThreshold` to 0.5. The `Output` phase judges a task's validated output before the
+  deliverable, the memory and `task.completed`: a block fails the task and nothing is kept; a call the
+  provider never answered has no output and is not judged. When the model fails, `FailMode: Closed`
+  (default) blocks and `Open` warns; both audit `guardian.judge.unavailable`. A text longer than
+  `MaxContentChars` is judged on its first and its last half of that budget with a marker between
+  them, and **what lies between is not judged**; the cut is audited as `guardian.judge.truncated`.
+  While the `Output` phase is guarded, a task's streamed deltas (`llm.delta`, the console) are held
+  until the judgement: streaming is delayed until the output is allowed, and a blocked output is
+  never streamed. The `Output` phase covers crew tasks only; a scripted `ctx.llm.act` crosses the
+  `Input` phase and its answer is not judged.
 - **RAG reranker** — `rerank.kind: decision` asks one `noul` per passage in a
   single request, passages cut at 4,000 characters, and orders them by probability.
 - **Tool** — `system_one_decide` lets an agent ask `choice`, `score` and `noul` questions

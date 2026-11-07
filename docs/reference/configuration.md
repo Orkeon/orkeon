@@ -179,19 +179,19 @@ closed list, and what it means.
 <!-- settings-index -->
 | Category | Sections | Keys |
 |---|---|---|
-| [Models](#models) | [`Evaluation`](#evaluation), [`Llm`](#llm), [`LlmLogging`](#llmlogging), [`Orkeon:CostTracking`](#orkeoncosttracking), [`Orkeon:Decision`](#orkeondecision), [`Orkeon:Decision:Guard`](#orkeondecisionguard), [`Orkeon:Kev`](#orkeonkev), [`Orkeon:Liquid`](#orkeonliquid), [`Orkeon:TokenCounter`](#orkeontokencounter), [`Orkeon:TypeSafe`](#orkeontypesafe) | 101 |
+| [Models](#models) | [`Evaluation`](#evaluation), [`Llm`](#llm), [`LlmLogging`](#llmlogging), [`Orkeon:CostTracking`](#orkeoncosttracking), [`Orkeon:Decision`](#orkeondecision), [`Orkeon:Kev`](#orkeonkev), [`Orkeon:Liquid`](#orkeonliquid), [`Orkeon:TokenCounter`](#orkeontokencounter), [`Orkeon:TypeSafe`](#orkeontypesafe) | 96 |
 | [Rate and budgets](#rate-and-budgets) | [`RateLimiting`](#ratelimiting), [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting) | 11 |
 | [Memory and vectors](#memory-and-vectors) | [`Memory`](#memory), [`Orkeon:ChromaDb`](#orkeonchromadb), [`Orkeon:CognitiveMemory`](#orkeoncognitivememory), [`Orkeon:CrewMemory`](#orkeoncrewmemory), [`Orkeon:EmbeddingCache`](#orkeonembeddingcache), [`Orkeon:Embeddings`](#orkeonembeddings), [`Orkeon:Encryption`](#orkeonencryption), [`Orkeon:LanceDb`](#orkeonlancedb), [`Orkeon:Pinecone`](#orkeonpinecone), [`Orkeon:Redis`](#orkeonredis), [`Orkeon:Sqlite`](#orkeonsqlite), [`Orkeon:VectorSearch`](#orkeonvectorsearch) | 64 |
 | [RAG](#rag) | [`Orkeon:Rag`](#orkeonrag), [`Orkeon:Rag:Ingestion`](#orkeonragingestion), [`Orkeon:Rag:QueryRouting`](#orkeonragqueryrouting), [`Orkeon:Rag:Retrieval:Hybrid`](#orkeonragretrievalhybrid), [`Orkeon:Rag:WebFallback`](#orkeonragwebfallback) | 34 |
 | [Files and sandbox](#files-and-sandbox) | [`Orkeon:CodeSandbox`](#orkeoncodesandbox), [`Orkeon:CodeSandbox:Docker`](#orkeoncodesandboxdocker), [`Orkeon:FileSystem`](#orkeonfilesystem), [`Orkeon:Sandbox`](#orkeonsandbox), [`PathSecurity`](#pathsecurity) | 33 |
-| [Security](#security) | [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:Guardian`](#orkeonguardian), [`Orkeon:Security:PermissionGate`](#orkeonsecuritypermissiongate), [`Secrets`](#secrets), [`Security:Audit`](#securityaudit), [`Security:Prompt`](#securityprompt), [`Security:ToolResults`](#securitytoolresults), [`Security:Url`](#securityurl), [`Security:Vault`](#securityvault) | 32 |
+| [Security](#security) | [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:Guardian`](#orkeonguardian), [`Orkeon:Security:PermissionGate`](#orkeonsecuritypermissiongate), [`Secrets`](#secrets), [`Security:Audit`](#securityaudit), [`Security:Prompt`](#securityprompt), [`Security:ToolResults`](#securitytoolresults), [`Security:Url`](#securityurl), [`Security:Vault`](#securityvault) | 40 |
 | [Tools](#tools) | [`BRAVE_API_KEY`](#brave_api_key), [`MCP`](#mcp), [`MCP:Server`](#mcpserver), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Tools:Drive`](#orkeontoolsdrive), [`Orkeon:Tools:Email`](#orkeontoolsemail), [`Orkeon:Tools:Firefox`](#orkeontoolsfirefox), [`Orkeon:Tools:GitHub`](#orkeontoolsgithub), [`Orkeon:Tools:ResultLimits`](#orkeontoolsresultlimits), [`Orkeon:Tools:Shell`](#orkeontoolsshell), [`Plugins`](#plugins), [`RaggableTree`](#raggabletree) | 98 |
 | [Orchestration and persistence](#orchestration-and-persistence) | [`Orkeon:Checkpointing`](#orkeoncheckpointing), [`Orkeon:Consensus`](#orkeonconsensus), [`Orkeon:CrewFactory`](#orkeoncrewfactory), [`Orkeon:ExecutionState:Persistence`](#orkeonexecutionstatepersistence), [`Orkeon:RunHistory`](#orkeonrunhistory) | 25 |
 | [Scripts and console](#scripts-and-console) | [`Orkeon:Cli:ConsoleStreaming`](#orkeoncliconsolestreaming), [`Orkeon:Cli:Memory`](#orkeonclimemory), [`Orkeon:Cli:ScriptCommands`](#orkeoncliscriptcommands), [`Orkeon:Cli:ScriptHost`](#orkeoncliscripthost), [`Orkeon:Cli:Session`](#orkeonclisession), [`Orkeon:Cli:Tui`](#orkeonclitui), [`Orkeon:Scripting:AgentInstances`](#orkeonscriptingagentinstances), [`Orkeon:Scripting:AgentMemory`](#orkeonscriptingagentmemory), [`Orkeon:Scripting:Limits`](#orkeonscriptinglimits), [`Orkeon:Scripting:Toolchain`](#orkeonscriptingtoolchain) | 32 |
 | [Service host and A2A](#service-host-and-a2a) | [`A2A`](#a2a), [`A2A:Security`](#a2asecurity), [`A2A:Security:AzureAD`](#a2asecurityazuread), [`A2A:Security:Oidc`](#a2asecurityoidc), [`Orkeon:Host`](#orkeonhost), [`Orkeon:Host:Discord`](#orkeonhostdiscord) | 46 |
 | [Observability](#observability) | [`Logging`](#logging), [`Orkeon:Monitoring`](#orkeonmonitoring), [`Telemetry`](#telemetry) | 8 |
 
-80 sections, 484 keys. Read by no shipped binary, only by a host written in C# (8): [`Evaluation`](#evaluation), [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:CognitiveMemory`](#orkeoncognitivememory), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Monitoring`](#orkeonmonitoring).
+79 sections, 487 keys. Read by no shipped binary, only by a host written in C# (8): [`Evaluation`](#evaluation), [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:CognitiveMemory`](#orkeoncognitivememory), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Monitoring`](#orkeonmonitoring).
 <!-- /settings-index -->
 
 How to read a table:
@@ -658,8 +658,8 @@ second call registers no evaluator twice).
 
 The decision provider TypeSafe (model Jev, key required), bound by `AddOrkeonDecisionProvider(configuration, provider)`, which the three
 shipped binaries call when it is the active provider (one provider is active at a time, see [`Orkeon:Decision`](#orkeondecision)): this section is present — even empty, `TypeSafe: {}` counts — or `TYPESAFE_API_KEY` is set, or `Orkeon:Decision:Provider` is `typesafe`: the key, the
-endpoint, the default model, the timeout and retries of each call, (the agent input guard is
-[`Orkeon:Decision:Guard`](#orkeondecisionguard)). See [Decision models](../architecture/decision-models.md).
+endpoint, the default model, the timeout and retries of each call (the LLM judge of the guardian is
+[`Orkeon:Guardian:Llm`](#orkeonguardian)). See [Decision models](../architecture/decision-models.md).
 
 <!-- settings:Orkeon:TypeSafe -->
 **Read by**: `orkeon`, `orkeon-host`, `orkeon-repl`.
@@ -749,25 +749,6 @@ warned as ignored in the start log (with a hint to name it when no provider is n
 | `Profiles:<name>:Stages:<i>:WarnThreshold` | number | `0.3` | The probability at or over which a `guard` logs a warning. |
 | `Profiles:<name>:Target` | string | `""` | The profile a call goes to when no stage routes it; `default` is the `Llm` section. |
 | `Provider` | string | — | The decision provider: `typesafe`, `liquid` or `kev`; empty deduces it. |
-<!-- /settings -->
-
-### `Orkeon:Decision:Guard`
-
-The agent input guard, registered with the decision model by `AddOrkeonDecisionProvider`: it judges
-the input with that model, in the `Input` phase, beside the built-in guard, through the active provider; its verdicts are signed with that provider's
-name. Off unless `Enabled`. See
-[Decision models](../architecture/decision-models.md).
-
-<!-- settings:Orkeon:Decision:Guard -->
-**Read by**: `orkeon`, `orkeon-host`, `orkeon-repl`.
-
-| Key | Type | Default | Meaning |
-|---|---|---|---|
-| `BlockThreshold` | number | `0.8` | The probability at or over which a risk blocks the input. |
-| `Enabled` | boolean | `false` | Whether the guard runs; off by default. |
-| `FailClosed` | boolean | `false` | Whether an unreachable decision model blocks the input; false warns and lets it in. |
-| `Risks:<name>` | string | — | The risks detected, each with what it is; empty takes the default risks. |
-| `WarnThreshold` | number | `0.5` | The probability at or over which a risk is a warning. |
 <!-- /settings -->
 
 ## Rate and budgets
@@ -1325,17 +1306,30 @@ from. The story is in [Security](../architecture/security.md).
 
 The guard pipeline: `GuardianPipeline` runs the input phase of every agent turn, and the tool and
 delegation phases of every tool call. On by default, registered by `AddOrkeonInfrastructure()`.
+The `Llm` sub-section adds an LLM judge, off by default: the decision model judges the input and the
+output of a task (`Phases`), a risk at or over `BlockThreshold` blocks, and when the model cannot answer
+`FailMode` decides: `Closed` (default) refuses, `Open` lets the text in; both audit
+`guardian.judge.unavailable`. While the output phase is guarded a task's streaming waits for the judgement. It needs a decision model (`AddOrkeonDecisionProvider`); enabled without
+one, the host refuses to start.
 
 <!-- settings:Orkeon:Guardian -->
 **Read by**: `orkeon`, `orkeon-host`, `orkeon-repl`.
 
-| Key | Type | Default | Meaning |
-|---|---|---|---|
-| `DefaultPolicy:DelegationGuardEnabled` | boolean | `true` | Whether the delegation phase (depth, self-delegation, cycles) runs. |
-| `DefaultPolicy:InputGuardEnabled` | boolean | `true` | Whether the input phase (prompt-injection screening of the composed user prompt) runs. |
-| `DefaultPolicy:MaxDelegationDepth` | integer | `5` | How many synchronous delegations may nest before the next one is blocked. |
-| `DefaultPolicy:ToolGuardEnabled` | boolean | `true` | Whether the tool phase (path traversal, SSRF and SQL injection in tool arguments) runs. |
-| `Enabled` | boolean | `true` | Whether the guardian runs. When false no guardian is registered in the pipeline: agent turns are neither screened on input nor on tool calls. |
+| Key | Type | Default | Values | Meaning |
+|---|---|---|---|---|
+| `DefaultPolicy:DelegationGuardEnabled` | boolean | `true` |  | Whether the delegation phase (depth, self-delegation, cycles) runs. |
+| `DefaultPolicy:InputGuardEnabled` | boolean | `true` |  | Whether the input phase (prompt-injection screening of the composed user prompt) runs. |
+| `DefaultPolicy:MaxDelegationDepth` | integer | `5` |  | How many synchronous delegations may nest before the next one is blocked. |
+| `DefaultPolicy:OutputGuardEnabled` | boolean | `true` |  | Whether the output phase runs. The only guard of that phase is the LLM judge, which is itself off unless `Orkeon:Guardian:Llm:Enabled`. |
+| `DefaultPolicy:ToolGuardEnabled` | boolean | `true` |  | Whether the tool phase (path traversal, SSRF and SQL injection in tool arguments) runs. |
+| `Enabled` | boolean | `true` |  | Whether the guardian runs. When false no guardian is registered in the pipeline: agent turns are neither screened on input nor on tool calls. |
+| `Llm:BlockThreshold` | number | `0.8` |  | The probability at or over which a risk blocks the text. |
+| `Llm:Enabled` | boolean | `false` |  | Whether the judge runs; off by default (it costs a model call per phase). |
+| `Llm:FailMode` | enum | `"Closed"` | `Closed`, `Open` | What happens when the decision model cannot judge: `Closed` (default) refuses, `Open` lets the text in; both audit `guardian.judge.unavailable`. |
+| `Llm:MaxContentChars` | integer | `8000` |  | The characters of a text the judge reads: a longer one is judged on its first and last half of that budget, what lies between is not judged, and the cut is audited. |
+| `Llm:Phases` | list of enum | `[]` | `Input`, `Output` | The phases judged, `Input` and/or `Output`; empty judges both. Any other value (the tool and delegation phases are checked by rules, not by a model) is refused at start. |
+| `Llm:Risks:<name>` | string | — |  | The risks detected, each with what it is; empty takes the default risks. |
+| `Llm:WarnThreshold` | number | `0.5` |  | The probability at or over which a risk is a warning. |
 <!-- /settings -->
 
 ### `Security:Prompt`
