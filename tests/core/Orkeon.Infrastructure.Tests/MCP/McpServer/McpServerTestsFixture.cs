@@ -41,7 +41,7 @@ public class McpServerTestsFixture
 
     // --- Build / Execution ---
 
-    public McpServer Build() => new(_mockRegistry, ToolInvocationPipeline.Unguarded, _options);
+    public McpServer Build() => new(_mockRegistry, ToolInvocationPipeline.Unguarded, new Orkeon.Tests.Shared.FileSystem.FakeFileSystemService(), _options);
 
     public async Task<JsonRpcResponse> ProcessRequestAsync(JsonRpcRequest request)
         => (await Build().ProcessRequestAsync(request))!;

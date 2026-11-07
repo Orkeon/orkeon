@@ -24,7 +24,9 @@ The MCP integration works in both directions:
   over stdio (`RunStdioAsync`) or by processing individual requests
   (`ProcessRequestAsync`). Every `tools/call` crosses the invocation point a crew agent's
   calls cross — guardian, truncation, result sanitizer, audit. Only the tools capability is
-  advertised — no resources, no prompts, no crews. `orkeon mcp serve` serves it over stdio —
+  advertised, plus read-only `resources` when `/output` is exposed (opt-in) — no prompts, no
+  crews. The stdio loop runs requests concurrently and honours `notifications/cancelled`.
+  `orkeon mcp serve` serves it over stdio —
   see [Serving the tools with `orkeon mcp serve`](#serving-the-tools-with-orkeon-mcp-serve).
 
 ## Version negotiation: two protocol lineages
@@ -98,14 +100,15 @@ services.AddOrkeonMcpServer(configuration);   // the server, for a host that ser
 `McpServerConfig` keyed by server id: `Transport` `Stdio` (default) or `Sse`,
 `Command`/`Args`/`Env` for stdio, `Url` for HTTP) and registers `McpToolProvider` as a
 singleton. It registers no server: `AddOrkeonMcpServer` registers `McpServer` (+
-`McpServerOptions` from `MCP:Server`: `Name`, default `Orkeon`, and `Version`, default
-`1.0.0`), which serves the container's `IToolRegistry` and calls every tool through its
+`McpServerOptions` from `MCP:Server`: `Name`, default `Orkeon`, `Version`, default
+`1.0.0`, `MaxConcurrency` (4), `ExposeOutput` (false), `ResourcesPageSize` (100) and
+`MaxResourceBytes` (1 MiB)), which serves the container's `IToolRegistry` and calls every tool through its
 `IToolInvocationPipeline` — `AddOrkeonInfrastructure()` and `AddOrkeonApplication()` register
 both. Registering is not serving: the host runs `RunStdioAsync` — what `orkeon mcp serve`
 does — or `ProcessRequestAsync` itself. No setting starts the server (GAP-24): the `MCP` section carries no such key, and every runner
-built on `RunnerHost` refuses an unknown key at startup, servers declared or not. The server exposes tools only — Orkeon has no resource or prompt
-model to serve, so `resources/*` and `prompts/*` answer `Method not found`, and there is no
-option claiming otherwise (the inert `ExposeResources`/`ExposePrompts` were removed, GAP-11).
+built on `RunnerHost` refuses an unknown key at startup, servers declared or not. The server exposes tools, and `/output` as resources when `ExposeOutput` is on (below);
+`prompts/*` answer `Method not found`, and there is no option claiming otherwise (the inert
+`ExposeResources`/`ExposePrompts` were removed, GAP-11).
 The `AddOrkeonInfrastructure(IConfiguration)` overload calls `AddOrkeonMcp` itself, never
 `AddOrkeonMcpServer`.
 
@@ -238,7 +241,7 @@ registry at run time and are not wrapped.
 ## Serving the tools with `orkeon mcp serve`
 
 ```bash
-orkeon mcp serve [--settings <file>] [--tools a,b,…]
+orkeon mcp serve [--settings <file>] [--tools a,b,…] [--max-concurrency <n>] [--expose-output]
 ```
 
 The verb serves an Orkeon host's tools to an MCP client over **stdio** — the transport by
@@ -258,6 +261,28 @@ stdout, one per line; closing stdin ends the server.
   are registered when their crew loads.
 - **`--tools a,b,…`** serves the named tools only (comma-separated); a name the host does not
   have refuses the start, naming it.
+- **Requests run concurrently** (`--max-concurrency <n>`, at least 1, default 4, or
+  `MCP:Server:MaxConcurrency`). Each request is one task; at most `n` run at once and the
+  others wait their turn, so a fifth slow call starts when one of the first four ends. The
+  answers go through one channel to one writer: two answers never interleave on stdout, and
+  they may arrive in a different order than the requests (the client matches them by `id`).
+  When stdin closes, every request already read is answered before the server ends.
+- **`notifications/cancelled`** cancels the request its `requestId` names, whether it runs or
+  still waits for its turn: the tool call receives the cancellation, and a cancelled request is
+  never answered, as the specification asks. An id the server does not know is ignored. A
+  second request with an id already in flight is refused (`-32600`). `McpServer` is a
+  singleton with no scoped dependency, so a request has no DI scope of its own.
+- **`--expose-output`** (or `MCP:Server:ExposeOutput`) serves `/output` as read-only
+  resources, off by default. `resources/list` pages the files under `/output` in path order
+  (`ResourcesPageSize` per page, an opaque `nextCursor`), each as
+  `orkeon:///output/<path>` with its `name`, `mimeType` and `size`; `resources/read` returns
+  a file as `text` when it is UTF-8 text and as a base64 `blob` otherwise, up to
+  `MaxResourceBytes`. Everything goes through `IFileSystemService`: the `/output` mount must
+  exist and grant Read (a warning on stderr says when it is not mounted), and the URI is
+  parsed strictly — no `.`/`..`/empty segment, no query or fragment, no `%2f`, anything but
+  `orkeon:///output/…` refused. `/workspace` and every other mount are never exposed, no
+  URI or error carries a physical path, and there is no `resources/subscribe` and no
+  `resources/templates/list`. Without the flag `resources/*` answer `Method not found`.
 - **Every call is guarded**: the invocation point of the [server](#server-mcpserver--dual-era-on-one-endpoint),
   under the caller `mcp` — a blocked call never reaches the tool, a result arrives truncated and
   tagged as data, and the audit trail records each call under the agent `mcp`; a blocked or
@@ -346,8 +371,8 @@ entry:
 - **HTTP+SSE 2024-11-05 not supported** — the transport with a separate message endpoint is refused; Streamable HTTP is the HTTP transport. Interop against the reference server runs nightly (`McpReferenceServerInteropTests`, [MCP interop](../guides/mcp-interop.md)).
 - **`2025-03-26` excluded** (mandatory JSON-RPC batching).
 - **The server speaks stdio only** (`orkeon mcp serve`, or `RunStdioAsync` /
-  `ProcessRequestAsync` in a C# host) and answers one request at a time: no HTTP transport,
-  no resources, no prompts, no crews exposed as tools.
+  `ProcessRequestAsync` in a C# host): no HTTP transport, no prompts, no crews exposed as
+  tools, and resources are `/output` only (read-only, no `resources/subscribe`).
 
 ## Experimental status
 

@@ -285,10 +285,12 @@ public class McpServerCapabilities
 
     /// <summary>Gets or sets the resources capability info, if supported.</summary>
     [JsonPropertyName("resources")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public McpCapabilityInfo? Resources { get; set; }
 
     /// <summary>Gets or sets the prompts capability info, if supported.</summary>
     [JsonPropertyName("prompts")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public McpCapabilityInfo? Prompts { get; set; }
 }
 
@@ -304,6 +306,7 @@ public class McpCapabilityInfo
 
     /// <summary>Gets or sets whether the server lets a client subscribe to updates of one resource (<c>resources.subscribe</c>).</summary>
     [JsonPropertyName("subscribe")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public bool? Subscribe { get; set; }
 }
 

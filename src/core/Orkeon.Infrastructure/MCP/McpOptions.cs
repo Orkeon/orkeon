@@ -36,4 +36,23 @@ public class McpServerOptions
     /// Server version advertised during MCP initialization.
     /// </summary>
     public string Version { get; set; } = "1.0.0";
+
+    /// <summary>
+    /// How many requests the stdio loop runs at once; the others wait their turn. At least 1.
+    /// <c>orkeon mcp serve --max-concurrency</c> overrides it.
+    /// </summary>
+    public int MaxConcurrency { get; set; } = 4;
+
+    /// <summary>
+    /// Whether the server serves <c>/output</c> as read-only MCP resources
+    /// (<c>orkeon:///output/&lt;path&gt;</c>). Off by default: nothing but the tools is exposed.
+    /// <c>/workspace</c> and every other mount are never exposed. <c>orkeon mcp serve --expose-output</c> sets it.
+    /// </summary>
+    public bool ExposeOutput { get; set; }
+
+    /// <summary>How many resources one <c>resources/list</c> page carries. At least 1.</summary>
+    public int ResourcesPageSize { get; set; } = 100;
+
+    /// <summary>The largest file <c>resources/read</c> returns, in bytes; a bigger one is refused.</summary>
+    public int MaxResourceBytes { get; set; } = 1_048_576;
 }

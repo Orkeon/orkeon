@@ -2590,11 +2590,39 @@
       "description": "URL endpoint for SSE transport."
     },
     {
+      "path": "MCP:Server:ExposeOutput",
+      "section": "MCP:Server",
+      "type": "boolean",
+      "default": false,
+      "description": "Whether the server serves `/output` as read-only MCP resources (`orkeon:///output/<path>`). Off by default: nothing but the tools is exposed. `/workspace` and every other mount are never exposed. `orkeon mcp serve --expose-output` sets it."
+    },
+    {
+      "path": "MCP:Server:MaxConcurrency",
+      "section": "MCP:Server",
+      "type": "integer",
+      "default": 4,
+      "description": "How many requests the stdio loop runs at once; the others wait their turn. At least 1. `orkeon mcp serve --max-concurrency` overrides it."
+    },
+    {
+      "path": "MCP:Server:MaxResourceBytes",
+      "section": "MCP:Server",
+      "type": "integer",
+      "default": 1048576,
+      "description": "The largest file `resources/read` returns, in bytes; a bigger one is refused."
+    },
+    {
       "path": "MCP:Server:Name",
       "section": "MCP:Server",
       "type": "string",
       "default": "Orkeon",
       "description": "Server name advertised during MCP initialization."
+    },
+    {
+      "path": "MCP:Server:ResourcesPageSize",
+      "section": "MCP:Server",
+      "type": "integer",
+      "default": 100,
+      "description": "How many resources one `resources/list` page carries. At least 1."
     },
     {
       "path": "MCP:Server:Version",

@@ -1,6 +1,7 @@
 using CommandLine;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Orkeon.Domain.FileSystem;
 using Orkeon.Domain.Tools;
 using Orkeon.Hosting;
 using Orkeon.Infrastructure.MCP;
@@ -21,12 +22,22 @@ internal sealed class McpServeCommandOptions : CliOptions
         HelpText = "Comma-separated names of the tools to serve (default: every tool of the host). A name the host does not have refuses the start.")]
     public IEnumerable<string> Tools { get; set; } = [];
 
+    /// <summary>How many requests are served at once; the settings' <c>MCP:Server:MaxConcurrency</c> (4) when absent.</summary>
+    [Option("max-concurrency", Required = false,
+        HelpText = "How many requests are served at once, at least 1 (default 4, or MCP:Server:MaxConcurrency); the others wait their turn.")]
+    public int? MaxConcurrency { get; set; }
+
+    /// <summary>Serves <c>/output</c> as read-only MCP resources.</summary>
+    [Option("expose-output", Required = false,
+        HelpText = "Serve /output as read-only MCP resources (orkeon:///output/<path>), through the host's virtual file system. /workspace is never served.")]
+    public bool ExposeOutput { get; set; }
+
     /// <summary>Test seam: overrides the current directory the host is anchored at.</summary>
     internal string? WorkingDirectoryOverride { get; set; }
 }
 
 /// <summary>
-/// <c>orkeon mcp serve [--settings &lt;file&gt;] [--tools a,b,…]</c> — serves the tools of an
+/// <c>orkeon mcp serve [--settings &lt;file&gt;] [--tools a,b,…] [--max-concurrency n] [--expose-output]</c> — serves the tools of an
 /// Orkeon host to an MCP client over stdio (GAP-24), the transport by which Claude Desktop and the
 /// editors launch a local server.
 /// <para>
@@ -75,6 +86,13 @@ internal static class McpCommand
             return Program.ExitScriptError;
         }
 
+        if (options.MaxConcurrency is < 1)
+        {
+            await console.ErrorOutput.WriteLineAsync(
+                $"orkeon mcp serve: --max-concurrency must be at least 1, got {options.MaxConcurrency}.").ConfigureAwait(false);
+            return Program.ExitScriptError;
+        }
+
         // Marked before the settings' servers are connected, so every process this serve starts
         // inherits the marker; cleared when it ends, so the process is left as it was found.
         Environment.SetEnvironmentVariable(RunnerEnvironment.McpServeVariable, "1");
@@ -86,6 +104,14 @@ internal static class McpCommand
 
             if (!await ServeOnlyAsync(console.ErrorOutput, host.Services.GetRequiredService<IToolRegistry>(), options.Tools).ConfigureAwait(false))
                 return Program.ExitScriptError;
+
+            if (options.ExposeOutput && !host.Services.GetRequiredService<IFileSystemService>().GetAvailableMounts()
+                    .Any(mount => string.Equals(mount.VirtualPath, "/output", StringComparison.Ordinal)))
+            {
+                await console.ErrorOutput.WriteLineAsync(
+                    "orkeon mcp serve: warning: --expose-output, but no /output mount is declared in the settings: "
+                    + "`resources/list` will refuse until one is (`Orkeon:FileSystem:Mounts`).").ConfigureAwait(false);
+            }
 
             await host.Services.GetRequiredService<McpServer>().RunStdioAsync(console.Input, console.Output).ConfigureAwait(false);
             return Program.ExitOk;
@@ -128,6 +154,14 @@ internal static class McpCommand
                 services.AddSemanticSearchTool();
                 RunCommand.AddCliRagServices(services);
                 services.AddOrkeonMcpServer(context.Configuration);
+                // The verb's options win over MCP:Server, which they extend.
+                services.PostConfigure<McpServerOptions>(server =>
+                {
+                    if (options.MaxConcurrency is int bound)
+                        server.MaxConcurrency = bound;
+                    if (options.ExposeOutput)
+                        server.ExposeOutput = true;
+                });
             },
             console.ErrorOutput,
             CancellationToken.None).ConfigureAwait(false);

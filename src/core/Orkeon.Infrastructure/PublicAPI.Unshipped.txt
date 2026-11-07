@@ -599,3 +599,15 @@ const Orkeon.Infrastructure.Decision.LlmJudgeGuard.TruncatedThreatType = "guardi
 Orkeon.Infrastructure.Decision.GuardianJudgePhase
 Orkeon.Infrastructure.Decision.GuardianJudgePhase.Input = 0 -> Orkeon.Infrastructure.Decision.GuardianJudgePhase
 Orkeon.Infrastructure.Decision.GuardianJudgePhase.Output = 1 -> Orkeon.Infrastructure.Decision.GuardianJudgePhase
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpServer.McpServer(Orkeon.Domain.Tools.IToolRegistry! toolRegistry, Orkeon.Application.Interfaces.Security.IToolInvocationPipeline! toolInvocation, Orkeon.Domain.FileSystem.IFileSystemService! fileSystem, Microsoft.Extensions.Options.IOptions<Orkeon.Infrastructure.MCP.McpServerOptions!>! options, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.MCP.McpServer!>? logger = null) -> void
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpServer.McpServer(Orkeon.Domain.Tools.IToolRegistry! toolRegistry, Orkeon.Application.Interfaces.Security.IToolInvocationPipeline! toolInvocation, Orkeon.Domain.FileSystem.IFileSystemService! fileSystem, Orkeon.Infrastructure.MCP.McpServerOptions! options, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.MCP.McpServer!>? logger = null) -> void
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpServerOptions.ExposeOutput.get -> bool
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpServerOptions.ExposeOutput.set -> void
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpServerOptions.MaxConcurrency.get -> int
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpServerOptions.MaxConcurrency.set -> void
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpServerOptions.MaxResourceBytes.get -> int
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpServerOptions.MaxResourceBytes.set -> void
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpServerOptions.ResourcesPageSize.get -> int
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpServerOptions.ResourcesPageSize.set -> void
+*REMOVED*[ORKEXP004]Orkeon.Infrastructure.MCP.McpServer.McpServer(Orkeon.Domain.Tools.IToolRegistry! toolRegistry, Orkeon.Application.Interfaces.Security.IToolInvocationPipeline! toolInvocation, Microsoft.Extensions.Options.IOptions<Orkeon.Infrastructure.MCP.McpServerOptions!>! options, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.MCP.McpServer!>? logger = null) -> void
+*REMOVED*[ORKEXP004]Orkeon.Infrastructure.MCP.McpServer.McpServer(Orkeon.Domain.Tools.IToolRegistry! toolRegistry, Orkeon.Application.Interfaces.Security.IToolInvocationPipeline! toolInvocation, Orkeon.Infrastructure.MCP.McpServerOptions! options, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.MCP.McpServer!>? logger = null) -> void

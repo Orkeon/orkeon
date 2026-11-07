@@ -25,7 +25,9 @@ L'intégration MCP fonctionne dans les deux sens :
   sur stdio (`RunStdioAsync`) ou par traitement de requêtes individuelles
   (`ProcessRequestAsync`). Chaque `tools/call` franchit le point d'invocation que franchissent
   les appels d'un agent de crew — garde, troncature, assainisseur de résultat, audit. Seule
-  la capacité outils est annoncée — ni ressources, ni prompts, ni crews. `orkeon mcp serve`
+  la capacité outils est annoncée, plus des `resources` en lecture seule quand `/output` est exposé
+  (opt-in) — ni prompts, ni crews. La boucle stdio traite les requêtes en concurrence et honore
+  `notifications/cancelled`. `orkeon mcp serve`
   le sert sur stdio — voir [Servir les outils avec `orkeon mcp serve`](#servir-les-outils-avec-orkeon-mcp-serve).
 
 ## Négociation de version : deux lignées de protocole
@@ -101,14 +103,15 @@ services.AddOrkeonMcpServer(configuration);   // le serveur, pour un hôte qui s
 de `McpServerConfig` indexé par identifiant de serveur : `Transport` `Stdio` (défaut) ou
 `Sse`, `Command`/`Args`/`Env` pour stdio, `Url` pour HTTP) et enregistre `McpToolProvider`
 en singleton. Il n'enregistre aucun serveur : c'est `AddOrkeonMcpServer` qui enregistre
-`McpServer` (+ `McpServerOptions` depuis `MCP:Server` : `Name`, `Orkeon` par défaut, et
-`Version`, `1.0.0` par défaut), lequel sert l'`IToolRegistry` du conteneur et appelle chaque
+`McpServer` (+ `McpServerOptions` depuis `MCP:Server` : `Name`, `Orkeon` par défaut, `Version`, `1.0.0`
+par défaut, `MaxConcurrency` (4), `ExposeOutput` (faux), `ResourcesPageSize` (100) et
+`MaxResourceBytes` (1 Mio)), lequel sert l'`IToolRegistry` du conteneur et appelle chaque
 outil par son `IToolInvocationPipeline` — `AddOrkeonInfrastructure()` et
 `AddOrkeonApplication()` enregistrent les deux. Enregistrer n'est pas servir : l'hôte lance
 `RunStdioAsync` — ce que fait `orkeon mcp serve` — ou `ProcessRequestAsync` lui-même.
 Aucun réglage ne démarre le serveur (GAP-24) : la section `MCP` ne porte aucune clé de ce genre, et
-chaque runner bâti sur `RunnerHost` refuse une clé inconnue au démarrage, serveurs déclarés ou non. Le serveur n'expose que des outils — Orkeon n'a
-aucun modèle de ressource ni de prompt à servir, donc `resources/*` et `prompts/*` répondent
+chaque runner bâti sur `RunnerHost` refuse une clé inconnue au démarrage, serveurs déclarés ou non. Le serveur expose des outils, et `/output` comme
+ressources quand `ExposeOutput` est actif (ci-dessous) ; `prompts/*` répondent
 `Method not found`, et aucune option ne prétend le contraire (les options inertes
 `ExposeResources`/`ExposePrompts` ont été supprimées, GAP-11). La surcharge
 `AddOrkeonInfrastructure(IConfiguration)` appelle elle-même `AddOrkeonMcp`, jamais
@@ -246,7 +249,7 @@ DI ; les outils MCP arrivent dans le registre à l'exécution et ne sont pas env
 ## Servir les outils avec `orkeon mcp serve`
 
 ```bash
-orkeon mcp serve [--settings <fichier>] [--tools a,b,…]
+orkeon mcp serve [--settings <fichier>] [--tools a,b,…] [--max-concurrency <n>] [--expose-output]
 ```
 
 Le verbe sert les outils d'un hôte Orkeon à un client MCP sur **stdio** — le transport par
@@ -267,6 +270,31 @@ réponses sur son stdout, une par ligne ; fermer stdin arrête le serveur.
   sont enregistrés au chargement de leur crew.
 - **`--tools a,b,…`** ne sert que les outils nommés (séparés par des virgules) ; un nom que
   l'hôte n'a pas refuse le démarrage en le nommant.
+- **Les requêtes s'exécutent en concurrence** (`--max-concurrency <n>`, au moins 1, 4 par
+  défaut, ou `MCP:Server:MaxConcurrency`). Chaque requête est une tâche ; `n` au plus
+  tournent à la fois et les autres attendent leur tour : un cinquième appel lent démarre
+  quand l'un des quatre premiers se termine. Les réponses passent par un canal vers un seul
+  écrivain : deux réponses ne s'entrelacent jamais sur stdout, et elles peuvent arriver dans
+  un autre ordre que les requêtes (le client les rapproche par `id`). Quand stdin se ferme,
+  chaque requête déjà lue reçoit sa réponse avant que le serveur ne s'arrête.
+- **`notifications/cancelled`** annule la requête que nomme son `requestId`, qu'elle tourne ou
+  qu'elle attende son tour : l'appel d'outil reçoit l'annulation, et une requête annulée n'est
+  jamais répondue, comme la spécification le demande. Un identifiant inconnu du serveur est
+  ignoré. Une seconde requête dont l'identifiant est déjà en vol est refusée (`-32600`).
+  `McpServer` est un singleton sans dépendance scoped : une requête n'a pas de portée DI
+  propre.
+- **`--expose-output`** (ou `MCP:Server:ExposeOutput`) sert `/output` comme ressources en
+  lecture seule, désactivé par défaut. `resources/list` pagine les fichiers sous `/output` par
+  ordre de chemin (`ResourcesPageSize` par page, un `nextCursor` opaque), chacun sous la forme
+  `orkeon:///output/<chemin>` avec son `name`, son `mimeType` et sa `size` ; `resources/read`
+  rend un fichier en `text` quand c'est du texte UTF-8 et en `blob` base64 sinon, jusqu'à
+  `MaxResourceBytes`. Tout passe par `IFileSystemService` : le montage `/output` doit exister
+  et accorder Read (un avertissement sur stderr le dit quand il n'est pas monté), et l'URI est
+  analysée strictement — aucun segment `.`/`..`/vide, ni requête ni fragment, ni `%2f`, tout
+  autre que `orkeon:///output/…` est refusé. `/workspace` et tout autre montage ne sont jamais
+  exposés, aucune URI ni erreur ne porte de chemin physique, et il n'y a ni
+  `resources/subscribe` ni `resources/templates/list`. Sans l'option, `resources/*` répondent
+  `Method not found`.
 - **Chaque appel est gardé** : le point d'invocation du [serveur](#serveur-mcpserver--bi-génération-sur-un-même-endpoint),
   sous l'appelant `mcp` — un appel bloqué n'atteint jamais l'outil, un résultat arrive tronqué et
   étiqueté comme donnée, et la piste d'audit enregistre chaque appel sous l'agent `mcp` ; un appel
@@ -361,8 +389,9 @@ changelog :
 - **HTTP+SSE 2024-11-05 non supporté** — le transport à endpoint de messages séparé est refusé ; Streamable HTTP est le transport HTTP. L'interop contre le serveur de référence tourne chaque nuit (`McpReferenceServerInteropTests`, [Interop MCP](../guides/mcp-interop.md)).
 - **`2025-03-26` exclue** (batching JSON-RPC obligatoire).
 - **Le serveur ne parle que stdio** (`orkeon mcp serve`, ou `RunStdioAsync` /
-  `ProcessRequestAsync` dans un hôte C#) et répond à une requête à la fois : pas de
-  transport HTTP, ni ressources, ni prompts, ni crews exposées comme outils.
+  `ProcessRequestAsync` dans un hôte C#) : pas de transport HTTP, ni prompts, ni crews
+  exposées comme outils, et les ressources se limitent à `/output` (lecture seule, pas de
+  `resources/subscribe`).
 
 ## Statut expérimental
 
