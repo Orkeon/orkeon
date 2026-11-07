@@ -4,7 +4,7 @@
 
 # Orkeon tool inventory
 
-This page is the reference catalogue of the **122 built-in tool classes**. The counting
+This page is the reference catalogue of the **123 built-in tool classes**. The counting
 rule is the one `scripts/check-doc-claims.py` enforces: every `*Tool.cs` file under
 `src/` except the interface (`IBaseTool.cs`) and the non-tool infrastructure that
 matches the glob (`MockTool.cs`, `JsTool.cs`, `ObservedTool.cs`, `AIAgentTool.cs`). The same script
@@ -63,6 +63,7 @@ what YAML references.
 | `session_cost` | `SessionCostTool` | Cumulative session cost in USD with a per-model breakdown |
 | `token_budget` | `TokenBudgetTool` | Context window size, used tokens and what fills them (`used_tokens_by_kind`: `system`, `user`, `assistant`, `tool`, `other`), available budget |
 | `memory_store` | `MemoryStoreTool` | List/add/replace/delete/get typed memories (user/project/feedback/reference): `add` returns the entry's `id`, every entry carries `created_at`, `list` takes `newest_first`, `replace` retires a stale fact in place (same `id` and category). Kept per project in `<Orkeon:Cli:Memory:RootDirectory>/<project slug>/memory.json` when `Orkeon:Cli:Memory:Persist` is on (the REPL's default); in memory otherwise |
+| `memory_recall` | `MemoryRecallTool` | Recall what the crew of the call remembers (`query`, `limit`), ranked by composite score; opt-in (`Orkeon:CognitiveMemory:Enabled`), held only by a crew with `memory: true` |
 
 ## Decision tool (`Orkeon.Infrastructure`) — `AddOrkeonDecisionProvider(configuration)`
 
@@ -274,7 +275,7 @@ Twenty-nine tools over the RaggableTree semantic code graph — the full guide i
 
 ## Outside the catalogue
 
-Deliberately **not** part of the 122 built-in tool classes:
+Deliberately **not** part of the 123 built-in tool classes:
 
 - `brief_submit` / `blueprint_submit` — internal to the `orkeon forge` command
   (`ForgeSubmission.cs`, `Orkeon.Scripting.Cli`); the engine's own agents use them, a
@@ -299,13 +300,13 @@ number the README and the documentation index state, checked by
 | `Orkeon.Tools.Analysis` (RaggableTree — see [its guide](../architecture/raggable-tree.md)) | 29 |
 | `Orkeon.Tools.Email` (see [its guide](../guides/email.md)) | 13 |
 | `Orkeon.Tools.Drive` (see [its guide](../guides/drive.md)) | 11 |
-| `Orkeon.Infrastructure` (collaboration, session, sandbox, human input, `semantic_search`, `system_one_decide`) | 13 |
+| `Orkeon.Infrastructure` (collaboration, session, sandbox, human input, `semantic_search`, `system_one_decide`, `memory_recall`) | 14 |
 | `Orkeon.Tools.Web` | 11 |
 | `Orkeon.Tools.EventHub` | 7 |
 | `Orkeon.Tools.FileSystem` | 8 |
 | `Orkeon.Tools.Rag` | 3 |
 | `Orkeon.Tools.Abstractions` / `Orkeon.Tools.Code` / `Orkeon.Tools.Embeddings.Local` / `Orkeon.Cli.Commands.Scripting` / `Orkeon.Scripting` | 1 each |
-| **Total** | **122** |
+| **Total** | **123** |
 
 ## Availability by composition root
 
@@ -480,6 +481,7 @@ The exact name to use in the YAML `tools:` section is the value of the tool clas
 | `mariadb_query` | `MariaDbDatabaseTool` | `Orkeon.Tools.Data` |
 | `mdx_search` | `MdxSearchTool` | `Orkeon.Tools.Data` |
 | `memory_store` | `MemoryStoreTool` | `Orkeon.Infrastructure` |
+| `memory_recall` | `MemoryRecallTool` | Recall what the crew of the call remembers (`query`, `limit`), ranked by composite score; opt-in (`Orkeon:CognitiveMemory:Enabled`), held only by a crew with `memory: true` |
 | `mongodb_query` | `MongoDbTool` | `Orkeon.Tools.Data` |
 | `mongodb_schema` | `MongoDbSchemaTool` | `Orkeon.Tools.Data` |
 | `mysql_query` | `MySqlDatabaseTool` | `Orkeon.Tools.Data` |

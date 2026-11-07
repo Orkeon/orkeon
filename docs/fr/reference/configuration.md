@@ -194,7 +194,7 @@ qu'elle accepte quand leur liste est fermée, et son sens.
 |---|---|---|
 | [Modèles](#modèles) | [`Evaluation`](#evaluation), [`Llm`](#llm), [`LlmLogging`](#llmlogging), [`Orkeon:CostTracking`](#orkeoncosttracking), [`Orkeon:Decision`](#orkeondecision), [`Orkeon:Decision:Guard`](#orkeondecisionguard), [`Orkeon:Kev`](#orkeonkev), [`Orkeon:Liquid`](#orkeonliquid), [`Orkeon:TokenCounter`](#orkeontokencounter), [`Orkeon:TypeSafe`](#orkeontypesafe) | 95 |
 | [Débit et budgets](#débit-et-budgets) | [`RateLimiting`](#ratelimiting), [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting) | 11 |
-| [Mémoire et vecteurs](#mémoire-et-vecteurs) | [`Memory`](#memory), [`Orkeon:ChromaDb`](#orkeonchromadb), [`Orkeon:CognitiveMemory`](#orkeoncognitivememory), [`Orkeon:CrewMemory`](#orkeoncrewmemory), [`Orkeon:EmbeddingCache`](#orkeonembeddingcache), [`Orkeon:Embeddings`](#orkeonembeddings), [`Orkeon:Encryption`](#orkeonencryption), [`Orkeon:LanceDb`](#orkeonlancedb), [`Orkeon:Pinecone`](#orkeonpinecone), [`Orkeon:Redis`](#orkeonredis), [`Orkeon:Sqlite`](#orkeonsqlite), [`Orkeon:VectorSearch`](#orkeonvectorsearch) | 58 |
+| [Mémoire et vecteurs](#mémoire-et-vecteurs) | [`Memory`](#memory), [`Orkeon:ChromaDb`](#orkeonchromadb), [`Orkeon:CognitiveMemory`](#orkeoncognitivememory), [`Orkeon:CrewMemory`](#orkeoncrewmemory), [`Orkeon:EmbeddingCache`](#orkeonembeddingcache), [`Orkeon:Embeddings`](#orkeonembeddings), [`Orkeon:Encryption`](#orkeonencryption), [`Orkeon:LanceDb`](#orkeonlancedb), [`Orkeon:Pinecone`](#orkeonpinecone), [`Orkeon:Redis`](#orkeonredis), [`Orkeon:Sqlite`](#orkeonsqlite), [`Orkeon:VectorSearch`](#orkeonvectorsearch) | 64 |
 | [RAG](#rag) | [`Orkeon:Rag`](#orkeonrag), [`Orkeon:Rag:Ingestion`](#orkeonragingestion), [`Orkeon:Rag:QueryRouting`](#orkeonragqueryrouting), [`Orkeon:Rag:Retrieval:Hybrid`](#orkeonragretrievalhybrid), [`Orkeon:Rag:WebFallback`](#orkeonragwebfallback) | 34 |
 | [Fichiers et bac à sable](#fichiers-et-bac-à-sable) | [`Orkeon:CodeSandbox`](#orkeoncodesandbox), [`Orkeon:CodeSandbox:Docker`](#orkeoncodesandboxdocker), [`Orkeon:FileSystem`](#orkeonfilesystem), [`Orkeon:Sandbox`](#orkeonsandbox), [`PathSecurity`](#pathsecurity) | 33 |
 | [Sécurité](#sécurité) | [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:Guardian`](#orkeonguardian), [`Orkeon:Security:PermissionGate`](#orkeonsecuritypermissiongate), [`Secrets`](#secrets), [`Security:Audit`](#securityaudit), [`Security:Prompt`](#securityprompt), [`Security:ToolResults`](#securitytoolresults), [`Security:Url`](#securityurl), [`Security:Vault`](#securityvault) | 31 |
@@ -204,7 +204,7 @@ qu'elle accepte quand leur liste est fermée, et son sens.
 | [Hôte de service et A2A](#hôte-de-service-et-a2a) | [`A2A`](#a2a), [`A2A:Security`](#a2asecurity), [`A2A:Security:AzureAD`](#a2asecurityazuread), [`A2A:Security:Oidc`](#a2asecurityoidc), [`Orkeon:Host`](#orkeonhost), [`Orkeon:Host:Discord`](#orkeonhostdiscord) | 46 |
 | [Observabilité](#observabilité) | [`Logging`](#logging), [`Orkeon:Monitoring`](#orkeonmonitoring), [`Telemetry`](#telemetry) | 8 |
 
-79 sections, 462 clés. Lues par aucun binaire livré, seulement par un hôte écrit en C# (10) : [`Evaluation`](#evaluation), [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:CognitiveMemory`](#orkeoncognitivememory), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Checkpointing`](#orkeoncheckpointing), [`Orkeon:ExecutionState:Persistence`](#orkeonexecutionstatepersistence), [`Orkeon:Monitoring`](#orkeonmonitoring).
+79 sections, 468 clés. Lues par aucun binaire livré, seulement par un hôte écrit en C# (10) : [`Evaluation`](#evaluation), [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:CognitiveMemory`](#orkeoncognitivememory), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Checkpointing`](#orkeoncheckpointing), [`Orkeon:ExecutionState:Persistence`](#orkeonexecutionstatepersistence), [`Orkeon:Monitoring`](#orkeonmonitoring).
 <!-- /settings-index -->
 
 Lire un tableau :
@@ -988,21 +988,25 @@ Ce que rappelle une crew `memory: true` avant chaque tâche (`CrewMemoryOptions`
 `MinScore` — à l'échelle de l'embedder, mesurée sur le modèle local —, coupés à `MaxChars`
 caractères de contenu au total — voir
 [Système de mémoire](../architecture/memory-system.md#ce-que-rappelle-une-crew). Lue par
-`MemoryCoordinator` ; liée par `AddOrkeonInfrastructure()`.
+`MemoryCoordinator` ; liée par `AddOrkeonInfrastructure()`. Avec la mémoire cognitive activée, le rappel est borné
+par `MinCompositeScore` et `MinSemanticScore` au lieu de `MinScore`, et `ConsolidateOnRunEnd` consolide la mémoire à la fin d'un run.
 
 <!-- settings:Orkeon:CrewMemory -->
 **Lue par** : `orkeon`, `orkeon-host`, `orkeon-repl`.
 
 | Clé | Type | Défaut | Sens |
 |---|---|---|---|
+| `ConsolidateOnRunEnd` | booléen | `false` | Si la mémoire de la crew est consolidée (souvenirs redondants fusionnés, souvenirs de faible valeur élagués) à la fin d'un run. Défaut : false, une consolidation coûte des appels LLM. Lu seulement quand la mémoire cognitive est branchée. |
 | `MaxChars` | entier | `4000` | Combien de caractères de contenu de mémoire l'invite d'une tâche reçoit au plus, tous souvenirs rappelés confondus. 4 000 par défaut ; le dernier souvenir qui ne tient pas est coupé. |
+| `MinCompositeScore` | nombre | `0.4` | Le score composite minimal (similarité, récence et importance ensemble) d'un souvenir pour être rappelé quand la mémoire cognitive est branchée. Défaut : 0,4. Distinct de `MinScore`, qui borne la similarité cosinus du chemin vectoriel : les deux échelles diffèrent. |
 | `MinScore` | nombre | `0.6` | La similarité cosinus minimale entre une tâche et un souvenir pour que le souvenir soit rappelé. 0,6 par défaut, mesuré sur le modèle d'embedding local (BGE-micro-v2), sur lequel la même tâche d'un run antérieur obtient 0,72 et plus, et une tâche anglaise sans rapport 0,53 et moins. Son échelle est celle de l'embedder : un autre modèle demande sa propre mesure. |
+| `MinSemanticScore` | nombre | `0.5` | La similarité sémantique (cosinus) minimale d'un souvenir pour être rappelé par la mémoire cognitive, quelles que soient sa récence et son importance : un souvenir rangé à l'instant, d'importance par défaut, atteint `MinCompositeScore` sur ces deux seules composantes, la pertinence est donc exigée à part. 0,5 par défaut ; son échelle est celle de l'embedder, comme `MinScore`. |
 | `RecallLimit` | entier | `5` | Combien de souvenirs une tâche rappelle au plus. 5 par défaut ; 0 ne rappelle rien (la crew stocke quand même ce que produisent ses tâches). |
 <!-- /settings -->
 
 ### `Orkeon:CognitiveMemory`
 
-Couche de mémoire cognitive. Opt-in : `AddOrkeonCognitiveMemory(configuration)`.
+Couche de mémoire cognitive. Opt-in : les exécuteurs la branchent quand `Enabled` vaut `true` (`AddOrkeonCognitiveMemory(configuration)` pour un hôte écrit en C#). Pas de clé YAML : le coût de l'analyse est à la charge de l'opérateur.
 
 <!-- settings:Orkeon:CognitiveMemory -->
 **Lue par** : un hôte écrit en C# seulement, par `AddOrkeonCognitiveMemory()` — aucun binaire livré ne lit cette section.
@@ -1014,13 +1018,16 @@ Couche de mémoire cognitive. Opt-in : `AddOrkeonCognitiveMemory(configuration)`
 | `ContradictionCandidateCount` | entier | `10` |  | Nombre de souvenirs existants où chercher des contradictions. Défaut : 10. |
 | `DefaultRecallOptions:ImportanceWeight` | nombre | `0.2` |  | Poids de l'importance dans le score composite. Défaut : 0,2. |
 | `DefaultRecallOptions:MinScore` | nombre | `0.1` |  | Seuil minimal du score composite. Défaut : 0,1. |
+| `DefaultRecallOptions:MinSemanticScore` | nombre | `0` |  | Similarité sémantique minimale d'un souvenir quelles que soient sa récence et son importance : sans elle, un souvenir frais d'importance par défaut sans rapport avec la requête atteint le plancher composite sur ces deux seules composantes. Défaut : 0. |
 | `DefaultRecallOptions:RecencyWeight` | nombre | `0.3` |  | Poids de la récence dans le score composite. Défaut : 0,3. |
 | `DefaultRecallOptions:SemanticWeight` | nombre | `0.5` |  | Poids de la similarité sémantique dans le score composite. Défaut : 0,5. |
 | `DefaultRecallOptions:TagFilter` | liste de chaînes | `[]` |  | Filtre facultatif par étiquettes (une seule suffit). |
 | `DefaultRecallOptions:TopK` | entier | `10` |  | Nombre maximal de résultats renvoyés. Défaut : 10. |
 | `DefaultRecallOptions:TypeFilter` | énumération | — | `ShortTerm`, `LongTerm`, `Episodic`, `Entity`, `Procedural` | Filtre facultatif par type de mémoire. |
 | `EnableContradictionDetection` | booléen | `true` |  | Si la détection de contradictions est activée à la mémorisation. Défaut : true. |
+| `Enabled` | booléen | `false` |  | Si les exécuteurs branchent la mémoire cognitive sur un run : rappel par score composite, stockage analysé, outil `memory_recall`. Défaut : false (l'analyse coûte des appels LLM). |
 | `EnableLlmAnalysis` | booléen | `true` |  | Si l'analyse du contenu par LLM est activée à la mémorisation. Défaut : true. |
+| `Profile` | chaîne | — |  | Le profil LLM (`Llm:Profiles:<nom>`) sur lequel tournent l'analyse, la détection de contradictions et la consolidation, donc comptés comme tout appel. Null ou vide : le profil par défaut. |
 | `PruningMinAgeDays` | entier | `30` |  | Âge minimal, en jours, avant qu'un souvenir puisse être élagué. Défaut : 30. |
 | `PruningThreshold` | nombre | `0.1` |  | Seuil d'importance en dessous duquel un souvenir est candidat à l'élagage. Défaut : 0,1. |
 | `RecencyHalfLifeHours` | nombre | `69` |  | Demi-vie de la décroissance de récence, en heures (exp(-ln2/halfLife * ageHours)). Défaut : 69,0. |

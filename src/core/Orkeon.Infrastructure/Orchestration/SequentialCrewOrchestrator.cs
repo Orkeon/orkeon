@@ -270,11 +270,30 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
         {
             runSpan?.Dispose();
 
+            // The run is over, whatever its outcome: the crew's memory is consolidated when the host
+            // asked for it (FWK-04). Never for a cancelled run, and never allowed to replace the run's
+            // own result or exception.
+            if (crew is not null && crew.MemoryEnabled && _memoryCoordinator is not null && !cancellationToken.IsCancellationRequested)
+                await FinishMemoryAsync(_memoryCoordinator, crew.Id, cancellationToken).ConfigureAwait(false);
+
             // Success, failure and cancellation all end here: the crew's queued events
             // (construction events, then Started and Completed/Failed) go to the
             // IDomainEventHandler<T> registrations once, and the aggregate is emptied.
             if (crew is not null)
                 await DispatchCrewEventsAsync(crew).ConfigureAwait(false);
+        }
+    }
+
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "A consolidation at the end of a run is best-effort: whatever it throws must not mask the run's own outcome (FWK-04).")]
+    private async Task FinishMemoryAsync(IMemoryCoordinator coordinator, CrewId crewId, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await coordinator.FinishRunAsync(crewId, cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            LogMemoryFinishFailed(ex, crewId);
         }
     }
 
@@ -875,6 +894,9 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
     private partial void LogOrchestratingCrewExecution(CrewId crewId);
     [LoggerMessage(Level = LogLevel.Information, Message = "Started checkpoint session {SessionId} for crew {CrewId}")]
     private partial void LogCheckpointSessionStarted(string sessionId, CrewId crewId);
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Crew {CrewId}: the memory could not be finished at the end of the run")]
+    private partial void LogMemoryFinishFailed(Exception ex, CrewId crewId);
+
     [LoggerMessage(Level = LogLevel.Error, Message = "Error orchestrating crew execution")]
     private partial void LogCrewExecutionError(Exception ex);
     [LoggerMessage(Level = LogLevel.Information, Message = "Orchestrating batch crew execution for {CrewId}")]

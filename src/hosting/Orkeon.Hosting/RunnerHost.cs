@@ -1505,6 +1505,12 @@ public static partial class RunnerHost
         // Orkeon:Security:PermissionGate:Enabled = true. No-op otherwise.
         services.AddOrkeonPermissionGate(context.Configuration);
 
+        // Cognitive memory — config opt-in: Orkeon:CognitiveMemory:Enabled = true (FWK-04). A crew
+        // with memory: true then recalls by composite score, stores analysed memories and holds
+        // memory_recall; the analysis costs LLM calls, on the profile Orkeon:CognitiveMemory:Profile.
+        if (context.Configuration.GetValue("Orkeon:CognitiveMemory:Enabled", defaultValue: false))
+            services.AddOrkeonCognitiveMemory(context.Configuration);
+
         // Register all standard tools
         services.AddOrkeonFileSystemTools();
         services.AddOrkeonDataTools();

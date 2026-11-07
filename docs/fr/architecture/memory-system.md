@@ -391,9 +391,9 @@ l'`IEncryptionProvider` AES-256-GCM enregistré par `AddOrkeonInfrastructure()`
 ## Mémoire cognitive
 
 Le sous-système cognitif (`Orkeon.Infrastructure.Memory.Cognitive`, opt-in
-`AddOrkeonCognitiveMemory(configuration)`) superpose `ICognitiveMemoryService` — un `IMemoryService`
+`AddOrkeonCognitiveMemory(configuration)`, branché par les exécuteurs sous `Orkeon:CognitiveMemory:Enabled`) superpose `ICognitiveMemoryService` — un `IMemoryService`
 enrichi de `RememberAsync`, `RecallAsync`, `ConsolidateAsync`, `AnalyzeAsync` et
-`CheckContradictionsAsync` — à la mémoire de la crew. Il requiert un `ILlmProvider` (analyse) et un
+`CheckContradictionsAsync` — à la mémoire de la crew. Il requiert un fournisseur LLM (analyse, sur le profil que nomme `Orkeon:CognitiveMemory:Profile`) et un
 `IEmbeddingProvider` (chaque souvenir rangé, chaque requête de rappel et chaque souvenir fusionné est
 plongé). Ses types de résultat vivent dans le Domain (`CognitiveMemoryTypes.cs`) :
 
@@ -423,7 +423,32 @@ crew est une crew sans nom.
   fusionné plongé et retire ceux qu'il remplace, dans la même mémoire. Un souvenir qui revient sans son
   vecteur (ChromaDB n'en rend pas avec un résultat de similarité) reste un groupe à lui seul.
 
-Options (`Orkeon:CognitiveMemory`, `CognitiveMemoryOptions`) : `EnableLlmAnalysis` (`true`),
+### Dans un run (FWK-04)
+
+`orkeon`, `orkeon-host` et `orkeon-repl` branchent le service quand `Orkeon:CognitiveMemory:Enabled` vaut `true`
+(défaut `false` : l'analyse coûte des appels LLM, au compte de l'opérateur ; il n'y a pas de clé YAML pour cela).
+`ICognitiveMemoryService` est un singleton, résolvable depuis le fournisseur racine. Alors, pour une crew avec
+`memory: true` :
+
+- Le **rappel** passe par `RecallAsync` : souvenirs classés par score composite (similarité, récence, importance),
+  plancher `Orkeon:CrewMemory:MinCompositeScore` (0,4 ; distinct de `MinScore`, le plancher cosinus du chemin
+  vectoriel) et `Orkeon:CrewMemory:MinSemanticScore` (0,5 : un souvenir frais d'importance par défaut atteint le
+  plancher composite sur la seule récence et la seule importance, la pertinence est donc exigée à part), bornes `RecallLimit` et `MaxChars` conservées. Le composite de chaque souvenir rappelé et ses trois
+  composantes sont journalisés au niveau debug.
+- Le **stockage** passe par `RememberAsync` : la sortie est analysée (importance, catégorie), vérifiée contre les
+  contradictions puis rangée. Quand l'analyse échoue, le souvenir est rangé avec l'importance par défaut et un
+  avertissement `memory.analysis.degraded` est journalisé.
+- La crew détient l'outil **`memory_recall(query, limit)`**, injecté seulement avec `memory: true` et le service
+  branché (distinct de `memory_store`, les notes typées de l'opérateur) ; il répond avec les souvenirs de la crew
+  de l'appel, sous les deux mêmes planchers.
+- `Orkeon:CrewMemory:ConsolidateOnRunEnd` (`false`) consolide la mémoire de la crew à la fin d'un run, quel qu'en soit le résultat (pas un run annulé) ; une consolidation qui échoue est un avertissement et ne remplace jamais le résultat du run.
+- L'analyseur, le détecteur de contradictions et le consolidateur appellent le LLM par le profil que nomme
+  `Orkeon:CognitiveMemory:Profile` (le profil par défaut sinon) : leurs appels entrent donc dans le chemin mesuré
+  comme tout autre.
+
+Sans le service, le chemin vectoriel est inchangé.
+
+Options (`Orkeon:CognitiveMemory`, `CognitiveMemoryOptions`) : `Enabled` (`false`), `Profile` (null), `EnableLlmAnalysis` (`true`),
 `EnableContradictionDetection` (`true`), `ContradictionCandidateCount` (10), `AnalysisModel`
 (null = le modèle du provider), `AnalysisTemperature` (0,1), `PruningThreshold` (0,1),
 `PruningMinAgeDays` (30), `RecencyHalfLifeHours` (69), `DefaultRecallOptions`.

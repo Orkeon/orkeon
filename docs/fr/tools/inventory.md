@@ -63,6 +63,7 @@ celui ci-dessus — est ce que le YAML référence.
 | `session_cost` | `SessionCostTool` | Coût cumulé de la session en USD avec ventilation par modèle |
 | `token_budget` | `TokenBudgetTool` | Taille de la fenêtre de contexte, tokens consommés et ce qui les remplit (`used_tokens_by_kind` : `system`, `user`, `assistant`, `tool`, `other`), budget disponible |
 | `memory_store` | `MemoryStoreTool` | Lister/ajouter/remplacer/supprimer/lire des mémoires typées (user/project/feedback/reference) : `add` renvoie l'`id` de l'entrée, chaque entrée porte `created_at`, `list` prend `newest_first`, `replace` retire un fait périmé sur place (même `id` et même catégorie). Conservées par projet dans `<Orkeon:Cli:Memory:RootDirectory>/<slug du projet>/memory.json` quand `Orkeon:Cli:Memory:Persist` est actif (défaut du REPL) ; en mémoire sinon |
+| `memory_recall` | `MemoryRecallTool` | Rappeler ce dont se souvient la crew de l'appel (`query`, `limit`), classé par score composite ; opt-in (`Orkeon:CognitiveMemory:Enabled`), détenu seulement par une crew avec `memory: true` |
 
 ## Tool de décision (`Orkeon.Infrastructure`) — `AddOrkeonDecisionProvider(configuration)`
 
@@ -306,13 +307,13 @@ le nombre qu'affichent le README et l'index de la documentation, vérifié par
 | `Orkeon.Tools.Analysis` (RaggableTree — voir [son guide](../architecture/raggable-tree.md)) | 29 |
 | `Orkeon.Tools.Email` (voir [son guide](../guides/email.md)) | 13 |
 | `Orkeon.Tools.Drive` (voir [son guide](../guides/drive.md)) | 11 |
-| `Orkeon.Infrastructure` (collaboration, session, sandbox, entrée humaine, `semantic_search`, `system_one_decide`) | 13 |
+| `Orkeon.Infrastructure` (collaboration, session, sandbox, entrée humaine, `semantic_search`, `system_one_decide`, `memory_recall`) | 14 |
 | `Orkeon.Tools.Web` | 11 |
 | `Orkeon.Tools.EventHub` | 7 |
 | `Orkeon.Tools.FileSystem` | 8 |
 | `Orkeon.Tools.Rag` | 3 |
 | `Orkeon.Tools.Abstractions` / `Orkeon.Tools.Code` / `Orkeon.Tools.Embeddings.Local` / `Orkeon.Cli.Commands.Scripting` / `Orkeon.Scripting` | 1 chacun |
-| **Total** | **122** |
+| **Total** | **123** |
 
 ## Disponibilité par racine de composition
 
@@ -489,6 +490,7 @@ correspondance alphabétique complète :
 | `mariadb_query` | `MariaDbDatabaseTool` | `Orkeon.Tools.Data` |
 | `mdx_search` | `MdxSearchTool` | `Orkeon.Tools.Data` |
 | `memory_store` | `MemoryStoreTool` | `Orkeon.Infrastructure` |
+| `memory_recall` | `MemoryRecallTool` | Rappeler ce dont se souvient la crew de l'appel (`query`, `limit`), classé par score composite ; opt-in (`Orkeon:CognitiveMemory:Enabled`), détenu seulement par une crew avec `memory: true` |
 | `mongodb_query` | `MongoDbTool` | `Orkeon.Tools.Data` |
 | `mongodb_schema` | `MongoDbSchemaTool` | `Orkeon.Tools.Data` |
 | `mysql_query` | `MySqlDatabaseTool` | `Orkeon.Tools.Data` |

@@ -174,6 +174,7 @@ public static class ServiceCollectionExtensions
             // GAP-17 — the host's named LLM profiles: an agent or a task naming one runs on its
             // provider; every other one stays on the default resolved above.
             orchestrator.LlmProfiles = sp.GetService<Interfaces.Ports.ILlmProfileRegistry>();
+            orchestrator.MemoryRegistry = sp.GetService<Memory.CrewMemoryProviderRegistry>();
 
             // GAP-32 — a host that renders the model's text as it arrives (orkeon run --stream, the
             // REPL's console) gets every agent turn streamed to it, not only ctx.llm.* calls.

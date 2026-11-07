@@ -31,4 +31,27 @@ public sealed class CrewMemoryOptions
     /// memories together. 4,000 by default; the last memory that does not fit is cut.
     /// </summary>
     public int MaxChars { get; set; } = 4_000;
+
+    /// <summary>
+    /// The least composite score (similarity, recency and importance together) a memory needs to be
+    /// recalled when the cognitive memory is wired (<c>Orkeon:CognitiveMemory:Enabled</c>). 0.4 by
+    /// default. Distinct from <see cref="MinScore"/>, which bounds the cosine similarity of the
+    /// vector path: the two scales are not the same, never reuse one for the other.
+    /// </summary>
+    public float MinCompositeScore { get; set; } = 0.4f;
+
+    /// <summary>
+    /// The least semantic similarity (cosine) a memory needs to be recalled by the cognitive memory,
+    /// whatever its recency and importance: a memory stored a moment ago at default importance reaches
+    /// <see cref="MinCompositeScore"/> on those two alone, so relevance is required apart. 0.5 by
+    /// default; its scale is the embedder's, like <see cref="MinScore"/>.
+    /// </summary>
+    public float MinSemanticScore { get; set; } = 0.5f;
+
+    /// <summary>
+    /// Whether the crew's memory is consolidated (redundant memories merged, low-value ones pruned)
+    /// when a run ends. False by default: a consolidation costs LLM calls. Read only when the cognitive
+    /// memory is wired.
+    /// </summary>
+    public bool ConsolidateOnRunEnd { get; set; }
 }

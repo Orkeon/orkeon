@@ -186,6 +186,13 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
     public ILlmDeltaSink? DeltaSink { get; set; }
 
     /// <summary>
+    /// What each crew declared about its memory: a crew with <c>memory: true</c> holds the registered
+    /// <c>memory_recall</c> tool when the cognitive memory is wired (FWK-04). Set by
+    /// <c>AddOrkeonApplication</c>; null — an orchestrator built by hand — injects none.
+    /// </summary>
+    public Orkeon.Application.Memory.CrewMemoryProviderRegistry? MemoryRegistry { get; set; }
+
+    /// <summary>
     /// Initializes a new instance of <see cref="ExecutionOrchestrator"/>.
     /// </summary>
     public ExecutionOrchestrator(
@@ -416,7 +423,7 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
                 // provider or profile, else the default (GAP-17, GAP-34) —, for its turns and its
                 // correction round alike.
                 var llm = LlmFor(agent, task);
-                var toolbelt = TaskToolbelt.Compose(agent, task, _registeredTools);
+                var toolbelt = TaskToolbelt.Compose(agent, task, _registeredTools, MemoryRegistry?.IsMemoryEnabled(context.CrewId) == true);
 
                 // A provider that runs its own tools — a Microsoft Agent Framework agent — never calls
                 // Orkeon's: a task that would hand it some fails before any call, saying what to do

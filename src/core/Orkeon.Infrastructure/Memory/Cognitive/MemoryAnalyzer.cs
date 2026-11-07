@@ -214,7 +214,7 @@ public sealed partial class MemoryAnalyzer
         return match.Success ? match.Groups[1].Value : null;
     }
 
-    [LoggerMessage(Level = LogLevel.Error, Message = "LLM analysis failed, using fallback defaults")]
+    [LoggerMessage(EventName = "memory.analysis.degraded", Level = LogLevel.Warning, Message = "memory.analysis.degraded: the LLM analysis failed, the memory is stored with the default importance")]
     private partial void LogAnalysisError(Exception ex);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "JSON parse failed for analysis response: {Response}")]

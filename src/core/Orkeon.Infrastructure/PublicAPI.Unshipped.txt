@@ -354,3 +354,34 @@ Orkeon.Infrastructure.Tools.MemoryStoreRequest.NewestFirst.set -> void
 *REMOVED*[ORKEXP004]Orkeon.Infrastructure.MCP.SseMcpTransport.SseMcpTransport(System.Uri! url, System.Net.Http.HttpClient? httpClient = null, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.MCP.SseMcpTransport!>? logger = null) -> void
 [ORKEXP004]Orkeon.Infrastructure.MCP.McpServerConfig.ConnectTimeout.get -> System.TimeSpan
 [ORKEXP004]Orkeon.Infrastructure.MCP.McpServerConfig.ConnectTimeout.set -> void
+Orkeon.Infrastructure.Memory.Cognitive.CognitiveMemoryOptions.Enabled.get -> bool
+Orkeon.Infrastructure.Memory.Cognitive.CognitiveMemoryOptions.Enabled.set -> void
+Orkeon.Infrastructure.Memory.Cognitive.CognitiveMemoryOptions.Profile.get -> string?
+Orkeon.Infrastructure.Memory.Cognitive.CognitiveMemoryOptions.Profile.set -> void
+Orkeon.Infrastructure.Tools.MemoryRecallRequest
+Orkeon.Infrastructure.Tools.MemoryRecallRequest.Limit.get -> int
+Orkeon.Infrastructure.Tools.MemoryRecallRequest.Limit.set -> void
+Orkeon.Infrastructure.Tools.MemoryRecallRequest.MemoryRecallRequest() -> void
+Orkeon.Infrastructure.Tools.MemoryRecallRequest.Query.get -> string!
+Orkeon.Infrastructure.Tools.MemoryRecallRequest.Query.set -> void
+Orkeon.Infrastructure.Tools.MemoryRecallResponse
+Orkeon.Infrastructure.Tools.MemoryRecallResponse.Error.get -> string?
+Orkeon.Infrastructure.Tools.MemoryRecallResponse.Error.set -> void
+Orkeon.Infrastructure.Tools.MemoryRecallResponse.Memories.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Infrastructure.Tools.RecalledMemoryEntry!>!
+Orkeon.Infrastructure.Tools.MemoryRecallResponse.Memories.set -> void
+Orkeon.Infrastructure.Tools.MemoryRecallResponse.MemoryRecallResponse() -> void
+Orkeon.Infrastructure.Tools.MemoryRecallResponse.Success.get -> bool
+Orkeon.Infrastructure.Tools.MemoryRecallResponse.Success.set -> void
+Orkeon.Infrastructure.Tools.MemoryRecallTool
+Orkeon.Infrastructure.Tools.RecalledMemoryEntry
+Orkeon.Infrastructure.Tools.RecalledMemoryEntry.Content.get -> string!
+Orkeon.Infrastructure.Tools.RecalledMemoryEntry.Content.set -> void
+Orkeon.Infrastructure.Tools.RecalledMemoryEntry.RecalledMemoryEntry() -> void
+Orkeon.Infrastructure.Tools.RecalledMemoryEntry.Score.get -> float
+Orkeon.Infrastructure.Tools.RecalledMemoryEntry.Score.set -> void
+Orkeon.Infrastructure.Tools.RecalledMemoryEntry.StoredAt.get -> string!
+Orkeon.Infrastructure.Tools.RecalledMemoryEntry.StoredAt.set -> void
+override Orkeon.Infrastructure.Tools.MemoryRecallTool.Access.get -> Orkeon.Domain.Tools.ToolAccess
+override Orkeon.Infrastructure.Tools.MemoryRecallTool.Description.get -> string!
+override Orkeon.Infrastructure.Tools.MemoryRecallTool.Name.get -> string!
+Orkeon.Infrastructure.Tools.MemoryRecallTool.MemoryRecallTool(Orkeon.Application.Interfaces.Services.ICognitiveMemoryService! memory, Microsoft.Extensions.Options.IOptions<Orkeon.Application.Memory.CrewMemoryOptions!>? options = null) -> void

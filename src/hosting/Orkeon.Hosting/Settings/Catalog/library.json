@@ -1308,6 +1308,13 @@
       "description": "Minimum composite score threshold. Default: 0.1."
     },
     {
+      "path": "Orkeon:CognitiveMemory:DefaultRecallOptions:MinSemanticScore",
+      "section": "Orkeon:CognitiveMemory",
+      "type": "number",
+      "default": 0,
+      "description": "Minimum semantic similarity a memory needs whatever its recency and importance: without it a fresh, default-importance memory unrelated to the query reaches the composite floor on those two alone. Default: 0 (no floor)."
+    },
+    {
       "path": "Orkeon:CognitiveMemory:DefaultRecallOptions:RecencyWeight",
       "section": "Orkeon:CognitiveMemory",
       "type": "number",
@@ -1356,11 +1363,24 @@
       "description": "Whether to enable contradiction detection on remember. Default: true."
     },
     {
+      "path": "Orkeon:CognitiveMemory:Enabled",
+      "section": "Orkeon:CognitiveMemory",
+      "type": "boolean",
+      "default": false,
+      "description": "Whether the runners wire the cognitive memory into a run: recall by composite score, analysed storage, the `memory_recall` tool. Default: false (the analysis costs LLM calls)."
+    },
+    {
       "path": "Orkeon:CognitiveMemory:EnableLlmAnalysis",
       "section": "Orkeon:CognitiveMemory",
       "type": "boolean",
       "default": true,
       "description": "Whether to enable LLM-based content analysis on remember. Default: true."
+    },
+    {
+      "path": "Orkeon:CognitiveMemory:Profile",
+      "section": "Orkeon:CognitiveMemory",
+      "type": "string",
+      "description": "The LLM profile (`Llm:Profiles:<name>`) the analysis, contradiction detection and consolidation run on, so they are metered like any call. Null or blank: the default profile."
     },
     {
       "path": "Orkeon:CognitiveMemory:PruningMinAgeDays",
@@ -1384,6 +1404,13 @@
       "description": "Half-life for recency decay in hours (exp(-ln2/halfLife * ageHours)). Default: 69.0."
     },
     {
+      "path": "Orkeon:CrewMemory:ConsolidateOnRunEnd",
+      "section": "Orkeon:CrewMemory",
+      "type": "boolean",
+      "default": false,
+      "description": "Whether the crew's memory is consolidated (redundant memories merged, low-value ones pruned) when a run ends. False by default: a consolidation costs LLM calls. Read only when the cognitive memory is wired."
+    },
+    {
       "path": "Orkeon:CrewMemory:MaxChars",
       "section": "Orkeon:CrewMemory",
       "type": "integer",
@@ -1391,11 +1418,25 @@
       "description": "How many characters of memory content a task's prompt receives at most, all recalled memories together. 4,000 by default; the last memory that does not fit is cut."
     },
     {
+      "path": "Orkeon:CrewMemory:MinCompositeScore",
+      "section": "Orkeon:CrewMemory",
+      "type": "number",
+      "default": 0.4,
+      "description": "The least composite score (similarity, recency and importance together) a memory needs to be recalled when the cognitive memory is wired (`Orkeon:CognitiveMemory:Enabled`). 0.4 by default. Distinct from `MinScore`, which bounds the cosine similarity of the vector path: the two scales are not the same, never reuse one for the other."
+    },
+    {
       "path": "Orkeon:CrewMemory:MinScore",
       "section": "Orkeon:CrewMemory",
       "type": "number",
       "default": 0.6,
       "description": "The least cosine similarity between a task and a memory for the memory to be recalled. 0.6 by default, measured on the local embedding model (BGE-micro-v2), on which the same task of an earlier run scores 0.72 and above and an unrelated English task 0.53 and below. Its scale is the embedder's: another model needs its own measure."
+    },
+    {
+      "path": "Orkeon:CrewMemory:MinSemanticScore",
+      "section": "Orkeon:CrewMemory",
+      "type": "number",
+      "default": 0.5,
+      "description": "The least semantic similarity (cosine) a memory needs to be recalled by the cognitive memory, whatever its recency and importance: a memory stored a moment ago at default importance reaches `MinCompositeScore` on those two alone, so relevance is required apart. 0.5 by default; its scale is the embedder's, like `MinScore`."
     },
     {
       "path": "Orkeon:CrewMemory:RecallLimit",

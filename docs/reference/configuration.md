@@ -182,7 +182,7 @@ closed list, and what it means.
 |---|---|---|
 | [Models](#models) | [`Evaluation`](#evaluation), [`Llm`](#llm), [`LlmLogging`](#llmlogging), [`Orkeon:CostTracking`](#orkeoncosttracking), [`Orkeon:Decision`](#orkeondecision), [`Orkeon:Decision:Guard`](#orkeondecisionguard), [`Orkeon:Kev`](#orkeonkev), [`Orkeon:Liquid`](#orkeonliquid), [`Orkeon:TokenCounter`](#orkeontokencounter), [`Orkeon:TypeSafe`](#orkeontypesafe) | 95 |
 | [Rate and budgets](#rate-and-budgets) | [`RateLimiting`](#ratelimiting), [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting) | 11 |
-| [Memory and vectors](#memory-and-vectors) | [`Memory`](#memory), [`Orkeon:ChromaDb`](#orkeonchromadb), [`Orkeon:CognitiveMemory`](#orkeoncognitivememory), [`Orkeon:CrewMemory`](#orkeoncrewmemory), [`Orkeon:EmbeddingCache`](#orkeonembeddingcache), [`Orkeon:Embeddings`](#orkeonembeddings), [`Orkeon:Encryption`](#orkeonencryption), [`Orkeon:LanceDb`](#orkeonlancedb), [`Orkeon:Pinecone`](#orkeonpinecone), [`Orkeon:Redis`](#orkeonredis), [`Orkeon:Sqlite`](#orkeonsqlite), [`Orkeon:VectorSearch`](#orkeonvectorsearch) | 58 |
+| [Memory and vectors](#memory-and-vectors) | [`Memory`](#memory), [`Orkeon:ChromaDb`](#orkeonchromadb), [`Orkeon:CognitiveMemory`](#orkeoncognitivememory), [`Orkeon:CrewMemory`](#orkeoncrewmemory), [`Orkeon:EmbeddingCache`](#orkeonembeddingcache), [`Orkeon:Embeddings`](#orkeonembeddings), [`Orkeon:Encryption`](#orkeonencryption), [`Orkeon:LanceDb`](#orkeonlancedb), [`Orkeon:Pinecone`](#orkeonpinecone), [`Orkeon:Redis`](#orkeonredis), [`Orkeon:Sqlite`](#orkeonsqlite), [`Orkeon:VectorSearch`](#orkeonvectorsearch) | 64 |
 | [RAG](#rag) | [`Orkeon:Rag`](#orkeonrag), [`Orkeon:Rag:Ingestion`](#orkeonragingestion), [`Orkeon:Rag:QueryRouting`](#orkeonragqueryrouting), [`Orkeon:Rag:Retrieval:Hybrid`](#orkeonragretrievalhybrid), [`Orkeon:Rag:WebFallback`](#orkeonragwebfallback) | 34 |
 | [Files and sandbox](#files-and-sandbox) | [`Orkeon:CodeSandbox`](#orkeoncodesandbox), [`Orkeon:CodeSandbox:Docker`](#orkeoncodesandboxdocker), [`Orkeon:FileSystem`](#orkeonfilesystem), [`Orkeon:Sandbox`](#orkeonsandbox), [`PathSecurity`](#pathsecurity) | 33 |
 | [Security](#security) | [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:Guardian`](#orkeonguardian), [`Orkeon:Security:PermissionGate`](#orkeonsecuritypermissiongate), [`Secrets`](#secrets), [`Security:Audit`](#securityaudit), [`Security:Prompt`](#securityprompt), [`Security:ToolResults`](#securitytoolresults), [`Security:Url`](#securityurl), [`Security:Vault`](#securityvault) | 31 |
@@ -192,7 +192,7 @@ closed list, and what it means.
 | [Service host and A2A](#service-host-and-a2a) | [`A2A`](#a2a), [`A2A:Security`](#a2asecurity), [`A2A:Security:AzureAD`](#a2asecurityazuread), [`A2A:Security:Oidc`](#a2asecurityoidc), [`Orkeon:Host`](#orkeonhost), [`Orkeon:Host:Discord`](#orkeonhostdiscord) | 46 |
 | [Observability](#observability) | [`Logging`](#logging), [`Orkeon:Monitoring`](#orkeonmonitoring), [`Telemetry`](#telemetry) | 8 |
 
-79 sections, 462 keys. Read by no shipped binary, only by a host written in C# (10): [`Evaluation`](#evaluation), [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:CognitiveMemory`](#orkeoncognitivememory), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Checkpointing`](#orkeoncheckpointing), [`Orkeon:ExecutionState:Persistence`](#orkeonexecutionstatepersistence), [`Orkeon:Monitoring`](#orkeonmonitoring).
+79 sections, 468 keys. Read by no shipped binary, only by a host written in C# (10): [`Evaluation`](#evaluation), [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:CognitiveMemory`](#orkeoncognitivememory), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Checkpointing`](#orkeoncheckpointing), [`Orkeon:ExecutionState:Persistence`](#orkeonexecutionstatepersistence), [`Orkeon:Monitoring`](#orkeonmonitoring).
 <!-- /settings-index -->
 
 How to read a table:
@@ -945,21 +945,26 @@ What a crew with `memory: true` recalls before each task (`CrewMemoryOptions`): 
 `RecallLimit` memories (0 recalls nothing), those whose cosine similarity reaches `MinScore` — on
 the embedder's scale, measured on the local model —, cut to `MaxChars` characters of memory
 content in all — see [Memory system](../architecture/memory-system.md#what-a-crew-recalls). Read
-by `MemoryCoordinator`; bound by `AddOrkeonInfrastructure()`.
+by `MemoryCoordinator`; bound by `AddOrkeonInfrastructure()`. With the cognitive memory enabled the
+recall is floored by `MinCompositeScore` and `MinSemanticScore` instead of `MinScore`, and `ConsolidateOnRunEnd`
+consolidates the memory when a run ends.
 
 <!-- settings:Orkeon:CrewMemory -->
 **Read by**: `orkeon`, `orkeon-host`, `orkeon-repl`.
 
 | Key | Type | Default | Meaning |
 |---|---|---|---|
+| `ConsolidateOnRunEnd` | boolean | `false` | Whether the crew's memory is consolidated (redundant memories merged, low-value ones pruned) when a run ends. False by default: a consolidation costs LLM calls. Read only when the cognitive memory is wired. |
 | `MaxChars` | integer | `4000` | How many characters of memory content a task's prompt receives at most, all recalled memories together. 4,000 by default; the last memory that does not fit is cut. |
+| `MinCompositeScore` | number | `0.4` | The least composite score (similarity, recency and importance together) a memory needs to be recalled when the cognitive memory is wired (`Orkeon:CognitiveMemory:Enabled`). 0.4 by default. Distinct from `MinScore`, which bounds the cosine similarity of the vector path: the two scales are not the same, never reuse one for the other. |
 | `MinScore` | number | `0.6` | The least cosine similarity between a task and a memory for the memory to be recalled. 0.6 by default, measured on the local embedding model (BGE-micro-v2), on which the same task of an earlier run scores 0.72 and above and an unrelated English task 0.53 and below. Its scale is the embedder's: another model needs its own measure. |
+| `MinSemanticScore` | number | `0.5` | The least semantic similarity (cosine) a memory needs to be recalled by the cognitive memory, whatever its recency and importance: a memory stored a moment ago at default importance reaches `MinCompositeScore` on those two alone, so relevance is required apart. 0.5 by default; its scale is the embedder's, like `MinScore`. |
 | `RecallLimit` | integer | `5` | How many memories a task recalls at most. 5 by default; 0 recalls nothing (the crew still stores what its tasks produce). |
 <!-- /settings -->
 
 ### `Orkeon:CognitiveMemory`
 
-Cognitive memory layering. Opt-in: `AddOrkeonCognitiveMemory(configuration)`.
+Cognitive memory layering. Opt-in: the runners wire it when `Enabled` is `true` (`AddOrkeonCognitiveMemory(configuration)` for a host written in C#). No YAML key: the analysis cost is the operator's.
 
 <!-- settings:Orkeon:CognitiveMemory -->
 **Read by**: a host written in C# only, through `AddOrkeonCognitiveMemory()` — no shipped binary reads this section.
@@ -971,13 +976,16 @@ Cognitive memory layering. Opt-in: `AddOrkeonCognitiveMemory(configuration)`.
 | `ContradictionCandidateCount` | integer | `10` |  | Number of existing memories to check for contradictions. Default: 10. |
 | `DefaultRecallOptions:ImportanceWeight` | number | `0.2` |  | Weight for importance in composite scoring. Default: 0.2. |
 | `DefaultRecallOptions:MinScore` | number | `0.1` |  | Minimum composite score threshold. Default: 0.1. |
+| `DefaultRecallOptions:MinSemanticScore` | number | `0` |  | Minimum semantic similarity a memory needs whatever its recency and importance: without it a fresh, default-importance memory unrelated to the query reaches the composite floor on those two alone. Default: 0 (no floor). |
 | `DefaultRecallOptions:RecencyWeight` | number | `0.3` |  | Weight for temporal recency in composite scoring. Default: 0.3. |
 | `DefaultRecallOptions:SemanticWeight` | number | `0.5` |  | Weight for semantic similarity in composite scoring. Default: 0.5. |
 | `DefaultRecallOptions:TagFilter` | list of string | `[]` |  | Optional filter by tags (any match). |
 | `DefaultRecallOptions:TopK` | integer | `10` |  | Maximum number of results to return. Default: 10. |
 | `DefaultRecallOptions:TypeFilter` | enum | — | `ShortTerm`, `LongTerm`, `Episodic`, `Entity`, `Procedural` | Optional filter by memory type. |
 | `EnableContradictionDetection` | boolean | `true` |  | Whether to enable contradiction detection on remember. Default: true. |
+| `Enabled` | boolean | `false` |  | Whether the runners wire the cognitive memory into a run: recall by composite score, analysed storage, the `memory_recall` tool. Default: false (the analysis costs LLM calls). |
 | `EnableLlmAnalysis` | boolean | `true` |  | Whether to enable LLM-based content analysis on remember. Default: true. |
+| `Profile` | string | — |  | The LLM profile (`Llm:Profiles:<name>`) the analysis, contradiction detection and consolidation run on, so they are metered like any call. Null or blank: the default profile. |
 | `PruningMinAgeDays` | integer | `30` |  | Minimum age in days before a memory can be pruned. Default: 30. |
 | `PruningThreshold` | number | `0.1` |  | Importance threshold below which memories are candidates for pruning. Default: 0.1. |
 | `RecencyHalfLifeHours` | number | `69` |  | Half-life for recency decay in hours (exp(-ln2/halfLife * ageHours)). Default: 69.0. |
