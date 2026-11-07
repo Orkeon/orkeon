@@ -10,7 +10,7 @@ namespace Orkeon.Plugins;
 /// confined to inner exceptions raised by the runtime.
 /// </remarks>
 #pragma warning disable S3925 // BinaryFormatter serialization is obsolete in .NET 10 (SYSLIB0051); ISerializable pattern not required
-public sealed class PluginLoadException : Exception
+public class PluginLoadException : Exception
 #pragma warning restore S3925
 {
     /// <summary>Creates an empty exception.</summary>

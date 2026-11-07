@@ -36,7 +36,7 @@ public class PluginRegistryTests
     {
         using var fixture = new PluginDirectoryFixture();
         var loader = new PluginLoader(new OrkeonPluginsOptions().SharedAssemblyPrefixes);
-        var loaded = loader.Load(fixture.CandidateFor(fixture.AddFlatFixturePlugin()));
+        var loaded = loader.Load(fixture.AddFixtureCandidate());
         using var registry = new PluginRegistry();
 
         registry.Add(loaded);
@@ -51,7 +51,7 @@ public class PluginRegistryTests
     {
         using var fixture = new PluginDirectoryFixture();
         var loader = new PluginLoader(new OrkeonPluginsOptions().SharedAssemblyPrefixes);
-        var loaded = loader.Load(fixture.CandidateFor(fixture.AddFlatFixturePlugin()));
+        var loaded = loader.Load(fixture.AddFixtureCandidate());
         using var registry = new PluginRegistry();
         registry.Add(loaded);
 
@@ -67,7 +67,7 @@ public class PluginRegistryTests
     {
         using var fixture = new PluginDirectoryFixture();
         var loader = new PluginLoader(new OrkeonPluginsOptions().SharedAssemblyPrefixes);
-        var loaded = loader.Load(fixture.CandidateFor(fixture.AddFlatFixturePlugin()));
+        var loaded = loader.Load(fixture.AddFixtureCandidate());
         var registry = new PluginRegistry();
         registry.Add(loaded);
 

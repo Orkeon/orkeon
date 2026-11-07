@@ -4,7 +4,8 @@
 > comme feuille de route. La **v1 réellement implémentée** est un sous-ensemble volontaire :
 > contrat `IOrkeonPlugin`, découverte sur répertoire (VFS), chargement isolé par
 > `AssemblyLoadContext` collectible + `AssemblyDependencyResolver`, activation DI opt-in
-> `AddOrkeonPlugins(...)` — **sans** manifeste `plugin.json`, **sans** sandbox/permissions,
+> `AddOrkeonPlugins(...)`, manifeste `plugin.json` minimal (FWK-13 : `name`, `version`,
+`orkeonVersion`, `entryAssembly`, `tools`) — **sans** sandbox/permissions,
 > **sans** hot-reload ni store de configuration par plugin (portée future). Voir
 > [README.md](README.md) et `docs/architecture/plugins.md` pour l'état réel.
 

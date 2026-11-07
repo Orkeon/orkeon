@@ -45,17 +45,80 @@ public sealed class PluginDirectoryFixture : IDisposable
     public string AddFlatNonPluginAssembly(string fileName = "NotAPlugin.dll") =>
         CopyAsFlat(NonPluginManagedAssemblyPath, fileName);
 
+    /// <summary>Orkeon range the fixture manifests target: every 1.x release, rc.1 included.</summary>
+    public const string CompatibleRange = "[1.0.0-rc.1,2.0.0)";
+
+    /// <summary>File name of the fixture plugin assembly (the test assembly).</summary>
+    public static string FixtureEntryAssembly => Path.GetFileName(FixturePluginAssemblyPath);
+
     /// <summary>
-    /// Copies the fixture plugin assembly using the folder-per-plugin layout
-    /// (<c>/plugins/&lt;name&gt;/&lt;name&gt;.dll</c>). Returns its virtual path.
+    /// Builds the manifest of a fixture plugin: by default the one <see cref="FakeAlphaPlugin"/> answers to.
     /// </summary>
-    public string AddConventionalFixturePlugin(string pluginDirName = "FixturePlugin")
+    public static PluginManifest FixtureManifest(
+        string name = "fake-alpha",
+        string version = "1.2.3",
+        string orkeonVersion = CompatibleRange,
+        params string[] tools) => new()
+        {
+            Name = name,
+            Version = version,
+            OrkeonVersion = orkeonVersion,
+            EntryAssembly = FixtureEntryAssembly,
+            Tools = tools,
+        };
+
+    /// <summary>
+    /// Creates <c>/plugins/&lt;dirName&gt;/</c> holding a copy of the fixture assembly and a
+    /// <c>plugin.json</c> written from <paramref name="manifest"/> (the default fixture manifest when
+    /// <c>null</c>). Returns the virtual path of the entry assembly.
+    /// </summary>
+    public string AddPluginFolder(string dirName, PluginManifest? manifest = null)
     {
-        var dir = Path.Combine(PhysicalRoot, pluginDirName);
+        manifest ??= FixtureManifest();
+        var dir = Path.Combine(PhysicalRoot, dirName);
         Directory.CreateDirectory(dir);
-        File.Copy(FixturePluginAssemblyPath, Path.Combine(dir, pluginDirName + ".dll"), overwrite: true);
-        return $"{VirtualRoot}/{pluginDirName}/{pluginDirName}.dll";
+        File.Copy(FixturePluginAssemblyPath, Path.Combine(dir, FixtureEntryAssembly), overwrite: true);
+        File.WriteAllText(Path.Combine(dir, "plugin.json"), ToJson(manifest));
+        return $"{VirtualRoot}/{dirName}/{FixtureEntryAssembly}";
     }
+
+    /// <summary>
+    /// Creates the folder of the sample plugin (<c>Fixtures/SamplePlugin/plugin.json</c>, copied as
+    /// it is, next to the fixture assembly). Returns the virtual path of the entry assembly.
+    /// </summary>
+    public string AddSamplePlugin(string dirName = "sample-plugin")
+    {
+        var dir = Path.Combine(PhysicalRoot, dirName);
+        Directory.CreateDirectory(dir);
+        File.Copy(FixturePluginAssemblyPath, Path.Combine(dir, FixtureEntryAssembly), overwrite: true);
+        File.Copy(
+            Path.Combine(AppContext.BaseDirectory, "Fixtures", "SamplePlugin", "plugin.json"),
+            Path.Combine(dir, "plugin.json"),
+            overwrite: true);
+        return $"{VirtualRoot}/{dirName}/{FixtureEntryAssembly}";
+    }
+
+    /// <summary>
+    /// <see cref="AddPluginFolder"/> then <see cref="CandidateFor"/> carrying the manifest, as discovery
+    /// would hand it to the loader.
+    /// </summary>
+    public PluginAssemblyCandidate AddFixtureCandidate(string dirName = "fixture-plugin", PluginManifest? manifest = null)
+    {
+        manifest ??= FixtureManifest();
+        var candidate = CandidateFor(AddPluginFolder(dirName, manifest));
+        return candidate with { Manifest = manifest };
+    }
+
+    /// <summary>Serializes a manifest the way a plugin author writes it (camelCase).</summary>
+    public static string ToJson(PluginManifest manifest) => System.Text.Json.JsonSerializer.Serialize(
+        new
+        {
+            name = manifest.Name,
+            version = manifest.Version,
+            orkeonVersion = manifest.OrkeonVersion,
+            entryAssembly = manifest.EntryAssembly,
+            tools = manifest.Tools,
+        });
 
     /// <summary>
     /// Writes an arbitrary (non-assembly) file at <paramref name="relativePath"/>,

@@ -66,7 +66,15 @@ public sealed class ReplMcpAndPluginsTests : IDisposable
     public async Task A_plugins_tool_reaches_the_tools_namespace_of_the_scripts()
     {
         var plugins = Directory.CreateDirectory(Path.Combine(_root, "plugins")).FullName;
-        File.Copy(typeof(FakeEchoPlugin).Assembly.Location, Path.Combine(plugins, "EchoPlugin.dll"));
+        var folder = Directory.CreateDirectory(Path.Combine(plugins, "echo-plugin")).FullName;
+        var assemblyFile = Path.GetFileName(typeof(FakeEchoPlugin).Assembly.Location);
+        File.Copy(typeof(FakeEchoPlugin).Assembly.Location, Path.Combine(folder, assemblyFile));
+        await File.WriteAllTextAsync(
+            Path.Combine(folder, "plugin.json"),
+            $$"""
+            { "name": "fake-echo", "version": "1.0.0", "orkeonVersion": "[1.0.0-rc.1,2.0.0)",
+              "entryAssembly": "{{assemblyFile}}", "tools": [ "{{FakeEchoPlugin.ToolName}}" ] }
+            """, Ct);
         using var host = Start($$"""
             {
               "Orkeon": { "FileSystem": { "InternalMounts": [ {{Json($"{plugins}:/plugins:ro")}} ] } },

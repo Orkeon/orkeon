@@ -1781,9 +1781,9 @@ host calls `AddOrkeonPlugins(fileSystem, configuration)` — see [Plugins](../ar
 
 | Key | Type | Default | Meaning |
 |---|---|---|---|
-| `ContinueOnError` | boolean | `false` | When `true`, a plugin assembly that fails to load or to configure its services is recorded in `IPluginRegistry.Failures` and the remaining candidates keep loading. When `false` (default), the first failure throws a `PluginLoadException` (fail fast). |
-| `Directory` | string | `"/plugins"` | Virtual path (VFS) of the directory scanned for plugin assemblies. Must start with `/` and resolve inside a configured mount. Default: `/plugins`. |
-| `SearchPattern` | string | `"*.dll"` | Simple glob pattern applied to candidate assembly file names (e.g. `*.dll`, `MyCompany.*.dll`). Candidates must additionally carry the `.dll` extension regardless of the pattern. Default: `*.dll`. |
+| `ContinueOnError` | boolean | `false` | When `true`, a plugin that fails to load, is refused by its manifest (absent, malformed, out of the Orkeon range, a tool not declared) or fails to configure its services is recorded in `IPluginRegistry.Failures` and the remaining candidates keep loading. When `false` (default), the first failure throws a `PluginLoadException` (fail fast). |
+| `Directory` | string | `"/plugins"` | Virtual path (VFS) of the directory whose sub-folders are plugins: each holds a `plugin.json` manifest and the entry assembly it names; a `.dll` dropped flat is ignored. Must start with `/` and resolve inside a configured mount. Default: `/plugins`. |
+| `SearchPattern` | string | `"*.dll"` | Simple glob pattern applied to the file name of each manifest's entry assembly (e.g. `*.dll`, `MyCompany.*.dll`). Entry assemblies must additionally carry the `.dll` extension regardless of the pattern. Default: `*.dll`. |
 | `SharedAssemblyPrefixes` | list of string | `["Orkeon.", "Orkeon.Rag.Abstractions", "Microsoft.Extensions."]` | Assembly simple-name prefixes that are never loaded into the plugin's isolated `AssemblyLoadContext`; resolution defers to the host (default) context instead, so contract types (e.g. `IOrkeonPlugin`, `IBaseTool`, `IServiceCollection`) keep a single identity shared between the host and the plugin. Defaults: `Orkeon.`, `Orkeon.Rag.Abstractions` and `Microsoft.Extensions.`. |
 <!-- /settings -->
 

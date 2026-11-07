@@ -22,4 +22,13 @@ public sealed record PluginAssemblyCandidate
     /// <see cref="System.Runtime.Loader.AssemblyLoadContext"/> loading APIs.
     /// </summary>
     public required string PhysicalPath { get; init; }
+
+    /// <summary>The parsed <c>plugin.json</c> of the plugin folder; <c>null</c> when there is none.</summary>
+    public PluginManifest? Manifest { get; init; }
+
+    /// <summary>
+    /// Why the plugin folder's manifest could not be used (absent, unreadable, malformed, entry
+    /// assembly missing), when discovery found out; the loader then refuses the candidate with it.
+    /// </summary>
+    public string? ManifestFailure { get; init; }
 }

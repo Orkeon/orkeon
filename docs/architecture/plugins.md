@@ -5,8 +5,8 @@
 > **Status**: v1 (workstream R1.6). Assembly `Orkeon.Plugins`
 > (`src/plugins/Orkeon.Plugins`) — **not shipped as a NuGet package**; see
 > [Building a plugin project](#building-a-plugin-project).
-> The original specification (manifest, permissions, hot-reload, per-plugin
-> configuration) remains a roadmap — see `src/plugins/Orkeon.Plugins/SPECIFICATION.md`.
+> The original specification (permissions, hot-reload, per-plugin
+> configuration) remains a roadmap; the `plugin.json` manifest is shipped — see `src/plugins/Orkeon.Plugins/SPECIFICATION.md`.
 
 The plugin system lets you drop third-party assemblies into a directory and let
 them contribute services (`IBaseTool` tools, LLM providers, memory providers,
@@ -52,7 +52,10 @@ public sealed class WeatherPlugin : IOrkeonPlugin
 ```
 
 - Public constructor with no required parameter (instantiation via `Activator`).
-- An assembly may contain several implementations; all of them are instantiated.
+- The manifest names the plugin (`name`, cross-checked with `Name`, and `version`, with `Version`). The
+  entry assembly may contain other `IOrkeonPlugin` types: they are constructed (`IOrkeonPlugin.Name` is an instance
+  property, so the loader must build them to match the name), but their `ConfigureServices` is never called.
+  A constructor that throws fails the load.
 - On the plugin project side: reference the contracts **without copying them** next to the plugin
   (shipping its own `Orkeon.Plugins.dll` breaks type identity — the loader
   detects this case and reports it explicitly) — see below.
@@ -97,20 +100,24 @@ against your own clone.
 ## Discovery (VFS)
 
 Discovery goes through `IFileSystemService`: `OrkeonPluginsOptions.Directory` is a
-**virtual path** (e.g. `/plugins`) that must resolve within a configured mount. Two
-layouts are recognized, at the first level only:
+**virtual path** (e.g. `/plugins`) that must resolve within a configured mount. One layout is
+recognized, at the first level only: **a sub-folder per plugin**, holding `plugin.json` and the
+entry assembly it names.
 
 ```
 /plugins/
-├── MyPlugin.dll                  # "flat" layout
+├── Stray.dll                     # flat: ignored, never loaded
 └── WeatherPlugin/
-    ├── WeatherPlugin.dll         # "folder per plugin" layout (<dir>/<dir>.dll)
+    ├── plugin.json               # the manifest, read before the assembly is loaded
+    ├── WeatherPlugin.dll         # the entry assembly the manifest names
     ├── WeatherPlugin.deps.json   # drives the resolution of the private dependencies
     └── Newtonsoft.Json.dll       # private dependency, never treated as a plugin
 ```
 
-Candidates must carry the `.dll` extension and satisfy `SearchPattern`
-(`*.dll` by default, a simple case-insensitive glob). The physical path resolution required by the
+The entry assembly must carry the `.dll` extension and its file name must satisfy `SearchPattern`
+(`*.dll` by default, a simple case-insensitive glob). A sub-folder without `plugin.json` is refused
+(`PluginManifestException`) when it holds any `.dll`, and ignored otherwise; an entry assembly that misses
+`SearchPattern` or that the mount rights deny is refused too, not skipped. The physical path resolution required by the
 `AssemblyLoadContext` APIs uses the VFS mechanism
 (`IFileSystemService.ResolveAndValidate` with `FileAccessRights.Read`, mount checks included);
 a file rejected by the mount policy is simply excluded. Error messages from
@@ -121,6 +128,45 @@ the plugin system only reference virtual paths.
 - Candidates are loaded in ordinal order of their virtual path, so the registration order
   (and therefore "last registration wins" between two plugins) is deterministic.
 - The enumeration does not follow symbolic links.
+
+## The manifest (`plugin.json`)
+
+Every plugin carries one, the plugins of the repository included. It is read through the VFS
+(`IFileSystemService`, a virtual path) before the assembly is loaded:
+
+```json
+{
+  "name": "acme.weather-tools",
+  "version": "1.0.0",
+  "orkeonVersion": "[1.0.0-rc.1,2.0.0)",
+  "entryAssembly": "WeatherPlugin.dll",
+  "tools": [ "weather_forecast" ]
+}
+```
+
+| Field | Meaning |
+|---|---|
+| `name` | Must equal `IOrkeonPlugin.Name`. |
+| `version` | Must equal `IOrkeonPlugin.Version`. |
+| `orkeonVersion` | NuGet-style range the running Orkeon must fall in: `1.0.0` (that version or later), `[1.0.0]`, `[1.0.0-rc.1,2.0.0)`, `(,2.0.0]`, `*`. The build metadata (`+sha`) of the running version is ignored; a pre-release sorts below its release. |
+| `entryAssembly` | File name of a `.dll` of the plugin folder: no path. |
+| `tools` | Names of the tools the plugin registers (`IBaseTool.Name`); may be empty. |
+
+`PluginManifestException` (a `PluginLoadException`, so `ContinueOnError` covers it) refuses the plugin
+when the manifest is absent or malformed, a required field is missing, the entry assembly is
+missing, `orkeonVersion` excludes the running Orkeon, the manifest names no plugin of the entry
+assembly or disagrees with it on the version, or the plugin registers an `IBaseTool` whose name is
+not in `tools`. A refused plugin leaves no registration behind: the service collection is restored as the host had it
+(a `Replace` or `RemoveAll` of a host registration included), and a `ConfigureServices` that throws is rolled
+back the same way and surfaces as a `PluginLoadException`. A tool registered as an instance is checked at
+registration. A tool registered by type, factory or key is checked by the host's own provider when it
+builds the tool (once, with the services the host registers after `AddOrkeonPlugins`, such as `ILogger<T>`):
+an undeclared name throws `PluginManifestException` naming the plugin, and an exception from the tool's
+code surfaces as a `PluginLoadException` with the cause inside. That check happens when the host resolves
+the tools, after `ContinueOnError` has done its work. A tool declared but not registered is not an error.
+
+A minimal plugin lives in the tests (`tests/plugins/Orkeon.Plugins.Tests/Fixtures/SamplePlugin/`): its
+`plugin.json` and `SamplePlugin`, which registers the one tool the manifest declares.
 
 ## Loading and isolation
 
@@ -188,8 +234,8 @@ Specifics:
 - discovery and loading are **immediate** (at the time of the call): plugins
   must contribute their registrations to the `IServiceCollection` before the
   provider is built;
-- a managed assembly with no `IOrkeonPlugin` implementation is ignored and its context
-  immediately unloaded;
+- a plugin whose entry assembly has no `IOrkeonPlugin` named by the manifest is refused and its
+  context unloaded;
 - `ContinueOnError = true` records failures in `IPluginRegistry.Failures` instead
   of throwing `PluginLoadException` (without rolling back the registrations already
   contributed by the faulty plugin);
@@ -201,7 +247,6 @@ Specifics:
 | Out of scope in v1 | Lead (SPECIFICATION.md) |
 |---|---|
 | Sandbox / permission model | `PluginSecurityManager`, `PluginSandbox` |
-| `plugin.json` manifest (out-of-code metadata) | `PluginManifest` |
 | Hot-reload | `ReloadPluginAsync` |
 | Persisted per-plugin configuration | `IPluginConfigurationStore` |
 | Symlinks in the plugin directory | not followed |

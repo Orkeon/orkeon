@@ -71,7 +71,7 @@ public class AddOrkeonPluginsTests
     public void AddOrkeonPlugins_LoadsPlugins_AndAppliesTheirRegistrations()
     {
         using var fixture = new PluginDirectoryFixture();
-        fixture.AddFlatFixturePlugin();
+        fixture.AddPluginFolder("alpha");
         var services = new ServiceCollection();
 
         services.AddOrkeonPlugins(fixture.FileSystem);
@@ -82,23 +82,23 @@ public class AddOrkeonPluginsTests
             services,
             d => d.ServiceType.FullName == typeof(AlphaPluginMarker).FullName);
         Assert.NotSame(typeof(AlphaPluginMarker), alphaDescriptor.ServiceType);
-        Assert.Contains(
+        // The manifest names fake-alpha: the other plugin types of the assembly are not activated.
+        Assert.DoesNotContain(
             services,
             d => d.ServiceType.FullName == typeof(BetaPluginMarker).FullName);
 
         using var provider = services.BuildServiceProvider();
         var registry = provider.GetRequiredService<IPluginRegistry>();
         Assert.Single(registry.Assemblies);
-        Assert.Contains(registry.Plugins, static p => p.Name == "fake-alpha");
-        Assert.Contains(registry.Plugins, static p => p.Name == "fake-beta");
+        Assert.Equal("fake-alpha", Assert.Single(registry.Plugins).Name);
         Assert.Empty(registry.Failures);
     }
 
     [Fact]
-    public void AddOrkeonPlugins_ConventionalLayout_IsLoadedToo()
+    public void AddOrkeonPlugins_ManifestLayout_IsLoaded()
     {
         using var fixture = new PluginDirectoryFixture();
-        var virtualPath = fixture.AddConventionalFixturePlugin("Weather");
+        var virtualPath = fixture.AddPluginFolder("Weather");
         var services = new ServiceCollection();
 
         services.AddOrkeonPlugins(fixture.FileSystem);
@@ -109,26 +109,20 @@ public class AddOrkeonPluginsTests
         Assert.Equal(virtualPath, assembly.VirtualPath);
     }
 
-    [Fact]
-    public void AddOrkeonPlugins_NonPluginAssembly_IsSkippedSilently()
+    private static string AddBrokenPlugin(PluginDirectoryFixture fixture, string dir)
     {
-        using var fixture = new PluginDirectoryFixture();
-        fixture.AddFlatNonPluginAssembly();
-        var services = new ServiceCollection();
-
-        services.AddOrkeonPlugins(fixture.FileSystem);
-
-        using var provider = services.BuildServiceProvider();
-        var registry = provider.GetRequiredService<IPluginRegistry>();
-        Assert.Empty(registry.Assemblies);
-        Assert.Empty(registry.Failures);
+        var dll = fixture.AddOpaqueFile($"{dir}/garbage.dll");
+        fixture.AddOpaqueFile(
+            $"{dir}/plugin.json",
+            PluginDirectoryFixture.ToJson(PluginDirectoryFixture.FixtureManifest() with { EntryAssembly = "garbage.dll" }));
+        return dll;
     }
 
     [Fact]
     public void AddOrkeonPlugins_BrokenAssembly_FailsFastByDefault()
     {
         using var fixture = new PluginDirectoryFixture();
-        var garbage = fixture.AddOpaqueFile("garbage.dll");
+        var garbage = AddBrokenPlugin(fixture, "broken");
         var services = new ServiceCollection();
 
         var ex = Assert.Throws<PluginLoadException>(
@@ -141,8 +135,8 @@ public class AddOrkeonPluginsTests
     public void AddOrkeonPlugins_ContinueOnError_RecordsFailure_AndLoadsTheRest()
     {
         using var fixture = new PluginDirectoryFixture();
-        var garbage = fixture.AddOpaqueFile("a-garbage.dll"); // sorts before the real plugin
-        fixture.AddFlatFixturePlugin("z-real-plugin.dll");
+        var garbage = AddBrokenPlugin(fixture, "a-broken"); // sorts before the real plugin
+        fixture.AddPluginFolder("z-real-plugin");
         var services = new ServiceCollection();
 
         services.AddOrkeonPlugins(fixture.FileSystem, options => options.ContinueOnError = true);
@@ -159,7 +153,7 @@ public class AddOrkeonPluginsTests
     public void AddOrkeonPlugins_ConfigurationOverload_BindsThePluginsSection()
     {
         using var fixture = new PluginDirectoryFixture();
-        var garbage = fixture.AddOpaqueFile("garbage.dll");
+        var garbage = AddBrokenPlugin(fixture, "broken");
         var configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {

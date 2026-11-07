@@ -10,6 +10,7 @@ namespace Orkeon.Plugins;
 public sealed class PluginLoader : IPluginLoader
 {
     private readonly string[] _sharedAssemblyPrefixes;
+    private readonly string _orkeonVersion;
 
     /// <summary>
     /// Creates a loader.
@@ -18,10 +19,26 @@ public sealed class PluginLoader : IPluginLoader
     /// Assembly simple-name prefixes resolved by the host context instead of the
     /// plugin context (see <see cref="OrkeonPluginsOptions.SharedAssemblyPrefixes"/>).
     /// </param>
+    /// <remarks>
+    /// The manifests' <c>orkeonVersion</c> ranges are checked against the version of this assembly.
+    /// </remarks>
     public PluginLoader(IEnumerable<string> sharedAssemblyPrefixes)
+        : this(sharedAssemblyPrefixes, PluginHostVersion.Current)
+    {
+    }
+
+    /// <summary>
+    /// Creates a loader that checks the manifests' <c>orkeonVersion</c> ranges against
+    /// <paramref name="orkeonVersion"/>.
+    /// </summary>
+    /// <param name="sharedAssemblyPrefixes">See <see cref="PluginLoader(IEnumerable{string})"/>.</param>
+    /// <param name="orkeonVersion">Version of the hosting Orkeon release.</param>
+    public PluginLoader(IEnumerable<string> sharedAssemblyPrefixes, string orkeonVersion)
     {
         ArgumentNullException.ThrowIfNull(sharedAssemblyPrefixes);
+        ArgumentException.ThrowIfNullOrWhiteSpace(orkeonVersion);
         _sharedAssemblyPrefixes = sharedAssemblyPrefixes.ToArray();
+        _orkeonVersion = orkeonVersion;
     }
 
     /// <inheritdoc />
@@ -29,13 +46,16 @@ public sealed class PluginLoader : IPluginLoader
     {
         ArgumentNullException.ThrowIfNull(candidate);
 
+        var manifest = CheckManifest(candidate);
+
         PluginLoadContext? context = null;
         try
         {
             context = new PluginLoadContext(candidate.PhysicalPath, _sharedAssemblyPrefixes);
             var assembly = context.LoadFromAssemblyPath(candidate.PhysicalPath);
-            var plugins = InstantiatePlugins(assembly, candidate.VirtualPath);
-            return new LoadedPluginAssembly(candidate.VirtualPath, assembly, context, plugins);
+            var plugins = MatchManifest(
+                InstantiatePlugins(assembly, candidate.VirtualPath), manifest, candidate.VirtualPath);
+            return new LoadedPluginAssembly(candidate.VirtualPath, assembly, context, plugins, manifest);
         }
         catch (PluginLoadException)
         {
@@ -52,6 +72,57 @@ public sealed class PluginLoader : IPluginLoader
                 candidate.VirtualPath,
                 ex);
         }
+    }
+
+    /// <summary>
+    /// Refuses a candidate without a usable manifest, or whose Orkeon range excludes this release,
+    /// before any assembly is loaded.
+    /// </summary>
+    private PluginManifest CheckManifest(PluginAssemblyCandidate candidate)
+    {
+        if (candidate.ManifestFailure is { } failure)
+            throw new PluginManifestException(failure, candidate.VirtualPath);
+
+        var manifest = candidate.Manifest
+            ?? throw new PluginManifestException(
+                $"Plugin '{candidate.VirtualPath}' has no manifest: every plugin folder carries a {PluginAssemblyDiscovery.ManifestFileName}.",
+                candidate.VirtualPath);
+        try
+        {
+            PluginManifestValidator.Validate(manifest, _orkeonVersion);
+        }
+        catch (PluginManifestException ex)
+        {
+            throw new PluginManifestException(ex.Message, candidate.VirtualPath);
+        }
+
+        return manifest;
+    }
+
+    /// <summary>
+    /// Keeps the plugin the manifest names; the other <see cref="IOrkeonPlugin"/> types of the
+    /// assembly are not activated. Name and version are cross-checked.
+    /// </summary>
+    private static List<IOrkeonPlugin> MatchManifest(
+        List<IOrkeonPlugin> plugins, PluginManifest manifest, string virtualPath)
+    {
+        var named = plugins.Where(p => string.Equals(p.Name, manifest.Name, StringComparison.Ordinal)).ToList();
+        if (named.Count == 0)
+        {
+            throw new PluginManifestException(
+                $"The manifest of '{virtualPath}' names the plugin '{manifest.Name}', but its entry assembly has no such plugin.",
+                virtualPath);
+        }
+
+        var mismatch = named.FirstOrDefault(p => !string.Equals(p.Version, manifest.Version, StringComparison.Ordinal));
+        if (mismatch is not null)
+        {
+            throw new PluginManifestException(
+                $"The manifest of '{virtualPath}' says version '{manifest.Version}' for plugin '{mismatch.Name}', the plugin says '{mismatch.Version}'.",
+                virtualPath);
+        }
+
+        return named;
     }
 
     private static List<IOrkeonPlugin> InstantiatePlugins(Assembly assembly, string virtualPath)

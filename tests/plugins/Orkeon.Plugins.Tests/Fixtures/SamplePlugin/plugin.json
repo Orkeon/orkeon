@@ -1,0 +1,7 @@
+{
+  "name": "sample-plugin",
+  "version": "1.0.0",
+  "orkeonVersion": "[1.0.0-rc.1,2.0.0)",
+  "entryAssembly": "Orkeon.Plugins.Tests.dll",
+  "tools": [ "sample.echo" ]
+}
