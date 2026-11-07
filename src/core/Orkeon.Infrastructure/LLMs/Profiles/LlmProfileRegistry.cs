@@ -2,6 +2,8 @@ using System.Collections.Concurrent;
 using System.Runtime.CompilerServices;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Orkeon.Application.Interfaces;
 using Orkeon.Application.Interfaces.LLM;
@@ -29,7 +31,22 @@ namespace Orkeon.Infrastructure.LLMs.Profiles;
 public sealed record LlmProfileRegistration(
     string Name,
     Func<IServiceProvider, ILlmProvider> Provider,
-    LlmConfig? BaseConfig = null);
+    LlmConfig? BaseConfig = null)
+{
+    /// <summary>
+    /// The profiles a failed call moves to, in order (FWK-05): the failures a retry cannot cure (a
+    /// transport error, a 5xx, a 429 once the retries are spent, a timeout) go to the first, then the
+    /// second. A name the host does not define, or a chain that comes back to its own profile, refuses
+    /// the registry's construction. Null or empty: no fallback.
+    /// </summary>
+    public IReadOnlyList<string>? Fallback { get; init; }
+
+    /// <summary>
+    /// The longest the chain may spend, from its first call, before it stops trying the next profile; null
+    /// bounds it only by each profile's own timeout and retries. Checked between two profiles.
+    /// </summary>
+    public TimeSpan? FallbackBudget { get; init; }
+}
 
 /// <summary>
 /// Which of its profiles a host lets crews name. <c>orkeon-host</c> runs crews it does not
@@ -53,10 +70,11 @@ public sealed class LlmProfileAccessOptions
 /// registry does the same to the provider an agent carries itself (<see cref="ForProvider"/>,
 /// GAP-34, GAP-38), one of the entrances of the metered path.
 /// </summary>
-public sealed class LlmProfileRegistry : ILlmProfileRegistry
+public sealed partial class LlmProfileRegistry : ILlmProfileRegistry
 {
     private readonly IServiceProvider _services;
     private readonly Dictionary<string, LlmProfileRegistration> _offered;
+    private readonly Dictionary<string, LlmProfileRegistration> _all;
     private readonly ConcurrentDictionary<string, Lazy<LlmProfile>> _built = new(StringComparer.OrdinalIgnoreCase);
     private readonly Lazy<LlmProfile> _default;
 
@@ -70,7 +88,10 @@ public sealed class LlmProfileRegistry : ILlmProfileRegistry
     /// <param name="services">The container the providers are built from.</param>
     /// <param name="registrations">Every profile the host registered.</param>
     /// <param name="access">The host's allow-list; unset allows every registered profile.</param>
-    /// <exception cref="InvalidOperationException">Two registrations share a name, or one uses the reserved default name.</exception>
+    /// <exception cref="InvalidOperationException">
+    /// Two registrations share a name, one uses the reserved default name, a <see cref="LlmProfileRegistration.Fallback"/>
+    /// names a profile nobody defines, or the fallback chains come back to a profile they started from.
+    /// </exception>
     public LlmProfileRegistry(
         IServiceProvider services,
         IEnumerable<LlmProfileRegistration> registrations,
@@ -91,6 +112,9 @@ public sealed class LlmProfileRegistry : ILlmProfileRegistry
                 throw new InvalidOperationException($"Two LLM profiles are named '{registration.Name}'.");
             order.Add(registration.Name);
         }
+
+        _all = all;
+        ValidateFallbacks(all);
 
         var allowed = access?.Value.AllowedProfiles;
         var allowedSet = allowed is null ? null : new HashSet<string>(allowed, StringComparer.OrdinalIgnoreCase);
@@ -142,10 +166,127 @@ public sealed class LlmProfileRegistry : ILlmProfileRegistry
                 baseConfig: null));
     }
 
-    private LlmProfile Build(LlmProfileRegistration registration) =>
+    private LlmProfile Build(LlmProfileRegistration registration)
+    {
         // Metered and limited by its registration (AddOrkeonLlmProfile), one of the entrances of the
         // metered path — a second meter or limiter here would count every call twice.
-        Assemble(registration.Name, registration.Provider(_services), registration.BaseConfig);
+        var own = Assemble(registration.Name, registration.Provider(_services), registration.BaseConfig);
+        if (registration.Fallback is not { Count: > 0 } fallback)
+            return own;
+
+        // The chain sits above profiles already entered and assembled, each with its own call mode,
+        // meter and trace: the metric and the span name the provider that answered (FWK-05).
+        var links = new List<FallbackLink>
+        {
+            new(registration.Name, own.Provider, registration.BaseConfig ?? own.Provider.BaseConfig),
+        };
+        foreach (var name in fallback.Select(n => n.Trim()).Distinct(StringComparer.OrdinalIgnoreCase))
+        {
+            var target = ResolveForChain(name, out var targetConfig);
+            links.Add(new FallbackLink(target.Name, target.Provider, targetConfig));
+        }
+
+        WarnAboutLesserFallbacks(registration.Name, links);
+        var chain = new FallbackLlmProvider(
+            registration.Name,
+            links,
+            _services.GetService<ILlmFallbackObserver>(),
+            Logger(),
+            registration.FallbackBudget,
+            _services.GetService<TimeProvider>() ?? TimeProvider.System);
+        return Assemble(registration.Name, chain, registration.BaseConfig);
+    }
+
+    /// <summary>A profile a chain falls back on: any the host defines, hidden from crews by the allow-list or not.</summary>
+    private LlmProfile ResolveForChain(string name, out LlmConfig? baseConfig)
+    {
+        if (LlmProfiles.IsDefault(name))
+        {
+            baseConfig = null;
+            return _default.Value;
+        }
+
+        var registration = _all[name];
+        baseConfig = registration.BaseConfig;
+        return _built.GetOrAdd(registration.Name, _ => new Lazy<LlmProfile>(() => Build(registration))).Value;
+    }
+
+    private ILogger Logger() =>
+        (_services.GetService<ILoggerFactory>() ?? NullLoggerFactory.Instance).CreateLogger<LlmProfileRegistry>();
+
+    /// <summary>
+    /// Refuses, when the registry is built, a fallback that names a profile nobody defines and a chain
+    /// that comes back to a profile it started from. Built later it would recurse inside the lazy
+    /// resolution of the profile; <c>CrewFactory</c> sees only the names crews reference, not the profiles
+    /// between them.
+    /// </summary>
+    private static void ValidateFallbacks(Dictionary<string, LlmProfileRegistration> all)
+    {
+        foreach (var registration in all.Values)
+        {
+            foreach (var name in registration.Fallback ?? [])
+            {
+                if (!LlmProfiles.IsDefault(name.Trim()) && !all.ContainsKey(name.Trim()))
+                    throw new InvalidOperationException(
+                        $"The Fallback of LLM profile '{registration.Name}' names '{name.Trim()}', which no profile defines. " +
+                        $"Profiles: {(all.Count == 0 ? "none" : string.Join(", ", all.Keys.Order(StringComparer.OrdinalIgnoreCase)))}; " +
+                        $"'{LlmProfiles.Default}' names the host's own.");
+            }
+        }
+
+        foreach (var registration in all.Values)
+        {
+            var path = new List<string> { registration.Name };
+            FindCycle(all, registration, path);
+        }
+    }
+
+    private static void FindCycle(Dictionary<string, LlmProfileRegistration> all, LlmProfileRegistration current, List<string> path)
+    {
+        foreach (var name in (current.Fallback ?? []).Select(n => n.Trim()))
+        {
+            if (!all.TryGetValue(name, out var next))
+                continue;
+
+            var seen = path.FindIndex(p => string.Equals(p, next.Name, StringComparison.OrdinalIgnoreCase));
+            if (seen >= 0)
+                throw new InvalidOperationException(
+                    $"The Fallback chains of LLM profiles come back to a profile they started from: {string.Join(" -> ", path.Skip(seen).Append(next.Name))}. " +
+                    "A profile cannot be its own fallback, directly or through another.");
+
+            path.Add(next.Name);
+            FindCycle(all, next, path);
+            path.RemoveAt(path.Count - 1);
+        }
+    }
+
+    /// <summary>
+    /// Warns, once per chain, about a fallback that declares less than the profile it replaces: an option
+    /// the first profile honours and the fallback cannot is dropped there, never silently.
+    /// </summary>
+    private void WarnAboutLesserFallbacks(string profile, List<FallbackLink> links)
+    {
+        var primary = links[0].Provider.Capabilities;
+        foreach (var link in links.Skip(1))
+        {
+            var lacks = new List<string>();
+            var capabilities = link.Provider.Capabilities;
+            if (primary.Vision && !capabilities.Vision)
+                lacks.Add("vision");
+            if (capabilities.ResponseFormat < primary.ResponseFormat)
+                lacks.Add($"response format ({primary.ResponseFormat} -> {capabilities.ResponseFormat})");
+            if (primary.Thinking != ThinkingSupport.None && capabilities.Thinking == ThinkingSupport.None)
+                lacks.Add("thinking");
+            if (primary.GbnfGrammar && !capabilities.GbnfGrammar)
+                lacks.Add("GBNF grammar");
+
+            if (lacks.Count > 0)
+                LogLesserFallback(Logger(), link.Name, profile, string.Join(", ", lacks));
+        }
+    }
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Fallback profile '{Fallback}' of '{Profile}' does not support {Missing}, which '{Profile}' does: an option that needs it is dropped when a call lands on it.")]
+    private static partial void LogLesserFallback(ILogger logger, string fallback, string profile, string missing);
 
     /// <summary>
     /// Builds a profile's three surfaces over one provider — the shape

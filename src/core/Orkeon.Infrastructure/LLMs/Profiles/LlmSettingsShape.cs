@@ -22,10 +22,28 @@ internal class LlmSectionShape : LlmProfileShape
     /// The named profiles, each another provider with the keys of the section itself: a crew, an
     /// agent or a task picks one by its name.
     /// </summary>
-    public Dictionary<string, LlmProfileShape>? Profiles { get; set; }
+    public Dictionary<string, LlmNamedProfileShape>? Profiles { get; set; }
 
     /// <summary>The models a scripted <c>/model</c> may offer: a list, or one comma-separated value.</summary>
     public List<string>? AvailableModels { get; set; }
+}
+
+/// <summary>A named profile: the keys of the <c>Llm</c> shape, and the two a default profile has no use for.</summary>
+internal sealed class LlmNamedProfileShape : LlmProfileShape
+{
+    /// <summary>
+    /// The profiles a call moves to, in order, when this one fails in a way a retry cannot cure: a transport
+    /// error, a 5xx, a 429 once <c>MaxRetries</c> is spent, a timeout. A list of profile names, or one
+    /// comma-separated value; <c>default</c> names the host's own. Left out, a failure is the call's.
+    /// </summary>
+    public List<string>? Fallback { get; set; }
+
+    /// <summary>
+    /// The longest the chain may spend before it stops trying the next profile, in seconds, counted from the
+    /// first call. It is checked between two profiles and never cuts a call in flight. Left out, the chain is
+    /// bounded only by each profile's own <c>TimeoutSeconds</c> and <c>MaxRetries</c>.
+    /// </summary>
+    public int? FallbackBudgetSeconds { get; set; }
 }
 
 /// <summary>The keys of one profile of the <c>Llm</c> shape — the default section's own, a named profile's.</summary>

@@ -161,6 +161,40 @@ public static class LlmSettings
         ];
     }
 
+    /// <summary>
+    /// The fallback chain and time budget each profile names (<c>Fallback</c>, <c>FallbackBudgetSeconds</c>),
+    /// by profile name; a profile that names neither is absent. Names are not checked here: the registry
+    /// does, with every profile in hand.
+    /// </summary>
+    /// <param name="configuration">The host configuration.</param>
+    /// <exception cref="InvalidOperationException">A budget is not a positive number of seconds.</exception>
+    internal static IReadOnlyDictionary<string, (IReadOnlyList<string> Chain, TimeSpan? Budget)> ReadFallbacks(IConfiguration configuration)
+    {
+        ArgumentNullException.ThrowIfNull(configuration);
+        var result = new Dictionary<string, (IReadOnlyList<string>, TimeSpan?)>(StringComparer.OrdinalIgnoreCase);
+        foreach (var section in ProfilesSection(configuration).GetChildren())
+        {
+            var list = section.GetSection(FallbackKey);
+            var names = list.GetChildren().Select(c => c.Value).Where(v => !string.IsNullOrWhiteSpace(v)).Select(v => v!.Trim()).ToList();
+            if (names.Count == 0 && !string.IsNullOrWhiteSpace(list.Value))
+                names = [.. list.Value.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)];
+
+            var seconds = ReadInt(section, FallbackBudgetKey, strict: true);
+            if (seconds is <= 0)
+                throw new InvalidOperationException(
+                    $"{section.Path}:{FallbackBudgetKey}: {seconds} is not a number of seconds above zero. Leave the key out for a chain bounded by each profile's own timeout.");
+
+            if (names.Count > 0 || seconds is not null)
+                result[section.Key] = (names, seconds is { } s ? TimeSpan.FromSeconds(s) : null);
+        }
+
+        return result;
+    }
+
+    private const string FallbackKey = "Fallback";
+
+    private const string FallbackBudgetKey = "FallbackBudgetSeconds";
+
     private static IConfigurationSection ProfilesSection(IConfiguration configuration) =>
         configuration.GetSection(ConfigurationKeys.LlmSection).GetSection(ConfigurationKeys.LlmProfiles);
 

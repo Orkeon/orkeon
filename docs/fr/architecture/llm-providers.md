@@ -273,6 +273,59 @@ agent ou d'une tâche, un Off explicite compris, l'emporte toujours. Les appels 
 scripté tournent avec le cache et l'effort que son builder a fixés (`.cache(...)`, `.effort(...)`, ou le
 `LlmConfig` donné à `.llm(...)`), les options propres d'un appel l'emportant.
 
+## Bascule de profil
+
+Un profil qui bascule nomme ses remplaçants : `Llm:Profiles:<name>:Fallback: [b, c]` (une liste de noms de profils, ou une seule valeur
+séparée par des virgules ; `default` désigne le profil de l'hôte). Un appel qui échoue sur `<name>` d'une façon qu'un nouvel essai
+ne guérit pas passe à `b`, puis à `c` ; un profil enregistré en code prend la même liste avec
+`services.AddOrkeonLlmProfile(name, provider, baseConfig, ["b", "c"])`.
+
+| Échec | Classe (`reason`) | Bascule |
+|---|---|---|
+| connexion refusée, réinitialisée, DNS, flux fermé avant toute réponse | `transport` | oui |
+| un 5xx | `server_error` | oui |
+| un 429, une fois `Llm:MaxRetries` épuisé, ou une fenêtre de limite plus longue que `MaxRateLimitWait` | `rate_limited` | oui |
+| le délai HTTP, un 408, un flux silencieux au-delà de `StreamIdleSeconds` | `timeout` | oui |
+| tous les profils d'une chaîne imbriquée ont échoué | `exhausted` | oui |
+| tout autre 4xx (400, 401, 403, 422...), un contenu bloqué (les étages de décision), un échec dont on ne sait rien | — | **non** : c'est la réponse |
+| l'annulation de l'appelant, levée ou rapportée dans la réponse par le fournisseur | — | non : l'appel est annulé, rien n'est basculé ni essayé |
+
+`LlmFailureClassifier` est l'unique classement : `ResiliencePolicies` en tire sa liste de statuts à rejouer (5xx, 408, 429), si bien
+que ce qu'un nouvel essai peut guérir et ce qu'une chaîne reprend forment le même ensemble.
+
+Construction de la chaîne (`LlmProfileRegistry`) : `FallbackLlmProvider` est le maillon le plus externe, **au-dessus** de profils déjà assemblés.
+Chaque profil garde ses décorateurs (`RateLimited` → `Traced` → `Metered` → `CallMode` → fournisseur) : la métrique et la trace nomment le
+fournisseur qui a répondu, un appel en échec est tracé comme l'échec qu'il est, et chaque profil garde son mode d'appel. Le client de chat de la
+chaîne lit les appels d'outils par détection automatique du format (forme Anthropic ou OpenAI), pas par un analyseur propre à chaque profil. Les `Capabilities`
+de la chaîne (et le choix de sortie structurée que le client de chat en tire) sont celles du **premier profil seul** ; un profil suivant qui en a moins est
+signalé par l'avertissement ci-dessous, sans entrer dans celles de la chaîne.
+
+Chaque profil utilise ses **propres réglages**. Le client de chat part de la configuration du premier profil et pose dessus les options de l'appelant ; la chaîne
+donne à un profil suivant l'appel dont chaque champ qui vaut encore celui du premier profil est remplacé par la valeur de ce profil (modèle, clé, point d'accès,
+`MaxTokens`, `Temperature`, `Thinking`, `CustomParameters`, `SystemMessage`, `StopSequences`, `GrammarGbnf`, délais, tous). Un champ que l'appelant a fixé sur l'appel
+(un `MaxTokens` explicite, une température dans les options de chat) diffère de celui du premier profil et reste pour tous les profils. Un appelant qui fixe un champ à
+exactement la valeur du premier profil ne se distingue pas du profil : la valeur du profil suivant s'applique.
+
+- **Streaming** : un flux ne bascule **qu'avant son premier delta** (une exception, ou une complétion en échec, sans rien émis). Dès qu'un jeton est
+  arrivé chez l'appelant, l'appel appartient à son profil et un échec ultérieur est celui de l'appelant. Un profil qui ne diffuse pas répond tamponné.
+- **Budget** : `Llm:Profiles:<name>:FallbackBudgetSeconds` (absent : aucun) est le temps maximal que la chaîne passe, depuis son premier appel, avant de cesser
+  d'essayer le profil suivant. Il est vérifié entre deux profils et ne coupe jamais un appel en cours : sans lui, une chaîne coûte au pire le
+  `TimeoutSeconds` de chaque profil multiplié par son `MaxRetries`.
+- **Chaîne épuisée** : un appel tamponné répond par une réponse d'erreur dont l'`ErrorType` est `FallbackExhausted` et dont le texte nomme chaque profil et son échec ;
+  un appel qui a échoué par exception lève une seule `HttpRequestException` portant le même texte, la dernière exception pour cause.
+- **Validation** (à la construction du registre, pas dans `CrewFactory`, qui ne voit que les profils nommés par les crews) : un nom qu'aucun profil ne définit, un profil qui se nomme
+  lui-même et un cycle (`a -> b -> a`) refusent le démarrage de l'hôte. Un secours peut être un profil que `Orkeon:Host:LlmProfiles` cache aux crews.
+- **Secours inférieur** : un secours dont les `LlmProviderCapabilities` sont en dessous de celles du premier profil (vision, format de réponse, réflexion, grammaire GBNF) journalise un
+  avertissement nommant ce qui lui manque à la construction de la chaîne ; une option qui en a besoin est alors traitée par le fournisseur qui la reçoit, comme pour tout fournisseur.
+- **Événement** : chaque bascule écrit `llm.fallback` sur le flux `--events` ([le bus d'événements de run](run-event-bus.md)) et un avertissement dans le journal. Un hôte qui enregistre un
+  `ILlmFallbackObserver` en est averti aussi. Seul `orkeon run` (avec `--events`) en enregistre un : `orkeon-host`, le REPL, Studio et un hôte bibliothèque basculent
+  pareillement mais n'écrivent aucun `llm.fallback`, l'avertissement du journal étant la seule trace tant que l'hôte n'enregistre pas son propre observateur.
+- **Pas de persistance du choix** : une chaîne repart de son premier profil à chaque appel. Avec un primaire en panne, chaque tour d'une boucle d'outils paie le
+  `TimeoutSeconds` du primaire multiplié par son `MaxRetries` avant d'atteindre le secours ; `FallbackBudgetSeconds` ne raccourcit pas cette attente (il est vérifié entre
+  deux profils) : réduisez le `TimeoutSeconds` et le `MaxRetries` propres d'un profil qui a un secours.
+- **Une clé révoquée bloque la chaîne** : un 401 et un 403 ne basculent jamais (c'est une erreur de configuration, pas une panne), si bien qu'un primaire dont la clé a été
+  révoquée répond son erreur à chaque appel et que ses secours ne sont jamais essayés.
+
 ## Décorateurs et enregistrement
 
 - **`MeteredLlmProvider`** — l'unique endroit où l'usage LLM est mesuré : il rapporte chaque

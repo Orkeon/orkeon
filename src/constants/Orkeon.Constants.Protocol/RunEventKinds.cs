@@ -80,6 +80,12 @@ public static class RunEventKinds
     /// <summary>The team grew at runtime - the autonomous mode's most opaque moment.</summary>
     public const string AgentSpawned = "agent.spawned";
 
+    /// <summary>
+    /// A profile's fallback chain moved a call to the next profile (FWK-05): <c>profile</c>, <c>from</c>,
+    /// <c>to</c>, <c>reason</c>. Additive: a consumer that does not know the kind ignores it.
+    /// </summary>
+    public const string LlmFallback = "llm.fallback";
+
     /// <summary>Something the run's event hub relayed to this process.</summary>
     public const string HubMessage = "hub.message";
 
@@ -91,6 +97,6 @@ public static class RunEventKinds
     [
         RunStarted, TaskStarted, TaskCompleted, CostUpdated, LlmDelta, RunFinished, Error,
         InputNeeded, InputGiven, ToolCalled, ToolReturned, DelegationStarted,
-        AgentSpawned, HubMessage, LlmCallStarted, LlmCallProgress, LlmCallFinished,
+        AgentSpawned, HubMessage, LlmCallStarted, LlmCallProgress, LlmCallFinished, LlmFallback,
     ];
 }

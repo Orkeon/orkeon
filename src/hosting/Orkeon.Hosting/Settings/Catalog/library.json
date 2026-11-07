@@ -663,6 +663,19 @@
       "description": "How a call reaches the model: `Auto`, `Buffer` or `Stream`, case ignored. Left out, `Auto`: the call streams, and falls back on a buffered call when the provider refuses streaming."
     },
     {
+      "path": "Llm:Profiles:<name>:Fallback",
+      "section": "Llm",
+      "type": "list of string",
+      "default": [],
+      "description": "The profiles a call moves to, in order, when this one fails in a way a retry cannot cure: a transport error, a 5xx, a 429 once `MaxRetries` is spent, a timeout. A list of profile names, or one comma-separated value; `default` names the host's own. Left out, a failure is the call's."
+    },
+    {
+      "path": "Llm:Profiles:<name>:FallbackBudgetSeconds",
+      "section": "Llm",
+      "type": "integer",
+      "description": "The longest the chain may spend before it stops trying the next profile, in seconds, counted from the first call. It is checked between two profiles and never cuts a call in flight. Left out, the chain is bounded only by each profile's own `TimeoutSeconds` and `MaxRetries`."
+    },
+    {
       "path": "Llm:Profiles:<name>:Grammar",
       "section": "Llm",
       "type": "boolean",

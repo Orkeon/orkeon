@@ -82,6 +82,8 @@ public sealed partial class LlmProviderMeteringGuardTests
             + "is counted by that provider's meter (FWK-02).",
         ["DecisionLlmProvider"] = "A decision profile: it forwards each call to profiles the registry resolved, already metered, "
             + "and is itself registered through AddOrkeonLlmProfile; the meter nearest the model counts the call once.",
+        ["FallbackLlmProvider"] = "A profile's fallback chain (FWK-05): it forwards each call to profiles the registry resolved, already "
+            + "entered on the path, so the meter nearest the model counts the call once and names the provider that answered.",
     };
 
     /// <summary>

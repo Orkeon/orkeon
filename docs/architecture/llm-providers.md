@@ -262,6 +262,59 @@ explicit Off included, always wins. The procedural `ctx.llm` calls of a script a
 effort its builder set (`.cache(...)`, `.effort(...)`, or the `LlmConfig` given to `.llm(...)`), a call's own
 options winning.
 
+## Profile fallback
+
+A profile that fails over names its replacements: `Llm:Profiles:<name>:Fallback: [b, c]` (a list of profile names, or one
+comma-separated value; `default` names the host's own profile). A call that fails on `<name>` in a way a retry cannot cure goes
+to `b`, then to `c`; a profile registered in code takes the same list with
+`services.AddOrkeonLlmProfile(name, provider, baseConfig, ["b", "c"])`.
+
+| Failure | Class (`reason`) | Moves on |
+|---|---|---|
+| connection refused, reset, DNS, a stream closed before any answer | `transport` | yes |
+| a 5xx | `server_error` | yes |
+| a 429, once `Llm:MaxRetries` is spent, or a rate-limit window longer than `MaxRateLimitWait` | `rate_limited` | yes |
+| the HTTP timeout, a 408, a stream idle past `StreamIdleSeconds` | `timeout` | yes |
+| every profile of a nested chain failed | `exhausted` | yes |
+| any other 4xx (400, 401, 403, 422...), a blocked content (the decision stages), a failure nothing is known about | — | **no**: it is the answer |
+| the caller's own cancellation, thrown or reported in-band by the provider | — | no: the call is cancelled, nothing is switched or tried |
+
+`LlmFailureClassifier` is the one classification: `ResiliencePolicies` takes its list of retryable statuses from it (5xx, 408,
+429), so what a retry may cure and what a chain takes over are the same set.
+
+How the chain is built (`LlmProfileRegistry`): `FallbackLlmProvider` is the outermost link, **above** profiles that are already
+assembled. Each profile keeps its own decorators (`RateLimited` → `Traced` → `Metered` → `CallMode` → provider), so the meter and the trace name
+the provider that answered, a failed call is traced as the failure it is, and each profile keeps its own call mode. The chat client
+of the chain reads tool calls with the format auto-detection (Anthropic or OpenAI shape), not a per-profile parser. The chain's `Capabilities`
+(and the structured-output choice the chat client makes from them) are the **first profile's only**; a later profile with fewer capabilities is
+reported by the warning below, not accounted for in the chain's own.
+
+Each profile uses its **own settings**. The chat client starts every call from the first profile's configuration and lays the caller's options over
+it; the chain gives a later profile the call with every field that still equals the first profile's replaced by that profile's own value (model, key,
+endpoint, `MaxTokens`, `Temperature`, `Thinking`, `CustomParameters`, `SystemMessage`, `StopSequences`, `GrammarGbnf`, timeouts, all of them). A field the
+caller set on the call (an explicit `MaxTokens`, a temperature in the chat options) differs from the first profile's and stays for every profile. A caller
+that sets a field to exactly the first profile's value cannot be told from the profile: the later profile's value applies.
+
+- **Streaming**: a stream moves on only **before its first delta** (a throw, or a completion that is a failure, with nothing yielded). Once a token
+  reached the caller the call belongs to its profile and a later failure is the caller's. A profile that does not stream answers buffered.
+- **Budget**: `Llm:Profiles:<name>:FallbackBudgetSeconds` (absent: none) is the longest the chain spends, from its first call, before it
+  stops trying the next profile. It is checked between two profiles and never cuts a call in flight, so without it a chain costs, at worst, each profile's
+  `TimeoutSeconds` times its `MaxRetries`.
+- **Exhausted chain**: a buffered call answers with an error response whose `ErrorType` is `FallbackExhausted` and whose text names every profile and its failure;
+  a call that failed by exception throws one `HttpRequestException` carrying the same text, the last exception as its cause.
+- **Validation** (when the registry is built, not in `CrewFactory`, which sees only the profiles crews name): a name no profile defines, a profile that names itself,
+  and a cycle (`a -> b -> a`) refuse the host's start. A fallback may be a profile hidden from crews by `Orkeon:Host:LlmProfiles`.
+- **Lesser fallback**: a fallback whose `LlmProviderCapabilities` are below the first profile's (vision, response format, thinking, GBNF grammar) logs one warning
+  naming what it lacks when the chain is built; an option that needs it is then handled by the provider that receives it, as for any provider.
+- **Event**: each switch writes `llm.fallback` on the `--events` stream ([the run event bus](run-event-bus.md)) and a warning in the log. A host that registers an
+  `ILlmFallbackObserver` is told too. Only `orkeon run` (with `--events`) registers one: `orkeon-host`, the REPL, Studio and a library host fail over
+  all the same but write no `llm.fallback`, the log warning being the only trace unless the host registers its own observer.
+- **No stickiness**: a chain starts again from its first profile on every call. With a primary that is down, each turn of a tool loop pays the primary's
+  `TimeoutSeconds` times its `MaxRetries` before it reaches the fallback; `FallbackBudgetSeconds` does not shorten that wait (it is checked between two
+  profiles), so lower the primary's own `TimeoutSeconds` and `MaxRetries` for a profile that has a fallback.
+- **A revoked key blocks the chain**: a 401 and a 403 never switch (they are a configuration error, not an outage), so a primary whose key was revoked answers
+  its error to every call and its fallbacks are never tried.
+
 ## Decorators and registration
 
 - **`MeteredLlmProvider`** — the one place LLM usage is measured: it reports every call of

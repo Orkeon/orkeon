@@ -42,6 +42,9 @@ internal static class RunEventKinds
     /// <summary>See <see cref="Orkeon.Constants.Protocol.RunEventKinds.LlmCallFinished"/>.</summary>
     public const string LlmCallFinished = Orkeon.Constants.Protocol.RunEventKinds.LlmCallFinished;
 
+    /// <summary>See <see cref="Orkeon.Constants.Protocol.RunEventKinds.LlmFallback"/>.</summary>
+    public const string LlmFallback = Orkeon.Constants.Protocol.RunEventKinds.LlmFallback;
+
     /// <summary>Closing event; mirrors the process exit code.</summary>
     public const string RunFinished = Orkeon.Constants.Protocol.RunEventKinds.RunFinished;
 

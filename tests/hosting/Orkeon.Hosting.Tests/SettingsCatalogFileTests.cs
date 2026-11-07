@@ -42,6 +42,9 @@ public sealed class SettingsCatalogFileTests
         // but Plugins, which AddOrkeonPlugins binds and the producer describes by its options type.
         "KickoffHookExtensions.AddAfterKickoffHook(AfterKickoffHook): a parameter the producer cannot supply",
         "KickoffHookExtensions.AddBeforeKickoffHook(BeforeKickoffHook): a parameter the producer cannot supply",
+        // A profile registered in code with its fallback chain: reads no setting; the configured form
+        // (AddOrkeonLlmProfiles) declares the Llm section, Fallback and FallbackBudgetSeconds included.
+        "LlmProviderRegistrationExtensions.AddOrkeonLlmProfile(String, Func`2, LlmConfig, IReadOnlyList`1): a parameter the producer cannot supply",
         "OrkeonPluginsServiceCollectionExtensions.AddOrkeonPlugins(IFileSystemService, Action`1): a parameter the producer cannot supply",
         "OrkeonPluginsServiceCollectionExtensions.AddOrkeonPlugins(IFileSystemService, IConfiguration): a parameter the producer cannot supply",
         "RaggableTreeInfrastructureExtensions.AddRaggableTreeWithLogging(RaggableTreeOptions): a parameter the producer cannot supply",
