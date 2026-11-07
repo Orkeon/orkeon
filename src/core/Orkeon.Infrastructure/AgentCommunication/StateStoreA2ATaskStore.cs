@@ -18,7 +18,7 @@ public sealed class StateStoreA2ATaskStore : IA2ATaskStore
 {
     private const string SessionPrefix = "a2a-task:";
     private const string CheckpointKey = "a2a";
-    private const string CrewId = "__a2a__";
+    private const string CrewKey = "__a2a__";
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -43,7 +43,7 @@ public sealed class StateStoreA2ATaskStore : IA2ATaskStore
         var state = new SessionState
         {
             SessionId = SessionPrefix + record.TaskId,
-            CrewId = CrewId,
+            CrewKey = CrewKey,
             Phase = MapPhase(record.Status),
             CreatedAt = record.CreatedAt,
             UpdatedAt = record.UpdatedAt,

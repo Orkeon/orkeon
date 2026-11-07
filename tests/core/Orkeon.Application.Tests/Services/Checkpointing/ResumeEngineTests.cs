@@ -23,7 +23,7 @@ public class ResumeEngineTests
     public async System.Threading.Tasks.Task CanResume_ReturnsTrue_ForIncompleteSession()
     {
         // Arrange
-        var sessionId = await _manager.StartSessionAsync(CrewId1, TestContext.Current.CancellationToken);
+        var sessionId = await _manager.StartSessionAsync(Orkeon.Application.Interfaces.Services.ExecutionId.New(), CrewId1, TestContext.Current.CancellationToken);
         await _manager.CheckpointAsync(sessionId, TaskId1, "output-1", TestContext.Current.CancellationToken);
         // Session is still Running (not Completed)
 
@@ -48,7 +48,7 @@ public class ResumeEngineTests
     public async System.Threading.Tasks.Task CanResume_ReturnsFalse_WhenSessionCompleted()
     {
         // Arrange
-        var sessionId = await _manager.StartSessionAsync(CrewId1, TestContext.Current.CancellationToken);
+        var sessionId = await _manager.StartSessionAsync(Orkeon.Application.Interfaces.Services.ExecutionId.New(), CrewId1, TestContext.Current.CancellationToken);
         await _manager.CheckpointAsync(sessionId, TaskId1, "output-1", TestContext.Current.CancellationToken);
         await _manager.CompleteSessionAsync(sessionId, TestContext.Current.CancellationToken);
 
@@ -63,7 +63,7 @@ public class ResumeEngineTests
     public async System.Threading.Tasks.Task Resume_ReturnsCorrectSkipCountAndOutputs()
     {
         // Arrange
-        var sessionId = await _manager.StartSessionAsync(CrewId1, TestContext.Current.CancellationToken);
+        var sessionId = await _manager.StartSessionAsync(Orkeon.Application.Interfaces.Services.ExecutionId.New(), CrewId1, TestContext.Current.CancellationToken);
         await _manager.CheckpointAsync(sessionId, TaskId1, "output-1", TestContext.Current.CancellationToken);
         await _manager.CheckpointAsync(sessionId, TaskId2, "output-2", TestContext.Current.CancellationToken);
 
@@ -85,7 +85,7 @@ public class ResumeEngineTests
     public async System.Threading.Tasks.Task Resume_WithSkipFailed_SkipsFailedTasks()
     {
         // Arrange
-        var sessionId = await _manager.StartSessionAsync(CrewId1, TestContext.Current.CancellationToken);
+        var sessionId = await _manager.StartSessionAsync(Orkeon.Application.Interfaces.Services.ExecutionId.New(), CrewId1, TestContext.Current.CancellationToken);
         await _manager.CheckpointAsync(sessionId, TaskId1, "output-1", TestContext.Current.CancellationToken);
         await _manager.MarkFailedAsync(sessionId, TaskId2, new Exception("fail"), TestContext.Current.CancellationToken);
 
@@ -104,7 +104,7 @@ public class ResumeEngineTests
     public async System.Threading.Tasks.Task Resume_WithRetryFailed_IncludesFailedForRetry()
     {
         // Arrange
-        var sessionId = await _manager.StartSessionAsync(CrewId1, TestContext.Current.CancellationToken);
+        var sessionId = await _manager.StartSessionAsync(Orkeon.Application.Interfaces.Services.ExecutionId.New(), CrewId1, TestContext.Current.CancellationToken);
         await _manager.CheckpointAsync(sessionId, TaskId1, "output-1", TestContext.Current.CancellationToken);
         await _manager.MarkFailedAsync(sessionId, TaskId2, new Exception("fail"), TestContext.Current.CancellationToken);
 

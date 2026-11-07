@@ -109,7 +109,7 @@ public static partial class RunnerExecution
             || !EnsureExternalMountsAllowed(opts, target.IsScript ? null : target.ConfigDir, llmLogPath, error)
             || !EnsureReservedRootsAreFree(
                 cliMounts, layers, error,
-                target.VirtualRoot, RunnerVirtualRoots.LlmLogs, RunnerVirtualRoots.Sandbox)
+                target.VirtualRoot, RunnerVirtualRoots.LlmLogs, RunnerVirtualRoots.Sandbox, RunnerVirtualRoots.State)
             || !EnsureMountSelectionIsResolvable(
                 cliMounts, opts.MountIds, crewMounts, new MountLayers(layers, target.SettingsPath), offered, error, out var selection)
             || !EnsureMountSourcesExist(cliMounts, layers, selection, error)
@@ -998,7 +998,9 @@ public static partial class RunnerExecution
             return (2, null);
 
         LogKickingOffCrew(logger, crew.Goal);
-        var output = await orchestrator.KickoffAsync(crew.Id, input, ct).ConfigureAwait(false);
+        var output = RunnerRunIdentity.Ambient(scope.ServiceProvider) is { } identity
+            ? await orchestrator.KickoffAsync(crew.Id, input, identity, ct).ConfigureAwait(false)
+            : await orchestrator.KickoffAsync(crew.Id, input, ct).ConfigureAwait(false);
 
         PrintCrewOutput(output, opts.MachineReadableStdout ? console.ErrorOutput : console.Output);
         if (!output.Succeeded)

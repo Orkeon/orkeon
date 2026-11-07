@@ -163,11 +163,17 @@ public sealed class RunnerExecutionCrewFailureTests : IDisposable
         public Task<BatchOutput> KickoffForEachAsync(CrewId crewId, IEnumerable<CrewInput> inputs, CancellationToken cancellationToken = default) =>
             throw new NotSupportedException();
 
+        public System.Threading.Tasks.Task<CrewOutput> KickoffAsync(CrewId crewId, CrewInput input, KickoffOptions options, CancellationToken cancellationToken = default) =>
+            KickoffAsync(crewId, input, cancellationToken);
+
         public Task<CrewExecutionId> KickoffAsyncNoWait(CrewId crewId, CrewInput input) =>
             throw new NotSupportedException();
 
         public Task<CrewExecutionStatus> GetExecutionStatusAsync(CrewExecutionId executionId, CancellationToken cancellationToken = default) =>
             throw new NotSupportedException();
+
+        public IAsyncEnumerable<CrewExecutionEvent> KickoffStreamingAsync(CrewId crewId, CrewInput input, KickoffOptions options, CancellationToken cancellationToken = default) =>
+            KickoffStreamingAsync(crewId, input, cancellationToken);
 
         public IAsyncEnumerable<CrewExecutionEvent> KickoffStreamingAsync(CrewId crewId, CrewInput input, CancellationToken cancellationToken = default) =>
             throw new NotSupportedException();

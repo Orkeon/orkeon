@@ -30,10 +30,10 @@ public sealed class InMemoryStateStore : IStateStore
     }
 
     /// <inheritdoc />
-    public Task<SessionState?> GetLatestForCrewAsync(string crewId, CancellationToken ct = default)
+    public Task<SessionState?> GetLatestForCrewAsync(string crewKey, CancellationToken ct = default)
     {
         var latest = _sessions.Values
-            .Where(s => s.CrewId == crewId)
+            .Where(s => s.CrewKey == crewKey)
             .OrderByDescending(s => s.UpdatedAt)
             .FirstOrDefault();
 
@@ -47,7 +47,7 @@ public sealed class InMemoryStateStore : IStateStore
             .Select(s => new SessionSummary
             {
                 SessionId = s.SessionId,
-                CrewId = s.CrewId,
+                CrewKey = s.CrewKey,
                 Phase = s.Phase,
                 CompletedTaskCount = s.TaskCheckpoints.Count(t => t.Value.Status == CheckpointStatus.Completed),
                 CreatedAt = s.CreatedAt,

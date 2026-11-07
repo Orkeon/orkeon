@@ -92,6 +92,13 @@ internal class OrkeonEventWriter
     private readonly Lock _gate = new();
     private int _sequence;
 
+    /// <summary>
+    /// The run in flight, when the writer sits in a host that runs crews: an event the scope gives no
+    /// correlation id carries the run's identifier, the one the checkpoint session and the A2A and API
+    /// task carry too (FWK-01). Null: only what the scope names is written.
+    /// </summary>
+    public Orkeon.Application.Interfaces.Services.IRunScope? RunScope { get; init; }
+
     /// <summary>Creates a writer over <paramref name="output"/> (stdout in the CLI).</summary>
     public OrkeonEventWriter(TextWriter output, IOrkeonClock? clock = null)
     {
@@ -126,7 +133,7 @@ internal class OrkeonEventWriter
 
             AddIfPresent(envelope, "crewId", scope.CrewId);
             AddIfPresent(envelope, "agentId", scope.AgentId);
-            AddIfPresent(envelope, "correlationId", scope.CorrelationId);
+            AddIfPresent(envelope, "correlationId", scope.CorrelationId ?? RunScope?.Current?.ExecutionId.ToString());
             AddIfPresent(envelope, "causationId", scope.CausationId);
 
             if (payload is not null)

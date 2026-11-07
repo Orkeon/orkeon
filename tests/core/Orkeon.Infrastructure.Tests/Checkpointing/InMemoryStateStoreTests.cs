@@ -21,7 +21,7 @@ public class InMemoryStateStoreTests
         // Assert
         Assert.NotNull(retrieved);
         Assert.Equal(SessionId1, retrieved.SessionId);
-        Assert.Equal(CrewId1, retrieved.CrewId);
+        Assert.Equal(CrewId1, retrieved.CrewKey);
         Assert.Equal(SessionPhase.Running, retrieved.Phase);
     }
 
@@ -111,7 +111,7 @@ public class InMemoryStateStoreTests
         new()
         {
             SessionId = sessionId,
-            CrewId = crewId,
+            CrewKey = crewId,
             Phase = phase,
             UpdatedAt = updatedAt ?? DateTime.UtcNow
         };

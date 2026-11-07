@@ -101,7 +101,7 @@ public sealed class PostgresStateStore : IStateStore, IAsyncDisposable, IDisposa
 
             CREATE TABLE IF NOT EXISTS {_schema}.sessions (
                 id TEXT PRIMARY KEY,
-                crew_id TEXT NOT NULL,
+                crew_key TEXT NOT NULL,
                 state_json JSONB NOT NULL,
                 created_at TIMESTAMPTZ NOT NULL,
                 updated_at TIMESTAMPTZ NOT NULL
@@ -147,16 +147,16 @@ public sealed class PostgresStateStore : IStateStore, IAsyncDisposable, IDisposa
         var cmd = conn.CreateCommand();
         await using var __cmd = cmd.ConfigureAwait(false);
         var upsertSql = $"""
-            INSERT INTO {_schema}.sessions (id, crew_id, state_json, created_at, updated_at)
-            VALUES (@id, @crewId, @stateJson::jsonb, @createdAt, @updatedAt)
+            INSERT INTO {_schema}.sessions (id, crew_key, state_json, created_at, updated_at)
+            VALUES (@id, @crewKey, @stateJson::jsonb, @createdAt, @updatedAt)
             ON CONFLICT(id) DO UPDATE SET
-                crew_id = @crewId,
+                crew_key = @crewKey,
                 state_json = @stateJson::jsonb,
                 updated_at = @updatedAt
             """;
         cmd.CommandText = upsertSql; // NOSONAR: _schema is a validated PostgreSQL identifier (alphanumeric+underscore only), checked at construction via SchemaNameValidator; all values are parameterized
         cmd.Parameters.AddWithValue("id", state.SessionId);
-        cmd.Parameters.AddWithValue("crewId", state.CrewId);
+        cmd.Parameters.AddWithValue("crewKey", state.CrewKey);
         cmd.Parameters.AddWithValue("stateJson", json);
         cmd.Parameters.AddWithValue("createdAt", state.CreatedAt);
         cmd.Parameters.AddWithValue("updatedAt", state.UpdatedAt);
@@ -187,15 +187,15 @@ public sealed class PostgresStateStore : IStateStore, IAsyncDisposable, IDisposa
     /// <inheritdoc />
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Security", "CA2100",
         Justification = "Only the {_schema} identifier is interpolated (validated at construction via SchemaNameValidator; identifiers cannot be parameterized); all caller values are passed as command parameters.")]
-    public async Task<SessionState?> GetLatestForCrewAsync(string crewId, CancellationToken ct = default)
+    public async Task<SessionState?> GetLatestForCrewAsync(string crewKey, CancellationToken ct = default)
     {
         await EnsureMigratedAsync(ct).ConfigureAwait(false);
         var conn = await _dataSource.OpenConnectionAsync(ct).ConfigureAwait(false);
         await using var __conn = conn.ConfigureAwait(false);
         var cmd = conn.CreateCommand();
         await using var __cmd = cmd.ConfigureAwait(false);
-        cmd.CommandText = $"SELECT state_json::text FROM {_schema}.sessions WHERE crew_id = @crewId ORDER BY updated_at DESC LIMIT 1"; // NOSONAR: _schema validated at construction via SchemaNameValidator (alphanumeric+underscore only); all values parameterized
-        cmd.Parameters.AddWithValue("crewId", crewId);
+        cmd.CommandText = $"SELECT state_json::text FROM {_schema}.sessions WHERE crew_key = @crewKey ORDER BY updated_at DESC LIMIT 1"; // NOSONAR: _schema validated at construction via SchemaNameValidator (alphanumeric+underscore only); all values parameterized
+        cmd.Parameters.AddWithValue("crewKey", crewKey);
 
         var result = await cmd.ExecuteScalarAsync(ct).ConfigureAwait(false);
         if (result is not string json)
@@ -229,7 +229,7 @@ public sealed class PostgresStateStore : IStateStore, IAsyncDisposable, IDisposa
                 summaries.Add(new SessionSummary
                 {
                     SessionId = state.SessionId,
-                    CrewId = state.CrewId,
+                    CrewKey = state.CrewKey,
                     Phase = state.Phase,
                     CompletedTaskCount = state.TaskCheckpoints.Count(t => t.Value.Status == CheckpointStatus.Completed),
                     CreatedAt = state.CreatedAt,
@@ -500,12 +500,12 @@ public sealed class PostgresStateStore : IStateStore, IAsyncDisposable, IDisposa
             {
                 sessCmd.Transaction = transaction;
                 var forkSessionSql = $"""
-                    INSERT INTO {_schema}.sessions (id, crew_id, state_json, created_at, updated_at)
-                    VALUES (@id, @crewId, @stateJson::jsonb, @createdAt, @updatedAt)
+                    INSERT INTO {_schema}.sessions (id, crew_key, state_json, created_at, updated_at)
+                    VALUES (@id, @crewKey, @stateJson::jsonb, @createdAt, @updatedAt)
                     """;
                 sessCmd.CommandText = forkSessionSql; // NOSONAR: _schema validated at construction via SchemaNameValidator (alphanumeric+underscore only); all values parameterized
                 sessCmd.Parameters.AddWithValue("id", newSessionId);
-                sessCmd.Parameters.AddWithValue("crewId", forkedState.CrewId);
+                sessCmd.Parameters.AddWithValue("crewKey", forkedState.CrewKey);
                 sessCmd.Parameters.AddWithValue("stateJson", stateJson);
                 sessCmd.Parameters.AddWithValue("createdAt", createdAt);
                 sessCmd.Parameters.AddWithValue("updatedAt", createdAt);

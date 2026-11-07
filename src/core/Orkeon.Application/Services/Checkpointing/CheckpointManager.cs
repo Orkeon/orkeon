@@ -1,6 +1,7 @@
 
 using Microsoft.Extensions.Logging;
 using Orkeon.Application.Interfaces.Checkpointing;
+using Orkeon.Application.Interfaces.Services;
 
 namespace Orkeon.Application.Services.Checkpointing;
 
@@ -25,15 +26,17 @@ public sealed partial class CheckpointManager : ICheckpointManager
     }
 
     /// <inheritdoc />
-    public async System.Threading.Tasks.Task<string> StartSessionAsync(string crewId, CancellationToken ct = default)
+    public async System.Threading.Tasks.Task<string> StartSessionAsync(ExecutionId sessionId, string crewKey, CancellationToken ct = default)
     {
-        var sessionId = Guid.NewGuid().ToString();
+        ArgumentNullException.ThrowIfNull(sessionId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(crewKey);
+        var id = sessionId.ToString();
         var now = DateTime.UtcNow;
 
         var state = new SessionState
         {
-            SessionId = sessionId,
-            CrewId = crewId,
+            SessionId = id,
+            CrewKey = crewKey,
             Phase = SessionPhase.Running,
             CompletedTaskIndex = 0,
             TaskCheckpoints = new Dictionary<string, TaskCheckpoint>(),
@@ -42,8 +45,8 @@ public sealed partial class CheckpointManager : ICheckpointManager
         };
 
         await _store.SaveAsync(state, ct).ConfigureAwait(false);
-        LogSessionStarted(sessionId, crewId);
-        return sessionId;
+        LogSessionStarted(id, crewKey);
+        return id;
     }
 
     /// <inheritdoc />
@@ -151,9 +154,9 @@ public sealed partial class CheckpointManager : ICheckpointManager
     }
 
     /// <inheritdoc />
-    public System.Threading.Tasks.Task<SessionState?> GetLatestCheckpointAsync(string crewId, CancellationToken ct = default)
+    public System.Threading.Tasks.Task<SessionState?> GetLatestCheckpointAsync(string crewKey, CancellationToken ct = default)
     {
-        return _store.GetLatestForCrewAsync(crewId, ct);
+        return _store.GetLatestForCrewAsync(crewKey, ct);
     }
 
     /// <inheritdoc />
@@ -196,8 +199,8 @@ public sealed partial class CheckpointManager : ICheckpointManager
     [LoggerMessage(Level = LogLevel.Information, Message = "Restored session {SessionId} to version {VersionId}")]
     private partial void LogVersionRestored(string sessionId, string versionId);
 
-    [LoggerMessage(Level = LogLevel.Information, Message = "Started checkpoint session {SessionId} for crew {CrewId}")]
-    private partial void LogSessionStarted(string sessionId, string crewId);
+    [LoggerMessage(Level = LogLevel.Information, Message = "Started checkpoint session {SessionId} for crew {CrewKey}")]
+    private partial void LogSessionStarted(string sessionId, string crewKey);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Cannot checkpoint: session {SessionId} not found")]
     private partial void LogSessionNotFoundForCheckpoint(string sessionId);

@@ -8,12 +8,12 @@ public interface IResumeEngine
     /// <summary>
     /// Determines whether the specified crew has a resumable session.
     /// </summary>
-    System.Threading.Tasks.Task<bool> CanResumeAsync(string crewId, CancellationToken ct = default);
+    System.Threading.Tasks.Task<bool> CanResumeAsync(string crewKey, CancellationToken ct = default);
 
     /// <summary>
     /// Resumes from the latest checkpoint for the specified crew.
     /// </summary>
-    System.Threading.Tasks.Task<ResumeResult> ResumeAsync(string crewId, ResumeOptions? options = null, CancellationToken ct = default);
+    System.Threading.Tasks.Task<ResumeResult> ResumeAsync(string crewKey, ResumeOptions? options = null, CancellationToken ct = default);
 }
 
 /// <summary>

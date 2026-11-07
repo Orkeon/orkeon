@@ -161,8 +161,7 @@ WARNING: ToolRateLimiting is read by no component of this host: a C# host reads 
 `orkeon doctor` reports the same sentence as a `warn` row of `runner-settings`, one per section,
 and still exits `0`. The sections are those the settings catalogue marks as read by no shipped
 binary: `ToolRateLimiting`, `TokenBudget`, `Orkeon:Dlp`, `Orkeon:Monitoring`,
-`Orkeon:CognitiveMemory`, `Orkeon:MultiModal`, `Evaluation`, `Orkeon:VectorSearch`,
-`Orkeon:Checkpointing` and `Orkeon:ExecutionState:Persistence`
+`Orkeon:CognitiveMemory`, `Orkeon:MultiModal`, `Evaluation` and `Orkeon:VectorSearch`
 ([opt-in subsystems](./opt-in-subsystems.md)). The list is computed, not written: a section a
 shipped binary starts to read leaves it. Not reported: a section another shipped binary reads
 (`Orkeon:Host` in a file `orkeon run` reads), a root section Orkeon does not know, and a section
@@ -187,12 +186,12 @@ closed list, and what it means.
 | [Files and sandbox](#files-and-sandbox) | [`Orkeon:CodeSandbox`](#orkeoncodesandbox), [`Orkeon:CodeSandbox:Docker`](#orkeoncodesandboxdocker), [`Orkeon:FileSystem`](#orkeonfilesystem), [`Orkeon:Sandbox`](#orkeonsandbox), [`PathSecurity`](#pathsecurity) | 33 |
 | [Security](#security) | [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:Guardian`](#orkeonguardian), [`Orkeon:Security:PermissionGate`](#orkeonsecuritypermissiongate), [`Secrets`](#secrets), [`Security:Audit`](#securityaudit), [`Security:Prompt`](#securityprompt), [`Security:ToolResults`](#securitytoolresults), [`Security:Url`](#securityurl), [`Security:Vault`](#securityvault) | 31 |
 | [Tools](#tools) | [`BRAVE_API_KEY`](#brave_api_key), [`MCP`](#mcp), [`MCP:Server`](#mcpserver), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Tools:Drive`](#orkeontoolsdrive), [`Orkeon:Tools:Email`](#orkeontoolsemail), [`Orkeon:Tools:Firefox`](#orkeontoolsfirefox), [`Orkeon:Tools:GitHub`](#orkeontoolsgithub), [`Orkeon:Tools:ResultLimits`](#orkeontoolsresultlimits), [`Orkeon:Tools:Shell`](#orkeontoolsshell), [`Plugins`](#plugins), [`RaggableTree`](#raggabletree) | 98 |
-| [Orchestration and persistence](#orchestration-and-persistence) | [`Orkeon:Checkpointing`](#orkeoncheckpointing), [`Orkeon:Consensus`](#orkeonconsensus), [`Orkeon:CrewFactory`](#orkeoncrewfactory), [`Orkeon:ExecutionState:Persistence`](#orkeonexecutionstatepersistence) | 16 |
+| [Orchestration and persistence](#orchestration-and-persistence) | [`Orkeon:Checkpointing`](#orkeoncheckpointing), [`Orkeon:Consensus`](#orkeonconsensus), [`Orkeon:CrewFactory`](#orkeoncrewfactory), [`Orkeon:ExecutionState:Persistence`](#orkeonexecutionstatepersistence) | 19 |
 | [Scripts and console](#scripts-and-console) | [`Orkeon:Cli:ConsoleStreaming`](#orkeoncliconsolestreaming), [`Orkeon:Cli:Memory`](#orkeonclimemory), [`Orkeon:Cli:ScriptCommands`](#orkeoncliscriptcommands), [`Orkeon:Cli:ScriptHost`](#orkeoncliscripthost), [`Orkeon:Cli:Session`](#orkeonclisession), [`Orkeon:Cli:Tui`](#orkeonclitui), [`Orkeon:Scripting:AgentInstances`](#orkeonscriptingagentinstances), [`Orkeon:Scripting:AgentMemory`](#orkeonscriptingagentmemory), [`Orkeon:Scripting:Limits`](#orkeonscriptinglimits), [`Orkeon:Scripting:Toolchain`](#orkeonscriptingtoolchain) | 32 |
 | [Service host and A2A](#service-host-and-a2a) | [`A2A`](#a2a), [`A2A:Security`](#a2asecurity), [`A2A:Security:AzureAD`](#a2asecurityazuread), [`A2A:Security:Oidc`](#a2asecurityoidc), [`Orkeon:Host`](#orkeonhost), [`Orkeon:Host:Discord`](#orkeonhostdiscord) | 46 |
 | [Observability](#observability) | [`Logging`](#logging), [`Orkeon:Monitoring`](#orkeonmonitoring), [`Telemetry`](#telemetry) | 8 |
 
-79 sections, 468 keys. Read by no shipped binary, only by a host written in C# (10): [`Evaluation`](#evaluation), [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:CognitiveMemory`](#orkeoncognitivememory), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Checkpointing`](#orkeoncheckpointing), [`Orkeon:ExecutionState:Persistence`](#orkeonexecutionstatepersistence), [`Orkeon:Monitoring`](#orkeonmonitoring).
+79 sections, 471 keys. Read by no shipped binary, only by a host written in C# (8): [`Evaluation`](#evaluation), [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:CognitiveMemory`](#orkeoncognitivememory), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Monitoring`](#orkeonmonitoring).
 <!-- /settings-index -->
 
 How to read a table:
@@ -1831,10 +1830,11 @@ section gates behavior.
 
 Durable crew execution states (`ScopedCrewExecutionStateManager`). Opt-in:
 `AddCrewExecutionStatePersistence(configuration)` — auto-called by
-`AddOrkeonInfrastructure(configuration)` when the section exists; requires an `IStateStore`.
+`AddOrkeonInfrastructure(configuration)` when the section exists, and by `orkeon run` and `orkeon-host`;
+requires an `IStateStore` (`Orkeon:Checkpointing`).
 
 <!-- settings:Orkeon:ExecutionState:Persistence -->
-**Read by**: a host written in C# only, through `AddCrewExecutionStatePersistence()` — no shipped binary reads this section.
+**Read by**: `orkeon`, `orkeon-host`.
 
 | Key | Type | Default | Meaning |
 |---|---|---|---|
@@ -1844,18 +1844,25 @@ Durable crew execution states (`ScopedCrewExecutionStateManager`). Opt-in:
 
 ### `Orkeon:Checkpointing`
 
-The Postgres state store (`CheckpointingExtensions`). Opt-in:
+Which store holds the checkpoint sessions of the runs: `Enabled` with `Store` memory, json, sqlite or
+postgres (`CheckpointingExtensions`). `orkeon run` and `orkeon-host` read it: `json` and `sqlite` write
+under `./.orkeon/state`, mounted at `/state` as an internal mount (`Path` is a virtual path under it);
+`sqlite` with a `ConnectionString` and `postgres` need no mount. A host written in C# registers it with
+`AddOrkeonCheckpointing(configuration)`, `AddOrkeonSqliteCheckpointing(...)` or
 `AddOrkeonPostgresCheckpointing(configuration)`.
 
 <!-- settings:Orkeon:Checkpointing -->
-**Read by**: a host written in C# only, through `AddOrkeonPostgresCheckpointing()` — no shipped binary reads this section.
+**Read by**: `orkeon`, `orkeon-host`.
 
-| Key | Type | Default | Meaning |
-|---|---|---|---|
-| `AutoMigrate` | boolean | `true` | Whether to auto-create the schema and tables on first use. |
-| `ConnectionString` | string, secret | — | The PostgreSQL connection string. |
-| `MaxHistoryPerSession` | integer | `1000` | The maximum number of version entries per session (default: 1000). |
-| `SchemaName` | string | `"orkeon"` | The schema name (default: "orkeon"). |
+| Key | Type | Default | Values | Meaning |
+|---|---|---|---|---|
+| `AutoMigrate` | boolean | `true` |  | Whether the PostgreSQL schema and tables are created on first use. |
+| `ConnectionString` | string, secret | — |  | The connection string of the Sqlite (instead of `Path`) or Postgres store. |
+| `Enabled` | boolean | `false` |  | Whether the store named by `Store` is used (default: false, the in-memory store). |
+| `MaxHistoryPerSession` | integer | `1000` |  | The maximum number of version entries per session in the PostgreSQL store. |
+| `Path` | string | — |  | The virtual path of the folder (Json) or the file (Sqlite) the store writes, under the `/state` mount. Null: `/state/checkpoints` or `/state/checkpoints.db`. |
+| `SchemaName` | string | `"orkeon"` |  | The PostgreSQL schema name (default: "orkeon"). |
+| `Store` | enum | `"Memory"` | `Memory`, `Json`, `Sqlite`, `Postgres` | The store (default: `Memory`). |
 <!-- /settings -->
 
 ## Scripts and console

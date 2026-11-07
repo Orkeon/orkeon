@@ -42,6 +42,12 @@ public static class RunnerVirtualRoots
     public const string LlmLogs = "/llm-logs";
 
     /// <summary>
+    /// Where the durable checkpoint store keeps its files (<c>Orkeon:Checkpointing</c> with the json or
+    /// sqlite store). Registered as an <b>internal</b> mount, like <see cref="LlmLogs"/>.
+    /// </summary>
+    public const string State = "/state";
+
+    /// <summary>
     /// Where the code sandboxes stage the snippets they run. Registered as an <b>internal</b>
     /// mount by <c>AddOrkeonFileSystem</c>, so it is present in every registry a runner builds
     /// — which is why it belongs in the reserved list: a user <c>--mount</c> claiming

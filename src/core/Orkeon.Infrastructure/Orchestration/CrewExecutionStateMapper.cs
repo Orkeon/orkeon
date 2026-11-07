@@ -77,7 +77,7 @@ public static class CrewExecutionStateMapper
         return new SessionState
         {
             SessionId = SessionIdFor(snapshot.Id),
-            CrewId = CrewScopeFor(snapshot.CrewId),
+            CrewKey = CrewScopeFor(snapshot.CrewId),
             Phase = ToPhase(snapshot.Status),
             CompletedTaskIndex = 0,
             TaskCheckpoints = new Dictionary<string, TaskCheckpoint>

@@ -23,7 +23,13 @@ public sealed class FakeCrewOrchestrationService : ICrewOrchestrationService
     }
 
     public System.Threading.Tasks.Task<BatchOutput> KickoffForEachAsync(CrewId crewId, IEnumerable<CrewInput> inputs, CancellationToken cancellationToken = default) => throw new NotImplementedException();
+    public System.Threading.Tasks.Task<CrewOutput> KickoffAsync(CrewId crewId, CrewInput input, KickoffOptions options, CancellationToken cancellationToken = default) =>
+        KickoffAsync(crewId, input, cancellationToken);
+
     public System.Threading.Tasks.Task<CrewExecutionId> KickoffAsyncNoWait(CrewId crewId, CrewInput input) => throw new NotImplementedException();
     public System.Threading.Tasks.Task<CrewExecutionStatus> GetExecutionStatusAsync(CrewExecutionId executionId, CancellationToken cancellationToken = default) => throw new NotImplementedException();
+    public IAsyncEnumerable<CrewExecutionEvent> KickoffStreamingAsync(CrewId crewId, CrewInput input, KickoffOptions options, CancellationToken cancellationToken = default) =>
+        KickoffStreamingAsync(crewId, input, cancellationToken);
+
     public IAsyncEnumerable<CrewExecutionEvent> KickoffStreamingAsync(CrewId crewId, CrewInput input, CancellationToken cancellationToken = default) => throw new NotImplementedException();
 }

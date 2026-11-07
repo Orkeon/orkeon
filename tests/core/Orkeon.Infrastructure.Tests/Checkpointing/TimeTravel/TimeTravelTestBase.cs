@@ -135,7 +135,7 @@ public abstract class TimeTravelTestBase : IAsyncLifetime
         var state = new SessionState
         {
             SessionId = SessionId1,
-            CrewId = CrewId1,
+            CrewKey = CrewId1,
             Phase = SessionPhase.Running,
             CompletedTaskIndex = 1,
             TaskCheckpoints = checkpoints,
@@ -150,7 +150,7 @@ public abstract class TimeTravelTestBase : IAsyncLifetime
         Assert.NotEqual(SessionId1, forked.SessionId);
         Assert.Equal(1, forked.Version);
         Assert.Equal("my-fork", forked.Label);
-        Assert.Equal(CrewId1, forked.State.CrewId);
+        Assert.Equal(CrewId1, forked.State.CrewKey);
         Assert.Equal(SessionPhase.Running, forked.State.Phase);
         Assert.True(forked.State.TaskCheckpoints.ContainsKey(TaskId1));
         Assert.Equal("result-1", forked.State.TaskCheckpoints[TaskId1].Output);
@@ -180,7 +180,7 @@ public abstract class TimeTravelTestBase : IAsyncLifetime
         var original = await _store.GetAsync(SessionId1, TestContext.Current.CancellationToken);
         Assert.NotNull(original);
         Assert.Equal(SessionId1, original.SessionId);
-        Assert.Equal(CrewId1, original.CrewId);
+        Assert.Equal(CrewId1, original.CrewKey);
 
         // Original version history should be unchanged
         var history = await _store.GetHistoryAsync(SessionId1, ct: TestContext.Current.CancellationToken);
@@ -193,7 +193,7 @@ public abstract class TimeTravelTestBase : IAsyncLifetime
         var state1 = new SessionState
         {
             SessionId = SessionId1,
-            CrewId = CrewId1,
+            CrewKey = CrewId1,
             Phase = SessionPhase.Running,
             TaskCheckpoints = new Dictionary<string, TaskCheckpoint>
             {
@@ -242,7 +242,7 @@ public abstract class TimeTravelTestBase : IAsyncLifetime
         var state1 = new SessionState
         {
             SessionId = SessionId1,
-            CrewId = CrewId1,
+            CrewKey = CrewId1,
             Phase = SessionPhase.Running,
             TaskCheckpoints = new Dictionary<string, TaskCheckpoint>
             {
@@ -274,7 +274,7 @@ public abstract class TimeTravelTestBase : IAsyncLifetime
         var state1 = new SessionState
         {
             SessionId = SessionId1,
-            CrewId = CrewId1,
+            CrewKey = CrewId1,
             Phase = SessionPhase.Running,
             CompletedTaskIndex = 1,
             TaskCheckpoints = new Dictionary<string, TaskCheckpoint>
@@ -316,7 +316,7 @@ public abstract class TimeTravelTestBase : IAsyncLifetime
 
         Assert.NotNull(retrieved);
         Assert.Equal(SessionId1, retrieved.SessionId);
-        Assert.Equal(CrewId1, retrieved.CrewId);
+        Assert.Equal(CrewId1, retrieved.CrewKey);
         Assert.Equal(SessionPhase.Running, retrieved.Phase);
 
         // Update via SaveAsync
@@ -335,7 +335,7 @@ public abstract class TimeTravelTestBase : IAsyncLifetime
         new()
         {
             SessionId = sessionId,
-            CrewId = crewId,
+            CrewKey = crewId,
             Phase = phase,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = updatedAt ?? DateTime.UtcNow

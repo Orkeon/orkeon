@@ -22,7 +22,7 @@ public class TimeTravelE2ETests
         var state = new SessionState
         {
             SessionId = sessionId,
-            CrewId = crewId,
+            CrewKey = crewId,
             Phase = SessionPhase.Running,
             CompletedTaskIndex = 0,
             TaskCheckpoints = new Dictionary<string, TaskCheckpoint>(),
@@ -96,7 +96,7 @@ public class TimeTravelE2ETests
         var state = new SessionState
         {
             SessionId = sessionId,
-            CrewId = crewId,
+            CrewKey = crewId,
             Phase = SessionPhase.Running,
             CompletedTaskIndex = 0,
             TaskCheckpoints = new Dictionary<string, TaskCheckpoint>(),
@@ -205,7 +205,7 @@ public class TimeTravelE2ETests
             var state = new SessionState
             {
                 SessionId = sessionId,
-                CrewId = "crew-concurrent",
+                CrewKey = "crew-concurrent",
                 Phase = SessionPhase.Running,
                 CompletedTaskIndex = 0,
                 TaskCheckpoints = new Dictionary<string, TaskCheckpoint>(),

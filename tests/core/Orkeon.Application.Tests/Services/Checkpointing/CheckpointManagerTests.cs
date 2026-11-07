@@ -22,7 +22,7 @@ public class CheckpointManagerTests
     public async System.Threading.Tasks.Task StartSession_CreatesNewState()
     {
         // Act
-        var sessionId = await _manager.StartSessionAsync(CrewId1, TestContext.Current.CancellationToken);
+        var sessionId = await _manager.StartSessionAsync(Orkeon.Application.Interfaces.Services.ExecutionId.New(), CrewId1, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.NotNull(sessionId);
@@ -30,7 +30,7 @@ public class CheckpointManagerTests
 
         var state = await _store.GetAsync(sessionId, TestContext.Current.CancellationToken);
         Assert.NotNull(state);
-        Assert.Equal(CrewId1, state.CrewId);
+        Assert.Equal(CrewId1, state.CrewKey);
         Assert.Equal(SessionPhase.Running, state.Phase);
         Assert.Equal(0, state.CompletedTaskIndex);
         Assert.Empty(state.TaskCheckpoints);
@@ -40,7 +40,7 @@ public class CheckpointManagerTests
     public async System.Threading.Tasks.Task Checkpoint_UpdatesTaskToCompleted()
     {
         // Arrange
-        var sessionId = await _manager.StartSessionAsync(CrewId1, TestContext.Current.CancellationToken);
+        var sessionId = await _manager.StartSessionAsync(Orkeon.Application.Interfaces.Services.ExecutionId.New(), CrewId1, TestContext.Current.CancellationToken);
 
         // Act
         await _manager.CheckpointAsync(sessionId, TaskId1, "output-1", TestContext.Current.CancellationToken);
@@ -58,7 +58,7 @@ public class CheckpointManagerTests
     public async System.Threading.Tasks.Task MarkFailed_RecordsErrorAndIncrementsRetry()
     {
         // Arrange
-        var sessionId = await _manager.StartSessionAsync(CrewId1, TestContext.Current.CancellationToken);
+        var sessionId = await _manager.StartSessionAsync(Orkeon.Application.Interfaces.Services.ExecutionId.New(), CrewId1, TestContext.Current.CancellationToken);
         var ex = new InvalidOperationException("Something went wrong");
 
         // Act
@@ -81,7 +81,7 @@ public class CheckpointManagerTests
     public async System.Threading.Tasks.Task MarkFailed_IncreasesRetryCountOnSubsequentFailures()
     {
         // Arrange
-        var sessionId = await _manager.StartSessionAsync(CrewId1, TestContext.Current.CancellationToken);
+        var sessionId = await _manager.StartSessionAsync(Orkeon.Application.Interfaces.Services.ExecutionId.New(), CrewId1, TestContext.Current.CancellationToken);
 
         // Act
         await _manager.MarkFailedAsync(sessionId, TaskId1, new Exception("Error 1"), TestContext.Current.CancellationToken);
@@ -99,7 +99,7 @@ public class CheckpointManagerTests
     public async System.Threading.Tasks.Task CompleteSession_SetsPhaseToCompleted()
     {
         // Arrange
-        var sessionId = await _manager.StartSessionAsync(CrewId1, TestContext.Current.CancellationToken);
+        var sessionId = await _manager.StartSessionAsync(Orkeon.Application.Interfaces.Services.ExecutionId.New(), CrewId1, TestContext.Current.CancellationToken);
         await _manager.CheckpointAsync(sessionId, TaskId1, "output-1", TestContext.Current.CancellationToken);
 
         // Act
@@ -115,11 +115,11 @@ public class CheckpointManagerTests
     public async System.Threading.Tasks.Task GetLatestCheckpoint_ReturnsMostRecent()
     {
         // Arrange
-        var session1 = await _manager.StartSessionAsync(CrewId1, TestContext.Current.CancellationToken);
+        var session1 = await _manager.StartSessionAsync(Orkeon.Application.Interfaces.Services.ExecutionId.New(), CrewId1, TestContext.Current.CancellationToken);
         await _manager.CheckpointAsync(session1, TaskId1, "output-1", TestContext.Current.CancellationToken);
         await _manager.CompleteSessionAsync(session1, TestContext.Current.CancellationToken);
 
-        var session2 = await _manager.StartSessionAsync(CrewId1, TestContext.Current.CancellationToken);
+        var session2 = await _manager.StartSessionAsync(Orkeon.Application.Interfaces.Services.ExecutionId.New(), CrewId1, TestContext.Current.CancellationToken);
         await _manager.CheckpointAsync(session2, TaskId2, "output-2", TestContext.Current.CancellationToken);
 
         // Act

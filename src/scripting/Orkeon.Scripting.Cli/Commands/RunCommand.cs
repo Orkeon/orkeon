@@ -389,9 +389,14 @@ internal static partial class RunCommand
         // shared-runner branch, so `--events jsonl` on a .ork.ts printed plain text and not a
         // single protocol line — while Studio added the flag for both dialects.
         Run.ObservedRunContext? observed = null;
+        IDisposable? runIdentity = null;
         if (options.EmitsEvents)
         {
-            var events = new Events.OrkeonEventWriter(console.Output);
+            // The run's one identity, opened before run.started: every line of the stream carries it.
+            var runScope = new Orkeon.Infrastructure.Orchestration.AsyncLocalRunScope();
+            runIdentity = runScope.Enter(new Orkeon.Application.Interfaces.Services.RunScope(
+                Orkeon.Application.Interfaces.Services.ExecutionId.New(), options.ScriptPath ?? "run"));
+            var events = new Events.OrkeonEventWriter(console.Output) { RunScope = runScope };
             events.Emit(Run.RunEventKinds.RunStarted, new
             {
                 target = options.ScriptPath,
@@ -455,6 +460,8 @@ internal static partial class RunCommand
         // silence — and the pump/bridge are torn down before the process leaves.
         if (observed is not null)
             exitCode = await observed.FinishAsync(exitCode).ConfigureAwait(false);
+
+        runIdentity?.Dispose();
 
         return exitCode;
     }
@@ -541,7 +548,11 @@ internal static partial class RunCommand
     /// </summary>
     private static async Task<int> RunWithEventsAsync(IRunnerConsole console, RunCommandOptions options)
     {
-        var events = new Events.OrkeonEventWriter(console.Output);
+        // The run's one identity, opened before run.started: every line of the stream carries it.
+        var runScope = new Orkeon.Infrastructure.Orchestration.AsyncLocalRunScope();
+        using var runIdentity = runScope.Enter(new Orkeon.Application.Interfaces.Services.RunScope(
+            Orkeon.Application.Interfaces.Services.ExecutionId.New(), options.ScriptPath ?? "run"));
+        var events = new Events.OrkeonEventWriter(console.Output) { RunScope = runScope };
         events.Emit(Run.RunEventKinds.RunStarted, new
         {
             target = options.ScriptPath,

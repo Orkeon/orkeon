@@ -30,7 +30,7 @@ public sealed class SqliteStateStoreTests : IDisposable
         var state = new SessionState
         {
             SessionId = SessionId1,
-            CrewId = CrewId1,
+            CrewKey = CrewId1,
             Phase = SessionPhase.Running,
             CompletedTaskIndex = 1,
             TaskCheckpoints = checkpoints,
@@ -45,7 +45,7 @@ public sealed class SqliteStateStoreTests : IDisposable
         // Assert
         Assert.NotNull(retrieved);
         Assert.Equal(SessionId1, retrieved.SessionId);
-        Assert.Equal(CrewId1, retrieved.CrewId);
+        Assert.Equal(CrewId1, retrieved.CrewKey);
         Assert.Equal(SessionPhase.Running, retrieved.Phase);
         Assert.Equal(1, retrieved.CompletedTaskIndex);
         Assert.True(retrieved.TaskCheckpoints.ContainsKey(TaskId1));
@@ -151,7 +151,7 @@ public sealed class SqliteStateStoreTests : IDisposable
         new()
         {
             SessionId = sessionId,
-            CrewId = crewId,
+            CrewKey = crewId,
             Phase = phase,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = updatedAt ?? DateTime.UtcNow

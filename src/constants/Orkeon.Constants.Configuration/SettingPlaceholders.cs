@@ -49,7 +49,7 @@ public static class SettingPlaceholders
         string[] values =
         [
             "MCP:Servers:*:Command", "MCP:Servers:*:Args:*", "MCP:Servers:*:Url",
-            "Orkeon:Redis:ConnectionString", "Orkeon:Sqlite:ConnectionString",
+            "Orkeon:Redis:ConnectionString", "Orkeon:Sqlite:ConnectionString", "Orkeon:Checkpointing:ConnectionString",
             "RaggableTree:Embedding:ApiKey", "Orkeon:Pinecone:ApiKey", "Orkeon:LanceDb:ApiKey",
             "Llm:BaseUrl", "Llm:Profiles:*:BaseUrl", "RaggableTree:Embedding:BaseUrl", "Orkeon:ChromaDb:BaseUrl",
             "Orkeon:Pinecone:Host", "Orkeon:LanceDb:Endpoint", "Orkeon:Rag:WebFallback:Endpoint", "Telemetry:OtlpEndpoint",

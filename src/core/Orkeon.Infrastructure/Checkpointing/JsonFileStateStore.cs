@@ -68,11 +68,11 @@ public sealed partial class JsonFileStateStore : IStateStore
     }
 
     /// <inheritdoc />
-    public async Task<SessionState?> GetLatestForCrewAsync(string crewId, CancellationToken ct = default)
+    public async Task<SessionState?> GetLatestForCrewAsync(string crewKey, CancellationToken ct = default)
     {
         var allSessions = await LoadAllSessionsAsync(ct).ConfigureAwait(false);
         return allSessions
-            .Where(s => s.CrewId == crewId)
+            .Where(s => s.CrewKey == crewKey)
             .OrderByDescending(s => s.UpdatedAt)
             .FirstOrDefault();
     }
@@ -85,7 +85,7 @@ public sealed partial class JsonFileStateStore : IStateStore
             .Select(s => new SessionSummary
             {
                 SessionId = s.SessionId,
-                CrewId = s.CrewId,
+                CrewKey = s.CrewKey,
                 Phase = s.Phase,
                 CompletedTaskCount = s.TaskCheckpoints.Count(t => t.Value.Status == CheckpointStatus.Completed),
                 CreatedAt = s.CreatedAt,

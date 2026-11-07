@@ -393,8 +393,8 @@
       "path": "Orkeon:Checkpointing",
       "category": "orchestration-and-persistence",
       "hosts": [],
-      "registration": "AddOrkeonPostgresCheckpointing",
-      "description": "Configuration options for `PostgresStateStore`."
+      "registration": "AddOrkeonCheckpointing",
+      "description": "The `Orkeon:Checkpointing` section: whether a host checkpoints its runs and in which store."
     },
     {
       "path": "Orkeon:Consensus",
@@ -3118,28 +3118,54 @@
       "section": "Orkeon:Checkpointing",
       "type": "boolean",
       "default": true,
-      "description": "Whether to auto-create the schema and tables on first use."
+      "description": "Whether the PostgreSQL schema and tables are created on first use."
     },
     {
       "path": "Orkeon:Checkpointing:ConnectionString",
       "section": "Orkeon:Checkpointing",
       "type": "string",
       "secret": true,
-      "description": "The PostgreSQL connection string."
+      "description": "The connection string of the Sqlite (instead of `Path`) or Postgres store."
+    },
+    {
+      "path": "Orkeon:Checkpointing:Enabled",
+      "section": "Orkeon:Checkpointing",
+      "type": "boolean",
+      "default": false,
+      "description": "Whether the store named by `Store` is used (default: false, the in-memory store)."
     },
     {
       "path": "Orkeon:Checkpointing:MaxHistoryPerSession",
       "section": "Orkeon:Checkpointing",
       "type": "integer",
       "default": 1000,
-      "description": "The maximum number of version entries per session (default: 1000)."
+      "description": "The maximum number of version entries per session in the PostgreSQL store."
+    },
+    {
+      "path": "Orkeon:Checkpointing:Path",
+      "section": "Orkeon:Checkpointing",
+      "type": "string",
+      "description": "The virtual path of the folder (Json) or the file (Sqlite) the store writes, under the `/state` mount. Null: `/state/checkpoints` or `/state/checkpoints.db`."
     },
     {
       "path": "Orkeon:Checkpointing:SchemaName",
       "section": "Orkeon:Checkpointing",
       "type": "string",
       "default": "orkeon",
-      "description": "The schema name (default: \"orkeon\")."
+      "description": "The PostgreSQL schema name (default: \"orkeon\")."
+    },
+    {
+      "path": "Orkeon:Checkpointing:Store",
+      "section": "Orkeon:Checkpointing",
+      "type": "enum",
+      "default": "Memory",
+      "values": [
+        "Memory",
+        "Json",
+        "Sqlite",
+        "Postgres"
+      ],
+      "description": "The store (default: `Memory`)."
     },
     {
       "path": "Orkeon:Consensus:EnableDiscussion",

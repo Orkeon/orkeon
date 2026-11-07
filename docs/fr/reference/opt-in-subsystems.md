@@ -488,9 +488,22 @@ Aucun attribut ne porte l'identifiant d'un crew, d'une tâche ou d'un agent.
 
 ## Persistance d'état d'exécution — `AddCrewExecutionStatePersistence(...)` (R3.8)
 
-- **Binaires livrés** : aucun ne l'active. `orkeon run`, `orkeon-host` et `orkeon-repl` ne lisent
-  ni `Orkeon:ExecutionState:Persistence` ni `Orkeon:Checkpointing`, celle du store Postgres, et le
-  disent à leur démarrage quand les réglages en écrivent une.
+- **Binaires livrés** : `orkeon run` et `orkeon-host` lisent `Orkeon:Checkpointing` (le magasin) et
+  `Orkeon:ExecutionState:Persistence` (l'interrupteur). `Orkeon:Checkpointing:Enabled=true` avec `Store`
+  `json`, `sqlite` ou `postgres` donne à chaque run de l'hôte une session de checkpoint durable, et à la
+  persistance des états d'exécution le même magasin. `json` et `sqlite` écrivent sous `./.orkeon/state`,
+  monté en `/state` comme montage interne. `orkeon-repl` ne lit ni l'une ni l'autre et le dit à son
+  démarrage quand les réglages en écrivent une.
+- **Identité d'un run** : un run a un seul identifiant, un `ExecutionId` : l'id de la session de
+  checkpoint, le `correlationId` des événements que `orkeon run --events` écrit, et l'id que rend le
+  kickoff sans attente. `KickoffOptions.ExecutionId` le transmet (reprise, hôte) ; `IRunScope.Current` le
+  montre à chaque décorateur et observateur que le run atteint. La clé de crew d'une session
+  (`SessionState.CrewKey`) est le nom de la crew sauf si `KickoffOptions.CrewKey` la nomme (nom et chemin
+  virtuel du fichier), pour qu'un nouveau processus retrouve une session : les ids d'une crew et de ses
+  tâches sont régénérés à chaque chargement.
+  Pas encore unifiés : l'id de tâche A2A et celui de l'API (FWK-14), et la clé de crew tant que l'hôte ne
+  passe pas nom et chemin (FWK-07). Un run lancé dans un autre entre dans son propre scope : son
+  identifiant remplace celui du run extérieur pendant sa durée.
 - **Rôle** : persistance durable des états d'exécution de crew
   (`ScopedCrewExecutionStateManager`) dans un state store de checkpointing
   (`IStateStore`) : chaque transition (création, mise à jour, complétion, archivage)
@@ -502,6 +515,7 @@ Aucun attribut ne porte l'identifiant d'un crew, d'une tâche ou d'un agent.
   // 1. Un state store de checkpointing (in-memory, SQLite ou PostgreSQL)
   services.AddOrkeonSqliteCheckpointing("Data Source=/output/orkeon-state.db"); // chemin virtuel, montage en écriture
   // ou : services.AddOrkeonCheckpointing();              // in-memory
+  // ou : services.AddOrkeonCheckpointing(configuration); // Orkeon:Checkpointing : Enabled, Store memory|json|sqlite|postgres
   // ou : services.AddOrkeonPostgresCheckpointing(configuration); // Orkeon:Checkpointing:*
 
   // 2. L'opt-in de persistance

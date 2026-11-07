@@ -586,3 +586,67 @@ static Orkeon.Application.Crew.Execution.TaskToolbelt.Compose(Orkeon.Domain.Agen
 *REMOVED*static Orkeon.Application.Crew.Execution.TaskToolbelt.Compose(Orkeon.Domain.Agent.Agent! agent, Orkeon.Domain.Task.CrewTask! task, System.Collections.Generic.IEnumerable<Orkeon.Domain.Tools.IBaseTool!>? registeredTools = null) -> System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Tools.IBaseTool!>!
 Orkeon.Application.Memory.CrewMemoryOptions.MinSemanticScore.get -> float
 Orkeon.Application.Memory.CrewMemoryOptions.MinSemanticScore.set -> void
+*REMOVED*Orkeon.Application.Interfaces.Checkpointing.ICheckpointManager.GetLatestCheckpointAsync(string! crewId, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Application.Interfaces.Checkpointing.SessionState?>!
+*REMOVED*Orkeon.Application.Interfaces.Checkpointing.ICheckpointManager.StartSessionAsync(string! crewId, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<string!>!
+*REMOVED*Orkeon.Application.Interfaces.Checkpointing.IResumeEngine.CanResumeAsync(string! crewId, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<bool>!
+*REMOVED*Orkeon.Application.Interfaces.Checkpointing.IResumeEngine.ResumeAsync(string! crewId, Orkeon.Application.Interfaces.Checkpointing.ResumeOptions? options = null, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Application.Interfaces.Checkpointing.ResumeResult!>!
+*REMOVED*Orkeon.Application.Interfaces.Checkpointing.IStateStore.GetLatestForCrewAsync(string! crewId, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Application.Interfaces.Checkpointing.SessionState?>!
+*REMOVED*Orkeon.Application.Interfaces.Checkpointing.SessionState.CrewId.get -> string!
+*REMOVED*Orkeon.Application.Interfaces.Checkpointing.SessionState.CrewId.init -> void
+*REMOVED*Orkeon.Application.Interfaces.Checkpointing.SessionSummary.CrewId.get -> string!
+*REMOVED*Orkeon.Application.Interfaces.Checkpointing.SessionSummary.CrewId.init -> void
+*REMOVED*Orkeon.Application.Services.Checkpointing.CheckpointManager.GetLatestCheckpointAsync(string! crewId, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Application.Interfaces.Checkpointing.SessionState?>!
+*REMOVED*Orkeon.Application.Services.Checkpointing.CheckpointManager.StartSessionAsync(string! crewId, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<string!>!
+*REMOVED*Orkeon.Application.Services.Checkpointing.ResumeEngine.CanResumeAsync(string! crewId, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<bool>!
+*REMOVED*Orkeon.Application.Services.Checkpointing.ResumeEngine.ResumeAsync(string! crewId, Orkeon.Application.Interfaces.Checkpointing.ResumeOptions? options = null, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Application.Interfaces.Checkpointing.ResumeResult!>!
+Orkeon.Application.Interfaces.Checkpointing.ICheckpointManager.GetLatestCheckpointAsync(string! crewKey, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Application.Interfaces.Checkpointing.SessionState?>!
+Orkeon.Application.Interfaces.Checkpointing.ICheckpointManager.StartSessionAsync(Orkeon.Application.Interfaces.Services.ExecutionId! sessionId, string! crewKey, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<string!>!
+Orkeon.Application.Interfaces.Checkpointing.IResumeEngine.CanResumeAsync(string! crewKey, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<bool>!
+Orkeon.Application.Interfaces.Checkpointing.IResumeEngine.ResumeAsync(string! crewKey, Orkeon.Application.Interfaces.Checkpointing.ResumeOptions? options = null, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Application.Interfaces.Checkpointing.ResumeResult!>!
+Orkeon.Application.Interfaces.Checkpointing.IStateStore.GetLatestForCrewAsync(string! crewKey, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Application.Interfaces.Checkpointing.SessionState?>!
+Orkeon.Application.Interfaces.Checkpointing.SessionState.CrewKey.get -> string!
+Orkeon.Application.Interfaces.Checkpointing.SessionState.CrewKey.init -> void
+Orkeon.Application.Interfaces.Checkpointing.SessionSummary.CrewKey.get -> string!
+Orkeon.Application.Interfaces.Checkpointing.SessionSummary.CrewKey.init -> void
+Orkeon.Application.Interfaces.Services.ICrewOrchestrationService.KickoffAsync(Orkeon.Domain.Common.CrewId! crewId, Orkeon.Application.Interfaces.Services.CrewInput! input, Orkeon.Application.Interfaces.Services.KickoffOptions! options, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Application.Interfaces.Services.CrewOutput!>!
+Orkeon.Application.Interfaces.Services.IRunScope
+Orkeon.Application.Interfaces.Services.IRunScope.Current.get -> Orkeon.Application.Interfaces.Services.RunScope?
+Orkeon.Application.Interfaces.Services.IRunScope.Enter(Orkeon.Application.Interfaces.Services.RunScope! scope) -> System.IDisposable!
+Orkeon.Application.Interfaces.Services.KickoffOptions
+Orkeon.Application.Interfaces.Services.KickoffOptions.<Clone>$() -> Orkeon.Application.Interfaces.Services.KickoffOptions!
+Orkeon.Application.Interfaces.Services.KickoffOptions.CrewKey.get -> string?
+Orkeon.Application.Interfaces.Services.KickoffOptions.CrewKey.init -> void
+Orkeon.Application.Interfaces.Services.KickoffOptions.Equals(Orkeon.Application.Interfaces.Services.KickoffOptions? other) -> bool
+Orkeon.Application.Interfaces.Services.KickoffOptions.ExecutionId.get -> Orkeon.Application.Interfaces.Services.ExecutionId?
+Orkeon.Application.Interfaces.Services.KickoffOptions.ExecutionId.init -> void
+Orkeon.Application.Interfaces.Services.KickoffOptions.KickoffOptions() -> void
+Orkeon.Application.Interfaces.Services.KickoffOptions.Resume.get -> string?
+Orkeon.Application.Interfaces.Services.KickoffOptions.Resume.init -> void
+Orkeon.Application.Interfaces.Services.RunScope
+Orkeon.Application.Interfaces.Services.RunScope.<Clone>$() -> Orkeon.Application.Interfaces.Services.RunScope!
+Orkeon.Application.Interfaces.Services.RunScope.CrewKey.get -> string!
+Orkeon.Application.Interfaces.Services.RunScope.CrewKey.init -> void
+Orkeon.Application.Interfaces.Services.RunScope.Deconstruct(out Orkeon.Application.Interfaces.Services.ExecutionId! ExecutionId, out string! CrewKey, out string? Resume) -> void
+Orkeon.Application.Interfaces.Services.RunScope.Equals(Orkeon.Application.Interfaces.Services.RunScope? other) -> bool
+Orkeon.Application.Interfaces.Services.RunScope.ExecutionId.get -> Orkeon.Application.Interfaces.Services.ExecutionId!
+Orkeon.Application.Interfaces.Services.RunScope.ExecutionId.init -> void
+Orkeon.Application.Interfaces.Services.RunScope.Resume.get -> string?
+Orkeon.Application.Interfaces.Services.RunScope.Resume.init -> void
+Orkeon.Application.Interfaces.Services.RunScope.RunScope(Orkeon.Application.Interfaces.Services.ExecutionId! ExecutionId, string! CrewKey, string? Resume = null) -> void
+Orkeon.Application.Services.Checkpointing.CheckpointManager.GetLatestCheckpointAsync(string! crewKey, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Application.Interfaces.Checkpointing.SessionState?>!
+Orkeon.Application.Services.Checkpointing.CheckpointManager.StartSessionAsync(Orkeon.Application.Interfaces.Services.ExecutionId! executionId, string! crewKey, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<string!>!
+Orkeon.Application.Services.Checkpointing.ResumeEngine.CanResumeAsync(string! crewKey, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<bool>!
+Orkeon.Application.Services.Checkpointing.ResumeEngine.ResumeAsync(string! crewKey, Orkeon.Application.Interfaces.Checkpointing.ResumeOptions? options = null, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Application.Interfaces.Checkpointing.ResumeResult!>!
+override Orkeon.Application.Interfaces.Services.KickoffOptions.Equals(object? obj) -> bool
+override Orkeon.Application.Interfaces.Services.KickoffOptions.GetHashCode() -> int
+override Orkeon.Application.Interfaces.Services.KickoffOptions.ToString() -> string!
+override Orkeon.Application.Interfaces.Services.RunScope.Equals(object? obj) -> bool
+override Orkeon.Application.Interfaces.Services.RunScope.GetHashCode() -> int
+override Orkeon.Application.Interfaces.Services.RunScope.ToString() -> string!
+static Orkeon.Application.Interfaces.Services.KickoffOptions.operator !=(Orkeon.Application.Interfaces.Services.KickoffOptions? left, Orkeon.Application.Interfaces.Services.KickoffOptions? right) -> bool
+static Orkeon.Application.Interfaces.Services.KickoffOptions.operator ==(Orkeon.Application.Interfaces.Services.KickoffOptions? left, Orkeon.Application.Interfaces.Services.KickoffOptions? right) -> bool
+static Orkeon.Application.Interfaces.Services.RunScope.operator !=(Orkeon.Application.Interfaces.Services.RunScope? left, Orkeon.Application.Interfaces.Services.RunScope? right) -> bool
+static Orkeon.Application.Interfaces.Services.RunScope.operator ==(Orkeon.Application.Interfaces.Services.RunScope? left, Orkeon.Application.Interfaces.Services.RunScope? right) -> bool
+*REMOVED*Orkeon.Application.Services.Checkpointing.CheckpointManager.StartSessionAsync(Orkeon.Application.Interfaces.Services.ExecutionId! executionId, string! crewKey, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<string!>!
+Orkeon.Application.Services.Checkpointing.CheckpointManager.StartSessionAsync(Orkeon.Application.Interfaces.Services.ExecutionId! sessionId, string! crewKey, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<string!>!
+Orkeon.Application.Interfaces.Services.ICrewOrchestrationService.KickoffStreamingAsync(Orkeon.Domain.Common.CrewId! crewId, Orkeon.Application.Interfaces.Services.CrewInput! input, Orkeon.Application.Interfaces.Services.KickoffOptions! options, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Collections.Generic.IAsyncEnumerable<Orkeon.Application.Interfaces.Services.CrewExecutionEvent!>!

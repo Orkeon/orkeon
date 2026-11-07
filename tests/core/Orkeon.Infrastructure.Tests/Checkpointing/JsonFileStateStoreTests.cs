@@ -28,7 +28,7 @@ public class JsonFileStateStoreTests
 
         Assert.NotNull(loaded);
         Assert.Equal(SessionId1, loaded.SessionId);
-        Assert.Equal(CrewId1, loaded.CrewId);
+        Assert.Equal(CrewId1, loaded.CrewKey);
         Assert.Equal(SessionPhase.Running, loaded.Phase);
     }
 
@@ -61,7 +61,7 @@ public class JsonFileStateStoreTests
         var state = new SessionState
         {
             SessionId = SessionId1,
-            CrewId = CrewId1,
+            CrewKey = CrewId1,
             Phase = SessionPhase.Running,
             CompletedTaskIndex = 1,
             TaskCheckpoints = checkpoints,
@@ -153,7 +153,7 @@ public class JsonFileStateStoreTests
         var state = new SessionState
         {
             SessionId = badId,
-            CrewId = CrewId1,
+            CrewKey = CrewId1,
             Phase = SessionPhase.Running,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
@@ -170,7 +170,7 @@ public class JsonFileStateStoreTests
         var state = new SessionState
         {
             SessionId = longId,
-            CrewId = CrewId1,
+            CrewKey = CrewId1,
             Phase = SessionPhase.Running,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
@@ -185,7 +185,7 @@ public class JsonFileStateStoreTests
         new()
         {
             SessionId = sessionId,
-            CrewId = crewId,
+            CrewKey = crewId,
             Phase = phase,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = updatedAt ?? DateTime.UtcNow

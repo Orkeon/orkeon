@@ -29,9 +29,9 @@ public sealed partial class ResumeEngine : IResumeEngine
     }
 
     /// <inheritdoc />
-    public async System.Threading.Tasks.Task<bool> CanResumeAsync(string crewId, CancellationToken ct = default)
+    public async System.Threading.Tasks.Task<bool> CanResumeAsync(string crewKey, CancellationToken ct = default)
     {
-        var latest = await _checkpointManager.GetLatestCheckpointAsync(crewId, ct).ConfigureAwait(false);
+        var latest = await _checkpointManager.GetLatestCheckpointAsync(crewKey, ct).ConfigureAwait(false);
         if (latest == null)
             return false;
 
@@ -40,7 +40,7 @@ public sealed partial class ResumeEngine : IResumeEngine
     }
 
     /// <inheritdoc />
-    public async System.Threading.Tasks.Task<ResumeResult> ResumeAsync(string crewId, ResumeOptions? options = null, CancellationToken ct = default)
+    public async System.Threading.Tasks.Task<ResumeResult> ResumeAsync(string crewKey, ResumeOptions? options = null, CancellationToken ct = default)
     {
         options ??= new ResumeOptions();
 
@@ -49,28 +49,28 @@ public sealed partial class ResumeEngine : IResumeEngine
         // If a specific version is requested, restore from that version
         if (!string.IsNullOrEmpty(options.FromVersionId))
         {
-            var checkpoint = await _checkpointManager.GetLatestCheckpointAsync(crewId, ct).ConfigureAwait(false);
+            var checkpoint = await _checkpointManager.GetLatestCheckpointAsync(crewKey, ct).ConfigureAwait(false);
             if (checkpoint == null)
             {
-                LogNoCheckpointFound(crewId);
+                LogNoCheckpointFound(crewKey);
                 return new ResumeResult();
             }
 
             latest = await _checkpointManager.RestoreToVersionAsync(checkpoint.SessionId, options.FromVersionId, ct).ConfigureAwait(false);
             if (latest == null)
             {
-                LogNoCheckpointFound(crewId);
+                LogNoCheckpointFound(crewKey);
                 return new ResumeResult();
             }
         }
         else
         {
-            latest = await _checkpointManager.GetLatestCheckpointAsync(crewId, ct).ConfigureAwait(false);
+            latest = await _checkpointManager.GetLatestCheckpointAsync(crewKey, ct).ConfigureAwait(false);
         }
 
         if (latest == null)
         {
-            LogNoCheckpointFound(crewId);
+            LogNoCheckpointFound(crewKey);
             return new ResumeResult();
         }
 
@@ -128,7 +128,7 @@ public sealed partial class ResumeEngine : IResumeEngine
             }
         }
 
-        LogResumeResult(crewId, completedIds.Count, skipCount, resumeFromIndex);
+        LogResumeResult(crewKey, completedIds.Count, skipCount, resumeFromIndex);
 
         return new ResumeResult
         {
@@ -140,8 +140,8 @@ public sealed partial class ResumeEngine : IResumeEngine
         };
     }
 
-    [LoggerMessage(Level = LogLevel.Warning, Message = "No checkpoint found for crew {CrewId}, cannot resume")]
-    private partial void LogNoCheckpointFound(string crewId);
+    [LoggerMessage(Level = LogLevel.Warning, Message = "No checkpoint found for crew {CrewKey}, cannot resume")]
+    private partial void LogNoCheckpointFound(string crewKey);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Skipped failed task {TaskId} in session {SessionId}")]
     private partial void LogSkippedFailedTask(string taskId, string sessionId);
@@ -149,6 +149,6 @@ public sealed partial class ResumeEngine : IResumeEngine
     [LoggerMessage(Level = LogLevel.Information, Message = "Task {TaskId} will be retried (attempt {Attempt}/{Max})")]
     private partial void LogTaskWillBeRetried(string taskId, int attempt, int max);
 
-    [LoggerMessage(Level = LogLevel.Information, Message = "Resume result for crew {CrewId}: {CompletedCount} completed, {SkipCount} skipped, resume from index {Index}")]
-    private partial void LogResumeResult(string crewId, int completedCount, int skipCount, int index);
+    [LoggerMessage(Level = LogLevel.Information, Message = "Resume result for crew {CrewKey}: {CompletedCount} completed, {SkipCount} skipped, resume from index {Index}")]
+    private partial void LogResumeResult(string crewKey, int completedCount, int skipCount, int index);
 }

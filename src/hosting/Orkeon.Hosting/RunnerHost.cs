@@ -14,7 +14,9 @@ using Orkeon.Domain.Constants.Llm;
 using Orkeon.Infrastructure.LLMs.Profiles;
 using Orkeon.Domain.Common;
 using Orkeon.Domain.FileSystem;
+using Orkeon.Infrastructure.Checkpointing;
 using Orkeon.Infrastructure.DependencyInjection;
+using Orkeon.Infrastructure.Orchestration;
 using Orkeon.Infrastructure.EventHub.DependencyInjection;
 using Orkeon.Infrastructure.FileSystem;
 using Orkeon.Domain.SharedKernel.ValueObjects;
@@ -62,6 +64,12 @@ public sealed record RunnerMountPlan
     /// <see cref="CliMounts"/>.
     /// </summary>
     public IReadOnlyList<string> InternalMounts { get; init; } = [];
+
+    /// <summary>
+    /// The folder <c>./.orkeon/state</c> is resolved against (the checkpoint store's); null: the
+    /// process's working directory.
+    /// </summary>
+    public string? WorkingDirectory { get; init; }
 
     /// <summary>Folders a command reads as its inputs, readable without the external-mounts opt-in.</summary>
     public IReadOnlyList<string> InputDirectories { get; init; } = [];
@@ -512,6 +520,9 @@ public static partial class RunnerHost
         /// <summary>Why OAuth accounts of the settings (e-mail, drive) have no token store in this run, one sentence per cause.</summary>
         public List<string> TokensUnavailable { get; } = [];
 
+        /// <summary>Settings the host reads but cannot honour as written (an ignored checkpoint store), one sentence each.</summary>
+        public List<string> StartupWarnings { get; } = [];
+
         /// <summary>The profile <c>--llm-profile</c> elected as the run's default, by its key in the settings; null when none.</summary>
         public string? ElectedLlmProfile { get; set; }
     }
@@ -525,13 +536,13 @@ public static partial class RunnerHost
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Globalization", "CA1303", Justification = "Framework is not localized; literals are CLI diagnostic/console messages.")]
     private static void WarnIfTokensUnavailable(IHost host, MountDecisions decisions)
     {
-        if (decisions.TokensUnavailable.Count == 0)
+        if (decisions.TokensUnavailable.Count == 0 && decisions.StartupWarnings.Count == 0)
             return;
 
         var loggerFactory = host.Services.GetRequiredService<ILoggerFactory>();
         var logger = loggerFactory.CreateLogger("Orkeon.Hosting.RunnerHost");
         var operatorLogger = RunnerOperatorLog.Create(loggerFactory);
-        foreach (var reason in decisions.TokensUnavailable)
+        foreach (var reason in decisions.TokensUnavailable.Concat(decisions.StartupWarnings))
         {
             RunnerOperatorLog.Warn(operatorLogger, "WARNING: " + reason);
             LogTokensUnavailable(logger, reason);
@@ -933,11 +944,31 @@ public static partial class RunnerHost
         // /credentials, whatever its layer.
         var credentialsDirectory = PlanCredentials(
             declared, placement.DeclaredMounts, placement.DeclaredInternal, mounts.CliMounts, settingsPath, decisions);
+        var nextInternalIndex = placement.NextInternalIndex;
+        var nextWhitelistIndex = placement.NextWhitelistIndex;
         if (credentialsDirectory is not null)
         {
-            overrides[$"{ConfigurationKeys.FileSystemInternalMounts}:{placement.NextInternalIndex}"] =
+            overrides[$"{ConfigurationKeys.FileSystemInternalMounts}:{nextInternalIndex++}"] =
                 $"{FileSystemMount.Quote(credentialsDirectory)}:{RunnerVirtualRoots.Credentials}:rw";
-            overrides[$"{PathSecurityWhitelistSection}:{placement.NextWhitelistIndex}"] = credentialsDirectory;
+            overrides[$"{PathSecurityWhitelistSection}:{nextWhitelistIndex++}"] = credentialsDirectory;
+        }
+
+        // The durable checkpoint store's folder (FWK-01), for a json or sqlite store the settings
+        // enable: mounted at /state, whichever command builds the host.
+        if (RunnerState.IgnoredStoreWarning(declared.Section("Orkeon:Checkpointing")) is { } ignoredStore)
+            decisions.StartupWarnings.Add(ignoredStore);
+
+        var stateDirectory = RunnerState.Plan(
+            declared.Section("Orkeon:Checkpointing"),
+            mounts.WorkingDirectory,
+            placement.DeclaredMounts.Concat(placement.DeclaredInternal).Select(entry => entry.Value)
+                .Concat(mounts.CliMounts).Concat(mounts.InternalMounts)
+                .Select(spec => spec is null ? null : MountSelection.TryGetVirtualRoot(spec)).OfType<string>());
+        if (stateDirectory is not null)
+        {
+            overrides[$"{ConfigurationKeys.FileSystemInternalMounts}:{nextInternalIndex}"] =
+                $"{FileSystemMount.Quote(stateDirectory)}:{RunnerVirtualRoots.State}:rw";
+            overrides[$"{PathSecurityWhitelistSection}:{nextWhitelistIndex}"] = stateDirectory;
         }
 
         if (overrides.Count > 0)
@@ -1475,6 +1506,11 @@ public static partial class RunnerHost
         // Core Orkeon services
         services.AddOrkeonApplication();
         services.AddOrkeonInfrastructure();
+        // The durable checkpoint store the Orkeon:Checkpointing section chooses, and the persistence
+        // of execution states over that same store. Bound here, never by
+        // AddOrkeonInfrastructure(IConfiguration): a host decides whether it checkpoints.
+        services.AddOrkeonCheckpointing(context.Configuration);
+        services.AddCrewExecutionStatePersistence(context.Configuration);
         // OpenTelemetry export: the `Telemetry` section of the settings, or the standard
         // OTEL_EXPORTER_OTLP_ENDPOINT environment a .NET Aspire AppHost (or any collector)
         // injects. Until 2026-09-11 the runners registered no exporter at all, so a run

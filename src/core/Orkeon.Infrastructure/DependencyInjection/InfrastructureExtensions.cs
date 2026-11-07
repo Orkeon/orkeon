@@ -629,6 +629,10 @@ public static class InfrastructureExtensions
         // === Phase 9: Session Checkpointing (S2) ===
         services.AddOrkeonCheckpointing();
 
+        // The ambient identity of the run in flight (FWK-01): entered by the orchestrator, read by
+        // event observers and decorators.
+        services.TryAddSingleton<Orkeon.Application.Interfaces.Services.IRunScope, Orkeon.Infrastructure.Orchestration.AsyncLocalRunScope>();
+
         // Opt-in subsystems (R4.9 — MORT-003): DLP (AddOrkeonDlp) and NIST compliance
         // reporting (AddOrkeonNistCompliance) are intentionally NOT registered by
         // default — no production code path consumes them yet. Hosts enable them

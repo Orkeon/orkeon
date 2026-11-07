@@ -48,7 +48,7 @@ public sealed class SqliteStateStore : IStateStore, IDisposable
         cmd.CommandText = """
             CREATE TABLE IF NOT EXISTS sessions (
                 id TEXT PRIMARY KEY,
-                crew_id TEXT NOT NULL,
+                crew_key TEXT NOT NULL,
                 state_json TEXT NOT NULL,
                 created_at TEXT NOT NULL,
                 updated_at TEXT NOT NULL
@@ -85,15 +85,15 @@ public sealed class SqliteStateStore : IStateStore, IDisposable
 
             using var cmd = _connection.CreateCommand();
             cmd.CommandText = """
-                INSERT INTO sessions (id, crew_id, state_json, created_at, updated_at)
-                VALUES (@id, @crewId, @stateJson, @createdAt, @updatedAt)
+                INSERT INTO sessions (id, crew_key, state_json, created_at, updated_at)
+                VALUES (@id, @crewKey, @stateJson, @createdAt, @updatedAt)
                 ON CONFLICT(id) DO UPDATE SET
-                    crew_id = @crewId,
+                    crew_key = @crewKey,
                     state_json = @stateJson,
                     updated_at = @updatedAt
                 """;
             cmd.Parameters.AddWithValue("@id", state.SessionId);
-            cmd.Parameters.AddWithValue("@crewId", state.CrewId);
+            cmd.Parameters.AddWithValue("@crewKey", state.CrewKey);
             cmd.Parameters.AddWithValue("@stateJson", json);
             cmd.Parameters.AddWithValue("@createdAt", state.CreatedAt.ToString("O"));
             cmd.Parameters.AddWithValue("@updatedAt", state.UpdatedAt.ToString("O"));
@@ -117,11 +117,11 @@ public sealed class SqliteStateStore : IStateStore, IDisposable
     }
 
     /// <inheritdoc />
-    public async Task<SessionState?> GetLatestForCrewAsync(string crewId, CancellationToken ct = default)
+    public async Task<SessionState?> GetLatestForCrewAsync(string crewKey, CancellationToken ct = default)
     {
         using var cmd = _connection.CreateCommand();
-        cmd.CommandText = "SELECT state_json FROM sessions WHERE crew_id = @crewId ORDER BY updated_at DESC LIMIT 1";
-        cmd.Parameters.AddWithValue("@crewId", crewId);
+        cmd.CommandText = "SELECT state_json FROM sessions WHERE crew_key = @crewKey ORDER BY updated_at DESC LIMIT 1";
+        cmd.Parameters.AddWithValue("@crewKey", crewKey);
 
         var result = await cmd.ExecuteScalarAsync(ct).ConfigureAwait(false);
         if (result is not string json)
@@ -148,7 +148,7 @@ public sealed class SqliteStateStore : IStateStore, IDisposable
                 summaries.Add(new SessionSummary
                 {
                     SessionId = state.SessionId,
-                    CrewId = state.CrewId,
+                    CrewKey = state.CrewKey,
                     Phase = state.Phase,
                     CompletedTaskCount = state.TaskCheckpoints.Count(t => t.Value.Status == CheckpointStatus.Completed),
                     CreatedAt = state.CreatedAt,
@@ -369,11 +369,11 @@ public sealed class SqliteStateStore : IStateStore, IDisposable
             {
                 sessCmd.Transaction = transaction;
                 sessCmd.CommandText = """
-                    INSERT INTO sessions (id, crew_id, state_json, created_at, updated_at)
-                    VALUES (@id, @crewId, @stateJson, @createdAt, @updatedAt)
+                    INSERT INTO sessions (id, crew_key, state_json, created_at, updated_at)
+                    VALUES (@id, @crewKey, @stateJson, @createdAt, @updatedAt)
                     """;
                 sessCmd.Parameters.AddWithValue("@id", newSessionId);
-                sessCmd.Parameters.AddWithValue("@crewId", forkedState.CrewId);
+                sessCmd.Parameters.AddWithValue("@crewKey", forkedState.CrewKey);
                 sessCmd.Parameters.AddWithValue("@stateJson", stateJson);
                 sessCmd.Parameters.AddWithValue("@createdAt", createdAt.ToString("O"));
                 sessCmd.Parameters.AddWithValue("@updatedAt", createdAt.ToString("O"));

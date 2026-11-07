@@ -17,9 +17,9 @@ public interface IStateStore
     System.Threading.Tasks.Task<SessionState?> GetAsync(string sessionId, CancellationToken ct = default);
 
     /// <summary>
-    /// Gets the most recent session state for a given crew.
+    /// Gets the most recent session state for a given crew key.
     /// </summary>
-    System.Threading.Tasks.Task<SessionState?> GetLatestForCrewAsync(string crewId, CancellationToken ct = default);
+    System.Threading.Tasks.Task<SessionState?> GetLatestForCrewAsync(string crewKey, CancellationToken ct = default);
 
     /// <summary>
     /// Lists summaries of all stored sessions.
@@ -85,8 +85,8 @@ public sealed record SessionState
     /// <summary>Gets the unique session identifier.</summary>
     public string SessionId { get; init; } = "";
 
-    /// <summary>Gets the crew identifier this session belongs to.</summary>
-    public string CrewId { get; init; } = "";
+    /// <summary>Gets the stable key of the crew this session belongs to (name and virtual path of its file).</summary>
+    public string CrewKey { get; init; } = "";
 
     /// <summary>Gets the current phase of the session.</summary>
     public SessionPhase Phase { get; init; } = SessionPhase.Pending;
@@ -139,8 +139,8 @@ public sealed record SessionSummary
     /// <summary>Gets the unique session identifier.</summary>
     public string SessionId { get; init; } = "";
 
-    /// <summary>Gets the crew identifier.</summary>
-    public string CrewId { get; init; } = "";
+    /// <summary>Gets the stable key of the crew.</summary>
+    public string CrewKey { get; init; } = "";
 
     /// <summary>Gets the current phase of the session.</summary>
     public SessionPhase Phase { get; init; }

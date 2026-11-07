@@ -476,9 +476,21 @@ No attribute carries an id of a crew, task or agent.
 
 ## Execution state persistence — `AddCrewExecutionStatePersistence(...)` (R3.8)
 
-- **Shipped binaries**: none activates it. `orkeon run`, `orkeon-host` and `orkeon-repl` read
-  neither `Orkeon:ExecutionState:Persistence` nor the Postgres store's `Orkeon:Checkpointing`, and
-  say so at their start when the settings write one.
+- **Shipped binaries**: `orkeon run` and `orkeon-host` read `Orkeon:Checkpointing` (the store) and
+  `Orkeon:ExecutionState:Persistence` (the switch). `Orkeon:Checkpointing:Enabled=true` with `Store`
+  `json`, `sqlite` or `postgres` gives every run of the host a durable checkpoint session, and the
+  persistence of execution states the same store. `json` and `sqlite` write under `./.orkeon/state`,
+  mounted at `/state` as an internal mount. `orkeon-repl` reads neither and says so at its start when
+  the settings write one.
+- **Run identity**: one run has one identifier, an `ExecutionId`: the checkpoint session id, the
+  `correlationId` of the events `orkeon run --events` writes, and the id the no-wait kickoff returns.
+  `KickoffOptions.ExecutionId` hands it in (resume, host); `IRunScope.Current` shows it to every
+  decorator and observer the run reaches. The crew key of a session (`SessionState.CrewKey`) is the
+  crew's name unless `KickoffOptions.CrewKey` names it (name and virtual path of the file), so that a
+  session can be found again by a new process: the ids of a crew and its tasks are regenerated at each load.
+  Not unified yet: the A2A task id and the API's (FWK-14), and the crew key until the host passes name and
+  path (FWK-07). A run kicked off inside another one enters its own scope: its identifier overrides the
+  outer one for its length.
 - **Role**: durable persistence of crew execution states
   (`ScopedCrewExecutionStateManager`) in a checkpointing state store
   (`IStateStore`): every transition (creation, update, completion, archiving)
@@ -490,6 +502,7 @@ No attribute carries an id of a crew, task or agent.
   // 1. A checkpointing state store (in-memory, SQLite or PostgreSQL)
   services.AddOrkeonSqliteCheckpointing("Data Source=/output/orkeon-state.db"); // virtual path, writable mount
   // or: services.AddOrkeonCheckpointing();              // in-memory
+  // or: services.AddOrkeonCheckpointing(configuration); // Orkeon:Checkpointing: Enabled, Store memory|json|sqlite|postgres
   // or: services.AddOrkeonPostgresCheckpointing(configuration); // Orkeon:Checkpointing:*
 
   // 2. The persistence opt-in

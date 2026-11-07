@@ -1,1 +1,3 @@
 #nullable enable
+Orkeon.Hosting.RunnerMountPlan.WorkingDirectory.get -> string?
+Orkeon.Hosting.RunnerMountPlan.WorkingDirectory.init -> void

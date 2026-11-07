@@ -50,6 +50,7 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
     private readonly Orkeon.Application.Interfaces.Ports.ILlmUsageSink? _usageSink;
     private readonly Orkeon.Application.Interfaces.Security.ILlmRateLimiter? _rateLimiter;
     private readonly TimeProvider _time;
+    private readonly IRunScope? _runScope;
 
     /// <summary>
     /// Initializes a new instance of <see cref="SequentialCrewOrchestrator"/>.
@@ -86,7 +87,8 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
         ICrewExecutionHook? executionHook = null,
         Orkeon.Application.Interfaces.Ports.ILlmUsageSink? usageSink = null,
         Orkeon.Application.Interfaces.Security.ILlmRateLimiter? rateLimiter = null,
-        TimeProvider? timeProvider = null)
+        TimeProvider? timeProvider = null,
+        IRunScope? runScope = null)
 #pragma warning restore S107
     {
         ArgumentNullException.ThrowIfNull(crewRepository);
@@ -112,6 +114,7 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
         _usageSink = usageSink;
         _rateLimiter = rateLimiter;
         _time = timeProvider ?? TimeProvider.System;
+        _runScope = runScope;
     }
 
     /// <summary>
@@ -125,12 +128,24 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(input);
-        return RunAsync(crewId, input, events: null, cancellationToken);
+        return RunAsync(crewId, input, events: null, options: null, cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public Task<CrewOutput> KickoffAsync(
+        CrewId crewId,
+        CrewInput input,
+        KickoffOptions options,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(input);
+        ArgumentNullException.ThrowIfNull(options);
+        return RunAsync(crewId, input, events: null, options, cancellationToken);
     }
 
     /// <summary>
-    /// The one kickoff (GAP-32): what <see cref="KickoffAsync"/> awaits and what
-    /// <see cref="KickoffStreamingAsync"/> observes while it runs. It loads the crew, records its
+    /// The one kickoff (GAP-32): what <see cref="KickoffAsync(CrewId, CrewInput, CancellationToken)"/> awaits and what
+    /// <see cref="KickoffStreamingAsync(CrewId, CrewInput, CancellationToken)"/> observes while it runs. It loads the crew, records its
     /// memory, validates and starts it, plans when it asks, runs its mode's strategy — the outcome
     /// rule, the lifecycle of its tasks and agents, its memory, knowledge and plan — ends it with one
     /// terminal transition, checkpoints and dispatches its events. <paramref name="events"/> is the
@@ -142,6 +157,7 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
         CrewId crewId,
         CrewInput input,
         ChannelWriter<CrewExecutionEvent>? events,
+        KickoffOptions? options,
         CancellationToken cancellationToken)
     {
         using var streamScope = CrewStreamScope.Begin(events);
@@ -169,6 +185,7 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
         CrewOutput output;
         Exception? cause = null;
         IDisposable? runSpan = null;
+        IDisposable? runIdentity = null;
 
         try
         {
@@ -188,10 +205,17 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
                 // (GAP-20). Idempotent.
                 _memoryProviderRegistry?.Record(crew.Id, crew.MemoryProvider, crew.Name, crew.MemoryEnabled);
 
+                // The run's one identity: the one the caller gave, else a new one. It is the
+                // checkpoint session, the correlation id of the run's events and the id of its
+                // task for the API and A2A (FWK-01), and it is visible to every decorator.
+                var executionId = options?.ExecutionId ?? ExecutionId.New();
+                var crewKey = options?.CrewKey is { Length: > 0 } named && !string.IsNullOrWhiteSpace(named) ? named : crew.Name ?? crewId.ToString();
+                runIdentity = _runScope?.Enter(new RunScope(executionId, crewKey, options?.Resume));
+
                 // Start checkpoint session if checkpoint manager is available
                 if (_checkpointManager != null)
                 {
-                    sessionId = await _checkpointManager.StartSessionAsync(crewId.ToString(), cancellationToken).ConfigureAwait(false);
+                    sessionId = await _checkpointManager.StartSessionAsync(executionId, crewKey, cancellationToken).ConfigureAwait(false);
                     LogCheckpointSessionStarted(sessionId, crewId);
                 }
 
@@ -268,6 +292,7 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
         }
         finally
         {
+            runIdentity?.Dispose();
             runSpan?.Dispose();
 
             // The run is over, whatever its outcome: the crew's memory is consolidated when the host
@@ -752,7 +777,8 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
                     s.Status = ExecutionState.Running;
                 }).ConfigureAwait(false);
 
-                var output = await KickoffAsync(crewId, input).ConfigureAwait(false);
+                var output = await KickoffAsync(
+                    crewId, input, new KickoffOptions { ExecutionId = executionId }).ConfigureAwait(false);
 
                 await _stateManager.UpdateStateAsync(executionId, s =>
                 {
@@ -785,7 +811,7 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
     }
 
     /// <summary>
-    /// Runs the crew exactly as <see cref="KickoffAsync"/> does and yields what happens as it goes
+    /// Runs the crew exactly as <see cref="KickoffAsync(CrewId, CrewInput, CancellationToken)"/> does and yields what happens as it goes
     /// (GAP-32): each task's start and end, each tool call, the model's text as it arrives, then
     /// <c>run.finished</c> with the run's <see cref="CrewOutput"/> — after an <c>error</c> when it failed.
     /// </summary>
@@ -796,7 +822,20 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
     {
         ArgumentNullException.ThrowIfNull(crewId);
         ArgumentNullException.ThrowIfNull(input);
-        return StreamAsync(crewId, input, cancellationToken);
+        return StreamAsync(crewId, input, options: null, cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public IAsyncEnumerable<CrewExecutionEvent> KickoffStreamingAsync(
+        CrewId crewId,
+        CrewInput input,
+        KickoffOptions options,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(crewId);
+        ArgumentNullException.ThrowIfNull(input);
+        ArgumentNullException.ThrowIfNull(options);
+        return StreamAsync(crewId, input, options, cancellationToken);
     }
 
     /// <summary>
@@ -812,13 +851,14 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
     private async IAsyncEnumerable<CrewExecutionEvent> StreamAsync(
         CrewId crewId,
         CrewInput input,
+        KickoffOptions? options,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         var channel = Channel.CreateUnbounded<CrewExecutionEvent>(
             new UnboundedChannelOptions { SingleReader = true, SingleWriter = false });
         using var stop = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         var run = System.Threading.Tasks.Task.Run(
-            () => RunStreamedAsync(crewId, input, channel.Writer, stop.Token), CancellationToken.None);
+            () => RunStreamedAsync(crewId, input, options, channel.Writer, stop.Token), CancellationToken.None);
 
         try
         {
@@ -840,12 +880,13 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
     private async System.Threading.Tasks.Task RunStreamedAsync(
         CrewId crewId,
         CrewInput input,
+        KickoffOptions? options,
         ChannelWriter<CrewExecutionEvent> events,
         CancellationToken cancellationToken)
     {
         try
         {
-            var output = await RunAsync(crewId, input, events, cancellationToken).ConfigureAwait(false);
+            var output = await RunAsync(crewId, input, events, options, cancellationToken).ConfigureAwait(false);
             events.TryWrite(new CrewExecutionEvent { Kind = RunEventKinds.RunFinished, Output = output });
         }
         finally
