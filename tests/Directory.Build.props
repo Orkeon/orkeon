@@ -15,5 +15,6 @@
          corrective RAG, MCP) by design — the ORKEXP diagnostics target
          consumers outside this repo (see docs/reference/experimental-apis.md). -->
     <NoWarn>$(NoWarn);ORKEXP001;ORKEXP002;ORKEXP003;ORKEXP004</NoWarn>
+    <NoWarn>$(NoWarn);ORKEXP007</NoWarn>
   </PropertyGroup>
 </Project>

@@ -1,3 +1,4 @@
+using Orkeon.Application.Runs;
 using Orkeon.Constants.Cli;
 using Orkeon.Constants.FileSystem;
 using System.Text.Json;
@@ -486,20 +487,23 @@ internal static partial class RunCommand
         // single protocol line — while Studio added the flag for both dialects.
         Run.ObservedRunContext? observed = null;
         IDisposable? runIdentity = null;
-        if (options.EmitsEvents)
+        var toStdout = options.EmitsEvents;
+        if (toStdout || RecordsHistory(options))
         {
             // The run's one identity, opened before run.started: every line of the stream carries it.
             var runScope = new Orkeon.Infrastructure.Orchestration.AsyncLocalRunScope();
             runIdentity = runScope.Enter(new Orkeon.Application.Interfaces.Services.RunScope(
                 RunIdOf(options), options.ScriptPath ?? "run"));
-            var events = new Events.OrkeonEventWriter(console.Output) { RunScope = runScope };
+#pragma warning disable CA2000 // The publisher holds no native resource: it lives as long as the run.
+            var events = Events.RunEventStreams.Create(console.Output, runScope, toStdout);
+#pragma warning restore CA2000
             events.Emit(Run.RunEventKinds.RunStarted, new
             {
                 target = options.ScriptPath,
                 stream = options.Stream,
             });
 #pragma warning disable CA2000 // Disposed on every path: FinishAsync below tears the context down, including when the run threw.
-            observed = new Run.ObservedRunContext(events, options.Stream, options.Client, console.Input);
+            observed = new Run.ObservedRunContext(events, options.Stream, options.Client, console.Input, recordOnly: !toStdout);
 #pragma warning restore CA2000
         }
 
@@ -595,7 +599,10 @@ internal static partial class RunCommand
                 .ConfigureAwait(false);
         }
 
-        if (!options.EmitsEvents || options.ListTools || options.Validate)
+        // The history records a run whether or not the stream is asked for: with it on (Orkeon:RunHistory:Enabled), the
+        // events go to the history alone, and stdout stays what it was.
+        var recordsHistory = !options.EmitsEvents && RecordsHistory(options);
+        if ((!options.EmitsEvents && !recordsHistory) || options.ListTools || options.Validate)
         {
             return await RunnerExecution.RunOneShotAsync(
                 ToRunnerOptions(console, options),
@@ -610,7 +617,27 @@ internal static partial class RunCommand
                 .ConfigureAwait(false);
         }
 
-        return await RunWithEventsAsync(console, options).ConfigureAwait(false);
+        return await RunWithEventsAsync(console, options, toStdout: options.EmitsEvents).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Whether this run, which asked for no stream, is recorded by the history: <c>Orkeon:RunHistory:Enabled</c> read from the
+    /// settings the run will use, before the host exists, so that <c>run.started</c> is the first event of the history. Not a
+    /// diagnostic mode, and not <c>--resume latest</c>, whose run the runner names only once it has looked in the store.
+    /// </summary>
+    private static bool RecordsHistory(RunCommandOptions options)
+    {
+        if (options.EmitsEvents || options.ListTools || options.Validate || string.IsNullOrEmpty(options.ScriptPath))
+            return false;
+
+        if (options.Resume is not null && !IsRunId(options.Resume))
+            return false;
+
+        // OUT-OF-SCOPE: locating the settings next to the user-supplied crew path, as the run itself does.
+        var full = Path.GetFullPath(options.ScriptPath);
+        var configDir = Directory.Exists(full) ? full : Path.GetDirectoryName(full) ?? Directory.GetCurrentDirectory();
+        var settings = RunnerSettings.ResolveSettingsPath(options.SettingsPath, configDir, warnings: null);
+        return RunnerRunHistory.IsEnabled(RunnerSettings.ReadConfiguration(settings).GetSection(RunnerRunHistory.SectionPath), byDefault: false);
     }
 
     /// <summary>
@@ -642,20 +669,20 @@ internal static partial class RunCommand
     /// on the runner's own exit code, so a configuration failure is reported as an event
     /// rather than as silence.
     /// </summary>
-    private static async Task<int> RunWithEventsAsync(IRunnerConsole console, RunCommandOptions options)
+    private static async Task<int> RunWithEventsAsync(IRunnerConsole console, RunCommandOptions options, bool toStdout = true)
     {
         // The run's one identity, opened before run.started: every line of the stream carries it.
         var runScope = new Orkeon.Infrastructure.Orchestration.AsyncLocalRunScope();
         using var runIdentity = runScope.Enter(new Orkeon.Application.Interfaces.Services.RunScope(
             RunIdOf(options), options.ScriptPath ?? "run"));
-        var events = new Events.OrkeonEventWriter(console.Output) { RunScope = runScope };
+        var events = Events.RunEventStreams.Create(console.Output, runScope, toStdout);
         events.Emit(Run.RunEventKinds.RunStarted, new
         {
             target = options.ScriptPath,
             stream = options.Stream,
         });
 
-        var observed = new Run.ObservedRunContext(events, options.Stream, options.Client, console.Input);
+        var observed = new Run.ObservedRunContext(events, options.Stream, options.Client, console.Input, recordOnly: !toStdout);
         await using var lifetime = observed.ConfigureAwait(false);
 
         var exitCode = await RunnerExecution.RunOneShotAsync(
@@ -965,7 +992,8 @@ internal static partial class RunCommand
 
         if (!RunnerExecution.EnsureReservedRootsAreFree(
                 cliMounts, settingsPath, console.ErrorOutput,
-                RunnerVirtualRoots.Script, RunnerVirtualRoots.LlmLogs, RunnerVirtualRoots.LlmMock, RunnerVirtualRoots.Sandbox))
+                RunnerVirtualRoots.Script, RunnerVirtualRoots.LlmLogs, RunnerVirtualRoots.LlmMock, RunnerVirtualRoots.Sandbox,
+                RunnerVirtualRoots.State, RunnerVirtualRoots.Runs))
         {
             return null;
         }

@@ -1,14 +1,15 @@
 using Orkeon.Application.Interfaces.Ports;
-using Orkeon.Scripting.Cli.Events;
+using Orkeon.Application.Runs;
+using Orkeon.Constants.Protocol;
 
-namespace Orkeon.Scripting.Cli.Commands.Run;
+namespace Orkeon.Hosting.Runs;
 
 /// <summary>Writes a profile's switch to its fallback on the run protocol (llm.fallback).</summary>
 internal sealed class RunEventsLlmFallbackObserver : ILlmFallbackObserver
 {
-    private readonly OrkeonEventWriter _events;
+    private readonly IRunEventSink _events;
 
-    public RunEventsLlmFallbackObserver(OrkeonEventWriter events) => _events = events;
+    public RunEventsLlmFallbackObserver(IRunEventSink events) => _events = events;
 
     /// <inheritdoc />
     public void FallbackTaken(string profile, string fromProfile, string toProfile, string reason) =>

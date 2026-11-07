@@ -186,12 +186,12 @@ closed list, and what it means.
 | [Files and sandbox](#files-and-sandbox) | [`Orkeon:CodeSandbox`](#orkeoncodesandbox), [`Orkeon:CodeSandbox:Docker`](#orkeoncodesandboxdocker), [`Orkeon:FileSystem`](#orkeonfilesystem), [`Orkeon:Sandbox`](#orkeonsandbox), [`PathSecurity`](#pathsecurity) | 33 |
 | [Security](#security) | [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:Guardian`](#orkeonguardian), [`Orkeon:Security:PermissionGate`](#orkeonsecuritypermissiongate), [`Secrets`](#secrets), [`Security:Audit`](#securityaudit), [`Security:Prompt`](#securityprompt), [`Security:ToolResults`](#securitytoolresults), [`Security:Url`](#securityurl), [`Security:Vault`](#securityvault) | 32 |
 | [Tools](#tools) | [`BRAVE_API_KEY`](#brave_api_key), [`MCP`](#mcp), [`MCP:Server`](#mcpserver), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Tools:Drive`](#orkeontoolsdrive), [`Orkeon:Tools:Email`](#orkeontoolsemail), [`Orkeon:Tools:Firefox`](#orkeontoolsfirefox), [`Orkeon:Tools:GitHub`](#orkeontoolsgithub), [`Orkeon:Tools:ResultLimits`](#orkeontoolsresultlimits), [`Orkeon:Tools:Shell`](#orkeontoolsshell), [`Plugins`](#plugins), [`RaggableTree`](#raggabletree) | 98 |
-| [Orchestration and persistence](#orchestration-and-persistence) | [`Orkeon:Checkpointing`](#orkeoncheckpointing), [`Orkeon:Consensus`](#orkeonconsensus), [`Orkeon:CrewFactory`](#orkeoncrewfactory), [`Orkeon:ExecutionState:Persistence`](#orkeonexecutionstatepersistence) | 19 |
+| [Orchestration and persistence](#orchestration-and-persistence) | [`Orkeon:Checkpointing`](#orkeoncheckpointing), [`Orkeon:Consensus`](#orkeonconsensus), [`Orkeon:CrewFactory`](#orkeoncrewfactory), [`Orkeon:ExecutionState:Persistence`](#orkeonexecutionstatepersistence), [`Orkeon:RunHistory`](#orkeonrunhistory) | 25 |
 | [Scripts and console](#scripts-and-console) | [`Orkeon:Cli:ConsoleStreaming`](#orkeoncliconsolestreaming), [`Orkeon:Cli:Memory`](#orkeonclimemory), [`Orkeon:Cli:ScriptCommands`](#orkeoncliscriptcommands), [`Orkeon:Cli:ScriptHost`](#orkeoncliscripthost), [`Orkeon:Cli:Session`](#orkeonclisession), [`Orkeon:Cli:Tui`](#orkeonclitui), [`Orkeon:Scripting:AgentInstances`](#orkeonscriptingagentinstances), [`Orkeon:Scripting:AgentMemory`](#orkeonscriptingagentmemory), [`Orkeon:Scripting:Limits`](#orkeonscriptinglimits), [`Orkeon:Scripting:Toolchain`](#orkeonscriptingtoolchain) | 32 |
 | [Service host and A2A](#service-host-and-a2a) | [`A2A`](#a2a), [`A2A:Security`](#a2asecurity), [`A2A:Security:AzureAD`](#a2asecurityazuread), [`A2A:Security:Oidc`](#a2asecurityoidc), [`Orkeon:Host`](#orkeonhost), [`Orkeon:Host:Discord`](#orkeonhostdiscord) | 46 |
 | [Observability](#observability) | [`Logging`](#logging), [`Orkeon:Monitoring`](#orkeonmonitoring), [`Telemetry`](#telemetry) | 8 |
 
-79 sections, 478 keys. Read by no shipped binary, only by a host written in C# (8): [`Evaluation`](#evaluation), [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:CognitiveMemory`](#orkeoncognitivememory), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Monitoring`](#orkeonmonitoring).
+80 sections, 484 keys. Read by no shipped binary, only by a host written in C# (8): [`Evaluation`](#evaluation), [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:CognitiveMemory`](#orkeoncognitivememory), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Monitoring`](#orkeonmonitoring).
 <!-- /settings-index -->
 
 How to read a table:
@@ -1874,6 +1874,29 @@ under `./.orkeon/state`, mounted at `/state` as an internal mount (`Path` is a v
 | `Path` | string | — |  | The virtual path of the folder (Json) or the file (Sqlite) the store writes, under the `/state` mount. Null: `/state/checkpoints` or `/state/checkpoints.db`. |
 | `SchemaName` | string | `"orkeon"` |  | The PostgreSQL schema name (default: "orkeon"). |
 | `Store` | enum | `"Memory"` | `Memory`, `Json`, `Sqlite`, `Postgres` | The store (default: `Memory`). |
+<!-- /settings -->
+
+### `Orkeon:RunHistory`
+
+Whether the events of a run are kept after it ended: `Enabled` turns the history on, `Store` is `jsonl`
+(one `<run id>.jsonl` file per run and an `index.jsonl`) or `sqlite` (`runs.db`, WAL). `orkeon-host` and the
+`orkeon init` template turn it on; the library and `orkeon run` leave it off. A run is recorded with or without `--events`. Secrets are masked before they are written, and the folder holds what runs said and did: keep it out of a repository (`orkeon init` adds `.orkeon/` to the `.gitignore`). The folder is `./.orkeon/runs`, mounted
+at `/runs` as an internal mount next to the checkpoint state (`Path` is a virtual path under it); `orkeon runs list`,
+`show` and `tail` read it back. A purge applies `RetentionDays` and `MaxRuns` when a process first writes and when a run
+finishes, never when the history is only read; a run still in flight is never purged, a run whose process vanished (`orphaned`) is. `llm.delta` events stay on the stdout stream and are kept in the
+history only with `IncludeDeltas`.
+
+<!-- settings:Orkeon:RunHistory -->
+**Read by**: `orkeon`, `orkeon-host`.
+
+| Key | Type | Default | Values | Meaning |
+|---|---|---|---|---|
+| `Enabled` | boolean | `false` |  | Whether the history is recorded. Off in the library, on in `orkeon-host` and the `orkeon init` template. |
+| `IncludeDeltas` | boolean | `false` |  | Whether `llm.delta` events (token by token, verbose) are kept in the history. They always stay on the stdout stream. |
+| `MaxRuns` | integer | `1000` |  | At most this many runs are kept, the oldest purged first; 0 keeps them all. |
+| `Path` | string | `"/runs"` |  | A virtual path (it starts with '/'), under the `/runs` mount; the Sqlite file is `runs.db` inside it. |
+| `RetentionDays` | integer | `30` |  | Runs older than this many days are purged, at start and when a run finishes; 0 keeps them for ever. |
+| `Store` | enum | `"Jsonl"` | `Jsonl`, `Sqlite` | The store: `jsonl` (default) or `sqlite`. |
 <!-- /settings -->
 
 ## Scripts and console

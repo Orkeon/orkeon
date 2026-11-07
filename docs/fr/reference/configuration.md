@@ -197,12 +197,12 @@ qu'elle accepte quand leur liste est fermée, et son sens.
 | [Fichiers et bac à sable](#fichiers-et-bac-à-sable) | [`Orkeon:CodeSandbox`](#orkeoncodesandbox), [`Orkeon:CodeSandbox:Docker`](#orkeoncodesandboxdocker), [`Orkeon:FileSystem`](#orkeonfilesystem), [`Orkeon:Sandbox`](#orkeonsandbox), [`PathSecurity`](#pathsecurity) | 33 |
 | [Sécurité](#sécurité) | [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:Guardian`](#orkeonguardian), [`Orkeon:Security:PermissionGate`](#orkeonsecuritypermissiongate), [`Secrets`](#secrets), [`Security:Audit`](#securityaudit), [`Security:Prompt`](#securityprompt), [`Security:ToolResults`](#securitytoolresults), [`Security:Url`](#securityurl), [`Security:Vault`](#securityvault) | 32 |
 | [Outils](#outils) | [`BRAVE_API_KEY`](#brave_api_key), [`MCP`](#mcp), [`MCP:Server`](#mcpserver), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Tools:Drive`](#orkeontoolsdrive), [`Orkeon:Tools:Email`](#orkeontoolsemail), [`Orkeon:Tools:Firefox`](#orkeontoolsfirefox), [`Orkeon:Tools:GitHub`](#orkeontoolsgithub), [`Orkeon:Tools:ResultLimits`](#orkeontoolsresultlimits), [`Orkeon:Tools:Shell`](#orkeontoolsshell), [`Plugins`](#plugins), [`RaggableTree`](#raggabletree) | 98 |
-| [Orchestration et persistance](#orchestration-et-persistance) | [`Orkeon:Checkpointing`](#orkeoncheckpointing), [`Orkeon:Consensus`](#orkeonconsensus), [`Orkeon:CrewFactory`](#orkeoncrewfactory), [`Orkeon:ExecutionState:Persistence`](#orkeonexecutionstatepersistence) | 19 |
+| [Orchestration et persistance](#orchestration-et-persistance) | [`Orkeon:Checkpointing`](#orkeoncheckpointing), [`Orkeon:Consensus`](#orkeonconsensus), [`Orkeon:CrewFactory`](#orkeoncrewfactory), [`Orkeon:ExecutionState:Persistence`](#orkeonexecutionstatepersistence), [`Orkeon:RunHistory`](#orkeonrunhistory) | 25 |
 | [Scripts et console](#scripts-et-console) | [`Orkeon:Cli:ConsoleStreaming`](#orkeoncliconsolestreaming), [`Orkeon:Cli:Memory`](#orkeonclimemory), [`Orkeon:Cli:ScriptCommands`](#orkeoncliscriptcommands), [`Orkeon:Cli:ScriptHost`](#orkeoncliscripthost), [`Orkeon:Cli:Session`](#orkeonclisession), [`Orkeon:Cli:Tui`](#orkeonclitui), [`Orkeon:Scripting:AgentInstances`](#orkeonscriptingagentinstances), [`Orkeon:Scripting:AgentMemory`](#orkeonscriptingagentmemory), [`Orkeon:Scripting:Limits`](#orkeonscriptinglimits), [`Orkeon:Scripting:Toolchain`](#orkeonscriptingtoolchain) | 32 |
 | [Hôte de service et A2A](#hôte-de-service-et-a2a) | [`A2A`](#a2a), [`A2A:Security`](#a2asecurity), [`A2A:Security:AzureAD`](#a2asecurityazuread), [`A2A:Security:Oidc`](#a2asecurityoidc), [`Orkeon:Host`](#orkeonhost), [`Orkeon:Host:Discord`](#orkeonhostdiscord) | 46 |
 | [Observabilité](#observabilité) | [`Logging`](#logging), [`Orkeon:Monitoring`](#orkeonmonitoring), [`Telemetry`](#telemetry) | 8 |
 
-79 sections, 478 clés. Lues par aucun binaire livré, seulement par un hôte écrit en C# (8) : [`Evaluation`](#evaluation), [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:CognitiveMemory`](#orkeoncognitivememory), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Monitoring`](#orkeonmonitoring).
+80 sections, 484 clés. Lues par aucun binaire livré, seulement par un hôte écrit en C# (8) : [`Evaluation`](#evaluation), [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:CognitiveMemory`](#orkeoncognitivememory), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Monitoring`](#orkeonmonitoring).
 <!-- /settings-index -->
 
 Lire un tableau :
@@ -1934,6 +1934,29 @@ sous `./.orkeon/state`, monté en `/state` comme montage interne (`Path` est un 
 | `Path` | chaîne | — |  | Le chemin virtuel du dossier (Json) ou du fichier (Sqlite) où le magasin écrit, sous le montage `/state`. Null : `/state/checkpoints` ou `/state/checkpoints.db`. |
 | `SchemaName` | chaîne | `"orkeon"` |  | Le nom du schéma PostgreSQL (défaut : "orkeon"). |
 | `Store` | énumération | `"Memory"` | `Memory`, `Json`, `Sqlite`, `Postgres` | Le magasin (défaut : `Memory`). |
+<!-- /settings -->
+
+### `Orkeon:RunHistory`
+
+Si les événements d'un run sont gardés après sa fin : `Enabled` active l'historique, `Store` vaut `jsonl`
+(un fichier `<run id>.jsonl` par run et un `index.jsonl`) ou `sqlite` (`runs.db`, WAL). `orkeon-host` et le gabarit de
+`orkeon init` l'activent ; la bibliothèque et `orkeon run` le laissent éteint. Un run est enregistré avec ou sans `--events`. Les secrets sont masqués avant l'écriture, et le dossier garde ce que les runs ont dit et fait : à tenir hors d'un dépôt (`orkeon init` ajoute `.orkeon/` au `.gitignore`). Le dossier est `./.orkeon/runs`, monté
+en `/runs` comme montage interne à côté de l'état des checkpoints (`Path` est un chemin virtuel dessous) ; `orkeon runs
+list`, `show` et `tail` le relisent. Une purge applique `RetentionDays` et `MaxRuns` quand un processus écrit pour la première fois et à la fin
+d'un run, jamais quand l'historique est seulement lu ; un run en cours n'est jamais purgé, un run dont le processus a disparu (`orphaned`) l'est. Les événements `llm.delta` restent sur le flux stdout et ne sont gardés
+dans l'historique qu'avec `IncludeDeltas`.
+
+<!-- settings:Orkeon:RunHistory -->
+**Lue par** : `orkeon`, `orkeon-host`.
+
+| Clé | Type | Défaut | Valeurs | Sens |
+|---|---|---|---|---|
+| `Enabled` | booléen | `false` |  | Si l'historique est enregistré. Éteint dans la bibliothèque, allumé dans `orkeon-host` et le gabarit de `orkeon init`. |
+| `IncludeDeltas` | booléen | `false` |  | Si les événements `llm.delta` (jeton par jeton, verbeux) sont gardés dans l'historique. Ils restent toujours sur le flux stdout. |
+| `MaxRuns` | entier | `1000` |  | Au plus ce nombre de runs sont gardés, les plus anciens purgés d'abord ; 0 les garde tous. |
+| `Path` | chaîne | `"/runs"` |  | Un chemin virtuel (il commence par « / »), sous le montage `/runs` ; le fichier Sqlite est `runs.db` dedans. |
+| `RetentionDays` | entier | `30` |  | Les runs plus vieux que ce nombre de jours sont purgés, au démarrage et à la fin d'un run ; 0 les garde pour toujours. |
+| `Store` | énumération | `"Jsonl"` | `Jsonl`, `Sqlite` | Le magasin : `jsonl` (défaut) ou `sqlite`. |
 <!-- /settings -->
 
 ## Scripts et console

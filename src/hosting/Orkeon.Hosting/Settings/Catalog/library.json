@@ -417,6 +417,12 @@
       "description": "Options controlling durable persistence of crew execution states (`ScopedCrewExecutionStateManager` → `IStateStore`)."
     },
     {
+      "path": "Orkeon:RunHistory",
+      "category": "orchestration-and-persistence",
+      "hosts": [],
+      "description": "The `Orkeon:RunHistory` section: whether the events of a run are kept after it ended, and where."
+    },
+    {
       "path": "Orkeon:Cli:ConsoleStreaming",
       "category": "scripts-and-console",
       "hosts": [],
@@ -3305,6 +3311,52 @@
       "type": "boolean",
       "default": false,
       "description": "Enables durable persistence of execution states. Default: `false` (in-memory only, identical to the historical behavior)."
+    },
+    {
+      "path": "Orkeon:RunHistory:Enabled",
+      "section": "Orkeon:RunHistory",
+      "type": "boolean",
+      "default": false,
+      "description": "Whether the history is recorded. Off in the library, on in `orkeon-host` and the `orkeon init` template."
+    },
+    {
+      "path": "Orkeon:RunHistory:IncludeDeltas",
+      "section": "Orkeon:RunHistory",
+      "type": "boolean",
+      "default": false,
+      "description": "Whether `llm.delta` events (token by token, verbose) are kept in the history. They always stay on the stdout stream."
+    },
+    {
+      "path": "Orkeon:RunHistory:MaxRuns",
+      "section": "Orkeon:RunHistory",
+      "type": "integer",
+      "default": 1000,
+      "description": "At most this many runs are kept, the oldest purged first; 0 keeps them all."
+    },
+    {
+      "path": "Orkeon:RunHistory:Path",
+      "section": "Orkeon:RunHistory",
+      "type": "string",
+      "default": "/runs",
+      "description": "A virtual path (it starts with '/'), under the `/runs` mount; the Sqlite file is `runs.db` inside it."
+    },
+    {
+      "path": "Orkeon:RunHistory:RetentionDays",
+      "section": "Orkeon:RunHistory",
+      "type": "integer",
+      "default": 30,
+      "description": "Runs older than this many days are purged, at start and when a run finishes; 0 keeps them for ever."
+    },
+    {
+      "path": "Orkeon:RunHistory:Store",
+      "section": "Orkeon:RunHistory",
+      "type": "enum",
+      "default": "Jsonl",
+      "values": [
+        "Jsonl",
+        "Sqlite"
+      ],
+      "description": "The store: `jsonl` (default) or `sqlite`."
     },
     {
       "path": "Orkeon:Cli:ConsoleStreaming:Enabled",

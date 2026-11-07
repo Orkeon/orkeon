@@ -667,3 +667,12 @@ verify:
 2. that each `AddOrkeonXxx()` produces a graph that is **resolvable** on its own (with
    logging and, where applicable, an `IConfiguration`);
 3. that the opt-ins **compose** with the core (`TryAdd` semantics, no duplicates).
+
+## Run history: `Orkeon:RunHistory`
+
+- **Shipped binaries**: `orkeon run`, `orkeon-host` and `orkeon runs` read `Orkeon:RunHistory`. It is **off in the library and
+  in `orkeon run`**, **on in `orkeon-host`** and in the settings `orkeon init` writes. `Enabled=true` keeps the events of every
+  run after it ended, with `Store` `jsonl` (default) or `sqlite`, under `./.orkeon/runs` mounted at `/runs` as an internal
+  mount; `orkeon runs list|show|tail` reads them back. A run is recorded with or without `--events` (without it, nothing is written to stdout). `orkeon-repl` does not publish run events. What is stored, and masked, is in [`orkeon runs`](./cli.md#orkeon-runs); the `orkeon init` template turns the history on and adds `.orkeon/` to the `.gitignore` of the current folder.
+- **A host written in C#** builds a `RunEventPublisher` over `JsonLinesFileRunEventSink` or `SqliteRunEventSink` (experimental
+  `ORKEXP007`, see [experimental APIs](./experimental-apis.md)) and reads back through `IRunHistoryReader`.

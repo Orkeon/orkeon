@@ -40,7 +40,7 @@ public sealed class CommandLineRefusalTests
         "run", "quickstart", "init", "doctor", "llm probe", "llm models", "rag ingest", "rag search", "rag eval",
         "email accounts", "email login", "email logout", "email check",
         "drive accounts", "drive login", "drive logout", "drive check",
-        "usecases list", "usecases show", "usecases export", "mcp serve",
+        "usecases list", "usecases show", "usecases export", "mcp serve", "runs list", "runs show",
     ];
 
     public static TheoryData<string> Rows { get; } = new(RowNames);
@@ -95,6 +95,8 @@ public sealed class CommandLineRefusalTests
             "usecases show" => ["usecases", "show", "03-email-pipeline", Extra],
             "usecases export" => ["usecases", "export", "01-research-assistant", "--to", target, Extra],
             "mcp serve" => ["mcp", "serve", "-s", settings, Extra],
+            "runs list" => ["runs", "list", "-s", settings, Extra],
+            "runs show" => ["runs", "show", "r1", "-s", settings, Extra],
             _ => throw new InvalidOperationException(row),
         };
         using var console = new TestConsole(stdin: string.Empty);

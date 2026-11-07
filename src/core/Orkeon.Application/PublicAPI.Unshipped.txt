@@ -702,3 +702,152 @@ Orkeon.Application.Interfaces.Services.TaskResult<TOutput>.TokensUsed.get -> int
 Orkeon.Application.Interfaces.Services.TaskResult<TOutput>.TokensUsed.init -> void
 Orkeon.Application.Interfaces.Ports.ILlmFallbackObserver
 Orkeon.Application.Interfaces.Ports.ILlmFallbackObserver.FallbackTaken(string! profile, string! fromProfile, string! toProfile, string! reason) -> void
+[ORKEXP007]Orkeon.Application.Runs.IRunHistoryReader
+[ORKEXP007]Orkeon.Application.Runs.IRunEventSink
+[ORKEXP007]Orkeon.Application.Runs.RunQuery
+[ORKEXP007]override Orkeon.Application.Runs.RunQuery.ToString() -> string!
+[ORKEXP007]static Orkeon.Application.Runs.RunQuery.operator !=(Orkeon.Application.Runs.RunQuery? left, Orkeon.Application.Runs.RunQuery? right) -> bool
+[ORKEXP007]static Orkeon.Application.Runs.RunQuery.operator ==(Orkeon.Application.Runs.RunQuery? left, Orkeon.Application.Runs.RunQuery? right) -> bool
+[ORKEXP007]override Orkeon.Application.Runs.RunQuery.GetHashCode() -> int
+[ORKEXP007]override Orkeon.Application.Runs.RunQuery.Equals(object? obj) -> bool
+[ORKEXP007]Orkeon.Application.Runs.RunQuery.Equals(Orkeon.Application.Runs.RunQuery? other) -> bool
+[ORKEXP007]Orkeon.Application.Runs.RunQuery.<Clone>$() -> Orkeon.Application.Runs.RunQuery!
+[ORKEXP007]Orkeon.Application.Runs.RunQuery.RunQuery() -> void
+[ORKEXP007]Orkeon.Application.Runs.RunEvent
+[ORKEXP007]override Orkeon.Application.Runs.RunEvent.ToString() -> string!
+[ORKEXP007]static Orkeon.Application.Runs.RunEvent.operator !=(Orkeon.Application.Runs.RunEvent? left, Orkeon.Application.Runs.RunEvent? right) -> bool
+[ORKEXP007]static Orkeon.Application.Runs.RunEvent.operator ==(Orkeon.Application.Runs.RunEvent? left, Orkeon.Application.Runs.RunEvent? right) -> bool
+[ORKEXP007]override Orkeon.Application.Runs.RunEvent.GetHashCode() -> int
+[ORKEXP007]override Orkeon.Application.Runs.RunEvent.Equals(object? obj) -> bool
+[ORKEXP007]Orkeon.Application.Runs.RunEvent.Equals(Orkeon.Application.Runs.RunEvent? other) -> bool
+[ORKEXP007]Orkeon.Application.Runs.RunEvent.<Clone>$() -> Orkeon.Application.Runs.RunEvent!
+[ORKEXP007]Orkeon.Application.Runs.RunEvent.RunEvent() -> void
+[ORKEXP007]Orkeon.Application.Runs.RunEventScope
+[ORKEXP007]override Orkeon.Application.Runs.RunEventScope.ToString() -> string!
+[ORKEXP007]static Orkeon.Application.Runs.RunEventScope.operator !=(Orkeon.Application.Runs.RunEventScope? left, Orkeon.Application.Runs.RunEventScope? right) -> bool
+[ORKEXP007]static Orkeon.Application.Runs.RunEventScope.operator ==(Orkeon.Application.Runs.RunEventScope? left, Orkeon.Application.Runs.RunEventScope? right) -> bool
+[ORKEXP007]override Orkeon.Application.Runs.RunEventScope.GetHashCode() -> int
+[ORKEXP007]override Orkeon.Application.Runs.RunEventScope.Equals(object? obj) -> bool
+[ORKEXP007]Orkeon.Application.Runs.RunEventScope.Equals(Orkeon.Application.Runs.RunEventScope? other) -> bool
+[ORKEXP007]Orkeon.Application.Runs.RunEventScope.<Clone>$() -> Orkeon.Application.Runs.RunEventScope!
+[ORKEXP007]Orkeon.Application.Runs.RunEventScope.RunEventScope() -> void
+[ORKEXP007]Orkeon.Application.Runs.RunEventSinkExtensions
+[ORKEXP007]Orkeon.Application.Runs.RunStatus
+[ORKEXP007]Orkeon.Application.Runs.RunStatus.Running = 0 -> Orkeon.Application.Runs.RunStatus
+[ORKEXP007]Orkeon.Application.Runs.RunStatus.Failed = 2 -> Orkeon.Application.Runs.RunStatus
+[ORKEXP007]Orkeon.Application.Runs.RunHistoryStore
+[ORKEXP007]Orkeon.Application.Runs.RunHistoryStore.Jsonl = 0 -> Orkeon.Application.Runs.RunHistoryStore
+[ORKEXP007]Orkeon.Application.Runs.RunHistoryStore.Sqlite = 1 -> Orkeon.Application.Runs.RunHistoryStore
+[ORKEXP007]Orkeon.Application.Runs.RunStatus.Succeeded = 1 -> Orkeon.Application.Runs.RunStatus
+[ORKEXP007]const Orkeon.Application.Runs.RunEventWire.ProtocolVersion = 2 -> int
+[ORKEXP007]Orkeon.Application.Runs.RunHistoryOptions
+[ORKEXP007]Orkeon.Application.Runs.RunHistoryOptions.RunHistoryOptions() -> void
+[ORKEXP007]const Orkeon.Application.Runs.RunHistoryOptions.DefaultPath = "/runs" -> string!
+[ORKEXP007]Orkeon.Application.Runs.RunHistoryRetention
+[ORKEXP007]Orkeon.Application.Runs.RunEventWire
+[ORKEXP007]const Orkeon.Application.Runs.RunHistoryOptions.SectionName = "Orkeon:RunHistory" -> string!
+[ORKEXP007]Orkeon.Application.Runs.RunSummary
+[ORKEXP007]override Orkeon.Application.Runs.RunSummary.ToString() -> string!
+[ORKEXP007]static Orkeon.Application.Runs.RunSummary.operator !=(Orkeon.Application.Runs.RunSummary? left, Orkeon.Application.Runs.RunSummary? right) -> bool
+[ORKEXP007]static Orkeon.Application.Runs.RunSummary.operator ==(Orkeon.Application.Runs.RunSummary? left, Orkeon.Application.Runs.RunSummary? right) -> bool
+[ORKEXP007]override Orkeon.Application.Runs.RunSummary.GetHashCode() -> int
+[ORKEXP007]override Orkeon.Application.Runs.RunSummary.Equals(object? obj) -> bool
+[ORKEXP007]Orkeon.Application.Runs.RunSummary.Equals(Orkeon.Application.Runs.RunSummary? other) -> bool
+[ORKEXP007]Orkeon.Application.Runs.RunSummary.<Clone>$() -> Orkeon.Application.Runs.RunSummary!
+[ORKEXP007]Orkeon.Application.Runs.RunSummary.RunSummary() -> void
+[ORKEXP007]static Orkeon.Application.Runs.RunHistoryRetention.Select(System.Collections.Generic.IReadOnlyCollection<Orkeon.Application.Runs.RunSummary!>! runs, Orkeon.Application.Runs.RunHistoryOptions! options, System.DateTimeOffset now) -> System.Collections.Generic.IReadOnlyList<string!>!
+[ORKEXP007]Orkeon.Application.Runs.RunHistoryOptions.Enabled.get -> bool
+[ORKEXP007]Orkeon.Application.Runs.RunHistoryOptions.Enabled.set -> void
+[ORKEXP007]Orkeon.Application.Runs.RunHistoryOptions.Store.get -> Orkeon.Application.Runs.RunHistoryStore
+[ORKEXP007]Orkeon.Application.Runs.RunHistoryOptions.Store.set -> void
+[ORKEXP007]Orkeon.Application.Runs.RunHistoryOptions.Path.get -> string!
+[ORKEXP007]Orkeon.Application.Runs.RunHistoryOptions.Path.set -> void
+[ORKEXP007]Orkeon.Application.Runs.RunHistoryOptions.RetentionDays.get -> int
+[ORKEXP007]Orkeon.Application.Runs.RunHistoryOptions.RetentionDays.set -> void
+[ORKEXP007]Orkeon.Application.Runs.RunHistoryOptions.MaxRuns.get -> int
+[ORKEXP007]Orkeon.Application.Runs.RunHistoryOptions.MaxRuns.set -> void
+[ORKEXP007]Orkeon.Application.Runs.RunHistoryOptions.IncludeDeltas.get -> bool
+[ORKEXP007]Orkeon.Application.Runs.RunHistoryOptions.IncludeDeltas.set -> void
+[ORKEXP007]static Orkeon.Application.Runs.RunEventWire.ToPayload(object? payload) -> System.Text.Json.Nodes.JsonObject?
+[ORKEXP007]static Orkeon.Application.Runs.RunEventWire.Serialize(Orkeon.Application.Runs.RunEvent! runEvent) -> string!
+[ORKEXP007]static Orkeon.Application.Runs.RunEventWire.TryParse(string! line, out Orkeon.Application.Runs.RunEvent? runEvent, string? runId = null) -> bool
+[ORKEXP007]static Orkeon.Application.Runs.RunEventSinkExtensions.Emit(this Orkeon.Application.Runs.IRunEventSink! sink, string! kind, object? payload = null) -> void
+[ORKEXP007]static Orkeon.Application.Runs.RunEventSinkExtensions.Emit(this Orkeon.Application.Runs.IRunEventSink! sink, string! kind, Orkeon.Application.Runs.RunEventScope! scope, object? payload = null) -> void
+[ORKEXP007]static Orkeon.Application.Runs.RunEventScope.None.get -> Orkeon.Application.Runs.RunEventScope!
+[ORKEXP007]Orkeon.Application.Runs.RunEventScope.CrewId.init -> void
+[ORKEXP007]Orkeon.Application.Runs.RunEventScope.AgentId.get -> string?
+[ORKEXP007]Orkeon.Application.Runs.RunEventScope.AgentId.init -> void
+[ORKEXP007]Orkeon.Application.Runs.RunEventScope.CorrelationId.get -> string?
+[ORKEXP007]Orkeon.Application.Runs.RunEventScope.CorrelationId.init -> void
+[ORKEXP007]Orkeon.Application.Runs.RunEventScope.CausationId.get -> string?
+[ORKEXP007]Orkeon.Application.Runs.RunEventScope.CausationId.init -> void
+[ORKEXP007]Orkeon.Application.Runs.RunEvent.RunId.get -> string?
+[ORKEXP007]Orkeon.Application.Runs.RunEventScope.CrewId.get -> string?
+[ORKEXP007]Orkeon.Application.Runs.RunEvent.RunId.init -> void
+[ORKEXP007]Orkeon.Application.Runs.RunEvent.Seq.init -> void
+[ORKEXP007]Orkeon.Application.Runs.RunEvent.Seq.get -> int
+[ORKEXP007]Orkeon.Application.Runs.RunEvent.Timestamp.get -> System.DateTimeOffset
+[ORKEXP007]Orkeon.Application.Runs.RunEvent.Timestamp.init -> void
+[ORKEXP007]Orkeon.Application.Runs.RunEvent.Kind.get -> string!
+[ORKEXP007]Orkeon.Application.Runs.RunEvent.Kind.init -> void
+[ORKEXP007]Orkeon.Application.Runs.RunEvent.CrewId.get -> string?
+[ORKEXP007]Orkeon.Application.Runs.RunEvent.CrewId.init -> void
+[ORKEXP007]Orkeon.Application.Runs.RunEvent.AgentId.get -> string?
+[ORKEXP007]Orkeon.Application.Runs.RunEvent.AgentId.init -> void
+[ORKEXP007]Orkeon.Application.Runs.RunEvent.CorrelationId.get -> string?
+[ORKEXP007]Orkeon.Application.Runs.RunEvent.CorrelationId.init -> void
+[ORKEXP007]Orkeon.Application.Runs.RunEvent.CausationId.get -> string?
+[ORKEXP007]Orkeon.Application.Runs.RunEvent.CausationId.init -> void
+[ORKEXP007]Orkeon.Application.Runs.RunEvent.Payload.get -> System.Text.Json.Nodes.JsonObject?
+[ORKEXP007]Orkeon.Application.Runs.RunSummary.RunId.get -> string!
+[ORKEXP007]Orkeon.Application.Runs.RunEvent.Payload.init -> void
+[ORKEXP007]Orkeon.Application.Runs.RunSummary.RunId.init -> void
+[ORKEXP007]Orkeon.Application.Runs.RunSummary.CrewKey.get -> string?
+[ORKEXP007]Orkeon.Application.Runs.RunSummary.Status.init -> void
+[ORKEXP007]Orkeon.Application.Runs.RunSummary.CrewKey.init -> void
+[ORKEXP007]Orkeon.Application.Runs.RunSummary.Status.get -> Orkeon.Application.Runs.RunStatus
+[ORKEXP007]Orkeon.Application.Runs.RunSummary.StartedAt.init -> void
+[ORKEXP007]Orkeon.Application.Runs.RunSummary.FinishedAt.get -> System.DateTimeOffset?
+[ORKEXP007]Orkeon.Application.Runs.RunSummary.FinishedAt.init -> void
+[ORKEXP007]Orkeon.Application.Runs.RunSummary.Error.get -> string?
+[ORKEXP007]Orkeon.Application.Runs.RunSummary.StartedAt.get -> System.DateTimeOffset
+[ORKEXP007]Orkeon.Application.Runs.RunSummary.Error.init -> void
+[ORKEXP007]Orkeon.Application.Runs.RunQuery.CrewKey.get -> string?
+[ORKEXP007]Orkeon.Application.Runs.RunQuery.CrewKey.init -> void
+[ORKEXP007]Orkeon.Application.Runs.RunQuery.Limit.get -> int
+[ORKEXP007]Orkeon.Application.Runs.RunQuery.Limit.init -> void
+[ORKEXP007]Orkeon.Application.Runs.IRunHistoryReader.GetAsync(string! runId, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Application.Runs.RunSummary?>!
+[ORKEXP007]Orkeon.Application.Runs.IRunHistoryReader.ListAsync(Orkeon.Application.Runs.RunQuery! query, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Orkeon.Application.Runs.RunSummary!>!>!
+[ORKEXP007]Orkeon.Application.Runs.IRunEventSink.WriteAsync(Orkeon.Application.Runs.RunEvent! runEvent, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+[ORKEXP007]Orkeon.Application.Runs.IRunHistoryReader.ReadEventsAsync(string! runId, int fromSeq = 1, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Orkeon.Application.Runs.RunEvent!>!>!
+[ORKEXP007]Orkeon.Application.Runs.RunStatus.Orphaned = 3 -> Orkeon.Application.Runs.RunStatus
+[ORKEXP007]Orkeon.Application.Runs.IRunProcessProbe
+[ORKEXP007]Orkeon.Application.Runs.RunProcessIdentity.Pid.get -> int
+[ORKEXP007]Orkeon.Application.Runs.RunProcessIdentity.Pid.init -> void
+[ORKEXP007]Orkeon.Application.Runs.RunProcessIdentity
+[ORKEXP007]Orkeon.Application.Runs.RunProcessIdentity.Host.get -> string!
+[ORKEXP007]override Orkeon.Application.Runs.RunProcessIdentity.ToString() -> string!
+[ORKEXP007]Orkeon.Application.Runs.RunProcessIdentity.StartedAt.get -> System.DateTimeOffset?
+[ORKEXP007]Orkeon.Application.Runs.RunProcessIdentity.Host.init -> void
+[ORKEXP007]static Orkeon.Application.Runs.RunProcessIdentity.operator !=(Orkeon.Application.Runs.RunProcessIdentity? left, Orkeon.Application.Runs.RunProcessIdentity? right) -> bool
+[ORKEXP007]Orkeon.Application.Runs.RunProcessIdentity.StartedAt.init -> void
+[ORKEXP007]static Orkeon.Application.Runs.RunProcessIdentity.operator ==(Orkeon.Application.Runs.RunProcessIdentity? left, Orkeon.Application.Runs.RunProcessIdentity? right) -> bool
+[ORKEXP007]override Orkeon.Application.Runs.RunProcessIdentity.GetHashCode() -> int
+[ORKEXP007]override Orkeon.Application.Runs.RunProcessIdentity.Equals(object? obj) -> bool
+[ORKEXP007]Orkeon.Application.Runs.RunProcessIdentity.Equals(Orkeon.Application.Runs.RunProcessIdentity? other) -> bool
+[ORKEXP007]Orkeon.Application.Runs.RunProcessIdentity.<Clone>$() -> Orkeon.Application.Runs.RunProcessIdentity!
+[ORKEXP007]Orkeon.Application.Runs.RunProcessIdentity.Deconstruct(out int Pid, out string! Host, out System.DateTimeOffset? StartedAt) -> void
+[ORKEXP007]Orkeon.Application.Runs.SystemRunProcessProbe
+[ORKEXP007]Orkeon.Application.Runs.SystemRunProcessProbe.SystemRunProcessProbe() -> void
+[ORKEXP007]Orkeon.Application.Runs.RunLiveness
+[ORKEXP007]Orkeon.Application.Runs.RunSummary.Pid.get -> int?
+[ORKEXP007]Orkeon.Application.Runs.RunSummary.Pid.init -> void
+[ORKEXP007]Orkeon.Application.Runs.RunSummary.Host.get -> string?
+[ORKEXP007]Orkeon.Application.Runs.RunSummary.Host.init -> void
+[ORKEXP007]Orkeon.Application.Runs.RunSummary.ProcessStartedAt.get -> System.DateTimeOffset?
+[ORKEXP007]Orkeon.Application.Runs.RunSummary.ProcessStartedAt.init -> void
+[ORKEXP007]static Orkeon.Application.Runs.RunLiveness.Apply(Orkeon.Application.Runs.RunSummary! summary, Orkeon.Application.Runs.IRunProcessProbe! probe, string! localHost) -> Orkeon.Application.Runs.RunSummary!
+[ORKEXP007]Orkeon.Application.Runs.SystemRunProcessProbe.IsAlive(int pid, System.DateTimeOffset? startedAt) -> bool
+[ORKEXP007]Orkeon.Application.Runs.RunProcessIdentity.RunProcessIdentity(int Pid, string! Host, System.DateTimeOffset? StartedAt) -> void
+[ORKEXP007]static Orkeon.Application.Runs.RunProcessIdentity.Current.get -> Orkeon.Application.Runs.RunProcessIdentity!
+[ORKEXP007]Orkeon.Application.Runs.IRunProcessProbe.IsAlive(int pid, System.DateTimeOffset? startedAt) -> bool

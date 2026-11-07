@@ -1,3 +1,4 @@
+using Orkeon.Application.Runs;
 using Orkeon.Application.Interfaces.Ports;
 using Orkeon.Domain.HumanInput;
 using Orkeon.Scripting.Cli.Events;
@@ -30,11 +31,11 @@ internal interface IAnswerChannel
 /// </summary>
 internal sealed class JsonLinesHumanInputProvider : IHumanInputProvider
 {
-    private readonly OrkeonEventWriter _events;
+    private readonly IRunEventSink _events;
     private readonly IAnswerChannel _answers;
 
     /// <summary>Builds the provider over the outbound stream and the inbound channel.</summary>
-    public JsonLinesHumanInputProvider(OrkeonEventWriter events, IAnswerChannel answers)
+    public JsonLinesHumanInputProvider(IRunEventSink events, IAnswerChannel answers)
     {
         _events = events ?? throw new ArgumentNullException(nameof(events));
         _answers = answers ?? throw new ArgumentNullException(nameof(answers));
@@ -109,7 +110,7 @@ internal sealed class JsonLinesHumanInputProvider : IHumanInputProvider
 
         _events.Emit(
             RunEventKinds.InputNeeded,
-            new OrkeonEventScope
+            new RunEventScope
             {
                 AgentId = string.IsNullOrEmpty(context.AgentRole) ? null : context.AgentRole,
                 CorrelationId = correlationId,

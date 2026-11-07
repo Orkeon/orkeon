@@ -65,6 +65,7 @@ public static class SettingsSections
         "Orkeon:Pinecone",
         "Orkeon:Rag",
         "Orkeon:Redis",
+        "Orkeon:RunHistory",
         "Orkeon:Sandbox",
         "Orkeon:Scripting",
         "Orkeon:Scripting:AgentInstances",

@@ -572,3 +572,15 @@ Orkeon.Infrastructure.Crew.Strategies.GraphProcessStrategy.GraphProcessStrategy(
 [ORKEXP004]Orkeon.Infrastructure.MCP.McpResourceReadResult.Contents.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Infrastructure.MCP.McpResourceContents!>!
 [ORKEXP004]Orkeon.Infrastructure.MCP.McpResourceReadResult.Contents.init -> void
 [ORKEXP004]Orkeon.Infrastructure.MCP.McpToolProvider.UnsubscribeResourceAsync(string! serverId, System.Uri! uri, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+[ORKEXP007]Orkeon.Infrastructure.Runs.SqliteRunEventSink
+[ORKEXP007]const Orkeon.Infrastructure.Runs.SqliteRunEventSink.DatabaseFile = "runs.db" -> string!
+[ORKEXP007]Orkeon.Infrastructure.Runs.SqliteRunEventSink.WriteAsync(Orkeon.Application.Runs.RunEvent! runEvent, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+[ORKEXP007]Orkeon.Infrastructure.Runs.SqliteRunEventSink.PurgeAsync(System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+[ORKEXP007]Orkeon.Infrastructure.Runs.SqliteRunEventSink.ListAsync(Orkeon.Application.Runs.RunQuery! query, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Orkeon.Application.Runs.RunSummary!>!>!
+[ORKEXP007]Orkeon.Infrastructure.Runs.SqliteRunEventSink.GetAsync(string! runId, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Application.Runs.RunSummary?>!
+[ORKEXP007]Orkeon.Infrastructure.Runs.SqliteRunEventSink.ReadEventsAsync(string! runId, int fromSeq = 1, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Orkeon.Application.Runs.RunEvent!>!>!
+[ORKEXP007]Orkeon.Infrastructure.Runs.SqliteRunEventSink.Dispose() -> void
+[ORKEXP007]Orkeon.Infrastructure.Runs.RedactingRunEventSink
+[ORKEXP007]Orkeon.Infrastructure.Runs.SqliteRunEventSink.SqliteRunEventSink(Orkeon.Domain.FileSystem.IFileSystemService! fileSystem, Orkeon.Application.Runs.RunHistoryOptions! options, System.TimeProvider! time, Orkeon.Application.Runs.RunProcessIdentity? identity = null, Orkeon.Application.Runs.IRunProcessProbe? probe = null) -> void
+[ORKEXP007]Orkeon.Infrastructure.Runs.RedactingRunEventSink.RedactingRunEventSink(Orkeon.Application.Runs.IRunEventSink! inner) -> void
+[ORKEXP007]Orkeon.Infrastructure.Runs.RedactingRunEventSink.WriteAsync(Orkeon.Application.Runs.RunEvent! runEvent, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!

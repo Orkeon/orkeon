@@ -155,3 +155,28 @@ Two rules worth building against. **Ignore a `kind` you do not know** — a newe
 - `Orkeon.Studio.Core.Run` — `RunClient` and `RunProgressModel`, a reference client with no dependency on Infrastructure or any LLM. `RunClient` is the shape to copy for a peer that takes the seat headlessly: subscribe, post, and reply.
 
 The same envelope carries [the Atelier](../reference/cli.md#orkeon-forge)'s own stream and the [`orkeon usecases`](../reference/cli.md#orkeon-usecases) session (`usecases search --events jsonl`, whose kinds `UseCaseEventKinds` declares beside `RunEventKinds`), so a client that reads one reads all three — and the sign-in of an e-mail account, [`orkeon email login --events jsonl`](../reference/cli.md#orkeon-email), whose five kinds `EmailEventKinds` declares.
+
+## 8. Where the events go: sinks and the run history
+
+The observers of a run (`RunEventObserver`, `ObservedTool`, `RunEventsLlmCallObserver`, in `Orkeon.Hosting`) write to one
+`IRunEventSink` (`Orkeon.Application.Runs`, experimental `ORKEXP007`), a `RunEventPublisher`. The publisher stamps each event
+once (`seq`, `ts`, the run identity) and hands it to every destination, so every destination holds the same lines:
+
+- **`StdoutJsonLinesRunEventSink`** (the CLI): the stream of `orkeon run --events jsonl`. It is unchanged byte for byte: a
+  golden test (`StdoutEventContractGoldenTests`) pins it. The other streaming verbs (`forge`, `email`, `drive`, `usecases`)
+  keep their own writer, which shares the envelope code and the model-call observer.
+- **`JsonLinesFileRunEventSink`** (`Orkeon.Hosting`): `<run id>.jsonl` and an `index.jsonl` under the `/runs` mount, through the
+  VFS, one serialized writer per run.
+- **`SqliteRunEventSink`** (`Orkeon.Infrastructure`): tables `runs` and `run_events`, WAL, in `runs.db` under the same mount.
+
+A destination that fails is logged and skipped: observing a run never changes its outcome. The history is the section
+[`Orkeon:RunHistory`](../reference/configuration.md#orkeonrunhistory) (off in the library, on in `orkeon-host` and the
+`orkeon init` template). Its settings are read when the host is built, after `run.started` was written, so the publisher keeps
+the first events and replays them to the history when it joins. `llm.delta` stays on the stdout stream and is kept only with
+`IncludeDeltas`. A purge applies `RetentionDays` and `MaxRuns` when a process first writes and when a run finishes, never when the history is only read. Several processes write one folder, so the JSONL index is only ever appended to (a purge appends a tombstone line instead of rewriting it), a run file the index lost is still listed, summarised from its own events, and the file system the store writes through is its own, because the closing event of `orkeon run` is written after its host is disposed. Secrets are masked (`RedactingRunEventSink`, the logs' own masking) before a file or Sqlite sink writes; stdout is not. A run resumed under its own id continues the sequence the history holds for it (the second `run.started` carries `resumed: true`), so `seq` stays strictly increasing within a run id. `run.started` is recorded with the pid and host of the writing process: a run still `running` whose process is gone from the same host is read as `orphaned`.
+
+`IRunHistoryReader` (`ListAsync`, `GetAsync`, `ReadEventsAsync`) reads a run back; [`orkeon runs`](../reference/cli.md#orkeon-runs)
+prints it as the lines of the stream. `orkeon-host` records each hosted run under the run's `ExecutionId` and writes the
+daemon's own run id into `run.started` as `hostRunId`; the task events and the closing event are recorded, the `tool.*`,
+`llm.call.*` and `cost.updated` events of a hosted run are not (see [limitations](../reference/limitations.md)). A reader
+ignores a `kind` it does not know, and the history stores it untouched.

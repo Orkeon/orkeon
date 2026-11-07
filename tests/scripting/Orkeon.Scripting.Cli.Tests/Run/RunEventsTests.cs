@@ -1,3 +1,4 @@
+using Orkeon.Hosting.Runs;
 using System.Collections.Immutable;
 using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
@@ -448,7 +449,7 @@ public sealed class RunEventsTests : IDisposable
         using var scratch = new ScriptScratch();
         var crew = scratch.WriteScript("crew.yaml", TwoTaskCrew);
         using var console = new TestConsole(stdin: string.Empty);
-        await using var observed = new ObservedRunContext(Writer(), stream: false, clientName: "studio", console.Input);
+        await using var observed = new ObservedRunContext(RunEventStreams.Stdout(_output, null, new FakeRunTimeProvider()), stream: false, clientName: "studio", console.Input);
 
         var exit = await RunnerExecution.RunOneShotAsync(
             RunCommand.ToRunnerOptions(console, new RunCommandOptions { ScriptPath = crew, AllowExternalMounts = true, Events = "jsonl" }),

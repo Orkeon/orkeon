@@ -1,3 +1,4 @@
+using Orkeon.Application.Runs;
 using System.Collections.Concurrent;
 using System.Collections.Immutable;
 using System.Text.Json;
@@ -46,7 +47,7 @@ internal static class HubCommandKinds
 internal sealed class JsonLinesEventHubBridge : IEventHub, IAsyncDisposable
 {
     private readonly IEventHub _inner;
-    private readonly OrkeonEventWriter _events;
+    private readonly IRunEventSink _events;
     private readonly string _clientName;
     private readonly MailboxAddress _clientMailbox;
     private readonly IEventHubCallerContext? _callerContext;
@@ -68,7 +69,7 @@ internal sealed class JsonLinesEventHubBridge : IEventHub, IAsyncDisposable
     /// *who* posted — without it the peer knows only that somebody did.
     /// </param>
     public JsonLinesEventHubBridge(
-        IEventHub inner, OrkeonEventWriter events, string clientName, IEventHubCallerContext? callerContext = null)
+        IEventHub inner, IRunEventSink events, string clientName, IEventHubCallerContext? callerContext = null)
     {
         _inner = inner ?? throw new ArgumentNullException(nameof(inner));
         _events = events ?? throw new ArgumentNullException(nameof(events));
@@ -373,8 +374,8 @@ internal sealed class JsonLinesEventHubBridge : IEventHub, IAsyncDisposable
         ImmutableDictionary<string, string>? metadata = null)
     {
         var scope = correlationId is null
-            ? OrkeonEventScope.None
-            : new OrkeonEventScope { CorrelationId = correlationId };
+            ? RunEventScope.None
+            : new RunEventScope { CorrelationId = correlationId };
 
         // Null entries are omitted by the writer — the contract's "absent key is omitted"
         // holds for hub.message like for every other kind.

@@ -1,16 +1,19 @@
+using System.Diagnostics.CodeAnalysis;
 using Orkeon.Application.Interfaces.Ports;
 using Orkeon.Domain.SharedKernel.ValueObjects;
-using Orkeon.Scripting.Cli.Events;
+using Orkeon.Application.Runs;
+using Orkeon.Constants.Protocol;
 
-namespace Orkeon.Scripting.Cli.Commands.Run;
+namespace Orkeon.Hosting.Runs;
 
 /// <summary>Writes the model calls on the run protocol (llm.call.*).</summary>
 internal sealed class RunEventsLlmCallObserver : ILlmCallObserver
 {
-    private readonly OrkeonEventWriter _events;
+    private readonly IRunEventSink _events;
     private readonly TimeProvider _time;
 
-    public RunEventsLlmCallObserver(OrkeonEventWriter events, TimeProvider time)
+    /// <summary>Writes the call events onto <paramref name="events"/>, throttling progress by <paramref name="time"/>.</summary>
+    public RunEventsLlmCallObserver(IRunEventSink events, TimeProvider time)
     {
         _events = events;
         _time = time;

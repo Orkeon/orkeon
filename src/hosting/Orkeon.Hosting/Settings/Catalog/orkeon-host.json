@@ -42,6 +42,7 @@
     "Orkeon:Rag:Retrieval:Hybrid",
     "Orkeon:Rag:WebFallback",
     "Orkeon:Redis",
+    "Orkeon:RunHistory",
     "Orkeon:Sandbox",
     "Orkeon:Scripting:AgentMemory",
     "Orkeon:Scripting:Limits",

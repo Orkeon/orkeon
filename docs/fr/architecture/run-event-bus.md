@@ -155,3 +155,28 @@ Deux règles à respecter en construisant votre client. **Ignorez un `kind` que 
 - `Orkeon.Studio.Core.Run` — `RunClient` et `RunProgressModel`, un client de référence, sans aucune dépendance à Infrastructure ni à un LLM. `RunClient` est la forme à copier pour un pair qui prend le siège sans écran : subscribe, post, reply.
 
 La même enveloppe porte le flux de [l'Atelier](../reference/cli.md#orkeon-forge) et la session [`orkeon usecases`](../reference/cli.md#orkeon-usecases) (`usecases search --events jsonl`, dont `UseCaseEventKinds` déclare les kinds à côté de `RunEventKinds`), donc un client qui lit l'un lit les trois — et la connexion d'un compte e-mail, [`orkeon email login --events jsonl`](../reference/cli.md#orkeon-email), dont `EmailEventKinds` déclare les cinq kinds.
+
+## 8. Où vont les événements : les sinks et l'historique de run
+
+Les observateurs d'un run (`RunEventObserver`, `ObservedTool`, `RunEventsLlmCallObserver`, dans `Orkeon.Hosting`) écrivent dans
+un seul `IRunEventSink` (`Orkeon.Application.Runs`, expérimental `ORKEXP007`), un `RunEventPublisher`. Le publisher estampille
+chaque événement une fois (`seq`, `ts`, l'identité du run) et le remet à chaque destination : toutes tiennent les mêmes lignes.
+
+- **`StdoutJsonLinesRunEventSink`** (la CLI) : le flux de `orkeon run --events jsonl`. Il est inchangé à l'octet près : un
+  test golden (`StdoutEventContractGoldenTests`) le fige. Les autres verbes qui streament (`forge`, `email`, `drive`,
+  `usecases`) gardent leur propre writer, qui partage le code de l'enveloppe et l'observateur d'appels de modèle.
+- **`JsonLinesFileRunEventSink`** (`Orkeon.Hosting`) : `<run id>.jsonl` et un `index.jsonl` sous le montage `/runs`, par le VFS,
+  un writer sérialisé par run.
+- **`SqliteRunEventSink`** (`Orkeon.Infrastructure`) : tables `runs` et `run_events`, WAL, dans `runs.db` sous le même montage.
+
+Une destination qui échoue est journalisée et sautée : observer un run ne change jamais son issue. L'historique est la section
+[`Orkeon:RunHistory`](../reference/configuration.md#orkeonrunhistory) (éteinte dans la bibliothèque, allumée dans `orkeon-host`
+et le gabarit de `orkeon init`). Ses réglages sont lus à la construction de l'hôte, après l'écriture de `run.started` : le
+publisher garde donc les premiers événements et les rejoue à l'historique quand il le rejoint. `llm.delta` reste sur le flux
+stdout et n'est gardé qu'avec `IncludeDeltas`. Une purge applique `RetentionDays` et `MaxRuns` quand un processus écrit pour la première fois et à la fin d'un run, jamais quand l'historique est seulement lu. Plusieurs processus écrivent un même dossier : l'index JSONL n'est donc qu'augmenté (une purge ajoute une ligne de pierre tombale au lieu de le réécrire), un fichier de run que l'index a perdu est quand même listé, résumé d'après ses propres événements, et le système de fichiers par lequel le magasin écrit est le sien, car l'événement de clôture d'`orkeon run` s'écrit après la destruction de son hôte. Les secrets sont masqués (`RedactingRunEventSink`, le masquage des logs) avant qu'un sink fichier ou Sqlite écrive ; stdout ne l'est pas. Un run repris sous son propre id poursuit la séquence que l'historique tient pour lui (le second `run.started` porte `resumed: true`), de sorte que `seq` reste strictement croissant au sein d'un id de run. `run.started` est enregistré avec le pid et l'hôte du processus qui écrit : un run encore `running` dont le processus a disparu du même hôte est lu `orphaned`.
+
+`IRunHistoryReader` (`ListAsync`, `GetAsync`, `ReadEventsAsync`) relit un run ; [`orkeon runs`](../reference/cli.md#orkeon-runs)
+l'affiche comme les lignes du flux. `orkeon-host` enregistre chaque run hébergé sous son `ExecutionId` et écrit l'id de run propre
+au démon dans `run.started` sous `hostRunId` ; les événements de tâche et l'événement de clôture sont enregistrés, pas les
+événements `tool.*`, `llm.call.*` et `cost.updated` d'un run hébergé (voir les [limites](../reference/limitations.md)). Un lecteur
+ignore un `kind` qu'il ne connaît pas, et l'historique le garde intact.

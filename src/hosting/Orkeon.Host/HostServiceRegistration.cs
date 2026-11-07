@@ -81,8 +81,12 @@ internal static class HostServiceRegistration
         // and CrewRunner wires its callback to the conversation watching the run. This is
         // what makes "reports progress as tasks finish" true rather than documented.
         services.AddScoped<RunProgressHook>();
+
+        // The run history (FWK-08): a recorded run puts the strategies' task events in front of the progress hook
+        // (which keeps receiving every callback); an unrecorded run gets the progress hook alone.
+        services.AddScoped<HostRunRecording>();
         services.AddScoped<Orkeon.Application.Crew.ICrewExecutionHook>(
-            sp => sp.GetRequiredService<RunProgressHook>());
+            sp => sp.GetRequiredService<HostRunRecording>().Hook(sp.GetRequiredService<RunProgressHook>()));
 
         services.AddSingleton(Options.Create(
             HostStartup.ReadSection<Gateway.DiscordChannelOptions>(configuration, Gateway.DiscordChannelOptions.SectionName)));

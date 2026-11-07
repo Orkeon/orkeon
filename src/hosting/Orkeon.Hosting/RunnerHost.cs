@@ -1,5 +1,6 @@
 using Orkeon.Constants.Configuration;
 using Orkeon.Constants.FileSystem;
+using Orkeon.Hosting.Runs;
 using System.Globalization;
 using System.Text;
 using Microsoft.Extensions.AI;
@@ -70,6 +71,12 @@ public sealed record RunnerMountPlan
     /// process's working directory.
     /// </summary>
     public string? WorkingDirectory { get; init; }
+
+    /// <summary>
+    /// Whether the run history (<c>Orkeon:RunHistory</c>) is on when the settings do not say: <c>orkeon-host</c> sets it,
+    /// the library and <c>orkeon run</c> leave it off.
+    /// </summary>
+    public bool RunHistoryByDefault { get; init; }
 
     /// <summary>Folders a command reads as its inputs, readable without the external-mounts opt-in.</summary>
     public IReadOnlyList<string> InputDirectories { get; init; } = [];
@@ -201,6 +208,7 @@ public static partial class RunnerHost
             WarnIfLlmNotConfigured(host, decisions.ElectedLlmProfile);
             LogDecisionProvider(host);
             ActivateTelemetry(host);
+            RunHistoryServices.Activate(host.Services);
             return host;
         }
         catch
@@ -974,9 +982,29 @@ public static partial class RunnerHost
                 .Select(spec => spec is null ? null : MountSelection.TryGetVirtualRoot(spec)).OfType<string>());
         if (stateDirectory is not null)
         {
-            overrides[$"{ConfigurationKeys.FileSystemInternalMounts}:{nextInternalIndex}"] =
+            overrides[$"{ConfigurationKeys.FileSystemInternalMounts}:{nextInternalIndex++}"] =
                 $"{FileSystemMount.Quote(stateDirectory)}:{RunnerVirtualRoots.State}:rw";
-            overrides[$"{PathSecurityWhitelistSection}:{nextWhitelistIndex}"] = stateDirectory;
+            overrides[$"{PathSecurityWhitelistSection}:{nextWhitelistIndex++}"] = stateDirectory;
+        }
+
+        // The run history (FWK-08): off in the library, on when the host asks for it by default and the operator
+        // did not say otherwise. The effective value is written back so that the services read what the mounts planned.
+        var historySection = declared.Section(RunnerRunHistory.SectionPath);
+        if (historySection?["Enabled"] is null && mounts.RunHistoryByDefault)
+            overrides[$"{RunnerRunHistory.SectionPath}:Enabled"] = "true";
+
+        var runsDirectory = RunnerRunHistory.Plan(
+            historySection,
+            mounts.RunHistoryByDefault,
+            mounts.WorkingDirectory,
+            placement.DeclaredMounts.Concat(placement.DeclaredInternal).Select(entry => entry.Value)
+                .Concat(mounts.CliMounts).Concat(mounts.InternalMounts)
+                .Select(spec => spec is null ? null : MountSelection.TryGetVirtualRoot(spec)).OfType<string>());
+        if (runsDirectory is not null)
+        {
+            overrides[$"{ConfigurationKeys.FileSystemInternalMounts}:{nextInternalIndex}"] =
+                $"{FileSystemMount.Quote(runsDirectory)}:{RunnerVirtualRoots.Runs}:rw";
+            overrides[$"{PathSecurityWhitelistSection}:{nextWhitelistIndex}"] = runsDirectory;
         }
 
         if (overrides.Count > 0)
@@ -1570,6 +1598,9 @@ public static partial class RunnerHost
         // Per-tool-call permission gate — config opt-in:
         // Orkeon:Security:PermissionGate:Enabled = true. No-op otherwise.
         services.AddOrkeonPermissionGate(context.Configuration);
+
+        // The run history (FWK-08): Orkeon:RunHistory, off unless enabled; the sinks and the reader of `orkeon runs`.
+        RunHistoryServices.Register(context, services);
 
         // Cognitive memory — config opt-in: Orkeon:CognitiveMemory:Enabled = true (FWK-04). A crew
         // with memory: true then recalls by composite score, stores analysed memories and holds

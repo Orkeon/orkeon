@@ -3,9 +3,10 @@ using System.Diagnostics.CodeAnalysis;
 using System.Text.Json;
 using Orkeon.Domain.Common;
 using Orkeon.Domain.Tools;
-using Orkeon.Scripting.Cli.Events;
+using Orkeon.Application.Runs;
+using Orkeon.Constants.Protocol;
 
-namespace Orkeon.Scripting.Cli.Commands.Run;
+namespace Orkeon.Hosting.Runs;
 
 /// <summary>
 /// Wraps a tool so every call it receives becomes two events (BUS-03).
@@ -36,10 +37,10 @@ internal sealed class ObservedTool : IBaseTool, IDisposable
     public const string SpawnToolName = "spawn_agent";
 
     private readonly IBaseTool _inner;
-    private readonly OrkeonEventWriter _events;
+    private readonly IRunEventSink _events;
 
     /// <summary>Wraps <paramref name="inner"/>, reporting onto <paramref name="events"/>.</summary>
-    public ObservedTool(IBaseTool inner, OrkeonEventWriter events)
+    public ObservedTool(IBaseTool inner, IRunEventSink events)
     {
         _inner = inner ?? throw new ArgumentNullException(nameof(inner));
         _events = events ?? throw new ArgumentNullException(nameof(events));
@@ -103,7 +104,7 @@ internal sealed class ObservedTool : IBaseTool, IDisposable
     private string Announce(IReadOnlyDictionary<string, object?>? arguments)
     {
         var correlationId = Guid.NewGuid().ToString("N");
-        var scope = new OrkeonEventScope { CorrelationId = correlationId };
+        var scope = new RunEventScope { CorrelationId = correlationId };
 
         switch (Name)
         {
@@ -141,7 +142,7 @@ internal sealed class ObservedTool : IBaseTool, IDisposable
         stopwatch.Stop();
         _events.Emit(
             RunEventKinds.ToolReturned,
-            new OrkeonEventScope { CorrelationId = correlationId },
+            new RunEventScope { CorrelationId = correlationId },
             new { toolName = Name, success, durationMs = stopwatch.ElapsedMilliseconds });
     }
 
@@ -186,10 +187,10 @@ internal sealed class ObservedTool : IBaseTool, IDisposable
 /// </summary>
 internal sealed class ObservedToolDecorator : Orkeon.Application.Interfaces.Ports.IToolDecorator
 {
-    private readonly OrkeonEventWriter _events;
+    private readonly IRunEventSink _events;
 
     /// <summary>Reports every decorated tool onto <paramref name="events"/>.</summary>
-    public ObservedToolDecorator(OrkeonEventWriter events) =>
+    public ObservedToolDecorator(IRunEventSink events) =>
         _events = events ?? throw new ArgumentNullException(nameof(events));
 
     /// <inheritdoc />

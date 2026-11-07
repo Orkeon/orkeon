@@ -61,6 +61,7 @@ internal static class CliUsage
         new("drive", "List the drive accounts (Google Drive, OneDrive), sign one in or out, check a connection."),
         new("typings", "Write the TypeScript typings for .ork.ts and .cmd.ts scripts into ./.orkeon/."),
         new("mcp", "Serve the host's tools to an MCP client (Claude Desktop, an editor) over stdio."),
+        new("runs", "List the recorded runs, show or tail the events of one (Orkeon:RunHistory)."),
     ];
 
     /// <summary>This build's version, without the build metadata SourceLink appends.</summary>

@@ -233,6 +233,60 @@ public sealed class InitCommandTests
         Assert.True(doc.RootElement.TryGetProperty("Llm", out _));
     }
 
+    // --- the run history (FWK-08) ---
+
+    [Fact]
+    public async Task TheTemplate_TurnsTheRunHistoryOn_AndIgnoresTheOrkeonFolderInAGitignore()
+    {
+        using var scratch = new ScriptScratch();
+        var target = Path.Combine(scratch.Root, "appsettings.json");
+        var project = Path.Combine(scratch.Root, "project");
+        Directory.CreateDirectory(project);
+        using var console = new TestConsole();
+
+        var exit = await InitCommand.ExecuteAsync(console, new InitCommandOptions
+        {
+            Provider = "ollama",
+            OutputPath = target,
+            NoProbe = true,
+            WorkingDirectory = project,
+        });
+
+        Assert.Equal(Program.ExitOk, exit);
+        using var doc = JsonDocument.Parse(await File.ReadAllTextAsync(target, TestContext.Current.CancellationToken));
+        Assert.True(doc.RootElement.GetProperty("Orkeon").GetProperty("RunHistory").GetProperty("Enabled").GetBoolean());
+        var ignore = await File.ReadAllTextAsync(Path.Combine(project, ".gitignore"), TestContext.Current.CancellationToken);
+        Assert.Contains(".orkeon/", ignore.Split('\n').Select(line => line.Trim()));
+    }
+
+    [Fact]
+    public async Task TheGitignoreOfTheProject_IsCompleted_NeverDuplicated_AndKeepsWhatItHeld()
+    {
+        using var scratch = new ScriptScratch();
+        var target = Path.Combine(scratch.Root, "appsettings.json");
+        var project = Path.Combine(scratch.Root, "project");
+        Directory.CreateDirectory(project);
+        await File.WriteAllTextAsync(Path.Combine(project, ".gitignore"), "bin/\nobj/", TestContext.Current.CancellationToken);
+
+        for (var run = 0; run < 2; run++)
+        {
+            using var console = new TestConsole();
+            var exit = await InitCommand.ExecuteAsync(console, new InitCommandOptions
+            {
+                Provider = "none",
+                OutputPath = target,
+                Force = true,
+                NoProbe = true,
+                WorkingDirectory = project,
+            });
+            Assert.Equal(Program.ExitOk, exit);
+        }
+
+        var lines = (await File.ReadAllTextAsync(Path.Combine(project, ".gitignore"), TestContext.Current.CancellationToken))
+            .Split('\n', StringSplitOptions.RemoveEmptyEntries).Select(line => line.Trim()).ToList();
+        Assert.Equal(["bin/", "obj/", ".orkeon/"], lines);
+    }
+
     // --- global path default + resolution from any cwd ---
 
     [Fact]

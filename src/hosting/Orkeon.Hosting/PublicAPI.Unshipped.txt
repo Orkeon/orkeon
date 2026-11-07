@@ -10,3 +10,5 @@ Orkeon.Hosting.RunnerOptionsBase.Resume.get -> string?
 Orkeon.Hosting.RunnerOptionsBase.Resume.set -> void
 Orkeon.Hosting.RunnerOptionsBase.WorkingDirectory.get -> string?
 Orkeon.Hosting.RunnerOptionsBase.WorkingDirectory.set -> void
+Orkeon.Hosting.RunnerMountPlan.RunHistoryByDefault.get -> bool
+Orkeon.Hosting.RunnerMountPlan.RunHistoryByDefault.init -> void

@@ -197,6 +197,8 @@ internal static class HostStartup
                     CliMounts = mounts,
                     InputDirectories = inputs,
                     AllowExternalMounts = command.AllowExternalMounts || RunnerEnvironment.AllowExternalMounts,
+                    // The daemon keeps the history of its runs unless Orkeon:RunHistory:Enabled says false (FWK-08).
+                    RunHistoryByDefault = true,
                 },
                 configureLogging: null,
                 // Everything the daemon adds to the runner host lives in HostServiceRegistration, so a

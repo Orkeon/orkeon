@@ -1,3 +1,4 @@
 #nullable enable
 const Orkeon.Constants.FileSystem.RunnerVirtualRoots.State = "/state" -> string!
 const Orkeon.Constants.FileSystem.RunnerVirtualRoots.LlmMock = "/llm-mock" -> string!
+const Orkeon.Constants.FileSystem.RunnerVirtualRoots.Runs = "/runs" -> string!

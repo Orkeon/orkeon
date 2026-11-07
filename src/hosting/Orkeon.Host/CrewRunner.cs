@@ -194,6 +194,11 @@ internal sealed partial class CrewRunner : ICrewRunner
             // hosted run's memory cannot outlive it by construction (every message loads a
             // fresh crew with a fresh id).
             using var scope = _scopes.CreateScope();
+
+            // The run history (FWK-08): the run's identity and run.started before anything resolves the run's
+            // hooks; run.finished when this block ends. Nothing happens when the history is off.
+            var recording = scope.ServiceProvider.GetService<HostRunRecording>();
+            using var history = recording?.Begin(hosted.Name, run.Id, () => run.Cancellation.IsCancellationRequested);
             var factory = scope.ServiceProvider.GetRequiredService<ICrewFactory>();
             var orchestrator = scope.ServiceProvider.GetRequiredService<ICrewOrchestrationService>();
 
@@ -222,13 +227,16 @@ internal sealed partial class CrewRunner : ICrewRunner
             var input = variables is { Count: > 0 }
                 ? Application.Interfaces.Services.CrewInput.WithStringVariables(prompt, variables)
                 : Application.Interfaces.Services.CrewInput.Empty(prompt);
+            // The kickoff adopts the identity the recording opened (the run's ExecutionId), and carries the crew key.
             var output = await orchestrator
                 .KickoffAsync(
                     crew.Id,
                     input,
-                    new Application.Interfaces.Services.KickoffOptions { CrewKey = RunnerRunIdentity.CrewKey(crew.Name, mapped ?? hosted.Path, hosted.Path) },
+                    RunnerRunIdentity.For(scope.ServiceProvider, crew.Name, mapped ?? hosted.Path, hosted.Path, resume: null),
                     run.Cancellation.Token)
                 .ConfigureAwait(false);
+            if (recording is not null)
+                recording.Succeeded = output.Succeeded;
 
             // KickoffAsync never throws — its fault barrier converts everything into an
             // output. Reading that output as Completed reported every timeout, /stop and

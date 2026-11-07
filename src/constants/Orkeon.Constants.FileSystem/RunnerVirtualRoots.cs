@@ -55,6 +55,12 @@ public static class RunnerVirtualRoots
     public const string LlmMock = "/llm-mock";
 
     /// <summary>
+    /// Where the run history keeps the events of past runs (<c>Orkeon:RunHistory</c>, FWK-08). Registered as an
+    /// <b>internal</b> mount, like <see cref="State"/>: <c>orkeon runs</c> and the history sinks reach it, no agent does.
+    /// </summary>
+    public const string Runs = "/runs";
+
+    /// <summary>
     /// Where the code sandboxes stage the snippets they run. Registered as an <b>internal</b>
     /// mount by <c>AddOrkeonFileSystem</c>, so it is present in every registry a runner builds
     /// — which is why it belongs in the reserved list: a user <c>--mount</c> claiming
