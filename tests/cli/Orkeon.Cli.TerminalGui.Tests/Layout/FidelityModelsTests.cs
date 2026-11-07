@@ -403,6 +403,9 @@ public class TranscriptModelTests
     }
 }
 
+// The aggregator listens to the process-wide "Orkeon.Scripting" source: every class that emits on
+// it shares this collection so their spans never leak into one another's listener.
+[Collection("ToolActivityAggregator")]
 public class ToolActivityAggregatorTests
 {
     private static KeyValuePair<string, int> Kv(string tool, int n) => new(tool, n);
