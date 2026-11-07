@@ -409,7 +409,7 @@ public class IBaseToolTests
 
         if (isValid)
         {
-            // Execute using legacy method
+            // Execute with a string input
             var executeResult = await tool.ExecuteAsync("workflow input", TestContext.Current.CancellationToken);
 
             // Execute using new protocol

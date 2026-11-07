@@ -21,14 +21,14 @@ namespace Orkeon.Rag.Embeddings;
 /// </para>
 /// <para>
 /// Both the unary and the batch port methods route through the inner provider's
-/// <c>EmbedBatchAsync</c>. The Analysis abstraction only exposes <c>Dimensions</c>, so
-/// <c>Name</c> and <c>Model</c> are constructor-injectable with sensible defaults
-/// (inner type name / <see cref="DefaultModel"/>).
+/// <c>EmbedBatchAsync</c>. <c>Name</c> and <c>Model</c> are constructor-injectable;
+/// <c>Name</c> defaults to the inner type name, <c>Model</c> to the inner provider's
+/// <c>ModelName</c>, then to <see cref="DefaultModel"/> when the inner provider does not name its model.
 /// </para>
 /// </remarks>
 public sealed class AnalysisEmbeddingProviderAdapter : IEmbeddingProvider
 {
-    /// <summary>Default <see cref="Model"/> when none is supplied — the Analysis abstraction does not expose one.</summary>
+    /// <summary>Default <see cref="Model"/> when none is supplied and the inner provider does not name its model.</summary>
     public const string DefaultModel = "analysis-embedding";
 
     private readonly AnalysisEmbeddingProvider _inner;
@@ -43,7 +43,7 @@ public sealed class AnalysisEmbeddingProviderAdapter : IEmbeddingProvider
     /// </param>
     /// <param name="model">
     /// Optional model identifier exposed on the Application port.
-    /// Defaults to <see cref="DefaultModel"/>; pass e.g. <c>"bge-micro-v2"</c> when known.
+    /// Defaults to the inner provider's <c>ModelName</c>, then to <see cref="DefaultModel"/>.
     /// </param>
     public AnalysisEmbeddingProviderAdapter(
         AnalysisEmbeddingProvider inner,
@@ -53,7 +53,9 @@ public sealed class AnalysisEmbeddingProviderAdapter : IEmbeddingProvider
         ArgumentNullException.ThrowIfNull(inner);
         _inner = inner;
         Name = string.IsNullOrWhiteSpace(name) ? inner.GetType().Name : name;
-        Model = string.IsNullOrWhiteSpace(model) ? DefaultModel : model;
+        Model = !string.IsNullOrWhiteSpace(model) ? model
+            : !string.IsNullOrWhiteSpace(inner.ModelName) ? inner.ModelName
+            : DefaultModel;
     }
 
     /// <inheritdoc />

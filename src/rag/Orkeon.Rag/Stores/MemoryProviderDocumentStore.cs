@@ -46,7 +46,7 @@ namespace Orkeon.Rag.Stores;
 /// <list type="number">
 ///   <item><description><see cref="IScoredVectorSearch"/> capability available → native
 ///   provider scores end to end, <see cref="ScoredChunk.ScoreOrigin"/> = <c>vector</c>.</description></item>
-///   <item><description>Otherwise the legacy <see cref="IMemoryProvider.SearchSimilarAsync"/>
+///   <item><description>Otherwise the dictionary-filter <see cref="IMemoryProvider.SearchSimilarAsync"/>
 ///   is tried: providers that implement it return true cosine similarities, so hits also
 ///   carry <c>vector</c> (the interface's default body returns empty, which falls
 ///   through).</description></item>
@@ -262,15 +262,15 @@ public sealed class MemoryProviderDocumentStore : IDocumentStore, IDocumentStore
             return hits.Select(hit => ToScoredChunk(hit.Item, hit.Score, VectorScoreOrigin)).ToList();
         }
 
-        // 2. Legacy vector search: providers that implement it return true cosine similarities.
+        // 2. Dictionary-filter vector search: providers that implement it return true cosine similarities.
         //    The interface's default body returns empty, which falls through to the local path.
-        var legacyHits = await _provider
+        var dictionaryHits = await _provider
             .SearchSimilarAsync(
                 [.. embedding], query.TopK, float.MinValue, filter.ToDictionary(), cancellationToken)
             .ConfigureAwait(false);
 
-        if (legacyHits.Count > 0)
-            return legacyHits.Select(hit => ToScoredChunk(hit.Item, hit.Score, VectorScoreOrigin)).ToList();
+        if (dictionaryHits.Count > 0)
+            return dictionaryHits.Select(hit => ToScoredChunk(hit.Item, hit.Score, VectorScoreOrigin)).ToList();
 
         // 3. Honest last resort: recompute cosine locally from the stored embeddings.
         return await SearchByLocalCosineAsync(collection, embedding, query.TopK, filter, cancellationToken)

@@ -167,7 +167,7 @@ FQN), `embedding_model`, `max_parallelism` (combien de fichiers sont lus et anal
 négative est refusée) et `use_cache` (défaut `true` ; `false` reconstruit tout, puis
 enregistre) — exactement ce que lit la construction. Les statements sont
 toujours extraits, et un argument que la requête ne déclare pas est ignoré.
-`incremental_reindex` accepte les mêmes `root_path`, `languages` et `enrich_with_llm`.
+`incremental_reindex` accepte le même `root_path`, plus `changed_files` ou `from_commit`/`to_commit`.
 
 ### Cache d'index
 

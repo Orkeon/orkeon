@@ -14,6 +14,9 @@ public sealed class FakeAnalysisEmbeddingProvider : IEmbeddingProvider
     /// <summary>Dimension reported and used for generated vectors. Defaults to 384 (BGE-micro-v2).</summary>
     public int Dimensions { get; set; } = 384;
 
+    /// <summary>Model name reported to callers; <see langword="null"/> by default (an unnamed model).</summary>
+    public string? ModelName { get; set; }
+
     /// <summary>Every batch received, in call order.</summary>
     public List<IReadOnlyList<string>> ReceivedBatches { get; } = [];
 

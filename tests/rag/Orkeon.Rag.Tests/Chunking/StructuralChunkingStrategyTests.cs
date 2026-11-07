@@ -4,9 +4,8 @@ using Orkeon.Rag.Chunking;
 namespace Orkeon.Rag.Tests.Chunking;
 
 /// <summary>
-/// Tests for <see cref="StructuralChunkingStrategy"/>, including the non-regression
-/// cases ported from the historical <c>MdxSearchTool.ChunkByHeadings</c> suite
-/// (RAG-02/C3).
+/// Tests for <see cref="StructuralChunkingStrategy"/>: heading boundaries, sub-splitting of
+/// large sections and global offsets.
 /// </summary>
 public class StructuralChunkingStrategyTests
 {
@@ -28,7 +27,6 @@ public class StructuralChunkingStrategyTests
         Assert.Empty(chunks);
     }
 
-    // Ported from MDXSearchToolTests.ChunkByHeadings_ShouldSplitAtHeadingBoundaries
     [Fact]
     public void Chunk_MarkdownHeadings_SplitsAtHeadingBoundaries()
     {
@@ -43,7 +41,6 @@ public class StructuralChunkingStrategyTests
         Assert.Contains("## Section B", chunks[2].Content, StringComparison.Ordinal);
     }
 
-    // Ported from MDXSearchToolTests.ChunkByHeadings_ShouldSubSplitLargeSections
     [Fact]
     public void Chunk_OversizedSection_IsSubSplit()
     {

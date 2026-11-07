@@ -70,11 +70,6 @@ public class TokenBudgetTrackerTestsFixture
         return tracker.GetReport(crewId);
     }
 
-    // --- Static helpers ---
-
-    public static decimal EstimateCost(int promptTokens, int completionTokens, string model)
-        => TokenBudgetTracker.EstimateCost(promptTokens, completionTokens, model, registry: null);
-
     // --- Inspection ---
 
     public TokenBudgetTracker GetTracker() => _sut ?? Build();

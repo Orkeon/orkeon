@@ -38,7 +38,8 @@ The `1.0.0-rc.*` line removes compatibility shims directly, with no `[Obsolete]`
 - **[breaking]** `Application.Execution.TaskOutput.RawOutput` is removed: `Content`. `FunctionCallInfo` and `LlmMessage.FunctionCallInfo` are removed: `LlmMessage.RawToolCalls`.
 - **[breaking]** `TokenBudgetTracker.EstimateCost(int, int, string)` is removed: `EstimateCost(prompt, completion, model, registry)` (`registry: null` keeps the built-in table).
 - **[breaking]** `IncrementalReindexTool` takes an `IndexFreshnessService`, now required; the constructor with a store and a builder factory, and its fallback path, are removed.
-- **[breaking]** Tolerant enum converters read names only: a JSON number is refused for every enum, flags enums included, with the list of valid names. `ImmutableArrayEnumTolerantConverter<TEnum>` and its registration in `JsonComponentSerializer` are removed; an `ImmutableArray` of a flags enum is read element by element by `TolerantFlagsEnumConverter`.
+- **[breaking]** `IncrementalReindexRequest` loses `Languages` and `EnrichWithLlm` (`languages` and `enrich_with_llm` of `incremental_reindex`): only the removed fallback path read them; a refresh takes `root_path` with `changed_files` or `from_commit`/`to_commit`.
+- **[breaking]** Tolerant enum converters read names only: a JSON number is refused for every enum, flags enums included, with the list of valid names. `ImmutableArrayEnumTolerantConverter<TEnum>` and its registration in `JsonComponentSerializer` are removed, with its coercions (a scalar read as a one-element array, `null` as an empty array, an array encoded as a JSON string). Tool and evaluator I/O now reads arrays of enum names through the default serializer only, which expects a JSON array of names; there is no public replacement.
 - Orphan `#pragma warning disable/restore CS0618` lines (no obsolete member behind them) are removed from the LLM providers, the `orkeon` CLI commands and the tests.
 
 **Analysis**
@@ -85,17 +86,19 @@ The `1.0.0-rc.*` line removes compatibility shims directly, with no `[Obsolete]`
 | `message.FunctionCallInfo` / `FunctionCallInfo` | `message.RawToolCalls` |
 | `TokenBudgetTracker.EstimateCost(p, c, model)` | `TokenBudgetTracker.EstimateCost(p, c, model, registry)` |
 | `new IncrementalReindexTool(store, builderFactory, ...)` | `new IncrementalReindexTool(freshnessService, gitDiff, logger)` |
-| `ImmutableArrayEnumTolerantConverter<TEnum>` | `TolerantFlagsEnumConverter` (element by element) |
+| `incremental_reindex` with `languages` / `enrich_with_llm` | the arguments are refused: drop them |
+| `ImmutableArrayEnumTolerantConverter<TEnum>` | none; arrays of enum names are read by the default serializer (no scalar, `null` or string-encoded array coercion) |
 | `"edge_kinds": 3` / `"level": 1` | `"edge_kinds": "imports, calls"` / `"level": "L1_Package"` |
 | `new InlineFqnValidationResult(extracted, unknown)` | `new InlineFqnValidationResult { ExtractedFqns = extracted, UnknownFqns = unknown }` |
 | `edge_kinds: ["ProjectDepends"]` | `edge_kinds: ["project_depends"]` |
 | `edge_kinds: ["Extends"]` / `["Implements"]` (fallback on `EdgeKind` names) | `edge_kinds: ["extends"]` / `["implements"]` (canonical, any case) |
 | an `IEmbeddingProvider` without a model name | override `ModelName` to have the model recorded |
 
-### Fixed — two bugs found while removing the shims
+### Fixed — bugs found while removing the shims
 
-- `CreateTaskCommand.AgentId` accepts a ULID, the form every `AgentId` prints, and still a GUID: `CreateTaskCommandValidator` refused ULIDs.
+- `CreateTaskCommand.AgentId` and the agent ids of `CreateCrewCommand` accept a ULID, the form every `AgentId` prints, and still a GUID: `CreateTaskCommandValidator` and `CreateCrewCommandValidator` refused ULIDs, and the crew validator let `Guid.Empty` through to a handler that threw. A ULID is accepted only when it is Crockford base32 that fits 128 bits (`Ulid.TryParse` decodes any 26 characters into some id); the validators' error reads `is not a valid agent id (a ULID or a GUID)`.
 - The embedding model an index records (`embedding_stats.model` of `index_codebase`) is the one the embedding provider names (`IEmbeddingProvider.ModelName`: the OpenAI, Ollama and local providers return theirs, `LocalEmbeddingProvider.EmbeddedModelName` = `bge-micro-v2`, or the `ModelPath` when set), no longer the request's `embedding_model` default `text-embedding-3-small` while the host embeds locally with `bge-micro-v2`; the request's value is recorded only when the provider names none.
+- The RAG ingestion pipeline records the same name: `AnalysisEmbeddingProviderAdapter` takes the inner provider's `ModelName` before its `analysis-embedding` default, so a local index built through `Orkeon.Rag` no longer records `analysis-embedding` for `bge-micro-v2`.
 
 ### Added — tasks in the thread, palettes and the way back
 

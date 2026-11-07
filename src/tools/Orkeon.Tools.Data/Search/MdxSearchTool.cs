@@ -3,7 +3,6 @@ using Microsoft.Extensions.Logging;
 using Orkeon.Domain.FileSystem;
 using Orkeon.Domain.Attributes;
 using Orkeon.Rag.Abstractions.Interfaces;
-using Orkeon.Rag.Chunking;
 
 namespace Orkeon.Tools.Data.Search;
 
@@ -51,20 +50,6 @@ public partial class MdxSearchTool : FileSearchToolBase<MdxSearchRequest>
         content = JsxExportRegex().Replace(content, "");
 
         return content.Trim();
-    }
-
-    /// <summary>
-    /// Splits Markdown content into heading-delimited sections via the canonical
-    /// <see cref="StructuralChunkingStrategy"/> (RAG-02/C3 consolidation), mapping chunk
-    /// offsets back to 1-based approximate source lines. Long sections are sub-split
-    /// recursively by the strategy itself. Kept as the reference implementation of the
-    /// tool's chunking behavior (the runtime path delegates to the same strategy by name).
-    /// </summary>
-    internal static List<(string Text, int ApproximateLine)> ChunkByHeadings(
-        string content, int maxChunkSize)
-    {
-        var chunks = new StructuralChunkingStrategy().ChunkText(content, maxChunkSize);
-        return [.. chunks.Select(c => (c.Content, PlainTextChunking.LineNumberAt(content, c.StartOffset)))];
     }
 
     [GeneratedRegex(@"^---\s*\n[\s\S]*?\n---\s*\n?", RegexOptions.Multiline)]

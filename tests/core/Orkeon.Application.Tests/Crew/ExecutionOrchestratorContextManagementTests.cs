@@ -7,7 +7,7 @@ using Orkeon.Domain.SharedKernel.ValueObjects;
 namespace Orkeon.Application.Tests.Crew;
 
 /// <summary>
-/// Tests for context window management in ExecutionOrchestrator:
+/// Tests for context window management in <see cref="ConversationPolicy"/>:
 /// sliding window trimming and tool result truncation.
 /// </summary>
 public class ExecutionOrchestratorContextManagementTests

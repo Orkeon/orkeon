@@ -1,8 +1,8 @@
 namespace Orkeon.Domain.Memory;
 
 /// <summary>
-/// Typed metadata filter for memory searches, replacing the legacy
-/// <c>Dictionary&lt;string, object&gt;</c> filter bags over time (RAG-02/C4, plan §4.2).
+/// Typed metadata filter for memory searches, alongside the
+/// <c>Dictionary&lt;string, object&gt;</c> filter bags (RAG-02/C4, plan §4.2).
 /// </summary>
 /// <remarks>
 /// <para>Semantics (aligned with the historical dictionary filter used by the providers):</para>
@@ -15,7 +15,7 @@ namespace Orkeon.Domain.Memory;
 /// </list>
 /// <para>
 /// Use <see cref="FromDictionary"/> / <see cref="ToDictionary"/> to interoperate with the
-/// legacy dictionary shape (<c>"source"</c>, <c>"tag"</c>/<c>"tags"</c>, custom keys).
+/// dictionary shape (<c>"source"</c>, <c>"tag"</c>/<c>"tags"</c>, custom keys).
 /// </para>
 /// </remarks>
 public sealed record MemoryFilter
@@ -85,12 +85,12 @@ public sealed record MemoryFilter
     }
 
     /// <summary>
-    /// Builds a <see cref="MemoryFilter"/> from the legacy dictionary filter shape:
+    /// Builds a <see cref="MemoryFilter"/> from the dictionary filter shape:
     /// <c>"source"</c> maps to <see cref="Source"/>, <c>"tag"</c>/<c>"tags"</c> (a string or a
     /// sequence of strings) maps to <see cref="Tags"/>, any other key becomes a
     /// <see cref="CustomProperties"/> entry (value converted via <c>ToString()</c>).
     /// </summary>
-    /// <param name="filter">The legacy filter dictionary, possibly <see langword="null"/> or empty.</param>
+    /// <param name="filter">The filter dictionary, possibly <see langword="null"/> or empty.</param>
     /// <returns>The equivalent typed filter, or <see langword="null"/> when the input is null or empty.</returns>
     public static MemoryFilter? FromDictionary(IReadOnlyDictionary<string, object>? filter)
     {
@@ -141,15 +141,15 @@ public sealed record MemoryFilter
     }
 
     /// <summary>
-    /// Converts this filter back to the legacy dictionary shape for providers that still
+    /// Converts this filter back to the dictionary shape for providers that still
     /// consume <c>Dictionary&lt;string, object&gt;</c>.
     /// </summary>
     /// <remarks>
-    /// Lossy edge case: the legacy shape carries a single <c>"tags"</c> entry — one tag is
+    /// Lossy edge case: the dictionary shape carries a single <c>"tags"</c> entry — one tag is
     /// emitted as a plain string (the historical format); multiple tags are emitted as a
     /// <c>string[]</c>, which pre-typed-filter providers may not understand.
     /// </remarks>
-    /// <returns>A mutable dictionary in the legacy filter shape (empty when <see cref="IsEmpty"/>).</returns>
+    /// <returns>A mutable dictionary in the dictionary filter shape (empty when <see cref="IsEmpty"/>).</returns>
     public Dictionary<string, object> ToDictionary()
     {
         var result = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);

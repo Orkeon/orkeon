@@ -7,8 +7,8 @@ using Orkeon.Domain.SharedKernel.ValueObjects;
 namespace Orkeon.Application.Tests.Crew;
 
 /// <summary>
-/// Tests for the circuit breaker logic in <see cref="ExecutionOrchestrator"/>.
-/// Focuses on the helper methods that are internal and testable in isolation.
+/// Tests for the tool-error extraction of <see cref="ConversationPolicy"/> that the circuit
+/// breaker of <see cref="ExecutionOrchestrator"/> reads.
 /// </summary>
 public class ExecutionOrchestratorCircuitBreakerTests
 {

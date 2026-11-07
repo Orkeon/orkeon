@@ -73,7 +73,7 @@ internal static class ConversationPolicy
     }
 
     /// <summary>
-    /// Extracts the last tool error from a StringBuilder conversation (legacy path).
+    /// Extracts the last tool error from a text conversation (the text agent loop).
     /// Returns the error text if the last tool result line contains an error, null otherwise.
     /// </summary>
     internal static string? ExtractLastToolErrorFromText(string conversationText)
@@ -168,7 +168,7 @@ internal static class ConversationPolicy
     }
 
     /// <summary>
-    /// Extracts the most recent non-empty assistant text from an LlmMessage list (legacy path).
+    /// Extracts the most recent non-empty assistant text from an LlmMessage list.
     /// </summary>
     internal static string? ExtractLastAssistantText(IReadOnlyList<Domain.SharedKernel.ValueObjects.LlmMessage> messages)
     {

@@ -363,7 +363,7 @@ public static partial class RunnerHost
     /// What <c>orkeon doctor</c> asks (GAP-40): the start validation of the host <c>orkeon run</c>
     /// builds on <paramref name="settingsPath"/> with <paramref name="configureServices"/> — no crew,
     /// no command-line mount, no MCP connection —, every refusal at once. A refusal the build itself
-    /// raises (a key retired, a file it cannot read, a log level) stops it and is the only one, as a
+    /// raises (a file it cannot read, a log level) stops it and is the only one, as a
     /// run reports it. The host is disposed: nothing is printed, no telemetry starts.
     /// </summary>
     /// <param name="settingsPath">The settings file a run would read, or null.</param>

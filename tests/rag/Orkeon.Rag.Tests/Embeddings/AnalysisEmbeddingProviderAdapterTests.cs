@@ -39,6 +39,24 @@ public class AnalysisEmbeddingProviderAdapterTests
         Assert.Equal("bge-micro-v2", adapter.Model);
     }
 
+    [Fact]
+    public void Constructor_NoModel_UsesInnerModelName()
+    {
+        var adapter = new AnalysisEmbeddingProviderAdapter(
+            new FakeAnalysisEmbeddingProvider { ModelName = "bge-micro-v2" });
+
+        Assert.Equal("bge-micro-v2", adapter.Model);
+    }
+
+    [Fact]
+    public void Constructor_ExplicitModel_WinsOverInnerModelName()
+    {
+        var adapter = new AnalysisEmbeddingProviderAdapter(
+            new FakeAnalysisEmbeddingProvider { ModelName = "bge-micro-v2" }, model: "custom-model");
+
+        Assert.Equal("custom-model", adapter.Model);
+    }
+
     [Theory]
     [InlineData("")]
     [InlineData("   ")]

@@ -163,6 +163,33 @@ public class CreateTaskCommandValidatorTests
     }
 
     [Fact]
+    public void ShouldPass_WhenAgentIdIsLowercaseUlid()
+    {
+        var agentId = AgentId.Create().ToString().ToLowerInvariant();
+        var command = new CreateTaskCommand("Analyze data", "A detailed report", agentId);
+
+        var result = _validator.Validate(command);
+
+        Assert.True(result.IsValid);
+    }
+
+    [Theory]
+    [InlineData("01ARZ3NDEKTSV4RRFFQ69G5FA!")]
+    [InlineData("ZZZZZZZZZZZZZZZZZZZZZZZZZZ")]
+    [InlineData("01ARZ3NDEKTSV4RRFFQ69G5FA")]
+    [InlineData("00000000000000000000000000")]
+    [InlineData("00000000-0000-0000-0000-000000000000")]
+    public void ShouldFail_WhenAgentIdIsNotAnAgentId(string agentId)
+    {
+        var command = new CreateTaskCommand("Analyze data", "A detailed report", agentId);
+
+        var result = _validator.Validate(command);
+
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Errors, e => e.Contains(agentId));
+    }
+
+    [Fact]
     public void ShouldFail_WhenAgentIdIsInvalidGuid()
     {
         var command = new CreateTaskCommand("Analyze data", "A detailed report", "not-a-guid");

@@ -313,10 +313,8 @@ public sealed class RaggableTreeBuilder
         var eligibleNodes = allNodes.Count(n => !string.IsNullOrEmpty(n.EmbeddingText));
         var nodesSkipped = eligibleNodes - nodesEmbedded;
 
-        // Provider name is derived from the implementation type name. Exposing
-        // Provider/Model directly on IEmbeddingProvider is intentionally deferred:
-        // the current heuristic is sufficient for stats reporting and avoids widening
-        // the abstraction for cosmetic metadata.
+        // The provider name is the implementation type name without its "EmbeddingProvider"
+        // suffix; the model is the one the provider names, else the one the request asked for.
         var providerName = _embedder.GetType().Name.Replace("EmbeddingProvider", "", StringComparison.Ordinal);
         return new EmbeddingStats
         {

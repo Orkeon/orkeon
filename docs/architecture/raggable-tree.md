@@ -170,8 +170,8 @@ at once: `0`, the default, one per processor; `1` one after the other; a negativ
 value is refused) and `use_cache` (default `true`; `false` rebuilds from scratch, then
 saves) — exactly what the build reads. Statements are always
 extracted, and an argument the request does not declare is ignored.
-`incremental_reindex` accepts the same `root_path`, `languages` and
-`enrich_with_llm`.
+`incremental_reindex` accepts the same `root_path`, plus `changed_files` or
+`from_commit`/`to_commit`.
 
 ### Index cache
 

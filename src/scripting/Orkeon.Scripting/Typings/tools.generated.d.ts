@@ -704,12 +704,8 @@ declare global {
         incrementalReindex(input: {
             /** Virtual paths of the files to reindex; omit them to take the files changed between from_commit and to_commit. */
             changed_files?: readonly string[];
-            /** Ask the LLM for a summary of each symbol while reindexing (slow). */
-            enrich_with_llm?: boolean;
             /** Commit the diff starts from when changed_files is omitted. */
             from_commit?: string | null;
-            /** Languages reindexed; empty keeps every supported language. */
-            languages?: readonly string[];
             /** Virtual path of the indexed root. */
             root_path: string;
             /** Commit the diff ends at (default HEAD). */

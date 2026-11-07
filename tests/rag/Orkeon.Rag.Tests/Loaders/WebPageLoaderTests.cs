@@ -7,8 +7,7 @@ using Orkeon.Rag.Tests.Doubles;
 namespace Orkeon.Rag.Tests.Loaders;
 
 /// <summary>
-/// <see cref="WebPageLoader"/> on the new contract — port of the legacy
-/// <c>Orkeon.Infrastructure.Tests</c> WebPageLoader suite (RAG-02/C5): HTTP fetch,
+/// <see cref="WebPageLoader"/> on the loader contract (RAG-02/C5): HTTP fetch,
 /// HTML text/title extraction, provenance metadata, URL gating, and HTTP errors.
 /// </summary>
 public sealed class WebPageLoaderTests : IDisposable

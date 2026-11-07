@@ -168,7 +168,7 @@ Each `Type` returned by `GetToolTypes()` must:
 1. Implement `IBaseTool` (from `Orkeon.Domain.Tools`).
 2. Provide a public parameterless constructor OR be resolvable via DI (registered in `Configure()`).
 3. Expose `Name`, `Description`, `Schema` properties.
-4. Implement both `CallAsync(ToolCallRequest)` (new JSON protocol) and `ExecuteAsync(string)` (legacy).
+4. Implement both `CallAsync(ToolCallRequest)` (new JSON protocol) and `ExecuteAsync(string)` (string input).
 
 Recommended approach: inherit from `ToolBase<TRequest, TResponse>` (from `Orkeon.Tools.Abstractions`) which implements the full typed pipeline.
 

@@ -206,3 +206,7 @@ static Orkeon.Analysis.Abstractions.DTOs.Responses.SemanticSearchResult.operator
 Orkeon.Analysis.Abstractions.UniversalNodeKind.Control = 26 -> Orkeon.Analysis.Abstractions.UniversalNodeKind
 *REMOVED*Orkeon.Analysis.Abstractions.Interfaces.InlineFqnValidationResult.InlineFqnValidationResult(System.Collections.Immutable.ImmutableArray<string!> ExtractedFqns, System.Collections.Immutable.ImmutableArray<string!> UnknownFqns) -> void
 Orkeon.Analysis.Abstractions.Interfaces.IEmbeddingProvider.ModelName.get -> string?
+*REMOVED*Orkeon.Analysis.Abstractions.DTOs.Tools.IncrementalReindexRequest.EnrichWithLlm.get -> bool
+*REMOVED*Orkeon.Analysis.Abstractions.DTOs.Tools.IncrementalReindexRequest.EnrichWithLlm.init -> void
+*REMOVED*Orkeon.Analysis.Abstractions.DTOs.Tools.IncrementalReindexRequest.Languages.get -> System.Collections.Immutable.ImmutableArray<string!>
+*REMOVED*Orkeon.Analysis.Abstractions.DTOs.Tools.IncrementalReindexRequest.Languages.init -> void

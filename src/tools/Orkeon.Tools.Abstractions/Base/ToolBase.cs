@@ -227,7 +227,7 @@ public abstract partial class ToolBase : IBaseTool
     {
         try
         {
-            LogToolLegacyExecuting(Name, input);
+            LogToolExecutingWithStringInput(Name, input);
 
             var request = ToolProtocolAdapter.ConvertToRequest(Name, input);
             var response = await CallAsync(request, cancellationToken).ConfigureAwait(false);
@@ -236,7 +236,7 @@ public abstract partial class ToolBase : IBaseTool
         }
         catch (Exception ex)
         {
-            LogToolLegacyExecutionError(ex, Name);
+            LogToolStringInputExecutionError(ex, Name);
             return ToolResult.CreateError($"Tool execution failed: {ex.Message}");
         }
     }
@@ -388,11 +388,11 @@ public abstract partial class ToolBase : IBaseTool
     [LoggerMessage(Level = LogLevel.Error, Message = "Error calling tool {ToolName}: {ExceptionType}: {Reason}")]
     private partial void LogToolCallRefused(string toolName, string exceptionType, string reason);
 
-    [LoggerMessage(Level = LogLevel.Debug, Message = "Executing tool {ToolName} with legacy input: {Input}")]
-    private partial void LogToolLegacyExecuting(string toolName, string input);
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Executing tool {ToolName} with string input: {Input}")]
+    private partial void LogToolExecutingWithStringInput(string toolName, string input);
 
-    [LoggerMessage(Level = LogLevel.Error, Message = "Error executing tool {ToolName} with legacy method")]
-    private partial void LogToolLegacyExecutionError(Exception ex, string toolName);
+    [LoggerMessage(Level = LogLevel.Error, Message = "Error executing tool {ToolName} with string input")]
+    private partial void LogToolStringInputExecutionError(Exception ex, string toolName);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Failed to parse JSON input: {Error}")]
     private partial void LogJsonInputParseFailed(string error);
