@@ -223,7 +223,8 @@ internal sealed class FirefoxProfile
     /// Removes the disposable profile folders under <paramref name="root"/> that no running Firefox holds
     /// and that are older than <paramref name="minimumAge"/>: the folders of a host that was killed with
     /// its browsers. A folder just created, whose browser has not locked it yet, is left alone, as is
-    /// anything that is not a disposable profile of the tool. Best effort.
+    /// anything that is not a disposable profile of the tool: a folder named like one but without the
+    /// <c>user.js</c> <see cref="Create"/> writes is not ours. Best effort.
     /// </summary>
     [SuppressMessage("Design", "CA1031", Justification = "Best-effort cleanup: a folder that cannot be read or removed is left for the next start.")]
     public static void RemoveStale(string root, TimeSpan minimumAge)
@@ -239,6 +240,7 @@ internal sealed class FirefoxProfile
             foreach (var directory in System.IO.Directory.EnumerateDirectories(root))
             {
                 if (!IsDisposableName(Path.GetFileName(directory))
+                    || !File.Exists(Path.Combine(directory, "user.js"))
                     || System.IO.Directory.GetLastWriteTimeUtc(directory) > cutoff
                     || LockedBy(directory) is not null)
                 {

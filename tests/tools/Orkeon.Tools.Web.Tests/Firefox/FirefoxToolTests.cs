@@ -813,6 +813,7 @@ public class FirefoxToolTests : FirefoxSessionTestBase
         Assert.Equal(Docs, tabs["url"]!.GetValue<string>());
         Assert.Equal("t2", tabs["tab"]!.GetValue<string>());
         Assert.False(Browser.Disposed);
+        Assert.DoesNotContain("browser.close", Browser.Wire.Methods);
         Assert.Single(Launcher.Browsers);
     }
 

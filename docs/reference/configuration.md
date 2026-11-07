@@ -1655,12 +1655,12 @@ not do is listed in [Known limitations](limitations.md).
 | `DeniedProfiles` | list of string | `[]` |  | The profiles no browser ever starts with, whether an agent names one or `Profile` does: the operator's own profiles, for instance. |
 | `ExecutablePath` | string | — |  | Path of the Firefox program, or its name on the PATH. Not set: `firefox` on the PATH, then the usual install folder of the platform. |
 | `Headless` | boolean | `false` |  | `true` starts Firefox without a window. The default shows the window; under Linux with neither `DISPLAY` nor `WAYLAND_DISPLAY` the browser starts headless anyway, and a warning says so. |
-| `Lifetime` | enum | `"Run"` | `Run`, `Host` | How long a browser lives: `Run` (the default) closes it with the agent run that started it; `Host` keeps it open, with its tabs and its profile, from one run to the next - one browser per profile - until `close`, the user closes the window, or the host stops. Case ignored. |
+| `Lifetime` | enum | `"Run"` | `Run`, `Host` | How long a browser lives: `Run` (the default) closes it with the agent run that started it; `Host` keeps it open, with its tabs and its profile, from one run to the next, one browser per profile, until `close`, the user closes the window, or the host stops. Case ignored. |
 | `MaxNodes` | integer | `40` |  | Most nodes one `snapshot` or `find` answer lists; the rest is read with `offset`. |
 | `MaxTextLength` | integer | `3000` |  | Most characters of page text one `read` answer carries. |
 | `Profile` | string | — |  | The profile a browser starts with when the agent names none: `disposable` (the default, a fresh folder removed when the browser closes), the name of a profile of the Firefox installed on the host (`profiles.ini`), or the path of a profile folder. A named profile is used in place, with its cookies and sessions, and never removed; a profile another Firefox holds open is refused. |
 | `ProfileRoot` | string | — |  | Folder under which each browser gets its own profile folder, removed when the browser closes. Not set: `~/snap/firefox/common/orkeon/profiles` when Firefox is a snap (a snap cannot read the system's temp folder), else `orkeon-firefox` under the system's temp folder. |
-| `SharedInstance` | boolean | `false` |  | `true` shares one browser per profile between the agent runs of the host: each run drives tabs of its own in it, and the browser closes when the last run leaves it. The default gives each run a browser of its own. |
+| `SharedInstance` | boolean | `false` |  | `true` shares one browser per profile between the agent runs of the host: each run drives tabs of its own in it, and the browser closes when the last run leaves it, unless `Lifetime` is `Host`. The default gives each run a browser of its own. |
 | `StartupTimeoutSeconds` | integer | `30` |  | Seconds Firefox is given to start and open its remote protocol. |
 <!-- /settings -->
 

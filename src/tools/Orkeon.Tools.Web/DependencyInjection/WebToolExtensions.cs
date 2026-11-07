@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Orkeon.Application.Configuration;
 using Orkeon.Application.Interfaces.Security;
 using Orkeon.Domain.Memory;
@@ -53,6 +54,9 @@ public static class WebToolExtensions
         services.AddTransient<IBaseTool>(CreateScrapeElementTool);
         services.AddTransient<IBaseTool>(CreateGitHubTool);
         services.AddTransient<IBaseTool>(CreateImageGenerationTool);
+        // The browsers belong to the host, not to a tool instance: one manager for every firefox tool
+        // the container hands out, closed with the container (TryAdd, idempotent).
+        services.TryAddSingleton(CreateFirefoxSessions);
         services.AddTransient<IBaseTool>(CreateFirefoxTool);
         return services;
     }
@@ -154,20 +158,31 @@ public static class WebToolExtensions
             : new ScrapeElementTool(httpClient, logger);
     }
 
+    private static Firefox.FirefoxSessionManager CreateFirefoxSessions(IServiceProvider sp)
+    {
+        var options = FirefoxToolOptions.From(sp.GetService<IConfiguration>());
+        var logger = sp.GetService<Microsoft.Extensions.Logging.ILogger<FirefoxTool>>();
+        return new Firefox.FirefoxSessionManager(
+            new Firefox.FirefoxProcessLauncher(options, logger), options, FirefoxFileSystem(sp), logger);
+    }
+
     private static IBaseTool CreateFirefoxTool(IServiceProvider sp)
     {
-        var fileSystem = sp.GetService<Orkeon.Domain.FileSystem.IFileSystemService>()
-            ?? throw new InvalidOperationException(
-                $"{nameof(FirefoxTool)} requires an {nameof(Orkeon.Domain.FileSystem.IFileSystemService)} to be registered.");
-
-        // Tools are transient; the browser is not: it belongs to the agent run, whichever instance asks.
+        // Tools are transient; the browsers are not: they belong to the agent run, or to the host
+        // (Lifetime: host), whichever instance asks.
         return new FirefoxTool(
+            sp.GetRequiredService<Firefox.FirefoxSessionManager>(),
             FirefoxToolOptions.From(sp.GetService<IConfiguration>()),
-            fileSystem,
+            FirefoxFileSystem(sp),
             sp.GetService<IUrlValidator>(),
             sp.GetService<IEphemeralCollectionSearch>(),
             sp.GetService<Microsoft.Extensions.Logging.ILogger<FirefoxTool>>());
     }
+
+    private static Orkeon.Domain.FileSystem.IFileSystemService FirefoxFileSystem(IServiceProvider sp) =>
+        sp.GetService<Orkeon.Domain.FileSystem.IFileSystemService>()
+            ?? throw new InvalidOperationException(
+                $"{nameof(FirefoxTool)} requires an {nameof(Orkeon.Domain.FileSystem.IFileSystemService)} to be registered.");
 
     private static IBaseTool CreateImageGenerationTool(IServiceProvider sp)
     {

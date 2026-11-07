@@ -54,15 +54,15 @@ public sealed class FirefoxToolOptions
 
     /// <summary>
     /// `true` shares one browser per profile between the agent runs of the host: each run drives tabs
-    /// of its own in it, and the browser closes when the last run leaves it. The default gives each
-    /// run a browser of its own.
+    /// of its own in it, and the browser closes when the last run leaves it, unless `Lifetime` is
+    /// `Host`. The default gives each run a browser of its own.
     /// </summary>
     public bool SharedInstance { get; set; }
 
     /// <summary>
     /// How long a browser lives: `Run` (the default) closes it with the agent run that started it;
-    /// `Host` keeps it open, with its tabs and its profile, from one run to the next - one browser per
-    /// profile - until `close`, the user closes the window, or the host stops. Case ignored.
+    /// `Host` keeps it open, with its tabs and its profile, from one run to the next, one browser per
+    /// profile, until `close`, the user closes the window, or the host stops. Case ignored.
     /// </summary>
     public FirefoxBrowserLifetime Lifetime { get; set; }
 

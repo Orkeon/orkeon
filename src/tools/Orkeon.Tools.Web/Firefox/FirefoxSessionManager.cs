@@ -23,7 +23,8 @@ namespace Orkeon.Tools.Web.Firefox;
 /// browser" is the host's browser of that profile, and an action without a profile goes there.</item>
 /// <item>An action that fails for a reason the agent can act on (<see cref="IExpectedToolError"/>) keeps
 /// the browser; any other failure, a cancellation, or a browser that has gone closes it, and the next
-/// action starts a new one.</item>
+/// action starts a new one. A browser the host keeps stays through a failure or a cancellation, and is
+/// replaced only once it has gone.</item>
 /// </list>
 /// </remarks>
 internal sealed class FirefoxSessionManager : IDisposable
@@ -110,7 +111,8 @@ internal sealed class FirefoxSessionManager : IDisposable
 
     /// <summary>
     /// Closes the browser the action addresses: the current run's, or, outside any run, the host's
-    /// browser of <paramref name="profile"/>; <c>false</c> when there is none.
+    /// browser of <paramref name="profile"/>; <c>false</c> when there is none. Under the host's lifetime
+    /// a run that has not used the browser yet addresses the host's browser of <paramref name="profile"/>.
     /// </summary>
     /// <exception cref="FirefoxException">Under the host's lifetime, <paramref name="named"/> names a profile other than the run's while the run's browser is open.</exception>
     public async Task<bool> CloseAsync(FirefoxProfileChoice profile, bool named, CancellationToken cancellationToken)
@@ -174,7 +176,7 @@ internal sealed class FirefoxSessionManager : IDisposable
             ObjectDisposedException.ThrowIf(_disposed, this);
             if (!_host!.TryGetValue(profile.Name, out var slot))
             {
-                slot = new FirefoxSessionSlot();
+                slot = new FirefoxSessionSlot(keepOnFailure: true);
                 _host[profile.Name] = slot;
             }
 

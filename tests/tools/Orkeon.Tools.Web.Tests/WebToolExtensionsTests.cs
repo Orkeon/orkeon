@@ -35,6 +35,23 @@ public class WebToolExtensionsTests
     }
 
     [Fact]
+    public void AddOrkeonWebTools_HandsEveryFirefoxToolTheBrowsersOfTheHost()
+    {
+        var services = new ServiceCollection();
+        services.AddSingleton<IFileSystemService>(new FakeFileSystemService());
+        services.AddSingleton<Orkeon.Application.Interfaces.Security.ISecretProvider>(new MockSecretProvider());
+        services.AddOrkeonWebTools();
+        using var sp = services.BuildServiceProvider();
+
+        // A crew resolves the tools each time it loads: the browsers must not start over with them.
+        var first = sp.GetServices<IBaseTool>().OfType<FirefoxTool>().Single();
+        var second = sp.GetServices<IBaseTool>().OfType<FirefoxTool>().Single();
+
+        Assert.NotSame(first, second);
+        Assert.Same(first.Sessions, second.Sessions);
+    }
+
+    [Fact]
     public async Task AddOrkeonWebTools_RegistersFirefox_WhichRefusesALoopbackPageBeforeAnyBrowserStarts()
     {
         var services = new ServiceCollection();

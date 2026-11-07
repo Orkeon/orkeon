@@ -165,24 +165,12 @@ public sealed class FirefoxProfileTests : IDisposable
     public void Should_RemoveTheDisposableFoldersNoFirefoxHolds_AndLeaveTheRest()
     {
         Assert.SkipWhen(OperatingSystem.IsWindows(), "The Unix lock is a symbolic link naming the process.");
-        var old = DateTime.UtcNow.AddHours(-1);
-        string Folder(string name, bool aged)
-        {
-            var directory = Directory.CreateDirectory(Path.Combine(_root.FullName, name)).FullName;
-            if (aged)
-                Directory.SetLastWriteTimeUtc(directory, old);
-            return directory;
-        }
-
-        var stale = Folder(Guid.NewGuid().ToString("N"), aged: true);
-        File.CreateSymbolicLink(Path.Combine(stale, "lock"), "127.0.0.1:+2147483646");
-        Directory.SetLastWriteTimeUtc(stale, old);
-        var unlocked = Folder(Guid.NewGuid().ToString("N"), aged: true);
-        var held = Folder(Guid.NewGuid().ToString("N"), aged: true);
-        File.CreateSymbolicLink(Path.Combine(held, "lock"), $"127.0.0.1:+{Environment.ProcessId}");
-        Directory.SetLastWriteTimeUtc(held, old);
-        var young = Folder(Guid.NewGuid().ToString("N"), aged: false);
-        var named = Folder("agent-work", aged: true);
+        var stale = Folder(Guid.NewGuid().ToString("N"), ours: true, aged: true, lockedBy: 2147483646);
+        var unlocked = Folder(Guid.NewGuid().ToString("N"), ours: true, aged: true);
+        var held = Folder(Guid.NewGuid().ToString("N"), ours: true, aged: true, lockedBy: Environment.ProcessId);
+        var young = Folder(Guid.NewGuid().ToString("N"), ours: true, aged: false);
+        var foreign = Folder(Guid.NewGuid().ToString("N"), ours: false, aged: true);
+        var named = Folder("agent-work", ours: true, aged: true);
 
         FirefoxProfile.RemoveStale(_root.FullName, FirefoxProfile.StaleAge);
 
@@ -190,6 +178,32 @@ public sealed class FirefoxProfileTests : IDisposable
         Assert.False(Directory.Exists(unlocked));
         Assert.True(Directory.Exists(held));
         Assert.True(Directory.Exists(young));
+        Assert.True(Directory.Exists(foreign));
         Assert.True(Directory.Exists(named));
+    }
+
+    [Fact]
+    public void Should_SweepTheFoldersLeftBehind_When_ADisposableProfileIsCreated()
+    {
+        var left = Folder(Guid.NewGuid().ToString("N"), ours: true, aged: true);
+
+        var profile = FirefoxProfile.Create(_root.FullName);
+
+        Assert.False(Directory.Exists(left));
+        Assert.True(Directory.Exists(profile.Directory));
+        Assert.True(File.Exists(Path.Combine(profile.Directory, "user.js")));
+    }
+
+    /// <summary>A folder under the root: one of the tool's (its <c>user.js</c>) or not, an hour old or fresh, locked by a process or free.</summary>
+    private string Folder(string name, bool ours, bool aged, int? lockedBy = null)
+    {
+        var directory = Directory.CreateDirectory(Path.Combine(_root.FullName, name)).FullName;
+        if (ours)
+            File.WriteAllText(Path.Combine(directory, "user.js"), FirefoxProfile.Preferences);
+        if (lockedBy is { } pid)
+            File.CreateSymbolicLink(Path.Combine(directory, "lock"), $"127.0.0.1:+{pid}");
+        if (aged)
+            Directory.SetLastWriteTimeUtc(directory, DateTime.UtcNow.AddHours(-1));
+        return directory;
     }
 }

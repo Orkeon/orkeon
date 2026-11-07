@@ -231,7 +231,7 @@ public sealed record FirefoxHit
     Description = "Drive a Firefox browser: open a page (navigate), read it as an outline of sections, links and controls (snapshot, find, read), " +
         "find its sections by meaning (search), then act on a node by its id (click, type), press keys, run a script (evaluate) or save a screenshot. " +
         "Tabs of its own are opened, listed, switched and closed (new_tab, tabs, switch_tab, close_tab). " +
-        "The browser stays open between calls of the same run; close ends it.",
+        "The browser stays open between calls of the same run, or from one run to the next when the host keeps it; close ends it.",
     Category = "Web Operations")]
 public sealed partial class FirefoxTool : ToolBase<FirefoxRequest, FirefoxResponse>
 {
@@ -287,6 +287,7 @@ public sealed partial class FirefoxTool : ToolBase<FirefoxRequest, FirefoxRespon
     };
 
     private readonly FirefoxSessionManager _sessions;
+    private readonly bool _ownsSessions;
     private readonly FirefoxToolOptions _options;
     private readonly FirefoxProfilePolicy _profiles;
     private readonly IFileSystemService _fileSystem;
@@ -310,22 +311,42 @@ public sealed partial class FirefoxTool : ToolBase<FirefoxRequest, FirefoxRespon
         IFirefoxLauncher launcher, FirefoxToolOptions options, IFileSystemService fileSystem,
         IUrlValidator? urlValidator = null, IEphemeralCollectionSearch? search = null,
         ILogger? logger = null, FirefoxSessionTimings? timings = null)
+        : this(new FirefoxSessionManager(launcher, options, fileSystem, logger, timings), ownsSessions: true, options, fileSystem, urlValidator, search, logger)
+    {
+    }
+
+    /// <summary>A tool over the browsers of <paramref name="sessions"/>, which the container registers once and closes with the host.</summary>
+    internal FirefoxTool(
+        FirefoxSessionManager sessions, FirefoxToolOptions options, IFileSystemService fileSystem,
+        IUrlValidator? urlValidator = null, IEphemeralCollectionSearch? search = null, ILogger? logger = null)
+        : this(sessions, ownsSessions: false, options, fileSystem, urlValidator, search, logger)
+    {
+    }
+
+    private FirefoxTool(
+        FirefoxSessionManager sessions, bool ownsSessions, FirefoxToolOptions options, IFileSystemService fileSystem,
+        IUrlValidator? urlValidator, IEphemeralCollectionSearch? search, ILogger? logger)
         : base(logger)
     {
+        ArgumentNullException.ThrowIfNull(sessions);
         ArgumentNullException.ThrowIfNull(options);
         ArgumentNullException.ThrowIfNull(fileSystem);
+        _sessions = sessions;
+        _ownsSessions = ownsSessions;
         _options = options;
         _fileSystem = fileSystem;
         _urlValidator = urlValidator;
         _search = search;
         _profiles = new FirefoxProfilePolicy(options);
-        _sessions = new FirefoxSessionManager(launcher, options, fileSystem, logger, timings);
     }
+
+    /// <summary>The browsers this tool drives: its own, or the host's when the container handed them.</summary>
+    internal FirefoxSessionManager Sessions => _sessions;
 
     /// <inheritdoc/>
     protected override void Dispose(bool disposing)
     {
-        if (disposing)
+        if (disposing && _ownsSessions)
             _sessions.Dispose();
         base.Dispose(disposing);
     }

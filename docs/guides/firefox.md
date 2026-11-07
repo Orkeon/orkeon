@@ -68,7 +68,7 @@ reading actions pass in `plan` mode, `screenshot` is an edit, the others are exe
 | `new_tab` | `url` | Read | Opens a tab, on `url` when given, and drives it from now on |
 | `switch_tab` | `tab` | Read | Drives the tab `tab` (`t1`, `t2`) from now on, shown in front of the others |
 | `close_tab` | `tab` | Execute | Closes a tab, the current one by default; the last tab is never closed (`close` is for that) |
-| `close` | `profile` | Execute | Closes the run's browser; the next action starts a new one. Under `Lifetime: host`, outside any run, closes the host's browser of `profile` |
+| `close` | `profile` | Execute | Closes the run's browser; the next action starts a new one. Outside any run, under `Lifetime: host`, closes the host's browser of `profile`, the default's without (`profile` counts there only) |
 
 Every answer carries the action, `url` and `title` of the page shown, `tab`, the handle of the
 tab the actions drive now, `profile`, the one the browser runs with, and `dialogs`: the
@@ -154,33 +154,38 @@ whoever asks. Names are compared without regard to case.
 
 By default every agent run has a browser of its own. `SharedInstance: true` gives the host one
 browser per profile, shared between the runs that use it: each run drives tabs of its own in it,
-sees only those, and the browser closes when the last run leaves it — or when the host stops.
-`close` closes the tabs of the run that calls it, not the browser the other runs share. A named
+sees only those, and the browser closes when the last run leaves it — unless `Lifetime: host`
+keeps it ([below](#a-browser-that-outlives-the-run)) — or when the host stops. `close` closes the
+tabs of the run that calls it, not the browser the other runs share. A named
 profile is what makes sharing useful: several agents on one signed-in session, side by side.
 
 ## A browser that outlives the run
 
-`Lifetime: host` keeps the browser once the run ends: its window, its tabs and its profile - the
-disposable one included - stay as the last action left them, and the next run, or an action
+`Lifetime: host` keeps the browser once the run ends: its window, its tabs and its profile — the
+disposable one included — stay as the last action left them, and the next run, or an action
 outside any run, finds them. One browser per profile: an action names the browser it addresses
 with `profile`, or gets the host's default. The browser closes when an agent calls `close`,
-when the user closes the window, or when the host stops; the disposable folder goes with it. A
-browser the user closed, or that has died, is noticed at the next action, which starts a new one.
+when the user closes the window, or when the host stops; the disposable folder goes with it. An
+action that fails or is cancelled leaves it open. A browser the user closed, or that has died, is
+noticed at the next action, which starts a new one. The session is the host's as well: `tabs`
+lists the tabs the earlier runs left, and the next run drives the one the last was on.
 
 Runs that overlap on one profile queue their actions on its browser, one at a time: the host's
-browser is shared by every run of the host, which fits a console with one operator - an agent
-that picks up where the last one left, a page the user reads between two runs - not agents that
-browse side by side. For those, `SharedInstance` stays the answer, and the two combine: the tabs
-of a run close with the run, the window stays open for the next one on a blank tab.
+browser is shared by every run of the host, which fits a console with one operator — an agent
+that picks up where the last one left, a page the user reads between two runs — not agents that
+browse side by side. For those, `SharedInstance` stays the answer, and the two combine: each run
+still sees tabs of its own, which close with the run, and the window stays open for the next one
+on a blank tab.
 
 ```json
 { "Orkeon": { "Tools": { "Firefox": { "Lifetime": "host" } } } }
 ```
 
-Inside a run, `close` closes the run's browser, as always; outside any run - a console, a
-script - `close` with a `profile` closes the host's browser of that profile, the default's
-without. On every start, the tool removes the disposable folders under `ProfileRoot` that no
-Firefox holds any more.
+Inside a run, `close` closes the run's browser, as always — or, when the run has not used one
+yet, the host's browser of the profile named, the default's without; outside any run — a console,
+a script — `close` closes the host's browser the same way. Each time a disposable profile is
+created, the tool first removes the disposable folders under `ProfileRoot` that no Firefox holds
+and that are more than ten minutes old: what a host killed with its browsers left behind.
 
 ## Settings
 

@@ -69,7 +69,7 @@ public class FirefoxToolOptionsTests
         var options = FirefoxToolOptions.From(Configuration(
             ("ExecutablePath", "  "),
             ("Headless", "maybe"),
-            ("Lifetime", "forever"),
+            ("Lifetime", "7"),
             ("StartupTimeoutSeconds", "soon"),
             ("CommandTimeoutSeconds", "0"),
             ("MaxNodes", "-3")));

@@ -74,7 +74,7 @@ exécutions.
 | `new_tab` | `url` | Read | Ouvre un onglet, sur `url` quand elle est donnée, et le pilote désormais |
 | `switch_tab` | `tab` | Read | Pilote désormais l'onglet `tab` (`t1`, `t2`), affiché devant les autres |
 | `close_tab` | `tab` | Execute | Ferme un onglet, le courant par défaut ; le dernier onglet n'est jamais fermé (`close` est là pour ça) |
-| `close` | `profile` | Execute | Ferme le navigateur de l'exécution ; l'action suivante en démarre un nouveau. Sous `Lifetime: host`, hors de toute exécution, ferme le navigateur de l'hôte du profil `profile` |
+| `close` | `profile` | Execute | Ferme le navigateur de l'exécution ; l'action suivante en démarre un nouveau. Hors de toute exécution, sous `Lifetime: host`, ferme le navigateur de l'hôte du profil `profile`, celui du profil par défaut sans (`profile` ne compte que là) |
 
 Chaque réponse porte l'action, l'`url` et le `title` de la page affichée, `tab`, la poignée de
 l'onglet que les actions pilotent désormais, `profile`, celui avec lequel le navigateur tourne,
@@ -168,37 +168,42 @@ casse.
 Par défaut, chaque exécution d'agent a son propre navigateur. `SharedInstance: true` donne à
 l'hôte un navigateur par profil, partagé entre les exécutions qui l'utilisent : chacune y pilote
 ses propres onglets, ne voit qu'eux, et le navigateur se ferme quand la dernière exécution le
-quitte — ou quand l'hôte s'arrête. `close` ferme les onglets de l'exécution qui l'appelle, pas le
+quitte — sauf si `Lifetime: host` le garde ([ci-dessous](#un-navigateur-qui-survit-à-lexécution)) —
+ou quand l'hôte s'arrête. `close` ferme les onglets de l'exécution qui l'appelle, pas le
 navigateur que les autres partagent. C'est un profil nommé qui rend le partage utile : plusieurs
 agents sur une même session connectée, côte à côte.
 
 ## Un navigateur qui survit à l'exécution
 
 `Lifetime: host` garde le navigateur une fois l'exécution terminée : sa fenêtre, ses onglets et
-son profil - le jetable compris - restent comme la dernière action les a laissés, et l'exécution
+son profil — le jetable compris — restent comme la dernière action les a laissés, et l'exécution
 suivante, ou une action hors de toute exécution, les retrouve. Un navigateur par profil : une
 action nomme avec `profile` le navigateur qu'elle vise, ou reçoit celui du profil par défaut de
 l'hôte. Le navigateur se ferme quand un agent appelle `close`, quand l'utilisateur ferme la
-fenêtre, ou quand l'hôte s'arrête ; le dossier jetable part avec lui. Un navigateur que
-l'utilisateur a fermé, ou qui est mort, est remarqué à l'action suivante, qui en démarre un
-nouveau.
+fenêtre, ou quand l'hôte s'arrête ; le dossier jetable part avec lui. Une action qui échoue ou
+est annulée le laisse ouvert. Un navigateur que l'utilisateur a fermé, ou qui est mort, est
+remarqué à l'action suivante, qui en démarre un nouveau. La session aussi est celle de l'hôte :
+`tabs` liste les onglets que les exécutions précédentes ont laissés, et l'exécution suivante
+pilote celui où la dernière s'est arrêtée.
 
 Des exécutions qui se chevauchent sur un même profil mettent leurs actions en file sur son
 navigateur, une à la fois : le navigateur de l'hôte est partagé par toutes les exécutions de
-l'hôte, ce qui convient à une console à un seul opérateur - un agent qui reprend là où le
-précédent s'est arrêté, une page que l'utilisateur lit entre deux exécutions - pas à des agents
+l'hôte, ce qui convient à une console à un seul opérateur — un agent qui reprend là où le
+précédent s'est arrêté, une page que l'utilisateur lit entre deux exécutions — pas à des agents
 qui naviguent côte à côte. Pour ceux-là, `SharedInstance` reste la réponse, et les deux se
-combinent : les onglets d'une exécution se ferment avec elle, la fenêtre reste ouverte pour la
-suivante sur un onglet vierge.
+combinent : chaque exécution ne voit toujours que ses propres onglets, qui se ferment avec elle,
+et la fenêtre reste ouverte pour la suivante sur un onglet vierge.
 
 ```json
 { "Orkeon": { "Tools": { "Firefox": { "Lifetime": "host" } } } }
 ```
 
-Dans une exécution, `close` ferme le navigateur de l'exécution, comme toujours ; hors de toute
-exécution - une console, un script - `close` avec un `profile` ferme le navigateur de l'hôte de
-ce profil, celui du profil par défaut sans. À chaque démarrage, l'outil supprime les dossiers
-jetables sous `ProfileRoot` qu'aucun Firefox ne tient plus.
+Dans une exécution, `close` ferme le navigateur de l'exécution, comme toujours — ou, quand
+l'exécution n'en a pas encore utilisé, le navigateur de l'hôte du profil nommé, celui du profil
+par défaut sans ; hors de toute exécution — une console, un script — `close` ferme le navigateur
+de l'hôte de la même façon. Chaque fois qu'un profil jetable est créé, l'outil supprime d'abord,
+sous `ProfileRoot`, les dossiers jetables de plus de dix minutes qu'aucun Firefox ne tient : ce
+qu'un hôte tué avec ses navigateurs a laissé derrière lui.
 
 ## Réglages
 

@@ -8,7 +8,11 @@ namespace Orkeon.Tools.Web.Firefox;
 /// the run's scope, which disposes it when the run ends; a host's slot (<c>Lifetime: host</c>) is one per
 /// profile, disposed with the host. It holds at most one live session at a time, replaced after a reset.
 /// </summary>
-internal sealed class FirefoxSessionSlot : IAsyncDisposable
+/// <param name="keepOnFailure">
+/// <c>true</c> keeps the session when an action fails or is cancelled, as long as its browser is there
+/// (the host's browser outlives the actions); <c>false</c> closes it, and the next action starts afresh.
+/// </param>
+internal sealed class FirefoxSessionSlot(bool keepOnFailure = false) : IAsyncDisposable
 {
     [SuppressMessage("Usage", "CA2213:Disposable fields should be disposed", Justification = "An action may still be queued on the gate when the slot ends; a SemaphoreSlim without AvailableWaitHandle holds no unmanaged resource.")]
     private readonly SemaphoreSlim _gate = new(1, 1);
@@ -16,13 +20,16 @@ internal sealed class FirefoxSessionSlot : IAsyncDisposable
     private FirefoxSession? _session;
     private bool _disposed;
 
-    /// <summary><c>true</c> while the slot holds a session whose browser is still there.</summary>
+    /// <summary>
+    /// <c>true</c> while the slot holds a session whose browser is still there, or while an action is
+    /// opening or using one: what a caller must not take for free.
+    /// </summary>
     public bool IsOpen
     {
         get
         {
             lock (_sync)
-                return _session is { IsAlive: true };
+                return _session is { IsAlive: true } || _gate.CurrentCount == 0;
         }
     }
 
@@ -91,7 +98,7 @@ internal sealed class FirefoxSessionSlot : IAsyncDisposable
                 // The agent reads the reason and goes on in the same page.
                 throw;
             }
-            catch
+            catch when (!keepOnFailure || !session.IsAlive)
             {
                 // Cancelled, or the browser died: the next action starts afresh.
                 await ResetAsync(session).ConfigureAwait(false);
@@ -104,7 +111,10 @@ internal sealed class FirefoxSessionSlot : IAsyncDisposable
         }
     }
 
-    /// <summary>Closes the slot's session, once the action in progress has ended; false when it has none.</summary>
+    /// <summary>
+    /// Closes the slot's session, once the action in progress has ended; false when it has none, or
+    /// when its browser had gone already.
+    /// </summary>
     public async Task<bool> CloseAsync(CancellationToken cancellationToken)
     {
         await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);
@@ -116,8 +126,9 @@ internal sealed class FirefoxSessionSlot : IAsyncDisposable
             if (session is null)
                 return false;
 
+            var alive = session.IsAlive;
             await ResetAsync(session).ConfigureAwait(false);
-            return true;
+            return alive;
         }
         finally
         {
