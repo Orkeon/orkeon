@@ -745,8 +745,8 @@ public class MemoryServiceTests
     [Fact]
     public async System.Threading.Tasks.Task ShouldUseInProcessStore_WhenNoRegistrySupplied()
     {
-        // Backward compatibility: the registry ctor arg is optional; omitting it keeps the pre-P2-O-02
-        // in-process behavior with no provider resolution.
+        // The registry ctor arg is optional; omitting it keeps the in-process store with no
+        // provider resolution.
         var provider = new TestMemoryProvider();
         var factory = new TestMemoryProviderFactory(provider);
         var crewId = CreateTestCrewId();

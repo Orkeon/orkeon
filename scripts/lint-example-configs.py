@@ -4,7 +4,7 @@
 Scans every ``examples/NN-category/NN-slug/config.yaml`` and checks:
 
   (a) TOOL NAMES  — every name in an agent's ``tools:`` block must exist in the runtime
-      tool manifest for that example's runner. Unknown names are ERRORS, with a
+      tool manifest of the orkeon CLI. Unknown names are ERRORS, with a
       closest-match suggestion (difflib). One manifest for every category;
       TypeScript crews (``main.ork.ts``) are linted against the manifest plus
       the names the shared ``_tools`` module declares (EX-01).
@@ -77,9 +77,8 @@ def load_manifest(path: Path) -> set[str]:
     return names
 
 
-def manifest_from_list_tools(runner: str) -> set[str] | None:
+def manifest_from_list_tools() -> set[str] | None:
     """Best-effort invocation of the stock CLI's ``run --list-tools`` contract."""
-    _ = runner  # single registry now; kept for call-site stability
     proj = ROOT / "src" / "scripting" / "Orkeon.Scripting.Cli"
     if not proj.is_dir():
         return None
@@ -422,7 +421,7 @@ def main() -> int:
     ap.add_argument("--manifest", type=Path, default=DEFAULT_STANDARD_MANIFEST,
                     help="standard tool manifest (one name per line)")
     ap.add_argument("--list-tools", action="store_true",
-                    help="regenerate manifests by invoking each runner's --list-tools")
+                    help="regenerate the manifest by invoking the orkeon CLI's run --list-tools")
     ap.add_argument("--root", type=Path, default=None,
                     help="override the examples scan root (defaults to ./examples)")
     ap.add_argument("--require-texts", action="store_true",
@@ -434,7 +433,7 @@ def main() -> int:
         EXAMPLES = args.root.resolve()
 
     if args.list_tools:
-        std = manifest_from_list_tools("standard")
+        std = manifest_from_list_tools()
         if std is None:
             print("warning: --list-tools failed; falling back to committed manifest",
                   file=sys.stderr)

@@ -11,7 +11,7 @@ namespace Orkeon.Infrastructure.Tests.DependencyInjection;
 
 /// <summary>
 /// Registration tests for the opt-in execution-state persistence (R3.8):
-/// default off (backward compatible), explicit code-first activation,
+/// default off (in memory only), explicit code-first activation,
 /// configuration-driven activation, and the SQLite checkpointing store registration.
 /// </summary>
 public class ExecutionStatePersistenceRegistrationTests
@@ -30,7 +30,7 @@ public class ExecutionStatePersistenceRegistrationTests
         var options = sp.GetRequiredService<IOptions<CrewExecutionStatePersistenceOptions>>().Value;
         var manager = sp.GetService<ICrewExecutionStateManager>();
 
-        // Assert — backward-compatible default: in-memory only
+        // Assert — default: in-memory only
         Assert.False(options.Enabled);
         Assert.NotNull(manager);
         Assert.IsType<ScopedCrewExecutionStateManager>(manager);

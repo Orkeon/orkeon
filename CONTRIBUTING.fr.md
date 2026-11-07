@@ -407,9 +407,12 @@ une affaire d'opinion — elle est **consignée dans le dépôt** et vérifiée 
   `PublicAPI.Shipped.txt`.** Il exige une version majeure (une mineure n'est acceptable
   qu'avant la 1.0), une entrée `*REMOVED*` dans le fichier d'API, et une entrée
   CHANGELOG qui le dit sans détour.
-- **Fenêtre de dépréciation** : rien de public n'est retiré sans avoir livré
-  `[Obsolete]` pendant au moins une version mineure, avec le remplaçant nommé dans le
-  message.
+- **Fenêtre de dépréciation (à partir de la 1.0)** : une fois la 1.0 publiée, rien de
+  public n'est retiré sans avoir livré `[Obsolete]` pendant au moins une version mineure,
+  avec le remplaçant nommé dans le message. Pendant la ligne `1.0.0-rc.*`, les cales de
+  compatibilité sont retirées directement, sans étape `[Obsolete]` : chaque retrait reçoit
+  une ligne `*REMOVED*` dans le fichier d'API et une entrée CHANGELOG `**[breaking]**`
+  avec une note de migration.
 - **Les surfaces `[Experimental]` sont hors de cet engagement.** A2A, l'orchestration
   Autonomous, le RAG correctif et l'intégration MCP portent des diagnostics
   `[Experimental("ORKEXP00x")]` : les référencer est une erreur de compilation à

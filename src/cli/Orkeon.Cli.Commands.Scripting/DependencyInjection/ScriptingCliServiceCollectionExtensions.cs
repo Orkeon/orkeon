@@ -88,8 +88,8 @@ public static class ScriptingCliServiceCollectionExtensions
         if (configure is not null)
             services.Configure(configure);
 
-        // Derive the legacy ScriptCommandLoaderOptions from the rich configuration so the
-        // loader stays unchanged across phases.
+        // Derive the ScriptCommandLoaderOptions the loader reads from the bound
+        // ScriptCommandsConfiguration.
         services.AddOptions<ScriptCommandLoaderOptions>();
         services.AddSingleton<IConfigureOptions<ScriptCommandLoaderOptions>>(sp =>
             new ConfigureNamedOptions<ScriptCommandLoaderOptions>(

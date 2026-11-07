@@ -235,7 +235,7 @@ public sealed class Agent : AggregateRoot<AgentId>
     /// Creates a new agent with the specified parameters.
     /// Convenience overload that delegates to <see cref="Create(AgentCreateOptions)"/>.
     /// </summary>
-#pragma warning disable S107 // Backward-compatible overload; use Create(AgentCreateOptions) instead
+#pragma warning disable S107 // Many parameters by design: the flat form is the one callers use
     public static Agent Create(
         AgentRole role,
         AgentGoal goal,

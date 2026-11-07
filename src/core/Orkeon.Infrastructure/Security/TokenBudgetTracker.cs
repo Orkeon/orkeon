@@ -130,8 +130,7 @@ public partial class TokenBudgetTracker : ITokenBudgetTracker
             }
         }
 
-        // Fallback: built-in approximate per-1K rates (kept for backward compatibility
-        // when no registry is injected)
+        // Fallback when no registry is injected: built-in approximate per-1K rates
         var (promptRate, completionRate) = GetFallbackRatesPerThousand(model);
         return (promptTokens * promptRate / 1000m) + (completionTokens * completionRate / 1000m);
     }

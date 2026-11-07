@@ -11,6 +11,92 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **`firefox`**, a built-in tool of `Orkeon.Tools.Web` (122 tool classes): the Firefox installed on the machine, driven over WebDriver BiDi on a WebSocket — no driver, no vendor package, no browser download. One `action` argument: `navigate`, `back`, `snapshot`, `read`, `find`, `search`, `click`, `type`, `press`, `evaluate`, `screenshot`, `tabs`, `new_tab`, `switch_tab`, `close_tab`, `close`; the reading actions pass in `plan` mode, `screenshot` is an edit, the others executions. A page is read as a semantic graph (`PageOutlineMapper` in `Orkeon.Analysis`, the new `UniversalNodeKind.Control`) in a `RaggableTree` of its own, whose node ids (`p2#7`) the next actions take; `search` embeds the sections of the page as an ephemeral RAG collection and names the section each hit belongs to. One browser per agent run, closed with the run, on a disposable profile unless `Orkeon:Tools:Firefox:Profile` names one of the host's Firefox (`AllowedProfiles` are the ones an agent may ask for with the `profile` argument, `DeniedProfiles` the ones no browser ever starts on); `SharedInstance` gives the host one browser per profile, shared between the runs, each driving tabs of its own (`tabs`, `new_tab`, `switch_tab`, `close_tab`). The window is visible unless `Orkeon:Tools:Firefox:Headless` is set or the machine has no display. Every address, the ones a click lands on included, goes through the host's URL policy. Guide: `docs/guides/firefox.md`.
 
+### Changed — compatibility shims removed **[breaking]**
+
+The `1.0.0-rc.*` line removes compatibility shims directly, with no `[Obsolete]` step (`CONTRIBUTING.md`, "Deprecation window (from 1.0)"): every shim an audit of the repository confirmed is gone, each public removal has its `*REMOVED*` line in the API file of its project, and the table below gives the migration. The shims the audit kept (the flat crew triplet, the `HttpToolBase` constructors without a validator, `IStateStore`'s default methods, the MCP protocol eras) are documented as current forms.
+
+**Hosting and configuration**
+
+- **[breaking]** The `examples/_shared/appsettings.json` settings fallback is removed: `RunnerSettings.ResolveSettingsPath` walks up from the crew directory looking only for `appsettings/appsettings.json`. Move a `_shared/appsettings.json` to `appsettings/appsettings.json`, or pass `--settings`.
+- **[breaking]** Retired settings keys are no longer refused with a migration hint: `Memory:ConnectionString`, `Orkeon:Rag:ConnectionString`, `Orkeon:Rag:ProviderOptions`, `Orkeon:Pinecone:Environment`, `Orkeon:TypeSafe:Guard`, `MCP:EnableServer`, `Telemetry:ExportToConsole`, `Telemetry:PrometheusEndpoint` and the `RaggableTree` keys `Exclude`, `RootAlias`, `IndexMode`, `EnrichWithLlm`, `IncludeStatements` fall under the generic refusal (`<key> is not a setting: <section> carries ...`). Delete the key; connect memory and RAG stores from the section of their provider (`Orkeon:Redis`, `Orkeon:Sqlite`, `Orkeon:ChromaDb`, `Orkeon:Pinecone:Host`, `Orkeon:LanceDb`), put the guard under `Orkeon:Decision:Guard`, send telemetry to an OTLP collector (`Telemetry:OtlpEndpoint`), start an MCP server with `orkeon mcp serve`, pass index options to each `index_codebase` call.
+- **[breaking]** `AddOrkeonMcp` and `AddOrkeonMcpServer` no longer throw a dedicated `InvalidOperationException` for `MCP:EnableServer`, nor `AddOrkeonTelemetry` for `Telemetry:ExportToConsole` / `Telemetry:PrometheusEndpoint`: a C# host that never runs the start validation ignores those keys.
+- **[breaking]** `AddOrkeonCliTerminalGui(Action<TerminalGuiOptions>?)` is removed; `AddOrkeonCliTerminalGui(TerminalGuiOptions? options = null)` is the one overload, and a null options registers the defaults.
+- **[breaking]** Studio: the brush keys `WarningBrush`, `SandBrush` and `FieldLineBrush` are removed from the theme dictionaries. Use `WarningInkBrush` for text, `WarningIconBrush` for an icon or a stroke, `FieldBorderBrush` for a field border. `BtnAssistant` stays.
+
+**Domain, application and infrastructure**
+
+- **[breaking]** `LlmConfig.Gpt4`, `Gpt4WithSecret`, `Gpt35Turbo` and `Gpt35TurboWithSecret` are removed: `LlmConfig.Create(model, apiKey)` with the model named.
+- **[breaking]** `ToolSchemaGenerator.GenerateReturns` (both overloads) is removed: `GenerateReturnsWithTypes<T>().Returns`.
+- **[breaking]** `AgentSelectionResult.SelectedAgent` and `Score` are removed: `SelectedAgentId` and `ConfidenceScore`. `CrewInput.Parameters` is removed: `CrewInput.Variables`.
+- **[breaking]** `Deconstruct` is removed from `LlmMetadata`, `TypedTaskExecutionContext`, `AgentStepContext` and `StepMetadata`: read the properties by name.
+- **[breaking]** `Orkeon.Domain.Common.Identity<T>` is removed: the `EntityId<T>` ids (`AgentId`, `TaskId`, ...).
+- **[breaking]** `ToolBase.ExecuteCoreAsync(string, CancellationToken)` is removed: override `ExecuteCoreAsync(ProtocolToolCallRequest, CancellationToken)`; `ExecuteAsync(string)` converts the string into a protocol call.
+- **[breaking]** `WebPageLoader` no longer accepts the `web` kind: `url`.
+- **[breaking]** The `[Obsolete]` `ProcessIsolationSandbox` alias is removed: `HostProcessRunner` (its file is now `HostProcessRunner.cs`).
+- **[breaking]** The `IPerformanceMetrics` port, `PerformanceMetricsCollector` and their records (`PerformanceReport`, `AgentMetrics`, `ToolMetrics`, `LlmMetrics`, `ProviderMetrics`, `MemoryMetrics`, `OperationMetrics`, `DurationStatistics`) are removed, with the `AgentExecutionService` constructor parameter that took the port. Metrics come from OpenTelemetry only.
+- **[breaking]** The flat `AgentStep.CreateSuccess(output, structuredOutput, agentId, taskId, action, input, toolsUsed, context)`, the flat `ExecutionMetadata` constructor and the flat `ExecutionSnapshot` constructor are removed: pass `AgentStepInfo`, `ExecutionTimingInfo` + `ExecutionIdentityInfo`, and `ExecutionStatusInfo` + `ExecutionTiming`.
+- **[breaking]** `Application.Execution.TaskOutput.RawOutput` is removed: `Content`. `FunctionCallInfo` and `LlmMessage.FunctionCallInfo` are removed: `LlmMessage.RawToolCalls`.
+- **[breaking]** `TokenBudgetTracker.EstimateCost(int, int, string)` is removed: `EstimateCost(prompt, completion, model, registry)` (`registry: null` keeps the built-in table).
+- **[breaking]** `IncrementalReindexTool` takes an `IndexFreshnessService`, now required; the constructor with a store and a builder factory, and its fallback path, are removed.
+- **[breaking]** Tolerant enum converters read names only: a JSON number is refused for every enum, flags enums included, with the list of valid names. `ImmutableArrayEnumTolerantConverter<TEnum>` and its registration in `JsonComponentSerializer` are removed; an `ImmutableArray` of a flags enum is read element by element by `TolerantFlagsEnumConverter`.
+- Orphan `#pragma warning disable/restore CS0618` lines (no obsolete member behind them) are removed from the LLM providers, the `orkeon` CLI commands and the tests.
+
+**Analysis**
+
+- **[breaking]** `InlineFqnValidationResult` loses its positional constructor `(ExtractedFqns, UnknownFqns)`: the object initializer.
+- **[breaking]** `edge_kinds` of `dependency_graph`, `sub_graph`, `flow_trace` and `edge_list` no longer falls back to `EdgeKind` member names: `extends` and `implements` are canonical workflow names (`GraphKindNames.EdgeKindNames` is `contains, calls, imports, inherits, extends, implements, tests, documents, project_depends`), so a script sends back the `edges[].kind` it read; `ProjectDepends` is refused as an unknown name, send `project_depends`. Names stay case-insensitive. The tool schemas and `tools.generated.d.ts` drop the "Legacy enum names … are still accepted" sentence.
+- **[breaking]** `Orkeon.Analysis.Abstractions.Interfaces.IEmbeddingProvider` gains `string? ModelName` (default `null`): an implementation overrides it to have its model recorded (see Fixed below). The `index_codebase` cache key carries that model name: an existing cache entry misses once and is rebuilt.
+
+**Scripting**
+
+- `orkeon-cli.d.ts` no longer announces `aborted` / `throwIfAborted` aliases on `CommandSignal`: only the PascalCase members exist at runtime.
+- Comments that described current code as "legacy" or "for backward compatibility" now say what it does: `JsCrewConfigurationAdapter` (`.withAutonomousTool(...)` takes tool instances; `.expect({...})` fills `Context["expect_schema"]`, read by the hierarchical manager prompt), `ToolsNamespaceBinding`, the esbuild probe (the "main-package" layout `node_modules/esbuild/bin`, in its error message and three test names too), `ScriptCommandLoaderOptions` and its registration.
+
+**Docs and tooling**
+
+- `CONTRIBUTING.md` (and `CONTRIBUTING.fr.md`): the deprecation window applies from 1.0; during the `1.0.0-rc.*` line a shim is removed directly, with a `*REMOVED*` line and a `**[breaking]**` entry.
+- Comments and docs that called a current form "legacy", "deprecated" or "backward-compatible" say what it is: the `apiKey` parameter of `LlmConfig` (kept; `ApiKeySecretName` is preferred), the constructors of `HttpToolBase`, `HttpToolBase<TRequest, TResponse>` and `HttpApiTool` that take no `IUrlValidator` (the fail-closed default SSRF guard applies), the `decision` reranker (no `typesafe` alias), the S107 pragmas of the flat `Crew`, `Agent`, `TaskOutput` and `MemoryMetadata` forms, `CrewInput`'s positional constructor, the defaults of `docs/reference/opt-in-subsystems.md`, and the flat `crew.yaml` + `agents.yaml` + `tasks.yaml` triplet, a supported layout `YamlCrewExporter` writes (two Studio test names follow).
+- `scripts/lint-example-configs.py`: the dead `runner` parameter of `manifest_from_list_tools` is removed.
+
+| Before | After |
+|---|---|
+| `_shared/appsettings.json` found by the walk-up | not read; `appsettings/appsettings.json` only |
+| `MCP:EnableServer` refused naming `orkeon mcp serve` | generic unknown-key refusal |
+| `Telemetry:ExportToConsole` / `PrometheusEndpoint` refused naming OTLP | generic unknown-key refusal |
+| `Memory:ConnectionString`, `Orkeon:Rag:ConnectionString`, `Orkeon:Rag:ProviderOptions`, `Orkeon:Pinecone:Environment`, `Orkeon:TypeSafe:Guard` refused with a migration | generic unknown-key refusal |
+| `RaggableTree:Exclude` / `RootAlias` / `IndexMode` / `EnrichWithLlm` / `IncludeStatements` refused naming `index_codebase` | generic unknown-key refusal |
+| `services.AddOrkeonCliTerminalGui(o => o.X = ...)` | `services.AddOrkeonCliTerminalGui(new TerminalGuiOptions { X = ... })` |
+| `{DynamicResource WarningBrush}` | `WarningInkBrush` (text), `WarningIconBrush` (icon, stroke) |
+| `SandBrush`, `FieldLineBrush` | removed (no consumer; `FieldBorderBrush` for fields) |
+| `LlmConfig.Gpt4(key)` / `LlmConfig.Gpt35Turbo(key)` (and `…WithSecret`) | `LlmConfig.Create("gpt-4", key)` / `LlmConfig.Create("gpt-3.5-turbo", key)` |
+| `ToolSchemaGenerator.GenerateReturns<T>()` / `GenerateReturns(type)` | `ToolSchemaGenerator.GenerateReturnsWithTypes<T>().Returns` |
+| `result.SelectedAgent` / `result.Score` | `result.SelectedAgentId` / `result.ConfidenceScore` |
+| `input.Parameters` (`CrewInput`) | `input.Variables` |
+| `var (a, b, ...) = metadata;` | `metadata.A`, `metadata.B` |
+| `Identity<T>` | `EntityId<T>` (`AgentId`, `TaskId`, ...) |
+| `override ExecuteCoreAsync(string input, ct)` | `override ExecuteCoreAsync(ProtocolToolCallRequest request, ct)` |
+| `kind: "web"` (`WebPageLoader`) | `kind: "url"` |
+| `ProcessIsolationSandbox` | `HostProcessRunner` |
+| `IPerformanceMetrics` / `PerformanceMetricsCollector` / `PerformanceReport` and its records | OpenTelemetry metrics |
+| `AgentStep.CreateSuccess(out, so, agentId, taskId, ...)` | `AgentStep.CreateSuccess(out, so, new AgentStepInfo(agentId, taskId, ...))` |
+| `new ExecutionMetadata(start, end, max, id, parent, ...)` | `new ExecutionMetadata(new ExecutionTimingInfo(start, end, max), new ExecutionIdentityInfo(id, parent), ...)` |
+| `new ExecutionSnapshot(id, crew, status, progress, task, error, start, end, meta)` | `new ExecutionSnapshot(id, crew, new ExecutionStatusInfo(status, progress, task, error), new ExecutionTiming(start, end), meta)` |
+| `taskOutput.RawOutput` (Application) | `taskOutput.Content` |
+| `message.FunctionCallInfo` / `FunctionCallInfo` | `message.RawToolCalls` |
+| `TokenBudgetTracker.EstimateCost(p, c, model)` | `TokenBudgetTracker.EstimateCost(p, c, model, registry)` |
+| `new IncrementalReindexTool(store, builderFactory, ...)` | `new IncrementalReindexTool(freshnessService, gitDiff, logger)` |
+| `ImmutableArrayEnumTolerantConverter<TEnum>` | `TolerantFlagsEnumConverter` (element by element) |
+| `"edge_kinds": 3` / `"level": 1` | `"edge_kinds": "imports, calls"` / `"level": "L1_Package"` |
+| `new InlineFqnValidationResult(extracted, unknown)` | `new InlineFqnValidationResult { ExtractedFqns = extracted, UnknownFqns = unknown }` |
+| `edge_kinds: ["ProjectDepends"]` | `edge_kinds: ["project_depends"]` |
+| `edge_kinds: ["Extends"]` / `["Implements"]` (fallback on `EdgeKind` names) | `edge_kinds: ["extends"]` / `["implements"]` (canonical, any case) |
+| an `IEmbeddingProvider` without a model name | override `ModelName` to have the model recorded |
+
+### Fixed — two bugs found while removing the shims
+
+- `CreateTaskCommand.AgentId` accepts a ULID, the form every `AgentId` prints, and still a GUID: `CreateTaskCommandValidator` refused ULIDs.
+- The embedding model an index records (`embedding_stats.model` of `index_codebase`) is the one the embedding provider names (`IEmbeddingProvider.ModelName`: the OpenAI, Ollama and local providers return theirs, `LocalEmbeddingProvider.EmbeddedModelName` = `bge-micro-v2`, or the `ModelPath` when set), no longer the request's `embedding_model` default `text-embedding-3-small` while the host embeds locally with `bge-micro-v2`; the request's value is recorded only when the provider names none.
+
 ### Added — tasks in the thread, palettes and the way back
 
 - In the split-pane console, tasks launched together read as one group with a branch per task, and the end line of a task says its tools, tokens and time, its glyph coloured by how it ended.

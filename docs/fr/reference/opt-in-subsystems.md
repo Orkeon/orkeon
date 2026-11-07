@@ -514,8 +514,8 @@ Aucun attribut ne porte l'identifiant d'un crew, d'une tâche ou d'un agent.
   Avec la surcharge `AddOrkeonInfrastructure(IConfiguration)`, la présence de la
   section `Orkeon:ExecutionState:Persistence` (`Enabled`, `DeleteFromStoreOnArchive`)
   suffit à lier les options.
-- **Défaut rétro-compatible** : sans activation, les états restent **in-memory only**
-  (aucune reprise après crash) — comportement historique inchangé. Si l'option est
+- **Défaut** : sans activation, les états restent **in-memory only**
+  (aucune reprise après crash). Si l'option est
   activée sans store enregistré, le manager logue un avertissement et continue en
   mémoire.
 - **Cohabitation** : les sessions d'état d'exécution sont **espacées de noms**
@@ -569,8 +569,8 @@ Aucun attribut ne porte l'identifiant d'un crew, d'une tâche ou d'un agent.
   annotations → `Execute`) ; les outils d'un serveur non fiable — le défaut — et d'un serveur
   qui n'envoie aucune annotation restent `Unspecified`, quoi que disent leurs indications.
   `BuiltInToolAccessTests` liste les outils intégrés encore laissés à `Unspecified`.
-- **Défaut rétro-compatible** : flag absent → aucune barrière enregistrée → `act` se
-  comporte exactement comme avant. Les scripts optent pour un mode à l'appel via
+- **Défaut** : flag absent → aucune barrière enregistrée → `act`
+  exécute ses appels d'outils sans contrôle. Les scripts optent pour un mode à l'appel via
   l'option d'act `permissionMode`. Un script lit si une barrière contrôle ses appels avec
   `ctx.llm.permissionGate.enabled` ; un `permissionMode` passé à `act` sur un hôte sans barrière
   journalise un avertissement (event id `2` de `JsLlmFacade`) au lieu d'être ignoré en silence.
@@ -586,8 +586,8 @@ Aucun attribut ne porte l'identifiant d'un crew, d'une tâche ou d'un agent.
   confiance qui tournent dans un espace de travail confiné (le REPL scripted-commands est
   le consommateur de référence — voir `examples/cli-ts-commands/` ; une commande de commit
   ne peut pas marcher sans).
-- **Défaut rétro-compatible** : flag absent → allowlist stricte lecture-seule,
-  comportement historique inchangé.
+- **Défaut** : flag absent → allowlist stricte lecture-seule,
+  comme sans l'option.
 - **Allowlist personnalisée** (deux clés tableau de chaînes, toutes deux lues par
   `AddOrkeonCodeTools()`) :
   - `Orkeon:Tools:Shell:ExtraAllowedCommands` — **additive** sur l'allowlist par défaut
@@ -640,7 +640,7 @@ Aucun attribut ne porte l'identifiant d'un crew, d'une tâche ou d'un agent.
   préfixées et rapportent faux. Le dispatch ouvre un reçu par requête d'agent et par
   exécution de crew dans le flux asynchrone de ce travail ; les tours du sink y
   enregistrent, il ne repasse jamais à faux au sein d'une requête, et des commandes qui tournent en même temps lisent chacune le leur.
-- **Défaut rétro-compatible** : flag absent → aucun sink enregistré → `act` conserve
+- **Défaut** : flag absent → aucun sink enregistré → `act` conserve
   son rendu bufferisé (identique à l'octet près), les scripts peuvent toujours
   streamer via `onDelta`.
 

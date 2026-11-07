@@ -6,7 +6,7 @@ namespace Orkeon.Scripting.Cli.Tests;
 /// <summary>
 /// Coverage for the directory dispatch of <see cref="RunCommand"/>: <c>orkeon run &lt;dir&gt;</c>
 /// must load a multi-file YAML crew (<c>config.yaml</c> + <c>agents/</c> + <c>tasks/</c>, or the
-/// flat legacy triplet) through the shared one-shot runner, honour the same options as a single
+/// flat triplet) through the shared one-shot runner, honour the same options as a single
 /// file, and refuse ambiguous or layout-less directories with a diagnostic naming what it found.
 /// Driven in-process and offline like <see cref="RunCommandYamlTests"/>: no <c>Llm</c> section is
 /// configured, so the runner host falls back to the echo provider it announces (WIN-01) and
@@ -48,7 +48,7 @@ public sealed class RunCommandDirectoryTests
         return dir;
     }
 
-    /// <summary>Writes the flat legacy triplet under the scratch root and returns its directory.</summary>
+    /// <summary>Writes the flat triplet under the scratch root and returns its directory.</summary>
     private static string WriteFlatCrew(ScriptScratch scratch)
     {
         var dir = Path.Combine(scratch.Root, "flat");

@@ -502,8 +502,8 @@ No attribute carries an id of a crew, task or agent.
   With the `AddOrkeonInfrastructure(IConfiguration)` overload, the presence of the
   `Orkeon:ExecutionState:Persistence` section (`Enabled`, `DeleteFromStoreOnArchive`)
   is enough to bind the options.
-- **Backward-compatible default**: without activation, states remain **in-memory only**
-  (no recovery after a crash) — historical behavior unchanged. If the option is
+- **Default**: without activation, states remain **in-memory only**
+  (no recovery after a crash). If the option is
   enabled without a registered store, the manager logs a warning and continues in
   memory.
 - **Cohabitation**: execution state sessions are **namespaced**
@@ -554,8 +554,8 @@ No attribute carries an id of a crew, task or agent.
   annotations → `Execute`); an untrusted server's tools — the default — and a server that
   sends no annotations stay `Unspecified`, whatever their hints say. `BuiltInToolAccessTests` lists the built-in tools still left at
   `Unspecified`.
-- **Backward-compatible default**: flag absent → no gate registered → `act`
-  behaves exactly as before. Scripts opt into a mode per call via the
+- **Default**: flag absent → no gate registered → `act`
+  runs its tool calls unchecked. Scripts opt into a mode per call via the
   `permissionMode` act option. A script reads whether a gate checks its calls with
   `ctx.llm.permissionGate.enabled`; a `permissionMode` passed to `act` on a host without a gate
   logs one warning (event id `2` of `JsLlmFacade`) instead of being dropped in silence.
@@ -570,8 +570,8 @@ No attribute carries an id of a crew, task or agent.
   hosts running inside a confined workspace (the scripted-commands REPL is the
   reference consumer — see `examples/cli-ts-commands/`; a commit command cannot
   work without it).
-- **Backward-compatible default**: flag absent → strict read-only allowlist,
-  historical behavior unchanged.
+- **Default**: flag absent → strict read-only allowlist,
+  as without the option.
 - **Allowlist customization** (two string-array keys, both read by
   `AddOrkeonCodeTools()`):
   - `Orkeon:Tools:Shell:ExtraAllowedCommands` — **additive** on top of the default
@@ -622,7 +622,7 @@ No attribute carries an id of a crew, task or agent.
   whole prefixed lines and report false. The dispatch opens one receipt per agent request
   and per crew run in that work's async flow; the sink's turns record into it, it never goes back
   to false within a request, and commands running at once each read their own.
-- **Backward-compatible default**: flag absent → no sink registered → `act` keeps
+- **Default**: flag absent → no sink registered → `act` keeps
   its buffered rendering (byte-identical), scripts can still stream via `onDelta`.
 
 ---

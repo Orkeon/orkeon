@@ -3,9 +3,9 @@ using System.Collections.Immutable;
 namespace Orkeon.Cli.Commands.Scripting.Loading;
 
 /// <summary>
-/// Phase 1 options for <see cref="ScriptCommandLoader"/>. Phase 4 promotes these to a
-/// fully bound <c>ScriptCommandsConfiguration</c> with appsettings support, CLI flags,
-/// and sandbox limits.
+/// Options <see cref="ScriptCommandLoader"/> reads: the directories and search pattern it scans.
+/// They are derived from the bound <c>ScriptCommandsConfiguration</c> (appsettings, CLI flags,
+/// sandbox limits) when the commands are registered.
 /// </summary>
 /// <remarks>
 /// Defaults follow spec §6.4. Directories are <em>virtual</em> paths resolved through

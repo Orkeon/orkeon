@@ -404,7 +404,7 @@ variables d'environnement `ORKEON_*` seules.
 `orkeon run` sur un répertoire contenant une crew multi-fichiers — `config.yaml`
 pour les réglages de la crew, un agent par fichier sous `agents/`, une task par
 fichier sous `tasks/`, le nom de chaque fichier servant d'identifiant — et il se
-charge exactement comme un fichier YAML unique. Le triplet plat historique
+charge exactement comme un fichier YAML unique. Le triplet plat
 (`crew.yaml` + `agents.yaml` + `tasks.yaml`) est également accepté, et toutes les
 options se comportent à l'identique sur un dossier (`--settings`, `-V/--var`,
 `--initial-context`, `--mount`, `--validate`, `--verbose`, `--llm-log`) :

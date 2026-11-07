@@ -389,7 +389,7 @@ variables alone.
 **A crew can also be a directory**. Point `orkeon run` at a
 folder holding a multi-file crew — `config.yaml` for the crew settings, one agent
 per file under `agents/`, one task per file under `tasks/`, each file name being
-the entity id — and it loads exactly like a single YAML file. The legacy flat
+the entity id — and it loads exactly like a single YAML file. The flat
 triplet (`crew.yaml` + `agents.yaml` + `tasks.yaml`) is accepted too, and every
 option behaves identically on a directory (`--settings`, `-V/--var`,
 `--initial-context`, `--mount`, `--validate`, `--verbose`, `--llm-log`):

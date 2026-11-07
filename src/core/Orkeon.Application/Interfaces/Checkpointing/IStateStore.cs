@@ -31,7 +31,7 @@ public interface IStateStore
     /// </summary>
     System.Threading.Tasks.Task DeleteAsync(string sessionId, CancellationToken ct = default);
 
-    // ── Time-travel methods (default implementations for backward compatibility) ──
+    // ── Time-travel methods (default implementations: a store without history keeps working) ──
 
     /// <summary>
     /// Saves a versioned snapshot of the session state (append-only).

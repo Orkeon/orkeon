@@ -244,7 +244,7 @@ public sealed class RunTargetDetectorTests
     }
 
     [Fact]
-    public void The_flat_legacy_triplet_is_a_multi_file_crew_the_cli_runs()
+    public void The_flat_triplet_is_a_multi_file_crew_the_cli_runs()
     {
         var probe = new FakeTargetProbe()
             .WithDirectories("/crews/flat")

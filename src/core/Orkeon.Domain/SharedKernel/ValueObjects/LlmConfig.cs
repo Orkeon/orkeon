@@ -203,7 +203,7 @@ public sealed record LlmConfig
 
     /// <summary>Initializes a new instance of <see cref="LlmConfig"/> with a model and optional API key.</summary>
     /// <param name="model">The model identifier.</param>
-    /// <param name="apiKey">The API key (deprecated; prefer secret-based resolution).</param>
+    /// <param name="apiKey">The API key in clear; <c>ApiKeySecretName</c> (resolution through the secret store) is preferred.</param>
     private LlmConfig(string model, string? apiKey = null)
     {
         Model = model;
@@ -310,7 +310,7 @@ public sealed record LlmConfig
 
     /// <summary>Creates a new <see cref="LlmConfig"/> with the specified model and optional API key.</summary>
     /// <param name="model">The model identifier (must not be null or empty).</param>
-    /// <param name="apiKey">The API key (deprecated; prefer secret-based resolution).</param>
+    /// <param name="apiKey">The API key in clear; <c>ApiKeySecretName</c> (resolution through the secret store) is preferred.</param>
     /// <returns>A new <see cref="LlmConfig"/> instance.</returns>
     /// <exception cref="ArgumentException">Thrown when <paramref name="model"/> is null or empty.</exception>
     public static LlmConfig Create(string model, string? apiKey = null)

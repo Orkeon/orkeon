@@ -121,7 +121,7 @@ public sealed class RunTargetFixtureTests : IDisposable
     }
 
     [Fact]
-    public void A_real_flat_legacy_triplet_is_detected_the_way_the_cli_reads_it()
+    public void A_real_flat_triplet_is_detected_the_way_the_cli_reads_it()
     {
         var directory = CreateTree();
         foreach (var name in RunTargetDetector.FlatLayoutFileNames)

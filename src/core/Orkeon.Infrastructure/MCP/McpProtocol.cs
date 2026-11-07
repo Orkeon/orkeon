@@ -6,7 +6,7 @@ namespace Orkeon.Infrastructure.MCP;
 /// <summary>
 /// Protocol-level constants and helpers shared by the MCP client and server:
 /// supported revisions, the modern per-request <c>_meta</c> keys (2026-07-28),
-/// and the legacy initialize-handshake versions kept for backward compatibility.
+/// and the initialize-handshake versions of the earlier revisions, still negotiated with older peers.
 /// </summary>
 [Experimental("ORKEXP004", UrlFormat = "https://github.com/Orkeon/orkeon/blob/main/docs/reference/experimental-apis.md")]
 public static class McpProtocol

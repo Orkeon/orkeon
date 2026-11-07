@@ -247,7 +247,7 @@ public sealed class Crew : AggregateRoot<CrewId>
     /// Creates a new crew with the specified parameters.
     /// Convenience overload that delegates to <see cref="Create(CrewCreateOptions)"/>.
     /// </summary>
-#pragma warning disable S107 // Backward-compatible overload; use Create(CrewCreateOptions) instead
+#pragma warning disable S107 // Many parameters by design: the flat form is the one callers use
     public static Crew Create(
         string goal,
         ProcessType? processType = null,

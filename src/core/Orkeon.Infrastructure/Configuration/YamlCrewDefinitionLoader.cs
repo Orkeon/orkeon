@@ -100,7 +100,7 @@ public partial class YamlCrewDefinitionLoader : ICrewDefinitionLoader
 
         // Per-entity layout: a crew is described by config.yaml/crew.yaml + agents/*.yaml + tasks/*.yaml.
         // It is selected as soon as an agents/ or tasks/ sub-directory exists; otherwise we fall back
-        // to the flat legacy triplet (crew.yaml + agents.yaml + tasks.yaml), byte-for-byte unchanged.
+        // to the flat triplet (crew.yaml + agents.yaml + tasks.yaml), byte-for-byte unchanged.
         var agentsDirExists = await IsDirectoryAsync(root + "/agents", ct).ConfigureAwait(false);
         var tasksDirExists = await IsDirectoryAsync(root + "/tasks", ct).ConfigureAwait(false);
 

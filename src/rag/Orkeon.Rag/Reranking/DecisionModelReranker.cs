@@ -9,7 +9,7 @@ using Orkeon.Rag.Abstractions.Models;
 namespace Orkeon.Rag.Reranking;
 
 /// <summary>
-/// <c>decision</c> (alias <c>typesafe</c>): reranks with the host's decision model in one request —
+/// <c>decision</c>: reranks with the host's decision model in one request —
 /// the query and every passage as the state, one yes-or-no question per passage, "is this passage
 /// relevant to the query". The passages come back by the probability of a yes, highest first, that
 /// probability as their score.

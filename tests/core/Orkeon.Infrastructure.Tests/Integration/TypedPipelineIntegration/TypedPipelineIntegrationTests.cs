@@ -221,7 +221,7 @@ public class TypedPipelineIntegrationTests
     }
 
     // ══════════════════════════════════════════════════════════════════════════
-    // 4. Backward compatibility: old Dictionary<string,object> still works
+    // 4. Untyped requests: a Dictionary<string,object> still works
     // ══════════════════════════════════════════════════════════════════════════
 
     [Fact]

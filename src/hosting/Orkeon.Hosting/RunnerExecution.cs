@@ -256,7 +256,7 @@ public static partial class RunnerExecution
         var configPath = Path.GetFullPath(opts.ConfigPath);
 
         // A crew target is either a single file (.yaml / .ork.ts) or a directory holding a
-        // multi-file crew (config.yaml + agents/ + tasks/, or the flat legacy triplet) — at its
+        // multi-file crew (config.yaml + agents/ + tasks/, or the flat triplet) — at its
         // root, or under its crew/ sub-folder, which then wins over whatever the root holds
         // (STUDIO-59). The directory form is classified here so an ambiguous or empty directory
         // reports its own diagnostic instead of the generic "config file not found".

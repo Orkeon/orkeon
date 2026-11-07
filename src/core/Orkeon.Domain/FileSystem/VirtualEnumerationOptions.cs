@@ -12,7 +12,7 @@ namespace Orkeon.Domain.FileSystem;
 /// <param name="MaxDepth">Optional maximum recursion depth. <c>null</c> means unlimited.</param>
 /// <param name="SearchPattern">
 /// Optional simple glob pattern applied to file/directory names (e.g. <c>*.json</c>, <c>audit-*.jsonl</c>).
-/// <c>null</c> means match all entries (default, backward-compatible).
+/// <c>null</c> (the default) means match all entries.
 /// </param>
 public sealed record VirtualEnumerationOptions(
     bool Recursive = true,
