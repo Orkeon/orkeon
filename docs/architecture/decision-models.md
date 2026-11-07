@@ -345,8 +345,7 @@ never on its own.
   (`Enabled`, thresholds, `Risks`); it checks through the active provider and signs its verdicts with
   that provider's name. Its `Risks` default to `prompt_injection` and `data_exfiltration`,
   `BlockThreshold` to 0.8, `WarnThreshold` to 0.5; it warns on a failure, or blocks with
-  `FailClosed`. A settings file still holding a `Guard` block under `Orkeon:TypeSafe` is refused at start, with a
-  message naming `Orkeon:Decision:Guard`.
+  `FailClosed`.
 - **RAG reranker** — `rerank.kind: decision` asks one `noul` per passage in a
   single request, passages cut at 4,000 characters, and orders them by probability.
 - **Tool** — `system_one_decide` lets an agent ask `choice`, `score` and `noul` questions

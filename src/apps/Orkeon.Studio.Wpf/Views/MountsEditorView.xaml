@@ -185,7 +185,7 @@
             </StackPanel>
           </DockPanel>
 
-          <TextBlock Style="{StaticResource Hint}" Foreground="{DynamicResource WarningBrush}" Margin="0,0,0,7"
+          <TextBlock Style="{StaticResource Hint}" Foreground="{DynamicResource WarningInkBrush}" Margin="0,0,0,7"
                      Visibility="{Binding IsParsed, Converter={StaticResource InverseBooleanToVisibility}}"
                      Text="{Binding [Studio.Settings.Unparsed], Source={x:Static services:I18n.Instance}}"/>
           <TextBox Style="{StaticResource InputMono}" Text="{Binding RawText, Mode=OneWay}" IsReadOnly="True"

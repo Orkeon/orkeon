@@ -397,8 +397,7 @@ orkeon run chemin/vers/config.yaml \
 Les settings sont résolus dans cet ordre : `--settings`, puis l'`appsettings.json`
 voisin du fichier de config, puis — en remontant les répertoires parents — un
 sous-répertoire `appsettings/appsettings.json` à chaque niveau (la matrice de
-profils partagée des exemples ; `_shared/appsettings.json` reste un fallback
-déprécié), puis le fichier global per-user écrit par `orkeon init`, puis les
+profils partagée des exemples), puis le fichier global per-user écrit par `orkeon init`, puis les
 variables d'environnement `ORKEON_*` seules.
 
 **Une crew peut aussi être un dossier**. Pointez

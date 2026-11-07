@@ -66,16 +66,15 @@ public sealed class RunnerHostUnknownSettingsTests : IDisposable
     }
 
     [Theory]
-    [InlineData("Orkeon:Rag:ConnectionString", "Data Source=/output/rag.db", "Orkeon:Rag:ConnectionString", "Orkeon:Sqlite:ConnectionString")]
-    [InlineData("Orkeon:Rag:ProviderOptions:Host", "localhost", "Orkeon:Rag:ProviderOptions", "Orkeon:Sqlite")]
-    [InlineData("Memory:ConnectionString", "localhost:6379", "Memory:ConnectionString", "Orkeon:Redis:ConnectionString")]
-    [InlineData("Orkeon:Pinecone:Environment", "us-east1-gcp", "Orkeon:Pinecone:Environment", "Orkeon:Pinecone:Host")]
-    public void A_key_GAP_08_removed_is_refused_with_its_migration(string key, string value, string named, string migration)
+    [InlineData("Orkeon:Rag:ConnectionString", "Data Source=/output/rag.db", "Orkeon:Rag:ConnectionString")]
+    [InlineData("Orkeon:Rag:ProviderOptions:Host", "localhost", "Orkeon:Rag:ProviderOptions")]
+    [InlineData("Memory:ConnectionString", "localhost:6379", "Memory:ConnectionString")]
+    [InlineData("Orkeon:Pinecone:Environment", "us-east1-gcp", "Orkeon:Pinecone:Environment")]
+    public void A_key_no_section_carries_any_more_is_refused_as_an_unknown_key(string key, string value, string named)
     {
         var error = Refusal(Settings((key, value)));
 
-        Assert.Contains(named, error.Message, StringComparison.Ordinal);
-        Assert.Contains(migration, error.Message, StringComparison.Ordinal);
+        Assert.Contains($"{named} is not a setting:", error.Message, StringComparison.Ordinal);
     }
 
     [Theory]
@@ -101,8 +100,8 @@ public sealed class RunnerHostUnknownSettingsTests : IDisposable
     /// <summary>
     /// Configuration keys are case-insensitive, and the configuration reports each one as it was
     /// written: <c>ORKEON_LLM__APIKEY</c> is read as <c>Llm:ApiKey</c> under a root child <c>LLM</c>,
-    /// a file's <c>"llm": { "apikey": … }</c> under <c>llm</c>. The shapes, the section names and the
-    /// retired keys are compared without case: a key the run reads is never refused for its case.
+    /// a file's <c>"llm": { "apikey": … }</c> under <c>llm</c>. The shapes and the section names
+    /// are compared without case: a key the run reads is never refused for its case.
     /// </summary>
     [Theory]
     [InlineData("""{ "RaggableTree": { "Enabled": false }, "llm": { "apikey": "sk-test", "baseurl": "http://localhost:11434" } }""")]

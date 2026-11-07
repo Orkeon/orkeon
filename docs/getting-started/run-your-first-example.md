@@ -188,8 +188,7 @@ order (first hit wins):
 2. `appsettings.json` sitting next to the `<config>` file.
 3. Walking up the directory tree from the config, looking for an
    `appsettings/appsettings.json` sub-directory at each level — that is how the
-   shared `examples/appsettings/appsettings.json` profile matrix is found
-   (the legacy `_shared/appsettings.json` remains a fallback for one release).
+   shared `examples/appsettings/appsettings.json` profile matrix is found.
 4. The global per-user config written by `orkeon init`
    (`%APPDATA%\Orkeon\appsettings.json` on Windows,
    `$XDG_CONFIG_HOME/Orkeon/appsettings.json` — by default

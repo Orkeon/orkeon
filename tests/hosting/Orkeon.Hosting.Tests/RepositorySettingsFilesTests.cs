@@ -4,8 +4,7 @@ namespace Orkeon.Hosting.Tests;
 
 /// <summary>
 /// A settings file of the repository writes only what Orkeon reads: every key is one of the settings
-/// catalogue — the names an operator chooses aside —, every value one its key can take, and no key
-/// is a retired one. The start validation protects a file a host reads; nothing protected the files
+/// catalogue — the names an operator chooses aside —, every value one its key can take. The start validation protects a file a host reads; nothing protected the files
 /// nobody starts: the templates of the examples, the sample of an installation, and the settings
 /// Orkeon Studio's screenshots are taken on, which wrote two keys of <c>RateLimiting</c> that never
 /// existed. Judged against the complete catalogue: a file may be the daemon's.

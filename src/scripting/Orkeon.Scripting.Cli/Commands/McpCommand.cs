@@ -38,8 +38,7 @@ internal sealed class McpServeCommandOptions : CliOptions
 /// the help and every diagnostic go to stderr, where a client records its server's output.
 /// </para>
 /// <para>
-/// Until this verb no shipped binary started the server: <c>MCP:EnableServer</c> registered it for
-/// nobody. The verb is the switch now, and the key is refused.
+/// This verb is what starts the server: no setting does.
 /// </para>
 /// <para>
 /// A serve never runs under another one (GAP-35): it marks its environment
@@ -108,7 +107,7 @@ internal static class McpCommand
     /// <summary>
     /// The host <c>--list-tools</c> reports, plus the server: what <c>orkeon run</c> adds to the
     /// runner host — <c>semantic_search</c>, the ONNX reranker —, and <c>AddOrkeonMcpServer</c>.
-    /// Null when the settings are refused — the removed <c>MCP:EnableServer</c> among them —; the
+    /// Null when the settings are refused; the
     /// line that says why is already on stderr.
     /// </summary>
     private static async Task<IHost?> BuildHostAsync(IRunnerConsole console, McpServeCommandOptions options)

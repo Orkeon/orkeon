@@ -382,7 +382,7 @@ orkeon run path/to/config.yaml \
 Settings are resolved in order: `--settings`, then `appsettings.json` sitting
 next to the config file, then — walking up the parent directories — an
 `appsettings/appsettings.json` sub-directory at each level (the shared examples
-profile matrix; `_shared/appsettings.json` stays a deprecated fallback), then the
+profile matrix), then the
 global per-user file written by `orkeon init`, then `ORKEON_*` environment
 variables alone.
 

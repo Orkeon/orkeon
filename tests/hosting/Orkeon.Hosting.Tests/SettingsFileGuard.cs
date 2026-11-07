@@ -6,7 +6,7 @@ namespace Orkeon.Hosting.Tests;
 
 /// <summary>
 /// What a settings text writes that the settings catalogue does not hold: a key no section carries,
-/// a value its key cannot take, a key that was retired. It is the start validation's list applied to
+/// a value its key cannot take. It is the start validation's list applied to
 /// a text nobody starts — a file of the repository an operator is handed to copy, a block of the
 /// documentation —, judged against the <b>complete</b> catalogue: a file may be the daemon's, or a
 /// host's written in C#.
@@ -86,8 +86,6 @@ internal sealed class SettingsFileGuard
         {
             if (_root.Child(member.Name) is { } below)
                 Walk(member.Value, below, member.Name, problems);
-            else if (SettingsValidation.RetiredKeys.TryGetValue(member.Name, out var migration))
-                problems.Add(migration);
             else if (!openRoot && !IsNote(member.Name))
                 problems.Add(Unknown(parent: null, member.Name, _root));
         }
@@ -117,12 +115,6 @@ internal sealed class SettingsFileGuard
 
     private static void Walk(JsonElement value, Node node, string path, List<string> problems)
     {
-        if (SettingsValidation.RetiredKeys.TryGetValue(path, out var migration))
-        {
-            problems.Add(migration);
-            return;
-        }
-
         switch (value.ValueKind)
         {
             case JsonValueKind.Null:
@@ -144,8 +136,6 @@ internal sealed class SettingsFileGuard
                     var below = $"{path}:{member.Name}";
                     if (node.Child(member.Name) is { } child)
                         Walk(member.Value, child, below, problems);
-                    else if (SettingsValidation.RetiredKeys.TryGetValue(below, out var retired))
-                        problems.Add(retired);
                     else
                         problems.Add(Unknown(path, member.Name, node));
                 }

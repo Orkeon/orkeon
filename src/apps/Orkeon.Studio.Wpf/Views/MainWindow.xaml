@@ -835,7 +835,7 @@
             <TextBlock Style="{StaticResource FieldLabel}"
                        Text="{Binding [Studio.Settings.NameLabel], Source={x:Static services:I18n.Instance}}"/>
             <TextBox Style="{StaticResource Input}" Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}"/>
-            <TextBlock Style="{StaticResource Hint}" Foreground="{DynamicResource WarningBrush}" Margin="0,4,0,0"
+            <TextBlock Style="{StaticResource Hint}" Foreground="{DynamicResource WarningInkBrush}" Margin="0,4,0,0"
                        Text="{Binding [Studio.Settings.NameTaken], Source={x:Static services:I18n.Instance}}"
                        Visibility="{Binding NameCollision, Converter={StaticResource BooleanToVisibility}}"/>
             <!-- STUDIO-48: the name a crew writes to run on this setting, as the name is typed —
@@ -847,13 +847,13 @@
                 <Style TargetType="TextBlock" BasedOn="{StaticResource Hint}">
                   <Style.Triggers>
                     <DataTrigger Binding="{Binding IsHostIdIssue}" Value="True">
-                      <Setter Property="Foreground" Value="{DynamicResource WarningBrush}"/>
+                      <Setter Property="Foreground" Value="{DynamicResource WarningInkBrush}"/>
                     </DataTrigger>
                   </Style.Triggers>
                 </Style>
               </TextBlock.Style>
             </TextBlock>
-            <TextBlock Style="{StaticResource Hint}" Foreground="{DynamicResource WarningBrush}" Margin="0,4,0,0"
+            <TextBlock Style="{StaticResource Hint}" Foreground="{DynamicResource WarningInkBrush}" Margin="0,4,0,0"
                        Text="{Binding HostIdRenamedText}"
                        Visibility="{Binding HostIdRenamedText, Converter={StaticResource StringPresentToVisibility}}"/>
 
@@ -1017,7 +1017,7 @@
                   <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
                     <StackPanel.Style>
                       <Style TargetType="StackPanel">
-                        <Setter Property="TextBlock.Foreground" Value="{DynamicResource WarningBrush}"/>
+                        <Setter Property="TextBlock.Foreground" Value="{DynamicResource WarningInkBrush}"/>
                         <Style.Triggers>
                           <DataTrigger Binding="{Binding HasStoredKey}" Value="True">
                             <Setter Property="TextBlock.Foreground" Value="{DynamicResource SuccessBrush}"/>
@@ -1029,7 +1029,7 @@
                       <controls:LucideIcon.Style>
                         <Style TargetType="controls:LucideIcon">
                           <Setter Property="Kind" Value="triangle-alert"/>
-                          <Setter Property="Foreground" Value="{DynamicResource WarningBrush}"/>
+                          <Setter Property="Foreground" Value="{DynamicResource WarningIconBrush}"/>
                           <Style.Triggers>
                             <DataTrigger Binding="{Binding HasStoredKey}" Value="True">
                               <Setter Property="Kind" Value="circle-check"/>
@@ -1055,7 +1055,7 @@
                 </DockPanel>
                 <!-- STUDIO-44: the key is in place for the session even when the user scope refused
                      it; the line says so, and why, instead of a click that seems to do nothing. -->
-                <TextBlock FontSize="13" Foreground="{DynamicResource WarningBrush}" TextWrapping="Wrap"
+                <TextBlock FontSize="13" Foreground="{DynamicResource WarningInkBrush}" TextWrapping="Wrap"
                            Margin="0,7,0,0" Text="{Binding KeyStoreError}"
                            Visibility="{Binding KeyStoreError, Converter={StaticResource StringPresentToVisibility}}"/>
                 <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
@@ -1143,7 +1143,7 @@
                   <Style TargetType="TextBlock" BasedOn="{StaticResource Hint}">
                     <Style.Triggers>
                       <DataTrigger Binding="{Binding IsBalanceLow}" Value="True">
-                        <Setter Property="Foreground" Value="{DynamicResource WarningBrush}"/>
+                        <Setter Property="Foreground" Value="{DynamicResource WarningInkBrush}"/>
                         <Setter Property="FontWeight" Value="SemiBold"/>
                       </DataTrigger>
                     </Style.Triggers>

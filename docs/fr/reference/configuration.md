@@ -21,7 +21,7 @@ un `Llm__Model` nu est lu aussi, sous chacune des couches qui suivent :
 1. **Un `appsettings.json` résolu** — chaîne de résolution (`RunnerSettings.ResolveSettingsPath`) :
    `--settings <chemin>` explicite → `appsettings.json` à côté de la config de crew →
    `appsettings/appsettings.json` en remontant l'arborescence (`examples/appsettings/appsettings.json`
-   dans ce dépôt ; `_shared/appsettings.json` est un repli déprécié) → la config globale
+   dans ce dépôt) → la config globale
    par utilisateur écrite par `orkeon init`. Aucun fichier trouvé ⇒ variables
    d'environnement uniquement.
 2. **Les variables d'environnement préfixées `ORKEON_`** (`AddEnvironmentVariables("ORKEON_")`,
@@ -127,9 +127,7 @@ une ligne qui nomme la clé — code de sortie `1` pour `orkeon` et `orkeon-repl
 - **Une clé** qu'aucune section ne porte, contre la forme que déclarent ses lecteurs — les lecteurs
   d'une même section ensemble, une sous-section qu'un autre lecteur déclare comprise :
   `Orkeon:Guardian:Enabeld`, `Llm:Provider` (rien ne la lit : le fournisseur se déduit de `BaseUrl`
-  et du modèle). Une clé que GAP-08 a retirée — `Memory:ConnectionString`,
-  `Orkeon:Rag:ConnectionString`, `Orkeon:Rag:ProviderOptions`, `Orkeon:Pinecone:Environment` — est
-  refusée avec sa migration. Le refus d'une clé inconnue se termine par la commande qui liste les
+  et du modèle). Le refus d'une clé inconnue se termine par la commande qui liste les
   clés de sa section — `` `orkeon settings Orkeon:Guardian` lists its keys ``. Un nom de section sous `Orkeon:` et sous les groupes `Orkeon:Cli`,
   `Orkeon:Tools`, `Orkeon:Scripting`, `Orkeon:Security` et `Security` doit être l'une de celles
   qu'Orkeon lit (`SettingsSections`) ; le refus propose la plus proche (`Orkeon:Guardain` →
@@ -786,7 +784,7 @@ sections présentes, ou aucune section et les deux clés définies, sont refusé
 
 La garde d'entrée des agents, enregistrée avec le modèle de décision par `AddOrkeonDecisionProvider` :
 elle juge l'entrée avec ce modèle, dans la phase `Input`, à côté de la garde intégrée, par le fournisseur actif ; ses verdicts sont signés de son nom.
-Cette section est celle de la garde : un bloc `Guard` resté sous `Orkeon:TypeSafe` est refusé au démarrage. Coupée sauf `Enabled`. Voir
+Coupée sauf `Enabled`. Voir
 [Modèles de décision](../architecture/decision-models.md).
 
 <!-- settings:Orkeon:Decision:Guard -->
@@ -1728,9 +1726,8 @@ livré : c'est celui qui est installé sur la machine. La fenêtre est visible s
 
 ### `MCP`
 
-Connexions client MCP (`MCP:Servers:<nom>`) et l'interrupteur `MCP:Enabled`. `MCP:EnableServer`
-est supprimé : une section qui le porte encore est refusée au démarrage, en nommant
-`orkeon mcp serve` (GAP-24). Lue par `RunnerHost` (`orkeon run`, `orkeon-host`,
+Connexions client MCP (`MCP:Servers:<nom>`) et l'interrupteur `MCP:Enabled`. Aucun réglage ne
+démarre un serveur MCP (GAP-24) : une clé que la section ne porte pas est refusée au démarrage comme toute clé inconnue. Lue par `RunnerHost` (`orkeon run`, `orkeon-host`,
 `orkeon mcp serve`) dès que `MCP:Servers` déclare au moins un serveur et que `MCP:Enabled` n'est
 pas `false` — les serveurs sont connectés avant le chargement de la crew (STUDIO-21), par
 `orkeon-host` une fois au démarrage, avant son premier message (GAP-11), et par
@@ -2224,9 +2221,7 @@ ouverte au-delà de ses niveaux ([plus haut](#quand-un-réglage-est-refusé)).
 
 Export OpenTelemetry. `OtlpEndpoint` est une adresse `http://` ou `https://`, refusée par sa clé
 sinon ; la variable standard `OTEL_EXPORTER_OTLP_ENDPOINT` marche aussi dans les runners.
-`ExportToConsole` et `PrometheusEndpoint` sont supprimées et refusées, en nommant le collecteur
-OTLP qui les remplace : l'exportateur console écrivait sur le stdout que lit un programme, et
-rien ne servait Prometheus (GAP-35). Lue par `AddOrkeonTelemetry(configuration)` — appelé par
+Lue par `AddOrkeonTelemetry(configuration)` — appelé par
 `AddOrkeonInfrastructure(configuration)` et `RunnerHost`.
 
 <!-- settings:Telemetry -->

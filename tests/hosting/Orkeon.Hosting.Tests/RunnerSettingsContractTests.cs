@@ -82,46 +82,6 @@ public sealed class RunnerSettingsContractTests : IDisposable
     }
 
     [Fact]
-    public void Walks_up_to_legacy_shared_appsettings_when_canonical_absent()
-    {
-        // Deprecated compatibility fallback: the _shared location is still honored
-        // when no appsettings/appsettings.json exists above the config dir.
-        var sharedDir = Path.Combine(_root, "_shared");
-        Directory.CreateDirectory(sharedDir);
-        var shared = Path.Combine(sharedDir, "appsettings.json");
-        File.WriteAllText(shared, "{}");
-
-        var configDir = Path.Combine(_root, "examples", "deep");
-        Directory.CreateDirectory(configDir);
-
-        var resolved = RunnerSettings.ResolveSettingsPath(null, configDir, TextWriter.Null);
-
-        Assert.Equal(shared, resolved);
-    }
-
-    [Fact]
-    public void Canonical_appsettings_wins_over_legacy_shared()
-    {
-        // When both live at the same level, the canonical appsettings/ folder
-        // takes precedence over the deprecated _shared/ fallback.
-        var settingsDir = Path.Combine(_root, "appsettings");
-        Directory.CreateDirectory(settingsDir);
-        var canonical = Path.Combine(settingsDir, "appsettings.json");
-        File.WriteAllText(canonical, "{}");
-
-        var sharedDir = Path.Combine(_root, "_shared");
-        Directory.CreateDirectory(sharedDir);
-        File.WriteAllText(Path.Combine(sharedDir, "appsettings.json"), "{}");
-
-        var configDir = Path.Combine(_root, "examples", "deep");
-        Directory.CreateDirectory(configDir);
-
-        var resolved = RunnerSettings.ResolveSettingsPath(null, configDir, TextWriter.Null);
-
-        Assert.Equal(canonical, resolved);
-    }
-
-    [Fact]
     public void Global_user_settings_are_used_when_nothing_local_matches()
     {
         // WIN-02 step 4: the config written by `orkeon init` at the global per-user
@@ -293,8 +253,8 @@ public sealed class RunnerSettingsContractTests : IDisposable
     [Fact]
     public void Walk_up_stops_at_examples_solution_marker()
     {
-        // _shared/appsettings.json above the marker must NOT be picked up.
-        var sharedDir = Path.Combine(_root, "_shared");
+        // appsettings/appsettings.json above the marker must NOT be picked up.
+        var sharedDir = Path.Combine(_root, "appsettings");
         Directory.CreateDirectory(sharedDir);
         File.WriteAllText(Path.Combine(sharedDir, "appsettings.json"), "{}");
 

@@ -162,7 +162,7 @@
                             Visibility="{Binding IsWriteToChoose, Converter={StaticResource BooleanToVisibility}}"/>
             <!-- A read root with no source folder: what the team will start from instead. -->
             <TextBlock Grid.Row="1" Grid.Column="1" FontSize="13" Margin="0,4,0,0" HorizontalAlignment="Left" VerticalAlignment="Center"
-                       TextWrapping="Wrap" TextAlignment="Left" Foreground="{DynamicResource WarningBrush}"
+                       TextWrapping="Wrap" TextAlignment="Left" Foreground="{DynamicResource WarningInkBrush}"
                        Text="{Binding [Studio.Create.MountToChooseRead], Source={x:Static services:I18n.Instance}}"
                        Visibility="{Binding IsReadToChoose, Converter={StaticResource BooleanToVisibility}}"/>
             <!-- Removing a bound folder gives the mount point back to the blueprint; removing a
@@ -266,7 +266,7 @@
         </StackPanel>
         <!-- STUDIO-52: what the team's scheduled run cannot follow — the default in place of a setting
              no crew can name, above all —, said before anything is installed. -->
-        <TextBlock Style="{StaticResource Hint}" Foreground="{DynamicResource WarningBrush}" Margin="0,6,0,0"
+        <TextBlock Style="{StaticResource Hint}" Foreground="{DynamicResource WarningInkBrush}" Margin="0,6,0,0"
                    TextWrapping="Wrap" Text="{Binding Notice}"
                    Visibility="{Binding HasNotice, Converter={StaticResource BooleanToVisibility}}"/>
         <TextBlock Style="{StaticResource Hint}" Margin="0,6,0,0" TextWrapping="Wrap"
@@ -841,7 +841,7 @@
                                           <Condition Binding="{Binding Tag, RelativeSource={RelativeSource AncestorType=ItemsControl}}" Value="True"/>
                                         </MultiDataTrigger.Conditions>
                                         <Setter Property="Background" Value="{DynamicResource WarningWeakBrush}"/>
-                                        <Setter Property="BorderBrush" Value="{DynamicResource WarningBrush}"/>
+                                        <Setter Property="BorderBrush" Value="{DynamicResource WarningIconBrush}"/>
                                       </MultiDataTrigger>
                                     </Style.Triggers>
                                   </Style>
@@ -879,7 +879,7 @@
                               <Condition Binding="{Binding Tag, RelativeSource={RelativeSource AncestorType=ItemsControl}}" Value="True"/>
                             </MultiDataTrigger.Conditions>
                             <Setter TargetName="Fiche" Property="Background" Value="{DynamicResource WarningWeakBrush}"/>
-                            <Setter TargetName="Fiche" Property="BorderBrush" Value="{DynamicResource WarningBrush}"/>
+                            <Setter TargetName="Fiche" Property="BorderBrush" Value="{DynamicResource WarningIconBrush}"/>
                           </MultiDataTrigger>
                         </DataTemplate.Triggers>
                       </DataTemplate>

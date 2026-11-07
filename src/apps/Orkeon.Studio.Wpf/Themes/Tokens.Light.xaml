@@ -12,10 +12,8 @@
   <!-- editable fields (T-31): a field must not share the sunk paper of the read-only wells,
        or nothing says «you can type here». The shadow is the inset hairline under the top edge. -->
   <SolidColorBrush x:Key="FieldBrush"       Color="#FFFFFF"/>
-  <!-- hrm R10: the field border of the palette (#C9D3D2). FieldBorderBrush is the name the
-       harmonised styles use; FieldLineBrush stays as an alias for the views not migrated yet. -->
+  <!-- hrm R10: the field border of the palette (#C9D3D2). -->
   <SolidColorBrush x:Key="FieldBorderBrush" Color="#C9D3D2"/>
-  <SolidColorBrush x:Key="FieldLineBrush"   Color="#C9D3D2"/>
   <SolidColorBrush x:Key="FieldShadowBrush" Color="#1416293B"/>
 
   <!-- text -->
@@ -44,13 +42,11 @@
 
   <!-- status (hrm R07/R08/R12/R20). Per tone: Brush = icon and stroke, Weak = tinted ground,
        Border = the 1 px edge of a banner, a bit darker than the ground, Ink = text on the ground.
-       WarningBrush and SandBrush keep their former value for the views not migrated yet: new
-       code takes WarningIconBrush for an icon and WarningInkBrush for text. -->
+       Warning takes WarningIconBrush for an icon or a stroke and WarningInkBrush for text. -->
   <SolidColorBrush x:Key="SuccessBrush"       Color="#2E8A6F"/>
   <SolidColorBrush x:Key="SuccessWeakBrush"   Color="#E2F0EB"/>
   <SolidColorBrush x:Key="SuccessBorderBrush" Color="#BFDDD1"/>
   <SolidColorBrush x:Key="SuccessInkBrush"    Color="#1F6B55"/>
-  <SolidColorBrush x:Key="WarningBrush"       Color="#C68A2A"/>
   <SolidColorBrush x:Key="WarningIconBrush"   Color="#D9A441"/>
   <SolidColorBrush x:Key="WarningWeakBrush"   Color="#F8EED5"/>
   <SolidColorBrush x:Key="WarningBorderBrush" Color="#EBD7A3"/>
@@ -68,7 +64,6 @@
   <SolidColorBrush x:Key="NeutralDotBrush"    Color="#8A99A5"/>
   <!-- hrm R04: the former Assistant blue and its family are gone — off the palette.
        The assistant button is a secondary button; its active state is sky + AccentInk. -->
-  <SolidColorBrush x:Key="SandBrush"          Color="#BB8628"/>
   <SolidColorBrush x:Key="SandWeakBrush"      Color="#F8EED5"/>
 
   <!-- log console (same in both themes — it is always "deep ocean night") -->

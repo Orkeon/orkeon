@@ -101,9 +101,6 @@ else
             EXAMPLES+=("$rel")
         fi
     done < <(find "$SCRIPT_DIR" \( -name "config.yaml" -o -name "main.ork.ts" \) \
-        -not -path "*/_legacy/*" \
-        -not -path "*/_shared/*" \
-        -not -path "*/runners/*" \
         -not -path "*/.vs/*" \
         -not -path "*/.orkeon/*" | sort)
 fi

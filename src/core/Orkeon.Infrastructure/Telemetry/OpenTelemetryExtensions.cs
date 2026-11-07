@@ -31,8 +31,7 @@ public static class OpenTelemetryExtensions
     /// <param name="configuration">The application configuration.</param>
     /// <returns>The service collection for chaining.</returns>
     /// <exception cref="InvalidOperationException">
-    /// The section carries a key that is no setting any more (<c>ExportToConsole</c>,
-    /// <c>PrometheusEndpoint</c>), or an <c>OtlpEndpoint</c> that is not an <c>http://</c> or
+    /// The section carries an <c>OtlpEndpoint</c> that is not an <c>http://</c> or
     /// <c>https://</c> address.
     /// </exception>
     public static IServiceCollection AddOrkeonTelemetry(
@@ -41,7 +40,6 @@ public static class OpenTelemetryExtensions
     {
         ArgumentNullException.ThrowIfNull(configuration);
         var section = configuration.GetSection(TelemetrySection);
-        RefuseRemovedKeys(section);
 
         // Bind TelemetryOptions — read below at registration already; declared so its keys are
         // judged with every other section's at the host's start (GAP-40).
@@ -94,33 +92,6 @@ public static class OpenTelemetryExtensions
             .AddCheck<SystemResourcesHealthCheck>("system_resources");
 
         return services;
-    }
-
-    /// <summary>
-    /// The keys of the section that are no settings any more (GAP-35), each with why. A key still
-    /// written — whatever its value — is refused, naming what replaces it, rather than ignored.
-    /// </summary>
-    private static readonly (string Key, string Why)[] s_removedKeys =
-    [
-        ("ExportToConsole",
-            "the console exporter wrote traces and metrics on stdout, which `--events jsonl`, the `--list-tools` "
-            + "manifest and `orkeon mcp serve` reserve for the program that reads them; a C# host that wants the "
-            + "console adds the exporter to its own AddOpenTelemetry()"),
-        ("PrometheusEndpoint", "nothing ever served a Prometheus endpoint"),
-    ];
-
-    private static void RefuseRemovedKeys(IConfigurationSection section)
-    {
-        foreach (var (key, why) in s_removedKeys)
-        {
-            if (!section.GetSection(key).Exists())
-                continue;
-
-            throw new InvalidOperationException(
-                $"Telemetry:{key} is not a setting any more: {why}. Send the telemetry to an OTLP collector — "
-                + "Telemetry:OtlpEndpoint, the standard OTEL_EXPORTER_OTLP_ENDPOINT, or the .NET Aspire dashboard. "
-                + "Remove the key.");
-        }
     }
 
     /// <summary>

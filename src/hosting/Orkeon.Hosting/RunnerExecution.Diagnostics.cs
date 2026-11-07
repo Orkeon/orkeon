@@ -253,7 +253,7 @@ public static partial class RunnerExecution
         }
         catch (RunnerSettingsException ex)
         {
-            // A setting the host build refuses — a retired key, MCP:EnableServer, an LLM profile
+            // A setting the host build refuses — an unknown key, an LLM profile
             // it cannot build, a file it cannot read, an address that is none (GAP-35) — is the
             // operator's to fix: the sentence, not a stack trace.
             ReportRefusedSettings(ex, error);

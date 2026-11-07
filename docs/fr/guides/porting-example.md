@@ -642,7 +642,7 @@ public class OrderProcessingMessageConsumer : IMessageHandler
   },
   "Memory": {
     // Le TYPE du provider mémoire (absent → in-memory) ; sa connexion est sa propre section,
-    // Orkeon:Redis plus haut — un Memory:ConnectionString est refusé au démarrage (GAP-08, GAP-40)
+    // Orkeon:Redis plus haut — un Memory:ConnectionString est refusé au démarrage comme clé inconnue (GAP-40)
     "Provider": "Redis"
   }
 }

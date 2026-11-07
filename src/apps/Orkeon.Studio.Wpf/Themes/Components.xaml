@@ -628,7 +628,7 @@
             <Trigger Property="State" Value="Warning">
               <Setter TargetName="EmptyMark" Property="Visibility" Value="Collapsed"/>
               <Setter TargetName="ExpectedMark" Property="Visibility" Value="Visible"/>
-              <Setter TargetName="Sub" Property="Foreground" Value="{DynamicResource WarningBrush}"/>
+              <Setter TargetName="Sub" Property="Foreground" Value="{DynamicResource WarningInkBrush}"/>
             </Trigger>
             <Trigger Property="State" Value="Verified">
               <Setter TargetName="EmptyMark" Property="Visibility" Value="Collapsed"/>

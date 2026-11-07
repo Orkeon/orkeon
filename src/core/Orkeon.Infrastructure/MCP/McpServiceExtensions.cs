@@ -21,14 +21,12 @@ public static class McpServiceExtensions
     /// <see cref="ConfigurationKeys.McpSection"/> section and registers <see cref="McpToolProvider"/>.
     /// It registers no server — <see cref="AddOrkeonMcpServer"/> does.
     /// </summary>
-    /// <exception cref="InvalidOperationException">The section still carries the removed <c>EnableServer</c> key.</exception>
     public static IServiceCollection AddOrkeonMcp(
         this IServiceCollection services,
         IConfiguration configuration)
     {
         ArgumentNullException.ThrowIfNull(configuration);
         var section = configuration.GetSection(ConfigurationKeys.McpSection);
-        RefuseServerSwitch(section);
         // Bound, and judged when the host starts (GAP-40): a server's Transport the binder cannot
         // convert refuses the start, not the connection step.
         services.AddOptions<McpOptions>()
@@ -46,33 +44,16 @@ public static class McpServiceExtensions
     /// host runs <see cref="McpServer.RunStdioAsync"/>, as <c>orkeon mcp serve</c> does, or
     /// <see cref="McpServer.ProcessRequestAsync"/> itself.
     /// </summary>
-    /// <exception cref="InvalidOperationException">The section still carries the removed <c>EnableServer</c> key.</exception>
     public static IServiceCollection AddOrkeonMcpServer(
         this IServiceCollection services,
         IConfiguration configuration)
     {
         ArgumentNullException.ThrowIfNull(configuration);
         var section = configuration.GetSection(ConfigurationKeys.McpSection);
-        RefuseServerSwitch(section);
         services.AddOptions<McpServerOptions>()
             .Bind(section.GetSection("Server"))
             .DeclareSettings(ServerSection);
         services.TryAddSingleton<McpServer>();
         return services;
-    }
-
-    /// <summary>
-    /// <c>MCP:EnableServer</c> registered a server no shipped binary ever resolved (GAP-24): a host
-    /// that still writes it, whatever the value, hears what replaced it instead of being ignored.
-    /// </summary>
-    private static void RefuseServerSwitch(IConfigurationSection section)
-    {
-        if (!section.GetSection("EnableServer").Exists())
-            return;
-
-        throw new InvalidOperationException(
-            $"{ConfigurationKeys.McpSection}:EnableServer is not a setting any more: no setting starts an MCP server. " +
-            "A C# host registers it with AddOrkeonMcpServer(configuration) and runs McpServer.RunStdioAsync(Console.In, Console.Out); " +
-            "the orkeon tool serves its host's tools with `orkeon mcp serve`. Remove the key.");
     }
 }

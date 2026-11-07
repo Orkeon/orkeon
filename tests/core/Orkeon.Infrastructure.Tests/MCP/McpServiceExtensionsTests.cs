@@ -11,8 +11,6 @@ namespace Orkeon.Infrastructure.Tests.MCP;
 
 /// <summary>
 /// GAP-24: the MCP server is registered by <c>AddOrkeonMcpServer</c>, never by a setting.
-/// <c>MCP:EnableServer</c> registered a server no shipped binary ever resolved; the key is gone,
-/// and a section that still carries it is refused with what replaced it rather than ignored.
 /// </summary>
 public sealed class McpServiceExtensionsTests
 {
@@ -28,32 +26,6 @@ public sealed class McpServiceExtensionsTests
 
         Assert.Contains(services, d => d.ServiceType == typeof(McpToolProvider));
         Assert.DoesNotContain(services, d => d.ServiceType == typeof(McpServer));
-    }
-
-    [Theory]
-    [InlineData("true")]
-    [InlineData("false")]
-    public void AddOrkeonMcp_refuses_the_removed_server_switch_and_names_what_replaced_it(string value)
-    {
-        var services = new ServiceCollection();
-        var configuration = Settings(new() { ["MCP:EnableServer"] = value });
-
-        var ex = Assert.Throws<InvalidOperationException>(() => services.AddOrkeonMcp(configuration));
-
-        Assert.Contains("MCP:EnableServer", ex.Message, StringComparison.Ordinal);
-        Assert.Contains("AddOrkeonMcpServer", ex.Message, StringComparison.Ordinal);
-        Assert.Contains("orkeon mcp serve", ex.Message, StringComparison.Ordinal);
-    }
-
-    [Fact]
-    public void AddOrkeonMcpServer_refuses_the_removed_server_switch_too()
-    {
-        var services = new ServiceCollection();
-        var configuration = Settings(new() { ["MCP:EnableServer"] = "true" });
-
-        var ex = Assert.Throws<InvalidOperationException>(() => services.AddOrkeonMcpServer(configuration));
-
-        Assert.Contains("MCP:EnableServer", ex.Message, StringComparison.Ordinal);
     }
 
     [Fact]

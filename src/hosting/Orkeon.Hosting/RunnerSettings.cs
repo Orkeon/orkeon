@@ -199,9 +199,8 @@ public static class RunnerSettings
     /// Resolves the appsettings.json path using a fallback chain:
     ///   1. Explicit --settings arg
     ///   2. appsettings.json next to config.yaml
-    ///   3. examples/appsettings/appsettings.json (walk up from config dir;
-    ///      examples/_shared/appsettings.json is a deprecated fallback, kept one
-    ///      release for compatibility — remove at the next release).
+    ///   3. appsettings/appsettings.json (walk up from config dir, stopping at an
+    ///      examples solution root).
     ///   4. Global per-user config written by <c>orkeon init</c>
     ///      (see <see cref="GetGlobalSettingsPath"/>).
     /// </summary>
@@ -251,9 +250,7 @@ public static class RunnerSettings
 
     /// <summary>
     /// Step 3 of the chain: walk up from the config directory looking for the canonical
-    /// <c>appsettings/appsettings.json</c>, falling back to the legacy
-    /// <c>_shared/appsettings.json</c> only when the canonical one is absent (temporary —
-    /// drop at the next release). The walk stops at an examples solution root.
+    /// <c>appsettings/appsettings.json</c>. The walk stops at an examples solution root.
     /// </summary>
     private static string? FindSettingsByWalkingUp(string configDir)
     {
@@ -262,10 +259,6 @@ public static class RunnerSettings
         {
             var canonical = Path.Combine(dir.FullName, "appsettings", ConventionalNames.SettingsFile);
             if (File.Exists(canonical)) return canonical;
-
-            // DEPRECATED: legacy _shared location, kept one release for compatibility.
-            var legacyShared = Path.Combine(dir.FullName, "_shared", ConventionalNames.SettingsFile);
-            if (File.Exists(legacyShared)) return legacyShared;
 
             if (File.Exists(Path.Combine(dir.FullName, "Orkeon.Examples.sln"))) break;
             dir = dir.Parent;

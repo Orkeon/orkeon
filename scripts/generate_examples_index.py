@@ -53,7 +53,7 @@ USECASE_FILE = "usecase.yaml"
 
 # Folders that are NOT part of the numbered catalog scan.
 EXCLUDED_TOP = {
-    "_shared", "_legacy", "others", "runners", "test-reports", ".vs",
+    "others", "test-reports", ".vs",
     "bin", "obj", "obj-linux",
 }
 

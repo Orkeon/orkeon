@@ -102,11 +102,8 @@ singleton. It registers no server: `AddOrkeonMcpServer` registers `McpServer` (+
 `1.0.0`), which serves the container's `IToolRegistry` and calls every tool through its
 `IToolInvocationPipeline` — `AddOrkeonInfrastructure()` and `AddOrkeonApplication()` register
 both. Registering is not serving: the host runs `RunStdioAsync` — what `orkeon mcp serve`
-does — or `ProcessRequestAsync` itself. **`MCP:EnableServer` is gone (GAP-24):** it
-registered a server no shipped binary ever resolved, so a user who wrote it got nothing. A
-section that still carries it, `true` or `false`, is refused at startup — by both extensions
-and by every runner built on `RunnerHost`, servers declared or not — with a message naming
-what replaced it; remove the key. The server exposes tools only — Orkeon has no resource or prompt
+does — or `ProcessRequestAsync` itself. No setting starts the server (GAP-24): the `MCP` section carries no such key, and every runner
+built on `RunnerHost` refuses an unknown key at startup, servers declared or not. The server exposes tools only — Orkeon has no resource or prompt
 model to serve, so `resources/*` and `prompts/*` answer `Method not found`, and there is no
 option claiming otherwise (the inert `ExposeResources`/`ExposePrompts` were removed, GAP-11).
 The `AddOrkeonInfrastructure(IConfiguration)` overload calls `AddOrkeonMcp` itself, never
@@ -235,7 +232,7 @@ stdout, one per line; closing stdin ends the server.
   goes to stderr — where an MCP client records a server's output —, and so do `--help` and
   the usage errors.
 - **Exit codes**: `0` the client closed the stream (or `--help`); `1` a usage error, a refused
-  setting (`MCP:EnableServer`, a mount the settings declare that cannot be mounted, any other
+  setting (an unknown key, a mount the settings declare that cannot be mounted, any other
   setting the runner host refuses — one `ERROR:` line names it), a `--tools` name the host does
   not have, a serve started by another serve (below); `2` an unexpected error. Ctrl+C ends the
   process.

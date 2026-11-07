@@ -220,9 +220,8 @@ The registration order is deliberate:
 9. **MCP** — `AddOrkeonMcp(configuration)` when the `MCP` section declares at least one
    server under `MCP:Servers` and `MCP:Enabled` is not `false`. Registering is not
    connecting: the servers are connected by the flows below, before the crew loads
-   (see [MCP](../architecture/mcp.md#activation)). A section that still carries the removed
-   `MCP:EnableServer` fails the build of the host, servers declared or not (GAP-24).
-10. **Decision models** — `RegisterDecisionModels`: one active decision provider (TypeSafe, Liquid or Kev), named by `Orkeon:Decision:Provider` or deduced (the `Orkeon:TypeSafe` or `Orkeon:Liquid` section, even empty, else the one whose key variable is set; none when nothing is present), and the decision profiles of `Orkeon:Decision:Profiles`. The start is refused for an unknown provider name, for TypeSafe and Liquid both present without a named provider (both sections, or no section and both keys; with one section, its provider is chosen) (the message names both and the setting), for a Kev address without an `http` or `https` scheme (`Orkeon:Kev:BaseUrl`), for a Kev key towards a non-local `http` address, and for a `Guard` block left under `Orkeon:TypeSafe` (it lives under `Orkeon:Decision:Guard`). The start log names the active provider, its model, its address and how it was chosen; every provider section that is not the active one gets a warning ("is ignored: the active decision provider is …"), the Kev one adding, when no provider is named, that Kev is never deduced and must be named with `Orkeon:Decision:Provider`. See [Decision models](../architecture/decision-models.md).
+   (see [MCP](../architecture/mcp.md#activation)). No setting starts an MCP server (GAP-24).
+10. **Decision models** — `RegisterDecisionModels`: one active decision provider (TypeSafe, Liquid or Kev), named by `Orkeon:Decision:Provider` or deduced (the `Orkeon:TypeSafe` or `Orkeon:Liquid` section, even empty, else the one whose key variable is set; none when nothing is present), and the decision profiles of `Orkeon:Decision:Profiles`. The start is refused for an unknown provider name, for TypeSafe and Liquid both present without a named provider (both sections, or no section and both keys; with one section, its provider is chosen) (the message names both and the setting), for a Kev address without an `http` or `https` scheme (`Orkeon:Kev:BaseUrl`), for a Kev key towards a non-local `http` address. The start log names the active provider, its model, its address and how it was chosen; every provider section that is not the active one gets a warning ("is ignored: the active decision provider is …"), the Kev one adding, when no provider is named, that Kev is never deduced and must be named with `Orkeon:Decision:Provider`. See [Decision models](../architecture/decision-models.md).
 11. **Tool registry** — nothing of its own: `AddOrkeonInfrastructure()` already registered the default
     `ToolRegistry`, which reads every `IBaseTool` the steps above registered when it is first resolved.
 12. **Runner services** — the caller's `configureServices` hook runs last.
@@ -308,14 +307,9 @@ while `CrewFactory` and the orchestrator resolve per scope.
 | `OtlpEndpoint` | — | An explicit OTLP endpoint; it wins over the environment. An `http://` or `https://` address: anything else is refused, naming the key. |
 | `MaxMemoryMB` | `2048` | Threshold of the `system_resources` health check. |
 
-**Removed keys (GAP-35).** `ExportToConsole` attached OpenTelemetry's console exporters, which write
-on stdout — where `--events jsonl`, the `--list-tools` manifest and `orkeon mcp serve` speak to a
-program —, and `PrometheusEndpoint` was bound and read by nothing. Both are gone, with the
-`OpenTelemetry.Exporter.Console` package, and a section that still writes one — whatever its value,
-`Enabled` `false` included — is refused with an `InvalidOperationException` that names the key and
-what replaces it: an OTLP collector (`Telemetry:OtlpEndpoint`, `OTEL_EXPORTER_OTLP_ENDPOINT`, the
-.NET Aspire dashboard). In the runners it is a refused setting: exit 1, or 78 for `orkeon-host`. A C#
-host that wants the console adds the exporter to its own `AddOpenTelemetry()`.
+**Console.** No setting attaches a console exporter: it would write on stdout, where `--events jsonl`, the
+`--list-tools` manifest and `orkeon mcp serve` speak to a program. A C# host that wants the console adds the
+exporter to its own `AddOpenTelemetry()`.
 
 **Where the data goes.** An explicit `Telemetry:OtlpEndpoint` is used as the exporters' endpoint.
 Without one, a non-empty `OTEL_EXPORTER_OTLP_ENDPOINT` attaches the OTLP exporters with no
