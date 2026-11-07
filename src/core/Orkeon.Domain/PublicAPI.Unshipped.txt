@@ -232,3 +232,16 @@ const Orkeon.Domain.Constants.Agent.AgentDefaults.AnalysisToolResultLength = 120
 *REMOVED*static Orkeon.Domain.Agent.AgentStep.CreateSuccess(string! output, object? structuredOutput, Orkeon.Domain.Common.AgentId? agentId = null, Orkeon.Domain.Common.TaskId? taskId = null, string! action = "", string! input = "", System.Collections.Generic.IReadOnlyList<string!>? toolsUsed = null, Orkeon.Domain.Agent.ValueObjects.AgentStepContext? context = null) -> Orkeon.Domain.Agent.AgentStep!
 Orkeon.Domain.Memory.RecallOptions.MinSemanticScore.get -> float
 Orkeon.Domain.Memory.RecallOptions.MinSemanticScore.init -> void
+Orkeon.Domain.Agent.Agent.PermissionMode.get -> Orkeon.Domain.Security.PermissionMode?
+Orkeon.Domain.Agent.AgentBuilder.PermissionMode(Orkeon.Domain.Security.PermissionMode mode) -> Orkeon.Domain.Agent.AgentBuilder!
+Orkeon.Domain.Configuration.AgentConfiguration.PermissionMode.get -> Orkeon.Domain.Security.PermissionMode?
+Orkeon.Domain.Configuration.AgentConfiguration.PermissionMode.init -> void
+Orkeon.Domain.Security.PermissionMode
+Orkeon.Domain.Security.PermissionMode.AcceptEdits = 1 -> Orkeon.Domain.Security.PermissionMode
+Orkeon.Domain.Security.PermissionMode.BypassPermissions = 2 -> Orkeon.Domain.Security.PermissionMode
+Orkeon.Domain.Security.PermissionMode.Default = 0 -> Orkeon.Domain.Security.PermissionMode
+Orkeon.Domain.Security.PermissionMode.DontAsk = 4 -> Orkeon.Domain.Security.PermissionMode
+Orkeon.Domain.Security.PermissionMode.Plan = 3 -> Orkeon.Domain.Security.PermissionMode
+Orkeon.Domain.Security.PermissionModes
+static Orkeon.Domain.Security.PermissionModes.ToWireName(this Orkeon.Domain.Security.PermissionMode mode) -> string!
+static Orkeon.Domain.Security.PermissionModes.TryParse(string? name, out Orkeon.Domain.Security.PermissionMode mode) -> bool

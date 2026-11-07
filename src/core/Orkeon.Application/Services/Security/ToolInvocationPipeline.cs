@@ -33,6 +33,9 @@ public sealed partial class ToolInvocationPipeline : IToolInvocationPipeline
     /// </summary>
     private static readonly AsyncLocal<ImmutableList<string>?> s_delegationChain = new();
 
+    private readonly IPermissionGate? _permissionGate;
+    private readonly IToolApprovalChannel? _approvalChannel;
+    private readonly Orkeon.Domain.Security.PermissionMode _defaultMode;
     private readonly IGuardianPipeline? _guardian;
     private readonly IToolResultSanitizer? _sanitizer;
     private readonly IAuditLogger? _auditLogger;
@@ -48,19 +51,31 @@ public sealed partial class ToolInvocationPipeline : IToolInvocationPipeline
     /// <param name="auditLogger">The audit trail a <c>ToolExecution</c> event is written to per call.</param>
     /// <param name="logger">The logger.</param>
     /// <param name="limits">The per-tool result cuts; without it the <c>AgentDefaults</c> ones apply.</param>
+    /// <param name="permissionGate">The permission gate consulted after the guardian for the calls of an agent; without it nothing is gated.</param>
+    /// <param name="approvalChannel">Where an <c>Ask</c> verdict of the gate is put to an operator; without it an <c>Ask</c> is a refusal.</param>
+    /// <param name="defaultMode">The mode of a caller that declares none.</param>
     public ToolInvocationPipeline(
         IGuardianPipeline? guardian = null,
         IToolResultSanitizer? sanitizer = null,
         IAuditLogger? auditLogger = null,
         ILogger<ToolInvocationPipeline>? logger = null,
-        Microsoft.Extensions.Options.IOptions<Orkeon.Domain.Tools.ToolResultLimitsOptions>? limits = null)
+        Microsoft.Extensions.Options.IOptions<Orkeon.Domain.Tools.ToolResultLimitsOptions>? limits = null,
+        IPermissionGate? permissionGate = null,
+        IToolApprovalChannel? approvalChannel = null,
+        Orkeon.Domain.Security.PermissionMode defaultMode = Orkeon.Domain.Security.PermissionMode.Default)
     {
+        _permissionGate = permissionGate;
+        _approvalChannel = approvalChannel;
+        _defaultMode = defaultMode;
         _guardian = guardian;
         _sanitizer = sanitizer;
         _auditLogger = auditLogger;
         _logger = (ILogger?)logger ?? NullLogger.Instance;
         _limits = limits?.Value;
     }
+
+    /// <inheritdoc />
+    public bool GatesPermissions => _permissionGate is not null;
 
     /// <inheritdoc />
     public System.Threading.Tasks.Task<ToolInvocationResult> InvokeAsync(
@@ -82,6 +97,15 @@ public sealed partial class ToolInvocationPipeline : IToolInvocationPipeline
         if (verdict is { IsAllowed: false })
         {
             var text = $"Error: Blocked by Guardian ({(isDelegation ? GuardPhase.Delegation : GuardPhase.ToolExecution)}): {verdict.Reason}";
+            OrkeonMeter.RecordToolExecution(tool.Name, "blocked", null);
+            await AuditCallAsync(tool.Name, caller, AuditOutcome.Blocked, 0, cancellationToken).ConfigureAwait(false);
+            return new ToolInvocationResult { ConversationText = text, RawText = text, Blocked = true };
+        }
+
+        var refusal = await GateAsync(invocation, caller, isDelegation, cancellationToken).ConfigureAwait(false);
+        if (refusal is not null)
+        {
+            var text = $"Error: Blocked by the permission gate: {refusal}";
             OrkeonMeter.RecordToolExecution(tool.Name, "blocked", null);
             await AuditCallAsync(tool.Name, caller, AuditOutcome.Blocked, 0, cancellationToken).ConfigureAwait(false);
             return new ToolInvocationResult { ConversationText = text, RawText = text, Blocked = true };
@@ -175,6 +199,52 @@ public sealed partial class ToolInvocationPipeline : IToolInvocationPipeline
         };
 
         return await _guardian.ExecuteAsync(context, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Puts the call of an agent to the permission gate, after the guardian. Null when the call may run;
+    /// else the reason it is refused. An <c>Ask</c> goes to the approval channel when there is one, and is a
+    /// refusal without (fail closed). Not gated: no gate, an exempt caller (<c>orkeon mcp serve</c>, the
+    /// forge) and the delegation tools, which hand work to another agent whose own calls are gated.
+    /// </summary>
+    private async System.Threading.Tasks.Task<string?> GateAsync(
+        ToolInvocation invocation, ToolInvocationCaller caller, bool isDelegation, CancellationToken cancellationToken)
+    {
+        if (_permissionGate is null || caller.GateExempt || isDelegation)
+            return null;
+
+        var mode = caller.RequireApproval
+            ? Orkeon.Domain.Security.PermissionModes.ToWireName(Orkeon.Domain.Security.PermissionMode.Default)
+            : string.IsNullOrWhiteSpace(caller.PermissionMode)
+                ? Orkeon.Domain.Security.PermissionModes.ToWireName(_defaultMode)
+                : caller.PermissionMode;
+        var tool = invocation.Tool;
+        var access = caller.RequireApproval ? Orkeon.Domain.Tools.ToolAccess.Edit : tool.AccessFor(invocation.Arguments);
+
+        // The wait for the gate and for an operator is not the caller's time (a script stops its clocks).
+        using var waiting = caller.WaitScope?.Invoke();
+        var verdict = await _permissionGate.CheckAsync(
+            tool.Name, invocation.Arguments, mode, access, cancellationToken).ConfigureAwait(false);
+        switch (verdict.Action)
+        {
+            case PermissionAction.Allow:
+                return null;
+            case PermissionAction.Ask when _approvalChannel is not null:
+                var decision = await _approvalChannel.RequestAsync(
+                    new ToolApprovalRequest
+                    {
+                        ToolName = tool.Name,
+                        Arguments = invocation.Arguments.ToImmutableDictionary(),
+                        Mode = mode,
+                        Reason = verdict.Message ?? $"tool '{tool.Name}' needs an approval in mode '{mode}'.",
+                    },
+                    cancellationToken).ConfigureAwait(false);
+                return decision == ToolApprovalDecision.Deny ? $"the operator refused tool '{tool.Name}'." : null;
+            case PermissionAction.Ask:
+                return $"{verdict.Message ?? $"tool '{tool.Name}' needs an approval in mode '{mode}'."} No approval channel is available, so the call is denied.";
+            default:
+                return verdict.Message ?? $"tool '{tool.Name}' is not permitted in mode '{mode}'.";
+        }
     }
 
     /// <summary>Whether <paramref name="toolName"/> hands work or a question to another agent.</summary>

@@ -47,3 +47,4 @@ override Orkeon.Cli.Commands.Scripting.Dispatch.ExclusiveLaunchRefusedException.
 static Orkeon.Cli.Commands.Scripting.Progress.ToolActivityPipeline.Decorate(Microsoft.Extensions.DependencyInjection.IServiceCollection! services) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
 static Orkeon.Cli.Commands.Scripting.Progress.ToolCallSubject.Of(string! tool, System.Collections.Generic.IReadOnlyDictionary<string!, object?>! arguments) -> string!
 static Orkeon.Cli.Commands.Scripting.Runtime.PromptDispatcher.PanelsOf(Orkeon.Cli.Abstractions.Console.IConsoleAdapter! console) -> Orkeon.Cli.Abstractions.Console.IChoiceConsole?
+Orkeon.Cli.Commands.Scripting.Progress.ToolActivityPipeline.GatesPermissions.get -> bool

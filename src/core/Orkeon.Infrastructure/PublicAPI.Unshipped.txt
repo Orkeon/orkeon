@@ -425,3 +425,5 @@ const Orkeon.Infrastructure.Checkpointing.CheckpointingOptions.SectionName = "Or
 const Orkeon.Infrastructure.Checkpointing.CheckpointingOptions.StateRoot = "/state" -> string!
 static Orkeon.Infrastructure.Checkpointing.CheckpointingExtensions.AddOrkeonCheckpointing(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, Microsoft.Extensions.Configuration.IConfiguration! configuration) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
 Orkeon.Infrastructure.Orchestration.SequentialCrewOrchestrator.KickoffStreamingAsync(Orkeon.Domain.Common.CrewId! crewId, Orkeon.Application.Interfaces.Services.CrewInput! input, Orkeon.Application.Interfaces.Services.KickoffOptions! options, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Collections.Generic.IAsyncEnumerable<Orkeon.Application.Interfaces.Services.CrewExecutionEvent!>!
+Orkeon.Infrastructure.Configuration.AgentYamlConfig.PermissionMode.get -> string?
+Orkeon.Infrastructure.Configuration.AgentYamlConfig.PermissionMode.set -> void

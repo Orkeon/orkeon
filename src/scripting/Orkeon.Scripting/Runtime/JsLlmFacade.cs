@@ -1440,7 +1440,7 @@ public sealed partial class JsLlmFacade
         session.Tools.FirstOrDefault(t => string.Equals(t.Name, toolName, StringComparison.OrdinalIgnoreCase));
 
     private readonly record struct PreparedToolCall(
-        Orkeon.Application.Interfaces.LLM.ParsedToolCall Call, IBaseTool? Tool, Dictionary<string, object?> Arguments, string? Refusal);
+        Orkeon.Application.Interfaces.LLM.ParsedToolCall Call, IBaseTool? Tool, Dictionary<string, object?> Arguments, string? Refusal, bool Ask = false);
 
     /// <summary>
     /// Runs the calls of one model turn group by group (<see cref="ToolCallScheduler"/>): per group the
@@ -1477,7 +1477,7 @@ public sealed partial class JsLlmFacade
             var toRun = prepared.Where(p => p.Refusal is null).ToList();
             var outputs = await ToolCallScheduler.RunAsync(
                 toRun, _ => group.IsParallel,
-                (p, _) => ExecuteToolAsync(p.Tool, p.Call.ToolName, p.Arguments),
+                (p, _) => ExecuteToolAsync(p.Tool, p.Call.ToolName, p.Arguments, session.PermissionMode, p.Ask),
                 ToolLimits.MaxParallelToolCalls, _ct).ConfigureAwait(false);
 
             var executed = 0;
@@ -1529,6 +1529,7 @@ public sealed partial class JsLlmFacade
             return new(call, tool, toolArgs, $"DENIED: {verdict.Message ?? $"tool '{toolName}' is not permitted in mode '{permissionMode}'."}");
         }
 
+        var ask = false;
         if (session.HasToolCallback)
         {
             var callback = await RunToolCallbackAsync(session, tool, toolName, toolArgs).ConfigureAwait(false);
@@ -1538,12 +1539,13 @@ public sealed partial class JsLlmFacade
                 return new(call, tool, toolArgs, $"DENIED: {callback.DenyReason}");
             }
             toolArgs = callback.Arguments;
+            ask = callback.Ask;
         }
 
         // Recorded here, NOT inside ExecuteToolAsync: its fault barrier would swallow
         // BudgetExhaustedException into an "ERROR:" string fed back to the model.
         _budget?.RecordToolCall();
-        return new(call, tool, toolArgs, null);
+        return new(call, tool, toolArgs, null, ask);
     }
 
     /// <summary>
@@ -1563,20 +1565,43 @@ public sealed partial class JsLlmFacade
                 : text;
     }
 
-    /// <summary>The permission gate's verdict on one call; <c>null</c> when the host registered no gate.</summary>
+    /// <summary>
+    /// The permission gate's verdict on one call; <c>null</c> when the host registered no gate, or when the
+    /// call goes through the host's invocation pipeline, which consults the gate itself (FWK-06: one
+    /// consultation per call). <paramref name="always"/> asks the gate whatever the path: an
+    /// <c>onToolCall</c> that answers <c>ask</c> is a question of its own.
+    /// </summary>
     private async Task<Orkeon.Application.Interfaces.Security.PermissionVerdict?> GateAsync(
-        string toolName, Dictionary<string, object?> toolArgs, string permissionMode, ToolAccess access)
+        string toolName, Dictionary<string, object?> toolArgs, string permissionMode, ToolAccess access, bool always = false)
     {
-        if (_permissionGate is null) return null;
+        if (_permissionGate is null || (PipelineGates && !always)) return null;
         // The gate may hold the call while an operator answers an approval: that time is not
         // the script's, so the engine's wall-clock limit and the agent's wall-time budget
         // both stop while the gate decides (#127).
-        using var paused = _engine.Constraints.Find<PausableTimeConstraint>()?.Pause();
-        using var budgetPaused = _budget?.PauseWallClock();
+        using var paused = PauseClocks();
         return await _permissionGate.CheckAsync(toolName, toolArgs, permissionMode, access, _ct).ConfigureAwait(false);
     }
 
-    private readonly record struct ToolCallbackOutcome(string? DenyReason, Dictionary<string, object?> Arguments);
+    /// <summary>Whether the host's invocation pipeline puts the calls to the permission gate itself.</summary>
+    private bool PipelineGates => _toolInvocation is { GatesPermissions: true };
+
+    /// <summary>
+    /// Stops the engine's wall-clock limit and the agent's wall-time budget until the handle is disposed: the
+    /// time an operator takes to answer an approval is not the script's (#127).
+    /// </summary>
+    private PausedClocks PauseClocks() => new PausedClocks(
+        _engine.Constraints.Find<PausableTimeConstraint>()?.Pause(), _budget?.PauseWallClock());
+
+    private sealed class PausedClocks(IDisposable? engine, IDisposable? budget) : IDisposable
+    {
+        public void Dispose()
+        {
+            budget?.Dispose();
+            engine?.Dispose();
+        }
+    }
+
+    private readonly record struct ToolCallbackOutcome(string? DenyReason, Dictionary<string, object?> Arguments, bool Ask = false);
 
     /// <summary>
     /// Runs the <c>onToolCall</c> callback through the session's pump and applies its verdict:
@@ -1616,7 +1641,10 @@ public sealed partial class JsLlmFacade
             return new(NoValidVerdict, toolArgs);
         if (_permissionGate is null)
             return new("onToolCall asked for approval but no permission gate is registered", toolArgs);
-        var asked = await GateAsync(toolName, toolArgs, "default", ToolAccess.Edit).ConfigureAwait(false);
+        // The pipeline is the one checkpoint when it gates: the call is handed to it as one to approve.
+        if (PipelineGates)
+            return new(null, toolArgs, Ask: true);
+        var asked = await GateAsync(toolName, toolArgs, "default", ToolAccess.Edit, always: true).ConfigureAwait(false);
         return new(DenialOf(asked, toolName, "default"), toolArgs);
     }
 
@@ -1647,7 +1675,7 @@ public sealed partial class JsLlmFacade
     private static string NotAvailable(string name) => $"ERROR: tool '{name}' is not available to this agent.";
 
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Tool-boundary fault barrier: any tool failure is converted to an 'ERROR: ...' string fed back to the model as the tool result, so one faulty tool cannot crash the scripted LLM tool-call loop.")]
-    private async Task<string> ExecuteToolAsync(IBaseTool? tool, string name, Dictionary<string, object?> arguments)
+    private async Task<string> ExecuteToolAsync(IBaseTool? tool, string name, Dictionary<string, object?> arguments, string permissionMode, bool requireApproval = false)
     {
         if (tool is null)
             return NotAvailable(name);
@@ -1661,7 +1689,7 @@ public sealed partial class JsLlmFacade
             {
                 Task<string> guarded;
                 using (HostWorkMemoryConstraint.Exclude(memory))
-                    guarded = InvokeThroughPipelineAsync(_toolInvocation, tool, arguments);
+                    guarded = InvokeThroughPipelineAsync(_toolInvocation, tool, arguments, permissionMode, requireApproval);
                 return await guarded.ConfigureAwait(false);
             }
 
@@ -1689,9 +1717,14 @@ public sealed partial class JsLlmFacade
     /// keeps the <c>ERROR: …</c> shape.
     /// </summary>
     private async Task<string> InvokeThroughPipelineAsync(
-        Orkeon.Application.Interfaces.Security.IToolInvocationPipeline pipeline, IBaseTool tool, Dictionary<string, object?> arguments)
+        Orkeon.Application.Interfaces.Security.IToolInvocationPipeline pipeline, IBaseTool tool, Dictionary<string, object?> arguments, string permissionMode, bool requireApproval)
     {
-        var caller = new Orkeon.Application.Interfaces.Security.ToolInvocationCaller(_agentName, _agentName);
+        var caller = new Orkeon.Application.Interfaces.Security.ToolInvocationCaller(_agentName, _agentName)
+        {
+            PermissionMode = permissionMode,
+            RequireApproval = requireApproval,
+            WaitScope = PauseClocks,
+        };
         var outcome = await pipeline.InvokeAsync(
             new Orkeon.Application.Interfaces.Security.ToolInvocation(tool, arguments, caller), _ct).ConfigureAwait(false);
         if (outcome.Blocked)

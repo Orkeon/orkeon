@@ -22,6 +22,7 @@ public sealed class AgentBuilder
     private int? _maxRpm;
     private bool _verbose;
     private string? _workingRoot;
+    private Security.PermissionMode? _permissionMode;
     private TimeSpan? _maxExecutionTime;
     private string? _systemTemplate;
     private string? _promptTemplate;
@@ -208,6 +209,14 @@ public sealed class AgentBuilder
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(maxOutputTokens);
         _llmConfig = (_llmConfig ?? LlmConfig.OnProfile()) with { MaxTokens = maxOutputTokens };
+        return this;
+    }
+
+    /// <summary>Declares the permission mode the agent's tool calls run under.</summary>
+    /// <param name="mode">The mode; unset, the gate's default mode applies.</param>
+    public AgentBuilder PermissionMode(Security.PermissionMode mode)
+    {
+        _permissionMode = mode;
         return this;
     }
 
@@ -398,6 +407,7 @@ public sealed class AgentBuilder
             KnowledgeAttachments = _knowledgeAttachments
         });
         agent.WorkingRoot = _workingRoot;
+        agent.PermissionMode = _permissionMode;
         return agent;
     }
 

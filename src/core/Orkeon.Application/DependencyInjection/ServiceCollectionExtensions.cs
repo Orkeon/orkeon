@@ -103,9 +103,21 @@ public static class ServiceCollectionExtensions
                 sp.GetService<Interfaces.Security.IGuardianPipeline>(),
                 sp.GetService<Interfaces.Security.IToolResultSanitizer>(),
                 sp.GetService<Interfaces.Security.IAuditLogger>(),
-                sp.GetService<Microsoft.Extensions.Logging.ILogger<Services.Security.ToolInvocationPipeline>>()));
+                sp.GetService<Microsoft.Extensions.Logging.ILogger<Services.Security.ToolInvocationPipeline>>(),
+                limits: null,
+                permissionGate: sp.GetService<Interfaces.Security.IPermissionGate>(),
+                approvalChannel: sp.GetService<Interfaces.Security.IToolApprovalChannel>(),
+                defaultMode: DefaultPermissionMode(sp.GetService<Microsoft.Extensions.Configuration.IConfiguration>())));
         return services;
     }
+
+    // Orkeon:Security:PermissionGate:DefaultMode, the mode of an agent that declares none; an unset
+    // key is "default", and a value that names no mode is refused by the settings shape at start.
+    private static Orkeon.Domain.Security.PermissionMode DefaultPermissionMode(Microsoft.Extensions.Configuration.IConfiguration? configuration) =>
+        Orkeon.Domain.Security.PermissionModes.TryParse(
+            configuration?.GetSection("Orkeon:Security:PermissionGate")["DefaultMode"], out var mode)
+            ? mode
+            : Orkeon.Domain.Security.PermissionMode.Default;
 
     /// <summary>
     /// Registers the <see cref="IExecutionOrchestrator"/> with a factory that prefers

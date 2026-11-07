@@ -1,0 +1,60 @@
+namespace Orkeon.Domain.Security;
+
+/// <summary>
+/// The permission mode an agent runs its tool calls under, as the permission gate reads it. The gate maps
+/// each mode to a verdict per tool; the names on the wire are the ones a script and a YAML crew write
+/// (<see cref="PermissionModes.ToWireName"/>).
+/// </summary>
+public enum PermissionMode
+{
+    /// <summary>Reads pass; every other tool asks for an approval.</summary>
+    Default,
+
+    /// <summary>Reads and file edits pass; shell commands ask.</summary>
+    AcceptEdits,
+
+    /// <summary>Every call passes.</summary>
+    BypassPermissions,
+
+    /// <summary>Reads pass; everything else is denied: a turn that changes nothing.</summary>
+    Plan,
+
+    /// <summary>Reads pass; everything else is denied, never asked.</summary>
+    DontAsk,
+}
+
+/// <summary>The wire names of <see cref="PermissionMode"/>: <c>default</c>, <c>acceptEdits</c>, <c>bypassPermissions</c>, <c>plan</c>, <c>dontAsk</c>.</summary>
+public static class PermissionModes
+{
+    /// <summary>The name the gate and the YAML key <c>permissionMode</c> use for <paramref name="mode"/>.</summary>
+    /// <param name="mode">The mode.</param>
+    /// <returns>Its camelCase name.</returns>
+    public static string ToWireName(this PermissionMode mode) => mode switch
+    {
+        PermissionMode.Default => "default",
+        PermissionMode.AcceptEdits => "acceptEdits",
+        PermissionMode.BypassPermissions => "bypassPermissions",
+        PermissionMode.Plan => "plan",
+        PermissionMode.DontAsk => "dontAsk",
+        _ => throw new ArgumentOutOfRangeException(nameof(mode), mode, "Unknown permission mode."),
+    };
+
+    /// <summary>Reads a wire name, ignoring case.</summary>
+    /// <param name="name">The name, e.g. <c>acceptEdits</c>.</param>
+    /// <param name="mode">The mode, when the name is one.</param>
+    /// <returns>Whether <paramref name="name"/> names a mode.</returns>
+    public static bool TryParse(string? name, out PermissionMode mode)
+    {
+        foreach (var candidate in Enum.GetValues<PermissionMode>())
+        {
+            if (string.Equals(candidate.ToWireName(), name?.Trim(), StringComparison.OrdinalIgnoreCase))
+            {
+                mode = candidate;
+                return true;
+            }
+        }
+
+        mode = PermissionMode.Default;
+        return false;
+    }
+}

@@ -70,6 +70,7 @@ agents:
 
       *sourcing
     workingRoot: /workspace/project
+    permissionMode: acceptEdits
     tools: [web_search, file_read]
     allowDelegation: false
     maxIter: 12

@@ -92,6 +92,17 @@ public sealed partial class YamlCrewMapper
                 SpawnedAgents = yaml.SpawnedAgents,
             };
 
+    // The permissionMode: of an agent, refused at load when it names no mode.
+    private static Orkeon.Domain.Security.PermissionMode? ReadPermissionMode(string agentKey, string? written)
+    {
+        if (string.IsNullOrWhiteSpace(written))
+            return null;
+        if (Orkeon.Domain.Security.PermissionModes.TryParse(written, out var mode))
+            return mode;
+        throw new InvalidOperationException(
+            $"Agent '{agentKey}' permissionMode: '{written.Trim()}' is not one of default, acceptEdits, bypassPermissions, plan, dontAsk.");
+    }
+
     /// <summary>
     /// Maps the <c>mounts:</c> block (VFS-90). Strict, unlike <see cref="MapLinks"/>: an item
     /// that is neither <c>/root</c> nor <c>&lt;ulid&gt;|/root</c> is a selection that would
@@ -153,6 +164,7 @@ public sealed partial class YamlCrewMapper
                 Goal = kvp.Value.Goal ?? string.Empty,
                 Backstory = kvp.Value.Backstory ?? string.Empty,
                 WorkingRoot = kvp.Value.WorkingRoot,
+                PermissionMode = ReadPermissionMode(kvp.Key, kvp.Value.PermissionMode),
                 Tools = kvp.Value.Tools ?? [],
                 AllowDelegation = kvp.Value.AllowDelegation ?? true,
                 MaxIterations = kvp.Value.MaxIter ?? Orkeon.Domain.Constants.Agent.AgentDefaults.MaxIterations,

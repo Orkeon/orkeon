@@ -257,6 +257,7 @@ public partial class YamlCrewExporter
             Goal = agent.Goal,
             Backstory = string.IsNullOrWhiteSpace(agent.Backstory) ? null : agent.Backstory,
             WorkingRoot = string.IsNullOrWhiteSpace(agent.WorkingRoot) ? null : agent.WorkingRoot,
+            PermissionMode = agent.PermissionMode is { } mode ? Orkeon.Domain.Security.PermissionModes.ToWireName(mode) : null,
             Tools = agent.Tools.Count > 0 ? new Collection<string>(agent.Tools.ToList()) : null,
             AllowDelegation = agent.AllowDelegation ? null : false,
             // Written when it differs from the one default, as the loader reads it back (GAP-38).

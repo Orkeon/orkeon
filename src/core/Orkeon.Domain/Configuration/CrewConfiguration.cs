@@ -90,6 +90,8 @@ public sealed record AgentConfiguration
     public string Backstory { get; init; } = string.Empty;
     /// <summary>Gets the virtual working root of the agent (<c>working_root:</c>, RT-06); null when none.</summary>
     public string? WorkingRoot { get; init; }
+    /// <summary>Gets the permission mode of the agent's tool calls (<c>permissionMode:</c>); null when none is declared.</summary>
+    public Orkeon.Domain.Security.PermissionMode? PermissionMode { get; init; }
     /// <summary>Gets the tool names available to this agent.</summary>
     public IReadOnlyList<string> Tools { get; init; } = Array.Empty<string>();
     /// <summary>Gets a value indicating whether delegation is allowed.</summary>

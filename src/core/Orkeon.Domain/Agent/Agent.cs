@@ -76,6 +76,12 @@ public sealed class Agent : AggregateRoot<AgentId>
     /// </summary>
     public TimeSpan? MaxExecutionTime { get; private set; }
 
+    /// <summary>
+    /// The permission mode the agent's tool calls run under (<c>permissionMode:</c> of a YAML agent); null
+    /// when it declares none and <c>Orkeon:Security:PermissionGate:DefaultMode</c> applies.
+    /// </summary>
+    public Security.PermissionMode? PermissionMode { get; internal set; }
+
     /// <summary>The virtual working root the agent runs under (RT-06); null when it declares none.</summary>
     public string? WorkingRoot { get; internal set; }
 

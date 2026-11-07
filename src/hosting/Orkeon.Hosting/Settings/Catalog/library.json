@@ -2209,6 +2209,13 @@
       "description": "Whether the guardian runs. When false no guardian is registered in the pipeline: agent turns are neither screened on input nor on tool calls."
     },
     {
+      "path": "Orkeon:Security:PermissionGate:DefaultMode",
+      "section": "Orkeon:Security:PermissionGate",
+      "type": "string",
+      "default": "default",
+      "description": "The permission mode of an agent of a crew that declares none (`permissionMode:`): `default`, `acceptEdits`, `bypassPermissions`, `plan` or `dontAsk`. A script poses its own mode on each `act`."
+    },
+    {
       "path": "Orkeon:Security:PermissionGate:Enabled",
       "section": "Orkeon:Security:PermissionGate",
       "type": "boolean",

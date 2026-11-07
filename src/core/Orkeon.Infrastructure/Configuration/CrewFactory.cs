@@ -284,6 +284,8 @@ public partial class CrewFactory : ICrewFactory
 
         if (!string.IsNullOrWhiteSpace(agentConfig.Backstory))
             builder.Backstory(agentConfig.Backstory);
+        if (agentConfig.PermissionMode is { } permissionMode)
+            builder.PermissionMode(permissionMode);
         if (!string.IsNullOrWhiteSpace(agentConfig.WorkingRoot))
             builder.WorkingRoot(agentConfig.WorkingRoot);
         if (resolvedTools.Count > 0)
