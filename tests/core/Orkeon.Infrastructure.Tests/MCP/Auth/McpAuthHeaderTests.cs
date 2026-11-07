@@ -28,7 +28,7 @@ public sealed class McpAuthHeaderTests
         handler.SetResponse(HttpStatusCode.OK, """{"jsonrpc":"2.0","id":1,"result":{}}""", "application/json");
         using var http = new HttpClient(handler);
         var authenticator = McpRequestAuthenticators.Create("srv", config, Env);
-        await using var transport = new SseMcpTransport(Endpoint, http, authenticator: authenticator);
+        await using var transport = new StreamableHttpMcpTransport(Endpoint, http, authenticator: authenticator);
         await transport.ConnectAsync(TestContext.Current.CancellationToken);
         var request = new JsonRpcRequest { Id = JsonSerializer.SerializeToElement(1), Method = "tools/list" };
         await transport.SendRequestAsync(request, TestContext.Current.CancellationToken);

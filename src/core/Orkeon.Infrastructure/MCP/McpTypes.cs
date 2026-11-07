@@ -301,6 +301,40 @@ public class McpCapabilityInfo
     /// <summary>Gets or sets whether the server supports list-changed notifications for this capability.</summary>
     [JsonPropertyName("listChanged")]
     public bool? ListChanged { get; set; }
+
+    /// <summary>Gets or sets whether the server lets a client subscribe to updates of one resource (<c>resources.subscribe</c>).</summary>
+    [JsonPropertyName("subscribe")]
+    public bool? Subscribe { get; set; }
+}
+
+/// <summary>The content of one resource, as <c>resources/read</c> returns it: text or a base64 blob.</summary>
+[Experimental("ORKEXP004", UrlFormat = "https://github.com/Orkeon/orkeon/blob/main/docs/reference/experimental-apis.md")]
+public class McpResourceContents
+{
+    /// <summary>Gets or sets the URI of the resource.</summary>
+    [JsonPropertyName("uri")]
+    public Uri? Uri { get; set; }
+
+    /// <summary>Gets or sets the MIME type of the content.</summary>
+    [JsonPropertyName("mimeType")]
+    public string? MimeType { get; set; }
+
+    /// <summary>Gets or sets the text of a text resource.</summary>
+    [JsonPropertyName("text")]
+    public string? Text { get; set; }
+
+    /// <summary>Gets or sets the base64 data of a binary resource.</summary>
+    [JsonPropertyName("blob")]
+    public string? Blob { get; set; }
+}
+
+/// <summary>The result of <c>resources/read</c>: the contents of the resource (the spec's <c>contents</c> array).</summary>
+[Experimental("ORKEXP004", UrlFormat = "https://github.com/Orkeon/orkeon/blob/main/docs/reference/experimental-apis.md")]
+public class McpResourceReadResult
+{
+    /// <summary>Gets the contents of the resource.</summary>
+    [JsonPropertyName("contents")]
+    public IReadOnlyList<McpResourceContents> Contents { get; init; } = [];
 }
 
 /// <summary>

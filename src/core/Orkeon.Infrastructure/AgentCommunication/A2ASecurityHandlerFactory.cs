@@ -45,7 +45,7 @@ public static partial class A2ASecurityHandlerFactory
         async Task<SocketsHttpHandler> CreateCoreAsync()
         {
             // 2-minute pooled-connection recycling: repo convention (cf. HttpToolBase,
-            // SseMcpTransport) so long-lived handlers still honour DNS changes.
+            // StreamableHttpMcpTransport) so long-lived handlers still honour DNS changes.
             SocketsHttpHandler? handler = null;
             try
             {

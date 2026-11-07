@@ -26,6 +26,9 @@ public sealed partial class McpToolProvider : IAsyncDisposable, IDisposable
     /// <summary>The method of the notification that tells the client a server's tool list changed.</summary>
     private const string ToolListChangedMethod = "notifications/tools/list_changed";
 
+    /// <summary>The method of the notification that tells the client a subscribed resource changed.</summary>
+    private const string ResourceUpdatedMethod = "notifications/resources/updated";
+
     /// <summary>
     /// How long the client waits after a <c>tools/list_changed</c> before listing again: the notifications
     /// that arrive in the meantime are answered by that one listing.
@@ -44,6 +47,13 @@ public sealed partial class McpToolProvider : IAsyncDisposable, IDisposable
         private long _notifications;
         private long _resyncs;
         private int _dirty;
+        private long _resourceUpdates;
+        private readonly ConcurrentDictionary<string, Uri> _subscriptions = new();
+        private readonly ConcurrentDictionary<string, McpResourceReadResult> _resourceCache = new();
+        private readonly ConcurrentDictionary<string, long> _resourceVersions = new();
+        private readonly object _cacheLock = new();
+        private long _cacheEpoch;
+        private int _reopenRequested;
 
         public McpClient Client { get; } = client;
 
@@ -75,10 +85,86 @@ public sealed partial class McpToolProvider : IAsyncDisposable, IDisposable
 
         public bool IsDirty => Volatile.Read(ref _dirty) == 1;
 
+        /// <summary>The <c>subscriptions/listen</c> request in flight: cancelled to open it again with another filter.</summary>
+        public CancellationTokenSource? ListenRound { get; set; }
+
+        public Task Listener { get; set; } = Task.CompletedTask;
+
+        /// <summary>The handler of the transport's <c>Resumed</c> event, kept to be detached at disconnection.</summary>
+        public Action? ResumedHandler { get; set; }
+
+        public long ResourceUpdates => Interlocked.Read(ref _resourceUpdates);
+
+        public Uri[] SubscribedUris() => [.. _subscriptions.Values];
+
+        public bool IsSubscribed(Uri uri) => _subscriptions.ContainsKey(uri.ToString());
+
+        public void Subscribe(Uri uri) => _subscriptions[uri.ToString()] = uri;
+
+        /// <summary>Drops a subscription and its cached read; false when there was none.</summary>
+        public bool Unsubscribe(Uri uri)
+        {
+            lock (_cacheLock)
+            {
+                _resourceCache.TryRemove(uri.ToString(), out _);
+                _resourceVersions.AddOrUpdate(uri.ToString(), 1, (_, v) => v + 1);
+                return _subscriptions.TryRemove(uri.ToString(), out _);
+            }
+        }
+
+        /// <summary>A subscription changed on a modern server: its notification stream must be opened again with the new filter.</summary>
+        public void RequestReopen() => Volatile.Write(ref _reopenRequested, 1);
+
+        public bool TakeReopenRequest() => Interlocked.Exchange(ref _reopenRequested, 0) == 1;
+
+        /// <summary>What a read must still match when it comes back to be cached: no update and no clearing since it began.</summary>
+        public (long Epoch, long Version) Stamp(Uri uri) =>
+            (Interlocked.Read(ref _cacheEpoch), _resourceVersions.GetValueOrDefault(uri.ToString()));
+
+        /// <summary>Drops every cached read: what the server said while its stream was down or re-opened is lost.</summary>
+        public void ClearCache()
+        {
+            lock (_cacheLock)
+            {
+                Interlocked.Increment(ref _cacheEpoch);
+                _resourceCache.Clear();
+            }
+        }
+
+        public bool TryGetCached(Uri uri, out McpResourceReadResult? result) => _resourceCache.TryGetValue(uri.ToString(), out result);
+
+        /// <summary>Keeps a read, unless the resource was updated or the cache cleared since <paramref name="stamp"/> was taken.</summary>
+        public void Cache(Uri uri, McpResourceReadResult result, (long Epoch, long Version) stamp)
+        {
+            lock (_cacheLock)
+            {
+                if (Stamp(uri) == stamp && IsSubscribed(uri))
+                    _resourceCache[uri.ToString()] = result;
+            }
+        }
+
+        /// <summary>A subscribed resource changed: its cached read is stale, and nothing else is touched.</summary>
+        public void ResourceUpdated(string uri)
+        {
+            lock (_cacheLock)
+            {
+                _resourceVersions.AddOrUpdate(uri, 1, (_, v) => v + 1);
+                _resourceCache.TryRemove(uri, out _);
+            }
+
+            Interlocked.Increment(ref _resourceUpdates);
+        }
+
         /// <summary>A <c>tools/list_changed</c> was read: a listing is owed, whatever else arrives.</summary>
         public void MarkChanged()
         {
             Interlocked.Increment(ref _notifications);
+            MarkDirty();
+        }
+
+        /// <summary>A listing is owed, without a notification having been read (a stream that was down).</summary>
+        public void MarkDirty()
+        {
             Volatile.Write(ref _dirty, 1);
             try
             {
@@ -210,10 +296,10 @@ public sealed partial class McpToolProvider : IAsyncDisposable, IDisposable
             {
                 McpTransportType.Stdio => new StdioMcpTransport(config,
                     _loggerFactory?.CreateLogger<StdioMcpTransport>(), serverId),
-                McpTransportType.Sse => new SseMcpTransport(config.Url!,
+                McpTransportType.Sse => new StreamableHttpMcpTransport(config.Url!,
                     _httpClientFactory?.CreateClient(McpServiceExtensions.HttpClientName),
-                    _loggerFactory?.CreateLogger<SseMcpTransport>(),
-                    authenticator),
+                    _loggerFactory?.CreateLogger<StreamableHttpMcpTransport>(),
+                    authenticator, _time),
                 _ => throw new InvalidOperationException($"Unknown transport type: {config.Transport}")
             };
 
@@ -361,6 +447,15 @@ public sealed partial class McpToolProvider : IAsyncDisposable, IDisposable
         _clients[serverId] = clientEntry;
         clientEntry.Reader = Task.Run(() => ReadNotificationsAsync(clientEntry), CancellationToken.None);
         clientEntry.Watcher = Task.Run(() => WatchToolListAsync(serverId, clientEntry), CancellationToken.None);
+        if (transport is StreamableHttpMcpTransport http)
+        {
+            void OnResumedHandler() => OnResumed(serverId, clientEntry);
+            clientEntry.ResumedHandler = OnResumedHandler;
+            http.Resumed += OnResumedHandler;
+        }
+
+        if (client.Era == McpProtocolEra.Modern)
+            clientEntry.Listener = Task.Run(() => ListenLoopAsync(serverId, clientEntry), CancellationToken.None);
 
         var toolCount = clientEntry.ToolNames().Length;
         LogConnectedToMcpServer(serverId, toolCount);
@@ -372,6 +467,13 @@ public sealed partial class McpToolProvider : IAsyncDisposable, IDisposable
     /// <exception cref="InvalidOperationException">The server is not connected.</exception>
     public Task<IReadOnlyList<McpPrompt>> ListPromptsAsync(string serverId, CancellationToken ct = default) =>
         ClientOf(serverId).ListPromptsAsync(ct);
+
+    /// <summary>Lists the resources of a connected server, following its pages.</summary>
+    /// <param name="serverId">The server's identifier.</param>
+    /// <param name="ct">The cancellation token.</param>
+    /// <exception cref="InvalidOperationException">The server is not connected.</exception>
+    public Task<IReadOnlyList<McpResource>> ListResourcesAsync(string serverId, CancellationToken ct = default) =>
+        ClientOf(serverId).ListResourcesAsync(ct);
 
     /// <summary>Gets a prompt of a connected server, its arguments filled in.</summary>
     /// <param name="serverId">The server's identifier.</param>
@@ -411,6 +513,198 @@ public sealed partial class McpToolProvider : IAsyncDisposable, IDisposable
             {
                 if (notification.Method == ToolListChangedMethod)
                     entry.MarkChanged();
+                else if (notification.Method == ResourceUpdatedMethod && ReadUpdatedUri(notification) is { } uri)
+                    entry.ResourceUpdated(uri);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // The server was disconnected.
+        }
+    }
+
+    /// <summary>
+    /// Subscribes to the updates of a resource of a connected server whose capabilities announce
+    /// <c>resources.subscribe</c>. From then on its reads (<see cref="ReadResourceAsync"/>) are cached until a
+    /// <c>resources/updated</c> notification invalidates them; the notification touches nothing else.
+    /// </summary>
+    /// <param name="serverId">The server's identifier.</param>
+    /// <param name="uri">The resource.</param>
+    /// <param name="ct">The cancellation token.</param>
+    /// <exception cref="InvalidOperationException">The server is not connected or does not announce resource subscriptions.</exception>
+    public async Task SubscribeResourceAsync(string serverId, Uri uri, CancellationToken ct = default)
+    {
+        ArgumentNullException.ThrowIfNull(uri);
+        var entry = EntryOf(serverId);
+        if (entry.Capabilities?.Resources?.Subscribe != true)
+            throw new InvalidOperationException($"MCP server '{serverId}' does not announce resources.subscribe.");
+
+        if (entry.Client.Era == McpProtocolEra.Modern)
+        {
+            // A modern server takes the subscription in the filter of its notification stream: open it again.
+            entry.Subscribe(uri);
+            await ReopenListenAsync(entry).ConfigureAwait(false);
+            return;
+        }
+
+        await entry.Client.SubscribeResourceAsync(uri, ct).ConfigureAwait(false);
+        entry.Subscribe(uri);
+    }
+
+    /// <summary>
+    /// Ends the subscription to a resource and drops its cached read. A legacy server is told
+    /// (<c>resources/unsubscribe</c>); a modern one is heard on a stream opened again without the resource.
+    /// </summary>
+    /// <param name="serverId">The server's identifier.</param>
+    /// <param name="uri">The resource.</param>
+    /// <param name="ct">The cancellation token.</param>
+    /// <exception cref="InvalidOperationException">The server is not connected.</exception>
+    public async Task UnsubscribeResourceAsync(string serverId, Uri uri, CancellationToken ct = default)
+    {
+        ArgumentNullException.ThrowIfNull(uri);
+        var entry = EntryOf(serverId);
+        if (!entry.Unsubscribe(uri))
+            return;
+
+        if (entry.Client.Era == McpProtocolEra.Modern)
+            await ReopenListenAsync(entry).ConfigureAwait(false);
+        else
+            await entry.Client.UnsubscribeResourceAsync(uri, ct).ConfigureAwait(false);
+    }
+
+    private static async Task ReopenListenAsync(McpClientEntry entry)
+    {
+        entry.RequestReopen();
+        if (entry.ListenRound is { } round)
+        {
+            try
+            {
+                await round.CancelAsync().ConfigureAwait(false);
+            }
+            catch (ObjectDisposedException)
+            {
+                // The stream just ended and is being opened again: it reads the new filter.
+            }
+        }
+    }
+
+    /// <summary>
+    /// Reads a resource of a connected server. The read of a resource subscribed to is kept until the server
+    /// says it was updated; any other read goes to the server each time, as nothing would invalidate it.
+    /// </summary>
+    /// <param name="serverId">The server's identifier.</param>
+    /// <param name="uri">The resource.</param>
+    /// <param name="ct">The cancellation token.</param>
+    /// <exception cref="InvalidOperationException">The server is not connected.</exception>
+    public async Task<McpResourceReadResult> ReadResourceAsync(string serverId, Uri uri, CancellationToken ct = default)
+    {
+        ArgumentNullException.ThrowIfNull(uri);
+        var entry = EntryOf(serverId);
+        if (entry.IsSubscribed(uri) && entry.TryGetCached(uri, out var cached) && cached is not null)
+            return cached;
+
+        // An update that arrives while the read is in flight makes its value stale: it is not kept.
+        var stamp = entry.Stamp(uri);
+        var result = await entry.Client.ReadResourceAsync(uri, ct).ConfigureAwait(false);
+        entry.Cache(uri, result, stamp);
+        return result;
+    }
+
+    /// <summary>
+    /// The transport may have missed what the server said (its stream was opened again, or its session
+    /// initialised again): no cached read can be trusted, and a legacy server forgets its subscriptions with
+    /// the session, so they are sent again.
+    /// </summary>
+    private void OnResumed(string serverId, McpClientEntry entry)
+    {
+        entry.ClearCache();
+        if (entry.Client.Era != McpProtocolEra.Modern && entry.SubscribedUris().Length > 0)
+            _ = Task.Run(() => ResubscribeAsync(serverId, entry), CancellationToken.None);
+    }
+
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Fault barrier of a background task: a subscription that cannot be sent again is logged and the others are tried.")]
+    private async Task ResubscribeAsync(string serverId, McpClientEntry entry)
+    {
+        foreach (var uri in entry.SubscribedUris())
+        {
+            try
+            {
+                await entry.Client.SubscribeResourceAsync(uri, entry.Stop.Token).ConfigureAwait(false);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                LogMcpResubscribeFailed(ex, serverId, uri);
+            }
+        }
+    }
+
+    /// <summary>How many <c>resources/updated</c> notifications a server sent.</summary>
+    internal long ResourceUpdates(string serverId) =>
+        _clients.TryGetValue(serverId, out var entry) ? entry.ResourceUpdates : 0;
+
+    private McpClientEntry EntryOf(string serverId) =>
+        _clients.TryGetValue(serverId, out var entry)
+            ? entry
+            : throw new InvalidOperationException($"MCP server '{serverId}' is not connected.");
+
+    private static string? ReadUpdatedUri(JsonRpcNotification notification) =>
+        notification.Params is { ValueKind: System.Text.Json.JsonValueKind.Object } p
+        && p.TryGetProperty("uri", out var uri) && uri.ValueKind == System.Text.Json.JsonValueKind.String
+            ? uri.GetString()
+            : null;
+
+    /// <summary>
+    /// Keeps a modern server's <c>subscriptions/listen</c> stream open: when it ends or fails it is opened again
+    /// after a bounded backoff, and the tool list is marked stale, since what the server said while the stream
+    /// was down is lost. A server that refuses the request is not asked again.
+    /// </summary>
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Fault barrier of a background stream: any failure re-opens it after the backoff, and is logged.")]
+    private async Task ListenLoopAsync(string serverId, McpClientEntry entry)
+    {
+        var ct = entry.Stop.Token;
+        var attempt = 0;
+        var first = true;
+        try
+        {
+            while (!ct.IsCancellationRequested)
+            {
+                using var round = CancellationTokenSource.CreateLinkedTokenSource(ct);
+                entry.ListenRound = round;
+                var failed = false;
+                try
+                {
+                    if (!first)
+                    {
+                        entry.MarkDirty();
+                        entry.ClearCache();
+                    }
+
+                    first = false;
+                    await entry.Client.ListenAsync(entry.SubscribedUris(), round.Token).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException) when (ct.IsCancellationRequested)
+                {
+                    return;
+                }
+                catch (OperationCanceledException) when (round.IsCancellationRequested && entry.TakeReopenRequest())
+                {
+                    // A subscription changed: the stream opens again at once, with the new filter. Any other
+                    // cancellation (an HTTP timeout, say) is a failure like the rest and waits out the backoff.
+                    continue;
+                }
+                catch (McpListenRefusedException ex)
+                {
+                    LogMcpListenRefused(ex, serverId);
+                    return;
+                }
+                catch (Exception ex)
+                {
+                    failed = true;
+                    LogMcpListenFailed(ex, serverId);
+                }
+
+                attempt = failed ? attempt + 1 : 0;
+                await Task.Delay(StreamableHttpMcpTransport.Backoff(attempt), _time, ct).ConfigureAwait(false);
             }
         }
         catch (OperationCanceledException)
@@ -532,9 +826,12 @@ public sealed partial class McpToolProvider : IAsyncDisposable, IDisposable
             return;
 
         // The watch ends first: a re-synchronisation must not register tools of a server being left.
+        if (entry.Transport is StreamableHttpMcpTransport http && entry.ResumedHandler is { } handler)
+            http.Resumed -= handler;
         await entry.Stop.CancelAsync().ConfigureAwait(false);
         await entry.Reader.ConfigureAwait(false);
         await entry.Watcher.ConfigureAwait(false);
+        await entry.Listener.ConfigureAwait(false);
 
         foreach (var toolName in entry.ToolNames())
         {
@@ -598,6 +895,15 @@ public sealed partial class McpToolProvider : IAsyncDisposable, IDisposable
         DisposeAsync().AsTask().GetAwaiter().GetResult();
         GC.SuppressFinalize(this);
     }
+
+    [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Information, Message = "MCP server '{ServerId}' offers no subscriptions/listen stream: it is not asked again")]
+    private partial void LogMcpListenRefused(Exception ex, string serverId);
+
+    [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Warning, Message = "The subscriptions/listen stream of MCP server '{ServerId}' failed: it is opened again after a delay")]
+    private partial void LogMcpListenFailed(Exception ex, string serverId);
+
+    [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Warning, Message = "MCP server '{ServerId}' did not take the subscription to '{Uri}' again after its session was resumed")]
+    private partial void LogMcpResubscribeFailed(Exception ex, string serverId, Uri uri);
 
     [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Information, Message = "Registered MCP tool '{Name}' from server '{ServerId}'")]
     private partial void LogRegisteredMcpTool(string name, string serverId);

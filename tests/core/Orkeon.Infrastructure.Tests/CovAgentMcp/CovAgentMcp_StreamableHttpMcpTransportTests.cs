@@ -6,10 +6,10 @@ using Orkeon.Infrastructure.MCP;
 namespace Orkeon.Infrastructure.Tests.CovAgentMcp;
 
 /// <summary>
-/// Coverage tests for <see cref="SseMcpTransport"/> (HTTP-based MCP transport).
+/// Coverage tests for <see cref="StreamableHttpMcpTransport"/> (HTTP-based MCP transport).
 /// Uses a fake <see cref="HttpMessageHandler"/> — no real network access.
 /// </summary>
-public sealed class CovAgentMcp_SseMcpTransportTests
+public sealed class CovAgentMcp_StreamableHttpMcpTransportTests
 {
     private const string Endpoint = "https://mcp.example.test/rpc";
 
@@ -45,7 +45,7 @@ public sealed class CovAgentMcp_SseMcpTransportTests
     [Fact]
     public void Constructor_WithNullUrl_Throws()
     {
-        Assert.Throws<ArgumentNullException>(() => new SseMcpTransport(null!));
+        Assert.Throws<ArgumentNullException>(() => new StreamableHttpMcpTransport(null!));
     }
 
     [Fact]
@@ -53,7 +53,7 @@ public sealed class CovAgentMcp_SseMcpTransportTests
     {
         using var innerHandler6 = new StubHttpMessageHandler(_ => JsonResponse("{}"));
         using var http = new HttpClient(innerHandler6);
-        await using var transport = new SseMcpTransport(new Uri(Endpoint), http);
+        await using var transport = new StreamableHttpMcpTransport(new Uri(Endpoint), http);
 
         Assert.False(transport.IsConnected);
     }
@@ -63,7 +63,7 @@ public sealed class CovAgentMcp_SseMcpTransportTests
     {
         using var innerHandler5 = new StubHttpMessageHandler(_ => JsonResponse("{}"));
         using var http = new HttpClient(innerHandler5);
-        await using var transport = new SseMcpTransport(new Uri(Endpoint), http);
+        await using var transport = new StreamableHttpMcpTransport(new Uri(Endpoint), http);
 
         await transport.ConnectAsync(TestContext.Current.CancellationToken);
 
@@ -75,7 +75,7 @@ public sealed class CovAgentMcp_SseMcpTransportTests
     {
         using var innerHandler4 = new StubHttpMessageHandler(_ => JsonResponse("{}"));
         using var http = new HttpClient(innerHandler4);
-        await using var transport = new SseMcpTransport(new Uri(Endpoint), http);
+        await using var transport = new StreamableHttpMcpTransport(new Uri(Endpoint), http);
         var request = new JsonRpcRequest { Method = "ping", Id = JsonSerializer.SerializeToElement(1) };
 
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(
@@ -89,7 +89,7 @@ public sealed class CovAgentMcp_SseMcpTransportTests
         using var handler = new StubHttpMessageHandler(_ =>
             JsonResponse(SerializeResponse(new JsonRpcResponse { Id = JsonSerializer.SerializeToElement(42) })));
         using var http = new HttpClient(handler);
-        await using var transport = new SseMcpTransport(new Uri(Endpoint), http);
+        await using var transport = new StreamableHttpMcpTransport(new Uri(Endpoint), http);
         await transport.ConnectAsync(TestContext.Current.CancellationToken);
 
         var request = new JsonRpcRequest { Method = "tools/list", Id = JsonSerializer.SerializeToElement(42) };
@@ -112,7 +112,7 @@ public sealed class CovAgentMcp_SseMcpTransportTests
         using var innerHandler3 = new StubHttpMessageHandler(_ =>
             JsonResponse(SerializeResponse(errorResponse)));
         using var http = new HttpClient(innerHandler3);
-        await using var transport = new SseMcpTransport(new Uri(Endpoint), http);
+        await using var transport = new StreamableHttpMcpTransport(new Uri(Endpoint), http);
         await transport.ConnectAsync(TestContext.Current.CancellationToken);
 
         var response = await transport.SendRequestAsync(new JsonRpcRequest { Method = "x", Id = JsonSerializer.SerializeToElement(7) }, TestContext.Current.CancellationToken);
@@ -128,7 +128,7 @@ public sealed class CovAgentMcp_SseMcpTransportTests
         // "null" deserializes to a null JsonRpcResponse -> service synthesizes an error.
         using var innerHandler2 = new StubHttpMessageHandler(_ => JsonResponse("null"));
         using var http = new HttpClient(innerHandler2);
-        await using var transport = new SseMcpTransport(new Uri(Endpoint), http);
+        await using var transport = new StreamableHttpMcpTransport(new Uri(Endpoint), http);
         await transport.ConnectAsync(TestContext.Current.CancellationToken);
 
         var request = new JsonRpcRequest { Method = "x", Id = JsonSerializer.SerializeToElement(99) };
@@ -146,7 +146,7 @@ public sealed class CovAgentMcp_SseMcpTransportTests
         using var innerHandler1 = new StubHttpMessageHandler(_ =>
             JsonResponse("{}", HttpStatusCode.InternalServerError));
         using var http = new HttpClient(innerHandler1);
-        await using var transport = new SseMcpTransport(new Uri(Endpoint), http);
+        await using var transport = new StreamableHttpMcpTransport(new Uri(Endpoint), http);
         await transport.ConnectAsync(TestContext.Current.CancellationToken);
 
         await Assert.ThrowsAsync<HttpRequestException>(
@@ -159,14 +159,14 @@ public sealed class CovAgentMcp_SseMcpTransportTests
         using var handler = new StubHttpMessageHandler(_ =>
             JsonResponse(SerializeResponse(new JsonRpcResponse { Id = JsonSerializer.SerializeToElement(1) })));
         using var http = new HttpClient(handler);
-        var transport = new SseMcpTransport(new Uri(Endpoint), http);
+        var transport = new StreamableHttpMcpTransport(new Uri(Endpoint), http);
         await transport.ConnectAsync(TestContext.Current.CancellationToken);
 
         await transport.DisposeAsync();
 
         Assert.False(transport.IsConnected);
         // The externally-owned HttpClient must still be usable (not disposed).
-        var transport2 = new SseMcpTransport(new Uri(Endpoint), http);
+        var transport2 = new StreamableHttpMcpTransport(new Uri(Endpoint), http);
         await transport2.ConnectAsync(TestContext.Current.CancellationToken);
         var resp = await transport2.SendRequestAsync(new JsonRpcRequest { Method = "x", Id = JsonSerializer.SerializeToElement(1) }, TestContext.Current.CancellationToken);
         Assert.Equal(1, resp.Id!.Value.GetInt32());
@@ -177,7 +177,7 @@ public sealed class CovAgentMcp_SseMcpTransportTests
     public async Task DisposeAsync_WhenOwningHttpClient_DisposesIt()
     {
         // No httpClient passed -> transport creates and owns one.
-        var transport = new SseMcpTransport(new Uri(Endpoint));
+        var transport = new StreamableHttpMcpTransport(new Uri(Endpoint));
         await transport.ConnectAsync(TestContext.Current.CancellationToken);
 
         await transport.DisposeAsync();

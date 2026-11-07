@@ -6,17 +6,17 @@ using Orkeon.Infrastructure.Tests.Doubles;
 namespace Orkeon.Infrastructure.Tests.MCP;
 
 /// <summary>FWK-10: an SSE-framed answer hands the notifications ahead of its final message to Notifications.</summary>
-public sealed class SseNotificationTests
+public sealed class StreamableHttpNotificationTests
 {
     private static readonly Uri Endpoint = new("https://mcp.example.test/rpc");
 
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Reliability", "CA2000", Justification = "The handler is owned by the HttpClient, which the caller disposes.")]
-    private static (SseMcpTransport Transport, HttpClient Http) Create(string sseBody)
+    private static (StreamableHttpMcpTransport Transport, HttpClient Http) Create(string sseBody)
     {
         var handler = new MockHttpMessageHandler();
         handler.SetResponse(HttpStatusCode.OK, sseBody, "text/event-stream");
         var http = new HttpClient(handler);
-        return (new SseMcpTransport(Endpoint, http), http);
+        return (new StreamableHttpMcpTransport(Endpoint, http), http);
     }
 
     private static JsonRpcRequest Request() =>
@@ -48,7 +48,7 @@ public sealed class SseNotificationTests
         await using var __ = transport;
         await transport.ConnectAsync(TestContext.Current.CancellationToken);
 
-        var ex = await Assert.ThrowsAsync<InvalidOperationException>(
+        var ex = await Assert.ThrowsAnyAsync<InvalidOperationException>(
             () => transport.SendRequestAsync(Request(), TestContext.Current.CancellationToken));
 
         Assert.Contains("notifications", ex.Message, StringComparison.Ordinal);

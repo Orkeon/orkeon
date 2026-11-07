@@ -21,7 +21,7 @@ public sealed partial class McpSection
     /// <summary>The stdio transport: a process the runner launches.</summary>
     public const string StdioTransport = "Stdio";
 
-    /// <summary>The HTTP transport (streamable HTTP, JSON-response mode), spelt as the runtime does.</summary>
+    /// <summary>The HTTP transport (Streamable HTTP), spelt as the runtime does.</summary>
     public const string SseTransport = "Sse";
 
     /// <summary>The transports the runtime knows, in the spelling it binds.</summary>

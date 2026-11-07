@@ -88,7 +88,7 @@ supportée des deux côtés (`McpClient.SendAsync`).
 | Transport | Classe | Notes |
 |---|---|---|
 | stdio | `StdioMcpTransport` | Lance le processus serveur (`McpServerConfig.Command`/`Args`) ; un message JSON-RPC par ligne ; la corrélation des réponses est agnostique de l'id (les ids nombre **ou** chaîne font l'aller-retour). |
-| HTTP | `SseMcpTransport` | Forme Streamable HTTP, **mode réponse JSON** : un POST par message. Les requêtes modernes portent les en-têtes `MCP-Protocol-Version`, `Mcp-Method` et `Mcp-Name` (dérivés du message lui-même) ; un corps de réponse encadré SSE (`text/event-stream`) est déballé jusqu'à son payload `data:` final. Les flux initiés par le serveur ne sont pas consommés. |
+| HTTP | `StreamableHttpMcpTransport` | **Streamable HTTP** : un POST par message, répondu en JSON ou en flux SSE lu événement par événement (un événement dont la connexion a été coupée au milieu est écarté, comme le dit la spécification SSE). Les requêtes modernes portent les en-têtes `MCP-Protocol-Version`, `Mcp-Method` et `Mcp-Name` (dérivés du message lui-même). Le `Mcp-Session-Id` donné par un serveur est gardé et renvoyé (une session legacy renvoie aussi le `MCP-Protocol-Version` négocié) ; un 404 sur une session rejoue une fois le handshake initialize. Une session legacy ouvre un flux `GET` de longue durée après `notifications/initialized` (repris avec `Last-Event-ID`, rouvert avec un délai de 0,5 s doublé jusqu'à 30 s, ou le `retry:` du serveur) ; un serveur qui répond 405 n'est plus sollicité, et un serveur qui répond 404 après chaque nouvelle session est abandonné après 3 réinitialisations de suite, chacune après le délai. La session se termine par un `DELETE` à la libération du transport. Le transport HTTP+SSE de 2024-11-05 à endpoint séparé n'est pas supporté. |
 
 ## Activation
 
@@ -318,10 +318,19 @@ aucun réglage.
   grossir sans fin.
 - **Notifications.** Une trame sans `id` n'est plus jetée : `IMcpTransport.Notifications` est un
   `ChannelReader<JsonRpcNotification>` (256 entrées, `DropOldest`, un avertissement par entrée perdue). Le
-  transport stdio l'alimente depuis la sortie du serveur ; le transport HTTP, avec les notifications qui précèdent
-  le message final d'une réponse encadrée en SSE, et n'ouvre aucun flux propre (pas de `subscriptions/listen`).
+  transport stdio l'alimente depuis la sortie du serveur ; le transport HTTP, avec les notifications d'une réponse
+  encadrée en SSE (à mesure qu'elles arrivent, pas après son message final), du flux `GET` et de `subscriptions/listen`.
   Une requête que le serveur envoie au client (`sampling/createMessage`, `roots/list`, `elicitation/create`)
-  reçoit `-32601` sur stdio : le client n'en offre aucune.
+  reçoit `-32601` sur stdio et sur HTTP : le client n'en offre aucune ; un `ping` en HTTP reçoit le résultat vide que la spécification exige.
+- **Abonnements.** Sur un serveur moderne en HTTP, `McpToolProvider` garde ouverte une requête `subscriptions/listen`
+  (`McpClient.ListenAsync` : changements de listes d'outils, de prompts et de ressources, plus les ressources abonnées) ;
+  quand le serveur termine le flux, il est rouvert après le même délai croissant et la liste d'outils est marquée
+  périmée, puisque ce que le serveur a dit entre-temps est perdu. Un serveur qui refuse la requête n'est plus sollicité.
+  Le flux n'est pas borné par `CallTimeout`. Sur un serveur legacy, `McpToolProvider.SubscribeResourceAsync` envoie
+  `resources/subscribe` (`UnsubscribeResourceAsync` y met fin et abandonne la lecture en cache) (refusé quand le serveur n'annonce pas `resources.subscribe`) et les mises à jour arrivent sur
+  le flux `GET`. Un `notifications/resources/updated` n'invalide que la lecture en cache de cette ressource
+  (`McpToolProvider.ReadResourceAsync` met en cache les lectures des ressources abonnées, et elles seules, et une lecture en vol quand la mise à jour arrive n'est pas gardée) ; les outils
+  ne sont pas listés de nouveau. Quand le flux `GET` est rouvert ou la session réinitialisée, le cache est abandonné et les abonnements sont renvoyés, puisque les notifications du trou sont perdues.
 - **`notifications/tools/list_changed`.** `McpToolProvider` surveille chaque serveur connecté. Après une attente
   de 500 ms (les notifications arrivées entre-temps sont absorbées) il liste de nouveau les outils, applique le
   filtre `Tools` du serveur, désenregistre les outils que le serveur a retirés, remplace ceux dont la définition a changé par un nouvel adaptateur en une seule étape du registre (`IToolRegistry.ReplaceToolAsync` : le nom ne cesse jamais de se résoudre), et
@@ -343,20 +352,17 @@ aucun réglage.
 Alignées sur [Limitations connues](../reference/limitations.md) et l'entrée PUB-07 du
 changelog :
 
-- **Pas de `subscriptions/listen`** — le client HTTP n'ouvre aucun flux serveur : un serveur qui ne notifie que sur un tel flux n'est pas entendu ; le client stdio entend chaque notification.
+- **Abonnements** — `subscriptions/listen` ne tourne qu'en HTTP (le client stdio entend chaque notification que le serveur envoie) ; la forme du filtre 2026-07-28 (`notifications.toolsListChanged`, `promptsListChanged`, `resourcesListChanged`, `resourceSubscriptions`) est celle que ce client envoie, vérifiée contre ses propres faux serveurs et le serveur de référence, pas encore contre le schéma publié.
 - **Ni sampling, ni roots, ni elicitation** — une requête du serveur pour l'un d'eux reçoit `-32601` : le sampling ferait appeler un LLM par Orkeon pour le serveur hors du budget, du gardien et du coût d'un run ; les roots exposeraient des chemins physiques (règle VFS) ; l'elicitation attend le human-in-the-loop durable.
 - **Pas de requêtes multi-aller-retour (MRTR)** — un résultat intermédiaire moderne
   `input_required` remonte comme une erreur d'outil explicite, jamais comme des données
   partielles.
 - **Pas d'autorisation MCP (OAuth)**.
-- **HTTP = mode réponse JSON uniquement** — en-têtes modernes envoyés, corps SSE
-  déballés, mais pas de streaming initié par le serveur.
+- **HTTP+SSE 2024-11-05 non supporté** — le transport à endpoint de messages séparé est refusé ; Streamable HTTP est le transport HTTP. L'interop contre le serveur de référence tourne chaque nuit (`McpReferenceServerInteropTests`, [Interop MCP](../guides/mcp-interop.md)).
 - **`2025-03-26` exclue** (batching JSON-RPC obligatoire).
 - **Le serveur ne parle que stdio** (`orkeon mcp serve`, ou `RunStdioAsync` /
   `ProcessRequestAsync` dans un hôte C#) et répond à une requête à la fois : pas de
   transport HTTP, ni ressources, ni prompts, ni crews exposées comme outils.
-- **L'interop contre les serveurs de référence (MCP Inspector) n'a pas encore tourné** —
-  suivie dans la note de clôture de PUB-07.
 
 ## Statut expérimental
 

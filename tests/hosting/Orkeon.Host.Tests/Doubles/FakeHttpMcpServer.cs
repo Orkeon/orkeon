@@ -65,6 +65,17 @@ internal sealed class FakeHttpMcpServer : IAsyncDisposable
                 continue;
             }
 
+            // A real Streamable HTTP client opens a GET stream after the handshake and ends the session with a DELETE:
+            // this server has no stream to give (405) and nothing to end.
+            if (context.Request.HttpMethod != "POST")
+            {
+                context.Response.StatusCode = context.Request.HttpMethod == "DELETE"
+                    ? (int)HttpStatusCode.OK
+                    : (int)HttpStatusCode.MethodNotAllowed;
+                context.Response.Close();
+                continue;
+            }
+
             using var reader = new StreamReader(context.Request.InputStream, Encoding.UTF8);
             var body = JsonNode.Parse(await reader.ReadToEndAsync().ConfigureAwait(false))!.AsObject();
             var answer = Answer(body);

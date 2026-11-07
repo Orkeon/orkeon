@@ -291,12 +291,12 @@ public partial class McpClient : IAsyncDisposable
     /// <summary>
     /// Reads a resource by URI.
     /// </summary>
-    public Task<McpToolCallResult> ReadResourceAsync(Uri uri, CancellationToken ct = default)
+    public Task<McpResourceReadResult> ReadResourceAsync(Uri uri, CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(uri);
         return ReadResourceCoreAsync();
 
-        async Task<McpToolCallResult> ReadResourceCoreAsync()
+        async Task<McpResourceReadResult> ReadResourceCoreAsync()
         {
             EnsureReady();
 
@@ -309,7 +309,84 @@ public partial class McpClient : IAsyncDisposable
                     $"resources/read failed: [{response.Error.Code}] {response.Error.Message}");
             }
 
-            return DeserializeResult<McpToolCallResult>(response);
+            return DeserializeResult<McpResourceReadResult>(response);
+        }
+    }
+
+    /// <summary>
+    /// Opens the 2026-07-28 notification stream (<c>subscriptions/listen</c>) and returns when the server
+    /// ends it. The notifications it carries reach the transport's <see cref="IMcpTransport.Notifications"/>
+    /// channel as they arrive; the call itself lasts as long as the stream, and is not bounded by a call timeout.
+    /// </summary>
+    /// <param name="resourceSubscriptions">The resources whose updates the stream carries.</param>
+    /// <param name="ct">Cancels the stream.</param>
+    /// <exception cref="InvalidOperationException">The server is not a modern one, or refused the subscription.</exception>
+    public async Task ListenAsync(IReadOnlyCollection<Uri> resourceSubscriptions, CancellationToken ct = default)
+    {
+        ArgumentNullException.ThrowIfNull(resourceSubscriptions);
+        EnsureReady();
+        if (_era != McpProtocolEra.Modern)
+        {
+            throw new InvalidOperationException(
+                "subscriptions/listen belongs to the 2026-07-28 revision: a legacy server is heard through the transport's own stream and resources/subscribe.");
+        }
+
+        var listenParams = new
+        {
+            notifications = new
+            {
+                toolsListChanged = true,
+                promptsListChanged = true,
+                resourcesListChanged = true,
+                resourceSubscriptions = resourceSubscriptions.Select(u => u.ToString()).ToArray(),
+            },
+        };
+
+        JsonRpcResponse response;
+        try
+        {
+            response = await SendAsync("subscriptions/listen", listenParams, ct).ConfigureAwait(false);
+        }
+        catch (McpStreamEndedException)
+        {
+            // The server closed the stream: the subscription is over, the caller opens it again.
+            return;
+        }
+
+        if (response.Error != null)
+        {
+            throw new McpListenRefusedException(
+                $"subscriptions/listen failed: [{response.Error.Code}] {response.Error.Message}");
+        }
+    }
+
+    /// <summary>Subscribes to the updates of a resource (legacy <c>resources/subscribe</c>); they arrive as <c>notifications/resources/updated</c>.</summary>
+    /// <param name="uri">The resource.</param>
+    /// <param name="ct">The cancellation token.</param>
+    public async Task SubscribeResourceAsync(Uri uri, CancellationToken ct = default)
+    {
+        ArgumentNullException.ThrowIfNull(uri);
+        EnsureReady();
+        var response = await SendAsync("resources/subscribe", new { uri = uri.ToString() }, ct).ConfigureAwait(false);
+        if (response.Error != null)
+        {
+            throw new InvalidOperationException(
+                $"resources/subscribe failed: [{response.Error.Code}] {response.Error.Message}");
+        }
+    }
+
+    /// <summary>Ends the subscription to a resource (legacy <c>resources/unsubscribe</c>).</summary>
+    /// <param name="uri">The resource.</param>
+    /// <param name="ct">The cancellation token.</param>
+    public async Task UnsubscribeResourceAsync(Uri uri, CancellationToken ct = default)
+    {
+        ArgumentNullException.ThrowIfNull(uri);
+        EnsureReady();
+        var response = await SendAsync("resources/unsubscribe", new { uri = uri.ToString() }, ct).ConfigureAwait(false);
+        if (response.Error != null)
+        {
+            throw new InvalidOperationException(
+                $"resources/unsubscribe failed: [{response.Error.Code}] {response.Error.Message}");
         }
     }
 
@@ -464,4 +541,14 @@ public partial class McpClient : IAsyncDisposable
 
     [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Debug, Message = "server/discover probe answered with a non-modern error [{Code}] {Message}; falling back to legacy initialize")]
     private partial void LogModernProbeFellBack(int code, string message);
+}
+
+/// <summary>The server refused <c>subscriptions/listen</c>: it does not offer the stream, and asking again would not change that.</summary>
+internal sealed class McpListenRefusedException : InvalidOperationException
+{
+    public McpListenRefusedException() { }
+
+    public McpListenRefusedException(string message) : base(message) { }
+
+    public McpListenRefusedException(string message, Exception innerException) : base(message, innerException) { }
 }

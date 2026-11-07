@@ -347,11 +347,9 @@ Orkeon.Infrastructure.Tools.MemoryStoreRequest.NewestFirst.set -> void
 [ORKEXP004]Orkeon.Infrastructure.MCP.McpToolFilterConfig.McpToolFilterConfig() -> void
 [ORKEXP004]Orkeon.Infrastructure.MCP.McpToolProvider.ConnectServerAsync(string! serverId, Orkeon.Infrastructure.MCP.IMcpTransport! transport, Orkeon.Infrastructure.MCP.McpServerConfig! config, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
 [ORKEXP004]Orkeon.Infrastructure.MCP.McpToolProvider.McpToolProvider(Orkeon.Domain.Tools.IToolRegistry! toolRegistry, Microsoft.Extensions.Logging.ILoggerFactory? loggerFactory = null, System.Net.Http.IHttpClientFactory? httpClientFactory = null, System.TimeProvider? timeProvider = null) -> void
-[ORKEXP004]Orkeon.Infrastructure.MCP.SseMcpTransport.SseMcpTransport(System.Uri! url, System.Net.Http.HttpClient? httpClient = null, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.MCP.SseMcpTransport!>? logger = null, Orkeon.Infrastructure.MCP.Auth.IMcpRequestAuthenticator? authenticator = null) -> void
 [ORKEXP004]const Orkeon.Infrastructure.MCP.McpServiceExtensions.HttpClientName = "orkeon-mcp" -> string!
 *REMOVED*[ORKEXP004]Orkeon.Infrastructure.MCP.McpToolAdapter.McpToolAdapter(Orkeon.Infrastructure.MCP.McpToolDefinition! definition, Orkeon.Infrastructure.MCP.McpClient! client, bool trustAnnotations = false) -> void
 *REMOVED*[ORKEXP004]Orkeon.Infrastructure.MCP.McpToolProvider.McpToolProvider(Orkeon.Domain.Tools.IToolRegistry! toolRegistry, Microsoft.Extensions.Logging.ILoggerFactory? loggerFactory = null) -> void
-*REMOVED*[ORKEXP004]Orkeon.Infrastructure.MCP.SseMcpTransport.SseMcpTransport(System.Uri! url, System.Net.Http.HttpClient? httpClient = null, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.MCP.SseMcpTransport!>? logger = null) -> void
 [ORKEXP004]Orkeon.Infrastructure.MCP.McpServerConfig.ConnectTimeout.get -> System.TimeSpan
 [ORKEXP004]Orkeon.Infrastructure.MCP.McpServerConfig.ConnectTimeout.set -> void
 Orkeon.Infrastructure.Memory.Cognitive.CognitiveMemoryOptions.Enabled.get -> bool
@@ -514,7 +512,6 @@ Orkeon.Infrastructure.MCP.McpPromptTextMessage.Text.init -> void
 [ORKEXP004]Orkeon.Infrastructure.MCP.McpToolListResult.NextCursor.init -> void
 [ORKEXP004]Orkeon.Infrastructure.MCP.McpToolProvider.GetPromptAsync(string! serverId, string! name, System.Collections.Generic.IReadOnlyDictionary<string!, string!>? arguments = null, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Infrastructure.MCP.McpPromptGetResult!>!
 [ORKEXP004]Orkeon.Infrastructure.MCP.McpToolProvider.ListPromptsAsync(string! serverId, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Orkeon.Infrastructure.MCP.McpPrompt!>!>!
-[ORKEXP004]Orkeon.Infrastructure.MCP.SseMcpTransport.Notifications.get -> System.Threading.Channels.ChannelReader<Orkeon.Infrastructure.MCP.JsonRpcNotification!>!
 [ORKEXP004]Orkeon.Infrastructure.MCP.StdioMcpTransport.Notifications.get -> System.Threading.Channels.ChannelReader<Orkeon.Infrastructure.MCP.JsonRpcNotification!>!
 override Orkeon.Infrastructure.MCP.McpPromptGetTool.Access.get -> Orkeon.Domain.Tools.ToolAccess
 Orkeon.Infrastructure.Tools.ToolRegistry.ReplaceToolAsync(Orkeon.Domain.Tools.IBaseTool! current, Orkeon.Domain.Tools.IBaseTool! replacement) -> System.Threading.Tasks.Task<bool>!
@@ -534,3 +531,44 @@ Orkeon.Infrastructure.Crew.Strategies.GraphProcessStrategy.GraphProcessStrategy(
 *REMOVED*Orkeon.Infrastructure.Crew.Strategies.CrewGraphState.FailedTaskIds.init -> void
 *REMOVED*Orkeon.Infrastructure.Crew.Strategies.CrewGraphState.PendingTaskIds.get -> System.Collections.Generic.Queue<Orkeon.Domain.Common.TaskId!>!
 *REMOVED*Orkeon.Infrastructure.Crew.Strategies.CrewGraphState.PendingTaskIds.init -> void
+*REMOVED*[ORKEXP004]Orkeon.Infrastructure.MCP.SseMcpTransport
+*REMOVED*[ORKEXP004]Orkeon.Infrastructure.MCP.SseMcpTransport.ConnectAsync(System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+*REMOVED*[ORKEXP004]Orkeon.Infrastructure.MCP.SseMcpTransport.DisposeAsync() -> System.Threading.Tasks.ValueTask
+*REMOVED*[ORKEXP004]Orkeon.Infrastructure.MCP.SseMcpTransport.IsConnected.get -> bool
+*REMOVED*[ORKEXP004]Orkeon.Infrastructure.MCP.SseMcpTransport.SendNotificationAsync(Orkeon.Infrastructure.MCP.JsonRpcNotification! notification, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+*REMOVED*[ORKEXP004]Orkeon.Infrastructure.MCP.SseMcpTransport.SendRequestAsync(Orkeon.Infrastructure.MCP.JsonRpcRequest! request, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Infrastructure.MCP.JsonRpcResponse!>!
+*REMOVED*[ORKEXP004]Orkeon.Infrastructure.MCP.SseMcpTransport.SseMcpTransport(System.Uri! url, System.Net.Http.HttpClient? httpClient = null, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.MCP.SseMcpTransport!>? logger = null) -> void
+[ORKEXP004]Orkeon.Infrastructure.MCP.StreamableHttpMcpTransport
+[ORKEXP004]Orkeon.Infrastructure.MCP.StreamableHttpMcpTransport.ConnectAsync(System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+[ORKEXP004]Orkeon.Infrastructure.MCP.StreamableHttpMcpTransport.DisposeAsync() -> System.Threading.Tasks.ValueTask
+[ORKEXP004]Orkeon.Infrastructure.MCP.StreamableHttpMcpTransport.IsConnected.get -> bool
+[ORKEXP004]Orkeon.Infrastructure.MCP.StreamableHttpMcpTransport.SendNotificationAsync(Orkeon.Infrastructure.MCP.JsonRpcNotification! notification, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+[ORKEXP004]Orkeon.Infrastructure.MCP.StreamableHttpMcpTransport.SendRequestAsync(Orkeon.Infrastructure.MCP.JsonRpcRequest! request, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Infrastructure.MCP.JsonRpcResponse!>!
+[ORKEXP004]Orkeon.Infrastructure.MCP.StreamableHttpMcpTransport.StreamableHttpMcpTransport(System.Uri! url, System.Net.Http.HttpClient? httpClient = null, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.MCP.StreamableHttpMcpTransport!>? logger = null, Orkeon.Infrastructure.MCP.Auth.IMcpRequestAuthenticator? authenticator = null, System.TimeProvider? timeProvider = null) -> void
+[ORKEXP004]Orkeon.Infrastructure.MCP.StreamableHttpMcpTransport.Notifications.get -> System.Threading.Channels.ChannelReader<Orkeon.Infrastructure.MCP.JsonRpcNotification!>!
+[ORKEXP004]Orkeon.Infrastructure.MCP.StreamableHttpMcpTransport.SessionId.get -> string?
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpToolProvider.SubscribeResourceAsync(string! serverId, System.Uri! uri, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpToolProvider.ReadResourceAsync(string! serverId, System.Uri! uri, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Infrastructure.MCP.McpResourceReadResult!>!
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpToolProvider.ListResourcesAsync(string! serverId, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Orkeon.Infrastructure.MCP.McpResource!>!>!
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpCapabilityInfo.Subscribe.get -> bool?
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpCapabilityInfo.Subscribe.set -> void
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpClient.ListenAsync(System.Collections.Generic.IReadOnlyCollection<System.Uri!>! resourceSubscriptions, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpClient.SubscribeResourceAsync(System.Uri! uri, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpClient.UnsubscribeResourceAsync(System.Uri! uri, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+*REMOVED*[ORKEXP004]Orkeon.Infrastructure.MCP.McpClient.ReadResourceAsync(System.Uri! uri, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Infrastructure.MCP.McpToolCallResult!>!
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpClient.ReadResourceAsync(System.Uri! uri, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Infrastructure.MCP.McpResourceReadResult!>!
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpResourceContents
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpResourceContents.McpResourceContents() -> void
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpResourceContents.Uri.get -> System.Uri?
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpResourceContents.Uri.set -> void
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpResourceContents.MimeType.get -> string?
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpResourceContents.MimeType.set -> void
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpResourceContents.Text.get -> string?
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpResourceContents.Text.set -> void
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpResourceContents.Blob.get -> string?
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpResourceContents.Blob.set -> void
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpResourceReadResult
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpResourceReadResult.McpResourceReadResult() -> void
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpResourceReadResult.Contents.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Infrastructure.MCP.McpResourceContents!>!
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpResourceReadResult.Contents.init -> void
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpToolProvider.UnsubscribeResourceAsync(string! serverId, System.Uri! uri, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!

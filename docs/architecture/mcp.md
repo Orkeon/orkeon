@@ -85,7 +85,7 @@ revision (`McpClient.SendAsync`).
 | Transport | Class | Notes |
 |---|---|---|
 | stdio | `StdioMcpTransport` | Launches the server process (`McpServerConfig.Command`/`Args`); one JSON-RPC message per line; response correlation is id-agnostic (number **or** string ids round-trip). |
-| HTTP | `SseMcpTransport` | Streamable HTTP shape, **JSON-response mode**: one POST per message. Modern requests carry the `MCP-Protocol-Version`, `Mcp-Method` and `Mcp-Name` headers (derived from the message itself); an SSE-framed response body (`text/event-stream`) is unwrapped to its final `data:` payload. Server-initiated streams are not consumed. |
+| HTTP | `StreamableHttpMcpTransport` | **Streamable HTTP**: one POST per message, answered as JSON or as an SSE stream read event by event (an event the connection was cut in the middle of is discarded, as the SSE specification says). Modern requests carry the `MCP-Protocol-Version`, `Mcp-Method` and `Mcp-Name` headers (derived from the message itself). The `Mcp-Session-Id` a server hands out is kept and sent back (a legacy session also sends the negotiated `MCP-Protocol-Version`); a 404 on a session replays the initialize handshake once. A legacy session opens a long-lived `GET` stream after `notifications/initialized` (resumed with `Last-Event-ID`, re-opened with a backoff of 0.5 s doubling up to 30 s, or the server's `retry:`); a server that answers it 405 is not asked again, and one that answers it 404 after each new session is given up after 3 re-initialisations in a row, each after the backoff. The session ends with a `DELETE` when the transport is disposed. The 2024-11-05 HTTP+SSE transport with a separate endpoint is not supported. |
 
 ## Activation
 
@@ -306,10 +306,18 @@ is also read by the `ORKEON_` configuration layer, as a key (`MCP_SERVE`) no set
   the listing after 100 pages, or after 10 000 items, (`InvalidOperationException`) instead of growing it without end.
 - **Notifications.** A frame without an `id` is no longer dropped: `IMcpTransport.Notifications` is a
   `ChannelReader<JsonRpcNotification>` (256 entries, `DropOldest`, one warning per dropped entry). The stdio
-  transport feeds it from the server's stdout; the HTTP transport feeds it with the notifications that precede the
-  final message of an SSE-framed answer, and opens no stream of its own (no `subscriptions/listen`). A request the
-  server sends to the client (`sampling/createMessage`, `roots/list`, `elicitation/create`) is answered `-32601`
-  on stdio: the client offers none of them.
+  transport feeds it from the server's stdout; the HTTP transport feeds it with the notifications of an SSE-framed answer (as they arrive, not after its final
+  message), of the `GET` stream and of `subscriptions/listen`. A request the server sends to the client
+  (`sampling/createMessage`, `roots/list`, `elicitation/create`) is answered `-32601` on stdio and on HTTP: the client
+  offers none of them; a `ping` on HTTP gets the empty result the specification requires.
+- **Subscriptions.** On a modern server over HTTP, `McpToolProvider` keeps a `subscriptions/listen` request open
+  (`McpClient.ListenAsync`: tools, prompts and resources list changes, plus the subscribed resources); when the
+  server ends the stream it is opened again after the same backoff and the tool list is marked stale, since what the
+  server said meanwhile is lost. A server that refuses the request is not asked again. The stream is not bounded by
+  `CallTimeout`. On a legacy server, `McpToolProvider.SubscribeResourceAsync` sends `resources/subscribe` (`UnsubscribeResourceAsync` ends it and drops the cached read) (refused when
+  the server does not announce `resources.subscribe`) and the updates arrive on the `GET` stream. A
+  `notifications/resources/updated` invalidates only the cached read of that resource
+  (`McpToolProvider.ReadResourceAsync` caches the reads of subscribed resources and nothing else, and a read that was in flight when the update arrived is not kept); the tools are not listed again. When the `GET` stream is opened again or the session initialised again, the cache is dropped and the subscriptions are sent again, since the notifications of the gap are lost.
 - **`notifications/tools/list_changed`.** `McpToolProvider` watches each connected server. After a 500 ms wait
   (the notifications that arrive meanwhile are absorbed) it lists the tools again, applies the server's `Tools`
   filter, unregisters the tools the server dropped, swaps the ones whose definition changed for a new adapter in one registry step (`IToolRegistry.ReplaceToolAsync`: the name never stops resolving), and registers the new ones. A name
@@ -330,19 +338,16 @@ is also read by the `ORKEON_` configuration layer, as a key (`MCP_SERVE`) no set
 Aligned with [Known limitations](../reference/limitations.md) and the PUB-07 changelog
 entry:
 
-- **No `subscriptions/listen`** — the HTTP client opens no server stream, so a server that notifies only on one is not heard; the stdio client hears every notification.
+- **Subscriptions** — `subscriptions/listen` runs on HTTP only (the stdio client hears every notification the server sends); the 2026-07-28 filter shape (`notifications.toolsListChanged`, `promptsListChanged`, `resourcesListChanged`, `resourceSubscriptions`) is the one this client sends, checked against its own fake servers and the reference server, not yet against the published schema.
 - **No sampling, roots or elicitation** — a server request for them is answered `-32601`: sampling would make Orkeon call an LLM for the server outside the budget, guard and cost of a run; roots would expose physical paths (VFS rule); elicitation waits for durable human-in-the-loop.
 - **No multi-round-trip requests (MRTR)** — a modern `input_required` interim result is
   surfaced as an explicit tool error, never as partial data.
 - **No MCP authorization (OAuth)**.
-- **HTTP = JSON-response mode only** — modern headers sent, SSE bodies unwrapped, but no
-  server-initiated streaming.
+- **HTTP+SSE 2024-11-05 not supported** — the transport with a separate message endpoint is refused; Streamable HTTP is the HTTP transport. Interop against the reference server runs nightly (`McpReferenceServerInteropTests`, [MCP interop](../guides/mcp-interop.md)).
 - **`2025-03-26` excluded** (mandatory JSON-RPC batching).
 - **The server speaks stdio only** (`orkeon mcp serve`, or `RunStdioAsync` /
   `ProcessRequestAsync` in a C# host) and answers one request at a time: no HTTP transport,
   no resources, no prompts, no crews exposed as tools.
-- **Interop against reference servers (MCP Inspector) has not run yet** — tracked in
-  PUB-07's closure note.
 
 ## Experimental status
 
