@@ -248,7 +248,10 @@ public sealed partial class LlmProviderFactory : ILlmProviderFactory
         if (built is OpenAICompatibleProviderBase compatible)
             compatible.ModelCapabilities = _capabilities;
         var provider = new CallModeLlmProvider(Cassette(built, config), config.CallMode, logger, _callObserver, _tokenCounter);
-        return new LlmProviderAdapter(LlmProviderEntrance.Enter(provider, _usageSink, _rateLimiter));
+        // A replayed call is answered from the cassette and sends nothing: it is metered as recorded
+        // (the usage the vendor reported) but takes no lease of the host's limiter (FWK review LLM-7).
+        var limiter = _cassette is not null && _replayMode == LlmReplayMode.Replay ? null : _rateLimiter;
+        return new LlmProviderAdapter(LlmProviderEntrance.Enter(provider, _usageSink, limiter));
     }
 
     /// <summary>

@@ -12,6 +12,7 @@ internal sealed class OutputHold
 
     private readonly Lock _gate = new();
     private List<Action>? _held = [];
+    private bool _draining;
 
     /// <summary>The hold of the task in progress, or null when its output is not guarded.</summary>
     public static OutputHold? Current => Ambient.Value;
@@ -44,20 +45,53 @@ internal sealed class OutputHold
         emission();
     }
 
-    /// <summary>The output was allowed: writes every held emission, in order; later ones pass straight through.</summary>
+    /// <summary>
+    /// The output was allowed: writes every held emission, in order; later ones pass straight through.
+    /// An emission that arrives while the held ones are being written joins the queue and is written
+    /// after them, by this call: nothing overtakes the hold's order (FWK review LLM-7).
+    /// </summary>
     public void Release()
     {
-        List<Action>? held;
+        List<Action> batch;
         lock (_gate)
         {
-            held = _held;
-            _held = null;
+            if (_held is null || _draining)
+                return;
+            batch = _held;
+            _held = [];
+            _draining = true;
         }
 
-        if (held is null)
-            return;
-        foreach (var emission in held)
-            emission();
+        try
+        {
+            while (true)
+            {
+                foreach (var emission in batch)
+                    emission();
+                lock (_gate)
+                {
+                    if (_held is not { Count: > 0 } pending)
+                    {
+                        _held = null;
+                        return;
+                    }
+
+                    batch = pending;
+                    _held = [];
+                }
+            }
+        }
+        catch
+        {
+            lock (_gate)
+                _held = null;
+            throw;
+        }
+        finally
+        {
+            lock (_gate)
+                _draining = false;
+        }
     }
 
     /// <summary>The output was refused, or never judged: forgets every held emission; later ones are forgotten too.</summary>

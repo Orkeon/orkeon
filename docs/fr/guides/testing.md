@@ -48,7 +48,8 @@ hachage : la réponse qu'une cassette stocke (masquée) et le tour suivant qui l
 
 Un appel qui échoue par une exception est enregistré aussi, et un rejeu relève le même genre d'exception (une
 `HttpRequestException` avec son statut, un délai dépassé, une limite de débit) : une chaîne de repli se comporte comme
-avant. Un rejeu juge aussi la requête comme un appel réel : un son pour un modèle qui n'en prend pas échoue de la même façon.
+avant. Un rejeu juge aussi la requête comme un appel réel, un simple prompt comme un chat : un son pour un modèle qui n'en prend pas échoue de la même façon.
+Un appel rejoué n'envoie rien : il ne prend aucun jeton du limiteur de débit de l'hôte ; son usage reste rapporté tel qu'il a été enregistré.
 
 **Secrets** : avant l'écriture d'une ligne, ces éléments sont remplacés par `[REDACTED]` : la clé d'API avec laquelle
 le fournisseur est configuré, un jeton `Bearer`, une clé d'éditeur de la forme `sk-...` (pas un mot qui contient seulement `sk-`), une clé Google de la forme

@@ -30,6 +30,7 @@ internal sealed class ReplayLlmProvider(ILlmProvider inner, LlmCassette cassette
 
     public async Task<LlmResponse> GenerateAsync(string prompt, LlmConfig? config = null, CancellationToken cancellationToken = default)
     {
+        Validate(prompt, config);
         var taken = await cassette.TakeAsync(profile, LlmCallKey.OfPrompt(profile, prompt, config), Excerpt(prompt), cancellationToken).ConfigureAwait(false);
         return taken.Failure is { } failure ? throw failure : taken.Response;
     }
@@ -44,6 +45,7 @@ internal sealed class ReplayLlmProvider(ILlmProvider inner, LlmCassette cassette
     public async IAsyncEnumerable<string> GenerateStreamingAsync(
         string prompt, LlmConfig? config = null, [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
+        Validate(prompt, config);
         var taken = await cassette.TakeAsync(profile, LlmCallKey.OfPrompt(profile, prompt, config), Excerpt(prompt), cancellationToken).ConfigureAwait(false);
         if (taken.Events is null)
         {
@@ -95,5 +97,10 @@ internal sealed class ReplayLlmProvider(ILlmProvider inner, LlmCassette cassette
             compatible.ValidateChatRequest(messages, config);
     }
 
-    private static string Excerpt(string prompt) => LlmCallKey.Excerpt([new LlmMessage { Role = "user", Content = prompt ?? string.Empty }]);
+    /// <summary>The same refusal for a plain prompt, judged as the one user message a live call sends.</summary>
+    private void Validate(string prompt, LlmConfig? config) => Validate([UserMessage(prompt)], config);
+
+    private static LlmMessage UserMessage(string prompt) => new() { Role = "user", Content = prompt ?? string.Empty };
+
+    private static string Excerpt(string prompt) => LlmCallKey.Excerpt([UserMessage(prompt)]);
 }

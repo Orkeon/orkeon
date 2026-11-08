@@ -47,7 +47,8 @@ answer a cassette stores (redacted) and the next turn that repeats it ask for th
 
 A call that fails with an exception is recorded too, and a replay raises the same kind of exception again (an
 `HttpRequestException` with its status, a timeout, a rate limit), so a fallback chain behaves as it did.
-A replay also judges the request as a live call does: audio for a model that takes none fails the same way.
+A replay also judges the request as a live call does, a plain prompt as much as a chat: audio for a model that takes none fails the same way.
+A replayed call sends nothing, so it takes no lease of the host's rate limiter; its usage is still reported as recorded.
 
 **Secrets**: before a line is written, these are replaced by `[REDACTED]`: the API key the provider was
 configured with, a `Bearer` token, a vendor key shaped `sk-...` (not a word that merely contains `sk-`), a Google key shaped `AIza...`, the value of a

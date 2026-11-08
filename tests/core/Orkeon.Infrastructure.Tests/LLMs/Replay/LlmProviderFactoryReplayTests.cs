@@ -123,4 +123,25 @@ public sealed class LlmProviderFactoryReplayTests
         Assert.Contains("Llm:Replay:Cassette", noCassette.Message, StringComparison.Ordinal);
         Assert.Contains("Llm:Replay:Mode", unknown.Message, StringComparison.Ordinal);
     }
+
+    [Fact]
+    public async Task A_replayed_call_takes_no_lease_of_the_rate_limiter_while_a_recorded_call_does()
+    {
+        // FWK review LLM-7: replay answers from the cassette without a network call, so it never waits on the limiter.
+        var recording = WithResponses();
+        var recordLimiter = new Orkeon.Infrastructure.Tests.Doubles.CountingLlmRateLimiter();
+        await Provider(new LlmProviderFactory(new NoHttpClientFactory(), NullLoggerFactory.Instance, recording, rateLimiter: recordLimiter,
+                replay: new LlmReplayOptions { Mode = LlmReplayMode.Record, Cassette = CassettePath }).Create(OfflineProfile()))
+            .ChatAsync(User("ping"), null, TestContext.Current.CancellationToken);
+        var replayLimiter = new Orkeon.Infrastructure.Tests.Doubles.CountingLlmRateLimiter();
+        var provider = Provider(new LlmProviderFactory(new NoHttpClientFactory(), NullLoggerFactory.Instance,
+            NewFileSystem().AddFile(CassettePath, await ReadAsync(recording)), rateLimiter: replayLimiter,
+            replay: new LlmReplayOptions { Mode = LlmReplayMode.Replay, Cassette = CassettePath }).Create(OfflineProfile()));
+
+        var response = await provider.ChatAsync(User("ping"), null, TestContext.Current.CancellationToken);
+
+        Assert.Equal("pong", response.Content);
+        Assert.Equal(1, recordLimiter.Acquired);
+        Assert.Equal(0, replayLimiter.Acquired);
+    }
 }

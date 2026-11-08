@@ -234,4 +234,33 @@ public sealed class LlmCassetteHardeningTests
 
         Assert.Contains("'gpt-4o'", refusal.Message, StringComparison.Ordinal);
     }
+
+    private sealed class OptionRefusingProvider(LlmConfig config, IHttpClientFactory http) : Orkeon.Infrastructure.LLMs.Base.OpenAICompatibleProviderBase(
+        config, http, (Polly.IAsyncPolicy<HttpResponseMessage>?)null, NullLogger<OptionRefusingProvider>.Instance)
+    {
+        public override string Name => "refusing";
+        protected override Uri DefaultBaseUrl => new("https://api.test.com/v1");
+        protected override string DefaultModel => "refusing-model";
+        protected override string ProviderDisplayName => "Refusing";
+
+        protected override void ApplyProviderSpecificOptions(Dictionary<string, object> payload, LlmConfig effectiveConfig) =>
+            throw new NotSupportedException("refused before sending");
+    }
+
+    [Fact]
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Reliability", "CA2000:Dispose objects before losing scope", Justification = "The provider lives as long as the test.")]
+    public async Task A_replayed_prompt_is_judged_as_a_live_call_is_before_the_cassette_is_read()
+    {
+        // FWK review LLM-7: the prompt paths skipped the refusal the chat paths apply.
+        using var http = new Orkeon.Infrastructure.Tests.Doubles.MockHttpClientFactory();
+        var replay = new ReplayLlmProvider(new OptionRefusingProvider(LlmConfig.Create("refusing-model", "sk-test"), http), new LlmCassette(NewFileSystem(), CassettePath), "default");
+
+        await Assert.ThrowsAsync<NotSupportedException>(() => replay.GenerateAsync("hi", null, TestContext.Current.CancellationToken));
+        await Assert.ThrowsAsync<NotSupportedException>(async () =>
+        {
+            await foreach (var _ in replay.GenerateStreamingAsync("hi", null, TestContext.Current.CancellationToken))
+            {
+            }
+        });
+    }
 }
