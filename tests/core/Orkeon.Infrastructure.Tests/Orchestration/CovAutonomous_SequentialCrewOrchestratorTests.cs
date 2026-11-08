@@ -244,12 +244,13 @@ public sealed class CovAutonomous_SequentialCrewOrchestratorTests
         FakeFactory Factory,
         FakeCheckpointManager? Checkpoint);
 
-    internal static Harness Build(bool withCheckpoint = false, IRunScope? runScope = null)
+    internal static Harness Build(bool withCheckpoint = false, IRunScope? runScope = null, Orkeon.Application.Interfaces.Services.IMemoryCoordinator? memory = null, ICheckpointManager? manager = null, IResumeEngine? engine = null)
     {
         var repo = new FakeCrewRepository();
         var state = new FakeStateManager();
         var factory = new FakeFactory();
         FakeCheckpointManager? cp = withCheckpoint ? new FakeCheckpointManager { Scope = runScope } : null;
+        ICheckpointManager? used = manager ?? cp;
 
         var orch = new SequentialCrewOrchestrator(
             repo,
@@ -258,8 +259,11 @@ public sealed class CovAutonomous_SequentialCrewOrchestratorTests
             factory,
             new ExecutionPlanParser(), new Orkeon.Infrastructure.Tests.Doubles.RecordingDomainEventDispatcher(),
             agentRepository: null,
-            checkpointManager: cp,
-            runScope: runScope);
+            checkpointManager: used,
+            resumeEngine: engine,
+            runScope: runScope,
+            memoryProviderRegistry: memory is null ? null : new Orkeon.Application.Memory.CrewMemoryProviderRegistry(),
+            memoryCoordinator: memory);
 
         return new Harness(orch, repo, state, factory, cp);
     }

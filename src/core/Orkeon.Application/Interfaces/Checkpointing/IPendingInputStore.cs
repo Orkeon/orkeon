@@ -63,4 +63,10 @@ public enum PendingInputAnswerOutcome
 
     /// <summary>The session does not exist.</summary>
     UnknownSession,
+
+    /// <summary>
+    /// The session waits on no question because the last one was answered with this same text and the run has not resumed
+    /// yet: the answer is already stored (a retry after a crash), nothing changes.
+    /// </summary>
+    AlreadyAnswered,
 }

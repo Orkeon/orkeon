@@ -851,3 +851,4 @@ override Orkeon.Infrastructure.LLMs.Embeddings.GeminiEmbeddingProvider.Name.get 
 override Orkeon.Infrastructure.LLMs.Embeddings.MistralEmbeddingProvider.Name.get -> string!
 Orkeon.Infrastructure.LLMs.Embeddings.EmbeddingModelGuard
 static Orkeon.Infrastructure.LLMs.Embeddings.EmbeddingModelGuard.CheckAsync(System.IServiceProvider! services, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<string?>!
+Orkeon.Infrastructure.FileSystem.FileSystemService.MoveAsync(string! srcVirtualPath, string! dstVirtualPath, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!

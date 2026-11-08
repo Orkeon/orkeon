@@ -72,6 +72,8 @@ public sealed class SuspensionCheckpointTests : IDisposable
         var run = new RunScope(_id, "crew");
         var inner = new FakeScriptedAgentExecutionService(ct =>
         {
+            // The task asked the question the run stopped on (a task that asked nothing keeps its result).
+            Orkeon.Infrastructure.Checkpointing.TaskInputScope.Current!.NextRequestId();
             run.Suspend(Question);
             return FakeScriptedAgentExecutionService.Fail("tool failed")(ct);
         });

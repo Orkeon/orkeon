@@ -1,5 +1,7 @@
 using Microsoft.Extensions.Logging;
 using Orkeon.Application.Interfaces.Checkpointing;
+#pragma warning disable ORKEXP007 // The run history is experimental; the engine reads it to tell a live run from a dead one.
+using Orkeon.Application.Runs;
 
 namespace Orkeon.Application.Services.Checkpointing;
 
@@ -11,6 +13,9 @@ public sealed partial class ResumeEngine : IResumeEngine
     private readonly ICheckpointManager _checkpointManager;
     private readonly IStateStore _store;
     private readonly ILogger<ResumeEngine> _logger;
+    private readonly IRunHistoryReader? _history;
+    private readonly IRunProcessProbe _probe;
+    private readonly string _localHost;
 
     /// <summary>
     /// Initializes a new instance of <see cref="ResumeEngine"/>.
@@ -18,8 +23,13 @@ public sealed partial class ResumeEngine : IResumeEngine
     public ResumeEngine(
         ICheckpointManager checkpointManager,
         IStateStore store,
-        ILogger<ResumeEngine> logger)
+        ILogger<ResumeEngine> logger,
+        IRunHistoryReader? history = null,
+        IRunProcessProbe? probe = null)
     {
+        _history = history;
+        _probe = probe ?? new SystemRunProcessProbe();
+        _localHost = RunProcessIdentity.Current.Host;
         ArgumentNullException.ThrowIfNull(checkpointManager);
         _checkpointManager = checkpointManager;
         ArgumentNullException.ThrowIfNull(store);
@@ -56,6 +66,14 @@ public sealed partial class ResumeEngine : IResumeEngine
                 LogNoCheckpointFound(crewKey);
                 return new ResumeResult();
             }
+
+            // A session another process still drives (a daemon that holds a run on its question) is not taken over, named or not.
+            if (latest.Phase is SessionPhase.Running or SessionPhase.WaitingForInput
+                && await ProvenLiveAsync(latest.SessionId, ct).ConfigureAwait(false))
+            {
+                LogRunningNotResumed(crewKey, latest.SessionId);
+                return new ResumeResult { Refusal = LiveRefusal(latest.SessionId, latest.Phase) };
+            }
         }
         // If a specific version is requested, restore from that version
         else if (!string.IsNullOrEmpty(options.FromVersionId))
@@ -89,14 +107,11 @@ public sealed partial class ResumeEngine : IResumeEngine
                 return new ResumeResult();
             }
 
-            if (unfinished.Phase == SessionPhase.Running)
+            if (unfinished.Phase == SessionPhase.Running
+                || (unfinished.Phase == SessionPhase.WaitingForInput && await ProvenLiveAsync(unfinished.SessionId, ct).ConfigureAwait(false)))
             {
                 LogRunningNotResumed(crewKey, unfinished.SessionId);
-                return new ResumeResult
-                {
-                    Refusal = $"Run {unfinished.SessionId} is still marked Running: it may be alive in another process, and 'latest' does not take a run over from it. " +
-                              $"If it is dead (killed, crashed), resume it by its id: --resume {unfinished.SessionId}.",
-                };
+                return new ResumeResult { Refusal = LiveRefusal(unfinished.SessionId, unfinished.Phase) };
             }
 
             latest = await _store.GetAsync(unfinished.SessionId, ct).ConfigureAwait(false);
@@ -173,6 +188,20 @@ public sealed partial class ResumeEngine : IResumeEngine
             CompletedTaskIds = completedIds,
             CompletedOutputs = completedOutputs,
         };
+    }
+
+    private static string LiveRefusal(string sessionId, SessionPhase phase) =>
+        $"Run {sessionId} is still marked {phase}: it may be alive in another process, and 'latest' does not take a run over from it. " +
+        $"If it is dead (killed, crashed), resume it by its id: --resume {sessionId}.";
+
+    // The run history says what the session cannot: a run recorded as Running whose process is alive on this host (or that ran on another host) is live.
+    // A session whose run left no record (history disabled) cannot be proven live: a run that stopped on a question and exited is resumable by "latest".
+    private async System.Threading.Tasks.Task<bool> ProvenLiveAsync(string sessionId, CancellationToken ct)
+    {
+        if (_history is null || await _history.GetAsync(sessionId, ct).ConfigureAwait(false) is not { } summary)
+            return false;
+
+        return RunLiveness.Apply(summary, _probe, _localHost).Status == RunStatus.Running;
     }
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "The latest unfinished run {SessionId} of crew {CrewKey} is still marked Running: not resumed without its id")]

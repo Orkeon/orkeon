@@ -179,10 +179,13 @@ public sealed partial class DurableHumanInputProvider : IHumanInputProvider
                     return stored;
                 }
 
-                var shown = asked.Pending ?? request;                if (pause == HumanInputPause.Suspend)
+                var shown = asked.Pending ?? request;
+                if (pause == HumanInputPause.Suspend)
                 {
                     if (asked.Pending is not null)
                         await NotifyAsync(run, new HumanInputNotice(HumanInputNoticeKind.Needed, shown, Suspending: true), ct).ConfigureAwait(false);
+                    else if (await PersistedAsync(sessionId, request, ct).ConfigureAwait(false) is { } persisted)
+                        shown = persisted;
                     throw Suspend(run, shown);
                 }
 
@@ -232,6 +235,24 @@ public sealed partial class DurableHumanInputProvider : IHumanInputProvider
         await _store.RecordAnswerAsync(sessionId, requestId, answer, CancellationToken.None).ConfigureAwait(false);
         await NotifyAsync(run, new HumanInputNotice(HumanInputNoticeKind.Given, shown), ct).ConfigureAwait(false);
         return answer;
+    }
+
+    // Only one question waits in the store: when another task's question holds the slot, this one was not persisted. The run
+    // stops on the question the store holds, never on one that nobody can answer.
+    private async System.Threading.Tasks.Task<PendingInputRequest?> PersistedAsync(string sessionId, PendingInputRequest request, CancellationToken ct)
+    {
+        for (var attempt = 0; attempt < 3; attempt++)
+        {
+            if (await _store.GetPendingAsync(sessionId, ct).ConfigureAwait(false) is { } held)
+                return held;
+
+            // The slot was freed between the two calls: ask again, this question may take it now.
+            var again = await _store.AskAsync(sessionId, request, ct).ConfigureAwait(false);
+            if (again.Pending is { } taken)
+                return taken;
+        }
+
+        return null;
     }
 
     private static RunSuspendedException Suspend(RunScope run, PendingInputRequest shown)

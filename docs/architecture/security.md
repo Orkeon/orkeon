@@ -352,6 +352,8 @@ The LLM budget and timeout are set by `Llm:MaxRetries` and `Llm:TimeoutSeconds`;
 
 `CheckpointManager` and `ResumeEngine` (`Orkeon.Application.Services.Checkpointing`) enable saving and resuming the state of crew executions. Useful for long workflows that must survive restarts.
 
+**What the state store holds.** The state store (in memory, JSON files, SQLite, PostgreSQL) keeps the outputs of the tasks and the answers given to a human in plaintext: protect it as you protect the data the run handles (file permissions, database access). The error message of a failed run passes through the log sanitizer before it is persisted, so a quoted secret is masked; task outputs and answers are not, because they are the data the resumed run reads back. A checkpoint rebuilds a structured output only as the type the task declares (or a plain JSON type): any other type name found in the store is refused and the task runs again.
+
 Since R3.8, the **execution states** themselves (`ICrewExecutionStateManager`: status, progress, output) can also be persisted in the same state stores (`IStateStore` — in-memory, SQLite via `AddOrkeonSqliteCheckpointing`, PostgreSQL) for recovery after a crash. Opt-in via `AddCrewExecutionStatePersistence(...)` — or the `Orkeon:ExecutionState:Persistence` section, which only takes effect through the `AddOrkeonInfrastructure(IConfiguration)` overload (the shipped runners use the parameterless one, so for them the explicit call is the route); default: in-memory only. See [Opt-in subsystems](../reference/opt-in-subsystems.md).
 
 ## Plugin system

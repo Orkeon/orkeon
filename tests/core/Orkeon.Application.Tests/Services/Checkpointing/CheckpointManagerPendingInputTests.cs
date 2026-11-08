@@ -133,4 +133,21 @@ public sealed class CheckpointManagerPendingInputTests
 
         Assert.Equal(PendingInputAnswerOutcome.UnknownSession, result.Outcome);
     }
+
+    [Fact]
+    [Trait("BR", "FWK-23")]
+    public async System.Threading.Tasks.Task ShouldReportAlreadyAnswered_WhenTheSameAnswerIsGivenAgainBeforeTheResume()
+    {
+        var session = await StartAsync();
+        await _manager.AskAsync(session, Question("ask#1.1"), TestContext.Current.CancellationToken);
+        await _manager.AnswerAsync(session, null, "blue", TestContext.Current.CancellationToken);
+
+        var again = await _manager.AnswerAsync(session, null, "blue", TestContext.Current.CancellationToken);
+        var other = await _manager.AnswerAsync(session, null, "red", TestContext.Current.CancellationToken);
+
+        Assert.Equal(PendingInputAnswerOutcome.AlreadyAnswered, again.Outcome);
+        Assert.Equal("ask#1.1", again.RequestId);
+        Assert.Equal(PendingInputAnswerOutcome.NotPending, other.Outcome);
+        Assert.Equal("blue", (await _store.GetAsync(session, TestContext.Current.CancellationToken))!.AnsweredInputs["ask#1.1"]);
+    }
 }

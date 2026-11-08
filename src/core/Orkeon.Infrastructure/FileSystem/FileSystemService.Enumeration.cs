@@ -184,6 +184,37 @@ public sealed partial class FileSystemService
         }
     }
 
+    /// <inheritdoc />
+    public async System.Threading.Tasks.Task MoveAsync(string srcVirtualPath, string dstVirtualPath, CancellationToken ct = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(srcVirtualPath);
+        ArgumentException.ThrowIfNullOrWhiteSpace(dstVirtualPath);
+        ct.ThrowIfCancellationRequested();
+
+        var srcV = ResolveAndValidate(srcVirtualPath, FileAccessRights.Read | FileAccessRights.Write);
+        if (!srcV.IsAllowed)
+            throw new FileAccessDeniedException(srcV.DenialReason!, srcVirtualPath, FileAccessRights.Read | FileAccessRights.Write);
+
+        var dstV = ResolveAndValidate(dstVirtualPath, FileAccessRights.Write | FileAccessRights.Create);
+        if (!dstV.IsAllowed)
+            throw new FileAccessDeniedException(dstV.DenialReason!, dstVirtualPath, FileAccessRights.Write | FileAccessRights.Create);
+
+        var dstDir = Path.GetDirectoryName(dstV.ResolvedPath!);
+        if (!string.IsNullOrEmpty(dstDir) && !Directory.Exists(dstDir))
+            Directory.CreateDirectory(dstDir);
+
+        try
+        {
+            File.Move(srcV.ResolvedPath!, dstV.ResolvedPath!, overwrite: true);
+        }
+        catch (IOException) when (File.Exists(srcV.ResolvedPath!))
+        {
+            // Another volume: no rename is possible, so copy then delete.
+            await CopyAsync(srcVirtualPath, dstVirtualPath, overwrite: true, ct).ConfigureAwait(false);
+            File.Delete(srcV.ResolvedPath!);
+        }
+    }
+
     private string? GetMountVirtualRoot(string virtualPath)
     {
         return GetAvailableMounts()

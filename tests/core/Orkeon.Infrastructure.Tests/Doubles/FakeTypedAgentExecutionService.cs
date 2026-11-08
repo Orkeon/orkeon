@@ -18,6 +18,9 @@ public sealed class FakeTypedAgentExecutionService : IAgentExecutionService
     /// <summary>How many calls reached the service.</summary>
     public int Calls => Volatile.Read(ref _calls);
 
+    /// <summary>Runs inside every execution, with the task key: what a sibling task does to the run meanwhile.</summary>
+    public Action<string>? OnExecute { get; set; }
+
     /// <summary>The keys whose execution throws.</summary>
     public HashSet<string> ThrowOn { get; } = [];
 
@@ -39,6 +42,7 @@ public sealed class FakeTypedAgentExecutionService : IAgentExecutionService
     {
         Interlocked.Increment(ref _calls);
         var key = task.Key!;
+        OnExecute?.Invoke(key);
         if (ThrowOn.Contains(key))
             throw new InvalidOperationException($"{key} blew up");
         return System.Threading.Tasks.Task.FromResult(FailOn.Contains(key)
@@ -53,6 +57,7 @@ public sealed class FakeTypedAgentExecutionService : IAgentExecutionService
     {
         Interlocked.Increment(ref _calls);
         var key = task.Key!;
+        OnExecute?.Invoke(key);
         if (ThrowOn.Contains(key))
             throw new InvalidOperationException($"{key} blew up");
         return System.Threading.Tasks.Task.FromResult(

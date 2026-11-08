@@ -111,6 +111,9 @@ public sealed partial class RetryingAgentExecutionService : IAgentExecutionServi
                     ct).ConfigureAwait(false);
             }
 
+            // A retry replays the task from its start: its questions to a human are numbered afresh (FWK-23).
+            Orkeon.Infrastructure.Checkpointing.TaskInputScope.Current?.BeginAttempt();
+
             TResult result;
             try
             {

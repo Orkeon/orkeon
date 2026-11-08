@@ -162,6 +162,14 @@ public sealed partial class CheckpointingAgentExecutionService : IAgentExecution
         if (stored is null)
             return null;
 
+        // The type a structured output is rebuilt as comes from the state store, which anyone with write access to it can edit:
+        // only the type the task declares (or a plain JSON type) is resolved; any other name is refused and the task runs again.
+        if (stored.StructuredType is { Length: > 0 } typeName && !IsAllowedStructuredType(task, typeName))
+        {
+            LogStructuredTypeRefused(key, typeName, run.ExecutionId);
+            return null;
+        }
+
         if (!string.Equals(stored.Fingerprint, fingerprint, StringComparison.Ordinal))
         {
             // The task was edited since the run: its output is not the one this definition would give,
@@ -176,6 +184,10 @@ public sealed partial class CheckpointingAgentExecutionService : IAgentExecution
         LogTaskResumed(key, run.ExecutionId);
         return stored;
     }
+
+    private static bool IsAllowedStructuredType(ICrewTask task, string typeName) =>
+        (task.OutputPydantic is { } declared && string.Equals(declared.AssemblyQualifiedName, typeName, StringComparison.Ordinal))
+        || typeName.StartsWith("System.Text.Json.", StringComparison.Ordinal);
 
     private async System.Threading.Tasks.Task<string> FingerprintAsync(DomainAgent? agent, ICrewTask task, CancellationToken ct)
     {
@@ -205,13 +217,16 @@ public sealed partial class CheckpointingAgentExecutionService : IAgentExecution
     {
         // The questions the task puts to a human are numbered within this invocation (FWK-23).
         using var inputs = TaskInputScope.Enter(call.Key);
+        var scope = TaskInputScope.Current!;
         try
         {
             var result = await execute().ConfigureAwait(false);
 
             // The task met a question it cannot wait for: the failure its agent reports (a tool that threw, a turn
             // that ended) is the suspension, not a result. The task runs again from its start when the run resumes.
-            if (call.Run.Suspension is { } suspended)
+            // Only when this task is the one that asked: a task of a parallel wave that asked nothing finished its work, and a
+            // run stopped by a sibling's question must not throw that result away (it is checkpointed, and not run again).
+            if (call.Run.Suspension is { } suspended && scope.Asked)
                 throw new RunSuspendedException(suspended.RequestId);
             return result;
         }
@@ -222,13 +237,16 @@ public sealed partial class CheckpointingAgentExecutionService : IAgentExecution
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            await _checkpoints.MarkFailedAsync(call.Run.ExecutionId.ToString(), call.Key, ex, CancellationToken.None).ConfigureAwait(false);
+            await _checkpoints.MarkFailedAsync(call.Run.ExecutionId.ToString(), call.Key, CheckpointErrors.Redacted(ex), CancellationToken.None).ConfigureAwait(false);
             throw;
         }
     }
 
     private System.Threading.Tasks.Task WriteAsync(Call call, StoredResult result, int retryCount, CancellationToken ct) =>
         _checkpoints.CheckpointAsync(call.Run.ExecutionId.ToString(), call.Key, JsonSerializer.Serialize(result, Json), retryCount, ct);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Task {Key} of run {RunId} has a checkpoint whose structured type {TypeName} is not one the task declares: the checkpoint is refused and the task runs again")]
+    private partial void LogStructuredTypeRefused(string key, string typeName, ExecutionId runId);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Task {Key} of run {RunId} answered from its checkpoint: no model was asked")]
     private partial void LogTaskResumed(string key, ExecutionId runId);

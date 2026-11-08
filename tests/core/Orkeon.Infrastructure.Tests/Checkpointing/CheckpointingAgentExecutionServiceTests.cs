@@ -41,8 +41,10 @@ public sealed class CheckpointingAgentExecutionServiceTests : IDisposable
     private SimpleExecutionContext Context() =>
         new(CrewId.Create(), new Dictionary<string, string>(), _memory, [], CancellationToken.None);
 
-    private static CrewTask Task(string key, string? description = null, string expected = "done") =>
-        new CrewTaskBuilder().WithKey(key).Description(description ?? $"do {key}").ExpectedOutput(expected).Build();
+    private static CrewTaskBuilder Declared(CrewTaskBuilder builder, Type? output) => output is null ? builder : builder.OutputPydantic(output);
+
+    private static CrewTask Task(string key, string? description = null, string expected = "done", Type? output = null) =>
+        Declared(new CrewTaskBuilder().WithKey(key).Description(description ?? $"do {key}").ExpectedOutput(expected), output).Build();
 
     // The session is started here, the scope entered by the caller: an AsyncLocal set inside an async
     // method does not flow back to the code that awaited it.
@@ -167,12 +169,12 @@ public sealed class CheckpointingAgentExecutionServiceTests : IDisposable
         _inner.UntypedStructured = key => new FakeTypedAgentExecutionService.Answer($"structured-{key}");
         await StartSessionAsync(id);
         using (Enter(id))
-            await Decorate().ExecuteTaskAsync(_agent, Task("first"), Context(), TestContext.Current.CancellationToken);
+            await Decorate().ExecuteTaskAsync(_agent, Task("first", output: typeof(FakeTypedAgentExecutionService.Answer)), Context(), TestContext.Current.CancellationToken);
         var plan = await PlanOfAsync(id);
 
         TaskResult replayed;
         using (Enter(id, plan))
-            replayed = await Decorate().ExecuteTaskAsync(_agent, Task("first"), Context(), TestContext.Current.CancellationToken);
+            replayed = await Decorate().ExecuteTaskAsync(_agent, Task("first", output: typeof(FakeTypedAgentExecutionService.Answer)), Context(), TestContext.Current.CancellationToken);
 
         var structured = Assert.IsType<FakeTypedAgentExecutionService.Answer>(replayed.StructuredOutput);
         Assert.Equal("structured-first", structured.Text);
@@ -352,5 +354,106 @@ public sealed class CheckpointingAgentExecutionServiceTests : IDisposable
                 Decorate(manager).ExecuteTaskAsync(_agent, Task("first"), Context(), TestContext.Current.CancellationToken));
             Assert.Equal("disk full", failure.Message);
         }
+    }
+
+    [Fact]
+    [Trait("BR", "FWK-23")]
+    public async System.Threading.Tasks.Task ShouldNumberTheQuestionsAgainFromOne_OnEveryAttemptOfARetriedTask()
+    {
+        var id = ExecutionId.New();
+        var asker = new FakeQuestionAskingAgentExecutionService { FailFirst = 1 };
+        var retrying = new Orkeon.Infrastructure.Crew.RetryingAgentExecutionService(
+            asker, NullLogger<Orkeon.Infrastructure.Crew.RetryingAgentExecutionService>.Instance, new FakeImmediateTimeProvider());
+        var decorated = new CheckpointingAgentExecutionService(retrying, _scope, _manager, _log);
+        var task = new CrewTaskBuilder().WithKey("t").Description("do t").ExpectedOutput("done").Retry(new TaskRetryPolicy(2)).Build();
+
+        await StartSessionAsync(id);
+        using (Enter(id))
+            await decorated.ExecuteTaskAsync(_agent, task, Context(), TestContext.Current.CancellationToken);
+
+        Assert.Equal(["t#1.1", "t#1.1"], asker.RequestIds);
+    }
+
+    [Fact]
+    [Trait("BR", "FWK-23")]
+    public async System.Threading.Tasks.Task ShouldCheckpointATaskThatAskedNothing_WhenASiblingSuspendedTheRunMeanwhile()
+    {
+        var id = ExecutionId.New();
+        await StartSessionAsync(id);
+        using (Enter(id))
+        {
+            var run = _scope.Current!;
+            _inner.OnExecute = _ => run.Suspend(new PendingInputRequest { RequestId = "other#1.1", Kind = PendingInputKind.Text, Prompt = "?", TaskKey = "other#1" });
+
+            var result = await Decorate().ExecuteTaskAsync(_agent, Task("quiet"), Context(), TestContext.Current.CancellationToken);
+
+            Assert.True(result.Success);
+        }
+
+        var state = await _store.GetAsync(id.ToString(), TestContext.Current.CancellationToken);
+        Assert.Equal(CheckpointStatus.Completed, state!.TaskCheckpoints["quiet#1"].Status);
+    }
+
+    [Fact]
+    [Trait("BR", "FWK-23")]
+    public async System.Threading.Tasks.Task ShouldNotCheckpointATaskThatAsked_WhenTheRunSuspendedOnItsQuestion()
+    {
+        var id = ExecutionId.New();
+        await StartSessionAsync(id);
+        using (Enter(id))
+        {
+            var run = _scope.Current!;
+            _inner.OnExecute = _ =>
+            {
+                var asked = TaskInputScope.Current!.NextRequestId();
+                run.Suspend(new PendingInputRequest { RequestId = asked, Kind = PendingInputKind.Text, Prompt = "?", TaskKey = "asker#1" });
+            };
+
+            await Assert.ThrowsAsync<RunSuspendedException>(() =>
+                Decorate().ExecuteTaskAsync(_agent, Task("asker"), Context(), TestContext.Current.CancellationToken));
+        }
+
+        var state = await _store.GetAsync(id.ToString(), TestContext.Current.CancellationToken);
+        Assert.DoesNotContain("asker#1", state!.TaskCheckpoints.Keys);
+    }
+
+    [Fact]
+    [Trait("BR", "FWK-07")]
+    public async System.Threading.Tasks.Task ShouldRunTheTaskAgain_WhenTheStoredStructuredTypeIsNotTheOneTheTaskDeclares()
+    {
+        // The checkpoint names the type its structured output was produced as; the task declares none, so the name is not
+        // resolved (Type.GetType on a name read from the store) and the checkpoint is refused.
+        var id = ExecutionId.New();
+        _inner.UntypedStructured = key => new FakeTypedAgentExecutionService.Answer($"structured-{key}");
+        await StartSessionAsync(id);
+        using (Enter(id))
+            await Decorate().ExecuteTaskAsync(_agent, Task("first"), Context(), TestContext.Current.CancellationToken);
+        var plan = await PlanOfAsync(id);
+        var before = _inner.Calls;
+
+        using (Enter(id, plan))
+            await Decorate().ExecuteTaskAsync(_agent, Task("first"), Context(), TestContext.Current.CancellationToken);
+
+        Assert.Equal(before + 1, _inner.Calls);
+    }
+
+    [Fact]
+    [Trait("BR", "FWK-07")]
+    public async System.Threading.Tasks.Task ShouldMaskASecret_InTheErrorMessageItPersists()
+    {
+        var id = ExecutionId.New();
+        _inner.ThrowOn.Add("leaky");
+        await StartSessionAsync(id);
+        using (Enter(id))
+        {
+            _inner.ThrowOn.Clear();
+            _inner.OnExecute = _ => throw new InvalidOperationException("401 for key sk-abcdefghijklmnopqrstuvwxyz0123456789ABCD");
+            await Assert.ThrowsAsync<InvalidOperationException>(() =>
+                Decorate().ExecuteTaskAsync(_agent, Task("leaky"), Context(), TestContext.Current.CancellationToken));
+        }
+
+        var state = await _store.GetAsync(id.ToString(), TestContext.Current.CancellationToken);
+        Assert.DoesNotContain("sk-abcdefghijklmnopqrstuvwxyz", state!.TaskCheckpoints["leaky#1"].ErrorMessage, StringComparison.Ordinal);
+        Assert.DoesNotContain("sk-abcdefghijklmnopqrstuvwxyz", state.ErrorMessage, StringComparison.Ordinal);
     }
 }

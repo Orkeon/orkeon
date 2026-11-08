@@ -43,7 +43,18 @@ public sealed partial class CheckpointManager
             return new PendingInputAnswered(PendingInputAnswerOutcome.UnknownSession, null);
 
         if (state.PendingInput is not { } pending)
+        {
+            // Answered, and the run has not resumed yet: the same answer given again (a retry after a crash) is the same fact.
+            if (state.Phase == SessionPhase.Suspended && state.AnsweredInputs.Count > 0
+                && state.AnsweredInputs.Last() is var last
+                && (requestId is null || string.Equals(last.Key, requestId, StringComparison.Ordinal))
+                && string.Equals(last.Value, answer, StringComparison.Ordinal))
+            {
+                return new PendingInputAnswered(PendingInputAnswerOutcome.AlreadyAnswered, last.Key);
+            }
+
             return new PendingInputAnswered(PendingInputAnswerOutcome.NotPending, null);
+        }
 
         if (requestId is not null && !string.Equals(pending.RequestId, requestId, StringComparison.Ordinal))
             return new PendingInputAnswered(PendingInputAnswerOutcome.Mismatch, pending.RequestId);

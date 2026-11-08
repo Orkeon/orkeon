@@ -91,10 +91,9 @@ public abstract class TimeTravelTestBase : IAsyncLifetime
         var beforeAll = DateTime.UtcNow.AddMilliseconds(-50);
 
         var v1 = await _store.SaveVersionedAsync(state, stepId: StepId1, ct: TestContext.Current.CancellationToken);
-        // Introduce a tiny delay so timestamps differ
-        await Task.Delay(20, TestContext.Current.CancellationToken);
-        var afterV1 = DateTime.UtcNow;
-        await Task.Delay(20, TestContext.Current.CancellationToken);
+        // The second version must be stamped strictly after the first: wait for the clock to move, not for a duration.
+        SpinWait.SpinUntil(() => DateTime.UtcNow > v1.CreatedAt);
+        var afterV1 = v1.CreatedAt;
         var v2 = await _store.SaveVersionedAsync(state with { CompletedTaskIndex = 1 }, stepId: "step-2", ct: TestContext.Current.CancellationToken);
 
         // Request at a time after v1 but before v2 was created
@@ -102,6 +101,7 @@ public abstract class TimeTravelTestBase : IAsyncLifetime
 
         Assert.NotNull(found);
         Assert.Equal(v1.VersionId, found.VersionId);
+        Assert.True(v2.CreatedAt > v1.CreatedAt);
     }
 
     [Fact]

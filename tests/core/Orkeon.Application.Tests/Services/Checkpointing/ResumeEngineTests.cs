@@ -1,4 +1,6 @@
+#pragma warning disable ORKEXP007 // The run history is experimental.
 using Orkeon.Application.Interfaces.Checkpointing;
+using Orkeon.Application.Tests.Doubles;
 using Orkeon.Application.Services.Checkpointing;
 using Orkeon.Infrastructure.Checkpointing;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -131,6 +133,24 @@ public class ResumeEngineTests
 
     private static string Crew => "crew@/crew/crew.yaml";
 
+    // Orders two sessions by an explicit timestamp, never by a wait: the session is moved into the past.
+    private async System.Threading.Tasks.Task AgeAsync(Orkeon.Application.Interfaces.Services.ExecutionId id)
+    {
+        var state = await _store.GetAsync(id.ToString(), TestContext.Current.CancellationToken);
+        await _store.SaveAsync(state! with { UpdatedAt = DateTime.UtcNow.AddHours(-1) }, TestContext.Current.CancellationToken);
+    }
+
+    private ResumeEngine EngineWith(MockRunHistoryReader history) =>
+        new(_manager, _store, NullLogger<ResumeEngine>.Instance, history, new StubRunProcessProbe { Alive = history.ProcessAlive });
+
+    private async System.Threading.Tasks.Task<Orkeon.Application.Interfaces.Services.ExecutionId> WaitingSessionAsync()
+    {
+        var id = Orkeon.Application.Interfaces.Services.ExecutionId.New();
+        await _manager.StartSessionAsync(id, Crew, TestContext.Current.CancellationToken);
+        await _manager.AskAsync(id.ToString(), new PendingInputRequest { RequestId = "a#1.1", Kind = PendingInputKind.Text, Prompt = "?", TaskKey = "a#1" }, TestContext.Current.CancellationToken);
+        return id;
+    }
+
     [Fact]
     [Trait("BR", "FWK-07")]
     public async System.Threading.Tasks.Task Resume_WithAnExecutionId_ResumesThatSessionAndNotTheLatest()
@@ -138,7 +158,7 @@ public class ResumeEngineTests
         var older = Orkeon.Application.Interfaces.Services.ExecutionId.New();
         await _manager.StartSessionAsync(older, Crew, TestContext.Current.CancellationToken);
         await _manager.CheckpointAsync(older.ToString(), "a#1", "older-a", TestContext.Current.CancellationToken);
-        await System.Threading.Tasks.Task.Delay(5, TestContext.Current.CancellationToken);
+        await AgeAsync(older);
         var newer = Orkeon.Application.Interfaces.Services.ExecutionId.New();
         await _manager.StartSessionAsync(newer, Crew, TestContext.Current.CancellationToken);
         await _manager.CheckpointAsync(newer.ToString(), "a#1", "newer-a", TestContext.Current.CancellationToken);
@@ -171,7 +191,7 @@ public class ResumeEngineTests
         await _manager.StartSessionAsync(failed, Crew, TestContext.Current.CancellationToken);
         await _manager.CheckpointAsync(failed.ToString(), "a#1", "kept", TestContext.Current.CancellationToken);
         await _manager.MarkFailedAsync(failed.ToString(), "b#1", new InvalidOperationException("boom"), TestContext.Current.CancellationToken);
-        await System.Threading.Tasks.Task.Delay(5, TestContext.Current.CancellationToken);
+        await AgeAsync(failed);
         var completed = Orkeon.Application.Interfaces.Services.ExecutionId.New();
         await _manager.StartSessionAsync(completed, Crew, TestContext.Current.CancellationToken);
         await _manager.CompleteSessionAsync(completed.ToString(), TestContext.Current.CancellationToken);
@@ -189,7 +209,7 @@ public class ResumeEngineTests
         var failed = Orkeon.Application.Interfaces.Services.ExecutionId.New();
         await _manager.StartSessionAsync(failed, Crew, TestContext.Current.CancellationToken);
         await _manager.MarkFailedAsync(failed.ToString(), "b#1", new InvalidOperationException("boom"), TestContext.Current.CancellationToken);
-        await System.Threading.Tasks.Task.Delay(5, TestContext.Current.CancellationToken);
+        await AgeAsync(failed);
         var running = Orkeon.Application.Interfaces.Services.ExecutionId.New();
         await _manager.StartSessionAsync(running, Crew, TestContext.Current.CancellationToken);
 
@@ -218,5 +238,50 @@ public class ResumeEngineTests
 
         Assert.Equal("", byId.SessionId);
         Assert.Equal("", latest.SessionId);
+    }
+
+    [Fact]
+    [Trait("BR", "FWK-23")]
+    public async System.Threading.Tasks.Task Resume_Latest_RefusesAWaitingSessionHeldByALiveProcess_AndByIdToo()
+    {
+        var id = await WaitingSessionAsync();
+        var history = new MockRunHistoryReader { Summary = MockRunHistoryReader.Running(id.ToString()), ProcessAlive = true };
+        var engine = EngineWith(history);
+
+        var latest = await engine.ResumeAsync(Crew, ct: TestContext.Current.CancellationToken);
+        var byId = await engine.ResumeAsync(Crew, new ResumeOptions { ExecutionId = id.ToString() }, TestContext.Current.CancellationToken);
+
+        Assert.Equal("", latest.SessionId);
+        Assert.Contains(id.ToString(), latest.Refusal, StringComparison.Ordinal);
+        Assert.Equal("", byId.SessionId);
+        Assert.NotNull(byId.Refusal);
+    }
+
+    [Fact]
+    [Trait("BR", "FWK-23")]
+    public async System.Threading.Tasks.Task Resume_Latest_TakesAWaitingSessionWhoseProcessIsDead_OrWhoseRunEnded()
+    {
+        var id = await WaitingSessionAsync();
+        var dead = EngineWith(new MockRunHistoryReader { Summary = MockRunHistoryReader.Running(id.ToString()), ProcessAlive = false });
+        var ended = EngineWith(new MockRunHistoryReader { Summary = MockRunHistoryReader.Running(id.ToString()) with { Status = Orkeon.Application.Runs.RunStatus.WaitingForInput }, ProcessAlive = true });
+
+        var afterDeath = await dead.ResumeAsync(Crew, ct: TestContext.Current.CancellationToken);
+        var afterExit = await ended.ResumeAsync(Crew, ct: TestContext.Current.CancellationToken);
+
+        Assert.Equal(id.ToString(), afterDeath.SessionId);
+        Assert.Equal(id.ToString(), afterExit.SessionId);
+    }
+
+    [Fact]
+    [Trait("BR", "FWK-23")]
+    public async System.Threading.Tasks.Task Resume_Latest_TakesAWaitingSession_WhenTheHistoryHoldsNoRecordOfIt()
+    {
+        // A run that stopped on a question and exited leaves a session and, with the history disabled, nothing else.
+        var id = await WaitingSessionAsync();
+
+        var latest = await _engine.ResumeAsync(Crew, ct: TestContext.Current.CancellationToken);
+
+        Assert.Equal(id.ToString(), latest.SessionId);
+        Assert.Null(latest.Refusal);
     }
 }

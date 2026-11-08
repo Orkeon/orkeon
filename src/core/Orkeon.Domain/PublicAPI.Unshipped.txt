@@ -394,3 +394,4 @@ override Orkeon.Domain.SharedKernel.ValueObjects.ToolCallDelta.ToString() -> str
 static Orkeon.Domain.SharedKernel.ValueObjects.LlmStreamEvent.ToolCallFragment(Orkeon.Domain.SharedKernel.ValueObjects.ToolCallDelta! toolCall) -> Orkeon.Domain.SharedKernel.ValueObjects.LlmStreamEvent!
 static Orkeon.Domain.SharedKernel.ValueObjects.ToolCallDelta.operator ==(Orkeon.Domain.SharedKernel.ValueObjects.ToolCallDelta? left, Orkeon.Domain.SharedKernel.ValueObjects.ToolCallDelta? right) -> bool
 static Orkeon.Domain.SharedKernel.ValueObjects.ToolCallDelta.operator !=(Orkeon.Domain.SharedKernel.ValueObjects.ToolCallDelta? left, Orkeon.Domain.SharedKernel.ValueObjects.ToolCallDelta? right) -> bool
+Orkeon.Domain.FileSystem.IFileSystemService.MoveAsync(string! srcVirtualPath, string! dstVirtualPath, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!

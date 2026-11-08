@@ -9,6 +9,7 @@ internal sealed class TaskInputScope
 {
     private static readonly AsyncLocal<TaskInputScope?> Slot = new();
     private int _questions;
+    private int _asked;
 
     private TaskInputScope(string key) => Key = key;
 
@@ -28,7 +29,20 @@ internal sealed class TaskInputScope
     }
 
     /// <summary>The id of the next question this task asks.</summary>
-    public string NextRequestId() => $"{Key}.{Interlocked.Increment(ref _questions)}";
+    public string NextRequestId()
+    {
+        Interlocked.Exchange(ref _asked, 1);
+        return $"{Key}.{Interlocked.Increment(ref _questions)}";
+    }
+
+    /// <summary>True once this task asked a question, in any attempt: the run stopping on a question is then this task's doing.</summary>
+    public bool Asked => Volatile.Read(ref _asked) != 0;
+
+    /// <summary>
+    /// A new attempt of the task starts: it replays the task from its start, so its questions are numbered from one again and
+    /// an answer given to <c>.1</c> in an earlier attempt is the one the same question finds now.
+    /// </summary>
+    public void BeginAttempt() => Interlocked.Exchange(ref _questions, 0);
 
     private sealed class Pop(TaskInputScope? previous) : IDisposable
     {

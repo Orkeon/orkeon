@@ -1,5 +1,8 @@
 using Orkeon.Application.Interfaces.Checkpointing;
 using Orkeon.Domain.Crew;
+using Orkeon.Domain.Common;
+using Orkeon.Domain.Task;
+using DomainCrew = Orkeon.Domain.Crew.Crew;
 using Orkeon.Domain.SharedKernel.ValueObjects;
 using Orkeon.Infrastructure.Orchestration;
 using Cov = Orkeon.Infrastructure.Tests.CovAutonomous.CovAutonomous_SequentialCrewOrchestratorTests;
@@ -49,5 +52,33 @@ public sealed class SuspendedKickoffTests
         Assert.True(output.Succeeded);
         Assert.Null(output.PendingInput);
         Assert.Equal(1, h.Checkpoint!.CompleteCount);
+    }
+
+    [Fact]
+    [Trait("BR", "FWK-04")]
+    public async Task KickoffAsync_WhenTheRunIsLeftWaitingForInput_DoesNotConsolidateItsMemory_ButDoesWhenItEnds()
+    {
+        var scope = new AsyncLocalRunScope();
+        var memory = new Orkeon.Infrastructure.Tests.Doubles.MockMemoryCoordinator();
+        var h = Cov.Build(withCheckpoint: true, runScope: scope, memory: memory);
+        var crew = DomainCrew.Create(new CrewCreateOptions { Goal = "goal", Name = "remembering", ProcessType = ProcessType.Sequential, MemoryEnabled = true });
+        crew.AddAgent(AgentId.Create());
+        crew.AddTask(TaskId.Create());
+        await h.Repo.AddAsync(crew, TestContext.Current.CancellationToken);
+        h.Factory.Strategy.OnExecute = () => scope.Current!.Suspend(Question);
+
+        var suspended = await h.Orchestrator.KickoffAsync(crew.Id, Cov.Input(), TestContext.Current.CancellationToken);
+        Assert.NotNull(suspended.PendingInput);
+        Assert.Equal(0, memory.Finished);
+
+        h.Factory.Strategy.OnExecute = null;
+        var crew2 = DomainCrew.Create(new CrewCreateOptions { Goal = "goal", Name = "remembering", ProcessType = ProcessType.Sequential, MemoryEnabled = true });
+        crew2.AddAgent(AgentId.Create());
+        crew2.AddTask(TaskId.Create());
+        await h.Repo.AddAsync(crew2, TestContext.Current.CancellationToken);
+        var ended = await h.Orchestrator.KickoffAsync(crew2.Id, Cov.Input(), TestContext.Current.CancellationToken);
+
+        Assert.True(ended.Succeeded);
+        Assert.Equal(1, memory.Finished);
     }
 }

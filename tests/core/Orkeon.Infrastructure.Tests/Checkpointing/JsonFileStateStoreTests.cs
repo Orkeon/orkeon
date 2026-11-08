@@ -190,4 +190,35 @@ public class JsonFileStateStoreTests
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = updatedAt ?? DateTime.UtcNow
         };
+
+    [Fact]
+    [Trait("BR", "FWK-07")]
+    public async Task Save_KeepsThePreviousSession_WhenTheWriteIsTorn()
+    {
+        var store = CreateStore(out var fake);
+        var failing = new Orkeon.Infrastructure.Tests.Doubles.FailingWriteFileSystemService(fake);
+        var guarded = new JsonFileStateStore(failing, BaseVirtualPath);
+        await guarded.SaveAsync(CreateState(SessionId1, CrewId1, SessionPhase.Running), TestContext.Current.CancellationToken);
+
+        failing.FailNextJsonWrites = 1;
+        await Assert.ThrowsAsync<IOException>(() =>
+            guarded.SaveAsync(CreateState(SessionId1, CrewId1, SessionPhase.Completed), TestContext.Current.CancellationToken));
+
+        var kept = await guarded.GetAsync(SessionId1, TestContext.Current.CancellationToken);
+        Assert.Equal(SessionPhase.Running, kept!.Phase);
+        Assert.Single(await guarded.ListAsync(TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
+    [Trait("BR", "FWK-07")]
+    public async Task Get_NamesTheSession_WhenItsCheckpointIsCorrupt()
+    {
+        var store = CreateStore(out var fake);
+        await fake.WriteAllTextAsync($"{BaseVirtualPath}/{SessionId1}.json", "{ \"sessionId\": ", TestContext.Current.CancellationToken);
+
+        var ex = await Assert.ThrowsAsync<InvalidDataException>(() => store.GetAsync(SessionId1, TestContext.Current.CancellationToken));
+
+        Assert.Contains(SessionId1, ex.Message, StringComparison.Ordinal);
+        Assert.IsType<System.Text.Json.JsonException>(ex.InnerException, exactMatch: false);
+    }
 }

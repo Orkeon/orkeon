@@ -2,6 +2,7 @@ using Orkeon.Application.Crew;
 using Orkeon.Application.Interfaces.Checkpointing;
 using Orkeon.Application.Interfaces.Services;
 using Orkeon.Infrastructure.HumanInput;
+using Orkeon.Infrastructure.Tests.Doubles;
 using Orkeon.Tests.Shared.Timing;
 
 namespace Orkeon.Infrastructure.Tests.HumanInput;
@@ -94,6 +95,37 @@ public sealed class DurableHumanInputProviderTests
         var state = await fx.StateAsync();
         Assert.Equal(otherId, state!.PendingInput!.RequestId);
         Assert.DoesNotContain(otherId, state.AnsweredInputs.Keys);
+    }
+
+    [Fact]
+    [Trait("BR", "FWK-23")]
+    public async System.Threading.Tasks.Task ShouldSuspendOnTheQuestionTheStoreHolds_WhenTheLoserOfTwoConcurrentAskersSuspendsFirst()
+    {
+        // A persists its question, then is held at a gate; B asks meanwhile, finds the slot taken and suspends the run
+        // first. The run must stop on A (what the store holds, what an answer can reach), never on B's unpersisted question.
+        using var fx = new DurableHumanInputFixture(HumanInputPause.Suspend);
+        var gated = new GatedPendingInputStore(fx.Manager) { HeldRequestId = "a#1.1" };
+        var provider = new DurableHumanInputProvider(
+            fx.Inner, fx.Scope, gated, fx.Broker, Microsoft.Extensions.Options.Options.Create(fx.Options), fx.Clock,
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<DurableHumanInputProvider>.Instance);
+        fx.EnterRun("unused#1");
+        async System.Threading.Tasks.Task<RunSuspendedException> AskAs(string task)
+        {
+            await System.Threading.Tasks.Task.Yield();
+            using var scope = Orkeon.Infrastructure.Checkpointing.TaskInputScope.Enter(task);
+            return await Assert.ThrowsAsync<RunSuspendedException>(() => provider.GetInputAsync(DurableHumanInputFixture.Ask($"{task}?"), Ct));
+        }
+
+        var a = AskAs("a#1");
+        await gated.Persisted;
+        var b = await AskAs("b#1");
+        gated.Release();
+        var aThrown = await a;
+
+        Assert.Equal("a#1.1", b.RequestId);
+        Assert.Equal("a#1.1", aThrown.RequestId);
+        Assert.Equal("a#1.1", fx.Run!.Suspension!.RequestId);
+        Assert.Equal("a#1.1", (await fx.StateAsync())!.PendingInput!.RequestId);
     }
 
     [Fact]

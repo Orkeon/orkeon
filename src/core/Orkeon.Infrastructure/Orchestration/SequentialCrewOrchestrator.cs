@@ -271,7 +271,7 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
                     else
                         await _checkpointManager.MarkFailedAsync(
                             sessionId, "crew-execution",
-                            new InvalidOperationException(RunFailureReason(crew, domainOutput.Error)),
+                            new InvalidOperationException(Orkeon.Infrastructure.Security.LogSanitizer.SanitizeString(RunFailureReason(crew, domainOutput.Error))),
                             CancellationToken.None).ConfigureAwait(false);
                 }
 
@@ -313,7 +313,7 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
 
                 // The run's token is not passed: a cancelled run still records its failure.
                 if (_checkpointManager != null && sessionId != null)
-                    await _checkpointManager.MarkFailedAsync(sessionId, "crew-execution", ex, CancellationToken.None).ConfigureAwait(false);
+                    await _checkpointManager.MarkFailedAsync(sessionId, "crew-execution", Orkeon.Infrastructure.Checkpointing.CheckpointErrors.Redacted(ex), CancellationToken.None).ConfigureAwait(false);
             }
 
             if (!output.Succeeded && output.PendingInput is null)
@@ -334,10 +334,12 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
             runIdentity?.Dispose();
             runSpan?.Dispose();
 
-            // The run is over, whatever its outcome: the crew's memory is consolidated when the host
+            // The run is over, whatever its terminal outcome: the crew's memory is consolidated when the host
             // asked for it (FWK-04). Never for a cancelled run, and never allowed to replace the run's
             // own result or exception.
-            if (crew is not null && crew.MemoryEnabled && _memoryCoordinator is not null && !cancellationToken.IsCancellationRequested)
+            // A run that stopped on a question to a human is not over: it resumes, and consolidates when it ends.
+            if (crew is not null && crew.MemoryEnabled && _memoryCoordinator is not null && !cancellationToken.IsCancellationRequested
+                && run?.Suspension is null)
                 await FinishMemoryAsync(_memoryCoordinator, crew.Id, cancellationToken).ConfigureAwait(false);
 
             // Success, failure and cancellation all end here: the crew's queued events
@@ -691,6 +693,10 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
 
         var pending = await store.GetPendingAsync(sessionId, ct).ConfigureAwait(false);
         var result = await store.AnswerAsync(sessionId, null, answer, ct).ConfigureAwait(false);
+        // The same answer given again after a crash is already stored: the run goes on (the command is idempotent).
+        if (result.Outcome == PendingInputAnswerOutcome.AlreadyAnswered)
+            return;
+
         if (result.Outcome != PendingInputAnswerOutcome.Accepted || pending is null)
             throw new InvalidOperationException($"Run {sessionId} is not waiting for an answer: --input has no question to answer.");
 

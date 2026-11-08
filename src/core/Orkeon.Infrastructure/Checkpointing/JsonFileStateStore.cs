@@ -53,7 +53,32 @@ public sealed partial class JsonFileStateStore : IStateStore
         {
             var filePath = GetFilePath(state.SessionId);
             var json = JsonSerializer.Serialize(state, JsonOptions);
-            await _fs.WriteAllTextAsync(filePath, json, ct).ConfigureAwait(false);
+            await WriteAtomicallyAsync(filePath, json, ct).ConfigureAwait(false);
+        }
+    }
+
+    // A session is rewritten at every checkpoint: writing the file in place would leave it truncated if the process died
+    // mid-write, and the run could never resume. The content goes to a sibling temp file, then replaces the target in one move.
+    private async Task WriteAtomicallyAsync(string filePath, string json, CancellationToken ct)
+    {
+        var temp = $"{filePath}.{Guid.NewGuid():N}.tmp";
+        try
+        {
+            await _fs.WriteAllTextAsync(temp, json, ct).ConfigureAwait(false);
+            await _fs.MoveAsync(temp, filePath, ct).ConfigureAwait(false);
+        }
+        catch
+        {
+            try
+            {
+                await _fs.DeleteAsync(temp, recursive: false, CancellationToken.None).ConfigureAwait(false);
+            }
+            catch (Exception cleanup) when (cleanup is IOException or UnauthorizedAccessException or Orkeon.Domain.FileSystem.FileAccessDeniedException)
+            {
+                // The write failure is the one reported; a leftover temp file is ignored by the listing.
+            }
+
+            throw;
         }
     }
 
@@ -64,7 +89,14 @@ public sealed partial class JsonFileStateStore : IStateStore
         var filePath = GetFilePath(sessionId);
         var json = await _fs.TryReadAllTextAsync(filePath, ct).ConfigureAwait(false);
         if (json is null) return null;
-        return JsonSerializer.Deserialize<SessionState>(json, JsonOptions);
+        try
+        {
+            return JsonSerializer.Deserialize<SessionState>(json, JsonOptions);
+        }
+        catch (JsonException ex)
+        {
+            throw new InvalidDataException($"The checkpoint of session '{sessionId}' is corrupt and cannot be read: {ex.Message}", ex);
+        }
     }
 
     /// <inheritdoc />
