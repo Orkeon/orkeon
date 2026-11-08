@@ -184,7 +184,10 @@ The client introduces itself as `Orkeon` `1.0.0`.
   person; the following renewals use the refresh token the provider issued, and ask for a new code only when
   it is refused. It is available in `orkeon run` and the REPL, which register an `IOAuthLoginInteraction` on
   their console. **`orkeon-host` registers none**, so a server in `oauth2-device` is set aside at startup with
-  an error naming it; use `oauth2-client-credentials` there.
+  an error naming it; use `oauth2-client-credentials` there. The sign-in is done **before** the connection's
+  handshake and before a call that finds the token expired, outside `ConnectTimeout` and `CallTimeout`: the
+  wait for the person is bounded by the lifetime of the device code, not by those timeouts. Closing a session
+  (the `DELETE` of `Mcp-Session-Id`) never starts a sign-in.
 - The token endpoint is reached through its own `HttpClient`, registered as `orkeon-mcp-oauth`
   (`McpServiceExtensions.OAuthHttpClientName`), with the default proxy and timeout and no redirect, and
   excluded from the LLM exchange log. The client secret and the tokens are never written in an error or a
@@ -334,10 +337,14 @@ stdout, one per line; closing stdin ends the server.
   stdout carries the protocol, so an `ask` would have no channel to a human and every call needing approval would be
   refused. A crew served with `--crew` is another matter: its own agents are gated as in `orkeon run`.
 - **`--tools a,b,…`** serves the named tools only (comma-separated); a name the host does not
-  have refuses the start, naming it.
+  have refuses the start, naming it. The other tools are neither listed nor callable, even those an
+  upstream MCP server registers later (`tools/list_changed`): the allow-list is the server's own
+  (`MCP:Server:AllowedTools`), not an unregistration. The tools of `--crew` are not subject to it.
 - **Requests run concurrently** (`--max-concurrency <n>`, at least 1, default 4, or
   `MCP:Server:MaxConcurrency`). Each request is one task; at most `n` run at once and the
-  others wait their turn, so a fifth slow call starts when one of the first four ends. The
+  others wait their turn, so a fifth slow call starts when one of the first four ends. A `--crew` call
+  holds no slot: it waits for its crew (one run per crew at a time), so `tools/list` and `ping` stay
+  answered meanwhile. The
   answers go through one channel to one writer: two answers never interleave on stdout, and
   they may arrive in a different order than the requests (the client matches them by `id`).
   When stdin closes, every request already read is answered before the server ends.

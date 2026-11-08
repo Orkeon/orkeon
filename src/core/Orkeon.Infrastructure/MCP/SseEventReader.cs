@@ -11,14 +11,70 @@ internal readonly record struct SseEvent(string? Id, string Event, string Data, 
 /// blank line, without waiting for the stream to end. Several <c>data:</c> lines of one event are joined with
 /// a newline; comments and unknown fields are skipped. An event the stream ends in the middle of (no blank
 /// line after it) is discarded, as the SSE specification says: a cut connection leaves truncated data.
+/// An event with an <c>id</c> or a <c>retry</c> but no <c>data</c> (the priming event of the 2025-11-25
+/// specification) is handed out with an empty <see cref="SseEvent.Data"/>: the caller keeps the id and the
+/// hint and dispatches nothing. A line longer than <see cref="MaxLineLength"/> characters ends the read with an
+/// <see cref="InvalidDataException"/>: a server cannot make the client buffer without end.
 /// </summary>
 internal static class SseEventReader
 {
-    public static async IAsyncEnumerable<SseEvent> ReadAsync(
-        Stream stream, [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken ct = default)
+    /// <summary>The longest line, in characters, the reader accepts.</summary>
+    internal const int MaxLineLength = 16 * 1024 * 1024;
+
+    /// <summary>Reads lines ended by LF, CR or CRLF, none longer than <paramref name="max"/>.</summary>
+    private sealed class BoundedLineReader(TextReader reader, int max)
+    {
+        private readonly char[] _buffer = new char[4096];
+        private readonly StringBuilder _line = new();
+        private int _position;
+        private int _length;
+        private bool _skipLf;
+
+        public async ValueTask<string?> ReadLineAsync(CancellationToken ct)
+        {
+            _line.Clear();
+            while (true)
+            {
+                if (_position == _length)
+                {
+                    _length = await reader.ReadAsync(_buffer.AsMemory(), ct).ConfigureAwait(false);
+                    _position = 0;
+                    if (_length == 0)
+                        return _line.Length > 0 ? _line.ToString() : null;
+                }
+
+                var c = _buffer[_position++];
+                if (_skipLf)
+                {
+                    _skipLf = false;
+                    if (c == '\n')
+                        continue;
+                }
+
+                if (c == '\n')
+                    return _line.ToString();
+                if (c == '\r')
+                {
+                    _skipLf = true;
+                    return _line.ToString();
+                }
+
+                if (_line.Length >= max)
+                    throw new InvalidDataException($"An SSE line is longer than {max} characters: the stream is refused.");
+                _line.Append(c);
+            }
+        }
+    }
+
+    public static IAsyncEnumerable<SseEvent> ReadAsync(Stream stream, CancellationToken ct = default) =>
+        ReadAsync(stream, MaxLineLength, ct);
+
+    internal static async IAsyncEnumerable<SseEvent> ReadAsync(
+        Stream stream, int maxLineLength, [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(stream);
-        using var reader = new StreamReader(stream, Encoding.UTF8, detectEncodingFromByteOrderMarks: false, leaveOpen: true);
+        using var text = new StreamReader(stream, Encoding.UTF8, detectEncodingFromByteOrderMarks: false, leaveOpen: true);
+        var reader = new BoundedLineReader(text, maxLineLength);
         string? id = null;
         var eventType = "";
         var data = new StringBuilder();
@@ -33,7 +89,7 @@ internal static class SseEventReader
 
             if (line.Length == 0)
             {
-                if (hasData)
+                if (hasData || id is not null || retry is not null)
                     yield return new SseEvent(id, eventType.Length == 0 ? "message" : eventType, data.ToString(), retry);
                 id = null;
                 eventType = "";

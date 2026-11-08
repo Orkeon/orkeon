@@ -30,6 +30,9 @@ public sealed partial class McpToolProvider : IAsyncDisposable, IDisposable
     /// <summary>The method of the notification that tells the client a subscribed resource changed.</summary>
     private const string ResourceUpdatedMethod = "notifications/resources/updated";
 
+    /// <summary>How long a <c>subscriptions/listen</c> stream must stay open before its end resets the backoff.</summary>
+    internal static readonly TimeSpan ListenHealthyAfter = TimeSpan.FromSeconds(5);
+
     /// <summary>
     /// How long the client waits after a <c>tools/list_changed</c> before listing again: the notifications
     /// that arrive in the meantime are answered by that one listing.
@@ -66,6 +69,9 @@ public sealed partial class McpToolProvider : IAsyncDisposable, IDisposable
         public McpServerConfig? Config { get; init; }
 
         public bool TrustAnnotations { get; init; }
+
+        /// <summary>The server's authenticator when it can sign a person in, to do so outside the timeouts.</summary>
+        public IMcpSignInAuthenticator? SignIn { get; init; }
 
         /// <summary>One re-synchronisation at a time per server.</summary>
         public SemaphoreSlim Gate { get; } = new(1, 1);
@@ -275,6 +281,9 @@ public sealed partial class McpToolProvider : IAsyncDisposable, IDisposable
         _logger = loggerFactory?.CreateLogger<McpToolProvider>() ?? NullLogger<McpToolProvider>.Instance;
     }
 
+    private static Func<CancellationToken, ValueTask>? BeforeCallOf(IMcpSignInAuthenticator? signIn) =>
+        signIn is null ? null : signIn.EnsureSignedInAsync;
+
     private McpOAuthServices OAuthServices() => new(_httpClientFactory, _loginInteraction, _time);
 
     /// <summary>
@@ -316,7 +325,7 @@ public sealed partial class McpToolProvider : IAsyncDisposable, IDisposable
 
             try
             {
-                await ConnectAndRegisterAsync(serverId, client, transport, config.TrustAnnotations, config, ct).ConfigureAwait(false);
+                await ConnectAndRegisterAsync(serverId, client, transport, config.TrustAnnotations, config, ct, authenticator as IMcpSignInAuthenticator).ConfigureAwait(false);
             }
             catch
             {
@@ -397,8 +406,13 @@ public sealed partial class McpToolProvider : IAsyncDisposable, IDisposable
     /// tool that held the name keeps it.
     /// </summary>
     private async Task ConnectAndRegisterAsync(
-        string serverId, McpClient client, IMcpTransport transport, bool trustAnnotations, McpServerConfig? config, CancellationToken ct)
+        string serverId, McpClient client, IMcpTransport transport, bool trustAnnotations, McpServerConfig? config, CancellationToken ct,
+        IMcpSignInAuthenticator? signIn = null)
     {
+        // A person may owe a sign-in (the device flow): it waits for the code's lifetime, not for ConnectTimeout.
+        if (signIn is not null)
+            await signIn.EnsureSignedInAsync(ct).ConfigureAwait(false);
+
         // Dual-era connection: server/discover probe, legacy initialize fallback. A configured server
         // answers within its ConnectTimeout, whoever connects it: the shared HTTP client has no timeout.
         using var guard = CancellationTokenSource.CreateLinkedTokenSource(ct);
@@ -426,13 +440,14 @@ public sealed partial class McpToolProvider : IAsyncDisposable, IDisposable
         {
             Config = config,
             TrustAnnotations = trustAnnotations,
+            SignIn = signIn,
         };
         clientEntry.SetUnmatched(unmatched);
         try
         {
             foreach (var toolDef in kept)
             {
-                var adapter = new McpToolAdapter(toolDef, client, trustAnnotations, config?.CallTimeout);
+                var adapter = new McpToolAdapter(toolDef, client, trustAnnotations, config?.CallTimeout) { BeforeCall = BeforeCallOf(signIn) };
                 if (await _toolRegistry.RegisterToolAsync(adapter).ConfigureAwait(false))
                 {
                     clientEntry.Remember(toolDef.Name, adapter, Fingerprint(toolDef));
@@ -689,7 +704,11 @@ public sealed partial class McpToolProvider : IAsyncDisposable, IDisposable
                     }
 
                     first = false;
+                    var opened = _time.GetTimestamp();
                     await entry.Client.ListenAsync(entry.SubscribedUris(), round.Token).ConfigureAwait(false);
+
+                    // A stream that ends at once is no healthier than one that fails: the attempts go on counting.
+                    failed = _time.GetElapsedTime(opened) < ListenHealthyAfter;
                 }
                 catch (OperationCanceledException) when (ct.IsCancellationRequested)
                 {
@@ -771,6 +790,9 @@ public sealed partial class McpToolProvider : IAsyncDisposable, IDisposable
     /// </summary>
     private async Task ResyncToolsAsync(string serverId, McpClientEntry entry, CancellationToken ct)
     {
+        if (entry.SignIn is { } signIn)
+            await signIn.EnsureSignedInAsync(ct).ConfigureAwait(false);
+
         await entry.Gate.WaitAsync(ct).ConfigureAwait(false);
         try
         {
@@ -793,7 +815,7 @@ public sealed partial class McpToolProvider : IAsyncDisposable, IDisposable
                 }
                 else if (held.Fingerprint != Fingerprint(definition))
                 {
-                    var adapter = new McpToolAdapter(definition, entry.Client, entry.TrustAnnotations, entry.Config?.CallTimeout);
+                    var adapter = new McpToolAdapter(definition, entry.Client, entry.TrustAnnotations, entry.Config?.CallTimeout) { BeforeCall = BeforeCallOf(entry.SignIn) };
                     if (await _toolRegistry.ReplaceToolAsync(held.Adapter, adapter).ConfigureAwait(false))
                         entry.Remember(name, adapter, Fingerprint(definition));
                     else
@@ -806,7 +828,7 @@ public sealed partial class McpToolProvider : IAsyncDisposable, IDisposable
             {
                 if (entry.Holds(name))
                     continue;
-                var adapter = new McpToolAdapter(definition, entry.Client, entry.TrustAnnotations, entry.Config?.CallTimeout);
+                var adapter = new McpToolAdapter(definition, entry.Client, entry.TrustAnnotations, entry.Config?.CallTimeout) { BeforeCall = BeforeCallOf(entry.SignIn) };
                 if (await _toolRegistry.RegisterToolAsync(adapter).ConfigureAwait(false))
                 {
                     entry.Remember(name, adapter, Fingerprint(definition));

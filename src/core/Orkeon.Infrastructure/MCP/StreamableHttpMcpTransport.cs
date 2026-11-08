@@ -287,8 +287,8 @@ public partial class StreamableHttpMcpTransport : IMcpTransport
             {
                 if (_sessionId != staleSession)
                     return;
-                _sessionId = null;
-                _protocolVersion = null;
+                // The stale id stays until the new one is captured: a re-initialisation that fails leaves the
+                // client able to meet the same 404 again, and to start over.
                 initializeJson = _initializeJson;
             }
 
@@ -300,6 +300,14 @@ public partial class StreamableHttpMcpTransport : IMcpTransport
                 body = LastData(body);
             if (JsonSerializer.Deserialize<JsonRpcResponse>(body) is { Error: null } answer)
                 RememberNegotiatedVersion(answer);
+
+            lock (_state)
+            {
+                // A server that no longer hands out a session id answers the stale one's end: the client is sessionless.
+                if (_sessionId == staleSession)
+                    _sessionId = null;
+                _lastEventId = null;
+            }
 
             var initialized = JsonSerializer.Serialize(new JsonRpcNotification { Method = InitializedMethod });
             using var done = await PostOnceAsync(initialized, InitializedMethod, null, ct).ConfigureAwait(false);
@@ -345,7 +353,8 @@ public partial class StreamableHttpMcpTransport : IMcpTransport
 
         if (version != null)
             message.Headers.TryAddWithoutValidation(McpProtocol.ProtocolVersionHeader, version);
-        if (session != null)
+        // An initialize starts a session: it never carries the id of one that ended.
+        if (session != null && method != "initialize")
             message.Headers.TryAddWithoutValidation(SessionHeader, session);
 
         // The entity the request names: a tool or prompt by name, a resource by uri (the reference server refuses a
@@ -354,9 +363,16 @@ public partial class StreamableHttpMcpTransport : IMcpTransport
         {
             var property = method == "resources/read" ? "uri" : "name";
             if (p.TryGetProperty(property, out var entity) && entity.ValueKind == JsonValueKind.String)
-                message.Headers.TryAddWithoutValidation(McpProtocol.NameHeader, entity.GetString());
+                message.Headers.TryAddWithoutValidation(McpProtocol.NameHeader, HeaderSafe(entity.GetString()!));
         }
     }
+
+    /// <summary>
+    /// A name or uri as a header value: printable ASCII as it is, anything else (a line break, a control character,
+    /// a non-ASCII letter) percent-encoded, so that no value a server or a model chose can split the header or fail the send.
+    /// </summary>
+    internal static string HeaderSafe(string value) =>
+        value.All(c => c is >= ' ' and <= '~') ? value : Uri.EscapeDataString(value);
 
     /// <summary>
     /// Reads an SSE-framed answer event by event: notifications go to <see cref="Notifications"/> as they
@@ -372,6 +388,10 @@ public partial class StreamableHttpMcpTransport : IMcpTransport
         {
             await foreach (var sse in SseEventReader.ReadAsync(stream, ct).ConfigureAwait(false))
             {
+                // The priming event (an id, no data) carries nothing to dispatch.
+                if (sse.Data.Length == 0)
+                    continue;
+
                 var frame = ReadFrame(sse.Data);
                 switch (frame.Kind)
                 {
@@ -541,7 +561,7 @@ public partial class StreamableHttpMcpTransport : IMcpTransport
                 {
                     await foreach (var sse in SseEventReader.ReadAsync(stream, ct).ConfigureAwait(false))
                     {
-                        if (sse.Id is not null)
+                        if (!string.IsNullOrEmpty(sse.Id))
                         {
                             lock (_state)
                                 _lastEventId = sse.Id;
@@ -549,6 +569,9 @@ public partial class StreamableHttpMcpTransport : IMcpTransport
 
                         if (sse.RetryMilliseconds is { } retry)
                             serverRetry = TimeSpan.FromMilliseconds(retry);
+
+                        if (sse.Data.Length == 0)
+                            continue;
 
                         var frame = ReadFrame(sse.Data);
                         if (frame.Kind == FrameKind.Notification)
@@ -598,6 +621,9 @@ public partial class StreamableHttpMcpTransport : IMcpTransport
     [LoggerMessage(Level = LogLevel.Warning, Message = "The GET stream of MCP server '{Url}' failed: it is opened again after a delay")]
     private partial void LogGetStreamFailed(Exception ex, Uri url);
 
+    [LoggerMessage(Level = LogLevel.Debug, Message = "MCP server '{Url}' was not told the session is over")]
+    private partial void LogEndSessionFailed(Exception ex, Uri url);
+
     [LoggerMessage(Level = LogLevel.Warning, Message = "MCP server '{Url}' did not take the refusal of its request")]
     private partial void LogRefusalFailed(Exception ex, Uri url);
 
@@ -631,6 +657,7 @@ public partial class StreamableHttpMcpTransport : IMcpTransport
     }
 
     /// <summary>Tells the server the session is over (DELETE with its id), once and without insisting.</summary>
+    [SuppressMessage("Design", "CA1031", Justification = "Fault barrier of the disposal: whatever goes wrong, the session ends with the connection and the other servers are still disposed.")]
     private async Task EndSessionAsync()
     {
         var session = SessionId;
@@ -639,16 +666,21 @@ public partial class StreamableHttpMcpTransport : IMcpTransport
 
         try
         {
+            using var guard = new CancellationTokenSource(TimeSpan.FromSeconds(5));
             using var message = new HttpRequestMessage(HttpMethod.Delete, _url);
             message.Headers.TryAddWithoutValidation(SessionHeader, session);
-            if (_authenticator is not null)
-                await _authenticator.ApplyAsync(message, CancellationToken.None).ConfigureAwait(false);
-            using var guard = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+            // The credential in cache, under the guard, and never a sign-in: closing must not ask a person for a code.
+            if (_authenticator is IMcpSignInAuthenticator signIn)
+                await signIn.ApplyWithoutSignInAsync(message, guard.Token).ConfigureAwait(false);
+            else if (_authenticator is not null)
+                await _authenticator.ApplyAsync(message, guard.Token).ConfigureAwait(false);
             using var response = await _httpClient.SendAsync(message, guard.Token).ConfigureAwait(false);
         }
-        catch (Exception ex) when (ex is HttpRequestException or OperationCanceledException or ObjectDisposedException)
+        catch (Exception ex)
         {
-            // The server is gone or does not take DELETE: the session ends with the connection.
+            // The server is gone, does not take DELETE, or the credential cannot be had: the session ends with the
+            // connection, and the disposal goes on (the other servers are disposed after this one).
+            LogEndSessionFailed(ex, _url);
         }
     }
 }

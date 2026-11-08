@@ -9,7 +9,7 @@ namespace Orkeon.Infrastructure.MCP.Auth;
 /// the server answers 401, <see cref="HandleUnauthorizedAsync"/> renews it once however many requests were refused
 /// together. The client secret and the tokens never appear in an error: the provider's messages are scrubbed.
 /// </summary>
-internal sealed class OAuthMcpAuthenticator : IMcpRequestAuthenticator, IDisposable
+internal sealed class OAuthMcpAuthenticator : IMcpSignInAuthenticator, IDisposable
 {
     private static readonly TimeSpan RenewMargin = TimeSpan.FromSeconds(60);
 
@@ -51,6 +51,19 @@ internal sealed class OAuthMcpAuthenticator : IMcpRequestAuthenticator, IDisposa
         ArgumentNullException.ThrowIfNull(request);
         var token = await CurrentAsync(rejected: null, ct).ConfigureAwait(false);
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+    }
+
+    /// <inheritdoc />
+    public async ValueTask EnsureSignedInAsync(CancellationToken ct = default) =>
+        await CurrentAsync(rejected: null, ct).ConfigureAwait(false);
+
+    /// <inheritdoc />
+    public ValueTask ApplyWithoutSignInAsync(HttpRequestMessage request, CancellationToken ct = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        if (_tokens is { } held)
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", held.AccessToken);
+        return ValueTask.CompletedTask;
     }
 
     public async ValueTask<bool> HandleUnauthorizedAsync(string? rejectedCredential, CancellationToken ct = default)

@@ -13,6 +13,10 @@ internal static class McpRequestAuthenticators
 {
     private const string EnvPrefix = "env:";
 
+    /// <summary>Headers the transport owns: a static value would overwrite the one it computes.</summary>
+    private static readonly HashSet<string> ReservedHeaders =
+        new(["Accept", "Content-Type", "Mcp-Session-Id"], StringComparer.OrdinalIgnoreCase);
+
     /// <summary>
     /// Returns the authenticator for <paramref name="config"/>, or <see langword="null"/> when it
     /// declares no header and no auth.
@@ -47,6 +51,12 @@ internal static class McpRequestAuthenticators
             {
                 throw new McpServerConfigurationException(key,
                     $"{key} is not accepted: a credential is never written in the settings. Use {prefix}:Auth with TokenEnv.");
+            }
+
+            if (ReservedHeaders.Contains(name))
+            {
+                throw new McpServerConfigurationException(key,
+                    $"{key} is not accepted: the transport sets {name} itself and a fixed value would overwrite it.");
             }
 
             headers[name] = raw.StartsWith(EnvPrefix, StringComparison.OrdinalIgnoreCase)

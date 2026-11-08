@@ -191,6 +191,9 @@ Le client se présente comme `Orkeon` `1.0.0`.
   redemandent un code que s'il est refusé. Disponible dans `orkeon run` et la REPL, qui enregistrent une
   `IOAuthLoginInteraction` sur leur console. **`orkeon-host` n'en enregistre aucune** : un serveur en
   `oauth2-device` y est écarté au démarrage avec une erreur qui le nomme ; utilisez `oauth2-client-credentials`.
+  La connexion se fait **avant** la poignée de main de la connexion et avant un appel qui trouve le jeton expiré,
+  hors de `ConnectTimeout` et `CallTimeout` : l'attente de la personne est bornée par la durée de vie du code
+  d'appareil, pas par ces délais. La fermeture d'une session (le `DELETE` de `Mcp-Session-Id`) ne lance jamais de connexion.
 - Le point de terminaison de jeton est joint par son propre `HttpClient`, enregistré sous le nom `orkeon-mcp-oauth`
   (`McpServiceExtensions.OAuthHttpClientName`), proxy et délai par défaut, sans redirection, exclu du journal
   d'échanges LLM. Le secret du client et les jetons ne sont jamais écrits dans une erreur ni une ligne de log :
@@ -345,11 +348,14 @@ réponses sur son stdout, une par ligne ; fermer stdin arrête le serveur.
   porte le protocole, un `ask` n'aurait aucun canal vers un humain et tout appel à approuver serait refusé. Une crew
   servie avec `--crew` est un autre cas : ses propres agents sont gardés comme dans `orkeon run`.
 - **`--tools a,b,…`** ne sert que les outils nommés (séparés par des virgules) ; un nom que
-  l'hôte n'a pas refuse le démarrage en le nommant.
+  l'hôte n'a pas refuse le démarrage en le nommant. Les autres outils ne sont ni listés ni appelables, même
+  ceux qu'un serveur MCP amont enregistre plus tard (`tools/list_changed`) : la liste blanche est celle du serveur
+  (`MCP:Server:AllowedTools`), pas un désenregistrement. Les outils de `--crew` n'y sont pas soumis.
 - **Les requêtes s'exécutent en concurrence** (`--max-concurrency <n>`, au moins 1, 4 par
   défaut, ou `MCP:Server:MaxConcurrency`). Chaque requête est une tâche ; `n` au plus
   tournent à la fois et les autres attendent leur tour : un cinquième appel lent démarre
-  quand l'un des quatre premiers se termine. Les réponses passent par un canal vers un seul
+  quand l'un des quatre premiers se termine. Un appel de `--crew` ne tient aucun emplacement : il attend sa
+  crew (une exécution à la fois par crew), donc `tools/list` et `ping` restent servis. Les réponses passent par un canal vers un seul
   écrivain : deux réponses ne s'entrelacent jamais sur stdout, et elles peuvent arriver dans
   un autre ordre que les requêtes (le client les rapproche par `id`). Quand stdin se ferme,
   chaque requête déjà lue reçoit sa réponse avant que le serveur ne s'arrête.

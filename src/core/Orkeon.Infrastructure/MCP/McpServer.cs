@@ -55,6 +55,7 @@ public partial class McpServer
     private readonly ILogger _logger;
     private readonly IFileSystemService _fileSystem;
     private readonly IMcpServerExtension? _extension;
+    private readonly HashSet<string>? _allowed;
 
     /// <summary>Initializes a new instance of <see cref="McpServer"/>.</summary>
     /// <param name="toolRegistry">The tool registry exposing Orkeon tools.</param>
@@ -104,6 +105,9 @@ public partial class McpServer
             throw new ArgumentOutOfRangeException(nameof(options), _options.MaxResourceBytes, "McpServerOptions.MaxResourceBytes must be at least 1.");
         _fileSystem = fileSystem;
         _logger = logger ?? NullLogger<McpServer>.Instance;
+        _allowed = _options.AllowedTools.Count == 0
+            ? null
+            : new HashSet<string>(_options.AllowedTools, StringComparer.OrdinalIgnoreCase);
     }
 
     /// <summary>
@@ -178,8 +182,9 @@ public partial class McpServer
             }
             catch (Exception ex)
             {
+                // The details stay in the log: a message may carry a path, a connection string, a stack of the host.
                 LogErrorProcessingRequest(ex, request.Method);
-                return CreateErrorResponse(request.Id, JsonRpcErrorCodes.InternalError, ex.Message);
+                return CreateErrorResponse(request.Id, JsonRpcErrorCodes.InternalError, "Internal error while processing the request.");
             }
         }
     }
@@ -315,7 +320,11 @@ public partial class McpServer
         var cancelled = false;
         try
         {
-            await gate.WaitAsync(cts.Token).ConfigureAwait(false);
+            // A call of a tool the extension runs (a crew) is bounded by the extension itself, one run per crew: it
+            // holds no slot of the server, or its callers waiting for a crew would starve tools/list and ping.
+            var slotted = !CallsExtensionTool(request);
+            if (slotted)
+                await gate.WaitAsync(cts.Token).ConfigureAwait(false);
             try
             {
                 response = await ProcessRequestWithNotificationsAsync(
@@ -325,7 +334,8 @@ public partial class McpServer
             }
             finally
             {
-                gate.Release();
+                if (slotted)
+                    gate.Release();
             }
 
             // A cancelled request is not answered (MCP cancellation).
@@ -347,6 +357,13 @@ public partial class McpServer
         if (response != null && !cancelled)
             outbox.TryWrite(JsonSerializer.Serialize(response));
     }
+
+    private bool CallsExtensionTool(JsonRpcRequest request) =>
+        _extension is { } extension
+        && request.Method == "tools/call"
+        && request.Params is { ValueKind: JsonValueKind.Object } p
+        && p.TryGetProperty("name", out var name) && name.ValueKind == JsonValueKind.String
+        && extension.OwnsTool(name.GetString()!);
 
     private sealed record LineSink(TextWriter Writer);
 
@@ -530,6 +547,7 @@ public partial class McpServer
 
         // Deterministic order (2026-07-28 SHOULD): stable client caches, better prompt caching.
         var mcpTools = tools
+            .Where(t => IsAllowed(t.Name))
             .Select(t => new McpToolDefinition
             {
                 Name = t.Name,
@@ -576,7 +594,9 @@ public partial class McpServer
             return CreateSuccessResponse(request.Id, extended);
         }
 
-        var tool = await _toolRegistry.GetToolByNameAsync(callParams.Name).ConfigureAwait(false);
+        var tool = IsAllowed(callParams.Name)
+            ? await _toolRegistry.GetToolByNameAsync(callParams.Name).ConfigureAwait(false)
+            : null;
         if (tool == null)
         {
             return CreateErrorResponse(request.Id, JsonRpcErrorCodes.InvalidParams,
@@ -624,6 +644,10 @@ public partial class McpServer
 
         return CreateSuccessResponse(request.Id, mcpResult);
     }
+
+    /// <summary>Whether a registry tool is served: <see cref="McpServerOptions.AllowedTools"/> is empty or names it.</summary>
+    private bool IsAllowed(string name) =>
+        _allowed is null || _allowed.Contains(name);
 
     private McpCapabilityInfo? ResourcesCapability() => _options.ExposeOutput ? new McpCapabilityInfo() : null;
 

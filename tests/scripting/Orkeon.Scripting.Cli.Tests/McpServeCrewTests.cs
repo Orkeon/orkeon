@@ -163,4 +163,29 @@ public sealed class McpServeCrewTests
         Assert.Equal(1, model.Cancelled);
         Assert.Empty(console.Stdout);
     }
+
+    [Fact]
+    [Trait("BR", "FWK-final-review")]
+    public async Task An_interrupt_ends_the_serve_and_disposes_the_crews_while_stdin_stays_open()
+    {
+        using var scratch = new ScriptScratch();
+        var crew = scratch.WriteFile("crew.yaml", Crew);
+        var settings = scratch.WriteFile("appsettings.json", """{ "RaggableTree": { "Enabled": false } }""");
+        using var console = new FakeGatedStdinConsole();
+        var serve = McpCommand.ServeAsync(console, new McpServeCommandOptions
+        {
+            SettingsPath = settings,
+            Crews = [crew],
+            AllowExternalMounts = true,
+            WorkingDirectoryOverride = scratch.Root,
+            ConfigureCrewServices = (_, services) => services.AddScoped<IAgentExecutionService>(_ => new FakeAgentExecutionService()),
+        });
+        console.Send("""{"jsonrpc":"2.0","id":1,"method":"tools/list"}""");
+        await Polling.WaitUntilAsync(() => console.Stdout.Contains("run_crew_report_writer", StringComparison.Ordinal), TimeSpan.FromMinutes(2));
+
+        Assert.True(console.Interrupt());
+        var exit = await serve.WaitAsync(TimeSpan.FromMinutes(2), TestContext.Current.CancellationToken);
+
+        Assert.Equal(Program.ExitOk, exit);
+    }
 }

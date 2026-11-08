@@ -468,7 +468,12 @@ internal sealed partial class McpCrewToolHost : IMcpServerExtension, IDisposable
         }
         catch (Exception ex)
         {
-            return Text($"The crew failed: {ex.Message}", isError: true);
+            // The details go to the log of the crew's host: a message may carry a path or a secret of the run.
+            LogCrewFailed(
+                (ILogger?)crew.Entry.Host.Services.GetService<ILoggerFactory>()?.CreateLogger<McpCrewToolHost>()
+                    ?? Microsoft.Extensions.Logging.Abstractions.NullLogger.Instance,
+                ex, crew.Name);
+            return Text("The crew failed. The details are in the log of the server.", isError: true);
         }
         finally
         {
@@ -565,6 +570,9 @@ internal sealed partial class McpCrewToolHost : IMcpServerExtension, IDisposable
             crew.Gate.Dispose();
         }
     }
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "The crew '{Crew}' failed during an MCP call")]
+    private static partial void LogCrewFailed(ILogger logger, Exception ex, string crew);
 
     /// <summary>Disposes the host of every crew.</summary>
     public void Dispose() => DisposeAll(_crews);

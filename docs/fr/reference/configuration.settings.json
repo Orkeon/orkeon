@@ -333,6 +333,7 @@
     "MCP:Server:ExposeOutput": "Si le serveur sert /output comme ressources MCP en lecture seule (orkeon:///output/<chemin>). Désactivé par défaut : seuls les outils sont exposés. /workspace et tout autre montage ne le sont jamais. `orkeon mcp serve --expose-output` l'active.",
     "MCP:Server:MaxConcurrency": "Nombre de requêtes que la boucle stdio exécute à la fois ; les autres attendent leur tour. Au moins 1. `orkeon mcp serve --max-concurrency` le remplace.",
     "MCP:Server:MaxResourceBytes": "Taille du plus gros fichier que resources/read rend, en octets (1 048 576 par défaut) ; un fichier plus gros est refusé.",
+    "MCP:Server:AllowedTools": "Les outils du registre que le serveur liste et exécute, par nom (insensible à la casse) ; vide les sert tous. Un outil hors de la liste n'est ni listé ni appelable, quel que soit celui qui l'enregistre et quand : un outil qu'un serveur MCP ajoute plus tard reste dehors. Les outils qu'une extension sert (`--crew`) n'y sont pas soumis. `orkeon mcp serve --tools` le définit.",
     "MCP:Server:Name": "Nom du serveur annoncé à l'initialisation MCP.",
     "MCP:Server:ResourcesPageSize": "Nombre de ressources d'une page de resources/list (100 par défaut). Au moins 1.",
     "MCP:Server:Version": "Version du serveur annoncée à l'initialisation MCP.",

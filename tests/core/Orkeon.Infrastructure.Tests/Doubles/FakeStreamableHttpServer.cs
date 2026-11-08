@@ -48,6 +48,9 @@ internal sealed class FakeStreamableHttpServer : IAsyncDisposable
     /// <summary>Whether <c>initialize</c> hands out a session id.</summary>
     public bool UseSessions { get; init; }
 
+    /// <summary>Whether <c>initialize</c> is answered 500, as a server that is up but cannot start a session.</summary>
+    public volatile bool FailInitialize;
+
     /// <summary>Whether the server announces <c>resources.subscribe</c>.</summary>
     public bool ResourceSubscribe { get; init; } = true;
 
@@ -191,6 +194,12 @@ internal sealed class FakeStreamableHttpServer : IAsyncDisposable
         if (request.HttpMethod == "DELETE")
         {
             response.StatusCode = 200;
+            return;
+        }
+
+        if (FailInitialize && method == "initialize")
+        {
+            response.StatusCode = 500;
             return;
         }
 

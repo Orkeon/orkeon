@@ -12,6 +12,7 @@ internal sealed class FakeGatedStdinConsole : IRunnerConsole, IDisposable
     private readonly StringWriter _out = new();
     private readonly StringWriter _error = new();
     private readonly GatedReader _in = new();
+    private readonly InterruptHandlers _interrupts = new();
 
     public string Stdout => _out.ToString();
 
@@ -31,20 +32,16 @@ internal sealed class FakeGatedStdinConsole : IRunnerConsole, IDisposable
     /// <summary>Ends the verb's stdin.</summary>
     public void CompleteInput() => _in.Lines.Writer.TryComplete();
 
-    public IDisposable OnInterrupt(Func<bool> handler) => new Registration();
+    public IDisposable OnInterrupt(Func<bool> handler) => _interrupts.Add(handler);
+
+    /// <summary>Plays a Ctrl+C: calls every registered interrupt handler.</summary>
+    public bool Interrupt() => _interrupts.Raise();
 
     public void Dispose()
     {
         _out.Dispose();
         _error.Dispose();
         _in.Dispose();
-    }
-
-    private sealed class Registration : IDisposable
-    {
-        public void Dispose()
-        {
-        }
     }
 
     private sealed class GatedReader : TextReader

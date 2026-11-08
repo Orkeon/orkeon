@@ -23,6 +23,9 @@ public sealed class FakeMcpServerExtension : IMcpServerExtension
     /// <summary>The arguments of the last tool call; null until a call started.</summary>
     public JsonElement? LastArguments { get; private set; }
 
+    /// <summary>When set, a tool call throws it, as a crew whose host failed would.</summary>
+    public Exception? ThrowOnCall { get; set; }
+
     /// <summary>Whether a call saw its token cancelled.</summary>
     public bool SawCancellation { get; private set; }
 
@@ -42,6 +45,8 @@ public sealed class FakeMcpServerExtension : IMcpServerExtension
     public async Task<McpToolCallResult> CallToolAsync(string name, JsonElement? arguments, IMcpProgress progress, CancellationToken ct)
     {
         LastArguments = arguments ?? JsonDocument.Parse("{}").RootElement;
+        if (ThrowOnCall is { } failure)
+            throw failure;
         for (var i = 1; i <= ProgressSteps; i++)
             progress.Report(i, ProgressSteps, $"step {i}");
         if (WaitForFinish)

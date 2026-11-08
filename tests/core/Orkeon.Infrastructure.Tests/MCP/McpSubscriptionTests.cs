@@ -86,6 +86,27 @@ public sealed class McpSubscriptionTests
     }
 
     [Fact]
+    public async Task ShouldBackOffLonger_WhenTheListenStreamEndsAtOnceTwiceInARow()
+    {
+        await using var server = new FakeStreamableHttpServer("a") { Modern = true };
+        var registry = new MockToolRegistry();
+        var clock = new ManualTimeProvider();
+        await using var provider = new McpToolProvider(registry, timeProvider: clock);
+        await provider.ConnectServerAsync("srv", Config(server), TestContext.Current.CancellationToken);
+        await EventuallyAsync(() => Count(server, "subscriptions/listen") == 1);
+
+        // The clock does not move: the stream lived no time at all, so its end is a failure like any other.
+        server.EndListen();
+        await EventuallyAsync(() => clock.PendingTimers > 0);
+        Assert.Contains(StreamableHttpMcpTransport.Backoff(1), clock.DueIns);
+        clock.Advance(StreamableHttpMcpTransport.Backoff(1));
+        await EventuallyAsync(() => Count(server, "subscriptions/listen") == 2);
+
+        server.EndListen();
+        await EventuallyAsync(() => clock.DueIns.Contains(StreamableHttpMcpTransport.Backoff(2)));
+    }
+
+    [Fact]
     public async Task ShouldSubscribeToAResource_AndServeItsReadsFromTheCacheUntilItIsUpdated()
     {
         await using var server = new FakeStreamableHttpServer("a") { UseSessions = true, AllowGet = true };

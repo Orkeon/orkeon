@@ -401,7 +401,17 @@ public partial class McpClient : IAsyncDisposable
             ? CreateModernRequest(method, parameters, _negotiatedVersion)
             : CreateRequest(method, parameters);
 
-        var response = await _transport.SendRequestAsync(request, ct).ConfigureAwait(false);
+        JsonRpcResponse response;
+        try
+        {
+            response = await _transport.SendRequestAsync(request, ct).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            // The caller gave up or a timeout fired: the server is told, so it stops working for nobody.
+            await NotifyCancelledAsync(request).ConfigureAwait(false);
+            throw;
+        }
 
         if (_era == McpProtocolEra.Modern &&
             response.Error is { Code: McpErrorCodes.UnsupportedProtocolVersion } error)
@@ -414,6 +424,31 @@ public partial class McpClient : IAsyncDisposable
         }
 
         return response;
+    }
+
+    /// <summary>
+    /// Best effort <c>notifications/cancelled</c> for a request that was abandoned: bounded, and a failure
+    /// to send it is not worth reporting over the cancellation itself.
+    /// </summary>
+    [SuppressMessage("Design", "CA1031", Justification = "Best-effort notification on the way out of a cancellation: nothing it throws may replace the cancellation.")]
+    private async Task NotifyCancelledAsync(JsonRpcRequest request)
+    {
+        if (request.Id is null || request.Method is "initialize" or "server/discover")
+            return;
+
+        try
+        {
+            using var guard = new CancellationTokenSource(TimeSpan.FromSeconds(2));
+            await _transport.SendNotificationAsync(new JsonRpcNotification
+            {
+                Method = "notifications/cancelled",
+                Params = JsonSerializer.SerializeToElement(new { requestId = request.Id.Value, reason = "The client stopped waiting for the answer." }),
+            }, guard.Token).ConfigureAwait(false);
+        }
+        catch (Exception)
+        {
+            // The connection is likely the very reason of the cancellation.
+        }
     }
 
     /// <summary>

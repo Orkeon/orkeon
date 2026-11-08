@@ -38,6 +38,16 @@ public sealed class ManualTimeProvider : TimeProvider
         }
     }
 
+    /// <summary>How far from now each pending timer falls due.</summary>
+    public IReadOnlyList<TimeSpan> DueIns
+    {
+        get
+        {
+            lock (_gate)
+                return [.. _timers.Where(timer => timer.DueAt is not null).Select(timer => timer.DueAt!.Value - _now)];
+        }
+    }
+
     /// <summary>The timers armed and not yet due: a <c>Task.Delay</c> on this clock in progress is one.</summary>
     public int PendingTimers
     {

@@ -50,6 +50,13 @@ public class McpServerOptions
     /// </summary>
     public bool ExposeOutput { get; set; }
 
+    /// <summary>
+    /// The registry tools the server exposes and runs, by name (case-insensitive); empty serves them all. A tool outside
+    /// the list is neither listed nor callable, whoever registers it and whenever: a tool an MCP server adds later
+    /// stays out. The tools an extension serves (<c>--crew</c>) are not subject to it. <c>orkeon mcp serve --tools</c> sets it.
+    /// </summary>
+    public IList<string> AllowedTools { get; } = [];
+
     /// <summary>How many resources one <c>resources/list</c> page carries. At least 1.</summary>
     public int ResourcesPageSize { get; set; } = 100;
 

@@ -46,6 +46,12 @@ public class McpToolAdapter : IBaseTool
     private readonly bool _trustAnnotations;
     private readonly TimeSpan? _callTimeout;
 
+    /// <summary>
+    /// Run before a call and outside <c>CallTimeout</c>: the sign-in a person may owe (the device flow) is bounded
+    /// by the lifetime of its code, not by the time one call may take.
+    /// </summary>
+    internal Func<CancellationToken, ValueTask>? BeforeCall { get; init; }
+
     /// <summary>Initializes a new instance of <see cref="McpToolAdapter"/>.</summary>
     /// <param name="definition">The MCP tool definition.</param>
     /// <param name="client">The MCP client used to invoke the tool.</param>
@@ -81,6 +87,9 @@ public class McpToolAdapter : IBaseTool
                 var json = JsonSerializer.Serialize(request.Parameters);
                 arguments = JsonElement.Parse(json);
             }
+
+            if (BeforeCall is { } beforeCall)
+                await beforeCall(cancellationToken).ConfigureAwait(false);
 
             using var linked = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             if (_callTimeout is { } timeout)

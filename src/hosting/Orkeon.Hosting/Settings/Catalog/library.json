@@ -2708,6 +2708,13 @@
       "description": "URL endpoint for SSE transport."
     },
     {
+      "path": "MCP:Server:AllowedTools",
+      "section": "MCP:Server",
+      "type": "list of string",
+      "default": [],
+      "description": "The registry tools the server exposes and runs, by name (case-insensitive); empty serves them all. A tool outside the list is neither listed nor callable, whoever registers it and whenever: a tool an MCP server adds later stays out. The tools an extension serves (`--crew`) are not subject to it. `orkeon mcp serve --tools` sets it."
+    },
+    {
       "path": "MCP:Server:ExposeOutput",
       "section": "MCP:Server",
       "type": "boolean",

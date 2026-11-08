@@ -117,4 +117,29 @@ public sealed class SseEventReaderTests
         Assert.True(await enumerator.MoveNextAsync());
         Assert.Equal("first", enumerator.Current.Data);
     }
+
+    [Fact]
+    public async Task ShouldHandOutAPrimingEvent_WithItsIdAndNoData()
+    {
+        // The priming event of the 2025-11-25 specification: an id and an empty data field.
+        var events = await ReadAllAsync("id: 0\ndata:\n\ndata: real\n\n");
+
+        Assert.Equal(2, events.Count);
+        Assert.Equal("0", events[0].Id);
+        Assert.Equal("", events[0].Data);
+        Assert.Equal("real", events[1].Data);
+    }
+
+    [Fact]
+    public async Task ShouldRefuseALineLongerThanTheBound()
+    {
+        await using var stream = new ChunkedStream("data: " + new string('x', 64) + "\n\n");
+
+        await Assert.ThrowsAsync<InvalidDataException>(async () =>
+        {
+            await foreach (var _ in SseEventReader.ReadAsync(stream, 32, TestContext.Current.CancellationToken))
+            {
+            }
+        });
+    }
 }
