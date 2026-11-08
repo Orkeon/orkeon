@@ -618,6 +618,31 @@
       "description": "The model's name. Left out, the provider runs its own default model."
     },
     {
+      "path": "Llm:ModelCapabilities:<name>:AudioInput",
+      "section": "Llm",
+      "type": "boolean",
+      "description": "Whether the model takes audio parts as input. Left out, the built-in value of the model (false when the table does not know it)."
+    },
+    {
+      "path": "Llm:ModelCapabilities:<name>:AudioOutput",
+      "section": "Llm",
+      "type": "boolean",
+      "description": "Whether the model answers in audio. Recorded only: nothing sends or reads audio output. Left out, the built-in value of the model (false when the table does not know it)."
+    },
+    {
+      "path": "Llm:ModelCapabilities:<name>:ReasoningEfforts",
+      "section": "Llm",
+      "type": "list of string",
+      "default": [],
+      "description": "The reasoning efforts the model takes: a list, or one comma-separated value; written empty, none. Left out, the built-in list of the model (no restriction for a model the table does not know) and the provider's own levels rule."
+    },
+    {
+      "path": "Llm:ModelCapabilities:<name>:Vision",
+      "section": "Llm",
+      "type": "boolean",
+      "description": "Whether the model takes image parts as input. Left out, the built-in value of the model (false when the table does not know it)."
+    },
+    {
       "path": "Llm:Profiles:<name>:ApiKey",
       "section": "Llm",
       "type": "string",

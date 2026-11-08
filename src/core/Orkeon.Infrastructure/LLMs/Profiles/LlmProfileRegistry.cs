@@ -12,6 +12,7 @@ using Orkeon.Application.Interfaces.Security;
 using Orkeon.Domain.SharedKernel;
 using Orkeon.Domain.SharedKernel.ValueObjects;
 using Orkeon.Infrastructure.LLMs.Adapters;
+using Orkeon.Infrastructure.LLMs.Capabilities;
 using Orkeon.Infrastructure.LLMs.ToolCalling;
 
 namespace Orkeon.Infrastructure.LLMs.Profiles;
@@ -267,6 +268,8 @@ public sealed partial class LlmProfileRegistry : ILlmProfileRegistry
     private void WarnAboutLesserFallbacks(string profile, List<FallbackLink> links)
     {
         var primary = links[0].Provider.Capabilities;
+        var table = _services.GetService<IModelCapabilityRegistry>() ?? ModelCapabilityRegistry.Default;
+        var primaryModel = table.TryGet(ModelOf(links[0]));
         foreach (var link in links.Skip(1))
         {
             var lacks = new List<string>();
@@ -279,9 +282,34 @@ public sealed partial class LlmProfileRegistry : ILlmProfileRegistry
                 lacks.Add("thinking");
             if (primary.GbnfGrammar && !capabilities.GbnfGrammar)
                 lacks.Add("GBNF grammar");
+            AddModelLacks(lacks, primaryModel, table.TryGet(ModelOf(link)));
 
             if (lacks.Count > 0)
                 LogLesserFallback(Logger(), link.Name, profile, string.Join(", ", lacks));
+        }
+    }
+
+    /// <summary>The model a chain link runs on, when its configuration names one.</summary>
+    private static string? ModelOf(FallbackLink link) =>
+        link.BaseConfig?.Model is { Length: > 0 } own ? own : link.Provider.BaseConfig?.Model;
+
+    /// <summary>
+    /// The per-model side of the comparison (FWK-21): what the table says the primary's model takes and the
+    /// fallback's does not. A fallback model the table does not know takes no audio (nothing sends it any).
+    /// </summary>
+    private static void AddModelLacks(List<string> lacks, ModelCapabilities? primary, ModelCapabilities? fallback)
+    {
+        if (primary is null)
+            return;
+
+        if (primary.AudioInput && fallback is not { AudioInput: true })
+            lacks.Add("audio input");
+
+        if (primary.ReasoningEfforts is { Count: > 0 } offered && fallback?.ReasoningEfforts is { } taken)
+        {
+            var missing = offered.Except(taken, StringComparer.Ordinal).ToList();
+            if (missing.Count > 0)
+                lacks.Add($"reasoning effort ({string.Join(", ", missing)})");
         }
     }
 

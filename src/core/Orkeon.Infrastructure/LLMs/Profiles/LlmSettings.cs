@@ -5,6 +5,7 @@ using Orkeon.Application.Interfaces.Ports;
 using Orkeon.Constants.Configuration;
 using Orkeon.Domain.SharedKernel.ValueObjects;
 using Orkeon.Infrastructure.Configuration;
+using Orkeon.Infrastructure.LLMs.Capabilities;
 
 namespace Orkeon.Infrastructure.LLMs.Profiles;
 
@@ -41,6 +42,7 @@ public static class LlmSettings
         ArgumentNullException.ThrowIfNull(configuration);
         return configuration.GetSection(ConfigurationKeys.LlmSection).GetChildren()
             .Any(c => !string.Equals(c.Key, ConfigurationKeys.LlmProfiles, StringComparison.OrdinalIgnoreCase)
+                      && !string.Equals(c.Key, ModelCapabilitiesKey, StringComparison.OrdinalIgnoreCase)
                       && HoldsValue(c));
     }
 
@@ -186,6 +188,41 @@ public static class LlmSettings
 
             if (names.Count > 0 || seconds is not null)
                 result[section.Key] = (names, seconds is { } s ? TimeSpan.FromSeconds(s) : null);
+        }
+
+        return result;
+    }
+
+    private const string ModelCapabilitiesKey = "ModelCapabilities";
+
+    /// <summary>
+    /// The host's per-model overrides (<c>Llm:ModelCapabilities:&lt;id&gt;</c>, FWK-21), by model id (a
+    /// prefix). A switch left out keeps the built-in value (false for a model the table does not know); <c>ReasoningEfforts</c> left out does not restrict the model, and
+    /// written empty says the model takes none.
+    /// </summary>
+    /// <param name="configuration">The host configuration.</param>
+    /// <exception cref="InvalidOperationException">A switch is neither true nor false.</exception>
+    internal static IReadOnlyDictionary<string, ModelCapabilityOverride> ReadModelCapabilities(IConfiguration configuration)
+    {
+        ArgumentNullException.ThrowIfNull(configuration);
+        var result = new Dictionary<string, ModelCapabilityOverride>(StringComparer.OrdinalIgnoreCase);
+        foreach (var section in configuration.GetSection(ConfigurationKeys.LlmSection).GetSection(ModelCapabilitiesKey).GetChildren())
+        {
+            var efforts = section.GetSection("ReasoningEfforts");
+            IReadOnlyList<string>? listed = null;
+            var items = efforts.GetChildren().Select(c => c.Value).Where(v => !string.IsNullOrWhiteSpace(v)).Select(v => v!.Trim()).ToList();
+            if (items.Count > 0)
+                listed = items;
+            else if (efforts.Value is { } single)
+                listed = [.. single.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)];
+
+            result[section.Key] = new ModelCapabilityOverride
+            {
+                AudioInput = ReadBool(section, "AudioInput"),
+                AudioOutput = ReadBool(section, "AudioOutput"),
+                Vision = ReadBool(section, "Vision"),
+                ReasoningEfforts = listed,
+            };
         }
 
         return result;

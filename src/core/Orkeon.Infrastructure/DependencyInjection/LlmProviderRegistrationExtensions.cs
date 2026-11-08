@@ -8,6 +8,7 @@ using Orkeon.Application.Interfaces.Ports;
 using Orkeon.Application.Interfaces.Security;
 using Orkeon.Domain.SharedKernel;
 using Orkeon.Domain.SharedKernel.ValueObjects;
+using Orkeon.Infrastructure.LLMs.Capabilities;
 using Orkeon.Infrastructure.LLMs;
 using Orkeon.Infrastructure.LLMs.Adapters;
 using Orkeon.Infrastructure.LLMs.Profiles;
@@ -142,6 +143,11 @@ public static class LlmProviderRegistrationExtensions
         // The keys of the whole Llm section, judged at the host's start with every declared
         // section's (GAP-40): the default's, the profiles', AvailableModels.
         services.DeclareSettingsShape(ConfigurationKeys.LlmSection, typeof(LlmSectionShape));
+
+        // The per-model table the providers read, the host's overrides over the built-in one (FWK-21).
+        // A registry the host registered itself wins: TryAdd leaves it in place.
+        services.TryAddSingleton<IModelCapabilityRegistry>(
+            new ModelCapabilityRegistry(LlmSettings.ReadModelCapabilities(configuration)));
 
         var fallbacks = LlmSettings.ReadFallbacks(configuration);
         foreach (var (name, config) in LlmSettings.ReadProfiles(configuration))

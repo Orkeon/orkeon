@@ -317,6 +317,53 @@ that sets a field to exactly the first profile's value cannot be told from the p
 - **A revoked key blocks the chain**: a 401 and a 403 never switch (they are a configuration error, not an outage), so a primary whose key was revoked answers
   its error to every call and its fallbacks are never tried.
 
+## What a model accepts, and audio as input
+
+`LlmProviderCapabilities` is declared once per provider, so it cannot tell two models of one vendor apart:
+`gpt-4o` takes no reasoning effort, `o3-mini` takes three, and both ride the same provider. The per-model side
+is a table, `IModelCapabilityRegistry` (`ORKEXP005`, [experimental](../reference/experimental-apis.md)),
+built like `ModelPricingRegistry`: a model id **prefix** maps to `ModelCapabilities` (`AudioInput`,
+`AudioOutput`, `Vision`, `ReasoningEfforts`), the longest prefix of the model asked wins, case-insensitive. The
+built-in table is in code and covers the OpenAI chat, audio and reasoning families, Gemini and Claude; a model
+it does not know is added, or a built-in entry replaced, from the configuration:
+
+```yaml
+Llm:
+  ModelCapabilities:
+    acme-voice:                 # a prefix: acme-voice-2 matches
+      AudioInput: true
+      ReasoningEfforts: [low, high]   # left out: no restriction; written empty: the model takes none
+```
+
+An entry merges with the built-in value of the same id **field by field**: a field left out keeps the built-in
+value, so an entry that sets `AudioInput` alone keeps the model's built-in effort restriction (for a model the table
+does not know, a switch left out is false and the efforts stay unrestricted). A `ReasoningEfforts` written empty
+says the model takes none. A registry the host registers itself (`IModelCapabilityRegistry`, before
+`AddOrkeonLlmProfiles`) wins over the configured one. A model id containing `:` (Ollama's `llama3:8b`) cannot be a
+key: .NET configuration has no escape for the path separator `:`. Key its prefix instead (`llama3` matches
+`llama3:8b` and every other tag).
+
+- **Audio in.** An `AudioContentPart` reaches a model that takes it as an `input_audio` part of the Chat
+  Completions API (raw bytes, `audio/wav` or `audio/mpeg`; the API takes no audio address). The OpenAI-compatible
+  family does it through `ContentConverter.ToOpenAIContentParts(content, model, registry)`, so OpenAI and Gemini
+  (through its compatible layer) are covered; `ToAIContents` judges the same way for the chat-client path. A
+  model the table does not credit with audio, or does not know, is refused with a `NotSupportedException` that
+  **names the model** and the `Llm:ModelCapabilities:<id>:AudioInput` key that declares it: the audio is never
+  dropped in silence. Anthropic and Ollama stay refusals (their APIs take no audio); a provider that declares no
+  vision keeps its structured warning "message attachments (audio)" and sends the text only. Azure OpenAI is
+  named by deployment: declare the deployment with an override. Audio **output** is out of scope: the table
+  records it, nothing sends or reads it.
+- **Reasoning effort, judged against the model** (event id `110`, `113`). On the OpenAI-compatible family an
+  effort the table lists the model without is **omitted** from the request with a structured warning naming the
+  model and the efforts it takes; a model the table does not know gets the effort as asked, with a warning that
+  nothing was checked, **once per provider instance and model** (`Llm:ModelCapabilities:<id>:ReasoningEfforts` silences it); a model whose entry leaves
+  `ReasoningEfforts` out is not restricted. The provider's own declared levels apply first (`xhigh` is lowered
+  where the field does not know it), then the table.
+- **Fallback chains** (`WarnAboutLesserFallbacks`) read the same table: a fallback whose model takes no audio,
+  or fewer efforts, than the primary's is warned about once, next to vision, response format, thinking and grammar.
+- The Anthropic and Ollama dialects do not read the table yet: their effort is judged by the provider's declared
+  levels only.
+
 ## Decorators and registration
 
 - **`MeteredLlmProvider`** — the one place LLM usage is measured: it reports every call of

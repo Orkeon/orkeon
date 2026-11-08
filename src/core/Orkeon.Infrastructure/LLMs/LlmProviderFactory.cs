@@ -3,6 +3,8 @@ using Orkeon.Constants.Llm;
 using System.Diagnostics.CodeAnalysis;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using Orkeon.Infrastructure.LLMs.Base;
+using Orkeon.Infrastructure.LLMs.Capabilities;
 using Orkeon.Infrastructure.LLMs.CallMode;
 using Orkeon.Application.Interfaces.Ports;
 using Orkeon.Application.Interfaces.Security;
@@ -35,6 +37,7 @@ public sealed partial class LlmProviderFactory : ILlmProviderFactory
     private readonly ILlmRateLimiter? _rateLimiter;
     private readonly ILlmCallObserver _callObserver;
     private readonly ITokenCounter _tokenCounter;
+    private readonly IModelCapabilityRegistry _capabilities;
     private readonly IFileSystemService _fileSystem;
     private readonly OpenAIToolCallingStrategy _openAiStrategy;
     private readonly AnthropicToolCallingStrategy _anthropicStrategy;
@@ -55,6 +58,7 @@ public sealed partial class LlmProviderFactory : ILlmProviderFactory
     /// </param>
     /// <param name="callObserver">The host's call observer: every call of a provider built is announced to it. Null observes nothing.</param>
     /// <param name="tokenCounter">Estimates the tokens the observer is told; null uses <see cref="SimpleTokenCounter"/>.</param>
+    /// <param name="capabilities">The per-model table (FWK-21) every provider built reads; null uses the built-in one.</param>
 
     public LlmProviderFactory(
         IHttpClientFactory httpClientFactory,
@@ -63,7 +67,8 @@ public sealed partial class LlmProviderFactory : ILlmProviderFactory
         ILlmUsageSink? usageSink = null,
         ILlmRateLimiter? rateLimiter = null,
         ILlmCallObserver? callObserver = null,
-        ITokenCounter? tokenCounter = null)
+        ITokenCounter? tokenCounter = null,
+        IModelCapabilityRegistry? capabilities = null)
     {
         ArgumentNullException.ThrowIfNull(fileSystem);
         _fileSystem = fileSystem;
@@ -75,6 +80,7 @@ public sealed partial class LlmProviderFactory : ILlmProviderFactory
         _rateLimiter = rateLimiter;
         _callObserver = callObserver ?? NullLlmCallObserver.Instance;
         _tokenCounter = tokenCounter ?? new SimpleTokenCounter();
+        _capabilities = capabilities ?? ModelCapabilityRegistry.Default;
 
         // Create tool calling strategies
         _openAiStrategy = new OpenAIToolCallingStrategy(
@@ -220,7 +226,10 @@ public sealed partial class LlmProviderFactory : ILlmProviderFactory
     private LlmProviderAdapter Adapt<TProvider>(LlmConfig config, Func<ILogger<TProvider>, ILlmProvider> build)
     {
         var logger = _loggerFactory.CreateLogger<TProvider>();
-        var provider = new CallModeLlmProvider(build(logger), config.CallMode, logger, _callObserver, _tokenCounter);
+        var built = build(logger);
+        if (built is OpenAICompatibleProviderBase compatible)
+            compatible.ModelCapabilities = _capabilities;
+        var provider = new CallModeLlmProvider(built, config.CallMode, logger, _callObserver, _tokenCounter);
         return new LlmProviderAdapter(LlmProviderEntrance.Enter(provider, _usageSink, _rateLimiter));
     }
 

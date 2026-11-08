@@ -232,4 +232,60 @@ public sealed class LlmProfileFallbackValidationTests
 
         Assert.DoesNotContain(loggers.Logger.Entries, e => e.Level == LogLevel.Warning);
     }
+
+    [Fact]
+    public async Task A_fallback_whose_model_takes_no_audio_is_warned_about_by_the_table()
+    {
+        using var loggers = new RecordingLoggerFactory();
+        await using var container = Host(s =>
+        {
+            s.AddSingleton<ILoggerFactory>(loggers);
+            Profile(s, "a", new FakeScriptedLlmProvider { BaseConfig = LlmConfig.Create("gpt-4o-audio-preview", "k") }, "b");
+            Profile(s, "b", new FakeScriptedLlmProvider { BaseConfig = LlmConfig.Create("gpt-4o", "k") });
+        });
+
+        container.GetRequiredService<ILlmProfileRegistry>().Resolve("a");
+
+        var warning = Assert.Single(loggers.Logger.Entries, e => e.Level == LogLevel.Warning);
+        Assert.Contains("audio input", warning.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task A_fallback_whose_model_takes_fewer_efforts_is_warned_about_by_the_table()
+    {
+        using var loggers = new RecordingLoggerFactory();
+        await using var container = Host(s =>
+        {
+            s.AddSingleton<ILoggerFactory>(loggers);
+            Profile(s, "a", new FakeScriptedLlmProvider { BaseConfig = LlmConfig.Create("o3-mini", "k") }, "b");
+            Profile(s, "b", new FakeScriptedLlmProvider { BaseConfig = LlmConfig.Create("gpt-4o", "k") });
+        });
+
+        container.GetRequiredService<ILlmProfileRegistry>().Resolve("a");
+
+        var warning = Assert.Single(loggers.Logger.Entries, e => e.Level == LogLevel.Warning);
+        Assert.Contains("reasoning effort", warning.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task The_hosts_table_decides_what_a_fallback_lacks()
+    {
+        using var loggers = new RecordingLoggerFactory();
+        var table = new Orkeon.Infrastructure.LLMs.Capabilities.ModelCapabilityRegistry(
+            new Dictionary<string, Orkeon.Infrastructure.LLMs.Capabilities.ModelCapabilityOverride>
+            {
+                ["gpt-4o"] = new() { AudioInput = true },
+            });
+        await using var container = Host(s =>
+        {
+            s.AddSingleton<ILoggerFactory>(loggers);
+            s.AddSingleton<Orkeon.Infrastructure.LLMs.Capabilities.IModelCapabilityRegistry>(table);
+            Profile(s, "a", new FakeScriptedLlmProvider { BaseConfig = LlmConfig.Create("gpt-4o-audio-preview", "k") }, "b");
+            Profile(s, "b", new FakeScriptedLlmProvider { BaseConfig = LlmConfig.Create("gpt-4o", "k") });
+        });
+
+        container.GetRequiredService<ILlmProfileRegistry>().Resolve("a");
+
+        Assert.DoesNotContain(loggers.Logger.Entries, e => e.Level == LogLevel.Warning);
+    }
 }

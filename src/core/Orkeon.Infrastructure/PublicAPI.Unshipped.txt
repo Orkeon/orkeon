@@ -415,7 +415,6 @@ Orkeon.Infrastructure.LLMs.Mock.JsonlMockLlmProvider.GenerateStreamingAsync(stri
 Orkeon.Infrastructure.LLMs.Mock.JsonlMockLlmProvider.JsonlMockLlmProvider(Orkeon.Domain.FileSystem.IFileSystemService! fileSystem, string! responsesPath) -> void
 Orkeon.Infrastructure.LLMs.Mock.JsonlMockLlmProvider.Name.get -> string!
 Orkeon.Infrastructure.LLMs.Mock.JsonlMockLlmProvider.SupportsStreaming.get -> bool
-Orkeon.Infrastructure.LLMs.LlmProviderFactory.LlmProviderFactory(System.Net.Http.IHttpClientFactory! httpClientFactory, Microsoft.Extensions.Logging.ILoggerFactory! loggerFactory, Orkeon.Domain.FileSystem.IFileSystemService! fileSystem, Orkeon.Application.Interfaces.Ports.ILlmUsageSink? usageSink = null, Orkeon.Application.Interfaces.Security.ILlmRateLimiter? rateLimiter = null, Orkeon.Application.Interfaces.Ports.ILlmCallObserver? callObserver = null, Orkeon.Domain.SharedKernel.ITokenCounter? tokenCounter = null) -> void
 static Orkeon.Infrastructure.LLMs.LlmProviderFactory.WithoutMounts(System.Net.Http.IHttpClientFactory! httpClientFactory, Microsoft.Extensions.Logging.ILoggerFactory! loggerFactory) -> Orkeon.Infrastructure.LLMs.LlmProviderFactory!
 Orkeon.Infrastructure.LLMs.Mock.JsonlMockLlmProvider.Capabilities.get -> Orkeon.Domain.SharedKernel.ValueObjects.LlmProviderCapabilities!
 Orkeon.Infrastructure.MCP.McpPromptGetRequest
@@ -735,3 +734,50 @@ Orkeon.Infrastructure.Configuration.GraphYamlConfig.Start.set -> void
 [ORKEXP004]Orkeon.Infrastructure.MCP.McpRequestException.McpRequestException(int code, string! message) -> void
 [ORKEXP004]Orkeon.Infrastructure.MCP.McpRequestException.McpRequestException(string! message) -> void
 [ORKEXP004]Orkeon.Infrastructure.MCP.McpRequestException.McpRequestException(string! message, System.Exception! innerException) -> void
+Orkeon.Infrastructure.LLMs.LlmProviderFactory.LlmProviderFactory(System.Net.Http.IHttpClientFactory! httpClientFactory, Microsoft.Extensions.Logging.ILoggerFactory! loggerFactory, Orkeon.Domain.FileSystem.IFileSystemService! fileSystem, Orkeon.Application.Interfaces.Ports.ILlmUsageSink? usageSink = null, Orkeon.Application.Interfaces.Security.ILlmRateLimiter? rateLimiter = null, Orkeon.Application.Interfaces.Ports.ILlmCallObserver? callObserver = null, Orkeon.Domain.SharedKernel.ITokenCounter? tokenCounter = null, Orkeon.Infrastructure.LLMs.Capabilities.IModelCapabilityRegistry? capabilities = null) -> void
+[ORKEXP005]Orkeon.Infrastructure.LLMs.Capabilities.IModelCapabilityRegistry
+[ORKEXP005]Orkeon.Infrastructure.LLMs.Capabilities.IModelCapabilityRegistry.TryGet(string? model) -> Orkeon.Infrastructure.LLMs.Capabilities.ModelCapabilities?
+[ORKEXP005]Orkeon.Infrastructure.LLMs.Capabilities.ModelCapabilities
+[ORKEXP005]Orkeon.Infrastructure.LLMs.Capabilities.ModelCapabilities.<Clone>$() -> Orkeon.Infrastructure.LLMs.Capabilities.ModelCapabilities!
+[ORKEXP005]Orkeon.Infrastructure.LLMs.Capabilities.ModelCapabilities.AudioInput.get -> bool
+[ORKEXP005]Orkeon.Infrastructure.LLMs.Capabilities.ModelCapabilities.AudioInput.init -> void
+[ORKEXP005]Orkeon.Infrastructure.LLMs.Capabilities.ModelCapabilities.AudioOutput.get -> bool
+[ORKEXP005]Orkeon.Infrastructure.LLMs.Capabilities.ModelCapabilities.AudioOutput.init -> void
+[ORKEXP005]Orkeon.Infrastructure.LLMs.Capabilities.ModelCapabilities.Equals(Orkeon.Infrastructure.LLMs.Capabilities.ModelCapabilities? other) -> bool
+[ORKEXP005]Orkeon.Infrastructure.LLMs.Capabilities.ModelCapabilities.ModelCapabilities() -> void
+[ORKEXP005]Orkeon.Infrastructure.LLMs.Capabilities.ModelCapabilities.ReasoningEfforts.get -> System.Collections.Generic.IReadOnlyList<string!>?
+[ORKEXP005]Orkeon.Infrastructure.LLMs.Capabilities.ModelCapabilities.ReasoningEfforts.init -> void
+[ORKEXP005]Orkeon.Infrastructure.LLMs.Capabilities.ModelCapabilities.Vision.get -> bool
+[ORKEXP005]Orkeon.Infrastructure.LLMs.Capabilities.ModelCapabilities.Vision.init -> void
+[ORKEXP005]Orkeon.Infrastructure.LLMs.Capabilities.ModelCapabilityRegistry
+[ORKEXP005]Orkeon.Infrastructure.LLMs.Capabilities.ModelCapabilityRegistry.TryGet(string? model) -> Orkeon.Infrastructure.LLMs.Capabilities.ModelCapabilities?
+[ORKEXP005]override Orkeon.Infrastructure.LLMs.Capabilities.ModelCapabilities.Equals(object? obj) -> bool
+[ORKEXP005]override Orkeon.Infrastructure.LLMs.Capabilities.ModelCapabilities.GetHashCode() -> int
+[ORKEXP005]override Orkeon.Infrastructure.LLMs.Capabilities.ModelCapabilities.ToString() -> string!
+[ORKEXP005]static Orkeon.Infrastructure.LLMs.Capabilities.ModelCapabilities.operator ==(Orkeon.Infrastructure.LLMs.Capabilities.ModelCapabilities? left, Orkeon.Infrastructure.LLMs.Capabilities.ModelCapabilities? right) -> bool
+[ORKEXP005]static Orkeon.Infrastructure.LLMs.Capabilities.ModelCapabilities.operator !=(Orkeon.Infrastructure.LLMs.Capabilities.ModelCapabilities? left, Orkeon.Infrastructure.LLMs.Capabilities.ModelCapabilities? right) -> bool
+[ORKEXP005]static Orkeon.Infrastructure.LLMs.Capabilities.ModelCapabilityRegistry.Default.get -> Orkeon.Infrastructure.LLMs.Capabilities.ModelCapabilityRegistry!
+static Orkeon.Infrastructure.LLMs.Converters.ContentConverter.ToAIContents(Orkeon.Domain.SharedKernel.ValueObjects.Content.MultiModalContent! content, string! model, Orkeon.Infrastructure.LLMs.Capabilities.IModelCapabilityRegistry? capabilities = null) -> System.Collections.Generic.IList<Microsoft.Extensions.AI.AIContent!>!
+static Orkeon.Infrastructure.LLMs.Converters.ContentConverter.ToChatMessage(string! role, Orkeon.Domain.SharedKernel.ValueObjects.Content.MultiModalContent! content, string! model, Orkeon.Infrastructure.LLMs.Capabilities.IModelCapabilityRegistry? capabilities = null) -> Microsoft.Extensions.AI.ChatMessage!
+static Orkeon.Infrastructure.LLMs.Converters.ContentConverter.ToOpenAIContentParts(Orkeon.Domain.SharedKernel.ValueObjects.Content.MultiModalContent! content, string! model, Orkeon.Infrastructure.LLMs.Capabilities.IModelCapabilityRegistry? capabilities = null) -> System.Collections.Generic.IReadOnlyList<object!>!
+*REMOVED*static Orkeon.Infrastructure.LLMs.Converters.ContentConverter.ToAIContents(Orkeon.Domain.SharedKernel.ValueObjects.Content.MultiModalContent! content) -> System.Collections.Generic.IList<Microsoft.Extensions.AI.AIContent!>!
+*REMOVED*static Orkeon.Infrastructure.LLMs.Converters.ContentConverter.ToChatMessage(string! role, Orkeon.Domain.SharedKernel.ValueObjects.Content.MultiModalContent! content) -> Microsoft.Extensions.AI.ChatMessage!
+*REMOVED*static Orkeon.Infrastructure.LLMs.Converters.ContentConverter.ToOpenAIContentParts(Orkeon.Domain.SharedKernel.ValueObjects.Content.MultiModalContent! content) -> System.Collections.Generic.IReadOnlyList<object!>!
+[ORKEXP005]Orkeon.Infrastructure.LLMs.Capabilities.ModelCapabilityOverride
+[ORKEXP005]Orkeon.Infrastructure.LLMs.Capabilities.ModelCapabilityOverride.<Clone>$() -> Orkeon.Infrastructure.LLMs.Capabilities.ModelCapabilityOverride!
+[ORKEXP005]Orkeon.Infrastructure.LLMs.Capabilities.ModelCapabilityOverride.AudioInput.get -> bool?
+[ORKEXP005]Orkeon.Infrastructure.LLMs.Capabilities.ModelCapabilityOverride.AudioInput.init -> void
+[ORKEXP005]Orkeon.Infrastructure.LLMs.Capabilities.ModelCapabilityOverride.AudioOutput.get -> bool?
+[ORKEXP005]Orkeon.Infrastructure.LLMs.Capabilities.ModelCapabilityOverride.AudioOutput.init -> void
+[ORKEXP005]Orkeon.Infrastructure.LLMs.Capabilities.ModelCapabilityOverride.Equals(Orkeon.Infrastructure.LLMs.Capabilities.ModelCapabilityOverride? other) -> bool
+[ORKEXP005]Orkeon.Infrastructure.LLMs.Capabilities.ModelCapabilityOverride.ModelCapabilityOverride() -> void
+[ORKEXP005]Orkeon.Infrastructure.LLMs.Capabilities.ModelCapabilityOverride.ReasoningEfforts.get -> System.Collections.Generic.IReadOnlyList<string!>?
+[ORKEXP005]Orkeon.Infrastructure.LLMs.Capabilities.ModelCapabilityOverride.ReasoningEfforts.init -> void
+[ORKEXP005]Orkeon.Infrastructure.LLMs.Capabilities.ModelCapabilityOverride.Vision.get -> bool?
+[ORKEXP005]Orkeon.Infrastructure.LLMs.Capabilities.ModelCapabilityOverride.Vision.init -> void
+[ORKEXP005]Orkeon.Infrastructure.LLMs.Capabilities.ModelCapabilityRegistry.ModelCapabilityRegistry(System.Collections.Generic.IReadOnlyDictionary<string!, Orkeon.Infrastructure.LLMs.Capabilities.ModelCapabilityOverride!>? overrides = null) -> void
+[ORKEXP005]override Orkeon.Infrastructure.LLMs.Capabilities.ModelCapabilityOverride.Equals(object? obj) -> bool
+[ORKEXP005]override Orkeon.Infrastructure.LLMs.Capabilities.ModelCapabilityOverride.GetHashCode() -> int
+[ORKEXP005]override Orkeon.Infrastructure.LLMs.Capabilities.ModelCapabilityOverride.ToString() -> string!
+[ORKEXP005]static Orkeon.Infrastructure.LLMs.Capabilities.ModelCapabilityOverride.operator ==(Orkeon.Infrastructure.LLMs.Capabilities.ModelCapabilityOverride? left, Orkeon.Infrastructure.LLMs.Capabilities.ModelCapabilityOverride? right) -> bool
+[ORKEXP005]static Orkeon.Infrastructure.LLMs.Capabilities.ModelCapabilityOverride.operator !=(Orkeon.Infrastructure.LLMs.Capabilities.ModelCapabilityOverride? left, Orkeon.Infrastructure.LLMs.Capabilities.ModelCapabilityOverride? right) -> bool

@@ -12,6 +12,7 @@ using Orkeon.Domain.Constants.Llm;
 using Orkeon.Domain.SharedKernel.ValueObjects;
 using Orkeon.Domain.Tools.Protocol;
 using Orkeon.Infrastructure.Constants.Llm;
+using Orkeon.Infrastructure.LLMs.Capabilities;
 using Orkeon.Infrastructure.LLMs.Converters;
 using Orkeon.Infrastructure.Security;
 
@@ -89,6 +90,14 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
     /// overridden provider by provider (LLM-02).
     /// </remarks>
     protected virtual bool SupportsVisionContent => Capabilities.Vision;
+
+    /// <summary>
+    /// The per-model table this provider reads for audio input and reasoning effort (FWK-21): the built-in
+    /// one until <see cref="LlmProviderFactory"/> hands it the host's, overrides included.
+    /// </summary>
+    internal IModelCapabilityRegistry ModelCapabilities { get; set; } = ModelCapabilityRegistry.Default;
+
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<string, byte> _uncheckedEffortModels = new(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>
     /// Wire name of the reasoning trace, in a buffered <c>choices[].message</c> and in a
@@ -1174,7 +1183,7 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
     /// </summary>
     private Dictionary<string, object> BuildChatRequestBody(LlmMessage[] messages, LlmConfig effectiveConfig)
     {
-        var messagesList = BuildChatMessagesList(messages);
+        var messagesList = BuildChatMessagesList(messages, ResolveModel(effectiveConfig));
         PrependConfiguredSystemMessage(messagesList, effectiveConfig);
 
         var payload = new Dictionary<string, object>
@@ -1235,17 +1244,17 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
     /// Translates Orkeon <see cref="LlmMessage"/>s into the OpenAI chat completions
     /// messages array, including tool/assistant-with-tool-calls special cases.
     /// </summary>
-    private List<Dictionary<string, object?>> BuildChatMessagesList(LlmMessage[] messages)
+    private List<Dictionary<string, object?>> BuildChatMessagesList(LlmMessage[] messages, string model)
     {
         var messagesList = new List<Dictionary<string, object?>>(messages.Length);
         foreach (var msg in messages)
         {
-            messagesList.Add(FormatChatMessage(msg));
+            messagesList.Add(FormatChatMessage(msg, model));
         }
         return messagesList;
     }
 
-    private Dictionary<string, object?> FormatChatMessage(LlmMessage msg)
+    private Dictionary<string, object?> FormatChatMessage(LlmMessage msg, string model)
     {
         if (LlmRoles.IsTool(msg.Role) && msg.ToolCallId != null)
         {
@@ -1277,7 +1286,7 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
         var basicMsg = new Dictionary<string, object?>
         {
             ["role"] = msg.Role,
-            ["content"] = BuildMessageContent(msg)
+            ["content"] = BuildMessageContent(msg, model)
         };
 
         if (LlmRoles.IsAssistant(msg.Role))
@@ -1295,9 +1304,9 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
     /// composed by <see cref="ContentConverter.ToOpenAIContentParts"/>; otherwise it is
     /// the historical plain text string.
     /// </summary>
-    private object? BuildMessageContent(LlmMessage msg) =>
+    private object? BuildMessageContent(LlmMessage msg, string model) =>
         ShouldComposeVisionContent(msg) && msg.MultiModalContent is { } content
-            ? ContentConverter.ToOpenAIContentParts(content)
+            ? ContentConverter.ToOpenAIContentParts(content, model, ModelCapabilities)
             : msg.Content;
 
     /// <summary>
@@ -1424,7 +1433,7 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
         ArgumentNullException.ThrowIfNull(payload);
         ArgumentNullException.ThrowIfNull(effectiveConfig);
 
-        ApplyThinkingOptions(payload, effectiveConfig.Thinking);
+        ApplyThinkingOptions(payload, effectiveConfig.Thinking, ResolveModel(effectiveConfig));
         ApplyResponseFormatOption(payload, effectiveConfig.ResponseFormat);
     }
 
@@ -1508,7 +1517,7 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
     /// Translates <see cref="LlmThinkingConfig"/> into the OpenAI dialect, bounded by the
     /// declared <see cref="LlmProviderCapabilities.Thinking"/> level.
     /// </summary>
-    private void ApplyThinkingOptions(Dictionary<string, object> payload, LlmThinkingConfig? thinking)
+    private void ApplyThinkingOptions(Dictionary<string, object> payload, LlmThinkingConfig? thinking, string model)
     {
         if (thinking is null)
             return;
@@ -1544,7 +1553,8 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
             var sent = LlmThinkingConfig.EffortFor(thinking.Effort, Capabilities.EffortLevels);
             if (sent != thinking.Effort)
                 LogEffortLowered(thinking.Effort, ProviderDisplayName, string.Join(", ", Capabilities.EffortLevels), sent);
-            payload["reasoning_effort"] = sent;
+            if (ModelTakesEffort(model, sent))
+                payload["reasoning_effort"] = sent;
         }
 
         // No OpenAI-dialect field carries a reasoning budget; only DashScope does, and Qwen
@@ -1554,6 +1564,32 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
             LogUnsupportedOption("thinking.budgetTokens", ProviderDisplayName,
                 "this API takes no reasoning token budget; use the effort hint instead");
         }
+    }
+
+    /// <summary>
+    /// Judges an effort against the model, not only the provider (FWK-21). A model the table lists without
+    /// that effort never gets it: the option is omitted and reported. A model the table does not know gets it
+    /// as asked, with a warning that nothing was checked.
+    /// </summary>
+    private bool ModelTakesEffort(string model, string effort)
+    {
+        var entry = ModelCapabilities.TryGet(model);
+        if (entry is null)
+        {
+            // Once per provider instance and model: the same notice on every call would drown the log.
+            if (_uncheckedEffortModels.TryAdd(model, 0))
+                LogEffortUnchecked(model, ProviderDisplayName, effort);
+            return true;
+        }
+
+        if (entry.ReasoningEfforts is not { } efforts || efforts.Contains(effort, StringComparer.Ordinal))
+            return true;
+
+        LogUnsupportedOption("thinking.effort", ProviderDisplayName,
+            efforts.Count == 0
+                ? $"the model '{model}' takes no reasoning effort; remove the option or pick a reasoning model"
+                : $"the model '{model}' takes the efforts {string.Join(", ", efforts)} only; ask for one of them");
+        return false;
     }
 
     /// <summary>
@@ -2185,6 +2221,11 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
     [LoggerMessage(EventId = 112, Level = LogLevel.Warning,
         Message = "Effort '{Effort}' was declared but {ProviderName} knows {Known} only — '{Sent}' was sent in its place. Ask for a level it knows, or pick a provider that knows this one.")]
     private partial void LogEffortLowered(string effort, string providerName, string known, string sent);
+
+    /// <summary>The model is in no table, so its effort could not be checked: it is sent as asked.</summary>
+    [LoggerMessage(EventId = 113, Level = LogLevel.Warning,
+        Message = "The model '{Model}' of {ProviderName} is in no capability table, so its reasoning effort '{Effort}' was sent unchecked. Declare it with Llm:ModelCapabilities:<id>:ReasoningEfforts to silence this.")]
+    private partial void LogEffortUnchecked(string model, string providerName, string effort);
 
     [LoggerMessage(EventId = 100, Level = LogLevel.Warning,
         Message = "{ProviderName} was asked for a JSON response format but no system/user message contains the word 'json'. This API may then emit an unbounded whitespace stream until max_tokens. Add 'json' to the prompt to be safe.")]

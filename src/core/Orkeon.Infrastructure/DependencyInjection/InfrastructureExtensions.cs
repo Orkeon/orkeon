@@ -20,6 +20,7 @@ using Orkeon.Domain.Tools.Security;
 using Orkeon.Domain.FileSystem;
 using Orkeon.Application.Memory;
 using Orkeon.Infrastructure.Configuration;
+using Orkeon.Infrastructure.LLMs.Capabilities;
 using Orkeon.Infrastructure.LLMs;
 using Orkeon.Infrastructure.Crew;
 using Orkeon.Infrastructure.Memory;
@@ -207,7 +208,8 @@ public static class InfrastructureExtensions
             sp.GetService<ILlmUsageSink>(),
             sp.GetService<ILlmRateLimiter>(),
             sp.GetService<ILlmCallObserver>(),
-            sp.GetService<ITokenCounter>()));
+            sp.GetService<ITokenCounter>(),
+            sp.GetService<IModelCapabilityRegistry>()));
 
         // The host's named LLM profiles (GAP-17): the default provider plus every profile
         // registered by AddOrkeonLlmProfile(s). Always present, so a crew naming a profile the

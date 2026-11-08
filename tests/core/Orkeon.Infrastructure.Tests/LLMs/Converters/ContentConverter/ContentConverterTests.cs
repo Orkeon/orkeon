@@ -13,7 +13,7 @@ public class ContentConverterTests
         var content = MultiModalContent.FromText("Hello world");
 
         // Act
-        var result = ContentConverter.ToAIContents(content);
+        var result = ContentConverter.ToAIContents(content, "gpt-4o-audio-preview");
 
         // Assert
         Assert.Single(result);
@@ -30,7 +30,7 @@ public class ContentConverterTests
             .AddText("Second");
 
         // Act
-        var result = ContentConverter.ToAIContents(content);
+        var result = ContentConverter.ToAIContents(content, "gpt-4o-audio-preview");
 
         // Assert
         Assert.Equal(2, result.Count);
@@ -47,7 +47,7 @@ public class ContentConverterTests
             .AddImage(ImageContentPart.FromUri(new Uri("https://example.com/img.png"), "image/png"));
 
         // Act
-        var result = ContentConverter.ToAIContents(content);
+        var result = ContentConverter.ToAIContents(content, "gpt-4o-audio-preview");
 
         // Assert
         Assert.Single(result);
@@ -65,7 +65,7 @@ public class ContentConverterTests
             .AddImage(ImageContentPart.FromBytes(data, "image/png"));
 
         // Act
-        var result = ContentConverter.ToAIContents(content);
+        var result = ContentConverter.ToAIContents(content, "gpt-4o-audio-preview");
 
         // Assert
         Assert.Single(result);
@@ -86,7 +86,7 @@ public class ContentConverterTests
             .AddImage(image);
 
         // Act
-        var result = ContentConverter.ToAIContents(content);
+        var result = ContentConverter.ToAIContents(content, "gpt-4o-audio-preview");
 
         // Assert
         var uriContent = Assert.IsType<UriContent>(result[0]);
@@ -101,7 +101,7 @@ public class ContentConverterTests
             .AddAudio(AudioContentPart.FromUri(new Uri("https://example.com/audio.wav"), "audio/wav"));
 
         // Act
-        var result = ContentConverter.ToAIContents(content);
+        var result = ContentConverter.ToAIContents(content, "gpt-4o-audio-preview");
 
         // Assert
         Assert.Single(result);
@@ -119,7 +119,7 @@ public class ContentConverterTests
             .AddAudio(audio);
 
         // Act
-        var result = ContentConverter.ToAIContents(content);
+        var result = ContentConverter.ToAIContents(content, "gpt-4o-audio-preview");
 
         // Assert
         var dataContent = Assert.IsType<DataContent>(result[0]);
@@ -139,7 +139,7 @@ public class ContentConverterTests
             });
 
         // Act
-        var result = ContentConverter.ToAIContents(content);
+        var result = ContentConverter.ToAIContents(content, "gpt-4o-audio-preview");
 
         // Assert
         Assert.Single(result);
@@ -158,7 +158,7 @@ public class ContentConverterTests
             .AddAudio(AudioContentPart.FromBytes([0x01]));
 
         // Act
-        var result = ContentConverter.ToAIContents(content);
+        var result = ContentConverter.ToAIContents(content, "gpt-4o-audio-preview");
 
         // Assert
         Assert.Equal(3, result.Count);
@@ -174,7 +174,7 @@ public class ContentConverterTests
         var content = MultiModalContent.Empty().AddImage(new ImageContentPart());
 
         // Act + Assert
-        Assert.Throws<ArgumentException>(() => ContentConverter.ToAIContents(content));
+        Assert.Throws<ArgumentException>(() => ContentConverter.ToAIContents(content, "gpt-4o-audio-preview"));
     }
 
     [Fact]
@@ -184,7 +184,7 @@ public class ContentConverterTests
         var content = MultiModalContent.Empty();
 
         // Act
-        var result = ContentConverter.ToAIContents(content);
+        var result = ContentConverter.ToAIContents(content, "gpt-4o-audio-preview");
 
         // Assert
         Assert.Empty(result);
@@ -312,7 +312,7 @@ public class ContentConverterTests
         var original = MultiModalContent.FromText("Hello world");
 
         // Act
-        var aiContents = ContentConverter.ToAIContents(original);
+        var aiContents = ContentConverter.ToAIContents(original, "gpt-4o-audio-preview");
         var roundTripped = ContentConverter.FromAIContents(aiContents);
 
         // Assert
@@ -329,7 +329,7 @@ public class ContentConverterTests
             .AddImage(ImageContentPart.FromBytes(bytes, "image/png"));
 
         // Act
-        var roundTripped = ContentConverter.FromAIContents(ContentConverter.ToAIContents(original));
+        var roundTripped = ContentConverter.FromAIContents(ContentConverter.ToAIContents(original, "gpt-4o-audio-preview"));
 
         // Assert
         Assert.Equal(2, roundTripped.Parts.Count);
@@ -345,7 +345,7 @@ public class ContentConverterTests
         var content = MultiModalContent.FromText("System prompt");
 
         // Act
-        var message = ContentConverter.ToChatMessage("system", content);
+        var message = ContentConverter.ToChatMessage("system", content, "gpt-4o-audio-preview");
 
         // Assert
         Assert.Equal(ChatRole.System, message.Role);
@@ -361,7 +361,7 @@ public class ContentConverterTests
         var content = MultiModalContent.FromText("User message");
 
         // Act
-        var message = ContentConverter.ToChatMessage("user", content);
+        var message = ContentConverter.ToChatMessage("user", content, "gpt-4o-audio-preview");
 
         // Assert
         Assert.Equal(ChatRole.User, message.Role);
@@ -374,7 +374,7 @@ public class ContentConverterTests
         var content = MultiModalContent.FromText("Assistant response");
 
         // Act
-        var message = ContentConverter.ToChatMessage("assistant", content);
+        var message = ContentConverter.ToChatMessage("assistant", content, "gpt-4o-audio-preview");
 
         // Assert
         Assert.Equal(ChatRole.Assistant, message.Role);
@@ -387,7 +387,7 @@ public class ContentConverterTests
         var content = MultiModalContent.FromText("Unknown role message");
 
         // Act
-        var message = ContentConverter.ToChatMessage("unknown", content);
+        var message = ContentConverter.ToChatMessage("unknown", content, "gpt-4o-audio-preview");
 
         // Assert
         Assert.Equal(ChatRole.User, message.Role);
@@ -429,7 +429,7 @@ public class ContentConverterTests
         var originalContent = MultiModalContent.FromText("Round trip test");
 
         // Act
-        var message = ContentConverter.ToChatMessage("user", originalContent);
+        var message = ContentConverter.ToChatMessage("user", originalContent, "gpt-4o-audio-preview");
         var (role, content) = ContentConverter.FromChatMessage(message);
 
         // Assert

@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — a capability table per model, and audio as input (FWK-21)
+
+- **`IModelCapabilityRegistry`** (`ORKEXP005`, experimental) maps a model id prefix to `ModelCapabilities` (`AudioInput`, `AudioOutput`, `Vision`, `ReasoningEfforts`); the longest prefix wins. The built-in table is in code (OpenAI chat, audio and reasoning families, Gemini, Claude); **`Llm:ModelCapabilities:<id>`** (`AudioInput`, `AudioOutput`, `Vision`, `ReasoningEfforts`) adds a model or replaces an entry. `LlmProviderCapabilities` stays per provider.
+- **Audio as input**: an audio part sent to a model the table credits with audio input becomes an `input_audio` part (raw bytes, `audio/wav` or `audio/mpeg`) on the OpenAI-compatible family (OpenAI, Gemini). A model without audio, or unknown to the table, is refused with a `NotSupportedException` naming the model and the key that declares it. Anthropic and Ollama stay refusals; audio output is out of scope.
+- **Reasoning effort is judged against the model** on the OpenAI-compatible family: an effort a listed model does not take is omitted with a structured warning (event 110); a model the table does not know gets it as asked, with a warning (event 113).
+- A `Llm:ModelCapabilities:<id>` entry merges with the built-in value **field by field** (a field left out keeps it); a registry the host registers itself wins over the configured one; the "effort sent unchecked" warning (event 113) is given once per provider instance and model. A model id containing `:` cannot be a key (no escape in .NET configuration): key its prefix.
+- `LlmProfileRegistry` reads the table when it warns about a fallback that lacks what the primary has: audio input and reasoning efforts join vision, response format, thinking and grammar.
+
+### Changed — the model id reaches the content converter (FWK-21)
+
+- **[breaking]** `ContentConverter.ToOpenAIContentParts`, `ToAIContents` and `ToChatMessage` take the model id the request is sent to (and an optional `IModelCapabilityRegistry`): audio is judged against it. Pass the model of the call. `LlmProviderFactory`'s constructor takes a last optional `IModelCapabilityRegistry`.
 ### Added — health probes, a run API and idempotency on `orkeon-host` (FWK-14)
 
 - **`Orkeon:Host:Api`** (`Enabled`, `Prefix`, `Security`, `ReadinessTags`, `IdempotencyTtl`, `IdempotencyMaxKeys`) starts a `HostApiServer` on its own `HttpListener`, off by default. `GET /healthz` (liveness, `system_resources` only, never an external service) and `GET /readyz` (`crew_registry`, `state_store`, `run_history`, `memory_provider`, and `llm_provider` only when `ReadinessTags` lists `llm`) answer without authentication and `503` once the stop has closed admission. `POST /runs` (`202`, `429` + `Retry-After`, `404`, `503`, `409`), `GET /runs`, `GET /runs/{id}`, `GET /runs/{id}/events` (SSE with `id: seq` and `Last-Event-ID`, else NDJSON) and `POST /runs/{id}/cancel`. A prefix beyond the loopback without authentication is refused at start. Reference: [`docs/reference/host-api.md`](docs/reference/host-api.md).

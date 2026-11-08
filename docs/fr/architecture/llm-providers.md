@@ -328,6 +328,56 @@ exactement la valeur du premier profil ne se distingue pas du profil : la valeur
 - **Une clé révoquée bloque la chaîne** : un 401 et un 403 ne basculent jamais (c'est une erreur de configuration, pas une panne), si bien qu'un primaire dont la clé a été
   révoquée répond son erreur à chaque appel et que ses secours ne sont jamais essayés.
 
+## Ce qu'accepte un modèle, et l'audio en entrée
+
+`LlmProviderCapabilities` est déclaré une fois par fournisseur : il ne distingue pas deux modèles d'un même
+éditeur. `gpt-4o` ne prend aucun effort de raisonnement, `o3-mini` en prend trois, et les deux passent par le
+même fournisseur. Le côté par modèle est une table, `IModelCapabilityRegistry` (`ORKEXP005`,
+[expérimental](../reference/experimental-apis.md)), bâtie comme `ModelPricingRegistry` : un **préfixe** d'identifiant
+de modèle donne des `ModelCapabilities` (`AudioInput`, `AudioOutput`, `Vision`, `ReasoningEfforts`) ; le plus long
+préfixe du modèle demandé l'emporte, sans tenir compte de la casse. La table intégrée est dans le code et couvre les
+familles OpenAI (chat, audio, raisonnement), Gemini et Claude ; un modèle qu'elle ignore s'ajoute, ou une entrée
+intégrée se remplace, depuis la configuration :
+
+```yaml
+Llm:
+  ModelCapabilities:
+    acme-voice:                 # un préfixe : acme-voice-2 correspond
+      AudioInput: true
+      ReasoningEfforts: [low, high]   # omis : aucune restriction ; écrit vide : le modèle n'en prend aucun
+```
+
+Une entrée se fusionne avec la valeur intégrée du même identifiant **champ par champ** : un champ omis garde la
+valeur intégrée, donc une entrée qui ne fixe que `AudioInput` garde la restriction d'effort intégrée du modèle (pour
+un modèle que la table ignore, un interrupteur omis est faux et les efforts restent sans restriction). Un
+`ReasoningEfforts` écrit vide dit que le modèle n'en prend aucun. Un registre que l'hôte enregistre lui-même
+(`IModelCapabilityRegistry`, avant `AddOrkeonLlmProfiles`) l'emporte sur celui de la configuration. Un identifiant de
+modèle contenant `:` (le `llama3:8b` d'Ollama) ne peut pas être une clé : la configuration .NET n'a pas
+d'échappement pour le séparateur de chemin `:`. Écrivez plutôt son préfixe (`llama3` correspond à `llama3:8b` et à
+tous les autres tags).
+
+- **Audio en entrée.** Un `AudioContentPart` parvient à un modèle qui l'accepte sous la forme d'une partie
+  `input_audio` de l'API Chat Completions (octets bruts, `audio/wav` ou `audio/mpeg` ; l'API ne prend pas d'adresse
+  audio). La famille compatible OpenAI le fait par `ContentConverter.ToOpenAIContentParts(content, model, registry)` :
+  OpenAI et Gemini (par sa couche compatible) sont couverts ; `ToAIContents` juge de même pour le chemin du client de
+  conversation. Un modèle que la table ne crédite pas d'audio, ou ne connaît pas, est refusé par une
+  `NotSupportedException` qui **nomme le modèle** et la clé `Llm:ModelCapabilities:<id>:AudioInput` qui le déclare :
+  l'audio n'est jamais abandonné en silence. Anthropic et Ollama restent des refus (leurs API ne prennent pas
+  d'audio) ; un fournisseur qui ne déclare pas la vision garde son avertissement structuré « message attachments
+  (audio) » et n'envoie que le texte. Azure OpenAI se nomme par déploiement : déclarez le déploiement par une
+  surcharge. La **sortie** audio est hors périmètre : la table l'enregistre, rien ne l'envoie ni ne la lit.
+- **Effort de raisonnement, jugé contre le modèle** (identifiants d'événement `110`, `113`). Sur la famille
+  compatible OpenAI, un effort que la table ne donne pas au modèle est **omis** de la requête, avec un avertissement
+  structuré qui nomme le modèle et les efforts qu'il prend ; un modèle que la table ignore reçoit l'effort tel que
+  demandé, avec un avertissement : rien n'a été vérifié, **une fois par instance de fournisseur et par modèle** (`Llm:ModelCapabilities:<id>:ReasoningEfforts` le fait taire) ;
+  un modèle dont l'entrée omet `ReasoningEfforts` n'est pas restreint. Les niveaux déclarés du fournisseur
+  s'appliquent d'abord (`xhigh` est abaissé là où le champ ne le connaît pas), puis la table.
+- **Les chaînes de bascule** (`WarnAboutLesserFallbacks`) lisent la même table : une bascule dont le modèle ne prend
+  pas d'audio, ou moins d'efforts, que celui du principal est signalée une fois, à côté de la vision, du format de
+  réponse, de la réflexion et de la grammaire.
+- Les dialectes Anthropic et Ollama ne lisent pas encore la table : leur effort n'est jugé que par les niveaux
+  déclarés du fournisseur.
+
 ## Décorateurs et enregistrement
 
 - **`MeteredLlmProvider`** — l'unique endroit où l'usage LLM est mesuré : il rapporte chaque

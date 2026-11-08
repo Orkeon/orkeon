@@ -26,6 +26,31 @@ internal class LlmSectionShape : LlmProfileShape
 
     /// <summary>The models a scripted <c>/model</c> may offer: a list, or one comma-separated value.</summary>
     public List<string>? AvailableModels { get; set; }
+
+    /// <summary>
+    /// What a model accepts, by model id (a prefix), overriding the built-in table (FWK-21): audio input,
+    /// image input, the reasoning efforts it takes.
+    /// </summary>
+    public Dictionary<string, LlmModelCapabilityShape>? ModelCapabilities { get; set; }
+}
+
+/// <summary>One <c>Llm:ModelCapabilities:&lt;id&gt;</c> entry.</summary>
+internal sealed class LlmModelCapabilityShape
+{
+    /// <summary>Whether the model takes audio parts as input. Left out, the built-in value of the model (false when the table does not know it).</summary>
+    public bool? AudioInput { get; set; }
+
+    /// <summary>Whether the model answers in audio. Recorded only: nothing sends or reads audio output. Left out, the built-in value of the model (false when the table does not know it).</summary>
+    public bool? AudioOutput { get; set; }
+
+    /// <summary>Whether the model takes image parts as input. Left out, the built-in value of the model (false when the table does not know it).</summary>
+    public bool? Vision { get; set; }
+
+    /// <summary>
+    /// The reasoning efforts the model takes: a list, or one comma-separated value; written empty, none.
+    /// Left out, the built-in list of the model (no restriction for a model the table does not know) and the provider's own levels rule.
+    /// </summary>
+    public List<string>? ReasoningEfforts { get; set; }
 }
 
 /// <summary>A named profile: the keys of the <c>Llm</c> shape, and the two a default profile has no use for.</summary>

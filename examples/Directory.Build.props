@@ -12,6 +12,6 @@
     <!-- Examples deliberately showcase experimental surfaces (Autonomous, A2A,
          corrective RAG, MCP); the ORKEXP diagnostics target consumers outside
          this repo (see docs/reference/experimental-apis.md). -->
-    <NoWarn>$(NoWarn);ORKEXP001;ORKEXP002;ORKEXP003;ORKEXP004</NoWarn>
+    <NoWarn>$(NoWarn);ORKEXP001;ORKEXP002;ORKEXP003;ORKEXP004;ORKEXP005</NoWarn>
   </PropertyGroup>
 </Project>
