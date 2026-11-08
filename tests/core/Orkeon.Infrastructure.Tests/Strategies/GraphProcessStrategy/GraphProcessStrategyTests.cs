@@ -237,13 +237,14 @@ public sealed class GraphProcessStrategyTests : IDisposable
 
     #endregion
 
-    #region Retry Logic (Controlled Cycles)
+    #region A failed task
 
     [Fact]
-    public async Task ShouldRetryFailedTasks_UpToMaxRetryCycles()
+    [Trait("BR", "FWK-15")]
+    public async Task ShouldNotRetryAFailedTask_ItsAttemptsAreItsRetryPolicyNotTheGraphs()
     {
-        var agent = CreateAgent("retrier");
-        var task = CreateTask("flaky_task");
+        var agent = CreateAgent("doomed");
+        var task = CreateTask("always_fails");
         var crew = CreateCrewWithTasksAndAgents([task], [agent]);
 
         _agents[agent.Id] = agent;
@@ -253,60 +254,13 @@ public sealed class GraphProcessStrategyTests : IDisposable
         _mockExecutionService.SetExecuteFunc((a, t, ctx, ct) =>
         {
             callCount++;
-            // Fail first 2 attempts, succeed on 3rd
-            var success = callCount >= 3;
-            return new TaskResult(success,
-                success ? "Finally succeeded" : $"Attempt {callCount} failed",
-                null, [], TimeSpan.FromSeconds(1));
+            return new TaskResult(false, "Always fails", null, [], TimeSpan.FromSeconds(1));
         });
 
-        var retryStrategy = new GraphProcessStrategy(
-            new CrewStrategyDependencies(
-                new MinimalTaskRepository(_tasks), new MinimalAgentRepository(_agents),
-                _mockExecutionService, _mockMemoryScope),
-            _delegationProvider,
-            _logger)
-        {
-            MaxRetryCycles = 3,
-            CircuitPolicy = CircuitBreakerPolicy.Permissive
-        };
+        var result = await _strategy.ExecuteSequentialAsync(crew, cancellationToken: TestContext.Current.CancellationToken);
 
-        var result = await retryStrategy.ExecuteSequentialAsync(crew, cancellationToken: TestContext.Current.CancellationToken);
-
-        Assert.True(result.Success || callCount >= 3);
-        Assert.True(callCount >= 3, $"Expected at least 3 calls but got {callCount}");
-    }
-
-    [Fact]
-    public async Task ShouldStopRetrying_WhenMaxRetriesExceeded()
-    {
-        var agent = CreateAgent("doomed");
-        var task = CreateTask("always_fails");
-        var crew = CreateCrewWithTasksAndAgents([task], [agent]);
-
-        _agents[agent.Id] = agent;
-        _tasks[task.Id] = task;
-
-        _mockExecutionService.SetExecuteFunc((a, t, ctx, ct) =>
-            new TaskResult(false, "Always fails", null, [], TimeSpan.FromSeconds(1)));
-
-        var retryStrategy = new GraphProcessStrategy(
-            new CrewStrategyDependencies(
-                new MinimalTaskRepository(_tasks), new MinimalAgentRepository(_agents),
-                _mockExecutionService, _mockMemoryScope),
-            _delegationProvider,
-            _logger)
-        {
-            MaxRetryCycles = 2,
-            CircuitPolicy = CircuitBreakerPolicy.Permissive
-        };
-
-        var result = await retryStrategy.ExecuteSequentialAsync(crew, cancellationToken: TestContext.Current.CancellationToken);
-
-        // Should complete (not hang) — the retry limit stops it, and a task still failing
-        // after its retries fails the crew, naming it (GAP-03)
-        Assert.NotNull(result);
-        Assert.True(_logger.HasLoggedError("failed after"));
+        // The crew fails, naming the task (GAP-03), after one call: no retry loop of the graph's own.
+        Assert.Equal(1, callCount);
         Assert.False(result.Success);
         Assert.Contains(task.Id.ToString(), result.Error, StringComparison.Ordinal);
         Assert.DoesNotContain("circuit breaker", result.Error, StringComparison.OrdinalIgnoreCase);
@@ -320,15 +274,15 @@ public sealed class GraphProcessStrategyTests : IDisposable
     public async Task ShouldReturnFailure_WhenCircuitBreakerTrips()
     {
         var agent = CreateAgent("looper");
-        var task = CreateTask("infinite_retry");
-        var crew = CreateCrewWithTasksAndAgents([task], [agent]);
+        var tasks = Enumerable.Range(0, 12).Select(i => CreateTask($"step_{i}")).ToList();
+        var crew = CreateCrewWithTasksAndAgents([.. tasks], [agent]);
 
         _agents[agent.Id] = agent;
-        _tasks[task.Id] = task;
+        foreach (var task in tasks)
+            _tasks[task.Id] = task;
 
-        // Always fail so retries keep cycling
         _mockExecutionService.SetExecuteFunc((a, t, ctx, ct) =>
-            new TaskResult(false, "Fails forever", null, [], TimeSpan.FromSeconds(0)));
+            new TaskResult(true, "done", null, [], TimeSpan.FromSeconds(0)));
 
         var tightPolicy = new CircuitBreakerPolicy
         {
@@ -345,7 +299,6 @@ public sealed class GraphProcessStrategyTests : IDisposable
             _delegationProvider,
             _logger)
         {
-            MaxRetryCycles = 100, // High — rely on circuit breaker to stop
             CircuitPolicy = tightPolicy
         };
 
@@ -432,60 +385,52 @@ public sealed class GraphProcessStrategyTests : IDisposable
     #region Crew GraphConfig Wiring (P2-O-01)
 
     [Fact]
-    public async Task ShouldHonorCrewGraphConfigMaxRetryCycles_WhenStrategyUsesDefaults()
+    [Trait("BR", "FWK-15")]
+    public async Task ShouldNotMultiplyTheAttempts_WhenTheTaskCarriesARetryPolicy()
     {
-        // The strategy is built with its DEFAULT init props (MaxRetryCycles = 2, CircuitPolicy = null: computed).
-        // The crew carries GraphConfig{ MaxRetryCycles = 5, permissive } — proving the per-crew config,
-        // not the strategy default, drives execution: a task that only succeeds on its 5th attempt
-        // completes, which the default of 2 retry cycles could never reach.
+        // The retry: of a task is applied below the strategy, by the execution service; a strategy that
+        // retried too would run the task attempts x (1 + cycles) times. Here the service is the double
+        // that fails: the strategy asks it once per task and the crew fails with the task.
         var agent = CreateAgent("retrier");
-        var task = CreateTask("flaky_task");
+        var task = new CrewTaskBuilder().Description(TaskDescription.From("flaky")).ExpectedOutput("done")
+            .Retry(new TaskRetryPolicy(5)).Build();
         _agents[agent.Id] = agent;
         _tasks[task.Id] = task;
-
-        var crew = CreateGraphCrew([task], [agent], new GraphConfig
-        {
-            MaxRetryCycles = 5,
-            CircuitBreakerPreset = "permissive"
-        });
+        var crew = CreateGraphCrew([task], [agent], new GraphConfig { CircuitBreakerPreset = "permissive" });
 
         var callCount = 0;
         _mockExecutionService.SetExecuteFunc((a, t, ctx, ct) =>
         {
             callCount++;
-            var success = callCount >= 5;
-            return new TaskResult(success,
-                success ? "Finally succeeded" : $"Attempt {callCount} failed",
-                null, [], TimeSpan.FromSeconds(1));
+            return new TaskResult(false, "down", null, [], TimeSpan.FromSeconds(1));
         });
 
-        // Default-configured strategy (no object-initializer overrides).
         var result = await _strategy.ExecuteSequentialAsync(crew, cancellationToken: TestContext.Current.CancellationToken);
 
-        Assert.True(result.Success, $"Expected success once the crew's 5 retry cycles are honored; callCount={callCount}");
-        Assert.True(callCount >= 5, $"Expected at least 5 attempts (crew MaxRetryCycles=5) but got {callCount}");
+        Assert.False(result.Success);
+        Assert.Equal(1, callCount);
     }
 
     [Fact]
     public async Task ShouldTripCircuitBreaker_WhenCrewGraphConfigSetsTightMaxTransitions()
     {
-        // Crew GraphConfig overrides MaxTransitions down to a tiny value; an always-failing task
-        // then trips the breaker. Uses the default strategy — the tight limit comes from the crew.
+        // Crew GraphConfig overrides MaxTransitions down to a tiny value; a crew of six tasks (twelve
+        // transitions) then trips the breaker. Uses the default strategy: the tight limit comes from the crew.
         var agent = CreateAgent("looper");
-        var task = CreateTask("infinite_retry");
+        var tasks = Enumerable.Range(0, 12).Select(i => CreateTask($"step_{i}")).ToList();
         _agents[agent.Id] = agent;
-        _tasks[task.Id] = task;
+        foreach (var task in tasks)
+            _tasks[task.Id] = task;
 
-        var crew = CreateGraphCrew([task], [agent], new GraphConfig
+        var crew = CreateGraphCrew([.. tasks], [agent], new GraphConfig
         {
             CircuitBreakerPreset = "permissive", // permissive => throws (no degraded mode)
             MaxTransitions = 8,                  // very low — trips quickly
             MaxStateVisits = 0,                  // disable visit-based tripping; rely on transitions
-            MaxRetryCycles = 100                 // high — rely on the breaker, not the retry cap
         });
 
         _mockExecutionService.SetExecuteFunc((a, t, ctx, ct) =>
-            new TaskResult(false, "Fails forever", null, [], TimeSpan.FromSeconds(0)));
+            new TaskResult(true, "done", null, [], TimeSpan.FromSeconds(0)));
 
         var result = await _strategy.ExecuteSequentialAsync(crew, cancellationToken: TestContext.Current.CancellationToken);
 
@@ -494,10 +439,11 @@ public sealed class GraphProcessStrategyTests : IDisposable
     }
 
     [Fact]
-    public async Task ShouldUseStrategyDefaults_WhenCrewHasNoGraphConfig()
+    [Trait("BR", "FWK-15")]
+    public async Task ShouldRunAFailingTaskOnce_WhenCrewHasNoGraphConfig()
     {
-        // Regression: a crew without GraphConfig must fall back to the strategy's built-in defaults
-        // (MaxRetryCycles = 2, bounds computed from the crew — GAP-03).
+        // The graph has no retry loop of its own: a task's attempts are its retry: policy, applied by the
+        // execution service the strategy calls. A task that fails ends the crew with the failure.
         var agent = CreateAgent("doomed");
         var task = CreateTask("always_fails");
         _agents[agent.Id] = agent;
@@ -515,10 +461,8 @@ public sealed class GraphProcessStrategyTests : IDisposable
 
         var result = await _strategy.ExecuteSequentialAsync(crew, cancellationToken: TestContext.Current.CancellationToken);
 
-        // Stops per the default cap/breaker (does not run away) and reports giving up — as before.
-        Assert.NotNull(result);
-        Assert.True(_logger.HasLoggedError("failed after") || _logger.HasLoggedWarning("will retry"));
-        Assert.True(callCount <= 4, $"Default MaxRetryCycles=2 should bound attempts; got {callCount}");
+        Assert.False(result.Success);
+        Assert.Equal(1, callCount);
     }
 
     #endregion

@@ -352,6 +352,7 @@ public partial class CrewFactory : ICrewFactory
                 .Description(TaskDescription.From(taskConfig.Description))
                 .ExpectedOutput(taskConfig.ExpectedOutput)
                 .Async(taskConfig.AsyncExecution)
+                .Retry(taskConfig.Retry)
                 .HumanInput(taskConfig.HumanInput)
                 .WithTools(resolvedTools)
                 .WithKey(taskConfig.Key);

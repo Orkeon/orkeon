@@ -69,7 +69,11 @@ public sealed partial class CheckpointManager : ICheckpointManager
     }
 
     /// <inheritdoc />
-    public async System.Threading.Tasks.Task CheckpointAsync(string sessionId, string taskId, string? output, CancellationToken ct = default)
+    public System.Threading.Tasks.Task CheckpointAsync(string sessionId, string taskId, string? output, CancellationToken ct = default) =>
+        CheckpointAsync(sessionId, taskId, output, 0, ct);
+
+    /// <inheritdoc />
+    public async System.Threading.Tasks.Task CheckpointAsync(string sessionId, string taskId, string? output, int retryCount, CancellationToken ct = default)
     {
         using var held = await EnterAsync(sessionId, ct).ConfigureAwait(false);
         var state = await _store.GetAsync(sessionId, ct).ConfigureAwait(false);
@@ -86,7 +90,8 @@ public sealed partial class CheckpointManager : ICheckpointManager
                 TaskId = taskId,
                 Status = CheckpointStatus.Completed,
                 Output = output,
-                Timestamp = DateTime.UtcNow
+                Timestamp = DateTime.UtcNow,
+                RetryCount = retryCount
             }
         };
 

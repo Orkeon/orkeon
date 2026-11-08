@@ -7,13 +7,6 @@ namespace Orkeon.Domain.Configuration;
 public sealed record GraphConfig
 {
     /// <summary>
-    /// Maximum retry cycles for failed tasks before giving up.
-    /// Each cycle re-enqueues all failed tasks for another attempt.
-    /// Default: 2.
-    /// </summary>
-    public int MaxRetryCycles { get; init; } = 2;
-
-    /// <summary>
     /// Circuit breaker preset name ("strict", "permissive", or "default").
     /// Overridden by explicit field values below when specified.
     /// Default: "strict".

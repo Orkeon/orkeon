@@ -81,7 +81,7 @@ public sealed partial class CheckpointingAgentExecutionService : IAgentExecution
 
         var result = await RunAsync(call, () => _inner.ExecuteTaskAsync(agent, task, context, cancellationToken)).ConfigureAwait(false);
         if (result.Success)
-            await WriteAsync(call, StoredResult.Of(result, call.Fingerprint), cancellationToken).ConfigureAwait(false);
+            await WriteAsync(call, StoredResult.Of(result, call.Fingerprint), result.RetryCount, cancellationToken).ConfigureAwait(false);
         return result;
     }
 
@@ -99,7 +99,7 @@ public sealed partial class CheckpointingAgentExecutionService : IAgentExecution
 
         var result = await RunAsync(call, () => _inner.ExecuteTaskAsync<TOutput>(agent, task, context, cancellationToken)).ConfigureAwait(false);
         if (result.Success)
-            await WriteAsync(call, StoredResult.Of(result, call.Fingerprint), cancellationToken).ConfigureAwait(false);
+            await WriteAsync(call, StoredResult.Of(result, call.Fingerprint), result.RetryCount, cancellationToken).ConfigureAwait(false);
         return result;
     }
 
@@ -190,8 +190,8 @@ public sealed partial class CheckpointingAgentExecutionService : IAgentExecution
         }
     }
 
-    private System.Threading.Tasks.Task WriteAsync(Call call, StoredResult result, CancellationToken ct) =>
-        _checkpoints.CheckpointAsync(call.Run.ExecutionId.ToString(), call.Key, JsonSerializer.Serialize(result, Json), ct);
+    private System.Threading.Tasks.Task WriteAsync(Call call, StoredResult result, int retryCount, CancellationToken ct) =>
+        _checkpoints.CheckpointAsync(call.Run.ExecutionId.ToString(), call.Key, JsonSerializer.Serialize(result, Json), retryCount, ct);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Task {Key} of run {RunId} answered from its checkpoint: no model was asked")]
     private partial void LogTaskResumed(string key, ExecutionId runId);

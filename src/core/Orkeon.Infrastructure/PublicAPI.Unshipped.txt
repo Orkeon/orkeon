@@ -611,3 +611,25 @@ Orkeon.Infrastructure.Decision.GuardianJudgePhase.Output = 1 -> Orkeon.Infrastru
 [ORKEXP004]Orkeon.Infrastructure.MCP.McpServerOptions.ResourcesPageSize.set -> void
 *REMOVED*[ORKEXP004]Orkeon.Infrastructure.MCP.McpServer.McpServer(Orkeon.Domain.Tools.IToolRegistry! toolRegistry, Orkeon.Application.Interfaces.Security.IToolInvocationPipeline! toolInvocation, Microsoft.Extensions.Options.IOptions<Orkeon.Infrastructure.MCP.McpServerOptions!>! options, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.MCP.McpServer!>? logger = null) -> void
 *REMOVED*[ORKEXP004]Orkeon.Infrastructure.MCP.McpServer.McpServer(Orkeon.Domain.Tools.IToolRegistry! toolRegistry, Orkeon.Application.Interfaces.Security.IToolInvocationPipeline! toolInvocation, Orkeon.Infrastructure.MCP.McpServerOptions! options, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.MCP.McpServer!>? logger = null) -> void
+Orkeon.Infrastructure.Configuration.RetryYamlConfig
+Orkeon.Infrastructure.Configuration.RetryYamlConfig.Attempts.get -> int?
+Orkeon.Infrastructure.Configuration.RetryYamlConfig.Attempts.set -> void
+Orkeon.Infrastructure.Configuration.RetryYamlConfig.Backoff.get -> string?
+Orkeon.Infrastructure.Configuration.RetryYamlConfig.Backoff.set -> void
+Orkeon.Infrastructure.Configuration.RetryYamlConfig.BackoffMs.get -> int?
+Orkeon.Infrastructure.Configuration.RetryYamlConfig.BackoffMs.set -> void
+Orkeon.Infrastructure.Configuration.RetryYamlConfig.RetryYamlConfig() -> void
+Orkeon.Infrastructure.Configuration.TaskYamlConfig.Retry.get -> Orkeon.Infrastructure.Configuration.RetryYamlConfig?
+Orkeon.Infrastructure.Configuration.TaskYamlConfig.Retry.set -> void
+Orkeon.Infrastructure.Crew.RetryingAgentExecutionService
+Orkeon.Infrastructure.Crew.RetryingAgentExecutionService.ExecuteTaskAsync(Orkeon.Domain.Agent.Agent! agent, Orkeon.Domain.Task.ICrewTask! task, Orkeon.Application.Context.SimpleExecutionContext! context, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Application.Interfaces.Services.TaskResult!>!
+Orkeon.Infrastructure.Crew.RetryingAgentExecutionService.ExecuteTaskAsync<TOutput>(Orkeon.Domain.Agent.Agent! agent, Orkeon.Domain.Task.ICrewTask! task, Orkeon.Application.Context.SimpleExecutionContext! context, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Application.Interfaces.Services.TaskResult<TOutput!>!>!
+Orkeon.Infrastructure.Crew.RetryingAgentExecutionService.RetryingAgentExecutionService(Orkeon.Application.Interfaces.Services.IAgentExecutionService! inner, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.Crew.RetryingAgentExecutionService!>! logger, System.TimeProvider? time = null, Orkeon.Application.Crew.ICrewExecutionHook? hook = null) -> void
+*REMOVED*Orkeon.Infrastructure.Configuration.GraphYamlConfig.MaxRetryCycles.get -> int?
+*REMOVED*Orkeon.Infrastructure.Configuration.GraphYamlConfig.MaxRetryCycles.set -> void
+*REMOVED*Orkeon.Infrastructure.Crew.Strategies.CrewGraphState.MaxRetryCycles.get -> int
+*REMOVED*Orkeon.Infrastructure.Crew.Strategies.CrewGraphState.MaxRetryCycles.init -> void
+*REMOVED*Orkeon.Infrastructure.Crew.Strategies.CrewGraphState.RetryCounts.get -> System.Collections.Generic.Dictionary<string!, int>!
+*REMOVED*Orkeon.Infrastructure.Crew.Strategies.CrewGraphState.RetryCounts.init -> void
+*REMOVED*Orkeon.Infrastructure.Crew.Strategies.GraphProcessStrategy.MaxRetryCycles.get -> int
+*REMOVED*Orkeon.Infrastructure.Crew.Strategies.GraphProcessStrategy.MaxRetryCycles.init -> void

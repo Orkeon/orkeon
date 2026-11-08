@@ -20,7 +20,6 @@ maxRpm: 120
 
 # Read in every mode, applied by process: graph alone — the file is what the round trip proves.
 graphConfig:
-  maxRetryCycles: 3
   circuitBreakerPreset: permissive
   maxTransitions: 40
   maxStateVisits: 12
@@ -122,6 +121,7 @@ tasks:
     agent: researcher
     tools: [http_api]
     asyncExecution: true
+    retry: { attempts: 3, backoffMs: 250, backoff: exponential }
     humanInput: true
     context:
       region: EMEA

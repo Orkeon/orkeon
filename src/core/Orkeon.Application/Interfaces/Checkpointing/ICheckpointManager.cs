@@ -24,6 +24,17 @@ public interface ICheckpointManager
     System.Threading.Tasks.Task CheckpointAsync(string sessionId, string taskId, string? output, CancellationToken ct = default);
 
     /// <summary>
+    /// Records a successful task checkpoint with its output and how many times the task ran again
+    /// before it succeeded (FWK-15).
+    /// </summary>
+    /// <param name="sessionId">The run's execution identifier.</param>
+    /// <param name="taskId">The checkpoint key of the task.</param>
+    /// <param name="output">The serialized result.</param>
+    /// <param name="retryCount">How many times the task ran again before it succeeded.</param>
+    /// <param name="ct">The cancellation token.</param>
+    System.Threading.Tasks.Task CheckpointAsync(string sessionId, string taskId, string? output, int retryCount, CancellationToken ct = default);
+
+    /// <summary>
     /// Records a task failure with exception details.
     /// </summary>
     System.Threading.Tasks.Task MarkFailedAsync(string sessionId, string taskId, Exception ex, CancellationToken ct = default);

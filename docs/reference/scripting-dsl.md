@@ -117,7 +117,7 @@ now builds on its own.
 
 Declarative only — the procedural engine never reads tasks. Carried to the crew:
 `description`, `agent` (a built agent), `expectedOutput`, `withContext(s)` (this is what builds
-the DAG), `tools` (added to the agent's own tools for that task only, never replacing them), `humanInput`, `asyncExecution`, `deliverable`, `withResponseFormat(type)`,
+the DAG), `tools` (added to the agent's own tools for that task only, never replacing them), `humanInput`, `asyncExecution`, `retry`, `deliverable`, `withResponseFormat(type)`,
 `withResponseSchema(name, schema, strict?)` and `withProfile(name)` (YAML `llm_override: { profile }`:
 this task alone runs on one of the host's profiles, on that profile's own model, and `"default"`
 brings it back to the host's default; a name the host does not offer fails the load, listing the
@@ -133,6 +133,8 @@ the tasks after it, and a task that lists it in `withContext` waits for it; unde
 `.process("parallel")` it has no effect of its own; under the four other modes the crew is refused
 when the run adapts it, naming the task (see
 [Asynchronous tasks](../orchestration/process-types.md#asynchronous-tasks-asyncexecution)).
+
+`retry({ attempts, backoffMs?, backoff? })` is the YAML `retry:` block (see [Task retry](../architecture/yaml-schema.md#task-retry)): a failed attempt runs the whole task again, tool calls included, up to `attempts` runs in all (at least 1, required); `backoffMs` (default 0) and `backoff` (`"fixed"`, the default, or `"exponential"`) set the wait. A missing or invalid `attempts`, a negative `backoffMs`, an unknown `backoff`, or a `retry` on a decision task throws an `InvalidScriptException` at the call (or at `build()` for the decision task). It is the only retry of a `.process("graph")` crew.
 
 A task's `agent` and the tasks of its `withContext(s)` are the crew's own (`withAgent(s)`,
 `withTask(s)`): one the crew does not hold is refused when the run adapts the crew, naming the
@@ -347,7 +349,7 @@ const g = stateGraph<{ done: boolean }>({
 
 An edge is a node name, `END`, or a function of the state returning one (a conditional edge).
 `graphConfig` bounds each `run(state)`: `circuitBreakerPreset` (`Strict`, `Default`,
-`Permissive`) or the individual `maxTransitions`, `maxStateVisits`, `maxRetryCycles` and
+`Permissive`) or the individual `maxTransitions`, `maxStateVisits`, `maxRetryCycles` (the script graph's own budget: the run-wide count of entries into a node already entered once, kept for the budget parity of the two engines; it is **not** a task retry, which is the task's `retry:`) and
 `maxTotalDurationSeconds` — exceeding a count throws, running out of time cancels the run. `runStream(state)` yields each hop
 (`{ fromNode, toNode, state }`) for `for await`.
 

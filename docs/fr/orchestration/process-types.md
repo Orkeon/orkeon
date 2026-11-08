@@ -16,7 +16,7 @@ ProcessType.Sequential    // Pipeline linéaire
 ProcessType.Hierarchical  // Manager + workers
 ProcessType.Parallel      // Vagues de dépendances, concurrence dans une vague
 ProcessType.Consensual    // Chaque agent exécute chaque tâche, puis un vote
-ProcessType.Graph         // Graphe d'états avec cycles de retry contrôlés
+ProcessType.Graph         // Graphe d'états avec circuit breaker
 ProcessType.Autonomous    // Auto-organisation sous budget
 ```
 
@@ -89,7 +89,8 @@ Une sélection qui échoue, ou qui désigne un agent absent de la crew, retombe 
 | **Une tâche échouée fait échouer la crew** | ✅ (dépendantes sautées) | ✅ (dépendantes sautées) | ✅ (dépendantes sautées) | ✅ (dépendantes sautées) | ✅ après ses retries (dépendantes sautées) | ✅ (dépendantes sautées ; un budget épuisé aussi) |
 | **Circuit breaker** | — | — | — | — | ✅ 3 mécanismes | — |
 | **Budget d'exécution** | — | — | — | — | — | ✅ 5 dimensions (`budget:` de la crew) |
-| **Retry automatique** | — | Jusqu'à 2 ré-exécutions après revue | — | Rounds de vote | ✅ `maxRetryCycles` | Une délégation à un pair |
+| **Retry automatique** | — | Jusqu'à 2 ré-exécutions après revue | — | Rounds de vote | — | Une délégation à un pair |
+| **`retry:` d'une tâche** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | **`asyncExecution: true` d'une tâche** | ✅ Tourne pendant les tâches suivantes | Refusé au chargement | Accepté, sans effet propre | Refusé au chargement | Refusé au chargement | Refusé au chargement |
 | **Tâches de décision et conditions `when`** | ✅ | Refusé au chargement | ✅ | Refusé au chargement | ✅ | Refusé au chargement |
 | **Manager** (`managerAgent:` ; `WithManagerLlm` en C#) | Refusé au chargement | ✅ Un agent (requis) ou, en C#, un LLM : il assigne et relit | Refusé au chargement | ✅ Un agent : l'arbitre de `ManagerDecision` (un LLM est refusé) | Refusé au chargement | Un LLM seulement : le profil par défaut, ou `WithManagerLlm` en C# (un agent est refusé) |
@@ -199,7 +200,7 @@ var crew = new CrewBuilder()
 
 - **Peu de parallélisme** : le temps total est la somme des tâches, sauf celles marquées `asyncExecution`
 - **Point de défaillance unique** : un échec bloque la suite de la chaîne — ses dépendantes sont sautées, seules les tâches indépendantes s'exécutent encore
-- **Pas de retry** : aucune reprise automatique en cas d'erreur
+- **Pas de retry propre** : une tâche demande des tentatives avec `retry:` ; rien n'est réessayé sinon
 - **Rigide** : l'ordre est fixe, pas de branchement conditionnel
 
 ### Quand l'utiliser
@@ -359,7 +360,7 @@ tasks:
 
 - **Ordonnancement grossier** : une tâche attend toute sa vague, pas seulement ce qu'elle a déclaré
 - **Pics de consommation d'API** : toutes les requêtes LLM d'une vague partent en même temps (rate limiting)
-- **Pas de retry** : une tâche échouée fait échouer la crew, et saute ce qui en dépend
+- **Pas de retry sauf si la tâche le demande** : une tâche échouée sans `retry:` fait échouer la crew, et saute ce qui en dépend
 
 ### Quand l'utiliser
 
@@ -501,17 +502,16 @@ Le mécanisme de vote est **sélectionnable par configuration** : `Orkeon:Consen
 
 ---
 
-## 5. Graph — Graphe d'états avec retry contrôlé
+## 5. Graph — Graphe d'états avec circuit breaker
 
 ### Principe
 
-La crew s'exécute à travers un **graphe d'états typé** (`StateGraph<CrewGraphState>`) à un nœud par tâche (ADR-018) : les nœuds sont enchaînés dans l'ordre d'exécution, et un nœud dont la tâche a échoué avec des retries restants reboucle sur lui-même — la tâche est relancée avant la suivante. Un **circuit breaker à 3 mécanismes** borne la boucle. Les arêtes conditionnelles et les topologies arbitraires sont disponibles via l'API Domain `StateGraph<TState>` en C# ; le mode YAML ne déclare pas son propre graphe.
+La crew s'exécute à travers un **graphe d'états typé** (`StateGraph<CrewGraphState>`) à un nœud par tâche (ADR-018) : les nœuds sont enchaînés dans l'ordre d'exécution, et les tentatives d'une tâche sont son propre `retry:` (appliqué sous la stratégie), pas une boucle de son nœud. Un **circuit breaker à 3 mécanismes** borne la boucle. Les arêtes conditionnelles et les topologies arbitraires sont disponibles via l'API Domain `StateGraph<TState>` en C# ; le mode YAML ne déclare pas son propre graphe.
 
 ### Mécanisme interne
 
 ```
 START ──→ tâche 1 ──→ tâche 2 ──→ … ──→ dernière tâche ──→ END
-            ↺ une tâche échouée avec des retries restants reboucle sur son propre nœud
 ```
 
 **Classes clés** :
@@ -525,8 +525,6 @@ START ──→ tâche 1 ──→ tâche 2 ──→ … ──→ dernière t�
 
 | Propriété | Type | Description |
 |-----------|------|-------------|
-| `RetryCounts` | `Dictionary<string, int>` | Compteur de retries par tâche |
-| `MaxRetryCycles` | `int` | Retries par tâche échouée (obligatoire ; rempli depuis `graphConfig.maxRetryCycles`, sinon depuis `MaxRetryCycles` de la stratégie, 2 par défaut) |
 | `ApplicationOutputs` / `DomainResults` | `IReadOnlyList<…>` | Sorties accumulées, une par tentative |
 | `TotalTokensUsed` | `int` | Tokens consommés (propagés dans les métadonnées de `CrewOutput` sous `totalTokens`) |
 | `PromptTokensUsed` / `CompletionTokensUsed` | `int` | Ventilation prompt/complétion (0 quand le fournisseur ne la rapporte pas) |
@@ -538,10 +536,10 @@ START ──→ tâche 1 ──→ tâche 2 ──→ … ──→ dernière t�
 | Mécanisme | Calculé (défaut) | Preset Strict | Preset Default | Preset Permissive |
 |-----------|--------|--------|---------|------------|
 | `MaxTransitions` (exécutions de nœuds) | 2 × visites + 1 | 50 | 100 | 1000 |
-| `MaxStateVisits` (visites d'un nœud) | tâches × (1 + `maxRetryCycles`) | 5 | 10 | 50 |
+| `MaxStateVisits` (visites d'un nœud) | somme de 1 + retries | 5 | 10 | 50 |
 | `MaxTotalDuration` | celle du preset (10 min en Strict) | 10 min | 30 min | 2 h |
 
-Chaque tentative de tâche est une visite du nœud de la tâche. Sans `maxStateVisits` / `maxTransitions` explicites, les deux sont **calculés depuis la crew** : `tâches × (1 + maxRetryCycles)` visites — une borne large : aucun nœud ne peut être visité plus de `1 + maxRetryCycles` fois — et deux fois plus une transitions ; une crew saine n'est donc jamais coupée, quelle que soit sa taille, et une vraie boucle déclenche encore le disjoncteur. Une valeur explicite l'emporte ; le preset (`circuitBreakerPreset`, Strict par défaut) ne fournit plus que ce qui n'est pas calculé, à commencer par la durée totale. Le quatrième mécanisme de la FSM, le timeout par état, n'est pas vérifié par le runner du graphe. Un disjoncteur déclenché renvoie un `CrewOutput` en échec (« Graph execution stopped by circuit breaker: … ») avec les sorties produites jusque-là.
+Chaque tentative de tâche est une visite du nœud de la tâche. Sans `maxStateVisits` / `maxTransitions` explicites, les deux sont **calculés depuis la crew** : la somme sur les tâches de `1 + retries` visites (les tentatives du `retry:` de chaque tâche ; `tâches × (1 + retries)` quand elles sont pareilles) — une borne large : un nœud n'est visité qu'une fois, ses tentatives ont lieu dans la visite — et deux fois plus une transitions ; une crew saine n'est donc jamais coupée, quelle que soit sa taille, et une vraie boucle déclenche encore le disjoncteur. Une valeur explicite l'emporte ; le preset (`circuitBreakerPreset`, Strict par défaut) ne fournit plus que ce qui n'est pas calculé, à commencer par la durée totale. Le quatrième mécanisme de la FSM, le timeout par état, n'est pas vérifié par le runner du graphe. Un disjoncteur déclenché renvoie un `CrewOutput` en échec (« Graph execution stopped by circuit breaker: … ») avec les sorties produites jusque-là.
 
 ### Configuration YAML
 
@@ -551,7 +549,6 @@ goal: "Démo graphe"
 process: graph
 graphConfig:
   circuitBreakerPreset: "strict"   # ou "default", "permissive" — fournit la durée
-  maxRetryCycles: 3
   # Surcharges individuelles possibles (visites et transitions sont calculées sinon) :
   maxTransitions: 75
   maxStateVisits: 20
@@ -560,7 +557,7 @@ graphConfig:
 
 ### Avantages
 
-- **Retry intégré** : une tâche échouée est relancée avant la suivante, jusqu'à `maxRetryCycles`
+- **Retry** : le `retry:` propre d'une tâche s'exécute avant que la suivante démarre, comme dans tous les modes
 - **Sûreté** : un circuit breaker borne les exécutions, les visites et la durée
 - **Observabilité** : événements `OnNodeEntered` / `OnNodeCompleted` / `OnCircuitBroken`, journalisés par la stratégie ; un événement de run `graph.node.entered` par nœud entré
 - **Bornes à la taille de la crew** : visites et transitions calculées depuis le nombre de tâches et les retries

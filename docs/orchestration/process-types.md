@@ -16,7 +16,7 @@ ProcessType.Sequential    // Linear pipeline
 ProcessType.Hierarchical  // Manager + workers
 ProcessType.Parallel      // Dependency waves, concurrent inside a wave
 ProcessType.Consensual    // Every agent runs every task, then a vote
-ProcessType.Graph         // State graph with controlled retry cycles
+ProcessType.Graph         // State graph with a circuit breaker
 ProcessType.Autonomous    // Self-organization under a budget
 ```
 
@@ -89,7 +89,8 @@ A selection that fails, or names an agent the crew does not carry, falls back to
 | **A failed task fails the crew** | ✅ (dependents skipped) | ✅ (dependents skipped) | ✅ (dependents skipped) | ✅ (dependents skipped) | ✅ after its retries (dependents skipped) | ✅ (dependents skipped; an exhausted budget too) |
 | **Circuit breaker** | — | — | — | — | ✅ 3 mechanisms | — |
 | **Execution budget** | — | — | — | — | — | ✅ 5 dimensions (crew `budget:`) |
-| **Automatic retry** | — | Up to 2 re-executions after review | — | Voting rounds | ✅ `maxRetryCycles` | One delegation to a peer |
+| **Automatic retry** | — | Up to 2 re-executions after review | — | Voting rounds | — | One delegation to a peer |
+| **A task's `retry:`** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | **A task's `asyncExecution: true`** | ✅ Runs alongside the next tasks | Refused at load | Accepted, no effect of its own | Refused at load | Refused at load | Refused at load |
 | **Decision tasks and `when` conditions** | ✅ | Refused at load | ✅ | Refused at load | ✅ | Refused at load |
 | **Manager** (`managerAgent:`; C# `WithManagerLlm`) | Refused at load | ✅ An agent (required) or, in C#, an LLM: it assigns and reviews | Refused at load | ✅ An agent: the `ManagerDecision` arbiter (an LLM is refused) | Refused at load | An LLM only: the default profile, or C# `WithManagerLlm` (an agent is refused) |
@@ -198,7 +199,7 @@ var crew = new CrewBuilder()
 
 - **Little parallelism**: the total time is the sum of the tasks, except those marked `asyncExecution`
 - **Single point of failure**: one failure blocks the rest of the chain — its dependents are skipped, only the independent tasks still run
-- **No retry**: no automatic recovery on error
+- **No retry of its own**: a task asks for attempts with `retry:`; nothing is retried otherwise
 - **Rigid**: the order is fixed, no conditional branching
 
 ### When to use it
@@ -358,7 +359,7 @@ tasks:
 
 - **Coarse ordering**: a task waits for its whole wave, not only for what it declared
 - **API consumption spikes**: all the LLM requests of a wave fire at once (rate limiting)
-- **No retry**: a failed task fails the crew, and skips what depends on it
+- **No retry unless the task asks**: a failed task with no `retry:` fails the crew, and skips what depends on it
 
 ### When to use it
 
@@ -368,7 +369,7 @@ tasks:
 
 ### When not to use it
 
-- Retry of flaky tasks (use Graph)
+- Retry of flaky tasks (give the task a `retry:`, in any mode)
 - APIs with strict rate limiting
 
 ---
@@ -500,17 +501,16 @@ The voting mechanism is **selectable via configuration**: `Orkeon:Consensus:Voti
 
 ---
 
-## 5. Graph — State graph with controlled retry
+## 5. Graph — State graph with a circuit breaker
 
 ### Principle
 
-The crew runs through a **typed state graph** (`StateGraph<CrewGraphState>`) with one node per task (ADR-018): the nodes are chained in execution order, and a node whose task failed with retries left loops on itself — the task is retried before the next one runs. A **3-mechanism circuit breaker** bounds the loop. Conditional edges and arbitrary topologies are available through the Domain `StateGraph<TState>` API in C#; the YAML mode does not declare its own graph.
+The crew runs through a **typed state graph** (`StateGraph<CrewGraphState>`) with one node per task (ADR-018): the nodes are chained in execution order, and a task's attempts are its own `retry:` (applied below the strategy), not a loop of its node. A **3-mechanism circuit breaker** bounds the loop. Conditional edges and arbitrary topologies are available through the Domain `StateGraph<TState>` API in C#; the YAML mode does not declare its own graph.
 
 ### Internal mechanism
 
 ```
 START ──→ task 1 ──→ task 2 ──→ … ──→ last task ──→ END
-            ↺ a task that failed with retries left loops on its own node
 ```
 
 **Key classes**:
@@ -524,8 +524,6 @@ START ──→ task 1 ──→ task 2 ──→ … ──→ last task ──
 
 | Property | Type | Description |
 |-----------|------|-------------|
-| `RetryCounts` | `Dictionary<string, int>` | Per-task retry counter |
-| `MaxRetryCycles` | `int` | Retries per failed task (required; filled from `graphConfig.maxRetryCycles`, else the strategy's `MaxRetryCycles`, 2 by default) |
 | `ApplicationOutputs` / `DomainResults` | `IReadOnlyList<…>` | Accumulated outputs, one per attempt |
 | `TotalTokensUsed` | `int` | Consumed tokens (propagated to the `CrewOutput` metadata under `totalTokens`) |
 | `PromptTokensUsed` / `CompletionTokensUsed` | `int` | Prompt/completion split (0 when the provider does not report it) |
@@ -537,10 +535,10 @@ START ──→ task 1 ──→ task 2 ──→ … ──→ last task ──
 | Mechanism | Computed (default) | Strict preset | Default preset | Permissive preset |
 |-----------|--------|--------|---------|------------|
 | `MaxTransitions` (node executions) | 2 × visits + 1 | 50 | 100 | 1000 |
-| `MaxStateVisits` (visits of one node) | tasks × (1 + `maxRetryCycles`) | 5 | 10 | 50 |
+| `MaxStateVisits` (visits of one node) | sum of 1 + retries | 5 | 10 | 50 |
 | `MaxTotalDuration` | the preset's (10 min under Strict) | 10 min | 30 min | 2 h |
 
-Every task attempt is one visit of the task's node. Without an explicit `maxStateVisits` / `maxTransitions`, both are **computed from the crew**: `tasks × (1 + maxRetryCycles)` visits — a loose bound: no single node can be visited more than `1 + maxRetryCycles` times — and twice that plus one transitions, so a healthy crew is never cut short whatever its size, and a real loop still trips the breaker. An explicit value wins; the preset (`circuitBreakerPreset`, Strict when absent) then only supplies what is not computed, the total duration first. The FSM's fourth mechanism, the per-state timeout, is not checked by the graph runner. A tripped breaker returns a failed `CrewOutput` ("Graph execution stopped by circuit breaker: …") with the outputs produced so far.
+Every task attempt is one visit of the task's node. Without an explicit `maxStateVisits` / `maxTransitions`, both are **computed from the crew**: the sum over the tasks of `1 + retries` visits (the attempts of each task's `retry:`; `tasks × (1 + retries)` when they are alike) — a loose bound: a node is entered once, its attempts happen inside the visit — and twice that plus one transitions, so a healthy crew is never cut short whatever its size, and a real loop still trips the breaker. An explicit value wins; the preset (`circuitBreakerPreset`, Strict when absent) then only supplies what is not computed, the total duration first. The FSM's fourth mechanism, the per-state timeout, is not checked by the graph runner. A tripped breaker returns a failed `CrewOutput` ("Graph execution stopped by circuit breaker: …") with the outputs produced so far.
 
 ### YAML configuration
 
@@ -550,7 +548,6 @@ goal: "Graph demo"
 process: graph
 graphConfig:
   circuitBreakerPreset: "strict"   # or "default", "permissive" — supplies the duration
-  maxRetryCycles: 3
   # Individual overrides possible (visits and transitions are computed otherwise):
   maxTransitions: 75
   maxStateVisits: 20
@@ -559,7 +556,7 @@ graphConfig:
 
 ### Advantages
 
-- **Built-in retry**: a failed task is retried before the next one runs, up to `maxRetryCycles`
+- **Retry**: a task's own `retry:` runs before the next task starts, as in every mode
 - **Safety**: a circuit breaker bounds executions, visits and duration
 - **Observability**: `OnNodeEntered` / `OnNodeCompleted` / `OnCircuitBroken` events, logged by the strategy; a `graph.node.entered` run event per node entered
 - **Bounds sized to the crew**: visits and transitions computed from the task count and the retries

@@ -6,7 +6,7 @@ This example showcases the **LangGraph-style state graph orchestrator** introduc
 
 - **Typed state graph**: A `StateGraph<CrewGraphState>` flows typed state through nodes instead of relying on implicit sequential ordering.
 - **One node per task**: each task is a node of the graph, named after the task and chained in execution order.
-- **Controlled retry cycles**: A failed task's node loops on itself, up to `maxRetryCycles` times.
+- **Task-level retry**: a failed task runs again from its own `retry:` block (here `collect_data`, 3 attempts with an exponential backoff), the same in every orchestration mode.
 - **Circuit breaker protection**: Prevents infinite loops via `CircuitBreakerPolicy` (max transitions, max node visits, max duration).
 - **Full observability**: `OnNodeEntered`, `OnNodeCompleted` and `OnCircuitBroken` events fire at each step for logging/telemetry, and `orkeon run --events jsonl` streams a `graph.node.entered` line per node.
 
@@ -14,7 +14,6 @@ This example showcases the **LangGraph-style state graph orchestrator** introduc
 
 ```
 START --> task 1 --> task 2 --> ... --> last task --> END
-            (a task that failed with retries left loops on its own node)
 ```
 
 ## YAML configuration
@@ -25,7 +24,6 @@ The key difference from a standard sequential crew is:
 process: "graph"          # <-- activates GraphProcessStrategy
 
 graphConfig:
-  maxRetryCycles: 2       # retry failed tasks up to 2x
   circuitBreakerPreset: "strict"
   # Optional overrides:
   # maxTransitions: 30
@@ -33,6 +31,7 @@ graphConfig:
   # maxTotalDurationSeconds: 300
 ```
 
+A flaky task asks for its own retries (`retry: { attempts: 3, backoffMs: 500, backoff: exponential }` on `collect_data`): the graph itself no longer retries.
 All other YAML fields (agents, tasks, dependencies, tools) work identically to `process: "sequential"`.
 
 ## When to use Graph vs Sequential

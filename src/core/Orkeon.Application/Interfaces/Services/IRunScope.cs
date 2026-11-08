@@ -6,7 +6,14 @@ namespace Orkeon.Application.Interfaces.Services;
 /// <param name="ExecutionId">The run's one identifier.</param>
 /// <param name="CrewKey">The stable key of the crew.</param>
 /// <param name="Resume">What the run resumes from, or null for a fresh run.</param>
-public sealed record RunScope(ExecutionId ExecutionId, string CrewKey, ResumePlan? Resume = null);
+public sealed record RunScope(ExecutionId ExecutionId, string CrewKey, ResumePlan? Resume = null)
+{
+    /// <summary>
+    /// The attempt that ended each task of this run that was retried (FWK-15), by task id: noted by the retry
+    /// decorator, read by whatever reports the task's end. A task that ran once has no entry (attempt 1).
+    /// </summary>
+    public System.Collections.Concurrent.ConcurrentDictionary<string, int> TaskAttempts { get; } = new(StringComparer.Ordinal);
+}
 
 /// <summary>
 /// The work a resumed run does not redo: the outputs of the tasks its session had completed, by

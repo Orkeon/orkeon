@@ -157,6 +157,8 @@ public sealed record TaskConfiguration
     /// load by the four modes that order their tasks themselves (GAP-22).
     /// </summary>
     public bool AsyncExecution { get; init; }
+    /// <summary>Gets the retry policy of this task (YAML <c>retry:</c>), or null when it runs once.</summary>
+    public Orkeon.Domain.Task.TaskRetryPolicy? Retry { get; init; }
     /// <summary>Gets a value indicating whether human input is required.</summary>
     public bool HumanInput { get; init; }
     /// <summary>

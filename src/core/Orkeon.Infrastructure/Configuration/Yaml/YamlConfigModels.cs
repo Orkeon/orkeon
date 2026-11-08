@@ -90,6 +90,8 @@ public class TaskYamlConfig
     public Collection<string>? Dependencies { get; set; }
     /// <summary>Gets or sets whether the task executes asynchronously.</summary>
     public bool? AsyncExecution { get; set; }
+    /// <summary>Gets or sets the task's retry policy (<c>retry:</c>).</summary>
+    public RetryYamlConfig? Retry { get; set; }
     /// <summary>Gets or sets whether human input is required.</summary>
     public bool? HumanInput { get; set; }
     /// <summary>Gets or sets additional context key-value pairs.</summary>
@@ -183,14 +185,23 @@ public class DeliverableYamlConfig
     public string? SchemaInline { get; set; }
 }
 
+/// <summary>YAML model of a task's <c>retry:</c> block.</summary>
+public class RetryYamlConfig
+{
+    /// <summary>Gets or sets how many times the task may run, the first run included (at least 1).</summary>
+    public int? Attempts { get; set; }
+    /// <summary>Gets or sets the base wait before a new attempt, in milliseconds.</summary>
+    public int? BackoffMs { get; set; }
+    /// <summary>Gets or sets how the wait grows: <c>fixed</c> or <c>exponential</c>.</summary>
+    public string? Backoff { get; set; }
+}
+
 /// <summary>
 /// YAML model for graph-specific configuration when process type is "graph".
-/// Controls retry cycles and circuit breaker behavior for the state graph engine.
+/// Controls the circuit breaker of the state graph engine (a task's retry is its own <c>retry:</c>).
 /// </summary>
 public class GraphYamlConfig
 {
-    /// <summary>Gets or sets the maximum retry cycles for failed tasks (default: 2).</summary>
-    public int? MaxRetryCycles { get; set; }
     /// <summary>Gets or sets the circuit breaker preset ("strict", "permissive", "default").</summary>
     public string? CircuitBreakerPreset { get; set; }
     /// <summary>Gets or sets the max transitions before tripping (overrides preset).</summary>

@@ -254,6 +254,7 @@ public sealed partial class YamlCrewMapper
                 Dependencies = dependencies,
                 Tools = kvp.Value.Tools ?? (IReadOnlyList<string>)Array.Empty<string>(),
                 AsyncExecution = kvp.Value.AsyncExecution ?? false,
+                Retry = MapRetry(kvp.Key, kvp.Value.Retry, decisions.ContainsKey(kvp.Key)),
                 HumanInput = kvp.Value.HumanInput ?? false,
                 Context = kvp.Value.Context ?? [],
                 Deliverable = MapDeliverable(kvp.Value.Deliverable),
@@ -268,6 +269,37 @@ public sealed partial class YamlCrewMapper
             ThrowUnknownReferences(unknownAgents, unknownDependencies, agentNameMap.Keys, taskNameToId.Keys);
 
         return result;
+    }
+
+    /// <summary>
+    /// A task's <c>retry:</c> block as its policy (FWK-15). <c>attempts</c> is required, a wait is never
+    /// negative, <c>backoff</c> is <c>fixed</c> or <c>exponential</c>, and a decision task, which runs no
+    /// agent, has nothing to retry: each is refused at load, naming the task and the key.
+    /// </summary>
+    private static TaskRetryPolicy? MapRetry(string taskKey, RetryYamlConfig? yaml, bool isDecision)
+    {
+        if (yaml is null)
+            return null;
+
+        if (isDecision)
+            throw new InvalidOperationException($"Task '{taskKey}' is a decision task and cannot declare retry:, a decision runs no agent. Remove retry.");
+
+        if (yaml.Attempts is not { } attempts)
+            throw new InvalidOperationException($"Task '{taskKey}' retry: attempts is required, the number of times the task may run (1 or more).");
+
+        var backoff = (yaml.Backoff?.Trim().ToUpperInvariant()) switch
+        {
+            null or "" or "FIXED" => TaskRetryBackoff.Fixed,
+            "EXPONENTIAL" => TaskRetryBackoff.Exponential,
+            _ => throw new InvalidOperationException($"Task '{taskKey}' retry: backoff '{yaml.Backoff}' is unknown, use fixed or exponential."),
+        };
+
+        if (attempts < 1)
+            throw new InvalidOperationException($"Task '{taskKey}' retry: attempts is {attempts}, a task runs at least once: use 1 or more, or remove retry.");
+        if (yaml.BackoffMs is < 0)
+            throw new InvalidOperationException($"Task '{taskKey}' retry: backoffMs is {yaml.BackoffMs}, a wait is never negative.");
+
+        return new TaskRetryPolicy(attempts, yaml.BackoffMs ?? 0, backoff);
     }
 
     /// <summary>Hands the declarations to the domain's crew-level rules; the boundary adds no rule of its own.</summary>
@@ -944,7 +976,6 @@ public sealed partial class YamlCrewMapper
 
         return new GraphConfig
         {
-            MaxRetryCycles = yaml.MaxRetryCycles ?? 2,
             CircuitBreakerPreset = yaml.CircuitBreakerPreset ?? "strict",
             MaxTransitions = yaml.MaxTransitions,
             MaxStateVisits = yaml.MaxStateVisits,

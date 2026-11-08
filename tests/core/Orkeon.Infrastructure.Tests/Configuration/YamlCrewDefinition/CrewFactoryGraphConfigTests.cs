@@ -65,12 +65,12 @@ public class CrewFactoryGraphConfigTests
     {
         var factory = BuildFactory();
         var config = BuildGraphConfig(
-            new GraphConfig { MaxRetryCycles = 5, CircuitBreakerPreset = "permissive", MaxTransitions = 12 });
+            new GraphConfig { MaxStateVisits = 5, CircuitBreakerPreset = "permissive", MaxTransitions = 12 });
 
         var crew = await factory.CreateFromConfigAsync(config, TestContext.Current.CancellationToken);
 
         Assert.NotNull(crew.GraphConfig);
-        Assert.Equal(5, crew.GraphConfig!.MaxRetryCycles);
+        Assert.Equal(5, crew.GraphConfig!.MaxStateVisits);
         Assert.Equal("permissive", crew.GraphConfig.CircuitBreakerPreset);
         Assert.Equal(12, crew.GraphConfig.MaxTransitions);
     }

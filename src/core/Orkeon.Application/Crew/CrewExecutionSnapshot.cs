@@ -17,6 +17,9 @@ public sealed record TaskStartSnapshot
 
     /// <summary>UTC timestamp when the task started.</summary>
     public required DateTimeOffset StartedAt { get; init; }
+
+    /// <summary>Which attempt of the task starts: 1 for the first run, 2 for the first retry (FWK-15).</summary>
+    public int Attempt { get; init; } = 1;
 }
 
 /// <summary>
@@ -73,6 +76,9 @@ public sealed record TaskExecutionSnapshot
     /// resumed (FWK-07), so no model was asked anything for it.
     /// </summary>
     public bool Resumed { get; init; }
+
+    /// <summary>Which attempt ended the task: 1 when it ran once, 3 for a task whose third attempt it is (FWK-15).</summary>
+    public int Attempt { get; init; } = 1;
 
     /// <summary>Why the task was skipped (the failed dependency or the <c>when</c> condition) — null unless <see cref="Skipped"/>.</summary>
     public string? SkipReason { get; init; }

@@ -150,6 +150,20 @@ public sealed class RunEventsTests : IDisposable
     }
 
     [Fact]
+    [Trait("BR", "FWK-15")]
+    public async Task A_task_events_carry_the_attempt_they_belong_to()
+    {
+        var observer = new RunEventObserver(Writer(), inner: null, stream: false);
+
+        await observer.OnTaskStartedAsync(Started("collect") with { Attempt = 2 }, TestContext.Current.CancellationToken);
+        await observer.OnTaskCompletedAsync(Snapshot("collect") with { Attempt = 3 }, TestContext.Current.CancellationToken);
+
+        var events = Events();
+        Assert.Equal(2, events[0].GetProperty("attempt").GetInt32());
+        Assert.Equal(3, events[1].GetProperty("attempt").GetInt32());
+    }
+
+    [Fact]
     public async Task A_skipped_task_says_so_on_the_wire()
     {
         // LLM-11: never started, completed with success=false, and told apart from a failure

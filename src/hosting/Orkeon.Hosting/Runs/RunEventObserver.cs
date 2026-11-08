@@ -120,6 +120,7 @@ internal sealed class RunEventObserver : ICrewExecutionHook, ILlmUsageSink, ILlm
             {
                 taskId = snapshot.TaskId,
                 agentRole = snapshot.AgentRole,
+                attempt = snapshot.Attempt,
             });
 
         if (_inner is not null)
@@ -141,6 +142,7 @@ internal sealed class RunEventObserver : ICrewExecutionHook, ILlmUsageSink, ILlm
                 success = snapshot.Success,
                 skipped = snapshot.Skipped,
                 resumed = snapshot.Resumed,
+                attempt = snapshot.Attempt,
                 durationMs = (long)snapshot.Duration.TotalMilliseconds,
                 tokens = snapshot.TokensUsed,
                 toolCalls = snapshot.ToolCallCount,

@@ -91,11 +91,11 @@ public sealed class GraphImplicitTopologyTests : IDisposable
     }
 
     [Fact]
-    [Trait("BR", "FWK-27")]
-    public async Task ShouldEnterTheNodeAgain_ForEachRetryOfAFailedTask()
+    [Trait("BR", "FWK-15")]
+    public async Task ShouldEnterTheNodeOnce_WhenTheTaskFails_BecauseItsAttemptsAreItsRetryPolicy()
     {
-        // The retry the removed execute_task/route loop used to give stays, until FWK-15, as a
-        // loop of the task's own node: one more visit, bounded by the breaker.
+        // A task's attempts are its retry: policy, applied below the strategy (FWK-15): a failed task
+        // is one visit of its node, not one more per attempt, and the graph does not run it again.
         var flaky = Keyed("flaky");
         var attempts = 0;
         _fixture.Execution.SetExecuteFunc((_, _, _, _) =>
@@ -105,8 +105,9 @@ public sealed class GraphImplicitTopologyTests : IDisposable
 
         var output = await RunAsync([flaky]);
 
-        _fixture.AssertCompleted(output);
-        Assert.Equal([("flaky", 1), ("flaky", 2), ("flaky", 3)], _observer.Entered.Select(e => (e.Node, e.Visit)).ToArray());
+        Assert.False(output.Success);
+        Assert.Equal(1, attempts);
+        Assert.Equal([("flaky", 1)], _observer.Entered.Select(e => (e.Node, e.Visit)).ToArray());
     }
 
     [Fact]
@@ -120,19 +121,5 @@ public sealed class GraphImplicitTopologyTests : IDisposable
 
         _fixture.AssertCompleted(output);
         Assert.Equal(3, output.TaskOutputs.Count);
-    }
-
-    [Fact]
-    [Trait("BR", "FWK-27")]
-    public async Task ShouldTripTheBreaker_WhenANodeIsEnteredMoreOftenThanMaxStateVisits()
-    {
-        var doomed = Keyed("doomed");
-        _fixture.Fail("doomed", "always");
-
-        var output = await RunAsync([doomed], new GraphConfig { MaxStateVisits = 2, MaxRetryCycles = 10 });
-
-        Assert.False(output.Success);
-        Assert.Contains("circuit breaker", output.Error, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("'doomed'", output.Error, StringComparison.Ordinal);
     }
 }

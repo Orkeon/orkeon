@@ -28,7 +28,7 @@ namespace Orkeon.Infrastructure.Crew.Strategies;
 /// Graph topology:
 /// START → task 1 → task 2 → … → END (one node per task, ADR-018)
 ///
-/// A node whose task failed with retries left loops on itself.
+/// A task's attempts are its own <c>retry:</c>, applied below the strategy: a node runs its task once.
 /// Cycle protection is enforced by <see cref="CircuitBreakerPolicy"/>.
 /// </summary>
 public sealed partial class GraphProcessStrategy : IProcessStrategy
@@ -49,19 +49,13 @@ public sealed partial class GraphProcessStrategy : IProcessStrategy
     /// <summary>
     /// Circuit breaker policy used as-is when the crew carries no <see cref="Domain.Configuration.GraphConfig"/>.
     /// Null — the default — sizes the breaker from the
-    /// crew instead: <c>tasks × (1 + maxRetryCycles)</c> visits of the busiest node and twice
+    /// crew instead: <c>sum(1 + retries) over the tasks</c> visits (their <c>retry:</c> attempts count) and twice
     /// that plus one transitions, on the Strict preset's duration (GAP-03). A fixed preset used
     /// to cap every crew: Strict's five visits failed any healthy crew of six tasks. Per-crew
     /// config, when present, takes precedence and is resolved off the crew at execution time —
     /// never stored on this (scoped, potentially shared) strategy instance.
     /// </summary>
     public CircuitBreakerPolicy? CircuitPolicy { get; init; }
-
-    /// <summary>
-    /// Fallback maximum retry cycles for failed tasks, used when the crew carries no
-    /// <see cref="Domain.Configuration.GraphConfig"/>. Applied in addition to the circuit breaker.
-    /// </summary>
-    public int MaxRetryCycles { get; init; } = 2;
 
     /// <summary>
     /// Creates a new <see cref="GraphProcessStrategy"/>.
@@ -154,8 +148,7 @@ public sealed partial class GraphProcessStrategy : IProcessStrategy
         // then this strategy's fallback defaults. The
         // config travels with the crew argument, not on the shared scoped strategy, so concurrent
         // crews can never clobber one another's policy.
-        var effectiveMaxRetryCycles = crew.GraphConfig?.MaxRetryCycles ?? MaxRetryCycles;
-        var effectivePolicy = ResolvePolicy(crew, taskIds.Count, effectiveMaxRetryCycles);
+        var effectivePolicy = ResolvePolicy(crew, taskIds.Count, loaded);
 
         // Build the initial graph state
         var initialState = new CrewGraphState
@@ -164,8 +157,6 @@ public sealed partial class GraphProcessStrategy : IProcessStrategy
             Agents = agents,
             Variables = variables,
             TotalTokensUsed = 0,
-            RetryCounts = new Dictionary<string, int>(),
-            MaxRetryCycles = effectiveMaxRetryCycles,
             Outcome = outcome,
             CrewTasks = loaded,
             // The run's context, from which each task's is derived (GAP-30, GAP-21).
@@ -332,9 +323,8 @@ public sealed partial class GraphProcessStrategy : IProcessStrategy
     /// Topology:
     ///   START → first → second → … → last → END
     ///
-    /// A node whose task failed with retries left loops on itself, so a retry is one more visit of
-    /// the node and the circuit breaker bounds it like any cycle. This keeps the retry the crew-level
-    /// <c>maxRetryCycles</c> gave until the task's own <c>retry:</c> (FWK-15) replaces it.
+    /// A node runs its task once and moves on: the attempts of a task are its <c>retry:</c> (FWK-15),
+    /// applied by the execution service below the strategy, not a loop of the graph.
     /// </summary>
     private (StateGraph<CrewGraphState> Graph, IReadOnlyDictionary<string, TaskId> NodeTasks) BuildCrewGraph(
         CrewGraphState initialState, CircuitBreakerPolicy policy, IReadOnlyList<TaskId> taskIds)
@@ -366,7 +356,7 @@ public sealed partial class GraphProcessStrategy : IProcessStrategy
         {
             var self = order[i];
             var next = i + 1 < order.Count ? order[i + 1] : end;
-            graph.AddConditionalEdge(self, state => state.TakeRetryRequest() ? self : next, [self, next]);
+            graph.AddEdge(self, next);
         }
 
         return (graph, nodeTasks);
@@ -443,7 +433,7 @@ public sealed partial class GraphProcessStrategy : IProcessStrategy
             : await RunTaskAsync(state, task, agent, ct).ConfigureAwait(false);
 
         AppendTaskOutputs(state, task, agent, executionResult);
-        await EvaluateFailureForRetryAsync(state, task, agent, executionResult).ConfigureAwait(false);
+        await EndTaskAsync(state, task, agent, executionResult).ConfigureAwait(false);
 
         LogTaskCompleted(taskId, executionResult.Success);
         return state;
@@ -515,51 +505,37 @@ public sealed partial class GraphProcessStrategy : IProcessStrategy
     }
 
     /// <summary>
-    /// Ends a task that succeeded; tracks the failure of one that did not and enqueues it for retry
-    /// if cycles remain — it keeps running meanwhile — or fails it once it gives up.
+    /// Ends a task: a success is recorded, a failure ends it for good. The task's attempts were used up
+    /// by its <c>retry:</c> before this point (FWK-15): the graph has no retry loop of its own.
     /// </summary>
-    private async Task EvaluateFailureForRetryAsync(
+    private async Task EndTaskAsync(
         CrewGraphState state,
         Orkeon.Domain.Task.CrewTask task,
         DomainAgent? agent,
         TaskResult executionResult)
     {
-        var taskId = task.Id;
         if (executionResult.Success)
         {
             await state.Outcome.RecordSuccessAsync(task, state.DomainResults[^1]).ConfigureAwait(false);
             return;
         }
 
-        var taskKey = taskId.Value.ToString();
-        state.RetryCounts.TryGetValue(taskKey, out var retries);
-        var nextAttempt = retries + 1;
-        state.RetryCounts[taskKey] = nextAttempt;
-
-        if (nextAttempt <= state.MaxRetryCycles)
-        {
-            state.RetryRequested = true;
-            LogTaskFailedWillRetry(taskId, nextAttempt, state.MaxRetryCycles);
-        }
-        else
-        {
-            LogTaskFailedMaxRetries(taskId, state.MaxRetryCycles);
-            await state.Outcome.RecordFailureAsync(task, agent?.Role.Value ?? DecisionDispatch.Role, executionResult.Error ?? executionResult.LastError).ConfigureAwait(false);
-        }
+        LogTaskFailed(task.Id);
+        await state.Outcome.RecordFailureAsync(task, agent?.Role.Value ?? DecisionDispatch.Role, executionResult.Error ?? executionResult.LastError).ConfigureAwait(false);
     }
 
     #region Helpers
 
     /// <summary>
     /// The breaker of this run. An explicit <c>maxStateVisits</c> / <c>maxTransitions</c> in
-    /// <c>graphConfig</c> wins; otherwise both are computed from the crew, since every attempt of
-    /// a task is one visit of its node:
-    /// <c>tasks × (1 + maxRetryCycles)</c> visits and twice that plus one transitions. The breaker
-    /// keeps its job — stopping a real loop — without capping the size of a healthy crew. The
-    /// duration stays the preset's (10 min under Strict), a cost choice
+    /// <c>graphConfig</c> wins; otherwise both are computed from the crew: every task is one visit of
+    /// its node plus one per retry its <c>retry:</c> grants, <c>sum(1 + retries)</c> visits in
+    /// all (nodes x (1 + retry attempts) when every task retries alike), and twice that plus one
+    /// transitions. The breaker keeps its job - stopping a real loop - without capping the size of a
+    /// healthy crew. The duration stays the preset's (10 min under Strict), a cost choice
     /// <c>graphConfig.maxTotalDurationSeconds</c> overrides.
     /// </summary>
-    private CircuitBreakerPolicy ResolvePolicy(DomainCrew crew, int taskCount, int maxRetryCycles)
+    private CircuitBreakerPolicy ResolvePolicy(DomainCrew crew, int taskCount, IReadOnlyList<Orkeon.Domain.Task.CrewTask> tasks)
     {
         if (crew.GraphConfig is null && CircuitPolicy is not null)
             return CircuitPolicy;
@@ -571,7 +547,7 @@ public sealed partial class GraphProcessStrategy : IProcessStrategy
         // An empty crew still gets one visit of bound. Clamped so the
         // transition bound never overflows.
         var visits = (int)Math.Min(
-            (long)Math.Max(1, taskCount) * (1 + Math.Max(0, maxRetryCycles)),
+            Math.Max(1L, taskCount + tasks.Sum(t => (long)(t.Retry?.Retries ?? 0))),
             (int.MaxValue - 1) / 2);
 
         return policy with
@@ -647,11 +623,8 @@ public sealed partial class GraphProcessStrategy : IProcessStrategy
     [LoggerMessage(Level = LogLevel.Debug, Message = "Task {TaskId} completed, success: {Success}")]
     private partial void LogTaskCompleted(TaskId taskId, bool success);
 
-    [LoggerMessage(Level = LogLevel.Warning, Message = "Task {TaskId} failed (attempt {Attempt}/{MaxRetries}), will retry")]
-    private partial void LogTaskFailedWillRetry(TaskId taskId, int attempt, int maxRetries);
-
-    [LoggerMessage(Level = LogLevel.Error, Message = "Task {TaskId} failed after {MaxRetries} retries, giving up")]
-    private partial void LogTaskFailedMaxRetries(TaskId taskId, int maxRetries);
+    [LoggerMessage(Level = LogLevel.Error, Message = "Task {TaskId} failed, its attempts are used up")]
+    private partial void LogTaskFailed(TaskId taskId);
 
     [LoggerMessage(Level = LogLevel.Error, Message = "Graph execution of crew {CrewId} failed: {FailedTasks} task(s) did not succeed. {Reason}")]
     private partial void LogGraphExecutionFailed(CrewId crewId, int failedTasks, string reason);
@@ -676,17 +649,6 @@ public sealed class CrewGraphState
 
     /// <summary>Available agents.</summary>
     public required IReadOnlyList<DomainAgent> Agents { get; init; }
-
-    /// <summary>Set by a node whose task failed with retries left; the node's edge reads it and loops back.</summary>
-    internal bool RetryRequested { get; set; }
-
-    /// <summary>Reads and clears <see cref="RetryRequested"/>.</summary>
-    internal bool TakeRetryRequest()
-    {
-        var requested = RetryRequested;
-        RetryRequested = false;
-        return requested;
-    }
 
     /// <summary>Input variables for template interpolation.</summary>
     public required Dictionary<string, string> Variables { get; init; }
@@ -733,12 +695,6 @@ public sealed class CrewGraphState
 
     /// <summary>Round-robin agent index.</summary>
     public int AgentIndex { get; set; }
-
-    /// <summary>Per-task retry counts (taskId string → count).</summary>
-    public required Dictionary<string, int> RetryCounts { get; init; }
-
-    /// <summary>Max retry cycles per failed task.</summary>
-    public required int MaxRetryCycles { get; init; }
 
     /// <summary>
     /// The failures of this run and the tasks that did not succeed (GAP-03), and the lifecycle of the

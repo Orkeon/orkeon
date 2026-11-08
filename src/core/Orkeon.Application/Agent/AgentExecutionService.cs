@@ -99,7 +99,10 @@ namespace Orkeon.Application.Agent
                 StructuredOutput: typedOutput,
                 ToolsUsed: result.ToolsUsed,
                 ExecutionTime: result.ExecutionTime,
-                Error: result.Error);
+                Error: result.Error)
+            {
+                ExitReason = result.ExitReason,
+            };
         }
 
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Service-boundary fault barrier: any failure inside task execution is converted to a failed TaskResult and surfaced via NotifyTaskCompletedAsync so one task cannot crash the agent execution loop.")]

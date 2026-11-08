@@ -51,6 +51,9 @@ public interface ICrewTask
     /// </summary>
     string? Key => null;
 
+    /// <summary>Gets the retry policy of this task, or null when it runs once.</summary>
+    TaskRetryPolicy? Retry => null;
+
     /// <summary>Assigns this task to an agent.</summary>
     /// <param name="agentId">The agent identifier to assign to.</param>
     void AssignTo(AgentId agentId);

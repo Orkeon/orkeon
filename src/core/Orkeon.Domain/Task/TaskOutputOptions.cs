@@ -34,6 +34,9 @@ public sealed record TaskOutputOptions
     /// </summary>
     public bool HumanInput { get; init; }
 
+    /// <summary>Gets the task's retry policy, or null when the task runs once.</summary>
+    public TaskRetryPolicy? Retry { get; init; }
+
     /// <summary>
     /// Declarative deliverable contract (path + production mode).
     /// When null, the task has no framework-managed deliverable and falls back to legacy tool_call behavior.

@@ -104,6 +104,12 @@ public record TaskResult(
     public AgentExitReason ExitReason { get; init; } = AgentExitReason.Completed;
 
     /// <summary>
+    /// Gets how many times the task ran again before this result: zero for a task that ran once,
+    /// two for a task whose third attempt this is (FWK-15).
+    /// </summary>
+    public int RetryCount { get; init; }
+
+    /// <summary>
     /// Number of iterations the agent actually performed before exiting.
     /// </summary>
     public int IterationsUsed { get; init; }
@@ -192,6 +198,12 @@ public record TaskResult<TOutput>(
 {
     /// <summary>Gets whether this result was read back from the checkpoint of a resumed run instead of being produced.</summary>
     public bool Resumed { get; init; }
+
+    /// <summary>Gets how many times the task ran again before this result (FWK-15).</summary>
+    public int RetryCount { get; init; }
+
+    /// <summary>Gets why the agent loop ended (the untyped result's reason, carried over; FWK-15).</summary>
+    public AgentExitReason ExitReason { get; init; } = AgentExitReason.Completed;
 
     /// <summary>Gets the tokens the task consumed, or zero when not tracked.</summary>
     public int TokensUsed { get; init; }

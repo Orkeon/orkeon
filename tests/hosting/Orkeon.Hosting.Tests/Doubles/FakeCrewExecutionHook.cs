@@ -17,8 +17,17 @@ public sealed class FakeCrewExecutionHook : ICrewExecutionHook
     /// <summary>The crew-level snapshots reported at the end of a crew that completed.</summary>
     public ConcurrentQueue<CrewExecutionSnapshot> CrewCompleted { get; } = new();
 
+    private readonly ConcurrentQueue<TaskStartSnapshot> _started = new();
+
+    /// <summary>Every task start reported, in order: a retry reports one more, with its attempt.</summary>
+    public IReadOnlyCollection<TaskStartSnapshot> Started => [.. _started];
+
     /// <inheritdoc />
-    public Task OnTaskStartedAsync(TaskStartSnapshot snapshot, CancellationToken ct) => Task.CompletedTask;
+    public Task OnTaskStartedAsync(TaskStartSnapshot snapshot, CancellationToken ct)
+    {
+        _started.Enqueue(snapshot);
+        return Task.CompletedTask;
+    }
 
     /// <inheritdoc />
     public Task OnTaskCompletedAsync(TaskExecutionSnapshot snapshot, CancellationToken ct)

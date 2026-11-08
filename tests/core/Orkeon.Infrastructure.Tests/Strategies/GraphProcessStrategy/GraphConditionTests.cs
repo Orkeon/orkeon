@@ -84,7 +84,7 @@ public sealed class GraphConditionTests : IDisposable
     [Fact]
     [Trait("BR", "BR-05")]
     [Trait("BR", "BR-06")]
-    public async System.Threading.Tasks.Task ShouldRetryDecisionTaskAsNewEvaluation_WhenGraphRetriesFailure()
+    public async System.Threading.Tasks.Task ShouldFailTheRunOnTheFirstModelFailure_BecauseTheGraphDoesNotRetryADecision()
     {
         var calls = 0;
         var answer = _model.Respond;
@@ -96,11 +96,13 @@ public sealed class GraphConditionTests : IDisposable
 
         var output = await RunAsync(strategy, crew);
 
-        Assert.True(output.Success, output.Error);
-        Assert.Equal(2, _model.Requests.Count);
-        Assert.Equal(TaskStatus.Completed, decide.Status);
-        Assert.Equal([branch.Id], _ran);
-        Assert.Equal(1, _executionService.ExecuteTaskCallCount);
+        // A decision task has no retry: policy (it runs no agent) and the graph's own retry loop is gone
+        // (FWK-15): the failure is final, and the task that branched on it never runs.
+        Assert.False(output.Success);
+        Assert.Equal(1, calls);
+        Assert.NotEqual(TaskStatus.Completed, decide.Status);
+        Assert.Empty(_ran);
+        Assert.Equal(0, _executionService.ExecuteTaskCallCount);
     }
 
     [Fact]
@@ -199,32 +201,6 @@ public sealed class GraphConditionTests : IDisposable
         var plainSnapshot = Assert.Single(_hook.CompletedTasks, s => s.TaskId == plain.Id.ToString());
         Assert.False(plainSnapshot.IsDecision);
         Assert.Null(plainSnapshot.DecisionAnswers);
-    }
-
-    [Fact]
-    [Trait("BR", "R-01")]
-    [Trait("BR", "R-29")]
-    public async System.Threading.Tasks.Task ShouldReadSuccessfulAttempt_WhenDependencyFailedThenSucceededOnRetry()
-    {
-        var prep = new CrewTaskBuilder().Description("Prep").ExpectedOutput("Prep").Build();
-        var decide = new CrewTaskBuilder().Description("Decide").ExpectedOutput("An outcome").DependsOn(prep)
-            .WithDecision(TaskDecision.Create(
-                [ChoiceQuestionSpec.Create("intent", "Pick", new Dictionary<string, string> { ["a"] = "first", ["b"] = "second" })],
-                null, null, false, null))
-            .Build();
-        var attempts = 0;
-        _executionService.SetExecuteFunc((_, _, _, _) =>
-            Interlocked.Increment(ref attempts) == 1
-                ? new TaskResult(false, "first-attempt-failed", null, [], TimeSpan.Zero, "boom")
-                : new TaskResult(true, "second-attempt-ok", null, [], TimeSpan.Zero));
-        var (crew, strategy) = Build([prep, decide], DecisionCircuit.On);
-
-        var output = await RunAsync(strategy, crew);
-
-        Assert.True(output.Success, output.Error);
-        var state = Assert.Single(_model.Requests).State.ToJsonString();
-        Assert.Contains("second-attempt-ok", state, StringComparison.Ordinal);
-        Assert.DoesNotContain("first-attempt-failed", state, StringComparison.Ordinal);
     }
 
     [Fact]

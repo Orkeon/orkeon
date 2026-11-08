@@ -508,8 +508,8 @@ Aucun attribut ne porte l'identifiant d'un crew, d'une tâche ou d'un agent.
   session de checkpoint à sa fin, par un décorateur d'`IAgentExecutionService` que tous les modes
   d'orchestration traversent (sequential, parallel, hierarchical, graph, autonomous, consensual), sous la
   clé `"{TaskKey}#{n}"` : `TaskKey` est le nom de la tâche dans la définition de la crew, `n` l'ordinal de
-  l'invocation de cette clé dans le run (une révision Hierarchical ou un retry Graph est `#2`). Une tâche qui
-  échoue ou lève n'est pas checkpointée ; un checkpoint impossible à écrire fait échouer la tâche.
+  l'invocation de cette clé dans le run (une révision Hierarchical est `#2` ; les tentatives du `retry:` d'une tâche partagent une clé). Une tâche qui
+  échoue ou lève n'est pas checkpointée, et une tâche réessayée l'est une fois, pour la tentative réussie (`RetryCount` note les retries) : un run arrêté entre deux tentatives reprend cette tâche à la tentative 1 ; un checkpoint impossible à écrire fait échouer la tâche.
   `orkeon run <crew> --resume <id>|latest` continue le run `<id>` (l'id qu'imprime un run échoué :
   `Run <id> did not complete. Resume it ...`), ou le dernier run de ce fichier de crew qui n'est pas terminé (et pas encore marqué `Running` : `latest` ne reprend pas un run qui peut être vivant dans un autre processus, le magasin ne tient aucun bail ; nommer son id pour le reprendre) : le run
   garde son id, les tâches qu'il avait terminées reviennent du checkpoint (`task.completed` porte

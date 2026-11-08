@@ -220,7 +220,8 @@ public sealed class CovAutonomous_SequentialCrewOrchestratorTests
 
         /// <summary>The run identity visible when a task output was checkpointed, or the session completed (after a yield).</summary>
         public List<RunScope?> ScopesAtCheckpoint { get; } = [];
-        public async Task CheckpointAsync(string sessionId, string taskId, string? output, CancellationToken ct = default) { await Task.Yield(); lock (Gate) { CheckpointCount++; ScopesAtCheckpoint.Add(Scope?.Current); } }
+        public Task CheckpointAsync(string sessionId, string taskId, string? output, CancellationToken ct = default) => CheckpointAsync(sessionId, taskId, output, 0, ct);
+        public async Task CheckpointAsync(string sessionId, string taskId, string? output, int retryCount, CancellationToken ct = default) { await Task.Yield(); lock (Gate) { CheckpointCount++; ScopesAtCheckpoint.Add(Scope?.Current); } }
         public Task MarkFailedAsync(string sessionId, string taskId, Exception ex, CancellationToken ct = default) { MarkFailedCount++; return Task.CompletedTask; }
         public async Task CompleteSessionAsync(string sessionId, CancellationToken ct = default) { await Task.Yield(); lock (Gate) { CompleteCount++; ScopesAtCheckpoint.Add(Scope?.Current); } }
         public Task<SessionState?> GetLatestCheckpointAsync(string crewId, CancellationToken ct = default) => Task.FromResult<SessionState?>(null);

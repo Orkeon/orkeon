@@ -495,8 +495,8 @@ No attribute carries an id of a crew, task or agent.
   checkpoint session as it ends, by a decorator of `IAgentExecutionService` that every orchestration mode
   goes through (sequential, parallel, hierarchical, graph, autonomous, consensual), under the key
   `"{TaskKey}#{n}"`: `TaskKey` is the task's name in the crew definition, `n` the ordinal of that key's
-  invocation in the run (a Hierarchical revision or a Graph retry is `#2`). A task that fails or throws is
-  not checkpointed; a checkpoint that cannot be written fails the task. `orkeon run <crew> --resume <id>|latest`
+  invocation in the run (a Hierarchical revision is `#2`; the attempts of a task's `retry:` share one key). A task that fails or throws is
+  not checkpointed, and a retried task is checkpointed once, for the attempt that succeeded (`RetryCount` records the retries): a run stopped between two attempts resumes that task from attempt 1; a checkpoint that cannot be written fails the task. `orkeon run <crew> --resume <id>|latest`
   continues the run `<id>` (the id a failed run prints: `Run <id> did not complete. Resume it ...`), or the
   latest run of that crew file that is not completed (and not still marked `Running`: `latest` does not take over a run that may be alive in another process, the store holds no lease; name its id to take it over): the run keeps its id, the tasks it had completed come back from
   the checkpoint (`task.completed` carries `resumed: true`, and no model is asked), the others run. Next to its output a checkpoint keeps a fingerprint of the task (description, expected output, agent, dependencies): a task edited since is run again with every task after it, and one warning names it. It needs

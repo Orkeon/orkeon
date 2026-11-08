@@ -427,10 +427,16 @@ public sealed class RunProgressModel
     {
         // The run's own clock, when it parses; null otherwise — a screen shows "since
         // HH:mm:ss" or nothing, never a time it made up.
-        _running.Add(new RunTaskInFlight(
+        // A retry announces the same task again (its `attempt` is above 1): the task is still one in progress.
+        var started = new RunTaskInFlight(
             orkeonEvent.GetString("taskId"),
             orkeonEvent.GetString("agentRole"),
-            ReadTimestamp(orkeonEvent)));
+            ReadTimestamp(orkeonEvent));
+        var again = _running.FindIndex(t => Same(t.TaskId, started.TaskId) && Same(t.AgentRole, started.AgentRole));
+        if (again >= 0)
+            _running[again] = started;
+        else
+            _running.Add(started);
         return true;
     }
 

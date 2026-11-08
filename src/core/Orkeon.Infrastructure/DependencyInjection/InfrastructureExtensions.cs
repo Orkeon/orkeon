@@ -423,7 +423,13 @@ public static class InfrastructureExtensions
     /// </summary>
     private static Orkeon.Application.Interfaces.Services.IAgentExecutionService CheckpointedExecutionService(IServiceProvider sp)
     {
-        var inner = sp.GetRequiredService<Orkeon.Application.Interfaces.Services.IAgentExecutionService>();
+        // checkpoint -> retry -> core: a task's attempts are the core's business, and only the attempt that
+        // ended the task is checkpointed (FWK-15).
+        var inner = new Crew.RetryingAgentExecutionService(
+            sp.GetRequiredService<Orkeon.Application.Interfaces.Services.IAgentExecutionService>(),
+            sp.GetRequiredService<ILogger<Crew.RetryingAgentExecutionService>>(),
+            sp.GetService<TimeProvider>(),
+            sp.GetService<Orkeon.Application.Crew.ICrewExecutionHook>());
         var runScope = sp.GetService<Orkeon.Application.Interfaces.Services.IRunScope>();
         var checkpoints = sp.GetService<Orkeon.Application.Interfaces.Checkpointing.ICheckpointManager>();
         return runScope is null || checkpoints is null

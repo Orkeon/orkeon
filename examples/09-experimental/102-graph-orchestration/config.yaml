@@ -1,16 +1,16 @@
 # 102. Graph-Based Orchestration (LangGraph-Style)
 # Use case: State graph with typed state, conditional edges, controlled cycles, and circuit breaker
-# Demonstrates: process: "graph" with retry loops for flaky tasks and automatic circuit breaker protection
+# Demonstrates: process: "graph" with a task-level retry for a flaky task and automatic circuit breaker protection
 #
 # Graph topology:
 #   START -> task 1 -> task 2 -> ... -> last task -> END
 #
-# One node per task, named after the task. A task that failed with retries left
-# loops on its own node, up to maxRetryCycles times.
+# One node per task, named after the task. A failed task is run again by its own retry: block
+# (here collect_data, 3 attempts), in every mode; the graph has no retry loop of its own.
 # The circuit breaker trips if the graph exceeds maxTransitions or maxStateVisits.
 
 name: "graph-orchestration-demo"
-goal: "Demonstrate LangGraph-style orchestration with typed state graph, conditional routing, and controlled retry cycles"
+goal: "Demonstrate LangGraph-style orchestration with typed state graph, conditional routing, and a task-level retry"
 process: "graph"
 verbose: true
 memory: false
@@ -18,7 +18,6 @@ planning: false
 
 # --- Graph-specific configuration ---
 graphConfig:
-  maxRetryCycles: 2               # Retry failed tasks up to 2 times
   circuitBreakerPreset: "strict"  # Strict preset: 10 min max; visits/transitions sized from the crew
   # Override specific circuit breaker values (optional) — graphConfig is the crew's only breaker setting:
   # maxTransitions: 30
@@ -92,6 +91,11 @@ tasks:
     expectedOutput: "JSON array of data objects with: source_url, timestamp, raw_content, reliability_score"
     agent: "data_collector"
     dependencies: []
+    # The whole task runs again when an attempt fails (tool calls included): 3 runs at most, 500 ms then 1 s apart.
+    retry:
+      attempts: 3
+      backoffMs: 500
+      backoff: exponential
     asyncExecution: false
     humanInput: false
 

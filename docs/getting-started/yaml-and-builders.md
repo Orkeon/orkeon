@@ -132,10 +132,9 @@ When `process: "graph"` is used, an additional `graphConfig` block configures th
 
 ```yaml
 graphConfig:
-  maxRetryCycles: int           # default: 2 — retry cycles for failed tasks
   circuitBreakerPreset: string  # "strict" | "permissive" | "default" — default: strict
   maxTransitions: int           # Default: computed, 2 × visits + 1
-  maxStateVisits: int           # Task-attempt cap — default: computed, tasks × (1 + maxRetryCycles)
+  maxStateVisits: int           # Task-attempt cap — default: computed, sum over the tasks of 1 + their retries
   maxTotalDurationSeconds: int  # Total duration in seconds (overrides the preset)
 ```
 
@@ -148,7 +147,7 @@ The YAML models include:
 - `AgentYamlConfig` (role, goal, backstory, tools, limits)
 - `TaskYamlConfig` (description, expected output, dependencies, tools, deliverable, guardrails)
 - `LlmYamlConfig` (profile, model, temperature, max tokens)
-- `GraphYamlConfig` (maxRetryCycles, circuitBreakerPreset, overrides — see [Graph Orchestration](../orchestration/graph.md))
+- `GraphYamlConfig` (circuitBreakerPreset, overrides — see [Graph Orchestration](../orchestration/graph.md); a failed task is retried by its own `retry:`, see [Task retry](../architecture/yaml-schema.md#task-retry))
 
 There is no framework-level "predefined configuration" object: a host composes its own settings through `AddOrkeonInfrastructure` / `AddOrkeonApplication` and its `appsettings.json`.
 

@@ -856,3 +856,18 @@ Orkeon.Application.Services.Security.GuardianPolicy.OutputGuardEnabled.get -> bo
 Orkeon.Application.Services.Security.GuardianPolicy.OutputGuardEnabled.set -> void
 Orkeon.Application.Interfaces.Security.IGuardianPipeline.IsPhaseGuarded(Orkeon.Application.Interfaces.Security.GuardPhase phase) -> bool
 Orkeon.Application.Services.Security.GuardianPipeline.IsPhaseGuarded(Orkeon.Application.Interfaces.Security.GuardPhase phase) -> bool
+Orkeon.Application.Crew.TaskStartSnapshot.Attempt.get -> int
+Orkeon.Application.Crew.TaskStartSnapshot.Attempt.init -> void
+Orkeon.Application.Interfaces.Services.TaskResult.RetryCount.get -> int
+Orkeon.Application.Interfaces.Services.TaskResult.RetryCount.init -> void
+Orkeon.Application.Interfaces.Services.TaskResult<TOutput>.RetryCount.get -> int
+Orkeon.Application.Interfaces.Services.TaskResult<TOutput>.RetryCount.init -> void
+Orkeon.Application.Interfaces.Services.CrewExecutionEvent.Attempt.get -> int?
+Orkeon.Application.Interfaces.Services.CrewExecutionEvent.Attempt.init -> void
+Orkeon.Application.Interfaces.Checkpointing.ICheckpointManager.CheckpointAsync(string! sessionId, string! taskId, string? output, int retryCount, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+Orkeon.Application.Services.Checkpointing.CheckpointManager.CheckpointAsync(string! sessionId, string! taskId, string? output, int retryCount, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+Orkeon.Application.Crew.TaskExecutionSnapshot.Attempt.get -> int
+Orkeon.Application.Crew.TaskExecutionSnapshot.Attempt.init -> void
+Orkeon.Application.Interfaces.Services.RunScope.TaskAttempts.get -> System.Collections.Concurrent.ConcurrentDictionary<string!, int>!
+Orkeon.Application.Interfaces.Services.TaskResult<TOutput>.ExitReason.get -> Orkeon.Application.Interfaces.Services.AgentExitReason
+Orkeon.Application.Interfaces.Services.TaskResult<TOutput>.ExitReason.init -> void

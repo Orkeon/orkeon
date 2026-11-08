@@ -41,3 +41,4 @@ Orkeon.Scripting.Testing.TestOverrideLlmProvider.ChatStreamingAsync(Orkeon.Domai
 Orkeon.Scripting.ScriptingHostPorts.GraphObserver.get -> Orkeon.Domain.Graph.IGraphNodeObserver?
 Orkeon.Scripting.ScriptingHostPorts.GraphObserver.init -> void
 static Orkeon.Scripting.Bindings.StateGraphBinding.Register(Jint.Engine! engine, Orkeon.Domain.Graph.IGraphNodeObserver? observer) -> void
+Orkeon.Scripting.Builders.JsTaskBuilder.retry(Jint.Native.JsValue! spec) -> Orkeon.Scripting.Builders.JsTaskBuilder!

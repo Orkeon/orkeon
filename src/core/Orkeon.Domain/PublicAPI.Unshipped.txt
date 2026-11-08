@@ -308,3 +308,30 @@ static Orkeon.Domain.Graph.GraphNodeEntered.operator ==(Orkeon.Domain.Graph.Grap
 static Orkeon.Domain.Graph.GraphTopology.operator !=(Orkeon.Domain.Graph.GraphTopology? left, Orkeon.Domain.Graph.GraphTopology? right) -> bool
 static Orkeon.Domain.Graph.GraphTopology.operator ==(Orkeon.Domain.Graph.GraphTopology? left, Orkeon.Domain.Graph.GraphTopology? right) -> bool
 static Orkeon.Domain.Graph.GraphTopologyValidator.Validate(Orkeon.Domain.Graph.GraphTopology! topology) -> System.Collections.Generic.IReadOnlyList<string!>!
+Orkeon.Domain.Configuration.TaskConfiguration.Retry.get -> Orkeon.Domain.Task.TaskRetryPolicy?
+Orkeon.Domain.Configuration.TaskConfiguration.Retry.init -> void
+Orkeon.Domain.Task.CrewTaskBase<TContext>.Retry.get -> Orkeon.Domain.Task.TaskRetryPolicy?
+Orkeon.Domain.Task.CrewTaskBuilder.Retry(Orkeon.Domain.Task.TaskRetryPolicy? policy) -> Orkeon.Domain.Task.CrewTaskBuilder!
+Orkeon.Domain.Task.ICrewTask.Retry.get -> Orkeon.Domain.Task.TaskRetryPolicy?
+Orkeon.Domain.Task.TaskOutputOptions.Retry.get -> Orkeon.Domain.Task.TaskRetryPolicy?
+Orkeon.Domain.Task.TaskOutputOptions.Retry.init -> void
+Orkeon.Domain.Task.TaskRetryBackoff
+Orkeon.Domain.Task.TaskRetryBackoff.Exponential = 1 -> Orkeon.Domain.Task.TaskRetryBackoff
+Orkeon.Domain.Task.TaskRetryBackoff.Fixed = 0 -> Orkeon.Domain.Task.TaskRetryBackoff
+Orkeon.Domain.Task.TaskRetryPolicy
+Orkeon.Domain.Task.TaskRetryPolicy.<Clone>$() -> Orkeon.Domain.Task.TaskRetryPolicy!
+Orkeon.Domain.Task.TaskRetryPolicy.Attempts.get -> int
+Orkeon.Domain.Task.TaskRetryPolicy.Backoff.get -> Orkeon.Domain.Task.TaskRetryBackoff
+Orkeon.Domain.Task.TaskRetryPolicy.BackoffMs.get -> int
+Orkeon.Domain.Task.TaskRetryPolicy.DelayBefore(int attempt) -> System.TimeSpan
+Orkeon.Domain.Task.TaskRetryPolicy.Equals(Orkeon.Domain.Task.TaskRetryPolicy? other) -> bool
+Orkeon.Domain.Task.TaskRetryPolicy.TaskRetryPolicy(int attempts, int backoffMs = 0, Orkeon.Domain.Task.TaskRetryBackoff backoff = Orkeon.Domain.Task.TaskRetryBackoff.Fixed) -> void
+override Orkeon.Domain.Task.TaskRetryPolicy.Equals(object? obj) -> bool
+override Orkeon.Domain.Task.TaskRetryPolicy.GetHashCode() -> int
+override Orkeon.Domain.Task.TaskRetryPolicy.ToString() -> string!
+static Orkeon.Domain.Task.TaskRetryPolicy.operator !=(Orkeon.Domain.Task.TaskRetryPolicy? left, Orkeon.Domain.Task.TaskRetryPolicy? right) -> bool
+static Orkeon.Domain.Task.TaskRetryPolicy.operator ==(Orkeon.Domain.Task.TaskRetryPolicy? left, Orkeon.Domain.Task.TaskRetryPolicy? right) -> bool
+Orkeon.Domain.Task.TaskRetryPolicy.Retries.get -> int
+static readonly Orkeon.Domain.Task.TaskRetryPolicy.MaxDelay -> System.TimeSpan
+*REMOVED*Orkeon.Domain.Configuration.GraphConfig.MaxRetryCycles.get -> int
+*REMOVED*Orkeon.Domain.Configuration.GraphConfig.MaxRetryCycles.init -> void

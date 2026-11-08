@@ -36,6 +36,9 @@ internal sealed record JsTaskMetadata
     /// <summary>YAML parity <c>asyncExecution: true</c> — a sequential crew runs the task alongside the tasks after it (GAP-22).</summary>
     public bool AsyncExecution { get; init; }
 
+    /// <summary>YAML parity <c>retry:</c> — the task's attempts, captured by <c>taskBuilder().retry(...)</c> (FWK-15).</summary>
+    public Orkeon.Domain.Task.TaskRetryPolicy? Retry { get; init; }
+
     /// <summary>Task-level <c>tools:</c> — names or <see cref="JsTool"/> instances the task requires.</summary>
     public IReadOnlyList<JsValue> Tools { get; init; } = [];
 

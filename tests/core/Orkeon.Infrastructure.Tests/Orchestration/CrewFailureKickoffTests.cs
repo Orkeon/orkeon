@@ -81,7 +81,11 @@ public sealed class CrewFailureKickoffTests
         });
         await using var container = Host(vendor, events);
         await using var scope = container.CreateAsyncScope();
-        var (crew, output) = await RunAsync(scope.ServiceProvider, TwoTaskCrew.Replace("PROCESS", "graph", StringComparison.Ordinal));
+        var withRetry = TwoTaskCrew
+            .Replace("PROCESS", "graph", StringComparison.Ordinal)
+            .Replace("    agent: writer\n  review:", "    agent: writer\n    retry: { attempts: 2 }\n  review:", StringComparison.Ordinal);
+        Assert.Contains("retry:", withRetry, StringComparison.Ordinal);
+        var (crew, output) = await RunAsync(scope.ServiceProvider, withRetry);
 
         Assert.True(output.Succeeded, output.Error);
         Assert.Equal(2, draftCalls);

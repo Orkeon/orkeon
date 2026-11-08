@@ -64,7 +64,7 @@ internal sealed partial class ResumeRunHarness : IDisposable
     }
 
     /// <summary>Writes a three-task crew (first, second, third, each after the one before) in its own folder.</summary>
-    public string WriteCrew(string folder, string process, string? name = null, string extra = "", string settings = Settings)
+    public string WriteCrew(string folder, string process, string? name = null, string extra = "", string settings = Settings, string secondExtra = "")
     {
         var dir = Path.Combine(_root, folder);
         Directory.CreateDirectory(dir);
@@ -94,6 +94,7 @@ internal sealed partial class ResumeRunHarness : IDisposable
                 expectedOutput: "Two."
                 agent: "worker"
                 dependencies: ["first"]
+            {secondExtra}
               third:
                 description: "Third."
                 expectedOutput: "Three."

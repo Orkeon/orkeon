@@ -123,7 +123,7 @@ La méthode a disparu ; `process("graph")` se construit maintenant seul.
 Déclaratif uniquement — le moteur procédural ne lit jamais les tâches. Transmis à la crew :
 `description`, `agent` (un agent construit), `expectedOutput`, `withContext(s)` (c'est ce qui
 construit le DAG), `tools` (ajoutés aux outils de l'agent pour cette tâche seulement, sans jamais
-les remplacer), `humanInput`, `asyncExecution`, `deliverable`,
+les remplacer), `humanInput`, `asyncExecution`, `retry`, `deliverable`,
 `withResponseFormat(type)`, `withResponseSchema(name, schema, strict?)` et `withProfile(nom)` (le
 `llm_override: { profile }` du YAML : cette tâche seule tourne sur un des profils de l'hôte, sur le
 modèle propre de ce profil, et `"default"` la ramène au défaut de l'hôte ; un nom que l'hôte
@@ -139,6 +139,8 @@ les tâches qui la suivent, et une tâche qui la cite dans `withContext` l'atten
 `.process("parallel")` elle n'a pas d'effet propre ; sous les quatre autres modes la crew est
 refusée quand le run l'adapte, en nommant la tâche (voir
 [Tâches asynchrones](../orchestration/process-types.md#tâches-asynchrones-asyncexecution)).
+
+`retry({ attempts, backoffMs?, backoff? })` est le bloc YAML `retry:` (voir [Retry d'une tâche](../architecture/yaml-schema.md#retry-dune-tâche)) : une tentative en échec rejoue la tâche entière, appels d'outils compris, jusqu'à `attempts` exécutions au total (au moins 1, obligatoire) ; `backoffMs` (défaut 0) et `backoff` (`"fixed"`, le défaut, ou `"exponential"`) règlent l'attente. Un `attempts` absent ou invalide, un `backoffMs` négatif, un `backoff` inconnu, ou un `retry` sur une tâche de décision lève une `InvalidScriptException` à l'appel (ou à `build()` pour la tâche de décision). C'est le seul retry d'une crew `.process("graph")`.
 
 L'`agent` d'une tâche et les tâches de son `withContext(s)` sont ceux de la crew (`withAgent(s)`,
 `withTask(s)`) : un agent ou une tâche que la crew ne tient pas est refusé quand le run adapte la
@@ -367,7 +369,7 @@ const g = stateGraph<{ done: boolean }>({
 Une arête est un nom de nœud, `END`, ou une fonction de l'état qui en rend un (une arête
 conditionnelle). `graphConfig` borne chaque `run(state)` : `circuitBreakerPreset` (`Strict`,
 `Default`, `Permissive`) ou les bornes individuelles `maxTransitions`, `maxStateVisits`,
-`maxRetryCycles` et `maxTotalDurationSeconds` — dépasser un compte lève une erreur, manquer de
+`maxRetryCycles` (le budget propre au graphe de script : le compte, sur tout le run, des entrées dans un nœud déjà entré une fois, gardé pour la parité de budget des deux moteurs ; ce n'est **pas** un retry de tâche, qui est le `retry:` de la tâche) et `maxTotalDurationSeconds` — dépasser un compte lève une erreur, manquer de
 temps annule le run. `runStream(state)` produit chaque saut (`{ fromNode, toNode, state }`)
 pour un `for await`.
 

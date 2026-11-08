@@ -9,6 +9,7 @@ using Orkeon.Domain.FileSystem;
 using Orkeon.Domain.Knowledge;
 using Orkeon.Domain.SharedKernel.ValueObjects;
 using Orkeon.Constants.Llm;
+using Orkeon.Domain.Task;
 using Orkeon.Domain.Task.ValueObjects;
 
 namespace Orkeon.Infrastructure.Configuration;
@@ -206,16 +207,25 @@ public partial class YamlCrewExporter
         _ => throw new InvalidOperationException($"A links: direction the loader cannot read: {direction}."),
     };
 
+    private static RetryYamlConfig? MapRetry(TaskRetryPolicy? retry) =>
+        retry is null
+            ? null
+            : new RetryYamlConfig
+            {
+                Attempts = retry.Attempts,
+                BackoffMs = retry.BackoffMs > 0 ? retry.BackoffMs : null,
+                Backoff = retry.Backoff == TaskRetryBackoff.Exponential ? "exponential" : null,
+            };
+
     /// <summary>
     /// The <c>graphConfig:</c> block; null when the crew has none. Its two settings with a default
-    /// (<c>maxRetryCycles</c>, <c>circuitBreakerPreset</c>) are written as the configuration carries them.
+    /// (<c>circuitBreakerPreset</c>) is written as the configuration carries it.
     /// </summary>
     private static GraphYamlConfig? MapGraphConfig(GraphConfig? graph) =>
         graph is null
             ? null
             : new GraphYamlConfig
             {
-                MaxRetryCycles = graph.MaxRetryCycles,
                 CircuitBreakerPreset = graph.CircuitBreakerPreset,
                 MaxTransitions = graph.MaxTransitions,
                 MaxStateVisits = graph.MaxStateVisits,
@@ -437,6 +447,7 @@ public partial class YamlCrewExporter
                 ? new Collection<string>(explicitDependencies)
                 : null,
             AsyncExecution = task.AsyncExecution ? true : null,
+            Retry = MapRetry(task.Retry),
             HumanInput = task.HumanInput ? true : null,
             Context = task.Context.Count > 0 ? task.Context : null,
             Deliverable = MapDeliverable(task.Deliverable),

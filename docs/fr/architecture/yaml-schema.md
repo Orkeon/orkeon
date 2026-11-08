@@ -117,6 +117,10 @@ tasks:
     agent: string         # Clé de l'agent assigné à la tâche (une clé qui ne désigne aucun agent fait échouer le chargement, en listant les agents de la crew)
     dependencies: [string] # Clés des tâches prérequises (garantit l'ordre ; une clé inconnue fait échouer le chargement, en listant les tâches de la crew ; un cycle aussi)
     asyncExecution: bool  # default: false — sequential : tourne pendant les tâches suivantes, une dépendante l'attend ; parallel : sans effet propre ; autres modes : true fait échouer le chargement
+    retry:                # défaut : aucun — la tâche tourne une fois. Une tentative en échec rejoue la tâche ENTIÈRE (voir « Retry d'une tâche »)
+      attempts: int       # obligatoire, 1 ou plus — exécutions au total, la première comprise
+      backoffMs: int      # défaut : 0 — attente de base avant une nouvelle tentative, en millisecondes
+      backoff: string     # "fixed" (défaut) | "exponential" (double à chaque retry, plafonné à 5 minutes)
     humanInput: bool      # default: false — demande intervention humaine
     context: {key: value} # Données additionnelles de contexte
     tools: [string]       # Outils AJOUTÉS à ceux de l'agent pour cette tâche seulement (sans jamais les remplacer) — résolus comme ceux d'un agent : un nom inconnu fait échouer le chargement sous StrictTools
@@ -180,6 +184,8 @@ Le `maxExecutionTime` (ou `max_execution_time`) d'un agent est un nombre entier 
 une valeur au-dessus du plafond (4294967 s, environ 49,7 jours) et une limite sur le `managerAgent` d'une crew
 hiérarchique font échouer le chargement, en nommant l'agent. Une tâche qui dépasse sa limite se termine en
 `ExecutionTimeExceeded` au plus tard à la fin de l'appel en cours ; le temps passé à attendre un humain ne compte pas.
+
+Un `retry:` de tâche sans `attempts`, avec `attempts` sous 1, un `backoffMs` négatif, un `backoff` autre que `fixed` ou `exponential`, ou posé sur une tâche de décision, fait aussi échouer le chargement, en nommant la tâche et la clé (voir [Retry d'une tâche](#retry-dune-tâche)).
 
 Un message nomme un agent ou une tâche par sa clé — `Agent 'researcher' must have a goal.` —, une
 configuration bâtie en code par son identifiant.
@@ -400,22 +406,50 @@ elle ne fait jamais planter le loader. L'équivalent fluent est
 `AgentBuilder.WithKnowledge("produits")` /
 `WithKnowledge("produits", opts => { opts.TopK = 8; opts.Profile = "quality"; })` (cumulable).
 
+## Retry d'une tâche
+
+```yaml
+tasks:
+  fetch:
+    description: Récupérer les cours
+    expectedOutput: Un tableau de cours
+    agent: trader
+    retry:
+      attempts: 3          # obligatoire — 3 exécutions au total : la première, puis au plus deux retries
+      backoffMs: 250       # défaut 0
+      backoff: exponential # fixed (défaut) | exponential : 250 ms, puis 500 ms, ... jamais plus de 5 minutes
+```
+
+Une tâche qui échoue est rejouée dans **chaque** mode d'orchestration : un seul décorateur, entre le checkpoint et le cœur d'exécution, applique la politique ; les stratégies ne réessaient donc jamais et les six modes se comportent pareil. En Graph il n'y a plus de boucle de retry propre : l'ancien `graphConfig.maxRetryCycles`, un retry de tâche échouée qui se serait multiplié avec celui-ci, est **retiré** et refusé au chargement comme clé inconnue.
+
+- **Une nouvelle tentative rejoue la tâche entière**, appels au modèle et appels d'outils compris, y compris les appels d'outils déjà réussis. Rien ne les déduplique : une tâche dont les outils écrivent (un fichier, un e-mail, un paiement) doit pouvoir tourner deux fois sans dommage, et c'est à l'auteur de la crew de le garantir.
+- **Jamais réessayés** : une annulation, un refus du gardien (`GuardianBlocked`), un budget épuisé. Le refus de la porte de permission est un résultat d'outil à l'intérieur d'une tentative, pas un échec de tâche. Les retries d'une sortie invalide restent à l'intérieur d'une tentative. Une tâche de décision n'exécute aucun agent et ne peut pas déclarer `retry:` (le chargement échoue, en nommant la tâche).
+- **Réessayés exprès** : un dépassement du temps d'exécution (`ExecutionTimeExceeded`) et une chaîne de basculement de fournisseur à court de profils (`FallbackExhausted`) comptent tous deux comme des échecs et sont réessayés, après le backoff, car l'un comme l'autre peut être passager. Le coût est borné : au plus `attempts` fois la chaîne de basculement entière par tour de la tâche.
+- **Ce qu'une tentative en échec laisse derrière elle** : ses appels d'outils (un fichier écrit, un message envoyé), ce qu'un outil a écrit en mémoire, le coût qu'elle a mesuré et les événements `tool.*` et `cost.updated` qu'elle a émis restent, et les callbacks `OnTaskStarted`/`OnTaskCompleted` partent une fois par tentative. Le résultat de la tâche va dans la mémoire de la crew et son livrable (`final_message`, `structured_output`) n'est écrit que par une tentative qui a produit une réponse finale : un retry les remplace donc au lieu de les dupliquer ; un fichier que l'agent écrit lui-même avec `file_write` n'est remplacé que si la tentative suivante écrit le même chemin.
+- **Reprise** : seule la tentative qui a clos la tâche est checkpointée. Un run arrêté entre deux tentatives, ou dont la dernière tentative a échoué, n'a aucun checkpoint pour cette tâche, et `orkeon run --resume` la rejoue depuis la tentative 1.
+- **Après la dernière tentative** il reste le dernier échec, exactement comme si la tâche avait tourné une fois : le même résultat en échec ou la même exception.
+- **L'attente** entre deux tentatives vient de `backoffMs` et `backoff`, sur le `TimeProvider` de l'hôte, et s'interrompt aussitôt que le run est annulé.
+- **Ce que voit un observateur** : chaque retry émet un `task.started` qui porte `attempt` (le démarrage de la stratégie est la tentative 1 ; voir [le bus d'événements du run](run-event-bus.md)) ; `task.completed` arrive une fois, pour la tentative qui a clos la tâche. Le checkpoint d'une tâche réussie à la troisième tentative note `RetryCount: 2`, et un run repris la répond depuis là sans interroger le modèle.
+- **Le basculement de fournisseur est une autre couche.** Un basculement (là où il est configuré) passe au fournisseur suivant *à l'intérieur d'un appel au modèle* ; `retry:` rejoue la *tâche entière*. Les deux se combinent : un appel qui échoue sur tous les fournisseurs de sa chaîne fait échouer la tentative, `retry:` rejoue alors la tâche, et cette tentative parcourt de nouveau la chaîne : une tâche fait au plus `attempts` fois la longueur de la chaîne d'appels au modèle par tour.
+- **Les budgets du graphe** comptent les tentatives : sans bornes `graph` explicites, les visites valent par défaut la somme sur les tâches de `1 + retries` (`retries` = `attempts - 1`), soit `nœuds × (1 + tentatives de retry)` quand toutes les tâches réessaient pareil, et les transitions le double plus un.
+
 ## Configuration Graph
 
 Quand `process: "graph"` est utilisé, un bloc `graphConfig` supplémentaire configure le moteur de graphe d'état :
 
 ```yaml
 graphConfig:
-  maxRetryCycles: int           # default: 2 — cycles de retry pour tâches échouées
   circuitBreakerPreset: string  # "strict" (défaut) | "permissive" | "default"
   maxTransitions: int           # Défaut : calculé, 2 × visites + 1
-  maxStateVisits: int           # Plafond de tentatives — défaut : calculé, tâches × (1 + maxRetryCycles)
+  maxStateVisits: int           # Plafond de tentatives — défaut : calculé, somme sur les tâches de 1 + leurs retries
   maxTotalDurationSeconds: int  # Durée totale en secondes (surcharge le preset)
 ```
 
 `graphConfig` est le seul réglage de circuit breaker d'une crew (`CircuitBreakerPolicyFactory.ResolveGraph`).
 Le moteur de graphe n'applique que trois limites — transitions, visites d'un même état, durée
 totale (`GraphRunner`) ; un timeout par état ou un mode dégradé n'a aucun effet sur un run de graphe.
+
+`graphConfig.maxRetryCycles` est **retiré** (`[breaking]`) : une tâche échouée est relancée par son propre `retry:` (voir [Retry d'une tâche](#retry-dune-tâche)), dans tous les modes, et une crew qui écrit encore la clé est refusée au chargement comme clé inconnue.
 
 ## Supprimé : `circuitBreaker`
 
@@ -501,7 +535,7 @@ Tous vivent dans `Orkeon.Infrastructure.Configuration` (`src/core/Orkeon.Infrast
 - `GuardrailsYamlConfig` (les `guardrails:` d'agent et de tâche)
 - `LinkYamlConfig` (l'ACL `links:` de crew)
 - `CrewYamlConfig.Mounts` / `CrewSettingsYamlConfig.Mounts` (le bloc `mounts:` de crew — items `/racine` ou `<ulid>|/racine`) → `CrewConfiguration.Mounts` (`MountReference`, VFS-90)
-- `GraphYamlConfig` (maxRetryCycles, circuitBreakerPreset, surcharges)
+- `GraphYamlConfig` (circuitBreakerPreset, surcharges)
 - `RagYamlConfig` (collections + sources/chunking, défauts — avec `RagCollectionYamlConfig`, `RagChunkingYamlConfig`, `RagDefaultsYamlConfig`) → `RagCrewConfig`
 - `AgentYamlConfig.Knowledge` (entrées forme courte/longue) → `KnowledgeAttachment`
 

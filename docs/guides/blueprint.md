@@ -52,7 +52,7 @@ private static readonly Dictionary<string, ProcessType> s_all = new(StringCompar
 
 ### Configuration DTO
 
-**File**: `src/core/Orkeon.Domain/Configuration/<Mode>Config.cs` — an immutable `sealed record` with defaults, nullable where a value overrides a preset (`GraphConfig` is the model: `MaxRetryCycles = 2`, `CircuitBreakerPreset = "strict"`, nullable limits).
+**File**: `src/core/Orkeon.Domain/Configuration/<Mode>Config.cs` — an immutable `sealed record` with defaults, nullable where a value overrides a preset (`GraphConfig` is the model: `CircuitBreakerPreset = "strict"`, nullable limits).
 
 Carry it to execution time:
 

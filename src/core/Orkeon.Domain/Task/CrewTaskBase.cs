@@ -114,6 +114,9 @@ public abstract class CrewTaskBase<TContext> : AggregateRoot<TaskId>, ICrewTask
     /// </summary>
     public bool AsyncExecution { get; private set; }
 
+    /// <summary>Gets the retry policy of this task (YAML <c>retry:</c>), or null when it runs once.</summary>
+    public TaskRetryPolicy? Retry { get; private set; }
+
     /// <summary>
     /// Gets the JSON schema for output validation.
     /// </summary>
@@ -201,6 +204,7 @@ public abstract class CrewTaskBase<TContext> : AggregateRoot<TaskId>, ICrewTask
         Status = TaskStatus.Pending;
         CreatedAt = DateTime.UtcNow;
         AsyncExecution = opts.AsyncExecution;
+        Retry = opts.Retry;
         OutputJson = opts.OutputJson;
         OutputPydantic = opts.OutputPydantic;
         OutputFile = opts.OutputFile;

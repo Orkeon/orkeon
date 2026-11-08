@@ -19,6 +19,9 @@ public sealed class FakeCheckpointManager : ICheckpointManager
         System.Threading.Tasks.Task.FromResult(sessionId.ToString());
 
     public System.Threading.Tasks.Task CheckpointAsync(string sessionId, string taskId, string? output, CancellationToken ct = default) =>
+        CheckpointAsync(sessionId, taskId, output, 0, ct);
+
+    public System.Threading.Tasks.Task CheckpointAsync(string sessionId, string taskId, string? output, int retryCount, CancellationToken ct = default) =>
         CheckpointFailure is null ? System.Threading.Tasks.Task.CompletedTask : System.Threading.Tasks.Task.FromException(CheckpointFailure);
 
     public System.Threading.Tasks.Task MarkFailedAsync(string sessionId, string taskId, Exception ex, CancellationToken ct = default)

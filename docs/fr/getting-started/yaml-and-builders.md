@@ -136,10 +136,9 @@ Quand `process: "graph"` est utilisé, un bloc `graphConfig` supplémentaire con
 
 ```yaml
 graphConfig:
-  maxRetryCycles: int           # default: 2 — cycles de retry pour tâches échouées
   circuitBreakerPreset: string  # "strict" | "permissive" | "default" — défaut : strict
   maxTransitions: int           # Défaut : calculé, 2 × visites + 1
-  maxStateVisits: int           # Plafond de tentatives — défaut : calculé, tâches × (1 + maxRetryCycles)
+  maxStateVisits: int           # Plafond de tentatives — défaut : calculé, somme sur les tâches de 1 + leurs retries
   maxTotalDurationSeconds: int  # Durée totale en secondes (surcharge le preset)
 ```
 
@@ -152,7 +151,7 @@ Les modèles YAML incluent :
 - `AgentYamlConfig` (rôle, objectif, backstory, outils, limites)
 - `TaskYamlConfig` (description, résultat attendu, dépendances, outils, livrable, guardrails)
 - `LlmYamlConfig` (profil, modèle, température, max tokens)
-- `GraphYamlConfig` (maxRetryCycles, circuitBreakerPreset, surcharges — voir [Orchestration Graph](../orchestration/graph.md))
+- `GraphYamlConfig` (circuitBreakerPreset, surcharges — voir [Orchestration Graph](../orchestration/graph.md) ; une tâche échouée est relancée par son propre `retry:`, voir [Retry d'une tâche](../architecture/yaml-schema.md#retry-dune-tâche))
 
 Il n'existe pas d'objet « configuration prédéfinie » au niveau du framework : un hôte compose ses réglages via `AddOrkeonInfrastructure` / `AddOrkeonApplication` et son `appsettings.json`.
 

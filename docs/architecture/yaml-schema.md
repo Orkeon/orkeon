@@ -115,6 +115,10 @@ tasks:
     agent: string         # Key of the agent assigned to the task (a key matching no agent fails the load, listing the crew's agents)
     dependencies: [string] # Keys of prerequisite tasks (guarantees ordering; an unknown key fails the load, listing the crew's tasks; so does a cycle)
     asyncExecution: bool  # default: false — sequential: runs alongside the next tasks, a dependant waits for it; parallel: no effect of its own; other modes: true fails the load
+    retry:                # default: none — the task runs once. A failed attempt runs the WHOLE task again (see "Task retry")
+      attempts: int       # required, 1 or more — runs in all, the first one included
+      backoffMs: int      # default: 0 — base wait before a new attempt, in milliseconds
+      backoff: string     # "fixed" (default) | "exponential" (doubles at each retry, capped at 5 minutes)
     humanInput: bool      # default: false — requests human intervention
     context: {key: value} # Additional context data
     tools: [string]       # Tools ADDED to the agent's own for this task only (never replacing them) — resolved like an agent's tools: an unknown name fails the load under StrictTools
@@ -175,6 +179,8 @@ An agent's `maxExecutionTime` (or `max_execution_time`) is whole seconds: 0 or l
 ceiling (4294967 s, about 49.7 days) and a limit on the `managerAgent` of a hierarchical crew fail the load, naming
 the agent. A task past its limit ends `ExecutionTimeExceeded` at the latest at the end of the call in progress;
 time spent waiting for a human does not count.
+
+A task's `retry:` without `attempts`, with `attempts` below 1, a negative `backoffMs`, a `backoff` other than `fixed` or `exponential`, or on a decision task, fails the load too, naming the task and the key (see [Task retry](#task-retry)).
 
 A message names an agent or a task by its key — `Agent 'researcher' must have a goal.` —, a
 configuration built in code by its identifier.
@@ -386,22 +392,50 @@ Keys accept snake_case (the form used above) and camelCase. A malformed `knowled
 crashes the loader. The fluent equivalent is `AgentBuilder.WithKnowledge("produits")` /
 `WithKnowledge("produits", opts => { opts.TopK = 8; opts.Profile = "quality"; })` (cumulative).
 
+## Task retry
+
+```yaml
+tasks:
+  fetch:
+    description: Fetch the quotes
+    expectedOutput: A table of quotes
+    agent: trader
+    retry:
+      attempts: 3          # required — 3 runs in all: the first, then at most two retries
+      backoffMs: 250       # default 0
+      backoff: exponential # fixed (default) | exponential: 250 ms, then 500 ms, ... never more than 5 minutes
+```
+
+A task that fails runs again, in **every** orchestration mode: one decorator, between the checkpoint and the execution core, applies the policy, so the strategies never retry and the six modes behave alike. In Graph there is no retry loop of its own any more: the former `graphConfig.maxRetryCycles`, a retry of a failed task that would have multiplied with this one, is **removed** and refused at load as an unknown key.
+
+- **A new attempt replays the whole task**, model calls and tool calls included, the tool calls that already succeeded too. Nothing deduplicates them: a task whose tools write (a file, an e-mail, a payment) must be safe to run twice, and that is the crew author's to guarantee.
+- **Never retried**: a cancellation, a refusal of the guardian (`GuardianBlocked`), an exhausted budget. A refusal of the permission gate is a tool result inside an attempt, not a task failure. Retries of an invalid output stay inside one attempt. A decision task runs no agent and cannot declare `retry:` (the load fails, naming the task).
+- **Retried on purpose**: an execution timeout (`ExecutionTimeExceeded`) and a provider failover chain that ran out of profiles (`FallbackExhausted`) both count as failures and are retried, after the backoff, because either can be transient. The cost is bounded: at most `attempts` times the whole failover chain for each turn of the task.
+- **What a failed attempt leaves behind**: its tool calls (a file written, a message sent), what a tool wrote to memory, the cost it metered and the `tool.*` and `cost.updated` events it emitted stay, and the callbacks `OnTaskStarted`/`OnTaskCompleted` fire once per attempt. The task's result goes to the crew's memory and its deliverable (`final_message`, `structured_output`) is written only by an attempt that produced a final answer, so a retry replaces them rather than duplicating them; a file the agent writes itself with `file_write` is replaced only if the next attempt writes the same path.
+- **Resume**: only the attempt that ended the task is checkpointed. A run stopped between two attempts, or whose last attempt failed, holds no checkpoint for that task, and `orkeon run --resume` runs it again from attempt 1.
+- **What is left after the last attempt** is the last failure, exactly as if the task had run once: the same failed result or the same exception.
+- **The wait** between two attempts comes from `backoffMs` and `backoff`, on the host's `TimeProvider`, and ends at once when the run is cancelled.
+- **What a watcher sees**: each retry emits a `task.started` carrying `attempt` (the strategy's own start is attempt 1; see [the run event bus](run-event-bus.md)); `task.completed` comes once, for the attempt that ended the task. The checkpoint of a task that succeeded on its third attempt records `RetryCount: 2`, and a resumed run answers it from there without asking the model.
+- **Provider failover is a different layer.** A failover (where one is configured) switches to the next provider *inside one model call*; `retry:` runs the *whole task* again. They combine: a call that fails every provider of its chain fails the attempt, `retry:` then runs the task again, and that attempt walks the chain afresh, so a task makes at most `attempts` times the chain's length of model calls per turn.
+- **Graph budgets** count the attempts: when no bounds are given, the visits default to the sum over the tasks of `1 + retries` (`retries` = `attempts - 1`), that is `nodes × (1 + retries)` when every task retries alike (ADR-018), and the transitions to twice that plus one.
+
 ## Graph configuration
 
 When `process: "graph"` is used, an additional `graphConfig` block configures the state graph engine:
 
 ```yaml
 graphConfig:
-  maxRetryCycles: int           # default: 2 — retry cycles for failed tasks
   circuitBreakerPreset: string  # "strict" (default) | "permissive" | "default"
   maxTransitions: int           # Default: computed, 2 × visits + 1
-  maxStateVisits: int           # Task-attempt cap — default: computed, tasks × (1 + maxRetryCycles)
+  maxStateVisits: int           # Task-attempt cap — default: computed, sum over the tasks of 1 + their retries
   maxTotalDurationSeconds: int  # Total duration in seconds (overrides the preset)
 ```
 
 `graphConfig` is the only circuit-breaker setting a crew carries (`CircuitBreakerPolicyFactory.ResolveGraph`).
 The graph engine enforces three limits only — transitions, visits of one state, total duration
 (`GraphRunner`); a state timeout or a degraded mode has no effect on a graph run.
+
+`graphConfig.maxRetryCycles` is **removed** (`[breaking]`): a failed task is retried by its own `retry:` (see [Task retry](#task-retry)), in every mode, and a crew that still writes the key is refused at load as an unknown key.
 
 ## Removed: `circuitBreaker`
 
@@ -484,7 +518,7 @@ All live in `Orkeon.Infrastructure.Configuration` (`src/core/Orkeon.Infrastructu
 - `GuardrailsYamlConfig` (agent- and task-level `guardrails:`)
 - `LinkYamlConfig` (the crew-level `links:` ACL)
 - `CrewYamlConfig.Mounts` / `CrewSettingsYamlConfig.Mounts` (the crew-level `mounts:` block — `/root` or `<ulid>|/root` items) → `CrewConfiguration.Mounts` (`MountReference`, VFS-90)
-- `GraphYamlConfig` (maxRetryCycles, circuitBreakerPreset, overrides)
+- `GraphYamlConfig` (circuitBreakerPreset, overrides)
 - `RagYamlConfig` (collections + sources/chunking, defaults — with `RagCollectionYamlConfig`, `RagChunkingYamlConfig`, `RagDefaultsYamlConfig`) → `RagCrewConfig`
 - `AgentYamlConfig.Knowledge` (short/long form entries) → `KnowledgeAttachment`
 
