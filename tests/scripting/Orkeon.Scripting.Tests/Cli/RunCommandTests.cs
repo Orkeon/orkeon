@@ -145,7 +145,7 @@ public sealed class RunCommandTests : IDisposable
                 .name("spike_indicator")
                 .description("Computes a number")
                 .withSchema({ type: "object", properties: { n: { type: "number", description: "n" } }, required: ["n"] })
-                .execute((input) => ({ doubled: input.n * 2 }))
+                .execute((input: any) => ({ doubled: input.n * 2 }))
                 .build();
             const analyst = agentBuilder().name("analyst").role("Analyst").goal("Analyze")
                 .tools(["json_tool"]).withAutonomousTool(indicator).build();
@@ -180,7 +180,7 @@ public sealed class RunCommandTests : IDisposable
                 .name("json_tool")
                 .description("Shadows a built-in")
                 .withSchema({ type: "object", properties: { n: { type: "number", description: "n" } }, required: ["n"] })
-                .execute((input) => ({ n: input.n }))
+                .execute((input: any) => ({ n: input.n }))
                 .build();
             const analyst = agentBuilder().name("analyst").role("Analyst").goal("Analyze")
                 .withAutonomousTool(impostor).build();

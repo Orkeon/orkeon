@@ -48,6 +48,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - New public types `IMcpServerExtension`, `IMcpProgress` and `McpRequestException` (`ORKEXP004`); `McpServer` takes an optional `extension` after `logger`.
 - `--crew` follows the repository's option grammar: several crews go space-separated after one flag, which cannot be repeated.
 
+### Added — type-checking `.ork.ts` in `--validate` (FWK-12)
+
+- **[breaking]** `orkeon run --validate` type-checks a `.ork.ts` by default, so a script with a type error that used to validate now fails with exit `1` wherever `tsc` is installed. `Orkeon:Scripting:Toolchain:TypeCheck: Off` is the opt-out; a machine without `tsc` only gets a warning.
+
+  | Before | After |
+  |---|---|
+  | `--validate` on a `.ork.ts` never looked at its types | `--validate` runs `tsc` first; a type error is `VALIDATION FAILED: type errors`, exit `1` |
+  | no setting | `Orkeon:Scripting:Toolchain:TypeCheck` `Validate` (default), `Off`, `Always`; `Off` restores the old behaviour |
+
+- The check runs `tsc` against the `orkeon.d.ts` roll-up this build embeds (`test.d.ts` included), after the MCP servers connect and before the crew loads, on the script and the local modules it imports. A type error prints `VALIDATION FAILED: type errors`, then `<virtual path>:line:col TSxxxx message` per error. The compiler reads and prints physical paths, so it checks a scratch copy (the `orkeon-script` pragma blanked in the script and in every imported module, line count kept; relative imports still resolve) written outside the VFS, and every path of its output and of a failure message is mapped back to the VFS before display.
+- **`Orkeon:Scripting:Toolchain:TypeCheck`** (`Off`, `Validate` default, `Always`), **`TscPath`** and **`TypeCheckTimeout`** (60 s). `Always` also checks before every run (`ERROR: type errors`, exit 2). `tsc` is found through `TscPath` (the only candidate when set), `tools/scripting-typecheck/node_modules/.bin/`, then `PATH`; nothing is downloaded. Without it, `Validate` warns (`WARNING: type check skipped: …`) and goes on, `Always` fails (`VALIDATION FAILED: type check unavailable`). A `tsc` that dies without a diagnostic (crash, signal, non-zero exit) is a failure (`type check failed (exit N)`), never "no errors"; cancelling the run kills it.
+- `orkeon doctor` gains a `tsc` check; `TscTypeChecker`, `TscOutputParser`, `TypeCheckDiagnostic`, `TscNotFoundException` and `TypeCheckMode` join the public surface of `Orkeon.Scripting`.
+
 ### Added — an LLM judge on a task's input and output (FWK-19)
 
 - **`Orkeon:Guardian:Llm`** (`Enabled`, `Phases`, `BlockThreshold`, `WarnThreshold`, `Risks`, `FailMode`, `MaxContentChars`) turns on `LlmJudgeGuard`, which asks the decision model (`IDecisionModel`, no profile of its own) one question per risk on an agent's input and on a task's output. Off by default: it costs a model call per phase.

@@ -198,11 +198,11 @@ qu'elle accepte quand leur liste est fermée, et son sens.
 | [Sécurité](#sécurité) | [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:Guardian`](#orkeonguardian), [`Orkeon:Security:PermissionGate`](#orkeonsecuritypermissiongate), [`Secrets`](#secrets), [`Security:Audit`](#securityaudit), [`Security:Prompt`](#securityprompt), [`Security:ToolResults`](#securitytoolresults), [`Security:Url`](#securityurl), [`Security:Vault`](#securityvault) | 40 |
 | [Outils](#outils) | [`BRAVE_API_KEY`](#brave_api_key), [`MCP`](#mcp), [`MCP:Server`](#mcpserver), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Tools:Drive`](#orkeontoolsdrive), [`Orkeon:Tools:Email`](#orkeontoolsemail), [`Orkeon:Tools:Firefox`](#orkeontoolsfirefox), [`Orkeon:Tools:GitHub`](#orkeontoolsgithub), [`Orkeon:Tools:ResultLimits`](#orkeontoolsresultlimits), [`Orkeon:Tools:Shell`](#orkeontoolsshell), [`Plugins`](#plugins), [`RaggableTree`](#raggabletree) | 108 |
 | [Orchestration et persistance](#orchestration-et-persistance) | [`Orkeon:Checkpointing`](#orkeoncheckpointing), [`Orkeon:Consensus`](#orkeonconsensus), [`Orkeon:CrewFactory`](#orkeoncrewfactory), [`Orkeon:ExecutionState:Persistence`](#orkeonexecutionstatepersistence), [`Orkeon:RunHistory`](#orkeonrunhistory) | 25 |
-| [Scripts et console](#scripts-et-console) | [`Orkeon:Cli:ConsoleStreaming`](#orkeoncliconsolestreaming), [`Orkeon:Cli:Memory`](#orkeonclimemory), [`Orkeon:Cli:ScriptCommands`](#orkeoncliscriptcommands), [`Orkeon:Cli:ScriptHost`](#orkeoncliscripthost), [`Orkeon:Cli:Session`](#orkeonclisession), [`Orkeon:Cli:Tui`](#orkeonclitui), [`Orkeon:Scripting:AgentInstances`](#orkeonscriptingagentinstances), [`Orkeon:Scripting:AgentMemory`](#orkeonscriptingagentmemory), [`Orkeon:Scripting:Limits`](#orkeonscriptinglimits), [`Orkeon:Scripting:Toolchain`](#orkeonscriptingtoolchain) | 32 |
+| [Scripts et console](#scripts-et-console) | [`Orkeon:Cli:ConsoleStreaming`](#orkeoncliconsolestreaming), [`Orkeon:Cli:Memory`](#orkeonclimemory), [`Orkeon:Cli:ScriptCommands`](#orkeoncliscriptcommands), [`Orkeon:Cli:ScriptHost`](#orkeoncliscripthost), [`Orkeon:Cli:Session`](#orkeonclisession), [`Orkeon:Cli:Tui`](#orkeonclitui), [`Orkeon:Scripting:AgentInstances`](#orkeonscriptingagentinstances), [`Orkeon:Scripting:AgentMemory`](#orkeonscriptingagentmemory), [`Orkeon:Scripting:Limits`](#orkeonscriptinglimits), [`Orkeon:Scripting:Toolchain`](#orkeonscriptingtoolchain) | 35 |
 | [Hôte de service et A2A](#hôte-de-service-et-a2a) | [`A2A`](#a2a), [`A2A:Security`](#a2asecurity), [`A2A:Security:AzureAD`](#a2asecurityazuread), [`A2A:Security:Oidc`](#a2asecurityoidc), [`Orkeon:Host`](#orkeonhost), [`Orkeon:Host:Discord`](#orkeonhostdiscord) | 57 |
 | [Observabilité](#observabilité) | [`Logging`](#logging), [`Orkeon:Monitoring`](#orkeonmonitoring), [`Telemetry`](#telemetry) | 8 |
 
-79 sections, 508 clés. Lues par aucun binaire livré, seulement par un hôte écrit en C# (7) : [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:CognitiveMemory`](#orkeoncognitivememory), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Monitoring`](#orkeonmonitoring).
+79 sections, 511 clés. Lues par aucun binaire livré, seulement par un hôte écrit en C# (7) : [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:CognitiveMemory`](#orkeoncognitivememory), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Monitoring`](#orkeonmonitoring).
 <!-- /settings-index -->
 
 Lire un tableau :
@@ -2018,10 +2018,13 @@ Lue par `EsbuildTranspiler.Create` — `orkeon run`, le runner partagé, `orkeon
 <!-- settings:Orkeon:Scripting:Toolchain -->
 **Lue par** : `orkeon`, `orkeon-host`.
 
-| Clé | Type | Défaut | Sens |
-|---|---|---|---|
-| `EsbuildPath` | chaîne | — | Chemin absolu du binaire esbuild. À null, le transpileur se rabat sur la variable d'environnement `ORKEON_ESBUILD_PATH`, puis sur un binaire livré à côté de l'application (`esbuild-bin/esbuild`), puis sur la copie que `npm install` dépose dans une copie de travail du dépôt (`tools/scripting-esbuild/node_modules/`, cherchée en remontant depuis le répertoire de travail et le répertoire de l'application), puis sur une recherche dans le PATH. |
-| `EsbuildTimeout` | durée | `"00:00:30"` | Temps maximal dont dispose esbuild pour transpiler une source. Défaut : 30 s. |
+| Clé | Type | Défaut | Valeurs | Sens |
+|---|---|---|---|---|
+| `EsbuildPath` | chaîne | — |  | Chemin absolu du binaire esbuild. À null, le transpileur se rabat sur la variable d'environnement `ORKEON_ESBUILD_PATH`, puis sur un binaire livré à côté de l'application (`esbuild-bin/esbuild`), puis sur la copie que `npm install` dépose dans une copie de travail du dépôt (`tools/scripting-esbuild/node_modules/`, cherchée en remontant depuis le répertoire de travail et le répertoire de l'application), puis sur une recherche dans le PATH. |
+| `EsbuildTimeout` | durée | `"00:00:30"` |  | Temps maximal dont dispose esbuild pour transpiler une source. Défaut : 30 s. |
+| `TscPath` | chaîne | — |  | Chemin absolu du binaire `tsc`. Renseigné, c'est le seul candidat : un chemin qui n'existe pas est signalé comme un compilateur absent, jamais remplacé en silence. À null, le vérificateur de types cherche dans `tools/scripting-typecheck/node_modules/.bin/` d'un checkout (depuis le répertoire de travail et celui de l'application, en remontant), puis dans `PATH`. |
+| `TypeCheck` | énumération | `"Validate"` | `Off`, `Validate`, `Always` | Quand le compilateur TypeScript (`tsc`) vérifie les types d'un script `.ork.ts` contre les typings que ce build livre : `Off` jamais, `Validate` (défaut) dans `orkeon run --validate`, `Always` dans `--validate` et avant chaque exécution. Sous `Validate` un compilateur absent est un avertissement ; sous `Always` c'est un échec. |
+| `TypeCheckTimeout` | durée | `"00:01:00"` |  | Temps maximal dont dispose `tsc` pour vérifier un script. Défaut : 60 s. |
 <!-- /settings -->
 
 ### `Orkeon:Cli:ScriptCommands`

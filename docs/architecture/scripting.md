@@ -393,6 +393,9 @@ and the REPL's `*.cmd.ts` commands:
 |---|---|---|
 | `EsbuildPath` | — | Absolute path to the esbuild binary; first in the lookup order below. |
 | `EsbuildTimeout` | `00:00:30` | Wall-clock bound of one esbuild transpilation or bundle. |
+| `TypeCheck` | `Validate` | `Off`, `Validate` or `Always`: when `tsc` type-checks a `.ork.ts` ([below](#type-checking-a-script)). |
+| `TscPath` | — | Absolute path to the `tsc` binary; when set it is the only candidate. |
+| `TypeCheckTimeout` | `00:01:00` | Wall-clock bound of one type check. |
 
 esbuild is looked up, in order: `Orkeon:Scripting:Toolchain:EsbuildPath`, the
 `ORKEON_ESBUILD_PATH` environment variable, an `esbuild-bin/esbuild[.exe]` next to the running
@@ -416,6 +419,30 @@ project that type-checks its scripts uses the line comment, which `orkeon forge`
 directive is optional; when present, a version the runtime does not support (only `1.0` today)
 fails the run with `ScriptVersionMismatchError` before anything executes. A script carrying both
 forms is read by its reference form.
+
+## Type-checking a script
+
+esbuild strips types and reports syntax only, so a wrong type used to show at run time. `orkeon run
+--validate` on a `.ork.ts` now runs the TypeScript compiler first (after the MCP servers connect,
+before the crew loads) against the `orkeon.d.ts` roll-up this build embeds, `test.d.ts` included.
+`Orkeon:Scripting:Toolchain:TypeCheck` picks when: `Off` never, `Validate` (default) in `--validate`,
+`Always` in `--validate` and before every run.
+
+A type error prints `VALIDATION FAILED: type errors` (`ERROR: type errors` before a run), then one
+line per error, `<virtual path>:line:col TSxxxx message`, and exits `1` (`2` before a run). The
+paths are the VFS's (`/script/main.ork.ts`, `/script/lib/helper.ts`); the compiler is an external
+process that reads and prints physical paths, so it works on a scratch copy whose paths are mapped
+back before anything is shown. The copy (of the script and of every local module it imports) blanks the two pragma forms (`tsc` rejects the reference
+form with TS1084 and then skips its semantic pass) without moving a line, and a script's relative
+imports still resolve. The scratch folder is written by the framework itself, outside the VFS, and
+deleted afterwards.
+
+`tsc` is looked up like esbuild: `Orkeon:Scripting:Toolchain:TscPath` (the only candidate when set),
+then `tools/scripting-typecheck/node_modules/.bin/` of a checkout (bootstrap it with
+`npm --prefix tools/scripting-typecheck install --prefer-offline`), then `PATH`
+(`npm install -g typescript`). Nothing is downloaded. Without a compiler, `Validate` prints
+`WARNING: type check skipped: …` and validates the rest; `Always` fails with
+`VALIDATION FAILED: type check unavailable`. A `tsc` that dies with no diagnostic (crash, signal, non-zero exit) fails as `type check failed (exit N)`, never as "no errors". `orkeon doctor` reports it as the `tsc` check.
 
 ## V1 limits
 

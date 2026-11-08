@@ -16,6 +16,7 @@ using Orkeon.Infrastructure.DependencyInjection;
 using Orkeon.Infrastructure.LLMs;
 using Orkeon.Infrastructure.LLMs.Profiles;
 using Orkeon.Rag.Onnx.Model;
+using Orkeon.Scripting.Configuration;
 using Orkeon.Scripting.Toolchain;
 
 namespace Orkeon.Scripting.Cli.Commands;
@@ -195,6 +196,7 @@ internal static class DoctorCommand
             .. CheckRunnerSettings(llm),
             await CheckLlmReachabilityAsync(llm, ct).ConfigureAwait(false),
             await CheckEsbuildAsync(llm.Configuration, ct).ConfigureAwait(false),
+            await CheckTscAsync(llm.Configuration, ct).ConfigureAwait(false),
             CheckLocalEmbeddings(),
             CheckOnnxReranker(),
             CheckTreeSitterGrammars(),
@@ -640,6 +642,42 @@ internal static class DoctorCommand
             Detail = version is not null
                 ? $"v{version} at {binary} (required only for .ork.ts scripts; editor typings: `orkeon typings`)"
                 : $"resolved at {binary}, but `--version` did not answer",
+        };
+    }
+
+    /// <summary>
+    /// The TypeScript compiler <c>orkeon run --validate</c> type-checks a <c>.ork.ts</c> with (FWK-12),
+    /// resolved by the checker's own chain and named with the mode the settings give it.
+    /// </summary>
+    private static async Task<DoctorCheckResult> CheckTscAsync(IConfiguration configuration, CancellationToken ct)
+    {
+        const string Check = "tsc";
+        var options = ScriptingToolchainOptions.FromConfiguration(configuration);
+        string binary;
+        try
+        {
+            binary = new TscTypeChecker(options).ResolveBinary();
+        }
+        catch (TscNotFoundException ex)
+        {
+            return new DoctorCheckResult
+            {
+                Check = Check,
+                Status = StatusWarn,
+                Detail = options.TypeCheck == TypeCheckMode.Off
+                    ? "not found — the type check of .ork.ts scripts is off (Orkeon:Scripting:Toolchain:TypeCheck)"
+                    : $"not found — {ex.Message}",
+            };
+        }
+
+        var version = await TryReadEsbuildVersionAsync(binary, ct).ConfigureAwait(false);
+        return new DoctorCheckResult
+        {
+            Check = Check,
+            Status = version is not null ? StatusOk : StatusWarn,
+            Detail = version is not null
+                ? $"{version} at {binary} (type check: {options.TypeCheck}; needed only to type-check .ork.ts scripts in `orkeon run --validate`)"
+                : $"resolved at {binary}, but `--version` did not answer (is Node installed?)",
         };
     }
 

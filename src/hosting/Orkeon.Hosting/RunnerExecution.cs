@@ -984,6 +984,10 @@ public static partial class RunnerExecution
         // only the one-shot command does between the load and the kickoff: parse the --var input and
         // probe the endpoint. The MCP tools join the registry before the crew resolves its own
         // (STUDIO-21): a server that fails costs one error line and the run goes on.
+        // TypeCheck=always: the script's types are checked before every run, not only --validate (FWK-12).
+        if (!await TypeCheckScriptAsync(host, bootstrap, console, validating: false, ct).ConfigureAwait(false))
+            return (2, null);
+
         var abortCode = 0;
         using var entry = new CrewRunEntryPoint(bootstrap, ownsHost: false);
         var run = await entry.RunAsync(

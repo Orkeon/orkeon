@@ -72,6 +72,11 @@ public static partial class RunnerExecution
                 // resolves its own, so --validate judges the crew a run would actually get.
                 await McpStartup.ConnectConfiguredServersAsync(host, cts.Token).ConfigureAwait(false);
 
+                // The types of a .ork.ts, before it loads: esbuild strips them, so a wrong one only
+                // showed at run time (FWK-12).
+                if (!await TypeCheckScriptAsync(host, bootstrap, console, validating: true, cts.Token).ConfigureAwait(false))
+                    return 1;
+
                 // The factory and the repositories it fills are scoped (GAP-25).
                 var scope = host.Services.CreateAsyncScope();
                 await using var _ = scope.ConfigureAwait(false);

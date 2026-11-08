@@ -42,3 +42,46 @@ Orkeon.Scripting.ScriptingHostPorts.GraphObserver.get -> Orkeon.Domain.Graph.IGr
 Orkeon.Scripting.ScriptingHostPorts.GraphObserver.init -> void
 static Orkeon.Scripting.Bindings.StateGraphBinding.Register(Jint.Engine! engine, Orkeon.Domain.Graph.IGraphNodeObserver? observer) -> void
 Orkeon.Scripting.Builders.JsTaskBuilder.retry(Jint.Native.JsValue! spec) -> Orkeon.Scripting.Builders.JsTaskBuilder!
+Orkeon.Scripting.Configuration.ScriptingToolchainOptions.TscPath.get -> string?
+Orkeon.Scripting.Configuration.ScriptingToolchainOptions.TscPath.init -> void
+Orkeon.Scripting.Configuration.ScriptingToolchainOptions.TypeCheck.get -> Orkeon.Scripting.Configuration.TypeCheckMode
+Orkeon.Scripting.Configuration.ScriptingToolchainOptions.TypeCheck.init -> void
+Orkeon.Scripting.Configuration.ScriptingToolchainOptions.TypeCheckTimeout.get -> System.TimeSpan
+Orkeon.Scripting.Configuration.ScriptingToolchainOptions.TypeCheckTimeout.init -> void
+Orkeon.Scripting.Configuration.TypeCheckMode
+Orkeon.Scripting.Configuration.TypeCheckMode.Always = 2 -> Orkeon.Scripting.Configuration.TypeCheckMode
+Orkeon.Scripting.Configuration.TypeCheckMode.Off = 0 -> Orkeon.Scripting.Configuration.TypeCheckMode
+Orkeon.Scripting.Configuration.TypeCheckMode.Validate = 1 -> Orkeon.Scripting.Configuration.TypeCheckMode
+Orkeon.Scripting.Toolchain.TscNotFoundException
+Orkeon.Scripting.Toolchain.TscNotFoundException.TscNotFoundException() -> void
+Orkeon.Scripting.Toolchain.TscNotFoundException.TscNotFoundException(string! message) -> void
+Orkeon.Scripting.Toolchain.TscNotFoundException.TscNotFoundException(string! message, System.Exception! innerException) -> void
+Orkeon.Scripting.Toolchain.TscOutputParser
+Orkeon.Scripting.Toolchain.TscTypeChecker
+Orkeon.Scripting.Toolchain.TscTypeChecker.CheckAsync(string! physicalScriptPath, string! virtualScriptPath, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Orkeon.Scripting.Toolchain.TypeCheckDiagnostic!>!>!
+Orkeon.Scripting.Toolchain.TscTypeChecker.ResolveBinary() -> string!
+Orkeon.Scripting.Toolchain.TscTypeChecker.TscTypeChecker(Microsoft.Extensions.Options.IOptions<Orkeon.Scripting.Configuration.ScriptingToolchainOptions!>! options, Microsoft.Extensions.Logging.ILogger<Orkeon.Scripting.Toolchain.TscTypeChecker!>? logger = null) -> void
+Orkeon.Scripting.Toolchain.TscTypeChecker.TscTypeChecker(Orkeon.Scripting.Configuration.ScriptingToolchainOptions? options = null) -> void
+Orkeon.Scripting.Toolchain.TypeCheckDiagnostic
+Orkeon.Scripting.Toolchain.TypeCheckDiagnostic.<Clone>$() -> Orkeon.Scripting.Toolchain.TypeCheckDiagnostic!
+Orkeon.Scripting.Toolchain.TypeCheckDiagnostic.Code.get -> string!
+Orkeon.Scripting.Toolchain.TypeCheckDiagnostic.Code.init -> void
+Orkeon.Scripting.Toolchain.TypeCheckDiagnostic.Column.get -> int
+Orkeon.Scripting.Toolchain.TypeCheckDiagnostic.Column.init -> void
+Orkeon.Scripting.Toolchain.TypeCheckDiagnostic.Deconstruct(out string? Path, out int Line, out int Column, out string! Code, out string! Message) -> void
+Orkeon.Scripting.Toolchain.TypeCheckDiagnostic.Equals(Orkeon.Scripting.Toolchain.TypeCheckDiagnostic? other) -> bool
+Orkeon.Scripting.Toolchain.TypeCheckDiagnostic.Line.get -> int
+Orkeon.Scripting.Toolchain.TypeCheckDiagnostic.Line.init -> void
+Orkeon.Scripting.Toolchain.TypeCheckDiagnostic.Message.get -> string!
+Orkeon.Scripting.Toolchain.TypeCheckDiagnostic.Message.init -> void
+Orkeon.Scripting.Toolchain.TypeCheckDiagnostic.Path.get -> string?
+Orkeon.Scripting.Toolchain.TypeCheckDiagnostic.Path.init -> void
+Orkeon.Scripting.Toolchain.TypeCheckDiagnostic.TypeCheckDiagnostic(string? Path, int Line, int Column, string! Code, string! Message) -> void
+const Orkeon.Scripting.Toolchain.TscTypeChecker.VirtualWorkFolder = "/typecheck" -> string!
+override Orkeon.Scripting.Toolchain.TypeCheckDiagnostic.Equals(object? obj) -> bool
+override Orkeon.Scripting.Toolchain.TypeCheckDiagnostic.GetHashCode() -> int
+override Orkeon.Scripting.Toolchain.TypeCheckDiagnostic.ToString() -> string!
+static Orkeon.Scripting.Toolchain.TscOutputParser.Parse(string! output, System.Func<string!, string!>! redactPath, System.Func<string!, string!>! redactText) -> System.Collections.Generic.IReadOnlyList<Orkeon.Scripting.Toolchain.TypeCheckDiagnostic!>!
+static Orkeon.Scripting.Toolchain.TscTypeChecker.Create(Microsoft.Extensions.Configuration.IConfiguration? configuration, Microsoft.Extensions.Logging.ILogger<Orkeon.Scripting.Toolchain.TscTypeChecker!>? logger = null) -> Orkeon.Scripting.Toolchain.TscTypeChecker!
+static Orkeon.Scripting.Toolchain.TypeCheckDiagnostic.operator !=(Orkeon.Scripting.Toolchain.TypeCheckDiagnostic? left, Orkeon.Scripting.Toolchain.TypeCheckDiagnostic? right) -> bool
+static Orkeon.Scripting.Toolchain.TypeCheckDiagnostic.operator ==(Orkeon.Scripting.Toolchain.TypeCheckDiagnostic? left, Orkeon.Scripting.Toolchain.TypeCheckDiagnostic? right) -> bool
