@@ -1708,7 +1708,7 @@ public sealed partial class JsLlmFacade
         return new(null, toolArgs, Ask: true);
     }
 
-    /// <summary>An <c>onToolCall</c> verdict object: <c>{ deny }</c>, <c>{ input }</c> (the input the gate judges) or <c>{ context }</c>.</summary>
+    /// <summary>An <c>onToolCall</c> verdict object: <c>{ deny }</c> or <c>{ input }</c> (the input the gate judges); any other shape denies.</summary>
     private static ToolCallbackOutcome FollowObjectVerdict(JsonElement root, Dictionary<string, object?> toolArgs)
     {
         if (root.TryGetProperty("deny", out var reason))
@@ -1719,8 +1719,6 @@ public sealed partial class JsLlmFacade
                 return new(NoValidVerdict, toolArgs);
             return new(null, JsonSerializer.Deserialize<Dictionary<string, object?>>(input.GetRawText())!);
         }
-        if (root.TryGetProperty("context", out _))
-            return new(null, toolArgs);
         return new(NoValidVerdict, toolArgs);
     }
 
