@@ -76,9 +76,12 @@ public sealed class McpSubscriptionTests
         clock.Advance(TimeSpan.FromMinutes(5));
         await EventuallyAsync(() => Count(server, "subscriptions/listen") == 2);
 
-        // Events missed while the stream was down: the tools are listed again.
-        await EventuallyAsync(() => clock.PendingTimers > 0);
-        clock.Advance(McpToolProvider.ToolListDebounce);
+        // Events missed while the stream was down: the tools are listed again. The reopening runs inside
+        // the Advance above, and the debounce it arms falls due within the same Advance when the watcher
+        // is quick: the listing is then already done, otherwise its timer is pending and the clock fires it.
+        await EventuallyAsync(() => clock.PendingTimers > 0 || provider.ToolListActivity("srv").Resyncs >= 1);
+        if (provider.ToolListActivity("srv").Resyncs < 1)
+            clock.Advance(McpToolProvider.ToolListDebounce);
         await EventuallyAsync(() => provider.ToolListActivity("srv").Resyncs >= 1);
     }
 
