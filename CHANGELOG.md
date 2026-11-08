@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Fixed — paths of the shell on Windows and WSL, and the gate after `onToolCall` (#300–#303)
+### Fixed — paths of the shell on Windows and WSL, and the gate after `onToolCall` (#300–#303, #305)
 
 - **Shell, quoted paths** (#300): in the output, a physical path that follows an opening `"` or `'` is rewritten to its closing quote on the same line, spaces included (`"C:\ici est\un dossier\f.txt"` → `"/workspace/un dossier/f.txt"`); a `;` still separates two entries. Unquoted, the token still ends at whitespace.
 - **Shell, Windows bases** (#301): a Windows base (`C:\proj`, `\\server\share`) matches without case and with `/` for any `\`, so `c:\Proj\src\a.ts` and git's `C:/proj/src/a.ts` come back as `/workspace/src/a.ts`. A POSIX base still matches ordinally.
@@ -18,6 +18,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   |---|---|
   | gate on the raw input, then `onToolCall`, then the gate again on a rewritten `{ input }` | `onToolCall`, then the gate once on the input it returns |
   | a gate denial skips `onToolCall` | `onToolCall` runs, then the gate denies |
+
+- **Typings, `onToolCall` and `onToolResult`** (#305): `orkeon typings` describes that order (`onToolCall`, then the gate once on the input it returns; a `{ deny }` never consults the gate), and says that through the host's invocation pipeline a call the guardian or the gate refused, an operator's refusal included, reaches `onToolResult` as a `DENIED: …` result. Run `orkeon typings` again to pick it up.
 
 ### Fixed — adversarial review of the FWK lots **[breaking]**
 

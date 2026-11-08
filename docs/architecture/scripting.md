@@ -159,8 +159,9 @@ the call starts (one `ActSession` per call):
 - **`onToolResult(call, result)`** runs after each tool call with the call and its result (the JSON
   parsed, or the text when it is not JSON). A returned `{ context: "..." }` replaces the line the
   model is shown for that result; returning nothing keeps it. Through the host's invocation pipeline
-  (the REPL, `orkeon run`) a call the gate refused is a result too, `DENIED: …`, and `onToolResult` runs
-  on it; a call `onToolCall` denied never reaches it.
+  (the REPL, `orkeon run`) a call the guardian or the gate refused (an operator's refusal included) is a
+  result too, `DENIED: …`, and `onToolResult` runs on it; without the pipeline, and for a call `onToolCall`
+  denied, a refused call never reaches it.
 
 Both callbacks run on the engine thread, through the same pump as script tools (see the threading
 model below); `onToolCall` always comes before the permission gate.

@@ -239,8 +239,9 @@ declare global {
          * Runs after each tool call, with the call and its result (the tool's JSON parsed, else
          * its text). A returned `{ context }` replaces the line the model is shown for that
          * result; a void return leaves it. Runs on the script's thread. Through the host's
-         * invocation pipeline (the REPL, `orkeon run`) a call the gate refused is a result too,
-         * `DENIED: …`; a call `onToolCall` denied never is.
+         * invocation pipeline (the REPL, `orkeon run`) a call the guardian or the permission gate
+         * refused (an operator's refusal included) is a result too, `DENIED: …`; without it, and for
+         * a call `onToolCall` denied, a refused call never reaches this callback.
          */
         onToolResult?: (call: { name: string; input: unknown }, result: unknown) =>
             void | { context: string } | Promise<void | { context: string }>;
