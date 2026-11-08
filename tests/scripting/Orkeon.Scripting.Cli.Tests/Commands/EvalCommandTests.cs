@@ -156,9 +156,13 @@ public sealed class EvalCommandTests
         Assert.Equal(2, benchmark.RootElement.GetProperty("runs_per_case").GetInt32());
         Assert.True(File.Exists(Path.Combine(scratch.Root, ".orkeon", "eval", "golden-bench.md")));
 
-        // A baseline that scored a perfect 1.0 on an evaluator the dataset now fails.
-        var worse = scratch.WriteFile("worse.json", """[ { "expected_output": "alpha beta gamma", "output": "zzz qqq" } ]""");
-        var baseline = Path.Combine(scratch.Root, ".orkeon", "eval", "golden-bench.json");
+        // A baseline that scored a perfect 1.0 on an evaluator the dataset now fails; kept out of the
+        // folder the run writes to.
+        Directory.CreateDirectory(Path.Combine(scratch.Root, "baselines"));
+        Directory.CreateDirectory(Path.Combine(scratch.Root, "next"));
+        var baseline = Path.Combine(scratch.Root, "baselines", "golden-bench.json");
+        File.Copy(Path.Combine(scratch.Root, ".orkeon", "eval", "golden-bench.json"), baseline);
+        var worse = scratch.WriteFile(Path.Combine("next", "golden.json"), """[ { "expected_output": "alpha beta gamma", "output": "zzz qqq" } ]""");
         using var second = new TestConsole();
         var regressed = await EvalCommand.ExecuteBenchAsync(second, new EvalBenchOptions
         {
@@ -169,30 +173,127 @@ public sealed class EvalCommandTests
         Assert.Contains("REGRESSION", second.Stderr, StringComparison.Ordinal);
     }
 
+    [Theory]
+    [Trait("BR", "FWK-09")]
+    [InlineData(".orkeon/eval/golden-bench.json")]
+    [InlineData("/output/eval/golden-bench.json")]
+    public async Task ShouldRefuseABaselineThatIsTheReportTheRunWrites_AndLeaveItUntouched(string baselineArgument)
+    {
+        // The documented usage used to overwrite the baseline with the run, then compare the run with
+        // itself: never a regression.
+        using var scratch = new ScriptScratch();
+        var settings = scratch.WriteFile("settings.json", "{}");
+        var dataset = scratch.WriteFile("golden.json", Dataset);
+        using (var first = new TestConsole())
+        {
+            Assert.Equal(Program.ExitOk, await EvalCommand.ExecuteBenchAsync(first, new EvalBenchOptions
+            {
+                Dataset = dataset, SettingsPath = settings, Evaluators = "similarity", Runs = 1, WorkingDirectoryOverride = scratch.Root,
+            }));
+        }
+
+        var baselineFile = Path.Combine(scratch.Root, ".orkeon", "eval", "golden-bench.json");
+        var before = await File.ReadAllTextAsync(baselineFile, TestContext.Current.CancellationToken);
+        await File.WriteAllTextAsync(dataset, """[ { "expected_output": "alpha beta gamma", "output": "zzz qqq" } ]""", TestContext.Current.CancellationToken);
+        using var second = new TestConsole();
+        var exit = await EvalCommand.ExecuteBenchAsync(second, new EvalBenchOptions
+        {
+            Dataset = dataset, SettingsPath = settings, Evaluators = "similarity", Runs = 1, Baseline = baselineArgument, WorkingDirectoryOverride = scratch.Root,
+        });
+
+        Assert.Equal(Program.ExitScriptError, exit);
+        Assert.Contains("is the report this run writes", second.Stderr, StringComparison.Ordinal);
+        Assert.Equal(before, await File.ReadAllTextAsync(baselineFile, TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
+    [Trait("BR", "FWK-09")]
+    public async Task ShouldRefuseABaselineOfAnotherDatasetOrEvaluators()
+    {
+        using var scratch = new ScriptScratch();
+        var settings = scratch.WriteFile("settings.json", "{}");
+        var other = scratch.WriteFile("other.json", Dataset);
+        using (var scoring = new TestConsole())
+        {
+            Assert.Equal(Program.ExitOk, await EvalCommand.ExecuteRunAsync(scoring, new EvalRunOptions
+            {
+                Dataset = other, SettingsPath = settings, Evaluators = "similarity", WorkingDirectoryOverride = scratch.Root,
+            }));
+        }
+
+        var golden = scratch.WriteFile("golden.json", Dataset);
+        using var bench = new TestConsole();
+        var exit = await EvalCommand.ExecuteBenchAsync(bench, new EvalBenchOptions
+        {
+            Dataset = golden, SettingsPath = settings, Evaluators = "similarity", Runs = 1,
+            Baseline = Path.Combine(scratch.Root, ".orkeon", "eval", "other-eval.json"), WorkingDirectoryOverride = scratch.Root,
+        });
+
+        Assert.Equal(Program.ExitScriptError, exit);
+        Assert.Contains("the dataset 'other'", bench.Stderr, StringComparison.Ordinal);
+        Assert.False(File.Exists(Path.Combine(scratch.Root, ".orkeon", "eval", "golden-bench.json")));
+    }
+
+    [Theory]
+    [Trait("BR", "FWK-09")]
+    [InlineData(-0.1)]
+    [InlineData(double.NaN)]
+    public async Task ShouldRefuseAThresholdOutOfRange(double threshold)
+    {
+        using var scratch = new ScriptScratch();
+        var settings = scratch.WriteFile("settings.json", "{}");
+        var dataset = scratch.WriteFile("golden.json", Dataset);
+        using var bench = new TestConsole();
+        using var compare = new TestConsole();
+
+        var benchExit = await EvalCommand.ExecuteBenchAsync(bench, new EvalBenchOptions
+        {
+            Dataset = dataset, SettingsPath = settings, Evaluators = "similarity", Threshold = threshold, WorkingDirectoryOverride = scratch.Root,
+        });
+        var compareExit = await EvalCommand.ExecuteCompareAsync(compare, new EvalCompareOptions
+        {
+            Baseline = "a.json", Current = "b.json", Threshold = threshold, SettingsPath = settings, WorkingDirectoryOverride = scratch.Root,
+        });
+
+        Assert.Equal(Program.ExitScriptError, benchExit);
+        Assert.Contains("--threshold must be between 0 and 1", bench.Stderr, StringComparison.Ordinal);
+        Assert.Equal(Program.ExitScriptError, compareExit);
+        Assert.Contains("--threshold must be between 0 and 1", compare.Stderr, StringComparison.Ordinal);
+    }
+
     [Fact]
     [Trait("BR", "FWK-09")]
     public async Task ShouldCompareTwoReports_AndExitOneOnARegression()
     {
         using var scratch = new ScriptScratch();
         var settings = scratch.WriteFile("settings.json", "{}");
-        var good = scratch.WriteFile("good.json", Dataset);
-        var bad = scratch.WriteFile("bad.json", """[ { "expected_output": "alpha beta gamma", "output": "zzz qqq" } ]""");
-        foreach (var dataset in new[] { good, bad })
+        Directory.CreateDirectory(Path.Combine(scratch.Root, "good"));
+        Directory.CreateDirectory(Path.Combine(scratch.Root, "bad"));
+        var good = scratch.WriteFile(Path.Combine("good", "qa.json"), Dataset);
+        var bad = scratch.WriteFile(Path.Combine("bad", "qa.json"), """[ { "expected_output": "alpha beta gamma", "output": "zzz qqq" } ]""");
+        foreach (var (dataset, output) in new[] { (good, "/output/eval/good"), (bad, "/output/eval/bad") })
         {
             using var scoring = new TestConsole();
             Assert.Equal(Program.ExitOk, await EvalCommand.ExecuteRunAsync(scoring, new EvalRunOptions
             {
-                Dataset = dataset, SettingsPath = settings, Evaluators = "similarity", WorkingDirectoryOverride = scratch.Root,
+                Dataset = dataset, SettingsPath = settings, Evaluators = "similarity", Output = output, WorkingDirectoryOverride = scratch.Root,
             }));
         }
 
-        var goodReport = Path.Combine(scratch.Root, ".orkeon", "eval", "good-eval.json");
-        var badReport = Path.Combine(scratch.Root, ".orkeon", "eval", "bad-eval.json");
+        var goodReport = Path.Combine(scratch.Root, ".orkeon", "eval", "good", "qa-eval.json");
+        var badReport = Path.Combine(scratch.Root, ".orkeon", "eval", "bad", "qa-eval.json");
+        var goodCopy = Path.Combine(scratch.Root, "qa-eval-copy.json");
+        File.Copy(goodReport, goodCopy);
 
+        using var itself = new TestConsole();
+        var refused = await EvalCommand.ExecuteCompareAsync(itself, new EvalCompareOptions
+        {
+            Baseline = goodReport, Current = "/output/eval/good/qa-eval.json", SettingsPath = settings, WorkingDirectoryOverride = scratch.Root,
+        });
         using var same = new TestConsole();
         var unchanged = await EvalCommand.ExecuteCompareAsync(same, new EvalCompareOptions
         {
-            Baseline = goodReport, Current = goodReport, SettingsPath = settings, WorkingDirectoryOverride = scratch.Root,
+            Baseline = goodReport, Current = goodCopy, SettingsPath = settings, WorkingDirectoryOverride = scratch.Root,
         });
         using var worse = new TestConsole();
         var regressed = await EvalCommand.ExecuteCompareAsync(worse, new EvalCompareOptions
@@ -200,6 +301,8 @@ public sealed class EvalCommandTests
             Baseline = goodReport, Current = badReport, SettingsPath = settings, WorkingDirectoryOverride = scratch.Root,
         });
 
+        Assert.Equal(Program.ExitScriptError, refused);
+        Assert.Contains("are the same file", itself.Stderr, StringComparison.Ordinal);
         Assert.True(unchanged == Program.ExitOk, same.Stderr);
         Assert.Contains("No Regression", same.Stdout, StringComparison.Ordinal);
         Assert.Equal(Program.ExitScriptError, regressed);

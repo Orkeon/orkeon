@@ -856,3 +856,5 @@ override Orkeon.Infrastructure.LLMs.Embeddings.MistralEmbeddingProvider.Name.get
 Orkeon.Infrastructure.LLMs.Embeddings.EmbeddingModelGuard
 static Orkeon.Infrastructure.LLMs.Embeddings.EmbeddingModelGuard.CheckAsync(System.IServiceProvider! services, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<string?>!
 Orkeon.Infrastructure.FileSystem.FileSystemService.MoveAsync(string! srcVirtualPath, string! dstVirtualPath, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+static Orkeon.Infrastructure.Evaluation.CompareReports.Incompatibility(Orkeon.Application.Evaluation.BenchmarkReport! baseline, Orkeon.Application.Evaluation.BenchmarkReport! current) -> string?
+static Orkeon.Infrastructure.Evaluation.CompareReports.IsValidThreshold(double threshold) -> bool

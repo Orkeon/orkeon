@@ -205,7 +205,7 @@ internal static class EvalCommand
             var report = await suite.RunAsync(produced, ct).ConfigureAwait(false);
             var path = $"{options.Output.TrimEnd('/')}/{ReportName(dataset)}-eval.json";
             var fileSystem = host.Services.GetRequiredService<IFileSystemService>();
-            await WriteReportAsync(console, fileSystem, path, ReportJson(report, produced), ct).ConfigureAwait(false);
+            await WriteReportAsync(console, fileSystem, path, ReportJson(dataset, report, produced), ct).ConfigureAwait(false);
 
             await PrintSummaryAsync(console, dataset, report.Summary.TotalCases, report.Summary.OverallScore, report.Summary.ScoresByEvaluator, path).ConfigureAwait(false);
             return await GateAsync(console, "eval run", report.Summary.OverallScore, options.MinScore).ConfigureAwait(false);
@@ -228,6 +228,9 @@ internal static class EvalCommand
                 return Program.ExitScriptError;
             }
 
+            if (await RefuseThresholdAsync(console, "eval bench", options.Threshold).ConfigureAwait(false) is { } badThreshold)
+                return badThreshold;
+
             var cwd = RagCommand.ResolveCwd(options);
             using var host = BuildScoringHost(console, options, cwd);
             if (host is null)
@@ -238,12 +241,37 @@ internal static class EvalCommand
                 return Program.ExitScriptError;
 
             var (name, suite, inputs) = loaded.Value;
+            var fileSystem = host.Services.GetRequiredService<IFileSystemService>();
+            var jsonPath = $"{options.Output.TrimEnd('/')}/{ReportName(name)}-bench.json";
+
+            // The baseline is read before the run writes anything: the report this run writes could be
+            // the baseline itself (the default --output is ./.orkeon/eval), and overwritten first it
+            // would compare with itself and never regress.
+            BenchmarkReport? baseline = null;
+            if (options.Baseline is not null)
+            {
+                if (SameFile(fileSystem, options.Baseline, cwd, jsonPath))
+                {
+                    await console.ErrorOutput.WriteLineAsync(
+                        $"orkeon eval bench: --baseline '{options.Baseline}' is the report this run writes ({jsonPath}): keep the baseline elsewhere (copy it, or pass another --output).")
+                        .ConfigureAwait(false);
+                    return Program.ExitScriptError;
+                }
+
+                baseline = await ReadReportAsync(fileSystem, options.Baseline, cwd, ct).ConfigureAwait(false);
+            }
+
             var runner = host.Services.GetRequiredService<IBenchmarkRunner>();
             var report = await runner.RunAsync(
                 new BenchmarkConfig(new InMemoryDataset(name, inputs), suite, options.Runs, options.Baseline), ct).ConfigureAwait(false);
 
-            var fileSystem = host.Services.GetRequiredService<IFileSystemService>();
-            var jsonPath = $"{options.Output.TrimEnd('/')}/{ReportName(name)}-bench.json";
+            if (baseline is not null && CompareReports.Incompatibility(baseline, report) is { } reason)
+            {
+                await console.ErrorOutput.WriteLineAsync($"orkeon eval bench: the baseline '{options.Baseline}' cannot be compared with this run: {reason}.")
+                    .ConfigureAwait(false);
+                return Program.ExitScriptError;
+            }
+
             await WriteReportAsync(console, fileSystem, jsonPath, Redacted(ReportExporter.ToJson(report)), ct).ConfigureAwait(false);
             await WriteReportAsync(
                 console, fileSystem, $"{options.Output.TrimEnd('/')}/{ReportName(name)}-bench.md", LogSanitizer.SanitizeString(ReportExporter.ToMarkdown(report)), ct)
@@ -252,10 +280,9 @@ internal static class EvalCommand
             await PrintSummaryAsync(console, name, report.Results.Count, report.Summary.OverallMean, report.Summary.MeanByEvaluator, jsonPath).ConfigureAwait(false);
 
             var exit = await GateAsync(console, "eval bench", report.Summary.OverallMean, options.MinScore).ConfigureAwait(false);
-            if (options.Baseline is null)
+            if (baseline is null)
                 return exit;
 
-            var baseline = await ReadReportAsync(fileSystem, options.Baseline, cwd, ct).ConfigureAwait(false);
             var comparison = CompareReports.Compare(baseline, report, options.Threshold);
             await console.Output.WriteAsync(ReportExporter.ToMarkdown(comparison)).ConfigureAwait(false);
             if (!comparison.HasRegression)
@@ -274,14 +301,31 @@ internal static class EvalCommand
         ArgumentNullException.ThrowIfNull(options);
         return RagCommand.GuardedAsync(console, "eval compare", async ct =>
         {
+            if (await RefuseThresholdAsync(console, "eval compare", options.Threshold).ConfigureAwait(false) is { } badThreshold)
+                return badThreshold;
+
             var cwd = RagCommand.ResolveCwd(options);
             using var host = RagCommand.BuildHost(console, options, cwd);
             if (host is null)
                 return Program.ExitScriptError;
 
             var fileSystem = host.Services.GetRequiredService<IFileSystemService>();
+            var currentPath = RagCommand.ToVirtualSource(options.Current, cwd, fileSystem.GetAvailableMounts());
+            if (SameFile(fileSystem, options.Baseline, cwd, currentPath))
+            {
+                await console.ErrorOutput.WriteLineAsync($"orkeon eval compare: the baseline and the current report are the same file ('{options.Current}').")
+                    .ConfigureAwait(false);
+                return Program.ExitScriptError;
+            }
+
             var baseline = await ReadReportAsync(fileSystem, options.Baseline, cwd, ct).ConfigureAwait(false);
             var current = await ReadReportAsync(fileSystem, options.Current, cwd, ct).ConfigureAwait(false);
+            if (CompareReports.Incompatibility(baseline, current) is { } reason)
+            {
+                await console.ErrorOutput.WriteLineAsync($"orkeon eval compare: the reports cannot be compared: {reason}.").ConfigureAwait(false);
+                return Program.ExitScriptError;
+            }
+
             var comparison = CompareReports.Compare(baseline, current, options.Threshold);
 
             await console.Output.WriteAsync(options.Json ? ReportExporter.ToJson(comparison) + Environment.NewLine : ReportExporter.ToMarkdown(comparison))
@@ -292,6 +336,36 @@ internal static class EvalCommand
             await console.ErrorOutput.WriteLineAsync("orkeon eval compare: REGRESSION detected.").ConfigureAwait(false);
             return Program.ExitScriptError;
         });
+    }
+
+    /// <summary>Refuses a --threshold that is negative, above 1 or not a number; null when it is valid.</summary>
+    private static async Task<int?> RefuseThresholdAsync(IRunnerConsole console, string command, double threshold)
+    {
+        if (CompareReports.IsValidThreshold(threshold))
+            return null;
+
+        await console.ErrorOutput.WriteLineAsync($"orkeon {command}: --threshold must be between 0 and 1.").ConfigureAwait(false);
+        return Program.ExitScriptError;
+    }
+
+    /// <summary>
+    /// True when the report path <paramref name="raw"/> (as the user typed it) and the virtual path
+    /// <paramref name="otherVirtual"/> name the same file: compared on their physical paths, since two
+    /// mounts can reach one folder (<c>/output</c> is <c>./.orkeon</c>, also under <c>/workspace</c>).
+    /// </summary>
+    private static bool SameFile(IFileSystemService fileSystem, string raw, string cwd, string otherVirtual)
+    {
+        var virtualPath = RagCommand.ToVirtualSource(raw, cwd, fileSystem.GetAvailableMounts());
+        if (string.Equals(virtualPath.TrimEnd('/'), otherVirtual.TrimEnd('/'), StringComparison.Ordinal))
+            return true;
+
+        var one = fileSystem.ResolveAndValidate(virtualPath, FileAccessRights.Read);
+        var other = fileSystem.ResolveAndValidate(otherVirtual, FileAccessRights.Read);
+        if (one.ResolvedPath is not { } first || other.ResolvedPath is not { } second)
+            return false;
+
+        var comparison = OperatingSystem.IsWindows() || OperatingSystem.IsMacOS() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
+        return string.Equals(Path.GetFullPath(first), Path.GetFullPath(second), comparison);
     }
 
     /// <summary>The refusals that need no host: an unknown evaluator, both judge switches, a score out of range.</summary>
@@ -525,9 +599,11 @@ internal static class EvalCommand
     }
 
     /// <summary>The report as JSON, with the cases the suite scored (the produced output, not the dataset's).</summary>
-    private static string ReportJson(EvaluationReport report, IReadOnlyList<EvaluationInput> scored)
+    private static string ReportJson(string dataset, EvaluationReport report, IReadOnlyList<EvaluationInput> scored)
     {
         var root = JsonNode.Parse(ReportExporter.ToJson(report))!.AsObject();
+        // The dataset's name: eval compare and eval bench --baseline refuse reports of different datasets.
+        root["dataset"] = dataset;
         var cases = new JsonArray();
         for (var i = 0; i < scored.Count; i++)
         {

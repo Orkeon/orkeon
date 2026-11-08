@@ -8,19 +8,50 @@ namespace Orkeon.Infrastructure.Evaluation;
 public static class CompareReports
 {
     /// <summary>
+    /// Why <paramref name="baseline"/> and <paramref name="current"/> cannot be compared, or null when they
+    /// can: they must score the same dataset with the same evaluators. An evaluator present on one side
+    /// alone has no score to compare on the other, and the overall means average different evaluators.
+    /// </summary>
+    public static string? Incompatibility(BenchmarkReport baseline, BenchmarkReport current)
+    {
+        ArgumentNullException.ThrowIfNull(baseline);
+        ArgumentNullException.ThrowIfNull(current);
+
+        if (!string.Equals(baseline.DatasetName, current.DatasetName, StringComparison.Ordinal))
+            return $"the baseline scored the dataset '{baseline.DatasetName}', the current report '{current.DatasetName}'";
+
+        var baselineEvaluators = baseline.Summary.MeanByEvaluator.Keys.Order(StringComparer.Ordinal).ToList();
+        var currentEvaluators = current.Summary.MeanByEvaluator.Keys.Order(StringComparer.Ordinal).ToList();
+        if (!baselineEvaluators.SequenceEqual(currentEvaluators, StringComparer.Ordinal))
+        {
+            return $"the baseline scored the evaluators [{string.Join(", ", baselineEvaluators)}], "
+                   + $"the current report [{string.Join(", ", currentEvaluators)}]";
+        }
+
+        return null;
+    }
+
+    /// <summary>
     /// Compares a current benchmark report against a baseline.
     /// </summary>
     /// <param name="baseline">The baseline (previous) benchmark report.</param>
     /// <param name="current">The current benchmark report.</param>
     /// <param name="regressionThreshold">
-    /// Minimum drop in score (absolute) to consider a regression. Default is 0.05 (5%).
+    /// Minimum drop in score (absolute) to consider a regression. Default is 0.05 (5%). A finite
+    /// number from 0 to 1.
     /// </param>
+    /// <exception cref="ArgumentOutOfRangeException">The threshold is negative, above 1 or not a number.</exception>
+    /// <exception cref="InvalidOperationException">The reports are not comparable (<see cref="Incompatibility"/>).</exception>
     public static ComparisonResult Compare(
         BenchmarkReport baseline, BenchmarkReport current,
         double regressionThreshold = 0.05)
     {
         ArgumentNullException.ThrowIfNull(baseline);
         ArgumentNullException.ThrowIfNull(current);
+        if (!IsValidThreshold(regressionThreshold))
+            throw new ArgumentOutOfRangeException(nameof(regressionThreshold), regressionThreshold, "The regression threshold must be a number from 0 to 1.");
+        if (Incompatibility(baseline, current) is { } reason)
+            throw new InvalidOperationException($"The reports cannot be compared: {reason}.");
 
         var baselineScore = baseline.Summary.OverallMean;
         var currentScore = current.Summary.OverallMean;
@@ -28,16 +59,13 @@ public static class CompareReports
 
         var comparisons = new List<EvaluatorComparison>();
 
-        // Collect all evaluator names from both reports
-        var evaluatorNames = baseline.Summary.MeanByEvaluator.Keys
-            .Union(current.Summary.MeanByEvaluator.Keys)
-            .Distinct()
-            .ToList();
+        // Both reports score the same evaluators (Incompatibility above).
+        var evaluatorNames = baseline.Summary.MeanByEvaluator.Keys.ToList();
 
         foreach (var name in evaluatorNames)
         {
-            var baseVal = baseline.Summary.MeanByEvaluator.GetValueOrDefault(name, 0.0);
-            var currVal = current.Summary.MeanByEvaluator.GetValueOrDefault(name, 0.0);
+            var baseVal = baseline.Summary.MeanByEvaluator[name];
+            var currVal = current.Summary.MeanByEvaluator[name];
             var evalDelta = currVal - baseVal;
 
             comparisons.Add(new EvaluatorComparison(
@@ -59,6 +87,9 @@ public static class CompareReports
             ScoreDelta: Math.Round(delta, 4),
             EvaluatorComparisons: comparisons.AsReadOnly());
     }
+
+    /// <summary>True when <paramref name="threshold"/> is a finite number from 0 to 1.</summary>
+    public static bool IsValidThreshold(double threshold) => threshold is >= 0 and <= 1;
 }
 
 /// <summary>

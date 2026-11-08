@@ -154,8 +154,10 @@ public static class ReportExporter
     /// <summary>
     /// Reads a report written by <see cref="ToJson(BenchmarkReport)"/> or by <see cref="ToJson(EvaluationReport)"/>
     /// as the benchmark report <see cref="CompareReports"/> takes (an evaluation report becomes a one-run benchmark).
+    /// An evaluation report names its dataset in a top-level <c>dataset</c> string (<c>orkeon eval run</c> writes
+    /// it): the benchmark takes that name, never the suite's.
     /// </summary>
-    /// <exception cref="InvalidOperationException">The JSON is neither report.</exception>
+    /// <exception cref="InvalidOperationException">The JSON is neither report, or an evaluation report names no dataset.</exception>
     public static BenchmarkReport ReadComparableReport(string json)
     {
         ArgumentNullException.ThrowIfNull(json);
@@ -172,10 +174,17 @@ public static class ReportExporter
 
                 if (doc.RootElement.TryGetProperty("suite_name", out _))
                 {
+                    if (!doc.RootElement.TryGetProperty("dataset", out var dataset)
+                        || dataset.ValueKind != System.Text.Json.JsonValueKind.String
+                        || string.IsNullOrWhiteSpace(dataset.GetString()))
+                    {
+                        throw new InvalidOperationException("The evaluation report names no 'dataset': it cannot be compared with another.");
+                    }
+
                     var evaluation = System.Text.Json.JsonSerializer.Deserialize<EvaluationReport>(json, s_json)
                                      ?? throw new InvalidOperationException("The evaluation report is empty.");
                     return new BenchmarkReport(
-                        evaluation.SuiteName,
+                        dataset.GetString()!,
                         evaluation.GeneratedAt,
                         1,
                         [],
