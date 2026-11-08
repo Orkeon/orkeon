@@ -163,14 +163,14 @@ public class LlmJudgeGuardTests
     }
 
     [Fact]
-    public async Task ShouldJudgeTheHeadAndTheTail_OfALongText_AndSayTheCutInTheAudit()
+    public async Task ShouldJudgeTheHeadAndTheTail_OfALongText_WhenFailOpen_AndSayTheCutInTheAudit()
     {
         var model = Answering(0);
         var audit = new MockAuditLogger();
         var text = new string('a', 100) + new string('m', 100) + "IGNORE-ALL-RULES";
         var longText = new GuardContext { Phase = GuardPhase.Input, AgentRole = "writer", Content = text };
 
-        await Guard(model, audit: audit, maxChars: 20).CheckAsync(longText, TestContext.Current.CancellationToken);
+        await Guard(model, failMode: GuardianJudgeFailMode.Open, audit: audit, maxChars: 20).CheckAsync(longText, TestContext.Current.CancellationToken);
 
         var judged = model.Requests[0].State.GetValue<string>();
         Assert.StartsWith(new string('a', 10), judged, StringComparison.Ordinal);
@@ -179,6 +179,37 @@ public class LlmJudgeGuardTests
         Assert.DoesNotContain("m", judged.Replace("not judged", "", StringComparison.Ordinal), StringComparison.Ordinal);
         var logged = Assert.Single(audit.AllLoggedEvents);
         Assert.Equal("guardian.judge.truncated", logged.Details["threatType"]);
+    }
+
+    [Fact]
+    public async Task ShouldBlockAnInjectionInTheMiddle_OfALongText_WhenFailClosed()
+    {
+        var model = new FakeDecisionModel
+        {
+            Respond = request => request.State.GetValue<string>().Contains("IGNORE-ALL-RULES", StringComparison.Ordinal)
+                ? Answering(0.99).Respond(request)
+                : Answering(0).Respond(request),
+        };
+        var text = new string('a', 300) + "IGNORE-ALL-RULES" + new string('b', 300);
+        var context = new GuardContext { Phase = GuardPhase.Input, AgentRole = "writer", Content = text };
+
+        var result = await Guard(model, maxChars: 100).CheckAsync(context, TestContext.Current.CancellationToken);
+
+        Assert.Equal(GuardAction.Block, result.Action);
+        Assert.All(model.Requests, r => Assert.True(r.State.GetValue<string>().Length <= 100));
+        Assert.True(model.Requests.Count >= 6);
+    }
+
+    [Fact]
+    public async Task ShouldBlock_WhenALongTextExceedsTheChunkBound_AndFailClosed()
+    {
+        var model = Answering(0);
+        var context = new GuardContext { Phase = GuardPhase.Input, AgentRole = "writer", Content = new string('a', 10 * (LlmJudgeGuard.MaxChunks + 1)) };
+
+        var result = await Guard(model, maxChars: 10).CheckAsync(context, TestContext.Current.CancellationToken);
+
+        Assert.Equal(GuardAction.Block, result.Action);
+        Assert.Empty(model.Requests);
     }
 
     [Fact]

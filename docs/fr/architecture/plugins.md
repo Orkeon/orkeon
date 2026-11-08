@@ -155,7 +155,8 @@ virtuel) avant le chargement de l'assembly :
 | `version` | Doit égaler `IOrkeonPlugin.Version`. |
 | `orkeonVersion` | Plage de style NuGet où doit tomber l'Orkeon qui tourne : `1.0.0` (cette version ou une suivante), `[1.0.0]`, `[1.0.0-rc.1,2.0.0)`, `(,2.0.0]`, `*`. Les métadonnées de build (`+sha`) de la version qui tourne sont ignorées ; une préversion se classe sous sa version finale. |
 | `entryAssembly` | Nom de fichier d'un `.dll` du dossier du plugin : aucun chemin. |
-| `tools` | Noms des outils que le plugin enregistre (`IBaseTool.Name`) ; peut être vide. |
+| `entryType` | Facultatif. Nom complet du type `IOrkeonPlugin` à activer. Sans lui, un assembly à un seul type de plugin active celui-là ; avec plusieurs, tous sont activés pour lire leur `Name`. |
+| `tools` | Noms des descripteurs `IBaseTool` que le plugin enregistre (`IBaseTool.Name`) ; peut être vide. Les autres enregistrements (services, services hébergés, fournisseurs) ne sont pas couverts par `tools`. |
 
 `PluginManifestException` (une `PluginLoadException` : `ContinueOnError` la couvre) refuse le plugin
 quand le manifeste est absent ou mal formé, qu'un champ requis manque, que l'assembly d'entrée est

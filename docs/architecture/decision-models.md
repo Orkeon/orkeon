@@ -349,8 +349,11 @@ never on its own.
   deliverable, the memory and `task.completed`: a block fails the task and nothing is kept; a call the
   provider never answered has no output and is not judged. When the model fails, `FailMode: Closed`
   (default) blocks and `Open` warns; both audit `guardian.judge.unavailable`. A text longer than
-  `MaxContentChars` is judged on its first and its last half of that budget with a marker between
-  them, and **what lies between is not judged**; the cut is audited as `guardian.judge.truncated`.
+  `MaxContentChars` is, under `FailMode: Closed`, judged whole in chunks of that size (any chunk that
+  blocks blocks), up to 32 chunks; a text beyond 32 chunks is refused and the refusal audited as
+  `guardian.judge.truncated`. Under `Open` it is judged on its first and its last half of that budget
+  with a marker between them, and **what lies between is not judged**; the cut is audited as
+  `guardian.judge.truncated`.
   While the `Output` phase is guarded, a task's streamed deltas (`llm.delta`, the console) are held
   until the judgement: streaming is delayed until the output is allowed, and a blocked output is
   never streamed. The `Output` phase covers crew tasks only; a scripted `ctx.llm.act` crosses the

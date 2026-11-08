@@ -1395,7 +1395,7 @@ sans lui, l'hôte refuse de démarrer.
 | `Llm:BlockThreshold` | nombre | `0.8` |  | La probabilité à partir de laquelle un risque bloque le texte. |
 | `Llm:Enabled` | booléen | `false` |  | Si le juge tourne ; coupé par défaut (il coûte un appel de modèle par phase). |
 | `Llm:FailMode` | énumération | `"Closed"` | `Closed`, `Open` | Ce qui se passe quand le modèle de décision ne peut pas juger : `Closed` (défaut) refuse, `Open` laisse passer le texte ; les deux auditent `guardian.judge.unavailable`. |
-| `Llm:MaxContentChars` | entier | `8000` |  | Les caractères d'un texte que le juge lit : un texte plus long est jugé sur la première et la dernière moitié de ce budget, ce qui est entre n'est pas jugé, et la coupe est auditée. |
+| `Llm:MaxContentChars` | entier | `8000` |  | Les caractères d'un texte que le juge lit en un appel. Sous `Closed` un texte plus long est jugé en entier, bloc par bloc (un bloc qui bloque bloque), jusqu'à 32 blocs, et un texte au-delà est refusé ; sous `Open` il est jugé sur la première et la dernière moitié de ce budget, ce qui est entre n'est pas jugé, et la coupe est auditée. |
 | `Llm:Phases` | liste d'énumérations | `[]` | `Input`, `Output` | Les phases jugées, `Input` et/ou `Output` ; vide, les deux. Toute autre valeur est refusée au démarrage (les phases d'outil et de délégation sont vérifiées par des règles, pas par un modèle). |
 | `Llm:Risks:<nom>` | chaîne | — |  | Les risques détectés, chacun avec ce qu'il est ; vide, les risques par défaut s'appliquent. |
 | `Llm:WarnThreshold` | nombre | `0.5` |  | La probabilité à partir de laquelle un risque est un avertissement. |

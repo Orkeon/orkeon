@@ -16,6 +16,35 @@ public class PluginLoaderManifestTests
     private static PluginLoader Loader() => new(Prefixes, "1.0.0-rc.6");
 
     [Fact]
+    public void Load_ManifestNamingAnEntryType_ActivatesOnlyThatType()
+    {
+        using var fixture = new PluginDirectoryFixture();
+        var manifest = PluginDirectoryFixture.FixtureManifest() with { EntryType = typeof(Doubles.FakeAlphaPlugin).FullName };
+        var candidate = fixture.AddFixtureCandidate("p", manifest);
+        Doubles.FakeCountingPlugin.Constructed = 0;
+
+        var loaded = Loader().Load(candidate);
+
+        Assert.Equal("fake-alpha", Assert.Single(loaded.Plugins).Name);
+        // The assembly is loaded in the plugin's own context: the counter is read from that copy.
+        var counted = loaded.Assembly.GetType(typeof(Doubles.FakeCountingPlugin).FullName!)!;
+        var constructed = (int)counted.GetProperty(nameof(Doubles.FakeCountingPlugin.Constructed))!.GetValue(null)!;
+        Assert.Equal(0, constructed);
+    }
+
+    [Fact]
+    public void Load_ManifestNamingAnUnknownEntryType_Throws()
+    {
+        using var fixture = new PluginDirectoryFixture();
+        var manifest = PluginDirectoryFixture.FixtureManifest() with { EntryType = "No.Such.Plugin" };
+        var candidate = fixture.AddFixtureCandidate("p", manifest);
+
+        var ex = Assert.Throws<PluginManifestException>(() => Loader().Load(candidate));
+
+        Assert.Contains("No.Such.Plugin", ex.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Load_CandidateWithoutManifest_Throws()
     {
         using var fixture = new PluginDirectoryFixture();

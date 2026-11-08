@@ -33,6 +33,10 @@ public sealed partial class ToolInvocationPipeline : IToolInvocationPipeline
     /// </summary>
     private static readonly AsyncLocal<ImmutableList<string>?> s_delegationChain = new();
 
+    // The strictest permission mode among the agents of the synchronous delegation chain: a coworker never runs
+    // under a looser mode than the agent that handed it the work.
+    private static readonly AsyncLocal<Orkeon.Domain.Security.PermissionMode?> s_delegatedMode = new();
+
     private readonly IPermissionGate? _permissionGate;
     private readonly IToolApprovalChannel? _approvalChannel;
     private readonly Orkeon.Domain.Security.PermissionMode _defaultMode;
@@ -116,13 +120,18 @@ public sealed partial class ToolInvocationPipeline : IToolInvocationPipeline
         }
 
         var stopwatch = Stopwatch.StartNew();
+        var inheritedMode = s_delegatedMode.Value;
         ToolCallResponse response;
         try
         {
             // A synchronous delegation runs the coworker's task inside this call: its own
             // tool calls see this agent at the end of the chain.
             if (isDelegation)
+            {
                 s_delegationChain.Value = chain.Add(caller.AgentRole);
+                if (!caller.GateExempt)
+                    s_delegatedMode.Value = Stricter(s_delegatedMode.Value, ResolveMode(caller));
+            }
 
             response = await tool.CallAsync(new ToolCallRequest(tool.Name, invocation.Arguments), cancellationToken)
                 .ConfigureAwait(false);
@@ -142,7 +151,10 @@ public sealed partial class ToolInvocationPipeline : IToolInvocationPipeline
         finally
         {
             if (isDelegation)
+            {
                 s_delegationChain.Value = chain;
+                s_delegatedMode.Value = inheritedMode;
+            }
         }
 
         // A tool swallows what it throws into a failed answer. One that left the run waiting for a human (FWK-23) is told
@@ -214,7 +226,7 @@ public sealed partial class ToolInvocationPipeline : IToolInvocationPipeline
     /// Puts the call of an agent to the permission gate, after the guardian. Null when the call may run;
     /// else the reason it is refused. An <c>Ask</c> goes to the approval channel when there is one, and is a
     /// refusal without (fail closed). Not gated: no gate, an exempt caller (<c>orkeon mcp serve</c>, the
-    /// forge) and the delegation tools, which hand work to another agent whose own calls are gated.
+    /// forge) and the delegation tools, which hand work to another agent whose own calls are gated under the stricter of its mode and the delegator's.
     /// </summary>
     private async System.Threading.Tasks.Task<string?> GateAsync(
         ToolInvocation invocation, ToolInvocationCaller caller, bool isDelegation, CancellationToken cancellationToken)
@@ -222,11 +234,8 @@ public sealed partial class ToolInvocationPipeline : IToolInvocationPipeline
         if (_permissionGate is null || caller.GateExempt || isDelegation)
             return null;
 
-        var mode = caller.RequireApproval
-            ? Orkeon.Domain.Security.PermissionModes.ToWireName(Orkeon.Domain.Security.PermissionMode.Default)
-            : string.IsNullOrWhiteSpace(caller.PermissionMode)
-                ? Orkeon.Domain.Security.PermissionModes.ToWireName(_defaultMode)
-                : caller.PermissionMode;
+        var mode = Orkeon.Domain.Security.PermissionModes.ToWireName(
+            Stricter(s_delegatedMode.Value, ResolveMode(caller)));
         var tool = invocation.Tool;
         var access = caller.RequireApproval ? Orkeon.Domain.Tools.ToolAccess.Edit : tool.AccessFor(invocation.Arguments);
 
@@ -255,6 +264,33 @@ public sealed partial class ToolInvocationPipeline : IToolInvocationPipeline
                 return verdict.Message ?? $"tool '{tool.Name}' is not permitted in mode '{mode}'.";
         }
     }
+
+    private Orkeon.Domain.Security.PermissionMode ResolveMode(ToolInvocationCaller caller)
+    {
+        if (caller.RequireApproval)
+            return Orkeon.Domain.Security.PermissionMode.Default;
+
+        if (string.IsNullOrWhiteSpace(caller.PermissionMode))
+            return _defaultMode;
+
+        // An unknown name is never read as a looser mode.
+        return Orkeon.Domain.Security.PermissionModes.TryParse(caller.PermissionMode, out var parsed)
+            ? parsed
+            : Orkeon.Domain.Security.PermissionMode.Default;
+    }
+
+    // Plan and DontAsk deny everything but reads; Default asks; AcceptEdits and BypassPermissions let more through.
+    private static int Strictness(Orkeon.Domain.Security.PermissionMode mode) => mode switch
+    {
+        Orkeon.Domain.Security.PermissionMode.BypassPermissions => 0,
+        Orkeon.Domain.Security.PermissionMode.AcceptEdits => 1,
+        Orkeon.Domain.Security.PermissionMode.Default => 2,
+        _ => 3,
+    };
+
+    private static Orkeon.Domain.Security.PermissionMode Stricter(
+        Orkeon.Domain.Security.PermissionMode? inherited, Orkeon.Domain.Security.PermissionMode own) =>
+        inherited is { } outer && Strictness(outer) > Strictness(own) ? outer : own;
 
     /// <summary>Whether <paramref name="toolName"/> hands work or a question to another agent.</summary>
     public static bool IsDelegationTool(string toolName) =>

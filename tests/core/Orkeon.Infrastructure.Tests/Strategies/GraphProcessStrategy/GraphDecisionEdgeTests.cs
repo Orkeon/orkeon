@@ -157,6 +157,32 @@ public sealed class GraphDecisionEdgeTests : IDisposable
 
     [Fact]
     [Trait("BR", "FWK-28")]
+    public async System.Threading.Tasks.Task ShouldFailAtBuild_WhenADecisionNodeHasNoOtherwiseEdge()
+    {
+        Answers("approve");
+        var triage = Decision("triage");
+        var graph = new GraphConfig
+        {
+            Start = "triage",
+            Edges =
+            [
+                new GraphEdgeConfig("triage", "fix", OneOf(triage, "approve")),
+                new GraphEdgeConfig("triage", "escalate", OneOf(triage, "revise")),
+                new GraphEdgeConfig("fix", GraphConfig.End),
+                new GraphEdgeConfig("escalate", GraphConfig.End),
+            ],
+        };
+
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => RunAsync(graph, triage, Keyed("fix"), Keyed("escalate")));
+
+        Assert.Contains("'triage'", ex.Message, StringComparison.Ordinal);
+        Assert.Contains("otherwise", ex.Message, StringComparison.Ordinal);
+        Assert.Empty(_ran);
+        Assert.Empty(_observer.Entered);
+    }
+
+    [Fact]
+    [Trait("BR", "FWK-28")]
     public async System.Threading.Tasks.Task ShouldRunALoop_TheLatestDecisionWinningOnARevisit()
     {
         Answers("revise", "revise", "approve");

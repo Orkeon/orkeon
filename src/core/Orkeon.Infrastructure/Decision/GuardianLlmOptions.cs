@@ -53,7 +53,7 @@ public sealed class GuardianLlmOptions
     /// <summary>Gets or sets what happens when the decision model cannot judge: <c>Closed</c> (default) refuses, <c>Open</c> lets the text in; both audit <c>guardian.judge.unavailable</c>.</summary>
     public GuardianJudgeFailMode FailMode { get; set; } = GuardianJudgeFailMode.Closed;
 
-    /// <summary>Gets or sets the characters of a text the judge reads: a longer one is judged on its first and last half of that budget, what lies between is not judged, and the cut is audited.</summary>
+    /// <summary>Gets or sets the characters of a text the judge reads in one call. Under <c>Closed</c> a longer text is judged whole, chunk by chunk (any chunk that blocks blocks), up to 32 chunks, and a text beyond that is refused; under <c>Open</c> it is judged on its first and last half of that budget, what lies between is not judged, and the cut is audited.</summary>
     public int MaxContentChars { get; set; } = 8000;
 
     /// <summary>Whether the judge runs in <paramref name="phase"/>.</summary>

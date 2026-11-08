@@ -78,7 +78,7 @@ categories. Jev fits none of these contracts: forcing it behind `ILlmProvider` w
 - The default of the judge is **fail-closed** on both phases when it is enabled (`FailMode: Closed`):
   a text the model could not judge is refused. `FailMode: Open` lets it in with a warning; both modes audit
   `guardian.judge.unavailable`. The judge is off by default (one model call per phase).
-- While the output phase is guarded, a task's streamed deltas are held until the judgement and dropped when it blocks, so a blocked output is never streamed. A long text is judged on its head and its tail (half of `MaxContentChars` each); the middle is not judged. The phase covers crew tasks, not `ctx.llm.act`.
+- While the output phase is guarded, a task's streamed deltas are held until the judgement and dropped when it blocks, so a blocked output is never streamed. A long text is judged whole in chunks of `MaxContentChars` under `FailMode: Closed` (any chunk that blocks blocks; up to 32 chunks, a longer text is refused), and on its head and its tail (half of `MaxContentChars` each) under `Open`, where the middle is not judged (amended after the FWK final review). The phase covers crew tasks, not `ctx.llm.act`.
 - The validators of an output correct its form; the judge decides its policy. They do not merge.
 - The judge runs once per call, outside the profile fallback chain (FWK-05): a refusal is a task
   failure, never a reason to move to another profile. A call the provider never answered has no

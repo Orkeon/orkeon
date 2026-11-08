@@ -146,4 +146,37 @@ public sealed class TscTypeCheckerProcessTests : IDisposable
         var d = Assert.Single(diagnostics);
         Assert.Equal("/script/main.ork.ts:1:7 TS2322 bad.", d.ToString());
     }
+
+    [Fact]
+    public async Task A_node_warning_on_an_exit_0_run_is_not_a_diagnostic()
+    {
+        var checker = CheckerWith("echo '(node:42) [DEP0040] DeprecationWarning: The punycode module is deprecated.' >&2\nexit 0");
+
+        var diagnostics = await checker.CheckAsync(_script, "/script/main.ork.ts", TestContext.Current.CancellationToken);
+
+        Assert.Empty(diagnostics);
+    }
+
+    [Fact]
+    public async Task A_grandchild_holding_the_pipes_does_not_hang_the_check()
+    {
+        var checker = CheckerWith("sleep 30 &\necho 'partial' \nexit 0");
+
+        var diagnostics = await checker.CheckAsync(_script, "/script/main.ork.ts", TestContext.Current.CancellationToken)
+            .WaitAsync(TimeSpan.FromSeconds(25), TestContext.Current.CancellationToken);
+
+        Assert.Empty(diagnostics);
+    }
+
+    [Fact]
+    public async Task A_failure_tail_redacts_an_absolute_path_it_cannot_map()
+    {
+        var checker = CheckerWith("echo 'FATAL at /usr/lib/node_modules/typescript/lib/tsc.js:12 and /script/lib.ts' >&2\nexit 134");
+
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => checker.CheckAsync(_script, "/script/main.ork.ts", TestContext.Current.CancellationToken));
+
+        Assert.DoesNotContain("/usr/lib", ex.Message, StringComparison.Ordinal);
+        Assert.Contains("<path>", ex.Message, StringComparison.Ordinal);
+    }
 }

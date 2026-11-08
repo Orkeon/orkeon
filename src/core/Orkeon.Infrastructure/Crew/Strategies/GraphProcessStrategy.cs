@@ -391,6 +391,16 @@ public sealed partial class GraphProcessStrategy : IProcessStrategy
         if (faults.Count > 0)
             throw new InvalidOperationException("Graph is invalid: " + string.Join(" ", faults));
 
+        // A node that branches needs the edge without a condition (the otherwise): found at build, never mid-run.
+        foreach (var leaving in topology.Edges.GroupBy(e => e.From, StringComparer.Ordinal))
+        {
+            if (leaving.All(e => e.When is not null))
+            {
+                throw new InvalidOperationException(
+                    $"Graph is invalid: node '{leaving.Key}' branches on a condition but has no otherwise edge (an edge without 'when').");
+            }
+        }
+
         const string end = StateGraph<CrewGraphState>.EndNode;
         var graph = new StateGraph<CrewGraphState>(policy);
         var nodeTasks = new Dictionary<string, TaskId>(StringComparer.Ordinal);
@@ -613,12 +623,12 @@ public sealed partial class GraphProcessStrategy : IProcessStrategy
 
     /// <summary>
     /// The breaker of this run. An explicit <c>maxStateVisits</c> / <c>maxTransitions</c> in
-    /// <c>graphConfig</c> wins; otherwise both are computed from the crew: every task is one visit of
+    /// the <c>graph:</c> block wins; otherwise both are computed from the crew: every task is one visit of
     /// its node plus one per retry its <c>retry:</c> grants, <c>sum(1 + retries)</c> visits in
     /// all (nodes x (1 + retry attempts) when every task retries alike), and twice that plus one
     /// transitions. The breaker keeps its job - stopping a real loop - without capping the size of a
     /// healthy crew. The duration stays the preset's (10 min under Strict), a cost choice
-    /// <c>graphConfig.maxTotalDurationSeconds</c> overrides.
+    /// <c>graph.maxTotalDurationSeconds</c> overrides.
     /// </summary>
     private CircuitBreakerPolicy ResolvePolicy(DomainCrew crew, int taskCount, IReadOnlyList<Orkeon.Domain.Task.CrewTask> tasks)
     {

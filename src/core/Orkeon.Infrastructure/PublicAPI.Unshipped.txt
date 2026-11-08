@@ -595,6 +595,7 @@ Orkeon.Infrastructure.Configuration.GuardianOptions.Llm.get -> Orkeon.Infrastruc
 Orkeon.Infrastructure.Configuration.GuardianOptions.Llm.set -> void
 const Orkeon.Infrastructure.Decision.LlmJudgeGuard.UnavailableThreatType = "guardian.judge.unavailable" -> string!
 const Orkeon.Infrastructure.Decision.LlmJudgeGuard.TruncatedThreatType = "guardian.judge.truncated" -> string!
+const Orkeon.Infrastructure.Decision.LlmJudgeGuard.MaxChunks = 32 -> int
 Orkeon.Infrastructure.Decision.GuardianJudgePhase
 Orkeon.Infrastructure.Decision.GuardianJudgePhase.Input = 0 -> Orkeon.Infrastructure.Decision.GuardianJudgePhase
 Orkeon.Infrastructure.Decision.GuardianJudgePhase.Output = 1 -> Orkeon.Infrastructure.Decision.GuardianJudgePhase

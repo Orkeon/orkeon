@@ -115,6 +115,40 @@ public sealed class ToolInvocationPipelinePermissionGateTests
         Assert.Empty(gate.Checks);
     }
 
+    [Theory]
+    [InlineData("plan", "bypassPermissions", "plan")]
+    [InlineData("dontAsk", "default", "dontAsk")]
+    [InlineData("default", "bypassPermissions", "default")]
+    [InlineData("bypassPermissions", "default", "default")]
+    [InlineData("acceptEdits", "plan", "plan")]
+    public async System.Threading.Tasks.Task ACoworker_RunsUnderTheStricterOfItsModeAndTheDelegators(string delegatorMode, string coworkerMode, string expected)
+    {
+        var gate = new StubPermissionGate();
+        var pipeline = new ToolInvocationPipeline(permissionGate: gate);
+        var coworker = new ToolInvocationCaller("agent-2", "editor") { PermissionMode = coworkerMode };
+        var delegateTool = new ToolInvocationPipelineTests.CallbackTool(ToolInvocationPipeline.DelegateWorkToolName, async ct =>
+        {
+            await pipeline.InvokeAsync(Call(new SpyTool("shell_command"), coworker), ct);
+        });
+
+        await pipeline.InvokeAsync(new ToolInvocation(delegateTool, new Dictionary<string, object?>(), Agent with { PermissionMode = delegatorMode }), Ct);
+
+        Assert.Equal(expected, Assert.Single(gate.Checks).Mode);
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task TheDelegatorsMode_DoesNotOutliveTheDelegation()
+    {
+        var gate = new StubPermissionGate();
+        var pipeline = new ToolInvocationPipeline(permissionGate: gate);
+        var delegateTool = new ToolInvocationPipelineTests.CallbackTool(ToolInvocationPipeline.DelegateWorkToolName, _ => System.Threading.Tasks.Task.CompletedTask);
+
+        await pipeline.InvokeAsync(new ToolInvocation(delegateTool, new Dictionary<string, object?>(), Agent with { PermissionMode = "plan" }), Ct);
+        await pipeline.InvokeAsync(Call(new SpyTool("shell_command"), Agent with { PermissionMode = "bypassPermissions" }), Ct);
+
+        Assert.Equal("bypassPermissions", Assert.Single(gate.Checks).Mode);
+    }
+
     [Fact]
     public async System.Threading.Tasks.Task AGuardianBlock_ComesBeforeTheGate()
     {

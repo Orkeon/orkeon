@@ -54,7 +54,7 @@ public sealed class PluginLoader : IPluginLoader
             context = new PluginLoadContext(candidate.PhysicalPath, _sharedAssemblyPrefixes);
             var assembly = context.LoadFromAssemblyPath(candidate.PhysicalPath);
             var plugins = MatchManifest(
-                InstantiatePlugins(assembly, candidate.VirtualPath), manifest, candidate.VirtualPath);
+                InstantiatePlugins(assembly, candidate.VirtualPath, manifest.EntryType), manifest, candidate.VirtualPath);
             return new LoadedPluginAssembly(candidate.VirtualPath, assembly, context, plugins, manifest);
         }
         catch (PluginLoadException)
@@ -125,7 +125,7 @@ public sealed class PluginLoader : IPluginLoader
         return named;
     }
 
-    private static List<IOrkeonPlugin> InstantiatePlugins(Assembly assembly, string virtualPath)
+    private static List<IOrkeonPlugin> InstantiatePlugins(Assembly assembly, string virtualPath, string? entryType)
     {
         Type[] types;
         try
@@ -145,7 +145,7 @@ public sealed class PluginLoader : IPluginLoader
                 ex);
         }
 
-        var plugins = new List<IOrkeonPlugin>();
+        var pluginTypes = new List<Type>();
         foreach (var type in types)
         {
             if (!type.IsClass || type.IsAbstract)
@@ -153,7 +153,7 @@ public sealed class PluginLoader : IPluginLoader
 
             if (typeof(IOrkeonPlugin).IsAssignableFrom(type))
             {
-                plugins.Add(Instantiate(type, virtualPath));
+                pluginTypes.Add(type);
             }
             else if (ImplementsForeignPluginContract(type))
             {
@@ -167,7 +167,22 @@ public sealed class PluginLoader : IPluginLoader
             }
         }
 
-        return plugins;
+        // Only the type the manifest names is activated; without a name, the one plugin type there is. Several
+        // types and no name: their Name is an instance property, so each is activated to be matched.
+        if (!string.IsNullOrWhiteSpace(entryType))
+        {
+            var named = pluginTypes.Where(t => string.Equals(t.FullName, entryType, StringComparison.Ordinal)).ToList();
+            if (named.Count == 0)
+            {
+                throw new PluginManifestException(
+                    $"The manifest of '{virtualPath}' names the entry type '{entryType}', but its entry assembly has no such IOrkeonPlugin type.",
+                    virtualPath);
+            }
+
+            pluginTypes = named;
+        }
+
+        return [.. pluginTypes.Select(t => Instantiate(t, virtualPath))];
     }
 
     private static IOrkeonPlugin Instantiate(Type type, string virtualPath)

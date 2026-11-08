@@ -279,7 +279,7 @@
     "Orkeon:Guardian:Llm:BlockThreshold": "La probabilité à partir de laquelle un risque bloque le texte.",
     "Orkeon:Guardian:Llm:Enabled": "Si le juge tourne ; coupé par défaut (il coûte un appel de modèle par phase).",
     "Orkeon:Guardian:Llm:FailMode": "Ce qui se passe quand le modèle de décision ne peut pas juger : `Closed` (défaut) refuse, `Open` laisse passer le texte ; les deux auditent `guardian.judge.unavailable`.",
-    "Orkeon:Guardian:Llm:MaxContentChars": "Les caractères d'un texte que le juge lit : un texte plus long est jugé sur la première et la dernière moitié de ce budget, ce qui est entre n'est pas jugé, et la coupe est auditée.",
+    "Orkeon:Guardian:Llm:MaxContentChars": "Les caractères d'un texte que le juge lit en un appel. Sous `Closed` un texte plus long est jugé en entier, bloc par bloc (un bloc qui bloque bloque), jusqu'à 32 blocs, et un texte au-delà est refusé ; sous `Open` il est jugé sur la première et la dernière moitié de ce budget, ce qui est entre n'est pas jugé, et la coupe est auditée.",
     "Orkeon:Guardian:Llm:Phases": "Les phases jugées, `Input` et/ou `Output` ; vide, les deux. Toute autre valeur est refusée au démarrage (les phases d'outil et de délégation sont vérifiées par des règles, pas par un modèle).",
     "Orkeon:Guardian:Llm:Risks:<name>": "Les risques détectés, chacun avec ce qu'il est ; vide, les risques par défaut s'appliquent.",
     "Orkeon:Guardian:Llm:WarnThreshold": "La probabilité à partir de laquelle un risque est un avertissement.",

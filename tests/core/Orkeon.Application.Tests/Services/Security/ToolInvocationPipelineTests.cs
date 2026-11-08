@@ -377,7 +377,7 @@ public class ToolInvocationPipelineTests
     }
 
     /// <summary>A tool whose call runs a callback — a coworker's turn nested in a delegation.</summary>
-    private sealed class CallbackTool : IBaseTool
+    internal sealed class CallbackTool : IBaseTool
     {
         private readonly Func<CancellationToken, System.Threading.Tasks.Task> _onCall;
 

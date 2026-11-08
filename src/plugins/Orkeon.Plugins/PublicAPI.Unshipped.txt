@@ -9,6 +9,8 @@ Orkeon.Plugins.PluginManifest
 Orkeon.Plugins.PluginManifest.<Clone>$() -> Orkeon.Plugins.PluginManifest!
 Orkeon.Plugins.PluginManifest.EntryAssembly.get -> string?
 Orkeon.Plugins.PluginManifest.EntryAssembly.init -> void
+Orkeon.Plugins.PluginManifest.EntryType.get -> string?
+Orkeon.Plugins.PluginManifest.EntryType.init -> void
 Orkeon.Plugins.PluginManifest.Equals(Orkeon.Plugins.PluginManifest? other) -> bool
 Orkeon.Plugins.PluginManifest.Name.get -> string?
 Orkeon.Plugins.PluginManifest.Name.init -> void

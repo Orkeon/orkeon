@@ -2326,7 +2326,7 @@
       "section": "Orkeon:Guardian",
       "type": "integer",
       "default": 8000,
-      "description": "The characters of a text the judge reads: a longer one is judged on its first and last half of that budget, what lies between is not judged, and the cut is audited."
+      "description": "The characters of a text the judge reads in one call. Under `Closed` a longer text is judged whole, chunk by chunk (any chunk that blocks blocks), up to 32 chunks, and a text beyond that is refused; under `Open` it is judged on its first and last half of that budget, what lies between is not judged, and the cut is audited."
     },
     {
       "path": "Orkeon:Guardian:Llm:Phases",

@@ -1346,7 +1346,7 @@ one, the host refuses to start.
 | `Llm:BlockThreshold` | number | `0.8` |  | The probability at or over which a risk blocks the text. |
 | `Llm:Enabled` | boolean | `false` |  | Whether the judge runs; off by default (it costs a model call per phase). |
 | `Llm:FailMode` | enum | `"Closed"` | `Closed`, `Open` | What happens when the decision model cannot judge: `Closed` (default) refuses, `Open` lets the text in; both audit `guardian.judge.unavailable`. |
-| `Llm:MaxContentChars` | integer | `8000` |  | The characters of a text the judge reads: a longer one is judged on its first and last half of that budget, what lies between is not judged, and the cut is audited. |
+| `Llm:MaxContentChars` | integer | `8000` |  | The characters of a text the judge reads in one call. Under `Closed` a longer text is judged whole, chunk by chunk (any chunk that blocks blocks), up to 32 chunks, and a text beyond that is refused; under `Open` it is judged on its first and last half of that budget, what lies between is not judged, and the cut is audited. |
 | `Llm:Phases` | list of enum | `[]` | `Input`, `Output` | The phases judged, `Input` and/or `Output`; empty judges both. Any other value (the tool and delegation phases are checked by rules, not by a model) is refused at start. |
 | `Llm:Risks:<name>` | string | — |  | The risks detected, each with what it is; empty takes the default risks. |
 | `Llm:WarnThreshold` | number | `0.5` |  | The probability at or over which a risk is a warning. |

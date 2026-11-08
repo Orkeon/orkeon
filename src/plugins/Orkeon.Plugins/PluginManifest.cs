@@ -20,7 +20,16 @@ public sealed record PluginManifest
     /// <summary>File name of the entry assembly, inside the plugin folder.</summary>
     public string? EntryAssembly { get; init; }
 
-    /// <summary>Names of the tools the plugin registers.</summary>
+    /// <summary>
+    /// Full name of the <see cref="IOrkeonPlugin"/> type to activate. Optional: without it, an assembly with
+    /// one plugin type activates that one, and an assembly with several activates them all to read their names.
+    /// </summary>
+    public string? EntryType { get; init; }
+
+    /// <summary>
+    /// Names of the <see cref="Orkeon.Domain.Tools.IBaseTool"/> descriptors the plugin registers; other
+    /// registrations are not declared here.
+    /// </summary>
     public IReadOnlyList<string> Tools { get; init; } = [];
 
     /// <summary>
@@ -48,6 +57,7 @@ public sealed record PluginManifest
                     "VERSION" => manifest with { Version = ReadText(property) },
                     "ORKEONVERSION" => manifest with { OrkeonVersion = ReadText(property) },
                     "ENTRYASSEMBLY" => manifest with { EntryAssembly = ReadText(property) },
+                    "ENTRYTYPE" => manifest with { EntryType = ReadText(property) },
                     "TOOLS" => manifest with { Tools = ReadTools(property) },
                     _ => manifest,
                 };

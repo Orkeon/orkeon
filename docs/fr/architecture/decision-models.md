@@ -360,9 +360,11 @@ seule, jamais de lui-même.
   le livrable, la mémoire et `task.completed` : un blocage fait échouer la tâche et rien n'est gardé ;
   un appel que le fournisseur n'a jamais répondu n'a pas de sortie et n'est pas jugé. Quand le modèle
   échoue, `FailMode: Closed` (défaut) bloque et `Open` avertit ; les deux
-  auditent `guardian.judge.unavailable`. Un texte plus long que `MaxContentChars` est jugé sur sa première
-  et sa dernière moitié de ce budget, un marqueur entre les deux, et **ce qui se trouve entre n'est pas
-  jugé** ; la coupe est auditée `guardian.judge.truncated`. Tant que la phase `Output` est gardée, les
+  auditent `guardian.judge.unavailable`. Un texte plus long que `MaxContentChars` est, sous `FailMode: Closed`,
+  jugé en entier par blocs de cette taille (un bloc qui bloque bloque), jusqu'à 32 blocs ; au-delà de
+  32 blocs le texte est refusé et le refus audité `guardian.judge.truncated`. Sous `Open` il est jugé
+  sur sa première et sa dernière moitié de ce budget, un marqueur entre les deux, et **ce qui se trouve
+  entre n'est pas jugé** ; la coupe est auditée `guardian.judge.truncated`. Tant que la phase `Output` est gardée, les
   deltas qu'une tâche streame (`llm.delta`, la console) sont retenus jusqu'au jugement : le streaming est
   retardé jusqu'à ce que la sortie soit autorisée, et une sortie bloquée n'est jamais streamée. La phase
   `Output` ne couvre que les tâches de crew ; un `ctx.llm.act` scripté traverse la phase `Input` et sa

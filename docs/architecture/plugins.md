@@ -151,7 +151,8 @@ Every plugin carries one, the plugins of the repository included. It is read thr
 | `version` | Must equal `IOrkeonPlugin.Version`. |
 | `orkeonVersion` | NuGet-style range the running Orkeon must fall in: `1.0.0` (that version or later), `[1.0.0]`, `[1.0.0-rc.1,2.0.0)`, `(,2.0.0]`, `*`. The build metadata (`+sha`) of the running version is ignored; a pre-release sorts below its release. |
 | `entryAssembly` | File name of a `.dll` of the plugin folder: no path. |
-| `tools` | Names of the tools the plugin registers (`IBaseTool.Name`); may be empty. |
+| `entryType` | Optional. Full name of the `IOrkeonPlugin` type to activate. Without it, an assembly with one plugin type activates that one; with several, all are activated to read their `Name`. |
+| `tools` | Names of the `IBaseTool` descriptors the plugin registers (`IBaseTool.Name`); may be empty. Other registrations (services, hosted services, providers) are not covered by `tools`. |
 
 `PluginManifestException` (a `PluginLoadException`, so `ContinueOnError` covers it) refuses the plugin
 when the manifest is absent or malformed, a required field is missing, the entry assembly is

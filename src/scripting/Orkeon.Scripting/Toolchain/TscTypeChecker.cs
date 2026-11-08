@@ -65,7 +65,7 @@ public sealed partial class TscTypeChecker
         => new(Microsoft.Extensions.Options.Options.Create(ScriptingToolchainOptions.FromConfiguration(configuration)), logger);
 
     /// <summary>
-    /// Locates <c>tsc</c> (config, else a checkout's <c>tools/scripting-typecheck</c> bootstrap, else <c>PATH</c>).
+    /// Locates <c>tsc</c> (config, else the <c>tools/scripting-typecheck</c> bootstrap above the install directory, else <c>PATH</c>; never the working directory).
     /// Exposed so <c>orkeon doctor</c> reports the resolution the checker would use.
     /// </summary>
     /// <exception cref="TscNotFoundException">If <c>tsc</c> cannot be located.</exception>
@@ -83,7 +83,9 @@ public sealed partial class TscTypeChecker
                     $"TypeScript compiler not found: '{ScriptingToolchainOptions.SectionName}:TscPath' names a file that does not exist. {InstallHint}");
         }
 
-        foreach (var seed in new[] { Directory.GetCurrentDirectory(), AppContext.BaseDirectory })
+        // The install directory and its ancestors only (a checkout's build output, a tool's layout): never the
+        // working directory, whose checkout may be untrusted and would have `orkeon run --validate` execute its binary.
+        foreach (var seed in new[] { AppContext.BaseDirectory })
         {
             var dir = new DirectoryInfo(seed);
             for (var i = 0; i < 8 && dir is not null; i++, dir = dir.Parent)
@@ -111,7 +113,7 @@ public sealed partial class TscTypeChecker
         throw new TscNotFoundException(
             "TypeScript compiler (tsc) not found. Tried (in order): " +
             $"config '{ScriptingToolchainOptions.SectionName}:TscPath', " +
-            "repo-local 'tools/scripting-typecheck/node_modules/.bin/', PATH lookup. " + InstallHint);
+            "'tools/scripting-typecheck/node_modules/.bin/' above the install directory, PATH lookup. " + InstallHint);
     }
 
     private const string InstallHint =
@@ -180,6 +182,10 @@ public sealed partial class TscTypeChecker
             }
 
             diagnostics = TscOutputParser.Parse(output, mapper.MapFile, mapper.MapText);
+            // A run that exited 0 found no error: a line with no code is a warning of node itself
+            // (a DeprecationWarning), not a finding. On failure such lines stay as context.
+            if (exitCode == 0)
+                diagnostics = [.. diagnostics.Where(d => d.Code.Length > 0)];
         }
         catch (Exception ex) when (ex is not OperationCanceledException and not TscNotFoundException)
         {
@@ -295,8 +301,8 @@ public sealed partial class TscTypeChecker
         using (proc)
         {
             // Not tied to ct: killing the process closes the pipes, which ends the reads.
-            var stdout = proc.StandardOutput.ReadToEndAsync(CancellationToken.None);
-            var stderr = proc.StandardError.ReadToEndAsync(CancellationToken.None);
+            var stdout = new Pump(proc.StandardOutput);
+            var stderr = new Pump(proc.StandardError);
             using var timeout = new CancellationTokenSource(_options.TypeCheckTimeout);
             using var linked = CancellationTokenSource.CreateLinkedTokenSource(ct, timeout.Token);
             try
@@ -317,9 +323,53 @@ public sealed partial class TscTypeChecker
                 throw;
             }
 
-            var text = await stdout.ConfigureAwait(false) + await stderr.ConfigureAwait(false);
+            // A grandchild that inherited the pipes can hold them open after tsc exited: the reads are
+            // bounded, and what was read so far is the output.
+            try
+            {
+                await Task.WhenAll(stdout.Done, stderr.Done).WaitAsync(PostExitReadGrace, CancellationToken.None).ConfigureAwait(false);
+            }
+            catch (TimeoutException) { /* a grandchild holds the pipes: the output read so far stands */ }
+            var text = stdout.Text + stderr.Text;
             LogRan(_logger, binary, proc.ExitCode, null);
             return (text, proc.ExitCode);
+        }
+    }
+
+    private static readonly TimeSpan PostExitReadGrace = TimeSpan.FromSeconds(2);
+    private const int MaxOutputChars = 4 * 1024 * 1024;
+
+    /// <summary>Reads a stream to its end into a bounded buffer that can be read before the end comes.</summary>
+    private sealed class Pump
+    {
+        private readonly StringBuilder _text = new();
+
+        public Pump(StreamReader reader) => Done = ReadAsync(reader);
+
+        public Task Done { get; }
+
+        public string Text
+        {
+            get { lock (_text) { return _text.ToString(); } }
+        }
+
+        private async Task ReadAsync(StreamReader reader)
+        {
+            var buffer = new char[4096];
+            try
+            {
+                int read;
+                while ((read = await reader.ReadAsync(buffer.AsMemory(), CancellationToken.None).ConfigureAwait(false)) > 0)
+                {
+                    lock (_text)
+                    {
+                        if (_text.Length < MaxOutputChars)
+                            _text.Append(buffer, 0, Math.Min(read, MaxOutputChars - _text.Length));
+                    }
+                }
+            }
+            catch (ObjectDisposedException) { /* the process was disposed while a grandchild held the pipe */ }
+            catch (IOException) { /* the pipe broke: what was read stands */ }
         }
     }
 
@@ -365,7 +415,24 @@ public sealed partial class TscTypeChecker
                 mapped = mapped.Replace(physical, virtualPrefix, StringComparison.OrdinalIgnoreCase);
             }
 
-            return mapped;
+            // Whatever absolute path is left is physical (a node install, a temp folder): it never leaves.
+            return AbsolutePath().Replace(mapped, match => IsVirtual(match.Value) ? match.Value : RedactedPath);
+        }
+
+        private bool IsVirtual(string path)
+        {
+            var v = virtualDir.TrimEnd('/');
+            return path.StartsWith(VirtualWorkFolder + "/", StringComparison.Ordinal)
+                || path == VirtualWorkFolder
+                || (v.Length > 0 && (path == v || path.StartsWith(v + "/", StringComparison.Ordinal)))
+                || path.StartsWith("/workspace/", StringComparison.Ordinal)
+                || path.StartsWith("/output/", StringComparison.Ordinal);
         }
     }
+
+    private const string RedactedPath = "<path>";
+
+    // An absolute path of two segments or more, or a drive path, standing alone in the text.
+    [GeneratedRegex(@"(?<![\w./:\\-])(?:/[\w.@+~-]+){2,}|(?<![\w])[A-Za-z]:[\\/][^\s'""():]+", RegexOptions.CultureInvariant)]
+    private static partial Regex AbsolutePath();
 }

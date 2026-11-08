@@ -117,6 +117,7 @@ public sealed class PluginDirectoryFixture : IDisposable
             version = manifest.Version,
             orkeonVersion = manifest.OrkeonVersion,
             entryAssembly = manifest.EntryAssembly,
+            entryType = manifest.EntryType,
             tools = manifest.Tools,
         });
 

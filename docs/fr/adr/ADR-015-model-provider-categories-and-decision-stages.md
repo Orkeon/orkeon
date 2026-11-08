@@ -81,7 +81,7 @@ chaque vérification de capacité devrait l'exclure.
   un texte que le modèle n'a pas pu juger est refusé. `FailMode: Open` le laisse passer avec un
   avertissement ; les deux modes auditent `guardian.judge.unavailable`. Le juge est coupé par défaut (un appel de
   modèle par phase).
-- Tant que la phase de sortie est gardée, les deltas streamés d'une tâche sont retenus jusqu'au jugement et abandonnés s'il bloque : une sortie bloquée n'est jamais streamée. Un texte long est jugé sur sa tête et sa queue (la moitié de `MaxContentChars` chacune) ; le milieu n'est pas jugé. La phase couvre les tâches de crew, pas `ctx.llm.act`.
+- Tant que la phase de sortie est gardée, les deltas streamés d'une tâche sont retenus jusqu'au jugement et abandonnés s'il bloque : une sortie bloquée n'est jamais streamée. Un texte long est jugé en entier par blocs de `MaxContentChars` sous `FailMode: Closed` (un bloc qui bloque bloque ; 32 blocs au plus, un texte plus long est refusé), et sur sa tête et sa queue (la moitié de `MaxContentChars` chacune) sous `Open`, où le milieu n'est pas jugé (amendé après la revue finale FWK). La phase couvre les tâches de crew, pas `ctx.llm.act`.
 - Les validateurs d'une sortie en corrigent la forme ; le juge en décide la politique. Ils ne
   fusionnent pas.
 - Le juge tourne une fois par appel, hors de la chaîne de repli des profils (FWK-05) : un refus est un
