@@ -461,6 +461,38 @@ public class A2ASecurityTests
         }
     }
 
+    [Theory]
+    [InlineData("POST", "/.well-known/agent.json")]
+    [InlineData("GET", "/.well-known/agent.json/extra")]
+    [InlineData("GET", "/unknown")]
+    [InlineData("DELETE", "/a2a/tasks/some-id")]
+    public async Task Server_ShouldRequireAuth_OnEveryPathButDiscovery(string method, string path)
+    {
+        // Arrange - only GET on the agent card is anonymous; any other method or path reads credentials first
+        var router = new StubA2ATaskRouter();
+        var security = new A2ASecurityOptions { AllowedAuthSchemes = { "Bearer" } };
+        var (server, port) = await A2ALoopback.StartAsync(options => new A2AServer(options, router, logger: null, security: security,
+            authenticationProviders: [new StubAuthenticationProvider("good-token")]), TestContext.Current.CancellationToken);
+
+        try
+        {
+            using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(5) };
+            using var request = new HttpRequestMessage(new HttpMethod(method), $"{LoopbackPorts.Host}:{port}{path}");
+            if (method == "POST")
+                request.Content = new StringContent("{}", System.Text.Encoding.UTF8, "application/json");
+
+            // Act - no Authorization header
+            var response = await client.SendAsync(request, TestContext.Current.CancellationToken);
+
+            // Assert - rejected before routing (401), never answered as discovery nor as 404
+            Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        }
+        finally
+        {
+            await server.DisposeAsync();
+        }
+    }
+
     // --- R3.4: GET /a2a/tasks/{id} no longer fabricates 200/Pending -----------------------
 
     [Fact]

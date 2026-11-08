@@ -50,7 +50,7 @@ public sealed class FakeMcpServerExtension : IMcpServerExtension
     /// <inheritdoc />
     public async Task<McpToolCallResult> CallToolAsync(string name, JsonElement? arguments, IMcpProgress progress, CancellationToken ct)
     {
-        LastArguments = arguments ?? JsonDocument.Parse("{}").RootElement;
+        LastArguments = arguments ?? JsonElement.Parse("{}");
         if (ThrowOnCall is { } failure)
             throw failure;
         for (var i = 1; i <= ProgressSteps; i++)

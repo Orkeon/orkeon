@@ -418,7 +418,7 @@ les commandes `*.cmd.ts` du REPL :
 |---|---|---|
 | `EsbuildPath` | — | Chemin absolu du binaire esbuild ; premier de l'ordre de recherche ci-dessous. |
 | `EsbuildTimeout` | `00:00:30` | Borne d'horloge d'une transpilation ou d'un bundle esbuild. |
-| `TypeCheck` | `Validate` | `Off`, `Validate` ou `Always` : quand `tsc` vérifie les types d'un `.ork.ts` ([ci-dessous](#verification-des-types-dun-script)). |
+| `TypeCheck` | `Validate` | `Off`, `Validate` ou `Always` : quand `tsc` vérifie les types d'un `.ork.ts` ([ci-dessous](#vérification-des-types-dun-script)). |
 | `TscPath` | — | Chemin absolu du binaire `tsc` ; renseigné, c'est le seul candidat. |
 | `TypeCheckTimeout` | `00:01:00` | Borne d'horloge d'une vérification de types. |
 

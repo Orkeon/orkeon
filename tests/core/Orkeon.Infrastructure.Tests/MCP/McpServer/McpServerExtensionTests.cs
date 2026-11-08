@@ -119,7 +119,7 @@ public sealed class McpServerExtensionTests
             reader.Complete();
             await run.WaitAsync(HangGuard, TestContext.Current.CancellationToken);
 
-            var lines = writer.Lines.Select(l => JsonDocument.Parse(l).RootElement).ToList();
+            var lines = writer.Lines.Select(l => JsonElement.Parse(l)).ToList();
             Assert.Equal(4, lines.Count);
             for (var i = 0; i < 3; i++)
             {
@@ -159,7 +159,7 @@ public sealed class McpServerExtensionTests
             await run.WaitAsync(HangGuard, TestContext.Current.CancellationToken);
 
             var line = Assert.Single(writer.Lines);
-            Assert.Equal(7, JsonDocument.Parse(line).RootElement.GetProperty("id").GetInt32());
+            Assert.Equal(7, JsonElement.Parse(line).GetProperty("id").GetInt32());
         }
         finally
         {

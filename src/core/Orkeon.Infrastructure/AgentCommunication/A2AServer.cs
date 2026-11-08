@@ -303,8 +303,6 @@ public partial class A2AServer : IA2AServer, IDisposable
         var path = context.Request.Url?.AbsolutePath ?? "";
         var method = context.Request.HttpMethod;
 
-        var isDiscovery = method == "GET" && path == "/.well-known/agent.json";
-
         // Without a header credential the loopback (or a client certificate a browser presents on its own) is the only
         // protection (PR review HOST-3): a web page the operator opens must not start a task, neither by a cross-site
         // form (no JSON content type) nor through a DNS name rebound to 127.0.0.1 (a Host the listener does not name).
@@ -323,13 +321,26 @@ public partial class A2AServer : IA2AServer, IDisposable
             }
         }
 
-        // Enforce A2A security on task endpoints (discovery stays public for agent cards).
-        if (!isDiscovery && !await AuthorizeRequestAsync(context, ct).ConfigureAwait(false))
+        // Discovery (the agent card) is public: it is answered here, before any credential is read.
+        if (method == "GET" && path == "/.well-known/agent.json")
+        {
+            await HandleAgentCardAsync(context, ct).ConfigureAwait(false);
+            return;
+        }
+
+        await RouteProtectedRequestAsync(context, method, path, ct).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Routes every request but discovery: the A2A security options are applied first, on every path,
+    /// unknown ones included, so no request-derived condition decides whether authorization runs.
+    /// </summary>
+    private async Task RouteProtectedRequestAsync(HttpListenerContext context, string method, string path, CancellationToken ct)
+    {
+        if (!await AuthorizeRequestAsync(context, ct).ConfigureAwait(false))
             return;
 
-        if (isDiscovery)
-            await HandleAgentCardAsync(context, ct).ConfigureAwait(false);
-        else if (method == "POST" && path == "/a2a/tasks/send")
+        if (method == "POST" && path == "/a2a/tasks/send")
             await HandleSendTaskAsync(context, ct).ConfigureAwait(false);
         else if (method == "POST" && path == "/a2a/tasks/sendSubscribe")
             await HandleSendSubscribeAsync(context, ct).ConfigureAwait(false);

@@ -87,8 +87,8 @@ public class MistralEmbeddingProviderTests
         using var handler = new MockHttpMessageHandler();
         handler.SetResponseFactory(request =>
         {
-            var count = JsonDocument.Parse(request.Content!.ReadAsStringAsync().GetAwaiter().GetResult())
-                .RootElement.GetProperty("input").GetArrayLength();
+            var count = JsonElement.Parse(request.Content!.ReadAsStringAsync().GetAwaiter().GetResult())
+                .GetProperty("input").GetArrayLength();
             return new HttpResponseMessage(HttpStatusCode.OK)
             {
                 Content = new StringContent(EmbeddingHttpFixtures.Answer(count, 1024), System.Text.Encoding.UTF8, "application/json"),

@@ -520,7 +520,7 @@ public sealed class CheckpointingAgentExecutionServiceTests : IDisposable
     public async System.Threading.Tasks.Task ShouldRunTheTaskAgain_WhenTheStoredTypeOnlyStartsLikeAJsonType()
     {
         var id = ExecutionId.New();
-        _inner.UntypedStructured = key => System.Text.Json.JsonDocument.Parse("{\"a\":1}").RootElement.Clone();
+        _inner.UntypedStructured = key => System.Text.Json.JsonElement.Parse("{\"a\":1}");
         await StartSessionAsync(id);
         using (Enter(id))
             await Decorate().ExecuteTaskAsync(_agent, Task("first"), Context(), TestContext.Current.CancellationToken);

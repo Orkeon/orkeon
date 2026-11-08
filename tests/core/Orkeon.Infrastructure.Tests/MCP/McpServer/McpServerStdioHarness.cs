@@ -41,7 +41,7 @@ internal sealed class McpServerStdioHarness : IAsyncDisposable
 
     /// <summary>The ids of the answers written so far, in writing order; every line must be a JSON-RPC object.</summary>
     public List<string> AnswerIds() =>
-        Writer.Lines.Select(line => JsonDocument.Parse(line).RootElement.GetProperty("id").ToString()).ToList();
+        Writer.Lines.Select(line => JsonElement.Parse(line).GetProperty("id").ToString()).ToList();
 
     /// <summary>Waits for <paramref name="condition"/>, then asserts it.</summary>
     public Task EventuallyAsync(Func<bool> condition, [System.Runtime.CompilerServices.CallerArgumentExpression(nameof(condition))] string? expression = null) =>

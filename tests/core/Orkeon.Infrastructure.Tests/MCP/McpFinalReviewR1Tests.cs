@@ -286,7 +286,7 @@ public sealed class McpFinalReviewR1Tests
         reader.Complete();
         await run.WaitAsync(HangGuard, Ct);
 
-        var ids = writer.Lines.Select(line => JsonDocument.Parse(line).RootElement.GetProperty("id").ToString()).ToList();
+        var ids = writer.Lines.Select(line => JsonElement.Parse(line).GetProperty("id").ToString()).ToList();
         Assert.Equal("3", ids[0]);
         Assert.Equal(3, ids.Count);
     }

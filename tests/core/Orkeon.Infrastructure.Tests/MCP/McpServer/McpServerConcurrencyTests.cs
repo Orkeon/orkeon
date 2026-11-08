@@ -74,7 +74,7 @@ public sealed class McpServerConcurrencyTests
 
         Assert.Equal(1, harness.Writer.MaxConcurrentWrites);
         Assert.All(harness.Writer.Lines, line =>
-            Assert.Equal(JsonValueKind.Object, JsonDocument.Parse(line).RootElement.ValueKind));
+            Assert.Equal(JsonValueKind.Object, JsonElement.Parse(line).ValueKind));
         Assert.Equal(["1", "2", "3", "4"], harness.AnswerIds().Order().ToList());
     }
 
