@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Removed — the `{ context }` verdict of `onToolCall` (#307) **[breaking]**
+
+- **Scripts, `onToolCall`** (#307) **[breaking]**: `{ context: string }` is no longer an `onToolCall` verdict. `ctx.llm.act` accepted it and ignored the string, running the call as `"allow"` would; it is now an unknown shape and denies the call (`DENIED: onToolCall returned no valid verdict`), the gate not consulted. The typings no longer list it.
+
+  | Before | After |
+  |---|---|
+  | `onToolCall: () => ({ context: "note" })` runs the call, the note dropped | return `"allow"`; to change what the model reads of the result, return `{ context }` from `onToolResult` |
+
 ### Fixed — paths of the shell on Windows and WSL, and the gate after `onToolCall` (#300–#303, #305)
 
 - **Shell, quoted paths** (#300): in the output, a physical path that follows an opening `"` or `'` is rewritten to its closing quote on the same line, spaces included (`"C:\ici est\un dossier\f.txt"` → `"/workspace/un dossier/f.txt"`); a `;` still separates two entries. Unquoted, the token still ends at whitespace.

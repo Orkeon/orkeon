@@ -226,15 +226,15 @@ declare global {
          * Called before each tool call, before the permission gate judges it. Answers `"allow"`
          * (hand the call to the gate), `"ask"` (once the mode admits the call, hand it to the
          * approval channel, as a default-mode edit would; a refusal denies), `{ deny: reason }`
-         * (block; the gate is not consulted, the model reads `DENIED: <reason>`), `{ input }` (the
-         * input the gate judges, once, then runs with) or `{ context }`. A callback that throws
-         * denies the call with the exception message. Any other return value (nothing, `null`, a
+         * (block; the gate is not consulted, the model reads `DENIED: <reason>`) or `{ input }` (the
+         * input the gate judges, once, then runs with). A callback that throws denies the call with
+         * the exception message. Any other return value (nothing, `null`, a
          * non-object `input`, an unknown shape) denies the call; `"ask"` without a registered
          * permission gate denies too. The `act` call never rejects because of a returned value.
          */
         onToolCall?: (call: { name: string; input: unknown }) =>
-            "allow" | "ask" | { deny: string } | { input: unknown } | { context: string }
-            | Promise<"allow" | "ask" | { deny: string } | { input: unknown } | { context: string }>;
+            "allow" | "ask" | { deny: string } | { input: unknown }
+            | Promise<"allow" | "ask" | { deny: string } | { input: unknown }>;
         /**
          * Runs after each tool call, with the call and its result (the tool's JSON parsed, else
          * its text). A returned `{ context }` replaces the line the model is shown for that
