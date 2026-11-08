@@ -1,1 +1,4 @@
 #nullable enable
+Orkeon.Tools.Code.ShellCommandTool.WindowsPaths.get -> System.Collections.Generic.IReadOnlyDictionary<string!, string!>!
+Orkeon.Tools.Code.ShellCommandTool.WindowsPaths.init -> void
+Orkeon.Tools.Code.ShellToolOptions.WindowsPaths.get -> System.Collections.Generic.Dictionary<string!, string!>!

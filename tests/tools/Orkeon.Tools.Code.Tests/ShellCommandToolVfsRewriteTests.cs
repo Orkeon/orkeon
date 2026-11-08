@@ -6,6 +6,8 @@ using Orkeon.Domain.Tools.Security;
 using Orkeon.Infrastructure.FileSystem;
 using Orkeon.Tests.Shared.Doubles;
 using Orkeon.Tests.Shared.FileSystem;
+using Orkeon.Tools.Code.Confinement;
+using Orkeon.Tools.Code.Tests.Doubles;
 
 namespace Orkeon.Tools.Code.Tests;
 
@@ -331,6 +333,163 @@ public sealed class ShellCommandToolVfsRewriteTests : IDisposable
 
         Assert.Equal("\"/workspace/a/b.txt\" (/workspace/c.txt) C:\\other\\d.txt", rewritten);
     }
+
+    [Theory]
+    [Trait("BR", "CH-300")]
+    [InlineData("\"C:\\ici est\\mon repertoire\\un dossier\\f.txt\"", "\"/workspace/un dossier/f.txt\"")]
+    [InlineData("'C:\\ici est\\mon repertoire\\un dossier\\f.txt' ok", "'/workspace/un dossier/f.txt' ok")]
+    [InlineData("\"C:\\ici est\\mon repertoire\\a (1).txt:12\"", "\"/workspace/a (1).txt:12\"")]
+    public void RewriteOutboundPaths_ShouldRunToTheClosingQuote_WhenTheBaseFollowsAnOpeningQuote(string output, string expected)
+    {
+        var rewritten = ShellCommandTool.RewriteOutboundPaths(output, [(@"C:\ici est\mon repertoire", "/workspace")]);
+
+        Assert.Equal(expected, rewritten);
+    }
+
+    [Theory]
+    [Trait("BR", "CH-300")]
+    [InlineData("C:\\ws\\un dossier\\f.txt", "/workspace/un dossier\\f.txt")]
+    [InlineData("\"C:\\ws\\un dossier\\f.txt\nnext\"", "\"/workspace/un dossier\\f.txt\nnext\"")]
+    [InlineData("\"C:\\ws\\a;C:\\ws\\b\"", "\"/workspace/a;/workspace/b\"")]
+    public void RewriteOutboundPaths_ShouldCutAtTheFirstDelimiter_WhenThePathIsNotClosedByAQuote(string output, string expected)
+    {
+        var rewritten = ShellCommandTool.RewriteOutboundPaths(output, [(@"C:\ws", "/workspace")]);
+
+        Assert.Equal(expected, rewritten);
+    }
+
+    [Theory]
+    [Trait("BR", "CH-301")]
+    [InlineData(@"c:\Proj\src\a.ts", "/workspace/src/a.ts")]
+    [InlineData("C:/proj/src/a.ts", "/workspace/src/a.ts")]
+    [InlineData("C:/proj", "/workspace")]
+    [InlineData(@"see c:/PROJ\x and C:\proj2\y", @"see /workspace/x and C:\proj2\y")]
+    public void RewriteOutboundPaths_ShouldMatchAWindowsBase_WithoutCaseAndWithEitherSeparator(string output, string expected)
+    {
+        var rewritten = ShellCommandTool.RewriteOutboundPaths(output, [(@"C:\proj", "/workspace")]);
+
+        Assert.Equal(expected, rewritten);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-301")]
+    public void RewriteOutboundPaths_ShouldMatchAPosixBaseOrdinally()
+    {
+        var rewritten = ShellCommandTool.RewriteOutboundPaths("/Data/x and /data/y", [("/data", "/mnt")]);
+
+        Assert.Equal("/Data/x and /mnt/y", rewritten);
+    }
+
+    // ── WSL: the Windows spelling of a mount, for a Windows program (#302) ───
+
+    private const string WindowsSystem32 = "/mnt/c/Windows/System32";
+
+    private static WslInterop FakeWsl(bool wsl) => new(
+        name => name switch
+        {
+            WslInterop.DistroVariable => wsl ? "Ubuntu" : null,
+            "PATH" => "/usr/bin:" + WindowsSystem32,
+            _ => null,
+        },
+        _ => null,
+        path => path is WindowsSystem32 + "/cmd.exe" or "/usr/bin/echo");
+
+    private ShellCommandTool WslTool(FakeShellSandbox sandbox, bool wsl, IReadOnlyDictionary<string, string>? windowsPaths = null,
+        string physicalBase = "/mnt/c/proj", string? denied = null)
+    {
+        var fs = new StubMappingFileSystemService(_tempDir).AddMount("/workspace", physicalBase);
+        if (denied is not null)
+            fs.Deny(denied);
+        return new ShellCommandTool(fs, extraAllowedCommands: ["cmd.exe"])
+        {
+            Sandbox = sandbox,
+            Wsl = FakeWsl(wsl),
+            WindowsPaths = windowsPaths ?? new Dictionary<string, string>(),
+        };
+    }
+
+    [Fact]
+    [Trait("BR", "CH-302")]
+    public async Task ShouldSpellAPathArgumentTheWindowsWay_WhenAWindowsProgramRunsUnderWsl()
+    {
+        var sandbox = new FakeShellSandbox();
+        using var tool = WslTool(sandbox, wsl: true);
+
+        Unpack(await tool.CallAsync(Request("cmd.exe /c dir /workspace/src/a.ts"), TestContext.Current.CancellationToken));
+
+        var invocation = Assert.Single(Assert.Single(sandbox.Sessions).Invocations);
+        Assert.Equal(["/c", "dir", @"C:\proj\src\a.ts"], invocation.Arguments);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-302")]
+    public async Task ShouldSpellAPathArgumentAfterTheDeclaredWindowsPath_WhenOneIsSet()
+    {
+        var sandbox = new FakeShellSandbox();
+        using var tool = WslTool(sandbox, wsl: true, new Dictionary<string, string> { ["/workspace/"] = @"\\wsl.localhost\Ubuntu\home\me\proj" },
+            physicalBase: "/home/me/proj");
+
+        Unpack(await tool.CallAsync(Request("cmd.exe /c type /workspace/a.ts /workspace"), TestContext.Current.CancellationToken));
+
+        var invocation = Assert.Single(Assert.Single(sandbox.Sessions).Invocations);
+        Assert.Equal(["/c", "type", @"\\wsl.localhost\Ubuntu\home\me\proj\a.ts", @"\\wsl.localhost\Ubuntu\home\me\proj"], invocation.Arguments);
+    }
+
+    [Theory]
+    [Trait("BR", "CH-302")]
+    [InlineData(true, "echo")]
+    [InlineData(false, "cmd.exe")]
+    public async Task ShouldKeepThePosixPath_WhenTheProgramIsNotAWindowsOneUnderWsl(bool wsl, string executable)
+    {
+        var sandbox = new FakeShellSandbox();
+        using var tool = WslTool(sandbox, wsl);
+
+        Unpack(await tool.CallAsync(Request($"{executable} /workspace/src/a.ts"), TestContext.Current.CancellationToken));
+
+        var invocation = Assert.Single(Assert.Single(sandbox.Sessions).Invocations);
+        Assert.Equal(["/mnt/c/proj/src/a.ts"], invocation.Arguments);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-302")]
+    public async Task ShouldStillRefuseADeniedPath_WhenAWindowsProgramRunsUnderWsl()
+    {
+        var sandbox = new FakeShellSandbox();
+        using var tool = WslTool(sandbox, wsl: true, denied: "/workspace/secret");
+
+        var response = await tool.CallAsync(Request("cmd.exe /c type /workspace/secret"), TestContext.Current.CancellationToken);
+
+        Assert.False(response.Success);
+        Assert.Empty(sandbox.Sessions);
+    }
+
+    [Theory]
+    [Trait("BR", "CH-302")]
+    [InlineData(true, "/workspace/src/a.ts and /workspace/b.ts")]
+    [InlineData(false, @"C:\Proj\src\a.ts and /workspace/b.ts")]
+    public async Task ShouldBringTheWindowsSpellingBackVirtual_OnlyUnderWsl(bool wsl, string expected)
+    {
+        var sandbox = new FakeShellSandbox
+        {
+            Configure = session => session.DefaultResult = new(0, @"C:\Proj\src\a.ts and /mnt/c/proj/b.ts", ""),
+        };
+        using var tool = WslTool(sandbox, wsl);
+
+        var dict = Unpack(await tool.CallAsync(Request("cmd.exe /c dir"), TestContext.Current.CancellationToken));
+
+        Assert.Equal(expected, dict["stdout"]);
+    }
+
+    [Theory]
+    [Trait("BR", "CH-302")]
+    [InlineData("/mnt/c/proj/src", @"C:\proj\src")]
+    [InlineData("/mnt/d", @"D:\")]
+    [InlineData("/mnt/c/", @"C:\")]
+    [InlineData("/home/me/proj", null)]
+    [InlineData("/mnt/cd/x", null)]
+    [InlineData("/mnt/", null)]
+    public void DriveSpelling_ShouldSpellAWindowsDrivePath(string posixPath, string? expected)
+        => Assert.Equal(expected, WslInterop.DriveSpelling(posixPath));
 
     [Fact]
     public void RewriteOutboundPaths_ShouldRewriteEveryEntry_WhenOutputListsPathsWithSeparators()

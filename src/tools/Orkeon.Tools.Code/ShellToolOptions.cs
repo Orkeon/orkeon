@@ -34,4 +34,12 @@ public sealed class ShellToolOptions
 
     /// <summary>The environment variables added to a session's allow-list (<c>Environment:Propagate</c>).</summary>
     public ShellEnvironmentOptions Environment { get; } = new();
+
+    /// <summary>
+    /// Under WSL, the Windows spelling of a mount's base by virtual path (<c>WindowsPaths:/workspace</c> =
+    /// <c>C:\proj</c>), what a launcher reads from <c>wslpath -w</c>. A Windows program run under WSL receives
+    /// its path arguments in that spelling, and what it prints in it comes back virtual. A mount not named
+    /// here whose base lies on a Windows drive (<c>/mnt/c/…</c>) gets the spelling of that drive.
+    /// </summary>
+    public Dictionary<string, string> WindowsPaths { get; } = new(StringComparer.Ordinal);
 }

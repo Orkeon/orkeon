@@ -88,6 +88,7 @@ public static class CodeToolExtensions
                 limits: sp.GetService<IOptions<Orkeon.Domain.Tools.ToolResultLimitsOptions>>()?.Value)
             {
                 Confinement = shell.Confinement,
+                WindowsPaths = shell.WindowsPaths,
                 PropagatedVariables = sp.GetRequiredService<ShellPropagatedVariables>().Names,
                 SessionBus = sp.GetRequiredService<ShellPropagatedVariables>().SessionBus,
                 Sessions = sp.GetRequiredService<ShellSessionManager>(),
