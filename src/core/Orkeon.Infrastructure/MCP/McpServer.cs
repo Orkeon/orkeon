@@ -278,7 +278,9 @@ public partial class McpServer
         {
             // The client closed stdin (or the server is stopping): every request read is answered
             // first, unless the stop cancelled it. The outbox is completed whatever happens, so
-            // the pump always ends.
+            // the pump always ends. A call still waiting for its crew is let go rather than run a
+            // paid crew in a queue nobody adds to.
+            _extension?.StopAdmitting();
             try
             {
                 await Task.WhenAll(running.Keys).ConfigureAwait(false);

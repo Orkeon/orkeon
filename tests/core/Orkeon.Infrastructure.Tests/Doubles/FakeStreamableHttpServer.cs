@@ -51,6 +51,12 @@ internal sealed class FakeStreamableHttpServer : IAsyncDisposable
     /// <summary>Whether <c>initialize</c> is answered 500, as a server that is up but cannot start a session.</summary>
     public volatile bool FailInitialize;
 
+    /// <summary>Whether <c>notifications/initialized</c> is answered 500, as a server that fails the end of a handshake.</summary>
+    public volatile bool FailInitialized;
+
+    /// <summary>Whether <c>initialize</c> is answered a JSON-RPC error (with a new session id still handed out).</summary>
+    public volatile bool InitializeError;
+
     /// <summary>Whether the server announces <c>resources.subscribe</c>.</summary>
     public bool ResourceSubscribe { get; init; } = true;
 
@@ -197,7 +203,7 @@ internal sealed class FakeStreamableHttpServer : IAsyncDisposable
             return;
         }
 
-        if (FailInitialize && method == "initialize")
+        if ((FailInitialize && method == "initialize") || (FailInitialized && method == "notifications/initialized"))
         {
             response.StatusCode = 500;
             return;
@@ -264,7 +270,7 @@ internal sealed class FakeStreamableHttpServer : IAsyncDisposable
         if (method == "resources/read" && ReadGate is { } readGate)
             await readGate.Task.WaitAsync(_stop.Token).ConfigureAwait(false);
 
-        var result = Answer(method, json);
+        var result = InitializeError && method == "initialize" ? null : Answer(method, json);
         var answer = new JsonObject { ["jsonrpc"] = "2.0", ["id"] = id.DeepClone() };
         if (result is null)
             answer["error"] = new JsonObject { ["code"] = -32601, ["message"] = $"Method not found: {method}" };

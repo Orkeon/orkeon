@@ -231,6 +231,32 @@ public sealed class McpToolListChangedTests
     }
 
     [Fact]
+    public async Task ShouldKeepWatching_WhenARelistingOutlivesConnectTimeout()
+    {
+        var registry = new MockToolRegistry();
+        var clock = new ManualTimeProvider();
+        var server = new Server("a", "b")
+        {
+            // The second listing never answers: ConnectTimeout cancels it.
+            ListGate = (call, ct) => call == 2 ? Task.Delay(Timeout.InfiniteTimeSpan, ct) : Task.CompletedTask,
+        };
+        await using var provider = new McpToolProvider(registry, timeProvider: clock);
+        await provider.ConnectServerAsync(
+            "srv", server.Transport, new McpServerConfig { ConnectTimeout = TimeSpan.FromSeconds(1) }, TestContext.Current.CancellationToken);
+
+        server.Tools = ["a"];
+        await NotifyAsync(server, clock);
+        await SettledAsync(provider, 1);
+        Assert.Equal(["a", "b"], await NamesAsync(registry));
+
+        // The watch survived the timed-out listing: the next notification is answered.
+        await NotifyAsync(server, clock);
+        await SettledAsync(provider, 2);
+
+        Assert.Equal(["a"], await NamesAsync(registry));
+    }
+
+    [Fact]
     public async Task ShouldStopWithoutListing_WhenTheProviderIsDisposedDuringTheDebounce()
     {
         var registry = new MockToolRegistry();

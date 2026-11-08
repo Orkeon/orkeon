@@ -41,6 +41,12 @@ public sealed class FakeMcpServerExtension : IMcpServerExtension
     /// <inheritdoc />
     public bool OwnsTool(string name) => name == "run_crew_demo";
 
+    /// <summary>Whether the server said its input ended.</summary>
+    public bool StoppedAdmitting { get; private set; }
+
+    /// <inheritdoc />
+    public void StopAdmitting() => StoppedAdmitting = true;
+
     /// <inheritdoc />
     public async Task<McpToolCallResult> CallToolAsync(string name, JsonElement? arguments, IMcpProgress progress, CancellationToken ct)
     {

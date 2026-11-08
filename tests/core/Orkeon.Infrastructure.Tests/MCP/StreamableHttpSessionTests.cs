@@ -204,6 +204,30 @@ public sealed class StreamableHttpSessionTests
     }
 
     [Fact]
+    public async Task ShouldReconnectTheGetStreamWithoutALastEventId_WhenAnEmptyIdResetIt()
+    {
+        var clock = new ManualTimeProvider();
+        await using var server = new FakeStreamableHttpServer("a") { UseSessions = true, AllowGet = true };
+        var (transport, http) = await OpenAsync(server, clock);
+        using var _ = http;
+        await using var __ = transport;
+        await HandshakeAsync(transport, Request);
+        await EventuallyAsync(() => server.GetCount >= 1);
+        server.PushOnGet("notifications/tools/list_changed", "41");
+        await NextNotificationAsync(transport);
+        // An empty id: field resets the last event id (SSE specification).
+        server.PushOnGet("notifications/prompts/list_changed", "");
+        await NextNotificationAsync(transport);
+
+        server.DropGet();
+        await EventuallyAsync(() => clock.PendingTimers > 0);
+        clock.Advance(TimeSpan.FromMinutes(5));
+        await EventuallyAsync(() => server.GetCount >= 2);
+
+        Assert.Null(server.Requests.Where(r => r.Verb == "GET").ElementAt(1).LastEventId);
+    }
+
+    [Fact]
     public async Task ShouldNotRetryTheGetStream_WhenTheServerAnswers405()
     {
         var clock = new ManualTimeProvider();

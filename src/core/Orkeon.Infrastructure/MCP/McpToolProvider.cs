@@ -489,15 +489,17 @@ public sealed partial class McpToolProvider : IAsyncDisposable, IDisposable
     /// <param name="serverId">The server's identifier.</param>
     /// <param name="ct">The cancellation token.</param>
     /// <exception cref="InvalidOperationException">The server is not connected.</exception>
+    /// <exception cref="TimeoutException">The server gave no answer within its <c>CallTimeout</c>.</exception>
     public Task<IReadOnlyList<McpPrompt>> ListPromptsAsync(string serverId, CancellationToken ct = default) =>
-        ClientOf(serverId).ListPromptsAsync(ct);
+        CallAsync(serverId, "prompts/list", (client, token) => client.ListPromptsAsync(token), ct);
 
     /// <summary>Lists the resources of a connected server, following its pages.</summary>
     /// <param name="serverId">The server's identifier.</param>
     /// <param name="ct">The cancellation token.</param>
     /// <exception cref="InvalidOperationException">The server is not connected.</exception>
+    /// <exception cref="TimeoutException">The server gave no answer within its <c>CallTimeout</c>.</exception>
     public Task<IReadOnlyList<McpResource>> ListResourcesAsync(string serverId, CancellationToken ct = default) =>
-        ClientOf(serverId).ListResourcesAsync(ct);
+        CallAsync(serverId, "resources/list", (client, token) => client.ListResourcesAsync(token), ct);
 
     /// <summary>Gets a prompt of a connected server, its arguments filled in.</summary>
     /// <param name="serverId">The server's identifier.</param>
@@ -505,9 +507,37 @@ public sealed partial class McpToolProvider : IAsyncDisposable, IDisposable
     /// <param name="arguments">The prompt's arguments.</param>
     /// <param name="ct">The cancellation token.</param>
     /// <exception cref="InvalidOperationException">The server is not connected.</exception>
+    /// <exception cref="TimeoutException">The server gave no answer within its <c>CallTimeout</c>.</exception>
     public Task<McpPromptGetResult> GetPromptAsync(
         string serverId, string name, IReadOnlyDictionary<string, string>? arguments = null, CancellationToken ct = default) =>
-        ClientOf(serverId).GetPromptAsync(name, arguments, ct);
+        CallAsync(serverId, "prompts/get", (client, token) => client.GetPromptAsync(name, arguments, token), ct);
+
+    /// <summary>
+    /// One request to a connected server, bounded as a tool call is: the sign-in a person may owe first, outside the
+    /// bound, then the request under the server's <c>CallTimeout</c>, since the shared HTTP client has no timeout.
+    /// </summary>
+    private Task<T> CallAsync<T>(string serverId, string method, Func<McpClient, CancellationToken, Task<T>> call, CancellationToken ct) =>
+        CallAsync(EntryOf(serverId), serverId, method, call, ct);
+
+    private static async Task<T> CallAsync<T>(
+        McpClientEntry entry, string serverId, string method, Func<McpClient, CancellationToken, Task<T>> call, CancellationToken ct)
+    {
+        if (entry.SignIn is { } signIn)
+            await signIn.EnsureSignedInAsync(ct).ConfigureAwait(false);
+
+        using var guard = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        if (entry.Config is { } config)
+            guard.CancelAfter(config.CallTimeout);
+        try
+        {
+            return await call(entry.Client, guard.Token).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) when (!ct.IsCancellationRequested && entry.Config is { } timedOut)
+        {
+            throw new TimeoutException(
+                $"MCP server '{serverId}' gave no answer to {method} within {timedOut.CallTimeout.TotalSeconds:0.###} s (MCP:Servers:{serverId}:CallTimeout).");
+        }
+    }
 
     /// <summary>
     /// What the watch of a server's tool list has done: the <c>tools/list_changed</c> notifications read,
@@ -515,11 +545,6 @@ public sealed partial class McpToolProvider : IAsyncDisposable, IDisposable
     /// </summary>
     internal (long Notifications, long Resyncs) ToolListActivity(string serverId) =>
         _clients.TryGetValue(serverId, out var entry) ? (entry.NotificationsSeen, entry.Resyncs) : (0, 0);
-
-    private McpClient ClientOf(string serverId) =>
-        _clients.TryGetValue(serverId, out var entry)
-            ? entry.Client
-            : throw new InvalidOperationException($"MCP server '{serverId}' is not connected.");
 
     private static string Fingerprint(McpToolDefinition definition) => JsonSerializer.Serialize(definition);
 
@@ -571,7 +596,11 @@ public sealed partial class McpToolProvider : IAsyncDisposable, IDisposable
             return;
         }
 
-        await entry.Client.SubscribeResourceAsync(uri, ct).ConfigureAwait(false);
+        await CallAsync(entry, serverId, "resources/subscribe", async (client, token) =>
+        {
+            await client.SubscribeResourceAsync(uri, token).ConfigureAwait(false);
+            return true;
+        }, ct).ConfigureAwait(false);
         entry.Subscribe(uri);
     }
 
@@ -593,7 +622,13 @@ public sealed partial class McpToolProvider : IAsyncDisposable, IDisposable
         if (entry.Client.Era == McpProtocolEra.Modern)
             await ReopenListenAsync(entry).ConfigureAwait(false);
         else
-            await entry.Client.UnsubscribeResourceAsync(uri, ct).ConfigureAwait(false);
+        {
+            await CallAsync(entry, serverId, "resources/unsubscribe", async (client, token) =>
+            {
+                await client.UnsubscribeResourceAsync(uri, token).ConfigureAwait(false);
+                return true;
+            }, ct).ConfigureAwait(false);
+        }
     }
 
     private static async Task ReopenListenAsync(McpClientEntry entry)
@@ -629,7 +664,7 @@ public sealed partial class McpToolProvider : IAsyncDisposable, IDisposable
 
         // An update that arrives while the read is in flight makes its value stale: it is not kept.
         var stamp = entry.Stamp(uri);
-        var result = await entry.Client.ReadResourceAsync(uri, ct).ConfigureAwait(false);
+        var result = await CallAsync(entry, serverId, "resources/read", (client, token) => client.ReadResourceAsync(uri, token), ct).ConfigureAwait(false);
         entry.Cache(uri, result, stamp);
         return result;
     }
@@ -637,11 +672,13 @@ public sealed partial class McpToolProvider : IAsyncDisposable, IDisposable
     /// <summary>
     /// The transport may have missed what the server said (its stream was opened again, or its session
     /// initialised again): no cached read can be trusted, and a legacy server forgets its subscriptions with
-    /// the session, so they are sent again.
+    /// the session, so they are sent again. A <c>tools/list_changed</c> sent in the gap is lost too: the tool list is
+    /// listed again.
     /// </summary>
     private void OnResumed(string serverId, McpClientEntry entry)
     {
         entry.ClearCache();
+        entry.MarkDirty();
         if (entry.Client.Era != McpProtocolEra.Modern && entry.SubscribedUris().Length > 0)
             _ = Task.Run(() => ResubscribeAsync(serverId, entry), CancellationToken.None);
     }
@@ -732,7 +769,16 @@ public sealed partial class McpToolProvider : IAsyncDisposable, IDisposable
                 }
 
                 attempt = failed ? attempt + 1 : 0;
-                await Task.Delay(StreamableHttpMcpTransport.Backoff(attempt), _time, ct).ConfigureAwait(false);
+                try
+                {
+                    // The round's token: a subscription that changes during the wait opens the stream at once.
+                    await Task.Delay(StreamableHttpMcpTransport.Backoff(attempt), _time, round.Token).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException) when (!ct.IsCancellationRequested)
+                {
+                    // A subscription changed: the stream opens again now, with the new filter.
+                    entry.TakeReopenRequest();
+                }
             }
         }
         catch (OperationCanceledException)
@@ -763,8 +809,10 @@ public sealed partial class McpToolProvider : IAsyncDisposable, IDisposable
                     {
                         await ResyncToolsAsync(serverId, entry, ct).ConfigureAwait(false);
                     }
-                    catch (Exception ex) when (ex is not OperationCanceledException)
+                    catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
                     {
+                        // A listing past ConnectTimeout is cancelled by its own guard: a failure like any other, and
+                        // the watch goes on. Only the disconnection of the server ends it.
                         LogMcpToolResyncFailed(ex, serverId);
                     }
                     finally

@@ -728,6 +728,7 @@ Orkeon.Infrastructure.Configuration.GraphYamlConfig.Start.set -> void
 [ORKEXP004]Orkeon.Infrastructure.MCP.IMcpServerExtension.CallToolAsync(string! name, System.Text.Json.JsonElement? arguments, Orkeon.Infrastructure.MCP.IMcpProgress! progress, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<Orkeon.Infrastructure.MCP.McpToolCallResult!>!
 [ORKEXP004]Orkeon.Infrastructure.MCP.IMcpServerExtension.GetPromptAsync(string! name, System.Text.Json.JsonElement? arguments, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<Orkeon.Infrastructure.MCP.McpPromptGetResult!>!
 [ORKEXP004]Orkeon.Infrastructure.MCP.IMcpServerExtension.OwnsTool(string! name) -> bool
+[ORKEXP004]Orkeon.Infrastructure.MCP.IMcpServerExtension.StopAdmitting() -> void
 [ORKEXP004]Orkeon.Infrastructure.MCP.IMcpServerExtension.Prompts.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Infrastructure.MCP.McpPrompt!>!
 [ORKEXP004]Orkeon.Infrastructure.MCP.IMcpServerExtension.Tools.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Infrastructure.MCP.McpToolDefinition!>!
 [ORKEXP004]Orkeon.Infrastructure.MCP.McpRequestException

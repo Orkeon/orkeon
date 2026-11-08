@@ -150,14 +150,20 @@ Le client se présente comme `Orkeon` `1.0.0`.
   nomme `TokenEnv`) ou `Basic` (`UserEnv` et `PasswordEnv`). Les variables sont lues à chaque requête :
   un jeton renouvelé ne demande aucun redémarrage. Aucun identifiant n'est jamais écrit dans les réglages.
 - `Headers` : en-têtes HTTP supplémentaires, chacun une valeur littérale ou `env:VAR`. Un en-tête
-  `Authorization` y est refusé : utilisez `Auth`.
+  `Authorization` y est refusé : utilisez `Auth`. Les en-têtes que le transport pose lui-même le sont aussi
+  (`Mcp-Session-Id`, `MCP-Protocol-Version`, `Mcp-Method`, `Mcp-Name`, `Last-Event-ID`) ; un en-tête statique
+  ne remplace jamais celui qu'une requête porte déjà.
+- `Url` : quand `Auth` est renseigné ou qu'un en-tête lit `env:VAR`, l'adresse doit être `https`, ou `http`
+  en loopback, comme `TokenUrl` : un identifiant n'est jamais envoyé en clair à un autre hôte.
 - `Tools` : `Allow` (vide, tous les outils sont gardés) puis `Deny`, appliqués avant que les outils
   n'atteignent le registre ; un nom présent dans les deux est refusé. Une entrée qui ne correspond à aucun
   outil listé par le serveur est signalée par un avertissement (et dans `McpServerStatus.UnmatchedToolFilters`).
 - `CallTimeout` : durée maximale d'un appel d'outil, 60 secondes par défaut. Un serveur muet termine
   l'appel en erreur d'outil (`McpCallTimeoutException`, `error_type` dans les métadonnées de la réponse) ;
-  l'annulation par l'appelant n'est pas un délai dépassé. Une durée non positive est refusée ; la borne ne
-  peut pas être désactivée.
+  l'annulation par l'appelant n'est pas un délai dépassé. La même borne vaut pour `prompts/list`,
+  `prompts/get`, `resources/list`, `resources/read` et un `resources/subscribe` legacy (une
+  `TimeoutException` qui nomme la clé). Une durée non positive est refusée ; la borne ne peut pas être
+  désactivée.
 - `ConnectTimeout` : durée maximale de la poignée de main et de la liste des outils, 30 secondes par défaut,
   quel que soit l'appelant. Un serveur resté muet fait échouer la connexion avec une erreur qui nomme
   `MCP:Servers:<id>:ConnectTimeout`.
@@ -203,7 +209,8 @@ Le client se présente comme `Orkeon` `1.0.0`.
   (DCR) ; les points de terminaison sont des réglages.
 
 `Headers` et `Auth` valent pour le transport HTTP (`Sse`) ; sur un serveur `Stdio` ils sont refusés, jamais
-ignorés en silence. Un serveur dont la configuration est invalide (un en-tête `Authorization` littéral, une
+ignorés en silence. Un serveur dont la configuration est invalide (un en-tête `Authorization` littéral, un en-tête que pose le
+transport, une `Url` en `http` simple vers un hôte distant avec des identifiants, une
 variable d'environnement absente, `Auth:Type` sans nom de variable, un délai non positif, `Auth` ou `Headers`
 sur un serveur `Stdio`) est écarté au démarrage avec une erreur qui nomme la clé des réglages, jamais une valeur, et le run continue
 sans ses outils. Tous les serveurs partagent un `HttpClient` enregistré sous le nom `orkeon-mcp`

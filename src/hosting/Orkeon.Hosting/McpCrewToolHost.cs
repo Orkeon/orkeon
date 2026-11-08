@@ -93,16 +93,35 @@ internal sealed partial class McpCrewToolHost : IMcpServerExtension, IDisposable
     private sealed class CrewGate : IDisposable
     {
         private readonly SemaphoreSlim _free = new(1, 1);
+        private readonly CancellationTokenSource _closed = new();
         private int _waiting;
 
         public int Waiting => Volatile.Read(ref _waiting);
 
-        public async Task EnterAsync(CancellationToken ct)
+        /// <summary>
+        /// Takes the crew, or says why not: <see cref="Admission.Busy"/> when <see cref="MaxWaitingCalls"/> calls
+        /// already wait for it, <see cref="Admission.Closed"/> once <see cref="Close"/> was called, including for a
+        /// call that was waiting then.
+        /// </summary>
+        public async Task<Admission> EnterAsync(CancellationToken ct)
         {
-            Interlocked.Increment(ref _waiting);
+            if (_closed.IsCancellationRequested)
+                return Admission.Closed;
+            if (Interlocked.Increment(ref _waiting) > MaxWaitingCalls)
+            {
+                Interlocked.Decrement(ref _waiting);
+                return Admission.Busy;
+            }
+
             try
             {
-                await _free.WaitAsync(ct).ConfigureAwait(false);
+                using var linked = CancellationTokenSource.CreateLinkedTokenSource(ct, _closed.Token);
+                await _free.WaitAsync(linked.Token).ConfigureAwait(false);
+                return Admission.Entered;
+            }
+            catch (OperationCanceledException) when (!ct.IsCancellationRequested)
+            {
+                return Admission.Closed;
             }
             finally
             {
@@ -112,8 +131,38 @@ internal sealed partial class McpCrewToolHost : IMcpServerExtension, IDisposable
 
         public void Leave() => _free.Release();
 
-        public void Dispose() => _free.Dispose();
+        /// <summary>Admits no more calls: those waiting are let go without running the crew.</summary>
+        public void Close()
+        {
+            try
+            {
+                _closed.Cancel();
+            }
+            catch (ObjectDisposedException)
+            {
+                // Disposed with its host: nothing waits any more.
+            }
+        }
+
+        public void Dispose()
+        {
+            _free.Dispose();
+            _closed.Dispose();
+        }
     }
+
+    private enum Admission
+    {
+        Entered,
+        Busy,
+        Closed,
+    }
+
+    /// <summary>
+    /// How many calls of one crew may wait while it runs: a call beyond is answered an error result at once, so a
+    /// client cannot queue paid runs without end (a call of a crew holds no slot of the server).
+    /// </summary>
+    internal const int MaxWaitingCalls = 4;
 
     /// <summary>
     /// The history record of one call, when the host's history is on: the run's identity opened before <c>run.started</c> (the
@@ -415,6 +464,13 @@ internal sealed partial class McpCrewToolHost : IMcpServerExtension, IDisposable
     public bool OwnsTool(string name) => _crews.Any(c => c.ToolName == name);
 
     /// <inheritdoc />
+    public void StopAdmitting()
+    {
+        foreach (var crew in _crews)
+            crew.Gate.Close();
+    }
+
+    /// <inheritdoc />
     public async Task<McpToolCallResult> CallToolAsync(string name, JsonElement? arguments, IMcpProgress progress, CancellationToken ct)
     {
         ArgumentNullException.ThrowIfNull(progress);
@@ -422,7 +478,14 @@ internal sealed partial class McpCrewToolHost : IMcpServerExtension, IDisposable
             ?? throw new McpRequestException($"Tool not found: {name}");
         var variables = ReadVariables(crew.Placeholders, arguments, $"the crew '{crew.Name}'");
 
-        await crew.Gate.EnterAsync(ct).ConfigureAwait(false);
+        switch (await crew.Gate.EnterAsync(ct).ConfigureAwait(false))
+        {
+            case Admission.Busy:
+                return Text($"The crew '{crew.Name}' is busy: {MaxWaitingCalls} calls already wait for it. Try again later.", isError: true);
+            case Admission.Closed:
+                return Text($"The server is closing: the crew '{crew.Name}' was not run.", isError: true);
+        }
+
         try
         {
             return await RunCrewAsync(crew, variables, progress, ct).ConfigureAwait(false);
@@ -452,13 +515,21 @@ internal sealed partial class McpCrewToolHost : IMcpServerExtension, IDisposable
             if (recording is not null)
                 recording.Succeeded = run.Output is { Succeeded: true };
 
-            return run.Outcome switch
+            // A failure's own text (an exception message, a task error) may carry a path or a secret of the run: it goes
+            // to the log, and the client reads that it failed and where the details are.
+            switch (run.Outcome)
             {
-                CrewRunOutcome.Completed when run.Output is { Succeeded: true } output => Text(output.FinalOutput, isError: false),
-                CrewRunOutcome.Completed => Text(run.Output?.Error ?? run.Output?.FinalOutput ?? "The crew failed.", isError: true),
-                CrewRunOutcome.LoadFailed => Text($"The crew no longer loads: {run.LoadError?.Message}", isError: true),
-                _ => Text(run.Refusal ?? "The crew did not run.", isError: true),
-            };
+                case CrewRunOutcome.Completed when run.Output is { Succeeded: true } output:
+                    return Text(output.FinalOutput, isError: false);
+                case CrewRunOutcome.Completed:
+                    LogCrewOutputFailed(LoggerOf(crew), crew.Name, run.Output?.Error ?? run.Output?.FinalOutput ?? "no error text");
+                    return Text(CrewFailedText, isError: true);
+                case CrewRunOutcome.LoadFailed:
+                    LogCrewLoadFailed(LoggerOf(crew), run.LoadError, crew.Name);
+                    return Text("The crew no longer loads. The details are in the log of the server.", isError: true);
+                default:
+                    return Text(run.Refusal ?? "The crew did not run.", isError: true);
+            }
         }
         catch (OperationCanceledException)
         {
@@ -469,11 +540,8 @@ internal sealed partial class McpCrewToolHost : IMcpServerExtension, IDisposable
         catch (Exception ex)
         {
             // The details go to the log of the crew's host: a message may carry a path or a secret of the run.
-            LogCrewFailed(
-                (ILogger?)crew.Entry.Host.Services.GetService<ILoggerFactory>()?.CreateLogger<McpCrewToolHost>()
-                    ?? Microsoft.Extensions.Logging.Abstractions.NullLogger.Instance,
-                ex, crew.Name);
-            return Text("The crew failed. The details are in the log of the server.", isError: true);
+            LogCrewFailed(LoggerOf(crew), ex, crew.Name);
+            return Text(CrewFailedText, isError: true);
         }
         finally
         {
@@ -571,8 +639,20 @@ internal sealed partial class McpCrewToolHost : IMcpServerExtension, IDisposable
         }
     }
 
+    private const string CrewFailedText = "The crew failed. The details are in the log of the server.";
+
+    private static ILogger LoggerOf(ServedCrew crew) =>
+        (ILogger?)crew.Entry.Host.Services.GetService<ILoggerFactory>()?.CreateLogger<McpCrewToolHost>()
+            ?? Microsoft.Extensions.Logging.Abstractions.NullLogger.Instance;
+
     [LoggerMessage(Level = LogLevel.Error, Message = "The crew '{Crew}' failed during an MCP call")]
     private static partial void LogCrewFailed(ILogger logger, Exception ex, string crew);
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "The crew '{Crew}' failed during an MCP call: {Error}")]
+    private static partial void LogCrewOutputFailed(ILogger logger, string crew, string error);
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "The crew '{Crew}' no longer loads during an MCP call")]
+    private static partial void LogCrewLoadFailed(ILogger logger, Exception? ex, string crew);
 
     /// <summary>Disposes the host of every crew.</summary>
     public void Dispose() => DisposeAll(_crews);

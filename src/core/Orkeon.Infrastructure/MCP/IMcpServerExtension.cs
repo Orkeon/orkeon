@@ -23,6 +23,13 @@ public interface IMcpServerExtension
     bool OwnsTool(string name);
 
     /// <summary>
+    /// Called when the server's input has ended: nobody is left to send new requests, and the calls that wait for their
+    /// turn (a crew busy with another call) are let go without running, answered an error result. A call already
+    /// running finishes.
+    /// </summary>
+    void StopAdmitting();
+
+    /// <summary>
     /// Runs the tool <paramref name="name"/>. A refusal of the arguments throws <see cref="McpRequestException"/>
     /// (answered as a JSON-RPC error); a failure of the run itself is a result with <c>isError</c> set.
     /// </summary>
