@@ -406,3 +406,4 @@ static Orkeon.Domain.Tools.CoworkerDelegation.Find(Orkeon.Domain.Tools.IBaseTool
 static Orkeon.Domain.Tools.CoworkerDelegation.IsDelegationTool(Orkeon.Domain.Tools.IBaseTool! tool) -> bool
 static Orkeon.Domain.Tools.CoworkerDelegation.IsReservedName(string! toolName) -> bool
 static Orkeon.Domain.Tools.CoworkerDelegation.ToolNames.get -> System.Collections.Generic.IReadOnlyList<string!>!
+static Orkeon.Domain.Security.PermissionModes.Stricter(this Orkeon.Domain.Security.PermissionMode own, Orkeon.Domain.Security.PermissionMode? inherited) -> Orkeon.Domain.Security.PermissionMode

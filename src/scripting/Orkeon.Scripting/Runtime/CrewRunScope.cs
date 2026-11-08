@@ -148,6 +148,9 @@ internal sealed class CrewRunScope : IDisposable
     /// <summary>The working root of the agent that started this run (a spawned child): an agent without its own runs under it (RT-06).</summary>
     internal string? InheritedRoot { get; set; }
 
+    /// <summary>SEC-7: the mode of the act that spawned this run; its acts are held to the stricter of theirs and this one.</summary>
+    internal string? PermissionFloor { get; set; }
+
     /// <summary>The <c>crew.run</c> span (<see cref="Start"/>, listener permitting).</summary>
     internal Activity? Activity { get; private set; }
 
@@ -294,7 +297,7 @@ internal sealed class CrewRunScope : IDisposable
         // RT-06: a working root under no mount never starts the attempt — thrown before the body's
         // try, so onError is not consulted and nothing retries it.
         var root = _crew.ResolveWorkingRoot(agent, InheritedRoot);
-        var ctx = new JsAgentContext(_crew.CreateEnvironment(agent, Budget, Token, Permit, Instance, root), initialState);
+        var ctx = new JsAgentContext(_crew.CreateEnvironment(agent, Budget, Token, Permit, Instance, root, PermissionFloor), initialState);
         try
         {
             var attribution = _crew.BeginBrokerScope(agent, this);

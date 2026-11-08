@@ -63,6 +63,7 @@ public class JsExecutionContext
                 UnknownTools = unknownTools,
                 Background = Background,
                 Instance = environment.Instance,
+                PermissionFloor = environment.PermissionFloor,
             },
             new JsLlmObservability
             {

@@ -251,7 +251,7 @@ public sealed partial class ToolInvocationPipeline : IToolInvocationPipeline
         // A call that must be approved (a script's onToolCall answered "ask") is put to the operator as a
         // default-mode edit; it never relaxes a stricter mode: under plan or dontAsk the call is first put to the
         // gate in that mode, which refuses a write before any operator is asked.
-        if (caller.RequireApproval && Strictness(resolved) > Strictness(Orkeon.Domain.Security.PermissionMode.Default))
+        if (caller.RequireApproval && IsStricterThanDefault(resolved))
         {
             var strictMode = Orkeon.Domain.Security.PermissionModes.ToWireName(resolved);
             var strict = await _permissionGate.CheckAsync(
@@ -299,17 +299,11 @@ public sealed partial class ToolInvocationPipeline : IToolInvocationPipeline
     }
 
     // Plan and DontAsk deny everything but reads; Default asks; AcceptEdits and BypassPermissions let more through.
-    private static int Strictness(Orkeon.Domain.Security.PermissionMode mode) => mode switch
-    {
-        Orkeon.Domain.Security.PermissionMode.BypassPermissions => 0,
-        Orkeon.Domain.Security.PermissionMode.AcceptEdits => 1,
-        Orkeon.Domain.Security.PermissionMode.Default => 2,
-        _ => 3,
-    };
+    private static bool IsStricterThanDefault(Orkeon.Domain.Security.PermissionMode mode) =>
+        Orkeon.Domain.Security.PermissionMode.Default.Stricter(mode) != Orkeon.Domain.Security.PermissionMode.Default;
 
     private static Orkeon.Domain.Security.PermissionMode Stricter(
-        Orkeon.Domain.Security.PermissionMode? inherited, Orkeon.Domain.Security.PermissionMode own) =>
-        inherited is { } outer && Strictness(outer) > Strictness(own) ? outer : own;
+        Orkeon.Domain.Security.PermissionMode? inherited, Orkeon.Domain.Security.PermissionMode own) => own.Stricter(inherited);
 
     private static ToolInvocationCaller WithAmbientCrew(ToolInvocationCaller caller)
     {

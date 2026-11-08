@@ -208,6 +208,10 @@ enfants) rejettent toujours à la garde, et `maxIterations` termine toujours par
   agent nommé de la crew comme enfant (`{ "agent", "input" }`) et renvoie sa sortie. L'enfant tourne
   sous un budget enfant (profondeur de délégation + 1) ; un refus (profondeur ou budget de spawn
   épuisé, agent inconnu) est un résultat d'outil en échec que le modèle lit, jamais une exception.
+  Les `act` de l'enfant tournent sous le plus strict de leur propre `permissionMode` et de celui de
+  l'`act` qui l'a lancé (plan, dontAsk > default > acceptEdits > bypassPermissions), comme une
+  délégation de crew ; sous plan ou dontAsk le lancement lui-même, une écriture, est refusé. Ce qu'un
+  enfant lancé démarre par `ctx.spawnBackground`, et un `crew.send` ultérieur, gardent ce plancher.
   L'exécution est du travail du moteur : elle passe par la pompe racine, comme les outils de script
   (voir le modèle de threading ci-dessous).
 - **`ctx.spawnBackground(agent, input)`** démarre un agent de la crew en arrière-plan et renvoie son

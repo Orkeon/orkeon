@@ -39,6 +39,22 @@ public static class PermissionModes
         _ => throw new ArgumentOutOfRangeException(nameof(mode), mode, "Unknown permission mode."),
     };
 
+    /// <summary>
+    /// The stricter of <paramref name="own"/> and <paramref name="inherited"/>: plan and dontAsk (reads
+    /// only) above default (asks), above acceptEdits, above bypassPermissions. A delegated or spawned run
+    /// is held to it, so a child never loosens the mode of the run that started it.
+    /// </summary>
+    public static PermissionMode Stricter(this PermissionMode own, PermissionMode? inherited) =>
+        inherited is { } outer && Strictness(outer) > Strictness(own) ? outer : own;
+
+    private static int Strictness(PermissionMode mode) => mode switch
+    {
+        PermissionMode.BypassPermissions => 0,
+        PermissionMode.AcceptEdits => 1,
+        PermissionMode.Default => 2,
+        _ => 3,
+    };
+
     /// <summary>Reads a wire name, ignoring case.</summary>
     /// <param name="name">The name, e.g. <c>acceptEdits</c>.</param>
     /// <param name="mode">The mode, when the name is one.</param>

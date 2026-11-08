@@ -199,8 +199,11 @@ depth, spawns) still reject at the gate, and `maxIterations` still ends with `ex
 - **`spawn_agent`** is a model-callable tool, always offered in `act`. It runs a named crew agent as a
   child (`{ "agent", "input" }`) and returns its output. The child runs under a child budget
   (delegation depth + 1); a refusal (depth or spawn budget exhausted, unknown agent) is a failed tool
-  result the model reads, never an exception. The run is engine work: it goes through the root pump,
-  like script tools (see the threading model below).
+  result the model reads, never an exception. The child's acts run under the stricter of their own
+  `permissionMode` and the spawner's act (plan, dontAsk > default > acceptEdits > bypassPermissions), as
+  a crew delegation does; under plan or dontAsk the spawn itself, an edit, is refused. What a spawned
+  run starts with `ctx.spawnBackground`, and a later `crew.send` to it, keep that floor. The run is
+  engine work: it goes through the root pump, like script tools (see the threading model below).
 - **`ctx.spawnBackground(agent, input)`** starts a crew agent in the background and returns its ticket
   (`{ id, agent }`) at once. Its completion reaches the script-context inbox, and the next `act` turn
   reads it as a user message: `agent <name> completed: <text>`, or `agent <name> failed: <reason>`.

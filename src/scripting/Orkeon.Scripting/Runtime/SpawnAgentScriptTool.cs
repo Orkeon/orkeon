@@ -31,7 +31,7 @@ internal sealed record SpawnAgentScriptResponse
 /// <summary>
 /// The model-callable <c>spawn_agent</c> of the script host: runs a named crew agent as a child on the
 /// engine, under a child budget (depth + 1). The run is engine work: the act loop reaches it through its
-/// JS tool pump (<see cref="Start(string)"/>), never from the loop's own thread.
+/// JS tool pump (<see cref="Start(string, string?)"/>), never from the loop's own thread.
 /// </summary>
 [ToolContract("spawn_agent", Name = "Spawn sub-agent",
     Description = "Run a named agent of the crew as a child and return its output",
@@ -57,19 +57,23 @@ internal sealed class SpawnAgentScriptTool : ToolBase<SpawnAgentScriptRequest, S
     /// spawn past <see cref="AgentExecutionBudget.MaxDelegationDepth"/> or
     /// <see cref="AgentExecutionBudget.MaxSpawnedAgents"/>, by throwing.
     /// </summary>
-    internal JsValue Start(string argumentsJson)
+    /// <param name="argumentsJson">The <c>spawn_agent</c> arguments.</param>
+    /// <param name="spawnerMode">The permission mode of the act that spawns the child (SEC-7).</param>
+    internal JsValue Start(string argumentsJson, string? spawnerMode = null)
     {
         var request = JsonSerializer.Deserialize<SpawnAgentScriptRequest>(argumentsJson, Json) ?? new SpawnAgentScriptRequest();
-        return Start(request.Agent, request.Input, inheritPermit: true, _environment.Ct);
+        return Start(request.Agent, request.Input, inheritPermit: true, _environment.Ct, spawnerMode);
     }
 
     /// <summary>
     /// Starts the child under <paramref name="signal"/>, through the crew's concurrency gate, and
-    /// returns its promise; refuses as <see cref="Start(string)"/> does. With
+    /// returns its promise; refuses as <see cref="Start(string, string?)"/> does. With
     /// <paramref name="inheritPermit"/> the child runs under the permit its caller holds (the blocking
-    /// spawn); without it the child takes a permit of its own (a background spawn).
+    /// spawn); without it the child takes a permit of its own (a background spawn). SEC-7: the child's
+    /// acts are held to the stricter of their own mode and <paramref name="spawnerMode"/> (the spawner
+    /// run's own floor when null), as a crew delegation is.
     /// </summary>
-    internal JsValue Start(string agentName, string input, bool inheritPermit, CancellationToken signal)
+    internal JsValue Start(string agentName, string input, bool inheritPermit, CancellationToken signal, string? spawnerMode = null)
     {
         var crew = _environment.Crew;
         var agent = crew.Resolve(agentName);
@@ -83,7 +87,8 @@ internal sealed class SpawnAgentScriptTool : ToolBase<SpawnAgentScriptRequest, S
         var instances = crew.Instances;
         var stop = CancellationTokenSource.CreateLinkedTokenSource(signal);
         var inheritedRoot = _environment.WorkingRoot;
-        var instanceId = instances.Register(agent, childBudget, stop, inheritedRoot);
+        var floor = spawnerMode ?? _environment.PermissionFloor;
+        var instanceId = instances.Register(agent, childBudget, stop, inheritedRoot, floor);
         var options = new Jint.Native.JsObject(engine);
         options.Set("signal", JsValue.FromObject(engine, stop.Token));
         options.Set("budget", JsValue.FromObject(engine, childBudget));
@@ -93,6 +98,8 @@ internal sealed class SpawnAgentScriptTool : ToolBase<SpawnAgentScriptRequest, S
         // RT-06: a child without a working root of its own runs under its parent's.
         if (inheritedRoot is { } root)
             options.Set("root", JsValue.FromObject(engine, new InheritedWorkingRoot(root)));
+        if (floor is not null)
+            options.Set("permissionFloor", floor);
         JsValue promise;
         try { promise = engine.Invoke(crew.runChild, [JsValue.FromObject(engine, agent), input, options]); }
         catch
