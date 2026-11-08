@@ -789,6 +789,18 @@
       "description": "`mock`, the only value: the offline provider that answers from the JSONL file `Responses` names. Left out, the provider follows from `BaseUrl`, the model's name and the key."
     },
     {
+      "path": "Llm:Replay:Cassette",
+      "section": "Llm",
+      "type": "string",
+      "description": "The virtual path of the cassette, a JSONL file; `record` and `replay` need it."
+    },
+    {
+      "path": "Llm:Replay:Mode",
+      "section": "Llm",
+      "type": "string",
+      "description": "`record` writes every call of the run and its answer to the cassette; `replay` answers every call from it, and a call it does not hold fails; `off` does neither. Left out, `off`."
+    },
+    {
       "path": "Llm:Responses",
       "section": "Llm",
       "type": "string",

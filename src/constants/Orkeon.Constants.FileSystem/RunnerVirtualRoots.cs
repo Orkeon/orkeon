@@ -55,6 +55,13 @@ public static class RunnerVirtualRoots
     public const string LlmMock = "/llm-mock";
 
     /// <summary>
+    /// Where <c>--llm-record</c> (read-write) and <c>--llm-replay</c> (read-only) mount the folder of their
+    /// cassette. Registered as an <b>internal</b> mount: the cassette decorators of the LLM providers read
+    /// and write it through the VFS, no agent has any business addressing it.
+    /// </summary>
+    public const string LlmCassette = "/llm-cassette";
+
+    /// <summary>
     /// Where the run history keeps the events of past runs (<c>Orkeon:RunHistory</c>, FWK-08). Registered as an
     /// <b>internal</b> mount, like <see cref="State"/>: <c>orkeon runs</c> and the history sinks reach it, no agent does.
     /// </summary>
@@ -102,5 +109,5 @@ public static class RunnerVirtualRoots
     /// whenever the settings need them — for a caller that has to refuse a user mount claiming
     /// one. A set, not five comparisons: an omission is what the pairwise drift test could not see.
     /// </summary>
-    public static IReadOnlyList<string> All { get; } = [Crew, Script, LlmLogs, LlmMock, Sandbox, Credentials];
+    public static IReadOnlyList<string> All { get; } = [Crew, Script, LlmLogs, LlmMock, LlmCassette, Sandbox, Credentials];
 }

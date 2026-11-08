@@ -67,6 +67,16 @@ internal sealed class EvalRunOptions : EvalScoringOptions
         HelpText = "With --crew: answer every LLM call of the crew from this JSONL file, offline (as orkeon run --llm-mock).")]
     public string? LlmMock { get; set; }
 
+    /// <summary>With <c>--crew</c>: record every LLM call of the crew, with its answer, in this JSONL cassette.</summary>
+    [Option("llm-record", Required = false,
+        HelpText = "With --crew: record every LLM call of the crew in this JSONL cassette (as orkeon run --llm-record). Exclusive with --llm-replay and --llm-mock.")]
+    public string? LlmRecord { get; set; }
+
+    /// <summary>With <c>--crew</c>: answer every LLM call of the crew from this cassette, with no network.</summary>
+    [Option("llm-replay", Required = false,
+        HelpText = "With --crew: answer every LLM call of the crew from this cassette, recorded by --llm-record, with no network (as orkeon run --llm-replay). Exclusive with --llm-record and --llm-mock.")]
+    public string? LlmReplay { get; set; }
+
     /// <summary>Host LLM profile of the crew.</summary>
     [Option("llm-profile", Required = false, HelpText = "With --crew: run the crew on this host LLM profile (as orkeon run --llm-profile).")]
     public string? LlmProfile { get; set; }
@@ -167,9 +177,9 @@ internal static class EvalCommand
             if (await RefuseAsync(console, "eval run", options).ConfigureAwait(false) is { } refused)
                 return refused;
 
-            if (options.Crew is null && (options.LlmMock is not null || options.LlmProfile is not null))
+            if (options.Crew is null && (options.LlmMock is not null || options.LlmRecord is not null || options.LlmReplay is not null || options.LlmProfile is not null))
             {
-                await console.ErrorOutput.WriteLineAsync("orkeon eval run: --llm-mock and --llm-profile belong to --crew.").ConfigureAwait(false);
+                await console.ErrorOutput.WriteLineAsync("orkeon eval run: --llm-mock, --llm-record, --llm-replay and --llm-profile belong to --crew.").ConfigureAwait(false);
                 return Program.ExitScriptError;
             }
 
@@ -441,6 +451,8 @@ internal static class EvalCommand
             Mounts = [.. options.Mounts],
             AllowExternalMounts = options.AllowExternalMounts,
             LlmMock = options.LlmMock,
+            LlmRecord = options.LlmRecord,
+            LlmReplay = options.LlmReplay,
             LlmProfile = options.LlmProfile,
             Verbose = options.Verbose,
             RunnerConsole = console,

@@ -12,6 +12,7 @@ using Orkeon.Domain.SharedKernel;
 using Orkeon.Domain.SharedKernel.ValueObjects;
 using Orkeon.Domain.FileSystem;
 using Orkeon.Infrastructure.LLMs.Mock;
+using Orkeon.Infrastructure.LLMs.Replay;
 using Orkeon.Infrastructure.LLMs.ToolCalling;
 
 namespace Orkeon.Infrastructure.LLMs;
@@ -39,6 +40,8 @@ public sealed partial class LlmProviderFactory : ILlmProviderFactory
     private readonly ITokenCounter _tokenCounter;
     private readonly IModelCapabilityRegistry _capabilities;
     private readonly IFileSystemService _fileSystem;
+    private readonly LlmCassette? _cassette;
+    private readonly LlmReplayMode _replayMode;
     private readonly OpenAIToolCallingStrategy _openAiStrategy;
     private readonly AnthropicToolCallingStrategy _anthropicStrategy;
 
@@ -59,6 +62,10 @@ public sealed partial class LlmProviderFactory : ILlmProviderFactory
     /// <param name="callObserver">The host's call observer: every call of a provider built is announced to it. Null observes nothing.</param>
     /// <param name="tokenCounter">Estimates the tokens the observer is told; null uses <see cref="SimpleTokenCounter"/>.</param>
     /// <param name="capabilities">The per-model table (FWK-21) every provider built reads; null uses the built-in one.</param>
+    /// <param name="replay">
+    /// Record or replay (FWK-11): every provider built is wrapped, under the call-mode layer, in a decorator that writes its
+    /// calls to the cassette or answers them from it. Null, or <see cref="LlmReplayMode.Off"/>, adds no layer.
+    /// </param>
 
     public LlmProviderFactory(
         IHttpClientFactory httpClientFactory,
@@ -68,8 +75,19 @@ public sealed partial class LlmProviderFactory : ILlmProviderFactory
         ILlmRateLimiter? rateLimiter = null,
         ILlmCallObserver? callObserver = null,
         ITokenCounter? tokenCounter = null,
-        IModelCapabilityRegistry? capabilities = null)
+        IModelCapabilityRegistry? capabilities = null,
+        LlmReplayOptions? replay = null)
     {
+        if (replay is { Mode: not LlmReplayMode.Off })
+        {
+            _replayMode = replay.Mode;
+            _cassette = new LlmCassette(
+                fileSystem,
+                string.IsNullOrWhiteSpace(replay.Cassette)
+                    ? throw new ArgumentException("A record or replay mode needs the virtual path of its cassette.", nameof(replay))
+                    : replay.Cassette);
+        }
+
         ArgumentNullException.ThrowIfNull(fileSystem);
         _fileSystem = fileSystem;
         ArgumentNullException.ThrowIfNull(httpClientFactory);
@@ -229,9 +247,21 @@ public sealed partial class LlmProviderFactory : ILlmProviderFactory
         var built = build(logger);
         if (built is OpenAICompatibleProviderBase compatible)
             compatible.ModelCapabilities = _capabilities;
-        var provider = new CallModeLlmProvider(built, config.CallMode, logger, _callObserver, _tokenCounter);
+        var provider = new CallModeLlmProvider(Cassette(built, config), config.CallMode, logger, _callObserver, _tokenCounter);
         return new LlmProviderAdapter(LlmProviderEntrance.Enter(provider, _usageSink, _rateLimiter));
     }
+
+    /// <summary>
+    /// <paramref name="built"/> under the cassette decorator the host asked for, or as it is. The cassette
+    /// holds what went over the wire, so the decorator sits under the call-mode layer, on the vendor's provider.
+    /// </summary>
+    private ILlmProvider Cassette(ILlmProvider built, LlmConfig config) => _cassette is null
+        ? built
+        : _replayMode == LlmReplayMode.Replay
+            ? new ReplayLlmProvider(built, _cassette, ProfileOf(config))
+            : new RecordingLlmProvider(built, _cassette, ProfileOf(config));
+
+    private static string ProfileOf(LlmConfig config) => string.IsNullOrWhiteSpace(config.Profile) ? "default" : config.Profile;
 
     /// <summary>
     /// The offline provider of a profile written <c>Provider: mock</c>: it answers from the JSONL file

@@ -184,6 +184,10 @@ internal sealed class CrewRunEntryPoint : IDisposable
     /// </summary>
     private static async Task<string?> OfflineRefusalAsync(IServiceProvider services, Domain.Crew.Crew crew, CancellationToken ct)
     {
+        // A replay answers every call of every profile from the cassette and reaches no endpoint: it is offline.
+        if (services.GetService<Orkeon.Infrastructure.LLMs.Replay.LlmReplayOptions>() is { Mode: Orkeon.Infrastructure.LLMs.Replay.LlmReplayMode.Replay })
+            return null;
+
         var registry = services.GetRequiredService<ILlmProfileRegistry>();
         var agents = await services.GetRequiredService<IAgentRepository>().GetByIdsAsync(crew.Agents, ct).ConfigureAwait(false);
         var offenders = new List<string>();

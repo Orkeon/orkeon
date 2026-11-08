@@ -209,7 +209,8 @@ public static class InfrastructureExtensions
             sp.GetService<ILlmRateLimiter>(),
             sp.GetService<ILlmCallObserver>(),
             sp.GetService<ITokenCounter>(),
-            sp.GetService<IModelCapabilityRegistry>()));
+            sp.GetService<IModelCapabilityRegistry>(),
+            sp.GetService<LLMs.Replay.LlmReplayOptions>()));
 
         // The host's named LLM profiles (GAP-17): the default provider plus every profile
         // registered by AddOrkeonLlmProfile(s). Always present, so a crew naming a profile the

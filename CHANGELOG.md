@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — record and replay of LLM calls (FWK-11)
+
+- **`orkeon run --llm-record <file>` and `--llm-replay <file>`** (YAML crews and procedural scripts): the first writes every LLM call of the run, with its answer, to a JSONL cassette; the second answers every call from it, with no network call and no model. A call the cassette does not hold fails with `ReplayMissException` (never a fallback on the network). The two switches and `--llm-mock` are exclusive two by two (exit 1). The cassette's folder is an internal mount at `/llm-cassette`. See [the guide](docs/guides/testing.md).
+- **`Llm:Replay:Mode`** (`off`, `record`, `replay`) and **`Llm:Replay:Cassette`** set the same thing for a host written in C#. `LlmProviderFactory` puts `RecordingLlmProvider` or `ReplayLlmProvider` under the call-mode layer, above the vendor's provider, so the cassette holds the messages that really went over the wire and `LlmProviderEntrance.Enter` and its callers do not change. `ILlmCallObserver` was not enough to record: it announces a call and its token counts, never its answer.
+- A call is filed under the SHA-256 of its profile, messages, tools and response format (timestamps and generated identifiers left out), with an occurrence number for a repeated call; a streamed call is kept as its deltas. The configured API key, `Bearer` tokens, `sk-` and `AIza` keys, `key=`/`api_key=`/`token=` query values and URL user info are redacted from every line.
+- `orkeon eval run --crew` takes `--llm-record` and `--llm-replay` too, and an offline run accepts a replay on any profile (it reaches no endpoint).
+
+### Changed — the profile name reaches the provider factory (FWK-11)
+
+- **[breaking]** `LlmProviderFactory` takes a last optional `LlmReplayOptions`. `LlmSettings.ReadProfiles` now sets `LlmConfig.Profile` to the profile's name (null stays the default profile).
+- **[breaking]** `RunnerVirtualRoots.LlmCassette` (`/llm-cassette`) joins `RunnerVirtualRoots.All`: a user mount may not claim it. `RunnerMountPlan` gains `LlmRecordCassette` and `LlmReplayCassette`; `MeteredLlmProvider.Unwrap` looks through the cassette decorators.
+
 ### Added — a capability table per model, and audio as input (FWK-21)
 
 - **`IModelCapabilityRegistry`** (`ORKEXP005`, experimental) maps a model id prefix to `ModelCapabilities` (`AudioInput`, `AudioOutput`, `Vision`, `ReasoningEfforts`); the longest prefix wins. The built-in table is in code (OpenAI chat, audio and reasoning families, Gemini, Claude); **`Llm:ModelCapabilities:<id>`** (`AudioInput`, `AudioOutput`, `Vision`, `ReasoningEfforts`) adds a model or replaces an entry. `LlmProviderCapabilities` stays per provider.

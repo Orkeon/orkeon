@@ -100,6 +100,7 @@ Giving agents a mailbox is one of the most requested features: the tutorial gets
 | [Porting example](./guides/porting-example.md) | Complete e-commerce pipeline: analysis, agent mapping, YAML, C# bootstrap |
 | [New orchestration blueprint](./guides/blueprint.md) | 8-step template to add a new ProcessType to the framework |
 | [Multi-modal content (vision)](./guides/multimodal.md) | Real vision (R3.9): `MultiModalContent` → `LlmMessage` → Anthropic blocks / OpenAI parts (14 compatible providers) / Ollama images, VFS loader, opt-in activation |
+| [Record and replay LLM calls](./guides/testing.md) | `--llm-record` and `--llm-replay`: freeze the calls of a real run in a JSONL cassette and replay them with no network, the key of a call, redaction, a replay miss, what a cassette does not hold |
 | [LLM response format](./guides/llm-response-format.md) | Constrained output at the provider boundary (`json_object` / `json_schema`), capability-driven translation per provider, cascade crew → agent → task → script → call |
 | [SonarQube Quality Gate](./guides/quality-gate.md) | Local SonarQube analysis with the "Orkeon Transitional" gate: transitional thresholds, hardening trajectory, automatic provisioning by the scripts |
 | [Local models](./guides/local-models.md) | Run everything on your own machine: Docker Model Runner (pull/configure/inspect, 128K contexts), Ollama, embedded `local-llm` image variant, model switching, troubleshooting |

@@ -92,6 +92,8 @@
     "Llm:Profiles:<name>:Thinking:Enabled": "Si le modèle réfléchit avant de répondre. Omise, le comportement propre du fournisseur.",
     "Llm:Profiles:<name>:TimeoutSeconds": "La durée maximale d'un appel, en secondes. Trop courte à son défaut pour un modèle qui réfléchit avant de répondre : écrivez 600 pour un tel modèle, ou coupez sa réflexion.",
     "Llm:Provider": "`mock`, la seule valeur : le fournisseur hors ligne qui répond depuis le fichier JSONL que nomme `Responses`. Omise, le fournisseur découle de `BaseUrl`, du nom du modèle et de la clé.",
+    "Llm:Replay:Cassette": "Le chemin virtuel de la cassette, un fichier JSONL ; `record` et `replay` en ont besoin.",
+    "Llm:Replay:Mode": "`record` écrit dans la cassette chaque appel du run et sa réponse ; `replay` répond à chaque appel depuis elle, et un appel qu'elle ne contient pas échoue ; `off` ne fait ni l'un ni l'autre. Omis, `off`.",
     "Llm:Responses": "Avec `Provider: mock`, le chemin virtuel du fichier JSONL — un objet `{match, regex?, content, toolCalls?}` par ligne — dont le fournisseur mock tire ses réponses.",
     "Llm:StreamIdleSeconds": "La plus longue absence de réponse tolérée entre deux fragments d'une réponse en flux, en secondes. Omise, rien ne la borne : `TimeoutSeconds` seule borne l'appel entier, en flux ou non. Un modèle qui réfléchit avant d'écrire peut rester silencieux un moment : ne la fixez qu'au-dessus de ce silence, ou coupez sa réflexion.",
     "Llm:Temperature": "La température d'échantillonnage. Omise, aucune n'est envoyée et le modèle applique la sienne.",

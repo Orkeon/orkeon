@@ -119,6 +119,20 @@ public sealed record RunnerMountPlan
     public string? LlmMockResponses { get; init; }
 
     /// <summary>
+    /// When non-null, every LLM call of the run is written, with its answer, to this <b>virtual</b> JSONL
+    /// cassette (<c>--llm-record</c>); the caller is responsible for having mounted its folder read-write
+    /// (<see cref="RunnerVirtualRoots.LlmCassette"/>).
+    /// </summary>
+    public string? LlmRecordCassette { get; init; }
+
+    /// <summary>
+    /// When non-null, every LLM call of the run is answered from this <b>virtual</b> JSONL cassette
+    /// (<c>--llm-replay</c>), never from a model; the caller is responsible for having mounted its folder
+    /// (<see cref="RunnerVirtualRoots.LlmCassette"/>).
+    /// </summary>
+    public string? LlmReplayCassette { get; init; }
+
+    /// <summary>
     /// When non-null, enables LLM exchange logging under this <b>virtual</b> path — the caller
     /// is responsible for having mounted it (the runners pass
     /// <see cref="RunnerVirtualRoots.LlmLogs"/> in <see cref="InternalMounts"/>). All HTTP
@@ -953,6 +967,7 @@ public static partial class RunnerHost
 
         ElectLlmProfile(overrides, declared, llmProfile, decisions);
         ApplyLlmMock(overrides, declared, mounts.LlmMockResponses);
+        ApplyLlmReplay(overrides, mounts.LlmRecordCassette, mounts.LlmReplayCassette);
 
         var placement = PlaceMounts(overrides, declared, mounts, settingsPath, decisions);
 
@@ -1194,6 +1209,21 @@ public static partial class RunnerHost
             overrides[$"{llm}:{ConfigurationKeys.LlmProfiles}:{profile.Key}:Provider"] = Orkeon.Constants.Llm.LlmProviderKeys.Mock;
             overrides[$"{llm}:{ConfigurationKeys.LlmProfiles}:{profile.Key}:Responses"] = responses;
         }
+    }
+
+    /// <summary>
+    /// <c>--llm-record</c> and <c>--llm-replay</c>: <c>Llm:Replay</c> set to the mode and the cassette, laid over
+    /// the settings. The providers the factory builds then write to the cassette or answer from it.
+    /// </summary>
+    private static void ApplyLlmReplay(Dictionary<string, string?> overrides, string? record, string? replay)
+    {
+        var cassette = record ?? replay;
+        if (cassette is null)
+            return;
+
+        var llm = ConfigurationKeys.LlmSection;
+        overrides[$"{llm}:Replay:Mode"] = record is not null ? "record" : "replay";
+        overrides[$"{llm}:Replay:Cassette"] = cassette;
     }
 
     /// <summary>

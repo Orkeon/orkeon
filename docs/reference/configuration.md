@@ -179,7 +179,7 @@ closed list, and what it means.
 <!-- settings-index -->
 | Category | Sections | Keys |
 |---|---|---|
-| [Models](#models) | [`Evaluation`](#evaluation), [`Llm`](#llm), [`LlmLogging`](#llmlogging), [`Orkeon:CostTracking`](#orkeoncosttracking), [`Orkeon:Decision`](#orkeondecision), [`Orkeon:Kev`](#orkeonkev), [`Orkeon:Liquid`](#orkeonliquid), [`Orkeon:TokenCounter`](#orkeontokencounter), [`Orkeon:TypeSafe`](#orkeontypesafe) | 100 |
+| [Models](#models) | [`Evaluation`](#evaluation), [`Llm`](#llm), [`LlmLogging`](#llmlogging), [`Orkeon:CostTracking`](#orkeoncosttracking), [`Orkeon:Decision`](#orkeondecision), [`Orkeon:Kev`](#orkeonkev), [`Orkeon:Liquid`](#orkeonliquid), [`Orkeon:TokenCounter`](#orkeontokencounter), [`Orkeon:TypeSafe`](#orkeontypesafe) | 102 |
 | [Rate and budgets](#rate-and-budgets) | [`RateLimiting`](#ratelimiting), [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting) | 11 |
 | [Memory and vectors](#memory-and-vectors) | [`Memory`](#memory), [`Orkeon:ChromaDb`](#orkeonchromadb), [`Orkeon:CognitiveMemory`](#orkeoncognitivememory), [`Orkeon:CrewMemory`](#orkeoncrewmemory), [`Orkeon:EmbeddingCache`](#orkeonembeddingcache), [`Orkeon:Embeddings`](#orkeonembeddings), [`Orkeon:Encryption`](#orkeonencryption), [`Orkeon:LanceDb`](#orkeonlancedb), [`Orkeon:Pinecone`](#orkeonpinecone), [`Orkeon:Redis`](#orkeonredis), [`Orkeon:Sqlite`](#orkeonsqlite), [`Orkeon:VectorSearch`](#orkeonvectorsearch) | 64 |
 | [RAG](#rag) | [`Orkeon:Rag`](#orkeonrag), [`Orkeon:Rag:Ingestion`](#orkeonragingestion), [`Orkeon:Rag:QueryRouting`](#orkeonragqueryrouting), [`Orkeon:Rag:Retrieval:Hybrid`](#orkeonragretrievalhybrid), [`Orkeon:Rag:WebFallback`](#orkeonragwebfallback) | 34 |
@@ -191,7 +191,7 @@ closed list, and what it means.
 | [Service host and A2A](#service-host-and-a2a) | [`A2A`](#a2a), [`A2A:Security`](#a2asecurity), [`A2A:Security:AzureAD`](#a2asecurityazuread), [`A2A:Security:Oidc`](#a2asecurityoidc), [`Orkeon:Host`](#orkeonhost), [`Orkeon:Host:Discord`](#orkeonhostdiscord) | 57 |
 | [Observability](#observability) | [`Logging`](#logging), [`Orkeon:Monitoring`](#orkeonmonitoring), [`Telemetry`](#telemetry) | 8 |
 
-80 sections, 517 keys. Read by no shipped binary, only by a host written in C# (7): [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:CognitiveMemory`](#orkeoncognitivememory), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Monitoring`](#orkeonmonitoring).
+80 sections, 519 keys. Read by no shipped binary, only by a host written in C# (7): [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:CognitiveMemory`](#orkeoncognitivememory), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Monitoring`](#orkeonmonitoring).
 <!-- /settings-index -->
 
 How to read a table:
@@ -307,6 +307,8 @@ the same way with its own keys.
 | `Profiles:<name>:Thinking:Enabled` | boolean | — | Whether the model thinks before it answers. Left out, the provider's own behaviour. |
 | `Profiles:<name>:TimeoutSeconds` | integer | `30` | How long one call may take, in seconds. Too short at its default for a model that thinks before it answers: write 600 for one, or turn its thinking off. |
 | `Provider` | string | — | `mock`, the only value: the offline provider that answers from the JSONL file `Responses` names. Left out, the provider follows from `BaseUrl`, the model's name and the key. |
+| `Replay:Cassette` | string | — | The virtual path of the cassette, a JSONL file; `record` and `replay` need it. |
+| `Replay:Mode` | string | — | `record` writes every call of the run and its answer to the cassette; `replay` answers every call from it, and a call it does not hold fails; `off` does neither. Left out, `off`. |
 | `Responses` | string | — | With `Provider: mock`, the virtual path of the JSONL file — one `{match, regex?, content, toolCalls?}` object per line — the mock provider answers from. |
 | `StreamIdleSeconds` | integer | — | The longest silence a streamed answer may hold between two of its chunks, in seconds. Left out, nothing bounds it: `TimeoutSeconds` alone bounds the whole call, streamed or not. A model that thinks before it writes may stay silent for a while: set it only above that silence, or turn its thinking off. |
 | `Temperature` | number | — | The sampling temperature. Left out, none is sent and the model applies its own. |
@@ -363,6 +365,10 @@ naming the model.
 #### `Provider: mock` answers from a file
 
 A profile — or the `Llm` section itself — written `"Provider": "mock", "Responses": "/llm-mock/answers.jsonl"` builds no vendor provider: it answers from a JSONL file read through the virtual file system, one `{"match", "regex"?, "content", "toolCalls"?}` object per line (the first line whose `match` fits the prompt wins; see [`orkeon run --llm-mock`](./cli.md#orkeon-run)). It makes no network call, so a YAML crew or an `.ork.ts` script runs offline with the same output every time. `mock` is the only value `Provider` takes; a provider otherwise follows from `BaseUrl`, the model's name and the key. `Responses` is required with it. `orkeon run --llm-mock <file>` writes both keys for every profile of the run. The mock is not one of the sixteen providers: it is a test double.
+
+#### `Replay` records or replays the calls
+
+`Llm:Replay:Mode` set to `record` writes every call a provider makes, with its answer, to the JSONL file `Llm:Replay:Cassette` names; `replay` answers every call from that file and calls no model; `off` (the default) does neither. The decorator sits in the provider factory, under the call-mode layer, so the cassette holds what really went over the wire. `orkeon run --llm-record` and `--llm-replay` set both keys and mount the folder; see [Record and replay LLM calls](../guides/testing.md). A mode without a cassette, or a mode that is none of the three, refuses the start naming the key.
 
 #### `Grammar` is for a llama.cpp-compatible server
 

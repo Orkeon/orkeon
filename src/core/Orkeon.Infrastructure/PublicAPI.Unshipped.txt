@@ -734,7 +734,7 @@ Orkeon.Infrastructure.Configuration.GraphYamlConfig.Start.set -> void
 [ORKEXP004]Orkeon.Infrastructure.MCP.McpRequestException.McpRequestException(int code, string! message) -> void
 [ORKEXP004]Orkeon.Infrastructure.MCP.McpRequestException.McpRequestException(string! message) -> void
 [ORKEXP004]Orkeon.Infrastructure.MCP.McpRequestException.McpRequestException(string! message, System.Exception! innerException) -> void
-Orkeon.Infrastructure.LLMs.LlmProviderFactory.LlmProviderFactory(System.Net.Http.IHttpClientFactory! httpClientFactory, Microsoft.Extensions.Logging.ILoggerFactory! loggerFactory, Orkeon.Domain.FileSystem.IFileSystemService! fileSystem, Orkeon.Application.Interfaces.Ports.ILlmUsageSink? usageSink = null, Orkeon.Application.Interfaces.Security.ILlmRateLimiter? rateLimiter = null, Orkeon.Application.Interfaces.Ports.ILlmCallObserver? callObserver = null, Orkeon.Domain.SharedKernel.ITokenCounter? tokenCounter = null, Orkeon.Infrastructure.LLMs.Capabilities.IModelCapabilityRegistry? capabilities = null) -> void
+Orkeon.Infrastructure.LLMs.LlmProviderFactory.LlmProviderFactory(System.Net.Http.IHttpClientFactory! httpClientFactory, Microsoft.Extensions.Logging.ILoggerFactory! loggerFactory, Orkeon.Domain.FileSystem.IFileSystemService! fileSystem, Orkeon.Application.Interfaces.Ports.ILlmUsageSink? usageSink = null, Orkeon.Application.Interfaces.Security.ILlmRateLimiter? rateLimiter = null, Orkeon.Application.Interfaces.Ports.ILlmCallObserver? callObserver = null, Orkeon.Domain.SharedKernel.ITokenCounter? tokenCounter = null, Orkeon.Infrastructure.LLMs.Capabilities.IModelCapabilityRegistry? capabilities = null, Orkeon.Infrastructure.LLMs.Replay.LlmReplayOptions? replay = null) -> void
 [ORKEXP005]Orkeon.Infrastructure.LLMs.Capabilities.IModelCapabilityRegistry
 [ORKEXP005]Orkeon.Infrastructure.LLMs.Capabilities.IModelCapabilityRegistry.TryGet(string? model) -> Orkeon.Infrastructure.LLMs.Capabilities.ModelCapabilities?
 [ORKEXP005]Orkeon.Infrastructure.LLMs.Capabilities.ModelCapabilities
@@ -813,3 +813,17 @@ Orkeon.Infrastructure.HumanInput.DurableToolApprovalChannel.DurableToolApprovalC
 Orkeon.Infrastructure.HumanInput.DurableToolApprovalChannel.RequestAsync(Orkeon.Application.Interfaces.Security.ToolApprovalRequest! request, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Application.Interfaces.Security.ToolApprovalDecision>!
 static Orkeon.Infrastructure.DependencyInjection.HumanInputExtensions.DecorateToolApprovalDurably(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
 [ORKEXP007]static Orkeon.Infrastructure.Runs.RedactingRunEventSink.RedactText(string! text) -> string!
+Orkeon.Infrastructure.LLMs.Replay.LlmReplayMode
+Orkeon.Infrastructure.LLMs.Replay.LlmReplayMode.Off = 0 -> Orkeon.Infrastructure.LLMs.Replay.LlmReplayMode
+Orkeon.Infrastructure.LLMs.Replay.LlmReplayMode.Record = 1 -> Orkeon.Infrastructure.LLMs.Replay.LlmReplayMode
+Orkeon.Infrastructure.LLMs.Replay.LlmReplayMode.Replay = 2 -> Orkeon.Infrastructure.LLMs.Replay.LlmReplayMode
+Orkeon.Infrastructure.LLMs.Replay.LlmReplayOptions
+Orkeon.Infrastructure.LLMs.Replay.LlmReplayOptions.Cassette.get -> string?
+Orkeon.Infrastructure.LLMs.Replay.LlmReplayOptions.Cassette.set -> void
+Orkeon.Infrastructure.LLMs.Replay.LlmReplayOptions.LlmReplayOptions() -> void
+Orkeon.Infrastructure.LLMs.Replay.LlmReplayOptions.Mode.get -> Orkeon.Infrastructure.LLMs.Replay.LlmReplayMode
+Orkeon.Infrastructure.LLMs.Replay.LlmReplayOptions.Mode.set -> void
+Orkeon.Infrastructure.LLMs.Replay.ReplayMissException
+Orkeon.Infrastructure.LLMs.Replay.ReplayMissException.ReplayMissException() -> void
+Orkeon.Infrastructure.LLMs.Replay.ReplayMissException.ReplayMissException(string! message) -> void
+Orkeon.Infrastructure.LLMs.Replay.ReplayMissException.ReplayMissException(string! message, System.Exception! innerException) -> void

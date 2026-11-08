@@ -89,6 +89,7 @@ public static partial class RunnerExecution
         var cliMounts = opts.Mounts.ToList();
         var llmLogPath = opts.ResolvedLlmLogPath;
         var llmMockPath = opts.ResolvedLlmMockPath;
+        var cassette = RunnerLlmCassette.Resolve(opts.LlmRecord, opts.LlmReplay);
 
         // The crew's own mounts: block, read raw before any host: it is one of the inputs that
         // decide which settings entries the host mounts (VFS-90), and the loader that reads it
@@ -106,13 +107,17 @@ public static partial class RunnerExecution
             : OfferedMountSelectors.All;
         var error = opts.RunnerConsole.ErrorOutput;
 
-        if (!RunnerLlmMock.EnsureReadable(llmMockPath, error)
+        if (!RunnerLlmCassette.EnsureExclusive(opts.LlmRecord, opts.LlmReplay, opts.LlmMock, error)
+            || !RunnerLlmCassette.EnsureReadable(cassette, error)
+            || !RunnerLlmCassette.EnsureSeparateFrom(cassette, target.ConfigDir, error)
+            || !RunnerLlmCassette.EnsureWriteAllowed(cassette, opts.EffectiveAllowExternalMounts, error)
+            || !RunnerLlmMock.EnsureReadable(llmMockPath, error)
             || !RunnerLlmMock.EnsureSeparateFrom(llmMockPath, target.ConfigDir, error)
             || !EnsureVirtualRootsAreUnique(cliMounts, layers, target.SettingsPath, error)
             || !EnsureExternalMountsAllowed(opts, target.IsScript ? null : target.ConfigDir, llmLogPath, error)
             || !EnsureReservedRootsAreFree(
                 cliMounts, layers, error,
-                target.VirtualRoot, RunnerVirtualRoots.LlmLogs, RunnerVirtualRoots.LlmMock, RunnerVirtualRoots.Sandbox, RunnerVirtualRoots.State, RunnerVirtualRoots.Runs)
+                target.VirtualRoot, RunnerVirtualRoots.LlmLogs, RunnerVirtualRoots.LlmMock, RunnerVirtualRoots.LlmCassette, RunnerVirtualRoots.Sandbox, RunnerVirtualRoots.State, RunnerVirtualRoots.Runs)
             || !EnsureMountSelectionIsResolvable(
                 cliMounts, opts.MountIds, crewMounts, new MountLayers(layers, target.SettingsPath), offered, error, out var selection)
             || !EnsureMountSourcesExist(cliMounts, layers, selection, error)
@@ -130,8 +135,8 @@ public static partial class RunnerExecution
 
         cliMounts.Insert(0, $"{FileSystemMount.Quote(target.ConfigDir)}:{target.VirtualRoot}:ro");
 
-        IReadOnlyList<string> internalMounts = [.. RunnerLlmLog.CreateMounts(llmLogPath), .. RunnerLlmMock.CreateMounts(llmMockPath)];
-        IReadOnlyList<string> inputDirectories = [.. (target.IsScript ? new[] { target.ConfigDir } : []), .. RunnerLlmMock.InputDirectories(llmMockPath)];
+        IReadOnlyList<string> internalMounts = [.. RunnerLlmLog.CreateMounts(llmLogPath), .. RunnerLlmMock.CreateMounts(llmMockPath), .. RunnerLlmCassette.CreateMounts(cassette)];
+        IReadOnlyList<string> inputDirectories = [.. (target.IsScript ? new[] { target.ConfigDir } : []), .. RunnerLlmMock.InputDirectories(llmMockPath), .. RunnerLlmCassette.InputDirectories(cassette)];
         var verbosity = Math.Clamp(opts.Verbose, 0, 2);
         var outputMountPath = DetectOutputMountPath(cliMounts);
 
@@ -151,6 +156,8 @@ public static partial class RunnerExecution
                     AllowExternalMounts = opts.EffectiveAllowExternalMounts,
                     LlmLogVirtualPath = llmLogPath != null ? RunnerVirtualRoots.LlmLogs : null,
                     LlmMockResponses = RunnerLlmMock.VirtualPath(llmMockPath),
+                    LlmRecordCassette = cassette is { Records: true } ? RunnerLlmCassette.VirtualPath(cassette) : null,
+                    LlmReplayCassette = cassette is { Records: false } ? RunnerLlmCassette.VirtualPath(cassette) : null,
                 },
                 configureLogging: configureLogging ?? (verbosity > 0
                     ? (ctx, b) => ConfigureVerboseLogging(b, verbosity, ctx.Configuration)

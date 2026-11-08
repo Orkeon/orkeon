@@ -9,6 +9,7 @@ using Orkeon.Application.Interfaces.Security;
 using Orkeon.Domain.SharedKernel;
 using Orkeon.Domain.SharedKernel.ValueObjects;
 using Orkeon.Infrastructure.LLMs.Capabilities;
+using Orkeon.Infrastructure.LLMs.Replay;
 using Orkeon.Infrastructure.LLMs;
 using Orkeon.Infrastructure.LLMs.Adapters;
 using Orkeon.Infrastructure.LLMs.Profiles;
@@ -148,6 +149,8 @@ public static class LlmProviderRegistrationExtensions
         // A registry the host registered itself wins: TryAdd leaves it in place.
         services.TryAddSingleton<IModelCapabilityRegistry>(
             new ModelCapabilityRegistry(LlmSettings.ReadModelCapabilities(configuration)));
+
+        services.TryAddSingleton(LlmSettings.ReadReplay(configuration));
 
         var fallbacks = LlmSettings.ReadFallbacks(configuration);
         foreach (var (name, config) in LlmSettings.ReadProfiles(configuration))

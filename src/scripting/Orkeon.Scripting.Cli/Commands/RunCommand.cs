@@ -88,6 +88,20 @@ internal sealed class RunCommandOptions : CliOptions
                        + "The file's folder is mounted read-only at /llm-mock.")]
         public string? LlmMock { get; set; }
 
+        /// <summary>A JSONL cassette the run writes every LLM call and its answer to.</summary>
+        [Option(RunOptionNames.LlmRecord, Required = false, Default = null,
+            HelpText = "Record every LLM call of the run, with its answer, in this JSONL cassette (API keys and "
+                       + "authorization headers are redacted). The file's folder is mounted read-write at /llm-cassette. "
+                       + "Exclusive with --llm-replay and --llm-mock.")]
+        public string? LlmRecord { get; set; }
+
+        /// <summary>A JSONL cassette the run answers every LLM call from, with no network.</summary>
+        [Option(RunOptionNames.LlmReplay, Required = false, Default = null,
+            HelpText = "Answer every LLM call of the run from this cassette, recorded by --llm-record, with no network: "
+                       + "a call the cassette does not hold fails with a replay miss. The file's folder is mounted "
+                       + "read-only at /llm-cassette. Exclusive with --llm-record and --llm-mock.")]
+        public string? LlmReplay { get; set; }
+
         /// <summary>Binds the global <c>test</c> namespace in a script.</summary>
         [Option(RunOptionNames.Test, Required = false, Default = false,
             HelpText = "Bind the global `test` (test.mockLlm, test.mockTool, test.assertLlmCalled...) in a script. "
@@ -761,6 +775,8 @@ internal static partial class RunCommand
             LlmLogEnabled = options.LlmLogEnabled,
             LlmLogPath = options.LlmLogPath,
             LlmMock = options.LlmMock,
+            LlmRecord = options.LlmRecord,
+            LlmReplay = options.LlmReplay,
             Variables = options.Variables,
             InitialContext = options.InitialContext,
             Validate = options.Validate,
@@ -823,7 +839,12 @@ internal static partial class RunCommand
         var cliMounts = options.Mounts.ToList();
         var llmLogPath = options.ResolvedLlmLogPath;
         var llmMockPath = RunnerLlmMock.ResolvePath(options.LlmMock);
-        if (!RunnerLlmMock.EnsureReadable(llmMockPath, console.ErrorOutput)
+        var cassette = RunnerLlmCassette.Resolve(options.LlmRecord, options.LlmReplay);
+        if (!RunnerLlmCassette.EnsureExclusive(options.LlmRecord, options.LlmReplay, options.LlmMock, console.ErrorOutput)
+            || !RunnerLlmCassette.EnsureReadable(cassette, console.ErrorOutput)
+            || !RunnerLlmCassette.EnsureSeparateFrom(cassette, scriptDir, console.ErrorOutput)
+            || !RunnerLlmCassette.EnsureWriteAllowed(cassette, options.EffectiveAllowExternalMounts, console.ErrorOutput)
+            || !RunnerLlmMock.EnsureReadable(llmMockPath, console.ErrorOutput)
             || !RunnerLlmMock.EnsureSeparateFrom(llmMockPath, scriptDir, console.ErrorOutput))
             return Program.ExitScriptError;
 
@@ -843,7 +864,7 @@ internal static partial class RunCommand
         // an "allowed-external" mount regardless of cwd because the script is the input.
         cliMounts.Insert(0, $"{FileSystemMount.Quote(scriptDir)}:{RunnerVirtualRoots.Script}:ro");
         // The exchange log is infrastructure — reachable by the VFS, invisible to agents.
-        IReadOnlyList<string> internalMounts = [.. RunnerLlmLog.CreateMounts(llmLogPath), .. RunnerLlmMock.CreateMounts(llmMockPath)];
+        IReadOnlyList<string> internalMounts = [.. RunnerLlmLog.CreateMounts(llmLogPath), .. RunnerLlmMock.CreateMounts(llmMockPath), .. RunnerLlmCassette.CreateMounts(cassette)];
         var verbosity = Math.Clamp(options.Verbose, 0, 2);
 
         using var host = RunnerHost.Build(
@@ -853,12 +874,14 @@ internal static partial class RunCommand
                 CliMounts = cliMounts,
                 InternalMounts = internalMounts,
                 // The script is the input: its folder is read without the flag.
-                InputDirectories = [scriptDir, .. RunnerLlmMock.InputDirectories(llmMockPath)],
+                InputDirectories = [scriptDir, .. RunnerLlmMock.InputDirectories(llmMockPath), .. RunnerLlmCassette.InputDirectories(cassette)],
                 SelectedMountIds = selection.SelectedMountIds,
                 CrewMountReferences = selection.CrewMountReferences,
                 AllowExternalMounts = options.EffectiveAllowExternalMounts,
                 LlmLogVirtualPath = llmLogPath != null ? RunnerVirtualRoots.LlmLogs : null,
                 LlmMockResponses = RunnerLlmMock.VirtualPath(llmMockPath),
+                LlmRecordCassette = cassette is { Records: true } ? RunnerLlmCassette.VirtualPath(cassette) : null,
+                LlmReplayCassette = cassette is { Records: false } ? RunnerLlmCassette.VirtualPath(cassette) : null,
             },
             configureLogging: verbosity > 0
                 ? (ctx, b) => RunnerExecution.ConfigureVerboseLogging(b, verbosity, ctx.Configuration)
@@ -1011,7 +1034,7 @@ internal static partial class RunCommand
 
         if (!RunnerExecution.EnsureReservedRootsAreFree(
                 cliMounts, settingsPath, console.ErrorOutput,
-                RunnerVirtualRoots.Script, RunnerVirtualRoots.LlmLogs, RunnerVirtualRoots.LlmMock, RunnerVirtualRoots.Sandbox,
+                RunnerVirtualRoots.Script, RunnerVirtualRoots.LlmLogs, RunnerVirtualRoots.LlmMock, RunnerVirtualRoots.LlmCassette, RunnerVirtualRoots.Sandbox,
                 RunnerVirtualRoots.State, RunnerVirtualRoots.Runs))
         {
             return null;

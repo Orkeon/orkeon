@@ -100,6 +100,7 @@ Donner une boîte aux lettres aux agents est l'une des fonctionnalités les plus
 | [Exemple de portage](./guides/porting-example.md) | Pipeline e-commerce complet : analyse, mapping agents, YAML, bootstrap C# |
 | [Blueprint nouvelle orchestration](./guides/blueprint.md) | Template 8 étapes pour ajouter un nouveau ProcessType au framework |
 | [Contenu multi-modal (vision)](./guides/multimodal.md) | Vision réelle (R3.9) : `MultiModalContent` → `LlmMessage` → blocs Anthropic / parts OpenAI (14 providers compatibles) / images Ollama, chargeur VFS, activation opt-in |
+| [Enregistrer et rejouer les appels LLM](./guides/testing.md) | `--llm-record` et `--llm-replay` : figer les appels d'un run réel dans une cassette JSONL et les rejouer sans réseau, la clé d'un appel, le masquage, un échec de rejeu, ce qu'une cassette ne contient pas |
 | [Format de réponse LLM](./guides/llm-response-format.md) | Sortie contrainte à la frontière provider (`json_object` / `json_schema`), traduction pilotée par les capacités de chaque provider, cascade crew → agent → task → script → appel |
 | [Quality Gate SonarQube](./guides/quality-gate.md) | Analyse SonarQube locale avec la gate « Orkeon Transitional » : seuils transitoires, trajectoire de durcissement, provisionnement automatique par les scripts |
 | [Modèles locaux](./guides/local-models.md) | Tout exécuter sur sa machine : Docker Model Runner (pull/configure/inspect, contextes 128K), Ollama, variante d'image `local-llm` embarquée, changement de modèle, dépannage |

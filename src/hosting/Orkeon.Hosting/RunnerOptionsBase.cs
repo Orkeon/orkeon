@@ -107,6 +107,24 @@ public abstract class RunnerOptionsBase
     public string? LlmMock { get; set; }
 
     /// <summary>
+    /// A JSONL cassette the run writes every LLM call and its answer to (<c>--llm-record</c>).
+    /// </summary>
+    [Option(RunOptionNames.LlmRecord, Required = false, Default = null,
+        HelpText = "Record every LLM call of the run, with its answer, in this JSONL cassette (API keys and "
+                   + "authorization headers are redacted). The file's folder is mounted read-write at /llm-cassette. "
+                   + "Exclusive with --llm-replay and --llm-mock.")]
+    public string? LlmRecord { get; set; }
+
+    /// <summary>
+    /// A JSONL cassette the run answers every LLM call from, with no network (<c>--llm-replay</c>).
+    /// </summary>
+    [Option(RunOptionNames.LlmReplay, Required = false, Default = null,
+        HelpText = "Answer every LLM call of the run from this cassette, recorded by --llm-record, with no network: "
+                   + "a call the cassette does not hold fails with a replay miss. The file's folder is mounted "
+                   + "read-only at /llm-cassette. Exclusive with --llm-record and --llm-mock.")]
+    public string? LlmReplay { get; set; }
+
+    /// <summary>
     /// KEY=VALUE variables forwarded to CrewInput. Several go space-separated after ONE flag,
     /// like <see cref="Mounts"/> — the parser refuses a repeated option.
     /// </summary>

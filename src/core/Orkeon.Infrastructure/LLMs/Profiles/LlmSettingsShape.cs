@@ -32,6 +32,22 @@ internal class LlmSectionShape : LlmProfileShape
     /// image input, the reasoning efforts it takes.
     /// </summary>
     public Dictionary<string, LlmModelCapabilityShape>? ModelCapabilities { get; set; }
+
+    /// <summary>Record the calls to the models in a cassette, or answer them from it (FWK-11).</summary>
+    public LlmReplayShape? Replay { get; set; }
+}
+
+/// <summary>The <c>Llm:Replay</c> section.</summary>
+internal sealed class LlmReplayShape
+{
+    /// <summary>
+    /// <c>record</c> writes every call of the run and its answer to the cassette; <c>replay</c> answers every call
+    /// from it, and a call it does not hold fails; <c>off</c> does neither. Left out, <c>off</c>.
+    /// </summary>
+    public string? Mode { get; set; }
+
+    /// <summary>The virtual path of the cassette, a JSONL file; <c>record</c> and <c>replay</c> need it.</summary>
+    public string? Cassette { get; set; }
 }
 
 /// <summary>One <c>Llm:ModelCapabilities:&lt;id&gt;</c> entry.</summary>

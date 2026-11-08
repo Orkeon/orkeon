@@ -52,6 +52,12 @@ public static class RunOptionNames
     /// <summary>Answer every LLM call from a JSONL responses file, offline.</summary>
     public const string LlmMock = "llm-mock";
 
+    /// <summary>Record every LLM call of the run, with its answer, in a JSONL cassette.</summary>
+    public const string LlmRecord = "llm-record";
+
+    /// <summary>Answer every LLM call of the run from a cassette recorded by <c>--llm-record</c>, offline.</summary>
+    public const string LlmReplay = "llm-replay";
+
     /// <summary>Bind the global <c>test</c> namespace (<c>test.mockLlm</c>, <c>test.mockTool</c>) in a script.</summary>
     public const string Test = "test";
 

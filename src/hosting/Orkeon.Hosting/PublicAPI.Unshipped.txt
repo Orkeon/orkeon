@@ -14,3 +14,11 @@ Orkeon.Hosting.RunnerMountPlan.RunHistoryByDefault.get -> bool
 Orkeon.Hosting.RunnerMountPlan.RunHistoryByDefault.init -> void
 Orkeon.Hosting.RunnerOptionsBase.Input.get -> string?
 Orkeon.Hosting.RunnerOptionsBase.Input.set -> void
+Orkeon.Hosting.RunnerOptionsBase.LlmRecord.get -> string?
+Orkeon.Hosting.RunnerOptionsBase.LlmRecord.set -> void
+Orkeon.Hosting.RunnerOptionsBase.LlmReplay.get -> string?
+Orkeon.Hosting.RunnerOptionsBase.LlmReplay.set -> void
+Orkeon.Hosting.RunnerMountPlan.LlmRecordCassette.get -> string?
+Orkeon.Hosting.RunnerMountPlan.LlmRecordCassette.init -> void
+Orkeon.Hosting.RunnerMountPlan.LlmReplayCassette.get -> string?
+Orkeon.Hosting.RunnerMountPlan.LlmReplayCassette.init -> void

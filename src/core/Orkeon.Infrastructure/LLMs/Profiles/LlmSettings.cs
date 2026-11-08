@@ -6,6 +6,7 @@ using Orkeon.Constants.Configuration;
 using Orkeon.Domain.SharedKernel.ValueObjects;
 using Orkeon.Infrastructure.Configuration;
 using Orkeon.Infrastructure.LLMs.Capabilities;
+using Orkeon.Infrastructure.LLMs.Replay;
 
 namespace Orkeon.Infrastructure.LLMs.Profiles;
 
@@ -43,6 +44,7 @@ public static class LlmSettings
         return configuration.GetSection(ConfigurationKeys.LlmSection).GetChildren()
             .Any(c => !string.Equals(c.Key, ConfigurationKeys.LlmProfiles, StringComparison.OrdinalIgnoreCase)
                       && !string.Equals(c.Key, ModelCapabilitiesKey, StringComparison.OrdinalIgnoreCase)
+                      && !string.Equals(c.Key, ReplayKey, StringComparison.OrdinalIgnoreCase)
                       && HoldsValue(c));
     }
 
@@ -101,7 +103,7 @@ public static class LlmSettings
                     $"{section.Path}: '{LlmProfiles.Default}' is the reserved name of the default profile, " +
                     $"which is the {ConfigurationKeys.LlmSection} section itself. Rename the profile.");
 
-            profiles.Add((section.Key, Read(section, strict: true, environment)));
+            profiles.Add((section.Key, Read(section, strict: true, environment) with { Profile = section.Key }));
         }
 
         return profiles;
@@ -226,6 +228,29 @@ public static class LlmSettings
         }
 
         return result;
+    }
+
+    private const string ReplayKey = "Replay";
+
+    /// <summary>
+    /// The record-and-replay settings (<c>Llm:Replay</c>, FWK-11). Left out, nothing is recorded or replayed.
+    /// </summary>
+    /// <param name="configuration">The host configuration.</param>
+    /// <exception cref="InvalidOperationException">The mode is unknown, or a mode is set without a cassette.</exception>
+    internal static LlmReplayOptions ReadReplay(IConfiguration configuration)
+    {
+        ArgumentNullException.ThrowIfNull(configuration);
+        var section = configuration.GetSection(ConfigurationKeys.LlmSection).GetSection(ReplayKey);
+        var options = new LlmReplayOptions { Cassette = Clean(section["Cassette"]) };
+        if (Clean(section["Mode"]) is not { } mode)
+            return options;
+
+        if (!Enum.TryParse<LlmReplayMode>(mode, ignoreCase: true, out var parsed) || !Enum.IsDefined(parsed))
+            throw new InvalidOperationException($"{section.Path}:Mode: '{mode}' is not a mode; the values are off, record and replay.");
+        options.Mode = parsed;
+        if (parsed != LlmReplayMode.Off && options.Cassette is null)
+            throw new InvalidOperationException($"{section.Path}:Cassette: the {mode} mode needs the virtual path of the cassette.");
+        return options;
     }
 
     private const string FallbackKey = "Fallback";

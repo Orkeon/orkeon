@@ -190,7 +190,7 @@ qu'elle accepte quand leur liste est fermée, et son sens.
 <!-- settings-index -->
 | Catégorie | Sections | Clés |
 |---|---|---|
-| [Modèles](#modèles) | [`Evaluation`](#evaluation), [`Llm`](#llm), [`LlmLogging`](#llmlogging), [`Orkeon:CostTracking`](#orkeoncosttracking), [`Orkeon:Decision`](#orkeondecision), [`Orkeon:Kev`](#orkeonkev), [`Orkeon:Liquid`](#orkeonliquid), [`Orkeon:TokenCounter`](#orkeontokencounter), [`Orkeon:TypeSafe`](#orkeontypesafe) | 100 |
+| [Modèles](#modèles) | [`Evaluation`](#evaluation), [`Llm`](#llm), [`LlmLogging`](#llmlogging), [`Orkeon:CostTracking`](#orkeoncosttracking), [`Orkeon:Decision`](#orkeondecision), [`Orkeon:Kev`](#orkeonkev), [`Orkeon:Liquid`](#orkeonliquid), [`Orkeon:TokenCounter`](#orkeontokencounter), [`Orkeon:TypeSafe`](#orkeontypesafe) | 102 |
 | [Débit et budgets](#débit-et-budgets) | [`RateLimiting`](#ratelimiting), [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting) | 11 |
 | [Mémoire et vecteurs](#mémoire-et-vecteurs) | [`Memory`](#memory), [`Orkeon:ChromaDb`](#orkeonchromadb), [`Orkeon:CognitiveMemory`](#orkeoncognitivememory), [`Orkeon:CrewMemory`](#orkeoncrewmemory), [`Orkeon:EmbeddingCache`](#orkeonembeddingcache), [`Orkeon:Embeddings`](#orkeonembeddings), [`Orkeon:Encryption`](#orkeonencryption), [`Orkeon:LanceDb`](#orkeonlancedb), [`Orkeon:Pinecone`](#orkeonpinecone), [`Orkeon:Redis`](#orkeonredis), [`Orkeon:Sqlite`](#orkeonsqlite), [`Orkeon:VectorSearch`](#orkeonvectorsearch) | 64 |
 | [RAG](#rag) | [`Orkeon:Rag`](#orkeonrag), [`Orkeon:Rag:Ingestion`](#orkeonragingestion), [`Orkeon:Rag:QueryRouting`](#orkeonragqueryrouting), [`Orkeon:Rag:Retrieval:Hybrid`](#orkeonragretrievalhybrid), [`Orkeon:Rag:WebFallback`](#orkeonragwebfallback) | 34 |
@@ -202,7 +202,7 @@ qu'elle accepte quand leur liste est fermée, et son sens.
 | [Hôte de service et A2A](#hôte-de-service-et-a2a) | [`A2A`](#a2a), [`A2A:Security`](#a2asecurity), [`A2A:Security:AzureAD`](#a2asecurityazuread), [`A2A:Security:Oidc`](#a2asecurityoidc), [`Orkeon:Host`](#orkeonhost), [`Orkeon:Host:Discord`](#orkeonhostdiscord) | 57 |
 | [Observabilité](#observabilité) | [`Logging`](#logging), [`Orkeon:Monitoring`](#orkeonmonitoring), [`Telemetry`](#telemetry) | 8 |
 
-80 sections, 517 clés. Lues par aucun binaire livré, seulement par un hôte écrit en C# (7) : [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:CognitiveMemory`](#orkeoncognitivememory), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Monitoring`](#orkeonmonitoring).
+80 sections, 519 clés. Lues par aucun binaire livré, seulement par un hôte écrit en C# (7) : [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:CognitiveMemory`](#orkeoncognitivememory), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Monitoring`](#orkeonmonitoring).
 <!-- /settings-index -->
 
 Lire un tableau :
@@ -325,6 +325,8 @@ avec ses propres clés.
 | `Profiles:<nom>:Thinking:Enabled` | booléen | — | Si le modèle réfléchit avant de répondre. Omise, le comportement propre du fournisseur. |
 | `Profiles:<nom>:TimeoutSeconds` | entier | `30` | La durée maximale d'un appel, en secondes. Trop courte à son défaut pour un modèle qui réfléchit avant de répondre : écrivez 600 pour un tel modèle, ou coupez sa réflexion. |
 | `Provider` | chaîne | — | `mock`, la seule valeur : le fournisseur hors ligne qui répond depuis le fichier JSONL que nomme `Responses`. Omise, le fournisseur découle de `BaseUrl`, du nom du modèle et de la clé. |
+| `Replay:Cassette` | chaîne | — | Le chemin virtuel de la cassette, un fichier JSONL ; `record` et `replay` en ont besoin. |
+| `Replay:Mode` | chaîne | — | `record` écrit dans la cassette chaque appel du run et sa réponse ; `replay` répond à chaque appel depuis elle, et un appel qu'elle ne contient pas échoue ; `off` ne fait ni l'un ni l'autre. Omis, `off`. |
 | `Responses` | chaîne | — | Avec `Provider: mock`, le chemin virtuel du fichier JSONL — un objet `{match, regex?, content, toolCalls?}` par ligne — dont le fournisseur mock tire ses réponses. |
 | `StreamIdleSeconds` | entier | — | La plus longue absence de réponse tolérée entre deux fragments d'une réponse en flux, en secondes. Omise, rien ne la borne : `TimeoutSeconds` seule borne l'appel entier, en flux ou non. Un modèle qui réfléchit avant d'écrire peut rester silencieux un moment : ne la fixez qu'au-dessus de ce silence, ou coupez sa réflexion. |
 | `Temperature` | nombre | — | La température d'échantillonnage. Omise, aucune n'est envoyée et le modèle applique la sienne. |
@@ -384,6 +386,10 @@ refuse est rejoué une fois sans le champ, avec un avertissement qui nomme le mo
 #### `Provider: mock` répond depuis un fichier
 
 Un profil — ou la section `Llm` elle-même — écrit `"Provider": "mock", "Responses": "/llm-mock/answers.jsonl"` ne construit aucun fournisseur d'éditeur : il répond depuis un fichier JSONL lu par le système de fichiers virtuel, un objet `{"match", "regex"?, "content", "toolCalls"?}` par ligne (la première ligne dont `match` convient au prompt l'emporte ; voir [`orkeon run --llm-mock`](./cli.md#orkeon-run)). Il ne fait aucun appel réseau : une crew YAML ou un script `.ork.ts` tourne hors ligne avec la même sortie à chaque fois. `mock` est la seule valeur que prend `Provider` ; sinon le fournisseur découle de `BaseUrl`, du nom du modèle et de la clé. `Responses` y est obligatoire. `orkeon run --llm-mock <fichier>` écrit les deux clés pour chaque profil de l'exécution. Le mock n'est pas l'un des seize fournisseurs : c'est un double de test.
+
+#### `Replay` enregistre ou rejoue les appels
+
+`Llm:Replay:Mode` à `record` écrit chaque appel d'un fournisseur, avec sa réponse, dans le fichier JSONL que `Llm:Replay:Cassette` nomme ; `replay` répond à chaque appel depuis ce fichier et n'appelle aucun modèle ; `off` (le défaut) ne fait ni l'un ni l'autre. Le décorateur se pose dans la fabrique de fournisseurs, sous la couche de mode d'appel : la cassette contient donc ce qui est vraiment parti sur le fil. `orkeon run --llm-record` et `--llm-replay` posent les deux clés et montent le dossier ; voir [Enregistrer et rejouer les appels LLM](../guides/testing.md). Un mode sans cassette, ou un mode qui n'est aucun des trois, refuse le démarrage en nommant la clé.
 
 #### `Grammar` est pour un serveur compatible llama.cpp
 
