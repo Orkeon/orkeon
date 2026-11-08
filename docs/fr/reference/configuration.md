@@ -172,7 +172,7 @@ WARNING: ToolRateLimiting is read by no component of this host: a C# host reads 
 `orkeon doctor` rapporte la même phrase en ligne `warn` de `runner-settings`, une par section, et
 sort toujours en `0`. Les sections sont celles que le catalogue des réglages marque comme lues par
 aucun binaire livré : `ToolRateLimiting`, `TokenBudget`, `Orkeon:Dlp`, `Orkeon:Monitoring`,
-`Orkeon:CognitiveMemory`, `Orkeon:MultiModal`, `Evaluation` et `Orkeon:VectorSearch`
+`Orkeon:MultiModal`, `Evaluation` et `Orkeon:VectorSearch`
 ([sous-systèmes opt-in](./opt-in-subsystems.md)). La liste est calculée, pas écrite : une section
 qu'un binaire livré se met à lire en sort. Ne sont pas signalées : une section qu'un autre binaire
 livré lit (`Orkeon:Host` dans un fichier que lit `orkeon run`), une section de la racine
@@ -202,7 +202,7 @@ qu'elle accepte quand leur liste est fermée, et son sens.
 | [Hôte de service et A2A](#hôte-de-service-et-a2a) | [`A2A`](#a2a), [`A2A:Security`](#a2asecurity), [`A2A:Security:AzureAD`](#a2asecurityazuread), [`A2A:Security:Oidc`](#a2asecurityoidc), [`Orkeon:Host`](#orkeonhost), [`Orkeon:Host:Discord`](#orkeonhostdiscord) | 57 |
 | [Observabilité](#observabilité) | [`Logging`](#logging), [`Orkeon:Monitoring`](#orkeonmonitoring), [`Telemetry`](#telemetry) | 8 |
 
-80 sections, 524 clés. Lues par aucun binaire livré, seulement par un hôte écrit en C# (7) : [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:CognitiveMemory`](#orkeoncognitivememory), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Monitoring`](#orkeonmonitoring).
+80 sections, 524 clés. Lues par aucun binaire livré, seulement par un hôte écrit en C# (6) : [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Monitoring`](#orkeonmonitoring).
 <!-- /settings-index -->
 
 Lire un tableau :
@@ -1009,7 +1009,7 @@ par `MinCompositeScore` et `MinSemanticScore` au lieu de `MinScore`, et `Consoli
 Couche de mémoire cognitive. Opt-in : les exécuteurs la branchent quand `Enabled` vaut `true` (`AddOrkeonCognitiveMemory(configuration)` pour un hôte écrit en C#). Pas de clé YAML : le coût de l'analyse est à la charge de l'opérateur.
 
 <!-- settings:Orkeon:CognitiveMemory -->
-**Lue par** : un hôte écrit en C# seulement, par `AddOrkeonCognitiveMemory()` — aucun binaire livré ne lit cette section.
+**Lue par** : `orkeon`, `orkeon-host`.
 
 | Clé | Type | Défaut | Valeurs | Sens |
 |---|---|---|---|---|
@@ -1965,7 +1965,7 @@ sous `./.orkeon/state`, monté en `/state` comme montage interne (`Path` est un 
 Comment un run se met en pause sur une question à un humain (FWK-23). Actif seulement avec `Orkeon:Checkpointing:Enabled`, qui donne à la question une session où être persistée. `Pause` vaut `Hold` (le run attend la réponse, jusqu'à `HoldTimeout`, puis suspend : la question reste persistée, rien n'est refusé) ou `Suspend` (le run s'arrête aussitôt : `run.finished` `status: waiting_for_input`, sortie 75). Sans valeur, un run qui a quelqu'un à interroger attend, un `orkeon run` simple sans personne suspend, et `orkeon-host` et `--events` attendent (30 minutes et sans limite). Un run se reprend avec `orkeon run <crew> --resume <id> --input "..."`.
 
 <!-- settings:Orkeon:HumanInput -->
-**Lue par** : `orkeon`, `orkeon-host`.
+**Lue par** : `orkeon`, `orkeon-host`, `orkeon-repl`.
 
 | Clé | Type | Défaut | Valeurs | Sens |
 |---|---|---|---|---|

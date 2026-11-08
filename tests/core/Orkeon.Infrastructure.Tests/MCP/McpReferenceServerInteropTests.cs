@@ -17,7 +17,7 @@ namespace Orkeon.Infrastructure.Tests.MCP;
 [Trait("Category", "Integration")]
 public sealed class McpReferenceServerInteropTests
 {
-    private const string Package = "@modelcontextprotocol/server-everything";
+    private const string Package = "@modelcontextprotocol/server-everything@2.2.1";
     private static readonly TimeSpan HangGuard = TimeSpan.FromMinutes(3);
 
     /// <summary>Whether <c>npx</c> answers: a probe of the system, not of the framework.</summary>

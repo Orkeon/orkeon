@@ -11,7 +11,7 @@ resource subscriptions. Two ways to run it: the nightly test, and the MCP Inspec
 ## The nightly test
 
 `McpReferenceServerInteropTests` (`tests/core/Orkeon.Infrastructure.Tests/MCP/`, `[Trait("Category", "Integration")]`)
-starts `npx -y --prefer-offline @modelcontextprotocol/server-everything` once over **stdio** and once over **Streamable
+starts `npx -y --prefer-offline @modelcontextprotocol/server-everything@2.2.1` once over **stdio** and once over **Streamable
 HTTP** (`streamableHttp`, on a loopback port it picks), connects it through `McpToolProvider` and checks:
 
 - the server's tools are registered (`echo` among them);
@@ -22,7 +22,7 @@ HTTP** (`streamableHttp`, on a loopback port it picks), connects it through `Mcp
 
 `integration.yml` installs Node with `actions/setup-node` after it cleans the runner's disk (the cleanup removes the
 runner's own npm). Without `npx` the test is skipped on a workstation and fails when `CI=true`. It downloads the
-package: on a metered connection run it once with the cache warm (`npx -y @modelcontextprotocol/server-everything --help`
+package: on a metered connection run it once with the cache warm (`npx -y @modelcontextprotocol/server-everything@2.2.1 --help`
 fills it), then locally:
 
 ```bash

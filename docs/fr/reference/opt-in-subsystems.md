@@ -17,7 +17,7 @@ opt-in rend leur activation **intentionnelle, documentée et vérifiable**.
 
 **Aucun binaire livré ne les active.** `orkeon run`, `orkeon-host` et `orkeon-repl` n'appellent
 aucune des extensions qui lisent ces sections : `ToolRateLimiting`, `TokenBudget`, `Orkeon:Dlp`, `Orkeon:Monitoring`,
-`Orkeon:CognitiveMemory`, `Orkeon:MultiModal`, `Plugins`, `Evaluation`, `Orkeon:VectorSearch`,
+`Orkeon:MultiModal`, `Plugins`, `Evaluation`, `Orkeon:VectorSearch`,
 `Orkeon:Checkpointing` et `Orkeon:ExecutionState:Persistence`. Écrite dans
 les réglages de l'un de ces binaires, une telle section n'est lue par rien : le run démarre sans
 la limite, le budget ou le filtrage qu'elle décrit. Le binaire le dit à son démarrage — une ligne

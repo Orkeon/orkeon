@@ -327,6 +327,12 @@ stdout, one per line; closing stdin ends the server.
     mock provider is reached only by pointing the profiles at it.
   - The progress `total` is the number of tasks of the crew; a retry or a hierarchical manager can run more task
     attempts than that, and the progress then stops at `total`.
+- **The permission gate is not consulted for the client's calls (`GateExempt`).** The server's calls run through the
+  guarded invocation point (Guardian, result sanitizer, audit) as the caller `mcp`, marked `GateExempt`: the AI client
+  that launched `orkeon mcp serve` over stdio is not passed through the `IPermissionGate`. The reason: the client is
+  the operator's own agent, and the operator already chose what it may reach (the settings, `--tools`, the mounts);
+  stdout carries the protocol, so an `ask` would have no channel to a human and every call needing approval would be
+  refused. A crew served with `--crew` is another matter: its own agents are gated as in `orkeon run`.
 - **`--tools a,b,…`** serves the named tools only (comma-separated); a name the host does not
   have refuses the start, naming it.
 - **Requests run concurrently** (`--max-concurrency <n>`, at least 1, default 4, or

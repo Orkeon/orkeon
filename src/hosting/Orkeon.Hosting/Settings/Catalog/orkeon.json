@@ -15,6 +15,7 @@
     "Orkeon:Cli:Session",
     "Orkeon:CodeSandbox",
     "Orkeon:CodeSandbox:Docker",
+    "Orkeon:CognitiveMemory",
     "Orkeon:Consensus",
     "Orkeon:CostTracking",
     "Orkeon:CrewFactory",

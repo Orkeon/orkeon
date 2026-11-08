@@ -17,7 +17,7 @@ activation **intentional, documented and verifiable**.
 
 **No shipped binary activates them.** `orkeon run`, `orkeon-host` and `orkeon-repl` call none of
 the extensions that read these sections: `ToolRateLimiting`, `TokenBudget`, `Orkeon:Dlp`, `Orkeon:Monitoring`,
-`Orkeon:CognitiveMemory`, `Orkeon:MultiModal`, `Plugins`, `Evaluation`, `Orkeon:VectorSearch`,
+`Orkeon:MultiModal`, `Plugins`, `Evaluation`, `Orkeon:VectorSearch`,
 `Orkeon:Checkpointing` and `Orkeon:ExecutionState:Persistence`. Written in the
 settings of one of those binaries, such a section is read by nothing: the run starts without the
 limit, the budget or the screening it describes. The binary says so at its start — one line on

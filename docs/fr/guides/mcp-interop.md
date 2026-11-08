@@ -11,7 +11,7 @@ abonnements de ressource. Deux façons de le lancer : le test nocturne, et le MC
 ## Le test nocturne
 
 `McpReferenceServerInteropTests` (`tests/core/Orkeon.Infrastructure.Tests/MCP/`, `[Trait("Category", "Integration")]`)
-démarre `npx -y --prefer-offline @modelcontextprotocol/server-everything` une fois en **stdio** et une fois en **Streamable
+démarre `npx -y --prefer-offline @modelcontextprotocol/server-everything@2.2.1` une fois en **stdio** et une fois en **Streamable
 HTTP** (`streamableHttp`, sur un port loopback qu'il choisit), le connecte par `McpToolProvider` et vérifie :
 
 - les outils du serveur sont enregistrés (dont `echo`) ;
@@ -22,7 +22,7 @@ HTTP** (`streamableHttp`, sur un port loopback qu'il choisit), le connecte par `
 
 `integration.yml` installe Node avec `actions/setup-node` après le nettoyage du disque du runner (ce nettoyage retire le
 npm du runner). Sans `npx`, le test est sauté sur un poste et échoue quand `CI=true`. Il télécharge le paquet : sur une
-connexion mesurée, lancez-le une fois avec le cache chaud (`npx -y @modelcontextprotocol/server-everything --help` le
+connexion mesurée, lancez-le une fois avec le cache chaud (`npx -y @modelcontextprotocol/server-everything@2.2.1 --help` le
 remplit), puis en local :
 
 ```bash

@@ -161,7 +161,7 @@ WARNING: ToolRateLimiting is read by no component of this host: a C# host reads 
 `orkeon doctor` reports the same sentence as a `warn` row of `runner-settings`, one per section,
 and still exits `0`. The sections are those the settings catalogue marks as read by no shipped
 binary: `ToolRateLimiting`, `TokenBudget`, `Orkeon:Dlp`, `Orkeon:Monitoring`,
-`Orkeon:CognitiveMemory`, `Orkeon:MultiModal`, `Evaluation` and `Orkeon:VectorSearch`
+`Orkeon:MultiModal`, `Evaluation` and `Orkeon:VectorSearch`
 ([opt-in subsystems](./opt-in-subsystems.md)). The list is computed, not written: a section a
 shipped binary starts to read leaves it. Not reported: a section another shipped binary reads
 (`Orkeon:Host` in a file `orkeon run` reads), a root section Orkeon does not know, and a section
@@ -191,7 +191,7 @@ closed list, and what it means.
 | [Service host and A2A](#service-host-and-a2a) | [`A2A`](#a2a), [`A2A:Security`](#a2asecurity), [`A2A:Security:AzureAD`](#a2asecurityazuread), [`A2A:Security:Oidc`](#a2asecurityoidc), [`Orkeon:Host`](#orkeonhost), [`Orkeon:Host:Discord`](#orkeonhostdiscord) | 57 |
 | [Observability](#observability) | [`Logging`](#logging), [`Orkeon:Monitoring`](#orkeonmonitoring), [`Telemetry`](#telemetry) | 8 |
 
-80 sections, 524 keys. Read by no shipped binary, only by a host written in C# (7): [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:CognitiveMemory`](#orkeoncognitivememory), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Monitoring`](#orkeonmonitoring).
+80 sections, 524 keys. Read by no shipped binary, only by a host written in C# (6): [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Monitoring`](#orkeonmonitoring).
 <!-- /settings-index -->
 
 How to read a table:
@@ -968,7 +968,7 @@ consolidates the memory when a run ends.
 Cognitive memory layering. Opt-in: the runners wire it when `Enabled` is `true` (`AddOrkeonCognitiveMemory(configuration)` for a host written in C#). No YAML key: the analysis cost is the operator's.
 
 <!-- settings:Orkeon:CognitiveMemory -->
-**Read by**: a host written in C# only, through `AddOrkeonCognitiveMemory()` — no shipped binary reads this section.
+**Read by**: `orkeon`, `orkeon-host`.
 
 | Key | Type | Default | Values | Meaning |
 |---|---|---|---|---|
@@ -1905,7 +1905,7 @@ under `./.orkeon/state`, mounted at `/state` as an internal mount (`Path` is a v
 How a run pauses on a question to a human (FWK-23). Active only with `Orkeon:Checkpointing:Enabled`, which gives the question a session to be persisted with. `Pause` is `Hold` (the run waits for the answer, up to `HoldTimeout`, then suspends: the question stays persisted, nothing is refused) or `Suspend` (the run stops at once: `run.finished` `status: waiting_for_input`, exit 75). Unset, a run with a person to ask holds, a plain `orkeon run` with nobody suspends, and `orkeon-host` and `--events` hold (30 minutes and no limit). A run is resumed with `orkeon run <crew> --resume <id> --input "..."`.
 
 <!-- settings:Orkeon:HumanInput -->
-**Read by**: `orkeon`, `orkeon-host`.
+**Read by**: `orkeon`, `orkeon-host`, `orkeon-repl`.
 
 | Key | Type | Default | Values | Meaning |
 |---|---|---|---|---|

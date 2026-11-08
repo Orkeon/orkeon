@@ -338,6 +338,12 @@ réponses sur son stdout, une par ligne ; fermer stdin arrête le serveur.
     qu'ils déclarent ; le fournisseur mock ne s'atteint qu'en pointant les profils vers lui.
   - Le `total` de la progression est le nombre de tâches de la crew ; une relance ou un manager hiérarchique peut
     exécuter plus de tentatives que cela, et la progression s'arrête alors à `total`.
+- **La permission gate n'est pas consultée pour les appels du client (`GateExempt`).** Les appels du serveur passent par
+  le point d'invocation gardé (Guardian, assainisseur de résultat, audit) sous l'appelant `mcp`, marqué `GateExempt` :
+  le client IA qui a lancé `orkeon mcp serve` sur stdio ne passe pas par l'`IPermissionGate`. La raison : le client est
+  l'agent de l'opérateur, qui a déjà choisi ce qu'il peut atteindre (les réglages, `--tools`, les montages) ; stdout
+  porte le protocole, un `ask` n'aurait aucun canal vers un humain et tout appel à approuver serait refusé. Une crew
+  servie avec `--crew` est un autre cas : ses propres agents sont gardés comme dans `orkeon run`.
 - **`--tools a,b,…`** ne sert que les outils nommés (séparés par des virgules) ; un nom que
   l'hôte n'a pas refuse le démarrage en le nommant.
 - **Les requêtes s'exécutent en concurrence** (`--max-concurrency <n>`, au moins 1, 4 par

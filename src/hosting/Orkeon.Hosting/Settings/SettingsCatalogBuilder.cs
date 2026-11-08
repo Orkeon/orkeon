@@ -74,6 +74,7 @@ internal static class SettingsCatalogBuilder
         ["Orkeon:Cli:ConsoleStreaming:Enabled"] = "true",
         ["Orkeon:Host:A2A:Enabled"] = "true",
         ["Orkeon:TypeSafe:Model"] = "catalogue",
+        ["Orkeon:CognitiveMemory:Enabled"] = "true",
     };
 
     /// <summary>
