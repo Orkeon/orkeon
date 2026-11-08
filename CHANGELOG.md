@@ -18,6 +18,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **[breaking]** `LlmProviderFactory` takes a last optional `LlmReplayOptions`. `LlmSettings.ReadProfiles` now sets `LlmConfig.Profile` to the profile's name (null stays the default profile).
 - **[breaking]** `RunnerVirtualRoots.LlmCassette` (`/llm-cassette`) joins `RunnerVirtualRoots.All`: a user mount may not claim it. `RunnerMountPlan` gains `LlmRecordCassette` and `LlmReplayCassette`; `MeteredLlmProvider.Unwrap` looks through the cassette decorators.
+### Added — Mistral, Azure OpenAI and Gemini embeddings, and a guard on the embedding model (FWK-25)
+
+- **`Orkeon:Embeddings:Provider`** accepts `mistral` (`MistralEmbeddingProvider`, `mistral-embed`, 1024 dimensions), `azure-openai` (`AzureOpenAIEmbeddingProvider`, `Model` is the deployment name, `Endpoint` the resource URL) and `gemini` (`GeminiEmbeddingProvider`, `gemini-embedding-001`, 3072 dimensions, Google's OpenAI-compatible endpoint). They share `OpenAICompatibleEmbeddingProviderBase`: answers re-ordered by `index`, batches cut at `BatchSize`, a vector whose length is not `Dimension` refused, a 4xx or 5xx raised as an `HttpRequestException` that never carries the key.
+- **New `Orkeon:Embeddings` keys**: `ApiKey` (secret), `ApiKeyEnvVar`, `Endpoint`, `ApiVersion` and `FingerprintPath`. `mistral` and `gemini` swap in their own model and dimensions when `Model` and `Dimension` keep the global defaults.
+- **A startup guard refuses a changed embedding model**: the first start records the provider, model and dimensions at `Orkeon:Embeddings:FingerprintPath` (default `/workspace/.orkeon/embedding-fingerprint.json`); a different one stops the host with an error naming both. Nothing is migrated. Only a host with an `Orkeon:Embeddings` section is guarded; with no `/workspace` mount, or an empty `FingerprintPath`, it runs unguarded with a warning.
+- `mistral` and `gemini` refuse, when the provider is built and before any call, a `Dimension` other than the fixed size of `mistral-embed` (1024) or `gemini-embedding-001` (3072). Embedding calls do not retry; `Llm:MaxRetries` is for chat.
+- A provider name outside the five now fails validation with a message listing them. Cohere, Voyage and pgvector stay out.
 
 ### Added — a capability table per model, and audio as input (FWK-21)
 

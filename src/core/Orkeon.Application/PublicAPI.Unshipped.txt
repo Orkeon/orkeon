@@ -1021,3 +1021,13 @@ Orkeon.Application.Interfaces.Services.KickoffOptions.ResumeInput.init -> void
 Orkeon.Application.Services.Security.ToolInvocationPipeline.ToolInvocationPipeline(Orkeon.Application.Interfaces.Security.IGuardianPipeline? guardian = null, Orkeon.Application.Interfaces.Security.IToolResultSanitizer? sanitizer = null, Orkeon.Application.Interfaces.Security.IAuditLogger? auditLogger = null, Microsoft.Extensions.Logging.ILogger<Orkeon.Application.Services.Security.ToolInvocationPipeline!>? logger = null, Microsoft.Extensions.Options.IOptions<Orkeon.Domain.Tools.ToolResultLimitsOptions!>? limits = null, Orkeon.Application.Interfaces.Security.IPermissionGate? permissionGate = null, Orkeon.Application.Interfaces.Security.IToolApprovalChannel? approvalChannel = null, Orkeon.Domain.Security.PermissionMode defaultMode = Orkeon.Domain.Security.PermissionMode.Default, Orkeon.Application.Interfaces.Services.IRunScope? runScope = null) -> void
 [ORKEXP007]Orkeon.Application.Runs.RunStatus.WaitingForInput = 4 -> Orkeon.Application.Runs.RunStatus
 [ORKEXP001]Orkeon.Application.Interfaces.AgentCommunication.A2ATaskStatus.InputRequired = 5 -> Orkeon.Application.Interfaces.AgentCommunication.A2ATaskStatus
+Orkeon.Application.Configuration.EmbeddingOptions.Endpoint.get -> string!
+Orkeon.Application.Configuration.EmbeddingOptions.Endpoint.set -> void
+Orkeon.Application.Configuration.EmbeddingOptions.ApiKey.get -> string!
+Orkeon.Application.Configuration.EmbeddingOptions.ApiKey.set -> void
+Orkeon.Application.Configuration.EmbeddingOptions.ApiKeyEnvVar.get -> string!
+Orkeon.Application.Configuration.EmbeddingOptions.ApiKeyEnvVar.set -> void
+Orkeon.Application.Configuration.EmbeddingOptions.ApiVersion.get -> string!
+Orkeon.Application.Configuration.EmbeddingOptions.ApiVersion.set -> void
+Orkeon.Application.Configuration.EmbeddingOptions.FingerprintPath.get -> string!
+Orkeon.Application.Configuration.EmbeddingOptions.FingerprintPath.set -> void

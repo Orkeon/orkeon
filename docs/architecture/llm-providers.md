@@ -364,6 +364,39 @@ key: .NET configuration has no escape for the path separator `:`. Key its prefix
 - The Anthropic and Ollama dialects do not read the table yet: their effort is judged by the provider's declared
   levels only.
 
+## Embedding providers
+
+`Orkeon:Embeddings:Provider` is resolved by `DefaultEmbeddingProviderResolver`, after a local or
+code-analysis provider and before the fail-fast stub. Five names are accepted; another one refuses
+the start.
+
+| `Provider` | Class | Endpoint | Default model (dimensions) |
+|---|---|---|---|
+| `openai` | `OpenAIEmbeddingProvider` | any M.E.AI embedding generator the host registers | `text-embedding-3-small` (1536) |
+| `ollama` | `OllamaEmbeddingProvider` | `/api/embed` of the Ollama host | the configured `Model` |
+| `mistral` | `MistralEmbeddingProvider` | `https://api.mistral.ai/v1/embeddings`, bearer key | `mistral-embed` (1024) |
+| `azure-openai` | `AzureOpenAIEmbeddingProvider` | `{Endpoint}/openai/deployments/{Model}/embeddings?api-version=`, `api-key` header | the deployment named by `Model` |
+| `gemini` | `GeminiEmbeddingProvider` | `https://generativelanguage.googleapis.com/v1beta/openai/embeddings`, bearer key | `gemini-embedding-001` (3072) |
+
+The last three share `OpenAICompatibleEmbeddingProviderBase`: one request shape (`model` and
+`input`), answers re-ordered by `index`, batches cut at `BatchSize`, and a vector whose length is not
+the declared `Dimension` refused. When `Model` and `Dimension` keep the global defaults
+(`text-embedding-3-small`, 1536), `mistral` and `gemini` use their own model and dimensions; `azure-openai`
+always takes `Model` as the deployment name. A 4xx or 5xx answer raises an `HttpRequestException` that
+names the provider, the status and the start of the body, never the key. Embedding calls do not retry: a 429 or a 5xx reaches the caller as that exception on the first answer, and `Llm:MaxRetries` applies to chat only. `mistral-embed` (1024) and `gemini-embedding-001` (3072) have a fixed size and these providers send no output size: a `Dimension` other than that size (the global default counts as unset) is refused when the provider is built, naming the size, before any call. The key is `ApiKey` or the
+variable named by `ApiKeyEnvVar`; with neither, the first call fails with a message naming both.
+Model ids of the embedding providers are not in the capability table of
+[What a model accepts](#what-a-model-accepts-and-audio-as-input): it covers chat input and reasoning effort.
+
+**Changing the embedding model invalidates stored vectors.** At start, a guard compares the
+provider, model and dimensions with the fingerprint recorded at `Orkeon:Embeddings:FingerprintPath`
+(default `/workspace/.orkeon/embedding-fingerprint.json`, in the virtual file system). The first start
+records it; a different one stops the host with an error that names both models. Nothing is migrated:
+restore the previous settings, or re-embed and clear the stored vectors, then delete the fingerprint file.
+Only a host that wrote an `Orkeon:Embeddings` section is guarded: the others keep the on-device default and nothing is written into their workspace. A host with no `/workspace` mount (the read is refused, a warning is logged), or an empty `FingerprintPath`, runs unguarded.
+
+Cohere, Voyage and pgvector are not shipped.
+
 ## Decorators and registration
 
 - **`MeteredLlmProvider`** — the one place LLM usage is measured: it reports every call of

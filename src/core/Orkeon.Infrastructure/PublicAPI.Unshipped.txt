@@ -827,3 +827,24 @@ Orkeon.Infrastructure.LLMs.Replay.ReplayMissException
 Orkeon.Infrastructure.LLMs.Replay.ReplayMissException.ReplayMissException() -> void
 Orkeon.Infrastructure.LLMs.Replay.ReplayMissException.ReplayMissException(string! message) -> void
 Orkeon.Infrastructure.LLMs.Replay.ReplayMissException.ReplayMissException(string! message, System.Exception! innerException) -> void
+abstract Orkeon.Infrastructure.LLMs.Embeddings.OpenAICompatibleEmbeddingProviderBase.Authenticate(System.Net.Http.HttpRequestMessage! request, string! apiKey) -> void
+abstract Orkeon.Infrastructure.LLMs.Embeddings.OpenAICompatibleEmbeddingProviderBase.BuildRequestUri() -> System.Uri!
+abstract Orkeon.Infrastructure.LLMs.Embeddings.OpenAICompatibleEmbeddingProviderBase.Name.get -> string!
+abstract Orkeon.Infrastructure.LLMs.Embeddings.OpenAICompatibleEmbeddingProviderBase.ProviderDefaultDimension.get -> int
+abstract Orkeon.Infrastructure.LLMs.Embeddings.OpenAICompatibleEmbeddingProviderBase.ProviderDefaultModel.get -> string!
+Orkeon.Infrastructure.LLMs.Embeddings.AzureOpenAIEmbeddingProvider
+Orkeon.Infrastructure.LLMs.Embeddings.AzureOpenAIEmbeddingProvider.AzureOpenAIEmbeddingProvider(System.Net.Http.HttpClient! httpClient, Microsoft.Extensions.Options.IOptions<Orkeon.Application.Configuration.EmbeddingOptions!>! options) -> void
+Orkeon.Infrastructure.LLMs.Embeddings.GeminiEmbeddingProvider
+Orkeon.Infrastructure.LLMs.Embeddings.GeminiEmbeddingProvider.GeminiEmbeddingProvider(System.Net.Http.HttpClient! httpClient, Microsoft.Extensions.Options.IOptions<Orkeon.Application.Configuration.EmbeddingOptions!>! options) -> void
+Orkeon.Infrastructure.LLMs.Embeddings.MistralEmbeddingProvider
+Orkeon.Infrastructure.LLMs.Embeddings.MistralEmbeddingProvider.MistralEmbeddingProvider(System.Net.Http.HttpClient! httpClient, Microsoft.Extensions.Options.IOptions<Orkeon.Application.Configuration.EmbeddingOptions!>! options) -> void
+Orkeon.Infrastructure.LLMs.Embeddings.OpenAICompatibleEmbeddingProviderBase
+Orkeon.Infrastructure.LLMs.Embeddings.OpenAICompatibleEmbeddingProviderBase.Dimensions.get -> int
+Orkeon.Infrastructure.LLMs.Embeddings.OpenAICompatibleEmbeddingProviderBase.GetEmbeddingAsync(string! text, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<float[]!>!
+Orkeon.Infrastructure.LLMs.Embeddings.OpenAICompatibleEmbeddingProviderBase.GetEmbeddingsAsync(System.Collections.Generic.IList<string!>! texts, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IList<float[]!>!>!
+Orkeon.Infrastructure.LLMs.Embeddings.OpenAICompatibleEmbeddingProviderBase.Model.get -> string!
+Orkeon.Infrastructure.LLMs.Embeddings.OpenAICompatibleEmbeddingProviderBase.OpenAICompatibleEmbeddingProviderBase(System.Net.Http.HttpClient! httpClient, Microsoft.Extensions.Options.IOptions<Orkeon.Application.Configuration.EmbeddingOptions!>! options) -> void
+Orkeon.Infrastructure.LLMs.Embeddings.OpenAICompatibleEmbeddingProviderBase.Settings.get -> Orkeon.Application.Configuration.EmbeddingOptions!
+override Orkeon.Infrastructure.LLMs.Embeddings.AzureOpenAIEmbeddingProvider.Name.get -> string!
+override Orkeon.Infrastructure.LLMs.Embeddings.GeminiEmbeddingProvider.Name.get -> string!
+override Orkeon.Infrastructure.LLMs.Embeddings.MistralEmbeddingProvider.Name.get -> string!

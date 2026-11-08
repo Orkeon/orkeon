@@ -1506,6 +1506,27 @@
       "description": "Sliding expiration time in minutes for cached embeddings."
     },
     {
+      "path": "Orkeon:Embeddings:ApiKey",
+      "section": "Orkeon:Embeddings",
+      "type": "string",
+      "secret": true,
+      "description": "The API key, in clear text, for `mistral`, `azure-openai` and `gemini`. Prefer `ApiKeyEnvVar`: a key written here is in the settings file."
+    },
+    {
+      "path": "Orkeon:Embeddings:ApiKeyEnvVar",
+      "section": "Orkeon:Embeddings",
+      "type": "string",
+      "default": "",
+      "description": "Name of the environment variable holding the API key, read when `ApiKey` is empty."
+    },
+    {
+      "path": "Orkeon:Embeddings:ApiVersion",
+      "section": "Orkeon:Embeddings",
+      "type": "string",
+      "default": "",
+      "description": "The `api-version` query of `azure-openai`. Empty: the provider's default."
+    },
+    {
       "path": "Orkeon:Embeddings:BatchSize",
       "section": "Orkeon:Embeddings",
       "type": "integer",
@@ -1527,6 +1548,20 @@
       "description": "Whether to enable embedding caching."
     },
     {
+      "path": "Orkeon:Embeddings:Endpoint",
+      "section": "Orkeon:Embeddings",
+      "type": "string",
+      "default": "",
+      "description": "Base URL of the embeddings endpoint. Empty: the provider's public endpoint. Required by `azure-openai` (the resource URL, `https://<resource>.openai.azure.com`)."
+    },
+    {
+      "path": "Orkeon:Embeddings:FingerprintPath",
+      "section": "Orkeon:Embeddings",
+      "type": "string",
+      "default": "/workspace/.orkeon/embedding-fingerprint.json",
+      "description": "Virtual path of the file recording the provider, model and dimensions the stored vectors came from; the host refuses to start when they change. Empty: the guard is off."
+    },
+    {
       "path": "Orkeon:Embeddings:Model",
       "section": "Orkeon:Embeddings",
       "type": "string",
@@ -1538,7 +1573,7 @@
       "section": "Orkeon:Embeddings",
       "type": "string",
       "default": "openai",
-      "description": "The embedding provider to use (e.g., \"openai\", \"ollama\")."
+      "description": "The embedding provider to use: \"openai\", \"ollama\", \"mistral\", \"azure-openai\" or \"gemini\"."
     },
     {
       "path": "Orkeon:Encryption:Enabled",

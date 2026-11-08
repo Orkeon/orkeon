@@ -192,7 +192,7 @@ qu'elle accepte quand leur liste est fermée, et son sens.
 |---|---|---|
 | [Modèles](#modèles) | [`Evaluation`](#evaluation), [`Llm`](#llm), [`LlmLogging`](#llmlogging), [`Orkeon:CostTracking`](#orkeoncosttracking), [`Orkeon:Decision`](#orkeondecision), [`Orkeon:Kev`](#orkeonkev), [`Orkeon:Liquid`](#orkeonliquid), [`Orkeon:TokenCounter`](#orkeontokencounter), [`Orkeon:TypeSafe`](#orkeontypesafe) | 102 |
 | [Débit et budgets](#débit-et-budgets) | [`RateLimiting`](#ratelimiting), [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting) | 11 |
-| [Mémoire et vecteurs](#mémoire-et-vecteurs) | [`Memory`](#memory), [`Orkeon:ChromaDb`](#orkeonchromadb), [`Orkeon:CognitiveMemory`](#orkeoncognitivememory), [`Orkeon:CrewMemory`](#orkeoncrewmemory), [`Orkeon:EmbeddingCache`](#orkeonembeddingcache), [`Orkeon:Embeddings`](#orkeonembeddings), [`Orkeon:Encryption`](#orkeonencryption), [`Orkeon:LanceDb`](#orkeonlancedb), [`Orkeon:Pinecone`](#orkeonpinecone), [`Orkeon:Redis`](#orkeonredis), [`Orkeon:Sqlite`](#orkeonsqlite), [`Orkeon:VectorSearch`](#orkeonvectorsearch) | 64 |
+| [Mémoire et vecteurs](#mémoire-et-vecteurs) | [`Memory`](#memory), [`Orkeon:ChromaDb`](#orkeonchromadb), [`Orkeon:CognitiveMemory`](#orkeoncognitivememory), [`Orkeon:CrewMemory`](#orkeoncrewmemory), [`Orkeon:EmbeddingCache`](#orkeonembeddingcache), [`Orkeon:Embeddings`](#orkeonembeddings), [`Orkeon:Encryption`](#orkeonencryption), [`Orkeon:LanceDb`](#orkeonlancedb), [`Orkeon:Pinecone`](#orkeonpinecone), [`Orkeon:Redis`](#orkeonredis), [`Orkeon:Sqlite`](#orkeonsqlite), [`Orkeon:VectorSearch`](#orkeonvectorsearch) | 69 |
 | [RAG](#rag) | [`Orkeon:Rag`](#orkeonrag), [`Orkeon:Rag:Ingestion`](#orkeonragingestion), [`Orkeon:Rag:QueryRouting`](#orkeonragqueryrouting), [`Orkeon:Rag:Retrieval:Hybrid`](#orkeonragretrievalhybrid), [`Orkeon:Rag:WebFallback`](#orkeonragwebfallback) | 34 |
 | [Fichiers et bac à sable](#fichiers-et-bac-à-sable) | [`Orkeon:CodeSandbox`](#orkeoncodesandbox), [`Orkeon:CodeSandbox:Docker`](#orkeoncodesandboxdocker), [`Orkeon:FileSystem`](#orkeonfilesystem), [`Orkeon:Sandbox`](#orkeonsandbox), [`PathSecurity`](#pathsecurity) | 33 |
 | [Sécurité](#sécurité) | [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:Guardian`](#orkeonguardian), [`Orkeon:Security:PermissionGate`](#orkeonsecuritypermissiongate), [`Secrets`](#secrets), [`Security:Audit`](#securityaudit), [`Security:Prompt`](#securityprompt), [`Security:ToolResults`](#securitytoolresults), [`Security:Url`](#securityurl), [`Security:Vault`](#securityvault) | 40 |
@@ -202,7 +202,7 @@ qu'elle accepte quand leur liste est fermée, et son sens.
 | [Hôte de service et A2A](#hôte-de-service-et-a2a) | [`A2A`](#a2a), [`A2A:Security`](#a2asecurity), [`A2A:Security:AzureAD`](#a2asecurityazuread), [`A2A:Security:Oidc`](#a2asecurityoidc), [`Orkeon:Host`](#orkeonhost), [`Orkeon:Host:Discord`](#orkeonhostdiscord) | 57 |
 | [Observabilité](#observabilité) | [`Logging`](#logging), [`Orkeon:Monitoring`](#orkeonmonitoring), [`Telemetry`](#telemetry) | 8 |
 
-80 sections, 519 clés. Lues par aucun binaire livré, seulement par un hôte écrit en C# (7) : [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:CognitiveMemory`](#orkeoncognitivememory), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Monitoring`](#orkeonmonitoring).
+80 sections, 524 clés. Lues par aucun binaire livré, seulement par un hôte écrit en C# (7) : [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:CognitiveMemory`](#orkeoncognitivememory), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Monitoring`](#orkeonmonitoring).
 <!-- /settings-index -->
 
 Lire un tableau :
@@ -455,9 +455,9 @@ n'est pas celle qui est lue : elle n'est pas jugée. Les réglages jugés, tiré
 
 | Réglages | Correction énoncée |
 |---|---|
-| `Llm:ApiKey`, `Llm:Profiles:<nom>:ApiKey` | écrire `"ApiKeyEnvVar": "<NOM>"` à la place |
-| `Llm:ApiKeyEnvVar`, `Llm:Profiles:<nom>:ApiKeyEnvVar`, `Orkeon:Rag:WebFallback:ApiKeyEnvVar`, `Orkeon:Host:Discord:TokenEnvironmentVariable`, `A2A:Security:ApiKeySecretNames:<i>`, `Orkeon:Encryption:SecretName`, `Orkeon:Tools:GitHub:TokenVariable` | écrire le nom seul, sans `${` ni `}` |
-| `MCP:Servers:<id>:Command`, `:Args:<i>`, `:Url` ; `Orkeon:Redis:ConnectionString`, `Orkeon:Sqlite:ConnectionString` ; `RaggableTree:Embedding:ApiKey`, `Orkeon:Pinecone:ApiKey`, `Orkeon:LanceDb:ApiKey` ; `Llm:BaseUrl`, `Llm:Profiles:<nom>:BaseUrl`, `RaggableTree:Embedding:BaseUrl`, `Orkeon:ChromaDb:BaseUrl`, `Orkeon:Pinecone:Host`, `Orkeon:LanceDb:Endpoint`, `Orkeon:Rag:WebFallback:Endpoint`, `Telemetry:OtlpEndpoint` ; `Security:Vault:AzureKeyVaultUri`, `A2A:Security:AzureAD:Authority`, `A2A:Security:Oidc:Authority` ; `Orkeon:Tools:GitHub:Token` | écrire la valeur, ou la garder hors du fichier par la couche d'environnement `ORKEON_<chemin avec __>` |
+| `Llm:ApiKey`, `Llm:Profiles:<nom>:ApiKey`, `Orkeon:Embeddings:ApiKey` | écrire `"ApiKeyEnvVar": "<NOM>"` à la place |
+| `Llm:ApiKeyEnvVar`, `Llm:Profiles:<nom>:ApiKeyEnvVar`, `Orkeon:Rag:WebFallback:ApiKeyEnvVar`, `Orkeon:Embeddings:ApiKeyEnvVar`, `Orkeon:Host:Discord:TokenEnvironmentVariable`, `A2A:Security:ApiKeySecretNames:<i>`, `Orkeon:Encryption:SecretName`, `Orkeon:Tools:GitHub:TokenVariable` | écrire le nom seul, sans `${` ni `}` |
+| `MCP:Servers:<id>:Command`, `:Args:<i>`, `:Url` ; `Orkeon:Redis:ConnectionString`, `Orkeon:Sqlite:ConnectionString` ; `RaggableTree:Embedding:ApiKey`, `Orkeon:Pinecone:ApiKey`, `Orkeon:LanceDb:ApiKey` ; `Llm:BaseUrl`, `Llm:Profiles:<nom>:BaseUrl`, `RaggableTree:Embedding:BaseUrl`, `Orkeon:ChromaDb:BaseUrl`, `Orkeon:Pinecone:Host`, `Orkeon:LanceDb:Endpoint`, `Orkeon:Embeddings:Endpoint`, `Orkeon:Rag:WebFallback:Endpoint`, `Telemetry:OtlpEndpoint` ; `Security:Vault:AzureKeyVaultUri`, `A2A:Security:AzureAD:Authority`, `A2A:Security:Oidc:Authority` ; `Orkeon:Tools:GitHub:Token` | écrire la valeur, ou la garder hors du fichier par la couche d'environnement `ORKEON_<chemin avec __>` |
 | `MCP:Servers:<id>:Env:<nom>` | retirer l'entrée : le serveur hérite de l'environnement où tourne Orkeon, y poser la variable |
 | `Secrets:<nom>` | retirer l'entrée et poser `ORKEON_<nom>`, que la chaîne des secrets lit en premier |
 | `BRAVE_API_KEY` | retirer l'entrée, Orkeon lit la variable |
@@ -1052,7 +1052,11 @@ opt-in : `AddOrkeonKeyRotation()`.
 ### `Orkeon:Embeddings`
 
 Sélection du provider d'embeddings : `Provider` vaut `openai`, tout générateur d'embeddings M.E.AI
-qu'inscrit l'hôte, ou `ollama` ; un autre nom refuse le démarrage. Lue par
+qu'inscrit l'hôte, `ollama`, `mistral`, `azure-openai` ou `gemini` ; un autre nom refuse le démarrage.
+Les trois derniers parlent le format d'embeddings d'OpenAI et lisent `ApiKey` (ou `ApiKeyEnvVar`),
+`Endpoint` et `Model` ; `azure-openai` exige aussi `Endpoint` (l'URL de la ressource) et prend le nom
+du déploiement comme `Model`. Au démarrage, l'hôte compare le provider, le modèle et les dimensions à
+ceux consignés dans `FingerprintPath` et refuse de démarrer s'ils ont changé. Lue par
 `DefaultEmbeddingProviderResolver`, quand aucun provider local ni d'analyse de code n'est inscrit.
 Liée par `AddOrkeonInfrastructure()`, et par `AddOrkeonVectorSearch(configuration)` (appelé par
 `AddOrkeonInfrastructure(configuration)`).
@@ -1062,11 +1066,16 @@ Liée par `AddOrkeonInfrastructure()`, et par `AddOrkeonVectorSearch(configurati
 
 | Clé | Type | Défaut | Sens |
 |---|---|---|---|
+| `ApiKey` | chaîne, secret | — | La clé d'API de `mistral`, `azure-openai` et `gemini`, en clair. Préférer `ApiKeyEnvVar` : une clé écrite ici se trouve dans le fichier de réglages. |
+| `ApiKeyEnvVar` | chaîne | `""` | Nom de la variable d'environnement qui porte la clé d'API, lue quand `ApiKey` est vide. |
+| `ApiVersion` | chaîne | `""` | Le paramètre `api-version` d'`azure-openai`. Vide : la version par défaut du fournisseur (`2024-10-21`). |
 | `BatchSize` | entier | `100` | Taille maximale d'un lot pour les requêtes d'embedding groupées. |
 | `Dimension` | entier | `1536` | La dimension des vecteurs d'embedding. |
 | `EnableCache` | booléen | `true` | Si le cache d'embeddings est activé. |
+| `Endpoint` | chaîne | `""` | URL de base du point d'accès des embeddings. Vide : le point d'accès public du fournisseur. Obligatoire pour `azure-openai` : l'URL de la ressource, `https://<ressource>.openai.azure.com`. |
+| `FingerprintPath` | chaîne | `"/workspace/.orkeon/embedding-fingerprint.json"` | Chemin virtuel du fichier qui consigne le fournisseur, le modèle et les dimensions dont viennent les vecteurs stockés ; l'hôte refuse de démarrer quand ils changent. Vide : le garde-fou est désactivé. |
 | `Model` | chaîne | `"text-embedding-3-small"` | Le nom du modèle utilisé pour les embeddings. |
-| `Provider` | chaîne | `"openai"` | Le provider d'embeddings à utiliser (p. ex. "openai", "ollama"). |
+| `Provider` | chaîne | `"openai"` | Le provider d'embeddings à utiliser : "openai", "ollama", "mistral", "azure-openai" ou "gemini". |
 <!-- /settings -->
 
 ### `Orkeon:EmbeddingCache`
@@ -2431,6 +2440,7 @@ une valeur : le secret reste hors du fichier. `orkeon settings <clé>` décrit c
 | `Orkeon:TypeSafe:ApiKeyEnvVar` | La clé du modèle de décision TypeSafe ; la clé nomme `TYPESAFE_API_KEY` quand rien ne la règle. | L'environnement du processus, puis les variables de l'utilisateur sous Windows. |
 | `Orkeon:Liquid:ApiKeyEnvVar` | La clé du modèle de décision Liquid ; la clé nomme `LIQUID_API_KEY` quand rien ne la règle. | L'environnement du processus, puis les variables de l'utilisateur sous Windows. |
 | `Orkeon:Kev:ApiKeyEnvVar` | La clé facultative du modèle de décision Kev ; la clé nomme `KEV_API_KEY` quand rien ne la règle. | L'environnement du processus, puis les variables de l'utilisateur sous Windows. |
+| `Orkeon:Embeddings:ApiKeyEnvVar` | La clé d'API du provider d'embeddings `mistral`, `azure-openai` ou `gemini`, lue quand `Orkeon:Embeddings:ApiKey` n'est pas réglée. | L'environnement du processus. |
 | `Orkeon:Rag:WebFallback:ApiKeyEnvVar` | La clé de la recherche web sur laquelle le RAG correctif se replie ; vide, aucune clé n'est envoyée. | L'environnement du processus. |
 | `Orkeon:Host:Discord:TokenEnvironmentVariable` | Le jeton de bot du canal Discord ; la clé nomme `ORKEON_DISCORD_TOKEN` quand rien ne la règle. | L'environnement du processus. |
 

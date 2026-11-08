@@ -326,7 +326,9 @@ crew les plus proches de la tâche, et le prompt utilisateur les porte :
   même tâche d'un run précédent obtient 0,72 et plus, une tâche anglaise sans rapport 0,53 et moins, et un
   travail voisin entre les deux (de 0,59 à 0,72). La requête porte les variables du run : une longue entrée
   qui partage le sujet du souvenir a porté une tâche sans rapport à 0,61. Ce modèle lit l'anglais : un
-  texte français obtient un score élevé quoi qu'il dise (0,67 pour une paire sans rapport). Un autre
+  texte français obtient un score élevé quoi qu'il dise (0,67 pour une paire sans rapport). Les providers
+  distants (`mistral-embed`, un déploiement Azure OpenAI, `gemini-embedding-001`) n'ont pas encore de mesure :
+  garder 0,6 comme point de départ et fixer `MinScore` d'après une passe sur vos propres données. Un autre
   embedder demande sa propre mesure.
 - **Le format** : une section du prompt utilisateur, après les résultats des tâches précédentes et avant la
   connaissance récupérée — l'en-tête *From this crew's memory — earlier work, possibly outdated; use it

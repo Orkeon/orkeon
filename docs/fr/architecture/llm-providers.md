@@ -378,6 +378,39 @@ tous les autres tags).
 - Les dialectes Anthropic et Ollama ne lisent pas encore la table : leur effort n'est jugé que par les niveaux
   déclarés du fournisseur.
 
+## Providers d'embeddings
+
+`Orkeon:Embeddings:Provider` est résolu par `DefaultEmbeddingProviderResolver`, après un provider
+local ou d'analyse de code et avant le bouchon qui échoue vite. Cinq noms sont acceptés ; un autre
+refuse le démarrage.
+
+| `Provider` | Classe | Point d'accès | Modèle par défaut (dimensions) |
+|---|---|---|---|
+| `openai` | `OpenAIEmbeddingProvider` | tout générateur d'embeddings M.E.AI qu'inscrit l'hôte | `text-embedding-3-small` (1536) |
+| `ollama` | `OllamaEmbeddingProvider` | `/api/embed` de l'hôte Ollama | le `Model` configuré |
+| `mistral` | `MistralEmbeddingProvider` | `https://api.mistral.ai/v1/embeddings`, clé en `Bearer` | `mistral-embed` (1024) |
+| `azure-openai` | `AzureOpenAIEmbeddingProvider` | `{Endpoint}/openai/deployments/{Model}/embeddings?api-version=`, en-tête `api-key` | le déploiement que nomme `Model` |
+| `gemini` | `GeminiEmbeddingProvider` | `https://generativelanguage.googleapis.com/v1beta/openai/embeddings`, clé en `Bearer` | `gemini-embedding-001` (3072) |
+
+Les trois derniers partagent `OpenAICompatibleEmbeddingProviderBase` : une seule forme de requête
+(`model` et `input`), des réponses remises dans l'ordre de `index`, des lots coupés à `BatchSize`, et un
+vecteur dont la longueur n'est pas la `Dimension` déclarée est refusé. Quand `Model` et `Dimension`
+gardent les défauts globaux (`text-embedding-3-small`, 1536), `mistral` et `gemini` prennent leur propre
+modèle et leurs dimensions ; `azure-openai` prend toujours `Model` comme nom du déploiement. Une réponse
+4xx ou 5xx lève une `HttpRequestException` qui nomme le provider, le statut et le début du corps, jamais la
+clé. Les appels d'embeddings ne sont pas rejoués : un 429 ou un 5xx parvient à l'appelant sous cette exception dès la première réponse, et `Llm:MaxRetries` ne vaut que pour le chat. `mistral-embed` (1024) et `gemini-embedding-001` (3072) ont une taille fixe et ces providers n'envoient aucune taille de sortie : une `Dimension` autre que cette taille (le défaut global compte pour non réglé) est refusée à la construction du provider, avec la taille attendue, avant tout appel. La clé est `ApiKey` ou la variable que nomme `ApiKeyEnvVar` ; sans l'une ni l'autre, le premier appel
+échoue avec un message qui nomme les deux. Les identifiants de modèle des providers d'embeddings ne sont
+pas dans la table des capacités : elle porte sur l'entrée de chat et l'effort de raisonnement.
+
+**Changer de modèle d'embedding invalide les vecteurs stockés.** Au démarrage, un garde-fou compare le
+provider, le modèle et les dimensions à l'empreinte consignée dans `Orkeon:Embeddings:FingerprintPath`
+(par défaut `/workspace/.orkeon/embedding-fingerprint.json`, dans le système de fichiers virtuel). Le
+premier démarrage la consigne ; une empreinte différente arrête l'hôte avec une erreur qui nomme les deux
+modèles. Rien n'est migré : rétablir les réglages précédents, ou ré-embedder et vider les vecteurs
+stockés, puis supprimer le fichier d'empreinte. Seul un hôte qui a écrit une section `Orkeon:Embeddings` est gardé : les autres gardent le défaut embarqué et rien n'est écrit dans leur espace de travail. Un hôte sans montage `/workspace` (la lecture est refusée, un avertissement est journalisé), ou avec un `FingerprintPath` vide, tourne sans garde-fou.
+
+Cohere, Voyage et pgvector ne sont pas livrés.
+
 ## Décorateurs et enregistrement
 
 - **`MeteredLlmProvider`** — l'unique endroit où l'usage LLM est mesuré : il rapporte chaque

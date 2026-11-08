@@ -319,7 +319,9 @@ closest to the task, and the user prompt carries them:
   same task of an earlier run scores 0.72 and above, an unrelated English task 0.53 and below, and related
   work in between (0.59 to 0.72). The query carries the run's variables: a long input sharing the memory's
   subject lifted an unrelated task to 0.61. That model reads English: a French text scores high whatever
-  it says (0.67 for an unrelated pair). Another embedder needs its own measure.
+  it says (0.67 for an unrelated pair). Another embedder needs its own measure: the remote providers
+  (`mistral-embed`, an Azure OpenAI deployment, `gemini-embedding-001`) have none yet, so keep 0.6 as a
+  starting point and set `MinScore` from a run of your own data.
 - **The format**: a section of the user prompt, after the previous task results and before the retrieved
   knowledge — the header *From this crew's memory — earlier work, possibly outdated; use it only where it
   helps:*, then for each memory a `--- 2026-09-30 · Analyst · Summarize the weekly news ---` line (when it
