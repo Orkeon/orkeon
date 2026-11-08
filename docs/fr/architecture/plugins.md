@@ -62,10 +62,11 @@ public sealed class WeatherPlugin : IOrkeonPlugin
 
 ### Construire un projet de plugin
 
-`Orkeon.Plugins` n'est **pas distribuée comme paquet NuGet**. Son csproj pose
-`IsPackable=false`, la [matrice de publication](../reference/publication-matrix.md#paquets-abandonnés)
-la classe dans les *paquets abandonnés*, et elle ne fait pas partie des douze assemblies embarquées
-dans le paquet parapluie `Orkeon` (`src/packaging/Orkeon/Orkeon.csproj`).
+`Orkeon.Plugins` n'est **pas distribuée comme paquet NuGet à part**. Son csproj pose
+`IsPackable=false` et la [matrice de publication](../reference/publication-matrix.md#paquets-abandonnés)
+classe l'identifiant dans les *paquets abandonnés* ; l'assembly est livrée dans le paquet parapluie
+`Orkeon`, l'une de ses treize assemblies embarquées (`src/packaging/Orkeon/Orkeon.csproj`), donc un
+projet de plugin référence `Orkeon` (le modèle `orkeon-plugin` le fait).
 `dotnet add package Orkeon.Plugins` ne se résout sur aucun flux — NuGet.org comme GitHub Packages
 (`NU1101`).
 

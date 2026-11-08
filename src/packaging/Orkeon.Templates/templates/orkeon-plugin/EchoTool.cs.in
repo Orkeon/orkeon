@@ -1,0 +1,41 @@
+using Microsoft.Extensions.Logging;
+using Orkeon.Domain.Attributes;
+using Orkeon.Domain.Tools;
+using Orkeon.Tools.Abstractions.Base;
+
+namespace MyOrkeonPlugin;
+
+/// <summary>The request of <see cref="EchoTool"/>.</summary>
+public sealed record EchoRequest
+{
+    [FieldSchema(Description = "Text to echo back", IsRequired = true, Example = "hello")]
+    public string Text { get; init; } = "";
+}
+
+/// <summary>The response of <see cref="EchoTool"/>.</summary>
+public sealed record EchoResponse
+{
+    [ReturnSchema(Description = "Whether the call succeeded")]
+    public bool Success { get; init; }
+
+    [ReturnSchema(Description = "The text that was sent")]
+    public string Text { get; init; } = "";
+
+    [ReturnSchema(Description = "Error message when the call failed")]
+    public string? Error { get; init; }
+}
+
+/// <summary>The smallest tool: it answers with the text it was given. Declare every tool you add in plugin.json.</summary>
+[ToolContract("sample_echo", Description = "Echo the given text back.")]
+public sealed class EchoTool : ToolBase<EchoRequest, EchoResponse>
+{
+    public EchoTool(ILogger<EchoTool>? logger = null) : base(logger) { }
+
+    public override ToolAccess Access => ToolAccess.Read;
+
+    protected override string? ValidateTypedRequest(EchoRequest request)
+        => string.IsNullOrWhiteSpace(request.Text) ? "Text cannot be empty." : null;
+
+    protected override Task<EchoResponse> ExecuteTypedAsync(EchoRequest request, CancellationToken cancellationToken)
+        => Task.FromResult(new EchoResponse { Success = true, Text = request.Text });
+}

@@ -209,6 +209,9 @@ The file holds only an `Llm` section (`Model`, `BaseUrl`, then `ApiKeyEnvVar` wh
 orkeon init --provider ollama --model llama3.2 --no-probe
 ```
 
+`orkeon init` writes the settings file only. To start a *project* — a host, a plugin or a tool — use the
+`dotnet new` templates of the `Orkeon.Templates` package: [Starting from a template](../getting-started/bootstrap.md#starting-from-a-template).
+
 ## `orkeon llm`
 
 Two verbs against a live provider endpoint.

@@ -25,13 +25,28 @@ exactement le même résultat.
 Infrastructure, les moteurs RAG et RaggableTree (`Orkeon.Analysis`),
 `Orkeon.Tools.Abstractions` et quatre satellites `Orkeon.Constants.*` ; il n'existe pas de
 paquet séparé `Orkeon.Domain` / `Orkeon.Application` / `Orkeon.Infrastructure`. L'hôte des
-runners (`Orkeon.Hosting`, `RunnerHost`), le chargeur de plugins (`Orkeon.Plugins`) et le
-DSL de scripting (`Orkeon.Scripting`) n'en font **pas** partie : ils sont livrés dans la
-CLI `orkeon`, pas sur NuGet — c'est pourquoi l'hôte ci-dessous est câblé à la main. Les
+runners (`Orkeon.Hosting`, `RunnerHost`) et le DSL de scripting (`Orkeon.Scripting`) n'en font
+**pas** partie : ils sont livrés dans le paquet opt-in `Orkeon.Scripting` et dans la CLI
+`orkeon` — c'est pourquoi l'hôte ci-dessous est câblé à la main. Le chargeur de plugins
+(`Orkeon.Plugins`, `IOrkeonPlugin`) en fait partie. Les
 opt-ins `Orkeon.Rag.Onnx`, `Orkeon.Tools.Embeddings.Local`,
 `Orkeon.Interop.AgentFramework` et `Orkeon.Hosting.Aspire` s'ajoutent de la même façon
 quand vous en avez besoin. La liste complète est la
 [matrice de publication](../reference/publication-matrix.md).
+
+### Partir d'un modèle
+
+`dotnet new install Orkeon.Templates --prerelease` ajoute trois modèles, chacun un projet qui compile
+contre les paquets de la même version, écrite en clair dans son `.csproj` :
+
+| Commande | Génère |
+|---|---|
+| `dotnet new orkeon-host -n MyHost` | Un hôte générique .NET qui exécute `crew.ork.ts` dans son propre processus (`ICrewScriptRunner`, de `Orkeon.Scripting`), configuré par `appsettings.json` comme le démon `orkeon-host` |
+| `dotnet new orkeon-plugin -n MyPlugin` | Un `IOrkeonPlugin`, un outil et le `plugin.json` qui le déclare (le chargeur refuse un outil que le manifeste ne liste pas) |
+| `dotnet new orkeon-tool -n MyTools` | Une bibliothèque de classes avec un outil `ToolBase<TRequest, TResponse>`, comme dans [le patron de nouvel outil](../tools/new-tool-pattern.md) |
+
+`orkeon init` est un autre travail : il écrit le fichier de settings, jamais un projet. Le modèle d'hôte
+demande `esbuild` sur la machine pour compiler `crew.ork.ts`, comme `orkeon run`.
 
 ## Bootstrap et injection de dépendances
 

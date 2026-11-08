@@ -713,6 +713,8 @@ def main(argv: list[str]) -> int:
     # Project counts.
     expect_contains("CLAUDE.md", f"**{src_projects} src projects**", "csproj count under src/")
     expect_contains("CLAUDE.md", f"**{test_projects} test projects**", "csproj count under tests/")
+    expect_contains("CONTRIBUTING.md", f"**{src_projects} src projects across", "csproj count under src/")
+    expect_contains("CONTRIBUTING.fr.md", f"**{src_projects} projets src répartis", "csproj count under src/")
 
     # Known-stale patterns that must never come back (outside legitimate history).
     for path in ("README.md", "README.fr.md", "docs/INDEX.md", "docs/fr/INDEX.md"):

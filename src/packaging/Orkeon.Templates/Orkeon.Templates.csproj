@@ -1,0 +1,63 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- FWK-26: the `Orkeon.Templates` package - `dotnet new` templates for an Orkeon host, plugin and
+       tool. No assembly: the package is its content. PackageType=Template makes `dotnet new install`
+       read it.
+
+       Source files of the templates are stored with an `.in` suffix (`OrkeonHost.csproj.in`,
+       `Program.cs.in`): a `.csproj` or a `Tool.cs` under src/ would be counted, linted and globbed as
+       repository code. The OrkeonTemplateStage target strips the suffix when it stages the content and
+       replaces the token $(OrkeonVersion) of every project file with the version of
+       src/Directory.Build.props, so a generated project carries explicit versions: outside the
+       repository there is no Directory.Packages.props to manage them. -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <PackageId>Orkeon.Templates</PackageId>
+    <PackageType>Template</PackageType>
+    <Description>dotnet new templates for Orkeon: orkeon-host (a generic host that runs a crew), orkeon-plugin (a plugin with its plugin.json) and orkeon-tool (a tool class).</Description>
+    <PackageTags>AI;Agents;LLM;Orkeon;dotnet-new;templates</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <OrkeonIconFamily>core</OrkeonIconFamily>
+    <OrkeonFreezePublicApi>false</OrkeonFreezePublicApi>
+    <IncludeBuildOutput>false</IncludeBuildOutput>
+    <IncludeContentInPack>true</IncludeContentInPack>
+    <SuppressDependenciesWhenPacking>true</SuppressDependenciesWhenPacking>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <EnableDefaultItems>false</EnableDefaultItems>
+    <DevelopmentDependency>true</DevelopmentDependency>
+    <NoWarn>$(NoWarn);NU5128;NU5110;NU5111</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="/" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <_OrkeonTemplateFile Include="templates/**/*" />
+  </ItemGroup>
+
+  <Target Name="OrkeonTemplateStage" BeforeTargets="_GetPackageFiles;GenerateNuspec">
+    <PropertyGroup>
+      <_OrkeonStage>$(MSBuildProjectDirectory)/$(IntermediateOutputPath)templates/</_OrkeonStage>
+      <_OrkeonToken>$([System.String]::Concat('$', '(OrkeonVersion)'))</_OrkeonToken>
+    </PropertyGroup>
+    <ItemGroup>
+      <_Stage Include="@(_OrkeonTemplateFile)"
+              Dest="$(_OrkeonStage)%(RecursiveDir)$([System.Text.RegularExpressions.Regex]::Replace('%(Filename)%(Extension)', '\.in$', ''))" />
+    </ItemGroup>
+    <RemoveDir Directories="$(_OrkeonStage)" />
+    <Copy SourceFiles="@(_Stage)" DestinationFiles="@(_Stage->'%(Dest)')" />
+    <!-- The version token, in every staged project file. -->
+    <ItemGroup>
+      <_StagedProject Include="$(_OrkeonStage)**/*.csproj" />
+    </ItemGroup>
+    <WriteLinesToFile File="%(_StagedProject.FullPath)"
+                      Lines="$([MSBuild]::Escape($([System.IO.File]::ReadAllText('%(_StagedProject.FullPath)').Replace('$(_OrkeonToken)', '$(PackageVersion)'))))"
+                      Overwrite="true" />
+    <ItemGroup>
+      <Content Include="$(_OrkeonStage)**/*" Exclude="$(_OrkeonStage)**/*.in"
+               Pack="true" PackagePath="content/%(RecursiveDir)" />
+    </ItemGroup>
+  </Target>
+
+</Project>

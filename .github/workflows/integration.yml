@@ -102,6 +102,9 @@ jobs:
         run: |
           firefox --version
           echo "Firefox starts on this runner: the firefox tool's integration suite will run."
+      # The Slow filter below also selects TemplatesPackTests (FWK-26, tests/e2e): it packs the
+      # lineup and the Orkeon.Templates package, installs the latter into a throw-away `dotnet new`
+      # hive, and builds each generated project on the local feed.
       - name: Run Integration + Slow suites (Testcontainers)
         env:
           # Floor on the number of tests the run must report. The nightly executes ~99

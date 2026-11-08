@@ -3,7 +3,7 @@
   <!-- PUB-25: the `Orkeon` umbrella package. The 39-project source layout (Clean
        Architecture, VFS analyzer, per-assembly PublicAPI freeze) is untouched — this
        project only changes how the framework is DISTRIBUTED: one nupkg carrying the
-       twelve assemblies of the core closure, so `dotnet add package Orkeon` is a
+       thirteen assemblies of the core closure, so `dotnet add package Orkeon` is a
        complete install. The embedded projects are IsPackable=false.
 
        Mechanics: ProjectReference PrivateAssets="all" keeps them out of the nuspec
@@ -41,6 +41,9 @@
     <ProjectReference Include="..\..\analysis\Orkeon.Analysis\Orkeon.Analysis.csproj" PrivateAssets="all" />
     <ProjectReference Include="..\..\rag\Orkeon.Rag.Abstractions\Orkeon.Rag.Abstractions.csproj" PrivateAssets="all" />
     <ProjectReference Include="..\..\rag\Orkeon.Rag\Orkeon.Rag.csproj" PrivateAssets="all" />
+    <!-- FWK-26: IOrkeonPlugin, which the orkeon-plugin template compiles against. It references Orkeon.Domain
+         and two Microsoft.Extensions packages the list below already carries. -->
+    <ProjectReference Include="..\..\plugins\Orkeon.Plugins\Orkeon.Plugins.csproj" PrivateAssets="all" />
   </ItemGroup>
 
   <!-- Union of the embedded assemblies' external dependencies (versions come from

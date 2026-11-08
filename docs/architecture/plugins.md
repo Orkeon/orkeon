@@ -62,10 +62,11 @@ public sealed class WeatherPlugin : IOrkeonPlugin
 
 ### Building a plugin project
 
-`Orkeon.Plugins` is **not distributed as a NuGet package**. Its csproj sets `IsPackable=false`,
-the [publication matrix](../reference/publication-matrix.md#discontinued-packages) lists it under
-*Discontinued packages*, and it is not one of the twelve assemblies embedded in the `Orkeon`
-umbrella package (`src/packaging/Orkeon/Orkeon.csproj`). `dotnet add package Orkeon.Plugins`
+`Orkeon.Plugins` is **not distributed as a NuGet package of its own**. Its csproj sets
+`IsPackable=false` and the [publication matrix](../reference/publication-matrix.md#discontinued-packages)
+lists the id under *Discontinued packages*; the assembly ships inside the `Orkeon` umbrella package,
+one of its thirteen embedded assemblies (`src/packaging/Orkeon/Orkeon.csproj`), so a plugin project
+references `Orkeon` (the `orkeon-plugin` template does). `dotnet add package Orkeon.Plugins`
 resolves on no feed — NuGet.org and GitHub Packages alike (`NU1101`).
 
 A plugin author builds against it **from source**: clone

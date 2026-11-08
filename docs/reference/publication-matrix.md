@@ -30,7 +30,7 @@ runtimes, a pre-release upstream).
 
 | PackageId | Why |
 |---|---|
-| `Orkeon` | The umbrella package — the twelve assemblies of the core closure (`Orkeon.Domain`, `Orkeon.Application`, `Orkeon.Infrastructure`, `Orkeon.Constants.{Llm,FileSystem,Configuration,Protocol}`, `Orkeon.Tools.Abstractions`, `Orkeon.Analysis.Abstractions`, `Orkeon.Rag.Abstractions`, `Orkeon.Analysis`, `Orkeon.Rag`) embedded in one nupkg. One install = the complete framework: agents, crews, six orchestration modes, 16 LLM providers, 6 memory stores, RAG, RaggableTree. The Clean Architecture split stays a source-layout discipline, not a distribution contract. |
+| `Orkeon` | The umbrella package — the thirteen assemblies of the core closure (`Orkeon.Domain`, `Orkeon.Application`, `Orkeon.Infrastructure`, `Orkeon.Constants.{Llm,FileSystem,Configuration,Protocol}`, `Orkeon.Tools.Abstractions`, `Orkeon.Analysis.Abstractions`, `Orkeon.Rag.Abstractions`, `Orkeon.Analysis`, `Orkeon.Rag`, `Orkeon.Plugins`) embedded in one nupkg. One install = the complete framework: agents, crews, six orchestration modes, 16 LLM providers, 6 memory stores, RAG, RaggableTree. The Clean Architecture split stays a source-layout discipline, not a distribution contract. |
 | `Orkeon.Tools` | The nine built-in tool families (`Analysis`, `Code`, `Data`, `Drive`, `Email`, `EventHub`, `FileSystem`, `Rag`, `Web`) in one nupkg. Separate from `Orkeon` **only for dependency weight**: the Data tools pull database drivers, PDF and spreadsheet libraries, the e-mail tools MailKit and MimeKit — dependencies a consumer who never uses them should not inherit. Depends on `Orkeon`. |
 | `Orkeon.Rag.Onnx`, `Orkeon.Rag.Onnx.Model` | Opt-in ONNX cross-encoder reranker pair (runtime + embedded int8 weights) — pushed together; native onnxruntime payload. `Orkeon.Rag.Onnx` depends on `Orkeon`; `Orkeon.Rag.Onnx.Model` is dependency-free (embedded resources only) and is referenced alongside it. |
 | `Orkeon.Tools.Embeddings.Local` | Local on-device embeddings (BGE-micro-v2 ONNX). Stays **outside the umbrella** because it carries a pre-release SmartComponents dependency from an archived upstream — putting it in `Orkeon` would force that pre-release on every consumer. Depends on `Orkeon`. |
@@ -39,11 +39,12 @@ runtimes, a pre-release upstream).
 | `Orkeon.Compliance.Vfs` | The Roslyn analyzer that refuses direct `System.IO` in your own code (rules `ORKVFS001`–`ORKVFS007`, `analyzers/dotnet/cs`, `DevelopmentDependency`). Standalone by design: it depends on nothing from Orkeon and works in any C# project — add the `PackageReference`, build, and every `File.*`/`Directory.*` call is a diagnostic. In the NuGet.org lineup since 2026-09-11 and pushed there with `1.0.0-rc.4`: `1.0.0-rc.3` reached GitHub Packages only (the NuGet.org push loop was a fixed list of six ids) and was inert anyway, compiled against a Roslyn newer than the SDK's compiler. |
 | `Orkeon.Interop.AgentFramework` | The bridge to Microsoft Agent Framework, both ways: an Orkeon crew as a MAF `AIAgent` (`CrewAgent`), a MAF `AIAgent` as the brain (`WithAgentFrameworkAgent`) or as a tool (`WithAgentFrameworkTool`) of an Orkeon agent. Separate from `Orkeon` because the `Microsoft.Agents.AI.Abstractions` dependency is a consumer's choice. Depends on `Orkeon`. |
 | `Orkeon.Hosting.Aspire` | The .NET Aspire hosting integration: `AddOrkeonHost` (the `orkeon-host` daemon) and `AddOrkeonCrewRun` (one `orkeon run`) as AppHost resources, `WithOrkeonModel` / `WithOrkeonSetting` for the `ORKEON_` environment, OTLP export wired so the dashboard reads the run. Separate from `Orkeon` because `Aspire.Hosting` is an AppHost's choice. Depends on `Orkeon`. |
+| `Orkeon.Templates` | The `dotnet new` templates (FWK-26): `orkeon-host` (a generic host that runs a crew in its own process, shaped like the `orkeon-host` daemon), `orkeon-plugin` (an `IOrkeonPlugin`, one tool and its `plugin.json`) and `orkeon-tool` (a `ToolBase` class). `PackageType=Template`: no assembly, no dependency. A generated project references `Orkeon` (and `Orkeon.Scripting` for the host) at the version of the template package, written out in its project file. |
 
 ### How the packaging projects are built
 
-- The lineup nupkgs come from dedicated **packaging projects** under `src/packaging/` — seven
-  of them: the `Orkeon` and `Orkeon.Tools` umbrellas, plus the `Orkeon.Rag.Onnx.Package`,
+- The lineup nupkgs come from dedicated **packaging projects** under `src/packaging/` — eight
+  of them: the `Orkeon` and `Orkeon.Tools` umbrellas, the `Orkeon.Templates` content package, plus the `Orkeon.Rag.Onnx.Package`,
   `Orkeon.Tools.Embeddings.Local.Package`, `Orkeon.Interop.AgentFramework.Package`,
   `Orkeon.Hosting.Aspire.Package` and `Orkeon.Scripting.Package` **wrappers**, which pack the
   opt-in assemblies with a nuspec dependency on the `Orkeon` umbrella — and, for
@@ -81,7 +82,7 @@ The following PackageIds are **no longer packed** (`IsPackable=false`): `Orkeon.
 `Orkeon.Tools.Abstractions` and the nine `Orkeon.Tools.<family>` projects, `Orkeon.Cli`,
 `Orkeon.Cli.Abstractions`, `Orkeon.Cli.Commands.Scripting`, `Orkeon.Cli.TerminalGui`,
 `Orkeon.Hosting`, `Orkeon.Plugins`. Those that the `Orkeon` and
-`Orkeon.Tools` umbrellas embed still ship — inside the umbrella's nupkg, not under their own id;
+`Orkeon.Tools` umbrellas embed still ship — inside the umbrella's nupkg, not under their own id (`Orkeon.Plugins` is the thirteenth assembly of `Orkeon`);
 `Orkeon.Hosting` ships inside the `Orkeon.Scripting` package. The `Orkeon.Scripting` id itself is
 in the lineup again since #229, as the opt-in that carries the scripting layer.
 

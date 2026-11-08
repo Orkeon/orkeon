@@ -209,6 +209,8 @@ Le fichier ne contient qu'une section `Llm` (`Model`, `BaseUrl`, puis `ApiKeyEnv
 orkeon init --provider ollama --model llama3.2 --no-probe
 ```
 
+`orkeon init` n'écrit que le fichier de settings. Pour démarrer un *projet* — un hôte, un plugin ou un outil — utilisez les modèles `dotnet new` du paquet `Orkeon.Templates` : [Partir d'un modèle](../getting-started/bootstrap.md#partir-dun-modèle).
+
 ## `orkeon llm`
 
 Deux verbes contre un endpoint fournisseur réel.

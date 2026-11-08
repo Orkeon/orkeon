@@ -33,6 +33,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
   The example `09-experimental/102-graph-orchestration` and the round-trip witnesses are migrated (a new `graph.yaml` witness sets every key of the block).
 
+### Added — `dotnet new` templates (FWK-26)
+
+- **`Orkeon.Templates`** (`src/packaging/Orkeon.Templates`, `PackageType=Template`, in the NuGet.org lineup) adds three templates: `orkeon-host` (a generic host that runs a `crew.ork.ts` through `ICrewScriptRunner`, configured from `appsettings.json`), `orkeon-plugin` (an `IOrkeonPlugin`, one tool and the `plugin.json` that declares it) and `orkeon-tool` (a `ToolBase<TRequest, TResponse>` class). `dotnet new install Orkeon.Templates --prerelease`.
+- A generated project carries explicit package versions: the templates hold the token `$(OrkeonVersion)` and the pack replaces it with the version of `src/Directory.Build.props`. `orkeon init` keeps the settings file and does not overlap.
+- **`Orkeon.Plugins` now ships inside the `Orkeon` umbrella package**, one of its thirteen assemblies (`IOrkeonPlugin`, the plugin loader), which the plugin template compiles against; it was packed nowhere before. `dotnet add package Orkeon.Plugins` still resolves nothing: the umbrella carries it. The assembly and its public API are unchanged.
+- `publish.yml` installs the packed template package, generates each template and builds it before the push; `TemplatesPackTests` (`Category=Slow`, `tests/e2e`) does the same offline, nightly, on a local feed of the packed nupkgs.
+- The source layout counts one more project: 51 under `src/`.
+
 ### Added — an LLM judge on a task's input and output (FWK-19)
 
 - **`Orkeon:Guardian:Llm`** (`Enabled`, `Phases`, `BlockThreshold`, `WarnThreshold`, `Risks`, `FailMode`, `MaxContentChars`) turns on `LlmJudgeGuard`, which asks the decision model (`IDecisionModel`, no profile of its own) one question per risk on an agent's input and on a task's output. Off by default: it costs a model call per phase.

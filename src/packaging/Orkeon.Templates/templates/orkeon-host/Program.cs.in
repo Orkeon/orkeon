@@ -1,0 +1,19 @@
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Orkeon.Hosting;
+using MyOrkeonHost;
+
+// A generic host, like the orkeon-host daemon: configuration from appsettings.json and the
+// environment, a hosted service that does the work, a clean stop on Ctrl+C or SIGTERM.
+var builder = Host.CreateApplicationBuilder(args);
+
+builder.Services.Configure<CrewOptions>(builder.Configuration.GetSection("Crew"));
+builder.Services.AddOrkeonScripting(options =>
+{
+    // The Orkeon settings file (Llm section): the one `orkeon run --settings` takes.
+    options.SettingsPath = builder.Configuration["Orkeon:SettingsPath"];
+});
+builder.Services.AddHostedService<CrewWorker>();
+
+await builder.Build().RunAsync();

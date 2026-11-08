@@ -1,0 +1,12 @@
+{
+  "$schema": "http://json.schemastore.org/template",
+  "author": "Orkeon Contributors",
+  "classifications": [ "Orkeon", "Tool", "Library" ],
+  "identity": "Orkeon.Templates.Tool",
+  "name": "Orkeon tool",
+  "shortName": "orkeon-tool",
+  "description": "A class library with one Orkeon tool (ToolBase<TRequest, TResponse>) an agent can call.",
+  "tags": { "language": "C#", "type": "project" },
+  "sourceName": "MyOrkeonTool",
+  "preferNameDirectory": true
+}

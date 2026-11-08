@@ -1,0 +1,12 @@
+{
+  "$schema": "http://json.schemastore.org/template",
+  "author": "Orkeon Contributors",
+  "classifications": [ "Orkeon", "Plugin", "Library" ],
+  "identity": "Orkeon.Templates.Plugin",
+  "name": "Orkeon plugin",
+  "shortName": "orkeon-plugin",
+  "description": "A plugin for an Orkeon host: an IOrkeonPlugin, one tool and the plugin.json that declares it.",
+  "tags": { "language": "C#", "type": "project" },
+  "sourceName": "MyOrkeonPlugin",
+  "preferNameDirectory": true
+}
