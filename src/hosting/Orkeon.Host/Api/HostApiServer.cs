@@ -9,6 +9,7 @@ using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Orkeon.Application.Interfaces.Checkpointing;
 using Orkeon.Application.Interfaces.Security;
 using Orkeon.Application.Runs;
 using Orkeon.Constants.Protocol;
@@ -58,6 +59,8 @@ internal sealed partial class HostApiServer : IHostedService, IDisposable
     private HttpRequestAuthenticator? _authenticator;
     private CancellationTokenSource? _stopping;
     private Task? _loop;
+    private readonly IPendingInputStore? _input;
+    private readonly IPendingInputBroker? _broker;
 
     public HostApiServer(
         IOptions<OrkeonHostOptions> options,
@@ -69,8 +72,12 @@ internal sealed partial class HostApiServer : IHostedService, IDisposable
         IRunHistoryReader? history = null,
         IEnumerable<IAuthenticationProvider>? bearerProviders = null,
         ISecretProvider? secrets = null,
-        TimeProvider? time = null)
+        TimeProvider? time = null,
+        Orkeon.Application.Interfaces.Checkpointing.ICheckpointManager? checkpoints = null,
+        IPendingInputBroker? broker = null)
     {
+        _input = checkpoints as IPendingInputStore;
+        _broker = broker;
         ArgumentNullException.ThrowIfNull(options);
         _options = options.Value.Api;
         _runner = runner ?? throw new ArgumentNullException(nameof(runner));
@@ -284,6 +291,9 @@ internal sealed partial class HostApiServer : IHostedService, IDisposable
             case (["runs", var id, "events"], "GET"):
                 await StreamEventsAsync(context, id, ct).ConfigureAwait(false);
                 break;
+            case (["runs", var id, "input"], "POST"):
+                await ProvideInputAsync(context, id, ct).ConfigureAwait(false);
+                break;
             case (["runs", var id, "cancel"], "POST"):
                 await CancelRunAsync(context, id, ct).ConfigureAwait(false);
                 break;
@@ -477,7 +487,99 @@ internal sealed partial class HostApiServer : IHostedService, IDisposable
             return;
         }
 
-        await WriteAsync(context, 200, run).ConfigureAwait(false);
+        await WriteAsync(context, 200, run with { PendingInput = await PendingOfAsync(id, ct).ConfigureAwait(false) }).ConfigureAwait(false);
+    }
+
+    // The question the run holds on or stopped on (FWK-23), read where the run persisted it.
+    private async Task<PendingInputDto?> PendingOfAsync(string id, CancellationToken ct)
+    {
+        if (_input is null || await _input.GetPendingAsync(id, ct).ConfigureAwait(false) is not { } pending)
+            return null;
+
+        return new PendingInputDto
+        {
+            RequestId = pending.RequestId,
+            Kind = pending.Kind switch
+            {
+                PendingInputKind.Confirm => "confirm",
+                PendingInputKind.Choice => "choice",
+                PendingInputKind.MultiChoice => "multi_choice",
+                PendingInputKind.ToolApproval => "tool_approval",
+                _ => "text",
+            },
+            // The stored prompt stays as it was asked, the resume needs it; what is read back is masked as the event sink masks.
+            Prompt = Orkeon.Infrastructure.Runs.RedactingRunEventSink.RedactText(pending.Prompt),
+            Choices = pending.Choices.Count > 0 ? [.. pending.Choices.Select(Orkeon.Infrastructure.Runs.RedactingRunEventSink.RedactText)] : null,
+        };
+    }
+
+    /// <summary>
+    /// <c>POST /runs/{id}/input</c> (FWK-23): hands the answer to the run that holds on the question in this process, which
+    /// goes on (200); a run that was suspended has the answer recorded and is resumed with <c>orkeon run --resume</c> (202).
+    /// The first answer wins: the next one is a 409.
+    /// </summary>
+    private async Task ProvideInputAsync(HttpListenerContext context, string id, CancellationToken ct)
+    {
+        if (_input is null || _broker is null)
+        {
+            await WriteAsync(context, 409, new ApiErrorDto { Error = "input_unavailable", Message = "This host keeps no checkpoints (Orkeon:Checkpointing:Enabled), so no run can wait for an answer." }).ConfigureAwait(false);
+            return;
+        }
+
+        var body = await ReadBodyAsync(context.Request, ct).ConfigureAwait(false);
+        if (body is null)
+        {
+            await WriteAsync(context, 413, new ApiErrorDto { Error = "payload_too_large", Message = $"The body is larger than {MaxBodyBytes} bytes." }).ConfigureAwait(false);
+            return;
+        }
+
+        ProvideInputRequest? request;
+        try
+        {
+            request = JsonSerializer.Deserialize<ProvideInputRequest>(body, s_read);
+        }
+        catch (JsonException)
+        {
+            request = null;
+        }
+
+        if (request?.Answer is null)
+        {
+            await WriteAsync(context, 400, new ApiErrorDto { Error = "invalid_request", Message = "The body must be a JSON object with an answer and an optional request_id." }).ConfigureAwait(false);
+            return;
+        }
+
+        if (_broker.HeldRequestId(id) is { } held)
+        {
+            if (request.RequestId is not null && !string.Equals(request.RequestId, held, StringComparison.Ordinal))
+            {
+                await WriteAsync(context, 409, new ApiErrorDto { Error = "request_mismatch", Message = "The run waits on another question." }).ConfigureAwait(false);
+                return;
+            }
+
+            if (_broker.TryComplete(id, held, request.Answer))
+            {
+                await WriteAsync(context, 200, new InputAcceptedDto { RunId = id, RequestId = held, Status = "delivered" }).ConfigureAwait(false);
+                return;
+            }
+        }
+
+        var answered = await _input.AnswerAsync(id, request.RequestId, request.Answer, ct).ConfigureAwait(false);
+        switch (answered.Outcome)
+        {
+            case PendingInputAnswerOutcome.Accepted:
+                await WriteAsync(context, 202, new InputAcceptedDto { RunId = id, RequestId = answered.RequestId!, Status = "recorded" }).ConfigureAwait(false);
+                break;
+            case PendingInputAnswerOutcome.UnknownSession:
+                await WriteNoSuchRunAsync(context).ConfigureAwait(false);
+                break;
+            case PendingInputAnswerOutcome.Mismatch:
+                await WriteAsync(context, 409, new ApiErrorDto { Error = "request_mismatch", Message = "The run waits on another question." }).ConfigureAwait(false);
+                break;
+            default:
+                await WriteAsync(context, 409, new ApiErrorDto { Error = "no_pending_input", Message = "The run waits for no answer: it asked nothing, or the question was already answered." }).ConfigureAwait(false);
+                break;
+        }
     }
 
     // The history first; a run admitted a moment ago has no run.started yet, and the registry knows it.

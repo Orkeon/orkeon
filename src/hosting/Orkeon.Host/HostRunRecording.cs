@@ -46,6 +46,9 @@ internal sealed class HostRunRecording
     /// <summary>Records that the run's crew completed (or not); read when the recording ends.</summary>
     public bool Succeeded { get; set; }
 
+    /// <summary>Records that the run stopped on a question to a human (FWK-23): its end is <c>waiting_for_input</c>, exit 75.</summary>
+    public bool WaitingForInput { get; set; }
+
     /// <summary>
     /// The task-event observer in front of <paramref name="inner"/> when the run is recorded, else <paramref name="inner"/>
     /// itself: the run's own hook keeps receiving every callback either way.
@@ -87,11 +90,12 @@ internal sealed class HostRunRecording
     private void Finish(Func<bool> cancelled, long started)
     {
         var success = Succeeded;
-        var exitCode = success ? 0 : cancelled() ? CancelledExitCode : 1;
+        var exitCode = WaitingForInput ? Orkeon.Constants.Cli.RunExitCodes.WaitingForInput : success ? 0 : cancelled() ? CancelledExitCode : 1;
         _publisher?.Emit(RunEventKinds.RunFinished, new
         {
             success,
             exitCode,
+            status = WaitingForInput ? "waiting_for_input" : null,
             durationMs = (long)Stopwatch.GetElapsedTime(started).TotalMilliseconds,
         });
     }

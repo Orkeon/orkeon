@@ -30,6 +30,9 @@ internal enum HostedRunOutcome
 
     /// <summary>It failed.</summary>
     Failed,
+
+    /// <summary>The run stopped on a question to a human and waits for the answer (FWK-23).</summary>
+    WaitingForInput,
 }
 
 /// <summary>What a hosted run produced.</summary>
@@ -247,7 +250,10 @@ internal sealed partial class CrewRunner : ICrewRunner
                     run.Cancellation.Token)
                 .ConfigureAwait(false);
             if (recording is not null)
+            {
                 recording.Succeeded = output.Succeeded;
+                recording.WaitingForInput = output.PendingInput is not null;
+            }
 
             // KickoffAsync never throws — its fault barrier converts everything into an
             // output. Reading that output as Completed reported every timeout, /stop and
@@ -262,6 +268,14 @@ internal sealed partial class CrewRunner : ICrewRunner
                     HostedRunOutcome.Completed,
                     run.Id,
                     output.FinalOutput ?? string.Empty);
+            }
+
+            if (output.PendingInput is { } waiting)
+            {
+                return new HostedRunResult(
+                    HostedRunOutcome.WaitingForInput,
+                    run.Id,
+                    $"The run is waiting for input ({waiting.RequestId}): {Orkeon.Infrastructure.Runs.RedactingRunEventSink.RedactText(waiting.Prompt)}");
             }
 
             if (run.Cancellation.IsCancellationRequested)

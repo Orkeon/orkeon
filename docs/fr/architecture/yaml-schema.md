@@ -121,7 +121,7 @@ tasks:
       attempts: int       # obligatoire, 1 ou plus — exécutions au total, la première comprise
       backoffMs: int      # défaut : 0 — attente de base avant une nouvelle tentative, en millisecondes
       backoff: string     # "fixed" (défaut) | "exponential" (double à chaque retry, plafonné à 5 minutes)
-    humanInput: bool      # default: false — demande intervention humaine
+    humanInput: bool      # default: false — demande intervention humaine ; avec le checkpoint la question est durable : le run peut s'arrêter dessus (sortie 75) et reprendre avec --input
     context: {key: value} # Données additionnelles de contexte
     tools: [string]       # Outils AJOUTÉS à ceux de l'agent pour cette tâche seulement (sans jamais les remplacer) — résolus comme ceux d'un agent : un nom inconnu fait échouer le chargement sous StrictTools
     deliverable:          # Contrat de fichier de sortie (ignoré sans path)

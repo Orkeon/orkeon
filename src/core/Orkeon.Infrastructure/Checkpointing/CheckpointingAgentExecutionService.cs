@@ -134,7 +134,13 @@ public sealed partial class CheckpointingAgentExecutionService : IAgentExecution
         var state = _runs.GetOrCreateValue(run);
         var key = $"{taskKey}#{state.Ordinals.AddOrUpdate(taskKey, 1, static (_, n) => n + 1)}";
         var fingerprint = await FingerprintAsync(agent, task, ct).ConfigureAwait(false);
-        return new Call(run, state, key, fingerprint, Lookup(run, state, key, fingerprint, task));
+        var call = new Call(run, state, key, fingerprint, Lookup(run, state, key, fingerprint, task));
+
+        // A run stopped on a question starts no more work (FWK-23); what the checkpoint already holds is still answered.
+        if (call.Stored is null && run.Suspension is { } suspended)
+            throw new RunSuspendedException(suspended.RequestId);
+
+        return call;
     }
 
     private StoredResult? Lookup(RunScope run, RunState state, string key, string fingerprint, ICrewTask task)
@@ -197,9 +203,22 @@ public sealed partial class CheckpointingAgentExecutionService : IAgentExecution
 
     private async System.Threading.Tasks.Task<T> RunAsync<T>(Call call, Func<System.Threading.Tasks.Task<T>> execute)
     {
+        // The questions the task puts to a human are numbered within this invocation (FWK-23).
+        using var inputs = TaskInputScope.Enter(call.Key);
         try
         {
-            return await execute().ConfigureAwait(false);
+            var result = await execute().ConfigureAwait(false);
+
+            // The task met a question it cannot wait for: the failure its agent reports (a tool that threw, a turn
+            // that ended) is the suspension, not a result. The task runs again from its start when the run resumes.
+            if (call.Run.Suspension is { } suspended)
+                throw new RunSuspendedException(suspended.RequestId);
+            return result;
+        }
+        catch (RunSuspendedException)
+        {
+            // Not a failure: the session waits for input and the task is not recorded.
+            throw;
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {

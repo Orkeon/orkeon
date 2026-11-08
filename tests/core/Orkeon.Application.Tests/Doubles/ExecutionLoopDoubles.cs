@@ -199,6 +199,9 @@ internal sealed class SpyTool : IBaseTool
 
     public List<DomainToolCallRequest> Calls { get; } = [];
 
+    /// <summary>Runs inside <see cref="CallAsync"/>, before it answers: what a tool does to the run around it.</summary>
+    public Action? OnCall { get; set; }
+
     public Task<ToolResult> ExecuteAsync(string input, CancellationToken cancellationToken = default)
     {
         if (_throw is not null) throw _throw;
@@ -208,6 +211,7 @@ internal sealed class SpyTool : IBaseTool
     public Task<ToolCallResponse> CallAsync(DomainToolCallRequest request, CancellationToken cancellationToken = default)
     {
         Calls.Add(request);
+        OnCall?.Invoke();
         if (_throw is not null) throw _throw;
         return System.Threading.Tasks.Task.FromResult(new ToolCallResponse(
             Success: _succeed,

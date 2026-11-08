@@ -101,7 +101,11 @@ The id of a run is the one the daemon mints when it admits the run (a ULID, an `
 
 ### `GET /runs`, `GET /runs/{id}`, `POST /runs/{id}/cancel`
 
-`GET /runs?crew=&limit=` lists the recorded runs, newest first (`limit` 1 to 500, 50 by default); `GET /runs/{id}` reads one: `run_id`, `crew`, `status` (`running`, `succeeded`, `failed`, `orphaned`), `started_at`, `finished_at`, `error`. `POST /runs/{id}/cancel` answers `202` and stops a running run (the run then reads `failed`: its `run.finished` carries exit code 130), `409 run_not_running` for a run that is over, `404 unknown_run` for an id nobody knows. The reading routes read the run history: with `Orkeon:RunHistory:Enabled` off they answer `501 run_history_disabled` (the daemon enables it by default).
+`GET /runs?crew=&limit=` lists the recorded runs, newest first (`limit` 1 to 500, 50 by default); `GET /runs/{id}` reads one: `run_id`, `crew`, `status` (`running`, `succeeded`, `failed`, `orphaned`, `waiting_for_input`), `started_at`, `finished_at`, `error`, and `pending_input` (`request_id`, `kind`, `prompt`, `choices?`) while the run holds or stopped on a question. `POST /runs/{id}/cancel` answers `202` and stops a running run (the run then reads `failed`: its `run.finished` carries exit code 130), `409 run_not_running` for a run that is over, `404 unknown_run` for an id nobody knows. The reading routes read the run history: with `Orkeon:RunHistory:Enabled` off they answer `501 run_history_disabled` (the daemon enables it by default).
+
+### `POST /runs/{id}/input`
+
+Answers the question a run waits on (FWK-23; needs `Orkeon:Checkpointing:Enabled`). Body: `{"request_id": "...", "answer": "..."}`; `request_id` is optional (the question the run waits on). `answer` is the text (a confirmation is `yes` or `no`, several choices a JSON array, a tool approval `allow`, `allow_for_session` or `deny`). The run that holds on the question in this process goes on: `200 {"status": "delivered"}`. A run that was suspended (the hold timeout, `Orkeon:HumanInput:Pause: Suspend`) has the answer recorded: `202 {"status": "recorded"}`, and `orkeon run <crew> --resume <id>` takes it up (the daemon does not resume a run by itself). The first answer wins: `409 no_pending_input` for the next one, `409 request_mismatch` for another question than the one asked, `400 invalid_request` without an answer, `404` for an unknown run, `409 input_unavailable` when the host keeps no checkpoints. The route goes through the same authorization as the other `/runs` routes. `Orkeon:HumanInput:Pause` is `Hold` by default in the daemon, with a `HoldTimeout` of 30 minutes; the run's history shows `input.needed` (with `requestId`) and `input.given`, and a suspended run ends `run.finished` `status: waiting_for_input`, `exitCode: 75`.
 
 ### `GET /runs/{id}/events`
 
@@ -119,4 +123,4 @@ The run's events, from the history, then live until `run.finished`. With `Accept
 
 ## Not in this API
 
-Answering a run's human-input question (`POST /runs/{id}/input`) is not here yet. Streaming the run's LLM tokens is not either: the events carry the task and tool progress the event bus publishes.
+Resuming a suspended run through the API is not here: the answer is recorded and the CLI resumes it. Streaming the run's LLM tokens is not either: the events carry the task and tool progress the event bus publishes.

@@ -59,6 +59,7 @@ public static class SettingsSections
         "Orkeon:FileSystem",
         "Orkeon:Guardian",
         "Orkeon:Host",
+        "Orkeon:HumanInput",
         "Orkeon:LanceDb",
         "Orkeon:Monitoring",
         "Orkeon:MultiModal",

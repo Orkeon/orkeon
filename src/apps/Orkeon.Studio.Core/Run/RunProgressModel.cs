@@ -351,6 +351,12 @@ public sealed class RunProgressModel
     /// <summary>The exit code, once the run reported it.</summary>
     public int? ExitCode { get; private set; }
 
+    /// <summary>Whether the run stopped on a question to a human and resumes with its answer (<c>status: waiting_for_input</c>, exit 75): not a failure.</summary>
+    public bool WaitingForInput { get; private set; }
+
+    /// <summary>The question a <see cref="WaitingForInput"/> run stopped on, for the answer that resumes it.</summary>
+    public string? WaitingRequestId { get; private set; }
+
     /// <summary>Total tokens the run reported at its close; null before, or on an older CLI (W-08).</summary>
     public long? FinalTokens { get; private set; }
 
@@ -602,6 +608,8 @@ public sealed class RunProgressModel
         Finished = true;
         Success = orkeonEvent.GetBool("success");
         ExitCode = (int?)orkeonEvent.GetInt64("exitCode");
+        WaitingForInput = orkeonEvent.GetString("status") == "waiting_for_input";
+        WaitingRequestId = WaitingForInput ? orkeonEvent.GetString("requestId") : null;
         FinalTokens = orkeonEvent.GetInt64("tokens");
         FinalDurationMs = orkeonEvent.GetInt64("durationMs");
         FinalCacheHitTokens = orkeonEvent.GetInt64("cacheHitTokens");

@@ -6,6 +6,7 @@ using Orkeon.Application.Crew;
 using Orkeon.Application.EventHub;
 using Orkeon.Application.Interfaces.Ports;
 using Orkeon.Domain.SharedKernel;
+using Orkeon.Infrastructure.DependencyInjection;
 using Orkeon.Domain.Tools;
 using Orkeon.Scripting.Cli.Events;
 
@@ -197,6 +198,9 @@ internal sealed class ObservedRunContext : IAsyncDisposable
         services.AddSingleton<IHumanInputProvider>(
             new JsonLinesHumanInputProvider(_events, Inbound!));
 
+        // A client reads the stream: a durable question is held for its answer, with no time limit, unless the settings say otherwise.
+        services.UseHoldByDefault(holdTimeout: null);
+
         // BUS-05: give the observing process a seat at the hub. A decorator, so local traffic
         // keeps going through the in-memory hub untouched — and only when the host registered
         // a hub at all.
@@ -235,10 +239,13 @@ internal sealed class ObservedRunContext : IAsyncDisposable
         // W-08: the closing event carries what the run cost — duration, the token split,
         // and the cache partition of the prompt side (null = not measured, never zero) — and,
         // since STUDIO-42, how much of it the runtime estimated (null = all counted).
+        var waiting = exitCode == Orkeon.Constants.Cli.RunExitCodes.WaitingForInput;
         _events.Emit(RunEventKinds.RunFinished, new
         {
             success = exitCode == 0,
             exitCode,
+            status = waiting ? "waiting_for_input" : null,
+            requestId = waiting ? _observer?.PendingRequestId : null,
             tokens = _observer?.TokensUsed ?? 0,
             durationMs = _clock.ElapsedMilliseconds,
             promptTokens = _observer?.PromptTokens ?? 0,

@@ -410,6 +410,13 @@
       "description": "Options controlling durable persistence of crew execution states (`ScopedCrewExecutionStateManager` → `IStateStore`)."
     },
     {
+      "path": "Orkeon:HumanInput",
+      "category": "orchestration-and-persistence",
+      "hosts": [],
+      "registration": "AddOrkeonHumanInput",
+      "description": "The `Orkeon:HumanInput` section: how a run pauses on a question. Active only with `Orkeon:Checkpointing:Enabled`."
+    },
+    {
       "path": "Orkeon:RunHistory",
       "category": "orchestration-and-persistence",
       "hosts": [],
@@ -3425,6 +3432,22 @@
       "type": "boolean",
       "default": false,
       "description": "Enables durable persistence of execution states. Default: `false` (in-memory only, identical to the historical behavior)."
+    },
+    {
+      "path": "Orkeon:HumanInput:HoldTimeout",
+      "section": "Orkeon:HumanInput",
+      "type": "duration",
+      "description": "How long a held run waits before it suspends (the question stays persisted, nothing is refused). Unset, the host decides: 30 minutes in the daemon, no limit under `--events`."
+    },
+    {
+      "path": "Orkeon:HumanInput:Pause",
+      "section": "Orkeon:HumanInput",
+      "type": "enum",
+      "values": [
+        "Hold",
+        "Suspend"
+      ],
+      "description": "The policy. Unset, the host decides: `Hold` in the daemon and under `--events`, `Suspend` in a plain `orkeon run`."
     },
     {
       "path": "Orkeon:RunHistory:Enabled",

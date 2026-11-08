@@ -41,6 +41,7 @@ public sealed partial class ToolInvocationPipeline : IToolInvocationPipeline
     private readonly IAuditLogger? _auditLogger;
     private readonly ILogger _logger;
     private readonly Orkeon.Domain.Tools.ToolResultLimitsOptions? _limits;
+    private readonly Orkeon.Application.Interfaces.Services.IRunScope? _runScope;
 
     /// <summary>A pipeline with no guardian, no sanitizer and no audit: the call and the truncation only.</summary>
     public static ToolInvocationPipeline Unguarded { get; } = new();
@@ -54,6 +55,7 @@ public sealed partial class ToolInvocationPipeline : IToolInvocationPipeline
     /// <param name="permissionGate">The permission gate consulted after the guardian for the calls of an agent; without it nothing is gated.</param>
     /// <param name="approvalChannel">Where an <c>Ask</c> verdict of the gate is put to an operator; without it an <c>Ask</c> is a refusal.</param>
     /// <param name="defaultMode">The mode of a caller that declares none.</param>
+    /// <param name="runScope">The ambient run: a tool that left it waiting for a human ends the agent's loop with the suspension (FWK-23).</param>
     public ToolInvocationPipeline(
         IGuardianPipeline? guardian = null,
         IToolResultSanitizer? sanitizer = null,
@@ -62,8 +64,10 @@ public sealed partial class ToolInvocationPipeline : IToolInvocationPipeline
         Microsoft.Extensions.Options.IOptions<Orkeon.Domain.Tools.ToolResultLimitsOptions>? limits = null,
         IPermissionGate? permissionGate = null,
         IToolApprovalChannel? approvalChannel = null,
-        Orkeon.Domain.Security.PermissionMode defaultMode = Orkeon.Domain.Security.PermissionMode.Default)
+        Orkeon.Domain.Security.PermissionMode defaultMode = Orkeon.Domain.Security.PermissionMode.Default,
+        Orkeon.Application.Interfaces.Services.IRunScope? runScope = null)
     {
+        _runScope = runScope;
         _permissionGate = permissionGate;
         _approvalChannel = approvalChannel;
         _defaultMode = defaultMode;
@@ -140,6 +144,11 @@ public sealed partial class ToolInvocationPipeline : IToolInvocationPipeline
             if (isDelegation)
                 s_delegationChain.Value = chain;
         }
+
+        // A tool swallows what it throws into a failed answer. One that left the run waiting for a human (FWK-23) is told
+        // from the run: the agent's loop ends here with the suspension, it is not handed an error to reason about.
+        if (_runScope?.Current?.Suspension is { } suspended)
+            throw new Orkeon.Application.Interfaces.Services.RunSuspendedException(suspended.RequestId);
 
         OrkeonMeter.RecordToolExecution(
             tool.Name, response.Success ? "success" : "failure", stopwatch.Elapsed.TotalSeconds);

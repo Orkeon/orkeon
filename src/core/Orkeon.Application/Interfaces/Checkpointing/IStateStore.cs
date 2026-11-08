@@ -105,6 +105,15 @@ public sealed record SessionState
 
     /// <summary>Gets an optional error message if the session failed.</summary>
     public string? ErrorMessage { get; init; }
+
+    /// <summary>Gets the question the run stopped on and still waits an answer for, or null (FWK-23).</summary>
+    public PendingInputRequest? PendingInput { get; init; }
+
+    /// <summary>
+    /// Gets the answers given to the run's questions, by <see cref="PendingInputRequest.RequestId"/>: a task replayed by a
+    /// resumed run finds there the answer to the question it asks again (FWK-23).
+    /// </summary>
+    public IReadOnlyDictionary<string, string> AnsweredInputs { get; init; } = new Dictionary<string, string>();
 }
 
 /// <summary>
@@ -173,7 +182,10 @@ public enum SessionPhase
     Failed,
 
     /// <summary>Session was suspended and can be resumed.</summary>
-    Suspended
+    Suspended,
+
+    /// <summary>Session stopped on a question to a human and resumes when it is answered (FWK-23).</summary>
+    WaitingForInput
 }
 
 /// <summary>

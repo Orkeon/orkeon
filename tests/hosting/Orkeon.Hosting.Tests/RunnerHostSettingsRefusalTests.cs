@@ -106,6 +106,7 @@ public sealed class RunnerHostSettingsRefusalTests : IDisposable
         { "EvaluationOptions", "Evaluation:EnableLlmJudge", "maybe", "Evaluation:EnableLlmJudge" },
         { "CheckpointingOptions", "Orkeon:Checkpointing:Store", "mongo", "Orkeon:Checkpointing:Store" },
         { "RunHistoryOptions", "Orkeon:RunHistory:Store", "mongo", "Orkeon:RunHistory:Store" },
+        { "HumanInputPauseOptions", "Orkeon:HumanInput:Pause", "mongo", "Orkeon:HumanInput:Pause" },
         { "CrewExecutionStatePersistenceOptions", "Orkeon:ExecutionState:Persistence:Enabled", "yes please", "Orkeon:ExecutionState:Persistence:Enabled" },
         { "CostTrackingOptions", "Orkeon:CostTracking:Enabled", "on", "Orkeon:CostTracking:Enabled" },
         { "TokenCounterOptions", "Orkeon:TokenCounter:CharsPerToken", "four", "Orkeon:TokenCounter:CharsPerToken" },

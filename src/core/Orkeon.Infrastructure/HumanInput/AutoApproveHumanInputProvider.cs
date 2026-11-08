@@ -98,6 +98,9 @@ public sealed partial class AutoApproveHumanInputProvider : IHumanInputProvider
     }
 
     /// <inheritdoc />
+    public bool AsksAPerson => false;
+
+    /// <inheritdoc />
     public Task<bool> IsAvailableAsync(CancellationToken cancellationToken = default)
         => Task.FromResult(true);
 

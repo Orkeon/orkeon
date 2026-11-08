@@ -99,6 +99,7 @@ public sealed class StateStoreA2ATaskStore : IA2ATaskStore
         A2ATaskStatus.Completed => SessionPhase.Completed,
         A2ATaskStatus.Failed => SessionPhase.Failed,
         A2ATaskStatus.Cancelled => SessionPhase.Suspended,
+        A2ATaskStatus.InputRequired => SessionPhase.WaitingForInput,
         _ => SessionPhase.Pending
     };
 }

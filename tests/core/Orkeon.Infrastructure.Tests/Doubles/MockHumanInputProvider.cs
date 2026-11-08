@@ -36,6 +36,9 @@ public class MockHumanInputProvider : IHumanInputProvider
 
     public int IsAvailableCallCount { get; private set; }
 
+    /// <summary>What the mock answers to <see cref="IHumanInputProvider.AsksAPerson"/>: a double answers on its own unless a test says otherwise.</summary>
+    public bool AsksAPerson { get; set; }
+
     /// <summary>When set, GetInputAsync answers with this pending result: the test releases it.</summary>
     public TaskCompletionSource<string>? PendingInput { get; set; }
 

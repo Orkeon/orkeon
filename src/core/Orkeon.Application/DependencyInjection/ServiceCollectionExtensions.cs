@@ -107,7 +107,8 @@ public static class ServiceCollectionExtensions
                 limits: null,
                 permissionGate: sp.GetService<Interfaces.Security.IPermissionGate>(),
                 approvalChannel: sp.GetService<Interfaces.Security.IToolApprovalChannel>(),
-                defaultMode: DefaultPermissionMode(sp.GetService<Microsoft.Extensions.Configuration.IConfiguration>())));
+                defaultMode: DefaultPermissionMode(sp.GetService<Microsoft.Extensions.Configuration.IConfiguration>()),
+                runScope: sp.GetService<Interfaces.Services.IRunScope>()));
         return services;
     }
 

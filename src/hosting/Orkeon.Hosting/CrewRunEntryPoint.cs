@@ -89,6 +89,7 @@ internal sealed class CrewRunEntryPoint : IDisposable
     /// </param>
     /// <param name="resume">The checkpointed run to resume, or null.</param>
     /// <param name="ct">Cancellation: an <see cref="OperationCanceledException"/> propagates.</param>
+    /// <param name="resumeInput">The answer to the question the resumed run stopped on (FWK-23), or null.</param>
     /// <param name="offline">
     /// Refuse the crew (<see cref="CrewRunOutcome.Refused"/>) when any agent or its manager would answer through a provider
     /// other than the mock: nothing runs, and the refusal names the agent and its profile.
@@ -97,7 +98,8 @@ internal sealed class CrewRunEntryPoint : IDisposable
         Func<Domain.Crew.Crew, CancellationToken, Task<CrewInput?>> beforeKickoff,
         string? resume,
         CancellationToken ct,
-        bool offline = false)
+        bool offline = false,
+        string? resumeInput = null)
     {
         ArgumentNullException.ThrowIfNull(beforeKickoff);
         var host = _bootstrap.Host;
@@ -118,7 +120,7 @@ internal sealed class CrewRunEntryPoint : IDisposable
         var output = await orchestrator.KickoffAsync(
             crew.Id,
             input,
-            RunnerRunIdentity.For(scope.ServiceProvider, crew.Name, _bootstrap.VirtualConfigPath, _bootstrap.ConfigPath, resume),
+            RunnerRunIdentity.For(scope.ServiceProvider, crew.Name, _bootstrap.VirtualConfigPath, _bootstrap.ConfigPath, resume, resumeInput),
             ct).ConfigureAwait(false);
         return new CrewRunResult(CrewRunOutcome.Completed, output, null);
     }

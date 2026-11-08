@@ -75,6 +75,32 @@ public class RunProgressModelTests
     }
 
     [Fact]
+    [Trait("BR", "FWK-23")]
+    public void A_run_that_stops_on_a_question_reads_as_waiting_for_input_and_not_as_a_failure()
+    {
+        var model = Fold(
+            """{"v":2,"seq":1,"ts":"t","kind":"run.started","target":"/ws/crew.yaml"}""",
+            """{"v":2,"seq":2,"ts":"t","kind":"input.needed","requestId":"ask#1.1","inputKind":"text","prompt":"Which colour?","suspending":true}""",
+            """{"v":2,"seq":3,"ts":"t","kind":"run.finished","success":false,"exitCode":75,"status":"waiting_for_input","requestId":"ask#1.1"}""");
+
+        Assert.True(model.Finished);
+        Assert.True(model.WaitingForInput);
+        Assert.Equal("ask#1.1", model.WaitingRequestId);
+        Assert.Equal(75, model.ExitCode);
+    }
+
+    [Fact]
+    [Trait("BR", "FWK-23")]
+    public void A_run_that_failed_is_not_waiting_for_input()
+    {
+        var model = Fold(
+            """{"v":2,"seq":1,"ts":"t","kind":"run.finished","success":false,"exitCode":2}""");
+
+        Assert.False(model.WaitingForInput);
+        Assert.Null(model.WaitingRequestId);
+    }
+
+    [Fact]
     public void The_stream_becomes_progress_cost_and_an_outcome()
     {
         var model = Fold(

@@ -197,6 +197,11 @@ internal sealed class RunCommandOptions : CliOptions
                        "refused with --validate. With --events, name the run id (latest is refused).")]
         public string? Resume { get; set; }
 
+        [Option(RunOptionNames.Input, Required = false, Default = null,
+            HelpText = "The answer to the question the resumed run stopped on (the run exited 75): only with --resume. " +
+                       "The task that asked is replayed and finds the answer; the tasks already done are not run again.")]
+        public string? Input { get; set; }
+
         /// <summary>
         /// Build the host and print the sorted runtime tool registry (one name per line), then exit.
         /// Mirrors the standard runner's <c>--list-tools</c>; no crew is loaded, so the crew path
@@ -314,6 +319,14 @@ internal static partial class RunCommand
         {
             await console.ErrorOutput.WriteLineAsync(
                 $"orkeon run: --client '{options.Client}' is not a valid peer name (non-empty, no '/').").ConfigureAwait(false);
+            return Program.ExitScriptError;
+        }
+
+        if (options.Input is not null && options.Resume is null)
+        {
+            await console.ErrorOutput.WriteLineAsync(
+                "orkeon run: --input answers the question of a run that stopped, so it needs --resume <id>: without a run to resume there is no question.")
+                .ConfigureAwait(false);
             return Program.ExitScriptError;
         }
 
@@ -753,6 +766,7 @@ internal static partial class RunCommand
             Validate = options.Validate,
             ListTools = options.ListTools,
             Resume = options.Resume,
+            Input = options.Input,
             WorkingDirectory = options.WorkingDirectory,
         };
 

@@ -121,6 +121,9 @@ public sealed class CovAutonomous_SequentialCrewOrchestratorTests
         public bool AutonomousCalled { get; private set; }
         public AgentExecutionBudget? LastBudget { get; private set; }
 
+        /// <summary>Runs inside the strategy, before it answers: what a task does to the run around it.</summary>
+        public Action? OnExecute { get; set; }
+
         public Task<DomainCrewOutput> ExecuteSequentialAsync(DomainCrew crew, IReadOnlyDictionary<string, string>? vars = null, CancellationToken ct = default)
         { LastMode = "Sequential"; return Out(crew); }
 
@@ -133,8 +136,9 @@ public sealed class CovAutonomous_SequentialCrewOrchestratorTests
         public Task<DomainCrewOutput> ExecuteAutonomousAsync(DomainCrew crew, AgentExecutionBudget budget, IReadOnlyDictionary<string, string>? vars = null, CancellationToken ct = default)
         { LastMode = "Autonomous"; AutonomousCalled = true; LastBudget = budget; return Out(crew); }
 
-        private static Task<DomainCrewOutput> Out(DomainCrew crew)
+        private Task<DomainCrewOutput> Out(DomainCrew crew)
         {
+            OnExecute?.Invoke();
             var taskOutputs = new List<DomainTaskOutput>
             {
                 DomainTaskOutput.Create("ok-content", "text", null, TaskId.Create(), true, TimeSpan.FromMilliseconds(5)),

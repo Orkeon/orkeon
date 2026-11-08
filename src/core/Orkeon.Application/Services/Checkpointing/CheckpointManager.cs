@@ -9,7 +9,7 @@ namespace Orkeon.Application.Services.Checkpointing;
 /// Manages session lifecycle and task-level checkpointing.
 /// Uses an <see cref="IStateStore"/> to persist session states.
 /// </summary>
-public sealed partial class CheckpointManager : ICheckpointManager
+public sealed partial class CheckpointManager : ICheckpointManager, IPendingInputStore
 {
     private readonly IStateStore _store;
     private readonly ILogger<CheckpointManager> _logger;

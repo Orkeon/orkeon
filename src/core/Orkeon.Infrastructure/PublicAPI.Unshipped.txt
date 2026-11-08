@@ -781,3 +781,35 @@ static Orkeon.Infrastructure.LLMs.Converters.ContentConverter.ToOpenAIContentPar
 [ORKEXP005]override Orkeon.Infrastructure.LLMs.Capabilities.ModelCapabilityOverride.ToString() -> string!
 [ORKEXP005]static Orkeon.Infrastructure.LLMs.Capabilities.ModelCapabilityOverride.operator ==(Orkeon.Infrastructure.LLMs.Capabilities.ModelCapabilityOverride? left, Orkeon.Infrastructure.LLMs.Capabilities.ModelCapabilityOverride? right) -> bool
 [ORKEXP005]static Orkeon.Infrastructure.LLMs.Capabilities.ModelCapabilityOverride.operator !=(Orkeon.Infrastructure.LLMs.Capabilities.ModelCapabilityOverride? left, Orkeon.Infrastructure.LLMs.Capabilities.ModelCapabilityOverride? right) -> bool
+Orkeon.Infrastructure.HumanInput.AutoApproveHumanInputProvider.AsksAPerson.get -> bool
+Orkeon.Infrastructure.HumanInput.DurableHumanInputProvider
+Orkeon.Infrastructure.HumanInput.DurableHumanInputProvider.DurableHumanInputProvider(Orkeon.Application.Interfaces.Ports.IHumanInputProvider! inner, Orkeon.Application.Interfaces.Services.IRunScope! runScope, Orkeon.Application.Interfaces.Checkpointing.IPendingInputStore! store, Orkeon.Application.Interfaces.Checkpointing.IPendingInputBroker! broker, Microsoft.Extensions.Options.IOptions<Orkeon.Infrastructure.HumanInput.HumanInputPauseOptions!>! options, System.TimeProvider! time, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.HumanInput.DurableHumanInputProvider!>! logger) -> void
+Orkeon.Infrastructure.HumanInput.DurableHumanInputProvider.GetChoiceAsync(Orkeon.Domain.HumanInput.HumanInputContext! context, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<string!>!
+Orkeon.Infrastructure.HumanInput.DurableHumanInputProvider.GetConfirmationAsync(Orkeon.Domain.HumanInput.HumanInputContext! context, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<bool>!
+Orkeon.Infrastructure.HumanInput.DurableHumanInputProvider.GetInputAsync(Orkeon.Domain.HumanInput.HumanInputContext! context, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<string!>!
+Orkeon.Infrastructure.HumanInput.DurableHumanInputProvider.GetMultiChoiceAsync(Orkeon.Domain.HumanInput.HumanInputContext! context, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<string!>!>!
+Orkeon.Infrastructure.HumanInput.DurableHumanInputProvider.IsAvailableAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<bool>!
+Orkeon.Infrastructure.HumanInput.HumanInputPause
+Orkeon.Infrastructure.HumanInput.HumanInputPause.Hold = 0 -> Orkeon.Infrastructure.HumanInput.HumanInputPause
+Orkeon.Infrastructure.HumanInput.HumanInputPause.Suspend = 1 -> Orkeon.Infrastructure.HumanInput.HumanInputPause
+Orkeon.Infrastructure.HumanInput.HumanInputPauseMetadata
+Orkeon.Infrastructure.HumanInput.HumanInputPauseOptions
+Orkeon.Infrastructure.HumanInput.HumanInputPauseOptions.HoldTimeout.get -> System.TimeSpan?
+Orkeon.Infrastructure.HumanInput.HumanInputPauseOptions.HoldTimeout.set -> void
+Orkeon.Infrastructure.HumanInput.HumanInputPauseOptions.HumanInputPauseOptions() -> void
+Orkeon.Infrastructure.HumanInput.HumanInputPauseOptions.Pause.get -> Orkeon.Infrastructure.HumanInput.HumanInputPause?
+Orkeon.Infrastructure.HumanInput.HumanInputPauseOptions.Pause.set -> void
+Orkeon.Infrastructure.HumanInput.PendingInputBroker
+Orkeon.Infrastructure.HumanInput.PendingInputBroker.HeldRequestId(string! runId) -> string?
+Orkeon.Infrastructure.HumanInput.PendingInputBroker.PendingInputBroker() -> void
+Orkeon.Infrastructure.HumanInput.PendingInputBroker.TryComplete(string! runId, string? requestId, string! answer) -> bool
+Orkeon.Infrastructure.HumanInput.PendingInputBroker.WaitAsync(string! runId, string! requestId, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<string!>!
+const Orkeon.Infrastructure.HumanInput.HumanInputPauseMetadata.RequestId = "orkeon.requestId" -> string!
+const Orkeon.Infrastructure.HumanInput.HumanInputPauseOptions.SectionName = "Orkeon:HumanInput" -> string!
+Orkeon.Infrastructure.HumanInput.DurableHumanInputProvider.AsksAPerson.get -> bool
+static Orkeon.Infrastructure.DependencyInjection.HumanInputExtensions.UseHoldByDefault(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, System.TimeSpan? holdTimeout) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
+Orkeon.Infrastructure.HumanInput.DurableToolApprovalChannel
+Orkeon.Infrastructure.HumanInput.DurableToolApprovalChannel.DurableToolApprovalChannel(Orkeon.Application.Interfaces.Security.IToolApprovalChannel? inner, Orkeon.Application.Interfaces.Services.IRunScope! runScope, Orkeon.Application.Interfaces.Checkpointing.IPendingInputStore! store, Orkeon.Application.Interfaces.Checkpointing.IPendingInputBroker! broker, Microsoft.Extensions.Options.IOptions<Orkeon.Infrastructure.HumanInput.HumanInputPauseOptions!>! options, System.TimeProvider! time, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.HumanInput.DurableHumanInputProvider!>! logger) -> void
+Orkeon.Infrastructure.HumanInput.DurableToolApprovalChannel.RequestAsync(Orkeon.Application.Interfaces.Security.ToolApprovalRequest! request, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Application.Interfaces.Security.ToolApprovalDecision>!
+static Orkeon.Infrastructure.DependencyInjection.HumanInputExtensions.DecorateToolApprovalDurably(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
+[ORKEXP007]static Orkeon.Infrastructure.Runs.RedactingRunEventSink.RedactText(string! text) -> string!

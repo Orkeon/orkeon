@@ -15,7 +15,7 @@ namespace Orkeon.Hosting;
 internal static class RunnerRunIdentity
 {
     /// <summary>The options of a kickoff: the ambient run's identifier, the crew's key and the run to resume.</summary>
-    internal static KickoffOptions For(IServiceProvider services, string? crewName, string virtualConfigPath, string physicalConfigPath, string? resume)
+    internal static KickoffOptions For(IServiceProvider services, string? crewName, string virtualConfigPath, string physicalConfigPath, string? resume, string? resumeInput = null)
     {
         ArgumentNullException.ThrowIfNull(services);
         return new KickoffOptions
@@ -23,6 +23,7 @@ internal static class RunnerRunIdentity
             ExecutionId = services.GetService<IRunScope>()?.Current?.ExecutionId,
             CrewKey = CrewKey(crewName, virtualConfigPath, physicalConfigPath),
             Resume = string.IsNullOrWhiteSpace(resume) ? null : resume,
+            ResumeInput = string.IsNullOrWhiteSpace(resume) ? null : resumeInput,
         };
     }
 

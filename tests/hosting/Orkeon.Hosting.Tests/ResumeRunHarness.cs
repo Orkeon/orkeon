@@ -120,9 +120,9 @@ internal sealed partial class ResumeRunHarness : IDisposable
 #pragma warning disable CA1822 // an instance member: the harness is the one thing a test holds
     /// <summary>Runs the crew once through the runner, with <paramref name="service"/> as its agents' model.</summary>
     public async Task<(int Exit, string Stderr, string Stdout)> RunAsync(
-        string crewPath, FakeAgentExecutionService service, string? resume = null, bool validate = false, FakeCrewExecutionHook? hook = null, Action<IServiceCollection>? configure = null, CancellationToken ct = default)
+        string crewPath, FakeAgentExecutionService service, string? resume = null, bool validate = false, FakeCrewExecutionHook? hook = null, Action<IServiceCollection>? configure = null, string? input = null, CancellationToken ct = default)
     {
-        var options = new Options { ConfigPath = crewPath, AllowExternalMounts = true, Resume = resume, Validate = validate, WorkingDirectory = _root };
+        var options = new Options { ConfigPath = crewPath, AllowExternalMounts = true, Resume = resume, Input = input, Validate = validate, WorkingDirectory = _root };
         var origOut = Console.Out;
         var origErr = Console.Error;
         using var stdout = new StringWriter(new StringBuilder());

@@ -1,5 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
 using Orkeon.Application.Crew;
+using Orkeon.Application.Interfaces.Checkpointing;
 using Orkeon.Application.Interfaces.Ports;
 using Orkeon.Application.Runs;
 using Orkeon.Constants.Protocol;
@@ -35,6 +36,7 @@ internal sealed class RunEventObserver : ICrewExecutionHook, ILlmUsageSink, ILlm
     private long _estimatedTokens;
     private decimal? _vendorCost;
     private string? _vendorCostCurrency;
+    private string? _pendingRequestId;
 
     /// <summary>Builds the observer over the stream, the hook it must not displace, and the streaming flag.</summary>
     public RunEventObserver(IRunEventSink events, ICrewExecutionHook? inner, bool stream)
@@ -42,6 +44,53 @@ internal sealed class RunEventObserver : ICrewExecutionHook, ILlmUsageSink, ILlm
         _events = events ?? throw new ArgumentNullException(nameof(events));
         _inner = inner;
         _stream = stream;
+    }
+
+    /// <summary>The question the run is waiting on, for the closing event (FWK-23); null once it is answered.</summary>
+    public string? PendingRequestId
+    {
+        get { lock (_gate) { return _pendingRequestId; } }
+    }
+
+    /// <inheritdoc />
+    public Task OnHumanInputAsync(HumanInputNotice notice, CancellationToken ct)
+    {
+        ArgumentNullException.ThrowIfNull(notice);
+        var request = notice.Request;
+        var scope = new RunEventScope { CorrelationId = request.RequestId };
+        if (notice.Kind == HumanInputNoticeKind.Needed)
+        {
+            lock (_gate)
+                _pendingRequestId = request.RequestId;
+            _events.Emit(
+                RunEventKinds.InputNeeded,
+                scope,
+                new
+                {
+                    requestId = request.RequestId,
+                    inputKind = request.Kind switch
+                    {
+                        PendingInputKind.Confirm => "confirm",
+                        PendingInputKind.Choice => "choice",
+                        PendingInputKind.MultiChoice => "multi",
+                        PendingInputKind.ToolApproval => "tool_approval",
+                        _ => "text",
+                    },
+                    prompt = request.Prompt,
+                    choices = request.Choices.Count > 0 ? request.Choices : null,
+                    taskKey = request.TaskKey,
+                    toolName = request.ToolName,
+                    suspending = notice.Suspending ? true : (bool?)null,
+                });
+        }
+        else
+        {
+            lock (_gate)
+                _pendingRequestId = null;
+            _events.Emit(RunEventKinds.InputGiven, scope, new { requestId = request.RequestId });
+        }
+
+        return _inner?.OnHumanInputAsync(notice, ct) ?? Task.CompletedTask;
     }
 
     /// <summary>Cumulative tokens seen on the meter, for the closing event.</summary>

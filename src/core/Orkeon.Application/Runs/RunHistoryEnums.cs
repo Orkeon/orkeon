@@ -17,6 +17,9 @@ public enum RunStatus
 
     /// <summary>The run was started, never finished, and its process no longer exists on this host: it was killed.</summary>
     Orphaned,
+
+    /// <summary><c>run.finished</c> reported <c>status: "waiting_for_input"</c>: the run stopped on a question and resumes with its answer (FWK-23).</summary>
+    WaitingForInput,
 }
 
 /// <summary>The store behind the run history (<c>Orkeon:RunHistory:Store</c>).</summary>

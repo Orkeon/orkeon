@@ -101,7 +101,11 @@ L'id d'un run est celui que le daemon frappe quand il admet le run (une ULID, un
 
 ### `GET /runs`, `GET /runs/{id}`, `POST /runs/{id}/cancel`
 
-`GET /runs?crew=&limit=` liste les runs enregistrés, du plus récent au plus ancien (`limit` de 1 à 500, 50 par défaut) ; `GET /runs/{id}` en lit un : `run_id`, `crew`, `status` (`running`, `succeeded`, `failed`, `orphaned`), `started_at`, `finished_at`, `error`. `POST /runs/{id}/cancel` répond `202` et arrête un run en cours (le run se lit alors `failed` : son `run.finished` porte le code de sortie 130), `409 run_not_running` pour un run terminé, `404 unknown_run` pour un id inconnu. Les routes de lecture lisent l'historique de runs : avec `Orkeon:RunHistory:Enabled` désactivé elles répondent `501 run_history_disabled` (le daemon l'active par défaut).
+`GET /runs?crew=&limit=` liste les runs enregistrés, du plus récent au plus ancien (`limit` de 1 à 500, 50 par défaut) ; `GET /runs/{id}` en lit un : `run_id`, `crew`, `status` (`running`, `succeeded`, `failed`, `orphaned`, `waiting_for_input`), `started_at`, `finished_at`, `error`. `POST /runs/{id}/cancel` répond `202` et arrête un run en cours (le run se lit alors `failed` : son `run.finished` porte le code de sortie 130), `409 run_not_running` pour un run terminé, `404 unknown_run` pour un id inconnu. Les routes de lecture lisent l'historique de runs : avec `Orkeon:RunHistory:Enabled` désactivé elles répondent `501 run_history_disabled` (le daemon l'active par défaut).
+
+### `POST /runs/{id}/input`
+
+Répond à la question qu'un run attend (FWK-23 ; demande `Orkeon:Checkpointing:Enabled`). Corps : `{"request_id": "...", "answer": "..."}` ; `request_id` est facultatif (la question attendue par le run). `answer` est le texte (une confirmation vaut `yes` ou `no`, plusieurs choix un tableau JSON, une approbation d'outil `allow`, `allow_for_session` ou `deny`). Le run qui attend la question dans ce processus continue : `200 {"status": "delivered"}`. Un run suspendu (délai d'attente écoulé, `Orkeon:HumanInput:Pause: Suspend`) voit la réponse enregistrée : `202 {"status": "recorded"}`, et `orkeon run <crew> --resume <id>` la reprend (le démon ne reprend pas un run de lui-même). La première réponse gagne : `409 no_pending_input` pour la suivante, `409 request_mismatch` pour une autre question que celle posée, `400 invalid_request` sans réponse, `404` pour un run inconnu, `409 input_unavailable` quand l'hôte ne garde aucun checkpoint. La route passe par la même autorisation que les autres routes `/runs`. `Orkeon:HumanInput:Pause` vaut `Hold` par défaut dans le démon, avec un `HoldTimeout` de 30 minutes ; l'historique du run montre `input.needed` (avec `requestId`) et `input.given`, et un run suspendu finit par `run.finished` `status: waiting_for_input`, `exitCode: 75`.
 
 ### `GET /runs/{id}/events`
 
@@ -119,4 +123,4 @@ Les événements du run, depuis l'historique, puis en direct jusqu'à `run.finis
 
 ## Hors de cette API
 
-Répondre à la question d'entrée humaine d'un run (`POST /runs/{id}/input`) n'y est pas encore. Le flux des jetons LLM du run non plus : les événements portent la progression des tâches et des outils que publie le bus d'événements.
+Reprendre un run suspendu par l'API n'y est pas : la réponse est enregistrée et la CLI le reprend. Le flux des jetons LLM du run non plus : les événements portent la progression des tâches et des outils que publie le bus d'événements.

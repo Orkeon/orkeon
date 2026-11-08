@@ -197,12 +197,12 @@ qu'elle accepte quand leur liste est fermée, et son sens.
 | [Fichiers et bac à sable](#fichiers-et-bac-à-sable) | [`Orkeon:CodeSandbox`](#orkeoncodesandbox), [`Orkeon:CodeSandbox:Docker`](#orkeoncodesandboxdocker), [`Orkeon:FileSystem`](#orkeonfilesystem), [`Orkeon:Sandbox`](#orkeonsandbox), [`PathSecurity`](#pathsecurity) | 33 |
 | [Sécurité](#sécurité) | [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:Guardian`](#orkeonguardian), [`Orkeon:Security:PermissionGate`](#orkeonsecuritypermissiongate), [`Secrets`](#secrets), [`Security:Audit`](#securityaudit), [`Security:Prompt`](#securityprompt), [`Security:ToolResults`](#securitytoolresults), [`Security:Url`](#securityurl), [`Security:Vault`](#securityvault) | 40 |
 | [Outils](#outils) | [`BRAVE_API_KEY`](#brave_api_key), [`MCP`](#mcp), [`MCP:Server`](#mcpserver), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Tools:Drive`](#orkeontoolsdrive), [`Orkeon:Tools:Email`](#orkeontoolsemail), [`Orkeon:Tools:Firefox`](#orkeontoolsfirefox), [`Orkeon:Tools:GitHub`](#orkeontoolsgithub), [`Orkeon:Tools:ResultLimits`](#orkeontoolsresultlimits), [`Orkeon:Tools:Shell`](#orkeontoolsshell), [`Plugins`](#plugins), [`RaggableTree`](#raggabletree) | 108 |
-| [Orchestration et persistance](#orchestration-et-persistance) | [`Orkeon:Checkpointing`](#orkeoncheckpointing), [`Orkeon:Consensus`](#orkeonconsensus), [`Orkeon:CrewFactory`](#orkeoncrewfactory), [`Orkeon:ExecutionState:Persistence`](#orkeonexecutionstatepersistence), [`Orkeon:RunHistory`](#orkeonrunhistory) | 25 |
+| [Orchestration et persistance](#orchestration-et-persistance) | [`Orkeon:Checkpointing`](#orkeoncheckpointing), [`Orkeon:Consensus`](#orkeonconsensus), [`Orkeon:CrewFactory`](#orkeoncrewfactory), [`Orkeon:ExecutionState:Persistence`](#orkeonexecutionstatepersistence), [`Orkeon:HumanInput`](#orkeonhumaninput), [`Orkeon:RunHistory`](#orkeonrunhistory) | 27 |
 | [Scripts et console](#scripts-et-console) | [`Orkeon:Cli:ConsoleStreaming`](#orkeoncliconsolestreaming), [`Orkeon:Cli:Memory`](#orkeonclimemory), [`Orkeon:Cli:ScriptCommands`](#orkeoncliscriptcommands), [`Orkeon:Cli:ScriptHost`](#orkeoncliscripthost), [`Orkeon:Cli:Session`](#orkeonclisession), [`Orkeon:Cli:Tui`](#orkeonclitui), [`Orkeon:Scripting:AgentInstances`](#orkeonscriptingagentinstances), [`Orkeon:Scripting:AgentMemory`](#orkeonscriptingagentmemory), [`Orkeon:Scripting:Limits`](#orkeonscriptinglimits), [`Orkeon:Scripting:Toolchain`](#orkeonscriptingtoolchain) | 35 |
 | [Hôte de service et A2A](#hôte-de-service-et-a2a) | [`A2A`](#a2a), [`A2A:Security`](#a2asecurity), [`A2A:Security:AzureAD`](#a2asecurityazuread), [`A2A:Security:Oidc`](#a2asecurityoidc), [`Orkeon:Host`](#orkeonhost), [`Orkeon:Host:Discord`](#orkeonhostdiscord) | 57 |
 | [Observabilité](#observabilité) | [`Logging`](#logging), [`Orkeon:Monitoring`](#orkeonmonitoring), [`Telemetry`](#telemetry) | 8 |
 
-79 sections, 515 clés. Lues par aucun binaire livré, seulement par un hôte écrit en C# (7) : [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:CognitiveMemory`](#orkeoncognitivememory), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Monitoring`](#orkeonmonitoring).
+80 sections, 517 clés. Lues par aucun binaire livré, seulement par un hôte écrit en C# (7) : [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:CognitiveMemory`](#orkeoncognitivememory), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Monitoring`](#orkeonmonitoring).
 <!-- /settings-index -->
 
 Lire un tableau :
@@ -1943,6 +1943,19 @@ sous `./.orkeon/state`, monté en `/state` comme montage interne (`Path` est un 
 | `Path` | chaîne | — |  | Le chemin virtuel du dossier (Json) ou du fichier (Sqlite) où le magasin écrit, sous le montage `/state`. Null : `/state/checkpoints` ou `/state/checkpoints.db`. |
 | `SchemaName` | chaîne | `"orkeon"` |  | Le nom du schéma PostgreSQL (défaut : "orkeon"). |
 | `Store` | énumération | `"Memory"` | `Memory`, `Json`, `Sqlite`, `Postgres` | Le magasin (défaut : `Memory`). |
+<!-- /settings -->
+
+### `Orkeon:HumanInput`
+
+Comment un run se met en pause sur une question à un humain (FWK-23). Actif seulement avec `Orkeon:Checkpointing:Enabled`, qui donne à la question une session où être persistée. `Pause` vaut `Hold` (le run attend la réponse, jusqu'à `HoldTimeout`, puis suspend : la question reste persistée, rien n'est refusé) ou `Suspend` (le run s'arrête aussitôt : `run.finished` `status: waiting_for_input`, sortie 75). Sans valeur, un run qui a quelqu'un à interroger attend, un `orkeon run` simple sans personne suspend, et `orkeon-host` et `--events` attendent (30 minutes et sans limite). Un run se reprend avec `orkeon run <crew> --resume <id> --input "..."`.
+
+<!-- settings:Orkeon:HumanInput -->
+**Lue par** : `orkeon`, `orkeon-host`.
+
+| Clé | Type | Défaut | Valeurs | Sens |
+|---|---|---|---|---|
+| `HoldTimeout` | durée | — |  | Combien de temps un run en attente patiente avant de suspendre (la question reste persistée, rien n'est refusé). Sans valeur, l'hôte décide : 30 minutes dans le démon, sans limite sous `--events`. |
+| `Pause` | énumération | — | `Hold`, `Suspend` | La politique. Sans valeur, l'hôte décide : `Hold` dans le démon et sous `--events`, `Suspend` dans un `orkeon run` simple. |
 <!-- /settings -->
 
 ### `Orkeon:RunHistory`

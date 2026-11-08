@@ -190,6 +190,12 @@ public record CrewOutput(
     /// in string form: the id a failed run is resumed by. Null when the run never got an identity.
     /// </summary>
     public string? ExecutionId { get; init; }
+
+    /// <summary>
+    /// Gets the question the run stopped on (FWK-23), or null. A run that stopped on one is not a failure and not a success:
+    /// <see cref="Succeeded"/> is false and this says what it waits for; it resumes with the answer.
+    /// </summary>
+    public Orkeon.Application.Interfaces.Checkpointing.PendingInputRequest? PendingInput { get; init; }
 }
 
 /// <summary>

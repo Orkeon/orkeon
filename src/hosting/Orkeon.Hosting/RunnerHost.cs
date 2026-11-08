@@ -1570,6 +1570,8 @@ public static partial class RunnerHost
         // AddOrkeonInfrastructure(IConfiguration): a host decides whether it checkpoints.
         services.AddOrkeonCheckpointing(context.Configuration);
         services.AddCrewExecutionStatePersistence(context.Configuration);
+        // How a run pauses on a question to a human (FWK-23): declared with the host, whether a crew asks or not.
+        services.AddOrkeonSettings<Orkeon.Infrastructure.HumanInput.HumanInputPauseOptions>(Orkeon.Infrastructure.HumanInput.HumanInputPauseOptions.SectionName);
         // OpenTelemetry export: the `Telemetry` section of the settings, or the standard
         // OTEL_EXPORTER_OTLP_ENDPOINT environment a .NET Aspire AppHost (or any collector)
         // injects. Until 2026-09-11 the runners registered no exporter at all, so a run

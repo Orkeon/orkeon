@@ -67,6 +67,9 @@ public static class RunOptionNames
     /// <summary>Resumes a checkpointed run: <c>--resume &lt;id&gt;|latest</c>.</summary>
     public const string Resume = "resume";
 
+    /// <summary>Answers the question a resumed run stopped on: <c>--resume &lt;id&gt; --input "..."</c> (FWK-23).</summary>
+    public const string Input = "input";
+
     /// <summary>List the tools the host would register, then exit.</summary>
     public const string ListTools = "list-tools";
 

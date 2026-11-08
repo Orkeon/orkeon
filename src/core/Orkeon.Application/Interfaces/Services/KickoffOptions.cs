@@ -19,4 +19,10 @@ public sealed record KickoffOptions
 
     /// <summary>Gets the identifier of the session this run resumes, or null for a fresh run.</summary>
     public string? Resume { get; init; }
+
+    /// <summary>
+    /// Gets the answer to the question the resumed run stopped on (FWK-23), given with <see cref="Resume"/>: recorded before
+    /// anything runs, so the task that asked finds it when it is replayed. Null: no answer.
+    /// </summary>
+    public string? ResumeInput { get; init; }
 }

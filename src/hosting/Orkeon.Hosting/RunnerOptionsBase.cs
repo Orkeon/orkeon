@@ -148,6 +148,14 @@ public abstract class RunnerOptionsBase
     public string? Resume { get; set; }
 
     /// <summary>
+    /// The answer to the question the resumed run stopped on (FWK-23): <c>--resume &lt;id&gt; --input "..."</c>. Only with
+    /// <see cref="Resume"/>.
+    /// </summary>
+    [Option(RunOptionNames.Input, Required = false, Default = null,
+        HelpText = "The answer to the question the resumed run stopped on (exit 75): only with --resume.")]
+    public string? Input { get; set; }
+
+    /// <summary>
     /// True when stdout carries a machine protocol (an `--events` run): the human summary —
     /// the crew's final output, duration, tokens — is then written to stderr instead. A
     /// banner between two JSONL documents is a parser error on the client, and the terminal

@@ -106,7 +106,11 @@ internal sealed class JsonLinesHumanInputProvider : IHumanInputProvider
 
     private async Task<string?> AskAsync(HumanInputContext context, string kind, CancellationToken cancellationToken)
     {
-        var correlationId = context.RequestId.ToString();
+        // A durable question (FWK-23) is told and answered by its own id; any other by the context's.
+        var requestId = context.Metadata.TryGetValue(Orkeon.Infrastructure.HumanInput.HumanInputPauseMetadata.RequestId, out var durable)
+            ? durable as string
+            : null;
+        var correlationId = requestId ?? context.RequestId.ToString();
 
         _events.Emit(
             RunEventKinds.InputNeeded,
@@ -117,6 +121,7 @@ internal sealed class JsonLinesHumanInputProvider : IHumanInputProvider
             },
             new
             {
+                requestId,
                 // NOT `kind`: that name belongs to the envelope and a payload naming it
                 // loses (BUS-01's reserved names). A client could then not tell a text
                 // question from a confirmation.

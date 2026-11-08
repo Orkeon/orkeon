@@ -26,6 +26,7 @@
     "Orkeon:ExecutionState:Persistence",
     "Orkeon:FileSystem",
     "Orkeon:Guardian",
+    "Orkeon:HumanInput",
     "Orkeon:Kev",
     "Orkeon:LanceDb",
     "Orkeon:Liquid",

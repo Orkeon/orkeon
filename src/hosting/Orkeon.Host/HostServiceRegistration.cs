@@ -92,6 +92,12 @@ internal static class HostServiceRegistration
         // The run history (FWK-08): a recorded run puts the strategies' task events in front of the progress hook
         // (which keeps receiving every callback); an unrecorded run gets the progress hook alone.
         services.AddScoped<HostRunRecording>();
+
+        // A question a hosted run puts to a human is held for its answer (POST /runs/{id}/input), 30 minutes unless the
+        // settings say otherwise, then the run suspends with the question persisted (FWK-23).
+        // The `human_input` tool and its provider: the daemon had none, so a crew that asked a human could not load here.
+        Orkeon.Infrastructure.DependencyInjection.HumanInputExtensions.AddOrkeonHumanInput(services);
+        Orkeon.Infrastructure.DependencyInjection.HumanInputExtensions.UseHoldByDefault(services, TimeSpan.FromMinutes(30));
         services.AddScoped<Orkeon.Application.Crew.ICrewExecutionHook>(
             sp => sp.GetRequiredService<HostRunRecording>().Hook(sp.GetRequiredService<RunProgressHook>()));
 

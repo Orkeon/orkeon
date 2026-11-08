@@ -36,6 +36,8 @@ public sealed class SettingsCatalogFileTests
         // Generic: registers a type the caller names, reads no setting.
         "EventHubServiceCollectionExtensions.AddEventHubMiddleware<TMiddleware>(): generic",
         "HumanInputExtensions.AddOrkeonHumanInput<TProvider>(): generic",
+        // A host's default for a section it reads (Orkeon:HumanInput, declared by AddOrkeonHumanInput): no section of its own.
+        "HumanInputExtensions.UseHoldByDefault(Nullable`1): a parameter the producer cannot supply",
         // Refuses to run before AddOrkeonRag, which declares its section (Orkeon:Rag:Retrieval:Hybrid).
         "HybridRetrievalExtensions.AddOrkeonHybridRetrieval(IConfiguration, Func`2): threw InvalidOperationException",
         // Take a hook, a file system or options built in code: no section of their own —

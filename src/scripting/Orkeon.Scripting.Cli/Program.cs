@@ -18,6 +18,8 @@ internal static class Program
     public const int ExitRuntimeError = 2;
     /// <summary>Cancelled via SIGINT (Ctrl+C).</summary>
     public const int ExitCancelled = 130;
+    /// <summary>The run stopped on a question to a human and waits for its answer (<c>--resume --input</c>), FWK-23.</summary>
+    public const int ExitWaitingForInput = Orkeon.Constants.Cli.RunExitCodes.WaitingForInput;
 
     /// <summary>
     /// The verb table: every top-level command and the entry point that owns it. Each verb

@@ -175,7 +175,8 @@ public partial class A2AClient : IA2AClient, IDisposable
 
                 if (update.Status is A2ATaskStatus.Completed
                     or A2ATaskStatus.Failed
-                    or A2ATaskStatus.Cancelled)
+                    or A2ATaskStatus.Cancelled
+                    or A2ATaskStatus.InputRequired)
                 {
                     break;
                 }

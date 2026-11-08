@@ -190,6 +190,7 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
         Exception? cause = null;
         IDisposable? runSpan = null;
         IDisposable? runIdentity = null;
+        RunScope? run = null;
 
         try
         {
@@ -221,7 +222,13 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
                 if (resumePlan is not null)
                     executionId = ExecutionId.From(resumePlan.SessionId);
                 runId = executionId.ToString();
-                runIdentity = _runScope?.Enter(new RunScope(executionId, crewKey, resumePlan));
+
+                // The answer given with the resume (--input) goes to the question the run stopped on, before anything runs.
+                if (options?.ResumeInput is { } resumeInput)
+                    await AnswerResumedQuestionAsync(runId, resumeInput, cancellationToken).ConfigureAwait(false);
+
+                run = new RunScope(executionId, crewKey, resumePlan) { HumanInputObserver = TellHookAboutInputAsync };
+                runIdentity = _runScope?.Enter(run);
 
                 // Start checkpoint session if checkpoint manager is available
                 if (_checkpointManager != null)
@@ -246,6 +253,14 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
                     crew.Id,
                     () => ExecuteAndCompleteAsync(crew, processStrategy, input, cancellationToken))
                     .ConfigureAwait(false);
+
+                // A run that stopped on a question to a human ends here, waiting for its answer (FWK-23): its session
+                // is not completed and not failed, it resumes where the question was asked.
+                if (run.Suspension is { } waiting)
+                {
+                    stopwatch.Stop();
+                    return SuspendedOutput(waiting, stopwatch.Elapsed, runId);
+                }
 
                 // The tasks were checkpointed as they completed (CheckpointingAgentExecutionService): the
                 // session ends here, completed when the crew succeeded, failed, and so resumable, when not.
@@ -278,6 +293,12 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
                     Error = domainOutput.Success ? null : RunFailureReason(crew, domainOutput.Error),
                 };
             }
+            catch (Exception) when (run?.Suspension is not null)
+            {
+                // The run was stopped on a question (the exception, or the failure it left behind): not a failure.
+                stopwatch.Stop();
+                return SuspendedOutput(run.Suspension, stopwatch.Elapsed, runId);
+            }
             catch (Exception ex)
             {
                 cause = ex;
@@ -295,7 +316,7 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
                     await _checkpointManager.MarkFailedAsync(sessionId, "crew-execution", ex, CancellationToken.None).ConfigureAwait(false);
             }
 
-            if (!output.Succeeded)
+            if (!output.Succeeded && output.PendingInput is null)
             {
                 if (runSpan is not null)
                 {
@@ -644,6 +665,37 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
         }
 
         return new ResumePlan(resumed.SessionId, resumed.CompletedOutputs);
+    }
+
+    private static CrewOutput SuspendedOutput(PendingInputRequest waiting, TimeSpan elapsed, string? runId) =>
+        new(
+            FinalOutput: $"The run is waiting for an answer to '{waiting.RequestId}': {Orkeon.Infrastructure.Runs.RedactingRunEventSink.RedactText(waiting.Prompt)}",
+            TaskOutputs: [],
+            Duration: elapsed,
+            TokensUsed: null)
+        {
+            Succeeded = false,
+            Error = $"The run is waiting for an answer to '{waiting.RequestId}'.",
+            PendingInput = waiting,
+            ExecutionId = runId,
+        };
+
+    // The run's observers hear the question through the crew's execution hook.
+    private System.Threading.Tasks.Task TellHookAboutInputAsync(HumanInputNotice notice, CancellationToken ct) =>
+        _executionHook?.OnHumanInputAsync(notice, ct) ?? System.Threading.Tasks.Task.CompletedTask;
+
+    private async System.Threading.Tasks.Task AnswerResumedQuestionAsync(string sessionId, string answer, CancellationToken ct)
+    {
+        if (_checkpointManager is not IPendingInputStore store)
+            throw new InvalidOperationException("An answer can be given to a resumed run only when checkpointing is available (Orkeon:Checkpointing:Enabled).");
+
+        var pending = await store.GetPendingAsync(sessionId, ct).ConfigureAwait(false);
+        var result = await store.AnswerAsync(sessionId, null, answer, ct).ConfigureAwait(false);
+        if (result.Outcome != PendingInputAnswerOutcome.Accepted || pending is null)
+            throw new InvalidOperationException($"Run {sessionId} is not waiting for an answer: --input has no question to answer.");
+
+        // The question is answered: the run's observers hear it (input.given), before the resumed run starts.
+        await TellHookAboutInputAsync(new HumanInputNotice(HumanInputNoticeKind.Given, pending), ct).ConfigureAwait(false);
     }
 
     private static async System.Threading.Tasks.Task<DomainCrewOutput> ExecuteDomainStrategyAsync(

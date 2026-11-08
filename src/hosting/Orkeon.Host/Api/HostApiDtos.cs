@@ -62,6 +62,10 @@ internal sealed record RunDto
     [JsonPropertyName("error")]
     public string? Error { get; init; }
 
+    /// <summary>The question the run holds on or stopped on; absent when it asks nothing (FWK-23).</summary>
+    [JsonPropertyName("pending_input")]
+    public PendingInputDto? PendingInput { get; init; }
+
     /// <summary>The DTO of a recorded run.</summary>
     public static RunDto From(RunSummary summary) => new()
     {
@@ -72,12 +76,61 @@ internal sealed record RunDto
             RunStatus.Running => "running",
             RunStatus.Succeeded => "succeeded",
             RunStatus.Failed => "failed",
+            RunStatus.WaitingForInput => "waiting_for_input",
             _ => "orphaned",
         },
         StartedAt = summary.StartedAt,
         FinishedAt = summary.FinishedAt,
         Error = summary.Error,
     };
+}
+
+/// <summary>The question a run waits an answer for, as <c>GET /runs/{id}</c> reads it (FWK-23).</summary>
+internal sealed record PendingInputDto
+{
+    /// <summary>The question's id: what <c>POST /runs/{id}/input</c> answers.</summary>
+    [JsonPropertyName("request_id")]
+    public required string RequestId { get; init; }
+
+    /// <summary><c>text</c>, <c>confirm</c>, <c>choice</c>, <c>multi_choice</c> or <c>tool_approval</c>.</summary>
+    [JsonPropertyName("kind")]
+    public required string Kind { get; init; }
+
+    /// <summary>The prompt, as it was first asked.</summary>
+    [JsonPropertyName("prompt")]
+    public required string Prompt { get; init; }
+
+    /// <summary>The options of a choice.</summary>
+    [JsonPropertyName("choices")]
+    public IReadOnlyList<string>? Choices { get; init; }
+}
+
+/// <summary>The body of <c>POST /runs/{id}/input</c>.</summary>
+internal sealed record ProvideInputRequest
+{
+    /// <summary>The question answered; absent: the one the run waits on.</summary>
+    [JsonPropertyName("request_id")]
+    public string? RequestId { get; init; }
+
+    /// <summary>The answer (a confirmation is yes or no, several choices a JSON array).</summary>
+    [JsonPropertyName("answer")]
+    public string? Answer { get; init; }
+}
+
+/// <summary>The answer of <c>POST /runs/{id}/input</c>.</summary>
+internal sealed record InputAcceptedDto
+{
+    /// <summary>The run.</summary>
+    [JsonPropertyName("run_id")]
+    public required string RunId { get; init; }
+
+    /// <summary>The question answered.</summary>
+    [JsonPropertyName("request_id")]
+    public required string RequestId { get; init; }
+
+    /// <summary><c>delivered</c> (the run was holding and goes on) or <c>recorded</c> (the run is suspended: resume it with <c>orkeon run --resume</c>).</summary>
+    [JsonPropertyName("status")]
+    public required string Status { get; init; }
 }
 
 /// <summary>The answer of <c>GET /runs</c>.</summary>

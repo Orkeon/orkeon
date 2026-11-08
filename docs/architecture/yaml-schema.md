@@ -119,7 +119,7 @@ tasks:
       attempts: int       # required, 1 or more — runs in all, the first one included
       backoffMs: int      # default: 0 — base wait before a new attempt, in milliseconds
       backoff: string     # "fixed" (default) | "exponential" (doubles at each retry, capped at 5 minutes)
-    humanInput: bool      # default: false — requests human intervention
+    humanInput: bool      # default: false — requests human intervention; with checkpointing the question is durable: the run can stop on it (exit 75) and resume with --input
     context: {key: value} # Additional context data
     tools: [string]       # Tools ADDED to the agent's own for this task only (never replacing them) — resolved like an agent's tools: an unknown name fails the load under StrictTools
     deliverable:          # Output-file contract (ignored without a path)

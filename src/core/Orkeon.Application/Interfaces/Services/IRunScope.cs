@@ -13,6 +13,29 @@ public sealed record RunScope(ExecutionId ExecutionId, string CrewKey, ResumePla
     /// decorator, read by whatever reports the task's end. A task that ran once has no entry (attempt 1).
     /// </summary>
     public System.Collections.Concurrent.ConcurrentDictionary<string, int> TaskAttempts { get; } = new(StringComparer.Ordinal);
+
+    private Orkeon.Application.Interfaces.Checkpointing.PendingInputRequest? _suspension;
+
+    /// <summary>
+    /// Where the run's questions to a human are told to its observers (FWK-23): set by the orchestrator, which holds the
+    /// run's execution hook; null when nothing observes.
+    /// </summary>
+    public Func<Orkeon.Application.Crew.HumanInputNotice, CancellationToken, System.Threading.Tasks.Task>? HumanInputObserver { get; set; }
+
+    /// <summary>
+    /// The question the run stopped on (FWK-23), or null while it runs: set by the durable human-input provider when it
+    /// suspends the run, read by every layer that must not start more work or count the stop as a failure.
+    /// </summary>
+    public Orkeon.Application.Interfaces.Checkpointing.PendingInputRequest? Suspension => Volatile.Read(ref _suspension);
+
+    /// <summary>Marks the run as stopped on <paramref name="request"/>; the first question wins.</summary>
+    /// <param name="request">The question.</param>
+    /// <returns>True when this call set it.</returns>
+    public bool Suspend(Orkeon.Application.Interfaces.Checkpointing.PendingInputRequest request)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        return Interlocked.CompareExchange(ref _suspension, request, null) is null;
+    }
 }
 
 /// <summary>

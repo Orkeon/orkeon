@@ -871,6 +871,14 @@ public static partial class RunnerExecution
             return 1;
         }
 
+        if (opts.Input is not null && opts.Resume is null)
+        {
+            await opts.RunnerConsole.ErrorOutput.WriteLineAsync(
+                "ERROR: --input answers the question of a run that stopped, so it needs --resume <id>: without a run to resume there is no question.")
+                .ConfigureAwait(false);
+            return 1;
+        }
+
         if (opts.ListTools)
             return await RunListToolsAsync(opts, loggerCategory, configureServices).ConfigureAwait(false);
         if (opts.Validate)
@@ -1010,7 +1018,8 @@ public static partial class RunnerExecution
                 return parsed;
             },
             opts.Resume,
-            ct).ConfigureAwait(false);
+            ct,
+            resumeInput: opts.Input).ConfigureAwait(false);
 
         if (run.Outcome == CrewRunOutcome.LoadFailed)
         {
@@ -1027,6 +1036,18 @@ public static partial class RunnerExecution
             return (abortCode, null);
 
         var output = run.Output!;
+
+        // A run that stopped on a question is neither done nor failed: 75, and how to answer it (FWK-23).
+        if (output.PendingInput is { } waiting)
+        {
+            await console.ErrorOutput.WriteLineAsync(
+                $"Run {output.ExecutionId} is waiting for input ({waiting.RequestId}): {Orkeon.Infrastructure.Runs.RedactingRunEventSink.RedactText(waiting.Prompt)}").ConfigureAwait(false);
+            await console.ErrorOutput.WriteLineAsync(
+                $"Answer it, its finished tasks kept, with: orkeon run {opts.ConfigPath} --resume {output.ExecutionId} --input \"<answer>\"")
+                .ConfigureAwait(false);
+            return (Orkeon.Constants.Cli.RunExitCodes.WaitingForInput, null);
+        }
+
         PrintCrewOutput(output, opts.MachineReadableStdout ? console.ErrorOutput : console.Output);
         if (!output.Succeeded)
         {

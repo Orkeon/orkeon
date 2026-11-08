@@ -129,7 +129,7 @@ public sealed partial class RetryingAgentExecutionService : IAgentExecutionServi
             }
 
             var (success, reason) = read(result);
-            if (success || attempt >= policy.Attempts || ct.IsCancellationRequested || IsFinal(reason))
+            if (success || attempt >= policy.Attempts || ct.IsCancellationRequested || IsFinal(reason) || RunIsSuspended())
             {
                 NoteAttempt(task, attempt);
                 return stamp(result, attempt - 1);
@@ -158,8 +158,13 @@ public sealed partial class RetryingAgentExecutionService : IAgentExecutionServi
     private static bool IsFinal(AgentExitReason reason) =>
         reason is AgentExitReason.Cancelled or AgentExitReason.BudgetExhausted or AgentExitReason.GuardianBlocked;
 
+    // A run stopped on a question to a human (FWK-23): asking the task again would ask the human again.
+    private static bool RunIsSuspended() =>
+        Orkeon.Infrastructure.Orchestration.AsyncLocalRunScope.Ambient?.Suspension is not null;
+
     private static bool IsRetryable(Exception ex) =>
         ex is not OperationCanceledException
+        && ex is not Orkeon.Application.Interfaces.Services.RunSuspendedException
 #pragma warning disable ORKEXP002 // the exception is experimental; a retry must still recognise it as final
         && ex is not Orkeon.Domain.Autonomous.BudgetExhaustedException;
 #pragma warning restore ORKEXP002

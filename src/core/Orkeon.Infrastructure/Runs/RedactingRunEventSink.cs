@@ -35,6 +35,11 @@ public sealed partial class RedactingRunEventSink : IRunEventSink
     [GeneratedRegex(@"^(?:pass(?:word|wd)|secret|(?:client|api|access|refresh|auth)?_?(?:token|key)|credentials?|authorization|cookie)$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
     private static partial Regex CredentialName();
 
+    /// <summary>The masking rule of <see cref="Redact"/> for one text: what a question to a human shows where it is printed or read back (FWK-23).</summary>
+    /// <param name="text">The text.</param>
+    public static string RedactText(string text) =>
+        Redact(JsonValue.Create(text ?? throw new ArgumentNullException(nameof(text))))!.GetValue<string>();
+
     /// <summary>
     /// A copy of <paramref name="node"/> with every string passed through <see cref="LogSanitizer.SanitizeString"/> and every
     /// string under a credential-named property masked: the rule of the run history, reused by the files a command writes from

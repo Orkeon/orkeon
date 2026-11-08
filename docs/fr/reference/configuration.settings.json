@@ -415,6 +415,8 @@
     "Orkeon:Checkpointing:Path": "Le chemin virtuel du dossier (Json) ou du fichier (Sqlite) où le magasin écrit, sous le montage `/state`. Null : `/state/checkpoints` ou `/state/checkpoints.db`.",
     "Orkeon:Checkpointing:SchemaName": "Le nom du schéma PostgreSQL (défaut : \"orkeon\").",
     "Orkeon:Checkpointing:Store": "Le magasin (défaut : `Memory`).",
+    "Orkeon:HumanInput:HoldTimeout": "Combien de temps un run en attente patiente avant de suspendre (la question reste persistée, rien n'est refusé). Sans valeur, l'hôte décide : 30 minutes dans le démon, sans limite sous `--events`.",
+    "Orkeon:HumanInput:Pause": "La politique. Sans valeur, l'hôte décide : `Hold` dans le démon et sous `--events`, `Suspend` dans un `orkeon run` simple.",
     "Orkeon:RunHistory:Enabled": "Si l'historique est enregistré. Éteint dans la bibliothèque, allumé dans `orkeon-host` et le gabarit de `orkeon init`.",
     "Orkeon:RunHistory:IncludeDeltas": "Si les événements `llm.delta` (jeton par jeton, verbeux) sont gardés dans l'historique. Ils restent toujours sur le flux stdout.",
     "Orkeon:RunHistory:MaxRuns": "Au plus ce nombre de runs sont gardés, les plus anciens purgés d'abord ; 0 les garde tous.",
