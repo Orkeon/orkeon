@@ -1193,10 +1193,12 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
         if (mounts.Count == 0 || arguments.Length == 0)
             return (arguments, null);
 
+        // The Windows spelling of each mount, once per call, not once per argument (#302).
+        var windowsBases = windowsTarget ? WindowsBasesOf(mounts) : null;
         var rewritten = new string[arguments.Length];
         for (var i = 0; i < arguments.Length; i++)
         {
-            var (token, denial) = TryRewriteToken(arguments[i], mounts, rights, windowsTarget);
+            var (token, denial) = TryRewriteToken(arguments[i], mounts, rights, windowsBases);
             if (denial is not null)
                 return (arguments, denial);
             rewritten[i] = token;
@@ -1240,13 +1242,14 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
     /// right side (even if it contains further <c>=</c>). Anything else stays verbatim.
     /// </summary>
     private (string Token, string? DenialReason) TryRewriteToken(
-        string token, IReadOnlyList<MountInfo> mounts, FileAccessRights rights, bool windowsTarget)
+        string token, IReadOnlyList<MountInfo> mounts, FileAccessRights rights,
+        IReadOnlyDictionary<string, (string Root, string WindowsBase)>? windowsBases)
     {
         if (mounts.Any(m => MatchesMountPrefix(token, m.VirtualPath)))
         {
             var result = AgentRootGuard.Check(_fileSystem, token) ?? _fileSystem.ResolveAndValidate(token, rights);
             return result.IsAllowed
-                ? (SpellForProcess(token, result.ResolvedPath!, mounts, windowsTarget), null)
+                ? (SpellForProcess(token, result.ResolvedPath!, windowsBases), null)
                 : (token, result.DenialReason ?? "access denied");
         }
 
@@ -1258,7 +1261,7 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
             {
                 var result = AgentRootGuard.Check(_fileSystem, right) ?? _fileSystem.ResolveAndValidate(right, rights);
                 return result.IsAllowed
-                    ? (string.Concat(token.AsSpan(0, eq + 1), SpellForProcess(right, result.ResolvedPath!, mounts, windowsTarget)), null)
+                    ? (string.Concat(token.AsSpan(0, eq + 1), SpellForProcess(right, result.ResolvedPath!, windowsBases)), null)
                     : (token, result.DenialReason ?? "access denied");
             }
         }
@@ -1267,27 +1270,46 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
     }
 
     /// <summary>
+    /// The mounts that have a Windows spelling under WSL, by virtual path without its trailing slash:
+    /// the mount's physical root and that spelling. Empty outside WSL.
+    /// </summary>
+    private Dictionary<string, (string Root, string WindowsBase)> WindowsBasesOf(IReadOnlyList<MountInfo> mounts)
+    {
+        var bases = new Dictionary<string, (string Root, string WindowsBase)>(StringComparer.Ordinal);
+        foreach (var mount in mounts)
+        {
+            var root = _fileSystem.ResolveAndValidate(mount.VirtualPath, FileAccessRights.None).ResolvedPath;
+            if (root is not null && WindowsBaseOf(mount.VirtualPath, root) is { } windowsBase)
+                bases[mount.VirtualPath.TrimEnd('/')] = (root, windowsBase);
+        }
+
+        return bases;
+    }
+
+    /// <summary>
     /// The physical path a checked virtual path is handed to the process as: the resolved path, or, for a
     /// Windows program under WSL, its Windows spelling (<c>/mnt/c/proj/src/a.ts</c> → <c>C:\proj\src\a.ts</c>).
     /// The spelling is built from the resolved path, the one the rights check judged, never from the
     /// virtual text. A mount without a Windows spelling keeps the resolved path.
     /// </summary>
-    private string SpellForProcess(string virtualPath, string resolved, IReadOnlyList<MountInfo> mounts, bool windowsTarget)
+    private static string SpellForProcess(
+        string virtualPath, string resolved, IReadOnlyDictionary<string, (string Root, string WindowsBase)>? windowsBases)
     {
-        if (!windowsTarget)
+        if (windowsBases is null || windowsBases.Count == 0)
             return resolved;
 
-        var mount = mounts.Where(m => MatchesMountPrefix(virtualPath, m.VirtualPath))
-            .MaxBy(m => m.VirtualPath.TrimEnd('/').Length);
-        if (mount is null)
+        string? key = null;
+        foreach (var candidate in windowsBases.Keys)
+        {
+            if (MatchesMountPrefix(virtualPath, candidate) && (key is null || candidate.Length > key.Length))
+                key = candidate;
+        }
+
+        if (key is null || !resolved.StartsWith(windowsBases[key].Root, StringComparison.Ordinal))
             return resolved;
 
-        var root = _fileSystem.ResolveAndValidate(mount.VirtualPath, FileAccessRights.None).ResolvedPath;
-        var windowsBase = root is null ? null : WindowsBaseOf(mount.VirtualPath, root);
-        if (windowsBase is null || !resolved.StartsWith(root!, StringComparison.Ordinal))
-            return resolved;
-
-        var rest = resolved[root!.Length..].Trim('/');
+        var (root, windowsBase) = windowsBases[key];
+        var rest = resolved[root.Length..].Trim('/');
         return rest.Length == 0
             ? windowsBase
             : windowsBase.TrimEnd('\\', '/') + "\\" + rest.Replace('/', '\\');
@@ -1303,11 +1325,9 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
             return null;
 
         var key = virtualPath.TrimEnd('/');
-        foreach (var (declared, spelling) in WindowsPaths)
-        {
-            if (string.Equals(declared.TrimEnd('/'), key, StringComparison.Ordinal) && !string.IsNullOrWhiteSpace(spelling))
-                return spelling.Trim();
-        }
+        if ((WindowsPaths.TryGetValue(key, out var spelling) || WindowsPaths.TryGetValue(key + "/", out spelling))
+            && !string.IsNullOrWhiteSpace(spelling))
+            return spelling.Trim();
 
         return WslInterop.DriveSpelling(physicalBase);
     }
@@ -1357,9 +1377,11 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
 
             replacements.Add((root.ResolvedPath, virtualPrefix));
 
-            // Under WSL a Windows program prints the Windows spelling of the base (#302).
+            // Under WSL a Windows program prints the Windows spelling of the base (#302). The base is
+            // kept without its trailing separator (a drive root C:\ becomes C:), as the match wants
+            // the separator after the base, not inside it.
             if (WindowsBaseOf(virtualPath, root.ResolvedPath) is { } windowsBase)
-                replacements.Add((windowsBase.TrimEnd('\\', '/') is { Length: > 2 } trimmed ? trimmed : windowsBase, virtualPrefix));
+                replacements.Add((windowsBase.TrimEnd('\\', '/') is { Length: >= 2 } trimmed ? trimmed : windowsBase, virtualPrefix));
         }
 
         replacements.Sort((a, b) => b.PhysicalBase.Length.CompareTo(a.PhysicalBase.Length));
@@ -1398,18 +1420,25 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
     }
 
     /// <summary>
-    /// Rewrites the path token starting at <paramref name="index"/> when one of the
-    /// physical bases matches there on a path boundary, appending the virtual prefix and
-    /// the separator-normalized remainder of the token, and advancing
-    /// <paramref name="index"/> past what it consumed. Returns false without touching the
-    /// builder when no base matches, leaving the caller to copy the character as it is.
+    /// Rewrites the path token starting at <paramref name="index"/> when one of the physical bases
+    /// matches there, at the start of a token and on a path boundary, appending the virtual prefix and
+    /// the separator-normalized remainder of the token, and advancing <paramref name="index"/> past what
+    /// it consumed. Inside a quoted span (<paramref name="quotedUntil"/>, see <see cref="ClosingQuoteOf"/>)
+    /// the remainder is scanned for further bases, so <c>"C:\proj\a and C:\proj\b"</c> rewrites both.
+    /// Returns false without touching the builder when no base matches.
     /// </summary>
     private static bool TryRewriteTokenAt(
         System.Text.StringBuilder sb,
         string output,
         IReadOnlyList<(string PhysicalBase, string VirtualPrefix)> replacements,
-        ref int index)
+        ref int index,
+        int quotedUntil = -1)
     {
+        // A base starts a token, never continues a word or a path: PID: is no D: base, and
+        // /foo/mnt/c/x holds no /mnt/c mount.
+        if (index > 0 && ContinuesPathToken(output[index - 1]))
+            return false;
+
         foreach (var (physicalBase, virtualPrefix) in replacements)
         {
             if (!MatchesAt(output, index, physicalBase))
@@ -1421,13 +1450,16 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
                 continue;
 
             sb.Append(virtualPrefix);
-            var closingQuote = ClosingQuoteOf(output, index, end);
+            var limit = quotedUntil >= 0 ? quotedUntil : ClosingQuoteOf(output, index, end);
             index = end;
             while (index < output.Length
-                   && (closingQuote >= 0 ? index < closingQuote && output[index] != ';' : !IsPathDelimiter(output[index])))
+                   && (limit >= 0 ? index < limit && output[index] != ';' : !IsPathDelimiter(output[index])))
             {
-                sb.Append(output[index] == '\\' ? '/' : output[index]);
+                var c = output[index];
+                sb.Append(c == '\\' ? '/' : c);
                 index++;
+                if (limit >= 0 && !ContinuesPathToken(c))
+                    TryRewriteTokenAt(sb, output, replacements, ref index, limit);
             }
 
             return true;
@@ -1438,13 +1470,16 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
 
     /// <summary>
     /// Where a path opened by a quote ends (#300): when the base at <paramref name="start"/> follows a
-    /// <c>"</c> or a <c>'</c> and the same quote closes it further on the same line, the index of that
-    /// quote, so <c>"C:\ici est\un dossier\f.txt"</c> is rewritten whole, spaces included. -1 otherwise:
-    /// unquoted, or a quote never closed on the line, the token ends at the first delimiter.
+    /// <c>"</c> or a <c>'</c> that starts a token, and the same quote closes it further on the same line,
+    /// the index of that quote, so <c>"C:\ici est\un dossier\f.txt"</c> is rewritten whole, spaces
+    /// included. -1 otherwise: unquoted, an apostrophe inside a word (<c>isn'C:\…</c>), or a quote never
+    /// closed on the line, the token ends at the first delimiter.
     /// </summary>
     private static int ClosingQuoteOf(string output, int start, int end)
     {
         if (start == 0 || output[start - 1] is not ('"' or '\''))
+            return -1;
+        if (start >= 2 && ContinuesPathToken(output[start - 2]))
             return -1;
 
         var quote = output[start - 1];
@@ -1458,6 +1493,9 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
 
         return -1;
     }
+
+    /// <summary>True when a character continues a word or a path, so that no path token can start right after it.</summary>
+    private static bool ContinuesPathToken(char c) => char.IsLetterOrDigit(c) || c is '/' or '\\' or '.' or '_' or '-';
 
     /// <summary>True when the character ends a matched physical base: a separator or a token delimiter.</summary>
     private static bool ClosesPathBase(char c) => c is '/' or '\\' || IsPathDelimiter(c);
@@ -1488,7 +1526,12 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
         return true;
     }
 
-    /// <summary>Whether a path is spelt the Windows way: a drive (<c>C:\</c>, <c>C:/</c>) or a UNC share (<c>\\server</c>).</summary>
+    /// <summary>
+    /// Whether a path is spelt the Windows way: a drive (<c>C:\</c>, <c>C:/</c>, or the bare <c>C:</c> an outbound
+    /// base of a drive-root mount is kept as) or a UNC share (<c>\\server</c>). Unlike the absolute-path checks of
+    /// <c>WorkingDirectoryResolver</c> and <c>FileSystemMount</c>, which want a separator after the drive, this one
+    /// accepts the bare drive.
+    /// </summary>
     internal static bool IsWindowsSpelling(string path)
         => (path.Length >= 2 && char.IsAsciiLetter(path[0]) && path[1] == ':'
             && (path.Length == 2 || path[2] is '\\' or '/'))

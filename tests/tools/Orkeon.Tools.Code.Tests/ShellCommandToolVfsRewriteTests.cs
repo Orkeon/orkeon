@@ -348,6 +348,41 @@ public sealed class ShellCommandToolVfsRewriteTests : IDisposable
 
     [Theory]
     [Trait("BR", "CH-300")]
+    [InlineData("\"C:\\proj\\a and C:\\proj\\b c\"", "\"/workspace/a and /workspace/b c\"")]
+    [InlineData("\"/mnt/c/proj/a /mnt/c/proj/b\"", "\"/workspace/a /workspace/b\"")]
+    [InlineData("\"C:\\proj\\a (C:\\proj\\b)\"", "\"/workspace/a (/workspace/b)\"")]
+    public void RewriteOutboundPaths_ShouldRewriteEveryBase_InsideAQuotedSpan(string output, string expected)
+    {
+        var rewritten = ShellCommandTool.RewriteOutboundPaths(output, [(@"C:\proj", "/workspace"), ("/mnt/c/proj", "/workspace")]);
+
+        Assert.Equal(expected, rewritten);
+    }
+
+    [Theory]
+    [Trait("BR", "CH-300")]
+    [InlineData("isn'C:\\proj\\a b' c", "isn'/workspace/a b' c")]
+    [InlineData("path='C:\\proj\\a b' c", "path='/workspace/a b' c")]
+    public void RewriteOutboundPaths_ShouldReadAQuoteAsOpening_OnlyAtTheStartOfAToken(string output, string expected)
+    {
+        var rewritten = ShellCommandTool.RewriteOutboundPaths(output, [(@"C:\proj", "/workspace")]);
+
+        Assert.Equal(expected, rewritten);
+    }
+
+    [Theory]
+    [Trait("BR", "CH-301")]
+    [InlineData("PID: 123 and D:\\x", "PID: 123 and /drive/x")]
+    [InlineData("/foo/data/y and /data/y", "/foo/data/y and /mnt/y")]
+    [InlineData("x=/data/y (/data/z)", "x=/mnt/y (/mnt/z)")]
+    public void RewriteOutboundPaths_ShouldMatchABase_OnlyAtTheStartOfAToken(string output, string expected)
+    {
+        var rewritten = ShellCommandTool.RewriteOutboundPaths(output, [("/data", "/mnt"), ("D:", "/drive")]);
+
+        Assert.Equal(expected, rewritten);
+    }
+
+    [Theory]
+    [Trait("BR", "CH-300")]
     [InlineData("C:\\ws\\un dossier\\f.txt", "/workspace/un dossier\\f.txt")]
     [InlineData("\"C:\\ws\\un dossier\\f.txt\nnext\"", "\"/workspace/un dossier\\f.txt\nnext\"")]
     [InlineData("\"C:\\ws\\a;C:\\ws\\b\"", "\"/workspace/a;/workspace/b\"")]
@@ -478,6 +513,22 @@ public sealed class ShellCommandToolVfsRewriteTests : IDisposable
         var dict = Unpack(await tool.CallAsync(Request("cmd.exe /c dir"), TestContext.Current.CancellationToken));
 
         Assert.Equal(expected, dict["stdout"]);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-302")]
+    public async Task ShouldBringADriveRootSpellingBackVirtual_WhenTheMountIsADriveRoot()
+    {
+        var sandbox = new FakeShellSandbox
+        {
+            Configure = session => session.DefaultResult = new(0, @"d:\x\a.ts and D:\", ""),
+        };
+        using var tool = WslTool(sandbox, wsl: true, physicalBase: "/mnt/d");
+
+        var dict = Unpack(await tool.CallAsync(Request("cmd.exe /c dir /workspace/x"), TestContext.Current.CancellationToken));
+
+        Assert.Equal("/workspace/x/a.ts and /workspace/", dict["stdout"]);
+        Assert.Equal(["/c", "dir", @"D:\x"], Assert.Single(Assert.Single(sandbox.Sessions).Invocations).Arguments);
     }
 
     [Theory]

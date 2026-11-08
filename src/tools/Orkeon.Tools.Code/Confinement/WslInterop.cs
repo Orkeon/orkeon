@@ -28,6 +28,7 @@ internal sealed class WslInterop(
         : new(_ => null, _ => null, _ => false);
 
     private bool? _isWsl;
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<string, bool> _windowsPrograms = new(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>True when the process runs in a WSL distribution; probed once.</summary>
     public bool IsWsl => _isWsl ??= !string.IsNullOrEmpty(environment(DistroVariable))
@@ -54,7 +55,7 @@ internal sealed class WslInterop(
 
     /// <summary>
     /// True when <paramref name="executable"/>, a bare name, resolves on the <c>PATH</c> to a <c>.exe</c>
-    /// of a Windows drive (<c>cmd.exe</c>, <c>code.exe</c>, a Windows <c>dotnet.exe</c>).
+    /// of a Windows drive (<c>cmd.exe</c>, <c>code.exe</c>, a Windows <c>dotnet.exe</c>); probed once per name.
     /// </summary>
     public bool IsWindowsProgram(string executable)
     {
@@ -62,6 +63,12 @@ internal sealed class WslInterop(
         if (!executable.EndsWith(".exe", StringComparison.OrdinalIgnoreCase) || executable.Contains('/', StringComparison.Ordinal))
             return false;
 
+        // The PATH of the process does not change, and a drvfs probe is slow: one verdict per name.
+        return _windowsPrograms.GetOrAdd(executable, ProbeWindowsProgram);
+    }
+
+    private bool ProbeWindowsProgram(string executable)
+    {
         foreach (var directory in (environment("PATH") ?? "").Split(':', StringSplitOptions.RemoveEmptyEntries))
         {
             var candidate = directory.TrimEnd('/') + "/" + executable;
