@@ -85,8 +85,9 @@ public sealed class RunnerHostCheckpointingTests : IDisposable
     [Trait("BR", "FWK-01")]
     public async Task ShouldReachTheDefaultSqliteFile_WhenACrewRunsThroughTheRunnerExecution()
     {
-        // The real entry point of `orkeon run <crew.yaml>`, over the process working directory: the
-        // default /state/checkpoints.db must reach the file the host mounted, not fail on first use.
+        // The real entry point of `orkeon run <crew.yaml>`, over a working directory of its own (never the
+        // process's, which every pass shares): the default /state/checkpoints.db must reach the file the
+        // host mounted under it, not fail on first use.
         var configPath = Path.Combine(_root, "config.yaml");
         await File.WriteAllTextAsync(Path.Combine(_root, "appsettings.json"), SqliteNoConnectionString, TestContext.Current.CancellationToken);
         await File.WriteAllTextAsync(configPath, """
@@ -105,7 +106,8 @@ public sealed class RunnerHostCheckpointingTests : IDisposable
                 expectedOutput: "The work."
                 agent: "worker"
             """, TestContext.Current.CancellationToken);
-        var database = Path.Combine(Directory.GetCurrentDirectory(), ".orkeon", "state", "checkpoints.db");
+        var database = Path.Combine(StateFolder, "checkpoints.db");
+        Assert.False(File.Exists(database));
         var sessionId = ExecutionId.New();
         string? sessionFound = null;
 
@@ -119,7 +121,7 @@ public sealed class RunnerHostCheckpointingTests : IDisposable
         try
         {
             exit = await RunnerExecution.RunOneShotAsync(
-                new ExecutionOptions { ConfigPath = configPath, AllowExternalMounts = true },
+                new ExecutionOptions { ConfigPath = configPath, AllowExternalMounts = true, WorkingDirectory = _root },
                 "Orkeon.Hosting.Tests",
                 (_, services) => services.AddScoped<ICrewOrchestrationService>(sp => new StoreProbeOrchestrator(sp, sessionId, found => sessionFound = found)),
                 TestContext.Current.CancellationToken);
