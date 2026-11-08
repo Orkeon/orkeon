@@ -395,3 +395,14 @@ static Orkeon.Domain.SharedKernel.ValueObjects.LlmStreamEvent.ToolCallFragment(O
 static Orkeon.Domain.SharedKernel.ValueObjects.ToolCallDelta.operator ==(Orkeon.Domain.SharedKernel.ValueObjects.ToolCallDelta? left, Orkeon.Domain.SharedKernel.ValueObjects.ToolCallDelta? right) -> bool
 static Orkeon.Domain.SharedKernel.ValueObjects.ToolCallDelta.operator !=(Orkeon.Domain.SharedKernel.ValueObjects.ToolCallDelta? left, Orkeon.Domain.SharedKernel.ValueObjects.ToolCallDelta? right) -> bool
 Orkeon.Domain.FileSystem.IFileSystemService.MoveAsync(string! srcVirtualPath, string! dstVirtualPath, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+Orkeon.Domain.Tools.CoworkerDelegation
+Orkeon.Domain.Tools.ICoworkerDelegationTool
+Orkeon.Domain.Tools.ICoworkerDelegationTool.CoworkerRoleOf(System.Collections.Generic.IReadOnlyDictionary<string!, object?>! arguments) -> string?
+Orkeon.Domain.Tools.IToolWrapper
+Orkeon.Domain.Tools.IToolWrapper.Inner.get -> Orkeon.Domain.Tools.IBaseTool!
+const Orkeon.Domain.Tools.CoworkerDelegation.AskQuestionToolName = "ask_question_to_coworker" -> string!
+const Orkeon.Domain.Tools.CoworkerDelegation.DelegateWorkToolName = "delegate_work_to_coworker" -> string!
+static Orkeon.Domain.Tools.CoworkerDelegation.Find(Orkeon.Domain.Tools.IBaseTool! tool) -> Orkeon.Domain.Tools.ICoworkerDelegationTool?
+static Orkeon.Domain.Tools.CoworkerDelegation.IsDelegationTool(Orkeon.Domain.Tools.IBaseTool! tool) -> bool
+static Orkeon.Domain.Tools.CoworkerDelegation.IsReservedName(string! toolName) -> bool
+static Orkeon.Domain.Tools.CoworkerDelegation.ToolNames.get -> System.Collections.Generic.IReadOnlyList<string!>!

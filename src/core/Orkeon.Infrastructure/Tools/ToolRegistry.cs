@@ -34,6 +34,12 @@ public sealed class ToolRegistry : IToolRegistry
         ArgumentNullException.ThrowIfNull(tools);
         foreach (var tool in tools)
         {
+            if (HoldsReservedName(tool))
+            {
+                throw new InvalidOperationException(
+                    $"The tool {tool.GetType().FullName} is named '{tool.Name}', a name reserved to the coworker delegation tools. Rename it.");
+            }
+
             if (!_tools.TryAdd(tool.Name, tool))
             {
                 var holder = _tools[tool.Name];
@@ -48,6 +54,8 @@ public sealed class ToolRegistry : IToolRegistry
     public Task<bool> RegisterToolAsync(IBaseTool tool)
     {
         ArgumentNullException.ThrowIfNull(tool);
+        if (HoldsReservedName(tool))
+            return Task.FromResult(false);
         var holder = _tools.GetOrAdd(tool.Name, tool);
         return Task.FromResult(ReferenceEquals(holder, tool));
     }
@@ -59,9 +67,16 @@ public sealed class ToolRegistry : IToolRegistry
         ArgumentNullException.ThrowIfNull(replacement);
         if (!string.Equals(current.Name, replacement.Name, StringComparison.OrdinalIgnoreCase))
             throw new ArgumentException("A replacement carries the name of the tool it replaces.", nameof(replacement));
+        if (HoldsReservedName(replacement))
+            return Task.FromResult(false);
         // One compare-and-swap: a reader finds the old instance or the new one, never a gap.
         return Task.FromResult(_tools.TryUpdate(current.Name, replacement, current));
     }
+
+    // The delegation tools' names are theirs: a tool that only carries one (an MCP server's, a plugin's) is
+    // refused, so no agent is handed it in their place.
+    private static bool HoldsReservedName(IBaseTool tool) =>
+        CoworkerDelegation.IsReservedName(tool.Name) && !CoworkerDelegation.IsDelegationTool(tool);
 
     /// <inheritdoc />
     public Task<bool> UnregisterToolAsync(string toolId)

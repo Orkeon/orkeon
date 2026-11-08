@@ -1563,7 +1563,9 @@ public sealed partial class JsLlmFacade
             // Deny (an operator's refusal included, when an approval channel answered) and an
             // Ask the gate let through undecided become a motivated refusal fed back as the
             // tool result — no exception, the model can adapt. Denied calls consume no
-            // tool-call budget.
+            // tool-call budget. Through the host's pipeline the gate is the pipeline's: this
+            // verdict is null, onToolCall sees the call before the gate decides, and the budget
+            // is charged by the pipeline once the gate admits the call (ToolInvocationCaller.Admitted).
             activity?.SetTag("orkeon.llm.act.permission", "denied");
             return new(call, tool, toolArgs, $"DENIED: {verdict.Message ?? $"tool '{toolName}' is not permitted in mode '{permissionMode}'."}");
         }
@@ -1581,9 +1583,11 @@ public sealed partial class JsLlmFacade
             ask = callback.Ask;
         }
 
-        // Recorded here, NOT inside ExecuteToolAsync: its fault barrier would swallow
-        // BudgetExhaustedException into an "ERROR:" string fed back to the model.
-        _budget?.RecordToolCall();
+        // Without the host's pipeline the gate has decided: the call is charged here. Through the pipeline it is
+        // charged once the pipeline's gate admits it, so a refused call costs nothing (ExecuteToolAsync lets the
+        // BudgetExhaustedException through its fault barrier).
+        if (_toolInvocation is null)
+            _budget?.RecordToolCall();
         return new(call, tool, toolArgs, null, ask);
     }
 
@@ -1743,7 +1747,7 @@ public sealed partial class JsLlmFacade
                 ? "(no output)"
                 : ToolResultLimitsOptions.Cut(JsonSerializer.Serialize(resp.Result), ToolLimits.ResolveFor(tool.Name));
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not Orkeon.Domain.Autonomous.BudgetExhaustedException)
         {
             return $"ERROR: {ex.Message}";
         }
@@ -1763,6 +1767,7 @@ public sealed partial class JsLlmFacade
             PermissionMode = permissionMode,
             RequireApproval = requireApproval,
             WaitScope = PauseClocks,
+            Admitted = _budget is null ? null : _budget.RecordToolCall,
         };
         var outcome = await pipeline.InvokeAsync(
             new Orkeon.Application.Interfaces.Security.ToolInvocation(tool, arguments, caller), _ct).ConfigureAwait(false);

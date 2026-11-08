@@ -1037,3 +1037,6 @@ Orkeon.Application.Configuration.EmbeddingOptions.FingerprintPath.get -> string!
 Orkeon.Application.Configuration.EmbeddingOptions.FingerprintPath.set -> void
 *REMOVED*Orkeon.Application.Services.Checkpointing.ResumeEngine.ResumeEngine(Orkeon.Application.Interfaces.Checkpointing.ICheckpointManager! checkpointManager, Orkeon.Application.Interfaces.Checkpointing.IStateStore! store, Microsoft.Extensions.Logging.ILogger<Orkeon.Application.Services.Checkpointing.ResumeEngine!>! logger) -> void
 Orkeon.Application.Services.Checkpointing.ResumeEngine.ResumeEngine(Orkeon.Application.Interfaces.Checkpointing.ICheckpointManager! checkpointManager, Orkeon.Application.Interfaces.Checkpointing.IStateStore! store, Microsoft.Extensions.Logging.ILogger<Orkeon.Application.Services.Checkpointing.ResumeEngine!>! logger, Orkeon.Application.Runs.IRunHistoryReader? history = null, Orkeon.Application.Runs.IRunProcessProbe? probe = null) -> void
+Orkeon.Application.Interfaces.Security.ToolInvocationCaller.Admitted.get -> System.Action?
+Orkeon.Application.Interfaces.Security.ToolInvocationCaller.Admitted.init -> void
+*REMOVED*static Orkeon.Application.Services.Security.ToolInvocationPipeline.IsDelegationTool(string! toolName) -> bool

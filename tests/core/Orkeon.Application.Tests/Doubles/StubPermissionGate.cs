@@ -14,6 +14,9 @@ internal sealed class StubPermissionGate : IPermissionGate
 
     public Action? OnCheck { get; init; }
 
+    /// <summary>When set, the verdict for a mode and an access class, in place of <see cref="Verdict"/>.</summary>
+    public Func<string, ToolAccess, PermissionVerdict>? VerdictFor { get; init; }
+
     public System.Threading.Tasks.Task<PermissionVerdict> CheckAsync(
         string toolName, IReadOnlyDictionary<string, object?> arguments, string mode,
         ToolAccess declaredAccess = ToolAccess.Unspecified, CancellationToken cancellationToken = default)
@@ -21,6 +24,6 @@ internal sealed class StubPermissionGate : IPermissionGate
         Checks.Add((toolName, mode));
         Accesses.Add(declaredAccess);
         OnCheck?.Invoke();
-        return System.Threading.Tasks.Task.FromResult(Verdict);
+        return System.Threading.Tasks.Task.FromResult(VerdictFor?.Invoke(mode, declaredAccess) ?? Verdict);
     }
 }

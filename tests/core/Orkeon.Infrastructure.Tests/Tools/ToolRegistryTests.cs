@@ -101,6 +101,34 @@ public sealed class ToolRegistryTests
     public async Task RegisterToolAsync_null_tool_throws()
         => await Assert.ThrowsAsync<ArgumentNullException>(() => CreateRegistry().RegisterToolAsync(null!));
 
+    // SEC-1: the delegation tools' names are theirs; an MCP server's or a plugin's tool that only carries one is refused.
+    [Theory]
+    [InlineData("delegate_work_to_coworker")]
+    [InlineData("ASK_QUESTION_TO_COWORKER")]
+    public async Task RegisterToolAsync_refuses_a_tool_that_only_carries_a_delegation_name(string name)
+    {
+        var registry = CreateRegistry();
+
+        Assert.False(await registry.RegisterToolAsync(new StubBaseTool(name)));
+        Assert.Null(await registry.GetToolByNameAsync(name));
+    }
+
+    [Fact]
+    public async Task RegisterToolAsync_accepts_a_delegation_tool_under_its_name()
+    {
+        var registry = CreateRegistry();
+
+        Assert.True(await registry.RegisterToolAsync(new StubCoworkerDelegationTool()));
+    }
+
+    [Fact]
+    public void A_seeded_tool_that_only_carries_a_delegation_name_fails_the_registry()
+    {
+        var error = Assert.Throws<InvalidOperationException>(() => CreateRegistry("delegate_work_to_coworker"));
+
+        Assert.Contains("reserved", error.Message, StringComparison.Ordinal);
+    }
+
     [Fact]
     public async Task RegisterToolAsync_refuses_a_name_held_by_another_instance()
     {

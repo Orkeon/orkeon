@@ -40,4 +40,18 @@ public sealed class TscTypeCheckerTrustTests : IDisposable
 
         Assert.NotEqual(planted, resolved);
     }
+
+    // SEC-6: a relative TscPath would resolve against the working directory; it is refused.
+    [Fact]
+    public void ShouldRefuseARelativeTscPath_EvenWhenTheWorkingDirectoryHoldsIt()
+    {
+        Directory.CreateDirectory(_dir);
+        File.WriteAllText(Path.Combine(_dir, "tsc"), "#!/bin/sh\nexit 0\n");
+        Directory.SetCurrentDirectory(_dir);
+
+        var error = Assert.Throws<TscNotFoundException>(() =>
+            new TscTypeChecker(new ScriptingToolchainOptions { TscPath = "tsc" }).ResolveBinary());
+
+        Assert.Contains("relative", error.Message, StringComparison.Ordinal);
+    }
 }

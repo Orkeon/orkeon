@@ -51,8 +51,16 @@ public sealed class PluginAssemblyDiscovery : IPluginAssemblyDiscovery
             {
                 ct.ThrowIfCancellationRequested();
 
-                // Flat files are not plugins: only a sub-folder can carry a manifest.
-                if (entry.Kind == VirtualEntryKind.Directory
+                // Only a sub-folder can carry a manifest. A flat assembly is not a plugin, and is refused rather than
+                // passed over unsaid: it is most often a plugin dropped in the old flat layout.
+                if (entry.Kind == VirtualEntryKind.File
+                    && entry.VirtualPath.EndsWith(AssemblyExtension, StringComparison.OrdinalIgnoreCase))
+                {
+                    candidates.Add(Refused(
+                        entry.VirtualPath,
+                        $"The assembly '{entry.VirtualPath}' lies flat in the plugin directory: a plugin lives in a sub-folder of its own, next to its {ManifestFileName}."));
+                }
+                else if (entry.Kind == VirtualEntryKind.Directory
                     && await ResolvePluginFolderAsync(entry.VirtualPath, options, ct).ConfigureAwait(false) is { } candidate)
                 {
                     candidates.Add(candidate);

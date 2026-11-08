@@ -13,7 +13,9 @@ public interface IToolRegistry
     /// Registering another instance under a name already held returns <see langword="false"/>
     /// and leaves the registered tool in place: a tool is never replaced behind the back of the
     /// agents that name it. Registering the instance that already holds the name is an
-    /// idempotent success. To replace a tool, unregister it first.
+    /// idempotent success. To replace a tool, unregister it first. The names of the coworker
+    /// delegation tools (<see cref="CoworkerDelegation.ToolNames"/>) are reserved: a tool that only
+    /// carries one is refused (<see langword="false"/>).
     /// </remarks>
     /// <returns><see langword="true"/> when <paramref name="tool"/> holds its name afterwards.</returns>
     System.Threading.Tasks.Task<bool> RegisterToolAsync(IBaseTool tool);

@@ -166,20 +166,32 @@ public class PluginLoaderManifestTests
     }
 
     [Fact]
-    public void AddOrkeonPlugins_FlatDllNextToTheSample_IsNotLoaded()
+    public void AddOrkeonPlugins_FlatDllNextToTheSample_IsNotLoaded_AndIsRecorded()
     {
         using var fixture = new PluginDirectoryFixture();
-        fixture.AddFlatFixturePlugin("Flat.dll");
+        var flat = fixture.AddFlatFixturePlugin("Flat.dll");
         fixture.AddSamplePlugin();
         var services = new ServiceCollection();
 
-        services.AddOrkeonPlugins(fixture.FileSystem);
+        services.AddOrkeonPlugins(fixture.FileSystem, options => options.ContinueOnError = true);
 
         using var provider = services.BuildServiceProvider();
         var registry = provider.GetRequiredService<IPluginRegistry>();
         Assert.Equal("sample-plugin", Assert.Single(registry.Plugins).Name);
-        Assert.Empty(registry.Failures);
+        Assert.Equal(flat, Assert.Single(registry.Failures).VirtualPath);
         Assert.DoesNotContain(services, static d => d.ServiceType.FullName == typeof(Doubles.AlphaPluginMarker).FullName);
+    }
+
+    [Fact]
+    public void AddOrkeonPlugins_FlatDll_FailsFastByDefault()
+    {
+        using var fixture = new PluginDirectoryFixture();
+        fixture.AddFlatFixturePlugin("Flat.dll");
+        var services = new ServiceCollection();
+
+        var error = Assert.ThrowsAny<PluginLoadException>(() => services.AddOrkeonPlugins(fixture.FileSystem));
+
+        Assert.Contains("lies flat", error.Message, StringComparison.Ordinal);
     }
 
     [Fact]

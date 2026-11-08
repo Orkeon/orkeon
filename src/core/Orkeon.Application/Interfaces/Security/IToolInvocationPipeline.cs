@@ -24,8 +24,10 @@ public sealed record ToolInvocationCaller(string AgentId, string AgentRole, stri
     public bool GateExempt { get; init; }
 
     /// <summary>
-    /// Gets a value indicating whether the call must be approved whatever the mode: the pipeline asks the gate
-    /// as a <c>default</c>-mode edit. A script's <c>onToolCall</c> that answers <c>ask</c> sets it.
+    /// Gets a value indicating whether the call must be approved by an operator: the pipeline asks the gate as a
+    /// <c>default</c>-mode edit. It never relaxes a stricter mode: under <c>plan</c> or <c>dontAsk</c> the call is
+    /// first put to the gate in that mode, and refused when that mode refuses it. A script's <c>onToolCall</c>
+    /// that answers <c>ask</c> sets it.
     /// </summary>
     public bool RequireApproval { get; init; }
 
@@ -35,6 +37,13 @@ public sealed record ToolInvocationCaller(string AgentId, string AgentRole, stri
     /// wall-time budget there, since that wait is not the script's. Null holds nothing.
     /// </summary>
     public Func<IDisposable>? WaitScope { get; init; }
+
+    /// <summary>
+    /// Gets what the caller does once the guardian and the permission gate let the call through, before the tool
+    /// runs: a script charges its tool-call budget there, so a refused call costs nothing. What it throws ends the
+    /// call, the tool unrun. Null does nothing.
+    /// </summary>
+    public Action? Admitted { get; init; }
 }
 
 /// <summary>One tool call an agent turn asks for.</summary>
