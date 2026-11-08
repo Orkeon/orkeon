@@ -38,6 +38,22 @@ public sealed class HostApiHardeningTests : IDisposable
 
     [Fact]
     [Trait("BR", "FWK-14")]
+    public async Task ShouldRefuseAPostWithoutAJsonContentType_WhenOnlyAClientCertificateIsRequired()
+    {
+        // PR review HOST-5: a browser presents an installed client certificate on its own, so mTLS alone does not lift the guard.
+        await using var daemon = await _harness.StartAsync(
+            new HeldLlmProvider("unused"),
+            configure: (_, api) => api["Security"] = new { RequireMutualTls = true, TrustedClientCertificateThumbprints = new[] { new string('A', 40) } });
+
+        using var response = await daemon.SendAsync(
+            HttpMethod.Post, "/runs", new { crew = "support", prompt = "hi" },
+            configure: r => r.Content = new StringContent("{\"crew\":\"support\",\"prompt\":\"hi\"}", Encoding.UTF8, "text/plain"));
+
+        Assert.Equal(HttpStatusCode.UnsupportedMediaType, response.StatusCode);
+    }
+
+    [Fact]
+    [Trait("BR", "FWK-14")]
     public async Task ShouldRefuseARequestWhoseHostIsNotTheListeners_WhenTheApiHasNoKey()
     {
         await using var daemon = await _harness.StartAsync(new HeldLlmProvider("unused"));

@@ -33,7 +33,7 @@
 
 A prefix beyond the loopback (`http://+:…`) with no authentication scheme and no `RequireMutualTls` is **refused at start** (exit 78): it would run crews for whoever can route to it. So are a prefix without its closing slash, a `Bearer` scheme without a validator, `RequireMutualTls` without a trust anchor, and a port another process holds. Under Windows the listener is HTTP.sys: a prefix other than the loopback needs a URL reservation for the service's account (`netsh http add urlacl url=http://+:5190/ user=<account>`); without it the start is refused with the same exit code and the hint.
 
-**Without any authentication scheme** (the loopback default, no key needed) the API still refuses what a web page opened in the operator's browser could send: a `POST` whose `Content-Type` is not `application/json` answers `415 unsupported_media_type` (a cross-site form cannot set it), and a request whose `Host` header is not the listener's own (`localhost`, `127.0.0.1`, `[::1]` on the configured port) answers `421 misdirected_request` (DNS rebinding). Send `Content-Type: application/json` on every `POST`, `/runs/{id}/cancel` included. With an authentication scheme configured, these two checks are not made.
+**Without an `ApiKey` or `Bearer` scheme** (the loopback default, no key needed, and also `RequireMutualTls` alone: a browser presents an installed client certificate on its own) the API still refuses what a web page opened in the operator's browser could send: a `POST` whose `Content-Type` is not `application/json` answers `415 unsupported_media_type` (a cross-site form cannot set it), and a request whose `Host` header is not the listener's own (`localhost`, `127.0.0.1`, `[::1]` on the configured port) answers `421 misdirected_request` (DNS rebinding). Send `Content-Type: application/json` on every `POST`, `/runs/{id}/cancel` included. With an `ApiKey` or `Bearer` scheme configured, these two checks are not made: a page cannot set the header. The daemon's [A2A listener](../architecture/service-host.md#5-other-agents-a2a) makes the same two checks under the same condition.
 
 ## Probes
 
@@ -41,7 +41,7 @@ Both answer without authentication — an orchestrator holds no credential — a
 
 ### `GET /healthz` — liveness
 
-Runs the checks tagged `live`: **`system_resources`** (process memory against `Telemetry:MaxMemoryMB`; over it, `degraded`, which still answers 200). It reads the process and nothing else: **liveness never depends on the LLM, the state store, the run history or any other service**, so a provider outage never makes an orchestrator restart a daemon that is fine. `200`, or `503` once the host is stopping (see below).
+Runs the checks tagged `live`: **`system_resources`** (process memory against `Telemetry:MaxMemoryMB`; over it, `degraded`, which still answers 200). It reads the process and nothing else: **liveness never depends on the LLM, the state store, the run history or any other service**, so a provider outage never makes an orchestrator restart a daemon that is fine. `200`, also while the host stops (with `"status": "stopping"`, see below): a draining process is alive, and a liveness `503` would have an orchestrator kill it before its runs finish. `503` only when a `live` check is unhealthy.
 
 ### `GET /readyz` — readiness
 
@@ -57,7 +57,7 @@ Runs the checks tagged `ready`, plus those whose tag `ReadinessTags` lists. `200
 
 The LLM check is out of readiness by default: a provider's outage takes every run down but not the daemon, and an orchestrator that pulled the host out of rotation would turn a partial failure into a total one. Add `"llm"` to `ReadinessTags` when a load balancer should route away from a host that cannot reach its model.
 
-**While the host stops**, both probes answer `503` with `"status": "stopping"` from the moment admission closes — the whole `ShutdownGracePeriod` — so a load balancer stops sending traffic while the runs in flight finish.
+**While the host stops**, from the moment admission closes — the whole `ShutdownGracePeriod` — both probes report `"status": "stopping"`: `/readyz` answers `503`, so a load balancer stops sending traffic while the runs in flight finish, and `/healthz` keeps answering `200`, so a liveness probe never restarts the process mid-drain.
 
 ```bash
 curl -s localhost:5190/healthz

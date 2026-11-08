@@ -64,6 +64,12 @@ internal sealed partial class HostApiServer : IHostedService, IDisposable
     private readonly IPendingInputStore? _input;
     private readonly IPendingInputBroker? _broker;
 
+    // One answer decided at a time, so the first one wins (PR review HOST-1). An answer handed to a held run is kept until
+    // the run ends: the run records it in its session only after it wakes, and until then the session still shows the
+    // question open, so a second answer would otherwise be recorded over the first.
+    private readonly SemaphoreSlim _inputGate = new(1, 1);
+    private readonly Dictionary<(string Run, string Request), string> _delivered = [];
+
     public HostApiServer(
         IOptions<OrkeonHostOptions> options,
         ICrewRunner runner,
@@ -252,10 +258,11 @@ internal sealed partial class HostApiServer : IHostedService, IDisposable
         var segments = (request.Url?.AbsolutePath ?? "/").Trim('/').Split('/', StringSplitOptions.RemoveEmptyEntries);
         var method = request.HttpMethod;
 
-        // Without any authentication the loopback is the only protection (FWK final review H8): a web page the operator
-        // opens must not drive the daemon, neither by a cross-site form (no JSON content type) nor through a DNS name
-        // rebound to 127.0.0.1 (a Host the listener does not name).
-        if (_options.IsUnauthenticated)
+        // Without a header credential the loopback (or a client certificate a browser presents on its own) is the only
+        // protection (FWK final review H8, PR review HOST-5): a web page the operator opens must not drive the daemon,
+        // neither by a cross-site form (no JSON content type) nor through a DNS name rebound to 127.0.0.1 (a Host the
+        // listener does not name).
+        if (_options.NeedsBrowserGuard)
         {
             if (!_options.AcceptsHost(request.Headers["Host"]))
             {
@@ -263,7 +270,7 @@ internal sealed partial class HostApiServer : IHostedService, IDisposable
                 return;
             }
 
-            if (method == "POST" && !IsJson(request.ContentType))
+            if (method == "POST" && !BrowserRequestGuard.IsJson(request.ContentType))
             {
                 await WriteAsync(context, 415, new ApiErrorDto { Error = "unsupported_media_type", Message = "A POST must declare Content-Type: application/json." }).ConfigureAwait(false);
                 return;
@@ -323,14 +330,6 @@ internal sealed partial class HostApiServer : IHostedService, IDisposable
         }
     }
 
-    private static bool IsJson(string? contentType)
-    {
-        var type = contentType?.Trim();
-        return type is not null
-            && type.StartsWith("application/json", StringComparison.OrdinalIgnoreCase)
-            && (type.Length == 16 || type[16] is ';' or ' ');
-    }
-
     private async Task ProbeAsync(HttpListenerContext context, string tag, bool includeReadinessTags, CancellationToken ct)
     {
         var extra = includeReadinessTags ? _options.ReadinessTags : [];
@@ -351,7 +350,9 @@ internal sealed partial class HostApiServer : IHostedService, IDisposable
 
         var stopping = _registry.AdmissionClosed;
         var status = stopping ? "stopping" : StatusName(report.Status);
-        var code = stopping || report.Status == HealthStatus.Unhealthy ? 503 : 200;
+        // A draining host is still alive (PR review HOST-6): only readiness turns it away, so a liveness probe never has an
+        // orchestrator kill the process while the runs in flight finish.
+        var code = (stopping && includeReadinessTags) || report.Status == HealthStatus.Unhealthy ? 503 : 200;
         var checks = report.Entries
             .Select(e => new ProbeCheckDto { Name = e.Key, Status = StatusName(e.Value.Status) })
             .OrderBy(c => c.Name, StringComparer.Ordinal)
@@ -588,8 +589,24 @@ internal sealed partial class HostApiServer : IHostedService, IDisposable
             return;
         }
 
-        var heldIds = _broker.HeldRequestIds(id);
-        if (request.RequestId is null && heldIds.Count > 1)
+        await _inputGate.WaitAsync(ct).ConfigureAwait(false);
+        try
+        {
+            await DecideInputAsync(context, id, request.RequestId, request.Answer, ct).ConfigureAwait(false);
+        }
+        finally
+        {
+            _inputGate.Release();
+        }
+    }
+
+    private async Task DecideInputAsync(HttpListenerContext context, string id, string? requestId, string answer, CancellationToken ct)
+    {
+        foreach (var gone in _delivered.Keys.Where(k => !IsRunning(k.Run)).ToArray())
+            _delivered.Remove(gone);
+
+        var heldIds = _broker!.HeldRequestIds(id);
+        if (requestId is null && heldIds.Count > 1)
         {
             // Several questions are held (parallel agents): an answer without a request_id would go to an arbitrary one.
             await WriteAsync(context, 409, new ApiErrorDto
@@ -600,9 +617,9 @@ internal sealed partial class HostApiServer : IHostedService, IDisposable
             return;
         }
 
-        var held = request.RequestId is null
+        var held = requestId is null
             ? heldIds.Count == 1 ? heldIds[0] : null
-            : heldIds.FirstOrDefault(h => string.Equals(h, request.RequestId, StringComparison.Ordinal));
+            : heldIds.FirstOrDefault(h => string.Equals(h, requestId, StringComparison.Ordinal));
         if (heldIds.Count > 0 && held is null)
         {
             await WriteAsync(context, 409, new ApiErrorDto { Error = "request_mismatch", Message = "The run waits on another question." }).ConfigureAwait(false);
@@ -611,14 +628,28 @@ internal sealed partial class HostApiServer : IHostedService, IDisposable
 
         if (held is not null)
         {
-            if (_broker.TryComplete(id, held, request.Answer))
+            _delivered[(id, held)] = answer;
+            if (_broker.TryComplete(id, held, answer))
             {
                 await WriteAsync(context, 200, new InputAcceptedDto { RunId = id, RequestId = held, Status = "delivered" }).ConfigureAwait(false);
                 return;
             }
         }
 
-        var answered = await _input.AnswerAsync(id, request.RequestId, request.Answer, ct).ConfigureAwait(false);
+        if (held is not null)
+            _delivered.Remove((id, held));
+
+        // The question already handed to the run, which has not recorded it yet: the first answer won.
+        var target = requestId ?? (await _input!.GetPendingAsync(id, ct).ConfigureAwait(false))?.RequestId;
+        if (target is not null && _delivered.TryGetValue((id, target), out var given))
+        {
+            await (string.Equals(given, answer, StringComparison.Ordinal)
+                ? WriteAsync(context, 200, new InputAcceptedDto { RunId = id, RequestId = target, Status = "already_answered" })
+                : WriteAsync(context, 409, new ApiErrorDto { Error = "no_pending_input", Message = "The question was already answered." })).ConfigureAwait(false);
+            return;
+        }
+
+        var answered = await _input!.AnswerAsync(id, requestId, answer, ct).ConfigureAwait(false);
         switch (answered.Outcome)
         {
             case PendingInputAnswerOutcome.Accepted:
@@ -772,6 +803,7 @@ internal sealed partial class HostApiServer : IHostedService, IDisposable
         _listener?.Abort();
         _stopping?.Dispose();
         _authenticator?.Dispose();
+        _inputGate.Dispose();
     }
 
     private static string HashRequest(string crew, string prompt, IReadOnlyDictionary<string, string>? variables)

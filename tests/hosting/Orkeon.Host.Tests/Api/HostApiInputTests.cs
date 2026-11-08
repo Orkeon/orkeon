@@ -116,6 +116,43 @@ public sealed class HostApiInputTests : IDisposable
 
     [Fact]
     [Trait("BR", "FWK-23")]
+    public async Task A_second_answer_is_refused_while_the_run_has_not_yet_recorded_the_first()
+    {
+        // PR review HOST-1: the run is handed the first answer but records it only once it wakes; until then the session
+        // still shows the question open. A different answer must not be recorded over the one the run goes on with.
+        var broker = new GatedPendingInputBroker();
+        await using var daemon = await _harness.StartAsync(
+            new HeldLlmProvider("unused"),
+            configure: (root, _) => Checkpointed(root, null),
+            services: s =>
+            {
+                Asks(s);
+                s.AddSingleton<Orkeon.Application.Interfaces.Checkpointing.IPendingInputBroker>(broker);
+            });
+        using var accepted = await daemon.StartRunAsync();
+        var runId = (await HostApiHarness.Daemon.JsonAsync(accepted))["run_id"]!.GetValue<string>();
+        var requestId = (await PendingAsync(daemon, runId))["request_id"]!.GetValue<string>();
+
+        using var first = await daemon.PostAsync($"/runs/{runId}/input", new { request_id = requestId, answer = "allow" });
+        using var other = await daemon.PostAsync($"/runs/{runId}/input", new { request_id = requestId, answer = "deny" });
+        using var unnamed = await daemon.PostAsync($"/runs/{runId}/input", new { answer = "deny" });
+        using var again = await daemon.PostAsync($"/runs/{runId}/input", new { request_id = requestId, answer = "allow" });
+        broker.Wake();
+        await daemon.WaitForStatusAsync(runId, "succeeded");
+
+        Assert.Equal(HttpStatusCode.OK, first.StatusCode);
+        Assert.Equal("delivered", (await HostApiHarness.Daemon.JsonAsync(first))["status"]!.GetValue<string>());
+        Assert.Equal(HttpStatusCode.Conflict, other.StatusCode);
+        Assert.Equal("no_pending_input", (await HostApiHarness.Daemon.JsonAsync(other))["error"]!.GetValue<string>());
+        Assert.Equal(HttpStatusCode.Conflict, unnamed.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, again.StatusCode);
+        Assert.Equal("already_answered", (await HostApiHarness.Daemon.JsonAsync(again))["status"]!.GetValue<string>());
+        var session = await daemon.Host.Services.GetRequiredService<Orkeon.Application.Interfaces.Checkpointing.IStateStore>().GetAsync(runId, Ct);
+        Assert.Equal("allow", session?.AnsweredInputs[requestId]);
+    }
+
+    [Fact]
+    [Trait("BR", "FWK-23")]
     public async Task A_suspended_run_reads_waiting_for_input_and_records_the_answer()
     {
         await using var daemon = await _harness.StartAsync(

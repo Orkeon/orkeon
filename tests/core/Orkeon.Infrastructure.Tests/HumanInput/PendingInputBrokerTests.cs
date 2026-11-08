@@ -47,4 +47,46 @@ public sealed class PendingInputBrokerTests
 
         Assert.Equal([true, false], states);
     }
+
+    [Fact]
+    [Trait("BR", "FWK-23")]
+    public async Task ShouldTellTheWatcherInTheOrderTheHoldsChanged_WhenANewQuestionComesWhileTheLastIsReleased()
+    {
+        // PR review HOST-2: the "released" of the last question is still on its way to the watcher when the next question
+        // is held. The watcher must end on "held", or the run clock would count the new hold.
+        var broker = new PendingInputBroker();
+        var states = new List<bool>();
+        using var releasing = new ManualResetEventSlim();
+        using var release = new ManualResetEventSlim();
+        using var watch = broker.WatchHolds("run", held =>
+        {
+            if (!held)
+            {
+                releasing.Set();
+                release.Wait(Ct);
+            }
+
+            lock (states)
+                states.Add(held);
+        });
+
+        var first = broker.WaitAsync("run", "q1", Ct);
+        broker.TryComplete("run", "q1", "a");
+        releasing.Wait(Ct);
+
+        System.Threading.Tasks.Task<string>? second = null;
+        var asker = new Thread(() => second = broker.WaitAsync("run", "q2", Ct));
+        asker.Start();
+        // Either the new question went through, or it waits for the release to be told first.
+        SpinWait.SpinUntil(() => !asker.IsAlive || (asker.ThreadState & ThreadState.WaitSleepJoin) != 0);
+        release.Set();
+        asker.Join();
+        await first;
+
+        lock (states)
+            Assert.Equal([true, false, true], states);
+        Assert.Equal(["q2"], broker.HeldRequestIds("run"));
+        broker.TryComplete("run", "q2", "b");
+        Assert.Equal("b", await second!);
+    }
 }

@@ -856,3 +856,7 @@ override Orkeon.Infrastructure.LLMs.Embeddings.MistralEmbeddingProvider.Name.get
 Orkeon.Infrastructure.LLMs.Embeddings.EmbeddingModelGuard
 static Orkeon.Infrastructure.LLMs.Embeddings.EmbeddingModelGuard.CheckAsync(System.IServiceProvider! services, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<string?>!
 Orkeon.Infrastructure.FileSystem.FileSystemService.MoveAsync(string! srcVirtualPath, string! dstVirtualPath, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+Orkeon.Infrastructure.AgentCommunication.BrowserRequestGuard
+static Orkeon.Infrastructure.AgentCommunication.BrowserRequestGuard.Applies(int allowedAuthSchemes) -> bool
+static Orkeon.Infrastructure.AgentCommunication.BrowserRequestGuard.IsJson(string? contentType) -> bool
+static Orkeon.Infrastructure.AgentCommunication.BrowserRequestGuard.NamesListener(string! prefix, string? hostHeader) -> bool

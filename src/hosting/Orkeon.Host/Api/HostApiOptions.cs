@@ -76,28 +76,17 @@ internal sealed record HostApiOptions
         }
     }
 
-    /// <summary>Whether the API declares no authentication, so the loopback is the only protection (FWK final review H8).</summary>
-    public bool IsUnauthenticated => Security.AllowedAuthSchemes.Count == 0 && !Security.RequireMutualTls;
-
     /// <summary>
-    /// Whether <paramref name="hostHeader"/> (the request's <c>Host</c>, with its port) names this listener. A wildcard prefix
-    /// accepts any host; a loopback prefix accepts the loopback spellings on its port, so a page reached through a
-    /// rebound DNS name is refused.
+    /// Whether no request header carries a credential (no <c>ApiKey</c>, no <c>Bearer</c>), so a web page the operator opens
+    /// could forge a request: the API then refuses a POST without a JSON content type and a <c>Host</c> that does not name
+    /// the listener (FWK final review H8). <c>RequireMutualTls</c> alone does not lift the checks: a browser presents an
+    /// installed client certificate on its own (PR review HOST-5).
     /// </summary>
-    public bool AcceptsHost(string? hostHeader)
-    {
-        if (Prefix.Contains("://+", StringComparison.Ordinal) || Prefix.Contains("://*", StringComparison.Ordinal))
-            return true;
-        if (!Uri.TryCreate(Prefix, UriKind.Absolute, out var prefix))
-            return true;
-        if (string.IsNullOrWhiteSpace(hostHeader) || !Uri.TryCreate("http://" + hostHeader, UriKind.Absolute, out var given))
-            return false;
-        if (given.Port != prefix.Port && !(given.IsDefaultPort && prefix.IsDefaultPort))
-            return false;
-        if (prefix.IsLoopback)
-            return given.IsLoopback || string.Equals(given.Host, "localhost", StringComparison.OrdinalIgnoreCase);
-        return string.Equals(given.Host, prefix.Host, StringComparison.OrdinalIgnoreCase);
-    }
+    public bool NeedsBrowserGuard => Orkeon.Infrastructure.AgentCommunication.BrowserRequestGuard.Applies(Security.AllowedAuthSchemes.Count);
+
+    /// <summary>Whether <paramref name="hostHeader"/> (the request's <c>Host</c>, with its port) names this listener.</summary>
+    public bool AcceptsHost(string? hostHeader) =>
+        Orkeon.Infrastructure.AgentCommunication.BrowserRequestGuard.NamesListener(Prefix, hostHeader);
 
     /// <summary>Refuses a section the listener cannot honour.</summary>
     /// <exception cref="HostConfigurationException">The prefix or a bound is unusable.</exception>

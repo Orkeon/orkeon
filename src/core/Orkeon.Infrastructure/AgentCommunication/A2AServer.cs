@@ -42,6 +42,7 @@ public partial class A2AServer : IA2AServer, IDisposable
 {
     private readonly A2AOptions _options;
     private readonly A2ASecurityOptions _security;
+    private string? _prefix;
     private readonly IA2ATaskRouter _taskRouter;
     private readonly IA2ATaskStore? _taskStore;
     private readonly HttpRequestAuthenticator _authenticator;
@@ -120,6 +121,7 @@ public partial class A2AServer : IA2AServer, IDisposable
         await _authenticator.EnsureReadyAsync(ct).ConfigureAwait(false);
 
         var prefix = $"{_options.Host.TrimEnd('/')}:{_options.Port}/";
+        _prefix = prefix;
 
         _listener = new HttpListener();
         _listener.Prefixes.Add(prefix);
@@ -302,6 +304,24 @@ public partial class A2AServer : IA2AServer, IDisposable
         var method = context.Request.HttpMethod;
 
         var isDiscovery = method == "GET" && path == "/.well-known/agent.json";
+
+        // Without a header credential the loopback (or a client certificate a browser presents on its own) is the only
+        // protection (PR review HOST-3): a web page the operator opens must not start a task, neither by a cross-site
+        // form (no JSON content type) nor through a DNS name rebound to 127.0.0.1 (a Host the listener does not name).
+        if (BrowserRequestGuard.Applies(_security.AllowedAuthSchemes.Count))
+        {
+            if (!BrowserRequestGuard.NamesListener(_prefix ?? "", context.Request.Headers["Host"]))
+            {
+                await WriteJsonResponse(context.Response, 421, new { error = "The Host header does not name this listener." }, ct).ConfigureAwait(false);
+                return;
+            }
+
+            if (method == "POST" && !BrowserRequestGuard.IsJson(context.Request.ContentType))
+            {
+                await WriteJsonResponse(context.Response, 415, new { error = "A POST must declare Content-Type: application/json." }, ct).ConfigureAwait(false);
+                return;
+            }
+        }
 
         // Enforce A2A security on task endpoints (discovery stays public for agent cards).
         if (!isDiscovery && !await AuthorizeRequestAsync(context, ct).ConfigureAwait(false))
