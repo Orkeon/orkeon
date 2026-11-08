@@ -148,17 +148,20 @@ the call starts (one `ActSession` per call):
   (`LlmCacheConfig`); a `ttl` other than `5m`/`1h`, a `ttl` on nothing cached or an unknown key throws. Like
   `effort` on the builder, it shapes the agent's declared configuration (its turns in a crew) and the agent's
   `ctx.llm` calls, a call's own `effort` or `cache` option winning (#254).
-- **`onToolCall(call)`** runs before each tool call, after the permission gate. It returns `"allow"`;
-  `"ask"` (the call goes to the approval channel as a `default`-mode edit would, and a denied answer
-  is a deny); `{ deny: reason }` (the call does not run, the model reads `DENIED: <reason>`); or
-  `{ input }` (the call runs with the rewritten input, which goes through the gate again). A
+- **`onToolCall(call)`** runs before each tool call, before the permission gate, which judges the
+  input the callback returns: a script that brings a model's `C:\proj\a.ts` back to `/workspace/a.ts`
+  has the canonical path judged, once (#303). It returns `"allow"` (the gate judges the call as it came);
+  `"ask"` (once the mode admits the call, it goes to the approval channel as a `default`-mode edit
+  would, and a denied answer is a deny); `{ deny: reason }` (the call does not run and the gate is not
+  asked, the model reads `DENIED: <reason>`); or `{ input }` (the gate judges the rewritten input, and
+  the call runs with it). A
   callback that throws, or returns anything else (nothing included), denies; `"ask"` with no permission gate denies.
 - **`onToolResult(call, result)`** runs after each tool call with the call and its result (the JSON
   parsed, or the text when it is not JSON). A returned `{ context: "..." }` replaces the line the
   model is shown for that result; returning nothing keeps it.
 
 Both callbacks run on the engine thread, through the same pump as script tools (see the threading
-model below); the permission gate always comes first.
+model below); `onToolCall` always comes before the permission gate.
 
 ## The token budget of act
 

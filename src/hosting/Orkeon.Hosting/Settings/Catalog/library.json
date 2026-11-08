@@ -3259,6 +3259,12 @@
       "description": "Commands added on top of the default (or replacement) allowlist, such as `make`."
     },
     {
+      "path": "Orkeon:Tools:Shell:WindowsPaths:<name>",
+      "section": "Orkeon:Tools:Shell",
+      "type": "string",
+      "description": "Under WSL, the Windows spelling of a mount's base by virtual path (`WindowsPaths:/workspace` = `C:\\proj`), what a launcher reads from `wslpath -w`. A Windows program run under WSL receives its path arguments in that spelling, and what it prints in it comes back virtual. A mount not named here whose base lies on a Windows drive (`/mnt/c/…`) gets the spelling of that drive."
+    },
+    {
       "path": "Plugins:ContinueOnError",
       "section": "Plugins",
       "type": "boolean",

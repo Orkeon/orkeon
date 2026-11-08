@@ -1541,9 +1541,11 @@ public sealed partial class JsLlmFacade
     }
 
     /// <summary>
-    /// Applies the permission gate and <c>onToolCall</c> to one tool call. A non-Allow verdict or a
-    /// callback denial becomes the <c>DENIED: …</c> refusal fed back to the model; otherwise the call is
-    /// ready to execute, with the arguments the callback may have rewritten.
+    /// Applies <c>onToolCall</c>, then the permission gate, to one tool call. The callback runs first so the
+    /// gate judges the input it returns (#303): a script that brings a model's <c>C:\proj\a.ts</c> back to
+    /// <c>/workspace/a.ts</c> has the canonical path judged, once. A callback denial or a non-Allow verdict
+    /// becomes the <c>DENIED: …</c> refusal fed back to the model; otherwise the call is ready to execute,
+    /// with the arguments the callback may have rewritten.
     /// </summary>
     private async Task<PreparedToolCall> PrepareToolCallAsync(
         ActSession session, Orkeon.Application.Interfaces.LLM.ParsedToolCall call, System.Diagnostics.Activity? activity)
@@ -1561,23 +1563,10 @@ public sealed partial class JsLlmFacade
             activity?.SetTag("orkeon.llm.act.permission", "unavailable");
             return new(call, null, toolArgs, NotAvailable(toolName));
         }
-        var verdict = await GateAsync(toolName, toolArgs, permissionMode, tool.AccessFor(toolArgs)).ConfigureAwait(false);
-        if (verdict is not null && verdict.Action != Orkeon.Application.Interfaces.Security.PermissionAction.Allow)
-        {
-            // Deny (an operator's refusal included, when an approval channel answered) and an
-            // Ask the gate let through undecided become a motivated refusal fed back as the
-            // tool result — no exception, the model can adapt. Denied calls consume no
-            // tool-call budget. Through the host's pipeline the gate is the pipeline's: this
-            // verdict is null, onToolCall sees the call before the gate decides, and the budget
-            // is charged by the pipeline once the gate admits the call (ToolInvocationCaller.Admitted).
-            activity?.SetTag("orkeon.llm.act.permission", "denied");
-            return new(call, tool, toolArgs, $"DENIED: {verdict.Message ?? $"tool '{toolName}' is not permitted in mode '{permissionMode}'."}");
-        }
-
         var ask = false;
         if (session.HasToolCallback)
         {
-            var callback = await RunToolCallbackAsync(session, tool, toolName, toolArgs).ConfigureAwait(false);
+            var callback = await RunToolCallbackAsync(session, toolName, toolArgs).ConfigureAwait(false);
             if (callback.DenyReason is not null)
             {
                 activity?.SetTag("orkeon.llm.act.permission", "denied");
@@ -1585,6 +1574,32 @@ public sealed partial class JsLlmFacade
             }
             toolArgs = callback.Arguments;
             ask = callback.Ask;
+        }
+
+        var verdict = await GateAsync(toolName, toolArgs, permissionMode, tool.AccessFor(toolArgs)).ConfigureAwait(false);
+        if (verdict is not null && verdict.Action != Orkeon.Application.Interfaces.Security.PermissionAction.Allow)
+        {
+            // Deny (an operator's refusal included, when an approval channel answered) and an
+            // Ask the gate let through undecided become a motivated refusal fed back as the
+            // tool result — no exception, the model can adapt. Denied calls consume no
+            // tool-call budget. Through the host's pipeline the gate is the pipeline's: this
+            // verdict is null, and the budget is charged by the pipeline once the gate admits
+            // the call (ToolInvocationCaller.Admitted).
+            activity?.SetTag("orkeon.llm.act.permission", "denied");
+            return new(call, tool, toolArgs, $"DENIED: {verdict.Message ?? $"tool '{toolName}' is not permitted in mode '{permissionMode}'."}");
+        }
+
+        // An onToolCall 'ask' is a question of its own, put once the mode admitted the call: to the
+        // operator as a default-mode edit here, or handed to the pipeline as a call to approve.
+        if (ask && !PipelineGates)
+        {
+            var asked = await GateAsync(toolName, toolArgs, "default", ToolAccess.Edit, always: true).ConfigureAwait(false);
+            if (DenialOf(asked, toolName, "default") is { } refusal)
+            {
+                activity?.SetTag("orkeon.llm.act.permission", "denied");
+                return new(call, tool, toolArgs, $"DENIED: {refusal}");
+            }
+            ask = false;
         }
 
         // Without the host's pipeline the gate has decided: the call is charged here. Through the pipeline it is
@@ -1651,12 +1666,12 @@ public sealed partial class JsLlmFacade
     private readonly record struct ToolCallbackOutcome(string? DenyReason, Dictionary<string, object?> Arguments, bool Ask = false);
 
     /// <summary>
-    /// Runs the <c>onToolCall</c> callback through the session's pump and applies its verdict:
-    /// <c>ask</c> goes to the gate as a default-mode edit, a rewritten input is gated again.
-    /// A callback failure, or a verdict this version does not know, denies.
+    /// Runs the <c>onToolCall</c> callback through the session's pump and reads its verdict: a deny, the
+    /// input to run (rewritten or not), and whether it asks for approval. The gate comes after, on that
+    /// input. A callback failure, or a verdict this version does not know, denies.
     /// </summary>
     private async Task<ToolCallbackOutcome> RunToolCallbackAsync(
-        ActSession session, IBaseTool? tool, string toolName, Dictionary<string, object?> toolArgs)
+        ActSession session, string toolName, Dictionary<string, object?> toolArgs)
     {
         var response = await session.CallToolCallbackAsync(toolName, toolArgs, _ct).ConfigureAwait(false);
         if (!response.Success)
@@ -1671,16 +1686,16 @@ public sealed partial class JsLlmFacade
         var root = verdict.RootElement;
         return root.ValueKind switch
         {
-            JsonValueKind.String => await FollowWordVerdictAsync(root.GetString(), toolName, toolArgs).ConfigureAwait(false),
-            JsonValueKind.Object => await FollowObjectVerdictAsync(root, session, tool, toolName, toolArgs).ConfigureAwait(false),
+            JsonValueKind.String => FollowWordVerdict(root.GetString(), toolArgs),
+            JsonValueKind.Object => FollowObjectVerdict(root, toolArgs),
             _ => new(NoValidVerdict, toolArgs),
         };
     }
 
     private const string NoValidVerdict = "onToolCall returned no valid verdict";
 
-    /// <summary>An <c>onToolCall</c> verdict of one word: <c>allow</c>, or <c>ask</c> the gate as a default-mode edit.</summary>
-    private async Task<ToolCallbackOutcome> FollowWordVerdictAsync(string? word, string toolName, Dictionary<string, object?> toolArgs)
+    /// <summary>An <c>onToolCall</c> verdict of one word: <c>allow</c>, or <c>ask</c> for approval once the mode admits the call.</summary>
+    private ToolCallbackOutcome FollowWordVerdict(string? word, Dictionary<string, object?> toolArgs)
     {
         if (word == "allow")
             return new(null, toolArgs);
@@ -1688,16 +1703,11 @@ public sealed partial class JsLlmFacade
             return new(NoValidVerdict, toolArgs);
         if (_permissionGate is null)
             return new("onToolCall asked for approval but no permission gate is registered", toolArgs);
-        // The pipeline is the one checkpoint when it gates: the call is handed to it as one to approve.
-        if (PipelineGates)
-            return new(null, toolArgs, Ask: true);
-        var asked = await GateAsync(toolName, toolArgs, "default", ToolAccess.Edit, always: true).ConfigureAwait(false);
-        return new(DenialOf(asked, toolName, "default"), toolArgs);
+        return new(null, toolArgs, Ask: true);
     }
 
-    /// <summary>An <c>onToolCall</c> verdict object: <c>{ deny }</c>, <c>{ input }</c> (gated again) or <c>{ context }</c>.</summary>
-    private async Task<ToolCallbackOutcome> FollowObjectVerdictAsync(
-        JsonElement root, ActSession session, IBaseTool? tool, string toolName, Dictionary<string, object?> toolArgs)
+    /// <summary>An <c>onToolCall</c> verdict object: <c>{ deny }</c>, <c>{ input }</c> (the input the gate judges) or <c>{ context }</c>.</summary>
+    private static ToolCallbackOutcome FollowObjectVerdict(JsonElement root, Dictionary<string, object?> toolArgs)
     {
         if (root.TryGetProperty("deny", out var reason))
             return new(reason.ToString(), toolArgs);
@@ -1705,9 +1715,7 @@ public sealed partial class JsLlmFacade
         {
             if (input.ValueKind != JsonValueKind.Object)
                 return new(NoValidVerdict, toolArgs);
-            var rewritten = JsonSerializer.Deserialize<Dictionary<string, object?>>(input.GetRawText())!;
-            var regated = await GateAsync(toolName, rewritten, session.PermissionMode, tool?.AccessFor(rewritten) ?? ToolAccess.Unspecified).ConfigureAwait(false);
-            return new(DenialOf(regated, toolName, session.PermissionMode), rewritten);
+            return new(null, JsonSerializer.Deserialize<Dictionary<string, object?>>(input.GetRawText())!);
         }
         if (root.TryGetProperty("context", out _))
             return new(null, toolArgs);

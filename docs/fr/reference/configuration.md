@@ -196,13 +196,13 @@ qu'elle accepte quand leur liste est fermée, et son sens.
 | [RAG](#rag) | [`Orkeon:Rag`](#orkeonrag), [`Orkeon:Rag:Ingestion`](#orkeonragingestion), [`Orkeon:Rag:QueryRouting`](#orkeonragqueryrouting), [`Orkeon:Rag:Retrieval:Hybrid`](#orkeonragretrievalhybrid), [`Orkeon:Rag:WebFallback`](#orkeonragwebfallback) | 34 |
 | [Fichiers et bac à sable](#fichiers-et-bac-à-sable) | [`Orkeon:CodeSandbox`](#orkeoncodesandbox), [`Orkeon:CodeSandbox:Docker`](#orkeoncodesandboxdocker), [`Orkeon:FileSystem`](#orkeonfilesystem), [`Orkeon:Sandbox`](#orkeonsandbox), [`PathSecurity`](#pathsecurity) | 33 |
 | [Sécurité](#sécurité) | [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:Guardian`](#orkeonguardian), [`Orkeon:Security:PermissionGate`](#orkeonsecuritypermissiongate), [`Secrets`](#secrets), [`Security:Audit`](#securityaudit), [`Security:Prompt`](#securityprompt), [`Security:ToolResults`](#securitytoolresults), [`Security:Url`](#securityurl), [`Security:Vault`](#securityvault) | 40 |
-| [Outils](#outils) | [`BRAVE_API_KEY`](#brave_api_key), [`MCP`](#mcp), [`MCP:Server`](#mcpserver), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Tools:Drive`](#orkeontoolsdrive), [`Orkeon:Tools:Email`](#orkeontoolsemail), [`Orkeon:Tools:Firefox`](#orkeontoolsfirefox), [`Orkeon:Tools:GitHub`](#orkeontoolsgithub), [`Orkeon:Tools:ResultLimits`](#orkeontoolsresultlimits), [`Orkeon:Tools:Shell`](#orkeontoolsshell), [`Plugins`](#plugins), [`RaggableTree`](#raggabletree) | 109 |
+| [Outils](#outils) | [`BRAVE_API_KEY`](#brave_api_key), [`MCP`](#mcp), [`MCP:Server`](#mcpserver), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Tools:Drive`](#orkeontoolsdrive), [`Orkeon:Tools:Email`](#orkeontoolsemail), [`Orkeon:Tools:Firefox`](#orkeontoolsfirefox), [`Orkeon:Tools:GitHub`](#orkeontoolsgithub), [`Orkeon:Tools:ResultLimits`](#orkeontoolsresultlimits), [`Orkeon:Tools:Shell`](#orkeontoolsshell), [`Plugins`](#plugins), [`RaggableTree`](#raggabletree) | 110 |
 | [Orchestration et persistance](#orchestration-et-persistance) | [`Orkeon:Checkpointing`](#orkeoncheckpointing), [`Orkeon:Consensus`](#orkeonconsensus), [`Orkeon:CrewFactory`](#orkeoncrewfactory), [`Orkeon:ExecutionState:Persistence`](#orkeonexecutionstatepersistence), [`Orkeon:HumanInput`](#orkeonhumaninput), [`Orkeon:RunHistory`](#orkeonrunhistory) | 28 |
 | [Scripts et console](#scripts-et-console) | [`Orkeon:Cli:ConsoleStreaming`](#orkeoncliconsolestreaming), [`Orkeon:Cli:Memory`](#orkeonclimemory), [`Orkeon:Cli:ScriptCommands`](#orkeoncliscriptcommands), [`Orkeon:Cli:ScriptHost`](#orkeoncliscripthost), [`Orkeon:Cli:Session`](#orkeonclisession), [`Orkeon:Cli:Tui`](#orkeonclitui), [`Orkeon:Scripting:AgentInstances`](#orkeonscriptingagentinstances), [`Orkeon:Scripting:AgentMemory`](#orkeonscriptingagentmemory), [`Orkeon:Scripting:Limits`](#orkeonscriptinglimits), [`Orkeon:Scripting:Toolchain`](#orkeonscriptingtoolchain) | 35 |
 | [Hôte de service et A2A](#hôte-de-service-et-a2a) | [`A2A`](#a2a), [`A2A:Security`](#a2asecurity), [`A2A:Security:AzureAD`](#a2asecurityazuread), [`A2A:Security:Oidc`](#a2asecurityoidc), [`Orkeon:Host`](#orkeonhost), [`Orkeon:Host:Discord`](#orkeonhostdiscord) | 59 |
 | [Observabilité](#observabilité) | [`Logging`](#logging), [`Orkeon:Monitoring`](#orkeonmonitoring), [`Telemetry`](#telemetry) | 8 |
 
-80 sections, 528 clés. Lues par aucun binaire livré, seulement par un hôte écrit en C# (6) : [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Monitoring`](#orkeonmonitoring).
+80 sections, 529 clés. Lues par aucun binaire livré, seulement par un hôte écrit en C# (6) : [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Monitoring`](#orkeonmonitoring).
 <!-- /settings-index -->
 
 Lire un tableau :
@@ -1584,6 +1584,15 @@ et aucun chemin qu'elle nomme n'est monté dans la vue. `Environment:SessionBus`
 remet à une session confinée le bus de session de l'opérateur, par lequel une commande peut sortir
 du bac à sable et lire le trousseau : l'hôte journalise un avertissement quand il est activé
 ([le bus de session est sur option](../architecture/security.md#confinement-du-shell)).
+Les chemins de la sortie reviennent virtuels : un chemin qui suit un guillemet ouvrant court
+jusqu'au guillemet fermant, espaces compris, et une base Windows (`C:\proj`) se reconnaît sans
+casse et avec `/` pour `\` (`c:\Proj`, le `C:/proj` de git). `WindowsPaths` sert un programme
+Windows lancé sous WSL avec `Confinement:Mode = None` (`cmd.exe`, un `dotnet.exe` Windows) : par
+chemin virtuel, il donne l'écriture Windows de la base d'un montage (`WindowsPaths:/workspace` =
+`C:\proj`, ce qu'affiche `wslpath -w`) ; un montage qu'il ne nomme pas, sur un lecteur Windows
+(`/mnt/c/proj`), prend l'écriture de ce lecteur. Un tel programme reçoit ses chemins dans cette
+écriture, après le même contrôle de droits, et ce qu'il écrit dans cette écriture revient virtuel.
+Hors de WSL la clé n'est pas lue.
 
 <!-- settings:Orkeon:Tools:Shell -->
 **Lue par** : `orkeon`, `orkeon-host`, `orkeon-repl`.
@@ -1598,6 +1607,7 @@ du bac à sable et lire le trousseau : l'hôte journalise un avertissement quand
 | `Environment:Propagate` | liste de chaînes | `[]` |  | Noms de variables supplémentaires propagés depuis l'environnement du runner, comme `HTTPS_PROXY` quand le proxy ne demande aucun identifiant. Un nom vide, qui contient `=` ou un NUL, commence par `ORKEON_` ou contient `KEY`, `TOKEN`, `SECRET`, `PASSWORD`, `PASSWD`, `PASS`, `CREDENTIAL` ou `AUTH` ou le mot `PAT` seul (sans casse), ou dont la valeur porte des identifiants d'URL (`http://user:password@proxy:3128`, `user:password@proxy:3128`), est écarté avec un avertissement qui ne cite jamais la valeur ; un nom déjà intégré est ignoré. Les noms se comparent avec la casse, sauf sous Windows. Sous bubblewrap, la valeur passe quel que soit le réseau, mais aucun chemin qu'elle nomme n'est lié dans la vue. Le bac à sable de code ne lit cette liste que dans la configuration : une liste posée dans le code (`Configure<ShellToolOptions>`) n'atteint que le shell. |
 | `Environment:SessionBus` | booléen | `false` |  | Indique si une session shell confinée (bubblewrap, Seatbelt, AppContainer) reçoit le bus de session de l'opérateur : `DBUS_SESSION_BUS_ADDRESS` et, sous bubblewrap avec le réseau, son socket. Faux par défaut. Le bus permet à une commande de sortir du bac à sable (`systemd-run --user`) et de lire tous les secrets du trousseau (`secret-tool`) : l'activer est journalisé comme un avertissement. Une session non confinée et le bac à sable de code, qu'aucune prison ne retient, le reçoivent toujours. |
 | `ExtraAllowedCommands` | liste de chaînes | `[]` |  | Commandes ajoutées à l'allowlist par défaut (ou de remplacement), comme `make`. |
+| `WindowsPaths:<nom>` | chaîne | — |  | Sous WSL, l'écriture Windows de la base d'un montage, par chemin virtuel (`WindowsPaths:/workspace` = `C:\proj`), ce qu'un lanceur lit de `wslpath -w`. Un programme Windows lancé sous WSL reçoit ses chemins dans cette écriture, et ce qu'il y écrit revient virtuel. Un montage qu'elle ne nomme pas et dont la base est sur un lecteur Windows (`/mnt/c/…`) prend l'écriture de ce lecteur. |
 <!-- /settings -->
 
 ### `Orkeon:Tools:Email`

@@ -185,13 +185,13 @@ closed list, and what it means.
 | [RAG](#rag) | [`Orkeon:Rag`](#orkeonrag), [`Orkeon:Rag:Ingestion`](#orkeonragingestion), [`Orkeon:Rag:QueryRouting`](#orkeonragqueryrouting), [`Orkeon:Rag:Retrieval:Hybrid`](#orkeonragretrievalhybrid), [`Orkeon:Rag:WebFallback`](#orkeonragwebfallback) | 34 |
 | [Files and sandbox](#files-and-sandbox) | [`Orkeon:CodeSandbox`](#orkeoncodesandbox), [`Orkeon:CodeSandbox:Docker`](#orkeoncodesandboxdocker), [`Orkeon:FileSystem`](#orkeonfilesystem), [`Orkeon:Sandbox`](#orkeonsandbox), [`PathSecurity`](#pathsecurity) | 33 |
 | [Security](#security) | [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:Guardian`](#orkeonguardian), [`Orkeon:Security:PermissionGate`](#orkeonsecuritypermissiongate), [`Secrets`](#secrets), [`Security:Audit`](#securityaudit), [`Security:Prompt`](#securityprompt), [`Security:ToolResults`](#securitytoolresults), [`Security:Url`](#securityurl), [`Security:Vault`](#securityvault) | 40 |
-| [Tools](#tools) | [`BRAVE_API_KEY`](#brave_api_key), [`MCP`](#mcp), [`MCP:Server`](#mcpserver), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Tools:Drive`](#orkeontoolsdrive), [`Orkeon:Tools:Email`](#orkeontoolsemail), [`Orkeon:Tools:Firefox`](#orkeontoolsfirefox), [`Orkeon:Tools:GitHub`](#orkeontoolsgithub), [`Orkeon:Tools:ResultLimits`](#orkeontoolsresultlimits), [`Orkeon:Tools:Shell`](#orkeontoolsshell), [`Plugins`](#plugins), [`RaggableTree`](#raggabletree) | 109 |
+| [Tools](#tools) | [`BRAVE_API_KEY`](#brave_api_key), [`MCP`](#mcp), [`MCP:Server`](#mcpserver), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Tools:Drive`](#orkeontoolsdrive), [`Orkeon:Tools:Email`](#orkeontoolsemail), [`Orkeon:Tools:Firefox`](#orkeontoolsfirefox), [`Orkeon:Tools:GitHub`](#orkeontoolsgithub), [`Orkeon:Tools:ResultLimits`](#orkeontoolsresultlimits), [`Orkeon:Tools:Shell`](#orkeontoolsshell), [`Plugins`](#plugins), [`RaggableTree`](#raggabletree) | 110 |
 | [Orchestration and persistence](#orchestration-and-persistence) | [`Orkeon:Checkpointing`](#orkeoncheckpointing), [`Orkeon:Consensus`](#orkeonconsensus), [`Orkeon:CrewFactory`](#orkeoncrewfactory), [`Orkeon:ExecutionState:Persistence`](#orkeonexecutionstatepersistence), [`Orkeon:HumanInput`](#orkeonhumaninput), [`Orkeon:RunHistory`](#orkeonrunhistory) | 28 |
 | [Scripts and console](#scripts-and-console) | [`Orkeon:Cli:ConsoleStreaming`](#orkeoncliconsolestreaming), [`Orkeon:Cli:Memory`](#orkeonclimemory), [`Orkeon:Cli:ScriptCommands`](#orkeoncliscriptcommands), [`Orkeon:Cli:ScriptHost`](#orkeoncliscripthost), [`Orkeon:Cli:Session`](#orkeonclisession), [`Orkeon:Cli:Tui`](#orkeonclitui), [`Orkeon:Scripting:AgentInstances`](#orkeonscriptingagentinstances), [`Orkeon:Scripting:AgentMemory`](#orkeonscriptingagentmemory), [`Orkeon:Scripting:Limits`](#orkeonscriptinglimits), [`Orkeon:Scripting:Toolchain`](#orkeonscriptingtoolchain) | 35 |
 | [Service host and A2A](#service-host-and-a2a) | [`A2A`](#a2a), [`A2A:Security`](#a2asecurity), [`A2A:Security:AzureAD`](#a2asecurityazuread), [`A2A:Security:Oidc`](#a2asecurityoidc), [`Orkeon:Host`](#orkeonhost), [`Orkeon:Host:Discord`](#orkeonhostdiscord) | 59 |
 | [Observability](#observability) | [`Logging`](#logging), [`Orkeon:Monitoring`](#orkeonmonitoring), [`Telemetry`](#telemetry) | 8 |
 
-80 sections, 528 keys. Read by no shipped binary, only by a host written in C# (6): [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Monitoring`](#orkeonmonitoring).
+80 sections, 529 keys. Read by no shipped binary, only by a host written in C# (6): [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Monitoring`](#orkeonmonitoring).
 <!-- /settings-index -->
 
 How to read a table:
@@ -1532,6 +1532,14 @@ an added variable passes whatever `AllowNetwork` says, and no path it names is b
 `Environment:SessionBus` (off by default) hands a confined session the operator's session bus,
 through which a command can leave the sandbox and read the keyring: the host logs a warning when it
 is on ([the session bus is opt-in](../architecture/security.md#shell-confinement)).
+Paths in the output come back virtual: a path that follows an opening quote runs to its closing
+quote, spaces included, and a Windows base (`C:\proj`) matches without case and with `/` for `\`
+(`c:\Proj`, git's `C:/proj`). `WindowsPaths` serves a Windows program run under WSL with
+`Confinement:Mode = None` (`cmd.exe`, a Windows `dotnet.exe`): keyed by virtual path, it gives the
+Windows spelling of a mount's base (`WindowsPaths:/workspace` = `C:\proj`, what `wslpath -w`
+prints); a mount it does not name, on a Windows drive (`/mnt/c/proj`), gets that drive's spelling.
+Such a program receives its path arguments in that spelling, after the same rights check, and
+what it prints in it comes back virtual. Outside WSL the key is not read.
 
 <!-- settings:Orkeon:Tools:Shell -->
 **Read by**: `orkeon`, `orkeon-host`, `orkeon-repl`.
@@ -1546,6 +1554,7 @@ is on ([the session bus is opt-in](../architecture/security.md#shell-confinement
 | `Environment:Propagate` | list of string | `[]` |  | Extra variable names propagated from the runner's environment, such as `HTTPS_PROXY` when the proxy needs no credential. A name that is blank, holds `=` or a NUL, starts with `ORKEON_` or contains `KEY`, `TOKEN`, `SECRET`, `PASSWORD`, `PASSWD`, `PASS`, `CREDENTIAL` or `AUTH` or the word `PAT` on its own (without case), or whose value carries URL credentials (`http://user:password@proxy:3128`, `user:password@proxy:3128`), is dropped with a warning that never quotes the value; a built-in name is ignored. Names compare with case, except on Windows. Under bubblewrap the value passes whatever the network, but no path it names is bound into the view. The code sandbox reads this list from configuration only: one set in code (`Configure<ShellToolOptions>`) reaches the shell alone. |
 | `Environment:SessionBus` | boolean | `false` |  | Whether a confined shell session (bubblewrap, Seatbelt, AppContainer) receives the operator's session bus: `DBUS_SESSION_BUS_ADDRESS` and, under bubblewrap with the network, its socket. False by default. The bus lets a command leave the sandbox (`systemd-run --user`) and read every keyring secret (`secret-tool`), so turning it on is logged as a warning. An unconfined session and the code sandbox, which no jail holds, always receive it. |
 | `ExtraAllowedCommands` | list of string | `[]` |  | Commands added on top of the default (or replacement) allowlist, such as `make`. |
+| `WindowsPaths:<name>` | string | — |  | Under WSL, the Windows spelling of a mount's base by virtual path (`WindowsPaths:/workspace` = `C:\proj`), what a launcher reads from `wslpath -w`. A Windows program run under WSL receives its path arguments in that spelling, and what it prints in it comes back virtual. A mount not named here whose base lies on a Windows drive (`/mnt/c/…`) gets the spelling of that drive. |
 <!-- /settings -->
 
 ### `Orkeon:Tools:Email`

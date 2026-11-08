@@ -77,12 +77,32 @@ public sealed class ActToolCallbacksTests
 
     [Fact]
     [Trait("BR", "RT-04")]
-    public async Task ShouldRunRewrittenInputAfterRegate_WhenOnToolCallRewrites()
+    public async Task ShouldGateOnlyTheRewrittenInput_WhenOnToolCallRewrites()
     {
         var run = await RunAsync("(call) => ({ input: { path: '/y' } })");
 
-        Assert.Equal(["/x", "/y"], run.Gate.Paths);
+        Assert.Equal(["/y"], run.Gate.Paths);
         Assert.Equal(["/y"], run.Tool.Inputs);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-303")]
+    public async Task ShouldRunTheCall_WhenTheGateRefusesTheRawSpellingTheCallbackCanonicalises()
+    {
+        var run = await RunAsync("(call) => ({ input: { path: '/workspace/a.ts' } })", gateDenies: args => Equals(args["path"], "/x"));
+
+        Assert.Equal(["/workspace/a.ts"], run.Gate.Paths);
+        Assert.Equal(["/workspace/a.ts"], run.Tool.Inputs);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-303")]
+    public async Task ShouldNotConsultTheGate_WhenOnToolCallDenies()
+    {
+        var run = await RunAsync("(call) => ({ deny: 'no' })");
+
+        Assert.Empty(run.Gate.Paths);
+        Assert.Equal("DENIED: no", run.ToolResultOfTurn2);
     }
 
     [Fact]
@@ -97,13 +117,15 @@ public sealed class ActToolCallbacksTests
 
     [Fact]
     [Trait("BR", "RT-04")]
-    public async Task ShouldRunGateBeforeCallback_WhenBothApply()
+    [Trait("BR", "CH-303")]
+    public async Task ShouldRunCallbackBeforeGate_WhenBothApply()
     {
         var allowed = await RunAsync(Counting("allow"));
         var denied = await RunAsync(Counting("allow"), gateDenies: _ => true);
 
         Assert.Equal(1, allowed.Seen);
-        Assert.Equal(0, denied.Seen);
+        Assert.Equal(1, denied.Seen);
+        Assert.Empty(denied.Tool.Inputs);
         Assert.Equal(["gate:/x", "tool:/x"], allowed.Log);
         Assert.Equal(["gate:/x"], denied.Log);
         Assert.Equal("DENIED: gate says no", denied.ToolResultOfTurn2);
