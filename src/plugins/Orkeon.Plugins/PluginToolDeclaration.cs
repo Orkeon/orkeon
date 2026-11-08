@@ -18,6 +18,10 @@ internal static class PluginToolDeclaration
     /// Goes over the <see cref="IBaseTool"/> registrations the plugin added (the descriptors not in
     /// <paramref name="before"/>): checks an instance now, wraps the others.
     /// </summary>
+    /// <param name="services">The plugin's service collection.</param>
+    /// <param name="before">The descriptors registered before the plugin ran.</param>
+    /// <param name="manifest">The plugin's manifest, listing its declared tools.</param>
+    /// <param name="virtualPath">The plugin's virtual path, for error messages.</param>
     /// <param name="failures">Where a tool refused at resolution is recorded and dropped; null to throw (fail fast).</param>
     /// <exception cref="PluginManifestException">A tool given as an instance is not declared.</exception>
     public static void Guard(

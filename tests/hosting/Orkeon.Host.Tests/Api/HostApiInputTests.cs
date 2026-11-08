@@ -148,7 +148,7 @@ public sealed class HostApiInputTests : IDisposable
         Assert.Equal(HttpStatusCode.OK, again.StatusCode);
         Assert.Equal("already_answered", (await HostApiHarness.Daemon.JsonAsync(again))["status"]!.GetValue<string>());
         var session = await daemon.Host.Services.GetRequiredService<Orkeon.Application.Interfaces.Checkpointing.IStateStore>().GetAsync(runId, Ct);
-        Assert.Equal("allow", session?.AnsweredInputs[requestId]);
+        Assert.Equal("allow", session?.AnsweredInputs[requestId].Answer);
     }
 
     [Fact]
