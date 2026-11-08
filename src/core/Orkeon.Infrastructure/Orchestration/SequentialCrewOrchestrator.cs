@@ -269,8 +269,8 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
                     if (domainOutput.Success)
                         await _checkpointManager.CompleteSessionAsync(sessionId, cancellationToken).ConfigureAwait(false);
                     else
-                        await _checkpointManager.MarkFailedAsync(
-                            sessionId, "crew-execution",
+                        await _checkpointManager.FailSessionAsync(
+                            sessionId,
                             new InvalidOperationException(Orkeon.Infrastructure.Security.LogSanitizer.SanitizeString(RunFailureReason(crew, domainOutput.Error))),
                             CancellationToken.None).ConfigureAwait(false);
                 }
@@ -313,7 +313,7 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
 
                 // The run's token is not passed: a cancelled run still records its failure.
                 if (_checkpointManager != null && sessionId != null)
-                    await _checkpointManager.MarkFailedAsync(sessionId, "crew-execution", Orkeon.Infrastructure.Checkpointing.CheckpointErrors.Redacted(ex), CancellationToken.None).ConfigureAwait(false);
+                    await _checkpointManager.FailSessionAsync(sessionId, Orkeon.Infrastructure.Checkpointing.CheckpointErrors.Redacted(ex), CancellationToken.None).ConfigureAwait(false);
             }
 
             if (!output.Succeeded && output.PendingInput is null)
@@ -691,11 +691,15 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
         if (_checkpointManager is not IPendingInputStore store)
             throw new InvalidOperationException("An answer can be given to a resumed run only when checkpointing is available (Orkeon:Checkpointing:Enabled).");
 
+        // The answer goes to the question the run stopped on, the one its exit showed (or the only one open).
         var pending = await store.GetPendingAsync(sessionId, ct).ConfigureAwait(false);
         var result = await store.AnswerAsync(sessionId, null, answer, ct).ConfigureAwait(false);
         // The same answer given again after a crash is already stored: the run goes on (the command is idempotent).
         if (result.Outcome == PendingInputAnswerOutcome.AlreadyAnswered)
             return;
+
+        if (result.Outcome == PendingInputAnswerOutcome.RequestIdRequired)
+            throw new InvalidOperationException($"Run {sessionId} waits on several questions and stopped on none of them: --input cannot tell which one it answers.");
 
         if (result.Outcome != PendingInputAnswerOutcome.Accepted || pending is null)
             throw new InvalidOperationException($"Run {sessionId} is not waiting for an answer: --input has no question to answer.");

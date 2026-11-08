@@ -156,4 +156,18 @@ public sealed class HostApiInputTests : IDisposable
         Assert.Equal(HttpStatusCode.Unauthorized, anonymous.StatusCode);
         Assert.NotEqual(HttpStatusCode.Unauthorized, authorised.StatusCode);
     }
+
+    [Fact]
+    [Trait("BR", "FWK-23")]
+    public async Task An_answer_is_refused_as_input_unavailable_when_the_host_keeps_no_checkpoints()
+    {
+        await using var daemon = await _harness.StartAsync(new HeldLlmProvider("unused"), services: Asks);
+        using var accepted = await daemon.StartRunAsync();
+        var runId = (await HostApiHarness.Daemon.JsonAsync(accepted))["run_id"]!.GetValue<string>();
+
+        using var posted = await daemon.PostAsync($"/runs/{runId}/input", new { answer = "green" });
+
+        Assert.Equal(HttpStatusCode.Conflict, posted.StatusCode);
+        Assert.Equal("input_unavailable", (await HostApiHarness.Daemon.JsonAsync(posted))["error"]!.GetValue<string>());
+    }
 }

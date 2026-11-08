@@ -68,7 +68,7 @@ public sealed partial class ResumeEngine : IResumeEngine
             }
 
             // A session another process still drives (a daemon that holds a run on its question) is not taken over, named or not.
-            if (latest.Phase is SessionPhase.Running or SessionPhase.WaitingForInput
+            if (latest.Phase is SessionPhase.Running or SessionPhase.WaitingForInput or SessionPhase.Failed
                 && await ProvenLiveAsync(latest.SessionId, ct).ConfigureAwait(false))
             {
                 LogRunningNotResumed(crewKey, latest.SessionId);
@@ -108,7 +108,7 @@ public sealed partial class ResumeEngine : IResumeEngine
             }
 
             if (unfinished.Phase == SessionPhase.Running
-                || (unfinished.Phase == SessionPhase.WaitingForInput && await ProvenLiveAsync(unfinished.SessionId, ct).ConfigureAwait(false)))
+                || (unfinished.Phase is SessionPhase.WaitingForInput or SessionPhase.Failed && await ProvenLiveAsync(unfinished.SessionId, ct).ConfigureAwait(false)))
             {
                 LogRunningNotResumed(crewKey, unfinished.SessionId);
                 return new ResumeResult { Refusal = LiveRefusal(unfinished.SessionId, unfinished.Phase) };

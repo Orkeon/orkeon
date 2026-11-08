@@ -53,3 +53,48 @@ public sealed record PendingInputRequest
     /// <summary>When the question was first asked.</summary>
     public DateTimeOffset CreatedAt { get; init; } = DateTimeOffset.UtcNow;
 }
+
+/// <summary>
+/// The answer a run's question received, kept with what the question was about (FWK-23): a replayed task gets the answer
+/// back only when it asks the same thing under the same id: the same kind and, for a tool approval, the same tool and the
+/// same arguments. An answer never approves another call than the one it was given to.
+/// </summary>
+public sealed record AnsweredInput
+{
+    /// <summary>The answer, as text.</summary>
+    public required string Answer { get; init; }
+
+    /// <summary>What the question answered asked for.</summary>
+    public required PendingInputKind Kind { get; init; }
+
+    /// <summary>The tool of the approval answered, or null.</summary>
+    public string? ToolName { get; init; }
+
+    /// <summary>The hash of the arguments of the tool call answered, or null.</summary>
+    public string? ArgsHash { get; init; }
+
+    /// <summary>When the answer was given.</summary>
+    public DateTimeOffset AnsweredAt { get; init; } = DateTimeOffset.UtcNow;
+
+    /// <summary>The answer <paramref name="answer"/> to <paramref name="request"/>.</summary>
+    /// <param name="request">The question answered.</param>
+    /// <param name="answer">The answer.</param>
+    /// <returns>The record of the answer.</returns>
+    public static AnsweredInput To(PendingInputRequest request, string answer)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        ArgumentNullException.ThrowIfNull(answer);
+        return new AnsweredInput { Answer = answer, Kind = request.Kind, ToolName = request.ToolName, ArgsHash = request.ArgsHash };
+    }
+
+    /// <summary>True when this answer was given to the same question as <paramref name="request"/> asks.</summary>
+    /// <param name="request">The question asked again.</param>
+    /// <returns>True when the kind, the tool and the arguments match.</returns>
+    public bool Answers(PendingInputRequest request)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        return Kind == request.Kind
+            && string.Equals(ToolName, request.ToolName, StringComparison.Ordinal)
+            && string.Equals(ArgsHash, request.ArgsHash, StringComparison.Ordinal);
+    }
+}

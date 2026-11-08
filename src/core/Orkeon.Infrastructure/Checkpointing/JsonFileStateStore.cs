@@ -167,9 +167,10 @@ public sealed partial class JsonFileStateStore : IStateStore
                 CreatedAt = createdAt
             };
 
+            // Written like the session file: a process that dies mid-write leaves the previous files whole.
             var versionFile = GetVersionFilePath(state.SessionId, nextVersion);
             var json = JsonSerializer.Serialize(versioned, JsonOptions);
-            await _fs.WriteAllTextAsync(versionFile, json, ct).ConfigureAwait(false);
+            await WriteAtomicallyAsync(versionFile, json, ct).ConfigureAwait(false);
 
             manifest.NextVersion = nextVersion + 1;
             manifest.Entries.Add(new ManifestEntry
@@ -298,7 +299,7 @@ public sealed partial class JsonFileStateStore : IStateStore
 
         var versionFile = GetVersionFilePath(newSessionId, 1);
         var json = JsonSerializer.Serialize(forkedVersion, JsonOptions);
-        await _fs.WriteAllTextAsync(versionFile, json, ct).ConfigureAwait(false);
+        await WriteAtomicallyAsync(versionFile, json, ct).ConfigureAwait(false);
 
         var manifest = new VersionManifest
         {
@@ -369,20 +370,53 @@ public sealed partial class JsonFileStateStore : IStateStore
 
         try
         {
-            return JsonSerializer.Deserialize<VersionManifest>(json, JsonOptions) ?? new VersionManifest();
+            if (JsonSerializer.Deserialize<VersionManifest>(json, JsonOptions) is { } manifest)
+                return manifest;
         }
         catch (JsonException)
         {
-            return new VersionManifest();
+            // Unreadable: rebuilt below from the version files themselves.
         }
+
+        // A manifest reset to empty would number the next version 1 again, overwrite v001 and lose the history it lists:
+        // the version files are the truth, the manifest is rebuilt from them.
+        return await RebuildManifestAsync(sessionId, ct).ConfigureAwait(false);
     }
 
-    private async Task SaveManifestAsync(string sessionId, VersionManifest manifest, CancellationToken ct)
+    private async Task<VersionManifest> RebuildManifestAsync(string sessionId, CancellationToken ct)
     {
-        var manifestPath = GetManifestFilePath(sessionId);
-        var json = JsonSerializer.Serialize(manifest, JsonOptions);
-        await _fs.WriteAllTextAsync(manifestPath, json, ct).ConfigureAwait(false);
+        var manifest = new VersionManifest();
+        var opts = new VirtualEnumerationOptions(Recursive: false, SearchPattern: "v*.json");
+        await foreach (var entry in _fs.EnumerateFilesAsync(GetSessionVersionDir(sessionId), opts, ct).ConfigureAwait(false))
+        {
+            var name = entry.VirtualPath[(entry.VirtualPath.LastIndexOf('/') + 1)..];
+            if (entry.Kind != VirtualEntryKind.File
+                || !int.TryParse(name.AsSpan(1, name.Length - ".json".Length - 1), System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out var version))
+            {
+                continue;
+            }
+
+            // A version number is never given twice, even when its file cannot be read back.
+            manifest.NextVersion = Math.Max(manifest.NextVersion, version + 1);
+            if (await LoadVersionFileAsync(sessionId, version, ct).ConfigureAwait(false) is { } versioned)
+            {
+                manifest.Entries.Add(new ManifestEntry
+                {
+                    VersionId = versioned.VersionId,
+                    Version = version,
+                    StepId = versioned.StepId,
+                    Label = versioned.Label,
+                    CreatedAt = versioned.CreatedAt,
+                });
+            }
+        }
+
+        manifest.Entries.Sort(static (a, b) => a.Version.CompareTo(b.Version));
+        return manifest;
     }
+
+    private Task SaveManifestAsync(string sessionId, VersionManifest manifest, CancellationToken ct) =>
+        WriteAtomicallyAsync(GetManifestFilePath(sessionId), JsonSerializer.Serialize(manifest, JsonOptions), ct);
 
     private async Task<VersionedState?> LoadVersionFileAsync(string sessionId, int version, CancellationToken ct)
     {

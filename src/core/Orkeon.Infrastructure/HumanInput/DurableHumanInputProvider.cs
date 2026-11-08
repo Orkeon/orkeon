@@ -15,9 +15,11 @@ namespace Orkeon.Infrastructure.HumanInput;
 /// Decorator that makes a question to a human outlive the process (FWK-23): it derives the question's id from the task
 /// that asks (<c>{TaskKey}#{n}.{q}</c>), persists the question with the run's checkpoint session, and then either holds
 /// for the answer (<see cref="HumanInputPause.Hold"/>, up to the hold timeout) or suspends the run
-/// (<see cref="HumanInputPause.Suspend"/>, <see cref="RunSuspendedException"/>). The answer is matched by the id alone and
-/// the prompt shown is the one persisted the first time, so a resumed task that words its question differently still
-/// gets its answer and never loops. Outside a task of a checkpointed run it is transparent.
+/// (<see cref="HumanInputPause.Suspend"/>, <see cref="RunSuspendedException"/>). The answer is matched by the id and by what
+/// the question is about (its kind and, for a tool approval, the tool and the hash of its arguments): an answer given to
+/// another call is never reused, the question is asked anew. The prompt shown is the one persisted the first time, so a
+/// resumed task that words its question differently still gets its answer and never loops. Every question is persisted:
+/// the tasks of a parallel wave each keep their own. Outside a task of a checkpointed run it is transparent.
 /// </summary>
 public sealed partial class DurableHumanInputProvider : IHumanInputProvider
 {
@@ -182,11 +184,8 @@ public sealed partial class DurableHumanInputProvider : IHumanInputProvider
                 var shown = asked.Pending ?? request;
                 if (pause == HumanInputPause.Suspend)
                 {
-                    if (asked.Pending is not null)
-                        await NotifyAsync(run, new HumanInputNotice(HumanInputNoticeKind.Needed, shown, Suspending: true), ct).ConfigureAwait(false);
-                    else if (await PersistedAsync(sessionId, request, ct).ConfigureAwait(false) is { } persisted)
-                        shown = persisted;
-                    throw Suspend(run, shown);
+                    await NotifyAsync(run, new HumanInputNotice(HumanInputNoticeKind.Needed, shown, Suspending: true), ct).ConfigureAwait(false);
+                    throw await SuspendAsync(run, sessionId, shown).ConfigureAwait(false);
                 }
 
                 return await HoldAsync(run, sessionId, requestId, shown, context, askThePerson, held!, hold, timeout, ct).ConfigureAwait(false);
@@ -229,35 +228,20 @@ public sealed partial class DurableHumanInputProvider : IHumanInputProvider
         catch (OperationCanceledException) when (timeout.IsCancellationRequested && !ct.IsCancellationRequested)
         {
             LogHoldExpired(requestId);
-            throw Suspend(run, shown);
+            throw await SuspendAsync(run, sessionId, shown).ConfigureAwait(false);
         }
 
-        await _store.RecordAnswerAsync(sessionId, requestId, answer, CancellationToken.None).ConfigureAwait(false);
+        await _store.RecordAnswerAsync(sessionId, shown, answer, CancellationToken.None).ConfigureAwait(false);
         await NotifyAsync(run, new HumanInputNotice(HumanInputNoticeKind.Given, shown), ct).ConfigureAwait(false);
         return answer;
     }
 
-    // Only one question waits in the store: when another task's question holds the slot, this one was not persisted. The run
-    // stops on the question the store holds, never on one that nobody can answer.
-    private async System.Threading.Tasks.Task<PendingInputRequest?> PersistedAsync(string sessionId, PendingInputRequest request, CancellationToken ct)
+    // The run stops on a question the store holds (every question is persisted); the first one to stop it is the one its exit
+    // names, and the one an answer that names no question goes to on the resume.
+    private async System.Threading.Tasks.Task<RunSuspendedException> SuspendAsync(RunScope run, string sessionId, PendingInputRequest shown)
     {
-        for (var attempt = 0; attempt < 3; attempt++)
-        {
-            if (await _store.GetPendingAsync(sessionId, ct).ConfigureAwait(false) is { } held)
-                return held;
-
-            // The slot was freed between the two calls: ask again, this question may take it now.
-            var again = await _store.AskAsync(sessionId, request, ct).ConfigureAwait(false);
-            if (again.Pending is { } taken)
-                return taken;
-        }
-
-        return null;
-    }
-
-    private static RunSuspendedException Suspend(RunScope run, PendingInputRequest shown)
-    {
-        run.Suspend(shown);
+        if (run.Suspend(shown))
+            await _store.SuspendAsync(sessionId, shown.RequestId, CancellationToken.None).ConfigureAwait(false);
         return new RunSuspendedException(run.Suspension!.RequestId);
     }
 
