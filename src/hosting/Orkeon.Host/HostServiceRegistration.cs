@@ -4,6 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
 using Orkeon.Application.Configuration;
+using Orkeon.Host.Api;
 using Orkeon.Application.Interfaces.AgentCommunication;
 using Orkeon.Infrastructure.AgentCommunication;
 using Orkeon.Rag.Onnx.DependencyInjection;
@@ -77,6 +78,12 @@ internal static class HostServiceRegistration
         if (hostSection.A2A.Enabled)
             services.AddHostA2A(configuration, hostSection.A2A);
 
+        // The run API and the probes (FWK-14): the idempotency keys, the daemon's readiness checks, and the
+        // listener (a hosted service that does nothing unless Orkeon:Host:Api:Enabled, started by AddHostLifetimeServices).
+        services.AddSingleton(sp => new Api.RunIdempotencyStore(
+            hostSection.Api.IdempotencyTtl, hostSection.Api.IdempotencyMaxKeys, sp.GetService<TimeProvider>()));
+        services.AddHostReadinessChecks();
+
         // One progress hook per run scope: the strategies dispatch task completions into it,
         // and CrewRunner wires its callback to the conversation watching the run. This is
         // what makes "reports progress as tasks finish" true rather than documented.
@@ -148,6 +155,8 @@ internal static class HostServiceRegistration
     /// <item><see cref="HostA2AService"/>, after MCP for the same reason — a task loads a crew —
     /// and before the chat channel and the crew host, so it stops after the drain and a run in
     /// flight still answers the peer that asked for it (GAP-23);</item>
+    /// <item><see cref="Api.HostApiServer"/> (FWK-14), after the A2A server for the same reasons and, like it, stopped after
+    /// the drain, so a client keeps reading its run while it finishes;</item>
     /// <item>the chat channel before the crew host, so it stops after it — the drain must run
     /// while the channel can still deliver, or the grace period keeps runs alive to produce
     /// answers nobody can receive;</item>
@@ -159,6 +168,7 @@ internal static class HostServiceRegistration
         ArgumentNullException.ThrowIfNull(services);
         services.AddHostedService<McpConnectionService>();
         services.AddHostedService<HostA2AService>();
+        services.AddHostedService<Api.HostApiServer>();
         services.AddHostedService<Gateway.ChatChannelService>();
         services.AddHostedService<CrewHostService>();
         return services;

@@ -176,7 +176,7 @@ the first events and replays them to the history when it joins. `llm.delta` stay
 `IncludeDeltas`. A purge applies `RetentionDays` and `MaxRuns` when a process first writes and when a run finishes, never when the history is only read. Several processes write one folder, so the JSONL index is only ever appended to (a purge appends a tombstone line instead of rewriting it), a run file the index lost is still listed, summarised from its own events, and the file system the store writes through is its own, because the closing event of `orkeon run` is written after its host is disposed. Secrets are masked (`RedactingRunEventSink`, the logs' own masking) before a file or Sqlite sink writes; stdout is not. A run resumed under its own id continues the sequence the history holds for it (the second `run.started` carries `resumed: true`), so `seq` stays strictly increasing within a run id. `run.started` is recorded with the pid and host of the writing process: a run still `running` whose process is gone from the same host is read as `orphaned`.
 
 `IRunHistoryReader` (`ListAsync`, `GetAsync`, `ReadEventsAsync`) reads a run back; [`orkeon runs`](../reference/cli.md#orkeon-runs)
-prints it as the lines of the stream. `orkeon-host` records each hosted run under the run's `ExecutionId` and writes the
-daemon's own run id into `run.started` as `hostRunId`; the task events and the closing event are recorded, the `tool.*`,
+prints it as the lines of the stream. `orkeon-host` records each hosted run under the run's `ExecutionId`, which is also the daemon's own run id (one id
+end to end: the host API, A2A, the history and the checkpoints name the run by it); `hostRunId` in `run.started` repeats it; the task events and the closing event are recorded, the `tool.*`,
 `llm.call.*` and `cost.updated` events of a hosted run are not (see [limitations](../reference/limitations.md)). A reader
 ignores a `kind` it does not know, and the history stores it untouched.

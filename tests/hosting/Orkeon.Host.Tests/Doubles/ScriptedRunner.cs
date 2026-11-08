@@ -27,7 +27,8 @@ internal sealed class ScriptedRunner : ICrewRunner
         string origin,
         Action<string>? onProgress = null,
         Func<string, Task>? onStarted = null,
-        IReadOnlyDictionary<string, string>? variables = null)
+        IReadOnlyDictionary<string, string>? variables = null,
+        RunIdempotency? idempotency = null)
     {
         Ran.Add($"{crewName}:{prompt}");
         Origins.Add(origin);

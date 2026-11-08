@@ -61,7 +61,7 @@ public static class SettingPlaceholders
         string[] names =
         [
             "Llm:ApiKeyEnvVar", "Llm:Profiles:*:ApiKeyEnvVar", "Orkeon:Rag:WebFallback:ApiKeyEnvVar",
-            "Orkeon:Host:Discord:TokenEnvironmentVariable", "A2A:Security:ApiKeySecretNames:*", "Orkeon:Encryption:SecretName",
+            "Orkeon:Host:Discord:TokenEnvironmentVariable", "A2A:Security:ApiKeySecretNames:*", "Orkeon:Host:Api:Security:ApiKeySecretNames:*", "Orkeon:Encryption:SecretName",
             "Orkeon:Tools:GitHub:TokenVariable", "MCP:Servers:*:Auth:ClientSecretEnv",
             "Orkeon:TypeSafe:ApiKeyEnvVar", "Orkeon:Liquid:ApiKeyEnvVar", "Orkeon:Kev:ApiKeyEnvVar",
         ];

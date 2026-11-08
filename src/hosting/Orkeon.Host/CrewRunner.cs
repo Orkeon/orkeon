@@ -58,8 +58,14 @@ internal interface ICrewRunner
         string origin,
         Action<string>? onProgress = null,
         Func<string, Task>? onStarted = null,
-        IReadOnlyDictionary<string, string>? variables = null);
+        IReadOnlyDictionary<string, string>? variables = null,
+        RunIdempotency? idempotency = null);
 }
+
+/// <summary>The idempotency key of a run asked over the host API, and the hash of the request it came with (FWK-14).</summary>
+/// <param name="Key">The client's key.</param>
+/// <param name="Hash">The hash of the request, to tell a replay from a different request under the same key.</param>
+internal sealed record RunIdempotency(string Key, string Hash);
 
 /// <summary>
 /// Runs one hosted crew, in its own dependency-injection scope (GATE-02).
@@ -133,13 +139,18 @@ internal sealed partial class CrewRunner : ICrewRunner
     /// The run's input variables, besides the prompt — what an A2A task's <c>metadata</c> carries
     /// (GAP-23); a chat message has none.
     /// </param>
+    /// <param name="idempotency">
+    /// The idempotency key and request hash of a run asked over the host API (FWK-14), written into
+    /// <c>run.started</c> so a restarted host still finds the key.
+    /// </param>
     public async Task<HostedRunResult> RunAsync(
         string crewName,
         string prompt,
         string origin,
         Action<string>? onProgress = null,
         Func<string, Task>? onStarted = null,
-        IReadOnlyDictionary<string, string>? variables = null)
+        IReadOnlyDictionary<string, string>? variables = null,
+        RunIdempotency? idempotency = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(crewName);
 
@@ -198,7 +209,7 @@ internal sealed partial class CrewRunner : ICrewRunner
             // The run history (FWK-08): the run's identity and run.started before anything resolves the run's
             // hooks; run.finished when this block ends. Nothing happens when the history is off.
             var recording = scope.ServiceProvider.GetService<HostRunRecording>();
-            using var history = recording?.Begin(hosted.Name, run.Id, () => run.Cancellation.IsCancellationRequested);
+            using var history = recording?.Begin(hosted.Name, run.Id, () => run.Cancellation.IsCancellationRequested, idempotency);
             var factory = scope.ServiceProvider.GetRequiredService<ICrewFactory>();
             var orchestrator = scope.ServiceProvider.GetRequiredService<ICrewOrchestrationService>();
 

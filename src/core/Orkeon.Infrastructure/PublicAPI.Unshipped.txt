@@ -654,3 +654,34 @@ static Orkeon.Infrastructure.Evaluation.ReportExporter.ReadComparableReport(stri
 [ORKEXP004]Orkeon.Infrastructure.MCP.McpAuthType.OAuth2ClientCredentials = 3 -> Orkeon.Infrastructure.MCP.McpAuthType
 [ORKEXP004]Orkeon.Infrastructure.MCP.McpAuthType.OAuth2Device = 4 -> Orkeon.Infrastructure.MCP.McpAuthType
 [ORKEXP004]const Orkeon.Infrastructure.MCP.McpServiceExtensions.OAuthHttpClientName = "orkeon-mcp-oauth" -> string!
+Orkeon.Infrastructure.Telemetry.HealthChecks.HealthCheckExtensions
+const Orkeon.Infrastructure.Telemetry.HealthChecks.HealthCheckExtensions.LiveTag = "live" -> string!
+const Orkeon.Infrastructure.Telemetry.HealthChecks.HealthCheckExtensions.ReadyTag = "ready" -> string!
+const Orkeon.Infrastructure.Telemetry.HealthChecks.HealthCheckExtensions.LlmTag = "llm" -> string!
+static Orkeon.Infrastructure.Telemetry.HealthChecks.HealthCheckExtensions.AddOrkeonHealthChecks(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
+[ORKEXP006]Orkeon.Infrastructure.AgentCommunication.HttpSecurityOptions
+[ORKEXP006]Orkeon.Infrastructure.AgentCommunication.HttpSecurityOptions.HttpSecurityOptions() -> void
+[ORKEXP006]Orkeon.Infrastructure.AgentCommunication.HttpSecurityOptions.AllowedAuthSchemes.get -> System.Collections.ObjectModel.Collection<string!>!
+[ORKEXP006]Orkeon.Infrastructure.AgentCommunication.HttpSecurityOptions.ApiKeySecretNames.get -> System.Collections.ObjectModel.Collection<string!>!
+[ORKEXP006]Orkeon.Infrastructure.AgentCommunication.HttpSecurityOptions.RequireMutualTls.get -> bool
+[ORKEXP006]Orkeon.Infrastructure.AgentCommunication.HttpSecurityOptions.RequireMutualTls.set -> void
+[ORKEXP006]Orkeon.Infrastructure.AgentCommunication.HttpSecurityOptions.TrustedCertificateAuthorities.get -> System.Collections.ObjectModel.Collection<string!>!
+[ORKEXP006]Orkeon.Infrastructure.AgentCommunication.HttpSecurityOptions.TrustedClientCertificateThumbprints.get -> System.Collections.ObjectModel.Collection<string!>!
+[ORKEXP006]static Orkeon.Infrastructure.AgentCommunication.HttpSecurityOptions.From(Orkeon.Infrastructure.AgentCommunication.A2ASecurityOptions! a2a) -> Orkeon.Infrastructure.AgentCommunication.HttpSecurityOptions!
+[ORKEXP001]Orkeon.Infrastructure.AgentCommunication.A2ACredentialValidator.A2ACredentialValidator(Orkeon.Infrastructure.AgentCommunication.HttpSecurityOptions! security, System.Collections.Generic.IEnumerable<Orkeon.Application.Interfaces.Security.IAuthenticationProvider!>! bearerProviders, Orkeon.Application.Interfaces.Security.ISecretProvider? secretProvider, string! sectionName = "A2A:Security") -> void
+[ORKEXP001]const Orkeon.Infrastructure.AgentCommunication.A2ACredentialValidator.DefaultSection = "A2A:Security" -> string!
+[ORKEXP006]Orkeon.Infrastructure.AgentCommunication.HttpRequestAuthenticator
+[ORKEXP006]Orkeon.Infrastructure.AgentCommunication.HttpRequestAuthenticator.HttpRequestAuthenticator(Orkeon.Infrastructure.AgentCommunication.HttpSecurityOptions! security, System.Collections.Generic.IEnumerable<Orkeon.Application.Interfaces.Security.IAuthenticationProvider!>? bearerProviders = null, Orkeon.Application.Interfaces.Security.ISecretProvider? secretProvider = null, Microsoft.Extensions.Logging.ILogger? logger = null, string! sectionName = "A2A:Security") -> void
+[ORKEXP006]Orkeon.Infrastructure.AgentCommunication.HttpRequestAuthenticator.IsRequired.get -> bool
+[ORKEXP006]Orkeon.Infrastructure.AgentCommunication.HttpRequestAuthenticator.EnsureReadyAsync(System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+[ORKEXP006]Orkeon.Infrastructure.AgentCommunication.HttpRequestAuthenticator.InitializeMutualTlsTrust() -> void
+[ORKEXP006]Orkeon.Infrastructure.AgentCommunication.HttpRequestAuthenticator.IsClientCertificateTrusted(System.Security.Cryptography.X509Certificates.X509Certificate2! certificate) -> bool
+[ORKEXP006]Orkeon.Infrastructure.AgentCommunication.HttpRequestAuthenticator.Dispose() -> void
+[ORKEXP006]Orkeon.Infrastructure.AgentCommunication.HttpAuthorization
+[ORKEXP006]Orkeon.Infrastructure.AgentCommunication.HttpAuthorization.HttpAuthorization(bool allowed, int statusCode, string? error, string? reason) -> void
+[ORKEXP006]Orkeon.Infrastructure.AgentCommunication.HttpAuthorization.Allowed.get -> bool
+[ORKEXP006]Orkeon.Infrastructure.AgentCommunication.HttpAuthorization.StatusCode.get -> int
+[ORKEXP006]Orkeon.Infrastructure.AgentCommunication.HttpAuthorization.Error.get -> string?
+[ORKEXP006]Orkeon.Infrastructure.AgentCommunication.HttpAuthorization.Reason.get -> string?
+[ORKEXP006]static Orkeon.Infrastructure.AgentCommunication.HttpAuthorization.Allow.get -> Orkeon.Infrastructure.AgentCommunication.HttpAuthorization!
+[ORKEXP006]Orkeon.Infrastructure.AgentCommunication.HttpRequestAuthenticator.AuthorizeAsync(System.Net.HttpListenerContext! context, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Infrastructure.AgentCommunication.HttpAuthorization!>!

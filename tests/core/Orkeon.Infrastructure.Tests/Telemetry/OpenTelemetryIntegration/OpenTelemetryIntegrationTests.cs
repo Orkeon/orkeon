@@ -1,3 +1,4 @@
+using Orkeon.Infrastructure.Telemetry.HealthChecks;
 using System.Diagnostics;
 using OpenTelemetry;
 using OpenTelemetry.Metrics;
@@ -158,13 +159,14 @@ public class OpenTelemetryIntegrationTests
     }
 
     [Fact]
-    public void ShouldRegisterHealthChecks_WhenAddingTelemetry()
+    public void ShouldRegisterHealthChecks_WhenAddingThem()
     {
         var services = OpenTelemetryIntegrationTestsFixture.CreateServicesWithTelemetry(new Dictionary<string, string?>
         {
             ["Telemetry:Enabled"] = "true"
         });
         _fixture.WithMockProviders(services);
+        services.AddOrkeonHealthChecks();
 
         var sp = services.BuildServiceProvider();
 
@@ -181,6 +183,7 @@ public class OpenTelemetryIntegrationTests
             ["Telemetry:MaxMemoryMB"] = "100000"
         });
         _fixture.WithMockProviders(services, "TestProvider");
+        services.AddOrkeonHealthChecks();
 
         var sp = services.BuildServiceProvider();
 

@@ -14,9 +14,9 @@ namespace Orkeon.Host;
 /// (<see cref="IRunScope"/>, the id the checkpoint session carries) before <c>run.started</c>, and the strategies'
 /// task events reach it through <see cref="RunEventObserver"/>. One instance per run scope.
 /// <para>
-/// The identity is the run's <see cref="ExecutionId"/>, not the daemon's own twelve-character run id, which is written
-/// into <c>run.started</c> as <c>hostRunId</c>. Unifying the two behind the API and A2A task ids is left to the host API
-/// (FWK-14): it reads <c>hostRunId</c> there, or replaces the id <see cref="Begin"/> mints.
+/// The identity is the run's <see cref="ExecutionId"/>, and it is the daemon's own run id too (FWK-14): the registry mints
+/// the id as an <see cref="ExecutionId"/> and <see cref="Begin"/> adopts it, so the history, the checkpoints, the A2A task
+/// and the host API name a run by one id. <c>hostRunId</c> in <c>run.started</c> repeats it.
 /// </para>
 /// </summary>
 internal sealed class HostRunRecording
@@ -61,17 +61,26 @@ internal sealed class HostRunRecording
     /// <c>run.finished</c> and closes the identity. Nothing happens when the history is off.
     /// </summary>
     /// <param name="crewName">The hosted crew.</param>
-    /// <param name="hostRunId">The daemon's own id of the run (see the type's remarks).</param>
+    /// <param name="hostRunId">The daemon's own id of the run, which is the run's <see cref="ExecutionId"/>.</param>
+    /// <param name="idempotency">The idempotency key and request hash of an API run, recorded in <c>run.started</c> so a restart finds them.</param>
     /// <param name="cancelled">Whether the run was stopped or timed out, asked at the end.</param>
-    public IDisposable Begin(string crewName, string hostRunId, Func<bool> cancelled)
+    public IDisposable Begin(string crewName, string hostRunId, Func<bool> cancelled, RunIdempotency? idempotency = null)
     {
         if (_history is null)
             return NoRecording.Instance;
 
-        var executionId = ExecutionId.New();
+        var executionId = ExecutionId.From(hostRunId);
         var identity = _runScope.Enter(new RunScope(executionId, crewName));
         _publisher = new RunEventPublisher([_history.Sink], _time, _runScope, executionId.ToString(), _logger);
-        _publisher.Emit(RunEventKinds.RunStarted, new { target = crewName, crewKey = crewName, hostRunId, stream = false });
+        _publisher.Emit(RunEventKinds.RunStarted, new
+        {
+            target = crewName,
+            crewKey = crewName,
+            hostRunId,
+            stream = false,
+            idempotencyKey = idempotency?.Key,
+            requestHash = idempotency?.Hash,
+        });
         return new Recording(this, identity, cancelled, Stopwatch.GetTimestamp());
     }
 

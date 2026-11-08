@@ -1,3 +1,4 @@
+using Orkeon.Infrastructure.Telemetry.HealthChecks;
 using Microsoft.Extensions.AI;
 using Orkeon.Domain.SharedKernel;
 using ILlmProvider = Orkeon.Domain.SharedKernel.ILlmProvider;
@@ -81,6 +82,9 @@ public static class InfrastructureExtensions
         services.AddOrkeonNativeToolCalling();
         services.AddOrkeonOutputValidation();
         services.AddOrkeonFeatureModules();
+
+        // The health checks do not hang on the telemetry: a host that never enables it still has them (FWK-14).
+        services.AddOrkeonHealthChecks();
         return services;
     }
 

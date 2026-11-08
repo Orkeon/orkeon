@@ -109,7 +109,8 @@ public sealed class HostPublishesRunEventsTests : IDisposable
         Assert.Contains(events, e => e.Kind == RunEventKinds.TaskStarted);
         Assert.Contains(events, e => e.Kind == RunEventKinds.TaskCompleted);
         Assert.Equal(Enumerable.Range(1, events.Count), events.Select(e => e.Seq));
-        // The daemon's own run id rides in run.started: the hook the host API (FWK-14) reads to unify the two ids.
+        // One id end to end (FWK-14): the daemon's run id is the history's run id, and run.started repeats it.
+        Assert.Equal(result.RunId, summary.RunId);
         Assert.Equal(result.RunId, events[0].Payload?["hostRunId"]?.GetValue<string>());
         Assert.All(events, e => Assert.Equal(summary.RunId, e.CorrelationId));
         Assert.True(events[^1].Payload?["success"]?.GetValue<bool>());
