@@ -1487,7 +1487,7 @@ public sealed partial class JsLlmFacade
 
     /// <summary>
     /// Runs the calls of one model turn group by group (<see cref="ToolCallScheduler"/>): per group the
-    /// gate and <c>onToolCall</c> of each call first, one by one in call order; then the group's reads
+    /// <c>onToolCall</c> then the gate of each call first, one by one in call order; then the group's reads
     /// together (a write, or any call not allow-listed, is a group of one); then <c>onToolResult</c> and the
     /// tool messages in call order. A call whose gate or callback faults leaves its siblings to complete;
     /// the first fault is rethrown after the group.

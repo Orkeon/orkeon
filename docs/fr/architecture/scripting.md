@@ -161,7 +161,9 @@ au début de l'appel (une `ActSession` par appel) :
   renvoyée (rien compris) refuse aussi, et `"ask"` sans porte de permission refuse.
 - **`onToolResult(call, result)`** s'exécute après chaque appel d'outil avec l'appel et son résultat (le
   JSON analysé, ou le texte s'il n'est pas du JSON). Un `{ context: "..." }` renvoyé remplace la ligne
-  montrée au modèle pour ce résultat ; ne rien renvoyer la conserve.
+  montrée au modèle pour ce résultat ; ne rien renvoyer la conserve. À travers le pipeline d'invocation de
+  l'hôte (le REPL, `orkeon run`), un appel que la barrière a refusé est aussi un résultat, `DENIED: …`, et
+  `onToolResult` s'exécute dessus ; un appel refusé par `onToolCall` ne l'atteint jamais.
 
 Les deux rappels s'exécutent sur le thread du moteur, par la même pompe que les outils de script (voir
 le modèle de threading ci-dessous) ; `onToolCall` passe toujours avant la porte de permission.
