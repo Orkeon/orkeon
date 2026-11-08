@@ -185,8 +185,28 @@ public sealed class McpCrewToolTests : IDisposable
         var result = await host.CallToolAsync(
             "run_crew_report_writer", Args(new { topic = "bees", tone = "plain", length = "3" }), new RecordingProgress(), TestContext.Current.CancellationToken);
 
+        // The task's own error text stays in the server's log: it may carry a path or a secret of the run.
         Assert.True(result.IsError);
-        Assert.Contains("polish", Assert.Single(result.Content).Text, StringComparison.Ordinal);
+        var text = Assert.Single(result.Content).Text;
+        Assert.DoesNotContain("polish failed", text, StringComparison.Ordinal);
+        Assert.Contains("log of the server", text, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    [Trait("BR", "FWK-24")]
+    public async Task ShouldNotReturnTheLoadError_WhenTheCrewNoLongerLoads()
+    {
+        var path = WriteCrew("a", "Report Writer", TwoTasks);
+        using var host = await OpenAsync(path);
+        const string Canary = "load-canary-7f3a";
+        await File.WriteAllTextAsync(path, $"not: [a crew {Canary}", Ct);
+
+        var result = await host.CallToolAsync("run_crew_report_writer", BeesArgs, new RecordingProgress(), Ct);
+
+        Assert.True(result.IsError);
+        var text = Assert.Single(result.Content).Text;
+        Assert.DoesNotContain(Canary, text, StringComparison.Ordinal);
+        Assert.Contains("log of the server", text, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -361,6 +381,56 @@ public sealed class McpCrewToolTests : IDisposable
         Assert.Equal(1, gated.MaxInside);
         Assert.Equal("Polish the draft, keep bees.", Assert.Single(results[0].Content).Text);
         Assert.Equal("Polish the draft, keep wasps.", Assert.Single(results[1].Content).Text);
+    }
+
+    [Fact]
+    [Trait("BR", "FWK-24")]
+    public async Task ShouldAnswerBusy_WhenMoreCallsThanTheBoundWaitForTheCrew()
+    {
+        var gated = new FakeGatedAgentExecutionService();
+        _service = gated;
+        using var host = await OpenAsync(WriteCrew("a", "Report Writer", TwoTasks));
+        var running = host.CallToolAsync("run_crew_report_writer", ArgsFor("bees"), new RecordingProgress(), Ct);
+        await Polling.WaitUntilAsync(() => gated.Entered >= 1, HangGuard);
+        var waiting = Enumerable.Range(0, McpCrewToolHost.MaxWaitingCalls)
+            .Select(i => host.CallToolAsync("run_crew_report_writer", ArgsFor($"topic{i}"), new RecordingProgress(), Ct))
+            .ToList();
+        await Polling.WaitUntilAsync(() => host.WaitingCalls("run_crew_report_writer") == McpCrewToolHost.MaxWaitingCalls, HangGuard);
+
+        var refused = await host.CallToolAsync("run_crew_report_writer", ArgsFor("wasps"), new RecordingProgress(), Ct)
+            .WaitAsync(HangGuard, Ct);
+
+        Assert.True(refused.IsError);
+        Assert.Contains("busy", Assert.Single(refused.Content).Text, StringComparison.Ordinal);
+        gated.Release();
+        var results = await Task.WhenAll([running, .. waiting]).WaitAsync(HangGuard, Ct);
+        Assert.All(results, r => Assert.NotEqual(true, r.IsError));
+    }
+
+    [Fact]
+    [Trait("BR", "FWK-24")]
+    public async Task ShouldLetAWaitingCallGoWithoutRunning_WhenTheServerStopsAdmitting()
+    {
+        var gated = new FakeGatedAgentExecutionService();
+        _service = gated;
+        using var host = await OpenAsync(WriteCrew("a", "Report Writer", TwoTasks));
+        var running = host.CallToolAsync("run_crew_report_writer", ArgsFor("bees"), new RecordingProgress(), Ct);
+        await Polling.WaitUntilAsync(() => gated.Entered >= 1, HangGuard);
+        var waiting = host.CallToolAsync("run_crew_report_writer", ArgsFor("wasps"), new RecordingProgress(), Ct);
+        await Polling.WaitUntilAsync(() => host.WaitingCalls("run_crew_report_writer") == 1, HangGuard);
+
+        host.StopAdmitting();
+        var letGo = await waiting.WaitAsync(HangGuard, Ct);
+
+        Assert.True(letGo.IsError);
+        Assert.Contains("closing", Assert.Single(letGo.Content).Text, StringComparison.Ordinal);
+        gated.Release();
+        var first = await running.WaitAsync(HangGuard, Ct);
+        Assert.Equal("Polish the draft, keep bees.", Assert.Single(first.Content).Text);
+        // Two tasks of the one run: the call let go never ran the crew.
+        Assert.Equal(2, gated.Entered);
+        var late = await host.CallToolAsync("run_crew_report_writer", ArgsFor("ants"), new RecordingProgress(), Ct);
+        Assert.True(late.IsError);
     }
 
     [Fact]
