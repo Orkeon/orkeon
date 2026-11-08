@@ -429,8 +429,11 @@ public sealed class McpCrewToolTests : IDisposable
         Assert.Equal("Polish the draft, keep bees.", Assert.Single(first.Content).Text);
         // Two tasks of the one run: the call let go never ran the crew.
         Assert.Equal(2, gated.Entered);
-        var late = await host.CallToolAsync("run_crew_report_writer", ArgsFor("ants"), new RecordingProgress(), Ct);
-        Assert.True(late.IsError);
+        // A call read before the close that finds the crew free still runs: its client may still read the answer.
+        var late = host.CallToolAsync("run_crew_report_writer", ArgsFor("ants"), new RecordingProgress(), Ct);
+        await Polling.WaitUntilAsync(() => gated.Entered >= 3, HangGuard);
+        gated.Release();
+        Assert.False((await late.WaitAsync(HangGuard, Ct)).IsError);
     }
 
     [Fact]

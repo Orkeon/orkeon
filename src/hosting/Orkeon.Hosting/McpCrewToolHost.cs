@@ -100,13 +100,14 @@ internal sealed partial class McpCrewToolHost : IMcpServerExtension, IDisposable
 
         /// <summary>
         /// Takes the crew, or says why not: <see cref="Admission.Busy"/> when <see cref="MaxWaitingCalls"/> calls
-        /// already wait for it, <see cref="Admission.Closed"/> once <see cref="Close"/> was called, including for a
-        /// call that was waiting then.
+        /// already wait for it, <see cref="Admission.Closed"/> once <see cref="Close"/> was called for a call that would
+        /// have to wait, including one that was waiting then. A call read before the close that finds the crew free
+        /// still runs: its client may still read the answer.
         /// </summary>
         public async Task<Admission> EnterAsync(CancellationToken ct)
         {
             if (_closed.IsCancellationRequested)
-                return Admission.Closed;
+                return _free.Wait(0, CancellationToken.None) ? Admission.Entered : Admission.Closed;
             if (Interlocked.Increment(ref _waiting) > MaxWaitingCalls)
             {
                 Interlocked.Decrement(ref _waiting);
@@ -131,7 +132,7 @@ internal sealed partial class McpCrewToolHost : IMcpServerExtension, IDisposable
 
         public void Leave() => _free.Release();
 
-        /// <summary>Admits no more calls: those waiting are let go without running the crew.</summary>
+        /// <summary>Admits no more waiting calls: those waiting are let go without running the crew.</summary>
         public void Close()
         {
             try
