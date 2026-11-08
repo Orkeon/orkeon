@@ -1487,9 +1487,11 @@ public sealed partial class JsLlmFacade
 
     /// <summary>
     /// Runs the calls of one model turn group by group (<see cref="ToolCallScheduler"/>): per group the
-    /// gate and <c>onToolCall</c> of each call first, one by one in call order; then the group's reads
+    /// <c>onToolCall</c> of each call first, then its gate, one by one in call order; then the group's reads
     /// together (a write, or any call not allow-listed, is a group of one); then <c>onToolResult</c> and the
-    /// tool messages in call order. A call whose gate or callback faults leaves its siblings to complete;
+    /// tool messages in call order. Through a host pipeline that gates, the gate is the pipeline's and judges
+    /// each call as it runs: a refusal comes back as that call's <c>DENIED: …</c> result, which
+    /// <c>onToolResult</c> sees; a refusal at preparation skips it. A call whose gate or callback faults leaves its siblings to complete;
     /// the first fault is rethrown after the group.
     /// </summary>
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Fault barrier: the siblings of a faulted call complete first; the first fault is rethrown after the group.")]
@@ -1706,7 +1708,7 @@ public sealed partial class JsLlmFacade
         return new(null, toolArgs, Ask: true);
     }
 
-    /// <summary>An <c>onToolCall</c> verdict object: <c>{ deny }</c>, <c>{ input }</c> (the input the gate judges) or <c>{ context }</c>.</summary>
+    /// <summary>An <c>onToolCall</c> verdict object: <c>{ deny }</c> or <c>{ input }</c> (the input the gate judges); any other shape denies.</summary>
     private static ToolCallbackOutcome FollowObjectVerdict(JsonElement root, Dictionary<string, object?> toolArgs)
     {
         if (root.TryGetProperty("deny", out var reason))
@@ -1717,8 +1719,6 @@ public sealed partial class JsLlmFacade
                 return new(NoValidVerdict, toolArgs);
             return new(null, JsonSerializer.Deserialize<Dictionary<string, object?>>(input.GetRawText())!);
         }
-        if (root.TryGetProperty("context", out _))
-            return new(null, toolArgs);
         return new(NoValidVerdict, toolArgs);
     }
 

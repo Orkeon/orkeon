@@ -61,7 +61,7 @@ internal sealed record JsExecutionEnvironment
 
     /// <summary>
     /// Optional single tool-invocation point (GAP-09) a <c>ctx.llm.act</c> tool call goes
-    /// through after the permission gate. Null = the tool is called directly.
+    /// through after <c>onToolCall</c>; it consults the permission gate itself. Null = the tool is called directly.
     /// </summary>
     public Orkeon.Application.Interfaces.Security.IToolInvocationPipeline? ToolInvocation { get; init; }
 

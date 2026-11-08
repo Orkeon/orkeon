@@ -9,7 +9,7 @@ using Orkeon.Tests.Shared.Timing;
 
 namespace Orkeon.Scripting.Tests.Runtime;
 
-/// <summary>RT-04: <c>act(prompt, {onToolCall})</c> is called before each tool call, after the permission gate.</summary>
+/// <summary>RT-04: <c>act(prompt, {onToolCall})</c> is called before each tool call, before the permission gate.</summary>
 public sealed class ActToolCallbacksTests
 {
     private sealed record Run(
@@ -103,6 +103,17 @@ public sealed class ActToolCallbacksTests
 
         Assert.Empty(run.Gate.Paths);
         Assert.Equal("DENIED: no", run.ToolResultOfTurn2);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-307")]
+    public async Task ShouldDenyWithoutConsultingTheGate_WhenOnToolCallReturnsContext()
+    {
+        var run = await RunAsync("(call) => ({ context: 'note' })");
+
+        Assert.Empty(run.Gate.Paths);
+        Assert.Empty(run.Tool.Inputs);
+        Assert.Equal("DENIED: onToolCall returned no valid verdict", run.ToolResultOfTurn2);
     }
 
     [Fact]
