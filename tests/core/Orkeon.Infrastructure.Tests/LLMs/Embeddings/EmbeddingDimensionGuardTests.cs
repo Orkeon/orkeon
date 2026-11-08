@@ -137,7 +137,7 @@ public class EmbeddingDimensionGuardTests
     }
 
     [Fact]
-    public async Task ShouldWriteNothing_WhenTheHostNeverConfiguredEmbeddings()
+    public async Task ShouldWriteNothing_WhenTheHostHasNoEmbeddingProvider()
     {
         var fs = new MockFileSystemService(Path.Combine(Path.GetTempPath(), "fwk25-none-" + Guid.NewGuid().ToString("N")));
         var services = new ServiceCollection();
@@ -151,6 +151,45 @@ public class EmbeddingDimensionGuardTests
             await service.StartAsync(TestContext.Current.CancellationToken);
 
         Assert.Null(await fs.TryReadAllTextAsync("/workspace/.orkeon/embedding-fingerprint.json", TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
+    public async Task ShouldRefuseTheModelASectionSwitchesTo_WhenTheHostFirstEmbeddedWithoutASection()
+    {
+        // FWK review LLM-5: a host with no Orkeon:Embeddings section recorded nothing, so the section
+        // written later (the switch to Mistral or Gemini) recorded the new model as the first one.
+        var root = Path.Combine(Path.GetTempPath(), "fwk25-switch-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(root);
+        try
+        {
+            var fs = new MockFileSystemService(root);
+            await StartAsync(fs, Provider("Default", "nomic-embed-text", 768));
+            Assert.NotNull(await fs.TryReadAllTextAsync("/workspace/.orkeon/embedding-fingerprint.json", TestContext.Current.CancellationToken));
+
+            var ex = await Assert.ThrowsAsync<EmbeddingModelChangedException>(
+                () => StartAsync(fs, Provider("Mistral", "mistral-embed", 1024), ("Orkeon:Embeddings:Provider", "mistral")));
+
+            Assert.Contains("nomic-embed-text", ex.Message, StringComparison.Ordinal);
+        }
+        finally
+        {
+            Directory.Delete(root, true);
+        }
+
+        static async Task StartAsync(IFileSystemService fs, MockEmbeddingProvider provider, params (string Key, string Value)[] settings)
+        {
+            var services = new ServiceCollection();
+            services.AddLogging();
+            services.AddSingleton<IFileSystemService>(fs);
+            services.AddSingleton<Orkeon.Application.Interfaces.Ports.IEmbeddingProvider>(provider);
+            services.AddSingleton<IConfiguration>(new ConfigurationBuilder()
+                .AddInMemoryCollection(settings.ToDictionary(s => s.Key, s => (string?)s.Value))
+                .Build());
+            services.AddOrkeonInfrastructure();
+            await using var sp = services.BuildServiceProvider();
+            foreach (var service in sp.GetServices<IHostedService>())
+                await service.StartAsync(TestContext.Current.CancellationToken);
+        }
     }
 
     [Fact]

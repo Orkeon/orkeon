@@ -48,12 +48,26 @@ public class ReportExporterJsonTests
 
     [Fact]
     [Trait("BR", "FWK-09")]
-    public void ShouldReadAnEvaluationReportAsAComparableOne()
+    public void ShouldReadAnEvaluationReportAsAComparableOne_NamedAfterItsDataset()
     {
-        var read = ReportExporter.ReadComparableReport(ReportExporter.ToJson(Evaluation()));
+        var json = System.Text.Json.Nodes.JsonNode.Parse(ReportExporter.ToJson(Evaluation()))!.AsObject();
+        json["dataset"] = "golden";
 
+        var read = ReportExporter.ReadComparableReport(json.ToJsonString());
+
+        Assert.Equal("golden", read.DatasetName);
         Assert.Equal(0.8, read.Summary.OverallMean);
         Assert.Equal(0.8, read.Summary.MeanByEvaluator["Similarity"]);
+    }
+
+    [Fact]
+    [Trait("BR", "FWK-09")]
+    public void ShouldRefuseAnEvaluationReportThatNamesNoDataset()
+    {
+        // Named after its suite, an evaluation report of any dataset would compare with any other.
+        var ex = Assert.Throws<InvalidOperationException>(() => ReportExporter.ReadComparableReport(ReportExporter.ToJson(Evaluation())));
+
+        Assert.Contains("dataset", ex.Message, StringComparison.Ordinal);
     }
 
     [Fact]

@@ -407,7 +407,7 @@ provider, le modèle et les dimensions à l'empreinte consignée dans `Orkeon:Em
 (par défaut `/workspace/.orkeon/embedding-fingerprint.json`, dans le système de fichiers virtuel). Le
 premier démarrage la consigne ; une empreinte différente arrête l'hôte avec une erreur qui nomme les deux
 modèles. Rien n'est migré : rétablir les réglages précédents, ou ré-embedder et vider les vecteurs
-stockés, puis supprimer le fichier d'empreinte. Seul un hôte qui a écrit une section `Orkeon:Embeddings` est gardé : les autres gardent le défaut embarqué et rien n'est écrit dans leur espace de travail. Un hôte sans montage `/workspace` (la lecture est refusée, un avertissement est journalisé), ou avec un `FingerprintPath` vide, tourne sans garde-fou.
+stockés, puis supprimer le fichier d'empreinte. Tout hôte dont le provider d'embeddings est configuré est gardé, avec ou sans section `Orkeon:Embeddings` : un hôte qui a produit des vecteurs avec le provider par défaut puis écrit une section (passage à Mistral ou Gemini) trouve l'empreinte du défaut et est refusé. Un hôte sans provider d'embeddings (aucun enregistré, pas de section) n'écrit rien. Un hôte sans montage `/workspace` (la lecture est refusée, un avertissement est journalisé), ou avec un `FingerprintPath` vide, tourne sans garde-fou.
 
 Cohere, Voyage et pgvector ne sont pas livrés.
 

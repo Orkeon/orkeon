@@ -865,3 +865,5 @@ Orkeon.Infrastructure.Checkpointing.JsonFileStateStore.JsonFileStateStore(Orkeon
 const Orkeon.Infrastructure.Checkpointing.JsonFileStateStore.DefaultMaxVersions = 20 -> int
 Orkeon.Infrastructure.Tools.MemoryRecallTool.MemoryRecallTool(Orkeon.Application.Interfaces.Services.ICognitiveMemoryService! memory, Microsoft.Extensions.Options.IOptions<Orkeon.Application.Memory.CrewMemoryOptions!>? options = null, Orkeon.Application.Memory.CrewMemoryProviderRegistry? registry = null) -> void
 static Orkeon.Infrastructure.Decision.LlmJudgeGuard.ChunkStep(int chunkSize) -> int
+static Orkeon.Infrastructure.Evaluation.CompareReports.Incompatibility(Orkeon.Application.Evaluation.BenchmarkReport! baseline, Orkeon.Application.Evaluation.BenchmarkReport! current) -> string?
+static Orkeon.Infrastructure.Evaluation.CompareReports.IsValidThreshold(double threshold) -> bool

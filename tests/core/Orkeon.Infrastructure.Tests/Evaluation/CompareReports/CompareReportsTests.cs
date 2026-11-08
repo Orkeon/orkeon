@@ -1,3 +1,5 @@
+using Orkeon.Infrastructure.Evaluation;
+
 namespace Orkeon.Infrastructure.Tests.Evaluation;
 
 public class CompareReportsTests
@@ -93,16 +95,40 @@ public class CompareReportsTests
     }
 
     [Fact]
-    public void ShouldIncludeNewEvaluator_WhenPresentOnlyInCurrent()
+    public void ShouldRefuse_WhenAnEvaluatorIsPresentOnOneSideOnly()
+    {
+        // Counted as 0 on the missing side, an evaluator scored by one report alone used to read as a
+        // regression (or an improvement) the reports never measured.
+        var baseline = CompareReportsTestsFixture.CreateReport(0.8, new Dictionary<string, double> { ["A"] = 0.8, ["B"] = 0.9 });
+        var current = CompareReportsTestsFixture.CreateReport(0.8, new Dictionary<string, double> { ["A"] = 0.8 });
+
+        var ex = Assert.Throws<InvalidOperationException>(() => CompareReportsTestsFixture.Compare(baseline, current));
+
+        Assert.Contains("evaluators", ex.Message, StringComparison.Ordinal);
+        Assert.NotNull(CompareReports.Incompatibility(current, baseline));
+    }
+
+    [Fact]
+    public void ShouldRefuse_WhenTheReportsScoreDifferentDatasets()
     {
         var baseline = CompareReportsTestsFixture.CreateReport(0.8, new Dictionary<string, double> { ["A"] = 0.8 });
-        var current = CompareReportsTestsFixture.CreateReport(0.8, new Dictionary<string, double> { ["A"] = 0.8, ["B"] = 0.9 });
+        var current = baseline with { DatasetName = "Other" };
 
-        var result = CompareReportsTestsFixture.Compare(baseline, current);
+        var ex = Assert.Throws<InvalidOperationException>(() => CompareReportsTestsFixture.Compare(baseline, current));
 
-        Assert.Equal(2, result.EvaluatorComparisons.Count);
-        var compB = result.EvaluatorComparisons.First(c => c.EvaluatorName == "B");
-        Assert.Equal(0.0, compB.BaselineScore);
-        Assert.Equal(0.9, compB.CurrentScore);
+        Assert.Contains("'Other'", ex.Message, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData(-0.01)]
+    [InlineData(1.5)]
+    [InlineData(double.NaN)]
+    [InlineData(double.PositiveInfinity)]
+    public void ShouldRefuseAThresholdOutOfRange(double threshold)
+    {
+        var report = CompareReportsTestsFixture.CreateReport(0.8, new Dictionary<string, double> { ["A"] = 0.8 });
+
+        Assert.Throws<ArgumentOutOfRangeException>(() => CompareReportsTestsFixture.Compare(report, report, threshold));
+        Assert.False(CompareReports.IsValidThreshold(threshold));
     }
 }

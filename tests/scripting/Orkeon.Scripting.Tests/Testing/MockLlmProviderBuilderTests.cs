@@ -15,6 +15,30 @@ public sealed partial class MockLlmProviderBuilderTests
     private static partial Regex DigitsPattern();
 
     [Fact]
+    public async Task Concurrent_calls_are_all_recorded()
+    {
+        // FWK review LLM-7: the crews of orkeon test call the mock from parallel agents; bare List<>
+        // records lost calls or threw.
+        var mock = new MockLlmProvider();
+        mock.When("ping").Respond("pong");
+        const int perKind = 50_000;
+        var chat = new[] { new LlmMessage { Role = "user", Content = "ping" } };
+
+        await Parallel.ForAsync(0, perKind * 2, TestContext.Current.CancellationToken, async (i, ct) =>
+        {
+            if (i % 2 == 0)
+                await mock.GenerateAsync("ping", null, ct);
+            else
+                await mock.ChatAsync(chat, null, ct);
+        });
+
+        Assert.Equal(perKind, mock.GenerateCalls.Count);
+        Assert.Equal(perKind, mock.ChatCalls.Count);
+        Assert.Equal(perKind * 2, mock.TotalCalls);
+        Assert.DoesNotContain(null, mock.GenerateCalls);
+    }
+
+    [Fact]
     public async Task When_text_responds_to_prompts_containing_it()
     {
         var provider = new MockLlmProvider();

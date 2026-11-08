@@ -8,26 +8,54 @@ namespace Orkeon.Scripting.Testing;
 /// In-memory <see cref="ILlmProvider"/> for tests. Calls are recorded and matched
 /// against a list of expectations registered through the <c>test.mockLlm</c> binding,
 /// or from .NET through <see cref="When(string)"/> / <see cref="When(Regex)"/>.
+/// Safe for concurrent calls: the crews of <c>orkeon test</c> run agents in parallel, and the
+/// recorded calls are read back as snapshots.
 /// </summary>
 public sealed class MockLlmProvider : ILlmProvider
 {
     private readonly List<MockLlmExpectation> _expectations = new();
     private readonly List<string> _generateCalls = new();
     private readonly List<LlmMessage[]> _chatCalls = new();
+    private readonly Lock _gate = new();
 
     /// <inheritdoc />
     public string Name => "mock";
 
-    /// <summary>Captured prompts from <see cref="GenerateAsync"/>.</summary>
-    public IReadOnlyList<string> GenerateCalls => _generateCalls;
+    /// <summary>Captured prompts from <see cref="GenerateAsync"/>: a snapshot, taken when read.</summary>
+    public IReadOnlyList<string> GenerateCalls
+    {
+        get
+        {
+            lock (_gate)
+                return _generateCalls.ToArray();
+        }
+    }
 
-    /// <summary>Captured message sets from <see cref="ChatAsync"/>.</summary>
-    public IReadOnlyList<LlmMessage[]> ChatCalls => _chatCalls;
+    /// <summary>Captured message sets from <see cref="ChatAsync"/>: a snapshot, taken when read.</summary>
+    public IReadOnlyList<LlmMessage[]> ChatCalls
+    {
+        get
+        {
+            lock (_gate)
+                return _chatCalls.ToArray();
+        }
+    }
 
     /// <summary>Number of times the mock was invoked across all entry points.</summary>
-    public int TotalCalls => _generateCalls.Count + _chatCalls.Count;
+    public int TotalCalls
+    {
+        get
+        {
+            lock (_gate)
+                return _generateCalls.Count + _chatCalls.Count;
+        }
+    }
 
-    internal void AddExpectation(MockLlmExpectation expectation) => _expectations.Add(expectation);
+    internal void AddExpectation(MockLlmExpectation expectation)
+    {
+        lock (_gate)
+            _expectations.Add(expectation);
+    }
 
     /// <summary>
     /// Starts an expectation for prompts that contain <paramref name="contains"/> (case ignored).
@@ -55,13 +83,23 @@ public sealed class MockLlmProvider : ILlmProvider
     /// <summary>The answer an expectation gives for <paramref name="prompt"/>, or null when none fits.</summary>
     internal LlmResponse? Match(string prompt)
     {
-        var match = _expectations.FirstOrDefault(e => e.Matches(prompt));
+        MockLlmExpectation? match;
+        lock (_gate)
+            match = _expectations.FirstOrDefault(e => e.Matches(prompt));
         return match is null ? null : new LlmResponse { Content = match.ResponseContent };
     }
 
-    internal void RecordGenerate(string prompt) => _generateCalls.Add(prompt);
+    internal void RecordGenerate(string prompt)
+    {
+        lock (_gate)
+            _generateCalls.Add(prompt);
+    }
 
-    internal void RecordChat(LlmMessage[] messages) => _chatCalls.Add(messages);
+    internal void RecordChat(LlmMessage[] messages)
+    {
+        lock (_gate)
+            _chatCalls.Add(messages);
+    }
 
     /// <summary>The prompt a chat is matched on: its last user message, or null when it has none.</summary>
     internal static string? PromptOf(LlmMessage[] messages) =>
