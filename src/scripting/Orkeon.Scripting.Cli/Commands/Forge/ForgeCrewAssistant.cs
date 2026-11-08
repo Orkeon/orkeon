@@ -113,7 +113,7 @@ internal sealed class ForgeCrewAssistant : IForgeAssistant
         _tally = services.GetRequiredService<ForgeUsageTally>();
 
         var loggerFactory = services.GetRequiredService<ILoggerFactory>();
-        var tools = services.GetServices<IBaseTool>().ToList();
+        var tools = services.GetServices<IBaseTool>().OfType<IBaseTool>().ToList();
         _readTools = [.. ReadToolAllowlist.Where(name => tools.Any(t => t.Name == name))];
         // What the designed team may use (SPEC §7.3): the sandbox catalogue with
         // descriptions — a closed list the blueprint prompt shows and validation enforces.

@@ -18,13 +18,17 @@ public class PluginDiscoveryLayoutTests
             .DiscoverAsync(options ?? new OrkeonPluginsOptions(), TestContext.Current.CancellationToken);
 
     [Fact]
-    public async Task DiscoverAsync_FlatDll_IsIgnored()
+    public async Task DiscoverAsync_FlatDll_IsRefusedNotPassedOverUnsaid()
     {
         using var fixture = new PluginDirectoryFixture();
-        fixture.AddOpaqueFile("alpha.dll");
-        fixture.AddOpaqueFile("UPPER.DLL");
+        var alpha = fixture.AddOpaqueFile("alpha.dll");
+        var upper = fixture.AddOpaqueFile("UPPER.DLL");
+        fixture.AddOpaqueFile("notes.txt");
 
-        Assert.Empty(await Discover(fixture));
+        var candidates = await Discover(fixture);
+
+        Assert.Equal([upper, alpha], candidates.Select(c => c.VirtualPath).Order(StringComparer.Ordinal));
+        Assert.All(candidates, c => Assert.Contains("lies flat", c.ManifestFailure, StringComparison.Ordinal));
     }
 
     [Fact]
@@ -135,7 +139,8 @@ public class PluginDiscoveryLayoutTests
         fixture.AddOpaqueFile("outside.dll");
         fixture.AddOpaqueFile("gamma/plugin.json", Manifest("../outside.dll"));
 
-        var candidate = Assert.Single(await Discover(fixture));
+        // The flat outside.dll is refused on its own; the folder's manifest is refused for pointing at it.
+        var candidate = Assert.Single(await Discover(fixture), c => c.VirtualPath.StartsWith("/plugins/gamma/", StringComparison.Ordinal));
 
         Assert.NotNull(candidate.ManifestFailure);
         Assert.Contains("entryAssembly", candidate.ManifestFailure, StringComparison.Ordinal);

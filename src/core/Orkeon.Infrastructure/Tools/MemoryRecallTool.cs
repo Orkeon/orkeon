@@ -60,7 +60,9 @@ public sealed class MemoryRecallResponse
 /// <summary>
 /// Recalls what the crew of the call remembers, ranked by composite score (FWK-04). Held only by a
 /// crew with <c>memory: true</c> when the host wires the cognitive memory; distinct from
-/// <c>memory_store</c>, the typed notes of the operator. The crew is the one the run meters its calls under.
+/// <c>memory_store</c>, the typed notes of the operator. The crew is the one the run meters its calls under, and
+/// the tool answers only for a crew that remembers (<c>memory: true</c>): a script's <c>act</c> that lists it
+/// under a crew with <c>memory: false</c> reads nothing.
 /// </summary>
 public sealed class MemoryRecallTool : ToolBase<MemoryRecallRequest, MemoryRecallResponse>
 {
@@ -69,14 +71,20 @@ public sealed class MemoryRecallTool : ToolBase<MemoryRecallRequest, MemoryRecal
 
     private readonly ICognitiveMemoryService _memory;
     private readonly CrewMemoryOptions _options;
+    private readonly CrewMemoryProviderRegistry? _registry;
 
     /// <summary>Creates the tool over the host's cognitive memory.</summary>
     /// <param name="memory">The cognitive memory.</param>
     /// <param name="options">The recall floors (<c>Orkeon:CrewMemory</c>); the defaults when null.</param>
-    public MemoryRecallTool(ICognitiveMemoryService memory, Microsoft.Extensions.Options.IOptions<CrewMemoryOptions>? options = null)
+    /// <param name="registry">What each crew declared about its memory: the tool refuses a crew that does not remember. Null checks nothing.</param>
+    public MemoryRecallTool(
+        ICognitiveMemoryService memory,
+        Microsoft.Extensions.Options.IOptions<CrewMemoryOptions>? options = null,
+        CrewMemoryProviderRegistry? registry = null)
     {
         _memory = memory ?? throw new ArgumentNullException(nameof(memory));
         _options = options?.Value ?? new CrewMemoryOptions();
+        _registry = registry;
     }
 
     /// <inheritdoc />
@@ -98,6 +106,8 @@ public sealed class MemoryRecallTool : ToolBase<MemoryRecallRequest, MemoryRecal
             return new MemoryRecallResponse { Error = "query is required." };
         if (CurrentCrew() is not { } crew)
             return new MemoryRecallResponse { Error = "memory_recall runs inside a crew's run only." };
+        if (_registry is not null && !_registry.IsMemoryEnabled(crew))
+            return new MemoryRecallResponse { Error = "memory_recall answers only for a crew that remembers (memory: true)." };
 
         var limit = Math.Clamp(request.Limit <= 0 ? DefaultLimit : request.Limit, 1, MaxLimit);
         var found = await _memory.RecallAsync(crew, request.Query, new RecallOptions

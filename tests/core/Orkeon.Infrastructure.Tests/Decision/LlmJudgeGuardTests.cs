@@ -200,6 +200,40 @@ public class LlmJudgeGuardTests
         Assert.True(model.Requests.Count >= 6);
     }
 
+    // SEC-3: the chunks overlap, so an instruction across a chunk boundary is judged whole, not as two harmless halves.
+    [Fact]
+    public async Task ShouldBlockAnInjectionAcrossAChunkBoundary_WhenFailClosed()
+    {
+        var model = new FakeDecisionModel
+        {
+            Respond = request => request.State.GetValue<string>().Contains("IGNORE-ALL-RULES", StringComparison.Ordinal)
+                ? Answering(0.99).Respond(request)
+                : Answering(0).Respond(request),
+        };
+        var text = new string('a', 90) + "IGNORE-ALL-RULES" + new string('b', 200);
+        var context = new GuardContext { Phase = GuardPhase.Input, AgentRole = "writer", Content = text };
+
+        var result = await Guard(model, maxChars: 100).CheckAsync(context, TestContext.Current.CancellationToken);
+
+        Assert.Equal(GuardAction.Block, result.Action);
+        Assert.All(model.Requests, r => Assert.True(r.State.GetValue<string>().Length <= 100));
+    }
+
+    [Fact]
+    public async Task ShouldJudgeEveryCharacter_AndEndOnTheLastOne_WhenFailClosed()
+    {
+        var model = Answering(0);
+        var text = string.Concat(Enumerable.Range(0, 250).Select(i => (char)('a' + (i % 26))));
+        var context = new GuardContext { Phase = GuardPhase.Input, AgentRole = "writer", Content = text };
+
+        await Guard(model, maxChars: 100).CheckAsync(context, TestContext.Current.CancellationToken);
+
+        var chunks = model.Requests.Select(r => r.State.GetValue<string>()).ToList();
+        Assert.Equal(text[..100], chunks[0]);
+        Assert.EndsWith(text[^25..], chunks[^1], StringComparison.Ordinal);
+        Assert.Equal(1 + ((250 - 100 + LlmJudgeGuard.ChunkStep(100) - 1) / LlmJudgeGuard.ChunkStep(100)), chunks.Count);
+    }
+
     [Fact]
     public async Task ShouldBlock_WhenALongTextExceedsTheChunkBound_AndFailClosed()
     {

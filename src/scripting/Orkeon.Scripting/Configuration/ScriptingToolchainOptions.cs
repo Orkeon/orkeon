@@ -39,10 +39,12 @@ public sealed record ScriptingToolchainOptions
     public TypeCheckMode TypeCheck { get; init; } = TypeCheckMode.Validate;
 
     /// <summary>
-    /// Absolute path to the <c>tsc</c> binary. When set it is the only candidate: a path that does
-    /// not exist is reported as a missing compiler, never silently replaced. When null, the type
-    /// checker looks in <c>tools/scripting-typecheck/node_modules/.bin/</c> of a checkout
-    /// (searched from the working directory and the application directory upwards), then in <c>PATH</c>.
+    /// Absolute path to the <c>tsc</c> binary. When set it is the only candidate: a relative path, or
+    /// one that does not exist, is reported as a missing compiler, never resolved against the working
+    /// directory nor silently replaced. When null, the type checker looks in
+    /// <c>tools/scripting-typecheck/node_modules/.bin/</c> above the application directory, then in
+    /// <c>PATH</c>; never in the working directory. Like <see cref="EsbuildPath"/>, it may come from the
+    /// <c>appsettings.json</c> next to the crew: that file is trusted as the crew itself is.
     /// </summary>
     public string? TscPath { get; init; }
 

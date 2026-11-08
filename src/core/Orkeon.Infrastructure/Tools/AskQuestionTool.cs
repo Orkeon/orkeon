@@ -46,7 +46,7 @@ public record AskQuestionResponse
 [ToolContract("ask_question_to_coworker", Name = "Ask question to coworker",
     Description = "Ask a specific question to a coworker with relevant expertise",
     Category = "Collaboration")]
-public partial class AskQuestionTool : ToolBase<AskQuestionRequest, AskQuestionResponse>
+public partial class AskQuestionTool : ToolBase<AskQuestionRequest, AskQuestionResponse>, Orkeon.Domain.Tools.ICoworkerDelegationTool
 {
     private readonly IAgentCommunicationService _communicationService;
     private readonly AgentId _currentAgentId;

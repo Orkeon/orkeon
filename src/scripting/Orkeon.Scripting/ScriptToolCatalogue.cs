@@ -25,7 +25,8 @@ public sealed class ScriptToolCatalogue : IEnumerable<IBaseTool>
     public ScriptToolCatalogue(IEnumerable<IBaseTool> containerTools, IToolRegistry? registry)
     {
         ArgumentNullException.ThrowIfNull(containerTools);
-        _containerTools = [.. containerTools];
+        // A plugin tool dropped under ContinueOnError resolves to null: skipped.
+        _containerTools = [.. containerTools.OfType<IBaseTool>()];
         _registry = registry;
     }
 

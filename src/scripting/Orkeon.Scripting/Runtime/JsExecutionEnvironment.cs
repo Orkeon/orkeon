@@ -39,6 +39,12 @@ internal sealed record JsExecutionEnvironment
     internal AgentInstanceRun? Instance { get; init; }
 
     /// <summary>
+    /// SEC-7: the permission mode of the act that spawned this run (<c>spawn_agent</c>, <c>ctx.spawnBackground</c>),
+    /// null for a run nothing spawned. Every act of the run is held to the stricter of its own mode and this one.
+    /// </summary>
+    internal string? PermissionFloor { get; init; }
+
+    /// <summary>
     /// Optional per-tool-call permission gate consulted by <c>ctx.llm.act</c> before each
     /// tool execution. Null = ungated (pre-F2 behaviour).
     /// </summary>

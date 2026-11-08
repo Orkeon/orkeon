@@ -93,7 +93,7 @@ public static class OrkeonPluginsServiceCollectionExtensions
         {
             try
             {
-                LoadCandidate(services, loader, registry, candidate);
+                LoadCandidate(services, loader, registry, candidate, options.ContinueOnError);
             }
             catch (PluginLoadException ex) when (options.ContinueOnError)
             {
@@ -113,7 +113,8 @@ public static class OrkeonPluginsServiceCollectionExtensions
         IServiceCollection services,
         PluginLoader loader,
         PluginRegistry registry,
-        PluginAssemblyCandidate candidate)
+        PluginAssemblyCandidate candidate,
+        bool continueOnError)
     {
         var loaded = loader.Load(candidate);
 
@@ -125,7 +126,8 @@ public static class OrkeonPluginsServiceCollectionExtensions
             foreach (var plugin in loaded.Plugins)
                 plugin.ConfigureServices(services);
 
-            PluginToolDeclaration.Guard(services, before, loaded.Manifest, candidate.VirtualPath);
+            PluginToolDeclaration.Guard(
+                services, before, loaded.Manifest, candidate.VirtualPath, continueOnError ? registry : null);
         }
         catch (PluginLoadException)
         {

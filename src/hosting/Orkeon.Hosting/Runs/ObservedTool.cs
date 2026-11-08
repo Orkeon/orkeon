@@ -23,7 +23,7 @@ namespace Orkeon.Hosting.Runs;
 /// they are named rather than buried among tool calls.
 /// </para>
 /// </summary>
-internal sealed class ObservedTool : IBaseTool, IDisposable
+internal sealed class ObservedTool : IBaseTool, IToolWrapper, IDisposable
 {
     /// <summary>
     /// The tool whose call means one agent delegated to another — the wire name of
@@ -31,7 +31,7 @@ internal sealed class ObservedTool : IBaseTool, IDisposable
     /// The first version of this constant said <c>delegate_work</c>, and the branch below was
     /// unreachable: every delegation was reported as an ordinary tool call.
     /// </summary>
-    public const string DelegateToolName = "delegate_work_to_coworker";
+    public const string DelegateToolName = CoworkerDelegation.DelegateWorkToolName;
 
     /// <summary>The tool whose call means the team grew at runtime (<c>SpawnAgentTool</c>'s contract name).</summary>
     public const string SpawnToolName = "spawn_agent";
@@ -45,6 +45,9 @@ internal sealed class ObservedTool : IBaseTool, IDisposable
         _inner = inner ?? throw new ArgumentNullException(nameof(inner));
         _events = events ?? throw new ArgumentNullException(nameof(events));
     }
+
+    /// <inheritdoc />
+    public IBaseTool Inner => _inner;
 
     /// <inheritdoc />
     public string Name => _inner.Name;

@@ -15,7 +15,7 @@ public static class AgentLlmRules
     /// The tools delegation gives an agent (<see cref="Agent.AllowDelegation"/>), as the
     /// infrastructure names them.
     /// </summary>
-    internal static IReadOnlyList<string> DelegationTools { get; } = ["delegate_work_to_coworker", "ask_question_to_coworker"];
+    internal static IReadOnlyList<string> DelegationTools => Orkeon.Domain.Tools.CoworkerDelegation.ToolNames;
 
     /// <summary>
     /// The refusal of Orkeon tools for <paramref name="holder"/>, which answers through

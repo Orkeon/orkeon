@@ -111,7 +111,7 @@ public sealed partial class JsCrew
     /// run's own (<see cref="CrewRunScope.Budget"/>): lifecycle hooks fired by add/remove and
     /// <c>runAgent</c> contexts without a <c>budget</c> or <c>charge</c> option (#189) are unbudgeted and pass <c>null</c>.
     /// </summary>
-    internal JsExecutionEnvironment CreateEnvironment(JsAgent agent, AgentExecutionBudget? budget, CancellationToken ct, GatePermit? permit = null, AgentInstanceRun? instance = null, string? workingRoot = null) => new()
+    internal JsExecutionEnvironment CreateEnvironment(JsAgent agent, AgentExecutionBudget? budget, CancellationToken ct, GatePermit? permit = null, AgentInstanceRun? instance = null, string? workingRoot = null, string? permissionFloor = null) => new()
     {
         Engine = _engine,
         Self = agent,
@@ -134,6 +134,7 @@ public sealed partial class JsCrew
         AgentMemoryStore = _agentMemoryStore,
         ToolLimits = _toolLimits ?? new(),
         WorkingRoot = workingRoot,
+        PermissionFloor = permissionFloor,
     };
 
     /// <summary>

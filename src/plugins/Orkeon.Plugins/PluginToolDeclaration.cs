@@ -8,6 +8,9 @@ namespace Orkeon.Plugins;
 /// checked at registration. A tool registered by type, factory or key is wrapped: the host's own provider
 /// builds it, once, with the services the host registers whenever it likes, and the wrapper reads its name
 /// then and refuses it when the manifest does not list it. No second construction, no scratch provider.
+/// Under <see cref="OrkeonPluginsOptions.ContinueOnError"/> a tool refused there (undeclared, or failing to
+/// build) is dropped instead: it resolves to <c>null</c>, which every host consumer of the container's tools
+/// skips, and the refusal is recorded once in <see cref="IPluginRegistry.Failures"/>.
 /// </summary>
 internal static class PluginToolDeclaration
 {
@@ -15,9 +18,14 @@ internal static class PluginToolDeclaration
     /// Goes over the <see cref="IBaseTool"/> registrations the plugin added (the descriptors not in
     /// <paramref name="before"/>): checks an instance now, wraps the others.
     /// </summary>
+    /// <param name="failures">Where a tool refused at resolution is recorded and dropped; null to throw (fail fast).</param>
     /// <exception cref="PluginManifestException">A tool given as an instance is not declared.</exception>
     public static void Guard(
-        IServiceCollection services, IReadOnlyCollection<ServiceDescriptor> before, PluginManifest manifest, string virtualPath)
+        IServiceCollection services,
+        IReadOnlyCollection<ServiceDescriptor> before,
+        PluginManifest manifest,
+        string virtualPath,
+        PluginRegistry? failures = null)
     {
         var known = new HashSet<ServiceDescriptor>(before, ReferenceEqualityComparer.Instance);
         var declared = new HashSet<string>(manifest.Tools, StringComparer.Ordinal);
@@ -36,15 +44,16 @@ internal static class PluginToolDeclaration
                 continue;
             }
 
+            var slot = new ToolSlot(guard, failures, virtualPath);
             services[i] = descriptor.IsKeyedService
                 ? new ServiceDescriptor(
                     typeof(IBaseTool),
                     descriptor.ServiceKey,
-                    (sp, key) => guard.Build(() => CreateKeyed(descriptor, sp, key)),
+                    (sp, key) => slot.Build(() => CreateKeyed(descriptor, sp, key))!,
                     descriptor.Lifetime)
                 : ServiceDescriptor.Describe(
                     typeof(IBaseTool),
-                    sp => guard.Build(() => Create(descriptor, sp)),
+                    sp => slot.Build(() => Create(descriptor, sp))!,
                     descriptor.Lifetime);
         }
     }
@@ -58,6 +67,29 @@ internal static class PluginToolDeclaration
         descriptor.KeyedImplementationFactory is { } factory
             ? factory(sp, key)
             : ActivatorUtilities.CreateInstance(sp, descriptor.KeyedImplementationType!);
+
+    /// <summary>One lazily built plugin tool: refused, it throws (fail fast) or, under ContinueOnError, is dropped and recorded once.</summary>
+    private sealed class ToolSlot(ToolGuard guard, PluginRegistry? failures, string virtualPath)
+    {
+        private int _recorded;
+
+        public object? Build(Func<object> create)
+        {
+            if (failures is null)
+                return guard.Build(create);
+
+            try
+            {
+                return guard.Build(create);
+            }
+            catch (PluginLoadException ex)
+            {
+                if (Interlocked.Exchange(ref _recorded, 1) == 0)
+                    failures.AddFailure(new PluginLoadFailure { VirtualPath = virtualPath, Reason = ex.Message });
+                return null;
+            }
+        }
+    }
 
     private sealed class ToolGuard(string plugin, string virtualPath, HashSet<string> declared)
     {

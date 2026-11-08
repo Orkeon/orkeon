@@ -3766,7 +3766,7 @@
       "path": "Orkeon:Scripting:Toolchain:TscPath",
       "section": "Orkeon:Scripting:Toolchain",
       "type": "string",
-      "description": "Absolute path to the `tsc` binary. When set it is the only candidate: a path that does not exist is reported as a missing compiler, never silently replaced. When null, the type checker looks in `tools/scripting-typecheck/node_modules/.bin/` of a checkout (searched from the working directory and the application directory upwards), then in `PATH`."
+      "description": "Absolute path to the `tsc` binary. When set it is the only candidate: a relative path, or one that does not exist, is reported as a missing compiler, never resolved against the working directory nor silently replaced. When null, the type checker looks in `tools/scripting-typecheck/node_modules/.bin/` above the application directory, then in `PATH`; never in the working directory. Like `EsbuildPath`, it may come from the `appsettings.json` next to the crew: that file is trusted as the crew itself is."
     },
     {
       "path": "Orkeon:Scripting:Toolchain:TypeCheck",

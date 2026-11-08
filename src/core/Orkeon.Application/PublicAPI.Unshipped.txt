@@ -1066,3 +1066,6 @@ override Orkeon.Application.Interfaces.Checkpointing.AnsweredInput.ToString() ->
 static Orkeon.Application.Interfaces.Checkpointing.AnsweredInput.To(Orkeon.Application.Interfaces.Checkpointing.PendingInputRequest! request, string! answer) -> Orkeon.Application.Interfaces.Checkpointing.AnsweredInput!
 static Orkeon.Application.Interfaces.Checkpointing.AnsweredInput.operator !=(Orkeon.Application.Interfaces.Checkpointing.AnsweredInput? left, Orkeon.Application.Interfaces.Checkpointing.AnsweredInput? right) -> bool
 static Orkeon.Application.Interfaces.Checkpointing.AnsweredInput.operator ==(Orkeon.Application.Interfaces.Checkpointing.AnsweredInput? left, Orkeon.Application.Interfaces.Checkpointing.AnsweredInput? right) -> bool
+Orkeon.Application.Interfaces.Security.ToolInvocationCaller.Admitted.get -> System.Action?
+Orkeon.Application.Interfaces.Security.ToolInvocationCaller.Admitted.init -> void
+*REMOVED*static Orkeon.Application.Services.Security.ToolInvocationPipeline.IsDelegationTool(string! toolName) -> bool

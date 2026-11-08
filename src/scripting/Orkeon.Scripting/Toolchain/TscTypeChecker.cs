@@ -74,9 +74,16 @@ public sealed partial class TscTypeChecker
     {
         var names = OperatingSystem.IsWindows() ? new[] { "tsc.cmd", "tsc.exe" } : new[] { "tsc" };
 
-        // An explicit setting is the only candidate: a path that is wrong is the operator's to fix.
+        // An explicit setting is the only candidate: a path that is wrong is the operator's to fix. It is absolute:
+        // a relative one would resolve against the working directory, whose checkout may be untrusted.
         if (!string.IsNullOrWhiteSpace(_options.TscPath))
         {
+            if (!Path.IsPathFullyQualified(_options.TscPath))
+            {
+                throw new TscNotFoundException(
+                    $"TypeScript compiler not found: '{ScriptingToolchainOptions.SectionName}:TscPath' is a relative path; it must be absolute, never resolved against the working directory. {InstallHint}");
+            }
+
             return File.Exists(_options.TscPath)
                 ? _options.TscPath
                 : throw new TscNotFoundException(

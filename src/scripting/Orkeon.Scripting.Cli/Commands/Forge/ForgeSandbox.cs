@@ -36,6 +36,7 @@ internal static class ForgeSandbox
         ArgumentNullException.ThrowIfNull(tools);
 
         return [.. tools
+            .OfType<IBaseTool>()
             .Where(tool => !DeniedTools.Contains(tool.Name))
             .OrderBy(tool => tool.Name, StringComparer.Ordinal)
             .Select(tool => new ForgeToolInfo(tool.Name, tool.Description))];

@@ -242,6 +242,42 @@ public sealed class CognitiveMemoryWiringTests
         Assert.Single(memories);
     }
 
+    // SEC-9: a script's act that lists memory_recall under a crew with memory: false reads nothing.
+    [Fact]
+    public async System.Threading.Tasks.Task The_recall_tool_of_a_crew_without_memory_reads_nothing()
+    {
+        using var harness = new Harness(profile: null);
+        await AddRelatedAndUnrelatedAsync(harness);
+        harness.Registry.Record(harness.Crew, providerType: null, "news-desk", memoryEnabled: false);
+        using var tool = new MemoryRecallTool(harness.Services.GetRequiredService<ICognitiveMemoryService>(), registry: harness.Registry);
+
+        using var scope = LlmUsageScope.Begin(crewId: harness.Crew.ToString());
+        var response = await tool.CallAsync(new ToolCallRequest("memory_recall", new Dictionary<string, object?>
+        {
+            ["query"] = "related",
+        }), Ct);
+
+        Assert.False(response.Success);
+        Assert.Contains("memory: true", response.Error, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task The_recall_tool_built_by_the_container_reads_the_crew_declarations()
+    {
+        using var harness = new Harness(profile: null);
+        await AddRelatedAndUnrelatedAsync(harness);
+        harness.Registry.Record(harness.Crew, providerType: null, "news-desk", memoryEnabled: false);
+        var tool = harness.Services.GetServices<IBaseTool>().Single(t => t.Name == "memory_recall");
+
+        using var scope = LlmUsageScope.Begin(crewId: harness.Crew.ToString());
+        var response = await tool.CallAsync(new ToolCallRequest("memory_recall", new Dictionary<string, object?>
+        {
+            ["query"] = "related",
+        }), Ct);
+
+        Assert.False(response.Success);
+    }
+
     [Fact]
     public async System.Threading.Tasks.Task The_recall_tool_outside_a_crew_fails_cleanly()
     {

@@ -176,6 +176,65 @@ public sealed class JsLlmFacadeSingleGateTests
         Assert.Equal(["/x"], tool.Inputs);
     }
 
+    // SEC-2: through the pipeline, an onToolCall "ask" never relaxes plan: the write is refused before any operator is asked.
+    [Fact]
+    public async Task An_onToolCall_ask_under_plan_is_refused_without_asking_the_operator_when_the_pipeline_gates()
+    {
+        using var engine = new Engine(options => options.Constraints.PromiseTimeout = HangGuards.EnginePromise);
+        var channel = new StubToolApprovalChannel { Decision = ToolApprovalDecision.AllowOnce };
+        var gate = new ModePermissionGate(channel);
+        var tool = new CountingTool();
+        var facade = new JsLlmFacade(
+            engine, new ScriptedProvider(), CancellationToken.None, new IBaseTool[] { tool },
+            new JsLlmActGuards { PermissionGate = gate },
+            new JsLlmObservability { ToolInvocation = new ToolInvocationPipeline(permissionGate: gate, approvalChannel: channel), AgentName = "coder" });
+        var options = await engine.EvaluateAsync(
+            "({ permissionMode: 'plan', onToolCall: (call) => 'ask' })", null, TestContext.Current.CancellationToken);
+
+        await facade.ActAsync(engine, "write", options);
+
+        Assert.Equal(0, tool.CallCount);
+        Assert.Empty(channel.Asks);
+    }
+
+    // SEC-5: through the pipeline, a call its gate refuses costs no tool-call budget; an admitted one costs one.
+    [Theory]
+    [InlineData(false, 0)]
+    [InlineData(true, 1)]
+    public async Task Only_a_call_the_pipeline_gate_admits_is_charged_to_the_tool_call_budget(bool allowed, int charged)
+    {
+        using var engine = new Engine(options => options.Constraints.PromiseTimeout = HangGuards.EnginePromise);
+        var budget = new AgentExecutionBudget { MaxToolCalls = 5 };
+        var gate = new CountingGate { Verdict = allowed ? PermissionVerdict.Allow() : PermissionVerdict.Deny("no writes") };
+        var tool = new CountingTool();
+        var facade = new JsLlmFacade(
+            engine, new ScriptedProvider(), CancellationToken.None, new IBaseTool[] { tool },
+            new JsLlmActGuards { PermissionGate = gate, Budget = budget },
+            new JsLlmObservability { ToolInvocation = new ToolInvocationPipeline(permissionGate: gate), AgentName = "coder" });
+
+        await facade.ActAsync(engine, "write", null);
+
+        Assert.Equal(charged, budget.CurrentToolCalls);
+        Assert.Equal(charged, tool.CallCount);
+    }
+
+    [Fact]
+    public async Task A_spent_tool_call_budget_ends_the_act_through_the_pipeline_the_tool_unrun()
+    {
+        using var engine = new Engine(options => options.Constraints.PromiseTimeout = HangGuards.EnginePromise);
+        var budget = new AgentExecutionBudget { MaxToolCalls = 0 };
+        var gate = new CountingGate();
+        var tool = new CountingTool();
+        var facade = new JsLlmFacade(
+            engine, new ScriptedProvider(), CancellationToken.None, new IBaseTool[] { tool },
+            new JsLlmActGuards { PermissionGate = gate, Budget = budget },
+            new JsLlmObservability { ToolInvocation = new ToolInvocationPipeline(permissionGate: gate), AgentName = "coder" });
+
+        await Assert.ThrowsAnyAsync<Exception>(() => facade.ActAsync(engine, "write", null));
+
+        Assert.Equal(0, tool.CallCount);
+    }
+
     [Fact]
     public async Task A_pipeline_that_does_not_gate_leaves_the_facade_gate_in_charge()
     {

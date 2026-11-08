@@ -7,6 +7,7 @@ using Orkeon.Constants.Llm;
 using Jint;
 using Jint.Native;
 using Orkeon.Domain.Execution;
+using Orkeon.Domain.Security;
 using Orkeon.Domain.SharedKernel;
 using Orkeon.Domain.SharedKernel.ValueObjects;
 using Orkeon.Domain.Tools;
@@ -57,6 +58,7 @@ public sealed partial class JsLlmFacade
     private readonly UnknownAgentTools? _unknownTools;
     private readonly BackgroundAgents? _background;
     private readonly AgentInstanceRun? _instance;
+    private readonly string? _permissionFloor;
 
     // The run scope of the agent body this facade belongs to (JsAgentContext), attached once and
     // ended by the context's Dispose; null for a context outside any agent body (a crew hook, a
@@ -95,6 +97,7 @@ public sealed partial class JsLlmFacade
         _unknownTools = guards?.UnknownTools;
         _background = guards?.Background;
         _instance = guards?.Instance;
+        _permissionFloor = guards?.PermissionFloor;
         _deltaSink = observability?.DeltaSink;
         _toolCallDlp = observability?.ToolCallDlp;
         _logger = observability?.Logger;
@@ -839,7 +842,8 @@ public sealed partial class JsLlmFacade
             Prompt = prompt;
             MaxIterations = ResolveMaxIterations(options);
             WaitsForChildren = WaitsForChildrenOf(options);
-            PermissionMode = ResolvePermissionMode(options);
+            // SEC-7: a spawned run never loosens the mode of the act that spawned it.
+            PermissionMode = Floored(ResolvePermissionMode(options), facade._permissionFloor);
             // A mode the script poses on a host without a gate checks nothing: say so once for
             // this call rather than drop it in silence (#128).
             if (facade._permissionGate is null && facade._logger is not null && DeclaresPermissionMode(options))
@@ -1031,7 +1035,7 @@ public sealed partial class JsLlmFacade
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Major Code Smell", "S1144:Unused private types or members should be removed",
             Justification = "Called by the act trampoline (ActFactorySource) through Jint. The type is private so the script sees nothing else.")]
         public JsValue spawn(string argumentsJson) =>
-            JsHostError.Guard(_facade._engine, () => Tools.OfType<SpawnToolProxy>().Single().Tool.Start(argumentsJson));
+            JsHostError.Guard(_facade._engine, () => Tools.OfType<SpawnToolProxy>().Single().Tool.Start(argumentsJson, PermissionMode));
 
         /// <summary>Posts one <c>spawn_agent</c> call to the JS pump and awaits the child's output.</summary>
         internal Task<Orkeon.Domain.Tools.Protocol.ToolCallResponse> CallSpawnAsync(
@@ -1563,7 +1567,9 @@ public sealed partial class JsLlmFacade
             // Deny (an operator's refusal included, when an approval channel answered) and an
             // Ask the gate let through undecided become a motivated refusal fed back as the
             // tool result — no exception, the model can adapt. Denied calls consume no
-            // tool-call budget.
+            // tool-call budget. Through the host's pipeline the gate is the pipeline's: this
+            // verdict is null, onToolCall sees the call before the gate decides, and the budget
+            // is charged by the pipeline once the gate admits the call (ToolInvocationCaller.Admitted).
             activity?.SetTag("orkeon.llm.act.permission", "denied");
             return new(call, tool, toolArgs, $"DENIED: {verdict.Message ?? $"tool '{toolName}' is not permitted in mode '{permissionMode}'."}");
         }
@@ -1581,9 +1587,11 @@ public sealed partial class JsLlmFacade
             ask = callback.Ask;
         }
 
-        // Recorded here, NOT inside ExecuteToolAsync: its fault barrier would swallow
-        // BudgetExhaustedException into an "ERROR:" string fed back to the model.
-        _budget?.RecordToolCall();
+        // Without the host's pipeline the gate has decided: the call is charged here. Through the pipeline it is
+        // charged once the pipeline's gate admits it, so a refused call costs nothing (ExecuteToolAsync lets the
+        // BudgetExhaustedException through its fault barrier).
+        if (_toolInvocation is null)
+            _budget?.RecordToolCall();
         return new(call, tool, toolArgs, null, ask);
     }
 
@@ -1743,7 +1751,7 @@ public sealed partial class JsLlmFacade
                 ? "(no output)"
                 : ToolResultLimitsOptions.Cut(JsonSerializer.Serialize(resp.Result), ToolLimits.ResolveFor(tool.Name));
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not Orkeon.Domain.Autonomous.BudgetExhaustedException)
         {
             return $"ERROR: {ex.Message}";
         }
@@ -1763,6 +1771,7 @@ public sealed partial class JsLlmFacade
             PermissionMode = permissionMode,
             RequireApproval = requireApproval,
             WaitScope = PauseClocks,
+            Admitted = _budget is null ? null : _budget.RecordToolCall,
         };
         var outcome = await pipeline.InvokeAsync(
             new Orkeon.Application.Interfaces.Security.ToolInvocation(tool, arguments, caller), _ct).ConfigureAwait(false);
@@ -1895,6 +1904,19 @@ public sealed partial class JsLlmFacade
     /// Reads the <c>permissionMode</c> act option (posed by the script, e.g. threaded from a
     /// crew input). Defaults to <c>"default"</c> — the most restrictive interactive policy.
     /// </summary>
+    /// <summary>
+    /// The stricter of <paramref name="own"/> and <paramref name="floor"/> (SEC-7). A name the gate does not
+    /// know counts as <c>default</c>, as the gate reads it.
+    /// </summary>
+    internal static string Floored(string own, string? floor)
+    {
+        if (floor is null || !Orkeon.Domain.Security.PermissionModes.TryParse(floor, out var outer))
+            return own;
+        var mode = Orkeon.Domain.Security.PermissionModes.TryParse(own, out var parsed) ? parsed : Orkeon.Domain.Security.PermissionMode.Default;
+        var stricter = mode.Stricter(outer);
+        return stricter == mode ? own : stricter.ToWireName();
+    }
+
     private static string ResolvePermissionMode(JsValue? options)
     {
         if (options is null || options.IsUndefined() || options.IsNull()) return "default";
