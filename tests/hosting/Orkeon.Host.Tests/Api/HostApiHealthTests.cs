@@ -92,7 +92,7 @@ public sealed class HostApiHealthTests : IDisposable
 
     [Fact]
     [Trait("BR", "FWK-14")]
-    public async Task Both_probes_answer_503_once_the_stop_has_closed_admission()
+    public async Task Readiness_answers_503_and_liveness_stays_200_once_the_stop_has_closed_admission()
     {
         await using var daemon = await _harness.StartAsync(new HeldLlmProvider("unused"));
 
@@ -100,8 +100,10 @@ public sealed class HostApiHealthTests : IDisposable
         using var live = await daemon.GetAsync("/healthz");
         using var ready = await daemon.GetAsync("/readyz");
 
-        Assert.Equal(HttpStatusCode.ServiceUnavailable, live.StatusCode);
+        // PR review HOST-6: a draining process is alive; a liveness 503 would have an orchestrator kill it mid-drain.
+        Assert.Equal(HttpStatusCode.OK, live.StatusCode);
         Assert.Equal("stopping", (await HostApiHarness.Daemon.JsonAsync(live))["status"]!.GetValue<string>());
         Assert.Equal(HttpStatusCode.ServiceUnavailable, ready.StatusCode);
+        Assert.Equal("stopping", (await HostApiHarness.Daemon.JsonAsync(ready))["status"]!.GetValue<string>());
     }
 }

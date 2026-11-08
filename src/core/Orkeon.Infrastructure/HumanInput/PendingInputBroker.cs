@@ -18,32 +18,29 @@ public sealed class PendingInputBroker : IPendingInputBroker
         ArgumentException.ThrowIfNullOrWhiteSpace(requestId);
         var key = (runId, requestId);
         TaskCompletionSource<string> waiter;
-        bool first;
         lock (_gate)
         {
-            first = !HoldsAny(runId);
+            // The watcher is told under the gate, as the state changes: told outside it, a late "released" of the last
+            // question could land after the "held" of the next one and restart the run clock during a hold (PR review HOST-2).
+            var first = !HoldsAny(runId);
             waiter = _waiters.GetOrAdd(
                 key,
                 _ => (++_sequence, new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously))).Waiter;
+            if (first)
+                Notify(runId, true);
         }
 
-        if (first)
-            Notify(runId, true);
         try
         {
             return await waiter.Task.WaitAsync(ct).ConfigureAwait(false);
         }
         finally
         {
-            bool last;
             lock (_gate)
             {
-                _waiters.TryRemove(key, out _);
-                last = !HoldsAny(runId);
+                if (_waiters.TryRemove(key, out _) && !HoldsAny(runId))
+                    Notify(runId, false);
             }
-
-            if (last)
-                Notify(runId, false);
         }
     }
 
@@ -83,15 +80,21 @@ public sealed class PendingInputBroker : IPendingInputBroker
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(runId);
         ArgumentNullException.ThrowIfNull(heldChanged);
-        _watchers[runId] = heldChanged;
-        if (HoldsAny(runId))
-            heldChanged(true);
+        lock (_gate)
+        {
+            _watchers[runId] = heldChanged;
+            if (HoldsAny(runId))
+                heldChanged(true);
+        }
+
         return new Watch(this, runId, heldChanged);
     }
 
     private bool HoldsAny(string runId) =>
         _waiters.Keys.Any(k => string.Equals(k.Run, runId, StringComparison.Ordinal));
 
+    // Called under _gate only, so the watcher sees the holds in the order they changed. The watcher must not call back
+    // into the broker from another thread while it runs (the run deadline only takes its own lock).
     private void Notify(string runId, bool held)
     {
         if (_watchers.TryGetValue(runId, out var watcher))

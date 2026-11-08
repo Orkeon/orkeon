@@ -33,7 +33,7 @@
 
 Un préfixe au-delà de la boucle locale (`http://+:…`) sans schéma d'authentification ni `RequireMutualTls` est **refusé au démarrage** (code 78) : il lancerait des crews pour quiconque peut le joindre. Le sont aussi un préfixe sans barre oblique finale, un schéma `Bearer` sans validateur, `RequireMutualTls` sans ancre de confiance et un port qu'un autre processus tient. Sous Windows le listener est HTTP.sys : un préfixe autre que la boucle locale demande une réservation d'URL pour le compte du service (`netsh http add urlacl url=http://+:5190/ user=<compte>`) ; sans elle le démarrage est refusé, avec le même code et l'indication.
 
-**Sans aucun schéma d'authentification** (le défaut sur la boucle locale, aucune clé requise) l'API refuse tout de même ce que pourrait envoyer une page web ouverte dans le navigateur de l'opérateur : un `POST` dont le `Content-Type` n'est pas `application/json` reçoit `415 unsupported_media_type` (un formulaire inter-sites ne peut pas le fixer), et une requête dont l'en-tête `Host` n'est pas celui du listener (`localhost`, `127.0.0.1`, `[::1]` sur le port configuré) reçoit `421 misdirected_request` (rebond DNS). Envoyez `Content-Type: application/json` sur chaque `POST`, `/runs/{id}/cancel` compris. Avec un schéma d'authentification configuré, ces deux contrôles ne sont pas faits.
+**Sans schéma `ApiKey` ni `Bearer`** (le défaut sur la boucle locale, aucune clé requise, et aussi `RequireMutualTls` seul : un navigateur présente de lui-même un certificat client installé) l'API refuse tout de même ce que pourrait envoyer une page web ouverte dans le navigateur de l'opérateur : un `POST` dont le `Content-Type` n'est pas `application/json` reçoit `415 unsupported_media_type` (un formulaire inter-sites ne peut pas le fixer), et une requête dont l'en-tête `Host` n'est pas celui du listener (`localhost`, `127.0.0.1`, `[::1]` sur le port configuré) reçoit `421 misdirected_request` (rebond DNS). Envoyez `Content-Type: application/json` sur chaque `POST`, `/runs/{id}/cancel` compris. Avec un schéma `ApiKey` ou `Bearer` configuré, ces deux contrôles ne sont pas faits : une page ne peut pas fixer l'en-tête. Le [listener A2A](../architecture/service-host.md#5-autres-agents-a2a) du démon fait les deux mêmes contrôles dans les mêmes conditions.
 
 ## Sondes
 
@@ -41,7 +41,7 @@ Les deux répondent sans authentification — un orchestrateur ne détient aucun
 
 ### `GET /healthz` — vivacité
 
-Exécute les contrôles de tag `live` : **`system_resources`** (la mémoire du processus contre `Telemetry:MaxMemoryMB` ; au-delà, `degraded`, qui répond encore 200). Il lit le processus et rien d'autre : **la vivacité ne dépend jamais du LLM, du magasin d'état, de l'historique de runs ni d'aucun autre service**, si bien qu'une panne de fournisseur ne fait jamais redémarrer par un orchestrateur un daemon qui va bien. `200`, ou `503` dès que le host s'arrête (voir plus bas).
+Exécute les contrôles de tag `live` : **`system_resources`** (la mémoire du processus contre `Telemetry:MaxMemoryMB` ; au-delà, `degraded`, qui répond encore 200). Il lit le processus et rien d'autre : **la vivacité ne dépend jamais du LLM, du magasin d'état, de l'historique de runs ni d'aucun autre service**, si bien qu'une panne de fournisseur ne fait jamais redémarrer par un orchestrateur un daemon qui va bien. `200`, y compris pendant l'arrêt du host (avec `"status": "stopping"`, voir plus bas) : un processus qui se vide est vivant, et un `503` de vivacité le ferait tuer par un orchestrateur avant la fin de ses runs. `503` seulement quand un contrôle `live` est en échec.
 
 ### `GET /readyz` — disponibilité
 
@@ -57,7 +57,7 @@ Exécute les contrôles de tag `ready`, plus ceux dont `ReadinessTags` liste le 
 
 Le contrôle du LLM est hors disponibilité par défaut : la panne d'un fournisseur fait tomber tous les runs mais pas le daemon, et un orchestrateur qui sortirait le host de la rotation transformerait une panne partielle en panne totale. Ajoutez `"llm"` à `ReadinessTags` quand un répartiteur de charge doit s'écarter d'un host qui ne joint pas son modèle.
 
-**Pendant l'arrêt du host**, les deux sondes répondent `503` avec `"status": "stopping"` dès la fermeture de l'admission — toute la `ShutdownGracePeriod` — pour qu'un répartiteur cesse d'envoyer du trafic pendant que les runs en cours se terminent.
+**Pendant l'arrêt du host**, dès la fermeture de l'admission — toute la `ShutdownGracePeriod` —, les deux sondes indiquent `"status": "stopping"` : `/readyz` répond `503`, pour qu'un répartiteur cesse d'envoyer du trafic pendant que les runs en cours se terminent, et `/healthz` continue de répondre `200`, pour qu'une sonde de vivacité ne redémarre jamais le processus en plein arrêt.
 
 ```bash
 curl -s localhost:5190/healthz
