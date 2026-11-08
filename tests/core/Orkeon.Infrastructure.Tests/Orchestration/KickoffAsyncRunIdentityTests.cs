@@ -3,6 +3,7 @@ using Orkeon.Domain.Crew;
 using Orkeon.Domain.SharedKernel.ValueObjects;
 using Orkeon.Infrastructure.Orchestration;
 using Orkeon.Infrastructure.Tests.CovAutonomous;
+using Orkeon.Tests.Shared.Timing;
 using Cov = Orkeon.Infrastructure.Tests.CovAutonomous.CovAutonomous_SequentialCrewOrchestratorTests;
 
 namespace Orkeon.Infrastructure.Tests.Orchestration;
@@ -61,9 +62,7 @@ public sealed class KickoffAsyncRunIdentityTests
 
         var execId = await h.Orchestrator.KickoffAsyncNoWait(crew.Id, Cov.Input());
 
-        var deadline = DateTime.UtcNow.AddSeconds(10);
-        while (h.State.CompleteExecutionCount == 0 && DateTime.UtcNow < deadline)
-            await Task.Delay(20, TestContext.Current.CancellationToken);
+        await Polling.WaitUntilAsync(() => h.State.CompleteExecutionCount > 0);
 
         Assert.Equal(1, h.Checkpoint!.StartCount);
         Assert.Equal(execId.AsString(), h.Checkpoint.LastSessionId!.AsString());

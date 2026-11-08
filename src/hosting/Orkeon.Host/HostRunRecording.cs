@@ -97,7 +97,7 @@ internal sealed class HostRunRecording
         {
             success,
             exitCode,
-            status = WaitingForInput ? "waiting_for_input" : null,
+            status = WaitingForInput ? RunFinishedStatuses.WaitingForInput : null,
             durationMs = (long)Stopwatch.GetElapsedTime(started).TotalMilliseconds,
         });
     }

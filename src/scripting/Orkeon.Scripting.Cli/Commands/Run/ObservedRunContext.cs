@@ -244,7 +244,7 @@ internal sealed class ObservedRunContext : IAsyncDisposable
         {
             success = exitCode == 0,
             exitCode,
-            status = waiting ? "waiting_for_input" : null,
+            status = waiting ? Orkeon.Constants.Protocol.RunFinishedStatuses.WaitingForInput : null,
             requestId = waiting ? _observer?.PendingRequestId : null,
             tokens = _observer?.TokensUsed ?? 0,
             durationMs = _clock.ElapsedMilliseconds,

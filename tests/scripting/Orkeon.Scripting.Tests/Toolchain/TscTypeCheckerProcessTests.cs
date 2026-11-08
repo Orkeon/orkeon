@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using Orkeon.Scripting.Configuration;
 using Orkeon.Scripting.Toolchain;
+using Orkeon.Tests.Shared.Timing;
 
 namespace Orkeon.Scripting.Tests.Toolchain;
 
@@ -40,20 +41,16 @@ public sealed class TscTypeCheckerProcessTests : IDisposable
 
     private static async Task<string> WaitForFileAsync(string path)
     {
-        var deadline = DateTime.UtcNow.AddSeconds(30);
-        while (DateTime.UtcNow < deadline)
+        // The fake compiler writes the file line by line: a file that does not end its line yet is still being written.
+        string? text = null;
+        await Polling.WaitUntilAsync(async () =>
         {
-            if (File.Exists(path))
-            {
-                var text = await File.ReadAllTextAsync(path);
-                if (text.EndsWith('\n'))
-                    return text.Trim();
-            }
-
-            await Task.Delay(20);
-        }
-
-        throw new TimeoutException($"{path} never appeared");
+            if (!File.Exists(path))
+                return false;
+            text = await File.ReadAllTextAsync(path);
+            return text.EndsWith('\n');
+        }, TimeSpan.FromSeconds(30));
+        return text!.Trim();
     }
 
     [Fact]
@@ -72,30 +69,22 @@ public sealed class TscTypeCheckerProcessTests : IDisposable
         await cts.CancelAsync();
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => check);
 
-        Assert.False(ProcessIsRunning(pid), "tsc is still running after the caller cancelled");
+        // Polling throws when tsc is still running after the caller cancelled.
+        await Polling.WaitUntilAsync(() => ProcessHasExited(pid));
         Assert.False(Directory.Exists(scratch), "the scratch folder was left behind");
     }
 
-    private static bool ProcessIsRunning(int pid)
+    private static bool ProcessHasExited(int pid)
     {
-        var deadline = DateTime.UtcNow.AddSeconds(10);
-        while (DateTime.UtcNow < deadline)
+        try
         {
-            try
-            {
-                using var p = Process.GetProcessById(pid);
-                if (p.HasExited)
-                    return false;
-            }
-            catch (ArgumentException)
-            {
-                return false;
-            }
-
-            Thread.Sleep(20);
+            using var p = Process.GetProcessById(pid);
+            return p.HasExited;
         }
-
-        return true;
+        catch (ArgumentException)
+        {
+            return true;
+        }
     }
 
     [Fact]

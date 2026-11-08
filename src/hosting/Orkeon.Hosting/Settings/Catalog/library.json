@@ -2641,7 +2641,7 @@
       "section": "MCP",
       "type": "duration",
       "default": "00:01:00",
-      "description": "How long one tool call may take before it ends as a tool error. 60 seconds by default."
+      "description": "How long one request to this server may take: a tool call ends as a tool error, and `prompts/list`, `prompts/get`, `resources/list`, `resources/read` and a subscription raise a timeout. 60 seconds by default; a value that is not positive is refused. A device sign-in owed first is outside the bound."
     },
     {
       "path": "MCP:Servers:<name>:Command",
@@ -2667,7 +2667,7 @@
       "path": "MCP:Servers:<name>:Headers:<name>",
       "section": "MCP",
       "type": "string",
-      "description": "Extra HTTP headers (SSE transport) sent on every request: a literal value, or `env:VAR` to read it from an environment variable when the server is connected. An `Authorization` header is refused here; credentials go through `Auth`."
+      "description": "Extra HTTP headers (SSE transport) sent on every request: a literal value, or `env:VAR` to read it from an environment variable when the server is connected. An `Authorization` header is refused here; credentials go through `Auth`. The headers the transport sets itself (`Accept`, `Content-Type`, `Mcp-Session-Id`, `MCP-Protocol-Version`, `Mcp-Method`, `Mcp-Name`, `Last-Event-ID`) are refused too."
     },
     {
       "path": "MCP:Servers:<name>:Tools:Allow",
@@ -2705,7 +2705,7 @@
       "path": "MCP:Servers:<name>:Url",
       "section": "MCP",
       "type": "uri",
-      "description": "URL endpoint for SSE transport."
+      "description": "URL endpoint for SSE transport. With credentials (an `Auth` type, or an `env:` header) it must be an absolute https address, http only on loopback, or the server is refused at configuration."
     },
     {
       "path": "MCP:Server:AllowedTools",

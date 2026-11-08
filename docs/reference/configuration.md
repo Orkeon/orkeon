@@ -1724,16 +1724,16 @@ loads (STUDIO-21), by `orkeon-host` once at startup, before its first message (G
 | `Servers:<name>:Auth:TokenUrl` | uri | — |  | The OAuth token endpoint (`oauth2-client-credentials`, `oauth2-device`): HTTPS, or HTTP on loopback. |
 | `Servers:<name>:Auth:Type` | enum | `"None"` | `None`, `Bearer`, `Basic`, `OAuth2ClientCredentials`, `OAuth2Device` | The authentication scheme, each with the keys it needs: `None`; `Bearer` (`TokenEnv`); `Basic` (`UserEnv`, `PasswordEnv`); `oauth2-client-credentials` (`TokenUrl`, `ClientId`, `ClientSecretEnv`; optional `Scopes`, `Audience`); `oauth2-device` (`TokenUrl`, `DeviceAuthorizationUrl`, `ClientId`; optional `ClientSecretEnv`, `Scopes`, `Audience`; refused by `orkeon-host`, which has no terminal). Accepted spellings, exactly: `None`, `none`, `Bearer`, `bearer`, `Basic`, `basic`, `OAuth2ClientCredentials`, `oauth2-client-credentials`, `OAuth2Device`, `oauth2-device`. |
 | `Servers:<name>:Auth:UserEnv` | string | — |  | The environment variable holding the basic-auth user name. |
-| `Servers:<name>:CallTimeout` | duration | `"00:01:00"` |  | How long one tool call may take before it ends as a tool error. 60 seconds by default. |
+| `Servers:<name>:CallTimeout` | duration | `"00:01:00"` |  | How long one request to this server may take: a tool call ends as a tool error, and `prompts/list`, `prompts/get`, `resources/list`, `resources/read` and a subscription raise a timeout. 60 seconds by default; a value that is not positive is refused. A device sign-in owed first is outside the bound. |
 | `Servers:<name>:Command` | string | `""` |  | Command to launch the MCP server process (for stdio transport). |
 | `Servers:<name>:ConnectTimeout` | duration | `"00:00:30"` |  | How long the handshake and the tool listing of this server may take before the connection fails. 30 seconds by default; a value that is not positive is refused. |
 | `Servers:<name>:Env:<name>` | string | — |  | Environment variables for the server process. |
-| `Servers:<name>:Headers:<name>` | string | — |  | Extra HTTP headers (SSE transport) sent on every request: a literal value, or `env:VAR` to read it from an environment variable when the server is connected. An `Authorization` header is refused here; credentials go through `Auth`. |
+| `Servers:<name>:Headers:<name>` | string | — |  | Extra HTTP headers (SSE transport) sent on every request: a literal value, or `env:VAR` to read it from an environment variable when the server is connected. An `Authorization` header is refused here; credentials go through `Auth`. The headers the transport sets itself (`Accept`, `Content-Type`, `Mcp-Session-Id`, `MCP-Protocol-Version`, `Mcp-Method`, `Mcp-Name`, `Last-Event-ID`) are refused too. |
 | `Servers:<name>:Tools:Allow` | list of string | `[]` |  | Tool names to register; empty means all. |
 | `Servers:<name>:Tools:Deny` | list of string | `[]` |  | Tool names never registered, applied after `Allow`. |
 | `Servers:<name>:Transport` | enum | `"Stdio"` | `Stdio`, `Sse` | Transport type to use. |
 | `Servers:<name>:TrustAnnotations` | boolean | `false` |  | Whether the permission gate takes this server's tool annotations at their word: a tool marked readOnlyHint is then a read, which plan mode lets run. Off by default: an untrusted server could label a destructive tool read-only, so its tools stay classified fail-closed. |
-| `Servers:<name>:Url` | uri | — |  | URL endpoint for SSE transport. |
+| `Servers:<name>:Url` | uri | — |  | URL endpoint for SSE transport. With credentials (an `Auth` type, or an `env:` header) it must be an absolute https address, http only on loopback, or the server is refused at configuration. |
 <!-- /settings -->
 
 ### `MCP:Server`

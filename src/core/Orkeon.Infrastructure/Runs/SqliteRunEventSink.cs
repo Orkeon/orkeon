@@ -113,10 +113,10 @@ public sealed class SqliteRunEventSink : IRunEventSink, IRunHistoryReader, IDisp
                     break;
                 case RunEventKinds.RunFinished:
                     var success = runEvent.Payload?["success"]?.GetValue<bool>() == true;
-                    var waiting = runEvent.Payload?["status"]?.ToString() == "waiting_for_input";
+                    var waiting = runEvent.Payload?["status"]?.ToString() == RunFinishedStatuses.WaitingForInput;
                     await Command(
                         "UPDATE runs SET status = $status, finished_at = $at WHERE run_id = $run",
-                        ("$status", waiting ? "waiting_for_input" : success ? "succeeded" : "failed"), ("$at", Iso(runEvent.Timestamp)), ("$run", runEvent.RunId))
+                        ("$status", waiting ? RunFinishedStatuses.WaitingForInput : success ? "succeeded" : "failed"), ("$at", Iso(runEvent.Timestamp)), ("$run", runEvent.RunId))
                         .ExecuteNonQueryAsync(ct).ConfigureAwait(false);
                     await PurgeCoreAsync(ct).ConfigureAwait(false);
                     break;
@@ -313,7 +313,7 @@ public sealed class SqliteRunEventSink : IRunEventSink, IRunHistoryReader, IDisp
                 {
                     "succeeded" => RunStatus.Succeeded,
                     "failed" => RunStatus.Failed,
-                    "waiting_for_input" => RunStatus.WaitingForInput,
+                    RunFinishedStatuses.WaitingForInput => RunStatus.WaitingForInput,
                     _ => RunStatus.Running,
                 },
                 StartedAt = DateTimeOffset.Parse(reader.GetString(3), CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal),

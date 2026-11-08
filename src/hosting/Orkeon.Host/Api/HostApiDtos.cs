@@ -76,7 +76,7 @@ internal sealed record RunDto
             RunStatus.Running => "running",
             RunStatus.Succeeded => "succeeded",
             RunStatus.Failed => "failed",
-            RunStatus.WaitingForInput => "waiting_for_input",
+            RunStatus.WaitingForInput => Orkeon.Constants.Protocol.RunFinishedStatuses.WaitingForInput,
             _ => "orphaned",
         },
         StartedAt = summary.StartedAt,

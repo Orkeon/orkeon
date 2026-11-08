@@ -40,7 +40,8 @@ public class McpServerConfig
     public Dictionary<string, string> Env { get; } = [];
 
     /// <summary>
-    /// URL endpoint for SSE transport.
+    /// URL endpoint for SSE transport. With credentials (an <see cref="Auth"/> type, or an <c>env:</c> header) it must be
+    /// an absolute https address, http only on loopback, or the server is refused at configuration.
     /// </summary>
     public Uri? Url { get; set; }
 
@@ -59,7 +60,9 @@ public class McpServerConfig
     /// <summary>
     /// Extra HTTP headers (SSE transport) sent on every request: a literal value, or <c>env:VAR</c> to read
     /// it from an environment variable when the server is connected. An <c>Authorization</c> header is
-    /// refused here; credentials go through <see cref="Auth"/>.
+    /// refused here; credentials go through <see cref="Auth"/>. The headers the transport sets itself (<c>Accept</c>,
+    /// <c>Content-Type</c>, <c>Mcp-Session-Id</c>, <c>MCP-Protocol-Version</c>, <c>Mcp-Method</c>, <c>Mcp-Name</c>,
+    /// <c>Last-Event-ID</c>) are refused too.
     /// </summary>
     public Dictionary<string, string> Headers { get; } = [];
 
@@ -69,7 +72,11 @@ public class McpServerConfig
     /// <summary>Which of the server's tools are registered.</summary>
     public McpToolFilterConfig Tools { get; } = new();
 
-    /// <summary>How long one tool call may take before it ends as a tool error. 60 seconds by default.</summary>
+    /// <summary>
+    /// How long one request to this server may take: a tool call ends as a tool error, and <c>prompts/list</c>,
+    /// <c>prompts/get</c>, <c>resources/list</c>, <c>resources/read</c> and a subscription raise a timeout. 60 seconds by
+    /// default; a value that is not positive is refused. A device sign-in owed first is outside the bound.
+    /// </summary>
     public TimeSpan CallTimeout { get; set; } = TimeSpan.FromSeconds(60);
 
     /// <summary>

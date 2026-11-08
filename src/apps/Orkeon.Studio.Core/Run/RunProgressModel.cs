@@ -608,7 +608,7 @@ public sealed class RunProgressModel
         Finished = true;
         Success = orkeonEvent.GetBool("success");
         ExitCode = (int?)orkeonEvent.GetInt64("exitCode");
-        WaitingForInput = orkeonEvent.GetString("status") == "waiting_for_input";
+        WaitingForInput = orkeonEvent.GetString("status") == Orkeon.Constants.Protocol.RunFinishedStatuses.WaitingForInput;
         WaitingRequestId = WaitingForInput ? orkeonEvent.GetString("requestId") : null;
         FinalTokens = orkeonEvent.GetInt64("tokens");
         FinalDurationMs = orkeonEvent.GetInt64("durationMs");

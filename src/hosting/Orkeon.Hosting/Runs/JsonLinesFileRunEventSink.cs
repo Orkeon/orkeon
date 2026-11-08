@@ -184,7 +184,7 @@ internal sealed class JsonLinesFileRunEventSink : IRunEventSink
                 var success = runEvent.Payload?["success"]?.GetValue<bool>() == true;
                 line = started with
                 {
-                    Status = runEvent.Payload?["status"]?.ToString() == "waiting_for_input"
+                    Status = runEvent.Payload?["status"]?.ToString() == RunFinishedStatuses.WaitingForInput
                         ? RunStatus.WaitingForInput
                         : success ? RunStatus.Succeeded : RunStatus.Failed,
                     FinishedAt = runEvent.Timestamp,
@@ -403,7 +403,7 @@ internal sealed class JsonLinesRunHistoryReader : IRunHistoryReader
             CrewKey = started?.CrewId ?? started?.Payload?["crewKey"]?.ToString() ?? started?.Payload?["target"]?.ToString(),
             Status = finished is null
                 ? RunStatus.Running
-                : finished.Payload?["status"]?.ToString() == "waiting_for_input" ? RunStatus.WaitingForInput
+                : finished.Payload?["status"]?.ToString() == RunFinishedStatuses.WaitingForInput ? RunStatus.WaitingForInput
                 : finished.Payload?["success"]?.GetValue<bool>() == true ? RunStatus.Succeeded : RunStatus.Failed,
             StartedAt = (started?.Timestamp ?? events[0].Timestamp) is { } first && first != default ? first : modified,
             FinishedAt = finished?.Timestamp,
