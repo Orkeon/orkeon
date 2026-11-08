@@ -173,6 +173,49 @@ public sealed class McpSubscriptionTests
     }
 
     [Fact]
+    public async Task ShouldListTheToolsAgain_WhenTheGetStreamOfALegacyServerIsReopened()
+    {
+        var clock = new ManualTimeProvider();
+        await using var server = new FakeStreamableHttpServer("a") { UseSessions = true, AllowGet = true };
+        var registry = new MockToolRegistry();
+        await using var provider = new McpToolProvider(registry, timeProvider: clock);
+        await provider.ConnectServerAsync("srv", Config(server), TestContext.Current.CancellationToken);
+        await EventuallyAsync(() => server.GetCount >= 1);
+
+        // A list_changed sent while the stream is down is lost: the reopening must list the tools again.
+        server.Tools = ["a", "b"];
+        server.DropGet();
+        await EventuallyAsync(() => clock.PendingTimers > 0);
+        clock.Advance(TimeSpan.FromMinutes(5));
+        await EventuallyAsync(() => server.GetCount >= 2);
+        await EventuallyAsync(() => clock.PendingTimers > 0 || provider.ToolListActivity("srv").Resyncs >= 1);
+        if (provider.ToolListActivity("srv").Resyncs < 1)
+            clock.Advance(McpToolProvider.ToolListDebounce);
+
+        await EventuallyAsync(async () => (await NamesAsync(registry)).SequenceEqual(["a", "b"]));
+        Assert.Equal(0, provider.ToolListActivity("srv").Notifications);
+    }
+
+    [Fact]
+    public async Task ShouldOpenTheListenStreamAtOnce_WhenASubscriptionChangesDuringTheBackoff()
+    {
+        await using var server = new FakeStreamableHttpServer("a") { Modern = true };
+        var clock = new ManualTimeProvider();
+        await using var provider = new McpToolProvider(new MockToolRegistry(), timeProvider: clock);
+        await provider.ConnectServerAsync("srv", Config(server), TestContext.Current.CancellationToken);
+        await EventuallyAsync(() => Count(server, "subscriptions/listen") == 1);
+        server.EndListen();
+        await EventuallyAsync(() => clock.PendingTimers > 0);
+
+        // The clock never moves: only the subscription can open the stream again.
+        await provider.SubscribeResourceAsync("srv", Resource, TestContext.Current.CancellationToken);
+
+        await EventuallyAsync(() => Count(server, "subscriptions/listen") == 2);
+        var listen = JsonNode.Parse(server.Requests.Last(r => r.Method == "subscriptions/listen").Body)!;
+        Assert.Contains(Resource.ToString(), listen.ToJsonString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task ShouldDropTheCacheAndSubscribeAgain_WhenTheSessionIsInitialisedAgain()
     {
         await using var server = new FakeStreamableHttpServer("a") { UseSessions = true, AllowGet = true };

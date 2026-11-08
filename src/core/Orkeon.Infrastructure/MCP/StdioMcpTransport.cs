@@ -263,7 +263,7 @@ public partial class StdioMcpTransport : IMcpTransport
             {
                 if (root.TryGetProperty("id", out var id) && id.ValueKind is not JsonValueKind.Null)
                 {
-                    _ = AnswerServerRequestAsync(id.Clone());
+                    _ = AnswerServerRequestAsync(id.Clone(), method.GetString());
                     return;
                 }
 
@@ -282,17 +282,22 @@ public partial class StdioMcpTransport : IMcpTransport
         DispatchResponse(line);
     }
 
-    /// <summary>Answers a request of the server with "method not found": the client offers no sampling, roots or elicitation.</summary>
+    /// <summary>
+    /// Answers a request of the server: a <c>ping</c> gets an empty result, as the specification requires; anything else
+    /// gets "method not found", since the client offers no sampling, roots or elicitation.
+    /// </summary>
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Best-effort answer: a server that went away, or a transport being disposed, has nobody left to answer.")]
-    private async Task AnswerServerRequestAsync(JsonElement id)
+    private async Task AnswerServerRequestAsync(JsonElement id, string? method)
     {
         try
         {
-            var answer = JsonSerializer.Serialize(new JsonRpcResponse
-            {
-                Id = id,
-                Error = new JsonRpcError(JsonRpcErrorCodes.MethodNotFound, "Method not found"),
-            });
+            var answer = method == "ping"
+                ? JsonSerializer.Serialize(new { jsonrpc = "2.0", id, result = new { } })
+                : JsonSerializer.Serialize(new JsonRpcResponse
+                {
+                    Id = id,
+                    Error = new JsonRpcError(JsonRpcErrorCodes.MethodNotFound, "Method not found"),
+                });
             await _writeLock.WaitAsync().ConfigureAwait(false);
             try
             {

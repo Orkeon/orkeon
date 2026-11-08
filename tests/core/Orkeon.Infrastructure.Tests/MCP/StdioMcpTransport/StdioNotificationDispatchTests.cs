@@ -5,7 +5,7 @@ namespace Orkeon.Infrastructure.Tests.MCP;
 
 /// <summary>
 /// FWK-10: a frame without an <c>id</c> reaches <see cref="IMcpTransport.Notifications"/> instead of being
-/// dropped; a request of the server is answered -32601. The echo process (<c>cat</c>) plays a server that
+/// dropped; a request of the server is answered -32601, a ping of the server an empty result. The echo process (<c>cat</c>) plays a server that
 /// sends back every line it is given.
 /// </summary>
 public sealed class StdioNotificationDispatchTests
@@ -68,6 +68,22 @@ public sealed class StdioNotificationDispatchTests
 
         Assert.Equal(JsonRpcErrorCodes.MethodNotFound, response.Error!.Code);
         Assert.Equal(7, response.Id!.Value.GetInt32());
+    }
+
+    [Fact]
+    public async Task ShouldAnswerAnEmptyResult_ToAPingOfTheServer()
+    {
+        await using var transport = await StdioMcpTransportTestsFixture.CreateConnectedTransport();
+
+        // The echo returns this ping as a ping of the server: the transport answers it, the echo returns the answer.
+        var response = await transport.SendRequestAsync(
+            StdioMcpTransportTestsFixture.CreateRequest(method: "ping", id: 11),
+            Guard());
+
+        Assert.Null(response.Error);
+        Assert.Equal(JsonValueKind.Object, response.Result!.Value.ValueKind);
+        Assert.Empty(response.Result.Value.EnumerateObject());
+        Assert.Equal(11, response.Id!.Value.GetInt32());
     }
 
     [Fact]

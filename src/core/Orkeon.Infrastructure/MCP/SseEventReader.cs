@@ -13,8 +13,9 @@ internal readonly record struct SseEvent(string? Id, string Event, string Data, 
 /// line after it) is discarded, as the SSE specification says: a cut connection leaves truncated data.
 /// An event with an <c>id</c> or a <c>retry</c> but no <c>data</c> (the priming event of the 2025-11-25
 /// specification) is handed out with an empty <see cref="SseEvent.Data"/>: the caller keeps the id and the
-/// hint and dispatches nothing. A line longer than <see cref="MaxLineLength"/> characters ends the read with an
-/// <see cref="InvalidDataException"/>: a server cannot make the client buffer without end.
+/// hint and dispatches nothing. A line, or the joined <c>data</c> of one event, longer than
+/// <see cref="MaxLineLength"/> characters ends the read with an <see cref="InvalidDataException"/>: a server cannot
+/// make the client buffer without end, whether in one line or in many <c>data:</c> lines with no blank line.
 /// </summary>
 internal static class SseEventReader
 {
@@ -111,6 +112,8 @@ internal static class SseEventReader
             switch (field)
             {
                 case "data":
+                    if (data.Length + value.Length + 1 > maxLineLength)
+                        throw new InvalidDataException($"An SSE event is longer than {maxLineLength} characters: the stream is refused.");
                     if (hasData)
                         data.Append('\n');
                     data.Append(value);

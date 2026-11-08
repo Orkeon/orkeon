@@ -1,8 +1,14 @@
 namespace Orkeon.Infrastructure.MCP.Auth;
 
-/// <summary>Applies several authenticators in order.</summary>
-internal sealed class ChainedMcpRequestAuthenticator(IReadOnlyList<IMcpRequestAuthenticator> links) : IMcpSignInAuthenticator
+/// <summary>Applies several authenticators in order; disposing it disposes them.</summary>
+internal sealed class ChainedMcpRequestAuthenticator(IReadOnlyList<IMcpRequestAuthenticator> links) : IMcpSignInAuthenticator, IDisposable
 {
+    public void Dispose()
+    {
+        foreach (var link in links)
+            (link as IDisposable)?.Dispose();
+    }
+
     public async ValueTask ApplyAsync(HttpRequestMessage request, CancellationToken ct = default)
     {
         foreach (var link in links)

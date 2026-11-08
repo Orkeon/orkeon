@@ -80,7 +80,10 @@ public partial class StreamableHttpMcpTransport : IMcpTransport
     /// <param name="url">The HTTP endpoint URL for the MCP server.</param>
     /// <param name="httpClient">Optional HTTP client to use.</param>
     /// <param name="logger">Optional logger.</param>
-    /// <param name="authenticator">Optional authenticator applied to every request.</param>
+    /// <param name="authenticator">
+    /// Optional authenticator applied to every request; the transport owns it and disposes it with itself when it is
+    /// <see cref="IDisposable"/>.
+    /// </param>
     /// <param name="timeProvider">The clock of the GET stream's reconnection delays; the system clock by default.</param>
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Reliability", "CA2000",
         Justification = "Ownership of the self-created HttpClient is transferred to the _httpClient field (_ownsHttpClient=true) and disposed in DisposeAsync; the HttpClient in turn owns and disposes the SocketsHttpHandler.")]
@@ -108,10 +111,17 @@ public partial class StreamableHttpMcpTransport : IMcpTransport
         {
             // PooledConnectionLifetime recycles pooled connections so this self-owned
             // fallback client picks up DNS changes on long-lived agent processes (ANT-013).
+            // The same settings as the shared client (McpServiceExtensions): no client-wide timeout, since a long-lived
+            // stream must stay open and each call is bounded by CallTimeout; no redirect, since the headers and
+            // credentials go to the configured host only.
             _httpClient = new HttpClient(new SocketsHttpHandler
             {
+                AllowAutoRedirect = false,
                 PooledConnectionLifetime = TimeSpan.FromMinutes(2)
-            });
+            })
+            {
+                Timeout = Timeout.InfiniteTimeSpan,
+            };
             _ownsHttpClient = true;
         }
     }
@@ -151,7 +161,7 @@ public partial class StreamableHttpMcpTransport : IMcpTransport
             }
             else
             {
-                var body = await httpResponse.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
+                var body = await ReadBodyAsync(httpResponse.Content, ct).ConfigureAwait(false);
                 response = JsonSerializer.Deserialize<JsonRpcResponse>(body);
             }
 
@@ -216,7 +226,8 @@ public partial class StreamableHttpMcpTransport : IMcpTransport
     /// One POST. A 401 asks the authenticator for a new credential; when it has one, the request is sent again,
     /// once: a second 401 is the answer. Requests refused together share the one renewal the authenticator makes.
     /// </summary>
-    private async Task<HttpResponseMessage> PostOnceAsync(string json, string method, JsonElement? parameters, CancellationToken ct)
+    private async Task<HttpResponseMessage> PostOnceAsync(
+        string json, string method, JsonElement? parameters, CancellationToken ct, PendingSession? pending = null)
     {
         var retried = false;
         while (true)
@@ -229,7 +240,7 @@ public partial class StreamableHttpMcpTransport : IMcpTransport
             })
             {
                 message.Headers.TryAddWithoutValidation("Accept", $"{HttpDefaults.JsonContentType}, {SseMediaType}");
-                AddMcpHeaders(message, method, parameters);
+                AddMcpHeaders(message, method, parameters, pending);
                 if (_authenticator is not null)
                     await _authenticator.ApplyAsync(message, ct).ConfigureAwait(false);
                 credential = message.Headers.Authorization?.ToString();
@@ -245,31 +256,71 @@ public partial class StreamableHttpMcpTransport : IMcpTransport
                 continue;
             }
 
-            CaptureSession(response);
+            // A session being started again is adopted once its handshake is over, not on the first answer.
+            if (pending is null)
+                CaptureSession(response);
             return response;
         }
     }
 
+    /// <summary>
+    /// The session a re-initialisation is starting: its id and revision go on the requests of its handshake, and become
+    /// the transport's only once <c>notifications/initialized</c> was taken.
+    /// </summary>
+    private sealed record PendingSession(string? SessionId, string? ProtocolVersion);
+
     private void CaptureSession(HttpResponseMessage response)
     {
-        if (response.IsSuccessStatusCode && response.Headers.TryGetValues(SessionHeader, out var values))
+        if (SessionOf(response) is { } id)
         {
-            var id = values.FirstOrDefault();
-            if (!string.IsNullOrEmpty(id))
-            {
-                lock (_state)
-                    _sessionId = id;
-            }
+            lock (_state)
+                _sessionId = id;
         }
     }
 
+    private static string? SessionOf(HttpResponseMessage response) =>
+        response.IsSuccessStatusCode && response.Headers.TryGetValues(SessionHeader, out var values)
+            && values.FirstOrDefault() is { Length: > 0 } id
+            ? id
+            : null;
+
     private void RememberNegotiatedVersion(JsonRpcResponse response)
     {
-        if (response.Result is { ValueKind: JsonValueKind.Object } result
-            && result.TryGetProperty("protocolVersion", out var version) && version.ValueKind == JsonValueKind.String)
+        if (NegotiatedVersion(response) is { } version)
         {
             lock (_state)
-                _protocolVersion = version.GetString();
+                _protocolVersion = version;
+        }
+    }
+
+    private static string? NegotiatedVersion(JsonRpcResponse response) =>
+        response.Result is { ValueKind: JsonValueKind.Object } result
+            && result.TryGetProperty("protocolVersion", out var version) && version.ValueKind == JsonValueKind.String
+            ? version.GetString()
+            : null;
+
+    /// <summary>The largest JSON body, in bytes, the transport reads: a server cannot make the client buffer without end.</summary>
+    internal const int MaxBodyLength = SseEventReader.MaxLineLength;
+
+    /// <summary>Reads a JSON answer, refused with an <see cref="InvalidDataException"/> past <paramref name="max"/> bytes.</summary>
+    internal static async Task<string> ReadBodyAsync(HttpContent content, CancellationToken ct, int max = MaxBodyLength)
+    {
+        if (content.Headers.ContentLength > max)
+            throw new InvalidDataException($"The server's answer is longer than {max} bytes: it is refused.");
+        var stream = await content.ReadAsStreamAsync(ct).ConfigureAwait(false);
+        await using (stream.ConfigureAwait(false))
+        {
+            using var buffer = new MemoryStream();
+            var chunk = new byte[16 * 1024];
+            int read;
+            while ((read = await stream.ReadAsync(chunk, ct).ConfigureAwait(false)) > 0)
+            {
+                if (buffer.Length + read > max)
+                    throw new InvalidDataException($"The server's answer is longer than {max} bytes: it is refused.");
+                await buffer.WriteAsync(chunk.AsMemory(0, read), ct).ConfigureAwait(false);
+            }
+
+            return System.Text.Encoding.UTF8.GetString(buffer.GetBuffer(), 0, (int)buffer.Length);
         }
     }
 
@@ -293,25 +344,41 @@ public partial class StreamableHttpMcpTransport : IMcpTransport
             }
 
             LogSessionExpired(_url);
-            using var initialize = await PostOnceAsync(initializeJson!, "initialize", null, ct).ConfigureAwait(false);
-            initialize.EnsureSuccessStatusCode();
-            var body = await initialize.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
-            if (string.Equals(initialize.Content.Headers.ContentType?.MediaType, SseMediaType, StringComparison.OrdinalIgnoreCase))
-                body = LastData(body);
-            if (JsonSerializer.Deserialize<JsonRpcResponse>(body) is { Error: null } answer)
-                RememberNegotiatedVersion(answer);
+
+            // The new session is held aside until its handshake is over: an answer that cannot be read, a JSON-RPC
+            // error or a refused notifications/initialized leaves the stale id in place, so the next request meets
+            // the 404 again and starts over, rather than use a session that was never told initialized.
+            var initializeRequest = JsonSerializer.Deserialize<JsonRpcRequest>(initializeJson!)!;
+            var starting = new PendingSession(null, null);
+            JsonRpcResponse? answer;
+            using (var initialize = await PostOnceAsync(initializeJson!, "initialize", null, ct, starting).ConfigureAwait(false))
+            {
+                initialize.EnsureSuccessStatusCode();
+                starting = starting with { SessionId = SessionOf(initialize) };
+                answer = string.Equals(initialize.Content.Headers.ContentType?.MediaType, SseMediaType, StringComparison.OrdinalIgnoreCase)
+                    ? await ReadStreamedAnswerAsync(initialize, initializeRequest, ct).ConfigureAwait(false)
+                    : JsonSerializer.Deserialize<JsonRpcResponse>(await ReadBodyAsync(initialize.Content, ct).ConfigureAwait(false));
+            }
+
+            if (answer is null)
+                throw new InvalidOperationException("The server answered the replayed initialize with no message: the session was not started again.");
+            if (answer.Error is { } error)
+                throw new InvalidOperationException($"The server refused the replayed initialize ({error.Code}: {error.Message}): the session was not started again.");
+            starting = starting with { ProtocolVersion = NegotiatedVersion(answer) };
+
+            var initialized = JsonSerializer.Serialize(new JsonRpcNotification { Method = InitializedMethod });
+            using (var done = await PostOnceAsync(initialized, InitializedMethod, null, ct, starting).ConfigureAwait(false))
+                done.EnsureSuccessStatusCode();
 
             lock (_state)
             {
                 // A server that no longer hands out a session id answers the stale one's end: the client is sessionless.
-                if (_sessionId == staleSession)
-                    _sessionId = null;
+                _sessionId = starting.SessionId;
+                if (starting.ProtocolVersion is not null)
+                    _protocolVersion = starting.ProtocolVersion;
                 _lastEventId = null;
             }
 
-            var initialized = JsonSerializer.Serialize(new JsonRpcNotification { Method = InitializedMethod });
-            using var done = await PostOnceAsync(initialized, InitializedMethod, null, ct).ConfigureAwait(false);
-            done.EnsureSuccessStatusCode();
             Resumed?.Invoke();
         }
         finally
@@ -320,25 +387,12 @@ public partial class StreamableHttpMcpTransport : IMcpTransport
         }
     }
 
-    private static string LastData(string sseBody)
-    {
-        var last = sseBody;
-        foreach (var rawLine in sseBody.Split('\n'))
-        {
-            var line = rawLine.TrimEnd('\r');
-            if (line.StartsWith("data:", StringComparison.Ordinal))
-                last = line["data:".Length..].TrimStart();
-        }
-
-        return last;
-    }
-
     /// <summary>
     /// Adds the Streamable HTTP request headers, derived from the JSON-RPC message itself:
     /// MCP-Protocol-Version (from `params._meta`, or the revision a legacy session negotiated), Mcp-Method,
     /// and Mcp-Name (from `params.name`, when present); and the session id once there is one.
     /// </summary>
-    private void AddMcpHeaders(HttpRequestMessage message, string method, JsonElement? parameters)
+    private void AddMcpHeaders(HttpRequestMessage message, string method, JsonElement? parameters, PendingSession? pending = null)
     {
         if (method.Length > 0)
             message.Headers.TryAddWithoutValidation(McpProtocol.MethodHeader, method);
@@ -347,8 +401,8 @@ public partial class StreamableHttpMcpTransport : IMcpTransport
         string? session;
         lock (_state)
         {
-            session = _sessionId;
-            version ??= method == "initialize" ? null : _protocolVersion;
+            session = pending is null ? _sessionId : pending.SessionId;
+            version ??= method == "initialize" ? null : pending?.ProtocolVersion ?? _protocolVersion;
         }
 
         if (version != null)
@@ -561,10 +615,11 @@ public partial class StreamableHttpMcpTransport : IMcpTransport
                 {
                     await foreach (var sse in SseEventReader.ReadAsync(stream, ct).ConfigureAwait(false))
                     {
-                        if (!string.IsNullOrEmpty(sse.Id))
+                        // An empty id: field resets the last event id, as the SSE specification says.
+                        if (sse.Id is not null)
                         {
                             lock (_state)
-                                _lastEventId = sse.Id;
+                                _lastEventId = sse.Id.Length == 0 ? null : sse.Id;
                         }
 
                         if (sse.RetryMilliseconds is { } retry)
@@ -651,6 +706,7 @@ public partial class StreamableHttpMcpTransport : IMcpTransport
             _httpClient.Dispose();
         }
 
+        (_authenticator as IDisposable)?.Dispose();
         _stop.Dispose();
         _reinitialize.Dispose();
         GC.SuppressFinalize(this);

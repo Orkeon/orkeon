@@ -145,14 +145,18 @@ The client introduces itself as `Orkeon` `1.0.0`.
   `TokenEnv` names) or `Basic` (`UserEnv` and `PasswordEnv`). The variables are read on every request, so
   a rotated token needs no restart. No credential is ever written in the settings.
 - `Headers`: extra HTTP headers, each a literal value or `env:VAR`. An `Authorization` header is refused
-  here: use `Auth`.
+  here: use `Auth`. So are the headers the transport sets itself (`Mcp-Session-Id`, `MCP-Protocol-Version`,
+  `Mcp-Method`, `Mcp-Name`, `Last-Event-ID`); a static header never replaces one a request already carries.
+- `Url`: when `Auth` is set or a header reads `env:VAR`, the address must be `https`, or `http` on loopback,
+  like `TokenUrl`: a credential is never sent in clear to another host.
 - `Tools`: `Allow` (empty keeps every tool) then `Deny`, applied before the tools reach the registry;
   a name in both is denied. An entry that matches no tool the server lists is reported as a warning
   (and in `McpServerStatus.UnmatchedToolFilters`).
 - `CallTimeout`: how long one tool call may take, 60 seconds by default. A silent server ends the call
   as a tool error (`McpCallTimeoutException`, `error_type` in the response metadata); a caller's own
-  cancellation is not a timeout. A duration that is not positive is refused; there is no way to switch the
-  bound off.
+  cancellation is not a timeout. The same bound holds for `prompts/list`, `prompts/get`, `resources/list`,
+  `resources/read` and a legacy `resources/subscribe` (a `TimeoutException` naming the key). A duration that
+  is not positive is refused; there is no way to switch the bound off.
 - `ConnectTimeout`: how long the handshake and the tool listing may take, 30 seconds by default, whoever
   connects the server. A server that stays silent fails the connection with an error naming
   `MCP:Servers:<id>:ConnectTimeout`.
@@ -197,7 +201,8 @@ The client introduces itself as `Orkeon` `1.0.0`.
   are settings.
 
 Headers and `Auth` apply to the HTTP (`Sse`) transport; on a `Stdio` server they are refused, never silently
-dropped. A server whose configuration is invalid (a literal `Authorization` header, an absent environment
+dropped. A server whose configuration is invalid (a literal `Authorization` header, a header the transport sets, a plain `http` `Url` to a
+remote host with credentials, an absent environment
 variable, `Auth:Type` without its variable name, a non-positive timeout, `Auth` or `Headers` on a `Stdio` server) is set aside
 at startup with an error that names the settings key, never a value, and the run goes on without its tools.
 All servers share one `HttpClient` registered as `orkeon-mcp` (`McpServiceExtensions.HttpClientName`); it

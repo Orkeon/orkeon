@@ -15,7 +15,8 @@ internal static class McpRequestAuthenticators
 
     /// <summary>Headers the transport owns: a static value would overwrite the one it computes.</summary>
     private static readonly HashSet<string> ReservedHeaders =
-        new(["Accept", "Content-Type", "Mcp-Session-Id"], StringComparer.OrdinalIgnoreCase);
+        new(["Accept", "Content-Type", "Mcp-Session-Id", McpProtocol.ProtocolVersionHeader, McpProtocol.MethodHeader,
+            McpProtocol.NameHeader, "Last-Event-ID"], StringComparer.OrdinalIgnoreCase);
 
     /// <summary>
     /// Returns the authenticator for <paramref name="config"/>, or <see langword="null"/> when it
@@ -44,6 +45,7 @@ internal static class McpRequestAuthenticators
         }
 
         var headers = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        var secretHeader = false;
         foreach (var (name, raw) in config.Headers)
         {
             var key = $"{prefix}:Headers:{name}";
@@ -59,10 +61,17 @@ internal static class McpRequestAuthenticators
                     $"{key} is not accepted: the transport sets {name} itself and a fixed value would overwrite it.");
             }
 
-            headers[name] = raw.StartsWith(EnvPrefix, StringComparison.OrdinalIgnoreCase)
+            var fromEnvironment = raw.StartsWith(EnvPrefix, StringComparison.OrdinalIgnoreCase);
+            secretHeader |= fromEnvironment;
+            headers[name] = fromEnvironment
                 ? Read(key, raw[EnvPrefix.Length..], environment)
                 : raw;
         }
+
+        // A credential (an Auth, or a header read from the environment, where secrets live) goes to the server's own
+        // address with every request: that address must not carry it in clear to another host.
+        if (config.Transport == McpTransportType.Sse && config.Url is { } url && (config.Auth.Type != McpAuthType.None || secretHeader))
+            Endpoint($"{prefix}:Url", url, "carries the credentials of Auth or of an env: header");
 
         if (headers.Count > 0)
             links.Add(new StaticHeaderAuthenticator(headers));
@@ -142,7 +151,7 @@ internal static class McpRequestAuthenticators
     }
 
     /// <summary>An absolute address, HTTPS or loopback HTTP: a credential is never posted in clear to another host.</summary>
-    private static Uri Endpoint(string key, Uri? value)
+    private static Uri Endpoint(string key, Uri? value, string? reason = null)
     {
         if (value is null)
             throw new McpServerConfigurationException(key, $"{key} must give the address of the endpoint.");
@@ -150,7 +159,9 @@ internal static class McpRequestAuthenticators
         if (!uri.IsAbsoluteUri
             || !(uri.Scheme == Uri.UriSchemeHttps || (uri.Scheme == Uri.UriSchemeHttp && uri.IsLoopback)))
         {
-            throw new McpServerConfigurationException(key, $"{key} must be an absolute https address (http only on loopback).");
+            throw new McpServerConfigurationException(key, reason is null
+                ? $"{key} must be an absolute https address (http only on loopback)."
+                : $"{key} {reason}: it must be an absolute https address (http only on loopback).");
         }
 
         return uri;
