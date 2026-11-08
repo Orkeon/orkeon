@@ -17,6 +17,12 @@ public partial class McpClient : IAsyncDisposable
     private const string ClientName = "Orkeon";
     private const string ClientVersion = "1.0.0";
 
+    /// <summary>The most pages one listing follows: a server whose cursor never ends fails the listing.</summary>
+    internal const int MaxPages = 100;
+
+    /// <summary>The most items one listing gathers over its pages: past it the server is flooding the client, and the listing fails.</summary>
+    internal const int MaxItems = 10_000;
+
     private readonly IMcpTransport _transport;
     private readonly ILogger _logger;
     private int _nextId;
@@ -192,16 +198,37 @@ public partial class McpClient : IAsyncDisposable
     {
         EnsureReady();
 
-        var response = await SendAsync("tools/list", null, ct).ConfigureAwait(false);
+        return await PageAllAsync("tools/list", (McpToolListResult r) => (r.Tools, r.NextCursor), ct).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Lists the prompts of the MCP server, following the cursor of every page.
+    /// </summary>
+    public async Task<IReadOnlyList<McpPrompt>> ListPromptsAsync(CancellationToken ct = default)
+    {
+        EnsureReady();
+        return await PageAllAsync("prompts/list", (McpPromptListResult r) => (r.Prompts, r.NextCursor), ct).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Gets a prompt of the server, its <paramref name="arguments"/> filled in.
+    /// </summary>
+    public async Task<McpPromptGetResult> GetPromptAsync(
+        string name, IReadOnlyDictionary<string, string>? arguments = null, CancellationToken ct = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(name);
+        EnsureReady();
+
+        var response = await SendAsync("prompts/get", new { name, arguments = arguments ?? new Dictionary<string, string>() }, ct)
+            .ConfigureAwait(false);
 
         if (response.Error != null)
         {
             throw new InvalidOperationException(
-                $"tools/list failed: [{response.Error.Code}] {response.Error.Message}");
+                $"prompts/get failed: [{response.Error.Code}] {response.Error.Message}");
         }
 
-        var result = DeserializeResult<McpToolListResult>(response);
-        return result.Tools;
+        return DeserializeResult<McpPromptGetResult>(response);
     }
 
     /// <summary>
@@ -258,27 +285,18 @@ public partial class McpClient : IAsyncDisposable
     {
         EnsureReady();
 
-        var response = await SendAsync("resources/list", null, ct).ConfigureAwait(false);
-
-        if (response.Error != null)
-        {
-            throw new InvalidOperationException(
-                $"resources/list failed: [{response.Error.Code}] {response.Error.Message}");
-        }
-
-        var result = DeserializeResult<McpResourceListResult>(response);
-        return result.Resources;
+        return await PageAllAsync("resources/list", (McpResourceListResult r) => (r.Resources, r.NextCursor), ct).ConfigureAwait(false);
     }
 
     /// <summary>
     /// Reads a resource by URI.
     /// </summary>
-    public Task<McpToolCallResult> ReadResourceAsync(Uri uri, CancellationToken ct = default)
+    public Task<McpResourceReadResult> ReadResourceAsync(Uri uri, CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(uri);
         return ReadResourceCoreAsync();
 
-        async Task<McpToolCallResult> ReadResourceCoreAsync()
+        async Task<McpResourceReadResult> ReadResourceCoreAsync()
         {
             EnsureReady();
 
@@ -291,7 +309,84 @@ public partial class McpClient : IAsyncDisposable
                     $"resources/read failed: [{response.Error.Code}] {response.Error.Message}");
             }
 
-            return DeserializeResult<McpToolCallResult>(response);
+            return DeserializeResult<McpResourceReadResult>(response);
+        }
+    }
+
+    /// <summary>
+    /// Opens the 2026-07-28 notification stream (<c>subscriptions/listen</c>) and returns when the server
+    /// ends it. The notifications it carries reach the transport's <see cref="IMcpTransport.Notifications"/>
+    /// channel as they arrive; the call itself lasts as long as the stream, and is not bounded by a call timeout.
+    /// </summary>
+    /// <param name="resourceSubscriptions">The resources whose updates the stream carries.</param>
+    /// <param name="ct">Cancels the stream.</param>
+    /// <exception cref="InvalidOperationException">The server is not a modern one, or refused the subscription.</exception>
+    public async Task ListenAsync(IReadOnlyCollection<Uri> resourceSubscriptions, CancellationToken ct = default)
+    {
+        ArgumentNullException.ThrowIfNull(resourceSubscriptions);
+        EnsureReady();
+        if (_era != McpProtocolEra.Modern)
+        {
+            throw new InvalidOperationException(
+                "subscriptions/listen belongs to the 2026-07-28 revision: a legacy server is heard through the transport's own stream and resources/subscribe.");
+        }
+
+        var listenParams = new
+        {
+            notifications = new
+            {
+                toolsListChanged = true,
+                promptsListChanged = true,
+                resourcesListChanged = true,
+                resourceSubscriptions = resourceSubscriptions.Select(u => u.ToString()).ToArray(),
+            },
+        };
+
+        JsonRpcResponse response;
+        try
+        {
+            response = await SendAsync("subscriptions/listen", listenParams, ct).ConfigureAwait(false);
+        }
+        catch (McpStreamEndedException)
+        {
+            // The server closed the stream: the subscription is over, the caller opens it again.
+            return;
+        }
+
+        if (response.Error != null)
+        {
+            throw new McpListenRefusedException(
+                $"subscriptions/listen failed: [{response.Error.Code}] {response.Error.Message}");
+        }
+    }
+
+    /// <summary>Subscribes to the updates of a resource (legacy <c>resources/subscribe</c>); they arrive as <c>notifications/resources/updated</c>.</summary>
+    /// <param name="uri">The resource.</param>
+    /// <param name="ct">The cancellation token.</param>
+    public async Task SubscribeResourceAsync(Uri uri, CancellationToken ct = default)
+    {
+        ArgumentNullException.ThrowIfNull(uri);
+        EnsureReady();
+        var response = await SendAsync("resources/subscribe", new { uri = uri.ToString() }, ct).ConfigureAwait(false);
+        if (response.Error != null)
+        {
+            throw new InvalidOperationException(
+                $"resources/subscribe failed: [{response.Error.Code}] {response.Error.Message}");
+        }
+    }
+
+    /// <summary>Ends the subscription to a resource (legacy <c>resources/unsubscribe</c>).</summary>
+    /// <param name="uri">The resource.</param>
+    /// <param name="ct">The cancellation token.</param>
+    public async Task UnsubscribeResourceAsync(Uri uri, CancellationToken ct = default)
+    {
+        ArgumentNullException.ThrowIfNull(uri);
+        EnsureReady();
+        var response = await SendAsync("resources/unsubscribe", new { uri = uri.ToString() }, ct).ConfigureAwait(false);
+        if (response.Error != null)
+        {
+            throw new InvalidOperationException(
+                $"resources/unsubscribe failed: [{response.Error.Code}] {response.Error.Message}");
         }
     }
 
@@ -306,7 +401,17 @@ public partial class McpClient : IAsyncDisposable
             ? CreateModernRequest(method, parameters, _negotiatedVersion)
             : CreateRequest(method, parameters);
 
-        var response = await _transport.SendRequestAsync(request, ct).ConfigureAwait(false);
+        JsonRpcResponse response;
+        try
+        {
+            response = await _transport.SendRequestAsync(request, ct).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            // The caller gave up or a timeout fired: the server is told, so it stops working for nobody.
+            await NotifyCancelledAsync(request).ConfigureAwait(false);
+            throw;
+        }
 
         if (_era == McpProtocolEra.Modern &&
             response.Error is { Code: McpErrorCodes.UnsupportedProtocolVersion } error)
@@ -319,6 +424,68 @@ public partial class McpClient : IAsyncDisposable
         }
 
         return response;
+    }
+
+    /// <summary>
+    /// Best effort <c>notifications/cancelled</c> for a request that was abandoned: bounded, and a failure
+    /// to send it is not worth reporting over the cancellation itself.
+    /// </summary>
+    [SuppressMessage("Design", "CA1031", Justification = "Best-effort notification on the way out of a cancellation: nothing it throws may replace the cancellation.")]
+    private async Task NotifyCancelledAsync(JsonRpcRequest request)
+    {
+        if (request.Id is null || request.Method is "initialize" or "server/discover")
+            return;
+
+        try
+        {
+            using var guard = new CancellationTokenSource(TimeSpan.FromSeconds(2));
+            await _transport.SendNotificationAsync(new JsonRpcNotification
+            {
+                Method = "notifications/cancelled",
+                Params = JsonSerializer.SerializeToElement(new { requestId = request.Id.Value, reason = "The client stopped waiting for the answer." }),
+            }, guard.Token).ConfigureAwait(false);
+        }
+        catch (Exception)
+        {
+            // The connection is likely the very reason of the cancellation.
+        }
+    }
+
+    /// <summary>
+    /// Reads every page of a listing: sends <paramref name="method"/> with the cursor of the page before
+    /// it, until a page names no next cursor. At most <see cref="MaxPages"/> pages — past it the server
+    /// is not paging, it is looping, and the listing fails rather than grow without end.
+    /// </summary>
+    private async Task<IReadOnlyList<TItem>> PageAllAsync<TPage, TItem>(
+        string method, Func<TPage, (IReadOnlyList<TItem> Items, string? NextCursor)> read, CancellationToken ct)
+        where TPage : new()
+    {
+        var all = new List<TItem>();
+        string? cursor = null;
+        for (var page = 0; page < MaxPages; page++)
+        {
+            var response = await SendAsync(method, cursor is null ? null : new { cursor }, ct).ConfigureAwait(false);
+            if (response.Error != null)
+            {
+                throw new InvalidOperationException(
+                    $"{method} failed: [{response.Error.Code}] {response.Error.Message}");
+            }
+
+            var (items, next) = read(DeserializeResult<TPage>(response));
+            all.AddRange(items);
+            if (all.Count > MaxItems)
+            {
+                throw new InvalidOperationException(
+                    $"{method} returned more than {MaxItems} items over {page + 1} pages: the listing is cut off rather than grow without end.");
+            }
+
+            if (string.IsNullOrEmpty(next))
+                return all;
+            cursor = next;
+        }
+
+        throw new InvalidOperationException(
+            $"{method} still had a next page after {MaxPages} pages: the server's cursor never ends.");
     }
 
     private JsonRpcRequest CreateRequest(string method, object? parameters = null)
@@ -409,4 +576,14 @@ public partial class McpClient : IAsyncDisposable
 
     [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Debug, Message = "server/discover probe answered with a non-modern error [{Code}] {Message}; falling back to legacy initialize")]
     private partial void LogModernProbeFellBack(int code, string message);
+}
+
+/// <summary>The server refused <c>subscriptions/listen</c>: it does not offer the stream, and asking again would not change that.</summary>
+internal sealed class McpListenRefusedException : InvalidOperationException
+{
+    public McpListenRefusedException() { }
+
+    public McpListenRefusedException(string message) : base(message) { }
+
+    public McpListenRefusedException(string message, Exception innerException) : base(message, innerException) { }
 }

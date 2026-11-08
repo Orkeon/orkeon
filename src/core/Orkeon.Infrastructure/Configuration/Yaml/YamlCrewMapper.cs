@@ -72,7 +72,7 @@ public sealed partial class YamlCrewMapper
             Agents = mappedAgents,
             Tasks = mappedTasks,
             ManagerAgentId = managerAgentId,
-            GraphConfig = MapGraphConfig(settings.GraphConfig),
+            GraphConfig = MapGraph(settings.Name ?? string.Empty, process, settings.Process, settings.Graph, tasks),
             Rag = MapRag(settings.Rag),
             Links = MapLinks(settings.Name ?? string.Empty, settings.Links),
             Mounts = MapMounts(settings.Name ?? string.Empty, settings.Mounts),
@@ -91,6 +91,17 @@ public sealed partial class YamlCrewMapper
                 DelegationDepth = yaml.DelegationDepth,
                 SpawnedAgents = yaml.SpawnedAgents,
             };
+
+    // The permissionMode: of an agent, refused at load when it names no mode.
+    private static Orkeon.Domain.Security.PermissionMode? ReadPermissionMode(string agentKey, string? written)
+    {
+        if (string.IsNullOrWhiteSpace(written))
+            return null;
+        if (Orkeon.Domain.Security.PermissionModes.TryParse(written, out var mode))
+            return mode;
+        throw new InvalidOperationException(
+            $"Agent '{agentKey}' permissionMode: '{written.Trim()}' is not one of default, acceptEdits, bypassPermissions, plan, dontAsk.");
+    }
 
     /// <summary>
     /// Maps the <c>mounts:</c> block (VFS-90). Strict, unlike <see cref="MapLinks"/>: an item
@@ -153,6 +164,7 @@ public sealed partial class YamlCrewMapper
                 Goal = kvp.Value.Goal ?? string.Empty,
                 Backstory = kvp.Value.Backstory ?? string.Empty,
                 WorkingRoot = kvp.Value.WorkingRoot,
+                PermissionMode = ReadPermissionMode(kvp.Key, kvp.Value.PermissionMode),
                 Tools = kvp.Value.Tools ?? [],
                 AllowDelegation = kvp.Value.AllowDelegation ?? true,
                 MaxIterations = kvp.Value.MaxIter ?? Orkeon.Domain.Constants.Agent.AgentDefaults.MaxIterations,
@@ -242,6 +254,7 @@ public sealed partial class YamlCrewMapper
                 Dependencies = dependencies,
                 Tools = kvp.Value.Tools ?? (IReadOnlyList<string>)Array.Empty<string>(),
                 AsyncExecution = kvp.Value.AsyncExecution ?? false,
+                Retry = MapRetry(kvp.Key, kvp.Value.Retry, decisions.ContainsKey(kvp.Key)),
                 HumanInput = kvp.Value.HumanInput ?? false,
                 Context = kvp.Value.Context ?? [],
                 Deliverable = MapDeliverable(kvp.Value.Deliverable),
@@ -256,6 +269,37 @@ public sealed partial class YamlCrewMapper
             ThrowUnknownReferences(unknownAgents, unknownDependencies, agentNameMap.Keys, taskNameToId.Keys);
 
         return result;
+    }
+
+    /// <summary>
+    /// A task's <c>retry:</c> block as its policy (FWK-15). <c>attempts</c> is required, a wait is never
+    /// negative, <c>backoff</c> is <c>fixed</c> or <c>exponential</c>, and a decision task, which runs no
+    /// agent, has nothing to retry: each is refused at load, naming the task and the key.
+    /// </summary>
+    private static TaskRetryPolicy? MapRetry(string taskKey, RetryYamlConfig? yaml, bool isDecision)
+    {
+        if (yaml is null)
+            return null;
+
+        if (isDecision)
+            throw new InvalidOperationException($"Task '{taskKey}' is a decision task and cannot declare retry:, a decision runs no agent. Remove retry.");
+
+        if (yaml.Attempts is not { } attempts)
+            throw new InvalidOperationException($"Task '{taskKey}' retry: attempts is required, the number of times the task may run (1 or more).");
+
+        var backoff = (yaml.Backoff?.Trim().ToUpperInvariant()) switch
+        {
+            null or "" or "FIXED" => TaskRetryBackoff.Fixed,
+            "EXPONENTIAL" => TaskRetryBackoff.Exponential,
+            _ => throw new InvalidOperationException($"Task '{taskKey}' retry: backoff '{yaml.Backoff}' is unknown, use fixed or exponential."),
+        };
+
+        if (attempts < 1)
+            throw new InvalidOperationException($"Task '{taskKey}' retry: attempts is {attempts}, a task runs at least once: use 1 or more, or remove retry.");
+        if (yaml.BackoffMs is < 0)
+            throw new InvalidOperationException($"Task '{taskKey}' retry: backoffMs is {yaml.BackoffMs}, a wait is never negative.");
+
+        return new TaskRetryPolicy(attempts, yaml.BackoffMs ?? 0, backoff);
     }
 
     /// <summary>Hands the declarations to the domain's crew-level rules; the boundary adds no rule of its own.</summary>
@@ -923,24 +967,6 @@ public sealed partial class YamlCrewMapper
     }
 
     /// <summary>
-    /// Maps a YAML graph config section to a <see cref="GraphConfig"/> domain model.
-    /// </summary>
-    private static GraphConfig? MapGraphConfig(GraphYamlConfig? yaml)
-    {
-        if (yaml == null)
-            return null;
-
-        return new GraphConfig
-        {
-            MaxRetryCycles = yaml.MaxRetryCycles ?? 2,
-            CircuitBreakerPreset = yaml.CircuitBreakerPreset ?? "strict",
-            MaxTransitions = yaml.MaxTransitions,
-            MaxStateVisits = yaml.MaxStateVisits,
-            MaxTotalDurationSeconds = yaml.MaxTotalDurationSeconds,
-        };
-    }
-
-    /// <summary>
     /// The agent <c>managerAgent:</c> names, by its key. A name the crew does not have — a typo —
     /// fails the load, listing its agents (GAP-33, decision 4): erased, it told a hierarchical crew it
     /// "requires a manager agent", and took a consensual crew's arbiter away without a word.
@@ -1079,8 +1105,8 @@ public sealed record CrewMappingSettings
     /// </summary>
     public string? ManagerAgent { get; init; }
 
-    /// <summary>Crew-level graph orchestration configuration (<c>crew.graph</c>).</summary>
-    public GraphYamlConfig? GraphConfig { get; init; }
+    /// <summary>Crew-level graph block (<c>graph:</c>).</summary>
+    public GraphYamlConfig? Graph { get; init; }
 
     /// <summary>Crew-level default LLM block, merged onto each agent (<c>crew.llm</c>).</summary>
     public LlmYamlConfig? CrewDefaultLlm { get; init; }

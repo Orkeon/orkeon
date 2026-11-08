@@ -1,3 +1,5 @@
+using Orkeon.Domain.Task.ValueObjects;
+
 namespace Orkeon.Domain.Configuration;
 
 /// <summary>
@@ -6,12 +8,25 @@ namespace Orkeon.Domain.Configuration;
 /// </summary>
 public sealed record GraphConfig
 {
+    /// <summary>The reserved word that ends the graph: the <c>to</c> of an edge leaving the run.</summary>
+    public const string End = "END";
+
     /// <summary>
-    /// Maximum retry cycles for failed tasks before giving up.
-    /// Each cycle re-enqueues all failed tasks for another attempt.
-    /// Default: 2.
+    /// The node the run starts at, or null for the first node (ADR-018, point 5). Read only when
+    /// <see cref="Edges"/> describe a topology.
     /// </summary>
-    public int MaxRetryCycles { get; init; } = 2;
+    public string? Start { get; init; }
+
+    /// <summary>
+    /// The nodes of the graph, or null for the implicit graph: one node per task, its id the task's key.
+    /// </summary>
+    public IReadOnlyList<GraphNodeConfig>? Nodes { get; init; }
+
+    /// <summary>
+    /// The edges of the graph, in the order declared. Empty means no topology: the crew runs one node
+    /// per task, chained in execution order (ADR-018, point 7).
+    /// </summary>
+    public IReadOnlyList<GraphEdgeConfig> Edges { get; init; } = [];
 
     /// <summary>
     /// Circuit breaker preset name ("strict", "permissive", or "default").
@@ -38,3 +53,17 @@ public sealed record GraphConfig
     /// </summary>
     public int? MaxTotalDurationSeconds { get; init; }
 }
+
+/// <summary>A node of a crew's graph: an id, and the task it runs.</summary>
+/// <param name="Id">The node id, unique in the graph; never <c>START</c> or <c>END</c>.</param>
+/// <param name="Task">The key of the crew task the node runs.</param>
+public sealed record GraphNodeConfig(string Id, string Task);
+
+/// <summary>An edge of a crew's graph (ADR-018, point 6).</summary>
+/// <param name="From">The node it leaves.</param>
+/// <param name="To">The node it leads to, or <see cref="GraphConfig.End"/>.</param>
+/// <param name="When">
+/// The condition on the answer of the <c>From</c> node's decision task, or null for the edge taken when
+/// no other of the node holds (the "otherwise").
+/// </param>
+public sealed record GraphEdgeConfig(string From, string To, TaskCondition? When = null);

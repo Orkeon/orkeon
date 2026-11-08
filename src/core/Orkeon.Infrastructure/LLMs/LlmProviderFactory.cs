@@ -3,11 +3,16 @@ using Orkeon.Constants.Llm;
 using System.Diagnostics.CodeAnalysis;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using Orkeon.Infrastructure.LLMs.Base;
+using Orkeon.Infrastructure.LLMs.Capabilities;
 using Orkeon.Infrastructure.LLMs.CallMode;
 using Orkeon.Application.Interfaces.Ports;
 using Orkeon.Application.Interfaces.Security;
 using Orkeon.Domain.SharedKernel;
 using Orkeon.Domain.SharedKernel.ValueObjects;
+using Orkeon.Domain.FileSystem;
+using Orkeon.Infrastructure.LLMs.Mock;
+using Orkeon.Infrastructure.LLMs.Replay;
 using Orkeon.Infrastructure.LLMs.ToolCalling;
 
 namespace Orkeon.Infrastructure.LLMs;
@@ -23,7 +28,7 @@ namespace Orkeon.Infrastructure.LLMs;
 /// when it registered an <see cref="ILlmRateLimiter"/> (GAP-38). A provider built anywhere else
 /// would spend tokens no meter sees, past every cap — an architecture test holds that line.
 /// </remarks>
-public sealed class LlmProviderFactory : ILlmProviderFactory
+public sealed partial class LlmProviderFactory : ILlmProviderFactory
 {
     private const string LlmBaseUrlSetting = "Llm:BaseUrl";
 
@@ -33,12 +38,19 @@ public sealed class LlmProviderFactory : ILlmProviderFactory
     private readonly ILlmRateLimiter? _rateLimiter;
     private readonly ILlmCallObserver _callObserver;
     private readonly ITokenCounter _tokenCounter;
+    private readonly IModelCapabilityRegistry _capabilities;
+    private readonly IFileSystemService _fileSystem;
+    private readonly LlmCassette? _cassette;
+    private readonly LlmReplayMode _replayMode;
     private readonly OpenAIToolCallingStrategy _openAiStrategy;
     private readonly AnthropicToolCallingStrategy _anthropicStrategy;
 
     /// <summary>Initializes a new instance of <see cref="LlmProviderFactory"/>.</summary>
     /// <param name="httpClientFactory">The HTTP client factory.</param>
     /// <param name="loggerFactory">The logger factory.</param>
+    /// <param name="fileSystem">
+    /// The virtual file system the <c>mock</c> provider reads its responses file through (the host's).
+    /// </param>
     /// <param name="usageSink">
     /// The host's usage receiver: every provider built is metered for it. Null — no host
     /// listening — builds the providers unmetered.
@@ -49,14 +61,35 @@ public sealed class LlmProviderFactory : ILlmProviderFactory
     /// </param>
     /// <param name="callObserver">The host's call observer: every call of a provider built is announced to it. Null observes nothing.</param>
     /// <param name="tokenCounter">Estimates the tokens the observer is told; null uses <see cref="SimpleTokenCounter"/>.</param>
+    /// <param name="capabilities">The per-model table (FWK-21) every provider built reads; null uses the built-in one.</param>
+    /// <param name="replay">
+    /// Record or replay (FWK-11): every provider built is wrapped, under the call-mode layer, in a decorator that writes its
+    /// calls to the cassette or answers them from it. Null, or <see cref="LlmReplayMode.Off"/>, adds no layer.
+    /// </param>
+
     public LlmProviderFactory(
         IHttpClientFactory httpClientFactory,
         ILoggerFactory loggerFactory,
+        IFileSystemService fileSystem,
         ILlmUsageSink? usageSink = null,
         ILlmRateLimiter? rateLimiter = null,
         ILlmCallObserver? callObserver = null,
-        ITokenCounter? tokenCounter = null)
+        ITokenCounter? tokenCounter = null,
+        IModelCapabilityRegistry? capabilities = null,
+        LlmReplayOptions? replay = null)
     {
+        if (replay is { Mode: not LlmReplayMode.Off })
+        {
+            _replayMode = replay.Mode;
+            _cassette = new LlmCassette(
+                fileSystem,
+                string.IsNullOrWhiteSpace(replay.Cassette)
+                    ? throw new ArgumentException("A record or replay mode needs the virtual path of its cassette.", nameof(replay))
+                    : replay.Cassette);
+        }
+
+        ArgumentNullException.ThrowIfNull(fileSystem);
+        _fileSystem = fileSystem;
         ArgumentNullException.ThrowIfNull(httpClientFactory);
         _httpClientFactory = httpClientFactory;
         ArgumentNullException.ThrowIfNull(loggerFactory);
@@ -65,12 +98,33 @@ public sealed class LlmProviderFactory : ILlmProviderFactory
         _rateLimiter = rateLimiter;
         _callObserver = callObserver ?? NullLlmCallObserver.Instance;
         _tokenCounter = tokenCounter ?? new SimpleTokenCounter();
+        _capabilities = capabilities ?? ModelCapabilityRegistry.Default;
 
         // Create tool calling strategies
         _openAiStrategy = new OpenAIToolCallingStrategy(
             loggerFactory.CreateLogger<OpenAIToolCallParser>());
         _anthropicStrategy = new AnthropicToolCallingStrategy();
     }
+
+    /// <summary>
+    /// A factory for a tool that builds a provider to look at it (<c>orkeon doctor</c>, <c>orkeon llm
+    /// probe</c>): its file system has no mount, so a <c>mock</c> profile built by it answers every
+    /// call with a missing-file error.
+    /// </summary>
+    /// <param name="httpClientFactory">The HTTP client factory.</param>
+    /// <param name="loggerFactory">The logger factory.</param>
+    public static LlmProviderFactory WithoutMounts(IHttpClientFactory httpClientFactory, ILoggerFactory loggerFactory) =>
+        new(httpClientFactory, loggerFactory, MountlessFileSystem());
+
+    /// <summary>
+    /// A file system with no mount: every read of it fails as an unmounted path. What a container
+    /// composed without a file system hands the factory, so that it still builds every vendor provider.
+    /// </summary>
+    internal static IFileSystemService MountlessFileSystem() =>
+        new FileSystem.FileSystemService(
+            new Orkeon.Domain.FileSystem.FileSystemRegistry([]),
+            new Security.PathValidator(new Configuration.PathSecurityOptions(), NullLogger<Security.PathValidator>.Instance),
+            NullLogger<FileSystem.FileSystemService>.Instance);
 
     /// <summary>
     /// <paramref name="provider"/> announced on <paramref name="observer"/>; a provider already under
@@ -92,6 +146,7 @@ public sealed class LlmProviderFactory : ILlmProviderFactory
 
         return InferProviderType(config) switch
         {
+            LlmProviderKeys.Mock => CreateMockProvider(config),
             LlmProviderKeys.Ollama => CreateOllamaProvider(config),
             LlmProviderKeys.OpenAI => CreateOpenAIProvider(config),
             LlmProviderKeys.Anthropic => CreateAnthropicProvider(config),
@@ -123,6 +178,7 @@ public sealed class LlmProviderFactory : ILlmProviderFactory
         return providerType.ToLowerInvariant() switch
 #pragma warning restore CA1308
         {
+            LlmProviderKeys.Mock => CreateMockProvider(config),
             LlmProviderKeys.Ollama => CreateOllamaProvider(config),
             LlmProviderKeys.OpenAI => CreateOpenAIProvider(config),
             LlmProviderKeys.Anthropic => CreateAnthropicProvider(config),
@@ -149,6 +205,9 @@ public sealed class LlmProviderFactory : ILlmProviderFactory
     /// </summary>
     private static string InferProviderType(LlmConfig config)
     {
+        if (MockProviderSettings.IsMock(config))
+            return LlmProviderKeys.Mock;
+
         var baseUrl = config.BaseUrl?.ToString();
         var reading = LlmEndpointReading.Of(baseUrl, config.Model, config.ApiKey);
         if (reading.Notice == LlmEndpointNotice.Refused)
@@ -185,9 +244,43 @@ public sealed class LlmProviderFactory : ILlmProviderFactory
     private LlmProviderAdapter Adapt<TProvider>(LlmConfig config, Func<ILogger<TProvider>, ILlmProvider> build)
     {
         var logger = _loggerFactory.CreateLogger<TProvider>();
-        var provider = new CallModeLlmProvider(build(logger), config.CallMode, logger, _callObserver, _tokenCounter);
-        return new LlmProviderAdapter(LlmProviderEntrance.Enter(provider, _usageSink, _rateLimiter));
+        var built = build(logger);
+        if (built is OpenAICompatibleProviderBase compatible)
+            compatible.ModelCapabilities = _capabilities;
+        var provider = new CallModeLlmProvider(Cassette(built, config), config.CallMode, logger, _callObserver, _tokenCounter);
+        // A replayed call is answered from the cassette and sends nothing: it is metered as recorded
+        // (the usage the vendor reported) but takes no lease of the host's limiter (FWK review LLM-7).
+        var limiter = _cassette is not null && _replayMode == LlmReplayMode.Replay ? null : _rateLimiter;
+        return new LlmProviderAdapter(LlmProviderEntrance.Enter(provider, _usageSink, limiter));
     }
+
+    /// <summary>
+    /// <paramref name="built"/> under the cassette decorator the host asked for, or as it is. The cassette
+    /// holds what went over the wire, so the decorator sits under the call-mode layer, on the vendor's provider.
+    /// </summary>
+    private ILlmProvider Cassette(ILlmProvider built, LlmConfig config) => _cassette is null
+        ? built
+        : _replayMode == LlmReplayMode.Replay
+            ? new ReplayLlmProvider(built, _cassette, ProfileOf(config))
+            : new RecordingLlmProvider(built, _cassette, ProfileOf(config));
+
+    private static string ProfileOf(LlmConfig config) => string.IsNullOrWhiteSpace(config.Profile) ? "default" : config.Profile;
+
+    /// <summary>
+    /// The offline provider of a profile written <c>Provider: mock</c>: it answers from the JSONL file
+    /// <c>Responses</c> names, read through the virtual file system, and sits under the call-mode
+    /// decorator like any provider.
+    /// </summary>
+    private LlmProviderAdapter CreateMockProvider(LlmConfig config)
+    {
+        var path = MockProviderSettings.ResponsesOf(config)
+            ?? throw new InvalidOperationException("The mock LLM provider needs the virtual path of its responses file (Responses).");
+        LogMockProvider(_loggerFactory.CreateLogger<LlmProviderFactory>(), MockProviderSettings.ProfileOf(config), path);
+        return Adapt<JsonlMockLlmProvider>(config, logger => new JsonlMockLlmProvider(_fileSystem, path, logger));
+    }
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "The LLM provider of profile {Profile} is the mock: it answers from {Responses} and calls no model. A host that serves real traffic must not run it.")]
+    private static partial void LogMockProvider(ILogger logger, string profile, string responses);
 
     /// <summary>
     /// Creates Ollama provider instance, wired for native tool calling (LLM-07 / G-10).

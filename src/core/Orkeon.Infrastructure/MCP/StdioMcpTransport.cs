@@ -27,9 +27,16 @@ public partial class StdioMcpTransport : IMcpTransport
     private volatile bool _isConnected;
     private volatile string? _lastStandardErrorLine;
     private volatile InvalidOperationException? _disconnection;
+    private readonly System.Threading.Channels.Channel<JsonRpcNotification> _notifications;
+
+    /// <summary>The most notifications kept for a reader that is behind: past it the oldest is dropped.</summary>
+    internal const int NotificationCapacity = 256;
 
     /// <inheritdoc />
     public bool IsConnected => _isConnected;
+
+    /// <inheritdoc />
+    public System.Threading.Channels.ChannelReader<JsonRpcNotification> Notifications => _notifications.Reader;
 
     /// <summary>Initializes a new instance of <see cref="StdioMcpTransport"/>.</summary>
     /// <param name="config">The MCP server configuration specifying the process to launch.</param>
@@ -44,6 +51,7 @@ public partial class StdioMcpTransport : IMcpTransport
         _config = config;
         _logger = logger ?? NullLogger<StdioMcpTransport>.Instance;
         _server = serverId ?? config.Command;
+        _notifications = CreateNotificationChannel();
     }
 
     /// <summary>Initializes a new instance of <see cref="StdioMcpTransport"/> for testing with an already-started process.</summary>
@@ -56,7 +64,17 @@ public partial class StdioMcpTransport : IMcpTransport
         _process = process;
         _logger = logger ?? NullLogger<StdioMcpTransport>.Instance;
         _server = $"process {process.Id.ToString(System.Globalization.CultureInfo.InvariantCulture)}";
+        _notifications = CreateNotificationChannel();
     }
+
+    private System.Threading.Channels.Channel<JsonRpcNotification> CreateNotificationChannel() =>
+        System.Threading.Channels.Channel.CreateBounded<JsonRpcNotification>(
+            new System.Threading.Channels.BoundedChannelOptions(NotificationCapacity)
+            {
+                FullMode = System.Threading.Channels.BoundedChannelFullMode.DropOldest,
+                SingleWriter = true,
+            },
+            dropped => LogNotificationDropped(dropped.Method, _server));
 
     /// <inheritdoc />
     public async Task ConnectAsync(CancellationToken ct = default)
@@ -212,7 +230,7 @@ public partial class StdioMcpTransport : IMcpTransport
                 }
 
                 if (!string.IsNullOrWhiteSpace(line))
-                    DispatchResponse(line);
+                    DispatchFrame(line);
             }
         }
         catch (OperationCanceledException)
@@ -226,6 +244,77 @@ public partial class StdioMcpTransport : IMcpTransport
         finally
         {
             await DisconnectAsync(endOfOutput, ct).ConfigureAwait(false);
+        }
+    }
+
+    /// <summary>
+    /// Routes one line of the server's stdout: a frame with a method and no id is a notification, for
+    /// <see cref="Notifications"/>; a frame with a method and an id is a request of the server, which this
+    /// client does not serve (-32601); anything else is the answer to a request of ours.
+    /// </summary>
+    private void DispatchFrame(string line)
+    {
+        try
+        {
+            using var document = JsonDocument.Parse(line);
+            var root = document.RootElement;
+            if (root.ValueKind == JsonValueKind.Object &&
+                root.TryGetProperty("method", out var method) && method.ValueKind == JsonValueKind.String)
+            {
+                if (root.TryGetProperty("id", out var id) && id.ValueKind is not JsonValueKind.Null)
+                {
+                    _ = AnswerServerRequestAsync(id.Clone(), method.GetString());
+                    return;
+                }
+
+                var notification = JsonSerializer.Deserialize<JsonRpcNotification>(line);
+                if (notification is not null)
+                    _notifications.Writer.TryWrite(notification);
+                return;
+            }
+        }
+        catch (JsonException ex)
+        {
+            LogFailedToParseResponse(ex, line);
+            return;
+        }
+
+        DispatchResponse(line);
+    }
+
+    /// <summary>
+    /// Answers a request of the server: a <c>ping</c> gets an empty result, as the specification requires; anything else
+    /// gets "method not found", since the client offers no sampling, roots or elicitation.
+    /// </summary>
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Best-effort answer: a server that went away, or a transport being disposed, has nobody left to answer.")]
+    private async Task AnswerServerRequestAsync(JsonElement id, string? method)
+    {
+        try
+        {
+            var answer = method == "ping"
+                ? JsonSerializer.Serialize(new { jsonrpc = "2.0", id, result = new { } })
+                : JsonSerializer.Serialize(new JsonRpcResponse
+                {
+                    Id = id,
+                    Error = new JsonRpcError(JsonRpcErrorCodes.MethodNotFound, "Method not found"),
+                });
+            await _writeLock.WaitAsync().ConfigureAwait(false);
+            try
+            {
+                if (_process is { HasExited: false } process)
+                {
+                    await process.StandardInput.WriteLineAsync(answer).ConfigureAwait(false);
+                    await process.StandardInput.FlushAsync().ConfigureAwait(false);
+                }
+            }
+            finally
+            {
+                _writeLock.Release();
+            }
+        }
+        catch (Exception ex)
+        {
+            LogMcpCleanupError(ex, "answer to a request of the server");
         }
     }
 
@@ -269,6 +358,7 @@ public partial class StdioMcpTransport : IMcpTransport
             kvp.Value.TrySetException(disconnection);
         }
         _pendingRequests.Clear();
+        _notifications.Writer.TryComplete();
     }
 
     /// <summary>
@@ -332,6 +422,7 @@ public partial class StdioMcpTransport : IMcpTransport
     public async ValueTask DisposeAsync()
     {
         _isConnected = false;
+        _notifications.Writer.TryComplete();
         if (_readCts is not null)
             await _readCts.CancelAsync().ConfigureAwait(false);
 
@@ -376,6 +467,9 @@ public partial class StdioMcpTransport : IMcpTransport
 
         GC.SuppressFinalize(this);
     }
+
+    [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Warning, Message = "MCP server '{Server}' sent more notifications than the client reads: the oldest ('{Method}') was dropped")]
+    private partial void LogNotificationDropped(string method, string server);
 
     [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Warning, Message = "Failed to parse JSON-RPC response: {Line}")]
     private partial void LogFailedToParseResponse(Exception ex, string line);

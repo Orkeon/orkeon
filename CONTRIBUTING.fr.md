@@ -106,9 +106,9 @@ dotnet test Orkeon.sln --no-build --filter "Category!=Integration&Category!=Slow
 
 ## Structure du projet
 
-La solution compte **50 projets src répartis en 14 zones** et **38 projets de tests**.
+La solution compte **51 projets src répartis en 14 zones** et **38 projets de tests**.
 Trente-six projets src ont un projet de tests miroir ; `tests/e2e` et `tests/shared`
-forment les deux autres. Quatorze projets src n'ont volontairement pas de miroir : les cinq
+forment les deux autres. Quinze projets src n'ont volontairement pas de miroir : les cinq
 satellites `Orkeon.Constants.*` et `Orkeon.Rag.Onnx.Model` ne portent que des constantes et
 des ressources embarquées, `Orkeon.Analysis.Abstractions` est exercé via
 `Orkeon.Analysis.Tests`, et les sept projets `src/packaging/` sont de pur empaquetage :
@@ -463,10 +463,10 @@ une affaire d'opinion — elle est **consignée dans le dépôt** et vérifiée 
    en-tête ; après le pack, il exécute aussi `scripts/check-package-closure.py` sur les
    nupkgs eux-mêmes.
 7. Taguer `v<version>` et pousser le tag. Cela déclenche : `publish.yml` (packe tout ;
-   pousse **les dix paquets de la gamme v1 sur NuGet.org** — `Orkeon`, `Orkeon.Tools`,
+   pousse **les onze paquets de la gamme v1 sur NuGet.org** — `Orkeon`, `Orkeon.Tools`,
    `Orkeon.Rag.Onnx`, `Orkeon.Rag.Onnx.Model`, `Orkeon.Tools.Embeddings.Local`,
    `Orkeon.Scripting`, `Orkeon.Scripting.Cli`, `Orkeon.Compliance.Vfs`, `Orkeon.Interop.AgentFramework`,
-   `Orkeon.Hosting.Aspire`, l'ombrelle en premier puisque les autres en dépendent, via
+   `Orkeon.Hosting.Aspire`, `Orkeon.Templates`, l'ombrelle en premier puisque les autres en dépendent, via
    Trusted Publishing — et chaque projet packable sur GitHub Packages, les paquets et un
    SBOM CycloneDX couverts par une attestation de provenance de build ; voir
    [la matrice de publication](docs/fr/reference/publication-matrix.md)),

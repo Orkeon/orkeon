@@ -56,6 +56,7 @@ public static class VectorSearchServiceExtensions
                 : new OpenAIEmbeddingProvider(generator, sp.GetRequiredService<IOptions<EmbeddingOptions>>());
         });
         services.AddHttpClient<OllamaEmbeddingProvider>();
+        DefaultEmbeddingProviderResolver.AddEmbeddingGuard(services);
 
         // Register IEmbeddingProvider with factory that selects provider based on config
         services.AddSingleton<IEmbeddingProvider>(sp =>
@@ -66,6 +67,7 @@ public static class VectorSearchServiceExtensions
 #pragma warning restore CA1308
             {
                 DefaultEmbeddingProviderResolver.OllamaProvider => sp.GetRequiredService<OllamaEmbeddingProvider>(),
+                var token when DefaultEmbeddingProviderResolver.TryCreateHttpProvider(token, sp, options) is { } http => http,
                 _ => sp.GetService<OpenAIEmbeddingProvider>()
                      ?? (IEmbeddingProvider)new UnconfiguredEmbeddingProvider(),
             };

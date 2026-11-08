@@ -48,6 +48,10 @@ public partial class GuardianPipeline : IGuardianPipeline
         guardList.Add(guard);
     }
 
+    /// <inheritdoc />
+    public bool IsPhaseGuarded(GuardPhase phase) =>
+        _policyEngine.Policy.IsGuardPhaseEnabled(phase) && _guards.TryGetValue(phase, out var guards) && guards.Count > 0;
+
     /// <summary>
     /// Executes all registered guardians for the context's phase.
     /// Returns Block immediately if any guard blocks; aggregates warnings otherwise.

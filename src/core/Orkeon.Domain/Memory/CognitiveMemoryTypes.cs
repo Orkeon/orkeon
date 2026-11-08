@@ -105,6 +105,13 @@ public sealed record RecallOptions
     /// <summary>Minimum composite score threshold. Default: 0.1.</summary>
     public float MinScore { get; init; } = 0.1f;
 
+    /// <summary>
+    /// Minimum semantic similarity a memory needs whatever its recency and importance: without it a
+    /// fresh, default-importance memory unrelated to the query reaches the composite floor on those
+    /// two alone. Default: 0 (no floor).
+    /// </summary>
+    public float MinSemanticScore { get; init; }
+
     /// <summary>Optional filter by memory type.</summary>
     public MemoryType? TypeFilter { get; init; }
 

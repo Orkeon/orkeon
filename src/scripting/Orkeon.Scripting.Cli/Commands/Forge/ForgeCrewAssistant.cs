@@ -113,7 +113,7 @@ internal sealed class ForgeCrewAssistant : IForgeAssistant
         _tally = services.GetRequiredService<ForgeUsageTally>();
 
         var loggerFactory = services.GetRequiredService<ILoggerFactory>();
-        var tools = services.GetServices<IBaseTool>().ToList();
+        var tools = services.GetServices<IBaseTool>().OfType<IBaseTool>().ToList();
         _readTools = [.. ReadToolAllowlist.Where(name => tools.Any(t => t.Name == name))];
         // What the designed team may use (SPEC §7.3): the sandbox catalogue with
         // descriptions — a closed list the blueprint prompt shows and validation enforces.
@@ -135,7 +135,11 @@ internal sealed class ForgeCrewAssistant : IForgeAssistant
             {
                 PermissionGate = services.GetService<IPermissionGate>(),
                 DeltaSink = services.GetService<ILlmDeltaSink>(),
-                ToolInvocation = services.GetService<IToolInvocationPipeline>(),
+                ToolCallDlp = Orkeon.Application.Crew.ToolCallDeltaDlp.From(services),
+                // The forge's own calls are the operator's: the permission gate does not stop them.
+                ToolInvocation = services.GetService<IToolInvocationPipeline>() is { } pipeline
+                    ? new GateExemptToolInvocationPipeline(pipeline)
+                    : null,
                 LlmProfiles = services.GetService<Orkeon.Application.Interfaces.Ports.ILlmProfileRegistry>(),
                 ToolLimits = configuration.GetSection(Orkeon.Domain.Tools.ToolResultLimitsOptions.SectionName).Get<Orkeon.Domain.Tools.ToolResultLimitsOptions>(),
                 AgentInstances = configuration.GetSection(Orkeon.Scripting.Configuration.ScriptAgentInstanceOptions.SectionName).Get<Orkeon.Scripting.Configuration.ScriptAgentInstanceOptions>(),

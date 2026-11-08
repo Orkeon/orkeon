@@ -46,5 +46,13 @@ namespace Orkeon.Application.Interfaces.Services
             string output,
             Context.SimpleExecutionContext context,
             CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Called when a run ends, success or not: consolidates the crew's memory when the cognitive
+        /// memory is wired and <c>ConsolidateOnRunEnd</c> is set. Does nothing otherwise, and for a crew
+        /// without memory; a consolidation that fails is a warning.
+        /// </summary>
+        System.Threading.Tasks.Task FinishRunAsync(CrewId crewId, CancellationToken cancellationToken = default) =>
+            System.Threading.Tasks.Task.CompletedTask;
     }
 }

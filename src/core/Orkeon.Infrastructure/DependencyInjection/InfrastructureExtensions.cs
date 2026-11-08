@@ -1,3 +1,4 @@
+using Orkeon.Infrastructure.Telemetry.HealthChecks;
 using Microsoft.Extensions.AI;
 using Orkeon.Domain.SharedKernel;
 using ILlmProvider = Orkeon.Domain.SharedKernel.ILlmProvider;
@@ -19,6 +20,7 @@ using Orkeon.Domain.Tools.Security;
 using Orkeon.Domain.FileSystem;
 using Orkeon.Application.Memory;
 using Orkeon.Infrastructure.Configuration;
+using Orkeon.Infrastructure.LLMs.Capabilities;
 using Orkeon.Infrastructure.LLMs;
 using Orkeon.Infrastructure.Crew;
 using Orkeon.Infrastructure.Memory;
@@ -81,6 +83,9 @@ public static class InfrastructureExtensions
         services.AddOrkeonNativeToolCalling();
         services.AddOrkeonOutputValidation();
         services.AddOrkeonFeatureModules();
+
+        // The health checks do not hang on the telemetry: a host that never enables it still has them (FWK-14).
+        services.AddOrkeonHealthChecks();
         return services;
     }
 
@@ -144,6 +149,26 @@ public static class InfrastructureExtensions
         sp.GetService<FileSystem.PrivilegedFileSystemAccess>()?.FileSystem
         ?? sp.GetRequiredService<IFileSystemService>();
 
+    /// <summary>
+    /// The file system the LLM provider factory hands the mock provider: the privileged view, else the
+    /// plain service. A container with no file system, or one whose mounts are not configured yet (the
+    /// registry refuses to build without one), gets a file system with no mount, so the factory still
+    /// builds every vendor provider; only a <c>mock</c> profile then finds its file missing.
+    /// </summary>
+    private static IFileSystemService FileSystemForLlmProviders(IServiceProvider sp)
+    {
+        try
+        {
+            return sp.GetService<FileSystem.PrivilegedFileSystemAccess>()?.FileSystem
+                ?? sp.GetService<IFileSystemService>()
+                ?? LlmProviderFactory.MountlessFileSystem();
+        }
+        catch (InvalidOperationException)
+        {
+            return LlmProviderFactory.MountlessFileSystem();
+        }
+    }
+
     private static IServiceCollection AddOrkeonCorePlumbing(this IServiceCollection services)
     {
         // Add path security options (configurable via appsettings.json "PathSecurity" section)
@@ -173,7 +198,19 @@ public static class InfrastructureExtensions
     private static IServiceCollection AddOrkeonLlmAndMemoryBaseline(this IServiceCollection services)
     {
         // Add LLM providers
-        services.AddSingleton<ILlmProviderFactory, LlmProviderFactory>();
+        // The mock provider reads its responses file from the /llm-mock internal mount: the factory takes
+        // the privileged view of the file system, the one a component that reads an internal root uses.
+        // A container composed without a file system still builds every vendor provider.
+        services.AddSingleton<ILlmProviderFactory>(sp => new LlmProviderFactory(
+            sp.GetRequiredService<IHttpClientFactory>(),
+            sp.GetRequiredService<ILoggerFactory>(),
+            FileSystemForLlmProviders(sp),
+            sp.GetService<ILlmUsageSink>(),
+            sp.GetService<ILlmRateLimiter>(),
+            sp.GetService<ILlmCallObserver>(),
+            sp.GetService<ITokenCounter>(),
+            sp.GetService<IModelCapabilityRegistry>(),
+            sp.GetService<LLMs.Replay.LlmReplayOptions>()));
 
         // The host's named LLM profiles (GAP-17): the default provider plus every profile
         // registered by AddOrkeonLlmProfile(s). Always present, so a crew naming a profile the
@@ -385,6 +422,30 @@ public static class InfrastructureExtensions
         return services;
     }
 
+    /// <summary>
+    /// The execution service the strategies run their tasks through: the registered one, wrapped so that
+    /// each task a run completes is checkpointed and a resumed run's completed tasks are answered from
+    /// its checkpoints (FWK-07). Every mode takes its service from <see cref="Crew.Strategies.CrewStrategyDependencies"/>,
+    /// so decorating here covers the six; calls made outside a run (scripts, delegation) are not touched.
+    /// </summary>
+    private static Orkeon.Application.Interfaces.Services.IAgentExecutionService CheckpointedExecutionService(IServiceProvider sp)
+    {
+        // checkpoint -> retry -> core: a task's attempts are the core's business, and only the attempt that
+        // ended the task is checkpointed (FWK-15).
+        var inner = new Crew.RetryingAgentExecutionService(
+            sp.GetRequiredService<Orkeon.Application.Interfaces.Services.IAgentExecutionService>(),
+            sp.GetRequiredService<ILogger<Crew.RetryingAgentExecutionService>>(),
+            sp.GetService<TimeProvider>(),
+            sp.GetService<Orkeon.Application.Crew.ICrewExecutionHook>());
+        var runScope = sp.GetService<Orkeon.Application.Interfaces.Services.IRunScope>();
+        var checkpoints = sp.GetService<Orkeon.Application.Interfaces.Checkpointing.ICheckpointManager>();
+        return runScope is null || checkpoints is null
+            ? inner
+            : new Checkpointing.CheckpointingAgentExecutionService(
+                inner, runScope, checkpoints, sp.GetRequiredService<ILogger<Checkpointing.CheckpointingAgentExecutionService>>(),
+                sp.GetService<Orkeon.Domain.Task.ITaskRepository>());
+    }
+
     private static IServiceCollection AddOrkeonRepositoriesAndStrategies(this IServiceCollection services)
     {
         // Agent delegation provider (scoped — one instance per crew execution)
@@ -401,7 +462,7 @@ public static class InfrastructureExtensions
         services.TryAddScoped<Crew.Strategies.CrewStrategyDependencies>(sp => new Crew.Strategies.CrewStrategyDependencies(
             sp.GetRequiredService<Orkeon.Domain.Task.ITaskRepository>(),
             sp.GetRequiredService<Orkeon.Domain.Agent.IAgentRepository>(),
-            sp.GetRequiredService<Orkeon.Application.Interfaces.Services.IAgentExecutionService>(),
+            CheckpointedExecutionService(sp),
             sp.GetRequiredService<Orkeon.Application.Interfaces.Ports.IMemoryScope>(),
             sp.GetService<Orkeon.Domain.SharedKernel.Events.IDomainEventDispatcher>())
         {
@@ -410,7 +471,10 @@ public static class InfrastructureExtensions
 
         // Add Process Strategies
         services.AddScoped<SequentialProcessStrategy>();
-        services.AddScoped<HierarchicalProcessStrategy>();
+        // The one strategy that takes the execution service itself rather than the shared dependencies:
+        // it is handed the checkpointed one like the others (FWK-07).
+        services.AddScoped<HierarchicalProcessStrategy>(sp =>
+            ActivatorUtilities.CreateInstance<HierarchicalProcessStrategy>(sp, CheckpointedExecutionService(sp)));
         services.AddScoped<ParallelProcessStrategy>();
         services.AddScoped<GraphProcessStrategy>();
         services.AddScoped<AutonomousProcessStrategy>();
@@ -629,6 +693,10 @@ public static class InfrastructureExtensions
         // === Phase 9: Session Checkpointing (S2) ===
         services.AddOrkeonCheckpointing();
 
+        // The ambient identity of the run in flight (FWK-01): entered by the orchestrator, read by
+        // event observers and decorators.
+        services.TryAddSingleton<Orkeon.Application.Interfaces.Services.IRunScope, Orkeon.Infrastructure.Orchestration.AsyncLocalRunScope>();
+
         // Opt-in subsystems (R4.9 — MORT-003): DLP (AddOrkeonDlp) and NIST compliance
         // reporting (AddOrkeonNistCompliance) are intentionally NOT registered by
         // default — no production code path consumes them yet. Hosts enable them
@@ -766,7 +834,14 @@ public static class InfrastructureExtensions
     /// </summary>
     public static IServiceCollection AddOrkeonGuardian(this IServiceCollection services)
     {
-        services.AddOrkeonSettings<GuardianOptions>("Orkeon:Guardian");
+        services.TryAddEnumerable(ServiceDescriptor.Singleton<IValidateOptions<GuardianOptions>, GuardianLlmPhasesValidator>());
+        services.AddOrkeonSettings<GuardianOptions>("Orkeon:Guardian")
+            .Validate(
+                o => o.Llm.BlockThreshold is >= 0 and <= 1 && o.Llm.WarnThreshold is >= 0 and <= 1,
+                $"{GuardianLlmOptions.SectionName}:BlockThreshold and WarnThreshold: probabilities in [0, 1].")
+            .Validate(
+                o => o.Llm.MaxContentChars > 0,
+                $"{GuardianLlmOptions.SectionName}:MaxContentChars: one character or more.");
 
         // Policy engine (singleton) - uses the default policy from options
         services.TryAddSingleton<GuardianPolicyEngine>(sp =>
@@ -793,9 +868,22 @@ public static class InfrastructureExtensions
                 return pipeline;
 
             pipeline.AddGuard(GuardPhase.Input, sp.GetRequiredService<InputGuard>());
-            // The decision model's input guard, beside the built-in one (AddOrkeonDecisionProvider).
-            if (sp.GetService<DecisionInputGuard>() is { Enabled: true } decisionGuard)
-                pipeline.AddGuard(GuardPhase.Input, decisionGuard);
+            // The LLM judge, beside the built-in guards: the decision model judges the input and the
+            // output of a task (Orkeon:Guardian:Llm, off by default). Enabled without a decision model
+            // is a refusal to start: a judge that cannot judge must not leave the phase unguarded.
+            if (options.Llm.Enabled)
+            {
+                var model = sp.GetService<Orkeon.Application.Interfaces.Ports.IDecisionModel>()
+                    ?? throw new InvalidOperationException(
+                        $"{GuardianLlmOptions.SectionName}:Enabled is true but no decision model is registered: " +
+                        "call AddOrkeonDecisionProvider, or turn the LLM judge off.");
+                var judge = new LlmJudgeGuard(model, Options.Create(options.Llm), sp.GetRequiredService<ILogger<LlmJudgeGuard>>(), auditLogger);
+                foreach (var phase in new[] { GuardPhase.Input, GuardPhase.Output })
+                {
+                    if (options.Llm.Judges(phase))
+                        pipeline.AddGuard(phase, judge);
+                }
+            }
             pipeline.AddGuard(GuardPhase.ToolExecution, sp.GetRequiredService<ToolGuard>());
             pipeline.AddGuard(GuardPhase.Delegation, sp.GetRequiredService<DelegationGuard>());
 

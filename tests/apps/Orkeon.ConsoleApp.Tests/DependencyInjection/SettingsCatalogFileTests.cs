@@ -29,6 +29,8 @@ public sealed class SettingsCatalogFileTests
             // --llm-log: the LlmLogging section is read only with the flag, as for orkeon run.
             ScriptedCommandsCliOptions.Parse(["--llm-log"]),
             replWordWrap: false);
+        // The step ReplStartup takes after Program.ConfigureServices: it binds Orkeon:HumanInput.
+        ReplStartup.RegisterReplHumanInput(services);
 
         var described = SettingsCatalogBuilder.Describe(services, SettingsDocumentation.From(ProducedFile.Documentation()));
         var library = SettingsCatalog.FromJson(

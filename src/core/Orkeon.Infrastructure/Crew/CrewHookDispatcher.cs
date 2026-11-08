@@ -60,6 +60,7 @@ internal sealed partial class CrewHookDispatcher
             Timestamp = snapshot.StartedAt,
             TaskId = snapshot.TaskId,
             AgentRole = snapshot.AgentRole,
+            Attempt = snapshot.Attempt,
         });
 
         if (_hook is null) return;
@@ -78,9 +79,22 @@ internal sealed partial class CrewHookDispatcher
     internal async Task TaskCompletedAsync(TaskExecutionSnapshot snapshot, CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(snapshot);
+
+        // A task a resumed run answered from its checkpoint (FWK-07) is reported as such, in every mode:
+        // the decorator that answered it noted its id on the run.
+        if (!snapshot.Resumed
+            && Orkeon.Infrastructure.Orchestration.AsyncLocalRunScope.Ambient?.Resume?.ResumedTaskIds.ContainsKey(snapshot.TaskId) == true)
+        {
+            snapshot = snapshot with { Resumed = true };
+        }
+
+        // A retried task reports the attempt that ended it (FWK-15): the retry decorator noted it on the run.
+        if (Orkeon.Infrastructure.Orchestration.AsyncLocalRunScope.Ambient?.TaskAttempts.TryGetValue(snapshot.TaskId, out var attempt) == true)
+            snapshot = snapshot with { Attempt = attempt };
         CrewStreamScope.Write(new CrewExecutionEvent
         {
             Kind = RunEventKinds.TaskCompleted,
+            Attempt = snapshot.Attempt,
             Timestamp = snapshot.CompletedAt,
             TaskId = snapshot.TaskId,
             AgentRole = snapshot.AgentRole,

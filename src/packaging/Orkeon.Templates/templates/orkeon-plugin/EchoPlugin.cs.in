@@ -1,0 +1,16 @@
+using Microsoft.Extensions.DependencyInjection;
+using Orkeon.Domain.Tools;
+using Orkeon.Plugins;
+
+namespace MyOrkeonPlugin;
+
+/// <summary>The plugin: registers the tools plugin.json declares.</summary>
+public sealed class EchoPlugin : IOrkeonPlugin
+{
+    public string Name => "MyOrkeonPlugin";
+
+    public string Version => "1.0.0";
+
+    public void ConfigureServices(IServiceCollection services)
+        => services.AddSingleton<IBaseTool, EchoTool>();
+}

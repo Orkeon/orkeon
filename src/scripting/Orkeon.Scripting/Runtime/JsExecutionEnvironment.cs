@@ -39,6 +39,12 @@ internal sealed record JsExecutionEnvironment
     internal AgentInstanceRun? Instance { get; init; }
 
     /// <summary>
+    /// SEC-7: the permission mode of the act that spawned this run (<c>spawn_agent</c>, <c>ctx.spawnBackground</c>),
+    /// null for a run nothing spawned. Every act of the run is held to the stricter of its own mode and this one.
+    /// </summary>
+    internal string? PermissionFloor { get; init; }
+
+    /// <summary>
     /// Optional per-tool-call permission gate consulted by <c>ctx.llm.act</c> before each
     /// tool execution. Null = ungated (pre-F2 behaviour).
     /// </summary>
@@ -49,6 +55,9 @@ internal sealed record JsExecutionEnvironment
     /// Null = buffered behaviour unless the script passes <c>onDelta</c>.
     /// </summary>
     public Orkeon.Application.Interfaces.Ports.ILlmDeltaSink? DeltaSink { get; init; }
+
+    /// <summary>The host's DLP for streamed tool calls; null streams the fragments as they arrive.</summary>
+    public Orkeon.Application.Crew.ToolCallDeltaDlp? ToolCallDlp { get; init; }
 
     /// <summary>
     /// Optional single tool-invocation point (GAP-09) a <c>ctx.llm.act</c> tool call goes

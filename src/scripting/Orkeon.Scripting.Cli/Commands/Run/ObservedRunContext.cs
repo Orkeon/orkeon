@@ -1,9 +1,12 @@
+using Orkeon.Hosting.Runs;
+using Orkeon.Application.Runs;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Orkeon.Application.Crew;
 using Orkeon.Application.EventHub;
 using Orkeon.Application.Interfaces.Ports;
 using Orkeon.Domain.SharedKernel;
+using Orkeon.Infrastructure.DependencyInjection;
 using Orkeon.Domain.Tools;
 using Orkeon.Scripting.Cli.Events;
 
@@ -18,9 +21,10 @@ namespace Orkeon.Scripting.Cli.Commands.Run;
 /// </summary>
 internal sealed class ObservedRunContext : IAsyncDisposable
 {
-    private readonly OrkeonEventWriter _events;
+    private readonly RunEventPublisher _events;
     private readonly bool _stream;
     private readonly string _clientName;
+    private readonly bool _recordOnly;
     private RunEventObserver? _observer;
     private readonly System.Diagnostics.Stopwatch _clock;
 
@@ -43,10 +47,13 @@ internal sealed class ObservedRunContext : IAsyncDisposable
     /// <param name="events">The outbound stream.</param>
     /// <param name="stream">Whether <c>llm.delta</c> events were asked for.</param>
     /// <param name="clientName">The peer's name on the hub (<c>client://{name}</c>).</param>
-    /// <param name="input">The inbound stream: the peer's lines (the process stdin under <c>orkeon</c>).</param>
-    public ObservedRunContext(OrkeonEventWriter events, bool stream, string clientName, TextReader input)
+    /// <param name="input">The inbound stream: the peer's lines (the process stdin under <c>orkeon</c>); unused when only recording.</param>
+    /// <param name="recordOnly">True when the run is recorded by the history without <c>--events</c>: no stdin pump, no human input, no hub seat.</param>
+    public ObservedRunContext(RunEventPublisher events, bool stream, string clientName, TextReader? input, bool recordOnly = false)
     {
-        ArgumentNullException.ThrowIfNull(input);
+        _recordOnly = recordOnly;
+        if (!recordOnly)
+            ArgumentNullException.ThrowIfNull(input);
         _events = events ?? throw new ArgumentNullException(nameof(events));
         _stream = stream;
         _clientName = clientName;
@@ -57,7 +64,14 @@ internal sealed class ObservedRunContext : IAsyncDisposable
 
         // One reader on stdin, routed by kind. Two would race, and BUS-04's channel dropped
         // every line that was not a human answer — including the hub commands.
-        Inbound = new InboundCommandPump(input, HandleCommandAsync);
+        if (recordOnly)
+        {
+            // Recording only (the history is on, --events is not): the run's stdin and stdout stay the user's, so there is no
+            // pump to read them, no human input answered by a peer and no hub seat for one.
+            return;
+        }
+
+        Inbound = new InboundCommandPump(input!, HandleCommandAsync);
 
         // Started unconditionally, not on the first human question: the peer's post/send/
         // subscribe lines arrive whenever the peer pleases, and a pump that only wakes up for
@@ -67,7 +81,7 @@ internal sealed class ObservedRunContext : IAsyncDisposable
     }
 
     /// <summary>The single stdin reader; the human-input provider waits on it.</summary>
-    public InboundCommandPump Inbound { get; }
+    public InboundCommandPump? Inbound { get; }
 
     private async System.Threading.Tasks.Task HandleCommandAsync(string line, CancellationToken ct)
     {
@@ -121,9 +135,15 @@ internal sealed class ObservedRunContext : IAsyncDisposable
     {
         ArgumentNullException.ThrowIfNull(services);
 
+        // The run's publisher is a service of its host: the run history joins it once the host exists (FWK-08).
+        services.AddSingleton(_events);
+
         // Protocol purity: everything the loggers write goes to stderr.
-        services.Configure<Microsoft.Extensions.Logging.Console.ConsoleLoggerOptions>(
-            o => o.LogToStandardErrorThreshold = LogLevel.Trace);
+        if (!_recordOnly)
+        {
+            services.Configure<Microsoft.Extensions.Logging.Console.ConsoleLoggerOptions>(
+                o => o.LogToStandardErrorThreshold = LogLevel.Trace);
+        }
 
         // BUS-03: wrap every registered tool so its calls become events. Doing it here —
         // where tools enter the process — covers the agent loops and the scripting facade at
@@ -159,7 +179,9 @@ internal sealed class ObservedRunContext : IAsyncDisposable
         });
         services.AddSingleton<ICrewExecutionHook>(sp => sp.GetRequiredService<RunEventObserver>());
         services.AddSingleton<ILlmUsageSink>(sp => sp.GetRequiredService<RunEventObserver>());
+        services.AddSingleton<Orkeon.Domain.Graph.IGraphNodeObserver>(sp => sp.GetRequiredService<RunEventObserver>());
         services.AddSingleton<ILlmCallObserver>(_ => new RunEventsLlmCallObserver(_events, TimeProvider.System));
+        services.AddSingleton<ILlmFallbackObserver>(_ => new RunEventsLlmFallbackObserver(_events));
 
         // The delta sink only under --stream (GAP-32): a registered sink makes the agent loop and
         // ctx.llm.* stream every turn to it, and without --stream every delta would be dropped —
@@ -170,8 +192,14 @@ internal sealed class ObservedRunContext : IAsyncDisposable
         // D6: an observed run never approves on the user's behalf. The runner's AutoApprove
         // fallback is registered by TryAdd, so an explicit singleton here wins without
         // removing anything.
+        if (_recordOnly)
+            return;
+
         services.AddSingleton<IHumanInputProvider>(
-            new JsonLinesHumanInputProvider(_events, Inbound));
+            new JsonLinesHumanInputProvider(_events, Inbound!));
+
+        // A client reads the stream: a durable question is held for its answer, with no time limit, unless the settings say otherwise.
+        services.UseHoldByDefault(holdTimeout: null);
 
         // BUS-05: give the observing process a seat at the hub. A decorator, so local traffic
         // keeps going through the in-memory hub untouched — and only when the host registered
@@ -211,10 +239,13 @@ internal sealed class ObservedRunContext : IAsyncDisposable
         // W-08: the closing event carries what the run cost — duration, the token split,
         // and the cache partition of the prompt side (null = not measured, never zero) — and,
         // since STUDIO-42, how much of it the runtime estimated (null = all counted).
+        var waiting = exitCode == Orkeon.Constants.Cli.RunExitCodes.WaitingForInput;
         _events.Emit(RunEventKinds.RunFinished, new
         {
             success = exitCode == 0,
             exitCode,
+            status = waiting ? Orkeon.Constants.Protocol.RunFinishedStatuses.WaitingForInput : null,
+            requestId = waiting ? _observer?.PendingRequestId : null,
             tokens = _observer?.TokensUsed ?? 0,
             durationMs = _clock.ElapsedMilliseconds,
             promptTokens = _observer?.PromptTokens ?? 0,
@@ -224,6 +255,8 @@ internal sealed class ObservedRunContext : IAsyncDisposable
             estimatedTokens = _observer?.EstimatedTokens,
         });
 
+        // Whatever the host did, the buffer that waited for a late history is of no use now.
+        _events.CompleteConfiguration();
         return exitCode;
     }
 
@@ -241,7 +274,8 @@ internal sealed class ObservedRunContext : IAsyncDisposable
         // bridge had snapshotted its subscriptions — a relay nobody would ever cancel,
         // writing hub.message lines after run.finished. Closing the pump completes the
         // command channel and awaits the worker, so nothing can touch the bridge afterwards.
-        await Inbound.DisposeAsync().ConfigureAwait(false);
+        if (Inbound is not null)
+            await Inbound.DisposeAsync().ConfigureAwait(false);
 
         if (_bridge is not null)
         {

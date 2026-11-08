@@ -97,6 +97,34 @@ public abstract class RunnerOptionsBase
     public string? LlmLogPath { get; set; }
 
     /// <summary>
+    /// A JSONL responses file the run answers every LLM call from, offline (<c>--llm-mock</c>).
+    /// </summary>
+    [Option(RunOptionNames.LlmMock, Required = false, Default = null,
+        HelpText = "Answer every LLM call from this JSONL file instead of a model, offline and deterministic: "
+                   + "one {\"match\", \"regex\"?, \"content\", \"toolCalls\"?} object per line, the first line that matches "
+                   + "the prompt wins. Every LLM profile of the run becomes Provider: mock reading this file. "
+                   + "The file's folder is mounted read-only at /llm-mock.")]
+    public string? LlmMock { get; set; }
+
+    /// <summary>
+    /// A JSONL cassette the run writes every LLM call and its answer to (<c>--llm-record</c>).
+    /// </summary>
+    [Option(RunOptionNames.LlmRecord, Required = false, Default = null,
+        HelpText = "Record every LLM call of the run, with its answer, in this JSONL cassette (API keys and "
+                   + "authorization headers are redacted). The file's folder is mounted read-write at /llm-cassette. "
+                   + "Exclusive with --llm-replay and --llm-mock.")]
+    public string? LlmRecord { get; set; }
+
+    /// <summary>
+    /// A JSONL cassette the run answers every LLM call from, with no network (<c>--llm-replay</c>).
+    /// </summary>
+    [Option(RunOptionNames.LlmReplay, Required = false, Default = null,
+        HelpText = "Answer every LLM call of the run from this cassette, recorded by --llm-record, with no network: "
+                   + "a call the cassette does not hold fails with a replay miss. The file's folder is mounted "
+                   + "read-only at /llm-cassette. Exclusive with --llm-record and --llm-mock.")]
+    public string? LlmReplay { get; set; }
+
+    /// <summary>
     /// KEY=VALUE variables forwarded to CrewInput. Several go space-separated after ONE flag,
     /// like <see cref="Mounts"/> — the parser refuses a repeated option.
     /// </summary>
@@ -121,6 +149,29 @@ public abstract class RunnerOptionsBase
                    "Prints 'VALIDATION OK: <config> (agents=N, tasks=M, tools resolved=K)' " +
                    "and exits 0, or reports the load error and exits non-zero.")]
     public bool Validate { get; set; }
+
+    /// <summary>
+    /// The folder <c>./.orkeon/state</c> (the checkpoint store's) is resolved against; null: the process's
+    /// working directory. Not a command-line option: a command that embeds a runner, or a test, sets it.
+    /// </summary>
+    public string? WorkingDirectory { get; set; }
+
+    /// <summary>
+    /// Resumes the checkpointed run <c>&lt;id&gt;</c> of this crew (or <c>latest</c>, its most recent
+    /// unfinished one) instead of starting a new one: the tasks it had completed are not run again.
+    /// </summary>
+    [Option(RunOptionNames.Resume, Required = false, Default = null,
+        HelpText = "Resume the checkpointed run <id> of this crew, or 'latest' for its most recent unfinished run: " +
+                   "tasks it had completed are not run again. Needs Orkeon:Checkpointing:Enabled; refused with --validate.")]
+    public string? Resume { get; set; }
+
+    /// <summary>
+    /// The answer to the question the resumed run stopped on (FWK-23): <c>--resume &lt;id&gt; --input "..."</c>. Only with
+    /// <see cref="Resume"/>.
+    /// </summary>
+    [Option(RunOptionNames.Input, Required = false, Default = null,
+        HelpText = "The answer to the question the resumed run stopped on (exit 75): only with --resume.")]
+    public string? Input { get; set; }
 
     /// <summary>
     /// True when stdout carries a machine protocol (an `--events` run): the human summary —
@@ -149,6 +200,9 @@ public abstract class RunnerOptionsBase
     {
         get => RunnerLlmLog.ResolvePath(LlmLogEnabled, LlmLogPath);
     }
+
+    /// <summary>The full physical path of the <c>--llm-mock</c> file, or null when the option is off.</summary>
+    public string? ResolvedLlmMockPath => RunnerLlmMock.ResolvePath(LlmMock);
 
     /// <summary>
     /// Parses <c>--var KEY=VALUE</c> entries into a dictionary. Returns an empty dict

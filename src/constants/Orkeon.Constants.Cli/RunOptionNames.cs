@@ -49,6 +49,18 @@ public static class RunOptionNames
     /// <summary>Where the exchange log files land.</summary>
     public const string LlmLogPath = "llm-log-path";
 
+    /// <summary>Answer every LLM call from a JSONL responses file, offline.</summary>
+    public const string LlmMock = "llm-mock";
+
+    /// <summary>Record every LLM call of the run, with its answer, in a JSONL cassette.</summary>
+    public const string LlmRecord = "llm-record";
+
+    /// <summary>Answer every LLM call of the run from a cassette recorded by <c>--llm-record</c>, offline.</summary>
+    public const string LlmReplay = "llm-replay";
+
+    /// <summary>Bind the global <c>test</c> namespace (<c>test.mockLlm</c>, <c>test.mockTool</c>) in a script.</summary>
+    public const string Test = "test";
+
     /// <summary>A template variable, <c>name=value</c>.</summary>
     public const string Var = "var";
 
@@ -57,6 +69,12 @@ public static class RunOptionNames
 
     /// <summary>Validate the definition and exit without running it.</summary>
     public const string Validate = "validate";
+
+    /// <summary>Resumes a checkpointed run: <c>--resume &lt;id&gt;|latest</c>.</summary>
+    public const string Resume = "resume";
+
+    /// <summary>Answers the question a resumed run stopped on: <c>--resume &lt;id&gt; --input "..."</c> (FWK-23).</summary>
+    public const string Input = "input";
 
     /// <summary>List the tools the host would register, then exit.</summary>
     public const string ListTools = "list-tools";

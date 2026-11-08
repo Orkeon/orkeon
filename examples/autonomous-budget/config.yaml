@@ -1,0 +1,42 @@
+# Autonomous orchestration under a budget, with no tool and no network: the crew the
+# `--llm-mock` sweep of scripts/validate-all-examples.sh runs for the autonomous mode.
+# Run it offline, deterministically:
+#   orkeon run examples/autonomous-budget/config.yaml \
+#     --llm-mock examples/mock-responses/autonomous-budget.jsonl
+name: "autonomous-budget-demo"
+goal: "Show the autonomous mode: the manager LLM picks the agent of each task, under a budget"
+process: "autonomous"
+memory: false
+planning: false
+
+budget:
+  toolCalls: 10
+  delegationDepth: 1
+  wallTimeSeconds: 120
+
+agents:
+  researcher:
+    role: "Researcher"
+    goal: "Collect the facts the report needs"
+    backstory: "You collect facts from what you are given and say plainly what is missing."
+    allowDelegation: true
+    maxIter: 3
+
+  writer:
+    role: "Writer"
+    goal: "Write the final report"
+    backstory: "You turn the facts into a short, clear report."
+    allowDelegation: false
+    maxIter: 3
+
+tasks:
+  collect_facts:
+    description: "List three facts about the topic of the report."
+    expectedOutput: "A list of three facts"
+    dependencies: []
+
+  write_report:
+    description: "Write a two-sentence report from the facts."
+    expectedOutput: "A two-sentence report"
+    dependencies:
+      - "collect_facts"

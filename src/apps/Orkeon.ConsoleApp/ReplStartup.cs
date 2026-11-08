@@ -171,7 +171,7 @@ internal static class ReplStartup
     /// <c>human_input</c> answered through the read loop (RT-08): the REPL provider is the inner provider, and
     /// the loop's single interceptor becomes a composite of the approval channel's and the provider's.
     /// </summary>
-    private static void RegisterReplHumanInput(IServiceCollection services)
+    internal static void RegisterReplHumanInput(IServiceCollection services)
     {
         const string approvalsKey = "orkeon.repl.approvals-interceptor";
         services.AddSingleton(sp => new ReplHumanInputProvider(() => sp.GetRequiredService<Orkeon.Cli.Abstractions.Console.IConsoleAdapter>()));

@@ -190,7 +190,7 @@ public sealed class HostA2AConfigurationTests
     }
 
     [Fact]
-    public void The_A2A_server_starts_after_the_MCP_servers_and_before_the_chat_channel()
+    public void The_A2A_server_and_the_API_start_after_the_MCP_servers_and_before_the_chat_channel()
     {
         // After MCP: a task loads a crew, whose MCP tools must be registered first. Before the
         // channel and the crew host: stopped after the drain, so a run in flight still answers
@@ -200,7 +200,7 @@ public sealed class HostA2AConfigurationTests
         services.AddHostLifetimeServices();
 
         Assert.Equal(
-            [typeof(McpConnectionService), typeof(HostA2AService), typeof(Gateway.ChatChannelService), typeof(CrewHostService)],
+            [typeof(McpConnectionService), typeof(HostA2AService), typeof(Orkeon.Host.Api.HostApiServer), typeof(Gateway.ChatChannelService), typeof(CrewHostService)],
             services.Where(d => d.ServiceType == typeof(IHostedService)).Select(d => d.ImplementationType));
     }
 

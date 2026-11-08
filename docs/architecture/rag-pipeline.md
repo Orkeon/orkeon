@@ -99,7 +99,7 @@ on. The profile's chat client is resolved at the first RAG call that needs a mod
 never when a crew merely loads; `RagLlm.EnsureProfileIsKnown`, which the runner
 host and the REPL call once the container is built, checks the name alone and
 refuses one the host does not offer — `orkeon-host`'s `Orkeon:Host:LlmProfiles`
-allow-list included — listing the known ones. `orkeon rag eval --offline` ignores
+allow-list included — listing the known ones. `orkeon eval rag --offline` ignores
 the key: the extractive stub answers in place of every model.
 
 Runnable, fully offline demos: [`rag/basic-ingestion`](https://github.com/Orkeon/orkeon/blob/main/examples/rag/basic-ingestion/README.md),
@@ -590,7 +590,7 @@ published number instead of a claim:
   generation (groundedness, answer-relevance) is judged by an LLM judge when
   available, with a deterministic heuristic fallback — the report always labels
   which judge ran.
-- **Profiles compared** in one run: `orkeon rag eval --dataset … --compare
+- **Profiles compared** in one run: `orkeon eval rag --dataset … --compare
   fast,balanced,quality,corrective,adaptive --offline` (`--offline` swaps
   generation for a deterministic extractive stub — zero network; the measured
   table and its honest reading live in `examples/rag/eval/README.md`).

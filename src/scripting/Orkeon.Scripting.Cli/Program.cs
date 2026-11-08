@@ -18,13 +18,15 @@ internal static class Program
     public const int ExitRuntimeError = 2;
     /// <summary>Cancelled via SIGINT (Ctrl+C).</summary>
     public const int ExitCancelled = 130;
+    /// <summary>The run stopped on a question to a human and waits for its answer (<c>--resume --input</c>), FWK-23.</summary>
+    public const int ExitWaitingForInput = Orkeon.Constants.Cli.RunExitCodes.WaitingForInput;
 
     /// <summary>
     /// The verb table: every top-level command and the entry point that owns it. Each verb
     /// parses its own tail — `orkeon rag ingest` (RAG-03/C3, RAG-04/C1), `orkeon llm probe`
     /// (LLM-08/C1), `orkeon init` (WIN-02), `orkeon doctor` (WIN-03), `orkeon forge`
     /// (FORGE-03), `orkeon usecases search` (STUDIO-38), `orkeon email login` (MAIL-05), `orkeon drive login` (DRIVE-05),
-    /// `orkeon typings` (GAP-13), `orkeon quickstart`, `orkeon mcp serve` (GAP-24), `orkeon settings` — so the
+    /// `orkeon typings` (GAP-13), `orkeon runs` (FWK-08), `orkeon quickstart`, `orkeon mcp serve` (GAP-24), `orkeon settings` — so the
     /// option grammars never collide. A verb is looked up before a first word is taken for a crew
     /// to run: `orkeon settings` stays the verb where a `settings/` folder exists.
     /// </summary>
@@ -38,6 +40,7 @@ internal static class Program
             ["settings"] = SettingsCommand.DispatchAsync,
             ["llm"] = LlmCommand.DispatchAsync,
             ["rag"] = RagCommand.DispatchAsync,
+            ["eval"] = EvalCommand.DispatchAsync,
             // A lambda rather than a method group: the forge dispatch carries an optional
             // working-directory override its tests use, and an optional parameter forbids the
             // conversion.
@@ -47,6 +50,7 @@ internal static class Program
             ["drive"] = DriveCommand.DispatchAsync,
             ["typings"] = TypingsCommand.DispatchAsync,
             ["mcp"] = McpCommand.DispatchAsync,
+            ["runs"] = RunsCommand.DispatchAsync,
         };
 
     /// <summary>The verbs the dispatch answers to, so the usage listing can be checked against it.</summary>

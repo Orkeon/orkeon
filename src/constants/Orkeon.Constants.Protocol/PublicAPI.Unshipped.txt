@@ -1,1 +1,5 @@
 #nullable enable
+const Orkeon.Constants.Protocol.RunEventKinds.LlmFallback = "llm.fallback" -> string!
+const Orkeon.Constants.Protocol.RunEventKinds.GraphNodeEntered = "graph.node.entered" -> string!
+Orkeon.Constants.Protocol.RunFinishedStatuses
+const Orkeon.Constants.Protocol.RunFinishedStatuses.WaitingForInput = "waiting_for_input" -> string!

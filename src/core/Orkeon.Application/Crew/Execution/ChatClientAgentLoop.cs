@@ -8,6 +8,7 @@ using Orkeon.Application.Common.DTOs;
 using Orkeon.Application.Interfaces.Ports;
 using Orkeon.Application.Interfaces.Services;
 using Orkeon.Domain.Constants.Agent;
+using Orkeon.Domain.SharedKernel.ValueObjects;
 using Orkeon.Domain.Task;
 
 namespace Orkeon.Application.Crew.Execution;
@@ -44,6 +45,7 @@ internal sealed class ChatClientAgentLoop
     private readonly ChatOptionsComposer _optionsComposer;
     private readonly ChatToolDispatcher _toolDispatcher;
     private readonly ILlmDeltaSink? _deltaSink;
+    private readonly ToolCallDeltaDlp? _toolCallDlp;
 
     internal ChatClientAgentLoop(
         ILogger logger,
@@ -52,8 +54,10 @@ internal sealed class ChatClientAgentLoop
         ChatOptionsComposer optionsComposer,
         ChatToolDispatcher toolDispatcher,
         ILlmDeltaSink? deltaSink = null,
-        ILogger? verboseLogger = null)
+        ILogger? verboseLogger = null,
+        ToolCallDeltaDlp? toolCallDlp = null)
     {
+        _toolCallDlp = toolCallDlp;
         _logger = logger;
         _verboseLogger = verboseLogger;
         _chatClient = chatClient;
@@ -687,32 +691,99 @@ internal sealed class ChatClientAgentLoop
         var sank = false;
         // The turn's own sink, labelled with the task (#211): the tasks of a parallel wave stream at once,
         // and the host keeps their output apart.
-        var turn = _deltaSink?.BeginTurn(taskId);
-        await foreach (var update in _chatClient.GetStreamingResponseAsync(messages, options, cancellationToken).ConfigureAwait(false))
+        // While the task's output phase is guarded the deltas are held until the guardian has judged the
+        // output (OutputHold): a blocked output is never streamed nor rendered.
+        var hold = OutputHold.Current;
+        ILlmDeltaSink? turn = null;
+        var turnOpened = false;
+        ILlmDeltaSink? Turn()
         {
-            updates.Add(update);
-            var text = update.Text;
-            if (string.IsNullOrEmpty(text))
-                continue;
+            if (!turnOpened)
+            {
+                turn = _deltaSink?.BeginTurn(taskId);
+                turnOpened = true;
+            }
 
+            return turn;
+        }
+
+        void EmitToolCall(ToolCallDelta fragment)
+        {
             CrewStreamScope.Write(new CrewExecutionEvent
             {
                 Kind = RunEventKinds.LlmDelta,
                 TaskId = taskId,
                 AgentRole = agentRole,
-                Text = text,
+                ToolCall = fragment,
             });
-            if (turn is not null)
+            Turn()?.OnToolCallDelta(fragment);
+        }
+
+        void ReleaseToolCall(ToolCallDelta fragment)
+        {
+            if (hold is null)
+                EmitToolCall(fragment);
+            else
+                hold.Hold(() => EmitToolCall(fragment));
+        }
+
+        // With a DLP interceptor the arguments of a call are held by index until the stream ends: a secret cut
+        // between two fragments would escape a scan of each piece.
+        var held = _toolCallDlp is null ? null : new ToolCallDeltaHold();
+
+        await foreach (var update in _chatClient.GetStreamingResponseAsync(messages, options, cancellationToken).ConfigureAwait(false))
+        {
+            // A fragment of a tool call the provider streams is not part of the turn: the call itself arrives whole
+            // in the final update, so the fold below is the one a buffered call returns.
+            if (update.RawRepresentation is ToolCallDelta fragment)
             {
-                turn.OnDelta(text);
-                sank = true;
+                if (held is null)
+                    ReleaseToolCall(fragment);
+                else
+                    held.Add(fragment);
+                continue;
             }
+
+            updates.Add(update);
+            var text = update.Text;
+            if (string.IsNullOrEmpty(text))
+                continue;
+
+            void Emit()
+            {
+                CrewStreamScope.Write(new CrewExecutionEvent
+                {
+                    Kind = RunEventKinds.LlmDelta,
+                    TaskId = taskId,
+                    AgentRole = agentRole,
+                    Text = text,
+                });
+                Turn()?.OnDelta(text);
+            }
+
+            if (hold is null)
+                Emit();
+            else
+                hold.Hold(Emit);
+            if (_deltaSink is not null)
+                sank = true;
+        }
+
+        if (held is not null)
+        {
+            foreach (var redacted in await held.RedactAsync(_toolCallDlp!, _logger, cancellationToken).ConfigureAwait(false))
+                ReleaseToolCall(redacted);
         }
 
         // The sink's turn boundary, only after a turn that rendered something: a turn that only
         // called tools leaves the console as it was.
         if (sank)
-            turn!.OnTurnCompleted();
+        {
+            if (hold is null)
+                Turn()!.OnTurnCompleted();
+            else
+                hold.Hold(() => Turn()!.OnTurnCompleted());
+        }
 
         return updates.ToChatResponse();
     }

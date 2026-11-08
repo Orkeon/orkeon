@@ -23,6 +23,17 @@ public interface ICrewOrchestrationService
         CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Executes a crew like <see cref="KickoffAsync(CrewId, CrewInput, CancellationToken)"/>, with what
+    /// the caller decided about the run: its identifier (<see cref="KickoffOptions.ExecutionId"/>),
+    /// the stable key of the crew and the session it resumes.
+    /// </summary>
+    System.Threading.Tasks.Task<CrewOutput> KickoffAsync(
+        CrewId crewId,
+        CrewInput input,
+        KickoffOptions options,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Executes the crew for each input, in sequence: each input is a full run — started, ended,
     /// its events dispatched — and the next one starts once the previous one has returned
     /// (CrewAI's <c>kickoff_for_each</c>). The results come back in the order of the inputs.
@@ -47,7 +58,7 @@ public interface ICrewOrchestrationService
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Executes the crew exactly as <see cref="KickoffAsync"/> does — the same tasks, agents, order,
+    /// Executes the crew exactly as <see cref="KickoffAsync(CrewId, CrewInput, CancellationToken)"/> does — the same tasks, agents, order,
     /// mode, memory, knowledge and plan — and yields what happens as the run goes (GAP-32): each
     /// task's start and end, each tool call, the model's text as it arrives (on a host with an
     /// <c>IChatClient</c>), then <c>run.finished</c> carrying the run's <see cref="CrewOutput"/>,
@@ -62,6 +73,16 @@ public interface ICrewOrchestrationService
     IAsyncEnumerable<CrewExecutionEvent> KickoffStreamingAsync(
         CrewId crewId,
         CrewInput input,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// The streamed kickoff with what the caller decided about the run: its identifier, the stable key
+    /// of the crew and the session it resumes (<see cref="KickoffOptions"/>).
+    /// </summary>
+    IAsyncEnumerable<CrewExecutionEvent> KickoffStreamingAsync(
+        CrewId crewId,
+        CrewInput input,
+        KickoffOptions options,
         CancellationToken cancellationToken = default);
 }
 
@@ -163,6 +184,18 @@ public record CrewOutput(
     /// it as its last stderr line and exits non-zero on it (STUDIO-12 C5a).
     /// </summary>
     public string? Error { get; init; }
+
+    /// <summary>
+    /// Gets the identifier of the run that produced this output, its <see cref="Orkeon.Application.Interfaces.Services.ExecutionId"/>
+    /// in string form: the id a failed run is resumed by. Null when the run never got an identity.
+    /// </summary>
+    public string? ExecutionId { get; init; }
+
+    /// <summary>
+    /// Gets the question the run stopped on (FWK-23), or null. A run that stopped on one is not a failure and not a success:
+    /// <see cref="Succeeded"/> is false and this says what it waits for; it resumes with the answer.
+    /// </summary>
+    public Orkeon.Application.Interfaces.Checkpointing.PendingInputRequest? PendingInput { get; init; }
 }
 
 /// <summary>
@@ -201,7 +234,7 @@ public record TokenUsage(
 
 
 /// <summary>
-/// One event of a streamed crew run (<see cref="ICrewOrchestrationService.KickoffStreamingAsync"/>,
+/// One event of a streamed crew run (<see cref="ICrewOrchestrationService.KickoffStreamingAsync(CrewId, CrewInput, CancellationToken)"/>,
 /// GAP-32): what happened — <see cref="Kind"/>, a <c>RunEventKinds</c> constant, the vocabulary
 /// <c>orkeon run --events</c> writes on the wire —, when, for which task and agent when the event has
 /// one, then what its kind says:
@@ -236,6 +269,12 @@ public sealed record CrewExecutionEvent
 
     /// <summary><c>llm.delta</c>: a fragment of the model's text, as it arrived.</summary>
     public string? Text { get; init; }
+
+    /// <summary><c>llm.delta</c>: a fragment of a tool call the model is building; null on a text delta.</summary>
+    public Orkeon.Domain.SharedKernel.ValueObjects.ToolCallDelta? ToolCall { get; init; }
+
+    /// <summary><c>task.started</c>: which attempt of the task starts (1, then 2 for its first retry); null on an event of another kind.</summary>
+    public int? Attempt { get; init; }
 
     /// <summary><c>tool.called</c>, <c>tool.returned</c>: the tool's name.</summary>
     public string? ToolName { get; init; }

@@ -24,13 +24,17 @@ public static class TaskToolbelt
     /// <summary>The name of the tool injected when a task declares <c>humanInput: true</c>.</summary>
     public const string HumanInputToolName = "human_input";
 
+    /// <summary>The name of the tool injected for a crew with <c>memory: true</c> when the cognitive memory is wired.</summary>
+    public const string MemoryRecallToolName = "memory_recall";
+
     /// <summary>Composes the tools <paramref name="agent"/> holds while it runs <paramref name="task"/>.</summary>
     /// <param name="agent">The executing agent.</param>
     /// <param name="task">The task being run.</param>
     /// <param name="registeredTools">The host's registered tools, or null when none are known.</param>
+    /// <param name="memoryEnabled">Whether the crew runs with <c>memory: true</c>: it then also holds the registered <c>memory_recall</c>.</param>
     /// <returns>The effective belt, without duplicate names, agent tools first.</returns>
     public static IReadOnlyList<IBaseTool> Compose(
-        DomainAgent agent, CrewTask task, IEnumerable<IBaseTool>? registeredTools = null)
+        DomainAgent agent, CrewTask task, IEnumerable<IBaseTool>? registeredTools = null, bool memoryEnabled = false)
     {
         ArgumentNullException.ThrowIfNull(agent);
         ArgumentNullException.ThrowIfNull(task);
@@ -45,6 +49,13 @@ public static class TaskToolbelt
             && names.Add(humanInput.Name))
         {
             belt.Add(humanInput);
+        }
+
+        if (memoryEnabled
+            && registeredTools?.FirstOrDefault(t => string.Equals(t.Name, MemoryRecallToolName, StringComparison.OrdinalIgnoreCase)) is { } recall
+            && names.Add(recall.Name))
+        {
+            belt.Add(recall);
         }
 
         return belt;

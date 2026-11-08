@@ -53,6 +53,17 @@ public sealed class MockMemoryCoordinator : IMemoryCoordinator
         return System.Threading.Tasks.Task.CompletedTask;
     }
 
+    /// <summary>How many times the run's end asked for a consolidation.</summary>
+    public int Finished => Volatile.Read(ref _finished);
+
+    private int _finished;
+
+    public System.Threading.Tasks.Task FinishRunAsync(CrewId crewId, CancellationToken cancellationToken = default)
+    {
+        Interlocked.Increment(ref _finished);
+        return System.Threading.Tasks.Task.CompletedTask;
+    }
+
     /// <summary>One recorded <see cref="StoreTaskResultAsync"/> call.</summary>
     public sealed record StoredTaskResult(DomainAgent Agent, CrewTask Task, string Output, SimpleExecutionContext Context);
 }

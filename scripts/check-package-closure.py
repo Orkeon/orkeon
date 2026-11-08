@@ -78,6 +78,7 @@ LINEUP = [
     "Orkeon.Compliance.Vfs",
     "Orkeon.Interop.AgentFramework",
     "Orkeon.Hosting.Aspire",
+    "Orkeon.Templates",
 ]
 
 # Packable, but deliberately GitHub Packages only — never pushed to NuGet.org.

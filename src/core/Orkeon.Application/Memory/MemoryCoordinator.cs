@@ -68,6 +68,7 @@ public partial class MemoryCoordinator : IMemoryCoordinator
     private readonly CrewMemoryProviderRegistry _registry;
     private readonly IEmbeddingProvider? _embeddingProvider;
     private readonly CrewMemoryOptions _options;
+    private readonly ICognitiveMemoryService? _cognitive;
 
     /// <summary>
     /// Initializes a new instance of <see cref="MemoryCoordinator"/>.
@@ -80,12 +81,17 @@ public partial class MemoryCoordinator : IMemoryCoordinator
     /// crew with memory is refused at kickoff.
     /// </param>
     /// <param name="options">The bounds of a recall (<c>Orkeon:CrewMemory</c>); the defaults when null.</param>
+    /// <param name="cognitiveMemory">
+    /// The cognitive memory (FWK-04), when the host wires it: recall then ranks by composite score and
+    /// storing analyses what is stored. Null keeps the vector path.
+    /// </param>
     public MemoryCoordinator(
         ILogger<MemoryCoordinator> logger,
         IMemoryService memoryService,
         CrewMemoryProviderRegistry providerRegistry,
         IEmbeddingProvider? embeddingProvider = null,
-        IOptions<CrewMemoryOptions>? options = null)
+        IOptions<CrewMemoryOptions>? options = null,
+        ICognitiveMemoryService? cognitiveMemory = null)
     {
         ArgumentNullException.ThrowIfNull(logger);
         _logger = logger;
@@ -95,6 +101,7 @@ public partial class MemoryCoordinator : IMemoryCoordinator
         _registry = providerRegistry;
         _embeddingProvider = embeddingProvider;
         _options = options?.Value ?? new CrewMemoryOptions();
+        _cognitive = cognitiveMemory;
     }
 
     /// <inheritdoc />
@@ -163,9 +170,12 @@ public partial class MemoryCoordinator : IMemoryCoordinator
         using var span = StartSpan(OrkeonRunSpans.MemoryRecall, "recall", context.CrewId);
         try
         {
+            var query = AgentPromptComposer.BuildKnowledgeQueryText(task, context);
+            if (_cognitive is not null)
+                return await RecallCognitiveAsync(query, scope, task, context, span, cancellationToken).ConfigureAwait(false);
+
             var embedder = _embeddingProvider
                 ?? throw new InvalidOperationException("no embedding provider is registered");
-            var query = AgentPromptComposer.BuildKnowledgeQueryText(task, context);
             var embedding = await embedder.GetEmbeddingAsync(query, cancellationToken).ConfigureAwait(false);
 
             // A memory the prompt already carries — one of this run's previous outputs — is not
@@ -188,7 +198,7 @@ public partial class MemoryCoordinator : IMemoryCoordinator
                     fresh.Add(hit);
             }
 
-            var recalled = Budgeted(fresh);
+            var recalled = Budgeted(fresh.Select(hit => hit.Item));
             span?.SetTag(OrkeonRunSpans.MemoryItemCount, recalled.Count);
             LogMemoriesRecalled(recalled.Count, scope, task.Id);
             return recalled;
@@ -203,14 +213,54 @@ public partial class MemoryCoordinator : IMemoryCoordinator
     }
 
     /// <summary>
+    /// The recall through the cognitive memory: ranked by composite score (similarity, recency,
+    /// importance), floored by <see cref="CrewMemoryOptions.MinCompositeScore"/>, bounded like the vector path.
+    /// </summary>
+    private async System.Threading.Tasks.Task<IReadOnlyList<RecalledMemory>> RecallCognitiveAsync(
+        string query, string scope, CrewTask task, SimpleExecutionContext context, Activity? span, CancellationToken cancellationToken)
+    {
+        var alreadyThere = context.PreviousOutputs
+            .Select(output => output.Content)
+            .Where(content => !string.IsNullOrEmpty(content))
+            .ToHashSet(StringComparer.Ordinal);
+        var found = await _cognitive!.RecallAsync(
+            context.CrewId,
+            query,
+            new RecallOptions
+            {
+                TopK = _options.RecallLimit + context.PreviousOutputs.Count,
+                MinScore = _options.MinCompositeScore,
+                MinSemanticScore = _options.MinSemanticScore,
+            },
+            cancellationToken).ConfigureAwait(false);
+
+        var fresh = new List<ScoredMemory>(_options.RecallLimit);
+        foreach (var hit in found)
+        {
+            if (fresh.Count == _options.RecallLimit)
+                break;
+            if (alreadyThere.Add(hit.Item.Content))
+                fresh.Add(hit);
+        }
+
+        foreach (var hit in fresh)
+            LogCompositeScore(scope, task.Id, hit.CompositeScore, hit.SemanticScore, hit.RecencyScore, hit.ImportanceScore);
+
+        var recalled = Budgeted(fresh.Select(hit => hit.Item));
+        span?.SetTag(OrkeonRunSpans.MemoryItemCount, recalled.Count);
+        LogMemoriesRecalled(recalled.Count, scope, task.Id);
+        return recalled;
+    }
+
+    /// <summary>
     /// The hits as recalled memories, within the character budget: whole while they fit, the last
     /// one cut, nothing past it.
     /// </summary>
-    private List<RecalledMemory> Budgeted(IEnumerable<ScoredMemoryItem> hits)
+    private List<RecalledMemory> Budgeted(IEnumerable<MemoryItem> items)
     {
         var recalled = new List<RecalledMemory>();
         var remaining = _options.MaxChars;
-        foreach (var item in hits.Select(hit => hit.Item))
+        foreach (var item in items)
         {
             if (remaining <= TruncationMarker.Length)
                 break;
@@ -222,7 +272,7 @@ public partial class MemoryCoordinator : IMemoryCoordinator
             recalled.Add(new RecalledMemory(
                 StoredAt(item),
                 Property(item, AgentRoleProperty),
-                Property(item, TaskDescriptionProperty),
+                TaskOf(item),
                 content));
             remaining -= content.Length;
         }
@@ -232,6 +282,10 @@ public partial class MemoryCoordinator : IMemoryCoordinator
 
     private static string Property(MemoryItem item, string name) =>
         item.Metadata.CustomProperties?.GetValueOrDefault(name) ?? string.Empty;
+
+    /// <summary>The task a memory answered: its own record, else the context the cognitive memory kept.</summary>
+    private static string TaskOf(MemoryItem item) =>
+        Property(item, TaskDescriptionProperty) is { Length: > 0 } description ? description : Property(item, "context");
 
     /// <summary>When the memory was stored: its own record of it, which every store keeps.</summary>
     private static DateTime StoredAt(MemoryItem item) =>
@@ -265,6 +319,18 @@ public partial class MemoryCoordinator : IMemoryCoordinator
         using var span = StartSpan(OrkeonRunSpans.MemoryStore, "store", context.CrewId);
         try
         {
+            if (_cognitive is not null)
+            {
+                // The cognitive memory embeds, analyses (importance, category) and stores; an analysis
+                // that fails is stored with the default importance (memory.analysis.degraded).
+                await _cognitive.RememberAsync(
+                    context.CrewId, output, AgentPromptComposer.InterpolateDescription(task, context), cancellationToken)
+                    .ConfigureAwait(false);
+                span?.SetTag(OrkeonRunSpans.MemoryItemCount, 1);
+                LogTaskResultStored(scope, task.Id, agent.Role.Value);
+                return;
+            }
+
             var embedder = _embeddingProvider
                 ?? throw new InvalidOperationException("no embedding provider is registered");
             var description = AgentPromptComposer.InterpolateDescription(task, context);
@@ -299,6 +365,26 @@ public partial class MemoryCoordinator : IMemoryCoordinator
         }
     }
 
+    /// <inheritdoc />
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Memory fault barrier (FWK-04): a consolidation that fails is a warning and the run keeps its result; a cancellation passes.")]
+    public async System.Threading.Tasks.Task FinishRunAsync(CrewId crewId, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(crewId);
+        if (_cognitive is null || !_options.ConsolidateOnRunEnd || !_registry.IsMemoryEnabled(crewId))
+            return;
+
+        var scope = _registry.GetScope(crewId);
+        try
+        {
+            var result = await _cognitive.ConsolidateAsync(crewId, cancellationToken).ConfigureAwait(false);
+            LogConsolidated(scope, result.MergedCount, result.PrunedCount);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            LogConsolidationFailed(ex, scope, ex.Message);
+        }
+    }
+
     /// <summary>
     /// The text a memory is embedded on: its task, then its output — the start of it, past
     /// <see cref="MaxEmbeddedOutputChars"/>. The content stored is the whole output.
@@ -329,6 +415,15 @@ public partial class MemoryCoordinator : IMemoryCoordinator
 
     [LoggerMessage(Level = LogLevel.Debug, Message = "Crew '{Crew}': recalled {Count} memories for task {TaskId}")]
     private partial void LogMemoriesRecalled(int count, string crew, object taskId);
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Crew '{Crew}': task {TaskId} recalled a memory at composite {Composite} (similarity {Semantic}, recency {Recency}, importance {Importance})")]
+    private partial void LogCompositeScore(string crew, object taskId, float composite, float semantic, float recency, float importance);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Crew '{Crew}': memory consolidated at the end of the run (merged {Merged}, pruned {Pruned})")]
+    private partial void LogConsolidated(string crew, int merged, int pruned);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Crew '{Crew}': the memory was not consolidated at the end of the run: {Cause}")]
+    private partial void LogConsolidationFailed(Exception ex, string crew, string cause);
 
     [LoggerMessage(Level = LogLevel.Debug, Message = "Crew '{Crew}': stored the result of task {TaskId} by {Agent}")]
     private partial void LogTaskResultStored(string crew, object taskId, string agent);

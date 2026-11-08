@@ -35,13 +35,6 @@
       "description": "The `Orkeon:Decision:Enabled` switch of the decision circuit."
     },
     {
-      "path": "Orkeon:Decision:Guard",
-      "category": "models",
-      "hosts": [],
-      "registration": "AddOrkeonDecisionProvider",
-      "description": "The `Orkeon:Decision:Guard` section: the guardian that judges an agent's input with the decision model, in the `Input` phase, beside the built-in input guard."
-    },
-    {
       "path": "Orkeon:Kev",
       "category": "models",
       "hosts": [],
@@ -393,8 +386,8 @@
       "path": "Orkeon:Checkpointing",
       "category": "orchestration-and-persistence",
       "hosts": [],
-      "registration": "AddOrkeonPostgresCheckpointing",
-      "description": "Configuration options for `PostgresStateStore`."
+      "registration": "AddOrkeonCheckpointing",
+      "description": "The `Orkeon:Checkpointing` section: whether a host checkpoints its runs and in which store."
     },
     {
       "path": "Orkeon:Consensus",
@@ -415,6 +408,19 @@
       "hosts": [],
       "registration": "AddCrewExecutionStatePersistence",
       "description": "Options controlling durable persistence of crew execution states (`ScopedCrewExecutionStateManager` → `IStateStore`)."
+    },
+    {
+      "path": "Orkeon:HumanInput",
+      "category": "orchestration-and-persistence",
+      "hosts": [],
+      "registration": "AddOrkeonHumanInput",
+      "description": "The `Orkeon:HumanInput` section: how a run pauses on a question. Active only with `Orkeon:Checkpointing:Enabled`."
+    },
+    {
+      "path": "Orkeon:RunHistory",
+      "category": "orchestration-and-persistence",
+      "hosts": [],
+      "description": "The `Orkeon:RunHistory` section: whether the events of a run are kept after it ended, and where."
     },
     {
       "path": "Orkeon:Cli:ConsoleStreaming",
@@ -619,6 +625,31 @@
       "description": "The model's name. Left out, the provider runs its own default model."
     },
     {
+      "path": "Llm:ModelCapabilities:<name>:AudioInput",
+      "section": "Llm",
+      "type": "boolean",
+      "description": "Whether the model takes audio parts as input. Left out, the built-in value of the model (false when the table does not know it)."
+    },
+    {
+      "path": "Llm:ModelCapabilities:<name>:AudioOutput",
+      "section": "Llm",
+      "type": "boolean",
+      "description": "Whether the model answers in audio. Recorded only: nothing sends or reads audio output. Left out, the built-in value of the model (false when the table does not know it)."
+    },
+    {
+      "path": "Llm:ModelCapabilities:<name>:ReasoningEfforts",
+      "section": "Llm",
+      "type": "list of string",
+      "default": [],
+      "description": "The reasoning efforts the model takes: a list, or one comma-separated value; written empty, none. Left out, the built-in list of the model (no restriction for a model the table does not know) and the provider's own levels rule."
+    },
+    {
+      "path": "Llm:ModelCapabilities:<name>:Vision",
+      "section": "Llm",
+      "type": "boolean",
+      "description": "Whether the model takes image parts as input. Left out, the built-in value of the model (false when the table does not know it)."
+    },
+    {
       "path": "Llm:Profiles:<name>:ApiKey",
       "section": "Llm",
       "type": "string",
@@ -663,6 +694,19 @@
       "description": "How a call reaches the model: `Auto`, `Buffer` or `Stream`, case ignored. Left out, `Auto`: the call streams, and falls back on a buffered call when the provider refuses streaming."
     },
     {
+      "path": "Llm:Profiles:<name>:Fallback",
+      "section": "Llm",
+      "type": "list of string",
+      "default": [],
+      "description": "The profiles a call moves to, in order, when this one fails in a way a retry cannot cure: a transport error, a 5xx, a 429 once `MaxRetries` is spent, a timeout. A list of profile names, or one comma-separated value; `default` names the host's own. Left out, a failure is the call's."
+    },
+    {
+      "path": "Llm:Profiles:<name>:FallbackBudgetSeconds",
+      "section": "Llm",
+      "type": "integer",
+      "description": "The longest the chain may spend before it stops trying the next profile, in seconds, counted from the first call. It is checked between two profiles and never cuts a call in flight. Left out, the chain is bounded only by each profile's own `TimeoutSeconds` and `MaxRetries`."
+    },
+    {
       "path": "Llm:Profiles:<name>:Grammar",
       "section": "Llm",
       "type": "boolean",
@@ -696,6 +740,18 @@
       "description": "The model's name. Left out, the provider runs its own default model."
     },
     {
+      "path": "Llm:Profiles:<name>:Provider",
+      "section": "Llm",
+      "type": "string",
+      "description": "`mock`, the only value: the offline provider that answers from the JSONL file `Responses` names. Left out, the provider follows from `BaseUrl`, the model's name and the key."
+    },
+    {
+      "path": "Llm:Profiles:<name>:Responses",
+      "section": "Llm",
+      "type": "string",
+      "description": "With `Provider: mock`, the virtual path of the JSONL file — one `{match, regex?, content, toolCalls?}` object per line — the mock provider answers from."
+    },
+    {
       "path": "Llm:Profiles:<name>:StreamIdleSeconds",
       "section": "Llm",
       "type": "integer",
@@ -725,6 +781,30 @@
       "type": "integer",
       "default": 30,
       "description": "How long one call may take, in seconds. Too short at its default for a model that thinks before it answers: write 600 for one, or turn its thinking off."
+    },
+    {
+      "path": "Llm:Provider",
+      "section": "Llm",
+      "type": "string",
+      "description": "`mock`, the only value: the offline provider that answers from the JSONL file `Responses` names. Left out, the provider follows from `BaseUrl`, the model's name and the key."
+    },
+    {
+      "path": "Llm:Replay:Cassette",
+      "section": "Llm",
+      "type": "string",
+      "description": "The virtual path of the cassette, a JSONL file; `record` and `replay` need it."
+    },
+    {
+      "path": "Llm:Replay:Mode",
+      "section": "Llm",
+      "type": "string",
+      "description": "`record` writes every call of the run and its answer to the cassette; `replay` answers every call from it, and a call it does not hold fails; `off` does neither. Left out, `off`."
+    },
+    {
+      "path": "Llm:Responses",
+      "section": "Llm",
+      "type": "string",
+      "description": "With `Provider: mock`, the virtual path of the JSONL file — one `{match, regex?, content, toolCalls?}` object per line — the mock provider answers from."
     },
     {
       "path": "Llm:StreamIdleSeconds",
@@ -966,40 +1046,6 @@
       "section": "Orkeon:Decision",
       "type": "string",
       "description": "The decision provider: `typesafe`, `liquid` or `kev`; empty deduces it."
-    },
-    {
-      "path": "Orkeon:Decision:Guard:BlockThreshold",
-      "section": "Orkeon:Decision:Guard",
-      "type": "number",
-      "default": 0.8,
-      "description": "The probability at or over which a risk blocks the input."
-    },
-    {
-      "path": "Orkeon:Decision:Guard:Enabled",
-      "section": "Orkeon:Decision:Guard",
-      "type": "boolean",
-      "default": false,
-      "description": "Whether the guard runs; off by default."
-    },
-    {
-      "path": "Orkeon:Decision:Guard:FailClosed",
-      "section": "Orkeon:Decision:Guard",
-      "type": "boolean",
-      "default": false,
-      "description": "Whether an unreachable decision model blocks the input; false warns and lets it in."
-    },
-    {
-      "path": "Orkeon:Decision:Guard:Risks:<name>",
-      "section": "Orkeon:Decision:Guard",
-      "type": "string",
-      "description": "The risks detected, each with what it is; empty takes the default risks."
-    },
-    {
-      "path": "Orkeon:Decision:Guard:WarnThreshold",
-      "section": "Orkeon:Decision:Guard",
-      "type": "number",
-      "default": 0.5,
-      "description": "The probability at or over which a risk is a warning."
     },
     {
       "path": "Orkeon:Kev:ApiKey",
@@ -1308,6 +1354,13 @@
       "description": "Minimum composite score threshold. Default: 0.1."
     },
     {
+      "path": "Orkeon:CognitiveMemory:DefaultRecallOptions:MinSemanticScore",
+      "section": "Orkeon:CognitiveMemory",
+      "type": "number",
+      "default": 0,
+      "description": "Minimum semantic similarity a memory needs whatever its recency and importance: without it a fresh, default-importance memory unrelated to the query reaches the composite floor on those two alone. Default: 0 (no floor)."
+    },
+    {
       "path": "Orkeon:CognitiveMemory:DefaultRecallOptions:RecencyWeight",
       "section": "Orkeon:CognitiveMemory",
       "type": "number",
@@ -1356,11 +1409,24 @@
       "description": "Whether to enable contradiction detection on remember. Default: true."
     },
     {
+      "path": "Orkeon:CognitiveMemory:Enabled",
+      "section": "Orkeon:CognitiveMemory",
+      "type": "boolean",
+      "default": false,
+      "description": "Whether the runners wire the cognitive memory into a run: recall by composite score, analysed storage, the `memory_recall` tool. Default: false (the analysis costs LLM calls)."
+    },
+    {
       "path": "Orkeon:CognitiveMemory:EnableLlmAnalysis",
       "section": "Orkeon:CognitiveMemory",
       "type": "boolean",
       "default": true,
       "description": "Whether to enable LLM-based content analysis on remember. Default: true."
+    },
+    {
+      "path": "Orkeon:CognitiveMemory:Profile",
+      "section": "Orkeon:CognitiveMemory",
+      "type": "string",
+      "description": "The LLM profile (`Llm:Profiles:<name>`) the analysis, contradiction detection and consolidation run on, so they are metered like any call. Null or blank: the default profile."
     },
     {
       "path": "Orkeon:CognitiveMemory:PruningMinAgeDays",
@@ -1384,6 +1450,13 @@
       "description": "Half-life for recency decay in hours (exp(-ln2/halfLife * ageHours)). Default: 69.0."
     },
     {
+      "path": "Orkeon:CrewMemory:ConsolidateOnRunEnd",
+      "section": "Orkeon:CrewMemory",
+      "type": "boolean",
+      "default": false,
+      "description": "Whether the crew's memory is consolidated (redundant memories merged, low-value ones pruned) when a run ends. False by default: a consolidation costs LLM calls. Read only when the cognitive memory is wired."
+    },
+    {
       "path": "Orkeon:CrewMemory:MaxChars",
       "section": "Orkeon:CrewMemory",
       "type": "integer",
@@ -1391,11 +1464,25 @@
       "description": "How many characters of memory content a task's prompt receives at most, all recalled memories together. 4,000 by default; the last memory that does not fit is cut."
     },
     {
+      "path": "Orkeon:CrewMemory:MinCompositeScore",
+      "section": "Orkeon:CrewMemory",
+      "type": "number",
+      "default": 0.4,
+      "description": "The least composite score (similarity, recency and importance together) a memory needs to be recalled when the cognitive memory is wired (`Orkeon:CognitiveMemory:Enabled`). 0.4 by default. Distinct from `MinScore`, which bounds the cosine similarity of the vector path: the two scales are not the same, never reuse one for the other."
+    },
+    {
       "path": "Orkeon:CrewMemory:MinScore",
       "section": "Orkeon:CrewMemory",
       "type": "number",
       "default": 0.6,
       "description": "The least cosine similarity between a task and a memory for the memory to be recalled. 0.6 by default, measured on the local embedding model (BGE-micro-v2), on which the same task of an earlier run scores 0.72 and above and an unrelated English task 0.53 and below. Its scale is the embedder's: another model needs its own measure."
+    },
+    {
+      "path": "Orkeon:CrewMemory:MinSemanticScore",
+      "section": "Orkeon:CrewMemory",
+      "type": "number",
+      "default": 0.5,
+      "description": "The least semantic similarity (cosine) a memory needs to be recalled by the cognitive memory, whatever its recency and importance: a memory stored a moment ago at default importance reaches `MinCompositeScore` on those two alone, so relevance is required apart. 0.5 by default; its scale is the embedder's, like `MinScore`."
     },
     {
       "path": "Orkeon:CrewMemory:RecallLimit",
@@ -1419,6 +1506,27 @@
       "description": "Sliding expiration time in minutes for cached embeddings."
     },
     {
+      "path": "Orkeon:Embeddings:ApiKey",
+      "section": "Orkeon:Embeddings",
+      "type": "string",
+      "secret": true,
+      "description": "The API key, in clear text, for `mistral`, `azure-openai` and `gemini`. Prefer `ApiKeyEnvVar`: a key written here is in the settings file."
+    },
+    {
+      "path": "Orkeon:Embeddings:ApiKeyEnvVar",
+      "section": "Orkeon:Embeddings",
+      "type": "string",
+      "default": "",
+      "description": "Name of the environment variable holding the API key, read when `ApiKey` is empty."
+    },
+    {
+      "path": "Orkeon:Embeddings:ApiVersion",
+      "section": "Orkeon:Embeddings",
+      "type": "string",
+      "default": "",
+      "description": "The `api-version` query of `azure-openai`. Empty: the provider's default."
+    },
+    {
       "path": "Orkeon:Embeddings:BatchSize",
       "section": "Orkeon:Embeddings",
       "type": "integer",
@@ -1440,6 +1548,20 @@
       "description": "Whether to enable embedding caching."
     },
     {
+      "path": "Orkeon:Embeddings:Endpoint",
+      "section": "Orkeon:Embeddings",
+      "type": "string",
+      "default": "",
+      "description": "Base URL of the embeddings endpoint. Empty: the provider's public endpoint. Required by `azure-openai` (the resource URL, `https://<resource>.openai.azure.com`)."
+    },
+    {
+      "path": "Orkeon:Embeddings:FingerprintPath",
+      "section": "Orkeon:Embeddings",
+      "type": "string",
+      "default": "/workspace/.orkeon/embedding-fingerprint.json",
+      "description": "Virtual path of the file recording the provider, model and dimensions the stored vectors came from; the host refuses to start when they change. Empty: the guard is off."
+    },
+    {
       "path": "Orkeon:Embeddings:Model",
       "section": "Orkeon:Embeddings",
       "type": "string",
@@ -1451,7 +1573,7 @@
       "section": "Orkeon:Embeddings",
       "type": "string",
       "default": "openai",
-      "description": "The embedding provider to use (e.g., \"openai\", \"ollama\")."
+      "description": "The embedding provider to use: \"openai\", \"ollama\", \"mistral\", \"azure-openai\" or \"gemini\"."
     },
     {
       "path": "Orkeon:Encryption:Enabled",
@@ -2154,6 +2276,13 @@
       "description": "How many synchronous delegations may nest before the next one is blocked."
     },
     {
+      "path": "Orkeon:Guardian:DefaultPolicy:OutputGuardEnabled",
+      "section": "Orkeon:Guardian",
+      "type": "boolean",
+      "default": true,
+      "description": "Whether the output phase runs. The only guard of that phase is the LLM judge, which is itself off unless `Orkeon:Guardian:Llm:Enabled`."
+    },
+    {
       "path": "Orkeon:Guardian:DefaultPolicy:ToolGuardEnabled",
       "section": "Orkeon:Guardian",
       "type": "boolean",
@@ -2166,6 +2295,69 @@
       "type": "boolean",
       "default": true,
       "description": "Whether the guardian runs. When false no guardian is registered in the pipeline: agent turns are neither screened on input nor on tool calls."
+    },
+    {
+      "path": "Orkeon:Guardian:Llm:BlockThreshold",
+      "section": "Orkeon:Guardian",
+      "type": "number",
+      "default": 0.8,
+      "description": "The probability at or over which a risk blocks the text."
+    },
+    {
+      "path": "Orkeon:Guardian:Llm:Enabled",
+      "section": "Orkeon:Guardian",
+      "type": "boolean",
+      "default": false,
+      "description": "Whether the judge runs; off by default (it costs a model call per phase)."
+    },
+    {
+      "path": "Orkeon:Guardian:Llm:FailMode",
+      "section": "Orkeon:Guardian",
+      "type": "enum",
+      "default": "Closed",
+      "values": [
+        "Closed",
+        "Open"
+      ],
+      "description": "What happens when the decision model cannot judge: `Closed` (default) refuses, `Open` lets the text in; both audit `guardian.judge.unavailable`."
+    },
+    {
+      "path": "Orkeon:Guardian:Llm:MaxContentChars",
+      "section": "Orkeon:Guardian",
+      "type": "integer",
+      "default": 8000,
+      "description": "The characters of a text the judge reads in one call. Under `Closed` a longer text is judged whole, chunk by chunk (any chunk that blocks blocks), up to 32 chunks, and a text beyond that is refused; under `Open` it is judged on its first and last half of that budget, what lies between is not judged, and the cut is audited."
+    },
+    {
+      "path": "Orkeon:Guardian:Llm:Phases",
+      "section": "Orkeon:Guardian",
+      "type": "list of enum",
+      "default": [],
+      "values": [
+        "Input",
+        "Output"
+      ],
+      "description": "The phases judged, `Input` and/or `Output`; empty judges both. Any other value (the tool and delegation phases are checked by rules, not by a model) is refused at start."
+    },
+    {
+      "path": "Orkeon:Guardian:Llm:Risks:<name>",
+      "section": "Orkeon:Guardian",
+      "type": "string",
+      "description": "The risks detected, each with what it is; empty takes the default risks."
+    },
+    {
+      "path": "Orkeon:Guardian:Llm:WarnThreshold",
+      "section": "Orkeon:Guardian",
+      "type": "number",
+      "default": 0.5,
+      "description": "The probability at or over which a risk is a warning."
+    },
+    {
+      "path": "Orkeon:Security:PermissionGate:DefaultMode",
+      "section": "Orkeon:Security:PermissionGate",
+      "type": "string",
+      "default": "default",
+      "description": "The permission mode of an agent of a crew that declares none (`permissionMode:`): `default`, `acceptEdits`, `bypassPermissions`, `plan` or `dontAsk`. A script poses its own mode on each `act`."
     },
     {
       "path": "Orkeon:Security:PermissionGate:Enabled",
@@ -2376,6 +2568,82 @@
       "description": "Command-line arguments for the server process."
     },
     {
+      "path": "MCP:Servers:<name>:Auth:Audience",
+      "section": "MCP",
+      "type": "string",
+      "description": "The OAuth audience the token is issued for, when the provider asks for one."
+    },
+    {
+      "path": "MCP:Servers:<name>:Auth:ClientId",
+      "section": "MCP",
+      "type": "string",
+      "description": "The OAuth client id."
+    },
+    {
+      "path": "MCP:Servers:<name>:Auth:ClientSecretEnv",
+      "section": "MCP",
+      "type": "string",
+      "description": "The environment variable holding the OAuth client secret (required for client credentials, optional for the device flow)."
+    },
+    {
+      "path": "MCP:Servers:<name>:Auth:DeviceAuthorizationUrl",
+      "section": "MCP",
+      "type": "uri",
+      "description": "The OAuth device authorization endpoint (`oauth2-device`)."
+    },
+    {
+      "path": "MCP:Servers:<name>:Auth:PasswordEnv",
+      "section": "MCP",
+      "type": "string",
+      "description": "The environment variable holding the basic-auth password."
+    },
+    {
+      "path": "MCP:Servers:<name>:Auth:Scopes",
+      "section": "MCP",
+      "type": "list of string",
+      "default": [],
+      "description": "The OAuth scopes requested; none by default."
+    },
+    {
+      "path": "MCP:Servers:<name>:Auth:TokenEnv",
+      "section": "MCP",
+      "type": "string",
+      "description": "The environment variable holding the bearer token."
+    },
+    {
+      "path": "MCP:Servers:<name>:Auth:TokenUrl",
+      "section": "MCP",
+      "type": "uri",
+      "description": "The OAuth token endpoint (`oauth2-client-credentials`, `oauth2-device`): HTTPS, or HTTP on loopback."
+    },
+    {
+      "path": "MCP:Servers:<name>:Auth:Type",
+      "section": "MCP",
+      "type": "enum",
+      "default": "None",
+      "values": [
+        "None",
+        "Bearer",
+        "Basic",
+        "OAuth2ClientCredentials",
+        "OAuth2Device"
+      ],
+      "description": "The authentication scheme, each with the keys it needs: `None`; `Bearer` (`TokenEnv`); `Basic` (`UserEnv`, `PasswordEnv`); `oauth2-client-credentials` (`TokenUrl`, `ClientId`, `ClientSecretEnv`; optional `Scopes`, `Audience`); `oauth2-device` (`TokenUrl`, `DeviceAuthorizationUrl`, `ClientId`; optional `ClientSecretEnv`, `Scopes`, `Audience`; refused by `orkeon-host`, which has no terminal). Accepted spellings, exactly: `None`, `none`, `Bearer`, `bearer`, `Basic`, `basic`, `OAuth2ClientCredentials`, `oauth2-client-credentials`, `OAuth2Device`, `oauth2-device`."
+    },
+    {
+      "path": "MCP:Servers:<name>:Auth:UserEnv",
+      "section": "MCP",
+      "type": "string",
+      "description": "The environment variable holding the basic-auth user name."
+    },
+    {
+      "path": "MCP:Servers:<name>:CallTimeout",
+      "section": "MCP",
+      "type": "duration",
+      "default": "00:01:00",
+      "description": "How long one request to this server may take: a tool call ends as a tool error, and `prompts/list`, `prompts/get`, `resources/list`, `resources/read` and a subscription raise a timeout. 60 seconds by default; a value that is not positive is refused. A device sign-in owed first is outside the bound."
+    },
+    {
       "path": "MCP:Servers:<name>:Command",
       "section": "MCP",
       "type": "string",
@@ -2383,10 +2651,37 @@
       "description": "Command to launch the MCP server process (for stdio transport)."
     },
     {
+      "path": "MCP:Servers:<name>:ConnectTimeout",
+      "section": "MCP",
+      "type": "duration",
+      "default": "00:00:30",
+      "description": "How long the handshake and the tool listing of this server may take before the connection fails. 30 seconds by default; a value that is not positive is refused."
+    },
+    {
       "path": "MCP:Servers:<name>:Env:<name>",
       "section": "MCP",
       "type": "string",
       "description": "Environment variables for the server process."
+    },
+    {
+      "path": "MCP:Servers:<name>:Headers:<name>",
+      "section": "MCP",
+      "type": "string",
+      "description": "Extra HTTP headers (SSE transport) sent on every request: a literal value, or `env:VAR` to read it from an environment variable when the server is connected. An `Authorization` header is refused here; credentials go through `Auth`. The headers the transport sets itself (`Accept`, `Content-Type`, `Mcp-Session-Id`, `MCP-Protocol-Version`, `Mcp-Method`, `Mcp-Name`, `Last-Event-ID`) are refused too."
+    },
+    {
+      "path": "MCP:Servers:<name>:Tools:Allow",
+      "section": "MCP",
+      "type": "list of string",
+      "default": [],
+      "description": "Tool names to register; empty means all."
+    },
+    {
+      "path": "MCP:Servers:<name>:Tools:Deny",
+      "section": "MCP",
+      "type": "list of string",
+      "default": [],
+      "description": "Tool names never registered, applied after `Allow`."
     },
     {
       "path": "MCP:Servers:<name>:Transport",
@@ -2410,7 +2705,35 @@
       "path": "MCP:Servers:<name>:Url",
       "section": "MCP",
       "type": "uri",
-      "description": "URL endpoint for SSE transport."
+      "description": "URL endpoint for SSE transport. With credentials (an `Auth` type, or an `env:` header) it must be an absolute https address, http only on loopback, or the server is refused at configuration."
+    },
+    {
+      "path": "MCP:Server:AllowedTools",
+      "section": "MCP:Server",
+      "type": "list of string",
+      "default": [],
+      "description": "The registry tools the server exposes and runs, by name (case-insensitive); empty serves them all. A tool outside the list is neither listed nor callable, whoever registers it and whenever: a tool an MCP server adds later stays out. The tools an extension serves (`--crew`) are not subject to it. `orkeon mcp serve --tools` sets it."
+    },
+    {
+      "path": "MCP:Server:ExposeOutput",
+      "section": "MCP:Server",
+      "type": "boolean",
+      "default": false,
+      "description": "Whether the server serves `/output` as read-only MCP resources (`orkeon:///output/<path>`). Off by default: nothing but the tools is exposed. `/workspace` and every other mount are never exposed. `orkeon mcp serve --expose-output` sets it."
+    },
+    {
+      "path": "MCP:Server:MaxConcurrency",
+      "section": "MCP:Server",
+      "type": "integer",
+      "default": 4,
+      "description": "How many requests the stdio loop runs at once; the others wait their turn. At least 1. `orkeon mcp serve --max-concurrency` overrides it."
+    },
+    {
+      "path": "MCP:Server:MaxResourceBytes",
+      "section": "MCP:Server",
+      "type": "integer",
+      "default": 1048576,
+      "description": "The largest file `resources/read` returns, in bytes; a bigger one is refused."
     },
     {
       "path": "MCP:Server:Name",
@@ -2418,6 +2741,13 @@
       "type": "string",
       "default": "Orkeon",
       "description": "Server name advertised during MCP initialization."
+    },
+    {
+      "path": "MCP:Server:ResourcesPageSize",
+      "section": "MCP:Server",
+      "type": "integer",
+      "default": 100,
+      "description": "How many resources one `resources/list` page carries. At least 1."
     },
     {
       "path": "MCP:Server:Version",
@@ -2933,21 +3263,21 @@
       "section": "Plugins",
       "type": "boolean",
       "default": false,
-      "description": "When `true`, a plugin assembly that fails to load or to configure its services is recorded in `IPluginRegistry.Failures` and the remaining candidates keep loading. When `false` (default), the first failure throws a `PluginLoadException` (fail fast)."
+      "description": "When `true`, a plugin that fails to load, is refused by its manifest (absent, malformed, out of the Orkeon range, a tool not declared) or fails to configure its services is recorded in `IPluginRegistry.Failures` and the remaining candidates keep loading. When `false` (default), the first failure throws a `PluginLoadException` (fail fast)."
     },
     {
       "path": "Plugins:Directory",
       "section": "Plugins",
       "type": "string",
       "default": "/plugins",
-      "description": "Virtual path (VFS) of the directory scanned for plugin assemblies. Must start with `/` and resolve inside a configured mount. Default: `/plugins`."
+      "description": "Virtual path (VFS) of the directory whose sub-folders are plugins: each holds a `plugin.json` manifest and the entry assembly it names; a `.dll` dropped flat is ignored. Must start with `/` and resolve inside a configured mount. Default: `/plugins`."
     },
     {
       "path": "Plugins:SearchPattern",
       "section": "Plugins",
       "type": "string",
       "default": "*.dll",
-      "description": "Simple glob pattern applied to candidate assembly file names (e.g. `*.dll`, `MyCompany.*.dll`). Candidates must additionally carry the `.dll` extension regardless of the pattern. Default: `*.dll`."
+      "description": "Simple glob pattern applied to the file name of each manifest's entry assembly (e.g. `*.dll`, `MyCompany.*.dll`). Entry assemblies must additionally carry the `.dll` extension regardless of the pattern. Default: `*.dll`."
     },
     {
       "path": "Plugins:SharedAssemblyPrefixes",
@@ -3013,28 +3343,61 @@
       "section": "Orkeon:Checkpointing",
       "type": "boolean",
       "default": true,
-      "description": "Whether to auto-create the schema and tables on first use."
+      "description": "Whether the PostgreSQL schema and tables are created on first use."
     },
     {
       "path": "Orkeon:Checkpointing:ConnectionString",
       "section": "Orkeon:Checkpointing",
       "type": "string",
       "secret": true,
-      "description": "The PostgreSQL connection string."
+      "description": "The connection string of the Sqlite (instead of `Path`) or Postgres store."
+    },
+    {
+      "path": "Orkeon:Checkpointing:Enabled",
+      "section": "Orkeon:Checkpointing",
+      "type": "boolean",
+      "default": false,
+      "description": "Whether the store named by `Store` is used (default: false, the in-memory store)."
     },
     {
       "path": "Orkeon:Checkpointing:MaxHistoryPerSession",
       "section": "Orkeon:Checkpointing",
       "type": "integer",
       "default": 1000,
-      "description": "The maximum number of version entries per session (default: 1000)."
+      "description": "The maximum number of version entries per session in the PostgreSQL store."
+    },
+    {
+      "path": "Orkeon:Checkpointing:MaxVersions",
+      "section": "Orkeon:Checkpointing",
+      "type": "integer",
+      "default": 20,
+      "description": "The number of versions a session keeps in the Json store (default: 20); each new version deletes the oldest beyond it. Zero or negative keeps them all."
+    },
+    {
+      "path": "Orkeon:Checkpointing:Path",
+      "section": "Orkeon:Checkpointing",
+      "type": "string",
+      "description": "The virtual path of the folder (Json) or the file (Sqlite) the store writes, under the `/state` mount. Null: `/state/checkpoints` or `/state/checkpoints.db`."
     },
     {
       "path": "Orkeon:Checkpointing:SchemaName",
       "section": "Orkeon:Checkpointing",
       "type": "string",
       "default": "orkeon",
-      "description": "The schema name (default: \"orkeon\")."
+      "description": "The PostgreSQL schema name (default: \"orkeon\")."
+    },
+    {
+      "path": "Orkeon:Checkpointing:Store",
+      "section": "Orkeon:Checkpointing",
+      "type": "enum",
+      "default": "Memory",
+      "values": [
+        "Memory",
+        "Json",
+        "Sqlite",
+        "Postgres"
+      ],
+      "description": "The store (default: `Memory`)."
     },
     {
       "path": "Orkeon:Consensus:EnableDiscussion",
@@ -3132,11 +3495,73 @@
       "description": "Enables durable persistence of execution states. Default: `false` (in-memory only, identical to the historical behavior)."
     },
     {
+      "path": "Orkeon:HumanInput:HoldTimeout",
+      "section": "Orkeon:HumanInput",
+      "type": "duration",
+      "description": "How long a held run waits before it suspends (the question stays persisted, nothing is refused). Unset, the host decides: 30 minutes in the daemon, no limit under `--events`."
+    },
+    {
+      "path": "Orkeon:HumanInput:Pause",
+      "section": "Orkeon:HumanInput",
+      "type": "enum",
+      "values": [
+        "Hold",
+        "Suspend"
+      ],
+      "description": "The policy. Unset, the host decides: `Hold` in the daemon and under `--events`, `Suspend` in a plain `orkeon run`."
+    },
+    {
+      "path": "Orkeon:RunHistory:Enabled",
+      "section": "Orkeon:RunHistory",
+      "type": "boolean",
+      "default": false,
+      "description": "Whether the history is recorded. Off in the library, on in `orkeon-host` and the `orkeon init` template."
+    },
+    {
+      "path": "Orkeon:RunHistory:IncludeDeltas",
+      "section": "Orkeon:RunHistory",
+      "type": "boolean",
+      "default": false,
+      "description": "Whether `llm.delta` events (token by token, verbose) are kept in the history. They always stay on the stdout stream."
+    },
+    {
+      "path": "Orkeon:RunHistory:MaxRuns",
+      "section": "Orkeon:RunHistory",
+      "type": "integer",
+      "default": 1000,
+      "description": "At most this many runs are kept, the oldest purged first; 0 keeps them all."
+    },
+    {
+      "path": "Orkeon:RunHistory:Path",
+      "section": "Orkeon:RunHistory",
+      "type": "string",
+      "default": "/runs",
+      "description": "A virtual path (it starts with '/'), under the `/runs` mount; the Sqlite file is `runs.db` inside it."
+    },
+    {
+      "path": "Orkeon:RunHistory:RetentionDays",
+      "section": "Orkeon:RunHistory",
+      "type": "integer",
+      "default": 30,
+      "description": "Runs older than this many days are purged, at start and when a run finishes; 0 keeps them for ever."
+    },
+    {
+      "path": "Orkeon:RunHistory:Store",
+      "section": "Orkeon:RunHistory",
+      "type": "enum",
+      "default": "Jsonl",
+      "values": [
+        "Jsonl",
+        "Sqlite"
+      ],
+      "description": "The store: `jsonl` (default) or `sqlite`."
+    },
+    {
       "path": "Orkeon:Cli:ConsoleStreaming:Enabled",
       "section": "Orkeon:Cli:ConsoleStreaming",
       "type": "boolean",
       "default": false,
-      "description": "Whether each piece of an answer is written to the console as the model sends it, instead of the whole answer at its end."
+      "description": "Whether each piece of an answer is written to the console as the model sends it, instead of the whole answer at its end. The REPL turns it on when the key is absent; a crew run keeps it off."
     },
     {
       "path": "Orkeon:Cli:Memory:Persist",
@@ -3336,6 +3761,31 @@
       "type": "duration",
       "default": "00:00:30",
       "description": "Maximum time esbuild has to transpile a single source. Default: 30 s."
+    },
+    {
+      "path": "Orkeon:Scripting:Toolchain:TscPath",
+      "section": "Orkeon:Scripting:Toolchain",
+      "type": "string",
+      "description": "Absolute path to the `tsc` binary. When set it is the only candidate: a relative path, or one that does not exist, is reported as a missing compiler, never resolved against the working directory nor silently replaced. When null, the type checker looks in `tools/scripting-typecheck/node_modules/.bin/` above the application directory, then in `PATH`; never in the working directory. Like `EsbuildPath`, it may come from the `appsettings.json` next to the crew: that file is trusted as the crew itself is."
+    },
+    {
+      "path": "Orkeon:Scripting:Toolchain:TypeCheck",
+      "section": "Orkeon:Scripting:Toolchain",
+      "type": "enum",
+      "default": "Validate",
+      "values": [
+        "Off",
+        "Validate",
+        "Always"
+      ],
+      "description": "When the TypeScript compiler (`tsc`) checks the types of a `.ork.ts` script against the typings this build ships: `Off` never, `Validate` (default) in `orkeon run --validate`, `Always` in `--validate` and before every run. Under `Validate` a missing compiler is a warning; under `Always` it is a failure."
+    },
+    {
+      "path": "Orkeon:Scripting:Toolchain:TypeCheckTimeout",
+      "section": "Orkeon:Scripting:Toolchain",
+      "type": "duration",
+      "default": "00:01:00",
+      "description": "Maximum time `tsc` has to check one script. Default: 60 s."
     },
     {
       "path": "A2A:AgentDescription",

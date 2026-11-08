@@ -16,6 +16,10 @@ public sealed partial class JsonFileStateStore : IStateStore
 {
     private readonly IFileSystemService _fs;
     private readonly string _baseVirtualPath;
+    private readonly int _maxVersions;
+
+    /// <summary>The number of versions a session keeps by default; older ones are deleted.</summary>
+    public const int DefaultMaxVersions = 20;
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -34,12 +38,17 @@ public sealed partial class JsonFileStateStore : IStateStore
     /// </summary>
     /// <param name="fs">Virtual file system service.</param>
     /// <param name="baseVirtualPath">Virtual base path (e.g. "/state") where session files are stored.</param>
-    public JsonFileStateStore(IFileSystemService fs, string baseVirtualPath)
+    /// <param name="maxVersions">
+    /// The number of versions a session keeps (default <see cref="DefaultMaxVersions"/>): each new version deletes the oldest
+    /// beyond it. Zero or negative keeps them all.
+    /// </param>
+    public JsonFileStateStore(IFileSystemService fs, string baseVirtualPath, int maxVersions = DefaultMaxVersions)
     {
         ArgumentNullException.ThrowIfNull(fs);
         ArgumentException.ThrowIfNullOrWhiteSpace(baseVirtualPath);
         _fs = fs;
         _baseVirtualPath = baseVirtualPath.TrimEnd('/');
+        _maxVersions = maxVersions;
     }
 
     /// <inheritdoc />
@@ -53,7 +62,32 @@ public sealed partial class JsonFileStateStore : IStateStore
         {
             var filePath = GetFilePath(state.SessionId);
             var json = JsonSerializer.Serialize(state, JsonOptions);
-            await _fs.WriteAllTextAsync(filePath, json, ct).ConfigureAwait(false);
+            await WriteAtomicallyAsync(filePath, json, ct).ConfigureAwait(false);
+        }
+    }
+
+    // A session is rewritten at every checkpoint: writing the file in place would leave it truncated if the process died
+    // mid-write, and the run could never resume. The content goes to a sibling temp file, then replaces the target in one move.
+    private async Task WriteAtomicallyAsync(string filePath, string json, CancellationToken ct)
+    {
+        var temp = $"{filePath}.{Guid.NewGuid():N}.tmp";
+        try
+        {
+            await _fs.WriteAllTextAsync(temp, json, ct).ConfigureAwait(false);
+            await _fs.MoveAsync(temp, filePath, ct).ConfigureAwait(false);
+        }
+        catch
+        {
+            try
+            {
+                await _fs.DeleteAsync(temp, recursive: false, CancellationToken.None).ConfigureAwait(false);
+            }
+            catch (Exception cleanup) when (cleanup is IOException or UnauthorizedAccessException or Orkeon.Domain.FileSystem.FileAccessDeniedException)
+            {
+                // The write failure is the one reported; a leftover temp file is ignored by the listing.
+            }
+
+            throw;
         }
     }
 
@@ -64,15 +98,22 @@ public sealed partial class JsonFileStateStore : IStateStore
         var filePath = GetFilePath(sessionId);
         var json = await _fs.TryReadAllTextAsync(filePath, ct).ConfigureAwait(false);
         if (json is null) return null;
-        return JsonSerializer.Deserialize<SessionState>(json, JsonOptions);
+        try
+        {
+            return JsonSerializer.Deserialize<SessionState>(json, JsonOptions);
+        }
+        catch (JsonException ex)
+        {
+            throw new InvalidDataException($"The checkpoint of session '{sessionId}' is corrupt and cannot be read: {ex.Message}", ex);
+        }
     }
 
     /// <inheritdoc />
-    public async Task<SessionState?> GetLatestForCrewAsync(string crewId, CancellationToken ct = default)
+    public async Task<SessionState?> GetLatestForCrewAsync(string crewKey, CancellationToken ct = default)
     {
         var allSessions = await LoadAllSessionsAsync(ct).ConfigureAwait(false);
         return allSessions
-            .Where(s => s.CrewId == crewId)
+            .Where(s => s.CrewKey == crewKey)
             .OrderByDescending(s => s.UpdatedAt)
             .FirstOrDefault();
     }
@@ -85,7 +126,7 @@ public sealed partial class JsonFileStateStore : IStateStore
             .Select(s => new SessionSummary
             {
                 SessionId = s.SessionId,
-                CrewId = s.CrewId,
+                CrewKey = s.CrewKey,
                 Phase = s.Phase,
                 CompletedTaskCount = s.TaskCheckpoints.Count(t => t.Value.Status == CheckpointStatus.Completed),
                 CreatedAt = s.CreatedAt,
@@ -135,9 +176,10 @@ public sealed partial class JsonFileStateStore : IStateStore
                 CreatedAt = createdAt
             };
 
+            // Written like the session file: a process that dies mid-write leaves the previous files whole.
             var versionFile = GetVersionFilePath(state.SessionId, nextVersion);
             var json = JsonSerializer.Serialize(versioned, JsonOptions);
-            await _fs.WriteAllTextAsync(versionFile, json, ct).ConfigureAwait(false);
+            await WriteAtomicallyAsync(versionFile, json, ct).ConfigureAwait(false);
 
             manifest.NextVersion = nextVersion + 1;
             manifest.Entries.Add(new ManifestEntry
@@ -148,7 +190,14 @@ public sealed partial class JsonFileStateStore : IStateStore
                 Label = label,
                 CreatedAt = createdAt
             });
+
+            // Retention: the oldest entries beyond the limit leave the manifest first, then their files go. The version just
+            // written is the newest and always stays. A process that dies between the two leaves orphan files, never an entry
+            // without its file.
+            var pruned = Prune(manifest);
             await SaveManifestAsync(state.SessionId, manifest, ct).ConfigureAwait(false);
+            foreach (var old in pruned)
+                await DeleteVersionFileAsync(state.SessionId, old, ct).ConfigureAwait(false);
 
             await SaveAsync(state, ct).ConfigureAwait(false);
 
@@ -266,7 +315,7 @@ public sealed partial class JsonFileStateStore : IStateStore
 
         var versionFile = GetVersionFilePath(newSessionId, 1);
         var json = JsonSerializer.Serialize(forkedVersion, JsonOptions);
-        await _fs.WriteAllTextAsync(versionFile, json, ct).ConfigureAwait(false);
+        await WriteAtomicallyAsync(versionFile, json, ct).ConfigureAwait(false);
 
         var manifest = new VersionManifest
         {
@@ -323,6 +372,31 @@ public sealed partial class JsonFileStateStore : IStateStore
 
     private string GetSessionVersionDir(string sessionId) => $"{_baseVirtualPath}/{sessionId}";
 
+    private List<int> Prune(VersionManifest manifest)
+    {
+        if (_maxVersions <= 0 || manifest.Entries.Count <= _maxVersions)
+            return [];
+
+        var ordered = manifest.Entries.OrderBy(e => e.Version).ToList();
+        var dropped = ordered.Take(ordered.Count - _maxVersions).ToList();
+        manifest.Entries = ordered.Skip(dropped.Count).ToList();
+        return dropped.Select(e => e.Version).ToList();
+    }
+
+    private async Task DeleteVersionFileAsync(string sessionId, int version, CancellationToken ct)
+    {
+        var file = GetVersionFilePath(sessionId, version);
+        try
+        {
+            if (await _fs.ExistsAsync(file, ct).ConfigureAwait(false))
+                await _fs.DeleteAsync(file, recursive: false, ct).ConfigureAwait(false);
+        }
+        catch (IOException)
+        {
+            // Out of the manifest already: an orphan file is harmless, and a manifest rebuilt from the files prunes it again.
+        }
+    }
+
     private string GetVersionFilePath(string sessionId, int version) =>
         $"{GetSessionVersionDir(sessionId)}/v{version:D3}.json";
 
@@ -337,20 +411,53 @@ public sealed partial class JsonFileStateStore : IStateStore
 
         try
         {
-            return JsonSerializer.Deserialize<VersionManifest>(json, JsonOptions) ?? new VersionManifest();
+            if (JsonSerializer.Deserialize<VersionManifest>(json, JsonOptions) is { } manifest)
+                return manifest;
         }
         catch (JsonException)
         {
-            return new VersionManifest();
+            // Unreadable: rebuilt below from the version files themselves.
         }
+
+        // A manifest reset to empty would number the next version 1 again, overwrite v001 and lose the history it lists:
+        // the version files are the truth, the manifest is rebuilt from them.
+        return await RebuildManifestAsync(sessionId, ct).ConfigureAwait(false);
     }
 
-    private async Task SaveManifestAsync(string sessionId, VersionManifest manifest, CancellationToken ct)
+    private async Task<VersionManifest> RebuildManifestAsync(string sessionId, CancellationToken ct)
     {
-        var manifestPath = GetManifestFilePath(sessionId);
-        var json = JsonSerializer.Serialize(manifest, JsonOptions);
-        await _fs.WriteAllTextAsync(manifestPath, json, ct).ConfigureAwait(false);
+        var manifest = new VersionManifest();
+        var opts = new VirtualEnumerationOptions(Recursive: false, SearchPattern: "v*.json");
+        await foreach (var entry in _fs.EnumerateFilesAsync(GetSessionVersionDir(sessionId), opts, ct).ConfigureAwait(false))
+        {
+            var name = entry.VirtualPath[(entry.VirtualPath.LastIndexOf('/') + 1)..];
+            if (entry.Kind != VirtualEntryKind.File
+                || !int.TryParse(name.AsSpan(1, name.Length - ".json".Length - 1), System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out var version))
+            {
+                continue;
+            }
+
+            // A version number is never given twice, even when its file cannot be read back.
+            manifest.NextVersion = Math.Max(manifest.NextVersion, version + 1);
+            if (await LoadVersionFileAsync(sessionId, version, ct).ConfigureAwait(false) is { } versioned)
+            {
+                manifest.Entries.Add(new ManifestEntry
+                {
+                    VersionId = versioned.VersionId,
+                    Version = version,
+                    StepId = versioned.StepId,
+                    Label = versioned.Label,
+                    CreatedAt = versioned.CreatedAt,
+                });
+            }
+        }
+
+        manifest.Entries.Sort(static (a, b) => a.Version.CompareTo(b.Version));
+        return manifest;
     }
+
+    private Task SaveManifestAsync(string sessionId, VersionManifest manifest, CancellationToken ct) =>
+        WriteAtomicallyAsync(GetManifestFilePath(sessionId), JsonSerializer.Serialize(manifest, JsonOptions), ct);
 
     private async Task<VersionedState?> LoadVersionFileAsync(string sessionId, int version, CancellationToken ct)
     {

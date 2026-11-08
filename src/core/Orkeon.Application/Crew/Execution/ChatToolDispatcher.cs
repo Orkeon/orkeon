@@ -361,5 +361,8 @@ internal sealed class ChatToolDispatcher
     }
 
     internal static ToolInvocationCaller CallerOf(DomainAgent agent, CrewTask task) =>
-        new(agent.Id.ToString(), agent.Role.Value, task.Id.ToString());
+        new(agent.Id.ToString(), agent.Role.Value, task.Id.ToString())
+        {
+            PermissionMode = agent.PermissionMode is { } mode ? Orkeon.Domain.Security.PermissionModes.ToWireName(mode) : null,
+        };
 }

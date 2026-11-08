@@ -1,1 +1,9 @@
 #nullable enable
+const Orkeon.Constants.Cli.RunOptionNames.LlmMock = "llm-mock" -> string!
+const Orkeon.Constants.Cli.RunOptionNames.Test = "test" -> string!
+const Orkeon.Constants.Cli.RunOptionNames.Resume = "resume" -> string!
+Orkeon.Constants.Cli.RunExitCodes
+const Orkeon.Constants.Cli.RunExitCodes.WaitingForInput = 75 -> int
+const Orkeon.Constants.Cli.RunOptionNames.Input = "input" -> string!
+const Orkeon.Constants.Cli.RunOptionNames.LlmRecord = "llm-record" -> string!
+const Orkeon.Constants.Cli.RunOptionNames.LlmReplay = "llm-replay" -> string!

@@ -7,7 +7,7 @@ using Orkeon.Scripting.Cli.Tests.Doubles;
 namespace Orkeon.Scripting.Cli.Tests;
 
 /// <summary>
-/// End-to-end coverage for the <c>orkeon rag eval</c> verb driven in-process
+/// End-to-end coverage for the <c>orkeon eval rag</c> verb driven in-process
 /// (RAG-04/C1). The full host bootstrap and VFS mounts run for real; the
 /// evaluation harness is a hand-written double pre-registered through the
 /// internal <c>ConfigureTestServices</c> seam (it wins the TryAdd race in
@@ -169,7 +169,7 @@ public sealed class RagEvalCommandTests
         using var console = new TestConsole();
 
         // Missing required --dataset → parse error, but the verb itself is known.
-        var exit = await RagCommand.DispatchAsync(console, ["eval"]);
+        var exit = await EvalCommand.DispatchAsync(console, ["rag"]);
 
         Assert.Equal(Program.ExitScriptError, exit);
     }

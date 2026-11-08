@@ -7,7 +7,7 @@ namespace Orkeon.Studio.Core.Configuration;
 /// Typed view over the <c>MCP</c> section (STUDIO-21): the switch and the servers the runner
 /// connects before a crew loads, keyed by identifier under <c>MCP:Servers</c>. Every write
 /// lands in place, field by field, so a key Studio does not model survives an edit of the
-/// server that carries it. Five of the fields <c>McpServerConfig</c> binds are modelled; its <c>TrustAnnotations</c> is not, and survives an edit like any other unmodelled key; the
+/// server that carries it. Five of the fields <c>McpServerConfig</c> binds are modelled; its <c>TrustAnnotations</c>, <c>Headers</c>, <c>Auth</c>, <c>Tools</c>, <c>CallTimeout</c> and <c>ConnectTimeout</c> are not, and survive an edit like any other unmodelled key; the
 /// outbound server (<c>MCP:Server</c>) is not modelled here.
 /// </summary>
 public sealed partial class McpSection
@@ -21,7 +21,7 @@ public sealed partial class McpSection
     /// <summary>The stdio transport: a process the runner launches.</summary>
     public const string StdioTransport = "Stdio";
 
-    /// <summary>The HTTP transport (streamable HTTP, JSON-response mode), spelt as the runtime does.</summary>
+    /// <summary>The HTTP transport (Streamable HTTP), spelt as the runtime does.</summary>
     public const string SseTransport = "Sse";
 
     /// <summary>The transports the runtime knows, in the spelling it binds.</summary>

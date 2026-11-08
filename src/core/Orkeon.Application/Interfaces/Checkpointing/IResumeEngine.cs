@@ -8,12 +8,12 @@ public interface IResumeEngine
     /// <summary>
     /// Determines whether the specified crew has a resumable session.
     /// </summary>
-    System.Threading.Tasks.Task<bool> CanResumeAsync(string crewId, CancellationToken ct = default);
+    System.Threading.Tasks.Task<bool> CanResumeAsync(string crewKey, CancellationToken ct = default);
 
     /// <summary>
     /// Resumes from the latest checkpoint for the specified crew.
     /// </summary>
-    System.Threading.Tasks.Task<ResumeResult> ResumeAsync(string crewId, ResumeOptions? options = null, CancellationToken ct = default);
+    System.Threading.Tasks.Task<ResumeResult> ResumeAsync(string crewKey, ResumeOptions? options = null, CancellationToken ct = default);
 }
 
 /// <summary>
@@ -32,6 +32,13 @@ public sealed record ResumeOptions
 
     /// <summary>Gets the specific version identifier to resume from, if any.</summary>
     public string? FromVersionId { get; init; }
+
+    /// <summary>
+    /// Gets the session to resume, when the caller names one; null resumes the latest session of the
+    /// crew. A session that is completed, that does not exist or that belongs to another crew is not
+    /// resumed.
+    /// </summary>
+    public string? ExecutionId { get; init; }
 }
 
 /// <summary>
@@ -39,6 +46,12 @@ public sealed record ResumeOptions
 /// </summary>
 public sealed record ResumeResult
 {
+    /// <summary>
+    /// Gets why a run that exists was not taken up, or null: the latest unfinished run is still marked
+    /// <see cref="SessionPhase.Running"/> and its id was not named.
+    /// </summary>
+    public string? Refusal { get; init; }
+
     /// <summary>Gets the session identifier being resumed.</summary>
     public string SessionId { get; init; } = "";
 
@@ -50,7 +63,4 @@ public sealed record ResumeResult
 
     /// <summary>Gets the outputs of completed tasks keyed by task identifier.</summary>
     public IReadOnlyDictionary<string, string?> CompletedOutputs { get; init; } = new Dictionary<string, string?>();
-
-    /// <summary>Gets the index from which execution should resume.</summary>
-    public int ResumeFromIndex { get; init; }
 }

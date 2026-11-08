@@ -1,3 +1,4 @@
+using Orkeon.Application.Runs;
 using Orkeon.Constants.Cli;
 using Orkeon.Constants.FileSystem;
 using System.Text.Json;
@@ -78,6 +79,34 @@ internal sealed class RunCommandOptions : CliOptions
                        + "the Llm section becomes that profile, whole, for every call that names no profile of its own. "
                        + "An id the settings do not define is refused, listing the ones they do.")]
         public string? LlmProfile { get; set; }
+
+        /// <summary>A JSONL responses file the run answers every LLM call from, offline.</summary>
+        [Option(RunOptionNames.LlmMock, Required = false, Default = null,
+            HelpText = "Answer every LLM call from this JSONL file instead of a model, offline and deterministic: "
+                       + "one {\"match\", \"regex\"?, \"content\", \"toolCalls\"?} object per line, the first line that matches "
+                       + "the prompt wins. Every LLM profile of the run becomes Provider: mock reading this file. "
+                       + "The file's folder is mounted read-only at /llm-mock.")]
+        public string? LlmMock { get; set; }
+
+        /// <summary>A JSONL cassette the run writes every LLM call and its answer to.</summary>
+        [Option(RunOptionNames.LlmRecord, Required = false, Default = null,
+            HelpText = "Record every LLM call of the run, with its answer, in this JSONL cassette (API keys and "
+                       + "authorization headers are redacted). The file's folder is mounted read-write at /llm-cassette. "
+                       + "Exclusive with --llm-replay and --llm-mock.")]
+        public string? LlmRecord { get; set; }
+
+        /// <summary>A JSONL cassette the run answers every LLM call from, with no network.</summary>
+        [Option(RunOptionNames.LlmReplay, Required = false, Default = null,
+            HelpText = "Answer every LLM call of the run from this cassette, recorded by --llm-record, with no network: "
+                       + "a call the cassette does not hold fails with a replay miss. The file's folder is mounted "
+                       + "read-only at /llm-cassette. Exclusive with --llm-record and --llm-mock.")]
+        public string? LlmReplay { get; set; }
+
+        /// <summary>Binds the global <c>test</c> namespace in a script.</summary>
+        [Option(RunOptionNames.Test, Required = false, Default = false,
+            HelpText = "Bind the global `test` (test.mockLlm, test.mockTool, test.assertLlmCalled...) in a script. "
+                       + "An expectation of test.mockLlm answers before the configured LLM; without --test there is no `test`.")]
+        public bool Test { get; set; }
 
         /// <summary>Switches the decision circuit off for this run, whatever the configuration says.</summary>
         [Option("no-decision", Required = false, Default = false,
@@ -176,6 +205,17 @@ internal sealed class RunCommandOptions : CliOptions
                        "'VALIDATION OK/FAILED: <config> ...' and exits 0 (ok) or non-zero (failed).")]
         public bool Validate { get; set; }
 
+        [Option(RunOptionNames.Resume, Required = false, Default = null,
+            HelpText = "Resume the checkpointed run <id> of this crew, or 'latest' for its most recent unfinished run: " +
+                       "the tasks it had completed are not run again. Needs Orkeon:Checkpointing:Enabled; " +
+                       "refused with --validate. With --events, name the run id (latest is refused).")]
+        public string? Resume { get; set; }
+
+        [Option(RunOptionNames.Input, Required = false, Default = null,
+            HelpText = "The answer to the question the resumed run stopped on (the run exited 75): only with --resume. " +
+                       "The task that asked is replayed and finds the answer; the tasks already done are not run again.")]
+        public string? Input { get; set; }
+
         /// <summary>
         /// Build the host and print the sorted runtime tool registry (one name per line), then exit.
         /// Mirrors the standard runner's <c>--list-tools</c>; no crew is loaded, so the crew path
@@ -198,6 +238,9 @@ internal sealed class RunCommandOptions : CliOptions
         /// double — a counting rate limiter — is the one the host resolves.
         /// </summary>
         internal Action<Microsoft.Extensions.Hosting.HostBuilderContext, IServiceCollection>? ConfigureTestServices { get; set; }
+
+        /// <summary>The folder <c>./.orkeon/state</c> is resolved against: null, the process's working directory. Set by tests.</summary>
+        internal string? WorkingDirectory { get; set; }
 }
 
 /// <summary>
@@ -293,7 +336,48 @@ internal static partial class RunCommand
             return Program.ExitScriptError;
         }
 
+        if (options.Input is not null && options.Resume is null)
+        {
+            await console.ErrorOutput.WriteLineAsync(
+                "orkeon run: --input answers the question of a run that stopped, so it needs --resume <id>: without a run to resume there is no question.")
+                .ConfigureAwait(false);
+            return Program.ExitScriptError;
+        }
+
+        // A resumed run is the run it resumes: the stream carries that run's id from run.started on, so
+        // it has to be named before the host starts. 'latest' is only known once the store is read.
+        if (options.Resume is not null && options.EmitsEvents && !IsRunId(options.Resume))
+        {
+            await console.ErrorOutput.WriteLineAsync(
+                $"orkeon run: --resume '{options.Resume}' with --events needs the run id the failed run printed (a 26-character id), not 'latest': the stream carries the run's id from its first line.")
+                .ConfigureAwait(false);
+            return Program.ExitScriptError;
+        }
+
         return null;
+    }
+
+    /// <summary>The id of the run a stream describes: the one resumed when it names one, else a new one.</summary>
+    private static Orkeon.Application.Interfaces.Services.ExecutionId RunIdOf(RunCommandOptions options) =>
+        options.Resume is { } resume && IsRunId(resume)
+            ? Orkeon.Application.Interfaces.Services.ExecutionId.From(resume)
+            : Orkeon.Application.Interfaces.Services.ExecutionId.New();
+
+    private static bool IsRunId(string value)
+    {
+        try
+        {
+            _ = Orkeon.Application.Interfaces.Services.ExecutionId.From(value);
+            return true;
+        }
+        catch (ArgumentException)
+        {
+            return false;
+        }
+        catch (FormatException)
+        {
+            return false;
+        }
     }
 
     /// <summary>
@@ -338,20 +422,30 @@ internal static partial class RunCommand
 
             // Same shared one-shot runner as a .yaml crew — it owns --validate, the mounts and
             // the exit codes, so every option behaves identically on a directory and on a file.
+            if (await RefuseTestSwitchAsync(console, options, "a crew directory").ConfigureAwait(false) is { } refusedDirectory)
+                return refusedDirectory;
             return await RunViaSharedRunnerAsync(console, options).ConfigureAwait(false);
         }
 
         // --validate is a crew-load concern (YAML or .ork.ts crew definition): the shared runner
         // loads the crew strictly and never probes the LLM, dispatching on the config extension.
         if (options.Validate)
+        {
+            if (await RefuseTestSwitchAsync(console, options, "a validation run").ConfigureAwait(false) is { } refusedValidation)
+                return refusedValidation;
             return await RunViaSharedRunnerAsync(console, options).ConfigureAwait(false);
+        }
 
         // Dispatch by extension BEFORE any script-specific setup (esbuild, /script:ro mount).
         // YAML crews delegate entirely to the shared one-shot runner — the same code path the
         // standalone standard runner uses — so a single published `orkeon` tool runs both
         // crew.ork.ts and crew.yaml without the consumer having to compile a runner.
         if (IsYamlConfig(options.ScriptPath))
+        {
+            if (await RefuseTestSwitchAsync(console, options, "a YAML crew").ConfigureAwait(false) is { } refusedYaml)
+                return refusedYaml;
             return await RunViaSharedRunnerAsync(console, options).ConfigureAwait(false);
+        }
 
         // A .ork.ts that hands its crew off via `globalThis.crew = …` is a DECLARATIVE
         // crew definition, not a procedural script: it runs through the same shared
@@ -363,11 +457,31 @@ internal static partial class RunCommand
         if (RunnerExecution.IsScriptedCrewDefinition(options.ScriptPath)
             && await DeclaresCrewHandoffAsync(options.ScriptPath).ConfigureAwait(false))
         {
+            if (await RefuseTestSwitchAsync(console, options, "a declarative script").ConfigureAwait(false) is { } refusedScript)
+                return refusedScript;
             await WarnAboutScriptOnlyOptionsAsync(console, options).ConfigureAwait(false);
             return await RunViaSharedRunnerAsync(console, options).ConfigureAwait(false);
         }
 
         return null;
+    }
+
+    /// <summary>
+    /// <c>--test</c> binds the global <c>test</c> in a procedural script's engine. A YAML crew, a crew
+    /// directory, a declarative script (which only hands its crew to the host) and a validation run
+    /// have no such engine: the switch would do nothing, so it is refused, with the exit code of a bad
+    /// invocation, rather than ignored.
+    /// </summary>
+    /// <returns>The exit code when the switch is refused; null when it is not set.</returns>
+    private static async Task<int?> RefuseTestSwitchAsync(IRunnerConsole console, RunCommandOptions options, string target)
+    {
+        if (!options.Test)
+            return null;
+
+        await console.ErrorOutput.WriteLineAsync(
+            $"orkeon run: --test binds the global `test` in a procedural .ork.ts script, and {target} is not one: "
+            + "the switch would do nothing. Remove --test, or run a procedural script.").ConfigureAwait(false);
+        return Program.ExitScriptError;
     }
 
     /// <summary>
@@ -378,6 +492,16 @@ internal static partial class RunCommand
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Top-level CLI fault barrier: after cancellation, file-not-found and esbuild errors are handled specifically, any other unexpected failure is converted to a runtime-error exit code so the tool reports cleanly instead of crashing with a stack trace.")]
     private static async Task<int> RunProceduralScriptAsync(IRunnerConsole console, RunCommandOptions options)
     {
+        // A script that runs its crew itself (`await crew.run()`) is a program, not a crew definition: its
+        // tasks are not named by a file the host loads again, so there is nothing to resume it from.
+        if (options.Resume is not null)
+        {
+            await console.ErrorOutput.WriteLineAsync(
+                "orkeon run: --resume applies to a crew definition (a .yaml crew, or a .ork.ts that ends with `globalThis.crew = crew`); " +
+                "a script that runs its crew itself with `crew.run()` cannot be resumed.").ConfigureAwait(false);
+            return Program.ExitScriptError;
+        }
+
         using var cts = new CancellationTokenSource();
         using var interrupt = console.OnInterrupt(() =>
         {
@@ -389,16 +513,24 @@ internal static partial class RunCommand
         // shared-runner branch, so `--events jsonl` on a .ork.ts printed plain text and not a
         // single protocol line — while Studio added the flag for both dialects.
         Run.ObservedRunContext? observed = null;
-        if (options.EmitsEvents)
+        IDisposable? runIdentity = null;
+        var toStdout = options.EmitsEvents;
+        if (toStdout || RecordsHistory(options))
         {
-            var events = new Events.OrkeonEventWriter(console.Output);
+            // The run's one identity, opened before run.started: every line of the stream carries it.
+            var runScope = new Orkeon.Infrastructure.Orchestration.AsyncLocalRunScope();
+            runIdentity = runScope.Enter(new Orkeon.Application.Interfaces.Services.RunScope(
+                RunIdOf(options), options.ScriptPath ?? "run"));
+#pragma warning disable CA2000 // The publisher holds no native resource: it lives as long as the run.
+            var events = Events.RunEventStreams.Create(console.Output, runScope, toStdout);
+#pragma warning restore CA2000
             events.Emit(Run.RunEventKinds.RunStarted, new
             {
                 target = options.ScriptPath,
                 stream = options.Stream,
             });
 #pragma warning disable CA2000 // Disposed on every path: FinishAsync below tears the context down, including when the run threw.
-            observed = new Run.ObservedRunContext(events, options.Stream, options.Client, console.Input);
+            observed = new Run.ObservedRunContext(events, options.Stream, options.Client, console.Input, recordOnly: !toStdout);
 #pragma warning restore CA2000
         }
 
@@ -456,6 +588,8 @@ internal static partial class RunCommand
         if (observed is not null)
             exitCode = await observed.FinishAsync(exitCode).ConfigureAwait(false);
 
+        runIdentity?.Dispose();
+
         return exitCode;
     }
 
@@ -492,7 +626,10 @@ internal static partial class RunCommand
                 .ConfigureAwait(false);
         }
 
-        if (!options.EmitsEvents || options.ListTools || options.Validate)
+        // The history records a run whether or not the stream is asked for: with it on (Orkeon:RunHistory:Enabled), the
+        // events go to the history alone, and stdout stays what it was.
+        var recordsHistory = !options.EmitsEvents && RecordsHistory(options);
+        if ((!options.EmitsEvents && !recordsHistory) || options.ListTools || options.Validate)
         {
             return await RunnerExecution.RunOneShotAsync(
                 ToRunnerOptions(console, options),
@@ -507,7 +644,27 @@ internal static partial class RunCommand
                 .ConfigureAwait(false);
         }
 
-        return await RunWithEventsAsync(console, options).ConfigureAwait(false);
+        return await RunWithEventsAsync(console, options, toStdout: options.EmitsEvents).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Whether this run, which asked for no stream, is recorded by the history: <c>Orkeon:RunHistory:Enabled</c> read from the
+    /// settings the run will use, before the host exists, so that <c>run.started</c> is the first event of the history. Not a
+    /// diagnostic mode, and not <c>--resume latest</c>, whose run the runner names only once it has looked in the store.
+    /// </summary>
+    private static bool RecordsHistory(RunCommandOptions options)
+    {
+        if (options.EmitsEvents || options.ListTools || options.Validate || string.IsNullOrEmpty(options.ScriptPath))
+            return false;
+
+        if (options.Resume is not null && !IsRunId(options.Resume))
+            return false;
+
+        // OUT-OF-SCOPE: locating the settings next to the user-supplied crew path, as the run itself does.
+        var full = Path.GetFullPath(options.ScriptPath);
+        var configDir = Directory.Exists(full) ? full : Path.GetDirectoryName(full) ?? Directory.GetCurrentDirectory();
+        var settings = RunnerSettings.ResolveSettingsPath(options.SettingsPath, configDir, warnings: null);
+        return RunnerRunHistory.IsEnabled(RunnerSettings.ReadConfiguration(settings).GetSection(RunnerRunHistory.SectionPath), byDefault: false);
     }
 
     /// <summary>
@@ -539,16 +696,20 @@ internal static partial class RunCommand
     /// on the runner's own exit code, so a configuration failure is reported as an event
     /// rather than as silence.
     /// </summary>
-    private static async Task<int> RunWithEventsAsync(IRunnerConsole console, RunCommandOptions options)
+    private static async Task<int> RunWithEventsAsync(IRunnerConsole console, RunCommandOptions options, bool toStdout = true)
     {
-        var events = new Events.OrkeonEventWriter(console.Output);
+        // The run's one identity, opened before run.started: every line of the stream carries it.
+        var runScope = new Orkeon.Infrastructure.Orchestration.AsyncLocalRunScope();
+        using var runIdentity = runScope.Enter(new Orkeon.Application.Interfaces.Services.RunScope(
+            RunIdOf(options), options.ScriptPath ?? "run"));
+        var events = Events.RunEventStreams.Create(console.Output, runScope, toStdout);
         events.Emit(Run.RunEventKinds.RunStarted, new
         {
             target = options.ScriptPath,
             stream = options.Stream,
         });
 
-        var observed = new Run.ObservedRunContext(events, options.Stream, options.Client, console.Input);
+        var observed = new Run.ObservedRunContext(events, options.Stream, options.Client, console.Input, recordOnly: !toStdout);
         await using var lifetime = observed.ConfigureAwait(false);
 
         var exitCode = await RunnerExecution.RunOneShotAsync(
@@ -613,10 +774,16 @@ internal static partial class RunCommand
             Verbose = options.Verbose,
             LlmLogEnabled = options.LlmLogEnabled,
             LlmLogPath = options.LlmLogPath,
+            LlmMock = options.LlmMock,
+            LlmRecord = options.LlmRecord,
+            LlmReplay = options.LlmReplay,
             Variables = options.Variables,
             InitialContext = options.InitialContext,
             Validate = options.Validate,
             ListTools = options.ListTools,
+            Resume = options.Resume,
+            Input = options.Input,
+            WorkingDirectory = options.WorkingDirectory,
         };
 
     private static int ReportEsbuildNotFound(TextWriter error, EsbuildNotFoundException ex)
@@ -671,6 +838,15 @@ internal static partial class RunCommand
 
         var cliMounts = options.Mounts.ToList();
         var llmLogPath = options.ResolvedLlmLogPath;
+        var llmMockPath = RunnerLlmMock.ResolvePath(options.LlmMock);
+        var cassette = RunnerLlmCassette.Resolve(options.LlmRecord, options.LlmReplay);
+        if (!RunnerLlmCassette.EnsureExclusive(options.LlmRecord, options.LlmReplay, options.LlmMock, console.ErrorOutput)
+            || !RunnerLlmCassette.EnsureReadable(cassette, console.ErrorOutput)
+            || !RunnerLlmCassette.EnsureSeparateFrom(cassette, scriptDir, console.ErrorOutput)
+            || !RunnerLlmCassette.EnsureWriteAllowed(cassette, options.EffectiveAllowExternalMounts, console.ErrorOutput)
+            || !RunnerLlmMock.EnsureReadable(llmMockPath, console.ErrorOutput)
+            || !RunnerLlmMock.EnsureSeparateFrom(llmMockPath, scriptDir, console.ErrorOutput))
+            return Program.ExitScriptError;
 
         var cwd = Directory.GetCurrentDirectory();
         var selection = await MountConfigurationIsValidAsync(console, options, cliMounts, settingsPath, llmLogPath, cwd)
@@ -688,7 +864,7 @@ internal static partial class RunCommand
         // an "allowed-external" mount regardless of cwd because the script is the input.
         cliMounts.Insert(0, $"{FileSystemMount.Quote(scriptDir)}:{RunnerVirtualRoots.Script}:ro");
         // The exchange log is infrastructure — reachable by the VFS, invisible to agents.
-        var internalMounts = RunnerLlmLog.CreateMounts(llmLogPath);
+        IReadOnlyList<string> internalMounts = [.. RunnerLlmLog.CreateMounts(llmLogPath), .. RunnerLlmMock.CreateMounts(llmMockPath), .. RunnerLlmCassette.CreateMounts(cassette)];
         var verbosity = Math.Clamp(options.Verbose, 0, 2);
 
         using var host = RunnerHost.Build(
@@ -698,11 +874,14 @@ internal static partial class RunCommand
                 CliMounts = cliMounts,
                 InternalMounts = internalMounts,
                 // The script is the input: its folder is read without the flag.
-                InputDirectories = [scriptDir],
+                InputDirectories = [scriptDir, .. RunnerLlmMock.InputDirectories(llmMockPath), .. RunnerLlmCassette.InputDirectories(cassette)],
                 SelectedMountIds = selection.SelectedMountIds,
                 CrewMountReferences = selection.CrewMountReferences,
                 AllowExternalMounts = options.EffectiveAllowExternalMounts,
                 LlmLogVirtualPath = llmLogPath != null ? RunnerVirtualRoots.LlmLogs : null,
+                LlmMockResponses = RunnerLlmMock.VirtualPath(llmMockPath),
+                LlmRecordCassette = cassette is { Records: true } ? RunnerLlmCassette.VirtualPath(cassette) : null,
+                LlmReplayCassette = cassette is { Records: false } ? RunnerLlmCassette.VirtualPath(cassette) : null,
             },
             configureLogging: verbosity > 0
                 ? (ctx, b) => RunnerExecution.ConfigureVerboseLogging(b, verbosity, ctx.Configuration)
@@ -710,6 +889,7 @@ internal static partial class RunCommand
             configureServices: (ctx, services) =>
             {
                 services.AddSingleton(console);
+                RunnerHost.RegisterMcpLoginInteraction(services, console);
 
                 // RAG-03/C3: scripts get the first-class `rag.*` namespace plus the
                 // auto-exposed tools.ragSearch / tools.ragIngest — the subsystem and its
@@ -762,7 +942,10 @@ internal static partial class RunCommand
 
         // Optional native delta renderer (F5 L3): opt-in via DI — without a sink the act
         // loop keeps its buffered behaviour unless the script passes onDelta.
-        var deltaSink = host.Services.GetService<Orkeon.Application.Interfaces.Ports.ILlmDeltaSink>();
+        // FWK-20: with DLP registered, the sink carries it, so the arguments of a streamed tool call are held
+        // until the call ends and written once, redacted.
+        var deltaSink = Orkeon.Application.Crew.ToolCallDlpDeltaSink.Wrap(
+            host.Services.GetService<Orkeon.Application.Interfaces.Ports.ILlmDeltaSink>(), host.Services);
 
         var ragBackend = Orkeon.Scripting.Bindings.RagScriptingBackendFactory.Build(host.Services);
 
@@ -775,6 +958,8 @@ internal static partial class RunCommand
             {
                 PermissionGate = permissionGate,
                 DeltaSink = deltaSink,
+                ToolCallDlp = Orkeon.Application.Crew.ToolCallDeltaDlp.From(host.Services),
+                GraphObserver = host.Services.GetService<Orkeon.Domain.Graph.IGraphNodeObserver>(),
                 // GAP-09: allowed ctx.llm.act calls go through the same guarded point as a crew's.
                 ToolInvocation = host.Services.GetService<Orkeon.Application.Interfaces.Security.IToolInvocationPipeline>(),
                 // GAP-17: llm.profile(name) picks among the host's Llm:Profiles.
@@ -784,7 +969,11 @@ internal static partial class RunCommand
                 // RT-06: a script agent's .workingRoot(...) is checked against these mounts.
                 FileSystem = fileSystem,
             },
-            ragBackend: ragBackend);
+            ragBackend: ragBackend)
+        {
+            // --test: the global `test` and the override over the configured provider.
+            EnableTestNamespace = options.Test,
+        };
 
         // ScriptHost stores but does not own/dispose the transpiler, so we keep ownership
         // here and dispose it when this method returns (after RunFromFileAsync completes).
@@ -845,7 +1034,8 @@ internal static partial class RunCommand
 
         if (!RunnerExecution.EnsureReservedRootsAreFree(
                 cliMounts, settingsPath, console.ErrorOutput,
-                RunnerVirtualRoots.Script, RunnerVirtualRoots.LlmLogs, RunnerVirtualRoots.Sandbox))
+                RunnerVirtualRoots.Script, RunnerVirtualRoots.LlmLogs, RunnerVirtualRoots.LlmMock, RunnerVirtualRoots.LlmCassette, RunnerVirtualRoots.Sandbox,
+                RunnerVirtualRoots.State, RunnerVirtualRoots.Runs))
         {
             return null;
         }

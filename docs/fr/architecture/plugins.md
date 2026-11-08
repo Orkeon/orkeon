@@ -5,8 +5,8 @@
 > **Statut** : v1 (chantier R1.6). Assembly `Orkeon.Plugins`
 > (`src/plugins/Orkeon.Plugins`) — **non livrée comme paquet NuGet** ; voir
 > [Construire un projet de plugin](#construire-un-projet-de-plugin).
-> La spécification d'origine (manifeste, permissions, hot-reload, configuration par
-> plugin) reste une feuille de route — voir `src/plugins/Orkeon.Plugins/SPECIFICATION.md`.
+> La spécification d'origine (permissions, hot-reload, configuration par
+> plugin) reste une feuille de route ; le manifeste `plugin.json` est livré — voir `src/plugins/Orkeon.Plugins/SPECIFICATION.md`.
 
 Le système de plugins permet de déposer des assemblies tierces dans un répertoire et de
 les laisser contribuer des services (outils `IBaseTool`, providers LLM, providers
@@ -52,17 +52,21 @@ public sealed class WeatherPlugin : IOrkeonPlugin
 ```
 
 - Constructeur public sans paramètre obligatoire (instanciation via `Activator`).
-- Un assembly peut contenir plusieurs implémentations ; toutes sont instanciées.
+- Le manifeste nomme le plugin (`name`, recoupé avec `Name`, et `version`, avec `Version`). L'assembly
+  d'entrée peut contenir d'autres types `IOrkeonPlugin` : ils sont construits (`IOrkeonPlugin.Name` est une propriété
+  d'instance, le chargeur doit donc les construire pour comparer le nom), mais leur `ConfigureServices` n'est
+  jamais appelé. Un constructeur qui lève fait échouer le chargement.
 - Côté projet plugin : référencer les contrats **sans les copier** à côté du plugin
   (embarquer son propre `Orkeon.Plugins.dll` casse l'identité de types — le chargeur
   détecte ce cas et le signale explicitement) — voir ci-dessous.
 
 ### Construire un projet de plugin
 
-`Orkeon.Plugins` n'est **pas distribuée comme paquet NuGet**. Son csproj pose
-`IsPackable=false`, la [matrice de publication](../reference/publication-matrix.md#paquets-abandonnés)
-la classe dans les *paquets abandonnés*, et elle ne fait pas partie des douze assemblies embarquées
-dans le paquet parapluie `Orkeon` (`src/packaging/Orkeon/Orkeon.csproj`).
+`Orkeon.Plugins` n'est **pas distribuée comme paquet NuGet à part**. Son csproj pose
+`IsPackable=false` et la [matrice de publication](../reference/publication-matrix.md#paquets-abandonnés)
+classe l'identifiant dans les *paquets abandonnés* ; l'assembly est livrée dans le paquet parapluie
+`Orkeon`, l'une de ses treize assemblies embarquées (`src/packaging/Orkeon/Orkeon.csproj`), donc un
+projet de plugin référence `Orkeon` (le modèle `orkeon-plugin` le fait).
 `dotnet add package Orkeon.Plugins` ne se résout sur aucun flux — NuGet.org comme GitHub Packages
 (`NU1101`).
 
@@ -101,20 +105,24 @@ clone.
 ## Découverte (VFS)
 
 La découverte passe par `IFileSystemService` : `OrkeonPluginsOptions.Directory` est un
-**chemin virtuel** (ex. `/plugins`) qui doit résoudre dans un mount configuré. Deux
-dispositions sont reconnues, au premier niveau uniquement :
+**chemin virtuel** (ex. `/plugins`) qui doit résoudre dans un mount configuré. Une seule
+disposition est reconnue, au premier niveau uniquement : **un sous-dossier par plugin**, qui contient
+`plugin.json` et l'assembly d'entrée qu'il nomme.
 
 ```
 /plugins/
-├── MyPlugin.dll                  # disposition « à plat »
+├── Stray.dll                     # à plat : ignoré, jamais chargé
 └── WeatherPlugin/
-    ├── WeatherPlugin.dll         # disposition « dossier par plugin » (<dir>/<dir>.dll)
+    ├── plugin.json               # le manifeste, lu avant le chargement de l'assembly
+    ├── WeatherPlugin.dll         # l'assembly d'entrée que nomme le manifeste
     ├── WeatherPlugin.deps.json   # pilote la résolution des dépendances privées
     └── Newtonsoft.Json.dll       # dépendance privée, jamais traitée comme plugin
 ```
 
-Les candidats doivent porter l'extension `.dll` et satisfaire `SearchPattern`
-(`*.dll` par défaut, un glob simple insensible à la casse). La résolution du chemin physique
+L'assembly d'entrée doit porter l'extension `.dll` et son nom de fichier satisfaire `SearchPattern`
+(`*.dll` par défaut, un glob simple insensible à la casse). Un sous-dossier sans `plugin.json` est
+refusé (`PluginManifestException`) quand il contient un `.dll` quelconque, et ignoré sinon ; un assembly
+d'entrée qui ne satisfait pas `SearchPattern` ou que les droits du mount refusent est refusé aussi, pas ignoré. La résolution du chemin physique
 exigée par les API `AssemblyLoadContext` utilise le mécanisme du VFS
 (`IFileSystemService.ResolveAndValidate` avec `FileAccessRights.Read`, contrôle des mounts
 compris) ; un fichier refusé par la politique de mount est simplement exclu. Les messages
@@ -125,6 +133,50 @@ d'erreur du système de plugins ne référencent que des chemins virtuels.
 - Les candidats sont chargés dans l'ordre ordinal de leur chemin virtuel : l'ordre des
   enregistrements (et donc « le dernier enregistré gagne » entre deux plugins) est déterministe.
 - L'énumération ne suit pas les liens symboliques.
+
+## Le manifeste (`plugin.json`)
+
+Chaque plugin en porte un, ceux du dépôt compris. Il est lu par le VFS (`IFileSystemService`, un chemin
+virtuel) avant le chargement de l'assembly :
+
+```json
+{
+  "name": "acme.weather-tools",
+  "version": "1.0.0",
+  "orkeonVersion": "[1.0.0-rc.1,2.0.0)",
+  "entryAssembly": "WeatherPlugin.dll",
+  "tools": [ "weather_forecast" ]
+}
+```
+
+| Champ | Sens |
+|---|---|
+| `name` | Doit égaler `IOrkeonPlugin.Name`. |
+| `version` | Doit égaler `IOrkeonPlugin.Version`. |
+| `orkeonVersion` | Plage de style NuGet où doit tomber l'Orkeon qui tourne : `1.0.0` (cette version ou une suivante), `[1.0.0]`, `[1.0.0-rc.1,2.0.0)`, `(,2.0.0]`, `*`. Les métadonnées de build (`+sha`) de la version qui tourne sont ignorées ; une préversion se classe sous sa version finale. |
+| `entryAssembly` | Nom de fichier d'un `.dll` du dossier du plugin : aucun chemin. |
+| `entryType` | Facultatif. Nom complet du type `IOrkeonPlugin` à activer. Sans lui, un assembly à un seul type de plugin active celui-là ; avec plusieurs, tous sont activés pour lire leur `Name`. |
+| `tools` | Noms des descripteurs `IBaseTool` que le plugin enregistre (`IBaseTool.Name`) ; peut être vide. Les autres enregistrements (services, services hébergés, fournisseurs) ne sont pas couverts par `tools`. |
+
+`PluginManifestException` (une `PluginLoadException` : `ContinueOnError` la couvre) refuse le plugin
+quand le manifeste est absent ou mal formé, qu'un champ requis manque, que l'assembly d'entrée est
+absent, que `orkeonVersion` exclut l'Orkeon qui tourne, que le manifeste ne nomme aucun plugin de
+l'assembly d'entrée ou en diffère par la version, ou que le plugin enregistre un `IBaseTool` dont le
+nom n'est pas dans `tools`. Un plugin refusé ne laisse aucun enregistrement : la collection de services est restaurée telle que
+l'hôte l'avait (un `Replace` ou `RemoveAll` d'un enregistrement de l'hôte compris), et un
+`ConfigureServices` qui lève est annulé de même et ressort en `PluginLoadException`. Un outil enregistré
+par instance est contrôlé à l'enregistrement. Un outil enregistré par type, fabrique ou clé est contrôlé
+par le fournisseur même de l'hôte quand il construit l'outil (une fois, avec les services que l'hôte
+enregistre après `AddOrkeonPlugins`, tel `ILogger<T>`) : un nom non déclaré lève `PluginManifestException`
+qui nomme le plugin, et une exception du code de l'outil ressort en `PluginLoadException` avec la cause
+dedans. Ce contrôle a lieu quand l'hôte résout les outils. Avec `ContinueOnError = false` il lève là ; avec
+`ContinueOnError = true` l'outil refusé est écarté : il se résout en `null`, que chaque consommateur Orkeon
+des outils du conteneur (`ToolRegistry`, les hôtes de script) ignore, les autres outils du plugin restent, et
+le refus est consigné une fois dans `IPluginRegistry.Failures`. Un hôte qui lit lui-même
+`GetServices<IBaseTool>()` ignore `null` de même. Un outil déclaré mais non enregistré n'est pas une erreur.
+
+Un plugin minimal vit dans les tests (`tests/plugins/Orkeon.Plugins.Tests/Fixtures/SamplePlugin/`) : son
+`plugin.json` et `SamplePlugin`, qui enregistre l'unique outil que déclare le manifeste.
 
 ## Chargement et isolation
 
@@ -192,8 +244,8 @@ Particularités :
 - la découverte et le chargement sont **immédiats** (au moment de l'appel) : les
   plugins doivent contribuer leurs enregistrements à l'`IServiceCollection` avant la
   construction du provider ;
-- un assembly managé sans implémentation d'`IOrkeonPlugin` est ignoré et son contexte
-  immédiatement déchargé ;
+- un plugin dont l'assembly d'entrée n'a aucun `IOrkeonPlugin` nommé par le manifeste est refusé et
+  son contexte déchargé ;
 - `ContinueOnError = true` consigne les échecs dans `IPluginRegistry.Failures` au lieu
   de lever `PluginLoadException` (sans rollback des enregistrements déjà contribués
   par le plugin fautif) ;
@@ -205,7 +257,6 @@ Particularités :
 | Hors périmètre v1 | Piste (SPECIFICATION.md) |
 |---|---|
 | Sandbox / modèle de permissions | `PluginSecurityManager`, `PluginSandbox` |
-| Manifeste `plugin.json` (métadonnées hors code) | `PluginManifest` |
 | Hot-reload / rechargement à chaud | `ReloadPluginAsync` |
 | Configuration persistée par plugin | `IPluginConfigurationStore` |
 | Symlinks dans le répertoire de plugins | non suivis |

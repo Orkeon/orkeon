@@ -15,6 +15,13 @@ internal sealed record JsLlmObservability
     /// </summary>
     public Orkeon.Application.Interfaces.Ports.ILlmDeltaSink? DeltaSink { get; init; }
 
+    /// <summary>
+    /// The host's DLP for the tool calls the model streams (FWK-20), independent of the delta sink: the arguments
+    /// of each call reach <c>onToolCallDelta</c> and the sink held until the call ends, scanned whole. Null streams
+    /// the fragments as they arrive.
+    /// </summary>
+    public Orkeon.Application.Crew.ToolCallDeltaDlp? ToolCallDlp { get; init; }
+
     /// <summary>Diagnostic sink for the facade's own progress logs. Null = silent.</summary>
     public Microsoft.Extensions.Logging.ILogger? Logger { get; init; }
 

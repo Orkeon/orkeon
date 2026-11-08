@@ -1,4 +1,6 @@
 
+using Orkeon.Application.Interfaces.Services;
+
 namespace Orkeon.Application.Interfaces.Checkpointing;
 
 /// <summary>
@@ -7,10 +9,14 @@ namespace Orkeon.Application.Interfaces.Checkpointing;
 public interface ICheckpointManager
 {
     /// <summary>
-    /// Starts a new checkpoint session for the specified crew.
+    /// Starts a checkpoint session for one run of the specified crew. The session is the run: its
+    /// identifier is the run's <see cref="ExecutionId"/>, never a second one.
     /// </summary>
-    /// <returns>The unique session identifier.</returns>
-    System.Threading.Tasks.Task<string> StartSessionAsync(string crewId, CancellationToken ct = default);
+    /// <param name="sessionId">The run's execution identifier.</param>
+    /// <param name="crewKey">The stable key of the crew (its name and the virtual path of its file).</param>
+    /// <param name="ct">The cancellation token.</param>
+    /// <returns>The session identifier: <paramref name="sessionId"/> in its string form.</returns>
+    System.Threading.Tasks.Task<string> StartSessionAsync(ExecutionId sessionId, string crewKey, CancellationToken ct = default);
 
     /// <summary>
     /// Records a successful task checkpoint with its output.
@@ -18,9 +24,27 @@ public interface ICheckpointManager
     System.Threading.Tasks.Task CheckpointAsync(string sessionId, string taskId, string? output, CancellationToken ct = default);
 
     /// <summary>
-    /// Records a task failure with exception details.
+    /// Records a successful task checkpoint with its output and how many times the task ran again
+    /// before it succeeded (FWK-15).
+    /// </summary>
+    /// <param name="sessionId">The run's execution identifier.</param>
+    /// <param name="taskId">The checkpoint key of the task.</param>
+    /// <param name="output">The serialized result.</param>
+    /// <param name="retryCount">How many times the task ran again before it succeeded.</param>
+    /// <param name="ct">The cancellation token.</param>
+    System.Threading.Tasks.Task CheckpointAsync(string sessionId, string taskId, string? output, int retryCount, CancellationToken ct = default);
+
+    /// <summary>
+    /// Records a task failure with exception details. The session keeps its phase: the run may go on with its other tasks,
+    /// and only <see cref="FailSessionAsync"/> fails the session, when the run ends.
     /// </summary>
     System.Threading.Tasks.Task MarkFailedAsync(string sessionId, string taskId, Exception ex, CancellationToken ct = default);
+
+    /// <summary>Marks the session as failed: the run ended without success, and the session is resumable.</summary>
+    /// <param name="sessionId">The run's execution identifier.</param>
+    /// <param name="ex">Why the run failed.</param>
+    /// <param name="ct">The cancellation token.</param>
+    System.Threading.Tasks.Task FailSessionAsync(string sessionId, Exception ex, CancellationToken ct = default);
 
     /// <summary>
     /// Marks the session as completed.
@@ -28,9 +52,9 @@ public interface ICheckpointManager
     System.Threading.Tasks.Task CompleteSessionAsync(string sessionId, CancellationToken ct = default);
 
     /// <summary>
-    /// Retrieves the latest checkpoint for a given crew.
+    /// Retrieves the latest checkpoint for a given crew key.
     /// </summary>
-    System.Threading.Tasks.Task<SessionState?> GetLatestCheckpointAsync(string crewId, CancellationToken ct = default);
+    System.Threading.Tasks.Task<SessionState?> GetLatestCheckpointAsync(string crewKey, CancellationToken ct = default);
 
     // ── Time-travel methods ──
 

@@ -269,6 +269,8 @@ internal sealed class InboundCommandPump : IAnswerChannel, IAsyncDisposable
 
             if (root.TryGetProperty("correlationId", out var id) && id.ValueKind == JsonValueKind.String)
                 correlationId = id.GetString();
+            else if (root.TryGetProperty("requestId", out var request) && request.ValueKind == JsonValueKind.String)
+                correlationId = request.GetString();
 
             value = root.TryGetProperty("value", out var v) && v.ValueKind == JsonValueKind.String
                 ? v.GetString()

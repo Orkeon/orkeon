@@ -12,7 +12,8 @@ namespace Orkeon.Infrastructure.DependencyInjection;
 /// is a config opt-in: without <c>Orkeon:Security:PermissionGate:Enabled = true</c> nothing
 /// is registered and <c>ctx.llm.act</c> keeps its ungated behaviour — enabling it globally
 /// would deny every tool call of scripts that never pass a <c>permissionMode</c> (the
-/// <c>default</c> mode asks, and headless asks degrade to denies).
+/// <c>default</c> mode asks, and headless asks degrade to denies). The gate is consulted by
+/// <c>ToolInvocationPipeline</c>, the one point every agent turn calls a tool through (FWK-06).
 /// </summary>
 public static class PermissionGateExtensions
 {
@@ -43,6 +44,13 @@ public static class PermissionGateExtensions
             return services;
 
         var interactive = section.GetValue("Interactive", defaults.Interactive);
+        if (section["DefaultMode"] is { Length: > 0 } defaultMode
+            && !Orkeon.Domain.Security.PermissionModes.TryParse(defaultMode, out _))
+        {
+            throw new InvalidOperationException(
+                $"{SectionName}:DefaultMode '{defaultMode}' is not one of default, acceptEdits, bypassPermissions, plan, dontAsk.");
+        }
+
         services.TryAddSingleton<IPermissionGate>(sp => sp.GetService<IToolApprovalChannel>() is { } channel
             ? new ModePermissionGate(channel) { Rules = sp.GetService<IToolPermissionRules>() }
             : new ModePermissionGate(interactive) { Rules = sp.GetService<IToolPermissionRules>() });
@@ -66,4 +74,11 @@ internal sealed class PermissionGateSettingsShape
     /// a call that needs an approval is refused, and the model reads the reason as the tool's result.
     /// </summary>
     public bool Interactive { get; set; }
+
+    /// <summary>
+    /// The permission mode of an agent of a crew that declares none (<c>permissionMode:</c>):
+    /// <c>default</c>, <c>acceptEdits</c>, <c>bypassPermissions</c>, <c>plan</c> or <c>dontAsk</c>.
+    /// A script poses its own mode on each <c>act</c>.
+    /// </summary>
+    public string DefaultMode { get; set; } = "default";
 }

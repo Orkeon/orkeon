@@ -70,7 +70,7 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
         _optionsComposer ??= new ChatOptionsComposer(_logger, _registeredTools, _fileSystem, Tools);
 
     private ChatClientAgentLoop ChatLoop =>
-        _chatLoop ??= new ChatClientAgentLoop(_logger, _chatClient!, LlmGate, OptionsComposer, ToolDispatcher, DeltaSink, _verboseLogger);
+        _chatLoop ??= new ChatClientAgentLoop(_logger, _chatClient!, LlmGate, OptionsComposer, ToolDispatcher, DeltaSink, _verboseLogger, ToolCallDlp);
 
     private LegacyTextAgentLoop LegacyLoop =>
         _legacyLoop ??= new LegacyTextAgentLoop(_logger, _llmProvider, LlmGate, Tools, _registeredTools, _verboseLogger);
@@ -184,6 +184,20 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
     /// like <see cref="Callbacks"/>. The native and text loops (no <c>IChatClient</c>) stream nothing.
     /// </summary>
     public ILlmDeltaSink? DeltaSink { get; set; }
+
+    /// <summary>
+    /// The DLP interceptor of the external-output channel, when the host registered one (FWK-20): with it, the
+    /// arguments of a streamed tool call are held per call and written once, redacted, instead of fragment by
+    /// fragment. Set by <c>AddOrkeonApplication</c>; null streams the fragments as they arrive.
+    /// </summary>
+    public ToolCallDeltaDlp? ToolCallDlp { get; set; }
+
+    /// <summary>
+    /// What each crew declared about its memory: a crew with <c>memory: true</c> holds the registered
+    /// <c>memory_recall</c> tool when the cognitive memory is wired (FWK-04). Set by
+    /// <c>AddOrkeonApplication</c>; null — an orchestrator built by hand — injects none.
+    /// </summary>
+    public Orkeon.Application.Memory.CrewMemoryProviderRegistry? MemoryRegistry { get; set; }
 
     /// <summary>
     /// Initializes a new instance of <see cref="ExecutionOrchestrator"/>.
@@ -416,7 +430,7 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
                 // provider or profile, else the default (GAP-17, GAP-34) —, for its turns and its
                 // correction round alike.
                 var llm = LlmFor(agent, task);
-                var toolbelt = TaskToolbelt.Compose(agent, task, _registeredTools);
+                var toolbelt = TaskToolbelt.Compose(agent, task, _registeredTools, MemoryRegistry?.IsMemoryEnabled(context.CrewId) == true);
 
                 // A provider that runs its own tools — a Microsoft Agent Framework agent — never calls
                 // Orkeon's: a task that would hand it some fails before any call, saying what to do
@@ -472,6 +486,11 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
 
                 var validationContext = OutputValidationCoordinator.BuildOutputValidationContext(task);
 
+                // While the output phase is guarded, what the turns stream is held until the guardian has
+                // judged the output (FWK-19): released when it allows it, dropped when it blocks it.
+                OutputHold? outputHold = null;
+                using var outputHoldScope = Guardian?.IsPhaseGuarded(GuardPhase.Output) == true ? OutputHold.Begin(out outputHold) : null;
+
                 var loopResult = await ExecuteWithProviderAsync(
                     new ExecutionInvocationContext(
                         Agent: agent,
@@ -499,6 +518,40 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
 
                 // Unescape literal \n sequences that LLMs frequently emit in text output
                 var finalOutput = ToolCallTextParser.UnescapeLlmText(validatedOutput);
+
+                // Output phase (FWK-19): the validators corrected the form, the guardian judges the
+                // policy — before the deliverable is written, the memory kept or task.completed raised.
+                // A call the provider never answered has no output to judge. A refusal is a readable
+                // task failure, not a provider failure: a profile never fails over on it.
+                if (loopResult.ExitReason != AgentExitReason.LlmCallFailed)
+                {
+                    var outputVerdict = await CheckOutputAsync(agent, context, finalOutput, taskToken).ConfigureAwait(false);
+                    if (outputVerdict is { IsAllowed: false })
+                    {
+                        outputHold?.Drop();
+                        var reason = $"Blocked by Guardian (output): {outputVerdict.Reason}";
+                        ExecutionLog.LogOutputBlocked(_logger, agent.Role, task.Id, outputVerdict.Reason ?? "");
+                        return new TaskResult(
+                            Success: false,
+                            Output: string.Empty,
+                            StructuredOutput: null,
+                            ToolsUsed: toolsUsed,
+                            ExecutionTime: DateTime.UtcNow - startTime,
+                            Error: reason)
+                        {
+                            ExitReason = AgentExitReason.GuardianBlocked,
+                            IterationsUsed = loopResult.IterationsUsed,
+                            LastError = reason,
+                        };
+                    }
+
+                    outputHold?.Release();
+                }
+                else
+                {
+                    // A failed call has no output to judge, and what it streamed was never judged either.
+                    outputHold?.Drop();
+                }
 
                 // Framework-managed deliverable persistence (Solution A / B).
                 // Legacy tasks with Deliverable == null or Source == ToolCall keep the existing
@@ -571,6 +624,28 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
             AgentRole = agent.Role.Value,
             CrewId = context.CrewId.ToString(),
             Content = userPrompt,
+        }, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Runs the guardian's output phase on a task's validated output; null when no guardian is set.
+    /// </summary>
+    private async System.Threading.Tasks.Task<GuardResult?> CheckOutputAsync(
+        DomainAgent agent,
+        SimpleExecutionContext context,
+        string output,
+        CancellationToken cancellationToken)
+    {
+        if (Guardian is null)
+            return null;
+
+        return await Guardian.ExecuteAsync(new GuardContext
+        {
+            Phase = GuardPhase.Output,
+            AgentId = agent.Id.ToString(),
+            AgentRole = agent.Role.Value,
+            CrewId = context.CrewId.ToString(),
+            Content = output,
         }, cancellationToken).ConfigureAwait(false);
     }
 

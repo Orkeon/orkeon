@@ -69,6 +69,36 @@ internal sealed class OAuth2Client
     /// <summary>Whether an access token expiring at <paramref name="expiresAt"/> outlives the refresh margin.</summary>
     public bool IsFresh(DateTimeOffset expiresAt) => expiresAt - _time.GetUtcNow() > RefreshMargin;
 
+    /// <summary>Obtains an access token for the client itself (client credentials grant, RFC 6749 section 4.4).</summary>
+    public async Task<OAuthTokenSet> RequestClientCredentialsAsync(OAuthSettings settings, string clientSecret, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(settings);
+        if (string.IsNullOrEmpty(clientSecret))
+            throw new OAuthException(OAuthFailure.InvalidConfiguration, "The client credentials grant needs the client secret.");
+
+        var form = new List<KeyValuePair<string, string>>
+        {
+            new("grant_type", "client_credentials"),
+            new("client_id", settings.ClientId),
+            new("client_secret", clientSecret),
+        };
+        if (settings.Scopes.Count > 0)
+            form.Add(new("scope", string.Join(' ', settings.Scopes)));
+        if (!string.IsNullOrEmpty(settings.Audience))
+            form.Add(new("audience", settings.Audience));
+
+        using var document = await PostAsync(settings.TokenEndpoint, form, cancellationToken).ConfigureAwait(false);
+        var root = document.RootElement;
+        if (TryReadError(root, out var error, out var description))
+        {
+            // A provider may echo what it was sent: the secret is never repeated.
+            throw new OAuthException(OAuthFailure.AuthenticationFailed,
+                OAuthRedaction.Redact($"The client credentials grant was refused: {error} {description}".Trim(), clientSecret));
+        }
+
+        return ReadTokens(root, previousRefreshToken: null, settings.Scopes);
+    }
+
     /// <summary>Starts a device authorization.</summary>
     public async Task<DeviceCodeGrant> RequestDeviceCodeAsync(OAuthSettings settings, CancellationToken cancellationToken)
     {
@@ -76,11 +106,15 @@ internal sealed class OAuth2Client
         var endpoint = settings.DeviceCodeEndpoint
             ?? throw new OAuthException(OAuthFailure.InvalidConfiguration, "This account's provider has no device authorization endpoint.");
 
-        using var document = await PostAsync(endpoint,
-        [
+        var form = new List<KeyValuePair<string, string>>
+        {
             new("client_id", settings.ClientId),
             new("scope", string.Join(' ', settings.Scopes)),
-        ], cancellationToken).ConfigureAwait(false);
+        };
+        if (!string.IsNullOrEmpty(settings.Audience))
+            form.Add(new("audience", settings.Audience));
+
+        using var document = await PostAsync(endpoint, form, cancellationToken).ConfigureAwait(false);
 
         var root = document.RootElement;
         if (TryReadError(root, out var error, out var description))
@@ -136,7 +170,7 @@ internal sealed class OAuth2Client
                     interval += SlowDownStep;
                     continue;
                 default:
-                    throw new OAuthException(OAuthFailure.LoginRequired, $"The sign-in did not complete: {error} {description}".Trim());
+                    throw new OAuthException(OAuthFailure.LoginRequired, OAuthRedaction.Redact($"The sign-in did not complete: {error} {description}".Trim(), clientSecret, grant.DeviceCode));
             }
         }
 
@@ -217,7 +251,7 @@ internal sealed class OAuth2Client
             var code = error is "invalid_grant" or "interaction_required" or "invalid_client" or "unauthorized_client"
                 ? OAuthFailure.LoginRequired
                 : OAuthFailure.AuthenticationFailed;
-            throw new OAuthException(code, $"The token refresh was refused: {error} {description}".Trim());
+            throw new OAuthException(code, OAuthRedaction.Redact($"The token refresh was refused: {error} {description}".Trim(), clientSecret, refreshToken));
         }
 
         return ReadTokens(root, refreshToken, settings.Scopes);

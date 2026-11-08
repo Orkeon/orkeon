@@ -27,7 +27,7 @@ public sealed class FailingWriteFileSystemService : IFileSystemService
 
     private async Task TearAsync(string virtualPath, CancellationToken ct)
     {
-        if (!virtualPath.EndsWith(".json", StringComparison.Ordinal)) return;
+        if (!virtualPath.Contains(".json", StringComparison.Ordinal)) return;
         if (Interlocked.Decrement(ref _failures) < 0)
         {
             Interlocked.Increment(ref _failures);

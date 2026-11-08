@@ -1,6 +1,7 @@
 using CommandLine;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Orkeon.Domain.FileSystem;
 using Orkeon.Domain.Tools;
 using Orkeon.Hosting;
 using Orkeon.Infrastructure.MCP;
@@ -21,12 +22,36 @@ internal sealed class McpServeCommandOptions : CliOptions
         HelpText = "Comma-separated names of the tools to serve (default: every tool of the host). A name the host does not have refuses the start.")]
     public IEnumerable<string> Tools { get; set; } = [];
 
+    /// <summary>How many requests are served at once; the settings' <c>MCP:Server:MaxConcurrency</c> (4) when absent.</summary>
+    [Option("max-concurrency", Required = false,
+        HelpText = "How many requests are served at once, at least 1 (default 4, or MCP:Server:MaxConcurrency); the others wait their turn.")]
+    public int? MaxConcurrency { get; set; }
+
+    /// <summary>Serves <c>/output</c> as read-only MCP resources.</summary>
+    [Option("expose-output", Required = false,
+        HelpText = "Serve /output as read-only MCP resources (orkeon:///output/<path>), through the host's virtual file system. /workspace is never served.")]
+    public bool ExposeOutput { get; set; }
+
+    /// <summary>The crews to serve as <c>run_crew_&lt;name&gt;</c> tools.</summary>
+    [Option("crew", Required = false,
+        HelpText = "Serve a crew as the tool run_crew_<name> (its name, lower case), its input the {placeholders} of its tasks, its result the crew's final output, with progress when the client sends a progressToken; "
+                   + "its tasks are also offered as prompts. Several crews go space-separated after ONE --crew (the flag cannot be repeated). Budget, guardian and permission gate are those of `orkeon run`.")]
+    public IEnumerable<string> Crews { get; set; } = [];
+
+    /// <summary>Lets a crew outside the working directory be served.</summary>
+    [Option("allow-external-mounts", Required = false, Default = false,
+        HelpText = "Allow a --crew whose folder is outside the working directory, as `orkeon run --allow-external-mounts` does. Can also be enabled via ORKEON_ALLOW_EXTERNAL_MOUNTS=1.")]
+    public bool AllowExternalMounts { get; set; }
+
+    /// <summary>Test seam: services added to the host of every <c>--crew</c>.</summary>
+    internal Action<Microsoft.Extensions.Hosting.HostBuilderContext, IServiceCollection>? ConfigureCrewServices { get; set; }
+
     /// <summary>Test seam: overrides the current directory the host is anchored at.</summary>
     internal string? WorkingDirectoryOverride { get; set; }
 }
 
 /// <summary>
-/// <c>orkeon mcp serve [--settings &lt;file&gt;] [--tools a,b,…]</c> — serves the tools of an
+/// <c>orkeon mcp serve [--settings &lt;file&gt;] [--tools a,b,…] [--max-concurrency n] [--expose-output] [--crew a.yaml b.yaml]</c> — serves the tools of an
 /// Orkeon host to an MCP client over stdio (GAP-24), the transport by which Claude Desktop and the
 /// editors launch a local server.
 /// <para>
@@ -75,19 +100,56 @@ internal static class McpCommand
             return Program.ExitScriptError;
         }
 
+        if (options.MaxConcurrency is < 1)
+        {
+            await console.ErrorOutput.WriteLineAsync(
+                $"orkeon mcp serve: --max-concurrency must be at least 1, got {options.MaxConcurrency}.").ConfigureAwait(false);
+            return Program.ExitScriptError;
+        }
+
         // Marked before the settings' servers are connected, so every process this serve starts
         // inherits the marker; cleared when it ends, so the process is left as it was found.
         Environment.SetEnvironmentVariable(RunnerEnvironment.McpServeVariable, "1");
+
+        // SIGINT and SIGTERM stop the serving, so the crews' hosts and the upstream servers' children are disposed below.
+        using var stop = new CancellationTokenSource();
+        using var interrupt = console.OnInterrupt(() =>
+        {
+            stop.Cancel();
+            return true;
+        });
+        using var terminate = RegisterTermination(stop);
         try
         {
-            using var host = await BuildHostAsync(console, options).ConfigureAwait(false);
+            // The crews first: a crew that does not load, or a name given twice, refuses the start before the tools host is built.
+            using var crews = await OpenCrewsAsync(console, options, stop.Token).ConfigureAwait(false);
+            if (options.Crews.Any() && crews is null)
+                return Program.ExitScriptError;
+
+            using var host = await BuildHostAsync(console, options, crews, stop.Token).ConfigureAwait(false);
             if (host is null)
                 return Program.ExitScriptError;
 
             if (!await ServeOnlyAsync(console.ErrorOutput, host.Services.GetRequiredService<IToolRegistry>(), options.Tools).ConfigureAwait(false))
                 return Program.ExitScriptError;
 
-            await host.Services.GetRequiredService<McpServer>().RunStdioAsync(console.Input, console.Output).ConfigureAwait(false);
+            if (crews is not null && !await CrewNamesAreFreeAsync(console.ErrorOutput, host.Services.GetRequiredService<IToolRegistry>(), crews).ConfigureAwait(false))
+                return Program.ExitScriptError;
+
+            if (options.ExposeOutput && !host.Services.GetRequiredService<IFileSystemService>().GetAvailableMounts()
+                    .Any(mount => string.Equals(mount.VirtualPath, "/output", StringComparison.Ordinal)))
+            {
+                await console.ErrorOutput.WriteLineAsync(
+                    "orkeon mcp serve: warning: --expose-output, but no /output mount is declared in the settings: "
+                    + "`resources/list` will refuse until one is (`Orkeon:FileSystem:Mounts`).").ConfigureAwait(false);
+            }
+
+            await host.Services.GetRequiredService<McpServer>().RunStdioAsync(console.Input, console.Output, stop.Token).ConfigureAwait(false);
+            return Program.ExitOk;
+        }
+        catch (OperationCanceledException) when (stop.IsCancellationRequested)
+        {
+            // SIGINT or SIGTERM: the crews and the upstream servers are disposed on the way out.
             return Program.ExitOk;
         }
         catch (Exception ex)
@@ -104,13 +166,65 @@ internal static class McpCommand
         }
     }
 
+    /// <summary>Opens the <c>--crew</c> crews, each through the entry point <c>orkeon run</c> loads a crew with; null when none is named or one refuses (the reason is on stderr).</summary>
+    private static async Task<McpCrewToolHost?> OpenCrewsAsync(IRunnerConsole console, McpServeCommandOptions options, CancellationToken ct)
+    {
+        var paths = options.Crews.ToList();
+        if (paths.Count == 0)
+            return null;
+
+        var cwd = Path.GetFullPath(options.WorkingDirectoryOverride ?? Directory.GetCurrentDirectory());
+        return await McpCrewToolHost.OpenAsync(
+            paths,
+            new McpCrewHostOptions
+            {
+                SettingsPath = options.SettingsPath,
+                WorkingDirectory = cwd,
+                AllowExternalMounts = options.AllowExternalMounts,
+                Console = console,
+                ConfigureServices = options.ConfigureCrewServices,
+            },
+            ct).ConfigureAwait(false);
+    }
+
+    /// <summary>Cancels <paramref name="stop"/> on SIGTERM (the signal a client's shutdown sends); nothing where the platform has none.</summary>
+    private static System.Runtime.InteropServices.PosixSignalRegistration? RegisterTermination(CancellationTokenSource stop)
+    {
+        try
+        {
+            return System.Runtime.InteropServices.PosixSignalRegistration.Create(
+                System.Runtime.InteropServices.PosixSignal.SIGTERM,
+                context =>
+                {
+                    context.Cancel = true;
+                    stop.Cancel();
+                });
+        }
+        catch (PlatformNotSupportedException)
+        {
+            return null;
+        }
+    }
+
+    /// <summary>A <c>run_crew_*</c> name a tool of the host already holds refuses the start, named: the client could not tell them apart.</summary>
+    private static async Task<bool> CrewNamesAreFreeAsync(TextWriter error, IToolRegistry registry, McpCrewToolHost crews)
+    {
+        var held = (await registry.GetAllToolsAsync().ConfigureAwait(false)).Select(t => t.Name).ToHashSet(StringComparer.Ordinal);
+        var clash = crews.Tools.Select(t => t.Name).FirstOrDefault(held.Contains);
+        if (clash is null)
+            return true;
+
+        await error.WriteLineAsync($"orkeon mcp serve: the tool name '{clash}' of a --crew is already held by a tool of the host.").ConfigureAwait(false);
+        return false;
+    }
+
     /// <summary>
     /// The host <c>--list-tools</c> reports, plus the server: what <c>orkeon run</c> adds to the
     /// runner host — <c>semantic_search</c>, the ONNX reranker —, and <c>AddOrkeonMcpServer</c>.
     /// Null when the settings are refused; the
     /// line that says why is already on stderr.
     /// </summary>
-    private static async Task<IHost?> BuildHostAsync(IRunnerConsole console, McpServeCommandOptions options)
+    private static async Task<IHost?> BuildHostAsync(IRunnerConsole console, McpServeCommandOptions options, McpCrewToolHost? crews, CancellationToken ct)
     {
         var cwd = Path.GetFullPath(options.WorkingDirectoryOverride ?? Directory.GetCurrentDirectory());
         var settingsPath = RunnerSettings.ResolveSettingsPath(options.SettingsPath, cwd, console.ErrorOutput);
@@ -127,15 +241,27 @@ internal static class McpCommand
                 services.AddSingleton(console);
                 services.AddSemanticSearchTool();
                 RunCommand.AddCliRagServices(services);
+                if (crews is not null)
+                    services.AddSingleton<IMcpServerExtension>(crews);
                 services.AddOrkeonMcpServer(context.Configuration);
+                // The verb's options win over MCP:Server, which they extend.
+                services.PostConfigure<McpServerOptions>(server =>
+                {
+                    if (options.MaxConcurrency is int bound)
+                        server.MaxConcurrency = bound;
+                    if (options.ExposeOutput)
+                        server.ExposeOutput = true;
+                    foreach (var name in options.Tools.Select(n => n.Trim()).Where(n => n.Length > 0))
+                        server.AllowedTools.Add(name);
+                });
             },
             console.ErrorOutput,
-            CancellationToken.None).ConfigureAwait(false);
+            ct).ConfigureAwait(false);
     }
 
     /// <summary>
     /// <c>--tools</c>: every name must be a tool of the host — one that is not refuses the start,
-    /// named — and every other tool leaves the registry, which this host keeps for the server alone.
+    /// named — and every other tool is left out of what the server lists and runs (<c>McpServerOptions.AllowedTools</c>).
     /// </summary>
     private static async Task<bool> ServeOnlyAsync(TextWriter error, IToolRegistry registry, IEnumerable<string> names)
     {
@@ -163,9 +289,8 @@ internal static class McpCommand
             return false;
         }
 
-        foreach (var tool in tools.Where(tool => !wanted.Contains(tool.Name)))
-            await registry.UnregisterToolAsync(tool.Name).ConfigureAwait(false);
-
+        // The server's own allow-list (McpServerOptions.AllowedTools, set where the host is built) keeps the others
+        // out; unregistering them here would not hold, an MCP server's list_changed registers a tool again.
         return true;
     }
 }

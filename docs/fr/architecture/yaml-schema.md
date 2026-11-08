@@ -35,7 +35,7 @@ planning: bool            # default: false. true : avant la première tâche, un
 maxRpm: int               # default: aucun — au plus N requêtes au modèle par minute pour toute la crew, tous ses agents et son manager confondus (vagues parallèles comprises) ; une de plus attend son tour. Le max_rpm de CrewAI (max_rpm: est accepté). 0 ou moins fait échouer le chargement
 budget: {tokens, wallTimeSeconds, toolCalls, delegationDepth, spawnedAgents}  # process: autonomous seulement — voir Budget autonome plus bas ; default: aucun plafond de tokens ni de durée, 50 / 4 / 10
 managerAgent: string      # La clé d'un des agents de la crew (tout autre nom fait échouer le chargement, en les listant). Hiérarchique : le manager — requis (omis, le chargement échoue) ; il assigne et revoit sur son propre bloc llm:, profil et modèle. Consensual : l'arbitre du repli ManagerDecision (inactif, avec un avertissement au début du run, sous un autre repli). Tout autre process : refusé au chargement
-graphConfig: {…}          # Réglages du mode Graph, seul réglage de circuit breaker d'une crew (voir la section dédiée)
+graph: {…}                # Mode Graph : nœuds, arêtes et réglages du circuit breaker (voir la section dédiée)
 
 llm:                      # LLM par défaut de la crew, fusionné CHAMP PAR CHAMP sous le llm: propre de chaque agent (même forme que agents.<id>.llm)
   profile: string         # Profil LLM de l'hôte (Llm:Profiles:<nom>) pour tous les agents — inconnu → le chargement échoue en listant les profils de l'hôte
@@ -74,6 +74,7 @@ agents:
     maxIter: int          # default: 20 — les tours que l'agent peut prendre sur une tâche (en C# et en .ork.ts aussi). 0 ou moins fait échouer le chargement
     maxRpm: int           # default: aucun — au plus N requêtes au modèle par minute pour cet agent ; une de plus attend son tour. Le RateLimiting:AgentRequestsPerMinute de l'hôte le borne aussi, le plus strict l'emporte. 0 ou moins fait échouer le chargement
     maxExecutionTime: int # default: aucun — les secondes qu'une tâche peut prendre chez cet agent (alias max_execution_time) ; 0 ou moins, ou plus de 4294967 (environ 49,7 jours), fait échouer le chargement, tout comme une limite sur le manager hiérarchique
+    permissionMode: string # default: aucun (Orkeon:Security:PermissionGate:DefaultMode) — default, acceptEdits, bypassPermissions, plan ou dontAsk (C# AgentBuilder.PermissionMode) : le mode que la permission gate lit pour les appels d'outil de cet agent, une fois Orkeon:Security:PermissionGate:Enabled à true ; toute autre valeur fait échouer le chargement
     working_root: string  # default: aucun — un chemin virtuel (alias workingRoot, C# AgentBuilder.WorkingRoot) sous un mount qui confine les outils fichier et shell_command de cet agent ; refusé au démarrage du run, en nommant la racine, si aucun mount ne la contient
     verbose: bool         # default: false — logs détaillés pour cet agent (appels d'outils, résultats, réponses du modèle, en Information, catégorie Orkeon.Verbose)
     llm:                  # Omis (et pas de llm: de crew) → la section Llm des settings du runner
@@ -116,7 +117,11 @@ tasks:
     agent: string         # Clé de l'agent assigné à la tâche (une clé qui ne désigne aucun agent fait échouer le chargement, en listant les agents de la crew)
     dependencies: [string] # Clés des tâches prérequises (garantit l'ordre ; une clé inconnue fait échouer le chargement, en listant les tâches de la crew ; un cycle aussi)
     asyncExecution: bool  # default: false — sequential : tourne pendant les tâches suivantes, une dépendante l'attend ; parallel : sans effet propre ; autres modes : true fait échouer le chargement
-    humanInput: bool      # default: false — demande intervention humaine
+    retry:                # défaut : aucun — la tâche tourne une fois. Une tentative en échec rejoue la tâche ENTIÈRE (voir « Retry d'une tâche »)
+      attempts: int       # obligatoire, 1 ou plus — exécutions au total, la première comprise
+      backoffMs: int      # défaut : 0 — attente de base avant une nouvelle tentative, en millisecondes
+      backoff: string     # "fixed" (défaut) | "exponential" (double à chaque retry, plafonné à 5 minutes)
+    humanInput: bool      # default: false — demande intervention humaine ; avec le checkpoint la question est durable : le run peut s'arrêter dessus (sortie 75) et reprendre avec --input
     context: {key: value} # Données additionnelles de contexte
     tools: [string]       # Outils AJOUTÉS à ceux de l'agent pour cette tâche seulement (sans jamais les remplacer) — résolus comme ceux d'un agent : un nom inconnu fait échouer le chargement sous StrictTools
     deliverable:          # Contrat de fichier de sortie (ignoré sans path)
@@ -164,7 +169,7 @@ au chargement (`CrewDefinitionValidator`) : une crew exige un `name`, un `goal`,
 `expectedOutput`) ; des `dependencies` circulaires, un item de `mounts:` listé deux fois ou deux
 identifiants qui sélectionnent la même racine font échouer le chargement. Une clé
 `circuitBreaker:` aussi, à la racine comme sur une tâche : le bloc a été supprimé (voir « Supprimé :
-`circuitBreaker` » plus bas), et le chargement nomme `graphConfig` au lieu de l'ignorer. Le
+`circuitBreaker` » plus bas), et le chargement nomme le bloc `graph` au lieu de l'ignorer. Le
 `asyncExecution: true` d'une tâche aussi, hors `process: sequential` et `process: parallel` : les quatre
 autres modes ordonnent leurs tâches eux-mêmes, et le chargement nomme chaque tâche qui le demande au lieu
 d'ignorer le drapeau (voir [Tâches asynchrones](../orchestration/process-types.md#tâches-asynchrones-asyncexecution)).
@@ -179,6 +184,8 @@ Le `maxExecutionTime` (ou `max_execution_time`) d'un agent est un nombre entier 
 une valeur au-dessus du plafond (4294967 s, environ 49,7 jours) et une limite sur le `managerAgent` d'une crew
 hiérarchique font échouer le chargement, en nommant l'agent. Une tâche qui dépasse sa limite se termine en
 `ExecutionTimeExceeded` au plus tard à la fin de l'appel en cours ; le temps passé à attendre un humain ne compte pas.
+
+Un `retry:` de tâche sans `attempts`, avec `attempts` sous 1, un `backoffMs` négatif, un `backoff` autre que `fixed` ou `exponential`, ou posé sur une tâche de décision, fait aussi échouer le chargement, en nommant la tâche et la clé (voir [Retry d'une tâche](#retry-dune-tâche)).
 
 Un message nomme un agent ou une tâche par sa clé — `Agent 'researcher' must have a goal.` —, une
 configuration bâtie en code par son identifiant.
@@ -399,35 +406,77 @@ elle ne fait jamais planter le loader. L'équivalent fluent est
 `AgentBuilder.WithKnowledge("produits")` /
 `WithKnowledge("produits", opts => { opts.TopK = 8; opts.Profile = "quality"; })` (cumulable).
 
-## Configuration Graph
-
-Quand `process: "graph"` est utilisé, un bloc `graphConfig` supplémentaire configure le moteur de graphe d'état :
+## Retry d'une tâche
 
 ```yaml
-graphConfig:
-  maxRetryCycles: int           # default: 2 — cycles de retry pour tâches échouées
-  circuitBreakerPreset: string  # "strict" (défaut) | "permissive" | "default"
-  maxTransitions: int           # Défaut : calculé, 2 × visites + 1
-  maxStateVisits: int           # Plafond de tentatives — défaut : calculé, tâches × (1 + maxRetryCycles)
-  maxTotalDurationSeconds: int  # Durée totale en secondes (surcharge le preset)
+tasks:
+  fetch:
+    description: Récupérer les cours
+    expectedOutput: Un tableau de cours
+    agent: trader
+    retry:
+      attempts: 3          # obligatoire — 3 exécutions au total : la première, puis au plus deux retries
+      backoffMs: 250       # défaut 0
+      backoff: exponential # fixed (défaut) | exponential : 250 ms, puis 500 ms, ... jamais plus de 5 minutes
 ```
 
-`graphConfig` est le seul réglage de circuit breaker d'une crew (`CircuitBreakerPolicyFactory.ResolveGraph`).
-Le moteur de graphe n'applique que trois limites — transitions, visites d'un même état, durée
-totale (`GraphRunner`) ; un timeout par état ou un mode dégradé n'a aucun effet sur un run de graphe.
+Une tâche qui échoue est rejouée dans **chaque** mode d'orchestration : un seul décorateur, entre le checkpoint et le cœur d'exécution, applique la politique ; les stratégies ne réessaient donc jamais et les six modes se comportent pareil. En Graph il n'y a plus de boucle de retry propre : l'ancien `graphConfig.maxRetryCycles`, un retry de tâche échouée qui se serait multiplié avec celui-ci, est **retiré** et refusé au chargement comme clé inconnue.
+
+- **Une nouvelle tentative rejoue la tâche entière**, appels au modèle et appels d'outils compris, y compris les appels d'outils déjà réussis. Rien ne les déduplique : une tâche dont les outils écrivent (un fichier, un e-mail, un paiement) doit pouvoir tourner deux fois sans dommage, et c'est à l'auteur de la crew de le garantir.
+- **Jamais réessayés** : une annulation, un refus du gardien (`GuardianBlocked`), un budget épuisé. Le refus de la porte de permission est un résultat d'outil à l'intérieur d'une tentative, pas un échec de tâche. Les retries d'une sortie invalide restent à l'intérieur d'une tentative. Une tâche de décision n'exécute aucun agent et ne peut pas déclarer `retry:` (le chargement échoue, en nommant la tâche).
+- **Réessayés exprès** : un dépassement du temps d'exécution (`ExecutionTimeExceeded`) et une chaîne de basculement de fournisseur à court de profils (`FallbackExhausted`) comptent tous deux comme des échecs et sont réessayés, après le backoff, car l'un comme l'autre peut être passager. Le coût est borné : au plus `attempts` fois la chaîne de basculement entière par tour de la tâche.
+- **Ce qu'une tentative en échec laisse derrière elle** : ses appels d'outils (un fichier écrit, un message envoyé), ce qu'un outil a écrit en mémoire, le coût qu'elle a mesuré et les événements `tool.*` et `cost.updated` qu'elle a émis restent, et les callbacks `OnTaskStarted`/`OnTaskCompleted` partent une fois par tentative. Le résultat de la tâche va dans la mémoire de la crew et son livrable (`final_message`, `structured_output`) n'est écrit que par une tentative qui a produit une réponse finale : un retry les remplace donc au lieu de les dupliquer ; un fichier que l'agent écrit lui-même avec `file_write` n'est remplacé que si la tentative suivante écrit le même chemin.
+- **Reprise** : seule la tentative qui a clos la tâche est checkpointée. Un run arrêté entre deux tentatives, ou dont la dernière tentative a échoué, n'a aucun checkpoint pour cette tâche, et `orkeon run --resume` la rejoue depuis la tentative 1.
+- **Après la dernière tentative** il reste le dernier échec, exactement comme si la tâche avait tourné une fois : le même résultat en échec ou la même exception.
+- **L'attente** entre deux tentatives vient de `backoffMs` et `backoff`, sur le `TimeProvider` de l'hôte, et s'interrompt aussitôt que le run est annulé.
+- **Ce que voit un observateur** : chaque retry émet un `task.started` qui porte `attempt` (le démarrage de la stratégie est la tentative 1 ; voir [le bus d'événements du run](run-event-bus.md)) ; `task.completed` arrive une fois, pour la tentative qui a clos la tâche. Le checkpoint d'une tâche réussie à la troisième tentative note `RetryCount: 2`, et un run repris la répond depuis là sans interroger le modèle.
+- **Le basculement de fournisseur est une autre couche.** Un basculement (là où il est configuré) passe au fournisseur suivant *à l'intérieur d'un appel au modèle* ; `retry:` rejoue la *tâche entière*. Les deux se combinent : un appel qui échoue sur tous les fournisseurs de sa chaîne fait échouer la tentative, `retry:` rejoue alors la tâche, et cette tentative parcourt de nouveau la chaîne : une tâche fait au plus `attempts` fois la longueur de la chaîne d'appels au modèle par tour.
+- **Les budgets du graphe** comptent les tentatives : sans bornes `graph` explicites, les visites valent par défaut la somme sur les tâches de `1 + retries` (`retries` = `attempts - 1`), soit `nœuds × (1 + tentatives de retry)` quand toutes les tâches réessaient pareil, et les transitions le double plus un.
+
+## Configuration Graph
+
+Avec `process: "graph"`, un bloc `graph:` décrit le graphe d'état que la crew exécute et le borne ([ADR-018](../adr/ADR-018-graph-engines-shared-topology-and-yaml-graph-block.md)) ; sans bloc, ou avec un bloc qui ne tient que des budgets, la crew exécute un nœud par tâche, enchaînés dans l'ordre d'exécution :
+
+```yaml
+process: graph
+graph:
+  start: triage              # facultatif : le premier nœud par défaut
+  nodes:                     # facultatif : absent = un nœud implicite par tâche, son id le nom de la tâche
+    - { id: triage,   task: triage }
+    - { id: fix,      task: fix }
+    - { id: escalate, task: escalate }
+  edges:
+    - { from: triage, to: fix, when: { triage.category: [bug] } }
+    - { from: triage, to: escalate }          # sans `when` : le « sinon »
+    - { from: fix,      to: END }
+    - { from: escalate, to: END }
+  circuitBreakerPreset: strict   # "strict" (défaut) | "permissive" | "default"
+  maxTransitions: 50             # défaut : calculé, 2 × visites + 1
+  maxVisits: 5                   # visites d'UN nœud — défaut : calculé, somme sur les tâches de 1 + leurs retries
+  maxTotalDurationSeconds: 600   # durée totale (surcharge le preset)
+```
+
+- **Nœuds.** Un nœud est `{id, task}` : `task` nomme une tâche de la crew, `START` et `END` sont refusés comme ids. Une tâche est portée par un nœud au plus ; quand `nodes` est donné, une tâche qu'aucun nœud ne nomme est refusée. `edges` sans `nodes` donne un nœud implicite par tâche. Un nœud est revisité par une arête qui y revient : à la revisite, la dernière sortie et la dernière décision l'emportent. Un nœud dont la tâche échoue arrête le run : il n'y a pas de routage sur échec (un retry est le `retry:` de la tâche).
+- **Arêtes.** Plusieurs `edges` depuis un même `from` forment une seule arête conditionnelle, évaluée dans l'ordre de déclaration : la première dont le `when` tient l'emporte, et l'arête sans `when` est le « sinon ». Un `from` qui porte des arêtes `when` est une [tâche de décision](./decision-models.md) et a exactement une arête sans `when` ; une tâche ordinaire a exactement une arête. Le `when` garde la grammaire de celui de la tâche, avec son préfixe `<tâche>.` : `<tâche>.<question>: [option, ...]`, `<tâche>.<question>: ">= 0.7"`, `<tâche>.<question>.<option>: ">= 0.25"` ; la tâche est celle du `from`, et ses questions sont vérifiées au chargement. `otherwise` ne s'écrit pas : une arête sans `when` en tient lieu.
+- **Refusé au chargement**, chaque message nommant le nœud : un `when` sur un `from` qui n'est pas une décision, une décision sans arête sans `when`, deux arêtes sans `when` depuis un même nœud, plusieurs arêtes sur une tâche ordinaire, un nœud orphelin, un nœud sans chemin vers `END`, une arête vers un nœud inconnu, un `graph:` hors de `process: graph`, et un `when:` ou des `dependencies:` au niveau tâche dans une crew qui a des nœuds ou des arêtes (les arêtes ordonnent les tâches, un second routeur les contredirait). Les fautes de topologie viennent de `GraphTopologyValidator`, toutes à la fois, et l'export vérifie les mêmes règles avant d'écrire.
+- **Budgets.** `maxVisits` est le `MaxStateVisits` du Domain, compté par nœud : un nœud entré plus souvent que cela déclenche le disjoncteur. Non renseigné, `maxVisits` vaut la somme sur les tâches de `1 + retries` et `maxTransitions` deux fois plus un ; une valeur explicite l'emporte.
+- **Retiré (`[breaking]`).** Le bloc `graphConfig:` (ses budgets passent dans `graph:`, `maxStateVisits` devenant `maxVisits`), `maxRetryCycles` et tout `maxCycles` : une borne sur les cycles est `maxVisits`, et un retry est le `retry:` de la tâche. Une crew qui écrit encore `graphConfig` est refusée au chargement, avec un renvoi vers `graph:`.
+- **Exécution.** Le moteur Domain exécute toute crew du process Graph, avec ou sans bloc `graph:` ; `JsStateGraph` n'exécute que le `stateGraph(...)` d'un script `.ork.ts`. Un run repris parcourt de nouveau le graphe : les exécutions d'une tâche déjà terminée sont servies depuis le checkpoint, clé `<tâche>#<n>` selon leur ordre, donc un nœud entré deux fois a deux entrées. La réponse d'un nœud de décision est checkpointée de la même façon (`<tâche>#<n>`) et rejouée à la reprise, jamais redemandée : un modèle interrogé deux fois pourrait répondre autrement et envoyer le run repris sur une autre route. L'export réécrit `graph:`, si bien qu'import, export, import donnent le même graphe.
+
+`graph:` est le seul réglage de circuit breaker d'une crew (`CircuitBreakerPolicyFactory.ResolveGraph`). Le moteur de graphe n'applique que trois limites : transitions, visites d'un même nœud, durée totale (`GraphRunner`) ; un timeout par état ou un mode dégradé n'a aucun effet sur un run de graphe.
 
 ## Supprimé : `circuitBreaker`
 
 Le bloc `circuitBreaker:` — à la racine de la crew comme sur une tâche — n'existe plus, et une crew
-qui en écrit encore un est **refusée au chargement** avec un message qui nomme `graphConfig`. Le
+qui en écrit encore un est **refusée au chargement** avec un message qui nomme le bloc `graph`. Le
 bloc de tâche configurait une machine d'états de tâche qu'aucun chemin d'exécution ne lançait, et
 trois limites de garde (`maxRetries`, `maxToolCallsPerRound`, `maxValidationRetries`) que rien ne
-lisait. Le bloc de crew n'était lu que par le mode Graph, où `graphConfig` porte le même preset et
+lisait. Le bloc de crew n'était lu que par le mode Graph, où le bloc `graph:` porte le même preset et
 les trois mêmes limites effectives.
 
 Ce qui borne une tâche, c'est sa boucle d'agent : le `maxIter` de l'agent, l'arrêt après trois
 erreurs d'outil identiques consécutives, et les reprises de validation de sortie. Ce qui borne un
-run de graphe, c'est `graphConfig` (ci-dessus). Le moteur générique de machine d'états et
+run de graphe, c'est `graph:` (ci-dessus). Le moteur générique de machine d'états et
 `CircuitBreakerPolicy` restent — le mode Graph, `orkeon forge` et le graphe RAG correctif s'en
 servent (voir [FSM](../orchestration/fsm.md)).
 
@@ -500,7 +549,7 @@ Tous vivent dans `Orkeon.Infrastructure.Configuration` (`src/core/Orkeon.Infrast
 - `GuardrailsYamlConfig` (les `guardrails:` d'agent et de tâche)
 - `LinkYamlConfig` (l'ACL `links:` de crew)
 - `CrewYamlConfig.Mounts` / `CrewSettingsYamlConfig.Mounts` (le bloc `mounts:` de crew — items `/racine` ou `<ulid>|/racine`) → `CrewConfiguration.Mounts` (`MountReference`, VFS-90)
-- `GraphYamlConfig` (maxRetryCycles, circuitBreakerPreset, surcharges)
+- `GraphYamlConfig` (circuitBreakerPreset, surcharges)
 - `RagYamlConfig` (collections + sources/chunking, défauts — avec `RagCollectionYamlConfig`, `RagChunkingYamlConfig`, `RagDefaultsYamlConfig`) → `RagCrewConfig`
 - `AgentYamlConfig.Knowledge` (entrées forme courte/longue) → `KnowledgeAttachment`
 

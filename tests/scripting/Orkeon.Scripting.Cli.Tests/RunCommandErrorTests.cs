@@ -102,6 +102,32 @@ public sealed class RunCommandErrorTests
     }
 
     /// <summary>
+    /// FWK-08, review: the roots the runner keeps for its checkpoint state and its run history are reserved on the scripting
+    /// path as they are on the YAML one: a user mount claiming them is refused with the actionable line.
+    /// </summary>
+    [Theory]
+    [InlineData("/state")]
+    [InlineData("/runs")]
+    public async Task A_user_mount_claiming_the_state_or_the_runs_root_is_refused_on_the_scripting_path(string root)
+    {
+        using var scratch = new ScriptScratch();
+        var script = scratch.WriteScript("ok.ork.ts", """
+            /// <reference orkeon-script="1.0" />
+            """);
+        using var console = new TestConsole();
+
+        var exit = await RunCommand.ExecuteAsync(console, new RunCommandOptions
+        {
+            ScriptPath = script,
+            Mounts = [$"{scratch.OutDir}:{root}:rw"],
+        });
+
+        Assert.Equal(Program.ExitScriptError, exit);
+        Assert.Contains("reserved by the runner", console.Stderr, StringComparison.Ordinal);
+        Assert.Contains(root, console.Stderr, StringComparison.Ordinal);
+    }
+
+    /// <summary>
     /// The e-mail token root is reserved on every run, not only on the runs that declare an
     /// OAuth account: a user mount there would hand the agents' file tools the place a later
     /// sign-in writes its tokens to.

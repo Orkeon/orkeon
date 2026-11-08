@@ -44,9 +44,10 @@ categories. Jev fits none of these contracts: forcing it behind `ILlmProvider` w
    refuses a decision profile named as a target when it builds, and an LLM profile that does not
    exist when the decision profile is first resolved.
 5. **When the decision model fails, the call goes on** with a warning (fail-open), unless the
-   profile sets `FailClosed`, in which case it is blocked.
-6. **The other uses are secondary** and reuse the same port: the agent input guard
-   `DecisionInputGuard`, the RAG reranker `decision` and the tool
+   profile sets `FailClosed`, in which case it is blocked. This is the rule of a decision *profile*;
+   the guardian's LLM judge follows the opposite default (see the amendment of 2026-11-08 below).
+6. **The other uses are secondary** and reuse the same port: the guardian's LLM judge
+   `LlmJudgeGuard` (the agent input and a task's output), the RAG reranker `decision` and the tool
    `system_one_decide`.
 
    > Amendment 2026-10-31: `IDecisionModel.ListModelsAsync` removed (no caller).
@@ -64,8 +65,26 @@ categories. Jev fits none of these contracts: forcing it behind `ILlmProvider` w
   response stages about the request and the response. A decision on the whole conversation needs
   a custom stage.
 - The meter counts a decision call as `decision` usage, once, at the adapter.
-- The `GuardPhase` of the agent pipeline has no `Output` phase; output filtering goes through a
-  response stage of a decision profile ([Known limitations](../reference/limitations.md)).
+- Since the amendment of 2026-11-08 the `GuardPhase` of the agent pipeline has an `Output` phase,
+  carried by the LLM judge; a response stage of a decision profile still judges the response inside
+  one call ([Known limitations](../reference/limitations.md)).
+
+## Amendment of 2026-11-08 (FWK-19): the guardian's LLM judge
+
+- `GuardPhase.Output` exists: the output of a task, once validated, is judged before the deliverable,
+  the memory and `task.completed`. `DecisionInputGuard` became `LlmJudgeGuard`, which judges the
+  `Input` and `Output` phases through the one `IDecisionModel` (no `Profile` key of its own), under
+  `Orkeon:Guardian:Llm`. `Orkeon:Decision:Guard` is gone.
+- The default of the judge is **fail-closed** on both phases when it is enabled (`FailMode: Closed`):
+  a text the model could not judge is refused. `FailMode: Open` lets it in with a warning; both modes audit
+  `guardian.judge.unavailable`. The judge is off by default (one model call per phase).
+- While the output phase is guarded, a task's streamed deltas are held until the judgement and dropped when it blocks, so a blocked output is never streamed. A long text is judged whole in chunks of `MaxContentChars` under `FailMode: Closed` (any chunk that blocks blocks; up to 32 chunks, a longer text is refused), and on its head and its tail (half of `MaxContentChars` each) under `Open`, where the middle is not judged (amended after the FWK final review). The phase covers crew tasks, not `ctx.llm.act`.
+- The validators of an output correct its form; the judge decides its policy. They do not merge.
+- The judge runs once per call, outside the profile fallback chain (FWK-05): a refusal is a task
+  failure, never a reason to move to another profile. A call the provider never answered has no
+  output and is not judged.
+- Output filtering by a response stage of a decision profile stays possible but is no longer the
+  way the pipeline's output phase is carried.
 
 ## Alternatives considered
 

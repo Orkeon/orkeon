@@ -29,6 +29,31 @@ public class CrewBuilderTests
     }
 
     [Fact]
+    [Trait("BR", "FWK-07")]
+    public void Building_a_crew_with_two_tasks_of_the_same_key_is_refused_naming_the_key()
+    {
+        // FWK-07: a task is checkpointed under its key, so two tasks of one crew cannot share it.
+        var builder = new CrewBuilder().Goal("Watch the law").WithAgent(CreateAgent())
+            .WithTask(new CrewTaskBuilder().WithKey("collect").Description("One").ExpectedOutput("Result").Build())
+            .WithTask(new CrewTaskBuilder().WithKey("collect").Description("Two").ExpectedOutput("Result").Build());
+
+        var refusal = Assert.Throws<InvalidOperationException>(() => builder.Build());
+
+        Assert.Contains("collect", refusal.Message, StringComparison.Ordinal);
+        Assert.Contains("twice", refusal.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    [Trait("BR", "FWK-07")]
+    public void Tasks_without_a_key_are_not_taken_for_duplicates()
+    {
+        var crew = new CrewBuilder().Goal("Watch the law").WithAgent(CreateAgent())
+            .WithTask(CreateTask("One")).WithTask(CreateTask("Two")).Build();
+
+        Assert.Equal(2, crew.Tasks.Count);
+    }
+
+    [Fact]
     public void A_crew_built_without_a_name_has_none()
     {
         var crew = new CrewBuilder().Goal("Watch the law").WithAgent(CreateAgent()).Build();

@@ -1,4 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
+using System.Threading.Channels;
 
 namespace Orkeon.Infrastructure.MCP;
 
@@ -28,4 +29,11 @@ public interface IMcpTransport : IAsyncDisposable
     /// Whether the transport is currently connected.
     /// </summary>
     bool IsConnected { get; }
+
+    /// <summary>
+    /// The notifications the server sends (frames without an <c>id</c>), in arrival order. The channel is
+    /// bounded; when nobody reads it the oldest notification is dropped, with a warning. It completes when
+    /// the transport goes away.
+    /// </summary>
+    ChannelReader<JsonRpcNotification> Notifications { get; }
 }

@@ -46,6 +46,7 @@ public sealed partial class JsCrew
     private readonly IReadOnlyList<Orkeon.Domain.Tools.IBaseTool>? _builtInTools;
     private readonly Orkeon.Application.Interfaces.Security.IPermissionGate? _permissionGate;
     private readonly Orkeon.Application.Interfaces.Ports.ILlmDeltaSink? _deltaSink;
+    private readonly Orkeon.Application.Crew.ToolCallDeltaDlp? _toolCallDlp;
     private readonly Orkeon.Application.Interfaces.Security.IToolInvocationPipeline? _toolInvocation;
     private readonly Orkeon.Application.Interfaces.Ports.IScriptAgentMemoryStore? _agentMemoryStore;
     private readonly Func<IReadOnlyList<Orkeon.Domain.FileSystem.MountInfo>>? _mounts;
@@ -90,6 +91,7 @@ public sealed partial class JsCrew
         _builtInTools = definition.BuiltInTools;
         _permissionGate = definition.PermissionGate;
         _deltaSink = definition.DeltaSink;
+        _toolCallDlp = definition.ToolCallDlp;
         _toolInvocation = definition.ToolInvocation;
         _agentMemoryStore = definition.AgentMemoryStore;
         _toolLimits = definition.ToolLimits;
@@ -109,7 +111,7 @@ public sealed partial class JsCrew
     /// run's own (<see cref="CrewRunScope.Budget"/>): lifecycle hooks fired by add/remove and
     /// <c>runAgent</c> contexts without a <c>budget</c> or <c>charge</c> option (#189) are unbudgeted and pass <c>null</c>.
     /// </summary>
-    internal JsExecutionEnvironment CreateEnvironment(JsAgent agent, AgentExecutionBudget? budget, CancellationToken ct, GatePermit? permit = null, AgentInstanceRun? instance = null, string? workingRoot = null) => new()
+    internal JsExecutionEnvironment CreateEnvironment(JsAgent agent, AgentExecutionBudget? budget, CancellationToken ct, GatePermit? permit = null, AgentInstanceRun? instance = null, string? workingRoot = null, string? permissionFloor = null) => new()
     {
         Engine = _engine,
         Self = agent,
@@ -127,10 +129,12 @@ public sealed partial class JsCrew
         Instance = instance,
         PermissionGate = _permissionGate,
         DeltaSink = _deltaSink,
+        ToolCallDlp = _toolCallDlp,
         ToolInvocation = _toolInvocation,
         AgentMemoryStore = _agentMemoryStore,
         ToolLimits = _toolLimits ?? new(),
         WorkingRoot = workingRoot,
+        PermissionFloor = permissionFloor,
     };
 
     /// <summary>

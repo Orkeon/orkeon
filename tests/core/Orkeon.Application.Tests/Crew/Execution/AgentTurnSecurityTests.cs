@@ -73,6 +73,9 @@ public class AgentTurnSecurityTests
     private sealed class ScriptedChatClient : IChatClient
     {
         private readonly Queue<ChatResponse> _responses = new();
+        private readonly Queue<Exception> _failures = new();
+
+        public void EnqueueFailure(Exception failure) => _failures.Enqueue(failure);
 
         public List<List<ChatMessage>> Requests { get; } = [];
 
@@ -86,6 +89,8 @@ public class AgentTurnSecurityTests
             IEnumerable<ChatMessage> messages, ChatOptions? options = null, CancellationToken cancellationToken = default)
         {
             Requests.Add(messages.ToList());
+            if (_failures.Count > 0)
+                throw _failures.Dequeue();
             return System.Threading.Tasks.Task.FromResult(_responses.Count > 0
                 ? _responses.Dequeue()
                 : new ChatResponse([new ChatMessage(ChatRole.Assistant, "done")]));
@@ -176,6 +181,70 @@ public class AgentTurnSecurityTests
         Assert.Contains("Blocked by Guardian (input): prompt injection suspected", result.Error, StringComparison.Ordinal);
     }
 
+    // ── The output phase (FWK-19) ─────────────────────────────────────────
+
+    private static FakeGuardianPipeline BlockingOutput() => new(context =>
+        context.Phase == GuardPhase.Output
+            ? GuardResult.Block("output refused by the policy",
+                [new GuardViolation("FakeGuard", GuardPhase.Output, "policy", GuardThreatSeverity.High, DateTime.UtcNow)])
+            : GuardResult.Allow());
+
+    [Fact]
+    public async System.Threading.Tasks.Task ABlockedOutput_FailsTheTask_AndKeepsNothing()
+    {
+        using var client = new ScriptedChatClient();
+        client.EnqueueText("The secret plan is X.");
+        var guardian = BlockingOutput();
+        var orchestrator = new ExecutionOrchestrator(new SpyLogger(), new ScriptedBasicLlmProvider(), client, [], new FakeFileSystemService())
+        {
+            Guardian = guardian,
+        };
+
+        var result = await orchestrator.ExecuteTaskCoreAsync(BuildAgent(), BuildTask(), BuildContext(), TestContext.Current.CancellationToken);
+
+        Assert.False(result.Success);
+        Assert.Equal(AgentExitReason.GuardianBlocked, result.ExitReason);
+        Assert.Equal(string.Empty, result.Output);
+        Assert.Null(result.StructuredOutput);
+        Assert.Contains("Blocked by Guardian (output): output refused by the policy", result.Error, StringComparison.Ordinal);
+        var judged = Assert.Single(guardian.Contexts, c => c.Phase == GuardPhase.Output);
+        Assert.Equal("The secret plan is X.", judged.Content);
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task AnAllowedOutput_CompletesTheTask()
+    {
+        using var client = new ScriptedChatClient();
+        client.EnqueueText("A fine summary.");
+        var guardian = new FakeGuardianPipeline();
+        var orchestrator = new ExecutionOrchestrator(new SpyLogger(), new ScriptedBasicLlmProvider(), client, [], new FakeFileSystemService())
+        {
+            Guardian = guardian,
+        };
+
+        var result = await orchestrator.ExecuteTaskCoreAsync(BuildAgent(), BuildTask(), BuildContext(), TestContext.Current.CancellationToken);
+
+        Assert.True(result.Success, result.Error);
+        Assert.Contains(guardian.Contexts, c => c.Phase == GuardPhase.Output);
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task AFailedLlmCall_HasNoOutputToJudge()
+    {
+        using var client = new ScriptedChatClient();
+        client.EnqueueFailure(new HttpRequestException("the provider did not answer"));
+        var guardian = BlockingOutput();
+        var orchestrator = new ExecutionOrchestrator(new SpyLogger(), new ScriptedBasicLlmProvider(), client, [], new FakeFileSystemService())
+        {
+            Guardian = guardian,
+        };
+
+        var result = await orchestrator.ExecuteTaskCoreAsync(BuildAgent(), BuildTask(), BuildContext(), TestContext.Current.CancellationToken);
+
+        Assert.Equal(AgentExitReason.LlmCallFailed, result.ExitReason);
+        Assert.DoesNotContain(guardian.Contexts, c => c.Phase == GuardPhase.Output);
+    }
+
     [Fact]
     public async System.Threading.Tasks.Task TheInputPhase_ReadsThePreviousOutputs_TheModelWillRead()
     {
@@ -188,7 +257,7 @@ public class AgentTurnSecurityTests
 
         await orchestrator.ExecuteTaskCoreAsync(BuildAgent(), BuildTask(), BuildContext("an earlier agent's report"), TestContext.Current.CancellationToken);
 
-        var input = Assert.Single(guardian.Contexts);
+        var input = Assert.Single(guardian.Contexts, c => c.Phase == GuardPhase.Input);
         Assert.Contains("an earlier agent's report", input.Content, StringComparison.Ordinal);
         Assert.Equal(input.Content, client.Requests[0].Single(m => m.Role == ChatRole.User).Text);
     }

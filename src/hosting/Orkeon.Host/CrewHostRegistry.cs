@@ -6,7 +6,7 @@ namespace Orkeon.Host;
 /// <summary>What the registry knows about one run in flight.</summary>
 internal sealed record HostedRun
 {
-    /// <summary>Identifier the operator and the channels use to name this run.</summary>
+    /// <summary>Identifier the operator, the channels and the API use to name this run: the run's ExecutionId (a ULID).</summary>
     public required string Id { get; init; }
 
     /// <summary>The crew it runs.</summary>
@@ -81,6 +81,16 @@ internal sealed class CrewHostRegistry
     public HostedCrewOptions? Find(string crewName) =>
         _options.Crews.FirstOrDefault(c => string.Equals(c.Name, crewName, StringComparison.OrdinalIgnoreCase));
 
+    /// <summary>True once the stop has begun and no run is admitted any more (the host API's probes read it).</summary>
+    public bool AdmissionClosed
+    {
+        get
+        {
+            lock (_admission)
+                return _admissionClosed;
+        }
+    }
+
     /// <summary>
     /// Admits no run any more, for good — the first gesture of a stop (GAP-35). Without it the
     /// drain admitted what arrived during its grace period: a chat message or an A2A task loaded a
@@ -141,13 +151,15 @@ internal sealed class CrewHostRegistry
             if (inFlight >= crew.Profile.MaxConcurrentRuns)
                 return null;
 
-            // A 12-hex-char id can collide once in a blue moon; retrying costs nothing,
-            // while returning null here would report the collision to the user as "busy".
+            // A collision is practically impossible; retrying costs nothing, while returning null here would
+            // report it to the user as "busy".
             for (var attempt = 0; attempt < 4; attempt++)
             {
                 var run = new HostedRun
                 {
-                    Id = Guid.NewGuid().ToString("N")[..12],
+                    // One identity end to end (FWK-14): the run's ExecutionId, the id the history, the checkpoints, the
+                    // A2A task and the API name it by. A ULID cannot collide in practice, but the retry stays cheap.
+                    Id = Orkeon.Application.Interfaces.Services.ExecutionId.New().ToString(),
                     CrewName = crew.Name,
                     Origin = origin,
                     StartedAt = _time.GetUtcNow(),

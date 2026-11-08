@@ -1,0 +1,34 @@
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+using Orkeon.Hosting;
+
+namespace MyOrkeonHost;
+
+/// <summary>Where the crew is, as appsettings.json says it ("Crew" section).</summary>
+public sealed class CrewOptions
+{
+    /// <summary>Path of the crew file, relative to the working directory.</summary>
+    public string Path { get; set; } = "crew.ork.ts";
+}
+
+/// <summary>Runs the crew once, logs its output, then stops the host.</summary>
+public sealed class CrewWorker(
+    ICrewScriptRunner runner,
+    IOptions<CrewOptions> options,
+    IHostApplicationLifetime lifetime,
+    ILogger<CrewWorker> logger) : BackgroundService
+{
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    {
+        try
+        {
+            var output = await runner.RunAsync(options.Value.Path, cancellationToken: stoppingToken);
+            logger.LogInformation("Crew finished: {Output}", output.FinalOutput);
+        }
+        finally
+        {
+            lifetime.StopApplication();
+        }
+    }
+}

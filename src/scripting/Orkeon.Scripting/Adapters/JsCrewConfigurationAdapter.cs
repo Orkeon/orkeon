@@ -219,6 +219,7 @@ public static class JsCrewConfigurationAdapter
             LlmOverride = BuildTaskLlmOverride(jsTask),
             HumanInput = jsTask.HumanInputFlag,
             AsyncExecution = jsTask.AsyncExecutionFlag,
+            Retry = jsTask.RetryPolicy,
             Tools = CollectToolNames(jsTask.Tools, seed: null),
         };
     }

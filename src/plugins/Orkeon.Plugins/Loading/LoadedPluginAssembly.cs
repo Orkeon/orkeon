@@ -17,13 +17,18 @@ public sealed class LoadedPluginAssembly
         string virtualPath,
         Assembly assembly,
         AssemblyLoadContext context,
-        IReadOnlyList<IOrkeonPlugin> plugins)
+        IReadOnlyList<IOrkeonPlugin> plugins,
+        PluginManifest manifest)
     {
+        Manifest = manifest;
         VirtualPath = virtualPath;
         Assembly = assembly;
         _context = context;
         Plugins = plugins;
     }
+
+    /// <summary>The manifest the plugin was loaded under.</summary>
+    public PluginManifest Manifest { get; }
 
     /// <summary>Virtual path the assembly was loaded from.</summary>
     public string VirtualPath { get; }

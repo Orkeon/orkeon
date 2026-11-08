@@ -1,0 +1,11 @@
+{"match": "reviewing the output of a completed task", "content": "{\"approved\": true, \"feedback\": \"The mock review accepts the output.\"}"}
+{"match": "(?s)assigning tasks to team members.*Description: Analyze the codebase for security.*?ID: (?<id>\\S+)\\s+Role: Revieweur Securite", "regex": true, "content": "{\"agent_id\": \"${id}\", \"reason\": \"Security task\"}"}
+{"match": "(?s)assigning tasks to team members.*Description: Analyze the codebase for performance.*?ID: (?<id>\\S+)\\s+Role: Revieweur Performance", "regex": true, "content": "{\"agent_id\": \"${id}\", \"reason\": \"Performance task\"}"}
+{"match": "(?s)assigning tasks to team members.*Description: Evaluate test coverage.*?ID: (?<id>\\S+)\\s+Role: Revieweur Tests", "regex": true, "content": "{\"agent_id\": \"${id}\", \"reason\": \"Test task\"}"}
+{"match": "(?s)assigning tasks to team members.*Description: Check code style.*?ID: (?<id>\\S+)\\s+Role: Revieweur Style", "regex": true, "content": "{\"agent_id\": \"${id}\", \"reason\": \"Style task\"}"}
+{"match": "(?s)assigning tasks to team members.*Description: Aggregate all review findings.*?ID: (?<id>\\S+)\\s+Role: \\S", "regex": true, "content": "{\"agent_id\": \"${id}\", \"reason\": \"Consolidation task\"}"}
+{"match": "^Task:\\s+Analyze the codebase for security", "regex": true, "content": "Security review: no injection path found, one hard-coded timeout."}
+{"match": "^Task:\\s+Analyze the codebase for performance", "regex": true, "content": "Performance review: one N+1 query in the report loader."}
+{"match": "^Task:\\s+Evaluate test coverage", "regex": true, "content": "Test review: the error paths of the importer are untested."}
+{"match": "^Task:\\s+Check code style", "regex": true, "content": "Style review: naming is consistent, two public methods lack documentation."}
+{"match": "^Task:\\s+Aggregate all review findings", "regex": true, "content": "Consolidated review: one performance issue and two documentation gaps, nothing blocking."}

@@ -138,6 +138,8 @@
       href: reference/opt-in-subsystems.md
     - name: Hosting & bootstrap des runners
       href: reference/hosting.md
+    - name: API du host et sondes de santé
+      href: reference/host-api.md
     - name: Interop Microsoft Agent Framework
       href: reference/agent-framework-interop.md
     - name: Matrice de publication NuGet

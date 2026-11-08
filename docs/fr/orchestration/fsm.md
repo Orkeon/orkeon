@@ -9,10 +9,10 @@
 Orkeon fournit un framework de machine à états finis générique (`StateMachine<TState, TEvent>`) dans la couche Domain, avec un circuit breaker intégré (`CircuitBreakerPolicy`) qui arrête une boucle emballée. C'est une brique pour votre propre code et pour trois consommateurs livrés :
 
 - **`orkeon forge`** déroule le cycle de sa session (brief → blueprint → rendu → validation → test → diagnostic → verdict) sur une `StateMachine<ForgeState, ForgeTrigger>` (`ForgeStateMachineFactory`).
-- **Le [mode Graph](./graph.md)** borne les runs de son `StateGraph` avec une `CircuitBreakerPolicy` construite depuis le `graphConfig` de la crew.
+- **Le [mode Graph](./graph.md)** borne les runs de son `StateGraph` avec une `CircuitBreakerPolicy` construite depuis le bloc `graph:` de la crew.
 - **Le graphe RAG correctif** (`CorrectiveRagPipeline`) borne sa boucle récupérer → évaluer → régénérer avec sa propre `CircuitBreakerPolicy`.
 
-> **Pas de machine à états de tâche.** Les tâches d'une crew ne passent par aucune FSM. Ce qui borne une tâche, c'est sa boucle d'agent : le `maxIter` de l'agent, un arrêt après 3 erreurs d'outil identiques consécutives, et les reprises de validation de sortie. L'ancienne spécialisation tâche (`TaskExecutionStateMachine`) et les blocs YAML `circuitBreaker:` qui la configuraient n'ont jamais été exécutés et ont été supprimés ; une crew qui écrit encore `circuitBreaker:` est refusée au chargement. En YAML, le seul réglage de circuit breaker est le `graphConfig` d'une crew Graph (voir [Schéma YAML](../architecture/yaml-schema.md)).
+> **Pas de machine à états de tâche.** Les tâches d'une crew ne passent par aucune FSM. Ce qui borne une tâche, c'est sa boucle d'agent : le `maxIter` de l'agent, un arrêt après 3 erreurs d'outil identiques consécutives, et les reprises de validation de sortie. L'ancienne spécialisation tâche (`TaskExecutionStateMachine`) et les blocs YAML `circuitBreaker:` qui la configuraient n'ont jamais été exécutés et ont été supprimés ; une crew qui écrit encore `circuitBreaker:` est refusée au chargement. En YAML, le seul réglage de circuit breaker est le bloc `graph:` d'une crew Graph (voir [Schéma YAML](../architecture/yaml-schema.md)).
 
 ## Architecture
 
@@ -29,7 +29,7 @@ Les composants du framework se trouvent dans `Orkeon.Domain.Common.StateMachine`
 | `IMutableStateMachine<TState, TEvent>` | Interface avec `Fire()`, `TryFire()`, `ResetCircuitBreaker()`, événements |
 | `CircuitBrokenException`, `InvalidTransitionException<TState, TEvent>` | Disjoncteur déclenché ; aucune transition pour cet état + événement |
 
-`CircuitBreakerPolicyFactory` (`Orkeon.Infrastructure.Configuration`) transforme le `graphConfig` d'une crew Graph en policy (`ResolveGraph`).
+`CircuitBreakerPolicyFactory` (`Orkeon.Infrastructure.Configuration`) transforme le bloc `graph:` d'une crew Graph en policy (`ResolveGraph`).
 
 ## Circuit breaker
 
@@ -61,7 +61,7 @@ Trois presets sont fournis via `CircuitBreakerPolicy` :
 | `Default` | 100 | 5 min | 10 | 30 min | false |
 | `Permissive` | 1000 | 30 min | 50 | 2 h | false |
 
-`new CircuitBreakerPolicy()` équivaut à `Default`. `Strict` est le repli de `StateGraph` et de `CircuitBreakerPolicyFactory.ResolveGraph` quand `graphConfig` ne nomme aucun preset (ou un preset inconnu).
+`new CircuitBreakerPolicy()` équivaut à `Default`. `Strict` est le repli de `StateGraph` et de `CircuitBreakerPolicyFactory.ResolveGraph` quand `graph:` ne nomme aucun preset (ou un preset inconnu).
 
 ### Observabilité
 
@@ -126,7 +126,7 @@ Les implémentations de `IProcessStrategy` exécutent une tâche via `IAgentExec
 | `Orkeon.Domain.Tests/Common/StateMachine/StateMachineTests.cs` | Transitions valides/invalides, états terminaux, cycle complet |
 | `Orkeon.Domain.Tests/Common/StateMachine/StateMachineGuardTests.cs` | Guards typés, priorité des guards, actions sur transition |
 | `Orkeon.Domain.Tests/Common/StateMachine/CircuitBreakerTests.cs` | Transitions max, détection de cycles, mode dégradé, reset, histogramme |
-| `Orkeon.Infrastructure.Tests/Configuration/CircuitBreakerPolicyFactoryGraphTests.cs` | `graphConfig` → policy : presets, surcharges, repli |
+| `Orkeon.Infrastructure.Tests/Configuration/CircuitBreakerPolicyFactoryGraphTests.cs` | `graph:` → policy : presets, surcharges, repli |
 | `Orkeon.Scripting.Cli.Tests/Forge/ForgeStateMachineTests.cs` | Les coups légaux du cycle forge |
 
 ```bash

@@ -42,9 +42,10 @@ public partial class A2AServer : IA2AServer, IDisposable
 {
     private readonly A2AOptions _options;
     private readonly A2ASecurityOptions _security;
+    private string? _prefix;
     private readonly IA2ATaskRouter _taskRouter;
     private readonly IA2ATaskStore? _taskStore;
-    private readonly A2ACredentialValidator _credentials;
+    private readonly HttpRequestAuthenticator _authenticator;
     private readonly ILogger _logger;
 
     [SuppressMessage("Usage", "CA2213:Disposable fields should be disposed",
@@ -58,9 +59,6 @@ public partial class A2AServer : IA2AServer, IDisposable
     private readonly ConcurrentDictionary<int, Task> _requestsInFlight = new();
     private readonly ConcurrentDictionary<string, CancellationTokenSource> _tasksInFlight = new(StringComparer.Ordinal);
 
-    // mTLS client trust, materialized once per StartAsync (SEC-012).
-    private HashSet<string>? _trustedClientThumbprints;
-    private readonly List<X509Certificate2> _trustedClientCertificateAuthorities = [];
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -108,7 +106,7 @@ public partial class A2AServer : IA2AServer, IDisposable
         ArgumentNullException.ThrowIfNull(taskRouter);
         _taskRouter = taskRouter;
         _taskStore = taskStore;
-        _credentials = new A2ACredentialValidator(_security, authenticationProviders ?? [], secretProvider);
+        _authenticator = new HttpRequestAuthenticator(HttpSecurityOptions.From(_security), authenticationProviders, secretProvider, logger);
         _logger = logger ?? NullLogger<A2AServer>.Instance;
     }
 
@@ -120,12 +118,10 @@ public partial class A2AServer : IA2AServer, IDisposable
 
         // Fail-closed: a declared scheme without a validator would accept any credential
         // of the right shape (GAP-09) — refuse to start instead.
-        await _credentials.EnsureReadyAsync(ct).ConfigureAwait(false);
-
-        if (_security.RequireMutualTls)
-            InitializeMutualTlsTrust();
+        await _authenticator.EnsureReadyAsync(ct).ConfigureAwait(false);
 
         var prefix = $"{_options.Host.TrimEnd('/')}:{_options.Port}/";
+        _prefix = prefix;
 
         _listener = new HttpListener();
         _listener.Prefixes.Add(prefix);
@@ -179,7 +175,7 @@ public partial class A2AServer : IA2AServer, IDisposable
         _listener = null;
         _cts?.Dispose();
         _cts = null;
-        DisposeTrustedClientCas();
+        _authenticator.Dispose();
 
         LogA2AServerStopped();
     }
@@ -307,15 +303,44 @@ public partial class A2AServer : IA2AServer, IDisposable
         var path = context.Request.Url?.AbsolutePath ?? "";
         var method = context.Request.HttpMethod;
 
-        var isDiscovery = method == "GET" && path == "/.well-known/agent.json";
+        // Without a header credential the loopback (or a client certificate a browser presents on its own) is the only
+        // protection (PR review HOST-3): a web page the operator opens must not start a task, neither by a cross-site
+        // form (no JSON content type) nor through a DNS name rebound to 127.0.0.1 (a Host the listener does not name).
+        if (BrowserRequestGuard.Applies(_security.AllowedAuthSchemes.Count))
+        {
+            if (!BrowserRequestGuard.NamesListener(_prefix ?? "", context.Request.Headers["Host"]))
+            {
+                await WriteJsonResponse(context.Response, 421, new { error = "The Host header does not name this listener." }, ct).ConfigureAwait(false);
+                return;
+            }
 
-        // Enforce A2A security on task endpoints (discovery stays public for agent cards).
-        if (!isDiscovery && !await AuthorizeRequestAsync(context, ct).ConfigureAwait(false))
+            if (method == "POST" && !BrowserRequestGuard.IsJson(context.Request.ContentType))
+            {
+                await WriteJsonResponse(context.Response, 415, new { error = "A POST must declare Content-Type: application/json." }, ct).ConfigureAwait(false);
+                return;
+            }
+        }
+
+        // Discovery (the agent card) is public: it is answered here, before any credential is read.
+        if (method == "GET" && path == "/.well-known/agent.json")
+        {
+            await HandleAgentCardAsync(context, ct).ConfigureAwait(false);
+            return;
+        }
+
+        await RouteProtectedRequestAsync(context, method, path, ct).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Routes every request but discovery: the A2A security options are applied first, on every path,
+    /// unknown ones included, so no request-derived condition decides whether authorization runs.
+    /// </summary>
+    private async Task RouteProtectedRequestAsync(HttpListenerContext context, string method, string path, CancellationToken ct)
+    {
+        if (!await AuthorizeRequestAsync(context, ct).ConfigureAwait(false))
             return;
 
-        if (isDiscovery)
-            await HandleAgentCardAsync(context, ct).ConfigureAwait(false);
-        else if (method == "POST" && path == "/a2a/tasks/send")
+        if (method == "POST" && path == "/a2a/tasks/send")
             await HandleSendTaskAsync(context, ct).ConfigureAwait(false);
         else if (method == "POST" && path == "/a2a/tasks/sendSubscribe")
             await HandleSendSubscribeAsync(context, ct).ConfigureAwait(false);
@@ -328,142 +353,24 @@ public partial class A2AServer : IA2AServer, IDisposable
     }
 
     /// <summary>
-    /// Applies the configured <see cref="A2ASecurityOptions"/> to an incoming request.
-    /// Writes a 401/403 response and returns <c>false</c> when the request is rejected;
-    /// returns <c>true</c> when the request may proceed.
+    /// Applies the configured security options to an incoming request (through the shared
+    /// <see cref="HttpRequestAuthenticator"/>). Writes a 401/403 response and returns <c>false</c> when
+    /// the request is rejected; returns <c>true</c> when the request may proceed.
     /// </summary>
     private async Task<bool> AuthorizeRequestAsync(HttpListenerContext context, CancellationToken ct)
     {
-        // mTLS: require a valid client certificate when mutual TLS is mandated.
-        if (_security.RequireMutualTls)
-        {
-            var clientCert = TryGetClientCertificate(context);
-            if (clientCert == null)
-            {
-                LogA2AUnauthorized("missing or untrusted client certificate (mTLS required)");
-                await WriteJsonResponse(context.Response, 403,
-                    new { error = "Client certificate required (mTLS)" }, ct).ConfigureAwait(false);
-                return false;
-            }
-        }
+        var verdict = await _authenticator.AuthorizeAsync(context, ct).ConfigureAwait(false);
+        if (verdict.Allowed)
+            return true;
 
-        // Bearer/ApiKey: the credential must pass its scheme's validator, not just look right.
-        if (_credentials.IsRequired)
-        {
-            var authHeader = context.Request.Headers["Authorization"];
-            var validation = await _credentials.ValidateAsync(authHeader, ct).ConfigureAwait(false);
-            if (!validation.IsValid)
-            {
-                LogA2AUnauthorized(validation.Error ?? "credential rejected");
-                await WriteJsonResponse(context.Response, 401,
-                    new { error = "Authentication required" }, ct).ConfigureAwait(false);
-                return false;
-            }
-        }
-
-        return true;
+        LogA2AUnauthorized(verdict.Reason ?? "rejected");
+        await WriteJsonResponse(context.Response, verdict.StatusCode, new { error = verdict.Error }, ct).ConfigureAwait(false);
+        return false;
     }
 
-    private X509Certificate2? TryGetClientCertificate(HttpListenerContext context)
-    {
-        try
-        {
-            var cert = context.Request.GetClientCertificate();
-            if (cert == null)
-                return null;
+    internal void InitializeMutualTlsTrust() => _authenticator.InitializeMutualTlsTrust();
 
-            // SEC-012: presence + date validity is not authentication — the certificate
-            // must chain to a configured CA or match a pinned thumbprint.
-            return IsClientCertificateTrusted(cert) ? cert : null;
-        }
-        catch (HttpListenerException)
-        {
-            return null;
-        }
-    }
-
-    /// <summary>
-    /// Materializes the mTLS client trust (pinned thumbprints + CA certificates loaded from
-    /// <see cref="A2ASecurityOptions.TrustedCertificateAuthorities"/>). Called by
-    /// <see cref="StartAsync"/> when <see cref="A2ASecurityOptions.RequireMutualTls"/> is set;
-    /// throws when mutual TLS is required but no usable trust anchor exists (fail-closed:
-    /// accepting any date-valid certificate is not mutual authentication).
-    /// </summary>
-    internal void InitializeMutualTlsTrust()
-    {
-        _trustedClientThumbprints = new HashSet<string>(
-            _security.TrustedClientCertificateThumbprints.Where(t => !string.IsNullOrWhiteSpace(t)),
-            StringComparer.OrdinalIgnoreCase);
-
-        DisposeTrustedClientCas();
-        foreach (var path in _security.TrustedCertificateAuthorities)
-        {
-            if (string.IsNullOrWhiteSpace(path))
-                continue;
-
-            try
-            {
-                // OUT-OF-SCOPE: trusted CA bundle on host, not VFS-mounted user data
-                _trustedClientCertificateAuthorities.Add(X509CertificateLoader.LoadCertificateFromFile(path));
-            }
-            catch (Exception ex) when (ex is System.Security.Cryptography.CryptographicException or IOException or UnauthorizedAccessException)
-            {
-                LogTrustedCaLoadFailed(ex, path);
-            }
-        }
-
-        if (_security.RequireMutualTls
-            && _trustedClientThumbprints.Count == 0
-            && _trustedClientCertificateAuthorities.Count == 0)
-        {
-            throw new InvalidOperationException(
-                "RequireMutualTls is enabled but no usable client trust is configured: set " +
-                "TrustedCertificateAuthorities (CA certificate paths) and/or " +
-                "TrustedClientCertificateThumbprints. Without a trust anchor every date-valid " +
-                "certificate would be accepted, which is not mutual authentication. For local " +
-                "development without client authentication, disable RequireMutualTls.");
-        }
-
-        LogMutualTlsTrustInitialized(_trustedClientCertificateAuthorities.Count, _trustedClientThumbprints.Count);
-    }
-
-    /// <summary>
-    /// Returns <c>true</c> when <paramref name="certificate"/> matches a pinned thumbprint
-    /// (and is within its validity window) or chains to one of the configured trusted CAs
-    /// (<see cref="X509ChainTrustMode.CustomRootTrust"/> — self-signed certificates that are
-    /// not pinned are rejected). Revocation is not checked: the trust anchors are private
-    /// CAs without CRL/OCSP endpoints (documented limitation).
-    /// </summary>
-    internal bool IsClientCertificateTrusted(X509Certificate2 certificate)
-    {
-        ArgumentNullException.ThrowIfNull(certificate);
-
-        if (_trustedClientThumbprints is { Count: > 0 }
-            && _trustedClientThumbprints.Contains(certificate.Thumbprint))
-        {
-            var nowUtc = DateTime.UtcNow;
-            return certificate.NotBefore.ToUniversalTime() <= nowUtc
-                && nowUtc <= certificate.NotAfter.ToUniversalTime();
-        }
-
-        if (_trustedClientCertificateAuthorities.Count == 0)
-            return false;
-
-        using var chain = new X509Chain();
-        chain.ChainPolicy.TrustMode = X509ChainTrustMode.CustomRootTrust;
-        chain.ChainPolicy.RevocationMode = X509RevocationMode.NoCheck;
-        foreach (var ca in _trustedClientCertificateAuthorities)
-            chain.ChainPolicy.CustomTrustStore.Add(ca);
-
-        return chain.Build(certificate);
-    }
-
-    private void DisposeTrustedClientCas()
-    {
-        foreach (var ca in _trustedClientCertificateAuthorities)
-            ca.Dispose();
-        _trustedClientCertificateAuthorities.Clear();
-    }
+    internal bool IsClientCertificateTrusted(X509Certificate2 certificate) => _authenticator.IsClientCertificateTrusted(certificate);
 
     [SuppressMessage("Design", "CA1031", Justification = "Best-effort error response: a failure to write the error body (e.g. client already disconnected) must not mask the primary failure being reported.")]
     private async Task TryWriteErrorResponseAsync(HttpListenerContext context, int statusCode, string error)
@@ -925,10 +832,4 @@ public partial class A2AServer : IA2AServer, IDisposable
 
     [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Warning, Message = "A2A request rejected: {Reason}")]
     private partial void LogA2AUnauthorized(string reason);
-
-    [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Information, Message = "A2A mTLS client trust initialized: {CaCount} CA(s) loaded, {ThumbprintCount} pinned thumbprint(s)")]
-    private partial void LogMutualTlsTrustInitialized(int caCount, int thumbprintCount);
-
-    [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Warning, Message = "A2A trusted CA could not be loaded and is ignored: {Path}")]
-    private partial void LogTrustedCaLoadFailed(Exception ex, string path);
 }

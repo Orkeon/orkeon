@@ -80,8 +80,20 @@ public static class RunEventKinds
     /// <summary>The team grew at runtime - the autonomous mode's most opaque moment.</summary>
     public const string AgentSpawned = "agent.spawned";
 
+    /// <summary>
+    /// A profile's fallback chain moved a call to the next profile (FWK-05): <c>profile</c>, <c>from</c>,
+    /// <c>to</c>, <c>reason</c>. Additive: a consumer that does not know the kind ignores it.
+    /// </summary>
+    public const string LlmFallback = "llm.fallback";
+
     /// <summary>Something the run's event hub relayed to this process.</summary>
     public const string HubMessage = "hub.message";
+
+    /// <summary>
+    /// A graph engine is about to run a node: <c>node</c> and <c>visit</c>, plus <c>task</c> for a
+    /// crew's graph and <c>graph</c> (its name) for a script's <c>stateGraph</c> (ADR-018).
+    /// </summary>
+    public const string GraphNodeEntered = "graph.node.entered";
 
     /// <summary>
     /// Every kind, so a consumer can assert it handles them all rather than discovering a gap
@@ -91,6 +103,6 @@ public static class RunEventKinds
     [
         RunStarted, TaskStarted, TaskCompleted, CostUpdated, LlmDelta, RunFinished, Error,
         InputNeeded, InputGiven, ToolCalled, ToolReturned, DelegationStarted,
-        AgentSpawned, HubMessage, LlmCallStarted, LlmCallProgress, LlmCallFinished,
+        AgentSpawned, HubMessage, LlmCallStarted, LlmCallProgress, LlmCallFinished, LlmFallback, GraphNodeEntered,
     ];
 }

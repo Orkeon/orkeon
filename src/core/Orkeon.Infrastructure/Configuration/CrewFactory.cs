@@ -284,6 +284,8 @@ public partial class CrewFactory : ICrewFactory
 
         if (!string.IsNullOrWhiteSpace(agentConfig.Backstory))
             builder.Backstory(agentConfig.Backstory);
+        if (agentConfig.PermissionMode is { } permissionMode)
+            builder.PermissionMode(permissionMode);
         if (!string.IsNullOrWhiteSpace(agentConfig.WorkingRoot))
             builder.WorkingRoot(agentConfig.WorkingRoot);
         if (resolvedTools.Count > 0)
@@ -350,6 +352,7 @@ public partial class CrewFactory : ICrewFactory
                 .Description(TaskDescription.From(taskConfig.Description))
                 .ExpectedOutput(taskConfig.ExpectedOutput)
                 .Async(taskConfig.AsyncExecution)
+                .Retry(taskConfig.Retry)
                 .HumanInput(taskConfig.HumanInput)
                 .WithTools(resolvedTools)
                 .WithKey(taskConfig.Key);

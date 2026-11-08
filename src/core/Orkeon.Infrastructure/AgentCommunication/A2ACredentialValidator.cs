@@ -47,9 +47,13 @@ public sealed class A2ACredentialValidator
     /// <summary>The API-key scheme, validated against secrets read through the <see cref="ISecretProvider"/>.</summary>
     public const string ApiKeyScheme = "ApiKey";
 
-    private readonly A2ASecurityOptions _security;
+    /// <summary>The section the A2A server reads its security options from.</summary>
+    public const string DefaultSection = "A2A:Security";
+
+    private readonly HttpSecurityOptions _security;
     private readonly List<IAuthenticationProvider> _bearerProviders;
     private readonly ISecretProvider? _secretProvider;
+    private readonly string _section;
 
     /// <summary>Initializes a new instance of <see cref="A2ACredentialValidator"/>.</summary>
     /// <param name="security">The A2A security options (declared schemes, API-key secret names).</param>
@@ -59,7 +63,23 @@ public sealed class A2ACredentialValidator
         A2ASecurityOptions security,
         IEnumerable<IAuthenticationProvider> bearerProviders,
         ISecretProvider? secretProvider)
+        : this(HttpSecurityOptions.From(security ?? throw new ArgumentNullException(nameof(security))), bearerProviders, secretProvider, DefaultSection)
     {
+    }
+
+    /// <summary>Initializes a new instance of <see cref="A2ACredentialValidator"/> over the neutral HTTP security options.</summary>
+    /// <param name="security">The declared schemes and API-key secret names.</param>
+    /// <param name="bearerProviders">The providers a bearer token is offered to, in order.</param>
+    /// <param name="secretProvider">The secret provider the API keys are read from.</param>
+    /// <param name="sectionName">The configuration section the options came from, named in the start refusals (<c>Orkeon:Host:Api:Security</c> for the host API).</param>
+    public A2ACredentialValidator(
+        HttpSecurityOptions security,
+        IEnumerable<IAuthenticationProvider> bearerProviders,
+        ISecretProvider? secretProvider,
+        string sectionName = DefaultSection)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(sectionName);
+        _section = sectionName;
         ArgumentNullException.ThrowIfNull(security);
         ArgumentNullException.ThrowIfNull(bearerProviders);
         _security = security;
@@ -85,7 +105,7 @@ public sealed class A2ACredentialValidator
             {
                 if (_bearerProviders.Count == 0)
                     throw new InvalidOperationException(
-                        "A2A:Security:AllowedAuthSchemes declares 'Bearer' but no token validator is registered: " +
+                        $"{_section}:AllowedAuthSchemes declares 'Bearer' but no token validator is registered: " +
                         "configure A2A:Security:AzureAD or A2A:Security:Oidc, or register an IAuthenticationProvider. " +
                         "A bearer token that nothing validates is not authentication.");
             }
@@ -94,14 +114,14 @@ public sealed class A2ACredentialValidator
                 var keys = await ReadApiKeysAsync(ct).ConfigureAwait(false);
                 if (keys.Count == 0)
                     throw new InvalidOperationException(
-                        "A2A:Security:AllowedAuthSchemes declares 'ApiKey' but no key can be read: list the secret " +
-                        "names in A2A:Security:ApiKeySecretNames (each one resolved through the secret provider, " +
+                        $"{_section}:AllowedAuthSchemes declares 'ApiKey' but no key can be read: list the secret " +
+                        $"names in {_section}:ApiKeySecretNames (each one resolved through the secret provider, " +
                         "e.g. ORKEON_<NAME>) — keys are never written in the configuration itself.");
             }
             else
             {
                 throw new InvalidOperationException(
-                    $"A2A:Security:AllowedAuthSchemes declares '{scheme}', which has no validator: only " +
+                    $"{_section}:AllowedAuthSchemes declares '{scheme}', which has no validator: only " +
                     $"'{BearerScheme}' and '{ApiKeyScheme}' are supported (mutual TLS is RequireMutualTls).");
             }
         }

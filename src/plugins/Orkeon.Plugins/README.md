@@ -21,8 +21,12 @@ This project is no longer distributed as a NuGet package — reference it from s
 - **`IOrkeonPlugin`** — minimal contract: `Name`, `Version`,
   `ConfigureServices(IServiceCollection)`.
 - **Directory-based discovery** — scans a configurable directory (a VFS virtual path)
-  for `*.dll`, in two layouts: flat (`/plugins/MyPlugin.dll`) or folder-per-plugin
-  (`/plugins/MyPlugin/MyPlugin.dll`, private dependencies alongside).
+  for one sub-folder per plugin (`/plugins/MyPlugin/`: a `plugin.json` manifest, the entry
+  assembly it names, private dependencies alongside). A `.dll` dropped flat is not loaded.
+- **Manifest** — `plugin.json` (`name`, `version`, `orkeonVersion` as a NuGet range,
+  `entryAssembly`, `tools`) is read before the assembly is loaded; a missing manifest, a
+  version outside the range or a tool the plugin registers without declaring it refuses the
+  plugin (`PluginManifestException`).
 - **Isolated loading** — one *collectible* `AssemblyLoadContext` per plugin assembly,
   dependencies resolved through `AssemblyDependencyResolver` (the plugin's
   `.deps.json`). Contract assemblies (`Orkeon.*`, `Microsoft.Extensions.*` by default)

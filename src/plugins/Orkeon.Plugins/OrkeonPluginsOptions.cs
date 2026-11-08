@@ -14,21 +14,23 @@ namespace Orkeon.Plugins;
 public sealed class OrkeonPluginsOptions
 {
     /// <summary>
-    /// Virtual path (VFS) of the directory scanned for plugin assemblies.
-    /// Must start with <c>/</c> and resolve inside a configured mount.
+    /// Virtual path (VFS) of the directory whose sub-folders are plugins: each holds a
+    /// <c>plugin.json</c> manifest and the entry assembly it names; a <c>.dll</c> dropped flat is
+    /// ignored. Must start with <c>/</c> and resolve inside a configured mount.
     /// Default: <c>/plugins</c>.
     /// </summary>
     public string Directory { get; set; } = "/plugins";
 
     /// <summary>
-    /// Simple glob pattern applied to candidate assembly file names
-    /// (e.g. <c>*.dll</c>, <c>MyCompany.*.dll</c>). Candidates must additionally
+    /// Simple glob pattern applied to the file name of each manifest's entry assembly
+    /// (e.g. <c>*.dll</c>, <c>MyCompany.*.dll</c>). Entry assemblies must additionally
     /// carry the <c>.dll</c> extension regardless of the pattern. Default: <c>*.dll</c>.
     /// </summary>
     public string SearchPattern { get; set; } = "*.dll";
 
     /// <summary>
-    /// When <c>true</c>, a plugin assembly that fails to load or to configure its
+    /// When <c>true</c>, a plugin that fails to load, is refused by its manifest (absent, malformed,
+    /// out of the Orkeon range, a tool not declared) or fails to configure its
     /// services is recorded in <see cref="IPluginRegistry.Failures"/> and the
     /// remaining candidates keep loading. When <c>false</c> (default), the first
     /// failure throws a <see cref="PluginLoadException"/> (fail fast).

@@ -39,6 +39,7 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
     private readonly IProcessStrategyFactory _processStrategyFactory;
     private readonly IAgentRepository? _agentRepository;
     private readonly ICheckpointManager? _checkpointManager;
+    private readonly IResumeEngine? _resumeEngine;
     private readonly IExecutionPlanParser _executionPlanParser;
     private readonly IDomainEventDispatcher _domainEventDispatcher;
     private readonly Orkeon.Application.Memory.CrewMemoryProviderRegistry? _memoryProviderRegistry;
@@ -50,6 +51,7 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
     private readonly Orkeon.Application.Interfaces.Ports.ILlmUsageSink? _usageSink;
     private readonly Orkeon.Application.Interfaces.Security.ILlmRateLimiter? _rateLimiter;
     private readonly TimeProvider _time;
+    private readonly IRunScope? _runScope;
 
     /// <summary>
     /// Initializes a new instance of <see cref="SequentialCrewOrchestrator"/>.
@@ -86,7 +88,9 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
         ICrewExecutionHook? executionHook = null,
         Orkeon.Application.Interfaces.Ports.ILlmUsageSink? usageSink = null,
         Orkeon.Application.Interfaces.Security.ILlmRateLimiter? rateLimiter = null,
-        TimeProvider? timeProvider = null)
+        TimeProvider? timeProvider = null,
+        IRunScope? runScope = null,
+        IResumeEngine? resumeEngine = null)
 #pragma warning restore S107
     {
         ArgumentNullException.ThrowIfNull(crewRepository);
@@ -112,6 +116,8 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
         _usageSink = usageSink;
         _rateLimiter = rateLimiter;
         _time = timeProvider ?? TimeProvider.System;
+        _runScope = runScope;
+        _resumeEngine = resumeEngine;
     }
 
     /// <summary>
@@ -125,12 +131,24 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(input);
-        return RunAsync(crewId, input, events: null, cancellationToken);
+        return RunAsync(crewId, input, events: null, options: null, cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public Task<CrewOutput> KickoffAsync(
+        CrewId crewId,
+        CrewInput input,
+        KickoffOptions options,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(input);
+        ArgumentNullException.ThrowIfNull(options);
+        return RunAsync(crewId, input, events: null, options, cancellationToken);
     }
 
     /// <summary>
-    /// The one kickoff (GAP-32): what <see cref="KickoffAsync"/> awaits and what
-    /// <see cref="KickoffStreamingAsync"/> observes while it runs. It loads the crew, records its
+    /// The one kickoff (GAP-32): what <see cref="KickoffAsync(CrewId, CrewInput, CancellationToken)"/> awaits and what
+    /// <see cref="KickoffStreamingAsync(CrewId, CrewInput, CancellationToken)"/> observes while it runs. It loads the crew, records its
     /// memory, validates and starts it, plans when it asks, runs its mode's strategy — the outcome
     /// rule, the lifecycle of its tasks and agents, its memory, knowledge and plan — ends it with one
     /// terminal transition, checkpoints and dispatches its events. <paramref name="events"/> is the
@@ -142,6 +160,7 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
         CrewId crewId,
         CrewInput input,
         ChannelWriter<CrewExecutionEvent>? events,
+        KickoffOptions? options,
         CancellationToken cancellationToken)
     {
         using var streamScope = CrewStreamScope.Begin(events);
@@ -165,10 +184,13 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
         LogOrchestratingCrewExecution(crewId);
 
         string? sessionId = null;
+        string? runId = null;
         Orkeon.Domain.Crew.Crew? crew = null;
         CrewOutput output;
         Exception? cause = null;
         IDisposable? runSpan = null;
+        IDisposable? runIdentity = null;
+        RunScope? run = null;
 
         try
         {
@@ -188,10 +210,30 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
                 // (GAP-20). Idempotent.
                 _memoryProviderRegistry?.Record(crew.Id, crew.MemoryProvider, crew.Name, crew.MemoryEnabled);
 
+                // The run's one identity: the one the caller gave, else a new one. It is the
+                // checkpoint session, the correlation id of the run's events and the id of its
+                // task for the API and A2A (FWK-01), and it is visible to every decorator.
+                var executionId = options?.ExecutionId ?? ExecutionId.New();
+                var crewKey = options?.CrewKey is { Length: > 0 } named && !string.IsNullOrWhiteSpace(named) ? named : crew.Name ?? crewId.ToString();
+
+                // A resumed run is the run it resumes: it takes the id of that run's session, which it
+                // continues, and carries the outputs of the tasks that session completed.
+                var resumePlan = await PlanResumeAsync(options?.Resume, crewKey, cancellationToken).ConfigureAwait(false);
+                if (resumePlan is not null)
+                    executionId = ExecutionId.From(resumePlan.SessionId);
+                runId = executionId.ToString();
+
+                // The answer given with the resume (--input) goes to the question the run stopped on, before anything runs.
+                if (options?.ResumeInput is { } resumeInput)
+                    await AnswerResumedQuestionAsync(runId, resumeInput, cancellationToken).ConfigureAwait(false);
+
+                run = new RunScope(executionId, crewKey, resumePlan) { HumanInputObserver = TellHookAboutInputAsync };
+                runIdentity = _runScope?.Enter(run);
+
                 // Start checkpoint session if checkpoint manager is available
                 if (_checkpointManager != null)
                 {
-                    sessionId = await _checkpointManager.StartSessionAsync(crewId.ToString(), cancellationToken).ConfigureAwait(false);
+                    sessionId = await _checkpointManager.StartSessionAsync(executionId, crewKey, cancellationToken).ConfigureAwait(false);
                     LogCheckpointSessionStarted(sessionId, crewId);
                 }
 
@@ -212,10 +254,25 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
                     () => ExecuteAndCompleteAsync(crew, processStrategy, input, cancellationToken))
                     .ConfigureAwait(false);
 
-                // Checkpoint each task output
+                // A run that stopped on a question to a human ends here, waiting for its answer (FWK-23): its session
+                // is not completed and not failed, it resumes where the question was asked.
+                if (run.Suspension is { } waiting)
+                {
+                    stopwatch.Stop();
+                    return SuspendedOutput(waiting, stopwatch.Elapsed, runId);
+                }
+
+                // The tasks were checkpointed as they completed (CheckpointingAgentExecutionService): the
+                // session ends here, completed when the crew succeeded, failed, and so resumable, when not.
                 if (_checkpointManager != null && sessionId != null)
                 {
-                    await CheckpointTaskOutputsAsync(sessionId, domainOutput, cancellationToken).ConfigureAwait(false);
+                    if (domainOutput.Success)
+                        await _checkpointManager.CompleteSessionAsync(sessionId, cancellationToken).ConfigureAwait(false);
+                    else
+                        await _checkpointManager.FailSessionAsync(
+                            sessionId,
+                            new InvalidOperationException(Orkeon.Infrastructure.Security.LogSanitizer.SanitizeString(RunFailureReason(crew, domainOutput.Error))),
+                            CancellationToken.None).ConfigureAwait(false);
                 }
 
                 stopwatch.Stop();
@@ -236,6 +293,12 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
                     Error = domainOutput.Success ? null : RunFailureReason(crew, domainOutput.Error),
                 };
             }
+            catch (Exception) when (run?.Suspension is not null)
+            {
+                // The run was stopped on a question (the exception, or the failure it left behind): not a failure.
+                stopwatch.Stop();
+                return SuspendedOutput(run.Suspension, stopwatch.Elapsed, runId);
+            }
             catch (Exception ex)
             {
                 cause = ex;
@@ -250,10 +313,10 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
 
                 // The run's token is not passed: a cancelled run still records its failure.
                 if (_checkpointManager != null && sessionId != null)
-                    await _checkpointManager.MarkFailedAsync(sessionId, "crew-execution", ex, CancellationToken.None).ConfigureAwait(false);
+                    await _checkpointManager.FailSessionAsync(sessionId, Orkeon.Infrastructure.Checkpointing.CheckpointErrors.Redacted(ex), CancellationToken.None).ConfigureAwait(false);
             }
 
-            if (!output.Succeeded)
+            if (!output.Succeeded && output.PendingInput is null)
             {
                 if (runSpan is not null)
                 {
@@ -264,17 +327,39 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
                 await ReportUnreportedFailureAsync(crewId, startedAt, output, cause, end).ConfigureAwait(false);
             }
 
-            return output;
+            return output with { ExecutionId = runId };
         }
         finally
         {
+            runIdentity?.Dispose();
             runSpan?.Dispose();
+
+            // The run is over, whatever its terminal outcome: the crew's memory is consolidated when the host
+            // asked for it (FWK-04). Never for a cancelled run, and never allowed to replace the run's
+            // own result or exception.
+            // A run that stopped on a question to a human is not over: it resumes, and consolidates when it ends.
+            if (crew is not null && crew.MemoryEnabled && _memoryCoordinator is not null && !cancellationToken.IsCancellationRequested
+                && run?.Suspension is null)
+                await FinishMemoryAsync(_memoryCoordinator, crew.Id, cancellationToken).ConfigureAwait(false);
 
             // Success, failure and cancellation all end here: the crew's queued events
             // (construction events, then Started and Completed/Failed) go to the
             // IDomainEventHandler<T> registrations once, and the aggregate is emptied.
             if (crew is not null)
                 await DispatchCrewEventsAsync(crew).ConfigureAwait(false);
+        }
+    }
+
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "A consolidation at the end of a run is best-effort: whatever it throws must not mask the run's own outcome (FWK-04).")]
+    private async Task FinishMemoryAsync(IMemoryCoordinator coordinator, CrewId crewId, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await coordinator.FinishRunAsync(crewId, cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            LogMemoryFinishFailed(ex, crewId);
         }
     }
 
@@ -554,20 +639,73 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
         return line.Length <= max ? line : string.Concat(line.AsSpan(0, max), "…");
     }
 
-    private async System.Threading.Tasks.Task CheckpointTaskOutputsAsync(
-        string sessionId,
-        DomainCrewOutput domainOutput,
-        CancellationToken cancellationToken)
+    /// <summary>
+    /// What a <c>Resume</c> request resumes: the checkpoint session of this crew it names (or its latest
+    /// unfinished one for <c>latest</c>) and the outputs that session completed. Null for a fresh run.
+    /// </summary>
+    private async System.Threading.Tasks.Task<ResumePlan?> PlanResumeAsync(
+        string? request, string crewKey, CancellationToken cancellationToken)
     {
-        foreach (var taskOutput in domainOutput.TaskOutputs ?? Enumerable.Empty<Domain.Task.ValueObjects.TaskOutput>())
+        if (string.IsNullOrWhiteSpace(request))
+            return null;
+
+        if (_resumeEngine is null || _checkpointManager is null)
+            throw new InvalidOperationException("A run can be resumed only when checkpointing is available (Orkeon:Checkpointing:Enabled).");
+
+        var named = string.Equals(request, "latest", StringComparison.OrdinalIgnoreCase) ? null : request.Trim();
+        var resumed = await _resumeEngine
+            .ResumeAsync(crewKey, new ResumeOptions { ExecutionId = named }, cancellationToken)
+            .ConfigureAwait(false);
+        if (resumed.Refusal is { } refusal)
+            throw new InvalidOperationException(refusal);
+
+        if (resumed.SessionId.Length == 0)
         {
-            await _checkpointManager!.CheckpointAsync(
-                sessionId,
-                taskOutput.TaskId?.ToString() ?? Guid.NewGuid().ToString(),
-                taskOutput.Output,
-                cancellationToken).ConfigureAwait(false);
+            throw new InvalidOperationException(named is null
+                ? $"Nothing to resume: crew '{crewKey}' has no unfinished run."
+                : $"Nothing to resume: run {named} is not an unfinished run of crew '{crewKey}'.");
         }
-        await _checkpointManager!.CompleteSessionAsync(sessionId, cancellationToken).ConfigureAwait(false);
+
+        return new ResumePlan(resumed.SessionId, resumed.CompletedOutputs);
+    }
+
+    private static CrewOutput SuspendedOutput(PendingInputRequest waiting, TimeSpan elapsed, string? runId) =>
+        new(
+            FinalOutput: $"The run is waiting for an answer to '{waiting.RequestId}': {Orkeon.Infrastructure.Runs.RedactingRunEventSink.RedactText(waiting.Prompt)}",
+            TaskOutputs: [],
+            Duration: elapsed,
+            TokensUsed: null)
+        {
+            Succeeded = false,
+            Error = $"The run is waiting for an answer to '{waiting.RequestId}'.",
+            PendingInput = waiting,
+            ExecutionId = runId,
+        };
+
+    // The run's observers hear the question through the crew's execution hook.
+    private System.Threading.Tasks.Task TellHookAboutInputAsync(HumanInputNotice notice, CancellationToken ct) =>
+        _executionHook?.OnHumanInputAsync(notice, ct) ?? System.Threading.Tasks.Task.CompletedTask;
+
+    private async System.Threading.Tasks.Task AnswerResumedQuestionAsync(string sessionId, string answer, CancellationToken ct)
+    {
+        if (_checkpointManager is not IPendingInputStore store)
+            throw new InvalidOperationException("An answer can be given to a resumed run only when checkpointing is available (Orkeon:Checkpointing:Enabled).");
+
+        // The answer goes to the question the run stopped on, the one its exit showed (or the only one open).
+        var pending = await store.GetPendingAsync(sessionId, ct).ConfigureAwait(false);
+        var result = await store.AnswerAsync(sessionId, null, answer, ct).ConfigureAwait(false);
+        // The same answer given again after a crash is already stored: the run goes on (the command is idempotent).
+        if (result.Outcome == PendingInputAnswerOutcome.AlreadyAnswered)
+            return;
+
+        if (result.Outcome == PendingInputAnswerOutcome.RequestIdRequired)
+            throw new InvalidOperationException($"Run {sessionId} waits on several questions and stopped on none of them: --input cannot tell which one it answers.");
+
+        if (result.Outcome != PendingInputAnswerOutcome.Accepted || pending is null)
+            throw new InvalidOperationException($"Run {sessionId} is not waiting for an answer: --input has no question to answer.");
+
+        // The question is answered: the run's observers hear it (input.given), before the resumed run starts.
+        await TellHookAboutInputAsync(new HumanInputNotice(HumanInputNoticeKind.Given, pending), ct).ConfigureAwait(false);
     }
 
     private static async System.Threading.Tasks.Task<DomainCrewOutput> ExecuteDomainStrategyAsync(
@@ -733,7 +871,8 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
                     s.Status = ExecutionState.Running;
                 }).ConfigureAwait(false);
 
-                var output = await KickoffAsync(crewId, input).ConfigureAwait(false);
+                var output = await KickoffAsync(
+                    crewId, input, new KickoffOptions { ExecutionId = executionId }).ConfigureAwait(false);
 
                 await _stateManager.UpdateStateAsync(executionId, s =>
                 {
@@ -766,7 +905,7 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
     }
 
     /// <summary>
-    /// Runs the crew exactly as <see cref="KickoffAsync"/> does and yields what happens as it goes
+    /// Runs the crew exactly as <see cref="KickoffAsync(CrewId, CrewInput, CancellationToken)"/> does and yields what happens as it goes
     /// (GAP-32): each task's start and end, each tool call, the model's text as it arrives, then
     /// <c>run.finished</c> with the run's <see cref="CrewOutput"/> — after an <c>error</c> when it failed.
     /// </summary>
@@ -777,7 +916,20 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
     {
         ArgumentNullException.ThrowIfNull(crewId);
         ArgumentNullException.ThrowIfNull(input);
-        return StreamAsync(crewId, input, cancellationToken);
+        return StreamAsync(crewId, input, options: null, cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public IAsyncEnumerable<CrewExecutionEvent> KickoffStreamingAsync(
+        CrewId crewId,
+        CrewInput input,
+        KickoffOptions options,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(crewId);
+        ArgumentNullException.ThrowIfNull(input);
+        ArgumentNullException.ThrowIfNull(options);
+        return StreamAsync(crewId, input, options, cancellationToken);
     }
 
     /// <summary>
@@ -793,13 +945,14 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
     private async IAsyncEnumerable<CrewExecutionEvent> StreamAsync(
         CrewId crewId,
         CrewInput input,
+        KickoffOptions? options,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         var channel = Channel.CreateUnbounded<CrewExecutionEvent>(
             new UnboundedChannelOptions { SingleReader = true, SingleWriter = false });
         using var stop = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         var run = System.Threading.Tasks.Task.Run(
-            () => RunStreamedAsync(crewId, input, channel.Writer, stop.Token), CancellationToken.None);
+            () => RunStreamedAsync(crewId, input, options, channel.Writer, stop.Token), CancellationToken.None);
 
         try
         {
@@ -821,12 +974,13 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
     private async System.Threading.Tasks.Task RunStreamedAsync(
         CrewId crewId,
         CrewInput input,
+        KickoffOptions? options,
         ChannelWriter<CrewExecutionEvent> events,
         CancellationToken cancellationToken)
     {
         try
         {
-            var output = await RunAsync(crewId, input, events, cancellationToken).ConfigureAwait(false);
+            var output = await RunAsync(crewId, input, events, options, cancellationToken).ConfigureAwait(false);
             events.TryWrite(new CrewExecutionEvent { Kind = RunEventKinds.RunFinished, Output = output });
         }
         finally
@@ -875,6 +1029,9 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
     private partial void LogOrchestratingCrewExecution(CrewId crewId);
     [LoggerMessage(Level = LogLevel.Information, Message = "Started checkpoint session {SessionId} for crew {CrewId}")]
     private partial void LogCheckpointSessionStarted(string sessionId, CrewId crewId);
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Crew {CrewId}: the memory could not be finished at the end of the run")]
+    private partial void LogMemoryFinishFailed(Exception ex, CrewId crewId);
+
     [LoggerMessage(Level = LogLevel.Error, Message = "Error orchestrating crew execution")]
     private partial void LogCrewExecutionError(Exception ex);
     [LoggerMessage(Level = LogLevel.Information, Message = "Orchestrating batch crew execution for {CrewId}")]

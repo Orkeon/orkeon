@@ -319,7 +319,9 @@ closest to the task, and the user prompt carries them:
   same task of an earlier run scores 0.72 and above, an unrelated English task 0.53 and below, and related
   work in between (0.59 to 0.72). The query carries the run's variables: a long input sharing the memory's
   subject lifted an unrelated task to 0.61. That model reads English: a French text scores high whatever
-  it says (0.67 for an unrelated pair). Another embedder needs its own measure.
+  it says (0.67 for an unrelated pair). Another embedder needs its own measure: the remote providers
+  (`mistral-embed`, an Azure OpenAI deployment, `gemini-embedding-001`) have none yet, so keep 0.6 as a
+  starting point and set `MinScore` from a run of your own data.
 - **The format**: a section of the user prompt, after the previous task results and before the retrieved
   knowledge — the header *From this crew's memory — earlier work, possibly outdated; use it only where it
   helps:*, then for each memory a `--- 2026-09-30 · Analyst · Summarize the weekly news ---` line (when it
@@ -381,10 +383,10 @@ AES-256-GCM `IEncryptionProvider` registered by `AddOrkeonInfrastructure()`
 ## Cognitive memory
 
 The cognitive subsystem (`Orkeon.Infrastructure.Memory.Cognitive`, opt-in
-`AddOrkeonCognitiveMemory(configuration)`) layers `ICognitiveMemoryService` — an `IMemoryService`
+`AddOrkeonCognitiveMemory(configuration)`, wired by the runners under `Orkeon:CognitiveMemory:Enabled`) layers `ICognitiveMemoryService` — an `IMemoryService`
 extended with `RememberAsync`, `RecallAsync`, `ConsolidateAsync`, `AnalyzeAsync` and
-`CheckContradictionsAsync` — over the crew's memory. It needs an `ILlmProvider` (analysis) and
-an `IEmbeddingProvider` (every remembered item, recall query and merged memory is embedded). Its result
+`CheckContradictionsAsync` — over the crew's memory. It needs an LLM
+provider (analysis, on the profile `Orkeon:CognitiveMemory:Profile` names) and an `IEmbeddingProvider` (every remembered item, recall query and merged memory is embedded). Its result
 types live in the Domain (`CognitiveMemoryTypes.cs`):
 
 - `MemoryAnalysis` — LLM-scored importance (0.0-1.0), categorization, entity extraction (`MemoryAnalyzer`);
@@ -412,7 +414,30 @@ first kickoff, a crew id is a crew without a name.
   embedded and removes what it replaces, in the same memory. A memory that comes back without its vector
   (ChromaDB returns none with a similarity match) stays a cluster of its own.
 
-Options (`Orkeon:CognitiveMemory`, `CognitiveMemoryOptions`): `EnableLlmAnalysis` (`true`),
+### In a run (FWK-04)
+
+`orkeon`, `orkeon-host` and `orkeon-repl` wire the service when `Orkeon:CognitiveMemory:Enabled` is `true`
+(default `false`: the analysis costs LLM calls, on the operator's account; there is no YAML key for it).
+`ICognitiveMemoryService` is a singleton, resolvable from the root provider. Then, for a crew with
+`memory: true`:
+
+- **Recall** goes through `RecallAsync`: memories ranked by composite score (similarity, recency, importance),
+  floored by `Orkeon:CrewMemory:MinCompositeScore` (0.4; distinct from `MinScore`, the cosine floor of the
+  vector path) and by `Orkeon:CrewMemory:MinSemanticScore` (0.5: a fresh memory at default importance reaches the
+  composite floor on recency and importance alone, so relevance is required apart), bounded by `RecallLimit` and `MaxChars` as before. Each recalled memory's composite and its three
+  components are logged at debug level.
+- **Storage** goes through `RememberAsync`: the output is analysed (importance, category), checked for contradictions
+  and stored. When the analysis fails the memory is stored with the default importance and a `memory.analysis.degraded`
+  warning is logged.
+- The crew holds the **`memory_recall(query, limit)`** tool, injected only when `memory: true` and the service is wired
+  (distinct from `memory_store`, the operator's typed notes); it answers with the memories of the crew of the call, under the same two floors.
+- `Orkeon:CrewMemory:ConsolidateOnRunEnd` (`false`) consolidates the crew's memory when a run ends, whatever its outcome (not a cancelled run); a consolidation that fails is a warning and never replaces the run's result.
+- The analyzer, the contradiction detector and the consolidator call the LLM through the profile named by
+  `Orkeon:CognitiveMemory:Profile` (default profile when unset), so their calls enter the metered path like any other.
+
+Without the service, the vector path is unchanged.
+
+Options (`Orkeon:CognitiveMemory`, `CognitiveMemoryOptions`): `Enabled` (`false`), `Profile` (null), `EnableLlmAnalysis` (`true`),
 `EnableContradictionDetection` (`true`), `ContradictionCandidateCount` (10), `AnalysisModel`
 (null = the provider's model), `AnalysisTemperature` (0.1), `PruningThreshold` (0.1),
 `PruningMinAgeDays` (30), `RecencyHalfLifeHours` (69), `DefaultRecallOptions`.

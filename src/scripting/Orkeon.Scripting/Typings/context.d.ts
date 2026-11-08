@@ -215,6 +215,14 @@ declare global {
          */
         onDelta?: (delta: string) => void;
         /**
+         * Called with each fragment of a tool call the model is building (when the provider supports
+         * SSE streaming): `index` is the call's position in the turn, `id` and `name` come on the
+         * fragment that carries them, `argumentsDelta` is a piece of the JSON arguments. Ollama sends
+         * a call whole, as one fragment. When the host enforces DLP, the arguments of each call are held
+         * until the call ends and arrive in one fragment, redacted. Keep it cheap.
+         */
+        onToolCallDelta?: (fragment: { index: number; id?: string; name?: string; argumentsDelta: string }) => void;
+        /**
          * Called before each tool call, after the permission gate allowed it. Answers `"allow"`
          * (run it), `"ask"` (hand the call to the approval channel, as a default-mode edit
          * would; a refusal denies), `{ deny: reason }` (block, the model reads `DENIED: <reason>`),

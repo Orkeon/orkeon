@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Polly;
 using System.Net;
 using Orkeon.Domain.Constants.Resilience;
+using Orkeon.Infrastructure.LLMs.Profiles;
 
 namespace Orkeon.Infrastructure.Resilience;
 
@@ -30,12 +31,15 @@ public static class ResiliencePolicies
         exception is TaskCanceledException { InnerException: TimeoutException }
             or HttpRequestException { InnerException: Polly.Timeout.TimeoutRejectedException };
 
-    /// <summary>The transient failures that come back in seconds: a request error, a 5xx, a 408.</summary>
+    /// <summary>
+    /// The transient failures: a request error, and the statuses <see cref="LlmFailureClassifier.IsTransientStatus"/>
+    /// names (5xx, 408, 429), the same list a profile's fallback chain takes over once these retries are spent.
+    /// </summary>
     private static PolicyBuilder<HttpResponseMessage> HandleTransientHttpStatusOrRequestError()
     {
         return Policy<HttpResponseMessage>
             .Handle<HttpRequestException>()
-            .OrResult(r => (int)r.StatusCode >= 500 || r.StatusCode == HttpStatusCode.RequestTimeout);
+            .OrResult(r => LlmFailureClassifier.IsTransientStatus(r.StatusCode));
     }
 
     /// <summary>
@@ -85,7 +89,6 @@ public static class ResiliencePolicies
 
         // The failures that come back in seconds take the whole Llm:MaxRetries budget.
         var transient = HandleTransientHttpStatusOrRequestError()
-            .OrResult(msg => msg.StatusCode == HttpStatusCode.TooManyRequests)
             .WaitAndRetryAsync(maxRetryAttempts,
                 (int retryAttempt, DelegateResult<HttpResponseMessage> outcome, Context context) =>
                 {

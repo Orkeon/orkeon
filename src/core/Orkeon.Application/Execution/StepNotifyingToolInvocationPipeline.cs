@@ -49,6 +49,9 @@ public sealed class StepNotifyingToolInvocationPipeline : IToolInvocationPipelin
     }
 
     /// <inheritdoc />
+    public bool GatesPermissions => _inner.GatesPermissions;
+
+    /// <inheritdoc />
     public System.Threading.Tasks.Task<ToolInvocationResult> InvokeAsync(
         ToolInvocation invocation, CancellationToken cancellationToken = default)
     {

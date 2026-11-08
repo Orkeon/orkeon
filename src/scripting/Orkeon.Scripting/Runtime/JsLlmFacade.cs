@@ -7,6 +7,7 @@ using Orkeon.Constants.Llm;
 using Jint;
 using Jint.Native;
 using Orkeon.Domain.Execution;
+using Orkeon.Domain.Security;
 using Orkeon.Domain.SharedKernel;
 using Orkeon.Domain.SharedKernel.ValueObjects;
 using Orkeon.Domain.Tools;
@@ -50,12 +51,14 @@ public sealed partial class JsLlmFacade
     /// </summary>
     internal LlmConfig? AgentSettings { get; init; }
     private readonly Orkeon.Application.Interfaces.Ports.ILlmDeltaSink? _deltaSink;
+    private readonly Orkeon.Application.Crew.ToolCallDeltaDlp? _toolCallDlp;
     private readonly Microsoft.Extensions.Logging.ILogger? _logger;
     private readonly string _crewName;
     private readonly string _agentName;
     private readonly UnknownAgentTools? _unknownTools;
     private readonly BackgroundAgents? _background;
     private readonly AgentInstanceRun? _instance;
+    private readonly string? _permissionFloor;
 
     // The run scope of the agent body this facade belongs to (JsAgentContext), attached once and
     // ended by the context's Dispose; null for a context outside any agent body (a crew hook, a
@@ -94,7 +97,9 @@ public sealed partial class JsLlmFacade
         _unknownTools = guards?.UnknownTools;
         _background = guards?.Background;
         _instance = guards?.Instance;
+        _permissionFloor = guards?.PermissionFloor;
         _deltaSink = observability?.DeltaSink;
+        _toolCallDlp = observability?.ToolCallDlp;
         _logger = observability?.Logger;
         _crewName = observability?.CrewName ?? string.Empty;
         _agentName = observability?.AgentName ?? string.Empty;
@@ -753,7 +758,15 @@ public sealed partial class JsLlmFacade
             const onDelta = typeof cb === "function" ? cb : null;
             const onToolCall = options && typeof options.onToolCall === "function" ? options.onToolCall : null;
             const onToolResult = options && typeof options.onToolResult === "function" ? options.onToolResult : null;
-            const s = beginAct(prompt, options, onDelta !== null);
+            const tcb = options ? options.onToolCallDelta : undefined;
+            const onToolCallDelta = typeof tcb === "function" ? tcb : null;
+            const s = beginAct(prompt, options, onDelta !== null, onToolCallDelta !== null);
+            const toolCallPump = onToolCallDelta
+                ? (async () => {
+                    try { for await (const d of s.toolCallDeltas) onToolCallDelta(JSON.parse(d)); }
+                    catch (e) { s.abort(); throw e; }
+                })()
+                : null;
             const pump = onDelta
                 ? (async () => {
                     try { for await (const d of s.deltas) onDelta(d); }
@@ -781,6 +794,7 @@ public sealed partial class JsLlmFacade
             catch (e) { throw s.declared(e); }
             finally {
                 if (pump) await pump;
+                if (toolCallPump) await toolCallPump;
                 if (tools) await tools;
             }
         }
@@ -788,8 +802,8 @@ public sealed partial class JsLlmFacade
 
     private JsValue BuildActFunction()
     {
-        Func<string, JsValue?, bool, ActSession> beginAct = (prompt, options, streamDeltas) =>
-            JsHostError.Guard(_engine, () => new ActSession(this, prompt, options, streamDeltas));
+        Func<string, JsValue?, bool, bool, ActSession> beginAct = (prompt, options, streamDeltas, streamToolCallDeltas) =>
+            JsHostError.Guard(_engine, () => new ActSession(this, prompt, options, streamDeltas, streamToolCallDeltas));
         var factory = JsTrampolineFactories.Act.For(_engine);
         return _engine.Invoke(factory, beginAct);
     }
@@ -804,7 +818,9 @@ public sealed partial class JsLlmFacade
     {
         private readonly JsLlmFacade _facade;
         private readonly Channel<string>? _deltas;
+        private readonly Channel<string>? _toolCallDeltas;
         private JsValue? _deltasJs;
+        private JsValue? _toolCallDeltasJs;
         private volatile bool _aborted;
 
         /// <summary>
@@ -813,7 +829,7 @@ public sealed partial class JsLlmFacade
         /// </summary>
         internal int PreviousPromptTokens;
 
-        public ActSession(JsLlmFacade facade, string prompt, JsValue? options, bool streamDeltas)
+        public ActSession(JsLlmFacade facade, string prompt, JsValue? options, bool streamDeltas, bool streamToolCallDeltas)
         {
             // What the agent's .tools([...]) names is what the loop offers (GAP-27): a name the
             // host does not answer to fails the call here, before a single model turn, as the
@@ -826,7 +842,8 @@ public sealed partial class JsLlmFacade
             Prompt = prompt;
             MaxIterations = ResolveMaxIterations(options);
             WaitsForChildren = WaitsForChildrenOf(options);
-            PermissionMode = ResolvePermissionMode(options);
+            // SEC-7: a spawned run never loosens the mode of the act that spawned it.
+            PermissionMode = Floored(ResolvePermissionMode(options), facade._permissionFloor);
             // A mode the script poses on a host without a gate checks nothing: say so once for
             // this call rather than drop it in silence (#128).
             if (facade._permissionGate is null && facade._logger is not null && DeclaresPermissionMode(options))
@@ -870,6 +887,8 @@ public sealed partial class JsLlmFacade
             // the writer must not block on a script that is slow to consume.
             if (streamDeltas)
                 _deltas = Channel.CreateUnbounded<string>(new UnboundedChannelOptions { SingleReader = true, SingleWriter = true });
+            if (streamToolCallDeltas)
+                _toolCallDeltas = Channel.CreateUnbounded<string>(new UnboundedChannelOptions { SingleReader = true, SingleWriter = true });
 
             // Taken here, on the engine thread inside act(): a spawnBackground made while this act
             // runs finds it as the innermost active act.
@@ -911,7 +930,7 @@ public sealed partial class JsLlmFacade
         /// <summary>The tools this call offers: the built-ins as they are, the script tools behind a <see cref="ScriptToolProxy"/>.</summary>
         internal List<IBaseTool> Tools { get; }
         internal List<LlmMessage> Messages { get; } = new(capacity: 2);
-        internal bool StreamsDeltas => _deltas is not null;
+        internal bool StreamsDeltas => _deltas is not null || _toolCallDeltas is not null;
 
         /// <summary>Whether the call declared an <c>onToolCall</c> function; fixed at construction.</summary>
         internal bool HasToolCallback { get; }
@@ -934,6 +953,15 @@ public sealed partial class JsLlmFacade
             // whose failure would supersede the graceful { interrupted: true } result.
             _deltas?.Reader.ReadAllAsync() ?? AsyncEnumerable.Empty<string>(), CancellationToken.None);
 
+        /// <summary>
+        /// The tool-call fragments (one JSON object each: index, id, name, argumentsDelta) as a JS async iterable, for
+        /// the <c>onToolCallDelta</c> pump; built on first access like <see cref="deltas"/>.
+        /// </summary>
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Major Code Smell", "S1144:Unused private types or members should be removed",
+            Justification = "Read by the act trampoline (ActFactorySource) through Jint: `s.toolCallDeltas` is the JS pump's source. The type is private so the script sees nothing else.")]
+        public JsValue toolCallDeltas => _toolCallDeltasJs ??= _facade.AsAsyncIterable(
+            _toolCallDeltas?.Reader.ReadAllAsync() ?? AsyncEnumerable.Empty<string>(), CancellationToken.None);
+
         /// <summary>Abandons the run: the pump's callback threw. Cannot throw, so needs no bridge.</summary>
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Major Code Smell", "S1144:Unused private types or members should be removed",
             Justification = "Called by the act trampoline (ActFactorySource) through Jint when the onDelta callback throws. The type is private so the script sees nothing else.")]
@@ -946,6 +974,20 @@ public sealed partial class JsLlmFacade
         }
 
         internal void OfferDelta(string delta) => _deltas?.Writer.TryWrite(delta);
+
+        internal void OfferToolCallDelta(ToolCallDelta fragment)
+        {
+            if (_toolCallDeltas is null)
+                return;
+
+            var json = new System.Text.Json.Nodes.JsonObject { ["index"] = fragment.Index };
+            if (!string.IsNullOrEmpty(fragment.Id))
+                json["id"] = fragment.Id;
+            if (!string.IsNullOrEmpty(fragment.Name))
+                json["name"] = fragment.Name;
+            json["argumentsDelta"] = fragment.ArgumentsDelta;
+            _toolCallDeltas.Writer.TryWrite(json.ToJsonString());
+        }
 
         /// <summary>
         /// The loop's rejection as the class <c>errors.d.ts</c> declares — a spent budget is a
@@ -960,6 +1002,7 @@ public sealed partial class JsLlmFacade
         internal void CompleteDeltas()
         {
             _deltas?.Writer.TryComplete();
+            _toolCallDeltas?.Writer.TryComplete();
             _toolRequests?.Writer.TryComplete();
         }
 
@@ -992,7 +1035,7 @@ public sealed partial class JsLlmFacade
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Major Code Smell", "S1144:Unused private types or members should be removed",
             Justification = "Called by the act trampoline (ActFactorySource) through Jint. The type is private so the script sees nothing else.")]
         public JsValue spawn(string argumentsJson) =>
-            JsHostError.Guard(_facade._engine, () => Tools.OfType<SpawnToolProxy>().Single().Tool.Start(argumentsJson));
+            JsHostError.Guard(_facade._engine, () => Tools.OfType<SpawnToolProxy>().Single().Tool.Start(argumentsJson, PermissionMode));
 
         /// <summary>Posts one <c>spawn_agent</c> call to the JS pump and awaits the child's output.</summary>
         internal Task<Orkeon.Domain.Tools.Protocol.ToolCallResponse> CallSpawnAsync(
@@ -1440,7 +1483,7 @@ public sealed partial class JsLlmFacade
         session.Tools.FirstOrDefault(t => string.Equals(t.Name, toolName, StringComparison.OrdinalIgnoreCase));
 
     private readonly record struct PreparedToolCall(
-        Orkeon.Application.Interfaces.LLM.ParsedToolCall Call, IBaseTool? Tool, Dictionary<string, object?> Arguments, string? Refusal);
+        Orkeon.Application.Interfaces.LLM.ParsedToolCall Call, IBaseTool? Tool, Dictionary<string, object?> Arguments, string? Refusal, bool Ask = false);
 
     /// <summary>
     /// Runs the calls of one model turn group by group (<see cref="ToolCallScheduler"/>): per group the
@@ -1477,7 +1520,7 @@ public sealed partial class JsLlmFacade
             var toRun = prepared.Where(p => p.Refusal is null).ToList();
             var outputs = await ToolCallScheduler.RunAsync(
                 toRun, _ => group.IsParallel,
-                (p, _) => ExecuteToolAsync(p.Tool, p.Call.ToolName, p.Arguments),
+                (p, _) => ExecuteToolAsync(p.Tool, p.Call.ToolName, p.Arguments, session.PermissionMode, p.Ask),
                 ToolLimits.MaxParallelToolCalls, _ct).ConfigureAwait(false);
 
             var executed = 0;
@@ -1524,11 +1567,14 @@ public sealed partial class JsLlmFacade
             // Deny (an operator's refusal included, when an approval channel answered) and an
             // Ask the gate let through undecided become a motivated refusal fed back as the
             // tool result — no exception, the model can adapt. Denied calls consume no
-            // tool-call budget.
+            // tool-call budget. Through the host's pipeline the gate is the pipeline's: this
+            // verdict is null, onToolCall sees the call before the gate decides, and the budget
+            // is charged by the pipeline once the gate admits the call (ToolInvocationCaller.Admitted).
             activity?.SetTag("orkeon.llm.act.permission", "denied");
             return new(call, tool, toolArgs, $"DENIED: {verdict.Message ?? $"tool '{toolName}' is not permitted in mode '{permissionMode}'."}");
         }
 
+        var ask = false;
         if (session.HasToolCallback)
         {
             var callback = await RunToolCallbackAsync(session, tool, toolName, toolArgs).ConfigureAwait(false);
@@ -1538,12 +1584,15 @@ public sealed partial class JsLlmFacade
                 return new(call, tool, toolArgs, $"DENIED: {callback.DenyReason}");
             }
             toolArgs = callback.Arguments;
+            ask = callback.Ask;
         }
 
-        // Recorded here, NOT inside ExecuteToolAsync: its fault barrier would swallow
-        // BudgetExhaustedException into an "ERROR:" string fed back to the model.
-        _budget?.RecordToolCall();
-        return new(call, tool, toolArgs, null);
+        // Without the host's pipeline the gate has decided: the call is charged here. Through the pipeline it is
+        // charged once the pipeline's gate admits it, so a refused call costs nothing (ExecuteToolAsync lets the
+        // BudgetExhaustedException through its fault barrier).
+        if (_toolInvocation is null)
+            _budget?.RecordToolCall();
+        return new(call, tool, toolArgs, null, ask);
     }
 
     /// <summary>
@@ -1563,20 +1612,43 @@ public sealed partial class JsLlmFacade
                 : text;
     }
 
-    /// <summary>The permission gate's verdict on one call; <c>null</c> when the host registered no gate.</summary>
+    /// <summary>
+    /// The permission gate's verdict on one call; <c>null</c> when the host registered no gate, or when the
+    /// call goes through the host's invocation pipeline, which consults the gate itself (FWK-06: one
+    /// consultation per call). <paramref name="always"/> asks the gate whatever the path: an
+    /// <c>onToolCall</c> that answers <c>ask</c> is a question of its own.
+    /// </summary>
     private async Task<Orkeon.Application.Interfaces.Security.PermissionVerdict?> GateAsync(
-        string toolName, Dictionary<string, object?> toolArgs, string permissionMode, ToolAccess access)
+        string toolName, Dictionary<string, object?> toolArgs, string permissionMode, ToolAccess access, bool always = false)
     {
-        if (_permissionGate is null) return null;
+        if (_permissionGate is null || (PipelineGates && !always)) return null;
         // The gate may hold the call while an operator answers an approval: that time is not
         // the script's, so the engine's wall-clock limit and the agent's wall-time budget
         // both stop while the gate decides (#127).
-        using var paused = _engine.Constraints.Find<PausableTimeConstraint>()?.Pause();
-        using var budgetPaused = _budget?.PauseWallClock();
+        using var paused = PauseClocks();
         return await _permissionGate.CheckAsync(toolName, toolArgs, permissionMode, access, _ct).ConfigureAwait(false);
     }
 
-    private readonly record struct ToolCallbackOutcome(string? DenyReason, Dictionary<string, object?> Arguments);
+    /// <summary>Whether the host's invocation pipeline puts the calls to the permission gate itself.</summary>
+    private bool PipelineGates => _toolInvocation is { GatesPermissions: true };
+
+    /// <summary>
+    /// Stops the engine's wall-clock limit and the agent's wall-time budget until the handle is disposed: the
+    /// time an operator takes to answer an approval is not the script's (#127).
+    /// </summary>
+    private PausedClocks PauseClocks() => new PausedClocks(
+        _engine.Constraints.Find<PausableTimeConstraint>()?.Pause(), _budget?.PauseWallClock());
+
+    private sealed class PausedClocks(IDisposable? engine, IDisposable? budget) : IDisposable
+    {
+        public void Dispose()
+        {
+            budget?.Dispose();
+            engine?.Dispose();
+        }
+    }
+
+    private readonly record struct ToolCallbackOutcome(string? DenyReason, Dictionary<string, object?> Arguments, bool Ask = false);
 
     /// <summary>
     /// Runs the <c>onToolCall</c> callback through the session's pump and applies its verdict:
@@ -1616,7 +1688,10 @@ public sealed partial class JsLlmFacade
             return new(NoValidVerdict, toolArgs);
         if (_permissionGate is null)
             return new("onToolCall asked for approval but no permission gate is registered", toolArgs);
-        var asked = await GateAsync(toolName, toolArgs, "default", ToolAccess.Edit).ConfigureAwait(false);
+        // The pipeline is the one checkpoint when it gates: the call is handed to it as one to approve.
+        if (PipelineGates)
+            return new(null, toolArgs, Ask: true);
+        var asked = await GateAsync(toolName, toolArgs, "default", ToolAccess.Edit, always: true).ConfigureAwait(false);
         return new(DenialOf(asked, toolName, "default"), toolArgs);
     }
 
@@ -1647,7 +1722,7 @@ public sealed partial class JsLlmFacade
     private static string NotAvailable(string name) => $"ERROR: tool '{name}' is not available to this agent.";
 
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Tool-boundary fault barrier: any tool failure is converted to an 'ERROR: ...' string fed back to the model as the tool result, so one faulty tool cannot crash the scripted LLM tool-call loop.")]
-    private async Task<string> ExecuteToolAsync(IBaseTool? tool, string name, Dictionary<string, object?> arguments)
+    private async Task<string> ExecuteToolAsync(IBaseTool? tool, string name, Dictionary<string, object?> arguments, string permissionMode, bool requireApproval = false)
     {
         if (tool is null)
             return NotAvailable(name);
@@ -1661,7 +1736,7 @@ public sealed partial class JsLlmFacade
             {
                 Task<string> guarded;
                 using (HostWorkMemoryConstraint.Exclude(memory))
-                    guarded = InvokeThroughPipelineAsync(_toolInvocation, tool, arguments);
+                    guarded = InvokeThroughPipelineAsync(_toolInvocation, tool, arguments, permissionMode, requireApproval);
                 return await guarded.ConfigureAwait(false);
             }
 
@@ -1676,7 +1751,7 @@ public sealed partial class JsLlmFacade
                 ? "(no output)"
                 : ToolResultLimitsOptions.Cut(JsonSerializer.Serialize(resp.Result), ToolLimits.ResolveFor(tool.Name));
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not Orkeon.Domain.Autonomous.BudgetExhaustedException)
         {
             return $"ERROR: {ex.Message}";
         }
@@ -1689,9 +1764,15 @@ public sealed partial class JsLlmFacade
     /// keeps the <c>ERROR: …</c> shape.
     /// </summary>
     private async Task<string> InvokeThroughPipelineAsync(
-        Orkeon.Application.Interfaces.Security.IToolInvocationPipeline pipeline, IBaseTool tool, Dictionary<string, object?> arguments)
+        Orkeon.Application.Interfaces.Security.IToolInvocationPipeline pipeline, IBaseTool tool, Dictionary<string, object?> arguments, string permissionMode, bool requireApproval)
     {
-        var caller = new Orkeon.Application.Interfaces.Security.ToolInvocationCaller(_agentName, _agentName);
+        var caller = new Orkeon.Application.Interfaces.Security.ToolInvocationCaller(_agentName, _agentName)
+        {
+            PermissionMode = permissionMode,
+            RequireApproval = requireApproval,
+            WaitScope = PauseClocks,
+            Admitted = _budget is null ? null : _budget.RecordToolCall,
+        };
         var outcome = await pipeline.InvokeAsync(
             new Orkeon.Application.Interfaces.Security.ToolInvocation(tool, arguments, caller), _ct).ConfigureAwait(false);
         if (outcome.Blocked)
@@ -1771,9 +1852,27 @@ public sealed partial class JsLlmFacade
         // The turn's own sink (#211): two acts streaming at once each hold one, so the host keeps their
         // output apart. The act knows no label; the host's sink reads the command it runs under, when any.
         var turn = _deltaSink?.BeginTurn(null);
+        // A host with DLP hands it to the engine, or wraps its sink with it: the arguments of each call are then
+        // held until the stream ends, for the sink and for the script's callback alike.
+        var dlp = _toolCallDlp ?? (_deltaSink as Orkeon.Application.Crew.ToolCallDlpDeltaSink)?.Dlp;
+        var held = dlp is null ? null : new Orkeon.Application.Crew.ToolCallDeltaHold();
+        void SendToolCall(ToolCallDelta fragment)
+        {
+            turn?.OnToolCallDelta(fragment);
+            session.OfferToolCallDelta(fragment);
+        }
+
         await foreach (var ev in provider.ChatStreamingAsync(messages, cfg, _ct).ConfigureAwait(false))
         {
-            if (ev.Kind == LlmStreamEventKind.ContentDelta && !string.IsNullOrEmpty(ev.Delta))
+            if (ev.Kind == LlmStreamEventKind.ToolCallDelta && ev.ToolCall is { } fragment)
+            {
+                session.ThrowIfAborted();
+                if (held is null)
+                    SendToolCall(fragment);
+                else
+                    held.Add(fragment);
+            }
+            else if (ev.Kind == LlmStreamEventKind.ContentDelta && !string.IsNullOrEmpty(ev.Delta))
             {
                 // An abandoned run stops mid-stream: leaving the enumeration disposes it, and
                 // with it the provider's HTTP read.
@@ -1790,6 +1889,12 @@ public sealed partial class JsLlmFacade
                 final = ev.FinalResponse;
             }
         }
+        if (held is not null)
+        {
+            foreach (var redacted in await held.RedactAsync(dlp!, _logger, _ct).ConfigureAwait(false))
+                SendToolCall(redacted);
+        }
+
         if (sankDeltas)
             turn!.OnTurnCompleted();
         return final ?? new LlmResponse { Content = "" };
@@ -1799,6 +1904,19 @@ public sealed partial class JsLlmFacade
     /// Reads the <c>permissionMode</c> act option (posed by the script, e.g. threaded from a
     /// crew input). Defaults to <c>"default"</c> — the most restrictive interactive policy.
     /// </summary>
+    /// <summary>
+    /// The stricter of <paramref name="own"/> and <paramref name="floor"/> (SEC-7). A name the gate does not
+    /// know counts as <c>default</c>, as the gate reads it.
+    /// </summary>
+    internal static string Floored(string own, string? floor)
+    {
+        if (floor is null || !Orkeon.Domain.Security.PermissionModes.TryParse(floor, out var outer))
+            return own;
+        var mode = Orkeon.Domain.Security.PermissionModes.TryParse(own, out var parsed) ? parsed : Orkeon.Domain.Security.PermissionMode.Default;
+        var stricter = mode.Stricter(outer);
+        return stricter == mode ? own : stricter.ToWireName();
+    }
+
     private static string ResolvePermissionMode(JsValue? options)
     {
         if (options is null || options.IsUndefined() || options.IsNull()) return "default";

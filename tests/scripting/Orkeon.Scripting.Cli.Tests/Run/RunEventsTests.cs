@@ -1,3 +1,4 @@
+using Orkeon.Hosting.Runs;
 using System.Collections.Immutable;
 using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
@@ -149,6 +150,20 @@ public sealed class RunEventsTests : IDisposable
     }
 
     [Fact]
+    [Trait("BR", "FWK-15")]
+    public async Task A_task_events_carry_the_attempt_they_belong_to()
+    {
+        var observer = new RunEventObserver(Writer(), inner: null, stream: false);
+
+        await observer.OnTaskStartedAsync(Started("collect") with { Attempt = 2 }, TestContext.Current.CancellationToken);
+        await observer.OnTaskCompletedAsync(Snapshot("collect") with { Attempt = 3 }, TestContext.Current.CancellationToken);
+
+        var events = Events();
+        Assert.Equal(2, events[0].GetProperty("attempt").GetInt32());
+        Assert.Equal(3, events[1].GetProperty("attempt").GetInt32());
+    }
+
+    [Fact]
     public async Task A_skipped_task_says_so_on_the_wire()
     {
         // LLM-11: never started, completed with success=false, and told apart from a failure
@@ -197,6 +212,20 @@ public sealed class RunEventsTests : IDisposable
         Assert.Equal(
             "Task write (Writer) skipped: it depends on task score, which did not succeed",
             events[1].GetProperty("skipReason").GetString());
+    }
+
+    [Fact]
+    [Trait("BR", "FWK-07")]
+    public async Task ShouldEmitResumed_WhenTaskCompletedFromACheckpoint()
+    {
+        var observer = new RunEventObserver(Writer(), inner: null, stream: false);
+
+        await observer.OnTaskCompletedAsync(Snapshot("write", "Writer") with { Resumed = true }, TestContext.Current.CancellationToken);
+        await observer.OnTaskCompletedAsync(Snapshot("check", "Writer"), TestContext.Current.CancellationToken);
+
+        var events = Events();
+        Assert.True(events[0].GetProperty("resumed").GetBoolean());
+        Assert.False(events[1].GetProperty("resumed").GetBoolean());
     }
 
     [Fact]
@@ -434,7 +463,7 @@ public sealed class RunEventsTests : IDisposable
         using var scratch = new ScriptScratch();
         var crew = scratch.WriteScript("crew.yaml", TwoTaskCrew);
         using var console = new TestConsole(stdin: string.Empty);
-        await using var observed = new ObservedRunContext(Writer(), stream: false, clientName: "studio", console.Input);
+        await using var observed = new ObservedRunContext(RunEventStreams.Stdout(_output, null, new FakeRunTimeProvider()), stream: false, clientName: "studio", console.Input);
 
         var exit = await RunnerExecution.RunOneShotAsync(
             RunCommand.ToRunnerOptions(console, new RunCommandOptions { ScriptPath = crew, AllowExternalMounts = true, Events = "jsonl" }),

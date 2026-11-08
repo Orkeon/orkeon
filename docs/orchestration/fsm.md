@@ -9,10 +9,10 @@
 Orkeon provides a generic finite state machine framework (`StateMachine<TState, TEvent>`) in the Domain layer, with a built-in circuit breaker (`CircuitBreakerPolicy`) that stops a runaway loop. It is a building block for your own code and for three shipped consumers:
 
 - **`orkeon forge`** runs its session cycle (brief → blueprint → render → validate → test → diagnose → verdict) on a `StateMachine<ForgeState, ForgeTrigger>` (`ForgeStateMachineFactory`).
-- **The [Graph mode](./graph.md)** bounds its `StateGraph` runs with a `CircuitBreakerPolicy` built from the crew's `graphConfig`.
+- **The [Graph mode](./graph.md)** bounds its `StateGraph` runs with a `CircuitBreakerPolicy` built from the crew's `graph:` block.
 - **The corrective RAG graph** (`CorrectiveRagPipeline`) bounds its retrieve → evaluate → regenerate loop with its own `CircuitBreakerPolicy`.
 
-> **No task state machine.** A crew's tasks do not run through an FSM. What bounds a task is its agent loop: the agent's `maxIter`, a stop after 3 consecutive identical tool errors, and the output-validation retries. The former task specialization (`TaskExecutionStateMachine`) and the YAML `circuitBreaker:` blocks that configured it were never run and have been removed; a crew that still writes `circuitBreaker:` is refused at load. In YAML, the only circuit-breaker setting is a Graph crew's `graphConfig` (see [YAML schema](../architecture/yaml-schema.md)).
+> **No task state machine.** A crew's tasks do not run through an FSM. What bounds a task is its agent loop: the agent's `maxIter`, a stop after 3 consecutive identical tool errors, and the output-validation retries. The former task specialization (`TaskExecutionStateMachine`) and the YAML `circuitBreaker:` blocks that configured it were never run and have been removed; a crew that still writes `circuitBreaker:` is refused at load. In YAML, the only circuit-breaker setting is a Graph crew's `graph:` block (see [YAML schema](../architecture/yaml-schema.md)).
 
 ## Architecture
 
@@ -29,7 +29,7 @@ The framework components live in `Orkeon.Domain.Common.StateMachine`:
 | `IMutableStateMachine<TState, TEvent>` | Interface with `Fire()`, `TryFire()`, `ResetCircuitBreaker()`, events |
 | `CircuitBrokenException`, `InvalidTransitionException<TState, TEvent>` | Tripped breaker; no transition for this state + event |
 
-`CircuitBreakerPolicyFactory` (`Orkeon.Infrastructure.Configuration`) turns a Graph crew's `graphConfig` into a policy (`ResolveGraph`).
+`CircuitBreakerPolicyFactory` (`Orkeon.Infrastructure.Configuration`) turns a Graph crew's `graph:` block into a policy (`ResolveGraph`).
 
 ## Circuit breaker
 
@@ -61,7 +61,7 @@ Three presets are provided via `CircuitBreakerPolicy`:
 | `Default` | 100 | 5 min | 10 | 30 min | false |
 | `Permissive` | 1000 | 30 min | 50 | 2 h | false |
 
-`new CircuitBreakerPolicy()` equals `Default`. `Strict` is the fallback of `StateGraph` and of `CircuitBreakerPolicyFactory.ResolveGraph` when `graphConfig` names no preset (or an unknown one).
+`new CircuitBreakerPolicy()` equals `Default`. `Strict` is the fallback of `StateGraph` and of `CircuitBreakerPolicyFactory.ResolveGraph` when `graph:` names no preset (or an unknown one).
 
 ### Observability
 
@@ -126,7 +126,7 @@ The `IProcessStrategy` implementations execute a task through `IAgentExecutionSe
 | `Orkeon.Domain.Tests/Common/StateMachine/StateMachineTests.cs` | Valid/invalid transitions, terminal states, complete cycle |
 | `Orkeon.Domain.Tests/Common/StateMachine/StateMachineGuardTests.cs` | Typed guards, guard priority, on-transition actions |
 | `Orkeon.Domain.Tests/Common/StateMachine/CircuitBreakerTests.cs` | Max transitions, cycle detection, degraded mode, reset, histogram |
-| `Orkeon.Infrastructure.Tests/Configuration/CircuitBreakerPolicyFactoryGraphTests.cs` | `graphConfig` → policy: presets, overrides, fallback |
+| `Orkeon.Infrastructure.Tests/Configuration/CircuitBreakerPolicyFactoryGraphTests.cs` | `graph:` → policy: presets, overrides, fallback |
 | `Orkeon.Scripting.Cli.Tests/Forge/ForgeStateMachineTests.cs` | The forge cycle's legal moves |
 
 ```bash

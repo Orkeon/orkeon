@@ -23,7 +23,7 @@ namespace Orkeon.Infrastructure.Tests.Configuration;
 /// </summary>
 public partial class YamlCrewExportRoundTripTests
 {
-    private static readonly string[] WitnessFiles = ["sequential.yaml", "hierarchical.yaml", "autonomous.yaml"];
+    private static readonly string[] WitnessFiles = ["sequential.yaml", "hierarchical.yaml", "autonomous.yaml", "graph.yaml"];
 
     private readonly YamlDotNetSerializer _serializer = new();
     private readonly FakeFileSystemService _fs = new();

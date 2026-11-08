@@ -47,6 +47,9 @@ public sealed class JsTask
     /// <summary>YAML parity <c>asyncExecution</c> flag captured by <c>taskBuilder().asyncExecution(...)</c>.</summary>
     internal bool AsyncExecutionFlag { get; }
 
+    /// <summary>YAML parity <c>retry:</c> captured by <c>taskBuilder().retry(...)</c>.</summary>
+    internal Orkeon.Domain.Task.TaskRetryPolicy? RetryPolicy { get; }
+
     /// <summary>Task-level tools (names or <see cref="JsTool"/> instances) captured by <c>taskBuilder().tools(...)</c>.</summary>
     internal IReadOnlyList<JsValue> Tools { get; }
 
@@ -86,6 +89,7 @@ public sealed class JsTask
         ProfileValue = metadata.Profile;
         HumanInputFlag = metadata.HumanInput;
         AsyncExecutionFlag = metadata.AsyncExecution;
+        RetryPolicy = metadata.Retry;
         Tools = metadata.Tools;
         Key = metadata.Key;
         DecisionSpec = metadata.DecisionSpec;

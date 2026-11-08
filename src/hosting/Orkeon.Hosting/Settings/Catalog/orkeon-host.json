@@ -6,30 +6,34 @@
     "A2A:Security:AzureAD",
     "A2A:Security:Oidc",
     "BRAVE_API_KEY",
+    "Evaluation",
     "Llm",
     "LlmLogging",
     "Logging",
     "MCP",
     "MCP:Server",
     "Memory",
+    "Orkeon:Checkpointing",
     "Orkeon:ChromaDb",
     "Orkeon:Cli:Memory",
     "Orkeon:Cli:Session",
     "Orkeon:CodeSandbox",
     "Orkeon:CodeSandbox:Docker",
+    "Orkeon:CognitiveMemory",
     "Orkeon:Consensus",
     "Orkeon:CostTracking",
     "Orkeon:CrewFactory",
     "Orkeon:CrewMemory",
     "Orkeon:Decision",
-    "Orkeon:Decision:Guard",
     "Orkeon:EmbeddingCache",
     "Orkeon:Embeddings",
     "Orkeon:Encryption",
+    "Orkeon:ExecutionState:Persistence",
     "Orkeon:FileSystem",
     "Orkeon:Guardian",
     "Orkeon:Host",
     "Orkeon:Host:Discord",
+    "Orkeon:HumanInput",
     "Orkeon:Kev",
     "Orkeon:LanceDb",
     "Orkeon:Liquid",
@@ -40,6 +44,7 @@
     "Orkeon:Rag:Retrieval:Hybrid",
     "Orkeon:Rag:WebFallback",
     "Orkeon:Redis",
+    "Orkeon:RunHistory",
     "Orkeon:Sandbox",
     "Orkeon:Scripting:AgentMemory",
     "Orkeon:Scripting:Limits",
@@ -109,6 +114,97 @@
       "description": "The listener's port."
     },
     {
+      "path": "Orkeon:Host:Api:Enabled",
+      "section": "Orkeon:Host",
+      "type": "boolean",
+      "default": false,
+      "description": "Serves the API. Off, the host listens on no port for it."
+    },
+    {
+      "path": "Orkeon:Host:Api:IdempotencyMaxKeys",
+      "section": "Orkeon:Host",
+      "type": "integer",
+      "default": 10000,
+      "description": "The most idempotency keys held in memory; the oldest finished ones go first."
+    },
+    {
+      "path": "Orkeon:Host:Api:IdempotencyTtl",
+      "section": "Orkeon:Host",
+      "type": "duration",
+      "default": "1.00:00:00",
+      "description": "How long an idempotency key is remembered. After it, the same key starts a new run."
+    },
+    {
+      "path": "Orkeon:Host:Api:MaxEventStreams",
+      "section": "Orkeon:Host",
+      "type": "integer",
+      "default": 64,
+      "description": "The most event streams (`GET /runs/{id}/events`) served at once. Beyond it a stream is refused with a 503 `too_many_streams` and a `Retry-After`: each stream holds a connection and polls the history."
+    },
+    {
+      "path": "Orkeon:Host:Api:Prefix",
+      "section": "Orkeon:Host",
+      "type": "string",
+      "default": "http://localhost:5190/",
+      "description": "The `HttpListener` prefix: scheme, host, port and a closing slash. A host the loopback does not contain (`http://+:5190/`) requires an authentication scheme or mutual TLS under `Security`."
+    },
+    {
+      "path": "Orkeon:Host:Api:ReadinessCacheTtl",
+      "section": "Orkeon:Host",
+      "type": "duration",
+      "default": "00:00:03",
+      "description": "How long a `/readyz` answer is reused before the checks run again. Readiness reaches the state store and the history: a probe loop or a hostile client must not turn each request into that work. Zero runs the checks every time."
+    },
+    {
+      "path": "Orkeon:Host:Api:ReadinessTags",
+      "section": "Orkeon:Host",
+      "type": "list of string",
+      "default": [],
+      "description": "Health-check tags added to readiness besides `ready`. `llm` adds the LLM provider check, which reaches an external service: left out by default, so a provider outage does not take the daemon out of rotation."
+    },
+    {
+      "path": "Orkeon:Host:Api:Security:AllowedAuthSchemes",
+      "section": "Orkeon:Host",
+      "type": "list of string",
+      "default": [],
+      "description": "Authentication schemes accepted: `Bearer` and/or `ApiKey`. Empty means no authentication is required. Each declared scheme is validated, not merely matched (see `A2ACredentialValidator`)."
+    },
+    {
+      "path": "Orkeon:Host:Api:Security:ApiKeySecretNames",
+      "section": "Orkeon:Host",
+      "type": "list of string",
+      "default": [],
+      "description": "Names of the secrets holding the API keys the `ApiKey` scheme accepts, read through the `ISecretProvider` on every request."
+    },
+    {
+      "path": "Orkeon:Host:Api:Security:RequireMutualTls",
+      "section": "Orkeon:Host",
+      "type": "boolean",
+      "default": false,
+      "description": "Whether a client certificate chaining to a trust anchor is required (fail-closed without one)."
+    },
+    {
+      "path": "Orkeon:Host:Api:Security:TrustedCertificateAuthorities",
+      "section": "Orkeon:Host",
+      "type": "list of string",
+      "default": [],
+      "description": "Paths of the CA certificates a client certificate must chain to when mutual TLS is required."
+    },
+    {
+      "path": "Orkeon:Host:Api:Security:TrustedClientCertificateThumbprints",
+      "section": "Orkeon:Host",
+      "type": "list of string",
+      "default": [],
+      "description": "Thumbprints of client certificates pinned exactly (still refused outside their validity window)."
+    },
+    {
+      "path": "Orkeon:Host:Api:SseKeepAliveInterval",
+      "section": "Orkeon:Host",
+      "type": "duration",
+      "default": "00:00:15",
+      "description": "How long a quiet event stream waits before it writes a keep-alive frame (an SSE comment, a blank NDJSON line). The write is what detects a client that went away: an abandoned stream of a long run would otherwise live as long as the run."
+    },
+    {
       "path": "Orkeon:Host:Crews:<i>:Description",
       "section": "Orkeon:Host",
       "type": "string",
@@ -154,7 +250,7 @@
       "section": "Orkeon:Host",
       "type": "duration",
       "default": "00:30:00",
-      "description": "How long a run may take before the host cancels it. A daemon has no user watching to press Ctrl-C, so an unbounded run is a stuck daemon."
+      "description": "How long a run may take before the host cancels it. A daemon has no user watching to press Ctrl-C, so an unbounded run is a stuck daemon. The clock stops while the run holds on a question to a person: the hold timeout, not this one, ends that wait."
     },
     {
       "path": "Orkeon:Host:ShutdownGracePeriod",

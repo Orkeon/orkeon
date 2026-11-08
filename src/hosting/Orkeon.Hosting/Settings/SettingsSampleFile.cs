@@ -59,9 +59,6 @@ internal static class SettingsSampleFile
             [Orkeon.Infrastructure.Decision.SystemOne.DecisionProviderDescriptor.Kev.Section] =
                 "Shown, not written: Kev is never deduced, so the section written without `Orkeon:Decision:Provider` set to `kev` " +
                 "is ignored and the host warns about it at every start.",
-            [Orkeon.Infrastructure.Decision.DecisionGuardOptions.SectionName] =
-                "Shown, not written: the guard is registered with the decision model, which the host registers for the active " +
-                "decision provider, whichever it is; written with no provider, the section is refused as a setting the host does not read.",
         };
 
     /// <summary>The file for <paramref name="catalog"/>: the sections at least one shipped binary reads.</summary>

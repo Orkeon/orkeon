@@ -116,6 +116,14 @@ internal sealed partial class HostedCrewA2ARouter : IA2ATaskRouter
             Output = result.Message,
             Timestamp = DateTime.UtcNow,
         },
+        // The run stopped on a question to a human (FWK-23): the peer reads input-required and the question.
+        HostedRunOutcome.WaitingForInput => new A2ATaskResponse
+        {
+            TaskId = request.Id,
+            Status = A2ATaskStatus.InputRequired,
+            Output = result.Message,
+            Timestamp = DateTime.UtcNow,
+        },
         HostedRunOutcome.Cancelled => new A2ATaskResponse
         {
             TaskId = request.Id,

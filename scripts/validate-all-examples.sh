@@ -18,11 +18,19 @@
 #   scripts/validate-all-examples.sh                 # full sweep (CI)
 #   scripts/validate-all-examples.sh --sample 8      # ~1 config per category, up to N
 #   scripts/validate-all-examples.sh --configs a,b   # exactly these configs
+#   scripts/validate-all-examples.sh --llm-mock      # run the mocked subset, validate the rest
 #
 # Options:
 #   --sample <N>             validate one config per category (in category order), up to N.
 #   --configs <csv>          validate exactly this comma-separated list of config paths
 #                            (absolute, repo-relative, or examples/-relative).
+#   --llm-mock               run for real, offline, every example that has a responses file
+#                            examples/mock-responses/<example>.jsonl (<example> is the name of its
+#                            folder): `orkeon run <config> --llm-mock <file>` must exit 0. Those files
+#                            cover each orchestration mode (sequential, parallel, hierarchical,
+#                            consensual, graph, autonomous) with no network tool; every other example
+#                            stays on --validate. The mocked examples are added to the sweep when they
+#                            sit outside the numbered categories (examples/autonomous-budget).
 #
 # Environment overrides:
 #   VALIDATE_JOBS=<n>        parallel workers (default 4). Each --validate is I/O-wait
@@ -60,14 +68,29 @@ if [[ "${1:-}" == "__worker" ]]; then
     config="$2"
     resultfile="$3"
 
-    cmd=(dotnet "$ORK_DLL" run "$config" --validate)
+    # --llm-mock: an example with a responses file runs for real, offline; the others validate.
+    mock_file=""
+    if [[ "${VALIDATE_LLM_MOCK:-0}" == "1" ]]; then
+        mock_file="examples/mock-responses/$(basename "$(dirname "$config")").jsonl"
+        [[ -f "$mock_file" ]] || mock_file=""
+    fi
+
+    if [[ -n "$mock_file" ]]; then
+        cmd=(dotnet "$ORK_DLL" run "$config" --llm-mock "$mock_file")
+    else
+        cmd=(dotnet "$ORK_DLL" run "$config" --validate)
+    fi
 
     # Capture combined output; --validate prints "VALIDATION OK:"/"VALIDATION FAILED:".
     out="$(timeout "$PER_TIMEOUT" "${cmd[@]}" 2>&1)"
     code=$?
 
     if [[ $code -eq 0 ]]; then
-        detail="$(printf '%s\n' "$out" | grep -m1 'VALIDATION OK:' | sed 's/.*(\(.*\)).*/\1/')"
+        if [[ -n "$mock_file" ]]; then
+            detail="llm-mock run OK ($(basename "$mock_file"))"
+        else
+            detail="$(printf '%s\n' "$out" | grep -m1 'VALIDATION OK:' | sed 's/.*(\(.*\)).*/\1/')"
+        fi
         printf 'OK\t%s\t%s\n' "$config" "$detail" > "$resultfile"
     elif [[ $code -eq 124 ]]; then
         printf 'FAIL\t%s\ttimeout after %ss\n' "$config" "$PER_TIMEOUT" > "$resultfile"
@@ -87,6 +110,7 @@ while [[ $# -gt 0 ]]; do
     case "$1" in
         --sample)   SAMPLE="${2:-}"; shift 2 ;;
         --configs)  EXPLICIT_CONFIGS="${2:-}"; shift 2 ;;
+        --llm-mock) export VALIDATE_LLM_MOCK=1; shift ;;
         -h|--help)  grep -E '^#( |$)' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
         *) echo "ERROR: unknown argument '$1' (see --help)" >&2; exit 2 ;;
     esac
@@ -123,6 +147,16 @@ fi
 mapfile -t ALL_CONFIGS < <(git ls-files --cached --others --exclude-standard -- 'examples/0[0-9]-*' \
     | grep -E '^examples/0[0-9]-[^/]+/.*(^|/)(config\.yaml|main\.ork\.ts)$' \
     | sort -u | while IFS= read -r f; do [[ -f "$f" ]] && printf '%s\n' "$f"; done)
+
+# --llm-mock: a mocked example outside the numbered categories (examples/<name>/config.yaml with
+# examples/mock-responses/<name>.jsonl) joins the sweep.
+if [[ "${VALIDATE_LLM_MOCK:-0}" == "1" ]]; then
+    for mock in examples/mock-responses/*.jsonl; do
+        name="$(basename "$mock" .jsonl)"
+        extra="examples/$name/config.yaml"
+        [[ -f "$extra" ]] && ALL_CONFIGS+=("$extra")
+    done
+fi
 
 # Normalise excludes into a newline list of substrings.
 declare -a EXCL=()

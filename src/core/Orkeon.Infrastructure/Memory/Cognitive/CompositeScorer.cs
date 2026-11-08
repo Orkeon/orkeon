@@ -57,6 +57,10 @@ public sealed class CompositeScorer
                     continue;
             }
 
+            // Relevance is required apart: recency and importance alone must not carry an unrelated memory.
+            if (semanticScore < options.MinSemanticScore)
+                continue;
+
             // Composite score
             var composite = options.SemanticWeight * semanticScore
                           + options.RecencyWeight * recencyScore

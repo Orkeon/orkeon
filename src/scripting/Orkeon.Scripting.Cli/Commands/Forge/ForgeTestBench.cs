@@ -234,12 +234,13 @@ internal sealed class ForgeCrewTestBench : IForgeTestBench
         var loggerFactory = _services.GetRequiredService<Microsoft.Extensions.Logging.ILoggerFactory>();
         var engineFactory = new Orkeon.Scripting.JsEngineFactory(
             loggerFactory: loggerFactory,
-            builtInTools: _services.GetServices<Orkeon.Domain.Tools.IBaseTool>().ToList(),
+            builtInTools: _services.GetServices<Orkeon.Domain.Tools.IBaseTool>().OfType<Orkeon.Domain.Tools.IBaseTool>().ToList(),
             llmProvider: _services.GetService<Orkeon.Domain.SharedKernel.ILlmProvider>(),
             hostPorts: new Orkeon.Scripting.ScriptingHostPorts
             {
                 PermissionGate = _services.GetService<Orkeon.Application.Interfaces.Security.IPermissionGate>(),
                 DeltaSink = _services.GetService<Orkeon.Application.Interfaces.Ports.ILlmDeltaSink>(),
+                ToolCallDlp = Orkeon.Application.Crew.ToolCallDeltaDlp.From(_services),
                 ToolInvocation = _services.GetService<Orkeon.Application.Interfaces.Security.IToolInvocationPipeline>(),
                 LlmProfiles = _services.GetService<Orkeon.Application.Interfaces.Ports.ILlmProfileRegistry>(),
             });

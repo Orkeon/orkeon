@@ -80,7 +80,7 @@ public sealed class UnknownCrewYamlKeysTests : IDisposable
     [InlineData("", "", "    llm_override:\n      temprature: 0.1", "temprature", "tasks[t].llm_override.temprature", "temperature")]
     [InlineData("", "", "    deliverable:\n      pth: out.md", "pth", "tasks[t].deliverable.pth", "path")]
     [InlineData("", "    guardrails:\n      rule: [x]", "", "rule", "agents[researcher].guardrails.rule", "rules")]
-    [InlineData("graphConfig:\n  maxTransition: 3", "", "", "maxTransition", "graphConfig.maxTransition", "maxTransitions")]
+    [InlineData("graph:\n  maxTransition: 3", "", "", "maxTransition", "graph.maxTransition", "maxTransitions")]
     [InlineData("rag:\n  collections:\n    docs:\n      sources: [a]\n      chunking: { max_token: 5 }", "", "", "chunking", "rag.collections[docs].chunking.max_token", "max_tokens")]
     [InlineData("links:\n  - to: x\n    allowed_topic: [a]", "", "", "allowed_topic", "links[0].allowed_topic", "allowed_topics")]
     [InlineData("", "    knowledge:\n      - docs\n      - collection: docs\n        top_kk: 3", "", "top_kk", "agents[researcher].knowledge[1].top_kk", "top_k")]

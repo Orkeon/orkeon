@@ -53,7 +53,7 @@ public sealed class RunMeterCoverageTests : IDisposable
         var vendor = new ScriptedCrewVendor();
         using var console = new TestConsole(stdin: string.Empty);
         await using var observed = new ObservedRunContext(
-            new OrkeonEventWriter(_output, new FakeOrkeonClock()), stream: false, clientName: "studio", console.Input);
+            RunEventStreams.Stdout(_output, null, new FakeRunTimeProvider()), stream: false, clientName: "studio", console.Input);
 
         // The real runner host, observed the way `orkeon run --events jsonl` observes it; the
         // vendor enters it like any provider the factory does not build.

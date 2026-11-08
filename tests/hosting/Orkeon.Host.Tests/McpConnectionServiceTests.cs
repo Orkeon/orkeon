@@ -52,6 +52,57 @@ public sealed class McpConnectionServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task A_bearer_server_refuses_without_the_token_and_serves_with_it()
+    {
+        var variable = $"ORKEON_TEST_MCP_TOKEN_{Guid.NewGuid():N}";
+        await using var server = new FakeHttpMcpServer("search_issues") { RequiredBearer = "t0ken-v4lue" };
+        var logs = new List<string>();
+        var settings = $$"""
+            { "MCP": { "Servers": { "tracker": { "Transport": "Sse", "Url": "{{server.Url}}",
+              "Auth": { "Type": "Bearer", "TokenEnv": "{{variable}}" } } } } }
+            """;
+
+        // The variable is absent: the server is set aside before any request, and the host starts.
+        using (var without = Build(settings, logs))
+        {
+            await without.StartAsync(TestContext.Current.CancellationToken);
+            await without.StopAsync(TestContext.Current.CancellationToken);
+            Assert.Single(logs, line => line.Contains($"{variable}", StringComparison.Ordinal));
+            Assert.Null(await without.Services.GetRequiredService<IToolRegistry>().GetToolByNameAsync("search_issues"));
+        }
+
+        Environment.SetEnvironmentVariable(variable, "wr0ng-v4lue");
+        try
+        {
+            using var wrong = Build(settings, logs);
+            await wrong.StartAsync(TestContext.Current.CancellationToken);
+            await wrong.StopAsync(TestContext.Current.CancellationToken);
+            Assert.True(server.UnauthorizedCount > 0);
+            Assert.Contains(logs, line => line.Contains("401", StringComparison.Ordinal));
+
+            Environment.SetEnvironmentVariable(variable, "t0ken-v4lue");
+            using var right = Build(settings, logs);
+            await right.StartAsync(TestContext.Current.CancellationToken);
+            try
+            {
+                Assert.NotNull(await right.Services.GetRequiredService<IToolRegistry>().GetToolByNameAsync("search_issues"));
+            }
+            finally
+            {
+                await right.StopAsync(TestContext.Current.CancellationToken);
+            }
+
+            // No token, right or wrong, is ever written in an error message or a log line.
+            Assert.DoesNotContain(logs, line => line.Contains("t0ken-v4lue", StringComparison.Ordinal)
+                || line.Contains("wr0ng-v4lue", StringComparison.Ordinal));
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable(variable, null);
+        }
+    }
+
+    [Fact]
     public async Task An_unreachable_server_costs_one_error_line_and_the_host_starts()
     {
         var logs = new List<string>();

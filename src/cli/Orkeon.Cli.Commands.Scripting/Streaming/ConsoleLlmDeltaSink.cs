@@ -63,6 +63,12 @@ public sealed class ConsoleLlmDeltaSink : ILlmDeltaSink
         turn.OnDelta(delta);
     }
 
+    /// <summary>A fragment of a tool call: the console renders the model's text, so it writes nothing (FWK-20).</summary>
+    /// <param name="toolCall">The fragment.</param>
+    public void OnToolCallDelta(Orkeon.Domain.SharedKernel.ValueObjects.ToolCallDelta toolCall)
+    {
+    }
+
     /// <summary>The end of the shared turn of the callers that opened none.</summary>
     public void OnTurnCompleted()
     {

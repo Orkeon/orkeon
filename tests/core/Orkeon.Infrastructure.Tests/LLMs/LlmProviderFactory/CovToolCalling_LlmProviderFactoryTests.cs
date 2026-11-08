@@ -22,7 +22,7 @@ public class CovToolCalling_LlmProviderFactoryTests
 
     [SuppressMessage("Reliability", "CA2000:Dispose objects before losing scope", Justification = "Stub factories (no-op Dispose) are owned by the returned LlmProviderFactory for the duration of the test.")]
     private static LlmProviderFactory NewFactory()
-        => new(new StubHttpClientFactory(), new StubLoggerFactory());
+        => new(new StubHttpClientFactory(), new StubLoggerFactory(), new Orkeon.Tests.Shared.FileSystem.FakeFileSystemService());
 
     // ── Explicit-type provider creation (covers every CreateXxxProvider) ──
 

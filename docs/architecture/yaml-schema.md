@@ -33,7 +33,7 @@ planning: bool            # default: false. true: before the first task, a plann
 maxRpm: int               # default: none — at most N model requests per minute for the whole crew, all its agents and its manager together (parallel waves included); one more waits its turn. CrewAI's max_rpm (max_rpm: is accepted). 0 or less fails the load
 budget: {tokens, wallTimeSeconds, toolCalls, delegationDepth, spawnedAgents}  # process: autonomous only — see Autonomous budget below; default: no token or time cap, 50 / 4 / 10
 managerAgent: string      # The key of one of the crew's agents (any other name fails the load, listing them). Hierarchical: the manager — required (omitted, the load fails); it assigns and reviews on its own llm: block, profile and model. Consensual: the arbiter of the ManagerDecision fallback (idle, with a warning at the start of the run, under another fallback). Any other process: refused at load
-graphConfig: {…}          # Graph mode settings, the crew's only circuit-breaker setting (see the dedicated section)
+graph: {…}                # Graph mode: nodes, edges and the circuit-breaker settings (see the dedicated section)
 
 llm:                      # Crew-default LLM, merged FIELD BY FIELD under each agent's own llm: (same shape as agents.<id>.llm)
   profile: string         # Host LLM profile (Llm:Profiles:<name>) for every agent — unknown → the load fails, listing the host's profiles
@@ -72,6 +72,7 @@ agents:
     maxIter: int          # default: 20 — the turns the agent may take on a task (C# and .ork.ts too). 0 or less fails the load
     maxRpm: int           # default: none — at most N model requests per minute for this agent; one more waits its turn. The host's RateLimiting:AgentRequestsPerMinute bounds it too, the stricter winning. 0 or less fails the load
     maxExecutionTime: int # default: none — the seconds a task may take on this agent (alias max_execution_time); 0 or less, or above 4294967 (about 49.7 days), fails the load, and so does a limit on the hierarchical manager
+    permissionMode: string # default: none (Orkeon:Security:PermissionGate:DefaultMode) — default, acceptEdits, bypassPermissions, plan or dontAsk (C# AgentBuilder.PermissionMode): the mode the permission gate reads for this agent's tool calls, once Orkeon:Security:PermissionGate:Enabled is true; any other value fails the load
     working_root: string  # default: none — a virtual path (alias workingRoot, C# AgentBuilder.WorkingRoot) under a mount that confines this agent's file tools and shell_command to it; refused at run start, naming the root, when no mount holds it
     verbose: bool         # default: false — detailed logs for this agent (tool calls, tool results, model responses, at Information, category Orkeon.Verbose)
     llm:                  # Omitted (and no crew llm:) → the runner's Llm settings section
@@ -114,7 +115,11 @@ tasks:
     agent: string         # Key of the agent assigned to the task (a key matching no agent fails the load, listing the crew's agents)
     dependencies: [string] # Keys of prerequisite tasks (guarantees ordering; an unknown key fails the load, listing the crew's tasks; so does a cycle)
     asyncExecution: bool  # default: false — sequential: runs alongside the next tasks, a dependant waits for it; parallel: no effect of its own; other modes: true fails the load
-    humanInput: bool      # default: false — requests human intervention
+    retry:                # default: none — the task runs once. A failed attempt runs the WHOLE task again (see "Task retry")
+      attempts: int       # required, 1 or more — runs in all, the first one included
+      backoffMs: int      # default: 0 — base wait before a new attempt, in milliseconds
+      backoff: string     # "fixed" (default) | "exponential" (doubles at each retry, capped at 5 minutes)
+    humanInput: bool      # default: false — requests human intervention; with checkpointing the question is durable: the run can stop on it (exit 75) and resume with --input
     context: {key: value} # Additional context data
     tools: [string]       # Tools ADDED to the agent's own for this task only (never replacing them) — resolved like an agent's tools: an unknown name fails the load under StrictTools
     deliverable:          # Output-file contract (ignored without a path)
@@ -159,7 +164,7 @@ tasks:
 Validation happens at load time (`CrewDefinitionValidator`): a crew needs a `name`, a `goal`, at least one agent (each
 with a goal) and at least one task (each with a `description` and an `expectedOutput`); circular
 `dependencies`, a `mounts:` item listed twice or two ids selecting the same root fail the load. So
-does a `circuitBreaker:` key, at the root or on a task: the block was removed (see "Removed: `circuitBreaker`" below), and the load names `graphConfig`
+does a `circuitBreaker:` key, at the root or on a task: the block was removed (see "Removed: `circuitBreaker`" below), and the load names the `graph` block
 instead of ignoring it. And so does a task's `asyncExecution: true` outside `process: sequential` and
 `process: parallel`: the four other modes order their tasks themselves, and the load names every task
 that asks for it rather than ignore the flag (see [Asynchronous tasks](../orchestration/process-types.md#asynchronous-tasks-asyncexecution)).
@@ -174,6 +179,8 @@ An agent's `maxExecutionTime` (or `max_execution_time`) is whole seconds: 0 or l
 ceiling (4294967 s, about 49.7 days) and a limit on the `managerAgent` of a hierarchical crew fail the load, naming
 the agent. A task past its limit ends `ExecutionTimeExceeded` at the latest at the end of the call in progress;
 time spent waiting for a human does not count.
+
+A task's `retry:` without `attempts`, with `attempts` below 1, a negative `backoffMs`, a `backoff` other than `fixed` or `exponential`, or on a decision task, fails the load too, naming the task and the key (see [Task retry](#task-retry)).
 
 A message names an agent or a task by its key — `Agent 'researcher' must have a goal.` —, a
 configuration built in code by its identifier.
@@ -385,34 +392,76 @@ Keys accept snake_case (the form used above) and camelCase. A malformed `knowled
 crashes the loader. The fluent equivalent is `AgentBuilder.WithKnowledge("produits")` /
 `WithKnowledge("produits", opts => { opts.TopK = 8; opts.Profile = "quality"; })` (cumulative).
 
-## Graph configuration
-
-When `process: "graph"` is used, an additional `graphConfig` block configures the state graph engine:
+## Task retry
 
 ```yaml
-graphConfig:
-  maxRetryCycles: int           # default: 2 — retry cycles for failed tasks
-  circuitBreakerPreset: string  # "strict" (default) | "permissive" | "default"
-  maxTransitions: int           # Default: computed, 2 × visits + 1
-  maxStateVisits: int           # Task-attempt cap — default: computed, tasks × (1 + maxRetryCycles)
-  maxTotalDurationSeconds: int  # Total duration in seconds (overrides the preset)
+tasks:
+  fetch:
+    description: Fetch the quotes
+    expectedOutput: A table of quotes
+    agent: trader
+    retry:
+      attempts: 3          # required — 3 runs in all: the first, then at most two retries
+      backoffMs: 250       # default 0
+      backoff: exponential # fixed (default) | exponential: 250 ms, then 500 ms, ... never more than 5 minutes
 ```
 
-`graphConfig` is the only circuit-breaker setting a crew carries (`CircuitBreakerPolicyFactory.ResolveGraph`).
-The graph engine enforces three limits only — transitions, visits of one state, total duration
-(`GraphRunner`); a state timeout or a degraded mode has no effect on a graph run.
+A task that fails runs again, in **every** orchestration mode: one decorator, between the checkpoint and the execution core, applies the policy, so the strategies never retry and the six modes behave alike. In Graph there is no retry loop of its own any more: the former `graphConfig.maxRetryCycles`, a retry of a failed task that would have multiplied with this one, is **removed** with the `graphConfig` block, and refused at load.
+
+- **A new attempt replays the whole task**, model calls and tool calls included, the tool calls that already succeeded too. Nothing deduplicates them: a task whose tools write (a file, an e-mail, a payment) must be safe to run twice, and that is the crew author's to guarantee.
+- **Never retried**: a cancellation, a refusal of the guardian (`GuardianBlocked`), an exhausted budget. A refusal of the permission gate is a tool result inside an attempt, not a task failure. Retries of an invalid output stay inside one attempt. A decision task runs no agent and cannot declare `retry:` (the load fails, naming the task).
+- **Retried on purpose**: an execution timeout (`ExecutionTimeExceeded`) and a provider failover chain that ran out of profiles (`FallbackExhausted`) both count as failures and are retried, after the backoff, because either can be transient. The cost is bounded: at most `attempts` times the whole failover chain for each turn of the task.
+- **What a failed attempt leaves behind**: its tool calls (a file written, a message sent), what a tool wrote to memory, the cost it metered and the `tool.*` and `cost.updated` events it emitted stay, and the callbacks `OnTaskStarted`/`OnTaskCompleted` fire once per attempt. The task's result goes to the crew's memory and its deliverable (`final_message`, `structured_output`) is written only by an attempt that produced a final answer, so a retry replaces them rather than duplicating them; a file the agent writes itself with `file_write` is replaced only if the next attempt writes the same path.
+- **Resume**: only the attempt that ended the task is checkpointed. A run stopped between two attempts, or whose last attempt failed, holds no checkpoint for that task, and `orkeon run --resume` runs it again from attempt 1.
+- **What is left after the last attempt** is the last failure, exactly as if the task had run once: the same failed result or the same exception.
+- **The wait** between two attempts comes from `backoffMs` and `backoff`, on the host's `TimeProvider`, and ends at once when the run is cancelled.
+- **What a watcher sees**: each retry emits a `task.started` carrying `attempt` (the strategy's own start is attempt 1; see [the run event bus](run-event-bus.md)); `task.completed` comes once, for the attempt that ended the task. The checkpoint of a task that succeeded on its third attempt records `RetryCount: 2`, and a resumed run answers it from there without asking the model.
+- **Provider failover is a different layer.** A failover (where one is configured) switches to the next provider *inside one model call*; `retry:` runs the *whole task* again. They combine: a call that fails every provider of its chain fails the attempt, `retry:` then runs the task again, and that attempt walks the chain afresh, so a task makes at most `attempts` times the chain's length of model calls per turn.
+- **Graph budgets** count the attempts: when no bounds are given, the visits default to the sum over the tasks of `1 + retries` (`retries` = `attempts - 1`), that is `nodes × (1 + retries)` when every task retries alike (ADR-018), and the transitions to twice that plus one.
+
+## Graph configuration
+
+With `process: "graph"`, a `graph:` block describes the state graph the crew runs and bounds it ([ADR-018](../adr/ADR-018-graph-engines-shared-topology-and-yaml-graph-block.md)); without one, or with a block that holds only budgets, the crew runs one node per task, chained in execution order:
+
+```yaml
+process: graph
+graph:
+  start: triage              # optional: the first node by default
+  nodes:                     # optional: absent = one implicit node per task, its id the task's name
+    - { id: triage,   task: triage }
+    - { id: fix,      task: fix }
+    - { id: escalate, task: escalate }
+  edges:
+    - { from: triage, to: fix, when: { triage.category: [bug] } }
+    - { from: triage, to: escalate }          # no `when`: the "otherwise"
+    - { from: fix,      to: END }
+    - { from: escalate, to: END }
+  circuitBreakerPreset: strict   # "strict" (default) | "permissive" | "default"
+  maxTransitions: 50             # default: computed, 2 x visits + 1
+  maxVisits: 5                   # visits of ONE node - default: computed, sum over the tasks of 1 + their retries
+  maxTotalDurationSeconds: 600   # total duration (overrides the preset)
+```
+
+- **Nodes.** A node is `{id, task}`: `task` names a task of the crew, `START` and `END` are refused as ids. A task is run by one node at most; when `nodes` is given, a task no node names is refused. `edges` without `nodes` gives one implicit node per task. A node is revisited by an edge leading back to it: on a revisit the latest output and the latest decision win. A node whose task fails ends the run: there is no routing on failure (a retry is the task's `retry:`).
+- **Edges.** Several `edges` from one `from` are one conditional edge, evaluated in the order declared: the first whose `when` holds wins, and the edge without `when` is the "otherwise". A `from` that carries `when` edges is a [decision task](./decision-models.md) and has exactly one edge without `when`; an ordinary task has exactly one edge. The `when` keeps the grammar of the task-level one, with its `<task>.` prefix: `<task>.<question>: [option, ...]`, `<task>.<question>: ">= 0.7"`, `<task>.<question>.<option>: ">= 0.25"`; the task is the `from` task, and its questions are checked at load. `otherwise` is not written: an edge without `when` is it.
+- **Refused at load**, each message naming the node: a `when` on a `from` that is not a decision task, a decision with no edge without `when`, two edges without `when` from one node, several edges on an ordinary task, an orphan node, a node with no way to `END`, an edge to an unknown node, a `graph:` outside `process: graph`, and a task-level `when:` or `dependencies:` in a crew that has nodes or edges (the edges order the tasks, a second router would contradict them). The topology faults come from `GraphTopologyValidator`, all at once, and the export checks the same rules before it writes.
+- **Budgets.** `maxVisits` is the Domain's `MaxStateVisits`, counted per node: a node entered more often than that trips the breaker. Left unset, `maxVisits` is the sum over the tasks of `1 + retries` and `maxTransitions` twice that plus one; an explicit value wins.
+- **Removed (`[breaking]`).** The `graphConfig:` block (its budgets moved into `graph:`, `maxStateVisits` becoming `maxVisits`), `maxRetryCycles` and any `maxCycles`: a bound on cycles is `maxVisits`, and a retry is the task's `retry:`. A crew that still writes `graphConfig` is refused at load, pointing to `graph:`.
+- **Execution.** The Domain engine runs every crew of the Graph process, with a `graph:` block or without; `JsStateGraph` runs only the `stateGraph(...)` of a `.ork.ts` script. A resumed run walks the graph again: the executions of a task that already ended are answered from the checkpoint, keyed `<task>#<n>` by their order, so a node entered twice has two entries. A decision node's answer is checkpointed the same way (`<task>#<n>`) and replayed on resume, never asked again: a model asked twice could answer otherwise and send the resumed run down another route. The export writes `graph:` back, so import, export and import give the same graph.
+
+`graph:` is the only circuit-breaker setting a crew carries (`CircuitBreakerPolicyFactory.ResolveGraph`). The graph engine enforces three limits only: transitions, visits of one node, total duration (`GraphRunner`); a state timeout or a degraded mode has no effect on a graph run.
 
 ## Removed: `circuitBreaker`
 
 The `circuitBreaker:` block — at the crew root and on a task — is gone, and a crew that still
-writes one is **refused at load** with a message naming `graphConfig`. The task block configured a
+writes one is **refused at load** with a message naming the `graph` block. The task block configured a
 task state machine that no execution path ran, along with three guard limits (`maxRetries`,
 `maxToolCallsPerRound`, `maxValidationRetries`) read by nothing. The crew block was read by the
-Graph mode alone, where `graphConfig` carries the same preset and the same three effective limits.
+Graph mode alone, where the `graph:` block carries the same preset and the same three effective limits.
 
 What bounds a task is its agent loop: the agent's `maxIter`, the stop after three identical
 consecutive tool errors, and the output-validation retries. What bounds a graph run is
-`graphConfig` (above). The generic state-machine engine and `CircuitBreakerPolicy` stay — the
+`graph:` (above). The generic state-machine engine and `CircuitBreakerPolicy` stay — the
 Graph mode, `orkeon forge` and the corrective RAG graph use them (see [FSM](../orchestration/fsm.md)).
 
 ## Removed: `outputFile`
@@ -483,7 +532,7 @@ All live in `Orkeon.Infrastructure.Configuration` (`src/core/Orkeon.Infrastructu
 - `GuardrailsYamlConfig` (agent- and task-level `guardrails:`)
 - `LinkYamlConfig` (the crew-level `links:` ACL)
 - `CrewYamlConfig.Mounts` / `CrewSettingsYamlConfig.Mounts` (the crew-level `mounts:` block — `/root` or `<ulid>|/root` items) → `CrewConfiguration.Mounts` (`MountReference`, VFS-90)
-- `GraphYamlConfig` (maxRetryCycles, circuitBreakerPreset, overrides)
+- `GraphYamlConfig` (circuitBreakerPreset, overrides)
 - `RagYamlConfig` (collections + sources/chunking, defaults — with `RagCollectionYamlConfig`, `RagChunkingYamlConfig`, `RagDefaultsYamlConfig`) → `RagCrewConfig`
 - `AgentYamlConfig.Knowledge` (short/long form entries) → `KnowledgeAttachment`
 

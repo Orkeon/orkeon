@@ -75,6 +75,32 @@ public class RunProgressModelTests
     }
 
     [Fact]
+    [Trait("BR", "FWK-23")]
+    public void A_run_that_stops_on_a_question_reads_as_waiting_for_input_and_not_as_a_failure()
+    {
+        var model = Fold(
+            """{"v":2,"seq":1,"ts":"t","kind":"run.started","target":"/ws/crew.yaml"}""",
+            """{"v":2,"seq":2,"ts":"t","kind":"input.needed","requestId":"ask#1.1","inputKind":"text","prompt":"Which colour?","suspending":true}""",
+            """{"v":2,"seq":3,"ts":"t","kind":"run.finished","success":false,"exitCode":75,"status":"waiting_for_input","requestId":"ask#1.1"}""");
+
+        Assert.True(model.Finished);
+        Assert.True(model.WaitingForInput);
+        Assert.Equal("ask#1.1", model.WaitingRequestId);
+        Assert.Equal(75, model.ExitCode);
+    }
+
+    [Fact]
+    [Trait("BR", "FWK-23")]
+    public void A_run_that_failed_is_not_waiting_for_input()
+    {
+        var model = Fold(
+            """{"v":2,"seq":1,"ts":"t","kind":"run.finished","success":false,"exitCode":2}""");
+
+        Assert.False(model.WaitingForInput);
+        Assert.Null(model.WaitingRequestId);
+    }
+
+    [Fact]
     public void The_stream_becomes_progress_cost_and_an_outcome()
     {
         var model = Fold(
@@ -340,6 +366,21 @@ public class RunProgressModelTests
     }
 
     [Fact]
+    [Trait("BR", "FWK-20")]
+    public void A_tool_call_delta_adds_no_generated_text_and_announces_no_change()
+    {
+        var model = new RunProgressModel();
+        var announced = 0;
+        model.Changed += (_, _) => announced++;
+
+        model.Apply(Parse("""{"v":2,"seq":1,"ts":"t","kind":"llm.delta","text":"Hel","deltaKind":"content"}"""));
+        model.Apply(Parse("""{"v":2,"seq":2,"ts":"t","kind":"llm.delta","deltaKind":"tool_call","toolCall":{"index":0,"id":"c1","name":"send_mail","argumentsDelta":"{}"}}"""));
+
+        Assert.Equal("Hel", model.GeneratedText);
+        Assert.Equal(1, announced);
+    }
+
+    [Fact]
     public void A_started_task_is_in_progress_until_the_run_reports_it_finished()
     {
         // STUDIO-17: the moment the screen used to be blind to. The start carries the run's own
@@ -370,6 +411,22 @@ public class RunProgressModelTests
             """{"v":2,"seq":3,"ts":"t","kind":"task.completed","taskId":"t1","agentRole":"graph","success":true,"durationMs":10}""");
 
         Assert.Equal("t2", Assert.Single(model.RunningTasks).TaskId);
+    }
+
+    [Fact]
+    [Trait("BR", "FWK-15")]
+    public void A_retry_announces_the_task_again_and_it_stays_one_task_in_progress()
+    {
+        var model = Fold(
+            """{"v":2,"seq":1,"ts":"2026-09-19T10:31:02Z","kind":"task.started","taskId":"t1","agentRole":"analyst","attempt":1}""",
+            """{"v":2,"seq":2,"ts":"2026-09-19T10:31:09Z","kind":"task.started","taskId":"t1","agentRole":"analyst","attempt":2}""");
+
+        var running = Assert.Single(model.RunningTasks);
+        Assert.Equal(new DateTimeOffset(2026, 9, 19, 10, 31, 9, TimeSpan.Zero), running.StartedAt);
+
+        model.Apply(Parse("""{"v":2,"seq":3,"ts":"t","kind":"task.completed","taskId":"t1","agentRole":"analyst","success":true,"durationMs":10}"""));
+
+        Assert.Empty(model.RunningTasks);
     }
 
     [Fact]

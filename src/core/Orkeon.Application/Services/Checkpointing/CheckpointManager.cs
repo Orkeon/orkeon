@@ -1,6 +1,7 @@
 
 using Microsoft.Extensions.Logging;
 using Orkeon.Application.Interfaces.Checkpointing;
+using Orkeon.Application.Interfaces.Services;
 
 namespace Orkeon.Application.Services.Checkpointing;
 
@@ -8,10 +9,16 @@ namespace Orkeon.Application.Services.Checkpointing;
 /// Manages session lifecycle and task-level checkpointing.
 /// Uses an <see cref="IStateStore"/> to persist session states.
 /// </summary>
-public sealed partial class CheckpointManager : ICheckpointManager
+public sealed partial class CheckpointManager : ICheckpointManager, IPendingInputStore
 {
     private readonly IStateStore _store;
     private readonly ILogger<CheckpointManager> _logger;
+
+    // One lock per session: the tasks of a parallel wave checkpoint at the same time, and each write
+    // reads the session, changes it and saves it whole, so two of them would lose one another's task.
+    // An entry lives while a write holds or awaits it: the last one out removes it, so a session that
+    // ended leaves nothing behind.
+    private readonly Dictionary<string, SessionLock> _locks = new(StringComparer.Ordinal);
 
     /// <summary>
     /// Initializes a new instance of <see cref="CheckpointManager"/>.
@@ -25,30 +32,50 @@ public sealed partial class CheckpointManager : ICheckpointManager
     }
 
     /// <inheritdoc />
-    public async System.Threading.Tasks.Task<string> StartSessionAsync(string crewId, CancellationToken ct = default)
+    public async System.Threading.Tasks.Task<string> StartSessionAsync(ExecutionId sessionId, string crewKey, CancellationToken ct = default)
     {
-        var sessionId = Guid.NewGuid().ToString();
-        var now = DateTime.UtcNow;
+        ArgumentNullException.ThrowIfNull(sessionId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(crewKey);
+        var id = sessionId.ToString();
 
-        var state = new SessionState
+        using (await EnterAsync(id, ct).ConfigureAwait(false))
         {
-            SessionId = sessionId,
-            CrewId = crewId,
-            Phase = SessionPhase.Running,
-            CompletedTaskIndex = 0,
-            TaskCheckpoints = new Dictionary<string, TaskCheckpoint>(),
-            CreatedAt = now,
-            UpdatedAt = now
-        };
+            var now = DateTime.UtcNow;
+            var existing = await _store.GetAsync(id, ct).ConfigureAwait(false);
 
-        await _store.SaveAsync(state, ct).ConfigureAwait(false);
-        LogSessionStarted(sessionId, crewId);
-        return sessionId;
+            // A resumed run keeps its execution id, so its session already exists: it continues, with the
+            // checkpoints it holds, instead of starting over.
+            var state = existing is null
+                ? new SessionState
+                {
+                    SessionId = id,
+                    CrewKey = crewKey,
+                    Phase = SessionPhase.Running,
+                    CompletedTaskIndex = 0,
+                    TaskCheckpoints = new Dictionary<string, TaskCheckpoint>(),
+                    CreatedAt = now,
+                    UpdatedAt = now
+                }
+                : existing with { Phase = SessionPhase.Running, ErrorMessage = null, SuspendedOn = null, UpdatedAt = now };
+
+            await _store.SaveAsync(state, ct).ConfigureAwait(false);
+            if (existing is null)
+                LogSessionStarted(id, crewKey);
+            else
+                LogSessionContinued(id, crewKey, existing.TaskCheckpoints.Count);
+        }
+
+        return id;
     }
 
     /// <inheritdoc />
-    public async System.Threading.Tasks.Task CheckpointAsync(string sessionId, string taskId, string? output, CancellationToken ct = default)
+    public System.Threading.Tasks.Task CheckpointAsync(string sessionId, string taskId, string? output, CancellationToken ct = default) =>
+        CheckpointAsync(sessionId, taskId, output, 0, ct);
+
+    /// <inheritdoc />
+    public async System.Threading.Tasks.Task CheckpointAsync(string sessionId, string taskId, string? output, int retryCount, CancellationToken ct = default)
     {
+        using var held = await EnterAsync(sessionId, ct).ConfigureAwait(false);
         var state = await _store.GetAsync(sessionId, ct).ConfigureAwait(false);
         if (state == null)
         {
@@ -63,7 +90,8 @@ public sealed partial class CheckpointManager : ICheckpointManager
                 TaskId = taskId,
                 Status = CheckpointStatus.Completed,
                 Output = output,
-                Timestamp = DateTime.UtcNow
+                Timestamp = DateTime.UtcNow,
+                RetryCount = retryCount
             }
         };
 
@@ -95,6 +123,7 @@ public sealed partial class CheckpointManager : ICheckpointManager
 
         async System.Threading.Tasks.Task MarkFailedCoreAsync()
         {
+            using var held = await EnterAsync(sessionId, ct).ConfigureAwait(false);
             var state = await _store.GetAsync(sessionId, ct).ConfigureAwait(false);
             if (state == null)
             {
@@ -117,12 +146,13 @@ public sealed partial class CheckpointManager : ICheckpointManager
                 }
             };
 
+            // The task failed, the run may not have: in Parallel, Hierarchical or Graph it goes on with its other tasks. The
+            // session keeps its phase (Running while the run lives), so a second process never takes over a live run; the
+            // orchestrator fails the session when the run ends (FailSessionAsync).
             var updated = state with
             {
-                Phase = SessionPhase.Failed,
                 TaskCheckpoints = checkpoints,
                 UpdatedAt = DateTime.UtcNow,
-                ErrorMessage = ex.Message
             };
 
             await _store.SaveAsync(updated, ct).ConfigureAwait(false);
@@ -131,8 +161,26 @@ public sealed partial class CheckpointManager : ICheckpointManager
     }
 
     /// <inheritdoc />
+    public async System.Threading.Tasks.Task FailSessionAsync(string sessionId, Exception ex, CancellationToken ct = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(sessionId);
+        ArgumentNullException.ThrowIfNull(ex);
+        using var held = await EnterAsync(sessionId, ct).ConfigureAwait(false);
+        var state = await _store.GetAsync(sessionId, ct).ConfigureAwait(false);
+        if (state == null)
+        {
+            LogSessionNotFoundForMarkFailed(sessionId);
+            return;
+        }
+
+        await _store.SaveAsync(state with { Phase = SessionPhase.Failed, ErrorMessage = ex.Message, UpdatedAt = DateTime.UtcNow }, ct).ConfigureAwait(false);
+        LogSessionFailed(sessionId, ex.Message);
+    }
+
+    /// <inheritdoc />
     public async System.Threading.Tasks.Task CompleteSessionAsync(string sessionId, CancellationToken ct = default)
     {
+        using var held = await EnterAsync(sessionId, ct).ConfigureAwait(false);
         var state = await _store.GetAsync(sessionId, ct).ConfigureAwait(false);
         if (state == null)
         {
@@ -151,9 +199,9 @@ public sealed partial class CheckpointManager : ICheckpointManager
     }
 
     /// <inheritdoc />
-    public System.Threading.Tasks.Task<SessionState?> GetLatestCheckpointAsync(string crewId, CancellationToken ct = default)
+    public System.Threading.Tasks.Task<SessionState?> GetLatestCheckpointAsync(string crewKey, CancellationToken ct = default)
     {
-        return _store.GetLatestForCrewAsync(crewId, ct);
+        return _store.GetLatestForCrewAsync(crewKey, ct);
     }
 
     /// <inheritdoc />
@@ -190,14 +238,74 @@ public sealed partial class CheckpointManager : ICheckpointManager
         return _store.DiffAsync(sessionId, fromVersionId, toVersionId, ct);
     }
 
+    private async System.Threading.Tasks.Task<IDisposable> EnterAsync(string sessionId, CancellationToken ct)
+    {
+        SessionLock sessionLock;
+        lock (_locks)
+        {
+            if (!_locks.TryGetValue(sessionId, out sessionLock!))
+                _locks[sessionId] = sessionLock = new SessionLock();
+            sessionLock.Users++;
+        }
+
+        try
+        {
+            await sessionLock.Gate.WaitAsync(ct).ConfigureAwait(false);
+        }
+        catch
+        {
+            Leave(sessionId, sessionLock);
+            throw;
+        }
+
+        return new Release(this, sessionId, sessionLock);
+    }
+
+    private void Leave(string sessionId, SessionLock sessionLock)
+    {
+        lock (_locks)
+        {
+            if (--sessionLock.Users == 0)
+            {
+                _locks.Remove(sessionId);
+                sessionLock.Gate.Dispose();
+            }
+        }
+    }
+
+    /// <summary>The number of sessions with a write in flight: zero once every run is over.</summary>
+    internal int LockedSessions
+    {
+        get { lock (_locks) return _locks.Count; }
+    }
+
+    private sealed class SessionLock
+    {
+        public SemaphoreSlim Gate { get; } = new(1, 1);
+
+        public int Users { get; set; }
+    }
+
+    private sealed class Release(CheckpointManager owner, string sessionId, SessionLock sessionLock) : IDisposable
+    {
+        public void Dispose()
+        {
+            sessionLock.Gate.Release();
+            owner.Leave(sessionId, sessionLock);
+        }
+    }
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Continued checkpoint session {SessionId} for crew {CrewKey} with {Completed} checkpointed tasks")]
+    private partial void LogSessionContinued(string sessionId, string crewKey, int completed);
+
     [LoggerMessage(Level = LogLevel.Warning, Message = "Version {VersionId} not found for session {SessionId}")]
     private partial void LogVersionNotFound(string sessionId, string versionId);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Restored session {SessionId} to version {VersionId}")]
     private partial void LogVersionRestored(string sessionId, string versionId);
 
-    [LoggerMessage(Level = LogLevel.Information, Message = "Started checkpoint session {SessionId} for crew {CrewId}")]
-    private partial void LogSessionStarted(string sessionId, string crewId);
+    [LoggerMessage(Level = LogLevel.Information, Message = "Started checkpoint session {SessionId} for crew {CrewKey}")]
+    private partial void LogSessionStarted(string sessionId, string crewKey);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Cannot checkpoint: session {SessionId} not found")]
     private partial void LogSessionNotFoundForCheckpoint(string sessionId);
@@ -210,6 +318,9 @@ public sealed partial class CheckpointManager : ICheckpointManager
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Marked task {TaskId} as failed in session {SessionId}: {Error}")]
     private partial void LogTaskMarkedFailed(string taskId, string sessionId, string error);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Session {SessionId} failed: {Error}")]
+    private partial void LogSessionFailed(string sessionId, string error);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Cannot complete: session {SessionId} not found")]
     private partial void LogSessionNotFoundForComplete(string sessionId);

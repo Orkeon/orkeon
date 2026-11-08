@@ -101,8 +101,8 @@ internal sealed class RagSearchCommandOptions : RagCommandOptionsBase
     public int TopN { get; set; } = 5;
 }
 
-/// <summary>Parsed CLI options for <c>orkeon rag eval</c>.</summary>
-[Verb("eval", HelpText = "Evaluate a RAG collection against a golden dataset (recall@k, MRR, groundedness; judge mode labelled); writes markdown/JSON reports.")]
+/// <summary>Parsed CLI options for <c>orkeon eval rag</c>.</summary>
+[Verb("rag", HelpText = "Evaluate a RAG collection against a golden dataset (recall@k, MRR, groundedness; judge mode labelled); writes markdown/JSON reports.")]
 internal sealed class RagEvalCommandOptions : RagCommandOptionsBase
 {
     /// <summary>Path to the golden dataset YAML file.</summary>
@@ -167,7 +167,7 @@ internal sealed class RagEvalCommandOptions : RagCommandOptionsBase
 }
 
 /// <summary>
-/// <c>orkeon rag ingest | search | eval</c> — ingestion, retrieval and evaluation
+/// <c>orkeon rag ingest | search</c> and <c>orkeon eval rag</c> — ingestion, retrieval and evaluation
 /// surfaces of the RAG subsystem (RAG-03/C3, RAG-04/C1). Builds the same
 /// shared host as the <c>run</c> verb (<see cref="RunnerHost.Build"/>: settings, VFS
 /// mounts, LLM/embedding wiring, and — like every runner host since GAP-02 — the RAG
@@ -183,11 +183,10 @@ internal static class RagCommand
     {
         ArgumentNullException.ThrowIfNull(args);
 
-        return await CliGrammar.DispatchAsync(console, "rag", args, [typeof(RagIngestCommandOptions), typeof(RagSearchCommandOptions), typeof(RagEvalCommandOptions)], (console, options) => options switch
+        return await CliGrammar.DispatchAsync(console, "rag", args, [typeof(RagIngestCommandOptions), typeof(RagSearchCommandOptions)], (console, options) => options switch
         {
             RagIngestCommandOptions o => ExecuteIngestAsync(console, o),
             RagSearchCommandOptions o => ExecuteSearchAsync(console, o),
-            RagEvalCommandOptions o => ExecuteEvalAsync(console, o),
             _ => Task.FromResult(Program.ExitScriptError),
         }).ConfigureAwait(false);
     }
@@ -197,7 +196,7 @@ internal static class RagCommand
     {
         ArgumentNullException.ThrowIfNull(console);
         ArgumentNullException.ThrowIfNull(options);
-        return GuardedAsync(console, "ingest", async ct =>
+        return GuardedAsync(console, "rag ingest", async ct =>
         {
             var cwd = ResolveCwd(options);
             using var host = BuildHost(console, options, cwd);
@@ -244,7 +243,7 @@ internal static class RagCommand
     {
         ArgumentNullException.ThrowIfNull(console);
         ArgumentNullException.ThrowIfNull(options);
-        return GuardedAsync(console, "search", async ct =>
+        return GuardedAsync(console, "rag search", async ct =>
         {
             if (string.IsNullOrWhiteSpace(options.Question))
             {
@@ -296,11 +295,11 @@ internal static class RagCommand
     {
         ArgumentNullException.ThrowIfNull(console);
         ArgumentNullException.ThrowIfNull(options);
-        return GuardedAsync(console, "eval", async ct =>
+        return GuardedAsync(console, "eval rag", async ct =>
         {
             if (string.IsNullOrWhiteSpace(options.Dataset))
             {
-                await console.ErrorOutput.WriteLineAsync("orkeon rag eval: --dataset is required.").ConfigureAwait(false);
+                await console.ErrorOutput.WriteLineAsync("orkeon eval rag: --dataset is required.").ConfigureAwait(false);
                 return Program.ExitScriptError;
             }
 
@@ -380,7 +379,7 @@ internal static class RagCommand
                 failed = true;
                 await error.WriteLineAsync(string.Create(
                     CultureInfo.InvariantCulture,
-                    $"orkeon rag eval: REGRESSION — profile '{report.Profile}' recall@{report.K} = {gatedRecall ?? 0:F3} < threshold {minRecall:F3} (cases tagged '{RagEvalCase.CorrectiveTag}' excluded).")).ConfigureAwait(false);
+                    $"orkeon eval rag: REGRESSION — profile '{report.Profile}' recall@{report.K} = {gatedRecall ?? 0:F3} < threshold {minRecall:F3} (cases tagged '{RagEvalCase.CorrectiveTag}' excluded).")).ConfigureAwait(false);
             }
 
             if (options.MinMrr is { } minMrr && (gatedMrr is null || gatedMrr < minMrr))
@@ -388,7 +387,7 @@ internal static class RagCommand
                 failed = true;
                 await error.WriteLineAsync(string.Create(
                     CultureInfo.InvariantCulture,
-                    $"orkeon rag eval: REGRESSION — profile '{report.Profile}' MRR = {gatedMrr ?? 0:F3} < threshold {minMrr:F3} (cases tagged '{RagEvalCase.CorrectiveTag}' excluded).")).ConfigureAwait(false);
+                    $"orkeon eval rag: REGRESSION — profile '{report.Profile}' MRR = {gatedMrr ?? 0:F3} < threshold {minMrr:F3} (cases tagged '{RagEvalCase.CorrectiveTag}' excluded).")).ConfigureAwait(false);
             }
         }
 
@@ -401,7 +400,7 @@ internal static class RagCommand
     /// anything unexpected → 2. Mirrors the exit-code contract of the run verb.
     /// </summary>
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Top-level CLI fault barrier: unexpected failures are converted to a runtime-error exit code so the tool reports cleanly instead of crashing with a stack trace.")]
-    private static async Task<int> GuardedAsync(IRunnerConsole console, string verb, Func<CancellationToken, Task<int>> body)
+    internal static async Task<int> GuardedAsync(IRunnerConsole console, string command, Func<CancellationToken, Task<int>> body)
     {
         using var cts = new CancellationTokenSource();
         using var interrupt = console.OnInterrupt(() =>
@@ -425,21 +424,21 @@ internal static class RagCommand
             or FileAccessDeniedException)
         {
             var root = Orkeon.Scripting.Internal.JsExceptionUnwrap.UnwrapToInnermost(ex);
-            await console.ErrorOutput.WriteLineAsync($"orkeon rag {verb}: {root.Message}").ConfigureAwait(false);
+            await console.ErrorOutput.WriteLineAsync($"orkeon {command}: {root.Message}").ConfigureAwait(false);
             return Program.ExitScriptError;
         }
         catch (Exception ex)
         {
             var root = Orkeon.Scripting.Internal.JsExceptionUnwrap.UnwrapToInnermost(ex);
             await console.ErrorOutput.WriteLineAsync(
-                $"orkeon rag {verb}: unexpected error [{root.GetType().FullName}]: {root.Message}").ConfigureAwait(false);
+                $"orkeon {command}: unexpected error [{root.GetType().FullName}]: {root.Message}").ConfigureAwait(false);
             if (RunnerEnvironment.DebugDiagnostics)
                 await console.ErrorOutput.WriteLineAsync(ex.ToString()).ConfigureAwait(false);
             return Program.ExitRuntimeError;
         }
     }
 
-    private static string ResolveCwd(RagCommandOptionsBase options)
+    internal static string ResolveCwd(RagCommandOptionsBase options)
         => Path.GetFullPath(options.WorkingDirectoryOverride ?? Directory.GetCurrentDirectory());
 
     /// <summary>
@@ -449,7 +448,7 @@ internal static class RagCommand
     /// for ingestion manifests) are injected unless the caller already claimed those
     /// virtual roots via <c>--mount</c>.
     /// </summary>
-    private static IHost? BuildHost(IRunnerConsole console, RagCommandOptionsBase options, string cwd)
+    internal static IHost? BuildHost(IRunnerConsole console, RagCommandOptionsBase options, string cwd, Action<IHostBuilder>? configureBuilder = null)
     {
         var settingsPath = RunnerSettings.ResolveSettingsPath(options.SettingsPath, cwd, console.ErrorOutput);
         if (settingsPath != null)
@@ -524,9 +523,13 @@ internal static class RagCommand
             // Orkeon:Rag:LlmProfile names included, which is then neither checked nor
             // resolved (GAP-19). The override comes last, so it wins over the settings.
             configureBuilder: options is RagEvalCommandOptions { Offline: true }
-                ? builder => builder.ConfigureAppConfiguration((_, configuration) =>
-                    configuration.AddInMemoryCollection([new KeyValuePair<string, string?>(RagLlm.ProfileKey, string.Empty)]))
-                : null);
+                ? builder =>
+                {
+                    builder.ConfigureAppConfiguration((_, configuration) =>
+                        configuration.AddInMemoryCollection([new KeyValuePair<string, string?>(RagLlm.ProfileKey, string.Empty)]));
+                    configureBuilder?.Invoke(builder);
+                }
+                : configureBuilder);
     }
 
     /// <summary>True when the Docker-style mount string claims <paramref name="virtualRoot"/>.</summary>

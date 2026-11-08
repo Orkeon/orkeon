@@ -45,6 +45,18 @@ public sealed class ReplMcpAndPluginsTests : IDisposable
             .Any(directory => File.Exists(Path.Combine(directory, OperatingSystem.IsWindows() ? "node.exe" : "node")));
 
     [Fact]
+    public void The_REPL_registers_the_interaction_an_oauth2_device_server_shows_its_code_through()
+    {
+        using var host = Start("""
+            { "MCP": { "Servers": { "tracker": { "Transport": "Sse", "Url": "http://127.0.0.1:9/mcp/",
+              "Auth": { "Type": "oauth2-device", "ClientId": "orkeon-cli",
+                        "TokenUrl": "https://idp.example.test/token", "DeviceAuthorizationUrl": "https://idp.example.test/device" } } } } }
+            """);
+
+        Assert.NotNull(host.Services.GetService<Orkeon.Tools.Abstractions.Auth.IOAuthLoginInteraction>());
+    }
+
+    [Fact]
     public async Task An_MCP_servers_tool_reaches_the_tools_namespace_of_the_scripts()
     {
         Assert.SkipUnless(NodeIsOnPath(), "The stdio MCP server of this test runs on node, which is not on PATH.");
@@ -66,7 +78,15 @@ public sealed class ReplMcpAndPluginsTests : IDisposable
     public async Task A_plugins_tool_reaches_the_tools_namespace_of_the_scripts()
     {
         var plugins = Directory.CreateDirectory(Path.Combine(_root, "plugins")).FullName;
-        File.Copy(typeof(FakeEchoPlugin).Assembly.Location, Path.Combine(plugins, "EchoPlugin.dll"));
+        var folder = Directory.CreateDirectory(Path.Combine(plugins, "echo-plugin")).FullName;
+        var assemblyFile = Path.GetFileName(typeof(FakeEchoPlugin).Assembly.Location);
+        File.Copy(typeof(FakeEchoPlugin).Assembly.Location, Path.Combine(folder, assemblyFile));
+        await File.WriteAllTextAsync(
+            Path.Combine(folder, "plugin.json"),
+            $$"""
+            { "name": "fake-echo", "version": "1.0.0", "orkeonVersion": "[1.0.0-rc.1,2.0.0)",
+              "entryAssembly": "{{assemblyFile}}", "tools": [ "{{FakeEchoPlugin.ToolName}}" ] }
+            """, Ct);
         using var host = Start($$"""
             {
               "Orkeon": { "FileSystem": { "InternalMounts": [ {{Json($"{plugins}:/plugins:ro")}} ] } },

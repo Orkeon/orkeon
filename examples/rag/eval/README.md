@@ -11,13 +11,13 @@ extractive generation (`--offline`), deterministic heuristic judge.
 ```bash
 # From the repository root — ingests corpus/ (incremental), evaluates, writes
 # reports to ./.orkeon/rag/eval/ (markdown + JSON):
-orkeon rag eval --dataset examples/rag/eval/golden.yaml --offline
+orkeon eval rag --dataset examples/rag/eval/golden.yaml --offline
 
 # Multi-profile comparison table (one row per profile preset — see "Profiles"):
-orkeon rag eval --dataset examples/rag/eval/golden.yaml --offline --compare fast,balanced,quality,corrective,adaptive
+orkeon eval rag --dataset examples/rag/eval/golden.yaml --offline --compare fast,balanced,quality,corrective,adaptive
 
 # CI anti-regression gate (exit 1 below the floors; `correctif` cases excluded):
-orkeon rag eval --dataset examples/rag/eval/golden.yaml --offline --min-recall 0.80 --min-mrr 0.70
+orkeon eval rag --dataset examples/rag/eval/golden.yaml --offline --min-recall 0.80 --min-mrr 0.70
 ```
 
 The dedicated CI workflow is `.github/workflows/rag-eval.yml` (floors in its

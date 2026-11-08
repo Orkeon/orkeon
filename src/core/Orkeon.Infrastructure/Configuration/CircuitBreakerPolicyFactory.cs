@@ -5,7 +5,7 @@ namespace Orkeon.Infrastructure.Configuration;
 
 /// <summary>
 /// Builds the <see cref="CircuitBreakerPolicy"/> of a Graph-mode crew from its YAML
-/// <c>graphConfig</c> block — the only circuit-breaker setting a crew carries.
+/// <c>graph:</c> block — the only circuit-breaker setting a crew carries.
 /// </summary>
 public static class CircuitBreakerPolicyFactory
 {
@@ -13,7 +13,7 @@ public static class CircuitBreakerPolicyFactory
     /// Resolves the effective <see cref="CircuitBreakerPolicy"/> for a graph execution: the
     /// <paramref name="graphConfig"/> preset with its node/visit/duration limits applied, or
     /// <paramref name="fallback"/> (the strategy's built-in default) when the crew has no
-    /// <c>graphConfig</c>.
+    /// <c>graph:</c> block.
     /// </summary>
     /// <param name="graphConfig">Graph-specific config (preset + node/visit/duration limits), nullable.</param>
     /// <param name="fallback">Policy to use when no config is supplied.</param>

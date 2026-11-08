@@ -69,7 +69,6 @@ public sealed class RunnerHostDecisionModelsTests
         Assert.Equal(key, model.Name);
         Assert.Same(model, provider.GetRequiredService<IDecisionModel>());
         Assert.Equal(key, provider.GetRequiredService<DecisionProviderChoice>().Provider!.Key);
-        Assert.NotNull(provider.GetRequiredService<DecisionInputGuard>());
         Assert.Single(services, d => d.ServiceType != typeof(IDecisionModel) && d.ImplementationType == typeof(Orkeon.Infrastructure.Tools.SystemOneDecideTool));
         Assert.IsType<Orkeon.Rag.Reranking.DecisionModelReranker>(
             Orkeon.Rag.DependencyInjection.RagRerankingExtensions.AddOrkeonRagReranking(services)

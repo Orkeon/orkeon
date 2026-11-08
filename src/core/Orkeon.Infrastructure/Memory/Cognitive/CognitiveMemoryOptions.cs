@@ -7,6 +7,18 @@ namespace Orkeon.Infrastructure.Memory.Cognitive;
 /// </summary>
 public sealed class CognitiveMemoryOptions
 {
+    /// <summary>
+    /// Whether the runners wire the cognitive memory into a run: recall by composite score, analysed
+    /// storage, the <c>memory_recall</c> tool. Default: false (the analysis costs LLM calls).
+    /// </summary>
+    public bool Enabled { get; set; }
+
+    /// <summary>
+    /// The LLM profile (<c>Llm:Profiles:&lt;name&gt;</c>) the analysis, contradiction detection and
+    /// consolidation run on, so they are metered like any call. Null or blank: the default profile.
+    /// </summary>
+    public string? Profile { get; set; }
+
     /// <summary>Whether to enable LLM-based content analysis on remember. Default: true.</summary>
     public bool EnableLlmAnalysis { get; set; } = true;
 

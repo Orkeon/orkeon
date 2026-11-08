@@ -1,0 +1,4 @@
+{"match": "(?s)assigning tasks to team members.*Description: List three facts.*?ID: (?<id>\\S+)\\s+Role: Researcher", "regex": true, "content": "{\"agent_id\": \"${id}\", \"reason\": \"The researcher collects facts\"}"}
+{"match": "(?s)assigning tasks to team members.*Description: Write a two-sentence report.*?ID: (?<id>\\S+)\\s+Role: Writer", "regex": true, "content": "{\"agent_id\": \"${id}\", \"reason\": \"The writer drafts the report\"}"}
+{"match": "^Task:\\s+List three facts", "regex": true, "content": "1. The mock provider answers from a file. 2. It makes no network call. 3. Its output is the same on every run."}
+{"match": "^Task:\\s+Write a two-sentence report", "regex": true, "content": "The mock provider answers from a file and calls no network. Its output is identical on every run."}

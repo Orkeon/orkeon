@@ -9,6 +9,7 @@ using Orkeon.Domain.FileSystem;
 using Orkeon.Domain.Knowledge;
 using Orkeon.Domain.SharedKernel.ValueObjects;
 using Orkeon.Constants.Llm;
+using Orkeon.Domain.Task;
 using Orkeon.Domain.Task.ValueObjects;
 
 namespace Orkeon.Infrastructure.Configuration;
@@ -159,7 +160,7 @@ public partial class YamlCrewExporter
                 }
                 : null,
             ManagerAgent = config.ManagerAgentId is { } manager ? names.Of(manager) : null,
-            GraphConfig = MapGraphConfig(config.GraphConfig),
+            Graph = MapGraph(config, names),
             Rag = MapRag(config.Rag),
             Links = MapLinks(config.Links),
             Mounts = MapMounts(config),
@@ -206,21 +207,56 @@ public partial class YamlCrewExporter
         _ => throw new InvalidOperationException($"A links: direction the loader cannot read: {direction}."),
     };
 
-    /// <summary>
-    /// The <c>graphConfig:</c> block; null when the crew has none. Its two settings with a default
-    /// (<c>maxRetryCycles</c>, <c>circuitBreakerPreset</c>) are written as the configuration carries them.
-    /// </summary>
-    private static GraphYamlConfig? MapGraphConfig(GraphConfig? graph) =>
-        graph is null
+    private static RetryYamlConfig? MapRetry(TaskRetryPolicy? retry) =>
+        retry is null
             ? null
-            : new GraphYamlConfig
+            : new RetryYamlConfig
             {
-                MaxRetryCycles = graph.MaxRetryCycles,
-                CircuitBreakerPreset = graph.CircuitBreakerPreset,
-                MaxTransitions = graph.MaxTransitions,
-                MaxStateVisits = graph.MaxStateVisits,
-                MaxTotalDurationSeconds = graph.MaxTotalDurationSeconds,
+                Attempts = retry.Attempts,
+                BackoffMs = retry.BackoffMs > 0 ? retry.BackoffMs : null,
+                Backoff = retry.Backoff == TaskRetryBackoff.Exponential ? "exponential" : null,
             };
+
+    /// <summary>
+    /// The <c>graph:</c> block; null when the crew has none. The topology is checked before it is written
+    /// (ADR-018, point 3), then nodes, edges and budgets go back as the configuration carries them, so
+    /// import, export and import give the same graph.
+    /// </summary>
+    private static GraphYamlConfig? MapGraph(CrewConfiguration config, EntryNames names)
+    {
+        if (config.GraphConfig is not { } graph)
+            return null;
+
+        if (graph.Nodes is not null || graph.Edges.Count > 0)
+        {
+            var nodeIds = graph.Nodes is null
+                ? config.Tasks.Select(t => names.Of(t.Id)).ToList()
+                : graph.Nodes.Select(n => n.Id).ToList();
+            var faults = GraphTopologyCheck.Faults(graph.Start, nodeIds, graph.Edges);
+            if (faults.Count > 0)
+                throw new InvalidOperationException($"Crew '{config.Name}' graph cannot be exported: " + string.Join(" ", faults));
+        }
+
+        return new GraphYamlConfig
+        {
+            Start = graph.Start,
+            Nodes = graph.Nodes is null
+                ? null
+                : new Collection<GraphNodeYamlConfig>([.. graph.Nodes.Select(n => new GraphNodeYamlConfig { Id = n.Id, Task = n.Task })]),
+            Edges = graph.Edges.Count == 0
+                ? null
+                : new Collection<GraphEdgeYamlConfig>([.. graph.Edges.Select(e => new GraphEdgeYamlConfig
+                {
+                    From = e.From,
+                    To = e.To,
+                    When = e.When is null ? null : MapCondition(e.When),
+                })]),
+            CircuitBreakerPreset = graph.CircuitBreakerPreset,
+            MaxTransitions = graph.MaxTransitions,
+            MaxVisits = graph.MaxStateVisits,
+            MaxTotalDurationSeconds = graph.MaxTotalDurationSeconds,
+        };
+    }
 
     /// <summary>
     /// The <c>rag:</c> block; null when the crew has none, <c>{}</c> when it declares an empty one. A
@@ -257,6 +293,7 @@ public partial class YamlCrewExporter
             Goal = agent.Goal,
             Backstory = string.IsNullOrWhiteSpace(agent.Backstory) ? null : agent.Backstory,
             WorkingRoot = string.IsNullOrWhiteSpace(agent.WorkingRoot) ? null : agent.WorkingRoot,
+            PermissionMode = agent.PermissionMode is { } mode ? Orkeon.Domain.Security.PermissionModes.ToWireName(mode) : null,
             Tools = agent.Tools.Count > 0 ? new Collection<string>(agent.Tools.ToList()) : null,
             AllowDelegation = agent.AllowDelegation ? null : false,
             // Written when it differs from the one default, as the loader reads it back (GAP-38).
@@ -436,6 +473,7 @@ public partial class YamlCrewExporter
                 ? new Collection<string>(explicitDependencies)
                 : null,
             AsyncExecution = task.AsyncExecution ? true : null,
+            Retry = MapRetry(task.Retry),
             HumanInput = task.HumanInput ? true : null,
             Context = task.Context.Count > 0 ? task.Context : null,
             Deliverable = MapDeliverable(task.Deliverable),

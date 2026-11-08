@@ -508,7 +508,108 @@ public sealed class JsLlmFacadeStreamTests
         Assert.Equal("4|8", result);
     }
 
-    private sealed record StreamedTurn(string[] Deltas, LlmResponse Final, string[]? ReasoningDeltas = null)
+    // ── FWK-20: the fragments of a tool call the model builds ──
+
+    private static readonly ToolCallDelta[] SecretSplit =
+    [
+        new(0, "call_1", "send_mail", ""),
+        new(0, null, null, "{\"key\":\"sk-SEC"),
+        new(0, null, null, "RET-123\"}"),
+    ];
+
+    private sealed class FragmentRecordingSink : Orkeon.Application.Interfaces.Ports.ILlmDeltaSink
+    {
+        public List<string> Calls { get; } = [];
+
+        public void OnDelta(string delta) => Calls.Add("text:" + delta);
+
+        public void OnToolCallDelta(ToolCallDelta toolCall) => Calls.Add($"tool|{toolCall.Index}|{toolCall.Id}|{toolCall.Name}|{toolCall.ArgumentsDelta}");
+
+        public void OnTurnCompleted() => Calls.Add("<turn>");
+    }
+
+    private static FakeStreamingProvider ProviderStreamingFragments() => new(
+        generateChunks: NoChunks,
+        turns: [new StreamedTurn(Deltas: ["ok"], Final: new LlmResponse { Content = "ok" }, ToolCallFragments: SecretSplit)]);
+
+    [Fact]
+    [Trait("BR", "FWK-20")]
+    public async Task Act_onToolCallDelta_receives_each_fragment_as_an_object_before_act_settles()
+    {
+        using var engine = new Engine(options => options.Constraints.PromiseTimeout = HangGuards.EnginePromise);
+        var facade = new JsLlmFacade(engine, ProviderStreamingFragments(), CancellationToken.None);
+
+        engine.SetValue("__calls", new List<object>());
+        var options = BuildOptions(engine, "({ onToolCallDelta: d => __calls.push(d.index + '|' + (d.id ?? '') + '|' + (d.name ?? '') + '|' + d.argumentsDelta) })");
+        var result = await facade.ActAsync(engine, "go", options);
+
+        Assert.Equal("ok", result.Get("output").AsString());
+        var calls = (List<object>)engine.GetValue("__calls").ToObject()!;
+        Assert.Equal(new object[] { "0|call_1|send_mail|", "0|||{\"key\":\"sk-SEC", "0|||RET-123\"}" }, calls.ToArray());
+    }
+
+    [Fact]
+    [Trait("BR", "FWK-20")]
+    public async Task Act_hands_each_fragment_to_the_host_sink_as_it_arrives_when_no_interceptor_is_configured()
+    {
+        using var engine = new Engine(options => options.Constraints.PromiseTimeout = HangGuards.EnginePromise);
+        var sink = new FragmentRecordingSink();
+        var facade = new JsLlmFacade(
+            engine, ProviderStreamingFragments(), CancellationToken.None, observability: new JsLlmObservability { DeltaSink = sink });
+
+        await facade.ActAsync(engine, "go", BuildOptions(engine, "({})"));
+
+        Assert.Equal(
+            ["tool|0|call_1|send_mail|", "tool|0|||{\"key\":\"sk-SEC", "tool|0|||RET-123\"}", "text:ok", "<turn>"],
+            sink.Calls);
+    }
+
+    [Fact]
+    [Trait("BR", "FWK-20")]
+    public async Task Act_redacts_a_secret_split_between_two_fragments_when_the_sink_carries_an_interceptor()
+    {
+        using var engine = new Engine(options => options.Constraints.PromiseTimeout = HangGuards.EnginePromise);
+        var recording = new FragmentRecordingSink();
+        var interceptor = new Doubles.FakeDlpInterceptor();
+        var sink = new Orkeon.Application.Crew.ToolCallDlpDeltaSink(
+            recording,
+            new Orkeon.Application.Crew.ToolCallDeltaDlp(
+                interceptor,
+                new Orkeon.Application.Interfaces.Security.DlpPolicy { Channel = Orkeon.Application.Interfaces.Security.DlpChannel.ExternalOutput }));
+        var facade = new JsLlmFacade(
+            engine, ProviderStreamingFragments(), CancellationToken.None, observability: new JsLlmObservability { DeltaSink = sink });
+
+        engine.SetValue("__calls", new List<object>());
+        await facade.ActAsync(engine, "go", BuildOptions(engine, "({ onToolCallDelta: d => __calls.push(d.argumentsDelta) })"));
+
+        Assert.Equal(["{\"key\":\"sk-SECRET-123\"}"], interceptor.Scanned);
+        Assert.Equal(["text:ok", "tool|0|call_1|send_mail|{\"key\":\"[MASKED]\"}", "<turn>"], recording.Calls);
+        var calls = (List<object>)engine.GetValue("__calls").ToObject()!;
+        Assert.Equal(new object[] { "{\"key\":\"[MASKED]\"}" }, calls.ToArray());
+    }
+
+    [Fact]
+    [Trait("BR", "FWK-20")]
+    public async Task Act_redacts_for_the_script_when_the_dlp_is_injected_and_no_sink_is_registered()
+    {
+        using var engine = new Engine(options => options.Constraints.PromiseTimeout = HangGuards.EnginePromise);
+        var interceptor = new Doubles.FakeDlpInterceptor();
+        var dlp = new Orkeon.Application.Crew.ToolCallDeltaDlp(
+            interceptor,
+            new Orkeon.Application.Interfaces.Security.DlpPolicy { Channel = Orkeon.Application.Interfaces.Security.DlpChannel.ExternalOutput });
+        var facade = new JsLlmFacade(
+            engine, ProviderStreamingFragments(), CancellationToken.None, observability: new JsLlmObservability { ToolCallDlp = dlp });
+
+        engine.SetValue("__calls", new List<object>());
+        await facade.ActAsync(engine, "go", BuildOptions(engine, "({ onToolCallDelta: d => __calls.push(d.argumentsDelta) })"));
+
+        Assert.Equal(["{\"key\":\"sk-SECRET-123\"}"], interceptor.Scanned);
+        var calls = (List<object>)engine.GetValue("__calls").ToObject()!;
+        Assert.Equal(new object[] { "{\"key\":\"[MASKED]\"}" }, calls.ToArray());
+    }
+
+    private sealed record StreamedTurn(
+        string[] Deltas, LlmResponse Final, string[]? ReasoningDeltas = null, ToolCallDelta[]? ToolCallFragments = null)
     {
         /// <summary>Reasoning deltas emitted BEFORE the content deltas, as a thinking model does.</summary>
         public string[] Reasoning => ReasoningDeltas ?? [];
@@ -580,6 +681,8 @@ public sealed class JsLlmFacadeStreamTests
             var turn = _turns[Math.Min(_turn++, _turns.Length - 1)];
             foreach (var reasoning in turn.Reasoning)
                 yield return LlmStreamEvent.Reasoning(reasoning);
+            foreach (var fragment in turn.ToolCallFragments ?? [])
+                yield return LlmStreamEvent.ToolCallFragment(fragment);
             foreach (var delta in turn.Deltas)
                 yield return LlmStreamEvent.Content(delta);
             OnStreamEnd?.Invoke();

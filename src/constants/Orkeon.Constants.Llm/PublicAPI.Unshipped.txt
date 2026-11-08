@@ -51,3 +51,4 @@ const Orkeon.Constants.Llm.DecisionProviderDefaults.LiquidBaseUrl = "https://api
 const Orkeon.Constants.Llm.DecisionProviderDefaults.LiquidModel = "d1.1" -> string!
 const Orkeon.Constants.Llm.DecisionProviderKeys.Kev = "kev" -> string!
 const Orkeon.Constants.Llm.DecisionProviderKeys.Liquid = "liquid" -> string!
+const Orkeon.Constants.Llm.LlmProviderKeys.Mock = "mock" -> string!

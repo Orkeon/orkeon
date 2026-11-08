@@ -9,6 +9,16 @@ declare global {
         readonly expectedOutput: string;
     }
 
+    /** The shape of `taskBuilder().retry(...)`, the twin of a YAML task's `retry:` block. */
+    interface TaskRetrySpec {
+        /** How many times the task may run, the first run included (1 or more). */
+        attempts: number;
+        /** The base wait before a new attempt, in milliseconds (default 0). */
+        backoffMs?: number;
+        /** How the wait grows: `"fixed"` (default) or `"exponential"`. */
+        backoff?: "fixed" | "exponential";
+    }
+
     interface TaskBuilder<TIn = unknown, TOut = unknown> {
         name(value: string): this;
         description(value: string): this;
@@ -48,6 +58,17 @@ declare global {
          * once); the four other modes refuse the crew, naming the task.
          */
         asyncExecution(value?: boolean): this;
+        /**
+         * YAML parity `retry: {attempts, backoffMs, backoff}` — a failed attempt runs the WHOLE task
+         * again, tool calls included (nothing deduplicates a call that already succeeded: keep the
+         * task's tools idempotent), up to `attempts` runs in all, the first one included.
+         * `attempts` is required and at least 1; `backoffMs` (default 0) is the wait between runs,
+         * `backoff` how it grows: `"fixed"` (default) or `"exponential"` (doubling, capped at five
+         * minutes). Never retried: a cancellation, a refusal of the guardian, an exhausted budget.
+         * A decision task cannot have one. In `.process("graph")` it is the only retry: the mode has
+         * no retry loop of its own.
+         */
+        retry(spec: TaskRetrySpec): this;
         /**
          * YAML parity task-level `tools:` — names, `toolBuilder()` instances, or an
          * array mixing both. They ADD to the assigned agent's own tools, for this task

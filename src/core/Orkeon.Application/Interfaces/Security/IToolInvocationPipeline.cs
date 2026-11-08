@@ -8,7 +8,43 @@ namespace Orkeon.Application.Interfaces.Security;
 /// <param name="AgentRole">The calling agent's role.</param>
 /// <param name="TaskId">The task the call serves, when known.</param>
 /// <param name="CrewId">The crew the call runs in, when known.</param>
-public sealed record ToolInvocationCaller(string AgentId, string AgentRole, string? TaskId = null, string? CrewId = null);
+public sealed record ToolInvocationCaller(string AgentId, string AgentRole, string? TaskId = null, string? CrewId = null)
+{
+    /// <summary>
+    /// Gets the wire name of the permission mode the call runs under (<c>default</c>, <c>acceptEdits</c>, ...):
+    /// the agent's <c>permissionMode</c>, or the one a script poses on <c>act</c>. Null (the agent declares
+    /// none) means <c>Orkeon:Security:PermissionGate:DefaultMode</c>.
+    /// </summary>
+    public string? PermissionMode { get; init; }
+
+    /// <summary>
+    /// Gets a value indicating whether the call is not put to the permission gate: the caller is the
+    /// operator's own (<c>orkeon mcp serve</c>, the forge), not an agent acting on its own.
+    /// </summary>
+    public bool GateExempt { get; init; }
+
+    /// <summary>
+    /// Gets a value indicating whether the call must be approved by an operator: the pipeline asks the gate as a
+    /// <c>default</c>-mode edit. It never relaxes a stricter mode: under <c>plan</c> or <c>dontAsk</c> the call is
+    /// first put to the gate in that mode, and refused when that mode refuses it. A script's <c>onToolCall</c>
+    /// that answers <c>ask</c> sets it.
+    /// </summary>
+    public bool RequireApproval { get; init; }
+
+    /// <summary>
+    /// Gets what the caller does while the pipeline waits for the gate and an operator's answer: it returns a
+    /// scope the pipeline holds around both and disposes after. A script stops its clock and its agent's
+    /// wall-time budget there, since that wait is not the script's. Null holds nothing.
+    /// </summary>
+    public Func<IDisposable>? WaitScope { get; init; }
+
+    /// <summary>
+    /// Gets what the caller does once the guardian and the permission gate let the call through, before the tool
+    /// runs: a script charges its tool-call budget there, so a refused call costs nothing. What it throws ends the
+    /// call, the tool unrun. Null does nothing.
+    /// </summary>
+    public Action? Admitted { get; init; }
+}
 
 /// <summary>One tool call an agent turn asks for.</summary>
 /// <param name="Tool">The tool to call.</param>
@@ -54,4 +90,12 @@ public interface IToolInvocationPipeline
     /// an exception thrown by the tool is audited and rethrown.
     /// </summary>
     System.Threading.Tasks.Task<ToolInvocationResult> InvokeAsync(ToolInvocation invocation, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Gets a value indicating whether this pipeline puts the calls of an agent to a permission gate. A caller
+    /// that holds a gate of its own (the script facade) leaves the question to the pipeline only when this is
+    /// true: a pipeline that does not gate would let the call through unchecked. A decorator answers for the
+    /// pipeline it wraps.
+    /// </summary>
+    bool GatesPermissions => false;
 }

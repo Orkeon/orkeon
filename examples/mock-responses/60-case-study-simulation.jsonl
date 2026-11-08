@@ -1,0 +1,3 @@
+{"match": "^Task:\\s+Initialize the case study scenario", "regex": true, "content": "Scenario ready: a tense contract renegotiation with three scripted complications."}
+{"match": "^Task:\\s+Facilitate the main interaction", "regex": true, "content": "Interaction transcript: the learner opened with a question, the client persona pushed back twice."}
+{"match": "^Task:\\s+Analyze the interaction transcript", "regex": true, "content": "Competency report: active listening 4/5, negotiation 3/5, with two quoted pieces of evidence."}

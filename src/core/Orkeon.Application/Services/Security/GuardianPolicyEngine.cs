@@ -24,6 +24,11 @@ public class GuardianPolicy
     /// cycles) runs.
     /// </summary>
     public bool DelegationGuardEnabled { get; set; } = true;
+    /// <summary>
+    /// Gets or sets a value indicating whether the output phase runs. The only guard of that phase is
+    /// the LLM judge, which is itself off unless <c>Orkeon:Guardian:Llm:Enabled</c>.
+    /// </summary>
+    public bool OutputGuardEnabled { get; set; } = true;
     /// <summary>Gets or sets how many synchronous delegations may nest before the next one is blocked.</summary>
     public int MaxDelegationDepth { get; set; } = 5;
 
@@ -35,6 +40,7 @@ public class GuardianPolicy
         GuardPhase.Input => InputGuardEnabled,
         GuardPhase.ToolExecution => ToolGuardEnabled,
         GuardPhase.Delegation => DelegationGuardEnabled,
+        GuardPhase.Output => OutputGuardEnabled,
         _ => true
     };
 }

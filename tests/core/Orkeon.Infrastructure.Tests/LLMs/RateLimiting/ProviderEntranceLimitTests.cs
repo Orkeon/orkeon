@@ -100,7 +100,7 @@ public sealed class ProviderEntranceLimitTests
         {
             Content = new StringContent(OpenAiAnswer, Encoding.UTF8, "application/json"),
         });
-        var factory = new LlmProviderFactory(http, NullLoggerFactory.Instance, usageSink: null, rateLimiter: limiter);
+        var factory = new LlmProviderFactory(http, NullLoggerFactory.Instance, new Orkeon.Tests.Shared.FileSystem.FakeFileSystemService(), usageSink: null, rateLimiter: limiter);
         var config = LlmConfig.Create("gpt-4o-mini") with { ApiKey = "sk-test", BaseUrl = new Uri("https://api.openai.com/v1"), CallMode = LlmCallMode.Buffer };
 
         var basic = Assert.IsType<LlmProviderAdapter>(factory.Create(config));

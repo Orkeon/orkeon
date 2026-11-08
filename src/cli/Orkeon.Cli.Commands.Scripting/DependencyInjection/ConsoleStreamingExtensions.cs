@@ -22,11 +22,12 @@ public static class ConsoleStreamingExtensions
     /// <summary>
     /// Registers <see cref="ConsoleLlmDeltaSink"/> as the <see cref="ILlmDeltaSink"/> when
     /// the <c>Orkeon:Cli:ConsoleStreaming</c> section enables it. Requires an
-    /// <see cref="IConsoleAdapter"/> in the container (any CLI host has one). Idempotent
+    /// <see cref="IConsoleAdapter"/> in the container (any CLI host has one). With the key unset, streaming is
+    /// on when <paramref name="enabledByDefault"/> is true (the REPL) and off otherwise (a crew run). Idempotent
     /// (<c>TryAddSingleton</c> — a host-supplied sink wins).
     /// </summary>
     public static IServiceCollection AddLlmConsoleStreaming(
-        this IServiceCollection services, IConfiguration configuration)
+        this IServiceCollection services, IConfiguration configuration, bool enabledByDefault = false)
     {
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(configuration);
@@ -35,7 +36,7 @@ public static class ConsoleStreamingExtensions
         // host starts (GAP-40), whether streaming is on or not.
         services.DeclareSettingsShape(SectionName, typeof(ConsoleStreamingSettingsShape));
         var section = configuration.GetSection(SectionName);
-        if (!section.GetValue("Enabled", new ConsoleStreamingSettingsShape().Enabled))
+        if (!section.GetValue("Enabled", enabledByDefault))
             return services;
 
         services.TryAddSingleton<ILlmDeltaSink>(sp =>
@@ -48,6 +49,6 @@ public static class ConsoleStreamingExtensions
 /// <remarks>Its property is the key, and its value on a new instance the default the registration applies: nothing binds it.</remarks>
 internal sealed class ConsoleStreamingSettingsShape
 {
-    /// <summary>Whether each piece of an answer is written to the console as the model sends it, instead of the whole answer at its end.</summary>
+    /// <summary>Whether each piece of an answer is written to the console as the model sends it, instead of the whole answer at its end. The REPL turns it on when the key is absent; a crew run keeps it off.</summary>
     public bool Enabled { get; set; }
 }

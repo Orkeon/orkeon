@@ -19,7 +19,7 @@ namespace Orkeon.Infrastructure.Tests.LLMs;
 public class LlmProviderFactoryRoutingTests
 {
     private static LlmProviderFactory CreateFactory() =>
-        new(new TestHttpClientFactory(), NullLoggerFactory.Instance);
+        new(new TestHttpClientFactory(), NullLoggerFactory.Instance, new Orkeon.Tests.Shared.FileSystem.FakeFileSystemService());
 
     private static string RoutedProviderName(string? model, string? baseUrl)
     {

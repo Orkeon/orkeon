@@ -209,6 +209,8 @@ réponse diffusée le corps que porte leur réponse bufferisée, où le repli du
 un appel que le modèle a écrit en texte. La matrice par provider vit dans [le comparatif des
 providers](../reference/llm-providers-comparison.md).
 
+**Deltas d'appels d'outils (FWK-20).** Le flux de chat informe son appelant d'un appel d'outil pendant que le modèle le construit : `LlmStreamEventKind.ToolCallDelta` porte `ToolCallDelta(Index, Id, Name, ArgumentsDelta)`, et l'événement final porte toujours l'appel entier, inchangé. Le dialecte OpenAI (les quatorze providers qui dérivent de `OpenAICompatibleProviderBase`, Azure OpenAI compris) émet un delta par fragment de `delta.tool_calls` ; Anthropic un à l'ouverture d'un bloc `tool_use` (id et nom) et un par `input_json_delta` ; Ollama un delta complet par appel, puisqu'il envoie les appels entiers. Aucun des 16 providers n'est muet : un test vérifie que les trois familles les couvrent, si bien qu'un provider ajouté plus tard doit rejoindre l'une d'elles ou dire qu'il ne le peut pas (un avertissement structuré, jamais un abandon silencieux). L'adaptateur de chat client transmet les fragments en mises à jour sans contenu, si bien que le repli du tour est celui d'avant ; `ILlmDeltaSink.OnToolCallDelta` les reçoit (vide par défaut) et ils voyagent dans l'événement `llm.delta` (`deltaKind: "tool_call"`). Les deltas de raisonnement ne sont pas transmis aux sinks. Avec un intercepteur DLP du canal de sortie externe enregistré (`AddOrkeonDlp`), les arguments de chaque appel sont retenus par index jusqu'à la fin du flux, scannés entiers et émis en un seul delta : un secret coupé entre deux fragments est rédigé ; sans intercepteur ils sortent au fil de l'eau. Une chaîne de repli (FWK-05) s'engage sur un provider à son premier événement, delta d'appel d'outil compris : les deltas partiels d'un provider tombé avant tout événement n'atteignent jamais l'appelant, et celui qui tombe après l'avoir atteint garde l'appel, son échec terminant le flux.
+
 ### Points d'extension du dialecte de la base compatible OpenAI
 
 Ce qui diffère entre les vendeurs compatibles s'exprime par une poignée de membres protégés,
@@ -272,6 +274,142 @@ fournisseur dont le cache est explicite (`LlmProviderCapabilities.ExplicitPrompt
 agent ou d'une tâche, un Off explicite compris, l'emporte toujours. Les appels procéduraux `ctx.llm` d'un agent
 scripté tournent avec le cache et l'effort que son builder a fixés (`.cache(...)`, `.effort(...)`, ou le
 `LlmConfig` donné à `.llm(...)`), les options propres d'un appel l'emportant.
+
+## Bascule de profil
+
+Un profil qui bascule nomme ses remplaçants : `Llm:Profiles:<name>:Fallback: [b, c]` (une liste de noms de profils, ou une seule valeur
+séparée par des virgules ; `default` désigne le profil de l'hôte). Un appel qui échoue sur `<name>` d'une façon qu'un nouvel essai
+ne guérit pas passe à `b`, puis à `c` ; un profil enregistré en code prend la même liste avec
+`services.AddOrkeonLlmProfile(name, provider, baseConfig, ["b", "c"])`.
+
+| Échec | Classe (`reason`) | Bascule |
+|---|---|---|
+| connexion refusée, réinitialisée, DNS, flux fermé avant toute réponse | `transport` | oui |
+| un 5xx | `server_error` | oui |
+| un 429, une fois `Llm:MaxRetries` épuisé, ou une fenêtre de limite plus longue que `MaxRateLimitWait` | `rate_limited` | oui |
+| le délai HTTP, un 408, un flux silencieux au-delà de `StreamIdleSeconds` | `timeout` | oui |
+| tous les profils d'une chaîne imbriquée ont échoué | `exhausted` | oui |
+| tout autre 4xx (400, 401, 403, 422...), un contenu bloqué (les étages de décision), un échec dont on ne sait rien | — | **non** : c'est la réponse |
+| l'annulation de l'appelant, levée ou rapportée dans la réponse par le fournisseur | — | non : l'appel est annulé, rien n'est basculé ni essayé |
+
+`LlmFailureClassifier` est l'unique classement : `ResiliencePolicies` en tire sa liste de statuts à rejouer (5xx, 408, 429), si bien
+que ce qu'un nouvel essai peut guérir et ce qu'une chaîne reprend forment le même ensemble.
+
+Construction de la chaîne (`LlmProfileRegistry`) : `FallbackLlmProvider` est le maillon le plus externe, **au-dessus** de profils déjà assemblés.
+Chaque profil garde ses décorateurs (`RateLimited` → `Traced` → `Metered` → `CallMode` → fournisseur) : la métrique et la trace nomment le
+fournisseur qui a répondu, un appel en échec est tracé comme l'échec qu'il est, et chaque profil garde son mode d'appel. Le client de chat de la
+chaîne lit les appels d'outils par détection automatique du format (forme Anthropic ou OpenAI), pas par un analyseur propre à chaque profil. Les `Capabilities`
+de la chaîne (et le choix de sortie structurée que le client de chat en tire) sont celles du **premier profil seul** ; un profil suivant qui en a moins est
+signalé par l'avertissement ci-dessous, sans entrer dans celles de la chaîne.
+
+Chaque profil utilise ses **propres réglages**. Le client de chat part de la configuration du premier profil et pose dessus les options de l'appelant ; la chaîne
+donne à un profil suivant l'appel dont chaque champ qui vaut encore celui du premier profil est remplacé par la valeur de ce profil (modèle, clé, point d'accès,
+`MaxTokens`, `Temperature`, `Thinking`, `CustomParameters`, `SystemMessage`, `StopSequences`, `GrammarGbnf`, délais, tous). Un champ que l'appelant a fixé sur l'appel
+(un `MaxTokens` explicite, une température dans les options de chat) diffère de celui du premier profil et reste pour tous les profils. Un appelant qui fixe un champ à
+exactement la valeur du premier profil ne se distingue pas du profil : la valeur du profil suivant s'applique.
+
+- **Streaming** : un flux ne bascule **qu'avant son premier delta** (une exception, ou une complétion en échec, sans rien émis). Dès qu'un jeton est
+  arrivé chez l'appelant, l'appel appartient à son profil et un échec ultérieur est celui de l'appelant. Un profil qui ne diffuse pas répond tamponné.
+- **Budget** : `Llm:Profiles:<name>:FallbackBudgetSeconds` (absent : aucun) est le temps maximal que la chaîne passe, depuis son premier appel, avant de cesser
+  d'essayer le profil suivant. Il est vérifié entre deux profils et ne coupe jamais un appel en cours : sans lui, une chaîne coûte au pire le
+  `TimeoutSeconds` de chaque profil multiplié par son `MaxRetries`.
+- **Chaîne épuisée** : un appel tamponné répond par une réponse d'erreur dont l'`ErrorType` est `FallbackExhausted` et dont le texte nomme chaque profil et son échec ;
+  un appel qui a échoué par exception lève une seule `HttpRequestException` portant le même texte, la dernière exception pour cause.
+- **Validation** (à la construction du registre, pas dans `CrewFactory`, qui ne voit que les profils nommés par les crews) : un nom qu'aucun profil ne définit, un profil qui se nomme
+  lui-même et un cycle (`a -> b -> a`) refusent le démarrage de l'hôte. Un secours peut être un profil que `Orkeon:Host:LlmProfiles` cache aux crews.
+- **Secours inférieur** : un secours dont les `LlmProviderCapabilities` sont en dessous de celles du premier profil (vision, format de réponse, réflexion, grammaire GBNF) journalise un
+  avertissement nommant ce qui lui manque à la construction de la chaîne ; une option qui en a besoin est alors traitée par le fournisseur qui la reçoit, comme pour tout fournisseur.
+- **Événement** : chaque bascule écrit `llm.fallback` sur le flux `--events` ([le bus d'événements de run](run-event-bus.md)) et un avertissement dans le journal. Un hôte qui enregistre un
+  `ILlmFallbackObserver` en est averti aussi. Seul `orkeon run` (avec `--events`) en enregistre un : `orkeon-host`, le REPL, Studio et un hôte bibliothèque basculent
+  pareillement mais n'écrivent aucun `llm.fallback`, l'avertissement du journal étant la seule trace tant que l'hôte n'enregistre pas son propre observateur.
+- **Pas de persistance du choix** : une chaîne repart de son premier profil à chaque appel. Avec un primaire en panne, chaque tour d'une boucle d'outils paie le
+  `TimeoutSeconds` du primaire multiplié par son `MaxRetries` avant d'atteindre le secours ; `FallbackBudgetSeconds` ne raccourcit pas cette attente (il est vérifié entre
+  deux profils) : réduisez le `TimeoutSeconds` et le `MaxRetries` propres d'un profil qui a un secours.
+- **Une clé révoquée bloque la chaîne** : un 401 et un 403 ne basculent jamais (c'est une erreur de configuration, pas une panne), si bien qu'un primaire dont la clé a été
+  révoquée répond son erreur à chaque appel et que ses secours ne sont jamais essayés.
+
+## Ce qu'accepte un modèle, et l'audio en entrée
+
+`LlmProviderCapabilities` est déclaré une fois par fournisseur : il ne distingue pas deux modèles d'un même
+éditeur. `gpt-4o` ne prend aucun effort de raisonnement, `o3-mini` en prend trois, et les deux passent par le
+même fournisseur. Le côté par modèle est une table, `IModelCapabilityRegistry` (`ORKEXP005`,
+[expérimental](../reference/experimental-apis.md)), bâtie comme `ModelPricingRegistry` : un **préfixe** d'identifiant
+de modèle donne des `ModelCapabilities` (`AudioInput`, `AudioOutput`, `Vision`, `ReasoningEfforts`) ; le plus long
+préfixe du modèle demandé l'emporte, sans tenir compte de la casse. La table intégrée est dans le code et couvre les
+familles OpenAI (chat, audio, raisonnement), Gemini et Claude ; un modèle qu'elle ignore s'ajoute, ou une entrée
+intégrée se remplace, depuis la configuration :
+
+```yaml
+Llm:
+  ModelCapabilities:
+    acme-voice:                 # un préfixe : acme-voice-2 correspond
+      AudioInput: true
+      ReasoningEfforts: [low, high]   # omis : aucune restriction ; écrit vide : le modèle n'en prend aucun
+```
+
+Une entrée se fusionne avec la valeur intégrée du même identifiant **champ par champ** : un champ omis garde la
+valeur intégrée, donc une entrée qui ne fixe que `AudioInput` garde la restriction d'effort intégrée du modèle (pour
+un modèle que la table ignore, un interrupteur omis est faux et les efforts restent sans restriction). Un
+`ReasoningEfforts` écrit vide dit que le modèle n'en prend aucun. Un registre que l'hôte enregistre lui-même
+(`IModelCapabilityRegistry`, avant `AddOrkeonLlmProfiles`) l'emporte sur celui de la configuration. Un identifiant de
+modèle contenant `:` (le `llama3:8b` d'Ollama) ne peut pas être une clé : la configuration .NET n'a pas
+d'échappement pour le séparateur de chemin `:`. Écrivez plutôt son préfixe (`llama3` correspond à `llama3:8b` et à
+tous les autres tags).
+
+- **Audio en entrée.** Un `AudioContentPart` parvient à un modèle qui l'accepte sous la forme d'une partie
+  `input_audio` de l'API Chat Completions (octets bruts, `audio/wav` ou `audio/mpeg` ; l'API ne prend pas d'adresse
+  audio). La famille compatible OpenAI le fait par `ContentConverter.ToOpenAIContentParts(content, model, registry)` :
+  OpenAI et Gemini (par sa couche compatible) sont couverts ; `ToAIContents` juge de même pour le chemin du client de
+  conversation. Un modèle que la table ne crédite pas d'audio, ou ne connaît pas, est refusé par une
+  `NotSupportedException` qui **nomme le modèle** et la clé `Llm:ModelCapabilities:<id>:AudioInput` qui le déclare :
+  l'audio n'est jamais abandonné en silence. Anthropic et Ollama restent des refus (leurs API ne prennent pas
+  d'audio) ; un fournisseur qui ne déclare pas la vision garde son avertissement structuré « message attachments
+  (audio) » et n'envoie que le texte. Azure OpenAI se nomme par déploiement : déclarez le déploiement par une
+  surcharge. La **sortie** audio est hors périmètre : la table l'enregistre, rien ne l'envoie ni ne la lit.
+- **Effort de raisonnement, jugé contre le modèle** (identifiants d'événement `110`, `113`). Sur la famille
+  compatible OpenAI, un effort que la table ne donne pas au modèle est **omis** de la requête, avec un avertissement
+  structuré qui nomme le modèle et les efforts qu'il prend ; un modèle que la table ignore reçoit l'effort tel que
+  demandé, avec un avertissement : rien n'a été vérifié, **une fois par instance de fournisseur et par modèle** (`Llm:ModelCapabilities:<id>:ReasoningEfforts` le fait taire) ;
+  un modèle dont l'entrée omet `ReasoningEfforts` n'est pas restreint. Les niveaux déclarés du fournisseur
+  s'appliquent d'abord (`xhigh` est abaissé là où le champ ne le connaît pas), puis la table.
+- **Les chaînes de bascule** (`WarnAboutLesserFallbacks`) lisent la même table : une bascule dont le modèle ne prend
+  pas d'audio, ou moins d'efforts, que celui du principal est signalée une fois, à côté de la vision, du format de
+  réponse, de la réflexion et de la grammaire.
+- Les dialectes Anthropic et Ollama ne lisent pas encore la table : leur effort n'est jugé que par les niveaux
+  déclarés du fournisseur.
+
+## Providers d'embeddings
+
+`Orkeon:Embeddings:Provider` est résolu par `DefaultEmbeddingProviderResolver`, après un provider
+local ou d'analyse de code et avant le bouchon qui échoue vite. Cinq noms sont acceptés ; un autre
+refuse le démarrage.
+
+| `Provider` | Classe | Point d'accès | Modèle par défaut (dimensions) |
+|---|---|---|---|
+| `openai` | `OpenAIEmbeddingProvider` | tout générateur d'embeddings M.E.AI qu'inscrit l'hôte | `text-embedding-3-small` (1536) |
+| `ollama` | `OllamaEmbeddingProvider` | `/api/embed` de l'hôte Ollama | le `Model` configuré |
+| `mistral` | `MistralEmbeddingProvider` | `https://api.mistral.ai/v1/embeddings`, clé en `Bearer` | `mistral-embed` (1024) |
+| `azure-openai` | `AzureOpenAIEmbeddingProvider` | `{Endpoint}/openai/deployments/{Model}/embeddings?api-version=`, en-tête `api-key` | le déploiement que nomme `Model` |
+| `gemini` | `GeminiEmbeddingProvider` | `https://generativelanguage.googleapis.com/v1beta/openai/embeddings`, clé en `Bearer` | `gemini-embedding-001` (3072) |
+
+Les trois derniers partagent `OpenAICompatibleEmbeddingProviderBase` : une seule forme de requête
+(`model` et `input`), des réponses remises dans l'ordre de `index`, des lots coupés à `BatchSize`, et un
+vecteur dont la longueur n'est pas la `Dimension` déclarée est refusé. Quand `Model` et `Dimension`
+gardent les défauts globaux (`text-embedding-3-small`, 1536), `mistral` et `gemini` prennent leur propre
+modèle et leurs dimensions ; `azure-openai` prend toujours `Model` comme nom du déploiement. Une réponse
+4xx ou 5xx lève une `HttpRequestException` qui nomme le provider, le statut et le début du corps, jamais la
+clé. Les appels d'embeddings ne sont pas rejoués : un 429 ou un 5xx parvient à l'appelant sous cette exception dès la première réponse, et `Llm:MaxRetries` ne vaut que pour le chat. `mistral-embed` (1024) et `gemini-embedding-001` (3072) ont une taille fixe et ces providers n'envoient aucune taille de sortie : une `Dimension` autre que cette taille (le défaut global compte pour non réglé) est refusée à la construction du provider, avec la taille attendue, avant tout appel. La clé est `ApiKey` ou la variable que nomme `ApiKeyEnvVar` ; sans l'une ni l'autre, le premier appel
+échoue avec un message qui nomme les deux. Les identifiants de modèle des providers d'embeddings ne sont
+pas dans la table des capacités : elle porte sur l'entrée de chat et l'effort de raisonnement.
+
+**Changer de modèle d'embedding invalide les vecteurs stockés.** Au démarrage, un garde-fou (lancé par `RunnerHost.Build` pour `orkeon run`, les autres commandes et le démon, par le démarrage du REPL, et par le service hébergé d'un hôte qui démarre ses services) compare le
+provider, le modèle et les dimensions à l'empreinte consignée dans `Orkeon:Embeddings:FingerprintPath`
+(par défaut `/workspace/.orkeon/embedding-fingerprint.json`, dans le système de fichiers virtuel). Le
+premier démarrage la consigne ; une empreinte différente arrête l'hôte avec une erreur qui nomme les deux
+modèles. Rien n'est migré : rétablir les réglages précédents, ou ré-embedder et vider les vecteurs
+stockés, puis supprimer le fichier d'empreinte. Tout hôte dont le provider d'embeddings est configuré est gardé, avec ou sans section `Orkeon:Embeddings` : un hôte qui a produit des vecteurs avec le provider par défaut puis écrit une section (passage à Mistral ou Gemini) trouve l'empreinte du défaut et est refusé. Un hôte sans provider d'embeddings (aucun enregistré, pas de section) n'écrit rien. Un hôte sans montage `/workspace` (la lecture est refusée, un avertissement est journalisé), ou avec un `FingerprintPath` vide, tourne sans garde-fou.
+
+Cohere, Voyage et pgvector ne sont pas livrés.
 
 ## Décorateurs et enregistrement
 

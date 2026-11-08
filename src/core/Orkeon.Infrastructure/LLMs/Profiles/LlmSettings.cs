@@ -5,6 +5,8 @@ using Orkeon.Application.Interfaces.Ports;
 using Orkeon.Constants.Configuration;
 using Orkeon.Domain.SharedKernel.ValueObjects;
 using Orkeon.Infrastructure.Configuration;
+using Orkeon.Infrastructure.LLMs.Capabilities;
+using Orkeon.Infrastructure.LLMs.Replay;
 
 namespace Orkeon.Infrastructure.LLMs.Profiles;
 
@@ -41,6 +43,8 @@ public static class LlmSettings
         ArgumentNullException.ThrowIfNull(configuration);
         return configuration.GetSection(ConfigurationKeys.LlmSection).GetChildren()
             .Any(c => !string.Equals(c.Key, ConfigurationKeys.LlmProfiles, StringComparison.OrdinalIgnoreCase)
+                      && !string.Equals(c.Key, ModelCapabilitiesKey, StringComparison.OrdinalIgnoreCase)
+                      && !string.Equals(c.Key, ReplayKey, StringComparison.OrdinalIgnoreCase)
                       && HoldsValue(c));
     }
 
@@ -99,7 +103,7 @@ public static class LlmSettings
                     $"{section.Path}: '{LlmProfiles.Default}' is the reserved name of the default profile, " +
                     $"which is the {ConfigurationKeys.LlmSection} section itself. Rename the profile.");
 
-            profiles.Add((section.Key, Read(section, strict: true, environment)));
+            profiles.Add((section.Key, Read(section, strict: true, environment) with { Profile = section.Key }));
         }
 
         return profiles;
@@ -161,6 +165,98 @@ public static class LlmSettings
         ];
     }
 
+    /// <summary>
+    /// The fallback chain and time budget each profile names (<c>Fallback</c>, <c>FallbackBudgetSeconds</c>),
+    /// by profile name; a profile that names neither is absent. Names are not checked here: the registry
+    /// does, with every profile in hand.
+    /// </summary>
+    /// <param name="configuration">The host configuration.</param>
+    /// <exception cref="InvalidOperationException">A budget is not a positive number of seconds.</exception>
+    internal static IReadOnlyDictionary<string, (IReadOnlyList<string> Chain, TimeSpan? Budget)> ReadFallbacks(IConfiguration configuration)
+    {
+        ArgumentNullException.ThrowIfNull(configuration);
+        var result = new Dictionary<string, (IReadOnlyList<string>, TimeSpan?)>(StringComparer.OrdinalIgnoreCase);
+        foreach (var section in ProfilesSection(configuration).GetChildren())
+        {
+            var list = section.GetSection(FallbackKey);
+            var names = list.GetChildren().Select(c => c.Value).Where(v => !string.IsNullOrWhiteSpace(v)).Select(v => v!.Trim()).ToList();
+            if (names.Count == 0 && !string.IsNullOrWhiteSpace(list.Value))
+                names = [.. list.Value.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)];
+
+            var seconds = ReadInt(section, FallbackBudgetKey, strict: true);
+            if (seconds is <= 0)
+                throw new InvalidOperationException(
+                    $"{section.Path}:{FallbackBudgetKey}: {seconds} is not a number of seconds above zero. Leave the key out for a chain bounded by each profile's own timeout.");
+
+            if (names.Count > 0 || seconds is not null)
+                result[section.Key] = (names, seconds is { } s ? TimeSpan.FromSeconds(s) : null);
+        }
+
+        return result;
+    }
+
+    private const string ModelCapabilitiesKey = "ModelCapabilities";
+
+    /// <summary>
+    /// The host's per-model overrides (<c>Llm:ModelCapabilities:&lt;id&gt;</c>, FWK-21), by model id (a
+    /// prefix). A switch left out keeps the built-in value (false for a model the table does not know); <c>ReasoningEfforts</c> left out does not restrict the model, and
+    /// written empty says the model takes none.
+    /// </summary>
+    /// <param name="configuration">The host configuration.</param>
+    /// <exception cref="InvalidOperationException">A switch is neither true nor false.</exception>
+    internal static IReadOnlyDictionary<string, ModelCapabilityOverride> ReadModelCapabilities(IConfiguration configuration)
+    {
+        ArgumentNullException.ThrowIfNull(configuration);
+        var result = new Dictionary<string, ModelCapabilityOverride>(StringComparer.OrdinalIgnoreCase);
+        foreach (var section in configuration.GetSection(ConfigurationKeys.LlmSection).GetSection(ModelCapabilitiesKey).GetChildren())
+        {
+            var efforts = section.GetSection("ReasoningEfforts");
+            IReadOnlyList<string>? listed = null;
+            var items = efforts.GetChildren().Select(c => c.Value).Where(v => !string.IsNullOrWhiteSpace(v)).Select(v => v!.Trim()).ToList();
+            if (items.Count > 0)
+                listed = items;
+            else if (efforts.Value is { } single)
+                listed = [.. single.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)];
+
+            result[section.Key] = new ModelCapabilityOverride
+            {
+                AudioInput = ReadBool(section, "AudioInput"),
+                AudioOutput = ReadBool(section, "AudioOutput"),
+                Vision = ReadBool(section, "Vision"),
+                ReasoningEfforts = listed,
+            };
+        }
+
+        return result;
+    }
+
+    private const string ReplayKey = "Replay";
+
+    /// <summary>
+    /// The record-and-replay settings (<c>Llm:Replay</c>, FWK-11). Left out, nothing is recorded or replayed.
+    /// </summary>
+    /// <param name="configuration">The host configuration.</param>
+    /// <exception cref="InvalidOperationException">The mode is unknown, or a mode is set without a cassette.</exception>
+    internal static LlmReplayOptions ReadReplay(IConfiguration configuration)
+    {
+        ArgumentNullException.ThrowIfNull(configuration);
+        var section = configuration.GetSection(ConfigurationKeys.LlmSection).GetSection(ReplayKey);
+        var options = new LlmReplayOptions { Cassette = Clean(section["Cassette"]) };
+        if (Clean(section["Mode"]) is not { } mode)
+            return options;
+
+        if (!Enum.TryParse<LlmReplayMode>(mode, ignoreCase: true, out var parsed) || !Enum.IsDefined(parsed))
+            throw new InvalidOperationException($"{section.Path}:Mode: '{mode}' is not a mode; the values are off, record and replay.");
+        options.Mode = parsed;
+        if (parsed != LlmReplayMode.Off && options.Cassette is null)
+            throw new InvalidOperationException($"{section.Path}:Cassette: the {mode} mode needs the virtual path of the cassette.");
+        return options;
+    }
+
+    private const string FallbackKey = "Fallback";
+
+    private const string FallbackBudgetKey = "FallbackBudgetSeconds";
+
     private static IConfigurationSection ProfilesSection(IConfiguration configuration) =>
         configuration.GetSection(ConfigurationKeys.LlmSection).GetSection(ConfigurationKeys.LlmProfiles);
 
@@ -205,10 +301,39 @@ public static class LlmSettings
         if (ReadInt(section, "MaxRetries", strict) is { } maxRetries)
             config = config with { MaxRetries = Math.Max(0, maxRetries) };
 
+        config = ReadMock(section, config);
+
         // Absent = ResilienceDefaults.DefaultMaxRateLimitWait.
         return ReadTimeSpan(section, "MaxRateLimitWait", strict) is { } maxRateLimitWait
             ? config with { MaxRateLimitWait = maxRateLimitWait }
             : config;
+    }
+
+    /// <summary>
+    /// <c>Provider: mock</c> with <c>Responses</c>, the virtual path of the JSONL file the offline
+    /// provider answers from. <c>mock</c> is the only value <c>Provider</c> takes; a provider
+    /// otherwise follows from <c>BaseUrl</c>, the model's name and the key.
+    /// </summary>
+    private static LlmConfig ReadMock(IConfigurationSection section, LlmConfig config)
+    {
+        var provider = section[Orkeon.Infrastructure.LLMs.Mock.MockProviderSettings.ProviderKey];
+        var responses = section[Orkeon.Infrastructure.LLMs.Mock.MockProviderSettings.ResponsesKey];
+        if (string.IsNullOrWhiteSpace(provider))
+            return config;
+
+        if (!string.Equals(provider, Orkeon.Constants.Llm.LlmProviderKeys.Mock, StringComparison.OrdinalIgnoreCase))
+            throw new InvalidOperationException(
+                $"{section.Path}:Provider: '{provider}' is not a provider key; the only value is 'mock'. "
+                + "Leave Provider out and the provider follows from BaseUrl, the model's name and the key.");
+
+        if (string.IsNullOrWhiteSpace(responses))
+            throw new InvalidOperationException(
+                $"{section.Path}:Responses: the mock provider needs the virtual path of its JSONL responses file.");
+
+        var profile = string.Equals(section.Path, ConfigurationKeys.LlmSection, StringComparison.OrdinalIgnoreCase)
+            ? "default"
+            : section.Key;
+        return Orkeon.Infrastructure.LLMs.Mock.MockProviderSettings.Apply(config, responses, profile);
     }
 
     private enum ApiKeySource

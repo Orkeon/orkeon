@@ -78,7 +78,7 @@ public sealed record RagEvalRunResult
 }
 
 /// <summary>
-/// One-call evaluation harness shared by the CLI (<c>orkeon rag eval</c>) and the
+/// One-call evaluation harness shared by the CLI (<c>orkeon eval rag</c>) and the
 /// agent tool (<c>rag_eval</c>): loads the dataset, ingests its corpus
 /// (incremental — unchanged sources are skipped), evaluates each requested
 /// profile, and writes the markdown/JSON reports (plus the comparison table for

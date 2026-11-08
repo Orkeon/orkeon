@@ -34,8 +34,8 @@ public sealed class GraphFailedTaskTests : IDisposable
         _fixture.AssertFailed(output, consolidate);
         Assert.Contains("no final answer", output.Error, StringComparison.Ordinal);
         Assert.DoesNotContain(extract.Id.ToString(), output.Error, StringComparison.Ordinal);
-        // The default two retries were spent before giving up: one attempt, two retries.
-        Assert.Equal(3, _fixture.Executed.Count(name => name == "consolidate"));
+        // The graph runs the task once: its attempts are its retry: policy, applied below the strategy (FWK-15).
+        Assert.Equal(1, _fixture.Executed.Count(name => name == "consolidate"));
     }
 
     [Fact]
@@ -56,33 +56,6 @@ public sealed class GraphFailedTaskTests : IDisposable
         Assert.Contains("skipped", output.Error, StringComparison.Ordinal);
     }
 
-    [Fact]
-    public async Task A_dependency_that_recovers_on_retry_runs_before_its_dependant()
-    {
-        var extract = _fixture.Task("extract");
-        var consolidate = _fixture.Task("consolidate", extract);
-        var attempts = 0;
-        _fixture.Execution.SetExecuteFunc((_, task, context, _) =>
-        {
-            if (task.Description.Value == "extract")
-            {
-                attempts++;
-                return attempts == 1
-                    ? new TaskResult(false, "", null, [], TimeSpan.Zero, Error: "flaky")
-                    : new TaskResult(true, "extracted", null, [], TimeSpan.Zero);
-            }
-
-            // The dependant reads a context whose last word on its dependency is a success.
-            Assert.True(context.PreviousOutputs.Last(o => o.TaskId == extract.Id.Value.ToString()).Success);
-            return new TaskResult(true, "consolidated", null, [], TimeSpan.Zero);
-        });
-
-        var output = await RunAsync(extract, consolidate);
-
-        _fixture.AssertCompleted(output);
-        Assert.Equal(2, attempts);
-    }
-
     [Theory]
     [InlineData(6)]
     [InlineData(30)]
@@ -97,11 +70,13 @@ public sealed class GraphFailedTaskTests : IDisposable
     }
 
     [Fact]
-    public async Task An_explicit_maxStateVisits_still_wins_over_the_computed_bound()
+    public async Task An_explicit_maxTransitions_still_wins_over_the_computed_bound()
     {
-        var tasks = Enumerable.Range(1, 3).Select(i => _fixture.Task($"task {i}")).ToArray();
+        // One node per task (ADR-018): the transitions are the node executions of the whole run, and an
+        // explicit bound cuts a healthy crew short where the computed one would not.
+        var tasks = new[] { _fixture.Task("a"), _fixture.Task("b"), _fixture.Task("c") };
 
-        var output = await RunAsync(tasks, new GraphConfig { MaxStateVisits = 2 });
+        var output = await RunAsync(tasks, new GraphConfig { MaxTransitions = 2, MaxStateVisits = 10 });
 
         Assert.False(output.Success);
         Assert.Contains("circuit breaker", output.Error, StringComparison.OrdinalIgnoreCase);

@@ -29,6 +29,13 @@ public interface IHumanInputProvider
         => throw new NotSupportedException("This provider does not support multiple choices.");
 
     /// <summary>
+    /// Gets whether this provider puts the question to a person who answers it (a terminal, a stream a client reads). A
+    /// provider that answers on its own (auto-approve) says false: a run that can pause for a human does so instead of
+    /// asking it (FWK-23).
+    /// </summary>
+    bool AsksAPerson => true;
+
+    /// <summary>
     /// Checks if human input is available.
     /// </summary>
     System.Threading.Tasks.Task<bool> IsAvailableAsync(CancellationToken cancellationToken = default);

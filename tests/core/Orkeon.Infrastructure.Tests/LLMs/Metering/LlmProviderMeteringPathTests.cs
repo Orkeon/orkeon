@@ -47,7 +47,7 @@ public sealed class LlmProviderMeteringPathTests
     {
         using var http = VendorAnswering(out var handler);
         var sink = new MockLlmUsageSink();
-        var factory = new LlmProviderFactory(http, NullLoggerFactory.Instance, sink);
+        var factory = new LlmProviderFactory(http, NullLoggerFactory.Instance, new Orkeon.Tests.Shared.FileSystem.FakeFileSystemService(), sink);
         var ct = TestContext.Current.CancellationToken;
 
         var basic = Assert.IsType<LlmProviderAdapter>(factory.Create(OpenAiConfig()));
@@ -71,7 +71,7 @@ public sealed class LlmProviderMeteringPathTests
     public void A_factory_no_host_listens_to_builds_its_providers_bare()
     {
         using var http = VendorAnswering(out _);
-        var factory = new LlmProviderFactory(http, NullLoggerFactory.Instance);
+        var factory = new LlmProviderFactory(http, NullLoggerFactory.Instance, new Orkeon.Tests.Shared.FileSystem.FakeFileSystemService());
 
         var basic = Assert.IsType<LlmProviderAdapter>(factory.Create(OpenAiConfig()));
 
@@ -85,6 +85,7 @@ public sealed class LlmProviderMeteringPathTests
         services.AddLogging();
         services.AddHttpClient();
         services.AddSingleton<ILlmUsageSink>(new MockLlmUsageSink());
+        services.AddSingleton<Orkeon.Domain.FileSystem.IFileSystemService, Orkeon.Tests.Shared.FileSystem.FakeFileSystemService>();
         services.AddSingleton<ILlmProviderFactory, LlmProviderFactory>();
         using var container = services.BuildServiceProvider();
 

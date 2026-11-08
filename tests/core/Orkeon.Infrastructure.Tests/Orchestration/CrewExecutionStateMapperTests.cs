@@ -122,9 +122,9 @@ public class CrewExecutionStateMapperTests
         // Assert — both ids carry the namespace so a shared store never confuses
         // execution states with CheckpointManager sessions (GetLatestForCrewAsync).
         Assert.StartsWith(CrewExecutionStateMapper.SessionNamespace, session.SessionId, StringComparison.Ordinal);
-        Assert.StartsWith(CrewExecutionStateMapper.SessionNamespace, session.CrewId, StringComparison.Ordinal);
+        Assert.StartsWith(CrewExecutionStateMapper.SessionNamespace, session.CrewKey, StringComparison.Ordinal);
         Assert.Equal(CrewExecutionStateMapper.SessionIdFor(executionId), session.SessionId);
-        Assert.Equal(CrewExecutionStateMapper.CrewScopeFor(crewId), session.CrewId);
+        Assert.Equal(CrewExecutionStateMapper.CrewScopeFor(crewId), session.CrewKey);
     }
 
     [Fact]
@@ -150,7 +150,7 @@ public class CrewExecutionStateMapperTests
         var foreignSession = new SessionState
         {
             SessionId = Guid.NewGuid().ToString(),
-            CrewId = CrewId.Create().AsString(),
+            CrewKey = CrewId.Create().AsString(),
             Phase = SessionPhase.Running
         };
 
@@ -165,7 +165,7 @@ public class CrewExecutionStateMapperTests
         var session = new SessionState
         {
             SessionId = CrewExecutionStateMapper.SessionNamespace + ExecutionId.New().AsString(),
-            CrewId = CrewExecutionStateMapper.SessionNamespace + CrewId.Create().AsString(),
+            CrewKey = CrewExecutionStateMapper.SessionNamespace + CrewId.Create().AsString(),
             Phase = SessionPhase.Running,
             TaskCheckpoints = new Dictionary<string, TaskCheckpoint>
             {

@@ -351,12 +351,24 @@ seule, jamais de lui-même.
 
 ## Usages secondaires
 
-- **Garde d'entrée** — `DecisionInputGuard` rejoint le pipeline de gardiens de l'agent en phase
-  `Input` quand `Orkeon:Decision:Guard:Enabled` vaut true. La garde a sa propre section,
-  `Orkeon:Decision:Guard` (`Enabled`, seuils, `Risks`) ; elle vérifie par le fournisseur actif et
-  signe ses verdicts du nom de ce fournisseur. Ses `Risks` valent par défaut
-  `prompt_injection` et `data_exfiltration`, `BlockThreshold` 0,8, `WarnThreshold` 0,5 ; elle
-  avertit sur une panne, ou bloque avec `FailClosed`.
+- **Juge LLM** — `LlmJudgeGuard` rejoint le pipeline de gardiens de l'agent en phases `Input` et
+  `Output` quand `Orkeon:Guardian:Llm:Enabled` vaut true. Il juge par l'unique `IDecisionModel` (le
+  fournisseur actif ; la garde n'a pas de profil propre) et signe ses verdicts du nom de ce
+  fournisseur. Sa section est `Orkeon:Guardian:Llm` (`Enabled`, `Phases`, seuils, `Risks`, `FailMode`,
+  `MaxContentChars`) ; `Risks` valent par défaut `prompt_injection` et `data_exfiltration`,
+  `BlockThreshold` 0,8, `WarnThreshold` 0,5. La phase `Output` juge la sortie validée d'une tâche avant
+  le livrable, la mémoire et `task.completed` : un blocage fait échouer la tâche et rien n'est gardé ;
+  un appel que le fournisseur n'a jamais répondu n'a pas de sortie et n'est pas jugé. Quand le modèle
+  échoue, `FailMode: Closed` (défaut) bloque et `Open` avertit ; les deux
+  auditent `guardian.judge.unavailable`. Un texte plus long que `MaxContentChars` est, sous `FailMode: Closed`,
+  jugé en entier par blocs de cette taille (un bloc qui bloque bloque), jusqu'à 32 blocs ; au-delà de
+  32 blocs le texte est refusé et le refus audité `guardian.judge.truncated`. Sous `Open` il est jugé
+  sur sa première et sa dernière moitié de ce budget, un marqueur entre les deux, et **ce qui se trouve
+  entre n'est pas jugé** ; la coupe est auditée `guardian.judge.truncated`. Tant que la phase `Output` est gardée, les
+  deltas qu'une tâche streame (`llm.delta`, la console) sont retenus jusqu'au jugement : le streaming est
+  retardé jusqu'à ce que la sortie soit autorisée, et une sortie bloquée n'est jamais streamée. La phase
+  `Output` ne couvre que les tâches de crew ; un `ctx.llm.act` scripté traverse la phase `Input` et sa
+  réponse n'est pas jugée.
 - **Reranker RAG** — `rerank.kind: decision` pose un `noul` par passage dans
   une seule requête, les passages coupés à 4 000 caractères, et les classe par probabilité.
 - **Tool** — `system_one_decide` permet à un agent de poser des questions `choice`, `score` et

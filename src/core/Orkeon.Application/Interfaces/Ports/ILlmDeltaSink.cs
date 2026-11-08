@@ -21,6 +21,15 @@ public interface ILlmDeltaSink
     void OnDelta(string delta);
 
     /// <summary>
+    /// Receives one fragment of a tool call the model is building. The default does nothing: a sink that
+    /// renders text only keeps ignoring it.
+    /// </summary>
+    /// <param name="toolCall">The fragment.</param>
+    void OnToolCallDelta(Orkeon.Domain.SharedKernel.ValueObjects.ToolCallDelta toolCall)
+    {
+    }
+
+    /// <summary>
     /// Signals the end of one streamed LLM turn, letting the renderer terminate the line
     /// or flush. Called once per streamed turn, after its last delta.
     /// </summary>

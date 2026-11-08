@@ -405,7 +405,7 @@ public partial class ScopedCrewExecutionStateManager : ICrewExecutionStateManage
         var states = new List<CrewExecutionState>();
         foreach (var summary in summaries)
         {
-            if (!string.Equals(summary.CrewId, crewScope, StringComparison.Ordinal))
+            if (!string.Equals(summary.CrewKey, crewScope, StringComparison.Ordinal))
                 continue;
             if (summary.Phase != SessionPhase.Pending && summary.Phase != SessionPhase.Running)
                 continue;

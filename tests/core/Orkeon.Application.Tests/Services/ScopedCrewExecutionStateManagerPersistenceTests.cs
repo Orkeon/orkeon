@@ -319,7 +319,7 @@ public sealed class ScopedCrewExecutionStateManagerPersistenceTests : IDisposabl
         var checkpointSession = new Orkeon.Application.Interfaces.Checkpointing.SessionState
         {
             SessionId = "session-from-checkpoint-manager",
-            CrewId = crewId.AsString(),
+            CrewKey = crewId.AsString(),
             Phase = Orkeon.Application.Interfaces.Checkpointing.SessionPhase.Running
         };
         await store.SaveAsync(checkpointSession, TestContext.Current.CancellationToken);
@@ -338,6 +338,6 @@ public sealed class ScopedCrewExecutionStateManagerPersistenceTests : IDisposabl
 
         var untouched = await store.GetAsync("session-from-checkpoint-manager", TestContext.Current.CancellationToken);
         Assert.NotNull(untouched);
-        Assert.Equal(crewId.AsString(), untouched.CrewId);
+        Assert.Equal(crewId.AsString(), untouched.CrewKey);
     }
 }

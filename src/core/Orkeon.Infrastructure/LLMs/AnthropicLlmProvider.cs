@@ -1022,9 +1022,15 @@ public partial class AnthropicLlmProvider : HttpLlmProviderBase
                 // after, as input_json_delta fragments of the same block index.
                 case "content_block_start" when root.TryGetProperty("content_block", out var block)
                     && block.TryGetProperty("type", out var blockType) && blockType.GetString() == "tool_use":
-                    state.ToolUses[BlockIndex(root)] = new StreamedToolUse(
+                    var opened = new StreamedToolUse(
                         block.TryGetProperty("id", out var toolId) ? toolId.GetString() ?? string.Empty : string.Empty,
                         block.TryGetProperty("name", out var toolName) ? toolName.GetString() ?? string.Empty : string.Empty);
+                    state.ToolUses[BlockIndex(root)] = opened;
+                    events.Add(LlmStreamEvent.ToolCallFragment(new ToolCallDelta(
+                        BlockIndex(root),
+                        string.IsNullOrEmpty(opened.Id) ? null : opened.Id,
+                        string.IsNullOrEmpty(opened.Name) ? null : opened.Name,
+                        string.Empty)));
                     break;
 
                 case "content_block_start" when root.TryGetProperty("content_block", out var thinkingStart)
@@ -1047,7 +1053,10 @@ public partial class AnthropicLlmProvider : HttpLlmProviderBase
                     if (blockDelta.TryGetProperty("partial_json", out var partialJson)
                         && state.ToolUses.TryGetValue(BlockIndex(root), out var toolUse))
                     {
-                        toolUse.InputJson.Append(partialJson.GetString());
+                        var piece = partialJson.GetString();
+                        toolUse.InputJson.Append(piece);
+                        if (!string.IsNullOrEmpty(piece))
+                            events.Add(LlmStreamEvent.ToolCallFragment(new ToolCallDelta(BlockIndex(root), null, null, piece)));
                     }
                     break;
 

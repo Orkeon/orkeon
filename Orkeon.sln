@@ -241,6 +241,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "generators", "generators", 
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Orkeon.Scripting.Package", "src\packaging\Orkeon.Scripting\Orkeon.Scripting.Package.csproj", "{DFCDD724-C063-48B8-B59B-DFF0260385BD}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Orkeon.Templates", "src\packaging\Orkeon.Templates\Orkeon.Templates.csproj", "{59383107-3575-41C7-A7FC-344BB5B63683}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -1307,6 +1309,18 @@ Global
 		{DFCDD724-C063-48B8-B59B-DFF0260385BD}.Release|x64.Build.0 = Release|Any CPU
 		{DFCDD724-C063-48B8-B59B-DFF0260385BD}.Release|x86.ActiveCfg = Release|Any CPU
 		{DFCDD724-C063-48B8-B59B-DFF0260385BD}.Release|x86.Build.0 = Release|Any CPU
+		{59383107-3575-41C7-A7FC-344BB5B63683}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{59383107-3575-41C7-A7FC-344BB5B63683}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{59383107-3575-41C7-A7FC-344BB5B63683}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{59383107-3575-41C7-A7FC-344BB5B63683}.Debug|x64.Build.0 = Debug|Any CPU
+		{59383107-3575-41C7-A7FC-344BB5B63683}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{59383107-3575-41C7-A7FC-344BB5B63683}.Debug|x86.Build.0 = Debug|Any CPU
+		{59383107-3575-41C7-A7FC-344BB5B63683}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{59383107-3575-41C7-A7FC-344BB5B63683}.Release|Any CPU.Build.0 = Release|Any CPU
+		{59383107-3575-41C7-A7FC-344BB5B63683}.Release|x64.ActiveCfg = Release|Any CPU
+		{59383107-3575-41C7-A7FC-344BB5B63683}.Release|x64.Build.0 = Release|Any CPU
+		{59383107-3575-41C7-A7FC-344BB5B63683}.Release|x86.ActiveCfg = Release|Any CPU
+		{59383107-3575-41C7-A7FC-344BB5B63683}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -1428,6 +1442,7 @@ Global
 		{8BCDA5C0-D13B-4804-ADFA-A9B8788145FC} = {D375ECF5-FF87-8989-4EDA-BFFC267ABD46}
 		{A6B34895-92C6-DB43-0133-FB688E98800D} = {A0000001-0000-0000-0000-000000000001}
 		{DFCDD724-C063-48B8-B59B-DFF0260385BD} = {7E9DE4FA-F578-4838-8E4B-5809653DD368}
+		{59383107-3575-41C7-A7FC-344BB5B63683} = {7E9DE4FA-F578-4838-8E4B-5809653DD368}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {07D2740A-4DC3-407A-8060-8CD6F87F73FC}

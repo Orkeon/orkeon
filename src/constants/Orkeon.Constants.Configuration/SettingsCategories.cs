@@ -149,6 +149,8 @@ public static class SettingsCategories
             ["Orkeon:Consensus"] = OrchestrationAndPersistence,
             ["Orkeon:ExecutionState"] = OrchestrationAndPersistence,
             ["Orkeon:Checkpointing"] = OrchestrationAndPersistence,
+            ["Orkeon:HumanInput"] = OrchestrationAndPersistence,
+            ["Orkeon:RunHistory"] = OrchestrationAndPersistence,
 
             ["Orkeon:Scripting"] = ScriptsAndConsole,
             ["Orkeon:Scripting:AgentInstances"] = ScriptsAndConsole,

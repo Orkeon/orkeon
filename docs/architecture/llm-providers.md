@@ -201,6 +201,8 @@ and Anthropic give a streamed answer the body their buffered answer carries, in 
 text-protocol fallback reads a call the model wrote as text. The per-provider matrix lives in
 [the provider comparison](../reference/llm-providers-comparison.md).
 
+**Tool-call deltas (FWK-20).** The chat stream tells its caller about a tool call while the model builds it: `LlmStreamEventKind.ToolCallDelta` carries `ToolCallDelta(Index, Id, Name, ArgumentsDelta)`, and the terminal event still holds the whole call, unchanged. The OpenAI dialect (the fourteen providers that derive from `OpenAICompatibleProviderBase`, Azure OpenAI included) emits one delta per `delta.tool_calls` fragment; Anthropic one when a `tool_use` block opens (id and name) and one per `input_json_delta`; Ollama one complete delta per call, since it sends calls whole. None of the 16 providers is mute: a test checks that the three families cover them, so a provider added later must join one of them or say that it cannot (a structured warning, never a silent drop). The chat client adapter passes the fragments on as updates that carry no content, so the fold of the turn is the one it was; `ILlmDeltaSink.OnToolCallDelta` receives them (empty by default) and they ride the `llm.delta` event (`deltaKind: "tool_call"`). Reasoning deltas are not forwarded to the sinks. With a DLP interceptor of the external-output channel registered (`AddOrkeonDlp`), the arguments of each call are held by index until the stream ends, scanned whole and emitted as one delta, so a secret cut between two fragments is redacted; without one they stream as they arrive. A fallback chain (FWK-05) commits to a provider at its first event, a tool-call delta included: the partial deltas of a provider that failed before any event never reach the caller, and one that fails after reaching it keeps the call, its failure ending the stream.
+
 ### Dialect seams of the OpenAI-compatible base
 
 What differs between the compatible vendors is expressed through a handful of protected
@@ -261,6 +263,139 @@ provider's `BaseConfig` drops it, so it neither reaches the call nor warns. An a
 explicit Off included, always wins. The procedural `ctx.llm` calls of a script agent run with the cache and the
 effort its builder set (`.cache(...)`, `.effort(...)`, or the `LlmConfig` given to `.llm(...)`), a call's own
 options winning.
+
+## Profile fallback
+
+A profile that fails over names its replacements: `Llm:Profiles:<name>:Fallback: [b, c]` (a list of profile names, or one
+comma-separated value; `default` names the host's own profile). A call that fails on `<name>` in a way a retry cannot cure goes
+to `b`, then to `c`; a profile registered in code takes the same list with
+`services.AddOrkeonLlmProfile(name, provider, baseConfig, ["b", "c"])`.
+
+| Failure | Class (`reason`) | Moves on |
+|---|---|---|
+| connection refused, reset, DNS, a stream closed before any answer | `transport` | yes |
+| a 5xx | `server_error` | yes |
+| a 429, once `Llm:MaxRetries` is spent, or a rate-limit window longer than `MaxRateLimitWait` | `rate_limited` | yes |
+| the HTTP timeout, a 408, a stream idle past `StreamIdleSeconds` | `timeout` | yes |
+| every profile of a nested chain failed | `exhausted` | yes |
+| any other 4xx (400, 401, 403, 422...), a blocked content (the decision stages), a failure nothing is known about | — | **no**: it is the answer |
+| the caller's own cancellation, thrown or reported in-band by the provider | — | no: the call is cancelled, nothing is switched or tried |
+
+`LlmFailureClassifier` is the one classification: `ResiliencePolicies` takes its list of retryable statuses from it (5xx, 408,
+429), so what a retry may cure and what a chain takes over are the same set.
+
+How the chain is built (`LlmProfileRegistry`): `FallbackLlmProvider` is the outermost link, **above** profiles that are already
+assembled. Each profile keeps its own decorators (`RateLimited` → `Traced` → `Metered` → `CallMode` → provider), so the meter and the trace name
+the provider that answered, a failed call is traced as the failure it is, and each profile keeps its own call mode. The chat client
+of the chain reads tool calls with the format auto-detection (Anthropic or OpenAI shape), not a per-profile parser. The chain's `Capabilities`
+(and the structured-output choice the chat client makes from them) are the **first profile's only**; a later profile with fewer capabilities is
+reported by the warning below, not accounted for in the chain's own.
+
+Each profile uses its **own settings**. The chat client starts every call from the first profile's configuration and lays the caller's options over
+it; the chain gives a later profile the call with every field that still equals the first profile's replaced by that profile's own value (model, key,
+endpoint, `MaxTokens`, `Temperature`, `Thinking`, `CustomParameters`, `SystemMessage`, `StopSequences`, `GrammarGbnf`, timeouts, all of them). A field the
+caller set on the call (an explicit `MaxTokens`, a temperature in the chat options) differs from the first profile's and stays for every profile. A caller
+that sets a field to exactly the first profile's value cannot be told from the profile: the later profile's value applies.
+
+- **Streaming**: a stream moves on only **before its first delta** (a throw, or a completion that is a failure, with nothing yielded). Once a token
+  reached the caller the call belongs to its profile and a later failure is the caller's. A profile that does not stream answers buffered.
+- **Budget**: `Llm:Profiles:<name>:FallbackBudgetSeconds` (absent: none) is the longest the chain spends, from its first call, before it
+  stops trying the next profile. It is checked between two profiles and never cuts a call in flight, so without it a chain costs, at worst, each profile's
+  `TimeoutSeconds` times its `MaxRetries`.
+- **Exhausted chain**: a buffered call answers with an error response whose `ErrorType` is `FallbackExhausted` and whose text names every profile and its failure;
+  a call that failed by exception throws one `HttpRequestException` carrying the same text, the last exception as its cause.
+- **Validation** (when the registry is built, not in `CrewFactory`, which sees only the profiles crews name): a name no profile defines, a profile that names itself,
+  and a cycle (`a -> b -> a`) refuse the host's start. A fallback may be a profile hidden from crews by `Orkeon:Host:LlmProfiles`.
+- **Lesser fallback**: a fallback whose `LlmProviderCapabilities` are below the first profile's (vision, response format, thinking, GBNF grammar) logs one warning
+  naming what it lacks when the chain is built; an option that needs it is then handled by the provider that receives it, as for any provider.
+- **Event**: each switch writes `llm.fallback` on the `--events` stream ([the run event bus](run-event-bus.md)) and a warning in the log. A host that registers an
+  `ILlmFallbackObserver` is told too. Only `orkeon run` (with `--events`) registers one: `orkeon-host`, the REPL, Studio and a library host fail over
+  all the same but write no `llm.fallback`, the log warning being the only trace unless the host registers its own observer.
+- **No stickiness**: a chain starts again from its first profile on every call. With a primary that is down, each turn of a tool loop pays the primary's
+  `TimeoutSeconds` times its `MaxRetries` before it reaches the fallback; `FallbackBudgetSeconds` does not shorten that wait (it is checked between two
+  profiles), so lower the primary's own `TimeoutSeconds` and `MaxRetries` for a profile that has a fallback.
+- **A revoked key blocks the chain**: a 401 and a 403 never switch (they are a configuration error, not an outage), so a primary whose key was revoked answers
+  its error to every call and its fallbacks are never tried.
+
+## What a model accepts, and audio as input
+
+`LlmProviderCapabilities` is declared once per provider, so it cannot tell two models of one vendor apart:
+`gpt-4o` takes no reasoning effort, `o3-mini` takes three, and both ride the same provider. The per-model side
+is a table, `IModelCapabilityRegistry` (`ORKEXP005`, [experimental](../reference/experimental-apis.md)),
+built like `ModelPricingRegistry`: a model id **prefix** maps to `ModelCapabilities` (`AudioInput`,
+`AudioOutput`, `Vision`, `ReasoningEfforts`), the longest prefix of the model asked wins, case-insensitive. The
+built-in table is in code and covers the OpenAI chat, audio and reasoning families, Gemini and Claude; a model
+it does not know is added, or a built-in entry replaced, from the configuration:
+
+```yaml
+Llm:
+  ModelCapabilities:
+    acme-voice:                 # a prefix: acme-voice-2 matches
+      AudioInput: true
+      ReasoningEfforts: [low, high]   # left out: no restriction; written empty: the model takes none
+```
+
+An entry merges with the built-in value of the same id **field by field**: a field left out keeps the built-in
+value, so an entry that sets `AudioInput` alone keeps the model's built-in effort restriction (for a model the table
+does not know, a switch left out is false and the efforts stay unrestricted). A `ReasoningEfforts` written empty
+says the model takes none. A registry the host registers itself (`IModelCapabilityRegistry`, before
+`AddOrkeonLlmProfiles`) wins over the configured one. A model id containing `:` (Ollama's `llama3:8b`) cannot be a
+key: .NET configuration has no escape for the path separator `:`. Key its prefix instead (`llama3` matches
+`llama3:8b` and every other tag).
+
+- **Audio in.** An `AudioContentPart` reaches a model that takes it as an `input_audio` part of the Chat
+  Completions API (raw bytes, `audio/wav` or `audio/mpeg`; the API takes no audio address). The OpenAI-compatible
+  family does it through `ContentConverter.ToOpenAIContentParts(content, model, registry)`, so OpenAI and Gemini
+  (through its compatible layer) are covered; `ToAIContents` judges the same way for the chat-client path. A
+  model the table does not credit with audio, or does not know, is refused with a `NotSupportedException` that
+  **names the model** and the `Llm:ModelCapabilities:<id>:AudioInput` key that declares it: the audio is never
+  dropped in silence. Anthropic and Ollama stay refusals (their APIs take no audio); a provider that declares no
+  vision keeps its structured warning "message attachments (audio)" and sends the text only. Azure OpenAI is
+  named by deployment: declare the deployment with an override. Audio **output** is out of scope: the table
+  records it, nothing sends or reads it.
+- **Reasoning effort, judged against the model** (event id `110`, `113`). On the OpenAI-compatible family an
+  effort the table lists the model without is **omitted** from the request with a structured warning naming the
+  model and the efforts it takes; a model the table does not know gets the effort as asked, with a warning that
+  nothing was checked, **once per provider instance and model** (`Llm:ModelCapabilities:<id>:ReasoningEfforts` silences it); a model whose entry leaves
+  `ReasoningEfforts` out is not restricted. The provider's own declared levels apply first (`xhigh` is lowered
+  where the field does not know it), then the table.
+- **Fallback chains** (`WarnAboutLesserFallbacks`) read the same table: a fallback whose model takes no audio,
+  or fewer efforts, than the primary's is warned about once, next to vision, response format, thinking and grammar.
+- The Anthropic and Ollama dialects do not read the table yet: their effort is judged by the provider's declared
+  levels only.
+
+## Embedding providers
+
+`Orkeon:Embeddings:Provider` is resolved by `DefaultEmbeddingProviderResolver`, after a local or
+code-analysis provider and before the fail-fast stub. Five names are accepted; another one refuses
+the start.
+
+| `Provider` | Class | Endpoint | Default model (dimensions) |
+|---|---|---|---|
+| `openai` | `OpenAIEmbeddingProvider` | any M.E.AI embedding generator the host registers | `text-embedding-3-small` (1536) |
+| `ollama` | `OllamaEmbeddingProvider` | `/api/embed` of the Ollama host | the configured `Model` |
+| `mistral` | `MistralEmbeddingProvider` | `https://api.mistral.ai/v1/embeddings`, bearer key | `mistral-embed` (1024) |
+| `azure-openai` | `AzureOpenAIEmbeddingProvider` | `{Endpoint}/openai/deployments/{Model}/embeddings?api-version=`, `api-key` header | the deployment named by `Model` |
+| `gemini` | `GeminiEmbeddingProvider` | `https://generativelanguage.googleapis.com/v1beta/openai/embeddings`, bearer key | `gemini-embedding-001` (3072) |
+
+The last three share `OpenAICompatibleEmbeddingProviderBase`: one request shape (`model` and
+`input`), answers re-ordered by `index`, batches cut at `BatchSize`, and a vector whose length is not
+the declared `Dimension` refused. When `Model` and `Dimension` keep the global defaults
+(`text-embedding-3-small`, 1536), `mistral` and `gemini` use their own model and dimensions; `azure-openai`
+always takes `Model` as the deployment name. A 4xx or 5xx answer raises an `HttpRequestException` that
+names the provider, the status and the start of the body, never the key. Embedding calls do not retry: a 429 or a 5xx reaches the caller as that exception on the first answer, and `Llm:MaxRetries` applies to chat only. `mistral-embed` (1024) and `gemini-embedding-001` (3072) have a fixed size and these providers send no output size: a `Dimension` other than that size (the global default counts as unset) is refused when the provider is built, naming the size, before any call. The key is `ApiKey` or the
+variable named by `ApiKeyEnvVar`; with neither, the first call fails with a message naming both.
+Model ids of the embedding providers are not in the capability table of
+[What a model accepts](#what-a-model-accepts-and-audio-as-input): it covers chat input and reasoning effort.
+
+**Changing the embedding model invalidates stored vectors.** At start, a guard (run by `RunnerHost.Build` for `orkeon run`, the other commands and the daemon, by the REPL's start, and by the hosted service of a host that starts its services) compares the
+provider, model and dimensions with the fingerprint recorded at `Orkeon:Embeddings:FingerprintPath`
+(default `/workspace/.orkeon/embedding-fingerprint.json`, in the virtual file system). The first start
+records it; a different one stops the host with an error that names both models. Nothing is migrated:
+restore the previous settings, or re-embed and clear the stored vectors, then delete the fingerprint file.
+Every host whose embedding provider is configured is guarded, with or without an `Orkeon:Embeddings` section: a host that embedded under the default provider and then writes a section (a switch to Mistral or Gemini) finds the default's fingerprint and is refused. A host with no embedding provider (none registered, no section) writes nothing. A host with no `/workspace` mount (the read is refused, a warning is logged), or an empty `FingerprintPath`, runs unguarded.
+
+Cohere, Voyage and pgvector are not shipped.
 
 ## Decorators and registration
 

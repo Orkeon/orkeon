@@ -24,6 +24,17 @@ internal sealed class FakeHttpMcpServer : IAsyncDisposable
         _loop = Task.Run(ServeAsync);
     }
 
+    /// <summary>
+    /// The bearer token every request must carry (<c>Authorization: Bearer ...</c>); a request without it
+    /// gets 401. <see langword="null"/> (the default) serves everyone.
+    /// </summary>
+    public string? RequiredBearer { get; init; }
+
+    private int _unauthorized;
+
+    /// <summary>How many requests were refused with 401.</summary>
+    public int UnauthorizedCount => Volatile.Read(ref _unauthorized);
+
     /// <summary>The endpoint to put under <c>MCP:Servers:&lt;id&gt;:Url</c>.</summary>
     public Uri Url { get; }
 
@@ -43,6 +54,26 @@ internal sealed class FakeHttpMcpServer : IAsyncDisposable
             catch (HttpListenerException)
             {
                 return;
+            }
+
+            if (RequiredBearer is not null
+                && context.Request.Headers["Authorization"] != $"Bearer {RequiredBearer}")
+            {
+                Interlocked.Increment(ref _unauthorized);
+                context.Response.StatusCode = (int)HttpStatusCode.Unauthorized;
+                context.Response.Close();
+                continue;
+            }
+
+            // A real Streamable HTTP client opens a GET stream after the handshake and ends the session with a DELETE:
+            // this server has no stream to give (405) and nothing to end.
+            if (context.Request.HttpMethod != "POST")
+            {
+                context.Response.StatusCode = context.Request.HttpMethod == "DELETE"
+                    ? (int)HttpStatusCode.OK
+                    : (int)HttpStatusCode.MethodNotAllowed;
+                context.Response.Close();
+                continue;
             }
 
             using var reader = new StreamReader(context.Request.InputStream, Encoding.UTF8);

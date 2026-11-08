@@ -25,19 +25,20 @@ public class PluginLoaderTests
     }
 
     [Fact]
-    public void Load_FixtureAssembly_InstantiatesAllPluginTypes()
+    public void Load_FixtureAssembly_InstantiatesThePluginTheManifestNames()
     {
         using var fixture = new PluginDirectoryFixture();
-        var candidate = fixture.CandidateFor(fixture.AddFlatFixturePlugin());
+        var candidate = fixture.AddFixtureCandidate();
         var loader = CreateLoader();
 
         var loaded = loader.Load(candidate);
         try
         {
             Assert.Equal(candidate.VirtualPath, loaded.VirtualPath);
-            Assert.Equal(FixtureAssembly.CountPluginTypes(), loaded.Plugins.Count);
-            Assert.Contains(loaded.Plugins, static p => p.Name == "fake-alpha" && p.Version == "1.2.3");
-            Assert.Contains(loaded.Plugins, static p => p.Name == "fake-beta" && p.Version == "2.0.0");
+            Assert.True(FixtureAssembly.CountPluginTypes() > 1);
+            var plugin = Assert.Single(loaded.Plugins);
+            Assert.Equal("fake-alpha", plugin.Name);
+            Assert.Equal("1.2.3", plugin.Version);
         }
         finally
         {
@@ -49,7 +50,7 @@ public class PluginLoaderTests
     public void Load_IsolatesAssembly_InACollectibleNonDefaultContext()
     {
         using var fixture = new PluginDirectoryFixture();
-        var candidate = fixture.CandidateFor(fixture.AddFlatFixturePlugin());
+        var candidate = fixture.AddFixtureCandidate();
         var loader = CreateLoader();
 
         var loaded = loader.Load(candidate);
@@ -76,8 +77,8 @@ public class PluginLoaderTests
     public void Load_TwoCandidates_UseDistinctLoadContexts()
     {
         using var fixture = new PluginDirectoryFixture();
-        var first = fixture.CandidateFor(fixture.AddFlatFixturePlugin("First.dll"));
-        var second = fixture.CandidateFor(fixture.AddFlatFixturePlugin("Second.dll"));
+        var first = fixture.AddFixtureCandidate("first");
+        var second = fixture.AddFixtureCandidate("second");
         var loader = CreateLoader();
 
         var loadedFirst = loader.Load(first);
@@ -97,28 +98,22 @@ public class PluginLoaderTests
     }
 
     [Fact]
-    public void Load_NonPluginManagedAssembly_ReturnsNoPlugins()
+    public void Load_NonPluginManagedAssembly_ThrowsWhenTheManifestNamesAPlugin()
     {
         using var fixture = new PluginDirectoryFixture();
-        var candidate = fixture.CandidateFor(fixture.AddFlatNonPluginAssembly());
+        var candidate = fixture.CandidateFor(fixture.AddFlatNonPluginAssembly())
+            with { Manifest = PluginDirectoryFixture.FixtureManifest() };
         var loader = CreateLoader();
 
-        var loaded = loader.Load(candidate);
-        try
-        {
-            Assert.Empty(loaded.Plugins);
-        }
-        finally
-        {
-            loaded.Unload();
-        }
+        Assert.Throws<PluginManifestException>(() => loader.Load(candidate));
     }
 
     [Fact]
     public void Load_NotAManagedAssembly_ThrowsPluginLoadException_WithVirtualPathOnly()
     {
         using var fixture = new PluginDirectoryFixture();
-        var candidate = fixture.CandidateFor(fixture.AddOpaqueFile("garbage.dll"));
+        var candidate = fixture.CandidateFor(fixture.AddOpaqueFile("garbage.dll"))
+            with { Manifest = PluginDirectoryFixture.FixtureManifest() };
         var loader = CreateLoader();
 
         var ex = Assert.Throws<PluginLoadException>(() => loader.Load(candidate));
@@ -134,7 +129,7 @@ public class PluginLoaderTests
     public void Unload_IsIdempotent()
     {
         using var fixture = new PluginDirectoryFixture();
-        var candidate = fixture.CandidateFor(fixture.AddFlatFixturePlugin());
+        var candidate = fixture.AddFixtureCandidate();
         var loaded = CreateLoader().Load(candidate);
 
         loaded.Unload();

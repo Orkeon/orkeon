@@ -1,6 +1,4 @@
-using System.Globalization;
-using System.Text.Json;
-using System.Text.Json.Nodes;
+using Orkeon.Application.Runs;
 
 namespace Orkeon.Scripting.Cli.Events;
 
@@ -62,41 +60,48 @@ internal sealed record OrkeonEventScope
 /// exactly like <c>orkeon doctor --json</c> pins its own.
 /// </para>
 /// </summary>
-internal class OrkeonEventWriter
+internal class OrkeonEventWriter : IRunEventSink
 {
     /// <summary>Version of the envelope this build emits.</summary>
-    public const int ProtocolVersion = 2;
-
-    /// <summary>
-    /// Relaxed escaping: the stream is a local pipe between two of our own processes, never
-    /// HTML, and the conversation it carries is French — an accented letter must stay that same
-    /// letter on the wire, not turn into an escape sequence in every log a human reads.
-    /// </summary>
-    private static readonly JsonSerializerOptions WireOptions = new()
-    {
-        Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
-    };
-
-    /// <summary>
-    /// Names the envelope owns. A payload may never write them — not even when the scope
-    /// left them out: a client must be able to trust that <c>crewId</c> came from the
-    /// emitter's own knowledge and not from an event's arbitrary contents.
-    /// </summary>
-    private static readonly HashSet<string> ReservedNames = new(StringComparer.Ordinal)
-    {
-        "v", "seq", "ts", "kind", "crewId", "agentId", "correlationId", "causationId",
-    };
+    public const int ProtocolVersion = RunEventWire.ProtocolVersion;
 
     private readonly TextWriter _output;
     private readonly IOrkeonClock _clock;
     private readonly Lock _gate = new();
     private int _sequence;
 
+    /// <summary>
+    /// The run in flight, when the writer sits in a host that runs crews: an event the scope gives no
+    /// correlation id carries the run's identifier, the one the checkpoint session and the A2A and API
+    /// task carry too (FWK-01). Null: only what the scope names is written.
+    /// </summary>
+    public Orkeon.Application.Interfaces.Services.IRunScope? RunScope { get; init; }
+
     /// <summary>Creates a writer over <paramref name="output"/> (stdout in the CLI).</summary>
     public OrkeonEventWriter(TextWriter output, IOrkeonClock? clock = null)
     {
         _output = output ?? throw new ArgumentNullException(nameof(output));
         _clock = clock ?? SystemOrkeonClock.Instance;
+    }
+
+    /// <summary>
+    /// Takes an event a shared observer produced (the model-call observer serves the Forge stream too): this writer
+    /// numbers and times its own stream, so only the event's kind, identity and payload are kept.
+    /// </summary>
+    public System.Threading.Tasks.Task WriteAsync(RunEvent runEvent, CancellationToken ct = default)
+    {
+        ArgumentNullException.ThrowIfNull(runEvent);
+        Emit(
+            runEvent.Kind,
+            new OrkeonEventScope
+            {
+                CrewId = runEvent.CrewId,
+                AgentId = runEvent.AgentId,
+                CorrelationId = runEvent.CorrelationId,
+                CausationId = runEvent.CausationId,
+            },
+            runEvent.Payload);
+        return System.Threading.Tasks.Task.CompletedTask;
     }
 
     /// <summary>Emits one event line with no identity — the shape of a cycle-level event.</summary>
@@ -116,49 +121,20 @@ internal class OrkeonEventWriter
 
         lock (_gate)
         {
-            var envelope = new JsonObject
+            var runEvent = new RunEvent
             {
-                ["v"] = ProtocolVersion,
-                ["seq"] = ++_sequence,
-                ["ts"] = _clock.UtcNow.UtcDateTime.ToString("yyyy-MM-dd'T'HH:mm:ss'Z'", CultureInfo.InvariantCulture),
-                ["kind"] = kind,
+                Seq = ++_sequence,
+                Timestamp = _clock.UtcNow,
+                Kind = kind,
+                CrewId = scope.CrewId,
+                AgentId = scope.AgentId,
+                CorrelationId = scope.CorrelationId ?? RunScope?.Current?.ExecutionId.ToString(),
+                CausationId = scope.CausationId,
+                Payload = RunEventWire.ToPayload(payload),
             };
 
-            AddIfPresent(envelope, "crewId", scope.CrewId);
-            AddIfPresent(envelope, "agentId", scope.AgentId);
-            AddIfPresent(envelope, "correlationId", scope.CorrelationId);
-            AddIfPresent(envelope, "causationId", scope.CausationId);
-
-            if (payload is not null)
-            {
-                var extra = JsonSerializer.SerializeToNode(payload)?.AsObject();
-                if (extra is not null)
-                {
-                    // Copy in declaration order; ToList() because detaching a node while
-                    // iterating its parent invalidates the enumerator.
-                    foreach (var property in extra.ToList())
-                    {
-                        extra.Remove(property.Key);
-
-                        // The contract says an absent key is omitted, never written as null —
-                        // and the writer is the only place that can hold every emitter to it.
-                        if (property.Value is null)
-                            continue;
-
-                        if (!ReservedNames.Contains(property.Key))
-                            envelope[property.Key] = property.Value;
-                    }
-                }
-            }
-
-            _output.WriteLine(envelope.ToJsonString(WireOptions));
+            _output.WriteLine(RunEventWire.Serialize(runEvent));
             _output.Flush();
         }
-    }
-
-    private static void AddIfPresent(JsonObject envelope, string name, string? value)
-    {
-        if (!string.IsNullOrEmpty(value))
-            envelope[name] = value;
     }
 }

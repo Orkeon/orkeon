@@ -23,6 +23,13 @@ public sealed record ScriptingHostPorts
     public Orkeon.Application.Interfaces.Ports.ILlmDeltaSink? DeltaSink { get; init; }
 
     /// <summary>
+    /// The host's DLP for the tool calls the model streams (FWK-20), independent of the delta sink: the arguments
+    /// of each call reach <c>onToolCallDelta</c> and the sink held until the call ends, scanned whole. Null streams
+    /// the fragments as they arrive.
+    /// </summary>
+    public Orkeon.Application.Crew.ToolCallDeltaDlp? ToolCallDlp { get; init; }
+
+    /// <summary>
     /// The single tool-invocation point (GAP-09) every <c>ctx.llm.act</c> tool call goes
     /// through once the permission gate allowed it: guardian, truncation, result sanitizer,
     /// audit. Null = the tool is called directly.
@@ -48,6 +55,12 @@ public sealed record ScriptingHostPorts
     /// Null refuses every working root at the start of the agent's run.
     /// </summary>
     public Orkeon.Domain.FileSystem.IFileSystemService? FileSystem { get; init; }
+
+    /// <summary>
+    /// Told each time a script's <c>stateGraph</c> enters a node (<c>graph.node.entered</c>, ADR-018).
+    /// Null = nobody watches.
+    /// </summary>
+    public Orkeon.Domain.Graph.IGraphNodeObserver? GraphObserver { get; init; }
 
     /// <summary>The transcript caps of an agent instance. Null keeps the defaults.</summary>
     public Orkeon.Scripting.Configuration.ScriptAgentInstanceOptions? AgentInstances { get; init; }

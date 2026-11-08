@@ -49,10 +49,11 @@ public static class SettingPlaceholders
         string[] values =
         [
             "MCP:Servers:*:Command", "MCP:Servers:*:Args:*", "MCP:Servers:*:Url",
-            "Orkeon:Redis:ConnectionString", "Orkeon:Sqlite:ConnectionString",
+            "MCP:Servers:*:Auth:TokenUrl", "MCP:Servers:*:Auth:DeviceAuthorizationUrl",
+            "Orkeon:Redis:ConnectionString", "Orkeon:Sqlite:ConnectionString", "Orkeon:Checkpointing:ConnectionString",
             "RaggableTree:Embedding:ApiKey", "Orkeon:Pinecone:ApiKey", "Orkeon:LanceDb:ApiKey",
             "Llm:BaseUrl", "Llm:Profiles:*:BaseUrl", "RaggableTree:Embedding:BaseUrl", "Orkeon:ChromaDb:BaseUrl",
-            "Orkeon:Pinecone:Host", "Orkeon:LanceDb:Endpoint", "Orkeon:Rag:WebFallback:Endpoint", "Telemetry:OtlpEndpoint",
+            "Orkeon:Pinecone:Host", "Orkeon:LanceDb:Endpoint", "Orkeon:Embeddings:Endpoint", "Orkeon:Rag:WebFallback:Endpoint", "Telemetry:OtlpEndpoint",
             "Security:Vault:AzureKeyVaultUri", "A2A:Security:AzureAD:Authority", "A2A:Security:Oidc:Authority",
             "Orkeon:Tools:GitHub:Token",
             "Orkeon:TypeSafe:BaseUrl", "Orkeon:Liquid:BaseUrl", "Orkeon:Kev:BaseUrl",
@@ -60,9 +61,9 @@ public static class SettingPlaceholders
         string[] names =
         [
             "Llm:ApiKeyEnvVar", "Llm:Profiles:*:ApiKeyEnvVar", "Orkeon:Rag:WebFallback:ApiKeyEnvVar",
-            "Orkeon:Host:Discord:TokenEnvironmentVariable", "A2A:Security:ApiKeySecretNames:*", "Orkeon:Encryption:SecretName",
-            "Orkeon:Tools:GitHub:TokenVariable",
-            "Orkeon:TypeSafe:ApiKeyEnvVar", "Orkeon:Liquid:ApiKeyEnvVar", "Orkeon:Kev:ApiKeyEnvVar",
+            "Orkeon:Host:Discord:TokenEnvironmentVariable", "A2A:Security:ApiKeySecretNames:*", "Orkeon:Host:Api:Security:ApiKeySecretNames:*", "Orkeon:Encryption:SecretName",
+            "Orkeon:Tools:GitHub:TokenVariable", "MCP:Servers:*:Auth:ClientSecretEnv",
+            "Orkeon:TypeSafe:ApiKeyEnvVar", "Orkeon:Liquid:ApiKeyEnvVar", "Orkeon:Kev:ApiKeyEnvVar", "Orkeon:Embeddings:ApiKeyEnvVar",
         ];
         List<SettingPlaceholderSetting> list =
         [
@@ -72,6 +73,7 @@ public static class SettingPlaceholders
             new("Orkeon:TypeSafe:ApiKey", ApiKey),
             new("Orkeon:Liquid:ApiKey", ApiKey),
             new("Orkeon:Kev:ApiKey", ApiKey),
+            new("Orkeon:Embeddings:ApiKey", ApiKey),
             new("Secrets:*", secret),
             new("BRAVE_API_KEY", brave),
         ];

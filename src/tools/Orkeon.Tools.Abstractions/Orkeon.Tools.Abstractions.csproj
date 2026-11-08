@@ -16,6 +16,9 @@
   <ItemGroup>
     <InternalsVisibleTo Include="Orkeon.Tools.Abstractions.Tests" />
     <!-- DRIVE-01: the OAuth client and the sign-in flows are shared by the families that sign in to a cloud account. -->
+    <!-- FWK-16: the MCP client signs in to a server with this client (client credentials, device flow). -->
+    <InternalsVisibleTo Include="Orkeon.Infrastructure" />
+    <InternalsVisibleTo Include="Orkeon.Infrastructure.Tests" />
     <InternalsVisibleTo Include="Orkeon.Tools.Email" />
     <InternalsVisibleTo Include="Orkeon.Tools.Email.Tests" />
     <InternalsVisibleTo Include="Orkeon.Tools.Drive" />

@@ -17,7 +17,7 @@ opt-in rend leur activation **intentionnelle, documentée et vérifiable**.
 
 **Aucun binaire livré ne les active.** `orkeon run`, `orkeon-host` et `orkeon-repl` n'appellent
 aucune des extensions qui lisent ces sections : `ToolRateLimiting`, `TokenBudget`, `Orkeon:Dlp`, `Orkeon:Monitoring`,
-`Orkeon:CognitiveMemory`, `Orkeon:MultiModal`, `Plugins`, `Evaluation`, `Orkeon:VectorSearch`,
+`Orkeon:MultiModal`, `Plugins`, `Evaluation`, `Orkeon:VectorSearch`,
 `Orkeon:Checkpointing` et `Orkeon:ExecutionState:Persistence`. Écrite dans
 les réglages de l'un de ces binaires, une telle section n'est lue par rien : le run démarre sans
 la limite, le budget ou le filtrage qu'elle décrit. Le binaire le dit à son démarrage — une ligne
@@ -56,22 +56,22 @@ services.AddOrkeonA2A(options => options.EnableServer = true);
 | DLP (Data Loss Prevention) | `AddOrkeonDlp()` | Infrastructure | `IDlpPolicyProvider`, `IPiiDetector`, `IDlpInterceptor` (×5) | Expérimental |
 | Rate-limiting d'outils & budget de tokens | `AddOrkeonToolRateLimiting()` | Infrastructure | `IToolRateLimiter`, `ITokenBudgetTracker` | Expérimental |
 | Rotation de clés | `AddOrkeonKeyRotation()` | Infrastructure | `IKeyRotationService` | Bêta |
-| Benchmarking d'évaluation | `AddOrkeonBenchmarking()` | Infrastructure | `IBenchmarkRunner` | Bêta |
+| Benchmarking d'évaluation | `AddOrkeonBenchmarking()` — les hôtes runner l'enregistrent | Infrastructure | `IBenchmarkRunner` | Bêta |
 | Contenu multi-modal (vision) | `AddOrkeonMultiModal(...)` | Infrastructure | `IContentValidationService`, `IMultiModalContentLoader` | Bêta (réel depuis R3.9) |
 | Hooks de kickoff | `AddOrkeonKickoffHooks()` | Application | `ICrewKickoffHookRunner` | Expérimental |
 | Contexte de codebase (RaggableTree) | `AddRaggableTree(options)` — ⚠️ **les hôtes runner font l'inverse (opt-out)** : `RunnerHost` l'enregistre par défaut et `RaggableTree:Enabled = false` le désactive | Analysis | `ICodebaseContextProvider` | Bêta |
 | Sous-système RAG (RAG-02…06) | `AddOrkeonRag(config)` (namespace `Orkeon.Rag.DependencyInjection`) + `AddOrkeonRagTools()` (`Orkeon.Tools.Rag`) ; profils `fast`/`balanced`/`quality`/`adaptive`/`corrective` via `Orkeon:Rag:Profile` (défaut `fast`) ; `balanced`/`quality`/`adaptive` exigent le cross-encoder ONNX — `AddOrkeonOnnxReranker()` (`Orkeon.Rag.Onnx` + `Orkeon.Rag.Onnx.Model`, poids embarqués, hors-ligne — enregistré par les trois binaires livrés, `orkeon`, `orkeon-host` et le REPL, pas par `RunnerHost`) ; `corrective` non (le graphe boucle au lieu de reranker) ; le repli web correctif est purement config — `AddOrkeonRag` câble déjà le transport, les deux interrupteurs `Enabled` gouvernent (`Orkeon:Rag:Corrective:WebFallback` politique, `Orkeon:Rag:WebFallback` transport) — voir la section détaillée plus bas | Orkeon.Rag.Abstractions / Orkeon.Rag / Orkeon.Tools.Rag / Orkeon.Rag.Onnx / Orkeon.Rag.Onnx.Model | `IRagPipeline` (à étages / graphe correctif), `IRagProfileResolver`, `IIngestionPipeline`, `IDocumentStore`, `IRagEvalHarness`, `rag_search`/`rag_ingest`/`rag_eval` (`IBaseTool`) | Bêta |
-| Modèles de décision (TypeSafe, Liquid, Kev) | `AddOrkeonDecisionProvider(configuration)` (le fournisseur actif, nommé par `Orkeon:Decision:Provider` ou déduit des sections `Orkeon:TypeSafe` / `Orkeon:Liquid` et des clés `TYPESAFE_API_KEY` / `LIQUID_API_KEY` ; Kev n'est jamais que nommé, sa `KEV_API_KEY` est facultative ; aussi la garde d'entrée, coupée sauf `Enabled` dans `Orkeon:Decision:Guard`, et `system_one_decide`) · `AddOrkeonDecisionProfiles(configuration)` (`Orkeon:Decision:Profiles`) — **les trois binaires livrés appellent les deux** : le fournisseur quand un est nommé ou déduit, les profils dans tous les cas · `rerank.kind: decision` — voir [Modèles de décision](../architecture/decision-models.md) | Infrastructure / Orkeon.Rag | `IDecisionModel` (`SystemOneDecisionModel`, un client pour les trois fournisseurs), `DecisionLlmProvider` avec les étapes `route`/`guard`/`verify`, `DecisionInputGuard`, `DecisionModelReranker`, `system_one_decide` (`IBaseTool`) | Expérimental |
+| Modèles de décision (TypeSafe, Liquid, Kev) | `AddOrkeonDecisionProvider(configuration)` (le fournisseur actif, nommé par `Orkeon:Decision:Provider` ou déduit des sections `Orkeon:TypeSafe` / `Orkeon:Liquid` et des clés `TYPESAFE_API_KEY` / `LIQUID_API_KEY` ; Kev n'est jamais que nommé, sa `KEV_API_KEY` est facultative ; aussi le modèle derrière le juge LLM du gardien (`Orkeon:Guardian:Llm`, coupé par défaut), et `system_one_decide`) · `AddOrkeonDecisionProfiles(configuration)` (`Orkeon:Decision:Profiles`) — **les trois binaires livrés appellent les deux** : le fournisseur quand un est nommé ou déduit, les profils dans tous les cas · `rerank.kind: decision` — voir [Modèles de décision](../architecture/decision-models.md) | Infrastructure / Orkeon.Rag | `IDecisionModel` (`SystemOneDecisionModel`, un client pour les trois fournisseurs), `DecisionLlmProvider` avec les étapes `route`/`guard`/`verify`, `DecisionInputGuard`, `DecisionModelReranker`, `system_one_decide` (`IBaseTool`) | Expérimental |
 | Étages de middleware EventHub | `AddOrkeonEventHubObservability()` (journalisation + télémétrie) · `AddOrkeonEventHubAcl(policy?)` (applique les blocs `links:` des crews — **déjà câblé par le host du runner et `orkeon-host`, avec le défaut permissif** : une crew sans liens se comporte comme avant, une crew qui déclare y est tenue ; seule la politique fermée reste un opt-in) · `AddOrkeonEventHubIdempotency(capacity?)` (point à point seulement, en mémoire, ne survit pas au processus) · `AddOrkeonEventHubValidation()` (un `SchemaId` déclaré doit être enregistré — l'existence du contrat, pas la conformité de la charge utile). Chacun est indépendant ; l'ordre d'enregistrement est l'ordre du pipeline — voir [EventHub §12](../architecture/event-hub-and-crew-lifecycle.md) | Infrastructure | `IEventHubMiddleware`, `ICrewLinkProvider`/`ICrewLinkRegistry`, `IEventSchemaRegistry` | Bêta |
 | Persistance d'état d'exécution (R3.8) | `AddCrewExecutionStatePersistence(...)` | Infrastructure | `ICrewExecutionStateManager` (durable via `IStateStore`) | Bêta |
 | Barrière de permissions (par appel d'outil) | `AddOrkeonPermissionGate(config)` + `Orkeon:Security:PermissionGate:Enabled = true` | Infrastructure | `IPermissionGate` (`ModePermissionGate`) — consommé par la boucle scriptée `ctx.llm.act` | Bêta |
 | Shell : interpréteurs & git mutant | config seule : `Orkeon:Tools:Shell:AllowInterpreters = true` | Tools.Code | (ré-enregistre `ShellCommandTool` avec `allowInterpreters: true` — équivalent RCE, avertissement de sécurité émis) | Bêta |
 | Shell : allowlist personnalisée | config seule : `Orkeon:Tools:Shell:ExtraAllowedCommands` (additive) / `Orkeon:Tools:Shell:AllowedCommands` (remplacement intégral — annule `AllowInterpreters`) | Tools.Code | (façonne l'allowlist d'exécutables de `ShellCommandTool` ; section absente/vide = défauts) | Bêta |
-| Streaming console LLM natif | `AddLlmConsoleStreaming(config)` + `Orkeon:Cli:ConsoleStreaming:Enabled = true` | Cli.Commands.Scripting | `ILlmDeltaSink` (`ConsoleLlmDeltaSink`) — deltas `ctx.llm.act` streamés rendus sur la console REPL, l'act de premier plan à mesure, tout autre tour ligne entière par ligne entière | Bêta |
+| Streaming console LLM natif | `AddLlmConsoleStreaming(config, enabledByDefault)` (la REPL : actif sauf `Orkeon:Cli:ConsoleStreaming:Enabled = false`) | Cli.Commands.Scripting | `ILlmDeltaSink` (`ConsoleLlmDeltaSink`) — deltas `ctx.llm.act` streamés rendus sur la console REPL, l'act de premier plan à mesure, tout autre tour ligne entière par ligne entière | Bêta |
 | Système de plugins | `AddOrkeonPlugins(...)` (jamais enregistré implicitement ; `orkeon-repl` l'appelle quand ses réglages portent une section `Plugins`, aucun autre binaire livré ne le fait) | Orkeon.Plugins | `IOrkeonPlugin`, `IPluginRegistry` — découverte par répertoire, `AssemblyLoadContext` collectables isolés ; ⚠️ les assemblies chargées s'exécutent en pleine confiance — voir [Plugins](../architecture/plugins.md) | Bêta |
 | Embeddings locaux sur machine | `AddOrkeonLocalEmbeddings()` | Tools.Embeddings.Local | `IEmbeddingProvider` (BGE-micro-v2 ONNX, 384 dims, CPU, sans clé API) — premier maillon de la chaîne de résolution des embeddings | Bêta |
 | Fournisseurs de mémoire externes (Redis, SQLite, ChromaDB, Pinecone, LanceDB) + migration | Un type — `Memory:Provider`, le `memoryProvider:` d'une crew, `Orkeon:Rag:Provider` — plus la section hôte de ce provider (`Orkeon:Redis`, `Orkeon:Sqlite`, `Orkeon:ChromaDb`, `Orkeon:Pinecone`, `Orkeon:LanceDb`), toutes liées par `AddOrkeonInfrastructure()` ; `MemoryProviderFactory` distribue une instance partagée par type, qui se connecte au premier usage. `AddOrkeonRedisMemory(configuration)` fait de Redis l'`IMemoryProvider` de l'application ; `AddOrkeonLanceDb`/`AddOrkeonChromaDb`/`AddOrkeonPinecone(configuration)` exposent le provider partagé par sa classe (les deux dernières sont appelées par `AddOrkeonInfrastructure(configuration)` quand leur section existe) · `AddOrkeonMemoryMigration()` | Infrastructure | `RedisMemoryProvider`, `LanceDbMemoryProvider` (+ `LanceDbMigrationService`), `MemoryMigrationService` — voir [Système de mémoire](../architecture/memory-system.md#sélection-par-configuration) | Bêta |
-| Mémoire cognitive | `AddOrkeonCognitiveMemory(configuration)` (`Orkeon:CognitiveMemory` ; aucun binaire livré ne l'appelle) | Infrastructure | `ICognitiveMemoryService` — analyse LLM, détection de contradictions, consolidation, score de rappel composite ; requiert un `ILlmProvider` et un `IEmbeddingProvider` — voir [Système de mémoire](../architecture/memory-system.md#mémoire-cognitive) | Expérimental |
+| Mémoire cognitive | `AddOrkeonCognitiveMemory(configuration)` (`Orkeon:CognitiveMemory` ; les exécuteurs l'appellent quand `Orkeon:CognitiveMemory:Enabled` vaut `true`) | Infrastructure | `ICognitiveMemoryService` — analyse LLM, détection de contradictions, consolidation, score de rappel composite ; requiert un fournisseur LLM (le profil `Orkeon:CognitiveMemory:Profile`) et un `IEmbeddingProvider` ; branché sur les runs avec `memory: true` — voir [Système de mémoire](../architecture/memory-system.md#mémoire-cognitive) | Expérimental |
 | Journalisation des échanges LLM | `AddLlmExchangeLogging(logDirectory, options?)` (capture JSONL complète + résumé structuré, handler injecté dans tous les clients `IHttpClientFactory` sauf ceux qu'une famille d'outils exclut par `LlmExchangeLogExclusion` — les clients drive et mail ; les clients des outils web et du repli web RAG restent capturés, si bien qu'avec `--llm-log` les pages qu'ils récupèrent finissent dans le JSONL comme des échanges LLM) — câblé par `RunnerHost` uniquement quand un run passe `--llm-log` (section `LlmLogging`) | Infrastructure | `ILlmExchangeLogger`, `LlmLoggingDelegatingHandler` — voir [Fournisseurs LLM](../architecture/llm-providers.md) | Bêta |
 | Outil d'entrée humaine | `AddOrkeonHumanInput()` (provider de repli qui approuve tout) / `AddOrkeonHumanInput<TProvider>()` — câblé par le chemin d'exécution des runners | Infrastructure | `human_input` (`IBaseTool`), `IHumanInputProvider` | Bêta |
 | Outils de session | `AddOrkeonSessionTools(configuration?)` (`Llm:AvailableModels`, `Orkeon:Cli:Session`, `Orkeon:Cli:Memory`) — câblé par `RunnerHost` et le REPL | Infrastructure | `session_store`, `session_snip`, `token_budget`, `memory_store`, `session_cost`, `session_stats` ; `ISessionBufferService`, `ICategoryMemoryStore` (sur fichier par projet quand `Orkeon:Cli:Memory:Persist` est actif, défaut du REPL) — voir [Agent de code (TS)](../architecture/coding-agent-ts.md) | Bêta |
@@ -286,7 +286,8 @@ Aucun attribut ne porte l'identifiant d'un crew, d'une tâche ou d'un agent.
   pour le reste.
 - **Limites connues** : les intercepteurs ne sont **pas** invoqués automatiquement par
   le pipeline d'exécution — l'hôte les résout (`GetServices<IDlpInterceptor>()`) et
-  les applique aux canaux qu'il veut protéger. À ne pas confondre avec le
+  les applique aux canaux qu'il veut protéger. Une exception (FWK-20) : l'intercepteur de sortie externe d'un hôte qui a enregistré la DLP s'applique aux arguments d'un appel d'outil diffusé, retenus
+  jusqu'à la fin de l'appel et émis en un seul delta rédigé. À ne pas confondre avec le
   `PiiDetectionValidator` du pipeline de validation de sortie, qui reste enregistré
   par défaut et est indépendant.
 
@@ -364,6 +365,9 @@ Aucun attribut ne porte l'identifiant d'un crew, d'une tâche ou d'un agent.
   `AddOrkeonEvaluation()` (inclus dans le socle) pour construire les suites.
   L'`IEvaluationSuite` par défaut porte les juges LLM quand `Evaluation:EnableLlmJudge`
   vaut `true` — lié par `AddOrkeonInfrastructure(configuration)`.
+- **Binaires livrés** : les hôtes runner (`orkeon`, `orkeon-host`) l'enregistrent et lient la
+  section `Evaluation` avec `AddOrkeonEvaluation(configuration)` ; `orkeon eval bench` l'exécute
+  (`orkeon eval run` note un jeu de données avec la suite par défaut).
 - **Dépendances** : aucune (la suite d'évaluation est fournie via `BenchmarkConfig`
   à l'appel).
 
@@ -488,9 +492,35 @@ Aucun attribut ne porte l'identifiant d'un crew, d'une tâche ou d'un agent.
 
 ## Persistance d'état d'exécution — `AddCrewExecutionStatePersistence(...)` (R3.8)
 
-- **Binaires livrés** : aucun ne l'active. `orkeon run`, `orkeon-host` et `orkeon-repl` ne lisent
-  ni `Orkeon:ExecutionState:Persistence` ni `Orkeon:Checkpointing`, celle du store Postgres, et le
-  disent à leur démarrage quand les réglages en écrivent une.
+- **Binaires livrés** : `orkeon run` et `orkeon-host` lisent `Orkeon:Checkpointing` (le magasin) et
+  `Orkeon:ExecutionState:Persistence` (l'interrupteur). `Orkeon:Checkpointing:Enabled=true` avec `Store`
+  `json`, `sqlite` ou `postgres` donne à chaque run de l'hôte une session de checkpoint durable, et à la
+  persistance des états d'exécution le même magasin. `json` et `sqlite` écrivent sous `./.orkeon/state`,
+  monté en `/state` comme montage interne. `orkeon-repl` ne lit ni l'une ni l'autre et le dit à son
+  démarrage quand les réglages en écrivent une.
+- **Identité d'un run** : un run a un seul identifiant, un `ExecutionId` : l'id de la session de
+  checkpoint, le `correlationId` des événements que `orkeon run --events` écrit, et l'id que rend le
+  kickoff sans attente. `KickoffOptions.ExecutionId` le transmet (reprise, hôte) ; `IRunScope.Current` le
+  montre à chaque décorateur et observateur que le run atteint. La clé de crew d'une session
+  (`SessionState.CrewKey`) est le nom de la crew sauf si `KickoffOptions.CrewKey` la nomme ; `orkeon run` et
+  `orkeon-host` la nomment avec le nom de la crew, le chemin virtuel de son fichier et une empreinte
+  du chemin complet du fichier, pour qu'un nouveau processus retrouve une session quels que soient les ids
+  de la crew et de ses tâches, régénérés à chaque chargement.
+  Pas encore unifiés : l'id de tâche A2A et celui de l'API (FWK-14). Un run lancé dans un autre entre dans
+  son propre scope : son identifiant remplace celui du run extérieur pendant sa durée.
+- **Checkpoint par tâche et `--resume`** (FWK-07) : chaque tâche qu'un run de crew termine est écrite dans la
+  session de checkpoint à sa fin, par un décorateur d'`IAgentExecutionService` que tous les modes
+  d'orchestration traversent (sequential, parallel, hierarchical, graph, autonomous, consensual), sous la
+  clé `"{TaskKey}#{n}"` : `TaskKey` est le nom de la tâche dans la définition de la crew, `n` l'ordinal de
+  l'invocation de cette clé dans le run (une révision Hierarchical est `#2` ; les tentatives du `retry:` d'une tâche partagent une clé). Une tâche qui
+  échoue ou lève n'est pas checkpointée, et une tâche réessayée l'est une fois, pour la tentative réussie (`RetryCount` note les retries) : un run arrêté entre deux tentatives reprend cette tâche à la tentative 1 ; un checkpoint impossible à écrire fait échouer la tâche.
+  `orkeon run <crew> --resume <id>|latest` continue le run `<id>` (l'id qu'imprime un run échoué :
+  `Run <id> did not complete. Resume it ...`), ou le dernier run de ce fichier de crew qui n'est pas terminé (et pas encore marqué `Running` : `latest` ne reprend pas un run qui peut être vivant dans un autre processus, le magasin ne tient aucun bail ; nommer son id pour le reprendre) : le run
+  garde son id, les tâches qu'il avait terminées reviennent du checkpoint (`task.completed` porte
+  `resumed: true`, aucun modèle n'est interrogé), les autres s'exécutent. Avec sa sortie, un checkpoint garde une empreinte de la tâche (description, sortie attendue, agent, dépendances) : une tâche modifiée depuis est rejouée avec chaque tâche qui la suit, et un avertissement la nomme. Il demande
+  `Orkeon:Checkpointing:Enabled=true` et est refusé avec `--validate`, avec `--list-tools`, sur un `.ork.ts`
+  procédural et, avec `--events`, sans id de run explicite. Dans un hôte écrit en C#, passer
+  `KickoffOptions.Resume` (`"latest"` ou l'id). Les noms de tâche sont uniques dans une crew.
 - **Rôle** : persistance durable des états d'exécution de crew
   (`ScopedCrewExecutionStateManager`) dans un state store de checkpointing
   (`IStateStore`) : chaque transition (création, mise à jour, complétion, archivage)
@@ -502,6 +532,7 @@ Aucun attribut ne porte l'identifiant d'un crew, d'une tâche ou d'un agent.
   // 1. Un state store de checkpointing (in-memory, SQLite ou PostgreSQL)
   services.AddOrkeonSqliteCheckpointing("Data Source=/output/orkeon-state.db"); // chemin virtuel, montage en écriture
   // ou : services.AddOrkeonCheckpointing();              // in-memory
+  // ou : services.AddOrkeonCheckpointing(configuration); // Orkeon:Checkpointing : Enabled, Store memory|json|sqlite|postgres
   // ou : services.AddOrkeonPostgresCheckpointing(configuration); // Orkeon:Checkpointing:*
 
   // 2. L'opt-in de persistance
@@ -610,10 +641,10 @@ Aucun attribut ne porte l'identifiant d'un crew, d'une tâche ou d'un agent.
   `AllowInterpreters` laisse passer plus de commandes, pas une vue plus large. `Mode = None`
   est la sortie — voir [Confinement du shell](../architecture/security.md#confinement-du-shell).
 
-## Streaming console LLM natif — `AddLlmConsoleStreaming(configuration)`
+## Streaming console LLM natif — `AddLlmConsoleStreaming(configuration, enabledByDefault)`
 
 - **Activation** : appelée par le bootstrap de la ConsoleApp, mais n'enregistre rien
-  tant que `Orkeon:Cli:ConsoleStreaming:Enabled = true` n'est pas posé.
+  tant que `Orkeon:Cli:ConsoleStreaming:Enabled = true` n'est pas posé (la REPL l'active sauf `Enabled = false` ; `enabledByDefault` (false) est ce que veut dire une clé absente : un hôte de crew le laisse désactivé sauf clé à `true`).
 - **Effet** : enregistre `ConsoleLlmDeltaSink` comme `ILlmDeltaSink`. Quand un sink
   est présent et que le provider LLM streame (`IStreamingLlmProvider`), la boucle
   scriptée `ctx.llm.act` bascule sur le chemin SSE et chaque delta de contenu atteint
@@ -661,3 +692,13 @@ vérifient :
 2. que chaque `AddOrkeonXxx()` produit un graphe **résolvable** seul (avec logging et,
    le cas échéant, une `IConfiguration`) ;
 3. que les opt-ins **composent** avec le socle (sémantique `TryAdd`, pas de doublons).
+
+## Historique de run : `Orkeon:RunHistory`
+
+- **Binaires livrés** : `orkeon run`, `orkeon-host` et `orkeon runs` lisent `Orkeon:RunHistory`. Il est **éteint dans la
+  bibliothèque et dans `orkeon run`**, **allumé dans `orkeon-host`** et dans les réglages qu'écrit `orkeon init`.
+  `Enabled=true` garde les événements de chaque run après sa fin, avec `Store` `jsonl` (défaut) ou `sqlite`, sous
+  `./.orkeon/runs` monté en `/runs` comme montage interne ; `orkeon runs list|show|tail` les relit. Un run est enregistré avec ou sans `--events` (sans, rien n'est écrit sur stdout). `orkeon-repl` ne publie
+  pas d'événements de run. Ce qui est gardé, et masqué, est dans [`orkeon runs`](./cli.md#orkeon-runs) ; le gabarit de `orkeon init` active l'historique et ajoute `.orkeon/` au `.gitignore` du dossier courant.
+- **Un hôte écrit en C#** construit un `RunEventPublisher` sur `JsonLinesFileRunEventSink` ou `SqliteRunEventSink`
+  (expérimental `ORKEXP007`, voir les [API expérimentales](./experimental-apis.md)) et relit par `IRunHistoryReader`.

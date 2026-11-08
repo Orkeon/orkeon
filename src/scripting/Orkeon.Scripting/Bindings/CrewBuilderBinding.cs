@@ -49,6 +49,7 @@ public static class CrewBuilderBinding
             engine, services.Logger, services.LlmProvider, tools, services.PermissionGate, services.DeltaSink, services.ToolInvocation)
         {
             AgentMemoryStore = services.AgentMemoryStore,
+            ToolCallDlp = services.ToolCallDlp,
             ToolLimits = services.ToolLimits,
             AgentInstances = services.AgentInstances,
             Mounts = services.Mounts,
@@ -63,6 +64,9 @@ public static class CrewBuilderBinding
         public IEnumerable<IBaseTool>? BuiltInTools { get; init; }
         public Orkeon.Application.Interfaces.Security.IPermissionGate? PermissionGate { get; init; }
         public Orkeon.Application.Interfaces.Ports.ILlmDeltaSink? DeltaSink { get; init; }
+
+        /// <summary>The host's DLP for streamed tool calls.</summary>
+        public Orkeon.Application.Crew.ToolCallDeltaDlp? ToolCallDlp { get; init; }
         public Orkeon.Application.Interfaces.Security.IToolInvocationPipeline? ToolInvocation { get; init; }
         public Orkeon.Application.Interfaces.Ports.IScriptAgentMemoryStore? AgentMemoryStore { get; init; }
         public Orkeon.Domain.Tools.ToolResultLimitsOptions? ToolLimits { get; init; }

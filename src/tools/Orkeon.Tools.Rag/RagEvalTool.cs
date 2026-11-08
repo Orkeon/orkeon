@@ -189,7 +189,7 @@ public class RagEvalTool : ToolBase<RagEvalRequest, RagEvalResponse>
     /// Formats a harness result as the agent-facing text block: one aggregate line
     /// per profile (judge mode labelled), the comparison table for multi-profile
     /// runs, then the report files written. Public so the CLI
-    /// (<c>orkeon rag eval</c>) prints the exact same summary.
+    /// (<c>orkeon eval rag</c>) prints the exact same summary.
     /// </summary>
     public static string FormatResult(RagEvalRunResult result)
     {

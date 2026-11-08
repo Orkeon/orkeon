@@ -24,7 +24,7 @@ public sealed class CovAutonomous_SequentialCrewOrchestratorTests
 {
     // ── Doubles ─────────────────────────────────────────────────────────────
 
-    private sealed class FakeCrewRepository : ICrewRepository
+    internal sealed class FakeCrewRepository : ICrewRepository
     {
         private readonly Dictionary<Ulid, DomainCrew> _crews = [];
         public void Add(DomainCrew crew) => _crews[crew.Id.Value] = crew;
@@ -53,7 +53,7 @@ public sealed class CovAutonomous_SequentialCrewOrchestratorTests
         public Task<int> CountAsync(CancellationToken ct = default) => Task.FromResult(_crews.Count);
     }
 
-    private sealed class FakeStateManager : ICrewExecutionStateManager
+    internal sealed class FakeStateManager : ICrewExecutionStateManager
     {
         private readonly Dictionary<Ulid, CrewExecutionState> _byCrew = [];
         private readonly Dictionary<string, CrewExecutionState> _byExec = [];
@@ -115,11 +115,14 @@ public sealed class CovAutonomous_SequentialCrewOrchestratorTests
         public Task CleanupExpiredExecutionsAsync(TimeSpan maxAge, CancellationToken ct = default) => Task.CompletedTask;
     }
 
-    private sealed class RecordingProcessStrategy : IProcessStrategy
+    internal sealed class RecordingProcessStrategy : IProcessStrategy
     {
         public string? LastMode { get; private set; }
         public bool AutonomousCalled { get; private set; }
         public AgentExecutionBudget? LastBudget { get; private set; }
+
+        /// <summary>Runs inside the strategy, before it answers: what a task does to the run around it.</summary>
+        public Action? OnExecute { get; set; }
 
         public Task<DomainCrewOutput> ExecuteSequentialAsync(DomainCrew crew, IReadOnlyDictionary<string, string>? vars = null, CancellationToken ct = default)
         { LastMode = "Sequential"; return Out(crew); }
@@ -133,8 +136,9 @@ public sealed class CovAutonomous_SequentialCrewOrchestratorTests
         public Task<DomainCrewOutput> ExecuteAutonomousAsync(DomainCrew crew, AgentExecutionBudget budget, IReadOnlyDictionary<string, string>? vars = null, CancellationToken ct = default)
         { LastMode = "Autonomous"; AutonomousCalled = true; LastBudget = budget; return Out(crew); }
 
-        private static Task<DomainCrewOutput> Out(DomainCrew crew)
+        private Task<DomainCrewOutput> Out(DomainCrew crew)
         {
+            OnExecute?.Invoke();
             var taskOutputs = new List<DomainTaskOutput>
             {
                 DomainTaskOutput.Create("ok-content", "text", null, TaskId.Create(), true, TimeSpan.FromMilliseconds(5)),
@@ -195,23 +199,36 @@ public sealed class CovAutonomous_SequentialCrewOrchestratorTests
         public IProcessStrategy CreateStrategy(ProcessType processType) => strategy;
     }
 
-    private sealed class FakeFactory : IProcessStrategyFactory
+    internal sealed class FakeFactory : IProcessStrategyFactory
     {
         public RecordingProcessStrategy Strategy { get; } = new();
         public IProcessStrategy CreateStrategy(ProcessType processType) => Strategy;
     }
 
-    private sealed class FakeCheckpointManager : ICheckpointManager
+    internal sealed class FakeCheckpointManager : ICheckpointManager
     {
         public int StartCount { get; private set; }
+        public IRunScope? Scope { get; init; }
+        public RunScope? ScopeAtStart { get; private set; }
+        public string? LastCrewKey { get; private set; }
         public int CheckpointCount { get; private set; }
         public int CompleteCount { get; private set; }
         public int MarkFailedCount { get; private set; }
 
-        public Task<string> StartSessionAsync(string crewId, CancellationToken ct = default) { StartCount++; return Task.FromResult("session-1"); }
-        public Task CheckpointAsync(string sessionId, string taskId, string? output, CancellationToken ct = default) { CheckpointCount++; return Task.CompletedTask; }
+        public Task<string> StartSessionAsync(ExecutionId sessionId, string crewKey, CancellationToken ct = default) { lock (Gate) { StartCount++; LastSessionId = sessionId; LastCrewKey = crewKey; ScopeAtStart = Scope?.Current; Starts.Add((sessionId, crewKey, Scope?.Current)); } return Task.FromResult(sessionId.ToString()); }
+        public ExecutionId? LastSessionId { get; private set; }
+        public object Gate { get; } = new();
+
+        /// <summary>Every session started, with the run identity visible at that moment.</summary>
+        public List<(ExecutionId Id, string CrewKey, RunScope? Scope)> Starts { get; } = [];
+
+        /// <summary>The run identity visible when a task output was checkpointed, or the session completed (after a yield).</summary>
+        public List<RunScope?> ScopesAtCheckpoint { get; } = [];
+        public Task CheckpointAsync(string sessionId, string taskId, string? output, CancellationToken ct = default) => CheckpointAsync(sessionId, taskId, output, 0, ct);
+        public async Task CheckpointAsync(string sessionId, string taskId, string? output, int retryCount, CancellationToken ct = default) { await Task.Yield(); lock (Gate) { CheckpointCount++; ScopesAtCheckpoint.Add(Scope?.Current); } }
         public Task MarkFailedAsync(string sessionId, string taskId, Exception ex, CancellationToken ct = default) { MarkFailedCount++; return Task.CompletedTask; }
-        public Task CompleteSessionAsync(string sessionId, CancellationToken ct = default) { CompleteCount++; return Task.CompletedTask; }
+        public Task FailSessionAsync(string sessionId, Exception ex, CancellationToken ct = default) { MarkFailedCount++; return Task.CompletedTask; }
+        public async Task CompleteSessionAsync(string sessionId, CancellationToken ct = default) { await Task.Yield(); lock (Gate) { CompleteCount++; ScopesAtCheckpoint.Add(Scope?.Current); } }
         public Task<SessionState?> GetLatestCheckpointAsync(string crewId, CancellationToken ct = default) => Task.FromResult<SessionState?>(null);
         public Task<IReadOnlyList<VersionSummary>> GetHistoryAsync(string sessionId, int? limit = null, CancellationToken ct = default) => Task.FromResult<IReadOnlyList<VersionSummary>>([]);
         public Task<SessionState?> RestoreToVersionAsync(string sessionId, string versionId, CancellationToken ct = default) => Task.FromResult<SessionState?>(null);
@@ -221,19 +238,20 @@ public sealed class CovAutonomous_SequentialCrewOrchestratorTests
 
     // ── Setup helper ────────────────────────────────────────────────────────
 
-    private sealed record Harness(
+    internal sealed record Harness(
         SequentialCrewOrchestrator Orchestrator,
         FakeCrewRepository Repo,
         FakeStateManager State,
         FakeFactory Factory,
         FakeCheckpointManager? Checkpoint);
 
-    private static Harness Build(bool withCheckpoint = false)
+    internal static Harness Build(bool withCheckpoint = false, IRunScope? runScope = null, Orkeon.Application.Interfaces.Services.IMemoryCoordinator? memory = null, ICheckpointManager? manager = null, IResumeEngine? engine = null)
     {
         var repo = new FakeCrewRepository();
         var state = new FakeStateManager();
         var factory = new FakeFactory();
-        FakeCheckpointManager? cp = withCheckpoint ? new FakeCheckpointManager() : null;
+        FakeCheckpointManager? cp = withCheckpoint ? new FakeCheckpointManager { Scope = runScope } : null;
+        ICheckpointManager? used = manager ?? cp;
 
         var orch = new SequentialCrewOrchestrator(
             repo,
@@ -242,12 +260,16 @@ public sealed class CovAutonomous_SequentialCrewOrchestratorTests
             factory,
             new ExecutionPlanParser(), new Orkeon.Infrastructure.Tests.Doubles.RecordingDomainEventDispatcher(),
             agentRepository: null,
-            checkpointManager: cp);
+            checkpointManager: used,
+            resumeEngine: engine,
+            runScope: runScope,
+            memoryProviderRegistry: memory is null ? null : new Orkeon.Application.Memory.CrewMemoryProviderRegistry(),
+            memoryCoordinator: memory);
 
         return new Harness(orch, repo, state, factory, cp);
     }
 
-    private static DomainCrew MakeCrew(ProcessType type, AgentId? manager = null)
+    internal static DomainCrew MakeCrew(ProcessType type, AgentId? manager = null)
     {
         var crew = manager is not null
             ? DomainCrew.Create("goal", type, managerAgentId: manager)
@@ -260,7 +282,7 @@ public sealed class CovAutonomous_SequentialCrewOrchestratorTests
         return crew;
     }
 
-    private static CrewInput Input() => new("ctx", new Dictionary<string, object> { ["k"] = "v" });
+    internal static CrewInput Input() => new("ctx", new Dictionary<string, object> { ["k"] = "v" });
 
     // ── Constructor guards ───────────────────────────────────────────────────
 
@@ -417,7 +439,9 @@ public sealed class CovAutonomous_SequentialCrewOrchestratorTests
         await h.Orchestrator.KickoffAsync(crew.Id, Input(), TestContext.Current.CancellationToken);
 
         Assert.Equal(1, h.Checkpoint!.StartCount);
-        Assert.True(h.Checkpoint.CheckpointCount >= 1);
+        // The tasks are checkpointed as they end, by the execution service's decorator (FWK-07): the
+        // orchestrator itself starts the session and completes it.
+        Assert.Equal(0, h.Checkpoint.CheckpointCount);
         Assert.Equal(1, h.Checkpoint.CompleteCount);
     }
 

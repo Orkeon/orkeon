@@ -54,13 +54,15 @@ internal static class CliUsage
         new("doctor", "Diagnose the installation: runtime, settings, esbuild, embeddings, tree-sitter."),
         new("settings", "List every setting a host reads, by category: type, default, meaning — offline."),
         new("llm", "Probe an LLM provider against the test protocol."),
-        new("rag", "Ingest, search and evaluate a RAG collection."),
+        new("rag", "Ingest documents into a RAG collection and search it."),
+        new("eval", "Score a dataset (running a crew per case with --crew), benchmark, compare reports, evaluate a RAG collection."),
         new("forge", "The Atelier: turn a need in plain words into a validated crew."),
         new("usecases", "Search, list, show and export the example use cases — offline, in five languages."),
         new("email", "List the e-mail accounts, sign an OAuth account in or out, check a connection."),
         new("drive", "List the drive accounts (Google Drive, OneDrive), sign one in or out, check a connection."),
         new("typings", "Write the TypeScript typings for .ork.ts and .cmd.ts scripts into ./.orkeon/."),
         new("mcp", "Serve the host's tools to an MCP client (Claude Desktop, an editor) over stdio."),
+        new("runs", "List the recorded runs, show or tail the events of one (Orkeon:RunHistory)."),
     ];
 
     /// <summary>This build's version, without the build metadata SourceLink appends.</summary>

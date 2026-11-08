@@ -318,6 +318,8 @@ static class Program
         // MCP:Servers, as the runners read it: registered when servers are declared, connected by the
         // runner before it loads the commands (ScriptedCommandsRunner.OnStartAsync).
         Orkeon.Hosting.RunnerHost.RegisterMcp(context, services);
+        // An oauth2-device server shows its sign-in code on the process terminal, as orkeon run does.
+        Orkeon.Hosting.RunnerHost.RegisterMcpLoginInteraction(services, Orkeon.Hosting.SystemRunnerConsole.Instance);
         // The decision models, as the runners register them: the active decision provider (the guard and
         // the model follow it), the decision profiles either way.
         Orkeon.Hosting.RunnerHost.RegisterDecisionModels(context, services);
@@ -353,10 +355,10 @@ static class Program
         // next line answers it (the read loop hands the line over).
         services.AddConsoleToolApproval();
         // Native incremental rendering of streamed act() output — config
-        // opt-in (Orkeon:Cli:ConsoleStreaming:Enabled = true). Registered here (after the
-        // IConsoleAdapter choice below is declared later in this method, resolution is
-        // lazy) so the REPL streams tokens without scripts passing onDelta.
-        services.AddLlmConsoleStreaming(context.Configuration);
+        // (Orkeon:Cli:ConsoleStreaming:Enabled; on in the REPL unless the key says false, FWK-20).
+        // Registered here (after the IConsoleAdapter choice below is declared later in this method,
+        // resolution is lazy) so the REPL streams tokens without scripts passing onDelta.
+        services.AddLlmConsoleStreaming(context.Configuration, enabledByDefault: true);
 
         // RaggableTree — semantic codebase index + agent tools (codebase_map/search,
         // symbol_source, flow_trace, impact_analysis, index_codebase, …). On-device embeddings
@@ -543,6 +545,14 @@ static class Program
 
     static async Task RunHostAsync(IHost host, UiMode effectiveUi, ScriptedCommandsCliOptions scriptedOpts, TextWriter stderr)
     {
+        // The REPL never starts its host, so the embedding model guard (FWK-25) runs here, before anything else.
+        if (await Orkeon.Infrastructure.LLMs.Embeddings.EmbeddingModelGuard.CheckAsync(host.Services, CancellationToken.None) is { } embeddingRefusal)
+        {
+            await stderr.WriteLineAsync("ERROR: " + embeddingRefusal);
+            Environment.ExitCode = 1;
+            return;
+        }
+
         // --replay: the file is read before anything runs; missing or unreadable, exit 2 and the REPL never opens.
         var replay = host.Services.GetRequiredService<ReplayConsoleAdapter>();
         if (await ReplayLaunch.StartAsync(

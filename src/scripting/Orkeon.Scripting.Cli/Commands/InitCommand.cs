@@ -61,6 +61,9 @@ internal sealed class InitCommandOptions : CliOptions
 
     /// <summary>Test seam: the handler the probe's HTTP client uses; production leaves it null.</summary>
     internal HttpMessageHandler? HttpHandler { get; set; }
+
+    /// <summary>Test seam: the folder whose <c>.gitignore</c> learns <c>.orkeon/</c>; the process's working directory when null.</summary>
+    internal string? WorkingDirectory { get; set; }
 }
 
 /// <summary>
@@ -195,6 +198,8 @@ internal static class InitCommand
         await File.WriteAllTextAsync(target, BuildJson(plan), ct).ConfigureAwait(false);
 
         await console.Output.WriteLineAsync($"Wrote {target}").ConfigureAwait(false);
+        if (await IgnoreOrkeonFolderAsync(options.WorkingDirectory ?? Directory.GetCurrentDirectory(), ct).ConfigureAwait(false))
+            await console.Output.WriteLineAsync("Added .orkeon/ to .gitignore (the run history and the checkpoint state are kept there).").ConfigureAwait(false);
         PrintGuidance(console, plan);
 
         if (reading?.Notice == LlmEndpointNotice.Silent)
@@ -424,6 +429,24 @@ internal static class InitCommand
         return Directory.Exists(full) ? Path.Combine(full, ConventionalNames.SettingsFile) : full;
     }
 
+    /// <summary>
+    /// The settings this command writes turn the run history on, and the history lives under <c>./.orkeon/</c>, with the
+    /// checkpoint state: both hold what a run said and did, which is not for a repository. The <c>.gitignore</c> of the
+    /// working directory is written, or completed with that one line, unless it already names the folder.
+    /// </summary>
+    /// <returns>True when a line was added.</returns>
+    private static async Task<bool> IgnoreOrkeonFolderAsync(string workingDirectory, CancellationToken ct)
+    {
+        var path = Path.Combine(workingDirectory, ".gitignore");
+        var existing = File.Exists(path) ? await File.ReadAllTextAsync(path, ct).ConfigureAwait(false) : string.Empty;
+        if (existing.Split('\n').Select(line => line.Trim()).Any(line => line is ".orkeon" or ".orkeon/" or "/.orkeon" or "/.orkeon/"))
+            return false;
+
+        var separator = existing.Length == 0 || existing.EndsWith('\n') ? string.Empty : Environment.NewLine;
+        await File.WriteAllTextAsync(path, existing + separator + ".orkeon/" + Environment.NewLine, ct).ConfigureAwait(false);
+        return true;
+    }
+
     private static string BuildJson(InitPlan plan)
     {
         // Insertion order is preserved — the generated file reads naturally.
@@ -451,6 +474,13 @@ internal static class InitCommand
                 llm["ApiKey"] = plan.InlineApiKey;
             root["Llm"] = llm;
         }
+
+        // The run history is on in the template (FWK-08, decision 3): `orkeon runs` reads what `orkeon run` leaves
+        // under ./.orkeon/runs. The library default stays off.
+        root["Orkeon"] = new Dictionary<string, object?>(StringComparer.Ordinal)
+        {
+            ["RunHistory"] = new Dictionary<string, object?>(StringComparer.Ordinal) { ["Enabled"] = true },
+        };
 
         return JsonSerializer.Serialize(root, s_indentedJson) + Environment.NewLine;
     }

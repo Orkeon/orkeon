@@ -103,9 +103,22 @@ public static class ServiceCollectionExtensions
                 sp.GetService<Interfaces.Security.IGuardianPipeline>(),
                 sp.GetService<Interfaces.Security.IToolResultSanitizer>(),
                 sp.GetService<Interfaces.Security.IAuditLogger>(),
-                sp.GetService<Microsoft.Extensions.Logging.ILogger<Services.Security.ToolInvocationPipeline>>()));
+                sp.GetService<Microsoft.Extensions.Logging.ILogger<Services.Security.ToolInvocationPipeline>>(),
+                limits: null,
+                permissionGate: sp.GetService<Interfaces.Security.IPermissionGate>(),
+                approvalChannel: sp.GetService<Interfaces.Security.IToolApprovalChannel>(),
+                defaultMode: DefaultPermissionMode(sp.GetService<Microsoft.Extensions.Configuration.IConfiguration>()),
+                runScope: sp.GetService<Interfaces.Services.IRunScope>()));
         return services;
     }
+
+    // Orkeon:Security:PermissionGate:DefaultMode, the mode of an agent that declares none; an unset
+    // key is "default", and a value that names no mode is refused by the settings shape at start.
+    private static Orkeon.Domain.Security.PermissionMode DefaultPermissionMode(Microsoft.Extensions.Configuration.IConfiguration? configuration) =>
+        Orkeon.Domain.Security.PermissionModes.TryParse(
+            configuration?.GetSection("Orkeon:Security:PermissionGate")["DefaultMode"], out var mode)
+            ? mode
+            : Orkeon.Domain.Security.PermissionMode.Default;
 
     /// <summary>
     /// Registers the <see cref="IExecutionOrchestrator"/> with a factory that prefers
@@ -174,10 +187,15 @@ public static class ServiceCollectionExtensions
             // GAP-17 — the host's named LLM profiles: an agent or a task naming one runs on its
             // provider; every other one stays on the default resolved above.
             orchestrator.LlmProfiles = sp.GetService<Interfaces.Ports.ILlmProfileRegistry>();
+            orchestrator.MemoryRegistry = sp.GetService<Memory.CrewMemoryProviderRegistry>();
 
             // GAP-32 — a host that renders the model's text as it arrives (orkeon run --stream, the
             // REPL's console) gets every agent turn streamed to it, not only ctx.llm.* calls.
             orchestrator.DeltaSink = sp.GetService<Interfaces.Ports.ILlmDeltaSink>();
+
+            // FWK-20 — a host that registered DLP (AddOrkeonDlp): the arguments of a streamed tool call
+            // are scanned whole by the external-output interceptor, never fragment by fragment.
+            orchestrator.ToolCallDlp = Crew.ToolCallDeltaDlp.From(sp);
 
             // GAP-38 — each agent's request window: the host's clock, and its per-agent cap when the
             // host configures RateLimiting (every shipped host, through AddOrkeonInfrastructure).

@@ -90,6 +90,8 @@ public sealed record AgentConfiguration
     public string Backstory { get; init; } = string.Empty;
     /// <summary>Gets the virtual working root of the agent (<c>working_root:</c>, RT-06); null when none.</summary>
     public string? WorkingRoot { get; init; }
+    /// <summary>Gets the permission mode of the agent's tool calls (<c>permissionMode:</c>); null when none is declared.</summary>
+    public Orkeon.Domain.Security.PermissionMode? PermissionMode { get; init; }
     /// <summary>Gets the tool names available to this agent.</summary>
     public IReadOnlyList<string> Tools { get; init; } = Array.Empty<string>();
     /// <summary>Gets a value indicating whether delegation is allowed.</summary>
@@ -155,6 +157,8 @@ public sealed record TaskConfiguration
     /// load by the four modes that order their tasks themselves (GAP-22).
     /// </summary>
     public bool AsyncExecution { get; init; }
+    /// <summary>Gets the retry policy of this task (YAML <c>retry:</c>), or null when it runs once.</summary>
+    public Orkeon.Domain.Task.TaskRetryPolicy? Retry { get; init; }
     /// <summary>Gets a value indicating whether human input is required.</summary>
     public bool HumanInput { get; init; }
     /// <summary>

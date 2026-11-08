@@ -571,3 +571,501 @@ Orkeon.Application.Interfaces.Ports.ICategoryMemoryStore.ReplaceAsync(int id, st
 Orkeon.Application.Agent.AgentExecutionService.AgentExecutionService(Microsoft.Extensions.Logging.ILogger<Orkeon.Application.Agent.AgentExecutionService!>! logger, Orkeon.Application.Interfaces.Services.IExecutionOrchestrator! executionOrchestrator, Orkeon.Application.Interfaces.Services.ICallbackOrchestrator! callbackOrchestrator, Orkeon.Application.Interfaces.Services.IMemoryCoordinator! memoryCoordinator, Orkeon.Application.EventHub.IEventHubCallerContext? hubCallerContext = null, Orkeon.Domain.FileSystem.IFileSystemService! fileSystem = null) -> void
 *REMOVED*Orkeon.Application.Execution.TaskOutput.RawOutput.get -> string!
 *REMOVED*Orkeon.Application.Interfaces.Services.ExecutionSnapshot.ExecutionSnapshot(Orkeon.Application.Interfaces.Services.ExecutionId! Id, Orkeon.Domain.Common.CrewId! CrewId, Orkeon.Application.Interfaces.Services.ExecutionState Status, double Progress, string? CurrentTask, string? Error, System.DateTime StartTime, System.DateTime? EndTime, Orkeon.Application.Execution.ExecutionMetadata! Metadata) -> void
+Orkeon.Application.Crew.ExecutionOrchestrator.MemoryRegistry.get -> Orkeon.Application.Memory.CrewMemoryProviderRegistry?
+Orkeon.Application.Crew.ExecutionOrchestrator.MemoryRegistry.set -> void
+Orkeon.Application.Interfaces.Services.IMemoryCoordinator.FinishRunAsync(Orkeon.Domain.Common.CrewId! crewId, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+Orkeon.Application.Memory.CrewMemoryOptions.ConsolidateOnRunEnd.get -> bool
+Orkeon.Application.Memory.CrewMemoryOptions.ConsolidateOnRunEnd.set -> void
+Orkeon.Application.Memory.CrewMemoryOptions.MinCompositeScore.get -> float
+Orkeon.Application.Memory.CrewMemoryOptions.MinCompositeScore.set -> void
+Orkeon.Application.Memory.MemoryCoordinator.FinishRunAsync(Orkeon.Domain.Common.CrewId! crewId, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+Orkeon.Application.Memory.MemoryCoordinator.MemoryCoordinator(Microsoft.Extensions.Logging.ILogger<Orkeon.Application.Memory.MemoryCoordinator!>! logger, Orkeon.Application.Interfaces.Services.IMemoryService! memoryService, Orkeon.Application.Memory.CrewMemoryProviderRegistry! providerRegistry, Orkeon.Application.Interfaces.Ports.IEmbeddingProvider? embeddingProvider = null, Microsoft.Extensions.Options.IOptions<Orkeon.Application.Memory.CrewMemoryOptions!>? options = null, Orkeon.Application.Interfaces.Services.ICognitiveMemoryService? cognitiveMemory = null) -> void
+const Orkeon.Application.Crew.Execution.TaskToolbelt.MemoryRecallToolName = "memory_recall" -> string!
+static Orkeon.Application.Crew.Execution.TaskToolbelt.Compose(Orkeon.Domain.Agent.Agent! agent, Orkeon.Domain.Task.CrewTask! task, System.Collections.Generic.IEnumerable<Orkeon.Domain.Tools.IBaseTool!>? registeredTools = null, bool memoryEnabled = false) -> System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Tools.IBaseTool!>!
+*REMOVED*Orkeon.Application.Memory.MemoryCoordinator.MemoryCoordinator(Microsoft.Extensions.Logging.ILogger<Orkeon.Application.Memory.MemoryCoordinator!>! logger, Orkeon.Application.Interfaces.Services.IMemoryService! memoryService, Orkeon.Application.Memory.CrewMemoryProviderRegistry! providerRegistry, Orkeon.Application.Interfaces.Ports.IEmbeddingProvider? embeddingProvider = null, Microsoft.Extensions.Options.IOptions<Orkeon.Application.Memory.CrewMemoryOptions!>? options = null) -> void
+*REMOVED*static Orkeon.Application.Crew.Execution.TaskToolbelt.Compose(Orkeon.Domain.Agent.Agent! agent, Orkeon.Domain.Task.CrewTask! task, System.Collections.Generic.IEnumerable<Orkeon.Domain.Tools.IBaseTool!>? registeredTools = null) -> System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Tools.IBaseTool!>!
+Orkeon.Application.Memory.CrewMemoryOptions.MinSemanticScore.get -> float
+Orkeon.Application.Memory.CrewMemoryOptions.MinSemanticScore.set -> void
+*REMOVED*Orkeon.Application.Interfaces.Checkpointing.ICheckpointManager.GetLatestCheckpointAsync(string! crewId, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Application.Interfaces.Checkpointing.SessionState?>!
+*REMOVED*Orkeon.Application.Interfaces.Checkpointing.ICheckpointManager.StartSessionAsync(string! crewId, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<string!>!
+*REMOVED*Orkeon.Application.Interfaces.Checkpointing.IResumeEngine.CanResumeAsync(string! crewId, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<bool>!
+*REMOVED*Orkeon.Application.Interfaces.Checkpointing.IResumeEngine.ResumeAsync(string! crewId, Orkeon.Application.Interfaces.Checkpointing.ResumeOptions? options = null, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Application.Interfaces.Checkpointing.ResumeResult!>!
+*REMOVED*Orkeon.Application.Interfaces.Checkpointing.IStateStore.GetLatestForCrewAsync(string! crewId, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Application.Interfaces.Checkpointing.SessionState?>!
+*REMOVED*Orkeon.Application.Interfaces.Checkpointing.SessionState.CrewId.get -> string!
+*REMOVED*Orkeon.Application.Interfaces.Checkpointing.SessionState.CrewId.init -> void
+*REMOVED*Orkeon.Application.Interfaces.Checkpointing.SessionSummary.CrewId.get -> string!
+*REMOVED*Orkeon.Application.Interfaces.Checkpointing.SessionSummary.CrewId.init -> void
+*REMOVED*Orkeon.Application.Services.Checkpointing.CheckpointManager.GetLatestCheckpointAsync(string! crewId, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Application.Interfaces.Checkpointing.SessionState?>!
+*REMOVED*Orkeon.Application.Services.Checkpointing.CheckpointManager.StartSessionAsync(string! crewId, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<string!>!
+*REMOVED*Orkeon.Application.Services.Checkpointing.ResumeEngine.CanResumeAsync(string! crewId, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<bool>!
+*REMOVED*Orkeon.Application.Services.Checkpointing.ResumeEngine.ResumeAsync(string! crewId, Orkeon.Application.Interfaces.Checkpointing.ResumeOptions? options = null, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Application.Interfaces.Checkpointing.ResumeResult!>!
+Orkeon.Application.Interfaces.Checkpointing.ICheckpointManager.GetLatestCheckpointAsync(string! crewKey, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Application.Interfaces.Checkpointing.SessionState?>!
+Orkeon.Application.Interfaces.Checkpointing.ICheckpointManager.StartSessionAsync(Orkeon.Application.Interfaces.Services.ExecutionId! sessionId, string! crewKey, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<string!>!
+Orkeon.Application.Interfaces.Checkpointing.IResumeEngine.CanResumeAsync(string! crewKey, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<bool>!
+Orkeon.Application.Interfaces.Checkpointing.IResumeEngine.ResumeAsync(string! crewKey, Orkeon.Application.Interfaces.Checkpointing.ResumeOptions? options = null, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Application.Interfaces.Checkpointing.ResumeResult!>!
+Orkeon.Application.Interfaces.Checkpointing.IStateStore.GetLatestForCrewAsync(string! crewKey, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Application.Interfaces.Checkpointing.SessionState?>!
+Orkeon.Application.Interfaces.Checkpointing.SessionState.CrewKey.get -> string!
+Orkeon.Application.Interfaces.Checkpointing.SessionState.CrewKey.init -> void
+Orkeon.Application.Interfaces.Checkpointing.SessionSummary.CrewKey.get -> string!
+Orkeon.Application.Interfaces.Checkpointing.SessionSummary.CrewKey.init -> void
+Orkeon.Application.Interfaces.Services.ICrewOrchestrationService.KickoffAsync(Orkeon.Domain.Common.CrewId! crewId, Orkeon.Application.Interfaces.Services.CrewInput! input, Orkeon.Application.Interfaces.Services.KickoffOptions! options, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Application.Interfaces.Services.CrewOutput!>!
+Orkeon.Application.Interfaces.Services.IRunScope
+Orkeon.Application.Interfaces.Services.IRunScope.Current.get -> Orkeon.Application.Interfaces.Services.RunScope?
+Orkeon.Application.Interfaces.Services.IRunScope.Enter(Orkeon.Application.Interfaces.Services.RunScope! scope) -> System.IDisposable!
+Orkeon.Application.Interfaces.Services.KickoffOptions
+Orkeon.Application.Interfaces.Services.KickoffOptions.<Clone>$() -> Orkeon.Application.Interfaces.Services.KickoffOptions!
+Orkeon.Application.Interfaces.Services.KickoffOptions.CrewKey.get -> string?
+Orkeon.Application.Interfaces.Services.KickoffOptions.CrewKey.init -> void
+Orkeon.Application.Interfaces.Services.KickoffOptions.Equals(Orkeon.Application.Interfaces.Services.KickoffOptions? other) -> bool
+Orkeon.Application.Interfaces.Services.KickoffOptions.ExecutionId.get -> Orkeon.Application.Interfaces.Services.ExecutionId?
+Orkeon.Application.Interfaces.Services.KickoffOptions.ExecutionId.init -> void
+Orkeon.Application.Interfaces.Services.KickoffOptions.KickoffOptions() -> void
+Orkeon.Application.Interfaces.Services.KickoffOptions.Resume.get -> string?
+Orkeon.Application.Interfaces.Services.KickoffOptions.Resume.init -> void
+Orkeon.Application.Interfaces.Services.RunScope
+Orkeon.Application.Interfaces.Services.RunScope.<Clone>$() -> Orkeon.Application.Interfaces.Services.RunScope!
+Orkeon.Application.Interfaces.Services.RunScope.CrewKey.get -> string!
+Orkeon.Application.Interfaces.Services.RunScope.CrewKey.init -> void
+Orkeon.Application.Interfaces.Services.RunScope.Equals(Orkeon.Application.Interfaces.Services.RunScope? other) -> bool
+Orkeon.Application.Interfaces.Services.RunScope.ExecutionId.get -> Orkeon.Application.Interfaces.Services.ExecutionId!
+Orkeon.Application.Interfaces.Services.RunScope.ExecutionId.init -> void
+Orkeon.Application.Interfaces.Services.RunScope.Resume.init -> void
+Orkeon.Application.Services.Checkpointing.CheckpointManager.GetLatestCheckpointAsync(string! crewKey, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Application.Interfaces.Checkpointing.SessionState?>!
+Orkeon.Application.Services.Checkpointing.CheckpointManager.StartSessionAsync(Orkeon.Application.Interfaces.Services.ExecutionId! executionId, string! crewKey, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<string!>!
+Orkeon.Application.Services.Checkpointing.ResumeEngine.CanResumeAsync(string! crewKey, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<bool>!
+Orkeon.Application.Services.Checkpointing.ResumeEngine.ResumeAsync(string! crewKey, Orkeon.Application.Interfaces.Checkpointing.ResumeOptions? options = null, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Application.Interfaces.Checkpointing.ResumeResult!>!
+override Orkeon.Application.Interfaces.Services.KickoffOptions.Equals(object? obj) -> bool
+override Orkeon.Application.Interfaces.Services.KickoffOptions.GetHashCode() -> int
+override Orkeon.Application.Interfaces.Services.KickoffOptions.ToString() -> string!
+override Orkeon.Application.Interfaces.Services.RunScope.Equals(object? obj) -> bool
+override Orkeon.Application.Interfaces.Services.RunScope.GetHashCode() -> int
+override Orkeon.Application.Interfaces.Services.RunScope.ToString() -> string!
+static Orkeon.Application.Interfaces.Services.KickoffOptions.operator !=(Orkeon.Application.Interfaces.Services.KickoffOptions? left, Orkeon.Application.Interfaces.Services.KickoffOptions? right) -> bool
+static Orkeon.Application.Interfaces.Services.KickoffOptions.operator ==(Orkeon.Application.Interfaces.Services.KickoffOptions? left, Orkeon.Application.Interfaces.Services.KickoffOptions? right) -> bool
+static Orkeon.Application.Interfaces.Services.RunScope.operator !=(Orkeon.Application.Interfaces.Services.RunScope? left, Orkeon.Application.Interfaces.Services.RunScope? right) -> bool
+static Orkeon.Application.Interfaces.Services.RunScope.operator ==(Orkeon.Application.Interfaces.Services.RunScope? left, Orkeon.Application.Interfaces.Services.RunScope? right) -> bool
+*REMOVED*Orkeon.Application.Services.Checkpointing.CheckpointManager.StartSessionAsync(Orkeon.Application.Interfaces.Services.ExecutionId! executionId, string! crewKey, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<string!>!
+Orkeon.Application.Services.Checkpointing.CheckpointManager.StartSessionAsync(Orkeon.Application.Interfaces.Services.ExecutionId! sessionId, string! crewKey, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<string!>!
+Orkeon.Application.Interfaces.Services.ICrewOrchestrationService.KickoffStreamingAsync(Orkeon.Domain.Common.CrewId! crewId, Orkeon.Application.Interfaces.Services.CrewInput! input, Orkeon.Application.Interfaces.Services.KickoffOptions! options, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Collections.Generic.IAsyncEnumerable<Orkeon.Application.Interfaces.Services.CrewExecutionEvent!>!
+*REMOVED*Orkeon.Application.Services.Security.ToolInvocationPipeline.ToolInvocationPipeline(Orkeon.Application.Interfaces.Security.IGuardianPipeline? guardian = null, Orkeon.Application.Interfaces.Security.IToolResultSanitizer? sanitizer = null, Orkeon.Application.Interfaces.Security.IAuditLogger? auditLogger = null, Microsoft.Extensions.Logging.ILogger<Orkeon.Application.Services.Security.ToolInvocationPipeline!>? logger = null, Microsoft.Extensions.Options.IOptions<Orkeon.Domain.Tools.ToolResultLimitsOptions!>? limits = null) -> void
+Orkeon.Application.Interfaces.Security.ToolInvocationCaller.GateExempt.get -> bool
+Orkeon.Application.Interfaces.Security.ToolInvocationCaller.GateExempt.init -> void
+Orkeon.Application.Interfaces.Security.ToolInvocationCaller.PermissionMode.get -> string?
+Orkeon.Application.Interfaces.Security.ToolInvocationCaller.PermissionMode.init -> void
+Orkeon.Application.Interfaces.Security.IToolInvocationPipeline.GatesPermissions.get -> bool
+Orkeon.Application.Interfaces.Security.ToolInvocationCaller.RequireApproval.get -> bool
+Orkeon.Application.Interfaces.Security.ToolInvocationCaller.RequireApproval.init -> void
+Orkeon.Application.Interfaces.Security.ToolInvocationCaller.WaitScope.get -> System.Func<System.IDisposable!>?
+Orkeon.Application.Interfaces.Security.ToolInvocationCaller.WaitScope.init -> void
+Orkeon.Application.Services.Security.ToolInvocationPipeline.GatesPermissions.get -> bool
+Orkeon.Application.Execution.StepNotifyingToolInvocationPipeline.GatesPermissions.get -> bool
+Orkeon.Application.Interfaces.Checkpointing.ResumeOptions.ExecutionId.get -> string?
+Orkeon.Application.Interfaces.Checkpointing.ResumeOptions.ExecutionId.init -> void
+Orkeon.Application.Interfaces.Services.ResumePlan
+Orkeon.Application.Interfaces.Services.ResumePlan.<Clone>$() -> Orkeon.Application.Interfaces.Services.ResumePlan!
+Orkeon.Application.Interfaces.Services.ResumePlan.CompletedOutputs.get -> System.Collections.Generic.IReadOnlyDictionary<string!, string?>!
+Orkeon.Application.Interfaces.Services.ResumePlan.CompletedOutputs.init -> void
+Orkeon.Application.Interfaces.Services.ResumePlan.Deconstruct(out string! SessionId, out System.Collections.Generic.IReadOnlyDictionary<string!, string?>! CompletedOutputs) -> void
+Orkeon.Application.Interfaces.Services.ResumePlan.Equals(Orkeon.Application.Interfaces.Services.ResumePlan? other) -> bool
+Orkeon.Application.Interfaces.Services.ResumePlan.ResumePlan(string! SessionId, System.Collections.Generic.IReadOnlyDictionary<string!, string?>! CompletedOutputs) -> void
+Orkeon.Application.Interfaces.Services.ResumePlan.SessionId.get -> string!
+Orkeon.Application.Interfaces.Services.ResumePlan.SessionId.init -> void
+Orkeon.Application.Interfaces.Services.RunScope.Deconstruct(out Orkeon.Application.Interfaces.Services.ExecutionId! ExecutionId, out string! CrewKey, out Orkeon.Application.Interfaces.Services.ResumePlan? Resume) -> void
+Orkeon.Application.Interfaces.Services.RunScope.Resume.get -> Orkeon.Application.Interfaces.Services.ResumePlan?
+Orkeon.Application.Interfaces.Services.RunScope.RunScope(Orkeon.Application.Interfaces.Services.ExecutionId! ExecutionId, string! CrewKey, Orkeon.Application.Interfaces.Services.ResumePlan? Resume = null) -> void
+Orkeon.Application.Interfaces.Services.TaskResult.Resumed.get -> bool
+Orkeon.Application.Interfaces.Services.TaskResult.Resumed.init -> void
+override Orkeon.Application.Interfaces.Services.ResumePlan.Equals(object? obj) -> bool
+override Orkeon.Application.Interfaces.Services.ResumePlan.GetHashCode() -> int
+override Orkeon.Application.Interfaces.Services.ResumePlan.ToString() -> string!
+static Orkeon.Application.Interfaces.Services.ResumePlan.operator !=(Orkeon.Application.Interfaces.Services.ResumePlan? left, Orkeon.Application.Interfaces.Services.ResumePlan? right) -> bool
+static Orkeon.Application.Interfaces.Services.ResumePlan.operator ==(Orkeon.Application.Interfaces.Services.ResumePlan? left, Orkeon.Application.Interfaces.Services.ResumePlan? right) -> bool
+*REMOVED*Orkeon.Application.Interfaces.Checkpointing.ResumeResult.ResumeFromIndex.get -> int
+*REMOVED*Orkeon.Application.Interfaces.Checkpointing.ResumeResult.ResumeFromIndex.init -> void
+Orkeon.Application.Interfaces.Services.CrewOutput.ExecutionId.get -> string?
+Orkeon.Application.Interfaces.Services.CrewOutput.ExecutionId.init -> void
+Orkeon.Application.Crew.TaskExecutionSnapshot.Resumed.get -> bool
+Orkeon.Application.Crew.TaskExecutionSnapshot.Resumed.init -> void
+Orkeon.Application.Interfaces.Checkpointing.ResumeResult.Refusal.get -> string?
+Orkeon.Application.Interfaces.Checkpointing.ResumeResult.Refusal.init -> void
+Orkeon.Application.Interfaces.Services.ResumePlan.ResumedTaskIds.get -> System.Collections.Concurrent.ConcurrentDictionary<string!, byte>!
+Orkeon.Application.Interfaces.Services.TaskResult<TOutput>.CompletionTokens.get -> int
+Orkeon.Application.Interfaces.Services.TaskResult<TOutput>.CompletionTokens.init -> void
+Orkeon.Application.Interfaces.Services.TaskResult<TOutput>.IterationsUsed.get -> int
+Orkeon.Application.Interfaces.Services.TaskResult<TOutput>.IterationsUsed.init -> void
+Orkeon.Application.Interfaces.Services.TaskResult<TOutput>.PromptTokens.get -> int
+Orkeon.Application.Interfaces.Services.TaskResult<TOutput>.PromptTokens.init -> void
+Orkeon.Application.Interfaces.Services.TaskResult<TOutput>.Resumed.get -> bool
+Orkeon.Application.Interfaces.Services.TaskResult<TOutput>.Resumed.init -> void
+Orkeon.Application.Interfaces.Services.TaskResult<TOutput>.TokensUsed.get -> int
+Orkeon.Application.Interfaces.Services.TaskResult<TOutput>.TokensUsed.init -> void
+Orkeon.Application.Interfaces.Ports.ILlmFallbackObserver
+Orkeon.Application.Interfaces.Ports.ILlmFallbackObserver.FallbackTaken(string! profile, string! fromProfile, string! toProfile, string! reason) -> void
+[ORKEXP007]Orkeon.Application.Runs.IRunHistoryReader
+[ORKEXP007]Orkeon.Application.Runs.IRunEventSink
+[ORKEXP007]Orkeon.Application.Runs.RunQuery
+[ORKEXP007]override Orkeon.Application.Runs.RunQuery.ToString() -> string!
+[ORKEXP007]static Orkeon.Application.Runs.RunQuery.operator !=(Orkeon.Application.Runs.RunQuery? left, Orkeon.Application.Runs.RunQuery? right) -> bool
+[ORKEXP007]static Orkeon.Application.Runs.RunQuery.operator ==(Orkeon.Application.Runs.RunQuery? left, Orkeon.Application.Runs.RunQuery? right) -> bool
+[ORKEXP007]override Orkeon.Application.Runs.RunQuery.GetHashCode() -> int
+[ORKEXP007]override Orkeon.Application.Runs.RunQuery.Equals(object? obj) -> bool
+[ORKEXP007]Orkeon.Application.Runs.RunQuery.Equals(Orkeon.Application.Runs.RunQuery? other) -> bool
+[ORKEXP007]Orkeon.Application.Runs.RunQuery.<Clone>$() -> Orkeon.Application.Runs.RunQuery!
+[ORKEXP007]Orkeon.Application.Runs.RunQuery.RunQuery() -> void
+[ORKEXP007]Orkeon.Application.Runs.RunEvent
+[ORKEXP007]override Orkeon.Application.Runs.RunEvent.ToString() -> string!
+[ORKEXP007]static Orkeon.Application.Runs.RunEvent.operator !=(Orkeon.Application.Runs.RunEvent? left, Orkeon.Application.Runs.RunEvent? right) -> bool
+[ORKEXP007]static Orkeon.Application.Runs.RunEvent.operator ==(Orkeon.Application.Runs.RunEvent? left, Orkeon.Application.Runs.RunEvent? right) -> bool
+[ORKEXP007]override Orkeon.Application.Runs.RunEvent.GetHashCode() -> int
+[ORKEXP007]override Orkeon.Application.Runs.RunEvent.Equals(object? obj) -> bool
+[ORKEXP007]Orkeon.Application.Runs.RunEvent.Equals(Orkeon.Application.Runs.RunEvent? other) -> bool
+[ORKEXP007]Orkeon.Application.Runs.RunEvent.<Clone>$() -> Orkeon.Application.Runs.RunEvent!
+[ORKEXP007]Orkeon.Application.Runs.RunEvent.RunEvent() -> void
+[ORKEXP007]Orkeon.Application.Runs.RunEventScope
+[ORKEXP007]override Orkeon.Application.Runs.RunEventScope.ToString() -> string!
+[ORKEXP007]static Orkeon.Application.Runs.RunEventScope.operator !=(Orkeon.Application.Runs.RunEventScope? left, Orkeon.Application.Runs.RunEventScope? right) -> bool
+[ORKEXP007]static Orkeon.Application.Runs.RunEventScope.operator ==(Orkeon.Application.Runs.RunEventScope? left, Orkeon.Application.Runs.RunEventScope? right) -> bool
+[ORKEXP007]override Orkeon.Application.Runs.RunEventScope.GetHashCode() -> int
+[ORKEXP007]override Orkeon.Application.Runs.RunEventScope.Equals(object? obj) -> bool
+[ORKEXP007]Orkeon.Application.Runs.RunEventScope.Equals(Orkeon.Application.Runs.RunEventScope? other) -> bool
+[ORKEXP007]Orkeon.Application.Runs.RunEventScope.<Clone>$() -> Orkeon.Application.Runs.RunEventScope!
+[ORKEXP007]Orkeon.Application.Runs.RunEventScope.RunEventScope() -> void
+[ORKEXP007]Orkeon.Application.Runs.RunEventSinkExtensions
+[ORKEXP007]Orkeon.Application.Runs.RunStatus
+[ORKEXP007]Orkeon.Application.Runs.RunStatus.Running = 0 -> Orkeon.Application.Runs.RunStatus
+[ORKEXP007]Orkeon.Application.Runs.RunStatus.Failed = 2 -> Orkeon.Application.Runs.RunStatus
+[ORKEXP007]Orkeon.Application.Runs.RunHistoryStore
+[ORKEXP007]Orkeon.Application.Runs.RunHistoryStore.Jsonl = 0 -> Orkeon.Application.Runs.RunHistoryStore
+[ORKEXP007]Orkeon.Application.Runs.RunHistoryStore.Sqlite = 1 -> Orkeon.Application.Runs.RunHistoryStore
+[ORKEXP007]Orkeon.Application.Runs.RunStatus.Succeeded = 1 -> Orkeon.Application.Runs.RunStatus
+[ORKEXP007]const Orkeon.Application.Runs.RunEventWire.ProtocolVersion = 2 -> int
+[ORKEXP007]Orkeon.Application.Runs.RunHistoryOptions
+[ORKEXP007]Orkeon.Application.Runs.RunHistoryOptions.RunHistoryOptions() -> void
+[ORKEXP007]const Orkeon.Application.Runs.RunHistoryOptions.DefaultPath = "/runs" -> string!
+[ORKEXP007]Orkeon.Application.Runs.RunHistoryRetention
+[ORKEXP007]Orkeon.Application.Runs.RunEventWire
+[ORKEXP007]const Orkeon.Application.Runs.RunHistoryOptions.SectionName = "Orkeon:RunHistory" -> string!
+[ORKEXP007]Orkeon.Application.Runs.RunSummary
+[ORKEXP007]override Orkeon.Application.Runs.RunSummary.ToString() -> string!
+[ORKEXP007]static Orkeon.Application.Runs.RunSummary.operator !=(Orkeon.Application.Runs.RunSummary? left, Orkeon.Application.Runs.RunSummary? right) -> bool
+[ORKEXP007]static Orkeon.Application.Runs.RunSummary.operator ==(Orkeon.Application.Runs.RunSummary? left, Orkeon.Application.Runs.RunSummary? right) -> bool
+[ORKEXP007]override Orkeon.Application.Runs.RunSummary.GetHashCode() -> int
+[ORKEXP007]override Orkeon.Application.Runs.RunSummary.Equals(object? obj) -> bool
+[ORKEXP007]Orkeon.Application.Runs.RunSummary.Equals(Orkeon.Application.Runs.RunSummary? other) -> bool
+[ORKEXP007]Orkeon.Application.Runs.RunSummary.<Clone>$() -> Orkeon.Application.Runs.RunSummary!
+[ORKEXP007]Orkeon.Application.Runs.RunSummary.RunSummary() -> void
+[ORKEXP007]static Orkeon.Application.Runs.RunHistoryRetention.Select(System.Collections.Generic.IReadOnlyCollection<Orkeon.Application.Runs.RunSummary!>! runs, Orkeon.Application.Runs.RunHistoryOptions! options, System.DateTimeOffset now) -> System.Collections.Generic.IReadOnlyList<string!>!
+[ORKEXP007]Orkeon.Application.Runs.RunHistoryOptions.Enabled.get -> bool
+[ORKEXP007]Orkeon.Application.Runs.RunHistoryOptions.Enabled.set -> void
+[ORKEXP007]Orkeon.Application.Runs.RunHistoryOptions.Store.get -> Orkeon.Application.Runs.RunHistoryStore
+[ORKEXP007]Orkeon.Application.Runs.RunHistoryOptions.Store.set -> void
+[ORKEXP007]Orkeon.Application.Runs.RunHistoryOptions.Path.get -> string!
+[ORKEXP007]Orkeon.Application.Runs.RunHistoryOptions.Path.set -> void
+[ORKEXP007]Orkeon.Application.Runs.RunHistoryOptions.RetentionDays.get -> int
+[ORKEXP007]Orkeon.Application.Runs.RunHistoryOptions.RetentionDays.set -> void
+[ORKEXP007]Orkeon.Application.Runs.RunHistoryOptions.MaxRuns.get -> int
+[ORKEXP007]Orkeon.Application.Runs.RunHistoryOptions.MaxRuns.set -> void
+[ORKEXP007]Orkeon.Application.Runs.RunHistoryOptions.IncludeDeltas.get -> bool
+[ORKEXP007]Orkeon.Application.Runs.RunHistoryOptions.IncludeDeltas.set -> void
+[ORKEXP007]static Orkeon.Application.Runs.RunEventWire.ToPayload(object? payload) -> System.Text.Json.Nodes.JsonObject?
+[ORKEXP007]static Orkeon.Application.Runs.RunEventWire.Serialize(Orkeon.Application.Runs.RunEvent! runEvent) -> string!
+[ORKEXP007]static Orkeon.Application.Runs.RunEventWire.TryParse(string! line, out Orkeon.Application.Runs.RunEvent? runEvent, string? runId = null) -> bool
+[ORKEXP007]static Orkeon.Application.Runs.RunEventSinkExtensions.Emit(this Orkeon.Application.Runs.IRunEventSink! sink, string! kind, object? payload = null) -> void
+[ORKEXP007]static Orkeon.Application.Runs.RunEventSinkExtensions.Emit(this Orkeon.Application.Runs.IRunEventSink! sink, string! kind, Orkeon.Application.Runs.RunEventScope! scope, object? payload = null) -> void
+[ORKEXP007]static Orkeon.Application.Runs.RunEventScope.None.get -> Orkeon.Application.Runs.RunEventScope!
+[ORKEXP007]Orkeon.Application.Runs.RunEventScope.CrewId.init -> void
+[ORKEXP007]Orkeon.Application.Runs.RunEventScope.AgentId.get -> string?
+[ORKEXP007]Orkeon.Application.Runs.RunEventScope.AgentId.init -> void
+[ORKEXP007]Orkeon.Application.Runs.RunEventScope.CorrelationId.get -> string?
+[ORKEXP007]Orkeon.Application.Runs.RunEventScope.CorrelationId.init -> void
+[ORKEXP007]Orkeon.Application.Runs.RunEventScope.CausationId.get -> string?
+[ORKEXP007]Orkeon.Application.Runs.RunEventScope.CausationId.init -> void
+[ORKEXP007]Orkeon.Application.Runs.RunEvent.RunId.get -> string?
+[ORKEXP007]Orkeon.Application.Runs.RunEventScope.CrewId.get -> string?
+[ORKEXP007]Orkeon.Application.Runs.RunEvent.RunId.init -> void
+[ORKEXP007]Orkeon.Application.Runs.RunEvent.Seq.init -> void
+[ORKEXP007]Orkeon.Application.Runs.RunEvent.Seq.get -> int
+[ORKEXP007]Orkeon.Application.Runs.RunEvent.Timestamp.get -> System.DateTimeOffset
+[ORKEXP007]Orkeon.Application.Runs.RunEvent.Timestamp.init -> void
+[ORKEXP007]Orkeon.Application.Runs.RunEvent.Kind.get -> string!
+[ORKEXP007]Orkeon.Application.Runs.RunEvent.Kind.init -> void
+[ORKEXP007]Orkeon.Application.Runs.RunEvent.CrewId.get -> string?
+[ORKEXP007]Orkeon.Application.Runs.RunEvent.CrewId.init -> void
+[ORKEXP007]Orkeon.Application.Runs.RunEvent.AgentId.get -> string?
+[ORKEXP007]Orkeon.Application.Runs.RunEvent.AgentId.init -> void
+[ORKEXP007]Orkeon.Application.Runs.RunEvent.CorrelationId.get -> string?
+[ORKEXP007]Orkeon.Application.Runs.RunEvent.CorrelationId.init -> void
+[ORKEXP007]Orkeon.Application.Runs.RunEvent.CausationId.get -> string?
+[ORKEXP007]Orkeon.Application.Runs.RunEvent.CausationId.init -> void
+[ORKEXP007]Orkeon.Application.Runs.RunEvent.Payload.get -> System.Text.Json.Nodes.JsonObject?
+[ORKEXP007]Orkeon.Application.Runs.RunSummary.RunId.get -> string!
+[ORKEXP007]Orkeon.Application.Runs.RunEvent.Payload.init -> void
+[ORKEXP007]Orkeon.Application.Runs.RunSummary.RunId.init -> void
+[ORKEXP007]Orkeon.Application.Runs.RunSummary.CrewKey.get -> string?
+[ORKEXP007]Orkeon.Application.Runs.RunSummary.Status.init -> void
+[ORKEXP007]Orkeon.Application.Runs.RunSummary.CrewKey.init -> void
+[ORKEXP007]Orkeon.Application.Runs.RunSummary.Status.get -> Orkeon.Application.Runs.RunStatus
+[ORKEXP007]Orkeon.Application.Runs.RunSummary.StartedAt.init -> void
+[ORKEXP007]Orkeon.Application.Runs.RunSummary.FinishedAt.get -> System.DateTimeOffset?
+[ORKEXP007]Orkeon.Application.Runs.RunSummary.FinishedAt.init -> void
+[ORKEXP007]Orkeon.Application.Runs.RunSummary.Error.get -> string?
+[ORKEXP007]Orkeon.Application.Runs.RunSummary.StartedAt.get -> System.DateTimeOffset
+[ORKEXP007]Orkeon.Application.Runs.RunSummary.Error.init -> void
+[ORKEXP007]Orkeon.Application.Runs.RunQuery.CrewKey.get -> string?
+[ORKEXP007]Orkeon.Application.Runs.RunQuery.CrewKey.init -> void
+[ORKEXP007]Orkeon.Application.Runs.RunQuery.Limit.get -> int
+[ORKEXP007]Orkeon.Application.Runs.RunQuery.Limit.init -> void
+[ORKEXP007]Orkeon.Application.Runs.IRunHistoryReader.GetAsync(string! runId, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Application.Runs.RunSummary?>!
+[ORKEXP007]Orkeon.Application.Runs.IRunHistoryReader.ListAsync(Orkeon.Application.Runs.RunQuery! query, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Orkeon.Application.Runs.RunSummary!>!>!
+[ORKEXP007]Orkeon.Application.Runs.IRunEventSink.WriteAsync(Orkeon.Application.Runs.RunEvent! runEvent, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+[ORKEXP007]Orkeon.Application.Runs.IRunHistoryReader.ReadEventsAsync(string! runId, int fromSeq = 1, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Orkeon.Application.Runs.RunEvent!>!>!
+[ORKEXP007]Orkeon.Application.Runs.IRunHistoryReader.ReadEventsAsync(string! runId, int fromSeq, int limit, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Orkeon.Application.Runs.RunEvent!>!>!
+[ORKEXP007]Orkeon.Application.Runs.RunStatus.Orphaned = 3 -> Orkeon.Application.Runs.RunStatus
+[ORKEXP007]Orkeon.Application.Runs.IRunProcessProbe
+[ORKEXP007]Orkeon.Application.Runs.RunProcessIdentity.Pid.get -> int
+[ORKEXP007]Orkeon.Application.Runs.RunProcessIdentity.Pid.init -> void
+[ORKEXP007]Orkeon.Application.Runs.RunProcessIdentity
+[ORKEXP007]Orkeon.Application.Runs.RunProcessIdentity.Host.get -> string!
+[ORKEXP007]override Orkeon.Application.Runs.RunProcessIdentity.ToString() -> string!
+[ORKEXP007]Orkeon.Application.Runs.RunProcessIdentity.StartedAt.get -> System.DateTimeOffset?
+[ORKEXP007]Orkeon.Application.Runs.RunProcessIdentity.Host.init -> void
+[ORKEXP007]static Orkeon.Application.Runs.RunProcessIdentity.operator !=(Orkeon.Application.Runs.RunProcessIdentity? left, Orkeon.Application.Runs.RunProcessIdentity? right) -> bool
+[ORKEXP007]Orkeon.Application.Runs.RunProcessIdentity.StartedAt.init -> void
+[ORKEXP007]static Orkeon.Application.Runs.RunProcessIdentity.operator ==(Orkeon.Application.Runs.RunProcessIdentity? left, Orkeon.Application.Runs.RunProcessIdentity? right) -> bool
+[ORKEXP007]override Orkeon.Application.Runs.RunProcessIdentity.GetHashCode() -> int
+[ORKEXP007]override Orkeon.Application.Runs.RunProcessIdentity.Equals(object? obj) -> bool
+[ORKEXP007]Orkeon.Application.Runs.RunProcessIdentity.Equals(Orkeon.Application.Runs.RunProcessIdentity? other) -> bool
+[ORKEXP007]Orkeon.Application.Runs.RunProcessIdentity.<Clone>$() -> Orkeon.Application.Runs.RunProcessIdentity!
+[ORKEXP007]Orkeon.Application.Runs.RunProcessIdentity.Deconstruct(out int Pid, out string! Host, out System.DateTimeOffset? StartedAt) -> void
+[ORKEXP007]Orkeon.Application.Runs.SystemRunProcessProbe
+[ORKEXP007]Orkeon.Application.Runs.SystemRunProcessProbe.SystemRunProcessProbe() -> void
+[ORKEXP007]Orkeon.Application.Runs.RunLiveness
+[ORKEXP007]Orkeon.Application.Runs.RunSummary.Pid.get -> int?
+[ORKEXP007]Orkeon.Application.Runs.RunSummary.Pid.init -> void
+[ORKEXP007]Orkeon.Application.Runs.RunSummary.Host.get -> string?
+[ORKEXP007]Orkeon.Application.Runs.RunSummary.Host.init -> void
+[ORKEXP007]Orkeon.Application.Runs.RunSummary.ProcessStartedAt.get -> System.DateTimeOffset?
+[ORKEXP007]Orkeon.Application.Runs.RunSummary.ProcessStartedAt.init -> void
+[ORKEXP007]static Orkeon.Application.Runs.RunLiveness.Apply(Orkeon.Application.Runs.RunSummary! summary, Orkeon.Application.Runs.IRunProcessProbe! probe, string! localHost) -> Orkeon.Application.Runs.RunSummary!
+[ORKEXP007]Orkeon.Application.Runs.SystemRunProcessProbe.IsAlive(int pid, System.DateTimeOffset? startedAt) -> bool
+[ORKEXP007]Orkeon.Application.Runs.RunProcessIdentity.RunProcessIdentity(int Pid, string! Host, System.DateTimeOffset? StartedAt) -> void
+[ORKEXP007]static Orkeon.Application.Runs.RunProcessIdentity.Current.get -> Orkeon.Application.Runs.RunProcessIdentity!
+[ORKEXP007]Orkeon.Application.Runs.IRunProcessProbe.IsAlive(int pid, System.DateTimeOffset? startedAt) -> bool
+Orkeon.Application.Interfaces.Security.GuardPhase.Output = 3 -> Orkeon.Application.Interfaces.Security.GuardPhase
+Orkeon.Application.Services.Security.GuardianPolicy.OutputGuardEnabled.get -> bool
+Orkeon.Application.Services.Security.GuardianPolicy.OutputGuardEnabled.set -> void
+Orkeon.Application.Interfaces.Security.IGuardianPipeline.IsPhaseGuarded(Orkeon.Application.Interfaces.Security.GuardPhase phase) -> bool
+Orkeon.Application.Services.Security.GuardianPipeline.IsPhaseGuarded(Orkeon.Application.Interfaces.Security.GuardPhase phase) -> bool
+Orkeon.Application.Crew.TaskStartSnapshot.Attempt.get -> int
+Orkeon.Application.Crew.TaskStartSnapshot.Attempt.init -> void
+Orkeon.Application.Interfaces.Services.TaskResult.RetryCount.get -> int
+Orkeon.Application.Interfaces.Services.TaskResult.RetryCount.init -> void
+Orkeon.Application.Interfaces.Services.TaskResult<TOutput>.RetryCount.get -> int
+Orkeon.Application.Interfaces.Services.TaskResult<TOutput>.RetryCount.init -> void
+Orkeon.Application.Interfaces.Services.CrewExecutionEvent.Attempt.get -> int?
+Orkeon.Application.Interfaces.Services.CrewExecutionEvent.Attempt.init -> void
+Orkeon.Application.Interfaces.Checkpointing.ICheckpointManager.CheckpointAsync(string! sessionId, string! taskId, string? output, int retryCount, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+Orkeon.Application.Services.Checkpointing.CheckpointManager.CheckpointAsync(string! sessionId, string! taskId, string? output, int retryCount, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+Orkeon.Application.Crew.TaskExecutionSnapshot.Attempt.get -> int
+Orkeon.Application.Crew.TaskExecutionSnapshot.Attempt.init -> void
+Orkeon.Application.Interfaces.Services.RunScope.TaskAttempts.get -> System.Collections.Concurrent.ConcurrentDictionary<string!, int>!
+Orkeon.Application.Interfaces.Services.TaskResult<TOutput>.ExitReason.get -> Orkeon.Application.Interfaces.Services.AgentExitReason
+Orkeon.Application.Interfaces.Services.TaskResult<TOutput>.ExitReason.init -> void
+Orkeon.Application.Interfaces.Ports.ILlmDeltaSink.OnToolCallDelta(Orkeon.Domain.SharedKernel.ValueObjects.ToolCallDelta! toolCall) -> void
+Orkeon.Application.Crew.ToolCallDeltaDlp
+Orkeon.Application.Crew.ToolCallDeltaDlp.<Clone>$() -> Orkeon.Application.Crew.ToolCallDeltaDlp!
+Orkeon.Application.Crew.ToolCallDeltaDlp.Deconstruct(out Orkeon.Application.Interfaces.Security.IDlpInterceptor! Interceptor, out Orkeon.Application.Interfaces.Security.DlpPolicy! Policy) -> void
+Orkeon.Application.Crew.ToolCallDeltaDlp.Equals(Orkeon.Application.Crew.ToolCallDeltaDlp? other) -> bool
+Orkeon.Application.Crew.ToolCallDeltaDlp.Interceptor.get -> Orkeon.Application.Interfaces.Security.IDlpInterceptor!
+Orkeon.Application.Crew.ToolCallDeltaDlp.Interceptor.init -> void
+Orkeon.Application.Crew.ToolCallDeltaDlp.Policy.get -> Orkeon.Application.Interfaces.Security.DlpPolicy!
+Orkeon.Application.Crew.ToolCallDeltaDlp.Policy.init -> void
+Orkeon.Application.Crew.ToolCallDeltaDlp.ToolCallDeltaDlp(Orkeon.Application.Interfaces.Security.IDlpInterceptor! Interceptor, Orkeon.Application.Interfaces.Security.DlpPolicy! Policy) -> void
+Orkeon.Application.Interfaces.Services.CrewExecutionEvent.ToolCall.get -> Orkeon.Domain.SharedKernel.ValueObjects.ToolCallDelta?
+Orkeon.Application.Interfaces.Services.CrewExecutionEvent.ToolCall.init -> void
+override Orkeon.Application.Crew.ToolCallDeltaDlp.Equals(object? obj) -> bool
+override Orkeon.Application.Crew.ToolCallDeltaDlp.GetHashCode() -> int
+override Orkeon.Application.Crew.ToolCallDeltaDlp.ToString() -> string!
+static Orkeon.Application.Crew.ToolCallDeltaDlp.operator ==(Orkeon.Application.Crew.ToolCallDeltaDlp? left, Orkeon.Application.Crew.ToolCallDeltaDlp? right) -> bool
+static Orkeon.Application.Crew.ToolCallDeltaDlp.operator !=(Orkeon.Application.Crew.ToolCallDeltaDlp? left, Orkeon.Application.Crew.ToolCallDeltaDlp? right) -> bool
+Orkeon.Application.Crew.ExecutionOrchestrator.ToolCallDlp.get -> Orkeon.Application.Crew.ToolCallDeltaDlp?
+Orkeon.Application.Crew.ExecutionOrchestrator.ToolCallDlp.set -> void
+Orkeon.Application.Crew.ToolCallDeltaHold
+Orkeon.Application.Crew.ToolCallDeltaHold.Add(Orkeon.Domain.SharedKernel.ValueObjects.ToolCallDelta! fragment) -> void
+Orkeon.Application.Crew.ToolCallDeltaHold.RedactAsync(Orkeon.Application.Crew.ToolCallDeltaDlp! dlp, Microsoft.Extensions.Logging.ILogger? logger, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Orkeon.Domain.SharedKernel.ValueObjects.ToolCallDelta!>!>!
+Orkeon.Application.Crew.ToolCallDeltaHold.ToolCallDeltaHold() -> void
+Orkeon.Application.Crew.ToolCallDlpDeltaSink
+Orkeon.Application.Crew.ToolCallDlpDeltaSink.BeginTurn(string? label) -> Orkeon.Application.Interfaces.Ports.ILlmDeltaSink!
+Orkeon.Application.Crew.ToolCallDlpDeltaSink.Dlp.get -> Orkeon.Application.Crew.ToolCallDeltaDlp!
+Orkeon.Application.Crew.ToolCallDlpDeltaSink.OnDelta(string! delta) -> void
+Orkeon.Application.Crew.ToolCallDlpDeltaSink.OnToolCallDelta(Orkeon.Domain.SharedKernel.ValueObjects.ToolCallDelta! toolCall) -> void
+Orkeon.Application.Crew.ToolCallDlpDeltaSink.OnTurnCompleted() -> void
+Orkeon.Application.Crew.ToolCallDlpDeltaSink.ToolCallDlpDeltaSink(Orkeon.Application.Interfaces.Ports.ILlmDeltaSink! inner, Orkeon.Application.Crew.ToolCallDeltaDlp! dlp) -> void
+static Orkeon.Application.Crew.ToolCallDeltaDlp.From(System.IServiceProvider! services) -> Orkeon.Application.Crew.ToolCallDeltaDlp?
+static Orkeon.Application.Crew.ToolCallDlpDeltaSink.Wrap(Orkeon.Application.Interfaces.Ports.ILlmDeltaSink? sink, System.IServiceProvider! services) -> Orkeon.Application.Interfaces.Ports.ILlmDeltaSink?
+Orkeon.Application.Interfaces.Checkpointing.IPendingInputBroker
+Orkeon.Application.Interfaces.Checkpointing.IPendingInputBroker.HeldRequestId(string! runId) -> string?
+Orkeon.Application.Interfaces.Checkpointing.IPendingInputBroker.HeldRequestIds(string! runId) -> System.Collections.Generic.IReadOnlyList<string!>!
+Orkeon.Application.Interfaces.Checkpointing.IPendingInputBroker.WatchHolds(string! runId, System.Action<bool>! heldChanged) -> System.IDisposable!
+Orkeon.Application.Interfaces.Checkpointing.IPendingInputBroker.TryComplete(string! runId, string? requestId, string! answer) -> bool
+Orkeon.Application.Interfaces.Checkpointing.IPendingInputBroker.WaitAsync(string! runId, string! requestId, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<string!>!
+Orkeon.Application.Interfaces.Checkpointing.IPendingInputStore
+Orkeon.Application.Interfaces.Checkpointing.IPendingInputStore.AnswerAsync(string! sessionId, string? requestId, string! answer, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Application.Interfaces.Checkpointing.PendingInputAnswered!>!
+Orkeon.Application.Interfaces.Checkpointing.IPendingInputStore.AskAsync(string! sessionId, Orkeon.Application.Interfaces.Checkpointing.PendingInputRequest! request, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Application.Interfaces.Checkpointing.PendingInputAsked!>!
+Orkeon.Application.Interfaces.Checkpointing.IPendingInputStore.GetPendingAsync(string! sessionId, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Application.Interfaces.Checkpointing.PendingInputRequest?>!
+Orkeon.Application.Interfaces.Checkpointing.PendingInputAnswerOutcome
+Orkeon.Application.Interfaces.Checkpointing.PendingInputAnswerOutcome.Accepted = 0 -> Orkeon.Application.Interfaces.Checkpointing.PendingInputAnswerOutcome
+Orkeon.Application.Interfaces.Checkpointing.PendingInputAnswerOutcome.AlreadyAnswered = 4 -> Orkeon.Application.Interfaces.Checkpointing.PendingInputAnswerOutcome
+Orkeon.Application.Interfaces.Checkpointing.PendingInputAnswerOutcome.Mismatch = 2 -> Orkeon.Application.Interfaces.Checkpointing.PendingInputAnswerOutcome
+Orkeon.Application.Interfaces.Checkpointing.PendingInputAnswerOutcome.NotPending = 1 -> Orkeon.Application.Interfaces.Checkpointing.PendingInputAnswerOutcome
+Orkeon.Application.Interfaces.Checkpointing.PendingInputAnswerOutcome.UnknownSession = 3 -> Orkeon.Application.Interfaces.Checkpointing.PendingInputAnswerOutcome
+Orkeon.Application.Interfaces.Checkpointing.PendingInputAnswered
+Orkeon.Application.Interfaces.Checkpointing.PendingInputAnswered.<Clone>$() -> Orkeon.Application.Interfaces.Checkpointing.PendingInputAnswered!
+Orkeon.Application.Interfaces.Checkpointing.PendingInputAnswered.Deconstruct(out Orkeon.Application.Interfaces.Checkpointing.PendingInputAnswerOutcome Outcome, out string? RequestId) -> void
+Orkeon.Application.Interfaces.Checkpointing.PendingInputAnswered.Equals(Orkeon.Application.Interfaces.Checkpointing.PendingInputAnswered? other) -> bool
+Orkeon.Application.Interfaces.Checkpointing.PendingInputAnswered.Outcome.get -> Orkeon.Application.Interfaces.Checkpointing.PendingInputAnswerOutcome
+Orkeon.Application.Interfaces.Checkpointing.PendingInputAnswered.Outcome.init -> void
+Orkeon.Application.Interfaces.Checkpointing.PendingInputAnswered.PendingInputAnswered(Orkeon.Application.Interfaces.Checkpointing.PendingInputAnswerOutcome Outcome, string? RequestId) -> void
+Orkeon.Application.Interfaces.Checkpointing.PendingInputAnswered.RequestId.get -> string?
+Orkeon.Application.Interfaces.Checkpointing.PendingInputAnswered.RequestId.init -> void
+Orkeon.Application.Interfaces.Checkpointing.PendingInputAsked
+Orkeon.Application.Interfaces.Checkpointing.PendingInputAsked.<Clone>$() -> Orkeon.Application.Interfaces.Checkpointing.PendingInputAsked!
+Orkeon.Application.Interfaces.Checkpointing.PendingInputAsked.Answer.get -> string?
+Orkeon.Application.Interfaces.Checkpointing.PendingInputAsked.Answer.init -> void
+Orkeon.Application.Interfaces.Checkpointing.PendingInputAsked.Deconstruct(out string? Answer, out Orkeon.Application.Interfaces.Checkpointing.PendingInputRequest? Pending) -> void
+Orkeon.Application.Interfaces.Checkpointing.PendingInputAsked.Equals(Orkeon.Application.Interfaces.Checkpointing.PendingInputAsked? other) -> bool
+Orkeon.Application.Interfaces.Checkpointing.PendingInputAsked.Pending.get -> Orkeon.Application.Interfaces.Checkpointing.PendingInputRequest?
+Orkeon.Application.Interfaces.Checkpointing.PendingInputAsked.Pending.init -> void
+Orkeon.Application.Interfaces.Checkpointing.PendingInputAsked.PendingInputAsked(string? Answer, Orkeon.Application.Interfaces.Checkpointing.PendingInputRequest? Pending) -> void
+Orkeon.Application.Interfaces.Checkpointing.PendingInputKind
+Orkeon.Application.Interfaces.Checkpointing.PendingInputKind.Choice = 2 -> Orkeon.Application.Interfaces.Checkpointing.PendingInputKind
+Orkeon.Application.Interfaces.Checkpointing.PendingInputKind.Confirm = 1 -> Orkeon.Application.Interfaces.Checkpointing.PendingInputKind
+Orkeon.Application.Interfaces.Checkpointing.PendingInputKind.MultiChoice = 3 -> Orkeon.Application.Interfaces.Checkpointing.PendingInputKind
+Orkeon.Application.Interfaces.Checkpointing.PendingInputKind.Text = 0 -> Orkeon.Application.Interfaces.Checkpointing.PendingInputKind
+Orkeon.Application.Interfaces.Checkpointing.PendingInputKind.ToolApproval = 4 -> Orkeon.Application.Interfaces.Checkpointing.PendingInputKind
+Orkeon.Application.Interfaces.Checkpointing.PendingInputRequest
+Orkeon.Application.Interfaces.Checkpointing.PendingInputRequest.<Clone>$() -> Orkeon.Application.Interfaces.Checkpointing.PendingInputRequest!
+Orkeon.Application.Interfaces.Checkpointing.PendingInputRequest.ArgsHash.get -> string?
+Orkeon.Application.Interfaces.Checkpointing.PendingInputRequest.ArgsHash.init -> void
+Orkeon.Application.Interfaces.Checkpointing.PendingInputRequest.Choices.get -> System.Collections.Immutable.ImmutableList<string!>!
+Orkeon.Application.Interfaces.Checkpointing.PendingInputRequest.Choices.init -> void
+Orkeon.Application.Interfaces.Checkpointing.PendingInputRequest.CreatedAt.get -> System.DateTimeOffset
+Orkeon.Application.Interfaces.Checkpointing.PendingInputRequest.CreatedAt.init -> void
+Orkeon.Application.Interfaces.Checkpointing.PendingInputRequest.Equals(Orkeon.Application.Interfaces.Checkpointing.PendingInputRequest? other) -> bool
+Orkeon.Application.Interfaces.Checkpointing.PendingInputRequest.Kind.get -> Orkeon.Application.Interfaces.Checkpointing.PendingInputKind
+Orkeon.Application.Interfaces.Checkpointing.PendingInputRequest.Kind.init -> void
+Orkeon.Application.Interfaces.Checkpointing.PendingInputRequest.PendingInputRequest() -> void
+Orkeon.Application.Interfaces.Checkpointing.PendingInputRequest.Prompt.get -> string!
+Orkeon.Application.Interfaces.Checkpointing.PendingInputRequest.Prompt.init -> void
+Orkeon.Application.Interfaces.Checkpointing.PendingInputRequest.RequestId.get -> string!
+Orkeon.Application.Interfaces.Checkpointing.PendingInputRequest.RequestId.init -> void
+Orkeon.Application.Interfaces.Checkpointing.PendingInputRequest.TaskKey.get -> string?
+Orkeon.Application.Interfaces.Checkpointing.PendingInputRequest.TaskKey.init -> void
+Orkeon.Application.Interfaces.Checkpointing.PendingInputRequest.ToolName.get -> string?
+Orkeon.Application.Interfaces.Checkpointing.PendingInputRequest.ToolName.init -> void
+Orkeon.Application.Interfaces.Checkpointing.SessionPhase.WaitingForInput = 5 -> Orkeon.Application.Interfaces.Checkpointing.SessionPhase
+Orkeon.Application.Interfaces.Checkpointing.SessionState.AnsweredInputs.init -> void
+Orkeon.Application.Interfaces.Checkpointing.SessionState.PendingInput.get -> Orkeon.Application.Interfaces.Checkpointing.PendingInputRequest?
+Orkeon.Application.Interfaces.Services.RunScope.Suspend(Orkeon.Application.Interfaces.Checkpointing.PendingInputRequest! request) -> bool
+Orkeon.Application.Interfaces.Services.RunScope.Suspension.get -> Orkeon.Application.Interfaces.Checkpointing.PendingInputRequest?
+Orkeon.Application.Interfaces.Services.RunSuspendedException
+Orkeon.Application.Interfaces.Services.RunSuspendedException.RequestId.get -> string!
+Orkeon.Application.Interfaces.Services.RunSuspendedException.RunSuspendedException() -> void
+Orkeon.Application.Interfaces.Services.RunSuspendedException.RunSuspendedException(string! message, System.Exception! innerException) -> void
+Orkeon.Application.Interfaces.Services.RunSuspendedException.RunSuspendedException(string! requestId) -> void
+Orkeon.Application.Services.Checkpointing.CheckpointManager.AnswerAsync(string! sessionId, string? requestId, string! answer, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Application.Interfaces.Checkpointing.PendingInputAnswered!>!
+Orkeon.Application.Services.Checkpointing.CheckpointManager.AskAsync(string! sessionId, Orkeon.Application.Interfaces.Checkpointing.PendingInputRequest! request, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Application.Interfaces.Checkpointing.PendingInputAsked!>!
+Orkeon.Application.Services.Checkpointing.CheckpointManager.GetPendingAsync(string! sessionId, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Application.Interfaces.Checkpointing.PendingInputRequest?>!
+override Orkeon.Application.Interfaces.Checkpointing.PendingInputAnswered.Equals(object? obj) -> bool
+override Orkeon.Application.Interfaces.Checkpointing.PendingInputAnswered.GetHashCode() -> int
+override Orkeon.Application.Interfaces.Checkpointing.PendingInputAnswered.ToString() -> string!
+override Orkeon.Application.Interfaces.Checkpointing.PendingInputAsked.Equals(object? obj) -> bool
+override Orkeon.Application.Interfaces.Checkpointing.PendingInputAsked.GetHashCode() -> int
+override Orkeon.Application.Interfaces.Checkpointing.PendingInputAsked.ToString() -> string!
+override Orkeon.Application.Interfaces.Checkpointing.PendingInputRequest.Equals(object? obj) -> bool
+override Orkeon.Application.Interfaces.Checkpointing.PendingInputRequest.GetHashCode() -> int
+override Orkeon.Application.Interfaces.Checkpointing.PendingInputRequest.ToString() -> string!
+static Orkeon.Application.Interfaces.Checkpointing.PendingInputAnswered.operator !=(Orkeon.Application.Interfaces.Checkpointing.PendingInputAnswered? left, Orkeon.Application.Interfaces.Checkpointing.PendingInputAnswered? right) -> bool
+static Orkeon.Application.Interfaces.Checkpointing.PendingInputAnswered.operator ==(Orkeon.Application.Interfaces.Checkpointing.PendingInputAnswered? left, Orkeon.Application.Interfaces.Checkpointing.PendingInputAnswered? right) -> bool
+static Orkeon.Application.Interfaces.Checkpointing.PendingInputAsked.operator !=(Orkeon.Application.Interfaces.Checkpointing.PendingInputAsked? left, Orkeon.Application.Interfaces.Checkpointing.PendingInputAsked? right) -> bool
+static Orkeon.Application.Interfaces.Checkpointing.PendingInputAsked.operator ==(Orkeon.Application.Interfaces.Checkpointing.PendingInputAsked? left, Orkeon.Application.Interfaces.Checkpointing.PendingInputAsked? right) -> bool
+static Orkeon.Application.Interfaces.Checkpointing.PendingInputRequest.operator !=(Orkeon.Application.Interfaces.Checkpointing.PendingInputRequest? left, Orkeon.Application.Interfaces.Checkpointing.PendingInputRequest? right) -> bool
+static Orkeon.Application.Interfaces.Checkpointing.PendingInputRequest.operator ==(Orkeon.Application.Interfaces.Checkpointing.PendingInputRequest? left, Orkeon.Application.Interfaces.Checkpointing.PendingInputRequest? right) -> bool
+Orkeon.Application.Crew.HumanInputNotice
+Orkeon.Application.Crew.HumanInputNotice.<Clone>$() -> Orkeon.Application.Crew.HumanInputNotice!
+Orkeon.Application.Crew.HumanInputNotice.Deconstruct(out Orkeon.Application.Crew.HumanInputNoticeKind Kind, out Orkeon.Application.Interfaces.Checkpointing.PendingInputRequest! Request, out bool Suspending) -> void
+Orkeon.Application.Crew.HumanInputNotice.Equals(Orkeon.Application.Crew.HumanInputNotice? other) -> bool
+Orkeon.Application.Crew.HumanInputNotice.HumanInputNotice(Orkeon.Application.Crew.HumanInputNoticeKind Kind, Orkeon.Application.Interfaces.Checkpointing.PendingInputRequest! Request, bool Suspending = false) -> void
+Orkeon.Application.Crew.HumanInputNotice.Kind.get -> Orkeon.Application.Crew.HumanInputNoticeKind
+Orkeon.Application.Crew.HumanInputNotice.Kind.init -> void
+Orkeon.Application.Crew.HumanInputNotice.Request.get -> Orkeon.Application.Interfaces.Checkpointing.PendingInputRequest!
+Orkeon.Application.Crew.HumanInputNotice.Request.init -> void
+Orkeon.Application.Crew.HumanInputNotice.Suspending.get -> bool
+Orkeon.Application.Crew.HumanInputNotice.Suspending.init -> void
+Orkeon.Application.Crew.HumanInputNoticeKind
+Orkeon.Application.Crew.HumanInputNoticeKind.Given = 1 -> Orkeon.Application.Crew.HumanInputNoticeKind
+Orkeon.Application.Crew.HumanInputNoticeKind.Needed = 0 -> Orkeon.Application.Crew.HumanInputNoticeKind
+Orkeon.Application.Crew.ICrewExecutionHook.OnHumanInputAsync(Orkeon.Application.Crew.HumanInputNotice! notice, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task!
+Orkeon.Application.Interfaces.Ports.IHumanInputProvider.AsksAPerson.get -> bool
+Orkeon.Application.Interfaces.Services.RunScope.HumanInputObserver.get -> System.Func<Orkeon.Application.Crew.HumanInputNotice!, System.Threading.CancellationToken, System.Threading.Tasks.Task!>?
+Orkeon.Application.Interfaces.Services.RunScope.HumanInputObserver.set -> void
+override Orkeon.Application.Crew.HumanInputNotice.Equals(object? obj) -> bool
+override Orkeon.Application.Crew.HumanInputNotice.GetHashCode() -> int
+override Orkeon.Application.Crew.HumanInputNotice.ToString() -> string!
+static Orkeon.Application.Crew.HumanInputNotice.operator !=(Orkeon.Application.Crew.HumanInputNotice? left, Orkeon.Application.Crew.HumanInputNotice? right) -> bool
+static Orkeon.Application.Crew.HumanInputNotice.operator ==(Orkeon.Application.Crew.HumanInputNotice? left, Orkeon.Application.Crew.HumanInputNotice? right) -> bool
+Orkeon.Application.Interfaces.Services.CrewOutput.PendingInput.get -> Orkeon.Application.Interfaces.Checkpointing.PendingInputRequest?
+Orkeon.Application.Interfaces.Services.CrewOutput.PendingInput.init -> void
+Orkeon.Application.Interfaces.Services.KickoffOptions.ResumeInput.get -> string?
+Orkeon.Application.Interfaces.Services.KickoffOptions.ResumeInput.init -> void
+Orkeon.Application.Services.Security.ToolInvocationPipeline.ToolInvocationPipeline(Orkeon.Application.Interfaces.Security.IGuardianPipeline? guardian = null, Orkeon.Application.Interfaces.Security.IToolResultSanitizer? sanitizer = null, Orkeon.Application.Interfaces.Security.IAuditLogger? auditLogger = null, Microsoft.Extensions.Logging.ILogger<Orkeon.Application.Services.Security.ToolInvocationPipeline!>? logger = null, Microsoft.Extensions.Options.IOptions<Orkeon.Domain.Tools.ToolResultLimitsOptions!>? limits = null, Orkeon.Application.Interfaces.Security.IPermissionGate? permissionGate = null, Orkeon.Application.Interfaces.Security.IToolApprovalChannel? approvalChannel = null, Orkeon.Domain.Security.PermissionMode defaultMode = Orkeon.Domain.Security.PermissionMode.Default, Orkeon.Application.Interfaces.Services.IRunScope? runScope = null) -> void
+[ORKEXP007]Orkeon.Application.Runs.RunStatus.WaitingForInput = 4 -> Orkeon.Application.Runs.RunStatus
+[ORKEXP001]Orkeon.Application.Interfaces.AgentCommunication.A2ATaskStatus.InputRequired = 5 -> Orkeon.Application.Interfaces.AgentCommunication.A2ATaskStatus
+Orkeon.Application.Configuration.EmbeddingOptions.Endpoint.get -> string!
+Orkeon.Application.Configuration.EmbeddingOptions.Endpoint.set -> void
+Orkeon.Application.Configuration.EmbeddingOptions.ApiKey.get -> string!
+Orkeon.Application.Configuration.EmbeddingOptions.ApiKey.set -> void
+Orkeon.Application.Configuration.EmbeddingOptions.ApiKeyEnvVar.get -> string!
+Orkeon.Application.Configuration.EmbeddingOptions.ApiKeyEnvVar.set -> void
+Orkeon.Application.Configuration.EmbeddingOptions.ApiVersion.get -> string!
+Orkeon.Application.Configuration.EmbeddingOptions.ApiVersion.set -> void
+Orkeon.Application.Configuration.EmbeddingOptions.FingerprintPath.get -> string!
+Orkeon.Application.Configuration.EmbeddingOptions.FingerprintPath.set -> void
+*REMOVED*Orkeon.Application.Services.Checkpointing.ResumeEngine.ResumeEngine(Orkeon.Application.Interfaces.Checkpointing.ICheckpointManager! checkpointManager, Orkeon.Application.Interfaces.Checkpointing.IStateStore! store, Microsoft.Extensions.Logging.ILogger<Orkeon.Application.Services.Checkpointing.ResumeEngine!>! logger) -> void
+Orkeon.Application.Services.Checkpointing.ResumeEngine.ResumeEngine(Orkeon.Application.Interfaces.Checkpointing.ICheckpointManager! checkpointManager, Orkeon.Application.Interfaces.Checkpointing.IStateStore! store, Microsoft.Extensions.Logging.ILogger<Orkeon.Application.Services.Checkpointing.ResumeEngine!>! logger, Orkeon.Application.Runs.IRunHistoryReader? history = null, Orkeon.Application.Runs.IRunProcessProbe? probe = null) -> void
+Orkeon.Application.Interfaces.Checkpointing.AnsweredInput
+Orkeon.Application.Interfaces.Checkpointing.AnsweredInput.<Clone>$() -> Orkeon.Application.Interfaces.Checkpointing.AnsweredInput!
+Orkeon.Application.Interfaces.Checkpointing.AnsweredInput.Answer.get -> string!
+Orkeon.Application.Interfaces.Checkpointing.AnsweredInput.Answer.init -> void
+Orkeon.Application.Interfaces.Checkpointing.AnsweredInput.AnsweredAt.get -> System.DateTimeOffset
+Orkeon.Application.Interfaces.Checkpointing.AnsweredInput.AnsweredAt.init -> void
+Orkeon.Application.Interfaces.Checkpointing.AnsweredInput.AnsweredInput() -> void
+Orkeon.Application.Interfaces.Checkpointing.AnsweredInput.Answers(Orkeon.Application.Interfaces.Checkpointing.PendingInputRequest! request) -> bool
+Orkeon.Application.Interfaces.Checkpointing.AnsweredInput.ArgsHash.get -> string?
+Orkeon.Application.Interfaces.Checkpointing.AnsweredInput.ArgsHash.init -> void
+Orkeon.Application.Interfaces.Checkpointing.AnsweredInput.Equals(Orkeon.Application.Interfaces.Checkpointing.AnsweredInput? other) -> bool
+Orkeon.Application.Interfaces.Checkpointing.AnsweredInput.Kind.get -> Orkeon.Application.Interfaces.Checkpointing.PendingInputKind
+Orkeon.Application.Interfaces.Checkpointing.AnsweredInput.Kind.init -> void
+Orkeon.Application.Interfaces.Checkpointing.AnsweredInput.ToolName.get -> string?
+Orkeon.Application.Interfaces.Checkpointing.AnsweredInput.ToolName.init -> void
+Orkeon.Application.Interfaces.Checkpointing.ICheckpointManager.FailSessionAsync(string! sessionId, System.Exception! ex, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+Orkeon.Application.Interfaces.Checkpointing.IPendingInputStore.RecordAnswerAsync(string! sessionId, Orkeon.Application.Interfaces.Checkpointing.PendingInputRequest! request, string! answer, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+Orkeon.Application.Interfaces.Checkpointing.IPendingInputStore.SuspendAsync(string! sessionId, string! requestId, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+Orkeon.Application.Interfaces.Checkpointing.PendingInputAnswerOutcome.RequestIdRequired = 5 -> Orkeon.Application.Interfaces.Checkpointing.PendingInputAnswerOutcome
+Orkeon.Application.Interfaces.Checkpointing.SessionState.AnsweredInputs.get -> System.Collections.Generic.IReadOnlyDictionary<string!, Orkeon.Application.Interfaces.Checkpointing.AnsweredInput!>!
+Orkeon.Application.Interfaces.Checkpointing.SessionState.PendingInputs.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Application.Interfaces.Checkpointing.PendingInputRequest!>!
+Orkeon.Application.Interfaces.Checkpointing.SessionState.PendingInputs.init -> void
+Orkeon.Application.Interfaces.Checkpointing.SessionState.SuspendedOn.get -> string?
+Orkeon.Application.Interfaces.Checkpointing.SessionState.SuspendedOn.init -> void
+Orkeon.Application.Services.Checkpointing.CheckpointManager.FailSessionAsync(string! sessionId, System.Exception! ex, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+Orkeon.Application.Services.Checkpointing.CheckpointManager.RecordAnswerAsync(string! sessionId, Orkeon.Application.Interfaces.Checkpointing.PendingInputRequest! request, string! answer, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+Orkeon.Application.Services.Checkpointing.CheckpointManager.SuspendAsync(string! sessionId, string! requestId, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+override Orkeon.Application.Interfaces.Checkpointing.AnsweredInput.Equals(object? obj) -> bool
+override Orkeon.Application.Interfaces.Checkpointing.AnsweredInput.GetHashCode() -> int
+override Orkeon.Application.Interfaces.Checkpointing.AnsweredInput.ToString() -> string!
+static Orkeon.Application.Interfaces.Checkpointing.AnsweredInput.To(Orkeon.Application.Interfaces.Checkpointing.PendingInputRequest! request, string! answer) -> Orkeon.Application.Interfaces.Checkpointing.AnsweredInput!
+static Orkeon.Application.Interfaces.Checkpointing.AnsweredInput.operator !=(Orkeon.Application.Interfaces.Checkpointing.AnsweredInput? left, Orkeon.Application.Interfaces.Checkpointing.AnsweredInput? right) -> bool
+static Orkeon.Application.Interfaces.Checkpointing.AnsweredInput.operator ==(Orkeon.Application.Interfaces.Checkpointing.AnsweredInput? left, Orkeon.Application.Interfaces.Checkpointing.AnsweredInput? right) -> bool
+Orkeon.Application.Interfaces.Security.ToolInvocationCaller.Admitted.get -> System.Action?
+Orkeon.Application.Interfaces.Security.ToolInvocationCaller.Admitted.init -> void
+*REMOVED*static Orkeon.Application.Services.Security.ToolInvocationPipeline.IsDelegationTool(string! toolName) -> bool

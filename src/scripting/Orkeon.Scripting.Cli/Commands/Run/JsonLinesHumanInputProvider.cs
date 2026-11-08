@@ -1,3 +1,4 @@
+using Orkeon.Application.Runs;
 using Orkeon.Application.Interfaces.Ports;
 using Orkeon.Domain.HumanInput;
 using Orkeon.Scripting.Cli.Events;
@@ -30,11 +31,11 @@ internal interface IAnswerChannel
 /// </summary>
 internal sealed class JsonLinesHumanInputProvider : IHumanInputProvider
 {
-    private readonly OrkeonEventWriter _events;
+    private readonly IRunEventSink _events;
     private readonly IAnswerChannel _answers;
 
     /// <summary>Builds the provider over the outbound stream and the inbound channel.</summary>
-    public JsonLinesHumanInputProvider(OrkeonEventWriter events, IAnswerChannel answers)
+    public JsonLinesHumanInputProvider(IRunEventSink events, IAnswerChannel answers)
     {
         _events = events ?? throw new ArgumentNullException(nameof(events));
         _answers = answers ?? throw new ArgumentNullException(nameof(answers));
@@ -105,17 +106,22 @@ internal sealed class JsonLinesHumanInputProvider : IHumanInputProvider
 
     private async Task<string?> AskAsync(HumanInputContext context, string kind, CancellationToken cancellationToken)
     {
-        var correlationId = context.RequestId.ToString();
+        // A durable question (FWK-23) is told and answered by its own id; any other by the context's.
+        var requestId = context.Metadata.TryGetValue(Orkeon.Infrastructure.HumanInput.HumanInputPauseMetadata.RequestId, out var durable)
+            ? durable as string
+            : null;
+        var correlationId = requestId ?? context.RequestId.ToString();
 
         _events.Emit(
             RunEventKinds.InputNeeded,
-            new OrkeonEventScope
+            new RunEventScope
             {
                 AgentId = string.IsNullOrEmpty(context.AgentRole) ? null : context.AgentRole,
                 CorrelationId = correlationId,
             },
             new
             {
+                requestId,
                 // NOT `kind`: that name belongs to the envelope and a payload naming it
                 // loses (BUS-01's reserved names). A client could then not tell a text
                 // question from a confirmation.

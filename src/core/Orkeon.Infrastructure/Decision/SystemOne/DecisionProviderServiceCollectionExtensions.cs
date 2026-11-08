@@ -50,16 +50,9 @@ public static class DecisionProviderServiceCollectionExtensions
             .Validate(o => o.MaxRetries >= 0, $"{section}:MaxRetries: zero or more.")
             .Validate(o => o.BaseUrl.IsAbsoluteUri, $"{section}:BaseUrl: an absolute URL.")
             .DeclareSettings(section);
-        services.AddOptions<DecisionGuardOptions>()
-            .Bind(configuration.GetSection(DecisionGuardOptions.SectionName))
-            .Validate(
-                o => o.BlockThreshold is >= 0 and <= 1 && o.WarnThreshold is >= 0 and <= 1,
-                $"{DecisionGuardOptions.SectionName}:BlockThreshold and WarnThreshold: probabilities in [0, 1].")
-            .DeclareSettings(DecisionGuardOptions.SectionName);
         services.TryAddSingleton(provider);
         services.TryAddSingleton<SystemOneDecisionModel>();
         services.TryAddSingleton<IDecisionModel>(sp => sp.GetRequiredService<SystemOneDecisionModel>());
-        services.TryAddSingleton<DecisionInputGuard>();
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IBaseTool, SystemOneDecideTool>());
         return services;
     }

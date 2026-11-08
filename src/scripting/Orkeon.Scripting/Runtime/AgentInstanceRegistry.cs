@@ -10,7 +10,11 @@ namespace Orkeon.Scripting.Runtime;
 internal sealed record AgentInstanceRun(AgentInstanceRegistry Registry, string Id, IReadOnlyList<LlmMessage> Seed);
 
 /// <summary>What <see cref="AgentInstanceRegistry.BeginSend"/> hands the follow-up run: the agent, its token, its fresh child budget and its context binding.</summary>
-internal sealed record AgentInstanceSend(JsAgent Agent, AgentExecutionBudget Budget, AgentInstanceRun Run, string? InheritedRoot, CancellationToken Signal);
+internal sealed record AgentInstanceSend(JsAgent Agent, AgentExecutionBudget Budget, AgentInstanceRun Run, string? InheritedRoot, CancellationToken Signal)
+{
+    /// <summary>SEC-7: the mode of the act that spawned the instance; its sends stay held to it.</summary>
+    internal string? PermissionFloor { get; init; }
+}
 
 /// <summary>The addressable child agents of a crew (RT-03): ids, states and the transcript each keeps.</summary>
 internal sealed class AgentInstanceRegistry
@@ -59,12 +63,12 @@ internal sealed class AgentInstanceRegistry
     /// Adds a running instance of <paramref name="agent"/>, whose sends count against the <paramref name="budget"/> it runs under; returns its id.
     /// Its sends run under <paramref name="inheritedRoot"/>, the working root its parent handed it (RT-06). The oldest ended instance goes when the cap is exceeded.
     /// </summary>
-    internal string Register(JsAgent agent, AgentExecutionBudget budget, CancellationTokenSource cancellation, string? inheritedRoot = null)
+    internal string Register(JsAgent agent, AgentExecutionBudget budget, CancellationTokenSource cancellation, string? inheritedRoot = null, string? permissionFloor = null)
     {
         lock (_sync)
         {
             var id = "a" + (++_last).ToString(CultureInfo.InvariantCulture);
-            _entries.Add(new Entry(id, agent, budget) { Cancellation = cancellation, InheritedRoot = inheritedRoot });
+            _entries.Add(new Entry(id, agent, budget) { Cancellation = cancellation, InheritedRoot = inheritedRoot, PermissionFloor = permissionFloor });
             Evict();
             return id;
         }
@@ -113,7 +117,7 @@ internal sealed class AgentInstanceRegistry
             var budget = entry.Budget.CreateChildBudget();
             entry.State = State.Running;
             entry.Cancellation = new CancellationTokenSource();
-            return new AgentInstanceSend(entry.Agent, budget, new AgentInstanceRun(this, id, entry.Transcript), entry.InheritedRoot, entry.Cancellation.Token);
+            return new AgentInstanceSend(entry.Agent, budget, new AgentInstanceRun(this, id, entry.Transcript), entry.InheritedRoot, entry.Cancellation.Token) { PermissionFloor = entry.PermissionFloor };
         }
     }
 
@@ -181,6 +185,8 @@ internal sealed class AgentInstanceRegistry
         internal State State { get; set; }
         internal CancellationTokenSource? Cancellation { get; set; }
         internal string? InheritedRoot { get; init; }
+
+        internal string? PermissionFloor { get; init; }
         internal IReadOnlyList<LlmMessage> Transcript { get; set; }
     }
 }

@@ -1,5 +1,6 @@
 using Orkeon.Constants.Configuration;
 using Orkeon.Constants.FileSystem;
+using Orkeon.Hosting.Runs;
 using System.Globalization;
 using System.Text;
 using Microsoft.Extensions.AI;
@@ -12,9 +13,13 @@ using Orkeon.Application.DependencyInjection;
 using Orkeon.Application.Interfaces.Ports;
 using Orkeon.Domain.Constants.Llm;
 using Orkeon.Infrastructure.LLMs.Profiles;
+using Orkeon.Infrastructure.LLMs.Embeddings;
 using Orkeon.Domain.Common;
 using Orkeon.Domain.FileSystem;
+using Orkeon.Infrastructure.Evaluation;
+using Orkeon.Infrastructure.Checkpointing;
 using Orkeon.Infrastructure.DependencyInjection;
+using Orkeon.Infrastructure.Orchestration;
 using Orkeon.Infrastructure.EventHub.DependencyInjection;
 using Orkeon.Infrastructure.FileSystem;
 using Orkeon.Domain.SharedKernel.ValueObjects;
@@ -63,6 +68,18 @@ public sealed record RunnerMountPlan
     /// </summary>
     public IReadOnlyList<string> InternalMounts { get; init; } = [];
 
+    /// <summary>
+    /// The folder <c>./.orkeon/state</c> is resolved against (the checkpoint store's); null: the
+    /// process's working directory.
+    /// </summary>
+    public string? WorkingDirectory { get; init; }
+
+    /// <summary>
+    /// Whether the run history (<c>Orkeon:RunHistory</c>) is on when the settings do not say: <c>orkeon-host</c> sets it,
+    /// the library and <c>orkeon run</c> leave it off.
+    /// </summary>
+    public bool RunHistoryByDefault { get; init; }
+
     /// <summary>Folders a command reads as its inputs, readable without the external-mounts opt-in.</summary>
     public IReadOnlyList<string> InputDirectories { get; init; } = [];
 
@@ -94,6 +111,27 @@ public sealed record RunnerMountPlan
     /// validates; it never restricts what else is mounted (D-05).
     /// </summary>
     public IReadOnlyList<MountReference> CrewMountReferences { get; init; } = [];
+
+    /// <summary>
+    /// When non-null, every LLM profile of the run — the default and each named one — becomes
+    /// <c>Provider: mock</c> reading this <b>virtual</b> JSONL file (<c>--llm-mock</c>); the caller is
+    /// responsible for having mounted its folder (<see cref="RunnerVirtualRoots.LlmMock"/>).
+    /// </summary>
+    public string? LlmMockResponses { get; init; }
+
+    /// <summary>
+    /// When non-null, every LLM call of the run is written, with its answer, to this <b>virtual</b> JSONL
+    /// cassette (<c>--llm-record</c>); the caller is responsible for having mounted its folder read-write
+    /// (<see cref="RunnerVirtualRoots.LlmCassette"/>).
+    /// </summary>
+    public string? LlmRecordCassette { get; init; }
+
+    /// <summary>
+    /// When non-null, every LLM call of the run is answered from this <b>virtual</b> JSONL cassette
+    /// (<c>--llm-replay</c>), never from a model; the caller is responsible for having mounted its folder
+    /// (<see cref="RunnerVirtualRoots.LlmCassette"/>).
+    /// </summary>
+    public string? LlmReplayCassette { get; init; }
 
     /// <summary>
     /// When non-null, enables LLM exchange logging under this <b>virtual</b> path — the caller
@@ -180,12 +218,18 @@ public static partial class RunnerHost
 
             EnsureMountsAreReachable(host.Services, mounts.CliMounts);
 
+            // The runners never start the host, so its hosted services never fire: the embedding model
+            // guard (FWK-25) is called here, once the settings are judged and the mounts reachable.
+            if (EmbeddingModelGuard.CheckAsync(host.Services, CancellationToken.None).GetAwaiter().GetResult() is { } embeddingRefusal)
+                throw new RunnerSettingsException(embeddingRefusal);
+
             LogMountDecisions(host, decisions);
             WarnIfTokensUnavailable(host, decisions);
             AnnounceSettingsNotices(host.Services, OperatorWarning(host.Services));
             WarnIfLlmNotConfigured(host, decisions.ElectedLlmProfile);
             LogDecisionProvider(host);
             ActivateTelemetry(host);
+            RunHistoryServices.Activate(host.Services);
             return host;
         }
         catch
@@ -512,6 +556,9 @@ public static partial class RunnerHost
         /// <summary>Why OAuth accounts of the settings (e-mail, drive) have no token store in this run, one sentence per cause.</summary>
         public List<string> TokensUnavailable { get; } = [];
 
+        /// <summary>Settings the host reads but cannot honour as written (an ignored checkpoint store), one sentence each.</summary>
+        public List<string> StartupWarnings { get; } = [];
+
         /// <summary>The profile <c>--llm-profile</c> elected as the run's default, by its key in the settings; null when none.</summary>
         public string? ElectedLlmProfile { get; set; }
     }
@@ -525,13 +572,13 @@ public static partial class RunnerHost
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Globalization", "CA1303", Justification = "Framework is not localized; literals are CLI diagnostic/console messages.")]
     private static void WarnIfTokensUnavailable(IHost host, MountDecisions decisions)
     {
-        if (decisions.TokensUnavailable.Count == 0)
+        if (decisions.TokensUnavailable.Count == 0 && decisions.StartupWarnings.Count == 0)
             return;
 
         var loggerFactory = host.Services.GetRequiredService<ILoggerFactory>();
         var logger = loggerFactory.CreateLogger("Orkeon.Hosting.RunnerHost");
         var operatorLogger = RunnerOperatorLog.Create(loggerFactory);
-        foreach (var reason in decisions.TokensUnavailable)
+        foreach (var reason in decisions.TokensUnavailable.Concat(decisions.StartupWarnings))
         {
             RunnerOperatorLog.Warn(operatorLogger, "WARNING: " + reason);
             LogTokensUnavailable(logger, reason);
@@ -925,6 +972,8 @@ public static partial class RunnerHost
         using var declared = DeclaredConfiguration.Snapshot(builder);
 
         ElectLlmProfile(overrides, declared, llmProfile, decisions);
+        ApplyLlmMock(overrides, declared, mounts.LlmMockResponses);
+        ApplyLlmReplay(overrides, mounts.LlmRecordCassette, mounts.LlmReplayCassette);
 
         var placement = PlaceMounts(overrides, declared, mounts, settingsPath, decisions);
 
@@ -933,11 +982,51 @@ public static partial class RunnerHost
         // /credentials, whatever its layer.
         var credentialsDirectory = PlanCredentials(
             declared, placement.DeclaredMounts, placement.DeclaredInternal, mounts.CliMounts, settingsPath, decisions);
+        var nextInternalIndex = placement.NextInternalIndex;
+        var nextWhitelistIndex = placement.NextWhitelistIndex;
         if (credentialsDirectory is not null)
         {
-            overrides[$"{ConfigurationKeys.FileSystemInternalMounts}:{placement.NextInternalIndex}"] =
+            overrides[$"{ConfigurationKeys.FileSystemInternalMounts}:{nextInternalIndex++}"] =
                 $"{FileSystemMount.Quote(credentialsDirectory)}:{RunnerVirtualRoots.Credentials}:rw";
-            overrides[$"{PathSecurityWhitelistSection}:{placement.NextWhitelistIndex}"] = credentialsDirectory;
+            overrides[$"{PathSecurityWhitelistSection}:{nextWhitelistIndex++}"] = credentialsDirectory;
+        }
+
+        // The durable checkpoint store's folder (FWK-01), for a json or sqlite store the settings
+        // enable: mounted at /state, whichever command builds the host.
+        if (RunnerState.IgnoredStoreWarning(declared.Section("Orkeon:Checkpointing")) is { } ignoredStore)
+            decisions.StartupWarnings.Add(ignoredStore);
+
+        var stateDirectory = RunnerState.Plan(
+            declared.Section("Orkeon:Checkpointing"),
+            mounts.WorkingDirectory,
+            placement.DeclaredMounts.Concat(placement.DeclaredInternal).Select(entry => entry.Value)
+                .Concat(mounts.CliMounts).Concat(mounts.InternalMounts)
+                .Select(spec => spec is null ? null : MountSelection.TryGetVirtualRoot(spec)).OfType<string>());
+        if (stateDirectory is not null)
+        {
+            overrides[$"{ConfigurationKeys.FileSystemInternalMounts}:{nextInternalIndex++}"] =
+                $"{FileSystemMount.Quote(stateDirectory)}:{RunnerVirtualRoots.State}:rw";
+            overrides[$"{PathSecurityWhitelistSection}:{nextWhitelistIndex++}"] = stateDirectory;
+        }
+
+        // The run history (FWK-08): off in the library, on when the host asks for it by default and the operator
+        // did not say otherwise. The effective value is written back so that the services read what the mounts planned.
+        var historySection = declared.Section(RunnerRunHistory.SectionPath);
+        if (historySection?["Enabled"] is null && mounts.RunHistoryByDefault)
+            overrides[$"{RunnerRunHistory.SectionPath}:Enabled"] = "true";
+
+        var runsDirectory = RunnerRunHistory.Plan(
+            historySection,
+            mounts.RunHistoryByDefault,
+            mounts.WorkingDirectory,
+            placement.DeclaredMounts.Concat(placement.DeclaredInternal).Select(entry => entry.Value)
+                .Concat(mounts.CliMounts).Concat(mounts.InternalMounts)
+                .Select(spec => spec is null ? null : MountSelection.TryGetVirtualRoot(spec)).OfType<string>());
+        if (runsDirectory is not null)
+        {
+            overrides[$"{ConfigurationKeys.FileSystemInternalMounts}:{nextInternalIndex}"] =
+                $"{FileSystemMount.Quote(runsDirectory)}:{RunnerVirtualRoots.Runs}:rw";
+            overrides[$"{PathSecurityWhitelistSection}:{nextWhitelistIndex}"] = runsDirectory;
         }
 
         if (overrides.Count > 0)
@@ -1104,6 +1193,43 @@ public static partial class RunnerHost
         static bool IsProfilesKey(string key) =>
             string.Equals(key, ConfigurationKeys.LlmProfiles, StringComparison.OrdinalIgnoreCase)
             || key.StartsWith(ConfigurationKeys.LlmProfiles + ConfigurationPath.KeyDelimiter, StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// <c>--llm-mock</c>: the default <c>Llm</c> section and every declared profile become
+    /// <c>Provider: mock</c> over <paramref name="responses"/>, laid over the settings and the election.
+    /// </summary>
+    private static void ApplyLlmMock(Dictionary<string, string?> overrides, DeclaredConfiguration declared, string? responses)
+    {
+        if (responses is null)
+            return;
+
+        var llm = ConfigurationKeys.LlmSection;
+        overrides[$"{llm}:Provider"] = Orkeon.Constants.Llm.LlmProviderKeys.Mock;
+        overrides[$"{llm}:Responses"] = responses;
+        if (declared.Section(llm) is not { } section)
+            return;
+
+        foreach (var profile in section.GetSection(ConfigurationKeys.LlmProfiles).GetChildren())
+        {
+            overrides[$"{llm}:{ConfigurationKeys.LlmProfiles}:{profile.Key}:Provider"] = Orkeon.Constants.Llm.LlmProviderKeys.Mock;
+            overrides[$"{llm}:{ConfigurationKeys.LlmProfiles}:{profile.Key}:Responses"] = responses;
+        }
+    }
+
+    /// <summary>
+    /// <c>--llm-record</c> and <c>--llm-replay</c>: <c>Llm:Replay</c> set to the mode and the cassette, laid over
+    /// the settings. The providers the factory builds then write to the cassette or answer from it.
+    /// </summary>
+    private static void ApplyLlmReplay(Dictionary<string, string?> overrides, string? record, string? replay)
+    {
+        var cassette = record ?? replay;
+        if (cassette is null)
+            return;
+
+        var llm = ConfigurationKeys.LlmSection;
+        overrides[$"{llm}:Replay:Mode"] = record is not null ? "record" : "replay";
+        overrides[$"{llm}:Replay:Cassette"] = cassette;
     }
 
     /// <summary>
@@ -1475,6 +1601,13 @@ public static partial class RunnerHost
         // Core Orkeon services
         services.AddOrkeonApplication();
         services.AddOrkeonInfrastructure();
+        // The durable checkpoint store the Orkeon:Checkpointing section chooses, and the persistence
+        // of execution states over that same store. Bound here, never by
+        // AddOrkeonInfrastructure(IConfiguration): a host decides whether it checkpoints.
+        services.AddOrkeonCheckpointing(context.Configuration);
+        services.AddCrewExecutionStatePersistence(context.Configuration);
+        // How a run pauses on a question to a human (FWK-23): declared with the host, whether a crew asks or not.
+        services.AddOrkeonSettings<Orkeon.Infrastructure.HumanInput.HumanInputPauseOptions>(Orkeon.Infrastructure.HumanInput.HumanInputPauseOptions.SectionName);
         // OpenTelemetry export: the `Telemetry` section of the settings, or the standard
         // OTEL_EXPORTER_OTLP_ENDPOINT environment a .NET Aspire AppHost (or any collector)
         // injects. Until 2026-09-11 the runners registered no exporter at all, so a run
@@ -1504,6 +1637,21 @@ public static partial class RunnerHost
         // Per-tool-call permission gate — config opt-in:
         // Orkeon:Security:PermissionGate:Enabled = true. No-op otherwise.
         services.AddOrkeonPermissionGate(context.Configuration);
+
+        // The run history (FWK-08): Orkeon:RunHistory, off unless enabled; the sinks and the reader of `orkeon runs`.
+        RunHistoryServices.Register(context, services);
+        // The evaluation suite is registered by AddOrkeonInfrastructure(); this binds the `Evaluation`
+        // section (EnableLlmJudge) and registers nothing twice. Bound here, never through
+        // AddOrkeonInfrastructure(IConfiguration), which would double telemetry, MCP and vector
+        // search. The benchmark runner is what `orkeon eval bench` runs (FWK-09).
+        services.AddOrkeonEvaluation(context.Configuration);
+        services.AddOrkeonBenchmarking();
+
+        // Cognitive memory — config opt-in: Orkeon:CognitiveMemory:Enabled = true (FWK-04). A crew
+        // with memory: true then recalls by composite score, stores analysed memories and holds
+        // memory_recall; the analysis costs LLM calls, on the profile Orkeon:CognitiveMemory:Profile.
+        if (context.Configuration.GetValue("Orkeon:CognitiveMemory:Enabled", defaultValue: false))
+            services.AddOrkeonCognitiveMemory(context.Configuration);
 
         // Register all standard tools
         services.AddOrkeonFileSystemTools();
@@ -1685,6 +1833,17 @@ public static partial class RunnerHost
             return;
 
         services.AddOrkeonMcp(context.Configuration);
+    }
+
+    /// <summary>
+    /// Lets an <c>oauth2-device</c> MCP server show its sign-in code on <paramref name="console"/> (FWK-16). Called by
+    /// <c>orkeon run</c> and the REPL; <c>orkeon-host</c> never calls it, so it refuses such a server at start.
+    /// </summary>
+    internal static void RegisterMcpLoginInteraction(IServiceCollection services, IRunnerConsole console)
+    {
+        ArgumentNullException.ThrowIfNull(services);
+        ArgumentNullException.ThrowIfNull(console);
+        services.AddSingleton<Orkeon.Tools.Abstractions.Auth.IOAuthLoginInteraction>(new McpConsoleLoginInteraction(console));
     }
 
     /// <summary>

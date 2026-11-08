@@ -126,8 +126,7 @@ une ligne qui nomme la clé — code de sortie `1` pour `orkeon` et `orkeon-repl
   `Information`, `Warning`, `Error`, `Critical`, `None`, sans tenir compte de la casse.
 - **Une clé** qu'aucune section ne porte, contre la forme que déclarent ses lecteurs — les lecteurs
   d'une même section ensemble, une sous-section qu'un autre lecteur déclare comprise :
-  `Orkeon:Guardian:Enabeld`, `Llm:Provider` (rien ne la lit : le fournisseur se déduit de `BaseUrl`
-  et du modèle). Le refus d'une clé inconnue se termine par la commande qui liste les
+  `Orkeon:Guardian:Enabeld`, `Llm:Modle`. Le refus d'une clé inconnue se termine par la commande qui liste les
   clés de sa section — `` `orkeon settings Orkeon:Guardian` lists its keys ``. Un nom de section sous `Orkeon:` et sous les groupes `Orkeon:Cli`,
   `Orkeon:Tools`, `Orkeon:Scripting`, `Orkeon:Security` et `Security` doit être l'une de celles
   qu'Orkeon lit (`SettingsSections`) ; le refus propose la plus proche (`Orkeon:Guardain` →
@@ -173,8 +172,7 @@ WARNING: ToolRateLimiting is read by no component of this host: a C# host reads 
 `orkeon doctor` rapporte la même phrase en ligne `warn` de `runner-settings`, une par section, et
 sort toujours en `0`. Les sections sont celles que le catalogue des réglages marque comme lues par
 aucun binaire livré : `ToolRateLimiting`, `TokenBudget`, `Orkeon:Dlp`, `Orkeon:Monitoring`,
-`Orkeon:CognitiveMemory`, `Orkeon:MultiModal`, `Evaluation`, `Orkeon:VectorSearch`,
-`Orkeon:Checkpointing` et `Orkeon:ExecutionState:Persistence`
+`Orkeon:MultiModal`, `Evaluation` et `Orkeon:VectorSearch`
 ([sous-systèmes opt-in](./opt-in-subsystems.md)). La liste est calculée, pas écrite : une section
 qu'un binaire livré se met à lire en sort. Ne sont pas signalées : une section qu'un autre binaire
 livré lit (`Orkeon:Host` dans un fichier que lit `orkeon run`), une section de la racine
@@ -192,19 +190,19 @@ qu'elle accepte quand leur liste est fermée, et son sens.
 <!-- settings-index -->
 | Catégorie | Sections | Clés |
 |---|---|---|
-| [Modèles](#modèles) | [`Evaluation`](#evaluation), [`Llm`](#llm), [`LlmLogging`](#llmlogging), [`Orkeon:CostTracking`](#orkeoncosttracking), [`Orkeon:Decision`](#orkeondecision), [`Orkeon:Decision:Guard`](#orkeondecisionguard), [`Orkeon:Kev`](#orkeonkev), [`Orkeon:Liquid`](#orkeonliquid), [`Orkeon:TokenCounter`](#orkeontokencounter), [`Orkeon:TypeSafe`](#orkeontypesafe) | 95 |
+| [Modèles](#modèles) | [`Evaluation`](#evaluation), [`Llm`](#llm), [`LlmLogging`](#llmlogging), [`Orkeon:CostTracking`](#orkeoncosttracking), [`Orkeon:Decision`](#orkeondecision), [`Orkeon:Kev`](#orkeonkev), [`Orkeon:Liquid`](#orkeonliquid), [`Orkeon:TokenCounter`](#orkeontokencounter), [`Orkeon:TypeSafe`](#orkeontypesafe) | 102 |
 | [Débit et budgets](#débit-et-budgets) | [`RateLimiting`](#ratelimiting), [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting) | 11 |
-| [Mémoire et vecteurs](#mémoire-et-vecteurs) | [`Memory`](#memory), [`Orkeon:ChromaDb`](#orkeonchromadb), [`Orkeon:CognitiveMemory`](#orkeoncognitivememory), [`Orkeon:CrewMemory`](#orkeoncrewmemory), [`Orkeon:EmbeddingCache`](#orkeonembeddingcache), [`Orkeon:Embeddings`](#orkeonembeddings), [`Orkeon:Encryption`](#orkeonencryption), [`Orkeon:LanceDb`](#orkeonlancedb), [`Orkeon:Pinecone`](#orkeonpinecone), [`Orkeon:Redis`](#orkeonredis), [`Orkeon:Sqlite`](#orkeonsqlite), [`Orkeon:VectorSearch`](#orkeonvectorsearch) | 58 |
+| [Mémoire et vecteurs](#mémoire-et-vecteurs) | [`Memory`](#memory), [`Orkeon:ChromaDb`](#orkeonchromadb), [`Orkeon:CognitiveMemory`](#orkeoncognitivememory), [`Orkeon:CrewMemory`](#orkeoncrewmemory), [`Orkeon:EmbeddingCache`](#orkeonembeddingcache), [`Orkeon:Embeddings`](#orkeonembeddings), [`Orkeon:Encryption`](#orkeonencryption), [`Orkeon:LanceDb`](#orkeonlancedb), [`Orkeon:Pinecone`](#orkeonpinecone), [`Orkeon:Redis`](#orkeonredis), [`Orkeon:Sqlite`](#orkeonsqlite), [`Orkeon:VectorSearch`](#orkeonvectorsearch) | 69 |
 | [RAG](#rag) | [`Orkeon:Rag`](#orkeonrag), [`Orkeon:Rag:Ingestion`](#orkeonragingestion), [`Orkeon:Rag:QueryRouting`](#orkeonragqueryrouting), [`Orkeon:Rag:Retrieval:Hybrid`](#orkeonragretrievalhybrid), [`Orkeon:Rag:WebFallback`](#orkeonragwebfallback) | 34 |
 | [Fichiers et bac à sable](#fichiers-et-bac-à-sable) | [`Orkeon:CodeSandbox`](#orkeoncodesandbox), [`Orkeon:CodeSandbox:Docker`](#orkeoncodesandboxdocker), [`Orkeon:FileSystem`](#orkeonfilesystem), [`Orkeon:Sandbox`](#orkeonsandbox), [`PathSecurity`](#pathsecurity) | 33 |
-| [Sécurité](#sécurité) | [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:Guardian`](#orkeonguardian), [`Orkeon:Security:PermissionGate`](#orkeonsecuritypermissiongate), [`Secrets`](#secrets), [`Security:Audit`](#securityaudit), [`Security:Prompt`](#securityprompt), [`Security:ToolResults`](#securitytoolresults), [`Security:Url`](#securityurl), [`Security:Vault`](#securityvault) | 31 |
-| [Outils](#outils) | [`BRAVE_API_KEY`](#brave_api_key), [`MCP`](#mcp), [`MCP:Server`](#mcpserver), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Tools:Drive`](#orkeontoolsdrive), [`Orkeon:Tools:Email`](#orkeontoolsemail), [`Orkeon:Tools:Firefox`](#orkeontoolsfirefox), [`Orkeon:Tools:GitHub`](#orkeontoolsgithub), [`Orkeon:Tools:ResultLimits`](#orkeontoolsresultlimits), [`Orkeon:Tools:Shell`](#orkeontoolsshell), [`Plugins`](#plugins), [`RaggableTree`](#raggabletree) | 89 |
-| [Orchestration et persistance](#orchestration-et-persistance) | [`Orkeon:Checkpointing`](#orkeoncheckpointing), [`Orkeon:Consensus`](#orkeonconsensus), [`Orkeon:CrewFactory`](#orkeoncrewfactory), [`Orkeon:ExecutionState:Persistence`](#orkeonexecutionstatepersistence) | 16 |
-| [Scripts et console](#scripts-et-console) | [`Orkeon:Cli:ConsoleStreaming`](#orkeoncliconsolestreaming), [`Orkeon:Cli:Memory`](#orkeonclimemory), [`Orkeon:Cli:ScriptCommands`](#orkeoncliscriptcommands), [`Orkeon:Cli:ScriptHost`](#orkeoncliscripthost), [`Orkeon:Cli:Session`](#orkeonclisession), [`Orkeon:Cli:Tui`](#orkeonclitui), [`Orkeon:Scripting:AgentInstances`](#orkeonscriptingagentinstances), [`Orkeon:Scripting:AgentMemory`](#orkeonscriptingagentmemory), [`Orkeon:Scripting:Limits`](#orkeonscriptinglimits), [`Orkeon:Scripting:Toolchain`](#orkeonscriptingtoolchain) | 32 |
-| [Hôte de service et A2A](#hôte-de-service-et-a2a) | [`A2A`](#a2a), [`A2A:Security`](#a2asecurity), [`A2A:Security:AzureAD`](#a2asecurityazuread), [`A2A:Security:Oidc`](#a2asecurityoidc), [`Orkeon:Host`](#orkeonhost), [`Orkeon:Host:Discord`](#orkeonhostdiscord) | 46 |
+| [Sécurité](#sécurité) | [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:Guardian`](#orkeonguardian), [`Orkeon:Security:PermissionGate`](#orkeonsecuritypermissiongate), [`Secrets`](#secrets), [`Security:Audit`](#securityaudit), [`Security:Prompt`](#securityprompt), [`Security:ToolResults`](#securitytoolresults), [`Security:Url`](#securityurl), [`Security:Vault`](#securityvault) | 40 |
+| [Outils](#outils) | [`BRAVE_API_KEY`](#brave_api_key), [`MCP`](#mcp), [`MCP:Server`](#mcpserver), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Tools:Drive`](#orkeontoolsdrive), [`Orkeon:Tools:Email`](#orkeontoolsemail), [`Orkeon:Tools:Firefox`](#orkeontoolsfirefox), [`Orkeon:Tools:GitHub`](#orkeontoolsgithub), [`Orkeon:Tools:ResultLimits`](#orkeontoolsresultlimits), [`Orkeon:Tools:Shell`](#orkeontoolsshell), [`Plugins`](#plugins), [`RaggableTree`](#raggabletree) | 109 |
+| [Orchestration et persistance](#orchestration-et-persistance) | [`Orkeon:Checkpointing`](#orkeoncheckpointing), [`Orkeon:Consensus`](#orkeonconsensus), [`Orkeon:CrewFactory`](#orkeoncrewfactory), [`Orkeon:ExecutionState:Persistence`](#orkeonexecutionstatepersistence), [`Orkeon:HumanInput`](#orkeonhumaninput), [`Orkeon:RunHistory`](#orkeonrunhistory) | 28 |
+| [Scripts et console](#scripts-et-console) | [`Orkeon:Cli:ConsoleStreaming`](#orkeoncliconsolestreaming), [`Orkeon:Cli:Memory`](#orkeonclimemory), [`Orkeon:Cli:ScriptCommands`](#orkeoncliscriptcommands), [`Orkeon:Cli:ScriptHost`](#orkeoncliscripthost), [`Orkeon:Cli:Session`](#orkeonclisession), [`Orkeon:Cli:Tui`](#orkeonclitui), [`Orkeon:Scripting:AgentInstances`](#orkeonscriptingagentinstances), [`Orkeon:Scripting:AgentMemory`](#orkeonscriptingagentmemory), [`Orkeon:Scripting:Limits`](#orkeonscriptinglimits), [`Orkeon:Scripting:Toolchain`](#orkeonscriptingtoolchain) | 35 |
+| [Hôte de service et A2A](#hôte-de-service-et-a2a) | [`A2A`](#a2a), [`A2A:Security`](#a2asecurity), [`A2A:Security:AzureAD`](#a2asecurityazuread), [`A2A:Security:Oidc`](#a2asecurityoidc), [`Orkeon:Host`](#orkeonhost), [`Orkeon:Host:Discord`](#orkeonhostdiscord) | 59 |
 | [Observabilité](#observabilité) | [`Logging`](#logging), [`Orkeon:Monitoring`](#orkeonmonitoring), [`Telemetry`](#telemetry) | 8 |
 
-79 sections, 453 clés. Lues par aucun binaire livré, seulement par un hôte écrit en C# (10) : [`Evaluation`](#evaluation), [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:CognitiveMemory`](#orkeoncognitivememory), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Checkpointing`](#orkeoncheckpointing), [`Orkeon:ExecutionState:Persistence`](#orkeonexecutionstatepersistence), [`Orkeon:Monitoring`](#orkeonmonitoring).
+80 sections, 528 clés. Lues par aucun binaire livré, seulement par un hôte écrit en C# (6) : [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Monitoring`](#orkeonmonitoring).
 <!-- /settings-index -->
 
 Lire un tableau :
@@ -301,6 +299,10 @@ avec ses propres clés.
 | `MaxRetries` | entier | `10` | Combien de fois un appel qui échoue sur une erreur passagère est retenté ; `0` ne retente jamais. |
 | `MaxTokens` | entier | — | Le plus grand nombre de tokens qu'une réponse peut contenir : un épinglage. Omise, une requête porte le maximum documenté de son modèle, et 4096 pour un modèle que le catalogue ne connaît pas. |
 | `Model` | chaîne | — | Le nom du modèle. Omis, le fournisseur utilise son propre modèle par défaut. |
+| `ModelCapabilities:<nom>:AudioInput` | booléen | — | Si le modèle accepte des parties audio en entrée. Omis, la valeur intégrée du modèle (faux si la table ne le connaît pas). |
+| `ModelCapabilities:<nom>:AudioOutput` | booléen | — | Si le modèle répond en audio. Simple enregistrement : rien n'envoie ni ne lit l'audio en sortie. Omis, la valeur intégrée du modèle (faux si la table ne le connaît pas). |
+| `ModelCapabilities:<nom>:ReasoningEfforts` | liste de chaînes | `[]` | Les efforts de raisonnement que le modèle accepte : une liste, ou une seule valeur séparée par des virgules ; écrit vide, aucun. Omis, la liste intégrée du modèle (aucune restriction pour un modèle que la table ne connaît pas) et les niveaux du fournisseur font foi. |
+| `ModelCapabilities:<nom>:Vision` | booléen | — | Si le modèle accepte des parties image en entrée. Omis, la valeur intégrée du modèle (faux si la table ne le connaît pas). |
 | `Profiles:<nom>:ApiKey` | chaîne, secret | — | La clé d'API, en clair. Préférez `ApiKeyEnvVar` : une clé écrite ici est dans le fichier de réglages. |
 | `Profiles:<nom>:ApiKeyEnvVar` | chaîne | — | Le nom de la variable d'environnement qui contient la clé d'API, lue quand `ApiKey` n'en résout aucune : l'environnement du processus, puis la portée utilisateur de Windows. |
 | `Profiles:<nom>:BaseUrl` | chaîne | — | L'adresse du point d'accès du fournisseur, `http://` ou `https://`. Omise, l'adresse du fournisseur que désigne le nom du modèle ou la clé. |
@@ -308,16 +310,24 @@ avec ses propres clés.
 | `Profiles:<nom>:Cache:Tools` | booléen | — | Marque les définitions d'outils comme cachables pour chaque agent qui ne fixe aucun cache, sur un fournisseur dont le cache de prompt est explicite (Anthropic). Omis, elles ne le sont pas. |
 | `Profiles:<nom>:Cache:Ttl` | chaîne | — | La durée de vie du cache, `5m` ou `1h` ; elle demande `SystemPrompt` ou `Tools`, et toute autre valeur refuse le chargement. Omise, celle du fournisseur (5 minutes chez Anthropic). |
 | `Profiles:<nom>:CallMode` | chaîne | `"Auto"` | Comment un appel atteint le modèle : `Auto`, `Buffer` ou `Stream`, casse ignorée. Omis, `Auto` : l'appel est diffusé en flux, et retombe sur un appel tamponné quand le fournisseur refuse le flux. |
+| `Profiles:<nom>:Fallback` | liste de chaînes | `[]` | Les profils vers lesquels un appel passe, dans l'ordre, quand celui-ci échoue d'une façon qu'un nouvel essai ne guérit pas : une erreur de transport, un 5xx, un 429 une fois `MaxRetries` épuisé, un délai dépassé. Une liste de noms de profils, ou une seule valeur séparée par des virgules ; `default` désigne le profil de l'hôte. Omise, un échec reste celui de l'appel. |
+| `Profiles:<nom>:FallbackBudgetSeconds` | entier | — | Le temps maximal, en secondes et compté depuis le premier appel, que la chaîne peut passer avant de cesser d'essayer le profil suivant. Il est vérifié entre deux profils et ne coupe jamais un appel en cours. Omis, la chaîne n'est bornée que par le `TimeoutSeconds` et le `MaxRetries` de chaque profil. |
 | `Profiles:<nom>:Grammar` | booléen | `false` | Si le point d'accès honore une grammaire GBNF — un serveur compatible llama.cpp, comme Docker Model Runner. Ailleurs une grammaire est abandonnée avec un avertissement. |
 | `Profiles:<nom>:MaxRateLimitWait` | durée | `"00:05:00"` | La plus longue fenêtre de limite de débit qu'un appel attend avant d'échouer : un fournisseur qui en annonce une plus longue fait échouer l'appel aussitôt avec une erreur de limite de débit. `00:00:00` n'attend rien. |
 | `Profiles:<nom>:MaxRetries` | entier | `10` | Combien de fois un appel qui échoue sur une erreur passagère est retenté ; `0` ne retente jamais. |
 | `Profiles:<nom>:MaxTokens` | entier | — | Le plus grand nombre de tokens qu'une réponse peut contenir : un épinglage. Omise, une requête porte le maximum documenté de son modèle, et 4096 pour un modèle que le catalogue ne connaît pas. |
 | `Profiles:<nom>:Model` | chaîne | — | Le nom du modèle. Omis, le fournisseur utilise son propre modèle par défaut. |
+| `Profiles:<nom>:Provider` | chaîne | — | `mock`, la seule valeur : le fournisseur hors ligne qui répond depuis le fichier JSONL que nomme `Responses`. Omise, le fournisseur découle de `BaseUrl`, du nom du modèle et de la clé. |
+| `Profiles:<nom>:Responses` | chaîne | — | Avec `Provider: mock`, le chemin virtuel du fichier JSONL — un objet `{match, regex?, content, toolCalls?}` par ligne — dont le fournisseur mock tire ses réponses. |
 | `Profiles:<nom>:StreamIdleSeconds` | entier | — | La plus longue absence de réponse tolérée entre deux fragments d'une réponse en flux, en secondes. Omise, rien ne la borne : `TimeoutSeconds` seule borne l'appel entier, en flux ou non. Un modèle qui réfléchit avant d'écrire peut rester silencieux un moment : ne la fixez qu'au-dessus de ce silence, ou coupez sa réflexion. |
 | `Profiles:<nom>:Temperature` | nombre | — | La température d'échantillonnage. Omise, aucune n'est envoyée et le modèle applique la sienne. |
 | `Profiles:<nom>:Thinking:Effort` | chaîne | — | L'intensité de sa réflexion, dans les mots du fournisseur (`low`, `medium`, `high`…). Omise, celle du fournisseur. |
 | `Profiles:<nom>:Thinking:Enabled` | booléen | — | Si le modèle réfléchit avant de répondre. Omise, le comportement propre du fournisseur. |
 | `Profiles:<nom>:TimeoutSeconds` | entier | `30` | La durée maximale d'un appel, en secondes. Trop courte à son défaut pour un modèle qui réfléchit avant de répondre : écrivez 600 pour un tel modèle, ou coupez sa réflexion. |
+| `Provider` | chaîne | — | `mock`, la seule valeur : le fournisseur hors ligne qui répond depuis le fichier JSONL que nomme `Responses`. Omise, le fournisseur découle de `BaseUrl`, du nom du modèle et de la clé. |
+| `Replay:Cassette` | chaîne | — | Le chemin virtuel de la cassette, un fichier JSONL ; `record` et `replay` en ont besoin. |
+| `Replay:Mode` | chaîne | — | `record` écrit dans la cassette chaque appel du run et sa réponse ; `replay` répond à chaque appel depuis elle, et un appel qu'elle ne contient pas échoue ; `off` ne fait ni l'un ni l'autre. Omis, `off`. |
+| `Responses` | chaîne | — | Avec `Provider: mock`, le chemin virtuel du fichier JSONL — un objet `{match, regex?, content, toolCalls?}` par ligne — dont le fournisseur mock tire ses réponses. |
 | `StreamIdleSeconds` | entier | — | La plus longue absence de réponse tolérée entre deux fragments d'une réponse en flux, en secondes. Omise, rien ne la borne : `TimeoutSeconds` seule borne l'appel entier, en flux ou non. Un modèle qui réfléchit avant d'écrire peut rester silencieux un moment : ne la fixez qu'au-dessus de ce silence, ou coupez sa réflexion. |
 | `Temperature` | nombre | — | La température d'échantillonnage. Omise, aucune n'est envoyée et le modèle applique la sienne. |
 | `Thinking:Effort` | chaîne | — | L'intensité de sa réflexion, dans les mots du fournisseur (`low`, `medium`, `high`…). Omise, celle du fournisseur. |
@@ -372,6 +382,14 @@ accomplie). Épinglez-le quand le modèle n'est pas au catalogue ou pour un plaf
 un profil de modèle Studio l'épingle en `ORKEON_Llm__MaxTokens`, et l'éditeur de profil dit ce
 qu'un champ vide signifie pour le modèle choisi. Un plafond du catalogue que le point d'accès
 refuse est rejoué une fois sans le champ, avec un avertissement qui nomme le modèle.
+
+#### `Provider: mock` répond depuis un fichier
+
+Un profil — ou la section `Llm` elle-même — écrit `"Provider": "mock", "Responses": "/llm-mock/answers.jsonl"` ne construit aucun fournisseur d'éditeur : il répond depuis un fichier JSONL lu par le système de fichiers virtuel, un objet `{"match", "regex"?, "content", "toolCalls"?}` par ligne (la première ligne dont `match` convient au prompt l'emporte ; voir [`orkeon run --llm-mock`](./cli.md#orkeon-run)). Il ne fait aucun appel réseau : une crew YAML ou un script `.ork.ts` tourne hors ligne avec la même sortie à chaque fois. `mock` est la seule valeur que prend `Provider` ; sinon le fournisseur découle de `BaseUrl`, du nom du modèle et de la clé. `Responses` y est obligatoire. `orkeon run --llm-mock <fichier>` écrit les deux clés pour chaque profil de l'exécution. Le mock n'est pas l'un des seize fournisseurs : c'est un double de test.
+
+#### `Replay` enregistre ou rejoue les appels
+
+`Llm:Replay:Mode` à `record` écrit chaque appel d'un fournisseur, avec sa réponse, dans le fichier JSONL que `Llm:Replay:Cassette` nomme ; `replay` répond à chaque appel depuis ce fichier et n'appelle aucun modèle ; `off` (le défaut) ne fait ni l'un ni l'autre. Le décorateur se pose dans la fabrique de fournisseurs, sous la couche de mode d'appel : la cassette contient donc ce qui est vraiment parti sur le fil. `orkeon run --llm-record` et `--llm-replay` posent les deux clés et montent le dossier ; voir [Enregistrer et rejouer les appels LLM](../guides/testing.md). Un mode sans cassette, ou un mode qui n'est aucun des trois, refuse le démarrage en nommant la clé.
 
 #### `Grammar` est pour un serveur compatible llama.cpp
 
@@ -437,9 +455,9 @@ n'est pas celle qui est lue : elle n'est pas jugée. Les réglages jugés, tiré
 
 | Réglages | Correction énoncée |
 |---|---|
-| `Llm:ApiKey`, `Llm:Profiles:<nom>:ApiKey` | écrire `"ApiKeyEnvVar": "<NOM>"` à la place |
-| `Llm:ApiKeyEnvVar`, `Llm:Profiles:<nom>:ApiKeyEnvVar`, `Orkeon:Rag:WebFallback:ApiKeyEnvVar`, `Orkeon:Host:Discord:TokenEnvironmentVariable`, `A2A:Security:ApiKeySecretNames:<i>`, `Orkeon:Encryption:SecretName`, `Orkeon:Tools:GitHub:TokenVariable` | écrire le nom seul, sans `${` ni `}` |
-| `MCP:Servers:<id>:Command`, `:Args:<i>`, `:Url` ; `Orkeon:Redis:ConnectionString`, `Orkeon:Sqlite:ConnectionString` ; `RaggableTree:Embedding:ApiKey`, `Orkeon:Pinecone:ApiKey`, `Orkeon:LanceDb:ApiKey` ; `Llm:BaseUrl`, `Llm:Profiles:<nom>:BaseUrl`, `RaggableTree:Embedding:BaseUrl`, `Orkeon:ChromaDb:BaseUrl`, `Orkeon:Pinecone:Host`, `Orkeon:LanceDb:Endpoint`, `Orkeon:Rag:WebFallback:Endpoint`, `Telemetry:OtlpEndpoint` ; `Security:Vault:AzureKeyVaultUri`, `A2A:Security:AzureAD:Authority`, `A2A:Security:Oidc:Authority` ; `Orkeon:Tools:GitHub:Token` | écrire la valeur, ou la garder hors du fichier par la couche d'environnement `ORKEON_<chemin avec __>` |
+| `Llm:ApiKey`, `Llm:Profiles:<nom>:ApiKey`, `Orkeon:Embeddings:ApiKey` | écrire `"ApiKeyEnvVar": "<NOM>"` à la place |
+| `Llm:ApiKeyEnvVar`, `Llm:Profiles:<nom>:ApiKeyEnvVar`, `Orkeon:Rag:WebFallback:ApiKeyEnvVar`, `Orkeon:Embeddings:ApiKeyEnvVar`, `Orkeon:Host:Discord:TokenEnvironmentVariable`, `A2A:Security:ApiKeySecretNames:<i>`, `Orkeon:Encryption:SecretName`, `Orkeon:Tools:GitHub:TokenVariable` | écrire le nom seul, sans `${` ni `}` |
+| `MCP:Servers:<id>:Command`, `:Args:<i>`, `:Url` ; `Orkeon:Redis:ConnectionString`, `Orkeon:Sqlite:ConnectionString` ; `RaggableTree:Embedding:ApiKey`, `Orkeon:Pinecone:ApiKey`, `Orkeon:LanceDb:ApiKey` ; `Llm:BaseUrl`, `Llm:Profiles:<nom>:BaseUrl`, `RaggableTree:Embedding:BaseUrl`, `Orkeon:ChromaDb:BaseUrl`, `Orkeon:Pinecone:Host`, `Orkeon:LanceDb:Endpoint`, `Orkeon:Embeddings:Endpoint`, `Orkeon:Rag:WebFallback:Endpoint`, `Telemetry:OtlpEndpoint` ; `Security:Vault:AzureKeyVaultUri`, `A2A:Security:AzureAD:Authority`, `A2A:Security:Oidc:Authority` ; `Orkeon:Tools:GitHub:Token` | écrire la valeur, ou la garder hors du fichier par la couche d'environnement `ORKEON_<chemin avec __>` |
 | `MCP:Servers:<id>:Env:<nom>` | retirer l'entrée : le serveur hérite de l'environnement où tourne Orkeon, y poser la variable |
 | `Secrets:<nom>` | retirer l'entrée et poser `ORKEON_<nom>`, que la chaîne des secrets lit en premier |
 | `BRAVE_API_KEY` | retirer l'entrée, Orkeon lit la variable |
@@ -673,10 +691,11 @@ comportement.
 Avec `EnableLlmJudge`, l'`IEvaluationSuite` par défaut exécute aussi les juges LLM de cohérence,
 fluidité et ancrage sur l'`IChatClient` enregistré. Liée par
 `AddOrkeonInfrastructure(configuration)`, ou `AddOrkeonEvaluation(configuration)` (idempotent : un
-second appel n'enregistre aucun évaluateur deux fois).
+second appel n'enregistre aucun évaluateur deux fois). Les hôtes runner (`orkeon`, `orkeon-host`) la
+lient avec le second ; `orkeon eval run --llm-judge` la fixe pour un run, `--offline` la force à faux.
 
 <!-- settings:Evaluation -->
-**Lue par** : un hôte écrit en C# seulement, par `AddOrkeonEvaluation()` — aucun binaire livré ne lit cette section.
+**Lue par** : `orkeon`, `orkeon-host`.
 
 | Clé | Type | Défaut | Sens |
 |---|---|---|---|
@@ -687,8 +706,8 @@ second appel n'enregistre aucun évaluateur deux fois).
 
 Le fournisseur de décision TypeSafe (modèle Jev, clé requise), lié par `AddOrkeonDecisionProvider(configuration, provider)`, que les trois
 binaires livrés appellent quand il est le fournisseur actif (un seul est actif à la fois, voir [`Orkeon:Decision`](#orkeondecision)) : cette section est présente — même vide, `TypeSafe: {}` compte — ou `TYPESAFE_API_KEY` est définie, ou `Orkeon:Decision:Provider` vaut `typesafe` : la clé,
-l'endpoint, le modèle par défaut, le délai et les nouvelles tentatives de chaque appel, (la garde d'entrée des agents est
-[`Orkeon:Decision:Guard`](#orkeondecisionguard)). Voir [Modèles de décision](../architecture/decision-models.md).
+l'endpoint, le modèle par défaut, le délai et les nouvelles tentatives de chaque appel (le juge LLM du gardien est
+[`Orkeon:Guardian:Llm`](#orkeonguardian)). Voir [Modèles de décision](../architecture/decision-models.md).
 
 <!-- settings:Orkeon:TypeSafe -->
 **Lue par** : `orkeon`, `orkeon-host`, `orkeon-repl`.
@@ -778,25 +797,6 @@ sections présentes, ou aucune section et les deux clés définies, sont refusé
 | `Profiles:<nom>:Stages:<i>:WarnThreshold` | nombre | `0.3` | La probabilité à partir de laquelle une étape `guard` journalise un avertissement. |
 | `Profiles:<nom>:Target` | chaîne | `""` | Le profil où va un appel qu'aucune étape ne route ; `default` est la section `Llm`. |
 | `Provider` | chaîne | — | Le fournisseur de décision actif : `typesafe`, `liquid` ou `kev` ; vide, il se déduit des sections et des clés. |
-<!-- /settings -->
-
-### `Orkeon:Decision:Guard`
-
-La garde d'entrée des agents, enregistrée avec le modèle de décision par `AddOrkeonDecisionProvider` :
-elle juge l'entrée avec ce modèle, dans la phase `Input`, à côté de la garde intégrée, par le fournisseur actif ; ses verdicts sont signés de son nom.
-Coupée sauf `Enabled`. Voir
-[Modèles de décision](../architecture/decision-models.md).
-
-<!-- settings:Orkeon:Decision:Guard -->
-**Lue par** : `orkeon`, `orkeon-host`, `orkeon-repl`.
-
-| Clé | Type | Défaut | Sens |
-|---|---|---|---|
-| `BlockThreshold` | nombre | `0.8` | La probabilité à partir de laquelle un risque bloque l'entrée. |
-| `Enabled` | booléen | `false` | Si la garde tourne ; coupée par défaut. |
-| `FailClosed` | booléen | `false` | Si un modèle de décision injoignable bloque l'entrée ; false avertit et la laisse passer. |
-| `Risks:<nom>` | chaîne | — | Les risques détectés, chacun avec ce qu'il est ; vide, les risques par défaut s'appliquent. |
-| `WarnThreshold` | nombre | `0.5` | La probabilité à partir de laquelle un risque est un avertissement. |
 <!-- /settings -->
 
 ## Débit et budgets
@@ -988,24 +988,28 @@ Ce que rappelle une crew `memory: true` avant chaque tâche (`CrewMemoryOptions`
 `MinScore` — à l'échelle de l'embedder, mesurée sur le modèle local —, coupés à `MaxChars`
 caractères de contenu au total — voir
 [Système de mémoire](../architecture/memory-system.md#ce-que-rappelle-une-crew). Lue par
-`MemoryCoordinator` ; liée par `AddOrkeonInfrastructure()`.
+`MemoryCoordinator` ; liée par `AddOrkeonInfrastructure()`. Avec la mémoire cognitive activée, le rappel est borné
+par `MinCompositeScore` et `MinSemanticScore` au lieu de `MinScore`, et `ConsolidateOnRunEnd` consolide la mémoire à la fin d'un run.
 
 <!-- settings:Orkeon:CrewMemory -->
 **Lue par** : `orkeon`, `orkeon-host`, `orkeon-repl`.
 
 | Clé | Type | Défaut | Sens |
 |---|---|---|---|
+| `ConsolidateOnRunEnd` | booléen | `false` | Si la mémoire de la crew est consolidée (souvenirs redondants fusionnés, souvenirs de faible valeur élagués) à la fin d'un run. Défaut : false, une consolidation coûte des appels LLM. Lu seulement quand la mémoire cognitive est branchée. |
 | `MaxChars` | entier | `4000` | Combien de caractères de contenu de mémoire l'invite d'une tâche reçoit au plus, tous souvenirs rappelés confondus. 4 000 par défaut ; le dernier souvenir qui ne tient pas est coupé. |
+| `MinCompositeScore` | nombre | `0.4` | Le score composite minimal (similarité, récence et importance ensemble) d'un souvenir pour être rappelé quand la mémoire cognitive est branchée. Défaut : 0,4. Distinct de `MinScore`, qui borne la similarité cosinus du chemin vectoriel : les deux échelles diffèrent. |
 | `MinScore` | nombre | `0.6` | La similarité cosinus minimale entre une tâche et un souvenir pour que le souvenir soit rappelé. 0,6 par défaut, mesuré sur le modèle d'embedding local (BGE-micro-v2), sur lequel la même tâche d'un run antérieur obtient 0,72 et plus, et une tâche anglaise sans rapport 0,53 et moins. Son échelle est celle de l'embedder : un autre modèle demande sa propre mesure. |
+| `MinSemanticScore` | nombre | `0.5` | La similarité sémantique (cosinus) minimale d'un souvenir pour être rappelé par la mémoire cognitive, quelles que soient sa récence et son importance : un souvenir rangé à l'instant, d'importance par défaut, atteint `MinCompositeScore` sur ces deux seules composantes, la pertinence est donc exigée à part. 0,5 par défaut ; son échelle est celle de l'embedder, comme `MinScore`. |
 | `RecallLimit` | entier | `5` | Combien de souvenirs une tâche rappelle au plus. 5 par défaut ; 0 ne rappelle rien (la crew stocke quand même ce que produisent ses tâches). |
 <!-- /settings -->
 
 ### `Orkeon:CognitiveMemory`
 
-Couche de mémoire cognitive. Opt-in : `AddOrkeonCognitiveMemory(configuration)`.
+Couche de mémoire cognitive. Opt-in : les exécuteurs la branchent quand `Enabled` vaut `true` (`AddOrkeonCognitiveMemory(configuration)` pour un hôte écrit en C#). Pas de clé YAML : le coût de l'analyse est à la charge de l'opérateur.
 
 <!-- settings:Orkeon:CognitiveMemory -->
-**Lue par** : un hôte écrit en C# seulement, par `AddOrkeonCognitiveMemory()` — aucun binaire livré ne lit cette section.
+**Lue par** : `orkeon`, `orkeon-host`.
 
 | Clé | Type | Défaut | Valeurs | Sens |
 |---|---|---|---|---|
@@ -1014,13 +1018,16 @@ Couche de mémoire cognitive. Opt-in : `AddOrkeonCognitiveMemory(configuration)`
 | `ContradictionCandidateCount` | entier | `10` |  | Nombre de souvenirs existants où chercher des contradictions. Défaut : 10. |
 | `DefaultRecallOptions:ImportanceWeight` | nombre | `0.2` |  | Poids de l'importance dans le score composite. Défaut : 0,2. |
 | `DefaultRecallOptions:MinScore` | nombre | `0.1` |  | Seuil minimal du score composite. Défaut : 0,1. |
+| `DefaultRecallOptions:MinSemanticScore` | nombre | `0` |  | Similarité sémantique minimale d'un souvenir quelles que soient sa récence et son importance : sans elle, un souvenir frais d'importance par défaut sans rapport avec la requête atteint le plancher composite sur ces deux seules composantes. Défaut : 0. |
 | `DefaultRecallOptions:RecencyWeight` | nombre | `0.3` |  | Poids de la récence dans le score composite. Défaut : 0,3. |
 | `DefaultRecallOptions:SemanticWeight` | nombre | `0.5` |  | Poids de la similarité sémantique dans le score composite. Défaut : 0,5. |
 | `DefaultRecallOptions:TagFilter` | liste de chaînes | `[]` |  | Filtre facultatif par étiquettes (une seule suffit). |
 | `DefaultRecallOptions:TopK` | entier | `10` |  | Nombre maximal de résultats renvoyés. Défaut : 10. |
 | `DefaultRecallOptions:TypeFilter` | énumération | — | `ShortTerm`, `LongTerm`, `Episodic`, `Entity`, `Procedural` | Filtre facultatif par type de mémoire. |
 | `EnableContradictionDetection` | booléen | `true` |  | Si la détection de contradictions est activée à la mémorisation. Défaut : true. |
+| `Enabled` | booléen | `false` |  | Si les exécuteurs branchent la mémoire cognitive sur un run : rappel par score composite, stockage analysé, outil `memory_recall`. Défaut : false (l'analyse coûte des appels LLM). |
 | `EnableLlmAnalysis` | booléen | `true` |  | Si l'analyse du contenu par LLM est activée à la mémorisation. Défaut : true. |
+| `Profile` | chaîne | — |  | Le profil LLM (`Llm:Profiles:<nom>`) sur lequel tournent l'analyse, la détection de contradictions et la consolidation, donc comptés comme tout appel. Null ou vide : le profil par défaut. |
 | `PruningMinAgeDays` | entier | `30` |  | Âge minimal, en jours, avant qu'un souvenir puisse être élagué. Défaut : 30. |
 | `PruningThreshold` | nombre | `0.1` |  | Seuil d'importance en dessous duquel un souvenir est candidat à l'élagage. Défaut : 0,1. |
 | `RecencyHalfLifeHours` | nombre | `69` |  | Demi-vie de la décroissance de récence, en heures (exp(-ln2/halfLife * ageHours)). Défaut : 69,0. |
@@ -1045,7 +1052,11 @@ opt-in : `AddOrkeonKeyRotation()`.
 ### `Orkeon:Embeddings`
 
 Sélection du provider d'embeddings : `Provider` vaut `openai`, tout générateur d'embeddings M.E.AI
-qu'inscrit l'hôte, ou `ollama` ; un autre nom refuse le démarrage. Lue par
+qu'inscrit l'hôte, `ollama`, `mistral`, `azure-openai` ou `gemini` ; un autre nom refuse le démarrage.
+Les trois derniers parlent le format d'embeddings d'OpenAI et lisent `ApiKey` (ou `ApiKeyEnvVar`),
+`Endpoint` et `Model` ; `azure-openai` exige aussi `Endpoint` (l'URL de la ressource) et prend le nom
+du déploiement comme `Model`. Au démarrage, l'hôte compare le provider, le modèle et les dimensions à
+ceux consignés dans `FingerprintPath` et refuse de démarrer s'ils ont changé. Lue par
 `DefaultEmbeddingProviderResolver`, quand aucun provider local ni d'analyse de code n'est inscrit.
 Liée par `AddOrkeonInfrastructure()`, et par `AddOrkeonVectorSearch(configuration)` (appelé par
 `AddOrkeonInfrastructure(configuration)`).
@@ -1055,11 +1066,16 @@ Liée par `AddOrkeonInfrastructure()`, et par `AddOrkeonVectorSearch(configurati
 
 | Clé | Type | Défaut | Sens |
 |---|---|---|---|
+| `ApiKey` | chaîne, secret | — | La clé d'API de `mistral`, `azure-openai` et `gemini`, en clair. Préférer `ApiKeyEnvVar` : une clé écrite ici se trouve dans le fichier de réglages. |
+| `ApiKeyEnvVar` | chaîne | `""` | Nom de la variable d'environnement qui porte la clé d'API, lue quand `ApiKey` est vide. |
+| `ApiVersion` | chaîne | `""` | Le paramètre `api-version` d'`azure-openai`. Vide : la version par défaut du fournisseur (`2024-10-21`). |
 | `BatchSize` | entier | `100` | Taille maximale d'un lot pour les requêtes d'embedding groupées. |
 | `Dimension` | entier | `1536` | La dimension des vecteurs d'embedding. |
 | `EnableCache` | booléen | `true` | Si le cache d'embeddings est activé. |
+| `Endpoint` | chaîne | `""` | URL de base du point d'accès des embeddings. Vide : le point d'accès public du fournisseur. Obligatoire pour `azure-openai` : l'URL de la ressource, `https://<ressource>.openai.azure.com`. |
+| `FingerprintPath` | chaîne | `"/workspace/.orkeon/embedding-fingerprint.json"` | Chemin virtuel du fichier qui consigne le fournisseur, le modèle et les dimensions dont viennent les vecteurs stockés ; l'hôte refuse de démarrer quand ils changent. Vide : le garde-fou est désactivé. |
 | `Model` | chaîne | `"text-embedding-3-small"` | Le nom du modèle utilisé pour les embeddings. |
-| `Provider` | chaîne | `"openai"` | Le provider d'embeddings à utiliser (p. ex. "openai", "ollama"). |
+| `Provider` | chaîne | `"openai"` | Le provider d'embeddings à utiliser : "openai", "ollama", "mistral", "azure-openai" ou "gemini". |
 <!-- /settings -->
 
 ### `Orkeon:EmbeddingCache`
@@ -1108,7 +1124,7 @@ Le pipeline de requête, étape par étape :
   RAG — génération, transformateurs de requête, reranker listwise, évaluateur et vérificateur
   d'ancrage correctifs, classifieur `llm`, juge d'évaluation ; absent ou `default` : le profil par
   défaut. Un nom inconnu fait refuser le démarrage de l'hôte en listant les profils connus ;
-  `orkeon rag eval --offline` l'ignore. Se choisit dans Studio › Réglages › Modèle d'IA (expert).
+  `orkeon eval rag --offline` l'ignore. Se choisit dans Studio › Réglages › Modèle d'IA (expert).
 - **`Provider`** — TYPE du provider du document store RAG (`RagStoreOptions` — un alias de type
   de `MemoryProviderFactory`), connecté depuis la section propre de ce provider (`Orkeon:Redis`,
   `Orkeon:Sqlite`, …) ; défaut : l'`IMemoryProvider` ambiant.
@@ -1359,17 +1375,30 @@ viennent les secrets. Le récit est dans [Sécurité](../architecture/security.m
 Le pipeline de gardes : `GuardianPipeline` joue la phase d'entrée de chaque tour d'agent, et les
 phases outil et délégation de chaque appel d'outil. Actif par défaut, enregistré par
 `AddOrkeonInfrastructure()`.
+La sous-section `Llm` ajoute un juge LLM, coupé par défaut : le modèle de décision juge l'entrée et la
+sortie d'une tâche (`Phases`), un risque à `BlockThreshold` ou au-dessus bloque, et quand le modèle ne
+répond pas `FailMode` tranche : `Closed` (défaut) refuse, `Open` laisse passer le texte ; les deux auditent
+`guardian.judge.unavailable`. Tant que la phase de sortie est gardée, le streaming d'une tâche attend le jugement. Il demande un modèle de décision (`AddOrkeonDecisionProvider`) ; activé
+sans lui, l'hôte refuse de démarrer.
 
 <!-- settings:Orkeon:Guardian -->
 **Lue par** : `orkeon`, `orkeon-host`, `orkeon-repl`.
 
-| Clé | Type | Défaut | Sens |
-|---|---|---|---|
-| `DefaultPolicy:DelegationGuardEnabled` | booléen | `true` | Si la phase de délégation (profondeur, auto-délégation, cycles) s'exécute. |
-| `DefaultPolicy:InputGuardEnabled` | booléen | `true` | Si la phase d'entrée (filtrage anti-injection de l'invite utilisateur composée) s'exécute. |
-| `DefaultPolicy:MaxDelegationDepth` | entier | `5` | Combien de délégations synchrones peuvent s'emboîter avant que la suivante ne soit bloquée. |
-| `DefaultPolicy:ToolGuardEnabled` | booléen | `true` | Si la phase outil (traversée de chemin, SSRF et injection SQL dans les arguments d'outil) s'exécute. |
-| `Enabled` | booléen | `true` | Si le guardian s'exécute. À false, aucun guardian n'est enregistré dans le pipeline : les tours d'agent ne sont filtrés ni en entrée ni sur les appels d'outils. |
+| Clé | Type | Défaut | Valeurs | Sens |
+|---|---|---|---|---|
+| `DefaultPolicy:DelegationGuardEnabled` | booléen | `true` |  | Si la phase de délégation (profondeur, auto-délégation, cycles) s'exécute. |
+| `DefaultPolicy:InputGuardEnabled` | booléen | `true` |  | Si la phase d'entrée (filtrage anti-injection de l'invite utilisateur composée) s'exécute. |
+| `DefaultPolicy:MaxDelegationDepth` | entier | `5` |  | Combien de délégations synchrones peuvent s'emboîter avant que la suivante ne soit bloquée. |
+| `DefaultPolicy:OutputGuardEnabled` | booléen | `true` |  | Si la phase de sortie s'exécute. Sa seule garde est le juge LLM, lui-même coupé sauf `Orkeon:Guardian:Llm:Enabled`. |
+| `DefaultPolicy:ToolGuardEnabled` | booléen | `true` |  | Si la phase outil (traversée de chemin, SSRF et injection SQL dans les arguments d'outil) s'exécute. |
+| `Enabled` | booléen | `true` |  | Si le guardian s'exécute. À false, aucun guardian n'est enregistré dans le pipeline : les tours d'agent ne sont filtrés ni en entrée ni sur les appels d'outils. |
+| `Llm:BlockThreshold` | nombre | `0.8` |  | La probabilité à partir de laquelle un risque bloque le texte. |
+| `Llm:Enabled` | booléen | `false` |  | Si le juge tourne ; coupé par défaut (il coûte un appel de modèle par phase). |
+| `Llm:FailMode` | énumération | `"Closed"` | `Closed`, `Open` | Ce qui se passe quand le modèle de décision ne peut pas juger : `Closed` (défaut) refuse, `Open` laisse passer le texte ; les deux auditent `guardian.judge.unavailable`. |
+| `Llm:MaxContentChars` | entier | `8000` |  | Les caractères d'un texte que le juge lit en un appel. Sous `Closed` un texte plus long est jugé en entier, bloc par bloc (un bloc qui bloque bloque), jusqu'à 32 blocs, et un texte au-delà est refusé ; sous `Open` il est jugé sur la première et la dernière moitié de ce budget, ce qui est entre n'est pas jugé, et la coupe est auditée. |
+| `Llm:Phases` | liste d'énumérations | `[]` | `Input`, `Output` | Les phases jugées, `Input` et/ou `Output` ; vide, les deux. Toute autre valeur est refusée au démarrage (les phases d'outil et de délégation sont vérifiées par des règles, pas par un modèle). |
+| `Llm:Risks:<nom>` | chaîne | — |  | Les risques détectés, chacun avec ce qu'il est ; vide, les risques par défaut s'appliquent. |
+| `Llm:WarnThreshold` | nombre | `0.5` |  | La probabilité à partir de laquelle un risque est un avertissement. |
 <!-- /settings -->
 
 ### `Security:Prompt`
@@ -1477,6 +1506,7 @@ appelé par `RunnerHost` — est sans effet tant que `Enabled = true` n'est pas 
 
 | Clé | Type | Défaut | Sens |
 |---|---|---|---|
+| `DefaultMode` | chaîne | `"default"` | Le mode de permission d'un agent d'une crew qui n'en déclare aucun (`permissionMode:`) : `default`, `acceptEdits`, `bypassPermissions`, `plan` ou `dontAsk`. Un script pose son propre mode à chaque `act`. |
 | `Enabled` | booléen | `false` | Si la barrière est enregistrée. Laissée à `false`, aucun appel d'outil n'y est soumis. |
 | `Interactive` | booléen | `false` | Si l'hôte tranche lui-même une approbation, sans canal d'approbation. Un hôte qui enregistre un canal (orkeon-repl le fait) interroge l'opérateur quoi que dise ce réglage. Laissée à `false` sans canal, un appel qui demande une approbation est refusé, et le modèle lit la raison comme résultat de l'outil. |
 <!-- /settings -->
@@ -1743,11 +1773,26 @@ pas `false` — les serveurs sont connectés avant le chargement de la crew (STU
 |---|---|---|---|---|
 | `Enabled` | booléen | `true` |  | Si MCP est activé, tout simplement. |
 | `Servers:<nom>:Args` | liste de chaînes | `[]` |  | Arguments de ligne de commande du processus serveur. |
+| `Servers:<nom>:Auth:Audience` | chaîne | — |  | Audience (ressource) pour laquelle le jeton OAuth est émis, quand le fournisseur en demande une (oauth2-client-credentials, oauth2-device). |
+| `Servers:<nom>:Auth:ClientId` | chaîne | — |  | Identifiant du client OAuth (oauth2-client-credentials, oauth2-device). |
+| `Servers:<nom>:Auth:ClientSecretEnv` | chaîne | — |  | Nom de la variable d'environnement qui porte le secret du client OAuth : obligatoire pour oauth2-client-credentials, facultatif pour oauth2-device. Lue à chaque demande de jeton, jamais écrite dans les réglages. |
+| `Servers:<nom>:Auth:DeviceAuthorizationUrl` | URI | — |  | Adresse https du point de terminaison d'autorisation d'appareil du fournisseur (oauth2-device) ; http n'est accepté que sur la boucle locale. |
+| `Servers:<nom>:Auth:PasswordEnv` | chaîne | — |  | Nom de la variable d'environnement qui porte le mot de passe basic (Auth:Type Basic). |
+| `Servers:<nom>:Auth:Scopes` | liste de chaînes | `[]` |  | Portées OAuth demandées (oauth2-client-credentials, oauth2-device) ; aucune par défaut. |
+| `Servers:<nom>:Auth:TokenEnv` | chaîne | — |  | Nom de la variable d'environnement qui porte le jeton bearer (Auth:Type Bearer). Lue à chaque requête. |
+| `Servers:<nom>:Auth:TokenUrl` | URI | — |  | Adresse https du point de terminaison de jeton OAuth (oauth2-client-credentials, oauth2-device) ; http n'est accepté que sur la boucle locale. |
+| `Servers:<nom>:Auth:Type` | énumération | `"None"` | `None`, `Bearer`, `Basic`, `OAuth2ClientCredentials`, `OAuth2Device` | Comment le client s'authentifie auprès d'un serveur HTTP (Sse), avec les clés que chaque valeur demande : None ; Bearer (TokenEnv) ; Basic (UserEnv, PasswordEnv) ; oauth2-client-credentials (TokenUrl, ClientId, ClientSecretEnv ; facultatifs Scopes, Audience) ; oauth2-device (TokenUrl, DeviceAuthorizationUrl, ClientId ; facultatifs ClientSecretEnv, Scopes, Audience ; refusé par orkeon-host, qui n'a pas de terminal). Graphies acceptées, exactement : None, none, Bearer, bearer, Basic, basic, OAuth2ClientCredentials, oauth2-client-credentials, OAuth2Device, oauth2-device ; toute autre est refusée. Aucun identifiant n'est écrit dans les réglages : ils sont lus dans les variables d'environnement que nomment les autres clés Auth. |
+| `Servers:<nom>:Auth:UserEnv` | chaîne | — |  | Nom de la variable d'environnement qui porte le nom d'utilisateur basic (Auth:Type Basic). |
+| `Servers:<nom>:CallTimeout` | durée | `"00:01:00"` |  | Durée maximale d'une requête à ce serveur : un appel d'outil se termine en erreur d'outil (McpCallTimeoutException), et prompts/list, prompts/get, resources/list, resources/read et un abonnement lèvent un dépassement de délai. 60 secondes par défaut ; une valeur non positive est refusée. Une connexion d'appareil due d'abord est hors de la borne. |
 | `Servers:<nom>:Command` | chaîne | `""` |  | Commande qui lance le processus du serveur MCP (pour le transport stdio). |
+| `Servers:<nom>:ConnectTimeout` | durée | `"00:00:30"` |  | Durée maximale de la poignée de main et de la liste des outils de ce serveur avant l'échec de la connexion. 30 secondes par défaut ; une valeur non positive est refusée. |
 | `Servers:<nom>:Env:<nom>` | chaîne | — |  | Variables d'environnement du processus serveur. |
+| `Servers:<nom>:Headers:<nom>` | chaîne | — |  | En-tête HTTP supplémentaire envoyé à chaque requête vers un serveur Sse : une valeur littérale, ou env:VAR pour la lire dans une variable d'environnement. Un en-tête Authorization est refusé ; utilisez Auth. Les en-têtes que le transport pose lui-même (Accept, Content-Type, Mcp-Session-Id, MCP-Protocol-Version, Mcp-Method, Mcp-Name, Last-Event-ID) sont refusés aussi. |
+| `Servers:<nom>:Tools:Allow` | liste de chaînes | `[]` |  | Noms des outils de ce serveur à enregistrer ; vide, ils le sont tous. |
+| `Servers:<nom>:Tools:Deny` | liste de chaînes | `[]` |  | Noms des outils de ce serveur jamais enregistrés ; appliqué après Tools:Allow. |
 | `Servers:<nom>:Transport` | énumération | `"Stdio"` | `Stdio`, `Sse` | Type de transport à utiliser. |
 | `Servers:<nom>:TrustAnnotations` | booléen | `false` |  | Si la permission gate prend au mot les annotations des outils de ce serveur : un outil marqué readOnlyHint devient alors une lecture, que le mode plan laisse passer. Désactivé par défaut : un serveur non fiable pourrait étiqueter en lecture seule un outil destructeur, ses outils restent donc classés par défaut comme des écritures. |
-| `Servers:<nom>:Url` | URI | — |  | URL du point d'accès pour le transport SSE. |
+| `Servers:<nom>:Url` | URI | — |  | URL du point d'accès pour le transport SSE. Avec des identifiants (un type Auth, ou un en-tête env:), elle doit être une adresse https absolue, http seulement sur la boucle locale, sinon le serveur est refusé à la configuration. |
 <!-- /settings -->
 
 ### `MCP:Server`
@@ -1760,7 +1805,12 @@ La façon dont le serveur d'`orkeon mcp serve` se présente (il n'expose que des
 
 | Clé | Type | Défaut | Sens |
 |---|---|---|---|
+| `AllowedTools` | liste de chaînes | `[]` | Les outils du registre que le serveur liste et exécute, par nom (insensible à la casse) ; vide les sert tous. Un outil hors de la liste n'est ni listé ni appelable, quel que soit celui qui l'enregistre et quand : un outil qu'un serveur MCP ajoute plus tard reste dehors. Les outils qu'une extension sert (`--crew`) n'y sont pas soumis. `orkeon mcp serve --tools` le définit. |
+| `ExposeOutput` | booléen | `false` | Si le serveur sert /output comme ressources MCP en lecture seule (orkeon:///output/&lt;chemin&gt;). Désactivé par défaut : seuls les outils sont exposés. /workspace et tout autre montage ne le sont jamais. `orkeon mcp serve --expose-output` l'active. |
+| `MaxConcurrency` | entier | `4` | Nombre de requêtes que la boucle stdio exécute à la fois ; les autres attendent leur tour. Au moins 1. `orkeon mcp serve --max-concurrency` le remplace. |
+| `MaxResourceBytes` | entier | `1048576` | Taille du plus gros fichier que resources/read rend, en octets (1 048 576 par défaut) ; un fichier plus gros est refusé. |
 | `Name` | chaîne | `"Orkeon"` | Nom du serveur annoncé à l'initialisation MCP. |
+| `ResourcesPageSize` | entier | `100` | Nombre de ressources d'une page de resources/list (100 par défaut). Au moins 1. |
 | `Version` | chaîne | `"1.0.0"` | Version du serveur annoncée à l'initialisation MCP. |
 <!-- /settings -->
 
@@ -1876,10 +1926,11 @@ Le vote du mode consensuel — les modes et ce qu'est un bulletin sont dans
 
 Persistance durable des états d'exécution d'une crew (`ScopedCrewExecutionStateManager`).
 Opt-in : `AddCrewExecutionStatePersistence(configuration)` — appelé automatiquement par
-`AddOrkeonInfrastructure(configuration)` quand la section existe ; requiert un `IStateStore`.
+`AddOrkeonInfrastructure(configuration)` quand la section existe, et par `orkeon run` et `orkeon-host` ;
+requiert un `IStateStore` (`Orkeon:Checkpointing`).
 
 <!-- settings:Orkeon:ExecutionState:Persistence -->
-**Lue par** : un hôte écrit en C# seulement, par `AddCrewExecutionStatePersistence()` — aucun binaire livré ne lit cette section.
+**Lue par** : `orkeon`, `orkeon-host`.
 
 | Clé | Type | Défaut | Sens |
 |---|---|---|---|
@@ -1889,18 +1940,62 @@ Opt-in : `AddCrewExecutionStatePersistence(configuration)` — appelé automatiq
 
 ### `Orkeon:Checkpointing`
 
-Le state store Postgres (`CheckpointingExtensions`). Opt-in :
+Le magasin qui garde les sessions de checkpoint des runs : `Enabled` avec `Store` memory, json, sqlite ou
+postgres (`CheckpointingExtensions`). `orkeon run` et `orkeon-host` la lisent : `json` et `sqlite` écrivent
+sous `./.orkeon/state`, monté en `/state` comme montage interne (`Path` est un chemin virtuel dessous) ;
+`sqlite` avec une `ConnectionString` et `postgres` n'ont besoin d'aucun montage. Un hôte écrit en C# l'enregistre avec
+`AddOrkeonCheckpointing(configuration)`, `AddOrkeonSqliteCheckpointing(...)` ou
 `AddOrkeonPostgresCheckpointing(configuration)`.
 
 <!-- settings:Orkeon:Checkpointing -->
-**Lue par** : un hôte écrit en C# seulement, par `AddOrkeonPostgresCheckpointing()` — aucun binaire livré ne lit cette section.
+**Lue par** : `orkeon`, `orkeon-host`.
 
-| Clé | Type | Défaut | Sens |
-|---|---|---|---|
-| `AutoMigrate` | booléen | `true` | S'il faut créer automatiquement le schéma et les tables au premier usage. |
-| `ConnectionString` | chaîne, secret | — | La chaîne de connexion PostgreSQL. |
-| `MaxHistoryPerSession` | entier | `1000` | Le nombre maximal d'entrées de version par session (défaut : 1000). |
-| `SchemaName` | chaîne | `"orkeon"` | Le nom du schéma (défaut : "orkeon"). |
+| Clé | Type | Défaut | Valeurs | Sens |
+|---|---|---|---|---|
+| `AutoMigrate` | booléen | `true` |  | S'il faut créer automatiquement le schéma et les tables PostgreSQL au premier usage. |
+| `ConnectionString` | chaîne, secret | — |  | La chaîne de connexion du magasin Sqlite (à la place de `Path`) ou Postgres. |
+| `Enabled` | booléen | `false` |  | Si le magasin nommé par `Store` est utilisé (défaut : false, le magasin en mémoire). |
+| `MaxHistoryPerSession` | entier | `1000` |  | Le nombre maximal d'entrées de version par session dans le magasin PostgreSQL. |
+| `MaxVersions` | entier | `20` |  | Le nombre de versions qu'une session garde dans le magasin Json (défaut : 20) ; chaque nouvelle version supprime les plus anciennes au-delà. Zéro ou négatif les garde toutes. |
+| `Path` | chaîne | — |  | Le chemin virtuel du dossier (Json) ou du fichier (Sqlite) où le magasin écrit, sous le montage `/state`. Null : `/state/checkpoints` ou `/state/checkpoints.db`. |
+| `SchemaName` | chaîne | `"orkeon"` |  | Le nom du schéma PostgreSQL (défaut : "orkeon"). |
+| `Store` | énumération | `"Memory"` | `Memory`, `Json`, `Sqlite`, `Postgres` | Le magasin (défaut : `Memory`). |
+<!-- /settings -->
+
+### `Orkeon:HumanInput`
+
+Comment un run se met en pause sur une question à un humain (FWK-23). Actif seulement avec `Orkeon:Checkpointing:Enabled`, qui donne à la question une session où être persistée. `Pause` vaut `Hold` (le run attend la réponse, jusqu'à `HoldTimeout`, puis suspend : la question reste persistée, rien n'est refusé) ou `Suspend` (le run s'arrête aussitôt : `run.finished` `status: waiting_for_input`, sortie 75). Sans valeur, un run qui a quelqu'un à interroger attend, un `orkeon run` simple sans personne suspend, et `orkeon-host` et `--events` attendent (30 minutes et sans limite). Un run se reprend avec `orkeon run <crew> --resume <id> --input "..."`.
+
+<!-- settings:Orkeon:HumanInput -->
+**Lue par** : `orkeon`, `orkeon-host`, `orkeon-repl`.
+
+| Clé | Type | Défaut | Valeurs | Sens |
+|---|---|---|---|---|
+| `HoldTimeout` | durée | — |  | Combien de temps un run en attente patiente avant de suspendre (la question reste persistée, rien n'est refusé). Sans valeur, l'hôte décide : 30 minutes dans le démon, sans limite sous `--events`. |
+| `Pause` | énumération | — | `Hold`, `Suspend` | La politique. Sans valeur, l'hôte décide : `Hold` dans le démon et sous `--events`, `Suspend` dans un `orkeon run` simple. |
+<!-- /settings -->
+
+### `Orkeon:RunHistory`
+
+Si les événements d'un run sont gardés après sa fin : `Enabled` active l'historique, `Store` vaut `jsonl`
+(un fichier `<run id>.jsonl` par run et un `index.jsonl`) ou `sqlite` (`runs.db`, WAL). `orkeon-host` et le gabarit de
+`orkeon init` l'activent ; la bibliothèque et `orkeon run` le laissent éteint. Un run est enregistré avec ou sans `--events`. Les secrets sont masqués avant l'écriture, et le dossier garde ce que les runs ont dit et fait : à tenir hors d'un dépôt (`orkeon init` ajoute `.orkeon/` au `.gitignore`). Le dossier est `./.orkeon/runs`, monté
+en `/runs` comme montage interne à côté de l'état des checkpoints (`Path` est un chemin virtuel dessous) ; `orkeon runs
+list`, `show` et `tail` le relisent. Une purge applique `RetentionDays` et `MaxRuns` quand un processus écrit pour la première fois et à la fin
+d'un run, jamais quand l'historique est seulement lu ; un run en cours n'est jamais purgé, un run dont le processus a disparu (`orphaned`) l'est. Les événements `llm.delta` restent sur le flux stdout et ne sont gardés
+dans l'historique qu'avec `IncludeDeltas`.
+
+<!-- settings:Orkeon:RunHistory -->
+**Lue par** : `orkeon`, `orkeon-host`.
+
+| Clé | Type | Défaut | Valeurs | Sens |
+|---|---|---|---|---|
+| `Enabled` | booléen | `false` |  | Si l'historique est enregistré. Éteint dans la bibliothèque, allumé dans `orkeon-host` et le gabarit de `orkeon init`. |
+| `IncludeDeltas` | booléen | `false` |  | Si les événements `llm.delta` (jeton par jeton, verbeux) sont gardés dans l'historique. Ils restent toujours sur le flux stdout. |
+| `MaxRuns` | entier | `1000` |  | Au plus ce nombre de runs sont gardés, les plus anciens purgés d'abord ; 0 les garde tous. |
+| `Path` | chaîne | `"/runs"` |  | Un chemin virtuel (il commence par « / »), sous le montage `/runs` ; le fichier Sqlite est `runs.db` dedans. |
+| `RetentionDays` | entier | `30` |  | Les runs plus vieux que ce nombre de jours sont purgés, au démarrage et à la fin d'un run ; 0 les garde pour toujours. |
+| `Store` | énumération | `"Jsonl"` | `Jsonl`, `Sqlite` | Le magasin : `jsonl` (défaut) ou `sqlite`. |
 <!-- /settings -->
 
 ## Scripts et console
@@ -1957,10 +2052,13 @@ Lue par `EsbuildTranspiler.Create` — `orkeon run`, le runner partagé, `orkeon
 <!-- settings:Orkeon:Scripting:Toolchain -->
 **Lue par** : `orkeon`, `orkeon-host`.
 
-| Clé | Type | Défaut | Sens |
-|---|---|---|---|
-| `EsbuildPath` | chaîne | — | Chemin absolu du binaire esbuild. À null, le transpileur se rabat sur la variable d'environnement `ORKEON_ESBUILD_PATH`, puis sur un binaire livré à côté de l'application (`esbuild-bin/esbuild`), puis sur la copie que `npm install` dépose dans une copie de travail du dépôt (`tools/scripting-esbuild/node_modules/`, cherchée en remontant depuis le répertoire de travail et le répertoire de l'application), puis sur une recherche dans le PATH. |
-| `EsbuildTimeout` | durée | `"00:00:30"` | Temps maximal dont dispose esbuild pour transpiler une source. Défaut : 30 s. |
+| Clé | Type | Défaut | Valeurs | Sens |
+|---|---|---|---|---|
+| `EsbuildPath` | chaîne | — |  | Chemin absolu du binaire esbuild. À null, le transpileur se rabat sur la variable d'environnement `ORKEON_ESBUILD_PATH`, puis sur un binaire livré à côté de l'application (`esbuild-bin/esbuild`), puis sur la copie que `npm install` dépose dans une copie de travail du dépôt (`tools/scripting-esbuild/node_modules/`, cherchée en remontant depuis le répertoire de travail et le répertoire de l'application), puis sur une recherche dans le PATH. |
+| `EsbuildTimeout` | durée | `"00:00:30"` |  | Temps maximal dont dispose esbuild pour transpiler une source. Défaut : 30 s. |
+| `TscPath` | chaîne | — |  | Chemin absolu du binaire `tsc`. Renseigné, c'est le seul candidat : un chemin relatif, ou qui n'existe pas, est signalé comme un compilateur absent, jamais résolu depuis le répertoire de travail ni remplacé en silence. À null, le vérificateur de types cherche dans `tools/scripting-typecheck/node_modules/.bin/` au-dessus du répertoire de l'application, puis dans `PATH` ; jamais dans le répertoire de travail. Comme `EsbuildPath`, il peut venir de l'`appsettings.json` posé à côté de la crew : ce fichier a la confiance de la crew elle-même. |
+| `TypeCheck` | énumération | `"Validate"` | `Off`, `Validate`, `Always` | Quand le compilateur TypeScript (`tsc`) vérifie les types d'un script `.ork.ts` contre les typings que ce build livre : `Off` jamais, `Validate` (défaut) dans `orkeon run --validate`, `Always` dans `--validate` et avant chaque exécution. Sous `Validate` un compilateur absent est un avertissement ; sous `Always` c'est un échec. |
+| `TypeCheckTimeout` | durée | `"00:01:00"` |  | Temps maximal dont dispose `tsc` pour vérifier un script. Défaut : 60 s. |
 <!-- /settings -->
 
 ### `Orkeon:Cli:ScriptCommands`
@@ -2002,14 +2100,14 @@ Résolution des crews `<nom>/crew.ork.ts` (`ScriptHostFacade`).
 
 ### `Orkeon:Cli:ConsoleStreaming`
 
-Deltas `ctx.llm.act` streamés sur la console REPL (`AddLlmConsoleStreaming(configuration)`).
+Deltas `ctx.llm.act` streamés sur la console REPL (`AddLlmConsoleStreaming(configuration, enabledByDefault)`).
 
 <!-- settings:Orkeon:Cli:ConsoleStreaming -->
 **Lue par** : `orkeon-repl`.
 
 | Clé | Type | Défaut | Sens |
 |---|---|---|---|
-| `Enabled` | booléen | `false` | Si chaque morceau d'une réponse est écrit sur la console à mesure que le modèle l'envoie, au lieu de la réponse entière à la fin. |
+| `Enabled` | booléen | `false` | Si chaque morceau d'une réponse est écrit sur la console à mesure que le modèle l'envoie, au lieu de la réponse entière à la fin. La REPL l'active quand la clé est absente ; un crew exécuté le garde désactivé. |
 <!-- /settings -->
 
 ### `Orkeon:Cli:Memory`
@@ -2088,13 +2186,26 @@ Le démon (`Orkeon.Host`) :
 | `A2A:Enabled` | booléen | `false` | Sert les crews exposées en A2A. Éteint, l'hôte n'écoute sur aucun port. |
 | `A2A:Host` | chaîne | `"http://localhost"` | Le schéma et le nom d'hôte de l'écoute : `http://localhost` par défaut, `http://+` pour toutes les interfaces. Ni port (c'est `Port`) ni chemin. |
 | `A2A:Port` | entier | `5002` | Le port de l'écoute. |
+| `Api:Enabled` | booléen | `false` | Sert l'API. Désactivée, le host n'écoute aucun port pour elle. |
+| `Api:IdempotencyMaxKeys` | entier | `10000` | Le plus de clés d'idempotence tenues en mémoire ; les plus anciennes terminées partent d'abord. |
+| `Api:IdempotencyTtl` | durée | `"1.00:00:00"` | Combien de temps une clé d'idempotence est retenue. Passé ce délai, la même clé démarre un nouveau run. |
+| `Api:MaxEventStreams` | entier | `64` | Le plus de flux d'événements (`GET /runs/{id}/events`) servis à la fois. Au-delà, un flux est refusé par un 503 `too_many_streams` avec un `Retry-After` : chaque flux tient une connexion et interroge l'historique. |
+| `Api:Prefix` | chaîne | `"http://localhost:5190/"` | Le préfixe du `HttpListener` : schéma, hôte, port et une barre oblique finale. Un hôte que la boucle locale ne contient pas (`http://+:5190/`) exige un schéma d'authentification ou le TLS mutuel sous `Security`. |
+| `Api:ReadinessCacheTtl` | durée | `"00:00:03"` | Combien de temps une réponse de `/readyz` est réutilisée avant que les contrôles ne tournent de nouveau. La disponibilité atteint le magasin d'état et l'historique : une boucle de sondes ou un client hostile ne doit pas faire de chaque requête ce travail. Zéro lance les contrôles à chaque fois. |
+| `Api:ReadinessTags` | liste de chaînes | `[]` | Tags de health checks ajoutés à la disponibilité en plus de `ready`. `llm` ajoute le contrôle du fournisseur LLM, qui joint un service externe : absent par défaut, pour qu'une panne de fournisseur ne sorte pas le daemon de la rotation. |
+| `Api:Security:AllowedAuthSchemes` | liste de chaînes | `[]` | Schémas d'authentification acceptés : `Bearer` et/ou `ApiKey`. Vide, aucune authentification n'est exigée. Chaque schéma déclaré est validé, pas seulement reconnu (voir `A2ACredentialValidator`). |
+| `Api:Security:ApiKeySecretNames` | liste de chaînes | `[]` | Noms des secrets qui détiennent les clés d'API que le schéma `ApiKey` accepte, lus par l'`ISecretProvider` à chaque requête. |
+| `Api:Security:RequireMutualTls` | booléen | `false` | Si un certificat client remontant à une ancre de confiance est exigé (fermé par défaut sans ancre). |
+| `Api:Security:TrustedCertificateAuthorities` | liste de chaînes | `[]` | Chemins des certificats d'autorité auxquels un certificat client doit remonter quand le TLS mutuel est exigé. |
+| `Api:Security:TrustedClientCertificateThumbprints` | liste de chaînes | `[]` | Empreintes de certificats clients épinglés exactement (toujours refusés hors de leur période de validité). |
+| `Api:SseKeepAliveInterval` | durée | `"00:00:15"` | Combien de temps un flux d'événements silencieux attend avant d'écrire une trame de maintien (un commentaire SSE, une ligne vide en NDJSON). L'écriture remarque un client parti : un flux abandonné s'achève au lieu de durer autant que le run. |
 | `Crews:<i>:Description` | chaîne | — | Ce que fait la crew, en une phrase : la description de sa compétence sur la carte d'agent A2A quand `Orkeon:Host:A2A` l'expose. Lue dans la configuration, jamais dans la définition de la crew — la carte se construit sans charger de crew. Facultative. |
 | `Crews:<i>:Mounts` | liste de chaînes | `[]` | Les dossiers que cet hôte accorde à CETTE crew, sous forme de chaînes de montage (`<physical>:<virtual>:<rights>`) : un espace de montages propre à chaque run, si bien que deux crews hébergées peuvent toutes deux adresser `/output` sur deux dossiers différents. Vide (le défaut) garde les montages de l'hôte pour cette crew. Un dossier accordé est une entrée du démon : lisible où qu'il se trouve, sans `--allow-external-mounts`. |
 | `Crews:<i>:Name` | chaîne | `""` | Le nom par lequel les canaux et l'opérateur la désignent. |
 | `Crews:<i>:Path` | chaîne | `""` | Chemin de la définition de la crew — un fichier YAML, un répertoire de crew multi-fichiers ou un script `.ork.ts`. Les mêmes cibles qu'accepte `orkeon run`. |
 | `Crews:<i>:Profile:MaxConcurrentRuns` | entier | `4` | Combien de runs de cette crew peuvent être en cours à la fois. Borné à dessein : un démon qui accepte un nombre illimité de runs simultanés est un démon qui meurt à sa première rafale. |
 | `LlmProfiles` | liste de chaînes | `[]` | Les profils LLM (`Llm:Profiles:<nom>`) que les crews hébergées peuvent nommer. Le service lance des crews qu'il ne contrôle pas : absente, tout profil que définit la configuration est offert ; présente, seuls ceux de la liste — une crew qui en nomme un autre échoue à se charger, et le run avec elle. Le profil par défaut (la section `Llm`) est toujours offert, donc `["default"]` n'offre que lui. Chaque entrée doit nommer un profil défini. |
-| `RunTimeout` | durée | `"00:30:00"` | Combien de temps un run peut durer avant que l'hôte ne l'annule. Un démon n'a pas d'utilisateur qui le regarde pour presser Ctrl-C : un run sans borne est un démon bloqué. |
+| `RunTimeout` | durée | `"00:30:00"` | Combien de temps un run peut durer avant que l'hôte ne l'annule. Un démon n'a pas d'utilisateur qui le regarde pour presser Ctrl-C : un run sans borne est un démon bloqué. L'horloge s'arrête tant que le run attend la réponse d'une personne : c'est le délai d'attente de la question, et non celui-ci, qui borne cette attente. |
 | `ShutdownGracePeriod` | durée | `"00:00:20"` | Combien de temps l'hôte attend les runs en cours à l'arrêt avant d'abandonner. Systemd envoie SIGKILL après son propre délai : celui-ci doit rester en dessous. |
 <!-- /settings -->
 
@@ -2333,6 +2444,7 @@ une valeur : le secret reste hors du fichier. `orkeon settings <clé>` décrit c
 | `Orkeon:TypeSafe:ApiKeyEnvVar` | La clé du modèle de décision TypeSafe ; la clé nomme `TYPESAFE_API_KEY` quand rien ne la règle. | L'environnement du processus, puis les variables de l'utilisateur sous Windows. |
 | `Orkeon:Liquid:ApiKeyEnvVar` | La clé du modèle de décision Liquid ; la clé nomme `LIQUID_API_KEY` quand rien ne la règle. | L'environnement du processus, puis les variables de l'utilisateur sous Windows. |
 | `Orkeon:Kev:ApiKeyEnvVar` | La clé facultative du modèle de décision Kev ; la clé nomme `KEV_API_KEY` quand rien ne la règle. | L'environnement du processus, puis les variables de l'utilisateur sous Windows. |
+| `Orkeon:Embeddings:ApiKeyEnvVar` | La clé d'API du provider d'embeddings `mistral`, `azure-openai` ou `gemini`, lue quand `Orkeon:Embeddings:ApiKey` n'est pas réglée. | L'environnement du processus. |
 | `Orkeon:Rag:WebFallback:ApiKeyEnvVar` | La clé de la recherche web sur laquelle le RAG correctif se replie ; vide, aucune clé n'est envoyée. | L'environnement du processus. |
 | `Orkeon:Host:Discord:TokenEnvironmentVariable` | Le jeton de bot du canal Discord ; la clé nomme `ORKEON_DISCORD_TOKEN` quand rien ne la règle. | L'environnement du processus. |
 

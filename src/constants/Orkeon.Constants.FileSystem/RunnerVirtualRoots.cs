@@ -42,6 +42,32 @@ public static class RunnerVirtualRoots
     public const string LlmLogs = "/llm-logs";
 
     /// <summary>
+    /// Where the durable checkpoint store keeps its files (<c>Orkeon:Checkpointing</c> with the json or
+    /// sqlite store). Registered as an <b>internal</b> mount, like <see cref="LlmLogs"/>.
+    /// </summary>
+    public const string State = "/state";
+
+    /// <summary>
+    /// Where <c>--llm-mock</c> mounts the folder of its responses file, read-only. Registered as an
+    /// <b>internal</b> mount: the mock provider reads the file through the VFS, no agent has any
+    /// business addressing it.
+    /// </summary>
+    public const string LlmMock = "/llm-mock";
+
+    /// <summary>
+    /// Where <c>--llm-record</c> (read-write) and <c>--llm-replay</c> (read-only) mount the folder of their
+    /// cassette. Registered as an <b>internal</b> mount: the cassette decorators of the LLM providers read
+    /// and write it through the VFS, no agent has any business addressing it.
+    /// </summary>
+    public const string LlmCassette = "/llm-cassette";
+
+    /// <summary>
+    /// Where the run history keeps the events of past runs (<c>Orkeon:RunHistory</c>, FWK-08). Registered as an
+    /// <b>internal</b> mount, like <see cref="State"/>: <c>orkeon runs</c> and the history sinks reach it, no agent does.
+    /// </summary>
+    public const string Runs = "/runs";
+
+    /// <summary>
     /// Where the code sandboxes stage the snippets they run. Registered as an <b>internal</b>
     /// mount by <c>AddOrkeonFileSystem</c>, so it is present in every registry a runner builds
     /// — which is why it belongs in the reserved list: a user <c>--mount</c> claiming
@@ -83,5 +109,5 @@ public static class RunnerVirtualRoots
     /// whenever the settings need them — for a caller that has to refuse a user mount claiming
     /// one. A set, not five comparisons: an omission is what the pairwise drift test could not see.
     /// </summary>
-    public static IReadOnlyList<string> All { get; } = [Crew, Script, LlmLogs, Sandbox, Credentials];
+    public static IReadOnlyList<string> All { get; } = [Crew, Script, LlmLogs, LlmMock, LlmCassette, Sandbox, Credentials];
 }

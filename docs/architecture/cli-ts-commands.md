@@ -487,7 +487,7 @@ pieces.
 |---|---|
 | `Orkeon.Cli.Abstractions` | The contracts: `IInteractiveCommand` (`Name`, `Aliases`, `Description`, `ExecuteAsync(CommandContext, ct)` returning `CommandResult.Continue(...)` / `Exit(...)`), `IInteractiveCommandRegistry` (`Commands`, optional `Fallback`), `IConsoleAdapter` with `SystemConsoleAdapter` and the line-editing `LineEditingConsoleAdapter`, and `InteractiveRunnerBase` — the loop itself. |
 | `Orkeon.Cli` | `AddOrkeonCli()`: the three default commands — `help` (`?`, `h`), `exit` (`quit`, `q`), `clear` (`cls`) — and the `DefaultCommandRegistry` holding them, as singletons. |
-| `Orkeon.Cli.Commands.Scripting` | `AddScriptCommands(configuration?, configure?, configureWhitelist?)`: the `*.cmd.ts` loader and its `ScriptCommandRegistry`, the dispatch substrate (`commands`), `script-host`, and `ScriptHost`. `AddLlmConsoleStreaming(configuration)` renders streamed `act()` output in the console when `Orkeon:Cli:ConsoleStreaming:Enabled` is `true`. |
+| `Orkeon.Cli.Commands.Scripting` | `AddScriptCommands(configuration?, configure?, configureWhitelist?)`: the `*.cmd.ts` loader and its `ScriptCommandRegistry`, the dispatch substrate (`commands`), `script-host`, and `ScriptHost`. `AddLlmConsoleStreaming(configuration, enabledByDefault)` renders streamed `act()` output in the console when `Orkeon:Cli:ConsoleStreaming:Enabled` is `true` (an unset key means `enabledByDefault`; the REPL passes `true`). |
 | `Orkeon.Cli.TerminalGui` | `AddOrkeonCliTerminalGui(options)`: the Terminal.Gui v2 split-pane console (below). |
 
 A runner derives from `InteractiveRunnerBase`, whose constructor takes the default registry,

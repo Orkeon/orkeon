@@ -36,12 +36,17 @@ public sealed class SettingsCatalogFileTests
         // Generic: registers a type the caller names, reads no setting.
         "EventHubServiceCollectionExtensions.AddEventHubMiddleware<TMiddleware>(): generic",
         "HumanInputExtensions.AddOrkeonHumanInput<TProvider>(): generic",
+        // A host's default for a section it reads (Orkeon:HumanInput, declared by AddOrkeonHumanInput): no section of its own.
+        "HumanInputExtensions.UseHoldByDefault(Nullable`1): a parameter the producer cannot supply",
         // Refuses to run before AddOrkeonRag, which declares its section (Orkeon:Rag:Retrieval:Hybrid).
         "HybridRetrievalExtensions.AddOrkeonHybridRetrieval(IConfiguration, Func`2): threw InvalidOperationException",
         // Take a hook, a file system or options built in code: no section of their own —
         // but Plugins, which AddOrkeonPlugins binds and the producer describes by its options type.
         "KickoffHookExtensions.AddAfterKickoffHook(AfterKickoffHook): a parameter the producer cannot supply",
         "KickoffHookExtensions.AddBeforeKickoffHook(BeforeKickoffHook): a parameter the producer cannot supply",
+        // A profile registered in code with its fallback chain: reads no setting; the configured form
+        // (AddOrkeonLlmProfiles) declares the Llm section, Fallback and FallbackBudgetSeconds included.
+        "LlmProviderRegistrationExtensions.AddOrkeonLlmProfile(String, Func`2, LlmConfig, IReadOnlyList`1): a parameter the producer cannot supply",
         "OrkeonPluginsServiceCollectionExtensions.AddOrkeonPlugins(IFileSystemService, Action`1): a parameter the producer cannot supply",
         "OrkeonPluginsServiceCollectionExtensions.AddOrkeonPlugins(IFileSystemService, IConfiguration): a parameter the producer cannot supply",
         "RaggableTreeInfrastructureExtensions.AddRaggableTreeWithLogging(RaggableTreeOptions): a parameter the producer cannot supply",

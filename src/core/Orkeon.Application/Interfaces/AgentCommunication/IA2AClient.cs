@@ -135,5 +135,9 @@ public enum A2ATaskStatus
     Failed,
 
     /// <summary>Task was cancelled.</summary>
-    Cancelled
+    Cancelled,
+
+    /// <summary>Task stopped on a question to a human and resumes when it is answered (FWK-23): <c>input-required</c> on the wire.</summary>
+    [JsonStringEnumMemberName("input-required")]
+    InputRequired
 }

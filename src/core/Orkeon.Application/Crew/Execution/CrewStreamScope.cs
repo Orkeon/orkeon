@@ -5,9 +5,9 @@ namespace Orkeon.Application.Crew.Execution;
 
 /// <summary>
 /// The live stream of the crew run in progress (GAP-32): where the run's events go while it runs,
-/// when its caller asked for them (<see cref="ICrewOrchestrationService.KickoffStreamingAsync"/>). The
+/// when its caller asked for them (<see cref="ICrewOrchestrationService.KickoffStreamingAsync(Orkeon.Domain.Common.CrewId, CrewInput, System.Threading.CancellationToken)"/>). The
 /// orchestrator opens a scope around every run — with the stream's writer, or with none for
-/// <see cref="ICrewOrchestrationService.KickoffAsync"/> —, and three points of the run write into it
+/// <see cref="ICrewOrchestrationService.KickoffAsync(Orkeon.Domain.Common.CrewId, CrewInput, System.Threading.CancellationToken)"/> —, and three points of the run write into it
 /// as they already notify: the execution hook's dispatcher (each task's start and end, the run's
 /// failure), the tool-invocation point of the agent loops (each tool call) and the chat-client agent
 /// loop (the model's text as it arrives). The execution hook the host registered is served as before.

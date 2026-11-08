@@ -8,6 +8,9 @@ internal enum OAuthFlow
 
     /// <summary>Authorization code with PKCE and a loopback redirect (Google).</summary>
     LoopbackPkce,
+
+    /// <summary>RFC 6749 section 4.4 client credentials grant: a service signs in as itself, no user involved.</summary>
+    ClientCredentials,
 }
 
 /// <summary>OAuth 2.0 settings of an account, preset endpoints included.</summary>
@@ -30,6 +33,9 @@ internal sealed record OAuthSettings
 
     /// <summary>Device authorization endpoint of the device-code flow.</summary>
     public Uri? DeviceCodeEndpoint { get; init; }
+
+    /// <summary>Audience (resource) the token is issued for, sent when the provider asks for one (Auth0, Okta).</summary>
+    public string? Audience { get; init; }
 
     /// <summary>Scopes requested at sign-in and refresh.</summary>
     public required IReadOnlyList<string> Scopes { get; init; }
@@ -55,4 +61,13 @@ internal sealed record OAuthTokenSet
 
     /// <summary>The scopes the tokens were granted for.</summary>
     public IReadOnlyList<string> Scopes { get; init; } = [];
+
+    // The generated formatting would print both tokens: a log line or an exception that holds this record must not.
+    private bool PrintMembers(System.Text.StringBuilder builder)
+    {
+        builder.Append("AccessToken = ***, RefreshToken = ").Append(RefreshToken is null ? "null" : "***")
+            .Append(", ExpiresAt = ").Append(ExpiresAt.ToString("O", System.Globalization.CultureInfo.InvariantCulture))
+            .Append(", Scopes = ").Append(string.Join(' ', Scopes));
+        return true;
+    }
 }

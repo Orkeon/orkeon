@@ -148,7 +148,7 @@ public class ToolInvocationPipelineTests
         var pipeline = new ToolInvocationPipeline(guardian);
 
         await pipeline.InvokeAsync(
-            Call(new SpyTool(ToolInvocationPipeline.DelegateWorkToolName), new Dictionary<string, object?>
+            Call(new FakeCoworkerDelegationTool(), new Dictionary<string, object?>
             {
                 ["task"] = "write the intro",
                 ["coworkerRole"] = "editor",
@@ -161,6 +161,36 @@ public class ToolInvocationPipelineTests
         Assert.Equal(0, context.DelegationDepth);
     }
 
+    [Theory]
+    [InlineData(ToolInvocationPipeline.DelegateWorkToolName)]
+    [InlineData("ASK_QUESTION_TO_COWORKER")]
+    public async System.Threading.Tasks.Task AToolThatOnlyCarriesADelegationName_IsCheckedByTheToolPhase(string name)
+    {
+        var guardian = new FakeGuardianPipeline();
+        var pipeline = new ToolInvocationPipeline(guardian);
+
+        await pipeline.InvokeAsync(
+            Call(new SpyTool(name), new Dictionary<string, object?> { ["coworkerRole"] = "editor" }),
+            TestContext.Current.CancellationToken);
+
+        var context = Assert.Single(guardian.Contexts);
+        Assert.Equal(GuardPhase.ToolExecution, context.Phase);
+        Assert.Null(context.TargetAgentRole);
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task AWrappedDelegationTool_IsStillCheckedByTheDelegationPhase()
+    {
+        var guardian = new FakeGuardianPipeline();
+        var pipeline = new ToolInvocationPipeline(guardian);
+
+        await pipeline.InvokeAsync(
+            Call(new FakeWrappingTool(new FakeCoworkerDelegationTool()), new Dictionary<string, object?> { ["coworker_role"] = "editor" }),
+            TestContext.Current.CancellationToken);
+
+        Assert.Equal(GuardPhase.Delegation, Assert.Single(guardian.Contexts).Phase);
+    }
+
     [Fact]
     public async System.Threading.Tasks.Task ANestedCall_SeesTheDelegationChainItRunsIn_AndTheChainUnwindsAfter()
     {
@@ -169,9 +199,9 @@ public class ToolInvocationPipelineTests
         var editor = new ToolInvocationCaller("agent-2", "editor");
         // The coworker's turn runs inside the delegation call: its own tool call goes through
         // the same pipeline, the way DelegateWorkTool's synchronous execution does.
-        var delegateTool = new CallbackTool(ToolInvocationPipeline.DelegateWorkToolName, async ct =>
+        var delegateTool = new FakeCoworkerDelegationTool(onCall: async ct =>
         {
-            await pipeline.InvokeAsync(Call(new SpyTool(ToolInvocationPipeline.DelegateWorkToolName),
+            await pipeline.InvokeAsync(Call(new FakeCoworkerDelegationTool(),
                 new Dictionary<string, object?> { ["coworker_role"] = "writer" }, editor), ct);
         });
 
@@ -377,7 +407,7 @@ public class ToolInvocationPipelineTests
     }
 
     /// <summary>A tool whose call runs a callback — a coworker's turn nested in a delegation.</summary>
-    private sealed class CallbackTool : IBaseTool
+    internal sealed class CallbackTool : IBaseTool
     {
         private readonly Func<CancellationToken, System.Threading.Tasks.Task> _onCall;
 

@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- The framework: the tool base class, the contract attributes and the request types. -->
+    <PackageReference Include="Orkeon" Version="$(OrkeonVersion)" />
+  </ItemGroup>
+
+</Project>

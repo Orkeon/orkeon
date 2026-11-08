@@ -88,6 +88,8 @@ public static partial class RunnerExecution
 
         var cliMounts = opts.Mounts.ToList();
         var llmLogPath = opts.ResolvedLlmLogPath;
+        var llmMockPath = opts.ResolvedLlmMockPath;
+        var cassette = RunnerLlmCassette.Resolve(opts.LlmRecord, opts.LlmReplay);
 
         // The crew's own mounts: block, read raw before any host: it is one of the inputs that
         // decide which settings entries the host mounts (VFS-90), and the loader that reads it
@@ -105,11 +107,17 @@ public static partial class RunnerExecution
             : OfferedMountSelectors.All;
         var error = opts.RunnerConsole.ErrorOutput;
 
-        if (!EnsureVirtualRootsAreUnique(cliMounts, layers, target.SettingsPath, error)
+        if (!RunnerLlmCassette.EnsureExclusive(opts.LlmRecord, opts.LlmReplay, opts.LlmMock, error)
+            || !RunnerLlmCassette.EnsureReadable(cassette, error)
+            || !RunnerLlmCassette.EnsureSeparateFrom(cassette, target.ConfigDir, error)
+            || !RunnerLlmCassette.EnsureWriteAllowed(cassette, opts.EffectiveAllowExternalMounts, error)
+            || !RunnerLlmMock.EnsureReadable(llmMockPath, error)
+            || !RunnerLlmMock.EnsureSeparateFrom(llmMockPath, target.ConfigDir, error)
+            || !EnsureVirtualRootsAreUnique(cliMounts, layers, target.SettingsPath, error)
             || !EnsureExternalMountsAllowed(opts, target.IsScript ? null : target.ConfigDir, llmLogPath, error)
             || !EnsureReservedRootsAreFree(
                 cliMounts, layers, error,
-                target.VirtualRoot, RunnerVirtualRoots.LlmLogs, RunnerVirtualRoots.Sandbox)
+                target.VirtualRoot, RunnerVirtualRoots.LlmLogs, RunnerVirtualRoots.LlmMock, RunnerVirtualRoots.LlmCassette, RunnerVirtualRoots.Sandbox, RunnerVirtualRoots.State, RunnerVirtualRoots.Runs)
             || !EnsureMountSelectionIsResolvable(
                 cliMounts, opts.MountIds, crewMounts, new MountLayers(layers, target.SettingsPath), offered, error, out var selection)
             || !EnsureMountSourcesExist(cliMounts, layers, selection, error)
@@ -127,7 +135,8 @@ public static partial class RunnerExecution
 
         cliMounts.Insert(0, $"{FileSystemMount.Quote(target.ConfigDir)}:{target.VirtualRoot}:ro");
 
-        var internalMounts = RunnerLlmLog.CreateMounts(llmLogPath);
+        IReadOnlyList<string> internalMounts = [.. RunnerLlmLog.CreateMounts(llmLogPath), .. RunnerLlmMock.CreateMounts(llmMockPath), .. RunnerLlmCassette.CreateMounts(cassette)];
+        IReadOnlyList<string> inputDirectories = [.. (target.IsScript ? new[] { target.ConfigDir } : []), .. RunnerLlmMock.InputDirectories(llmMockPath), .. RunnerLlmCassette.InputDirectories(cassette)];
         var verbosity = Math.Clamp(opts.Verbose, 0, 2);
         var outputMountPath = DetectOutputMountPath(cliMounts);
 
@@ -140,11 +149,15 @@ public static partial class RunnerExecution
                 {
                     CliMounts = cliMounts,
                     InternalMounts = internalMounts,
-                    InputDirectories = target.IsScript ? [target.ConfigDir] : [],
+                    WorkingDirectory = opts.WorkingDirectory,
+                    InputDirectories = inputDirectories,
                     SelectedMountIds = selection.SelectedMountIds,
                     CrewMountReferences = selection.CrewMountReferences,
                     AllowExternalMounts = opts.EffectiveAllowExternalMounts,
                     LlmLogVirtualPath = llmLogPath != null ? RunnerVirtualRoots.LlmLogs : null,
+                    LlmMockResponses = RunnerLlmMock.VirtualPath(llmMockPath),
+                    LlmRecordCassette = cassette is { Records: true } ? RunnerLlmCassette.VirtualPath(cassette) : null,
+                    LlmReplayCassette = cassette is { Records: false } ? RunnerLlmCassette.VirtualPath(cassette) : null,
                 },
                 configureLogging: configureLogging ?? (verbosity > 0
                     ? (ctx, b) => ConfigureVerboseLogging(b, verbosity, ctx.Configuration)
@@ -167,6 +180,7 @@ public static partial class RunnerExecution
                     // The runner's console, before the caller's services: the operator channel
                     // writes on it (RunnerOperatorLog), a caller may still replace it.
                     services.AddSingleton(opts.RunnerConsole);
+                    RunnerHost.RegisterMcpLoginInteraction(services, opts.RunnerConsole);
                     configureServices?.Invoke(ctx, services);
                     // After the caller's own provider is in, so the deadline decorator wraps it.
                     services.DecorateHumanInputWithDeadline();
@@ -856,6 +870,22 @@ public static partial class RunnerExecution
         {
         // Diagnostic modes short-circuit the kickoff: --list-tools dumps the runtime tool
         // registry (no crew), --validate loads the crew strictly but never probes the LLM.
+        if (opts.Resume is not null && (opts.Validate || opts.ListTools))
+        {
+            await opts.RunnerConsole.ErrorOutput.WriteLineAsync(
+                $"ERROR: --resume cannot be combined with {(opts.Validate ? "--validate" : "--list-tools")}: that mode runs nothing, so there is no run to resume.")
+                .ConfigureAwait(false);
+            return 1;
+        }
+
+        if (opts.Input is not null && opts.Resume is null)
+        {
+            await opts.RunnerConsole.ErrorOutput.WriteLineAsync(
+                "ERROR: --input answers the question of a run that stopped, so it needs --resume <id>: without a run to resume there is no question.")
+                .ConfigureAwait(false);
+            return 1;
+        }
+
         if (opts.ListTools)
             return await RunListToolsAsync(opts, loggerCategory, configureServices).ConfigureAwait(false);
         if (opts.Validate)
@@ -955,54 +985,87 @@ public static partial class RunnerExecution
         var console = opts.RunnerConsole;
         RunnerLogging.LogMounts(bootstrap.CliMounts, logger);
 
+        if (opts.Resume is not null && !CheckpointingEnabled(host))
+        {
+            await console.ErrorOutput.WriteLineAsync(
+                "ERROR: --resume needs Orkeon:Checkpointing:Enabled=true in the settings: without a checkpoint store nothing of an earlier run is kept to resume.")
+                .ConfigureAwait(false);
+            return (1, null);
+        }
+
         LogLoadingCrew(logger, bootstrap.ConfigPath);
 
-        // The MCP tools must be in the registry before the crew resolves its tools (STUDIO-21):
-        // a server that fails costs one error line and the run goes on, so a crew naming one
-        // of its tools fails at load, under StrictTools, with the usual "unknown tool" line.
-        await McpStartup.ConnectConfiguredServersAsync(host, ct).ConfigureAwait(false);
+        // The load, the scope and the kickoff are the entry point's (FWK-09); what stays here is what
+        // only the one-shot command does between the load and the kickoff: parse the --var input and
+        // probe the endpoint. The MCP tools join the registry before the crew resolves its own
+        // (STUDIO-21): a server that fails costs one error line and the run goes on.
+        // TypeCheck=always: the script's types are checked before every run, not only --validate (FWK-12).
+        if (!await TypeCheckScriptAsync(host, bootstrap, console, validating: false, ct).ConfigureAwait(false))
+            return (2, null);
 
-        // One scope for the load and the kickoff, as orkeon-host's CrewRunner opens per run
-        // (GAP-25): the crew factory, the orchestrator and the repositories the crew is loaded
-        // into are scoped, and resolving them from the root kept them for the life of the
-        // process — or failed outright on a host validating scopes.
-        var scope = host.Services.CreateAsyncScope();
-        await using var _ = scope.ConfigureAwait(false);
-        var factory = scope.ServiceProvider.GetRequiredService<ICrewFactory>();
+        var abortCode = 0;
+        using var entry = new CrewRunEntryPoint(bootstrap, ownsHost: false);
+        var run = await entry.RunAsync(
+            async (loaded, token) =>
+            {
+                var parsed = await TryParseCrewInputAsync(opts).ConfigureAwait(false);
+                if (parsed is null)
+                {
+                    abortCode = 1;
+                    return null;
+                }
 
-        Domain.Crew.Crew crew;
-        try
+                if (!await EnsureLlmEndpointReachableAsync(host, logger, console.ErrorOutput, token).ConfigureAwait(false))
+                {
+                    abortCode = 2;
+                    return null;
+                }
+
+                LogKickingOffCrew(logger, loaded.Goal);
+                return parsed;
+            },
+            opts.Resume,
+            ct,
+            resumeInput: opts.Input).ConfigureAwait(false);
+
+        if (run.Outcome == CrewRunOutcome.LoadFailed)
         {
-            crew = await LoadCrewAsync(
-                host, factory, scope.ServiceProvider, bootstrap.VirtualConfigPath, logger, ct, bootstrap.IsCrewDirectory).ConfigureAwait(false);
-        }
-        catch (Exception ex) when (ex is not OperationCanceledException && !IsConnectionRefused(ex))
-        {
-            // A crew that does not load is a configuration mistake — report it the way
+            // A crew that does not load is a configuration mistake - report it the way
             // --validate does (one actionable line, stack behind -v / ORKEON_DEBUG=1)
             // rather than letting the generic fault barrier above dump the raw exception.
-            // A scripted crew can reach the LLM while loading, though: that failure is not
-            // a configuration mistake, so it is left to the unreachable-endpoint handler.
-            await console.ErrorOutput.WriteLineAsync($"ERROR: {ex.Message}").ConfigureAwait(false);
-            await ReportCrewConfigurationErrorAsync(logger, ex, opts.Verbose, console.ErrorOutput).ConfigureAwait(false);
+            var failure = run.LoadError!;
+            await console.ErrorOutput.WriteLineAsync($"ERROR: {failure.Message}").ConfigureAwait(false);
+            await ReportCrewConfigurationErrorAsync(logger, failure, opts.Verbose, console.ErrorOutput).ConfigureAwait(false);
             return (2, null);
         }
 
-        var orchestrator = scope.ServiceProvider.GetRequiredService<ICrewOrchestrationService>();
+        if (run.Outcome == CrewRunOutcome.Aborted)
+            return (abortCode, null);
 
-        var input = await TryParseCrewInputAsync(opts).ConfigureAwait(false);
-        if (input is null)
-            return (1, null);
+        var output = run.Output!;
 
-        if (!await EnsureLlmEndpointReachableAsync(host, logger, console.ErrorOutput, ct).ConfigureAwait(false))
-            return (2, null);
-
-        LogKickingOffCrew(logger, crew.Goal);
-        var output = await orchestrator.KickoffAsync(crew.Id, input, ct).ConfigureAwait(false);
+        // A run that stopped on a question is neither done nor failed: 75, and how to answer it (FWK-23).
+        if (output.PendingInput is { } waiting)
+        {
+            await console.ErrorOutput.WriteLineAsync(
+                $"Run {output.ExecutionId} is waiting for input ({waiting.RequestId}): {Orkeon.Infrastructure.Runs.RedactingRunEventSink.RedactText(waiting.Prompt)}").ConfigureAwait(false);
+            await console.ErrorOutput.WriteLineAsync(
+                $"Answer it, its finished tasks kept, with: orkeon run {opts.ConfigPath} --resume {output.ExecutionId} --input \"<answer>\"")
+                .ConfigureAwait(false);
+            return (Orkeon.Constants.Cli.RunExitCodes.WaitingForInput, null);
+        }
 
         PrintCrewOutput(output, opts.MachineReadableStdout ? console.ErrorOutput : console.Output);
         if (!output.Succeeded)
         {
+            // A run that left a checkpoint session can be taken up again: say by what id.
+            if (output.ExecutionId is { Length: > 0 } runId && CheckpointingEnabled(host))
+            {
+                await console.ErrorOutput.WriteLineAsync(
+                    $"Run {runId} did not complete. Resume it, its finished tasks kept, with: orkeon run {opts.ConfigPath} --resume {runId}")
+                    .ConfigureAwait(false);
+            }
+
             // The crew ran and failed: exit 2, the reason handed back so the caller writes it
             // as the last stderr line once the host — and its console logger queue — is
             // disposed. KickoffAsync never throws, so this exit code was 0 for every crew
@@ -1012,6 +1075,10 @@ public static partial class RunnerExecution
 
         return (0, null);
     }
+
+    /// <summary>Whether the host keeps checkpoints (<c>Orkeon:Checkpointing:Enabled</c>): what a run needs to be resumed.</summary>
+    private static bool CheckpointingEnabled(IHost host) =>
+        host.Services.GetService<Microsoft.Extensions.Options.IOptions<Orkeon.Infrastructure.Checkpointing.CheckpointingOptions>>()?.Value.Enabled == true;
 
     /// <summary>
     /// Builds the <see cref="CrewInput"/> for a one-shot kickoff from the parsed CLI variables
@@ -1081,7 +1148,7 @@ public static partial class RunnerExecution
     /// "connection refused" socket failure — the signature of an LLM endpoint that is configured
     /// but not listening (e.g. Docker Model Runner is not running).
     /// </summary>
-    private static bool IsConnectionRefused(Exception ex)
+    internal static bool IsConnectionRefused(Exception ex)
     {
         for (Exception? e = ex; e is not null; e = e.InnerException)
         {
@@ -1151,7 +1218,13 @@ public static partial class RunnerExecution
     /// </summary>
     private static string? ResolveConfiguredLlmEndpoint(IHost host)
     {
-        var url = host.Services.GetService<IConfiguration>()?["Llm:BaseUrl"];
+        var configuration = host.Services.GetService<IConfiguration>();
+        // The mock provider (--llm-mock) has no endpoint: whatever address the settings still carry
+        // is never dialled, so it is neither probed nor named in a diagnostic.
+        if (string.Equals(configuration?["Llm:Provider"], Orkeon.Constants.Llm.LlmProviderKeys.Mock, StringComparison.OrdinalIgnoreCase))
+            return null;
+
+        var url = configuration?["Llm:BaseUrl"];
         return string.IsNullOrWhiteSpace(url) ? null : url;
     }
 
@@ -1559,7 +1632,8 @@ public static partial class RunnerExecution
             hostPorts: new ScriptingHostPorts
             {
                 PermissionGate = sp.GetService<Orkeon.Application.Interfaces.Security.IPermissionGate>(),
-                DeltaSink = sp.GetService<Orkeon.Application.Interfaces.Ports.ILlmDeltaSink>(),
+                DeltaSink = Orkeon.Application.Crew.ToolCallDlpDeltaSink.Wrap(sp.GetService<Orkeon.Application.Interfaces.Ports.ILlmDeltaSink>(), sp),
+                ToolCallDlp = Orkeon.Application.Crew.ToolCallDeltaDlp.From(sp),
                 ToolInvocation = sp.GetService<Orkeon.Application.Interfaces.Security.IToolInvocationPipeline>(),
                 // GAP-17: llm.profile(name) picks among the host's Llm:Profiles.
                 LlmProfiles = sp.GetService<Orkeon.Application.Interfaces.Ports.ILlmProfileRegistry>(),

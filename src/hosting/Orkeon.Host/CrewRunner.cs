@@ -30,6 +30,9 @@ internal enum HostedRunOutcome
 
     /// <summary>It failed.</summary>
     Failed,
+
+    /// <summary>The run stopped on a question to a human and waits for the answer (FWK-23).</summary>
+    WaitingForInput,
 }
 
 /// <summary>What a hosted run produced.</summary>
@@ -58,8 +61,14 @@ internal interface ICrewRunner
         string origin,
         Action<string>? onProgress = null,
         Func<string, Task>? onStarted = null,
-        IReadOnlyDictionary<string, string>? variables = null);
+        IReadOnlyDictionary<string, string>? variables = null,
+        RunIdempotency? idempotency = null);
 }
+
+/// <summary>The idempotency key of a run asked over the host API, and the hash of the request it came with (FWK-14).</summary>
+/// <param name="Key">The client's key.</param>
+/// <param name="Hash">The hash of the request, to tell a replay from a different request under the same key.</param>
+internal sealed record RunIdempotency(string Key, string Hash);
 
 /// <summary>
 /// Runs one hosted crew, in its own dependency-injection scope (GATE-02).
@@ -96,6 +105,9 @@ internal sealed partial class CrewRunner : ICrewRunner
     /// </summary>
     private readonly HostCrewMountPlan? _mountPlan;
 
+    private readonly TimeProvider _time;
+    private readonly Orkeon.Application.Interfaces.Checkpointing.IPendingInputBroker? _broker;
+
     /// <summary>Builds the runner over the host's services and its registry.</summary>
     public CrewRunner(
         IServiceScopeFactory scopes,
@@ -103,8 +115,12 @@ internal sealed partial class CrewRunner : ICrewRunner
         IHost host,
         IOptions<OrkeonHostOptions> options,
         ILogger<CrewRunner> logger,
-        HostCrewMountPlan? mountPlan = null)
+        HostCrewMountPlan? mountPlan = null,
+        TimeProvider? time = null,
+        Orkeon.Application.Interfaces.Checkpointing.IPendingInputBroker? broker = null)
     {
+        _time = time ?? TimeProvider.System;
+        _broker = broker;
         _scopes = scopes ?? throw new ArgumentNullException(nameof(scopes));
         _registry = registry ?? throw new ArgumentNullException(nameof(registry));
         _host = host ?? throw new ArgumentNullException(nameof(host));
@@ -133,13 +149,18 @@ internal sealed partial class CrewRunner : ICrewRunner
     /// The run's input variables, besides the prompt — what an A2A task's <c>metadata</c> carries
     /// (GAP-23); a chat message has none.
     /// </param>
+    /// <param name="idempotency">
+    /// The idempotency key and request hash of a run asked over the host API (FWK-14), written into
+    /// <c>run.started</c> so a restarted host still finds the key.
+    /// </param>
     public async Task<HostedRunResult> RunAsync(
         string crewName,
         string prompt,
         string origin,
         Action<string>? onProgress = null,
         Func<string, Task>? onStarted = null,
-        IReadOnlyDictionary<string, string>? variables = null)
+        IReadOnlyDictionary<string, string>? variables = null,
+        RunIdempotency? idempotency = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(crewName);
 
@@ -173,7 +194,9 @@ internal sealed partial class CrewRunner : ICrewRunner
             // The deadline is armed BEFORE the acknowledgement: the ack is a network round
             // trip, and a rate-limited channel could otherwise hold an admitted slot with no
             // timeout at all.
-            run.Cancellation.CancelAfter(_options.RunTimeout);
+            // The clock stops while the run holds on a question to a person (FWK final review H1): the hold timeout,
+            // not this one, ends that wait.
+            using var deadline = new RunDeadline(_time, _options.RunTimeout, _broker, run.Id, run.Cancellation.Cancel);
 
             // Inside the try: a throwing callback must release the slot like any other
             // failure, or the crew stays one seat closer to permanently "busy".
@@ -194,6 +217,11 @@ internal sealed partial class CrewRunner : ICrewRunner
             // hosted run's memory cannot outlive it by construction (every message loads a
             // fresh crew with a fresh id).
             using var scope = _scopes.CreateScope();
+
+            // The run history (FWK-08): the run's identity and run.started before anything resolves the run's
+            // hooks; run.finished when this block ends. Nothing happens when the history is off.
+            var recording = scope.ServiceProvider.GetService<HostRunRecording>();
+            using var history = recording?.Begin(hosted.Name, run.Id, () => run.Cancellation.IsCancellationRequested, idempotency);
             var factory = scope.ServiceProvider.GetRequiredService<ICrewFactory>();
             var orchestrator = scope.ServiceProvider.GetRequiredService<ICrewOrchestrationService>();
 
@@ -222,9 +250,19 @@ internal sealed partial class CrewRunner : ICrewRunner
             var input = variables is { Count: > 0 }
                 ? Application.Interfaces.Services.CrewInput.WithStringVariables(prompt, variables)
                 : Application.Interfaces.Services.CrewInput.Empty(prompt);
+            // The kickoff adopts the identity the recording opened (the run's ExecutionId), and carries the crew key.
             var output = await orchestrator
-                .KickoffAsync(crew.Id, input, run.Cancellation.Token)
+                .KickoffAsync(
+                    crew.Id,
+                    input,
+                    RunnerRunIdentity.For(scope.ServiceProvider, crew.Name, mapped ?? hosted.Path, hosted.Path, resume: null),
+                    run.Cancellation.Token)
                 .ConfigureAwait(false);
+            if (recording is not null)
+            {
+                recording.Succeeded = output.Succeeded;
+                recording.WaitingForInput = output.PendingInput is not null;
+            }
 
             // KickoffAsync never throws — its fault barrier converts everything into an
             // output. Reading that output as Completed reported every timeout, /stop and
@@ -239,6 +277,14 @@ internal sealed partial class CrewRunner : ICrewRunner
                     HostedRunOutcome.Completed,
                     run.Id,
                     output.FinalOutput ?? string.Empty);
+            }
+
+            if (output.PendingInput is { } waiting)
+            {
+                return new HostedRunResult(
+                    HostedRunOutcome.WaitingForInput,
+                    run.Id,
+                    $"The run is waiting for input ({waiting.RequestId}): {Orkeon.Infrastructure.Runs.RedactingRunEventSink.RedactText(waiting.Prompt)}");
             }
 
             if (run.Cancellation.IsCancellationRequested)

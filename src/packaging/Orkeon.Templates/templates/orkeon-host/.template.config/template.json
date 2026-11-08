@@ -1,0 +1,12 @@
+{
+  "$schema": "http://json.schemastore.org/template",
+  "author": "Orkeon Contributors",
+  "classifications": [ "Orkeon", "Host", "Console" ],
+  "identity": "Orkeon.Templates.Host",
+  "name": "Orkeon host",
+  "shortName": "orkeon-host",
+  "description": "A .NET generic host that runs an Orkeon crew (crew.ork.ts) in its own process, shaped like the orkeon-host daemon.",
+  "tags": { "language": "C#", "type": "project" },
+  "sourceName": "MyOrkeonHost",
+  "preferNameDirectory": true
+}

@@ -1,6 +1,7 @@
 using Microsoft.Extensions.AI;
 using Orkeon.Domain.FileSystem;
 using Orkeon.Domain.SharedKernel.ValueObjects.Content;
+using Orkeon.Infrastructure.LLMs.Capabilities;
 
 namespace Orkeon.Infrastructure.LLMs.Converters;
 
@@ -116,12 +117,14 @@ public static class ContentConverter
     /// either the original http(s)/data URL or a base64 <c>data:</c> URL built from raw bytes.
     /// </summary>
     /// <param name="content">The multi-modal content to convert.</param>
+    /// <param name="model">The model id the request is sent to: audio parts are judged against it.</param>
+    /// <param name="capabilities">The per-model table; null reads the built-in one.</param>
     /// <returns>The ordered list of OpenAI content part objects, ready for JSON serialization.</returns>
     /// <exception cref="NotSupportedException">
-    /// Thrown for audio/file parts, unsupported image media types, or unsupported URI schemes.
+    /// Thrown for file parts, audio the model cannot take, unsupported image media types, or unsupported URI schemes.
     /// </exception>
     /// <exception cref="ArgumentException">Thrown when an image part carries neither data nor URI.</exception>
-    public static IReadOnlyList<object> ToOpenAIContentParts(MultiModalContent content)
+    public static IReadOnlyList<object> ToOpenAIContentParts(MultiModalContent content, string model, IModelCapabilityRegistry? capabilities = null)
     {
         ArgumentNullException.ThrowIfNull(content);
 
@@ -132,6 +135,7 @@ public static class ContentConverter
             {
                 TextContentPart text => new { type = "text", text = text.Text },
                 ImageContentPart image => ToOpenAIImagePart(image),
+                AudioContentPart audio => ToOpenAIAudioPart(audio, model, capabilities),
                 _ => throw UnsupportedPart(part, "OpenAI Chat Completions API")
             });
         }
@@ -282,9 +286,12 @@ public static class ContentConverter
     /// <see cref="DataContent"/> (raw bytes) or <see cref="UriContent"/> (URI reference).
     /// </summary>
     /// <param name="content">The multi-modal content to convert.</param>
+    /// <param name="model">The model id the request is sent to: audio parts are judged against it.</param>
+    /// <param name="capabilities">The per-model table; null reads the built-in one.</param>
     /// <returns>The ordered list of AIContent items.</returns>
+    /// <exception cref="NotSupportedException">Thrown for an audio part the model cannot take.</exception>
     /// <exception cref="ArgumentException">Thrown when a binary part carries neither data nor URI.</exception>
-    public static IList<AIContent> ToAIContents(MultiModalContent content)
+    public static IList<AIContent> ToAIContents(MultiModalContent content, string model, IModelCapabilityRegistry? capabilities = null)
     {
         ArgumentNullException.ThrowIfNull(content);
 
@@ -295,7 +302,7 @@ public static class ContentConverter
             {
                 TextContentPart text => new TextContent(text.Text),
                 ImageContentPart img => ToBinaryAIContent(img.Data, img.Uri, img.MimeType ?? DefaultImageMediaType),
-                AudioContentPart audio => ToBinaryAIContent(audio.Data, audio.Uri, audio.MimeType ?? DefaultAudioMediaType),
+                AudioContentPart audio => ToAudioAIContent(audio, model, capabilities),
                 FileContentPart file => ToFileAIContent(file),
                 _ => new TextContent(part.ToString() ?? string.Empty)
             });
@@ -331,9 +338,13 @@ public static class ContentConverter
     /// <summary>
     /// Creates a ChatMessage from a role string and MultiModalContent.
     /// </summary>
-    public static ChatMessage ToChatMessage(string role, MultiModalContent content)
+    /// <param name="role">The message role.</param>
+    /// <param name="content">The multi-modal content.</param>
+    /// <param name="model">The model id the request is sent to: audio parts are judged against it.</param>
+    /// <param name="capabilities">The per-model table; null reads the built-in one.</param>
+    public static ChatMessage ToChatMessage(string role, MultiModalContent content, string model, IModelCapabilityRegistry? capabilities = null)
     {
-        return new ChatMessage(MapRole(role), ToAIContents(content));
+        return new ChatMessage(MapRole(role), ToAIContents(content, model, capabilities));
     }
 
     /// <summary>
@@ -352,6 +363,47 @@ public static class ContentConverter
         _ => ChatRole.User
     };
 
+    /// <summary>
+    /// Builds the <c>input_audio</c> part of the Chat Completions API: base64 bytes and a <c>wav</c> or <c>mp3</c>
+    /// format, the two the API takes. A model the table does not credit with audio input refuses it by name.
+    /// </summary>
+    private static object ToOpenAIAudioPart(AudioContentPart audio, string model, IModelCapabilityRegistry? capabilities)
+    {
+        RequireAudioInput(model, capabilities);
+        var mediaType = audio.MimeType ?? DefaultAudioMediaType;
+        if (audio.Data is not { Count: > 0 })
+        {
+            throw new NotSupportedException(
+                $"An audio part reaches '{model}' as raw bytes only: the Chat Completions API takes no audio address. Load the file and send its bytes.");
+        }
+
+        var format = mediaType.ToUpperInvariant() switch
+        {
+            "AUDIO/WAV" or "AUDIO/X-WAV" or "AUDIO/WAVE" => "wav",
+            "AUDIO/MPEG" or "AUDIO/MP3" => "mp3",
+            _ => throw new NotSupportedException(
+                $"Audio media type '{mediaType}' is not supported by the Chat Completions API for '{model}'. Supported media types: audio/wav, audio/mpeg."),
+        };
+        return new { type = "input_audio", input_audio = new { data = Convert.ToBase64String(AsByteArray(audio.Data)), format } };
+    }
+
+    /// <summary>
+    /// Refuses audio for a model the table does not credit with audio input, naming the model — and, when the
+    /// table does not know it at all, the override that declares it. Returns the model for chaining.
+    /// </summary>
+    private static string RequireAudioInput(string model, IModelCapabilityRegistry? capabilities)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(model);
+        var entry = (capabilities ?? ModelCapabilityRegistry.Default).TryGet(model);
+        if (entry is { AudioInput: true })
+            return model;
+
+        var reason = entry is null
+            ? $"the model capability table does not know '{model}'; declare it with Llm:ModelCapabilities:<id>:AudioInput if it takes audio"
+            : $"'{model}' takes no audio input; pick an audio model, or declare it with Llm:ModelCapabilities:<id>:AudioInput";
+        throw new NotSupportedException($"Content part of type 'audio' is not supported for the model '{model}': {reason}.");
+    }
+
     private static byte[] AsByteArray(IReadOnlyList<byte> data) =>
         data as byte[] ?? [.. data];
 
@@ -363,6 +415,12 @@ public static class ContentConverter
             return new UriContent(uri, mediaType);
         throw new ArgumentException(
             $"Content part with media type '{mediaType}' must carry either raw data or a URI.");
+    }
+
+    private static AIContent ToAudioAIContent(AudioContentPart audio, string model, IModelCapabilityRegistry? capabilities)
+    {
+        RequireAudioInput(model, capabilities);
+        return ToBinaryAIContent(audio.Data, audio.Uri, audio.MimeType ?? DefaultAudioMediaType);
     }
 
     private static AIContent ToFileAIContent(FileContentPart file)

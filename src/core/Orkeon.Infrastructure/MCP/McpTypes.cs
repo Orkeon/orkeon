@@ -1,3 +1,4 @@
+using System.Collections.ObjectModel;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Diagnostics.CodeAnalysis;
@@ -39,7 +40,8 @@ public class McpServerConfig
     public Dictionary<string, string> Env { get; } = [];
 
     /// <summary>
-    /// URL endpoint for SSE transport.
+    /// URL endpoint for SSE transport. With credentials (an <see cref="Auth"/> type, or an <c>env:</c> header) it must be
+    /// an absolute https address, http only on loopback, or the server is refused at configuration.
     /// </summary>
     public Uri? Url { get; set; }
 
@@ -54,6 +56,172 @@ public class McpServerConfig
     /// label a destructive tool read-only, so its tools stay classified fail-closed.
     /// </summary>
     public bool TrustAnnotations { get; set; }
+
+    /// <summary>
+    /// Extra HTTP headers (SSE transport) sent on every request: a literal value, or <c>env:VAR</c> to read
+    /// it from an environment variable when the server is connected. An <c>Authorization</c> header is
+    /// refused here; credentials go through <see cref="Auth"/>. The headers the transport sets itself (<c>Accept</c>,
+    /// <c>Content-Type</c>, <c>Mcp-Session-Id</c>, <c>MCP-Protocol-Version</c>, <c>Mcp-Method</c>, <c>Mcp-Name</c>,
+    /// <c>Last-Event-ID</c>) are refused too.
+    /// </summary>
+    public Dictionary<string, string> Headers { get; } = [];
+
+    /// <summary>Credentials sent with every request, read from the environment (SSE transport).</summary>
+    public McpAuthConfig Auth { get; } = new();
+
+    /// <summary>Which of the server's tools are registered.</summary>
+    public McpToolFilterConfig Tools { get; } = new();
+
+    /// <summary>
+    /// How long one request to this server may take: a tool call ends as a tool error, and <c>prompts/list</c>,
+    /// <c>prompts/get</c>, <c>resources/list</c>, <c>resources/read</c> and a subscription raise a timeout. 60 seconds by
+    /// default; a value that is not positive is refused. A device sign-in owed first is outside the bound.
+    /// </summary>
+    public TimeSpan CallTimeout { get; set; } = TimeSpan.FromSeconds(60);
+
+    /// <summary>
+    /// How long the handshake and the tool listing of this server may take before the connection fails.
+    /// 30 seconds by default; a value that is not positive is refused.
+    /// </summary>
+    public TimeSpan ConnectTimeout { get; set; } = TimeSpan.FromSeconds(30);
+}
+
+/// <summary>How a server authenticates the client.</summary>
+[Experimental("ORKEXP004", UrlFormat = "https://github.com/Orkeon/orkeon/blob/main/docs/reference/experimental-apis.md")]
+[System.ComponentModel.TypeConverter(typeof(McpAuthTypeConverter))]
+public enum McpAuthType
+{
+    /// <summary>No credential.</summary>
+    None,
+
+    /// <summary><c>Authorization: Bearer</c>, the token read from <see cref="McpAuthConfig.TokenEnv"/>.</summary>
+    Bearer,
+
+    /// <summary><c>Authorization: Basic</c>, from <see cref="McpAuthConfig.UserEnv"/> and <see cref="McpAuthConfig.PasswordEnv"/>.</summary>
+    Basic,
+
+    /// <summary>
+    /// OAuth 2.0 client credentials grant (<c>oauth2-client-credentials</c>): the client signs in as itself at
+    /// <see cref="McpAuthConfig.TokenUrl"/>, its secret read from <see cref="McpAuthConfig.ClientSecretEnv"/>.
+    /// </summary>
+    OAuth2ClientCredentials,
+
+    /// <summary>
+    /// OAuth 2.0 device authorization grant (<c>oauth2-device</c>): a person signs in on another device; needs a host
+    /// that can show the code (<c>orkeon run</c>, the REPL), not <c>orkeon-host</c>.
+    /// </summary>
+    OAuth2Device
+}
+
+/// <summary>
+/// Reads the <c>Auth.Type</c> of the settings from a closed list of spellings: each member's name, and its lower-case
+/// kebab form (<c>oauth2-device</c>). Anything else, a number included, is refused with the list.
+/// </summary>
+internal sealed class McpAuthTypeConverter : System.ComponentModel.EnumConverter
+{
+    private static readonly Dictionary<string, McpAuthType> Spellings = new(StringComparer.Ordinal)
+    {
+        ["None"] = McpAuthType.None,
+        ["none"] = McpAuthType.None,
+        ["Bearer"] = McpAuthType.Bearer,
+        ["bearer"] = McpAuthType.Bearer,
+        ["Basic"] = McpAuthType.Basic,
+        ["basic"] = McpAuthType.Basic,
+        ["OAuth2ClientCredentials"] = McpAuthType.OAuth2ClientCredentials,
+        ["oauth2-client-credentials"] = McpAuthType.OAuth2ClientCredentials,
+        ["OAuth2Device"] = McpAuthType.OAuth2Device,
+        ["oauth2-device"] = McpAuthType.OAuth2Device,
+    };
+
+    public McpAuthTypeConverter() : base(typeof(McpAuthType))
+    {
+    }
+
+    public override object? ConvertFrom(System.ComponentModel.ITypeDescriptorContext? context, System.Globalization.CultureInfo? culture, object value)
+    {
+        if (value is not string text)
+            return base.ConvertFrom(context, culture, value);
+        if (Spellings.TryGetValue(text, out var type))
+            return type;
+
+        throw new FormatException(
+            $"'{text}' is not an MCP Auth:Type. Accepted: {string.Join(", ", Spellings.Keys.OrderBy(k => k, StringComparer.Ordinal))}.");
+    }
+}
+
+/// <summary>The <c>Auth</c> block of a server: the names of the environment variables that hold the credentials.</summary>
+[Experimental("ORKEXP004", UrlFormat = "https://github.com/Orkeon/orkeon/blob/main/docs/reference/experimental-apis.md")]
+public class McpAuthConfig
+{
+    /// <summary>
+    /// The authentication scheme, each with the keys it needs: <c>None</c>; <c>Bearer</c> (<c>TokenEnv</c>); <c>Basic</c>
+    /// (<c>UserEnv</c>, <c>PasswordEnv</c>); <c>oauth2-client-credentials</c> (<c>TokenUrl</c>, <c>ClientId</c>,
+    /// <c>ClientSecretEnv</c>; optional <c>Scopes</c>, <c>Audience</c>); <c>oauth2-device</c> (<c>TokenUrl</c>,
+    /// <c>DeviceAuthorizationUrl</c>, <c>ClientId</c>; optional <c>ClientSecretEnv</c>, <c>Scopes</c>, <c>Audience</c>;
+    /// refused by <c>orkeon-host</c>, which has no terminal). Accepted spellings, exactly: <c>None</c>, <c>none</c>, <c>Bearer</c>, <c>bearer</c>, <c>Basic</c>, <c>basic</c>, <c>OAuth2ClientCredentials</c>, <c>oauth2-client-credentials</c>, <c>OAuth2Device</c>, <c>oauth2-device</c>.
+    /// </summary>
+    public McpAuthType Type { get; set; } = McpAuthType.None;
+
+    /// <summary>The environment variable holding the bearer token.</summary>
+    public string? TokenEnv { get; set; }
+
+    /// <summary>The environment variable holding the basic-auth user name.</summary>
+    public string? UserEnv { get; set; }
+
+    /// <summary>The environment variable holding the basic-auth password.</summary>
+    public string? PasswordEnv { get; set; }
+
+    /// <summary>The OAuth token endpoint (<c>oauth2-client-credentials</c>, <c>oauth2-device</c>): HTTPS, or HTTP on loopback.</summary>
+    public Uri? TokenUrl { get; set; }
+
+    /// <summary>The OAuth device authorization endpoint (<c>oauth2-device</c>).</summary>
+    public Uri? DeviceAuthorizationUrl { get; set; }
+
+    /// <summary>The OAuth client id.</summary>
+    public string? ClientId { get; set; }
+
+    /// <summary>The environment variable holding the OAuth client secret (required for client credentials, optional for the device flow).</summary>
+    public string? ClientSecretEnv { get; set; }
+
+    /// <summary>The OAuth scopes requested; none by default.</summary>
+    public Collection<string> Scopes { get; } = [];
+
+    /// <summary>The OAuth audience the token is issued for, when the provider asks for one.</summary>
+    public string? Audience { get; set; }
+}
+
+/// <summary>
+/// The <c>Tools</c> block of a server. An empty <see cref="Allow"/> keeps every tool; <see cref="Deny"/>
+/// then removes names, so a name in both is denied.
+/// </summary>
+[Experimental("ORKEXP004", UrlFormat = "https://github.com/Orkeon/orkeon/blob/main/docs/reference/experimental-apis.md")]
+public class McpToolFilterConfig
+{
+    /// <summary>Tool names to register; empty means all.</summary>
+    public Collection<string> Allow { get; } = [];
+
+    /// <summary>Tool names never registered, applied after <see cref="Allow"/>.</summary>
+    public Collection<string> Deny { get; } = [];
+}
+
+/// <summary>A tool call that outlived <see cref="McpServerConfig.CallTimeout"/>.</summary>
+[Experimental("ORKEXP004", UrlFormat = "https://github.com/Orkeon/orkeon/blob/main/docs/reference/experimental-apis.md")]
+[SuppressMessage("Design", "CA1032", Justification = "Raised only by this library with a settings key; the standard constructors would build an exception without one.")]
+public sealed class McpCallTimeoutException : TimeoutException
+{
+    /// <summary>Creates the exception for <paramref name="toolName"/>.</summary>
+    public McpCallTimeoutException(string toolName, TimeSpan timeout)
+        : base($"The MCP tool '{toolName}' gave no answer within {timeout.TotalSeconds:0.###} s (MCP CallTimeout).")
+    {
+        ToolName = toolName;
+        Timeout = timeout;
+    }
+
+    /// <summary>The tool that did not answer.</summary>
+    public string ToolName { get; }
+
+    /// <summary>The delay it was given.</summary>
+    public TimeSpan Timeout { get; }
 }
 
 /// <summary>
@@ -197,10 +365,12 @@ public class McpServerCapabilities
 
     /// <summary>Gets or sets the resources capability info, if supported.</summary>
     [JsonPropertyName("resources")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public McpCapabilityInfo? Resources { get; set; }
 
     /// <summary>Gets or sets the prompts capability info, if supported.</summary>
     [JsonPropertyName("prompts")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public McpCapabilityInfo? Prompts { get; set; }
 }
 
@@ -213,6 +383,41 @@ public class McpCapabilityInfo
     /// <summary>Gets or sets whether the server supports list-changed notifications for this capability.</summary>
     [JsonPropertyName("listChanged")]
     public bool? ListChanged { get; set; }
+
+    /// <summary>Gets or sets whether the server lets a client subscribe to updates of one resource (<c>resources.subscribe</c>).</summary>
+    [JsonPropertyName("subscribe")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public bool? Subscribe { get; set; }
+}
+
+/// <summary>The content of one resource, as <c>resources/read</c> returns it: text or a base64 blob.</summary>
+[Experimental("ORKEXP004", UrlFormat = "https://github.com/Orkeon/orkeon/blob/main/docs/reference/experimental-apis.md")]
+public class McpResourceContents
+{
+    /// <summary>Gets or sets the URI of the resource.</summary>
+    [JsonPropertyName("uri")]
+    public Uri? Uri { get; set; }
+
+    /// <summary>Gets or sets the MIME type of the content.</summary>
+    [JsonPropertyName("mimeType")]
+    public string? MimeType { get; set; }
+
+    /// <summary>Gets or sets the text of a text resource.</summary>
+    [JsonPropertyName("text")]
+    public string? Text { get; set; }
+
+    /// <summary>Gets or sets the base64 data of a binary resource.</summary>
+    [JsonPropertyName("blob")]
+    public string? Blob { get; set; }
+}
+
+/// <summary>The result of <c>resources/read</c>: the contents of the resource (the spec's <c>contents</c> array).</summary>
+[Experimental("ORKEXP004", UrlFormat = "https://github.com/Orkeon/orkeon/blob/main/docs/reference/experimental-apis.md")]
+public class McpResourceReadResult
+{
+    /// <summary>Gets the contents of the resource.</summary>
+    [JsonPropertyName("contents")]
+    public IReadOnlyList<McpResourceContents> Contents { get; init; } = [];
 }
 
 /// <summary>
@@ -235,6 +440,12 @@ public class McpServerStatus
     /// tool already holds the name (a built-in tool, a script tool, or another server's tool).
     /// </summary>
     public IReadOnlyList<string> RejectedToolNames { get; init; } = [];
+
+    /// <summary>
+    /// Gets the <c>Tools:Allow</c> / <c>Tools:Deny</c> entries that matched no tool of the server, as
+    /// <c>Allow:name</c> or <c>Deny:name</c>: likely a typo.
+    /// </summary>
+    public IReadOnlyList<string> UnmatchedToolFilters { get; init; } = [];
 }
 
 /// <summary>
@@ -261,6 +472,10 @@ public class McpToolListResult
     /// <summary>Gets the list of available tools.</summary>
     [JsonPropertyName("tools")]
     public IReadOnlyList<McpToolDefinition> Tools { get; init; } = [];
+
+    /// <summary>Gets the opaque cursor of the next page, absent on the last one.</summary>
+    [JsonPropertyName("nextCursor")]
+    public string? NextCursor { get; init; }
 
     /// <summary>Gets or sets the result type ("complete"; absent on legacy servers, to be treated as complete).</summary>
     [JsonPropertyName("resultType")]
@@ -292,6 +507,10 @@ public class McpResourceListResult
     /// <summary>Gets the list of available resources.</summary>
     [JsonPropertyName("resources")]
     public IReadOnlyList<McpResource> Resources { get; init; } = [];
+
+    /// <summary>Gets the opaque cursor of the next page, absent on the last one.</summary>
+    [JsonPropertyName("nextCursor")]
+    public string? NextCursor { get; init; }
 }
 
 /// <summary>
@@ -382,4 +601,77 @@ public class McpDiscoverResult
     [JsonPropertyName("_meta")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public JsonElement? Meta { get; set; }
+}
+
+/// <summary>An argument a prompt template takes.</summary>
+[Experimental("ORKEXP004", UrlFormat = "https://github.com/Orkeon/orkeon/blob/main/docs/reference/experimental-apis.md")]
+public class McpPromptArgument
+{
+    /// <summary>Gets or sets the argument name.</summary>
+    [JsonPropertyName("name")]
+    public string Name { get; set; } = "";
+
+    /// <summary>Gets or sets what the argument is for.</summary>
+    [JsonPropertyName("description")]
+    public string? Description { get; set; }
+
+    /// <summary>Gets or sets whether the server needs the argument.</summary>
+    [JsonPropertyName("required")]
+    public bool Required { get; set; }
+}
+
+/// <summary>A prompt template a server offers (<c>prompts/list</c>).</summary>
+[Experimental("ORKEXP004", UrlFormat = "https://github.com/Orkeon/orkeon/blob/main/docs/reference/experimental-apis.md")]
+public class McpPrompt
+{
+    /// <summary>Gets or sets the prompt name.</summary>
+    [JsonPropertyName("name")]
+    public string Name { get; set; } = "";
+
+    /// <summary>Gets or sets what the prompt does.</summary>
+    [JsonPropertyName("description")]
+    public string? Description { get; set; }
+
+    /// <summary>Gets the arguments the prompt takes.</summary>
+    [JsonPropertyName("arguments")]
+    public IReadOnlyList<McpPromptArgument> Arguments { get; init; } = [];
+}
+
+/// <summary>One message of a prompt (<c>prompts/get</c>).</summary>
+[Experimental("ORKEXP004", UrlFormat = "https://github.com/Orkeon/orkeon/blob/main/docs/reference/experimental-apis.md")]
+public class McpPromptMessage
+{
+    /// <summary>Gets or sets the speaker: <c>user</c> or <c>assistant</c>.</summary>
+    [JsonPropertyName("role")]
+    public string Role { get; set; } = "user";
+
+    /// <summary>Gets or sets the content block of the message.</summary>
+    [JsonPropertyName("content")]
+    public McpContent Content { get; set; } = new();
+}
+
+/// <summary>Result of <c>prompts/list</c>: one page.</summary>
+[Experimental("ORKEXP004", UrlFormat = "https://github.com/Orkeon/orkeon/blob/main/docs/reference/experimental-apis.md")]
+public class McpPromptListResult
+{
+    /// <summary>Gets the prompts of the page.</summary>
+    [JsonPropertyName("prompts")]
+    public IReadOnlyList<McpPrompt> Prompts { get; init; } = [];
+
+    /// <summary>Gets the opaque cursor of the next page, absent on the last one.</summary>
+    [JsonPropertyName("nextCursor")]
+    public string? NextCursor { get; init; }
+}
+
+/// <summary>Result of <c>prompts/get</c>.</summary>
+[Experimental("ORKEXP004", UrlFormat = "https://github.com/Orkeon/orkeon/blob/main/docs/reference/experimental-apis.md")]
+public class McpPromptGetResult
+{
+    /// <summary>Gets or sets what the prompt does.</summary>
+    [JsonPropertyName("description")]
+    public string? Description { get; set; }
+
+    /// <summary>Gets the messages of the prompt, its arguments filled in.</summary>
+    [JsonPropertyName("messages")]
+    public IReadOnlyList<McpPromptMessage> Messages { get; init; } = [];
 }

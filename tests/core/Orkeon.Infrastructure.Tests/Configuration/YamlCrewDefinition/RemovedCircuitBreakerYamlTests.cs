@@ -9,7 +9,7 @@ namespace Orkeon.Infrastructure.Tests.Configuration;
 /// GAP-07: the task state machine and the <c>circuitBreaker:</c> blocks that configured it are
 /// gone. The task block never ran, and the crew block was read by Graph alone, where it doubled
 /// <c>graphConfig</c>. The deserializer ignores unknown keys, so a crew that still writes one is
-/// refused at load with a message that names <c>graphConfig</c> — never silently ignored.
+/// refused at load with a message that names the <c>graph</c> block — never silently ignored.
 /// </summary>
 public class RemovedCircuitBreakerYamlTests
 {
@@ -17,7 +17,7 @@ public class RemovedCircuitBreakerYamlTests
         => new(new YamlDotNetSerializer(), fs ?? new FakeFileSystemService(), NullLogger<YamlCrewDefinitionLoader>.Instance);
 
     [Fact]
-    public async Task LoadFromString_CrewLevelCircuitBreaker_IsRefusedAndNamesGraphConfig()
+    public async Task LoadFromString_CrewLevelCircuitBreaker_IsRefusedAndNamesTheGraphBlock()
     {
         var yaml = """
 name: c
@@ -36,7 +36,7 @@ tasks:
             () => BuildLoader().LoadFromStringAsync(yaml, TestContext.Current.CancellationToken));
 
         Assert.Contains("'circuitBreaker'", ex.Message, StringComparison.Ordinal);
-        Assert.Contains("graphConfig", ex.Message, StringComparison.Ordinal);
+        Assert.Contains("graph block", ex.Message, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -62,7 +62,7 @@ tasks:
             () => BuildLoader().LoadFromStringAsync(yaml, TestContext.Current.CancellationToken));
 
         Assert.Contains("tasks[review].circuitBreaker", ex.Message, StringComparison.Ordinal);
-        Assert.Contains("graphConfig", ex.Message, StringComparison.Ordinal);
+        Assert.Contains("graph block", ex.Message, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -95,13 +95,13 @@ tasks:
     }
 
     [Fact]
-    public async Task LoadFromString_GraphConfig_StillLoads()
+    public async Task LoadFromString_GraphBlock_StillLoads()
     {
         var yaml = """
 name: c
 goal: g
 process: graph
-graphConfig:
+graph:
   circuitBreakerPreset: permissive
   maxTransitions: 30
 agents:

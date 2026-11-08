@@ -72,6 +72,11 @@ public static partial class RunnerExecution
                 // resolves its own, so --validate judges the crew a run would actually get.
                 await McpStartup.ConnectConfiguredServersAsync(host, cts.Token).ConfigureAwait(false);
 
+                // The types of a .ork.ts, before it loads: esbuild strips them, so a wrong one only
+                // showed at run time (FWK-12).
+                if (!await TypeCheckScriptAsync(host, bootstrap, console, validating: true, cts.Token).ConfigureAwait(false))
+                    return 1;
+
                 // The factory and the repositories it fills are scoped (GAP-25).
                 var scope = host.Services.CreateAsyncScope();
                 await using var _ = scope.ConfigureAwait(false);
@@ -152,6 +157,7 @@ public static partial class RunnerExecution
                     // human_input is silently absent from --list-tools.
                     services.AddOrkeonHumanInput();
                     services.AddSingleton(console);
+                    RunnerHost.RegisterMcpLoginInteraction(services, console);
                     configureServices?.Invoke(ctx, services);
                 },
                 console.ErrorOutput,
@@ -444,7 +450,7 @@ public static partial class RunnerExecution
     /// Console logging preset that routes every level to stderr. Used by <c>--list-tools</c> so
     /// stdout stays a clean, machine-readable tool manifest while warnings/errors remain visible.
     /// </summary>
-    private static void ConfigureStderrOnlyLogging(ILoggingBuilder b)
+    internal static void ConfigureStderrOnlyLogging(ILoggingBuilder b)
     {
         b.AddSimpleConsole(o =>
         {

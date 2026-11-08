@@ -93,7 +93,7 @@ public static class OrkeonPluginsServiceCollectionExtensions
         {
             try
             {
-                LoadCandidate(services, loader, registry, candidate);
+                LoadCandidate(services, loader, registry, candidate, options.ContinueOnError);
             }
             catch (PluginLoadException ex) when (options.ContinueOnError)
             {
@@ -113,35 +113,45 @@ public static class OrkeonPluginsServiceCollectionExtensions
         IServiceCollection services,
         PluginLoader loader,
         PluginRegistry registry,
-        PluginAssemblyCandidate candidate)
+        PluginAssemblyCandidate candidate,
+        bool continueOnError)
     {
         var loaded = loader.Load(candidate);
 
-        if (loaded.Plugins.Count == 0)
+        // A refused plugin leaves nothing behind: the collection is restored as the host had it
+        // (a plugin may also Replace or RemoveAll a host registration), and the context unloads.
+        var before = services.ToList();
+        try
         {
-            // Not a plugin assembly (e.g. a dependency dropped flat) — release it.
-            loaded.Unload();
-            return;
-        }
-
-        foreach (var plugin in loaded.Plugins)
-        {
-            try
-            {
+            foreach (var plugin in loaded.Plugins)
                 plugin.ConfigureServices(services);
-            }
-            catch (Exception ex)
-            {
-                // No rollback of registrations already contributed by this plugin —
-                // with ContinueOnError the host accepts a partially configured set.
-                loaded.Unload();
-                throw new PluginLoadException(
-                    $"Plugin '{plugin.Name}' ({candidate.VirtualPath}) failed in ConfigureServices. See inner exception for details.",
-                    candidate.VirtualPath,
-                    ex);
-            }
+
+            PluginToolDeclaration.Guard(
+                services, before, loaded.Manifest, candidate.VirtualPath, continueOnError ? registry : null);
+        }
+        catch (PluginLoadException)
+        {
+            Restore(services, before);
+            loaded.Unload();
+            throw;
+        }
+        catch (Exception ex)
+        {
+            Restore(services, before);
+            loaded.Unload();
+            throw new PluginLoadException(
+                $"Plugin '{loaded.Manifest.Name}' ({candidate.VirtualPath}) failed in ConfigureServices. See inner exception for details.",
+                candidate.VirtualPath,
+                ex);
         }
 
         registry.Add(loaded);
+    }
+
+    private static void Restore(IServiceCollection services, List<ServiceDescriptor> snapshot)
+    {
+        services.Clear();
+        foreach (var descriptor in snapshot)
+            services.Add(descriptor);
     }
 }

@@ -161,4 +161,16 @@ public interface IFileSystemService
     /// <exception cref="FileAccessDeniedException">Thrown when src lacks Read rights or dst lacks Write/Create rights.</exception>
     /// <exception cref="IOException">Thrown when the destination file already exists and <paramref name="overwrite"/> is false.</exception>
     System.Threading.Tasks.Task CopyAsync(string srcVirtualPath, string dstVirtualPath, bool overwrite = false, CancellationToken ct = default);
+    /// <summary>
+    /// Moves the file at <paramref name="srcVirtualPath"/> to <paramref name="dstVirtualPath"/>, replacing the destination.
+    /// On one volume the real implementation is an atomic rename: a reader sees the old content or the new one, never a
+    /// torn file, which is what a durable write (write a sibling temp file, then move it over the target) relies on.
+    /// The default is a copy then a delete, for a service that has no rename.
+    /// </summary>
+    /// <exception cref="FileAccessDeniedException">Thrown when src lacks Read/Write rights or dst lacks Write/Create rights.</exception>
+    async System.Threading.Tasks.Task MoveAsync(string srcVirtualPath, string dstVirtualPath, CancellationToken ct = default)
+    {
+        await CopyAsync(srcVirtualPath, dstVirtualPath, overwrite: true, ct).ConfigureAwait(false);
+        await DeleteAsync(srcVirtualPath, recursive: false, ct).ConfigureAwait(false);
+    }
 }

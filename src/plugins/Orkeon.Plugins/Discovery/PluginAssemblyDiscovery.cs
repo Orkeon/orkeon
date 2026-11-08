@@ -4,14 +4,17 @@ namespace Orkeon.Plugins;
 
 /// <summary>
 /// VFS-based implementation of <see cref="IPluginAssemblyDiscovery"/>: enumerates the
-/// plugin directory through <see cref="IFileSystemService"/> (virtual paths) and resolves
-/// each candidate to its physical path via
-/// <see cref="IFileSystemService.ResolveAndValidate"/> — the mount-aware, rights-audited
-/// resolution mechanism required by the <see cref="System.Runtime.Loader.AssemblyLoadContext"/>
-/// loading APIs.
+/// plugin directory through <see cref="IFileSystemService"/> (virtual paths), reads each plugin
+/// folder's <c>plugin.json</c> through it, and resolves the entry assembly the manifest names to its
+/// physical path via <see cref="IFileSystemService.ResolveAndValidate"/> — the mount-aware,
+/// rights-audited resolution mechanism required by the
+/// <see cref="System.Runtime.Loader.AssemblyLoadContext"/> loading APIs.
 /// </summary>
 public sealed class PluginAssemblyDiscovery : IPluginAssemblyDiscovery
 {
+    /// <summary>File name of the manifest every plugin folder carries.</summary>
+    public const string ManifestFileName = "plugin.json";
+
     private const string AssemblyExtension = ".dll";
 
     private readonly IFileSystemService _fileSystem;
@@ -47,8 +50,21 @@ public sealed class PluginAssemblyDiscovery : IPluginAssemblyDiscovery
             await foreach (var entry in _fileSystem.EnumerateFilesAsync(root, topLevelOnly, ct).ConfigureAwait(false))
             {
                 ct.ThrowIfCancellationRequested();
-                if (await ResolveEntryCandidateAsync(entry, options, ct).ConfigureAwait(false) is { } candidate)
+
+                // Only a sub-folder can carry a manifest. A flat assembly is not a plugin, and is refused rather than
+                // passed over unsaid: it is most often a plugin dropped in the old flat layout.
+                if (entry.Kind == VirtualEntryKind.File
+                    && entry.VirtualPath.EndsWith(AssemblyExtension, StringComparison.OrdinalIgnoreCase))
+                {
+                    candidates.Add(Refused(
+                        entry.VirtualPath,
+                        $"The assembly '{entry.VirtualPath}' lies flat in the plugin directory: a plugin lives in a sub-folder of its own, next to its {ManifestFileName}."));
+                }
+                else if (entry.Kind == VirtualEntryKind.Directory
+                    && await ResolvePluginFolderAsync(entry.VirtualPath, options, ct).ConfigureAwait(false) is { } candidate)
+                {
                     candidates.Add(candidate);
+                }
             }
 
             candidates.Sort(static (a, b) => string.CompareOrdinal(a.VirtualPath, b.VirtualPath));
@@ -57,52 +73,80 @@ public sealed class PluginAssemblyDiscovery : IPluginAssemblyDiscovery
     }
 
     /// <summary>
-    /// Resolves a single enumerated entry to a plugin candidate, or <c>null</c> when the entry
-    /// is not a plugin assembly (or is denied by the VFS). Handles the two supported layouts:
-    /// flat (<c>&lt;dir&gt;/MyPlugin.dll</c>) and folder-per-plugin
-    /// (<c>&lt;dir&gt;/MyPlugin/MyPlugin.dll</c>). Symbolic links are not followed in v1.
+    /// Resolves one sub-folder of the plugin directory. A folder with a manifest yields its entry
+    /// assembly and the parsed manifest; a folder whose manifest cannot be used (malformed, a required
+    /// field missing, entry assembly absent, not matching <c>SearchPattern</c>, denied by the mount), or
+    /// that holds a <c>.dll</c> but no manifest, yields a candidate carrying <see cref="PluginAssemblyCandidate.ManifestFailure"/>
+    /// so the loader refuses it (and <c>ContinueOnError</c> records it). Any other folder is ignored.
     /// </summary>
-    private async Task<PluginAssemblyCandidate?> ResolveEntryCandidateAsync(
-        VirtualFileEntry entry, OrkeonPluginsOptions options, CancellationToken ct)
+    private async Task<PluginAssemblyCandidate?> ResolvePluginFolderAsync(
+        string folder, OrkeonPluginsOptions options, CancellationToken ct)
     {
-        switch (entry.Kind)
+        var manifestPath = $"{folder}/{ManifestFileName}";
+        var text = await _fileSystem.TryReadAllTextAsync(manifestPath, ct).ConfigureAwait(false);
+        if (text is null)
+            return await ResolveFolderWithoutManifestAsync(folder, ct).ConfigureAwait(false);
+
+        PluginManifest manifest;
+        try
         {
-            // Layout 1 — flat: <dir>/MyPlugin.dll
-            case VirtualEntryKind.File when IsCandidateFileName(GetVirtualFileName(entry.VirtualPath), options.SearchPattern):
-                return TryResolveCandidate(entry.VirtualPath);
-
-            // Layout 2 — folder-per-plugin: <dir>/MyPlugin/MyPlugin.dll
-            case VirtualEntryKind.Directory:
-                return await ResolveConventionalDirCandidateAsync(entry, options, ct).ConfigureAwait(false);
-
-            default:
-                return null;
+            manifest = PluginManifest.Parse(text);
+            PluginManifestValidator.ValidateShape(manifest);
         }
+        catch (PluginManifestException ex)
+        {
+            return Refused(manifestPath, $"The manifest '{manifestPath}' is not usable: {ex.Message}");
+        }
+
+        var entryName = manifest.EntryAssembly!;
+        if (!IsCandidateFileName(entryName, options.SearchPattern))
+        {
+            return Refused(
+                manifestPath,
+                $"The entry assembly '{entryName}' named by '{manifestPath}' does not match the SearchPattern '{options.SearchPattern}' (and carry .dll).");
+        }
+
+        var entryPath = $"{folder}/{entryName}";
+        if (!await _fileSystem.ExistsAsync(entryPath, ct).ConfigureAwait(false))
+            return Refused(manifestPath, $"The entry assembly '{entryName}' named by '{manifestPath}' is not in the plugin folder.");
+
+        return TryResolveCandidate(entryPath) is { } resolved
+            ? resolved with { Manifest = manifest }
+            : Refused(manifestPath, $"The entry assembly '{entryName}' named by '{manifestPath}' is denied by the mount rights.");
     }
 
-    /// <summary>
-    /// Resolves the conventional <c>&lt;dir&gt;/&lt;dir&gt;.dll</c> assembly inside a plugin folder,
-    /// or <c>null</c> when the convention is not matched, the file is absent, or the VFS denies it.
-    /// </summary>
-    private async Task<PluginAssemblyCandidate?> ResolveConventionalDirCandidateAsync(
-        VirtualFileEntry entry, OrkeonPluginsOptions options, CancellationToken ct)
+    private async Task<PluginAssemblyCandidate?> ResolveFolderWithoutManifestAsync(
+        string folder, CancellationToken ct)
     {
-        var dirName = GetVirtualFileName(entry.VirtualPath);
-        var conventionalFileName = dirName + AssemblyExtension;
-        if (!IsCandidateFileName(conventionalFileName, options.SearchPattern))
+        var dlls = new List<string>();
+        await foreach (var entry in _fileSystem
+            .EnumerateFilesAsync(folder, new VirtualEnumerationOptions(Recursive: false), ct).ConfigureAwait(false))
+        {
+            if (entry.Kind == VirtualEntryKind.File
+                && entry.VirtualPath.EndsWith(AssemblyExtension, StringComparison.OrdinalIgnoreCase))
+            {
+                dlls.Add(entry.VirtualPath);
+            }
+        }
+
+        if (dlls.Count == 0)
             return null;
 
-        var conventionalPath = $"{entry.VirtualPath}/{conventionalFileName}";
-        return await _fileSystem.ExistsAsync(conventionalPath, ct).ConfigureAwait(false)
-            ? TryResolveCandidate(conventionalPath)
-            : null;
+        dlls.Sort(StringComparer.Ordinal);
+        return Refused(dlls[0], $"The plugin folder '{folder}' has no {ManifestFileName}: every plugin carries a manifest.");
     }
+
+    private static PluginAssemblyCandidate Refused(string virtualPath, string failure) =>
+        new()
+        {
+            VirtualPath = virtualPath,
+            PhysicalPath = string.Empty,
+            ManifestFailure = failure,
+        };
 
     /// <summary>
     /// Resolves the candidate's physical path through the VFS. Returns <c>null</c> when the
-    /// candidate is denied by the mount rights (the VFS policy wins). Returning the resolved
-    /// candidate (rather than mutating a passed-in list) keeps the collection mutation visible
-    /// at the call site so the loop's accumulation is provable by static analysis.
+    /// candidate is denied by the mount rights (the VFS policy wins).
     /// </summary>
     private PluginAssemblyCandidate? TryResolveCandidate(string virtualPath)
     {

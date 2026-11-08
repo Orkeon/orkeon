@@ -25,6 +25,7 @@ public sealed class JsTaskBuilder
     private JsValue? _deliverableSpec;
     private bool _humanInput;
     private bool _asyncExecution;
+    private Orkeon.Domain.Task.TaskRetryPolicy? _retry;
     private readonly List<JsValue> _tools = new();
     private string? _responseFormat;
     private string? _responseSchemaName;
@@ -201,6 +202,46 @@ public sealed class JsTaskBuilder
         return this;
     }
 
+    /// <summary>
+    /// YAML parity <c>retry: {attempts, backoffMs, backoff}</c> (FWK-15): a failed attempt runs the whole
+    /// task again, tool calls included, up to <c>attempts</c> runs in all. <c>attempts</c> is required;
+    /// <c>backoffMs</c> (default 0) and <c>backoff</c> (<c>"fixed"</c>, the default, or
+    /// <c>"exponential"</c>) set the wait between runs. A value the policy refuses fails here.
+    /// </summary>
+    public JsTaskBuilder retry(JsValue spec)
+    {
+        if (spec is null || !spec.IsObject())
+            throw new InvalidScriptException(".retry(spec) expects an object literal { attempts, backoffMs?, backoff? }.");
+
+        var attemptsRaw = spec.Get("attempts");
+        if (!attemptsRaw.IsNumber())
+            throw new InvalidScriptException(".retry({ attempts }) is required: the number of times the task may run (1 or more).");
+
+        var backoffMsRaw = spec.Get("backoffMs");
+        var backoffRaw = spec.Get("backoff");
+        var backoffText = backoffRaw.IsString() ? backoffRaw.AsString() : null;
+        var backoff = backoffText switch
+        {
+            null or "fixed" => Orkeon.Domain.Task.TaskRetryBackoff.Fixed,
+            "exponential" => Orkeon.Domain.Task.TaskRetryBackoff.Exponential,
+            _ => throw new InvalidScriptException($".retry({{ backoff: \"{backoffText}\" }}) is unknown, use \"fixed\" or \"exponential\"."),
+        };
+
+        try
+        {
+            _retry = new Orkeon.Domain.Task.TaskRetryPolicy(
+                (int)attemptsRaw.AsNumber(),
+                backoffMsRaw.IsNumber() ? (int)backoffMsRaw.AsNumber() : 0,
+                backoff);
+        }
+        catch (ArgumentOutOfRangeException ex)
+        {
+            throw new InvalidScriptException($".retry(...) is refused: {ex.ParamName} {ex.Message}", ex);
+        }
+
+        return this;
+    }
+
     public JsTask build()
     {
         if (_decisionSpec is not null)
@@ -210,6 +251,9 @@ public sealed class JsTaskBuilder
             _description ??= _name;
             _expectedOutput ??= "decision";
         }
+
+        if (_decisionSpec is not null && _retry is not null)
+            throw new InvalidScriptException($"taskBuilder() decision task '{_name}' cannot have .retry(...): a decision runs no agent.");
 
         if (string.IsNullOrWhiteSpace(_description))
             throw new InvalidScriptException("taskBuilder() requires .description(...).");
@@ -236,6 +280,7 @@ public sealed class JsTaskBuilder
             Profile = _profile,
             HumanInput = _humanInput,
             AsyncExecution = _asyncExecution,
+            Retry = _retry,
             Tools = _tools,
             Key = string.IsNullOrWhiteSpace(_name) ? _description : _name,
             DecisionSpec = _decisionSpec,

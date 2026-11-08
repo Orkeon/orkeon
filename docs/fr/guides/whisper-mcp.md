@@ -168,7 +168,7 @@ outils disponibles.
 | Le handshake doit répondre en 30 s au démarrage. | le pas de démarrage MCP des runners | Il charge le modèle au premier appel. |
 | Un nom d'outil que le registre détient déjà est refusé ; l'outil antérieur le garde. | `McpToolProvider` | Il nomme son outil `transcribe_audio`, aucun nom d'outil intégré. |
 | Le handshake legacy demande `2025-11-25` et refuse un serveur qui répond `2025-03-26`. | `McpClient.InitializeAsync` | Il demande un paquet `mcp` qui ne répond pas `2025-03-26` (le client accepte `2025-11-25`, `2025-06-18` et `2024-11-05`) ; `uv run --with mcp` prend le dernier. |
-| Le transport HTTP n'envoie pas d'en-tête `Authorization`. | `SseMcpTransport` | Il passe par stdio. |
+| Le transport HTTP n'envoie un en-tête `Authorization` que depuis `Auth` (un identifiant bearer ou basic lu dans l'environnement) ; pas d'OAuth. | `StreamableHttpMcpTransport`, `IMcpRequestAuthenticator` | Il passe par stdio. |
 
 Une transcription est une donnée venue de l'extérieur : elle traverse l'assainisseur de résultats
 comme tout résultat d'outil (`Security:ToolResults`), de sorte qu'un enregistrement qui dit

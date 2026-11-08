@@ -27,7 +27,7 @@ public sealed class LlmEndpointParityTests
         _ = providerKey;
         _ = isLocal;
         var config = LlmConfig.OnProfile() with { BaseUrl = new Uri(address) };
-        var built = new LlmProviderFactory(new DefaultHttpClientFactory(), NullLoggerFactory.Instance).Create(config).Name;
+        var built = new LlmProviderFactory(new DefaultHttpClientFactory(), NullLoggerFactory.Instance, new Orkeon.Tests.Shared.FileSystem.FakeFileSystemService()).Create(config).Name;
         var runIsOllama = string.Equals(built, LlmProviderKeys.Ollama, StringComparison.OrdinalIgnoreCase);
 
         var card = LlmPresets.CardOf(new ModelProfile { Name = "setting", Provider = null, BaseUrl = address, Model = "m" });

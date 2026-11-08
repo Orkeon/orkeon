@@ -46,4 +46,32 @@ public interface ICrewExecutionHook
     /// (the original crew token may already be canceled).
     /// </param>
     System.Threading.Tasks.Task OnCrewFailedAsync(CrewExecutionSnapshot isPartial, Exception? ex, CancellationToken ct);
+
+    /// <summary>
+    /// Called when the run puts a question to a human that outlives the task (FWK-23), and when the answer comes.
+    /// The default does nothing: only the observers that publish run events care.
+    /// </summary>
+    /// <param name="notice">The question, or the answer to it.</param>
+    /// <param name="ct">Cancellation token.</param>
+    System.Threading.Tasks.Task OnHumanInputAsync(HumanInputNotice notice, CancellationToken ct) =>
+        System.Threading.Tasks.Task.CompletedTask;
 }
+
+/// <summary>What a durable human-input provider tells the run's observers (FWK-23).</summary>
+public enum HumanInputNoticeKind
+{
+    /// <summary>A question was put to a human: <c>input.needed</c>.</summary>
+    Needed,
+
+    /// <summary>The question was answered: <c>input.given</c>.</summary>
+    Given,
+}
+
+/// <summary>A question to a human, or its answer, as the observers of a run see it.</summary>
+/// <param name="Kind">Whether the question was asked or answered.</param>
+/// <param name="Request">The question as persisted.</param>
+/// <param name="Suspending">True when the run stops on the question (<c>Suspend</c>), false when it holds on it.</param>
+public sealed record HumanInputNotice(
+    HumanInputNoticeKind Kind,
+    Orkeon.Application.Interfaces.Checkpointing.PendingInputRequest Request,
+    bool Suspending = false);

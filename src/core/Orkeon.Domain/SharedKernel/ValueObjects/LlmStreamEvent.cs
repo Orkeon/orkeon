@@ -9,6 +9,11 @@ public enum LlmStreamEventKind
     ReasoningDelta,
     /// <summary>Terminal event carrying the assembled <see cref="LlmStreamEvent.FinalResponse"/>.</summary>
     Completed,
+    /// <summary>
+    /// A fragment of a tool call the model is building: its name and id when they arrive, then pieces of its
+    /// JSON arguments (<see cref="LlmStreamEvent.ToolCall"/>). The terminal event still carries the whole call.
+    /// </summary>
+    ToolCallDelta,
 }
 
 /// <summary>
@@ -26,6 +31,9 @@ public sealed record LlmStreamEvent
     /// <summary>Delta text for <see cref="LlmStreamEventKind.ContentDelta"/> / <see cref="LlmStreamEventKind.ReasoningDelta"/>.</summary>
     public string? Delta { get; init; }
 
+    /// <summary>The fragment of a tool call, set on <see cref="LlmStreamEventKind.ToolCallDelta"/> only.</summary>
+    public ToolCallDelta? ToolCall { get; init; }
+
     /// <summary>Assembled response, set on <see cref="LlmStreamEventKind.Completed"/> only.</summary>
     public LlmResponse? FinalResponse { get; init; }
 
@@ -34,6 +42,9 @@ public sealed record LlmStreamEvent
 
     /// <summary>Creates a reasoning delta event.</summary>
     public static LlmStreamEvent Reasoning(string delta) => new() { Kind = LlmStreamEventKind.ReasoningDelta, Delta = delta };
+
+    /// <summary>Creates a tool-call delta event.</summary>
+    public static LlmStreamEvent ToolCallFragment(ToolCallDelta toolCall) => new() { Kind = LlmStreamEventKind.ToolCallDelta, ToolCall = toolCall };
 
     /// <summary>Creates the terminal event.</summary>
     public static LlmStreamEvent Complete(LlmResponse response) => new() { Kind = LlmStreamEventKind.Completed, FinalResponse = response };

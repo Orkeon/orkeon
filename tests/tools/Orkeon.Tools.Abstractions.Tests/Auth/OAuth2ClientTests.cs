@@ -177,6 +177,22 @@ public sealed class OAuth2ClientTests : IDisposable
     }
 
     [Fact]
+    public async Task Should_stop_polling_When_the_caller_cancels_during_the_wait()
+    {
+        // The default delay runs on the manual clock: the poll is parked on a timer that never fires.
+        var client = new OAuth2Client(_http, _time);
+        var grant = new DeviceCodeGrant("d", "u", new Uri("https://microsoft.com/devicelogin"), TimeSpan.FromMinutes(15), TimeSpan.FromSeconds(5));
+        using var cancellation = new CancellationTokenSource();
+        var poll = client.PollDeviceCodeAsync(Microsoft, null, grant, cancellation.Token);
+        await Polling.WaitUntilAsync(() => Task.FromResult(_time.PendingTimers > 0), Polling.DefaultTimeout);
+
+        await cancellation.CancelAsync();
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(async () => await poll);
+        Assert.Empty(_handler.Requests);
+    }
+
+    [Fact]
     public async Task Should_keep_the_refresh_token_When_the_provider_does_not_rotate_it()
     {
         _handler.EnqueueJson("""{"access_token":"at-2","expires_in":"1800"}""");

@@ -230,3 +230,180 @@ const Orkeon.Domain.Constants.Agent.AgentDefaults.AnalysisToolResultLength = 120
 *REMOVED*static Orkeon.Domain.SharedKernel.ValueObjects.FunctionCallInfo.FromDictionary(System.Collections.Generic.Dictionary<string!, object!>? dictionary) -> Orkeon.Domain.SharedKernel.ValueObjects.FunctionCallInfo?
 *REMOVED*Orkeon.Domain.SharedKernel.ValueObjects.ExecutionMetadata.ExecutionMetadata(System.DateTime StartedAt, System.DateTime? CompletedAt, System.TimeSpan? MaxExecutionTime, string! ExecutionId, string? ParentExecutionId, int RetryCount, string? LastError, System.Collections.Immutable.ImmutableDictionary<string!, string!>! Tags, System.Collections.Immutable.ImmutableDictionary<string!, object!>! CustomProperties) -> void
 *REMOVED*static Orkeon.Domain.Agent.AgentStep.CreateSuccess(string! output, object? structuredOutput, Orkeon.Domain.Common.AgentId? agentId = null, Orkeon.Domain.Common.TaskId? taskId = null, string! action = "", string! input = "", System.Collections.Generic.IReadOnlyList<string!>? toolsUsed = null, Orkeon.Domain.Agent.ValueObjects.AgentStepContext? context = null) -> Orkeon.Domain.Agent.AgentStep!
+Orkeon.Domain.Memory.RecallOptions.MinSemanticScore.get -> float
+Orkeon.Domain.Memory.RecallOptions.MinSemanticScore.init -> void
+Orkeon.Domain.Agent.Agent.PermissionMode.get -> Orkeon.Domain.Security.PermissionMode?
+Orkeon.Domain.Agent.AgentBuilder.PermissionMode(Orkeon.Domain.Security.PermissionMode mode) -> Orkeon.Domain.Agent.AgentBuilder!
+Orkeon.Domain.Configuration.AgentConfiguration.PermissionMode.get -> Orkeon.Domain.Security.PermissionMode?
+Orkeon.Domain.Configuration.AgentConfiguration.PermissionMode.init -> void
+Orkeon.Domain.Security.PermissionMode
+Orkeon.Domain.Security.PermissionMode.AcceptEdits = 1 -> Orkeon.Domain.Security.PermissionMode
+Orkeon.Domain.Security.PermissionMode.BypassPermissions = 2 -> Orkeon.Domain.Security.PermissionMode
+Orkeon.Domain.Security.PermissionMode.Default = 0 -> Orkeon.Domain.Security.PermissionMode
+Orkeon.Domain.Security.PermissionMode.DontAsk = 4 -> Orkeon.Domain.Security.PermissionMode
+Orkeon.Domain.Security.PermissionMode.Plan = 3 -> Orkeon.Domain.Security.PermissionMode
+Orkeon.Domain.Security.PermissionModes
+static Orkeon.Domain.Security.PermissionModes.ToWireName(this Orkeon.Domain.Security.PermissionMode mode) -> string!
+static Orkeon.Domain.Security.PermissionModes.TryParse(string? name, out Orkeon.Domain.Security.PermissionMode mode) -> bool
+Orkeon.Domain.Tools.IToolRegistry.ReplaceToolAsync(Orkeon.Domain.Tools.IBaseTool! current, Orkeon.Domain.Tools.IBaseTool! replacement) -> System.Threading.Tasks.Task<bool>!
+Orkeon.Domain.Task.ICrewTask.Key.get -> string?
+Orkeon.Domain.Graph.GraphEdgeDescription
+Orkeon.Domain.Graph.GraphEdgeDescription.<Clone>$() -> Orkeon.Domain.Graph.GraphEdgeDescription!
+Orkeon.Domain.Graph.GraphEdgeDescription.Deconstruct(out string! From, out System.Collections.Generic.IReadOnlyList<string!>? Targets, out bool IsFixed) -> void
+Orkeon.Domain.Graph.GraphEdgeDescription.Equals(Orkeon.Domain.Graph.GraphEdgeDescription? other) -> bool
+Orkeon.Domain.Graph.GraphEdgeDescription.From.get -> string!
+Orkeon.Domain.Graph.GraphEdgeDescription.From.init -> void
+Orkeon.Domain.Graph.GraphEdgeDescription.GraphEdgeDescription(string! From, System.Collections.Generic.IReadOnlyList<string!>? Targets, bool IsFixed) -> void
+Orkeon.Domain.Graph.GraphEdgeDescription.IsFixed.get -> bool
+Orkeon.Domain.Graph.GraphEdgeDescription.IsFixed.init -> void
+Orkeon.Domain.Graph.GraphEdgeDescription.Targets.get -> System.Collections.Generic.IReadOnlyList<string!>?
+Orkeon.Domain.Graph.GraphEdgeDescription.Targets.init -> void
+Orkeon.Domain.Graph.GraphNodeEntered
+Orkeon.Domain.Graph.GraphNodeEntered.<Clone>$() -> Orkeon.Domain.Graph.GraphNodeEntered!
+Orkeon.Domain.Graph.GraphNodeEntered.Deconstruct(out string! Node, out int Visit, out string? Task, out string? Graph) -> void
+Orkeon.Domain.Graph.GraphNodeEntered.Equals(Orkeon.Domain.Graph.GraphNodeEntered? other) -> bool
+Orkeon.Domain.Graph.GraphNodeEntered.Graph.get -> string?
+Orkeon.Domain.Graph.GraphNodeEntered.Graph.init -> void
+Orkeon.Domain.Graph.GraphNodeEntered.GraphNodeEntered(string! Node, int Visit, string? Task = null, string? Graph = null) -> void
+Orkeon.Domain.Graph.GraphNodeEntered.Node.get -> string!
+Orkeon.Domain.Graph.GraphNodeEntered.Node.init -> void
+Orkeon.Domain.Graph.GraphNodeEntered.Task.get -> string?
+Orkeon.Domain.Graph.GraphNodeEntered.Task.init -> void
+Orkeon.Domain.Graph.GraphNodeEntered.Visit.get -> int
+Orkeon.Domain.Graph.GraphNodeEntered.Visit.init -> void
+Orkeon.Domain.Graph.GraphRunner<TState>.OnNodeEntered -> System.EventHandler<Orkeon.Domain.Graph.NodeEnteredEventArgs!>?
+Orkeon.Domain.Graph.GraphTopology
+Orkeon.Domain.Graph.GraphTopology.<Clone>$() -> Orkeon.Domain.Graph.GraphTopology!
+Orkeon.Domain.Graph.GraphTopology.Deconstruct(out string! StartId, out string! EndId, out System.Collections.Generic.IReadOnlyList<string!>! Nodes, out System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Graph.GraphEdgeDescription!>! Edges) -> void
+Orkeon.Domain.Graph.GraphTopology.Edges.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Graph.GraphEdgeDescription!>!
+Orkeon.Domain.Graph.GraphTopology.Edges.init -> void
+Orkeon.Domain.Graph.GraphTopology.EndId.get -> string!
+Orkeon.Domain.Graph.GraphTopology.EndId.init -> void
+Orkeon.Domain.Graph.GraphTopology.Equals(Orkeon.Domain.Graph.GraphTopology? other) -> bool
+Orkeon.Domain.Graph.GraphTopology.GraphTopology(string! StartId, string! EndId, System.Collections.Generic.IReadOnlyList<string!>! Nodes, System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Graph.GraphEdgeDescription!>! Edges) -> void
+Orkeon.Domain.Graph.GraphTopology.Nodes.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Orkeon.Domain.Graph.GraphTopology.Nodes.init -> void
+Orkeon.Domain.Graph.GraphTopology.StartId.get -> string!
+Orkeon.Domain.Graph.GraphTopology.StartId.init -> void
+Orkeon.Domain.Graph.GraphTopologyValidator
+Orkeon.Domain.Graph.IGraphNodeObserver
+Orkeon.Domain.Graph.IGraphNodeObserver.NodeEntered(Orkeon.Domain.Graph.GraphNodeEntered! entered) -> void
+Orkeon.Domain.Graph.NodeEnteredEventArgs
+Orkeon.Domain.Graph.NodeEnteredEventArgs.NodeEnteredEventArgs(string! nodeName, int visit) -> void
+Orkeon.Domain.Graph.NodeEnteredEventArgs.NodeName.get -> string!
+Orkeon.Domain.Graph.NodeEnteredEventArgs.Visit.get -> int
+override Orkeon.Domain.Graph.GraphEdgeDescription.Equals(object? obj) -> bool
+override Orkeon.Domain.Graph.GraphEdgeDescription.GetHashCode() -> int
+override Orkeon.Domain.Graph.GraphEdgeDescription.ToString() -> string!
+override Orkeon.Domain.Graph.GraphNodeEntered.Equals(object? obj) -> bool
+override Orkeon.Domain.Graph.GraphNodeEntered.GetHashCode() -> int
+override Orkeon.Domain.Graph.GraphNodeEntered.ToString() -> string!
+override Orkeon.Domain.Graph.GraphTopology.Equals(object? obj) -> bool
+override Orkeon.Domain.Graph.GraphTopology.GetHashCode() -> int
+override Orkeon.Domain.Graph.GraphTopology.ToString() -> string!
+static Orkeon.Domain.Graph.GraphEdgeDescription.operator !=(Orkeon.Domain.Graph.GraphEdgeDescription? left, Orkeon.Domain.Graph.GraphEdgeDescription? right) -> bool
+static Orkeon.Domain.Graph.GraphEdgeDescription.operator ==(Orkeon.Domain.Graph.GraphEdgeDescription? left, Orkeon.Domain.Graph.GraphEdgeDescription? right) -> bool
+static Orkeon.Domain.Graph.GraphNodeEntered.operator !=(Orkeon.Domain.Graph.GraphNodeEntered? left, Orkeon.Domain.Graph.GraphNodeEntered? right) -> bool
+static Orkeon.Domain.Graph.GraphNodeEntered.operator ==(Orkeon.Domain.Graph.GraphNodeEntered? left, Orkeon.Domain.Graph.GraphNodeEntered? right) -> bool
+static Orkeon.Domain.Graph.GraphTopology.operator !=(Orkeon.Domain.Graph.GraphTopology? left, Orkeon.Domain.Graph.GraphTopology? right) -> bool
+static Orkeon.Domain.Graph.GraphTopology.operator ==(Orkeon.Domain.Graph.GraphTopology? left, Orkeon.Domain.Graph.GraphTopology? right) -> bool
+static Orkeon.Domain.Graph.GraphTopologyValidator.Validate(Orkeon.Domain.Graph.GraphTopology! topology) -> System.Collections.Generic.IReadOnlyList<string!>!
+Orkeon.Domain.Configuration.TaskConfiguration.Retry.get -> Orkeon.Domain.Task.TaskRetryPolicy?
+Orkeon.Domain.Configuration.TaskConfiguration.Retry.init -> void
+Orkeon.Domain.Task.CrewTaskBase<TContext>.Retry.get -> Orkeon.Domain.Task.TaskRetryPolicy?
+Orkeon.Domain.Task.CrewTaskBuilder.Retry(Orkeon.Domain.Task.TaskRetryPolicy? policy) -> Orkeon.Domain.Task.CrewTaskBuilder!
+Orkeon.Domain.Task.ICrewTask.Retry.get -> Orkeon.Domain.Task.TaskRetryPolicy?
+Orkeon.Domain.Task.TaskOutputOptions.Retry.get -> Orkeon.Domain.Task.TaskRetryPolicy?
+Orkeon.Domain.Task.TaskOutputOptions.Retry.init -> void
+Orkeon.Domain.Task.TaskRetryBackoff
+Orkeon.Domain.Task.TaskRetryBackoff.Exponential = 1 -> Orkeon.Domain.Task.TaskRetryBackoff
+Orkeon.Domain.Task.TaskRetryBackoff.Fixed = 0 -> Orkeon.Domain.Task.TaskRetryBackoff
+Orkeon.Domain.Task.TaskRetryPolicy
+Orkeon.Domain.Task.TaskRetryPolicy.<Clone>$() -> Orkeon.Domain.Task.TaskRetryPolicy!
+Orkeon.Domain.Task.TaskRetryPolicy.Attempts.get -> int
+Orkeon.Domain.Task.TaskRetryPolicy.Backoff.get -> Orkeon.Domain.Task.TaskRetryBackoff
+Orkeon.Domain.Task.TaskRetryPolicy.BackoffMs.get -> int
+Orkeon.Domain.Task.TaskRetryPolicy.DelayBefore(int attempt) -> System.TimeSpan
+Orkeon.Domain.Task.TaskRetryPolicy.Equals(Orkeon.Domain.Task.TaskRetryPolicy? other) -> bool
+Orkeon.Domain.Task.TaskRetryPolicy.TaskRetryPolicy(int attempts, int backoffMs = 0, Orkeon.Domain.Task.TaskRetryBackoff backoff = Orkeon.Domain.Task.TaskRetryBackoff.Fixed) -> void
+override Orkeon.Domain.Task.TaskRetryPolicy.Equals(object? obj) -> bool
+override Orkeon.Domain.Task.TaskRetryPolicy.GetHashCode() -> int
+override Orkeon.Domain.Task.TaskRetryPolicy.ToString() -> string!
+static Orkeon.Domain.Task.TaskRetryPolicy.operator !=(Orkeon.Domain.Task.TaskRetryPolicy? left, Orkeon.Domain.Task.TaskRetryPolicy? right) -> bool
+static Orkeon.Domain.Task.TaskRetryPolicy.operator ==(Orkeon.Domain.Task.TaskRetryPolicy? left, Orkeon.Domain.Task.TaskRetryPolicy? right) -> bool
+Orkeon.Domain.Task.TaskRetryPolicy.Retries.get -> int
+static readonly Orkeon.Domain.Task.TaskRetryPolicy.MaxDelay -> System.TimeSpan
+*REMOVED*Orkeon.Domain.Configuration.GraphConfig.MaxRetryCycles.get -> int
+*REMOVED*Orkeon.Domain.Configuration.GraphConfig.MaxRetryCycles.init -> void
+Orkeon.Domain.Configuration.GraphConfig.Edges.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Configuration.GraphEdgeConfig!>!
+Orkeon.Domain.Configuration.GraphConfig.Edges.init -> void
+Orkeon.Domain.Configuration.GraphConfig.Nodes.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Configuration.GraphNodeConfig!>?
+Orkeon.Domain.Configuration.GraphConfig.Nodes.init -> void
+Orkeon.Domain.Configuration.GraphConfig.Start.get -> string?
+Orkeon.Domain.Configuration.GraphConfig.Start.init -> void
+Orkeon.Domain.Configuration.GraphEdgeConfig
+Orkeon.Domain.Configuration.GraphEdgeConfig.<Clone>$() -> Orkeon.Domain.Configuration.GraphEdgeConfig!
+Orkeon.Domain.Configuration.GraphEdgeConfig.Deconstruct(out string! From, out string! To, out Orkeon.Domain.Task.ValueObjects.TaskCondition? When) -> void
+Orkeon.Domain.Configuration.GraphEdgeConfig.Equals(Orkeon.Domain.Configuration.GraphEdgeConfig? other) -> bool
+Orkeon.Domain.Configuration.GraphEdgeConfig.From.get -> string!
+Orkeon.Domain.Configuration.GraphEdgeConfig.From.init -> void
+Orkeon.Domain.Configuration.GraphEdgeConfig.GraphEdgeConfig(string! From, string! To, Orkeon.Domain.Task.ValueObjects.TaskCondition? When = null) -> void
+Orkeon.Domain.Configuration.GraphEdgeConfig.To.get -> string!
+Orkeon.Domain.Configuration.GraphEdgeConfig.To.init -> void
+Orkeon.Domain.Configuration.GraphEdgeConfig.When.get -> Orkeon.Domain.Task.ValueObjects.TaskCondition?
+Orkeon.Domain.Configuration.GraphEdgeConfig.When.init -> void
+Orkeon.Domain.Configuration.GraphNodeConfig
+Orkeon.Domain.Configuration.GraphNodeConfig.<Clone>$() -> Orkeon.Domain.Configuration.GraphNodeConfig!
+Orkeon.Domain.Configuration.GraphNodeConfig.Deconstruct(out string! Id, out string! Task) -> void
+Orkeon.Domain.Configuration.GraphNodeConfig.Equals(Orkeon.Domain.Configuration.GraphNodeConfig? other) -> bool
+Orkeon.Domain.Configuration.GraphNodeConfig.GraphNodeConfig(string! Id, string! Task) -> void
+Orkeon.Domain.Configuration.GraphNodeConfig.Id.get -> string!
+Orkeon.Domain.Configuration.GraphNodeConfig.Id.init -> void
+Orkeon.Domain.Configuration.GraphNodeConfig.Task.get -> string!
+Orkeon.Domain.Configuration.GraphNodeConfig.Task.init -> void
+const Orkeon.Domain.Configuration.GraphConfig.End = "END" -> string!
+override Orkeon.Domain.Configuration.GraphEdgeConfig.Equals(object? obj) -> bool
+override Orkeon.Domain.Configuration.GraphEdgeConfig.GetHashCode() -> int
+override Orkeon.Domain.Configuration.GraphEdgeConfig.ToString() -> string!
+override Orkeon.Domain.Configuration.GraphNodeConfig.Equals(object? obj) -> bool
+override Orkeon.Domain.Configuration.GraphNodeConfig.GetHashCode() -> int
+override Orkeon.Domain.Configuration.GraphNodeConfig.ToString() -> string!
+static Orkeon.Domain.Configuration.GraphEdgeConfig.operator !=(Orkeon.Domain.Configuration.GraphEdgeConfig? left, Orkeon.Domain.Configuration.GraphEdgeConfig? right) -> bool
+static Orkeon.Domain.Configuration.GraphEdgeConfig.operator ==(Orkeon.Domain.Configuration.GraphEdgeConfig? left, Orkeon.Domain.Configuration.GraphEdgeConfig? right) -> bool
+static Orkeon.Domain.Configuration.GraphNodeConfig.operator !=(Orkeon.Domain.Configuration.GraphNodeConfig? left, Orkeon.Domain.Configuration.GraphNodeConfig? right) -> bool
+static Orkeon.Domain.Configuration.GraphNodeConfig.operator ==(Orkeon.Domain.Configuration.GraphNodeConfig? left, Orkeon.Domain.Configuration.GraphNodeConfig? right) -> bool
+Orkeon.Domain.SharedKernel.ValueObjects.LlmStreamEventKind.ToolCallDelta = 3 -> Orkeon.Domain.SharedKernel.ValueObjects.LlmStreamEventKind
+Orkeon.Domain.SharedKernel.ValueObjects.LlmStreamEvent.ToolCall.get -> Orkeon.Domain.SharedKernel.ValueObjects.ToolCallDelta?
+Orkeon.Domain.SharedKernel.ValueObjects.LlmStreamEvent.ToolCall.init -> void
+Orkeon.Domain.SharedKernel.ValueObjects.ToolCallDelta
+Orkeon.Domain.SharedKernel.ValueObjects.ToolCallDelta.<Clone>$() -> Orkeon.Domain.SharedKernel.ValueObjects.ToolCallDelta!
+Orkeon.Domain.SharedKernel.ValueObjects.ToolCallDelta.ArgumentsDelta.get -> string!
+Orkeon.Domain.SharedKernel.ValueObjects.ToolCallDelta.ArgumentsDelta.init -> void
+Orkeon.Domain.SharedKernel.ValueObjects.ToolCallDelta.Deconstruct(out int Index, out string? Id, out string? Name, out string! ArgumentsDelta) -> void
+Orkeon.Domain.SharedKernel.ValueObjects.ToolCallDelta.Equals(Orkeon.Domain.SharedKernel.ValueObjects.ToolCallDelta? other) -> bool
+Orkeon.Domain.SharedKernel.ValueObjects.ToolCallDelta.Id.get -> string?
+Orkeon.Domain.SharedKernel.ValueObjects.ToolCallDelta.Id.init -> void
+Orkeon.Domain.SharedKernel.ValueObjects.ToolCallDelta.Index.get -> int
+Orkeon.Domain.SharedKernel.ValueObjects.ToolCallDelta.Index.init -> void
+Orkeon.Domain.SharedKernel.ValueObjects.ToolCallDelta.Name.get -> string?
+Orkeon.Domain.SharedKernel.ValueObjects.ToolCallDelta.Name.init -> void
+Orkeon.Domain.SharedKernel.ValueObjects.ToolCallDelta.ToolCallDelta(int Index, string? Id, string? Name, string! ArgumentsDelta) -> void
+override Orkeon.Domain.SharedKernel.ValueObjects.ToolCallDelta.Equals(object? obj) -> bool
+override Orkeon.Domain.SharedKernel.ValueObjects.ToolCallDelta.GetHashCode() -> int
+override Orkeon.Domain.SharedKernel.ValueObjects.ToolCallDelta.ToString() -> string!
+static Orkeon.Domain.SharedKernel.ValueObjects.LlmStreamEvent.ToolCallFragment(Orkeon.Domain.SharedKernel.ValueObjects.ToolCallDelta! toolCall) -> Orkeon.Domain.SharedKernel.ValueObjects.LlmStreamEvent!
+static Orkeon.Domain.SharedKernel.ValueObjects.ToolCallDelta.operator ==(Orkeon.Domain.SharedKernel.ValueObjects.ToolCallDelta? left, Orkeon.Domain.SharedKernel.ValueObjects.ToolCallDelta? right) -> bool
+static Orkeon.Domain.SharedKernel.ValueObjects.ToolCallDelta.operator !=(Orkeon.Domain.SharedKernel.ValueObjects.ToolCallDelta? left, Orkeon.Domain.SharedKernel.ValueObjects.ToolCallDelta? right) -> bool
+Orkeon.Domain.FileSystem.IFileSystemService.MoveAsync(string! srcVirtualPath, string! dstVirtualPath, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+Orkeon.Domain.Tools.CoworkerDelegation
+Orkeon.Domain.Tools.ICoworkerDelegationTool
+Orkeon.Domain.Tools.ICoworkerDelegationTool.CoworkerRoleOf(System.Collections.Generic.IReadOnlyDictionary<string!, object?>! arguments) -> string?
+Orkeon.Domain.Tools.IToolWrapper
+Orkeon.Domain.Tools.IToolWrapper.Inner.get -> Orkeon.Domain.Tools.IBaseTool!
+const Orkeon.Domain.Tools.CoworkerDelegation.AskQuestionToolName = "ask_question_to_coworker" -> string!
+const Orkeon.Domain.Tools.CoworkerDelegation.DelegateWorkToolName = "delegate_work_to_coworker" -> string!
+static Orkeon.Domain.Tools.CoworkerDelegation.Find(Orkeon.Domain.Tools.IBaseTool! tool) -> Orkeon.Domain.Tools.ICoworkerDelegationTool?
+static Orkeon.Domain.Tools.CoworkerDelegation.IsDelegationTool(Orkeon.Domain.Tools.IBaseTool! tool) -> bool
+static Orkeon.Domain.Tools.CoworkerDelegation.IsReservedName(string! toolName) -> bool
+static Orkeon.Domain.Tools.CoworkerDelegation.ToolNames.get -> System.Collections.Generic.IReadOnlyList<string!>!
+static Orkeon.Domain.Security.PermissionModes.Stricter(this Orkeon.Domain.Security.PermissionMode own, Orkeon.Domain.Security.PermissionMode? inherited) -> Orkeon.Domain.Security.PermissionMode

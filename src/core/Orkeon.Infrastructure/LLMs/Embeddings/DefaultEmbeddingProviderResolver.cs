@@ -1,6 +1,8 @@
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Orkeon.Application.Configuration;
@@ -66,6 +68,18 @@ public static partial class DefaultEmbeddingProviderResolver
     /// <summary>The <c>Orkeon:Embeddings:Provider</c> of an OpenAI-compatible endpoint: any M.E.AI embedding generator.</summary>
     internal const string OpenAiProvider = "openai";
 
+    private static readonly string[] KnownProviders =
+        [OpenAiProvider, OllamaProvider, MistralProvider, AzureOpenAiProvider, GeminiProvider];
+
+    /// <summary>The <c>Orkeon:Embeddings:Provider</c> of Mistral.</summary>
+    internal const string MistralProvider = "mistral";
+
+    /// <summary>The <c>Orkeon:Embeddings:Provider</c> of Azure OpenAI.</summary>
+    internal const string AzureOpenAiProvider = "azure-openai";
+
+    /// <summary>The <c>Orkeon:Embeddings:Provider</c> of Gemini.</summary>
+    internal const string GeminiProvider = "gemini";
+
     /// <summary>
     /// Registers the two sections the remote branch reads — <c>Orkeon:Embeddings</c> and
     /// <c>Orkeon:EmbeddingCache</c> — bound, and judged when a host starts (GAP-40): a provider name
@@ -76,6 +90,31 @@ public static partial class DefaultEmbeddingProviderResolver
         services.AddOrkeonSettings<EmbeddingOptions>(EmbeddingsSectionKey)
             .ValidateSettings(ProviderProblem);
         services.AddOrkeonSettings<EmbeddingCacheOptions>(EmbeddingCacheSectionKey);
+        AddEmbeddingGuard(services);
+    }
+
+    /// <summary>Registers the startup guard that refuses a change of embedding model (FWK-25), once.</summary>
+    internal static void AddEmbeddingGuard(IServiceCollection services) =>
+        services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, EmbeddingDimensionGuardHostedService>());
+
+    /// <summary>
+    /// Builds the OpenAI-compatible HTTP provider (<c>mistral</c>, <c>azure-openai</c>, <c>gemini</c>) a
+    /// provider token names, or null when the token names another provider.
+    /// </summary>
+    internal static IEmbeddingProvider? TryCreateHttpProvider(
+        string providerToken, IServiceProvider serviceProvider, EmbeddingOptions options)
+    {
+        if (providerToken is not (MistralProvider or AzureOpenAiProvider or GeminiProvider))
+            return null;
+
+        var http = serviceProvider.GetRequiredService<IHttpClientFactory>().CreateClient("Orkeon.Embeddings." + providerToken);
+        var wrapped = Options.Create(options);
+        return providerToken switch
+        {
+            MistralProvider => new MistralEmbeddingProvider(http, wrapped),
+            AzureOpenAiProvider => new AzureOpenAIEmbeddingProvider(http, wrapped),
+            _ => new GeminiEmbeddingProvider(http, wrapped),
+        };
     }
 
     /// <summary>
@@ -86,11 +125,11 @@ public static partial class DefaultEmbeddingProviderResolver
     {
         ArgumentNullException.ThrowIfNull(options);
         var provider = options.Provider?.Trim();
-        return string.Equals(provider, OpenAiProvider, StringComparison.OrdinalIgnoreCase)
-               || string.Equals(provider, OllamaProvider, StringComparison.OrdinalIgnoreCase)
+        return KnownProviders.Contains(provider ?? string.Empty, StringComparer.OrdinalIgnoreCase)
             ? null
             : $"{EmbeddingsSectionKey}:Provider is '{options.Provider}', which is not an embedding provider: write " +
-              $"{OpenAiProvider} (any M.E.AI embedding generator the host registers) or {OllamaProvider}.";
+              $"{OpenAiProvider} (any M.E.AI embedding generator the host registers), {OllamaProvider}, " +
+              $"{MistralProvider}, {AzureOpenAiProvider} or {GeminiProvider}.";
     }
 
     /// <summary>
@@ -177,6 +216,14 @@ public static partial class DefaultEmbeddingProviderResolver
             if (logger is not null)
                 LogConfiguredRemoteProvider(logger, "ollama", options.Model);
             return new OllamaEmbeddingProvider(httpClient, Options.Create(options));
+        }
+
+        var http = TryCreateHttpProvider(providerToken, serviceProvider, options);
+        if (http is not null)
+        {
+            if (logger is not null)
+                LogConfiguredRemoteProvider(logger, options.Provider, http.Model);
+            return http;
         }
 
         // Default branch: OpenAI / any M.E.AI-compatible generator.

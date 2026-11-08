@@ -269,7 +269,10 @@ public sealed class McpServeCommandTests
             using var document = JsonDocument.Parse(line);
             Assert.Equal("2.0", document.RootElement.GetProperty("jsonrpc").GetString());
             return document.RootElement.Clone();
-        }).ToList();
+        })
+        // Requests run at once: the answers come back in the order they finish, matched by id.
+        .OrderBy(answer => answer.TryGetProperty("id", out var id) && id.ValueKind == JsonValueKind.Number ? id.GetInt32() : int.MinValue)
+        .ToList();
 
     private static List<string?> ToolNames(JsonElement answer) =>
         answer.GetProperty("result").GetProperty("tools").EnumerateArray()

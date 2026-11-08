@@ -85,7 +85,8 @@ internal sealed record OrkeonHostOptions
 
     /// <summary>
     /// How long a run may take before the host cancels it. A daemon has no user watching to
-    /// press Ctrl-C, so an unbounded run is a stuck daemon.
+    /// press Ctrl-C, so an unbounded run is a stuck daemon. The clock stops while the run holds on a
+    /// question to a person: the hold timeout, not this one, ends that wait.
     /// </summary>
     public TimeSpan RunTimeout { get; init; } = TimeSpan.FromMinutes(30);
 
@@ -108,6 +109,11 @@ internal sealed record OrkeonHostOptions
     /// The crews other agents may run over A2A (<c>Orkeon:Host:A2A</c>, GAP-23). Off by default.
     /// </summary>
     public HostA2AOptions A2A { get; init; } = new();
+
+    /// <summary>
+    /// The run API and the health probes (<c>Orkeon:Host:Api</c>, FWK-14). Off by default.
+    /// </summary>
+    public Api.HostApiOptions Api { get; init; } = new();
 }
 
 /// <summary>

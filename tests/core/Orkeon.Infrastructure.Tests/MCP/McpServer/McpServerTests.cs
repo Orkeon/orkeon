@@ -66,7 +66,7 @@ public class McpServerTests
 
     // The bare invocation point: the call and the truncation, no guard, no tagging — these tests
     // pin the protocol; McpServerGuardTests pins what the composed pipeline does to a call.
-    private McpServerSut CreateServer() => new(_mockRegistry, ToolInvocationPipeline.Unguarded, _options);
+    private McpServerSut CreateServer() => new(_mockRegistry, ToolInvocationPipeline.Unguarded, new Orkeon.Tests.Shared.FileSystem.FakeFileSystemService(), _options);
 
     [Fact]
     public async Task ShouldReturnCapabilities_WhenHandlingInitialize()
@@ -117,11 +117,15 @@ public class McpServerTests
         // Assert: one response line per answered message, nothing else on the channel
         var lines = writer.ToString().Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
         Assert.Equal(2, lines.Length);
-        using var first = JsonDocument.Parse(lines[0]);
-        Assert.Equal(7, first.RootElement.GetProperty("id").GetInt32());
-        Assert.True(first.RootElement.TryGetProperty("result", out _));
-        using var second = JsonDocument.Parse(lines[1]);
-        Assert.Equal(JsonRpcErrorCodes.ParseError, second.RootElement.GetProperty("error").GetProperty("code").GetInt32());
+        // Requests run at once, so the answers come in the order they finish: told apart by their content.
+        using var one = JsonDocument.Parse(lines[0]);
+        using var other = JsonDocument.Parse(lines[1]);
+        var (answer, failure) = one.RootElement.GetProperty("result").ValueKind == JsonValueKind.Object
+            ? (one.RootElement, other.RootElement)
+            : (other.RootElement, one.RootElement);
+        Assert.Equal(7, answer.GetProperty("id").GetInt32());
+        Assert.Equal(JsonValueKind.Object, answer.GetProperty("result").ValueKind);
+        Assert.Equal(JsonRpcErrorCodes.ParseError, failure.GetProperty("error").GetProperty("code").GetInt32());
     }
 
     [Fact]

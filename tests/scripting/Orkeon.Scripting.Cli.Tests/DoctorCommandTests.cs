@@ -23,6 +23,7 @@ public sealed class DoctorCommandTests : IDisposable
         "runner-settings",
         "llm-reachability",
         "esbuild",
+        "tsc",
         "local-embeddings",
         "onnx-reranker",
         "tree-sitter",

@@ -27,12 +27,6 @@ namespace Orkeon.Hosting;
 internal static partial class McpStartup
 {
     /// <summary>
-    /// How long one server gets to start and answer the handshake. A server that hangs must
-    /// not hang the run: past this, it is reported like a server that failed.
-    /// </summary>
-    internal static readonly TimeSpan ConnectTimeout = TimeSpan.FromSeconds(30);
-
-    /// <summary>
     /// Whether the settings declare at least one MCP server and do not switch MCP off. This is
     /// the one gate: without it the section is bound by nobody, and a run is exactly what it
     /// was before MCP reached the runners.
@@ -77,25 +71,54 @@ internal static partial class McpStartup
         var logger = loggerFactory.CreateLogger("Orkeon.Hosting.McpStartup");
         var operatorLogger = RunnerOperatorLog.Create(loggerFactory);
         var servers = services.GetRequiredService<IOptions<McpOptions>>().Value.Servers;
+        ReportUnreadableServers(services, servers, logger, operatorLogger);
 
         foreach (var (serverId, config) in servers)
         {
             ct.ThrowIfCancellationRequested();
-            using var guard = CancellationTokenSource.CreateLinkedTokenSource(ct);
-            guard.CancelAfter(ConnectTimeout);
             try
             {
-                await provider.ConnectServerAsync(serverId, config, guard.Token).ConfigureAwait(false);
+                // The provider bounds the handshake with the server's own ConnectTimeout.
+                await provider.ConnectServerAsync(serverId, config, ct).ConfigureAwait(false);
                 ReportCollisions(provider, operatorLogger, serverId);
-            }
-            catch (OperationCanceledException) when (!ct.IsCancellationRequested)
-            {
-                Report(logger, operatorLogger, serverId, $"no answer within {ConnectTimeout.TotalSeconds:0} s");
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
                 Report(logger, operatorLogger, serverId, ex.Message);
             }
+        }
+    }
+
+    /// <summary>
+    /// A server whose settings the binder cannot convert (a misspelt <c>Auth:Type</c>, a bad duration) is dropped from
+    /// the bound options without a word: it is read again alone, which does throw, and the reason is reported with the
+    /// server's name, so a typo costs one clear line and not a server that silently never connects.
+    /// </summary>
+    [SuppressMessage("Design", "CA1031", Justification = "Whatever the binder throws on one server's settings is that server's reason to be set aside.")]
+    private static void ReportUnreadableServers(
+        IServiceProvider services, Dictionary<string, McpServerConfig> bound, ILogger logger, ILogger operatorLogger)
+    {
+        var section = services.GetService<IConfiguration>()?.GetSection(ConfigurationKeys.McpSection).GetSection("Servers");
+        if (section is null)
+            return;
+
+        foreach (var child in section.GetChildren())
+        {
+            if (bound.ContainsKey(child.Key))
+                continue;
+
+            string reason;
+            try
+            {
+                _ = child.Get<McpServerConfig>();
+                reason = "its settings could not be read";
+            }
+            catch (Exception ex)
+            {
+                reason = ex.InnerException?.Message ?? ex.Message;
+            }
+
+            Report(logger, operatorLogger, child.Key, $"MCP:Servers:{child.Key} was set aside: {reason}");
         }
     }
 
@@ -112,6 +135,13 @@ internal static partial class McpStartup
             RunnerOperatorLog.Warn(
                 operatorLogger,
                 $"The tool '{name}' of MCP server '{serverId}' collides with an already-registered tool and was not registered.");
+        }
+
+        foreach (var entry in status?.UnmatchedToolFilters ?? [])
+        {
+            RunnerOperatorLog.Warn(
+                operatorLogger,
+                $"The MCP:Servers:{serverId}:Tools entry '{entry}' matches no tool the server lists.");
         }
     }
 

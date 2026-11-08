@@ -17,9 +17,9 @@ public interface IStateStore
     System.Threading.Tasks.Task<SessionState?> GetAsync(string sessionId, CancellationToken ct = default);
 
     /// <summary>
-    /// Gets the most recent session state for a given crew.
+    /// Gets the most recent session state for a given crew key.
     /// </summary>
-    System.Threading.Tasks.Task<SessionState?> GetLatestForCrewAsync(string crewId, CancellationToken ct = default);
+    System.Threading.Tasks.Task<SessionState?> GetLatestForCrewAsync(string crewKey, CancellationToken ct = default);
 
     /// <summary>
     /// Lists summaries of all stored sessions.
@@ -85,8 +85,8 @@ public sealed record SessionState
     /// <summary>Gets the unique session identifier.</summary>
     public string SessionId { get; init; } = "";
 
-    /// <summary>Gets the crew identifier this session belongs to.</summary>
-    public string CrewId { get; init; } = "";
+    /// <summary>Gets the stable key of the crew this session belongs to (name and virtual path of its file).</summary>
+    public string CrewKey { get; init; } = "";
 
     /// <summary>Gets the current phase of the session.</summary>
     public SessionPhase Phase { get; init; } = SessionPhase.Pending;
@@ -105,6 +105,42 @@ public sealed record SessionState
 
     /// <summary>Gets an optional error message if the session failed.</summary>
     public string? ErrorMessage { get; init; }
+
+    /// <summary>
+    /// Gets the questions the run asked and that still wait for an answer, in the order they were asked (FWK-23): the tasks
+    /// of a parallel wave each keep their own.
+    /// </summary>
+    public IReadOnlyList<PendingInputRequest> PendingInputs { get; init; } = [];
+
+    /// <summary>
+    /// Gets the id of the question the run stopped on (the one its exit names), or null while it runs: what an answer that
+    /// names no question goes to (FWK-23).
+    /// </summary>
+    public string? SuspendedOn { get; init; }
+
+    /// <summary>
+    /// Gets the question shown for the run: the one it stopped on while it waits, else the oldest one still open, or null.
+    /// </summary>
+    [System.Text.Json.Serialization.JsonIgnore]
+    public PendingInputRequest? PendingInput
+    {
+        get
+        {
+            foreach (var question in PendingInputs)
+            {
+                if (string.Equals(question.RequestId, SuspendedOn, StringComparison.Ordinal))
+                    return question;
+            }
+
+            return PendingInputs.Count > 0 ? PendingInputs[0] : null;
+        }
+    }
+
+    /// <summary>
+    /// Gets the answers given to the run's questions, by <see cref="PendingInputRequest.RequestId"/>: a task replayed by a
+    /// resumed run finds there the answer to the question it asks again, when it asks the same thing (FWK-23).
+    /// </summary>
+    public IReadOnlyDictionary<string, AnsweredInput> AnsweredInputs { get; init; } = new Dictionary<string, AnsweredInput>();
 }
 
 /// <summary>
@@ -139,8 +175,8 @@ public sealed record SessionSummary
     /// <summary>Gets the unique session identifier.</summary>
     public string SessionId { get; init; } = "";
 
-    /// <summary>Gets the crew identifier.</summary>
-    public string CrewId { get; init; } = "";
+    /// <summary>Gets the stable key of the crew.</summary>
+    public string CrewKey { get; init; } = "";
 
     /// <summary>Gets the current phase of the session.</summary>
     public SessionPhase Phase { get; init; }
@@ -173,7 +209,10 @@ public enum SessionPhase
     Failed,
 
     /// <summary>Session was suspended and can be resumed.</summary>
-    Suspended
+    Suspended,
+
+    /// <summary>Session stopped on a question to a human and resumes when it is answered (FWK-23).</summary>
+    WaitingForInput
 }
 
 /// <summary>

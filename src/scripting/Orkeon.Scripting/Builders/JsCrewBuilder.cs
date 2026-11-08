@@ -65,6 +65,9 @@ public sealed partial class JsCrewBuilder
     /// <summary>The durable store behind <c>ctx.memory.agent</c> the host wired (RT-16).</summary>
     internal Orkeon.Application.Interfaces.Ports.IScriptAgentMemoryStore? AgentMemoryStore { get; init; }
 
+    /// <summary>The host's DLP for streamed tool calls; null streams the fragments as they arrive.</summary>
+    internal Orkeon.Application.Crew.ToolCallDeltaDlp? ToolCallDlp { get; init; }
+
     /// <summary>The tool-result limits the host wired.</summary>
     internal Orkeon.Domain.Tools.ToolResultLimitsOptions? ToolLimits { get; init; }
 
@@ -221,6 +224,7 @@ public sealed partial class JsCrewBuilder
             BuiltInTools = _builtInTools,
             PermissionGate = _permissionGate,
             DeltaSink = _deltaSink,
+            ToolCallDlp = ToolCallDlp,
             ToolInvocation = _toolInvocation,
             AgentMemoryStore = AgentMemoryStore,
             ToolLimits = ToolLimits,

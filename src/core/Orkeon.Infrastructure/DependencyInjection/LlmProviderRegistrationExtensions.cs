@@ -8,6 +8,8 @@ using Orkeon.Application.Interfaces.Ports;
 using Orkeon.Application.Interfaces.Security;
 using Orkeon.Domain.SharedKernel;
 using Orkeon.Domain.SharedKernel.ValueObjects;
+using Orkeon.Infrastructure.LLMs.Capabilities;
+using Orkeon.Infrastructure.LLMs.Replay;
 using Orkeon.Infrastructure.LLMs;
 using Orkeon.Infrastructure.LLMs.Adapters;
 using Orkeon.Infrastructure.LLMs.Profiles;
@@ -91,6 +93,38 @@ public static class LlmProviderRegistrationExtensions
     }
 
     /// <summary>
+    /// <see cref="AddOrkeonLlmProfile(IServiceCollection, string, Func{IServiceProvider, ILlmProvider}, LlmConfig?)"/>
+    /// with a fallback chain (FWK-05): the profiles a call moves to when this one fails in a way a
+    /// retry cannot cure.
+    /// </summary>
+    /// <param name="services">The service collection.</param>
+    /// <param name="name">The name crews reference; <c>default</c> is reserved.</param>
+    /// <param name="provider">Builds the provider, once, from the container.</param>
+    /// <param name="baseConfig">The configuration the profile's chat client merges per-call options into.</param>
+    /// <param name="fallback">The profiles tried next, in order; <c>default</c> names the host's own.</param>
+    /// <returns>The service collection, for chaining.</returns>
+    public static IServiceCollection AddOrkeonLlmProfile(
+        this IServiceCollection services,
+        string name,
+        Func<IServiceProvider, ILlmProvider> provider,
+        LlmConfig? baseConfig,
+        IReadOnlyList<string> fallback)
+    {
+        ArgumentNullException.ThrowIfNull(services);
+        ArgumentException.ThrowIfNullOrWhiteSpace(name);
+        ArgumentNullException.ThrowIfNull(provider);
+        ArgumentNullException.ThrowIfNull(fallback);
+
+        services.AddSingleton(new LlmProfileRegistration(
+            name.Trim(),
+            sp => LlmProviderEntrance.Enter(provider(sp), sp.GetService<ILlmUsageSink>(), sp.GetService<ILlmRateLimiter>()),
+            baseConfig)
+        { Fallback = fallback });
+        services.TryAddSingleton<ILlmProfileRegistry, LlmProfileRegistry>();
+        return services;
+    }
+
+    /// <summary>
     /// Registers every profile the host configures under <c>Llm:Profiles:&lt;name&gt;</c>, each
     /// of the <c>Llm</c> section's shape and built by the provider factory (GAP-17). The
     /// profiles are read and validated now — a reserved name, an invalid <c>BaseUrl</c> or an
@@ -111,14 +145,31 @@ public static class LlmProviderRegistrationExtensions
         // section's (GAP-40): the default's, the profiles', AvailableModels.
         services.DeclareSettingsShape(ConfigurationKeys.LlmSection, typeof(LlmSectionShape));
 
+        // The per-model table the providers read, the host's overrides over the built-in one (FWK-21).
+        // A registry the host registered itself wins: TryAdd leaves it in place.
+        services.TryAddSingleton<IModelCapabilityRegistry>(
+            new ModelCapabilityRegistry(LlmSettings.ReadModelCapabilities(configuration)));
+
+        services.TryAddSingleton(LlmSettings.ReadReplay(configuration));
+
+        var fallbacks = LlmSettings.ReadFallbacks(configuration);
         foreach (var (name, config) in LlmSettings.ReadProfiles(configuration))
         {
-            services.AddOrkeonLlmProfile(name, sp =>
-                sp.GetRequiredService<ILlmProviderFactory>().Create(config) is LlmProviderAdapter adapter
-                    ? adapter.UnderlyingProvider
-                    : throw new InvalidOperationException(
-                        $"The LLM provider of profile '{name}' does not expose ILlmProvider."),
-                config);
+            fallbacks.TryGetValue(name, out var chain);
+            services.AddSingleton(new LlmProfileRegistration(
+                name,
+                sp => LlmProviderEntrance.Enter(
+                    sp.GetRequiredService<ILlmProviderFactory>().Create(config) is LlmProviderAdapter adapter
+                        ? adapter.UnderlyingProvider
+                        : throw new InvalidOperationException(
+                            $"The LLM provider of profile '{name}' does not expose ILlmProvider."),
+                    sp.GetService<ILlmUsageSink>(),
+                    sp.GetService<ILlmRateLimiter>()),
+                config)
+            {
+                Fallback = chain.Chain,
+                FallbackBudget = chain.Budget,
+            });
         }
 
         services.TryAddSingleton<ILlmProfileRegistry, LlmProfileRegistry>();

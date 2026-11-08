@@ -23,13 +23,27 @@ dotnet add package Orkeon.Tools --prerelease
 `Orkeon` carries the core closure in one package — Domain, Application, Infrastructure,
 the RAG and RaggableTree (`Orkeon.Analysis`) engines, `Orkeon.Tools.Abstractions` and four
 `Orkeon.Constants.*` satellites; there is no separate `Orkeon.Domain` /
-`Orkeon.Application` / `Orkeon.Infrastructure` package. The runner host
-(`Orkeon.Hosting`, `RunnerHost`), the plugin loader (`Orkeon.Plugins`) and the scripting
-DSL (`Orkeon.Scripting`) are **not** in it: they ship inside the `orkeon` CLI, not on
-NuGet — which is why the host below is wired by hand. The opt-ins `Orkeon.Rag.Onnx`,
+`Orkeon.Application` / `Orkeon.Infrastructure` package. The plugin loader
+(`Orkeon.Plugins`, `IOrkeonPlugin`) is in it. The runner host (`Orkeon.Hosting`, `RunnerHost`)
+and the scripting DSL (`Orkeon.Scripting`) are **not**: they ship in the opt-in `Orkeon.Scripting`
+package and in the `orkeon` CLI — which is why the host below is wired by hand. The opt-ins `Orkeon.Rag.Onnx`,
 `Orkeon.Tools.Embeddings.Local`, `Orkeon.Interop.AgentFramework` and
 `Orkeon.Hosting.Aspire` are added the same way when you need them. The full lineup is the
 [publication matrix](../reference/publication-matrix.md).
+
+### Starting from a template
+
+`dotnet new install Orkeon.Templates --prerelease` adds three templates, each a project that compiles
+against the packages of the same version, written out in its `.csproj`:
+
+| Command | Generates |
+|---|---|
+| `dotnet new orkeon-host -n MyHost` | A .NET generic host that runs `crew.ork.ts` in its own process (`ICrewScriptRunner`, from `Orkeon.Scripting`), configured from `appsettings.json` like the `orkeon-host` daemon |
+| `dotnet new orkeon-plugin -n MyPlugin` | An `IOrkeonPlugin`, one tool and the `plugin.json` that declares it (the loader refuses a tool the manifest does not list) |
+| `dotnet new orkeon-tool -n MyTools` | A class library with one `ToolBase<TRequest, TResponse>` tool, as in [the new-tool pattern](../tools/new-tool-pattern.md) |
+
+`orkeon init` is a different job: it writes the settings file, never a project. The host template needs
+`esbuild` on the machine to compile `crew.ork.ts`, as `orkeon run` does.
 
 ## Bootstrap and dependency injection
 

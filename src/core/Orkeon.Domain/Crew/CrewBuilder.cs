@@ -412,7 +412,14 @@ public sealed class CrewBuilder
             crew.AddAgent(agent.Id);
         }
 
-        // 7. Add tasks
+        // 7. Add tasks. A task is checkpointed under its key (FWK-07): two tasks of a crew never share one.
+        var seenKeys = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var task in _tasks.Where(t => t.Key is not null))
+        {
+            if (!seenKeys.Add(task.Key!))
+                throw new InvalidOperationException($"Task '{task.Key}' is declared twice: a task name is unique in a crew.");
+        }
+
         foreach (var task in _tasks)
         {
             crew.AddTask(task.Id);

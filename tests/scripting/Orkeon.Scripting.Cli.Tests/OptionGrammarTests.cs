@@ -238,6 +238,9 @@ public sealed class OptionGrammarTests
     [InlineData(typeof(RagIngestCommandOptions))]
     [InlineData(typeof(RagSearchCommandOptions))]
     [InlineData(typeof(RagEvalCommandOptions))]
+    [InlineData(typeof(EvalRunOptions))]
+    [InlineData(typeof(EvalBenchOptions))]
+    [InlineData(typeof(EvalCompareOptions))]
     public void No_parsed_option_calls_itself_repeatable(Type optionsType)
     {
         var offenders = optionsType.GetProperties()
@@ -282,6 +285,12 @@ public sealed class OptionGrammarTests
             Row<RagEvalCommandOptions>("--dataset", "g.yaml", "--profile", "balanced", "--offline", "--reindex", "--min-recall", "0.8", "--min-mrr", "0.7"),
             Row<RagEvalCommandOptions>("--dataset=g.yaml", "-k", "3"),
             Row<RagEvalCommandOptions>("--offline"),
+            Row<EvalRunOptions>("--dataset", "g.json", "--crew", "c.yaml", "--llm-mock", "m.jsonl", "--offline", "--min-score", "0.7", "--evaluators", "format,similarity"),
+            Row<EvalRunOptions>("-d", "g.json", "--llm-judge", "--output", "/output/x", "-v", "1"),
+            Row<EvalRunOptions>("--nope"),
+            Row<EvalBenchOptions>("-d", "g.json", "--runs", "5", "--baseline", "b.json", "--threshold", "0.1"),
+            Row<EvalCompareOptions>("a.json", "b.json", "--json", "--threshold=0.2"),
+            Row<EvalCompareOptions>("a.json"),
             Row<EmailAccountsCommandOptions>("--json", "-s", "a.json"),
             Row<EmailAccountsCommandOptions>("--settings=a.json"),
             Row<EmailLoginCommandOptions>("hotmail", "--events", "jsonl"),
@@ -314,6 +323,8 @@ public sealed class OptionGrammarTests
     [
         (typeof(RunCommandOptions), ["crew.yaml", "--validate", "extra"]),
         (typeof(RagSearchCommandOptions), ["question", "-c", "docs", "extra"]),
+        (typeof(EvalRunOptions), ["-d", "g.json", "extra"]),
+        (typeof(EvalCompareOptions), ["a.json", "b.json", "extra"]),
         (typeof(EmailLoginCommandOptions), ["hotmail", "extra"]),
         (typeof(DriveCheckCommandOptions), ["pro", "extra"]),
         (typeof(UseCasesShowOptions), ["03-email-pipeline", "extra"]),

@@ -681,6 +681,7 @@ public sealed partial class ConsensualProcessStrategy : IProcessStrategy
     {
         var results = new Dictionary<string, TaskResult>();
         var executionTasks = new List<(string agentKey, System.Threading.Tasks.Task<TaskResult> task)>();
+        var slot = 0;
 
         foreach (var agent in vote.Agents)
         {
@@ -704,11 +705,17 @@ public sealed partial class ConsensualProcessStrategy : IProcessStrategy
             }
 
             var capturedAgent = agent;
-            executionTasks.Add((agentKey, System.Threading.Tasks.Task.Run(async () =>
+
+            // Each agent's execution is checkpointed in its own slot, its position in the vote: the agents run at once, and
+            // the order in which they reach the checkpoint must not decide whose checkpoint a resumed run reads.
+            using (Orkeon.Infrastructure.Checkpointing.CheckpointSlot.Enter($"a{slot++}"))
             {
-                return await _executionService.ExecuteTaskAsync(
-                    capturedAgent, vote.Task, context, ct).ConfigureAwait(false);
-            }, ct)));
+                executionTasks.Add((agentKey, System.Threading.Tasks.Task.Run(async () =>
+                {
+                    return await _executionService.ExecuteTaskAsync(
+                        capturedAgent, vote.Task, context, ct).ConfigureAwait(false);
+                }, ct)));
+            }
         }
 
         // Wait for all agents to complete

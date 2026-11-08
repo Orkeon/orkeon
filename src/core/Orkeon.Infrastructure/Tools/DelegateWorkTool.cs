@@ -79,7 +79,7 @@ public record DelegateWorkResponse
 [ToolContract("delegate_work_to_coworker", Name = "Delegate work to coworker",
     Description = "Delegate a task to a coworker with specific expertise",
     Category = "Collaboration")]
-public partial class DelegateWorkTool : ToolBase<DelegateWorkRequest, DelegateWorkResponse>
+public partial class DelegateWorkTool : ToolBase<DelegateWorkRequest, DelegateWorkResponse>, Orkeon.Domain.Tools.ICoworkerDelegationTool
 {
     private readonly IAgentCommunicationService _communicationService;
     private readonly AgentId _currentAgentId;

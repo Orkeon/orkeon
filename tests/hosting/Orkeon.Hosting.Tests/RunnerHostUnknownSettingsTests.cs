@@ -41,7 +41,7 @@ public sealed class RunnerHostUnknownSettingsTests : IDisposable
     [InlineData("Orkeon:Guardain:Enabled", "true", "Orkeon:Guardain", "Orkeon:Guardian")]
     [InlineData("Orkeon:Rag:Ingestion:ChunkSize", "512", "Orkeon:Rag:Ingestion:ChunkSize", "DefaultChunkingStrategy")]
     [InlineData("Orkeon:CodeSandbox:Dockr:PullImageOnStartup", "true", "Orkeon:CodeSandbox:Dockr", "Orkeon:CodeSandbox:Docker")]
-    [InlineData("Llm:Provider", "deepseek", "Llm:Provider", "BaseUrl")]
+    [InlineData("Llm:Modle", "deepseek", "Llm:Modle", "Llm:Model")]
     [InlineData("Llm:Profiles:a:Modle", "gpt", "Llm:Profiles:a:Modle", "Llm:Profiles:a:Model")]
     [InlineData("Security:Promt:Policy", "Block", "Security:Promt", "Security:Prompt")]
     [InlineData("orkeon:guardain:enabled", "true", "guardain", "Orkeon:Guardian")]

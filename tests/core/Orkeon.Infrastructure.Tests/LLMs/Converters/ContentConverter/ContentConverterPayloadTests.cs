@@ -154,7 +154,7 @@ public class ContentConverterPayloadTests
             .AddImage(ImageContentPart.FromBytes(bytes, "image/jpeg"));
 
         // Act
-        var parts = ContentConverter.ToOpenAIContentParts(content);
+        var parts = ContentConverter.ToOpenAIContentParts(content, "gpt-4o-audio-preview");
 
         // Assert — Chat Completions shape: {"type":"image_url","image_url":{"url":"data:..."}}
         using var doc = SerializeToJson(parts);
@@ -177,7 +177,7 @@ public class ContentConverterPayloadTests
             .AddImage(ImageContentPart.FromUri(new Uri("https://example.com/photo.png")));
 
         // Act
-        var parts = ContentConverter.ToOpenAIContentParts(content);
+        var parts = ContentConverter.ToOpenAIContentParts(content, "gpt-4o-audio-preview");
 
         // Assert
         using var doc = SerializeToJson(parts);
@@ -194,7 +194,7 @@ public class ContentConverterPayloadTests
             .AddImage(ImageContentPart.FromUri(new Uri(dataUrl)));
 
         // Act
-        var parts = ContentConverter.ToOpenAIContentParts(content);
+        var parts = ContentConverter.ToOpenAIContentParts(content, "gpt-4o-audio-preview");
 
         // Assert
         using var doc = SerializeToJson(parts);
@@ -211,7 +211,7 @@ public class ContentConverterPayloadTests
 
         // Act + Assert
         var ex = Assert.Throws<NotSupportedException>(
-            () => ContentConverter.ToOpenAIContentParts(content));
+            () => ContentConverter.ToOpenAIContentParts(content, "gpt-4o-audio-preview"));
         Assert.Contains("File", ex.Message);
         Assert.Contains("OpenAI", ex.Message);
     }
@@ -225,7 +225,7 @@ public class ContentConverterPayloadTests
 
         // Act + Assert
         var ex = Assert.Throws<NotSupportedException>(
-            () => ContentConverter.ToOpenAIContentParts(content));
+            () => ContentConverter.ToOpenAIContentParts(content, "gpt-4o-audio-preview"));
         Assert.Contains("image/tiff", ex.Message);
     }
 

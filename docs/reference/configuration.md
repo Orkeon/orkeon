@@ -117,7 +117,7 @@ refusals on the same file, one `runner-settings` row each. What is refused:
   any case.
 - **A key** no section carries, against the shape its readers declare — the readers of one section
   together, a sub-section another reader declares included: `Orkeon:Guardian:Enabeld`,
-  `Llm:Provider` (nothing reads it: the provider follows from `BaseUrl` and the model). The refusal of an unknown key ends on the command that lists the
+  `Llm:Modle`. The refusal of an unknown key ends on the command that lists the
   keys of its section — `` `orkeon settings Orkeon:Guardian` lists its keys ``. A section name under `Orkeon:` and
   under the groups `Orkeon:Cli`, `Orkeon:Tools`, `Orkeon:Scripting`, `Orkeon:Security` and `Security`
   must be one Orkeon reads (`SettingsSections`); the refusal proposes the closest
@@ -161,8 +161,7 @@ WARNING: ToolRateLimiting is read by no component of this host: a C# host reads 
 `orkeon doctor` reports the same sentence as a `warn` row of `runner-settings`, one per section,
 and still exits `0`. The sections are those the settings catalogue marks as read by no shipped
 binary: `ToolRateLimiting`, `TokenBudget`, `Orkeon:Dlp`, `Orkeon:Monitoring`,
-`Orkeon:CognitiveMemory`, `Orkeon:MultiModal`, `Evaluation`, `Orkeon:VectorSearch`,
-`Orkeon:Checkpointing` and `Orkeon:ExecutionState:Persistence`
+`Orkeon:MultiModal`, `Evaluation` and `Orkeon:VectorSearch`
 ([opt-in subsystems](./opt-in-subsystems.md)). The list is computed, not written: a section a
 shipped binary starts to read leaves it. Not reported: a section another shipped binary reads
 (`Orkeon:Host` in a file `orkeon run` reads), a root section Orkeon does not know, and a section
@@ -180,19 +179,19 @@ closed list, and what it means.
 <!-- settings-index -->
 | Category | Sections | Keys |
 |---|---|---|
-| [Models](#models) | [`Evaluation`](#evaluation), [`Llm`](#llm), [`LlmLogging`](#llmlogging), [`Orkeon:CostTracking`](#orkeoncosttracking), [`Orkeon:Decision`](#orkeondecision), [`Orkeon:Decision:Guard`](#orkeondecisionguard), [`Orkeon:Kev`](#orkeonkev), [`Orkeon:Liquid`](#orkeonliquid), [`Orkeon:TokenCounter`](#orkeontokencounter), [`Orkeon:TypeSafe`](#orkeontypesafe) | 95 |
+| [Models](#models) | [`Evaluation`](#evaluation), [`Llm`](#llm), [`LlmLogging`](#llmlogging), [`Orkeon:CostTracking`](#orkeoncosttracking), [`Orkeon:Decision`](#orkeondecision), [`Orkeon:Kev`](#orkeonkev), [`Orkeon:Liquid`](#orkeonliquid), [`Orkeon:TokenCounter`](#orkeontokencounter), [`Orkeon:TypeSafe`](#orkeontypesafe) | 102 |
 | [Rate and budgets](#rate-and-budgets) | [`RateLimiting`](#ratelimiting), [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting) | 11 |
-| [Memory and vectors](#memory-and-vectors) | [`Memory`](#memory), [`Orkeon:ChromaDb`](#orkeonchromadb), [`Orkeon:CognitiveMemory`](#orkeoncognitivememory), [`Orkeon:CrewMemory`](#orkeoncrewmemory), [`Orkeon:EmbeddingCache`](#orkeonembeddingcache), [`Orkeon:Embeddings`](#orkeonembeddings), [`Orkeon:Encryption`](#orkeonencryption), [`Orkeon:LanceDb`](#orkeonlancedb), [`Orkeon:Pinecone`](#orkeonpinecone), [`Orkeon:Redis`](#orkeonredis), [`Orkeon:Sqlite`](#orkeonsqlite), [`Orkeon:VectorSearch`](#orkeonvectorsearch) | 58 |
+| [Memory and vectors](#memory-and-vectors) | [`Memory`](#memory), [`Orkeon:ChromaDb`](#orkeonchromadb), [`Orkeon:CognitiveMemory`](#orkeoncognitivememory), [`Orkeon:CrewMemory`](#orkeoncrewmemory), [`Orkeon:EmbeddingCache`](#orkeonembeddingcache), [`Orkeon:Embeddings`](#orkeonembeddings), [`Orkeon:Encryption`](#orkeonencryption), [`Orkeon:LanceDb`](#orkeonlancedb), [`Orkeon:Pinecone`](#orkeonpinecone), [`Orkeon:Redis`](#orkeonredis), [`Orkeon:Sqlite`](#orkeonsqlite), [`Orkeon:VectorSearch`](#orkeonvectorsearch) | 69 |
 | [RAG](#rag) | [`Orkeon:Rag`](#orkeonrag), [`Orkeon:Rag:Ingestion`](#orkeonragingestion), [`Orkeon:Rag:QueryRouting`](#orkeonragqueryrouting), [`Orkeon:Rag:Retrieval:Hybrid`](#orkeonragretrievalhybrid), [`Orkeon:Rag:WebFallback`](#orkeonragwebfallback) | 34 |
 | [Files and sandbox](#files-and-sandbox) | [`Orkeon:CodeSandbox`](#orkeoncodesandbox), [`Orkeon:CodeSandbox:Docker`](#orkeoncodesandboxdocker), [`Orkeon:FileSystem`](#orkeonfilesystem), [`Orkeon:Sandbox`](#orkeonsandbox), [`PathSecurity`](#pathsecurity) | 33 |
-| [Security](#security) | [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:Guardian`](#orkeonguardian), [`Orkeon:Security:PermissionGate`](#orkeonsecuritypermissiongate), [`Secrets`](#secrets), [`Security:Audit`](#securityaudit), [`Security:Prompt`](#securityprompt), [`Security:ToolResults`](#securitytoolresults), [`Security:Url`](#securityurl), [`Security:Vault`](#securityvault) | 31 |
-| [Tools](#tools) | [`BRAVE_API_KEY`](#brave_api_key), [`MCP`](#mcp), [`MCP:Server`](#mcpserver), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Tools:Drive`](#orkeontoolsdrive), [`Orkeon:Tools:Email`](#orkeontoolsemail), [`Orkeon:Tools:Firefox`](#orkeontoolsfirefox), [`Orkeon:Tools:GitHub`](#orkeontoolsgithub), [`Orkeon:Tools:ResultLimits`](#orkeontoolsresultlimits), [`Orkeon:Tools:Shell`](#orkeontoolsshell), [`Plugins`](#plugins), [`RaggableTree`](#raggabletree) | 89 |
-| [Orchestration and persistence](#orchestration-and-persistence) | [`Orkeon:Checkpointing`](#orkeoncheckpointing), [`Orkeon:Consensus`](#orkeonconsensus), [`Orkeon:CrewFactory`](#orkeoncrewfactory), [`Orkeon:ExecutionState:Persistence`](#orkeonexecutionstatepersistence) | 16 |
-| [Scripts and console](#scripts-and-console) | [`Orkeon:Cli:ConsoleStreaming`](#orkeoncliconsolestreaming), [`Orkeon:Cli:Memory`](#orkeonclimemory), [`Orkeon:Cli:ScriptCommands`](#orkeoncliscriptcommands), [`Orkeon:Cli:ScriptHost`](#orkeoncliscripthost), [`Orkeon:Cli:Session`](#orkeonclisession), [`Orkeon:Cli:Tui`](#orkeonclitui), [`Orkeon:Scripting:AgentInstances`](#orkeonscriptingagentinstances), [`Orkeon:Scripting:AgentMemory`](#orkeonscriptingagentmemory), [`Orkeon:Scripting:Limits`](#orkeonscriptinglimits), [`Orkeon:Scripting:Toolchain`](#orkeonscriptingtoolchain) | 32 |
-| [Service host and A2A](#service-host-and-a2a) | [`A2A`](#a2a), [`A2A:Security`](#a2asecurity), [`A2A:Security:AzureAD`](#a2asecurityazuread), [`A2A:Security:Oidc`](#a2asecurityoidc), [`Orkeon:Host`](#orkeonhost), [`Orkeon:Host:Discord`](#orkeonhostdiscord) | 46 |
+| [Security](#security) | [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:Guardian`](#orkeonguardian), [`Orkeon:Security:PermissionGate`](#orkeonsecuritypermissiongate), [`Secrets`](#secrets), [`Security:Audit`](#securityaudit), [`Security:Prompt`](#securityprompt), [`Security:ToolResults`](#securitytoolresults), [`Security:Url`](#securityurl), [`Security:Vault`](#securityvault) | 40 |
+| [Tools](#tools) | [`BRAVE_API_KEY`](#brave_api_key), [`MCP`](#mcp), [`MCP:Server`](#mcpserver), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Tools:Drive`](#orkeontoolsdrive), [`Orkeon:Tools:Email`](#orkeontoolsemail), [`Orkeon:Tools:Firefox`](#orkeontoolsfirefox), [`Orkeon:Tools:GitHub`](#orkeontoolsgithub), [`Orkeon:Tools:ResultLimits`](#orkeontoolsresultlimits), [`Orkeon:Tools:Shell`](#orkeontoolsshell), [`Plugins`](#plugins), [`RaggableTree`](#raggabletree) | 109 |
+| [Orchestration and persistence](#orchestration-and-persistence) | [`Orkeon:Checkpointing`](#orkeoncheckpointing), [`Orkeon:Consensus`](#orkeonconsensus), [`Orkeon:CrewFactory`](#orkeoncrewfactory), [`Orkeon:ExecutionState:Persistence`](#orkeonexecutionstatepersistence), [`Orkeon:HumanInput`](#orkeonhumaninput), [`Orkeon:RunHistory`](#orkeonrunhistory) | 28 |
+| [Scripts and console](#scripts-and-console) | [`Orkeon:Cli:ConsoleStreaming`](#orkeoncliconsolestreaming), [`Orkeon:Cli:Memory`](#orkeonclimemory), [`Orkeon:Cli:ScriptCommands`](#orkeoncliscriptcommands), [`Orkeon:Cli:ScriptHost`](#orkeoncliscripthost), [`Orkeon:Cli:Session`](#orkeonclisession), [`Orkeon:Cli:Tui`](#orkeonclitui), [`Orkeon:Scripting:AgentInstances`](#orkeonscriptingagentinstances), [`Orkeon:Scripting:AgentMemory`](#orkeonscriptingagentmemory), [`Orkeon:Scripting:Limits`](#orkeonscriptinglimits), [`Orkeon:Scripting:Toolchain`](#orkeonscriptingtoolchain) | 35 |
+| [Service host and A2A](#service-host-and-a2a) | [`A2A`](#a2a), [`A2A:Security`](#a2asecurity), [`A2A:Security:AzureAD`](#a2asecurityazuread), [`A2A:Security:Oidc`](#a2asecurityoidc), [`Orkeon:Host`](#orkeonhost), [`Orkeon:Host:Discord`](#orkeonhostdiscord) | 59 |
 | [Observability](#observability) | [`Logging`](#logging), [`Orkeon:Monitoring`](#orkeonmonitoring), [`Telemetry`](#telemetry) | 8 |
 
-79 sections, 453 keys. Read by no shipped binary, only by a host written in C# (10): [`Evaluation`](#evaluation), [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:CognitiveMemory`](#orkeoncognitivememory), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Checkpointing`](#orkeoncheckpointing), [`Orkeon:ExecutionState:Persistence`](#orkeonexecutionstatepersistence), [`Orkeon:Monitoring`](#orkeonmonitoring).
+80 sections, 528 keys. Read by no shipped binary, only by a host written in C# (6): [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Monitoring`](#orkeonmonitoring).
 <!-- /settings-index -->
 
 How to read a table:
@@ -282,6 +281,10 @@ the same way with its own keys.
 | `MaxRetries` | integer | `10` | How many times a call that fails on a passing error is tried again; `0` never retries. |
 | `MaxTokens` | integer | — | The most tokens an answer may hold: a pin. Left out, a request carries the documented maximum of its model, and 4096 for a model the catalogue does not know. |
 | `Model` | string | — | The model's name. Left out, the provider runs its own default model. |
+| `ModelCapabilities:<name>:AudioInput` | boolean | — | Whether the model takes audio parts as input. Left out, the built-in value of the model (false when the table does not know it). |
+| `ModelCapabilities:<name>:AudioOutput` | boolean | — | Whether the model answers in audio. Recorded only: nothing sends or reads audio output. Left out, the built-in value of the model (false when the table does not know it). |
+| `ModelCapabilities:<name>:ReasoningEfforts` | list of string | `[]` | The reasoning efforts the model takes: a list, or one comma-separated value; written empty, none. Left out, the built-in list of the model (no restriction for a model the table does not know) and the provider's own levels rule. |
+| `ModelCapabilities:<name>:Vision` | boolean | — | Whether the model takes image parts as input. Left out, the built-in value of the model (false when the table does not know it). |
 | `Profiles:<name>:ApiKey` | string, secret | — | The API key, in clear text. Prefer `ApiKeyEnvVar`: a key written here is in the settings file. |
 | `Profiles:<name>:ApiKeyEnvVar` | string | — | The name of the environment variable that holds the API key, read when `ApiKey` resolves none: the process environment, then the Windows user scope. |
 | `Profiles:<name>:BaseUrl` | string | — | The address of the provider's endpoint, `http://` or `https://`. Left out, the address of the provider the model's name or the key points to. |
@@ -289,16 +292,24 @@ the same way with its own keys.
 | `Profiles:<name>:Cache:Tools` | boolean | — | Marks the tool definitions cacheable for every agent that sets no cache of its own, on a provider whose prompt cache is explicit (Anthropic). Left out, they are not. |
 | `Profiles:<name>:Cache:Ttl` | string | — | The cache lifetime, `5m` or `1h`; it needs `SystemPrompt` or `Tools`, and any other value refuses the load. Left out, the vendor default (5 minutes on Anthropic). |
 | `Profiles:<name>:CallMode` | string | `"Auto"` | How a call reaches the model: `Auto`, `Buffer` or `Stream`, case ignored. Left out, `Auto`: the call streams, and falls back on a buffered call when the provider refuses streaming. |
+| `Profiles:<name>:Fallback` | list of string | `[]` | The profiles a call moves to, in order, when this one fails in a way a retry cannot cure: a transport error, a 5xx, a 429 once `MaxRetries` is spent, a timeout. A list of profile names, or one comma-separated value; `default` names the host's own. Left out, a failure is the call's. |
+| `Profiles:<name>:FallbackBudgetSeconds` | integer | — | The longest the chain may spend before it stops trying the next profile, in seconds, counted from the first call. It is checked between two profiles and never cuts a call in flight. Left out, the chain is bounded only by each profile's own `TimeoutSeconds` and `MaxRetries`. |
 | `Profiles:<name>:Grammar` | boolean | `false` | Whether the endpoint honours a GBNF grammar — a llama.cpp-compatible server, such as Docker Model Runner. Elsewhere a grammar is dropped with a warning. |
 | `Profiles:<name>:MaxRateLimitWait` | duration | `"00:05:00"` | The longest rate-limit window a call waits out before it fails: a provider that announces a longer one makes the call fail at once with a rate-limit error. `00:00:00` waits for nothing. |
 | `Profiles:<name>:MaxRetries` | integer | `10` | How many times a call that fails on a passing error is tried again; `0` never retries. |
 | `Profiles:<name>:MaxTokens` | integer | — | The most tokens an answer may hold: a pin. Left out, a request carries the documented maximum of its model, and 4096 for a model the catalogue does not know. |
 | `Profiles:<name>:Model` | string | — | The model's name. Left out, the provider runs its own default model. |
+| `Profiles:<name>:Provider` | string | — | `mock`, the only value: the offline provider that answers from the JSONL file `Responses` names. Left out, the provider follows from `BaseUrl`, the model's name and the key. |
+| `Profiles:<name>:Responses` | string | — | With `Provider: mock`, the virtual path of the JSONL file — one `{match, regex?, content, toolCalls?}` object per line — the mock provider answers from. |
 | `Profiles:<name>:StreamIdleSeconds` | integer | — | The longest silence a streamed answer may hold between two of its chunks, in seconds. Left out, nothing bounds it: `TimeoutSeconds` alone bounds the whole call, streamed or not. A model that thinks before it writes may stay silent for a while: set it only above that silence, or turn its thinking off. |
 | `Profiles:<name>:Temperature` | number | — | The sampling temperature. Left out, none is sent and the model applies its own. |
 | `Profiles:<name>:Thinking:Effort` | string | — | How hard it thinks, in the provider's own words (`low`, `medium`, `high`…). Left out, the provider's own. |
 | `Profiles:<name>:Thinking:Enabled` | boolean | — | Whether the model thinks before it answers. Left out, the provider's own behaviour. |
 | `Profiles:<name>:TimeoutSeconds` | integer | `30` | How long one call may take, in seconds. Too short at its default for a model that thinks before it answers: write 600 for one, or turn its thinking off. |
+| `Provider` | string | — | `mock`, the only value: the offline provider that answers from the JSONL file `Responses` names. Left out, the provider follows from `BaseUrl`, the model's name and the key. |
+| `Replay:Cassette` | string | — | The virtual path of the cassette, a JSONL file; `record` and `replay` need it. |
+| `Replay:Mode` | string | — | `record` writes every call of the run and its answer to the cassette; `replay` answers every call from it, and a call it does not hold fails; `off` does neither. Left out, `off`. |
+| `Responses` | string | — | With `Provider: mock`, the virtual path of the JSONL file — one `{match, regex?, content, toolCalls?}` object per line — the mock provider answers from. |
 | `StreamIdleSeconds` | integer | — | The longest silence a streamed answer may hold between two of its chunks, in seconds. Left out, nothing bounds it: `TimeoutSeconds` alone bounds the whole call, streamed or not. A model that thinks before it writes may stay silent for a while: set it only above that silence, or turn its thinking off. |
 | `Temperature` | number | — | The sampling temperature. Left out, none is sent and the model applies its own. |
 | `Thinking:Effort` | string | — | How hard it thinks, in the provider's own words (`low`, `medium`, `high`…). Left out, the provider's own. |
@@ -350,6 +361,14 @@ the catalogue or when you want a tighter cap; a Studio model profile pins it as
 `ORKEON_Llm__MaxTokens`, and the profile editor says what an empty field means for the chosen
 model. A catalogue cap the endpoint refuses is retried once without the field, with a warning
 naming the model.
+
+#### `Provider: mock` answers from a file
+
+A profile — or the `Llm` section itself — written `"Provider": "mock", "Responses": "/llm-mock/answers.jsonl"` builds no vendor provider: it answers from a JSONL file read through the virtual file system, one `{"match", "regex"?, "content", "toolCalls"?}` object per line (the first line whose `match` fits the prompt wins; see [`orkeon run --llm-mock`](./cli.md#orkeon-run)). It makes no network call, so a YAML crew or an `.ork.ts` script runs offline with the same output every time. `mock` is the only value `Provider` takes; a provider otherwise follows from `BaseUrl`, the model's name and the key. `Responses` is required with it. `orkeon run --llm-mock <file>` writes both keys for every profile of the run. The mock is not one of the sixteen providers: it is a test double.
+
+#### `Replay` records or replays the calls
+
+`Llm:Replay:Mode` set to `record` writes every call a provider makes, with its answer, to the JSONL file `Llm:Replay:Cassette` names; `replay` answers every call from that file and calls no model; `off` (the default) does neither. The decorator sits in the provider factory, under the call-mode layer, so the cassette holds what really went over the wire. `orkeon run --llm-record` and `--llm-replay` set both keys and mount the folder; see [Record and replay LLM calls](../guides/testing.md). A mode without a cassette, or a mode that is none of the three, refuses the start naming the key.
 
 #### `Grammar` is for a llama.cpp-compatible server
 
@@ -412,9 +431,9 @@ covers is not the one read, so it is not judged. The settings judged, from
 
 | Settings | Correction stated |
 |---|---|
-| `Llm:ApiKey`, `Llm:Profiles:<name>:ApiKey` | write `"ApiKeyEnvVar": "<NAME>"` instead |
-| `Llm:ApiKeyEnvVar`, `Llm:Profiles:<name>:ApiKeyEnvVar`, `Orkeon:Rag:WebFallback:ApiKeyEnvVar`, `Orkeon:Host:Discord:TokenEnvironmentVariable`, `A2A:Security:ApiKeySecretNames:<i>`, `Orkeon:Encryption:SecretName`, `Orkeon:Tools:GitHub:TokenVariable` | write the name alone, without `${` and `}` |
-| `MCP:Servers:<id>:Command`, `:Args:<i>`, `:Url`; `Orkeon:Redis:ConnectionString`, `Orkeon:Sqlite:ConnectionString`; `RaggableTree:Embedding:ApiKey`, `Orkeon:Pinecone:ApiKey`, `Orkeon:LanceDb:ApiKey`; `Llm:BaseUrl`, `Llm:Profiles:<name>:BaseUrl`, `RaggableTree:Embedding:BaseUrl`, `Orkeon:ChromaDb:BaseUrl`, `Orkeon:Pinecone:Host`, `Orkeon:LanceDb:Endpoint`, `Orkeon:Rag:WebFallback:Endpoint`, `Telemetry:OtlpEndpoint`; `Security:Vault:AzureKeyVaultUri`, `A2A:Security:AzureAD:Authority`, `A2A:Security:Oidc:Authority`; `Orkeon:Tools:GitHub:Token` | write the value, or keep it out of the file through the environment layer `ORKEON_<path with __>` |
+| `Llm:ApiKey`, `Llm:Profiles:<name>:ApiKey`, `Orkeon:Embeddings:ApiKey` | write `"ApiKeyEnvVar": "<NAME>"` instead |
+| `Llm:ApiKeyEnvVar`, `Llm:Profiles:<name>:ApiKeyEnvVar`, `Orkeon:Rag:WebFallback:ApiKeyEnvVar`, `Orkeon:Embeddings:ApiKeyEnvVar`, `Orkeon:Host:Discord:TokenEnvironmentVariable`, `A2A:Security:ApiKeySecretNames:<i>`, `Orkeon:Encryption:SecretName`, `Orkeon:Tools:GitHub:TokenVariable` | write the name alone, without `${` and `}` |
+| `MCP:Servers:<id>:Command`, `:Args:<i>`, `:Url`; `Orkeon:Redis:ConnectionString`, `Orkeon:Sqlite:ConnectionString`; `RaggableTree:Embedding:ApiKey`, `Orkeon:Pinecone:ApiKey`, `Orkeon:LanceDb:ApiKey`; `Llm:BaseUrl`, `Llm:Profiles:<name>:BaseUrl`, `RaggableTree:Embedding:BaseUrl`, `Orkeon:ChromaDb:BaseUrl`, `Orkeon:Pinecone:Host`, `Orkeon:LanceDb:Endpoint`, `Orkeon:Embeddings:Endpoint`, `Orkeon:Rag:WebFallback:Endpoint`, `Telemetry:OtlpEndpoint`; `Security:Vault:AzureKeyVaultUri`, `A2A:Security:AzureAD:Authority`, `A2A:Security:Oidc:Authority`; `Orkeon:Tools:GitHub:Token` | write the value, or keep it out of the file through the environment layer `ORKEON_<path with __>` |
 | `MCP:Servers:<id>:Env:<name>` | remove the entry: the server inherits the environment Orkeon runs in, set the variable there |
 | `Secrets:<name>` | remove the entry and set `ORKEON_<name>`, which the secret chain reads first |
 | `BRAVE_API_KEY` | remove the entry, Orkeon reads the variable |
@@ -635,10 +654,11 @@ Token estimation. Registered by `AddOrkeonInfrastructure()`; the section gates b
 With `EnableLlmJudge`, the default `IEvaluationSuite` also runs the coherence, fluency and
 groundedness LLM judges over the registered `IChatClient`. Bound by
 `AddOrkeonInfrastructure(configuration)`, or `AddOrkeonEvaluation(configuration)` (idempotent: a
-second call registers no evaluator twice).
+second call registers no evaluator twice). The runner hosts (`orkeon`, `orkeon-host`) bind it with
+the second; `orkeon eval run --llm-judge` sets it for one run, `--offline` forces it off.
 
 <!-- settings:Evaluation -->
-**Read by**: a host written in C# only, through `AddOrkeonEvaluation()` — no shipped binary reads this section.
+**Read by**: `orkeon`, `orkeon-host`.
 
 | Key | Type | Default | Meaning |
 |---|---|---|---|
@@ -649,8 +669,8 @@ second call registers no evaluator twice).
 
 The decision provider TypeSafe (model Jev, key required), bound by `AddOrkeonDecisionProvider(configuration, provider)`, which the three
 shipped binaries call when it is the active provider (one provider is active at a time, see [`Orkeon:Decision`](#orkeondecision)): this section is present — even empty, `TypeSafe: {}` counts — or `TYPESAFE_API_KEY` is set, or `Orkeon:Decision:Provider` is `typesafe`: the key, the
-endpoint, the default model, the timeout and retries of each call, (the agent input guard is
-[`Orkeon:Decision:Guard`](#orkeondecisionguard)). See [Decision models](../architecture/decision-models.md).
+endpoint, the default model, the timeout and retries of each call (the LLM judge of the guardian is
+[`Orkeon:Guardian:Llm`](#orkeonguardian)). See [Decision models](../architecture/decision-models.md).
 
 <!-- settings:Orkeon:TypeSafe -->
 **Read by**: `orkeon`, `orkeon-host`, `orkeon-repl`.
@@ -740,25 +760,6 @@ warned as ignored in the start log (with a hint to name it when no provider is n
 | `Profiles:<name>:Stages:<i>:WarnThreshold` | number | `0.3` | The probability at or over which a `guard` logs a warning. |
 | `Profiles:<name>:Target` | string | `""` | The profile a call goes to when no stage routes it; `default` is the `Llm` section. |
 | `Provider` | string | — | The decision provider: `typesafe`, `liquid` or `kev`; empty deduces it. |
-<!-- /settings -->
-
-### `Orkeon:Decision:Guard`
-
-The agent input guard, registered with the decision model by `AddOrkeonDecisionProvider`: it judges
-the input with that model, in the `Input` phase, beside the built-in guard, through the active provider; its verdicts are signed with that provider's
-name. Off unless `Enabled`. See
-[Decision models](../architecture/decision-models.md).
-
-<!-- settings:Orkeon:Decision:Guard -->
-**Read by**: `orkeon`, `orkeon-host`, `orkeon-repl`.
-
-| Key | Type | Default | Meaning |
-|---|---|---|---|
-| `BlockThreshold` | number | `0.8` | The probability at or over which a risk blocks the input. |
-| `Enabled` | boolean | `false` | Whether the guard runs; off by default. |
-| `FailClosed` | boolean | `false` | Whether an unreachable decision model blocks the input; false warns and lets it in. |
-| `Risks:<name>` | string | — | The risks detected, each with what it is; empty takes the default risks. |
-| `WarnThreshold` | number | `0.5` | The probability at or over which a risk is a warning. |
 <!-- /settings -->
 
 ## Rate and budgets
@@ -945,24 +946,29 @@ What a crew with `memory: true` recalls before each task (`CrewMemoryOptions`): 
 `RecallLimit` memories (0 recalls nothing), those whose cosine similarity reaches `MinScore` — on
 the embedder's scale, measured on the local model —, cut to `MaxChars` characters of memory
 content in all — see [Memory system](../architecture/memory-system.md#what-a-crew-recalls). Read
-by `MemoryCoordinator`; bound by `AddOrkeonInfrastructure()`.
+by `MemoryCoordinator`; bound by `AddOrkeonInfrastructure()`. With the cognitive memory enabled the
+recall is floored by `MinCompositeScore` and `MinSemanticScore` instead of `MinScore`, and `ConsolidateOnRunEnd`
+consolidates the memory when a run ends.
 
 <!-- settings:Orkeon:CrewMemory -->
 **Read by**: `orkeon`, `orkeon-host`, `orkeon-repl`.
 
 | Key | Type | Default | Meaning |
 |---|---|---|---|
+| `ConsolidateOnRunEnd` | boolean | `false` | Whether the crew's memory is consolidated (redundant memories merged, low-value ones pruned) when a run ends. False by default: a consolidation costs LLM calls. Read only when the cognitive memory is wired. |
 | `MaxChars` | integer | `4000` | How many characters of memory content a task's prompt receives at most, all recalled memories together. 4,000 by default; the last memory that does not fit is cut. |
+| `MinCompositeScore` | number | `0.4` | The least composite score (similarity, recency and importance together) a memory needs to be recalled when the cognitive memory is wired (`Orkeon:CognitiveMemory:Enabled`). 0.4 by default. Distinct from `MinScore`, which bounds the cosine similarity of the vector path: the two scales are not the same, never reuse one for the other. |
 | `MinScore` | number | `0.6` | The least cosine similarity between a task and a memory for the memory to be recalled. 0.6 by default, measured on the local embedding model (BGE-micro-v2), on which the same task of an earlier run scores 0.72 and above and an unrelated English task 0.53 and below. Its scale is the embedder's: another model needs its own measure. |
+| `MinSemanticScore` | number | `0.5` | The least semantic similarity (cosine) a memory needs to be recalled by the cognitive memory, whatever its recency and importance: a memory stored a moment ago at default importance reaches `MinCompositeScore` on those two alone, so relevance is required apart. 0.5 by default; its scale is the embedder's, like `MinScore`. |
 | `RecallLimit` | integer | `5` | How many memories a task recalls at most. 5 by default; 0 recalls nothing (the crew still stores what its tasks produce). |
 <!-- /settings -->
 
 ### `Orkeon:CognitiveMemory`
 
-Cognitive memory layering. Opt-in: `AddOrkeonCognitiveMemory(configuration)`.
+Cognitive memory layering. Opt-in: the runners wire it when `Enabled` is `true` (`AddOrkeonCognitiveMemory(configuration)` for a host written in C#). No YAML key: the analysis cost is the operator's.
 
 <!-- settings:Orkeon:CognitiveMemory -->
-**Read by**: a host written in C# only, through `AddOrkeonCognitiveMemory()` — no shipped binary reads this section.
+**Read by**: `orkeon`, `orkeon-host`.
 
 | Key | Type | Default | Values | Meaning |
 |---|---|---|---|---|
@@ -971,13 +977,16 @@ Cognitive memory layering. Opt-in: `AddOrkeonCognitiveMemory(configuration)`.
 | `ContradictionCandidateCount` | integer | `10` |  | Number of existing memories to check for contradictions. Default: 10. |
 | `DefaultRecallOptions:ImportanceWeight` | number | `0.2` |  | Weight for importance in composite scoring. Default: 0.2. |
 | `DefaultRecallOptions:MinScore` | number | `0.1` |  | Minimum composite score threshold. Default: 0.1. |
+| `DefaultRecallOptions:MinSemanticScore` | number | `0` |  | Minimum semantic similarity a memory needs whatever its recency and importance: without it a fresh, default-importance memory unrelated to the query reaches the composite floor on those two alone. Default: 0 (no floor). |
 | `DefaultRecallOptions:RecencyWeight` | number | `0.3` |  | Weight for temporal recency in composite scoring. Default: 0.3. |
 | `DefaultRecallOptions:SemanticWeight` | number | `0.5` |  | Weight for semantic similarity in composite scoring. Default: 0.5. |
 | `DefaultRecallOptions:TagFilter` | list of string | `[]` |  | Optional filter by tags (any match). |
 | `DefaultRecallOptions:TopK` | integer | `10` |  | Maximum number of results to return. Default: 10. |
 | `DefaultRecallOptions:TypeFilter` | enum | — | `ShortTerm`, `LongTerm`, `Episodic`, `Entity`, `Procedural` | Optional filter by memory type. |
 | `EnableContradictionDetection` | boolean | `true` |  | Whether to enable contradiction detection on remember. Default: true. |
+| `Enabled` | boolean | `false` |  | Whether the runners wire the cognitive memory into a run: recall by composite score, analysed storage, the `memory_recall` tool. Default: false (the analysis costs LLM calls). |
 | `EnableLlmAnalysis` | boolean | `true` |  | Whether to enable LLM-based content analysis on remember. Default: true. |
+| `Profile` | string | — |  | The LLM profile (`Llm:Profiles:<name>`) the analysis, contradiction detection and consolidation run on, so they are metered like any call. Null or blank: the default profile. |
 | `PruningMinAgeDays` | integer | `30` |  | Minimum age in days before a memory can be pruned. Default: 30. |
 | `PruningThreshold` | number | `0.1` |  | Importance threshold below which memories are candidates for pruning. Default: 0.1. |
 | `RecencyHalfLifeHours` | number | `69` |  | Half-life for recency decay in hours (exp(-ln2/halfLife * ageHours)). Default: 69.0. |
@@ -1001,7 +1010,11 @@ and the decorator is applied by the host. Key rotation stays opt-in: `AddOrkeonK
 ### `Orkeon:Embeddings`
 
 Embedding provider selection: `Provider` is `openai`, any M.E.AI embedding generator the host
-registers, or `ollama`; another name refuses the start. Read by
+registers, `ollama`, `mistral`, `azure-openai` or `gemini`; another name refuses the start. The last
+three speak the OpenAI embeddings wire format and read `ApiKey` (or `ApiKeyEnvVar`), `Endpoint` and
+`Model`; `azure-openai` also needs `Endpoint` (the resource URL) and takes the deployment name as
+`Model`. At start the host compares the provider, model and dimensions with the ones recorded at
+`FingerprintPath` and refuses to start when they changed. Read by
 `DefaultEmbeddingProviderResolver`, when no local or code-analysis provider is registered. Bound
 by `AddOrkeonInfrastructure()`, and by `AddOrkeonVectorSearch(configuration)` (called by
 `AddOrkeonInfrastructure(configuration)`).
@@ -1011,11 +1024,16 @@ by `AddOrkeonInfrastructure()`, and by `AddOrkeonVectorSearch(configuration)` (c
 
 | Key | Type | Default | Meaning |
 |---|---|---|---|
+| `ApiKey` | string, secret | — | The API key, in clear text, for `mistral`, `azure-openai` and `gemini`. Prefer `ApiKeyEnvVar`: a key written here is in the settings file. |
+| `ApiKeyEnvVar` | string | `""` | Name of the environment variable holding the API key, read when `ApiKey` is empty. |
+| `ApiVersion` | string | `""` | The `api-version` query of `azure-openai`. Empty: the provider's default. |
 | `BatchSize` | integer | `100` | Maximum batch size for bulk embedding requests. |
 | `Dimension` | integer | `1536` | The dimension of the embedding vectors. |
 | `EnableCache` | boolean | `true` | Whether to enable embedding caching. |
+| `Endpoint` | string | `""` | Base URL of the embeddings endpoint. Empty: the provider's public endpoint. Required by `azure-openai` (the resource URL, `https://<resource>.openai.azure.com`). |
+| `FingerprintPath` | string | `"/workspace/.orkeon/embedding-fingerprint.json"` | Virtual path of the file recording the provider, model and dimensions the stored vectors came from; the host refuses to start when they change. Empty: the guard is off. |
 | `Model` | string | `"text-embedding-3-small"` | The model name to use for embeddings. |
-| `Provider` | string | `"openai"` | The embedding provider to use (e.g., "openai", "ollama"). |
+| `Provider` | string | `"openai"` | The embedding provider to use: "openai", "ollama", "mistral", "azure-openai" or "gemini". |
 <!-- /settings -->
 
 ### `Orkeon:EmbeddingCache`
@@ -1063,7 +1081,7 @@ The query pipeline, stage by stage:
 - **`LlmProfile`** — the host LLM profile (`Llm:Profiles:<name>`) the RAG subsystem calls —
   generation, query transformers, listwise reranker, corrective evaluator and groundedness
   checker, `llm` classifier, evaluation judge; unset or `default` is the default profile. An
-  unknown name refuses the host start, listing the known ones; `orkeon rag eval --offline` ignores
+  unknown name refuses the host start, listing the known ones; `orkeon eval rag --offline` ignores
   it. Chosen in Studio › Settings › AI model (expert).
 - **`Provider`** — TYPE of the RAG document-store provider (`RagStoreOptions` — a
   `MemoryProviderFactory` type alias), connected from that provider's own section (`Orkeon:Redis`,
@@ -1308,17 +1326,30 @@ from. The story is in [Security](../architecture/security.md).
 
 The guard pipeline: `GuardianPipeline` runs the input phase of every agent turn, and the tool and
 delegation phases of every tool call. On by default, registered by `AddOrkeonInfrastructure()`.
+The `Llm` sub-section adds an LLM judge, off by default: the decision model judges the input and the
+output of a task (`Phases`), a risk at or over `BlockThreshold` blocks, and when the model cannot answer
+`FailMode` decides: `Closed` (default) refuses, `Open` lets the text in; both audit
+`guardian.judge.unavailable`. While the output phase is guarded a task's streaming waits for the judgement. It needs a decision model (`AddOrkeonDecisionProvider`); enabled without
+one, the host refuses to start.
 
 <!-- settings:Orkeon:Guardian -->
 **Read by**: `orkeon`, `orkeon-host`, `orkeon-repl`.
 
-| Key | Type | Default | Meaning |
-|---|---|---|---|
-| `DefaultPolicy:DelegationGuardEnabled` | boolean | `true` | Whether the delegation phase (depth, self-delegation, cycles) runs. |
-| `DefaultPolicy:InputGuardEnabled` | boolean | `true` | Whether the input phase (prompt-injection screening of the composed user prompt) runs. |
-| `DefaultPolicy:MaxDelegationDepth` | integer | `5` | How many synchronous delegations may nest before the next one is blocked. |
-| `DefaultPolicy:ToolGuardEnabled` | boolean | `true` | Whether the tool phase (path traversal, SSRF and SQL injection in tool arguments) runs. |
-| `Enabled` | boolean | `true` | Whether the guardian runs. When false no guardian is registered in the pipeline: agent turns are neither screened on input nor on tool calls. |
+| Key | Type | Default | Values | Meaning |
+|---|---|---|---|---|
+| `DefaultPolicy:DelegationGuardEnabled` | boolean | `true` |  | Whether the delegation phase (depth, self-delegation, cycles) runs. |
+| `DefaultPolicy:InputGuardEnabled` | boolean | `true` |  | Whether the input phase (prompt-injection screening of the composed user prompt) runs. |
+| `DefaultPolicy:MaxDelegationDepth` | integer | `5` |  | How many synchronous delegations may nest before the next one is blocked. |
+| `DefaultPolicy:OutputGuardEnabled` | boolean | `true` |  | Whether the output phase runs. The only guard of that phase is the LLM judge, which is itself off unless `Orkeon:Guardian:Llm:Enabled`. |
+| `DefaultPolicy:ToolGuardEnabled` | boolean | `true` |  | Whether the tool phase (path traversal, SSRF and SQL injection in tool arguments) runs. |
+| `Enabled` | boolean | `true` |  | Whether the guardian runs. When false no guardian is registered in the pipeline: agent turns are neither screened on input nor on tool calls. |
+| `Llm:BlockThreshold` | number | `0.8` |  | The probability at or over which a risk blocks the text. |
+| `Llm:Enabled` | boolean | `false` |  | Whether the judge runs; off by default (it costs a model call per phase). |
+| `Llm:FailMode` | enum | `"Closed"` | `Closed`, `Open` | What happens when the decision model cannot judge: `Closed` (default) refuses, `Open` lets the text in; both audit `guardian.judge.unavailable`. |
+| `Llm:MaxContentChars` | integer | `8000` |  | The characters of a text the judge reads in one call. Under `Closed` a longer text is judged whole, chunk by chunk (any chunk that blocks blocks), up to 32 chunks, and a text beyond that is refused; under `Open` it is judged on its first and last half of that budget, what lies between is not judged, and the cut is audited. |
+| `Llm:Phases` | list of enum | `[]` | `Input`, `Output` | The phases judged, `Input` and/or `Output`; empty judges both. Any other value (the tool and delegation phases are checked by rules, not by a model) is refused at start. |
+| `Llm:Risks:<name>` | string | — |  | The risks detected, each with what it is; empty takes the default risks. |
+| `Llm:WarnThreshold` | number | `0.5` |  | The probability at or over which a risk is a warning. |
 <!-- /settings -->
 
 ### `Security:Prompt`
@@ -1426,6 +1457,7 @@ by `RunnerHost` — is a no-op unless `Enabled = true`.
 
 | Key | Type | Default | Meaning |
 |---|---|---|---|
+| `DefaultMode` | string | `"default"` | The permission mode of an agent of a crew that declares none (`permissionMode:`): `default`, `acceptEdits`, `bypassPermissions`, `plan` or `dontAsk`. A script poses its own mode on each `act`. |
 | `Enabled` | boolean | `false` | Whether the gate is registered. Left `false`, no tool call is gated. |
 | `Interactive` | boolean | `false` | Whether the host resolves an approval itself, without an approval channel. A host that registers a channel (orkeon-repl does) asks the operator whatever this says. Left `false` without a channel, a call that needs an approval is refused, and the model reads the reason as the tool's result. |
 <!-- /settings -->
@@ -1682,11 +1714,26 @@ loads (STUDIO-21), by `orkeon-host` once at startup, before its first message (G
 |---|---|---|---|---|
 | `Enabled` | boolean | `true` |  | Whether MCP is enabled at all. |
 | `Servers:<name>:Args` | list of string | `[]` |  | Command-line arguments for the server process. |
+| `Servers:<name>:Auth:Audience` | string | — |  | The OAuth audience the token is issued for, when the provider asks for one. |
+| `Servers:<name>:Auth:ClientId` | string | — |  | The OAuth client id. |
+| `Servers:<name>:Auth:ClientSecretEnv` | string | — |  | The environment variable holding the OAuth client secret (required for client credentials, optional for the device flow). |
+| `Servers:<name>:Auth:DeviceAuthorizationUrl` | uri | — |  | The OAuth device authorization endpoint (`oauth2-device`). |
+| `Servers:<name>:Auth:PasswordEnv` | string | — |  | The environment variable holding the basic-auth password. |
+| `Servers:<name>:Auth:Scopes` | list of string | `[]` |  | The OAuth scopes requested; none by default. |
+| `Servers:<name>:Auth:TokenEnv` | string | — |  | The environment variable holding the bearer token. |
+| `Servers:<name>:Auth:TokenUrl` | uri | — |  | The OAuth token endpoint (`oauth2-client-credentials`, `oauth2-device`): HTTPS, or HTTP on loopback. |
+| `Servers:<name>:Auth:Type` | enum | `"None"` | `None`, `Bearer`, `Basic`, `OAuth2ClientCredentials`, `OAuth2Device` | The authentication scheme, each with the keys it needs: `None`; `Bearer` (`TokenEnv`); `Basic` (`UserEnv`, `PasswordEnv`); `oauth2-client-credentials` (`TokenUrl`, `ClientId`, `ClientSecretEnv`; optional `Scopes`, `Audience`); `oauth2-device` (`TokenUrl`, `DeviceAuthorizationUrl`, `ClientId`; optional `ClientSecretEnv`, `Scopes`, `Audience`; refused by `orkeon-host`, which has no terminal). Accepted spellings, exactly: `None`, `none`, `Bearer`, `bearer`, `Basic`, `basic`, `OAuth2ClientCredentials`, `oauth2-client-credentials`, `OAuth2Device`, `oauth2-device`. |
+| `Servers:<name>:Auth:UserEnv` | string | — |  | The environment variable holding the basic-auth user name. |
+| `Servers:<name>:CallTimeout` | duration | `"00:01:00"` |  | How long one request to this server may take: a tool call ends as a tool error, and `prompts/list`, `prompts/get`, `resources/list`, `resources/read` and a subscription raise a timeout. 60 seconds by default; a value that is not positive is refused. A device sign-in owed first is outside the bound. |
 | `Servers:<name>:Command` | string | `""` |  | Command to launch the MCP server process (for stdio transport). |
+| `Servers:<name>:ConnectTimeout` | duration | `"00:00:30"` |  | How long the handshake and the tool listing of this server may take before the connection fails. 30 seconds by default; a value that is not positive is refused. |
 | `Servers:<name>:Env:<name>` | string | — |  | Environment variables for the server process. |
+| `Servers:<name>:Headers:<name>` | string | — |  | Extra HTTP headers (SSE transport) sent on every request: a literal value, or `env:VAR` to read it from an environment variable when the server is connected. An `Authorization` header is refused here; credentials go through `Auth`. The headers the transport sets itself (`Accept`, `Content-Type`, `Mcp-Session-Id`, `MCP-Protocol-Version`, `Mcp-Method`, `Mcp-Name`, `Last-Event-ID`) are refused too. |
+| `Servers:<name>:Tools:Allow` | list of string | `[]` |  | Tool names to register; empty means all. |
+| `Servers:<name>:Tools:Deny` | list of string | `[]` |  | Tool names never registered, applied after `Allow`. |
 | `Servers:<name>:Transport` | enum | `"Stdio"` | `Stdio`, `Sse` | Transport type to use. |
 | `Servers:<name>:TrustAnnotations` | boolean | `false` |  | Whether the permission gate takes this server's tool annotations at their word: a tool marked readOnlyHint is then a read, which plan mode lets run. Off by default: an untrusted server could label a destructive tool read-only, so its tools stay classified fail-closed. |
-| `Servers:<name>:Url` | uri | — |  | URL endpoint for SSE transport. |
+| `Servers:<name>:Url` | uri | — |  | URL endpoint for SSE transport. With credentials (an `Auth` type, or an `env:` header) it must be an absolute https address, http only on loopback, or the server is refused at configuration. |
 <!-- /settings -->
 
 ### `MCP:Server`
@@ -1699,7 +1746,12 @@ How the server of `orkeon mcp serve` introduces itself (it exposes tools only). 
 
 | Key | Type | Default | Meaning |
 |---|---|---|---|
+| `AllowedTools` | list of string | `[]` | The registry tools the server exposes and runs, by name (case-insensitive); empty serves them all. A tool outside the list is neither listed nor callable, whoever registers it and whenever: a tool an MCP server adds later stays out. The tools an extension serves (`--crew`) are not subject to it. `orkeon mcp serve --tools` sets it. |
+| `ExposeOutput` | boolean | `false` | Whether the server serves `/output` as read-only MCP resources (`orkeon:///output/<path>`). Off by default: nothing but the tools is exposed. `/workspace` and every other mount are never exposed. `orkeon mcp serve --expose-output` sets it. |
+| `MaxConcurrency` | integer | `4` | How many requests the stdio loop runs at once; the others wait their turn. At least 1. `orkeon mcp serve --max-concurrency` overrides it. |
+| `MaxResourceBytes` | integer | `1048576` | The largest file `resources/read` returns, in bytes; a bigger one is refused. |
 | `Name` | string | `"Orkeon"` | Server name advertised during MCP initialization. |
+| `ResourcesPageSize` | integer | `100` | How many resources one `resources/list` page carries. At least 1. |
 | `Version` | string | `"1.0.0"` | Server version advertised during MCP initialization. |
 <!-- /settings -->
 
@@ -1765,9 +1817,9 @@ host calls `AddOrkeonPlugins(fileSystem, configuration)` — see [Plugins](../ar
 
 | Key | Type | Default | Meaning |
 |---|---|---|---|
-| `ContinueOnError` | boolean | `false` | When `true`, a plugin assembly that fails to load or to configure its services is recorded in `IPluginRegistry.Failures` and the remaining candidates keep loading. When `false` (default), the first failure throws a `PluginLoadException` (fail fast). |
-| `Directory` | string | `"/plugins"` | Virtual path (VFS) of the directory scanned for plugin assemblies. Must start with `/` and resolve inside a configured mount. Default: `/plugins`. |
-| `SearchPattern` | string | `"*.dll"` | Simple glob pattern applied to candidate assembly file names (e.g. `*.dll`, `MyCompany.*.dll`). Candidates must additionally carry the `.dll` extension regardless of the pattern. Default: `*.dll`. |
+| `ContinueOnError` | boolean | `false` | When `true`, a plugin that fails to load, is refused by its manifest (absent, malformed, out of the Orkeon range, a tool not declared) or fails to configure its services is recorded in `IPluginRegistry.Failures` and the remaining candidates keep loading. When `false` (default), the first failure throws a `PluginLoadException` (fail fast). |
+| `Directory` | string | `"/plugins"` | Virtual path (VFS) of the directory whose sub-folders are plugins: each holds a `plugin.json` manifest and the entry assembly it names; a `.dll` dropped flat is ignored. Must start with `/` and resolve inside a configured mount. Default: `/plugins`. |
+| `SearchPattern` | string | `"*.dll"` | Simple glob pattern applied to the file name of each manifest's entry assembly (e.g. `*.dll`, `MyCompany.*.dll`). Entry assemblies must additionally carry the `.dll` extension regardless of the pattern. Default: `*.dll`. |
 | `SharedAssemblyPrefixes` | list of string | `["Orkeon.", "Orkeon.Rag.Abstractions", "Microsoft.Extensions."]` | Assembly simple-name prefixes that are never loaded into the plugin's isolated `AssemblyLoadContext`; resolution defers to the host (default) context instead, so contract types (e.g. `IOrkeonPlugin`, `IBaseTool`, `IServiceCollection`) keep a single identity shared between the host and the plugin. Defaults: `Orkeon.`, `Orkeon.Rag.Abstractions` and `Microsoft.Extensions.`. |
 <!-- /settings -->
 
@@ -1814,10 +1866,11 @@ section gates behavior.
 
 Durable crew execution states (`ScopedCrewExecutionStateManager`). Opt-in:
 `AddCrewExecutionStatePersistence(configuration)` — auto-called by
-`AddOrkeonInfrastructure(configuration)` when the section exists; requires an `IStateStore`.
+`AddOrkeonInfrastructure(configuration)` when the section exists, and by `orkeon run` and `orkeon-host`;
+requires an `IStateStore` (`Orkeon:Checkpointing`).
 
 <!-- settings:Orkeon:ExecutionState:Persistence -->
-**Read by**: a host written in C# only, through `AddCrewExecutionStatePersistence()` — no shipped binary reads this section.
+**Read by**: `orkeon`, `orkeon-host`.
 
 | Key | Type | Default | Meaning |
 |---|---|---|---|
@@ -1827,18 +1880,62 @@ Durable crew execution states (`ScopedCrewExecutionStateManager`). Opt-in:
 
 ### `Orkeon:Checkpointing`
 
-The Postgres state store (`CheckpointingExtensions`). Opt-in:
+Which store holds the checkpoint sessions of the runs: `Enabled` with `Store` memory, json, sqlite or
+postgres (`CheckpointingExtensions`). `orkeon run` and `orkeon-host` read it: `json` and `sqlite` write
+under `./.orkeon/state`, mounted at `/state` as an internal mount (`Path` is a virtual path under it);
+`sqlite` with a `ConnectionString` and `postgres` need no mount. A host written in C# registers it with
+`AddOrkeonCheckpointing(configuration)`, `AddOrkeonSqliteCheckpointing(...)` or
 `AddOrkeonPostgresCheckpointing(configuration)`.
 
 <!-- settings:Orkeon:Checkpointing -->
-**Read by**: a host written in C# only, through `AddOrkeonPostgresCheckpointing()` — no shipped binary reads this section.
+**Read by**: `orkeon`, `orkeon-host`.
 
-| Key | Type | Default | Meaning |
-|---|---|---|---|
-| `AutoMigrate` | boolean | `true` | Whether to auto-create the schema and tables on first use. |
-| `ConnectionString` | string, secret | — | The PostgreSQL connection string. |
-| `MaxHistoryPerSession` | integer | `1000` | The maximum number of version entries per session (default: 1000). |
-| `SchemaName` | string | `"orkeon"` | The schema name (default: "orkeon"). |
+| Key | Type | Default | Values | Meaning |
+|---|---|---|---|---|
+| `AutoMigrate` | boolean | `true` |  | Whether the PostgreSQL schema and tables are created on first use. |
+| `ConnectionString` | string, secret | — |  | The connection string of the Sqlite (instead of `Path`) or Postgres store. |
+| `Enabled` | boolean | `false` |  | Whether the store named by `Store` is used (default: false, the in-memory store). |
+| `MaxHistoryPerSession` | integer | `1000` |  | The maximum number of version entries per session in the PostgreSQL store. |
+| `MaxVersions` | integer | `20` |  | The number of versions a session keeps in the Json store (default: 20); each new version deletes the oldest beyond it. Zero or negative keeps them all. |
+| `Path` | string | — |  | The virtual path of the folder (Json) or the file (Sqlite) the store writes, under the `/state` mount. Null: `/state/checkpoints` or `/state/checkpoints.db`. |
+| `SchemaName` | string | `"orkeon"` |  | The PostgreSQL schema name (default: "orkeon"). |
+| `Store` | enum | `"Memory"` | `Memory`, `Json`, `Sqlite`, `Postgres` | The store (default: `Memory`). |
+<!-- /settings -->
+
+### `Orkeon:HumanInput`
+
+How a run pauses on a question to a human (FWK-23). Active only with `Orkeon:Checkpointing:Enabled`, which gives the question a session to be persisted with. `Pause` is `Hold` (the run waits for the answer, up to `HoldTimeout`, then suspends: the question stays persisted, nothing is refused) or `Suspend` (the run stops at once: `run.finished` `status: waiting_for_input`, exit 75). Unset, a run with a person to ask holds, a plain `orkeon run` with nobody suspends, and `orkeon-host` and `--events` hold (30 minutes and no limit). A run is resumed with `orkeon run <crew> --resume <id> --input "..."`.
+
+<!-- settings:Orkeon:HumanInput -->
+**Read by**: `orkeon`, `orkeon-host`, `orkeon-repl`.
+
+| Key | Type | Default | Values | Meaning |
+|---|---|---|---|---|
+| `HoldTimeout` | duration | — |  | How long a held run waits before it suspends (the question stays persisted, nothing is refused). Unset, the host decides: 30 minutes in the daemon, no limit under `--events`. |
+| `Pause` | enum | — | `Hold`, `Suspend` | The policy. Unset, the host decides: `Hold` in the daemon and under `--events`, `Suspend` in a plain `orkeon run`. |
+<!-- /settings -->
+
+### `Orkeon:RunHistory`
+
+Whether the events of a run are kept after it ended: `Enabled` turns the history on, `Store` is `jsonl`
+(one `<run id>.jsonl` file per run and an `index.jsonl`) or `sqlite` (`runs.db`, WAL). `orkeon-host` and the
+`orkeon init` template turn it on; the library and `orkeon run` leave it off. A run is recorded with or without `--events`. Secrets are masked before they are written, and the folder holds what runs said and did: keep it out of a repository (`orkeon init` adds `.orkeon/` to the `.gitignore`). The folder is `./.orkeon/runs`, mounted
+at `/runs` as an internal mount next to the checkpoint state (`Path` is a virtual path under it); `orkeon runs list`,
+`show` and `tail` read it back. A purge applies `RetentionDays` and `MaxRuns` when a process first writes and when a run
+finishes, never when the history is only read; a run still in flight is never purged, a run whose process vanished (`orphaned`) is. `llm.delta` events stay on the stdout stream and are kept in the
+history only with `IncludeDeltas`.
+
+<!-- settings:Orkeon:RunHistory -->
+**Read by**: `orkeon`, `orkeon-host`.
+
+| Key | Type | Default | Values | Meaning |
+|---|---|---|---|---|
+| `Enabled` | boolean | `false` |  | Whether the history is recorded. Off in the library, on in `orkeon-host` and the `orkeon init` template. |
+| `IncludeDeltas` | boolean | `false` |  | Whether `llm.delta` events (token by token, verbose) are kept in the history. They always stay on the stdout stream. |
+| `MaxRuns` | integer | `1000` |  | At most this many runs are kept, the oldest purged first; 0 keeps them all. |
+| `Path` | string | `"/runs"` |  | A virtual path (it starts with '/'), under the `/runs` mount; the Sqlite file is `runs.db` inside it. |
+| `RetentionDays` | integer | `30` |  | Runs older than this many days are purged, at start and when a run finishes; 0 keeps them for ever. |
+| `Store` | enum | `"Jsonl"` | `Jsonl`, `Sqlite` | The store: `jsonl` (default) or `sqlite`. |
 <!-- /settings -->
 
 ## Scripts and console
@@ -1895,10 +1992,13 @@ esbuild toolchain resolution: `EsbuildPath` comes first in the lookup order. Rea
 <!-- settings:Orkeon:Scripting:Toolchain -->
 **Read by**: `orkeon`, `orkeon-host`.
 
-| Key | Type | Default | Meaning |
-|---|---|---|---|
-| `EsbuildPath` | string | — | Absolute path to the esbuild binary. When null, the transpiler falls back to the `ORKEON_ESBUILD_PATH` environment variable, then to a binary bundled next to the application (`esbuild-bin/esbuild`), then to the copy `npm install` places in a checkout of the repository (`tools/scripting-esbuild/node_modules/`, searched from the working directory and the application directory upwards), then to a PATH lookup. |
-| `EsbuildTimeout` | duration | `"00:00:30"` | Maximum time esbuild has to transpile a single source. Default: 30 s. |
+| Key | Type | Default | Values | Meaning |
+|---|---|---|---|---|
+| `EsbuildPath` | string | — |  | Absolute path to the esbuild binary. When null, the transpiler falls back to the `ORKEON_ESBUILD_PATH` environment variable, then to a binary bundled next to the application (`esbuild-bin/esbuild`), then to the copy `npm install` places in a checkout of the repository (`tools/scripting-esbuild/node_modules/`, searched from the working directory and the application directory upwards), then to a PATH lookup. |
+| `EsbuildTimeout` | duration | `"00:00:30"` |  | Maximum time esbuild has to transpile a single source. Default: 30 s. |
+| `TscPath` | string | — |  | Absolute path to the `tsc` binary. When set it is the only candidate: a relative path, or one that does not exist, is reported as a missing compiler, never resolved against the working directory nor silently replaced. When null, the type checker looks in `tools/scripting-typecheck/node_modules/.bin/` above the application directory, then in `PATH`; never in the working directory. Like `EsbuildPath`, it may come from the `appsettings.json` next to the crew: that file is trusted as the crew itself is. |
+| `TypeCheck` | enum | `"Validate"` | `Off`, `Validate`, `Always` | When the TypeScript compiler (`tsc`) checks the types of a `.ork.ts` script against the typings this build ships: `Off` never, `Validate` (default) in `orkeon run --validate`, `Always` in `--validate` and before every run. Under `Validate` a missing compiler is a warning; under `Always` it is a failure. |
+| `TypeCheckTimeout` | duration | `"00:01:00"` |  | Maximum time `tsc` has to check one script. Default: 60 s. |
 <!-- /settings -->
 
 ### `Orkeon:Cli:ScriptCommands`
@@ -1940,14 +2040,14 @@ Crew resolution for `<name>/crew.ork.ts` (`ScriptHostFacade`).
 
 ### `Orkeon:Cli:ConsoleStreaming`
 
-Streamed `ctx.llm.act` deltas on the REPL console (`AddLlmConsoleStreaming(configuration)`).
+Streamed `ctx.llm.act` deltas on the REPL console (`AddLlmConsoleStreaming(configuration, enabledByDefault)`).
 
 <!-- settings:Orkeon:Cli:ConsoleStreaming -->
 **Read by**: `orkeon-repl`.
 
 | Key | Type | Default | Meaning |
 |---|---|---|---|
-| `Enabled` | boolean | `false` | Whether each piece of an answer is written to the console as the model sends it, instead of the whole answer at its end. |
+| `Enabled` | boolean | `false` | Whether each piece of an answer is written to the console as the model sends it, instead of the whole answer at its end. The REPL turns it on when the key is absent; a crew run keeps it off. |
 <!-- /settings -->
 
 ### `Orkeon:Cli:Memory`
@@ -2024,13 +2124,26 @@ The daemon (`Orkeon.Host`):
 | `A2A:Enabled` | boolean | `false` | Serves the exposed crews over A2A. Off, the host listens on no port. |
 | `A2A:Host` | string | `"http://localhost"` | The listener's scheme and host name: `http://localhost` by default, `http://+` for every interface. No port (that is `Port`) and no path. |
 | `A2A:Port` | integer | `5002` | The listener's port. |
+| `Api:Enabled` | boolean | `false` | Serves the API. Off, the host listens on no port for it. |
+| `Api:IdempotencyMaxKeys` | integer | `10000` | The most idempotency keys held in memory; the oldest finished ones go first. |
+| `Api:IdempotencyTtl` | duration | `"1.00:00:00"` | How long an idempotency key is remembered. After it, the same key starts a new run. |
+| `Api:MaxEventStreams` | integer | `64` | The most event streams (`GET /runs/{id}/events`) served at once. Beyond it a stream is refused with a 503 `too_many_streams` and a `Retry-After`: each stream holds a connection and polls the history. |
+| `Api:Prefix` | string | `"http://localhost:5190/"` | The `HttpListener` prefix: scheme, host, port and a closing slash. A host the loopback does not contain (`http://+:5190/`) requires an authentication scheme or mutual TLS under `Security`. |
+| `Api:ReadinessCacheTtl` | duration | `"00:00:03"` | How long a `/readyz` answer is reused before the checks run again. Readiness reaches the state store and the history: a probe loop or a hostile client must not turn each request into that work. Zero runs the checks every time. |
+| `Api:ReadinessTags` | list of string | `[]` | Health-check tags added to readiness besides `ready`. `llm` adds the LLM provider check, which reaches an external service: left out by default, so a provider outage does not take the daemon out of rotation. |
+| `Api:Security:AllowedAuthSchemes` | list of string | `[]` | Authentication schemes accepted: `Bearer` and/or `ApiKey`. Empty means no authentication is required. Each declared scheme is validated, not merely matched (see `A2ACredentialValidator`). |
+| `Api:Security:ApiKeySecretNames` | list of string | `[]` | Names of the secrets holding the API keys the `ApiKey` scheme accepts, read through the `ISecretProvider` on every request. |
+| `Api:Security:RequireMutualTls` | boolean | `false` | Whether a client certificate chaining to a trust anchor is required (fail-closed without one). |
+| `Api:Security:TrustedCertificateAuthorities` | list of string | `[]` | Paths of the CA certificates a client certificate must chain to when mutual TLS is required. |
+| `Api:Security:TrustedClientCertificateThumbprints` | list of string | `[]` | Thumbprints of client certificates pinned exactly (still refused outside their validity window). |
+| `Api:SseKeepAliveInterval` | duration | `"00:00:15"` | How long a quiet event stream waits before it writes a keep-alive frame (an SSE comment, a blank NDJSON line). The write is what detects a client that went away: an abandoned stream of a long run would otherwise live as long as the run. |
 | `Crews:<i>:Description` | string | — | What the crew does, in a sentence: the description of its skill on the A2A agent card when `Orkeon:Host:A2A` exposes it. Read from the configuration, never from the crew definition — the card is built without loading a crew. Optional. |
 | `Crews:<i>:Mounts` | list of string | `[]` | The folders this host grants THIS crew, as mount strings (`<physical>:<virtual>:<rights>`): a mount namespace of its own for each run, so two hosted crews may both address `/output` over two different folders. Empty (the default) keeps the host's mounts for that crew. A granted folder is an input of the daemon: readable wherever it lies, without `--allow-external-mounts`. |
 | `Crews:<i>:Name` | string | `""` | The name the channels and the operator use to refer to it. |
 | `Crews:<i>:Path` | string | `""` | Path to the crew definition — a YAML file, a multi-file crew directory, or an `.ork.ts` script. The same targets `orkeon run` accepts. |
 | `Crews:<i>:Profile:MaxConcurrentRuns` | integer | `4` | How many runs of this crew may be in flight at once. Bounded on purpose: a daemon that accepts unlimited concurrent runs is a daemon that dies under its first burst. |
 | `LlmProfiles` | list of string | `[]` | The LLM profiles (`Llm:Profiles:<name>`) the hosted crews may name. The service runs crews it does not control: unset, every profile the configuration defines is offered; set, only those listed — a crew naming another one fails to load, the run with it. The default profile (the `Llm` section) is always offered, so `["default"]` offers it alone. Every entry must name a defined profile. |
-| `RunTimeout` | duration | `"00:30:00"` | How long a run may take before the host cancels it. A daemon has no user watching to press Ctrl-C, so an unbounded run is a stuck daemon. |
+| `RunTimeout` | duration | `"00:30:00"` | How long a run may take before the host cancels it. A daemon has no user watching to press Ctrl-C, so an unbounded run is a stuck daemon. The clock stops while the run holds on a question to a person: the hold timeout, not this one, ends that wait. |
 | `ShutdownGracePeriod` | duration | `"00:00:20"` | How long the host waits for in-flight runs on shutdown before giving up. Systemd sends SIGKILL after its own timeout, so this must stay under it. |
 <!-- /settings -->
 
@@ -2265,6 +2378,7 @@ value: the secret stays out of the file. `orkeon settings <key>` describes each.
 | `Orkeon:TypeSafe:ApiKeyEnvVar` | The key of the TypeSafe decision model; the key names `TYPESAFE_API_KEY` when nothing sets it. | The process environment, then the user's own variables under Windows. |
 | `Orkeon:Liquid:ApiKeyEnvVar` | The key of the Liquid decision model; the key names `LIQUID_API_KEY` when nothing sets it. | The process environment, then the user's own variables under Windows. |
 | `Orkeon:Kev:ApiKeyEnvVar` | The optional key of the Kev decision model; the key names `KEV_API_KEY` when nothing sets it. | The process environment, then the user's own variables under Windows. |
+| `Orkeon:Embeddings:ApiKeyEnvVar` | The API key of the `mistral`, `azure-openai` or `gemini` embedding provider, read when no `Orkeon:Embeddings:ApiKey` is set. | The process environment. |
 | `Orkeon:Rag:WebFallback:ApiKeyEnvVar` | The key of the web search the corrective RAG falls back to; empty, no key is sent. | The process environment. |
 | `Orkeon:Host:Discord:TokenEnvironmentVariable` | The bot token of the Discord channel; the key names `ORKEON_DISCORD_TOKEN` when nothing sets it. | The process environment. |
 

@@ -19,6 +19,7 @@ public sealed class CrewTaskBuilder
     private readonly Dictionary<string, object> _context = [];
     private AgentId? _assignedAgent;
     private bool _asyncExecution;
+    private TaskRetryPolicy? _retry;
     private JsonSchema? _outputJson;
     private Type? _outputPydantic;
     private string? _outputFile;
@@ -132,6 +133,16 @@ public sealed class CrewTaskBuilder
     public CrewTaskBuilder Async(bool asyncExecution = true)
     {
         _asyncExecution = asyncExecution;
+        return this;
+    }
+
+    /// <summary>
+    /// Sets the task's retry policy: a failed attempt runs the whole task again, tool calls included,
+    /// up to <paramref name="policy"/>'s attempts.
+    /// </summary>
+    public CrewTaskBuilder Retry(TaskRetryPolicy? policy)
+    {
+        _retry = policy;
         return this;
     }
 
@@ -254,9 +265,13 @@ public sealed class CrewTaskBuilder
         if (_decision is not null && _assignedAgent is not null)
             throw new BuilderValidationException("Task", "A task carries a decision or an agent, never both.");
 
+        if (_decision is not null && _retry is not null)
+            throw new BuilderValidationException("Task", "A decision task runs no agent and cannot have a retry policy: remove Retry.");
+
         var outputOptions = new TaskOutputOptions
         {
             AsyncExecution = _asyncExecution,
+            Retry = _retry,
             OutputJson = _outputJson,
             OutputPydantic = _outputPydantic,
             OutputFile = _outputFile,

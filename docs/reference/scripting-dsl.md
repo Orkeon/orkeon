@@ -104,8 +104,7 @@ type by type.
 #### `process("graph")` is not `stateGraph`
 
 They are different facilities with a shared word. `process("graph")` runs the crew on the
-**domain's** graph strategy: a fixed `agent_execute → route_decision` loop with a circuit
-breaker, tuned by `GraphConfig`. `stateGraph({ nodes, edges })` is the topology **you**
+**domain's** graph strategy: one node per task, chained in execution order (a retry is the task's `retry:`), with a circuit breaker tuned by `GraphConfig`; a crew file can also describe its nodes and edges in a `graph:` block, which a script does not write. `stateGraph({ nodes, edges })` is the topology **you**
 draw, and it runs when you call `.run()` on it — from an agent `.body()`, so procedurally.
 
 `crewBuilder().graph(g)` used to blur the two: it accepted a `stateGraph`, stored it in a
@@ -117,7 +116,7 @@ now builds on its own.
 
 Declarative only — the procedural engine never reads tasks. Carried to the crew:
 `description`, `agent` (a built agent), `expectedOutput`, `withContext(s)` (this is what builds
-the DAG), `tools` (added to the agent's own tools for that task only, never replacing them), `humanInput`, `asyncExecution`, `deliverable`, `withResponseFormat(type)`,
+the DAG), `tools` (added to the agent's own tools for that task only, never replacing them), `humanInput`, `asyncExecution`, `retry`, `deliverable`, `withResponseFormat(type)`,
 `withResponseSchema(name, schema, strict?)` and `withProfile(name)` (YAML `llm_override: { profile }`:
 this task alone runs on one of the host's profiles, on that profile's own model, and `"default"`
 brings it back to the host's default; a name the host does not offer fails the load, listing the
@@ -133,6 +132,8 @@ the tasks after it, and a task that lists it in `withContext` waits for it; unde
 `.process("parallel")` it has no effect of its own; under the four other modes the crew is refused
 when the run adapts it, naming the task (see
 [Asynchronous tasks](../orchestration/process-types.md#asynchronous-tasks-asyncexecution)).
+
+`retry({ attempts, backoffMs?, backoff? })` is the YAML `retry:` block (see [Task retry](../architecture/yaml-schema.md#task-retry)): a failed attempt runs the whole task again, tool calls included, up to `attempts` runs in all (at least 1, required); `backoffMs` (default 0) and `backoff` (`"fixed"`, the default, or `"exponential"`) set the wait. A missing or invalid `attempts`, a negative `backoffMs`, an unknown `backoff`, or a `retry` on a decision task throws an `InvalidScriptException` at the call (or at `build()` for the decision task). It is the only retry of a `.process("graph")` crew.
 
 A task's `agent` and the tasks of its `withContext(s)` are the crew's own (`withAgent(s)`,
 `withTask(s)`): one the crew does not hold is refused when the run adapts the crew, naming the
@@ -239,7 +240,10 @@ in the agent's wall-time budget (`.budget({ wallTime })`). `ctx.llm.permissionGa
 whether the host registered a gate; without one, a `permissionMode` checks nothing and the call
 logs one warning saying so — declare a script
 tool's `.access("read")` for it to pass `plan`; `onDelta` receives the streamed text of each
-assistant turn.
+assistant turn, and `onToolCallDelta` each fragment of a tool call the model is building
+(`{index, id?, name?, argumentsDelta}`; `id` and `name` come on the fragment that carries them, and
+Ollama sends a call whole). On a host that registered DLP, the arguments of a call arrive held, in one
+redacted fragment, once the call ends.
 
 `ctx.delegate(agentOrName, input)` is `crew.runAgent`: the target runs with its own context,
 under its semaphore and its `onError` policy. Neither gives the run a budget unless asked:
@@ -288,8 +292,24 @@ name } }` and the context; `code` is one of `rate_limit`, `network`, `timeout`,
 | `llm` | The model settings `agentBuilder().llm(...)` takes (declarative shape). `llm.default_` — a value, not a function — is the host's provider on its configured model (an empty `model` when the host configures none: the agent then runs on that provider's own default, never on OpenAI's), or the `<undefined-llm>` echo when the host has none; `llm.model(name, overrides?)` is the same provider on another model; `llm.profile(name, overrides?)` is one of the host's named profiles (`Llm:Profiles:<name>`) on its own model — an agent configured with it runs its turns and its `ctx.llm` calls on that provider, and a name the host does not offer throws, listing the known ones (`"default"` is `llm.default_`). `with({ model, temperature, maxTokens, responseFormat, effort, cache })` returns a copy, keeps the profile, and refuses any other key. There is no per-vendor factory: a script picks among the providers the host configured, by profile name. |
 | `tools` | The host's built-in tools, called from a body: `tools.fileRead({ path })`, the snake_case name camelCased. `tools.generated.d.ts` declares the input and the result of every built-in tool a run registers, written from its request and response records (the tool's own snake_case keys: `tools.fileRead({ path, max_length })`), so a misspelled parameter fails the type check; `tools.d.ts` declares the e-mail and drive families by hand. A plugin or MCP tool is reachable the same way, untyped. |
 | `rag` | `rag.ingest({ collection, sources, chunkingStrategy?, reindex?, prune? })`, `rag.query(question, { collection, profile?, topN? })` (a grounded answer with citations) and `rag.retrieve(...)` (the same passages, no generation). Needs a host that registered the RAG subsystem (`AddOrkeonRag`); bound in `orkeon run`, the REPL and the daemon host alike. |
+| `test` | Only under `orkeon run --test`: the mocks and assertions of the script ([below](#the-test-namespace-orkeon-run---test)). |
 | `ErrorAction` | The factories an `onError` handler returns: `fail()`, `skip()`, `fallback(value)`, `retry({ delay?, max? })`. Anything else is treated as `fail()`. |
 | `stateMachine`, `stateGraph`, `START`, `END` | Below. |
+
+## The `test` namespace (`orkeon run --test`)
+
+`orkeon run --test` binds the global `test` (declared in `Typings/test.d.ts`); without the flag a script has none, and a reference to it is a `ReferenceError`. Under the flag the host's configured model — or the `--llm-mock` file — stays behind the mock: a prompt an expectation of `test.mockLlm` fits is answered by it, any other prompt goes to the configured provider. One mock is shared by `ctx.llm`, the crews of the script, the namespace and the providers of `llm.profile("…")`, so an expectation registered in the script is the one a call meets, whichever profile it is made on.
+
+```ts
+test.mockLlm.when("weather").respond("sunny");        // a string to look for, or { prompt: /regex/ }
+test.mockTool("lookup").when({ city: "Paris" }).respond({ temp: 21 });
+
+await crew.run();
+test.assertLlmCalled({ times: 1, with: "weather" });
+test.assertToolCalled("lookup");
+```
+
+From .NET, `MockLlmProvider` and `MockTool` (`Orkeon.Scripting.Testing`) take the same expectations through `When(string | Regex).Respond(...)`; `TestOverrideLlmProvider` is the provider that puts them in front of a configured one.
 
 ## `stateMachine` and `stateGraph`
 
@@ -331,9 +351,24 @@ const g = stateGraph<{ done: boolean }>({
 
 An edge is a node name, `END`, or a function of the state returning one (a conditional edge).
 `graphConfig` bounds each `run(state)`: `circuitBreakerPreset` (`Strict`, `Default`,
-`Permissive`) or the individual `maxTransitions`, `maxStateVisits`, `maxRetryCycles` and
+`Permissive`) or the individual `maxTransitions`, `maxStateVisits`, `maxRetryCycles` (the script graph's own budget: the run-wide count of entries into a node already entered once, kept for the budget parity of the two engines; it is **not** a task retry, which is the task's `retry:`) and
 `maxTotalDurationSeconds` — exceeding a count throws, running out of time cancels the run. `runStream(state)` yields each hop
 (`{ fromNode, toNode, state }`) for `for await`.
+
+`stateGraph(...)` checks the graph's shape when it is built, with the validator the Domain engine
+and the crew's graph share (ADR-018), and reports **every** fault in one `InvalidScriptException`: an edge from or to
+an undeclared node, a node with no outgoing edge, a node nothing reaches (an orphan), no path from `START` to `END`, a node
+that cannot reach `END`. A function edge cannot be read before it runs, so it is assumed to be able to lead anywhere,
+`END` included. Each time the loop enters a node, a `graph.node.entered` event goes to the host
+(`orkeon run --events jsonl` writes it).
+
+Defaults, when `graphConfig` is absent: 200 transitions, no bound on the visits of one node, no bound on revisits (`maxRetryCycles`) and no duration
+bound; a `circuitBreakerPreset` replaces all four. (The Domain engine alone takes the Strict policy, 50 transitions and 5
+visits, and a bare `CircuitBreakerPolicy` is 100 and 10: the defaults differ per engine and stay as they are.)
+`maxStateVisits` is the Domain's `MaxStateVisits`: a node entered more often than that trips the breaker.
+`maxRetryCycles` counts, over the whole run, the entries into a node already entered once; on a graph that loops on **one** node,
+`maxRetryCycles: k` and `maxStateVisits: k + 1` are the same bound (the node runs k + 1 times, the next entry throws), which
+`GraphBudgetParityTests` pins on both engines. With several nodes it stays a different, run-wide bound.
 
 `TState` cannot be inferred from the node bodies — a node both takes and returns the state,
 so inference is circular — and falls back to `Record<string, unknown>`. Annotate the call

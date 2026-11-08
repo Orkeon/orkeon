@@ -108,8 +108,7 @@ dans l'ordre où ils ont tourné, `output` étant ce que le corps a rendu. Rien 
 #### `process("graph")` n'est pas `stateGraph`
 
 Deux dispositifs différents qui partagent un mot. `process("graph")` exécute la crew sur la
-stratégie graphe **du domaine** : une boucle fixe `agent_execute → route_decision` avec
-disjoncteur, réglée par `GraphConfig`. `stateGraph({ nodes, edges })` est la topologie que
+stratégie graphe **du domaine** : un nœud par tâche, enchaînés dans l'ordre d'exécution (un retry est le `retry:` de la tâche), avec un disjoncteur réglé par `GraphConfig` ; un fichier de crew peut aussi décrire ses nœuds et ses arêtes dans un bloc `graph:`, qu'un script n'écrit pas. `stateGraph({ nodes, edges })` est la topologie que
 **vous** dessinez, et elle s'exécute quand vous appelez `.run()` dessus — depuis un `.body()`
 d'agent, donc en procédural.
 
@@ -123,7 +122,7 @@ La méthode a disparu ; `process("graph")` se construit maintenant seul.
 Déclaratif uniquement — le moteur procédural ne lit jamais les tâches. Transmis à la crew :
 `description`, `agent` (un agent construit), `expectedOutput`, `withContext(s)` (c'est ce qui
 construit le DAG), `tools` (ajoutés aux outils de l'agent pour cette tâche seulement, sans jamais
-les remplacer), `humanInput`, `asyncExecution`, `deliverable`,
+les remplacer), `humanInput`, `asyncExecution`, `retry`, `deliverable`,
 `withResponseFormat(type)`, `withResponseSchema(name, schema, strict?)` et `withProfile(nom)` (le
 `llm_override: { profile }` du YAML : cette tâche seule tourne sur un des profils de l'hôte, sur le
 modèle propre de ce profil, et `"default"` la ramène au défaut de l'hôte ; un nom que l'hôte
@@ -139,6 +138,8 @@ les tâches qui la suivent, et une tâche qui la cite dans `withContext` l'atten
 `.process("parallel")` elle n'a pas d'effet propre ; sous les quatre autres modes la crew est
 refusée quand le run l'adapte, en nommant la tâche (voir
 [Tâches asynchrones](../orchestration/process-types.md#tâches-asynchrones-asyncexecution)).
+
+`retry({ attempts, backoffMs?, backoff? })` est le bloc YAML `retry:` (voir [Retry d'une tâche](../architecture/yaml-schema.md#retry-dune-tâche)) : une tentative en échec rejoue la tâche entière, appels d'outils compris, jusqu'à `attempts` exécutions au total (au moins 1, obligatoire) ; `backoffMs` (défaut 0) et `backoff` (`"fixed"`, le défaut, ou `"exponential"`) règlent l'attente. Un `attempts` absent ou invalide, un `backoffMs` négatif, un `backoff` inconnu, ou un `retry` sur une tâche de décision lève une `InvalidScriptException` à l'appel (ou à `build()` pour la tâche de décision). C'est le seul retry d'une crew `.process("graph")`.
 
 L'`agent` d'une tâche et les tâches de son `withContext(s)` sont ceux de la crew (`withAgent(s)`,
 `withTask(s)`) : un agent ou une tâche que la crew ne tient pas est refusé quand le run adapte la
@@ -252,7 +253,10 @@ a un), et il est refusé sinon ; le temps que la porte met à décider ne compte
 `ctx.llm.permissionGate.enabled` dit si l'hôte a enregistré une porte ; sans elle, un
 `permissionMode` ne contrôle rien et l'appel journalise un avertissement qui le dit — déclarez
 `.access("read")` sur un outil de script pour qu'il passe `plan` ; `onDelta` reçoit le texte
-streamé de chaque tour de l'assistant.
+streamé de chaque tour de l'assistant, et `onToolCallDelta` chaque fragment d'appel d'outil que le modèle
+est en train de construire (`{index, id?, name?, argumentsDelta}` ; `id` et `name` viennent sur le fragment
+qui les porte, et Ollama envoie un appel entier). Sur un hôte qui a enregistré la DLP, les arguments d'un
+appel arrivent retenus, en un seul fragment rédigé, une fois l'appel terminé.
 
 `ctx.delegate(agentOuNom, input)` est `crew.runAgent` : la cible s'exécute avec son propre
 contexte, sous son sémaphore et sa politique `onError`. Ni l'un ni l'autre ne donne de budget à
@@ -306,8 +310,24 @@ agent: { id, name } }` et le contexte ; `code` vaut `rate_limit`, `network`, `ti
 | `llm` | Les réglages de modèle que prend `agentBuilder().llm(...)` (forme déclarative). `llm.default_` — une valeur, pas une fonction — est le fournisseur de l'hôte sur son modèle configuré (un `model` vide quand l'hôte n'en configure aucun : l'agent tourne alors sur le modèle par défaut de ce fournisseur, jamais sur celui d'OpenAI), ou l'écho `<undefined-llm>` quand l'hôte n'en a pas ; `llm.model(name, overrides?)` est le même fournisseur sur un autre modèle ; `llm.profile(name, overrides?)` est l'un des profils nommés de l'hôte (`Llm:Profiles:<nom>`) sur son propre modèle — un agent configuré avec lui fait ses tours et ses appels `ctx.llm` sur ce fournisseur, et un nom que l'hôte n'offre pas lève une erreur qui liste les profils connus (`"default"` est `llm.default_`). `with({ model, temperature, maxTokens, responseFormat, effort, cache })` rend une copie, garde le profil et refuse toute autre clé. Il n'y a pas de fabrique par vendeur : un script choisit parmi les fournisseurs que l'hôte a configurés, par nom de profil. |
 | `tools` | Les outils intégrés de l'hôte, appelés depuis un `body` : `tools.fileRead({ path })`, le nom snake_case passé en camelCase. `tools.generated.d.ts` déclare l'entrée et le résultat de chaque outil intégré qu'un run enregistre, écrits depuis ses records de requête et de réponse (les clés snake_case de l'outil : `tools.fileRead({ path, max_length })`), si bien qu'un paramètre mal orthographié échoue au contrôle de types ; `tools.d.ts` déclare à la main les familles e-mail et drive. Un outil de plugin ou MCP s'atteint de la même façon, sans type. |
 | `rag` | `rag.ingest({ collection, sources, chunkingStrategy?, reindex?, prune? })`, `rag.query(question, { collection, profile?, topN? })` (une réponse ancrée avec citations) et `rag.retrieve(...)` (les mêmes passages, sans génération). Demande un hôte qui a enregistré le sous-système RAG (`AddOrkeonRag`) ; liée dans `orkeon run`, le REPL et l'hôte daemon. |
+| `test` | Seulement sous `orkeon run --test` : les mocks et assertions du script ([plus bas](#lespace-de-noms-test-orkeon-run---test)). |
 | `ErrorAction` | Les fabriques qu'un gestionnaire `onError` retourne : `fail()`, `skip()`, `fallback(value)`, `retry({ delay?, max? })`. Tout le reste vaut `fail()`. |
 | `stateMachine`, `stateGraph`, `START`, `END` | Ci-dessous. |
+
+## L'espace de noms `test` (`orkeon run --test`)
+
+`orkeon run --test` lie le global `test` (déclaré dans `Typings/test.d.ts`) ; sans le drapeau, un script n'en a pas, et s'y référer est une `ReferenceError`. Sous le drapeau, le modèle configuré par l'hôte — ou le fichier de `--llm-mock` — reste derrière le mock : un prompt que couvre une attente de `test.mockLlm` reçoit sa réponse, tout autre prompt va au fournisseur configuré. Un seul mock est partagé par `ctx.llm`, les crews du script, l'espace de noms et les fournisseurs de `llm.profile("…")` : une attente enregistrée dans le script est celle que rencontre un appel, quel que soit le profil.
+
+```ts
+test.mockLlm.when("météo").respond("ensoleillé");      // un texte à chercher, ou { prompt: /regex/ }
+test.mockTool("lookup").when({ city: "Paris" }).respond({ temp: 21 });
+
+await crew.run();
+test.assertLlmCalled({ times: 1, with: "météo" });
+test.assertToolCalled("lookup");
+```
+
+Depuis .NET, `MockLlmProvider` et `MockTool` (`Orkeon.Scripting.Testing`) prennent les mêmes attentes par `When(string | Regex).Respond(...)` ; `TestOverrideLlmProvider` est le fournisseur qui les place devant un fournisseur configuré.
 
 ## `stateMachine` et `stateGraph`
 
@@ -351,9 +371,24 @@ const g = stateGraph<{ done: boolean }>({
 Une arête est un nom de nœud, `END`, ou une fonction de l'état qui en rend un (une arête
 conditionnelle). `graphConfig` borne chaque `run(state)` : `circuitBreakerPreset` (`Strict`,
 `Default`, `Permissive`) ou les bornes individuelles `maxTransitions`, `maxStateVisits`,
-`maxRetryCycles` et `maxTotalDurationSeconds` — dépasser un compte lève une erreur, manquer de
+`maxRetryCycles` (le budget propre au graphe de script : le compte, sur tout le run, des entrées dans un nœud déjà entré une fois, gardé pour la parité de budget des deux moteurs ; ce n'est **pas** un retry de tâche, qui est le `retry:` de la tâche) et `maxTotalDurationSeconds` — dépasser un compte lève une erreur, manquer de
 temps annule le run. `runStream(state)` produit chaque saut (`{ fromNode, toNode, state }`)
 pour un `for await`.
+
+`stateGraph(...)` vérifie la forme du graphe à sa construction, avec le validateur que partagent le moteur du
+Domain et le graphe d'une crew (ADR-018), et signale **toutes** les fautes dans une seule `InvalidScriptException` : une arête depuis ou
+vers un nœud non déclaré, un nœud sans arête sortante, un nœud que rien n'atteint (un orphelin), aucun chemin de `START` à `END`,
+un nœud qui ne peut pas atteindre `END`. Une arête fonction ne se lit pas avant de s'exécuter : on suppose qu'elle peut mener
+n'importe où, `END` compris. Chaque fois que la boucle entre dans un nœud, un événement `graph.node.entered` part vers l'hôte
+(`orkeon run --events jsonl` l'écrit).
+
+Défauts, quand `graphConfig` est absent : 200 transitions, aucune borne sur les visites d'un nœud, aucune borne sur les revisites (`maxRetryCycles`) et
+aucune borne de durée ; un `circuitBreakerPreset` remplace les quatre. (Le moteur du Domain seul prend la politique Strict, 50 transitions
+et 5 visites, et un `CircuitBreakerPolicy` nu vaut 100 et 10 : les défauts diffèrent selon le moteur et restent tels quels.)
+`maxStateVisits` est le `MaxStateVisits` du Domain : un nœud entré plus souvent déclenche le disjoncteur.
+`maxRetryCycles` compte, sur tout le run, les entrées dans un nœud déjà entré une fois ; sur un graphe qui boucle sur **un seul** nœud,
+`maxRetryCycles: k` et `maxStateVisits: k + 1` sont la même borne (le nœud s'exécute k + 1 fois, l'entrée suivante lève), ce que
+`GraphBudgetParityTests` fixe sur les deux moteurs. Avec plusieurs nœuds, c'est une autre borne, globale au run.
 
 `TState` ne peut pas être inféré depuis les corps de nœuds — un nœud prend et rend l'état,
 l'inférence est donc circulaire — et retombe sur `Record<string, unknown>`. Annotez l'appel

@@ -85,12 +85,6 @@ public static class OpenTelemetryExtensions
         if (otlp.Exports)
             services.AddLogging(logging => logging.AddOpenTelemetry(otelLogging => AddOtlpLogging(otelLogging, otlp)));
 
-        // Register health checks
-        services.AddHealthChecks()
-            .AddCheck<LlmProviderHealthCheck>("llm_provider")
-            .AddCheck<MemoryProviderHealthCheck>("memory_provider")
-            .AddCheck<SystemResourcesHealthCheck>("system_resources");
-
         return services;
     }
 
