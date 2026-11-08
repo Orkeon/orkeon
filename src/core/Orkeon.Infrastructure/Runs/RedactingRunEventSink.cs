@@ -35,7 +35,13 @@ public sealed partial class RedactingRunEventSink : IRunEventSink
     [GeneratedRegex(@"^(?:pass(?:word|wd)|secret|(?:client|api|access|refresh|auth)?_?(?:token|key)|credentials?|authorization|cookie)$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
     private static partial Regex CredentialName();
 
-    private static JsonNode? Redact(JsonNode? node)
+    /// <summary>
+    /// A copy of <paramref name="node"/> with every string passed through <see cref="LogSanitizer.SanitizeString"/> and every
+    /// string under a credential-named property masked: the rule of the run history, reused by the files a command writes from
+    /// model output (<c>orkeon eval</c> reports).
+    /// </summary>
+    /// <param name="node">The JSON to redact, or null.</param>
+    public static JsonNode? Redact(JsonNode? node)
     {
         switch (node)
         {

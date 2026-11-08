@@ -38,6 +38,7 @@ internal static class Program
             ["settings"] = SettingsCommand.DispatchAsync,
             ["llm"] = LlmCommand.DispatchAsync,
             ["rag"] = RagCommand.DispatchAsync,
+            ["eval"] = EvalCommand.DispatchAsync,
             // A lambda rather than a method group: the forge dispatch carries an optional
             // working-directory override its tests use, and an optional parameter forbids the
             // conversion.

@@ -1,5 +1,5 @@
 # RAG evaluation gate (RAG-04/C1+C4, plan §9.3) — runs the golden dataset through
-# `orkeon rag eval` on every change touching the RAG subsystem, 100 % offline:
+# `orkeon eval rag` on every change touching the RAG subsystem, 100 % offline:
 #   - embeddings: local BGE-micro-v2 (SmartComponents ONNX, embedded model, no key),
 #   - reranker: ms-marco-MiniLM-L-6-v2 cross-encoder (Orkeon.Rag.Onnx.Model,
 #     int8 weights embedded — zero download),
@@ -73,7 +73,7 @@ jobs:
       - name: Compare the fast/balanced/quality/corrective/adaptive profiles (offline)
         run: >
           dotnet run --project src/scripting/Orkeon.Scripting.Cli -c Release --no-build --
-          rag eval
+          eval rag
           --dataset examples/rag/eval/golden.yaml
           --compare fast,balanced,quality,corrective,adaptive
           --offline
@@ -88,7 +88,7 @@ jobs:
       - name: Gate on the balanced profile (offline, anti-regression)
         run: >
           dotnet run --project src/scripting/Orkeon.Scripting.Cli -c Release --no-build --
-          rag eval
+          eval rag
           --dataset examples/rag/eval/golden.yaml
           --profile balanced
           --offline

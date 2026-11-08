@@ -372,7 +372,7 @@ Description: multi-agent AI orchestration framework and CLI
  .
  The orkeon command line tool can run TypeScript-scripted crews (orkeon run),
  ingest, search and evaluate a RAG corpus (orkeon rag ingest / rag search /
- rag eval), scaffold a new workspace (orkeon init) and diagnose an install
+ eval rag), scaffold a new workspace (orkeon init) and diagnose an install
  (orkeon doctor).
  .
  The package also ships orkeon-repl, the interactive console: it drives agents,

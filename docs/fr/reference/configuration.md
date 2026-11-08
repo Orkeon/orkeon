@@ -202,7 +202,7 @@ qu'elle accepte quand leur liste est fermée, et son sens.
 | [Hôte de service et A2A](#hôte-de-service-et-a2a) | [`A2A`](#a2a), [`A2A:Security`](#a2asecurity), [`A2A:Security:AzureAD`](#a2asecurityazuread), [`A2A:Security:Oidc`](#a2asecurityoidc), [`Orkeon:Host`](#orkeonhost), [`Orkeon:Host:Discord`](#orkeonhostdiscord) | 46 |
 | [Observabilité](#observabilité) | [`Logging`](#logging), [`Orkeon:Monitoring`](#orkeonmonitoring), [`Telemetry`](#telemetry) | 8 |
 
-79 sections, 491 clés. Lues par aucun binaire livré, seulement par un hôte écrit en C# (8) : [`Evaluation`](#evaluation), [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:CognitiveMemory`](#orkeoncognitivememory), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Monitoring`](#orkeonmonitoring).
+79 sections, 491 clés. Lues par aucun binaire livré, seulement par un hôte écrit en C# (7) : [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:CognitiveMemory`](#orkeoncognitivememory), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Monitoring`](#orkeonmonitoring).
 <!-- /settings-index -->
 
 Lire un tableau :
@@ -681,10 +681,11 @@ comportement.
 Avec `EnableLlmJudge`, l'`IEvaluationSuite` par défaut exécute aussi les juges LLM de cohérence,
 fluidité et ancrage sur l'`IChatClient` enregistré. Liée par
 `AddOrkeonInfrastructure(configuration)`, ou `AddOrkeonEvaluation(configuration)` (idempotent : un
-second appel n'enregistre aucun évaluateur deux fois).
+second appel n'enregistre aucun évaluateur deux fois). Les hôtes runner (`orkeon`, `orkeon-host`) la
+lient avec le second ; `orkeon eval run --llm-judge` la fixe pour un run, `--offline` la force à faux.
 
 <!-- settings:Evaluation -->
-**Lue par** : un hôte écrit en C# seulement, par `AddOrkeonEvaluation()` — aucun binaire livré ne lit cette section.
+**Lue par** : `orkeon`, `orkeon-host`.
 
 | Clé | Type | Défaut | Sens |
 |---|---|---|---|
@@ -1104,7 +1105,7 @@ Le pipeline de requête, étape par étape :
   RAG — génération, transformateurs de requête, reranker listwise, évaluateur et vérificateur
   d'ancrage correctifs, classifieur `llm`, juge d'évaluation ; absent ou `default` : le profil par
   défaut. Un nom inconnu fait refuser le démarrage de l'hôte en listant les profils connus ;
-  `orkeon rag eval --offline` l'ignore. Se choisit dans Studio › Réglages › Modèle d'IA (expert).
+  `orkeon eval rag --offline` l'ignore. Se choisit dans Studio › Réglages › Modèle d'IA (expert).
 - **`Provider`** — TYPE du provider du document store RAG (`RagStoreOptions` — un alias de type
   de `MemoryProviderFactory`), connecté depuis la section propre de ce provider (`Orkeon:Redis`,
   `Orkeon:Sqlite`, …) ; défaut : l'`IMemoryProvider` ambiant.

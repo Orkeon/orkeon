@@ -191,7 +191,7 @@ closed list, and what it means.
 | [Service host and A2A](#service-host-and-a2a) | [`A2A`](#a2a), [`A2A:Security`](#a2asecurity), [`A2A:Security:AzureAD`](#a2asecurityazuread), [`A2A:Security:Oidc`](#a2asecurityoidc), [`Orkeon:Host`](#orkeonhost), [`Orkeon:Host:Discord`](#orkeonhostdiscord) | 46 |
 | [Observability](#observability) | [`Logging`](#logging), [`Orkeon:Monitoring`](#orkeonmonitoring), [`Telemetry`](#telemetry) | 8 |
 
-79 sections, 491 keys. Read by no shipped binary, only by a host written in C# (8): [`Evaluation`](#evaluation), [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:CognitiveMemory`](#orkeoncognitivememory), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Monitoring`](#orkeonmonitoring).
+79 sections, 491 keys. Read by no shipped binary, only by a host written in C# (7): [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:CognitiveMemory`](#orkeoncognitivememory), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Monitoring`](#orkeonmonitoring).
 <!-- /settings-index -->
 
 How to read a table:
@@ -644,10 +644,11 @@ Token estimation. Registered by `AddOrkeonInfrastructure()`; the section gates b
 With `EnableLlmJudge`, the default `IEvaluationSuite` also runs the coherence, fluency and
 groundedness LLM judges over the registered `IChatClient`. Bound by
 `AddOrkeonInfrastructure(configuration)`, or `AddOrkeonEvaluation(configuration)` (idempotent: a
-second call registers no evaluator twice).
+second call registers no evaluator twice). The runner hosts (`orkeon`, `orkeon-host`) bind it with
+the second; `orkeon eval run --llm-judge` sets it for one run, `--offline` forces it off.
 
 <!-- settings:Evaluation -->
-**Read by**: a host written in C# only, through `AddOrkeonEvaluation()` — no shipped binary reads this section.
+**Read by**: `orkeon`, `orkeon-host`.
 
 | Key | Type | Default | Meaning |
 |---|---|---|---|
@@ -1061,7 +1062,7 @@ The query pipeline, stage by stage:
 - **`LlmProfile`** — the host LLM profile (`Llm:Profiles:<name>`) the RAG subsystem calls —
   generation, query transformers, listwise reranker, corrective evaluator and groundedness
   checker, `llm` classifier, evaluation judge; unset or `default` is the default profile. An
-  unknown name refuses the host start, listing the known ones; `orkeon rag eval --offline` ignores
+  unknown name refuses the host start, listing the known ones; `orkeon eval rag --offline` ignores
   it. Chosen in Studio › Settings › AI model (expert).
 - **`Provider`** — TYPE of the RAG document-store provider (`RagStoreOptions` — a
   `MemoryProviderFactory` type alias), connected from that provider's own section (`Orkeon:Redis`,

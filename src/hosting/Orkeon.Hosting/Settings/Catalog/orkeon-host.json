@@ -6,6 +6,7 @@
     "A2A:Security:AzureAD",
     "A2A:Security:Oidc",
     "BRAVE_API_KEY",
+    "Evaluation",
     "Llm",
     "LlmLogging",
     "Logging",

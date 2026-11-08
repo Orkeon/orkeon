@@ -633,3 +633,8 @@ Orkeon.Infrastructure.Crew.RetryingAgentExecutionService.RetryingAgentExecutionS
 *REMOVED*Orkeon.Infrastructure.Crew.Strategies.CrewGraphState.RetryCounts.init -> void
 *REMOVED*Orkeon.Infrastructure.Crew.Strategies.GraphProcessStrategy.MaxRetryCycles.get -> int
 *REMOVED*Orkeon.Infrastructure.Crew.Strategies.GraphProcessStrategy.MaxRetryCycles.init -> void
+static Orkeon.Infrastructure.Evaluation.ReportExporter.ToJson(Orkeon.Application.Evaluation.EvaluationReport! report) -> string!
+static Orkeon.Infrastructure.Evaluation.ReportExporter.ToJson(Orkeon.Application.Evaluation.BenchmarkReport! report) -> string!
+static Orkeon.Infrastructure.Evaluation.ReportExporter.ToJson(Orkeon.Infrastructure.Evaluation.ComparisonResult! comparison) -> string!
+static Orkeon.Infrastructure.Evaluation.ReportExporter.ReadComparableReport(string! json) -> Orkeon.Application.Evaluation.BenchmarkReport!
+[ORKEXP007]static Orkeon.Infrastructure.Runs.RedactingRunEventSink.Redact(System.Text.Json.Nodes.JsonNode? node) -> System.Text.Json.Nodes.JsonNode?

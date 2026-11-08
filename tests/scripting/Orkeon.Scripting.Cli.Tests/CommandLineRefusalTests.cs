@@ -37,7 +37,7 @@ public sealed class CommandLineRefusalTests
 
     private static readonly string[] RowNames =
     [
-        "run", "quickstart", "init", "doctor", "llm probe", "llm models", "rag ingest", "rag search", "rag eval",
+        "run", "quickstart", "init", "doctor", "llm probe", "llm models", "rag ingest", "rag search", "eval rag", "eval run", "eval bench", "eval compare",
         "email accounts", "email login", "email logout", "email check",
         "drive accounts", "drive login", "drive logout", "drive check",
         "usecases list", "usecases show", "usecases export", "mcp serve", "runs list", "runs show",
@@ -82,7 +82,10 @@ public sealed class CommandLineRefusalTests
             "llm models" => ["llm", "models", "-p", "openai", "-u", catalogue.BaseUrl, Extra],
             "rag ingest" => ["rag", "ingest", "-c", "docs", "--source", "a.md", "-s", settings, Extra],
             "rag search" => ["rag", "search", "question", "-c", "docs", "-s", settings, Extra],
-            "rag eval" => ["rag", "eval", "-d", "g.yaml", "-s", settings, Extra],
+            "eval rag" => ["eval", "rag", "-d", "g.yaml", "-s", settings, Extra],
+            "eval run" => ["eval", "run", "-d", "g.json", "-s", settings, Extra],
+            "eval bench" => ["eval", "bench", "-d", "g.json", "-s", settings, Extra],
+            "eval compare" => ["eval", "compare", "a.json", "b.json", "-s", settings, Extra],
             "email accounts" => ["email", "accounts", "-s", settings, Extra],
             "email login" => ["email", "login", "perso", "-s", settings, Extra],
             "email logout" => ["email", "logout", "perso", "-s", settings, Extra],
@@ -167,7 +170,8 @@ public sealed class CommandLineRefusalTests
     [InlineData("doctor --json --x", "x", "--json")]
     [InlineData("run crew.yaml --events jsonl --x", "x", "--events")]
     [InlineData("rag", "verb", "ingest")]
-    [InlineData("rag eval", "dataset", "--dataset")]
+    [InlineData("eval rag", "dataset", "--dataset")]
+    [InlineData("eval run", "dataset", "--dataset")]
     [Trait("BR", "CH-07")]
     public async Task ShouldWriteNothingOnStdout_WhenAnOptionIsUnknown(string line, string error, string usage)
     {

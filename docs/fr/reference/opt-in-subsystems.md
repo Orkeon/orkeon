@@ -56,7 +56,7 @@ services.AddOrkeonA2A(options => options.EnableServer = true);
 | DLP (Data Loss Prevention) | `AddOrkeonDlp()` | Infrastructure | `IDlpPolicyProvider`, `IPiiDetector`, `IDlpInterceptor` (×5) | Expérimental |
 | Rate-limiting d'outils & budget de tokens | `AddOrkeonToolRateLimiting()` | Infrastructure | `IToolRateLimiter`, `ITokenBudgetTracker` | Expérimental |
 | Rotation de clés | `AddOrkeonKeyRotation()` | Infrastructure | `IKeyRotationService` | Bêta |
-| Benchmarking d'évaluation | `AddOrkeonBenchmarking()` | Infrastructure | `IBenchmarkRunner` | Bêta |
+| Benchmarking d'évaluation | `AddOrkeonBenchmarking()` — les hôtes runner l'enregistrent | Infrastructure | `IBenchmarkRunner` | Bêta |
 | Contenu multi-modal (vision) | `AddOrkeonMultiModal(...)` | Infrastructure | `IContentValidationService`, `IMultiModalContentLoader` | Bêta (réel depuis R3.9) |
 | Hooks de kickoff | `AddOrkeonKickoffHooks()` | Application | `ICrewKickoffHookRunner` | Expérimental |
 | Contexte de codebase (RaggableTree) | `AddRaggableTree(options)` — ⚠️ **les hôtes runner font l'inverse (opt-out)** : `RunnerHost` l'enregistre par défaut et `RaggableTree:Enabled = false` le désactive | Analysis | `ICodebaseContextProvider` | Bêta |
@@ -364,6 +364,9 @@ Aucun attribut ne porte l'identifiant d'un crew, d'une tâche ou d'un agent.
   `AddOrkeonEvaluation()` (inclus dans le socle) pour construire les suites.
   L'`IEvaluationSuite` par défaut porte les juges LLM quand `Evaluation:EnableLlmJudge`
   vaut `true` — lié par `AddOrkeonInfrastructure(configuration)`.
+- **Binaires livrés** : les hôtes runner (`orkeon`, `orkeon-host`) l'enregistrent et lient la
+  section `Evaluation` avec `AddOrkeonEvaluation(configuration)` ; `orkeon eval bench` l'exécute
+  (`orkeon eval run` note un jeu de données avec la suite par défaut).
 - **Dépendances** : aucune (la suite d'évaluation est fournie via `BenchmarkConfig`
   à l'appel).
 

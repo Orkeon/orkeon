@@ -103,6 +103,7 @@ public sealed class RunnerHostSettingsRefusalTests : IDisposable
         { "ToolResultSecurityOptions", "Security:ToolResults:Policy", "Paranoid", "Security:ToolResults:Policy" },
         { "UrlSecurityOptions", "Security:Url:BlockPrivateIPs", "sure", "Security:Url:BlockPrivateIPs" },
         { "VaultOptions", "Security:Vault:CacheTtl", "an hour", "Security:Vault:CacheTtl" },
+        { "EvaluationOptions", "Evaluation:EnableLlmJudge", "maybe", "Evaluation:EnableLlmJudge" },
         { "CheckpointingOptions", "Orkeon:Checkpointing:Store", "mongo", "Orkeon:Checkpointing:Store" },
         { "RunHistoryOptions", "Orkeon:RunHistory:Store", "mongo", "Orkeon:RunHistory:Store" },
         { "CrewExecutionStatePersistenceOptions", "Orkeon:ExecutionState:Persistence:Enabled", "yes please", "Orkeon:ExecutionState:Persistence:Enabled" },

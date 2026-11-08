@@ -979,53 +979,49 @@ public static partial class RunnerExecution
 
         LogLoadingCrew(logger, bootstrap.ConfigPath);
 
-        // The MCP tools must be in the registry before the crew resolves its tools (STUDIO-21):
-        // a server that fails costs one error line and the run goes on, so a crew naming one
-        // of its tools fails at load, under StrictTools, with the usual "unknown tool" line.
-        await McpStartup.ConnectConfiguredServersAsync(host, ct).ConfigureAwait(false);
+        // The load, the scope and the kickoff are the entry point's (FWK-09); what stays here is what
+        // only the one-shot command does between the load and the kickoff: parse the --var input and
+        // probe the endpoint. The MCP tools join the registry before the crew resolves its own
+        // (STUDIO-21): a server that fails costs one error line and the run goes on.
+        var abortCode = 0;
+        using var entry = new CrewRunEntryPoint(bootstrap, ownsHost: false);
+        var run = await entry.RunAsync(
+            async (loaded, token) =>
+            {
+                var parsed = await TryParseCrewInputAsync(opts).ConfigureAwait(false);
+                if (parsed is null)
+                {
+                    abortCode = 1;
+                    return null;
+                }
 
-        // One scope for the load and the kickoff, as orkeon-host's CrewRunner opens per run
-        // (GAP-25): the crew factory, the orchestrator and the repositories the crew is loaded
-        // into are scoped, and resolving them from the root kept them for the life of the
-        // process — or failed outright on a host validating scopes.
-        var scope = host.Services.CreateAsyncScope();
-        await using var _ = scope.ConfigureAwait(false);
-        var factory = scope.ServiceProvider.GetRequiredService<ICrewFactory>();
+                if (!await EnsureLlmEndpointReachableAsync(host, logger, console.ErrorOutput, token).ConfigureAwait(false))
+                {
+                    abortCode = 2;
+                    return null;
+                }
 
-        Domain.Crew.Crew crew;
-        try
-        {
-            crew = await LoadCrewAsync(
-                host, factory, scope.ServiceProvider, bootstrap.VirtualConfigPath, logger, ct, bootstrap.IsCrewDirectory).ConfigureAwait(false);
-        }
-        catch (Exception ex) when (ex is not OperationCanceledException && !IsConnectionRefused(ex))
-        {
-            // A crew that does not load is a configuration mistake — report it the way
-            // --validate does (one actionable line, stack behind -v / ORKEON_DEBUG=1)
-            // rather than letting the generic fault barrier above dump the raw exception.
-            // A scripted crew can reach the LLM while loading, though: that failure is not
-            // a configuration mistake, so it is left to the unreachable-endpoint handler.
-            await console.ErrorOutput.WriteLineAsync($"ERROR: {ex.Message}").ConfigureAwait(false);
-            await ReportCrewConfigurationErrorAsync(logger, ex, opts.Verbose, console.ErrorOutput).ConfigureAwait(false);
-            return (2, null);
-        }
-
-        var orchestrator = scope.ServiceProvider.GetRequiredService<ICrewOrchestrationService>();
-
-        var input = await TryParseCrewInputAsync(opts).ConfigureAwait(false);
-        if (input is null)
-            return (1, null);
-
-        if (!await EnsureLlmEndpointReachableAsync(host, logger, console.ErrorOutput, ct).ConfigureAwait(false))
-            return (2, null);
-
-        LogKickingOffCrew(logger, crew.Goal);
-        var output = await orchestrator.KickoffAsync(
-            crew.Id,
-            input,
-            RunnerRunIdentity.For(scope.ServiceProvider, crew.Name, bootstrap.VirtualConfigPath, bootstrap.ConfigPath, opts.Resume),
+                LogKickingOffCrew(logger, loaded.Goal);
+                return parsed;
+            },
+            opts.Resume,
             ct).ConfigureAwait(false);
 
+        if (run.Outcome == CrewRunOutcome.LoadFailed)
+        {
+            // A crew that does not load is a configuration mistake - report it the way
+            // --validate does (one actionable line, stack behind -v / ORKEON_DEBUG=1)
+            // rather than letting the generic fault barrier above dump the raw exception.
+            var failure = run.LoadError!;
+            await console.ErrorOutput.WriteLineAsync($"ERROR: {failure.Message}").ConfigureAwait(false);
+            await ReportCrewConfigurationErrorAsync(logger, failure, opts.Verbose, console.ErrorOutput).ConfigureAwait(false);
+            return (2, null);
+        }
+
+        if (run.Outcome == CrewRunOutcome.Aborted)
+            return (abortCode, null);
+
+        var output = run.Output!;
         PrintCrewOutput(output, opts.MachineReadableStdout ? console.ErrorOutput : console.Output);
         if (!output.Succeeded)
         {
@@ -1119,7 +1115,7 @@ public static partial class RunnerExecution
     /// "connection refused" socket failure — the signature of an LLM endpoint that is configured
     /// but not listening (e.g. Docker Model Runner is not running).
     /// </summary>
-    private static bool IsConnectionRefused(Exception ex)
+    internal static bool IsConnectionRefused(Exception ex)
     {
         for (Exception? e = ex; e is not null; e = e.InnerException)
         {

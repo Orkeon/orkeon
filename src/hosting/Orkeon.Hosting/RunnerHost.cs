@@ -15,6 +15,7 @@ using Orkeon.Domain.Constants.Llm;
 using Orkeon.Infrastructure.LLMs.Profiles;
 using Orkeon.Domain.Common;
 using Orkeon.Domain.FileSystem;
+using Orkeon.Infrastructure.Evaluation;
 using Orkeon.Infrastructure.Checkpointing;
 using Orkeon.Infrastructure.DependencyInjection;
 using Orkeon.Infrastructure.Orchestration;
@@ -1601,6 +1602,12 @@ public static partial class RunnerHost
 
         // The run history (FWK-08): Orkeon:RunHistory, off unless enabled; the sinks and the reader of `orkeon runs`.
         RunHistoryServices.Register(context, services);
+        // The evaluation suite is registered by AddOrkeonInfrastructure(); this binds the `Evaluation`
+        // section (EnableLlmJudge) and registers nothing twice. Bound here, never through
+        // AddOrkeonInfrastructure(IConfiguration), which would double telemetry, MCP and vector
+        // search. The benchmark runner is what `orkeon eval bench` runs (FWK-09).
+        services.AddOrkeonEvaluation(context.Configuration);
+        services.AddOrkeonBenchmarking();
 
         // Cognitive memory — config opt-in: Orkeon:CognitiveMemory:Enabled = true (FWK-04). A crew
         // with memory: true then recalls by composite score, stores analysed memories and holds

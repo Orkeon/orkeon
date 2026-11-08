@@ -100,7 +100,7 @@ résolu au premier appel RAG qui a besoin d'un modèle, jamais au simple chargem
 `RagLlm.EnsureProfileIsKnown`, que l'hôte runner et le REPL appellent une fois le conteneur
 construit, ne vérifie que le nom et refuse un profil que l'hôte n'offre pas — liste blanche
 `Orkeon:Host:LlmProfiles` d'`orkeon-host` comprise — en listant les profils connus.
-`orkeon rag eval --offline` ignore la clé : le stub extractif répond à la place de tout modèle.
+`orkeon eval rag --offline` ignore la clé : le stub extractif répond à la place de tout modèle.
 
 Démos exécutables, entièrement offline : [`rag/basic-ingestion`](https://github.com/Orkeon/orkeon/blob/main/examples/rag/basic-ingestion/README.md),
 [`rag/hybrid-retrieval`](https://github.com/Orkeon/orkeon/blob/main/examples/rag/hybrid-retrieval/README.md),
@@ -597,7 +597,7 @@ chiffre publié plutôt qu'en une affirmation :
   génération (groundedness, answer-relevance) est notée par un juge LLM quand il est
   disponible, avec un repli heuristique déterministe — le rapport indique toujours quel
   juge a tourné.
-- **Profils comparés** en une seule passe : `orkeon rag eval --dataset … --compare
+- **Profils comparés** en une seule passe : `orkeon eval rag --dataset … --compare
   fast,balanced,quality,corrective,adaptive --offline` (`--offline` remplace la génération
   par un stub extractif déterministe — zéro réseau ; le tableau mesuré et sa lecture honnête
   vivent dans `examples/rag/eval/README.md`).

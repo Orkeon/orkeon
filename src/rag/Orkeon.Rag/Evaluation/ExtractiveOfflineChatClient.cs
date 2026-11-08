@@ -9,7 +9,7 @@ namespace Orkeon.Rag.Evaluation;
 /// <see cref="Pipeline.StagedRagPipeline"/> verbatim. The heuristic judge's
 /// <c>expected_substrings</c> check then measures whether retrieval actually
 /// surfaced the right passages — an extractive, honest proxy for generation.
-/// Wired by <c>orkeon rag eval --offline</c> and the offline e2e tests.
+/// Wired by <c>orkeon eval rag --offline</c> and the offline e2e tests.
 /// </summary>
 public sealed class ExtractiveOfflineChatClient : IChatClient
 {

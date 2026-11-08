@@ -34,6 +34,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **[breaking]** decision tasks lose the old graph retry: a decision-model failure used to be retried by the graph's retry cycles and now fails the task at once (the decision circuit's `fallback` is the recovery); the graph's `maxRetryCycles` is gone and a decision task cannot declare `retry:`.
 - Studio shows a retried task once in the tasks in progress.
 
+### Added - `orkeon eval` and the `Evaluation` section read by the runner hosts (FWK-09)
+
+- **`orkeon eval run --dataset <json> [--evaluators ...] [--llm-judge] [--offline] [--output /output/eval] [--min-score 0.7] [--crew <file>]`** scores a dataset with the default suite and writes a JSON report; exit 1 under `--min-score`. With `--crew` the crew runs once per case first (its prompt is the case's `task_description`), offline on the mock provider with `--llm-mock`; its final output replaces `output` in the report and the dataset file is never modified. **`eval bench --runs N --baseline <json>`** and **`eval compare a.json b.json`** exit 1 on a regression.
+- **`RunnerHost` binds the `Evaluation` section** (`AddOrkeonEvaluation(configuration)`, next to the permission gate) and registers `AddOrkeonBenchmarking()`: `Evaluation:EnableLlmJudge` was bound by no shipped binary. `orkeon` and `orkeon-host` now list `Evaluation` among the sections they read.
+- **`CrewRunEntryPoint`** (`Orkeon.Hosting`, internal) loads a crew and kicks it off in a scope of its own and hands the output back; `orkeon run` prints from it, and `eval run --crew` reads it once per case.
+- **`--offline` with `--crew` refuses a crew that would reach a real model**: `CrewRunEntryPoint.RunAsync(..., offline: true)` checks, once the crew is loaded, the model of every agent (its own profile, its own provider, the host default) and of the manager, and refuses with the agent and the profile named. **`RedactingRunEventSink.Redact`** is now public: the strings of an eval report go through the redaction of the run history.
+- **`ReportExporter.ToJson`** (evaluation, benchmark and comparison reports, snake_case) and **`ReportExporter.ReadComparableReport`**.
+
+### Changed - `orkeon rag eval` is `orkeon eval rag` (FWK-09)
+
+- **[breaking]** `orkeon rag eval` is now **`orkeon eval rag`**, with the same options and no alias; `rag` keeps `ingest` and `search`. Migration: replace `orkeon rag eval` with `orkeon eval rag` in scripts and CI (`rag-eval.yml` does). The error lines read `orkeon eval rag: ...`.
+
 ### Added — a profile that fails over to another (FWK-05)
 
 - **`Llm:Profiles:<name>:Fallback: [b, c]`** (and `FallbackBudgetSeconds`) names the profiles a call moves to when `<name>` fails in a way a retry cannot cure: a transport error, a 5xx, a 429 once `Llm:MaxRetries` is spent, a timeout. A 4xx, a blocked content and a failure nothing is known about are the answer and move nothing. `FallbackLlmProvider` is the outermost link, above profiles already assembled, so each keeps its call mode and the meter and the trace name the provider that answered; a stream moves on only before its first delta; an exhausted chain answers with one error naming every profile (`ErrorType` `FallbackExhausted`). Unknown names, self-references and cycles refuse `LlmProfileRegistry`'s construction; a fallback with fewer `LlmProviderCapabilities` logs one warning. `LlmFailureClassifier` is the one classification, and `ResiliencePolicies` takes its retryable statuses from it (no change of behaviour). Code: `AddOrkeonLlmProfile(name, provider, baseConfig, fallback)` and `LlmProfileRegistration.Fallback` / `FallbackBudget`. Guide: `docs/architecture/llm-providers.md#profile-fallback`.

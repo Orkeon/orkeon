@@ -4,7 +4,7 @@ using Orkeon.Rag.Evaluation;
 namespace Orkeon.Rag.Tests.Evaluation;
 
 /// <summary>
-/// The deterministic offline generation stub used by <c>orkeon rag eval --offline</c>
+/// The deterministic offline generation stub used by <c>orkeon eval rag --offline</c>
 /// and the CI runs: it must return the linear pipeline's context block verbatim.
 /// </summary>
 public sealed class ExtractiveOfflineChatClientTests

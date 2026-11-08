@@ -56,7 +56,7 @@ services.AddOrkeonA2A(options => options.EnableServer = true);
 | DLP (Data Loss Prevention) | `AddOrkeonDlp()` | Infrastructure | `IDlpPolicyProvider`, `IPiiDetector`, `IDlpInterceptor` (×5) | Experimental |
 | Tool rate-limiting & token budget | `AddOrkeonToolRateLimiting()` | Infrastructure | `IToolRateLimiter`, `ITokenBudgetTracker` | Experimental |
 | Key rotation | `AddOrkeonKeyRotation()` | Infrastructure | `IKeyRotationService` | Beta |
-| Evaluation benchmarking | `AddOrkeonBenchmarking()` | Infrastructure | `IBenchmarkRunner` | Beta |
+| Evaluation benchmarking | `AddOrkeonBenchmarking()` — runner hosts register it | Infrastructure | `IBenchmarkRunner` | Beta |
 | Multi-modal content (vision) | `AddOrkeonMultiModal(...)` | Infrastructure | `IContentValidationService`, `IMultiModalContentLoader` | Beta (real since R3.9) |
 | Kickoff hooks | `AddOrkeonKickoffHooks()` | Application | `ICrewKickoffHookRunner` | Experimental |
 | Codebase context (RaggableTree) | `AddRaggableTree(options)` — ⚠️ **runner hosts opt out instead**: `RunnerHost` registers it by default and `RaggableTree:Enabled = false` disables it | Analysis | `ICodebaseContextProvider` | Beta |
@@ -356,6 +356,9 @@ No attribute carries an id of a crew, task or agent.
   `AddOrkeonEvaluation()` (included in the core) to build the suites. The
   default `IEvaluationSuite` carries the LLM judges when `Evaluation:EnableLlmJudge`
   is `true` — bound by `AddOrkeonInfrastructure(configuration)`.
+- **Shipped binaries**: the runner hosts (`orkeon`, `orkeon-host`) register it and bind the
+  `Evaluation` section with `AddOrkeonEvaluation(configuration)`; `orkeon eval bench` runs it
+  (`orkeon eval run` scores a dataset with the default suite).
 - **Dependencies**: none (the evaluation suite is provided via `BenchmarkConfig`
   at call time).
 

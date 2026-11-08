@@ -2,6 +2,7 @@
   "host": "orkeon",
   "reads": [
     "BRAVE_API_KEY",
+    "Evaluation",
     "Llm",
     "LlmLogging",
     "Logging",

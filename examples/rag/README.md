@@ -11,4 +11,4 @@ C# projects, so `run-example.sh` falls back to `dotnet run --project …` for th
 | [`hybrid-retrieval/`](hybrid-retrieval/) | Same corpus, same questions, two pipelines: vector-only (`fast`) vs hybrid BM25 + RRF |
 | [`custom-reranker/`](custom-reranker/) | Replacing the reranking stage with a host-provided `IReranker` via DI |
 | [`crew-yaml/`](crew-yaml/) | A crew declared entirely in YAML: crew-level `rag:` block + agent `knowledge:` attachments |
-| [`eval/`](eval/) | The versioned golden dataset (`golden.yaml`) behind `orkeon rag eval` and the CI gate, with the measured per-profile numbers |
+| [`eval/`](eval/) | The versioned golden dataset (`golden.yaml`) behind `orkeon eval rag` and the CI gate, with the measured per-profile numbers |

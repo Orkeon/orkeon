@@ -122,4 +122,76 @@ public static class ReportExporter
 
         return sb.ToString();
     }
+
+    private static readonly System.Text.Json.JsonSerializerOptions s_json = new()
+    {
+        PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.SnakeCaseLower,
+        WriteIndented = true,
+        MaxDepth = Orkeon.Domain.Constants.Serialization.SerializationDefaults.JsonMaxDepth,
+    };
+
+    /// <summary>Exports an <see cref="EvaluationReport"/> as indented JSON with snake_case property names.</summary>
+    public static string ToJson(EvaluationReport report)
+    {
+        ArgumentNullException.ThrowIfNull(report);
+        return System.Text.Json.JsonSerializer.Serialize(report, s_json);
+    }
+
+    /// <summary>Exports a <see cref="BenchmarkReport"/> as indented JSON with snake_case property names.</summary>
+    public static string ToJson(BenchmarkReport report)
+    {
+        ArgumentNullException.ThrowIfNull(report);
+        return System.Text.Json.JsonSerializer.Serialize(report, s_json);
+    }
+
+    /// <summary>Exports a <see cref="ComparisonResult"/> as indented JSON with snake_case property names.</summary>
+    public static string ToJson(ComparisonResult comparison)
+    {
+        ArgumentNullException.ThrowIfNull(comparison);
+        return System.Text.Json.JsonSerializer.Serialize(comparison, s_json);
+    }
+
+    /// <summary>
+    /// Reads a report written by <see cref="ToJson(BenchmarkReport)"/> or by <see cref="ToJson(EvaluationReport)"/>
+    /// as the benchmark report <see cref="CompareReports"/> takes (an evaluation report becomes a one-run benchmark).
+    /// </summary>
+    /// <exception cref="InvalidOperationException">The JSON is neither report.</exception>
+    public static BenchmarkReport ReadComparableReport(string json)
+    {
+        ArgumentNullException.ThrowIfNull(json);
+        try
+        {
+            using var doc = System.Text.Json.JsonDocument.Parse(json);
+            if (doc.RootElement.ValueKind == System.Text.Json.JsonValueKind.Object)
+            {
+                if (doc.RootElement.TryGetProperty("dataset_name", out _))
+                {
+                    return System.Text.Json.JsonSerializer.Deserialize<BenchmarkReport>(json, s_json)
+                           ?? throw new InvalidOperationException("The benchmark report is empty.");
+                }
+
+                if (doc.RootElement.TryGetProperty("suite_name", out _))
+                {
+                    var evaluation = System.Text.Json.JsonSerializer.Deserialize<EvaluationReport>(json, s_json)
+                                     ?? throw new InvalidOperationException("The evaluation report is empty.");
+                    return new BenchmarkReport(
+                        evaluation.SuiteName,
+                        evaluation.GeneratedAt,
+                        1,
+                        [],
+                        new BenchmarkSummary(
+                            evaluation.Summary.OverallScore,
+                            0,
+                            evaluation.Summary.ScoresByEvaluator,
+                            evaluation.Summary.Variance));
+                }
+            }
+        }
+        catch (System.Text.Json.JsonException ex)
+        {
+            throw new InvalidOperationException($"Not a JSON report: {ex.Message}", ex);
+        }
+
+        throw new InvalidOperationException("Not an evaluation or benchmark report: expected a JSON object with 'suite_name' or 'dataset_name'.");
+    }
 }
