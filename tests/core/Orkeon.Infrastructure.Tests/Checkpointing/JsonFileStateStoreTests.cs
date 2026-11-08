@@ -221,4 +221,85 @@ public class JsonFileStateStoreTests
         Assert.Contains(SessionId1, ex.Message, StringComparison.Ordinal);
         Assert.IsType<System.Text.Json.JsonException>(ex.InnerException, exactMatch: false);
     }
+
+    [Fact]
+    [Trait("BR", "FWK-07")]
+    public async Task SaveVersioned_KeepsThePreviousVersionAndManifest_WhenTheirWriteIsTorn()
+    {
+        var store = CreateStore(out var fake);
+        var failing = new Orkeon.Infrastructure.Tests.Doubles.FailingWriteFileSystemService(fake);
+        var guarded = new JsonFileStateStore(failing, BaseVirtualPath);
+        await guarded.SaveVersionedAsync(CreateState(SessionId1, CrewId1, SessionPhase.Running), "a", null, TestContext.Current.CancellationToken);
+
+        failing.FailNextJsonWrites = 1;
+        await Assert.ThrowsAsync<IOException>(() =>
+            guarded.SaveVersionedAsync(CreateState(SessionId1, CrewId1, SessionPhase.Completed), "b", null, TestContext.Current.CancellationToken));
+
+        // The torn write went to a temp file: version 2 does not exist half-written, and version 1 is still listed.
+        Assert.Null(await fake.TryReadAllTextAsync($"{BaseVirtualPath}/{SessionId1}/v002.json", CancellationToken.None));
+        var history = await guarded.GetHistoryAsync(SessionId1, null, TestContext.Current.CancellationToken);
+        Assert.Equal("a", Assert.Single(history).StepId);
+    }
+
+    [Fact]
+    [Trait("BR", "FWK-07")]
+    public async Task SaveVersioned_RebuildsTheManifestFromTheVersions_WhenItIsCorrupt()
+    {
+        var store = CreateStore(out var fake);
+        await store.SaveVersionedAsync(CreateState(SessionId1, CrewId1, SessionPhase.Running), "a", null, TestContext.Current.CancellationToken);
+        await store.SaveVersionedAsync(CreateState(SessionId1, CrewId1, SessionPhase.Running), "b", null, TestContext.Current.CancellationToken);
+        await fake.WriteAllTextAsync($"{BaseVirtualPath}/{SessionId1}/manifest.json", "{ \"nextVersion\": ", TestContext.Current.CancellationToken);
+
+        var third = await store.SaveVersionedAsync(CreateState(SessionId1, CrewId1, SessionPhase.Completed), "c", null, TestContext.Current.CancellationToken);
+
+        // Version 1 is not overwritten: the next number follows the files on disk, and the history keeps all three.
+        Assert.Equal(3, third.Version);
+        var history = await store.GetHistoryAsync(SessionId1, null, TestContext.Current.CancellationToken);
+        Assert.Equal(["a", "b", "c"], history.OrderBy(v => v.Version).Select(v => v.StepId));
+    }
+
+    [Fact]
+    public async Task SaveVersioned_DeletesTheOldestVersions_BeyondTheRetentionLimit()
+    {
+        var fake = new FakeFileSystemService();
+        fake.AddMount(BaseVirtualPath, FileAccessRights.ReadWrite);
+        var store = new JsonFileStateStore(fake, BaseVirtualPath, maxVersions: 2);
+        foreach (var step in new[] { "a", "b", "c", "d" })
+            await store.SaveVersionedAsync(CreateState(SessionId1, CrewId1, SessionPhase.Running), step, null, TestContext.Current.CancellationToken);
+
+        // The two newest are kept, the files of the older ones are gone, and the numbering goes on from the newest.
+        var history = await store.GetHistoryAsync(SessionId1, null, TestContext.Current.CancellationToken);
+        Assert.Equal(["c", "d"], history.OrderBy(v => v.Version).Select(v => v.StepId));
+        Assert.False(await fake.ExistsAsync($"{BaseVirtualPath}/{SessionId1}/v001.json", TestContext.Current.CancellationToken));
+        Assert.False(await fake.ExistsAsync($"{BaseVirtualPath}/{SessionId1}/v002.json", TestContext.Current.CancellationToken));
+        Assert.True(await fake.ExistsAsync($"{BaseVirtualPath}/{SessionId1}/v004.json", TestContext.Current.CancellationToken));
+        var fifth = await store.SaveVersionedAsync(CreateState(SessionId1, CrewId1, SessionPhase.Completed), "e", null, TestContext.Current.CancellationToken);
+        Assert.Equal(5, fifth.Version);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    public async Task SaveVersioned_KeepsEveryVersion_WhenTheRetentionLimitIsZeroOrNegative(int maxVersions)
+    {
+        var fake = new FakeFileSystemService();
+        fake.AddMount(BaseVirtualPath, FileAccessRights.ReadWrite);
+        var store = new JsonFileStateStore(fake, BaseVirtualPath, maxVersions);
+        for (var i = 0; i < 25; i++)
+            await store.SaveVersionedAsync(CreateState(SessionId1, CrewId1, SessionPhase.Running), $"s{i}", null, TestContext.Current.CancellationToken);
+
+        Assert.Equal(25, (await store.GetHistoryAsync(SessionId1, null, TestContext.Current.CancellationToken)).Count);
+    }
+
+    [Fact]
+    public async Task SaveVersioned_KeepsTwentyVersions_ByDefault()
+    {
+        var store = CreateStore(out _);
+        for (var i = 0; i < 22; i++)
+            await store.SaveVersionedAsync(CreateState(SessionId1, CrewId1, SessionPhase.Running), $"s{i}", null, TestContext.Current.CancellationToken);
+
+        var history = await store.GetHistoryAsync(SessionId1, null, TestContext.Current.CancellationToken);
+        Assert.Equal(JsonFileStateStore.DefaultMaxVersions, history.Count);
+        Assert.Equal("s21", history.MaxBy(v => v.Version)!.StepId);
+    }
 }

@@ -36,8 +36,11 @@ public sealed class GatedPendingInputStore(IPendingInputStore inner) : IPendingI
     public System.Threading.Tasks.Task<PendingInputAnswered> AnswerAsync(string sessionId, string? requestId, string answer, CancellationToken ct = default) =>
         inner.AnswerAsync(sessionId, requestId, answer, ct);
 
-    public System.Threading.Tasks.Task RecordAnswerAsync(string sessionId, string requestId, string answer, CancellationToken ct = default) =>
-        inner.RecordAnswerAsync(sessionId, requestId, answer, ct);
+    public System.Threading.Tasks.Task RecordAnswerAsync(string sessionId, PendingInputRequest request, string answer, CancellationToken ct = default) =>
+        inner.RecordAnswerAsync(sessionId, request, answer, ct);
+
+    public System.Threading.Tasks.Task SuspendAsync(string sessionId, string requestId, CancellationToken ct = default) =>
+        inner.SuspendAsync(sessionId, requestId, ct);
 
     public System.Threading.Tasks.Task<PendingInputRequest?> GetPendingAsync(string sessionId, CancellationToken ct = default) =>
         inner.GetPendingAsync(sessionId, ct);

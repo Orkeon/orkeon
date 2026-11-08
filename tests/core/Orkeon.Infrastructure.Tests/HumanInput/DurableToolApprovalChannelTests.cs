@@ -83,7 +83,7 @@ public sealed class DurableToolApprovalChannelTests
 
         Assert.Equal(ToolApprovalDecision.AllowOnce, decision);
         Assert.Equal(1, inner.Calls);
-        Assert.Equal("allow", (await fx.StateAsync())!.AnsweredInputs["ask#1.1"]);
+        Assert.Equal("allow", (await fx.StateAsync())!.AnsweredInputs["ask#1.1"].Answer);
     }
 
     [Fact]
@@ -105,4 +105,75 @@ public sealed class DurableToolApprovalChannelTests
         Assert.Equal(ToolApprovalDecision.AllowForSession, await Channel(fx, inner).RequestAsync(Shell(), Ct));
         Assert.Equal(1, inner.Calls);
     }
+
+    private static ToolApprovalRequest Shell(string command) => Shell() with
+    {
+        Arguments = new Dictionary<string, object?> { ["command"] = command }.ToImmutableDictionary(),
+    };
+
+    private sealed class SwitchingToolApprovalChannel : IToolApprovalChannel
+    {
+        public ToolApprovalDecision Decision { get; set; }
+
+        public System.Threading.Tasks.Task<ToolApprovalDecision> RequestAsync(ToolApprovalRequest request, CancellationToken cancellationToken = default) =>
+            System.Threading.Tasks.Task.FromResult(Decision);
+    }
+
+    [Fact]
+    [Trait("BR", "FWK-23")]
+    public async System.Threading.Tasks.Task ShouldAskAgain_WhenTheResumedRunCallsAnotherCommandUnderTheSameQuestionId()
+    {
+        using var fx = new DurableHumanInputFixture(HumanInputPause.Suspend);
+        fx.EnterRun();
+        await Assert.ThrowsAsync<RunSuspendedException>(() => Channel(fx).RequestAsync(Shell("ls"), Ct));
+        await fx.Manager.AnswerAsync(fx.Id.ToString(), null, "allow", Ct);
+        fx.LeaveRun();
+        fx.EnterRun();
+
+        // The replayed task now wants to run something else: the allow given to `ls` does not approve it.
+        var asked = await Assert.ThrowsAsync<RunSuspendedException>(() => Channel(fx).RequestAsync(Shell("rm -rf /workspace"), Ct));
+
+        Assert.Equal("ask#1.1", asked.RequestId);
+        Assert.NotEqual((await fx.StateAsync())!.PendingInput!.ArgsHash, ArgumentsHashOf("ls"));
+    }
+
+    [Fact]
+    [Trait("BR", "FWK-23")]
+    public async System.Threading.Tasks.Task ShouldNotApproveTheRetryWithTheFirstAttemptsAnswer_WhenItCallsWithOtherArguments()
+    {
+        using var fx = new DurableHumanInputFixture(HumanInputPause.Hold);
+        var inner = new SwitchingToolApprovalChannel { Decision = ToolApprovalDecision.AllowOnce };
+        fx.EnterRun();
+        Assert.Equal(ToolApprovalDecision.AllowOnce, await Channel(fx, inner).RequestAsync(Shell("ls"), Ct));
+
+        // A retry replays the task: its questions are numbered from one again, the person now refuses.
+        Orkeon.Infrastructure.Checkpointing.TaskInputScope.Current!.BeginAttempt();
+        inner.Decision = ToolApprovalDecision.Deny;
+
+        Assert.Equal(ToolApprovalDecision.Deny, await Channel(fx, inner).RequestAsync(Shell("rm -rf /workspace"), Ct));
+        Assert.Equal(ToolApprovalDecision.Deny, await ReplayAsync());
+
+        async System.Threading.Tasks.Task<ToolApprovalDecision> ReplayAsync()
+        {
+            Orkeon.Infrastructure.Checkpointing.TaskInputScope.Current!.BeginAttempt();
+            return await Channel(fx, inner).RequestAsync(Shell("rm -rf /workspace"), Ct);
+        }
+    }
+
+    [Fact]
+    [Trait("BR", "FWK-23")]
+    public async System.Threading.Tasks.Task ShouldReuseTheAnswer_WhenTheRetryMakesTheSameCall()
+    {
+        using var fx = new DurableHumanInputFixture(HumanInputPause.Hold);
+        var inner = new SwitchingToolApprovalChannel { Decision = ToolApprovalDecision.AllowOnce };
+        fx.EnterRun();
+        await Channel(fx, inner).RequestAsync(Shell("ls"), Ct);
+        Orkeon.Infrastructure.Checkpointing.TaskInputScope.Current!.BeginAttempt();
+        inner.Decision = ToolApprovalDecision.Deny;
+
+        Assert.Equal(ToolApprovalDecision.AllowOnce, await Channel(fx, inner).RequestAsync(Shell("ls"), Ct));
+    }
+
+    private static string ArgumentsHashOf(string command) =>
+        ArgumentsHash.Of(new Dictionary<string, object?> { ["command"] = command });
 }

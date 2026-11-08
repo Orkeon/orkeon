@@ -35,9 +35,16 @@ public interface ICheckpointManager
     System.Threading.Tasks.Task CheckpointAsync(string sessionId, string taskId, string? output, int retryCount, CancellationToken ct = default);
 
     /// <summary>
-    /// Records a task failure with exception details.
+    /// Records a task failure with exception details. The session keeps its phase: the run may go on with its other tasks,
+    /// and only <see cref="FailSessionAsync"/> fails the session, when the run ends.
     /// </summary>
     System.Threading.Tasks.Task MarkFailedAsync(string sessionId, string taskId, Exception ex, CancellationToken ct = default);
+
+    /// <summary>Marks the session as failed: the run ended without success, and the session is resumable.</summary>
+    /// <param name="sessionId">The run's execution identifier.</param>
+    /// <param name="ex">Why the run failed.</param>
+    /// <param name="ct">The cancellation token.</param>
+    System.Threading.Tasks.Task FailSessionAsync(string sessionId, Exception ex, CancellationToken ct = default);
 
     /// <summary>
     /// Marks the session as completed.

@@ -56,7 +56,7 @@ public sealed partial class CheckpointManager : ICheckpointManager, IPendingInpu
                     CreatedAt = now,
                     UpdatedAt = now
                 }
-                : existing with { Phase = SessionPhase.Running, ErrorMessage = null, UpdatedAt = now };
+                : existing with { Phase = SessionPhase.Running, ErrorMessage = null, SuspendedOn = null, UpdatedAt = now };
 
             await _store.SaveAsync(state, ct).ConfigureAwait(false);
             if (existing is null)
@@ -146,17 +146,35 @@ public sealed partial class CheckpointManager : ICheckpointManager, IPendingInpu
                 }
             };
 
+            // The task failed, the run may not have: in Parallel, Hierarchical or Graph it goes on with its other tasks. The
+            // session keeps its phase (Running while the run lives), so a second process never takes over a live run; the
+            // orchestrator fails the session when the run ends (FailSessionAsync).
             var updated = state with
             {
-                Phase = SessionPhase.Failed,
                 TaskCheckpoints = checkpoints,
                 UpdatedAt = DateTime.UtcNow,
-                ErrorMessage = ex.Message
             };
 
             await _store.SaveAsync(updated, ct).ConfigureAwait(false);
             LogTaskMarkedFailed(taskId, sessionId, ex.Message);
         }
+    }
+
+    /// <inheritdoc />
+    public async System.Threading.Tasks.Task FailSessionAsync(string sessionId, Exception ex, CancellationToken ct = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(sessionId);
+        ArgumentNullException.ThrowIfNull(ex);
+        using var held = await EnterAsync(sessionId, ct).ConfigureAwait(false);
+        var state = await _store.GetAsync(sessionId, ct).ConfigureAwait(false);
+        if (state == null)
+        {
+            LogSessionNotFoundForMarkFailed(sessionId);
+            return;
+        }
+
+        await _store.SaveAsync(state with { Phase = SessionPhase.Failed, ErrorMessage = ex.Message, UpdatedAt = DateTime.UtcNow }, ct).ConfigureAwait(false);
+        LogSessionFailed(sessionId, ex.Message);
     }
 
     /// <inheritdoc />
@@ -300,6 +318,9 @@ public sealed partial class CheckpointManager : ICheckpointManager, IPendingInpu
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Marked task {TaskId} as failed in session {SessionId}: {Error}")]
     private partial void LogTaskMarkedFailed(string taskId, string sessionId, string error);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Session {SessionId} failed: {Error}")]
+    private partial void LogSessionFailed(string sessionId, string error);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Cannot complete: session {SessionId} not found")]
     private partial void LogSessionNotFoundForComplete(string sessionId);

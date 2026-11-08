@@ -90,6 +90,7 @@ public class ResumeEngineTests
         var sessionId = await _manager.StartSessionAsync(Orkeon.Application.Interfaces.Services.ExecutionId.New(), CrewId1, TestContext.Current.CancellationToken);
         await _manager.CheckpointAsync(sessionId, TaskId1, "output-1", TestContext.Current.CancellationToken);
         await _manager.MarkFailedAsync(sessionId, TaskId2, new Exception("fail"), TestContext.Current.CancellationToken);
+        await _manager.FailSessionAsync(sessionId, new Exception("fail"), TestContext.Current.CancellationToken);
 
         var options = new ResumeOptions { SkipFailed = true };
 
@@ -108,6 +109,7 @@ public class ResumeEngineTests
         var sessionId = await _manager.StartSessionAsync(Orkeon.Application.Interfaces.Services.ExecutionId.New(), CrewId1, TestContext.Current.CancellationToken);
         await _manager.CheckpointAsync(sessionId, TaskId1, "output-1", TestContext.Current.CancellationToken);
         await _manager.MarkFailedAsync(sessionId, TaskId2, new Exception("fail"), TestContext.Current.CancellationToken);
+        await _manager.FailSessionAsync(sessionId, new Exception("fail"), TestContext.Current.CancellationToken);
 
         var options = new ResumeOptions { RetryFailed = true, MaxRetries = 3 };
 
@@ -190,7 +192,7 @@ public class ResumeEngineTests
         var failed = Orkeon.Application.Interfaces.Services.ExecutionId.New();
         await _manager.StartSessionAsync(failed, Crew, TestContext.Current.CancellationToken);
         await _manager.CheckpointAsync(failed.ToString(), "a#1", "kept", TestContext.Current.CancellationToken);
-        await _manager.MarkFailedAsync(failed.ToString(), "b#1", new InvalidOperationException("boom"), TestContext.Current.CancellationToken);
+        await _manager.FailSessionAsync(failed.ToString(), new InvalidOperationException("boom"), TestContext.Current.CancellationToken);
         await AgeAsync(failed);
         var completed = Orkeon.Application.Interfaces.Services.ExecutionId.New();
         await _manager.StartSessionAsync(completed, Crew, TestContext.Current.CancellationToken);
@@ -208,7 +210,7 @@ public class ResumeEngineTests
     {
         var failed = Orkeon.Application.Interfaces.Services.ExecutionId.New();
         await _manager.StartSessionAsync(failed, Crew, TestContext.Current.CancellationToken);
-        await _manager.MarkFailedAsync(failed.ToString(), "b#1", new InvalidOperationException("boom"), TestContext.Current.CancellationToken);
+        await _manager.FailSessionAsync(failed.ToString(), new InvalidOperationException("boom"), TestContext.Current.CancellationToken);
         await AgeAsync(failed);
         var running = Orkeon.Application.Interfaces.Services.ExecutionId.New();
         await _manager.StartSessionAsync(running, Crew, TestContext.Current.CancellationToken);
@@ -283,5 +285,24 @@ public class ResumeEngineTests
 
         Assert.Equal(id.ToString(), latest.SessionId);
         Assert.Null(latest.Refusal);
+    }
+
+    [Fact]
+    [Trait("BR", "FWK-07")]
+    public async System.Threading.Tasks.Task Resume_RefusesAFailedSessionWhoseRunIsStillAlive_ByLatestAndById()
+    {
+        // A session marked Failed while its process still runs (a task failed, the others go on): never taken over.
+        var id = Orkeon.Application.Interfaces.Services.ExecutionId.New();
+        await _manager.StartSessionAsync(id, Crew, TestContext.Current.CancellationToken);
+        await _manager.FailSessionAsync(id.ToString(), new InvalidOperationException("boom"), TestContext.Current.CancellationToken);
+        var engine = EngineWith(new MockRunHistoryReader { Summary = MockRunHistoryReader.Running(id.ToString()), ProcessAlive = true });
+
+        var latest = await engine.ResumeAsync(Crew, ct: TestContext.Current.CancellationToken);
+        var byId = await engine.ResumeAsync(Crew, new ResumeOptions { ExecutionId = id.ToString() }, TestContext.Current.CancellationToken);
+
+        Assert.Equal("", latest.SessionId);
+        Assert.NotNull(latest.Refusal);
+        Assert.Equal("", byId.SessionId);
+        Assert.NotNull(byId.Refusal);
     }
 }

@@ -456,4 +456,113 @@ public sealed class CheckpointingAgentExecutionServiceTests : IDisposable
         Assert.DoesNotContain("sk-abcdefghijklmnopqrstuvwxyz", state!.TaskCheckpoints["leaky#1"].ErrorMessage, StringComparison.Ordinal);
         Assert.DoesNotContain("sk-abcdefghijklmnopqrstuvwxyz", state.ErrorMessage, StringComparison.Ordinal);
     }
+
+    private SimpleExecutionContext ContextWith(string name, string value) =>
+        new(CrewId.Create(), new Dictionary<string, string> { [name] = value }, _memory, [], CancellationToken.None);
+
+    [Fact]
+    [Trait("BR", "FWK-07")]
+    public async System.Threading.Tasks.Task ShouldRunTheTaskAgain_WhenTheResumedRunIsGivenAnotherKickoffValue()
+    {
+        var id = ExecutionId.New();
+        var task = Task("write", description: "Write about {topic}");
+        await StartSessionAsync(id);
+        using (Enter(id))
+            await Decorate().ExecuteTaskAsync(_agent, task, ContextWith("topic", "A"), TestContext.Current.CancellationToken);
+        var plan = await PlanOfAsync(id);
+        var before = _inner.Calls;
+
+        using (Enter(id, plan))
+            await Decorate().ExecuteTaskAsync(_agent, task, ContextWith("topic", "B"), TestContext.Current.CancellationToken);
+        var afterOtherValue = _inner.Calls;
+        using (Enter(id, await PlanOfAsync(id)))
+            await Decorate().ExecuteTaskAsync(_agent, task, ContextWith("topic", "B"), TestContext.Current.CancellationToken);
+
+        // topic=B is not the run that topic=A checkpointed: it runs; the same value again is answered from its checkpoint.
+        Assert.Equal(before + 1, afterOtherValue);
+        Assert.Equal(afterOtherValue, _inner.Calls);
+    }
+
+    [Fact]
+    [Trait("BR", "FWK-07")]
+    public async System.Threading.Tasks.Task ShouldGiveEachConcurrentInvocationItsOwnCheckpoint_WhateverOrderTheyArriveIn()
+    {
+        // Consensual runs one task for several agents at once: the order they reach the decorator is a race.
+        var id = ExecutionId.New();
+        var alice = new AgentBuilder().Role("Alice").Goal("Vote").Build();
+        var bob = new AgentBuilder().Role("Bob").Goal("Vote").Build();
+        await StartSessionAsync(id);
+        using (Enter(id))
+        {
+            using (CheckpointSlot.Enter("a1"))
+                await Decorate().ExecuteTaskAsync(bob, Task("vote"), Context(), TestContext.Current.CancellationToken);
+            using (CheckpointSlot.Enter("a0"))
+                await Decorate().ExecuteTaskAsync(alice, Task("vote"), Context(), TestContext.Current.CancellationToken);
+        }
+
+        var plan = await PlanOfAsync(id);
+        var before = _inner.Calls;
+        using (Enter(id, plan))
+        {
+            var decorated = Decorate();
+            using (CheckpointSlot.Enter("a0"))
+                Assert.True((await decorated.ExecuteTaskAsync(alice, Task("vote"), Context(), TestContext.Current.CancellationToken)).Resumed);
+            using (CheckpointSlot.Enter("a1"))
+                Assert.True((await decorated.ExecuteTaskAsync(bob, Task("vote"), Context(), TestContext.Current.CancellationToken)).Resumed);
+        }
+
+        Assert.Equal(before, _inner.Calls);
+        Assert.Contains("vote@a0#1", plan.CompletedOutputs.Keys);
+    }
+
+    [Fact]
+    [Trait("BR", "FWK-07")]
+    public async System.Threading.Tasks.Task ShouldRunTheTaskAgain_WhenTheStoredTypeOnlyStartsLikeAJsonType()
+    {
+        var id = ExecutionId.New();
+        _inner.UntypedStructured = key => System.Text.Json.JsonDocument.Parse("{\"a\":1}").RootElement.Clone();
+        await StartSessionAsync(id);
+        using (Enter(id))
+            await Decorate().ExecuteTaskAsync(_agent, Task("first"), Context(), TestContext.Current.CancellationToken);
+        var plan = await PlanOfAsync(id);
+        var stored = System.Text.Json.Nodes.JsonNode.Parse(plan.CompletedOutputs["first#1"]!)!.AsObject();
+        Assert.Equal(typeof(System.Text.Json.JsonElement).AssemblyQualifiedName, stored["structuredType"]!.GetValue<string>());
+        stored["structuredType"] = "System.Text.Json.Evil, Evil.Assembly";
+        var tampered = new ResumePlan(id.ToString(), new Dictionary<string, string?> { ["first#1"] = stored.ToJsonString() });
+        var before = _inner.Calls;
+
+        using (Enter(id, tampered))
+            await Decorate().ExecuteTaskAsync(_agent, Task("first"), Context(), TestContext.Current.CancellationToken);
+
+        Assert.Equal(before + 1, _inner.Calls);
+    }
+
+    [Fact]
+    [Trait("BR", "FWK-07")]
+    public async System.Threading.Tasks.Task ShouldRunTheTypedTaskAgain_WhenItsStoredOutputCannotBeBuiltAsTheType()
+    {
+        var id = ExecutionId.New();
+        await StartSessionAsync(id);
+        using (Enter(id))
+            await Decorate().ExecuteTaskAsync<FakeTypedAgentExecutionService.Answer>(_agent, Task("first"), Context(), TestContext.Current.CancellationToken);
+        var plan = await PlanOfAsync(id);
+        var before = _inner.Calls;
+
+        TaskResult<Unbuildable> replayed;
+        using (Enter(id, plan))
+            replayed = await Decorate().ExecuteTaskAsync<Unbuildable>(_agent, Task("first"), Context(), TestContext.Current.CancellationToken);
+
+        Assert.Equal(before + 1, _inner.Calls);
+        Assert.False(replayed.Resumed);
+    }
+
+    /// <summary>A type the serializer cannot build: its only constructor is private.</summary>
+    public sealed class Unbuildable
+    {
+        private Unbuildable()
+        {
+        }
+
+        public string? Text { get; set; }
+    }
 }

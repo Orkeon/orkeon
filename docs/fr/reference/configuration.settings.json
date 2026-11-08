@@ -420,6 +420,7 @@
     "Orkeon:Checkpointing:ConnectionString": "La chaîne de connexion du magasin Sqlite (à la place de `Path`) ou Postgres.",
     "Orkeon:Checkpointing:Enabled": "Si le magasin nommé par `Store` est utilisé (défaut : false, le magasin en mémoire).",
     "Orkeon:Checkpointing:MaxHistoryPerSession": "Le nombre maximal d'entrées de version par session dans le magasin PostgreSQL.",
+    "Orkeon:Checkpointing:MaxVersions": "Le nombre de versions qu'une session garde dans le magasin Json (défaut : 20) ; chaque nouvelle version supprime les plus anciennes au-delà. Zéro ou négatif les garde toutes.",
     "Orkeon:Checkpointing:Path": "Le chemin virtuel du dossier (Json) ou du fichier (Sqlite) où le magasin écrit, sous le montage `/state`. Null : `/state/checkpoints` ou `/state/checkpoints.db`.",
     "Orkeon:Checkpointing:SchemaName": "Le nom du schéma PostgreSQL (défaut : \"orkeon\").",
     "Orkeon:Checkpointing:Store": "Le magasin (défaut : `Memory`).",

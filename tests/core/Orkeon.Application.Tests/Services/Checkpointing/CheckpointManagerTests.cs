@@ -55,7 +55,8 @@ public class CheckpointManagerTests
     }
 
     [Fact]
-    public async System.Threading.Tasks.Task MarkFailed_RecordsErrorAndIncrementsRetry()
+    [Trait("BR", "FWK-07")]
+    public async System.Threading.Tasks.Task MarkFailed_RecordsTheTaskFailure_AndKeepsTheSessionRunning()
     {
         // Arrange
         var sessionId = await _manager.StartSessionAsync(Orkeon.Application.Interfaces.Services.ExecutionId.New(), CrewId1, TestContext.Current.CancellationToken);
@@ -67,14 +68,28 @@ public class CheckpointManagerTests
         // Assert
         var state = await _store.GetAsync(sessionId, TestContext.Current.CancellationToken);
         Assert.NotNull(state);
-        Assert.Equal(SessionPhase.Failed, state.Phase);
+        // The run may go on with its other tasks: only the end of the run fails the session (FailSessionAsync).
+        Assert.Equal(SessionPhase.Running, state.Phase);
         Assert.True(state.TaskCheckpoints.ContainsKey(TaskId1));
 
         var checkpoint = state.TaskCheckpoints[TaskId1];
         Assert.Equal(CheckpointStatus.Failed, checkpoint.Status);
         Assert.Equal("Something went wrong", checkpoint.ErrorMessage);
         Assert.Equal(1, checkpoint.RetryCount);
-        Assert.Equal("Something went wrong", state.ErrorMessage);
+        Assert.Null(state.ErrorMessage);
+    }
+
+    [Fact]
+    [Trait("BR", "FWK-07")]
+    public async System.Threading.Tasks.Task FailSession_MarksTheSessionFailedWithItsReason()
+    {
+        var sessionId = await _manager.StartSessionAsync(Orkeon.Application.Interfaces.Services.ExecutionId.New(), CrewId1, TestContext.Current.CancellationToken);
+
+        await _manager.FailSessionAsync(sessionId, new InvalidOperationException("the crew failed"), TestContext.Current.CancellationToken);
+
+        var state = await _store.GetAsync(sessionId, TestContext.Current.CancellationToken);
+        Assert.Equal(SessionPhase.Failed, state!.Phase);
+        Assert.Equal("the crew failed", state.ErrorMessage);
     }
 
     [Fact]

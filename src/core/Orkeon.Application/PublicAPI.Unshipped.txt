@@ -913,7 +913,6 @@ Orkeon.Application.Interfaces.Checkpointing.IPendingInputStore
 Orkeon.Application.Interfaces.Checkpointing.IPendingInputStore.AnswerAsync(string! sessionId, string? requestId, string! answer, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Application.Interfaces.Checkpointing.PendingInputAnswered!>!
 Orkeon.Application.Interfaces.Checkpointing.IPendingInputStore.AskAsync(string! sessionId, Orkeon.Application.Interfaces.Checkpointing.PendingInputRequest! request, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Application.Interfaces.Checkpointing.PendingInputAsked!>!
 Orkeon.Application.Interfaces.Checkpointing.IPendingInputStore.GetPendingAsync(string! sessionId, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Application.Interfaces.Checkpointing.PendingInputRequest?>!
-Orkeon.Application.Interfaces.Checkpointing.IPendingInputStore.RecordAnswerAsync(string! sessionId, string! requestId, string! answer, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
 Orkeon.Application.Interfaces.Checkpointing.PendingInputAnswerOutcome
 Orkeon.Application.Interfaces.Checkpointing.PendingInputAnswerOutcome.Accepted = 0 -> Orkeon.Application.Interfaces.Checkpointing.PendingInputAnswerOutcome
 Orkeon.Application.Interfaces.Checkpointing.PendingInputAnswerOutcome.AlreadyAnswered = 4 -> Orkeon.Application.Interfaces.Checkpointing.PendingInputAnswerOutcome
@@ -965,10 +964,8 @@ Orkeon.Application.Interfaces.Checkpointing.PendingInputRequest.TaskKey.init -> 
 Orkeon.Application.Interfaces.Checkpointing.PendingInputRequest.ToolName.get -> string?
 Orkeon.Application.Interfaces.Checkpointing.PendingInputRequest.ToolName.init -> void
 Orkeon.Application.Interfaces.Checkpointing.SessionPhase.WaitingForInput = 5 -> Orkeon.Application.Interfaces.Checkpointing.SessionPhase
-Orkeon.Application.Interfaces.Checkpointing.SessionState.AnsweredInputs.get -> System.Collections.Generic.IReadOnlyDictionary<string!, string!>!
 Orkeon.Application.Interfaces.Checkpointing.SessionState.AnsweredInputs.init -> void
 Orkeon.Application.Interfaces.Checkpointing.SessionState.PendingInput.get -> Orkeon.Application.Interfaces.Checkpointing.PendingInputRequest?
-Orkeon.Application.Interfaces.Checkpointing.SessionState.PendingInput.init -> void
 Orkeon.Application.Interfaces.Services.RunScope.Suspend(Orkeon.Application.Interfaces.Checkpointing.PendingInputRequest! request) -> bool
 Orkeon.Application.Interfaces.Services.RunScope.Suspension.get -> Orkeon.Application.Interfaces.Checkpointing.PendingInputRequest?
 Orkeon.Application.Interfaces.Services.RunSuspendedException
@@ -979,7 +976,6 @@ Orkeon.Application.Interfaces.Services.RunSuspendedException.RunSuspendedExcepti
 Orkeon.Application.Services.Checkpointing.CheckpointManager.AnswerAsync(string! sessionId, string? requestId, string! answer, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Application.Interfaces.Checkpointing.PendingInputAnswered!>!
 Orkeon.Application.Services.Checkpointing.CheckpointManager.AskAsync(string! sessionId, Orkeon.Application.Interfaces.Checkpointing.PendingInputRequest! request, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Application.Interfaces.Checkpointing.PendingInputAsked!>!
 Orkeon.Application.Services.Checkpointing.CheckpointManager.GetPendingAsync(string! sessionId, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Application.Interfaces.Checkpointing.PendingInputRequest?>!
-Orkeon.Application.Services.Checkpointing.CheckpointManager.RecordAnswerAsync(string! sessionId, string! requestId, string! answer, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
 override Orkeon.Application.Interfaces.Checkpointing.PendingInputAnswered.Equals(object? obj) -> bool
 override Orkeon.Application.Interfaces.Checkpointing.PendingInputAnswered.GetHashCode() -> int
 override Orkeon.Application.Interfaces.Checkpointing.PendingInputAnswered.ToString() -> string!
@@ -1037,3 +1033,36 @@ Orkeon.Application.Configuration.EmbeddingOptions.FingerprintPath.get -> string!
 Orkeon.Application.Configuration.EmbeddingOptions.FingerprintPath.set -> void
 *REMOVED*Orkeon.Application.Services.Checkpointing.ResumeEngine.ResumeEngine(Orkeon.Application.Interfaces.Checkpointing.ICheckpointManager! checkpointManager, Orkeon.Application.Interfaces.Checkpointing.IStateStore! store, Microsoft.Extensions.Logging.ILogger<Orkeon.Application.Services.Checkpointing.ResumeEngine!>! logger) -> void
 Orkeon.Application.Services.Checkpointing.ResumeEngine.ResumeEngine(Orkeon.Application.Interfaces.Checkpointing.ICheckpointManager! checkpointManager, Orkeon.Application.Interfaces.Checkpointing.IStateStore! store, Microsoft.Extensions.Logging.ILogger<Orkeon.Application.Services.Checkpointing.ResumeEngine!>! logger, Orkeon.Application.Runs.IRunHistoryReader? history = null, Orkeon.Application.Runs.IRunProcessProbe? probe = null) -> void
+Orkeon.Application.Interfaces.Checkpointing.AnsweredInput
+Orkeon.Application.Interfaces.Checkpointing.AnsweredInput.<Clone>$() -> Orkeon.Application.Interfaces.Checkpointing.AnsweredInput!
+Orkeon.Application.Interfaces.Checkpointing.AnsweredInput.Answer.get -> string!
+Orkeon.Application.Interfaces.Checkpointing.AnsweredInput.Answer.init -> void
+Orkeon.Application.Interfaces.Checkpointing.AnsweredInput.AnsweredAt.get -> System.DateTimeOffset
+Orkeon.Application.Interfaces.Checkpointing.AnsweredInput.AnsweredAt.init -> void
+Orkeon.Application.Interfaces.Checkpointing.AnsweredInput.AnsweredInput() -> void
+Orkeon.Application.Interfaces.Checkpointing.AnsweredInput.Answers(Orkeon.Application.Interfaces.Checkpointing.PendingInputRequest! request) -> bool
+Orkeon.Application.Interfaces.Checkpointing.AnsweredInput.ArgsHash.get -> string?
+Orkeon.Application.Interfaces.Checkpointing.AnsweredInput.ArgsHash.init -> void
+Orkeon.Application.Interfaces.Checkpointing.AnsweredInput.Equals(Orkeon.Application.Interfaces.Checkpointing.AnsweredInput? other) -> bool
+Orkeon.Application.Interfaces.Checkpointing.AnsweredInput.Kind.get -> Orkeon.Application.Interfaces.Checkpointing.PendingInputKind
+Orkeon.Application.Interfaces.Checkpointing.AnsweredInput.Kind.init -> void
+Orkeon.Application.Interfaces.Checkpointing.AnsweredInput.ToolName.get -> string?
+Orkeon.Application.Interfaces.Checkpointing.AnsweredInput.ToolName.init -> void
+Orkeon.Application.Interfaces.Checkpointing.ICheckpointManager.FailSessionAsync(string! sessionId, System.Exception! ex, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+Orkeon.Application.Interfaces.Checkpointing.IPendingInputStore.RecordAnswerAsync(string! sessionId, Orkeon.Application.Interfaces.Checkpointing.PendingInputRequest! request, string! answer, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+Orkeon.Application.Interfaces.Checkpointing.IPendingInputStore.SuspendAsync(string! sessionId, string! requestId, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+Orkeon.Application.Interfaces.Checkpointing.PendingInputAnswerOutcome.RequestIdRequired = 5 -> Orkeon.Application.Interfaces.Checkpointing.PendingInputAnswerOutcome
+Orkeon.Application.Interfaces.Checkpointing.SessionState.AnsweredInputs.get -> System.Collections.Generic.IReadOnlyDictionary<string!, Orkeon.Application.Interfaces.Checkpointing.AnsweredInput!>!
+Orkeon.Application.Interfaces.Checkpointing.SessionState.PendingInputs.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Application.Interfaces.Checkpointing.PendingInputRequest!>!
+Orkeon.Application.Interfaces.Checkpointing.SessionState.PendingInputs.init -> void
+Orkeon.Application.Interfaces.Checkpointing.SessionState.SuspendedOn.get -> string?
+Orkeon.Application.Interfaces.Checkpointing.SessionState.SuspendedOn.init -> void
+Orkeon.Application.Services.Checkpointing.CheckpointManager.FailSessionAsync(string! sessionId, System.Exception! ex, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+Orkeon.Application.Services.Checkpointing.CheckpointManager.RecordAnswerAsync(string! sessionId, Orkeon.Application.Interfaces.Checkpointing.PendingInputRequest! request, string! answer, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+Orkeon.Application.Services.Checkpointing.CheckpointManager.SuspendAsync(string! sessionId, string! requestId, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+override Orkeon.Application.Interfaces.Checkpointing.AnsweredInput.Equals(object? obj) -> bool
+override Orkeon.Application.Interfaces.Checkpointing.AnsweredInput.GetHashCode() -> int
+override Orkeon.Application.Interfaces.Checkpointing.AnsweredInput.ToString() -> string!
+static Orkeon.Application.Interfaces.Checkpointing.AnsweredInput.To(Orkeon.Application.Interfaces.Checkpointing.PendingInputRequest! request, string! answer) -> Orkeon.Application.Interfaces.Checkpointing.AnsweredInput!
+static Orkeon.Application.Interfaces.Checkpointing.AnsweredInput.operator !=(Orkeon.Application.Interfaces.Checkpointing.AnsweredInput? left, Orkeon.Application.Interfaces.Checkpointing.AnsweredInput? right) -> bool
+static Orkeon.Application.Interfaces.Checkpointing.AnsweredInput.operator ==(Orkeon.Application.Interfaces.Checkpointing.AnsweredInput? left, Orkeon.Application.Interfaces.Checkpointing.AnsweredInput? right) -> bool

@@ -73,7 +73,7 @@ public sealed partial class CheckpointingAgentExecutionService : IAgentExecution
         DomainAgent agent, ICrewTask task, SimpleExecutionContext context, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(task);
-        if (await OpenAsync(agent, task, cancellationToken).ConfigureAwait(false) is not { } call)
+        if (await OpenAsync(agent, task, context, cancellationToken).ConfigureAwait(false) is not { } call)
             return await _inner.ExecuteTaskAsync(agent, task, context, cancellationToken).ConfigureAwait(false);
 
         if (call.Stored is { } stored)
@@ -91,11 +91,13 @@ public sealed partial class CheckpointingAgentExecutionService : IAgentExecution
         where TOutput : class
     {
         ArgumentNullException.ThrowIfNull(task);
-        if (await OpenAsync(agent, task, cancellationToken).ConfigureAwait(false) is not { } call)
+        if (await OpenAsync(agent, task, context, cancellationToken).ConfigureAwait(false) is not { } call)
             return await _inner.ExecuteTaskAsync<TOutput>(agent, task, context, cancellationToken).ConfigureAwait(false);
 
-        if (call.Stored is { } stored)
-            return stored.ToResult<TOutput>();
+        // A stored structured output that no longer reads as the task's type (edited, or a type that changed) is not an
+        // answer: the task runs again instead of failing at every resume.
+        if (call.Stored is { } stored && TryRebuild<TOutput>(stored, call, task) is { } rebuilt)
+            return rebuilt;
 
         var result = await RunAsync(call, () => _inner.ExecuteTaskAsync<TOutput>(agent, task, context, cancellationToken)).ConfigureAwait(false);
         if (result.Success)
@@ -109,7 +111,7 @@ public sealed partial class CheckpointingAgentExecutionService : IAgentExecution
     {
         ArgumentNullException.ThrowIfNull(task);
         ArgumentNullException.ThrowIfNull(decide);
-        if (await OpenAsync(null, task, cancellationToken).ConfigureAwait(false) is not { } call)
+        if (await OpenAsync(null, task, null, cancellationToken).ConfigureAwait(false) is not { } call)
             return await decide().ConfigureAwait(false);
 
         if (call.Stored is { } stored)
@@ -126,14 +128,17 @@ public sealed partial class CheckpointingAgentExecutionService : IAgentExecution
     /// checkpoint holds for it; null when the decorator has nothing to do (no run, or a task that has no
     /// name in a crew definition).
     /// </summary>
-    private async System.Threading.Tasks.Task<Call?> OpenAsync(DomainAgent? agent, ICrewTask task, CancellationToken ct)
+    private async System.Threading.Tasks.Task<Call?> OpenAsync(DomainAgent? agent, ICrewTask task, SimpleExecutionContext? context, CancellationToken ct)
     {
         if (_runScope.Current is not { } run || task.Key is not { Length: > 0 } taskKey)
             return null;
 
+        // Invocations of one task that run at once (Consensual) count their ordinals each in its own slot: the order in which
+        // they reach this line is a race, the slot is not.
         var state = _runs.GetOrCreateValue(run);
-        var key = $"{taskKey}#{state.Ordinals.AddOrUpdate(taskKey, 1, static (_, n) => n + 1)}";
-        var fingerprint = await FingerprintAsync(agent, task, ct).ConfigureAwait(false);
+        var counted = CheckpointSlot.Current is { } slot ? $"{taskKey}@{slot}" : taskKey;
+        var key = $"{counted}#{state.Ordinals.AddOrUpdate(counted, 1, static (_, n) => n + 1)}";
+        var fingerprint = await FingerprintAsync(agent, task, context, ct).ConfigureAwait(false);
         var call = new Call(run, state, key, fingerprint, Lookup(run, state, key, fingerprint, task));
 
         // A run stopped on a question starts no more work (FWK-23); what the checkpoint already holds is still answered.
@@ -185,11 +190,36 @@ public sealed partial class CheckpointingAgentExecutionService : IAgentExecution
         return stored;
     }
 
+    // The plain JSON types a structured output may be stored as, by their exact assembly-qualified name: a name that merely
+    // starts like one (a generic type with arbitrary arguments, another assembly) is not one of them.
+    private static readonly HashSet<string> JsonTypes = new(
+        new[]
+        {
+            typeof(JsonElement), typeof(JsonDocument),
+            typeof(System.Text.Json.Nodes.JsonNode), typeof(System.Text.Json.Nodes.JsonObject), typeof(System.Text.Json.Nodes.JsonArray),
+        }.Select(t => t.AssemblyQualifiedName!),
+        StringComparer.Ordinal);
+
     private static bool IsAllowedStructuredType(ICrewTask task, string typeName) =>
         (task.OutputPydantic is { } declared && string.Equals(declared.AssemblyQualifiedName, typeName, StringComparison.Ordinal))
-        || typeName.StartsWith("System.Text.Json.", StringComparison.Ordinal);
+        || JsonTypes.Contains(typeName);
 
-    private async System.Threading.Tasks.Task<string> FingerprintAsync(DomainAgent? agent, ICrewTask task, CancellationToken ct)
+    private TaskResult<TOutput>? TryRebuild<TOutput>(StoredResult stored, Call call, ICrewTask task)
+        where TOutput : class
+    {
+        try
+        {
+            return stored.ToResult<TOutput>();
+        }
+        catch (Exception ex) when (ex is JsonException or NotSupportedException or InvalidOperationException)
+        {
+            LogStructuredOutputUnreadable(call.Key, call.Run.ExecutionId);
+            call.Run.Resume?.ResumedTaskIds.TryRemove(task.TaskId.Value.ToString(), out _);
+            return null;
+        }
+    }
+
+    private async System.Threading.Tasks.Task<string> FingerprintAsync(DomainAgent? agent, ICrewTask task, SimpleExecutionContext? context, CancellationToken ct)
     {
         // The agent by what it is told to be, not by its id, which is new at every load; the dependencies
         // by their keys, for the same reason.
@@ -203,10 +233,13 @@ public sealed partial class CheckpointingAgentExecutionService : IAgentExecution
             dependencies.Sort(StringComparer.Ordinal);
         }
 
+        // The description and expected output as the agent reads them, with the run's variables in them: a resumed run
+        // given other kickoff values (--var) does not get the outputs of the first values back.
+        var variables = context?.Variables;
         var text = string.Join(
             '\u0001',
-            task.Description.Value,
-            task.ExpectedOutput.Value,
+            Orkeon.Application.Crew.Execution.TaskTextInterpolation.Interpolate(task.Description.Value, variables),
+            Orkeon.Application.Crew.Execution.TaskTextInterpolation.Interpolate(task.ExpectedOutput.Value, variables),
             agent?.Role.Value ?? string.Empty,
             agent?.Goal.Value ?? string.Empty,
             string.Join('\u0002', dependencies));
@@ -247,6 +280,9 @@ public sealed partial class CheckpointingAgentExecutionService : IAgentExecution
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Task {Key} of run {RunId} has a checkpoint whose structured type {TypeName} is not one the task declares: the checkpoint is refused and the task runs again")]
     private partial void LogStructuredTypeRefused(string key, string typeName, ExecutionId runId);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Task {Key} of run {RunId} has a checkpoint whose structured output cannot be read back: the task runs again")]
+    private partial void LogStructuredOutputUnreadable(string key, ExecutionId runId);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Task {Key} of run {RunId} answered from its checkpoint: no model was asked")]
     private partial void LogTaskResumed(string key, ExecutionId runId);
@@ -369,8 +405,9 @@ public sealed partial class CheckpointingAgentExecutionService : IAgentExecution
                 {
                     return element.Deserialize(type, Json) ?? element;
                 }
-                catch (JsonException)
+                catch (Exception ex) when (ex is JsonException or NotSupportedException or InvalidOperationException)
                 {
+                    // A type the serializer cannot build (no usable constructor, an unsupported member): the JSON is the answer.
                     return element;
                 }
             }

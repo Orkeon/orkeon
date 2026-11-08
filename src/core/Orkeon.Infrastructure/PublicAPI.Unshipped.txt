@@ -640,7 +640,6 @@ static Orkeon.Infrastructure.Evaluation.ReportExporter.ToJson(Orkeon.Application
 static Orkeon.Infrastructure.Evaluation.ReportExporter.ToJson(Orkeon.Infrastructure.Evaluation.ComparisonResult! comparison) -> string!
 static Orkeon.Infrastructure.Evaluation.ReportExporter.ReadComparableReport(string! json) -> Orkeon.Application.Evaluation.BenchmarkReport!
 [ORKEXP007]static Orkeon.Infrastructure.Runs.RedactingRunEventSink.Redact(System.Text.Json.Nodes.JsonNode? node) -> System.Text.Json.Nodes.JsonNode?
-
 [ORKEXP004]Orkeon.Infrastructure.MCP.Auth.IMcpRequestAuthenticator.HandleUnauthorizedAsync(string? rejectedCredential, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask<bool>
 [ORKEXP004]Orkeon.Infrastructure.MCP.McpAuthConfig.Audience.get -> string?
 [ORKEXP004]Orkeon.Infrastructure.MCP.McpAuthConfig.Audience.set -> void
@@ -860,3 +859,7 @@ Orkeon.Infrastructure.AgentCommunication.BrowserRequestGuard
 static Orkeon.Infrastructure.AgentCommunication.BrowserRequestGuard.Applies(int allowedAuthSchemes) -> bool
 static Orkeon.Infrastructure.AgentCommunication.BrowserRequestGuard.IsJson(string? contentType) -> bool
 static Orkeon.Infrastructure.AgentCommunication.BrowserRequestGuard.NamesListener(string! prefix, string? hostHeader) -> bool
+Orkeon.Infrastructure.Checkpointing.CheckpointingOptions.MaxVersions.get -> int
+Orkeon.Infrastructure.Checkpointing.CheckpointingOptions.MaxVersions.set -> void
+Orkeon.Infrastructure.Checkpointing.JsonFileStateStore.JsonFileStateStore(Orkeon.Domain.FileSystem.IFileSystemService! fs, string! baseVirtualPath, int maxVersions = 20) -> void
+const Orkeon.Infrastructure.Checkpointing.JsonFileStateStore.DefaultMaxVersions = 20 -> int

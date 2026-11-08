@@ -82,9 +82,12 @@ internal sealed partial class HostApiServer : IHostedService, IDisposable
         ISecretProvider? secrets = null,
         TimeProvider? time = null,
         Orkeon.Application.Interfaces.Checkpointing.ICheckpointManager? checkpoints = null,
-        IPendingInputBroker? broker = null)
+        IPendingInputBroker? broker = null,
+        Microsoft.Extensions.Options.IOptions<Orkeon.Infrastructure.Checkpointing.CheckpointingOptions>? checkpointing = null)
     {
-        _input = checkpoints as IPendingInputStore;
+        // A run's questions are persisted only with Orkeon:Checkpointing:Enabled (the durable human input engages on it): the
+        // checkpoint manager is registered either way, so its presence alone says nothing.
+        _input = checkpointing?.Value.Enabled == true ? checkpoints as IPendingInputStore : null;
         _broker = broker;
         ArgumentNullException.ThrowIfNull(options);
         _options = options.Value.Api;
@@ -664,6 +667,9 @@ internal sealed partial class HostApiServer : IHostedService, IDisposable
                 break;
             case PendingInputAnswerOutcome.Mismatch:
                 await WriteAsync(context, 409, new ApiErrorDto { Error = "request_mismatch", Message = "The run waits on another question." }).ConfigureAwait(false);
+                break;
+            case PendingInputAnswerOutcome.RequestIdRequired:
+                await WriteAsync(context, 409, new ApiErrorDto { Error = "request_id_required", Message = "The run waits on several questions: name the one you answer with request_id." }).ConfigureAwait(false);
                 break;
             default:
                 await WriteAsync(context, 409, new ApiErrorDto { Error = "no_pending_input", Message = "The run waits for no answer: it asked nothing, or the question was already answered." }).ConfigureAwait(false);

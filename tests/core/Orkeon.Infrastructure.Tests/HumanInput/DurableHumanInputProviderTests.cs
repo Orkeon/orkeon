@@ -51,13 +51,13 @@ public sealed class DurableHumanInputProviderTests
         var state = await fx.StateAsync();
         Assert.Equal("t#2.1", state!.PendingInput!.RequestId);
         Assert.Equal("t#2", state.PendingInput.TaskKey);
-        Assert.Equal("first answer", state.AnsweredInputs["t#1.1"]);
+        Assert.Equal("first answer", state.AnsweredInputs["t#1.1"].Answer);
         Assert.DoesNotContain("t#2.1", state.AnsweredInputs.Keys);
     }
 
     [Fact]
     [Trait("BR", "FWK-23")]
-    public async System.Threading.Tasks.Task ShouldKeepOneQuestionPending_AndAskTheOtherAgain_WhenTwoTasksAskAtOnce()
+    public async System.Threading.Tasks.Task ShouldStopOnAPersistedQuestion_AndAnswerIt_WhenTwoTasksAskAtOnce()
     {
         using var fx = new DurableHumanInputFixture(HumanInputPause.Suspend);
         fx.EnterRun("unused#1");
@@ -75,34 +75,37 @@ public sealed class DurableHumanInputProviderTests
             }
         }
 
-        // Two tasks of one wave ask together: both stop, and exactly one question is persisted.
+        // Two tasks of one wave ask together: both stop, on a question the store holds, and the run names it.
         var together = await System.Threading.Tasks.Task.WhenAll(AskAs("a#1"), AskAs("b#1"));
         Assert.All(together, answer => Assert.Null(answer));
-        var pending = (await fx.StateAsync())!.PendingInput!;
-        var other = pending.RequestId == "a#1.1" ? "b#1" : "a#1";
+        var stopped = fx.Run!.Suspension!;
+        var persisted = (await fx.StateAsync())!;
+        Assert.Contains(persisted.PendingInputs, p => p.RequestId == stopped.RequestId);
+        Assert.Equal(stopped.RequestId, persisted.SuspendedOn);
+        var other = stopped.TaskKey == "a#1" ? "b#1" : "a#1";
         var otherId = other + ".1";
-        Assert.NotNull(fx.Run!.Suspension);
 
-        // The first is answered and the run resumes: the one that was not persisted is asked again, not lost.
-        await fx.Manager.AnswerAsync(fx.Id.ToString(), null, "first", Ct);
+        // The answer that names no question goes to the one the run stopped on; on the resume the other is asked again.
+        var answer = await fx.Manager.AnswerAsync(fx.Id.ToString(), null, "first", Ct);
+        Assert.Equal(stopped.RequestId, answer.RequestId);
         fx.LeaveRun();
         fx.EnterRun("unused#1");
-        var answered = await AskAs(pending.TaskKey!);
+        var answered = await AskAs(stopped.TaskKey!);
         var again = await AskAs(other);
 
         Assert.Equal("first", answered);
         Assert.Null(again);
         var state = await fx.StateAsync();
-        Assert.Equal(otherId, state!.PendingInput!.RequestId);
+        Assert.Equal(otherId, Assert.Single(state!.PendingInputs).RequestId);
         Assert.DoesNotContain(otherId, state.AnsweredInputs.Keys);
     }
 
     [Fact]
     [Trait("BR", "FWK-23")]
-    public async System.Threading.Tasks.Task ShouldSuspendOnTheQuestionTheStoreHolds_WhenTheLoserOfTwoConcurrentAskersSuspendsFirst()
+    public async System.Threading.Tasks.Task ShouldStopOnThePersistedQuestionOfTheFirstToSuspend_WhenTheLaterAskerSuspendsFirst()
     {
-        // A persists its question, then is held at a gate; B asks meanwhile, finds the slot taken and suspends the run
-        // first. The run must stop on A (what the store holds, what an answer can reach), never on B's unpersisted question.
+        // A persists its question, then is held at a gate; B asks meanwhile, persists its own question and suspends the run
+        // first. Both questions stay open and the run stops on B, a question the store holds and an answer can reach.
         using var fx = new DurableHumanInputFixture(HumanInputPause.Suspend);
         var gated = new GatedPendingInputStore(fx.Manager) { HeldRequestId = "a#1.1" };
         var provider = new DurableHumanInputProvider(
@@ -122,10 +125,12 @@ public sealed class DurableHumanInputProviderTests
         gated.Release();
         var aThrown = await a;
 
-        Assert.Equal("a#1.1", b.RequestId);
-        Assert.Equal("a#1.1", aThrown.RequestId);
-        Assert.Equal("a#1.1", fx.Run!.Suspension!.RequestId);
-        Assert.Equal("a#1.1", (await fx.StateAsync())!.PendingInput!.RequestId);
+        var state = await fx.StateAsync();
+        Assert.Equal("b#1.1", b.RequestId);
+        Assert.Equal("b#1.1", aThrown.RequestId);
+        Assert.Equal("b#1.1", fx.Run!.Suspension!.RequestId);
+        Assert.Equal("b#1.1", state!.SuspendedOn);
+        Assert.Equal(["a#1.1", "b#1.1"], state.PendingInputs.Select(p => p.RequestId).Order(StringComparer.Ordinal));
     }
 
     [Fact]
@@ -242,7 +247,7 @@ public sealed class DurableHumanInputProviderTests
         Assert.Equal("red", answer);
         var state = await fx.StateAsync();
         Assert.Equal(SessionPhase.Running, state!.Phase);
-        Assert.Equal("red", state.AnsweredInputs["ask#1.1"]);
+        Assert.Equal("red", state.AnsweredInputs["ask#1.1"].Answer);
         Assert.Null(fx.Run!.Suspension);
         Assert.Contains(fx.Notices, n => n.Kind == HumanInputNoticeKind.Given && n.Request.RequestId == "ask#1.1");
         Assert.False(fx.Notices.First().Suspending);
@@ -261,6 +266,39 @@ public sealed class DurableHumanInputProviderTests
 
         Assert.Equal("typed", answer);
         Assert.Equal("ask#1.1", fx.Inner.LastGetInputContext!.Metadata[HumanInputPauseMetadata.RequestId]);
-        Assert.Equal("typed", (await fx.StateAsync())!.AnsweredInputs["ask#1.1"]);
+        Assert.Equal("typed", (await fx.StateAsync())!.AnsweredInputs["ask#1.1"].Answer);
+    }
+
+    [Fact]
+    [Trait("BR", "FWK-23")]
+    public async System.Threading.Tasks.Task ShouldPersistEveryHeldQuestionAndStopOnOneOfThem_WhenTheHoldTimeoutExpiresForTwoTasks()
+    {
+        var limit = TimeSpan.FromMinutes(30);
+        using var fx = new DurableHumanInputFixture(HumanInputPause.Hold, limit);
+        fx.EnterRun("unused#1");
+        async System.Threading.Tasks.Task<RunSuspendedException> AskAs(string task)
+        {
+            await System.Threading.Tasks.Task.Yield();
+            using var scope = Orkeon.Infrastructure.Checkpointing.TaskInputScope.Enter(task);
+            return await Assert.ThrowsAsync<RunSuspendedException>(() => fx.Provider.GetInputAsync(DurableHumanInputFixture.Ask($"{task}?"), Ct));
+        }
+
+        var a = AskAs("a#1");
+        var b = AskAs("b#1");
+        await Polling.WaitUntilAsync(() =>
+        {
+            lock (fx.Notices)
+                return System.Threading.Tasks.Task.FromResult(fx.Notices.Count(n => n.Kind == Orkeon.Application.Crew.HumanInputNoticeKind.Needed) == 2);
+        }, Polling.DefaultTimeout);
+        fx.Clock.Advance(limit + TimeSpan.FromSeconds(1));
+        var thrown = await System.Threading.Tasks.Task.WhenAll(a, b).WaitAsync(Polling.DefaultTimeout, Ct);
+
+        // Both stop on the question the run stopped on, which the store holds; the other question is kept too.
+        var stopped = fx.Run!.Suspension!.RequestId;
+        Assert.All(thrown, ex => Assert.Equal(stopped, ex.RequestId));
+        var state = (await fx.StateAsync())!;
+        Assert.Equal(["a#1.1", "b#1.1"], state.PendingInputs.Select(p => p.RequestId).Order());
+        Assert.Equal(stopped, state.SuspendedOn);
+        Assert.Equal(stopped, state.PendingInput!.RequestId);
     }
 }

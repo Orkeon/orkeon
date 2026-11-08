@@ -3367,6 +3367,13 @@
       "description": "The maximum number of version entries per session in the PostgreSQL store."
     },
     {
+      "path": "Orkeon:Checkpointing:MaxVersions",
+      "section": "Orkeon:Checkpointing",
+      "type": "integer",
+      "default": 20,
+      "description": "The number of versions a session keeps in the Json store (default: 20); each new version deletes the oldest beyond it. Zero or negative keeps them all."
+    },
+    {
       "path": "Orkeon:Checkpointing:Path",
       "section": "Orkeon:Checkpointing",
       "type": "string",

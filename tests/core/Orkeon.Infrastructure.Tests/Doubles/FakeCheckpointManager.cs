@@ -15,6 +15,8 @@ public sealed class FakeCheckpointManager : ICheckpointManager
     /// <summary>The task keys whose failure was marked.</summary>
     public List<string> MarkedFailed { get; } = [];
 
+    public List<string> SessionsFailed { get; } = [];
+
     public System.Threading.Tasks.Task<string> StartSessionAsync(ExecutionId sessionId, string crewKey, CancellationToken ct = default) =>
         System.Threading.Tasks.Task.FromResult(sessionId.ToString());
 
@@ -27,6 +29,12 @@ public sealed class FakeCheckpointManager : ICheckpointManager
     public System.Threading.Tasks.Task MarkFailedAsync(string sessionId, string taskId, Exception ex, CancellationToken ct = default)
     {
         MarkedFailed.Add(taskId);
+        return System.Threading.Tasks.Task.CompletedTask;
+    }
+
+    public System.Threading.Tasks.Task FailSessionAsync(string sessionId, Exception ex, CancellationToken ct = default)
+    {
+        SessionsFailed.Add(sessionId);
         return System.Threading.Tasks.Task.CompletedTask;
     }
 

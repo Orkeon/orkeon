@@ -75,7 +75,7 @@ public static class CheckpointingExtensions
         return o.Store switch
         {
             CheckpointStore.Memory => new InMemoryStateStore(),
-            CheckpointStore.Json => new JsonFileStateStore(fs, o.Path ?? $"{CheckpointingOptions.StateRoot}/checkpoints"),
+            CheckpointStore.Json => new JsonFileStateStore(fs, o.Path ?? $"{CheckpointingOptions.StateRoot}/checkpoints", o.MaxVersions),
             CheckpointStore.Sqlite => new SqliteStateStore(
                 string.IsNullOrWhiteSpace(o.ConnectionString)
                     ? $"Data Source={o.Path ?? $"{CheckpointingOptions.StateRoot}/checkpoints.db"}"
