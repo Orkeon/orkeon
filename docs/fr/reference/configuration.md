@@ -2066,14 +2066,14 @@ Résolution des crews `<nom>/crew.ork.ts` (`ScriptHostFacade`).
 
 ### `Orkeon:Cli:ConsoleStreaming`
 
-Deltas `ctx.llm.act` streamés sur la console REPL (`AddLlmConsoleStreaming(configuration)`).
+Deltas `ctx.llm.act` streamés sur la console REPL (`AddLlmConsoleStreaming(configuration, enabledByDefault)`).
 
 <!-- settings:Orkeon:Cli:ConsoleStreaming -->
 **Lue par** : `orkeon-repl`.
 
 | Clé | Type | Défaut | Sens |
 |---|---|---|---|
-| `Enabled` | booléen | `false` | Si chaque morceau d'une réponse est écrit sur la console à mesure que le modèle l'envoie, au lieu de la réponse entière à la fin. |
+| `Enabled` | booléen | `false` | Si chaque morceau d'une réponse est écrit sur la console à mesure que le modèle l'envoie, au lieu de la réponse entière à la fin. La REPL l'active quand la clé est absente ; un crew exécuté le garde désactivé. |
 <!-- /settings -->
 
 ### `Orkeon:Cli:Memory`

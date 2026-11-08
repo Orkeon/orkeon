@@ -253,7 +253,10 @@ a un), et il est refusé sinon ; le temps que la porte met à décider ne compte
 `ctx.llm.permissionGate.enabled` dit si l'hôte a enregistré une porte ; sans elle, un
 `permissionMode` ne contrôle rien et l'appel journalise un avertissement qui le dit — déclarez
 `.access("read")` sur un outil de script pour qu'il passe `plan` ; `onDelta` reçoit le texte
-streamé de chaque tour de l'assistant.
+streamé de chaque tour de l'assistant, et `onToolCallDelta` chaque fragment d'appel d'outil que le modèle
+est en train de construire (`{index, id?, name?, argumentsDelta}` ; `id` et `name` viennent sur le fragment
+qui les porte, et Ollama envoie un appel entier). Sur un hôte qui a enregistré la DLP, les arguments d'un
+appel arrivent retenus, en un seul fragment rédigé, une fois l'appel terminé.
 
 `ctx.delegate(agentOuNom, input)` est `crew.runAgent` : la cible s'exécute avec son propre
 contexte, sous son sémaphore et sa politique `onError`. Ni l'un ni l'autre ne donne de budget à

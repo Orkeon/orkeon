@@ -68,7 +68,7 @@ public sealed class StdoutEventContractGoldenTests : IDisposable
     private const string Golden = """
         {"v":2,"seq":1,"ts":"2026-08-19T12:00:00Z","kind":"run.started","correlationId":"01K9FWK8000000000000000000","target":"crew.yaml","stream":true}
         {"v":2,"seq":2,"ts":"2026-08-19T12:00:01Z","kind":"task.started","agentId":"Rédacteur","correlationId":"01K9FWK8000000000000000000","taskId":"t1","agentRole":"Rédacteur","attempt":1}
-        {"v":2,"seq":3,"ts":"2026-08-19T12:00:02Z","kind":"llm.delta","correlationId":"01K9FWK8000000000000000000","text":"Bonjour — à bientôt"}
+        {"v":2,"seq":3,"ts":"2026-08-19T12:00:02Z","kind":"llm.delta","correlationId":"01K9FWK8000000000000000000","text":"Bonjour — à bientôt","deltaKind":"content"}
         {"v":2,"seq":4,"ts":"2026-08-19T12:00:03Z","kind":"cost.updated","crewId":"c-1","agentId":"a-1","correlationId":"01K9FWK8000000000000000000","tokens":15,"promptTokens":10,"completionTokens":5,"model":"m1","provider":"p1"}
         {"v":2,"seq":5,"ts":"2026-08-19T12:00:04Z","kind":"llm.call.started","correlationId":"01K9FWK8000000000000000000","callId":"c1","mode":"stream","estimatedPromptTokens":7}
         {"v":2,"seq":6,"ts":"2026-08-19T12:00:05Z","kind":"task.completed","agentId":"Rédacteur","correlationId":"01K9FWK8000000000000000000","taskId":"t1","agentRole":"Rédacteur","success":true,"skipped":false,"resumed":false,"attempt":1,"durationMs":1200,"tokens":15,"toolCalls":2,"defaulted":false,"isDecision":false}

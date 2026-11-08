@@ -23,6 +23,13 @@ public sealed record ScriptingHostPorts
     public Orkeon.Application.Interfaces.Ports.ILlmDeltaSink? DeltaSink { get; init; }
 
     /// <summary>
+    /// The host's DLP for the tool calls the model streams (FWK-20), independent of the delta sink: the arguments
+    /// of each call reach <c>onToolCallDelta</c> and the sink held until the call ends, scanned whole. Null streams
+    /// the fragments as they arrive.
+    /// </summary>
+    public Orkeon.Application.Crew.ToolCallDeltaDlp? ToolCallDlp { get; init; }
+
+    /// <summary>
     /// The single tool-invocation point (GAP-09) every <c>ctx.llm.act</c> tool call goes
     /// through once the permission gate allowed it: guardian, truncation, result sanitizer,
     /// audit. Null = the tool is called directly.

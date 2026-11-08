@@ -526,6 +526,11 @@ public sealed class RunProgressModel
 
     private bool ApplyLlmDelta(OrkeonEvent orkeonEvent)
     {
+        // Only the model's text is shown: a fragment of a tool call (deltaKind "tool_call", FWK-20) changes nothing.
+        // A delta without a deltaKind is text, as the stream wrote it before the field existed.
+        if (orkeonEvent.GetString("deltaKind") is { } deltaKind && !string.Equals(deltaKind, "content", StringComparison.Ordinal))
+            return false;
+
         _generated.Append(orkeonEvent.GetString("text"));
         return true;
     }

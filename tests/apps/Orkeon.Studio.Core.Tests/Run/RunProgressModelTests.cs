@@ -340,6 +340,21 @@ public class RunProgressModelTests
     }
 
     [Fact]
+    [Trait("BR", "FWK-20")]
+    public void A_tool_call_delta_adds_no_generated_text_and_announces_no_change()
+    {
+        var model = new RunProgressModel();
+        var announced = 0;
+        model.Changed += (_, _) => announced++;
+
+        model.Apply(Parse("""{"v":2,"seq":1,"ts":"t","kind":"llm.delta","text":"Hel","deltaKind":"content"}"""));
+        model.Apply(Parse("""{"v":2,"seq":2,"ts":"t","kind":"llm.delta","deltaKind":"tool_call","toolCall":{"index":0,"id":"c1","name":"send_mail","argumentsDelta":"{}"}}"""));
+
+        Assert.Equal("Hel", model.GeneratedText);
+        Assert.Equal(1, announced);
+    }
+
+    [Fact]
     public void A_started_task_is_in_progress_until_the_run_reports_it_finished()
     {
         // STUDIO-17: the moment the screen used to be blind to. The start carries the run's own

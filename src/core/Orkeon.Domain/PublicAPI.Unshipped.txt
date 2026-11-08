@@ -372,3 +372,25 @@ static Orkeon.Domain.Configuration.GraphEdgeConfig.operator !=(Orkeon.Domain.Con
 static Orkeon.Domain.Configuration.GraphEdgeConfig.operator ==(Orkeon.Domain.Configuration.GraphEdgeConfig? left, Orkeon.Domain.Configuration.GraphEdgeConfig? right) -> bool
 static Orkeon.Domain.Configuration.GraphNodeConfig.operator !=(Orkeon.Domain.Configuration.GraphNodeConfig? left, Orkeon.Domain.Configuration.GraphNodeConfig? right) -> bool
 static Orkeon.Domain.Configuration.GraphNodeConfig.operator ==(Orkeon.Domain.Configuration.GraphNodeConfig? left, Orkeon.Domain.Configuration.GraphNodeConfig? right) -> bool
+Orkeon.Domain.SharedKernel.ValueObjects.LlmStreamEventKind.ToolCallDelta = 3 -> Orkeon.Domain.SharedKernel.ValueObjects.LlmStreamEventKind
+Orkeon.Domain.SharedKernel.ValueObjects.LlmStreamEvent.ToolCall.get -> Orkeon.Domain.SharedKernel.ValueObjects.ToolCallDelta?
+Orkeon.Domain.SharedKernel.ValueObjects.LlmStreamEvent.ToolCall.init -> void
+Orkeon.Domain.SharedKernel.ValueObjects.ToolCallDelta
+Orkeon.Domain.SharedKernel.ValueObjects.ToolCallDelta.<Clone>$() -> Orkeon.Domain.SharedKernel.ValueObjects.ToolCallDelta!
+Orkeon.Domain.SharedKernel.ValueObjects.ToolCallDelta.ArgumentsDelta.get -> string!
+Orkeon.Domain.SharedKernel.ValueObjects.ToolCallDelta.ArgumentsDelta.init -> void
+Orkeon.Domain.SharedKernel.ValueObjects.ToolCallDelta.Deconstruct(out int Index, out string? Id, out string? Name, out string! ArgumentsDelta) -> void
+Orkeon.Domain.SharedKernel.ValueObjects.ToolCallDelta.Equals(Orkeon.Domain.SharedKernel.ValueObjects.ToolCallDelta? other) -> bool
+Orkeon.Domain.SharedKernel.ValueObjects.ToolCallDelta.Id.get -> string?
+Orkeon.Domain.SharedKernel.ValueObjects.ToolCallDelta.Id.init -> void
+Orkeon.Domain.SharedKernel.ValueObjects.ToolCallDelta.Index.get -> int
+Orkeon.Domain.SharedKernel.ValueObjects.ToolCallDelta.Index.init -> void
+Orkeon.Domain.SharedKernel.ValueObjects.ToolCallDelta.Name.get -> string?
+Orkeon.Domain.SharedKernel.ValueObjects.ToolCallDelta.Name.init -> void
+Orkeon.Domain.SharedKernel.ValueObjects.ToolCallDelta.ToolCallDelta(int Index, string? Id, string? Name, string! ArgumentsDelta) -> void
+override Orkeon.Domain.SharedKernel.ValueObjects.ToolCallDelta.Equals(object? obj) -> bool
+override Orkeon.Domain.SharedKernel.ValueObjects.ToolCallDelta.GetHashCode() -> int
+override Orkeon.Domain.SharedKernel.ValueObjects.ToolCallDelta.ToString() -> string!
+static Orkeon.Domain.SharedKernel.ValueObjects.LlmStreamEvent.ToolCallFragment(Orkeon.Domain.SharedKernel.ValueObjects.ToolCallDelta! toolCall) -> Orkeon.Domain.SharedKernel.ValueObjects.LlmStreamEvent!
+static Orkeon.Domain.SharedKernel.ValueObjects.ToolCallDelta.operator ==(Orkeon.Domain.SharedKernel.ValueObjects.ToolCallDelta? left, Orkeon.Domain.SharedKernel.ValueObjects.ToolCallDelta? right) -> bool
+static Orkeon.Domain.SharedKernel.ValueObjects.ToolCallDelta.operator !=(Orkeon.Domain.SharedKernel.ValueObjects.ToolCallDelta? left, Orkeon.Domain.SharedKernel.ValueObjects.ToolCallDelta? right) -> bool

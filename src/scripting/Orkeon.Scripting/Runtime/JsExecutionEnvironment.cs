@@ -50,6 +50,9 @@ internal sealed record JsExecutionEnvironment
     /// </summary>
     public Orkeon.Application.Interfaces.Ports.ILlmDeltaSink? DeltaSink { get; init; }
 
+    /// <summary>The host's DLP for streamed tool calls; null streams the fragments as they arrive.</summary>
+    public Orkeon.Application.Crew.ToolCallDeltaDlp? ToolCallDlp { get; init; }
+
     /// <summary>
     /// Optional single tool-invocation point (GAP-09) a <c>ctx.llm.act</c> tool call goes
     /// through after the permission gate. Null = the tool is called directly.

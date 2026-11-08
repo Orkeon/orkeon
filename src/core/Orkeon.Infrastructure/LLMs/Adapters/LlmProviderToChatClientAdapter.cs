@@ -434,6 +434,12 @@ public sealed class LlmProviderToChatClientAdapter : IChatClient
                 streamed.Append(streamEvent.Delta);
                 yield return TextUpdate(streamEvent.Delta);
             }
+            else if (streamEvent.Kind == LlmStreamEventKind.ToolCallDelta && streamEvent.ToolCall is { } fragment)
+            {
+                // A fragment of the call being built (FWK-20): no content, so the fold is unchanged; the whole
+                // call still arrives in the last update. The reader finds the fragment as the raw representation.
+                yield return new ChatResponseUpdate(ChatRole.Assistant, []) { RawRepresentation = fragment };
+            }
             else if (streamEvent.Kind == LlmStreamEventKind.Completed)
             {
                 final = streamEvent.FinalResponse;

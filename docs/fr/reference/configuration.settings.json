@@ -429,7 +429,7 @@
     "Orkeon:CrewFactory:StrictTools": "Si un outil qu'une crew nomme et que le registre ne contient pas fait échouer le chargement de la crew, en listant les noms inconnus et ceux qui sont disponibles. `false` écarte l'outil avec un avertissement — le comportement tolérant de la bibliothèque, que les hôtes livrés désactivent.",
     "Orkeon:ExecutionState:Persistence:DeleteFromStoreOnArchive": "À `true`, archiver une exécution (à son achèvement ou au nettoyage d'expiration) supprime aussi son entrée persistée du state store. Défaut : `false` — le dernier instantané est gardé dans le store pour que les requêtes d'état continuent de répondre une fois l'entrée en mémoire évincée.",
     "Orkeon:ExecutionState:Persistence:Enabled": "Active la persistance durable des états d'exécution. Défaut : `false` (en mémoire seulement, identique au comportement historique).",
-    "Orkeon:Cli:ConsoleStreaming:Enabled": "Si chaque morceau d'une réponse est écrit sur la console à mesure que le modèle l'envoie, au lieu de la réponse entière à la fin.",
+    "Orkeon:Cli:ConsoleStreaming:Enabled": "Si chaque morceau d'une réponse est écrit sur la console à mesure que le modèle l'envoie, au lieu de la réponse entière à la fin. La REPL l'active quand la clé est absente ; un crew exécuté le garde désactivé.",
     "Orkeon:Cli:ScriptCommands:ContinueOnConflict": "À false, deux scripts qui déclarent le même nom de commande sont une erreur fatale au démarrage.",
     "Orkeon:Cli:ScriptCommands:Directories": "Chemins virtuels parcourus à la recherche de `*.cmd.ts`. Le premier répertoire l'emporte en cas de conflit.",
     "Orkeon:Cli:ScriptCommands:Enabled": "Interrupteur principal. False ⇒ la découverte est sautée, le registre est vide.",

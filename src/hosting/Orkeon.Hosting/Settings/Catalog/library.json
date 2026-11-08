@@ -3452,7 +3452,7 @@
       "section": "Orkeon:Cli:ConsoleStreaming",
       "type": "boolean",
       "default": false,
-      "description": "Whether each piece of an answer is written to the console as the model sends it, instead of the whole answer at its end."
+      "description": "Whether each piece of an answer is written to the console as the model sends it, instead of the whole answer at its end. The REPL turns it on when the key is absent; a crew run keeps it off."
     },
     {
       "path": "Orkeon:Cli:Memory:Persist",

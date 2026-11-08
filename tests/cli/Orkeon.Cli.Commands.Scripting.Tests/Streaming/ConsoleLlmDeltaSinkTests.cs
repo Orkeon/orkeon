@@ -318,7 +318,30 @@ public sealed class ConsoleLlmDeltaSinkTests
         Assert.IsType<ConsoleLlmDeltaSink>(on.GetService<ILlmDeltaSink>());
     }
 
-    private static ServiceProvider BuildProvider(string? enabled)
+    [Fact]
+    [Trait("BR", "FWK-20")]
+    public void The_repl_turns_streaming_on_when_the_key_is_unset_and_the_operator_can_still_turn_it_off()
+    {
+        var unset = BuildProvider(enabled: null, enabledByDefault: true);
+        Assert.IsType<ConsoleLlmDeltaSink>(unset.GetService<ILlmDeltaSink>());
+
+        var off = BuildProvider(enabled: "false", enabledByDefault: true);
+        Assert.Null(off.GetService<ILlmDeltaSink>());
+    }
+
+    [Fact]
+    [Trait("BR", "FWK-20")]
+    public void A_tool_call_fragment_writes_nothing_to_the_console()
+    {
+        var console = new FakeThreadedConsole();
+        var sink = new ConsoleLlmDeltaSink(console);
+
+        sink.OnToolCallDelta(new Orkeon.Domain.SharedKernel.ValueObjects.ToolCallDelta(0, "c1", "send_mail", "{}"));
+
+        Assert.Empty(console.Lines);
+    }
+
+    private static ServiceProvider BuildProvider(string? enabled, bool enabledByDefault = false)
     {
         var values = new Dictionary<string, string?>();
         if (enabled is not null)
@@ -327,7 +350,7 @@ public sealed class ConsoleLlmDeltaSinkTests
 
         var services = new ServiceCollection();
         services.AddSingleton<IConsoleAdapter>(new ScriptedTestConsole());
-        services.AddLlmConsoleStreaming(configuration);
+        services.AddLlmConsoleStreaming(configuration, enabledByDefault);
         return services.BuildServiceProvider();
     }
 }

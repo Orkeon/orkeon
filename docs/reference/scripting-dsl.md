@@ -240,7 +240,10 @@ in the agent's wall-time budget (`.budget({ wallTime })`). `ctx.llm.permissionGa
 whether the host registered a gate; without one, a `permissionMode` checks nothing and the call
 logs one warning saying so — declare a script
 tool's `.access("read")` for it to pass `plan`; `onDelta` receives the streamed text of each
-assistant turn.
+assistant turn, and `onToolCallDelta` each fragment of a tool call the model is building
+(`{index, id?, name?, argumentsDelta}`; `id` and `name` come on the fragment that carries them, and
+Ollama sends a call whole). On a host that registered DLP, the arguments of a call arrive held, in one
+redacted fragment, once the call ends.
 
 `ctx.delegate(agentOrName, input)` is `crew.runAgent`: the target runs with its own context,
 under its semaphore and its `onError` policy. Neither gives the run a budget unless asked:

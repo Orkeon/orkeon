@@ -33,6 +33,9 @@ internal sealed record JsCrewDefinition
     /// <summary>Optional host-native renderer for streamed <c>ctx.llm.act</c> deltas (F5 L3).</summary>
     public Orkeon.Application.Interfaces.Ports.ILlmDeltaSink? DeltaSink { get; init; }
 
+    /// <summary>The host's DLP for streamed tool calls; null streams the fragments as they arrive.</summary>
+    public Orkeon.Application.Crew.ToolCallDeltaDlp? ToolCallDlp { get; init; }
+
     /// <summary>Optional single tool-invocation point applied inside <c>ctx.llm.act</c> (GAP-09).</summary>
     public Orkeon.Application.Interfaces.Security.IToolInvocationPipeline? ToolInvocation { get; init; }
 

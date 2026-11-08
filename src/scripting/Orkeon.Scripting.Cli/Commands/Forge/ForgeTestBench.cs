@@ -240,6 +240,7 @@ internal sealed class ForgeCrewTestBench : IForgeTestBench
             {
                 PermissionGate = _services.GetService<Orkeon.Application.Interfaces.Security.IPermissionGate>(),
                 DeltaSink = _services.GetService<Orkeon.Application.Interfaces.Ports.ILlmDeltaSink>(),
+                ToolCallDlp = Orkeon.Application.Crew.ToolCallDeltaDlp.From(_services),
                 ToolInvocation = _services.GetService<Orkeon.Application.Interfaces.Security.IToolInvocationPipeline>(),
                 LlmProfiles = _services.GetService<Orkeon.Application.Interfaces.Ports.ILlmProfileRegistry>(),
             });

@@ -2006,14 +2006,14 @@ Crew resolution for `<name>/crew.ork.ts` (`ScriptHostFacade`).
 
 ### `Orkeon:Cli:ConsoleStreaming`
 
-Streamed `ctx.llm.act` deltas on the REPL console (`AddLlmConsoleStreaming(configuration)`).
+Streamed `ctx.llm.act` deltas on the REPL console (`AddLlmConsoleStreaming(configuration, enabledByDefault)`).
 
 <!-- settings:Orkeon:Cli:ConsoleStreaming -->
 **Read by**: `orkeon-repl`.
 
 | Key | Type | Default | Meaning |
 |---|---|---|---|
-| `Enabled` | boolean | `false` | Whether each piece of an answer is written to the console as the model sends it, instead of the whole answer at its end. |
+| `Enabled` | boolean | `false` | Whether each piece of an answer is written to the console as the model sends it, instead of the whole answer at its end. The REPL turns it on when the key is absent; a crew run keeps it off. |
 <!-- /settings -->
 
 ### `Orkeon:Cli:Memory`

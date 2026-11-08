@@ -8,6 +8,7 @@ using Orkeon.Application.Common.DTOs;
 using Orkeon.Application.Interfaces.Ports;
 using Orkeon.Application.Interfaces.Services;
 using Orkeon.Domain.Constants.Agent;
+using Orkeon.Domain.SharedKernel.ValueObjects;
 using Orkeon.Domain.Task;
 
 namespace Orkeon.Application.Crew.Execution;
@@ -44,6 +45,7 @@ internal sealed class ChatClientAgentLoop
     private readonly ChatOptionsComposer _optionsComposer;
     private readonly ChatToolDispatcher _toolDispatcher;
     private readonly ILlmDeltaSink? _deltaSink;
+    private readonly ToolCallDeltaDlp? _toolCallDlp;
 
     internal ChatClientAgentLoop(
         ILogger logger,
@@ -52,8 +54,10 @@ internal sealed class ChatClientAgentLoop
         ChatOptionsComposer optionsComposer,
         ChatToolDispatcher toolDispatcher,
         ILlmDeltaSink? deltaSink = null,
-        ILogger? verboseLogger = null)
+        ILogger? verboseLogger = null,
+        ToolCallDeltaDlp? toolCallDlp = null)
     {
+        _toolCallDlp = toolCallDlp;
         _logger = logger;
         _verboseLogger = verboseLogger;
         _chatClient = chatClient;
@@ -703,8 +707,43 @@ internal sealed class ChatClientAgentLoop
             return turn;
         }
 
+        void EmitToolCall(ToolCallDelta fragment)
+        {
+            CrewStreamScope.Write(new CrewExecutionEvent
+            {
+                Kind = RunEventKinds.LlmDelta,
+                TaskId = taskId,
+                AgentRole = agentRole,
+                ToolCall = fragment,
+            });
+            Turn()?.OnToolCallDelta(fragment);
+        }
+
+        void ReleaseToolCall(ToolCallDelta fragment)
+        {
+            if (hold is null)
+                EmitToolCall(fragment);
+            else
+                hold.Hold(() => EmitToolCall(fragment));
+        }
+
+        // With a DLP interceptor the arguments of a call are held by index until the stream ends: a secret cut
+        // between two fragments would escape a scan of each piece.
+        var held = _toolCallDlp is null ? null : new ToolCallDeltaHold();
+
         await foreach (var update in _chatClient.GetStreamingResponseAsync(messages, options, cancellationToken).ConfigureAwait(false))
         {
+            // A fragment of a tool call the provider streams is not part of the turn: the call itself arrives whole
+            // in the final update, so the fold below is the one a buffered call returns.
+            if (update.RawRepresentation is ToolCallDelta fragment)
+            {
+                if (held is null)
+                    ReleaseToolCall(fragment);
+                else
+                    held.Add(fragment);
+                continue;
+            }
+
             updates.Add(update);
             var text = update.Text;
             if (string.IsNullOrEmpty(text))
@@ -728,6 +767,12 @@ internal sealed class ChatClientAgentLoop
                 hold.Hold(Emit);
             if (_deltaSink is not null)
                 sank = true;
+        }
+
+        if (held is not null)
+        {
+            foreach (var redacted in await held.RedactAsync(_toolCallDlp!, _logger, cancellationToken).ConfigureAwait(false))
+                ReleaseToolCall(redacted);
         }
 
         // The sink's turn boundary, only after a turn that rendered something: a turn that only

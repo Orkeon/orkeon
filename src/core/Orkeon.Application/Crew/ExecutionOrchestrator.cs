@@ -70,7 +70,7 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
         _optionsComposer ??= new ChatOptionsComposer(_logger, _registeredTools, _fileSystem, Tools);
 
     private ChatClientAgentLoop ChatLoop =>
-        _chatLoop ??= new ChatClientAgentLoop(_logger, _chatClient!, LlmGate, OptionsComposer, ToolDispatcher, DeltaSink, _verboseLogger);
+        _chatLoop ??= new ChatClientAgentLoop(_logger, _chatClient!, LlmGate, OptionsComposer, ToolDispatcher, DeltaSink, _verboseLogger, ToolCallDlp);
 
     private LegacyTextAgentLoop LegacyLoop =>
         _legacyLoop ??= new LegacyTextAgentLoop(_logger, _llmProvider, LlmGate, Tools, _registeredTools, _verboseLogger);
@@ -184,6 +184,13 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
     /// like <see cref="Callbacks"/>. The native and text loops (no <c>IChatClient</c>) stream nothing.
     /// </summary>
     public ILlmDeltaSink? DeltaSink { get; set; }
+
+    /// <summary>
+    /// The DLP interceptor of the external-output channel, when the host registered one (FWK-20): with it, the
+    /// arguments of a streamed tool call are held per call and written once, redacted, instead of fragment by
+    /// fragment. Set by <c>AddOrkeonApplication</c>; null streams the fragments as they arrive.
+    /// </summary>
+    public ToolCallDeltaDlp? ToolCallDlp { get; set; }
 
     /// <summary>
     /// What each crew declared about its memory: a crew with <c>memory: true</c> holds the registered

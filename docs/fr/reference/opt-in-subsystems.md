@@ -67,7 +67,7 @@ services.AddOrkeonA2A(options => options.EnableServer = true);
 | Barrière de permissions (par appel d'outil) | `AddOrkeonPermissionGate(config)` + `Orkeon:Security:PermissionGate:Enabled = true` | Infrastructure | `IPermissionGate` (`ModePermissionGate`) — consommé par la boucle scriptée `ctx.llm.act` | Bêta |
 | Shell : interpréteurs & git mutant | config seule : `Orkeon:Tools:Shell:AllowInterpreters = true` | Tools.Code | (ré-enregistre `ShellCommandTool` avec `allowInterpreters: true` — équivalent RCE, avertissement de sécurité émis) | Bêta |
 | Shell : allowlist personnalisée | config seule : `Orkeon:Tools:Shell:ExtraAllowedCommands` (additive) / `Orkeon:Tools:Shell:AllowedCommands` (remplacement intégral — annule `AllowInterpreters`) | Tools.Code | (façonne l'allowlist d'exécutables de `ShellCommandTool` ; section absente/vide = défauts) | Bêta |
-| Streaming console LLM natif | `AddLlmConsoleStreaming(config)` + `Orkeon:Cli:ConsoleStreaming:Enabled = true` | Cli.Commands.Scripting | `ILlmDeltaSink` (`ConsoleLlmDeltaSink`) — deltas `ctx.llm.act` streamés rendus sur la console REPL, l'act de premier plan à mesure, tout autre tour ligne entière par ligne entière | Bêta |
+| Streaming console LLM natif | `AddLlmConsoleStreaming(config, enabledByDefault)` (la REPL : actif sauf `Orkeon:Cli:ConsoleStreaming:Enabled = false`) | Cli.Commands.Scripting | `ILlmDeltaSink` (`ConsoleLlmDeltaSink`) — deltas `ctx.llm.act` streamés rendus sur la console REPL, l'act de premier plan à mesure, tout autre tour ligne entière par ligne entière | Bêta |
 | Système de plugins | `AddOrkeonPlugins(...)` (jamais enregistré implicitement ; `orkeon-repl` l'appelle quand ses réglages portent une section `Plugins`, aucun autre binaire livré ne le fait) | Orkeon.Plugins | `IOrkeonPlugin`, `IPluginRegistry` — découverte par répertoire, `AssemblyLoadContext` collectables isolés ; ⚠️ les assemblies chargées s'exécutent en pleine confiance — voir [Plugins](../architecture/plugins.md) | Bêta |
 | Embeddings locaux sur machine | `AddOrkeonLocalEmbeddings()` | Tools.Embeddings.Local | `IEmbeddingProvider` (BGE-micro-v2 ONNX, 384 dims, CPU, sans clé API) — premier maillon de la chaîne de résolution des embeddings | Bêta |
 | Fournisseurs de mémoire externes (Redis, SQLite, ChromaDB, Pinecone, LanceDB) + migration | Un type — `Memory:Provider`, le `memoryProvider:` d'une crew, `Orkeon:Rag:Provider` — plus la section hôte de ce provider (`Orkeon:Redis`, `Orkeon:Sqlite`, `Orkeon:ChromaDb`, `Orkeon:Pinecone`, `Orkeon:LanceDb`), toutes liées par `AddOrkeonInfrastructure()` ; `MemoryProviderFactory` distribue une instance partagée par type, qui se connecte au premier usage. `AddOrkeonRedisMemory(configuration)` fait de Redis l'`IMemoryProvider` de l'application ; `AddOrkeonLanceDb`/`AddOrkeonChromaDb`/`AddOrkeonPinecone(configuration)` exposent le provider partagé par sa classe (les deux dernières sont appelées par `AddOrkeonInfrastructure(configuration)` quand leur section existe) · `AddOrkeonMemoryMigration()` | Infrastructure | `RedisMemoryProvider`, `LanceDbMemoryProvider` (+ `LanceDbMigrationService`), `MemoryMigrationService` — voir [Système de mémoire](../architecture/memory-system.md#sélection-par-configuration) | Bêta |
@@ -286,7 +286,8 @@ Aucun attribut ne porte l'identifiant d'un crew, d'une tâche ou d'un agent.
   pour le reste.
 - **Limites connues** : les intercepteurs ne sont **pas** invoqués automatiquement par
   le pipeline d'exécution — l'hôte les résout (`GetServices<IDlpInterceptor>()`) et
-  les applique aux canaux qu'il veut protéger. À ne pas confondre avec le
+  les applique aux canaux qu'il veut protéger. Une exception (FWK-20) : l'intercepteur de sortie externe d'un hôte qui a enregistré la DLP s'applique aux arguments d'un appel d'outil diffusé, retenus
+  jusqu'à la fin de l'appel et émis en un seul delta rédigé. À ne pas confondre avec le
   `PiiDetectionValidator` du pipeline de validation de sortie, qui reste enregistré
   par défaut et est indépendant.
 
@@ -640,10 +641,10 @@ Aucun attribut ne porte l'identifiant d'un crew, d'une tâche ou d'un agent.
   `AllowInterpreters` laisse passer plus de commandes, pas une vue plus large. `Mode = None`
   est la sortie — voir [Confinement du shell](../architecture/security.md#confinement-du-shell).
 
-## Streaming console LLM natif — `AddLlmConsoleStreaming(configuration)`
+## Streaming console LLM natif — `AddLlmConsoleStreaming(configuration, enabledByDefault)`
 
 - **Activation** : appelée par le bootstrap de la ConsoleApp, mais n'enregistre rien
-  tant que `Orkeon:Cli:ConsoleStreaming:Enabled = true` n'est pas posé.
+  tant que `Orkeon:Cli:ConsoleStreaming:Enabled = true` n'est pas posé (la REPL l'active sauf `Enabled = false` ; `enabledByDefault` (false) est ce que veut dire une clé absente : un hôte de crew le laisse désactivé sauf clé à `true`).
 - **Effet** : enregistre `ConsoleLlmDeltaSink` comme `ILlmDeltaSink`. Quand un sink
   est présent et que le provider LLM streame (`IStreamingLlmProvider`), la boucle
   scriptée `ctx.llm.act` bascule sur le chemin SSE et chaque delta de contenu atteint

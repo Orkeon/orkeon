@@ -355,10 +355,10 @@ static class Program
         // next line answers it (the read loop hands the line over).
         services.AddConsoleToolApproval();
         // Native incremental rendering of streamed act() output — config
-        // opt-in (Orkeon:Cli:ConsoleStreaming:Enabled = true). Registered here (after the
-        // IConsoleAdapter choice below is declared later in this method, resolution is
-        // lazy) so the REPL streams tokens without scripts passing onDelta.
-        services.AddLlmConsoleStreaming(context.Configuration);
+        // (Orkeon:Cli:ConsoleStreaming:Enabled; on in the REPL unless the key says false, FWK-20).
+        // Registered here (after the IConsoleAdapter choice below is declared later in this method,
+        // resolution is lazy) so the REPL streams tokens without scripts passing onDelta.
+        services.AddLlmConsoleStreaming(context.Configuration, enabledByDefault: true);
 
         // RaggableTree — semantic codebase index + agent tools (codebase_map/search,
         // symbol_source, flow_trace, impact_analysis, index_codebase, …). On-device embeddings

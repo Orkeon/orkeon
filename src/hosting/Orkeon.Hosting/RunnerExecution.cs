@@ -1604,7 +1604,8 @@ public static partial class RunnerExecution
             hostPorts: new ScriptingHostPorts
             {
                 PermissionGate = sp.GetService<Orkeon.Application.Interfaces.Security.IPermissionGate>(),
-                DeltaSink = sp.GetService<Orkeon.Application.Interfaces.Ports.ILlmDeltaSink>(),
+                DeltaSink = Orkeon.Application.Crew.ToolCallDlpDeltaSink.Wrap(sp.GetService<Orkeon.Application.Interfaces.Ports.ILlmDeltaSink>(), sp),
+                ToolCallDlp = Orkeon.Application.Crew.ToolCallDeltaDlp.From(sp),
                 ToolInvocation = sp.GetService<Orkeon.Application.Interfaces.Security.IToolInvocationPipeline>(),
                 // GAP-17: llm.profile(name) picks among the host's Llm:Profiles.
                 LlmProfiles = sp.GetService<Orkeon.Application.Interfaces.Ports.ILlmProfileRegistry>(),

@@ -85,3 +85,5 @@ static Orkeon.Scripting.Toolchain.TscOutputParser.Parse(string! output, System.F
 static Orkeon.Scripting.Toolchain.TscTypeChecker.Create(Microsoft.Extensions.Configuration.IConfiguration? configuration, Microsoft.Extensions.Logging.ILogger<Orkeon.Scripting.Toolchain.TscTypeChecker!>? logger = null) -> Orkeon.Scripting.Toolchain.TscTypeChecker!
 static Orkeon.Scripting.Toolchain.TypeCheckDiagnostic.operator !=(Orkeon.Scripting.Toolchain.TypeCheckDiagnostic? left, Orkeon.Scripting.Toolchain.TypeCheckDiagnostic? right) -> bool
 static Orkeon.Scripting.Toolchain.TypeCheckDiagnostic.operator ==(Orkeon.Scripting.Toolchain.TypeCheckDiagnostic? left, Orkeon.Scripting.Toolchain.TypeCheckDiagnostic? right) -> bool
+Orkeon.Scripting.ScriptingHostPorts.ToolCallDlp.get -> Orkeon.Application.Crew.ToolCallDeltaDlp?
+Orkeon.Scripting.ScriptingHostPorts.ToolCallDlp.init -> void

@@ -871,3 +871,35 @@ Orkeon.Application.Crew.TaskExecutionSnapshot.Attempt.init -> void
 Orkeon.Application.Interfaces.Services.RunScope.TaskAttempts.get -> System.Collections.Concurrent.ConcurrentDictionary<string!, int>!
 Orkeon.Application.Interfaces.Services.TaskResult<TOutput>.ExitReason.get -> Orkeon.Application.Interfaces.Services.AgentExitReason
 Orkeon.Application.Interfaces.Services.TaskResult<TOutput>.ExitReason.init -> void
+Orkeon.Application.Interfaces.Ports.ILlmDeltaSink.OnToolCallDelta(Orkeon.Domain.SharedKernel.ValueObjects.ToolCallDelta! toolCall) -> void
+Orkeon.Application.Crew.ToolCallDeltaDlp
+Orkeon.Application.Crew.ToolCallDeltaDlp.<Clone>$() -> Orkeon.Application.Crew.ToolCallDeltaDlp!
+Orkeon.Application.Crew.ToolCallDeltaDlp.Deconstruct(out Orkeon.Application.Interfaces.Security.IDlpInterceptor! Interceptor, out Orkeon.Application.Interfaces.Security.DlpPolicy! Policy) -> void
+Orkeon.Application.Crew.ToolCallDeltaDlp.Equals(Orkeon.Application.Crew.ToolCallDeltaDlp? other) -> bool
+Orkeon.Application.Crew.ToolCallDeltaDlp.Interceptor.get -> Orkeon.Application.Interfaces.Security.IDlpInterceptor!
+Orkeon.Application.Crew.ToolCallDeltaDlp.Interceptor.init -> void
+Orkeon.Application.Crew.ToolCallDeltaDlp.Policy.get -> Orkeon.Application.Interfaces.Security.DlpPolicy!
+Orkeon.Application.Crew.ToolCallDeltaDlp.Policy.init -> void
+Orkeon.Application.Crew.ToolCallDeltaDlp.ToolCallDeltaDlp(Orkeon.Application.Interfaces.Security.IDlpInterceptor! Interceptor, Orkeon.Application.Interfaces.Security.DlpPolicy! Policy) -> void
+Orkeon.Application.Interfaces.Services.CrewExecutionEvent.ToolCall.get -> Orkeon.Domain.SharedKernel.ValueObjects.ToolCallDelta?
+Orkeon.Application.Interfaces.Services.CrewExecutionEvent.ToolCall.init -> void
+override Orkeon.Application.Crew.ToolCallDeltaDlp.Equals(object? obj) -> bool
+override Orkeon.Application.Crew.ToolCallDeltaDlp.GetHashCode() -> int
+override Orkeon.Application.Crew.ToolCallDeltaDlp.ToString() -> string!
+static Orkeon.Application.Crew.ToolCallDeltaDlp.operator ==(Orkeon.Application.Crew.ToolCallDeltaDlp? left, Orkeon.Application.Crew.ToolCallDeltaDlp? right) -> bool
+static Orkeon.Application.Crew.ToolCallDeltaDlp.operator !=(Orkeon.Application.Crew.ToolCallDeltaDlp? left, Orkeon.Application.Crew.ToolCallDeltaDlp? right) -> bool
+Orkeon.Application.Crew.ExecutionOrchestrator.ToolCallDlp.get -> Orkeon.Application.Crew.ToolCallDeltaDlp?
+Orkeon.Application.Crew.ExecutionOrchestrator.ToolCallDlp.set -> void
+Orkeon.Application.Crew.ToolCallDeltaHold
+Orkeon.Application.Crew.ToolCallDeltaHold.Add(Orkeon.Domain.SharedKernel.ValueObjects.ToolCallDelta! fragment) -> void
+Orkeon.Application.Crew.ToolCallDeltaHold.RedactAsync(Orkeon.Application.Crew.ToolCallDeltaDlp! dlp, Microsoft.Extensions.Logging.ILogger? logger, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Orkeon.Domain.SharedKernel.ValueObjects.ToolCallDelta!>!>!
+Orkeon.Application.Crew.ToolCallDeltaHold.ToolCallDeltaHold() -> void
+Orkeon.Application.Crew.ToolCallDlpDeltaSink
+Orkeon.Application.Crew.ToolCallDlpDeltaSink.BeginTurn(string? label) -> Orkeon.Application.Interfaces.Ports.ILlmDeltaSink!
+Orkeon.Application.Crew.ToolCallDlpDeltaSink.Dlp.get -> Orkeon.Application.Crew.ToolCallDeltaDlp!
+Orkeon.Application.Crew.ToolCallDlpDeltaSink.OnDelta(string! delta) -> void
+Orkeon.Application.Crew.ToolCallDlpDeltaSink.OnToolCallDelta(Orkeon.Domain.SharedKernel.ValueObjects.ToolCallDelta! toolCall) -> void
+Orkeon.Application.Crew.ToolCallDlpDeltaSink.OnTurnCompleted() -> void
+Orkeon.Application.Crew.ToolCallDlpDeltaSink.ToolCallDlpDeltaSink(Orkeon.Application.Interfaces.Ports.ILlmDeltaSink! inner, Orkeon.Application.Crew.ToolCallDeltaDlp! dlp) -> void
+static Orkeon.Application.Crew.ToolCallDeltaDlp.From(System.IServiceProvider! services) -> Orkeon.Application.Crew.ToolCallDeltaDlp?
+static Orkeon.Application.Crew.ToolCallDlpDeltaSink.Wrap(Orkeon.Application.Interfaces.Ports.ILlmDeltaSink? sink, System.IServiceProvider! services) -> Orkeon.Application.Interfaces.Ports.ILlmDeltaSink?

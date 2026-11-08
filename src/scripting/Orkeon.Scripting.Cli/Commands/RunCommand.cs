@@ -905,7 +905,10 @@ internal static partial class RunCommand
 
         // Optional native delta renderer (F5 L3): opt-in via DI — without a sink the act
         // loop keeps its buffered behaviour unless the script passes onDelta.
-        var deltaSink = host.Services.GetService<Orkeon.Application.Interfaces.Ports.ILlmDeltaSink>();
+        // FWK-20: with DLP registered, the sink carries it, so the arguments of a streamed tool call are held
+        // until the call ends and written once, redacted.
+        var deltaSink = Orkeon.Application.Crew.ToolCallDlpDeltaSink.Wrap(
+            host.Services.GetService<Orkeon.Application.Interfaces.Ports.ILlmDeltaSink>(), host.Services);
 
         var ragBackend = Orkeon.Scripting.Bindings.RagScriptingBackendFactory.Build(host.Services);
 
@@ -918,6 +921,7 @@ internal static partial class RunCommand
             {
                 PermissionGate = permissionGate,
                 DeltaSink = deltaSink,
+                ToolCallDlp = Orkeon.Application.Crew.ToolCallDeltaDlp.From(host.Services),
                 GraphObserver = host.Services.GetService<Orkeon.Domain.Graph.IGraphNodeObserver>(),
                 // GAP-09: allowed ctx.llm.act calls go through the same guarded point as a crew's.
                 ToolInvocation = host.Services.GetService<Orkeon.Application.Interfaces.Security.IToolInvocationPipeline>(),

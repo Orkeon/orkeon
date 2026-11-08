@@ -264,6 +264,9 @@ public sealed record CrewExecutionEvent
     /// <summary><c>llm.delta</c>: a fragment of the model's text, as it arrived.</summary>
     public string? Text { get; init; }
 
+    /// <summary><c>llm.delta</c>: a fragment of a tool call the model is building; null on a text delta.</summary>
+    public Orkeon.Domain.SharedKernel.ValueObjects.ToolCallDelta? ToolCall { get; init; }
+
     /// <summary><c>task.started</c>: which attempt of the task starts (1, then 2 for its first retry); null on an event of another kind.</summary>
     public int? Attempt { get; init; }
 

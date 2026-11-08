@@ -135,6 +135,7 @@ internal sealed class ForgeCrewAssistant : IForgeAssistant
             {
                 PermissionGate = services.GetService<IPermissionGate>(),
                 DeltaSink = services.GetService<ILlmDeltaSink>(),
+                ToolCallDlp = Orkeon.Application.Crew.ToolCallDeltaDlp.From(services),
                 // The forge's own calls are the operator's: the permission gate does not stop them.
                 ToolInvocation = services.GetService<IToolInvocationPipeline>() is { } pipeline
                     ? new GateExemptToolInvocationPipeline(pipeline)

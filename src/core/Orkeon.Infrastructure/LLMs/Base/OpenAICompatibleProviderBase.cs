@@ -614,7 +614,7 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
         }
 
         if (delta.TryGetProperty("tool_calls", out var toolCalls) && toolCalls.ValueKind == JsonValueKind.Array)
-            AccumulateToolCallFragments(toolCalls, state);
+            AccumulateToolCallFragments(toolCalls, state, events);
     }
 
     /// <summary>The pieces the inline-reasoning split produced, accumulated and turned into events.</summary>
@@ -839,7 +839,7 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
             inner: null,
             statusCode: error.StatusCode);
 
-    private static void AccumulateToolCallFragments(JsonElement toolCalls, ChatStreamState state)
+    private static void AccumulateToolCallFragments(JsonElement toolCalls, ChatStreamState state, List<LlmStreamEvent> events)
     {
         foreach (var fragment in toolCalls.EnumerateArray())
         {
@@ -851,7 +851,32 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
             }
 
             MergeToolCallFragment(fragment, call);
+
+            // The fragment as it came (FWK-20): the caller sees the call being built; the merge above
+            // still assembles the whole call for the terminal event.
+            if (ToolCallFragmentOf(index, fragment) is { } delta)
+                events.Add(LlmStreamEvent.ToolCallFragment(delta));
         }
+    }
+
+    private static ToolCallDelta? ToolCallFragmentOf(int index, JsonElement fragment)
+    {
+        var id = fragment.TryGetProperty("id", out var idElement) && idElement.ValueKind == JsonValueKind.String
+            ? idElement.GetString()
+            : null;
+        string? name = null;
+        var arguments = string.Empty;
+        if (fragment.TryGetProperty("function", out var fn) && fn.ValueKind == JsonValueKind.Object)
+        {
+            if (fn.TryGetProperty("name", out var nameElement) && nameElement.ValueKind == JsonValueKind.String)
+                name = nameElement.GetString();
+            if (fn.TryGetProperty("arguments", out var argumentsElement) && argumentsElement.ValueKind == JsonValueKind.String)
+                arguments = argumentsElement.GetString() ?? string.Empty;
+        }
+
+        return string.IsNullOrEmpty(id) && string.IsNullOrEmpty(name) && arguments.Length == 0
+            ? null
+            : new ToolCallDelta(index, string.IsNullOrEmpty(id) ? null : id, string.IsNullOrEmpty(name) ? null : name, arguments);
     }
 
     private static void MergeToolCallFragment(JsonElement fragment, StreamedToolCall call)

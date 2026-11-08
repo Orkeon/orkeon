@@ -712,6 +712,9 @@ public partial class OllamaLlmProvider : HttpLlmProviderBase
         /// <summary>Raw <c>tool_calls</c> of the frame that carried them, kept for the final response.</summary>
         public string? ToolCallsJson { get; set; }
 
+        /// <summary>How many tool calls were handed to the caller as deltas; the next one's index.</summary>
+        public int ToolCallDeltas { get; set; }
+
         /// <summary>Whether the <c>done: true</c> frame — the end of a complete answer — was read.</summary>
         public bool Finished { get; set; }
     }
@@ -769,6 +772,19 @@ public partial class OllamaLlmProvider : HttpLlmProviderBase
                 && toolCalls.ValueKind == JsonValueKind.Array)
             {
                 state.ToolCallsJson = toolCalls.GetRawText();
+
+                // Whole calls, one delta each (FWK-20): Ollama has no argument fragments to forward.
+                foreach (var call in toolCalls.EnumerateArray())
+                {
+                    if (!call.TryGetProperty("function", out var function) || function.ValueKind != JsonValueKind.Object)
+                        continue;
+                    var callName = ReadStringProperty(function, "name");
+                    var callArguments = function.TryGetProperty("arguments", out var args)
+                        ? args.ValueKind == JsonValueKind.String ? args.GetString() ?? string.Empty : args.GetRawText()
+                        : string.Empty;
+                    yield return LlmStreamEvent.ToolCallFragment(
+                        new ToolCallDelta(state.ToolCallDeltas++, ReadStringProperty(call, "id"), callName, callArguments));
+                }
             }
 
             var text = chatEndpoint

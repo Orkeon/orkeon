@@ -292,7 +292,23 @@ internal sealed class RunEventObserver : ICrewExecutionHook, ILlmUsageSink, ILlm
     public void OnDelta(string delta)
     {
         if (_stream && !string.IsNullOrEmpty(delta))
-            _events.Emit(RunEventKinds.LlmDelta, new { text = delta });
+            _events.Emit(RunEventKinds.LlmDelta, new { text = delta, deltaKind = "content" });
+    }
+
+    /// <inheritdoc />
+    public void OnToolCallDelta(Orkeon.Domain.SharedKernel.ValueObjects.ToolCallDelta toolCall)
+    {
+        if (!_stream)
+            return;
+
+        // The id and the name are on the fragments that carry them: a fragment without one leaves it out.
+        var call = new System.Text.Json.Nodes.JsonObject { ["index"] = toolCall.Index };
+        if (!string.IsNullOrEmpty(toolCall.Id))
+            call["id"] = toolCall.Id;
+        if (!string.IsNullOrEmpty(toolCall.Name))
+            call["name"] = toolCall.Name;
+        call["argumentsDelta"] = toolCall.ArgumentsDelta;
+        _events.Emit(RunEventKinds.LlmDelta, new { deltaKind = "tool_call", toolCall = call });
     }
 
     /// <inheritdoc />

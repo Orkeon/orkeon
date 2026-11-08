@@ -20,6 +20,7 @@ public sealed class JsEngineFactory
     private readonly Orkeon.Domain.SharedKernel.ILlmProvider? _llmProvider;
     private readonly Orkeon.Application.Interfaces.Security.IPermissionGate? _permissionGate;
     private readonly Orkeon.Application.Interfaces.Ports.ILlmDeltaSink? _deltaSink;
+    private readonly Orkeon.Application.Crew.ToolCallDeltaDlp? _toolCallDlp;
     private readonly Orkeon.Domain.Graph.IGraphNodeObserver? _graphObserver;
     private readonly Orkeon.Application.Interfaces.Security.IToolInvocationPipeline? _toolInvocation;
     private readonly Orkeon.Application.Interfaces.Ports.IScriptAgentMemoryStore? _agentMemoryStore;
@@ -68,6 +69,7 @@ public sealed class JsEngineFactory
         _llmProvider = llmProvider;
         _permissionGate = hostPorts?.PermissionGate;
         _deltaSink = hostPorts?.DeltaSink;
+        _toolCallDlp = hostPorts?.ToolCallDlp;
         _graphObserver = hostPorts?.GraphObserver;
         _toolInvocation = hostPorts?.ToolInvocation;
         _agentMemoryStore = hostPorts?.AgentMemoryStore;
@@ -207,6 +209,7 @@ public sealed class JsEngineFactory
             BuiltInTools = _builtInTools,
             PermissionGate = _permissionGate,
             DeltaSink = _deltaSink,
+            ToolCallDlp = _toolCallDlp,
             ToolInvocation = _toolInvocation,
             AgentMemoryStore = _agentMemoryStore,
             ToolLimits = _toolLimits,

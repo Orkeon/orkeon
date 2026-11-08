@@ -62,7 +62,8 @@
 - **Console palettes are named, not detected.** The palette never comes from the terminal, `ctx.setTheme` lasts for the session, and a selector cannot preview one live: nothing calls a script back from the UI thread.
 - **`?` alone cannot start a message on an empty prompt of the split-pane console.** It lists the keys there; while a script's `ctx.prompt` reads, it is text.
 - **The prompt recalled on a scrolled transcript hides the row under it.** Scrolling one row further shows that row.
-- **Streaming in the split-pane console.** It stays off by default (`Orkeon:Cli:ConsoleStreaming:Enabled`), and an intermediate assistant text does not show in a crew that does not stream. The rows of a table stay hidden until the table ends, and a closing fence adds a blank row.
+- **Tool-call deltas stop at the sinks that read them.** The reasoning deltas are not forwarded to `ILlmDeltaSink`, and the `mock` provider emits no tool-call delta.
+- **Streaming in the split-pane console.** It is on in the REPL and off for a crew run unless `Orkeon:Cli:ConsoleStreaming:Enabled` says otherwise, and an intermediate assistant text does not show in a crew that does not stream. The rows of a table stay hidden until the table ends, and a closing fence adds a blank row.
 - **Diffs and code in the split-pane console have no syntax colouring**, which would need a package.
 - **A command's wrapped output starts again at column 0.** The next rows of a plain line that wraps do not align under the elbow.
 - **Prompts of a split-pane script.** A `ctx.prompt` the script does not await leaves a read open, and the next read of the loop can fail with `A ReadLineAsync is already in progress`. A line typed at the prompt for an approval, buffered and then withdrawn with its question, can reach the loop as a line of its own (rare).

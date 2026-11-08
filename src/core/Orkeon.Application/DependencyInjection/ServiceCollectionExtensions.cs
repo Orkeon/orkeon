@@ -192,6 +192,10 @@ public static class ServiceCollectionExtensions
             // REPL's console) gets every agent turn streamed to it, not only ctx.llm.* calls.
             orchestrator.DeltaSink = sp.GetService<Interfaces.Ports.ILlmDeltaSink>();
 
+            // FWK-20 — a host that registered DLP (AddOrkeonDlp): the arguments of a streamed tool call
+            // are scanned whole by the external-output interceptor, never fragment by fragment.
+            orchestrator.ToolCallDlp = Crew.ToolCallDeltaDlp.From(sp);
+
             // GAP-38 — each agent's request window: the host's clock, and its per-agent cap when the
             // host configures RateLimiting (every shipped host, through AddOrkeonInfrastructure).
             orchestrator.TimeProvider = sp.GetService<TimeProvider>() ?? TimeProvider.System;
