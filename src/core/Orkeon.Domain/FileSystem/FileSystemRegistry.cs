@@ -275,6 +275,22 @@ public sealed class FileSystemRegistry : IDisposable
                     requiredRight);
             }
 
+            // 5b. Containment of the REAL path. The check above reads the path as written; a
+            // symbolic link anywhere on it (`/workspace/a/link/sub/file`, `link` pointing
+            // elsewhere) carries the open past the mount all the same. Every existing component
+            // is resolved, the mount's own root included (it may be a link itself), and the
+            // path is refused when its real location leaves the mount's real root, which also
+            // refuses a link into another mount: it would borrow this mount's rights there.
+            var realPath = PhysicalRealPath.Resolve(physicalPath);
+            var realRoot = PhysicalRealPath.Resolve(Path.GetFullPath(mount.BasePath));
+            if (realPath is null || realRoot is null || !PhysicalPathContainment.IsUnder(realPath, realRoot))
+            {
+                throw new FileAccessDeniedException(
+                    $"Access denied for '{virtualPath}': a symbolic link on the path leads outside its mount.",
+                    virtualPath,
+                    requiredRight);
+            }
+
             // 6. An Internal mount is a boundary in PHYSICAL space, not only in the virtual
             // namespace. Refusing the name `/llm-logs` is worth nothing while the same bytes
             // keep a second address through whatever agent-facing mount contains them — and
@@ -283,7 +299,7 @@ public sealed class FileSystemRegistry : IDisposable
             // directory, and the working directory is what gets mounted for the agents. The
             // boundary has to be enforced where the physical path is produced, since the
             // physical path is what the caller then opens.
-            if (!includeInternal && IsUnderInternalMountUnsafe(physicalPath))
+            if (!includeInternal && (IsUnderInternalMountUnsafe(physicalPath) || IsUnderInternalMountUnsafe(realPath)))
             {
                 throw new FileAccessDeniedException(
                     $"Access denied for '{virtualPath}': this path is reserved by the runtime.",
