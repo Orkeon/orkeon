@@ -169,8 +169,11 @@ par instance est contrôlé à l'enregistrement. Un outil enregistré par type, 
 par le fournisseur même de l'hôte quand il construit l'outil (une fois, avec les services que l'hôte
 enregistre après `AddOrkeonPlugins`, tel `ILogger<T>`) : un nom non déclaré lève `PluginManifestException`
 qui nomme le plugin, et une exception du code de l'outil ressort en `PluginLoadException` avec la cause
-dedans. Ce contrôle a lieu quand l'hôte résout les outils, après le travail de `ContinueOnError`. Un outil
-déclaré mais non enregistré n'est pas une erreur.
+dedans. Ce contrôle a lieu quand l'hôte résout les outils. Avec `ContinueOnError = false` il lève là ; avec
+`ContinueOnError = true` l'outil refusé est écarté : il se résout en `null`, que chaque consommateur Orkeon
+des outils du conteneur (`ToolRegistry`, les hôtes de script) ignore, les autres outils du plugin restent, et
+le refus est consigné une fois dans `IPluginRegistry.Failures`. Un hôte qui lit lui-même
+`GetServices<IBaseTool>()` ignore `null` de même. Un outil déclaré mais non enregistré n'est pas une erreur.
 
 Un plugin minimal vit dans les tests (`tests/plugins/Orkeon.Plugins.Tests/Fixtures/SamplePlugin/`) : son
 `plugin.json` et `SamplePlugin`, qui enregistre l'unique outil que déclare le manifeste.

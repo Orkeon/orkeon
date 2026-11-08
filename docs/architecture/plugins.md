@@ -165,7 +165,11 @@ registration. A tool registered by type, factory or key is checked by the host's
 builds the tool (once, with the services the host registers after `AddOrkeonPlugins`, such as `ILogger<T>`):
 an undeclared name throws `PluginManifestException` naming the plugin, and an exception from the tool's
 code surfaces as a `PluginLoadException` with the cause inside. That check happens when the host resolves
-the tools, after `ContinueOnError` has done its work. A tool declared but not registered is not an error.
+the tools. With `ContinueOnError = false` it throws there; with `ContinueOnError = true` the refused tool is
+dropped instead: it resolves to `null`, which every Orkeon consumer of the container's tools (`ToolRegistry`,
+the script hosts) skips, the plugin's other tools stay, and the refusal is recorded once in
+`IPluginRegistry.Failures`. A host reading `GetServices<IBaseTool>()` itself skips `null` the same way.
+A tool declared but not registered is not an error.
 
 A minimal plugin lives in the tests (`tests/plugins/Orkeon.Plugins.Tests/Fixtures/SamplePlugin/`): its
 `plugin.json` and `SamplePlugin`, which registers the one tool the manifest declares.

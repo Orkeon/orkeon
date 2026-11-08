@@ -227,4 +227,14 @@ public sealed class ToolRegistryTests
 
         Assert.Empty(await registry.GetAllToolsAsync());
     }
+    // SEC-4: a plugin tool dropped under ContinueOnError resolves to null in the container; the registry skips it.
+    [Fact]
+    public async Task Constructor_SkipsAToolTheContainerResolvedToNothing()
+    {
+        var registry = new ToolRegistry(new IBaseTool[] { null!, new StubBaseTool("http_api") });
+
+        var tools = await registry.GetAllToolsAsync();
+
+        Assert.Equal("http_api", Assert.Single(tools).Name);
+    }
 }

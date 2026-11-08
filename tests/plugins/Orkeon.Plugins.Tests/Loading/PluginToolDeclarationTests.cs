@@ -5,6 +5,7 @@ using Orkeon.Domain.Tools;
 using Orkeon.Plugins;
 using Orkeon.Plugins.Tests.Doubles;
 using Orkeon.Plugins.Tests.Fixtures;
+using Orkeon.Tests.Shared.Doubles;
 
 namespace Orkeon.Plugins.Tests.Loading;
 
@@ -16,12 +17,16 @@ namespace Orkeon.Plugins.Tests.Loading;
 public class PluginToolDeclarationTests
 {
     private static ServiceCollection Compose(
-        PluginDirectoryFixture fixture, string pluginName, params string[] tools)
+        PluginDirectoryFixture fixture, string pluginName, params string[] tools) =>
+        Compose(fixture, pluginName, continueOnError: false, tools);
+
+    private static ServiceCollection Compose(
+        PluginDirectoryFixture fixture, string pluginName, bool continueOnError, params string[] tools)
     {
         fixture.AddPluginFolder(
             "p", PluginDirectoryFixture.FixtureManifest(name: pluginName, version: "1.0.0", tools: tools));
         var services = new ServiceCollection();
-        services.AddOrkeonPlugins(fixture.FileSystem);
+        services.AddOrkeonPlugins(fixture.FileSystem, options => options.ContinueOnError = continueOnError);
 
         // The host registers this after AddOrkeonPlugins, as it does with its own services.
         services.AddSingleton<StrongBox<int>>(new StrongBox<int>());
@@ -56,6 +61,52 @@ public class PluginToolDeclarationTests
 
         Assert.Contains(plugin, ex.Message, StringComparison.Ordinal);
         Assert.Contains(FakeDependentTool.ToolName, ex.Message, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("fake-tool-type")]
+    [InlineData("fake-tool-factory")]
+    public void ContinueOnError_ToolBuiltByTypeOrFactory_NotDeclared_IsDroppedAndRecorded_TheHostToolsKept(string plugin)
+    {
+        using var fixture = new PluginDirectoryFixture();
+        var services = Compose(fixture, plugin, continueOnError: true);
+        services.AddSingleton<IBaseTool>(new StubBaseTool("host.tool"));
+
+        using var provider = services.BuildServiceProvider();
+        var tools = provider.GetServices<IBaseTool>().OfType<IBaseTool>().ToList();
+
+        Assert.Equal("host.tool", Assert.Single(tools).Name);
+        var failure = Assert.Single(provider.GetRequiredService<IPluginRegistry>().Failures);
+        Assert.Contains(plugin, failure.Reason, StringComparison.Ordinal);
+        Assert.Contains(FakeDependentTool.ToolName, failure.Reason, StringComparison.Ordinal);
+
+        // Resolved again, the dropped tool is recorded once.
+        _ = provider.GetServices<IBaseTool>().ToList();
+        Assert.Single(provider.GetRequiredService<IPluginRegistry>().Failures);
+    }
+
+    [Fact]
+    public void ContinueOnError_KeyedTool_NotDeclared_ResolvesToNothingAndIsRecorded()
+    {
+        using var fixture = new PluginDirectoryFixture();
+        var services = Compose(fixture, "fake-tool-keyed", continueOnError: true);
+
+        using var provider = services.BuildServiceProvider();
+
+        Assert.Null(provider.GetKeyedService<IBaseTool>(FakeKeyedToolPlugin.Key));
+        Assert.Single(provider.GetRequiredService<IPluginRegistry>().Failures);
+    }
+
+    [Fact]
+    public void ContinueOnError_ToolWhoseConstructorThrows_IsDroppedAndRecorded()
+    {
+        using var fixture = new PluginDirectoryFixture();
+        var services = Compose(fixture, "fake-tool-throwing", continueOnError: true, "throwing.tool");
+
+        using var provider = services.BuildServiceProvider();
+
+        Assert.Empty(provider.GetServices<IBaseTool>().OfType<IBaseTool>());
+        Assert.Contains("fake-tool-throwing", Assert.Single(provider.GetRequiredService<IPluginRegistry>().Failures).Reason, StringComparison.Ordinal);
     }
 
     [Fact]

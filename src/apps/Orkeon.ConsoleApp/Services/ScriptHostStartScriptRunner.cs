@@ -21,7 +21,8 @@ internal sealed class ScriptHostStartScriptRunner : IStartScriptRunner
     {
         _scriptHost = scriptHost;
         _fileSystem = fileSystem;
-        _tools = tools;
+        // A plugin tool dropped under ContinueOnError resolves to null: skipped.
+        _tools = [.. tools.OfType<IBaseTool>()];
     }
 
     public Task<StartScriptOutput> RunAsync(string scriptPath, CancellationToken ct)

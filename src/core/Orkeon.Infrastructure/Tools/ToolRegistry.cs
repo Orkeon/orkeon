@@ -32,7 +32,8 @@ public sealed class ToolRegistry : IToolRegistry
     public ToolRegistry(IEnumerable<IBaseTool> tools)
     {
         ArgumentNullException.ThrowIfNull(tools);
-        foreach (var tool in tools)
+        // A plugin tool dropped under ContinueOnError resolves to null in the container: skipped.
+        foreach (var tool in tools.OfType<IBaseTool>())
         {
             if (HoldsReservedName(tool))
             {

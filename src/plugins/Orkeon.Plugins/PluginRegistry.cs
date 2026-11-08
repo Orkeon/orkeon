@@ -13,7 +13,8 @@ namespace Orkeon.Plugins;
 public sealed class PluginRegistry : IPluginRegistry, IDisposable
 {
     private readonly List<LoadedPluginAssembly> _assemblies = [];
-    private readonly List<PluginLoadFailure> _failures = [];
+    // Swapped whole: a tool dropped under ContinueOnError is recorded at resolution, from any thread.
+    private System.Collections.Immutable.ImmutableList<PluginLoadFailure> _failures = [];
 
     // Flattened view of all plugins across assemblies. Rebuilt eagerly whenever the set of
     // loaded assemblies changes (Add / UnloadAll) so the property never re-projects the
@@ -39,7 +40,7 @@ public sealed class PluginRegistry : IPluginRegistry, IDisposable
     internal void AddFailure(PluginLoadFailure failure)
     {
         ArgumentNullException.ThrowIfNull(failure);
-        _failures.Add(failure);
+        System.Collections.Immutable.ImmutableInterlocked.Update(ref _failures, list => list.Add(failure));
     }
 
     /// <summary>
