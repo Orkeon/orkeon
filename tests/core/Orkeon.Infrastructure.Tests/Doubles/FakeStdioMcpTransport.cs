@@ -82,7 +82,7 @@ public sealed class FakeStdioMcpTransport : IMcpTransport
 
     private void Deliver(string line)
     {
-        var root = JsonDocument.Parse(line).RootElement;
+        var root = JsonElement.Parse(line);
         if (root.TryGetProperty("id", out var id) && _pending.TryRemove(id.GetRawText(), out var answer))
             answer.TrySetResult(JsonSerializer.Deserialize<JsonRpcResponse>(line)!);
         else

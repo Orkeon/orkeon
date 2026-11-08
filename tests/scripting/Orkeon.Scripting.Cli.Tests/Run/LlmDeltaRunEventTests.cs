@@ -14,7 +14,7 @@ namespace Orkeon.Scripting.Cli.Tests.Run;
 public sealed class LlmDeltaRunEventTests
 {
     private static List<JsonElement> Lines(StringWriter output) =>
-        [.. output.ToString().Split('\n', StringSplitOptions.RemoveEmptyEntries).Select(l => JsonDocument.Parse(l).RootElement.Clone())];
+        [.. output.ToString().Split('\n', StringSplitOptions.RemoveEmptyEntries).Select(l => JsonElement.Parse(l))];
 
     private static RunEventObserver Streaming(StringWriter output) =>
         new(new OrkeonEventWriter(output, new FakeOrkeonClock()), inner: null, stream: true);
