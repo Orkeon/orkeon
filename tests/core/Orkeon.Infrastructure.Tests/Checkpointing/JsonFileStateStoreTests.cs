@@ -257,4 +257,49 @@ public class JsonFileStateStoreTests
         var history = await store.GetHistoryAsync(SessionId1, null, TestContext.Current.CancellationToken);
         Assert.Equal(["a", "b", "c"], history.OrderBy(v => v.Version).Select(v => v.StepId));
     }
+
+    [Fact]
+    public async Task SaveVersioned_DeletesTheOldestVersions_BeyondTheRetentionLimit()
+    {
+        var fake = new FakeFileSystemService();
+        fake.AddMount(BaseVirtualPath, FileAccessRights.ReadWrite);
+        var store = new JsonFileStateStore(fake, BaseVirtualPath, maxVersions: 2);
+        foreach (var step in new[] { "a", "b", "c", "d" })
+            await store.SaveVersionedAsync(CreateState(SessionId1, CrewId1, SessionPhase.Running), step, null, TestContext.Current.CancellationToken);
+
+        // The two newest are kept, the files of the older ones are gone, and the numbering goes on from the newest.
+        var history = await store.GetHistoryAsync(SessionId1, null, TestContext.Current.CancellationToken);
+        Assert.Equal(["c", "d"], history.OrderBy(v => v.Version).Select(v => v.StepId));
+        Assert.False(await fake.ExistsAsync($"{BaseVirtualPath}/{SessionId1}/v001.json", TestContext.Current.CancellationToken));
+        Assert.False(await fake.ExistsAsync($"{BaseVirtualPath}/{SessionId1}/v002.json", TestContext.Current.CancellationToken));
+        Assert.True(await fake.ExistsAsync($"{BaseVirtualPath}/{SessionId1}/v004.json", TestContext.Current.CancellationToken));
+        var fifth = await store.SaveVersionedAsync(CreateState(SessionId1, CrewId1, SessionPhase.Completed), "e", null, TestContext.Current.CancellationToken);
+        Assert.Equal(5, fifth.Version);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    public async Task SaveVersioned_KeepsEveryVersion_WhenTheRetentionLimitIsZeroOrNegative(int maxVersions)
+    {
+        var fake = new FakeFileSystemService();
+        fake.AddMount(BaseVirtualPath, FileAccessRights.ReadWrite);
+        var store = new JsonFileStateStore(fake, BaseVirtualPath, maxVersions);
+        for (var i = 0; i < 25; i++)
+            await store.SaveVersionedAsync(CreateState(SessionId1, CrewId1, SessionPhase.Running), $"s{i}", null, TestContext.Current.CancellationToken);
+
+        Assert.Equal(25, (await store.GetHistoryAsync(SessionId1, null, TestContext.Current.CancellationToken)).Count);
+    }
+
+    [Fact]
+    public async Task SaveVersioned_KeepsTwentyVersions_ByDefault()
+    {
+        var store = CreateStore(out _);
+        for (var i = 0; i < 22; i++)
+            await store.SaveVersionedAsync(CreateState(SessionId1, CrewId1, SessionPhase.Running), $"s{i}", null, TestContext.Current.CancellationToken);
+
+        var history = await store.GetHistoryAsync(SessionId1, null, TestContext.Current.CancellationToken);
+        Assert.Equal(JsonFileStateStore.DefaultMaxVersions, history.Count);
+        Assert.Equal("s21", history.MaxBy(v => v.Version)!.StepId);
+    }
 }

@@ -16,6 +16,10 @@ public sealed partial class JsonFileStateStore : IStateStore
 {
     private readonly IFileSystemService _fs;
     private readonly string _baseVirtualPath;
+    private readonly int _maxVersions;
+
+    /// <summary>The number of versions a session keeps by default; older ones are deleted.</summary>
+    public const int DefaultMaxVersions = 20;
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -34,12 +38,17 @@ public sealed partial class JsonFileStateStore : IStateStore
     /// </summary>
     /// <param name="fs">Virtual file system service.</param>
     /// <param name="baseVirtualPath">Virtual base path (e.g. "/state") where session files are stored.</param>
-    public JsonFileStateStore(IFileSystemService fs, string baseVirtualPath)
+    /// <param name="maxVersions">
+    /// The number of versions a session keeps (default <see cref="DefaultMaxVersions"/>): each new version deletes the oldest
+    /// beyond it. Zero or negative keeps them all.
+    /// </param>
+    public JsonFileStateStore(IFileSystemService fs, string baseVirtualPath, int maxVersions = DefaultMaxVersions)
     {
         ArgumentNullException.ThrowIfNull(fs);
         ArgumentException.ThrowIfNullOrWhiteSpace(baseVirtualPath);
         _fs = fs;
         _baseVirtualPath = baseVirtualPath.TrimEnd('/');
+        _maxVersions = maxVersions;
     }
 
     /// <inheritdoc />
@@ -181,7 +190,14 @@ public sealed partial class JsonFileStateStore : IStateStore
                 Label = label,
                 CreatedAt = createdAt
             });
+
+            // Retention: the oldest entries beyond the limit leave the manifest first, then their files go. The version just
+            // written is the newest and always stays. A process that dies between the two leaves orphan files, never an entry
+            // without its file.
+            var pruned = Prune(manifest);
             await SaveManifestAsync(state.SessionId, manifest, ct).ConfigureAwait(false);
+            foreach (var old in pruned)
+                await DeleteVersionFileAsync(state.SessionId, old, ct).ConfigureAwait(false);
 
             await SaveAsync(state, ct).ConfigureAwait(false);
 
@@ -355,6 +371,31 @@ public sealed partial class JsonFileStateStore : IStateStore
     private string GetFilePath(string sessionId) => $"{_baseVirtualPath}/{sessionId}.json";
 
     private string GetSessionVersionDir(string sessionId) => $"{_baseVirtualPath}/{sessionId}";
+
+    private List<int> Prune(VersionManifest manifest)
+    {
+        if (_maxVersions <= 0 || manifest.Entries.Count <= _maxVersions)
+            return [];
+
+        var ordered = manifest.Entries.OrderBy(e => e.Version).ToList();
+        var dropped = ordered.Take(ordered.Count - _maxVersions).ToList();
+        manifest.Entries = ordered.Skip(dropped.Count).ToList();
+        return dropped.Select(e => e.Version).ToList();
+    }
+
+    private async Task DeleteVersionFileAsync(string sessionId, int version, CancellationToken ct)
+    {
+        var file = GetVersionFilePath(sessionId, version);
+        try
+        {
+            if (await _fs.ExistsAsync(file, ct).ConfigureAwait(false))
+                await _fs.DeleteAsync(file, recursive: false, ct).ConfigureAwait(false);
+        }
+        catch (IOException)
+        {
+            // Out of the manifest already: an orphan file is harmless, and a manifest rebuilt from the files prunes it again.
+        }
+    }
 
     private string GetVersionFilePath(string sessionId, int version) =>
         $"{GetSessionVersionDir(sessionId)}/v{version:D3}.json";

@@ -640,7 +640,6 @@ static Orkeon.Infrastructure.Evaluation.ReportExporter.ToJson(Orkeon.Application
 static Orkeon.Infrastructure.Evaluation.ReportExporter.ToJson(Orkeon.Infrastructure.Evaluation.ComparisonResult! comparison) -> string!
 static Orkeon.Infrastructure.Evaluation.ReportExporter.ReadComparableReport(string! json) -> Orkeon.Application.Evaluation.BenchmarkReport!
 [ORKEXP007]static Orkeon.Infrastructure.Runs.RedactingRunEventSink.Redact(System.Text.Json.Nodes.JsonNode? node) -> System.Text.Json.Nodes.JsonNode?
-
 [ORKEXP004]Orkeon.Infrastructure.MCP.Auth.IMcpRequestAuthenticator.HandleUnauthorizedAsync(string? rejectedCredential, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask<bool>
 [ORKEXP004]Orkeon.Infrastructure.MCP.McpAuthConfig.Audience.get -> string?
 [ORKEXP004]Orkeon.Infrastructure.MCP.McpAuthConfig.Audience.set -> void
@@ -856,3 +855,7 @@ override Orkeon.Infrastructure.LLMs.Embeddings.MistralEmbeddingProvider.Name.get
 Orkeon.Infrastructure.LLMs.Embeddings.EmbeddingModelGuard
 static Orkeon.Infrastructure.LLMs.Embeddings.EmbeddingModelGuard.CheckAsync(System.IServiceProvider! services, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<string?>!
 Orkeon.Infrastructure.FileSystem.FileSystemService.MoveAsync(string! srcVirtualPath, string! dstVirtualPath, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+Orkeon.Infrastructure.Checkpointing.CheckpointingOptions.MaxVersions.get -> int
+Orkeon.Infrastructure.Checkpointing.CheckpointingOptions.MaxVersions.set -> void
+Orkeon.Infrastructure.Checkpointing.JsonFileStateStore.JsonFileStateStore(Orkeon.Domain.FileSystem.IFileSystemService! fs, string! baseVirtualPath, int maxVersions = 20) -> void
+const Orkeon.Infrastructure.Checkpointing.JsonFileStateStore.DefaultMaxVersions = 20 -> int

@@ -48,6 +48,12 @@ public sealed class CheckpointingOptions
     /// <summary>Gets or sets whether the PostgreSQL schema and tables are created on first use.</summary>
     public bool AutoMigrate { get; set; } = true;
 
+    /// <summary>
+    /// Gets or sets the number of versions a session keeps in the Json store (default: 20); each new version deletes the
+    /// oldest beyond it. Zero or negative keeps them all.
+    /// </summary>
+    public int MaxVersions { get; set; } = JsonFileStateStore.DefaultMaxVersions;
+
     /// <summary>Gets or sets the maximum number of version entries per session in the PostgreSQL store.</summary>
     public int MaxHistoryPerSession { get; set; } = 1000;
 }
