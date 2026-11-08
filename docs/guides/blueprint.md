@@ -16,7 +16,7 @@ Before starting, decide:
 
 - **Mode name**: the `ProcessType` value (PascalCase, e.g. `Swarm`) and its YAML/scripting spelling (`swarm`: the YAML is matched case-insensitively, the scripting builder `process()` accepts the lowercase name only)
 - **Entry point**: reuse `IProcessStrategy.ExecuteSequentialAsync(crew, inputVariables, ct)` (Graph, Consensual) or add a dedicated method (Autonomous, which needs an `AgentExecutionBudget`)
-- **Configuration**: none, a .NET options section (Consensual: `Orkeon:Consensus`), or a crew-level YAML block (Graph: `graphConfig`)
+- **Configuration**: none, a .NET options section (Consensual: `Orkeon:Consensus`), or a crew-level YAML block (Graph: `graph:`)
 - **Engine**: whether the mode needs a reusable Domain engine (`StateGraph<TState>`, `StateMachine<TState, TEvent>`) or lives entirely in its strategy
 - **Stability**: whether the public surface ships under an `[Experimental]` diagnostic (Autonomous: `ORKEXP002`, see [experimental APIs](../reference/experimental-apis.md))
 
@@ -134,7 +134,7 @@ An options section follows the `Orkeon:*` convention (`services.AddOptions<Swarm
 
 ## Step 5 — YAML: the configuration block
 
-`process: swarm` needs nothing more (step 1). A crew-level block follows the `graphConfig` path; a task-level block follows the task `deliverable:` path — mapped in `MapTasks`, then applied to the task by `CrewFactory`: a block read and never applied is a bug, and a crew that writes a key no model carries is refused at load (`CrewYamlKeyCheck`), so the model of this step must exist before the block is written.
+`process: swarm` needs nothing more (step 1). A crew-level block follows the `graph:` path; a task-level block follows the task `deliverable:` path — mapped in `MapTasks`, then applied to the task by `CrewFactory`: a block read and never applied is a bug, and a crew that writes a key no model carries is refused at load (`CrewYamlKeyCheck`), so the model of this step must exist before the block is written.
 
 **Models** — `src/core/Orkeon.Infrastructure/Configuration/Yaml/YamlConfigModels.cs`. The models carry **no** `[YamlMember]` attributes: keys resolve by convention (camelCase, with a snake_case fallback). Add a public class and the property on the models that need it:
 

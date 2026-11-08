@@ -121,20 +121,23 @@ In `.ork.ts` the same choice is `agentBuilder().llm(llm.profile("claude"))` on a
 profile: its card shows the name to write (`profile: claude`), and Studio writes it into the
 settings file without its key ([Studio writes this section](../reference/configuration.md#studio-writes-this-section)).
 
-A task's `tools:` add to its agent's own for that task only: a writer that holds `file_read` and runs a task declaring `tools: [file_write]` can read and write during that task, and only read during the others. There is no `circuitBreaker:` block — a crew that writes one is refused at load. What bounds a task at run time is the agent loop (`maxIter`, a stop after 3 consecutive identical tool errors, and the output-validation retries); a Graph run is bounded by `graphConfig` (below).
+A task's `tools:` add to its agent's own for that task only: a writer that holds `file_read` and runs a task declaring `tools: [file_write]` can read and write during that task, and only read during the others. There is no `circuitBreaker:` block — a crew that writes one is refused at load. What bounds a task at run time is the agent loop (`maxIter`, a stop after 3 consecutive identical tool errors, and the output-validation retries); a Graph run is bounded by `graph:` (below).
 
 Guardrails may be declared on an agent (all its tasks) and/or on a task (that task only). When both
 exist, both apply — agent rules first, then the task's — injected into the executing agent's system
 prompt. A `preset` other than `analysis`, `strict` or `creative` fails the load, naming the agent or the
 task. See [YAML schema — Guardrails configuration](../architecture/yaml-schema.md#guardrails-configuration).
 
-When `process: "graph"` is used, an additional `graphConfig` block configures the state graph engine:
+When `process: "graph"` is used, an additional `graph:` block describes the nodes and edges of the state graph and bounds it:
 
 ```yaml
-graphConfig:
+graph:
+  start: string                 # optional: the first node by default
+  nodes: [{ id, task }]         # optional: absent = one implicit node per task
+  edges: [{ from, to, when? }]  # `to: END` ends the run; several from one node, in order; no `when` = the otherwise
   circuitBreakerPreset: string  # "strict" | "permissive" | "default" — default: strict
   maxTransitions: int           # Default: computed, 2 × visits + 1
-  maxStateVisits: int           # Task-attempt cap — default: computed, sum over the tasks of 1 + their retries
+  maxVisits: int                # Visits of one node — default: computed, sum over the tasks of 1 + their retries
   maxTotalDurationSeconds: int  # Total duration in seconds (overrides the preset)
 ```
 

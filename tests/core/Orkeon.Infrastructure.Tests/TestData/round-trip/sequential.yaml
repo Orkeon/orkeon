@@ -18,13 +18,6 @@ planning: true
 # The crew's own model requests per minute, its agents and its manager together (GAP-38).
 maxRpm: 120
 
-# Read in every mode, applied by process: graph alone — the file is what the round trip proves.
-graphConfig:
-  circuitBreakerPreset: permissive
-  maxTransitions: 40
-  maxStateVisits: 12
-  maxTotalDurationSeconds: 900
-
 # The crew's default, merged field by field under each agent's own llm: — researcher completes it,
 # writer takes it whole. The export writes the merged block under each agent.
 llm:

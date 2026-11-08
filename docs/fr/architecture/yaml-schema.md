@@ -35,7 +35,7 @@ planning: bool            # default: false. true : avant la première tâche, un
 maxRpm: int               # default: aucun — au plus N requêtes au modèle par minute pour toute la crew, tous ses agents et son manager confondus (vagues parallèles comprises) ; une de plus attend son tour. Le max_rpm de CrewAI (max_rpm: est accepté). 0 ou moins fait échouer le chargement
 budget: {tokens, wallTimeSeconds, toolCalls, delegationDepth, spawnedAgents}  # process: autonomous seulement — voir Budget autonome plus bas ; default: aucun plafond de tokens ni de durée, 50 / 4 / 10
 managerAgent: string      # La clé d'un des agents de la crew (tout autre nom fait échouer le chargement, en les listant). Hiérarchique : le manager — requis (omis, le chargement échoue) ; il assigne et revoit sur son propre bloc llm:, profil et modèle. Consensual : l'arbitre du repli ManagerDecision (inactif, avec un avertissement au début du run, sous un autre repli). Tout autre process : refusé au chargement
-graphConfig: {…}          # Réglages du mode Graph, seul réglage de circuit breaker d'une crew (voir la section dédiée)
+graph: {…}                # Mode Graph : nœuds, arêtes et réglages du circuit breaker (voir la section dédiée)
 
 llm:                      # LLM par défaut de la crew, fusionné CHAMP PAR CHAMP sous le llm: propre de chaque agent (même forme que agents.<id>.llm)
   profile: string         # Profil LLM de l'hôte (Llm:Profiles:<nom>) pour tous les agents — inconnu → le chargement échoue en listant les profils de l'hôte
@@ -169,7 +169,7 @@ au chargement (`CrewDefinitionValidator`) : une crew exige un `name`, un `goal`,
 `expectedOutput`) ; des `dependencies` circulaires, un item de `mounts:` listé deux fois ou deux
 identifiants qui sélectionnent la même racine font échouer le chargement. Une clé
 `circuitBreaker:` aussi, à la racine comme sur une tâche : le bloc a été supprimé (voir « Supprimé :
-`circuitBreaker` » plus bas), et le chargement nomme `graphConfig` au lieu de l'ignorer. Le
+`circuitBreaker` » plus bas), et le chargement nomme le bloc `graph` au lieu de l'ignorer. Le
 `asyncExecution: true` d'une tâche aussi, hors `process: sequential` et `process: parallel` : les quatre
 autres modes ordonnent leurs tâches eux-mêmes, et le chargement nomme chaque tâche qui le demande au lieu
 d'ignorer le drapeau (voir [Tâches asynchrones](../orchestration/process-types.md#tâches-asynchrones-asyncexecution)).
@@ -435,34 +435,48 @@ Une tâche qui échoue est rejouée dans **chaque** mode d'orchestration : un se
 
 ## Configuration Graph
 
-Quand `process: "graph"` est utilisé, un bloc `graphConfig` supplémentaire configure le moteur de graphe d'état :
+Avec `process: "graph"`, un bloc `graph:` décrit le graphe d'état que la crew exécute et le borne ([ADR-018](../adr/ADR-018-graph-engines-shared-topology-and-yaml-graph-block.md)) ; sans bloc, ou avec un bloc qui ne tient que des budgets, la crew exécute un nœud par tâche, enchaînés dans l'ordre d'exécution :
 
 ```yaml
-graphConfig:
-  circuitBreakerPreset: string  # "strict" (défaut) | "permissive" | "default"
-  maxTransitions: int           # Défaut : calculé, 2 × visites + 1
-  maxStateVisits: int           # Plafond de tentatives — défaut : calculé, somme sur les tâches de 1 + leurs retries
-  maxTotalDurationSeconds: int  # Durée totale en secondes (surcharge le preset)
+process: graph
+graph:
+  start: triage              # facultatif : le premier nœud par défaut
+  nodes:                     # facultatif : absent = un nœud implicite par tâche, son id le nom de la tâche
+    - { id: triage,   task: triage }
+    - { id: fix,      task: fix }
+    - { id: escalate, task: escalate }
+  edges:
+    - { from: triage, to: fix, when: { triage.category: [bug] } }
+    - { from: triage, to: escalate }          # sans `when` : le « sinon »
+    - { from: fix,      to: END }
+    - { from: escalate, to: END }
+  circuitBreakerPreset: strict   # "strict" (défaut) | "permissive" | "default"
+  maxTransitions: 50             # défaut : calculé, 2 × visites + 1
+  maxVisits: 5                   # visites d'UN nœud — défaut : calculé, somme sur les tâches de 1 + leurs retries
+  maxTotalDurationSeconds: 600   # durée totale (surcharge le preset)
 ```
 
-`graphConfig` est le seul réglage de circuit breaker d'une crew (`CircuitBreakerPolicyFactory.ResolveGraph`).
-Le moteur de graphe n'applique que trois limites — transitions, visites d'un même état, durée
-totale (`GraphRunner`) ; un timeout par état ou un mode dégradé n'a aucun effet sur un run de graphe.
+- **Nœuds.** Un nœud est `{id, task}` : `task` nomme une tâche de la crew, `START` et `END` sont refusés comme ids. Une tâche est portée par un nœud au plus ; quand `nodes` est donné, une tâche qu'aucun nœud ne nomme est refusée. `edges` sans `nodes` donne un nœud implicite par tâche. Un nœud est revisité par une arête qui y revient : à la revisite, la dernière sortie et la dernière décision l'emportent. Un nœud dont la tâche échoue arrête le run : il n'y a pas de routage sur échec (un retry est le `retry:` de la tâche).
+- **Arêtes.** Plusieurs `edges` depuis un même `from` forment une seule arête conditionnelle, évaluée dans l'ordre de déclaration : la première dont le `when` tient l'emporte, et l'arête sans `when` est le « sinon ». Un `from` qui porte des arêtes `when` est une [tâche de décision](./decision-models.md) et a exactement une arête sans `when` ; une tâche ordinaire a exactement une arête. Le `when` garde la grammaire de celui de la tâche, avec son préfixe `<tâche>.` : `<tâche>.<question>: [option, ...]`, `<tâche>.<question>: ">= 0.7"`, `<tâche>.<question>.<option>: ">= 0.25"` ; la tâche est celle du `from`, et ses questions sont vérifiées au chargement. `otherwise` ne s'écrit pas : une arête sans `when` en tient lieu.
+- **Refusé au chargement**, chaque message nommant le nœud : un `when` sur un `from` qui n'est pas une décision, une décision sans arête sans `when`, deux arêtes sans `when` depuis un même nœud, plusieurs arêtes sur une tâche ordinaire, un nœud orphelin, un nœud sans chemin vers `END`, une arête vers un nœud inconnu, un `graph:` hors de `process: graph`, et un `when:` ou des `dependencies:` au niveau tâche dans une crew qui a des nœuds ou des arêtes (les arêtes ordonnent les tâches, un second routeur les contredirait). Les fautes de topologie viennent de `GraphTopologyValidator`, toutes à la fois, et l'export vérifie les mêmes règles avant d'écrire.
+- **Budgets.** `maxVisits` est le `MaxStateVisits` du Domain, compté par nœud : un nœud entré plus souvent que cela déclenche le disjoncteur. Non renseigné, `maxVisits` vaut la somme sur les tâches de `1 + retries` et `maxTransitions` deux fois plus un ; une valeur explicite l'emporte.
+- **Retiré (`[breaking]`).** Le bloc `graphConfig:` (ses budgets passent dans `graph:`, `maxStateVisits` devenant `maxVisits`), `maxRetryCycles` et tout `maxCycles` : une borne sur les cycles est `maxVisits`, et un retry est le `retry:` de la tâche. Une crew qui écrit encore `graphConfig` est refusée au chargement, avec un renvoi vers `graph:`.
+- **Exécution.** Le moteur Domain exécute toute crew du process Graph, avec ou sans bloc `graph:` ; `JsStateGraph` n'exécute que le `stateGraph(...)` d'un script `.ork.ts`. Un run repris parcourt de nouveau le graphe : les exécutions d'une tâche déjà terminée sont servies depuis le checkpoint, clé `<tâche>#<n>` selon leur ordre, donc un nœud entré deux fois a deux entrées. La réponse d'un nœud de décision est checkpointée de la même façon (`<tâche>#<n>`) et rejouée à la reprise, jamais redemandée : un modèle interrogé deux fois pourrait répondre autrement et envoyer le run repris sur une autre route. L'export réécrit `graph:`, si bien qu'import, export, import donnent le même graphe.
 
-`graphConfig.maxRetryCycles` est **retiré** (`[breaking]`) : une tâche échouée est relancée par son propre `retry:` (voir [Retry d'une tâche](#retry-dune-tâche)), dans tous les modes, et une crew qui écrit encore la clé est refusée au chargement comme clé inconnue.
+`graph:` est le seul réglage de circuit breaker d'une crew (`CircuitBreakerPolicyFactory.ResolveGraph`). Le moteur de graphe n'applique que trois limites : transitions, visites d'un même nœud, durée totale (`GraphRunner`) ; un timeout par état ou un mode dégradé n'a aucun effet sur un run de graphe.
 
 ## Supprimé : `circuitBreaker`
 
 Le bloc `circuitBreaker:` — à la racine de la crew comme sur une tâche — n'existe plus, et une crew
-qui en écrit encore un est **refusée au chargement** avec un message qui nomme `graphConfig`. Le
+qui en écrit encore un est **refusée au chargement** avec un message qui nomme le bloc `graph`. Le
 bloc de tâche configurait une machine d'états de tâche qu'aucun chemin d'exécution ne lançait, et
 trois limites de garde (`maxRetries`, `maxToolCallsPerRound`, `maxValidationRetries`) que rien ne
-lisait. Le bloc de crew n'était lu que par le mode Graph, où `graphConfig` porte le même preset et
+lisait. Le bloc de crew n'était lu que par le mode Graph, où le bloc `graph:` porte le même preset et
 les trois mêmes limites effectives.
 
 Ce qui borne une tâche, c'est sa boucle d'agent : le `maxIter` de l'agent, l'arrêt après trois
 erreurs d'outil identiques consécutives, et les reprises de validation de sortie. Ce qui borne un
-run de graphe, c'est `graphConfig` (ci-dessus). Le moteur générique de machine d'états et
+run de graphe, c'est `graph:` (ci-dessus). Le moteur générique de machine d'états et
 `CircuitBreakerPolicy` restent — le mode Graph, `orkeon forge` et le graphe RAG correctif s'en
 servent (voir [FSM](../orchestration/fsm.md)).
 

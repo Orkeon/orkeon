@@ -72,7 +72,7 @@ public sealed partial class YamlCrewMapper
             Agents = mappedAgents,
             Tasks = mappedTasks,
             ManagerAgentId = managerAgentId,
-            GraphConfig = MapGraphConfig(settings.GraphConfig),
+            GraphConfig = MapGraph(settings.Name ?? string.Empty, process, settings.Process, settings.Graph, tasks),
             Rag = MapRag(settings.Rag),
             Links = MapLinks(settings.Name ?? string.Empty, settings.Links),
             Mounts = MapMounts(settings.Name ?? string.Empty, settings.Mounts),
@@ -967,23 +967,6 @@ public sealed partial class YamlCrewMapper
     }
 
     /// <summary>
-    /// Maps a YAML graph config section to a <see cref="GraphConfig"/> domain model.
-    /// </summary>
-    private static GraphConfig? MapGraphConfig(GraphYamlConfig? yaml)
-    {
-        if (yaml == null)
-            return null;
-
-        return new GraphConfig
-        {
-            CircuitBreakerPreset = yaml.CircuitBreakerPreset ?? "strict",
-            MaxTransitions = yaml.MaxTransitions,
-            MaxStateVisits = yaml.MaxStateVisits,
-            MaxTotalDurationSeconds = yaml.MaxTotalDurationSeconds,
-        };
-    }
-
-    /// <summary>
     /// The agent <c>managerAgent:</c> names, by its key. A name the crew does not have — a typo —
     /// fails the load, listing its agents (GAP-33, decision 4): erased, it told a hierarchical crew it
     /// "requires a manager agent", and took a consensual crew's arbiter away without a word.
@@ -1122,8 +1105,8 @@ public sealed record CrewMappingSettings
     /// </summary>
     public string? ManagerAgent { get; init; }
 
-    /// <summary>Crew-level graph orchestration configuration (<c>crew.graph</c>).</summary>
-    public GraphYamlConfig? GraphConfig { get; init; }
+    /// <summary>Crew-level graph block (<c>graph:</c>).</summary>
+    public GraphYamlConfig? Graph { get; init; }
 
     /// <summary>Crew-level default LLM block, merged onto each agent (<c>crew.llm</c>).</summary>
     public LlmYamlConfig? CrewDefaultLlm { get; init; }

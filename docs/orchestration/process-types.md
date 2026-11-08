@@ -538,7 +538,7 @@ START ──→ task 1 ──→ task 2 ──→ … ──→ last task ──
 | `MaxStateVisits` (visits of one node) | sum of 1 + retries | 5 | 10 | 50 |
 | `MaxTotalDuration` | the preset's (10 min under Strict) | 10 min | 30 min | 2 h |
 
-Every task attempt is one visit of the task's node. Without an explicit `maxStateVisits` / `maxTransitions`, both are **computed from the crew**: the sum over the tasks of `1 + retries` visits (the attempts of each task's `retry:`; `tasks × (1 + retries)` when they are alike) — a loose bound: a node is entered once, its attempts happen inside the visit — and twice that plus one transitions, so a healthy crew is never cut short whatever its size, and a real loop still trips the breaker. An explicit value wins; the preset (`circuitBreakerPreset`, Strict when absent) then only supplies what is not computed, the total duration first. The FSM's fourth mechanism, the per-state timeout, is not checked by the graph runner. A tripped breaker returns a failed `CrewOutput` ("Graph execution stopped by circuit breaker: …") with the outputs produced so far.
+Every entry into a node is one visit of it, counted per node (`maxVisits`). Without an explicit `maxVisits` / `maxTransitions`, both are **computed from the crew**: the sum over the tasks of `1 + retries` visits (the attempts of each task's `retry:`; `tasks × (1 + retries)` when they are alike) — a loose bound: a node is entered once, its attempts happen inside the visit — and twice that plus one transitions, so a healthy crew is never cut short whatever its size, and a real loop still trips the breaker. An explicit value wins (in the `graph:` block); the preset (`circuitBreakerPreset`, Strict when absent) then only supplies what is not computed, the total duration first. The FSM's fourth mechanism, the per-state timeout, is not checked by the graph runner. A tripped breaker returns a failed `CrewOutput` ("Graph execution stopped by circuit breaker: …") with the outputs produced so far.
 
 ### YAML configuration
 
@@ -546,13 +546,24 @@ Every task attempt is one visit of the task's node. Without an explicit `maxStat
 name: "review-loop"
 goal: "Graph demo"
 process: graph
-graphConfig:
+graph:
+  nodes:                           # optional: without nodes and edges, one node per task
+    - { id: write,   task: write }
+    - { id: review,  task: review }     # a decision task: edges leave it on its answers
+    - { id: publish, task: publish }
+  edges:
+    - { from: write,  to: review }
+    - { from: review, to: write, when: { review.verdict: [revise] } }
+    - { from: review, to: publish }     # no `when`: the otherwise
+    - { from: publish, to: END }
   circuitBreakerPreset: "strict"   # or "default", "permissive" — supplies the duration
   # Individual overrides possible (visits and transitions are computed otherwise):
   maxTransitions: 75
-  maxStateVisits: 20
+  maxVisits: 20
   maxTotalDurationSeconds: 1800
 ```
+
+A loop is an edge leading back to a node; `maxVisits` bounds it. See [Graph orchestration](./graph.md) and [the YAML schema](../architecture/yaml-schema.md#graph-configuration) for the rules (one "otherwise" edge per decision, no task-level `when:` or `dependencies:` beside nodes).
 
 ### Advantages
 
@@ -742,7 +753,7 @@ ProcessTypes are exclusive at the scale of one crew, but they combine with the o
 |-------|----------|
 | Architecture and core concepts | [Overview](../getting-started/overview.md) |
 | Detailed features | [YAML and Builders](../getting-started/yaml-and-builders.md) |
-| YAML schema (`process`, `graphConfig`) | [YAML schema](../architecture/yaml-schema.md) |
+| YAML schema (`process`, `graph`) | [YAML schema](../architecture/yaml-schema.md) |
 | FSM (generic Domain engine) | [./fsm.md](./fsm.md) |
 | Graph orchestration | [./graph.md](./graph.md) |
 | Autonomous orchestration | [./autonomous.md](./autonomous.md) |

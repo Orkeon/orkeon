@@ -21,13 +21,17 @@ internal static class CrewYamlKeyCheck
     private const string MergeKey = "<<";
 
     private const string GraphConfigGuidance =
-        "the crew-level circuit breaker bounded Graph mode only, where graphConfig carries the same settings — " +
-        "on a process: graph crew, write graphConfig: { circuitBreakerPreset, maxTransitions, maxStateVisits, maxTotalDurationSeconds }; " +
+        "the crew-level circuit breaker bounded Graph mode only, where the graph block carries the same settings — " +
+        "on a process: graph crew, write graph: { circuitBreakerPreset, maxTransitions, maxVisits, maxTotalDurationSeconds }; " +
         "other modes have no state machine to bound";
+
+    private const string GraphBlockGuidance =
+        "the graph block replaced it — write graph: { circuitBreakerPreset, maxTransitions, maxVisits (formerly maxStateVisits), " +
+        "maxTotalDurationSeconds, and the nodes and edges }; a retry of a failed task is the task's own retry:, and there is no maxCycles";
 
     private const string TaskBreakerGuidance =
         "the task state machine it configured never ran — a task is bounded by its agent's maxIter and by output-validation retries; " +
-        "Graph-mode limits live in the crew's graphConfig block";
+        "Graph-mode limits live in the crew's graph block";
 
     private static readonly string[] s_llmNames = NamesOf(typeof(LlmYamlConfig));
 
@@ -42,6 +46,8 @@ internal static class CrewYamlKeyCheck
             "the document store is the host's choice — set Orkeon:Rag:Provider in the settings"),
         new(typeof(CrewYamlConfig), "circuitBreaker", GraphConfigGuidance),
         new(typeof(CrewSettingsYamlConfig), "circuitBreaker", GraphConfigGuidance),
+        new(typeof(CrewYamlConfig), "graphConfig", GraphBlockGuidance),
+        new(typeof(CrewSettingsYamlConfig), "graphConfig", GraphBlockGuidance),
         new(typeof(TaskYamlConfig), "circuitBreaker", TaskBreakerGuidance),
         new(typeof(TaskYamlConfig), "outputFile",
             "the framework writes a task's file from its deliverable: block — write deliverable: { path: /output/report.md }"),

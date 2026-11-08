@@ -23,6 +23,11 @@ public sealed class FakeAgentExecutionService : IAgentExecutionService
     /// <summary>The tasks that fail their next calls: the key and how many calls still fail.</summary>
     public ConcurrentDictionary<string, int> FailTimes { get; } = new();
 
+    /// <summary>The tasks that fail on one numbered call (1 is the first): the key and the call number.</summary>
+    public ConcurrentDictionary<string, int> FailOnCall { get; } = new();
+
+    private readonly ConcurrentDictionary<string, int> _callNumbers = new();
+
     /// <summary>The key of every task run, in call order.</summary>
     public IReadOnlyCollection<string> Calls => [.. _calls];
 
@@ -35,8 +40,9 @@ public sealed class FakeAgentExecutionService : IAgentExecutionService
     {
         var key = task.Key ?? task.TaskId.ToString();
         _calls.Enqueue(key);
+        var callNumber = _callNumbers.AddOrUpdate(key, 1, static (_, n) => n + 1);
         _previousOutputs[key] = string.Join('|', context.PreviousOutputs.Select(o => o.Content));
-        return System.Threading.Tasks.Task.FromResult(FailOn.Contains(key) || TakeFailure(key)
+        return System.Threading.Tasks.Task.FromResult(FailOn.Contains(key) || TakeFailure(key) || (FailOnCall.TryGetValue(key, out var failing) && failing == callNumber)
             ? new TaskResult(false, "", null, [], TimeSpan.Zero, $"{key} failed")
             : new TaskResult(true, $"out:{key}", null, [], TimeSpan.Zero));
     }

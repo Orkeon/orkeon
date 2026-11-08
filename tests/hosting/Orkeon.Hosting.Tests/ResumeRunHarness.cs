@@ -106,10 +106,21 @@ internal sealed partial class ResumeRunHarness : IDisposable
         return path;
     }
 
+    /// <summary>Writes a crew file of the test's own, with the checkpointing settings, in its own folder.</summary>
+    public string WriteCrewYaml(string folder, string yaml, string settings = Settings)
+    {
+        var dir = Path.Combine(_root, folder);
+        Directory.CreateDirectory(dir);
+        File.WriteAllText(Path.Combine(dir, "appsettings.json"), settings);
+        var path = Path.Combine(dir, "crew.yaml");
+        File.WriteAllText(path, yaml);
+        return path;
+    }
+
 #pragma warning disable CA1822 // an instance member: the harness is the one thing a test holds
     /// <summary>Runs the crew once through the runner, with <paramref name="service"/> as its agents' model.</summary>
     public async Task<(int Exit, string Stderr, string Stdout)> RunAsync(
-        string crewPath, FakeAgentExecutionService service, string? resume = null, bool validate = false, FakeCrewExecutionHook? hook = null, CancellationToken ct = default)
+        string crewPath, FakeAgentExecutionService service, string? resume = null, bool validate = false, FakeCrewExecutionHook? hook = null, Action<IServiceCollection>? configure = null, CancellationToken ct = default)
     {
         var options = new Options { ConfigPath = crewPath, AllowExternalMounts = true, Resume = resume, Validate = validate, WorkingDirectory = _root };
         var origOut = Console.Out;
@@ -129,6 +140,7 @@ internal sealed partial class ResumeRunHarness : IDisposable
                     services.AddScoped<IManagerAgent>(_ => new StubAcceptingManagerAgent());
                     if (hook is not null)
                         services.AddScoped<ICrewExecutionHook>(_ => hook);
+                    configure?.Invoke(services);
                 },
                 ct);
             return (exit, stderr.ToString(), stdout.ToString());

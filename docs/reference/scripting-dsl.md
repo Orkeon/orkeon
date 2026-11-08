@@ -104,8 +104,7 @@ type by type.
 #### `process("graph")` is not `stateGraph`
 
 They are different facilities with a shared word. `process("graph")` runs the crew on the
-**domain's** graph strategy: one node per task, chained in execution order, a node looping on itself
-to retry its task, with a circuit breaker tuned by `GraphConfig`. `stateGraph({ nodes, edges })` is the topology **you**
+**domain's** graph strategy: one node per task, chained in execution order (a retry is the task's `retry:`), with a circuit breaker tuned by `GraphConfig`; a crew file can also describe its nodes and edges in a `graph:` block, which a script does not write. `stateGraph({ nodes, edges })` is the topology **you**
 draw, and it runs when you call `.run()` on it — from an agent `.body()`, so procedurally.
 
 `crewBuilder().graph(g)` used to blur the two: it accepted a `stateGraph`, stored it in a

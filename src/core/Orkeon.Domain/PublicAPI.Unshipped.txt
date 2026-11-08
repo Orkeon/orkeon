@@ -335,3 +335,40 @@ Orkeon.Domain.Task.TaskRetryPolicy.Retries.get -> int
 static readonly Orkeon.Domain.Task.TaskRetryPolicy.MaxDelay -> System.TimeSpan
 *REMOVED*Orkeon.Domain.Configuration.GraphConfig.MaxRetryCycles.get -> int
 *REMOVED*Orkeon.Domain.Configuration.GraphConfig.MaxRetryCycles.init -> void
+Orkeon.Domain.Configuration.GraphConfig.Edges.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Configuration.GraphEdgeConfig!>!
+Orkeon.Domain.Configuration.GraphConfig.Edges.init -> void
+Orkeon.Domain.Configuration.GraphConfig.Nodes.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Configuration.GraphNodeConfig!>?
+Orkeon.Domain.Configuration.GraphConfig.Nodes.init -> void
+Orkeon.Domain.Configuration.GraphConfig.Start.get -> string?
+Orkeon.Domain.Configuration.GraphConfig.Start.init -> void
+Orkeon.Domain.Configuration.GraphEdgeConfig
+Orkeon.Domain.Configuration.GraphEdgeConfig.<Clone>$() -> Orkeon.Domain.Configuration.GraphEdgeConfig!
+Orkeon.Domain.Configuration.GraphEdgeConfig.Deconstruct(out string! From, out string! To, out Orkeon.Domain.Task.ValueObjects.TaskCondition? When) -> void
+Orkeon.Domain.Configuration.GraphEdgeConfig.Equals(Orkeon.Domain.Configuration.GraphEdgeConfig? other) -> bool
+Orkeon.Domain.Configuration.GraphEdgeConfig.From.get -> string!
+Orkeon.Domain.Configuration.GraphEdgeConfig.From.init -> void
+Orkeon.Domain.Configuration.GraphEdgeConfig.GraphEdgeConfig(string! From, string! To, Orkeon.Domain.Task.ValueObjects.TaskCondition? When = null) -> void
+Orkeon.Domain.Configuration.GraphEdgeConfig.To.get -> string!
+Orkeon.Domain.Configuration.GraphEdgeConfig.To.init -> void
+Orkeon.Domain.Configuration.GraphEdgeConfig.When.get -> Orkeon.Domain.Task.ValueObjects.TaskCondition?
+Orkeon.Domain.Configuration.GraphEdgeConfig.When.init -> void
+Orkeon.Domain.Configuration.GraphNodeConfig
+Orkeon.Domain.Configuration.GraphNodeConfig.<Clone>$() -> Orkeon.Domain.Configuration.GraphNodeConfig!
+Orkeon.Domain.Configuration.GraphNodeConfig.Deconstruct(out string! Id, out string! Task) -> void
+Orkeon.Domain.Configuration.GraphNodeConfig.Equals(Orkeon.Domain.Configuration.GraphNodeConfig? other) -> bool
+Orkeon.Domain.Configuration.GraphNodeConfig.GraphNodeConfig(string! Id, string! Task) -> void
+Orkeon.Domain.Configuration.GraphNodeConfig.Id.get -> string!
+Orkeon.Domain.Configuration.GraphNodeConfig.Id.init -> void
+Orkeon.Domain.Configuration.GraphNodeConfig.Task.get -> string!
+Orkeon.Domain.Configuration.GraphNodeConfig.Task.init -> void
+const Orkeon.Domain.Configuration.GraphConfig.End = "END" -> string!
+override Orkeon.Domain.Configuration.GraphEdgeConfig.Equals(object? obj) -> bool
+override Orkeon.Domain.Configuration.GraphEdgeConfig.GetHashCode() -> int
+override Orkeon.Domain.Configuration.GraphEdgeConfig.ToString() -> string!
+override Orkeon.Domain.Configuration.GraphNodeConfig.Equals(object? obj) -> bool
+override Orkeon.Domain.Configuration.GraphNodeConfig.GetHashCode() -> int
+override Orkeon.Domain.Configuration.GraphNodeConfig.ToString() -> string!
+static Orkeon.Domain.Configuration.GraphEdgeConfig.operator !=(Orkeon.Domain.Configuration.GraphEdgeConfig? left, Orkeon.Domain.Configuration.GraphEdgeConfig? right) -> bool
+static Orkeon.Domain.Configuration.GraphEdgeConfig.operator ==(Orkeon.Domain.Configuration.GraphEdgeConfig? left, Orkeon.Domain.Configuration.GraphEdgeConfig? right) -> bool
+static Orkeon.Domain.Configuration.GraphNodeConfig.operator !=(Orkeon.Domain.Configuration.GraphNodeConfig? left, Orkeon.Domain.Configuration.GraphNodeConfig? right) -> bool
+static Orkeon.Domain.Configuration.GraphNodeConfig.operator ==(Orkeon.Domain.Configuration.GraphNodeConfig? left, Orkeon.Domain.Configuration.GraphNodeConfig? right) -> bool

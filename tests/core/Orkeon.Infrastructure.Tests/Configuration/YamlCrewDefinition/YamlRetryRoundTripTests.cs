@@ -114,7 +114,7 @@ tasks:
     public async System.Threading.Tasks.Task ShouldRefuseMaxRetryCyclesAsAnUnknownKey()
     {
         var ex = await Assert.ThrowsAnyAsync<InvalidOperationException>(
-            () => Loader().LoadFromStringAsync(Crew("", "graph", "graphConfig:\n  maxRetryCycles: 3"), Ct));
+            () => Loader().LoadFromStringAsync(Crew("", "graph", "graph:\n  maxRetryCycles: 3"), Ct));
 
         Assert.Contains("maxRetryCycles", ex.Message, StringComparison.Ordinal);
     }

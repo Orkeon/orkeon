@@ -197,19 +197,48 @@ public class RetryYamlConfig
 }
 
 /// <summary>
-/// YAML model for graph-specific configuration when process type is "graph".
-/// Controls the circuit breaker of the state graph engine (a task's retry is its own <c>retry:</c>).
+/// YAML model for the <c>graph:</c> block of a crew, read with <c>process: graph</c> only (ADR-018): the
+/// nodes and edges of the graph, and the budgets of its circuit breaker (a task's retry is its own <c>retry:</c>).
 /// </summary>
 public class GraphYamlConfig
 {
+    /// <summary>Gets or sets the id of the node the run starts at; unset, the first node.</summary>
+    public string? Start { get; set; }
+    /// <summary>Gets or sets the nodes; unset, one implicit node per task, its id the task's name.</summary>
+    public Collection<GraphNodeYamlConfig>? Nodes { get; set; }
+    /// <summary>Gets or sets the edges; several from one node are one conditional edge, evaluated in order.</summary>
+    public Collection<GraphEdgeYamlConfig>? Edges { get; set; }
     /// <summary>Gets or sets the circuit breaker preset ("strict", "permissive", "default").</summary>
     public string? CircuitBreakerPreset { get; set; }
-    /// <summary>Gets or sets the max transitions before tripping (overrides preset).</summary>
+    /// <summary>Gets or sets the max node runs before tripping (overrides preset).</summary>
     public int? MaxTransitions { get; set; }
-    /// <summary>Gets or sets the max state visits / cycle detection (overrides preset).</summary>
-    public int? MaxStateVisits { get; set; }
+    /// <summary>Gets or sets the max visits of one node before tripping (overrides preset).</summary>
+    public int? MaxVisits { get; set; }
     /// <summary>Gets or sets the max total duration in seconds (overrides preset).</summary>
     public int? MaxTotalDurationSeconds { get; set; }
+}
+
+/// <summary>YAML model for one node of the <c>graph:</c> block: an id and the task it runs.</summary>
+public class GraphNodeYamlConfig
+{
+    /// <summary>Gets or sets the node id, unique in the graph; never <c>START</c> or <c>END</c>.</summary>
+    public string? Id { get; set; }
+    /// <summary>Gets or sets the name of the crew task the node runs.</summary>
+    public string? Task { get; set; }
+}
+
+/// <summary>YAML model for one edge of the <c>graph:</c> block.</summary>
+public class GraphEdgeYamlConfig
+{
+    /// <summary>Gets or sets the node the edge leaves.</summary>
+    public string? From { get; set; }
+    /// <summary>Gets or sets the node the edge leads to, or <c>END</c>.</summary>
+    public string? To { get; set; }
+    /// <summary>
+    /// Gets or sets the condition: <c>&lt;task&gt;.&lt;question&gt;[.&lt;option&gt;]</c> to a value, on the decision task the edge leaves.
+    /// An edge without it is the "otherwise".
+    /// </summary>
+    public Dictionary<string, object>? When { get; set; }
 }
 
 /// <summary>
@@ -387,8 +416,8 @@ public class CrewYamlConfig
     /// (GAP-33).
     /// </summary>
     public string? ManagerAgent { get; set; }
-    /// <summary>Gets or sets the graph-specific configuration (only used when process is "graph").</summary>
-    public GraphYamlConfig? GraphConfig { get; set; }
+    /// <summary>Gets or sets the graph block (read with process "graph" only).</summary>
+    public GraphYamlConfig? Graph { get; set; }
     /// <summary>Gets or sets the crew-default LLM configuration applied to agents without their own (snake_case YAML parity).</summary>
     public LlmYamlConfig? Llm { get; set; }
     /// <summary>Gets or sets the crew-level RAG configuration (provider, collections, defaults).</summary>
@@ -455,8 +484,8 @@ public class CrewSettingsYamlConfig
     /// and Consensual (the <c>ManagerDecision</c> arbiter) only — see <see cref="CrewYamlConfig.ManagerAgent"/>.
     /// </summary>
     public string? ManagerAgent { get; set; }
-    /// <summary>Gets or sets the graph-specific configuration (only used when process is "graph").</summary>
-    public GraphYamlConfig? GraphConfig { get; set; }
+    /// <summary>Gets or sets the graph block (read with process "graph" only).</summary>
+    public GraphYamlConfig? Graph { get; set; }
     /// <summary>Gets or sets the crew-default LLM configuration applied to agents without their own (snake_case YAML parity).</summary>
     public LlmYamlConfig? Llm { get; set; }
     /// <summary>Gets or sets the crew-level RAG configuration (provider, collections, defaults).</summary>

@@ -2,12 +2,14 @@
 # Use case: State graph with typed state, conditional edges, controlled cycles, and circuit breaker
 # Demonstrates: process: "graph" with a task-level retry for a flaky task and automatic circuit breaker protection
 #
-# Graph topology:
-#   START -> task 1 -> task 2 -> ... -> last task -> END
+# Graph topology (the graph: block below):
+#   START -> collect_data -> validate_data -> analyze_insights -> write_report -> END
 #
-# One node per task, named after the task. A failed task is run again by its own retry: block
-# (here collect_data, 3 attempts), in every mode; the graph has no retry loop of its own.
-# The circuit breaker trips if the graph exceeds maxTransitions or maxStateVisits.
+# One node per task. A failed task is run again by its own retry: block (here collect_data, 3 attempts),
+# in every mode; the graph has no retry loop of its own, and a node that still fails stops the run.
+# The circuit breaker trips if the graph exceeds maxTransitions or maxVisits. With nodes, the edges order
+# the tasks: no task carries dependencies:. A decision task would add edges with a when: (see
+# docs/orchestration/graph.md).
 
 name: "graph-orchestration-demo"
 goal: "Demonstrate LangGraph-style orchestration with typed state graph, conditional routing, and a task-level retry"
@@ -16,12 +18,23 @@ verbose: true
 memory: false
 planning: false
 
-# --- Graph-specific configuration ---
-graphConfig:
+# --- The graph: nodes, edges and the circuit breaker ---
+graph:
+  start: collect
+  nodes:
+    - { id: collect,  task: collect_data }
+    - { id: validate, task: validate_data }
+    - { id: analyze,  task: analyze_insights }
+    - { id: report,   task: write_report }
+  edges:
+    - { from: collect,  to: validate }
+    - { from: validate, to: analyze }
+    - { from: analyze,  to: report }
+    - { from: report,   to: END }
   circuitBreakerPreset: "strict"  # Strict preset: 10 min max; visits/transitions sized from the crew
-  # Override specific circuit breaker values (optional) — graphConfig is the crew's only breaker setting:
+  # Override specific circuit breaker values (optional):
   # maxTransitions: 30
-  # maxStateVisits: 3
+  # maxVisits: 3
   # maxTotalDurationSeconds: 300
 
 agents:
@@ -90,7 +103,6 @@ tasks:
       Handle transient network errors gracefully.
     expectedOutput: "JSON array of data objects with: source_url, timestamp, raw_content, reliability_score"
     agent: "data_collector"
-    dependencies: []
     # The whole task runs again when an attempt fails (tool calls included): 3 runs at most, 500 ms then 1 s apart.
     retry:
       attempts: 3
@@ -106,8 +118,6 @@ tasks:
       indicating how many items passed/failed validation.
     expectedOutput: "JSON object with: clean_data (array), quality_report (pass_count, fail_count, issues)"
     agent: "data_validator"
-    dependencies:
-      - "collect_data"
     asyncExecution: false
     humanInput: false
 
@@ -118,8 +128,6 @@ tasks:
       Identify at least 3 actionable insights.
     expectedOutput: "JSON object with: insights (array of {finding, confidence, evidence}), summary_stats"
     agent: "analyst"
-    dependencies:
-      - "validate_data"
     asyncExecution: false
     humanInput: false
 
@@ -131,7 +139,5 @@ tasks:
       Save to output.md.
     expectedOutput: "Markdown executive report with sections: Summary, Methodology, Findings, Recommendations, Sources"
     agent: "report_writer"
-    dependencies:
-      - "analyze_insights"
     asyncExecution: false
     humanInput: false

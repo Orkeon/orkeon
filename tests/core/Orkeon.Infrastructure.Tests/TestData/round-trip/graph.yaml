@@ -1,0 +1,58 @@
+# Round-trip witness (FWK-28), with sequential.yaml: a graph crew, the one process that reads graph:.
+# It sets every key of the block (nodes, edges, the budgets) and is held to the same guard and round trip.
+name: ticket-router
+goal: Route a ticket to a fix or an escalation, and review the fix until it is approved
+process: graph
+
+graph:
+  start: triage
+  nodes:
+    - { id: triage,   task: triage }
+    - { id: fix,      task: fix }
+    - { id: review,   task: review }
+    - { id: escalate, task: escalate }
+  edges:
+    - { from: triage, to: fix, when: { triage.category: [bug] } }
+    - { from: triage, to: escalate }
+    - { from: fix,    to: review }
+    - { from: review, to: fix, when: { review.verdict: [revise] } }
+    - { from: review, to: END }
+    - { from: escalate, to: END }
+  circuitBreakerPreset: permissive
+  maxTransitions: 40
+  maxVisits: 6
+  maxTotalDurationSeconds: 900
+
+agents:
+  engineer:
+    role: Engineer
+    goal: Fix what the ticket reports
+
+tasks:
+  triage:
+    description: Classify the ticket
+    expectedOutput: A category
+    decision:
+      questions:
+        category:
+          choice:
+            bug: a defect
+            other: anything else
+  fix:
+    description: Fix the defect
+    expectedOutput: A patch
+    agent: engineer
+    retry: { attempts: 2 }
+  review:
+    description: Judge the patch
+    expectedOutput: A verdict
+    decision:
+      questions:
+        verdict:
+          choice:
+            approve: ship it
+            revise: send it back
+  escalate:
+    description: Page the on-call
+    expectedOutput: A page
+    agent: engineer

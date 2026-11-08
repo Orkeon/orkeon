@@ -124,7 +124,7 @@ En `.ork.ts`, le même choix s'écrit `agentBuilder().llm(llm.profile("claude"))
 un tel profil : sa carte montre le nom à écrire (`profile: claude`), et Studio l'écrit dans le
 fichier de réglages sans sa clé ([Studio écrit cette section](../reference/configuration.md#studio-écrit-cette-section)).
 
-Le `tools:` d'une tâche s'ajoute aux outils de son agent pour cette tâche seulement : un rédacteur qui détient `file_read` et exécute une tâche déclarant `tools: [file_write]` peut lire et écrire pendant cette tâche, et seulement lire pendant les autres. Il n'y a pas de bloc `circuitBreaker:` — une crew qui en écrit un est refusée au chargement. Ce qui borne une tâche à l'exécution, c'est la boucle de l'agent (`maxIter`, un arrêt après 3 erreurs d'outil identiques consécutives, et les reprises de validation de sortie) ; un run Graph est borné par `graphConfig` (ci-dessous).
+Le `tools:` d'une tâche s'ajoute aux outils de son agent pour cette tâche seulement : un rédacteur qui détient `file_read` et exécute une tâche déclarant `tools: [file_write]` peut lire et écrire pendant cette tâche, et seulement lire pendant les autres. Il n'y a pas de bloc `circuitBreaker:` — une crew qui en écrit un est refusée au chargement. Ce qui borne une tâche à l'exécution, c'est la boucle de l'agent (`maxIter`, un arrêt après 3 erreurs d'outil identiques consécutives, et les reprises de validation de sortie) ; un run Graph est borné par `graph:` (ci-dessous).
 
 Les guardrails peuvent être déclarés sur un agent (toutes ses tâches) et/ou sur une tâche
 (cette tâche seulement). Quand les deux existent, les deux s'appliquent — les règles de
@@ -132,13 +132,16 @@ l'agent d'abord, puis celles de la tâche — injectées dans le prompt système
 exécutant. Un `preset` autre que `analysis`, `strict` ou `creative` fait échouer le chargement, en
 nommant l'agent ou la tâche. Voir [Schéma YAML — Configuration Guardrails](../architecture/yaml-schema.md#configuration-guardrails).
 
-Quand `process: "graph"` est utilisé, un bloc `graphConfig` supplémentaire configure le moteur de graphe d'état :
+Quand `process: "graph"` est utilisé, un bloc `graph:` supplémentaire décrit les nœuds et les arêtes du graphe d'état et le borne :
 
 ```yaml
-graphConfig:
+graph:
+  start: string                 # facultatif : le premier nœud par défaut
+  nodes: [{ id, task }]         # facultatif : absent = un nœud implicite par tâche
+  edges: [{ from, to, when? }]  # `to: END` termine le run ; plusieurs depuis un nœud, dans l'ordre ; sans `when` = le sinon
   circuitBreakerPreset: string  # "strict" | "permissive" | "default" — défaut : strict
   maxTransitions: int           # Défaut : calculé, 2 × visites + 1
-  maxStateVisits: int           # Plafond de tentatives — défaut : calculé, somme sur les tâches de 1 + leurs retries
+  maxVisits: int                # Visites d'un nœud — défaut : calculé, somme sur les tâches de 1 + leurs retries
   maxTotalDurationSeconds: int  # Durée totale en secondes (surcharge le preset)
 ```
 

@@ -539,7 +539,7 @@ START ──→ tâche 1 ──→ tâche 2 ──→ … ──→ dernière t�
 | `MaxStateVisits` (visites d'un nœud) | somme de 1 + retries | 5 | 10 | 50 |
 | `MaxTotalDuration` | celle du preset (10 min en Strict) | 10 min | 30 min | 2 h |
 
-Chaque tentative de tâche est une visite du nœud de la tâche. Sans `maxStateVisits` / `maxTransitions` explicites, les deux sont **calculés depuis la crew** : la somme sur les tâches de `1 + retries` visites (les tentatives du `retry:` de chaque tâche ; `tâches × (1 + retries)` quand elles sont pareilles) — une borne large : un nœud n'est visité qu'une fois, ses tentatives ont lieu dans la visite — et deux fois plus une transitions ; une crew saine n'est donc jamais coupée, quelle que soit sa taille, et une vraie boucle déclenche encore le disjoncteur. Une valeur explicite l'emporte ; le preset (`circuitBreakerPreset`, Strict par défaut) ne fournit plus que ce qui n'est pas calculé, à commencer par la durée totale. Le quatrième mécanisme de la FSM, le timeout par état, n'est pas vérifié par le runner du graphe. Un disjoncteur déclenché renvoie un `CrewOutput` en échec (« Graph execution stopped by circuit breaker: … ») avec les sorties produites jusque-là.
+Chaque entrée dans un nœud est une visite de ce nœud, comptée par nœud (`maxVisits`). Sans `maxVisits` / `maxTransitions` explicites, les deux sont **calculés depuis la crew** : la somme sur les tâches de `1 + retries` visites (les tentatives du `retry:` de chaque tâche ; `tâches × (1 + retries)` quand elles sont pareilles) — une borne large : un nœud n'est visité qu'une fois, ses tentatives ont lieu dans la visite — et deux fois plus une transitions ; une crew saine n'est donc jamais coupée, quelle que soit sa taille, et une vraie boucle déclenche encore le disjoncteur. Une valeur explicite (dans le bloc `graph:`) l'emporte ; le preset (`circuitBreakerPreset`, Strict par défaut) ne fournit plus que ce qui n'est pas calculé, à commencer par la durée totale. Le quatrième mécanisme de la FSM, le timeout par état, n'est pas vérifié par le runner du graphe. Un disjoncteur déclenché renvoie un `CrewOutput` en échec (« Graph execution stopped by circuit breaker: … ») avec les sorties produites jusque-là.
 
 ### Configuration YAML
 
@@ -547,13 +547,24 @@ Chaque tentative de tâche est une visite du nœud de la tâche. Sans `maxStateV
 name: "review-loop"
 goal: "Démo graphe"
 process: graph
-graphConfig:
+graph:
+  nodes:                           # facultatif : sans nœuds ni arêtes, un nœud par tâche
+    - { id: write,   task: write }
+    - { id: review,  task: review }     # une tâche de décision : des arêtes en partent selon ses réponses
+    - { id: publish, task: publish }
+  edges:
+    - { from: write,  to: review }
+    - { from: review, to: write, when: { review.verdict: [revise] } }
+    - { from: review, to: publish }     # sans `when` : le sinon
+    - { from: publish, to: END }
   circuitBreakerPreset: "strict"   # ou "default", "permissive" — fournit la durée
   # Surcharges individuelles possibles (visites et transitions sont calculées sinon) :
   maxTransitions: 75
-  maxStateVisits: 20
+  maxVisits: 20
   maxTotalDurationSeconds: 1800
 ```
+
+Une boucle est une arête qui revient sur un nœud ; `maxVisits` la borne. Voir [l'orchestration Graph](./graph.md) et [le schéma YAML](../architecture/yaml-schema.md#configuration-graph) pour les règles (une arête « sinon » par décision, ni `when:` ni `dependencies:` au niveau tâche à côté de nœuds).
 
 ### Avantages
 
@@ -743,7 +754,7 @@ Les ProcessTypes sont exclusifs à l'échelle d'une crew, mais se combinent avec
 |-------|----------|
 | Architecture et concepts fondamentaux | [Vue d'ensemble](../getting-started/overview.md) |
 | Fonctionnalités détaillées | [YAML et Builders](../getting-started/yaml-and-builders.md) |
-| Schéma YAML (`process`, `graphConfig`) | [Schéma YAML](../architecture/yaml-schema.md) |
+| Schéma YAML (`process`, `graph`) | [Schéma YAML](../architecture/yaml-schema.md) |
 | FSM (moteur Domain générique) | [./fsm.md](./fsm.md) |
 | Orchestration Graph | [./graph.md](./graph.md) |
 | Orchestration Autonomous | [./autonomous.md](./autonomous.md) |

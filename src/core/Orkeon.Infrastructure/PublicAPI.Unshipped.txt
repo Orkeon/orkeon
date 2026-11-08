@@ -685,3 +685,39 @@ static Orkeon.Infrastructure.Telemetry.HealthChecks.HealthCheckExtensions.AddOrk
 [ORKEXP006]Orkeon.Infrastructure.AgentCommunication.HttpAuthorization.Reason.get -> string?
 [ORKEXP006]static Orkeon.Infrastructure.AgentCommunication.HttpAuthorization.Allow.get -> Orkeon.Infrastructure.AgentCommunication.HttpAuthorization!
 [ORKEXP006]Orkeon.Infrastructure.AgentCommunication.HttpRequestAuthenticator.AuthorizeAsync(System.Net.HttpListenerContext! context, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Infrastructure.AgentCommunication.HttpAuthorization!>!
+Orkeon.Infrastructure.Configuration.CrewMappingSettings.Graph.get -> Orkeon.Infrastructure.Configuration.GraphYamlConfig?
+Orkeon.Infrastructure.Configuration.CrewMappingSettings.Graph.init -> void
+Orkeon.Infrastructure.Configuration.CrewSettingsYamlConfig.Graph.get -> Orkeon.Infrastructure.Configuration.GraphYamlConfig?
+Orkeon.Infrastructure.Configuration.CrewSettingsYamlConfig.Graph.set -> void
+Orkeon.Infrastructure.Configuration.CrewYamlConfig.Graph.get -> Orkeon.Infrastructure.Configuration.GraphYamlConfig?
+Orkeon.Infrastructure.Configuration.CrewYamlConfig.Graph.set -> void
+Orkeon.Infrastructure.Configuration.GraphEdgeYamlConfig
+Orkeon.Infrastructure.Configuration.GraphEdgeYamlConfig.From.get -> string?
+Orkeon.Infrastructure.Configuration.GraphEdgeYamlConfig.From.set -> void
+Orkeon.Infrastructure.Configuration.GraphEdgeYamlConfig.GraphEdgeYamlConfig() -> void
+Orkeon.Infrastructure.Configuration.GraphEdgeYamlConfig.To.get -> string?
+Orkeon.Infrastructure.Configuration.GraphEdgeYamlConfig.To.set -> void
+Orkeon.Infrastructure.Configuration.GraphEdgeYamlConfig.When.get -> System.Collections.Generic.Dictionary<string!, object!>?
+Orkeon.Infrastructure.Configuration.GraphEdgeYamlConfig.When.set -> void
+Orkeon.Infrastructure.Configuration.GraphNodeYamlConfig
+Orkeon.Infrastructure.Configuration.GraphNodeYamlConfig.GraphNodeYamlConfig() -> void
+Orkeon.Infrastructure.Configuration.GraphNodeYamlConfig.Id.get -> string?
+Orkeon.Infrastructure.Configuration.GraphNodeYamlConfig.Id.set -> void
+Orkeon.Infrastructure.Configuration.GraphNodeYamlConfig.Task.get -> string?
+Orkeon.Infrastructure.Configuration.GraphNodeYamlConfig.Task.set -> void
+Orkeon.Infrastructure.Configuration.GraphYamlConfig.Edges.get -> System.Collections.ObjectModel.Collection<Orkeon.Infrastructure.Configuration.GraphEdgeYamlConfig!>?
+Orkeon.Infrastructure.Configuration.GraphYamlConfig.Edges.set -> void
+Orkeon.Infrastructure.Configuration.GraphYamlConfig.MaxVisits.get -> int?
+Orkeon.Infrastructure.Configuration.GraphYamlConfig.MaxVisits.set -> void
+Orkeon.Infrastructure.Configuration.GraphYamlConfig.Nodes.get -> System.Collections.ObjectModel.Collection<Orkeon.Infrastructure.Configuration.GraphNodeYamlConfig!>?
+Orkeon.Infrastructure.Configuration.GraphYamlConfig.Nodes.set -> void
+Orkeon.Infrastructure.Configuration.GraphYamlConfig.Start.get -> string?
+Orkeon.Infrastructure.Configuration.GraphYamlConfig.Start.set -> void
+*REMOVED*Orkeon.Infrastructure.Configuration.CrewMappingSettings.GraphConfig.get -> Orkeon.Infrastructure.Configuration.GraphYamlConfig?
+*REMOVED*Orkeon.Infrastructure.Configuration.CrewMappingSettings.GraphConfig.init -> void
+*REMOVED*Orkeon.Infrastructure.Configuration.CrewSettingsYamlConfig.GraphConfig.get -> Orkeon.Infrastructure.Configuration.GraphYamlConfig?
+*REMOVED*Orkeon.Infrastructure.Configuration.CrewSettingsYamlConfig.GraphConfig.set -> void
+*REMOVED*Orkeon.Infrastructure.Configuration.CrewYamlConfig.GraphConfig.get -> Orkeon.Infrastructure.Configuration.GraphYamlConfig?
+*REMOVED*Orkeon.Infrastructure.Configuration.CrewYamlConfig.GraphConfig.set -> void
+*REMOVED*Orkeon.Infrastructure.Configuration.GraphYamlConfig.MaxStateVisits.get -> int?
+*REMOVED*Orkeon.Infrastructure.Configuration.GraphYamlConfig.MaxStateVisits.set -> void

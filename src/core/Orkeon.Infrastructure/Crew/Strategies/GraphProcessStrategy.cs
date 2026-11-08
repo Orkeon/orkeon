@@ -1,3 +1,4 @@
+using Orkeon.Domain.Configuration;
 using Orkeon.Domain.Agent;
 using Orkeon.Domain.Common;
 using Orkeon.Domain.Common.StateMachine;
@@ -164,7 +165,7 @@ public sealed partial class GraphProcessStrategy : IProcessStrategy
         };
 
         // Build and compile the state graph
-        var (graph, nodeTasks) = BuildCrewGraph(initialState, effectivePolicy, taskIds);
+        var (graph, nodeTasks) = BuildCrewGraph(initialState, effectivePolicy, taskIds, crew.GraphConfig);
         var runner = graph.Compile();
 
         // Wire up observability
@@ -327,10 +328,13 @@ public sealed partial class GraphProcessStrategy : IProcessStrategy
     /// applied by the execution service below the strategy, not a loop of the graph.
     /// </summary>
     private (StateGraph<CrewGraphState> Graph, IReadOnlyDictionary<string, TaskId> NodeTasks) BuildCrewGraph(
-        CrewGraphState initialState, CircuitBreakerPolicy policy, IReadOnlyList<TaskId> taskIds)
+        CrewGraphState initialState, CircuitBreakerPolicy policy, IReadOnlyList<TaskId> taskIds, GraphConfig? topology)
     {
         _delegationProvider.UpdateExecutionContext(
             initialState.Context with { PreviousOutputs = initialState.ApplicationOutputs });
+
+        if (topology is { } described && (described.Nodes is not null || described.Edges.Count > 0))
+            return BuildDescribedGraph(initialState, policy, taskIds, described);
 
         var graph = new StateGraph<CrewGraphState>(policy);
         var nodeTasks = new Dictionary<string, TaskId>(StringComparer.Ordinal);
@@ -360,6 +364,78 @@ public sealed partial class GraphProcessStrategy : IProcessStrategy
         }
 
         return (graph, nodeTasks);
+    }
+
+    /// <summary>
+    /// Builds the graph a crew's <c>graph:</c> block describes (ADR-018, points 5 and 6): a node per
+    /// <see cref="GraphNodeConfig"/> (one per task when none is written), START leading to
+    /// <see cref="GraphConfig.Start"/> or the first node, and every node's edges as one edge, a conditional
+    /// one when the node branches on its decision's answers: the first edge whose <c>when</c> holds is taken,
+    /// else the edge without one. A node whose task did not succeed ends the run, there is no routing on
+    /// failure (a retry is the task's <c>retry:</c>), so every node can lead to END.
+    /// </summary>
+    private (StateGraph<CrewGraphState> Graph, IReadOnlyDictionary<string, TaskId> NodeTasks) BuildDescribedGraph(
+        CrewGraphState initialState, CircuitBreakerPolicy policy, IReadOnlyList<TaskId> taskIds, GraphConfig topology)
+    {
+        var byKey = new Dictionary<string, Orkeon.Domain.Task.CrewTask>(StringComparer.Ordinal);
+        foreach (var task in initialState.CrewTasks.Where(t => !string.IsNullOrWhiteSpace(t.Key)))
+            byKey.TryAdd(task.Key!, task);
+
+        var nodes = topology.Nodes
+            ?? [.. taskIds.Select(id => initialState.CrewTasks.FirstOrDefault(t => t.Id == id))
+                .OfType<Orkeon.Domain.Task.CrewTask>()
+                .Where(t => !string.IsNullOrWhiteSpace(t.Key))
+                .Select(t => new GraphNodeConfig(t.Key!, t.Key!))];
+
+        var faults = GraphTopologyCheck.Faults(topology.Start, [.. nodes.Select(n => n.Id)], topology.Edges);
+        if (faults.Count > 0)
+            throw new InvalidOperationException("Graph is invalid: " + string.Join(" ", faults));
+
+        const string end = StateGraph<CrewGraphState>.EndNode;
+        var graph = new StateGraph<CrewGraphState>(policy);
+        var nodeTasks = new Dictionary<string, TaskId>(StringComparer.Ordinal);
+        var taskOf = new Dictionary<string, Orkeon.Domain.Task.CrewTask>(StringComparer.Ordinal);
+        foreach (var node in nodes)
+        {
+            if (!byKey.TryGetValue(node.Task, out var task))
+                throw new InvalidOperationException($"Graph node '{node.Id}' names task '{node.Task}', which the crew does not have.");
+
+            nodeTasks[node.Id] = task.Id;
+            taskOf[node.Id] = task;
+            graph.AddNode(node.Id, (state, ct) => ExecuteTaskNodeAsync(state, task, ct));
+        }
+
+        graph.AddEdge(StateGraph<CrewGraphState>.StartNode, topology.Start ?? nodes[0].Id);
+        foreach (var leaving in topology.Edges.GroupBy(e => e.From, StringComparer.Ordinal))
+        {
+            var task = taskOf[leaving.Key];
+            var edges = leaving.ToList();
+            string Target(GraphEdgeConfig edge) => edge.To == GraphConfig.End ? end : edge.To;
+            var targets = edges.Select(Target).Append(end).Distinct(StringComparer.Ordinal).ToList();
+            graph.AddConditionalEdge(leaving.Key, state => RouteFrom(state, task, edges, Target), targets);
+        }
+
+        return (graph, nodeTasks);
+    }
+
+    private static string RouteFrom(
+        CrewGraphState state,
+        Orkeon.Domain.Task.CrewTask task,
+        List<GraphEdgeConfig> edges,
+        Func<GraphEdgeConfig, string> target)
+    {
+        if (state.Outcome.DidNotSucceed(task.Id))
+            return StateGraph<CrewGraphState>.EndNode;
+
+        // The latest answer of the decision wins on a revisit; none recorded takes the otherwise.
+        if (task.Decision is { } decision && state.Outcome.DecisionOf(task.Id) is { } answer)
+        {
+            var match = edges.FirstOrDefault(e => e.When is { } when && when.Holds(answer, decision));
+            if (match is not null)
+                return target(match);
+        }
+
+        return target(edges.First(e => e.When is null));
     }
 
     private static string NodeIdOf(Orkeon.Domain.Task.CrewTask task, Dictionary<string, TaskId> taken)
@@ -440,10 +516,19 @@ public sealed partial class GraphProcessStrategy : IProcessStrategy
     }
 
     /// <summary>A decision task answered by the decision runner from the outputs so far: no agent, no memory; the tokens the decision model reports are tallied.</summary>
-    private Task<TaskResult> RunDecisionTaskAsync(CrewGraphState state, Orkeon.Domain.Task.CrewTask task, CancellationToken ct) =>
-        _decisions is null
-            ? throw new InvalidOperationException($"Task {task.Id} is a decision task and the strategy has no decision runner.")
-            : _decisions.RunAsync(task, state.CrewTasks, state.ApplicationOutputs, ct);
+    private Task<TaskResult> RunDecisionTaskAsync(CrewGraphState state, Orkeon.Domain.Task.CrewTask task, CancellationToken ct)
+    {
+        if (_decisions is null)
+            throw new InvalidOperationException($"Task {task.Id} is a decision task and the strategy has no decision runner.");
+
+        Task<TaskResult> Decide() => _decisions.RunAsync(task, state.CrewTasks, state.ApplicationOutputs, ct);
+
+        // Taken once, then replayed from the checkpoint on a resumed run: the route a decision picked is part of
+        // the run, and a model asked again could pick another (FWK-28).
+        return _executionService is Checkpointing.ICheckpointedDecisions checkpointed
+            ? checkpointed.RunDecisionAsync(task, Decide, ct)
+            : Decide();
+    }
 
     /// <summary>
     /// Rebuilds the execution context with the latest outputs and runs the task.

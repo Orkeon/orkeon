@@ -108,8 +108,7 @@ dans l'ordre où ils ont tourné, `output` étant ce que le corps a rendu. Rien 
 #### `process("graph")` n'est pas `stateGraph`
 
 Deux dispositifs différents qui partagent un mot. `process("graph")` exécute la crew sur la
-stratégie graphe **du domaine** : un nœud par tâche, enchaînés dans l'ordre d'exécution, un nœud
-rebouclant sur lui-même pour relancer sa tâche, avec un disjoncteur réglé par `GraphConfig`. `stateGraph({ nodes, edges })` est la topologie que
+stratégie graphe **du domaine** : un nœud par tâche, enchaînés dans l'ordre d'exécution (un retry est le `retry:` de la tâche), avec un disjoncteur réglé par `GraphConfig` ; un fichier de crew peut aussi décrire ses nœuds et ses arêtes dans un bloc `graph:`, qu'un script n'écrit pas. `stateGraph({ nodes, edges })` est la topologie que
 **vous** dessinez, et elle s'exécute quand vous appelez `.run()` dessus — depuis un `.body()`
 d'agent, donc en procédural.
 

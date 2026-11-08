@@ -16,6 +16,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **One id end to end** [breaking]: the daemon's run id is now the run's `ExecutionId` (a 26-character ULID, was twelve hexadecimal characters). The chat `/stop`, the A2A task, the API, `orkeon runs`, the history and the checkpoint session name a run by it. `ICrewRunner.RunAsync` takes a trailing `RunIdempotency?`.
 - **Health checks always registered** [breaking]: they were added by `AddOrkeonTelemetry`, so a host without telemetry had none. `AddOrkeonInfrastructure()` now registers them through `AddOrkeonHealthChecks()`, and `llm_provider` carries the tag `llm`, `memory_provider` `ready`, `system_resources` `live`.
 
+### Added — the YAML `graph:` block: nodes, edges and decision branches (FWK-28) **[breaking]**
+
+- **`graph: {start?, nodes?: [{id, task}], edges: [{from, to, when?}], maxTransitions, maxVisits, circuitBreakerPreset, maxTotalDurationSeconds}`** under `process: graph` describes the graph the crew runs (ADR-018): `to: END` ends the run, several edges from one `from` are one conditional edge evaluated in the order declared, the first whose `when` holds wins and the edge without `when` is the "otherwise". A `when` keeps the grammar of the task-level one (`<task>.<question>[.<option>]`), on the decision task the edge leaves; a loop is an edge leading back to a node, bounded by `maxVisits`, and on a revisit the latest output and decision win. `edges` without `nodes` gives one node per task, named after it; without `graph:` the crew still runs one node per task in execution order. A node whose task fails ends the run.
+- Refused at load, each message naming the node or the task: a `when` on a task that is no decision, a decision with no edge without `when`, two edges without `when` from one node, several edges on an ordinary task, an orphan node, a node with no way to END, an unknown node or task, a task run by two nodes or by none, a task-level `when:` or `dependencies:` beside nodes or edges, and a `graph:` outside `process: graph`. The topology faults come from `GraphTopologyValidator`, all at once; the export checks them before it writes and writes `graph:` back, so import, export and import give the same graph.
+- A decision node's answer is checkpointed under the task's invocation key (`<task>#<n>`) and replayed when the run is resumed instead of being asked again, so a resumed run takes the route the interrupted one took (Graph process; `CheckpointingAgentExecutionService` keeps the decision outcome in the stored result). Sequential and Parallel still ask their decision tasks again on resume.
+- Domain: `GraphConfig` gains `Start`, `Nodes` (`GraphNodeConfig`) and `Edges` (`GraphEdgeConfig`, with an optional `TaskCondition`) and the constant `GraphConfig.End`. `GraphProcessStrategy` builds the described graph on the Domain engine, with the default budgets of the implicit graph (visits = sum of `1 + retries`, transitions = 2 × visits + 1).
+- **[breaking]** the YAML `graphConfig:` block is replaced by `graph:`; a crew that still writes `graphConfig` is refused at load, pointing to `graph:`. `maxStateVisits` becomes `maxVisits`, and there is no `maxCycles` (a bound on cycles is `maxVisits`, a retry is the task's `retry:`).
+
+  | Before | After |
+  |---|---|
+  | `graphConfig: { circuitBreakerPreset, maxTransitions, maxTotalDurationSeconds }` | `graph: { circuitBreakerPreset, maxTransitions, maxTotalDurationSeconds }` |
+  | `graphConfig.maxStateVisits` | `graph.maxVisits` |
+  | `CrewYamlConfig.GraphConfig`, `CrewSettingsYamlConfig.GraphConfig`, `CrewMappingSettings.GraphConfig` | `Graph` |
+  | `GraphYamlConfig.MaxStateVisits` | `GraphYamlConfig.MaxVisits` (the domain `GraphConfig.MaxStateVisits` keeps its name) |
+
+  The example `09-experimental/102-graph-orchestration` and the round-trip witnesses are migrated (a new `graph.yaml` witness sets every key of the block).
+
 ### Added — an LLM judge on a task's input and output (FWK-19)
 
 - **`Orkeon:Guardian:Llm`** (`Enabled`, `Phases`, `BlockThreshold`, `WarnThreshold`, `Risks`, `FailMode`, `MaxContentChars`) turns on `LlmJudgeGuard`, which asks the decision model (`IDecisionModel`, no profile of its own) one question per risk on an agent's input and on a task's output. Off by default: it costs a model call per phase.

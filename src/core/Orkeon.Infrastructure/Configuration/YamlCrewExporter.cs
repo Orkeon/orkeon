@@ -160,7 +160,7 @@ public partial class YamlCrewExporter
                 }
                 : null,
             ManagerAgent = config.ManagerAgentId is { } manager ? names.Of(manager) : null,
-            GraphConfig = MapGraphConfig(config.GraphConfig),
+            Graph = MapGraph(config, names),
             Rag = MapRag(config.Rag),
             Links = MapLinks(config.Links),
             Mounts = MapMounts(config),
@@ -218,19 +218,45 @@ public partial class YamlCrewExporter
             };
 
     /// <summary>
-    /// The <c>graphConfig:</c> block; null when the crew has none. Its two settings with a default
-    /// (<c>circuitBreakerPreset</c>) is written as the configuration carries it.
+    /// The <c>graph:</c> block; null when the crew has none. The topology is checked before it is written
+    /// (ADR-018, point 3), then nodes, edges and budgets go back as the configuration carries them, so
+    /// import, export and import give the same graph.
     /// </summary>
-    private static GraphYamlConfig? MapGraphConfig(GraphConfig? graph) =>
-        graph is null
-            ? null
-            : new GraphYamlConfig
-            {
-                CircuitBreakerPreset = graph.CircuitBreakerPreset,
-                MaxTransitions = graph.MaxTransitions,
-                MaxStateVisits = graph.MaxStateVisits,
-                MaxTotalDurationSeconds = graph.MaxTotalDurationSeconds,
-            };
+    private static GraphYamlConfig? MapGraph(CrewConfiguration config, EntryNames names)
+    {
+        if (config.GraphConfig is not { } graph)
+            return null;
+
+        if (graph.Nodes is not null || graph.Edges.Count > 0)
+        {
+            var nodeIds = graph.Nodes is null
+                ? config.Tasks.Select(t => names.Of(t.Id)).ToList()
+                : graph.Nodes.Select(n => n.Id).ToList();
+            var faults = GraphTopologyCheck.Faults(graph.Start, nodeIds, graph.Edges);
+            if (faults.Count > 0)
+                throw new InvalidOperationException($"Crew '{config.Name}' graph cannot be exported: " + string.Join(" ", faults));
+        }
+
+        return new GraphYamlConfig
+        {
+            Start = graph.Start,
+            Nodes = graph.Nodes is null
+                ? null
+                : new Collection<GraphNodeYamlConfig>([.. graph.Nodes.Select(n => new GraphNodeYamlConfig { Id = n.Id, Task = n.Task })]),
+            Edges = graph.Edges.Count == 0
+                ? null
+                : new Collection<GraphEdgeYamlConfig>([.. graph.Edges.Select(e => new GraphEdgeYamlConfig
+                {
+                    From = e.From,
+                    To = e.To,
+                    When = e.When is null ? null : MapCondition(e.When),
+                })]),
+            CircuitBreakerPreset = graph.CircuitBreakerPreset,
+            MaxTransitions = graph.MaxTransitions,
+            MaxVisits = graph.MaxStateVisits,
+            MaxTotalDurationSeconds = graph.MaxTotalDurationSeconds,
+        };
+    }
 
     /// <summary>
     /// The <c>rag:</c> block; null when the crew has none, <c>{}</c> when it declares an empty one. A

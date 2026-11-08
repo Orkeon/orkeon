@@ -30,7 +30,7 @@ namespace Orkeon.Infrastructure.Checkpointing;
 /// checkpointed: a task that failed runs again when the run is resumed. A checkpoint that cannot be
 /// written fails the task.
 /// </remarks>
-public sealed partial class CheckpointingAgentExecutionService : IAgentExecutionService
+public sealed partial class CheckpointingAgentExecutionService : IAgentExecutionService, ICheckpointedDecisions
 {
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
 
@@ -103,12 +103,30 @@ public sealed partial class CheckpointingAgentExecutionService : IAgentExecution
         return result;
     }
 
+    /// <inheritdoc />
+    async System.Threading.Tasks.Task<TaskResult> ICheckpointedDecisions.RunDecisionAsync(
+        ICrewTask task, Func<System.Threading.Tasks.Task<TaskResult>> decide, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(task);
+        ArgumentNullException.ThrowIfNull(decide);
+        if (await OpenAsync(null, task, cancellationToken).ConfigureAwait(false) is not { } call)
+            return await decide().ConfigureAwait(false);
+
+        if (call.Stored is { } stored)
+            return stored.ToResult();
+
+        var result = await RunAsync(call, decide).ConfigureAwait(false);
+        if (result.Success)
+            await WriteAsync(call, StoredResult.Of(result, call.Fingerprint), result.RetryCount, cancellationToken).ConfigureAwait(false);
+        return result;
+    }
+
     /// <summary>
     /// Opens the invocation: the run in flight, the key of this call, the task's fingerprint and what the
     /// checkpoint holds for it; null when the decorator has nothing to do (no run, or a task that has no
     /// name in a crew definition).
     /// </summary>
-    private async System.Threading.Tasks.Task<Call?> OpenAsync(DomainAgent agent, ICrewTask task, CancellationToken ct)
+    private async System.Threading.Tasks.Task<Call?> OpenAsync(DomainAgent? agent, ICrewTask task, CancellationToken ct)
     {
         if (_runScope.Current is not { } run || task.Key is not { Length: > 0 } taskKey)
             return null;
@@ -153,7 +171,7 @@ public sealed partial class CheckpointingAgentExecutionService : IAgentExecution
         return stored;
     }
 
-    private async System.Threading.Tasks.Task<string> FingerprintAsync(DomainAgent agent, ICrewTask task, CancellationToken ct)
+    private async System.Threading.Tasks.Task<string> FingerprintAsync(DomainAgent? agent, ICrewTask task, CancellationToken ct)
     {
         // The agent by what it is told to be, not by its id, which is new at every load; the dependencies
         // by their keys, for the same reason.
@@ -171,8 +189,8 @@ public sealed partial class CheckpointingAgentExecutionService : IAgentExecution
             '\u0001',
             task.Description.Value,
             task.ExpectedOutput.Value,
-            agent.Role.Value,
-            agent.Goal.Value,
+            agent?.Role.Value ?? string.Empty,
+            agent?.Goal.Value ?? string.Empty,
             string.Join('\u0002', dependencies));
         return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(text)))[..16];
     }
@@ -238,6 +256,9 @@ public sealed partial class CheckpointingAgentExecutionService : IAgentExecution
 
         public DateTimeOffset? EndedAt { get; init; }
 
+        // The outcome of a decision task, which a route reads: kept so that a resumed run replays it.
+        public Orkeon.Domain.Task.ValueObjects.DecisionOutcome? Decision { get; init; }
+
         public static StoredResult Of(TaskResult result, string fingerprint) => new()
         {
             Success = result.Success,
@@ -253,6 +274,7 @@ public sealed partial class CheckpointingAgentExecutionService : IAgentExecution
             CacheMissTokens = result.CacheMissTokens,
             IterationsUsed = result.IterationsUsed,
             EndedAt = result.EndedAt,
+            Decision = result.Decision,
         };
 
         public static StoredResult Of<TOutput>(TaskResult<TOutput> result, string fingerprint)
@@ -279,6 +301,7 @@ public sealed partial class CheckpointingAgentExecutionService : IAgentExecution
             CacheMissTokens = CacheMissTokens,
             IterationsUsed = IterationsUsed,
             EndedAt = EndedAt,
+            Decision = Decision,
         };
 
         public TaskResult<TOutput> ToResult<TOutput>()
