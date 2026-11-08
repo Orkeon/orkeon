@@ -151,18 +151,20 @@ au début de l'appel (une `ActSession` par appel) :
   (`LlmCacheConfig`) ; un `ttl` autre que `5m`/`1h`, un `ttl` sur rien de mis en cache ou une clé inconnue lève une
   erreur. Comme `effort` sur le builder, il façonne la configuration déclarée de l'agent (ses tours dans un
   équipage) et ses appels `ctx.llm`, l'option `effort` ou `cache` propre à un appel l'emportant (#254).
-- **`onToolCall(call)`** s'exécute avant chaque appel d'outil, après la porte de permission. Il renvoie
-  `"allow"` ; `"ask"` (l'appel passe par le canal d'approbation comme une édition en mode `default`, et
-  une réponse négative vaut refus) ; `{ deny: raison }` (l'appel ne s'exécute pas, le modèle lit
-  `DENIED: <raison>`) ; ou `{ input }` (l'appel s'exécute avec l'entrée réécrite, qui repasse par la
-  porte). Un rappel qui lève une exception refuse avec le message de l'exception ; toute autre valeur
+- **`onToolCall(call)`** s'exécute avant chaque appel d'outil, avant la porte de permission, qui juge
+  l'entrée que le rappel renvoie : un script qui ramène le `C:\proj\a.ts` d'un modèle à `/workspace/a.ts`
+  fait juger le chemin canonique, une fois (#303). Il renvoie `"allow"` (la porte juge l'appel tel
+  qu'il est venu) ; `"ask"` (une fois l'appel admis par le mode, il passe par le canal d'approbation
+  comme une édition en mode `default`, et une réponse négative vaut refus) ; `{ deny: raison }` (l'appel
+  ne s'exécute pas et la porte n'est pas consultée, le modèle lit `DENIED: <raison>`) ; ou `{ input }`
+  (la porte juge l'entrée réécrite, et l'appel s'exécute avec elle). Un rappel qui lève une exception refuse avec le message de l'exception ; toute autre valeur
   renvoyée (rien compris) refuse aussi, et `"ask"` sans porte de permission refuse.
 - **`onToolResult(call, result)`** s'exécute après chaque appel d'outil avec l'appel et son résultat (le
   JSON analysé, ou le texte s'il n'est pas du JSON). Un `{ context: "..." }` renvoyé remplace la ligne
   montrée au modèle pour ce résultat ; ne rien renvoyer la conserve.
 
 Les deux rappels s'exécutent sur le thread du moteur, par la même pompe que les outils de script (voir
-le modèle de threading ci-dessous) ; la porte de permission passe toujours en premier.
+le modèle de threading ci-dessous) ; `onToolCall` passe toujours avant la porte de permission.
 
 ## Le budget de tokens d'act
 

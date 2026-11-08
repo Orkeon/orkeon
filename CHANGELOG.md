@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — paths of the shell on Windows and WSL, and the gate after `onToolCall` (#300–#303)
+
+- **Shell, quoted paths** (#300): in the output, a physical path that follows an opening `"` or `'` is rewritten to its closing quote on the same line, spaces included (`"C:\ici est\un dossier\f.txt"` → `"/workspace/un dossier/f.txt"`); a `;` still separates two entries. Unquoted, the token still ends at whitespace.
+- **Shell, Windows bases** (#301): a Windows base (`C:\proj`, `\\server\share`) matches without case and with `/` for any `\`, so `c:\Proj\src\a.ts` and git's `C:/proj/src/a.ts` come back as `/workspace/src/a.ts`. A POSIX base still matches ordinally.
+- **Shell under WSL** (#302): new `Orkeon:Tools:Shell:WindowsPaths:<virtual path>`, the Windows spelling of a mount's base (what `wslpath -w` prints), and `ShellCommandTool.WindowsPaths`. Under WSL, unconfined, a Windows program on the `PATH` (a `.exe` under `/mnt/<d>/`) receives its mount-prefixed arguments in that spelling, after the same rights check; a mount the key does not name, on a Windows drive, gets that drive's spelling (`/mnt/c/proj` → `C:\proj`). What a program prints in that spelling comes back virtual. Outside WSL nothing changes.
+- **Scripts, `onToolCall` before the gate** (#303) **[breaking]**: without the host's invocation pipeline, `ctx.llm.act` runs `onToolCall` first and consults the permission gate once, on the input the callback returns, so a script that canonicalises a path (`C:\proj\a.ts` → `/workspace/a.ts`) has the canonical path judged. A `{ deny }` from the callback no longer reaches the gate; `"ask"` is put to the operator once the mode admitted the call.
+
+  | Before | After |
+  |---|---|
+  | gate on the raw input, then `onToolCall`, then the gate again on a rewritten `{ input }` | `onToolCall`, then the gate once on the input it returns |
+  | a gate denial skips `onToolCall` | `onToolCall` runs, then the gate denies |
+
 ### Fixed — adversarial review of the FWK lots **[breaking]**
 
 - **Human input and checkpoints** **[breaking]**: a stored answer is reused only for the question it answered: same kind, and for a tool approval the same tool and arguments' hash; any other call is asked again (it used to take the stored `allow`). A session holds every pending question (`SessionState.PendingInputs`; `PendingInput` is now the computed one shown), an answer closes only its own, and the run stops on a persisted question (`SessionState.SuspendedOn`); an answer that names no question goes to that one, and with several open and none of them the one the run stopped on it is refused (`PendingInputAnswerOutcome.RequestIdRequired`, `409 request_id_required` on the API). The resume fingerprint reads a task's description and expected output with the kickoff variables in them: a changed `--var` reruns the task. A task failure no longer marks the session `Failed` (`ICheckpointManager.FailSessionAsync` does, for the crew), and `--resume` checks the liveness of a `Failed` session as of a waiting one. The agents of a Consensual task each get their own checkpoint. A stored structured output is resolved from an exact allowlist of JSON types, and one that cannot be built reruns its task. The Json store writes its version files and manifest atomically, rebuilds an unreadable manifest from the version files, and keeps at most `Orkeon:Checkpointing:MaxVersions` versions per session (20; zero or negative keeps all), deleting the oldest; `JsonFileStateStore`'s constructor takes `maxVersions`.
