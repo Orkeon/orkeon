@@ -26,7 +26,7 @@ L'intégration MCP fonctionne dans les deux sens :
   (`ProcessRequestAsync`). Chaque `tools/call` franchit le point d'invocation que franchissent
   les appels d'un agent de crew — garde, troncature, assainisseur de résultat, audit. Seule
   la capacité outils est annoncée, plus des `resources` en lecture seule quand `/output` est exposé
-  (opt-in) — ni prompts, ni crews. La boucle stdio traite les requêtes en concurrence et honore
+  (opt-in), plus les `prompts` et les outils de crew quand `--crew` nomme des crews. La boucle stdio traite les requêtes en concurrence et honore
   `notifications/cancelled`. `orkeon mcp serve`
   le sert sur stdio — voir [Servir les outils avec `orkeon mcp serve`](#servir-les-outils-avec-orkeon-mcp-serve).
 
@@ -112,7 +112,7 @@ outil par son `IToolInvocationPipeline` — `AddOrkeonInfrastructure()` et
 Aucun réglage ne démarre le serveur (GAP-24) : la section `MCP` ne porte aucune clé de ce genre, et
 chaque runner bâti sur `RunnerHost` refuse une clé inconnue au démarrage, serveurs déclarés ou non. Le serveur expose des outils, et `/output` comme
 ressources quand `ExposeOutput` est actif (ci-dessous) ; `prompts/*` répondent
-`Method not found`, et aucune option ne prétend le contraire (les options inertes
+`Method not found` sauf si l'hôte donne au serveur un `IMcpServerExtension` (`orkeon mcp serve --crew` le fait, FWK-24), et aucune option ne prétend le contraire (les options inertes
 `ExposeResources`/`ExposePrompts` ont été supprimées, GAP-11). La surcharge
 `AddOrkeonInfrastructure(IConfiguration)` appelle elle-même `AddOrkeonMcp`, jamais
 `AddOrkeonMcpServer`.
@@ -286,7 +286,7 @@ DI ; les outils MCP arrivent dans le registre à l'exécution et ne sont pas env
 ## Servir les outils avec `orkeon mcp serve`
 
 ```bash
-orkeon mcp serve [--settings <fichier>] [--tools a,b,…] [--max-concurrency <n>] [--expose-output]
+orkeon mcp serve [--settings <fichier>] [--tools a,b,…] [--max-concurrency <n>] [--expose-output] [--crew <a.yaml> [<b.yaml> …]] [--allow-external-mounts]
 ```
 
 Le verbe sert les outils d'un hôte Orkeon à un client MCP sur **stdio** — le transport par
@@ -305,6 +305,39 @@ réponses sur son stdout, une par ligne ; fermer stdin arrête le serveur.
   outil répond pour l'opérateur d'un run, et le client d'un serveur MCP a son propre humain.
   Aucune crew n'est chargée, donc aucun outil que déclare une crew `.ork.ts` n'est servi : ceux-là
   sont enregistrés au chargement de leur crew.
+- **`--crew <a.yaml> [<b.yaml> …]` sert des crews comme outils (FWK-24).** Plusieurs crews se suivent, séparées par
+  des espaces, après un seul drapeau, qu'on ne peut pas répéter (comme `--mount`). Chaque crew est chargée une fois au
+  démarrage par le point d'entrée avec lequel `orkeon run` et `orkeon eval run --crew` chargent une crew, dans un hôte
+  à elle qui porte ce qu'`orkeon run` donne à une crew : les réglages (`--settings`, sinon résolus depuis le dossier
+  de la crew), le budget, le gardien et la barrière de permissions (`Orkeon:Security:PermissionGate`, un `ask` est
+  refusé sans canal). Une crew qui ne se charge pas, un dossier hors du répertoire courant sans
+  `--allow-external-mounts`, deux crews qui donnent un même nom, ou un nom `run_crew_*` qu'un outil de l'hôte porte déjà
+  refusent le démarrage, avec le nom. Seules les crews nommées sont servies : aucun outil ne prend de chemin.
+  - **L'outil est `run_crew_<nom>`** : le `name` de la crew, en minuscules, chaque suite d'autres caractères devenant un
+    tiret bas. Son `inputSchema` est un objet à une propriété chaîne obligatoire par `{placeholder}` trouvé dans les
+    `description` et `expectedOutput` des tâches (comparés sans tenir compte de la casse, dans l'ordre de première
+    apparition) et aucune autre propriété. Un nombre ou un booléen est lu comme son texte ; un objet, un tableau ou
+    `null` est refusé, de même qu'un argument inconnu ou manquant (`-32602`, noms listés). Le résultat est la sortie
+    finale de la crew ; une crew qui échoue est un résultat `isError`, pas une erreur JSON-RPC.
+  - **Progression** : quand l'appel porte `_meta.progressToken`, le serveur envoie une `notifications/progress` par tâche
+    terminée (`progress` de 1 à `total`, le nombre de tâches, avec un `message`) avant la réponse ; sans jeton rien
+    n'est envoyé. `notifications/cancelled` annule le run.
+  - **Prompts** : chaque tâche est le prompt `<nom>_task_<n>` (à partir de 1), ses arguments les placeholders de cette
+    tâche, le message sa description et sa sortie attendue interpolées. La capacité `prompts` n'est annoncée qu'avec
+    `--crew`.
+  - **Les appels d'une même crew s'exécutent un par un.** L'hôte de la crew est partagé par ses appels, et avec lui ce
+    qu'il monte (`/output`, `AUTO_SUMMARY.md`, les checkpoints) : un second appel attend le premier (les appels d'autres
+    crews, et tous les autres outils, s'exécutent à côté). Chaque appel tourne tout de même dans un scope à lui, avec
+    son propre état de tâches, et un `notifications/cancelled` du client annule la crew en cours : ses agents voient le
+    jeton et l'appel n'est pas répondu.
+  - **Le run est enregistré comme tout run de l'hôte.** Avec `Orkeon:RunHistory:Enabled` activé dans les réglages de la
+    crew, chaque appel est un run de l'historique : `run.started`, les événements de tâche, `run.finished`, sous son
+    propre identifiant de run (celui des checkpoints), lu avec `orkeon runs`. Historique éteint, rien n'est écrit. Les
+    événements ne portent pas de compte de tokens : l'usage du modèle n'est pas attribué par appel.
+  - **Il n'y a pas de mode hors ligne.** L'hôte du serveur lit les vrais réglages et une crew appelle les modèles
+    qu'ils déclarent ; le fournisseur mock ne s'atteint qu'en pointant les profils vers lui.
+  - Le `total` de la progression est le nombre de tâches de la crew ; une relance ou un manager hiérarchique peut
+    exécuter plus de tentatives que cela, et la progression s'arrête alors à `total`.
 - **`--tools a,b,…`** ne sert que les outils nommés (séparés par des virgules) ; un nom que
   l'hôte n'a pas refuse le démarrage en le nommant.
 - **Les requêtes s'exécutent en concurrence** (`--max-concurrency <n>`, au moins 1, 4 par
@@ -426,8 +459,7 @@ changelog :
 - **HTTP+SSE 2024-11-05 non supporté** — le transport à endpoint de messages séparé est refusé ; Streamable HTTP est le transport HTTP. L'interop contre le serveur de référence tourne chaque nuit (`McpReferenceServerInteropTests`, [Interop MCP](../guides/mcp-interop.md)).
 - **`2025-03-26` exclue** (batching JSON-RPC obligatoire).
 - **Le serveur ne parle que stdio** (`orkeon mcp serve`, ou `RunStdioAsync` /
-  `ProcessRequestAsync` dans un hôte C#) : pas de transport HTTP, ni prompts, ni crews
-  exposées comme outils, et les ressources se limitent à `/output` (lecture seule, pas de
+  `ProcessRequestAsync` dans un hôte C#) : pas de transport HTTP, des prompts et des crews comme outils seulement pour les crews que nomme `--crew` (un client ne donne jamais de chemin), et les ressources se limitent à `/output` (lecture seule, pas de
   `resources/subscribe`).
 
 ## Statut expérimental

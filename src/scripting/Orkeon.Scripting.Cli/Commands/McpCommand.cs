@@ -32,12 +32,26 @@ internal sealed class McpServeCommandOptions : CliOptions
         HelpText = "Serve /output as read-only MCP resources (orkeon:///output/<path>), through the host's virtual file system. /workspace is never served.")]
     public bool ExposeOutput { get; set; }
 
+    /// <summary>The crews to serve as <c>run_crew_&lt;name&gt;</c> tools.</summary>
+    [Option("crew", Required = false,
+        HelpText = "Serve a crew as the tool run_crew_<name> (its name, lower case), its input the {placeholders} of its tasks, its result the crew's final output, with progress when the client sends a progressToken; "
+                   + "its tasks are also offered as prompts. Several crews go space-separated after ONE --crew (the flag cannot be repeated). Budget, guardian and permission gate are those of `orkeon run`.")]
+    public IEnumerable<string> Crews { get; set; } = [];
+
+    /// <summary>Lets a crew outside the working directory be served.</summary>
+    [Option("allow-external-mounts", Required = false, Default = false,
+        HelpText = "Allow a --crew whose folder is outside the working directory, as `orkeon run --allow-external-mounts` does. Can also be enabled via ORKEON_ALLOW_EXTERNAL_MOUNTS=1.")]
+    public bool AllowExternalMounts { get; set; }
+
+    /// <summary>Test seam: services added to the host of every <c>--crew</c>.</summary>
+    internal Action<Microsoft.Extensions.Hosting.HostBuilderContext, IServiceCollection>? ConfigureCrewServices { get; set; }
+
     /// <summary>Test seam: overrides the current directory the host is anchored at.</summary>
     internal string? WorkingDirectoryOverride { get; set; }
 }
 
 /// <summary>
-/// <c>orkeon mcp serve [--settings &lt;file&gt;] [--tools a,b,…] [--max-concurrency n] [--expose-output]</c> — serves the tools of an
+/// <c>orkeon mcp serve [--settings &lt;file&gt;] [--tools a,b,…] [--max-concurrency n] [--expose-output] [--crew a.yaml b.yaml]</c> — serves the tools of an
 /// Orkeon host to an MCP client over stdio (GAP-24), the transport by which Claude Desktop and the
 /// editors launch a local server.
 /// <para>
@@ -98,11 +112,19 @@ internal static class McpCommand
         Environment.SetEnvironmentVariable(RunnerEnvironment.McpServeVariable, "1");
         try
         {
-            using var host = await BuildHostAsync(console, options).ConfigureAwait(false);
+            // The crews first: a crew that does not load, or a name given twice, refuses the start before the tools host is built.
+            using var crews = await OpenCrewsAsync(console, options).ConfigureAwait(false);
+            if (options.Crews.Any() && crews is null)
+                return Program.ExitScriptError;
+
+            using var host = await BuildHostAsync(console, options, crews).ConfigureAwait(false);
             if (host is null)
                 return Program.ExitScriptError;
 
             if (!await ServeOnlyAsync(console.ErrorOutput, host.Services.GetRequiredService<IToolRegistry>(), options.Tools).ConfigureAwait(false))
+                return Program.ExitScriptError;
+
+            if (crews is not null && !await CrewNamesAreFreeAsync(console.ErrorOutput, host.Services.GetRequiredService<IToolRegistry>(), crews).ConfigureAwait(false))
                 return Program.ExitScriptError;
 
             if (options.ExposeOutput && !host.Services.GetRequiredService<IFileSystemService>().GetAvailableMounts()
@@ -130,13 +152,46 @@ internal static class McpCommand
         }
     }
 
+    /// <summary>Opens the <c>--crew</c> crews, each through the entry point <c>orkeon run</c> loads a crew with; null when none is named or one refuses (the reason is on stderr).</summary>
+    private static async Task<McpCrewToolHost?> OpenCrewsAsync(IRunnerConsole console, McpServeCommandOptions options)
+    {
+        var paths = options.Crews.ToList();
+        if (paths.Count == 0)
+            return null;
+
+        var cwd = Path.GetFullPath(options.WorkingDirectoryOverride ?? Directory.GetCurrentDirectory());
+        return await McpCrewToolHost.OpenAsync(
+            paths,
+            new McpCrewHostOptions
+            {
+                SettingsPath = options.SettingsPath,
+                WorkingDirectory = cwd,
+                AllowExternalMounts = options.AllowExternalMounts,
+                Console = console,
+                ConfigureServices = options.ConfigureCrewServices,
+            },
+            CancellationToken.None).ConfigureAwait(false);
+    }
+
+    /// <summary>A <c>run_crew_*</c> name a tool of the host already holds refuses the start, named: the client could not tell them apart.</summary>
+    private static async Task<bool> CrewNamesAreFreeAsync(TextWriter error, IToolRegistry registry, McpCrewToolHost crews)
+    {
+        var held = (await registry.GetAllToolsAsync().ConfigureAwait(false)).Select(t => t.Name).ToHashSet(StringComparer.Ordinal);
+        var clash = crews.Tools.Select(t => t.Name).FirstOrDefault(held.Contains);
+        if (clash is null)
+            return true;
+
+        await error.WriteLineAsync($"orkeon mcp serve: the tool name '{clash}' of a --crew is already held by a tool of the host.").ConfigureAwait(false);
+        return false;
+    }
+
     /// <summary>
     /// The host <c>--list-tools</c> reports, plus the server: what <c>orkeon run</c> adds to the
     /// runner host — <c>semantic_search</c>, the ONNX reranker —, and <c>AddOrkeonMcpServer</c>.
     /// Null when the settings are refused; the
     /// line that says why is already on stderr.
     /// </summary>
-    private static async Task<IHost?> BuildHostAsync(IRunnerConsole console, McpServeCommandOptions options)
+    private static async Task<IHost?> BuildHostAsync(IRunnerConsole console, McpServeCommandOptions options, McpCrewToolHost? crews)
     {
         var cwd = Path.GetFullPath(options.WorkingDirectoryOverride ?? Directory.GetCurrentDirectory());
         var settingsPath = RunnerSettings.ResolveSettingsPath(options.SettingsPath, cwd, console.ErrorOutput);
@@ -153,6 +208,8 @@ internal static class McpCommand
                 services.AddSingleton(console);
                 services.AddSemanticSearchTool();
                 RunCommand.AddCliRagServices(services);
+                if (crews is not null)
+                    services.AddSingleton<IMcpServerExtension>(crews);
                 services.AddOrkeonMcpServer(context.Configuration);
                 // The verb's options win over MCP:Server, which they extend.
                 services.PostConfigure<McpServerOptions>(server =>

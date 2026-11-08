@@ -445,7 +445,7 @@ public static partial class RunnerExecution
     /// Console logging preset that routes every level to stderr. Used by <c>--list-tools</c> so
     /// stdout stays a clean, machine-readable tool manifest while warnings/errors remain visible.
     /// </summary>
-    private static void ConfigureStderrOnlyLogging(ILoggingBuilder b)
+    internal static void ConfigureStderrOnlyLogging(ILoggingBuilder b)
     {
         b.AddSimpleConsole(o =>
         {

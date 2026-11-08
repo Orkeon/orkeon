@@ -599,8 +599,8 @@ const Orkeon.Infrastructure.Decision.LlmJudgeGuard.TruncatedThreatType = "guardi
 Orkeon.Infrastructure.Decision.GuardianJudgePhase
 Orkeon.Infrastructure.Decision.GuardianJudgePhase.Input = 0 -> Orkeon.Infrastructure.Decision.GuardianJudgePhase
 Orkeon.Infrastructure.Decision.GuardianJudgePhase.Output = 1 -> Orkeon.Infrastructure.Decision.GuardianJudgePhase
-[ORKEXP004]Orkeon.Infrastructure.MCP.McpServer.McpServer(Orkeon.Domain.Tools.IToolRegistry! toolRegistry, Orkeon.Application.Interfaces.Security.IToolInvocationPipeline! toolInvocation, Orkeon.Domain.FileSystem.IFileSystemService! fileSystem, Microsoft.Extensions.Options.IOptions<Orkeon.Infrastructure.MCP.McpServerOptions!>! options, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.MCP.McpServer!>? logger = null) -> void
-[ORKEXP004]Orkeon.Infrastructure.MCP.McpServer.McpServer(Orkeon.Domain.Tools.IToolRegistry! toolRegistry, Orkeon.Application.Interfaces.Security.IToolInvocationPipeline! toolInvocation, Orkeon.Domain.FileSystem.IFileSystemService! fileSystem, Orkeon.Infrastructure.MCP.McpServerOptions! options, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.MCP.McpServer!>? logger = null) -> void
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpServer.McpServer(Orkeon.Domain.Tools.IToolRegistry! toolRegistry, Orkeon.Application.Interfaces.Security.IToolInvocationPipeline! toolInvocation, Orkeon.Domain.FileSystem.IFileSystemService! fileSystem, Microsoft.Extensions.Options.IOptions<Orkeon.Infrastructure.MCP.McpServerOptions!>! options, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.MCP.McpServer!>? logger = null, Orkeon.Infrastructure.MCP.IMcpServerExtension? extension = null) -> void
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpServer.McpServer(Orkeon.Domain.Tools.IToolRegistry! toolRegistry, Orkeon.Application.Interfaces.Security.IToolInvocationPipeline! toolInvocation, Orkeon.Domain.FileSystem.IFileSystemService! fileSystem, Orkeon.Infrastructure.MCP.McpServerOptions! options, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.MCP.McpServer!>? logger = null, Orkeon.Infrastructure.MCP.IMcpServerExtension? extension = null) -> void
 [ORKEXP004]Orkeon.Infrastructure.MCP.McpServerOptions.ExposeOutput.get -> bool
 [ORKEXP004]Orkeon.Infrastructure.MCP.McpServerOptions.ExposeOutput.set -> void
 [ORKEXP004]Orkeon.Infrastructure.MCP.McpServerOptions.MaxConcurrency.get -> int
@@ -721,3 +721,17 @@ Orkeon.Infrastructure.Configuration.GraphYamlConfig.Start.set -> void
 *REMOVED*Orkeon.Infrastructure.Configuration.CrewYamlConfig.GraphConfig.set -> void
 *REMOVED*Orkeon.Infrastructure.Configuration.GraphYamlConfig.MaxStateVisits.get -> int?
 *REMOVED*Orkeon.Infrastructure.Configuration.GraphYamlConfig.MaxStateVisits.set -> void
+[ORKEXP004]Orkeon.Infrastructure.MCP.IMcpProgress
+[ORKEXP004]Orkeon.Infrastructure.MCP.IMcpProgress.Report(double progress, double? total = null, string? message = null) -> void
+[ORKEXP004]Orkeon.Infrastructure.MCP.IMcpServerExtension
+[ORKEXP004]Orkeon.Infrastructure.MCP.IMcpServerExtension.CallToolAsync(string! name, System.Text.Json.JsonElement? arguments, Orkeon.Infrastructure.MCP.IMcpProgress! progress, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<Orkeon.Infrastructure.MCP.McpToolCallResult!>!
+[ORKEXP004]Orkeon.Infrastructure.MCP.IMcpServerExtension.GetPromptAsync(string! name, System.Text.Json.JsonElement? arguments, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<Orkeon.Infrastructure.MCP.McpPromptGetResult!>!
+[ORKEXP004]Orkeon.Infrastructure.MCP.IMcpServerExtension.OwnsTool(string! name) -> bool
+[ORKEXP004]Orkeon.Infrastructure.MCP.IMcpServerExtension.Prompts.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Infrastructure.MCP.McpPrompt!>!
+[ORKEXP004]Orkeon.Infrastructure.MCP.IMcpServerExtension.Tools.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Infrastructure.MCP.McpToolDefinition!>!
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpRequestException
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpRequestException.Code.get -> int
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpRequestException.McpRequestException() -> void
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpRequestException.McpRequestException(int code, string! message) -> void
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpRequestException.McpRequestException(string! message) -> void
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpRequestException.McpRequestException(string! message, System.Exception! innerException) -> void

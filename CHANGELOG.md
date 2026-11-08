@@ -41,6 +41,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `publish.yml` installs the packed template package, generates each template and builds it before the push; `TemplatesPackTests` (`Category=Slow`, `tests/e2e`) does the same offline, nightly, on a local feed of the packed nupkgs.
 - The source layout counts one more project: 51 under `src/`.
 
+### Added — crews as MCP tools and server-side prompts (FWK-24)
+
+- **`orkeon mcp serve --crew <a.yaml> [<b.yaml> …]`** serves each crew as the tool `run_crew_<name>` (the crew's `name`, lower case): its `inputSchema` is one required string property per `{placeholder}` of the tasks' `description` and `expectedOutput`, its result the crew's final output (a crew that fails is a result with `isError`), and a call carrying `_meta.progressToken` gets one `notifications/progress` per finished task. Only the crews named are served: no tool takes a path. Each crew is loaded through `CrewRunEntryPoint`, in a host of its own, so the budget, the guardian and the permission gate are those of `orkeon run`; `--allow-external-mounts` is the `orkeon run` guard for a crew outside the working directory. A call is recorded in the run history (`Orkeon:RunHistory:Enabled`) like any run of the host, under its own run id, and nothing is written with the history off. Calls of one crew run one at a time (its host and its mounts are shared), and `notifications/cancelled` cancels the running crew. The progress `total` is the number of tasks, which a retry or a hierarchical manager can exceed. The serve host reads the real settings: there is no offline mode.
+- **`prompts/list` and `prompts/get`**: every task of every served crew is the prompt `<name>_task_<n>`, its arguments the task's placeholders, the message its description and expected output interpolated. The `prompts` capability is advertised only with `--crew`.
+- New public types `IMcpServerExtension`, `IMcpProgress` and `McpRequestException` (`ORKEXP004`); `McpServer` takes an optional `extension` after `logger`.
+- `--crew` follows the repository's option grammar: several crews go space-separated after one flag, which cannot be repeated.
+
 ### Added — an LLM judge on a task's input and output (FWK-19)
 
 - **`Orkeon:Guardian:Llm`** (`Enabled`, `Phases`, `BlockThreshold`, `WarnThreshold`, `Risks`, `FailMode`, `MaxContentChars`) turns on `LlmJudgeGuard`, which asks the decision model (`IDecisionModel`, no profile of its own) one question per risk on an agent's input and on a task's output. Off by default: it costs a model call per phase.

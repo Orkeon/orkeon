@@ -54,6 +54,7 @@ public partial class McpServer
     private readonly McpServerOptions _options;
     private readonly ILogger _logger;
     private readonly IFileSystemService _fileSystem;
+    private readonly IMcpServerExtension? _extension;
 
     /// <summary>Initializes a new instance of <see cref="McpServer"/>.</summary>
     /// <param name="toolRegistry">The tool registry exposing Orkeon tools.</param>
@@ -61,13 +62,15 @@ public partial class McpServer
     /// <param name="fileSystem">The virtual file system <c>/output</c> is served from, when <see cref="McpServerOptions.ExposeOutput"/> is on; its rights apply.</param>
     /// <param name="options">The MCP server options.</param>
     /// <param name="logger">Optional logger.</param>
+    /// <param name="extension">Optional extra tools and prompts the host serves (FWK-24).</param>
     public McpServer(
         IToolRegistry toolRegistry,
         IToolInvocationPipeline toolInvocation,
         IFileSystemService fileSystem,
         IOptions<McpServerOptions> options,
-        ILogger<McpServer>? logger = null)
-        : this(toolRegistry, toolInvocation, fileSystem, options?.Value ?? new McpServerOptions(), logger)
+        ILogger<McpServer>? logger = null,
+        IMcpServerExtension? extension = null)
+        : this(toolRegistry, toolInvocation, fileSystem, options?.Value ?? new McpServerOptions(), logger, extension)
     {
     }
 
@@ -77,13 +80,16 @@ public partial class McpServer
     /// <param name="fileSystem">The virtual file system <c>/output</c> is served from, when <see cref="McpServerOptions.ExposeOutput"/> is on; its rights apply.</param>
     /// <param name="options">The MCP server options.</param>
     /// <param name="logger">Optional logger.</param>
+    /// <param name="extension">Optional extra tools and prompts the host serves (FWK-24).</param>
     public McpServer(
         IToolRegistry toolRegistry,
         IToolInvocationPipeline toolInvocation,
         IFileSystemService fileSystem,
         McpServerOptions options,
-        ILogger<McpServer>? logger = null)
+        ILogger<McpServer>? logger = null,
+        IMcpServerExtension? extension = null)
     {
+        _extension = extension;
         ArgumentNullException.ThrowIfNull(toolRegistry);
         ArgumentNullException.ThrowIfNull(toolInvocation);
         ArgumentNullException.ThrowIfNull(fileSystem);
@@ -109,6 +115,16 @@ public partial class McpServer
         JsonRpcRequest request, CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(request);
+        return ProcessRequestWithNotificationsAsync(request, null, ct);
+    }
+
+    /// <summary>
+    /// The request's processing. <paramref name="notify"/> carries what the call sends the client before its answer
+    /// (<c>notifications/progress</c>); null when there is no channel to send on.
+    /// </summary>
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "JSON-RPC boundary fault barrier: any handler failure is converted into a JSON-RPC InternalError response so one bad request cannot crash the MCP server.")]
+    private Task<JsonRpcResponse?> ProcessRequestWithNotificationsAsync(JsonRpcRequest request, Action<JsonRpcNotification>? notify, CancellationToken ct)
+    {
         return ProcessRequestCoreAsync();
 
         async Task<JsonRpcResponse?> ProcessRequestCoreAsync()
@@ -147,12 +163,18 @@ public partial class McpServer
                     // ping was removed from the modern lineage; it stays served for legacy sessions.
                     "ping" when !isModern => CreateSuccessResponse(request.Id, new { }),
                     "tools/list" => await HandleToolsList(request, isModern).ConfigureAwait(false),
-                    "tools/call" => await HandleToolsCall(request, isModern, ct).ConfigureAwait(false),
+                    "tools/call" => await HandleToolsCall(request, isModern, notify, ct).ConfigureAwait(false),
+                    "prompts/list" when HasPrompts => HandlePromptsList(request),
+                    "prompts/get" when HasPrompts => await HandlePromptsGet(request, ct).ConfigureAwait(false),
                     "resources/list" when _options.ExposeOutput => await HandleResourcesList(request, ct).ConfigureAwait(false),
                     "resources/read" when _options.ExposeOutput => await HandleResourcesRead(request, ct).ConfigureAwait(false),
                     _ => CreateErrorResponse(request.Id, JsonRpcErrorCodes.MethodNotFound,
                         $"Method not found: {request.Method}")
                 };
+            }
+            catch (McpRequestException ex)
+            {
+                return CreateErrorResponse(request.Id, ex.Code, ex.Message);
             }
             catch (Exception ex)
             {
@@ -296,7 +318,10 @@ public partial class McpServer
             await gate.WaitAsync(cts.Token).ConfigureAwait(false);
             try
             {
-                response = await ProcessRequestAsync(request, cts.Token).ConfigureAwait(false);
+                response = await ProcessRequestWithNotificationsAsync(
+                    request,
+                    notification => outbox.TryWrite(JsonSerializer.Serialize(notification)),
+                    cts.Token).ConfigureAwait(false);
             }
             finally
             {
@@ -372,7 +397,8 @@ public partial class McpServer
             Capabilities = new McpServerCapabilities
             {
                 Tools = new McpCapabilityInfo { ListChanged = true },
-                Resources = ResourcesCapability()
+                Resources = ResourcesCapability(),
+                Prompts = PromptsCapability()
             },
             TtlMs = ToolListTtlMs,
             CacheScope = "private",
@@ -380,6 +406,84 @@ public partial class McpServer
         };
 
         return CreateSuccessResponse(request.Id, result);
+    }
+
+    private bool HasPrompts => _extension is { Prompts.Count: > 0 };
+
+    private McpCapabilityInfo? PromptsCapability() => HasPrompts ? new McpCapabilityInfo { ListChanged = false } : null;
+
+    private JsonRpcResponse HandlePromptsList(JsonRpcRequest request) =>
+        CreateSuccessResponse(request.Id, new McpPromptListResult { Prompts = _extension!.Prompts });
+
+    private async Task<JsonRpcResponse> HandlePromptsGet(JsonRpcRequest request, CancellationToken ct)
+    {
+        string? name = null;
+        JsonElement? arguments = null;
+        if (request.Params is { ValueKind: JsonValueKind.Object } p)
+        {
+            if (p.TryGetProperty("name", out var n) && n.ValueKind == JsonValueKind.String)
+                name = n.GetString();
+            if (p.TryGetProperty("arguments", out var a))
+                arguments = a;
+        }
+
+        if (string.IsNullOrEmpty(name))
+            return CreateErrorResponse(request.Id, JsonRpcErrorCodes.InvalidParams, "Missing prompt name in parameters");
+
+        var result = await _extension!.GetPromptAsync(name, arguments, ct).ConfigureAwait(false);
+        return CreateSuccessResponse(request.Id, result);
+    }
+
+    /// <summary>The progress channel of a call: notifications when the client gave a <c>progressToken</c> and there is a channel to send on.</summary>
+    private static IMcpProgress ProgressFor(JsonRpcRequest request, Action<JsonRpcNotification>? notify)
+    {
+        if (notify is null
+            || request.Params is not { ValueKind: JsonValueKind.Object } p
+            || !p.TryGetProperty("_meta", out var meta)
+            || meta.ValueKind != JsonValueKind.Object
+            || !meta.TryGetProperty("progressToken", out var token)
+            || token.ValueKind is not (JsonValueKind.String or JsonValueKind.Number))
+        {
+            return NoProgress.Instance;
+        }
+
+        return new NotifyingProgress(token.Clone(), notify);
+    }
+
+    private sealed class NoProgress : IMcpProgress
+    {
+        public static readonly NoProgress Instance = new();
+
+        public void Report(double progress, double? total = null, string? message = null)
+        {
+        }
+    }
+
+    /// <summary>Turns each report into a <c>notifications/progress</c>; a value that does not exceed the last one is dropped, as the spec requires.</summary>
+    private sealed class NotifyingProgress(JsonElement token, Action<JsonRpcNotification> notify) : IMcpProgress
+    {
+        private readonly Lock _gate = new();
+        private double _last = double.NegativeInfinity;
+
+        public void Report(double progress, double? total = null, string? message = null)
+        {
+            lock (_gate)
+            {
+                if (progress <= _last)
+                    return;
+                _last = progress;
+                var parameters = new Dictionary<string, object?> { ["progressToken"] = token, ["progress"] = progress };
+                if (total is { } t)
+                    parameters["total"] = t;
+                if (message is not null)
+                    parameters["message"] = message;
+                notify(new JsonRpcNotification
+                {
+                    Method = "notifications/progress",
+                    Params = JsonSerializer.SerializeToElement(parameters),
+                });
+            }
+        }
     }
 
     private JsonRpcResponse HandleInitialize(JsonRpcRequest request)
@@ -407,7 +511,8 @@ public partial class McpServer
             Capabilities = new McpServerCapabilities
             {
                 Tools = new McpCapabilityInfo { ListChanged = true },
-                Resources = ResourcesCapability()
+                Resources = ResourcesCapability(),
+                Prompts = PromptsCapability()
             },
             ServerInfo = new McpServerInfo
             {
@@ -425,13 +530,15 @@ public partial class McpServer
 
         // Deterministic order (2026-07-28 SHOULD): stable client caches, better prompt caching.
         var mcpTools = tools
-            .OrderBy(t => t.Name, StringComparer.Ordinal)
             .Select(t => new McpToolDefinition
             {
                 Name = t.Name,
                 Description = t.Description,
                 InputSchema = ConvertToolSchemaToJsonSchema(t.Schema)
-            }).ToList();
+            })
+            .Concat(_extension?.Tools ?? [])
+            .OrderBy(t => t.Name, StringComparer.Ordinal)
+            .ToList();
 
         var result = new McpToolListResult
         {
@@ -445,7 +552,7 @@ public partial class McpServer
         return CreateSuccessResponse(request.Id, result);
     }
 
-    private async Task<JsonRpcResponse> HandleToolsCall(JsonRpcRequest request, bool isModern, CancellationToken ct)
+    private async Task<JsonRpcResponse> HandleToolsCall(JsonRpcRequest request, bool isModern, Action<JsonRpcNotification>? notify, CancellationToken ct)
     {
         McpToolCallParams? callParams = null;
         if (request.Params.HasValue)
@@ -458,6 +565,15 @@ public partial class McpServer
         {
             return CreateErrorResponse(request.Id, JsonRpcErrorCodes.InvalidParams,
                 "Missing tool name in parameters");
+        }
+
+        // A tool the host runs itself (a crew): it answers, with the progress the client asked for.
+        if (_extension is { } extension && extension.OwnsTool(callParams.Name))
+        {
+            var progress = ProgressFor(request, notify);
+            var extended = await extension.CallToolAsync(callParams.Name, callParams.Arguments, progress, ct).ConfigureAwait(false);
+            extended.ResultType ??= "complete";
+            return CreateSuccessResponse(request.Id, extended);
         }
 
         var tool = await _toolRegistry.GetToolByNameAsync(callParams.Name).ConfigureAwait(false);

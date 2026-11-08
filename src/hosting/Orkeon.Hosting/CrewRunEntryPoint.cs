@@ -57,16 +57,23 @@ internal sealed class CrewRunEntryPoint : IDisposable
     /// Builds the host of the crew <paramref name="opts"/> names, with every guard of <c>orkeon run</c>.
     /// The entry point owns the host and disposes it.
     /// </summary>
+    /// <param name="opts">The options naming the crew and the host's guards.</param>
+    /// <param name="loggerCategory">The category of the host's logger.</param>
+    /// <param name="configureServices">Services added to the host, or null.</param>
+    /// <param name="entry">The entry point when the host was built, else null.</param>
+    /// <param name="errorCode">The exit code of the refusal.</param>
+    /// <param name="configureLogging">Replaces the verbosity-driven logging: a server whose stdout is a protocol channel sends every log to stderr.</param>
     /// <returns>False when a guard refused the run (it has already said why on the console); <paramref name="errorCode"/> is then the exit code.</returns>
     internal static bool TryOpen(
         RunnerOptionsBase opts,
         string loggerCategory,
         Action<HostBuilderContext, IServiceCollection>? configureServices,
         out CrewRunEntryPoint? entry,
-        out int errorCode)
+        out int errorCode,
+        Action<HostBuilderContext, Microsoft.Extensions.Logging.ILoggingBuilder>? configureLogging = null)
     {
         entry = null;
-        if (!RunnerExecution.TryBuildHost(opts, loggerCategory, configureServices, out var bootstrap, out errorCode))
+        if (!RunnerExecution.TryBuildHost(opts, loggerCategory, configureServices, out var bootstrap, out errorCode, configureLogging))
             return false;
 
         entry = new CrewRunEntryPoint(bootstrap!, ownsHost: true);
@@ -94,34 +101,11 @@ internal sealed class CrewRunEntryPoint : IDisposable
     {
         ArgumentNullException.ThrowIfNull(beforeKickoff);
         var host = _bootstrap.Host;
-
-        // The MCP tools must be in the registry before the crew resolves its tools (STUDIO-21): once
-        // per host, however many runs it serves.
-        if (!_mcpConnected)
-        {
-            await McpStartup.ConnectConfiguredServersAsync(host, ct).ConfigureAwait(false);
-            _mcpConnected = true;
-        }
-
-        // One scope for the load and the kickoff, as orkeon-host's CrewRunner opens per run (GAP-25):
-        // the crew factory, the orchestrator and the repositories the crew is loaded into are scoped.
         var scope = host.Services.CreateAsyncScope();
         await using var _ = scope.ConfigureAwait(false);
-        var factory = scope.ServiceProvider.GetRequiredService<ICrewFactory>();
-
-        Domain.Crew.Crew crew;
-        try
-        {
-            crew = await RunnerExecution.LoadCrewAsync(
-                host, factory, scope.ServiceProvider, _bootstrap.VirtualConfigPath, _bootstrap.Logger, ct, _bootstrap.IsCrewDirectory)
-                .ConfigureAwait(false);
-        }
-        catch (Exception ex) when (ex is not OperationCanceledException && !RunnerExecution.IsConnectionRefused(ex))
-        {
-            // A crew that does not load is a configuration mistake the caller reports. A scripted
-            // crew can reach the LLM while loading, though: that failure is not one, and propagates.
-            return new CrewRunResult(CrewRunOutcome.LoadFailed, null, ex);
-        }
+        var (crew, loadError) = await LoadAsync(scope, ct).ConfigureAwait(false);
+        if (crew is null)
+            return new CrewRunResult(CrewRunOutcome.LoadFailed, null, loadError);
 
         if (offline && await OfflineRefusalAsync(scope.ServiceProvider, crew, ct).ConfigureAwait(false) is { } refusal)
             return new CrewRunResult(CrewRunOutcome.Refused, null, null, refusal);
@@ -137,6 +121,59 @@ internal sealed class CrewRunEntryPoint : IDisposable
             RunnerRunIdentity.For(scope.ServiceProvider, crew.Name, _bootstrap.VirtualConfigPath, _bootstrap.ConfigPath, resume),
             ct).ConfigureAwait(false);
         return new CrewRunResult(CrewRunOutcome.Completed, output, null);
+    }
+
+    /// <summary>
+    /// Loads the crew in a scope of its own and hands <paramref name="inspect"/> what the scope holds, without running it:
+    /// what a server reads to describe the crew (its tasks, its placeholders) before any call. It loads the crew
+    /// the way <see cref="RunAsync"/> does, so what it describes is what runs.
+    /// </summary>
+    /// <typeparam name="T">What <paramref name="inspect"/> returns.</typeparam>
+    /// <param name="inspect">Called with the loaded crew and the services of the scope it was loaded in.</param>
+    /// <param name="ct">Cancellation.</param>
+    /// <returns>The inspection, or the load failure.</returns>
+    internal async Task<(T? Value, Exception? LoadError)> InspectAsync<T>(
+        Func<Domain.Crew.Crew, IServiceProvider, CancellationToken, Task<T>> inspect, CancellationToken ct)
+    {
+        ArgumentNullException.ThrowIfNull(inspect);
+        var scope = _bootstrap.Host.Services.CreateAsyncScope();
+        await using var _ = scope.ConfigureAwait(false);
+        var (crew, loadError) = await LoadAsync(scope, ct).ConfigureAwait(false);
+        if (crew is null)
+            return (default, loadError);
+
+        return (await inspect(crew, scope.ServiceProvider, ct).ConfigureAwait(false), null);
+    }
+
+    /// <summary>The MCP servers of the settings, connected once per host, then the crew loaded in <paramref name="scope"/>.</summary>
+    private async Task<(Domain.Crew.Crew? Crew, Exception? LoadError)> LoadAsync(AsyncServiceScope scope, CancellationToken ct)
+    {
+        var host = _bootstrap.Host;
+
+        // The MCP tools must be in the registry before the crew resolves its tools (STUDIO-21): once
+        // per host, however many runs it serves.
+        if (!_mcpConnected)
+        {
+            await McpStartup.ConnectConfiguredServersAsync(host, ct).ConfigureAwait(false);
+            _mcpConnected = true;
+        }
+
+        // One scope for the load and the kickoff, as orkeon-host's CrewRunner opens per run (GAP-25):
+        // the crew factory, the orchestrator and the repositories the crew is loaded into are scoped.
+        var factory = scope.ServiceProvider.GetRequiredService<ICrewFactory>();
+        try
+        {
+            var crew = await RunnerExecution.LoadCrewAsync(
+                host, factory, scope.ServiceProvider, _bootstrap.VirtualConfigPath, _bootstrap.Logger, ct, _bootstrap.IsCrewDirectory)
+                .ConfigureAwait(false);
+            return (crew, null);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException && !RunnerExecution.IsConnectionRefused(ex))
+        {
+            // A crew that does not load is a configuration mistake the caller reports. A scripted
+            // crew can reach the LLM while loading, though: that failure is not one, and propagates.
+            return (null, ex);
+        }
     }
 
     /// <summary>

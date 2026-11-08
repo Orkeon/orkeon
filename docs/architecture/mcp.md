@@ -24,8 +24,8 @@ The MCP integration works in both directions:
   over stdio (`RunStdioAsync`) or by processing individual requests
   (`ProcessRequestAsync`). Every `tools/call` crosses the invocation point a crew agent's
   calls cross — guardian, truncation, result sanitizer, audit. Only the tools capability is
-  advertised, plus read-only `resources` when `/output` is exposed (opt-in) — no prompts, no
-  crews. The stdio loop runs requests concurrently and honours `notifications/cancelled`.
+  advertised, plus read-only `resources` when `/output` is exposed (opt-in), plus `prompts`
+  and crew tools when `--crew` names crews. The stdio loop runs requests concurrently and honours `notifications/cancelled`.
   `orkeon mcp serve` serves it over stdio —
   see [Serving the tools with `orkeon mcp serve`](#serving-the-tools-with-orkeon-mcp-serve).
 
@@ -107,7 +107,7 @@ singleton. It registers no server: `AddOrkeonMcpServer` registers `McpServer` (+
 both. Registering is not serving: the host runs `RunStdioAsync` — what `orkeon mcp serve`
 does — or `ProcessRequestAsync` itself. No setting starts the server (GAP-24): the `MCP` section carries no such key, and every runner
 built on `RunnerHost` refuses an unknown key at startup, servers declared or not. The server exposes tools, and `/output` as resources when `ExposeOutput` is on (below);
-`prompts/*` answer `Method not found`, and there is no option claiming otherwise (the inert
+`prompts/*` answer `Method not found` unless the host hands the server an `IMcpServerExtension` (`orkeon mcp serve --crew` does, FWK-24), and there is no option claiming otherwise (the inert
 `ExposeResources`/`ExposePrompts` were removed, GAP-11).
 The `AddOrkeonInfrastructure(IConfiguration)` overload calls `AddOrkeonMcp` itself, never
 `AddOrkeonMcpServer`.
@@ -277,7 +277,7 @@ registry at run time and are not wrapped.
 ## Serving the tools with `orkeon mcp serve`
 
 ```bash
-orkeon mcp serve [--settings <file>] [--tools a,b,…] [--max-concurrency <n>] [--expose-output]
+orkeon mcp serve [--settings <file>] [--tools a,b,…] [--max-concurrency <n>] [--expose-output] [--crew <a.yaml> [<b.yaml> …]] [--allow-external-mounts]
 ```
 
 The verb serves an Orkeon host's tools to an MCP client over **stdio** — the transport by
@@ -295,6 +295,38 @@ stdout, one per line; closing stdin ends the server.
   aside: that tool answers for the operator of a run, and the client of an MCP server has a
   human of its own. No crew is loaded, so no tool a `.ork.ts` crew declares is served: those
   are registered when their crew loads.
+- **`--crew <a.yaml> [<b.yaml> …]` serves crews as tools (FWK-24).** Several crews go space-separated after
+  one flag, which cannot be repeated (like `--mount`). Each crew is loaded once at the start through the entry point
+  `orkeon run` and `orkeon eval run --crew` load crews with, in a host of its own that carries what `orkeon run`
+  gives a crew: the settings (`--settings`, else resolved from the crew's folder), the budget, the guardian, and the
+  permission gate (`Orkeon:Security:PermissionGate`, `ask` refused without a channel). A crew that does not load, a
+  folder outside the working directory without `--allow-external-mounts`, or two crews that give one name refuse the
+  start, named; so does a `run_crew_*` name a tool of the host already holds. Only the crews named are served: no
+  tool takes a path.
+  - **The tool is `run_crew_<name>`**: the crew's `name`, lower case, every run of other characters one underscore.
+    Its `inputSchema` is an object with one required string property per `{placeholder}` found in the tasks'
+    `description` and `expectedOutput` (matched without regard to case, in order of first use) and no other
+    property. A number or a boolean is read as its text; an object, an array or `null` is refused, so is an unknown
+    or a missing argument (`-32602`, the names listed). The result is the crew's final output; a crew that fails is a
+    result with `isError`, not a JSON-RPC error.
+  - **Progress**: when the call carries `_meta.progressToken`, the server sends one `notifications/progress` per
+    finished task (`progress` 1 to `total`, the number of tasks, with a `message`) before the answer; without a token
+    nothing is sent. `notifications/cancelled` cancels the run.
+  - **Prompts**: every task is the prompt `<name>_task_<n>` (1-based), its arguments the placeholders of that task, the
+    message its description and expected output interpolated. The `prompts` capability is advertised only with
+    `--crew`.
+  - **Calls of one crew run one at a time.** The crew's host is shared by its calls, and so is what the host mounts
+    (`/output`, `AUTO_SUMMARY.md`, the checkpoints), so a second call of a crew waits for the first (calls of other
+    crews, and every other tool, run alongside). Each call still runs in a scope of its own, with its own task state, and
+    a client's `notifications/cancelled` cancels the running crew: its agents see the token and the call is not answered.
+  - **The run is recorded like any run of the host.** With `Orkeon:RunHistory:Enabled` on in the crew's settings, each call
+    is a run of the history: `run.started`, the task events, `run.finished`, under its own run id (the one the
+    checkpoints use), read with `orkeon runs`. With the history off nothing is written. The events carry no token
+    count: the model's usage is not attributed per call.
+  - **There is no offline mode.** The serve host reads the real settings and a crew calls the models they declare; the
+    mock provider is reached only by pointing the profiles at it.
+  - The progress `total` is the number of tasks of the crew; a retry or a hierarchical manager can run more task
+    attempts than that, and the progress then stops at `total`.
 - **`--tools a,b,…`** serves the named tools only (comma-separated); a name the host does not
   have refuses the start, naming it.
 - **Requests run concurrently** (`--max-concurrency <n>`, at least 1, default 4, or
@@ -407,8 +439,7 @@ entry:
 - **HTTP+SSE 2024-11-05 not supported** — the transport with a separate message endpoint is refused; Streamable HTTP is the HTTP transport. Interop against the reference server runs nightly (`McpReferenceServerInteropTests`, [MCP interop](../guides/mcp-interop.md)).
 - **`2025-03-26` excluded** (mandatory JSON-RPC batching).
 - **The server speaks stdio only** (`orkeon mcp serve`, or `RunStdioAsync` /
-  `ProcessRequestAsync` in a C# host): no HTTP transport, no prompts, no crews exposed as
-  tools, and resources are `/output` only (read-only, no `resources/subscribe`).
+  `ProcessRequestAsync` in a C# host): no HTTP transport, prompts and crews as tools only for the crews `--crew` names (a client never gives a path), and resources are `/output` only (read-only, no `resources/subscribe`).
 
 ## Experimental status
 
