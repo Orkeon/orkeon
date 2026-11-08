@@ -8,8 +8,8 @@ namespace Orkeon.Infrastructure.LLMs.Replay;
 
 /// <summary>
 /// The key a call is filed under in a cassette: the SHA-256 of the profile, the messages, the tools and
-/// the response format, with the timestamps and the generated identifiers the run injected into the
-/// text replaced by a fixed mark, so that a second run asks for the same key.
+/// the response format, the model and the sampling options, with the timestamps and the generated identifiers the run injected into the
+/// text replaced by a fixed mark and the secret-shaped values redacted as the cassette stores them, so that a second run asks for the same key.
 /// </summary>
 internal static partial class LlmCallKey
 {
@@ -38,6 +38,10 @@ internal static partial class LlmCallKey
             }),
             tools = config?.Tools is null ? null : Serialize(config.Tools),
             responseFormat = config?.ResponseFormat is null ? null : Serialize(config.ResponseFormat),
+            model = string.IsNullOrWhiteSpace(config?.Model) ? null : config.Model,
+            temperature = config?.Temperature,
+            maxTokens = config?.MaxTokens,
+            thinking = config?.Thinking is null ? null : Serialize(config.Thinking),
         };
         return Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(request))));
     }
@@ -55,7 +59,7 @@ internal static partial class LlmCallKey
     }
 
     private static string Normalize(string text) =>
-        Identifier().Replace(Timestamp().Replace(text, "<time>"), "<id>");
+        Identifier().Replace(Timestamp().Replace(CassetteRedaction.Text(text), "<time>"), "<id>");
 
     private static string Serialize(object value)
     {

@@ -237,4 +237,38 @@ public sealed class JsonlMockLlmProviderTests
 
         Assert.Contains("line 2", response.Error, StringComparison.Ordinal);
     }
+
+    [Fact]
+    public async Task Each_option_the_file_cannot_honour_gets_its_own_structured_warning()
+    {
+        using var logs = new Orkeon.Infrastructure.Tests.Doubles.FakeLoggerFactory();
+        var fs = new FakeFileSystemService().AddMount("/llm-mock").AddFile(Path, """{"match":"hi","content":"yo"}""");
+        var provider = new JsonlMockLlmProvider(fs, Path, logs.CreateLogger("mock"));
+        var config = LlmConfig.OnProfile() with
+        {
+            ResponseFormat = LlmResponseFormat.JsonObject(),
+            Thinking = new LlmThinkingConfig { Enabled = true },
+            Temperature = 0.3,
+        };
+
+        await provider.ChatAsync(User("hi"), config, TestContext.Current.CancellationToken);
+
+        var warnings = logs.Entries.Where(e => e.Level == Microsoft.Extensions.Logging.LogLevel.Warning).Select(e => e.Message).ToList();
+        Assert.Equal(3, warnings.Count);
+        Assert.Contains(warnings, w => w.Contains("responseFormat", StringComparison.Ordinal));
+        Assert.Contains(warnings, w => w.Contains("thinking", StringComparison.Ordinal));
+        Assert.Contains(warnings, w => w.Contains("temperature", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task A_call_without_those_options_warns_of_nothing()
+    {
+        using var logs = new Orkeon.Infrastructure.Tests.Doubles.FakeLoggerFactory();
+        var fs = new FakeFileSystemService().AddMount("/llm-mock").AddFile(Path, """{"match":"hi","content":"yo"}""");
+        var provider = new JsonlMockLlmProvider(fs, Path, logs.CreateLogger("mock"));
+
+        await provider.ChatAsync(User("hi"), LlmConfig.OnProfile(), TestContext.Current.CancellationToken);
+
+        Assert.Empty(logs.Entries);
+    }
 }

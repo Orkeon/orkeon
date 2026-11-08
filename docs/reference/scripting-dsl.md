@@ -298,7 +298,7 @@ name } }` and the context; `code` is one of `rate_limit`, `network`, `timeout`,
 
 ## The `test` namespace (`orkeon run --test`)
 
-`orkeon run --test` binds the global `test` (declared in `Typings/test.d.ts`); without the flag a script has none, and a reference to it is a `ReferenceError`. Under the flag the host's configured model — or the `--llm-mock` file — stays behind the mock: a prompt an expectation of `test.mockLlm` fits is answered by it, any other prompt goes to the configured provider. One provider is shared by `ctx.llm`, the crews of the script and the namespace, so an expectation registered in the script is the one a call meets.
+`orkeon run --test` binds the global `test` (declared in `Typings/test.d.ts`); without the flag a script has none, and a reference to it is a `ReferenceError`. Under the flag the host's configured model — or the `--llm-mock` file — stays behind the mock: a prompt an expectation of `test.mockLlm` fits is answered by it, any other prompt goes to the configured provider. One mock is shared by `ctx.llm`, the crews of the script, the namespace and the providers of `llm.profile("…")`, so an expectation registered in the script is the one a call meets, whichever profile it is made on.
 
 ```ts
 test.mockLlm.when("weather").respond("sunny");        // a string to look for, or { prompt: /regex/ }

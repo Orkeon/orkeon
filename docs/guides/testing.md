@@ -32,18 +32,22 @@ included. The decorator sits in the provider factory, under the call-mode layer,
 the cassette holds the messages that really went over the wire, including the prompt-based tool-calling
 emulation of a model without native tools.
 
-The **key** is the SHA-256 of the profile, the messages (role, content, tool call ids), the tools and the
-response format. Timestamps (`2026-11-08T10:11:12Z`) and generated identifiers (GUIDs) in the text are
+The **key** is the SHA-256 of the profile, the messages (role, content, tool call ids), the tools, the
+response format, the model name and the sampling options (`temperature`, `max_tokens`, thinking). Timestamps (`2026-11-08T10:11:12Z`) and generated identifiers (GUIDs) in the text are
 replaced by a fixed mark first, so a second run asks for the same key. A call repeated with the same key
 gets an occurrence number: the n-th identical call replays the n-th recorded answer. Identical calls made
 at the same moment are served in the order they arrive.
 
-The sampling options and the model name (`temperature`, `max_tokens`, `model`, the seed, the timeout) are **not**
-part of the key: changing them does not miss, and a replay answers with what was recorded under the old ones.
-Only the profile, the messages, the tools and the response format count.
+Changing the model or one of those options therefore misses: record the cassette again. The seed and the timeout
+are not part of the key. The secret-shaped values below are redacted in the text before it is hashed, so the
+answer a cassette stores (redacted) and the next turn that repeats it ask for the same key.
+
+A call that fails with an exception is recorded too, and a replay raises the same kind of exception again (an
+`HttpRequestException` with its status, a timeout, a rate limit), so a fallback chain behaves as it did.
+A replay also judges the request as a live call does: audio for a model that takes none fails the same way.
 
 **Secrets**: before a line is written, these are replaced by `[REDACTED]`: the API key the provider was
-configured with, a `Bearer` token, a vendor key shaped `sk-...`, a Google key shaped `AIza...`, the value of a
+configured with, a `Bearer` token, a vendor key shaped `sk-...` (not a word that merely contains `sk-`), a Google key shaped `AIza...`, the value of a
 `key=`, `api_key=`, `apikey=`, `token=` or `access_token=` query parameter of a URL, and the user info of a
 URL (`https://user:password@host`). The request itself is never stored, only its key. Nothing else is
 redacted: the answers are stored as they came, and a model may repeat what it was given. Check a cassette
@@ -60,4 +64,4 @@ prompt. A replay never falls back on the network, and a cassette that does not e
 - Tools run again on a replay: only the model's answers are frozen. A tool with side effects does them twice.
 - Identical calls that two agents make at the same moment take the recorded answers in the order they arrive, so a run whose parallel identical calls change order may swap them.
 - Embeddings and memory are not LLM calls and are not recorded.
-- Changing a prompt, a tool or the response format changes the key: record the cassette again.
+- Changing a prompt, a tool, the response format, the model or the temperature changes the key: record the cassette again.

@@ -50,6 +50,7 @@ internal static partial class LlmFailureClassifier
         {
             LlmRateLimitException => LlmFailureKind.RateLimited,
             HttpRequestException { StatusCode: { } status } => ClassifyStatus(status),
+            HttpRequestException { StatusCode: null } rejection when LabelKindOf(rejection.Message) is { } labelled => labelled,
             HttpRequestException or SocketException or IOException => LlmFailureKind.Transport,
             _ => LlmFailureKind.None,
         };
@@ -73,7 +74,7 @@ internal static partial class LlmFailureClassifier
             case "StreamTruncated" or "HttpRequestException" or "SocketException" or "IOException":
                 return LlmFailureKind.Transport;
             case "APIError":
-                return StatusOf(error) is { } status ? ClassifyStatus(status) : LlmFailureKind.None;
+                return StatusOf(error) is { } status ? ClassifyStatus(status) : LabelKindOf(error) ?? LlmFailureKind.None;
             default:
                 return LlmFailureKind.None;
         }
@@ -112,9 +113,38 @@ internal static partial class LlmFailureClassifier
         {
             LlmFailureKind.Timeout => new System.TimeoutException(message),
             LlmFailureKind.Transport or LlmFailureKind.Exhausted => new HttpRequestException(message),
-            LlmFailureKind.ServerError or LlmFailureKind.RateLimited or LlmFailureKind.Refused when StatusOf(message) is { } status =>
-                new HttpRequestException(message, null, status),
+            LlmFailureKind.ServerError or LlmFailureKind.RateLimited or LlmFailureKind.Refused =>
+                new HttpRequestException(message, null, StatusOf(message) ?? StatusFor(kind)),
             _ => new InvalidOperationException(message),
+        };
+    }
+
+    /// <summary>The status a class stands for when the vendor gave a label and no status.</summary>
+    private static HttpStatusCode StatusFor(LlmFailureKind kind) => kind switch
+    {
+        LlmFailureKind.RateLimited => HttpStatusCode.TooManyRequests,
+        LlmFailureKind.ServerError => HttpStatusCode.ServiceUnavailable,
+        _ => HttpStatusCode.BadRequest,
+    };
+
+    /// <summary>
+    /// The class a vendor's own error label names, for a failure that carries a label and no status
+    /// (a rejection in the middle of a stream); null for a label this table does not know.
+    /// </summary>
+    private static LlmFailureKind? LabelKindOf(string error)
+    {
+        var match = ApiErrorStatus().Match(error);
+        if (!match.Success)
+            return null;
+
+        var label = match.Groups[1].Value;
+        if (label.StartsWith("rate_limit", StringComparison.OrdinalIgnoreCase))
+            return LlmFailureKind.RateLimited;
+        return label switch
+        {
+            "overloaded_error" or "server_error" or "api_error" or "internal_server_error" or "service_unavailable" => LlmFailureKind.ServerError,
+            "invalid_api_key" or "authentication_error" or "permission_error" or "invalid_request_error" or "not_found_error" => LlmFailureKind.Refused,
+            _ => null,
         };
     }
 

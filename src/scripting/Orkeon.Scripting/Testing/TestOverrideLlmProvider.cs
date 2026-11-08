@@ -23,6 +23,19 @@ public sealed class TestOverrideLlmProvider : ILlmProvider, IStreamingLlmProvide
         Mock = new MockLlmProvider();
     }
 
+    /// <summary>
+    /// Creates an override over <paramref name="inner"/> that shares <paramref name="mock"/> with another one:
+    /// the provider of a profile the script picks answers from, and is counted in, the same expectations.
+    /// </summary>
+    /// <param name="inner">The profile's provider.</param>
+    /// <param name="mock">The mock the script's expectations are registered on.</param>
+    public TestOverrideLlmProvider(ILlmProvider? inner, MockLlmProvider mock)
+    {
+        ArgumentNullException.ThrowIfNull(mock);
+        _inner = inner;
+        Mock = mock;
+    }
+
     /// <summary>The mock the <c>test</c> namespace registers its expectations on and asserts against.</summary>
     public MockLlmProvider Mock { get; }
 

@@ -126,4 +126,13 @@ public class ModelCapabilityRegistryTests
         Assert.False(entry.Vision);
         Assert.Null(entry.ReasoningEfforts);
     }
+
+    [Fact]
+    public void The_gpt_5_prefix_does_not_cover_the_chat_model_that_does_not_reason()
+    {
+        var registry = ModelCapabilityRegistry.Default;
+
+        Assert.Empty(registry.TryGet("gpt-5-chat-latest")!.ReasoningEfforts!);
+        Assert.Contains("minimal", registry.TryGet("gpt-5-mini")!.ReasoningEfforts!);
+    }
 }

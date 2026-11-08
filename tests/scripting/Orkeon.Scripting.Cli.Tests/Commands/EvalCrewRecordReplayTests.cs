@@ -41,7 +41,7 @@ public sealed class EvalCrewRecordReplayTests
         ]
         """;
 
-    private const string MockSettings = "{ \"Llm\": { \"Provider\": \"mock\", \"Responses\": \"/answers/answers.jsonl\" } }";
+    private const string MockSettings = "{ \"Llm\": { \"Provider\": \"mock\", \"Model\": \"llama3\", \"Responses\": \"/answers/answers.jsonl\" } }";
 
     // A profile that would reach a real endpoint if anything called it: a replay must never do.
     private const string UnreachableSettings = "{ \"Llm\": { \"Model\": \"llama3\", \"BaseUrl\": \"http://127.0.0.1:9\" } }";

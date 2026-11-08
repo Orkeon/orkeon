@@ -89,6 +89,7 @@ public sealed class ModelCapabilityRegistry : IModelCapabilityRegistry
         ["o3-mini"] = new() { ReasoningEfforts = s_lowToHigh },
         ["o4-mini"] = new() { Vision = true, ReasoningEfforts = s_lowToHigh },
         ["gpt-5"] = new() { Vision = true, ReasoningEfforts = s_minimalToHigh },
+        ["gpt-5-chat"] = new() { Vision = true, ReasoningEfforts = s_none },
         ["gpt-5-pro"] = new() { Vision = true, ReasoningEfforts = s_highOnly },
         // Gemini, through its OpenAI-compatible layer: audio and images in; the 2.0 and 1.5 lines do not reason.
         ["gemini-"] = new() { AudioInput = true, Vision = true },

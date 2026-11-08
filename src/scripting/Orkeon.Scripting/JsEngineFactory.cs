@@ -218,7 +218,9 @@ public sealed class JsEngineFactory
         });
         TaskBuilderBinding.Register(engine);
         ToolBuilderBinding.Register(engine);
-        LlmNamespaceBinding.Register(engine, _scriptLogger, llmProvider, _llmProfiles);
+        LlmNamespaceBinding.Register(
+            engine, _scriptLogger, llmProvider, _llmProfiles,
+            testProvider is null ? null : profile => new Testing.TestOverrideLlmProvider(profile, testProvider.Mock));
         ToolsNamespaceBinding.Register(engine, _builtInTools ?? Array.Empty<IBaseTool>(), _scriptLogger);
         RagNamespaceBinding.Register(engine, _ragBackend, _scriptLogger);
         ErrorActionBinding.Register(engine);

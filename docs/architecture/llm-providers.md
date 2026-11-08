@@ -388,7 +388,7 @@ variable named by `ApiKeyEnvVar`; with neither, the first call fails with a mess
 Model ids of the embedding providers are not in the capability table of
 [What a model accepts](#what-a-model-accepts-and-audio-as-input): it covers chat input and reasoning effort.
 
-**Changing the embedding model invalidates stored vectors.** At start, a guard compares the
+**Changing the embedding model invalidates stored vectors.** At start, a guard (run by `RunnerHost.Build` for `orkeon run`, the other commands and the daemon, by the REPL's start, and by the hosted service of a host that starts its services) compares the
 provider, model and dimensions with the fingerprint recorded at `Orkeon:Embeddings:FingerprintPath`
 (default `/workspace/.orkeon/embedding-fingerprint.json`, in the virtual file system). The first start
 records it; a different one stops the host with an error that names both models. Nothing is migrated:

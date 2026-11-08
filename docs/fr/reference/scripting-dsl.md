@@ -316,7 +316,7 @@ agent: { id, name } }` et le contexte ; `code` vaut `rate_limit`, `network`, `ti
 
 ## L'espace de noms `test` (`orkeon run --test`)
 
-`orkeon run --test` lie le global `test` (déclaré dans `Typings/test.d.ts`) ; sans le drapeau, un script n'en a pas, et s'y référer est une `ReferenceError`. Sous le drapeau, le modèle configuré par l'hôte — ou le fichier de `--llm-mock` — reste derrière le mock : un prompt que couvre une attente de `test.mockLlm` reçoit sa réponse, tout autre prompt va au fournisseur configuré. Un seul fournisseur est partagé par `ctx.llm`, les crews du script et l'espace de noms : une attente enregistrée dans le script est celle que rencontre un appel.
+`orkeon run --test` lie le global `test` (déclaré dans `Typings/test.d.ts`) ; sans le drapeau, un script n'en a pas, et s'y référer est une `ReferenceError`. Sous le drapeau, le modèle configuré par l'hôte — ou le fichier de `--llm-mock` — reste derrière le mock : un prompt que couvre une attente de `test.mockLlm` reçoit sa réponse, tout autre prompt va au fournisseur configuré. Un seul mock est partagé par `ctx.llm`, les crews du script, l'espace de noms et les fournisseurs de `llm.profile("…")` : une attente enregistrée dans le script est celle que rencontre un appel, quel que soit le profil.
 
 ```ts
 test.mockLlm.when("météo").respond("ensoleillé");      // un texte à chercher, ou { prompt: /regex/ }

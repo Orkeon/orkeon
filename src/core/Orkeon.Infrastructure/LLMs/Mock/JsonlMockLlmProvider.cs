@@ -1,6 +1,8 @@
 using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Orkeon.Application.Interfaces.Ports;
 using Orkeon.Domain.FileSystem;
 using Orkeon.Domain.SharedKernel;
@@ -34,19 +36,22 @@ namespace Orkeon.Infrastructure.LLMs.Mock;
 /// the error), never an empty answer. Streaming is emulated: the whole answer is one chunk.
 /// </para>
 /// </remarks>
-public sealed class JsonlMockLlmProvider : ILlmProvider, IStreamingLlmProvider
+public sealed partial class JsonlMockLlmProvider : ILlmProvider, IStreamingLlmProvider
 {
     private static readonly TimeSpan s_regexTimeout = TimeSpan.FromSeconds(1);
 
     private readonly IFileSystemService _fileSystem;
     private readonly string _path;
+    private readonly ILogger _logger;
     private readonly Lazy<Task<LoadResult>> _entries;
 
     /// <summary>Creates a provider over the JSONL file at <paramref name="responsesPath"/>.</summary>
     /// <param name="fileSystem">The virtual file system the file is read through.</param>
     /// <param name="responsesPath">The virtual path of the JSONL file; it is read on the first call.</param>
-    public JsonlMockLlmProvider(IFileSystemService fileSystem, string responsesPath)
+    /// <param name="logger">Where the warnings about options the file cannot honour go; none: they are not reported.</param>
+    public JsonlMockLlmProvider(IFileSystemService fileSystem, string responsesPath, ILogger? logger = null)
     {
+        _logger = logger ?? NullLogger.Instance;
         ArgumentNullException.ThrowIfNull(fileSystem);
         ArgumentException.ThrowIfNullOrWhiteSpace(responsesPath);
         _fileSystem = fileSystem;
@@ -72,13 +77,17 @@ public sealed class JsonlMockLlmProvider : ILlmProvider, IStreamingLlmProvider
     public bool SupportsStreaming => true;
 
     /// <inheritdoc />
-    public Task<LlmResponse> GenerateAsync(string prompt, LlmConfig? config = null, CancellationToken cancellationToken = default) =>
-        AnswerAsync(prompt ?? string.Empty, rounds: 0);
+    public Task<LlmResponse> GenerateAsync(string prompt, LlmConfig? config = null, CancellationToken cancellationToken = default)
+    {
+        WarnOnUnsupportedOptions(config);
+        return AnswerAsync(prompt ?? string.Empty, rounds: 0);
+    }
 
     /// <inheritdoc />
     public Task<LlmResponse> ChatAsync(LlmMessage[] messages, LlmConfig? config = null, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(messages);
+        WarnOnUnsupportedOptions(config);
         var lastUser = Array.FindLastIndex(messages, m => m.Role == "user");
         var prompt = lastUser < 0 ? string.Empty : messages[lastUser].Content;
         return AnswerAsync(prompt, ToolRounds(messages, lastUser));
@@ -104,6 +113,23 @@ public sealed class JsonlMockLlmProvider : ILlmProvider, IStreamingLlmProvider
             yield return LlmStreamEvent.Content(response.Content);
         yield return LlmStreamEvent.Complete(response);
     }
+
+    /// <summary>One warning per option the call sets and a file of canned answers cannot honour: none is silently dropped.</summary>
+    private void WarnOnUnsupportedOptions(LlmConfig? config)
+    {
+        if (config is null)
+            return;
+        if (config.ResponseFormat is { Type: { Length: > 0 } format } && !string.Equals(format, "text", StringComparison.OrdinalIgnoreCase))
+            LogUnsupportedOption("responseFormat", "the mock answers with the text of its file, in no declared format");
+        if (config.Thinking is { } thinking && (thinking.Enabled == true || thinking.Effort is not null || thinking.BudgetTokens is not null))
+            LogUnsupportedOption("thinking", "the mock does not reason");
+        if (config.Temperature is not null)
+            LogUnsupportedOption("temperature", "the mock does not sample");
+    }
+
+    [LoggerMessage(EventId = 1, Level = LogLevel.Warning,
+        Message = "Option '{Option}' was declared but the mock LLM provider does not support it - it was ignored. {Remedy}.")]
+    private partial void LogUnsupportedOption(string option, string remedy);
 
     /// <summary>The rounds of tool results after the last user message: each run of tool messages is one.</summary>
     private static int ToolRounds(LlmMessage[] messages, int lastUser)

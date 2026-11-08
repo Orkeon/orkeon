@@ -39,12 +39,29 @@ public static class LlmNamespaceBinding
         Engine engine,
         ILogger? logger = null,
         ILlmProvider? defaultProvider = null,
-        Orkeon.Application.Interfaces.Ports.ILlmProfileRegistry? profiles = null)
+        Orkeon.Application.Interfaces.Ports.ILlmProfileRegistry? profiles = null) =>
+        Register(engine, logger, defaultProvider, profiles, wrapProfileProvider: null);
+
+    /// <summary>The same registration, wrapping the provider of each named profile.</summary>
+    /// <param name="engine">Jint engine receiving the binding.</param>
+    /// <param name="logger">Diagnostic sink.</param>
+    /// <param name="defaultProvider">The host's provider.</param>
+    /// <param name="profiles">The host's named LLM profiles.</param>
+    /// <param name="wrapProfileProvider">
+    /// Wraps the provider of each named profile <c>llm.profile(name)</c> resolves; <c>orkeon run --test</c>
+    /// puts the test override there, so a profile answers from <c>test.mockLlm</c> like the default.
+    /// </param>
+    internal static void Register(
+        Engine engine,
+        ILogger? logger,
+        ILlmProvider? defaultProvider,
+        Orkeon.Application.Interfaces.Ports.ILlmProfileRegistry? profiles,
+        Func<ILlmProvider, ILlmProvider>? wrapProfileProvider)
     {
         ArgumentNullException.ThrowIfNull(engine);
         var log = logger ?? NullLogger.Instance;
 
-        var ns = new JsLlmNamespace(log, defaultProvider, profiles);
+        var ns = new JsLlmNamespace(log, defaultProvider, profiles, wrapProfileProvider);
         engine.SetValue(GlobalName, ns);
     }
 }
@@ -60,14 +77,17 @@ public sealed partial class JsLlmNamespace
     private readonly ILogger _logger;
     private readonly ILlmProvider? _defaultProvider;
     private readonly Orkeon.Application.Interfaces.Ports.ILlmProfileRegistry? _profiles;
+    private readonly Func<ILlmProvider, ILlmProvider>? _wrapProfileProvider;
     private JsLlmConfig? _default;
     private readonly Lock _defaultLock = new();
 
     internal JsLlmNamespace(
         ILogger logger,
         ILlmProvider? defaultProvider = null,
-        Orkeon.Application.Interfaces.Ports.ILlmProfileRegistry? profiles = null)
+        Orkeon.Application.Interfaces.Ports.ILlmProfileRegistry? profiles = null,
+        Func<ILlmProvider, ILlmProvider>? wrapProfileProvider = null)
     {
+        _wrapProfileProvider = wrapProfileProvider;
         _logger = logger;
         _defaultProvider = defaultProvider;
         _profiles = profiles;
@@ -138,7 +158,8 @@ public sealed partial class JsLlmNamespace
             var domain = (string.IsNullOrWhiteSpace(profileModel) ? LlmConfig.OnProfile() : LlmConfig.Create(profileModel))
                 with { Profile = profileName };
             LogResolvedProfile(profileName, resolved.Provider.Name);
-            onProfile = new JsLlmConfig(resolved.Provider.Name, domain, profileProvider: resolved.Provider);
+            var provider = _wrapProfileProvider is null ? resolved.Provider : _wrapProfileProvider(resolved.Provider);
+            onProfile = new JsLlmConfig(resolved.Provider.Name, domain, profileProvider: provider);
         }
 
         return overrides is null ? onProfile : onProfile.with(overrides);

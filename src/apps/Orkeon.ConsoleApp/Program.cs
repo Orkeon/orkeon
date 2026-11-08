@@ -545,6 +545,14 @@ static class Program
 
     static async Task RunHostAsync(IHost host, UiMode effectiveUi, ScriptedCommandsCliOptions scriptedOpts, TextWriter stderr)
     {
+        // The REPL never starts its host, so the embedding model guard (FWK-25) runs here, before anything else.
+        if (await Orkeon.Infrastructure.LLMs.Embeddings.EmbeddingModelGuard.CheckAsync(host.Services, CancellationToken.None) is { } embeddingRefusal)
+        {
+            await stderr.WriteLineAsync("ERROR: " + embeddingRefusal);
+            Environment.ExitCode = 1;
+            return;
+        }
+
         // --replay: the file is read before anything runs; missing or unreadable, exit 2 and the REPL never opens.
         var replay = host.Services.GetRequiredService<ReplayConsoleAdapter>();
         if (await ReplayLaunch.StartAsync(

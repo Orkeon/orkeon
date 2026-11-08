@@ -412,7 +412,7 @@ Orkeon.Infrastructure.LLMs.Mock.JsonlMockLlmProvider.ChatAsync(Orkeon.Domain.Sha
 Orkeon.Infrastructure.LLMs.Mock.JsonlMockLlmProvider.ChatStreamingAsync(Orkeon.Domain.SharedKernel.ValueObjects.LlmMessage![]! messages, Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig? config = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Collections.Generic.IAsyncEnumerable<Orkeon.Domain.SharedKernel.ValueObjects.LlmStreamEvent!>!
 Orkeon.Infrastructure.LLMs.Mock.JsonlMockLlmProvider.GenerateAsync(string! prompt, Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig? config = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Domain.SharedKernel.ValueObjects.LlmResponse!>!
 Orkeon.Infrastructure.LLMs.Mock.JsonlMockLlmProvider.GenerateStreamingAsync(string! prompt, Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig? config = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Collections.Generic.IAsyncEnumerable<string!>!
-Orkeon.Infrastructure.LLMs.Mock.JsonlMockLlmProvider.JsonlMockLlmProvider(Orkeon.Domain.FileSystem.IFileSystemService! fileSystem, string! responsesPath) -> void
+Orkeon.Infrastructure.LLMs.Mock.JsonlMockLlmProvider.JsonlMockLlmProvider(Orkeon.Domain.FileSystem.IFileSystemService! fileSystem, string! responsesPath, Microsoft.Extensions.Logging.ILogger? logger = null) -> void
 Orkeon.Infrastructure.LLMs.Mock.JsonlMockLlmProvider.Name.get -> string!
 Orkeon.Infrastructure.LLMs.Mock.JsonlMockLlmProvider.SupportsStreaming.get -> bool
 static Orkeon.Infrastructure.LLMs.LlmProviderFactory.WithoutMounts(System.Net.Http.IHttpClientFactory! httpClientFactory, Microsoft.Extensions.Logging.ILoggerFactory! loggerFactory) -> Orkeon.Infrastructure.LLMs.LlmProviderFactory!
@@ -849,3 +849,5 @@ Orkeon.Infrastructure.LLMs.Embeddings.OpenAICompatibleEmbeddingProviderBase.Sett
 override Orkeon.Infrastructure.LLMs.Embeddings.AzureOpenAIEmbeddingProvider.Name.get -> string!
 override Orkeon.Infrastructure.LLMs.Embeddings.GeminiEmbeddingProvider.Name.get -> string!
 override Orkeon.Infrastructure.LLMs.Embeddings.MistralEmbeddingProvider.Name.get -> string!
+Orkeon.Infrastructure.LLMs.Embeddings.EmbeddingModelGuard
+static Orkeon.Infrastructure.LLMs.Embeddings.EmbeddingModelGuard.CheckAsync(System.IServiceProvider! services, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<string?>!

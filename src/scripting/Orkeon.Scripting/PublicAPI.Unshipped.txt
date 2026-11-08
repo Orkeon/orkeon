@@ -22,6 +22,7 @@ Orkeon.Scripting.Testing.TestOverrideLlmProvider.GenerateAsync(string! prompt, O
 Orkeon.Scripting.Testing.TestOverrideLlmProvider.Mock.get -> Orkeon.Scripting.Testing.MockLlmProvider!
 Orkeon.Scripting.Testing.TestOverrideLlmProvider.Name.get -> string!
 Orkeon.Scripting.Testing.TestOverrideLlmProvider.TestOverrideLlmProvider(Orkeon.Domain.SharedKernel.ILlmProvider? inner) -> void
+Orkeon.Scripting.Testing.TestOverrideLlmProvider.TestOverrideLlmProvider(Orkeon.Domain.SharedKernel.ILlmProvider? inner, Orkeon.Scripting.Testing.MockLlmProvider! mock) -> void
 Orkeon.Scripting.Testing.MockLlmExpectationBuilder
 Orkeon.Scripting.Testing.MockLlmExpectationBuilder.Respond(string! content) -> Orkeon.Scripting.Testing.MockLlmProvider!
 Orkeon.Scripting.Testing.MockLlmProvider.When(string! contains) -> Orkeon.Scripting.Testing.MockLlmExpectationBuilder!

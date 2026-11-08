@@ -109,26 +109,48 @@ internal sealed class FileEmbeddingFingerprintStore : IEmbeddingFingerprintStore
     }
 }
 
-/// <summary>Runs <see cref="EmbeddingDimensionGuard"/> when the host starts.</summary>
-internal sealed partial class EmbeddingDimensionGuardHostedService : IHostedService
+/// <summary>
+/// Runs the embedding model guard (FWK-25) for a host whose entry point does not start the host: the
+/// runners (<c>orkeon run</c>, the other commands) and the REPL build a host and never start its hosted
+/// services, so each calls this once, right after it built the host.
+/// </summary>
+public static class EmbeddingModelGuard
 {
-    private readonly IServiceProvider _services;
-
-    public EmbeddingDimensionGuardHostedService(IServiceProvider services)
+    /// <summary>
+    /// Checks the embedding model against the fingerprint recorded for the host's vectors, and records it
+    /// when none exists. A host that wrote no <c>Orkeon:Embeddings</c> section is not guarded.
+    /// </summary>
+    /// <param name="services">The built host's services.</param>
+    /// <param name="cancellationToken">Cancellation.</param>
+    /// <returns>The refusal to show when the model changed since vectors were stored; null when the host may go on.</returns>
+    public static async System.Threading.Tasks.Task<string?> CheckAsync(IServiceProvider services, CancellationToken cancellationToken)
     {
-        _services = services;
+        ArgumentNullException.ThrowIfNull(services);
+        try
+        {
+            await EmbeddingDimensionGuardRunner.RunAsync(services, cancellationToken).ConfigureAwait(false);
+            return null;
+        }
+        catch (EmbeddingModelChangedException ex)
+        {
+            return ex.Message;
+        }
     }
+}
 
-    public async System.Threading.Tasks.Task StartAsync(CancellationToken cancellationToken)
+/// <summary>The body of the guard, shared by the hosted service and <see cref="EmbeddingModelGuard"/>.</summary>
+internal static partial class EmbeddingDimensionGuardRunner
+{
+    public static async System.Threading.Tasks.Task RunAsync(IServiceProvider services, CancellationToken cancellationToken)
     {
-        var logger = _services.GetService<ILoggerFactory>()?.CreateLogger<EmbeddingDimensionGuardHostedService>();
-        var store = _services.GetService<IEmbeddingFingerprintStore>() ?? TryCreateFileStore(_services);
+        var logger = services.GetService<ILoggerFactory>()?.CreateLogger(typeof(EmbeddingDimensionGuardRunner).FullName!);
+        var store = services.GetService<IEmbeddingFingerprintStore>() ?? TryCreateFileStore(services);
         if (store is null)
             return;
 
         try
         {
-            var provider = _services.GetRequiredService<IEmbeddingProvider>();
+            var provider = services.GetRequiredService<IEmbeddingProvider>();
             await EmbeddingDimensionGuard.CheckAsync(provider, store, cancellationToken).ConfigureAwait(false);
         }
         catch (EmbeddingModelChangedException)
@@ -142,9 +164,6 @@ internal sealed partial class EmbeddingDimensionGuardHostedService : IHostedServ
                 LogGuardSkipped(logger, ex.Message);
         }
     }
-
-    public System.Threading.Tasks.Task StopAsync(CancellationToken cancellationToken) =>
-        System.Threading.Tasks.Task.CompletedTask;
 
     private static FileEmbeddingFingerprintStore? TryCreateFileStore(IServiceProvider services)
     {
@@ -164,4 +183,21 @@ internal sealed partial class EmbeddingDimensionGuardHostedService : IHostedServ
     [LoggerMessage(EventId = 1, Level = LogLevel.Warning,
         Message = "The embedding model guard could not read or write its fingerprint, the check is skipped: {Reason}")]
     private static partial void LogGuardSkipped(ILogger logger, string reason);
+}
+
+/// <summary>Runs <see cref="EmbeddingDimensionGuard"/> when a host that starts its hosted services starts.</summary>
+internal sealed class EmbeddingDimensionGuardHostedService : IHostedService
+{
+    private readonly IServiceProvider _services;
+
+    public EmbeddingDimensionGuardHostedService(IServiceProvider services)
+    {
+        _services = services;
+    }
+
+    public System.Threading.Tasks.Task StartAsync(CancellationToken cancellationToken) =>
+        EmbeddingDimensionGuardRunner.RunAsync(_services, cancellationToken);
+
+    public System.Threading.Tasks.Task StopAsync(CancellationToken cancellationToken) =>
+        System.Threading.Tasks.Task.CompletedTask;
 }

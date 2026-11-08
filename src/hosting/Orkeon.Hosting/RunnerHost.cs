@@ -13,6 +13,7 @@ using Orkeon.Application.DependencyInjection;
 using Orkeon.Application.Interfaces.Ports;
 using Orkeon.Domain.Constants.Llm;
 using Orkeon.Infrastructure.LLMs.Profiles;
+using Orkeon.Infrastructure.LLMs.Embeddings;
 using Orkeon.Domain.Common;
 using Orkeon.Domain.FileSystem;
 using Orkeon.Infrastructure.Evaluation;
@@ -216,6 +217,11 @@ public static partial class RunnerHost
                 throw new RunnerSettingsException(refusal);
 
             EnsureMountsAreReachable(host.Services, mounts.CliMounts);
+
+            // The runners never start the host, so its hosted services never fire: the embedding model
+            // guard (FWK-25) is called here, once the settings are judged and the mounts reachable.
+            if (EmbeddingModelGuard.CheckAsync(host.Services, CancellationToken.None).GetAwaiter().GetResult() is { } embeddingRefusal)
+                throw new RunnerSettingsException(embeddingRefusal);
 
             LogMountDecisions(host, decisions);
             WarnIfTokensUnavailable(host, decisions);

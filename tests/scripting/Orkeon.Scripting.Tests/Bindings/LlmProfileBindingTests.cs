@@ -54,6 +54,33 @@ public sealed class LlmProfileBindingTests
     }
 
     [Fact]
+    public async Task Under_the_test_switch_a_profile_provider_answers_from_test_mock_llm_first()
+    {
+        var engine = new JsEngineFactory(llmProvider: s_host, hostPorts: new ScriptingHostPorts { LlmProfiles = Profiles() })
+        {
+            EnableTestNamespace = true,
+        }.Create();
+
+        _ = await engine.EvaluateAsync("test.mockLlm.when('ping').respond('from-test')", cancellationToken: TestContext.Current.CancellationToken);
+        var config = (JsLlmConfig)(await engine.EvaluateAsync("llm.profile('claude')", cancellationToken: TestContext.Current.CancellationToken)).ToObject()!;
+        var served = await config.ProfileProvider!.GenerateAsync("ping", null, TestContext.Current.CancellationToken);
+        var passed = await config.ProfileProvider.GenerateAsync("other", null, TestContext.Current.CancellationToken);
+
+        Assert.Equal("from-test", served.Content);
+        Assert.Equal("anthropic", passed.Content);
+        Assert.Equal("anthropic", config.ProfileProvider.Name);
+        _ = await engine.EvaluateAsync("test.assertLlmCalled({ times: 2 })", cancellationToken: TestContext.Current.CancellationToken);
+    }
+
+    [Fact]
+    public void Without_the_test_switch_a_profile_provider_is_the_profiles_own()
+    {
+        var config = (JsLlmConfig)Engine(Profiles()).Evaluate("llm.profile('claude')").ToObject()!;
+
+        Assert.Same(s_claude, config.ProfileProvider);
+    }
+
+    [Fact]
     public void llm_profile_applies_its_overrides_and_keeps_the_profile()
     {
         var config = (JsLlmConfig)Engine(Profiles())

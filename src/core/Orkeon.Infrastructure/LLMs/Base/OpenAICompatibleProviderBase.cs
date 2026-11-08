@@ -97,6 +97,17 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
     /// </summary>
     internal IModelCapabilityRegistry ModelCapabilities { get; set; } = ModelCapabilityRegistry.Default;
 
+    /// <summary>
+    /// Judges a chat request the way a live call does, without sending it: builds the body, so an audio
+    /// part for a model that takes none throws the <see cref="NotSupportedException"/> the live call
+    /// throws, and an effort the model does not take is reported. A replay runs it before it answers.
+    /// </summary>
+    internal void ValidateChatRequest(LlmMessage[] messages, LlmConfig? config)
+    {
+        if (messages is { Length: > 0 })
+            _ = BuildChatRequestBody(messages, EffectiveConfig(config));
+    }
+
     private readonly System.Collections.Concurrent.ConcurrentDictionary<string, byte> _uncheckedEffortModels = new(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>

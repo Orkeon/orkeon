@@ -2,7 +2,10 @@ using System.Diagnostics.CodeAnalysis;
 using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using System.Text.RegularExpressions;
+using System.Net;
+using System.Net.Sockets;
+using System.Text.Json.Nodes;
+using Orkeon.Domain.Exceptions;
 using Orkeon.Domain.FileSystem;
 using Orkeon.Domain.SharedKernel.ValueObjects;
 
@@ -15,9 +18,9 @@ namespace Orkeon.Infrastructure.LLMs.Replay;
 /// </summary>
 [SuppressMessage("Design", "CA1001:Types that own disposable fields should be disposable",
     Justification = "The semaphore never exposes its wait handle, so it holds no unmanaged resource; the cassette lives as long as the factory.")]
-internal sealed partial class LlmCassette
+internal sealed class LlmCassette
 {
-    private const string Mark = "[REDACTED]";
+    private const string Mark = CassetteRedaction.Mark;
 
     private static readonly JsonSerializerOptions s_json = new()
     {
@@ -42,32 +45,18 @@ internal sealed partial class LlmCassette
         _path = path;
     }
 
-    [GeneratedRegex(@"(?i)bearer\s+[A-Za-z0-9._~+/=\-]{8,}", RegexOptions.CultureInvariant, 1000)]
-    private static partial Regex BearerToken();
-
-    [GeneratedRegex(@"sk-[A-Za-z0-9_\-]{16,}", RegexOptions.CultureInvariant, 1000)]
-    private static partial Regex VendorKey();
-
-    [GeneratedRegex(@"AIza[0-9A-Za-z_\-]{35}", RegexOptions.CultureInvariant, 1000)]
-    private static partial Regex GoogleKey();
-
-    [GeneratedRegex(@"([?&](?:key|api_key|apikey|token|access_token)=)[^&\s""'<>]+", RegexOptions.CultureInvariant | RegexOptions.IgnoreCase, 1000)]
-    private static partial Regex UrlQueryCredential();
-
-    [GeneratedRegex(@"(https?://)[^/\s@""'<>]+@", RegexOptions.CultureInvariant | RegexOptions.IgnoreCase, 1000)]
-    private static partial Regex UrlUserInfo();
-
     /// <summary>Appends one answered call; the first call of the run starts the file afresh.</summary>
     public async Task RecordAsync(
-        string profile, string key, LlmResponse response, IReadOnlyList<LlmStreamEvent>? events,
-        IEnumerable<string?> secrets, CancellationToken ct)
+        string profile, string key, LlmResponse? response, IReadOnlyList<LlmStreamEvent>? events,
+        IEnumerable<string?> secrets, CancellationToken ct, Exception? failure = null)
     {
         var line = new Line
         {
             Version = 1,
             Profile = profile,
             Key = key,
-            Response = ResponseRecord.From(response),
+            Response = response is null ? null : ResponseRecord.From(response),
+            Failure = failure is null ? null : FailureRecord.From(failure),
             Deltas = events?.Select(DeltaRecord.From).ToList(),
         };
 
@@ -76,7 +65,7 @@ internal sealed partial class LlmCassette
         {
             line.Occurrence = _recorded.GetValueOrDefault(key);
             _recorded[key] = line.Occurrence + 1;
-            var text = Redact(JsonSerializer.Serialize(line, s_json), secrets) + "\n";
+            var text = Redact(JsonSerializer.SerializeToNode(line, s_json)!, secrets).ToJsonString(s_json) + "\n";
             if (!_started)
             {
                 await _fileSystem.WriteAllTextAsync(_path, string.Empty, ct).ConfigureAwait(false);
@@ -92,7 +81,7 @@ internal sealed partial class LlmCassette
     }
 
     /// <summary>The next recorded answer of <paramref name="key"/>; none left is a <see cref="ReplayMissException"/>.</summary>
-    public async Task<(LlmResponse Response, IReadOnlyList<LlmStreamEvent>? Events)> TakeAsync(
+    public async Task<TakenCall> TakeAsync(
         string profile, string key, string call, CancellationToken ct)
     {
         await _gate.WaitAsync(ct).ConfigureAwait(false);
@@ -110,7 +99,10 @@ internal sealed partial class LlmCassette
 
             _taken[key] = taken + 1;
             var line = lines[taken];
-            return (line.Response!.ToResponse(), line.Deltas?.Select(d => d.ToEvent()).ToList());
+            return new TakenCall(
+                line.Response?.ToResponse() ?? new LlmResponse(),
+                line.Deltas?.Select(d => d.ToEvent()).ToList(),
+                line.Failure?.ToException());
         }
         finally
         {
@@ -139,7 +131,7 @@ internal sealed partial class LlmCassette
                 throw new ReplayMissException($"Line {number} of the cassette {_path} is not a recorded call ({ex.Message}).", ex);
             }
 
-            if (line?.Key is null || line.Response is null)
+            if (line?.Key is null || (line.Response is null && line.Failure is null))
                 throw new ReplayMissException($"Line {number} of the cassette {_path} is not a recorded call.");
             if (!result.TryGetValue(line.Key, out var list))
                 result[line.Key] = list = [];
@@ -149,21 +141,53 @@ internal sealed partial class LlmCassette
         return result;
     }
 
-    private static string Redact(string text, IEnumerable<string?> secrets)
+    /// <summary>Redacts every string value of the line, so what is written is valid JSON whatever the values held.</summary>
+    private static JsonNode Redact(JsonNode node, IEnumerable<string?> secrets)
     {
-        foreach (var secret in secrets.Where(s => !string.IsNullOrEmpty(s) && s.Length >= 6).Distinct(StringComparer.Ordinal))
-        {
-            text = text.Replace(secret!, Mark, StringComparison.Ordinal);
-            var escaped = JsonSerializer.Serialize(secret, s_json)[1..^1];
-            text = text.Replace(escaped, Mark, StringComparison.Ordinal);
-        }
-
-        text = BearerToken().Replace(text, "Bearer " + Mark);
-        text = UrlQueryCredential().Replace(text, "$1" + Mark);
-        text = UrlUserInfo().Replace(text, "$1" + Mark + "@");
-        text = GoogleKey().Replace(text, Mark);
-        return VendorKey().Replace(text, Mark);
+        var known = secrets.Where(x => !string.IsNullOrEmpty(x) && x.Length >= 6).Distinct(StringComparer.Ordinal).ToList();
+        return Walk(node, known!);
     }
+
+    private static void ReplaceIfChanged(JsonNode before, JsonNode after, Action<JsonNode> assign)
+    {
+        if (!ReferenceEquals(before, after))
+            assign(after);
+    }
+
+    private static JsonNode Walk(JsonNode node, List<string> secrets)
+    {
+        switch (node)
+        {
+            case JsonObject obj:
+                foreach (var name in obj.Select(p => p.Key).ToList())
+                {
+                    if (obj[name] is { } child)
+                        ReplaceIfChanged(child, Walk(child, secrets), replacement => obj[name] = replacement);
+                }
+
+                return obj;
+            case JsonArray array:
+                for (var i = 0; i < array.Count; i++)
+                {
+                    if (array[i] is { } child)
+                        ReplaceIfChanged(child, Walk(child, secrets), replacement => array[i] = replacement);
+                }
+
+                return array;
+            case JsonValue value when value.TryGetValue<string>(out var text):
+                foreach (var secret in secrets)
+                    text = text.Replace(secret, Mark, StringComparison.Ordinal);
+                return JsonValue.Create(CassetteRedaction.Text(text))!;
+            default:
+                return node;
+        }
+    }
+
+    /// <summary>What a cassette held for one call: its answer, its deltas, and the failure it ended with, if any.</summary>
+    /// <param name="Response">The answer (empty when the call failed).</param>
+    /// <param name="Events">The recorded deltas of a streamed call.</param>
+    /// <param name="Failure">The failure to raise, or null.</param>
+    internal sealed record TakenCall(LlmResponse Response, IReadOnlyList<LlmStreamEvent>? Events, Exception? Failure);
 
     private sealed class Line
     {
@@ -172,7 +196,33 @@ internal sealed partial class LlmCassette
         public string? Key { get; set; }
         public int Occurrence { get; set; }
         public ResponseRecord? Response { get; set; }
+        public FailureRecord? Failure { get; set; }
         public List<DeltaRecord>? Deltas { get; set; }
+    }
+
+    private sealed class FailureRecord
+    {
+        public string Kind { get; set; } = "other";
+        public string Message { get; set; } = string.Empty;
+        public int? Status { get; set; }
+        public double? WaitSeconds { get; set; }
+
+        public static FailureRecord From(Exception e) => e switch
+        {
+            LlmRateLimitException r => new() { Kind = "rate_limit", Message = r.Message, WaitSeconds = r.Wait.TotalSeconds },
+            HttpRequestException h => new() { Kind = "http", Message = h.Message, Status = (int?)h.StatusCode },
+            SocketException or IOException => new() { Kind = "http", Message = e.Message },
+            System.TimeoutException or OperationCanceledException => new() { Kind = "timeout", Message = e.Message },
+            _ => new() { Kind = "other", Message = e.Message },
+        };
+
+        public Exception ToException() => Kind switch
+        {
+            "rate_limit" => new LlmRateLimitException(Message, TimeSpan.FromSeconds(WaitSeconds ?? 0)),
+            "http" => new HttpRequestException(Message, null, (HttpStatusCode?)Status),
+            "timeout" => new System.TimeoutException(Message),
+            _ => new InvalidOperationException(Message),
+        };
     }
 
     private sealed class ResponseRecord

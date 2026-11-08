@@ -402,7 +402,7 @@ clé. Les appels d'embeddings ne sont pas rejoués : un 429 ou un 5xx parvient �
 échoue avec un message qui nomme les deux. Les identifiants de modèle des providers d'embeddings ne sont
 pas dans la table des capacités : elle porte sur l'entrée de chat et l'effort de raisonnement.
 
-**Changer de modèle d'embedding invalide les vecteurs stockés.** Au démarrage, un garde-fou compare le
+**Changer de modèle d'embedding invalide les vecteurs stockés.** Au démarrage, un garde-fou (lancé par `RunnerHost.Build` pour `orkeon run`, les autres commandes et le démon, par le démarrage du REPL, et par le service hébergé d'un hôte qui démarre ses services) compare le
 provider, le modèle et les dimensions à l'empreinte consignée dans `Orkeon:Embeddings:FingerprintPath`
 (par défaut `/workspace/.orkeon/embedding-fingerprint.json`, dans le système de fichiers virtuel). Le
 premier démarrage la consigne ; une empreinte différente arrête l'hôte avec une erreur qui nomme les deux
