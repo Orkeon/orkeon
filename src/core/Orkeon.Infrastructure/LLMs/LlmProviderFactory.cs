@@ -273,7 +273,7 @@ public sealed partial class LlmProviderFactory : ILlmProviderFactory
         var path = MockProviderSettings.ResponsesOf(config)
             ?? throw new InvalidOperationException("The mock LLM provider needs the virtual path of its responses file (Responses).");
         LogMockProvider(_loggerFactory.CreateLogger<LlmProviderFactory>(), MockProviderSettings.ProfileOf(config), path);
-        return Adapt<JsonlMockLlmProvider>(config, _ => new JsonlMockLlmProvider(_fileSystem, path));
+        return Adapt<JsonlMockLlmProvider>(config, logger => new JsonlMockLlmProvider(_fileSystem, path, logger));
     }
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "The LLM provider of profile {Profile} is the mock: it answers from {Responses} and calls no model. A host that serves real traffic must not run it.")]

@@ -32,14 +32,18 @@ d'appel d'outil compris. Le décorateur se pose dans la fabrique de fournisseurs
 sur le fournisseur de l'éditeur : la cassette contient les messages qui sont vraiment partis sur le fil, y compris
 l'émulation de l'appel d'outil par le prompt pour un modèle sans outils natifs.
 
-La **clé** est le SHA-256 du profil, des messages (rôle, contenu, identifiants d'appel d'outil), des outils, du
-format de réponse, du nom du modèle et des options d'échantillonnage (`temperature`, `max_tokens`, réflexion). Les horodatages (`2026-11-08T10:11:12Z`) et les identifiants générés (GUID) du texte sont d'abord
+La **clé** est le SHA-256 du profil, des messages (rôle, contenu, identifiants d'appel d'outil), du message système
+(le rôle, l'objectif et l'histoire d'un agent), des outils et du mode d'outil, du format de réponse, de la grammaire, du
+nom du modèle, des options d'échantillonnage (`temperature`, `top_p`, `seed`, les pénalités de fréquence et de
+présence, les séquences d'arrêt, `max_tokens`, réflexion) et du paramètre personnalisé `system_message` (les autres
+paramètres personnalisés sont la plomberie du profil : le fichier de réponses du mock, une version d'API) ; une option laissée à sa
+valeur par défaut ne pèse rien. Les horodatages (`2026-11-08T10:11:12Z`) et les identifiants générés (GUID) du texte sont d'abord
 remplacés par une marque fixe : un second run demande donc la même clé. Un appel répété avec la même clé reçoit un
 numéro d'occurrence : le n-ième appel identique rejoue la n-ième réponse enregistrée. Des appels identiques faits au
 même instant sont servis dans l'ordre où ils arrivent.
 
-Changer le modèle ou l'une de ces options provoque donc un échec : enregistrez de nouveau la cassette. La graine et le
-délai ne font pas partie de la clé. Les valeurs de forme secrète ci-dessous sont masquées dans le texte avant son
+Changer le modèle, une histoire d'agent ou l'une de ces options provoque donc un échec : enregistrez de nouveau la
+cassette. Le délai, les nouvelles tentatives et les réglages de cache ne font pas partie de la clé. Les valeurs de forme secrète ci-dessous sont masquées dans le texte avant son
 hachage : la réponse qu'une cassette stocke (masquée) et le tour suivant qui la répète demandent la même clé.
 
 Un appel qui échoue par une exception est enregistré aussi, et un rejeu relève le même genre d'exception (une
@@ -49,7 +53,9 @@ avant. Un rejeu juge aussi la requête comme un appel réel : un son pour un mod
 **Secrets** : avant l'écriture d'une ligne, ces éléments sont remplacés par `[REDACTED]` : la clé d'API avec laquelle
 le fournisseur est configuré, un jeton `Bearer`, une clé d'éditeur de la forme `sk-...` (pas un mot qui contient seulement `sk-`), une clé Google de la forme
 `AIza...`, la valeur d'un paramètre de requête `key=`, `api_key=`, `apikey=`, `token=` ou `access_token=` d'une URL, et
-les informations utilisateur d'une URL (`https://user:motdepasse@hote`). La requête elle-même n'est jamais stockée,
+les informations utilisateur d'une URL (`https://user:motdepasse@hote`). Une réponse en flux est masquée flux par flux
+(le contenu, le raisonnement, les arguments de chaque appel d'outil) autant que delta par delta : un secret que le flux
+a coupé en deux est rattrapé, et ce flux est alors stocké en un seul delta qui porte le texte masqué. La requête elle-même n'est jamais stockée,
 seulement sa clé. Rien d'autre n'est masqué : les réponses sont stockées telles quelles, et un modèle peut répéter ce
 qu'on lui a donné. Relisez une cassette avant de la versionner.
 

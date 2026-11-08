@@ -1,6 +1,5 @@
 using System.Globalization;
 using System.Text.Json;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -118,7 +117,7 @@ public static class EmbeddingModelGuard
 {
     /// <summary>
     /// Checks the embedding model against the fingerprint recorded for the host's vectors, and records it
-    /// when none exists. A host that wrote no <c>Orkeon:Embeddings</c> section is not guarded.
+    /// when none exists. A host whose embedding provider is unconfigured (no dimensions) is not guarded.
     /// </summary>
     /// <param name="services">The built host's services.</param>
     /// <param name="cancellationToken">Cancellation.</param>
@@ -167,12 +166,10 @@ internal static partial class EmbeddingDimensionGuardRunner
 
     private static FileEmbeddingFingerprintStore? TryCreateFileStore(IServiceProvider services)
     {
-        // Only a host that wrote an Orkeon:Embeddings section chose its embedding model: the others
-        // keep the on-device default and get no file written into their workspace.
-        var section = services.GetService<IConfiguration>()?.GetSection(DefaultEmbeddingProviderResolver.EmbeddingsSectionKey);
-        if (section is null || !section.Exists())
-            return null;
-
+        // Every host with an embedding provider is guarded, with or without an Orkeon:Embeddings
+        // section: a host that embedded under the default model and then writes a section (a switch
+        // to another provider) must find the default's fingerprint, not record the new model as the
+        // first one. A host with no provider (dimensions 0) writes nothing: CheckAsync skips it.
         var path = services.GetService<IOptions<EmbeddingOptions>>()?.Value.FingerprintPath;
         var fileSystem = services.GetService<IFileSystemService>();
         return string.IsNullOrWhiteSpace(path) || fileSystem is null

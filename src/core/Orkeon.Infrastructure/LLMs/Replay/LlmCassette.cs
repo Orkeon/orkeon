@@ -65,7 +65,9 @@ internal sealed class LlmCassette
         {
             line.Occurrence = _recorded.GetValueOrDefault(key);
             _recorded[key] = line.Occurrence + 1;
-            var text = Redact(JsonSerializer.SerializeToNode(line, s_json)!, secrets).ToJsonString(s_json) + "\n";
+            var known = KnownSecrets(secrets);
+            JoinSplitSecrets(line.Deltas, known);
+            var text = Walk(JsonSerializer.SerializeToNode(line, s_json)!, known).ToJsonString(s_json) + "\n";
             if (!_started)
             {
                 await _fileSystem.WriteAllTextAsync(_path, string.Empty, ct).ConfigureAwait(false);
@@ -142,10 +144,49 @@ internal sealed class LlmCassette
     }
 
     /// <summary>Redacts every string value of the line, so what is written is valid JSON whatever the values held.</summary>
-    private static JsonNode Redact(JsonNode node, IEnumerable<string?> secrets)
+    private static List<string> KnownSecrets(IEnumerable<string?> secrets) =>
+        secrets.Where(x => !string.IsNullOrEmpty(x) && x.Length >= 6).Distinct(StringComparer.Ordinal).ToList()!;
+
+    /// <summary>The text with the configured secrets and every secret-shaped value replaced by <see cref="Mark"/>.</summary>
+    private static string RedactText(string text, List<string> secrets)
     {
-        var known = secrets.Where(x => !string.IsNullOrEmpty(x) && x.Length >= 6).Distinct(StringComparer.Ordinal).ToList();
-        return Walk(node, known!);
+        foreach (var secret in secrets)
+            text = text.Replace(secret, Mark, StringComparison.Ordinal);
+        return CassetteRedaction.Text(text);
+    }
+
+    /// <summary>
+    /// A secret split across deltas: redacted one by one, no delta holds the whole value, so neither
+    /// the configured key nor a secret shape matches and the parts would be stored in clear. Each
+    /// stream (the content, the reasoning, the arguments of each tool call) is redacted whole; when
+    /// that removes more than redacting its deltas one by one, the stream is stored as a single
+    /// delta holding the redacted text - the replay yields the same text in fewer pieces.
+    /// </summary>
+    private static void JoinSplitSecrets(List<DeltaRecord>? deltas, List<string> secrets)
+    {
+        if (deltas is null)
+            return;
+
+        foreach (var stream in deltas.Where(d => d.Delta is not null).GroupBy(d => d.Kind, StringComparer.Ordinal))
+            JoinIfSplit(stream.ToList(), d => d.Delta, (d, v) => d.Delta = v, secrets);
+        foreach (var stream in deltas.Where(d => d.Index is not null && d.ArgumentsDelta is not null).GroupBy(d => d.Index))
+            JoinIfSplit(stream.ToList(), d => d.ArgumentsDelta, (d, v) => d.ArgumentsDelta = v, secrets);
+    }
+
+    private static void JoinIfSplit(List<DeltaRecord> stream, Func<DeltaRecord, string?> get, Action<DeltaRecord, string> set, List<string> secrets)
+    {
+        var parts = stream.Where(d => !string.IsNullOrEmpty(get(d))).ToList();
+        if (parts.Count < 2)
+            return;
+
+        var whole = RedactText(string.Concat(parts.Select(get)), secrets);
+        var pieceByPiece = string.Concat(parts.Select(d => RedactText(get(d)!, secrets)));
+        if (string.Equals(whole, pieceByPiece, StringComparison.Ordinal))
+            return;
+
+        set(parts[0], whole);
+        foreach (var part in parts.Skip(1))
+            set(part, string.Empty);
     }
 
     private static void ReplaceIfChanged(JsonNode before, JsonNode after, Action<JsonNode> assign)

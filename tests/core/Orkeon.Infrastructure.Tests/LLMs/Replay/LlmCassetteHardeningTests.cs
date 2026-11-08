@@ -32,6 +32,85 @@ public sealed class LlmCassetteHardeningTests
     }
 
     [Fact]
+    public async Task A_secret_split_across_streamed_deltas_never_lands_in_clear_in_the_cassette()
+    {
+        // FWK review LLM-2: redacted delta by delta, a key cut in two by the stream matched nowhere.
+        var fs = NewFileSystem();
+        var inner = new FakeScriptedLlmProvider
+        {
+            BaseConfig = LlmConfig.OnProfile() with { Model = "m", ApiKey = "configured-secret-0123" },
+            StreamEvents =
+            [
+                LlmStreamEvent.Content("echo configured-sec"),
+                LlmStreamEvent.Content("ret-0123 and sk-abcdefgh"),
+                LlmStreamEvent.Content("ijklmnopqrst done"),
+                LlmStreamEvent.ToolCallFragment(new ToolCallDelta(0, "c1", "fetch", "{\"url\":\"http://x.example/?api_")),
+                LlmStreamEvent.ToolCallFragment(new ToolCallDelta(0, null, null, "key=hunter2hunter2\"}")),
+                LlmStreamEvent.Complete(new LlmResponse { Content = "echo [REDACTED] and [REDACTED] done" }),
+            ],
+        };
+        var recorder = new RecordingLlmProvider(inner, new LlmCassette(fs, CassettePath), "default");
+        await foreach (var unused in recorder.ChatStreamingAsync(User("ping"), null, TestContext.Current.CancellationToken))
+        {
+        }
+
+        var cassette = await ReadAsync(fs);
+        Assert.DoesNotContain("configured-sec", cassette, StringComparison.Ordinal);
+        Assert.DoesNotContain("ret-0123", cassette, StringComparison.Ordinal);
+        Assert.DoesNotContain("abcdefgh", cassette, StringComparison.Ordinal);
+        Assert.DoesNotContain("ijklmnopqrst", cassette, StringComparison.Ordinal);
+        Assert.DoesNotContain("hunter2", cassette, StringComparison.Ordinal);
+
+        var text = new System.Text.StringBuilder();
+        var arguments = new System.Text.StringBuilder();
+        await foreach (var ev in Replaying(fs).ChatStreamingAsync(User("ping"), null, TestContext.Current.CancellationToken))
+        {
+            if (ev.Kind == LlmStreamEventKind.ContentDelta)
+                text.Append(ev.Delta);
+            if (ev.ToolCall is { } call)
+                arguments.Append(call.ArgumentsDelta);
+        }
+
+        Assert.Equal("echo [REDACTED] and [REDACTED] done", text.ToString());
+        Assert.Equal("{\"url\":\"http://x.example/?api_key=[REDACTED]\"}", arguments.ToString());
+    }
+
+    public static TheoryData<string> ChangedOptions => new()
+    {
+        "systemMessage", "toolMode", "topP", "seed", "stop", "frequencyPenalty", "presencePenalty", "custom", "grammar",
+    };
+
+    private static LlmConfig Changed(LlmConfig config, string option) => option switch
+    {
+        "systemMessage" => config with { SystemMessage = "You are a pirate." },
+        "toolMode" => config with { ToolMode = Orkeon.Domain.Tools.Protocol.ToolCallMode.Required },
+        "topP" => config with { TopP = 0.5 },
+        "seed" => config with { Seed = 7 },
+        "stop" => config with { StopSequences = ["END"] },
+        "frequencyPenalty" => config with { FrequencyPenalty = 0.4 },
+        "presencePenalty" => config with { PresencePenalty = 0.4 },
+        "custom" => config with { CustomParameters = new Dictionary<string, object> { ["system_message"] = "Be terse." } },
+        "grammar" => config with { GrammarEnabled = true, GrammarGbnf = "root ::= \"yes\"" },
+        _ => throw new ArgumentOutOfRangeException(nameof(option)),
+    };
+
+    [Theory]
+    [MemberData(nameof(ChangedOptions))]
+    public async Task A_call_whose_configuration_changed_what_the_model_answers_is_a_replay_miss(string option)
+    {
+        // FWK review LLM-3: a backstory edit (the system message) or another tool mode used to replay
+        // the old answer.
+        var fs = NewFileSystem();
+        var recorded = LlmConfig.OnProfile() with { Model = "m", SystemMessage = "You are a clerk." };
+        await new RecordingLlmProvider(new FakeScriptedLlmProvider { Response = new LlmResponse { Content = "old" } }, new LlmCassette(fs, CassettePath), "default")
+            .ChatAsync(User("ping"), recorded, TestContext.Current.CancellationToken);
+
+        Assert.Equal("old", (await Replaying(fs).ChatAsync(User("ping"), recorded, TestContext.Current.CancellationToken)).Content);
+        await Assert.ThrowsAsync<ReplayMissException>(
+            () => Replaying(fs).ChatAsync(User("ping"), Changed(recorded, option), TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
     public async Task A_kebab_case_slug_is_not_taken_for_a_vendor_key()
     {
         var fs = NewFileSystem();

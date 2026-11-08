@@ -37,6 +37,29 @@ public sealed class MockProfileFactoryTests
     }
 
     [Fact]
+    public async Task The_factory_hands_the_mock_a_logger_so_an_option_it_cannot_honour_is_warned_about()
+    {
+        // FWK review LLM-4: built without a logger, the mock's per-option warnings went to NullLogger in
+        // every runner - the silent drop the provider rule forbids.
+        using var logs = new Orkeon.Infrastructure.Tests.Doubles.FakeLoggerFactory();
+        var factory = new LlmProviderFactory(
+            new NoHttpClientFactory(),
+            logs,
+            fileSystem: new FakeFileSystemService().AddMount("/llm-mock").AddFile("/llm-mock/a.jsonl", """{"match":"ping","content":"pong"}"""));
+        var configuration = Settings(("Llm:Profiles:offline:Provider", "mock"), ("Llm:Profiles:offline:Responses", "/llm-mock/a.jsonl"));
+        var (_, config) = Assert.Single(LlmSettings.ReadProfiles(configuration));
+        var provider = Assert.IsType<LlmProviderAdapter>(factory.Create(config)).UnderlyingProvider;
+
+        await provider.ChatAsync(
+            [new Orkeon.Domain.SharedKernel.ValueObjects.LlmMessage { Role = "user", Content = "ping" }],
+            config with { Temperature = 0.3 },
+            TestContext.Current.CancellationToken);
+
+        Assert.Contains(logs.Entries, e => e.Level == Microsoft.Extensions.Logging.LogLevel.Warning
+                                           && e.Message.Contains("temperature", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public void Default_section_with_provider_mock_resolves_the_jsonl_provider()
     {
         var configuration = Settings(("Llm:Provider", "mock"), ("Llm:Responses", "/llm-mock/a.jsonl"));

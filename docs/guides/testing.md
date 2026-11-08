@@ -32,14 +32,17 @@ included. The decorator sits in the provider factory, under the call-mode layer,
 the cassette holds the messages that really went over the wire, including the prompt-based tool-calling
 emulation of a model without native tools.
 
-The **key** is the SHA-256 of the profile, the messages (role, content, tool call ids), the tools, the
-response format, the model name and the sampling options (`temperature`, `max_tokens`, thinking). Timestamps (`2026-11-08T10:11:12Z`) and generated identifiers (GUIDs) in the text are
+The **key** is the SHA-256 of the profile, the messages (role, content, tool call ids), the system message
+(an agent's role, goal and backstory), the tools and the tool mode, the response format, the grammar, the model
+name, the sampling options (`temperature`, `top_p`, `seed`, the frequency and presence penalties, the stop
+sequences, `max_tokens`, thinking) and the `system_message` custom parameter (the other custom parameters are the
+profile's plumbing: the mock's responses file, an API version); an option left at its default weighs as nothing. Timestamps (`2026-11-08T10:11:12Z`) and generated identifiers (GUIDs) in the text are
 replaced by a fixed mark first, so a second run asks for the same key. A call repeated with the same key
 gets an occurrence number: the n-th identical call replays the n-th recorded answer. Identical calls made
 at the same moment are served in the order they arrive.
 
-Changing the model or one of those options therefore misses: record the cassette again. The seed and the timeout
-are not part of the key. The secret-shaped values below are redacted in the text before it is hashed, so the
+Changing the model, a backstory or one of those options therefore misses: record the cassette again. The timeout,
+the retries and the cache settings are not part of the key. The secret-shaped values below are redacted in the text before it is hashed, so the
 answer a cassette stores (redacted) and the next turn that repeats it ask for the same key.
 
 A call that fails with an exception is recorded too, and a replay raises the same kind of exception again (an
@@ -49,7 +52,9 @@ A replay also judges the request as a live call does: audio for a model that tak
 **Secrets**: before a line is written, these are replaced by `[REDACTED]`: the API key the provider was
 configured with, a `Bearer` token, a vendor key shaped `sk-...` (not a word that merely contains `sk-`), a Google key shaped `AIza...`, the value of a
 `key=`, `api_key=`, `apikey=`, `token=` or `access_token=` query parameter of a URL, and the user info of a
-URL (`https://user:password@host`). The request itself is never stored, only its key. Nothing else is
+URL (`https://user:password@host`). A streamed answer is redacted stream by stream (the content, the reasoning,
+the arguments of each tool call) as well as delta by delta: a secret the stream cut in two is caught, and that
+stream is then stored as one delta holding the redacted text. The request itself is never stored, only its key. Nothing else is
 redacted: the answers are stored as they came, and a model may repeat what it was given. Check a cassette
 before committing it.
 

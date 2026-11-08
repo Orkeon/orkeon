@@ -393,7 +393,7 @@ provider, model and dimensions with the fingerprint recorded at `Orkeon:Embeddin
 (default `/workspace/.orkeon/embedding-fingerprint.json`, in the virtual file system). The first start
 records it; a different one stops the host with an error that names both models. Nothing is migrated:
 restore the previous settings, or re-embed and clear the stored vectors, then delete the fingerprint file.
-Only a host that wrote an `Orkeon:Embeddings` section is guarded: the others keep the on-device default and nothing is written into their workspace. A host with no `/workspace` mount (the read is refused, a warning is logged), or an empty `FingerprintPath`, runs unguarded.
+Every host whose embedding provider is configured is guarded, with or without an `Orkeon:Embeddings` section: a host that embedded under the default provider and then writes a section (a switch to Mistral or Gemini) finds the default's fingerprint and is refused. A host with no embedding provider (none registered, no section) writes nothing. A host with no `/workspace` mount (the read is refused, a warning is logged), or an empty `FingerprintPath`, runs unguarded.
 
 Cohere, Voyage and pgvector are not shipped.
 
