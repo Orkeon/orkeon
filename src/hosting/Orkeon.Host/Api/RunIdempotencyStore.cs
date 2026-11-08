@@ -141,7 +141,7 @@ internal sealed class RunIdempotencyStore(TimeSpan ttl, int maxKeys, TimeProvide
         var runs = await history.ListAsync(new RunQuery { Limit = Math.Min(maxKeys, 1000) }, ct).ConfigureAwait(false);
         foreach (var run in runs.Where(r => r.StartedAt >= horizon))
         {
-            var events = await history.ReadEventsAsync(run.RunId, 1, ct).ConfigureAwait(false);
+            var events = await history.ReadEventsAsync(run.RunId, 1, 1, ct).ConfigureAwait(false);
             var started = events.FirstOrDefault(e => e.Kind == RunEventKinds.RunStarted);
             var key = started?.Payload?["idempotencyKey"]?.GetValue<string>();
             var hash = started?.Payload?["requestHash"]?.GetValue<string>();

@@ -85,7 +85,7 @@ internal sealed class JsonLinesFileRunEventSink : IRunEventSink
         try
         {
             var stored = await ContinueSequenceAsync(runEvent, ct).ConfigureAwait(false);
-            await _fs.AppendAllTextAsync(RunFile(runEvent.RunId), RunEventWire.Serialize(stored) + "\n", ct).ConfigureAwait(false);
+            await AppendLineAsync(RunFile(runEvent.RunId), RunEventWire.Serialize(stored), ct).ConfigureAwait(false);
         }
         finally
         {
@@ -123,6 +123,29 @@ internal sealed class JsonLinesFileRunEventSink : IRunEventSink
     internal string RunFile(string runId) => $"{_options.Path.TrimEnd('/')}/{runId}.jsonl";
 
     internal string IndexPath => $"{_options.Path.TrimEnd('/')}/{IndexFile}";
+
+    // A process killed mid-write leaves a last line without its newline: the next line would be glued to it and both lost
+    // (FWK final review H15). A file that does not end with a newline gets one first.
+    private async System.Threading.Tasks.Task AppendLineAsync(string path, string line, CancellationToken ct)
+    {
+        var prefix = string.Empty;
+        if (await _fs.ExistsAsync(path, ct).ConfigureAwait(false))
+        {
+            var stream = await _fs.OpenReadStreamAsync(path, ct).ConfigureAwait(false);
+            await using (stream.ConfigureAwait(false))
+            {
+                if (stream.CanSeek && stream.Length > 0)
+                {
+                    stream.Seek(-1, SeekOrigin.End);
+                    var last = new byte[1];
+                    if (await stream.ReadAsync(last, ct).ConfigureAwait(false) == 1 && last[0] != (byte)'\n')
+                        prefix = "\n";
+                }
+            }
+        }
+
+        await _fs.AppendAllTextAsync(path, prefix + line + "\n", ct).ConfigureAwait(false);
+    }
 
     private async System.Threading.Tasks.Task EnsureFolderAsync(CancellationToken ct)
     {
@@ -175,7 +198,7 @@ internal sealed class JsonLinesFileRunEventSink : IRunEventSink
         await _indexGate.WaitAsync(ct).ConfigureAwait(false);
         try
         {
-            await _fs.AppendAllTextAsync(IndexPath, JsonSerializer.Serialize(line, IndexOptions) + "\n", ct).ConfigureAwait(false);
+            await AppendLineAsync(IndexPath, JsonSerializer.Serialize(line, IndexOptions), ct).ConfigureAwait(false);
             if (runEvent.Kind == RunEventKinds.RunFinished)
             {
                 _runGates.TryRemove(runId, out _);
@@ -211,7 +234,7 @@ internal sealed class JsonLinesFileRunEventSink : IRunEventSink
             await _fs.DeleteAsync(RunFile(runId), recursive: false, ct).ConfigureAwait(false);
 
             // A tombstone, not a rewrite of the index: another process may be appending to it right now.
-            await _fs.AppendAllTextAsync(IndexPath, JsonSerializer.Serialize(new { run_id = runId, purged = true }) + "\n", ct).ConfigureAwait(false);
+            await AppendLineAsync(IndexPath, JsonSerializer.Serialize(new { run_id = runId, purged = true }), ct).ConfigureAwait(false);
         }
     }
 
@@ -270,7 +293,11 @@ internal sealed class JsonLinesRunHistoryReader : IRunHistoryReader
     }
 
     /// <inheritdoc />
-    public async System.Threading.Tasks.Task<IReadOnlyList<RunEvent>> ReadEventsAsync(string runId, int fromSeq = 1, CancellationToken ct = default)
+    public System.Threading.Tasks.Task<IReadOnlyList<RunEvent>> ReadEventsAsync(string runId, int fromSeq = 1, CancellationToken ct = default) =>
+        ReadEventsAsync(runId, fromSeq, int.MaxValue, ct);
+
+    /// <inheritdoc />
+    public async System.Threading.Tasks.Task<IReadOnlyList<RunEvent>> ReadEventsAsync(string runId, int fromSeq, int limit, CancellationToken ct = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(runId);
 
@@ -282,7 +309,7 @@ internal sealed class JsonLinesRunHistoryReader : IRunHistoryReader
         if (text is null)
             return [];
 
-        return [.. ParseEvents(text, runId).Where(e => e.Seq >= fromSeq)];
+        return [.. ParseEvents(text, runId).Where(e => e.Seq >= fromSeq).Take(limit)];
     }
 
     /// <summary>

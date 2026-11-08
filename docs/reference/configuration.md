@@ -188,10 +188,10 @@ closed list, and what it means.
 | [Tools](#tools) | [`BRAVE_API_KEY`](#brave_api_key), [`MCP`](#mcp), [`MCP:Server`](#mcpserver), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Tools:Drive`](#orkeontoolsdrive), [`Orkeon:Tools:Email`](#orkeontoolsemail), [`Orkeon:Tools:Firefox`](#orkeontoolsfirefox), [`Orkeon:Tools:GitHub`](#orkeontoolsgithub), [`Orkeon:Tools:ResultLimits`](#orkeontoolsresultlimits), [`Orkeon:Tools:Shell`](#orkeontoolsshell), [`Plugins`](#plugins), [`RaggableTree`](#raggabletree) | 109 |
 | [Orchestration and persistence](#orchestration-and-persistence) | [`Orkeon:Checkpointing`](#orkeoncheckpointing), [`Orkeon:Consensus`](#orkeonconsensus), [`Orkeon:CrewFactory`](#orkeoncrewfactory), [`Orkeon:ExecutionState:Persistence`](#orkeonexecutionstatepersistence), [`Orkeon:HumanInput`](#orkeonhumaninput), [`Orkeon:RunHistory`](#orkeonrunhistory) | 27 |
 | [Scripts and console](#scripts-and-console) | [`Orkeon:Cli:ConsoleStreaming`](#orkeoncliconsolestreaming), [`Orkeon:Cli:Memory`](#orkeonclimemory), [`Orkeon:Cli:ScriptCommands`](#orkeoncliscriptcommands), [`Orkeon:Cli:ScriptHost`](#orkeoncliscripthost), [`Orkeon:Cli:Session`](#orkeonclisession), [`Orkeon:Cli:Tui`](#orkeonclitui), [`Orkeon:Scripting:AgentInstances`](#orkeonscriptingagentinstances), [`Orkeon:Scripting:AgentMemory`](#orkeonscriptingagentmemory), [`Orkeon:Scripting:Limits`](#orkeonscriptinglimits), [`Orkeon:Scripting:Toolchain`](#orkeonscriptingtoolchain) | 35 |
-| [Service host and A2A](#service-host-and-a2a) | [`A2A`](#a2a), [`A2A:Security`](#a2asecurity), [`A2A:Security:AzureAD`](#a2asecurityazuread), [`A2A:Security:Oidc`](#a2asecurityoidc), [`Orkeon:Host`](#orkeonhost), [`Orkeon:Host:Discord`](#orkeonhostdiscord) | 57 |
+| [Service host and A2A](#service-host-and-a2a) | [`A2A`](#a2a), [`A2A:Security`](#a2asecurity), [`A2A:Security:AzureAD`](#a2asecurityazuread), [`A2A:Security:Oidc`](#a2asecurityoidc), [`Orkeon:Host`](#orkeonhost), [`Orkeon:Host:Discord`](#orkeonhostdiscord) | 59 |
 | [Observability](#observability) | [`Logging`](#logging), [`Orkeon:Monitoring`](#orkeonmonitoring), [`Telemetry`](#telemetry) | 8 |
 
-80 sections, 525 keys. Read by no shipped binary, only by a host written in C# (6): [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Monitoring`](#orkeonmonitoring).
+80 sections, 527 keys. Read by no shipped binary, only by a host written in C# (6): [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Monitoring`](#orkeonmonitoring).
 <!-- /settings-index -->
 
 How to read a table:
@@ -2126,7 +2126,9 @@ The daemon (`Orkeon.Host`):
 | `Api:Enabled` | boolean | `false` | Serves the API. Off, the host listens on no port for it. |
 | `Api:IdempotencyMaxKeys` | integer | `10000` | The most idempotency keys held in memory; the oldest finished ones go first. |
 | `Api:IdempotencyTtl` | duration | `"1.00:00:00"` | How long an idempotency key is remembered. After it, the same key starts a new run. |
+| `Api:MaxEventStreams` | integer | `64` | The most event streams (`GET /runs/{id}/events`) served at once. Beyond it a stream is refused with a 503 `too_many_streams` and a `Retry-After`: each stream holds a connection and polls the history. |
 | `Api:Prefix` | string | `"http://localhost:5190/"` | The `HttpListener` prefix: scheme, host, port and a closing slash. A host the loopback does not contain (`http://+:5190/`) requires an authentication scheme or mutual TLS under `Security`. |
+| `Api:ReadinessCacheTtl` | duration | `"00:00:03"` | How long a `/readyz` answer is reused before the checks run again. Readiness reaches the state store and the history: a probe loop or a hostile client must not turn each request into that work. Zero runs the checks every time. |
 | `Api:ReadinessTags` | list of string | `[]` | Health-check tags added to readiness besides `ready`. `llm` adds the LLM provider check, which reaches an external service: left out by default, so a provider outage does not take the daemon out of rotation. |
 | `Api:Security:AllowedAuthSchemes` | list of string | `[]` | Authentication schemes accepted: `Bearer` and/or `ApiKey`. Empty means no authentication is required. Each declared scheme is validated, not merely matched (see `A2ACredentialValidator`). |
 | `Api:Security:ApiKeySecretNames` | list of string | `[]` | Names of the secrets holding the API keys the `ApiKey` scheme accepts, read through the `ISecretProvider` on every request. |
@@ -2140,7 +2142,7 @@ The daemon (`Orkeon.Host`):
 | `Crews:<i>:Path` | string | `""` | Path to the crew definition — a YAML file, a multi-file crew directory, or an `.ork.ts` script. The same targets `orkeon run` accepts. |
 | `Crews:<i>:Profile:MaxConcurrentRuns` | integer | `4` | How many runs of this crew may be in flight at once. Bounded on purpose: a daemon that accepts unlimited concurrent runs is a daemon that dies under its first burst. |
 | `LlmProfiles` | list of string | `[]` | The LLM profiles (`Llm:Profiles:<name>`) the hosted crews may name. The service runs crews it does not control: unset, every profile the configuration defines is offered; set, only those listed — a crew naming another one fails to load, the run with it. The default profile (the `Llm` section) is always offered, so `["default"]` offers it alone. Every entry must name a defined profile. |
-| `RunTimeout` | duration | `"00:30:00"` | How long a run may take before the host cancels it. A daemon has no user watching to press Ctrl-C, so an unbounded run is a stuck daemon. |
+| `RunTimeout` | duration | `"00:30:00"` | How long a run may take before the host cancels it. A daemon has no user watching to press Ctrl-C, so an unbounded run is a stuck daemon. The clock stops while the run holds on a question to a person: the hold timeout, not this one, ends that wait. |
 | `ShutdownGracePeriod` | duration | `"00:00:20"` | How long the host waits for in-flight runs on shutdown before giving up. Systemd sends SIGKILL after its own timeout, so this must stay under it. |
 <!-- /settings -->
 

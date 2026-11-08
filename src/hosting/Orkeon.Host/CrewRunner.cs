@@ -105,6 +105,9 @@ internal sealed partial class CrewRunner : ICrewRunner
     /// </summary>
     private readonly HostCrewMountPlan? _mountPlan;
 
+    private readonly TimeProvider _time;
+    private readonly Orkeon.Application.Interfaces.Checkpointing.IPendingInputBroker? _broker;
+
     /// <summary>Builds the runner over the host's services and its registry.</summary>
     public CrewRunner(
         IServiceScopeFactory scopes,
@@ -112,8 +115,12 @@ internal sealed partial class CrewRunner : ICrewRunner
         IHost host,
         IOptions<OrkeonHostOptions> options,
         ILogger<CrewRunner> logger,
-        HostCrewMountPlan? mountPlan = null)
+        HostCrewMountPlan? mountPlan = null,
+        TimeProvider? time = null,
+        Orkeon.Application.Interfaces.Checkpointing.IPendingInputBroker? broker = null)
     {
+        _time = time ?? TimeProvider.System;
+        _broker = broker;
         _scopes = scopes ?? throw new ArgumentNullException(nameof(scopes));
         _registry = registry ?? throw new ArgumentNullException(nameof(registry));
         _host = host ?? throw new ArgumentNullException(nameof(host));
@@ -187,7 +194,9 @@ internal sealed partial class CrewRunner : ICrewRunner
             // The deadline is armed BEFORE the acknowledgement: the ack is a network round
             // trip, and a rate-limited channel could otherwise hold an admitted slot with no
             // timeout at all.
-            run.Cancellation.CancelAfter(_options.RunTimeout);
+            // The clock stops while the run holds on a question to a person (FWK final review H1): the hold timeout,
+            // not this one, ends that wait.
+            using var deadline = new RunDeadline(_time, _options.RunTimeout, _broker, run.Id, run.Cancellation.Cancel);
 
             // Inside the try: a throwing callback must release the slot like any other
             // failure, or the crew stays one seat closer to permanently "busy".

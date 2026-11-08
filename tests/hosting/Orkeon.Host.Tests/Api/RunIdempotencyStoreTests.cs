@@ -149,4 +149,20 @@ public sealed class RunIdempotencyStoreTests
         Assert.False(oldest.Replay);
         Assert.True(store.Count <= 2);
     }
+
+    [Fact]
+    [Trait("BR", "FWK-14")]
+    public async Task Hydration_reads_one_event_per_run_not_the_whole_run()
+    {
+        var runs = Enumerable.Range(1, 3)
+            .Select(i => new Orkeon.Application.Runs.RunSummary { RunId = "run-" + i, StartedAt = DateTimeOffset.UtcNow })
+            .ToList();
+        var history = new Orkeon.Host.Tests.Doubles.FakeRunHistoryReader(runs, eventsPerRun: 500);
+        var store = new RunIdempotencyStore(s_ttl, 100);
+
+        var recovered = await store.HydrateAsync(history, TestContext.Current.CancellationToken);
+
+        Assert.Equal(3, recovered);
+        Assert.Equal([1, 1, 1], history.Limits);
+    }
 }

@@ -85,7 +85,8 @@ internal sealed record OrkeonHostOptions
 
     /// <summary>
     /// How long a run may take before the host cancels it. A daemon has no user watching to
-    /// press Ctrl-C, so an unbounded run is a stuck daemon.
+    /// press Ctrl-C, so an unbounded run is a stuck daemon. The clock stops while the run holds on a
+    /// question to a person: the hold timeout, not this one, ends that wait.
     /// </summary>
     public TimeSpan RunTimeout { get; init; } = TimeSpan.FromMinutes(30);
 

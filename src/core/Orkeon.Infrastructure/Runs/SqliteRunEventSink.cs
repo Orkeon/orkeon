@@ -177,14 +177,18 @@ public sealed class SqliteRunEventSink : IRunEventSink, IRunHistoryReader, IDisp
     }
 
     /// <inheritdoc />
-    public async System.Threading.Tasks.Task<IReadOnlyList<RunEvent>> ReadEventsAsync(string runId, int fromSeq = 1, CancellationToken ct = default)
+    public System.Threading.Tasks.Task<IReadOnlyList<RunEvent>> ReadEventsAsync(string runId, int fromSeq = 1, CancellationToken ct = default) =>
+        ReadEventsAsync(runId, fromSeq, int.MaxValue, ct);
+
+    /// <inheritdoc />
+    public async System.Threading.Tasks.Task<IReadOnlyList<RunEvent>> ReadEventsAsync(string runId, int fromSeq, int limit, CancellationToken ct = default)
     {
         await _gate.WaitAsync(ct).ConfigureAwait(false);
         try
         {
             using var reader = await Command(
-                "SELECT seq, ts, kind, agent_id, payload_json FROM run_events WHERE run_id = $run AND seq >= $from ORDER BY seq",
-                ("$run", runId), ("$from", fromSeq)).ExecuteReaderAsync(ct).ConfigureAwait(false);
+                "SELECT seq, ts, kind, agent_id, payload_json FROM run_events WHERE run_id = $run AND seq >= $from ORDER BY seq LIMIT $limit",
+                ("$run", runId), ("$from", fromSeq), ("$limit", limit)).ExecuteReaderAsync(ct).ConfigureAwait(false);
             var events = new List<RunEvent>();
             while (await reader.ReadAsync(ct).ConfigureAwait(false))
             {
@@ -275,7 +279,8 @@ public sealed class SqliteRunEventSink : IRunEventSink, IRunHistoryReader, IDisp
             ?? runEvent.Payload?["crewKey"]?.ToString()
             ?? runEvent.Payload?["target"]?.ToString();
         await Command(
-            "INSERT OR REPLACE INTO runs (run_id, crew_key, status, started_at, inputs_json, pid, host, process_started_at) VALUES ($run, $crew, 'running', $at, $inputs, $pid, $host, $pstart)",
+            "INSERT INTO runs (run_id, crew_key, status, started_at, inputs_json, pid, host, process_started_at) VALUES ($run, $crew, 'running', $at, $inputs, $pid, $host, $pstart) "
+            + "ON CONFLICT(run_id) DO UPDATE SET status = 'running', finished_at = NULL, pid = excluded.pid, host = excluded.host, process_started_at = excluded.process_started_at",
             ("$run", runEvent.RunId), ("$crew", crew), ("$at", Iso(runEvent.Timestamp)), ("$inputs", runEvent.Payload?["inputs"]?.ToJsonString()),
             ("$pid", _identity.Pid), ("$host", _identity.Host), ("$pstart", _identity.StartedAt is { } at ? Iso(at) : null))
             .ExecuteNonQueryAsync(ct).ConfigureAwait(false);

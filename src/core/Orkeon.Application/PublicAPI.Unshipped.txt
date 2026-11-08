@@ -819,6 +819,7 @@ Orkeon.Application.Interfaces.Ports.ILlmFallbackObserver.FallbackTaken(string! p
 [ORKEXP007]Orkeon.Application.Runs.IRunHistoryReader.ListAsync(Orkeon.Application.Runs.RunQuery! query, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Orkeon.Application.Runs.RunSummary!>!>!
 [ORKEXP007]Orkeon.Application.Runs.IRunEventSink.WriteAsync(Orkeon.Application.Runs.RunEvent! runEvent, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
 [ORKEXP007]Orkeon.Application.Runs.IRunHistoryReader.ReadEventsAsync(string! runId, int fromSeq = 1, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Orkeon.Application.Runs.RunEvent!>!>!
+[ORKEXP007]Orkeon.Application.Runs.IRunHistoryReader.ReadEventsAsync(string! runId, int fromSeq, int limit, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Orkeon.Application.Runs.RunEvent!>!>!
 [ORKEXP007]Orkeon.Application.Runs.RunStatus.Orphaned = 3 -> Orkeon.Application.Runs.RunStatus
 [ORKEXP007]Orkeon.Application.Runs.IRunProcessProbe
 [ORKEXP007]Orkeon.Application.Runs.RunProcessIdentity.Pid.get -> int
@@ -904,6 +905,8 @@ static Orkeon.Application.Crew.ToolCallDeltaDlp.From(System.IServiceProvider! se
 static Orkeon.Application.Crew.ToolCallDlpDeltaSink.Wrap(Orkeon.Application.Interfaces.Ports.ILlmDeltaSink? sink, System.IServiceProvider! services) -> Orkeon.Application.Interfaces.Ports.ILlmDeltaSink?
 Orkeon.Application.Interfaces.Checkpointing.IPendingInputBroker
 Orkeon.Application.Interfaces.Checkpointing.IPendingInputBroker.HeldRequestId(string! runId) -> string?
+Orkeon.Application.Interfaces.Checkpointing.IPendingInputBroker.HeldRequestIds(string! runId) -> System.Collections.Generic.IReadOnlyList<string!>!
+Orkeon.Application.Interfaces.Checkpointing.IPendingInputBroker.WatchHolds(string! runId, System.Action<bool>! heldChanged) -> System.IDisposable!
 Orkeon.Application.Interfaces.Checkpointing.IPendingInputBroker.TryComplete(string! runId, string? requestId, string! answer) -> bool
 Orkeon.Application.Interfaces.Checkpointing.IPendingInputBroker.WaitAsync(string! runId, string! requestId, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<string!>!
 Orkeon.Application.Interfaces.Checkpointing.IPendingInputStore

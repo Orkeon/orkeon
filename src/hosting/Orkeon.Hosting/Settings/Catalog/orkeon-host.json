@@ -135,11 +135,25 @@
       "description": "How long an idempotency key is remembered. After it, the same key starts a new run."
     },
     {
+      "path": "Orkeon:Host:Api:MaxEventStreams",
+      "section": "Orkeon:Host",
+      "type": "integer",
+      "default": 64,
+      "description": "The most event streams (`GET /runs/{id}/events`) served at once. Beyond it a stream is refused with a 503 `too_many_streams` and a `Retry-After`: each stream holds a connection and polls the history."
+    },
+    {
       "path": "Orkeon:Host:Api:Prefix",
       "section": "Orkeon:Host",
       "type": "string",
       "default": "http://localhost:5190/",
       "description": "The `HttpListener` prefix: scheme, host, port and a closing slash. A host the loopback does not contain (`http://+:5190/`) requires an authentication scheme or mutual TLS under `Security`."
+    },
+    {
+      "path": "Orkeon:Host:Api:ReadinessCacheTtl",
+      "section": "Orkeon:Host",
+      "type": "duration",
+      "default": "00:00:03",
+      "description": "How long a `/readyz` answer is reused before the checks run again. Readiness reaches the state store and the history: a probe loop or a hostile client must not turn each request into that work. Zero runs the checks every time."
     },
     {
       "path": "Orkeon:Host:Api:ReadinessTags",
@@ -236,7 +250,7 @@
       "section": "Orkeon:Host",
       "type": "duration",
       "default": "00:30:00",
-      "description": "How long a run may take before the host cancels it. A daemon has no user watching to press Ctrl-C, so an unbounded run is a stuck daemon."
+      "description": "How long a run may take before the host cancels it. A daemon has no user watching to press Ctrl-C, so an unbounded run is a stuck daemon. The clock stops while the run holds on a question to a person: the hold timeout, not this one, ends that wait."
     },
     {
       "path": "Orkeon:Host:ShutdownGracePeriod",

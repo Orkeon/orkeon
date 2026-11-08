@@ -148,6 +148,8 @@ internal sealed class HostApiHarness : IDisposable
 #pragma warning restore CA2000
             if (body is not null)
                 request.Content = new StringContent(JsonSerializer.Serialize(body), Encoding.UTF8, "application/json");
+            else if (method == HttpMethod.Post)
+                request.Content = new StringContent(string.Empty, Encoding.UTF8, "application/json");
             if (authorization is not null)
                 request.Headers.TryAddWithoutValidation("Authorization", authorization);
             configure?.Invoke(request);

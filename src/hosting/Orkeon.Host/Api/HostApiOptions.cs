@@ -49,6 +49,18 @@ internal sealed record HostApiOptions
     /// <summary>The most idempotency keys held in memory; the oldest finished ones go first.</summary>
     public int IdempotencyMaxKeys { get; init; } = 10_000;
 
+    /// <summary>
+    /// How long a <c>/readyz</c> answer is reused before the checks run again. Readiness reaches the state store and the
+    /// history: a probe loop or a hostile client must not turn each request into that work. Zero runs the checks every time.
+    /// </summary>
+    public TimeSpan ReadinessCacheTtl { get; init; } = TimeSpan.FromSeconds(3);
+
+    /// <summary>
+    /// The most event streams (<c>GET /runs/{id}/events</c>) served at once. Beyond it a stream is refused with a 503
+    /// <c>too_many_streams</c> and a <c>Retry-After</c>: each stream holds a connection and polls the history.
+    /// </summary>
+    public int MaxEventStreams { get; init; } = 64;
+
     /// <summary>Whether the prefix names only the loopback interface.</summary>
     public bool ListensOnLoopbackOnly
     {
@@ -62,6 +74,29 @@ internal sealed record HostApiOptions
 
             return uri.IsLoopback;
         }
+    }
+
+    /// <summary>Whether the API declares no authentication, so the loopback is the only protection (FWK final review H8).</summary>
+    public bool IsUnauthenticated => Security.AllowedAuthSchemes.Count == 0 && !Security.RequireMutualTls;
+
+    /// <summary>
+    /// Whether <paramref name="hostHeader"/> (the request's <c>Host</c>, with its port) names this listener. A wildcard prefix
+    /// accepts any host; a loopback prefix accepts the loopback spellings on its port, so a page reached through a
+    /// rebound DNS name is refused.
+    /// </summary>
+    public bool AcceptsHost(string? hostHeader)
+    {
+        if (Prefix.Contains("://+", StringComparison.Ordinal) || Prefix.Contains("://*", StringComparison.Ordinal))
+            return true;
+        if (!Uri.TryCreate(Prefix, UriKind.Absolute, out var prefix))
+            return true;
+        if (string.IsNullOrWhiteSpace(hostHeader) || !Uri.TryCreate("http://" + hostHeader, UriKind.Absolute, out var given))
+            return false;
+        if (given.Port != prefix.Port && !(given.IsDefaultPort && prefix.IsDefaultPort))
+            return false;
+        if (prefix.IsLoopback)
+            return given.IsLoopback || string.Equals(given.Host, "localhost", StringComparison.OrdinalIgnoreCase);
+        return string.Equals(given.Host, prefix.Host, StringComparison.OrdinalIgnoreCase);
     }
 
     /// <summary>Refuses a section the listener cannot honour.</summary>
@@ -79,6 +114,10 @@ internal sealed record HostApiOptions
             throw new HostConfigurationException($"{SectionName}:IdempotencyTtl must be greater than zero.");
         if (SseKeepAliveInterval <= TimeSpan.Zero)
             throw new HostConfigurationException($"{SectionName}:SseKeepAliveInterval must be greater than zero.");
+        if (ReadinessCacheTtl < TimeSpan.Zero)
+            throw new HostConfigurationException($"{SectionName}:ReadinessCacheTtl must not be negative.");
+        if (MaxEventStreams < 1)
+            throw new HostConfigurationException($"{SectionName}:MaxEventStreams must be at least 1.");
         if (IdempotencyMaxKeys < 1)
             throw new HostConfigurationException($"{SectionName}:IdempotencyMaxKeys must be at least 1.");
     }

@@ -5,7 +5,7 @@ namespace Orkeon.Application.Runs;
 /// <summary>
 /// Which recorded runs a purge removes, one rule for every store: a finished run older than
 /// <see cref="RunHistoryOptions.RetentionDays"/> goes, and so does the oldest finished run beyond
-/// <see cref="RunHistoryOptions.MaxRuns"/>. A run still in flight is never purged: its history is being written.
+/// <see cref="RunHistoryOptions.MaxRuns"/>. A run still in flight, or waiting for an answer to resume with, is never purged.
 /// </summary>
 [Experimental("ORKEXP007", UrlFormat = "https://github.com/Orkeon/orkeon/blob/main/docs/reference/experimental-apis.md")]
 public static class RunHistoryRetention
@@ -17,7 +17,7 @@ public static class RunHistoryRetention
         ArgumentNullException.ThrowIfNull(options);
 
         var purge = new HashSet<string>(StringComparer.Ordinal);
-        var finished = runs.Where(run => run.Status != RunStatus.Running).ToList();
+        var finished = runs.Where(run => run.Status is not (RunStatus.Running or RunStatus.WaitingForInput)).ToList();
 
         if (options.RetentionDays > 0)
         {

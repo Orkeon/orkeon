@@ -72,7 +72,9 @@ public sealed class HostApiHealthTests : IDisposable
     {
         var store = new FakeStateStore();
         await using var daemon = await _harness.StartAsync(
-            new HeldLlmProvider("unused"), services: s => s.AddSingleton<IStateStore>(store));
+            new HeldLlmProvider("unused"),
+            configure: (_, api) => api["ReadinessCacheTtl"] = "00:00:00",
+            services: s => s.AddSingleton<IStateStore>(store));
 
         store.Throws = true;
         using var down = await daemon.GetAsync("/readyz");

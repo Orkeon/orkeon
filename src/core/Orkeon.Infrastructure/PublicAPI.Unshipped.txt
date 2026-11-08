@@ -560,6 +560,7 @@ Orkeon.Infrastructure.Crew.Strategies.GraphProcessStrategy.GraphProcessStrategy(
 [ORKEXP007]Orkeon.Infrastructure.Runs.SqliteRunEventSink.ListAsync(Orkeon.Application.Runs.RunQuery! query, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Orkeon.Application.Runs.RunSummary!>!>!
 [ORKEXP007]Orkeon.Infrastructure.Runs.SqliteRunEventSink.GetAsync(string! runId, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Application.Runs.RunSummary?>!
 [ORKEXP007]Orkeon.Infrastructure.Runs.SqliteRunEventSink.ReadEventsAsync(string! runId, int fromSeq = 1, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Orkeon.Application.Runs.RunEvent!>!>!
+[ORKEXP007]Orkeon.Infrastructure.Runs.SqliteRunEventSink.ReadEventsAsync(string! runId, int fromSeq, int limit, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Orkeon.Application.Runs.RunEvent!>!>!
 [ORKEXP007]Orkeon.Infrastructure.Runs.SqliteRunEventSink.Dispose() -> void
 [ORKEXP007]Orkeon.Infrastructure.Runs.RedactingRunEventSink
 [ORKEXP007]Orkeon.Infrastructure.Runs.SqliteRunEventSink.SqliteRunEventSink(Orkeon.Domain.FileSystem.IFileSystemService! fileSystem, Orkeon.Application.Runs.RunHistoryOptions! options, System.TimeProvider! time, Orkeon.Application.Runs.RunProcessIdentity? identity = null, Orkeon.Application.Runs.IRunProcessProbe? probe = null) -> void
@@ -803,6 +804,8 @@ Orkeon.Infrastructure.HumanInput.HumanInputPauseOptions.Pause.get -> Orkeon.Infr
 Orkeon.Infrastructure.HumanInput.HumanInputPauseOptions.Pause.set -> void
 Orkeon.Infrastructure.HumanInput.PendingInputBroker
 Orkeon.Infrastructure.HumanInput.PendingInputBroker.HeldRequestId(string! runId) -> string?
+Orkeon.Infrastructure.HumanInput.PendingInputBroker.HeldRequestIds(string! runId) -> System.Collections.Generic.IReadOnlyList<string!>!
+Orkeon.Infrastructure.HumanInput.PendingInputBroker.WatchHolds(string! runId, System.Action<bool>! heldChanged) -> System.IDisposable!
 Orkeon.Infrastructure.HumanInput.PendingInputBroker.PendingInputBroker() -> void
 Orkeon.Infrastructure.HumanInput.PendingInputBroker.TryComplete(string! runId, string? requestId, string! answer) -> bool
 Orkeon.Infrastructure.HumanInput.PendingInputBroker.WaitAsync(string! runId, string! requestId, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<string!>!

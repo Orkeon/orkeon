@@ -53,6 +53,8 @@ internal sealed partial class HostApiServer : IHostedService, IDisposable
     private readonly ConcurrentDictionary<int, Task> _requests = new();
     private readonly ConcurrentDictionary<int, Task> _runs = new();
     private int _sequence;
+    private int _streams;
+    private (HealthReport Report, long At)? _readiness;
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Usage", "CA2213:Disposable fields should be disposed",
         Justification = "Released with Abort(), the disposal of a listener Stop() has stopped: Close() and Dispose() would bind the port again (GAP-41).")]
     private HttpListener? _listener;
@@ -250,6 +252,24 @@ internal sealed partial class HostApiServer : IHostedService, IDisposable
         var segments = (request.Url?.AbsolutePath ?? "/").Trim('/').Split('/', StringSplitOptions.RemoveEmptyEntries);
         var method = request.HttpMethod;
 
+        // Without any authentication the loopback is the only protection (FWK final review H8): a web page the operator
+        // opens must not drive the daemon, neither by a cross-site form (no JSON content type) nor through a DNS name
+        // rebound to 127.0.0.1 (a Host the listener does not name).
+        if (_options.IsUnauthenticated)
+        {
+            if (!_options.AcceptsHost(request.Headers["Host"]))
+            {
+                await WriteAsync(context, 421, new ApiErrorDto { Error = "misdirected_request", Message = "The Host header does not name this listener." }).ConfigureAwait(false);
+                return;
+            }
+
+            if (method == "POST" && !IsJson(request.ContentType))
+            {
+                await WriteAsync(context, 415, new ApiErrorDto { Error = "unsupported_media_type", Message = "A POST must declare Content-Type: application/json." }).ConfigureAwait(false);
+                return;
+            }
+        }
+
         // Probes first, and without authentication: an orchestrator holds no credential.
         if (segments is ["healthz"] && method == "GET")
         {
@@ -303,18 +323,37 @@ internal sealed partial class HostApiServer : IHostedService, IDisposable
         }
     }
 
+    private static bool IsJson(string? contentType)
+    {
+        var type = contentType?.Trim();
+        return type is not null
+            && type.StartsWith("application/json", StringComparison.OrdinalIgnoreCase)
+            && (type.Length == 16 || type[16] is ';' or ' ');
+    }
+
     private async Task ProbeAsync(HttpListenerContext context, string tag, bool includeReadinessTags, CancellationToken ct)
     {
         var extra = includeReadinessTags ? _options.ReadinessTags : [];
-        var report = await _health.CheckHealthAsync(
-            registration => registration.Tags.Contains(tag) || registration.Tags.Intersect(extra, StringComparer.OrdinalIgnoreCase).Any(), ct)
-            .ConfigureAwait(false);
+        var cached = includeReadinessTags && _options.ReadinessCacheTtl > TimeSpan.Zero;
+        HealthReport report;
+        if (cached && _readiness is { } last && _time.GetElapsedTime(last.At) < _options.ReadinessCacheTtl)
+        {
+            report = last.Report;
+        }
+        else
+        {
+            report = await _health.CheckHealthAsync(
+                registration => registration.Tags.Contains(tag) || registration.Tags.Intersect(extra, StringComparer.OrdinalIgnoreCase).Any(), ct)
+                .ConfigureAwait(false);
+            if (cached)
+                _readiness = (report, _time.GetTimestamp());
+        }
 
         var stopping = _registry.AdmissionClosed;
         var status = stopping ? "stopping" : StatusName(report.Status);
         var code = stopping || report.Status == HealthStatus.Unhealthy ? 503 : 200;
         var checks = report.Entries
-            .Select(e => new ProbeCheckDto { Name = e.Key, Status = StatusName(e.Value.Status), Description = e.Value.Description })
+            .Select(e => new ProbeCheckDto { Name = e.Key, Status = StatusName(e.Value.Status) })
             .OrderBy(c => c.Name, StringComparer.Ordinal)
             .ToList();
         await WriteAsync(context, code, new ProbeDto { Status = status, Checks = checks }).ConfigureAwait(false);
@@ -549,14 +588,29 @@ internal sealed partial class HostApiServer : IHostedService, IDisposable
             return;
         }
 
-        if (_broker.HeldRequestId(id) is { } held)
+        var heldIds = _broker.HeldRequestIds(id);
+        if (request.RequestId is null && heldIds.Count > 1)
         {
-            if (request.RequestId is not null && !string.Equals(request.RequestId, held, StringComparison.Ordinal))
+            // Several questions are held (parallel agents): an answer without a request_id would go to an arbitrary one.
+            await WriteAsync(context, 409, new ApiErrorDto
             {
-                await WriteAsync(context, 409, new ApiErrorDto { Error = "request_mismatch", Message = "The run waits on another question." }).ConfigureAwait(false);
-                return;
-            }
+                Error = "request_id_required",
+                Message = $"The run holds {heldIds.Count} questions: name the one you answer with request_id ({string.Join(", ", heldIds)}).",
+            }).ConfigureAwait(false);
+            return;
+        }
 
+        var held = request.RequestId is null
+            ? heldIds.Count == 1 ? heldIds[0] : null
+            : heldIds.FirstOrDefault(h => string.Equals(h, request.RequestId, StringComparison.Ordinal));
+        if (heldIds.Count > 0 && held is null)
+        {
+            await WriteAsync(context, 409, new ApiErrorDto { Error = "request_mismatch", Message = "The run waits on another question." }).ConfigureAwait(false);
+            return;
+        }
+
+        if (held is not null)
+        {
             if (_broker.TryComplete(id, held, request.Answer))
             {
                 await WriteAsync(context, 200, new InputAcceptedDto { RunId = id, RequestId = held, Status = "delivered" }).ConfigureAwait(false);
@@ -569,6 +623,10 @@ internal sealed partial class HostApiServer : IHostedService, IDisposable
         {
             case PendingInputAnswerOutcome.Accepted:
                 await WriteAsync(context, 202, new InputAcceptedDto { RunId = id, RequestId = answered.RequestId!, Status = "recorded" }).ConfigureAwait(false);
+                break;
+            case PendingInputAnswerOutcome.AlreadyAnswered:
+                // The same answer given again before the resume (a retried POST): the same fact, so the same success.
+                await WriteAsync(context, 200, new InputAcceptedDto { RunId = id, RequestId = answered.RequestId!, Status = "already_answered" }).ConfigureAwait(false);
                 break;
             case PendingInputAnswerOutcome.UnknownSession:
                 await WriteNoSuchRunAsync(context).ConfigureAwait(false);
@@ -626,6 +684,28 @@ internal sealed partial class HostApiServer : IHostedService, IDisposable
             return;
         }
 
+        // A stream holds a connection and polls the history: beyond the cap the answer is a structured 503 (FWK final review H18).
+        if (Interlocked.Increment(ref _streams) > _options.MaxEventStreams)
+        {
+            Interlocked.Decrement(ref _streams);
+            context.Response.Headers["Retry-After"] = RetryAfterSeconds.ToString(CultureInfo.InvariantCulture);
+            await WriteAsync(context, 503, new ApiErrorDto { Error = "too_many_streams", Message = $"The host serves {_options.MaxEventStreams} event streams already; try again shortly." }).ConfigureAwait(false);
+            return;
+        }
+
+        try
+        {
+            await ServeStreamAsync(context, id, ct).ConfigureAwait(false);
+        }
+        finally
+        {
+            Interlocked.Decrement(ref _streams);
+        }
+    }
+
+    private async Task ServeStreamAsync(HttpListenerContext context, string id, CancellationToken ct)
+    {
+        var history = _history!;
         // Last-Event-ID is the seq the client last received: it resumes after it. ?from= is inclusive, as the history reads.
         var next = 1;
         var lastEventId = context.Request.Headers["Last-Event-ID"];
@@ -644,7 +724,7 @@ internal sealed partial class HostApiServer : IHostedService, IDisposable
         var lastWrite = _time.GetTimestamp();
         while (!ct.IsCancellationRequested)
         {
-            var events = await _history.ReadEventsAsync(id, next, ct).ConfigureAwait(false);
+            var events = await history.ReadEventsAsync(id, next, ct).ConfigureAwait(false);
             var finished = false;
             foreach (var runEvent in events)
             {
@@ -672,7 +752,7 @@ internal sealed partial class HostApiServer : IHostedService, IDisposable
                 return;
 
             // Nothing new: stop when the run is over without a run.finished (a killed process), else wait.
-            if (events.Count == 0 && !IsRunning(id) && await _history.GetAsync(id, ct).ConfigureAwait(false) is { Status: not RunStatus.Running })
+            if (events.Count == 0 && !IsRunning(id) && await history.GetAsync(id, ct).ConfigureAwait(false) is { Status: not RunStatus.Running })
                 return;
 
             await Task.Delay(s_eventPoll, _time, ct).ConfigureAwait(false);

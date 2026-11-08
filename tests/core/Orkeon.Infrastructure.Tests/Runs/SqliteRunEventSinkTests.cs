@@ -169,4 +169,34 @@ public sealed class SqliteRunEventSinkTests : IDisposable
         Assert.Equal("wal", mode);
         Assert.Equal(["r4"], (await reopened.ListAsync(new RunQuery(), Ct)).Select(r => r.RunId));
     }
+
+    [Fact]
+    [Trait("BR", "FWK-23")]
+    public async Task ShouldKeepStartedAtAndInputs_WhenAResumedRunStartsAgain()
+    {
+        var sink = Open();
+        var first = _time.GetUtcNow();
+        await sink.WriteAsync(Event("r1", 1, RunEventKinds.RunStarted, first, new { target = "crew", inputs = new { topic = "x" } }), Ct);
+        await sink.WriteAsync(Event("r1", 2, RunEventKinds.RunFinished, first, new { success = false, exitCode = 75, status = "waiting_for_input" }), Ct);
+        _time.Advance(TimeSpan.FromHours(1));
+
+        await sink.WriteAsync(Event("r1", 3, RunEventKinds.RunStarted, _time.GetUtcNow(), new { target = "crew" }), Ct);
+
+        var run = await sink.GetAsync("r1", Ct);
+        Assert.Equal(first, run?.StartedAt);
+        Assert.Equal(RunStatus.Running, run?.Status);
+        Assert.Null(run?.FinishedAt);
+    }
+
+    [Fact]
+    [Trait("BR", "FWK-23")]
+    public async Task ShouldReadOnlyTheFirstEvents_WhenALimitIsGiven()
+    {
+        var sink = Open();
+        await RecordAsync(sink, "r1", "crew");
+
+        var events = await sink.ReadEventsAsync("r1", 1, 1, Ct);
+
+        Assert.Equal([RunEventKinds.RunStarted], events.Select(e => e.Kind));
+    }
 }

@@ -15,6 +15,13 @@ public interface IRunHistoryReader
 
     /// <summary>The events of a run in <see cref="RunEvent.Seq"/> order, from <paramref name="fromSeq"/> on (inclusive); empty for an unknown run.</summary>
     System.Threading.Tasks.Task<IReadOnlyList<RunEvent>> ReadEventsAsync(string runId, int fromSeq = 1, CancellationToken ct = default);
+
+    /// <summary>The first <paramref name="limit"/> events of a run from <paramref name="fromSeq"/> on: a caller that needs only the first one does not read them all.</summary>
+    /// <param name="runId">The run.</param>
+    /// <param name="fromSeq">The first sequence number to return.</param>
+    /// <param name="limit">The most events to return.</param>
+    /// <param name="ct">Cancellation token.</param>
+    System.Threading.Tasks.Task<IReadOnlyList<RunEvent>> ReadEventsAsync(string runId, int fromSeq, int limit, CancellationToken ct = default);
 }
 
 /// <summary>Which runs <see cref="IRunHistoryReader.ListAsync"/> returns.</summary>

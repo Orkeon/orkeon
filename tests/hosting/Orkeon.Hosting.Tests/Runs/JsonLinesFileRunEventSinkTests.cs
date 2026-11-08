@@ -186,4 +186,21 @@ public sealed class JsonLinesFileRunEventSinkTests : IDisposable
         Assert.Empty(await reader.ReadEventsAsync("../run-c", 1, Ct));
         Assert.Empty(await reader.ReadEventsAsync("unknown", 1, Ct));
     }
+
+    [Fact]
+    [Trait("BR", "FWK-08")]
+    public async Task ShouldStartANewLine_WhenTheFileEndsWithoutANewline()
+    {
+        var options = Options();
+        // A process killed mid-write: the last line of the run file has no newline.
+        await File.WriteAllTextAsync(Path.Combine(_root, "run-cut.jsonl"), "{\"truncated\":", Ct);
+        var run = PublisherOf("run-cut", options);
+
+        run.Emit(RunEventKinds.RunStarted, new { target = "crew.yaml" });
+
+        var lines = await File.ReadAllLinesAsync(Path.Combine(_root, "run-cut.jsonl"), Ct);
+        Assert.Equal(2, lines.Length);
+        Assert.StartsWith("{\"truncated\":", lines[0], StringComparison.Ordinal);
+        Assert.Contains(RunEventKinds.RunStarted, lines[1], StringComparison.Ordinal);
+    }
 }

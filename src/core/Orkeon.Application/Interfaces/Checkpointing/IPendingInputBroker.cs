@@ -21,4 +21,17 @@ public interface IPendingInputBroker
     /// <summary>Gets the question the run holds on in this process, or null.</summary>
     /// <param name="runId">The run.</param>
     string? HeldRequestId(string runId);
+
+    /// <summary>Gets every question the run holds on in this process, oldest first; empty when none.</summary>
+    /// <param name="runId">The run.</param>
+    IReadOnlyList<string> HeldRequestIds(string runId);
+
+    /// <summary>
+    /// Watches whether the run holds on any question: <paramref name="heldChanged"/> receives true when its first question
+    /// is held and false when its last is released. One watcher per run; the run timeout stops its clock on it.
+    /// </summary>
+    /// <param name="runId">The run.</param>
+    /// <param name="heldChanged">Receives the new state.</param>
+    /// <returns>Stops the watch when disposed.</returns>
+    IDisposable WatchHolds(string runId, Action<bool> heldChanged);
 }

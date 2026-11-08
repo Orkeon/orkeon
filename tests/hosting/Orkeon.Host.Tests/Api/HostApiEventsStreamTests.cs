@@ -17,6 +17,11 @@ public sealed class HostApiEventsStreamTests : IDisposable
 
     private static CancellationToken Ct => TestContext.Current.CancellationToken;
 
+    // The run timeout is a timer of the injected clock too (FWK final review H1): twenty days keep it out of these tests'
+    // advances, which count the stream's own timers.
+    private static void LongRunTimeout(Dictionary<string, object?> root) =>
+        ((Dictionary<string, object?>)((Dictionary<string, object?>)root["Orkeon"]!)["Host"]!)["RunTimeout"] = "20.00:00:00";
+
     private static void Sse(HttpRequestMessage request) => request.Headers.TryAddWithoutValidation("Accept", "text/event-stream");
 
     private async Task<(HostApiHarness.Daemon Daemon, string RunId)> FinishedRunAsync()
@@ -105,7 +110,7 @@ public sealed class HostApiEventsStreamTests : IDisposable
     {
         var clock = new ManualTimeProvider();
         var llm = new HeldLlmProvider("the answer", held: true);
-        await using var daemon = await _harness.StartAsync(llm, services: s => s.AddSingleton<TimeProvider>(clock));
+        await using var daemon = await _harness.StartAsync(llm, configure: (root, _) => LongRunTimeout(root), services: s => s.AddSingleton<TimeProvider>(clock));
         using var accepted = await daemon.StartRunAsync();
         var runId = (await HostApiHarness.Daemon.JsonAsync(accepted))["run_id"]!.GetValue<string>();
         await llm.Started.Task.WaitAsync(Ct);
@@ -141,7 +146,7 @@ public sealed class HostApiEventsStreamTests : IDisposable
         var clock = new ManualTimeProvider();
         using var logs = new RecordingLoggerProvider();
         var llm = new HeldLlmProvider("the answer", held: true);
-        await using var daemon = await _harness.StartAsync(llm, services: s => s.AddSingleton<TimeProvider>(clock), logs: logs);
+        await using var daemon = await _harness.StartAsync(llm, configure: (root, _) => LongRunTimeout(root), services: s => s.AddSingleton<TimeProvider>(clock), logs: logs);
         using var accepted = await daemon.StartRunAsync();
         var runId = (await HostApiHarness.Daemon.JsonAsync(accepted))["run_id"]!.GetValue<string>();
         await llm.Started.Task.WaitAsync(Ct);

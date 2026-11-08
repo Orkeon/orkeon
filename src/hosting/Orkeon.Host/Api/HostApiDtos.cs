@@ -175,8 +175,4 @@ internal sealed record ProbeCheckDto
     /// <summary>Its status.</summary>
     [JsonPropertyName("status")]
     public required string Status { get; init; }
-
-    /// <summary>Its description.</summary>
-    [JsonPropertyName("description")]
-    public string? Description { get; init; }
 }

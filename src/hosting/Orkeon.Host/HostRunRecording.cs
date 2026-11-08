@@ -61,7 +61,7 @@ internal sealed class HostRunRecording
 
     /// <summary>
     /// Opens the recording of a run: the run's identity, then <c>run.started</c>. Disposing the result writes
-    /// <c>run.finished</c> and closes the identity. Nothing happens when the history is off.
+    /// <c>run.finished</c> and closes the identity. Without a history only the identity is opened.
     /// </summary>
     /// <param name="crewName">The hosted crew.</param>
     /// <param name="hostRunId">The daemon's own id of the run, which is the run's <see cref="ExecutionId"/>.</param>
@@ -69,11 +69,13 @@ internal sealed class HostRunRecording
     /// <param name="cancelled">Whether the run was stopped or timed out, asked at the end.</param>
     public IDisposable Begin(string crewName, string hostRunId, Func<bool> cancelled, RunIdempotency? idempotency = null)
     {
-        if (_history is null)
-            return NoRecording.Instance;
-
+        // The identity is opened whether or not the history is on (FWK final review H2): the checkpoints, the broker and
+        // the events name the run by the id the host API returned, never by one the orchestrator would mint.
         var executionId = ExecutionId.From(hostRunId);
         var identity = _runScope.Enter(new RunScope(executionId, crewName));
+        if (_history is null)
+            return identity;
+
         _publisher = new RunEventPublisher([_history.Sink], _time, _runScope, executionId.ToString(), _logger);
         _publisher.Emit(RunEventKinds.RunStarted, new
         {
@@ -106,15 +108,6 @@ internal sealed class HostRunRecording
         {
             owner.Finish(cancelled, started);
             identity.Dispose();
-        }
-    }
-
-    private sealed class NoRecording : IDisposable
-    {
-        public static NoRecording Instance { get; } = new();
-
-        public void Dispose()
-        {
         }
     }
 }

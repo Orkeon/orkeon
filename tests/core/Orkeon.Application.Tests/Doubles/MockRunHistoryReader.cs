@@ -31,6 +31,9 @@ public sealed class MockRunHistoryReader : IRunHistoryReader
 
     public System.Threading.Tasks.Task<IReadOnlyList<RunEvent>> ReadEventsAsync(string runId, int fromSeq = 1, CancellationToken ct = default) =>
         System.Threading.Tasks.Task.FromResult<IReadOnlyList<RunEvent>>([]);
+
+    public System.Threading.Tasks.Task<IReadOnlyList<RunEvent>> ReadEventsAsync(string runId, int fromSeq, int limit, CancellationToken ct = default) =>
+        System.Threading.Tasks.Task.FromResult<IReadOnlyList<RunEvent>>([]);
 }
 
 /// <summary>An <see cref="IRunProcessProbe"/> whose answer is a field.</summary>

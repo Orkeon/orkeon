@@ -101,4 +101,19 @@ public sealed class RunHistoryRetentionTests : IDisposable
 
         Assert.Empty(RunHistoryRetention.Select(runs, new RunHistoryOptions { RetentionDays = 0, MaxRuns = 0 }, _time.GetUtcNow()));
     }
+
+    [Fact]
+    [Trait("BR", "FWK-23")]
+    public void ShouldNeverSelectARunWaitingForInput_EvenWhenItIsOlderThanTheRetention()
+    {
+        var runs = new[]
+        {
+            new RunSummary { RunId = "waiting", Status = RunStatus.WaitingForInput, StartedAt = _time.Start.AddYears(-1) },
+            new RunSummary { RunId = "done", Status = RunStatus.Succeeded, StartedAt = _time.Start.AddYears(-1) },
+        };
+
+        var purged = RunHistoryRetention.Select(runs, new RunHistoryOptions { RetentionDays = 30, MaxRuns = 1 }, _time.GetUtcNow());
+
+        Assert.Equal(["done"], purged);
+    }
 }
