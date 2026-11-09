@@ -57,6 +57,9 @@ public sealed class TeamMountRowViewModel : ObservableObject
     /// <summary>The physical folder behind it.</summary>
     public string PhysicalPath { get; }
 
+    /// <summary>The folder's own name, what the novice reads instead of the path (UX lot 02).</summary>
+    public string FolderName => FolderNames.Of(PhysicalPath);
+
     /// <summary>The rights pill's text.</summary>
     public string RightsLabel { get; }
 

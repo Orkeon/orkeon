@@ -54,6 +54,9 @@ public sealed class AllowedFolderRowViewModel : ObservableObject
     /// <summary>The folder on this machine.</summary>
     public string PhysicalPath { get; }
 
+    /// <summary>The folder's own name, what the novice reads instead of the path (UX lot 02).</summary>
+    public string FolderName => FolderNames.Of(PhysicalPath);
+
     /// <summary>The full rights label — the pill's tooltip; the rights of the settings entry, never re-chosen here.</summary>
     public string RightsLabel { get; }
 

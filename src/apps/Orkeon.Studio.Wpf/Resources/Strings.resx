@@ -143,10 +143,10 @@
   <data name="Studio.Run.InputsTitle" xml:space="preserve"><value>Inputs</value></data>
   <data name="Studio.Run.LblInputsJson" xml:space="preserve"><value>Inline JSON (--inputs)</value></data>
   <data name="Studio.Run.LblInputsFile" xml:space="preserve"><value>File (--inputs-file)</value></data>
-  <data name="Studio.Run.LblVerbosity" xml:space="preserve"><value>Verbosity (--verbose)</value></data>
-  <data name="Studio.Run.LlmLog" xml:space="preserve"><value>Log LLM exchanges (--llm-log)</value></data>
+  <data name="Studio.Run.LblVerbosity" xml:space="preserve"><value>Log detail</value></data>
+  <data name="Studio.Run.LlmLog" xml:space="preserve"><value>Keep the exchanges with the model</value></data>
   <data name="Studio.Run.SettingsMountsTitle" xml:space="preserve"><value>Mounts already in the selected appsettings</value></data>
-  <data name="Studio.Run.AllowExternal" xml:space="preserve"><value>Allow mounts outside the working directory (--allow-external-mounts)</value></data>
+  <data name="Studio.Run.AllowExternal" xml:space="preserve"><value>Allow folders outside the working directory</value></data>
   <data name="Studio.Run.CopyCommand" xml:space="preserve"><value>Copy the command</value></data>
   <data name="Studio.Run.CommandCopied" xml:space="preserve"><value>Command copied</value></data>
   <data name="Studio.Run.StateIdle" xml:space="preserve"><value>Ready to work</value></data>
@@ -423,6 +423,9 @@
   <data name="Studio.Settings.GroupCloud" xml:space="preserve"><value>IN THE CLOUD · API KEY REQUIRED</value></data>
   <data name="Studio.Settings.KeyTitleFor" xml:space="preserve"><value>API key {0}</value></data>
   <data name="Studio.Settings.KeyTitleService" xml:space="preserve"><value>The service's API key</value></data>
+  <data name="Studio.Settings.ToolSecretWebSearch" xml:space="preserve"><value>Web search (Tavily)</value></data>
+  <data name="Studio.Settings.ToolSecretBraveSearch" xml:space="preserve"><value>Web search (Brave)</value></data>
+  <data name="Studio.Settings.ToolSecretImageGeneration" xml:space="preserve"><value>Image generation (OpenAI)</value></data>
   <data name="Studio.Settings.KeyExplainer" xml:space="preserve"><value>Studio keeps it in your Windows session — never in a file, never in a shared folder.</value></data>
   <data name="Studio.Settings.KeyPlaceholder" xml:space="preserve"><value>Paste your key here (sk-…)</value></data>
   <data name="Studio.Settings.KeyStore" xml:space="preserve"><value>Remember the key</value></data>
@@ -596,6 +599,7 @@
   <data name="Studio.Diagnostics.Check.runner-settings" xml:space="preserve"><value>Runner settings</value></data>
   <data name="Studio.Diagnostics.Check.tree-sitter" xml:space="preserve"><value>The code parser (tree-sitter)</value></data>
   <data name="Studio.Diagnostics.Check.workspace-write" xml:space="preserve"><value>Write access to the workspace</value></data>
+  <data name="Studio.Diagnostics.Check.Unknown" xml:space="preserve"><value>Engine check</value></data>
   <data name="Studio.Diagnostics.AllGood" xml:space="preserve"><value>Everything is in place.</value></data>
   <data name="Studio.Diagnostics.FixNeeded" xml:space="preserve"><value>{0} {0:plural:point|points} to fix before launching a team.</value></data>
   <data name="Studio.Diagnostics.Counts" xml:space="preserve"><value>{0} {0:plural:check passed|checks passed}, {1} {1:plural:warning|warnings}, {2} {2:plural:failure|failures}.</value></data>

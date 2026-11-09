@@ -20,12 +20,17 @@
         </Style>
       </controls:PageHeader.Style>
       <StackPanel Orientation="Horizontal">
-        <Button Margin="0,0,8,0" Click="OnCopyReport" controls:ButtonIcon.Kind="copy"
-                Visibility="{Binding CanCopyReport, Converter={StaticResource BooleanToVisibility}}">
+        <!-- Expert only (UX lot 02): the visibility lives in the style, a local value would
+             beat the novice trigger. -->
+        <Button Margin="0,0,8,0" Click="OnCopyReport" controls:ButtonIcon.Kind="copy">
           <Button.Style>
             <Style TargetType="Button" BasedOn="{StaticResource BtnSecondary}">
               <Setter Property="Content" Value="{Binding [Studio.Diagnostics.CopyReport], Source={x:Static services:I18n.Instance}}"/>
+              <Setter Property="Visibility" Value="{Binding CanCopyReport, Converter={StaticResource BooleanToVisibility}}"/>
               <Style.Triggers>
+                <DataTrigger Binding="{Binding DataContext.Mode.IsNovice, RelativeSource={RelativeSource AncestorType=Window}}" Value="True">
+                  <Setter Property="Visibility" Value="Collapsed"/>
+                </DataTrigger>
                 <DataTrigger Binding="{Binding ReportCopied}" Value="True">
                   <Setter Property="Content" Value="{Binding [Studio.Diagnostics.Copied], Source={x:Static services:I18n.Instance}}"/>
                 </DataTrigger>

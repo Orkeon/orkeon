@@ -20,7 +20,9 @@ public sealed class ToolsSettingsViewModelTests
         Assert.True(tools.HasSecrets);
         Assert.Equal([ToolCatalog.TavilyKeyEnv, ToolCatalog.BraveKeyEnv, ToolCatalog.OpenAiImageKeyEnv], tools.Secrets.Select(s => s.EnvName));
         var tavily = tools.Secrets[0];
-        Assert.Equal("web_search", tavily.UsedBy);
+        // UX lot 02: the row is titled by what the key serves, never by the tool's identifier.
+        Assert.Equal("Web search (Tavily)", tavily.UsedBy);
+        Assert.Equal(["Web search (Tavily)", "Web search (Brave)", "Image generation (OpenAI)"], tools.Secrets.Select(s => s.UsedBy));
         Assert.True(tavily.HasConsoleUrl);
         Assert.False(tavily.HasKey);
         Assert.Equal("no key detected", tavily.StatusText);

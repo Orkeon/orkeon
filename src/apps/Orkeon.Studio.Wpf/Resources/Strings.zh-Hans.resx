@@ -368,16 +368,16 @@
     <value>文件（--inputs-file）</value>
   </data>
   <data name="Studio.Run.LblVerbosity" xml:space="preserve">
-    <value>详细程度（--verbose）</value>
+    <value>日志详细程度</value>
   </data>
   <data name="Studio.Run.LlmLog" xml:space="preserve">
-    <value>记录 LLM 交互（--llm-log）</value>
+    <value>保留与模型的交互</value>
   </data>
   <data name="Studio.Run.SettingsMountsTitle" xml:space="preserve">
     <value>所选 appsettings 中已有的挂载</value>
   </data>
   <data name="Studio.Run.AllowExternal" xml:space="preserve">
-    <value>允许工作目录之外的挂载（--allow-external-mounts）</value>
+    <value>允许工作目录之外的文件夹</value>
   </data>
   <data name="Studio.Run.CopyCommand" xml:space="preserve"><value>复制命令</value></data>
   <data name="Studio.Run.CommandCopied" xml:space="preserve"><value>命令已复制</value></data>
@@ -1122,6 +1122,15 @@
   <data name="Studio.Settings.KeyTitleService" xml:space="preserve">
     <value>服务的 API 密钥</value>
   </data>
+  <data name="Studio.Settings.ToolSecretWebSearch" xml:space="preserve">
+    <value>网页搜索（Tavily）</value>
+  </data>
+  <data name="Studio.Settings.ToolSecretBraveSearch" xml:space="preserve">
+    <value>网页搜索（Brave）</value>
+  </data>
+  <data name="Studio.Settings.ToolSecretImageGeneration" xml:space="preserve">
+    <value>图像生成（OpenAI）</value>
+  </data>
   <data name="Studio.Settings.KeyExplainer" xml:space="preserve">
     <value>Studio 将它存放在您的 Windows 会话中——绝不写入文件，绝不放进共享文件夹。</value>
   </data>
@@ -1630,6 +1639,9 @@
   </data>
   <data name="Studio.Diagnostics.Check.workspace-write" xml:space="preserve">
     <value>对工作目录的写入权限</value>
+  </data>
+  <data name="Studio.Diagnostics.Check.Unknown" xml:space="preserve">
+    <value>引擎检查</value>
   </data>
   <data name="Studio.Diagnostics.AllGood" xml:space="preserve">
     <value>一切就绪。</value>

@@ -175,4 +175,21 @@ public sealed class DiagnosticVerdictTests
         Assert.Equal("The LLM profiles", diagnostic.Checks[0].FriendlyName);
         Assert.Equal("The key of an LLM profile", diagnostic.Checks[1].FriendlyName);
     }
+
+    [Fact]
+    public async Task A_check_Studio_has_no_words_for_reads_as_an_engine_check_and_keeps_its_id_for_the_expert()
+    {
+        // UX lot 02: a check the engine adds before Studio names it never shows its raw
+        // identifier as a title; the identifier stays the expert detail.
+        var launcher = new FakeProcessLauncher();
+        launcher.OutputToEmit.Add(ProcessOutputLine.Now(
+            ProcessOutputChannel.StandardOutput,
+            """[{"check":"brand-new-check","status":"ok","detail":"fine"}]"""));
+
+        var diagnostic = Create(launcher);
+        await diagnostic.RunAsync(cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.Equal("Engine check", diagnostic.Checks[0].FriendlyName);
+        Assert.Equal("brand-new-check", diagnostic.Checks[0].Name);
+    }
 }

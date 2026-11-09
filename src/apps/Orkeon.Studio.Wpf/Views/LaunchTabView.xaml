@@ -311,65 +311,70 @@
             </Border>
 
             <StackPanel IsEnabled="{Binding IsEditable}">
-              <!-- two columns: Check first · Verbosity / Display (+ token by token) · Log the LLM calls -->
-              <Grid>
-                <Grid.ColumnDefinitions>
-                  <ColumnDefinition Width="*"/>
-                  <ColumnDefinition Width="24"/>
-                  <ColumnDefinition Width="*"/>
-                </Grid.ColumnDefinitions>
-                <Grid.RowDefinitions>
-                  <RowDefinition Height="Auto"/>
-                  <RowDefinition Height="Auto"/>
-                </Grid.RowDefinitions>
-                <CheckBox Margin="0,0,0,12" VerticalAlignment="Center"
-                          IsChecked="{Binding Options.ValidateFirst}"
-                          Content="{Binding [Studio.Run.ValidateFirst], Source={x:Static services:I18n.Instance}}"/>
-                <StackPanel Grid.Column="2" Orientation="Horizontal" Margin="0,0,0,12">
-                  <TextBlock Style="{StaticResource FieldLabel}" Margin="0,0,10,0" VerticalAlignment="Center"
-                             Text="{Binding [Studio.Run.LblVerbosity], Source={x:Static services:I18n.Instance}}"/>
-                  <ComboBox Style="{StaticResource ComboS}" ItemsSource="{x:Static launch:LaunchOptionsViewModel.VerbosityChoices}"
-                            SelectedItem="{Binding Options.Verbosity}">
-                    <ComboBox.ItemTemplate>
-                      <DataTemplate>
-                        <TextBlock Text="{Binding Converter={StaticResource VerbosityLabel}}"/>
-                      </DataTemplate>
-                    </ComboBox.ItemTemplate>
-                  </ComboBox>
-                </StackPanel>
-                <StackPanel Grid.Row="1" Margin="0,0,0,12">
-                  <StackPanel Orientation="Horizontal">
-                    <TextBlock Style="{StaticResource FieldLabel}" Margin="0,0,10,0" VerticalAlignment="Center"
-                               Text="{Binding [Studio.Run.LblDisplay], Source={x:Static services:I18n.Instance}}"/>
-                    <Border Style="{StaticResource SegmentedGroup}" Height="30" CornerRadius="15">
-                      <StackPanel Orientation="Horizontal" Margin="2">
-                        <Button Style="{StaticResource SegmentBtnOn}" Command="{Binding ShowProgressDisplayCommand}"
-                                Tag="{Binding Options.WatchProgress}"
-                                Content="{Binding [Studio.Run.DisplayProgress], Source={x:Static services:I18n.Instance}}"/>
-                        <Button Style="{StaticResource SegmentBtnOn}" Command="{Binding ShowRawDisplayCommand}"
-                                Tag="{Binding Options.WatchProgress, Converter={StaticResource Negate}}"
-                                Content="{Binding [Studio.Run.DisplayRaw], Source={x:Static services:I18n.Instance}}"/>
-                      </StackPanel>
-                    </Border>
-                  </StackPanel>
-                  <!-- the stream rides on the progress: greyed, and says why, in raw output -->
-                  <CheckBox Margin="0,8,0,0"
-                            IsChecked="{Binding Options.StreamGeneratedText}"
-                            IsEnabled="{Binding Options.CanStreamGeneratedText}"
-                            ToolTipService.ShowOnDisabled="True"
-                            ToolTip="{Binding [Studio.Run.StreamNeedsWatch], Source={x:Static services:I18n.Instance}}"
-                            Content="{Binding [Studio.Run.StreamShort], Source={x:Static services:I18n.Instance}}"/>
-                </StackPanel>
-                <CheckBox Grid.Row="1" Grid.Column="2" Margin="0,6,0,12" VerticalAlignment="Top"
-                          IsChecked="{Binding Options.LlmLogEnabled}"
-                          Content="{Binding [Studio.Run.LlmLog], Source={x:Static services:I18n.Instance}}"/>
-              </Grid>
+              <!-- UX lot 02: only « Check first » stays above the fold; the engine's knobs
+                   (verbosity, display, model log) live in the advanced options, their CLI flag
+                   in an expert-only tooltip. -->
+              <CheckBox Margin="0,0,0,12" HorizontalAlignment="Left" VerticalAlignment="Center"
+                        IsChecked="{Binding Options.ValidateFirst}"
+                        Content="{Binding [Studio.Run.ValidateFirst], Source={x:Static services:I18n.Instance}}"/>
 
               <!-- advanced options, folded. C12 (R16): the shared Disclosure, « label + chevron »,
                    the label stable; closed by default as before. -->
               <controls:Disclosure x:Name="AdvancedFold"
                                    Header="{Binding [Studio.Run.Advanced], Source={x:Static services:I18n.Instance}}">
               <StackPanel Margin="0,0,0,4">
+                <!-- two columns: Verbosity · Log the model exchanges / Display (+ token by token) -->
+                <Grid Margin="0,0,0,8">
+                  <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="24"/>
+                    <ColumnDefinition Width="*"/>
+                  </Grid.ColumnDefinitions>
+                  <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                  </Grid.RowDefinitions>
+                  <StackPanel Orientation="Horizontal" Margin="0,0,0,12"
+                              ToolTip="--verbose" ToolTipService.IsEnabled="{Binding IsExpertMode}">
+                    <TextBlock Style="{StaticResource FieldLabel}" Margin="0,0,10,0" VerticalAlignment="Center"
+                               Text="{Binding [Studio.Run.LblVerbosity], Source={x:Static services:I18n.Instance}}"/>
+                    <ComboBox Style="{StaticResource ComboS}" ItemsSource="{x:Static launch:LaunchOptionsViewModel.VerbosityChoices}"
+                              SelectedItem="{Binding Options.Verbosity}">
+                      <ComboBox.ItemTemplate>
+                        <DataTemplate>
+                          <TextBlock Text="{Binding Converter={StaticResource VerbosityLabel}}"/>
+                        </DataTemplate>
+                      </ComboBox.ItemTemplate>
+                    </ComboBox>
+                  </StackPanel>
+                  <CheckBox Grid.Column="2" Margin="0,6,0,12" VerticalAlignment="Top"
+                            IsChecked="{Binding Options.LlmLogEnabled}"
+                            ToolTip="--llm-log" ToolTipService.IsEnabled="{Binding IsExpertMode}"
+                            Content="{Binding [Studio.Run.LlmLog], Source={x:Static services:I18n.Instance}}"/>
+                  <StackPanel Grid.Row="1" Grid.ColumnSpan="3" Margin="0,0,0,4">
+                    <StackPanel Orientation="Horizontal">
+                      <TextBlock Style="{StaticResource FieldLabel}" Margin="0,0,10,0" VerticalAlignment="Center"
+                                 Text="{Binding [Studio.Run.LblDisplay], Source={x:Static services:I18n.Instance}}"/>
+                      <Border Style="{StaticResource SegmentedGroup}" Height="30" CornerRadius="15">
+                        <StackPanel Orientation="Horizontal" Margin="2">
+                          <Button Style="{StaticResource SegmentBtnOn}" Command="{Binding ShowProgressDisplayCommand}"
+                                  Tag="{Binding Options.WatchProgress}"
+                                  Content="{Binding [Studio.Run.DisplayProgress], Source={x:Static services:I18n.Instance}}"/>
+                          <Button Style="{StaticResource SegmentBtnOn}" Command="{Binding ShowRawDisplayCommand}"
+                                  Tag="{Binding Options.WatchProgress, Converter={StaticResource Negate}}"
+                                  Content="{Binding [Studio.Run.DisplayRaw], Source={x:Static services:I18n.Instance}}"/>
+                        </StackPanel>
+                      </Border>
+                    </StackPanel>
+                    <!-- the stream rides on the progress: greyed, and says why, in raw output -->
+                    <CheckBox Margin="0,8,0,0"
+                              IsChecked="{Binding Options.StreamGeneratedText}"
+                              IsEnabled="{Binding Options.CanStreamGeneratedText}"
+                              ToolTipService.ShowOnDisabled="True"
+                              ToolTip="{Binding [Studio.Run.StreamNeedsWatch], Source={x:Static services:I18n.Instance}}"
+                              Content="{Binding [Studio.Run.StreamShort], Source={x:Static services:I18n.Instance}}"/>
+                  </StackPanel>
+                </Grid>
                 <TextBlock Style="{StaticResource Subhead}" Text="appsettings.json"/>
                 <RadioButton Margin="0,8,0,0" GroupName="{Binding IsTrial, StringFormat=RunSettings-{0}}" Checked="OnSettingsAutomaticChecked"
                              IsChecked="{Binding Options.IsSettingsAutomatic, Mode=OneWay}"
@@ -483,10 +488,20 @@
                               </controls:Badge.Style>
                             </controls:Badge>
                           </StackPanel>
-                          <!-- R09: a path is cut in the middle, the whole of it in the tooltip once cut -->
-                          <controls:MiddleEllipsisText Style="{StaticResource PathText}" FontSize="12.5" Margin="0,2,0,0"
-                                     HorizontalAlignment="Left" Text="{Binding PhysicalPath}"
-                                     Visibility="{Binding PhysicalPath, Converter={StaticResource StringPresentToVisibility}}"/>
+                          <!-- R09: a path is cut in the middle, the whole of it in the tooltip once cut.
+                               UX lot 02: the expert reads the path, the novice the folder's name,
+                               the path in its tooltip. -->
+                          <StackPanel Visibility="{Binding DataContext.IsExpertMode, RelativeSource={RelativeSource AncestorType=views:LaunchTabView}, Converter={StaticResource BooleanToVisibility}}">
+                            <controls:MiddleEllipsisText Style="{StaticResource PathText}" FontSize="12.5" Margin="0,2,0,0"
+                                       HorizontalAlignment="Left" Text="{Binding PhysicalPath}"
+                                       Visibility="{Binding PhysicalPath, Converter={StaticResource StringPresentToVisibility}}"/>
+                          </StackPanel>
+                          <StackPanel Visibility="{Binding DataContext.IsExpertMode, RelativeSource={RelativeSource AncestorType=views:LaunchTabView}, Converter={StaticResource InverseBooleanToVisibility}}">
+                            <TextBlock FontSize="12.5" Margin="0,2,0,0" HorizontalAlignment="Left"
+                                       Foreground="{DynamicResource InkMutedBrush}" TextTrimming="CharacterEllipsis"
+                                       Text="{Binding FolderName}" ToolTip="{Binding PhysicalPath}"
+                                       Visibility="{Binding FolderName, Converter={StaticResource StringPresentToVisibility}}"/>
+                          </StackPanel>
                         </StackPanel>
                       </DockPanel>
                     </DataTemplate>
@@ -513,7 +528,7 @@
                   </ItemsControl>
 
                   <CheckBox Margin="0,12,0,0"
-                            IsChecked="{Binding Mounts.AllowExternalMounts}"
+                            IsChecked="{Binding Mounts.AllowExternalMounts}" ToolTip="--allow-external-mounts"
                             Content="{Binding [Studio.Run.AllowExternal], Source={x:Static services:I18n.Instance}}"/>
                   <TextBlock Style="{StaticResource Hint}" Foreground="{DynamicResource WarningInkBrush}"
                              Text="{Binding Mounts.ExternalMountsWarning, Mode=OneWay}"/>
@@ -777,10 +792,13 @@
                     <StackPanel>
                       <TextBlock FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}"
                                  TextTrimming="CharacterEllipsis" Text="{Binding DisplayName}" ToolTip="{Binding DisplayName}"/>
-                      <TextBlock Style="{StaticResource MonoText}" FontSize="12" Foreground="{DynamicResource InkFaintBrush}"
-                                 Margin="0,2,0,0" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis"
-                                 Text="{Binding Identifier}" ToolTip="{Binding Identifier}"
-                                 Visibility="{Binding HasIdentifier, Converter={StaticResource BooleanToVisibility}}"/>
+                      <!-- UX lot 02: the identifier and the technical detail are the expert's -->
+                      <StackPanel Visibility="{Binding DataContext.IsExpertMode, RelativeSource={RelativeSource AncestorType=views:LaunchTabView}, Converter={StaticResource BooleanToVisibility}}">
+                        <TextBlock Style="{StaticResource MonoText}" FontSize="12" Foreground="{DynamicResource InkFaintBrush}"
+                                   Margin="0,2,0,0" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis"
+                                   Text="{Binding Identifier}" ToolTip="{Binding Identifier}"
+                                   Visibility="{Binding HasIdentifier, Converter={StaticResource BooleanToVisibility}}"/>
+                      </StackPanel>
                       <Border x:Name="Bar" Height="4" CornerRadius="2" Margin="0,8,0,8" Background="{DynamicResource LineStrongBrush}"/>
                       <DockPanel>
                         <controls:LucideIcon x:Name="Mark" DockPanel.Dock="Left" Kind="circle" Size="12" Margin="0,0,6,0"
@@ -788,9 +806,11 @@
                         <TextBlock x:Name="Status" FontSize="12.5" Foreground="{DynamicResource InkMutedBrush}"
                                    TextTrimming="CharacterEllipsis" Text="{Binding StatusText}"/>
                       </DockPanel>
-                      <TextBlock Style="{StaticResource MonoText}" FontSize="12" Margin="0,4,0,0" TextWrapping="NoWrap"
-                                 TextTrimming="CharacterEllipsis" Text="{Binding Detail}" ToolTip="{Binding Detail}"
-                                 Visibility="{Binding Detail, Converter={StaticResource StringPresentToVisibility}}"/>
+                      <StackPanel Visibility="{Binding DataContext.IsExpertMode, RelativeSource={RelativeSource AncestorType=views:LaunchTabView}, Converter={StaticResource BooleanToVisibility}}">
+                        <TextBlock Style="{StaticResource MonoText}" FontSize="12" Margin="0,4,0,0" TextWrapping="NoWrap"
+                                   TextTrimming="CharacterEllipsis" Text="{Binding Detail}" ToolTip="{Binding Detail}"
+                                   Visibility="{Binding Detail, Converter={StaticResource StringPresentToVisibility}}"/>
+                      </StackPanel>
                     </StackPanel>
                   </Border>
                   <DataTemplate.Triggers>
@@ -821,17 +841,17 @@
               </ItemsControl.ItemTemplate>
             </ItemsControl>
 
-            <!-- the figures: sent, received, model, where the result lands. D06/R11: the labels are
+            <!-- the figures: sent, received (expert only, UX lot 02), model, where the result lands. D06/R11: the labels are
                  Hanken meta, only the values are mono; a value never breaks (deepseek-chat), it ends
                  in «…» with the whole value in its tooltip. -->
             <UniformGrid Columns="4" Margin="0,6,0,0"
                          Visibility="{Binding HasRunFigures, Converter={StaticResource BooleanToVisibility}}">
-              <StackPanel Margin="0,0,12,0">
+              <StackPanel Margin="0,0,12,0" Visibility="{Binding IsExpertMode, Converter={StaticResource BooleanToVisibility}}">
                 <TextBlock Style="{StaticResource MetaText}" Text="{Binding [Studio.Run.FigSent], Source={x:Static services:I18n.Instance}}"/>
                 <TextBlock Style="{StaticResource MonoText}" FontSize="14" Foreground="{DynamicResource InkBrush}" Margin="0,4,0,0"
                            TextWrapping="NoWrap" Typography.NumeralAlignment="Tabular" Text="{Binding SentFigure}"/>
               </StackPanel>
-              <StackPanel Margin="0,0,12,0">
+              <StackPanel Margin="0,0,12,0" Visibility="{Binding IsExpertMode, Converter={StaticResource BooleanToVisibility}}">
                 <TextBlock Style="{StaticResource MetaText}" Text="{Binding [Studio.Run.FigReceived], Source={x:Static services:I18n.Instance}}"/>
                 <TextBlock Style="{StaticResource MonoText}" FontSize="14" Foreground="{DynamicResource InkBrush}" Margin="0,4,0,0"
                            TextWrapping="NoWrap" Typography.NumeralAlignment="Tabular" Text="{Binding ReceivedFigure}"/>

@@ -330,7 +330,8 @@
                           <TextBlock FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}" Text="{Binding Id}"/>
                           <TextBlock FontSize="13" Foreground="{DynamicResource InkMutedBrush}" Margin="0,3,0,0" Text="{Binding Summary}"
                                      Visibility="{Binding HasSummary, Converter={StaticResource BooleanToVisibility}}"/>
-                          <TextBlock Style="{StaticResource Hint}" Margin="0,3,0,0" TextWrapping="Wrap" Text="{Binding HostIdText}"/>
+                          <TextBlock Style="{StaticResource Hint}" Margin="0,3,0,0" TextWrapping="Wrap" Text="{Binding HostIdText}"
+                                     Visibility="{Binding DataContext.Mode.IsExpert, RelativeSource={RelativeSource AncestorType=views:SettingsView}, Converter={StaticResource BooleanToVisibility}}"/>
                         </StackPanel>
                       </Border>
                     </DataTemplate>

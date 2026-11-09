@@ -109,11 +109,11 @@ public sealed class StatusBarRunGroupViewModel : ObservableObject
     /// <summary>What came back (↓); null until the meter carries it.</summary>
     public string? TokensDown => StatusBarText.Count(Figure?.Down);
 
-    /// <summary>Whether ↑ is on the bar — in both modes, once measured.</summary>
-    public bool ShowsTokensUp => TokensUp is not null;
+    /// <summary>Whether ↑ is on the bar — in expert mode, once measured (UX lot 02).</summary>
+    public bool ShowsTokensUp => _isExpert() && TokensUp is not null;
 
-    /// <summary>Whether ↓ is on the bar — in both modes, once measured.</summary>
-    public bool ShowsTokensDown => TokensDown is not null;
+    /// <summary>Whether ↓ is on the bar — in expert mode, once measured (UX lot 02).</summary>
+    public bool ShowsTokensDown => _isExpert() && TokensDown is not null;
 
     /// <summary>
     /// Whether the runtime estimated part of ↑ and ↓ because a provider counted nothing — the bar
@@ -281,7 +281,7 @@ public sealed class StatusBarRunGroupViewModel : ObservableObject
     /// <summary>The window switched between novice and expert.</summary>
     internal void RefreshMode()
     {
-        OnPropertyChanged(nameof(ShowsDetails));
+        OnPropertiesChanged(nameof(ShowsDetails), nameof(ShowsTokensUp), nameof(ShowsTokensDown));
         OpenCommand.RaiseCanExecuteChanged();
     }
 
@@ -439,11 +439,11 @@ public sealed class StatusBarAtelierGroupViewModel : ObservableObject
     /// <summary>A figure the progress reported, null when it reported none.</summary>
     private static string? Reported(string? figure) => figure is { Length: > 0 } ? figure : null;
 
-    /// <summary>Whether ↑ is on the bar — in both modes, once measured.</summary>
-    public bool ShowsTokensUp => TokensUp is not null;
+    /// <summary>Whether ↑ is on the bar — in expert mode, once measured (UX lot 02).</summary>
+    public bool ShowsTokensUp => _isExpert() && TokensUp is not null;
 
-    /// <summary>Whether ↓ is on the bar — in both modes, once measured.</summary>
-    public bool ShowsTokensDown => TokensDown is not null;
+    /// <summary>Whether ↓ is on the bar — in expert mode, once measured (UX lot 02).</summary>
+    public bool ShowsTokensDown => _isExpert() && TokensDown is not null;
 
     /// <summary>Whether the figures are the runtime's approximation — the bar marks them «≈», like the card.</summary>
     public bool TokensEstimated => Figure?.Estimated ?? _progress?.TokensEstimated == true;
@@ -492,7 +492,8 @@ public sealed class StatusBarAtelierGroupViewModel : ObservableObject
     public RelayCommand OpenCommand { get; }
 
     /// <summary>The window switched between novice and expert.</summary>
-    internal void RefreshMode() => OnPropertyChanged(nameof(ShowsBudgetLeft));
+    internal void RefreshMode() =>
+        OnPropertiesChanged(nameof(ShowsBudgetLeft), nameof(ShowsTokensUp), nameof(ShowsTokensDown));
 
     /// <summary>Everything the group formats itself, said again in a new language.</summary>
     internal void RefreshAll() => OnPropertiesChanged(

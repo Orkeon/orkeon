@@ -24,7 +24,7 @@ public sealed class DoctorCheckViewModel
     /// <summary>
     /// The plain-language name of the check (audit 09/20), resolved per identifier from
     /// the localization port; the raw identifier stays the expert detail. An unknown
-    /// check degrades to its own identifier, never to a blank.
+    /// check degrades to « Engine check », never to its raw identifier.
     /// </summary>
     public string FriendlyName
     {
@@ -33,6 +33,8 @@ public sealed class DoctorCheckViewModel
             // Keyed by the CLI's own check name, so the key is computed rather than
             // written: «Studio.Diagnostics.Check.» + what doctor called it.
             var key = CheckKeyPrefix + Name;
+            // An unknown check reads as a generic engine check in both modes: the raw
+            // identifier stays the expert detail, never the novice's title.
             var localized = _strings[key];
             if (localized != key)
                 return localized;
@@ -40,7 +42,7 @@ public sealed class DoctorCheckViewModel
             // A check the engine added since Studio learnt its name: say so to whoever debugs,
             // no logger being injected here.
             System.Diagnostics.Debug.WriteLine($"Studio.Diagnostics: no key {key} for doctor check '{Name}'.");
-            return Name;
+            return _strings[StudioStringKeys.DiagCheckUnknown];
         }
     }
 

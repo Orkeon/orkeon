@@ -841,11 +841,20 @@
             <!-- STUDIO-48: the name a crew writes to run on this setting, as the name is typed —
                  or why none can; « default », or an id another setting or the settings file
                  already holds, refuses the save. -->
-            <TextBlock Margin="0,4,0,0" TextWrapping="Wrap" Text="{Binding HostIdText}"
-                       Visibility="{Binding HostIdText, Converter={StaticResource StringPresentToVisibility}}">
+            <!-- UX lot 02: the expert's line; the novice reads it only when it says why the
+                 name is refused. -->
+            <TextBlock Margin="0,4,0,0" TextWrapping="Wrap" Text="{Binding HostIdText}">
               <TextBlock.Style>
                 <Style TargetType="TextBlock" BasedOn="{StaticResource Hint}">
+                  <Setter Property="Visibility" Value="{Binding HostIdText, Converter={StaticResource StringPresentToVisibility}}"/>
                   <Style.Triggers>
+                    <MultiDataTrigger>
+                      <MultiDataTrigger.Conditions>
+                        <Condition Binding="{Binding DataContext.Mode.IsNovice, RelativeSource={RelativeSource AncestorType=Window}}" Value="True"/>
+                        <Condition Binding="{Binding IsHostIdIssue}" Value="False"/>
+                      </MultiDataTrigger.Conditions>
+                      <Setter Property="Visibility" Value="Collapsed"/>
+                    </MultiDataTrigger>
                     <DataTrigger Binding="{Binding IsHostIdIssue}" Value="True">
                       <Setter Property="Foreground" Value="{DynamicResource WarningInkBrush}"/>
                     </DataTrigger>
@@ -1215,14 +1224,19 @@
                               </controls:Badge.Style>
                             </controls:Badge>
                             <StackPanel>
-                              <!-- The name the agents use, then the tail of the entry's id (VFS-90): two /output
-                                   rows are told apart here, not by squinting at a truncated path. -->
+                              <!-- The name the agents use. The entry's id stays in Réglages › Dossiers, for the
+                                   expert (UX lot 02): the path, or the folder's name, tells two /output rows apart. -->
                               <TextBlock Style="{StaticResource MonoText}" FontSize="13" Foreground="{DynamicResource InkBrush}">
-                                <Run Text="{Binding VirtualPath, Mode=OneWay}"/><Run Text=" · " Foreground="{DynamicResource InkFaintBrush}"/><Run Text="{Binding ShortId, Mode=OneWay}" Foreground="{DynamicResource InkFaintBrush}"/>
+                                <Run Text="{Binding VirtualPath, Mode=OneWay}"/>
                               </TextBlock>
-                              <!-- The real folder, whole: wrapped rather than trimmed. -->
+                              <!-- The real folder, whole: wrapped rather than trimmed. The novice reads the
+                                   folder's name, the path in its tooltip (UX lot 02). -->
                               <TextBlock x:Name="Disk" FontSize="13" Foreground="{DynamicResource InkFaintBrush}" Margin="0,2,0,0"
-                                         TextWrapping="Wrap" Text="{Binding PhysicalPath}"/>
+                                         TextWrapping="Wrap" Text="{Binding PhysicalPath}"
+                                         Visibility="{Binding DataContext.Mode.IsExpert, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BooleanToVisibility}}"/>
+                              <TextBlock x:Name="DiskName" FontSize="13" Foreground="{DynamicResource InkFaintBrush}" Margin="0,2,0,0"
+                                         TextWrapping="Wrap" Text="{Binding FolderName}" ToolTip="{Binding PhysicalPath}"
+                                         Visibility="{Binding DataContext.Mode.IsExpert, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource InverseBooleanToVisibility}}"/>
                             </StackPanel>
                           </DockPanel>
                         </Border>
@@ -1238,6 +1252,7 @@
                           <DataTrigger Binding="{Binding IsUndeclared}" Value="True">
                             <Setter TargetName="Row" Property="BorderBrush" Value="{DynamicResource DangerBrush}"/>
                             <Setter TargetName="Disk" Property="Foreground" Value="{DynamicResource DangerBrush}"/>
+                            <Setter TargetName="DiskName" Property="Foreground" Value="{DynamicResource DangerBrush}"/>
                           </DataTrigger>
                         </ControlTemplate.Triggers>
                       </ControlTemplate>
@@ -1293,15 +1308,21 @@
                 <DataTemplate>
                   <!-- toggleable chip — the ONE chip recipe (mono 11.5, pill), plus the
                        on/off and hover states a plain ToolChip border cannot carry -->
-                  <Button Command="{Binding ToggleCommand}" Cursor="Hand" Margin="0,0,6,6">
+                  <!-- UX lot 02: the chip says what the tool does (« lire /docs »), its identifier
+                       in the tooltip, and under the words for the expert. -->
+                  <Button Command="{Binding ToggleCommand}" Cursor="Hand" Margin="0,0,6,6" ToolTip="{Binding Tool}">
                     <Button.Template>
                       <ControlTemplate TargetType="Button">
                         <Border x:Name="Chip" Style="{StaticResource ToolChip}"
                                 Background="{DynamicResource SurfaceBrush}"
                                 BorderBrush="{DynamicResource LineBrush}">
-                          <TextBlock x:Name="Label" FontSize="13"
-                                     Foreground="{DynamicResource InkMutedBrush}" VerticalAlignment="Center"
-                                     FontFamily="{StaticResource MonoFont}" Text="{Binding Tool}"/>
+                          <StackPanel VerticalAlignment="Center">
+                            <TextBlock x:Name="Label" FontSize="13"
+                                       Foreground="{DynamicResource InkMutedBrush}" Text="{Binding Label}"/>
+                            <TextBlock FontSize="11.5" FontFamily="{StaticResource MonoFont}"
+                                       Foreground="{DynamicResource InkFaintBrush}" Text="{Binding Tool}"
+                                       Visibility="{Binding DataContext.Mode.IsExpert, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BooleanToVisibility}}"/>
+                          </StackPanel>
                         </Border>
                         <ControlTemplate.Triggers>
                           <Trigger Property="IsMouseOver" Value="True">
@@ -1423,14 +1444,19 @@
                                 </controls:Badge.Style>
                               </controls:Badge>
                               <StackPanel>
-                                <!-- The name the agents use, then the tail of the entry's id (VFS-90): two
-                                     /output rows are told apart here, not by squinting at a truncated path. -->
+                                <!-- The name the agents use. The entry's id stays in Réglages › Dossiers, for the
+                                     expert (UX lot 02): the path, or the folder's name, tells two /output rows apart. -->
                                 <TextBlock Style="{StaticResource MonoText}" FontSize="13" Foreground="{DynamicResource InkBrush}">
-                                  <Run Text="{Binding VirtualPath, Mode=OneWay}"/><Run Text=" · " Foreground="{DynamicResource InkFaintBrush}"/><Run Text="{Binding ShortId, Mode=OneWay}" Foreground="{DynamicResource InkFaintBrush}"/>
+                                  <Run Text="{Binding VirtualPath, Mode=OneWay}"/>
                                 </TextBlock>
-                                <!-- The real folder, whole: wrapped rather than trimmed. -->
+                                <!-- The real folder, whole: wrapped rather than trimmed. The novice reads the
+                                     folder's name, the path in its tooltip (UX lot 02). -->
                                 <TextBlock FontSize="13" Foreground="{DynamicResource InkFaintBrush}" Margin="0,2,0,0"
-                                           TextWrapping="Wrap" Text="{Binding PhysicalPath}"/>
+                                           TextWrapping="Wrap" Text="{Binding PhysicalPath}"
+                                           Visibility="{Binding DataContext.Mode.IsExpert, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BooleanToVisibility}}"/>
+                                <TextBlock FontSize="13" Foreground="{DynamicResource InkFaintBrush}" Margin="0,2,0,0"
+                                           TextWrapping="Wrap" Text="{Binding FolderName}" ToolTip="{Binding PhysicalPath}"
+                                           Visibility="{Binding DataContext.Mode.IsExpert, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource InverseBooleanToVisibility}}"/>
                                 <!-- Why the row cannot be picked, or that its root is shared: under the path, where
                                      a sentence has room, not beside the pill where it squeezed the path. -->
                                 <TextBlock FontSize="13" Margin="0,3,0,0" TextWrapping="Wrap"

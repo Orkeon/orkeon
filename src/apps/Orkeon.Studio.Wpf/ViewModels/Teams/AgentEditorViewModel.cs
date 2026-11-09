@@ -14,9 +14,13 @@ public sealed class AgentToolChipViewModel : ObservableObject
 {
     private bool _isSelected;
 
-    internal AgentToolChipViewModel(string tool, bool isSelected, Action changed)
+    internal AgentToolChipViewModel(string tool, WizardToolChip chip, bool isSelected, Action changed)
     {
+        ArgumentNullException.ThrowIfNull(chip);
+
         Tool = tool;
+        Label = chip.Label;
+        Icon = chip.Icon;
         _isSelected = isSelected;
         ToggleCommand = new RelayCommand(() =>
         {
@@ -25,8 +29,14 @@ public sealed class AgentToolChipViewModel : ObservableObject
         });
     }
 
-    /// <summary>The tool identifier, as the blueprint spells it.</summary>
+    /// <summary>The tool identifier, as the blueprint spells it: the tooltip, and the expert's mono line.</summary>
     public string Tool { get; }
+
+    /// <summary>What the tool does, in words (« lire /docs »); the identifier when Studio has no words for it (UX lot 02).</summary>
+    public string Label { get; }
+
+    /// <summary>The chip's Lucide icon.</summary>
+    public string Icon { get; }
 
     /// <summary>Whether the agent keeps this capability.</summary>
     public bool IsSelected
@@ -107,8 +117,16 @@ public sealed class AgentEditorViewModel : ObservableObject
         var palette = agents.SelectMany(a => a.Tools).Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal);
         var selected = current.Tools ?? [];
         Chips.Clear();
+        // The chip reads what the tool does on the team's folders, as on the creation screen:
+        // the first read-only mount for a reading tool, the first writable one for a writing tool.
+        var readScope = FirstScope(teamMounts, readWrite: false);
+        var writeScope = FirstScope(teamMounts, readWrite: true);
         foreach (var tool in palette)
-            Chips.Add(new AgentToolChipViewModel(tool, selected.Contains(tool, StringComparer.Ordinal), OnChipsChanged));
+            Chips.Add(new AgentToolChipViewModel(
+                tool,
+                WizardToolChips.For(tool, _strings, readScope, writeScope),
+                selected.Contains(tool, StringComparer.Ordinal),
+                OnChipsChanged));
 
         IsOpen = true;
         OnPropertiesChanged(nameof(Name), nameof(WhatItDoes), nameof(ScopeInfo), nameof(Title), nameof(IsNew), nameof(KeyLine), nameof(SaveLabel));
@@ -159,6 +177,22 @@ public sealed class AgentEditorViewModel : ObservableObject
     /// </summary>
     internal static string DescribeScope(IReadOnlyList<string> mountStrings, IStudioStrings strings) =>
         MountLabels.DescribeAll(mountStrings, strings);
+
+    /// <summary>
+    /// The virtual path of the first team mount with the given rights; null when none, so the
+    /// chip says what the tool does without inventing a folder.
+    /// </summary>
+    internal static string? FirstScope(IReadOnlyList<string> mountStrings, bool readWrite)
+    {
+        foreach (var mountString in mountStrings)
+        {
+            if (MountDefinition.TryParse(mountString, out var mount, out _) && mount is not null
+                && (mount.Rights != MountRights.ReadOnly) == readWrite)
+                return mount.VirtualPath;
+        }
+
+        return null;
+    }
 
     /// <summary>The expert mono line: <c>id: key · tools: […]</c>.</summary>
     public string KeyLine =>

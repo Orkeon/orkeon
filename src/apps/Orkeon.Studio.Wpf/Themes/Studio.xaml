@@ -1515,8 +1515,10 @@
         </StackPanel>
         <StackPanel VerticalAlignment="Center">
           <StackPanel Orientation="Horizontal">
-            <TextBlock Style="{StaticResource MonoText}" FontSize="13" FontWeight="SemiBold"
-                       Foreground="{DynamicResource InkBrush}" Text="{Binding EnvName}"/>
+            <!-- The title is the human name (profiles, or the tool); the variable is the
+                 expert's subtitle and the novice's tooltip (UX lot 02). -->
+            <TextBlock FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}"
+                       Text="{Binding UsedBy}" ToolTip="{Binding EnvName}"/>
             <Border Margin="9,0,0,0" VerticalAlignment="Center">
               <Border.Style>
                 <Style TargetType="Border" BasedOn="{StaticResource BadgeBase}">
@@ -1533,7 +1535,19 @@
               <TextBlock Style="{StaticResource BadgeText}" FontSize="13" Text="{Binding StatusText}"/>
             </Border>
           </StackPanel>
-          <TextBlock Style="{StaticResource Hint}" Margin="0,2,0,0" Text="{Binding UsedBy}"/>
+          <TextBlock Margin="0,2,0,0" Text="{Binding EnvName}">
+            <TextBlock.Style>
+              <Style TargetType="TextBlock" BasedOn="{StaticResource Hint}">
+                <Setter Property="FontFamily" Value="{StaticResource MonoFont}"/>
+                <Setter Property="Visibility" Value="Collapsed"/>
+                <Style.Triggers>
+                  <DataTrigger Binding="{Binding DataContext.Mode.IsExpert, RelativeSource={RelativeSource AncestorType=Window}}" Value="True">
+                    <Setter Property="Visibility" Value="Visible"/>
+                  </DataTrigger>
+                </Style.Triggers>
+              </Style>
+            </TextBlock.Style>
+          </TextBlock>
           <!-- No converter here: a trigger shows the link. -->
           <StackPanel Margin="0,3,0,0">
             <StackPanel.Style>

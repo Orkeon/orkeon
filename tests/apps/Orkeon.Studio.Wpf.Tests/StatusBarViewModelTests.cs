@@ -201,12 +201,12 @@ public sealed class StatusBarViewModelTests
     }
 
     /// <summary>
-    /// D-03: the novice reads the state and the two meters; the expert reads everything. The
+    /// D-03, UX lot 02: the novice reads the state alone; the expert reads the meters and everything. The
     /// switch moves the bar at once — a mode change that waits for the next event is one the
     /// user sees as broken.
     /// </summary>
     [Fact]
-    public async Task Novice_mode_shows_the_state_and_the_meters_and_expert_mode_shows_everything()
+    public async Task Novice_mode_shows_the_state_and_expert_mode_shows_the_meters_and_everything()
     {
         var mode = new UiModeViewModel();
         var (launch, process) = Launcher(new StubTimeProvider { Now = new DateTimeOffset(2026, 9, 24, 10, 30, 0, TimeSpan.Zero) });
@@ -214,6 +214,7 @@ public sealed class StatusBarViewModelTests
         var raised = new List<string?>();
         (bool Up, bool Down, bool Details)? novice = null;
         (bool Details, string Line, bool Raised)? expert = null;
+        (bool Up, bool Down, bool Raised)? expertMeters = null;
         process.WhileRunning = () =>
         {
             process.Emit(Event(RunStarted));
@@ -227,11 +228,15 @@ public sealed class StatusBarViewModelTests
             mode.SetExpertCommand.Execute(null);
             expert = (bar.Launch.ShowsDetails, bar.Launch.Details,
                 raised.Contains(nameof(StatusBarRunGroupViewModel.ShowsDetails)));
+            expertMeters = (bar.Launch.ShowsTokensUp, bar.Launch.ShowsTokensDown,
+                raised.Contains(nameof(StatusBarRunGroupViewModel.ShowsTokensUp))
+                && raised.Contains(nameof(StatusBarRunGroupViewModel.ShowsTokensDown)));
         };
 
         await launch.RunAsync(TestContext.Current.CancellationToken);
 
-        Assert.Equal((true, true, false), novice);
+        Assert.Equal((false, false, false), novice);
+        Assert.Equal((true, true, true), expertMeters);
         Assert.Equal(
             (true,
              $"veille · analyst · 1 min 0 s · cache 67 % · {N(800)} tokens · {0.0123m.ToString("0.######", CultureInfo.CurrentCulture)} USD · 1 tool(s): pdf_reader · deepseek · deepseek-chat",
@@ -530,10 +535,14 @@ public sealed class StatusBarViewModelTests
 
         card.Update(Composing());
         Assert.False(bar.Atelier.ShowsBudgetLeft);
-        Assert.True(bar.Atelier.ShowsTokensUp);
+        // UX lot 02: the meters are the expert's too.
+        Assert.False(bar.Atelier.ShowsTokensUp);
+        Assert.False(bar.Atelier.ShowsTokensDown);
 
         mode.SetExpertCommand.Execute(null);
         Assert.True(bar.Atelier.ShowsBudgetLeft);
+        Assert.True(bar.Atelier.ShowsTokensUp);
+        Assert.True(bar.Atelier.ShowsTokensDown);
 
         card.Update(Composing(tokensRemaining: null));
         Assert.Null(bar.Atelier.BudgetLeft);

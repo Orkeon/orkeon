@@ -6,6 +6,7 @@ using Orkeon.Studio.Core.FileSystem;
 using Orkeon.Studio.Core.Launch;
 using Orkeon.Studio.Core.Localization;
 using Orkeon.Studio.Core.Teams;
+using Orkeon.Studio.Wpf.ViewModels.Mounts;
 using Orkeon.Studio.Wpf.ViewModels.Mvvm;
 using Orkeon.Studio.Wpf.ViewModels.Shell;
 
@@ -16,7 +17,11 @@ namespace Orkeon.Studio.Wpf.ViewModels.Launch;
 /// <param name="RightsLabel">« Read » or « Read and write ».</param>
 /// <param name="IsWritable">Whether the agents may write there.</param>
 /// <param name="PhysicalPath">The folder on this machine; empty when the entry names none.</param>
-public sealed record RunFolderRow(string VirtualPath, string RightsLabel, bool IsWritable, string PhysicalPath);
+public sealed record RunFolderRow(string VirtualPath, string RightsLabel, bool IsWritable, string PhysicalPath)
+{
+    /// <summary>The folder's own name, what the novice reads instead of the path (UX lot 02).</summary>
+    public string FolderName => FolderNames.Of(PhysicalPath);
+}
 
 /// <summary>
 /// One agent's column of the run tab (refonte lot 12): there before the launch, from the crew's

@@ -89,11 +89,12 @@ internal static class RunStops
             Screen = CaptureScreen.Run,
             Because = "A run in flight — the plain-language progress card moving, the tone badge, "
                     + "the token meter and the technical journal filling, and the Run group on the "
-                    + "status bar with its state and its meters (STUDIO-34). It exists only while a "
+                    + "status bar with its state (and its meters, in expert mode only since UX lot 02; "
+                    + "STUDIO-34). It exists only while a "
                     + "stream is open, so no artefact on disk can reproduce it: the scripted CLI is "
                     + "held open across this shot, before the line that reports its end, and "
                     + "released by the teardown.",
-            Covers = ["Launch.IsRunning", "Launch.HasTeamCard", "StatusBar.Launch.IsActive", "StatusBar.Launch.ShowsTokensUp"],
+            Covers = ["Launch.IsRunning", "Launch.HasTeamCard", "StatusBar.Launch.IsActive"],
             Arrange = static async c =>
             {
                 c.Shell.Launch.Target.Select(c.World.TeamDirectory("veille-concurrentielle"));

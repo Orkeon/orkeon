@@ -463,6 +463,9 @@ public static class StudioStringKeys
     /// <summary>A check's action when Studio has no fix of its own: "Check again".</summary>
     public const string DiagCheckAgain = "Studio.Diagnostics.CheckAgain";
 
+    /// <summary>A check the engine reports under a name Studio has no label for: "Engine check".</summary>
+    public const string DiagCheckUnknown = "Studio.Diagnostics.Check.Unknown";
+
     /// <summary>The settings-file line of the checks (lot 5, the former sidebar card): "Settings file".</summary>
     public const string DiagSettingsFile = "Studio.Diagnostics.SettingsFile";
 
@@ -1393,6 +1396,15 @@ public static class StudioStringKeys
 
     /// <summary>"The service's API key"</summary>
     public const string ProfileKeyTitleService = "Studio.Settings.KeyTitleService";
+
+    /// <summary>The tool a key serves, for <c>web_search</c>: "Web search (Tavily)".</summary>
+    public const string ToolSecretWebSearch = "Studio.Settings.ToolSecretWebSearch";
+
+    /// <summary>The tool a key serves, for <c>brave_search</c>: "Web search (Brave)".</summary>
+    public const string ToolSecretBraveSearch = "Studio.Settings.ToolSecretBraveSearch";
+
+    /// <summary>The tool a key serves, for <c>image_generation</c>: "Image generation (OpenAI)".</summary>
+    public const string ToolSecretImageGeneration = "Studio.Settings.ToolSecretImageGeneration";
 
     /// <summary>"Studio keeps it in your Windows session — never in a file, never in a shared folder."</summary>
     public const string ProfileKeyExplainer = "Studio.Settings.KeyExplainer";
@@ -3043,6 +3055,7 @@ public sealed class EnglishStudioStrings : IStudioStrings
         ["Studio.Diagnostics.Check.runner-settings"] = "Runner settings",
         ["Studio.Diagnostics.Check.tree-sitter"] = "The code parser (tree-sitter)",
         ["Studio.Diagnostics.Check.workspace-write"] = "Write access to the workspace",
+        [StudioStringKeys.DiagCheckUnknown] = "Engine check",
         ["Studio.Diagnostics.Problem.appsettings"] = "Studio cannot read the settings file.",
         ["Studio.Diagnostics.Problem.dotnet-runtime"] = "The .NET runtime the engine needs is not found.",
         ["Studio.Diagnostics.Problem.esbuild"] = "The script compiler is missing on this machine.",
@@ -3384,6 +3397,9 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.ProfileGroupCloud] = "IN THE CLOUD · API KEY REQUIRED",
         [StudioStringKeys.ProfileKeyTitleFor] = "API key {0}",
         [StudioStringKeys.ProfileKeyTitleService] = "The service's API key",
+        [StudioStringKeys.ToolSecretWebSearch] = "Web search (Tavily)",
+        [StudioStringKeys.ToolSecretBraveSearch] = "Web search (Brave)",
+        [StudioStringKeys.ToolSecretImageGeneration] = "Image generation (OpenAI)",
         [StudioStringKeys.ProfileKeyExplainer] = "Studio keeps it in your Windows session — never in a file, never in a shared folder.",
         [StudioStringKeys.ProfileKeyPlaceholder] = "Paste your key here (sk-…)",
         [StudioStringKeys.ProfileKeyStore] = "Remember the key",

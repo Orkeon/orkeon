@@ -143,10 +143,10 @@
   <data name="Studio.Run.InputsTitle" xml:space="preserve"><value>Entrées</value></data>
   <data name="Studio.Run.LblInputsJson" xml:space="preserve"><value>JSON en ligne (--inputs)</value></data>
   <data name="Studio.Run.LblInputsFile" xml:space="preserve"><value>Fichier (--inputs-file)</value></data>
-  <data name="Studio.Run.LblVerbosity" xml:space="preserve"><value>Verbosité (--verbose)</value></data>
-  <data name="Studio.Run.LlmLog" xml:space="preserve"><value>Journaliser les échanges avec le modèle (--llm-log)</value></data>
+  <data name="Studio.Run.LblVerbosity" xml:space="preserve"><value>Détail du journal</value></data>
+  <data name="Studio.Run.LlmLog" xml:space="preserve"><value>Garder les échanges avec le modèle</value></data>
   <data name="Studio.Run.SettingsMountsTitle" xml:space="preserve"><value>Dossiers déjà autorisés dans le fichier de réglages sélectionné</value></data>
-  <data name="Studio.Run.AllowExternal" xml:space="preserve"><value>Autoriser des dossiers hors du répertoire de travail (--allow-external-mounts)</value></data>
+  <data name="Studio.Run.AllowExternal" xml:space="preserve"><value>Autoriser des dossiers hors du répertoire de travail</value></data>
   <data name="Studio.Run.CopyCommand" xml:space="preserve"><value>Copier la commande</value></data>
   <data name="Studio.Run.CommandCopied" xml:space="preserve"><value>Commande copiée</value></data>
   <data name="Studio.Run.StateIdle" xml:space="preserve"><value>Prête à travailler</value></data>
@@ -192,8 +192,8 @@
   <data name="Studio.Diagnostics.NoFindings" xml:space="preserve"><value>Vérification : aucun constat.</value></data>
   <data name="Studio.Diagnostics.Summary" xml:space="preserve"><value>Vérification : {0} {0:plural:erreur|erreurs}, {1} {1:plural:avertissement|avertissements}, {2} {2:plural:note|notes}.</value></data>
   <data name="Studio.Run.NothingRan" xml:space="preserve"><value>Rien n'a été exécuté — {0}</value></data>
-  <data name="Studio.Run.Tokens" xml:space="preserve"><value>{0} tokens</value></data>
-  <data name="Studio.Run.Cache" xml:space="preserve"><value>cache {0} % · {1} tokens</value></data>
+  <data name="Studio.Run.Tokens" xml:space="preserve"><value>{0} jetons</value></data>
+  <data name="Studio.Run.Cache" xml:space="preserve"><value>cache {0} % · {1} jetons</value></data>
   <data name="Studio.Run.Seconds" xml:space="preserve"><value>{0} s</value></data>
   <data name="Studio.Run.MinutesSeconds" xml:space="preserve"><value>{0} min {1} s</value></data>
   <data name="Studio.Run.ExitCode" xml:space="preserve"><value>Code de sortie {0} — {1}</value></data>
@@ -423,6 +423,9 @@
   <data name="Studio.Settings.GroupCloud" xml:space="preserve"><value>DANS LE NUAGE · CLÉ D'API REQUISE</value></data>
   <data name="Studio.Settings.KeyTitleFor" xml:space="preserve"><value>Clé d'API {0}</value></data>
   <data name="Studio.Settings.KeyTitleService" xml:space="preserve"><value>Clé d'API du service</value></data>
+  <data name="Studio.Settings.ToolSecretWebSearch" xml:space="preserve"><value>Recherche sur le web (Tavily)</value></data>
+  <data name="Studio.Settings.ToolSecretBraveSearch" xml:space="preserve"><value>Recherche sur le web (Brave)</value></data>
+  <data name="Studio.Settings.ToolSecretImageGeneration" xml:space="preserve"><value>Création d'images (OpenAI)</value></data>
   <data name="Studio.Settings.KeyExplainer" xml:space="preserve"><value>Studio la range dans votre session Windows — jamais dans un fichier, jamais dans un dossier partagé.</value></data>
   <data name="Studio.Settings.KeyPlaceholder" xml:space="preserve"><value>Collez votre clé ici (sk-…)</value></data>
   <data name="Studio.Settings.KeyStore" xml:space="preserve"><value>Mémoriser la clé</value></data>
@@ -596,6 +599,7 @@
   <data name="Studio.Diagnostics.Check.runner-settings" xml:space="preserve"><value>Réglages du lanceur</value></data>
   <data name="Studio.Diagnostics.Check.tree-sitter" xml:space="preserve"><value>L'analyseur de code (tree-sitter)</value></data>
   <data name="Studio.Diagnostics.Check.workspace-write" xml:space="preserve"><value>L'écriture dans le dossier de travail</value></data>
+  <data name="Studio.Diagnostics.Check.Unknown" xml:space="preserve"><value>Vérification du moteur</value></data>
   <data name="Studio.Diagnostics.AllGood" xml:space="preserve"><value>Tout est en place.</value></data>
   <data name="Studio.Diagnostics.FixNeeded" xml:space="preserve"><value>{0} {0:plural:point à corriger|points à corriger} avant de lancer une équipe.</value></data>
   <data name="Studio.Diagnostics.Counts" xml:space="preserve"><value>{0} {0:plural:vérification passée|vérifications passées}, {1} {1:plural:avertissement|avertissements}, {2} {2:plural:échec|échecs}.</value></data>
@@ -1145,7 +1149,7 @@
     <value>Les agents ne voient que les dossiers autorisés dans Réglages. Un dossier en lecture seule ne peut jamais être modifié, même si un agent le demande.</value>
   </data>
   <data name="Studio.Chat.AnswerCost" xml:space="preserve">
-    <value>Un modèle local (Ollama) ne coûte rien. Dans le nuage, le coût dépend du nombre de mots échangés : Studio affiche les tokens consommés à la fin de chaque exécution.</value>
+    <value>Un modèle local (Ollama) ne coûte rien. Dans le nuage, le coût dépend du nombre de mots échangés : Studio affiche les jetons consommés à la fin de chaque lancement.</value>
   </data>
   <data name="Studio.Chat.AnswerDuration" xml:space="preserve">
     <value>Sur ce jeu de données, comptez une à deux minutes par exécution en local. Le journal technique indique la durée de chaque étape.</value>
@@ -1810,7 +1814,7 @@
     <value>{0} figure deux fois.</value>
   </data>
   <data name="Studio.Settings.HostId" xml:space="preserve">
-    <value>Dans le fichier d'une équipe : profile: {0}</value>
+    <value>Nom à écrire dans le fichier d'une équipe : {0}</value>
   </data>
   <data name="Studio.Settings.HostIdReserved" xml:space="preserve">
     <value>Une équipe écrirait profile: default, le nom réservé au modèle par défaut — choisissez un autre nom.</value>
@@ -1869,7 +1873,7 @@
   <data name="Studio.Run.ExitCodeLabel" xml:space="preserve"><value>code de sortie</value></data>
   <data name="Studio.Run.ColAgent" xml:space="preserve"><value>AGENT</value></data>
   <data name="Studio.Run.ColToolCalls" xml:space="preserve"><value>APPELS D’OUTILS</value></data>
-  <data name="Studio.Run.ColTokens" xml:space="preserve"><value>TOKENS</value></data>
+  <data name="Studio.Run.ColTokens" xml:space="preserve"><value>JETONS</value></data>
   <data name="Studio.Run.ColDuration" xml:space="preserve"><value>DURÉE</value></data>
   <data name="Studio.History.OutcomeBadgeNotStarted" xml:space="preserve"><value>Pas lancée</value></data>
   <data name="Studio.Shell.Drive" xml:space="preserve"><value>Stockage cloud</value></data>

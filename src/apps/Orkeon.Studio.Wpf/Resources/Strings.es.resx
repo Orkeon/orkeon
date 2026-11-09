@@ -368,16 +368,16 @@
     <value>Archivo (--inputs-file)</value>
   </data>
   <data name="Studio.Run.LblVerbosity" xml:space="preserve">
-    <value>Verbosidad (--verbose)</value>
+    <value>Detalle del registro</value>
   </data>
   <data name="Studio.Run.LlmLog" xml:space="preserve">
-    <value>Registrar los intercambios LLM (--llm-log)</value>
+    <value>Conservar los intercambios con el modelo</value>
   </data>
   <data name="Studio.Run.SettingsMountsTitle" xml:space="preserve">
     <value>Montajes ya presentes en el appsettings seleccionado</value>
   </data>
   <data name="Studio.Run.AllowExternal" xml:space="preserve">
-    <value>Permitir montajes fuera del directorio de trabajo (--allow-external-mounts)</value>
+    <value>Permitir carpetas fuera del directorio de trabajo</value>
   </data>
   <data name="Studio.Run.CopyCommand" xml:space="preserve"><value>Copiar el comando</value></data>
   <data name="Studio.Run.CommandCopied" xml:space="preserve"><value>Comando copiado</value></data>
@@ -1122,6 +1122,15 @@
   <data name="Studio.Settings.KeyTitleService" xml:space="preserve">
     <value>Clave de API del servicio</value>
   </data>
+  <data name="Studio.Settings.ToolSecretWebSearch" xml:space="preserve">
+    <value>Búsqueda web (Tavily)</value>
+  </data>
+  <data name="Studio.Settings.ToolSecretBraveSearch" xml:space="preserve">
+    <value>Búsqueda web (Brave)</value>
+  </data>
+  <data name="Studio.Settings.ToolSecretImageGeneration" xml:space="preserve">
+    <value>Generación de imágenes (OpenAI)</value>
+  </data>
   <data name="Studio.Settings.KeyExplainer" xml:space="preserve">
     <value>Studio la guarda en su sesión de Windows — nunca en un archivo, nunca en una carpeta compartida.</value>
   </data>
@@ -1630,6 +1639,9 @@
   </data>
   <data name="Studio.Diagnostics.Check.workspace-write" xml:space="preserve">
     <value>La escritura en la carpeta de trabajo</value>
+  </data>
+  <data name="Studio.Diagnostics.Check.Unknown" xml:space="preserve">
+    <value>Comprobación del motor</value>
   </data>
   <data name="Studio.Diagnostics.AllGood" xml:space="preserve">
     <value>Todo está en su sitio.</value>

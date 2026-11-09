@@ -129,6 +129,31 @@ public sealed class ModalDialogsTests
     }
 
     [Fact]
+    public void A_capability_chip_says_what_the_tool_does_on_the_team_folders_and_keeps_its_id()
+    {
+        // UX lot 02: « read /docs », never « file_read »; the identifier stays the tooltip and
+        // the expert's line. A tool Studio has no words for keeps its identifier.
+        var editor = new AgentEditorViewModel();
+        editor.Open(Blueprint, "redacteur", ["/a:/docs:ro", "/b:/output:rw"], _ => { });
+
+        Assert.Equal(["read /docs", "write /output", "browse a web page"], editor.Chips.Select(c => c.Label));
+        Assert.Equal(["file_read", "file_write", "web_scrape"], editor.Chips.Select(c => c.Tool));
+        Assert.Equal("folder-open", editor.Chips[0].Icon);
+
+        editor.Open(Blueprint, "redacteur", [], _ => { });
+        Assert.Equal("write", editor.Chips.Single(c => c.Tool == "file_write").Label.Trim());
+    }
+
+    [Theory]
+    [InlineData(@"C:\Users\me\Docs", "Docs")]
+    [InlineData(@"C:\Users\me\Docs\", "Docs")]
+    [InlineData("/home/me/output/", "output")]
+    [InlineData("Docs", "Docs")]
+    [InlineData("", "")]
+    public void A_folder_reads_by_its_own_name(string path, string expected) =>
+        Assert.Equal(expected, FolderNames.Of(path));
+
+    [Fact]
     public void Adding_an_agent_appends_a_sluggged_unique_key()
     {
         var editor = new AgentEditorViewModel();

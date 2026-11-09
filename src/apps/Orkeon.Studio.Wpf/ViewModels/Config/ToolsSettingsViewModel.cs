@@ -24,7 +24,7 @@ public sealed class ToolsSettingsViewModel : ObservableObject
         var store = keyStore ?? new EnvironmentApiKeyStore();
 
         Secrets = [.. ToolCatalog.Secrets.Select(secret =>
-            new SecretRowViewModel(secret.EnvName, secret.UsedBy, store, _strings, secret.ConsoleUrl))];
+            new SecretRowViewModel(secret.EnvName, ToolLabel(secret.UsedBy), store, _strings, secret.ConsoleUrl))];
         Families = [.. ToolCatalog.Families.Select(family => new ToolFamilyViewModel(family, _strings))];
 
         // The labels are read live; a language switch re-emits every one of them, the key rows'
@@ -37,6 +37,18 @@ public sealed class ToolsSettingsViewModel : ObservableObject
                 secret.RefreshTexts();
         };
     }
+
+    /// <summary>
+    /// The human name of the tool a key serves (« Web search (Tavily) »); an identifier Studio
+    /// has no label for stays raw, and the card shows it to the expert only.
+    /// </summary>
+    private string ToolLabel(string toolId) => toolId switch
+    {
+        "web_search" => _strings[StudioStringKeys.ToolSecretWebSearch],
+        "brave_search" => _strings[StudioStringKeys.ToolSecretBraveSearch],
+        "image_generation" => _strings[StudioStringKeys.ToolSecretImageGeneration],
+        _ => toolId,
+    };
 
     /// <summary>The keys the tools need, in the card's order.</summary>
     public IReadOnlyList<SecretRowViewModel> Secrets { get; }
