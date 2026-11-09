@@ -71,9 +71,14 @@
           </Viewbox>-->
           <!-- Icône de l'application (cadrage buste, coins arrondis détourés dans le PNG).
                Source 64 px rendue à 23 : nette jusqu'à ~275 % de mise à l'échelle. -->
-          <Image Source="/Assets/orkeon-studio-mark.png" Width="23" Height="23"
-                 RenderOptions.BitmapScalingMode="HighQuality"
-                 VerticalAlignment="Center"/>
+          <!-- UX lot 09: a 1 px ring (LogoRingBrush, transparent in light) keeps the mark's square
+               visible on the dark header. -->
+          <Border BorderBrush="{DynamicResource LogoRingBrush}" BorderThickness="1" CornerRadius="6"
+                  VerticalAlignment="Center">
+            <Image Source="/Assets/orkeon-studio-mark.png" Width="23" Height="23"
+                   RenderOptions.BitmapScalingMode="HighQuality"
+                   VerticalAlignment="Center"/>
+          </Border>
           <TextBlock Text="Orkeon" FontFamily="{StaticResource DisplayFont}" FontSize="16.5" FontWeight="Bold"
                      Foreground="{DynamicResource InkBrush}" Margin="9,0,0,0" VerticalAlignment="Center"/>
           <TextBlock Text="STUDIO" Style="{StaticResource Eyebrow}" Margin="9,2,0,0" VerticalAlignment="Center"/>
@@ -785,8 +790,9 @@
             </RadioButton.IsChecked>
             <RadioButton.Template>
               <ControlTemplate TargetType="RadioButton">
+                <!-- UX lot 09: LineStrong so a card is delimited without hover; the chosen one is Accent. -->
                 <Border x:Name="Card" Background="{DynamicResource SurfaceBrush}"
-                        BorderBrush="{DynamicResource LineBrush}" BorderThickness="1"
+                        BorderBrush="{DynamicResource LineStrongBrush}" BorderThickness="1"
                         CornerRadius="10" Padding="11,8">
                   <StackPanel>
                     <!-- R09 (B10): a trimmed title or description gives its full text on hover. -->
@@ -808,7 +814,7 @@
         </DataTemplate>
       </Grid.Resources>
       <Border Width="680" HorizontalAlignment="Center" VerticalAlignment="Center" MouseLeftButtonDown="OnSwallowClick"
-              Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1"
+              Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource LineStrongBrush}" BorderThickness="1"
               CornerRadius="20" DataContext="{Binding Settings.Profiles.Editor}" Effect="{DynamicResource ShadowLg}">
         <StackPanel>
           <!-- R15 (C21): the header stays put; only the body below it scrolls, so the scroll bar
@@ -1174,7 +1180,7 @@
     <Grid Grid.Row="0" Grid.RowSpan="3" Background="{DynamicResource ScrimBrush}" MouseLeftButtonDown="OnTeamMountsBackdropClick"
           Visibility="{Binding TeamMounts.IsOpen, Converter={StaticResource BooleanToVisibility}}">
       <Border Width="600" HorizontalAlignment="Center" VerticalAlignment="Center" MouseLeftButtonDown="OnSwallowClick"
-              Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1"
+              Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource LineStrongBrush}" BorderThickness="1"
               CornerRadius="20" DataContext="{Binding TeamMounts}" Effect="{DynamicResource ShadowLg}">
         <StackPanel>
           <StackPanel Margin="22,20,22,0">
@@ -1269,7 +1275,7 @@
     <Grid Grid.Row="0" Grid.RowSpan="3" Background="{DynamicResource ScrimBrush}" MouseLeftButtonDown="OnAgentEditorBackdropClick"
           Visibility="{Binding CreateTeam.AgentEditor.IsOpen, Converter={StaticResource BooleanToVisibility}}">
       <Border Width="620" HorizontalAlignment="Center" VerticalAlignment="Center" MouseLeftButtonDown="OnSwallowClick"
-              Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1"
+              Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource LineStrongBrush}" BorderThickness="1"
               CornerRadius="20" DataContext="{Binding CreateTeam.AgentEditor}" Effect="{DynamicResource ShadowLg}">
         <StackPanel>
           <StackPanel Margin="22,20,22,0">
@@ -1358,7 +1364,7 @@
     <Grid Grid.Row="1" Grid.RowSpan="2" Background="{DynamicResource ScrimBrush}" MouseLeftButtonDown="OnGalleryBackdropClick"
           Visibility="{Binding CreateTeam.Gallery.IsOpen, Converter={StaticResource BooleanToVisibility}}">
       <Border Width="560" HorizontalAlignment="Right" MouseLeftButtonDown="OnSwallowClick"
-              Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1,0,0,0"
+              Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource LineStrongBrush}" BorderThickness="1,0,0,0"
               CornerRadius="18,0,0,18" DataContext="{Binding CreateTeam.Gallery}" Effect="{DynamicResource ShadowLg}">
         <views:UseCaseGalleryView/>
       </Border>
@@ -1372,7 +1378,7 @@
     <Grid Grid.Row="0" Grid.RowSpan="3" Background="{DynamicResource ScrimBrush}" MouseLeftButtonDown="OnAllowedFoldersBackdropClick"
           Visibility="{Binding AllowedFolders.IsOpen, Converter={StaticResource BooleanToVisibility}}">
       <Border Width="600" HorizontalAlignment="Center" VerticalAlignment="Center" MouseLeftButtonDown="OnSwallowClick"
-              Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1"
+              Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource LineStrongBrush}" BorderThickness="1"
               CornerRadius="20" DataContext="{Binding AllowedFolders}" Effect="{DynamicResource ShadowLg}">
         <StackPanel>
           <StackPanel Margin="22,20,22,0">
@@ -1487,7 +1493,7 @@
     <Grid Grid.Row="0" Grid.RowSpan="3" Background="{DynamicResource ScrimBrush}" MouseLeftButtonDown="OnAboutBackdropClick"
           Visibility="{Binding About.IsOpen, Converter={StaticResource BooleanToVisibility}}">
       <Border Width="660" HorizontalAlignment="Center" VerticalAlignment="Center" MouseLeftButtonDown="OnSwallowClick"
-              Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1"
+              Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource LineStrongBrush}" BorderThickness="1"
               CornerRadius="20" ClipToBounds="True" Effect="{DynamicResource ShadowLg}">
         <Grid>
           <Grid.ColumnDefinitions>

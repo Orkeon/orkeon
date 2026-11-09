@@ -1069,7 +1069,7 @@
                               <Border DockPanel.Dock="Left" Width="32" Height="32" CornerRadius="16" VerticalAlignment="Top"
                                       Background="{DynamicResource AccentWeakBrush}" Margin="0,0,12,0">
                                 <TextBlock FontFamily="{StaticResource MonoFont}" FontSize="13" FontWeight="SemiBold"
-                                           Foreground="{DynamicResource AccentBrush}" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                           Foreground="{DynamicResource AccentInkBrush}" HorizontalAlignment="Center" VerticalAlignment="Center"
                                            Text="{Binding Initial}"/>
                               </Border>
                               <Button DockPanel.Dock="Right" Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="32"

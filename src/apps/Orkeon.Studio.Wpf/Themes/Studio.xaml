@@ -201,9 +201,8 @@
               <Setter TargetName="trail" Property="Margin" Value="0"/>
               <Setter TargetName="content" Property="Visibility" Value="Collapsed"/>
             </Trigger>
-            <Trigger Property="IsEnabled" Value="False">
-              <Setter TargetName="bd" Property="Opacity" Value="0.45"/>
-            </Trigger>
+            <!-- UX lot 09: no disabled opacity here — a template setter would beat the style
+                 triggers; each button family states its own disabled look below. -->
           </ControlTemplate.Triggers>
         </ControlTemplate>
       </Setter.Value>
@@ -221,6 +220,13 @@
         <Setter Property="Background" Value="{DynamicResource AccentActiveBrush}"/>
         <Setter Property="RenderTransform"><Setter.Value><TranslateTransform Y="1"/></Setter.Value></Setter>
       </Trigger>
+      <!-- UX lot 09: disabled reads as a neutral button (ground, border, text), not a 45 % ghost:
+           InkDisabled on Surface2 is 3.09:1 dark, 3.18:1 light. Last, so it wins. -->
+      <Trigger Property="IsEnabled" Value="False">
+        <Setter Property="Background" Value="{DynamicResource Surface2Brush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource LineStrongBrush}"/>
+        <Setter Property="Foreground" Value="{DynamicResource InkDisabledBrush}"/>
+      </Trigger>
     </Style.Triggers>
   </Style>
   <Style x:Key="BtnSecondary" TargetType="Button" BasedOn="{StaticResource BtnBase}">
@@ -235,6 +241,13 @@
       <Trigger Property="IsPressed" Value="True">
         <Setter Property="Background" Value="{DynamicResource PaperSunkBrush}"/>
         <Setter Property="RenderTransform"><Setter.Value><TranslateTransform Y="1"/></Setter.Value></Setter>
+      </Trigger>
+      <!-- UX lot 09: disabled reads as a neutral button (ground, border, text), not a 45 % ghost:
+           InkDisabled on Surface2 is 3.09:1 dark, 3.18:1 light. Last, so it wins. -->
+      <Trigger Property="IsEnabled" Value="False">
+        <Setter Property="Background" Value="{DynamicResource Surface2Brush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource LineStrongBrush}"/>
+        <Setter Property="Foreground" Value="{DynamicResource InkDisabledBrush}"/>
       </Trigger>
     </Style.Triggers>
   </Style>
@@ -252,6 +265,11 @@
       <Trigger Property="IsPressed" Value="True">
         <Setter Property="Background" Value="{DynamicResource LineFaintBrush}"/>
         <Setter Property="RenderTransform"><Setter.Value><TranslateTransform Y="1"/></Setter.Value></Setter>
+      </Trigger>
+      <!-- UX lot 09: disabled keeps its ground (no solid fill); text and border take InkDisabled. -->
+      <Trigger Property="IsEnabled" Value="False">
+        <Setter Property="Foreground" Value="{DynamicResource InkDisabledBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource InkDisabledBrush}"/>
       </Trigger>
     </Style.Triggers>
   </Style>
@@ -272,6 +290,11 @@
       <Trigger Property="IsPressed" Value="True">
         <Setter Property="RenderTransform"><Setter.Value><TranslateTransform Y="1"/></Setter.Value></Setter>
       </Trigger>
+      <!-- UX lot 09: disabled keeps its ground (no solid fill); text and border take InkDisabled. -->
+      <Trigger Property="IsEnabled" Value="False">
+        <Setter Property="Foreground" Value="{DynamicResource InkDisabledBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource InkDisabledBrush}"/>
+      </Trigger>
     </Style.Triggers>
   </Style>
   <!-- Assistant (R04): a round trip with the model is a Secondary like any other action — the
@@ -289,6 +312,13 @@
       </Trigger>
       <Trigger Property="IsPressed" Value="True">
         <Setter Property="RenderTransform"><Setter.Value><TranslateTransform Y="1"/></Setter.Value></Setter>
+      </Trigger>
+      <!-- UX lot 09: disabled reads as a neutral button (ground, border, text), not a 45 % ghost:
+           InkDisabled on Surface2 is 3.09:1 dark, 3.18:1 light. Last, so it wins. -->
+      <Trigger Property="IsEnabled" Value="False">
+        <Setter Property="Background" Value="{DynamicResource Surface2Brush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource LineStrongBrush}"/>
+        <Setter Property="Foreground" Value="{DynamicResource InkDisabledBrush}"/>
       </Trigger>
     </Style.Triggers>
   </Style>
@@ -343,8 +373,11 @@
               <Setter TargetName="bd" Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
               <Setter Property="Foreground" Value="{DynamicResource AccentInkBrush}"/>
             </Trigger>
+            <!-- UX lot 09: a neutral disabled state instead of a 45 % ghost (see BtnPrimary). -->
             <Trigger Property="IsEnabled" Value="False">
-              <Setter TargetName="bd" Property="Opacity" Value="0.45"/>
+              <Setter TargetName="bd" Property="Background" Value="{DynamicResource Surface2Brush}"/>
+              <Setter TargetName="bd" Property="BorderBrush" Value="{DynamicResource LineStrongBrush}"/>
+              <Setter Property="Foreground" Value="{DynamicResource InkDisabledBrush}"/>
             </Trigger>
           </ControlTemplate.Triggers>
         </ControlTemplate>
@@ -459,7 +492,7 @@
           <ControlTemplate.Triggers>
             <Trigger Property="IsChecked" Value="True">
               <Setter TargetName="bd" Property="Background" Value="{DynamicResource AccentWeakBrush}"/>
-              <Setter Property="Foreground" Value="{DynamicResource AccentBrush}"/>
+              <Setter Property="Foreground" Value="{DynamicResource AccentInkBrush}"/>
             </Trigger>
             <MultiTrigger>
               <MultiTrigger.Conditions>
@@ -871,8 +904,11 @@
             <Trigger Property="IsPressed" Value="True">
               <Setter Property="RenderTransform"><Setter.Value><TranslateTransform Y="1"/></Setter.Value></Setter>
             </Trigger>
+            <!-- UX lot 09: a neutral disabled state instead of a 45 % ghost (see BtnPrimary). -->
             <Trigger Property="IsEnabled" Value="False">
-              <Setter TargetName="bd" Property="Opacity" Value="0.45"/>
+              <Setter TargetName="bd" Property="Background" Value="{DynamicResource Surface2Brush}"/>
+              <Setter TargetName="bd" Property="BorderBrush" Value="{DynamicResource LineStrongBrush}"/>
+              <Setter Property="Foreground" Value="{DynamicResource InkDisabledBrush}"/>
             </Trigger>
           </ControlTemplate.Triggers>
         </ControlTemplate>
@@ -948,7 +984,7 @@
             <DataTrigger Binding="{Binding IsSelected}" Value="True">
               <Setter TargetName="Bg" Property="Background" Value="{DynamicResource AccentWeakBrush}"/>
               <Setter TargetName="Bg" Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
-              <Setter Property="Foreground" Value="{DynamicResource AccentBrush}"/>
+              <Setter Property="Foreground" Value="{DynamicResource AccentInkBrush}"/>
             </DataTrigger>
           </ControlTemplate.Triggers>
         </ControlTemplate>
@@ -1049,7 +1085,7 @@
     <Style.Triggers>
       <DataTrigger Binding="{Binding Tag, RelativeSource={RelativeSource Self}}" Value="True">
         <Setter Property="Background" Value="{DynamicResource AccentWeakBrush}"/>
-        <Setter Property="Foreground" Value="{DynamicResource AccentBrush}"/>
+        <Setter Property="Foreground" Value="{DynamicResource AccentInkBrush}"/>
       </DataTrigger>
     </Style.Triggers>
   </Style>
@@ -1083,7 +1119,7 @@
             </Trigger>
             <Trigger Property="IsSelected" Value="True">
               <Setter TargetName="bd" Property="Background" Value="{DynamicResource AccentWeakBrush}"/>
-              <Setter Property="Foreground" Value="{DynamicResource AccentBrush}"/>
+              <Setter Property="Foreground" Value="{DynamicResource AccentInkBrush}"/>
             </Trigger>
           </ControlTemplate.Triggers>
         </ControlTemplate>

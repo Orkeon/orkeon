@@ -80,7 +80,7 @@ public sealed class TourOverlay : Grid
         // theme-aware brushes
         _dim.SetResourceReference(Shape.FillProperty, "TourScrimBrush");
         _pop.SetResourceReference(Border.BackgroundProperty, "SurfaceBrush");
-        _pop.SetResourceReference(Border.BorderBrushProperty, "LineBrush");
+        _pop.SetResourceReference(Border.BorderBrushProperty, "LineStrongBrush");
         _ring.SetResourceReference(Shape.StrokeProperty, "AccentBrush");
         label.SetResourceReference(TextBlock.FontFamilyProperty, "MonoFont");
         _counter.SetResourceReference(TextBlock.FontFamilyProperty, "MonoFont");

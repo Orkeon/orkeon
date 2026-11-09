@@ -105,10 +105,10 @@ public sealed partial class HarmonisationThemeConformityTests
     [InlineData("SuccessInkBrush", "#1F6B55")]
     [InlineData("WarningInkBrush", "#7A4F0E")]
     [InlineData("DangerInkBrush", "#9E3227")]
-    [InlineData("WarningIconBrush", "#D9A441")]
+    [InlineData("WarningIconBrush", "#B8842A")]
     [InlineData("AccentInkBrush", "#186670")]
-    [InlineData("NeutralDotBrush", "#8A99A5")]
-    [InlineData("FieldBorderBrush", "#C9D3D2")]
+    [InlineData("NeutralDotBrush", "#6E7F8B")]
+    [InlineData("FieldBorderBrush", "#758893")]
     [InlineData("SkyBrush", "#E6F1F2")]
     public void Should_Hold_The_Palette_Value_When_Reading_The_Light_Tokens(string key, string colour)
     {

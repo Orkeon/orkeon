@@ -82,7 +82,7 @@
                 <Border DockPanel.Dock="Left" Width="24" Height="24" CornerRadius="12" VerticalAlignment="Top"
                         Background="{DynamicResource AccentWeakBrush}" Margin="0,0,13,0">
                   <TextBlock FontFamily="{StaticResource MonoFont}" FontSize="13" FontWeight="SemiBold"
-                             Foreground="{DynamicResource AccentBrush}" HorizontalAlignment="Center" VerticalAlignment="Center"
+                             Foreground="{DynamicResource AccentInkBrush}" HorizontalAlignment="Center" VerticalAlignment="Center"
                              Text="{Binding Order}"/>
                 </Border>
                 <StackPanel>
