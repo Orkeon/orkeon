@@ -392,7 +392,7 @@ matter of opinion — it is **recorded in the repository** and enforced at build
   `*REMOVED*` entry in the API file, and a CHANGELOG entry that says so plainly.
 - **Deprecation window (from 1.0)**: once 1.0 ships, nothing public is removed without
   shipping `[Obsolete]` for at least one minor version first, with the replacement named
-  in the message. During the `1.0.0-rc.*` line, compatibility shims are removed directly,
+  in the message. Before 1.0, compatibility shims are removed directly,
   with no `[Obsolete]` step: each removal gets a `*REMOVED*` line in the API file and a
   `**[breaking]**` CHANGELOG entry with a migration note.
 - **`[Experimental]` surfaces are outside this commitment.** A2A, Autonomous
@@ -401,9 +401,9 @@ matter of opinion — it is **recorded in the repository** and enforced at build
   suppress explicitly, which is your opt-in to a surface that may change in any
   release. See [docs/reference/experimental-apis.md](docs/reference/experimental-apis.md).
 - **Stability commitment for the 1.x window**: once 1.0 ships, no breaking change to
-  a non-experimental shipped API before 2.0. Until then — the `1.0.0-rc.*` line
-  that `main` is on today — breaking changes may still land between release
-  candidates, but are always called out in the CHANGELOG and the migration notes.
+  a non-experimental shipped API before 2.0. Until then — while `main` is on
+  pre-release versions — breaking changes may still land between two
+  pre-releases, but are always called out in the CHANGELOG and the migration notes.
 
 ## Release Process
 
@@ -417,7 +417,7 @@ matter of opinion — it is **recorded in the repository** and enforced at build
    `## Release <version>` heading, leaving the `Unshipped` file with its header only.
    The release-tracking analyzer parses that heading as a plain `Major.Minor.Patch`
    number and rejects a prerelease suffix (RS2007), so the heading for the 1.0.0 line
-   is `## Release 1.0.0` — it is already there, and the `rc.*` tags add nothing to it.
+   is `## Release 1.0.0` — it is already there, and the pre-release tags add nothing to it.
 5. Make sure CI is green on the commit you tag. Beyond the `-warnaserror` build and the
    test suites, the gates that must pass are `scripts/check-docs-parity.sh`,
    `scripts/check-doc-claims.py` (it also compares the hand-written copies of the NuGet

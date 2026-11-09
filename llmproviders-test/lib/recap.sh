@@ -37,8 +37,8 @@ while IFS= read -r report; do
   [[ -n "$json" ]] || continue
 
   rel="${report#"$ROOT"/}"
-  read -r provider model stamp version passed failed skipped < <(
-    printf '%s' "$json" | jq -r '[.provider, .model, .timestampUtc, .orkeonVersion,
+  read -r provider model stamp commit passed failed skipped < <(
+    printf '%s' "$json" | jq -r '[.provider, .model, .timestampUtc, (.commit // "" | if . == "" then "—" else . end),
       (.passed|tostring), (.failed|tostring), (.notApplicable|tostring)] | @tsv' | tr '\t' ' ')
 
   if [[ "$failed" -gt 0 ]]; then status="❌"; else status="✅"; fi
@@ -48,7 +48,7 @@ while IFS= read -r report; do
   # the same second, and a plain reverse sort over the rendered line would then break the tie
   # on whatever the row happens to start with — differently from the PowerShell mirror.
   rows+="${stamp}"$'\t'"${provider}"$'\t'"${model}"$'\t'
-  rows+="| ${stamp} | \`${provider}\` | \`${model}\` | ${status} ${passed}/${failed}/${skipped} | ${version} | [report](${rel}) |"$'\n'
+  rows+="| ${stamp} | \`${provider}\` | \`${model}\` | ${status} ${passed}/${failed}/${skipped} | \`${commit}\` | [report](${rel}) |"$'\n'
   count=$((count + 1))
 
   # Reports are visited in ascending timestamp order, so the last write wins.
@@ -78,7 +78,7 @@ done < <(find "$ROOT" -mindepth 2 -maxdepth 2 -name '*.md' -type f -not -path "$
     echo "llmproviders-test/run-campaign.sh --provider ollama --model llama3.2"
     echo '```'
   else
-    echo "| Timestamp (UTC) | Provider | Model | ✅/❌/➖ | Version | Report |"
+    echo "| Timestamp (UTC) | Provider | Model | ✅/❌/➖ | Commit | Report |"
     echo "|---|---|---|---|---|---|"
     # Newest first — then provider, then model, so a tie is broken the same way everywhere.
     printf '%s' "$rows" | sort -t$'\t' -k1,1r -k2,2 -k3,3 | cut -f4-

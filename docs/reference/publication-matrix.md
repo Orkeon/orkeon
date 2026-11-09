@@ -9,13 +9,13 @@ never drift again (OSS-011 / R8.3).
 
 > **Status — consolidated lineup implemented (PUB-25, 2026-09-01).** Distribution is one
 > `Orkeon` package plus a handful of opt-ins, wired in `publish.yml` and guarded by the
-> `scripts/check-package-closure.py` gate. Its first six packages went out with
-> `1.0.0-rc.3` (2026-09-09); `Orkeon.Compliance.Vfs`, `Orkeon.Interop.AgentFramework` and
-> `Orkeon.Hosting.Aspire` joined the lineup on 2026-09-11 and went out to NuGet.org with
-> `1.0.0-rc.4` (seen on api.nuget.org on 2026-10-12) — nine packages in all from rc.4. Trusted Publishing to NuGet.org
+> `scripts/check-package-closure.py` gate. Its first six packages went out on 2026-09-09;
+> `Orkeon.Compliance.Vfs`, `Orkeon.Interop.AgentFramework` and `Orkeon.Hosting.Aspire` joined
+> the lineup on 2026-09-11 and reached NuGet.org with the next release (seen on api.nuget.org
+> on 2026-10-12) — nine packages in all since. Trusted Publishing to NuGet.org
 > is **operational** — the discontinued per-layer packages `Orkeon.Domain` /
-> `Orkeon.Application` / `Orkeon.Infrastructure` shipped `1.0.0-rc.1` (2026-08-18) and
-> `1.0.0-rc.2` (2026-08-25) through it, and were unlisted on 2026-09-07 (see the owner
+> `Orkeon.Application` / `Orkeon.Infrastructure` shipped two pre-releases through it
+> (2026-08-18 and 2026-08-25), and were unlisted on 2026-09-07 (see the owner
 > actions below). Decision **D3** (the
 > scripting naming twins) is **resolved** — PUB-02, 2026-08-17,
 > [ADR-007](../adr/ADR-007-d3-renommage-cli-commands-scripting.md): the command library was
@@ -36,7 +36,7 @@ runtimes, a pre-release upstream).
 | `Orkeon.Tools.Embeddings.Local` | Local on-device embeddings (BGE-micro-v2 ONNX). Stays **outside the umbrella** because it carries a pre-release SmartComponents dependency from an archived upstream — putting it in `Orkeon` would force that pre-release on every consumer. Depends on `Orkeon`. |
 | `Orkeon.Scripting` | Runs a `crew.ork.ts` inside a .NET application, without starting a process (#229): `services.AddOrkeonScripting()` then `ICrewScriptRunner.RunAsync(path)`, relative paths resolved against the process working directory — see [Orkeon.Hosting](hosting.md#running-a-crew-in-process). Embeds `Orkeon.Scripting` (the Jint host, the esbuild bundler driver, the DSL typings as an embedded resource), `Orkeon.Hosting` (the runner bootstrap `orkeon run` and `orkeon-host` share) and `Orkeon.Constants.Cli`. Separate from `Orkeon` because the runner host composes every built-in tool family: it depends on `Orkeon`, `Orkeon.Tools` and `Orkeon.Tools.Embeddings.Local` (so on their database drivers, MailKit and the SmartComponents pre-release), plus Jint, `Microsoft.Extensions.Hosting` and `CommandLineParser`. esbuild is not shipped, as for the tool. |
 | `Orkeon.Scripting.Cli` | The `orkeon` dotnet tool (`PackAsTool`; the PackageId is the install command — ADR-007). Publishable on NuGet.org since the iOS/Android onnxruntime natives a CLI tool can never load were excluded: 262.5 MB → 137.6 MB, under the nuget.org size limit. |
-| `Orkeon.Compliance.Vfs` | The Roslyn analyzer that refuses direct `System.IO` in your own code (rules `ORKVFS001`–`ORKVFS007`, `analyzers/dotnet/cs`, `DevelopmentDependency`). Standalone by design: it depends on nothing from Orkeon and works in any C# project — add the `PackageReference`, build, and every `File.*`/`Directory.*` call is a diagnostic. In the NuGet.org lineup since 2026-09-11 and pushed there with `1.0.0-rc.4`: `1.0.0-rc.3` reached GitHub Packages only (the NuGet.org push loop was a fixed list of six ids) and was inert anyway, compiled against a Roslyn newer than the SDK's compiler. |
+| `Orkeon.Compliance.Vfs` | The Roslyn analyzer that refuses direct `System.IO` in your own code (rules `ORKVFS001`–`ORKVFS007`, `analyzers/dotnet/cs`, `DevelopmentDependency`). Standalone by design: it depends on nothing from Orkeon and works in any C# project — add the `PackageReference`, build, and every `File.*`/`Directory.*` call is a diagnostic. In the NuGet.org lineup since 2026-09-11: the release published before that date reached GitHub Packages only (the NuGet.org push loop was a fixed list of six ids) and was inert anyway, compiled against a Roslyn newer than the SDK's compiler. |
 | `Orkeon.Interop.AgentFramework` | The bridge to Microsoft Agent Framework, both ways: an Orkeon crew as a MAF `AIAgent` (`CrewAgent`), a MAF `AIAgent` as the brain (`WithAgentFrameworkAgent`) or as a tool (`WithAgentFrameworkTool`) of an Orkeon agent. Separate from `Orkeon` because the `Microsoft.Agents.AI.Abstractions` dependency is a consumer's choice. Depends on `Orkeon`. |
 | `Orkeon.Hosting.Aspire` | The .NET Aspire hosting integration: `AddOrkeonHost` (the `orkeon-host` daemon) and `AddOrkeonCrewRun` (one `orkeon run`) as AppHost resources, `WithOrkeonModel` / `WithOrkeonSetting` for the `ORKEON_` environment, OTLP export wired so the dashboard reads the run. Separate from `Orkeon` because `Aspire.Hosting` is an AppHost's choice. Depends on `Orkeon`. |
 | `Orkeon.Templates` | The `dotnet new` templates (FWK-26): `orkeon-host` (a generic host that runs a crew in its own process, shaped like the `orkeon-host` daemon), `orkeon-plugin` (an `IOrkeonPlugin`, one tool and its `plugin.json`) and `orkeon-tool` (a `ToolBase` class). `PackageType=Template`: no assembly, no dependency. A generated project references `Orkeon` (and `Orkeon.Scripting` for the host) at the version of the template package, written out in its project file. |
@@ -94,7 +94,7 @@ only the install changes. Uninstall the per-layer packages and
 ## Actual NuGet.org state, and the remaining owner actions
 
 `orkeon.domain`, `orkeon.application` and `orkeon.infrastructure` **were published** on
-NuGet.org: `1.0.0-rc.1` (2026-08-18) and `1.0.0-rc.2` (2026-08-25), pushed by `publish.yml`
+NuGet.org: two pre-releases (2026-08-18 and 2026-08-25), pushed by `publish.yml`
 through Trusted Publishing. Two of the three were not restorable there (`NU1101`): they
 declared five `Orkeon.*` dependencies that were never published — the incident that motivated
 the closure gate above. All six versions were **unlisted on 2026-09-07** — unlisted, not
@@ -102,16 +102,16 @@ deleted: the bytes are still served, so a consumer pinning one of them still res
 
 Owner actions already done:
 
-- ✅ **2026-09-07 — the six `rc.1` / `rc.2` versions of the per-layer trio are unlisted**
+- ✅ **2026-09-07 — the six versions of the per-layer trio are unlisted**
   (`listed: false` on the three packages). Nobody is offered a package that cannot restore.
 - ✅ **2026-09-08 — the `Orkeon` prefix is reserved** on nuget.org for the owner account
   `arion-orkeon`: the bare `Orkeon` ID *and* the `Orkeon.*` family. Any matching package ID
   pushed by another account is rejected from now on — the ~30 `Orkeon.*` assembly names this
   documentation makes public can no longer be squatted.
 - ✅ The `NUGET_USER` repository variable and the Trusted Publishing policy are operational
-  (the rc.1/rc.2 pushes prove it).
+  (the per-layer pushes prove it).
 
-**2026-09-09 — the v1 lineup is published.** `1.0.0-rc.3` of all six packages was pushed by
+**2026-09-09 — the v1 lineup is published.** All six packages were pushed by
 `publish.yml` through Trusted Publishing (owner `arion-orkeon`, the account holding the
 `Orkeon` prefix reservation). The family finally has a page on nuget.org.
 
@@ -146,14 +146,14 @@ NuGet.org lineup above **plus** the build-time and runner packages that stay off
 
 Once `ci.yml` is green on a push to `main`, the `publish-dev` job of `publish.yml` packs the
 same projects as `<props version>.dev.<n>`, `n` being the number of that CI run — so
-`1.0.0-rc.4.dev.412` is the commit CI run #412 validated — and pushes them to **GitHub
+`<version>.dev.412` is the commit CI run #412 validated — and pushes them to **GitHub
 Packages only**: never NuGet.org, which can unlist a version but never delete it.
 `scripts/prune-dev-packages.sh` then deletes the older dev builds, so the feed holds **every
 tagged release plus the latest green `main`**, nothing in between. A tagged version is never
 deleted; a version that is neither tagged nor a dev build is reported, not deleted — the
 same script removes those in a one-off, reviewed run (`--include-untagged`, dry run first).
 
-- SemVer puts `1.0.0-rc.4.dev.<n>` above `1.0.0-rc.4` and below the next rc, so
+- SemVer puts `<version>.dev.<n>` above `<version>` and below the next pre-release, so
   `--prerelease` resolves the dev build. When the props version has no suffix (a stable
   release), the dev builds move to the next patch — `1.0.1-dev.<n>` after `1.0.0` — because
   `1.0.0-dev.<n>` would sort below the release.
@@ -168,8 +168,8 @@ same script removes those in a one-off, reviewed run (`--include-untagged`, dry 
 
   | Form | Comes from | Example |
   |---|---|---|
-  | `<props version>.dev.<n>` | CI alone — `publish.yml` and `apt-dev.yml`, `n` being the CI run number | `1.0.0-rc.4.dev.412` |
-  | `<props version>.local.<stamp>` | a build made from a checkout — `scripts/package-installers.sh` or `.ps1` without a version, a manual run of `release.yml` | `1.0.0-rc.4.local.202610080430` |
+  | `<props version>.dev.<n>` | CI alone — `publish.yml` and `apt-dev.yml`, `n` being the CI run number | `<version>.dev.412` |
+  | `<props version>.local.<stamp>` | a build made from a checkout — `scripts/package-installers.sh` or `.ps1` without a version, a manual run of `release.yml` | `<version>.local.202610080430` |
 
   `<stamp>` is the committer date of the commit built, `YYYYMMDDHHMM` in UTC: it orders two
   local builds, and a shallow clone gives the same one. Uncommitted changes do not move it.
@@ -209,7 +209,7 @@ container image to GHCR (one multi-platform tag, `linux/amd64` and `linux/arm64`
 once pushed) in parallel with `release`, so a red smoke moves neither the
 Release nor the `:latest` tag. `workflow_dispatch` runs
 the same thing minus the publication (no tag, no Release to attach to). A tag carrying a
-pre-release segment (`v1.0.0-rc.4`) is published **as a prerelease**, so it never becomes the
+pre-release segment (`v<version>-<pre>`) is published **as a prerelease**, so it never becomes the
 repository's *latest* release; a bare `v1.0.0` does. The retired
 `orkeon-examples` runner is **no longer packaged** — the `orkeon` CLI replaces it
 (`orkeon run crew.yaml` runs the `examples/` YAML crews; `orkeon run script.ork.ts` runs the
@@ -282,34 +282,33 @@ replays the onboarding smokes of both `.deb` (amd64, and arm64 on an ARM runner)
 `osx-arm64` tarball on them — catching an asset that an upload, a replace or a tamper made
 different from what the smokes above installed. The two smoke jobs check the tag out, so the
 smokes replayed are the tag's own: an older Release is asked what its own smokes asked of it,
-not what `main`'s ask today. Run by hand on `v1.0.0-rc.3` or
-`v1.0.0-rc.4`, it fails by design: those Releases predate the naming rule below, and carry no
-arm64 package.
+not what `main`'s ask today. Run by hand on the two earliest Releases with installers, it
+fails by design: they predate the naming rule below, and carry no arm64 package.
 
 `smoke-macos` is also the only place the Gatekeeper and code-signing story is exercised: an
 unsigned, quarantined or malformed native library (`libtree-sitter*.dylib`, onnxruntime, the
 esbuild binary) is killed at load time, so it fails there rather than in a user's terminal.
 
-The `.deb` file name carries the tag's version (`orkeon_1.0.0-rc.4_amd64.deb`), while the
-package's `Version:` field replaces `-` with `~` (`1.0.0~rc.4`) so a pre-release sorts before
+The `.deb` file name carries the tag's version (`orkeon_<version>_amd64.deb`), while the
+package's `Version:` field replaces `-` with `~` (`<X.Y.Z>-<pre>` becomes `<X.Y.Z>~<pre>`) so a pre-release sorts before
 its final under `dpkg`. The two differ on purpose: GitHub rewrites `~` in an uploaded asset
 name, and apt reads the file name from its index, never from the package. No asset name
 carries a character outside `[A-Za-z0-9._-]` — `scripts/check-release-assets.sh` fails the
-`installers` job, and the `release` job before publishing, otherwise — so `SHA256SUMS` lists every asset under the name it is published with. (The `1.0.0-rc.3` and
-`1.0.0-rc.4` Releases predate the rule: their `.deb` was published as
-`orkeon_1.0.0.rc.N_amd64.deb` while their `SHA256SUMS` names it with `~`.)
+`installers` job, and the `release` job before publishing, otherwise — so `SHA256SUMS` lists every asset under the name it is published with. (The two earliest
+Releases with installers predate the rule: their `.deb` was published with `.` in place of `~`
+while their `SHA256SUMS` names it with `~`.)
 
 The MSI's `ProductVersion` drops the suffix instead: Windows Installer versions carry only three
-numeric fields, so `build-msi.ps1` truncates `1.0.0-rc.1` to `1.0.0` for the property that
+numeric fields, so `build-msi.ps1` truncates `<X.Y.Z>-<pre>` to `<X.Y.Z>` for the property that
 `<MajorUpgrade>` actually compares. Nothing is silently lost — the full string survives in the
-`.msi` filename (`orkeon-1.0.0-rc.1-win-x64.msi`) and in the `ARPCOMMENTS` property shown in
+`.msi` filename (`orkeon-<version>-win-x64.msi`) and in the `ARPCOMMENTS` property shown in
 "Installed apps".
 
 The `orkeon` CLI is distributed through **eight channels**:
 
 | Channel | Artifact | Runtime | Audience |
 |---|---|---|---|
-| NuGet dotnet tool | `Orkeon.Scripting.Cli` (`PackAsTool`, command `orkeon`) | needs .NET 10 SDK (`dotnet tool install`) | .NET developers. Part of the NuGet.org lineup (PUB-25) — publishable since the package dropped from 262.5 MB to 137.6 MB (iOS/Android onnxruntime natives excluded); first push at `v1.0.0-rc.3` |
+| NuGet dotnet tool | `Orkeon.Scripting.Cli` (`PackAsTool`, command `orkeon`) | needs .NET 10 SDK (`dotnet tool install`) | .NET developers. Part of the NuGet.org lineup (PUB-25) — publishable since the package dropped from 262.5 MB to 137.6 MB (iOS/Android onnxruntime natives excluded) |
 | Windows zip + `install.cmd` | `orkeon-cli-<version>-win-x64.zip` | self-contained | Windows onboarding — the recommended channel. Ships `orkeon-studio` (WPF Orkeon Studio) next to the CLI |
 | Windows MSI (per-user) | `orkeon-<version>-win-x64.msi` | self-contained | Windows, double-click install and an "Installed apps" entry. Ships `orkeon-studio` with a Start-menu shortcut. One channel at a time: the MSI refuses to install over a zip install |
 | Debian / Ubuntu apt repository | the `.deb` packages below, indexed on the `apt` branch (channels `stable`, `rc`, `dev`) | self-contained | Debian / Ubuntu, amd64 and arm64 — the recommended channel: `apt install`, `apt upgrade`. See [The apt repository](#the-apt-repository) |
@@ -363,7 +362,7 @@ treats it as a warning, a Docker build retries.
 |---|---|---|
 | `stable` | `stable/` | every `v*` tag without a pre-release segment — the same test that sets `prerelease:` on the Release. Empty until a final version is published |
 | `rc` | `rc/` | every `v*` tag, so every package of `stable` is in `rc` too |
-| `dev` | `dev/` | the `orkeon` package of every green push to `main`, versioned `<props version with ~>.dev.<n>` (`1.0.0~rc.4.dev.<n>`); its assets sit on the single fixed-tag prerelease `apt-dev`; only the three latest builds are kept. Never published to NuGet.org, never attested as a release |
+| `dev` | `dev/` | the `orkeon` package of every green push to `main`, versioned `<props version with ~>.dev.<n>` (`<X.Y.Z>~<pre>.dev.<n>`); its assets sit on the single fixed-tag prerelease `apt-dev`; only the three latest builds are kept. Never published to NuGet.org, never attested as a release |
 
 Each channel's `Release` file keeps `Origin: Orkeon` and `Label: Orkeon` for ever (a change
 makes every machine confirm it), sets `Suite:` to the source path without its trailing `/` and
@@ -396,7 +395,7 @@ expiry with the 180-day threshold, and raw's availability.
 (the guard of `publish.yml`'s `publish-dev` job). It publishes the CLI set for `linux-x64` and
 `linux-arm64` only, packs the two `.deb` with `package-deb.sh --arch`, and never calls
 `dotnet pack`, `publish.yml` or a NuGet feed. The version is `publish-dev`'s, with `~` for `-` in
-the Debian field: `1.0.0~rc.4.dev.<CI run number>`, asset `orkeon_1.0.0-rc.4.dev.<n>_<arch>.deb`.
+the Debian field: `<X.Y.Z>~<pre>.dev.<CI run number>`, asset `orkeon_<version>.dev.<n>_<arch>.deb`.
 Then, in the `apt-signing` environment, `scripts/apt/publish-dev.sh`:
 
 1. creates the `apt-dev` prerelease if it is missing (never latest; its tag, set on the first
@@ -503,7 +502,7 @@ print the runtime install commands rather than failing at first launch.
   policy (repository `Orkeon/orkeon`, workflow `publish.yml`) lets `NuGet/login` exchange
   the job's OIDC token for a short-lived key; the steps are gated on the **`NUGET_USER`
   repository variable** (the nuget.org profile owning the policy). Both are **set up and
-  proven** — the rc.1/rc.2 pushes went through this path; if the variable ever disappears
+  proven** — the per-layer pushes went through this path; if the variable ever disappears
   the steps emit a warning and no-op instead of failing the tag.
   Expanding the NuGet.org lineup is a maintainer decision recorded in this matrix first
   (and mirrored in `check-package-closure.py`'s `LINEUP`, the workflow's push loop, the
@@ -525,4 +524,4 @@ print the runtime install commands rather than failing at first launch.
   `release.yml`, a run artefact named `sbom` in `publish.yml`. How to verify any of it, and
   why a nuget.org download must shed its repository signature first, is in
   [Verify what you install](../guides/verify-what-you-install.md).
-- Version flows from `src/Directory.Build.props` (currently `1.0.0-rc.6`), the single source of truth: no project overrides it, and the publish workflow's tag guard refuses any `v*` tag that disagrees with it. The dev channel derives its `<version>.dev.<n>` from it, a build made from a checkout its `<version>.local.<stamp>` (see *Dev channel* above).
+- Version flows from `src/Directory.Build.props`, the single source of truth: no project overrides it, and the publish workflow's tag guard refuses any `v*` tag that disagrees with it. The dev channel derives its `<version>.dev.<n>` from it, a build made from a checkout its `<version>.local.<stamp>` (see *Dev channel* above).

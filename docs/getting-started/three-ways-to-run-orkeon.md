@@ -139,9 +139,9 @@ Each [GitHub Release](https://github.com/Orkeon/orkeon/releases) attaches a
 | **`dotnet tool install --global Orkeon.Scripting.Cli --prerelease`** | the `orkeon` CLI — **without esbuild**: a `.ork.ts` script needs `npm install -g esbuild` (or `ORKEON_ESBUILD_PATH`); YAML crews do not. `orkeon typings` writes the editor typings | .NET 10 **SDK** | Getting just the CLI on a dev box that already builds .NET |
 
 `<rid>` is `linux-x64`, `linux-arm64`, `osx-x64`, `osx-arm64` (`.tar.gz`) or
-`win-x64` (`.zip`). In every file name, `<version>` is the tag's version (for example `1.0.0-rc.6`) — except the `.deb`
-of the releases up to `1.0.0-rc.4`, named `orkeon_1.0.0.rc.N_amd64.deb` while their `SHA256SUMS` line reads
-`orkeon_1.0.0~rc.N_amd64.deb`: check those two by hand.
+`win-x64` (`.zip`). In every file name, `<version>` is the tag's version — except the `.deb`
+of the two earliest releases with installers, named with `.` in place of the `~` their `SHA256SUMS` line
+reads: check those two by hand.
 `SHA256SUMS` covers every artifact of the release except the MSI, which
 has its own `SHA256SUMS.msi` (each file is produced by the CI job that built the artifact).
 
@@ -252,8 +252,8 @@ sudo apt install ./orkeon_<version>_amd64.deb   # _arm64.deb on ARM
 sudo apt remove orkeon
 ```
 
-(Releases up to `1.0.0-rc.4` name the file `orkeon_1.0.0.rc.N_amd64.deb`, while their `SHA256SUMS`
-line reads `orkeon_1.0.0~rc.N_amd64.deb`: check those two by hand.)
+(The two earliest releases with installers name the file with `.` in place of the `~` their
+`SHA256SUMS` line reads: check those two by hand.)
 
 The multi-app `tar.gz` + `install.sh` is the per-user alternative (and the only
 option when you want the service host, or the REPL on a system without apt):

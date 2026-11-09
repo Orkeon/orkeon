@@ -11,8 +11,9 @@ commit, in this repository*. You can check that statement yourself, with tools y
 have, without trusting the maintainer, the download page, or this document.
 
 This page lists what the chain proves, what it does not, and the commands. Each command was
-run on the published `v1.0.0-rc.5` artefacts before being written down here, and the comments
-under it show what it printed. For another release, change `VER`.
+run on published release artefacts before being written down here, and the comments under it
+show what it printed, the release's version written `<version>`. Set `VER` to the version of
+the release you verify (the tag without its `v`).
 
 ## Which check for which file
 
@@ -51,20 +52,20 @@ Release assets are attested **as uploaded**: the file you download from the Rele
 page has the digest in the statement.
 
 ```bash
-VER=1.0.0-rc.5
+VER="<version>"
 BASE="https://github.com/Orkeon/orkeon/releases/download/v$VER"
 curl -fsSL -O "$BASE/orkeon-cli-$VER-osx-arm64.tar.gz" -O "$BASE/SHA256SUMS"
 
 # 1. integrity — the manifest travelled with the file
 sha256sum --check --ignore-missing SHA256SUMS
-#    orkeon-cli-1.0.0-rc.5-osx-arm64.tar.gz: OK
+#    orkeon-cli-<version>-osx-arm64.tar.gz: OK
 
 # 2. provenance — the signed statement about this exact digest (gh >= 2.49, logged in)
 gh attestation verify "orkeon-cli-$VER-osx-arm64.tar.gz" --repo Orkeon/orkeon
 ```
 
 The second command checks the statement's signature, names the workflow that built the file
-(`.github/workflows/release.yml@refs/tags/v1.0.0-rc.5`) and fails on any byte difference. It
+(`.github/workflows/release.yml@refs/tags/v<version>`) and fails on any byte difference. It
 wants a logged-in `gh` (`gh auth login`), even for a public repository, and prints its report
 only in a terminal: in a script, rely on its exit code.
 
@@ -78,10 +79,10 @@ curl -fsSL "https://api.github.com/repos/Orkeon/orkeon/attestations/sha256:$D" |
          | "\(.predicateType)  \(.subject | length) subjects",
            (.predicate.runDetails.builder.id // empty),
            (.predicate.buildDefinition.resolvedDependencies[0].digest.gitCommit // empty)'
-#    https://in-toto.io/attestation/release/v0.2  17 subjects
-#    https://slsa.dev/provenance/v1  14 subjects
-#    https://github.com/Orkeon/orkeon/.github/workflows/release.yml@refs/tags/v1.0.0-rc.5
-#    e7dba7a43ee6d4460bc86f8f6d76cedf3e36dc72
+#    https://in-toto.io/attestation/release/v0.2  18 subjects
+#    https://slsa.dev/provenance/v1  15 subjects
+#    https://github.com/Orkeon/orkeon/.github/workflows/release.yml@refs/tags/v<version>
+#    <commit sha>
 ```
 
 No line — curl reports a 404, or the list is empty — means *no statement for these bytes*.
@@ -91,18 +92,14 @@ A release asset has two statements:
 
 - The **`slsa.dev/provenance/v1`** line is the workflow's statement; the two lines after it
   are its builder — the workflow file and the tag it ran on — and the commit it built. Its
-  fourteen subjects are every file the run attached to the Release: the five installer
-  archives, the three CLI archives, both `.deb` packages, the apt keyring package, both MSIs
-  and the SBOM. The two `SHA256SUMS` manifests are the only assets missing, while every file
+  fifteen subjects are every file the run attached to the Release: the five installer
+  archives, the three CLI archives, both `.deb` packages, the apt keyring package, both MSIs,
+  the typings archive (`orkeon-typings-<version>.tar.gz`) and the SBOM. The two `SHA256SUMS` manifests are the only assets missing, while every file
   they list is there.
 - The **`in-toto.io/attestation/release/v0.2`** line is GitHub's own statement about the
   published Release, signed by GitHub rather than by the workflow: Orkeon Releases are
-  immutable. Its seventeen subjects are the tag (`pkg:github/Orkeon/orkeon@v1.0.0-rc.5`,
-  pinned to the SHA-1 of its tag object), the fourteen files above and both manifests.
-
-Those counts, fourteen and seventeen, are those of `v1.0.0-rc.5`. The releases after it also
-attach `orkeon-typings-<version>.tar.gz`, which `SHA256SUMS` lists and the attestations cover:
-fifteen and eighteen subjects.
+  immutable. Its eighteen subjects are the tag (`pkg:github/Orkeon/orkeon@v<version>`,
+  pinned to the SHA-1 of its tag object), the fifteen files above and both manifests.
 
 The first says *which run built these bytes*; the second, *these are the bytes this tag
 published, and they cannot change*.
@@ -151,7 +148,7 @@ no re-zipping — with a standard-library script from this repository:
 ```bash
 # From the root of a clone, for scripts/nupkg-unsign.py:
 #    git clone --depth 1 https://github.com/Orkeon/orkeon && cd orkeon
-VER=1.0.0-rc.5
+VER="<version>"
 curl -fsSL -o "Orkeon.$VER.nupkg" \
   "https://api.nuget.org/v3-flatcontainer/orkeon/$VER/orkeon.$VER.nupkg"
 
@@ -161,7 +158,7 @@ dotnet nuget verify --all "Orkeon.$VER.nupkg"
 
 # 2. the bytes as attested — strip the appended repository signature
 python3 scripts/nupkg-unsign.py "Orkeon.$VER.nupkg"
-#    Orkeon.1.0.0-rc.5.unsigned.nupkg  sha256:a6c81a0c77a451e0af8408d5a7774c4c8527bcfbae213f2d4c005550701548e8
+#    Orkeon.<version>.unsigned.nupkg  sha256:<digest>
 
 # 3. provenance of those bytes
 gh attestation verify "Orkeon.$VER.unsigned.nupkg" --repo Orkeon/orkeon
@@ -172,8 +169,8 @@ central-directory record, and writes an end-of-central-directory record with the
 size and offset put back. It refuses to guess: if the signature is not the last entry of the
 archive it stops rather than emit something that would fail verification anyway.
 
-Measured on `Orkeon.1.0.0-rc.5.nupkg`, the recovered digest has one statement (the `jq`
-filter above prints it too): builder `.github/workflows/publish.yml@refs/tags/v1.0.0-rc.5`,
+Measured on `Orkeon.<version>.nupkg`, the recovered digest has one statement (the `jq`
+filter above prints it too): builder `.github/workflows/publish.yml@refs/tags/v<version>`,
 the commit the release assets were built from, twelve subjects — the nine packages pushed to
 nuget.org at that tag, the two that only reach GitHub Packages (`Orkeon.ConsoleApp`,
 `Orkeon.Generators`), and the SBOM. The attestation is literal: it lists what the workflow
@@ -186,7 +183,7 @@ attestation: there is nothing to verify them against.
 
 ## Verify the software bill of materials
 
-Since `v1.0.0-rc.4`, every release ships a CycloneDX SBOM next to its assets —
+Every release ships a CycloneDX SBOM next to its assets —
 `orkeon-<version>.sbom.cdx.json`, the NuGet dependency graph of `Orkeon.sln`, transitive
 packages included and test projects excluded. A pinned `CycloneDX` dotnet tool (not a
 third-party action) generates it on the runner that packaged the archives, right after them;
@@ -195,12 +192,12 @@ covers the binaries and the dependency graph they were built from. Verify it lik
 asset:
 
 ```bash
-VER=1.0.0-rc.5
+VER="<version>"
 curl -fsSL -O "https://github.com/Orkeon/orkeon/releases/download/v$VER/orkeon-$VER.sbom.cdx.json"
 gh attestation verify "orkeon-$VER.sbom.cdx.json" --repo Orkeon/orkeon
 ```
 
-The `v1.0.0-rc.5` file lists 276 components under CycloneDX spec 1.7. It is a dependency
+The file lists its components under CycloneDX spec 1.7. It is a dependency
 graph, not a vulnerability scan: feed it to the scanner you already use. What the attestation
 adds is that the graph you scan is the graph the release was built from, not one regenerated
 afterwards.

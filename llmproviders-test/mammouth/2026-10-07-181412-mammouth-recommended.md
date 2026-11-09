@@ -6,7 +6,6 @@
 | **Model** | `mammouth-recommended` |
 | **Endpoint** | `api.mammouth.ai` |
 | **Timestamp (UTC)** | 2026-10-07T18:14:15Z |
-| **Orkeon version** | 1.0.0-rc.4 |
 | **Commit** | `77ac8a969` |
 | **Modes exercised** | M1 |
 | **Temperature** | 0 |
@@ -48,7 +47,7 @@ Journal (§7):
 Model table (§6.18):
 
 ```
-| `mammouth-recommended` | | | M1 | ✅ | 2026-10-07 | 1.0.0-rc.4 | campaign 2026-10-07-181412-mammouth-recommended.md |
+| `mammouth-recommended` | | | M1 | ✅ | 2026-10-07 | 77ac8a969 | campaign 2026-10-07-181412-mammouth-recommended.md |
 ```
 
 <!-- orkeon-campaign-json -->
@@ -57,7 +56,6 @@ Model table (§6.18):
   "provider": "mammouth",
   "model": "mammouth-recommended",
   "endpointHost": "api.mammouth.ai",
-  "orkeonVersion": "1.0.0-rc.4",
   "commit": "77ac8a969",
   "timestampUtc": "2026-10-07T18:14:15Z",
   "temperature": 0,

@@ -180,6 +180,6 @@ never overwrite each other. The first publication creates the `apt` branch.
 **Order for the first publication.** Run the ceremony and merge its certificate first: a tag
 pushed while the certificate is the placeholder attaches no keyring package and its
 `apt-publish` job fails on purpose. Then seed the Releases published before the repository
-existed (`apt-maintenance.yml`, mode `seed`, targets `v1.0.0-rc.3 v1.0.0-rc.4`) **after** the
+existed (`apt-maintenance.yml`, mode `seed`, targets: the tags of those Releases) **after** the
 first publishing tag: that tag brings the `orkeon-archive-keyring` package, without which the
 documented installation block cannot install it.

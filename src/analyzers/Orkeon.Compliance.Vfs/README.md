@@ -18,7 +18,7 @@ project, that line does not compile.
 `new StreamReader("<path>")` and `Path.GetFullPath(<user input>)` is an `ORKVFS` error.
 Nothing else from Orkeon is required: the package depends on no Orkeon assembly.
 
-> `1.0.0-rc.3` and `1.0.0-rc.4` of this package are inert outside the Orkeon repository:
+> The first two published versions of this package are inert outside the Orkeon repository:
 > both were compiled against Roslyn 5.9.0, newer than the compiler of a stock .NET 10 SDK,
 > and the compiler skips them with `CS9057` — a warning, then silence. Every later version
 > is compiled against Roslyn 4.8.0 — any SDK from .NET 8.0.100 on loads it.

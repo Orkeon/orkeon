@@ -11,7 +11,7 @@
 
 `shell_command` checked the paths its command line names against the VFS, and nothing else: a
 script it started read and wrote wherever the host's user could, read-only mounts included, and
-reached the network. Since 1.0.0-rc.4 an operator could opt into bubblewrap on Linux
+reached the network. An operator could opt into bubblewrap on Linux
 (`Confinement:Mode = Bubblewrap`); nobody had to, and macOS and Windows had nothing. Each command
 was also its own process, so a confined view would have been rebuilt at every call, and a
 caller's cancellation left the command running.

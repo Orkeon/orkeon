@@ -6,7 +6,6 @@
 | **Model** | `Qwen/Qwen3-VL-30B-A3B-Instruct` |
 | **Endpoint** | `router.huggingface.co` |
 | **Timestamp (UTC)** | 2026-09-21T06:35:34Z |
-| **Orkeon version** | 1.0.0-rc.3 |
 | **Commit** | `16660df6` |
 | **Modes exercised** | M9 |
 | **Temperature** | 0 |
@@ -42,7 +41,7 @@ Journal (§7):
 Model table (§6.11):
 
 ```
-| `Qwen/Qwen3-VL-30B-A3B-Instruct` | | | M9 | ✅ | 2026-09-21 | 1.0.0-rc.3 | campaign 2026-09-21-063532-Qwen_Qwen3-VL-30B-A3B-Instruct.md |
+| `Qwen/Qwen3-VL-30B-A3B-Instruct` | | | M9 | ✅ | 2026-09-21 | 16660df6 | campaign 2026-09-21-063532-Qwen_Qwen3-VL-30B-A3B-Instruct.md |
 ```
 
 <!-- orkeon-campaign-json -->
@@ -51,7 +50,6 @@ Model table (§6.11):
   "provider": "huggingface",
   "model": "Qwen/Qwen3-VL-30B-A3B-Instruct",
   "endpointHost": "router.huggingface.co",
-  "orkeonVersion": "1.0.0-rc.3",
   "commit": "16660df6",
   "timestampUtc": "2026-09-21T06:35:34Z",
   "temperature": 0,

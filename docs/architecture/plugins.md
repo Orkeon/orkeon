@@ -139,7 +139,7 @@ Every plugin carries one, the plugins of the repository included. It is read thr
 {
   "name": "acme.weather-tools",
   "version": "1.0.0",
-  "orkeonVersion": "[1.0.0-rc.1,2.0.0)",
+  "orkeonVersion": "[1.0.0,2.0.0)",
   "entryAssembly": "WeatherPlugin.dll",
   "tools": [ "weather_forecast" ]
 }
@@ -149,7 +149,7 @@ Every plugin carries one, the plugins of the repository included. It is read thr
 |---|---|
 | `name` | Must equal `IOrkeonPlugin.Name`. |
 | `version` | Must equal `IOrkeonPlugin.Version`. |
-| `orkeonVersion` | NuGet-style range the running Orkeon must fall in: `1.0.0` (that version or later), `[1.0.0]`, `[1.0.0-rc.1,2.0.0)`, `(,2.0.0]`, `*`. The build metadata (`+sha`) of the running version is ignored; a pre-release sorts below its release. |
+| `orkeonVersion` | NuGet-style range the running Orkeon must fall in: `1.0.0` (that version or later), `[1.0.0]`, `[1.0.0-beta.1,2.0.0)`, `(,2.0.0]`, `*`. The build metadata (`+sha`) of the running version is ignored; a pre-release sorts below its release. |
 | `entryAssembly` | File name of a `.dll` of the plugin folder: no path. |
 | `entryType` | Optional. Full name of the `IOrkeonPlugin` type to activate. Without it, an assembly with one plugin type activates that one; with several, all are activated to read their `Name`. |
 | `tools` | Names of the `IBaseTool` descriptors the plugin registers (`IBaseTool.Name`); may be empty. Other registrations (services, hosted services, providers) are not covered by `tools`. |

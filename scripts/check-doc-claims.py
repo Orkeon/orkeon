@@ -2,8 +2,8 @@
 """Check the numeric claims in the documentation against the code (DOC-02, lot F).
 
 Ground truth is computed from the repository itself; the claims checked are the
-ones that have historically rotted (provider/tool/example/project counts and the
-version string). A mismatch fails the build with an actionable message.
+ones that have historically rotted (provider/tool/example/project counts), and the
+absence of any Orkeon version string from the pages a reader meets. A mismatch fails the build with an actionable message.
 
 `--surface` prints the ground truth itself -- every number the front page shows, next
 to the rule that produced it -- and exits; `--surface --json` prints it as JSON. That is
@@ -283,6 +283,36 @@ def expect_absent(path: str, pattern: str, why: str) -> None:
     ]
     for hit in hits:
         fail(f"{hit}: stale pattern /{pattern}/ ({why})")
+
+
+# --- no Orkeon version in the documentation ---------------------------------------------
+
+VERSION_MENTION = re.compile(r"\b\d+\.\d+\.\d+[-~.]rc\b|\brc\.(?:\d+|\*|N)\b")
+
+
+def documentation_pages() -> list[Path]:
+    """The pages a reader meets: the root guides, docs/ (both languages, ADRs included) and
+    every README under src/, examples/ and installers/, and the llmproviders-test/ campaign
+    reports. CHANGELOG.md is the one page whose
+    subject is the versions, and stays out."""
+    pages = [ROOT / name for name in ("README.md", "README.fr.md", "CLAUDE.md",
+                                      "CONTRIBUTING.md", "CONTRIBUTING.fr.md")]
+    pages += git_files(ROOT / "docs", (".md",))
+    for folder in ("src", "examples", "installers"):
+        pages += [f for f in git_files(ROOT / folder, (".md",)) if f.name.startswith("README")]
+    # The provider campaigns: their reports and index name the commit, not a version.
+    pages += git_files(ROOT / "llmproviders-test", (".md",))
+    return pages
+
+
+def check_no_version_mentions(version: str) -> None:
+    exact = re.escape(version) if "-" in version else None
+    for page in documentation_pages():
+        rel = page.relative_to(ROOT).as_posix()
+        for i, line in enumerate(page.read_text(encoding="utf-8").splitlines()):
+            if VERSION_MENTION.search(line) or (exact and re.search(exact, line)):
+                fail(f"{rel}:{i + 1}: names an Orkeon version -- the documentation states none "
+                     f"(src/Directory.Build.props holds it; write `<version>`)")
 
 
 # --- the tagged version, when the clone carries tags ------------------------------------
@@ -645,10 +675,10 @@ def main(argv: list[str]) -> int:
           f"memory-stores={stores} examples={examples} src-projects={src_projects} "
           f"test-projects={test_projects}")
 
-    # Version — the single source of truth must be echoed correctly.
-    expect_contains("CLAUDE.md", f"`{version}`", "version from src/Directory.Build.props")
-    expect_contains("README.md", f"**{version}**", "version from src/Directory.Build.props")
-    expect_contains("README.fr.md", f"**{version}**", "version from src/Directory.Build.props")
+    # Version — src/Directory.Build.props is its only home. The documentation names no
+    # Orkeon pre-release (`1.0.0-rc.6`, `rc.3`, `rc.*`): such a mention is stale at the
+    # next tag. Placeholders (`<version>`, `<X.Y.Z>-<pre>`) say what a reader needs.
+    check_no_version_mentions(version)
 
     # LLM provider count.
     expect_contains("README.md", f"{providers} LLM provider",

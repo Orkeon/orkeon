@@ -68,7 +68,6 @@ $add = { param($text) $lines.Add([string]$text) }
 & $add "| **Model** | ``$($c.model)`` |"
 & $add "| **Endpoint** | ``$($c.endpointHost)`` |"
 & $add "| **Timestamp (UTC)** | $stamp |"
-& $add "| **Orkeon version** | $($c.orkeonVersion) |"
 & $add "| **Commit** | ``$commit`` |"
 & $add "| **Modes exercised** | $modesRun |"
 # Older campaigns predate the field; "not pinned" is the honest rendering of a run whose
@@ -125,12 +124,14 @@ $sectionOrDefault = if ($section) { $section } else { '§6' }
 & $add "Model table ($sectionOrDefault):"
 & $add ''
 & $add '```'
-& $add "| ``$($c.model)`` | | | $modesRun | $status | $date | $($c.orkeonVersion) | campaign $fileName |"
+& $add "| ``$($c.model)`` | | | $modesRun | $status | $date | $commit | campaign $fileName |"
 & $add '```'
 & $add ''
 & $add $JsonMarker
 & $add '```json'
-& $add $rawJson.TrimEnd()
+# The report names the commit, never an Orkeon version: the version goes stale at the
+# next tag, the commit does not. The probe's own field is left out of the archive.
+& $add ((($rawJson.TrimEnd() -split "`n") | Where-Object { $_ -notmatch '^\s*"orkeonVersion":' }) -join "`n")
 & $add '```'
 
 # UTF-8 without BOM, LF endings: the report is versioned and must be byte-identical to what

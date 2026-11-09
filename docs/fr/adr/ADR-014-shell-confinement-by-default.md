@@ -11,7 +11,7 @@
 
 `shell_command` vérifiait auprès du VFS les chemins que nomme sa ligne de commande, et rien
 d'autre : un script qu'il lançait lisait et écrivait partout où l'utilisateur de l'hôte le pouvait,
-montages en lecture seule compris, et atteignait le réseau. Depuis la 1.0.0-rc.4, un opérateur
+montages en lecture seule compris, et atteignait le réseau. Un opérateur
 pouvait choisir bubblewrap sous Linux (`Confinement:Mode = Bubblewrap`) ; personne n'y était tenu,
 et macOS comme Windows n'avaient rien. Chaque commande était aussi son propre processus : une vue
 confinée aurait été reconstruite à chaque appel, et l'annulation de l'appelant laissait la commande
