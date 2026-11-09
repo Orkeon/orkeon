@@ -242,7 +242,8 @@ public sealed class ConfigTabViewModelTests
         await tab.Diagnostic.RunAsync(workingDirectory: null, TestContext.Current.CancellationToken);
 
         Assert.Equal(2, tab.Diagnostic.Checks.Count);
-        Assert.Equal(DoctorStatus.Warning, tab.Diagnostic.Checks[1].Status);
+        // UX lot 04 (064): the warning comes first.
+        Assert.Equal(DoctorStatus.Warning, tab.Diagnostic.Checks[0].Status);
         Assert.Null(tab.Diagnostic.ErrorMessage);
     }
 

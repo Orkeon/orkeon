@@ -463,6 +463,9 @@ public static class StudioStringKeys
     /// <summary>A check's action: "Open the settings file".</summary>
     public const string DiagOpenFile = "Studio.Diagnostics.OpenFile";
 
+    /// <summary>What the danger banner says to do when the engine is missing (UX lot 04).</summary>
+    public const string DiagEngineMissingHow = "Studio.Diagnostics.EngineMissingHow";
+
     /// <summary>A check's action: "Test the connection".</summary>
     public const string DiagTestConnection = "Studio.Diagnostics.TestConnection";
 
@@ -1393,6 +1396,9 @@ public static class StudioStringKeys
     /// <summary>"New setting" — the freshly created profile's placeholder name.</summary>
     public const string ProfileNewName = "Studio.Settings.NewName";
 
+    /// <summary>The name of the very first model setting, when none exists yet (UX lot 04).</summary>
+    public const string ProfileFirstName = "Studio.Settings.FirstProfileName";
+
     /// <summary>"ON YOUR MACHINE · FREE, NO KEY"</summary>
     public const string ProfileGroupLocal = "Studio.Settings.GroupLocal";
 
@@ -1634,7 +1640,7 @@ public static class StudioStringKeys
     /// <summary>"Starting the sign-in…" — the verb has not said yet what to do.</summary>
     public const string MailSignInStarting = "Studio.Settings.MailSignInStarting";
 
-    /// <summary>"Open {0} and enter this code:" — {0} is the page the provider names.</summary>
+    /// <summary>"Open the authorization page below and enter this code:" — the page is shown once, under it.</summary>
     public const string MailDeviceCode = "Studio.Settings.MailDeviceCode";
 
     /// <summary>"The code expires in {0}" — {0} is <see cref="CommonMinutes"/>.</summary>
@@ -2956,6 +2962,7 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.DiagOpenKeys] = "Open API keys",
         [StudioStringKeys.DiagOpenFolders] = "Open Allowed folders",
         [StudioStringKeys.DiagOpenFile] = "Open the settings file",
+        [StudioStringKeys.DiagEngineMissingHow] = "Install the Orkeon engine, then run the diagnostic again.",
         [StudioStringKeys.DiagTestConnection] = "Test the connection",
         [StudioStringKeys.DiagCheckAgain] = "Check again",
         [StudioStringKeys.DiagSettingsFile] = "Settings file",
@@ -3407,6 +3414,7 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.BalanceThresholdNoReading] = "not read yet this session",
 
         [StudioStringKeys.ProfileNewName] = "New setting",
+        [StudioStringKeys.ProfileFirstName] = "Main",
         [StudioStringKeys.ProfileGroupLocal] = "ON YOUR MACHINE · FREE, NO KEY",
         [StudioStringKeys.ProfileGroupCloud] = "IN THE CLOUD · API KEY REQUIRED",
         [StudioStringKeys.ProfileKeyTitleFor] = "API key {0}",
@@ -3483,7 +3491,7 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.MailSignOutConfirm] = "Forget the stored tokens of {0}? The account will need a new sign-in.",
         [StudioStringKeys.MailSignOutFailed] = "Could not sign out",
         [StudioStringKeys.MailSignInStarting] = "Starting the sign-in…",
-        [StudioStringKeys.MailDeviceCode] = "Open {0} and enter this code:",
+        [StudioStringKeys.MailDeviceCode] = "Open the authorization page below and enter this code:",
         [StudioStringKeys.MailDeviceCodeExpiresIn] = "The code expires in {0}",
         [StudioStringKeys.MailDeviceCodeExpiresSoon] = "The code expires in under a minute",
         [StudioStringKeys.CommonMinutes] = "{0} min",

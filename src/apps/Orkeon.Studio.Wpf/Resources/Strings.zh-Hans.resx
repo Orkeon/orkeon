@@ -277,6 +277,9 @@
   <data name="Studio.Settings.MountsRemove" xml:space="preserve">
     <value>移除</value>
   </data>
+  <data name="Studio.Settings.MountSuggestions" xml:space="preserve">
+    <value>建议：</value>
+  </data>
   <data name="Studio.Settings.Unparsed" xml:space="preserve">
     <value>无法解析该条目。它被原样保留，不会丢失任何内容。</value>
   </data>
@@ -1014,6 +1017,15 @@
   <data name="Studio.Common.SubNovice" xml:space="preserve">
     <value>要设置两件事：用哪个 AI 模型，以及智能体能看哪些文件夹。</value>
   </data>
+  <data name="Studio.Settings.AutoSaveNote" xml:space="preserve">
+    <value>您的更改会自动保存。</value>
+  </data>
+  <data name="Studio.Settings.ValidateTip" xml:space="preserve">
+    <value>检查设置但不保存。</value>
+  </data>
+  <data name="Studio.Settings.SaveTip" xml:space="preserve">
+    <value>检查后写入设置文件。</value>
+  </data>
   <data name="Studio.Common.SubExpert" xml:space="preserve">
     <value>appsettings.json —— 类型化表单、挂载、速率限制，以及只读的原始文件。</value>
   </data>
@@ -1104,11 +1116,26 @@
   <data name="Studio.Settings.NewName" xml:space="preserve">
     <value>新建配置</value>
   </data>
+  <data name="Studio.Settings.FirstProfileName" xml:space="preserve">
+    <value>主模型</value>
+  </data>
+  <data name="Studio.Settings.ChooseModelCta" xml:space="preserve">
+    <value>选择我的 AI 模型</value>
+  </data>
+  <data name="Studio.Settings.ModelMissingTip" xml:space="preserve">
+    <value>未选择模型：助手无法组建团队。</value>
+  </data>
   <data name="Studio.Settings.GroupLocal" xml:space="preserve">
     <value>本机运行 · 免费、无需密钥</value>
   </data>
   <data name="Studio.Settings.GroupCloud" xml:space="preserve">
     <value>云端 · 需要 API 密钥</value>
+  </data>
+  <data name="Studio.Settings.ProviderRecommended" xml:space="preserve">
+    <value>推荐</value>
+  </data>
+  <data name="Studio.Settings.GroupOthers" xml:space="preserve">
+    <value>其他提供商</value>
   </data>
   <data name="Studio.Settings.KeyTitleFor" xml:space="preserve">
     <value>API 密钥 {0}</value>
@@ -1133,6 +1160,9 @@
   </data>
   <data name="Studio.Settings.KeyStore" xml:space="preserve">
     <value>记住密钥</value>
+  </data>
+  <data name="Studio.Settings.SecretStore" xml:space="preserve">
+    <value>记住</value>
   </data>
   <data name="Studio.Settings.KeyStatusSet" xml:space="preserve">
     <value>密钥已记住</value>
@@ -1196,6 +1226,9 @@
   </data>
   <data name="Studio.Create.ManageSettings" xml:space="preserve">
     <value>管理配置</value>
+  </data>
+  <data name="Studio.Create.ChooseModel" xml:space="preserve">
+    <value>选择模型</value>
   </data>
   <data name="Studio.Create.Step1" xml:space="preserve">
     <value>描述</value>
@@ -1733,6 +1766,12 @@
   <data name="Studio.Settings.ToolsIntro" xml:space="preserve">
     <value>团队在运行中可使用的全部工具，按家族列出。大多数无需配置；需要配置的会说明需要什么、在哪里设置。</value>
   </data>
+  <data name="Studio.Settings.ToolKeysElsewhere" xml:space="preserve">
+    <value>工具密钥（网页搜索、图像…）在 访问 › 工具密钥 中设置。</value>
+  </data>
+  <data name="Studio.Settings.ApiKeysElsewhere" xml:space="preserve">
+    <value>模型密钥在 模型 › API 密钥 中设置。</value>
+  </data>
   <data name="Studio.Settings.ShellTitle" xml:space="preserve">
     <value>Shell 命令</value>
   </data>
@@ -2088,7 +2127,7 @@
     <value>正在开始登录…</value>
   </data>
   <data name="Studio.Settings.MailDeviceCode" xml:space="preserve">
-    <value>打开 {0} 并输入此代码：</value>
+    <value>打开下方的授权页面并输入此代码：</value>
   </data>
   <data name="Studio.Settings.MailDeviceCodeExpiresIn" xml:space="preserve">
     <value>代码将在 {0} 后过期</value>
@@ -3964,12 +4003,17 @@
   <data name="Studio.Settings.GroupAccess" xml:space="preserve"><value>访问</value></data>
   <data name="Studio.Settings.GroupConnections" xml:space="preserve"><value>连接</value></data>
   <data name="Studio.Settings.GroupAdvanced" xml:space="preserve"><value>高级</value></data>
+  <data name="Studio.Settings.DotRequiredTip" xml:space="preserve"><value>运行团队前必须设置</value></data>
+  <data name="Studio.Settings.DotOptionalTip" xml:space="preserve"><value>可选</value></data>
   <data name="Studio.Diagnostics.OpenModels" xml:space="preserve"><value>打开模型</value></data>
   <data name="Studio.Diagnostics.OpenKeys" xml:space="preserve">
     <value>打开 API 密钥</value>
   </data>
   <data name="Studio.Diagnostics.OpenFolders" xml:space="preserve"><value>打开授权文件夹</value></data>
   <data name="Studio.Diagnostics.OpenFile" xml:space="preserve"><value>打开设置文件</value></data>
+  <data name="Studio.Diagnostics.EngineMissingHow" xml:space="preserve"><value>请安装 Orkeon 引擎，然后重新运行诊断。</value></data>
+  <data name="Studio.Diagnostics.InstallGuide" xml:space="preserve"><value>如何安装引擎</value></data>
+  <data name="Studio.Diagnostics.FixFirst" xml:space="preserve"><value>修复第一个问题</value></data>
   <data name="Studio.Diagnostics.TestConnection" xml:space="preserve"><value>测试连接</value></data>
   <data name="Studio.Diagnostics.CheckAgain" xml:space="preserve"><value>重新检查</value></data>
   <data name="Studio.Diagnostics.SettingsFile" xml:space="preserve"><value>设置文件</value></data>

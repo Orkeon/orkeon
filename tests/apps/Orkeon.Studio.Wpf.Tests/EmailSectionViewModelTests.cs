@@ -916,7 +916,12 @@ public sealed partial class EmailSectionViewModelTests
 
         Assert.True(gmail.ShowExpertFields);
         Assert.True(gmail.ShowHosts);
+        // UX lot 04 (058): a password account shows no OAuth field, the expert's neither -
+        // until the file names a client id, which then stays reachable.
+        Assert.False(gmail.ShowClientId);
+        gmail.ClientId = "client-id";
         Assert.True(gmail.ShowClientId);
+        gmail.ClientId = "";
         // No key is the raw file's alone: the expert reaches the sending rules of an account that does not send yet.
         Assert.True(gmail.ShowRecipients);
         Assert.False(gmail.ShowSendClosed);

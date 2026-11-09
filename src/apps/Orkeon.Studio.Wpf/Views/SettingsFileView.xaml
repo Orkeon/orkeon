@@ -31,7 +31,8 @@
           <TextBlock Style="{StaticResource CardTitle}" Text="{Binding [Studio.Settings.LocationTitle], Source={x:Static services:I18n.Instance}}"/>
         </StackPanel>
 
-        <RadioButton Style="{StaticResource PickRow}" GroupName="Loc" Margin="0,0,0,8"
+        <!-- UX lot 04 (050): room under the global row, so its error's last line is never cut. -->
+        <RadioButton Style="{StaticResource PickRow}" GroupName="Loc" Margin="0,0,0,16"
                      IsChecked="{Binding Location.IsGlobal, Mode=OneWay}" Command="{Binding Location.UseGlobalCommand}">
           <StackPanel>
             <DockPanel>
@@ -44,7 +45,7 @@
             <controls:MiddleEllipsisText Style="{StaticResource PathText}" Margin="0,3,0,0" HorizontalAlignment="Stretch"
                                          Text="{Binding Location.GlobalPath}"/>
             <TextBlock Style="{StaticResource Hint}" Foreground="{DynamicResource DangerInkBrush}" Margin="0,3,0,0"
-                       Text="{Binding Location.GlobalPathError}"
+                       TextWrapping="Wrap" Text="{Binding Location.GlobalPathError}"
                        Visibility="{Binding Location.GlobalPathError, Converter={StaticResource StringPresentToVisibility}}"/>
           </StackPanel>
         </RadioButton>

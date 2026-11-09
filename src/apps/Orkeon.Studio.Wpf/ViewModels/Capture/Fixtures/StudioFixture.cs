@@ -26,7 +26,7 @@ internal static class StudioFixture
     public const string DeviceSignInCode = "DEMO-1234";
 
     /// <summary>Name of the profile the assistant runs on; the wizard's gate keys on it.</summary>
-    public const string AssistantProfile = "Studio";
+    public const string AssistantProfile = "Principal";
 
     /// <summary>The variable the assistant's DeepSeek key is remembered under.</summary>
     public const string DeepSeekKeyVariable = "DEEPSEEK_API_KEY";

@@ -31,6 +31,7 @@ public sealed class StudioLocalizationSwitchTests
             [StudioStringKeys.PresetNoneDescription] = "Pas de LLM : provider écho.",
             [StudioStringKeys.MountsSummaryOk] = "{0} montage(s), aucune erreur.",
             [StudioStringKeys.ProfileNewName] = "Nouveau réglage",
+            [StudioStringKeys.ProfileFirstName] = "Principal",
             // STUDIO-56: what the open editor and the tab's lines say again.
             [StudioStringKeys.ProviderCustomShortDescription] = "tout point d'accès : tapez l'URL et le modèle",
             [StudioStringKeys.ProfileThinkingProviderDefault] = "Défaut du fournisseur",
@@ -135,7 +136,8 @@ public sealed class StudioLocalizationSwitchTests
         profiles.NewProfileCommand.Execute(null);
 
         Assert.NotNull(profiles.Editor);
-        Assert.Equal("Nouveau réglage", profiles.Editor!.Name);
+        // UX lot 04 (044): the first model of an empty list is « Principal ».
+        Assert.Equal("Principal", profiles.Editor!.Name);
         Assert.Contains(profiles.Editor.Providers, p => p.Title == "Aucun / hors ligne");
     }
 

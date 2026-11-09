@@ -135,7 +135,10 @@ public sealed class EmailAccountRowViewModel : ObservableObject
         CancelRemoveCommand = new RelayCommand(() => IsConfirmingRemove = false);
         TestCommand = new AsyncRelayCommand(TestAsync, () => _owner.CanTest);
         SignInCommand = new RelayCommand(BeginSignIn, () => CanSign && _signIn is not { IsWaiting: true });
-        SignOutCommand = new RelayCommand(() => { if (CanSign) _owner.ArmSignOut(this); }, () => CanSign);
+        // Signing out needs an account the engine found signed in, and no sign-in under way (UX lot 04, 059).
+        SignOutCommand = new RelayCommand(
+            () => { if (CanSign) _owner.ArmSignOut(this); },
+            () => CanSign && IsReady && _signIn is not { IsWaiting: true });
         ConfirmSignOutCommand = new AsyncRelayCommand(SignOutAsync, () => _isConfirmingSignOut);
         CancelSignOutCommand = new RelayCommand(() => IsConfirmingSignOut = false);
         ShowAccountTabCommand = new RelayCommand(() => ActiveTab = AccountTab);
@@ -728,8 +731,12 @@ public sealed class EmailAccountRowViewModel : ObservableObject
     /// </summary>
     public bool ShowHosts => _owner.IsExpert || Provider is not (EmailSection.Values.Gmail or EmailSection.Values.Outlook);
 
-    /// <summary>Whether the OAuth client id shows: for the expert, and for everyone once the account signs in with OAuth2.</summary>
-    public bool ShowClientId => _owner.IsExpert || _effective.AuthMethod == EmailSection.Values.OAuth2;
+    /// <summary>
+    /// Whether the OAuth client id shows: for everyone once the account signs in with OAuth2, and
+    /// for the expert when the file already names one — a password account shows no OAuth field (UX lot 04, 058).
+    /// </summary>
+    public bool ShowClientId =>
+        _effective.AuthMethod == EmailSection.Values.OAuth2 || (_owner.IsExpert && !string.IsNullOrWhiteSpace(_clientId));
 
     // The expert's sign-in fields show when the account's method or provider calls for them, or
     // when the file already holds them: a key the file carries must stay reachable, and a key
@@ -972,6 +979,7 @@ public sealed class EmailAccountRowViewModel : ObservableObject
         _state = state;
         _stateFailure = failure;
         RefreshState();
+        SignOutCommand.RaiseCanExecuteChanged();
     }
 
     /// <summary>

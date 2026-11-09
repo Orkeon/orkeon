@@ -360,6 +360,12 @@
                         <DataTrigger Binding="{Binding Config.HasPendingChanges}" Value="True">
                           <Setter Property="Visibility" Value="Visible"/>
                         </DataTrigger>
+                        <!-- UX lot 04 (015): no model chosen, no crew - red until one is. -->
+                        <DataTrigger Binding="{Binding Settings.Profiles.HasStudioProfile}" Value="False">
+                          <Setter Property="Visibility" Value="Visible"/>
+                          <Setter Property="Fill" Value="{DynamicResource DangerBrush}"/>
+                          <Setter Property="ToolTip" Value="{Binding [Studio.Settings.ModelMissingTip], Source={x:Static services:I18n.Instance}}"/>
+                        </DataTrigger>
                         <DataTrigger Binding="{Binding Config.HasBlockingErrors}" Value="True">
                           <Setter Property="Visibility" Value="Visible"/>
                           <Setter Property="Fill" Value="{DynamicResource DangerBrush}"/>
@@ -773,8 +779,14 @@
                         CornerRadius="10" Padding="11,8">
                   <StackPanel>
                     <!-- R09 (B10): a trimmed title or description gives its full text on hover. -->
-                    <TextBlock FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}"
-                               TextTrimming="CharacterEllipsis" Text="{Binding Title}" ToolTip="{Binding Title}"/>
+                    <!-- UX lot 04 (063): the recommended cards say so. -->
+                    <DockPanel>
+                      <controls:Badge DockPanel.Dock="Right" Tone="Success" Margin="6,0,0,0" VerticalAlignment="Center"
+                                      Content="{Binding [Studio.Settings.ProviderRecommended], Source={x:Static services:I18n.Instance}}"
+                                      Visibility="{Binding IsRecommended, Converter={StaticResource BooleanToVisibility}}"/>
+                      <TextBlock FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}"
+                                 TextTrimming="CharacterEllipsis" Text="{Binding Title}" ToolTip="{Binding Title}"/>
+                    </DockPanel>
                     <TextBlock FontSize="13" Foreground="{DynamicResource InkMutedBrush}" Margin="0,1,0,0"
                                TextTrimming="CharacterEllipsis" Text="{Binding Description}" ToolTip="{Binding Description}"/>
                   </StackPanel>
@@ -873,11 +885,15 @@
               </ItemsControl.ItemsPanel>
             </ItemsControl>
 
-            <ItemsControl ItemsSource="{Binding OtherProviders}" ItemTemplate="{StaticResource ProviderCard}" Margin="0,7,0,0">
-              <ItemsControl.ItemsPanel>
-                <ItemsPanelTemplate><UniformGrid Columns="3"/></ItemsPanelTemplate>
-              </ItemsControl.ItemsPanel>
-            </ItemsControl>
+            <!-- UX lot 04 (063): the catch-all and the offline fallback fold away, closed. -->
+            <controls:Disclosure Margin="0,7,0,0" IsExpanded="False"
+                                 Header="{Binding [Studio.Settings.GroupOthers], Source={x:Static services:I18n.Instance}}">
+              <ItemsControl ItemsSource="{Binding OtherProviders}" ItemTemplate="{StaticResource ProviderCard}" Margin="0,6,0,0">
+                <ItemsControl.ItemsPanel>
+                  <ItemsPanelTemplate><UniformGrid Columns="3"/></ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+              </ItemsControl>
+            </controls:Disclosure>
 
             <!-- URL/model: pointless without a model; the URL is expert-only except for
                  the catch-all card, where everyone must type it. -->

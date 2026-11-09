@@ -277,6 +277,9 @@
   <data name="Studio.Settings.MountsRemove" xml:space="preserve">
     <value>Quitar</value>
   </data>
+  <data name="Studio.Settings.MountSuggestions" xml:space="preserve">
+    <value>Sugerencias:</value>
+  </data>
   <data name="Studio.Settings.Unparsed" xml:space="preserve">
     <value>No se pudo analizar esta entrada. Se conserva tal cual, no se pierde nada.</value>
   </data>
@@ -1014,6 +1017,15 @@
   <data name="Studio.Common.SubNovice" xml:space="preserve">
     <value>Dos cosas por configurar: qué modelo de IA, y qué carpetas pueden ver sus agentes.</value>
   </data>
+  <data name="Studio.Settings.AutoSaveNote" xml:space="preserve">
+    <value>Sus cambios se guardan automáticamente.</value>
+  </data>
+  <data name="Studio.Settings.ValidateTip" xml:space="preserve">
+    <value>Comprueba los ajustes sin guardarlos.</value>
+  </data>
+  <data name="Studio.Settings.SaveTip" xml:space="preserve">
+    <value>Comprueba y luego escribe el archivo de ajustes.</value>
+  </data>
   <data name="Studio.Common.SubExpert" xml:space="preserve">
     <value>appsettings.json — formularios tipados, montajes, límites de tasa, y el archivo bruto en solo lectura.</value>
   </data>
@@ -1104,11 +1116,26 @@
   <data name="Studio.Settings.NewName" xml:space="preserve">
     <value>Nuevo perfil</value>
   </data>
+  <data name="Studio.Settings.FirstProfileName" xml:space="preserve">
+    <value>Principal</value>
+  </data>
+  <data name="Studio.Settings.ChooseModelCta" xml:space="preserve">
+    <value>Elegir mi modelo de IA</value>
+  </data>
+  <data name="Studio.Settings.ModelMissingTip" xml:space="preserve">
+    <value>Ningún modelo elegido: el asistente no puede componer un equipo.</value>
+  </data>
   <data name="Studio.Settings.GroupLocal" xml:space="preserve">
     <value>EN SU MÁQUINA · GRATIS, SIN CLAVE</value>
   </data>
   <data name="Studio.Settings.GroupCloud" xml:space="preserve">
     <value>EN LA NUBE · CLAVE DE API REQUERIDA</value>
+  </data>
+  <data name="Studio.Settings.ProviderRecommended" xml:space="preserve">
+    <value>Recomendado</value>
+  </data>
+  <data name="Studio.Settings.GroupOthers" xml:space="preserve">
+    <value>Otros proveedores</value>
   </data>
   <data name="Studio.Settings.KeyTitleFor" xml:space="preserve">
     <value>Clave de API {0}</value>
@@ -1133,6 +1160,9 @@
   </data>
   <data name="Studio.Settings.KeyStore" xml:space="preserve">
     <value>Recordar la clave</value>
+  </data>
+  <data name="Studio.Settings.SecretStore" xml:space="preserve">
+    <value>Recordar</value>
   </data>
   <data name="Studio.Settings.KeyStatusSet" xml:space="preserve">
     <value>clave recordada</value>
@@ -1196,6 +1226,9 @@
   </data>
   <data name="Studio.Create.ManageSettings" xml:space="preserve">
     <value>Gestionar los perfiles</value>
+  </data>
+  <data name="Studio.Create.ChooseModel" xml:space="preserve">
+    <value>Elegir un modelo</value>
   </data>
   <data name="Studio.Create.Step1" xml:space="preserve">
     <value>Describir</value>
@@ -1733,6 +1766,12 @@
   <data name="Studio.Settings.ToolsIntro" xml:space="preserve">
     <value>Todas las herramientas que un equipo puede usar en una ejecución, por familia. La mayoría no necesita nada; las que sí, lo dicen, y dónde.</value>
   </data>
+  <data name="Studio.Settings.ToolKeysElsewhere" xml:space="preserve">
+    <value>Las claves de las herramientas (búsqueda web, imágenes…) se configuran en Acceso › Claves de las herramientas.</value>
+  </data>
+  <data name="Studio.Settings.ApiKeysElsewhere" xml:space="preserve">
+    <value>Las claves de los modelos se configuran en Modelos › Claves de API.</value>
+  </data>
   <data name="Studio.Settings.ShellTitle" xml:space="preserve">
     <value>Comandos de shell</value>
   </data>
@@ -2088,7 +2127,7 @@
     <value>Iniciando la sesión…</value>
   </data>
   <data name="Studio.Settings.MailDeviceCode" xml:space="preserve">
-    <value>Abra {0} e introduzca este código:</value>
+    <value>Abra la página de autorización de abajo e introduzca este código:</value>
   </data>
   <data name="Studio.Settings.MailDeviceCodeExpiresIn" xml:space="preserve">
     <value>El código caduca en {0}</value>
@@ -3964,12 +4003,17 @@
   <data name="Studio.Settings.GroupAccess" xml:space="preserve"><value>Acceso</value></data>
   <data name="Studio.Settings.GroupConnections" xml:space="preserve"><value>Conexiones</value></data>
   <data name="Studio.Settings.GroupAdvanced" xml:space="preserve"><value>Avanzado</value></data>
+  <data name="Studio.Settings.DotRequiredTip" xml:space="preserve"><value>Necesario para ejecutar un equipo</value></data>
+  <data name="Studio.Settings.DotOptionalTip" xml:space="preserve"><value>Opcional</value></data>
   <data name="Studio.Diagnostics.OpenModels" xml:space="preserve"><value>Abrir Modelos</value></data>
   <data name="Studio.Diagnostics.OpenKeys" xml:space="preserve">
     <value>Abrir Claves API</value>
   </data>
   <data name="Studio.Diagnostics.OpenFolders" xml:space="preserve"><value>Abrir Carpetas autorizadas</value></data>
   <data name="Studio.Diagnostics.OpenFile" xml:space="preserve"><value>Abrir el archivo de configuración</value></data>
+  <data name="Studio.Diagnostics.EngineMissingHow" xml:space="preserve"><value>Instale el motor de Orkeon y vuelva a ejecutar el diagnóstico.</value></data>
+  <data name="Studio.Diagnostics.InstallGuide" xml:space="preserve"><value>Cómo instalar el motor</value></data>
+  <data name="Studio.Diagnostics.FixFirst" xml:space="preserve"><value>Corregir el primer punto</value></data>
   <data name="Studio.Diagnostics.TestConnection" xml:space="preserve"><value>Probar la conexión</value></data>
   <data name="Studio.Diagnostics.CheckAgain" xml:space="preserve"><value>Comprobar de nuevo</value></data>
   <data name="Studio.Diagnostics.SettingsFile" xml:space="preserve"><value>Archivo de configuración</value></data>

@@ -1600,7 +1600,8 @@ public sealed class ModelProfilesViewModel : ObservableObject
             catalog,
             new ModelProfile
             {
-                Name = _strings[StudioStringKeys.ProfileNewName],
+                // UX lot 04 (044): the very first model is « Main », never a name that reads as the application.
+                Name = _strings[IsEmpty ? StudioStringKeys.ProfileFirstName : StudioStringKeys.ProfileNewName],
                 Provider = seed?.Name,
                 Model = seed?.DefaultModel,
                 BaseUrl = seed?.DefaultBaseUrl,

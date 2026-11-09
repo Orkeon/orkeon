@@ -109,6 +109,7 @@
 
       <data name="Studio.Settings.Add" xml:space="preserve"><value>Ajouter</value></data>
   <data name="Studio.Settings.MountsRemove" xml:space="preserve"><value>Retirer</value></data>
+  <data name="Studio.Settings.MountSuggestions" xml:space="preserve"><value>Suggestions :</value></data>
   <data name="Studio.Settings.Unparsed" xml:space="preserve"><value>Cette entrée n'a pas pu être analysée. Elle est conservée telle quelle, rien n'est perdu.</value></data>
   <data name="Studio.Settings.LblPhysical" xml:space="preserve"><value>Chemin physique (sur cette machine)</value></data>
   <data name="Studio.Settings.CreateFolder" xml:space="preserve"><value>Créer le dossier</value></data>
@@ -384,7 +385,10 @@
 <data name="Studio.Shell.Env" xml:space="preserve"><value>ENVIRONNEMENT</value></data>
 <data name="Studio.Shell.Settings" xml:space="preserve"><value>Réglages</value></data>
 <data name="Studio.Common.Title" xml:space="preserve"><value>Réglages</value></data>
-<data name="Studio.Common.SubNovice" xml:space="preserve"><value>Deux choses à régler : quel modèle d'IA, et quels dossiers vos agents peuvent voir.</value></data>
+<data name="Studio.Common.SubNovice" xml:space="preserve"><value>L'essentiel : le modèle d'IA et les dossiers que vos agents peuvent voir. Le reste est facultatif.</value></data>
+<data name="Studio.Settings.AutoSaveNote" xml:space="preserve"><value>Vos changements sont enregistrés automatiquement.</value></data>
+<data name="Studio.Settings.ValidateTip" xml:space="preserve"><value>Vérifie les réglages sans les enregistrer.</value></data>
+<data name="Studio.Settings.SaveTip" xml:space="preserve"><value>Vérifie puis écrit le fichier de réglages.</value></data>
 <data name="Studio.Common.SubExpert" xml:space="preserve"><value>appsettings.json — formulaires typés, dossiers autorisés, limites de débit, et le fichier brut en lecture seule.</value></data>
 <data name="Studio.Shell.Model" xml:space="preserve"><value>Modèle d'IA</value></data>
 <data name="Studio.Shell.Folders" xml:space="preserve"><value>Dossiers autorisés</value></data>
@@ -417,8 +421,13 @@
 <data name="Studio.Settings.Save" xml:space="preserve"><value>Enregistrer le modèle</value></data>
 <data name="Studio.Common.Cancel" xml:space="preserve"><value>Annuler</value></data>
 <data name="Studio.Settings.NewName" xml:space="preserve"><value>Nouveau modèle</value></data>
+<data name="Studio.Settings.FirstProfileName" xml:space="preserve"><value>Principal</value></data>
+<data name="Studio.Settings.ChooseModelCta" xml:space="preserve"><value>Choisir mon modèle d'IA</value></data>
+<data name="Studio.Settings.ModelMissingTip" xml:space="preserve"><value>Aucun modèle choisi : l'assistant ne peut pas composer d'équipe.</value></data>
   <data name="Studio.Settings.GroupLocal" xml:space="preserve"><value>SUR VOTRE MACHINE · GRATUIT, SANS CLÉ</value></data>
   <data name="Studio.Settings.GroupCloud" xml:space="preserve"><value>DANS LE NUAGE · CLÉ D'API REQUISE</value></data>
+  <data name="Studio.Settings.ProviderRecommended" xml:space="preserve"><value>Recommandé</value></data>
+  <data name="Studio.Settings.GroupOthers" xml:space="preserve"><value>Autres fournisseurs</value></data>
   <data name="Studio.Settings.KeyTitleFor" xml:space="preserve"><value>Clé d'API {0}</value></data>
   <data name="Studio.Settings.KeyTitleService" xml:space="preserve"><value>Clé d'API du service</value></data>
   <data name="Studio.Settings.ToolSecretWebSearch" xml:space="preserve"><value>Recherche sur le web (Tavily)</value></data>
@@ -427,6 +436,7 @@
   <data name="Studio.Settings.KeyExplainer" xml:space="preserve"><value>Studio la range dans votre session Windows — jamais dans un fichier, jamais dans un dossier partagé.</value></data>
   <data name="Studio.Settings.KeyPlaceholder" xml:space="preserve"><value>Collez votre clé ici (sk-…)</value></data>
   <data name="Studio.Settings.KeyStore" xml:space="preserve"><value>Mémoriser la clé</value></data>
+  <data name="Studio.Settings.SecretStore" xml:space="preserve"><value>Mémoriser</value></data>
   <data name="Studio.Settings.KeyStatusSet" xml:space="preserve"><value>clé mémorisée</value></data>
   <data name="Studio.Settings.KeyStatusMissing" xml:space="preserve"><value>aucune clé détectée</value></data>
   <data name="Studio.Settings.KeyPersistFailed" xml:space="preserve"><value>La clé est en place pour cette session, mais Windows ne l'a pas conservée pour les suivantes : {0}</value></data>
@@ -448,6 +458,7 @@
 <data name="Studio.Create.GateTitle" xml:space="preserve"><value>L'assistant a besoin d'un modèle. C'est lui qui composera votre équipe et rédigera les verdicts d'essai.</value></data>
 <data name="Studio.Create.GateBody" xml:space="preserve"><value>Choisissez un modèle : la création s'ouvrira juste après, et vous pourrez en changer à tout moment dans Réglages.</value></data>
 <data name="Studio.Create.ManageSettings" xml:space="preserve"><value>Gérer les réglages</value></data>
+<data name="Studio.Create.ChooseModel" xml:space="preserve"><value>Choisir un modèle</value></data>
 <data name="Studio.Create.Step1" xml:space="preserve"><value>Décrire</value></data>
 <data name="Studio.Create.Step2" xml:space="preserve"><value>Composer</value></data>
 <data name="Studio.Create.Step3" xml:space="preserve"><value>Essayer</value></data>
@@ -629,7 +640,9 @@
   <data name="Studio.Settings.ToolKeysTitle" xml:space="preserve"><value>Clés des outils</value></data>
   <data name="Studio.Settings.ToolKeysIntro" xml:space="preserve"><value>Deux outils de recherche ont besoin d'une clé. Collez-la une fois : elle vit dans votre environnement utilisateur, jamais dans un fichier.</value></data>
   <data name="Studio.Settings.ToolsTitle" xml:space="preserve"><value>Catalogue des outils</value></data>
-  <data name="Studio.Settings.ToolsIntro" xml:space="preserve"><value>Tous les outils qu'une équipe peut utiliser à l'exécution, par famille. La plupart ne demandent rien ; ceux qui demandent quelque chose le disent, et où.</value></data>
+  <data name="Studio.Settings.ToolsIntro" xml:space="preserve"><value>Ce que vos agents savent faire : chaque outil est une capacité que l'assistant peut leur donner. Lecture seule ici ; les clés se règlent dans l'onglet « Clés des outils ».</value></data>
+  <data name="Studio.Settings.ToolKeysElsewhere" xml:space="preserve"><value>Les clés des outils (recherche web, images…) se règlent dans Accès › Clés des outils.</value></data>
+  <data name="Studio.Settings.ApiKeysElsewhere" xml:space="preserve"><value>Les clés des modèles se règlent dans Modèles › Clés API.</value></data>
   <data name="Studio.Settings.ShellTitle" xml:space="preserve"><value>Commandes shell</value></data>
   <data name="Studio.Settings.ShellIntro" xml:space="preserve"><value>Ce que l'outil shell_command peut exécuter. Par défaut, une liste de commandes en lecture seule.</value></data>
   <data name="Studio.Settings.ShellAllowInterpreters" xml:space="preserve"><value>Autoriser les interpréteurs (shells, moteurs de script)</value></data>
@@ -744,13 +757,13 @@
   <data name="Studio.Settings.MailTestSignInFirst" xml:space="preserve"><value>Connectez-vous d'abord</value></data>
   <data name="Studio.Settings.MailTestSignInFirstHint" xml:space="preserve"><value>« Se connecter », ci-dessus, ouvre la connexion ; le test réussit une fois le compte connecté.</value></data>
   <data name="Studio.Settings.MailTestSecretFirst" xml:space="preserve"><value>Mémorisez d'abord le mot de passe</value></data>
-  <data name="Studio.Settings.MailTestSecretFirstHint" xml:space="preserve"><value>Saisissez-le dans l'onglet Connexion et enregistrez-le ; le test réussit une fois qu'il est mémorisé.</value></data>
+  <data name="Studio.Settings.MailTestSecretFirstHint" xml:space="preserve"><value>Saisissez-le dans l'onglet Connexion et mémorisez-le ; le test réussit une fois qu'il est mémorisé.</value></data>
   <data name="Studio.Settings.MailSignIn" xml:space="preserve"><value>Se connecter</value></data>
   <data name="Studio.Settings.MailSignOut" xml:space="preserve"><value>Se déconnecter</value></data>
   <data name="Studio.Settings.MailSignOutConfirm" xml:space="preserve"><value>Oublier les jetons mémorisés de {0} ? Le compte devra se connecter à nouveau.</value></data>
   <data name="Studio.Settings.MailSignOutFailed" xml:space="preserve"><value>Déconnexion impossible</value></data>
   <data name="Studio.Settings.MailSignInStarting" xml:space="preserve"><value>Démarrage de la connexion…</value></data>
-  <data name="Studio.Settings.MailDeviceCode" xml:space="preserve"><value>Ouvrez {0} et saisissez ce code :</value></data>
+  <data name="Studio.Settings.MailDeviceCode" xml:space="preserve"><value>Ouvrez la page d'autorisation ci-dessous et saisissez ce code :</value></data>
   <data name="Studio.Settings.MailDeviceCodeExpiresIn" xml:space="preserve"><value>Le code expire dans {0}</value></data>
   <data name="Studio.Settings.MailDeviceCodeExpiresSoon" xml:space="preserve"><value>Le code expire dans moins d'une minute</value></data>
   <data name="Studio.Common.Minutes" xml:space="preserve"><value>{0} min</value></data>
@@ -780,7 +793,7 @@
   <data name="Studio.Settings.MailPort" xml:space="preserve"><value>Numéro de port</value></data>
   <data name="Studio.Settings.MailSecurity" xml:space="preserve"><value>Sécurité de la connexion</value></data>
   <data name="Studio.Settings.MailOutgoingHostHint" xml:space="preserve"><value>Sans serveur d'envoi, le sien ou celui d'un préréglage, le compte ne peut pas envoyer.</value></data>
-  <data name="Studio.Settings.MailTimeout" xml:space="preserve"><value>Délai d'attente, en secondes</value></data>
+  <data name="Studio.Settings.MailTimeout" xml:space="preserve"><value>Délai d'attente (s)</value></data>
   <data name="Studio.Settings.MailTimeoutHint" xml:space="preserve"><value>Vide : celui de la bibliothèque de messagerie. Il ne s'applique pas à un compte lu par Microsoft Graph.</value></data>
   <data name="Studio.Settings.MailSaveSentCopy" xml:space="preserve"><value>Ranger une copie de chaque message envoyé dans le dossier des messages envoyés</value></data>
   <data name="Studio.Settings.MailSectionTitle" xml:space="preserve"><value>Pour tous les comptes</value></data>
@@ -2286,12 +2299,17 @@
   <data name="Studio.Settings.GroupAccess" xml:space="preserve"><value>Accès</value></data>
   <data name="Studio.Settings.GroupConnections" xml:space="preserve"><value>Connexions</value></data>
   <data name="Studio.Settings.GroupAdvanced" xml:space="preserve"><value>Avancé</value></data>
+  <data name="Studio.Settings.DotRequiredTip" xml:space="preserve"><value>À régler pour lancer une équipe</value></data>
+  <data name="Studio.Settings.DotOptionalTip" xml:space="preserve"><value>Facultatif</value></data>
   <data name="Studio.Diagnostics.OpenModels" xml:space="preserve"><value>Ouvrir Modèles</value></data>
   <data name="Studio.Diagnostics.OpenKeys" xml:space="preserve">
     <value>Ouvrir Clés API</value>
   </data>
   <data name="Studio.Diagnostics.OpenFolders" xml:space="preserve"><value>Ouvrir Dossiers autorisés</value></data>
   <data name="Studio.Diagnostics.OpenFile" xml:space="preserve"><value>Ouvrir le fichier de réglages</value></data>
+  <data name="Studio.Diagnostics.EngineMissingHow" xml:space="preserve"><value>Installez le moteur Orkeon, puis relancez le diagnostic.</value></data>
+  <data name="Studio.Diagnostics.InstallGuide" xml:space="preserve"><value>Comment installer le moteur</value></data>
+  <data name="Studio.Diagnostics.FixFirst" xml:space="preserve"><value>Corriger le premier point</value></data>
   <data name="Studio.Diagnostics.TestConnection" xml:space="preserve"><value>Tester la connexion</value></data>
   <data name="Studio.Diagnostics.CheckAgain" xml:space="preserve"><value>Vérifier à nouveau</value></data>
   <data name="Studio.Diagnostics.SettingsFile" xml:space="preserve"><value>Fichier de réglages</value></data>

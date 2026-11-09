@@ -382,7 +382,7 @@
                     Visibility="{Binding NeedsAssistant, Converter={StaticResource BooleanToVisibility}}">
       <controls:Alert.Actions>
         <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="32" Command="{Binding OpenSettingsCommand}"
-        Content="{Binding [Studio.Create.ManageSettings], Source={x:Static services:I18n.Instance}}" controls:ButtonIcon.Kind="sliders-horizontal"/>
+        Content="{Binding [Studio.Create.ChooseModel], Source={x:Static services:I18n.Instance}}" controls:ButtonIcon.Kind="sliders-horizontal"/>
       </controls:Alert.Actions>
       <StackPanel>
         <TextBlock Style="{StaticResource Hint}" TextWrapping="Wrap" Margin="0,0,0,10"

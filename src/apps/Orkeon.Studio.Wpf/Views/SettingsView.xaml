@@ -27,14 +27,20 @@
       <StackPanel Orientation="Horizontal" Visibility="{Binding Mode.IsExpert, Converter={StaticResource BooleanToVisibility}}">
         <Button Style="{StaticResource BtnSecondary}" Command="{Binding Config.ValidateCommand}" Margin="0,0,8,0"
                 controls:ButtonIcon.Kind="badge-check"
+                ToolTip="{Binding [Studio.Settings.ValidateTip], Source={x:Static services:I18n.Instance}}"
                 Content="{Binding [Studio.Common.Validate], Source={x:Static services:I18n.Instance}}"/>
         <!-- Novice saves automatically (audit 07/16); the explicit ending of the cycle is
              the expert's. -->
         <Button Style="{StaticResource BtnPrimary}" Command="{Binding Config.SaveCommand}"
                 controls:ButtonIcon.Kind="save"
+                ToolTip="{Binding [Studio.Settings.SaveTip], Source={x:Static services:I18n.Instance}}"
                 Content="{Binding [Studio.Common.Save], Source={x:Static services:I18n.Instance}}"/>
       </StackPanel>
     </controls:PageHeader>
+    <!-- UX lot 04 (043-062): the novice is told the changes save themselves. -->
+    <TextBlock Style="{StaticResource Hint}" Margin="0,6,0,0" TextWrapping="Wrap"
+               Visibility="{Binding Mode.IsNovice, Converter={StaticResource BooleanToVisibility}}"
+               Text="{Binding [Studio.Settings.AutoSaveNote], Source={x:Static services:I18n.Instance}}"/>
     <!-- Lot 11: the outcomes only; « Loaded: path » is said once, in the File section. -->
     <TextBlock Style="{StaticResource MonoText}" FontSize="13" Margin="0,6,0,0" Text="{Binding Config.HeaderStatusMessage}"
                Visibility="{Binding Config.HeaderStatusMessage, Converter={StaticResource StringPresentToVisibility}}"/>
@@ -87,7 +93,13 @@
 
           <!-- lot 9: the model Studio itself uses (wizard, verdicts), distinct from the teams'
                models: a property row and its list. The tab's subtitle says when it is missing. -->
-          <StackPanel Margin="0,0,0,18">
+          <!-- UX lot 04 (043): with no model yet, the tab starts with the one useful action, not an empty list. -->
+          <Button Style="{StaticResource BtnPrimary}" HorizontalAlignment="Left" Margin="0,0,0,18"
+                  Command="{Binding Profiles.NewProfileCommand}" controls:ButtonIcon.Kind="plus"
+                  Visibility="{Binding Profiles.IsEmpty, Converter={StaticResource BooleanToVisibility}}"
+                  Content="{Binding [Studio.Settings.ChooseModelCta], Source={x:Static services:I18n.Instance}}"/>
+          <StackPanel Margin="0,0,0,18"
+                      Visibility="{Binding Profiles.IsEmpty, Converter={StaticResource InverseBooleanToVisibility}}">
             <controls:PropertyRow Label="{Binding [Studio.Settings.AssistantRow], Source={x:Static services:I18n.Instance}}">
               <Grid Width="320" HorizontalAlignment="Left">
                 <ComboBox ItemsSource="{Binding Profiles.ProfileNames}"
@@ -392,6 +404,14 @@
               <ItemsControl ItemsSource="{Binding Profiles.Secrets}" ItemTemplate="{StaticResource KeyRowTemplate}"/>
             </StackPanel>
           </Border>
+          <!-- UX lot 04 (046, 051): each key stays by what uses it; this tab points at the other. -->
+          <DockPanel Margin="0,0,0,8">
+            <Button DockPanel.Dock="Right" Style="{StaticResource BtnGhost}" VerticalAlignment="Center" Margin="12,0,0,0"
+                    Command="{Binding ShowToolKeysCommand}" controls:ButtonIcon.Kind="arrow-right"
+                    Content="{Binding [Studio.Settings.ToolKeysTitle], Source={x:Static services:I18n.Instance}}"/>
+            <TextBlock Style="{StaticResource Hint}" TextWrapping="Wrap" VerticalAlignment="Center"
+                       Text="{Binding [Studio.Settings.ToolKeysElsewhere], Source={x:Static services:I18n.Instance}}"/>
+          </DockPanel>
 
         </StackPanel>
       </controls:StepTab>
@@ -496,24 +516,28 @@
           <StackPanel Visibility="{Binding Mode.IsExpert, Converter={StaticResource BooleanToVisibility}}">
             <views:MountsEditorView x:Name="MountsPanel" DataContext="{Binding Config.Mounts}"/>
           </StackPanel>
-          <Border Style="{StaticResource Well}" Margin="0,14,0,0" Padding="13,10"
-                  Visibility="{Binding Mode.IsExpert, Converter={StaticResource BooleanToVisibility}}">
-            <StackPanel>
-              <!-- D01 (R18): the eyebrow is Studio's, translated; the strings below stay raw, in mono. -->
-              <TextBlock Style="{StaticResource Eyebrow}" Margin="0,0,0,5"
-                         Text="{Binding [Studio.Settings.MountStringsEyebrow], Source={x:Static services:I18n.Instance}}"/>
-              <TextBlock Style="{StaticResource Hint}" Margin="0,0,0,8"
-                       Text="{Binding [Studio.Settings.NoviceEmpty], Source={x:Static services:I18n.Instance}}"
-                       Visibility="{Binding Config.Mounts.Mounts.Count, Converter={StaticResource ZeroToVisibility}}"/>
-            <ItemsControl ItemsSource="{Binding Config.Mounts.Mounts}">
-                <ItemsControl.ItemTemplate>
-                  <DataTemplate>
-                    <TextBlock Style="{StaticResource MonoText}" FontSize="13" Text="{Binding MountString}"/>
-                  </DataTemplate>
-                </ItemsControl.ItemTemplate>
-              </ItemsControl>
-            </StackPanel>
-          </Border>
+          <!-- UX lot 04 (048): the mount strings repeat the editor's preview; they fold away, closed. -->
+          <controls:Disclosure Margin="0,14,0,0" IsExpanded="False"
+                               Header="{Binding [Studio.Common.TechnicalDetails], Source={x:Static services:I18n.Instance}}"
+                               Visibility="{Binding Mode.IsExpert, Converter={StaticResource BooleanToVisibility}}">
+            <Border Style="{StaticResource Well}" Margin="0,6,0,0" Padding="13,10">
+              <StackPanel>
+                <!-- D01 (R18): the eyebrow is Studio's, translated; the strings below stay raw, in mono. -->
+                <TextBlock Style="{StaticResource Eyebrow}" Margin="0,0,0,5"
+                           Text="{Binding [Studio.Settings.MountStringsEyebrow], Source={x:Static services:I18n.Instance}}"/>
+                <TextBlock Style="{StaticResource Hint}" Margin="0,0,0,8"
+                         Text="{Binding [Studio.Settings.NoviceEmpty], Source={x:Static services:I18n.Instance}}"
+                         Visibility="{Binding Config.Mounts.Mounts.Count, Converter={StaticResource ZeroToVisibility}}"/>
+              <ItemsControl ItemsSource="{Binding Config.Mounts.Mounts}">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                      <TextBlock Style="{StaticResource MonoText}" FontSize="13" Text="{Binding MountString}"/>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </StackPanel>
+            </Border>
+          </controls:Disclosure>
 
           <!-- STUDIO-14 (D-13, P-1): the teams' own folders, read-only, after the declared ones in
                BOTH modes — under the novice list, under the expert editor and its mount strings.

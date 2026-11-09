@@ -254,7 +254,8 @@ public sealed class StepTabs : TabControl
                 var group = Groups[index];
                 group.Label = titles[index];
                 group.Count = visible.Count;
-                group.HasDot = visible.Any(entry => entry.Tab.State is StepTabState.Expected or StepTabState.Warning);
+                // Only what a crew needs lights the group (UX lot 04): an optional tab's hollow dot does not.
+                group.HasDot = visible.Any(entry => entry.Tab.State is StepTabState.Warning);
                 group.IsActive = index == _activeGroup;
             }
 

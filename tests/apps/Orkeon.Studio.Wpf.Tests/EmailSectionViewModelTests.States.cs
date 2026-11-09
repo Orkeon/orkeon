@@ -160,6 +160,27 @@ public sealed partial class EmailSectionViewModelTests
     }
 
     [Fact]
+    public async Task Signing_out_is_offered_only_to_an_account_the_engine_found_signed_in()
+    {
+        // UX lot 04 (059): « Sign out » stays disabled while no account is signed in.
+        var cli = new FakeEmailCli
+        {
+            AccountsOutput = """
+                [{"name":"gmail","provider":"Gmail","reads":"Imap","auth":"OAuth2","ready":true,"problem":null},
+                 {"name":"hotmail","provider":"Outlook","reads":"Graph","auth":"OAuth2","ready":false,"problem":"run orkeon email login hotmail"}]
+                """,
+        };
+        var (section, _) = BuildWithCli(OAuthAccounts, cli);
+
+        await section.RefreshStatesAsync();
+
+        Assert.False(Row(section, "hotmail").IsReady);
+        Assert.False(Row(section, "hotmail").SignOutCommand.CanExecute(null));
+        Assert.True(Row(section, "gmail").IsReady);
+        Assert.True(Row(section, "gmail").SignOutCommand.CanExecute(null));
+    }
+
+    [Fact]
     public async Task A_row_is_paired_with_its_state_by_name_whatever_the_case_and_whatever_the_order()
     {
         const string Shouting = """

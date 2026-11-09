@@ -109,6 +109,7 @@
 
       <data name="Studio.Settings.Add" xml:space="preserve"><value>Add</value></data>
   <data name="Studio.Settings.MountsRemove" xml:space="preserve"><value>Remove</value></data>
+  <data name="Studio.Settings.MountSuggestions" xml:space="preserve"><value>Suggestions:</value></data>
   <data name="Studio.Settings.Unparsed" xml:space="preserve"><value>This entry could not be parsed. It is kept exactly as written so nothing is lost.</value></data>
   <data name="Studio.Settings.LblPhysical" xml:space="preserve"><value>Physical path (on this machine)</value></data>
   <data name="Studio.Settings.CreateFolder" xml:space="preserve"><value>Create folder</value></data>
@@ -385,6 +386,9 @@
 <data name="Studio.Shell.Settings" xml:space="preserve"><value>Settings</value></data>
 <data name="Studio.Common.Title" xml:space="preserve"><value>Settings</value></data>
 <data name="Studio.Common.SubNovice" xml:space="preserve"><value>Two things to set: which AI model, and which folders your agents may see.</value></data>
+<data name="Studio.Settings.AutoSaveNote" xml:space="preserve"><value>Your changes are saved automatically.</value></data>
+<data name="Studio.Settings.ValidateTip" xml:space="preserve"><value>Checks the settings without saving them.</value></data>
+<data name="Studio.Settings.SaveTip" xml:space="preserve"><value>Checks, then writes the settings file.</value></data>
 <data name="Studio.Common.SubExpert" xml:space="preserve"><value>appsettings.json — typed forms, mounts, rate limits, and the raw file read-only.</value></data>
 <data name="Studio.Shell.Model" xml:space="preserve"><value>AI model</value></data>
 <data name="Studio.Shell.Folders" xml:space="preserve"><value>Authorized folders</value></data>
@@ -417,8 +421,13 @@
 <data name="Studio.Settings.Save" xml:space="preserve"><value>Save the setting</value></data>
 <data name="Studio.Common.Cancel" xml:space="preserve"><value>Cancel</value></data>
 <data name="Studio.Settings.NewName" xml:space="preserve"><value>New setting</value></data>
+<data name="Studio.Settings.FirstProfileName" xml:space="preserve"><value>Main</value></data>
+<data name="Studio.Settings.ChooseModelCta" xml:space="preserve"><value>Choose my AI model</value></data>
+<data name="Studio.Settings.ModelMissingTip" xml:space="preserve"><value>No model chosen: the assistant cannot compose a crew.</value></data>
   <data name="Studio.Settings.GroupLocal" xml:space="preserve"><value>ON YOUR MACHINE · FREE, NO KEY</value></data>
   <data name="Studio.Settings.GroupCloud" xml:space="preserve"><value>IN THE CLOUD · API KEY REQUIRED</value></data>
+  <data name="Studio.Settings.ProviderRecommended" xml:space="preserve"><value>Recommended</value></data>
+  <data name="Studio.Settings.GroupOthers" xml:space="preserve"><value>Other providers</value></data>
   <data name="Studio.Settings.KeyTitleFor" xml:space="preserve"><value>API key {0}</value></data>
   <data name="Studio.Settings.KeyTitleService" xml:space="preserve"><value>The service's API key</value></data>
   <data name="Studio.Settings.ToolSecretWebSearch" xml:space="preserve"><value>Web search (Tavily)</value></data>
@@ -427,6 +436,7 @@
   <data name="Studio.Settings.KeyExplainer" xml:space="preserve"><value>Studio keeps it in your Windows session — never in a file, never in a shared folder.</value></data>
   <data name="Studio.Settings.KeyPlaceholder" xml:space="preserve"><value>Paste your key here (sk-…)</value></data>
   <data name="Studio.Settings.KeyStore" xml:space="preserve"><value>Remember the key</value></data>
+  <data name="Studio.Settings.SecretStore" xml:space="preserve"><value>Store</value></data>
   <data name="Studio.Settings.KeyStatusSet" xml:space="preserve"><value>key remembered</value></data>
   <data name="Studio.Settings.KeyStatusMissing" xml:space="preserve"><value>no key detected</value></data>
   <data name="Studio.Settings.KeyPersistFailed" xml:space="preserve"><value>The key is in place for this session, but Windows did not keep it for the next ones: {0}</value></data>
@@ -448,6 +458,7 @@
 <data name="Studio.Create.GateTitle" xml:space="preserve"><value>The assistant needs an AI model</value></data>
 <data name="Studio.Create.GateBody" xml:space="preserve"><value>It is the one that will compose your team and write the trial verdicts. Pick a setting — creation opens right after, and you can change it any time in Settings.</value></data>
 <data name="Studio.Create.ManageSettings" xml:space="preserve"><value>Manage settings</value></data>
+<data name="Studio.Create.ChooseModel" xml:space="preserve"><value>Choose a model</value></data>
 <data name="Studio.Create.Step1" xml:space="preserve"><value>Describe</value></data>
 <data name="Studio.Create.Step2" xml:space="preserve"><value>Compose</value></data>
 <data name="Studio.Create.Step3" xml:space="preserve"><value>Try</value></data>
@@ -630,6 +641,8 @@
   <data name="Studio.Settings.ToolKeysIntro" xml:space="preserve"><value>Two search tools need a key of their own. Paste it once: it lives in your user environment, never in a file.</value></data>
   <data name="Studio.Settings.ToolsTitle" xml:space="preserve"><value>Tool catalogue</value></data>
   <data name="Studio.Settings.ToolsIntro" xml:space="preserve"><value>Every tool a team can use in a run, by family. Most need nothing; the ones that do say what, and where.</value></data>
+  <data name="Studio.Settings.ToolKeysElsewhere" xml:space="preserve"><value>Tool keys (web search, images…) are set in Access › Tool keys.</value></data>
+  <data name="Studio.Settings.ApiKeysElsewhere" xml:space="preserve"><value>Model keys are set in Models › API keys.</value></data>
   <data name="Studio.Settings.ShellTitle" xml:space="preserve"><value>Shell commands</value></data>
   <data name="Studio.Settings.ShellIntro" xml:space="preserve"><value>What the shell_command tool may run. By default, a read-only list of commands.</value></data>
   <data name="Studio.Settings.ShellAllowInterpreters" xml:space="preserve"><value>Allow interpreters (shells, scripting runtimes)</value></data>
@@ -750,7 +763,7 @@
   <data name="Studio.Settings.MailSignOutConfirm" xml:space="preserve"><value>Forget the stored tokens of {0}? The account will need a new sign-in.</value></data>
   <data name="Studio.Settings.MailSignOutFailed" xml:space="preserve"><value>Could not sign out</value></data>
   <data name="Studio.Settings.MailSignInStarting" xml:space="preserve"><value>Starting the sign-in…</value></data>
-  <data name="Studio.Settings.MailDeviceCode" xml:space="preserve"><value>Open {0} and enter this code:</value></data>
+  <data name="Studio.Settings.MailDeviceCode" xml:space="preserve"><value>Open the authorization page below and enter this code:</value></data>
   <data name="Studio.Settings.MailDeviceCodeExpiresIn" xml:space="preserve"><value>The code expires in {0}</value></data>
   <data name="Studio.Settings.MailDeviceCodeExpiresSoon" xml:space="preserve"><value>The code expires in under a minute</value></data>
   <data name="Studio.Common.Minutes" xml:space="preserve"><value>{0} min</value></data>
@@ -2286,12 +2299,17 @@
   <data name="Studio.Settings.GroupAccess" xml:space="preserve"><value>Access</value></data>
   <data name="Studio.Settings.GroupConnections" xml:space="preserve"><value>Connections</value></data>
   <data name="Studio.Settings.GroupAdvanced" xml:space="preserve"><value>Advanced</value></data>
+  <data name="Studio.Settings.DotRequiredTip" xml:space="preserve"><value>Needed to run a crew</value></data>
+  <data name="Studio.Settings.DotOptionalTip" xml:space="preserve"><value>Optional</value></data>
   <data name="Studio.Diagnostics.OpenModels" xml:space="preserve"><value>Open Models</value></data>
   <data name="Studio.Diagnostics.OpenKeys" xml:space="preserve">
     <value>Open API keys</value>
   </data>
   <data name="Studio.Diagnostics.OpenFolders" xml:space="preserve"><value>Open Allowed folders</value></data>
   <data name="Studio.Diagnostics.OpenFile" xml:space="preserve"><value>Open the settings file</value></data>
+  <data name="Studio.Diagnostics.EngineMissingHow" xml:space="preserve"><value>Install the Orkeon engine, then run the diagnostic again.</value></data>
+  <data name="Studio.Diagnostics.InstallGuide" xml:space="preserve"><value>How to install the engine</value></data>
+  <data name="Studio.Diagnostics.FixFirst" xml:space="preserve"><value>Fix the first issue</value></data>
   <data name="Studio.Diagnostics.TestConnection" xml:space="preserve"><value>Test the connection</value></data>
   <data name="Studio.Diagnostics.CheckAgain" xml:space="preserve"><value>Check again</value></data>
   <data name="Studio.Diagnostics.SettingsFile" xml:space="preserve"><value>Settings file</value></data>

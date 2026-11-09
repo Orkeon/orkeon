@@ -209,9 +209,12 @@ public sealed class EmailSignInViewModel : ObservableObject
     /// <summary>The code to type on the page of a device sign-in; null in every other phase.</summary>
     public string? UserCode => _userCode;
 
-    /// <summary>"Open {page} and enter this code:", localized; null outside a device sign-in.</summary>
+    /// <summary>
+    /// "Open the authorization page below and enter this code:", localized; null outside a device
+    /// sign-in. The page itself is shown once, under the code (UX lot 04, 059).
+    /// </summary>
     public string? DeviceCodeLine => IsDeviceCode
-        ? _strings.Format(StudioStringKeys.MailDeviceCode, _address)
+        ? _strings[StudioStringKeys.MailDeviceCode]
         : null;
 
     /// <summary>Whether the device code has a known lifetime to count down.</summary>

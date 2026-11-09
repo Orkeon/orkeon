@@ -106,7 +106,7 @@ public sealed class DoctorCheckViewModel
         "llm-profile-key" => FixKeys,
         "llm-reachability" => FixTest,
         "workspace-write" => FixFolders,
-        "appsettings" => FixFile,
+        "appsettings" or "runner-settings" => FixFile,
         _ => FixAgain,
     };
 
@@ -219,6 +219,8 @@ public sealed class DiagnosticViewModel : ObservableObject
     private readonly IStudioStrings _strings;
     private readonly string? _forgeWorkspace;
     private readonly string? _teamsRoot;
+    private readonly IBrowserOpener? _browser;
+    private readonly Uri? _installGuide;
     private DoctorReport? _lastReport;
     private string? _summary;
     private string? _errorMessage;
@@ -237,12 +239,19 @@ public sealed class DiagnosticViewModel : ObservableObject
     /// The teams directory: a team moved or renamed there is found by its id, so its session is no
     /// orphan. Null consults none.
     /// </param>
+    /// <param name="browser">What opens the install guide (UX lot 04, 065); none when null.</param>
+    /// <param name="installGuide">
+    /// The https page that says how to install the engine; <see cref="InstallGuideUrl"/> when null.
+    /// No button shows while there is none, or it is not https.
+    /// </param>
     public DiagnosticViewModel(
         OrkeonProcessRunner runner,
         IUiDispatcher? dispatcher = null,
         IStudioStrings? strings = null,
         string? forgeWorkspace = null,
-        string? teamsRoot = null)
+        string? teamsRoot = null,
+        IBrowserOpener? browser = null,
+        Uri? installGuide = null)
     {
         ArgumentNullException.ThrowIfNull(runner);
 
@@ -251,6 +260,8 @@ public sealed class DiagnosticViewModel : ObservableObject
         _strings = strings ?? EnglishStudioStrings.Instance;
         _forgeWorkspace = forgeWorkspace;
         _teamsRoot = teamsRoot;
+        _browser = browser;
+        _installGuide = installGuide ?? (HttpsAddress.TryParse(InstallGuideUrl, out var page) ? page : null);
 
         // Only the verdict line re-describes on a language switch: the check names and details
         // are `orkeon doctor`'s own output and stay as the CLI printed them (STUDIO-11 decision).
@@ -261,11 +272,54 @@ public sealed class DiagnosticViewModel : ObservableObject
                 Summary = Describe(report);
                 OnPropertyChanged(nameof(VerdictHeadline));
                 OnPropertyChanged(nameof(VerdictDetail));
+                OnPropertyChanged(nameof(DangerMessage));
             }
         };
 
         RunCommand = new AsyncRelayCommand(() => RunAsync());
+        OpenInstallGuideCommand = new RelayCommand(OpenInstallGuide, () => HasInstallGuide);
     }
+
+    /// <summary>
+    /// The page that says how to install the Orkeon engine (UX lot 04, 065). Empty until the team
+    /// publishes one: the « How to install the engine » button stays hidden meanwhile.
+    /// </summary>
+    public const string InstallGuideUrl = "";
+
+    /// <summary>Opens <see cref="InstallGuideUrl"/> in the browser.</summary>
+    public RelayCommand OpenInstallGuideCommand { get; }
+
+    /// <summary>Whether an install guide can be opened: an https address, and a browser to open it in.</summary>
+    public bool HasInstallGuide => _browser is not null && HttpsAddress.Is(_installGuide);
+
+    /// <summary>
+    /// What the danger banner says to do (UX lot 04, 065): install the engine when it is missing;
+    /// nothing for an unreadable report, whose engine text sits in its technical details.
+    /// </summary>
+    public string? DangerMessage => IsEngineMissing ? _strings[StudioStringKeys.DiagEngineMissingHow] : null;
+
+    /// <summary>
+    /// Whether the verdict banner shows (UX lot 04, 043-063): one banner per state, so never under
+    /// the danger banner of a missing engine or an unreadable report.
+    /// </summary>
+    public bool ShowVerdict => HasRun && !IsEngineMissing && string.IsNullOrEmpty(ErrorMessage);
+
+    /// <summary>The first check that carries an action, failures first: what « Fix the first issue » fixes.</summary>
+    public DoctorCheckViewModel? FirstFixable => Checks.FirstOrDefault(c => c.HasFix);
+
+    private void OpenInstallGuide()
+    {
+        if (_browser is { } browser && HttpsAddress.Is(_installGuide))
+            browser.Open(_installGuide);
+    }
+
+    // Failures first, then warnings, then the rest, each group in the engine's order (UX lot 04, 064).
+    private static int Rank(DoctorStatus status) => status switch
+    {
+        DoctorStatus.Failure => 0,
+        DoctorStatus.Warning => 1,
+        _ => 2,
+    };
 
     /// <summary>
     /// The silent first run (audit 09/20, T-09): the window triggers it once at startup so
@@ -498,7 +552,7 @@ public sealed class DiagnosticViewModel : ObservableObject
             OnPropertyChanged(nameof(HasOrphanSessions));
 
             Checks.Clear();
-            foreach (var check in report.Checks)
+            foreach (var check in report.Checks.OrderBy(c => Rank(c.Status)))
                 Checks.Add(new DoctorCheckViewModel(check, _strings));
 
             _lastReport = report;
@@ -515,6 +569,9 @@ public sealed class DiagnosticViewModel : ObservableObject
             OnPropertyChanged(nameof(VerdictHeadline));
             OnPropertyChanged(nameof(VerdictDetail));
             OnPropertyChanged(nameof(IsEngineMissing));
+            OnPropertyChanged(nameof(DangerMessage));
+            OnPropertyChanged(nameof(ShowVerdict));
+            OnPropertyChanged(nameof(FirstFixable));
         });
 
         return report;

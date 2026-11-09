@@ -14,9 +14,25 @@ public partial class DiagnosticView : UserControl
     // tests the model's connection there, or runs the checks again when the fix is not Studio's.
     private void OnFixCheck(object sender, RoutedEventArgs e)
     {
-        if (sender is not FrameworkElement { DataContext: DoctorCheckViewModel check })
+        if (sender is FrameworkElement { DataContext: DoctorCheckViewModel check })
+            Fix(check);
+    }
+
+    // « Fix the first issue » (UX lot 04, 064): the first point of the list, in its order - the
+    // settings file when it is invalid, else the first check with an action - fixed as its own button does.
+    private void OnFixFirst(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is not DiagnosticViewModel diagnostic)
             return;
 
+        if (diagnostic.IsSettingsFileInvalid)
+            OpenSettingsFile();
+        else if (diagnostic.FirstFixable is { } check)
+            Fix(check);
+    }
+
+    private void Fix(DoctorCheckViewModel check)
+    {
         switch (check.FixKind)
         {
             case DoctorCheckViewModel.FixModels:
@@ -29,7 +45,7 @@ public partial class DiagnosticView : UserControl
                 OpenSettings(SettingsScreenViewModel.FoldersTab);
                 break;
             case DoctorCheckViewModel.FixFile:
-                OpenSettings(SettingsScreenViewModel.JsonTab);
+                OpenSettingsFile();
                 break;
             case DoctorCheckViewModel.FixTest:
                 if (OpenSettings(SettingsScreenViewModel.ModelTab) is { } settings)
@@ -57,7 +73,15 @@ public partial class DiagnosticView : UserControl
             test.Execute(null);
     }
 
-    private void OnOpenSettingsFile(object sender, RoutedEventArgs e) => OpenSettings(SettingsScreenViewModel.JsonTab);
+    private void OnOpenSettingsFile(object sender, RoutedEventArgs e) => OpenSettingsFile();
+
+    // The File tab is the expert's (UX lot 04, 064): the novice, who cannot see it, lands on Models -
+    // never on a tab that does not show.
+    private void OpenSettingsFile()
+    {
+        var expert = Window.GetWindow(this) is { DataContext: ViewModels.Shell.MainWindowViewModel { Mode.IsExpert: true } };
+        OpenSettings(expert ? SettingsScreenViewModel.JsonTab : SettingsScreenViewModel.ModelTab);
+    }
 
     private SettingsScreenViewModel? OpenSettings(string tab)
     {

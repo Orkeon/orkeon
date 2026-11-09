@@ -172,8 +172,9 @@ public sealed class DiagnosticVerdictTests
         var diagnostic = Create(launcher);
         await diagnostic.RunAsync(cancellationToken: TestContext.Current.CancellationToken);
 
-        Assert.Equal("The LLM profiles", diagnostic.Checks[0].FriendlyName);
-        Assert.Equal("The key of an LLM profile", diagnostic.Checks[1].FriendlyName);
+        // UX lot 04 (064): the warning comes first.
+        Assert.Equal("The key of an LLM profile", diagnostic.Checks[0].FriendlyName);
+        Assert.Equal("The LLM profiles", diagnostic.Checks[1].FriendlyName);
     }
 
     [Fact]

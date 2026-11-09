@@ -20,6 +20,14 @@
         <ItemsControl ItemsSource="{Binding Tools.Secrets}" ItemTemplate="{StaticResource KeyRowTemplate}"/>
       </StackPanel>
     </Border>
+    <!-- UX lot 04 (046, 051): each key stays by what uses it; this tab points at the other. -->
+    <DockPanel Margin="0,0,0,8">
+      <Button DockPanel.Dock="Right" Style="{StaticResource BtnGhost}" VerticalAlignment="Center" Margin="12,0,0,0"
+              Command="{Binding ShowKeysCommand}" controls:ButtonIcon.Kind="arrow-right"
+              Content="{Binding [Studio.Settings.SecretsTitle], Source={x:Static services:I18n.Instance}}"/>
+      <TextBlock Style="{StaticResource Hint}" TextWrapping="Wrap" VerticalAlignment="Center"
+                 Text="{Binding [Studio.Settings.ApiKeysElsewhere], Source={x:Static services:I18n.Instance}}"/>
+    </DockPanel>
 
   </StackPanel>
 </UserControl>

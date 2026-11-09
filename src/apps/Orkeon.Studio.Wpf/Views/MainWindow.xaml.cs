@@ -39,7 +39,12 @@ public partial class MainWindow : Window
             return;
 
         shell.CreateTeam.SessionActivated += (_, _) => NavCreate.IsChecked = true;
-        shell.CreateTeam.OpenSettingsRequested += (_, _) => NavSettings.IsChecked = true;
+        // UX lot 04 (015): the gate asks for a model, so the settings open on Models.
+        shell.CreateTeam.OpenSettingsRequested += (_, _) =>
+        {
+            shell.Settings.ShowSection(ViewModels.Config.SettingsScreenViewModel.ModelTab);
+            NavSettings.IsChecked = true;
+        };
         shell.CreateTeam.OpenDiagnosticRequested += (_, _) => NavDiag.IsChecked = true;
         shell.CreateTeam.OpenTeamRequested += (_, _) => NavTeams.IsChecked = true;
         shell.AllowedFolders.OpenSettingsRequested += (_, _) => NavSettings.IsChecked = true;
