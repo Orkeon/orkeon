@@ -10,6 +10,13 @@ namespace Orkeon.Studio.Wpf.ViewModels.Shell;
 /// <param name="Name">The language's own name, in that language («中文» for Chinese).</param>
 public sealed record LanguageOption(string Code, string Display, string Name);
 
+/// <summary>One row of the language menu: a supported language, and whether it is the one in force.</summary>
+/// <param name="Code">Two-letter code, lowercase — what the pick command receives.</param>
+/// <param name="Display">Uppercase code for the row's badge.</param>
+/// <param name="Name">The language's own name.</param>
+/// <param name="IsCurrent">True for the language in force: the row carries a check and does nothing.</param>
+public sealed record LanguageMenuOption(string Code, string Display, string Name, bool IsCurrent);
+
 /// <summary>
 /// Which language the app speaks, and how that was decided (30/08 mock, T-13/T-14).
 /// <para>
@@ -94,11 +101,12 @@ public sealed class LanguageSelectorViewModel : ObservableObject
     public bool IsExplicitChoice => _isExplicit;
 
     /// <summary>
-    /// The menu lists the OTHER languages only: the one in force is already on the button,
-    /// and offering it again is a row that does nothing.
+    /// The menu lists every supported language, the one in force included and marked: a list
+    /// that left it out read as if that language were not on offer (007).
     /// </summary>
-    public IReadOnlyList<LanguageOption> Others =>
-        [.. Supported.Where(l => !string.Equals(l.Code, _current, StringComparison.Ordinal))];
+    public IReadOnlyList<LanguageMenuOption> Options =>
+        [.. Supported.Select(l => new LanguageMenuOption(
+            l.Code, l.Display, l.Name, string.Equals(l.Code, _current, StringComparison.Ordinal)))];
 
     /// <summary>
     /// The system-or-chosen marker with the current language's name — the popup's first line. Where the
@@ -145,7 +153,7 @@ public sealed class LanguageSelectorViewModel : ObservableObject
         _persist?.Invoke(language);
         OnPropertiesChanged(
             nameof(Current), nameof(CurrentDisplay), nameof(CurrentName),
-            nameof(IsExplicitChoice), nameof(Others), nameof(MenuHeader), nameof(Tooltip));
+            nameof(IsExplicitChoice), nameof(Options), nameof(MenuHeader), nameof(Tooltip));
     }
 
     private static LanguageOption Option(string code) =>

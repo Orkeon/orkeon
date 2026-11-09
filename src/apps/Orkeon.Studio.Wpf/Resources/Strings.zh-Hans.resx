@@ -84,34 +84,22 @@
     <value>完成</value>
   </data>
   <data name="Studio.Shell.TourStep1Title" xml:space="preserve">
-    <value>两种模式，同一产品</value>
+    <value>在这里写下您的需求</value>
   </data>
   <data name="Studio.Shell.TourStep1Body" xml:space="preserve">
-    <value>新手模式解释每一步并隐藏内部机制。专家模式展示全部：命令行、日志、原始 JSON。随时切换，毫无损失。</value>
+    <value>用几句话描述您希望团队为您做什么。无需技术词汇：像对同事那样说出来即可。</value>
   </data>
   <data name="Studio.Shell.TourStep2Title" xml:space="preserve">
-    <value>一切围绕团队</value>
+    <value>助手来组建，您来试用</value>
   </data>
   <data name="Studio.Shell.TourStep2Body" xml:space="preserve">
-    <value>智能体团队是核心对象：您创建它、保有它、启动它。应用的其余部分都为它服务。</value>
+    <value>Studio 会根据您的需求提出一个智能体团队。采用之前，您可以先用一个示例试用；此步骤不会真正运行任何内容。</value>
   </data>
   <data name="Studio.Shell.TourStep3Title" xml:space="preserve">
-    <value>日常工作</value>
+    <value>在这里找到您的团队</value>
   </data>
   <data name="Studio.Shell.TourStep3Body" xml:space="preserve">
-    <value>先试再跑，执行后在历史记录中找到每一次——包含结果与原样重放所需的一切。</value>
-  </data>
-  <data name="Studio.Shell.TourStep4Title" xml:space="preserve">
-    <value>环境，一次配好</value>
-  </data>
-  <data name="Studio.Shell.TourStep4Body" xml:space="preserve">
-    <value>只有两项设置：AI 模型和智能体可见的文件夹。出现阻碍时诊断会提醒您。</value>
-  </data>
-  <data name="Studio.Shell.TourStep5Title" xml:space="preserve">
-    <value>帮助与上下文相关</value>
-  </data>
-  <data name="Studio.Shell.TourStep5Body" xml:space="preserve">
-    <value>在新手模式下，带步骤的界面（创建团队、执行）在左侧分区列表下方有一个“这一步做什么”说明框。切换到专家模式后它会隐去。</value>
+    <value>每个已采用的团队都会出现在“我的团队”中：您可以从它的卡片运行、计划或修改它。</value>
   </data>
   <!-- STUDIO-34: the status bar at the foot of the window -->
   <data name="Studio.Shell.StatusWaiting" xml:space="preserve">

@@ -98,17 +98,18 @@ public sealed class LanguageSelectionTests
     }
 
     [Fact]
-    public void The_menu_lists_the_other_languages_only()
+    public void The_menu_lists_every_language_and_marks_the_current_one()
     {
         var (vm, _, _) = Build(system: "fr");
 
-        Assert.Equal(LanguageSelectorViewModel.Supported.Count - 1, vm.Others.Count);
-        Assert.DoesNotContain(vm.Others, l => l.Code == "fr");
+        Assert.Equal(LanguageSelectorViewModel.Supported.Count, vm.Options.Count);
+        Assert.Equal("fr", Assert.Single(vm.Options, l => l.IsCurrent).Code);
 
         vm.PickCommand.Execute("de");
 
-        Assert.DoesNotContain(vm.Others, l => l.Code == "de");
-        Assert.Contains(vm.Others, l => l.Code == "fr");
+        Assert.Equal(LanguageSelectorViewModel.Supported.Count, vm.Options.Count);
+        Assert.Equal("de", Assert.Single(vm.Options, l => l.IsCurrent).Code);
+        Assert.Contains(vm.Options, l => l.Code == "fr" && !l.IsCurrent);
     }
 
     [Fact]

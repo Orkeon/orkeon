@@ -124,7 +124,7 @@ internal sealed class WpfCaptureSurface(MainWindow window, MainWindowViewModel s
     public void HideSplash() => Window.HideSplashForCapture();
 
     /// <inheritdoc />
-    public void StartTourAt(int stepIndex) => Window.Tour.Start(MainWindow.TourSteps, stepIndex);
+    public void StartTourAt(int stepIndex) => Window.Tour.Start(Window.BuildTourSteps(), stepIndex);
 
     /// <inheritdoc />
     public void EndTour() => Window.Tour.End();

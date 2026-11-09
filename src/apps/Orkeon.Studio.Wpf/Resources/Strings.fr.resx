@@ -40,16 +40,12 @@
   <data name="Studio.Shell.Next" xml:space="preserve"><value>Suivant</value></data>
   <data name="Studio.Shell.Finish" xml:space="preserve"><value>Terminer</value></data>
 
-  <data name="Studio.Shell.TourStep1Title" xml:space="preserve"><value>Deux modes, un seul produit</value></data>
-  <data name="Studio.Shell.TourStep1Body" xml:space="preserve"><value>Novice explique chaque étape et cache la machinerie. Expert montre tout : ligne de commande, journal, JSON brut. Vous basculez quand vous voulez, sans rien perdre.</value></data>
-  <data name="Studio.Shell.TourStep2Title" xml:space="preserve"><value>Tout tourne autour des équipes</value></data>
-  <data name="Studio.Shell.TourStep2Body" xml:space="preserve"><value>Une équipe d'agents est l'objet central : vous la créez, vous la gardez, vous la lancez. Le reste de l'application ne fait que servir cet objet.</value></data>
-  <data name="Studio.Shell.TourStep3Title" xml:space="preserve"><value>Le travail quotidien</value></data>
-  <data name="Studio.Shell.TourStep3Body" xml:space="preserve"><value>Essayer avant de lancer, lancer, puis retrouver chaque exécution dans l'historique — avec son résultat et de quoi la rejouer à l'identique.</value></data>
-  <data name="Studio.Shell.TourStep4Title" xml:space="preserve"><value>L'environnement, une fois pour toutes</value></data>
-  <data name="Studio.Shell.TourStep4Body" xml:space="preserve"><value>Deux choses à régler : le modèle d'IA et les dossiers autorisés aux agents. Le diagnostic vous prévient quand quelque chose bloque.</value></data>
-  <data name="Studio.Shell.TourStep5Title" xml:space="preserve"><value>L'aide est contextuelle</value></data>
-  <data name="Studio.Shell.TourStep5Body" xml:space="preserve"><value>En mode Novice, les écrans à étapes (Créer une équipe, Lancer) portent un encadré « Ce que fait cette étape » à gauche, sous la liste des sections. Il s'efface en mode Expert.</value></data>
+  <data name="Studio.Shell.TourStep1Title" xml:space="preserve"><value>Écrivez votre besoin ici</value></data>
+  <data name="Studio.Shell.TourStep1Body" xml:space="preserve"><value>Décrivez en quelques phrases ce que l'équipe doit faire pour vous. Pas de vocabulaire technique : dites-le comme à un collègue.</value></data>
+  <data name="Studio.Shell.TourStep2Title" xml:space="preserve"><value>L'assistant compose, vous essayez</value></data>
+  <data name="Studio.Shell.TourStep2Body" xml:space="preserve"><value>À partir de votre besoin, Studio propose une équipe d'agents. Vous l'essayez sur un exemple avant de l'adopter ; rien n'est lancé pour de vrai à cette étape.</value></data>
+  <data name="Studio.Shell.TourStep3Title" xml:space="preserve"><value>Retrouvez vos équipes ici</value></data>
+  <data name="Studio.Shell.TourStep3Body" xml:space="preserve"><value>Chaque équipe adoptée apparaît dans « Mes équipes » : vous la lancez, la planifiez ou la modifiez depuis sa carte.</value></data>
   <!-- STUDIO-34: the status bar at the foot of the window -->
   <data name="Studio.Shell.StatusWaiting" xml:space="preserve"><value>en attente d'une réponse</value></data>
   <data name="Studio.Shell.StatusTools" xml:space="preserve"><value>{0} {0:plural:outil|outils} : {1}</value></data>

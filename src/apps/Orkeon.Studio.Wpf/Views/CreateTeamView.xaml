@@ -370,7 +370,7 @@
            enregistré… » stood where « Adopter » should. Now the state sits right of the steps
            when the line holds both, and goes below them when it does not; a step is never cut. -->
       <WrapPanel Margin="0,16,0,20" Orientation="Horizontal">
-        <StackPanel Orientation="Horizontal" Margin="0,0,24,0" VerticalAlignment="Center">
+        <StackPanel x:Name="StepRail" Orientation="Horizontal" Margin="0,0,24,0" VerticalAlignment="Center">
           <Button Style="{StaticResource StepPill}" Command="{Binding GoStep1Command}" Tag="{Binding IsStep1}">
             <StackPanel Orientation="Horizontal">
               <Grid Width="16" Height="16" Margin="0,0,7,0" VerticalAlignment="Center">

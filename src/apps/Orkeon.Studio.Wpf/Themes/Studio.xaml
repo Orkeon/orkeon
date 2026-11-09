@@ -618,7 +618,8 @@
     </Setter>
   </Style>
 
-  <!-- One row of the language menu. -->
+  <!-- One row of the language menu. The row of the language in force is disabled (007): no
+       hand cursor, no hover. -->
   <Style x:Key="LangRow" TargetType="Button">
     <Setter Property="Cursor" Value="Hand"/>
     <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
@@ -636,6 +637,11 @@
         </ControlTemplate>
       </Setter.Value>
     </Setter>
+    <Style.Triggers>
+      <Trigger Property="IsEnabled" Value="False">
+        <Setter Property="Cursor" Value="Arrow"/>
+      </Trigger>
+    </Style.Triggers>
   </Style>
 
   <!-- ══ Inputs (T-31) ══

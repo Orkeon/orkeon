@@ -92,6 +92,9 @@ public sealed class ShellChromeViewModelTests
         Assert.Equal(["--version"], launcher.Requests[0].Arguments);
         Assert.Equal("1.0.0-rc.2", about.CliVersion);
         Assert.Equal($"Studio 1.0.0-rc.2 · CLI 1.0.0-rc.2 · .NET {Environment.Version.Major}", about.VersionLine);
+        Assert.Equal(
+            ["Studio 1.0.0-rc.2", "CLI 1.0.0-rc.2", $".NET {Environment.Version.Major}"],
+            about.VersionLines);
     }
 
     [Fact]
@@ -104,6 +107,27 @@ public sealed class ShellChromeViewModelTests
 
         Assert.Null(about.CliVersion);
         Assert.Equal($"Studio 1.0.0-rc.2 · .NET {Environment.Version.Major}", about.VersionLine);
+        Assert.Equal(["Studio 1.0.0-rc.2", $".NET {Environment.Version.Major}"], about.VersionLines);
+        Assert.Equal(string.Empty, about.CliVersionLine);
+    }
+
+    [Theory]
+    [InlineData("1.0.0-rc.6.local.202611072029", "1.0.0-rc.6")]
+    [InlineData("1.0.1-local.202611072029", "1.0.1")]
+    [InlineData("1.0.0-rc.6.local.202611072029+8377b60772dc", "1.0.0-rc.6")]
+    [InlineData("1.0.0-rc.6+8377b60772dc", "1.0.0-rc.6")]
+    [InlineData("1.0.0", "1.0.0")]
+    public void Should_ShowTheReleaseVersion_And_KeepTheRawOneForTheTooltip(string raw, string shown)
+    {
+        var about = new AboutViewModel(
+            new OrkeonProcessRunner(
+                new FakeProcessLauncher(), new OrkeonBinaryLocator(FakeExecutableProbe.WithOrkeonInstalled())),
+            dispatcher: null,
+            studioVersion: raw);
+
+        Assert.Equal(shown, about.StudioVersion);
+        Assert.Equal($"Studio {shown}", about.StudioVersionLine);
+        Assert.Equal(raw, about.FullVersion);
     }
 
     // ── the shell exposes both ──

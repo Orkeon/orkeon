@@ -40,16 +40,12 @@
   <data name="Studio.Shell.Next" xml:space="preserve"><value>Next</value></data>
   <data name="Studio.Shell.Finish" xml:space="preserve"><value>Finish</value></data>
 
-  <data name="Studio.Shell.TourStep1Title" xml:space="preserve"><value>Two modes, one product</value></data>
-  <data name="Studio.Shell.TourStep1Body" xml:space="preserve"><value>Novice explains each step and hides the machinery. Expert shows everything: command line, journal, raw JSON. Switch whenever you want — nothing is lost.</value></data>
-  <data name="Studio.Shell.TourStep2Title" xml:space="preserve"><value>Everything revolves around teams</value></data>
-  <data name="Studio.Shell.TourStep2Body" xml:space="preserve"><value>An agent team is the central object: you create it, you keep it, you launch it. The rest of the application only serves that object.</value></data>
-  <data name="Studio.Shell.TourStep3Title" xml:space="preserve"><value>The daily work</value></data>
-  <data name="Studio.Shell.TourStep3Body" xml:space="preserve"><value>Test before launching, run, then find every execution in the history — with its result and everything needed to replay it identically.</value></data>
-  <data name="Studio.Shell.TourStep4Title" xml:space="preserve"><value>The environment, once and for all</value></data>
-  <data name="Studio.Shell.TourStep4Body" xml:space="preserve"><value>Only two things to set: the AI model, and the folders your agents may see. The diagnostic warns you when something is in the way.</value></data>
-  <data name="Studio.Shell.TourStep5Title" xml:space="preserve"><value>Help is contextual</value></data>
-  <data name="Studio.Shell.TourStep5Body" xml:space="preserve"><value>In Novice mode, the step-by-step screens (Create a team, Run) carry a “What this step does” box on the left, under the list of sections. It steps aside in Expert mode.</value></data>
+  <data name="Studio.Shell.TourStep1Title" xml:space="preserve"><value>Write your need here</value></data>
+  <data name="Studio.Shell.TourStep1Body" xml:space="preserve"><value>Describe in a few sentences what the team should do for you. No technical words: say it as you would to a colleague.</value></data>
+  <data name="Studio.Shell.TourStep2Title" xml:space="preserve"><value>The assistant composes, you try it out</value></data>
+  <data name="Studio.Shell.TourStep2Body" xml:space="preserve"><value>From your need, Studio proposes a team of agents. You try it on an example before adopting it; nothing runs for real at this step.</value></data>
+  <data name="Studio.Shell.TourStep3Title" xml:space="preserve"><value>Find your teams here</value></data>
+  <data name="Studio.Shell.TourStep3Body" xml:space="preserve"><value>Every adopted team appears in “My teams”: run, schedule or modify it from its card.</value></data>
   <!-- STUDIO-34: the status bar at the foot of the window -->
   <data name="Studio.Shell.StatusWaiting" xml:space="preserve"><value>waiting for an answer</value></data>
   <data name="Studio.Shell.StatusTools" xml:space="preserve"><value>{0} tool(s): {1}</value></data>

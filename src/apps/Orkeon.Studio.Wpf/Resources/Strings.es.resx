@@ -84,34 +84,22 @@
     <value>Terminar</value>
   </data>
   <data name="Studio.Shell.TourStep1Title" xml:space="preserve">
-    <value>Dos modos, un solo producto</value>
+    <value>Escriba aquí su necesidad</value>
   </data>
   <data name="Studio.Shell.TourStep1Body" xml:space="preserve">
-    <value>Principiante explica cada paso y oculta la maquinaria. Experto lo muestra todo: línea de comandos, registro, JSON bruto. Cambie cuando quiera, sin perder nada.</value>
+    <value>Describa en pocas frases lo que el equipo debe hacer por usted. Sin vocabulario técnico: dígalo como se lo diría a un colega.</value>
   </data>
   <data name="Studio.Shell.TourStep2Title" xml:space="preserve">
-    <value>Todo gira en torno a los equipos</value>
+    <value>El asistente compone, usted prueba</value>
   </data>
   <data name="Studio.Shell.TourStep2Body" xml:space="preserve">
-    <value>Un equipo de agentes es el objeto central: usted lo crea, lo conserva, lo lanza. El resto de la aplicación solo sirve a ese objeto.</value>
+    <value>A partir de su necesidad, Studio propone un equipo de agentes. Lo prueba con un ejemplo antes de adoptarlo; en este paso no se ejecuta nada de verdad.</value>
   </data>
   <data name="Studio.Shell.TourStep3Title" xml:space="preserve">
-    <value>El trabajo diario</value>
+    <value>Encuentre aquí sus equipos</value>
   </data>
   <data name="Studio.Shell.TourStep3Body" xml:space="preserve">
-    <value>Probar antes de lanzar, ejecutar, y luego encontrar cada ejecución en el historial — con su resultado y lo necesario para repetirla idéntica.</value>
-  </data>
-  <data name="Studio.Shell.TourStep4Title" xml:space="preserve">
-    <value>El entorno, de una vez por todas</value>
-  </data>
-  <data name="Studio.Shell.TourStep4Body" xml:space="preserve">
-    <value>Solo dos ajustes: el modelo de IA y las carpetas que los agentes pueden ver. El diagnóstico le avisa cuando algo bloquea.</value>
-  </data>
-  <data name="Studio.Shell.TourStep5Title" xml:space="preserve">
-    <value>La ayuda es contextual</value>
-  </data>
-  <data name="Studio.Shell.TourStep5Body" xml:space="preserve">
-    <value>En modo Principiante, las pantallas con pasos (Crear un equipo, Ejecutar) llevan un recuadro «Lo que hace este paso» a la izquierda, bajo la lista de secciones. Desaparece en modo Experto.</value>
+    <value>Cada equipo adoptado aparece en «Mis equipos»: lo ejecuta, lo programa o lo modifica desde su tarjeta.</value>
   </data>
   <!-- STUDIO-34: the status bar at the foot of the window -->
   <data name="Studio.Shell.StatusWaiting" xml:space="preserve">

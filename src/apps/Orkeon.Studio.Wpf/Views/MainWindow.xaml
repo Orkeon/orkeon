@@ -160,25 +160,13 @@
                 <controls:LucideIcon Kind="chevron-down" Size="16" Margin="6,0,0,0" VerticalAlignment="Center"
                                      Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
                                      RenderTransformOrigin="0.5,0.5">
-                  <controls:LucideIcon.RenderTransform><RotateTransform/></controls:LucideIcon.RenderTransform>
                   <controls:LucideIcon.Style>
+                    <!-- 008: a static angle, no animation: a capture can never catch the chevron half-turned. -->
                     <Style TargetType="controls:LucideIcon" BasedOn="{StaticResource {x:Type controls:LucideIcon}}">
+                      <Setter Property="RenderTransform"><Setter.Value><RotateTransform Angle="0"/></Setter.Value></Setter>
                       <Style.Triggers>
                         <DataTrigger Binding="{Binding Language.IsMenuOpen}" Value="True">
-                          <DataTrigger.EnterActions>
-                            <BeginStoryboard>
-                              <Storyboard>
-                                <DoubleAnimation Storyboard.TargetProperty="RenderTransform.Angle" To="180" Duration="0:0:0.14"/>
-                              </Storyboard>
-                            </BeginStoryboard>
-                          </DataTrigger.EnterActions>
-                          <DataTrigger.ExitActions>
-                            <BeginStoryboard>
-                              <Storyboard>
-                                <DoubleAnimation Storyboard.TargetProperty="RenderTransform.Angle" To="0" Duration="0:0:0.14"/>
-                              </Storyboard>
-                            </BeginStoryboard>
-                          </DataTrigger.ExitActions>
+                          <Setter Property="RenderTransform"><Setter.Value><RotateTransform Angle="180"/></Setter.Value></Setter>
                         </DataTrigger>
                       </Style.Triggers>
                     </Style>
@@ -186,8 +174,9 @@
                 </controls:LucideIcon>
               </StackPanel>
             </Button>
-            <!-- R04 (A05): the menu opens under «FR», its right edge on the button's
-                 (MainWindow.PlaceLanguageMenu) — never under the mode switch. -->
+            <!-- R04 (A05), 007: the menu opens under «FR», its left edge on the button's
+                 (MainWindow.PlaceLanguageMenu), so it leaves the page actions below
+                 (« Recommencer ») uncovered; right-aligned only when the window is too narrow. -->
             <Popup x:Name="LanguagePopup" IsOpen="{Binding Language.IsMenuOpen, Mode=TwoWay}" StaysOpen="False"
                    PlacementTarget="{Binding ElementName=LanguageButton}" Placement="Custom"
                    AllowsTransparency="True" PopupAnimation="Fade">
@@ -197,21 +186,26 @@
                 <StackPanel>
                   <!-- One sentence-case line in the UI font («Langue choisie · Français»), no mono capitals. -->
                   <TextBlock Style="{StaticResource MetaText}" Padding="8,5,8,6" Text="{Binding Language.MenuHeader}"/>
-                  <ItemsControl ItemsSource="{Binding Language.Others}">
+                  <ItemsControl ItemsSource="{Binding Language.Options}">
                     <ItemsControl.ItemTemplate>
                       <DataTemplate>
                         <!-- Anchored on the ItemsControl, not on the Popup: a Popup's child
                              lives in its own visual tree, so walking up to the Popup itself
                              relies on the logical hop. The ItemsControl is an ancestor in the
                              ordinary way and carries the same inherited DataContext. -->
+                        <!-- 007: the language in force is listed too, with a check, and does nothing. -->
                         <Button Style="{StaticResource LangRow}" CommandParameter="{Binding Code}"
+                                IsEnabled="{Binding IsCurrent, Converter={StaticResource Negate}}"
                                 Command="{Binding DataContext.Language.PickCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}">
-                          <StackPanel Orientation="Horizontal">
-                            <TextBlock Style="{StaticResource MonoText}" FontSize="13" FontWeight="SemiBold" Width="20"
+                          <DockPanel LastChildFill="False">
+                            <TextBlock DockPanel.Dock="Left" Style="{StaticResource MonoText}" FontSize="13" FontWeight="SemiBold" Width="20"
                                        Foreground="{DynamicResource AccentBrush}" Text="{Binding Display}"/>
-                            <TextBlock FontSize="13" Margin="9,0,0,0" Foreground="{DynamicResource InkBrush}"
+                            <TextBlock DockPanel.Dock="Left" FontSize="13" Margin="9,0,0,0" Foreground="{DynamicResource InkBrush}"
                                        Text="{Binding Name}"/>
-                          </StackPanel>
+                            <controls:LucideIcon DockPanel.Dock="Right" Kind="check" Size="14" Margin="12,0,0,0" VerticalAlignment="Center"
+                                                 Foreground="{DynamicResource AccentBrush}"
+                                                 Visibility="{Binding IsCurrent, Converter={StaticResource BooleanToVisibility}}"/>
+                          </DockPanel>
                         </Button>
                       </DataTemplate>
                     </ItemsControl.ItemTemplate>
@@ -1514,7 +1508,20 @@
                        Text="{Binding [Studio.Shell.Eyebrow], Source={x:Static services:I18n.Instance}}"/>
             <TextBlock Text="Orkeon Studio" FontFamily="{StaticResource DisplayFont}" FontSize="24" FontWeight="SemiBold"
                        Foreground="{DynamicResource InkBrush}" Margin="0,8,0,0"/>
-            <TextBlock Style="{StaticResource MonoText}" FontSize="13" Margin="0,8,0,0" Text="{Binding About.VersionLine}"/>
+            <!-- 008: the versions one per line; the raw informational version in the Studio line's tooltip. -->
+            <ItemsControl Margin="0,8,0,0" ItemsSource="{Binding About.VersionLines}" AlternationCount="1000">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                  <TextBlock x:Name="line" Style="{StaticResource MonoText}" FontSize="13" Text="{Binding}"/>
+                  <DataTemplate.Triggers>
+                    <DataTrigger Binding="{Binding (ItemsControl.AlternationIndex), RelativeSource={RelativeSource AncestorType=ContentPresenter}}" Value="0">
+                      <Setter TargetName="line" Property="ToolTip"
+                              Value="{Binding DataContext.About.FullVersion, RelativeSource={RelativeSource AncestorType=ItemsControl}}"/>
+                    </DataTrigger>
+                  </DataTemplate.Triggers>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
             <TextBlock FontSize="13" Foreground="{DynamicResource InkMutedBrush}" TextWrapping="Wrap" LineHeight="21" Margin="0,16,0,0"
                        Text="{Binding [Studio.Shell.Line], Source={x:Static services:I18n.Instance}}"/>
             <Border Background="{DynamicResource SkyBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1"
@@ -1576,8 +1583,9 @@
             </Rectangle.Triggers>
           </Rectangle>
         </Border>
+        <!-- 001-003: the Studio version alone, in both modes; the detail stays in About. -->
         <TextBlock FontSize="13" Foreground="{DynamicResource InkFaintBrush}" HorizontalAlignment="Center" Margin="0,14,0,0"
-                   Text="{Binding About.VersionLine}"/>
+                   Text="{Binding About.StudioVersionLine}"/>
       </StackPanel>
     </Border>
 
