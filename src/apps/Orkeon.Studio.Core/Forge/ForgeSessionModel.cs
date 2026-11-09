@@ -134,8 +134,8 @@ public sealed record ForgeVerdictView(
 /// judge was unavailable and honesty demands "judge for yourself" — and the finding's
 /// wording when it did not.
 /// <para>
-/// <see cref="IsRemark"/> sets a finding the engine does not block on (major, minor) apart from
-/// a failure: the criterion carries a remark, drawn amber, never the red of a blocking finding.
+/// <see cref="IsRemark"/> sets a finding the engine does not block on (a minor one) apart from
+/// a failure: the criterion carries a remark, drawn amber, never the red of a failure.
 /// </para>
 /// </summary>
 public sealed record ForgeChecklistItem(string Statement, bool? Passed, string? Detail, bool IsRemark = false);
@@ -685,7 +685,7 @@ public sealed class ForgeSessionModel
             var orphaned = string.IsNullOrWhiteSpace(finding.Acceptance)
                 || !_criteria.Any(c => string.Equals(c.Id, finding.Acceptance, StringComparison.OrdinalIgnoreCase));
             if (orphaned)
-                items.Add(new ForgeChecklistItem(finding.Statement, false, finding.Evidence, IsRemark: !finding.IsBlocking));
+                items.Add(new ForgeChecklistItem(finding.Statement, false, finding.Evidence, IsRemark: IsRemark(finding)));
         }
 
         foreach (var criterion in _criteria)
@@ -718,10 +718,14 @@ public sealed class ForgeSessionModel
         var detail = finding.Evidence is { Length: > 0 } evidence
             ? $"{finding.Statement} — {evidence}"
             : finding.Statement;
-        // Only a blocking finding fails the criterion, the engine's own rule for « passing »;
-        // a major or minor one is a remark on it.
-        return new ForgeChecklistItem(criterion.Statement, false, detail, IsRemark: !finding.IsBlocking);
+        // UX lot 05 (019, 020): a major or blocking finding fails the criterion — the engine
+        // judges such a verdict not passing; only a minor one is a remark on a criterion met.
+        return new ForgeChecklistItem(criterion.Statement, false, detail, IsRemark: IsRemark(finding));
     }
+
+    /// <summary>Whether a finding blocks nothing — a minor one: the criterion stays met, with a remark.</summary>
+    private static bool IsRemark(ForgeFindingView f) =>
+        string.Equals(f.Severity, "minor", StringComparison.OrdinalIgnoreCase);
 
     /// <summary>The <c>id</c> of the event's <c>reference</c> object; null when there is none.</summary>
     private static string? ReadReferenceId(OrkeonEvent orkeonEvent) =>

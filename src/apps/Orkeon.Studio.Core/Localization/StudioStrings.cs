@@ -269,6 +269,8 @@ public static class StudioStringKeys
 
     /// <summary>Said in the thread when the engine stops mid-interview.</summary>
     public const string ChatSessionEnded = "Studio.Chat.SessionEnded";
+    /// <summary>UX lot 05: « Resume » on the bubble said when the engine stops mid-interview.</summary>
+    public const string ChatRestart = "Studio.Chat.Restart";
 
     /// <summary>The status line while the assistant waits on the user.</summary>
     public const string ChatStatusWaiting = "Studio.Chat.StatusWaiting";
@@ -1872,6 +1874,8 @@ public static class StudioStringKeys
 
     /// <summary>"Described" — the need tab's subtitle once typed.</summary>
     public const string WizardTabNeedDone = "Studio.Create.TabNeedDone";
+    /// <summary>UX lot 05: "Described, brief interrupted" — the need tab after the assistant stopped.</summary>
+    public const string WizardTabNeedInterrupted = "Studio.Create.TabNeedInterrupted";
 
     /// <summary>"Described, {0} questions settled" — the need tab's subtitle once the assistant asked.</summary>
     public const string WizardTabNeedDoneAnswers = "Studio.Create.TabNeedDoneAnswers";
@@ -1954,6 +1958,12 @@ public static class StudioStringKeys
     public const string WizardCompositionDraftNotSaved = "Studio.Create.CompositionDraftNotSaved";
     public const string WizardCompositionFooterDone = "Studio.Create.CompositionFooterDone";
     public const string WizardCompositionFooterRunning = "Studio.Create.CompositionFooterRunning";
+    /// <summary>UX lot 05: the composition pane's footer when the definition is not valid.</summary>
+    public const string WizardCompositionFooterInvalid = "Studio.Create.CompositionFooterInvalid";
+    /// <summary>UX lot 05: the composition pane's footer when the composition stopped unchecked.</summary>
+    public const string WizardCompositionFooterStopped = "Studio.Create.CompositionFooterStopped";
+    /// <summary>UX lot 05: the Expert's pointer to the technical journal under the composition tab.</summary>
+    public const string WizardCompositionSubExpert = "Studio.Create.CompositionSubExpert";
     public const string WizardMoreTools = "Studio.Create.MoreTools";
 
     /// <summary>"No instruction yet."</summary>
@@ -2578,12 +2588,18 @@ public static class StudioStringKeys
 
     /// <summary>"{0} folder(s) to choose before the trial." — the step-2 action bar.</summary>
     public const string WizardFoldersToChoose = "Studio.Create.FoldersToChoose";
+    /// <summary>UX lot 05: "Available after the composition." — the disabled « Try the team »'s reason.</summary>
+    public const string WizardTryTeamNoProposal = "Studio.Create.TryTeamNoProposal";
 
     /// <summary>"Composed and validated — nothing has run yet." — the step-2 action bar at the pause.</summary>
     public const string WizardPausedHint = "Studio.Create.PausedHint";
 
     /// <summary>"{0} of {1} criteria met" — the verdict's summary sentence.</summary>
     public const string WizardVerdictSummary = "Studio.Create.VerdictSummary";
+    /// <summary>UX lot 05: "Ready to adopt" — the verdict's header when the engine says passing.</summary>
+    public const string WizardVerdictReady = "Studio.Create.VerdictReady";
+    /// <summary>UX lot 05: "To fix: {0} points" — the verdict's header when it does not pass.</summary>
+    public const string WizardVerdictToFix = "Studio.Create.VerdictToFix";
 
     /// <summary>"Attempt {0}"</summary>
     public const string ForgeAttempt = "Studio.Create.Attempt";
@@ -2603,6 +2619,8 @@ public static class StudioStringKeys
 
     /// <summary>"The orkeon engine was not found on this machine."</summary>
     public const string WizardFailureEngineMissing = "Studio.Create.FailureEngineMissing";
+    /// <summary>UX lot 05: the missing engine's action sentence, as on the diagnostic.</summary>
+    public const string WizardFailureEngineMissingHow = "Studio.Create.FailureEngineMissingHow";
 
     /// <summary>"The engine refused to go on."</summary>
     public const string WizardFailureConfigRefused = "Studio.Create.FailureConfigRefused";
@@ -2753,6 +2771,12 @@ public static class StudioStringKeys
 
     /// <summary>The tooltip of the header button before adoption: the working session opens.</summary>
     public const string WizardOpenFolderSession = "Studio.Create.OpenFolderSession";
+    /// <summary>UX lot 05: why « Open the folder » is greyed — no session folder yet.</summary>
+    public const string WizardOpenFolderLater = "Studio.Create.OpenFolderLater";
+    /// <summary>UX lot 05: "{0} (default)" — the step-4 model line when the team follows the default.</summary>
+    public const string WizardAdoptModelDefault = "Studio.Create.AdoptModelDefault";
+    /// <summary>UX lot 05: under a new team's name — it is also the folder's name.</summary>
+    public const string WizardNameIsFolder = "Studio.Create.NameIsFolder";
 
     /// <summary>The tooltip of the header button after adoption: the team folder opens.</summary>
     public const string WizardOpenFolderTeam = "Studio.Create.OpenFolderTeam";
@@ -3079,6 +3103,7 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.ChatStatusMessagesPattern] = "{0} message(s)",
         [StudioStringKeys.ChatStatusNoQuestion] = "no question yet",
         [StudioStringKeys.ChatSessionEnded] = "The assistant stopped before the brief was finished. Start again when you are ready.",
+        [StudioStringKeys.ChatRestart] = "Resume",
         [StudioStringKeys.ChatPlaceholderAnswer] = "Answer the assistant…",
         [StudioStringKeys.ChatStatusWaiting] = "waiting for your answer",
         [StudioStringKeys.ChatRecapProgressPattern] = "{0} / {1}",
@@ -3641,7 +3666,7 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.WizardActivityFailed] = "{0} — failed",
         [StudioStringKeys.WizardHintDescribe] = "Describe the work to continue.",
         [StudioStringKeys.WizardHintAssistant] = "Choose a model for the assistant first.",
-        [StudioStringKeys.WizardHintReady] = "Everything is there — I can compose the team.",
+        [StudioStringKeys.WizardHintReady] = "Ready: you can compose the team.",
         [StudioStringKeys.WizardHintComposing] = "Composition under way: the assistant prepares the team.",
         [StudioStringKeys.ChatStatusWaitingCard] = "waiting for you",
         [StudioStringKeys.WizardComposeBusyTip] = "Composition under way",
@@ -3652,6 +3677,7 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.WizardHintConfirmFolders] = "Confirm the folders to move on to the composition.",
         [StudioStringKeys.WizardHintDecide] = "Settle the choice in the conversation to continue.",
         [StudioStringKeys.WizardTabNeedDone] = "Described",
+        [StudioStringKeys.WizardTabNeedInterrupted] = "Described, brief interrupted",
         [StudioStringKeys.WizardTabNeedDoneAnswers] = "Described, {0} {0:plural:question settled|questions settled}",
         [StudioStringKeys.WizardTabNeedEmpty] = "To describe",
         [StudioStringKeys.WizardTabNeedEmptyFooter] = "Need not described yet.",
@@ -3697,6 +3723,9 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.WizardCompositionDraftNotSaved] = "not saved yet",
         [StudioStringKeys.WizardCompositionFooterDone] = "Composition finished.",
         [StudioStringKeys.WizardCompositionFooterRunning] = "Composition under way.",
+        [StudioStringKeys.WizardCompositionFooterInvalid] = "Composition to fix: the definition is not valid.",
+        [StudioStringKeys.WizardCompositionFooterStopped] = "Composition stopped.",
+        [StudioStringKeys.WizardCompositionSubExpert] = "The full detail is in the technical journal below.",
         [StudioStringKeys.WizardMoreTools] = "+ {0}",
         [StudioStringKeys.WizardTabNotesFooterEmpty] = "No instruction yet.",
         [StudioStringKeys.WizardTabNotesFooterTaken] = "Instruction taken as written.",
@@ -3908,8 +3937,11 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.WizardDraftSavedAt] = "Draft saved at {0}",
         [StudioStringKeys.WizardResumeUnavailable] = "This session can no longer be resumed here: start over, or look for it under Sessions underway in My teams.",
         [StudioStringKeys.WizardFoldersToChoose] = "{0} {0:plural:folder|folders} to choose before the trial.",
+        [StudioStringKeys.WizardTryTeamNoProposal] = "Available after the composition.",
         [StudioStringKeys.WizardPausedHint] = "Team composed — you can try it.",
         [StudioStringKeys.WizardVerdictSummary] = "{0} of {1} {1:plural:criterion|criteria} met",
+        [StudioStringKeys.WizardVerdictReady] = "Ready to adopt",
+        [StudioStringKeys.WizardVerdictToFix] = "To fix: {0} {0:plural:point|points}",
         [StudioStringKeys.ForgeAttempt] = "Attempt {0}",
         [StudioStringKeys.ForgeCheckUnverified] = "I could not check this automatically — judge for yourself.",
         [StudioStringKeys.ForgeResultScore] = "The try is done (score {0}).",
@@ -3917,6 +3949,7 @@ public sealed class EnglishStudioStrings : IStudioStrings
 
         // STUDIO-13: the wizard's failure card, one headline per family
         [StudioStringKeys.WizardFailureEngineMissing] = "The orkeon engine was not found on this machine.",
+        [StudioStringKeys.WizardFailureEngineMissingHow] = "Install the Orkeon engine, then run the diagnostic again.",
         [StudioStringKeys.WizardFailureConfigRefused] = "The engine refused to go on.",
         [StudioStringKeys.WizardFailureEngineStopped] = "The engine stopped (exit code {0}).",
         [StudioStringKeys.WizardFailureUnknown] = "Something went wrong before the engine could answer.",
@@ -3965,6 +3998,9 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.WizardDefaultOutputPurpose] = "Where the team writes its results.",
         [StudioStringKeys.WizardOpenFolder] = "Open the folder",
         [StudioStringKeys.WizardOpenFolderSession] = "Opens the working session — the folder the assistant is writing in.",
+        [StudioStringKeys.WizardOpenFolderLater] = "Available after the composition: the session folder does not exist yet.",
+        [StudioStringKeys.WizardAdoptModelDefault] = "{0} (default)",
+        [StudioStringKeys.WizardNameIsFolder] = "The name is also the folder's name.",
         [StudioStringKeys.WizardOpenFolderTeam] = "Opens the folder of the adopted team.",
 
         // STUDIO-39: the use-case gallery

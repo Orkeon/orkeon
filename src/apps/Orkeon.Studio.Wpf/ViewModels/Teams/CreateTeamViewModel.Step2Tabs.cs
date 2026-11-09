@@ -197,7 +197,7 @@ public sealed partial class CreateTeamViewModel
     /// </summary>
     public string CompositionTabState =>
         IsComposing ? TabWorking
-        : _model.FinishedStatus is null ? TabEmpty
+        : _model.FinishedStatus is null && !HasProposal ? TabEmpty
         : ValidationOk switch
         {
             true => TabDone,
@@ -211,7 +211,7 @@ public sealed partial class CreateTeamViewModel
     /// </summary>
     public string CompositionTabSubtitle =>
         IsComposing ? _strings[StudioStringKeys.WizardTabCompositionRunning]
-        : _model.FinishedStatus is null ? _strings[StudioStringKeys.WizardTabCompositionNone]
+        : _model.FinishedStatus is null && !HasProposal ? _strings[StudioStringKeys.WizardTabCompositionNone]
         : _strings.Format(
             ValidationOk switch
             {
@@ -256,10 +256,18 @@ public sealed partial class CreateTeamViewModel
         }
     }
 
-    /// <summary>The composition pane's footer.</summary>
-    public string CompositionFooter => _strings[IsComposing
-        ? StudioStringKeys.WizardCompositionFooterRunning
-        : StudioStringKeys.WizardCompositionFooterDone];
+    /// <summary>
+    /// The composition pane's footer, on the « State » row's scale (UX lot 05, 017): under way,
+    /// finished when the definition holds, to fix when it does not, stopped when unchecked.
+    /// </summary>
+    public string CompositionFooter => _strings[
+        IsComposing ? StudioStringKeys.WizardCompositionFooterRunning
+        : ValidationOk switch
+        {
+            true => StudioStringKeys.WizardCompositionFooterDone,
+            false => StudioStringKeys.WizardCompositionFooterInvalid,
+            null => StudioStringKeys.WizardCompositionFooterStopped,
+        }];
 
     /// <summary>Whether the composition pane has anything to report.</summary>
     public bool IsCompositionTabEmpty => !HasComposition;
@@ -270,9 +278,13 @@ public sealed partial class CreateTeamViewModel
     /// </summary>
     public bool CanTryTeamNow => CanTryTeam && !HasFoldersToChoose;
 
-    /// <summary>The disabled « Try the team → »'s reason; empty when it runs.</summary>
-    public string TryTeamTip => CanTryTeam && HasFoldersToChoose
-        ? _strings.Format(StudioStringKeys.WizardFoldersToChoose, FoldersToChooseCount)
+    /// <summary>
+    /// The disabled « Try the team → »'s reason — the folders left to choose, else that the
+    /// composition comes first (UX lot 05, 021); empty when it runs. The button always stands.
+    /// </summary>
+    public string TryTeamTip =>
+        HasFoldersToChoose ? _strings.Format(StudioStringKeys.WizardFoldersToChoose, FoldersToChooseCount)
+        : !CanTryTeam ? _strings[StudioStringKeys.WizardTryTeamNoProposal]
         : string.Empty;
 
     /// <summary>Whether the action bar has a sentence — its dot shows with it.</summary>

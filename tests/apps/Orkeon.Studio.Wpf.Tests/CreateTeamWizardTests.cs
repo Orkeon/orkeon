@@ -150,7 +150,7 @@ public partial class CreateTeamWizardTests
         Assert.True(raised);
         Assert.True(vm.CanCompose);
         Assert.True(vm.ComposeCommand.CanExecute(null));
-        Assert.Equal("Everything is there — I can compose the team.", vm.Step1Hint);
+        Assert.Equal("Ready: you can compose the team.", vm.Step1Hint);
 
         // Blank is not a need.
         vm.Need = "   ";
@@ -254,7 +254,7 @@ public partial class CreateTeamWizardTests
         ]);
 
         FillStepOne(vm);
-        Assert.Equal("Everything is there — I can compose the team.", vm.Step1Hint);
+        Assert.Equal("Ready: you can compose the team.", vm.Step1Hint);
         await Compose(vm);
 
         // The brief is the need, verbatim: no precision sentence rides along any more (STUDIO-45)…
@@ -493,10 +493,14 @@ public partial class CreateTeamWizardTests
             var team = TeamCatalog.Describe(teamDir);
             await vm.ReopenTeamAsync(team);
 
-            // The wizard reopened at Composer with the whole stepper reachable and the
-            // adoption fields seeded from the sidecar.
+            // The wizard reopened at Composer with the adoption fields seeded from the sidecar.
+            // UX lot 05 (021): a folder is still to choose, so the stepper stops at step 2 — « Try »
+            // is not checked — and the step opens on its folders tab.
             Assert.Equal(2, vm.Step);
-            Assert.Equal(4, vm.MaxStep);
+            Assert.True(vm.HasFoldersToChoose);
+            Assert.Equal(2, vm.MaxStep);
+            Assert.False(vm.IsStep3Done);
+            Assert.Equal(CreateTeamViewModel.Step2FoldersTab, vm.Step2TabIndex);
             Assert.Equal("Veille docs", vm.TeamName);
             Assert.Equal("Local", vm.AdoptProfileName);
             Assert.Equal(1, vm.ScheduleChoice);

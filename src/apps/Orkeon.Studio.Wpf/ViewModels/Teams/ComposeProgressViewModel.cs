@@ -87,6 +87,12 @@ public sealed class ComposeProgressViewModel : ObservableObject
     /// <summary>Whether the engine is working — the only state in which the spinner turns.</summary>
     public bool IsWorking => _reading.EngineRunning && !_reading.WaitingOnUser && !_reading.Finished;
 
+    /// <summary>
+    /// Whether the composition is over or the engine gone — the card would only say « Stopped. »;
+    /// step 3 hides it then, unless a trial runs (UX lot 05, 020).
+    /// </summary>
+    public bool IsIdle => _reading.Finished || !_reading.EngineRunning;
+
     /// <summary>Whether the engine is alive and waiting on you rather than on itself.</summary>
     public bool IsWaiting => _reading.EngineRunning && _reading.WaitingOnUser;
 
@@ -213,7 +219,7 @@ public sealed class ComposeProgressViewModel : ObservableObject
     }
 
     private void RaiseAll() => OnPropertiesChanged(
-        nameof(IsVisible), nameof(IsWorking), nameof(IsWaiting), nameof(Title), nameof(Detail),
+        nameof(IsVisible), nameof(IsIdle), nameof(IsWorking), nameof(IsWaiting), nameof(Title), nameof(Detail),
         nameof(TokensUp), nameof(TokensDown), nameof(HasTokens), nameof(TokensEstimated),
         nameof(TokensNote), nameof(TokensUpLabel), nameof(TokensDownLabel),
         nameof(Facts), nameof(HasFacts), nameof(IsEngineRunning), nameof(TokensRemaining), nameof(WaitPhrase));

@@ -518,7 +518,7 @@
 <data name="Studio.Create.ActivityFailed" xml:space="preserve"><value>{0} — en échec</value></data>
 <data name="Studio.Create.HintDescribe" xml:space="preserve"><value>Décrivez le travail pour continuer.</value></data>
 <data name="Studio.Create.HintAssistant" xml:space="preserve"><value>Choisissez d'abord un modèle pour l'assistant.</value></data>
-<data name="Studio.Create.HintReady" xml:space="preserve"><value>Tout est là — je peux composer l'équipe.</value></data>
+<data name="Studio.Create.HintReady" xml:space="preserve"><value>Prêt : vous pouvez composer l'équipe.</value></data>
 <data name="Studio.Create.DecisionAccept" xml:space="preserve"><value>Ça me va</value></data>
   <data name="Studio.Create.DecisionRetry" xml:space="preserve"><value>Refaire un essai</value></data>
 <data name="Studio.Create.DecisionRefine" xml:space="preserve"><value>Corriger et réessayer</value></data>
@@ -905,7 +905,7 @@
   <data name="Studio.Create.HelpTitle" xml:space="preserve"><value>Ce que fait cette étape</value></data>
   <data name="Studio.Create.HelpStep1" xml:space="preserve"><value>Décrivez le besoin avec vos mots — les dossiers à lire, le résultat attendu, la fréquence. L'assistant pose ses questions jusqu'à ce que le brief soit clair ; rien ne s'exécute encore sur votre machine.</value></data>
   <data name="Studio.Create.HelpStep2" xml:space="preserve"><value>L'assistant propose une équipe : un agent par tâche, chacun avec les seules capacités nécessaires. Vous pouvez modifier un agent, en ajouter un, et choisir les dossiers que l'équipe verra une fois adoptée.</value></data>
-  <data name="Studio.Create.HelpStep3" xml:space="preserve"><value>L'équipe répète sur un exemple, dans son bac à sable — rien d'autre n'est touché. Le verdict vous dit honnêtement si le résultat correspond à ce que vous avez demandé à l'étape 1.</value></data>
+  <data name="Studio.Create.HelpStep3" xml:space="preserve"><value>L'équipe répète sur un exemple, dans son bac à sable — rien d'autre n'est touché. Le verdict vous dit si le résultat correspond à ce que vous avez demandé à l'étape 1.</value></data>
   <data name="Studio.Create.HelpStep4" xml:space="preserve"><value>Adopter range l'équipe dans un dossier ordinaire de votre profil. Si vous avez choisi une planification, Studio propose ensuite de l'installer dans le planificateur de votre système ; l'équipe apparaît dans Mes équipes.</value></data>
   <data name="Studio.Settings.NoviceEmpty" xml:space="preserve"><value>Aucun dossier n'est encore autorisé : les agents ne voient aucun des vôtres. Une équipe qui ne lit ni n'écrit de fichier n'en a pas besoin, et les dossiers propres à une équipe voyagent avec elle.</value></data>
   <data name="Studio.Settings.NotSavedWriteFailed" xml:space="preserve"><value>Non enregistré — le fichier n'a pas pu être écrit : {0}</value></data>
@@ -1016,6 +1016,7 @@
   <data name="Studio.Chat.SessionEnded" xml:space="preserve">
     <value>L'assistant s'est arrêté avant la fin du brief. Relancez quand vous voulez.</value>
   </data>
+  <data name="Studio.Chat.Restart" xml:space="preserve"><value>Reprendre</value></data>
   <data name="Studio.Create.HintComposing" xml:space="preserve">
     <value>Composition en cours : l'assistant prépare l'équipe.</value>
   </data>
@@ -1407,8 +1408,10 @@
     <value>La copie tourne sur le modèle par défaut : {0} n'a pas pu être copié.</value>
   </data>
   <data name="Studio.Create.RenameHint" xml:space="preserve">
-    <value>Pour renommer le dossier, utilisez Renommer dans Mes équipes.</value>
+    <value>Ici, seul le titre change. « Renommer » dans Mes équipes renomme aussi le dossier.</value>
   </data>
+  <data name="Studio.Create.AdoptModelDefault" xml:space="preserve"><value>{0} (par défaut)</value></data>
+  <data name="Studio.Create.NameIsFolder" xml:space="preserve"><value>Le nom sert aussi de nom de dossier.</value></data>
   <!-- STUDIO-32: My teams — the search, the order, the Archives view, the archive gestures and their undo banner, the archive suggestion and its Settings › Studio card -->
   <data name="Studio.Teams.SearchHint" xml:space="preserve">
     <value>Rechercher par nom ou par besoin</value>
@@ -1620,6 +1623,7 @@
   <data name="Studio.Create.FailureEngineMissing" xml:space="preserve">
     <value>Le moteur Orkeon est introuvable sur cette machine.</value>
   </data>
+  <data name="Studio.Create.FailureEngineMissingHow" xml:space="preserve"><value>Installez le moteur Orkeon, puis relancez le diagnostic.</value></data>
   <data name="Studio.Create.FailureConfigRefused" xml:space="preserve">
     <value>Le moteur a refusé de continuer.</value>
   </data>
@@ -1676,6 +1680,7 @@
   <data name="Studio.Create.OpenFolderSession" xml:space="preserve">
     <value>Ouvre la session de travail — le dossier où l'assistant écrit.</value>
   </data>
+  <data name="Studio.Create.OpenFolderLater" xml:space="preserve"><value>Disponible après la composition : le dossier de la session n'existe pas encore.</value></data>
   <data name="Studio.Create.OpenFolderTeam" xml:space="preserve">
     <value>Ouvre le dossier de l'équipe adoptée.</value>
   </data>
@@ -2074,7 +2079,10 @@
   <data name="Studio.Create.DraftSavedAt" xml:space="preserve"><value>Brouillon enregistré à {0}</value></data>
   <data name="Studio.Create.ResumeUnavailable" xml:space="preserve"><value>Cette session ne peut plus être reprise ici : recommencez, ou retrouvez-la sous « Créations en cours » dans Mes équipes.</value></data>
   <data name="Studio.Create.FoldersToChoose" xml:space="preserve"><value>{0} {0:plural:dossier|dossiers} à choisir avant l'essai.</value></data>
+  <data name="Studio.Create.TryTeamNoProposal" xml:space="preserve"><value>Disponible après la composition.</value></data>
   <data name="Studio.Create.VerdictSummary" xml:space="preserve"><value>{0} {0:plural:critère atteint|critères atteints} sur {1}</value></data>
+  <data name="Studio.Create.VerdictReady" xml:space="preserve"><value>Prêt à adopter</value></data>
+  <data name="Studio.Create.VerdictToFix" xml:space="preserve"><value>À corriger : {0} {0:plural:point|points}</value></data>
   <data name="Studio.Create.ScreenSub" xml:space="preserve"><value>Rien n'est écrit sur votre machine avant l'adoption.</value></data>
   <data name="Studio.Create.Back" xml:space="preserve"><value>Retour</value></data>
   <data name="Studio.Create.Resume" xml:space="preserve"><value>Reprendre</value></data>
@@ -2348,6 +2356,7 @@
   <data name="Studio.Create.HintConfirmFolders" xml:space="preserve"><value>Confirmez les dossiers pour passer à la composition.</value></data>
   <data name="Studio.Create.HintDecide" xml:space="preserve"><value>Tranchez le choix dans la conversation pour continuer.</value></data>
   <data name="Studio.Create.TabNeedDone" xml:space="preserve"><value>Décrit</value></data>
+  <data name="Studio.Create.TabNeedInterrupted" xml:space="preserve"><value>Décrit, brief interrompu</value></data>
   <data name="Studio.Create.TabNeedDoneAnswers" xml:space="preserve">
     <value>Décrit, {0} {0:plural:question réglée|questions réglées}</value>
   </data>
@@ -2455,6 +2464,8 @@
   <data name="Studio.Create.CompositionFooterRunning" xml:space="preserve">
     <value>Composition en cours.</value>
   </data>
+  <data name="Studio.Create.CompositionFooterInvalid" xml:space="preserve"><value>Composition à corriger : la définition n'est pas valide.</value></data>
+  <data name="Studio.Create.CompositionFooterStopped" xml:space="preserve"><value>Composition arrêtée.</value></data>
   <data name="Studio.Create.MoreTools" xml:space="preserve">
     <value>+ {0}</value>
   </data>
@@ -2513,8 +2524,9 @@
     <value>Composition par le moteur</value>
   </data>
   <data name="Studio.Create.CompositionSub" xml:space="preserve">
-    <value>Ce que le moteur a fait pour produire cette proposition. Lecture seule ; le détail complet est dans le Journal technique.</value>
+    <value>Ce que le moteur a fait pour produire cette proposition. Lecture seule.</value>
   </data>
+  <data name="Studio.Create.CompositionSubExpert" xml:space="preserve"><value>Le détail complet est dans le Journal technique, ci-dessous.</value></data>
   <data name="Studio.Create.FieldState" xml:space="preserve">
     <value>État</value>
   </data>

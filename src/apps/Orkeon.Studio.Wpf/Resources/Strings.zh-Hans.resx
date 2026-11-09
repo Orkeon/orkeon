@@ -1404,7 +1404,7 @@
     <value>请先为助手选择一个模型。</value>
   </data>
   <data name="Studio.Create.HintReady" xml:space="preserve">
-    <value>信息齐全——我可以组建团队了。</value>
+    <value>就绪：您可以组建团队了。</value>
   </data>
   <data name="Studio.Create.DecisionAccept" xml:space="preserve">
     <value>可以</value>
@@ -2493,7 +2493,7 @@
     <value>助手会提出一个团队：每项任务一个智能体，各自只拥有必需的能力。您可以修改某个智能体、新增一个，并选择团队被采纳后能看到哪些文件夹。</value>
   </data>
   <data name="Studio.Create.HelpStep3" xml:space="preserve">
-    <value>团队会在自己的沙箱里用一个样例排练——沙箱之外的一切都不会被触碰。结论会如实告诉您结果是否符合您在第 1 步提出的要求。</value>
+    <value>团队在自己的沙箱里用一个样例排练——其他一切都不会被触碰。结论会告诉您结果是否符合您在第 1 步提出的要求。</value>
   </data>
   <data name="Studio.Create.HelpStep4" xml:space="preserve">
     <value>采纳会把团队保存为您个人目录下的一个普通文件夹。如果您选择了排程，Studio 随后会提议把它安装到系统的计划程序中；团队会出现在「我的团队」中。</value>
@@ -2617,6 +2617,7 @@
   <data name="Studio.Chat.SessionEnded" xml:space="preserve">
     <value>助手在完成简报前中断了。您可以随时重新开始。</value>
   </data>
+  <data name="Studio.Chat.Restart" xml:space="preserve"><value>继续</value></data>
   <data name="Studio.Create.HintComposing" xml:space="preserve">
     <value>正在组建：助手正在准备团队。</value>
   </data>
@@ -3008,8 +3009,10 @@
     <value>副本将使用默认设置运行：无法复制 {0}。</value>
   </data>
   <data name="Studio.Create.RenameHint" xml:space="preserve">
-    <value>要重命名文件夹，请在“我的团队”中使用“重命名”。</value>
+    <value>此处只更改标题。“我的团队”中的“重命名”也会重命名文件夹。</value>
   </data>
+  <data name="Studio.Create.AdoptModelDefault" xml:space="preserve"><value>{0}（默认）</value></data>
+  <data name="Studio.Create.NameIsFolder" xml:space="preserve"><value>名称同时用作文件夹名称。</value></data>
   <!-- STUDIO-32: My teams — the search, the order, the Archives view, the archive gestures and their undo banner, the archive suggestion and its Settings › Studio card -->
   <data name="Studio.Teams.SearchHint" xml:space="preserve">
     <value>按名称或需求搜索团队…</value>
@@ -3221,6 +3224,7 @@
   <data name="Studio.Create.FailureEngineMissing" xml:space="preserve">
     <value>在这台机器上找不到 orkeon 引擎。</value>
   </data>
+  <data name="Studio.Create.FailureEngineMissingHow" xml:space="preserve"><value>请安装 Orkeon 引擎，然后重新运行诊断。</value></data>
   <data name="Studio.Create.FailureConfigRefused" xml:space="preserve">
     <value>引擎拒绝继续。</value>
   </data>
@@ -3295,6 +3299,7 @@
   <data name="Studio.Create.OpenFolderSession" xml:space="preserve">
     <value>打开工作会话——助手正在写入的文件夹。</value>
   </data>
+  <data name="Studio.Create.OpenFolderLater" xml:space="preserve"><value>组建完成后可用：会话文件夹尚不存在。</value></data>
   <data name="Studio.Create.OpenFolderTeam" xml:space="preserve">
     <value>打开已采纳团队的文件夹。</value>
   </data>
@@ -3775,7 +3780,10 @@
   <data name="Studio.Create.DraftSavedAt" xml:space="preserve"><value>草稿已于 {0} 保存</value></data>
   <data name="Studio.Create.ResumeUnavailable" xml:space="preserve"><value>此会话无法在此继续：请重新开始，或在「我的团队」的「进行中的会话」中找到它。</value></data>
   <data name="Studio.Create.FoldersToChoose" xml:space="preserve"><value>试运行前还需选择 {0} 个文件夹。</value></data>
+  <data name="Studio.Create.TryTeamNoProposal" xml:space="preserve"><value>组建完成后可用。</value></data>
   <data name="Studio.Create.VerdictSummary" xml:space="preserve"><value>{1} 项标准中已满足 {0} 项</value></data>
+  <data name="Studio.Create.VerdictReady" xml:space="preserve"><value>可以采用</value></data>
+  <data name="Studio.Create.VerdictToFix" xml:space="preserve"><value>待修正：{0} 项</value></data>
   <data name="Studio.Create.ScreenSub" xml:space="preserve"><value>采用之前，不会向您的计算机写入任何内容。</value></data>
   <data name="Studio.Create.Back" xml:space="preserve"><value>返回</value></data>
   <data name="Studio.Create.Resume" xml:space="preserve"><value>继续</value></data>
@@ -4052,6 +4060,7 @@
   <data name="Studio.Create.HintConfirmFolders" xml:space="preserve"><value>确认文件夹以进入组建。</value></data>
   <data name="Studio.Create.HintDecide" xml:space="preserve"><value>在对话中做出选择以继续。</value></data>
   <data name="Studio.Create.TabNeedDone" xml:space="preserve"><value>已描述</value></data>
+  <data name="Studio.Create.TabNeedInterrupted" xml:space="preserve"><value>已描述，需求简报中断</value></data>
   <data name="Studio.Create.TabNeedDoneAnswers" xml:space="preserve">
     <value>已描述，已解决 {0} 个问题</value>
   </data>
@@ -4159,6 +4168,8 @@
   <data name="Studio.Create.CompositionFooterRunning" xml:space="preserve">
     <value>组建进行中。</value>
   </data>
+  <data name="Studio.Create.CompositionFooterInvalid" xml:space="preserve"><value>组建需修正：定义无效。</value></data>
+  <data name="Studio.Create.CompositionFooterStopped" xml:space="preserve"><value>组建已停止。</value></data>
   <data name="Studio.Create.MoreTools" xml:space="preserve">
     <value>+ {0}</value>
   </data>
@@ -4217,8 +4228,9 @@
     <value>引擎的组建</value>
   </data>
   <data name="Studio.Create.CompositionSub" xml:space="preserve">
-    <value>引擎为生成此提议所做的工作。只读；完整细节见技术日志。</value>
+    <value>引擎为生成此提议所做的工作。只读。</value>
   </data>
+  <data name="Studio.Create.CompositionSubExpert" xml:space="preserve"><value>完整细节见下方的技术日志。</value></data>
   <data name="Studio.Create.FieldState" xml:space="preserve">
     <value>状态</value>
   </data>

@@ -283,7 +283,9 @@ public sealed class UseCaseGalleryViewModel : ObservableObject
         private set
         {
             if (SetProperty(ref _failure, value))
-                OnPropertiesChanged(nameof(HasFailure), nameof(IsEngineMissing), nameof(FailureOffersDiagnostic));
+                OnPropertiesChanged(
+                    nameof(HasFailure), nameof(IsEngineMissing), nameof(FailureOffersDiagnostic),
+                    nameof(FailureOffersDiagnosticSecondary));
         }
     }
 
@@ -296,6 +298,12 @@ public sealed class UseCaseGalleryViewModel : ObservableObject
     /// <summary>Whether the card offers the diagnostic — the doctor names what is missing.</summary>
     public bool FailureOffersDiagnostic =>
         _failure?.Kind is WizardFailureKind.EngineMissing or WizardFailureKind.EngineStopped;
+
+    /// <summary>
+    /// Whether « Open the diagnostic » stands as a secondary — a missing engine makes it the card's
+    /// one primary (UX lot 05, 071).
+    /// </summary>
+    public bool FailureOffersDiagnosticSecondary => FailureOffersDiagnostic && !IsEngineMissing;
 
     /// <summary>Closes the panel; the filters stay for the next opening.</summary>
     public RelayCommand CloseCommand { get; }

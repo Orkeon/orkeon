@@ -1404,7 +1404,7 @@
     <value>Wählen Sie zuerst ein Modell für den Assistenten.</value>
   </data>
   <data name="Studio.Create.HintReady" xml:space="preserve">
-    <value>Alles da — ich kann das Team zusammenstellen.</value>
+    <value>Bereit: Sie können das Team zusammenstellen.</value>
   </data>
   <data name="Studio.Create.DecisionAccept" xml:space="preserve">
     <value>Passt für mich</value>
@@ -2493,7 +2493,7 @@
     <value>Der Assistent schlägt ein Team vor: ein Agent pro Aufgabe, jeder nur mit den nötigen Fähigkeiten. Sie können einen Agenten bearbeiten, einen hinzufügen und wählen, welche Ordner das Team nach der Übernahme sieht.</value>
   </data>
   <data name="Studio.Create.HelpStep3" xml:space="preserve">
-    <value>Das Team probt an einem Beispiel, in seiner eigenen Sandbox — nichts außerhalb wird berührt. Das Urteil sagt Ihnen ehrlich, ob das Ergebnis dem entspricht, was Sie in Schritt 1 verlangt haben.</value>
+    <value>Das Team probt an einem Beispiel, in seiner Sandbox — nichts anderes wird berührt. Das Urteil sagt Ihnen, ob das Ergebnis dem entspricht, was Sie in Schritt 1 verlangt haben.</value>
   </data>
   <data name="Studio.Create.HelpStep4" xml:space="preserve">
     <value>Die Übernahme legt das Team als gewöhnlichen Ordner in Ihrem Profil ab. Haben Sie eine Zeitplanung gewählt, bietet Studio danach an, sie in der Aufgabenplanung Ihres Systems zu installieren; das Team erscheint unter Meine Teams.</value>
@@ -2617,6 +2617,7 @@
   <data name="Studio.Chat.SessionEnded" xml:space="preserve">
     <value>Der Assistent hat vor dem Ende des Briefings abgebrochen. Starten Sie erneut, wenn Sie möchten.</value>
   </data>
+  <data name="Studio.Chat.Restart" xml:space="preserve"><value>Fortsetzen</value></data>
   <data name="Studio.Create.HintComposing" xml:space="preserve">
     <value>Zusammenstellung läuft: Der Assistent bereitet das Team vor.</value>
   </data>
@@ -3008,8 +3009,10 @@
     <value>Die Kopie läuft mit der Standardeinstellung: {0} konnte nicht kopiert werden.</value>
   </data>
   <data name="Studio.Create.RenameHint" xml:space="preserve">
-    <value>Um den Ordner umzubenennen, nutzen Sie „Umbenennen“ unter „Meine Teams“.</value>
+    <value>Hier ändert sich nur der Titel. „Umbenennen“ unter „Meine Teams“ benennt auch den Ordner um.</value>
   </data>
+  <data name="Studio.Create.AdoptModelDefault" xml:space="preserve"><value>{0} (Standard)</value></data>
+  <data name="Studio.Create.NameIsFolder" xml:space="preserve"><value>Der Name ist auch der Name des Ordners.</value></data>
   <!-- STUDIO-32: My teams — the search, the order, the Archives view, the archive gestures and their undo banner, the archive suggestion and its Settings › Studio card -->
   <data name="Studio.Teams.SearchHint" xml:space="preserve">
     <value>Ein Team nach Name oder Bedarf suchen…</value>
@@ -3221,6 +3224,7 @@
   <data name="Studio.Create.FailureEngineMissing" xml:space="preserve">
     <value>Die orkeon-Engine wurde auf diesem Rechner nicht gefunden.</value>
   </data>
+  <data name="Studio.Create.FailureEngineMissingHow" xml:space="preserve"><value>Installieren Sie die Orkeon-Engine und führen Sie die Diagnose dann erneut aus.</value></data>
   <data name="Studio.Create.FailureConfigRefused" xml:space="preserve">
     <value>Die Engine hat sich geweigert, fortzufahren.</value>
   </data>
@@ -3295,6 +3299,7 @@
   <data name="Studio.Create.OpenFolderSession" xml:space="preserve">
     <value>Öffnet die Arbeitssitzung — den Ordner, in den der Assistent schreibt.</value>
   </data>
+  <data name="Studio.Create.OpenFolderLater" xml:space="preserve"><value>Verfügbar nach der Zusammenstellung: Der Sitzungsordner existiert noch nicht.</value></data>
   <data name="Studio.Create.OpenFolderTeam" xml:space="preserve">
     <value>Öffnet den Ordner des übernommenen Teams.</value>
   </data>
@@ -3775,7 +3780,10 @@
   <data name="Studio.Create.DraftSavedAt" xml:space="preserve"><value>Entwurf um {0} gespeichert</value></data>
   <data name="Studio.Create.ResumeUnavailable" xml:space="preserve"><value>Diese Sitzung kann hier nicht mehr fortgesetzt werden: Beginnen Sie neu oder suchen Sie sie unter „Laufende Sitzungen“ in „Meine Teams“.</value></data>
   <data name="Studio.Create.FoldersToChoose" xml:space="preserve"><value>Vor dem Test {0:plural:ist|sind} noch {0} Ordner auszuwählen.</value></data>
+  <data name="Studio.Create.TryTeamNoProposal" xml:space="preserve"><value>Verfügbar nach der Zusammenstellung.</value></data>
   <data name="Studio.Create.VerdictSummary" xml:space="preserve"><value>{0} von {1} {1:plural:Kriterium|Kriterien} erfüllt</value></data>
+  <data name="Studio.Create.VerdictReady" xml:space="preserve"><value>Bereit zur Übernahme</value></data>
+  <data name="Studio.Create.VerdictToFix" xml:space="preserve"><value>Zu korrigieren: {0} {0:plural:Punkt|Punkte}</value></data>
   <data name="Studio.Create.ScreenSub" xml:space="preserve"><value>Vor der Übernahme wird nichts auf Ihren Rechner geschrieben.</value></data>
   <data name="Studio.Create.Back" xml:space="preserve"><value>Zurück</value></data>
   <data name="Studio.Create.Resume" xml:space="preserve"><value>Fortsetzen</value></data>
@@ -4052,6 +4060,7 @@
   <data name="Studio.Create.HintConfirmFolders" xml:space="preserve"><value>Bestätigen Sie die Ordner, um zur Zusammenstellung überzugehen.</value></data>
   <data name="Studio.Create.HintDecide" xml:space="preserve"><value>Treffen Sie die Wahl im Gespräch, um fortzufahren.</value></data>
   <data name="Studio.Create.TabNeedDone" xml:space="preserve"><value>Beschrieben</value></data>
+  <data name="Studio.Create.TabNeedInterrupted" xml:space="preserve"><value>Beschrieben, Briefing unterbrochen</value></data>
   <data name="Studio.Create.TabNeedDoneAnswers" xml:space="preserve">
     <value>Beschrieben, {0} {0:plural:Frage|Fragen} geklärt</value>
   </data>
@@ -4159,6 +4168,8 @@
   <data name="Studio.Create.CompositionFooterRunning" xml:space="preserve">
     <value>Zusammenstellung läuft.</value>
   </data>
+  <data name="Studio.Create.CompositionFooterInvalid" xml:space="preserve"><value>Zusammenstellung zu korrigieren: Die Definition ist ungültig.</value></data>
+  <data name="Studio.Create.CompositionFooterStopped" xml:space="preserve"><value>Zusammenstellung angehalten.</value></data>
   <data name="Studio.Create.MoreTools" xml:space="preserve">
     <value>+ {0}</value>
   </data>
@@ -4217,8 +4228,9 @@
     <value>Zusammenstellung durch die Engine</value>
   </data>
   <data name="Studio.Create.CompositionSub" xml:space="preserve">
-    <value>Was die Engine für diesen Vorschlag getan hat. Nur lesen; die Einzelheiten stehen im technischen Protokoll.</value>
+    <value>Was die Engine für diesen Vorschlag getan hat. Nur lesen.</value>
   </data>
+  <data name="Studio.Create.CompositionSubExpert" xml:space="preserve"><value>Alle Einzelheiten stehen unten im technischen Protokoll.</value></data>
   <data name="Studio.Create.FieldState" xml:space="preserve">
     <value>Status</value>
   </data>

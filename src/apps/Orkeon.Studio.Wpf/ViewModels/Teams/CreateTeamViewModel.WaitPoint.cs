@@ -48,6 +48,10 @@ public sealed partial class CreateTeamViewModel
 {
     private WizardWaitPoint _waitPoint;
 
+    // UX lot 05 (011-012): the « Resume » bubble pushed after an interrupted brief, so a new run
+    // takes back that one and no other.
+    private ChatPendingAction? _resumeAction;
+
     /// <summary>
     /// Raised when a wait point is reached, or asked for again (« Waiting for you: … » clicked):
     /// the view reads <see cref="WaitPoint"/>, brings the step, the tab and the card on screen
@@ -137,6 +141,8 @@ public sealed partial class CreateTeamViewModel
 
         _waitPoint = next;
         Chat.SetPendingAction(PendingActionFor(next));
+        if (next != WizardWaitPoint.None)
+            _resumeAction = null;
         OnPropertiesChanged(
             nameof(WaitPoint), nameof(HasWaitPoint), nameof(WaitPointLabel),
             nameof(IsWaitOnChooseFolder), nameof(IsWaitOnAdopt),
@@ -216,6 +222,36 @@ public sealed partial class CreateTeamViewModel
             _strings[StudioStringKeys.WizardWaitPlaceholderAdopt]),
         _ => null,
     };
+
+    /// <summary>
+    /// UX lot 05 (011-012): the bubble « the assistant stopped… » with its « Resume » — the
+    /// stopped session picked up, else the failure's « Try again », else a new composition;
+    /// null when none of them can run. The link brings the need back on screen.
+    /// </summary>
+    private ChatPendingAction? ResumeActionAfterInterruption()
+    {
+        AsyncRelayCommand action =
+            CanResumeHere ? ResumeHereCommand
+            : HasFailure ? FailureRetryCommand
+            : ComposeCommand;
+        if (!action.CanExecute(null))
+        {
+            _resumeAction = null;
+            return null;
+        }
+
+        _resumeAction = new ChatPendingAction(
+            _strings[StudioStringKeys.ChatSessionEnded],
+            _strings[StudioStringKeys.ChatRestart],
+            action,
+            new RelayCommand(() =>
+            {
+                GoStep(1);
+                Step1TabIndex = Step1NeedTab;
+            }),
+            _strings[StudioStringKeys.ChatPlaceholderAnswer]);
+        return _resumeAction;
+    }
 
     /// <summary>The action each wait point names, in the infinitive: « confirm the folders ».</summary>
     private static string WaitActionKey(WizardWaitPoint point) => point switch

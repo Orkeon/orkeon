@@ -251,6 +251,109 @@
       </Border>
     </DataTemplate>
   </UserControl.Resources>
+  <!-- UX lot 05 (016, 022): the visible step's action bar is docked at the bottom, outside the
+       scroll — the step's one primary button stays on screen whatever the step's length; the
+       rest of the screen scrolls above it (MainWindow hosts this view in a Grid, not a
+       ScrollViewer). -->
+  <DockPanel>
+    <StackPanel DockPanel.Dock="Bottom">
+        <!-- STUDIO-45: the step's action bar (lot 3), outside the classeur: the step's state on
+             the left — the wait point while the engine waits on the user (R13) — then « Back »
+             (the tab before) and the step's gesture. -->
+        <Border Style="{StaticResource WizardActionBar}"
+                Visibility="{Binding IsStep1, Converter={StaticResource BooleanToVisibility}}">
+          <DockPanel>
+            <Button DockPanel.Dock="Right" Style="{StaticResource BtnPrimary}" controls:ButtonSize.Height="40"
+                    Command="{Binding ComposeCommand}"
+                    ToolTip="{Binding ComposeTip}" ToolTipService.ShowOnDisabled="True"
+                    ToolTipService.IsEnabled="{Binding HasComposeTip}"
+                    Content="{Binding [Studio.Create.Compose], Source={x:Static services:I18n.Instance}}" controls:ButtonIcon.Kind="arrow-right" controls:ButtonIcon.Placement="Trailing"/>
+            <Button DockPanel.Dock="Right" Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="40" Margin="0,0,8,0"
+                    Command="{Binding Step1BackCommand}" controls:ButtonIcon.Kind="arrow-left"
+                    Content="{Binding [Studio.Create.Back], Source={x:Static services:I18n.Instance}}"/>
+            <!-- R08: what is missing to go on, after its dot — sand while it waits on the user,
+                 green once the team can be composed, neutral while the engine works. -->
+            <controls:StatusDot Content="{Binding Step1Hint}">
+              <controls:StatusDot.Style>
+                <Style TargetType="controls:StatusDot" BasedOn="{StaticResource PaneFooterState}">
+                  <Setter Property="Tone" Value="Attention"/>
+                  <Style.Triggers>
+                    <DataTrigger Binding="{Binding CanCompose}" Value="True">
+                      <Setter Property="Tone" Value="Ready"/>
+                    </DataTrigger>
+                    <DataTrigger Binding="{Binding IsSessionWorking}" Value="True">
+                      <Setter Property="Tone" Value="Neutral"/>
+                    </DataTrigger>
+                  </Style.Triggers>
+                </Style>
+              </controls:StatusDot.Style>
+            </controls:StatusDot>
+          </DockPanel>
+        </Border>
+        <!-- The action bar (lot 3, lot 10): a dot and the step's sentence — the folders left to
+             choose, else that the team can be tried — then « Back », « Adopt without trial » and
+             « Try the team → ». The Composer pause stops the engine before the trial (dry mode):
+             the trial is THIS click, never a side effect; it waits while a folder is to choose. -->
+        <Border Style="{StaticResource WizardActionBar}"
+                Visibility="{Binding IsStep2, Converter={StaticResource BooleanToVisibility}}">
+          <DockPanel>
+            <StackPanel DockPanel.Dock="Right" Style="{StaticResource ActionRow}">
+              <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="40" Command="{Binding GoBackCommand}"
+              Content="{Binding [Studio.Create.Back], Source={x:Static services:I18n.Instance}}" controls:ButtonIcon.Kind="arrow-left"/>
+              <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="40" Margin="8,0,0,0"
+                      Command="{Binding AdoptWithoutTrialCommand}"
+                      ToolTip="{Binding [Studio.Create.AdoptWithoutTrialTip], Source={x:Static services:I18n.Instance}}"
+                      Visibility="{Binding CanTryTeam, Converter={StaticResource BooleanToVisibility}}"
+                      Content="{Binding [Studio.Create.AdoptWithoutTrial], Source={x:Static services:I18n.Instance}}"/>
+              <Button Style="{StaticResource BtnPrimary}" controls:ButtonSize.Height="40" Margin="8,0,0,0"
+                      Command="{Binding TryTeamCommand}"
+                      IsEnabled="{Binding CanTryTeamNow}"
+                      ToolTip="{Binding TryTeamTip}" ToolTipService.ShowOnDisabled="True"
+                      ToolTipService.IsEnabled="{Binding CanTryTeamNow, Converter={StaticResource Negate}}"
+                      Content="{Binding [Studio.Create.TryTeam], Source={x:Static services:I18n.Instance}}" controls:ButtonIcon.Kind="arrow-right" controls:ButtonIcon.Placement="Trailing"/>
+            </StackPanel>
+            <!-- R08: the folders left to choose (sand), else that the team can be tried (green). -->
+            <controls:StatusDot Content="{Binding Step2Hint}"
+                                Visibility="{Binding HasStep2Hint, Converter={StaticResource BooleanToVisibility}}">
+              <controls:StatusDot.Style>
+                <Style TargetType="controls:StatusDot" BasedOn="{StaticResource PaneFooterState}">
+                  <Setter Property="Tone" Value="Ready"/>
+                  <Style.Triggers>
+                    <DataTrigger Binding="{Binding IsStep2HintWarning}" Value="True">
+                      <Setter Property="Tone" Value="Attention"/>
+                    </DataTrigger>
+                  </Style.Triggers>
+                </Style>
+              </controls:StatusDot.Style>
+            </controls:StatusDot>
+          </DockPanel>
+        </Border>
+        <!-- The action bar (lot 3): « Back » to the composition. The verdict's decisions stay
+             in the verdict card, next to what they decide. hrm R02/R05: the step's footer, back
+             on the left with its arrow. -->
+        <Border Style="{StaticResource StepActionFooter}"
+                Visibility="{Binding IsStep3, Converter={StaticResource BooleanToVisibility}}">
+          <DockPanel LastChildFill="False">
+            <Button DockPanel.Dock="Left" Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="40"
+                    Command="{Binding GoBackCommand}" controls:ButtonIcon.Kind="arrow-left"
+                    Content="{Binding [Studio.Create.Back], Source={x:Static services:I18n.Instance}}"/>
+          </DockPanel>
+        </Border>
+        <!-- The action bar (lot 3): « Back » and « Adopt the team ». hrm R02/R05: the step's
+             footer, back on the left, the one primary of the step on the right. -->
+        <Border Style="{StaticResource StepActionFooter}"
+                Visibility="{Binding IsStep4, Converter={StaticResource BooleanToVisibility}}">
+          <DockPanel LastChildFill="False">
+            <Button DockPanel.Dock="Left" Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="40"
+                    Command="{Binding GoBackCommand}" controls:ButtonIcon.Kind="arrow-left"
+                    Content="{Binding [Studio.Create.Back], Source={x:Static services:I18n.Instance}}"/>
+            <Button x:Name="AdoptButton" DockPanel.Dock="Right" Style="{StaticResource BtnPrimary}" controls:ButtonSize.Height="40"
+                    Command="{Binding SaveTeamCommand}" controls:ButtonIcon.Kind="save"
+                    Content="{Binding [Studio.Create.Save], Source={x:Static services:I18n.Instance}}"/>
+          </DockPanel>
+        </Border>
+    </StackPanel>
+  <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
   <StackPanel>
 
     <!-- R3 (lot 3): one header, title and subtitle on the left, the page's two doors on the
@@ -345,6 +448,10 @@
     <controls:Alert Tone="Danger" Margin="0,14,0,0"
                     Message="{Binding Failure.Headline}" Details="{Binding Failure.Detail}"
                     Visibility="{Binding HasFailure, Converter={StaticResource BooleanToVisibility}}">
+      <!-- UX lot 05 (012): no engine — the sentence that says what to do, under the title. -->
+      <TextBlock Style="{StaticResource Hint}" TextWrapping="Wrap"
+                 Text="{Binding [Studio.Create.FailureEngineMissingHow], Source={x:Static services:I18n.Instance}}"
+                 Visibility="{Binding IsEngineMissing, Converter={StaticResource BooleanToVisibility}}"/>
       <!-- C02: the ways out are the banner's actions — on its right when it is wide, under the
            text otherwise; the banner takes the container's width. -->
       <controls:Alert.Actions>
@@ -366,8 +473,12 @@
         <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="32" Margin="0,0,8,0" Command="{Binding FailureRetryCommand}"
                 Visibility="{Binding FailureOffersRetry, Converter={StaticResource BooleanToVisibility}}"
                 Content="{Binding [Studio.Create.FailureRetry], Source={x:Static services:I18n.Instance}}" controls:ButtonIcon.Kind="rotate-cw"/>
+        <!-- UX lot 05 (012): the way out of a missing engine is the banner's one primary. -->
+        <Button Style="{StaticResource BtnPrimary}" controls:ButtonSize.Height="32" Margin="0,0,8,0" Command="{Binding OpenDiagnosticCommand}"
+                Visibility="{Binding IsEngineMissing, Converter={StaticResource BooleanToVisibility}}"
+                Content="{Binding [Studio.Create.FailureOpenDiagnostic], Source={x:Static services:I18n.Instance}}" controls:ButtonIcon.Kind="stethoscope"/>
         <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="32" Margin="0,0,8,0" Command="{Binding OpenDiagnosticCommand}"
-                Visibility="{Binding FailureOffersDiagnostic, Converter={StaticResource BooleanToVisibility}}"
+                Visibility="{Binding FailureOffersDiagnosticSecondary, Converter={StaticResource BooleanToVisibility}}"
                 Content="{Binding [Studio.Create.FailureOpenDiagnostic], Source={x:Static services:I18n.Instance}}" controls:ButtonIcon.Kind="stethoscope"/>
         <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="32" Margin="0,0,8,0" Command="{Binding OpenSettingsCommand}"
                 Visibility="{Binding FailureOffersSettings, Converter={StaticResource BooleanToVisibility}}"
@@ -379,7 +490,7 @@
     <!-- Before anything: the assistant must have a model — the wizard is gated until then (R7). -->
     <controls:Alert x:Name="AssistantGate" Tone="Warning" Margin="0,16,0,0"
                     Message="{Binding [Studio.Create.GateTitle], Source={x:Static services:I18n.Instance}}"
-                    Visibility="{Binding NeedsAssistant, Converter={StaticResource BooleanToVisibility}}">
+                    Visibility="{Binding ShowsAssistantGate, Converter={StaticResource BooleanToVisibility}}">
       <controls:Alert.Actions>
         <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="32" Command="{Binding OpenSettingsCommand}"
         Content="{Binding [Studio.Create.ChooseModel], Source={x:Static services:I18n.Instance}}" controls:ButtonIcon.Kind="sliders-horizontal"/>
@@ -645,9 +756,11 @@
             <DockPanel>
               <Border DockPanel.Dock="Bottom" Style="{StaticResource PaneFooter}">
                 <DockPanel>
+                  <!-- UX lot 05 (009-014): « See the folders → » only once the folders tab has
+                       something to show; the step's state is said once, by the action bar. -->
                   <Button DockPanel.Dock="Right" Style="{StaticResource BtnSecondary}" Command="{Binding ShowFoldersTabCommand}"
+                          Visibility="{Binding IsFoldersTabEmpty, Converter={StaticResource InverseBooleanToVisibility}}"
                   Content="{Binding [Studio.Create.SeeFolders], Source={x:Static services:I18n.Instance}}" controls:ButtonIcon.Kind="arrow-right" controls:ButtonIcon.Placement="Trailing"/>
-                  <controls:StatusDot Style="{StaticResource PaneFooterState}" Tag="{Binding NeedTabState}" Content="{Binding NeedFooter}"/>
                 </DockPanel>
               </Border>
               <StackPanel>
@@ -657,8 +770,8 @@
                            Text="{Binding [Studio.Create.NeedSub], Source={x:Static services:I18n.Instance}}"/>
                 <!-- STUDIO-47: files and folders dropped from the explorer land at the caret, quoted;
                      the Preview events take the drop before the TextBox, which refuses files. The
-                     screen's main entry: 48 px at the least (R2). -->
-                <TextBox x:Name="NeedBox" Style="{StaticResource InputMultiline}" AllowDrop="True" MinHeight="48"
+                     screen's main entry: three lines at the least (R2, UX lot 05). -->
+                <TextBox x:Name="NeedBox" Style="{StaticResource InputMultiline}" AllowDrop="True" MinHeight="72"
                          PreviewDragEnter="OnNeedDragOver" PreviewDragOver="OnNeedDragOver"
                          PreviewDragLeave="OnNeedDragLeave" PreviewDrop="OnNeedDrop"
                          Text="{Binding Need, UpdateSourceTrigger=PropertyChanged}"/>
@@ -705,22 +818,22 @@
                     </Button>
                   </StackPanel>
                 </Border>
-                <!-- The quick examples as compact chips (lot 3), the whole sentence in the tooltip. -->
+                <!-- The quick examples (UX lot 05, 009-014): one per line, full width, whole. -->
                 <TextBlock Style="{StaticResource Eyebrow}" Margin="0,16,0,8"
                            Text="{Binding [Studio.Create.Examples], Source={x:Static services:I18n.Instance}}"/>
                 <ItemsControl ItemsSource="{Binding Examples}">
                   <ItemsControl.ItemsPanel>
                     <ItemsPanelTemplate>
-                      <WrapPanel/>
+                      <StackPanel/>
                     </ItemsPanelTemplate>
                   </ItemsControl.ItemsPanel>
                   <ItemsControl.ItemTemplate>
                     <DataTemplate>
-                      <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="32" MaxWidth="300"
-                              Margin="0,0,8,6" ToolTip="{Binding}"
+                      <Button Style="{StaticResource BtnSecondary}" MinHeight="32" Padding="12,6" FontSize="13"
+                              Margin="0,0,0,6" HorizontalContentAlignment="Left"
                               Command="{Binding DataContext.UseExampleCommand, RelativeSource={RelativeSource AncestorType=views:CreateTeamView}}"
                               CommandParameter="{Binding}">
-                        <TextBlock Text="{Binding}" TextTrimming="CharacterEllipsis"/>
+                        <TextBlock Text="{Binding}" TextWrapping="Wrap"/>
                       </Button>
                     </DataTemplate>
                   </ItemsControl.ItemTemplate>
@@ -1023,38 +1136,6 @@
           </controls:StepTab>
         </controls:StepTabs>
 
-        <!-- STUDIO-45: the step's action bar (lot 3), outside the classeur: the step's state on
-             the left — the wait point while the engine waits on the user (R13) — then « Back »
-             (the tab before) and the step's gesture. -->
-        <Border Style="{StaticResource WizardActionBar}">
-          <DockPanel>
-            <Button DockPanel.Dock="Right" Style="{StaticResource BtnPrimary}" controls:ButtonSize.Height="40"
-                    Command="{Binding ComposeCommand}"
-                    ToolTip="{Binding ComposeTip}" ToolTipService.ShowOnDisabled="True"
-                    ToolTipService.IsEnabled="{Binding IsEngineRunning}"
-                    Content="{Binding [Studio.Create.Compose], Source={x:Static services:I18n.Instance}}" controls:ButtonIcon.Kind="arrow-right" controls:ButtonIcon.Placement="Trailing"/>
-            <Button DockPanel.Dock="Right" Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="40" Margin="0,0,8,0"
-                    Command="{Binding Step1BackCommand}" controls:ButtonIcon.Kind="arrow-left"
-                    Content="{Binding [Studio.Create.Back], Source={x:Static services:I18n.Instance}}"/>
-            <!-- R08: what is missing to go on, after its dot — sand while it waits on the user,
-                 green once the team can be composed, neutral while the engine works. -->
-            <controls:StatusDot Content="{Binding Step1Hint}">
-              <controls:StatusDot.Style>
-                <Style TargetType="controls:StatusDot" BasedOn="{StaticResource PaneFooterState}">
-                  <Setter Property="Tone" Value="Attention"/>
-                  <Style.Triggers>
-                    <DataTrigger Binding="{Binding CanCompose}" Value="True">
-                      <Setter Property="Tone" Value="Ready"/>
-                    </DataTrigger>
-                    <DataTrigger Binding="{Binding IsSessionWorking}" Value="True">
-                      <Setter Property="Tone" Value="Neutral"/>
-                    </DataTrigger>
-                  </Style.Triggers>
-                </Style>
-              </controls:StatusDot.Style>
-            </controls:StatusDot>
-          </DockPanel>
-        </Border>
       </StackPanel>
 
       <!-- ── STEP 2 : COMPOSER ── -->
@@ -1415,6 +1496,10 @@
                            Text="{Binding [Studio.Create.CompositionTitle], Source={x:Static services:I18n.Instance}}"/>
                 <TextBlock Style="{StaticResource Hint}" Margin="0,6,0,12" TextWrapping="Wrap"
                            Text="{Binding [Studio.Create.CompositionSub], Source={x:Static services:I18n.Instance}}"/>
+                <!-- UX lot 05 (017): the technical journal is the Expert's; only the Expert is pointed to it. -->
+                <TextBlock Style="{StaticResource Hint}" Margin="0,-6,0,12" TextWrapping="Wrap"
+                           Text="{Binding [Studio.Create.CompositionSubExpert], Source={x:Static services:I18n.Instance}}"
+                           Visibility="{Binding DataContext.Mode.IsExpert, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BooleanToVisibility}}"/>
                 <controls:PropertyRow Label="{Binding [Studio.Create.FieldState], Source={x:Static services:I18n.Instance}}">
                   <TextBlock FontSize="13" Foreground="{DynamicResource InkBrush}" TextWrapping="Wrap" Text="{Binding CompositionStateText}"/>
                 </controls:PropertyRow>
@@ -1478,48 +1563,26 @@
           </controls:StepTab>
         </controls:StepTabs>
 
-        <!-- The action bar (lot 3, lot 10): a dot and the step's sentence — the folders left to
-             choose, else that the team can be tried — then « Back », « Adopt without trial » and
-             « Try the team → ». The Composer pause stops the engine before the trial (dry mode):
-             the trial is THIS click, never a side effect; it waits while a folder is to choose. -->
-        <Border Style="{StaticResource WizardActionBar}">
-          <DockPanel>
-            <StackPanel DockPanel.Dock="Right" Style="{StaticResource ActionRow}">
-              <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="40" Command="{Binding GoBackCommand}"
-              Content="{Binding [Studio.Create.Back], Source={x:Static services:I18n.Instance}}" controls:ButtonIcon.Kind="arrow-left"/>
-              <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="40" Margin="8,0,0,0"
-                      Command="{Binding AdoptWithoutTrialCommand}"
-                      ToolTip="{Binding [Studio.Create.AdoptWithoutTrialTip], Source={x:Static services:I18n.Instance}}"
-                      Visibility="{Binding CanTryTeam, Converter={StaticResource BooleanToVisibility}}"
-                      Content="{Binding [Studio.Create.AdoptWithoutTrial], Source={x:Static services:I18n.Instance}}"/>
-              <Button Style="{StaticResource BtnPrimary}" controls:ButtonSize.Height="40" Margin="8,0,0,0"
-                      Command="{Binding TryTeamCommand}"
-                      ToolTip="{Binding TryTeamTip}" ToolTipService.ShowOnDisabled="True"
-                      ToolTipService.IsEnabled="{Binding HasFoldersToChoose}"
-                      Visibility="{Binding CanTryTeam, Converter={StaticResource BooleanToVisibility}}"
-                      Content="{Binding [Studio.Create.TryTeam], Source={x:Static services:I18n.Instance}}" controls:ButtonIcon.Kind="arrow-right" controls:ButtonIcon.Placement="Trailing"/>
-            </StackPanel>
-            <!-- R08: the folders left to choose (sand), else that the team can be tried (green). -->
-            <controls:StatusDot Content="{Binding Step2Hint}"
-                                Visibility="{Binding HasStep2Hint, Converter={StaticResource BooleanToVisibility}}">
-              <controls:StatusDot.Style>
-                <Style TargetType="controls:StatusDot" BasedOn="{StaticResource PaneFooterState}">
-                  <Setter Property="Tone" Value="Ready"/>
-                  <Style.Triggers>
-                    <DataTrigger Binding="{Binding IsStep2HintWarning}" Value="True">
-                      <Setter Property="Tone" Value="Attention"/>
-                    </DataTrigger>
-                  </Style.Triggers>
-                </Style>
-              </controls:StatusDot.Style>
-            </controls:StatusDot>
-          </DockPanel>
-        </Border>
       </StackPanel>
 
       <!-- ── STEP 3 : ESSAYER ── -->
       <StackPanel Visibility="{Binding IsStep3, Converter={StaticResource BooleanToVisibility}}">
-        <views:ComposeProgressView DataContext="{Binding Progress}"/>
+        <!-- UX lot 05 (020): no « Stopped. » card once the trial is over — the verdict speaks. -->
+        <views:ComposeProgressView DataContext="{Binding Progress}">
+          <views:ComposeProgressView.Style>
+            <Style TargetType="views:ComposeProgressView">
+              <Style.Triggers>
+                <MultiDataTrigger>
+                  <MultiDataTrigger.Conditions>
+                    <Condition Binding="{Binding IsIdle}" Value="True"/>
+                    <Condition Binding="{Binding DataContext.TrialInProgress, RelativeSource={RelativeSource AncestorType=views:CreateTeamView}}" Value="False"/>
+                  </MultiDataTrigger.Conditions>
+                  <Setter Property="Visibility" Value="Collapsed"/>
+                </MultiDataTrigger>
+              </Style.Triggers>
+            </Style>
+          </views:ComposeProgressView.Style>
+        </views:ComposeProgressView>
 
         <Border Style="{StaticResource Card}" Margin="0,0,0,16">
           <StackPanel>
@@ -1595,8 +1658,25 @@
         <Border Style="{StaticResource Card}" Margin="0,0,0,16"
                 Visibility="{Binding HasVerdict, Converter={StaticResource BooleanToVisibility}}">
           <StackPanel>
-            <!-- Lot 3: the summary sentence first — « 3 of 3 criteria met ». -->
-            <TextBlock Style="{StaticResource CardTitle}" Margin="0,0,0,8"
+            <!-- UX lot 05 (019, 020): the header follows the engine's « passing » — « Ready to
+                 adopt » or « To fix: 1 point » — red while a point is to fix, sand over remarks
+                 only, green otherwise; « 1 of 2 criteria met » stays as the line under it. -->
+            <TextBlock TextWrapping="Wrap" Text="{Binding VerdictHeadline}">
+              <TextBlock.Style>
+                <Style TargetType="TextBlock" BasedOn="{StaticResource CardTitle}">
+                  <Setter Property="Foreground" Value="{DynamicResource SuccessInkBrush}"/>
+                  <Style.Triggers>
+                    <DataTrigger Binding="{Binding VerdictHeadlineTone}" Value="Danger">
+                      <Setter Property="Foreground" Value="{DynamicResource DangerInkBrush}"/>
+                    </DataTrigger>
+                    <DataTrigger Binding="{Binding VerdictHeadlineTone}" Value="Warning">
+                      <Setter Property="Foreground" Value="{DynamicResource WarningInkBrush}"/>
+                    </DataTrigger>
+                  </Style.Triggers>
+                </Style>
+              </TextBlock.Style>
+            </TextBlock>
+            <TextBlock Style="{StaticResource MetaText}" Margin="0,2,0,8"
                        TextWrapping="Wrap" Text="{Binding VerdictSummary}"
                        Visibility="{Binding HasVerdictSummary, Converter={StaticResource BooleanToVisibility}}"/>
             <StackPanel Orientation="Horizontal">
@@ -1693,9 +1773,13 @@
                         <TextBlock.Style>
                           <Style TargetType="TextBlock" BasedOn="{StaticResource MetaText}">
                             <Style.Triggers>
-                              <!-- hrm D02: a remark is a sand note, never a mark on the criterion. -->
+                              <!-- hrm D02: a remark is a sand note, never a mark on the criterion;
+                                   UX lot 05 (019/020): a failure's finding reads red. -->
                               <DataTrigger Binding="{Binding IsRemark}" Value="True">
                                 <Setter Property="Foreground" Value="{DynamicResource WarningInkBrush}"/>
+                              </DataTrigger>
+                              <DataTrigger Binding="{Binding IsFailure}" Value="True">
+                                <Setter Property="Foreground" Value="{DynamicResource DangerInkBrush}"/>
                               </DataTrigger>
                             </Style.Triggers>
                           </Style>
@@ -1748,16 +1832,6 @@
         <views:StepNotesView DataContext="{Binding TryNotes}"
                              Title="{Binding [Studio.Create.NotesTry], Source={x:Static services:I18n.Instance}}"/>
 
-        <!-- The action bar (lot 3): « Back » to the composition. The verdict's decisions stay
-             in the verdict card, next to what they decide. hrm R02/R05: the step's footer, back
-             on the left with its arrow. -->
-        <Border Style="{StaticResource StepActionFooter}">
-          <DockPanel LastChildFill="False">
-            <Button DockPanel.Dock="Left" Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="40"
-                    Command="{Binding GoBackCommand}" controls:ButtonIcon.Kind="arrow-left"
-                    Content="{Binding [Studio.Create.Back], Source={x:Static services:I18n.Instance}}"/>
-          </DockPanel>
-        </Border>
       </StackPanel>
 
       <!-- ── STEP 4 : ADOPTER ── -->
@@ -1786,9 +1860,13 @@
             <!-- STUDIO-28 (D-06): on a team « Modify » reopened, the name is its title and the
                  re-adoption writes back into the same folder; the folder is renamed from My teams,
                  whose « Rename » carries the session and the schedule along. -->
-            <TextBlock Style="{StaticResource MetaText}" Margin="0,6,0,0"
+            <TextBlock Style="{StaticResource MetaText}" Margin="0,6,0,0" TextWrapping="Wrap"
                        Text="{Binding [Studio.Create.RenameHint], Source={x:Static services:I18n.Instance}}"
                        Visibility="{Binding IsModifyingTeam, Converter={StaticResource BooleanToVisibility}}"/>
+            <!-- UX lot 05 (022): a new team's name is also its folder's. -->
+            <TextBlock Style="{StaticResource MetaText}" Margin="0,6,0,0" TextWrapping="Wrap"
+                       Text="{Binding [Studio.Create.NameIsFolder], Source={x:Static services:I18n.Instance}}"
+                       Visibility="{Binding IsModifyingTeam, Converter={StaticResource InverseBooleanToVisibility}}"/>
             <!-- STUDIO-26 (D-07): the name is already taken in My teams. Said here, under the
                  field, with a free name and the way to the team that holds this one; the
                  engine's own refusal never reaches the screen. -->
@@ -1808,43 +1886,27 @@
               </controls:Alert.Actions>
             </controls:Alert>
 
-            <!-- T-22: «Gérer les réglages» rides the LABEL's line. Stacked under the picker
-                 it read as a fourth choice among the profiles rather than as the way out
-                 to the screen that manages them. -->
-            <DockPanel Margin="0,16,0,7">
-              <Button DockPanel.Dock="Right" Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="32"
-                      VerticalAlignment="Center" Command="{Binding OpenSettingsCommand}" controls:ButtonIcon.Kind="sliders-horizontal"
-                      Content="{Binding [Studio.Create.ManageSettings], Source={x:Static services:I18n.Instance}}"/>
-              <TextBlock Style="{StaticResource FieldLabel}" VerticalAlignment="Center" Margin="0"
+            <!-- UX lot 05 (022): one line for one choice — « Model: DeepSeek (default) · Change ».
+                 « Change » unfolds the default first, then the settings, and « Manage the
+                 settings » as the way out at the bottom. -->
+            <DockPanel Margin="0,16,0,0" MaxWidth="480" HorizontalAlignment="Left" LastChildFill="False">
+              <TextBlock DockPanel.Dock="Left" Style="{StaticResource FieldLabel}" VerticalAlignment="Center" Margin="0,0,12,0"
                          Text="{Binding [Studio.Create.AdoptProfile], Source={x:Static services:I18n.Instance}}"/>
+              <TextBlock DockPanel.Dock="Left" Style="{StaticResource Subhead}" VerticalAlignment="Center" Margin="0,0,12,0"
+                         TextTrimming="CharacterEllipsis" Text="{Binding AdoptModelLine}" ToolTip="{Binding AdoptProfileSummary}"/>
+              <Button DockPanel.Dock="Left" Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="32"
+                      VerticalAlignment="Center" Command="{Binding ToggleAdoptProfilePickerCommand}"
+                      Content="{Binding [Studio.Create.AdoptChange], Source={x:Static services:I18n.Instance}}"/>
             </DockPanel>
-            <!-- STUDIO-73: checked (D2), the team follows the default elected when a run starts;
-                 unchecked, the card below pins one setting. -->
-            <CheckBox Margin="0,0,0,8" IsChecked="{Binding AdoptUsesDefaultLlm}"
-                      IsEnabled="{Binding Profiles.IsEmpty, Converter={StaticResource Negate}}"
-                      Content="{Binding AdoptUseDefaultLlmLabel}"
-                      ToolTip="{Binding [Studio.Teams.UseDefaultLlmHint], Source={x:Static services:I18n.Instance}}"/>
-            <StackPanel Visibility="{Binding AdoptUsesDefaultLlm, Converter={StaticResource InverseBooleanToVisibility}}">
-            <!-- W-07: the selected model profile as a card — «Changer» unfolds the radio
-                 rows; no select at all, exactly the mock's shape. The container carries the
-                 surface pair of the mock rather than the sunk one (T-22). -->
-            <Border Background="{DynamicResource Surface2Brush}" BorderBrush="{DynamicResource LineBrush}"
-                    BorderThickness="1" CornerRadius="10" Padding="13,11" MaxWidth="480" HorizontalAlignment="Left">
-              <DockPanel>
-                <controls:LucideIcon DockPanel.Dock="Left" Kind="sparkles" Size="16"
-                                     Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center" Margin="0,0,11,0"/>
-                <Button DockPanel.Dock="Right" Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="32"
-                        VerticalAlignment="Center" Command="{Binding ToggleAdoptProfilePickerCommand}"
-                        Content="{Binding [Studio.Create.AdoptChange], Source={x:Static services:I18n.Instance}}"/>
-                <StackPanel VerticalAlignment="Center" Margin="0,0,12,0">
-                  <TextBlock Style="{StaticResource Subhead}" Text="{Binding AdoptProfileName}"/>
-                  <TextBlock Style="{StaticResource MetaText}" Margin="0,2,0,0" Text="{Binding AdoptProfileSummary}"
-                             Visibility="{Binding AdoptProfileSummary, Converter={StaticResource StringPresentToVisibility}}"/>
-                </StackPanel>
-              </DockPanel>
-            </Border>
             <StackPanel Margin="0,7,0,0" MaxWidth="480" HorizontalAlignment="Left"
                         Visibility="{Binding IsAdoptProfilePickerOpen, Converter={StaticResource BooleanToVisibility}}">
+              <RadioButton Style="{StaticResource PickRow}" GroupName="AdoptProfile" Margin="0,0,0,7"
+                           IsChecked="{Binding AdoptUsesDefaultLlm, Mode=OneWay}"
+                           IsEnabled="{Binding Profiles.IsEmpty, Converter={StaticResource Negate}}"
+                           Command="{Binding UseDefaultAdoptLlmCommand}"
+                           ToolTip="{Binding [Studio.Teams.UseDefaultLlmHint], Source={x:Static services:I18n.Instance}}">
+                <TextBlock FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}" Text="{Binding AdoptUseDefaultLlmLabel}"/>
+              </RadioButton>
               <ItemsControl ItemsSource="{Binding Profiles.Profiles}">
                 <ItemsControl.ItemTemplate>
                   <DataTemplate>
@@ -1859,7 +1921,9 @@
                   </DataTemplate>
                 </ItemsControl.ItemTemplate>
               </ItemsControl>
-            </StackPanel>
+              <Button Style="{StaticResource BtnGhost}" controls:ButtonSize.Height="32" HorizontalAlignment="Left"
+                      Command="{Binding OpenSettingsCommand}" controls:ButtonIcon.Kind="sliders-horizontal"
+                      Content="{Binding [Studio.Create.ManageSettings], Source={x:Static services:I18n.Instance}}"/>
             </StackPanel>
 
             <TextBlock Style="{StaticResource FieldLabel}" Margin="0,16,0,7"
@@ -1920,18 +1984,6 @@
           </views:StepNotesView.Style>
         </views:StepNotesView>
 
-        <!-- The action bar (lot 3): « Back » and « Adopt the team ». hrm R02/R05: the step's
-             footer, back on the left, the one primary of the step on the right. -->
-        <Border Style="{StaticResource StepActionFooter}">
-          <DockPanel LastChildFill="False">
-            <Button DockPanel.Dock="Left" Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="40"
-                    Command="{Binding GoBackCommand}" controls:ButtonIcon.Kind="arrow-left"
-                    Content="{Binding [Studio.Create.Back], Source={x:Static services:I18n.Instance}}"/>
-            <Button x:Name="AdoptButton" DockPanel.Dock="Right" Style="{StaticResource BtnPrimary}" controls:ButtonSize.Height="40"
-                    Command="{Binding SaveTeamCommand}" controls:ButtonIcon.Kind="save"
-                    Content="{Binding [Studio.Create.Save], Source={x:Static services:I18n.Instance}}"/>
-          </DockPanel>
-        </Border>
       </StackPanel>
 
         </StackPanel>
@@ -2034,4 +2086,6 @@
     </StackPanel>
 
   </StackPanel>
+  </ScrollViewer>
+  </DockPanel>
 </UserControl>

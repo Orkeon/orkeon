@@ -536,6 +536,11 @@ public sealed partial class CreateTeamViewModel : ObservableObject
         // STUDIO-46: the Folders step, between the brief and the plan.
         InitializeFolderStep();
         ToggleAdoptProfilePickerCommand = new RelayCommand(() => IsAdoptProfilePickerOpen = !IsAdoptProfilePickerOpen);
+        UseDefaultAdoptLlmCommand = new RelayCommand(() =>
+        {
+            AdoptUsesDefaultLlm = true;
+            IsAdoptProfilePickerOpen = false;
+        });
         PickAdoptProfileCommand = new RelayCommand(PickAdoptProfile);
         RemoveTeamMountCommand = new RelayCommand(RemoveTeamMount, IsStringParameter);
         RemoveDerivedMountCommand = new RelayCommand(DropDerivedMount, IsStringParameter);
@@ -761,6 +766,7 @@ public sealed partial class CreateTeamViewModel : ObservableObject
             return;
 
         AdoptProfileName = profileName;
+        AdoptUsesDefaultLlm = false;
         IsAdoptProfilePickerOpen = false;
     }
 
@@ -876,8 +882,8 @@ public sealed partial class CreateTeamViewModel : ObservableObject
         // CanCompose starts with HasAssistant: an election must wake the button too. The step-4 card
         // reads the setting it names among them — renamed, edited or newly elected (STUDIO-52).
         OnPropertiesChanged(
-            nameof(HasAssistant), nameof(NeedsAssistant), nameof(CanCompose), nameof(Step1Hint),
-            nameof(AdoptProfileName), nameof(AdoptProfileSummary), nameof(AdoptUseDefaultLlmLabel));
+            nameof(HasAssistant), nameof(NeedsAssistant), nameof(ShowsAssistantGate), nameof(CanCompose), nameof(Step1Hint),
+            nameof(AdoptProfileName), nameof(AdoptProfileSummary), nameof(AdoptUseDefaultLlmLabel), nameof(AdoptModelLine));
         ComposeCommand.RaiseCanExecuteChanged();
         // A model elected (or the last one removed) opens or closes the « choose a model » wait.
         SyncWaitPoint();
@@ -957,6 +963,12 @@ public sealed partial class CreateTeamViewModel : ObservableObject
 
     /// <summary>The gate card's visibility.</summary>
     public bool NeedsAssistant => !HasAssistant;
+
+    /// <summary>
+    /// UX lot 05 (071): the « the assistant needs a model » gate, unless the gallery found no
+    /// engine — the missing engine comes first, one cause on screen.
+    /// </summary>
+    public bool ShowsAssistantGate => NeedsAssistant && !Gallery.IsEngineMissing;
 
     // ── stepper ──
 
@@ -1125,7 +1137,14 @@ public sealed partial class CreateTeamViewModel : ObservableObject
     public bool CanCompose =>
         HasAssistant
         && !IsEngineRunning
-        && _need.Trim().Length > 0;
+        && _need.Trim().Length > 0
+        && !IsEngineMissing;
+
+    /// <summary>
+    /// UX lot 05 (012): whether the last run found no engine — the alert says how to install it,
+    /// « Compose the team » waits greyed with the reason in its tooltip.
+    /// </summary>
+    public bool IsEngineMissing => _failure?.Kind == WizardFailureKind.EngineMissing;
 
     /// <summary>The sentence under the compose button, tracking what is still missing.</summary>
     public string Step1Hint
@@ -1364,6 +1383,8 @@ public sealed partial class CreateTeamViewModel : ObservableObject
     {
         if (propertyName is nameof(UseCaseGalleryViewModel.HasCatalog) or nameof(UseCaseGalleryViewModel.Count))
             OnPropertiesChanged(nameof(BrowseUseCasesLabel), nameof(ReferenceUseCaseLabel));
+        if (propertyName is nameof(UseCaseGalleryViewModel.IsEngineMissing))
+            OnPropertyChanged(nameof(ShowsAssistantGate));
     }
 
     /// <summary>The titles and labels here are catalogue text: a language switch re-reads them.</summary>
@@ -1900,7 +1921,14 @@ public sealed partial class CreateTeamViewModel : ObservableObject
             nameof(HasDerivedMounts),
             nameof(DroppedDerivedRoots),
             nameof(HasDroppedDerivedRoots),
-            nameof(DroppedDerivedWarning));
+            nameof(DroppedDerivedWarning), nameof(IsStep3Done));
+        // UX lot 05 (021): the last folder chosen releases the steps the milestone held back.
+        if (MaxStep >= 2 && !HasFoldersToChoose && _model.Slug is not null && !IsFillFoldersStep)
+        {
+            var released = Math.Max(MilestoneStep(), _reopenedMaxStep);
+            if (released > MaxStep)
+                MaxStep = released;
+        }
         RefreshStep2Tabs();
         SyncWaitPoint();
     }
@@ -2220,7 +2248,7 @@ public sealed partial class CreateTeamViewModel : ObservableObject
         set
         {
             if (SetProperty(ref _adoptProfileName, value))
-                OnPropertyChanged(nameof(AdoptProfileSummary));
+                OnPropertiesChanged(nameof(AdoptProfileSummary), nameof(AdoptModelLine));
         }
     }
 
@@ -2241,10 +2269,26 @@ public sealed partial class CreateTeamViewModel : ObservableObject
         get => _adoptUsesDefaultLlm;
         set
         {
-            if (SetProperty(ref _adoptUsesDefaultLlm, value) && value)
+            if (!SetProperty(ref _adoptUsesDefaultLlm, value))
+                return;
+
+            OnPropertyChanged(nameof(AdoptModelLine));
+            if (value)
                 IsAdoptProfilePickerOpen = false;
         }
     }
+
+    /// <summary>
+    /// UX lot 05 (022): the step-4 « Model » line, one control for one choice — « DeepSeek
+    /// (default) » while the team follows the machine's default, else the profile it pins.
+    /// </summary>
+    public string AdoptModelLine =>
+        AdoptUsesDefaultLlm
+            ? _strings.Format(StudioStringKeys.WizardAdoptModelDefault, Profiles.DefaultProfileName ?? "")
+            : AdoptProfileName ?? "";
+
+    /// <summary>The unfolded picker's first row: back to the machine's default model.</summary>
+    public RelayCommand UseDefaultAdoptLlmCommand { get; }
 
     /// <summary>« Use the default model (X) », X the setting elected now.</summary>
     public string AdoptUseDefaultLlmLabel =>
@@ -2472,10 +2516,16 @@ public sealed partial class CreateTeamViewModel : ObservableObject
         // writes back as it is (STUDIO-14, D-07).
         foreach (var mount in team.Metadata?.Mounts ?? team.Mounts)
             TeamMounts.Add(mount);
+        // UX lot 05 (021): the steps the reopened team really went through — a folder still to
+        // choose stops it at step 2, a team never adopted from this session at the trial. The
+        // last folder chosen releases the rest (RefreshMountSurfaces).
+        _reopenedMaxStep = session.PromotedTo is { Length: > 0 } ? 4 : 3;
         RefreshMountSurfaces();
 
-        MaxStep = 4;
+        MaxStep = HasFoldersToChoose ? 2 : _reopenedMaxStep;
         Step = 2;
+        if (HasFoldersToChoose)
+            Step2TabIndex = Step2FoldersTab;
         SyncFromModel();
 
         // The dry pause (a rebuilt session, or one adopted without a trial and reopened):
@@ -2702,6 +2752,10 @@ public sealed partial class CreateTeamViewModel : ObservableObject
         request = request with { Language = _uiLanguage() };
 
         IsEngineRunning = true;
+        // UX lot 05 (011-012): a new run takes back the interrupted brief's « Resume ».
+        if (_resumeAction is not null && ReferenceEquals(Chat.PendingAction, _resumeAction))
+            Chat.SetPendingAction(null);
+        _resumeAction = null;
         _lastStderr = null;
         // A card left over from the previous run would contradict this one (STUDIO-13, D-05).
         Failure = null;
@@ -2740,6 +2794,10 @@ public sealed partial class CreateTeamViewModel : ObservableObject
                 // composer writing into a closed pipe.
                 Chat.EngineFinished(interrupted: Chat.IsStarted && !Chat.IsDone);
                 SyncFromModel();
+                // UX lot 05 (011-012): « start again when you are ready » comes with its button.
+                if (Chat.WasInterrupted && _waitPoint == WizardWaitPoint.None)
+                    Chat.SetPendingAction(ResumeActionAfterInterruption());
+                RefreshStep1Tabs();
             }).ConfigureAwait(false);
         }
     }
@@ -3000,7 +3058,7 @@ public sealed partial class CreateTeamViewModel : ObservableObject
         // The adoption fields too (review, lot 7): a reopened team seeds profile and
         // schedule — without this reset they would leak into the NEXT session's sidecar.
         _adoptProfileName = null;
-        OnPropertiesChanged(nameof(AdoptProfileName), nameof(AdoptProfileSummary));
+        OnPropertiesChanged(nameof(AdoptProfileName), nameof(AdoptProfileSummary), nameof(AdoptModelLine));
         AdoptUsesDefaultLlm = true;
         ScheduleChoice = 0;
         ScheduleTime = "07:30";
@@ -3008,6 +3066,7 @@ public sealed partial class CreateTeamViewModel : ObservableObject
         StatusMessage = "";
         Step = 1;
         MaxStep = 1;
+        _reopenedMaxStep = 0;
     }
 
     /// <summary>
@@ -3217,6 +3276,25 @@ public sealed partial class CreateTeamViewModel : ObservableObject
             StatusMessage = failure.Headline;
     }
 
+    /// <summary>The steps a reopened team went through (3, or 4 once adopted from this session); 0 otherwise.</summary>
+    private int _reopenedMaxStep;
+
+    /// <summary>
+    /// The step the engine's milestone reaches — on a reopened team, held at step 2 while a folder
+    /// is still to choose (UX lot 05, 021): the trial waits for the folders, and so do the steps after it.
+    /// </summary>
+    private int MilestoneStep()
+    {
+        var reached = _model.Milestone switch
+        {
+            ForgeMilestone.Describe => 1,
+            ForgeMilestone.Propose => 2,
+            ForgeMilestone.Try => 3,
+            _ => 4,
+        };
+        return _reopenedMaxStep > 0 && HasFoldersToChoose ? Math.Min(reached, 2) : reached;
+    }
+
     private void GoStep(int step)
     {
         if (step <= MaxStep)
@@ -3243,13 +3321,7 @@ public sealed partial class CreateTeamViewModel : ObservableObject
 
         // The milestone drives the stepper; the user may look back, never skip ahead. The fill
         // question holds it: the step moves on once the user answered (STUDIO-57, R15).
-        var reached = _model.Milestone switch
-        {
-            ForgeMilestone.Describe => 1,
-            ForgeMilestone.Propose => 2,
-            ForgeMilestone.Try => 3,
-            _ => 4,
-        };
+        var reached = MilestoneStep();
         if (reached > MaxStep && !IsFillFoldersStep)
         {
             MaxStep = reached;
@@ -3309,7 +3381,8 @@ public sealed partial class CreateTeamViewModel : ObservableObject
             nameof(CrewDefinitionYaml), nameof(HasCrewDefinition),
             nameof(CanSaveTeam), nameof(DecisionPending), nameof(CanEditAgents), nameof(CanTryTeam),
             nameof(IsEngineWaitingOnUser), nameof(IsEngineWorking), nameof(IsModifyingTeam),
-            nameof(VerdictSummary), nameof(HasVerdictSummary), nameof(Step2Hint));
+            nameof(VerdictSummary), nameof(HasVerdictSummary), nameof(Step2Hint),
+            nameof(VerdictHeadline), nameof(VerdictHeadlineTone), nameof(IsStep3Done));
         RaiseSessionStateChanged();
         RefreshStep1Tabs();
         RefreshStep2Tabs();
@@ -3475,8 +3548,9 @@ public sealed partial class CreateTeamViewModel : ObservableObject
     public bool CanOpenFolder => HasShellOpener && FolderToOpen() is not null;
 
     /// <summary>Which of the two folders opens, said on the button: the working session, or the adopted team.</summary>
-    public string OpenFolderTooltip => _strings[TeamFolderToOpen() is not null
-        ? StudioStringKeys.WizardOpenFolderTeam
+    public string OpenFolderTooltip => _strings[
+        !CanOpenFolder ? StudioStringKeys.WizardOpenFolderLater
+        : TeamFolderToOpen() is not null ? StudioStringKeys.WizardOpenFolderTeam
         : StudioStringKeys.WizardOpenFolderSession];
 
     /// <summary>The team folder, once there is one: a team reopened from its card.</summary>
@@ -3650,7 +3724,10 @@ public sealed partial class CreateTeamViewModel : ObservableObject
             FailureReportCopied = false;
             OnPropertiesChanged(
                 nameof(HasFailure), nameof(CanCopyFailureReport), nameof(FailureRetryCommand),
-                nameof(FailureOffersRetry), nameof(FailureOffersDiagnostic), nameof(FailureOffersSettings));
+                nameof(FailureOffersRetry), nameof(FailureOffersDiagnostic), nameof(FailureOffersSettings),
+                nameof(IsEngineMissing), nameof(FailureOffersDiagnosticSecondary),
+                nameof(CanCompose), nameof(ComposeTip), nameof(HasComposeTip));
+            ComposeCommand.RaiseCanExecuteChanged();
         }
     }
 
@@ -3689,6 +3766,12 @@ public sealed partial class CreateTeamViewModel : ObservableObject
     /// <summary>Whether the card offers "Open the diagnostic" — the doctor names what is missing or unreachable.</summary>
     public bool FailureOffersDiagnostic =>
         _failure?.Kind is WizardFailureKind.EngineMissing or WizardFailureKind.EngineStopped or WizardFailureKind.Unknown;
+
+    /// <summary>
+    /// Whether « Open the diagnostic » stands as a secondary — the primary one is the missing
+    /// engine's (<see cref="IsEngineMissing"/>, UX lot 05).
+    /// </summary>
+    public bool FailureOffersDiagnosticSecondary => FailureOffersDiagnostic && !IsEngineMissing;
 
     /// <summary>Whether the card offers "Open the settings" — the engine refused what the settings gave it.</summary>
     public bool FailureOffersSettings => _failure?.Kind is WizardFailureKind.ConfigRefused;

@@ -1404,7 +1404,7 @@
     <value>Elija primero un modelo para el asistente.</value>
   </data>
   <data name="Studio.Create.HintReady" xml:space="preserve">
-    <value>Todo está aquí — puedo componer el equipo.</value>
+    <value>Listo: puede componer el equipo.</value>
   </data>
   <data name="Studio.Create.DecisionAccept" xml:space="preserve">
     <value>Me sirve</value>
@@ -2493,7 +2493,7 @@
     <value>El asistente propone un equipo: un agente por tarea, cada uno con las capacidades justas. Puede modificar un agente, añadir otro, y elegir qué carpetas verá el equipo una vez adoptado.</value>
   </data>
   <data name="Studio.Create.HelpStep3" xml:space="preserve">
-    <value>El equipo ensaya sobre un ejemplo, en su propio entorno aislado — no se toca nada fuera de él. El veredicto le dice honestamente si el resultado corresponde a lo que pidió en el paso 1.</value>
+    <value>El equipo ensaya sobre un ejemplo, en su entorno aislado — no se toca nada más. El veredicto le dice si el resultado corresponde a lo que pidió en el paso 1.</value>
   </data>
   <data name="Studio.Create.HelpStep4" xml:space="preserve">
     <value>Adoptar guarda el equipo como una carpeta ordinaria de su perfil. Si eligió una planificación, Studio le propone después instalarla en el programador de su sistema; el equipo aparece en Mis equipos.</value>
@@ -2617,6 +2617,7 @@
   <data name="Studio.Chat.SessionEnded" xml:space="preserve">
     <value>El asistente se detuvo antes de terminar el resumen. Vuelve a empezar cuando quieras.</value>
   </data>
+  <data name="Studio.Chat.Restart" xml:space="preserve"><value>Reanudar</value></data>
   <data name="Studio.Create.HintComposing" xml:space="preserve">
     <value>Composición en curso: el asistente prepara el equipo.</value>
   </data>
@@ -3008,8 +3009,10 @@
     <value>La copia corre con el ajuste predeterminado: no se pudo copiar {0}.</value>
   </data>
   <data name="Studio.Create.RenameHint" xml:space="preserve">
-    <value>Para renombrar la carpeta, use Renombrar en Mis equipos.</value>
+    <value>Aquí solo cambia el título. «Renombrar» en Mis equipos también renombra la carpeta.</value>
   </data>
+  <data name="Studio.Create.AdoptModelDefault" xml:space="preserve"><value>{0} (predeterminado)</value></data>
+  <data name="Studio.Create.NameIsFolder" xml:space="preserve"><value>El nombre también es el nombre de la carpeta.</value></data>
   <!-- STUDIO-32: My teams — the search, the order, the Archives view, the archive gestures and their undo banner, the archive suggestion and its Settings › Studio card -->
   <data name="Studio.Teams.SearchHint" xml:space="preserve">
     <value>Buscar un equipo por su nombre o su necesidad…</value>
@@ -3221,6 +3224,7 @@
   <data name="Studio.Create.FailureEngineMissing" xml:space="preserve">
     <value>El motor orkeon no se encuentra en esta máquina.</value>
   </data>
+  <data name="Studio.Create.FailureEngineMissingHow" xml:space="preserve"><value>Instale el motor de Orkeon y vuelva a ejecutar el diagnóstico.</value></data>
   <data name="Studio.Create.FailureConfigRefused" xml:space="preserve">
     <value>El motor se negó a continuar.</value>
   </data>
@@ -3295,6 +3299,7 @@
   <data name="Studio.Create.OpenFolderSession" xml:space="preserve">
     <value>Abre la sesión de trabajo — la carpeta en la que escribe el asistente.</value>
   </data>
+  <data name="Studio.Create.OpenFolderLater" xml:space="preserve"><value>Disponible después de la composición: la carpeta de la sesión aún no existe.</value></data>
   <data name="Studio.Create.OpenFolderTeam" xml:space="preserve">
     <value>Abre la carpeta del equipo adoptado.</value>
   </data>
@@ -3775,7 +3780,10 @@
   <data name="Studio.Create.DraftSavedAt" xml:space="preserve"><value>Borrador guardado a las {0}</value></data>
   <data name="Studio.Create.ResumeUnavailable" xml:space="preserve"><value>Esta sesión ya no se puede reanudar aquí: empiece de nuevo o búsquela en Sesiones en curso, en Mis equipos.</value></data>
   <data name="Studio.Create.FoldersToChoose" xml:space="preserve"><value>{0} {0:plural:carpeta|carpetas} por elegir antes de la prueba.</value></data>
+  <data name="Studio.Create.TryTeamNoProposal" xml:space="preserve"><value>Disponible después de la composición.</value></data>
   <data name="Studio.Create.VerdictSummary" xml:space="preserve"><value>{0} de {1} {1:plural:criterio cumplido|criterios cumplidos}</value></data>
+  <data name="Studio.Create.VerdictReady" xml:space="preserve"><value>Listo para adoptar</value></data>
+  <data name="Studio.Create.VerdictToFix" xml:space="preserve"><value>Por corregir: {0} {0:plural:punto|puntos}</value></data>
   <data name="Studio.Create.ScreenSub" xml:space="preserve"><value>Nada se escribe en su equipo antes de la adopción.</value></data>
   <data name="Studio.Create.Back" xml:space="preserve"><value>Atrás</value></data>
   <data name="Studio.Create.Resume" xml:space="preserve"><value>Reanudar</value></data>
@@ -4052,6 +4060,7 @@
   <data name="Studio.Create.HintConfirmFolders" xml:space="preserve"><value>Confirme las carpetas para pasar a la composición.</value></data>
   <data name="Studio.Create.HintDecide" xml:space="preserve"><value>Resuelva la elección en la conversación para continuar.</value></data>
   <data name="Studio.Create.TabNeedDone" xml:space="preserve"><value>Descrito</value></data>
+  <data name="Studio.Create.TabNeedInterrupted" xml:space="preserve"><value>Descrito, briefing interrumpido</value></data>
   <data name="Studio.Create.TabNeedDoneAnswers" xml:space="preserve">
     <value>Descrito, {0} {0:plural:pregunta resuelta|preguntas resueltas}</value>
   </data>
@@ -4159,6 +4168,8 @@
   <data name="Studio.Create.CompositionFooterRunning" xml:space="preserve">
     <value>Composición en curso.</value>
   </data>
+  <data name="Studio.Create.CompositionFooterInvalid" xml:space="preserve"><value>Composición por corregir: la definición no es válida.</value></data>
+  <data name="Studio.Create.CompositionFooterStopped" xml:space="preserve"><value>Composición detenida.</value></data>
   <data name="Studio.Create.MoreTools" xml:space="preserve">
     <value>+ {0}</value>
   </data>
@@ -4217,8 +4228,9 @@
     <value>Composición por el motor</value>
   </data>
   <data name="Studio.Create.CompositionSub" xml:space="preserve">
-    <value>Lo que hizo el motor para producir esta propuesta. Solo lectura; el detalle completo está en el diario técnico.</value>
+    <value>Lo que hizo el motor para producir esta propuesta. Solo lectura.</value>
   </data>
+  <data name="Studio.Create.CompositionSubExpert" xml:space="preserve"><value>El detalle completo está en el diario técnico, más abajo.</value></data>
   <data name="Studio.Create.FieldState" xml:space="preserve">
     <value>Estado</value>
   </data>

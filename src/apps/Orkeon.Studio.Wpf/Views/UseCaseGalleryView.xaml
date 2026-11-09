@@ -174,15 +174,24 @@
     <controls:Alert DockPanel.Dock="Top" Tone="Danger" Margin="24,16,24,0"
                     Message="{Binding Failure.Headline}" Details="{Binding Failure.Detail}"
                     Visibility="{Binding HasFailure, Converter={StaticResource BooleanToVisibility}}">
+      <!-- UX lot 05 (071): no engine — the sentence that says what to do, and the diagnostic as
+           the one primary. -->
+      <TextBlock Style="{StaticResource Hint}" TextWrapping="Wrap"
+                 Text="{Binding [Studio.Create.FailureEngineMissingHow], Source={x:Static services:I18n.Instance}}"
+                 Visibility="{Binding IsEngineMissing, Converter={StaticResource BooleanToVisibility}}"/>
       <controls:Alert.Actions>
         <WrapPanel>
+          <Button Style="{StaticResource BtnPrimary}" controls:ButtonSize.Height="32" Margin="0,0,8,0" Command="{Binding OpenDiagnosticCommand}"
+                  controls:ButtonIcon.Kind="stethoscope"
+                  Content="{Binding [Studio.Create.FailureOpenDiagnostic], Source={x:Static services:I18n.Instance}}"
+                  Visibility="{Binding IsEngineMissing, Converter={StaticResource BooleanToVisibility}}"/>
           <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="32" Margin="0,0,8,0" Command="{Binding RetryCommand}"
                   controls:ButtonIcon.Kind="rotate-cw"
                   Content="{Binding [Studio.Create.FailureRetry], Source={x:Static services:I18n.Instance}}"/>
           <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="32" Command="{Binding OpenDiagnosticCommand}"
                   controls:ButtonIcon.Kind="stethoscope"
                   Content="{Binding [Studio.Create.FailureOpenDiagnostic], Source={x:Static services:I18n.Instance}}"
-                  Visibility="{Binding FailureOffersDiagnostic, Converter={StaticResource BooleanToVisibility}}"/>
+                  Visibility="{Binding FailureOffersDiagnosticSecondary, Converter={StaticResource BooleanToVisibility}}"/>
         </WrapPanel>
       </controls:Alert.Actions>
     </controls:Alert>

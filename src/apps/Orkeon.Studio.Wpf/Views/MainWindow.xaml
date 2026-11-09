@@ -448,13 +448,14 @@
              scrolled content (a ScrollViewer's Padding sits outside the viewport and left a dead
              band above the bar). The right margin only shows below 1440 px. -->
         <Grid Grid.Column="0">
-        <ScrollViewer VerticalScrollBarVisibility="Visible"
-                      Visibility="{Binding IsChecked, ElementName=NavCreate, Converter={StaticResource BooleanToVisibility}}">
+        <!-- UX lot 05 (016, 022): no ScrollViewer here — the view scrolls its own content and keeps
+             the step's action bar docked below it, always on screen. -->
+        <Grid Visibility="{Binding IsChecked, ElementName=NavCreate, Converter={StaticResource BooleanToVisibility}}">
           <Grid Style="{StaticResource PageHost}">
             <Grid.ColumnDefinitions><ColumnDefinition Style="{StaticResource PageColumn}"/></Grid.ColumnDefinitions>
             <views:CreateTeamView x:Name="CreatePanel" DataContext="{Binding CreateTeam}"/>
           </Grid>
-        </ScrollViewer>
+        </Grid>
         <ScrollViewer VerticalScrollBarVisibility="Visible"
                       Visibility="{Binding IsChecked, ElementName=NavTeams, Converter={StaticResource BooleanToVisibility}}">
           <Grid Style="{StaticResource PageHost}">
@@ -603,6 +604,7 @@
               <!-- «~» when Studio or the runtime had to estimate for a provider that reported nothing, as in the assistant's group. -->
               <TextBlock Style="{StaticResource StatusFigure}" Margin="0,0,2,0" Text="~"
                          Foreground="{DynamicResource InkFaintBrush}"
+                         ToolTip="{Binding [Studio.Create.TokensEstimated], Source={x:Static services:I18n.Instance}}"
                          Visibility="{Binding TokensEstimated, Converter={StaticResource BooleanToVisibility}}"/>
               <controls:LucideIcon Kind="arrow-up" Size="11" VerticalAlignment="Center"
                                    Foreground="{DynamicResource InkMutedBrush}"/>
@@ -708,6 +710,7 @@
                 <!-- «~» when Studio or the runtime had to estimate for a provider that reported nothing, as on the card. -->
                 <TextBlock Style="{StaticResource StatusFigure}" Margin="0,0,2,0" Text="~"
                            Foreground="{DynamicResource InkFaintBrush}"
+                           ToolTip="{Binding [Studio.Create.TokensEstimated], Source={x:Static services:I18n.Instance}}"
                            Visibility="{Binding TokensEstimated, Converter={StaticResource BooleanToVisibility}}"/>
                 <controls:LucideIcon Kind="arrow-up" Size="11" VerticalAlignment="Center"
                                      Foreground="{DynamicResource InkMutedBrush}"/>

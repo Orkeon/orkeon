@@ -46,8 +46,14 @@ public sealed partial class CreateTeamViewModel
     /// <summary>The step's « Back »: the tab before the one on screen.</summary>
     public RelayCommand Step1BackCommand { get; private set; } = null!;
 
-    /// <summary>The « Need » tab's state: done once the need is typed.</summary>
-    public string NeedTabState => _need.Trim().Length > 0 ? TabDone : TabEmpty;
+    /// <summary>
+    /// The « Need » tab's state: done once the need is typed — amber when the assistant stopped
+    /// before the brief was accepted (UX lot 05, 011-012).
+    /// </summary>
+    public string NeedTabState =>
+        _need.Trim().Length == 0 ? TabEmpty
+        : Chat.WasInterrupted ? TabWarning
+        : TabDone;
 
     /// <summary>« To describe », « Described », or « Described, 2 questions settled ».</summary>
     public string NeedTabSubtitle
@@ -56,6 +62,8 @@ public sealed partial class CreateTeamViewModel
         {
             if (_need.Trim().Length == 0)
                 return _strings[StudioStringKeys.WizardTabNeedEmpty];
+            if (Chat.WasInterrupted)
+                return _strings[StudioStringKeys.WizardTabNeedInterrupted];
 
             var answers = AnswersGiven;
             return answers == 0
@@ -165,8 +173,17 @@ public sealed partial class CreateTeamViewModel
         ? StudioStringKeys.WizardTabNotesFooterTaken
         : StudioStringKeys.WizardTabNotesFooterEmpty];
 
-    /// <summary>« Composition under way » on the disabled « Compose the team »; empty otherwise.</summary>
-    public string ComposeTip => IsEngineRunning ? _strings[StudioStringKeys.WizardComposeBusyTip] : string.Empty;
+    /// <summary>
+    /// The disabled « Compose the team »'s reason: « Composition under way », or that the engine
+    /// was not found (UX lot 05, 012); empty otherwise.
+    /// </summary>
+    public string ComposeTip =>
+        IsEngineRunning ? _strings[StudioStringKeys.WizardComposeBusyTip]
+        : IsEngineMissing ? _strings[StudioStringKeys.WizardFailureEngineMissing]
+        : string.Empty;
+
+    /// <summary>Whether « Compose the team » carries a reason in its tooltip.</summary>
+    public bool HasComposeTip => ComposeTip.Length > 0;
 
     private void InitializeStep1Tabs()
     {
@@ -186,7 +203,8 @@ public sealed partial class CreateTeamViewModel
     /// </summary>
     private void OnWaitPointLanguageChanged()
     {
-        Chat.SetPendingAction(PendingActionFor(_waitPoint));
+        Chat.SetPendingAction(PendingActionFor(_waitPoint)
+            ?? (_resumeAction is not null && Chat.WasInterrupted ? ResumeActionAfterInterruption() : null));
         OnQuestionsLanguageChanged();
         foreach (var held in HeldFolderRows)
             held.OnLanguageChanged();
@@ -199,5 +217,5 @@ public sealed partial class CreateTeamViewModel
     private void RefreshStep1Tabs() => OnPropertiesChanged(
         nameof(NeedTabState), nameof(NeedTabSubtitle), nameof(NeedFooter),
         nameof(FoldersTabState), nameof(FoldersTabSubtitle), nameof(IsFoldersTabEmpty), nameof(FoldersFooter),
-        nameof(NotesTabState), nameof(NotesTabSubtitle), nameof(NotesFooter), nameof(ComposeTip));
+        nameof(NotesTabState), nameof(NotesTabSubtitle), nameof(NotesFooter), nameof(ComposeTip), nameof(HasComposeTip));
 }

@@ -193,6 +193,7 @@ public sealed class ScheduleManagementTests : IDisposable
     public async Task A_readoption_on_demand_whose_schedule_cannot_be_stopped_is_not_saved()
     {
         var (vm, processes, teamDir) = await ReopenScheduledTeamAsync();
+        var maxStepBefore = vm.MaxStep;
         vm.ScheduleChoice = 0;
         processes.NextRuns.Enqueue([Refused("The windows scheduler refused: ERROR: Access is denied.", "schtasks /Delete /TN \"Orkeon veille-docs\" /F")]);
         processes.ExitCode = 1;
@@ -203,7 +204,9 @@ public sealed class ScheduleManagementTests : IDisposable
         Assert.Contains("Access is denied", vm.StatusMessage, StringComparison.Ordinal);
         Assert.Contains("schtasks /Delete", vm.StatusMessage, StringComparison.Ordinal);
         Assert.Equal("daily@07:30", TeamCatalog.Describe(teamDir).Schedule);
-        Assert.Equal(4, vm.MaxStep);
+        // Nothing saved: the stepper stays where the reopen left it (UX lot 05 counts the steps
+        // the reopened team really went through, no longer a flat 4).
+        Assert.Equal(maxStepBefore, vm.MaxStep);
     }
 
     // ── the card (D-05) ──

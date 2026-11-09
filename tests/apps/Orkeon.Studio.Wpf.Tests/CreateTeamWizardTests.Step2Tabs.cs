@@ -52,7 +52,7 @@ public partial class CreateTeamWizardTests
         Assert.StartsWith(vm.ValidationOk switch { true => "Composed · ", false => "To fix · ", null => "Stopped · " }, vm.CompositionTabSubtitle, StringComparison.Ordinal);
         Assert.StartsWith(vm.ValidationOk switch { true => "Composed", false => "Composition to fix", null => "Composition stopped" }, vm.CompositionStateText, StringComparison.Ordinal);
         Assert.Equal($"{vm.Files.Count} {(vm.Files.Count == 1 ? "file" : "files")} in the team's draft", vm.CompositionFilesText);
-        Assert.Equal("Composition finished.", vm.CompositionFooter);
+        Assert.Equal(vm.ValidationOk switch { true => "Composition finished.", false => "Composition to fix: the definition is not valid.", null => "Composition stopped." }, vm.CompositionFooter);
         Assert.False(vm.IsCompositionTabEmpty);
     }
 

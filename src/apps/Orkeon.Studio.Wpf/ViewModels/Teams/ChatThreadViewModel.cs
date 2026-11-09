@@ -51,6 +51,7 @@ public sealed class ChatThreadViewModel : ObservableObject
     private bool _isBusy;
     private bool _isDone;
     private bool _isStarted;
+    private bool _wasInterrupted;
     private bool _isRecapExpanded;
     private int _unreadCount;
     private int _tick;
@@ -181,6 +182,17 @@ public sealed class ChatThreadViewModel : ObservableObject
 
     /// <summary>Whether the bubble of a pending action shows.</summary>
     public bool HasPendingAction => _pendingAction is not null;
+
+    /// <summary>
+    /// UX lot 05 (011-012): whether the engine left before the brief was accepted — the thread
+    /// said « the assistant stopped » and the need is described but its brief interrupted. A new
+    /// session (<see cref="StartSession"/>) or a new binding clears it.
+    /// </summary>
+    public bool WasInterrupted
+    {
+        get => _wasInterrupted;
+        private set => SetProperty(ref _wasInterrupted, value);
+    }
 
     /// <summary>
     /// Whether the thread waits on the user, a question or a card: the header says it with a
@@ -408,6 +420,7 @@ public sealed class ChatThreadViewModel : ObservableObject
         _profileName = profileName;
         _askEngine = askEngine;
         _nameResolver = nameResolver;
+        WasInterrupted = false;
     }
 
     /// <summary>
@@ -569,6 +582,7 @@ public sealed class ChatThreadViewModel : ObservableObject
         // the assistant said, here as everywhere.
         PushWizard(new ChatTurnViewModel(_strings, isBot: true, "", bodyKey: StudioStringKeys.ChatSessionEnded));
         IsStarted = false;
+        WasInterrupted = true;
         RaiseDerived();
     }
 
@@ -757,6 +771,7 @@ public sealed class ChatThreadViewModel : ObservableObject
         Draft = "";
         IsDone = false;
         IsStarted = true;
+        WasInterrupted = false;
         IsRecapExpanded = false;
         UnreadCount = 0;
         IsOpen = true;
@@ -775,6 +790,7 @@ public sealed class ChatThreadViewModel : ObservableObject
         _tick = 0;
         Draft = "";
         IsStarted = false;
+        WasInterrupted = false;
         IsDone = false;
         IsBusy = false;
         IsOpen = false;
