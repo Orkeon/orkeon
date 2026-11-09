@@ -446,6 +446,12 @@ form with TS1084 and then skips its semantic pass) without moving a line, and a 
 imports still resolve. The scratch folder is written by the framework itself, outside the VFS, and
 deleted afterwards.
 
+A module may keep `/// <reference path="…/.orkeon/orkeon.d.ts" />` for its editor: that copy, written
+by `orkeon typings`, would otherwise be checked beside the embedded roll-up and report every
+identifier twice (TS6200). A copy identical to this build's roll-up (line endings aside) stands in
+for it; a copy that differs fails with one line on the copy, ``TS6200 this copy of the Orkeon typings
+is not the one this build ships …: regenerate it with `orkeon typings` ``.
+
 `tsc` is looked up like esbuild: `Orkeon:Scripting:Toolchain:TscPath` (the only candidate when set),
 then `tools/scripting-typecheck/node_modules/.bin/` of a checkout (bootstrap it with
 `npm --prefix tools/scripting-typecheck install --prefer-offline`), then `PATH`

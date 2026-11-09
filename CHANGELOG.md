@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — `orkeon run --validate` judges a `.ork.ts` the way `orkeon run` does (#315, #316)
+
+- **`--validate`, procedural scripts** (#316): a `.ork.ts` whose source never assigns `globalThis.crew` (a crew published through an imported helper, or run with `crew.run()`) runs on the scripting host, and `--validate` no longer loads it through the declarative loader, whose checks (a task required, no `contextTokens` on an autonomous budget) are not the ones such a script answers to. It checks the version directive, the types and the esbuild bundle, never evaluates the script — the old load ran a `crew.run()` at its top level — and prints `VALIDATION OK: <config> (procedural script: bundled, not run)`. `RunnerOptionsBase.ProceduralScript` carries the routing.
+- **Type check, referenced typings** (#315): a module that keeps `/// <reference path="…/.orkeon/orkeon.d.ts" />` for its editor no longer fails with TS6200 on every identifier. A copy identical to the build's roll-up stands in for it; a copy that differs fails with one `TS6200` line on the copy that says to run `orkeon typings`.
+
 ### Removed — the `{ context }` verdict of `onToolCall` (#307) **[breaking]**
 
 - **Scripts, `onToolCall`** (#307) **[breaking]**: `{ context: string }` is no longer an `onToolCall` verdict. `ctx.llm.act` accepted it and ignored the string, running the call as `"allow"` would; it is now an unknown shape and denies the call (`DENIED: onToolCall returned no valid verdict`), the gate not consulted. The typings no longer list it.

@@ -188,7 +188,22 @@ public sealed partial class TscTypeChecker
                 (output, exitCode) = await RunAsync(binary, tsconfig, work, ct).ConfigureAwait(false);
             }
 
-            diagnostics = TscOutputParser.Parse(output, mapper.MapFile, mapper.MapText);
+            // #315: a module that references the project's copy of the typings (`orkeon typings`, for its
+            // editor) brings that copy in beside the roll-up, and tsc reports every identifier twice
+            // (TS6200). A copy that is this build's roll-up stands in for it; a stale one is named as such.
+            var copies = await TypingsCopiesAsync(output, work, rollup, ct).ConfigureAwait(false);
+            var stale = copies.Where(c => !c.Current).Select(c => c.Path).ToList();
+            if (copies.Count > 0 && stale.Count == 0)
+            {
+                await File.WriteAllTextAsync(tsconfig, BuildTsconfig(null, mirrored, mirrorRoot, root), ct).ConfigureAwait(false);
+                (output, exitCode) = await RunAsync(binary, tsconfig, work, ct).ConfigureAwait(false);
+            }
+
+            diagnostics = stale.Count > 0
+                ? [.. stale.Select(path => new TypeCheckDiagnostic(mapper.MapFile(path), 1, 1, "TS6200",
+                    "this copy of the Orkeon typings is not the one this build ships, and a module of the script "
+                    + "references it: regenerate it with `orkeon typings`."))]
+                : TscOutputParser.Parse(output, mapper.MapFile, mapper.MapText);
             // A run that exited 0 found no error: a line with no code is a warning of node itself
             // (a DeprecationWarning), not a finding. On failure such lines stay as context.
             if (exitCode == 0)
@@ -262,7 +277,40 @@ public sealed partial class TscTypeChecker
         return string.Join('\n', lines);
     }
 
-    private static string BuildTsconfig(string rollup, string mirroredScript, string mirrorRoot, string root)
+    /// <summary>
+    /// The files outside the scratch folder that tsc found clashing with another (TS6200) and that open
+    /// like the roll-up: copies of the Orkeon typings a module referenced. <c>Current</c> when the copy is
+    /// this build's roll-up, line endings aside.
+    /// </summary>
+    [SuppressVfsCompliance("EXCEPTION-BOOTSTRAP: reads the files an external tsc process named, to compare them with the roll-up it was given; tsc cannot go through the VFS.")]
+    private static async Task<IReadOnlyList<(string Path, bool Current)>> TypingsCopiesAsync(
+        string output, string work, string rollup, CancellationToken ct)
+    {
+        var rollupText = NormalizeNewlines(await File.ReadAllTextAsync(rollup, ct).ConfigureAwait(false));
+        var header = rollupText[..Math.Max(rollupText.IndexOf('\n', StringComparison.Ordinal), 0)];
+        var copies = new List<(string, bool)>();
+        foreach (var file in DuplicateDiagnostic().Matches(output)
+                     .Select(m => Path.GetFullPath(m.Groups["p"].Value.Trim(), work))
+                     .Distinct(StringComparer.OrdinalIgnoreCase))
+        {
+            if (file.StartsWith(work, StringComparison.OrdinalIgnoreCase) || !File.Exists(file))
+                continue;
+
+            var text = NormalizeNewlines(await File.ReadAllTextAsync(file, ct).ConfigureAwait(false));
+            if (header.Length > 0 && text.StartsWith(header + "\n", StringComparison.Ordinal))
+                copies.Add((file, string.Equals(text, rollupText, StringComparison.Ordinal)));
+        }
+
+        return copies;
+    }
+
+    private static string NormalizeNewlines(string text) => text.Replace("\r\n", "\n", StringComparison.Ordinal);
+
+    [GeneratedRegex(@"^(?<p>.+?)\(\d+,\d+\): error TS6200\b", RegexOptions.CultureInvariant | RegexOptions.Multiline)]
+    private static partial Regex DuplicateDiagnostic();
+
+    /// <summary>The tsconfig of one pass; without <paramref name="rollup"/> when a referenced copy of it stands in.</summary>
+    private static string BuildTsconfig(string? rollup, string mirroredScript, string mirrorRoot, string root)
     {
         // tsconfig.base.json of tools/scripting-typecheck is the author-facing copy; these are its options.
         static string J(string path) => System.Text.Json.JsonSerializer.Serialize(path.Replace('\\', '/'));
@@ -273,7 +321,10 @@ public sealed partial class TscTypeChecker
           .Append("\"strict\":true,\"noEmit\":true,\"allowImportingTsExtensions\":true,")
           .Append("\"forceConsistentCasingInFileNames\":true,")
           .Append("\"rootDirs\":[").Append(J(mirrorRoot)).Append(',').Append(J(root)).Append("]},")
-          .Append("\"files\":[").Append(J(rollup)).Append(',').Append(J(mirroredScript)).Append("]}");
+          .Append("\"files\":[");
+        if (rollup is not null)
+            sb.Append(J(rollup)).Append(',');
+        sb.Append(J(mirroredScript)).Append("]}");
         return sb.ToString();
     }
 

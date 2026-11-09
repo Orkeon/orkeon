@@ -22,3 +22,5 @@ Orkeon.Hosting.RunnerMountPlan.LlmRecordCassette.get -> string?
 Orkeon.Hosting.RunnerMountPlan.LlmRecordCassette.init -> void
 Orkeon.Hosting.RunnerMountPlan.LlmReplayCassette.get -> string?
 Orkeon.Hosting.RunnerMountPlan.LlmReplayCassette.init -> void
+Orkeon.Hosting.RunnerOptionsBase.ProceduralScript.get -> bool
+Orkeon.Hosting.RunnerOptionsBase.ProceduralScript.set -> void

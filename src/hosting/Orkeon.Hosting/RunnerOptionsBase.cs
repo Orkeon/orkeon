@@ -151,6 +151,16 @@ public abstract class RunnerOptionsBase
     public bool Validate { get; set; }
 
     /// <summary>
+    /// The <c>.ork.ts</c> target is a procedural script - its source never assigns
+    /// <c>globalThis.crew</c>, so <c>orkeon run</c> evaluates it on the scripting host rather than
+    /// loading a crew definition. <c>--validate</c> then checks what it can without running it (the
+    /// version directive, the type check, the esbuild bundle) and never loads it as a declarative
+    /// crew. Not a command-line option: <c>orkeon run</c> sets it from the same source sniff that
+    /// routes a run.
+    /// </summary>
+    public bool ProceduralScript { get; set; }
+
+    /// <summary>
     /// The folder <c>./.orkeon/state</c> (the checkpoint store's) is resolved against; null: the process's
     /// working directory. Not a command-line option: a command that embeds a runner, or a test, sets it.
     /// </summary>
