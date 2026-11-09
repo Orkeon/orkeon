@@ -149,6 +149,7 @@ public sealed class ModalDialogsTests
     [InlineData(@"C:\Users\me\Docs\", "Docs")]
     [InlineData("/home/me/output/", "output")]
     [InlineData("Docs", "Docs")]
+    [InlineData(@"C:\", "C:")]
     [InlineData("", "")]
     public void A_folder_reads_by_its_own_name(string path, string expected) =>
         Assert.Equal(expected, FolderNames.Of(path));

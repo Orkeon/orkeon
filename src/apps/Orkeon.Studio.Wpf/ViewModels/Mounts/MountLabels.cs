@@ -60,23 +60,6 @@ internal static class MountLabels
     }
 
     /// <summary>
-    /// The last segment of a folder on this machine — what a Novice screen shows, the full path
-    /// going in a tooltip. A drive root reads as its drive (<c>C:</c>); a path with nothing
-    /// left to cut comes back whole.
-    /// </summary>
-    public static string FolderNameOf(string? folder)
-    {
-        if (string.IsNullOrEmpty(folder))
-            return "";
-
-        // Both separators on every OS: a Windows path read on Linux (a test, a copied
-        // settings file) must cut the same way.
-        var trimmed = folder.TrimEnd('\\', '/');
-        var name = trimmed[(trimmed.LastIndexOfAny(['\\', '/']) + 1)..];
-        return name.Length > 0 ? name : folder;
-    }
-
-    /// <summary>
     /// Whether the folder behind <paramref name="mountString"/> is one of the folders declared
     /// on the Settings › Allowed folders screen. A team mount that is not — a folder bound inside the
     /// team at adoption, an entry inherited from an imported sidecar, a settings entry since

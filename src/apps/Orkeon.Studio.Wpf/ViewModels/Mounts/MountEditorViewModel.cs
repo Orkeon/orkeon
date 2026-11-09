@@ -168,7 +168,7 @@ public sealed class MountEditorViewModel : ObservableObject
     /// The last segment of <see cref="PhysicalPath"/> — the title of a Novice card, the full
     /// path going in its tooltip; the whole path when it has no segment to cut.
     /// </summary>
-    public string FolderName => MountLabels.FolderNameOf(_physicalPath);
+    public string FolderName => FolderNames.Of(_physicalPath);
 
     /// <summary>The path the agents see, e.g. <c>/workspace</c>.</summary>
     public string VirtualPath

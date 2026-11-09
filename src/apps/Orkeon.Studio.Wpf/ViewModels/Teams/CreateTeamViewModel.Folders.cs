@@ -181,7 +181,7 @@ public sealed class WizardFolderRow : ObservableObject
     /// The last segment of the folder of this machine that answers the row — what a Novice fiche
     /// shows next to « Use an existing folder… », the full path in its tooltip; empty when none.
     /// </summary>
-    public string ChosenFolderName => MountLabels.FolderNameOf(_directory);
+    public string ChosenFolderName => FolderNames.Of(_directory);
 
     /// <summary>The folder's name inside the team: <c>input</c> for <c>/workspace</c>, its own otherwise.</summary>
     internal string FolderName =>

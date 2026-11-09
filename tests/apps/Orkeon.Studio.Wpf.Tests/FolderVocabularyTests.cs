@@ -31,15 +31,6 @@ public sealed class FolderVocabularyTests
         Assert.Equal("/docs · read", MountLabels.Describe("./docs:/docs:ro", English).Label);
     }
 
-    [Theory]
-    [InlineData(@"C:\Users\cyril\AppData\Local\Temp\orkeon\sortie", "sortie")]
-    [InlineData(@"C:\Users\cyril\Documents\factures\", "factures")]
-    [InlineData("/srv/factures/", "factures")]
-    [InlineData(@"C:\", "C:")]
-    [InlineData("", "")]
-    public void A_folder_name_is_the_last_segment_of_its_path(string folder, string expected) =>
-        Assert.Equal(expected, MountLabels.FolderNameOf(folder));
-
     [Fact]
     public void A_composer_row_shows_one_remove_for_a_bound_folder_or_a_bare_root()
     {

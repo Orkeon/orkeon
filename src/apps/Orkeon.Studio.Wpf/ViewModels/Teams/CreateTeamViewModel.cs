@@ -311,7 +311,7 @@ public sealed record MountRow(
     /// The last segment of <see cref="Folder"/> — what a Novice row shows in place of the full
     /// path on this machine, which goes in its tooltip (UX lot 01).
     /// </summary>
-    public string FolderName => MountLabels.FolderNameOf(Folder);
+    public string FolderName => FolderNames.Of(Folder);
 }
 
 /// <summary>
