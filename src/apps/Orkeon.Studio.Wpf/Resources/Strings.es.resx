@@ -484,6 +484,12 @@
   <data name="Studio.Run.ExitCode" xml:space="preserve">
     <value>Código de salida {0} — {1}</value>
   </data>
+  <data name="Studio.Run.ExitSuccess" xml:space="preserve"><value>ejecución completada sin errores</value></data>
+  <data name="Studio.Run.ExitScriptError" xml:space="preserve"><value>error de script o de configuración: revise el archivo del equipo y la configuración que usa</value></data>
+  <data name="Studio.Run.ExitRuntimeError" xml:space="preserve"><value>error durante la ejecución: las últimas líneas del registro explican por qué</value></data>
+  <data name="Studio.Run.ExitCancelled" xml:space="preserve"><value>ejecución interrumpida</value></data>
+  <data name="Studio.Run.ExitUnknown" xml:space="preserve"><value>final inesperado: revise la salida de arriba</value></data>
+  <data name="Studio.Run.ExitNotStarted" xml:space="preserve"><value>el motor no se inició</value></data>
   <data name="Studio.Settings.OllamaTitle" xml:space="preserve">
     <value>Ollama</value>
   </data>
@@ -1599,6 +1605,7 @@
   <data name="Studio.Diagnostics.Check.esbuild" xml:space="preserve">
     <value>El compilador de scripts (esbuild)</value>
   </data>
+  <data name="Studio.Diagnostics.Check.install-channel" xml:space="preserve"><value>Canal de instalación del motor</value></data>
   <data name="Studio.Diagnostics.Check.llm-config" xml:space="preserve">
     <value>Configuración del modelo</value>
   </data>
@@ -1617,6 +1624,7 @@
   <data name="Studio.Diagnostics.Check.onnx-reranker" xml:space="preserve">
     <value>El reordenador ONNX</value>
   </data>
+  <data name="Studio.Diagnostics.Check.runner-settings" xml:space="preserve"><value>Configuración del lanzador</value></data>
   <data name="Studio.Diagnostics.Check.tree-sitter" xml:space="preserve">
     <value>El analizador de código (tree-sitter)</value>
   </data>
@@ -2016,6 +2024,9 @@
   <data name="Studio.Settings.MailStateNotReady" xml:space="preserve">
     <value>No está lista</value>
   </data>
+  <data name="Studio.Settings.MailNotReadyPassword" xml:space="preserve"><value>La contraseña no está almacenada: la variable {0} está vacía en este equipo. Escríbala en la pestaña Inicio de sesión.</value></data>
+  <data name="Studio.Settings.MailNotReadySecret" xml:space="preserve"><value>El secreto de cliente no está almacenado: la variable {0} está vacía en este equipo. Escríbalo en la pestaña Inicio de sesión.</value></data>
+  <data name="Studio.Settings.MailNotReadyOAuth" xml:space="preserve"><value>Esta cuenta aún no ha iniciado sesión: use « Iniciar sesión » más abajo.</value></data>
   <data name="Studio.Settings.MailStateSetAside" xml:space="preserve">
     <value>Apartada</value>
   </data>
@@ -2076,6 +2087,8 @@
   <data name="Studio.Settings.MailDeviceCodeExpiresIn" xml:space="preserve">
     <value>El código caduca en {0}</value>
   </data>
+  <data name="Studio.Settings.MailDeviceCodeExpiresSoon" xml:space="preserve"><value>El código caduca en menos de un minuto</value></data>
+  <data name="Studio.Common.Minutes" xml:space="preserve"><value>{0} min</value></data>
   <data name="Studio.Settings.MailDeviceCodeExpired" xml:space="preserve">
     <value>El código ha caducado — empiece de nuevo</value>
   </data>
@@ -3944,12 +3957,14 @@
   <data name="Studio.Diagnostics.Problem.appsettings" xml:space="preserve"><value>Studio no puede leer el archivo de configuración.</value></data>
   <data name="Studio.Diagnostics.Problem.dotnet-runtime" xml:space="preserve"><value>No se encuentra el entorno .NET que necesita el motor.</value></data>
   <data name="Studio.Diagnostics.Problem.esbuild" xml:space="preserve"><value>Falta el compilador de scripts en este equipo.</value></data>
+  <data name="Studio.Diagnostics.Problem.install-channel" xml:space="preserve"><value>Studio no reconoce cómo se instaló el motor; no se ofrecerán actualizaciones.</value></data>
   <data name="Studio.Diagnostics.Problem.llm-config" xml:space="preserve"><value>No hay ningún modelo configurado para los equipos.</value></data>
   <data name="Studio.Diagnostics.Problem.llm-profile-key" xml:space="preserve"><value>Un modelo no tiene clave, o no se encuentra su clave.</value></data>
   <data name="Studio.Diagnostics.Problem.llm-profiles" xml:space="preserve"><value>Un modelo está incompleto en la configuración.</value></data>
   <data name="Studio.Diagnostics.Problem.llm-reachability" xml:space="preserve"><value>El modelo no responde: compruebe su dirección y su clave.</value></data>
   <data name="Studio.Diagnostics.Problem.local-embeddings" xml:space="preserve"><value>Los embeddings locales no están disponibles en este equipo.</value></data>
   <data name="Studio.Diagnostics.Problem.onnx-reranker" xml:space="preserve"><value>El reclasificador ONNX no está disponible en este equipo.</value></data>
+  <data name="Studio.Diagnostics.Problem.runner-settings" xml:space="preserve"><value>La configuración del lanzador contiene un valor que el motor rechaza: en modo Experto, abra Configuración → pestaña Archivo.</value></data>
   <data name="Studio.Diagnostics.Problem.tree-sitter" xml:space="preserve"><value>El analizador de código no está disponible en este equipo.</value></data>
   <data name="Studio.Diagnostics.Problem.workspace-write" xml:space="preserve"><value>El motor no puede escribir en su carpeta de trabajo.</value></data>
   <data name="Studio.Chat.StatusWaitingCard" xml:space="preserve"><value>esperando su acción</value></data>

@@ -25,6 +25,7 @@ public class StudioStringsTests
             [StudioStringKeys.ValidationSummary] = "Validation : {0} erreur(s), {1} avertissement(s), {2} note(s).",
             [StudioStringKeys.LaunchNothingRan] = "Rien n'a été exécuté — {0}",
             [StudioStringKeys.LaunchExitCode] = "Code de sortie {0} — {1}",
+            [StudioStringKeys.LaunchExitSuccess] = "lancement terminé sans erreur",
             [StudioStringKeys.PresetNoneTitle] = "Aucun / hors ligne",
             [StudioStringKeys.PresetErrorCustomIncomplete] = "Le preset custom exige URL de base et modèle.",
             [StudioStringKeys.PresetGuidanceApiKeyEnv] = "Clé d'API : export {0}=<votre-clé>",
@@ -74,7 +75,8 @@ public class StudioStringsTests
 
         var line = LaunchOutcomeFormatter.DescribeRun(result, new FrenchStrings());
 
-        Assert.Equal("Code de sortie 0 — success", line);
+        // Studio's own sentence for the outcome: the engine's English one stays in Description.
+        Assert.Equal("Code de sortie 0 — lancement terminé sans erreur", line);
     }
 
     [Fact]

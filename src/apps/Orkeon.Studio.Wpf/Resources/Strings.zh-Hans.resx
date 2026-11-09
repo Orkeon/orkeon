@@ -484,6 +484,12 @@
   <data name="Studio.Run.ExitCode" xml:space="preserve">
     <value>退出码 {0} — {1}</value>
   </data>
+  <data name="Studio.Run.ExitSuccess" xml:space="preserve"><value>运行成功完成</value></data>
+  <data name="Studio.Run.ExitScriptError" xml:space="preserve"><value>脚本或设置错误：请检查团队文件及其使用的设置</value></data>
+  <data name="Studio.Run.ExitRuntimeError" xml:space="preserve"><value>运行时错误：日志的最后几行说明了原因</value></data>
+  <data name="Studio.Run.ExitCancelled" xml:space="preserve"><value>运行已中断</value></data>
+  <data name="Studio.Run.ExitUnknown" xml:space="preserve"><value>意外结束：请查看上方的输出</value></data>
+  <data name="Studio.Run.ExitNotStarted" xml:space="preserve"><value>引擎未启动</value></data>
   <data name="Studio.Settings.OllamaTitle" xml:space="preserve">
     <value>Ollama</value>
   </data>
@@ -1599,6 +1605,7 @@
   <data name="Studio.Diagnostics.Check.esbuild" xml:space="preserve">
     <value>脚本编译器（esbuild）</value>
   </data>
+  <data name="Studio.Diagnostics.Check.install-channel" xml:space="preserve"><value>引擎安装渠道</value></data>
   <data name="Studio.Diagnostics.Check.llm-config" xml:space="preserve">
     <value>模型配置详情</value>
   </data>
@@ -1617,6 +1624,7 @@
   <data name="Studio.Diagnostics.Check.onnx-reranker" xml:space="preserve">
     <value>ONNX 重排序器</value>
   </data>
+  <data name="Studio.Diagnostics.Check.runner-settings" xml:space="preserve"><value>启动器设置</value></data>
   <data name="Studio.Diagnostics.Check.tree-sitter" xml:space="preserve">
     <value>代码分析器（tree-sitter）</value>
   </data>
@@ -2016,6 +2024,9 @@
   <data name="Studio.Settings.MailStateNotReady" xml:space="preserve">
     <value>未就绪</value>
   </data>
+  <data name="Studio.Settings.MailNotReadyPassword" xml:space="preserve"><value>密码尚未保存：此计算机上的变量 {0} 为空。请在「登录」标签页中输入。</value></data>
+  <data name="Studio.Settings.MailNotReadySecret" xml:space="preserve"><value>客户端密钥尚未保存：此计算机上的变量 {0} 为空。请在「登录」标签页中输入。</value></data>
+  <data name="Studio.Settings.MailNotReadyOAuth" xml:space="preserve"><value>此账户尚未登录：请使用下方的「登录」。</value></data>
   <data name="Studio.Settings.MailStateSetAside" xml:space="preserve">
     <value>已搁置</value>
   </data>
@@ -2076,6 +2087,8 @@
   <data name="Studio.Settings.MailDeviceCodeExpiresIn" xml:space="preserve">
     <value>代码将在 {0} 后过期</value>
   </data>
+  <data name="Studio.Settings.MailDeviceCodeExpiresSoon" xml:space="preserve"><value>代码将在一分钟内过期</value></data>
+  <data name="Studio.Common.Minutes" xml:space="preserve"><value>{0} 分钟</value></data>
   <data name="Studio.Settings.MailDeviceCodeExpired" xml:space="preserve">
     <value>代码已过期 — 请重新开始</value>
   </data>
@@ -3944,12 +3957,14 @@
   <data name="Studio.Diagnostics.Problem.appsettings" xml:space="preserve"><value>Studio 无法读取设置文件。</value></data>
   <data name="Studio.Diagnostics.Problem.dotnet-runtime" xml:space="preserve"><value>找不到引擎所需的 .NET 运行时。</value></data>
   <data name="Studio.Diagnostics.Problem.esbuild" xml:space="preserve"><value>此计算机上缺少脚本编译器。</value></data>
+  <data name="Studio.Diagnostics.Problem.install-channel" xml:space="preserve"><value>Studio 无法识别引擎的安装方式；将不会提供更新。</value></data>
   <data name="Studio.Diagnostics.Problem.llm-config" xml:space="preserve"><value>尚未为团队配置模型。</value></data>
   <data name="Studio.Diagnostics.Problem.llm-profile-key" xml:space="preserve"><value>某个模型没有密钥，或找不到其密钥。</value></data>
   <data name="Studio.Diagnostics.Problem.llm-profiles" xml:space="preserve"><value>设置中有模型不完整。</value></data>
   <data name="Studio.Diagnostics.Problem.llm-reachability" xml:space="preserve"><value>模型无响应：请检查其地址和密钥。</value></data>
   <data name="Studio.Diagnostics.Problem.local-embeddings" xml:space="preserve"><value>此计算机上没有可用的本地嵌入。</value></data>
   <data name="Studio.Diagnostics.Problem.onnx-reranker" xml:space="preserve"><value>此计算机上没有可用的 ONNX 重排序器。</value></data>
+  <data name="Studio.Diagnostics.Problem.runner-settings" xml:space="preserve"><value>启动器设置包含引擎拒绝的值：请在专家模式下打开「设置」→「文件」标签页。</value></data>
   <data name="Studio.Diagnostics.Problem.tree-sitter" xml:space="preserve"><value>此计算机上没有可用的代码解析器。</value></data>
   <data name="Studio.Diagnostics.Problem.workspace-write" xml:space="preserve"><value>引擎无法写入其工作文件夹。</value></data>
   <data name="Studio.Chat.StatusWaitingCard" xml:space="preserve"><value>等待您操作</value></data>

@@ -301,7 +301,7 @@ public sealed class EmailSignInViewModelTests
         var signIn = fixture.SignIn("hotmail");
 
         Assert.True(signIn.HasExpiry);
-        Assert.Equal("The code expires in 15:00", signIn.ExpiresInText);
+        Assert.Equal("The code expires in 15 min", signIn.ExpiresInText);
         Assert.True(fixture.Ticker.IsRunning);
         Assert.Equal(TimeSpan.FromSeconds(1), fixture.Ticker.Interval);
 
@@ -310,13 +310,13 @@ public sealed class EmailSignInViewModelTests
         fixture.Clock.Now += TimeSpan.FromSeconds(61);
         fixture.Ticker.Tick();
 
-        Assert.Equal("The code expires in 13:59", signIn.ExpiresInText);
+        Assert.Equal("The code expires in 14 min", signIn.ExpiresInText);
         Assert.Contains(nameof(EmailSignInViewModel.ExpiresInText), raised);
         Assert.True(signIn.IsDeviceCode);
 
         fixture.Clock.Now += TimeSpan.FromMinutes(13) + TimeSpan.FromSeconds(54);
         fixture.Ticker.Tick();
-        Assert.Equal("The code expires in 0:05", signIn.ExpiresInText);
+        Assert.Equal("The code expires in under a minute", signIn.ExpiresInText);
     }
 
     [Fact]
@@ -348,7 +348,7 @@ public sealed class EmailSignInViewModelTests
         Assert.Equal(2, fixture.Runs("login"));
         Assert.Equal(EmailSignInPhase.DeviceCode, signIn.Phase);
         Assert.Equal(UserCode, signIn.UserCode);
-        Assert.Equal("The code expires in 15:00", signIn.ExpiresInText);
+        Assert.Equal("The code expires in 15 min", signIn.ExpiresInText);
         Assert.Equal(1, fixture.Cli.LiveConversations);
     }
 
@@ -1001,7 +1001,7 @@ public sealed class EmailSignInViewModelTests
         strings.SwitchToFrench();
 
         Assert.Equal($"Ouvrez {DevicePage} et saisissez ce code :", signIn.DeviceCodeLine);
-        Assert.Equal("Le code expire dans 15:00", signIn.ExpiresInText);
+        Assert.Equal("Le code expire dans 15 min", signIn.ExpiresInText);
         Assert.Equal(UserCode, signIn.UserCode);
         Assert.Equal(DevicePage, signIn.Address);
         Assert.Contains(nameof(EmailSignInViewModel.DeviceCodeLine), raised);

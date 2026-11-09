@@ -26,6 +26,9 @@ public sealed partial class EmailSectionViewModelTests
     private const string PasswordUnset =
         "The password of e-mail account 'work' is read from the environment variable WORK_MAIL_PASSWORD, which is not set.";
 
+    private const string WorkNotStored =
+        "The password is not stored: variable WORK_MAIL_PASSWORD is empty on this machine. Enter it in the Sign-in tab.";
+
     private const string ReachableSentence = "E-mail account 'perso' is reachable: 12 folder(s), inbox 340 message(s), 3 unread.";
 
     // The engine lists the accounts sorted by name, in its own spelling: not the order of the file.
@@ -113,9 +116,47 @@ public sealed partial class EmailSectionViewModelTests
         Assert.Equal(EmailAccountReadiness.NotReady, work.StateKind);
         Assert.False(work.IsReady);
         Assert.Equal("Not ready", work.State);
-        // The engine's sentence, as printed: it names the variable, and nothing is read out of it.
-        Assert.Equal(PasswordUnset, work.StateDetail);
+        // Studio's own sentence, chosen on the structured fields: the variable the file names.
+        Assert.Equal(WorkNotStored, work.StateDetail);
         Assert.True(work.HasStateDetail);
+        // The engine's sentence, as printed, for the expert: nothing is read out of it.
+        Assert.Equal(PasswordUnset, work.EngineProblem);
+        Assert.Null(perso.EngineProblem);
+    }
+
+    private const string OAuthAccounts = """
+        { "Orkeon": { "Tools": { "Email": { "Accounts": {
+          "hotmail": { "Provider": "Outlook", "Address": "me@hotmail.com", "Rights": "Read",
+                       "Auth": { "Method": "OAuth2", "ClientId": "client-id" } },
+          "gmail": { "Provider": "Gmail", "Address": "me@gmail.com", "Rights": "Read",
+                     "Auth": { "Method": "OAuth2", "ClientId": "client-id", "ClientSecretEnvVar": "GMAIL_CLIENT_SECRET" } },
+          "bare": { "Provider": "Custom", "Address": "me@example.com", "Rights": "Read",
+                    "Incoming": { "Host": "imap.example.com" } } } } } } }
+        """;
+
+    [Fact]
+    public async Task A_not_ready_account_is_told_what_is_missing_from_how_it_signs_in_never_from_the_engines_sentence()
+    {
+        var cli = new FakeEmailCli
+        {
+            AccountsOutput = """
+                [{"name":"bare","provider":"Custom","reads":"Imap","auth":"Password","ready":false,"problem":"no variable"},
+                 {"name":"gmail","provider":"Gmail","reads":"Imap","auth":"OAuth2","ready":false,"problem":"secret unset"},
+                 {"name":"hotmail","provider":"Outlook","reads":"Graph","auth":"OAuth2","ready":false,"problem":"run orkeon email login hotmail"}]
+                """,
+        };
+        var (section, _) = BuildWithCli(OAuthAccounts, cli);
+
+        await section.RefreshStatesAsync();
+
+        Assert.Equal(
+            "This account is not signed in yet: use “Sign in” below.", Row(section, "hotmail").StateDetail);
+        Assert.Equal(
+            "The client secret is not stored: variable GMAIL_CLIENT_SECRET is empty on this machine. Enter it in the Sign-in tab.",
+            Row(section, "gmail").StateDetail);
+        // A password account whose file names no variable: nothing to name, the bare state.
+        Assert.Equal("Not ready", Row(section, "bare").StateDetail);
+        Assert.Equal("run orkeon email login hotmail", Row(section, "hotmail").EngineProblem);
     }
 
     [Fact]
@@ -264,7 +305,7 @@ public sealed partial class EmailSectionViewModelTests
 
         Assert.Equal(1, cli.Cancelled);
         Assert.Equal(0, cli.Live);
-        Assert.Equal("later", Row(section, "perso").StateDetail);
+        Assert.Equal("later", Row(section, "perso").EngineProblem);
     }
 
     [Fact]
@@ -299,7 +340,9 @@ public sealed partial class EmailSectionViewModelTests
         strings.SwitchToFrench();
 
         Assert.Equal(SwitchableStrings.FrenchNotReady, work.State);
-        Assert.Equal(PasswordUnset, work.StateDetail);
+        Assert.Equal(SwitchableStrings.FrenchWorkNotStored, work.StateDetail);
+        Assert.Equal(PasswordUnset, work.EngineProblem);
+        Assert.Contains(nameof(EmailAccountRowViewModel.StateDetail), raised);
         Assert.Contains(nameof(EmailAccountRowViewModel.State), raised);
     }
 
@@ -676,7 +719,7 @@ public sealed partial class EmailSectionViewModelTests
         Assert.True(await config.SaveAsync(TestContext.Current.CancellationToken));
 
         Assert.Equal(2, cli.ListRuns);
-        Assert.Equal("after the save", Row(config.Email, "perso").StateDetail);
+        Assert.Equal("after the save", Row(config.Email, "perso").EngineProblem);
     }
 
     [Fact]
@@ -719,7 +762,7 @@ public sealed partial class EmailSectionViewModelTests
 
         Assert.Equal(2, cli.ListRuns);
         Assert.Equal(0, delay.Pending);
-        Assert.Equal("after the typing", Row(config.Email, "perso").StateDetail);
+        Assert.Equal("after the typing", Row(config.Email, "perso").EngineProblem);
     }
 
     [Fact]

@@ -345,12 +345,12 @@ internal static class StudioFixture
     /// <summary>Six checks with one warning and one failure — the shape worth photographing.</summary>
     private const string DoctorWithIssues = """
         [
-          { "check": "cli", "status": "ok", "detail": "orkeon 1.0.0-rc.2" },
-          { "check": "appsettings", "status": "ok", "detail": "chargé depuis le dossier de configuration" },
-          { "check": "mounts", "status": "warn", "detail": "un dossier déclaré est introuvable : /perdu" },
-          { "check": "llm-provider", "status": "ok", "detail": "deepseek / deepseek-chat" },
-          { "check": "llm-reachability", "status": "fail", "detail": "le point de terminaison a refusé la connexion" },
-          { "check": "workspace", "status": "ok", "detail": "accessible en écriture" }
+          { "check": "install-channel", "status": "ok", "detail": "dotnet global tool" },
+          { "check": "appsettings", "status": "ok", "detail": "loaded from the configuration folder" },
+          { "check": "runner-settings", "status": "warn", "detail": "Runner:MaxParallelRuns must be a positive integer" },
+          { "check": "llm-config", "status": "ok", "detail": "deepseek / deepseek-chat" },
+          { "check": "llm-reachability", "status": "fail", "detail": "the endpoint refused the connection" },
+          { "check": "workspace-write", "status": "ok", "detail": "writable" }
         ]
         """;
 

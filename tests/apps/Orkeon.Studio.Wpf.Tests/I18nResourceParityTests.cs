@@ -171,8 +171,10 @@ public sealed partial class I18nResourceParityTests
         // Refonte lot 12: raised by the Launch classeur's labels no language rewrites —
         // « Options », « Mode » and « MODE » (fr), « Team » and « Engine » (de) — the same
         // floor, measured, not above it.
+        // UX lot 03: es raised by one for « {0} min », the device code's lifetime — Spanish
+        // abbreviates minutes as English does, a real cognate (the same floor), measured, not above it.
         ["Strings.fr.resx"] = 65,
-        ["Strings.es.resx"] = 45,
+        ["Strings.es.resx"] = 46,
         ["Strings.de.resx"] = 52,
         ["Strings.zh-Hans.resx"] = 37,
     };

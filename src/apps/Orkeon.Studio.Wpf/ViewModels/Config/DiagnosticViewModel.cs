@@ -34,7 +34,13 @@ public sealed class DoctorCheckViewModel
             // written: «Studio.Diagnostics.Check.» + what doctor called it.
             var key = CheckKeyPrefix + Name;
             var localized = _strings[key];
-            return localized == key ? Name : localized;
+            if (localized != key)
+                return localized;
+
+            // A check the engine added since Studio learnt its name: say so to whoever debugs,
+            // no logger being injected here.
+            System.Diagnostics.Debug.WriteLine($"Studio.Diagnostics: no key {key} for doctor check '{Name}'.");
+            return Name;
         }
     }
 

@@ -287,9 +287,16 @@
                     <TextBlock Style="{StaticResource Subhead}" TextWrapping="Wrap"
                                Foreground="{DynamicResource InkBrush}" Text="{Binding State}"/>
                   </DockPanel>
-                  <!-- the engine's own sentence: it names the variable to fill or the sign-in to run -->
-                  <TextBlock Style="{StaticResource MonoText}" FontSize="13" Margin="15,3,0,0" Text="{Binding StateDetail}"
+                  <!-- what is missing, in the user's language, and the gesture of this screen that supplies it -->
+                  <TextBlock FontSize="13" TextWrapping="Wrap" Margin="15,3,0,0" Foreground="{DynamicResource WarningInkBrush}"
+                             Text="{Binding StateDetail}"
                              Visibility="{Binding HasStateDetail, Converter={StaticResource BooleanToVisibility}}"/>
+                  <!-- the engine's own sentence, in English, as printed: the expert's -->
+                  <StackPanel Visibility="{Binding DataContext.IsExpert, RelativeSource={RelativeSource AncestorType=views:EmailView}, Converter={StaticResource BooleanToVisibility}}">
+                    <TextBlock Style="{StaticResource MonoText}" FontSize="12" TextWrapping="Wrap" Margin="15,2,0,0"
+                               Text="{Binding EngineProblem}"
+                               Visibility="{Binding EngineProblem, Converter={StaticResource StringPresentToVisibility}}"/>
+                  </StackPanel>
                   <!-- unsaved edits: the state is the saved file's, and the test waits for the save -->
                   <TextBlock Style="{StaticResource Hint}" Margin="0,6,0,0"
                              Text="{Binding [Studio.Settings.MailStateOfSavedFile], Source={x:Static services:I18n.Instance}}"

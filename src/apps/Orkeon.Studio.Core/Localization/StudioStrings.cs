@@ -140,6 +140,24 @@ public static class StudioStringKeys
     /// <summary>"Exit code {0} — {1}"</summary>
     public const string LaunchExitCode = "Studio.Run.ExitCode";
 
+    /// <summary>"run completed successfully" — {1} of <see cref="LaunchExitCode"/> for exit code 0.</summary>
+    public const string LaunchExitSuccess = "Studio.Run.ExitSuccess";
+
+    /// <summary>"script or settings error: check the crew file and the settings it uses" — exit code 1.</summary>
+    public const string LaunchExitScriptError = "Studio.Run.ExitScriptError";
+
+    /// <summary>"runtime error: the last log lines say why" — exit code 2.</summary>
+    public const string LaunchExitRuntimeError = "Studio.Run.ExitRuntimeError";
+
+    /// <summary>"run interrupted" — a run cancelled, or exit code 130.</summary>
+    public const string LaunchExitCancelled = "Studio.Run.ExitCancelled";
+
+    /// <summary>"unexpected end: check the output above" — any other exit code.</summary>
+    public const string LaunchExitUnknown = "Studio.Run.ExitUnknown";
+
+    /// <summary>"the engine did not start" — {0} of <see cref="LaunchNothingRan"/>.</summary>
+    public const string LaunchExitNotStarted = "Studio.Run.ExitNotStarted";
+
     // ---- Usage metric chips (Launch/UsageMetricsFormatter, W-08) ---------
 
     /// <summary>"{0} tokens"</summary>
@@ -1528,8 +1546,17 @@ public static class StudioStringKeys
     /// <summary>"Ready"</summary>
     public const string MailStateReady = "Studio.Settings.MailStateReady";
 
-    /// <summary>"Not ready" — the engine's own sentence follows, as printed.</summary>
+    /// <summary>"Not ready" — a sentence of Studio's on what is missing follows.</summary>
     public const string MailStateNotReady = "Studio.Settings.MailStateNotReady";
+
+    /// <summary>"The password is not stored: variable {0} is empty on this machine. Enter it in the Sign-in tab." — {0} is the variable the file names.</summary>
+    public const string MailNotReadyPassword = "Studio.Settings.MailNotReadyPassword";
+
+    /// <summary>"The client secret is not stored: variable {0} is empty on this machine. Enter it in the Sign-in tab." — {0} is the variable the file names.</summary>
+    public const string MailNotReadySecret = "Studio.Settings.MailNotReadySecret";
+
+    /// <summary>"This account is not signed in yet: use “Sign in” below."</summary>
+    public const string MailNotReadyOAuth = "Studio.Settings.MailNotReadyOAuth";
 
     /// <summary>"Set aside" — the findings of the form already say why.</summary>
     public const string MailStateSetAside = "Studio.Settings.MailStateSetAside";
@@ -1590,8 +1617,14 @@ public static class StudioStringKeys
     /// <summary>"Open {0} and enter this code:" — {0} is the page the provider names.</summary>
     public const string MailDeviceCode = "Studio.Settings.MailDeviceCode";
 
-    /// <summary>"The code expires in {0}" — {0} is minutes and seconds.</summary>
+    /// <summary>"The code expires in {0}" — {0} is <see cref="CommonMinutes"/>.</summary>
     public const string MailDeviceCodeExpiresIn = "Studio.Settings.MailDeviceCodeExpiresIn";
+
+    /// <summary>"The code expires in under a minute"</summary>
+    public const string MailDeviceCodeExpiresSoon = "Studio.Settings.MailDeviceCodeExpiresSoon";
+
+    /// <summary>"{0} min" — a whole number of minutes.</summary>
+    public const string CommonMinutes = "Studio.Common.Minutes";
 
     /// <summary>"The code expired — start again"</summary>
     public const string MailDeviceCodeExpired = "Studio.Settings.MailDeviceCodeExpired";
@@ -3000,23 +3033,27 @@ public sealed class EnglishStudioStrings : IStudioStrings
         ["Studio.Diagnostics.Check.appsettings"] = "The settings file is readable",
         ["Studio.Diagnostics.Check.dotnet-runtime"] = "The .NET runtime",
         ["Studio.Diagnostics.Check.esbuild"] = "The script compiler (esbuild)",
+        ["Studio.Diagnostics.Check.install-channel"] = "Engine install channel",
         ["Studio.Diagnostics.Check.llm-config"] = "The model configuration",
         ["Studio.Diagnostics.Check.llm-profile-key"] = "The key of an LLM profile",
         ["Studio.Diagnostics.Check.llm-profiles"] = "The LLM profiles",
         ["Studio.Diagnostics.Check.llm-reachability"] = "The connection to the model",
         ["Studio.Diagnostics.Check.local-embeddings"] = "Local embeddings",
         ["Studio.Diagnostics.Check.onnx-reranker"] = "The ONNX reranker",
+        ["Studio.Diagnostics.Check.runner-settings"] = "Runner settings",
         ["Studio.Diagnostics.Check.tree-sitter"] = "The code parser (tree-sitter)",
         ["Studio.Diagnostics.Check.workspace-write"] = "Write access to the workspace",
         ["Studio.Diagnostics.Problem.appsettings"] = "Studio cannot read the settings file.",
         ["Studio.Diagnostics.Problem.dotnet-runtime"] = "The .NET runtime the engine needs is not found.",
         ["Studio.Diagnostics.Problem.esbuild"] = "The script compiler is missing on this machine.",
+        ["Studio.Diagnostics.Problem.install-channel"] = "Studio does not recognise how the engine was installed; updates will not be offered.",
         ["Studio.Diagnostics.Problem.llm-config"] = "No model is set up for the teams.",
         ["Studio.Diagnostics.Problem.llm-profile-key"] = "A model has no key, or its key is not found.",
         ["Studio.Diagnostics.Problem.llm-profiles"] = "A model is incomplete in the settings.",
         ["Studio.Diagnostics.Problem.llm-reachability"] = "The model does not answer: check its address and its key.",
         ["Studio.Diagnostics.Problem.local-embeddings"] = "Local embeddings are not available on this machine.",
         ["Studio.Diagnostics.Problem.onnx-reranker"] = "The ONNX reranker is not available on this machine.",
+        ["Studio.Diagnostics.Problem.runner-settings"] = "The runner settings hold a value the engine refuses: in Expert mode, open Settings → File tab.",
         ["Studio.Diagnostics.Problem.tree-sitter"] = "The code parser is not available on this machine.",
         ["Studio.Diagnostics.Problem.workspace-write"] = "The engine cannot write to its working folder.",
         [StudioStringKeys.ImportRecognizedAgents] = "{0} — {1} agent(s)",
@@ -3091,6 +3128,12 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.ValidationSummary] = "Validation: {0} error(s), {1} warning(s), {2} note(s).",
         [StudioStringKeys.LaunchNothingRan] = "Nothing ran — {0}",
         [StudioStringKeys.LaunchExitCode] = "Exit code {0} — {1}",
+        [StudioStringKeys.LaunchExitSuccess] = "run completed successfully",
+        [StudioStringKeys.LaunchExitScriptError] = "script or settings error: check the crew file and the settings it uses",
+        [StudioStringKeys.LaunchExitRuntimeError] = "runtime error: the last log lines say why",
+        [StudioStringKeys.LaunchExitCancelled] = "run interrupted",
+        [StudioStringKeys.LaunchExitUnknown] = "unexpected end: check the output above",
+        [StudioStringKeys.LaunchExitNotStarted] = "the engine did not start",
         [StudioStringKeys.UsageTokens] = "{0} tokens",
         [StudioStringKeys.UsageCache] = "cache {0} % · {1} tokens",
         [StudioStringKeys.UsageSeconds] = "{0} s",
@@ -3389,6 +3432,9 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.MailSecretVariable] = "Kept in the variable {0}",
         [StudioStringKeys.MailStateReady] = "Ready",
         [StudioStringKeys.MailStateNotReady] = "Not ready",
+        [StudioStringKeys.MailNotReadyPassword] = "The password is not stored: variable {0} is empty on this machine. Enter it in the Sign-in tab.",
+        [StudioStringKeys.MailNotReadySecret] = "The client secret is not stored: variable {0} is empty on this machine. Enter it in the Sign-in tab.",
+        [StudioStringKeys.MailNotReadyOAuth] = "This account is not signed in yet: use “Sign in” below.",
         [StudioStringKeys.MailStateSetAside] = "Set aside",
         [StudioStringKeys.MailStateUnknown] = "Unknown — {0}",
         [StudioStringKeys.MailStateOfSavedFile] = "As of the saved file — save to check again",
@@ -3409,6 +3455,8 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.MailSignInStarting] = "Starting the sign-in…",
         [StudioStringKeys.MailDeviceCode] = "Open {0} and enter this code:",
         [StudioStringKeys.MailDeviceCodeExpiresIn] = "The code expires in {0}",
+        [StudioStringKeys.MailDeviceCodeExpiresSoon] = "The code expires in under a minute",
+        [StudioStringKeys.CommonMinutes] = "{0} min",
         [StudioStringKeys.MailDeviceCodeExpired] = "The code expired — start again",
         [StudioStringKeys.MailSignInRestart] = "Start again",
         [StudioStringKeys.MailAuthorizationUrl] = "Open this address in a browser and allow the access:",

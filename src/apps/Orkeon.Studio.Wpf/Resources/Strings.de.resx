@@ -484,6 +484,12 @@
   <data name="Studio.Run.ExitCode" xml:space="preserve">
     <value>Exit-Code {0} — {1}</value>
   </data>
+  <data name="Studio.Run.ExitSuccess" xml:space="preserve"><value>Lauf ohne Fehler abgeschlossen</value></data>
+  <data name="Studio.Run.ExitScriptError" xml:space="preserve"><value>Skript- oder Einstellungsfehler: Prüfen Sie die Team-Datei und die Einstellungen, die sie verwendet</value></data>
+  <data name="Studio.Run.ExitRuntimeError" xml:space="preserve"><value>Fehler während des Laufs: Die letzten Protokollzeilen nennen den Grund</value></data>
+  <data name="Studio.Run.ExitCancelled" xml:space="preserve"><value>Lauf abgebrochen</value></data>
+  <data name="Studio.Run.ExitUnknown" xml:space="preserve"><value>unerwartetes Ende: Prüfen Sie die Ausgabe oben</value></data>
+  <data name="Studio.Run.ExitNotStarted" xml:space="preserve"><value>die Engine ist nicht gestartet</value></data>
   <data name="Studio.Settings.OllamaTitle" xml:space="preserve">
     <value>Ollama</value>
   </data>
@@ -1599,6 +1605,7 @@
   <data name="Studio.Diagnostics.Check.esbuild" xml:space="preserve">
     <value>Der Skript-Compiler (esbuild)</value>
   </data>
+  <data name="Studio.Diagnostics.Check.install-channel" xml:space="preserve"><value>Installationskanal der Engine</value></data>
   <data name="Studio.Diagnostics.Check.llm-config" xml:space="preserve">
     <value>Modellkonfiguration</value>
   </data>
@@ -1617,6 +1624,7 @@
   <data name="Studio.Diagnostics.Check.onnx-reranker" xml:space="preserve">
     <value>Der ONNX-Reranker</value>
   </data>
+  <data name="Studio.Diagnostics.Check.runner-settings" xml:space="preserve"><value>Einstellungen des Starters</value></data>
   <data name="Studio.Diagnostics.Check.tree-sitter" xml:space="preserve">
     <value>Der Code-Analysator (tree-sitter)</value>
   </data>
@@ -2016,6 +2024,9 @@
   <data name="Studio.Settings.MailStateNotReady" xml:space="preserve">
     <value>Nicht bereit</value>
   </data>
+  <data name="Studio.Settings.MailNotReadyPassword" xml:space="preserve"><value>Das Passwort ist nicht hinterlegt: Die Variable {0} ist auf diesem Rechner leer. Tragen Sie es im Reiter Anmeldung ein.</value></data>
+  <data name="Studio.Settings.MailNotReadySecret" xml:space="preserve"><value>Das Client-Geheimnis ist nicht hinterlegt: Die Variable {0} ist auf diesem Rechner leer. Tragen Sie es im Reiter Anmeldung ein.</value></data>
+  <data name="Studio.Settings.MailNotReadyOAuth" xml:space="preserve"><value>Dieses Konto ist noch nicht angemeldet: Verwenden Sie „Anmelden“ unten.</value></data>
   <data name="Studio.Settings.MailStateSetAside" xml:space="preserve">
     <value>Zurückgestellt</value>
   </data>
@@ -2076,6 +2087,8 @@
   <data name="Studio.Settings.MailDeviceCodeExpiresIn" xml:space="preserve">
     <value>Der Code läuft in {0} ab</value>
   </data>
+  <data name="Studio.Settings.MailDeviceCodeExpiresSoon" xml:space="preserve"><value>Der Code läuft in weniger als einer Minute ab</value></data>
+  <data name="Studio.Common.Minutes" xml:space="preserve"><value>{0} Min.</value></data>
   <data name="Studio.Settings.MailDeviceCodeExpired" xml:space="preserve">
     <value>Der Code ist abgelaufen — beginnen Sie erneut</value>
   </data>
@@ -3944,12 +3957,14 @@
   <data name="Studio.Diagnostics.Problem.appsettings" xml:space="preserve"><value>Studio kann die Einstellungsdatei nicht lesen.</value></data>
   <data name="Studio.Diagnostics.Problem.dotnet-runtime" xml:space="preserve"><value>Die .NET-Laufzeit, die die Engine braucht, wurde nicht gefunden.</value></data>
   <data name="Studio.Diagnostics.Problem.esbuild" xml:space="preserve"><value>Der Skript-Compiler fehlt auf diesem Rechner.</value></data>
+  <data name="Studio.Diagnostics.Problem.install-channel" xml:space="preserve"><value>Studio erkennt nicht, wie die Engine installiert wurde; Aktualisierungen werden nicht angeboten.</value></data>
   <data name="Studio.Diagnostics.Problem.llm-config" xml:space="preserve"><value>Für die Teams ist kein Modell eingerichtet.</value></data>
   <data name="Studio.Diagnostics.Problem.llm-profile-key" xml:space="preserve"><value>Einem Modell fehlt der Schlüssel, oder er wird nicht gefunden.</value></data>
   <data name="Studio.Diagnostics.Problem.llm-profiles" xml:space="preserve"><value>Ein Modell ist in den Einstellungen unvollständig.</value></data>
   <data name="Studio.Diagnostics.Problem.llm-reachability" xml:space="preserve"><value>Das Modell antwortet nicht: prüfen Sie Adresse und Schlüssel.</value></data>
   <data name="Studio.Diagnostics.Problem.local-embeddings" xml:space="preserve"><value>Lokale Embeddings sind auf diesem Rechner nicht verfügbar.</value></data>
   <data name="Studio.Diagnostics.Problem.onnx-reranker" xml:space="preserve"><value>Der ONNX-Reranker ist auf diesem Rechner nicht verfügbar.</value></data>
+  <data name="Studio.Diagnostics.Problem.runner-settings" xml:space="preserve"><value>Die Einstellungen des Starters enthalten einen Wert, den die Engine ablehnt: Öffnen Sie im Expertenmodus Einstellungen → Reiter Datei.</value></data>
   <data name="Studio.Diagnostics.Problem.tree-sitter" xml:space="preserve"><value>Der Code-Parser ist auf diesem Rechner nicht verfügbar.</value></data>
   <data name="Studio.Diagnostics.Problem.workspace-write" xml:space="preserve"><value>Die Engine kann nicht in ihren Arbeitsordner schreiben.</value></data>
   <data name="Studio.Chat.StatusWaitingCard" xml:space="preserve"><value>wartet auf Sie</value></data>

@@ -512,11 +512,44 @@ public sealed class EmailAccountRowViewModel : ObservableObject
     };
 
     /// <summary>
-    /// The engine's sentence on what a not-ready account lacks, in English, as printed — it names
-    /// the variable or the sign-in to run. Null otherwise: an account set aside already says why
-    /// through <see cref="Problems"/>, and the reason of an unknown state is in <see cref="State"/>.
+    /// What a not-ready account lacks, in the user's language, and where on this screen to supply
+    /// it. Chosen on the engine's structured fields — how the account signs in, which variable
+    /// the file names, whether it holds a value — in the order the engine checks them (password,
+    /// client secret, token), never by reading its English sentence, which
+    /// <see cref="EngineProblem"/> keeps for the expert. Null otherwise: an account set aside
+    /// already says why through <see cref="Problems"/>, and the reason of an unknown state is in
+    /// <see cref="State"/>.
     /// </summary>
-    public string? StateDetail =>
+    public string? StateDetail
+    {
+        get
+        {
+            if (StateKind != EmailAccountReadiness.NotReady)
+                return null;
+
+            if (string.Equals(_state!.Auth, EmailSection.Values.Password, StringComparison.Ordinal))
+            {
+                return string.IsNullOrWhiteSpace(_passwordEnvVar)
+                    ? _strings[StudioStringKeys.MailStateNotReady]
+                    : _strings.Format(StudioStringKeys.MailNotReadyPassword, _passwordEnvVar);
+            }
+
+            if (string.Equals(_state.Auth, EmailSection.Values.OAuth2, StringComparison.Ordinal))
+            {
+                return !string.IsNullOrWhiteSpace(_clientSecretEnvVar) && !ClientSecretStored
+                    ? _strings.Format(StudioStringKeys.MailNotReadySecret, _clientSecretEnvVar)
+                    : _strings[StudioStringKeys.MailNotReadyOAuth];
+            }
+
+            return _strings[StudioStringKeys.MailStateNotReady];
+        }
+    }
+
+    /// <summary>
+    /// The engine's own sentence on what a not-ready account lacks, in English, as printed — shown
+    /// to the expert under <see cref="StateDetail"/>, never read. Null otherwise.
+    /// </summary>
+    public string? EngineProblem =>
         StateKind == EmailAccountReadiness.NotReady && _state?.Problem is { Length: > 0 } problem ? problem : null;
 
     /// <summary>Whether the row has a state to show.</summary>
@@ -1211,12 +1244,14 @@ public sealed class EmailAccountRowViewModel : ObservableObject
 
     private void RefreshState() =>
         OnPropertiesChanged(
-            nameof(StateKind), nameof(State), nameof(StateDetail), nameof(HasState), nameof(HasStateDetail), nameof(IsReady));
+            nameof(StateKind), nameof(State), nameof(StateDetail), nameof(EngineProblem), nameof(HasState), nameof(HasStateDetail),
+            nameof(IsReady));
 
     private void RefreshSecretStates() =>
         OnPropertiesChanged(
             nameof(PasswordStored), nameof(PasswordStatus), nameof(PasswordVariable),
-            nameof(ClientSecretStored), nameof(ClientSecretStatus), nameof(ClientSecretVariable));
+            nameof(ClientSecretStored), nameof(ClientSecretStatus), nameof(ClientSecretVariable),
+            nameof(StateDetail), nameof(HasStateDetail));
 
     /// <summary>
     /// Whether the run will find the secret: a value under a variable the file names. A value left

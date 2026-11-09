@@ -303,7 +303,8 @@ public sealed partial class LaunchTabViewModel : ObservableObject
         private set
         {
             if (SetProperty(ref _lastResult, value))
-                OnPropertiesChanged(nameof(ExitCode), nameof(Outcome), nameof(ExitDescription), nameof(HasResult), nameof(ResultMetricsLine));
+                OnPropertiesChanged(nameof(ExitCode), nameof(Outcome), nameof(ExitDescription), nameof(ExitTooltip), nameof(HasResult),
+                    nameof(ResultMetricsLine));
             RaiseRunStateChanged();
         }
     }
@@ -319,6 +320,12 @@ public sealed partial class LaunchTabViewModel : ObservableObject
 
     /// <summary>The plain-language reading of the last exit code.</summary>
     public string? ExitDescription => LastResult?.Description;
+
+    /// <summary>
+    /// The tooltip of the finished subtitle: the engine's English sentence, for the expert only —
+    /// the novice reads Studio's own sentence in the journal and nothing else.
+    /// </summary>
+    public string? ExitTooltip => IsExpertMode ? ExitDescription : null;
 
     /// <summary>
     /// What the finished run cost, under the result sentence (T-23): tokens, cache hit as a

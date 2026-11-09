@@ -151,7 +151,7 @@
   <data name="Studio.Run.CommandCopied" xml:space="preserve"><value>Commande copiée</value></data>
   <data name="Studio.Run.StateIdle" xml:space="preserve"><value>Prête à travailler</value></data>
   <data name="Studio.Run.StateRunning" xml:space="preserve"><value>Exécution en cours</value></data>
-  <data name="Studio.Run.StateDone" xml:space="preserve"><value>Exécution terminée</value></data>
+  <data name="Studio.Run.StateDone" xml:space="preserve"><value>Lancement terminé</value></data>
   <data name="Studio.Run.BadgeIdle" xml:space="preserve"><value>en attente</value></data>
   <data name="Studio.Run.BadgeRunning" xml:space="preserve"><value>En cours</value></data>
   <data name="Studio.Run.BadgeDone" xml:space="preserve"><value>Réussie</value></data>
@@ -197,6 +197,12 @@
   <data name="Studio.Run.Seconds" xml:space="preserve"><value>{0} s</value></data>
   <data name="Studio.Run.MinutesSeconds" xml:space="preserve"><value>{0} min {1} s</value></data>
   <data name="Studio.Run.ExitCode" xml:space="preserve"><value>Code de sortie {0} — {1}</value></data>
+  <data name="Studio.Run.ExitSuccess" xml:space="preserve"><value>lancement terminé sans erreur</value></data>
+  <data name="Studio.Run.ExitScriptError" xml:space="preserve"><value>erreur de script ou de réglages : vérifiez le fichier de l'équipe et les réglages qu'il utilise</value></data>
+  <data name="Studio.Run.ExitRuntimeError" xml:space="preserve"><value>erreur pendant le lancement : les dernières lignes du journal disent pourquoi</value></data>
+  <data name="Studio.Run.ExitCancelled" xml:space="preserve"><value>lancement interrompu</value></data>
+  <data name="Studio.Run.ExitUnknown" xml:space="preserve"><value>fin inattendue : consultez la sortie ci-dessus</value></data>
+  <data name="Studio.Run.ExitNotStarted" xml:space="preserve"><value>le moteur n'a pas démarré</value></data>
 
   <!-- STUDIO-11 tranche 2 : catalogues Core -->
   <data name="Studio.Settings.OllamaTitle" xml:space="preserve"><value>Ollama</value></data>
@@ -580,12 +586,14 @@
   <data name="Studio.Diagnostics.Check.appsettings" xml:space="preserve"><value>Les réglages sont lisibles</value></data>
   <data name="Studio.Diagnostics.Check.dotnet-runtime" xml:space="preserve"><value>L'environnement .NET</value></data>
   <data name="Studio.Diagnostics.Check.esbuild" xml:space="preserve"><value>Le compilateur de scripts (esbuild)</value></data>
+  <data name="Studio.Diagnostics.Check.install-channel" xml:space="preserve"><value>Canal d'installation du moteur</value></data>
   <data name="Studio.Diagnostics.Check.llm-config" xml:space="preserve"><value>La configuration du modèle</value></data>
   <data name="Studio.Diagnostics.Check.llm-profile-key" xml:space="preserve"><value>La clé d'un modèle</value></data>
   <data name="Studio.Diagnostics.Check.llm-profiles" xml:space="preserve"><value>Les modèles</value></data>
   <data name="Studio.Diagnostics.Check.llm-reachability" xml:space="preserve"><value>La connexion au modèle</value></data>
   <data name="Studio.Diagnostics.Check.local-embeddings" xml:space="preserve"><value>Les embeddings locaux</value></data>
   <data name="Studio.Diagnostics.Check.onnx-reranker" xml:space="preserve"><value>Le reclasseur ONNX</value></data>
+  <data name="Studio.Diagnostics.Check.runner-settings" xml:space="preserve"><value>Réglages du lanceur</value></data>
   <data name="Studio.Diagnostics.Check.tree-sitter" xml:space="preserve"><value>L'analyseur de code (tree-sitter)</value></data>
   <data name="Studio.Diagnostics.Check.workspace-write" xml:space="preserve"><value>L'écriture dans le dossier de travail</value></data>
   <data name="Studio.Diagnostics.AllGood" xml:space="preserve"><value>Tout est en place.</value></data>
@@ -719,6 +727,9 @@
   <data name="Studio.Settings.MailSecretVariable" xml:space="preserve"><value>Conservé dans la variable {0}</value></data>
   <data name="Studio.Settings.MailStateReady" xml:space="preserve"><value>Prêt</value></data>
   <data name="Studio.Settings.MailStateNotReady" xml:space="preserve"><value>Pas prêt</value></data>
+  <data name="Studio.Settings.MailNotReadyPassword" xml:space="preserve"><value>Le mot de passe n'est pas mémorisé : la variable {0} est vide sur cette machine. Saisissez-le dans l'onglet Connexion.</value></data>
+  <data name="Studio.Settings.MailNotReadySecret" xml:space="preserve"><value>Le secret client n'est pas mémorisé : la variable {0} est vide sur cette machine. Saisissez-le dans l'onglet Connexion.</value></data>
+  <data name="Studio.Settings.MailNotReadyOAuth" xml:space="preserve"><value>Ce compte n'est pas encore connecté : utilisez « Se connecter » ci-dessous.</value></data>
   <data name="Studio.Settings.MailStateSetAside" xml:space="preserve"><value>Mis de côté</value></data>
   <data name="Studio.Settings.MailStateUnknown" xml:space="preserve"><value>Inconnu — {0}</value></data>
   <data name="Studio.Settings.MailStateOfSavedFile" xml:space="preserve"><value>État du fichier enregistré — enregistrez pour vérifier à nouveau</value></data>
@@ -739,6 +750,8 @@
   <data name="Studio.Settings.MailSignInStarting" xml:space="preserve"><value>Démarrage de la connexion…</value></data>
   <data name="Studio.Settings.MailDeviceCode" xml:space="preserve"><value>Ouvrez {0} et saisissez ce code :</value></data>
   <data name="Studio.Settings.MailDeviceCodeExpiresIn" xml:space="preserve"><value>Le code expire dans {0}</value></data>
+  <data name="Studio.Settings.MailDeviceCodeExpiresSoon" xml:space="preserve"><value>Le code expire dans moins d'une minute</value></data>
+  <data name="Studio.Common.Minutes" xml:space="preserve"><value>{0} min</value></data>
   <data name="Studio.Settings.MailDeviceCodeExpired" xml:space="preserve"><value>Le code a expiré — recommencez</value></data>
   <data name="Studio.Settings.MailSignInRestart" xml:space="preserve"><value>Recommencer</value></data>
   <data name="Studio.Settings.MailAuthorizationUrl" xml:space="preserve"><value>Ouvrez cette adresse dans un navigateur et autorisez l'accès :</value></data>
@@ -2270,12 +2283,14 @@
   <data name="Studio.Diagnostics.Problem.appsettings" xml:space="preserve"><value>Studio ne parvient pas à lire le fichier de réglages.</value></data>
   <data name="Studio.Diagnostics.Problem.dotnet-runtime" xml:space="preserve"><value>L'environnement .NET dont le moteur a besoin est introuvable.</value></data>
   <data name="Studio.Diagnostics.Problem.esbuild" xml:space="preserve"><value>Le compilateur de scripts est absent de cette machine.</value></data>
+  <data name="Studio.Diagnostics.Problem.install-channel" xml:space="preserve"><value>Studio ne reconnaît pas la façon dont le moteur a été installé ; les mises à jour ne seront pas proposées.</value></data>
   <data name="Studio.Diagnostics.Problem.llm-config" xml:space="preserve"><value>Aucun modèle n'est configuré pour les équipes.</value></data>
   <data name="Studio.Diagnostics.Problem.llm-profile-key" xml:space="preserve"><value>Un modèle n'a pas de clé, ou sa clé est introuvable.</value></data>
   <data name="Studio.Diagnostics.Problem.llm-profiles" xml:space="preserve"><value>Un modèle est incomplet dans les réglages.</value></data>
   <data name="Studio.Diagnostics.Problem.llm-reachability" xml:space="preserve"><value>Le modèle ne répond pas : vérifiez son adresse et sa clé.</value></data>
   <data name="Studio.Diagnostics.Problem.local-embeddings" xml:space="preserve"><value>Les embeddings locaux ne sont pas disponibles sur cette machine.</value></data>
   <data name="Studio.Diagnostics.Problem.onnx-reranker" xml:space="preserve"><value>Le reclasseur ONNX n'est pas disponible sur cette machine.</value></data>
+  <data name="Studio.Diagnostics.Problem.runner-settings" xml:space="preserve"><value>Les réglages du lanceur contiennent une valeur que le moteur refuse : en mode Expert, ouvrez Réglages → onglet Fichier.</value></data>
   <data name="Studio.Diagnostics.Problem.tree-sitter" xml:space="preserve"><value>L'analyseur de code n'est pas disponible sur cette machine.</value></data>
   <data name="Studio.Diagnostics.Problem.workspace-write" xml:space="preserve"><value>Le moteur ne peut pas écrire dans son dossier de travail.</value></data>
   <data name="Studio.Chat.StatusWaitingCard" xml:space="preserve"><value>en attente de vous</value></data>
@@ -2525,7 +2540,7 @@
 
   <!-- hrm:L08 begin -->
   <data name="Studio.Run.LaneNotRun" xml:space="preserve"><value>Non exécuté</value></data>
-  <data name="Studio.Run.PaneFinishedContext" xml:space="preserve"><value>Exécution terminée</value></data>
+  <data name="Studio.Run.PaneFinishedContext" xml:space="preserve"><value>Lancement terminé</value></data>
   <!-- hrm:L08 end -->
 
   <!-- hrm:L09 begin -->

@@ -713,13 +713,13 @@
                          Visibility="{Binding RunDuration, Converter={StaticResource StringPresentToVisibility}}"/>
             </WrapPanel>
             <!-- What is going on, or what the pane will show; once the run ended (D01, R18), Studio's
-                 own sentence «Exécution terminée · code de sortie 0» — the engine's sentence stays in
-                 the journal, in mono, and in the tooltip. -->
+                 own sentence «Lancement terminé · code de sortie 0» — the engine's English sentence
+                 is the expert's tooltip only (ExitTooltip). -->
             <TextBlock FontSize="13" Foreground="{DynamicResource InkMutedBrush}" Margin="0,6,0,0" TextWrapping="Wrap"
                        Text="{Binding RunPaneContext}"
                        Visibility="{Binding ShowsFinishedSubtitle, Converter={StaticResource InverseBooleanToVisibility}}"/>
             <TextBlock FontSize="13" Foreground="{DynamicResource InkMutedBrush}" Margin="0,6,0,0" TextWrapping="Wrap"
-                       ToolTip="{Binding ExitDescription}"
+                       ToolTip="{Binding ExitTooltip}"
                        Visibility="{Binding ShowsFinishedSubtitle, Converter={StaticResource BooleanToVisibility}}">
               <Run Text="{Binding [Studio.Run.PaneFinishedContext], Source={x:Static services:I18n.Instance}, Mode=OneWay}"/>
               <Run Text=" · "/>

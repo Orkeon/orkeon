@@ -1,4 +1,5 @@
 using Orkeon.Studio.Core.Launch;
+using Orkeon.Studio.Core.Localization;
 using Orkeon.Studio.Core.Process;
 
 namespace Orkeon.Studio.Core.Tests;
@@ -43,6 +44,42 @@ public class LaunchOutcomeFormatterTests
 
         Assert.Contains("`orkeon` was not found.", text, StringComparison.Ordinal);
         Assert.DoesNotContain("Exit code", text, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData(OrkeonExitCodes.Success, "Exit code 0 — run completed successfully")]
+    [InlineData(OrkeonExitCodes.ScriptError, "Exit code 1 — script or settings error: check the crew file and the settings it uses")]
+    [InlineData(OrkeonExitCodes.RuntimeError, "Exit code 2 — runtime error: the last log lines say why")]
+    [InlineData(OrkeonExitCodes.Cancelled, "Exit code 130 — run interrupted")]
+    [InlineData(42, "Exit code 42 — unexpected end: check the output above")]
+    public void The_localized_overload_says_the_outcome_in_the_ports_words_never_the_engines(int exitCode, string expected)
+    {
+        var result = Exited(exitCode);
+
+        var text = LaunchOutcomeFormatter.DescribeRun(result, EnglishStudioStrings.Instance);
+
+        Assert.Equal(expected, text);
+        Assert.DoesNotContain(result.Description, text, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void The_localized_overload_says_a_run_never_started_without_the_engines_reason()
+    {
+        var text = LaunchOutcomeFormatter.DescribeRun(
+            ProcessRunResult.NotStarted("`orkeon` was not found."), EnglishStudioStrings.Instance);
+
+        Assert.Equal("Nothing ran — the engine did not start", text);
+    }
+
+    [Fact]
+    public void The_english_launcher_keeps_the_engines_sentence()
+    {
+        Assert.Equal(
+            "Exit code 0 — Completed successfully (exit code 0).",
+            LaunchOutcomeFormatter.DescribeRun(Exited(OrkeonExitCodes.Success)));
+        Assert.Equal(
+            "VALIDATION OK — Exit code 0 — Completed successfully (exit code 0).",
+            LaunchOutcomeFormatter.DescribeValidation(Exited(OrkeonExitCodes.Success)));
     }
 
     [Fact]
