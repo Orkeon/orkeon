@@ -1221,7 +1221,7 @@
                             </Border>
                             <!-- One word in the pill, the full label as its tooltip (STUDIO-16): the full
                                  label ate the width and the disk path read as «C:\Users\…\orkeon\…». -->
-                            <!-- R12 (C13): the shared rights badge, «Lecture seule» neutral, «Lecture et écriture» sky. -->
+                            <!-- R12 (C13): the shared rights badge, «Lecture» neutral, «Écriture» sky. -->
                             <controls:Badge Grid.Column="2" VerticalAlignment="Center" Margin="12,0,0,0" ToolTip="{Binding RightsTip}" Content="{Binding RightsBadge}">
                               <controls:Badge.Style>
                                 <Style TargetType="controls:Badge" BasedOn="{StaticResource {x:Type controls:Badge}}">
@@ -1457,7 +1457,7 @@
                               <!-- Les droits viennent des Réglages et ne se rechoisissent pas ici. One word in
                                    the pill, the full label as its tooltip (STUDIO-16): the full label ate the
                                    width and the disk path read as «C:\Users\…\orkeon\…». -->
-                              <!-- R12 (C13): the shared rights badge, «Lecture seule» neutral, «Lecture et écriture» sky. -->
+                              <!-- R12 (C13): the shared rights badge, «Lecture» neutral, «Écriture» sky. -->
                               <controls:Badge Grid.Column="2" VerticalAlignment="Center" Margin="12,0,0,0" ToolTip="{Binding RightsTip}" Content="{Binding RightsBadge}">
                                 <controls:Badge.Style>
                                   <Style TargetType="controls:Badge" BasedOn="{StaticResource {x:Type controls:Badge}}">
