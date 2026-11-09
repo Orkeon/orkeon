@@ -852,7 +852,7 @@
   <data name="Studio.Settings.TeamFoldersUnknownId" xml:space="preserve"><value>{0} · {1} — declaration {2} is missing on this machine</value></data>
   <data name="Studio.Create.UnknownMountId" xml:space="preserve"><value>This declaration ({0}) is missing on this machine</value></data>
   <data name="Studio.Create.DeclaredFolder" xml:space="preserve"><value>“{0}” authorized and bound as {1}</value></data>
-  <data name="Studio.Run.BlockedUnknownMountId" xml:space="preserve"><value>This team refers to folder declarations missing here: {0}. Declare them in Settings › Authorized folders or change the team's folders.</value></data>
+  <data name="Studio.Run.BlockedUnknownMountId" xml:space="preserve"><value>This team refers to authorized folders missing here: {0}. Allow them in Settings › Authorized folders or change the team's folders.</value></data>
   <data name="Studio.Run.OriginSelectedById" xml:space="preserve"><value>{0} (selected by id among {1})</value></data>
   <data name="Studio.Run.OriginNotSelected" xml:space="preserve"><value>{0} (not mounted for this run)</value></data>
   <data name="Studio.Run.OriginConflict" xml:space="preserve"><value>{0} (one of {1} entries — nothing selects it)</value></data>

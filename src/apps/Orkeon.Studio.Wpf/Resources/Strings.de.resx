@@ -2351,7 +2351,7 @@
   <data name="Studio.Settings.TeamFoldersUnknownId" xml:space="preserve"><value>{0} · {1} — die Deklaration {2} fehlt auf diesem Rechner</value></data>
   <data name="Studio.Create.UnknownMountId" xml:space="preserve"><value>Diese Deklaration ({0}) fehlt auf diesem Rechner</value></data>
   <data name="Studio.Create.DeclaredFolder" xml:space="preserve"><value>„{0}“ freigegeben und als {1} verbunden</value></data>
-  <data name="Studio.Run.BlockedUnknownMountId" xml:space="preserve"><value>Dieses Team verweist auf Ordnerdeklarationen, die hier fehlen: {0}. Deklarieren Sie sie unter Einstellungen › Freigegebene Ordner oder ändern Sie die Ordner des Teams.</value></data>
+  <data name="Studio.Run.BlockedUnknownMountId" xml:space="preserve"><value>Dieses Team verweist auf freigegebene Ordner, die hier fehlen: {0}. Erlauben Sie sie unter Einstellungen › Freigegebene Ordner oder ändern Sie die Ordner des Teams.</value></data>
   <data name="Studio.Run.OriginSelectedById" xml:space="preserve"><value>{0} (per Kennung ausgewählt unter {1})</value></data>
   <data name="Studio.Run.OriginNotSelected" xml:space="preserve"><value>{0} (für diesen Lauf nicht eingehängt)</value></data>
   <data name="Studio.Run.OriginConflict" xml:space="preserve"><value>{0} (einer von {1} Einträgen — nichts wählt ihn aus)</value></data>

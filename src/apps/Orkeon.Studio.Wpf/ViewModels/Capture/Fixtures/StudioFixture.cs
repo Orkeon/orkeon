@@ -141,7 +141,7 @@ internal static class StudioFixture
         "D'accord : une note quotidienne à partir de ce que vos concurrents publient. "
         + "Dans quel dossier vos sources arrivent-elles ?",
         // UX lot 06: four agents, as the fixture's team lists them (veilleur, analyste,
-        // rédacteur, relecteur) — the bubble no longer miscounts the team on screen.
+        // writer, reviewer) — the bubble no longer miscounts the team on screen.
         "Parfait. Je compose une équipe de quatre : un veilleur qui lit, un analyste qui trie, "
         + "un rédacteur qui écrit la note et un relecteur qui vérifie.",
     ];

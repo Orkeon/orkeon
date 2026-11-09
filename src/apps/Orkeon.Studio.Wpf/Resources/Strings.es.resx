@@ -2351,7 +2351,7 @@
   <data name="Studio.Settings.TeamFoldersUnknownId" xml:space="preserve"><value>{0} · {1} — la declaración {2} falta en esta máquina</value></data>
   <data name="Studio.Create.UnknownMountId" xml:space="preserve"><value>Esta declaración ({0}) falta en esta máquina</value></data>
   <data name="Studio.Create.DeclaredFolder" xml:space="preserve"><value>«{0}» autorizada y vinculada como {1}</value></data>
-  <data name="Studio.Run.BlockedUnknownMountId" xml:space="preserve"><value>Este equipo hace referencia a declaraciones de carpeta que faltan aquí: {0}. Decláralas en Ajustes › Carpetas autorizadas o cambia las carpetas del equipo.</value></data>
+  <data name="Studio.Run.BlockedUnknownMountId" xml:space="preserve"><value>Este equipo hace referencia a carpetas autorizadas que faltan aquí: {0}. Autorízalas en Ajustes › Carpetas autorizadas o cambia las carpetas del equipo.</value></data>
   <data name="Studio.Run.OriginSelectedById" xml:space="preserve"><value>{0} (seleccionada por identificador entre {1})</value></data>
   <data name="Studio.Run.OriginNotSelected" xml:space="preserve"><value>{0} (no montada en esta ejecución)</value></data>
   <data name="Studio.Run.OriginConflict" xml:space="preserve"><value>{0} (una de {1} entradas — nada la selecciona)</value></data>

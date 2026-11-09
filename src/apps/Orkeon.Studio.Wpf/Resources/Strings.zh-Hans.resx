@@ -2351,7 +2351,7 @@
   <data name="Studio.Settings.TeamFoldersUnknownId" xml:space="preserve"><value>{0} · {1} — 此机器上缺少声明 {2}</value></data>
   <data name="Studio.Create.UnknownMountId" xml:space="preserve"><value>此机器上缺少该声明（{0}）</value></data>
   <data name="Studio.Create.DeclaredFolder" xml:space="preserve"><value>“{0}”已授权并绑定为 {1}</value></data>
-  <data name="Studio.Run.BlockedUnknownMountId" xml:space="preserve"><value>该团队引用了此处缺少的文件夹声明：{0}。请在“设置 › 已授权文件夹”中声明它们，或更改团队的文件夹。</value></data>
+  <data name="Studio.Run.BlockedUnknownMountId" xml:space="preserve"><value>该团队引用了此处缺少的已授权文件夹：{0}。请在“设置 › 已授权文件夹”中授权它们，或更改团队的文件夹。</value></data>
   <data name="Studio.Run.OriginSelectedById" xml:space="preserve"><value>{0}（在 {1} 个条目中按标识选中）</value></data>
   <data name="Studio.Run.OriginNotSelected" xml:space="preserve"><value>{0}（本次运行未挂载）</value></data>
   <data name="Studio.Run.OriginConflict" xml:space="preserve"><value>{0}（{1} 个条目之一 — 没有任何选择）</value></data>

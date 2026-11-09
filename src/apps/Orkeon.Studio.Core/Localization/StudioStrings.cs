@@ -612,7 +612,7 @@ public static class StudioStringKeys
     /// <summary>"“{0}” authorized and bound as {1}" — the wizard declared a folder under the row's root.</summary>
     public const string WizardDeclaredFolder = "Studio.Create.DeclaredFolder";
 
-    /// <summary>"This team refers to folder declarations missing here: {0}. Declare them in Settings › Authorized folders or change the team's folders."</summary>
+    /// <summary>"This team refers to authorized folders missing here: {0}. Allow them in Settings › Authorized folders or change the team's folders."</summary>
     public const string RunBlockedUnknownMountId = "Studio.Run.BlockedUnknownMountId";
 
     /// <summary>"Open the result" — the Launch screen's button once a run finished, one writable folder.</summary>
@@ -2919,7 +2919,7 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.WizardUnknownMountId] = "This declaration ({0}) is missing on this machine",
         [StudioStringKeys.WizardDeclaredFolder] = "“{0}” authorized and bound as {1}",
         [StudioStringKeys.RunBlockedUnknownMountId] =
-            "This team refers to folder declarations missing here: {0}. Declare them in Settings › Authorized folders or change the team's folders.",
+            "This team refers to authorized folders missing here: {0}. Allow them in Settings › Authorized folders or change the team's folders.",
         [StudioStringKeys.RunOpenResult] = "Open the result",
         [StudioStringKeys.RunOpenLogs] = "Open logs folder",
         [StudioStringKeys.RunOpenLogsNotYet] = "The logs folder does not exist yet: it is created at the first logged call.",

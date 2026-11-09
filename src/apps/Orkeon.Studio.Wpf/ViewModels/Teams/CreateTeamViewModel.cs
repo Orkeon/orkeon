@@ -3837,8 +3837,8 @@ public sealed partial class CreateTeamViewModel : ObservableObject
     /// first two words' initials («Data Analyst» → «DA»), else its first two letters
     /// («Writer» → «Wr», «Reviewer» → «Re»). An empty name stays «?».
     /// <para>
-    /// UX lot 12 (016): two pairs an accent or a case apart («Ré» / «Re» for «Rédacteur» and
-    /// «Relecteur») read as one; such names take, after their capital, the first letter where
+    /// UX lot 12 (016): two pairs an accent or a case apart (an accented «Re» against a plain «Re»,
+    /// as the French writer and reviewer roles give) read as one; such names take, after their capital, the first letter where
     /// they differ («Rd» / «Rl»).
     /// </para>
     /// </summary>
@@ -3874,7 +3874,7 @@ public sealed partial class CreateTeamViewModel : ObservableObject
         return initials;
     }
 
-    // Accents and case set aside: «Ré» and «re» compare equal. A comparison, not a fold.
+    // Accents and case set aside: an accented «Re» and «re» compare equal. A comparison, not a fold.
     private static readonly StringComparer LookAlike =
         StringComparer.Create(CultureInfo.InvariantCulture, CompareOptions.IgnoreNonSpace | CompareOptions.IgnoreCase);
 
