@@ -6,7 +6,6 @@
 | **Modèle** | `deepseek-v4-flash-vision-exp` |
 | **Endpoint** | `api.deepseek.com` |
 | **Horodatage (UTC)** | 2026-08-30T15:51:50Z |
-| **Version Orkeon** | 1.0.0-rc.2 |
 | **Commit** | `6388cecb` |
 | **Modes exercés** | M9 |
 | **Température** | 0 |
@@ -41,7 +40,7 @@ Journal (§7) :
 Tableau modèles (§6.7) :
 
 ```
-| `deepseek-v4-flash-vision-exp` | | | M9 | ✅ | 2026-08-30 | 1.0.0-rc.2 | campagne 2026-08-30-155147-deepseek-v4-flash-vision-exp.md |
+| `deepseek-v4-flash-vision-exp` | | | M9 | ✅ | 2026-08-30 | 6388cecb | campagne 2026-08-30-155147-deepseek-v4-flash-vision-exp.md |
 ```
 
 <!-- orkeon-campaign-json -->
@@ -50,7 +49,6 @@ Tableau modèles (§6.7) :
   "provider": "deepseek",
   "model": "deepseek-v4-flash-vision-exp",
   "endpointHost": "api.deepseek.com",
-  "orkeonVersion": "1.0.0-rc.2",
   "commit": "6388cecb",
   "timestampUtc": "2026-08-30T15:51:50Z",
   "temperature": 0,

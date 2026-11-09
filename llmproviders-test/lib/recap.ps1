@@ -66,7 +66,7 @@ foreach ($report in $reports) {
         Provider = $campaign.provider
         Model    = $campaign.model
         Stamp    = $stamp
-        Version  = $campaign.orkeonVersion
+        Commit   = if ([string]::IsNullOrWhiteSpace($campaign.commit)) { '—' } else { $campaign.commit }
         Passed   = $campaign.passed
         Failed   = $campaign.failed
         Skipped  = $campaign.notApplicable
@@ -97,7 +97,7 @@ if ($campaigns.Count -eq 0) {
     $lines.Add('```')
 }
 else {
-    $lines.Add('| Timestamp (UTC) | Provider | Model | ✅/❌/➖ | Version | Report |')
+    $lines.Add('| Timestamp (UTC) | Provider | Model | ✅/❌/➖ | Commit | Report |')
     $lines.Add('|---|---|---|---|---|---|')
 
     # Newest first — then provider, then model, so a tie is broken the same way everywhere.
@@ -109,7 +109,7 @@ else {
         @{ Expression = 'Model'; Descending = $false }
 
     foreach ($c in $ordered) {
-        $lines.Add("| $($c.Stamp) | ``$($c.Provider)`` | ``$($c.Model)`` | $($c.Status) $($c.Passed)/$($c.Failed)/$($c.Skipped) | $($c.Version) | [report]($($c.Relative)) |")
+        $lines.Add("| $($c.Stamp) | ``$($c.Provider)`` | ``$($c.Model)`` | $($c.Status) $($c.Passed)/$($c.Failed)/$($c.Skipped) | ``$($c.Commit)`` | [report]($($c.Relative)) |")
     }
 
     $lines.Add('')

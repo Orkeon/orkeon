@@ -292,13 +292,16 @@ VERSION_MENTION = re.compile(r"\b\d+\.\d+\.\d+[-~.]rc\b|\brc\.(?:\d+|\*|N)\b")
 
 def documentation_pages() -> list[Path]:
     """The pages a reader meets: the root guides, docs/ (both languages, ADRs included) and
-    every README under src/, examples/ and installers/. CHANGELOG.md is the one page whose
+    every README under src/, examples/ and installers/, and the llmproviders-test/ campaign
+    reports. CHANGELOG.md is the one page whose
     subject is the versions, and stays out."""
     pages = [ROOT / name for name in ("README.md", "README.fr.md", "CLAUDE.md",
                                       "CONTRIBUTING.md", "CONTRIBUTING.fr.md")]
     pages += git_files(ROOT / "docs", (".md",))
     for folder in ("src", "examples", "installers"):
         pages += [f for f in git_files(ROOT / folder, (".md",)) if f.name.startswith("README")]
+    # The provider campaigns: their reports and index name the commit, not a version.
+    pages += git_files(ROOT / "llmproviders-test", (".md",))
     return pages
 
 

@@ -29,7 +29,6 @@ command -v jq >/dev/null 2>&1 || { echo "report.sh: jq is required." >&2; exit 2
 provider=$(jq -r '.provider' "$CAMPAIGN")
 model=$(jq -r '.model' "$CAMPAIGN")
 host=$(jq -r '.endpointHost' "$CAMPAIGN")
-version=$(jq -r '.orkeonVersion' "$CAMPAIGN")
 commit=$(jq -r '.commit // "" | if . == "" then "not supplied" else . end' "$CAMPAIGN")
 stamp=$(jq -r '.timestampUtc' "$CAMPAIGN")
 # Older campaigns predate the field; "not pinned" is the honest rendering of a run whose
@@ -69,7 +68,6 @@ mkdir -p "$(dirname "$OUTPUT")"
   echo "| **Model** | \`${model}\` |"
   echo "| **Endpoint** | \`${host}\` |"
   echo "| **Timestamp (UTC)** | ${stamp} |"
-  echo "| **Orkeon version** | ${version} |"
   echo "| **Commit** | \`${commit}\` |"
   echo "| **Modes exercised** | ${modes_run} |"
   echo "| **Temperature** | ${temperature} |"
@@ -124,12 +122,14 @@ mkdir -p "$(dirname "$OUTPUT")"
   printf '| `%s` | | | %s | %s | %s | %s | campaign %s |\n' \
     "$model" "$modes_run" \
     "$(if [[ "$failed" -gt 0 ]]; then echo "❌"; else echo "✅"; fi)" \
-    "${stamp%%T*}" "$version" "$(basename "$OUTPUT")"
+    "${stamp%%T*}" "$commit" "$(basename "$OUTPUT")"
   echo '```'
   echo
   echo "$JSON_MARKER"
   echo '```json'
-  cat "$CAMPAIGN"
+  # The report names the commit, never an Orkeon version: the version goes stale at the
+  # next tag, the commit does not. The probe's own field is left out of the archive.
+  grep -v '^[[:space:]]*"orkeonVersion":' "$CAMPAIGN"
   echo '```'
 } > "$OUTPUT"
 

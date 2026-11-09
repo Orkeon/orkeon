@@ -6,7 +6,6 @@
 | **Model** | `deepseek/deepseek-v4.1-flash` |
 | **Endpoint** | `openrouter.ai` |
 | **Timestamp (UTC)** | 2026-10-07T18:14:35Z |
-| **Orkeon version** | 1.0.0-rc.4 |
 | **Commit** | `77ac8a969` |
 | **Modes exercised** | M5, M7, M8, M10 |
 | **Temperature** | 0 |
@@ -50,7 +49,7 @@ Journal (§7):
 Model table (§6.17):
 
 ```
-| `deepseek/deepseek-v4.1-flash` | | | M5, M7, M8, M10 | ✅ | 2026-10-07 | 1.0.0-rc.4 | campaign 2026-10-07-181417-deepseek_deepseek-v4.1-flash.md |
+| `deepseek/deepseek-v4.1-flash` | | | M5, M7, M8, M10 | ✅ | 2026-10-07 | 77ac8a969 | campaign 2026-10-07-181417-deepseek_deepseek-v4.1-flash.md |
 ```
 
 <!-- orkeon-campaign-json -->
@@ -59,7 +58,6 @@ Model table (§6.17):
   "provider": "openrouter",
   "model": "deepseek/deepseek-v4.1-flash",
   "endpointHost": "openrouter.ai",
-  "orkeonVersion": "1.0.0-rc.4",
   "commit": "77ac8a969",
   "timestampUtc": "2026-10-07T18:14:35Z",
   "temperature": 0,
