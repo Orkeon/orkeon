@@ -136,14 +136,15 @@
   <data name="Studio.Run.Folder" xml:space="preserve"><value>Folder…</value></data>
   <data name="Studio.Run.UseCandidate" xml:space="preserve"><value>Use this file</value></data>
   <data name="Studio.Run.SettingsAuto" xml:space="preserve"><value>Automatic (let the runtime resolve it)</value></data>
+  <data name="Studio.Run.SettingsFileTitle" xml:space="preserve"><value>Settings file</value></data>
   <data name="Studio.Run.SettingsExplicit" xml:space="preserve"><value>Explicit path</value></data>
   <data name="Studio.Run.VarsTitle" xml:space="preserve"><value>Variables (-V KEY=VALUE)</value></data>
   <data name="Studio.Run.Add" xml:space="preserve"><value>Add</value></data>
   <data name="Studio.Run.Remove" xml:space="preserve"><value>Remove</value></data>
   <data name="Studio.Run.LblInitialContext" xml:space="preserve"><value>Initial context</value></data>
   <data name="Studio.Run.InputsTitle" xml:space="preserve"><value>Inputs</value></data>
-  <data name="Studio.Run.LblInputsJson" xml:space="preserve"><value>Inline JSON (--inputs)</value></data>
-  <data name="Studio.Run.LblInputsFile" xml:space="preserve"><value>File (--inputs-file)</value></data>
+  <data name="Studio.Run.LblInputsJson" xml:space="preserve"><value>Inline JSON</value></data>
+  <data name="Studio.Run.LblInputsFile" xml:space="preserve"><value>File</value></data>
   <data name="Studio.Run.LblVerbosity" xml:space="preserve"><value>Log detail</value></data>
   <data name="Studio.Run.LlmLog" xml:space="preserve"><value>Keep the exchanges with the model</value></data>
   <data name="Studio.Run.SettingsMountsTitle" xml:space="preserve"><value>Mounts already in the selected appsettings</value></data>
@@ -831,7 +832,7 @@
   <data name="Studio.Settings.AllowedFoldersConfirm" xml:space="preserve"><value>Add to the team</value></data>
   <data name="Studio.Create.DroppedDerived" xml:space="preserve"><value>{0}: nothing will be bound to it — the agents writing there will fail.</value></data>
   <data name="Studio.Create.RestoreFolders" xml:space="preserve"><value>Restore</value></data>
-  <data name="Studio.Run.BlockedUndeclared" xml:space="preserve"><value>This team uses folders your settings do not allow: {0}. Declare them in Settings › Authorized folders, or remove them from the team.</value></data>
+  <data name="Studio.Run.BlockedUndeclared" xml:space="preserve"><value>This team uses folders your settings do not allow: {0}. Allow them in Settings › Authorized folders, or remove them from the team.</value></data>
   <data name="Studio.Run.OpenAllowedFolders" xml:space="preserve"><value>Open authorized folders</value></data>
   <data name="Studio.Create.UndeclaredLegend" xml:space="preserve"><value>In red: folders that are not among your authorized folders.</value></data>
   <data name="Studio.Settings.AlreadyAdded" xml:space="preserve"><value>already added</value></data>
@@ -1287,7 +1288,7 @@
     <value>Stop the schedule</value>
   </data>
   <data name="Studio.Teams.ScheduleManual" xml:space="preserve">
-    <value>By hand:</value>
+    <value>Command to run by hand:</value>
   </data>
   <data name="Studio.Teams.ScheduleInstallFailed" xml:space="preserve">
     <value>The schedule could not be installed: {0}</value>
@@ -2185,6 +2186,8 @@
   <data name="Studio.Run.OptionsFooter" xml:space="preserve">
     <value>{0} · {1} · {2} {2:plural:folder|folders}</value>
   </data>
+  <data name="Studio.Run.OptionsDefault" xml:space="preserve"><value>Default settings</value></data>
+  <data name="Studio.Run.VerbosityPrefix" xml:space="preserve"><value>{0} level</value></data>
   <data name="Studio.Run.FoldersSection" xml:space="preserve">
     <value>Allowed folders — {0} {0:plural:folder|folders} of the team, {1}</value>
   </data>

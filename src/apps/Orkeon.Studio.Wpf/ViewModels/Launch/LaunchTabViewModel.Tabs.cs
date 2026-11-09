@@ -173,8 +173,10 @@ public sealed partial class LaunchTabViewModel
     /// <summary>The options keep their marks to themselves: an empty circle.</summary>
     public static string OptionsTabState => "Empty";
 
-    /// <summary>« Normal · progress »: the verbosity and the display.</summary>
-    public string OptionsTabSubtitle => string.Join(" · ", VerbosityLabel(Options.Verbosity), DisplayLabel.ToLower(CultureInfo.CurrentCulture));
+    /// <summary>« Default settings » while the options are untouched; otherwise « Detailed level · Raw output »: the verbosity and the display.</summary>
+    public string OptionsTabSubtitle => Options.Verbosity == 0 && Options.WatchProgress
+        ? _strings[StudioStringKeys.RunOptionsDefault]
+        : string.Join(" · ", _strings.Format(StudioStringKeys.RunVerbosityPrefix, VerbosityLabel(Options.Verbosity)), DisplayLabel);
 
     /// <summary>The options pane's footer: the verbosity, the display and the folders the launch mounts.</summary>
     public string OptionsFooter => _strings.Format(

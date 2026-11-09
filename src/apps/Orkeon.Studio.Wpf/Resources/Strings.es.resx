@@ -346,6 +346,7 @@
   <data name="Studio.Run.SettingsAuto" xml:space="preserve">
     <value>Automático (resuelto por el runtime)</value>
   </data>
+  <data name="Studio.Run.SettingsFileTitle" xml:space="preserve"><value>Archivo de ajustes</value></data>
   <data name="Studio.Run.SettingsExplicit" xml:space="preserve">
     <value>Ruta explícita</value>
   </data>
@@ -365,10 +366,10 @@
     <value>Entradas</value>
   </data>
   <data name="Studio.Run.LblInputsJson" xml:space="preserve">
-    <value>JSON en línea (--inputs)</value>
+    <value>JSON en línea</value>
   </data>
   <data name="Studio.Run.LblInputsFile" xml:space="preserve">
-    <value>Archivo (--inputs-file)</value>
+    <value>Archivo</value>
   </data>
   <data name="Studio.Run.LblVerbosity" xml:space="preserve">
     <value>Detalle del registro</value>
@@ -2315,7 +2316,7 @@
     <value>Restablecer</value>
   </data>
   <data name="Studio.Run.BlockedUndeclared" xml:space="preserve">
-    <value>Este equipo usa carpetas que sus ajustes no autorizan: {0}. Declárelas en Ajustes › Carpetas autorizadas, o retírelas del equipo.</value>
+    <value>Este equipo usa carpetas que sus ajustes no autorizan: {0}. Autorícelas en Ajustes › Carpetas autorizadas, o retírelas del equipo.</value>
   </data>
   <data name="Studio.Run.OpenAllowedFolders" xml:space="preserve">
     <value>Abrir las carpetas autorizadas</value>
@@ -2888,7 +2889,7 @@
     <value>Detener la planificación</value>
   </data>
   <data name="Studio.Teams.ScheduleManual" xml:space="preserve">
-    <value>A mano:</value>
+    <value>Comando para ejecutar a mano:</value>
   </data>
   <data name="Studio.Teams.ScheduleInstallFailed" xml:space="preserve">
     <value>No se pudo instalar la planificación: {0}</value>
@@ -3887,6 +3888,8 @@
   <data name="Studio.Run.OptionsFooter" xml:space="preserve">
     <value>{0} · {1} · {2} {2:plural:carpeta|carpetas}</value>
   </data>
+  <data name="Studio.Run.OptionsDefault" xml:space="preserve"><value>Ajustes predeterminados</value></data>
+  <data name="Studio.Run.VerbosityPrefix" xml:space="preserve"><value>Nivel {0}</value></data>
   <data name="Studio.Run.FoldersSection" xml:space="preserve">
     <value>Carpetas autorizadas — {0} {0:plural:carpeta|carpetas} del equipo, {1}</value>
   </data>

@@ -666,6 +666,9 @@ public static class StudioStringKeys
     public const string RunTeamLastRun = "Studio.Run.TeamLastRun";
     public const string RunTeamNeverRun = "Studio.Run.TeamNeverRun";
     public const string RunOptionsFooter = "Studio.Run.OptionsFooter";
+    public const string RunOptionsDefault = "Studio.Run.OptionsDefault";
+    public const string RunVerbosityPrefix = "Studio.Run.VerbosityPrefix";
+    public const string RunSettingsFileTitle = "Studio.Run.SettingsFileTitle";
     public const string RunFoldersSection = "Studio.Run.FoldersSection";
     public const string RunFoldersAddedNone = "Studio.Run.FoldersAddedNone";
     public const string RunFoldersAdded = "Studio.Run.FoldersAdded";
@@ -2893,7 +2896,7 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.RagWebFallbackTransportOff] = "Inactive: the corrective policy allows it, but the transport (Orkeon:Rag:WebFallback) is still off.",
         [StudioStringKeys.RagWebFallbackPolicyOff] = "Inactive: the transport is on, but the corrective policy (Orkeon:Rag:Corrective:WebFallback) is still off.",
         [StudioStringKeys.RagWebFallbackOff] = "Off. Both switches must be turned on for the corrective loop to reach the web.",
-        [StudioStringKeys.RunBlockedUndeclared] = "This team uses folders your settings do not allow: {0}. Declare them in Settings › Authorized folders, or remove them from the team.",
+        [StudioStringKeys.RunBlockedUndeclared] = "This team uses folders your settings do not allow: {0}. Allow them in Settings › Authorized folders, or remove them from the team.",
         [StudioStringKeys.WizardDroppedDerived] = "{0}: nothing will be bound to it — the agents writing there will fail.",
         [StudioStringKeys.AllowedFoldersAlreadyAdded] = "already added",
         [StudioStringKeys.AllowedFoldersConflict] = "{0} is already used by another folder",
@@ -2957,6 +2960,9 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.RunTeamLastRun] = "launched on {0}",
         [StudioStringKeys.RunTeamNeverRun] = "never launched",
         [StudioStringKeys.RunOptionsFooter] = "{0} · {1} · {2} {2:plural:folder|folders}",
+        [StudioStringKeys.RunOptionsDefault] = "Default settings",
+        [StudioStringKeys.RunVerbosityPrefix] = "{0} level",
+        [StudioStringKeys.RunSettingsFileTitle] = "Settings file",
         [StudioStringKeys.RunFoldersSection] = "Allowed folders — {0} {0:plural:folder|folders} of the team, {1}",
         [StudioStringKeys.RunFoldersAddedNone] = "nothing added",
         [StudioStringKeys.RunFoldersAdded] = "{0} added",

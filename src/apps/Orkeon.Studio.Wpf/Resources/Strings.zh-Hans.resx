@@ -346,6 +346,7 @@
   <data name="Studio.Run.SettingsAuto" xml:space="preserve">
     <value>自动（由运行时解析）</value>
   </data>
+  <data name="Studio.Run.SettingsFileTitle" xml:space="preserve"><value>设置文件</value></data>
   <data name="Studio.Run.SettingsExplicit" xml:space="preserve">
     <value>显式路径</value>
   </data>
@@ -365,10 +366,10 @@
     <value>输入</value>
   </data>
   <data name="Studio.Run.LblInputsJson" xml:space="preserve">
-    <value>内联 JSON（--inputs）</value>
+    <value>内联 JSON</value>
   </data>
   <data name="Studio.Run.LblInputsFile" xml:space="preserve">
-    <value>文件（--inputs-file）</value>
+    <value>文件</value>
   </data>
   <data name="Studio.Run.LblVerbosity" xml:space="preserve">
     <value>日志详细程度</value>
@@ -2315,7 +2316,7 @@
     <value>恢复</value>
   </data>
   <data name="Studio.Run.BlockedUndeclared" xml:space="preserve">
-    <value>该团队使用了您的设置未授权的文件夹：{0}。请在「设置 › 授权文件夹」中声明它们，或将其从团队中移除。</value>
+    <value>该团队使用了您的设置未授权的文件夹：{0}。请在「设置 › 授权文件夹」中授权它们，或将其从团队中移除。</value>
   </data>
   <data name="Studio.Run.OpenAllowedFolders" xml:space="preserve">
     <value>打开授权文件夹</value>
@@ -2888,7 +2889,7 @@
     <value>停止计划</value>
   </data>
   <data name="Studio.Teams.ScheduleManual" xml:space="preserve">
-    <value>手动执行：</value>
+    <value>手动执行的命令：</value>
   </data>
   <data name="Studio.Teams.ScheduleInstallFailed" xml:space="preserve">
     <value>无法安装计划：{0}</value>
@@ -3887,6 +3888,8 @@
   <data name="Studio.Run.OptionsFooter" xml:space="preserve">
     <value>{0} · {1} · {2} 个文件夹</value>
   </data>
+  <data name="Studio.Run.OptionsDefault" xml:space="preserve"><value>默认设置</value></data>
+  <data name="Studio.Run.VerbosityPrefix" xml:space="preserve"><value>{0}级别</value></data>
   <data name="Studio.Run.FoldersSection" xml:space="preserve">
     <value>允许的文件夹 — 团队的 {0} 个文件夹，{1}</value>
   </data>

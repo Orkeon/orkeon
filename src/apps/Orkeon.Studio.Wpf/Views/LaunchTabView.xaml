@@ -381,7 +381,7 @@
                               Content="{Binding [Studio.Run.StreamShort], Source={x:Static services:I18n.Instance}}"/>
                   </StackPanel>
                 </Grid>
-                <TextBlock Style="{StaticResource Subhead}" Text="appsettings.json"/>
+                <TextBlock Style="{StaticResource Subhead}" Text="{Binding [Studio.Run.SettingsFileTitle], Source={x:Static services:I18n.Instance}}"/>
                 <RadioButton Margin="0,8,0,0" GroupName="{Binding IsTrial, StringFormat=RunSettings-{0}}" Checked="OnSettingsAutomaticChecked"
                              IsChecked="{Binding Options.IsSettingsAutomatic, Mode=OneWay}"
                              Content="{Binding [Studio.Run.SettingsAuto], Source={x:Static services:I18n.Instance}}"/>

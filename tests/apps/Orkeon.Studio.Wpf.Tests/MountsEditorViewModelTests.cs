@@ -82,7 +82,7 @@ public sealed class MountEditorViewModelTests
         private static readonly Dictionary<string, string> French = new(StringComparer.Ordinal)
         {
             [Orkeon.Studio.Core.Localization.StudioStringKeys.RightsBadgeReadWrite] = "écriture",
-            [Orkeon.Studio.Core.Localization.StudioStringKeys.RightsReadWrite] = "Lecture / écriture (création et suppression autorisées)",
+            [Orkeon.Studio.Core.Localization.StudioStringKeys.RightsReadWrite] = "Lecture et écriture",
         };
 
         public string this[string key] =>
@@ -118,7 +118,7 @@ public sealed class MountEditorViewModelTests
 
         var french = new MountEditorViewModel(new FrenchRightsStrings()) { Rights = MountRights.ReadWrite };
         Assert.Equal("écriture", french.RightsBadge);
-        Assert.Equal("Lecture / écriture (création et suppression autorisées)", french.RightsLabel);
+        Assert.Equal("Lecture et écriture", french.RightsLabel);
 
         // And the row template wires it that way: the badge shows RightsBadge, its tooltip is
         // RightsTip, and the name comes first so the badge can never shrink it.

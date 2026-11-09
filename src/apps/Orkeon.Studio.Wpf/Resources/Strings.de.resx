@@ -346,6 +346,7 @@
   <data name="Studio.Run.SettingsAuto" xml:space="preserve">
     <value>Automatisch (von der Laufzeit aufgelöst)</value>
   </data>
+  <data name="Studio.Run.SettingsFileTitle" xml:space="preserve"><value>Einstellungsdatei</value></data>
   <data name="Studio.Run.SettingsExplicit" xml:space="preserve">
     <value>Expliziter Pfad</value>
   </data>
@@ -365,10 +366,10 @@
     <value>Eingaben</value>
   </data>
   <data name="Studio.Run.LblInputsJson" xml:space="preserve">
-    <value>Inline-JSON (--inputs)</value>
+    <value>Inline-JSON</value>
   </data>
   <data name="Studio.Run.LblInputsFile" xml:space="preserve">
-    <value>Datei (--inputs-file)</value>
+    <value>Datei</value>
   </data>
   <data name="Studio.Run.LblVerbosity" xml:space="preserve">
     <value>Detailgrad des Protokolls</value>
@@ -2315,7 +2316,7 @@
     <value>Wiederherstellen</value>
   </data>
   <data name="Studio.Run.BlockedUndeclared" xml:space="preserve">
-    <value>Dieses Team nutzt Ordner, die Ihre Einstellungen nicht erlauben: {0}. Deklarieren Sie sie unter Einstellungen › Erlaubte Ordner oder entfernen Sie sie aus dem Team.</value>
+    <value>Dieses Team nutzt Ordner, die Ihre Einstellungen nicht erlauben: {0}. Erlauben Sie sie unter Einstellungen › Erlaubte Ordner oder entfernen Sie sie aus dem Team.</value>
   </data>
   <data name="Studio.Run.OpenAllowedFolders" xml:space="preserve">
     <value>Erlaubte Ordner öffnen</value>
@@ -2888,7 +2889,7 @@
     <value>Zeitplan stoppen</value>
   </data>
   <data name="Studio.Teams.ScheduleManual" xml:space="preserve">
-    <value>Von Hand:</value>
+    <value>Befehl zum manuellen Ausführen:</value>
   </data>
   <data name="Studio.Teams.ScheduleInstallFailed" xml:space="preserve">
     <value>Der Zeitplan konnte nicht installiert werden: {0}</value>
@@ -3887,6 +3888,8 @@
   <data name="Studio.Run.OptionsFooter" xml:space="preserve">
     <value>{0} · {1} · {2} {2:plural:Ordner|Ordner}</value>
   </data>
+  <data name="Studio.Run.OptionsDefault" xml:space="preserve"><value>Standardeinstellungen</value></data>
+  <data name="Studio.Run.VerbosityPrefix" xml:space="preserve"><value>Stufe {0}</value></data>
   <data name="Studio.Run.FoldersSection" xml:space="preserve">
     <value>Erlaubte Ordner — {0} Ordner des Teams, {1}</value>
   </data>
