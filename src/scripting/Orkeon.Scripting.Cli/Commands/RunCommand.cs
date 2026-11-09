@@ -433,7 +433,11 @@ internal static partial class RunCommand
         {
             if (await RefuseTestSwitchAsync(console, options, "a validation run").ConfigureAwait(false) is { } refusedValidation)
                 return refusedValidation;
-            return await RunViaSharedRunnerAsync(console, options).ConfigureAwait(false);
+            // Routed as a run is (#316): a .ork.ts whose source never assigns globalThis.crew runs on
+            // the scripting host, so it is not judged by the declarative loader either.
+            var procedural = RunnerExecution.IsScriptedCrewDefinition(options.ScriptPath)
+                && !await DeclaresCrewHandoffAsync(options.ScriptPath).ConfigureAwait(false);
+            return await RunViaSharedRunnerAsync(console, options, procedural).ConfigureAwait(false);
         }
 
         // Dispatch by extension BEFORE any script-specific setup (esbuild, /script:ro mount).
@@ -613,7 +617,8 @@ internal static partial class RunCommand
     /// <see cref="Program.ExitOk"/>/<see cref="Program.ExitScriptError"/>/<see cref="Program.ExitRuntimeError"/>/<see cref="Program.ExitCancelled"/>,
     /// so we return its code verbatim.
     /// </summary>
-    private static async Task<int> RunViaSharedRunnerAsync(IRunnerConsole console, RunCommandOptions options)
+    private static async Task<int> RunViaSharedRunnerAsync(
+        IRunnerConsole console, RunCommandOptions options, bool proceduralScript = false)
     {
         // The diagnostic modes are not runs: --list-tools prints a manifest and --validate a
         // verdict, both as plain text on stdout by their own contract. Wrapping them in the
@@ -631,8 +636,10 @@ internal static partial class RunCommand
         var recordsHistory = !options.EmitsEvents && RecordsHistory(options);
         if ((!options.EmitsEvents && !recordsHistory) || options.ListTools || options.Validate)
         {
+            var runnerOptions = ToRunnerOptions(console, options);
+            runnerOptions.ProceduralScript = proceduralScript;
             return await RunnerExecution.RunOneShotAsync(
-                ToRunnerOptions(console, options),
+                runnerOptions,
                 "orkeon",
                 configureServices: (ctx, services) =>
                 {

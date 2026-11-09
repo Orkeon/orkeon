@@ -48,7 +48,7 @@ how it ends. `orkeon run` reads your source looking for an assignment to `global
 | the file ends with | `await crew.run()` | `globalThis.crew = crew` |
 | runs agent `.body()` | yes, one per agent | **no** |
 | honours `withTask`, `process`, `manager` | **no** | yes |
-| `--validate` without running | fails — after running the script | works |
+| `--validate` without running | type-checks and bundles it, never runs it | loads the crew |
 
 These are opposites, not two spellings of the same thing. The procedural engine iterates the
 agents and never looks at tasks. The declarative adapter never invokes a `.body()`.
@@ -185,8 +185,11 @@ VALIDATION OK: …/crew-review-desk/main.ork.ts (agents=3, tasks=3, tools resolv
 
 That check is only available on this shape, and it is a good reason to prefer it: it catches
 an unregistered tool name or a task pointing at an undeclared agent before you spend a token.
-On a procedural file `--validate` fails — and only after evaluating it, `await crew.run()`
-included.
+On a procedural file `--validate` checks what it can without running it — the version
+directive, the types, the esbuild bundle — and prints `VALIDATION OK: … (procedural script:
+bundled, not run)`; it never evaluates it. Only the entry file's own source is read for the
+handoff: a script that assigns `globalThis.crew` inside an imported helper is procedural, for
+`orkeon run` as for `--validate`.
 
 ## Shape B — the procedural script
 

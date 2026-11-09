@@ -50,7 +50,7 @@ lequel par sa façon de finir. `orkeon run` lit votre source à la recherche d'u
 | le fichier finit par | `await crew.run()` | `globalThis.crew = crew` |
 | exécute les `.body()` | oui, un par agent | **non** |
 | honore `withTask`, `process`, `manager` | **non** | oui |
-| `--validate` sans exécuter | échoue — après avoir exécuté le script | fonctionne |
+| `--validate` sans exécuter | vérifie ses types et le bundle, ne l'exécute jamais | charge le crew |
 
 Ce sont des opposés, pas deux orthographes de la même chose. Le moteur procédural itère les
 agents et ne regarde jamais les tâches. L'adaptateur déclaratif n'invoque jamais un `.body()`.
@@ -187,8 +187,11 @@ VALIDATION OK: …/crew-review-desk/main.ork.ts (agents=3, tasks=3, tools resolv
 
 Ce contrôle n'existe que sur cette forme, et c'est une bonne raison de la préférer : il
 attrape un nom d'outil non enregistré ou une tâche pointant vers un agent non déclaré avant
-d'avoir dépensé un token. Sur un fichier procédural, `--validate` échoue — et seulement après
-l'avoir évalué, `await crew.run()` compris.
+d'avoir dépensé un token. Sur un fichier procédural, `--validate` vérifie ce qu'il
+peut sans l'exécuter — la directive de version, les types, le bundle esbuild — et imprime
+`VALIDATION OK: … (procedural script: bundled, not run)` ; il ne l'évalue jamais. Seule la source
+du fichier d'entrée est lue pour le passage de relais : un script qui affecte `globalThis.crew`
+dans un helper importé est procédural, pour `orkeon run` comme pour `--validate`.
 
 ## Forme B — le script procédural
 

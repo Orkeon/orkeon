@@ -77,6 +77,18 @@ public static partial class RunnerExecution
                 if (!await TypeCheckScriptAsync(host, bootstrap, console, validating: true, cts.Token).ConfigureAwait(false))
                     return 1;
 
+                // A procedural script builds and runs its crew when it is evaluated (#316): `orkeon run`
+                // hands it to the scripting host, never to the declarative loader below, whose checks
+                // (a task required, no contextTokens on an autonomous budget) are not the ones it
+                // answers to. Evaluating it here would run it, so it is checked up to its bundle.
+                if (opts.ProceduralScript && IsScriptedCrewDefinition(virtualConfigPath))
+                {
+                    await BundleProceduralScriptAsync(host, virtualConfigPath, cts.Token).ConfigureAwait(false);
+                    await console.Output.WriteLineAsync(
+                        $"VALIDATION OK: {configPath} (procedural script: bundled, not run)").ConfigureAwait(false);
+                    return 0;
+                }
+
                 // The factory and the repositories it fills are scoped (GAP-25).
                 var scope = host.Services.CreateAsyncScope();
                 await using var _ = scope.ConfigureAwait(false);
@@ -420,6 +432,27 @@ public static partial class RunnerExecution
             lines.AddRange(await drive.CheckAsync(toolNames, ct).ConfigureAwait(false));
         if (lines.Count > 0)
             throw new InvalidOperationException(string.Join('\n', lines));
+    }
+
+    /// <summary>
+    /// What <c>--validate</c> checks of a procedural script without evaluating it: its version
+    /// directive and its esbuild bundle (syntax, relative imports), the two steps a run takes before
+    /// the first line executes.
+    /// </summary>
+    private static async Task BundleProceduralScriptAsync(IHost host, string virtualPath, CancellationToken ct)
+    {
+        var fileSystem = host.Services.GetRequiredService<IFileSystemService>();
+        var source = await fileSystem.TryReadAllTextAsync(virtualPath, ct).ConfigureAwait(false)
+            ?? throw new FileNotFoundException($"Script not found: '{virtualPath}'", virtualPath);
+        Orkeon.Scripting.Versioning.VersionDirectiveParser.ParseAndValidate(source);
+
+        // esbuild resolves the relative imports from disk, as on a run (LoadCrewFromScriptAsync).
+        var resolved = fileSystem.ResolveAndValidate(virtualPath, FileAccessRights.Read);
+        using var transpiler = Orkeon.Scripting.Toolchain.EsbuildTranspiler.Create(
+            host.Services.GetRequiredService<Microsoft.Extensions.Configuration.IConfiguration>());
+        _ = resolved.IsAllowed && resolved.ResolvedPath is { } physicalPath
+            ? await transpiler.BundleFromFileAsync(physicalPath, source, ct).ConfigureAwait(false)
+            : await transpiler.TranspileAsync(source, ct).ConfigureAwait(false);
     }
 
     private static async Task<Domain.Crew.Crew> LoadCrewTargetAsync(

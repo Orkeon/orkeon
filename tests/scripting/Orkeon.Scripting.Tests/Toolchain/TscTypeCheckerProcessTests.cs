@@ -168,4 +168,60 @@ public sealed class TscTypeCheckerProcessTests : IDisposable
         Assert.DoesNotContain("/usr/lib", ex.Message, StringComparison.Ordinal);
         Assert.Contains("<path>", ex.Message, StringComparison.Ordinal);
     }
+
+    // #315: tsc reports a clash (TS6200) on the file named, and only while the roll-up is in the program.
+    private TscTypeChecker CheckerClashingWith(string file)
+        => CheckerWith($"if grep -q 'orkeon-typecheck-[0-9a-f]*/orkeon\\.d\\.ts\"' \"$2\"; then echo '{file}(13,1): error TS6200: Definitions conflict.'; exit 2; fi\nexit 0");
+
+    private static string Rollup()
+    {
+        using var stream = typeof(TscTypeChecker).Assembly.GetManifestResourceStream("Orkeon.Scripting.Typings.orkeon.d.ts")!;
+        using var reader = new StreamReader(stream);
+        return reader.ReadToEnd();
+    }
+
+    private string WriteTypingsCopy(string text)
+    {
+        Directory.CreateDirectory(Path.Combine(_dir, ".orkeon"));
+        var copy = Path.Combine(_dir, ".orkeon", "orkeon.d.ts");
+        File.WriteAllText(copy, text);
+        return copy;
+    }
+
+    [Fact]
+    public async Task A_referenced_copy_of_this_builds_typings_stands_in_for_the_rollup()
+    {
+        var checker = CheckerClashingWith(WriteTypingsCopy(Rollup().Replace("\n", "\r\n", StringComparison.Ordinal)));
+
+        var diagnostics = await checker.CheckAsync(_script, "/script/main.ork.ts", TestContext.Current.CancellationToken);
+
+        Assert.Empty(diagnostics);
+    }
+
+    [Fact]
+    public async Task A_referenced_stale_copy_of_the_typings_is_named_with_the_command_that_regenerates_it()
+    {
+        var rollup = Rollup();
+        var header = rollup[..rollup.IndexOf('\n', StringComparison.Ordinal)];
+        var checker = CheckerClashingWith(WriteTypingsCopy(header + "\ndeclare const stale: number;\n"));
+
+        var diagnostics = await checker.CheckAsync(_script, "/script/main.ork.ts", TestContext.Current.CancellationToken);
+
+        var d = Assert.Single(diagnostics);
+        Assert.Equal("/script/.orkeon/orkeon.d.ts", d.Path);
+        Assert.Contains("orkeon typings", d.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task A_clash_with_a_file_that_is_not_the_typings_is_reported_as_tsc_wrote_it()
+    {
+        var other = Path.Combine(_dir, "globals.d.ts");
+        await File.WriteAllTextAsync(other, "declare const label: string;\n", TestContext.Current.CancellationToken);
+        var checker = CheckerClashingWith(other);
+
+        var diagnostics = await checker.CheckAsync(_script, "/script/main.ork.ts", TestContext.Current.CancellationToken);
+
+        var d = Assert.Single(diagnostics);
+        Assert.Equal("/script/globals.d.ts:13:1 TS6200 Definitions conflict.", d.ToString());
+    }
 }
