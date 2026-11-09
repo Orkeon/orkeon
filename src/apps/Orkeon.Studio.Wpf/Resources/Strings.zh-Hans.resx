@@ -2429,6 +2429,7 @@
     <value>待试运行</value>
   </data>
   <data name="Studio.Teams.NeedsFolderBadge" xml:space="preserve"><value>待授权文件夹</value></data>
+  <data name="Studio.Teams.ReadyBadge" xml:space="preserve"><value>就绪 · 按需运行</value></data>
   <data name="Studio.Teams.LastRun" xml:space="preserve">
     <value>上次执行：{0}，{1}</value>
   </data>
@@ -2652,7 +2653,7 @@
     <value>正在处理…</value>
   </data>
   <data name="Studio.Create.StageIdle" xml:space="preserve">
-    <value>已停止。</value>
+    <value>组建已停止。</value>
   </data>
   <data name="Studio.Create.TokensUp" xml:space="preserve">
     <value>发送给模型的令牌</value>
@@ -3316,6 +3317,8 @@
   <data name="Studio.Create.GalleryAnyProcess" xml:space="preserve"><value>不限</value></data>
   <data name="Studio.Create.GalleryCount" xml:space="preserve"><value>共 {1} 个用例，显示 {0} 个</value></data>
   <data name="Studio.Create.GallerySuggested" xml:space="preserve"><value>与您的需求相近（{0}）</value></data>
+  <data name="Studio.Create.GalleryMoreFilters" xml:space="preserve"><value>更多筛选</value></data>
+  <data name="Studio.Create.GalleryAgentsLine" xml:space="preserve"><value>{0} 个智能体 · {1}</value></data>
   <data name="Studio.Create.GalleryUnreadable" xml:space="preserve"><value>无法读取用例。</value></data>
   <data name="Studio.Create.GalleryCategoryEnterprise" xml:space="preserve"><value>企业</value></data>
   <data name="Studio.Create.GalleryCategoryScience" xml:space="preserve"><value>科学与研究</value></data>
@@ -3758,7 +3761,7 @@
   <data name="Studio.Teams.RefusedRuns" xml:space="preserve"><value>{0} 个计划运行将在下次执行时被拒绝：已保存的设置文件尚未包含 {1}。</value></data>
   <data name="Studio.Teams.SaveSettings" xml:space="preserve"><value>保存设置</value></data>
   <data name="Studio.Teams.ImportShort" xml:space="preserve"><value>导入</value></data>
-  <data name="Studio.Teams.ScheduleManualValue" xml:space="preserve"><value>手动</value></data>
+  <data name="Studio.Teams.ScheduleManualValue" xml:space="preserve"><value>按需</value></data>
   <data name="Studio.Teams.LaunchNeedsFolder" xml:space="preserve"><value>请先允许文件夹 {0}。</value></data>
   <data name="Studio.Teams.AllowFolder" xml:space="preserve"><value>允许</value></data>
   <data name="Studio.Create.SessionRunning" xml:space="preserve"><value>运行中</value></data>
@@ -4099,6 +4102,8 @@
   <data name="Studio.Create.TabCompositionStopped" xml:space="preserve">
     <value>已停止 · 已写入 {0} 个文件</value>
   </data>
+  <data name="Studio.Create.TabCompositionDone" xml:space="preserve"><value>已组建 · 已写入 {0} 个文件</value></data>
+  <data name="Studio.Create.TabCompositionInvalid" xml:space="preserve"><value>需修正 · 已写入 {0} 个文件</value></data>
   <data name="Studio.Create.TabCompositionRunning" xml:space="preserve">
     <value>进行中</value>
   </data>
@@ -4124,13 +4129,13 @@
     <value>进行中</value>
   </data>
   <data name="Studio.Create.CompositionStateValid" xml:space="preserve">
-    <value>已停止 — 定义已检查</value>
+    <value>已组建 — 定义已检查</value>
   </data>
   <data name="Studio.Create.CompositionStateInvalid" xml:space="preserve">
-    <value>已停止 — 定义需修正</value>
+    <value>组建需修正</value>
   </data>
   <data name="Studio.Create.CompositionStateStopped" xml:space="preserve">
-    <value>已停止</value>
+    <value>组建已停止</value>
   </data>
   <data name="Studio.Create.CompositionFiles" xml:space="preserve">
     <value>团队草稿中有 {0} 个文件</value>

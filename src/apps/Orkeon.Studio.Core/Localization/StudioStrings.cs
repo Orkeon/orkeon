@@ -753,9 +753,12 @@ public static class StudioStringKeys
     /// </summary>
     public const string TeamsMountUnreadable = "Studio.Teams.MountUnreadable";
 
-    /// <summary>"to try" — the badge of a team that never ran and has no schedule.</summary>
+    /// <summary>"To try" — the badge of a team that never ran and has no schedule (Warning tone).</summary>
     public const string TeamsToTest = "Studio.Teams.ToTest";
     public const string TeamsNeedsFolderBadge = "Studio.Teams.NeedsFolderBadge";
+
+    /// <summary>"Ready · on demand" — the badge of an unscheduled team that already ran (Success tone, UX lot 11).</summary>
+    public const string TeamsReadyBadge = "Studio.Teams.ReadyBadge";
 
     /// <summary>"Last run: {0}, {1}" — the meta line's history part.</summary>
     public const string TeamsLastRun = "Studio.Teams.LastRun";
@@ -1905,6 +1908,15 @@ public static class StudioStringKeys
     public const string WizardTabTeamFoldersNone = "Studio.Create.TabTeamFoldersNone";
     public const string WizardTabComposition = "Studio.Create.TabComposition";
     public const string WizardTabCompositionStopped = "Studio.Create.TabCompositionStopped";
+
+    /// <summary>
+    /// Composition tab subtitle once the run stopped and the definition validated: "Composed · {0} files written".
+    /// Composition state scale (UX lot 11): None (Neutral) → Running (Attention) → Done (Ready) | Invalid (Attention) | Stopped (Neutral, no validation).
+    /// </summary>
+    public const string WizardTabCompositionDone = "Studio.Create.TabCompositionDone";
+
+    /// <summary>Composition tab subtitle once the run stopped and the definition failed validation: "To fix · {0} files written" (UX lot 11).</summary>
+    public const string WizardTabCompositionInvalid = "Studio.Create.TabCompositionInvalid";
     public const string WizardTabCompositionRunning = "Studio.Create.TabCompositionRunning";
     public const string WizardTabCompositionNone = "Studio.Create.TabCompositionNone";
     public const string WizardTeamFooterStopped = "Studio.Create.TeamFooterStopped";
@@ -2735,6 +2747,12 @@ public static class StudioStringKeys
     /// <summary>"Close to your need ({0})" — the filter the suggestion hint opens the panel on.</summary>
     public const string WizardGallerySuggested = "Studio.Create.GallerySuggested";
 
+    /// <summary>"More filters" — the folded section of the use-case gallery holding the secondary filters (UX lot 11).</summary>
+    public const string WizardGalleryMoreFilters = "Studio.Create.GalleryMoreFilters";
+
+    /// <summary>"{0} agents · {1}" — the line under a use-case card title: agent count and team organisation (UX lot 11).</summary>
+    public const string WizardGalleryAgentsLine = "Studio.Create.GalleryAgentsLine";
+
     /// <summary>"The use cases could not be read." — the panel's card when the CLI answered no catalogue.</summary>
     public const string WizardGalleryUnreadable = "Studio.Create.GalleryUnreadable";
 
@@ -2927,8 +2945,9 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.TeamsMountRo] = "{0} · read",
         [StudioStringKeys.TeamsMountRw] = "{0} · read, write",
         [StudioStringKeys.TeamsMountUnreadable] = "unreadable folder",
-        [StudioStringKeys.TeamsToTest] = "to try",
+        [StudioStringKeys.TeamsToTest] = "To try",
         [StudioStringKeys.TeamsNeedsFolderBadge] = "Folder to allow",
+        [StudioStringKeys.TeamsReadyBadge] = "Ready · on demand",
         [StudioStringKeys.TeamsLastRun] = "Last run: {0}, {1}",
         [StudioStringKeys.TeamsRunOk] = "succeeded",
         [StudioStringKeys.TeamsRunFail] = "failed",
@@ -3559,7 +3578,7 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.ComposeStageVerdict] = "I am preparing the report…",
         [StudioStringKeys.ComposeStagePromote] = "I am saving the team…",
         [StudioStringKeys.ComposeStageWorking] = "Working…",
-        [StudioStringKeys.ComposeStageIdle] = "Stopped.",
+        [StudioStringKeys.ComposeStageIdle] = "Composition stopped.",
         [StudioStringKeys.ComposeTokensUp] = "Tokens sent to the model",
         [StudioStringKeys.ComposeTokensDown] = "Tokens received from the model",
         [StudioStringKeys.ComposeTokensEstimated] = "Estimate: this provider does not report token counts.",
@@ -3611,6 +3630,8 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.WizardTabTeamFoldersNone] = "No folder",
         [StudioStringKeys.WizardTabComposition] = "Composition",
         [StudioStringKeys.WizardTabCompositionStopped] = "Stopped · {0} {0:plural:file|files} written",
+        [StudioStringKeys.WizardTabCompositionDone] = "Composed · {0} {0:plural:file written|files written}",
+        [StudioStringKeys.WizardTabCompositionInvalid] = "To fix · {0} {0:plural:file written|files written}",
         [StudioStringKeys.WizardTabCompositionRunning] = "Under way",
         [StudioStringKeys.WizardTabCompositionNone] = "Not started",
         [StudioStringKeys.WizardTeamFooterStopped] = "{0} {0:plural:agent|agents}, composition stopped.",
@@ -3619,9 +3640,9 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.WizardStep2FoldersFooterSet] = "{0} {0:plural:folder, set|folders, all set}.",
         [StudioStringKeys.WizardStep2FoldersFooterNone] = "This team uses no folder.",
         [StudioStringKeys.WizardCompositionStateRunning] = "Under way",
-        [StudioStringKeys.WizardCompositionStateValid] = "Stopped — definition checked",
-        [StudioStringKeys.WizardCompositionStateInvalid] = "Stopped — definition to fix",
-        [StudioStringKeys.WizardCompositionStateStopped] = "Stopped",
+        [StudioStringKeys.WizardCompositionStateValid] = "Composed — definition checked",
+        [StudioStringKeys.WizardCompositionStateInvalid] = "Composition to fix",
+        [StudioStringKeys.WizardCompositionStateStopped] = "Composition stopped",
         [StudioStringKeys.WizardCompositionFiles] = "{0} {0:plural:file|files} in the team's draft",
         [StudioStringKeys.WizardCompositionDraftSaved] = "saved at {0}",
         [StudioStringKeys.WizardCompositionDraftNotSaved] = "not saved yet",
@@ -3900,6 +3921,8 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.WizardGalleryAnyProcess] = "Any",
         [StudioStringKeys.WizardGalleryCount] = "{0} of {1} use cases",
         [StudioStringKeys.WizardGallerySuggested] = "Close to your need ({0})",
+        [StudioStringKeys.WizardGalleryMoreFilters] = "More filters",
+        [StudioStringKeys.WizardGalleryAgentsLine] = "{0} {0:plural:agent|agents} · {1}",
         [StudioStringKeys.WizardGalleryUnreadable] = "The use cases could not be read.",
         // STUDIO-41: « Import as is »
         [StudioStringKeys.WizardGalleryImporting] = "Importing “{0}”…",

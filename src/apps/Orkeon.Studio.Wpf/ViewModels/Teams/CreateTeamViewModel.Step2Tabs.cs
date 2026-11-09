@@ -183,18 +183,43 @@ public sealed partial class CreateTeamViewModel
     /// <summary>Whether a composition has run in this session (stopped or under way).</summary>
     private bool HasComposition => IsComposing || _model.FinishedStatus is not null;
 
-    /// <summary>The composition tab: turning while it runs, a check once stopped, the warning on a definition to fix.</summary>
+    /// <summary>
+    /// The composition tab's state — the scale of the composition (UX lot 11, mod. 11), one row per
+    /// state: state → subtitle key → tab state (→ dot / badge tone).
+    /// <list type="bullet">
+    /// <item>none (never composed) → <c>WizardTabCompositionNone</c> → Empty (Neutral)</item>
+    /// <item>running → <c>WizardTabCompositionRunning</c> → Working (Attention)</item>
+    /// <item>stopped, <c>ValidationOk == true</c> → <c>WizardTabCompositionDone</c> → Done (Ready / Success)</item>
+    /// <item>stopped, <c>ValidationOk == false</c> → <c>WizardTabCompositionInvalid</c> → Warning (Attention / Warning)</item>
+    /// <item>stopped, <c>ValidationOk == null</c> (not checked) → <c>WizardTabCompositionStopped</c> → Empty (Neutral)</item>
+    /// </list>
+    /// <see cref="CompositionTabSubtitle"/> and <see cref="CompositionStateText"/> follow the same scale.
+    /// </summary>
     public string CompositionTabState =>
         IsComposing ? TabWorking
         : _model.FinishedStatus is null ? TabEmpty
-        : ValidationOk == false ? TabWarning
-        : TabDone;
+        : ValidationOk switch
+        {
+            true => TabDone,
+            false => TabWarning,
+            null => TabEmpty,
+        };
 
-    /// <summary>« Stopped · 4 files written », « Under way », « Not started ».</summary>
+    /// <summary>
+    /// « Composed · 4 files written », « To fix · … », « Stopped · … », « Under way », « Not started »:
+    /// the subtitle key of <see cref="CompositionTabState"/>'s scale (state → key → tone).
+    /// </summary>
     public string CompositionTabSubtitle =>
         IsComposing ? _strings[StudioStringKeys.WizardTabCompositionRunning]
         : _model.FinishedStatus is null ? _strings[StudioStringKeys.WizardTabCompositionNone]
-        : _strings.Format(StudioStringKeys.WizardTabCompositionStopped, Files.Count);
+        : _strings.Format(
+            ValidationOk switch
+            {
+                true => StudioStringKeys.WizardTabCompositionDone,
+                false => StudioStringKeys.WizardTabCompositionInvalid,
+                null => StudioStringKeys.WizardTabCompositionStopped,
+            },
+            Files.Count);
 
     /// <summary>The « State » row: under way, or stopped with what the validation said.</summary>
     public string CompositionStateText =>

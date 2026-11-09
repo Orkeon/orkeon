@@ -40,44 +40,64 @@
                Tag="{Binding [Studio.Create.GallerySearch], Source={x:Static services:I18n.Instance}}"
                Text="{Binding Query, UpdateSourceTrigger=PropertyChanged}"/>
 
-      <TextBlock Style="{StaticResource FieldLabel}" Margin="0,12,0,5"
-                 Text="{Binding [Studio.Create.GalleryFilterCategory], Source={x:Static services:I18n.Instance}}"/>
-      <ItemsControl ItemsSource="{Binding Categories}">
-        <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
-        <ItemsControl.ItemTemplate>
-          <DataTemplate>
-            <Button Style="{StaticResource SelectableChip}" Command="{Binding SelectCommand}" Content="{Binding Label}"/>
-          </DataTemplate>
-        </ItemsControl.ItemTemplate>
-      </ItemsControl>
+      <!-- UX lot 11: the count and the way out sit under the search; the domains with the
+           most cases and the cases close to the need stay in view, the rest is folded -->
+      <TextBlock Style="{StaticResource MetaText}" Margin="0,8,0,0">
+        <Run Text="{Binding CountLabel, Mode=OneWay}"/>
+        <InlineUIContainer BaselineAlignment="Center">
+          <TextBlock Visibility="{Binding HasActiveFilter, Converter={StaticResource BooleanToVisibility}}">
+            <Run Text=" · "/><Hyperlink Command="{Binding ClearFiltersCommand}"><Run Text="{Binding [Studio.Create.GalleryClearFilters], Source={x:Static services:I18n.Instance}, Mode=OneWay}"/></Hyperlink>
+          </TextBlock>
+        </InlineUIContainer>
+      </TextBlock>
 
-      <TextBlock Style="{StaticResource FieldLabel}" Margin="0,6,0,5"
-                 Text="{Binding [Studio.Create.GalleryFilterProcess], Source={x:Static services:I18n.Instance}}"/>
-      <ItemsControl ItemsSource="{Binding Processes}">
-        <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
-        <ItemsControl.ItemTemplate>
-          <DataTemplate>
-            <Button Style="{StaticResource SelectableChip}" Command="{Binding SelectCommand}" Content="{Binding Label}"/>
-          </DataTemplate>
-        </ItemsControl.ItemTemplate>
-      </ItemsControl>
-
-      <WrapPanel Margin="0,4,0,0">
-        <CheckBox Margin="0,0,16,6" IsChecked="{Binding WithoutWeb}"
-                  Content="{Binding [Studio.Create.GalleryNoWeb], Source={x:Static services:I18n.Instance}}"/>
-        <CheckBox Margin="0,0,16,6" IsChecked="{Binding WithoutKeys}"
-                  Content="{Binding [Studio.Create.GalleryNoKey], Source={x:Static services:I18n.Instance}}"/>
+      <WrapPanel Margin="0,12,0,0">
         <!-- The cases the need's suggestions found, best first — what « N close use cases »
              under the need opens the panel on. -->
-        <CheckBox Margin="0,0,16,6" IsChecked="{Binding SuggestedOnly}" Content="{Binding SuggestedFilterLabel}"
-                  Visibility="{Binding HasSuggestions, Converter={StaticResource BooleanToVisibility}}"/>
+        <Button Style="{StaticResource SelectableChip}" DataContext="{Binding SuggestedChip}"
+                Command="{Binding SelectCommand}" Content="{Binding Label}"
+                Visibility="{Binding DataContext.HasSuggestions, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource BooleanToVisibility}}"/>
       </WrapPanel>
+      <ItemsControl ItemsSource="{Binding PrimaryCategories}">
+        <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+        <ItemsControl.ItemTemplate>
+          <DataTemplate>
+            <Button Style="{StaticResource SelectableChip}" Command="{Binding SelectCommand}" Content="{Binding Label}"/>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
 
-      <DockPanel Margin="0,6,0,0">
-        <Button DockPanel.Dock="Right" Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="32" Command="{Binding ClearFiltersCommand}"
-                Content="{Binding [Studio.Create.GalleryClearFilters], Source={x:Static services:I18n.Instance}}"/>
-        <TextBlock Style="{StaticResource MetaText}" VerticalAlignment="Center" Text="{Binding CountLabel}"/>
-      </DockPanel>
+      <controls:Disclosure Margin="0,6,0,0"
+                           Header="{Binding [Studio.Create.GalleryMoreFilters], Source={x:Static services:I18n.Instance}}">
+        <StackPanel Margin="0,6,0,0">
+          <TextBlock Style="{StaticResource FieldLabel}" Margin="0,0,0,5"
+                     Text="{Binding [Studio.Create.GalleryFilterProcess], Source={x:Static services:I18n.Instance}}"/>
+          <ItemsControl ItemsSource="{Binding Processes}">
+        <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+        <ItemsControl.ItemTemplate>
+          <DataTemplate>
+            <Button Style="{StaticResource SelectableChip}" Command="{Binding SelectCommand}" Content="{Binding Label}"/>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+          <TextBlock Style="{StaticResource FieldLabel}" Margin="0,6,0,5"
+                     Text="{Binding [Studio.Create.GalleryFilterCategory], Source={x:Static services:I18n.Instance}}"/>
+          <ItemsControl ItemsSource="{Binding MoreCategories}">
+        <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+        <ItemsControl.ItemTemplate>
+          <DataTemplate>
+            <Button Style="{StaticResource SelectableChip}" Command="{Binding SelectCommand}" Content="{Binding Label}"/>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+          <WrapPanel Margin="0,4,0,0">
+            <CheckBox Margin="0,0,16,6" IsChecked="{Binding WithoutWeb}"
+                      Content="{Binding [Studio.Create.GalleryNoWeb], Source={x:Static services:I18n.Instance}}"/>
+            <CheckBox Margin="0,0,16,6" IsChecked="{Binding WithoutKeys}"
+                      Content="{Binding [Studio.Create.GalleryNoKey], Source={x:Static services:I18n.Instance}}"/>
+          </WrapPanel>
+        </StackPanel>
+      </controls:Disclosure>
     </StackPanel>
 
     <!-- STUDIO-41: « Import as is » — the name already taken (D-05: what holds it, the free name,
@@ -208,14 +228,14 @@
                                Text="{Binding [Studio.Create.GalleryChoose], Source={x:Static services:I18n.Instance}}"/>
                   </Button>
                   <!-- STUDIO-41 (D-01, D-03): the expert's shortcut — the case as a team of My
-                       teams, ready to run and to modify; never on a reference-only case. -->
-                  <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="32" HorizontalAlignment="Stretch" Margin="0,8,0,0"
-                          Command="{Binding ImportAsIsCommand}" controls:ButtonIcon.Kind="arrow-down"
-                          ToolTip="{Binding [Studio.Create.GalleryImportAsIsTip], Source={x:Static services:I18n.Instance}}"
-                          Visibility="{Binding CanImportAsIs, Converter={StaticResource BooleanToVisibility}}">
-                    <TextBlock TextTrimming="CharacterEllipsis"
-                               Text="{Binding [Studio.Create.GalleryImportAsIs], Source={x:Static services:I18n.Instance}}"/>
-                  </Button>
+                       teams, ready to run and to modify; never on a reference-only case. UX lot 11:
+                       it sits in the «…» menu, the card's one visible action is the primary. -->
+                  <controls:OverflowMenuButton HorizontalAlignment="Right" Margin="0,8,0,0"
+                                               Visibility="{Binding CanImportAsIs, Converter={StaticResource BooleanToVisibility}}">
+                    <MenuItem Command="{Binding ImportAsIsCommand}"
+                              Header="{Binding [Studio.Create.GalleryImportAsIs], Source={x:Static services:I18n.Instance}}"
+                              ToolTip="{Binding [Studio.Create.GalleryImportAsIsTip], Source={x:Static services:I18n.Instance}}"/>
+                  </controls:OverflowMenuButton>
                 </StackPanel>
                 <StackPanel Grid.Column="0" Margin="0,0,12,0">
                   <!-- R11: card title 16/600, the problem as body text; both wrap, never cut (R09) -->
@@ -229,16 +249,18 @@
                   <TextBlock Style="{StaticResource BodyText}" Foreground="{DynamicResource InkMutedBrush}"
                              Margin="0,4,0,0" Text="{Binding Problem}"
                              Visibility="{Binding HasProblem, Converter={StaticResource BooleanToVisibility}}"/>
+                  <TextBlock Style="{StaticResource MetaText}" Margin="0,2,0,0" Text="{Binding AgentsLine}"/>
                   <!-- D09 (R12, R20): the shared Badge — its tinted ground is kept in the dark
                        theme, so the domain tag never turns into bare text. -->
                   <WrapPanel Margin="0,9,0,0">
-                    <controls:Badge Tone="Neutral" Margin="0,0,6,4" Content="{Binding ProcessLabel}"/>
                     <controls:Badge Tone="Info" Margin="0,0,6,4" Content="{Binding CategoryLabel}"/>
                     <controls:Badge Tone="Warning" Margin="0,0,6,4"
-                                    ToolTip="{Binding [Studio.Create.GalleryReferenceOnlyTip], Source={x:Static services:I18n.Instance}}"
                                     Visibility="{Binding IsReferenceOnly, Converter={StaticResource BooleanToVisibility}}"
                                     Content="{Binding [Studio.Create.GalleryReferenceOnly], Source={x:Static services:I18n.Instance}}"/>
                   </WrapPanel>
+                  <TextBlock Style="{StaticResource MetaText}" FontSize="12" TextWrapping="Wrap"
+                             Text="{Binding [Studio.Create.GalleryReferenceOnlyTip], Source={x:Static services:I18n.Instance}}"
+                             Visibility="{Binding IsReferenceOnly, Converter={StaticResource BooleanToVisibility}}"/>
                 </StackPanel>
               </Grid>
             </Border>

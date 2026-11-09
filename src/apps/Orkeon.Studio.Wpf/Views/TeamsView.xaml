@@ -261,25 +261,9 @@
                 <TextBlock Style="{StaticResource ObjectTitle}" FontSize="16" ToolTip="{Binding NameTip}">
                   <Run Text="{Binding Name, Mode=OneWay}"/>
                   <InlineUIContainer BaselineAlignment="Center">
-                    <!-- R12: the shared badge — ok success, warn warning, muted neutral, else sky. -->
-                    <controls:Badge Margin="8,0,0,0" Content="{Binding BadgeText}">
-                      <controls:Badge.Style>
-                        <Style TargetType="controls:Badge" BasedOn="{StaticResource {x:Type controls:Badge}}">
-                          <Setter Property="Tone" Value="Info"/>
-                          <Style.Triggers>
-                            <DataTrigger Binding="{Binding BadgeTone}" Value="ok">
-                              <Setter Property="Tone" Value="Success"/>
-                            </DataTrigger>
-                            <DataTrigger Binding="{Binding BadgeTone}" Value="warn">
-                              <Setter Property="Tone" Value="Warning"/>
-                            </DataTrigger>
-                            <DataTrigger Binding="{Binding BadgeTone}" Value="muted">
-                              <Setter Property="Tone" Value="Neutral"/>
-                            </DataTrigger>
-                          </Style.Triggers>
-                        </Style>
-                      </controls:Badge.Style>
-                    </controls:Badge>
+                    <!-- UX lot 11: the shared badge, its tone from the state (ok / warn / muted) by StateToneConverter. -->
+                    <controls:Badge Margin="8,0,0,0" Content="{Binding BadgeText}"
+                                    Tone="{Binding BadgeTone, Converter={StaticResource StateToneConverter}}"/>
                   </InlineUIContainer>
                   <InlineUIContainer BaselineAlignment="Center">
                     <TextBlock Style="{StaticResource MonoText}" FontSize="13" Margin="8,0,0,0"

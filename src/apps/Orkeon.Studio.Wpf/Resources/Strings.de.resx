@@ -2426,9 +2426,10 @@
     <value>unlesbarer Ordner</value>
   </data>
   <data name="Studio.Teams.ToTest" xml:space="preserve">
-    <value>zu erproben</value>
+    <value>Zu erproben</value>
   </data>
   <data name="Studio.Teams.NeedsFolderBadge" xml:space="preserve"><value>Ordner freizugeben</value></data>
+  <data name="Studio.Teams.ReadyBadge" xml:space="preserve"><value>Bereit · auf Abruf</value></data>
   <data name="Studio.Teams.LastRun" xml:space="preserve">
     <value>Letzter Lauf: {0}, {1}</value>
   </data>
@@ -2652,7 +2653,7 @@
     <value>Arbeitet…</value>
   </data>
   <data name="Studio.Create.StageIdle" xml:space="preserve">
-    <value>Angehalten.</value>
+    <value>Komposition angehalten.</value>
   </data>
   <data name="Studio.Create.TokensUp" xml:space="preserve">
     <value>An das Modell gesendete Token</value>
@@ -3183,7 +3184,7 @@
     <value>Schreiben</value>
   </data>
   <data name="Studio.Settings.RightsBadgeRwnd" xml:space="preserve">
-    <value>Schreiben, ohne Löschen</value>
+    <value>Schreiben ohne Löschen</value>
   </data>
   <data name="Studio.Settings.RightsRwndTip" xml:space="preserve"><value>Darf ändern, nie löschen.</value></data>
   <!-- STUDIO-14 settings: the read-only « Team folders » section of the folders tab -->
@@ -3316,6 +3317,8 @@
   <data name="Studio.Create.GalleryAnyProcess" xml:space="preserve"><value>Beliebig</value></data>
   <data name="Studio.Create.GalleryCount" xml:space="preserve"><value>{0} von {1} Anwendungsfällen</value></data>
   <data name="Studio.Create.GallerySuggested" xml:space="preserve"><value>Passend zu Ihrem Bedarf ({0})</value></data>
+  <data name="Studio.Create.GalleryMoreFilters" xml:space="preserve"><value>Weitere Filter</value></data>
+  <data name="Studio.Create.GalleryAgentsLine" xml:space="preserve"><value>{0} {0:plural:Agent|Agenten} · {1}</value></data>
   <data name="Studio.Create.GalleryUnreadable" xml:space="preserve"><value>Die Anwendungsfälle konnten nicht gelesen werden.</value></data>
   <data name="Studio.Create.GalleryCategoryEnterprise" xml:space="preserve"><value>Unternehmen</value></data>
   <data name="Studio.Create.GalleryCategoryScience" xml:space="preserve"><value>Wissenschaft und Forschung</value></data>
@@ -3758,7 +3761,7 @@
   <data name="Studio.Teams.RefusedRuns" xml:space="preserve"><value>{0} {0:plural:geplanter Lauf wird|geplante Läufe werden} beim nächsten Durchgang abgelehnt: Die gespeicherte Einstellungsdatei enthält {1} noch nicht.</value></data>
   <data name="Studio.Teams.SaveSettings" xml:space="preserve"><value>Einstellungen speichern</value></data>
   <data name="Studio.Teams.ImportShort" xml:space="preserve"><value>Importieren</value></data>
-  <data name="Studio.Teams.ScheduleManualValue" xml:space="preserve"><value>Manuell</value></data>
+  <data name="Studio.Teams.ScheduleManualValue" xml:space="preserve"><value>Auf Abruf</value></data>
   <data name="Studio.Teams.LaunchNeedsFolder" xml:space="preserve"><value>Geben Sie zuerst den Ordner {0} frei.</value></data>
   <data name="Studio.Teams.AllowFolder" xml:space="preserve"><value>Freigeben</value></data>
   <data name="Studio.Create.SessionRunning" xml:space="preserve"><value>Läuft</value></data>
@@ -4099,6 +4102,8 @@
   <data name="Studio.Create.TabCompositionStopped" xml:space="preserve">
     <value>Angehalten · {0} {0:plural:Datei|Dateien} geschrieben</value>
   </data>
+  <data name="Studio.Create.TabCompositionDone" xml:space="preserve"><value>Komponiert · {0} {0:plural:Datei|Dateien} geschrieben</value></data>
+  <data name="Studio.Create.TabCompositionInvalid" xml:space="preserve"><value>Zu korrigieren · {0} {0:plural:Datei|Dateien} geschrieben</value></data>
   <data name="Studio.Create.TabCompositionRunning" xml:space="preserve">
     <value>Läuft</value>
   </data>
@@ -4124,13 +4129,13 @@
     <value>Läuft</value>
   </data>
   <data name="Studio.Create.CompositionStateValid" xml:space="preserve">
-    <value>Angehalten — Definition geprüft</value>
+    <value>Komponiert — Definition geprüft</value>
   </data>
   <data name="Studio.Create.CompositionStateInvalid" xml:space="preserve">
-    <value>Angehalten — Definition zu korrigieren</value>
+    <value>Komposition zu korrigieren</value>
   </data>
   <data name="Studio.Create.CompositionStateStopped" xml:space="preserve">
-    <value>Angehalten</value>
+    <value>Komposition angehalten</value>
   </data>
   <data name="Studio.Create.CompositionFiles" xml:space="preserve">
     <value>{0} {0:plural:Datei|Dateien} im Entwurf des Teams</value>

@@ -878,8 +878,9 @@
   <data name="Studio.Teams.MountRo" xml:space="preserve"><value>{0} · read</value></data>
   <data name="Studio.Teams.MountRw" xml:space="preserve"><value>{0} · read, write</value></data>
   <data name="Studio.Teams.MountUnreadable" xml:space="preserve"><value>unreadable folder</value></data>
-  <data name="Studio.Teams.ToTest" xml:space="preserve"><value>to try</value></data>
+  <data name="Studio.Teams.ToTest" xml:space="preserve"><value>To try</value></data>
   <data name="Studio.Teams.NeedsFolderBadge" xml:space="preserve"><value>Folder to allow</value></data>
+  <data name="Studio.Teams.ReadyBadge" xml:space="preserve"><value>Ready · on demand</value></data>
   <data name="Studio.Teams.LastRun" xml:space="preserve"><value>Last run: {0}, {1}</value></data>
   <data name="Studio.Teams.RunOk" xml:space="preserve"><value>succeeded</value></data>
   <data name="Studio.Teams.RunFail" xml:space="preserve"><value>failed</value></data>
@@ -1049,7 +1050,7 @@
     <value>Working…</value>
   </data>
   <data name="Studio.Create.StageIdle" xml:space="preserve">
-    <value>Stopped.</value>
+    <value>Composition stopped.</value>
   </data>
   <data name="Studio.Create.TokensUp" xml:space="preserve">
     <value>Tokens sent to the model</value>
@@ -1695,6 +1696,8 @@
   <data name="Studio.Create.GalleryAnyProcess" xml:space="preserve"><value>Any</value></data>
   <data name="Studio.Create.GalleryCount" xml:space="preserve"><value>{0} of {1} use cases</value></data>
   <data name="Studio.Create.GallerySuggested" xml:space="preserve"><value>Close to your need ({0})</value></data>
+  <data name="Studio.Create.GalleryMoreFilters" xml:space="preserve"><value>More filters</value></data>
+  <data name="Studio.Create.GalleryAgentsLine" xml:space="preserve"><value>{0} {0:plural:agent|agents} · {1}</value></data>
   <data name="Studio.Create.GalleryUnreadable" xml:space="preserve"><value>The use cases could not be read.</value></data>
   <data name="Studio.Create.GalleryCategoryEnterprise" xml:space="preserve"><value>Enterprise</value></data>
   <data name="Studio.Create.GalleryCategoryScience" xml:space="preserve"><value>Science and research</value></data>
@@ -2055,7 +2058,7 @@
   <data name="Studio.Teams.RefusedRuns" xml:space="preserve"><value>{0} {0:plural:scheduled run|scheduled runs} will be refused on the next pass: the saved settings file does not hold {1} yet.</value></data>
   <data name="Studio.Teams.SaveSettings" xml:space="preserve"><value>Save the settings</value></data>
   <data name="Studio.Teams.ImportShort" xml:space="preserve"><value>Import</value></data>
-  <data name="Studio.Teams.ScheduleManualValue" xml:space="preserve"><value>Manual</value></data>
+  <data name="Studio.Teams.ScheduleManualValue" xml:space="preserve"><value>On demand</value></data>
   <data name="Studio.Teams.LaunchNeedsFolder" xml:space="preserve"><value>Allow the folder {0} first to launch the team.</value></data>
   <data name="Studio.Teams.AllowFolder" xml:space="preserve"><value>Allow</value></data>
   <data name="Studio.Create.SessionRunning" xml:space="preserve"><value>Running</value></data>
@@ -2393,6 +2396,8 @@
   <data name="Studio.Create.TabCompositionStopped" xml:space="preserve">
     <value>Stopped · {0} {0:plural:file|files} written</value>
   </data>
+  <data name="Studio.Create.TabCompositionDone" xml:space="preserve"><value>Composed · {0} {0:plural:file written|files written}</value></data>
+  <data name="Studio.Create.TabCompositionInvalid" xml:space="preserve"><value>To fix · {0} {0:plural:file written|files written}</value></data>
   <data name="Studio.Create.TabCompositionRunning" xml:space="preserve">
     <value>Under way</value>
   </data>
@@ -2418,13 +2423,13 @@
     <value>Under way</value>
   </data>
   <data name="Studio.Create.CompositionStateValid" xml:space="preserve">
-    <value>Stopped — definition checked</value>
+    <value>Composed — definition checked</value>
   </data>
   <data name="Studio.Create.CompositionStateInvalid" xml:space="preserve">
-    <value>Stopped — definition to fix</value>
+    <value>Composition to fix</value>
   </data>
   <data name="Studio.Create.CompositionStateStopped" xml:space="preserve">
-    <value>Stopped</value>
+    <value>Composition stopped</value>
   </data>
   <data name="Studio.Create.CompositionFiles" xml:space="preserve">
     <value>{0} {0:plural:file|files} in the team's draft</value>

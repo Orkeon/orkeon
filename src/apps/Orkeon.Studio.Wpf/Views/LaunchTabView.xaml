@@ -719,27 +719,8 @@
                     </Style.Triggers>
                   </Style>
                 </Border.Style>
-                <controls:Badge Content="{Binding RunBadgeText}">
-                  <controls:Badge.Style>
-                    <Style TargetType="controls:Badge" BasedOn="{StaticResource {x:Type controls:Badge}}">
-                      <Setter Property="Tone" Value="Neutral"/>
-                      <Style.Triggers>
-                        <DataTrigger Binding="{Binding RunBadgeTone}" Value="running">
-                          <Setter Property="Tone" Value="Info"/>
-                        </DataTrigger>
-                        <DataTrigger Binding="{Binding RunBadgeTone}" Value="ok">
-                          <Setter Property="Tone" Value="Success"/>
-                        </DataTrigger>
-                        <DataTrigger Binding="{Binding RunBadgeTone}" Value="warn">
-                          <Setter Property="Tone" Value="Warning"/>
-                        </DataTrigger>
-                        <DataTrigger Binding="{Binding RunBadgeTone}" Value="fail">
-                          <Setter Property="Tone" Value="Danger"/>
-                        </DataTrigger>
-                      </Style.Triggers>
-                    </Style>
-                  </controls:Badge.Style>
-                </controls:Badge>
+                <controls:Badge Content="{Binding RunBadgeText}"
+                                Tone="{Binding RunBadgeTone, Converter={StaticResource StateToneConverter}}"/>
               </Border>
               <TextBlock Style="{StaticResource MonoText}" FontSize="13" Margin="12,0,0,0" VerticalAlignment="Center"
                          Text="{Binding RunDuration}"

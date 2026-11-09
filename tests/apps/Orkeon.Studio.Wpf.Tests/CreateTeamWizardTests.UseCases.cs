@@ -160,6 +160,86 @@ public partial class CreateTeamWizardTests
     }
 
     [Fact]
+    public async Task The_gallery_shows_the_four_largest_domains_and_folds_the_others()
+    {
+        FakeUseCase Case(string id, string category) => new(id, category, "sequential", Texts(id, id, id), Texts(id, id, id));
+        var cli = new FakeUseCaseCli();
+        // finance 3, health 2, education 2, enterprise 1, science 1, iot 1: the ties break by the folder order of the labels.
+        cli.Catalog.AddRange(
+        [
+            Case("a1", "03-finance-trading"), Case("a2", "03-finance-trading"), Case("a3", "03-finance-trading"),
+            Case("b1", "04-health-wellness"), Case("b2", "04-health-wellness"),
+            Case("c1", "05-education"), Case("c2", "05-education"),
+            Case("d1", "08-iot-smart-systems"), Case("e1", "02-science-research"), Case("f1", "01-enterprise"),
+        ]);
+        var vm = WizardWithGallery(cli);
+        await vm.Gallery.LoadAsync(TestContext.Current.CancellationToken);
+
+        Assert.Equal(
+            ["All", "Finance and trading", "Health and wellness", "Education", "Enterprise"],
+            vm.Gallery.PrimaryCategories.Select(chip => chip.Label));
+        Assert.Equal(["02-science-research", "08-iot-smart-systems"], vm.Gallery.MoreCategories.Select(chip => chip.Key).Order());
+
+        vm.Gallery.MoreCategories.Single(chip => chip.Key == "02-science-research").SelectCommand.Execute(null);
+
+        Assert.Equal(["e1"], vm.Gallery.Cards.Select(card => card.Id));
+        Assert.True(vm.Gallery.MoreCategories.Single(chip => chip.Key == "02-science-research").IsSelected);
+    }
+
+    [Fact]
+    public async Task The_clear_filters_link_shows_only_while_a_filter_or_the_search_narrows_the_list()
+    {
+        var vm = WizardWithGallery(UseCaseCli());
+        await vm.Gallery.LoadAsync(TestContext.Current.CancellationToken);
+        vm.BrowseUseCasesCommand.Execute(null);
+        Assert.False(vm.Gallery.HasActiveFilter);
+
+        vm.Gallery.Query = "veille";
+        Assert.True(vm.Gallery.HasActiveFilter);
+        vm.Gallery.Query = "";
+        Assert.False(vm.Gallery.HasActiveFilter);
+
+        vm.Gallery.WithoutWeb = true;
+        Assert.True(vm.Gallery.HasActiveFilter);
+        vm.Gallery.ClearFiltersCommand.Execute(null);
+        Assert.False(vm.Gallery.HasActiveFilter);
+
+        vm.Gallery.PrimaryCategories.Single(chip => chip.Key == "03-finance-trading").SelectCommand.Execute(null);
+        Assert.True(vm.Gallery.HasActiveFilter);
+        vm.Gallery.PrimaryCategories[0].SelectCommand.Execute(null);
+        Assert.False(vm.Gallery.HasActiveFilter);
+    }
+
+    [Fact]
+    public async Task A_card_says_how_many_agents_and_how_the_team_works()
+    {
+        var vm = WizardWithGallery(UseCaseCli());
+        await vm.Gallery.LoadAsync(TestContext.Current.CancellationToken);
+        vm.BrowseUseCasesCommand.Execute(null);
+
+        Assert.Equal("3 agents · Step by step", vm.Gallery.Cards[0].AgentsLine);
+    }
+
+    [Fact]
+    public async Task The_suggestions_chip_toggles_the_suggested_only_filter()
+    {
+        var vm = WizardWithGallery(UseCaseCli());
+        await vm.Gallery.LoadAsync(TestContext.Current.CancellationToken);
+        vm.Gallery.Suggest(["56-adaptive-tutor"]);
+
+        vm.Gallery.SuggestedChip.SelectCommand.Execute(null);
+
+        Assert.True(vm.Gallery.SuggestedOnly);
+        Assert.True(vm.Gallery.SuggestedChip.IsSelected);
+        Assert.Equal(["56-adaptive-tutor"], vm.Gallery.Cards.Select(card => card.Id));
+
+        vm.Gallery.SuggestedChip.SelectCommand.Execute(null);
+
+        Assert.False(vm.Gallery.SuggestedOnly);
+        Assert.Equal(6, vm.Gallery.Cards.Count);
+    }
+
+    [Fact]
     public async Task The_gallery_filters_by_process_by_web_access_and_by_third_party_key()
     {
         var vm = WizardWithGallery(UseCaseCli());

@@ -787,49 +787,13 @@
     </Setter>
   </Style>
 
-  <!-- ══ Badge: <Border Style="Badge*"><TextBlock .../></Border> ══
-       WPF rule (unlike CSS): CornerRadius is NOT clamped to height/2 — an oversized
-       value deforms the corners into ogives. Every pill therefore carries a fixed
-       Height and CornerRadius = Height / 2, exactly.
-       hrm R12/R20: a tinted ground and the DARK ink of the same tone (SuccessInk, WarningInk,
-       DangerInk, AccentInk); both grounds stay visible in the dark theme. Sky is the
-       «Lecture et écriture» pill, Neutral the «Lecture seule» one. -->
+  <!-- ══ Badge text: the 13/600 label a controls:Badge (Components.xaml) carries when its content is
+       a TextBlock that needs its own trimming or an icon beside it. The pill itself is the Badge. ══ -->
   <Style x:Key="BadgeText" TargetType="TextBlock">
     <Setter Property="FontFamily" Value="{StaticResource TextFont}"/>
     <Setter Property="FontSize" Value="13"/>
     <Setter Property="FontWeight" Value="SemiBold"/>
     <Setter Property="VerticalAlignment" Value="Center"/>
-  </Style>
-  <Style x:Key="BadgeBase" TargetType="Border">
-    <Setter Property="Height" Value="22"/>
-    <Setter Property="CornerRadius" Value="11"/>
-    <Setter Property="Padding" Value="10,0"/>
-    <Setter Property="VerticalAlignment" Value="Center"/>
-    <Setter Property="SnapsToDevicePixels" Value="True"/>
-  </Style>
-  <Style x:Key="BadgeNeutral" TargetType="Border" BasedOn="{StaticResource BadgeBase}">
-    <Setter Property="Background" Value="{DynamicResource PaperSunkBrush}"/>
-    <Setter Property="TextElement.Foreground" Value="{DynamicResource InkMutedBrush}"/>
-  </Style>
-  <Style x:Key="BadgeSky" TargetType="Border" BasedOn="{StaticResource BadgeBase}">
-    <Setter Property="Background" Value="{DynamicResource SkyBrush}"/>
-    <Setter Property="TextElement.Foreground" Value="{DynamicResource AccentInkBrush}"/>
-  </Style>
-  <Style x:Key="BadgeOk" TargetType="Border" BasedOn="{StaticResource BadgeBase}">
-    <Setter Property="Background" Value="{DynamicResource SuccessWeakBrush}"/>
-    <Setter Property="TextElement.Foreground" Value="{DynamicResource SuccessInkBrush}"/>
-  </Style>
-  <Style x:Key="BadgeWarn" TargetType="Border" BasedOn="{StaticResource BadgeBase}">
-    <Setter Property="Background" Value="{DynamicResource WarningWeakBrush}"/>
-    <Setter Property="TextElement.Foreground" Value="{DynamicResource WarningInkBrush}"/>
-  </Style>
-  <Style x:Key="BadgeFail" TargetType="Border" BasedOn="{StaticResource BadgeBase}">
-    <Setter Property="Background" Value="{DynamicResource DangerWeakBrush}"/>
-    <Setter Property="TextElement.Foreground" Value="{DynamicResource DangerInkBrush}"/>
-  </Style>
-  <Style x:Key="BadgeRun" TargetType="Border" BasedOn="{StaticResource BadgeBase}">
-    <Setter Property="Background" Value="{DynamicResource AccentWeakBrush}"/>
-    <Setter Property="TextElement.Foreground" Value="{DynamicResource AccentInkBrush}"/>
   </Style>
 
   <!-- ══ Tool / mount chip — THE one chip recipe (v3 W-03): mono 11.5, paper-sunk,
@@ -1519,21 +1483,30 @@
                  expert's subtitle and the novice's tooltip (UX lot 02). -->
             <TextBlock FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}"
                        Text="{Binding UsedBy}" ToolTip="{Binding EnvName}"/>
-            <Border Margin="9,0,0,0" VerticalAlignment="Center">
-              <Border.Style>
-                <Style TargetType="Border" BasedOn="{StaticResource BadgeBase}">
-                  <Setter Property="Background" Value="{DynamicResource WarningWeakBrush}"/>
-                  <Setter Property="TextElement.Foreground" Value="{DynamicResource WarningInkBrush}"/>
-                  <Style.Triggers>
-                    <DataTrigger Binding="{Binding HasKey}" Value="True">
-                      <Setter Property="Background" Value="{DynamicResource SuccessWeakBrush}"/>
-                      <Setter Property="TextElement.Foreground" Value="{DynamicResource SuccessInkBrush}"/>
-                    </DataTrigger>
-                  </Style.Triggers>
-                </Style>
-              </Border.Style>
-              <TextBlock Style="{StaticResource BadgeText}" FontSize="13" Text="{Binding StatusText}"/>
-            </Border>
+            <!-- A DataTemplate of the theme resolves no resource declared after it, so the tone is two
+                 badges, one shown at a time, not a style based on the Badge's: warn without a key, ok with one. -->
+            <Grid Margin="9,0,0,0" VerticalAlignment="Center">
+              <controls:Badge Tone="Warning">
+                <controls:Badge.Visibility>
+                  <Binding Path="HasKey">
+                    <Binding.Converter>
+                      <views:InverseBooleanToVisibilityConverter/>
+                    </Binding.Converter>
+                  </Binding>
+                </controls:Badge.Visibility>
+                <TextBlock Style="{StaticResource BadgeText}" FontSize="13" Text="{Binding StatusText}"/>
+              </controls:Badge>
+              <controls:Badge Tone="Success">
+                <controls:Badge.Visibility>
+                  <Binding Path="HasKey">
+                    <Binding.Converter>
+                      <BooleanToVisibilityConverter/>
+                    </Binding.Converter>
+                  </Binding>
+                </controls:Badge.Visibility>
+                <TextBlock Style="{StaticResource BadgeText}" FontSize="13" Text="{Binding StatusText}"/>
+              </controls:Badge>
+            </Grid>
           </StackPanel>
           <TextBlock Margin="0,2,0,0" Text="{Binding EnvName}">
             <TextBlock.Style>

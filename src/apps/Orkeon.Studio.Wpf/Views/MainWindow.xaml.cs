@@ -124,6 +124,27 @@ public partial class MainWindow : Window
                 shell.CreateTeam.Gallery.CloseCommand.Execute(null);
                 e.Handled = true;
             }
+            // Lot 11 (072): the four modals close on Escape like their cross and Cancel do.
+            else if (e.Key == System.Windows.Input.Key.Escape && shell.TeamMounts.IsOpen)
+            {
+                shell.TeamMounts.CancelCommand.Execute(null);
+                e.Handled = true;
+            }
+            else if (e.Key == System.Windows.Input.Key.Escape && shell.CreateTeam.AgentEditor.IsOpen)
+            {
+                shell.CreateTeam.AgentEditor.CancelCommand.Execute(null);
+                e.Handled = true;
+            }
+            else if (e.Key == System.Windows.Input.Key.Escape && shell.AllowedFolders.IsOpen)
+            {
+                shell.AllowedFolders.CancelCommand.Execute(null);
+                e.Handled = true;
+            }
+            else if (e.Key == System.Windows.Input.Key.Escape && shell.About.IsOpen)
+            {
+                shell.About.CloseCommand.Execute(null);
+                e.Handled = true;
+            }
         };
 
         // The wizard's use-case search session lives as long as the window (STUDIO-39, D-03):

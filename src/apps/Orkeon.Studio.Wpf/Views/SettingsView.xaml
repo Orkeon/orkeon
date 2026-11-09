@@ -172,39 +172,34 @@
                       <StackPanel>
                         <StackPanel Orientation="Horizontal">
                           <TextBlock Style="{StaticResource Subhead}" VerticalAlignment="Center" Text="{Binding Name}"/>
-                          <Border Style="{StaticResource BadgeRun}" Margin="10,0,0,0"
-                                  Visibility="{Binding IsDefault, Converter={StaticResource BooleanToVisibility}}">
-                            <TextBlock Style="{StaticResource BadgeText}"
-                                       Text="{Binding [Studio.Settings.DefaultBadge], Source={x:Static services:I18n.Instance}}"/>
-                          </Border>
-                          <Border Style="{StaticResource BadgeNeutral}" Margin="10,0,0,0"
-                                  Visibility="{Binding IsDefault, Converter={StaticResource InverseBooleanToVisibility}}">
-                            <TextBlock Style="{StaticResource BadgeText}" Text="{Binding Provider}"/>
-                          </Border>
-                          <Border Style="{StaticResource BadgeSky}" Margin="10,0,0,0"
-                                  Visibility="{Binding IsStudio, Converter={StaticResource BooleanToVisibility}}">
-                            <TextBlock Style="{StaticResource BadgeText}"
-                                       Text="{Binding [Studio.Settings.StudioBadge], Source={x:Static services:I18n.Instance}}"/>
-                          </Border>
+                          <controls:Badge Tone="Info" Margin="10,0,0,0"
+                                          Visibility="{Binding IsDefault, Converter={StaticResource BooleanToVisibility}}"
+                                          Content="{Binding [Studio.Settings.DefaultBadge], Source={x:Static services:I18n.Instance}}"/>
+                          <controls:Badge Tone="Neutral" Margin="10,0,0,0"
+                                          Visibility="{Binding IsDefault, Converter={StaticResource InverseBooleanToVisibility}}"
+                                          Content="{Binding Provider}"/>
+                          <controls:Badge Tone="Info" Margin="10,0,0,0"
+                                          Visibility="{Binding IsStudio, Converter={StaticResource BooleanToVisibility}}"
+                                          Content="{Binding [Studio.Settings.StudioBadge], Source={x:Static services:I18n.Instance}}"/>
                           <!-- STUDIO-35 (D-04): what the profile's account has left, once this session
                                read it — in the warning tone under its provider's threshold. -->
-                          <Border Margin="10,0,0,0" ToolTip="{Binding BalanceTip}"
-                                  Visibility="{Binding HasBalance, Converter={StaticResource BooleanToVisibility}}">
-                            <Border.Style>
-                              <Style TargetType="Border" BasedOn="{StaticResource BadgeNeutral}">
+                          <controls:Badge Margin="10,0,0,0" ToolTip="{Binding BalanceTip}"
+                                          Visibility="{Binding HasBalance, Converter={StaticResource BooleanToVisibility}}">
+                            <controls:Badge.Style>
+                              <Style TargetType="controls:Badge" BasedOn="{StaticResource {x:Type controls:Badge}}">
+                                <Setter Property="Tone" Value="Neutral"/>
                                 <Style.Triggers>
                                   <DataTrigger Binding="{Binding IsBalanceLow}" Value="True">
-                                    <Setter Property="Background" Value="{DynamicResource WarningWeakBrush}"/>
-                                    <Setter Property="TextElement.Foreground" Value="{DynamicResource WarningInkBrush}"/>
+                                    <Setter Property="Tone" Value="Warning"/>
                                   </DataTrigger>
                                 </Style.Triggers>
                               </Style>
-                            </Border.Style>
+                            </controls:Badge.Style>
                             <StackPanel Orientation="Horizontal">
                               <controls:LucideIcon Kind="wallet" Size="10" Margin="0,0,5,0" VerticalAlignment="Center"/>
                               <TextBlock Style="{StaticResource BadgeText}" Text="{Binding Balance}"/>
                             </StackPanel>
-                          </Border>
+                          </controls:Badge>
                         </StackPanel>
                         <TextBlock FontSize="13" Foreground="{DynamicResource InkMutedBrush}" Margin="0,4,0,8" Text="{Binding Summary}"/>
                         <controls:PropertyRow Label="{Binding [Studio.Settings.FieldProvider], Source={x:Static services:I18n.Instance}}">
@@ -275,11 +270,11 @@
                             </ItemsControl.ItemsPanel>
                             <ItemsControl.ItemTemplate>
                               <DataTemplate>
-                                <Border Style="{StaticResource BadgeNeutral}" Margin="0,0,6,3"
-                                        MaxWidth="260" ToolTip="{Binding}">
+                                <controls:Badge Tone="Neutral" Margin="0,0,6,3"
+                                                MaxWidth="260" ToolTip="{Binding}">
                                   <TextBlock Style="{StaticResource BadgeText}"
                                              TextTrimming="CharacterEllipsis" Text="{Binding}"/>
-                                </Border>
+                                </controls:Badge>
                               </DataTemplate>
                             </ItemsControl.ItemTemplate>
                           </ItemsControl>

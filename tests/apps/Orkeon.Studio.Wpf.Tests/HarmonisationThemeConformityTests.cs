@@ -262,17 +262,6 @@ public sealed partial class HarmonisationThemeConformityTests
         Assert.Equal(value, Setter(key, property));
     }
 
-    [Theory]
-    [InlineData("BadgeOk", "{DynamicResource SuccessInkBrush}")]
-    [InlineData("BadgeWarn", "{DynamicResource WarningInkBrush}")]
-    [InlineData("BadgeFail", "{DynamicResource DangerInkBrush}")]
-    [InlineData("BadgeSky", "{DynamicResource AccentInkBrush}")]
-    [InlineData("BadgeRun", "{DynamicResource AccentInkBrush}")]
-    public void Should_Write_A_Badge_In_The_Dark_Ink_Of_Its_Tone(string key, string ink)
-    {
-        Assert.Equal(ink, Setter(key, "TextElement.Foreground"));
-    }
-
     [Fact]
     public void Should_Bound_The_Page_Container_At_1040()
     {

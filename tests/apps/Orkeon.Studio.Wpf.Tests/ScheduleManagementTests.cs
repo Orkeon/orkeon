@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Orkeon.Studio.Core.Forge;
+using Orkeon.Studio.Core.History;
 using Orkeon.Studio.Core.Localization;
 using Orkeon.Studio.Core.Process;
 using Orkeon.Studio.Core.Teams;
@@ -223,7 +224,7 @@ public sealed class ScheduleManagementTests : IDisposable
         var teams = Teams(processes);
 
         var byName = teams.Teams.ToDictionary(card => card.Slug, StringComparer.Ordinal);
-        Assert.Equal("accent", byName["installee"].BadgeTone);
+        Assert.Equal("muted", byName["installee"].BadgeTone);
         Assert.False(byName["installee"].HasScheduleStateLine);
         Assert.False(byName["a-la-demande"].HasScheduleRow);
 
@@ -635,5 +636,32 @@ public sealed class ScheduleManagementTests : IDisposable
         Assert.Null(card.LaunchBlockedReason);
         Assert.NotEqual("Folder to allow", card.BadgeText);
         Assert.True(card.LaunchCommand.CanExecute(null));
+    }
+
+    /// <summary>UX lot 11: never run nor scheduled = « To try » (warn); run once, on demand = « Ready · on demand » (ok).</summary>
+    [Fact]
+    public async Task An_on_demand_team_says_to_try_until_its_first_run_then_ready()
+    {
+        var team = Team("veille", schedule: null);
+        var store = new FakeLaunchHistoryStore
+        {
+            History = LaunchHistory.Empty.Add(new LaunchHistoryEntry
+            {
+                Target = team,
+                StartedAt = new DateTimeOffset(2026, 8, 22, 8, 0, 0, TimeSpan.Zero),
+                Outcome = RunOutcome.Success,
+            }),
+        };
+        var teams = new TeamsViewModel(new TeamsDependencies { TeamsRoot = TeamsRoot, WorkspaceDirectory = _root, HistoryStore = store });
+        var card = Assert.Single(teams.Teams);
+
+        Assert.Equal(EnglishStudioStrings.Instance[StudioStringKeys.TeamsToTest], card.BadgeText);
+        Assert.Equal("warn", card.BadgeTone);
+
+        await teams.LoadLastRunsAsync(TestContext.Current.CancellationToken);
+
+        card = Assert.Single(teams.Teams);
+        Assert.Equal(EnglishStudioStrings.Instance[StudioStringKeys.TeamsReadyBadge], card.BadgeText);
+        Assert.Equal("ok", card.BadgeTone);
     }
 }

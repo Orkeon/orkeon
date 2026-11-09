@@ -878,8 +878,9 @@
   <data name="Studio.Teams.MountRo" xml:space="preserve"><value>{0} · lecture</value></data>
   <data name="Studio.Teams.MountRw" xml:space="preserve"><value>{0} · lecture, écriture</value></data>
   <data name="Studio.Teams.MountUnreadable" xml:space="preserve"><value>dossier illisible</value></data>
-  <data name="Studio.Teams.ToTest" xml:space="preserve"><value>à essayer</value></data>
+  <data name="Studio.Teams.ToTest" xml:space="preserve"><value>À essayer</value></data>
   <data name="Studio.Teams.NeedsFolderBadge" xml:space="preserve"><value>Dossier à autoriser</value></data>
+  <data name="Studio.Teams.ReadyBadge" xml:space="preserve"><value>Prête · à la demande</value></data>
   <data name="Studio.Teams.LastRun" xml:space="preserve"><value>Dernière exécution : {0}, {1}</value></data>
   <data name="Studio.Teams.RunOk" xml:space="preserve"><value>réussie</value></data>
   <data name="Studio.Teams.RunFail" xml:space="preserve"><value>échouée</value></data>
@@ -1049,7 +1050,7 @@
     <value>Travail en cours…</value>
   </data>
   <data name="Studio.Create.StageIdle" xml:space="preserve">
-    <value>Arrêté.</value>
+    <value>Composition arrêtée.</value>
   </data>
   <data name="Studio.Create.TokensUp" xml:space="preserve">
     <value>Jetons envoyés au modèle</value>
@@ -1574,13 +1575,13 @@
     <value>La session n'a pas pu être supprimée — un de ses fichiers est peut-être ouvert.</value>
   </data>
   <data name="Studio.Settings.RightsBadgeRo" xml:space="preserve">
-    <value>Lecture seule</value>
+    <value>Lecture</value>
   </data>
   <data name="Studio.Settings.RightsBadgeRw" xml:space="preserve">
-    <value>Lecture et écriture</value>
+    <value>Écriture</value>
   </data>
   <data name="Studio.Settings.RightsBadgeRwnd" xml:space="preserve">
-    <value>Lecture et écriture, sans suppression</value>
+    <value>Écriture sans suppression</value>
   </data>
   <data name="Studio.Settings.RightsRwndTip" xml:space="preserve"><value>Peut modifier, jamais effacer.</value></data>
   <!-- STUDIO-14 settings: the read-only « Team folders » section of the folders tab -->
@@ -1695,6 +1696,8 @@
   <data name="Studio.Create.GalleryAnyProcess" xml:space="preserve"><value>Toutes</value></data>
   <data name="Studio.Create.GalleryCount" xml:space="preserve"><value>{0} cas d'usage sur {1}</value></data>
   <data name="Studio.Create.GallerySuggested" xml:space="preserve"><value>Proches de votre besoin ({0})</value></data>
+  <data name="Studio.Create.GalleryMoreFilters" xml:space="preserve"><value>Plus de filtres</value></data>
+  <data name="Studio.Create.GalleryAgentsLine" xml:space="preserve"><value>{0} {0:plural:agent|agents} · {1}</value></data>
   <data name="Studio.Create.GalleryUnreadable" xml:space="preserve"><value>Les cas d'usage n'ont pas pu être lus.</value></data>
   <data name="Studio.Create.GalleryCategoryEnterprise" xml:space="preserve"><value>Entreprise</value></data>
   <data name="Studio.Create.GalleryCategoryScience" xml:space="preserve"><value>Sciences et recherche</value></data>
@@ -2055,7 +2058,7 @@
   <data name="Studio.Teams.RefusedRuns" xml:space="preserve"><value>{0} {0:plural:planification sera refusée|planifications seront refusées} au prochain passage : le fichier de réglages enregistré ne contient pas encore {1}.</value></data>
   <data name="Studio.Teams.SaveSettings" xml:space="preserve"><value>Enregistrer les réglages</value></data>
   <data name="Studio.Teams.ImportShort" xml:space="preserve"><value>Importer</value></data>
-  <data name="Studio.Teams.ScheduleManualValue" xml:space="preserve"><value>Manuelle</value></data>
+  <data name="Studio.Teams.ScheduleManualValue" xml:space="preserve"><value>À la demande</value></data>
   <data name="Studio.Teams.LaunchNeedsFolder" xml:space="preserve"><value>Autorisez d'abord le dossier {0} pour lancer l'équipe.</value></data>
   <data name="Studio.Teams.AllowFolder" xml:space="preserve"><value>Autoriser</value></data>
   <data name="Studio.Create.SessionRunning" xml:space="preserve"><value>En cours</value></data>
@@ -2393,6 +2396,8 @@
   <data name="Studio.Create.TabCompositionStopped" xml:space="preserve">
     <value>Arrêtée · {0} {0:plural:fichier écrit|fichiers écrits}</value>
   </data>
+  <data name="Studio.Create.TabCompositionDone" xml:space="preserve"><value>Composée · {0} {0:plural:fichier écrit|fichiers écrits}</value></data>
+  <data name="Studio.Create.TabCompositionInvalid" xml:space="preserve"><value>À corriger · {0} {0:plural:fichier écrit|fichiers écrits}</value></data>
   <data name="Studio.Create.TabCompositionRunning" xml:space="preserve">
     <value>En cours</value>
   </data>
@@ -2418,13 +2423,13 @@
     <value>En cours</value>
   </data>
   <data name="Studio.Create.CompositionStateValid" xml:space="preserve">
-    <value>Arrêtée — définition vérifiée</value>
+    <value>Composée — définition vérifiée</value>
   </data>
   <data name="Studio.Create.CompositionStateInvalid" xml:space="preserve">
-    <value>Arrêtée — définition à corriger</value>
+    <value>Composition à corriger</value>
   </data>
   <data name="Studio.Create.CompositionStateStopped" xml:space="preserve">
-    <value>Arrêtée</value>
+    <value>Composition arrêtée</value>
   </data>
   <data name="Studio.Create.CompositionFiles" xml:space="preserve">
     <value>{0} {0:plural:fichier|fichiers} dans le brouillon de l'équipe</value>

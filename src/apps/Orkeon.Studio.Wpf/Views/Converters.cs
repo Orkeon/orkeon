@@ -171,3 +171,29 @@ public sealed class TeamLastRunConverter : IValueConverter
     public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) =>
         throw new NotSupportedException();
 }
+
+/// <summary>
+/// A state name (the view-model's <c>ok</c> / <c>warn</c> / <c>muted</c> / <c>idle</c> / <c>running</c> /
+/// <c>fail</c>) to the <see cref="Controls.Tone"/> of a <see cref="Controls.Badge"/> (UX lot 11): ok →
+/// Success, warn → Warning, muted and idle → Neutral, running → Info, fail → Danger, anything else
+/// Neutral. Running is Info by the spec's literal table, although Info is otherwise reserved for categories.
+/// </summary>
+public sealed class StateToneConverter : IValueConverter
+{
+    /// <inheritdoc />
+    public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture) =>
+        value is string state
+            ? state switch
+            {
+                "ok" => Controls.Tone.Success,
+                "warn" => Controls.Tone.Warning,
+                "running" => Controls.Tone.Info,
+                "fail" => Controls.Tone.Danger,
+                _ => Controls.Tone.Neutral,
+            }
+            : Controls.Tone.Neutral;
+
+    /// <inheritdoc />
+    public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) =>
+        throw new NotSupportedException();
+}

@@ -48,12 +48,35 @@ public partial class CreateTeamWizardTests
         await Compose(vm);
 
         Assert.False(vm.IsComposing);
-        Assert.Equal(vm.ValidationOk == false ? "Warning" : "Done", vm.CompositionTabState);
-        Assert.StartsWith("Stopped · ", vm.CompositionTabSubtitle, StringComparison.Ordinal);
-        Assert.StartsWith("Stopped", vm.CompositionStateText, StringComparison.Ordinal);
+        Assert.Equal(vm.ValidationOk switch { true => "Done", false => "Warning", null => "Empty" }, vm.CompositionTabState);
+        Assert.StartsWith(vm.ValidationOk switch { true => "Composed · ", false => "To fix · ", null => "Stopped · " }, vm.CompositionTabSubtitle, StringComparison.Ordinal);
+        Assert.StartsWith(vm.ValidationOk switch { true => "Composed", false => "Composition to fix", null => "Composition stopped" }, vm.CompositionStateText, StringComparison.Ordinal);
         Assert.Equal($"{vm.Files.Count} {(vm.Files.Count == 1 ? "file" : "files")} in the team's draft", vm.CompositionFilesText);
         Assert.Equal("Composition finished.", vm.CompositionFooter);
         Assert.False(vm.IsCompositionTabEmpty);
+    }
+
+    /// <summary>UX lot 11: the composition tab's subtitle and state follow the validation (true / false / null).</summary>
+    [Theory]
+    [InlineData("true", "Composed · ", "Done")]
+    [InlineData("false", "To fix · ", "Warning")]
+    [InlineData(null, "Stopped · ", "Empty")]
+    public async Task The_composition_subtitle_and_state_follow_the_validation(string? ok, string subtitle, string state)
+    {
+        var (vm, processes, _) = Build();
+        processes.OutputToEmit.Add(Out(SessionStarted));
+        processes.OutputToEmit.Add(Out(ReadingWritingBlueprint()));
+        if (ok is not null)
+            processes.OutputToEmit.Add(Out($$$"""{"v":2,"seq":8,"ts":"t","kind":"validation.result","ok":{{{ok}}},"errors":[]}"""));
+        processes.OutputToEmit.Add(Out(Paused));
+        FillStepOne(vm);
+
+        await Compose(vm);
+
+        Assert.Equal(ok is null ? null : ok == "true", vm.ValidationOk);
+        Assert.StartsWith(subtitle, vm.CompositionTabSubtitle, StringComparison.Ordinal);
+        Assert.Contains($"{vm.Files.Count} ", vm.CompositionTabSubtitle, StringComparison.Ordinal);
+        Assert.Equal(state, vm.CompositionTabState);
     }
 
     [Fact]

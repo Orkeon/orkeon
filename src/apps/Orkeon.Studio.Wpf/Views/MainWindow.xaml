@@ -1188,11 +1188,17 @@
           <StackPanel Margin="22,20,22,0">
             <!-- R11 (D07): the shared 20/600 modal title. R09 (B06): a long team name wraps to a
                  second line, then ends on «…» with the whole title as a tooltip — never cut bare. -->
-            <TextBlock Style="{StaticResource ModalTitle}" Text="{Binding Title}" ToolTip="{Binding Title}"
-                       TextTrimming="CharacterEllipsis" LineHeight="26" LineStackingStrategy="BlockLineHeight" MaxHeight="52"/>
+            <DockPanel>
+              <Button DockPanel.Dock="Right" Style="{StaticResource IconBtnGhost}" VerticalAlignment="Top" Margin="12,0,0,0"
+                      Command="{Binding CancelCommand}" controls:ButtonIcon.Kind="x"
+                      ToolTip="{Binding [Studio.Shell.Close], Source={x:Static services:I18n.Instance}}"
+                      AutomationProperties.Name="{Binding [Studio.Shell.Close], Source={x:Static services:I18n.Instance}}"/>
+              <TextBlock Style="{StaticResource ModalTitle}" Text="{Binding Title}" ToolTip="{Binding Title}"
+                         TextTrimming="CharacterEllipsis" LineHeight="26" LineStackingStrategy="BlockLineHeight" MaxHeight="52"/>
+            </DockPanel>
             <TextBlock FontSize="13" Foreground="{DynamicResource InkMutedBrush}" TextWrapping="Wrap" LineHeight="18.5"
                        Margin="0,6,0,0" Text="{Binding [Studio.Teams.TeamMountsSub], Source={x:Static services:I18n.Instance}}"/>
-            <ItemsControl ItemsSource="{Binding Rows}" Margin="0,14,0,0">
+            <ItemsControl ItemsSource="{Binding Rows}" Margin="0,14,0,0" Grid.IsSharedSizeScope="True">
               <ItemsControl.ItemTemplate>
                 <DataTemplate>
                   <ToggleButton IsChecked="{Binding IsChecked}" Cursor="Hand" Margin="0,0,0,8">
@@ -1201,8 +1207,13 @@
                         <Border x:Name="Row" Background="{DynamicResource SurfaceBrush}"
                                 BorderBrush="{DynamicResource LineBrush}" BorderThickness="1"
                                 CornerRadius="10" Padding="13,11">
-                          <DockPanel>
-                            <Border x:Name="Box" DockPanel.Dock="Left" Width="16" Height="16" CornerRadius="5"
+                          <Grid>
+                            <Grid.ColumnDefinitions>
+                              <ColumnDefinition Width="Auto"/>
+                              <ColumnDefinition Width="*"/>
+                              <ColumnDefinition Width="Auto" SharedSizeGroup="RightsBadge"/>
+                            </Grid.ColumnDefinitions>
+                            <Border x:Name="Box" Grid.Column="0" Width="16" Height="16" CornerRadius="5"
                                     BorderThickness="1.5" BorderBrush="{DynamicResource LineStrongBrush}"
                                     Background="{DynamicResource PaperSunkBrush}" VerticalAlignment="Center" Margin="0,0,12,0">
                               <controls:LucideIcon x:Name="Tick" Kind="check" Size="11"
@@ -1211,7 +1222,7 @@
                             <!-- One word in the pill, the full label as its tooltip (STUDIO-16): the full
                                  label ate the width and the disk path read as «C:\Users\…\orkeon\…». -->
                             <!-- R12 (C13): the shared rights badge, «Lecture seule» neutral, «Lecture et écriture» sky. -->
-                            <controls:Badge DockPanel.Dock="Right" Margin="12,0,0,0" ToolTip="{Binding RightsTip}" Content="{Binding RightsBadge}">
+                            <controls:Badge Grid.Column="2" VerticalAlignment="Center" Margin="12,0,0,0" ToolTip="{Binding RightsTip}" Content="{Binding RightsBadge}">
                               <controls:Badge.Style>
                                 <Style TargetType="controls:Badge" BasedOn="{StaticResource {x:Type controls:Badge}}">
                                   <Style.Triggers>
@@ -1222,22 +1233,21 @@
                                 </Style>
                               </controls:Badge.Style>
                             </controls:Badge>
-                            <StackPanel>
+                            <StackPanel Grid.Column="1">
                               <!-- The name the agents use. The entry's id stays in Réglages › Dossiers, for the
                                    expert (UX lot 02): the path, or the folder's name, tells two /output rows apart. -->
                               <TextBlock Style="{StaticResource MonoText}" FontSize="13" Foreground="{DynamicResource InkBrush}">
                                 <Run Text="{Binding VirtualPath, Mode=OneWay}"/>
                               </TextBlock>
-                              <!-- The real folder, whole: wrapped rather than trimmed. The novice reads the
-                                   folder's name, the path in its tooltip (UX lot 02). -->
+                              <!-- The real folder on one line, trimmed, whole in the tooltip (lot 11, 067). -->
                               <TextBlock x:Name="Disk" FontSize="13" Foreground="{DynamicResource InkFaintBrush}" Margin="0,2,0,0"
-                                         TextWrapping="Wrap" Text="{Binding PhysicalPath}"
+                                         TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" ToolTip="{Binding PhysicalPath}" Text="{Binding PhysicalPath}"
                                          Visibility="{Binding DataContext.Mode.IsExpert, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BooleanToVisibility}}"/>
                               <TextBlock x:Name="DiskName" FontSize="13" Foreground="{DynamicResource InkFaintBrush}" Margin="0,2,0,0"
-                                         TextWrapping="Wrap" Text="{Binding FolderName}" ToolTip="{Binding PhysicalPath}"
+                                         TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" Text="{Binding FolderName}" ToolTip="{Binding PhysicalPath}"
                                          Visibility="{Binding DataContext.Mode.IsExpert, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource InverseBooleanToVisibility}}"/>
                             </StackPanel>
-                          </DockPanel>
+                          </Grid>
                         </Border>
                         <ControlTemplate.Triggers>
                           <Trigger Property="IsChecked" Value="True">
@@ -1269,7 +1279,7 @@
             <DockPanel>
               <Button DockPanel.Dock="Right" Style="{StaticResource BtnPrimary}" Command="{Binding SaveCommand}" controls:ButtonIcon.Kind="check"
                       Content="{Binding [Studio.Common.Save], Source={x:Static services:I18n.Instance}}"/>
-              <Button DockPanel.Dock="Right" Style="{StaticResource BtnSecondary}" Margin="0,0,10,0" Command="{Binding CancelCommand}"
+              <Button DockPanel.Dock="Left" Style="{StaticResource BtnSecondary}" Margin="0,0,12,0" Command="{Binding CancelCommand}"
                       Content="{Binding [Studio.Common.Cancel], Source={x:Static services:I18n.Instance}}"/>
               <TextBlock FontSize="13" Foreground="{DynamicResource InkFaintBrush}" VerticalAlignment="Center"
                          TextTrimming="CharacterEllipsis" Margin="0,0,12,0" Text="{Binding Summary}" ToolTip="{Binding Summary}"/>
@@ -1287,7 +1297,13 @@
               CornerRadius="20" DataContext="{Binding CreateTeam.AgentEditor}" Effect="{DynamicResource ShadowLg}">
         <StackPanel>
           <StackPanel Margin="22,20,22,0">
-            <TextBlock Style="{StaticResource ModalTitle}" Text="{Binding Title}"/>
+            <DockPanel>
+              <Button DockPanel.Dock="Right" Style="{StaticResource IconBtnGhost}" VerticalAlignment="Top" Margin="12,0,0,0"
+                      Command="{Binding CancelCommand}" controls:ButtonIcon.Kind="x"
+                      ToolTip="{Binding [Studio.Shell.Close], Source={x:Static services:I18n.Instance}}"
+                      AutomationProperties.Name="{Binding [Studio.Shell.Close], Source={x:Static services:I18n.Instance}}"/>
+              <TextBlock Style="{StaticResource ModalTitle}" Text="{Binding Title}"/>
+            </DockPanel>
             <TextBlock FontSize="13" Foreground="{DynamicResource InkMutedBrush}" TextWrapping="Wrap" LineHeight="18.5"
                        Margin="0,6,0,0" Text="{Binding [Studio.Create.AgentEditorSub], Source={x:Static services:I18n.Instance}}"/>
             <TextBlock Style="{StaticResource FieldLabel}" Margin="0,14,0,5"
@@ -1355,10 +1371,10 @@
             <DockPanel>
               <Button DockPanel.Dock="Right" Style="{StaticResource BtnPrimary}" Command="{Binding SaveCommand}" controls:ButtonIcon.Kind="check"
                       Content="{Binding SaveLabel}"/>
-              <Button DockPanel.Dock="Right" Style="{StaticResource BtnSecondary}" Margin="0,0,10,0" Command="{Binding CancelCommand}"
+              <Button DockPanel.Dock="Left" Style="{StaticResource BtnSecondary}" Margin="0,0,12,0" Command="{Binding CancelCommand}"
                       Content="{Binding [Studio.Common.Cancel], Source={x:Static services:I18n.Instance}}"/>
               <!-- R06: removing the agent from the team is definitive — danger outline with the trash
-                   icon, apart from Cancel and the one primary on the right. -->
+                   icon, after Cancel on the left, the one primary on the right (lot 11 modal template). -->
               <Button Style="{StaticResource BtnDanger}" HorizontalAlignment="Left" Command="{Binding RemoveCommand}"
                       controls:ButtonIcon.Kind="trash-2"
                       Content="{Binding [Studio.Create.Remove], Source={x:Static services:I18n.Instance}}"
@@ -1396,8 +1412,14 @@
               CornerRadius="20" DataContext="{Binding AllowedFolders}" Effect="{DynamicResource ShadowLg}">
         <StackPanel>
           <StackPanel Margin="22,20,22,0">
-            <TextBlock Style="{StaticResource ModalTitle}" Text="{Binding Title}" ToolTip="{Binding Title}"
-                       TextTrimming="CharacterEllipsis" LineHeight="26" LineStackingStrategy="BlockLineHeight" MaxHeight="52"/>
+            <DockPanel>
+              <Button DockPanel.Dock="Right" Style="{StaticResource IconBtnGhost}" VerticalAlignment="Top" Margin="12,0,0,0"
+                      Command="{Binding CancelCommand}" controls:ButtonIcon.Kind="x"
+                      ToolTip="{Binding [Studio.Shell.Close], Source={x:Static services:I18n.Instance}}"
+                      AutomationProperties.Name="{Binding [Studio.Shell.Close], Source={x:Static services:I18n.Instance}}"/>
+              <TextBlock Style="{StaticResource ModalTitle}" Text="{Binding Title}" ToolTip="{Binding Title}"
+                         TextTrimming="CharacterEllipsis" LineHeight="26" LineStackingStrategy="BlockLineHeight" MaxHeight="52"/>
+            </DockPanel>
             <TextBlock FontSize="13" Foreground="{DynamicResource InkMutedBrush}" TextWrapping="Wrap" LineHeight="18.5"
                        Margin="0,6,0,0" Text="{Binding [Studio.Settings.AllowedFoldersSub], Source={x:Static services:I18n.Instance}}"/>
 
@@ -1410,7 +1432,7 @@
 
             <ScrollViewer MaxHeight="264" VerticalScrollBarVisibility="Auto" Margin="0,14,0,0"
                           Visibility="{Binding HasRows, Converter={StaticResource BooleanToVisibility}}">
-              <ItemsControl ItemsSource="{Binding Rows}">
+              <ItemsControl ItemsSource="{Binding Rows}" Grid.IsSharedSizeScope="True">
                 <ItemsControl.ItemTemplate>
                   <DataTemplate>
                     <ToggleButton IsChecked="{Binding IsChecked}" IsEnabled="{Binding IsSelectable}"
@@ -1420,8 +1442,13 @@
                           <Border x:Name="Row" Background="{DynamicResource SurfaceBrush}"
                                   BorderBrush="{DynamicResource LineBrush}" BorderThickness="1"
                                   CornerRadius="10" Padding="13,11">
-                            <DockPanel>
-                              <Border x:Name="Box" DockPanel.Dock="Left" Width="16" Height="16" CornerRadius="5"
+                            <Grid>
+                              <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto" SharedSizeGroup="RightsBadge"/>
+                              </Grid.ColumnDefinitions>
+                              <Border x:Name="Box" Grid.Column="0" Width="16" Height="16" CornerRadius="5"
                                       BorderThickness="1.5" BorderBrush="{DynamicResource LineStrongBrush}"
                                       Background="{DynamicResource PaperSunkBrush}" VerticalAlignment="Center" Margin="0,0,12,0">
                                 <controls:LucideIcon x:Name="Tick" Kind="check" Size="11"
@@ -1431,7 +1458,7 @@
                                    the pill, the full label as its tooltip (STUDIO-16): the full label ate the
                                    width and the disk path read as «C:\Users\…\orkeon\…». -->
                               <!-- R12 (C13): the shared rights badge, «Lecture seule» neutral, «Lecture et écriture» sky. -->
-                              <controls:Badge DockPanel.Dock="Right" Margin="12,0,0,0" ToolTip="{Binding RightsTip}" Content="{Binding RightsBadge}">
+                              <controls:Badge Grid.Column="2" VerticalAlignment="Center" Margin="12,0,0,0" ToolTip="{Binding RightsTip}" Content="{Binding RightsBadge}">
                                 <controls:Badge.Style>
                                   <Style TargetType="controls:Badge" BasedOn="{StaticResource {x:Type controls:Badge}}">
                                     <Style.Triggers>
@@ -1442,19 +1469,18 @@
                                   </Style>
                                 </controls:Badge.Style>
                               </controls:Badge>
-                              <StackPanel>
+                              <StackPanel Grid.Column="1">
                                 <!-- The name the agents use. The entry's id stays in Réglages › Dossiers, for the
                                      expert (UX lot 02): the path, or the folder's name, tells two /output rows apart. -->
                                 <TextBlock Style="{StaticResource MonoText}" FontSize="13" Foreground="{DynamicResource InkBrush}">
                                   <Run Text="{Binding VirtualPath, Mode=OneWay}"/>
                                 </TextBlock>
-                                <!-- The real folder, whole: wrapped rather than trimmed. The novice reads the
-                                     folder's name, the path in its tooltip (UX lot 02). -->
+                                <!-- The real folder on one line, trimmed, whole in the tooltip (lot 11, 067). -->
                                 <TextBlock FontSize="13" Foreground="{DynamicResource InkFaintBrush}" Margin="0,2,0,0"
-                                           TextWrapping="Wrap" Text="{Binding PhysicalPath}"
+                                           TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" ToolTip="{Binding PhysicalPath}" Text="{Binding PhysicalPath}"
                                            Visibility="{Binding DataContext.Mode.IsExpert, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BooleanToVisibility}}"/>
                                 <TextBlock FontSize="13" Foreground="{DynamicResource InkFaintBrush}" Margin="0,2,0,0"
-                                           TextWrapping="Wrap" Text="{Binding FolderName}" ToolTip="{Binding PhysicalPath}"
+                                           TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" Text="{Binding FolderName}" ToolTip="{Binding PhysicalPath}"
                                            Visibility="{Binding DataContext.Mode.IsExpert, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource InverseBooleanToVisibility}}"/>
                                 <!-- Why the row cannot be picked, or that its root is shared: under the path, where
                                      a sentence has room, not beside the pill where it squeezed the path. -->
@@ -1465,7 +1491,7 @@
                                            Foreground="{DynamicResource InkFaintBrush}" Text="{Binding SharedRootNote}"
                                            Visibility="{Binding HasSharedRootNote, Converter={StaticResource BooleanToVisibility}}"/>
                               </StackPanel>
-                            </DockPanel>
+                            </Grid>
                           </Border>
                           <ControlTemplate.Triggers>
                             <Trigger Property="IsChecked" Value="True">
@@ -1498,7 +1524,7 @@
             <DockPanel>
               <Button DockPanel.Dock="Right" Style="{StaticResource BtnPrimary}" Command="{Binding ConfirmCommand}" controls:ButtonIcon.Kind="check"
                       Content="{Binding [Studio.Settings.AllowedFoldersConfirm], Source={x:Static services:I18n.Instance}}"/>
-              <Button DockPanel.Dock="Right" Style="{StaticResource BtnSecondary}" Margin="0,0,10,0" Command="{Binding CancelCommand}"
+              <Button DockPanel.Dock="Left" Style="{StaticResource BtnSecondary}" Margin="0,0,12,0" Command="{Binding CancelCommand}"
                       Content="{Binding [Studio.Common.Cancel], Source={x:Static services:I18n.Instance}}"/>
               <TextBlock Style="{StaticResource Hint}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
                          Text="{Binding Summary}" ToolTip="{Binding Summary}"/>
@@ -1529,8 +1555,14 @@
               </Border.Background>
           </Border>
           <StackPanel Grid.Column="1" Margin="28,26">
-            <TextBlock Style="{StaticResource Eyebrow}"
-                       Text="{Binding [Studio.Shell.Eyebrow], Source={x:Static services:I18n.Instance}}"/>
+            <DockPanel>
+              <Button DockPanel.Dock="Right" Style="{StaticResource IconBtnGhost}" VerticalAlignment="Top" Margin="12,0,0,0"
+                      Command="{Binding About.CloseCommand}" controls:ButtonIcon.Kind="x"
+                      ToolTip="{Binding [Studio.Shell.Close], Source={x:Static services:I18n.Instance}}"
+                      AutomationProperties.Name="{Binding [Studio.Shell.Close], Source={x:Static services:I18n.Instance}}"/>
+              <TextBlock Style="{StaticResource Eyebrow}"
+                         Text="{Binding [Studio.Shell.Eyebrow], Source={x:Static services:I18n.Instance}}"/>
+            </DockPanel>
             <TextBlock Text="Orkeon Studio" FontFamily="{StaticResource DisplayFont}" FontSize="24" FontWeight="SemiBold"
                        Foreground="{DynamicResource InkBrush}" Margin="0,8,0,0"/>
             <!-- 008: the versions one per line; the raw informational version in the Studio line's tooltip. -->

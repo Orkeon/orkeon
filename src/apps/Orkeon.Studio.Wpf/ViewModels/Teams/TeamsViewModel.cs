@@ -858,8 +858,8 @@ public sealed class TeamCardViewModel : ObservableObject
     public RelayCommand AllowFolderCommand { get; }
 
     /// <summary>
-    /// The card badge (mock: scheduled = green, to be tested = amber, on demand = accent).
-    /// A team that never ran and is not scheduled still has to earn its first run.
+    /// The card badge (UX lot 11): archived = muted; a folder to allow = warn; a scheduled team says its
+    /// schedule; otherwise « To try » (warn) until the first run, then « Ready · on demand » (ok).
     /// </summary>
     public string BadgeText
     {
@@ -873,12 +873,16 @@ public sealed class TeamCardViewModel : ObservableObject
             if (HasUndeclaredFolder)
                 return _strings[StudioStringKeys.TeamsNeedsFolderBadge];
 
-            return IsScheduled || LastRun is not null ? ScheduleDisplay : _strings[StudioStringKeys.TeamsToTest];
+            if (IsScheduled)
+                return ScheduleDisplay;
+
+            // Never run nor scheduled: « To try »; run at least once, on demand: « Ready · on demand ».
+            return _strings[LastRun is null ? StudioStringKeys.TeamsToTest : StudioStringKeys.TeamsReadyBadge];
         }
     }
 
     /// <summary>
-    /// ok / warn / accent / muted — the badge's tone name for the view's triggers. A scheduled team
+    /// ok / warn / muted — the badge's state name, mapped to a tone by <c>StateToneConverter</c>. A scheduled team
     /// is green only once the engine said the operating system runs it (STUDIO-27); not installed or
     /// to reinstall reads amber, and not asked yet claims nothing. An archived team is muted
     /// (STUDIO-32): out of the list, nothing about it is urgent.
@@ -894,13 +898,13 @@ public sealed class TeamCardViewModel : ObservableObject
                 return "warn";
 
             if (!IsScheduled)
-                return LastRun is null ? "warn" : "accent";
+                return LastRun is null ? "warn" : "ok";
 
             return _scheduleState switch
             {
                 TeamScheduleState.Installed => "ok",
                 TeamScheduleState.Absent or TeamScheduleState.Stale => "warn",
-                _ => "accent",
+                _ => "muted",
             };
         }
     }

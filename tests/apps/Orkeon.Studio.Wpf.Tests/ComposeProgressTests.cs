@@ -142,7 +142,7 @@ public sealed class ComposeProgressTests
         await vm.ComposeCommand.ExecuteAsync();
 
         Assert.False(vm.Progress.IsWorking);
-        Assert.Equal("Stopped.", vm.Progress.Title);
+        Assert.Equal("Composition stopped.", vm.Progress.Title);
     }
 
     /// <summary>
