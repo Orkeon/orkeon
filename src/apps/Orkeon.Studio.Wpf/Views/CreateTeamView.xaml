@@ -121,12 +121,40 @@
                 <TextBlock.ToolTip>
                   <TextBlock>
                     <Run Text="{Binding Title, Mode=OneWay}"/>
-                    <Run Text="{Binding VirtualPath, Mode=OneWay}"/>
+                    <Run>
+                      <Run.Style>
+                        <Style TargetType="Run">
+                          <Setter Property="Text" Value="{Binding VirtualPath, Mode=OneWay}"/>
+                          <Style.Triggers>
+                            <DataTrigger Binding="{Binding VirtualPath}" Value="/output">
+                              <Setter Property="Text" Value="{Binding [Studio.Create.OutputFolderLabel], Source={x:Static services:I18n.Instance}}"/>
+                            </DataTrigger>
+                            <DataTrigger Binding="{Binding VirtualPath}" Value="/workspace">
+                              <Setter Property="Text" Value="{Binding [Studio.Create.WorkspaceFolderLabel], Source={x:Static services:I18n.Instance}}"/>
+                            </DataTrigger>
+                          </Style.Triggers>
+                        </Style>
+                      </Run.Style>
+                    </Run>
                   </TextBlock>
                 </TextBlock.ToolTip>
                 <Run Text="{Binding Title, Mode=OneWay}" FontWeight="SemiBold" Foreground="{DynamicResource InkMutedBrush}"/>
-                <Run Text="{Binding VirtualPath, Mode=OneWay}" FontFamily="{StaticResource MonoFont}" FontSize="13"
-                     Foreground="{DynamicResource InkBrush}"/>
+                <!-- UX lot 01: the engine's fixed roots keep their alias but say what they hold. -->
+                <Run FontFamily="{StaticResource MonoFont}" FontSize="13" Foreground="{DynamicResource InkBrush}">
+                  <Run.Style>
+                    <Style TargetType="Run">
+                      <Setter Property="Text" Value="{Binding VirtualPath, Mode=OneWay}"/>
+                      <Style.Triggers>
+                        <DataTrigger Binding="{Binding VirtualPath}" Value="/output">
+                          <Setter Property="Text" Value="{Binding [Studio.Create.OutputFolderLabel], Source={x:Static services:I18n.Instance}}"/>
+                        </DataTrigger>
+                        <DataTrigger Binding="{Binding VirtualPath}" Value="/workspace">
+                          <Setter Property="Text" Value="{Binding [Studio.Create.WorkspaceFolderLabel], Source={x:Static services:I18n.Instance}}"/>
+                        </DataTrigger>
+                      </Style.Triggers>
+                    </Style>
+                  </Run.Style>
+                </Run>
               </TextBlock>
               <controls:Badge VerticalAlignment="Center">
                 <controls:Badge.Style>
@@ -147,9 +175,20 @@
             </WrapPanel>
             <!-- Where the folder lies, on the second line under the name (C18): a disk path (mono,
                  cut in the middle), «inside the team: output» in the accent colour, or «to choose». -->
-            <controls:MiddleEllipsisText Grid.Row="1" Grid.Column="1" Style="{StaticResource PathText}" Margin="0,4,0,0"
-                                         HorizontalAlignment="Left" Text="{Binding Folder}"
-                                         Visibility="{Binding IsRealFolder, Converter={StaticResource BooleanToVisibility}}"/>
+            <!-- UX lot 01: the Novice reads the folder's name, the full path in its tooltip; the
+                 Expert keeps the path, cut in the middle. -->
+            <Grid Grid.Row="1" Grid.Column="1" Margin="0,4,0,0" HorizontalAlignment="Left"
+                  Visibility="{Binding IsRealFolder, Converter={StaticResource BooleanToVisibility}}">
+              <controls:MiddleEllipsisText Style="{StaticResource PathText}" HorizontalAlignment="Left" Text="{Binding Folder}"
+                                           Visibility="{Binding DataContext.Mode.IsExpert, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BooleanToVisibility}}"/>
+              <StackPanel Orientation="Horizontal" ToolTip="{Binding Folder}"
+                          Visibility="{Binding DataContext.Mode.IsNovice, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BooleanToVisibility}}">
+                <controls:LucideIcon Kind="folder-open" Size="16" Margin="0,0,6,0" VerticalAlignment="Center"
+                                     Foreground="{DynamicResource InkMutedBrush}"/>
+                <TextBlock VerticalAlignment="Center" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"
+                           Text="{Binding FolderName}"/>
+              </StackPanel>
+            </Grid>
             <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="0,4,0,0"
                         Visibility="{Binding IsInsideTeam, Converter={StaticResource BooleanToVisibility}}">
               <controls:LucideIcon Kind="folder" Size="16" Margin="0,0,6,0" VerticalAlignment="Center"
@@ -165,22 +204,15 @@
                        TextWrapping="Wrap" TextAlignment="Left" Foreground="{DynamicResource WarningInkBrush}"
                        Text="{Binding [Studio.Create.MountToChooseRead], Source={x:Static services:I18n.Instance}}"
                        Visibility="{Binding IsReadToChoose, Converter={StaticResource BooleanToVisibility}}"/>
-            <!-- Removing a bound folder gives the mount point back to the blueprint; removing a
-                 bare implied root drops it, which the banner then explains. -->
-            <StackPanel Grid.Column="2" Grid.RowSpan="2" Orientation="Horizontal" VerticalAlignment="Top" Margin="12,0,0,0">
-              <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="32"
-                      Command="{Binding DataContext.RemoveTeamMountCommand, RelativeSource={RelativeSource AncestorType=views:CreateTeamView}}"
-                      CommandParameter="{Binding MountString}"
-                      ToolTip="{Binding [Studio.Create.RemoveFolder], Source={x:Static services:I18n.Instance}}"
-                      Visibility="{Binding IsBound, Converter={StaticResource BooleanToVisibility}}"
-                      Content="{Binding [Studio.Create.RemoveShort], Source={x:Static services:I18n.Instance}}" controls:ButtonIcon.Kind="x"/>
-              <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="32"
-                      Command="{Binding DataContext.RemoveDerivedMountCommand, RelativeSource={RelativeSource AncestorType=views:CreateTeamView}}"
-                      CommandParameter="{Binding VirtualPath}"
-                      ToolTip="{Binding [Studio.Create.RemoveFolder], Source={x:Static services:I18n.Instance}}"
-                      Visibility="{Binding IsDroppable, Converter={StaticResource BooleanToVisibility}}"
-                      Content="{Binding [Studio.Create.RemoveShort], Source={x:Static services:I18n.Instance}}" controls:ButtonIcon.Kind="x"/>
-            </StackPanel>
+            <!-- One « Remove » per row (UX lot 01): a bound folder gives the mount point back to the
+                 blueprint; a bare implied root is dropped, which the banner then explains. -->
+            <Button Grid.Column="2" Grid.RowSpan="2" VerticalAlignment="Top" Margin="12,0,0,0"
+                    Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="32"
+                    Command="{Binding DataContext.RemoveMountCommand, RelativeSource={RelativeSource AncestorType=views:CreateTeamView}}"
+                    CommandParameter="{Binding}"
+                    ToolTip="{Binding [Studio.Create.RemoveFolder], Source={x:Static services:I18n.Instance}}"
+                    Visibility="{Binding CanRemove, Converter={StaticResource BooleanToVisibility}}"
+                    Content="{Binding [Studio.Create.RemoveShort], Source={x:Static services:I18n.Instance}}" controls:ButtonIcon.Kind="x"/>
           </Grid>
           <!-- Line 2: the note the step-1 fiche gave the folder. -->
           <TextBlock Style="{StaticResource Hint}" Margin="24,4,0,0" TextTrimming="CharacterEllipsis"
@@ -188,8 +220,23 @@
                      Visibility="{Binding HasNote, Converter={StaticResource BooleanToVisibility}}"/>
           <!-- Line 3, a folder still to choose: name the folder, or give it its own inside the
                team, created at adoption and recorded team-relative (STUDIO-14, D-08). -->
-          <WrapPanel Margin="24,8,0,0"
-                     Visibility="{Binding CanChooseFolder, Converter={StaticResource BooleanToVisibility}}">
+          <!-- UX lot 01: per-row answers are the Expert's; the Novice answers every row at once
+               with « Create every folder inside the team » under the list. -->
+          <WrapPanel Margin="24,8,0,0">
+            <WrapPanel.Style>
+              <Style TargetType="WrapPanel">
+                <Setter Property="Visibility" Value="Collapsed"/>
+                <Style.Triggers>
+                  <MultiDataTrigger>
+                    <MultiDataTrigger.Conditions>
+                      <Condition Binding="{Binding CanChooseFolder}" Value="True"/>
+                      <Condition Binding="{Binding DataContext.Mode.IsNovice, RelativeSource={RelativeSource AncestorType=Window}}" Value="False"/>
+                    </MultiDataTrigger.Conditions>
+                    <Setter Property="Visibility" Value="Visible"/>
+                  </MultiDataTrigger>
+                </Style.Triggers>
+              </Style>
+            </WrapPanel.Style>
             <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="32" Margin="0,0,8,0"
                     Command="{Binding DataContext.BindMountCommand, RelativeSource={RelativeSource AncestorType=views:CreateTeamView}}"
                     CommandParameter="{Binding VirtualPath}"
@@ -707,6 +754,9 @@
                        standard proposal when the request named no folder. -->
                   <TextBlock Style="{StaticResource Hint}" Margin="0,2,0,12" TextWrapping="Wrap"
                              Text="{Binding FoldersStepSubtitle}"/>
+                  <!-- UX lot 01: the folders' one question, asked here and nowhere else. -->
+                  <TextBlock Style="{StaticResource CardTitle}" Margin="0,0,0,10" TextWrapping="Wrap"
+                             Text="{Binding [Studio.Create.FoldersQuestion], Source={x:Static services:I18n.Instance}}"/>
                   <!-- Tag carries « still editable » to every fiche: once confirmed, only « Change… » and
                        « Open the folder » stay live. -->
                   <ItemsControl ItemsSource="{Binding FolderRows}" Tag="{Binding IsFoldersStep}">
@@ -716,11 +766,12 @@
                                 BorderThickness="1" CornerRadius="10" Padding="14,12" Margin="0,0,0,10">
                           <Grid>
                             <Grid.ColumnDefinitions>
-                              <ColumnDefinition Width="104"/>
+                              <ColumnDefinition Width="140"/>
                               <ColumnDefinition Width="*"/>
                               <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
                             <Grid.RowDefinitions>
+                              <RowDefinition Height="Auto"/>
                               <RowDefinition Height="Auto"/>
                               <RowDefinition Height="Auto"/>
                               <RowDefinition Height="Auto"/>
@@ -737,7 +788,7 @@
                                        Text="{Binding VirtualPath, UpdateSourceTrigger=PropertyChanged}"/>
                               <!-- STUDIO-57: read, or read and write — the two halves flip the one role;
                                    the active half is the one that cannot be pressed. -->
-                              <Border Style="{StaticResource SegmentedGroup}" Height="30" CornerRadius="15" Margin="10,0,0,0"
+                              <Border Style="{StaticResource SegmentedGroup}" Height="30" CornerRadius="15" Margin="10,0,0,0" MinWidth="260"
                                       IsEnabled="{Binding Tag, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
                                       ToolTip="{Binding [Studio.Create.FolderRoleTip], Source={x:Static services:I18n.Instance}}">
                                 <StackPanel Orientation="Horizontal" Margin="2">
@@ -765,11 +816,43 @@
                                     AutomationProperties.Name="{Binding [Studio.Create.RemoveFolder], Source={x:Static services:I18n.Instance}}"
                                     Content="{Binding [Studio.Create.RemoveShort], Source={x:Static services:I18n.Instance}}" controls:ButtonIcon.Kind="x"/>
 
+                            <!-- Under the rights (UX lot 01), in both modes: a folder of this machine instead
+                                 of the team's own; once one is chosen, the Novice reads its name here,
+                                 the full path in the tooltip. -->
+                            <WrapPanel Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2" Margin="0,6,0,0"
+                                       Visibility="{Binding Tag, RelativeSource={RelativeSource AncestorType=ItemsControl}, Converter={StaticResource BooleanToVisibility}}">
+                              <Button Style="{StaticResource BtnGhost}" controls:ButtonSize.Height="32" VerticalAlignment="Center"
+                                      Command="{Binding PickCommand}" controls:ButtonIcon.Kind="folder-open"
+                                      Content="{Binding [Studio.Create.UseExistingFolder], Source={x:Static services:I18n.Instance}}"/>
+                              <StackPanel Orientation="Horizontal" Margin="8,0,0,0" VerticalAlignment="Center" ToolTip="{Binding FolderLabel}">
+                                <StackPanel.Style>
+                                  <Style TargetType="StackPanel">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                    <Style.Triggers>
+                                      <MultiDataTrigger>
+                                        <MultiDataTrigger.Conditions>
+                                          <Condition Binding="{Binding HasDirectory}" Value="True"/>
+                                          <Condition Binding="{Binding DataContext.Mode.IsNovice, RelativeSource={RelativeSource AncestorType=Window}}" Value="True"/>
+                                        </MultiDataTrigger.Conditions>
+                                        <Setter Property="Visibility" Value="Visible"/>
+                                      </MultiDataTrigger>
+                                    </Style.Triggers>
+                                  </Style>
+                                </StackPanel.Style>
+                                <controls:LucideIcon Kind="folder" Size="16" Margin="0,0,6,0" VerticalAlignment="Center"
+                                                     Foreground="{DynamicResource InkMutedBrush}"/>
+                                <TextBlock VerticalAlignment="Center" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"
+                                           Text="{Binding ChosenFolderName}"/>
+                              </StackPanel>
+                            </WrapPanel>
+
                             <!-- Line 2: the note the assistant follows — what the folder holds and how
                                  the team must use it. The forge's words to start with. -->
-                            <TextBlock Grid.Row="1" Style="{StaticResource Hint}" VerticalAlignment="Center" Margin="0,8,0,0"
+                            <TextBlock Grid.Row="2" Style="{StaticResource Hint}" VerticalAlignment="Center" Margin="0,8,0,0"
+                                       Visibility="{Binding DataContext.Mode.IsExpert, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BooleanToVisibility}}"
                                        Text="{Binding [Studio.Create.FolderFieldNote], Source={x:Static services:I18n.Instance}}"/>
-                            <Border Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2" Margin="0,8,0,0"
+                            <Border Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="2" Margin="0,8,0,0"
+                                    Visibility="{Binding DataContext.Mode.IsExpert, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BooleanToVisibility}}"
                                     BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" CornerRadius="8"
                                     Background="{DynamicResource SurfaceBrush}">
                               <DockPanel>
@@ -786,10 +869,12 @@
 
                             <!-- Line 3: where it lives — inside the team, or a folder of this machine,
                                  exclusive (AnswerInsideTeam / AnswerWithDirectory); its state; « Choose… ». -->
-                            <TextBlock Grid.Row="2" Style="{StaticResource Hint}" VerticalAlignment="Center" Margin="0,8,0,0"
+                            <TextBlock Grid.Row="3" Style="{StaticResource Hint}" VerticalAlignment="Center" Margin="0,8,0,0"
+                                       Visibility="{Binding DataContext.Mode.IsExpert, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BooleanToVisibility}}"
                                        Text="{Binding [Studio.Create.FolderLocation], Source={x:Static services:I18n.Instance}}"/>
-                            <DockPanel Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="2" Margin="0,8,0,0">
-                              <Border DockPanel.Dock="Left" Style="{StaticResource SegmentedGroup}" Height="30" CornerRadius="15"
+                            <DockPanel Grid.Row="3" Grid.Column="1" Grid.ColumnSpan="2" Margin="0,8,0,0"
+                                       Visibility="{Binding DataContext.Mode.IsExpert, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BooleanToVisibility}}">
+                              <Border DockPanel.Dock="Left" Style="{StaticResource SegmentedGroup}" Height="30" CornerRadius="15" MinWidth="260"
                                       IsEnabled="{Binding Tag, RelativeSource={RelativeSource AncestorType=ItemsControl}}">
                                 <StackPanel Orientation="Horizontal" Margin="2">
                                   <Button Style="{StaticResource SegmentBtnOn}" Command="{Binding InsideTeamCommand}"
@@ -856,10 +941,10 @@
 
                             <!-- Line 4 (STUDIO-57, the drop): a folder kept inside the team — its file
                                  count, watched while the engine waits, the explorer on it, its path. -->
-                            <TextBlock Grid.Row="3" Style="{StaticResource Hint}" VerticalAlignment="Center" Margin="0,8,0,0"
+                            <TextBlock Grid.Row="4" Style="{StaticResource Hint}" VerticalAlignment="Center" Margin="0,8,0,0"
                                        Text="{Binding [Studio.Create.FolderFieldFiles], Source={x:Static services:I18n.Instance}}"
                                        Visibility="{Binding HasHeld, Converter={StaticResource BooleanToVisibility}}"/>
-                            <DockPanel Grid.Row="3" Grid.Column="1" Grid.ColumnSpan="2" Margin="0,8,0,0" DataContext="{Binding Held}"
+                            <DockPanel Grid.Row="4" Grid.Column="1" Grid.ColumnSpan="2" Margin="0,8,0,0" DataContext="{Binding Held}"
                                        Visibility="{Binding DataContext.HasHeld, RelativeSource={RelativeSource AncestorType=Grid}, Converter={StaticResource BooleanToVisibility}}">
                               <TextBlock DockPanel.Dock="Left" FontSize="13" VerticalAlignment="Center" Foreground="{DynamicResource InkBrush}"
                                          Text="{Binding FilesLabel}"/>
@@ -1203,15 +1288,15 @@
                            Text="{Binding [Studio.Create.FoldersHint], Source={x:Static services:I18n.Instance}}"/>
                 <ItemsControl ItemsSource="{Binding MountRows}" ItemTemplate="{StaticResource MountRowTemplate}"/>
                 <WrapPanel Margin="0,4,0,0">
-                  <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="32" Margin="0,0,8,4"
-                          Command="{Binding AllowFolderCommand}"
-                          Content="{Binding [Studio.Create.AllowFolder], Source={x:Static services:I18n.Instance}}" controls:ButtonIcon.Kind="plus"/>
-                  <!-- STUDIO-14 (D-08): every unanswered row at once. Hidden once every row is
-                       answered (lot 3). -->
-                  <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="32" Margin="0,0,8,4"
+                  <!-- STUDIO-14 (D-08): every unanswered row at once — the step's primary while a
+                       row is unanswered (UX lot 01), hidden once every row is answered (lot 3). -->
+                  <Button Style="{StaticResource BtnPrimary}" controls:ButtonSize.Height="32" Margin="0,0,8,4"
                           Command="{Binding CreateAllInsideTeamCommand}"
                           Visibility="{Binding HasFoldersToChoose, Converter={StaticResource BooleanToVisibility}}"
                           Content="{Binding [Studio.Create.CreateAllInsideTeam], Source={x:Static services:I18n.Instance}}" controls:ButtonIcon.Kind="folder"/>
+                  <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="32" Margin="0,0,8,4"
+                          Command="{Binding AllowFolderCommand}"
+                          Content="{Binding [Studio.Create.AllowFolder], Source={x:Static services:I18n.Instance}}" controls:ButtonIcon.Kind="plus"/>
                 </WrapPanel>
                 <controls:Alert Tone="Danger" Margin="0,8,0,0"
                                 Message="{Binding [Studio.Create.UndeclaredLegend], Source={x:Static services:I18n.Instance}}"

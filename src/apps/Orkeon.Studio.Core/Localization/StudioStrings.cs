@@ -746,6 +746,7 @@ public static class StudioStringKeys
 
     /// <summary>"to try" — the badge of a team that never ran and has no schedule.</summary>
     public const string TeamsToTest = "Studio.Teams.ToTest";
+    public const string TeamsNeedsFolderBadge = "Studio.Teams.NeedsFolderBadge";
 
     /// <summary>"Last run: {0}, {1}" — the meta line's history part.</summary>
     public const string TeamsLastRun = "Studio.Teams.LastRun";
@@ -978,6 +979,7 @@ public static class StudioStringKeys
 
     /// <summary>"write, no delete" — the badge of a read-write-no-delete mount row.</summary>
     public const string RightsBadgeReadWriteNoDelete = "Studio.Settings.RightsBadgeRwnd";
+    public const string RightsReadWriteNoDeleteTip = "Studio.Settings.RightsRwndTip";
 
     // STUDIO-14 settings — the read-only « Team folders » section of Settings › Authorized
     // folders (WPF Config/TeamFoldersViewModel, D-13): a team's own folders, vouched for by
@@ -2056,6 +2058,10 @@ public static class StudioStringKeys
 
     /// <summary>"These folders are kept inside the team. ..."</summary>
     public const string WizardFillFoldersHint = "Studio.Create.FillFoldersHint";
+    public const string WizardFoldersQuestion = "Studio.Create.FoldersQuestion";
+    public const string WizardUseExistingFolder = "Studio.Create.UseExistingFolder";
+    public const string WizardOutputFolderLabel = "Studio.Create.OutputFolderLabel";
+    public const string WizardWorkspaceFolderLabel = "Studio.Create.WorkspaceFolderLabel";
 
     /// <summary>"Yes"</summary>
     public const string WizardFillFoldersYes = "Studio.Create.FillFoldersYes";
@@ -2913,6 +2919,7 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.TeamsMountRw] = "{0} · read, write",
         [StudioStringKeys.TeamsMountUnreadable] = "unreadable folder",
         [StudioStringKeys.TeamsToTest] = "to try",
+        [StudioStringKeys.TeamsNeedsFolderBadge] = "Folder to allow",
         [StudioStringKeys.TeamsLastRun] = "Last run: {0}, {1}",
         [StudioStringKeys.TeamsRunOk] = "succeeded",
         [StudioStringKeys.TeamsRunFail] = "failed",
@@ -3247,6 +3254,7 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.RightsBadgeReadOnly] = "read",
         [StudioStringKeys.RightsBadgeReadWrite] = "write",
         [StudioStringKeys.RightsBadgeReadWriteNoDelete] = "write, no delete",
+        [StudioStringKeys.RightsReadWriteNoDeleteTip] = "Can modify, never delete.",
 
         // STUDIO-14 settings
         [StudioStringKeys.TeamFoldersTitle] = "TEAM FOLDERS",
@@ -3638,6 +3646,10 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.WizardDecisionQuestion] = "The trial is judged. What do we do next?",
         [StudioStringKeys.WizardFillFoldersQuestion] = "Do you want to put files or sub-folders in the folders you set up?",
         [StudioStringKeys.WizardFillFoldersHint] = "These folders are kept inside the team. What you drop there now is what the trial reads, and it moves into the team when you adopt it.",
+        [StudioStringKeys.WizardFoldersQuestion] = "Where are your files? Where should results go?",
+        [StudioStringKeys.WizardUseExistingFolder] = "Use an existing folder…",
+        [StudioStringKeys.WizardOutputFolderLabel] = "Results (/output)",
+        [StudioStringKeys.WizardWorkspaceFolderLabel] = "Workspace (/workspace)",
         [StudioStringKeys.WizardFillFoldersYes] = "Yes",
         [StudioStringKeys.WizardFillFoldersNo] = "No",
         [StudioStringKeys.WizardFillFoldersContinue] = "Continue",
@@ -3749,7 +3761,7 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.TeamsArchivedUndo] = "Team “{0}” archived.",
         [StudioStringKeys.TeamsArchivedScheduleStoppedUndo] = "Team “{0}” archived and its schedule stopped — Undo brings the team back, not its schedule.",
         [StudioStringKeys.TeamsArchivedManyUndo] = "{0} teams archived.",
-        [StudioStringKeys.TeamsLaunchNeedsFolder] = "Allow the folder {0} first.",
+        [StudioStringKeys.TeamsLaunchNeedsFolder] = "Allow the folder {0} first to launch the team.",
         [StudioStringKeys.TeamsRefusedRuns] = "{0} {0:plural:scheduled run|scheduled runs} will be refused on the next pass: the saved settings file does not hold {1} yet.",
         [StudioStringKeys.TeamsSuggestionOne] = "“{0}” has not been launched for {1} days — archive it?",
         [StudioStringKeys.TeamsSuggestionMany] = "{0} teams not launched for {1} days — archive them?",

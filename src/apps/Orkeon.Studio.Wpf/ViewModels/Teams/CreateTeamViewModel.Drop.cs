@@ -120,7 +120,8 @@ public sealed partial class CreateTeamViewModel
 
     /// <summary>
     /// The dropped folders answer the rows the forge just proposed — the row of their name,
-    /// else the default input still unanswered, else a row of their own — and each answer is
+    /// else the default input with no folder of the disk yet (inside the team
+    /// by default since UX lot 01), else a row of their own — and each answer is
     /// bound through the shell.
     /// </summary>
     private void MergeDroppedFolders()
@@ -141,7 +142,7 @@ public sealed partial class CreateTeamViewModel
 
             var name = RootNameOf(folder);
             var row = FolderRows.FirstOrDefault(r => r.Directory is null && SameRoot(r.VirtualPath, name))
-                ?? FolderRows.FirstOrDefault(r => r.IsInput && r.IsUnanswered
+                ?? FolderRows.FirstOrDefault(r => r.IsInput && r.Directory is null
                     && string.Equals(r.VirtualPath, TeamMountPaths.ReadRoot, StringComparison.Ordinal));
             if (row is null)
             {

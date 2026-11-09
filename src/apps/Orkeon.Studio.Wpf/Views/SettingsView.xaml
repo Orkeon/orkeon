@@ -426,6 +426,8 @@
                           <Button.Style>
                             <Style TargetType="Button" BasedOn="{StaticResource ChipAction}">
                               <Setter Property="FontSize" Value="13"/>
+                              <!-- UX lot 01: a fill, no border — a pill, not a second button. -->
+                              <Setter Property="BorderThickness" Value="0"/>
                               <Setter Property="Background" Value="{DynamicResource Surface2Brush}"/>
                               <Setter Property="Foreground" Value="{DynamicResource InkMutedBrush}"/>
                               <Style.Triggers>
@@ -439,14 +441,17 @@
                         </Button>
                         <Button Width="29" Height="29" Padding="0" Style="{StaticResource BtnSecondary}"
                                 Command="{Binding DataContext.Config.Mounts.DropMountCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                CommandParameter="{Binding}">
+                                CommandParameter="{Binding}"
+                                ToolTip="{Binding [Studio.Settings.MountsRemove], Source={x:Static services:I18n.Instance}}"
+                                AutomationProperties.Name="{Binding [Studio.Settings.MountsRemove], Source={x:Static services:I18n.Instance}}">
                           <controls:LucideIcon Kind="x" Size="13"/>
                         </Button>
                       </StackPanel>
                       <StackPanel>
-                        <!-- R09: the folder's path is cut in the middle, whole in its tooltip. -->
-                        <controls:MiddleEllipsisText Style="{StaticResource PathText}" FontWeight="SemiBold"
-                                                     Foreground="{DynamicResource InkBrush}" Text="{Binding PhysicalPath}"/>
+                        <!-- UX lot 01: the folder's name is the card's title, in the body font; the full
+                             path is its tooltip. -->
+                        <TextBlock FontWeight="SemiBold" FontSize="14" Foreground="{DynamicResource InkBrush}"
+                                   TextTrimming="CharacterEllipsis" Text="{Binding FolderName}" ToolTip="{Binding PhysicalPath}"/>
                         <TextBlock Style="{StaticResource MonoText}" FontSize="13" Margin="0,3,0,0"
                                    Foreground="{DynamicResource InkFaintBrush}">
                           <Run Text="{Binding [Studio.Settings.SeenAs], Source={x:Static services:I18n.Instance}, Mode=OneWay}"/><Run Text=" "/><Run Text="{Binding VirtualPath}"/>
@@ -540,7 +545,7 @@
                                  Text="{Binding Label, Mode=OneWay}"/>
                       <!-- R12: the rights pill of every screen — read-only neutral, read-write sky. -->
                       <controls:Badge Margin="8,0,0,0" MaxWidth="160" HorizontalAlignment="Right"
-                                      ToolTip="{Binding RightsLabel, Mode=OneWay}">
+                                      ToolTip="{Binding RightsTip, Mode=OneWay}">
                         <controls:Badge.Style>
                           <Style TargetType="controls:Badge" BasedOn="{StaticResource {x:Type controls:Badge}}">
                             <Setter Property="Tone" Value="Neutral"/>

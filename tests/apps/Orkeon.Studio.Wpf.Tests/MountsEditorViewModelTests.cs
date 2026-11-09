@@ -102,12 +102,16 @@ public sealed class MountEditorViewModelTests
         Assert.Equal("Read / write (create and delete allowed)", mount.RightsLabel);
         Assert.Equal("read", new MountEditorViewModel { Rights = MountRights.ReadOnly }.RightsBadge);
         Assert.Equal("write, no delete", new MountEditorViewModel { Rights = MountRights.ReadWriteNoDelete }.RightsBadge);
+        // The tooltip: the long label, except for no-delete whose one-word badge needs a sentence.
+        Assert.Equal(mount.RightsLabel, mount.RightsTip);
+        Assert.Equal("Can modify, never delete.", new MountEditorViewModel { Rights = MountRights.ReadWriteNoDelete }.RightsTip);
 
         // The badge moves with the rights, and with the culture.
         var raised = new List<string>();
         mount.PropertyChanged += (_, e) => raised.Add(e.PropertyName!);
         mount.Rights = MountRights.ReadOnly;
         Assert.Contains(nameof(MountEditorViewModel.RightsBadge), raised);
+        Assert.Contains(nameof(MountEditorViewModel.RightsTip), raised);
         raised.Clear();
         mount.RefreshCulture();
         Assert.Contains(nameof(MountEditorViewModel.RightsBadge), raised);
@@ -117,11 +121,11 @@ public sealed class MountEditorViewModelTests
         Assert.Equal("Lecture / écriture (création et suppression autorisées)", french.RightsLabel);
 
         // And the row template wires it that way: the badge shows RightsBadge, its tooltip is
-        // RightsLabel, and the name comes first so the badge can never shrink it.
+        // RightsTip, and the name comes first so the badge can never shrink it.
         var xaml = File.ReadAllText(Path.Combine(WpfSourceRoot(), "Views", "MountsEditorView.xaml"));
         var row = xaml[xaml.IndexOf("<ListBox.ItemTemplate>", StringComparison.Ordinal)..xaml.IndexOf("</ListBox.ItemTemplate>", StringComparison.Ordinal)];
         Assert.Contains("Text=\"{Binding RightsBadge, Mode=OneWay}\"", row, StringComparison.Ordinal);
-        Assert.Contains("ToolTip=\"{Binding RightsLabel, Mode=OneWay}\"", row, StringComparison.Ordinal);
+        Assert.Contains("ToolTip=\"{Binding RightsTip, Mode=OneWay}\"", row, StringComparison.Ordinal);
         Assert.DoesNotContain("Text=\"{Binding RightsLabel", row, StringComparison.Ordinal);
         Assert.True(
             row.IndexOf("{Binding VirtualPath, Mode=OneWay}", StringComparison.Ordinal)

@@ -4,6 +4,7 @@ using Orkeon.Studio.Core.FileSystem;
 using Orkeon.Studio.Core.Forge;
 using Orkeon.Studio.Core.Localization;
 using Orkeon.Studio.Core.Teams;
+using Orkeon.Studio.Wpf.ViewModels.Mounts;
 using Orkeon.Studio.Wpf.ViewModels.Mvvm;
 
 namespace Orkeon.Studio.Wpf.ViewModels.Teams;
@@ -43,9 +44,11 @@ public sealed class WizardFolderRow : ObservableObject
         _role = proposed.Role;
         _purpose = proposed.Purpose ?? "";
         _directory = proposed.Directory;
-        // « Inside the team » by default for an output (STUDIO-46, D-4): its results then travel
-        // with the team. An input waits for a folder to be chosen.
-        _isInsideTeam = proposed.Directory is null && !proposed.IsInput;
+        // « Inside the team » by default for every folder (STUDIO-46, D-4; UX lot 01): its files
+        // then travel with the team, and an input no longer waits on a question — « Use an
+        // existing folder… » answers it with a folder of the disk. The field, not the setter:
+        // the setter marks the proposal edited.
+        _isInsideTeam = proposed.Directory is null;
         PickCommand = new RelayCommand(() => pick(this));
         InsideTeamCommand = new RelayCommand(() => { MarkEdited(); AnswerInsideTeam(); }, () => !_isInsideTeam);
         ToggleRoleCommand = new RelayCommand(ToggleRole);
@@ -174,6 +177,12 @@ public sealed class WizardFolderRow : ObservableObject
             ? _strings.Format(StudioStringKeys.WizardInsideTeamFolder, FolderName)
             : _strings[StudioStringKeys.WizardFolderToChooseRead]);
 
+    /// <summary>
+    /// The last segment of the folder of this machine that answers the row — what a Novice fiche
+    /// shows next to « Use an existing folder… », the full path in its tooltip; empty when none.
+    /// </summary>
+    public string ChosenFolderName => MountLabels.FolderNameOf(_directory);
+
     /// <summary>The folder's name inside the team: <c>input</c> for <c>/workspace</c>, its own otherwise.</summary>
     internal string FolderName =>
         _virtualPath.Trim('/') is { Length: > 0 } ? TeamMountPaths.FolderFor(_virtualPath) : "";
@@ -228,7 +237,7 @@ public sealed class WizardFolderRow : ObservableObject
 
     /// <summary>
     /// Flips the role. A folder of the disk was bound with the former rights, so it no longer
-    /// answers the row, which falls back to its default answer for the new role.
+    /// answers the row, which falls back to inside the team (UX lot 01).
     /// </summary>
     private void ToggleRole()
     {
@@ -236,7 +245,7 @@ public sealed class WizardFolderRow : ObservableObject
         _role = IsInput ? ForgeFolder.OutputRole : ForgeFolder.InputRole;
         var hadDirectory = _directory is not null;
         _directory = null;
-        _isInsideTeam = !IsInput;
+        _isInsideTeam = true;
         OnPropertiesChanged(nameof(Role), nameof(IsInput), nameof(RoleLabel));
         RaiseAnswer();
         if (hadDirectory)
@@ -257,7 +266,7 @@ public sealed class WizardFolderRow : ObservableObject
     {
         OnPropertiesChanged(
             nameof(Directory), nameof(IsInsideTeam), nameof(HasDirectory), nameof(IsUnanswered), nameof(FolderLabel),
-            nameof(IsOnMachine), nameof(NeedsChoice));
+            nameof(IsOnMachine), nameof(NeedsChoice), nameof(ChosenFolderName));
         InsideTeamCommand.RaiseCanExecuteChanged();
     }
 }

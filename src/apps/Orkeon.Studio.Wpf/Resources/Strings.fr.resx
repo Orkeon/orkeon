@@ -606,7 +606,7 @@
   <data name="Studio.Settings.NoviceTitle" xml:space="preserve"><value>Dossiers que les agents peuvent voir</value></data>
   <data name="Studio.Settings.NoviceIntro" xml:space="preserve"><value>Tout le reste de votre machine leur est invisible. Un dossier en lecture seule ne peut jamais être modifié.</value></data>
   <data name="Studio.Settings.SeenAs" xml:space="preserve"><value>vu comme</value></data>
-  <data name="Studio.Settings.Allow" xml:space="preserve"><value>Autoriser un dossier…</value></data>
+  <data name="Studio.Settings.Allow" xml:space="preserve"><value>Ajouter un dossier…</value></data>
   <data name="Studio.Settings.ToggleRights" xml:space="preserve"><value>Cliquer pour passer de lecture seule à lecture et écriture, et inversement</value></data>
   <data name="Studio.Import.RecognizedAgents" xml:space="preserve"><value>{0} — {1} {1:plural:agent|agents}</value></data>
   <data name="Studio.Import.SecretsClean" xml:space="preserve"><value>Aucun secret dans les fichiers</value></data>
@@ -807,16 +807,16 @@
   <data name="Studio.Create.TitleEdit" xml:space="preserve"><value>Modifier l'agent</value></data>
   <data name="Studio.Create.Add" xml:space="preserve"><value>Ajouter à l'équipe</value></data>
   <data name="Studio.Teams.TeamMountsSub" xml:space="preserve"><value>Cochez ce que cette équipe peut voir. Tout dossier décoché lui devient invisible, même si d'autres équipes l'utilisent.</value></data>
-  <data name="Studio.Teams.AddAnother" xml:space="preserve"><value>Autoriser un autre dossier…</value></data>
-  <data name="Studio.Settings.AllowedFoldersTitle" xml:space="preserve"><value>Ajouter un dossier autorisé</value></data>
+  <data name="Studio.Teams.AddAnother" xml:space="preserve"><value>Ajouter un autre dossier…</value></data>
+  <data name="Studio.Settings.AllowedFoldersTitle" xml:space="preserve"><value>Ajouter un dossier à l'équipe</value></data>
   <data name="Studio.Settings.BindTitle" xml:space="preserve"><value>Quel dossier se trouve derrière {0} ?</value></data>
   <data name="Studio.Settings.AllowedFoldersSub" xml:space="preserve"><value>Choisissez parmi les dossiers autorisés dans Réglages › Dossiers autorisés. L'équipe les verra avec les mêmes droits.</value></data>
   <data name="Studio.Settings.AllowedFoldersEmpty" xml:space="preserve"><value>Aucun dossier n'est encore autorisé dans les réglages.</value></data>
-  <data name="Studio.Settings.Declare" xml:space="preserve"><value>Déclarer un nouveau dossier…</value></data>
+  <data name="Studio.Settings.Declare" xml:space="preserve"><value>Ajouter un dossier de cet ordinateur…</value></data>
   <data name="Studio.Settings.AllowedFoldersConfirm" xml:space="preserve"><value>Ajouter à l'équipe</value></data>
   <data name="Studio.Create.DroppedDerived" xml:space="preserve"><value>{0} : aucun dossier ne lui sera associé — les agents qui y écrivent échoueront.</value></data>
   <data name="Studio.Create.RestoreFolders" xml:space="preserve"><value>Rétablir</value></data>
-  <data name="Studio.Run.BlockedUndeclared" xml:space="preserve"><value>Cette équipe utilise des dossiers que vos réglages n'autorisent pas : {0}. Déclarez-les dans Réglages › Dossiers autorisés, ou retirez-les de l'équipe.</value></data>
+  <data name="Studio.Run.BlockedUndeclared" xml:space="preserve"><value>Cette équipe utilise des dossiers que vos réglages n'autorisent pas : {0}. Autorisez-les dans Réglages › Dossiers autorisés, ou retirez-les de l'équipe.</value></data>
   <data name="Studio.Run.OpenAllowedFolders" xml:space="preserve"><value>Ouvrir les dossiers autorisés</value></data>
   <data name="Studio.Create.UndeclaredLegend" xml:space="preserve"><value>En rouge : les dossiers qui ne font pas partie de vos dossiers autorisés.</value></data>
   <data name="Studio.Settings.AlreadyAdded" xml:space="preserve"><value>déjà ajouté</value></data>
@@ -851,9 +851,10 @@
   <data name="Studio.Create.Wait" xml:space="preserve"><value>L'étape en cours doit d'abord se terminer</value></data>
   <data name="Studio.Settings.ExportDestination" xml:space="preserve"><value>Choisissez où exporter l'équipe</value></data>
   <data name="Studio.Create.TeamFolders" xml:space="preserve"><value>Dossiers de cette équipe</value></data>
-  <data name="Studio.Create.AllowFolder" xml:space="preserve"><value>Autoriser un dossier</value></data>
+  <data name="Studio.Create.AllowFolder" xml:space="preserve"><value>Ajouter un dossier</value></data>
   <data name="Studio.Create.ChooseFolder" xml:space="preserve"><value>Choisir le dossier…</value></data>
-  <data name="Studio.Create.FoldersHint" xml:space="preserve"><value>Déduits des agents : modifier un agent change ce qu'il voit. Enregistrés avec l'équipe à l'adoption ; l'essai tourne dans son bac à sable.</value></data>
+  <data name="Studio.Create.FoldersHint" xml:space="preserve"><value>Les dossiers que l'équipe pourra lire ou modifier. Pendant l'essai, elle travaille sur une copie.</value></data>
+  <data name="Studio.Create.FoldersQuestion" xml:space="preserve"><value>Où sont vos fichiers ? Où ranger les résultats ?</value></data>
   <data name="Studio.Teams.Modify" xml:space="preserve"><value>Modifier</value></data>
   <data name="Studio.Teams.ModifyTip" xml:space="preserve"><value>Rouvrir l'assistant sur cette équipe</value></data>
   <data name="Studio.Teams.ModifyRebuild" xml:space="preserve"><value>Rouvrir l'assistant sur cette équipe — aucune session d'atelier ne pointe ici, elle sera reconstruite depuis les fichiers de l'équipe</value></data>
@@ -866,6 +867,7 @@
   <data name="Studio.Teams.MountRw" xml:space="preserve"><value>{0} · lecture, écriture</value></data>
   <data name="Studio.Teams.MountUnreadable" xml:space="preserve"><value>dossier illisible</value></data>
   <data name="Studio.Teams.ToTest" xml:space="preserve"><value>à essayer</value></data>
+  <data name="Studio.Teams.NeedsFolderBadge" xml:space="preserve"><value>Dossier à autoriser</value></data>
   <data name="Studio.Teams.LastRun" xml:space="preserve"><value>Dernière exécution : {0}, {1}</value></data>
   <data name="Studio.Teams.RunOk" xml:space="preserve"><value>réussie</value></data>
   <data name="Studio.Teams.RunFail" xml:space="preserve"><value>échouée</value></data>
@@ -1559,6 +1561,7 @@
   <data name="Studio.Settings.RightsBadgeRwnd" xml:space="preserve">
     <value>Lecture et écriture, sans suppression</value>
   </data>
+  <data name="Studio.Settings.RightsRwndTip" xml:space="preserve"><value>Peut modifier, jamais effacer.</value></data>
   <!-- STUDIO-14 settings: the read-only « Team folders » section of the folders tab -->
   <data name="Studio.Settings.TeamFoldersTitle" xml:space="preserve">
     <value>DOSSIERS DES ÉQUIPES</value>
@@ -1748,7 +1751,7 @@
     <value>Ce qu'il contient et comment l'équipe doit s'en servir — l'assistant suivra ces consignes.</value>
   </data>
   <data name="Studio.Create.FolderRoleTip" xml:space="preserve">
-    <value>Lecture seule, ou lecture et écriture.</value>
+    <value>Lecture : l'équipe lit sans rien changer. Écriture : elle peut créer et modifier des fichiers.</value>
   </data>
   <data name="Studio.Create.FoldersStepSubDefaults" xml:space="preserve">
     <value>Votre demande ne nomme aucun dossier : voici la proposition standard. Renommez un dossier si vous le souhaitez, dites où chacun se trouve, puis confirmez : l'équipe utilisera exactement ceux-là.</value>
@@ -1867,6 +1870,9 @@
   <data name="Studio.Create.FolderLocation" xml:space="preserve"><value>Emplacement</value></data>
   <data name="Studio.Create.FolderOnMachine" xml:space="preserve"><value>Dossier sur cet ordinateur</value></data>
   <data name="Studio.Create.ChooseShort" xml:space="preserve"><value>Choisir…</value></data>
+  <data name="Studio.Create.UseExistingFolder" xml:space="preserve"><value>Utiliser un dossier existant…</value></data>
+  <data name="Studio.Create.OutputFolderLabel" xml:space="preserve"><value>Résultats (/output)</value></data>
+  <data name="Studio.Create.WorkspaceFolderLabel" xml:space="preserve"><value>Espace de travail (/workspace)</value></data>
   <data name="Studio.Run.OutcomeSucceeded" xml:space="preserve"><value>Réussie</value></data>
   <data name="Studio.Run.OutcomeFailed" xml:space="preserve"><value>Échouée</value></data>
   <data name="Studio.Run.OutcomeCancelled" xml:space="preserve"><value>Annulée</value></data>
@@ -2029,7 +2035,7 @@
   <data name="Studio.Teams.SaveSettings" xml:space="preserve"><value>Enregistrer les réglages</value></data>
   <data name="Studio.Teams.ImportShort" xml:space="preserve"><value>Importer</value></data>
   <data name="Studio.Teams.ScheduleManualValue" xml:space="preserve"><value>Manuelle</value></data>
-  <data name="Studio.Teams.LaunchNeedsFolder" xml:space="preserve"><value>Autorisez d'abord le dossier {0}.</value></data>
+  <data name="Studio.Teams.LaunchNeedsFolder" xml:space="preserve"><value>Autorisez d'abord le dossier {0} pour lancer l'équipe.</value></data>
   <data name="Studio.Teams.AllowFolder" xml:space="preserve"><value>Autoriser</value></data>
   <data name="Studio.Create.SessionRunning" xml:space="preserve"><value>En cours</value></data>
   <data name="Studio.Create.SessionWaiting" xml:space="preserve"><value>En attente de vous</value></data>

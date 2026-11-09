@@ -854,6 +854,7 @@
   <data name="Studio.Create.AllowFolder" xml:space="preserve"><value>Allow a folder</value></data>
   <data name="Studio.Create.ChooseFolder" xml:space="preserve"><value>Choose the folder…</value></data>
   <data name="Studio.Create.FoldersHint" xml:space="preserve"><value>These folders are recorded with the team at adoption — the trial itself runs in its own sandbox.</value></data>
+  <data name="Studio.Create.FoldersQuestion" xml:space="preserve"><value>Where are your files? Where should results go?</value></data>
   <data name="Studio.Teams.Modify" xml:space="preserve"><value>Modify</value></data>
   <data name="Studio.Teams.ModifyTip" xml:space="preserve"><value>Reopen the assistant on this team</value></data>
   <data name="Studio.Teams.ModifyRebuild" xml:space="preserve"><value>Reopen the assistant on this team — no workshop session points here, so one is rebuilt from the team's files</value></data>
@@ -866,6 +867,7 @@
   <data name="Studio.Teams.MountRw" xml:space="preserve"><value>{0} · read, write</value></data>
   <data name="Studio.Teams.MountUnreadable" xml:space="preserve"><value>unreadable folder</value></data>
   <data name="Studio.Teams.ToTest" xml:space="preserve"><value>to try</value></data>
+  <data name="Studio.Teams.NeedsFolderBadge" xml:space="preserve"><value>Folder to allow</value></data>
   <data name="Studio.Teams.LastRun" xml:space="preserve"><value>Last run: {0}, {1}</value></data>
   <data name="Studio.Teams.RunOk" xml:space="preserve"><value>succeeded</value></data>
   <data name="Studio.Teams.RunFail" xml:space="preserve"><value>failed</value></data>
@@ -1559,6 +1561,7 @@
   <data name="Studio.Settings.RightsBadgeRwnd" xml:space="preserve">
     <value>write, no delete</value>
   </data>
+  <data name="Studio.Settings.RightsRwndTip" xml:space="preserve"><value>Can modify, never delete.</value></data>
   <!-- STUDIO-14 settings: the read-only « Team folders » section of the folders tab -->
   <data name="Studio.Settings.TeamFoldersTitle" xml:space="preserve">
     <value>TEAM FOLDERS</value>
@@ -1867,6 +1870,9 @@
   <data name="Studio.Create.FolderLocation" xml:space="preserve"><value>Location</value></data>
   <data name="Studio.Create.FolderOnMachine" xml:space="preserve"><value>Folder on this machine</value></data>
   <data name="Studio.Create.ChooseShort" xml:space="preserve"><value>Choose…</value></data>
+  <data name="Studio.Create.UseExistingFolder" xml:space="preserve"><value>Use an existing folder…</value></data>
+  <data name="Studio.Create.OutputFolderLabel" xml:space="preserve"><value>Results (/output)</value></data>
+  <data name="Studio.Create.WorkspaceFolderLabel" xml:space="preserve"><value>Workspace (/workspace)</value></data>
   <data name="Studio.Run.OutcomeSucceeded" xml:space="preserve"><value>Succeeded</value></data>
   <data name="Studio.Run.OutcomeFailed" xml:space="preserve"><value>Failed</value></data>
   <data name="Studio.Run.OutcomeCancelled" xml:space="preserve"><value>Cancelled</value></data>
@@ -2029,7 +2035,7 @@
   <data name="Studio.Teams.SaveSettings" xml:space="preserve"><value>Save the settings</value></data>
   <data name="Studio.Teams.ImportShort" xml:space="preserve"><value>Import</value></data>
   <data name="Studio.Teams.ScheduleManualValue" xml:space="preserve"><value>Manual</value></data>
-  <data name="Studio.Teams.LaunchNeedsFolder" xml:space="preserve"><value>Allow the folder {0} first.</value></data>
+  <data name="Studio.Teams.LaunchNeedsFolder" xml:space="preserve"><value>Allow the folder {0} first to launch the team.</value></data>
   <data name="Studio.Teams.AllowFolder" xml:space="preserve"><value>Allow</value></data>
   <data name="Studio.Create.SessionRunning" xml:space="preserve"><value>Running</value></data>
   <data name="Studio.Create.SessionWaiting" xml:space="preserve"><value>Waiting for you</value></data>

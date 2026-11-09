@@ -1347,7 +1347,10 @@ public partial class CreateTeamWizardTests
         Assert.True(bound.IsBound);
         Assert.Equal(Path.Combine("/data", "sorties"), bound.Folder);
 
-        vm.RemoveTeamMountCommand.Execute(chosen.ToMountString());
+        // UX lot 01: the row's one « Remove » retires a bound folder.
+        var boundRow = vm.MountRows.Single(r => r.MountString == chosen.ToMountString());
+        Assert.True(boundRow.CanRemove);
+        vm.RemoveMountCommand.Execute(boundRow);
 
         // Removed: the mount point is back to unanswered, which is what the save records.
         Assert.Contains(vm.MountRows, r => r is { VirtualPath: "/output", IsBound: false });
@@ -1383,7 +1386,10 @@ public partial class CreateTeamWizardTests
         Assert.Equal(["/workspace", "/output"], vm.MountRows.Select(r => r.VirtualPath));
         Assert.False(vm.HasDroppedDerivedRoots);
 
-        vm.RemoveDerivedMountCommand.Execute("/output");
+        // UX lot 01: the same « Remove » drops a bare implied root.
+        var bareRow = vm.MountRows.Single(r => r.VirtualPath == "/output");
+        Assert.True(bareRow.CanRemove);
+        vm.RemoveMountCommand.Execute(bareRow);
 
         Assert.Equal(["/workspace"], vm.MountRows.Select(r => r.VirtualPath));
         Assert.Equal(["/output"], vm.DroppedDerivedRoots);
@@ -1690,7 +1696,7 @@ public partial class CreateTeamWizardTests
     /// the Composer rows are /inpdf and /outmd, never the canonical /workspace and /output.
     /// </summary>
     [Fact]
-    public async Task The_folders_step_proposes_the_named_folders_and_an_output_lives_inside_the_team_by_default()
+    public async Task The_folders_step_proposes_the_named_folders_and_every_folder_lives_inside_the_team_by_default()
     {
         var (vm, processes, _) = Build();
         FillStepOne(vm);
@@ -1701,8 +1707,10 @@ public partial class CreateTeamWizardTests
             Assert.Equal(["/inpdf", "/outmd"], wizard.FolderRows.Select(r => r.VirtualPath));
             Assert.Equal(["read", "read, write"], wizard.FolderRows.Select(r => r.RoleLabel));
             Assert.Equal(["p", "p"], wizard.FolderRows.Select(r => r.Purpose));
-            Assert.True(wizard.FolderRows[0].IsUnanswered);
-            Assert.Equal("To choose: the team must read documents that already exist.", wizard.FolderRows[0].FolderLabel);
+            Assert.False(wizard.FolderRows[0].IsUnanswered);
+            Assert.True(wizard.FolderRows[0].IsInsideTeam);
+            Assert.Equal("inside the team: inpdf", wizard.FolderRows[0].FolderLabel);
+            Assert.All(wizard.FolderRows, r => Assert.True(r.ShowsDeduced));
             Assert.True(wizard.FolderRows[1].IsInsideTeam);
             Assert.Equal("inside the team: outmd", wizard.FolderRows[1].FolderLabel);
             Assert.False(wizard.HasFoldersProblem);
@@ -1717,10 +1725,10 @@ public partial class CreateTeamWizardTests
         Assert.False(vm.IsFoldersStep);
         Assert.Equal([("/inpdf", (string?)null), ("/outmd", null)], Confirmed(processes));
         Assert.Equal(2, vm.Step);
-        Assert.Equal(["./outmd:/outmd:rw"], vm.TeamMounts);
-        Assert.Equal(["/outmd", "/inpdf"], vm.MountRows.Select(r => r.VirtualPath));
+        Assert.Equal(["./inpdf:/inpdf:ro", "./outmd:/outmd:rw"], vm.TeamMounts);
+        Assert.Equal(["/inpdf", "/outmd"], vm.MountRows.Select(r => r.VirtualPath));
         Assert.DoesNotContain(vm.MountRows, r => r.VirtualPath is "/workspace" or "/output");
-        Assert.Equal(["./outmd:/outmd:rw", "./inpdf:/inpdf:ro"], vm.SidecarMounts());
+        Assert.Equal(["./inpdf:/inpdf:ro", "./outmd:/outmd:rw"], vm.SidecarMounts());
         Assert.DoesNotContain("--read", processes.Requests[0].Arguments);
     }
 
@@ -1782,18 +1790,22 @@ public partial class CreateTeamWizardTests
         {
             var input = wizard.FolderRows[0];
             var output = wizard.FolderRows[1];
-            Assert.False(input.IsInsideTeam);
-            Assert.True(output.IsInsideTeam);
-
-            input.IsInsideTeam = true;
             Assert.True(input.IsInsideTeam);
             Assert.False(input.IsUnanswered);
+            Assert.False(input.NeedsChoice);
+            Assert.False(input.IsOnMachine);
+            Assert.True(input.ShowsDeduced);
+            Assert.True(output.IsInsideTeam);
             Assert.Equal("inside the team: inpdf", input.FolderLabel);
 
             input.IsInsideTeam = false;
             Assert.False(input.IsInsideTeam);
             Assert.True(input.IsUnanswered);
             Assert.Equal("To choose: the team must read documents that already exist.", input.FolderLabel);
+
+            input.IsInsideTeam = true;
+            Assert.True(input.IsInsideTeam);
+            Assert.False(input.IsUnanswered);
 
             output.IsInsideTeam = false;
             Assert.True(output.IsInsideTeam);
@@ -1965,7 +1977,8 @@ public partial class CreateTeamWizardTests
             var added = wizard.FolderRows[2];
             Assert.Equal("/files", added.VirtualPath);
             Assert.True(added.IsInput);
-            Assert.True(added.IsUnanswered);
+            Assert.True(added.IsInsideTeam);
+            Assert.False(added.IsUnanswered);
 
             added.ToggleRoleCommand.Execute(null);
             Assert.False(added.IsInput);
@@ -1993,7 +2006,7 @@ public partial class CreateTeamWizardTests
         var rapports = sent.RootElement.GetProperty("folders")[1];
         Assert.Equal("output", rapports.GetProperty("role").GetString());
         Assert.Equal("un compte rendu par envoi, en Markdown", rapports.GetProperty("purpose").GetString());
-        Assert.Equal(["./rapports:/rapports:rw"], vm.TeamMounts);
+        Assert.Equal(["./inpdf:/inpdf:ro", "./rapports:/rapports:rw"], vm.TeamMounts);
     }
 
     /// <summary>
@@ -2147,7 +2160,12 @@ public partial class CreateTeamWizardTests
     {
         var (vm, processes, _) = Build();
         FillStepOne(vm);
-        ScriptFoldersStep(vm, processes, PdfFolders, wizard => wizard.ConfirmFoldersCommand.Execute(null), PdfBlueprint(), Paused);
+        ScriptFoldersStep(vm, processes, PdfFolders, wizard =>
+        {
+            // Inputs start inside the team: put this one back to unanswered.
+            wizard.FolderRows[0].IsInsideTeam = false;
+            wizard.ConfirmFoldersCommand.Execute(null);
+        }, PdfBlueprint(), Paused);
 
         await Compose(vm);
         // STUDIO-57: the wizard waits on the fill question; nothing to drop here.
@@ -2599,7 +2617,12 @@ public partial class CreateTeamWizardTests
         var (vm, processes, _) = Build();
         FillStepOne(vm);
         ScriptFoldersStep(vm, processes, [("/factures", "input"), ("/rapports", "output")],
-            wizard => wizard.ConfirmFoldersCommand.Execute(null), PdfBlueprint("/rapports"), Paused);
+            wizard =>
+            {
+                // Inputs start inside the team: put this one back to unanswered.
+                wizard.FolderRows[0].IsInsideTeam = false;
+                wizard.ConfirmFoldersCommand.Execute(null);
+            }, PdfBlueprint("/rapports"), Paused);
 
         await Compose(vm);
 

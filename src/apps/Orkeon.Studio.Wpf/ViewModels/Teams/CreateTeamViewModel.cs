@@ -299,6 +299,19 @@ public sealed record MountRow(
     /// never dropped.
     /// </summary>
     public bool IsDroppable => !IsBound && !HasTitle;
+
+    /// <summary>
+    /// Whether the row shows its one « Retirer » (UX lot 01): a bound folder is retired, a bare
+    /// implied root is dropped — one button, <see cref="CreateTeamViewModel.RemoveMountCommand"/>
+    /// telling the two apart.
+    /// </summary>
+    public bool CanRemove => IsBound || IsDroppable;
+
+    /// <summary>
+    /// The last segment of <see cref="Folder"/> — what a Novice row shows in place of the full
+    /// path on this machine, which goes in its tooltip (UX lot 01).
+    /// </summary>
+    public string FolderName => MountLabels.FolderNameOf(Folder);
 }
 
 /// <summary>
@@ -525,6 +538,7 @@ public sealed partial class CreateTeamViewModel : ObservableObject
         PickAdoptProfileCommand = new RelayCommand(PickAdoptProfile);
         RemoveTeamMountCommand = new RelayCommand(RemoveTeamMount, IsStringParameter);
         RemoveDerivedMountCommand = new RelayCommand(DropDerivedMount, IsStringParameter);
+        RemoveMountCommand = new RelayCommand(RemoveMount, parameter => parameter is MountRow { CanRemove: true });
         RestoreDerivedMountsCommand = new RelayCommand(
             RestoreDerivedMounts,
             () => _droppedDerivedRoots.Count > 0);
@@ -765,6 +779,17 @@ public sealed partial class CreateTeamViewModel : ObservableObject
         // The ✕ of an unanswered row: a root the team addresses is dropped, with its banner.
         if (_droppedDerivedRoots.Add(virtualPath))
             RefreshMountSurfaces();
+    }
+
+    private void RemoveMount(object? parameter)
+    {
+        if (parameter is not MountRow row)
+            return;
+
+        if (row.IsBound)
+            RemoveTeamMount(row.MountString);
+        else if (row.IsDroppable)
+            DropDerivedMount(row.VirtualPath);
     }
 
     private void RestoreDerivedMounts()
@@ -1692,6 +1717,12 @@ public sealed partial class CreateTeamViewModel : ObservableObject
     /// nothing is bound to it at adoption afterwards, and the warning line says so.
     /// </summary>
     public RelayCommand RemoveDerivedMountCommand { get; }
+
+    /// <summary>
+    /// The one « Retirer » of a Composer row (UX lot 01); the parameter is the <see cref="MountRow"/>:
+    /// a bound folder is retired from the team, a bare implied root is dropped.
+    /// </summary>
+    public RelayCommand RemoveMountCommand { get; }
 
     /// <summary>Puts every dropped agent-addressed root back — the way out of a wrong ✕.</summary>
     public RelayCommand RestoreDerivedMountsCommand { get; }

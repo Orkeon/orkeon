@@ -118,7 +118,7 @@
                      shared rights pill, «Read only» neutral, every writing right sky. -->
                 <controls:Badge Margin="6,0,0,0" MaxWidth="160"
                                 HorizontalAlignment="Right" VerticalAlignment="Center"
-                                ToolTip="{Binding RightsLabel, Mode=OneWay}"
+                                ToolTip="{Binding RightsTip, Mode=OneWay}"
                                 Visibility="{Binding IsParsed, Converter={StaticResource BooleanToVisibility}}">
                   <controls:Badge.Style>
                     <Style TargetType="controls:Badge" BasedOn="{StaticResource {x:Type controls:Badge}}">

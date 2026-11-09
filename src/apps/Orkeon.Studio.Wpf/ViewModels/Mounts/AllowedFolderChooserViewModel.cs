@@ -40,6 +40,7 @@ public sealed class AllowedFolderRowViewModel : ObservableObject
             ? StudioStringKeys.RightsReadWrite
             : StudioStringKeys.RightsReadOnly];
         RightsBadge = MountRightsTokens.GetBadge(mount?.Rights ?? MountRights.ReadOnly, strings);
+        RightsTip = MountRightsTokens.GetTip(mount?.Rights ?? MountRights.ReadOnly, strings);
     }
 
     /// <summary>The declared entry, verbatim — what the team will record.</summary>
@@ -65,6 +66,9 @@ public sealed class AllowedFolderRowViewModel : ObservableObject
     /// width the disk path needed, which then read as <c>C:\Users\…\orkeon\…</c>.
     /// </summary>
     public string RightsBadge { get; }
+
+    /// <summary>The badge's tooltip: "can modify, never delete" for a no-delete entry, the full label otherwise.</summary>
+    public string RightsTip { get; }
 
     /// <summary>The last six characters of the entry's id (VFS-90); empty for an entry without one.</summary>
     public string ShortId { get; }

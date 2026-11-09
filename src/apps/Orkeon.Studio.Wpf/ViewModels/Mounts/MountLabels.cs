@@ -38,8 +38,42 @@ internal static class MountLabels
         return (
             strings.Format(
                 readWrite ? StudioStringKeys.TeamsMountRw : StudioStringKeys.TeamsMountRo,
-                mount.VirtualPath),
+                DisplayName(mount.VirtualPath, strings)),
             readWrite);
+    }
+
+    /// <summary>
+    /// The name a virtual path is shown under: the engine's fixed roots keep their alias but
+    /// say what they hold — "Results (/output)", "Workspace (/workspace)" — every other alias
+    /// is shown as it is spelled.
+    /// </summary>
+    public static string DisplayName(string virtualPath, IStudioStrings strings)
+    {
+        ArgumentNullException.ThrowIfNull(strings);
+
+        return virtualPath switch
+        {
+            "/output" => strings[StudioStringKeys.WizardOutputFolderLabel],
+            "/workspace" => strings[StudioStringKeys.WizardWorkspaceFolderLabel],
+            _ => virtualPath,
+        };
+    }
+
+    /// <summary>
+    /// The last segment of a folder on this machine — what a Novice screen shows, the full path
+    /// going in a tooltip. A drive root reads as its drive (<c>C:</c>); a path with nothing
+    /// left to cut comes back whole.
+    /// </summary>
+    public static string FolderNameOf(string? folder)
+    {
+        if (string.IsNullOrEmpty(folder))
+            return "";
+
+        // Both separators on every OS: a Windows path read on Linux (a test, a copied
+        // settings file) must cut the same way.
+        var trimmed = folder.TrimEnd('\\', '/');
+        var name = trimmed[(trimmed.LastIndexOfAny(['\\', '/']) + 1)..];
+        return name.Length > 0 ? name : folder;
     }
 
     /// <summary>

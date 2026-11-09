@@ -868,6 +868,11 @@ public sealed class TeamCardViewModel : ObservableObject
             if (IsArchived)
                 return _strings[StudioStringKeys.TeamsArchivedBadge];
 
+            // UX lot 01: a team that cannot launch says why first — the card's sentence and the
+            // « Allow » next to it tell which folder.
+            if (HasUndeclaredFolder)
+                return _strings[StudioStringKeys.TeamsNeedsFolderBadge];
+
             return IsScheduled || LastRun is not null ? ScheduleDisplay : _strings[StudioStringKeys.TeamsToTest];
         }
     }
@@ -884,6 +889,9 @@ public sealed class TeamCardViewModel : ObservableObject
         {
             if (IsArchived)
                 return "muted";
+
+            if (HasUndeclaredFolder)
+                return "warn";
 
             if (!IsScheduled)
                 return LastRun is null ? "warn" : "accent";

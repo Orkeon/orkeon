@@ -377,15 +377,22 @@
                 <!-- Folders: « /input » and its rights badge, then « Change » (F-02, R6; R12) -->
                 <controls:PropertyRow Margin="0,4,0,0"
                                       Label="{Binding [Studio.Teams.RowFolders], Source={x:Static services:I18n.Instance}}">
-                  <Grid>
-                    <ItemsControl ItemsSource="{Binding MountChips}" ItemTemplate="{StaticResource TeamFolderTemplate}" Focusable="False"
-                                  Visibility="{Binding HasMounts, Converter={StaticResource BooleanToVisibility}}">
-                      <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
-                    </ItemsControl>
-                    <TextBlock Foreground="{DynamicResource InkMutedBrush}"
-                               Text="{Binding [Studio.Teams.NoMountsValue], Source={x:Static services:I18n.Instance}}"
-                               Visibility="{Binding HasMounts, Converter={StaticResource InverseBooleanToVisibility}}"/>
-                  </Grid>
+                  <StackPanel>
+                    <Grid>
+                      <ItemsControl ItemsSource="{Binding MountChips}" ItemTemplate="{StaticResource TeamFolderTemplate}" Focusable="False"
+                                    Visibility="{Binding HasMounts, Converter={StaticResource BooleanToVisibility}}">
+                        <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                      </ItemsControl>
+                      <TextBlock Foreground="{DynamicResource InkMutedBrush}"
+                                 Text="{Binding [Studio.Teams.NoMountsValue], Source={x:Static services:I18n.Instance}}"
+                                 Visibility="{Binding HasMounts, Converter={StaticResource InverseBooleanToVisibility}}"/>
+                    </Grid>
+                    <!-- UX lot 01: why the team cannot launch, next to « Allow » — the same sentence
+                         as the Launch button's tooltip. -->
+                    <TextBlock Style="{StaticResource Hint}" TextWrapping="Wrap" Margin="0,4,0,0"
+                               Text="{Binding LaunchBlockedReason}"
+                               Visibility="{Binding HasUndeclaredFolder, Converter={StaticResource BooleanToVisibility}}"/>
+                  </StackPanel>
                   <controls:PropertyRow.Action>
                     <StackPanel Orientation="Horizontal"
                                 Visibility="{Binding IsArchived, Converter={StaticResource InverseBooleanToVisibility}}">

@@ -96,6 +96,11 @@ public partial class CreateTeamWizardTests
             // The tab opens itself, with the amber dot.
             Assert.Equal(CreateTeamViewModel.Step1FoldersTab, wizard.Step1TabIndex);
             Assert.Equal("Expected", wizard.FoldersTabState);
+            Assert.Equal("2 folders to confirm", wizard.FoldersTabSubtitle);
+            Assert.All(wizard.FolderRows, row => Assert.True(row.ShowsDeduced));
+
+            // An input put back to unanswered is a folder to choose, and the next wait point.
+            wizard.FolderRows[0].IsInsideTeam = false;
             Assert.Equal("2 folders · 1 to choose", wizard.FoldersTabSubtitle);
 
             // The assistant stops its indicator, names the action and holds Enter back.
@@ -166,11 +171,21 @@ public partial class CreateTeamWizardTests
             var input = wizard.FolderRows[0];
             var output = wizard.FolderRows[1];
 
+            // Every folder starts inside the team, deduced and not marked as modified.
             Assert.True(input.ShowsDeduced);
-            Assert.True(input.NeedsChoice);
-            Assert.True(input.IsOnMachine);
+            Assert.True(output.ShowsDeduced);
+            Assert.True(input.IsInsideTeam);
+            Assert.False(input.NeedsChoice);
+            Assert.False(input.IsOnMachine);
             Assert.False(output.NeedsChoice);
             Assert.False(output.IsOnMachine);
+            Assert.Equal("2 folders to confirm", wizard.FoldersTabSubtitle);
+            Assert.DoesNotContain("to choose", wizard.FoldersFooter, StringComparison.Ordinal);
+
+            // Back to unanswered, an input is a read folder to choose and names the footer.
+            input.IsInsideTeam = false;
+            Assert.True(input.NeedsChoice);
+            Assert.True(input.IsOnMachine);
             Assert.Equal("2 folders · 1 to choose", wizard.FoldersTabSubtitle);
             Assert.StartsWith("1 folder to choose. You can confirm now:", wizard.FoldersFooter, StringComparison.Ordinal);
             Assert.Contains("« inpdf »", wizard.FoldersFooter, StringComparison.Ordinal);

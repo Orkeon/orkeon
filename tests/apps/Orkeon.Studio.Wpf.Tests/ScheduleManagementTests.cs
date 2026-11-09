@@ -621,7 +621,10 @@ public sealed class ScheduleManagementTests : IDisposable
 
         Assert.Equal("/factures", card.UndeclaredFolder);
         Assert.False(card.LaunchCommand.CanExecute(null));
-        Assert.Equal("Allow the folder /factures first.", card.LaunchBlockedReason);
+        Assert.Equal("Allow the folder /factures first to launch the team.", card.LaunchBlockedReason);
+        // UX lot 01: the card's badge says why it cannot launch, in the warning tone.
+        Assert.Equal("Folder to allow", card.BadgeText);
+        Assert.Equal("warn", card.BadgeTone);
         card.AllowFolderCommand.Execute(null);
         Assert.Equal(1, opened);
 
@@ -630,6 +633,7 @@ public sealed class ScheduleManagementTests : IDisposable
         card = Assert.Single(teams.Teams);
         Assert.False(card.HasUndeclaredFolder);
         Assert.Null(card.LaunchBlockedReason);
+        Assert.NotEqual("Folder to allow", card.BadgeText);
         Assert.True(card.LaunchCommand.CanExecute(null));
     }
 }
