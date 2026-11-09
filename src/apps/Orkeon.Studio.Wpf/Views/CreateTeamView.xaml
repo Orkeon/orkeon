@@ -1171,7 +1171,7 @@
                     <!-- The agents (lot 3, lot 10): a 32 px avatar, the name, the key (Expert), what
                          it does on one line — whole in the tooltip — what it can do, folded after
                          five pills, and « Modify », which opens the agent editor (it keeps
-                         « Remove from the team »). -->
+                         « Remove from the team ») — in Novice, behind « Adjust the team… » (UX lot 12). -->
                     <ItemsControl ItemsSource="{Binding Agents}" Margin="0,10,0,0">
                       <ItemsControl.ItemTemplate>
                         <DataTemplate>
@@ -1183,12 +1183,21 @@
                                            Foreground="{DynamicResource AccentInkBrush}" HorizontalAlignment="Center" VerticalAlignment="Center"
                                            Text="{Binding Initial}"/>
                               </Border>
+                              <!-- UX lot 12 (016): one « Edit » per agent in Expert; in Novice once
+                                   « Adjust the team… » is pressed, rather than four identical buttons. -->
                               <Button DockPanel.Dock="Right" Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="32"
                                       VerticalAlignment="Top" Margin="12,0,0,0"
                                       Command="{Binding EditCommand}"
                                       ToolTip="{Binding [Studio.Create.Wait], Source={x:Static services:I18n.Instance}}"
                                       ToolTipService.ShowOnDisabled="True"
-                                      Content="{Binding [Studio.Create.Modify], Source={x:Static services:I18n.Instance}}" controls:ButtonIcon.Kind="pencil"/>
+                                      Content="{Binding [Studio.Create.Modify], Source={x:Static services:I18n.Instance}}" controls:ButtonIcon.Kind="pencil">
+                                <Button.Visibility>
+                                  <MultiBinding Converter="{StaticResource AnyTrueToVisibility}">
+                                    <Binding Path="DataContext.Mode.IsExpert" RelativeSource="{RelativeSource AncestorType=Window}"/>
+                                    <Binding Path="DataContext.IsAdjustingTeam" RelativeSource="{RelativeSource AncestorType=views:CreateTeamView}"/>
+                                  </MultiBinding>
+                                </Button.Visibility>
+                              </Button>
                               <StackPanel>
                                 <TextBlock Style="{StaticResource ObjectTitle}" FontSize="13.5">
                                   <Run Text="{Binding Name, Mode=OneWay}"/>
@@ -1236,12 +1245,26 @@
                         </DataTemplate>
                       </ItemsControl.ItemTemplate>
                     </ItemsControl>
-                    <!-- Add an agent (F-01) — actionable while the engine waits at its arbitration. -->
-                    <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="32" HorizontalAlignment="Left" Margin="0,8,0,0"
-                            Command="{Binding AddAgentCommand}"
-                            ToolTip="{Binding [Studio.Create.Wait], Source={x:Static services:I18n.Instance}}"
-                            ToolTipService.ShowOnDisabled="True"
-                            Content="{Binding [Studio.Create.AddAgent], Source={x:Static services:I18n.Instance}}" controls:ButtonIcon.Kind="plus"/>
+                    <WrapPanel Margin="0,8,0,0">
+                      <!-- UX lot 12 (016): the Novice's one « Adjust the team… », which brings out
+                           each agent's « Edit »; the Expert has them from the start. -->
+                      <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="32" Margin="0,0,8,0"
+                              Command="{Binding AdjustTeamCommand}"
+                              Content="{Binding [Studio.Create.AdjustTeam], Source={x:Static services:I18n.Instance}}" controls:ButtonIcon.Kind="pencil">
+                        <Button.Visibility>
+                          <MultiBinding Converter="{StaticResource AllTrueToVisibility}">
+                            <Binding Path="DataContext.Mode.IsNovice" RelativeSource="{RelativeSource AncestorType=Window}"/>
+                            <Binding Path="OffersAdjustTeam"/>
+                          </MultiBinding>
+                        </Button.Visibility>
+                      </Button>
+                      <!-- Add an agent (F-01) — actionable while the engine waits at its arbitration. -->
+                      <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="32"
+                              Command="{Binding AddAgentCommand}"
+                              ToolTip="{Binding [Studio.Create.Wait], Source={x:Static services:I18n.Instance}}"
+                              ToolTipService.ShowOnDisabled="True"
+                              Content="{Binding [Studio.Create.AddAgent], Source={x:Static services:I18n.Instance}}" controls:ButtonIcon.Kind="plus"/>
+                    </WrapPanel>
                   </StackPanel>
 
                   <!-- Expert, the YAML side: what the render wrote, where the session lives. -->

@@ -79,6 +79,53 @@ public sealed class EffectiveMountViewModel
 }
 
 /// <summary>
+/// One line of the « already in the settings » table (UX lot 12, capture 036 in Expert): the
+/// folder's name, its path and its rights in a word, the raw mount string — id, path, root,
+/// rights token — kept for the tooltip rather than shown as the line.
+/// </summary>
+public sealed class SettingsMountRowViewModel
+{
+    /// <summary>Reads one mount string of the settings; an unreadable one keeps its raw text as its name.</summary>
+    public SettingsMountRowViewModel(string raw, IStudioStrings? strings = null)
+    {
+        ArgumentNullException.ThrowIfNull(raw);
+
+        var culture = strings ?? EnglishStudioStrings.Instance;
+        Raw = raw;
+        if (MountDefinition.TryParse(raw, out var definition, out _))
+        {
+            Name = FolderNames.Of(definition.PhysicalPath);
+            PhysicalPath = definition.PhysicalPath;
+            VirtualPath = definition.VirtualPath;
+            Rights = MountRightsTokens.GetBadge(definition.Rights, culture);
+            RightsTip = MountRightsTokens.GetTip(definition.Rights, culture);
+        }
+        else
+        {
+            Name = raw;
+        }
+    }
+
+    /// <summary>The folder's name, the last segment of its path.</summary>
+    public string Name { get; }
+
+    /// <summary>The folder on this machine; empty when the string could not be read.</summary>
+    public string PhysicalPath { get; } = "";
+
+    /// <summary>Where the agents see it (<c>/docs</c>); empty when the string could not be read.</summary>
+    public string VirtualPath { get; } = "";
+
+    /// <summary>The rights in a word; empty when the string could not be read.</summary>
+    public string Rights { get; } = "";
+
+    /// <summary>The rights in a sentence, the badge's tooltip.</summary>
+    public string RightsTip { get; } = "";
+
+    /// <summary>The mount string as the settings hold it — the row's tooltip.</summary>
+    public string Raw { get; }
+}
+
+/// <summary>
 /// The launch-time mount panel of spec §5.2: the mounts already declared in the appsettings the
 /// launch will use, shown read-only, the per-launch mounts edited with the §4.5 form, and the
 /// effective table that spells out the by-root override.
@@ -112,6 +159,7 @@ public sealed class LaunchMountsViewModel : ObservableObject
         {
             OnPropertiesChanged(
                 nameof(OverrideExplanation), nameof(ExternalMountsExplanation), nameof(ExternalMountsWarning));
+            RebuildSettingsMountRows();
             RecomputeEffectiveMounts();
         };
 
@@ -126,6 +174,12 @@ public sealed class LaunchMountsViewModel : ObservableObject
     /// not editable here, and what a team entry is deduplicated against.
     /// </summary>
     public ObservableCollection<string> SettingsMounts { get; } = [];
+
+    /// <summary>
+    /// <see cref="SettingsMounts"/> as the expert reads them (UX lot 12): name, folder and
+    /// rights on the line, the raw string in the tooltip.
+    /// </summary>
+    public ObservableCollection<SettingsMountRowViewModel> SettingsMountRows { get; } = [];
 
     /// <summary>
     /// The adopted team's mounts as they stand for this machine (effective strings — what the
@@ -159,14 +213,24 @@ public sealed class LaunchMountsViewModel : ObservableObject
     /// <summary>The security warning shown next to the <c>--allow-external-mounts</c> checkbox.</summary>
     public string ExternalMountsWarning => _strings[StudioStringKeys.MountsExternalWarning];
 
-    /// <summary>Whether to pass <c>--allow-external-mounts</c>.</summary>
+    /// <summary>
+    /// Whether the security warning stands (UX lot 12, 036 E): the switch is set by the team's
+    /// own folders when they reach outside it, so the launch may depend on it — the warning is
+    /// then an alert, not a hint in small print.
+    /// </summary>
+    public bool ShowsExternalMountsWarning => _allowExternalMounts;
+
+    /// <summary>Whether to pass <c>--allow-external-mounts</c>; the warning shows while it is on (UX lot 12).</summary>
     public bool AllowExternalMounts
     {
         get => _allowExternalMounts;
         set
         {
-            if (SetProperty(ref _allowExternalMounts, value))
-                Changed?.Invoke(this, EventArgs.Empty);
+            if (!SetProperty(ref _allowExternalMounts, value))
+                return;
+
+            OnPropertyChanged(nameof(ShowsExternalMountsWarning));
+            Changed?.Invoke(this, EventArgs.Empty);
         }
     }
 
@@ -212,7 +276,15 @@ public sealed class LaunchMountsViewModel : ObservableObject
         foreach (var mount in mounts)
             SettingsMounts.Add(mount);
 
+        RebuildSettingsMountRows();
         RecomputeEffectiveMounts();
+    }
+
+    private void RebuildSettingsMountRows()
+    {
+        SettingsMountRows.Clear();
+        foreach (var mount in SettingsMounts)
+            SettingsMountRows.Add(new SettingsMountRowViewModel(mount, _strings));
     }
 
     /// <summary>

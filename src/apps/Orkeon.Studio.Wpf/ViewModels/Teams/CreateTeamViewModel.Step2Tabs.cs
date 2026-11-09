@@ -35,6 +35,7 @@ public sealed partial class CreateTeamViewModel
     private int _step2TabIndex;
     private bool _showAllTeamTools;
     private bool _isYamlView;
+    private bool _isAdjustingTeam;
 
     /// <summary>The tab on screen in step 2.</summary>
     public int Step2TabIndex
@@ -54,6 +55,26 @@ public sealed partial class CreateTeamViewModel
 
     /// <summary>« ← Back to the team », the composition pane's footer.</summary>
     public RelayCommand BackToTeamCommand { get; private set; } = null!;
+
+    /// <summary>
+    /// UX lot 12 (016): the Novice's one « Adjust the team… » under the agents — it brings out
+    /// each card's « Edit », which the Expert always sees. A new creation folds them again.
+    /// </summary>
+    public RelayCommand AdjustTeamCommand { get; private set; } = null!;
+
+    /// <summary>Whether the Novice asked to adjust the team: each agent card shows its « Edit ».</summary>
+    public bool IsAdjustingTeam
+    {
+        get => _isAdjustingTeam;
+        private set
+        {
+            if (SetProperty(ref _isAdjustingTeam, value))
+                OnPropertyChanged(nameof(OffersAdjustTeam));
+        }
+    }
+
+    /// <summary>Whether « Adjust the team… » stands: not yet pressed (the view keeps it to the Novice).</summary>
+    public bool OffersAdjustTeam => !_isAdjustingTeam;
 
     /// <summary>The Proposal | YAML switch (Expert): the proposal side.</summary>
     public RelayCommand ShowProposalViewCommand { get; private set; } = null!;
@@ -241,6 +262,7 @@ public sealed partial class CreateTeamViewModel
         SeeNotesCommand = new RelayCommand(() => Step2TabIndex = Step2NotesTab);
         SeeCompositionCommand = new RelayCommand(() => Step2TabIndex = Step2CompositionTab);
         BackToTeamCommand = new RelayCommand(() => Step2TabIndex = Step2TeamTab);
+        AdjustTeamCommand = new RelayCommand(() => IsAdjustingTeam = true);
         ShowProposalViewCommand = new RelayCommand(() => IsYamlView = false);
         ShowYamlViewCommand = new RelayCommand(() => IsYamlView = true);
         ShowAllTeamToolsCommand = new RelayCommand(() =>
@@ -256,6 +278,7 @@ public sealed partial class CreateTeamViewModel
     {
         Step2TabIndex = Step2TeamTab;
         IsYamlView = false;
+        IsAdjustingTeam = false;
         _showAllTeamTools = false;
         RefreshStep2Tabs();
     }

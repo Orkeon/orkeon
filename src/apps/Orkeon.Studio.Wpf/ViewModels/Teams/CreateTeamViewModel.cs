@@ -3753,6 +3753,11 @@ public sealed partial class CreateTeamViewModel : ObservableObject
     /// unless another shown name starts with the same one: it then takes two letters — the
     /// first two words' initials («Data Analyst» → «DA»), else its first two letters
     /// («Writer» → «Wr», «Reviewer» → «Re»). An empty name stays «?».
+    /// <para>
+    /// UX lot 12 (016): two pairs an accent or a case apart («Ré» / «Re» for «Rédacteur» and
+    /// «Relecteur») read as one; such names take, after their capital, the first letter where
+    /// they differ («Rd» / «Rl»).
+    /// </para>
     /// </summary>
     public static IReadOnlyList<string> AvatarInitials(IReadOnlyList<string> names)
     {
@@ -3764,7 +3769,45 @@ public sealed partial class CreateTeamViewModel : ObservableObject
             .Where(group => group.Count() > 1)
             .Select(group => group.Key)
             .ToHashSet(StringComparer.Ordinal);
-        return [.. names.Select((name, index) => shared.Contains(single[index]) ? TwoLetters(name, single[index]) : single[index])];
+        var initials = names.Select((name, index) => shared.Contains(single[index]) ? TwoLetters(name, single[index]) : single[index]).ToList();
+
+        // The pairs that read alike: same letters once accents and case are set aside.
+        var lookAlikes = initials
+            .Select((initial, index) => (Initial: initial, Index: index))
+            .Where(entry => entry.Initial.Length == 2)
+            .GroupBy(entry => entry.Initial, LookAlike)
+            .Where(group => group.Count() > 1);
+        foreach (var group in lookAlikes)
+        {
+            var indexes = group.Select(entry => entry.Index).ToList();
+            foreach (var index in indexes)
+            {
+                var others = indexes.Where(other => other != index).Select(other => names[other]).ToList();
+                if (FirstDistinctLetter(names[index], others) is { } letter)
+                    initials[index] = string.Concat(single[index], letter.ToString());
+            }
+        }
+
+        return initials;
+    }
+
+    // Accents and case set aside: «Ré» and «re» compare equal. A comparison, not a fold.
+    private static readonly StringComparer LookAlike =
+        StringComparer.Create(CultureInfo.InvariantCulture, CompareOptions.IgnoreNonSpace | CompareOptions.IgnoreCase);
+
+    // The name's first letter, after its capital, where it differs from every other name.
+    private static char? FirstDistinctLetter(string name, IReadOnlyList<string> others)
+    {
+        for (var i = 1; i < name.Length; i++)
+        {
+            if (!char.IsLetter(name[i]))
+                continue;
+            var letter = name[i].ToString();
+            if (others.All(other => i >= other.Length || !LookAlike.Equals(other[i].ToString(), letter)))
+                return char.ToLowerInvariant(name[i]);
+        }
+
+        return null;
     }
 
     private static string TwoLetters(string name, string single)

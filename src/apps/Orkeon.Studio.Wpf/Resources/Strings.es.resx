@@ -2413,6 +2413,9 @@
   <data name="Studio.Create.AddAgent" xml:space="preserve">
     <value>Añadir un agente</value>
   </data>
+  <data name="Studio.Create.AdjustTeam" xml:space="preserve">
+    <value>Ajustar el equipo…</value>
+  </data>
   <data name="Studio.Teams.MountRo" xml:space="preserve">
     <value>{0} · lectura</value>
   </data>

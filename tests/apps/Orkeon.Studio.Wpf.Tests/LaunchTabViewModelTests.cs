@@ -1,3 +1,4 @@
+using Orkeon.Studio.Core.FileSystem;
 using Orkeon.Studio.Core.History;
 using Orkeon.Studio.Core.Launch;
 using Orkeon.Studio.Core.Process;
@@ -253,6 +254,37 @@ public sealed class LaunchMountsViewModelTests
         };
 
         return mounts;
+    }
+
+    [Fact]
+    public void Should_ReadEachSettingsMountAsANamePathAndRights_With_TheRawStringKept()
+    {
+        // UX lot 12 (036 E): the expert reads a folder, not « 01K6…|C:\…:/docs:ro ».
+        var mounts = new LaunchMountsViewModel(new FakeDirectoryProbe("/data/docs"));
+
+        mounts.SetSettingsMounts(["/data/docs:/docs:ro", "not a mount"]);
+
+        Assert.Equal(2, mounts.SettingsMountRows.Count);
+        var row = mounts.SettingsMountRows[0];
+        Assert.Equal("docs", row.Name);
+        Assert.Equal("/data/docs", row.PhysicalPath);
+        Assert.Equal("/docs", row.VirtualPath);
+        Assert.Equal(MountRightsTokens.GetBadge(MountRights.ReadOnly), row.Rights);
+        Assert.Equal("/data/docs:/docs:ro", row.Raw);
+        Assert.Equal("not a mount", mounts.SettingsMountRows[1].Name);
+        Assert.Equal("", mounts.SettingsMountRows[1].Rights);
+    }
+
+    [Fact]
+    public void Should_RaiseTheExternalMountsWarning_OnlyWhileTheSwitchIsOn()
+    {
+        // UX lot 12 (036 E): an alert while the switch is on, nothing while it is off.
+        var mounts = new LaunchMountsViewModel(new FakeDirectoryProbe("/a"));
+        Assert.False(mounts.ShowsExternalMountsWarning);
+
+        mounts.AllowExternalMounts = true;
+
+        Assert.True(mounts.ShowsExternalMountsWarning);
     }
 
     [Fact]

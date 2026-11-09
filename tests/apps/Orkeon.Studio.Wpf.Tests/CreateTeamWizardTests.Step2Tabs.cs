@@ -115,4 +115,25 @@ public partial class CreateTeamWizardTests
         Assert.Equal(5, card.VisibleTools.Count);
         Assert.False(card.HasHiddenTools);
     }
+
+    [Fact]
+    public async Task Adjust_the_team_brings_out_each_agents_edit_until_a_new_creation()
+    {
+        // UX lot 12 (016): the Novice sees one « Adjust the team… » rather than one « Edit » per agent.
+        var (vm, _) = ComposedAndPaused();
+        await Compose(vm);
+
+        Assert.False(vm.IsAdjustingTeam);
+        Assert.True(vm.OffersAdjustTeam);
+
+        vm.AdjustTeamCommand.Execute(null);
+
+        Assert.True(vm.IsAdjustingTeam);
+        Assert.False(vm.OffersAdjustTeam);
+
+        vm.RestartCommand.Execute(null);
+
+        Assert.False(vm.IsAdjustingTeam);
+        Assert.True(vm.OffersAdjustTeam);
+    }
 }

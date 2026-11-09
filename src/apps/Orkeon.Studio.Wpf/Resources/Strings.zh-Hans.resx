@@ -2413,6 +2413,9 @@
   <data name="Studio.Create.AddAgent" xml:space="preserve">
     <value>添加智能体</value>
   </data>
+  <data name="Studio.Create.AdjustTeam" xml:space="preserve">
+    <value>调整团队…</value>
+  </data>
   <data name="Studio.Teams.MountRo" xml:space="preserve">
     <value>{0} · 读取</value>
   </data>

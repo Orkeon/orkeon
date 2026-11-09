@@ -108,6 +108,24 @@ public sealed class AllTrueToVisibilityConverter : IMultiValueConverter
         throw new NotSupportedException();
 }
 
+/// <summary>
+/// Any bound value true → Visible, none → Collapsed. An agent card's « Edit » is the case it
+/// exists for (UX lot 12): always in Expert, in Novice once « Adjust the team… » is pressed —
+/// two conditions that live on different objects.
+/// </summary>
+public sealed class AnyTrueToVisibilityConverter : IMultiValueConverter
+{
+    /// <inheritdoc />
+    public object Convert(object?[] values, Type targetType, object? parameter, CultureInfo culture) =>
+        values is not null && values.Any(v => v is true)
+            ? Visibility.Visible
+            : Visibility.Collapsed;
+
+    /// <inheritdoc />
+    public object[] ConvertBack(object? value, Type[] targetTypes, object? parameter, CultureInfo culture) =>
+        throw new NotSupportedException();
+}
+
 /// <summary>Boolean inverter — a null (an unset IsChecked) reads as false, so it negates to true.</summary>
 public sealed class NegateConverter : IValueConverter
 {

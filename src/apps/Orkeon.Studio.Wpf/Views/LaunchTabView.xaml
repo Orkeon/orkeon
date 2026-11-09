@@ -519,10 +519,21 @@
                 <StackPanel Margin="0,14,0,0" Visibility="{Binding IsExpertMode, Converter={StaticResource BooleanToVisibility}}">
                   <TextBlock Style="{StaticResource Subhead}"
                              Text="{Binding [Studio.Run.SettingsMountsTitle], Source={x:Static services:I18n.Instance}}"/>
-                  <ItemsControl ItemsSource="{Binding Mounts.SettingsMounts}" Margin="0,7,0,0">
+                  <!-- UX lot 12 (036 E): one readable line per folder — name, path, rights in a
+                       word — the raw string (id|path:root:rights) in the line's tooltip. -->
+                  <ItemsControl ItemsSource="{Binding Mounts.SettingsMountRows}" Margin="0,7,0,0">
                     <ItemsControl.ItemTemplate>
                       <DataTemplate>
-                        <TextBlock Style="{StaticResource MonoText}" FontSize="13" Margin="0,1" Text="{Binding}"/>
+                        <DockPanel Margin="0,2" Background="Transparent" ToolTip="{Binding Raw}">
+                          <TextBlock DockPanel.Dock="Left" Width="160" FontSize="13" FontWeight="SemiBold"
+                                     Foreground="{DynamicResource InkBrush}" TextTrimming="CharacterEllipsis"
+                                     Text="{Binding Name}"/>
+                          <TextBlock DockPanel.Dock="Right" FontSize="12.5" Margin="12,0,0,0"
+                                     Foreground="{DynamicResource InkMutedBrush}"
+                                     Text="{Binding Rights}" ToolTip="{Binding RightsTip}"/>
+                          <controls:MiddleEllipsisText Style="{StaticResource PathText}" FontSize="12.5"
+                                     HorizontalAlignment="Left" Text="{Binding PhysicalPath}"/>
+                        </DockPanel>
                       </DataTemplate>
                     </ItemsControl.ItemTemplate>
                   </ItemsControl>
@@ -530,10 +541,17 @@
                   <CheckBox Margin="0,12,0,0"
                             IsChecked="{Binding Mounts.AllowExternalMounts}" ToolTip="--allow-external-mounts"
                             Content="{Binding [Studio.Run.AllowExternal], Source={x:Static services:I18n.Instance}}"/>
-                  <TextBlock Style="{StaticResource Hint}" Foreground="{DynamicResource WarningInkBrush}"
-                             Text="{Binding Mounts.ExternalMountsWarning, Mode=OneWay}"/>
+                  <!-- UX lot 12 (036 E): the switch follows the team's folders (a launch may need it),
+                       so while it is on its security warning is an alert, not small print. -->
+                  <controls:Alert Tone="Warning" Margin="0,8,0,0"
+                                  Message="{Binding Mounts.ExternalMountsWarning, Mode=OneWay}"
+                                  Visibility="{Binding Mounts.ShowsExternalMountsWarning, Converter={StaticResource BooleanToVisibility}}"/>
 
-                  <TextBlock Style="{StaticResource Hint}" Margin="0,7,0,0" Text="{Binding Mounts.OverrideExplanation, Mode=OneWay}"/>
+                  <!-- UX lot 12 (036 E): the mount-id paragraph is a technical detail, folded. -->
+                  <controls:Disclosure Margin="0,7,0,0" IsExpanded="False"
+                                       Header="{Binding [Studio.Common.TechnicalDetails], Source={x:Static services:I18n.Instance}}">
+                    <TextBlock Style="{StaticResource Hint}" Margin="0,4,0,4" Text="{Binding Mounts.OverrideExplanation, Mode=OneWay}"/>
+                  </controls:Disclosure>
                   <TextBlock Style="{StaticResource Hint}" Text="{Binding Mounts.Summary}"/>
                   <!-- effective mounts: plain rows (the DataGrid's stock chrome broke T-04) -->
                   <ScrollViewer MaxHeight="140" VerticalScrollBarVisibility="Auto" Margin="0,7,0,0">

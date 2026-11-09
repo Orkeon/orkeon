@@ -874,6 +874,7 @@
   <data name="Studio.Create.AgentCan" xml:space="preserve"><value>Peut :</value></data>
   <data name="Studio.Create.Modify" xml:space="preserve"><value>Modifier</value></data>
   <data name="Studio.Create.AddAgent" xml:space="preserve"><value>Ajouter un agent</value></data>
+  <data name="Studio.Create.AdjustTeam" xml:space="preserve"><value>Ajuster l'équipe…</value></data>
   <data name="Studio.Teams.MountRo" xml:space="preserve"><value>{0} · lecture</value></data>
   <data name="Studio.Teams.MountRw" xml:space="preserve"><value>{0} · lecture, écriture</value></data>
   <data name="Studio.Teams.MountUnreadable" xml:space="preserve"><value>dossier illisible</value></data>
