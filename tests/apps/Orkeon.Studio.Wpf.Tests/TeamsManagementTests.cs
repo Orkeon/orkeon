@@ -105,6 +105,7 @@ public sealed class TeamsManagementTests
 
             card.AskDeleteCommand.Execute(null);
             Assert.Equal(EnglishStudioStrings.Instance[StudioStringKeys.TeamsDeleteAskArchive], card.DeleteQuestion);
+            Assert.False(card.HasDeleteConsequence);
             Assert.True(card.CanDeleteSessionToo);
             card.DeleteSessionToo = true;
             await card.ConfirmDeleteCommand.ExecuteAsync();
@@ -181,7 +182,10 @@ public sealed class TeamsManagementTests
             var card = Assert.Single(teams.Teams);
 
             card.AskDeleteCommand.Execute(null);
-            Assert.Equal(EnglishStudioStrings.Instance[StudioStringKeys.TeamsDeleteConfirm], card.DeleteQuestion);
+            // UX lot 08: the question names the team, and says what goes and what stays.
+            Assert.Equal("Delete the team “Veille”?", card.DeleteQuestion);
+            Assert.True(card.HasDeleteConsequence);
+            Assert.Equal(EnglishStudioStrings.Instance[StudioStringKeys.TeamsDeleteConsequence], card.DeleteConsequence);
             await card.ConfirmDeleteCommand.ExecuteAsync();
 
             Assert.False(Directory.Exists(team));
@@ -222,9 +226,13 @@ public sealed class TeamsManagementTests
             var teams = new TeamsViewModel(new TeamsDependencies { TeamsRoot = root, LoadSessions = () => [.. sessions] });
             var session = Assert.Single(teams.InProgress);
             Assert.True(teams.HasInProgress);
+            // UX lot 08: the drafts are one fold, « Drafts · 1 », closed until a confirmation opens it.
+            Assert.Equal("Drafts · 1", teams.InProgressHeader);
+            Assert.False(teams.IsDraftsExpanded);
 
             session.AskDeleteCommand.Execute(null);
             Assert.True(session.IsConfirmingDelete);
+            Assert.True(teams.IsDraftsExpanded);
 
             // The list re-reads from the loader, so the loader has to forget it too —
             // exactly what ForgeSessionCatalog.List would do once the folder is gone.

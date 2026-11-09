@@ -17,7 +17,8 @@ namespace Orkeon.Studio.Wpf.ViewModels.Launch;
 /// <param name="RightsLabel">« Read » or « Read and write ».</param>
 /// <param name="IsWritable">Whether the agents may write there.</param>
 /// <param name="PhysicalPath">The folder on this machine; empty when the entry names none.</param>
-public sealed record RunFolderRow(string VirtualPath, string RightsLabel, bool IsWritable, string PhysicalPath)
+/// <param name="IsUndeclared">Whether no setting of this machine allows the folder: the run is refused on it.</param>
+public sealed record RunFolderRow(string VirtualPath, string RightsLabel, bool IsWritable, string PhysicalPath, bool IsUndeclared = false)
 {
     /// <summary>The folder's own name, what the novice reads instead of the path (UX lot 02).</summary>
     public string FolderName => FolderNames.Of(PhysicalPath);
@@ -152,7 +153,9 @@ public sealed partial class LaunchTabViewModel
             var parts = new List<string>(3);
             if (TeamMetaLine is { Length: > 0 } meta)
                 parts.Add(meta);
-            parts.Add(RunLlmLabelOf(RunLlmChoice));
+            var llmLabel = RunLlmLabelOf(RunLlmChoice);
+            if (!parts.Exists(part => part.Contains(llmLabel, StringComparison.Ordinal)))
+                parts.Add(llmLabel);
             if (Target.KindDisplay is { Length: > 0 } kind)
                 parts.Add(kind);
             return parts.Count > 0 ? string.Join(" · ", parts) : null;
@@ -195,6 +198,7 @@ public sealed partial class LaunchTabViewModel
         get
         {
             var rows = new List<RunFolderRow>();
+            var undeclared = UndeclaredTeamFolders;
             var definitions = Mounts.ResolvedTeamMounts
                 .Select(mount => MountDefinition.TryParse(mount.Effective, out var parsed, out _) ? parsed : null)
                 .OfType<MountDefinition>();
@@ -205,7 +209,8 @@ public sealed partial class LaunchTabViewModel
                     definition.VirtualPath,
                     _strings[writable ? StudioStringKeys.RunRightsReadWrite : StudioStringKeys.RunRightsRead],
                     writable,
-                    definition.PhysicalPath ?? string.Empty));
+                    definition.PhysicalPath ?? string.Empty,
+                    undeclared.Contains(definition.VirtualPath, StringComparer.Ordinal)));
             }
 
             return rows;

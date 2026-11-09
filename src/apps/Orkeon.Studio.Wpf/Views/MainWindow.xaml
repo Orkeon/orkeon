@@ -312,9 +312,19 @@
               <DockPanel LastChildFill="False">
                 <controls:LucideIcon DockPanel.Dock="Left" Kind="brain-circuit" Size="14" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}"/>
                 <TextBlock DockPanel.Dock="Left" Margin="10,0,0,0" Text="{Binding [Studio.Shell.NavTeams], Source={x:Static services:I18n.Instance}}"/>
-                <TextBlock DockPanel.Dock="Right" FontFamily="{StaticResource MonoFont}" FontSize="13"
+                <TextBlock DockPanel.Dock="Right" FontSize="13"
                            Foreground="{DynamicResource InkFaintBrush}" VerticalAlignment="Center"
-                           Text="{Binding DataContext.Teams.ActiveCount, RelativeSource={RelativeSource AncestorType=Window}}"/>
+                           Text="{Binding DataContext.Teams.ActiveCount, RelativeSource={RelativeSource AncestorType=Window}}">
+                  <TextBlock.Style>
+                    <Style TargetType="TextBlock">
+                      <Style.Triggers>
+                        <DataTrigger Binding="{Binding DataContext.Teams.ActiveCount, RelativeSource={RelativeSource AncestorType=Window}}" Value="0">
+                          <Setter Property="Visibility" Value="Collapsed"/>
+                        </DataTrigger>
+                      </Style.Triggers>
+                    </Style>
+                  </TextBlock.Style>
+                </TextBlock>
               </DockPanel>
             </RadioButton>
             <RadioButton x:Name="NavImport" GroupName="Nav" Style="{StaticResource NavItem}">

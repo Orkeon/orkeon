@@ -156,6 +156,7 @@
   <data name="Studio.Run.BadgeIdle" xml:space="preserve"><value>en attente</value></data>
   <data name="Studio.Run.BadgeRunning" xml:space="preserve"><value>En cours</value></data>
   <data name="Studio.Run.BadgeDone" xml:space="preserve"><value>Réussie</value></data>
+  <data name="Studio.Run.BadgeDoneSkipped" xml:space="preserve"><value>Réussie · {0} {0:plural:agent non exécuté|agents non exécutés}</value></data>
   <data name="Studio.Run.BadgeFailed" xml:space="preserve"><value>Échouée</value></data>
   <data name="Studio.Run.BtnLaunch" xml:space="preserve"><value>Lancer maintenant</value></data>
   <data name="Studio.Run.BtnRunning" xml:space="preserve"><value>En cours…</value></data>
@@ -186,7 +187,7 @@
   <data name="Studio.Run.ClearLog" xml:space="preserve"><value>Vider le journal</value></data>
 
   <data name="Studio.History.Title" xml:space="preserve"><value>Historique</value></data>
-  <data name="Studio.History.Sub" xml:space="preserve"><value>Chaque exécution est enregistrée localement et rejouable à l'identique.</value></data>
+  <data name="Studio.History.Sub" xml:space="preserve"><value>Chaque lancement réel est enregistré ici. Vous pouvez le relancer avec les mêmes réglages.</value></data>
   <data name="Studio.History.Replay" xml:space="preserve"><value>Préparer le rejeu</value></data>
 
   <!-- STUDIO-11: strings fabricated below the view layer (Core formatters via IStudioStrings) -->
@@ -507,7 +508,7 @@
 <data name="Studio.Teams.Launch" xml:space="preserve"><value>Lancer</value></data>
 <data name="Studio.Teams.Duplicate" xml:space="preserve"><value>Dupliquer</value></data>
 <data name="Studio.Teams.Delete" xml:space="preserve"><value>Supprimer</value></data>
-<data name="Studio.Teams.InProgress" xml:space="preserve"><value>CRÉATIONS EN COURS</value></data>
+  <data name="Studio.Teams.InProgressCount" xml:space="preserve"><value>Brouillons · {0}</value></data>
 <data name="Studio.Teams.Resume" xml:space="preserve"><value>Reprendre</value></data>
 <data name="Studio.Create.BriefConsigne" xml:space="preserve"><value>Consigne permanente pour tous les agents : {0}</value></data>
 <data name="Studio.Create.AgentFallback" xml:space="preserve"><value>Agent</value></data>
@@ -595,6 +596,7 @@
   <data name="Studio.History.OutcomeCancelled" xml:space="preserve"><value>Interrompue avant la fin.</value></data>
   <data name="Studio.History.OutcomeNotStarted" xml:space="preserve"><value>N'a jamais démarré.</value></data>
   <data name="Studio.History.Result" xml:space="preserve"><value>Ouvrir le résultat</value></data>
+  <data name="Studio.History.ShowError" xml:space="preserve"><value>Voir l'erreur</value></data>
   <data name="Studio.Diagnostics.Check.appsettings" xml:space="preserve"><value>Les réglages sont lisibles</value></data>
   <data name="Studio.Diagnostics.Check.dotnet-runtime" xml:space="preserve"><value>L'environnement .NET</value></data>
   <data name="Studio.Diagnostics.Check.esbuild" xml:space="preserve"><value>Le compilateur de scripts (esbuild)</value></data>
@@ -627,6 +629,8 @@
   <data name="Studio.Import.DropHint" xml:space="preserve"><value>…ou déposez ici un dossier / un fichier .yaml ou .ork.ts</value></data>
   <data name="Studio.Import.ReportTitle" xml:space="preserve"><value>RAPPORT DE RECONNAISSANCE</value></data>
   <data name="Studio.Import.TestFirst" xml:space="preserve"><value>Essayer d'abord</value></data>
+  <data name="Studio.Import.DetectHint" xml:space="preserve"><value>Indiquez d'abord un fichier ou un dossier d'équipe.</value></data>
+  <data name="Studio.Import.PathPlaceholder" xml:space="preserve"><value>Exemple : C:\Equipes\veille\team.yaml</value></data>
   <data name="Studio.Run.Browse" xml:space="preserve"><value>Parcourir…</value></data>
   <data name="Studio.Settings.UsedBy" xml:space="preserve"><value>Utilisé par</value></data>
   <data name="Studio.Settings.ModelPlaceholder" xml:space="preserve"><value>— à configurer —</value></data>
@@ -914,6 +918,8 @@
   <data name="Studio.Teams.DeleteConfirm" xml:space="preserve">
     <value>Supprimer cette équipe ?</value>
   </data>
+  <data name="Studio.Teams.DeleteConfirmNamed" xml:space="preserve"><value>Supprimer l'équipe “{0}” ?</value></data>
+  <data name="Studio.Teams.DeleteConsequence" xml:space="preserve"><value>Son dossier et son historique sont effacés. Les dossiers que vous avez autorisés restent en place.</value></data>
   <data name="Studio.Teams.SessionDeleteConfirm" xml:space="preserve">
     <value>Supprimer ce brouillon ?</value>
   </data>
@@ -928,9 +934,6 @@
   </data>
   <data name="Studio.Teams.Import" xml:space="preserve">
     <value>Importer une équipe</value>
-  </data>
-  <data name="Studio.Teams.NoSessions" xml:space="preserve">
-    <value>Une création interrompue réapparaîtra ici.</value>
   </data>
   <data name="Studio.Create.DraftStepPattern" xml:space="preserve">
     <value>Étape {0} sur {1} · {2}</value>
@@ -1244,6 +1247,7 @@
   <data name="Studio.Run.ChooseTeam" xml:space="preserve">
     <value>Choisir une équipe</value>
   </data>
+  <data name="Studio.Run.PickTeamPrompt" xml:space="preserve"><value>Choisissez une équipe…</value></data>
   <data name="Studio.Diagnostics.StatusOk" xml:space="preserve">
     <value>En place.</value>
   </data>
@@ -1425,8 +1429,10 @@
     <value>Archives · {0}</value>
   </data>
   <data name="Studio.Teams.ArchivesHint" xml:space="preserve">
-    <value>Les équipes archivées quittent la liste, le sélecteur de l'écran Lancer et le solde ; leurs dossiers, leurs sessions et leur historique restent en place. « Restaurer » remet une équipe parmi les autres.</value>
+    <value>Archiver range l'équipe hors de la liste sans rien supprimer. Restaurer la fait revenir.</value>
   </data>
+  <data name="Studio.Teams.ArchivesTitle" xml:space="preserve"><value>Équipes archivées</value></data>
+  <data name="Studio.Teams.ArchivesBack" xml:space="preserve"><value>← Retour à mes équipes</value></data>
   <data name="Studio.Teams.Archive" xml:space="preserve">
     <value>Archiver</value>
   </data>
@@ -1961,6 +1967,7 @@
   <data name="Studio.Teams.LlmSaved" xml:space="preserve"><value>{0} tourne désormais sur : {1}.</value></data>
   <data name="Studio.Teams.ConfigureModel" xml:space="preserve"><value>Configurer un modèle</value></data>
   <data name="Studio.Run.LlmForThisRun" xml:space="preserve"><value>Cette exécution : {0}</value></data>
+  <data name="Studio.Run.LlmDefaultEntry" xml:space="preserve"><value>Par défaut ({0})</value></data>
   <data name="Studio.Run.RememberLlmForTeam" xml:space="preserve"><value>Mémoriser pour cette équipe</value></data>
   <data name="Studio.Settings.UsedByDefault" xml:space="preserve"><value>{0} {0:plural:équipe|équipes}, dont {1} par défaut</value></data>
   <data name="Studio.Settings.TabModelCount" xml:space="preserve">
@@ -2055,8 +2062,8 @@
   <data name="Studio.Teams.RowSchedule" xml:space="preserve"><value>Programmation</value></data>
   <data name="Studio.Teams.ChangeShort" xml:space="preserve"><value>Changer</value></data>
   <data name="Studio.Teams.NoMountsValue" xml:space="preserve"><value>Aucun dossier</value></data>
-  <data name="Studio.Teams.RefusedRuns" xml:space="preserve"><value>{0} {0:plural:planification sera refusée|planifications seront refusées} au prochain passage : le fichier de réglages enregistré ne contient pas encore {1}.</value></data>
-  <data name="Studio.Teams.SaveSettings" xml:space="preserve"><value>Enregistrer les réglages</value></data>
+  <data name="Studio.Teams.RefusedRuns" xml:space="preserve"><value>{0} {0:plural:équipe planifiée ne pourra|équipes planifiées ne pourront} pas démarrer au prochain passage : leurs réglages (modèle ou dossiers) ne sont pas enregistrés.</value></data>
+  <data name="Studio.Teams.SaveSettings" xml:space="preserve"><value>Corriger maintenant</value></data>
   <data name="Studio.Teams.ImportShort" xml:space="preserve"><value>Importer</value></data>
   <data name="Studio.Teams.ScheduleManualValue" xml:space="preserve"><value>À la demande</value></data>
   <data name="Studio.Teams.LaunchNeedsFolder" xml:space="preserve"><value>Autorisez d'abord le dossier {0} pour lancer l'équipe.</value></data>
@@ -2263,6 +2270,8 @@
   <data name="Studio.Run.BlockedFolders" xml:space="preserve">
     <value>Un dossier de l'équipe n'est pas autorisé sur cette machine.</value>
   </data>
+  <data name="Studio.Run.FolderNotAllowed" xml:space="preserve"><value>Non autorisé</value></data>
+  <data name="Studio.Run.AllowThisFolder" xml:space="preserve"><value>Autoriser ce dossier</value></data>
   <data name="Studio.Run.BlockedArchived" xml:space="preserve">
     <value>Cette équipe est archivée : restaurez-la pour la lancer.</value>
   </data>
@@ -2569,9 +2578,6 @@
   <!-- hrm:L05 end -->
 
   <!-- hrm:L06 begin -->
-  <data name="Studio.Teams.NoSessionsTitle" xml:space="preserve">
-    <value>Aucune création en cours</value>
-  </data>
   <!-- hrm:L06 end -->
 
   <!-- hrm:L07 begin -->
@@ -2579,6 +2585,7 @@
 
   <!-- hrm:L08 begin -->
   <data name="Studio.Run.LaneNotRun" xml:space="preserve"><value>Non exécuté</value></data>
+  <data name="Studio.Run.TaskDetails" xml:space="preserve"><value>Détail des tâches</value></data>
   <data name="Studio.Run.PaneFinishedContext" xml:space="preserve"><value>Lancement terminé</value></data>
   <!-- hrm:L08 end -->
 

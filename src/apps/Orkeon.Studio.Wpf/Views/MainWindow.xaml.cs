@@ -69,6 +69,7 @@ public partial class MainWindow : Window
         };
         shell.TestRequested += (_, _) => NavRun.IsChecked = true;
         shell.Teams.LaunchRequested += (_, _) => NavRun.IsChecked = true;
+        shell.Launch.History.LaunchRequested += (_, _) => NavRun.IsChecked = true;
         shell.Teams.ResumeRequested += (_, _) => NavCreate.IsChecked = true;
         shell.Import.TeamImported += (_, _) => NavTeams.IsChecked = true;
         // STUDIO-34 (D-04): a click on a group of the status bar opens its activity's screen.

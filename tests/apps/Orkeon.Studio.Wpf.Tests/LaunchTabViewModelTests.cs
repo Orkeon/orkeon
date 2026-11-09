@@ -1553,6 +1553,33 @@ public sealed class LaunchTabViewModelTests
     }
 
     [Fact]
+    public void Should_OfferOneModelListWithTheDefaultFirst_And_SelectItByString()
+    {
+        var (root, pinned) = ModelTeamOnDisk("Qwen", useDefault: null);
+        try
+        {
+            var (tab, _, _) = BuildForModel(pinned);
+            tab.Target.Select(pinned);
+
+            Assert.Equal(["Default (GLM)", "GLM", "Qwen"], tab.LlmChoices);
+            Assert.Equal("Qwen", tab.SelectedLlmChoice);
+            Assert.False(tab.RunUsesDefaultLlm);
+
+            tab.SelectedLlmChoice = "Default (GLM)";
+            Assert.True(tab.RunUsesDefaultLlm);
+            Assert.Equal("Default (GLM)", tab.SelectedLlmChoice);
+
+            tab.SelectedLlmChoice = "GLM";
+            Assert.False(tab.RunUsesDefaultLlm);
+            Assert.Equal("GLM", tab.RunLlmProfile);
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
     public void Should_PrefillTheRunsModelWithTheTeams_When_ATeamIsSelected()
     {
         var (root, pinned) = ModelTeamOnDisk("Qwen", useDefault: null);

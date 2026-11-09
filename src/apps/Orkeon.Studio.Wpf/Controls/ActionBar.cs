@@ -187,7 +187,7 @@ public sealed class ActionBar : Panel
         {
             var item = new MenuItem
             {
-                Header = LabelOf(button),
+                Header = HeaderOf(button),
                 ToolTip = button.ToolTip,
             };
             // The item follows the button while the menu is open: a command whose CanExecute
@@ -220,6 +220,32 @@ public sealed class ActionBar : Panel
         {
             invoke.Invoke();
         }
+    }
+
+    /// <summary>
+    /// The item's header: the button's label — and, for a disabled button whose tooltip is a
+    /// sentence, that sentence under it in the Hint style (UX lot 08): the reason a greyed
+    /// « Modify » cannot run is read without hovering.
+    /// </summary>
+    private static object HeaderOf(ButtonBase button)
+    {
+        var label = LabelOf(button);
+        if (button.IsEnabled || button.ToolTip is not string { Length: > 0 } reason)
+        {
+            return label;
+        }
+
+        var header = new StackPanel();
+        header.Children.Add(new TextBlock { Text = label });
+        var hint = new TextBlock { Text = reason, FontSize = 12, TextWrapping = TextWrapping.Wrap, MaxWidth = 320 };
+        if (button.TryFindResource("Hint") is Style hintStyle)
+        {
+            hint.Style = hintStyle;
+            hint.FontSize = 12;
+        }
+
+        header.Children.Add(hint);
+        return header;
     }
 
     private static string LabelOf(ButtonBase button)

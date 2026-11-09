@@ -1144,6 +1144,35 @@ public sealed partial class LaunchTabViewModel : ObservableObject
         }
     }
 
+    /// <summary>The entries of the model list: « Default (X) » first, then the settings by name.</summary>
+    public IReadOnlyList<string> LlmChoices => [DefaultLlmEntry, .. LlmProfiles];
+
+    /// <summary>The entry the list shows selected, held by string; the default entry is <see cref="RunUsesDefaultLlm"/>.</summary>
+    public string? SelectedLlmChoice
+    {
+        get => _runUsesDefaultLlm || _runLlmProfile is null ? DefaultLlmEntry : _runLlmProfile;
+        set
+        {
+            if (value is null)
+                return;
+
+            if (string.Equals(value, DefaultLlmEntry, StringComparison.Ordinal))
+            {
+                RunUsesDefaultLlm = true;
+                return;
+            }
+
+            _runUsesDefaultLlm = false;
+            RunLlmProfile = value;
+            RaiseRunLlmChanged();
+        }
+    }
+
+    private string DefaultLlmEntry =>
+        _strings.Format(
+            StudioStringKeys.RunLlmDefaultEntry,
+            _modelSettings?.Invoke().Default?.Name ?? _strings[StudioStringKeys.TeamsLlmNoDefault]);
+
     /// <summary>The settings of this machine a run can take, by name; empty without model settings.</summary>
     public IReadOnlyList<string> LlmProfiles =>
         _modelSettings is null ? [] : [.. _modelSettings().Profiles.Select(profile => profile.Name)];
@@ -1211,7 +1240,7 @@ public sealed partial class LaunchTabViewModel : ObservableObject
     private void RaiseRunLlmChanged()
     {
         OnPropertiesChanged(nameof(RunUsesDefaultLlm), nameof(RunLlmProfile), nameof(LlmProfiles), nameof(HasLlmProfiles),
-            nameof(UseDefaultLlmLabel), nameof(RunLlmChoice), nameof(RunLlmLine), nameof(CanRememberLlmForTeam),
+            nameof(UseDefaultLlmLabel), nameof(LlmChoices), nameof(SelectedLlmChoice), nameof(RunLlmChoice), nameof(RunLlmLine), nameof(CanRememberLlmForTeam),
             nameof(TeamSettingsLine));
         RememberLlmForTeamCommand.RaiseCanExecuteChanged();
     }
@@ -1406,7 +1435,9 @@ public sealed partial class LaunchTabViewModel : ObservableObject
 
     /// <summary>The state badge next to the title.</summary>
     public string RunBadgeText =>
-        _strings[CardState switch
+        CardState == RunCardState.Succeeded && AgentCards.Count(card => card.State == "notrun") is > 0 and var skipped
+            ? _strings.Format(StudioStringKeys.RunBadgeDoneSkipped, skipped)
+            : _strings[CardState switch
         {
             RunCardState.Running => StudioStringKeys.RunBadgeRunning,
             RunCardState.Idle => StudioStringKeys.RunBadgeIdle,
@@ -1420,7 +1451,7 @@ public sealed partial class LaunchTabViewModel : ObservableObject
     {
         RunCardState.Running => "running",
         RunCardState.Idle => "idle",
-        RunCardState.Succeeded => "ok",
+        RunCardState.Succeeded => AgentCards.Any(card => card.State == "notrun") ? "warn" : "ok",
         RunCardState.Cancelled => "warn",
         _ => "fail",
     };
@@ -1806,6 +1837,7 @@ public sealed partial class LaunchTabViewModel : ObservableObject
         AgentCards.Clear();
         foreach (var card in cards)
             AgentCards.Add(card);
+        OnPropertiesChanged(nameof(RunBadgeText), nameof(RunBadgeTone));
     }
 
     private static RunAgentCard CardOf(RunAgentLane lane, string identifier, bool finished) => new(

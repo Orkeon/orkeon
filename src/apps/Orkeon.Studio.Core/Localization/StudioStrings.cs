@@ -442,6 +442,12 @@ public static class StudioStringKeys
     /// <summary>"The team's tools are checked at its first launch."</summary>
     public const string ImportToolsLaterDetail = "Studio.Import.ToolsLaterDetail";
 
+    /// <summary>"Choose a team file or folder first." (UX lot 08).</summary>
+    public const string ImportDetectHint = "Studio.Import.DetectHint";
+
+    /// <summary>"Example: C:\Teams\watch\team.yaml" (UX lot 08).</summary>
+    public const string ImportPathPlaceholder = "Studio.Import.PathPlaceholder";
+
     // ---- Diagnostic verdict card (Config/DiagnosticViewModel, audit 09/20) --
 
     /// <summary>"Everything is in place."</summary>
@@ -691,6 +697,12 @@ public static class StudioStringKeys
     public const string RunBlockedNoCli = "Studio.Run.BlockedNoCli";
     public const string RunBlockedNoTeam = "Studio.Run.BlockedNoTeam";
     public const string RunBlockedFolders = "Studio.Run.BlockedFolders";
+
+    /// <summary>"Not allowed" (UX lot 08).</summary>
+    public const string RunFolderNotAllowed = "Studio.Run.FolderNotAllowed";
+
+    /// <summary>"Allow this folder" (UX lot 08).</summary>
+    public const string RunAllowThisFolder = "Studio.Run.AllowThisFolder";
     public const string RunBlockedArchived = "Studio.Run.BlockedArchived";
     public const string RunRunningLine = "Studio.Run.RunningLine";
     public const string RunLaneWaiting = "Studio.Run.LaneWaiting";
@@ -1168,6 +1180,15 @@ public static class StudioStringKeys
 
     /// <summary>"succeeded"</summary>
     public const string RunBadgeDone = "Studio.Run.BadgeDone";
+
+    /// <summary>"Succeeded · {0} {0:plural:agent not run|agents not run}" (UX lot 08).</summary>
+    public const string RunBadgeDoneSkipped = "Studio.Run.BadgeDoneSkipped";
+
+    /// <summary>"Task details" (UX lot 08).</summary>
+    public const string RunTaskDetails = "Studio.Run.TaskDetails";
+
+    /// <summary>"Show the error" (UX lot 08).</summary>
+    public const string HistoryShowError = "Studio.History.ShowError";
 
     /// <summary>"failed"</summary>
     public const string RunBadgeFailed = "Studio.Run.BadgeFailed";
@@ -2141,6 +2162,12 @@ public static class StudioStringKeys
     /// <summary>"Delete this team?" — the delete banner's question in a plain catalogue (STUDIO-27).</summary>
     public const string TeamsDeleteConfirm = "Studio.Teams.DeleteConfirm";
 
+    /// <summary>"Delete the team “{0}”?" (UX lot 08).</summary>
+    public const string TeamsDeleteConfirmNamed = "Studio.Teams.DeleteConfirmNamed";
+
+    /// <summary>"Its folder and its history are erased. The folders you allowed stay where they are." (UX lot 08).</summary>
+    public const string TeamsDeleteConsequence = "Studio.Teams.DeleteConsequence";
+
     // ---- STUDIO-64: in a workshop, Rename, Delete and Duplicate follow the team's trees ----
 
     /// <summary>"Move the team and what goes with it to the workshop's archive?" — the delete banner's question in a workshop, where Delete archives (STUDIO-64).</summary>
@@ -2214,6 +2241,12 @@ public static class StudioStringKeys
 
     /// <summary>"This run: {0}" - the model the next launch of the Run or Test screen takes (STUDIO-73).</summary>
     public const string RunLlmForThisRun = "Studio.Run.LlmForThisRun";
+
+    /// <summary>"Choose a team…" (UX lot 08).</summary>
+    public const string RunPickTeamPrompt = "Studio.Run.PickTeamPrompt";
+
+    /// <summary>"Default ({0})" (UX lot 08).</summary>
+    public const string RunLlmDefaultEntry = "Studio.Run.LlmDefaultEntry";
 
     /// <summary>"Remember for this team" - writes the Run screen's model choice into the team (STUDIO-73).</summary>
     public const string RunRememberLlmForTeam = "Studio.Run.RememberLlmForTeam";
@@ -2357,6 +2390,15 @@ public static class StudioStringKeys
 
     /// <summary>"Archives ({0})" — the toggle of the Archives view; {0} is the number of archived teams (STUDIO-32, D-01).</summary>
     public const string TeamsArchivesLabel = "Studio.Teams.ArchivesLabel";
+
+    /// <summary>"Drafts · {0}" (UX lot 08).</summary>
+    public const string TeamsInProgressCount = "Studio.Teams.InProgressCount";
+
+    /// <summary>"Archived teams" (UX lot 08).</summary>
+    public const string TeamsArchivesTitle = "Studio.Teams.ArchivesTitle";
+
+    /// <summary>"← Back to my teams" (UX lot 08).</summary>
+    public const string TeamsArchivesBack = "Studio.Teams.ArchivesBack";
 
     /// <summary>"No team matches “{0}”." — the search found nothing; {0} is what was typed (STUDIO-32, D-04).</summary>
     public const string TeamsSearchNoMatch = "Studio.Teams.SearchNoMatch";
@@ -2922,6 +2964,8 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.RunBlockedNoCli] = "The Orkeon engine is not found: the launch waits for the diagnostic.",
         [StudioStringKeys.RunBlockedNoTeam] = "Choose a team first.",
         [StudioStringKeys.RunBlockedFolders] = "A folder of the team is not allowed on this machine.",
+        [StudioStringKeys.RunFolderNotAllowed] = "Not allowed",
+        [StudioStringKeys.RunAllowThisFolder] = "Allow this folder",
         [StudioStringKeys.RunBlockedArchived] = "This team is archived: restore it to launch it.",
         [StudioStringKeys.RunRunningLine] = "{0} · running · {1}",
         [StudioStringKeys.RunLaneWaiting] = "Waiting",
@@ -3115,6 +3159,8 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.ImportSecretsFoundDetail] = "{0} file(s) carry what looks like an inline secret — see the warning below.",
         [StudioStringKeys.ImportToolsLater] = "Tools",
         [StudioStringKeys.ImportToolsLaterDetail] = "The team's tools are checked at its first launch.",
+        [StudioStringKeys.ImportDetectHint] = "Choose a team file or folder first.",
+        [StudioStringKeys.ImportPathPlaceholder] = "Example: C:\\Teams\\watch\\team.yaml",
         ["Studio.Diagnostics.Code.WIN-01"] = "No Llm section: the engine will start on its built-in defaults (Ollama, local).",
         ["Studio.Diagnostics.Code.STUDIO-JSON"] = "The settings file is not valid JSON.",
         ["Studio.Diagnostics.Code.STUDIO-TYPE"] = "A settings field has the wrong type.",
@@ -3196,6 +3242,9 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.RunBadgeIdle] = "waiting",
         [StudioStringKeys.RunBadgeRunning] = "running",
         [StudioStringKeys.RunBadgeDone] = "succeeded",
+        [StudioStringKeys.RunBadgeDoneSkipped] = "Succeeded · {0} {0:plural:agent not run|agents not run}",
+        [StudioStringKeys.RunTaskDetails] = "Task details",
+        [StudioStringKeys.HistoryShowError] = "Show the error",
         [StudioStringKeys.RunBadgeFailed] = "failed",
         [StudioStringKeys.RunButtonLaunch] = "Launch now",
         [StudioStringKeys.RunButtonRunning] = "Running…",
@@ -3704,6 +3753,8 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.TeamsDeleteUnscheduleFailed] = "Not deleted: its schedule could not be stopped — {0}",
         [StudioStringKeys.TeamsDeleteRefused] = "Not deleted: the disk refused — a file of the team may be open.",
         [StudioStringKeys.TeamsDeleteConfirm] = "Delete this team?",
+        [StudioStringKeys.TeamsDeleteConfirmNamed] = "Delete the team “{0}”?",
+        [StudioStringKeys.TeamsDeleteConsequence] = "Its folder and its history are erased. The folders you allowed stay where they are.",
 
         // STUDIO-64: in a workshop, Rename, Delete and Duplicate follow the team's trees
         [StudioStringKeys.TeamsDeleteAskArchive] = "Move the team and what goes with it to the workshop's archive?",
@@ -3728,6 +3779,8 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.TeamsLlmSaved] = "{0} now runs on: {1}.",
         [StudioStringKeys.TeamsConfigureModel] = "Configure a model",
         [StudioStringKeys.RunLlmForThisRun] = "This run: {0}",
+        [StudioStringKeys.RunPickTeamPrompt] = "Choose a team…",
+        [StudioStringKeys.RunLlmDefaultEntry] = "Default ({0})",
         [StudioStringKeys.RunRememberLlmForTeam] = "Remember for this team",
         [StudioStringKeys.SettingsUsedByDefault] = "{0} team(s), {1} by default",
         [StudioStringKeys.SettingsTabModelCount] = "{0} {0:plural:model|models} · {1} by default",
@@ -3791,12 +3844,15 @@ public sealed class EnglishStudioStrings : IStudioStrings
 
         // STUDIO-32: My teams — search, order, the Archives view, the undo banner, the suggestion
         [StudioStringKeys.TeamsArchivesLabel] = "Archives ({0})",
+        [StudioStringKeys.TeamsInProgressCount] = "Drafts · {0}",
+        [StudioStringKeys.TeamsArchivesTitle] = "Archived teams",
+        [StudioStringKeys.TeamsArchivesBack] = "← Back to my teams",
         [StudioStringKeys.TeamsSearchNoMatch] = "No team matches “{0}”.",
         [StudioStringKeys.TeamsArchivedUndo] = "Team “{0}” archived.",
         [StudioStringKeys.TeamsArchivedScheduleStoppedUndo] = "Team “{0}” archived and its schedule stopped — Undo brings the team back, not its schedule.",
         [StudioStringKeys.TeamsArchivedManyUndo] = "{0} teams archived.",
         [StudioStringKeys.TeamsLaunchNeedsFolder] = "Allow the folder {0} first to launch the team.",
-        [StudioStringKeys.TeamsRefusedRuns] = "{0} {0:plural:scheduled run|scheduled runs} will be refused on the next pass: the saved settings file does not hold {1} yet.",
+        [StudioStringKeys.TeamsRefusedRuns] = "{0} {0:plural:scheduled team will not be able|scheduled teams will not be able} to start on the next pass: their settings (model or folders) are not saved.",
         [StudioStringKeys.TeamsSuggestionOne] = "“{0}” has not been launched for {1} days — archive it?",
         [StudioStringKeys.TeamsSuggestionMany] = "{0} teams not launched for {1} days — archive them?",
         [StudioStringKeys.TeamsArchivedBadge] = "Archived",

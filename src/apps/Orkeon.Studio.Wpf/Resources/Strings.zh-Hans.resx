@@ -402,6 +402,7 @@
   <data name="Studio.Run.BadgeDone" xml:space="preserve">
     <value>成功</value>
   </data>
+  <data name="Studio.Run.BadgeDoneSkipped" xml:space="preserve"><value>成功 · {0} 个智能体未执行</value></data>
   <data name="Studio.Run.BadgeFailed" xml:space="preserve">
     <value>失败</value>
   </data>
@@ -458,7 +459,7 @@
     <value>历史记录</value>
   </data>
   <data name="Studio.History.Sub" xml:space="preserve">
-    <value>每次执行都保存在本地，可原样重放。</value>
+    <value>每次真实运行都会记录在此。您可以使用相同的设置再次运行。</value>
   </data>
   <data name="Studio.History.Replay" xml:space="preserve">
     <value>准备重放</value>
@@ -1374,9 +1375,7 @@
   <data name="Studio.Teams.Delete" xml:space="preserve">
     <value>删除</value>
   </data>
-  <data name="Studio.Teams.InProgress" xml:space="preserve">
-    <value>进行中的会话</value>
-  </data>
+  <data name="Studio.Teams.InProgressCount" xml:space="preserve"><value>草稿 · {0}</value></data>
   <data name="Studio.Teams.Resume" xml:space="preserve">
     <value>继续</value>
   </data>
@@ -1632,6 +1631,7 @@
   <data name="Studio.History.Result" xml:space="preserve">
     <value>打开结果</value>
   </data>
+  <data name="Studio.History.ShowError" xml:space="preserve"><value>查看错误</value></data>
   <data name="Studio.Diagnostics.Check.appsettings" xml:space="preserve">
     <value>设置可读取</value>
   </data>
@@ -1724,6 +1724,8 @@
   <data name="Studio.Import.TestFirst" xml:space="preserve">
     <value>先试运行</value>
   </data>
+  <data name="Studio.Import.DetectHint" xml:space="preserve"><value>请先选择团队文件或文件夹。</value></data>
+  <data name="Studio.Import.PathPlaceholder" xml:space="preserve"><value>示例：C:\Teams\watch\team.yaml</value></data>
   <data name="Studio.Run.Browse" xml:space="preserve">
     <value>浏览…</value>
   </data>
@@ -2517,6 +2519,8 @@
   <data name="Studio.Teams.DeleteConfirm" xml:space="preserve">
     <value>删除这个团队？</value>
   </data>
+  <data name="Studio.Teams.DeleteConfirmNamed" xml:space="preserve"><value>删除团队“{0}”？</value></data>
+  <data name="Studio.Teams.DeleteConsequence" xml:space="preserve"><value>其文件夹和历史将被清除。您已允许的文件夹保持不变。</value></data>
   <data name="Studio.Teams.SessionDeleteConfirm" xml:space="preserve">
     <value>删除这份草稿？</value>
   </data>
@@ -2531,9 +2535,6 @@
   </data>
   <data name="Studio.Teams.Import" xml:space="preserve">
     <value>导入团队</value>
-  </data>
-  <data name="Studio.Teams.NoSessions" xml:space="preserve">
-    <value>中断的创建会重新出现在这里。</value>
   </data>
   <data name="Studio.Create.DraftStepPattern" xml:space="preserve">
     <value>第 {0} / {1} 步 · {2}</value>
@@ -2847,6 +2848,7 @@
   <data name="Studio.Run.ChooseTeam" xml:space="preserve">
     <value>选择一个团队</value>
   </data>
+  <data name="Studio.Run.PickTeamPrompt" xml:space="preserve"><value>选择一个团队…</value></data>
   <data name="Studio.Diagnostics.StatusOk" xml:space="preserve">
     <value>已就绪。</value>
   </data>
@@ -3028,8 +3030,10 @@
     <value>归档（{0}）</value>
   </data>
   <data name="Studio.Teams.ArchivesHint" xml:space="preserve">
-    <value>已归档的团队不再出现在列表、「执行」界面的选择器和余额中；它们的文件夹、会话和历史保持原样。“恢复”可让团队回到其他团队之中。</value>
+    <value>归档会将团队移出列表，但不删除任何内容。恢复可让它回来。</value>
   </data>
+  <data name="Studio.Teams.ArchivesTitle" xml:space="preserve"><value>已归档的团队</value></data>
+  <data name="Studio.Teams.ArchivesBack" xml:space="preserve"><value>← 返回我的团队</value></data>
   <data name="Studio.Teams.Archive" xml:space="preserve">
     <value>归档</value>
   </data>
@@ -3664,6 +3668,7 @@
   <data name="Studio.Teams.LlmSaved" xml:space="preserve"><value>{0} 现在运行于：{1}。</value></data>
   <data name="Studio.Teams.ConfigureModel" xml:space="preserve"><value>配置模型</value></data>
   <data name="Studio.Run.LlmForThisRun" xml:space="preserve"><value>本次运行：{0}</value></data>
+  <data name="Studio.Run.LlmDefaultEntry" xml:space="preserve"><value>默认（{0}）</value></data>
   <data name="Studio.Run.RememberLlmForTeam" xml:space="preserve"><value>为此团队记住</value></data>
   <data name="Studio.Settings.UsedByDefault" xml:space="preserve"><value>{0} 个团队，其中 {1} 个使用默认</value></data>
   <data name="Studio.Settings.TabModelCount" xml:space="preserve">
@@ -3758,8 +3763,8 @@
   <data name="Studio.Teams.RowSchedule" xml:space="preserve"><value>计划</value></data>
   <data name="Studio.Teams.ChangeShort" xml:space="preserve"><value>更改</value></data>
   <data name="Studio.Teams.NoMountsValue" xml:space="preserve"><value>无文件夹</value></data>
-  <data name="Studio.Teams.RefusedRuns" xml:space="preserve"><value>{0} 个计划运行将在下次执行时被拒绝：已保存的设置文件尚未包含 {1}。</value></data>
-  <data name="Studio.Teams.SaveSettings" xml:space="preserve"><value>保存设置</value></data>
+  <data name="Studio.Teams.RefusedRuns" xml:space="preserve"><value>{0} 个计划团队在下次执行时将无法启动：其设置（模型或文件夹）尚未保存。</value></data>
+  <data name="Studio.Teams.SaveSettings" xml:space="preserve"><value>立即修复</value></data>
   <data name="Studio.Teams.ImportShort" xml:space="preserve"><value>导入</value></data>
   <data name="Studio.Teams.ScheduleManualValue" xml:space="preserve"><value>按需</value></data>
   <data name="Studio.Teams.LaunchNeedsFolder" xml:space="preserve"><value>请先允许文件夹 {0}。</value></data>
@@ -3967,6 +3972,8 @@
   <data name="Studio.Run.BlockedFolders" xml:space="preserve">
     <value>团队的某个文件夹在此计算机上未获允许。</value>
   </data>
+  <data name="Studio.Run.FolderNotAllowed" xml:space="preserve"><value>未允许</value></data>
+  <data name="Studio.Run.AllowThisFolder" xml:space="preserve"><value>允许此文件夹</value></data>
   <data name="Studio.Run.BlockedArchived" xml:space="preserve">
     <value>该团队已归档：请恢复后再启动。</value>
   </data>
@@ -4275,9 +4282,6 @@
   <!-- hrm:L05 end -->
 
   <!-- hrm:L06 begin -->
-  <data name="Studio.Teams.NoSessionsTitle" xml:space="preserve">
-    <value>没有进行中的会话</value>
-  </data>
   <!-- hrm:L06 end -->
 
   <!-- hrm:L07 begin -->
@@ -4285,6 +4289,7 @@
 
   <!-- hrm:L08 begin -->
   <data name="Studio.Run.LaneNotRun" xml:space="preserve"><value>未执行</value></data>
+  <data name="Studio.Run.TaskDetails" xml:space="preserve"><value>任务详情</value></data>
   <data name="Studio.Run.PaneFinishedContext" xml:space="preserve"><value>运行已结束</value></data>
   <!-- hrm:L08 end -->
 

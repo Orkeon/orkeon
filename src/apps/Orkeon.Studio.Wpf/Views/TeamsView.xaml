@@ -140,10 +140,19 @@
                Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"/>
     </DockPanel>
 
-    <!-- The Archives view says what an archive is, and how one comes back. -->
-    <TextBlock Style="{StaticResource Hint}" Margin="0,-4,0,12"
-               Text="{Binding [Studio.Teams.ArchivesHint], Source={x:Static services:I18n.Instance}}"
-               Visibility="{Binding ShowArchives, Converter={StaticResource BooleanToVisibility}}"/>
+    <!-- The Archives view says where it is, the way back, what an archive is and how one comes
+         back (UX lot 08). -->
+    <StackPanel Margin="0,-4,0,12" Visibility="{Binding ShowArchives, Converter={StaticResource BooleanToVisibility}}">
+      <DockPanel>
+        <Button DockPanel.Dock="Right" Style="{StaticResource BtnGhost}" controls:ButtonSize.Height="32" VerticalAlignment="Center"
+                Command="{Binding ToggleArchivesCommand}"
+                Content="{Binding [Studio.Teams.ArchivesBack], Source={x:Static services:I18n.Instance}}"/>
+        <TextBlock Style="{StaticResource Subhead}" VerticalAlignment="Center"
+                   Text="{Binding [Studio.Teams.ArchivesTitle], Source={x:Static services:I18n.Instance}}"/>
+      </DockPanel>
+      <TextBlock Style="{StaticResource Hint}" Margin="0,4,0,0" TextWrapping="Wrap"
+                 Text="{Binding [Studio.Teams.ArchivesHint], Source={x:Static services:I18n.Instance}}"/>
+    </StackPanel>
 
     <TextBlock Style="{StaticResource MetaText}" Margin="0,-4,0,10" Text="{Binding StatusMessage}"
                Visibility="{Binding StatusMessage, Converter={StaticResource StringPresentToVisibility}}"/>
@@ -157,8 +166,9 @@
          now » puts it away for the session. Settings › Studio sets the threshold, or turns it off. -->
     <!-- R07 (C02, C22): a suggestion is the info tone — « Archive » secondary, « Not now » ghost; the
          icon sits on the first line of text (the shared Alert). -->
+    <!-- UX lot 08: one banner — while the refusals show, the suggestion is said on its card instead. -->
     <controls:Alert Tone="Info" Margin="0,0,0,14" Message="{Binding ArchiveSuggestionLine}"
-                    Visibility="{Binding HasArchiveSuggestion, Converter={StaticResource BooleanToVisibility}}">
+                    Visibility="{Binding ShowsArchiveSuggestionBanner, Converter={StaticResource BooleanToVisibility}}">
       <TextBlock Style="{StaticResource MetaText}" Text="{Binding ArchiveSuggestionNames}"
                  Visibility="{Binding ArchiveSuggestionNames, Converter={StaticResource StringPresentToVisibility}}"/>
       <controls:Alert.Actions>
@@ -218,9 +228,65 @@
       </controls:EmptyState>
     </Border>
 
+    <!-- The wizard sessions still underway — beside the active teams, not in the Archives view.
+         UX lot 08: over the cards, in one fold closed at first, « Drafts · 3 »; a session's delete
+         lives in its «…» menu, so no red button shows before a menu opens. Nothing underway: no fold. -->
+    <controls:Disclosure Margin="0,0,0,14" IsExpanded="{Binding IsDraftsExpanded}" Header="{Binding InProgressHeader}">
+      <controls:Disclosure.Visibility>
+        <MultiBinding Converter="{StaticResource AllTrueToVisibility}">
+          <Binding Path="HasInProgress"/>
+          <Binding Path="ShowArchives" Converter="{StaticResource Negate}"/>
+        </MultiBinding>
+      </controls:Disclosure.Visibility>
+      <ItemsControl ItemsSource="{Binding InProgress}" Margin="0,8,0,0">
+        <ItemsControl.ItemTemplate>
+          <DataTemplate>
+            <Border Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1"
+                    CornerRadius="14" Padding="16,12" Margin="0,0,0,8">
+              <StackPanel>
+                <DockPanel>
+                  <controls:ActionBar DockPanel.Dock="Right" ButtonHeight="32" VerticalAlignment="Center"
+                                      Visibility="{Binding IsIdle, Converter={StaticResource BooleanToVisibility}}">
+                    <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="32" Command="{Binding ResumeCommand}"
+                            Content="{Binding [Studio.Teams.Resume], Source={x:Static services:I18n.Instance}}"/>
+                    <Button Style="{StaticResource BtnDanger}" controls:ButtonSize.Height="32" controls:ActionBar.InMenu="True"
+                            Command="{Binding AskDeleteCommand}" controls:ButtonIcon.Kind="trash-2"
+                            Content="{Binding [Studio.Teams.SessionDelete], Source={x:Static services:I18n.Instance}}"/>
+                  </controls:ActionBar>
+                  <StackPanel VerticalAlignment="Center">
+                    <TextBlock Style="{StaticResource Subhead}" Text="{Binding Title}" ToolTip="{Binding Title}"
+                               TextTrimming="CharacterEllipsis"/>
+                    <TextBlock Style="{StaticResource MonoText}" FontSize="13" Margin="0,2,0,0" Text="{Binding State}"
+                               Visibility="{Binding DataContext.Mode.IsExpert, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BooleanToVisibility}}"/>
+                  </StackPanel>
+                </DockPanel>
+                <!-- The confirmation takes the row's whole width under it, never cut. -->
+                <Border Background="{DynamicResource DangerWeakBrush}" BorderBrush="{DynamicResource DangerBorderBrush}"
+                        BorderThickness="1" CornerRadius="10" Padding="12,6,8,6" Margin="0,8,0,0" IsVisibleChanged="OnEditorShown"
+                        Visibility="{Binding IsConfirmingDelete, Converter={StaticResource BooleanToVisibility}}">
+                  <WrapPanel>
+                    <TextBlock FontSize="14" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,8,0" TextWrapping="Wrap"
+                               Foreground="{DynamicResource DangerInkBrush}"
+                               Text="{Binding [Studio.Teams.SessionDeleteConfirm], Source={x:Static services:I18n.Instance}}"/>
+                    <Button Style="{StaticResource BtnDangerSolid}" controls:ButtonSize.Height="32" Command="{Binding ConfirmDeleteCommand}"
+                            controls:ButtonIcon.Kind="trash-2"
+                            Content="{Binding [Studio.Teams.SessionDelete], Source={x:Static services:I18n.Instance}}"/>
+                    <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="32" Margin="8,0,0,0"
+                            Command="{Binding CancelDeleteCommand}"
+                            Content="{Binding [Studio.Common.Cancel], Source={x:Static services:I18n.Instance}}"/>
+                  </WrapPanel>
+                </Border>
+              </StackPanel>
+            </Border>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+    </controls:Disclosure>
+
     <!-- The cards the screen lists: the active teams or the archives, the search applied, in the
          chosen order (STUDIO-32, D-01). -->
-    <ItemsControl ItemsSource="{Binding Cards}">
+    <!-- UX lot 08: 56 px under the last card — the undo toast never covers its buttons. -->
+    <ItemsControl ItemsSource="{Binding Cards}" Margin="0,0,0,56">
       <ItemsControl.ItemTemplate>
         <DataTemplate>
           <Border Style="{StaticResource Card}" Margin="0,0,0,10">
@@ -261,9 +327,16 @@
                 <TextBlock Style="{StaticResource ObjectTitle}" FontSize="16" ToolTip="{Binding NameTip}">
                   <Run Text="{Binding Name, Mode=OneWay}"/>
                   <InlineUIContainer BaselineAlignment="Center">
-                    <!-- UX lot 11: the shared badge, its tone from the state (ok / warn / muted) by StateToneConverter. -->
-                    <controls:Badge Margin="8,0,0,0" Content="{Binding BadgeText}"
-                                    Tone="{Binding BadgeTone, Converter={StaticResource StateToneConverter}}"/>
+                    <!-- UX lot 11: the shared badge, its tone from the state (ok / warn / muted) by StateToneConverter.
+                         UX lot 08: « Folder to allow » is a button — the click opens the allowed folders,
+                         like « Allow » on the Folders row; any other badge is only read. -->
+                    <Button Style="{StaticResource LinkBtn}" Margin="8,0,0,0" Command="{Binding AllowFolderCommand}"
+                            IsHitTestVisible="{Binding HasUndeclaredFolder}" Focusable="{Binding HasUndeclaredFolder}"
+                            ToolTip="{Binding LaunchBlockedReason}"
+                            AutomationProperties.Name="{Binding BadgeText}">
+                      <controls:Badge Content="{Binding BadgeText}"
+                                      Tone="{Binding BadgeTone, Converter={StaticResource StateToneConverter}}"/>
+                    </Button>
                   </InlineUIContainer>
                   <InlineUIContainer BaselineAlignment="Center">
                     <TextBlock Style="{StaticResource MonoText}" FontSize="13" Margin="8,0,0,0"
@@ -278,7 +351,7 @@
                 <!-- STUDIO-73 (D6): the model the team runs on, and « Change the model » on the card — the
                      editor opens in place, like the rename one: the box « Use the default model (X) »,
                      the list of settings, Save and Cancel. An archived team keeps its model. -->
-                <controls:PropertyRow Margin="0,12,0,0"
+                <controls:PropertyRow Margin="0,12,0,0" IsEnabled="{Binding IsConfirmingDelete, Converter={StaticResource Negate}}"
                                       Label="{Binding [Studio.Teams.RowModel], Source={x:Static services:I18n.Instance}}"
                                       Visibility="{Binding HasProfileDisplay, Converter={StaticResource BooleanToVisibility}}">
                   <!-- R19 (D08): the model's own name, as Settings and Run write it; a team that follows the
@@ -359,7 +432,7 @@
                   </TextBlock>
                 </Button>
                 <!-- Folders: « /input » and its rights badge, then « Change » (F-02, R6; R12) -->
-                <controls:PropertyRow Margin="0,4,0,0"
+                <controls:PropertyRow Margin="0,4,0,0" IsEnabled="{Binding IsConfirmingDelete, Converter={StaticResource Negate}}"
                                       Label="{Binding [Studio.Teams.RowFolders], Source={x:Static services:I18n.Instance}}">
                   <StackPanel>
                     <Grid>
@@ -393,7 +466,7 @@
                 </controls:PropertyRow>
                 <!-- No schedule: the row says « Manual », without a button — a schedule is set at the
                      adoption or through « Modify ». -->
-                <controls:PropertyRow Margin="0,4,0,0"
+                <controls:PropertyRow Margin="0,4,0,0" IsEnabled="{Binding IsConfirmingDelete, Converter={StaticResource Negate}}"
                                       Label="{Binding [Studio.Teams.RowSchedule], Source={x:Static services:I18n.Instance}}"
                                       Visibility="{Binding HasScheduleRow, Converter={StaticResource InverseBooleanToVisibility}}">
                   <TextBlock Foreground="{DynamicResource InkMutedBrush}"
@@ -401,7 +474,7 @@
                 </controls:PropertyRow>
                 <!-- STUDIO-27 (D-05): where the schedule really stands — what the engine answered,
                      never what the sidecar says — and its two gestures, install and stop. -->
-                <StackPanel Margin="0,4,0,0"
+                <StackPanel Margin="0,4,0,0" IsEnabled="{Binding IsConfirmingDelete, Converter={StaticResource Negate}}"
                             Visibility="{Binding HasScheduleRow, Converter={StaticResource BooleanToVisibility}}">
                   <controls:PropertyRow Label="{Binding [Studio.Teams.RowSchedule], Source={x:Static services:I18n.Instance}}">
                     <DockPanel>
@@ -454,6 +527,20 @@
                     <controls:TechBlock Text="{Binding ScheduleManualCommand, Mode=OneWay}"/>
                   </StackPanel>
                 </StackPanel>
+                <!-- UX lot 08: the archive suggestion on its card, while the refusals hold the screen's banner. -->
+                <controls:Alert Tone="Info" Margin="0,10,0,0" Message="{Binding ArchiveSuggestionNotice}"
+                                Visibility="{Binding HasArchiveSuggestionNotice, Converter={StaticResource BooleanToVisibility}}">
+                  <controls:Alert.Actions>
+                    <StackPanel Style="{StaticResource ActionRow}">
+                      <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="32" Command="{Binding ArchiveCommand}"
+                              controls:ButtonIcon.Kind="archive"
+                              Content="{Binding [Studio.Teams.Archive], Source={x:Static services:I18n.Instance}}"/>
+                      <Button Style="{StaticResource BtnGhost}" controls:ButtonSize.Height="32" Margin="8,0,0,0"
+                              Command="{Binding DataContext.DismissSuggestionCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                              Content="{Binding [Studio.Teams.SuggestionLater], Source={x:Static services:I18n.Instance}}"/>
+                    </StackPanel>
+                  </controls:Alert.Actions>
+                </controls:Alert>
                 <!-- STUDIO-31/32: what an archive or a restore has to say on its card — a refusal (the
                      team busy, the disk), or an offer: « Stop the schedule and archive » (the system
                      would keep running a team nobody sees), « Restore ». Never a refusal in silence. -->
@@ -484,9 +571,10 @@
                  a MessageBox would take the card off screen to ask about it. -->
             <Border Style="{StaticResource CardFooter}">
               <Grid>
-                <!-- R23 (C10, C23): one order in both modes — Launch, Test | Modify, Rename | Open folder,
-                     Duplicate | «…». Export, Archive and Delete always live in the «…» menu, Delete last, in
-                     red after a rule; Novice hides Open folder, Duplicate and Export, never reorders. -->
+                <!-- R23 (C10, C23), UX lot 08: on the line, Launch (40 px, the one primary) and Test; every
+                     other action lives in the «…» menu in one order — Modify, Rename, Open folder, Duplicate,
+                     Export, Archive, Delete last in red after a rule; Novice hides Open folder, Duplicate and
+                     Export, never reorders. A greyed item says why under its label (ActionBar). -->
                 <Grid>
                   <Grid.Visibility>
                     <MultiBinding Converter="{StaticResource AllTrueToVisibility}">
@@ -496,7 +584,7 @@
                   </Grid.Visibility>
                   <!-- R5: one line, one primary; what no longer fits goes to the «…» menu at its end. -->
                   <controls:ActionBar ButtonHeight="32">
-                  <Button Style="{StaticResource BtnPrimary}" controls:ButtonSize.Height="32" Command="{Binding LaunchCommand}"
+                  <Button Style="{StaticResource BtnPrimary}" controls:ButtonSize.Height="40" Command="{Binding LaunchCommand}"
                           ToolTip="{Binding LaunchBlockedReason}" ToolTipService.ShowOnDisabled="True">
                     <StackPanel Orientation="Horizontal">
                       <controls:LucideIcon Kind="play" Size="16" Margin="0,0,8,0" Foreground="{DynamicResource AccentFgBrush}"/>
@@ -512,7 +600,7 @@
                   <Rectangle Style="{StaticResource ActionBarRule}"/>
                   <!-- «Modifier» reopens the wizard at step 2 on this team (FORGE-09); disabled,
                        with the reason, only for a team with no YAML crew. -->
-                  <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="32" Command="{Binding ModifyCommand}"
+                  <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="32" controls:ActionBar.InMenu="True" Command="{Binding ModifyCommand}"
                             ToolTip="{Binding ModifyTooltip}">
                     <StackPanel Orientation="Horizontal">
                       <controls:LucideIcon Kind="pencil" Size="16" Margin="0,0,8,0"/>
@@ -521,7 +609,7 @@
                   </Button>
                   <!-- STUDIO-28 (D-07): the folder, the workshop session, the titles and the
                        schedule follow the new name — Modify only retitles. -->
-                  <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="32" Command="{Binding RenameCommand}"
+                  <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="32" controls:ActionBar.InMenu="True" Command="{Binding RenameCommand}"
                             ToolTip="{Binding [Studio.Teams.RenameTip], Source={x:Static services:I18n.Instance}}">
                     <StackPanel Orientation="Horizontal">
                       <controls:LucideIcon Kind="pencil-line" Size="16" Margin="0,0,8,0"/>
@@ -529,13 +617,13 @@
                     </StackPanel>
                   </Button>
                   <Rectangle Style="{StaticResource ActionBarRule}"/>
-                  <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="32" Command="{Binding OpenCommand}" Visibility="{Binding DataContext.Mode.IsExpert, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BooleanToVisibility}}">
+                  <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="32" controls:ActionBar.InMenu="True" Command="{Binding OpenCommand}" Visibility="{Binding DataContext.Mode.IsExpert, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BooleanToVisibility}}">
                     <StackPanel Orientation="Horizontal">
                       <controls:LucideIcon Kind="folder-open" Size="16" Margin="0,0,8,0"/>
                       <TextBlock Text="{Binding [Studio.Teams.Open], Source={x:Static services:I18n.Instance}}"/>
                     </StackPanel>
                   </Button>
-                  <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="32" Command="{Binding DuplicateCommand}" Visibility="{Binding DataContext.Mode.IsExpert, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BooleanToVisibility}}">
+                  <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="32" controls:ActionBar.InMenu="True" Command="{Binding DuplicateCommand}" Visibility="{Binding DataContext.Mode.IsExpert, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BooleanToVisibility}}">
                     <StackPanel Orientation="Horizontal">
                       <controls:LucideIcon Kind="copy" Size="16" Margin="0,0,8,0"/>
                       <TextBlock Text="{Binding [Studio.Teams.Duplicate], Source={x:Static services:I18n.Instance}}"/>
@@ -607,13 +695,24 @@
                               Command="{Binding CancelDeleteCommand}"
                               Content="{Binding [Studio.Common.Cancel], Source={x:Static services:I18n.Instance}}"/>
                     </WrapPanel>
+                    <!-- UX lot 08: what goes and what stays, in the user's words. -->
+                    <TextBlock Style="{StaticResource Hint}" Margin="0,6,0,0" TextWrapping="Wrap"
+                               Text="{Binding DeleteConsequence}"
+                               Visibility="{Binding HasDeleteConsequence, Converter={StaticResource BooleanToVisibility}}"/>
                     <!-- STUDIO-27 (D-07): the workshop session rule R links to this team goes with
                          it, unless unticked. A copy is linked to none, so it offers none: deleting
                          a copy never touches its original's session. -->
+                    <!-- UX lot 08: a workshop session is an Expert notion — Novice never sees the box. -->
                     <CheckBox Margin="0,6,0,2" IsChecked="{Binding DeleteSessionToo}"
-                              Visibility="{Binding CanDeleteSessionToo, Converter={StaticResource BooleanToVisibility}}"
-                              Content="{Binding [Studio.Teams.DeleteSessionToo], Source={x:Static services:I18n.Instance}}"/>
-                    <!-- STUDIO-27 (D-06): the schedule is stopped first; when it cannot be, the team
+                              Content="{Binding [Studio.Teams.DeleteSessionToo], Source={x:Static services:I18n.Instance}}">
+                      <CheckBox.Visibility>
+                        <MultiBinding Converter="{StaticResource AllTrueToVisibility}">
+                          <Binding Path="CanDeleteSessionToo"/>
+                          <Binding Path="DataContext.Mode.IsExpert" RelativeSource="{RelativeSource AncestorType=Window}"/>
+                        </MultiBinding>
+                      </CheckBox.Visibility>
+                    </CheckBox>
+                                        <!-- STUDIO-27 (D-06): the schedule is stopped first; when it cannot be, the team
                          stays, and the banner says why and what to run by hand. -->
                     <TextBlock Style="{StaticResource Hint}" Foreground="{DynamicResource DangerInkBrush}" Margin="0,6,0,0"
                                TextWrapping="Wrap" Text="{Binding DeleteRefusal}"
@@ -656,60 +755,6 @@
         </DataTemplate>
       </ItemsControl.ItemTemplate>
     </ItemsControl>
-
-    <!-- the wizard sessions still underway — beside the active teams, not in the Archives view -->
-    <StackPanel Margin="0,18,0,0"
-                Visibility="{Binding ShowArchives, Converter={StaticResource InverseBooleanToVisibility}}">
-      <TextBlock Style="{StaticResource Eyebrow}" Margin="0,0,0,8"
-                 Text="{Binding [Studio.Teams.InProgress], Source={x:Static services:I18n.Instance}}"/>
-      <!-- R17 (C17): nothing underway — the compact empty state, no action. -->
-      <controls:EmptyState IsCompact="True" Icon="history" Padding="0,4"
-                           Title="{Binding [Studio.Teams.NoSessionsTitle], Source={x:Static services:I18n.Instance}}"
-                           Text="{Binding [Studio.Teams.NoSessions], Source={x:Static services:I18n.Instance}}"
-                           Visibility="{Binding HasInProgress, Converter={StaticResource InverseBooleanToVisibility}}"/>
-      <ItemsControl ItemsSource="{Binding InProgress}">
-        <ItemsControl.ItemTemplate>
-          <DataTemplate>
-            <Border Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1"
-                    CornerRadius="14" Padding="16,12" Margin="0,0,0,8">
-              <DockPanel>
-                <Grid DockPanel.Dock="Right">
-                  <StackPanel Orientation="Horizontal"
-                              Visibility="{Binding IsIdle, Converter={StaticResource BooleanToVisibility}}">
-                    <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="32" Command="{Binding ResumeCommand}"
-                            Content="{Binding [Studio.Teams.Resume], Source={x:Static services:I18n.Instance}}"/>
-                    <Button Style="{StaticResource BtnDanger}" controls:ButtonSize.Height="32" Margin="8,0,0,0" Command="{Binding AskDeleteCommand}"
-                            controls:ButtonIcon.Kind="trash-2"
-                            Content="{Binding [Studio.Teams.SessionDelete], Source={x:Static services:I18n.Instance}}"/>
-                  </StackPanel>
-                  <Border Background="{DynamicResource DangerWeakBrush}" BorderBrush="{DynamicResource DangerBorderBrush}"
-                          BorderThickness="1" CornerRadius="10" Padding="12,6,8,6" IsVisibleChanged="OnEditorShown"
-                          Visibility="{Binding IsConfirmingDelete, Converter={StaticResource BooleanToVisibility}}">
-                    <StackPanel Orientation="Horizontal">
-                      <TextBlock FontSize="14" FontWeight="SemiBold" VerticalAlignment="Center"
-                                 Foreground="{DynamicResource DangerInkBrush}"
-                                 Text="{Binding [Studio.Teams.SessionDeleteConfirm], Source={x:Static services:I18n.Instance}}"/>
-                      <Button Style="{StaticResource BtnDangerSolid}" controls:ButtonSize.Height="32" Margin="8,0,0,0" Command="{Binding ConfirmDeleteCommand}"
-                              controls:ButtonIcon.Kind="trash-2"
-                              Content="{Binding [Studio.Teams.SessionDelete], Source={x:Static services:I18n.Instance}}"/>
-                      <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="32" Margin="8,0,0,0"
-                              Command="{Binding CancelDeleteCommand}"
-                              Content="{Binding [Studio.Common.Cancel], Source={x:Static services:I18n.Instance}}"/>
-                    </StackPanel>
-                  </Border>
-                </Grid>
-                <StackPanel VerticalAlignment="Center">
-                  <TextBlock Style="{StaticResource Subhead}" Text="{Binding Title}" ToolTip="{Binding Title}"
-                             TextTrimming="CharacterEllipsis"/>
-                  <TextBlock Style="{StaticResource MonoText}" FontSize="13" Margin="0,2,0,0" Text="{Binding State}"
-                             Visibility="{Binding DataContext.Mode.IsExpert, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BooleanToVisibility}}"/>
-                </StackPanel>
-              </DockPanel>
-            </Border>
-          </DataTemplate>
-        </ItemsControl.ItemTemplate>
-      </ItemsControl>
-    </StackPanel>
 
   </StackPanel>
 </UserControl>

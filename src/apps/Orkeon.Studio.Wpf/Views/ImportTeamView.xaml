@@ -36,8 +36,12 @@
                   controls:ButtonIcon.Kind="scan-search" Command="{Binding Target.DetectCommand}"
                   Content="{Binding [Studio.Run.Detect], Source={x:Static services:I18n.Instance}}"/>
           <TextBox Style="{StaticResource InputMono}" VerticalAlignment="Center"
+                   Tag="{Binding [Studio.Import.PathPlaceholder], Source={x:Static services:I18n.Instance}}"
                    Text="{Binding Target.SelectedPath, UpdateSourceTrigger=PropertyChanged}"/>
         </DockPanel>
+        <TextBlock Style="{StaticResource Hint}" Margin="0,6,0,0"
+                   Text="{Binding [Studio.Import.DetectHint], Source={x:Static services:I18n.Instance}}"
+                   Visibility="{Binding Target.SelectedPath, Converter={StaticResource StringPresentToVisibility}, ConverterParameter=invert}"/>
 
         <!-- drop zone (audit 04): dashed, centred; files also arrive via the typed path -->
         <Border Margin="0,12,0,0" CornerRadius="10" Padding="22" AllowDrop="True" Drop="OnDropCandidate"
@@ -133,12 +137,7 @@
               Content="{Binding [Studio.Import.DeclareCopies], Source={x:Static services:I18n.Instance}}"/>
       <Button Style="{StaticResource BtnSecondary}" Margin="8,0,0,0" Click="OnTestFirst"
               controls:ButtonIcon.Kind="play" IsEnabled="{Binding Target.IsResolved}"
-              Content="{Binding [Studio.Import.TestFirst], Source={x:Static services:I18n.Instance}}">
-        <Button.Visibility>
-          <Binding Path="DataContext.Mode.IsExpert" RelativeSource="{RelativeSource AncestorType=Window}"
-                   Converter="{StaticResource BooleanToVisibility}"/>
-        </Button.Visibility>
-      </Button>
+              Content="{Binding [Studio.Import.TestFirst], Source={x:Static services:I18n.Instance}}"/>
       <TextBlock Style="{StaticResource MonoText}" VerticalAlignment="Center" Margin="12,0,0,0"
                  Text="{Binding StatusMessage}"
                  Visibility="{Binding StatusMessage, Converter={StaticResource StringPresentToVisibility}}"/>

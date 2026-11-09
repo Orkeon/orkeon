@@ -597,7 +597,7 @@ public sealed class ScheduleManagementTests : IDisposable
 
         Assert.True(teams.HasRefusedRuns);
         Assert.Equal(
-            "2 scheduled runs will be refused on the next pass: the saved settings file does not hold Local yet.",
+            "2 scheduled teams will not be able to start on the next pass: their settings (model or folders) are not saved.",
             teams.RefusedRunsLine);
 
         var quiet = new TeamsViewModel(new TeamsDependencies { TeamsRoot = TeamsRoot, WorkspaceDirectory = _root });

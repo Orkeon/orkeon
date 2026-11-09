@@ -278,6 +278,8 @@ internal static class StudioFixture
         ],
         History =
         [
+            new("rapport-hebdo", Now.AddMinutes(-20), 1, RunOutcome.ScriptError, 8.6, null, null),
+            new("tri-factures", Now.AddHours(-1), 0, RunOutcome.Success, 142.5, 21_300, 4_100),
             new("veille-concurrentielle", Now.AddHours(-2), 0, RunOutcome.Success, 74.2, 18_430, 11_200),
             new("rapport-hebdo", Now.AddDays(-1), 0, RunOutcome.Success, 212.8, 46_100, 9_800),
             new("veille-concurrentielle", Now.AddDays(-1).AddHours(-2), 2, RunOutcome.RuntimeError, 31.4, 6_020, 0),
