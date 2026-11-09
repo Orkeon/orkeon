@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-Orkeon is a C# framework (.NET 10) for teams of AI agents that collaborate on tasks through LLMs: crews of agents, tasks and tools, run in six orchestration modes over 16 LLM providers with 124 built-in tool classes. Version `1.0.0-rc.6` is in preparation. `git tag` is the authority on what is tagged: never assert tag state in prose.
+Orkeon is a C# framework (.NET 10) for teams of AI agents that collaborate on tasks through LLMs: crews of agents, tasks and tools, run in six orchestration modes over 16 LLM providers with 124 built-in tool classes. The version lives in `src/Directory.Build.props` alone: never state it in prose. `git tag` is the authority on what is tagged: never assert tag state in prose.
 Start from `docs/INDEX.md` (`docs/fr/` is its full French mirror). Known gaps between what ships and what is wired are in `docs/reference/limitations.md`, tracked in `backstage/tasks/GAP-00-PLAN.md`: check there before assuming a registered surface is invoked.
 Decisions live in `docs/adr/`; breaking changes and migration tables in `CHANGELOG.md`.
 
@@ -75,7 +75,7 @@ Use native xUnit assertions only: no mocking framework (Moq, NSubstitute, FakeIt
 - **Version**: `src/Directory.Build.props` (`VersionPrefix` + `VersionSuffix`) is the single source of truth; the publish workflow refuses a `v*` tag that does not match it.
 - **LLM options**: an option declared on a provider that cannot honour it produces a structured warning, never a silent drop (`docs/architecture/llm-providers.md`).
 - **Tool names**: `IToolRegistry.RegisterToolAsync` refuses a name another tool already holds; new tools follow `docs/tools/new-tool-pattern.md`.
-- **Doc claims**: `scripts/check-doc-claims.py` checks the counts and the version stated here and in the READMEs against the code, and `scripts/check-docs-parity.sh` checks the `docs/fr/` mirror. Run both after changing either. A changed docs page is mirrored in `docs/fr/` in the same commit.
+- **Doc claims**: `scripts/check-doc-claims.py` checks the counts stated here and in the READMEs against the code and refuses any Orkeon version in the documentation (CHANGELOG aside), and `scripts/check-docs-parity.sh` checks the `docs/fr/` mirror. Run both after changing either. A changed docs page is mirrored in `docs/fr/` in the same commit.
 
 ## Architecture map
 

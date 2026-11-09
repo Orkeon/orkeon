@@ -141,8 +141,8 @@ Chaque [GitHub Release](https://github.com/Orkeon/orkeon/releases) attache un
 
 `<rid>` vaut `linux-x64`, `linux-arm64`, `osx-x64`, `osx-arm64` (`.tar.gz`) ou
 `win-x64` (`.zip`). Dans chaque nom de fichier, `<version>` est la version du tag
-(par exemple `1.0.0-rc.6`) — sauf le `.deb` des releases jusqu'à `1.0.0-rc.4`, nommé `orkeon_1.0.0.rc.N_amd64.deb` alors que
-leur ligne `SHA256SUMS` porte `orkeon_1.0.0~rc.N_amd64.deb` : vérifiez ces deux-là à la main. `SHA256SUMS` couvre tous les artefacts de la release sauf le
+— sauf le `.deb` des deux premières releases à installeurs, nommé avec `.` à la place du `~` que
+porte leur ligne `SHA256SUMS` : vérifiez ces deux-là à la main. `SHA256SUMS` couvre tous les artefacts de la release sauf le
 MSI, qui a son propre `SHA256SUMS.msi` (chaque fichier est produit par le job CI
 qui a construit l'artefact).
 
@@ -260,8 +260,8 @@ sudo apt install ./orkeon_<version>_amd64.deb   # _arm64.deb sur ARM
 sudo apt remove orkeon
 ```
 
-(Les releases jusqu'à `1.0.0-rc.4` nomment le fichier `orkeon_1.0.0.rc.N_amd64.deb`, alors que leur ligne
-`SHA256SUMS` porte `orkeon_1.0.0~rc.N_amd64.deb` : vérifiez ces deux-là à la main.)
+(Les deux premières releases à installeurs nomment le fichier avec `.` à la place du `~` que porte
+leur ligne `SHA256SUMS` : vérifiez ces deux-là à la main.)
 
 Le `tar.gz` multi-apps + `install.sh` est l'alternative per-user (et la seule
 option quand vous voulez l'hôte de service, ou le REPL sur un système sans apt) :

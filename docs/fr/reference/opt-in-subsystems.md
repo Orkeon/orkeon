@@ -635,8 +635,8 @@ Aucun attribut ne porte l'identifiant d'un crew, d'une tâche ou d'un agent.
   échouer l'appel avec la raison expurgée — et stdout/stderr sont réécrits
   physique→virtuel : le modèle ne voit jamais que des chemins virtuels. Montages
   `AgentFacing`, correspondance ordinale ; sans montage, les deux passes sont sans effet.
-- **Le confinement n'est pas sur option** (`Orkeon:Tools:Shell:Confinement`) : depuis
-  `1.0.0-rc.6`, le processus tourne confiné par défaut (`Mode = Auto` : bubblewrap sous
+- **Le confinement n'est pas sur option** (`Orkeon:Tools:Shell:Confinement`) : le
+  processus tourne confiné par défaut (`Mode = Auto` : bubblewrap sous
   Linux, Seatbelt sous macOS, un AppContainer sous Windows, coupé dans un conteneur), et
   `AllowInterpreters` laisse passer plus de commandes, pas une vue plus large. `Mode = None`
   est la sortie — voir [Confinement du shell](../architecture/security.md#confinement-du-shell).

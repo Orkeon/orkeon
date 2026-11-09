@@ -91,8 +91,8 @@ The same source file is kept in the repository as
 | Check what runs | `orkeon --version` |
 
 **Version strings.** apt writes the pre-release separator as `~`, which sorts a pre-release
-*before* its final version: the release tagged `v1.0.0-rc.4` is the package version
-`1.0.0~rc.4`, so going back to it is `sudo apt install orkeon=1.0.0~rc.4`. apt asks you to
+*before* its final version: a release tagged `v<X.Y.Z>-<pre>` is the package version
+`<X.Y.Z>~<pre>`, so going back to it is `sudo apt install orkeon=<X.Y.Z>~<pre>`. apt asks you to
 confirm a downgrade; in a script, `sudo apt-get install -y --allow-downgrades orkeon=<version>`.
 
 Every version still attached to a GitHub Release stays in its channel, so going back always
@@ -142,7 +142,7 @@ Suites: raw/apt/dev/
 - **A build appears a few minutes after CI passes** on a push to `main`. Its packages are
   attached to the `apt-dev` prerelease of the repository — one fixed tag that never moves, and
   not a release.
-- **Versions** look like `1.0.0~rc.4.dev.<n>`, `n` being the number of the CI run that validated
+- **Versions** look like `<X.Y.Z>~<pre>.dev.<n>`, `n` being the number of the CI run that validated
   the commit, so it grows at every build: above the
   release they start from, below the next one — so a dev machine moves to the next release
   candidate by a plain `apt upgrade` when it is published. After a final version, the dev
@@ -277,7 +277,7 @@ by other bytes under the same version: a fix always comes as a new version.
 A machine that cannot reach GitHub's raw content can still install a single version: download
 `orkeon_<version>_amd64.deb` (or `_arm64.deb`) and `SHA256SUMS` from the
 [Releases](https://github.com/Orkeon/orkeon/releases), where `<version>` is the tag's version
-(`1.0.0-rc.4`), then:
+(without the `v`), then:
 
 ```bash
 grep " orkeon_<version>_amd64.deb$" SHA256SUMS | sha256sum --check   # expect: OK

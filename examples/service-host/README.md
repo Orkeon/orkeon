@@ -106,6 +106,6 @@ daemon off the network altogether.
 
 ## What this does not do
 
-It does not schedule anything. rc.2 ships no scheduler: a crew that should run every morning
+It does not schedule anything. The host has no scheduler: a crew that should run every morning
 still needs the artifact `orkeon forge promote --schedule` produces, installed by you. The host
 is where such a crew would live, not what would trigger it.

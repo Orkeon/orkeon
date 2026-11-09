@@ -16,8 +16,8 @@ dotnet add package Orkeon --prerelease
 dotnet add package Orkeon.Tools --prerelease
 ```
 
-`--prerelease` is required while the 1.0.0 line is a release candidate; drop it once
-1.0.0 is final. Both commands write the matching `<PackageReference>` entries into your
+`--prerelease` is required while Orkeon publishes only pre-release versions; drop it once
+a final version is out. Both commands write the matching `<PackageReference>` entries into your
 `.csproj`, so an equivalent hand-edit works just as well.
 
 `Orkeon` carries the core closure in one package — Domain, Application, Infrastructure,

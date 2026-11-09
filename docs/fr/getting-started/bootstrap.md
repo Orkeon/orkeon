@@ -16,8 +16,8 @@ dotnet add package Orkeon --prerelease
 dotnet add package Orkeon.Tools --prerelease
 ```
 
-`--prerelease` est nécessaire tant que la ligne 1.0.0 est une release candidate ; il
-disparaît une fois la 1.0.0 finale. Les deux commandes écrivent les entrées
+`--prerelease` est nécessaire tant qu'Orkeon ne publie que des pré-versions ; il
+disparaît une fois une version finale publiée. Les deux commandes écrivent les entrées
 `<PackageReference>` correspondantes dans votre `.csproj` — une édition à la main donne
 exactement le même résultat.
 

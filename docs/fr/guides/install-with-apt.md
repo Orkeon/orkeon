@@ -92,8 +92,8 @@ Le même fichier de source est conservé dans le dépôt :
 | Voir ce qui tourne | `orkeon --version` |
 
 **Forme des versions.** apt écrit le séparateur de pré-version avec `~`, qui classe une
-pré-version *avant* sa version finale : la release taguée `v1.0.0-rc.4` est la version de
-paquet `1.0.0~rc.4`, et y revenir s'écrit `sudo apt install orkeon=1.0.0~rc.4`. apt demande de
+pré-version *avant* sa version finale : une release taguée `v<X.Y.Z>-<pre>` est la version de
+paquet `<X.Y.Z>~<pre>`, et y revenir s'écrit `sudo apt install orkeon=<X.Y.Z>~<pre>`. apt demande de
 confirmer un retour en arrière ; dans un script,
 `sudo apt-get install -y --allow-downgrades orkeon=<version>`.
 
@@ -144,7 +144,7 @@ Suites: raw/apt/dev/
 - **Un build arrive quelques minutes après le passage de la CI** sur un push vers `main`. Ses
   paquets sont attachés à la prerelease `apt-dev` du dépôt — un tag fixe qui ne bouge jamais, et
   pas une release.
-- **Les versions** ont la forme `1.0.0~rc.4.dev.<n>`, `n` étant le numéro de l'exécution de CI qui
+- **Les versions** ont la forme `<X.Y.Z>~<pre>.dev.<n>`, `n` étant le numéro de l'exécution de CI qui
   a validé le commit, donc croissant à chaque build : au-dessus de
   la release dont elles partent, en dessous de la suivante — une machine dev passe donc à la
   release candidate suivante par un simple `apt upgrade` quand elle est publiée. Après une
@@ -282,7 +282,7 @@ une nouvelle version.
 Une machine qui n'atteint pas le contenu brut de GitHub peut quand même installer une version
 isolée : téléchargez `orkeon_<version>_amd64.deb` (ou `_arm64.deb`) et `SHA256SUMS` depuis les
 [Releases](https://github.com/Orkeon/orkeon/releases), où `<version>` est la version du tag
-(`1.0.0-rc.4`), puis :
+(sans le `v`), puis :
 
 ```bash
 grep " orkeon_<version>_amd64.deb$" SHA256SUMS | sha256sum --check   # attendu : OK

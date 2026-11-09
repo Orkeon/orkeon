@@ -721,7 +721,7 @@ ctx.writeLine(`archived ${archived}, loaded ${count} messages`);
 
 **Runtime version.** `ctx.services.get("runtime")`, always present, answers the runtime that runs the
 command as a plain object `{ version, commit, channel }`: the release with its build metadata removed
-(`1.0.0-rc.6`), as `orkeon doctor` prints it; the commit sha that metadata carries (the part after
+(`1.2.0` for `1.2.0+3f9c2ab`), as `orkeon doctor` prints it; the commit sha that metadata carries (the part after
 `+`), null when there is none; and the channel the runtime was installed through, read from the
 installation's `INSTALL-CHANNEL` marker as [`orkeon doctor`](../reference/cli.md#orkeon-doctor) reads
 it (`deb`, `tarball`, `source`, `dotnet-tool`…), `unknown` when nothing names one. `orkeon-repl`

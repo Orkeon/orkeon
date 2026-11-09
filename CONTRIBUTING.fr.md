@@ -409,7 +409,7 @@ une affaire d'opinion — elle est **consignée dans le dépôt** et vérifiée 
   CHANGELOG qui le dit sans détour.
 - **Fenêtre de dépréciation (à partir de la 1.0)** : une fois la 1.0 publiée, rien de
   public n'est retiré sans avoir livré `[Obsolete]` pendant au moins une version mineure,
-  avec le remplaçant nommé dans le message. Pendant la ligne `1.0.0-rc.*`, les cales de
+  avec le remplaçant nommé dans le message. Avant la 1.0, les cales de
   compatibilité sont retirées directement, sans étape `[Obsolete]` : chaque retrait reçoit
   une ligne `*REMOVED*` dans le fichier d'API et une entrée CHANGELOG `**[breaking]**`
   avec une note de migration.
@@ -420,9 +420,9 @@ une affaire d'opinion — elle est **consignée dans le dépôt** et vérifiée 
   n'importe quelle version. Voir
   [docs/fr/reference/experimental-apis.md](docs/fr/reference/experimental-apis.md).
 - **Engagement de stabilité pour la fenêtre 1.x** : une fois la 1.0 publiée, aucun
-  breaking change sur une API livrée non expérimentale avant la 2.0. D'ici là — la
-  ligne `1.0.0-rc.*` sur laquelle `main` se trouve aujourd'hui — des breaking changes
-  peuvent encore arriver d'une release candidate à l'autre, mais sont toujours annoncés
+  breaking change sur une API livrée non expérimentale avant la 2.0. D'ici là — tant que
+  `main` est en pré-version — des breaking changes
+  peuvent encore arriver d'une pré-version à l'autre, mais sont toujours annoncés
   dans le CHANGELOG et les notes de migration.
 
 ## Processus de release
@@ -438,7 +438,7 @@ une affaire d'opinion — elle est **consignée dans le dépôt** et vérifiée 
    `## Release <version>`, ne laissant que son en-tête au fichier `Unshipped`.
    L'analyseur de suivi des releases lit ce titre comme un simple numéro
    `Majeur.Mineur.Correctif` et refuse un suffixe de pré-release (RS2007) : le titre de la
-   ligne 1.0.0 est donc `## Release 1.0.0` — il est déjà là, et les tags `rc.*` n'y ajoutent
+   ligne 1.0.0 est donc `## Release 1.0.0` — il est déjà là, et les tags de pré-version n'y ajoutent
    rien.
 5. Vérifier que la CI est verte sur le commit que vous taguez. Au-delà du build
    `-warnaserror` et des suites de tests, les gates qui doivent passer sont

@@ -747,7 +747,7 @@ ctx.writeLine(`archived ${archived}, loaded ${count} messages`);
 
 **Version du runtime.** `ctx.services.get("runtime")`, toujours présent, décrit le runtime qui exécute
 la commande par un objet simple `{ version, commit, channel }` : la version publiée sans ses
-métadonnées de build (`1.0.0-rc.6`), telle qu'`orkeon doctor` l'imprime ; le sha du commit que portent
+métadonnées de build (`1.2.0` pour `1.2.0+3f9c2ab`), telle qu'`orkeon doctor` l'imprime ; le sha du commit que portent
 ces métadonnées (la partie après `+`), null quand il n'y en a pas ; et le canal par lequel le runtime a
 été installé, lu dans le marqueur `INSTALL-CHANNEL` de l'installation comme
 [`orkeon doctor`](../reference/cli.md#orkeon-doctor) le lit (`deb`, `tarball`, `source`,
