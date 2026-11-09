@@ -277,7 +277,7 @@ public class ChatThreadViewModelTests
     }
 
     [Fact]
-    public void A_card_waiting_on_the_user_stops_the_indicator_and_holds_enter_back()
+    public void A_card_waiting_on_the_user_stops_the_indicator_and_enter_still_sends()
     {
         var chat = new ChatThreadViewModel();
         chat.StartSession();
@@ -289,20 +289,88 @@ public class ChatThreadViewModelTests
 
         Assert.False(chat.IsBusy);
         Assert.Equal("Confirm, or ask", chat.Placeholder);
-        Assert.False(chat.EnterSends);
+
+        // UX lot 06: one keyboard rule — Enter sends, card or not; the card acts by its button only.
         var before = chat.Turns.Count;
         chat.Draft = "why these folders?";
         chat.EnterCommand.Execute(null);
-        Assert.Equal(before, chat.Turns.Count);
-        Assert.Equal("why these folders?", chat.Draft);
+        Assert.True(chat.Turns.Count > before);
+        Assert.False(chat.Turns[before].IsBot);
+        Assert.Equal("", chat.Draft);
+        Assert.Equal(0, ran);
 
         chat.PendingActionCommand.Execute(null);
         Assert.Equal(1, ran);
+    }
 
-        chat.SetPendingAction(null);
+    [Fact]
+    public void Run_and_history_keep_their_own_thread_and_never_ask_the_composition_engine()
+    {
+        var asked = new List<string>();
+        var chat = new ChatThreadViewModel();
+        chat.Bind(() => [], () => "", () => [], () => null, q => { asked.Add(q); return true; });
+        chat.SetContext(AssistantContext.WizardStep2);
+        chat.AddAssistantTurn("Which folder do your sources land in?");
+        var card = new ChatPendingAction("A folder is to choose.", "Show the folder",
+            new RelayCommand(() => { }), new RelayCommand(() => { }), "Your question…");
+        chat.SetPendingAction(card);
 
-        Assert.True(chat.IsBusy);
-        Assert.True(chat.EnterSends);
+        chat.SetContext(AssistantContext.Run);
+
+        Assert.Empty(chat.Turns);
+        Assert.False(chat.HasPendingAction);
+        chat.Draft = "how do I run a team?";
+        chat.SendCommand.Execute(null);
+        Assert.Empty(asked);
+        Assert.Contains(chat.Turns, turn => turn.IsBot);
+
+        // The engine keeps talking to the wizard's thread, not to the screen on show.
+        var runTurns = chat.Turns.Count;
+        chat.AddAssistantTurn("Noted.");
+        Assert.Equal(runTurns, chat.Turns.Count);
+
+        chat.SetContext(AssistantContext.WizardStep2);
+
+        Assert.Equal(2, chat.Turns.Count);
+        Assert.Equal("Noted.", chat.Turns[^1].Body);
+        Assert.Same(card, chat.PendingAction);
+        chat.Draft = "why that folder?";
+        chat.SendCommand.Execute(null);
+        Assert.Equal(["why that folder?"], asked);
+
+        // Back on Run, its own thread is there again.
+        chat.SetContext(AssistantContext.History);
+        Assert.Equal(runTurns, chat.Turns.Count);
+    }
+
+    [Fact]
+    public void The_agents_the_engine_names_by_key_read_by_their_role()
+    {
+        var chat = new ChatThreadViewModel();
+        chat.Bind(() => [], () => "", () => [], () => null, _ => false,
+            nameResolver: text => text.Replace("veilleur-tri", "Veilleur", StringComparison.OrdinalIgnoreCase));
+
+        chat.AddAssistantTurn("Le veilleur-tri lit les sources.");
+
+        Assert.Equal("Le Veilleur lit les sources.", chat.Turns[^1].Body);
+    }
+
+    [Fact]
+    public void The_folded_recap_shows_three_pills_known_or_pending()
+    {
+        var chat = new ChatThreadViewModel();
+        chat.Bind(
+            () =>
+            [
+                new ChatRecapFact("The work you described", "a morning note", true),
+                new ChatRecapFact("What comes in", "pending", false),
+                new ChatRecapFact("What comes out", "a summary", true),
+                new ChatRecapFact("Composition instruction", "be brief", true),
+            ],
+            () => "", () => [], () => null, _ => false);
+
+        Assert.Equal(["Work", "Inputs", "Output"], chat.Pills.Select(p => p.Label));
+        Assert.Equal([true, false, true], chat.Pills.Select(p => p.IsKnown));
     }
 
     [Fact]

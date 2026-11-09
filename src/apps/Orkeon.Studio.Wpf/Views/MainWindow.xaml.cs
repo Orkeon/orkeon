@@ -421,12 +421,12 @@ public partial class MainWindow : Window
     private void OnResumeDraft(object sender, RoutedEventArgs e) => NavCreate.IsChecked = true;
 
     /// <summary>The assistant's panel width, as the markup declares it.</summary>
-    private const double AssistantPanelWidth = 420;
+    private const double AssistantPanelWidth = 360;
 
     /// <summary>
     /// The narrowest content column the docked panel may leave: 720 px (R15: the assistant
     /// overlays below 720 px). Below it the panel overlays the content; at 1440 px the content
-    /// keeps 808 px beside it, so every control of the screen stays reachable.
+    /// keeps 868 px beside it, so every control of the screen stays reachable.
     /// </summary>
     private const double MinDockedContentWidth = 720;
 

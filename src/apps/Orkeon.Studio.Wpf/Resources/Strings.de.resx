@@ -975,12 +975,6 @@
   <data name="Studio.Shell.Expert" xml:space="preserve">
     <value>Experte</value>
   </data>
-  <data name="Studio.Shell.HelpTitle" xml:space="preserve">
-    <value>Hilfe nötig?</value>
-  </data>
-  <data name="Studio.Shell.HelpBody" xml:space="preserve">
-    <value>Der Einsteiger-Modus erklärt jeden Schritt. Wechseln Sie zu Experte, wenn Sie alles sehen wollen.</value>
-  </data>
   <data name="Studio.Common.GuidedTour" xml:space="preserve">
     <value>Geführte Tour</value>
   </data>
@@ -2687,6 +2681,15 @@
   <data name="Studio.Chat.FactOutput" xml:space="preserve">
     <value>Was herauskommt</value>
   </data>
+  <data name="Studio.Chat.PillBrief" xml:space="preserve">
+    <value>Arbeit</value>
+  </data>
+  <data name="Studio.Chat.PillSource" xml:space="preserve">
+    <value>Eingaben</value>
+  </data>
+  <data name="Studio.Chat.PillOutput" xml:space="preserve">
+    <value>Ausgabe</value>
+  </data>
   <data name="Studio.Chat.FactComposeNote" xml:space="preserve">
     <value>Kompositions-Anweisung</value>
   </data>
@@ -4127,7 +4130,6 @@
   <data name="Studio.Create.WaitPlaceholderFillFolders" xml:space="preserve">
     <value>Legen Sie Ihre Dateien ab und fahren Sie fort, oder stellen Sie eine Frage</value>
   </data>
-  <data name="Studio.Create.WaitPlaceholderChooseFolder" xml:space="preserve"><value>Wählen Sie den Ordner, um fortzufahren, oder stellen Sie eine Frage</value></data>
   <data name="Studio.Create.WaitPlaceholderAdopt" xml:space="preserve"><value>Übernehmen Sie das Team zum Abschluss, oder stellen Sie eine Frage</value></data>
   <data name="Studio.Create.WaitShowCard" xml:space="preserve"><value>Ordner anzeigen</value></data>
   <data name="Studio.Create.TabNeed" xml:space="preserve"><value>Bedarf</value></data>
@@ -4189,7 +4191,6 @@
   <data name="Studio.Create.NotesTabSub" xml:space="preserve"><value>Optional. Eine Anweisung gilt für alle Agenten, reist mit dem Team und wird beim Probelauf zum Prüfpunkt.</value></data>
   <data name="Studio.Create.NotesPlaceholder" xml:space="preserve"><value>Zum Beispiel: Jede Antwort auf Deutsch verfassen und das Quelldokument zitieren.</value></data>
   <data name="Studio.Create.NotesLeaveEmpty" xml:space="preserve"><value>Lassen Sie es leer, wenn Sie nichts vorgeben wollen: Der Assistent schlägt im Schritt Zusammenstellen eigene Regeln vor.</value></data>
-  <data name="Studio.Chat.KeyHintPending" xml:space="preserve"><value>Strg+Eingabe zum Senden · Umschalt+Eingabe für eine neue Zeile</value></data>
   <data name="Studio.Chat.PendingReveal" xml:space="preserve"><value>Karte anzeigen</value></data>
   <data name="Studio.Create.DecisionQuestion" xml:space="preserve"><value>Der Probelauf ist bewertet. Wie geht es weiter?</value></data>
 

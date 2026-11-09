@@ -586,19 +586,17 @@
         </DockPanel>
       </Border>
 
-      <!-- The novice help rail (F-10): the step's plain-words explainer on the right;
+      <!-- The novice help rail (F-10): the step's plain-words explainer on the left;
            questions to the assistant live in each step's notes panel. -->
       <Grid>
         <Grid.ColumnDefinitions>
-          <ColumnDefinition Width="*"/>
           <ColumnDefinition Width="Auto"/>
+          <ColumnDefinition Width="*"/>
         </Grid.ColumnDefinitions>
 
         <!-- T-07: the conversation takes the CONTENT column, it does not float over the
-             screen. The help rail beside it keeps its 300 px and stays readable — an
-             overlay, or a panel with a constant width, covers it the moment the window
-             is resized. The width comes from the grid; nothing here names one. -->
-        <StackPanel Grid.Column="0">
+             screen. The width comes from the grid; nothing here names one. -->
+        <StackPanel Grid.Column="1">
         <!-- The conversation lives in the shell's side panel (refonte R10): the step stays
              on screen while the user talks to the assistant. -->
         <StackPanel>
@@ -613,8 +611,22 @@
           <!-- Under the tabs: the step's help in Novice, nothing in Expert. -->
           <controls:StepTabs.SideContent>
             <Border Background="{DynamicResource SkyBrush}" BorderBrush="{DynamicResource InfoBorderBrush}" BorderThickness="1"
-                    CornerRadius="12" Padding="14,12"
-                    Visibility="{Binding DataContext.Mode.IsNovice, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BooleanToVisibility}}">
+                    CornerRadius="12" Padding="14,12">
+              <!-- UX lot 06: one contextual help per screen — the open assistant takes its place. -->
+              <Border.Style>
+                <Style TargetType="Border">
+                  <Setter Property="Visibility" Value="Collapsed"/>
+                  <Style.Triggers>
+                    <MultiDataTrigger>
+                      <MultiDataTrigger.Conditions>
+                        <Condition Binding="{Binding DataContext.Mode.IsNovice, RelativeSource={RelativeSource AncestorType=Window}}" Value="True"/>
+                        <Condition Binding="{Binding DataContext.Chat.IsOpen, RelativeSource={RelativeSource AncestorType=views:CreateTeamView}}" Value="False"/>
+                      </MultiDataTrigger.Conditions>
+                      <Setter Property="Visibility" Value="Visible"/>
+                    </MultiDataTrigger>
+                  </Style.Triggers>
+                </Style>
+              </Border.Style>
               <StackPanel>
                 <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
                   <controls:LucideIcon Kind="circle-help" Size="16" Foreground="{DynamicResource MarkBrush}" VerticalAlignment="Center"/>
@@ -1055,8 +1067,22 @@
           <!-- Under the tabs: the step's help in Novice, nothing in Expert. -->
           <controls:StepTabs.SideContent>
             <Border Background="{DynamicResource SkyBrush}" BorderBrush="{DynamicResource InfoBorderBrush}" BorderThickness="1"
-                    CornerRadius="12" Padding="14,12"
-                    Visibility="{Binding DataContext.Mode.IsNovice, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BooleanToVisibility}}">
+                    CornerRadius="12" Padding="14,12">
+              <!-- UX lot 06: one contextual help per screen — the open assistant takes its place. -->
+              <Border.Style>
+                <Style TargetType="Border">
+                  <Setter Property="Visibility" Value="Collapsed"/>
+                  <Style.Triggers>
+                    <MultiDataTrigger>
+                      <MultiDataTrigger.Conditions>
+                        <Condition Binding="{Binding DataContext.Mode.IsNovice, RelativeSource={RelativeSource AncestorType=Window}}" Value="True"/>
+                        <Condition Binding="{Binding DataContext.Chat.IsOpen, RelativeSource={RelativeSource AncestorType=views:CreateTeamView}}" Value="False"/>
+                      </MultiDataTrigger.Conditions>
+                      <Setter Property="Visibility" Value="Visible"/>
+                    </MultiDataTrigger>
+                  </Style.Triggers>
+                </Style>
+              </Border.Style>
               <StackPanel>
                 <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
                   <controls:LucideIcon Kind="circle-help" Size="16" Foreground="{DynamicResource MarkBrush}" VerticalAlignment="Center"/>
@@ -1887,9 +1913,11 @@
 
         </StackPanel>
         </StackPanel>
-        <!-- The Novice help column; the assistant panel takes its place while it is open (R3).
-             Step 1 holds its help under its tabs (R14). -->
-        <Border Grid.Column="1" Width="300" VerticalAlignment="Top" Margin="16,0,0,16"
+        <!-- The Novice help of steps 3-4; the assistant panel takes its place while it is open (R3).
+             Steps 1-2 hold theirs under their tabs (R14). UX lot 06 (019-022): on the left, at the
+             place and width of the classeur's side slot (220 px column, 12 px gap), so the help
+             never changes side from one step to the next. -->
+        <Border Grid.Column="0" Width="208" VerticalAlignment="Top" Margin="0,0,12,16"
                 Background="{DynamicResource SkyBrush}" BorderBrush="{DynamicResource InfoBorderBrush}" BorderThickness="1"
                 CornerRadius="12" Padding="14,12">
           <Border.Style>
@@ -1909,7 +1937,7 @@
             </Style>
           </Border.Style>
           <StackPanel>
-            <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+            <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
               <controls:LucideIcon Kind="circle-help" Size="16" Foreground="{DynamicResource MarkBrush}" VerticalAlignment="Center"/>
               <TextBlock Style="{StaticResource Subhead}" Margin="8,0,0,0" VerticalAlignment="Center"
                          Text="{Binding [Studio.Create.HelpTitle], Source={x:Static services:I18n.Instance}}"/>

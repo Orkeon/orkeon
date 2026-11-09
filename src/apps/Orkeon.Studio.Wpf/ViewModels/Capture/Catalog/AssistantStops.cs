@@ -49,8 +49,15 @@ internal static class AssistantStops
             SweepsLanguages = true,
             Arrange = CaptureAction.Sync(static c =>
             {
-                foreach (var turn in StudioFixture.AssistantTurns)
-                    c.Shell.Chat.AddAssistantTurn(turn);
+                // UX lot 06 (074): the user's replies between the assistant's turns, on the right.
+                var bot = StudioFixture.AssistantTurns;
+                var user = StudioFixture.UserTurns;
+                for (var i = 0; i < bot.Count; i++)
+                {
+                    c.Shell.Chat.AddAssistantTurn(bot[i]);
+                    if (i < user.Count)
+                        c.Shell.Chat.AddUserTurn(user[i]);
+                }
             }),
         },
 

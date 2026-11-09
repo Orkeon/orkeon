@@ -140,8 +140,20 @@ internal static class StudioFixture
         "Bonjour. Décrivez-moi ce que vous voulez obtenir, avec vos mots — je m'occupe de la forme.",
         "D'accord : une note quotidienne à partir de ce que vos concurrents publient. "
         + "Dans quel dossier vos sources arrivent-elles ?",
-        "Parfait. Je compose une équipe de trois : un veilleur qui lit, un analyste qui trie, "
-        + "un rédacteur qui écrit la note.",
+        // UX lot 06: four agents, as the fixture's team lists them (veilleur, analyste,
+        // rédacteur, relecteur) — the bubble no longer miscounts the team on screen.
+        "Parfait. Je compose une équipe de quatre : un veilleur qui lit, un analyste qui trie, "
+        + "un rédacteur qui écrit la note et un relecteur qui vérifie.",
+    ];
+
+    /// <summary>
+    /// The user's side of <see cref="AssistantTurns"/>, one reply after each but the last, so
+    /// the conversation reads as a dialogue (UX lot 06, 074).
+    /// </summary>
+    public static IReadOnlyList<string> UserTurns { get; } =
+    [
+        "Un résumé, chaque matin, de ce que publient mes concurrents.",
+        "Dans le dossier docs : j'y dépose leurs communiqués chaque soir.",
     ];
 
     /// <summary>

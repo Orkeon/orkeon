@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
+using System.Text.RegularExpressions;
 using Orkeon.Domain.FileSystem;
 using Orkeon.Studio.Core.Events;
 using Orkeon.Studio.Core.FileSystem;
@@ -565,7 +566,8 @@ public sealed partial class CreateTeamViewModel : ObservableObject
                 .. _model.BriefOutput is { Length: > 0 } output ? [output] : Array.Empty<string>(),
             ],
             profileName: () => Profiles.Set.Studio?.Name,
-            askEngine: AskEngine);
+            askEngine: AskEngine,
+            nameResolver: ResolveAgentNames);
         Chat.StopRequested += (_, _) => StopEngine();
         // «Edit» on the brief card means the form, not just a hidden panel. Without this the
         // pencil closed the thread and dropped the user back on whatever step they were on,
@@ -837,6 +839,14 @@ public sealed partial class CreateTeamViewModel : ObservableObject
     {
         if (propertyName is nameof(ChatThreadViewModel.IsStarted))
             RestartCommand?.RaiseCanExecuteChanged();
+
+        // UX lot 06: the wait reminder steps aside while the open panel's card carries it, and
+        // comes back on the status bar the moment the panel closes.
+        if (propertyName is nameof(ChatThreadViewModel.IsOpen))
+        {
+            OnPropertiesChanged(nameof(WaitPointLabel), nameof(StatusMessage));
+            SyncProgress();
+        }
 
         // The nav's draft block reads the conversation too: the assistant awaiting your
         // reply is the state a user must never walk away from without seeing.
@@ -3037,6 +3047,29 @@ public sealed partial class CreateTeamViewModel : ObservableObject
             value is { Length: > 0 });
     }
 
+    /// <summary>
+    /// The engine's agent keys, read by their role in the assistant's words (UX lot 06, 073-076):
+    /// « veilleur-tri » becomes « Veilleur ». A whole key only, any case; the longest key first so
+    /// that one key never eats part of another.
+    /// </summary>
+    private string ResolveAgentNames(string text)
+    {
+        if (_model.Proposal?.Agents is not { Count: > 0 } agents)
+            return text;
+
+        foreach (var agent in agents.Where(a => a.Key.Length > 0).OrderByDescending(a => a.Key.Length))
+        {
+            text = Regex.Replace(
+                text,
+                $@"(?<![\w-]){Regex.Escape(agent.Key)}(?![\w-])",
+                _ => agent.Role,
+                RegexOptions.IgnoreCase | RegexOptions.CultureInvariant,
+                TimeSpan.FromSeconds(1));
+        }
+
+        return text;
+    }
+
     private string ChatMessageCount() => Chat.Turns.Count == 0
         ? ""
         : _strings.Format(
@@ -3353,7 +3386,9 @@ public sealed partial class CreateTeamViewModel : ObservableObject
         _model.TokensRemaining,
         // A model to choose is not a session's wait: the gate's alert names it, and the status
         // bar stays at rest until a creation is under way.
-        HasWaitPoint && _waitPoint != WizardWaitPoint.ChooseModel ? WaitPointLabel : null));
+        HasWaitPoint && _waitPoint != WizardWaitPoint.ChooseModel && WaitPointLabel is { Length: > 0 } waitLabel
+            ? waitLabel
+            : null));
 
     private void SyncActivity()
     {

@@ -22,6 +22,12 @@ namespace Orkeon.Studio.Wpf.ViewModels.Teams;
 /// questions BEFORE the engine started, so the user was interviewed twice, by two
 /// mechanisms, on two surfaces.
 /// </para>
+/// <para>
+/// UX lot 06 (077): one instance, two threads. The wizard's conversation and the one of the
+/// other screens (Run, History) never mix: leaving the wizard parks its turns, its pending card
+/// and its question, and coming back restores them. What the engine says meanwhile goes to the
+/// parked wizard thread, never to the screen on show.
+/// </para>
 /// </summary>
 public sealed class ChatThreadViewModel : ObservableObject
 {
@@ -39,6 +45,7 @@ public sealed class ChatThreadViewModel : ObservableObject
     private Func<string>? _brief;
     private Func<IReadOnlyList<string>>? _briefChips;
     private Func<string?>? _profileName;
+    private Func<string, string>? _nameResolver;
 
     private bool _isOpen;
     private bool _isBusy;
@@ -56,6 +63,11 @@ public sealed class ChatThreadViewModel : ObservableObject
     private bool _busyBeforeAction;
     private AssistantContext _context = AssistantContext.WizardStep1;
 
+    // The thread not on show (UX lot 06): the wizard's while another screen holds the panel,
+    // the other screens' while the wizard does.
+    private readonly ParkedThread _parkedWizard = new();
+    private readonly ParkedThread _parkedOther = new();
+
     /// <summary>Builds the thread over its seams; both default to the inline implementations.</summary>
     public ChatThreadViewModel(IStudioStrings? strings = null, IUiDelay? delay = null)
     {
@@ -70,15 +82,13 @@ public sealed class ChatThreadViewModel : ObservableObject
         ToggleRecapCommand = new RelayCommand(() => IsRecapExpanded = !_isRecapExpanded);
         StopCommand = new RelayCommand(Stop, () => _isBusy);
         SendCommand = new RelayCommand(() => Send(_draft), () => _draft.Trim().Length > 0 && !_isBusy);
-        // R13: while the screen waits on a card, Enter in the composer no longer sends — a
-        // question then goes with Ctrl+Enter or the button, never by reflex.
         PendingActionCommand = new RelayCommand(
             () => _pendingAction?.Action.Execute(null), () => _pendingAction?.Action.CanExecute(null) == true);
         PendingRevealCommand = new RelayCommand(() => _pendingAction?.Reveal.Execute(null), () => _pendingAction is not null);
         QuestionRevealCommand = new RelayCommand(() => Question?.Reveal?.Execute(null), () => Question?.Reveal is not null);
         EnterCommand = new RelayCommand(() =>
         {
-            if (EnterSends && SendCommand.CanExecute(null))
+            if (SendCommand.CanExecute(null))
                 Send(_draft);
         });
         // Not a predetermined answer to a predetermined question: « I don't know — do your
@@ -192,9 +202,6 @@ public sealed class ChatThreadViewModel : ObservableObject
     /// <summary>The question's link: the work its answer leads to, on screen (R13, R15).</summary>
     public RelayCommand QuestionRevealCommand { get; }
 
-    /// <summary>Whether Enter in the composer sends: not while a card waits on the user (R13).</summary>
-    public bool EnterSends => _pendingAction is null;
-
     /// <summary>How many assistant turns arrived while the thread was closed.</summary>
     public int UnreadCount
     {
@@ -275,7 +282,7 @@ public sealed class ChatThreadViewModel : ObservableObject
             if (IsAsking)
                 return _strings[StudioStringKeys.ChatStatusWaiting];
 
-            if (_isDone)
+            if (_isDone && InWizard)
                 return Format(StudioStringKeys.ChatStatusDonePattern, Turns.Count);
 
             return Turns.Count > 0
@@ -326,6 +333,18 @@ public sealed class ChatThreadViewModel : ObservableObject
     /// <summary>"What I've noted", rebuilt from the owner on every change.</summary>
     public IReadOnlyList<ChatRecapFact> Facts => _facts?.Invoke() ?? [];
 
+    /// <summary>
+    /// The folded recap's three pills (UX lot 06, 075): the work, what comes in, what comes out —
+    /// the first three facts under a one-word label, known or still pending. The instructions stay
+    /// in the unfolded recap.
+    /// </summary>
+    public IReadOnlyList<ChatRecapFact> Pills =>
+    [
+        .. Facts.Take(3).Zip(
+            [StudioStringKeys.ChatPillBrief, StudioStringKeys.ChatPillSource, StudioStringKeys.ChatPillOutput],
+            (fact, key) => fact with { Label = _strings[key] }),
+    ];
+
     /// <summary>«4 / 8» — how much of the recap is filled in.</summary>
     public string RecapProgress
     {
@@ -362,7 +381,7 @@ public sealed class ChatThreadViewModel : ObservableObject
     /// <summary>The pending bubble's link: the card on screen, focused (R13).</summary>
     public RelayCommand PendingRevealCommand { get; }
 
-    /// <summary>Enter in the composer: sends, unless a card waits on the user (R13).</summary>
+    /// <summary>Enter in the composer: sends, card waiting or not — the card acts by its own button only (UX lot 06).</summary>
     public RelayCommand EnterCommand { get; }
 
     /// <summary>Answers the question with «do your best» and moves on.</summary>
@@ -372,30 +391,118 @@ public sealed class ChatThreadViewModel : ObservableObject
 
     /// <summary>
     /// Hands the thread everything it must ask the owner rather than know: the recap rows,
-    /// the brief and its chips, the assistant's profile name, and the engine channel.
+    /// the brief and its chips, the assistant's profile name, the engine channel, and how the
+    /// engine's agent keys read on screen (« veilleur-tri » → « Veilleur », UX lot 06).
     /// </summary>
     public void Bind(
         Func<IReadOnlyList<ChatRecapFact>> facts,
         Func<string> brief,
         Func<IReadOnlyList<string>> briefChips,
         Func<string?> profileName,
-        Func<string, bool> askEngine)
+        Func<string, bool> askEngine,
+        Func<string, string>? nameResolver = null)
     {
         _facts = facts;
         _brief = brief;
         _briefChips = briefChips;
         _profileName = profileName;
         _askEngine = askEngine;
+        _nameResolver = nameResolver;
     }
 
-    /// <summary>Where the thread now sits — it decides the primer and the free-question fallback.</summary>
+    /// <summary>
+    /// Where the thread now sits — it decides the primer and the free-question fallback. Moving
+    /// between the wizard and another screen swaps the thread on show (UX lot 06, 077): the
+    /// steps of the wizard share one, Run and History another.
+    /// </summary>
     public void SetContext(AssistantContext context)
     {
         if (_context == context)
             return;
 
+        var fromWizard = InWizard;
+        var toWizard = IsWizard(context);
+        if (fromWizard != toWizard)
+            Park(fromWizard ? _parkedWizard : _parkedOther);
+
         _context = context;
+
+        if (fromWizard != toWizard)
+            Restore(toWizard ? _parkedWizard : _parkedOther);
+
         OnPropertiesChanged(nameof(Primer), nameof(ShowsBrief), nameof(ShowsBriefCard));
+    }
+
+    private static bool IsWizard(AssistantContext context) => context
+        is AssistantContext.WizardStep1 or AssistantContext.WizardStep2
+        or AssistantContext.WizardStep3 or AssistantContext.WizardStep4;
+
+    /// <summary>Whether the thread on show is the wizard's.</summary>
+    private bool InWizard => IsWizard(_context);
+
+    /// <summary>Sets the thread on show aside, whole: turns, card, question and work in flight.</summary>
+    private void Park(ParkedThread slot)
+    {
+        slot.Turns.Clear();
+        slot.Turns.AddRange(Turns);
+        slot.Pending = _pendingAction;
+        slot.OwnerQuestion = _ownerQuestion;
+        slot.Busy = _isBusy;
+        slot.BusyBeforeAction = _busyBeforeAction;
+
+        if (_pendingAction is not null)
+            _pendingAction.Action.CanExecuteChanged -= OnPendingActionCanExecuteChanged;
+        _pendingAction = null;
+        _ownerQuestion = null;
+        _askedQuestion = null;
+        _askedTurn = null;
+        _busyBeforeAction = false;
+        Turns.Clear();
+        IsBusy = false;
+    }
+
+    /// <summary>Puts a parked thread back on show, as it was — without opening or focusing anything.</summary>
+    private void Restore(ParkedThread slot)
+    {
+        foreach (var turn in slot.Turns)
+            Turns.Add(turn);
+        _pendingAction = slot.Pending;
+        if (_pendingAction is not null)
+            _pendingAction.Action.CanExecuteChanged += OnPendingActionCanExecuteChanged;
+        _ownerQuestion = slot.OwnerQuestion;
+        _busyBeforeAction = slot.BusyBeforeAction;
+        _shownQuestion = Question;
+        var busy = slot.Busy;
+        slot.Clear();
+
+        PendingActionCommand.RaiseCanExecuteChanged();
+        PendingRevealCommand.RaiseCanExecuteChanged();
+        OnPropertiesChanged(nameof(PendingAction), nameof(HasPendingAction), nameof(IsEmpty));
+        if (busy)
+        {
+            IsBusy = true;
+            StartBeats();
+        }
+
+        RaiseDerived();
+    }
+
+    /// <summary>A turn of the wizard's session: on show in the wizard, parked elsewhere.</summary>
+    private void PushWizard(ChatTurnViewModel turn)
+    {
+        if (InWizard)
+            Push(turn);
+        else
+            _parkedWizard.Turns.Add(turn);
+    }
+
+    /// <summary>The engine's work ended: the spinner stops where the wizard's thread is.</summary>
+    private void StopWizardBusy()
+    {
+        if (InWizard)
+            IsBusy = false;
+        else
+            _parkedWizard.Busy = false;
     }
 
     /// <summary>
@@ -416,14 +523,29 @@ public sealed class ChatThreadViewModel : ObservableObject
         RaiseDerived();
     }
 
-    /// <summary>Pushes the assistant's own turn, straight from the engine, into the thread.</summary>
+    /// <summary>
+    /// Pushes the assistant's own turn, straight from the engine, into the wizard's thread. The
+    /// agents it names by their engine key read by their role (UX lot 06).
+    /// </summary>
     public void AddAssistantTurn(string text)
     {
         if (string.IsNullOrWhiteSpace(text))
             return;
 
-        Push(new ChatTurnViewModel(_strings, isBot: true, text));
-        IsBusy = false;
+        PushWizard(new ChatTurnViewModel(_strings, isBot: true, _nameResolver?.Invoke(text) ?? text));
+        StopWizardBusy();
+    }
+
+    /// <summary>
+    /// Pushes a turn the user said, as is, without handing it to anyone — a replayed thread, the
+    /// capture campaign's conversation (UX lot 06, 074). A typed question goes through Send.
+    /// </summary>
+    internal void AddUserTurn(string text)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+            return;
+
+        Push(new ChatTurnViewModel(_strings, isBot: false, text.Trim()));
     }
 
     /// <summary>
@@ -439,13 +561,13 @@ public sealed class ChatThreadViewModel : ObservableObject
     /// </summary>
     public void EngineFinished(bool interrupted = false)
     {
-        IsBusy = false;
+        StopWizardBusy();
         if (!interrupted)
             return;
 
         // From the catalogue, not resolved into the turn: a language switch rewrites what
         // the assistant said, here as everywhere.
-        Push(new ChatTurnViewModel(_strings, isBot: true, "", bodyKey: StudioStringKeys.ChatSessionEnded));
+        PushWizard(new ChatTurnViewModel(_strings, isBot: true, "", bodyKey: StudioStringKeys.ChatSessionEnded));
         IsStarted = false;
         RaiseDerived();
     }
@@ -460,9 +582,9 @@ public sealed class ChatThreadViewModel : ObservableObject
         if (_isDone)
             return;
 
-        IsBusy = false;
+        StopWizardBusy();
         IsDone = true;
-        Push(new ChatTurnViewModel(_strings, isBot: true, "", isClosing: true));
+        PushWizard(new ChatTurnViewModel(_strings, isBot: true, "", isClosing: true));
         RaiseDerived();
         _delay.After(ClosingPause, CloseAfterBrief);
     }
@@ -474,7 +596,7 @@ public sealed class ChatThreadViewModel : ObservableObject
     /// </summary>
     private void CloseAfterBrief()
     {
-        if (_ownerQuestion is not null || _pendingAction is not null)
+        if (!InWizard || _ownerQuestion is not null || _pendingAction is not null)
             return;
 
         Close();
@@ -488,6 +610,13 @@ public sealed class ChatThreadViewModel : ObservableObject
     /// </summary>
     public void SetPendingAction(ChatPendingAction? action)
     {
+        // Another screen holds the panel: the card waits with the wizard's parked thread.
+        if (!InWizard)
+        {
+            _parkedWizard.Pending = action;
+            return;
+        }
+
         if (ReferenceEquals(action, _pendingAction) || (action is not null && action.Equals(_pendingAction)))
             return;
 
@@ -513,7 +642,7 @@ public sealed class ChatThreadViewModel : ObservableObject
             StartBeats();
         }
 
-        OnPropertiesChanged(nameof(PendingAction), nameof(HasPendingAction), nameof(EnterSends));
+        OnPropertiesChanged(nameof(PendingAction), nameof(HasPendingAction));
         RaiseDerived();
     }
 
@@ -550,6 +679,13 @@ public sealed class ChatThreadViewModel : ObservableObject
     /// </summary>
     public void SetQuestion(ChatQuestion? question, bool announce = true)
     {
+        // The owner's questions are the wizard's: parked with its thread on another screen.
+        if (!InWizard)
+        {
+            _parkedWizard.OwnerQuestion = question;
+            return;
+        }
+
         if (ReferenceEquals(question, _ownerQuestion))
             return;
 
@@ -605,7 +741,7 @@ public sealed class ChatThreadViewModel : ObservableObject
 
     /// <summary>Notifies the recap and the brief card that their source moved.</summary>
     public void OwnerChanged() =>
-        OnPropertiesChanged(nameof(Facts), nameof(RecapProgress), nameof(Brief), nameof(BriefChips), nameof(ShowsBriefCard));
+        OnPropertiesChanged(nameof(Facts), nameof(Pills), nameof(RecapProgress), nameof(Brief), nameof(BriefChips), nameof(ShowsBriefCard));
 
     // ── the session ────────────────────────────────────────────────────────
 
@@ -633,6 +769,7 @@ public sealed class ChatThreadViewModel : ObservableObject
     /// <summary>Clears the thread whole — the wizard restarting takes its conversation with it.</summary>
     public void Reset()
     {
+        _parkedWizard.Clear();
         _delay.CancelPending();
         Turns.Clear();
         _tick = 0;
@@ -648,7 +785,7 @@ public sealed class ChatThreadViewModel : ObservableObject
         _askedQuestion = null;
         _askedTurn = null;
         _shownQuestion = null;
-        OnPropertiesChanged(nameof(PendingAction), nameof(HasPendingAction), nameof(EnterSends));
+        OnPropertiesChanged(nameof(PendingAction), nameof(HasPendingAction));
         OnPropertyChanged(nameof(IsEmpty));
         RaiseDerived();
     }
@@ -679,8 +816,9 @@ public sealed class ChatThreadViewModel : ObservableObject
 
         // The engine wins whenever one is listening — a canned line would be a downgrade of
         // an answer the app already knows how to get. The bank speaks only where there is no
-        // session at all: before Compose, and on the Run and History screens.
-        if (_askEngine is { } ask)
+        // session at all: before Compose, and on the Run and History screens — the composition
+        // engine never hears a question asked there (UX lot 06, 077).
+        if (InWizard && _askEngine is { } ask)
         {
             // Claim the wait BEFORE handing the message over. The reply can come back from
             // inside that call, and setting the flag afterwards would leave the thread
@@ -753,11 +891,30 @@ public sealed class ChatThreadViewModel : ObservableObject
         OnPropertiesChanged(
             nameof(IsAsking), nameof(Placeholder), nameof(SendLabel),
             nameof(Status), nameof(Thinking), nameof(StripTitle), nameof(StripAction),
-            nameof(IsLive), nameof(Facts), nameof(RecapProgress), nameof(Brief),
+            nameof(IsLive), nameof(Facts), nameof(Pills), nameof(RecapProgress), nameof(Brief),
             nameof(BriefChips), nameof(Primer), nameof(Question), nameof(HasQuestion),
             nameof(IsWaitingOnUser), nameof(ShowsBriefCard));
         QuestionRevealCommand.RaiseCanExecuteChanged();
         FollowQuestion();
+    }
+}
+
+/// <summary>A thread set aside while another screen holds the panel (UX lot 06).</summary>
+internal sealed class ParkedThread
+{
+    public List<ChatTurnViewModel> Turns { get; } = [];
+    public ChatPendingAction? Pending { get; set; }
+    public ChatQuestion? OwnerQuestion { get; set; }
+    public bool Busy { get; set; }
+    public bool BusyBeforeAction { get; set; }
+
+    public void Clear()
+    {
+        Turns.Clear();
+        Pending = null;
+        OwnerQuestion = null;
+        Busy = false;
+        BusyBeforeAction = false;
     }
 }
 

@@ -64,9 +64,12 @@ public sealed partial class CreateTeamViewModel
     /// <summary>Whether something waits on the user.</summary>
     public bool HasWaitPoint => _waitPoint != WizardWaitPoint.None;
 
-    /// <summary>« Waiting for you: confirm the folders »; empty when nothing waits.</summary>
+    /// <summary>
+    /// « Waiting for you: confirm the folders »; empty when nothing waits, and while the assistant's
+    /// panel is open — its pinned card carries the action, once (UX lot 06, 073-075).
+    /// </summary>
     public string WaitPointLabel =>
-        _waitPoint == WizardWaitPoint.None
+        _waitPoint == WizardWaitPoint.None || Chat.IsOpen
             ? string.Empty
             : _strings.Format(StudioStringKeys.WizardWaitingFor, _strings[WaitActionKey(_waitPoint)]);
 
@@ -202,7 +205,9 @@ public sealed partial class CreateTeamViewModel
             _strings[StudioStringKeys.WizardWaitShowCard],
             GoToWaitPointCommand,
             GoToWaitPointCommand,
-            _strings[StudioStringKeys.WizardWaitPlaceholderChooseFolder]),
+            // UX lot 06: the card and its « Show the folder » already say it; the composer
+            // invites a question, it does not repeat the reminder.
+            _strings[StudioStringKeys.ChatPlaceholder]),
         WizardWaitPoint.Adopt => new ChatPendingAction(
             _strings[StudioStringKeys.WizardWaitBubbleAdopt],
             _strings[StudioStringKeys.WizardSave],

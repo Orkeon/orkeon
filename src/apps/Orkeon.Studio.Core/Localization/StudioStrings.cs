@@ -298,6 +298,12 @@ public static class StudioStringKeys
     public const string ChatFactSource = "Studio.Chat.FactSource";
     /// <summary>"What comes out" — the validated brief's expected output (STUDIO-45)</summary>
     public const string ChatFactOutput = "Studio.Chat.FactOutput";
+    /// <summary>"Work" — the brief's pill in the folded recap header (UX lot 06)</summary>
+    public const string ChatPillBrief = "Studio.Chat.PillBrief";
+    /// <summary>"Inputs" — the inputs' pill in the folded recap header (UX lot 06)</summary>
+    public const string ChatPillSource = "Studio.Chat.PillSource";
+    /// <summary>"Output" — the output's pill in the folded recap header (UX lot 06)</summary>
+    public const string ChatPillOutput = "Studio.Chat.PillOutput";
     /// <summary>"Composition instruction"</summary>
     public const string ChatFactComposeNote = "Studio.Chat.FactComposeNote";
     /// <summary>"Trial instruction"</summary>
@@ -1955,9 +1961,6 @@ public static class StudioStringKeys
     public const string WizardWaitPlaceholderFolders = "Studio.Create.WaitPlaceholderFolders";
     public const string WizardWaitPlaceholderFillFolders = "Studio.Create.WaitPlaceholderFillFolders";
 
-    /// <summary>The composer's placeholder while a folder is to choose.</summary>
-    public const string WizardWaitPlaceholderChooseFolder = "Studio.Create.WaitPlaceholderChooseFolder";
-
     /// <summary>The composer's placeholder while the team waits to be adopted.</summary>
     public const string WizardWaitPlaceholderAdopt = "Studio.Create.WaitPlaceholderAdopt";
 
@@ -3021,6 +3024,9 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.ChatFactBrief] = "The work you described",
         [StudioStringKeys.ChatFactSource] = "What comes in",
         [StudioStringKeys.ChatFactOutput] = "What comes out",
+        [StudioStringKeys.ChatPillBrief] = "Work",
+        [StudioStringKeys.ChatPillSource] = "Inputs",
+        [StudioStringKeys.ChatPillOutput] = "Output",
         [StudioStringKeys.ChatFactComposeNote] = "Composition instruction",
         [StudioStringKeys.ChatFactTryNote] = "Trial instruction",
         [StudioStringKeys.ChatFactAdoptNote] = "Adoption instruction",
@@ -3632,7 +3638,6 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.WizardWaitBubbleAdopt] = "The team is ready. Adopt it to find it in your teams.",
         [StudioStringKeys.WizardWaitPlaceholderFolders] = "Confirm the folders to continue, or ask a question",
         [StudioStringKeys.WizardWaitPlaceholderFillFolders] = "Drop your files then continue, or ask a question",
-        [StudioStringKeys.WizardWaitPlaceholderChooseFolder] = "Choose the folder to continue, or ask a question",
         [StudioStringKeys.WizardWaitPlaceholderAdopt] = "Adopt the team to finish, or ask a question",
         [StudioStringKeys.WizardWaitShowCard] = "Show the folder",
         [StudioStringKeys.WizardSuggestions] = "What the engine suggests changing",

@@ -1883,6 +1883,8 @@ public partial class CreateTeamWizardTests
 
         // The folders tab is the wait point: amber dot, « dropping files », the footer's « Continue ».
         Assert.Equal(WizardWaitPoint.FillFolders, vm.WaitPoint);
+        // UX lot 06: said by the panel's card while it is open, by the label once it closes.
+        vm.Chat.CloseCommand.Execute(null);
         Assert.Equal("Waiting for you: drop your files", vm.WaitPointLabel);
         Assert.Equal("Waiting for you: drop your files", vm.Progress.WaitPhrase);
         Assert.Equal(CreateTeamViewModel.Step1FoldersTab, vm.Step1TabIndex);

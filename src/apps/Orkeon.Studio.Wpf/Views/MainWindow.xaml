@@ -246,27 +246,10 @@
       <Border x:Name="Sidebar" Grid.Column="0" Background="{DynamicResource PaperSunkBrush}"
               BorderBrush="{DynamicResource LineBrush}" BorderThickness="0,0,1,0">
         <DockPanel Margin="10,14,10,12">
-          <!-- settings-file card (bottom) -->
-          <!-- novice: a hand; expert: the settings file being edited (design v3 sidebar foot) -->
-          <Border x:Name="HelpCard" DockPanel.Dock="Bottom" Background="{DynamicResource SkyBrush}"
-                  BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" CornerRadius="11" Padding="11"
-                  Visibility="{Binding Mode.IsNovice, Converter={StaticResource BooleanToVisibility}}">
-            <StackPanel>
-              <StackPanel Orientation="Horizontal">
-                <controls:LucideIcon Kind="circle-help" Size="13" Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center"/>
-                <TextBlock FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}" Margin="7,0,0,0"
-                           Text="{Binding [Studio.Shell.HelpTitle], Source={x:Static services:I18n.Instance}}"/>
-              </StackPanel>
-              <TextBlock Style="{StaticResource Hint}" TextWrapping="Wrap" Margin="0,6,0,8"
-                         Text="{Binding [Studio.Shell.HelpBody], Source={x:Static services:I18n.Instance}}"/>
-              <Button Style="{StaticResource BtnSecondary}" HorizontalAlignment="Stretch" Click="OnStartTour"
-                      Content="{Binding [Studio.Common.GuidedTour], Source={x:Static services:I18n.Instance}}"/>
-            </StackPanel>
-          </Border>
           <!-- Only from somewhere else: the draft says where it stopped, so leaving the
                assistant is never the same as forgetting it. On the Créer screen itself it
                would only repeat what is on screen. R13 (A10): a contextual block goes to the
-               foot of the nav column — above «Besoin d'aide ?» in Novice — never between two
+               foot of the nav column, never between two
                entries, so the nav never moves when it comes or goes. -->
           <Button x:Name="DraftNote" DockPanel.Dock="Bottom" Margin="0,8,0,8" Style="{StaticResource DraftNote}" Click="OnResumeDraft">
             <StackPanel>
@@ -402,17 +385,17 @@
       </Border>
 
       <!-- CONTENT: one panel per nav item, visibility driven by the RadioButtons; the
-           assistant's side panel (420 px) on the right while it is open (refonte R10). -->
+           assistant's side panel (360 px) on the right while it is open (refonte R10). -->
       <Grid Grid.Column="1">
         <Grid.ColumnDefinitions>
           <ColumnDefinition Width="*"/>
           <ColumnDefinition Width="Auto"/>
         </Grid.ColumnDefinitions>
-        <!-- R15 (A06, B04, C18): an anchored 420 px panel with its own scroll bar. It docks in
+        <!-- R15 (A06, B04, C18), UX lot 06: an anchored 360 px panel with its own scroll bar. It docks in
              the Auto column while the content keeps 720 px beside it; narrower, it lays over the
              content, right-aligned and shadowed, instead of squeezing it (PlaceAssistantPanel).
              Closed, it is collapsed: the Auto column reserves nothing. -->
-        <views:ChatThreadView x:Name="AssistantPanel" Grid.Column="1" Width="420"
+        <views:ChatThreadView x:Name="AssistantPanel" Grid.Column="1" Width="360"
                               AutomationProperties.AutomationId="AssistantPanel"
                               DataContext="{Binding Chat}"
                               Loaded="OnAssistantPanelLoaded"

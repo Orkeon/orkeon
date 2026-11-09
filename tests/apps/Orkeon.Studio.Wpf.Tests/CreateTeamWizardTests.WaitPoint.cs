@@ -91,7 +91,13 @@ public partial class CreateTeamWizardTests
             Assert.Equal(string.Empty, wizard.SessionStateLabel);
             Assert.False(wizard.IsSessionWorking);
             Assert.Equal("Confirm the folders to move on to the composition.", wizard.Step1Hint);
+            // UX lot 06: the open panel's card carries the wait; closed, the label names it again.
+            Assert.True(wizard.Chat.IsOpen);
+            Assert.Equal(string.Empty, wizard.WaitPointLabel);
+            wizard.Chat.CloseCommand.Execute(null);
+            Assert.Equal("Waiting for you: confirm the folders", wizard.WaitPointLabel);
             Assert.Equal("Waiting for you: confirm the folders", wizard.Progress.Title);
+            wizard.Chat.OpenCommand.Execute(null);
 
             // The tab opens itself, with the amber dot.
             Assert.Equal(CreateTeamViewModel.Step1FoldersTab, wizard.Step1TabIndex);
@@ -103,12 +109,11 @@ public partial class CreateTeamWizardTests
             wizard.FolderRows[0].IsInsideTeam = false;
             Assert.Equal("2 folders · 1 to choose", wizard.FoldersTabSubtitle);
 
-            // The assistant stops its indicator, names the action and holds Enter back.
+            // The assistant stops its indicator and names the action; Enter still sends (UX lot 06).
             Assert.False(wizard.Chat.IsBusy);
             Assert.True(wizard.Chat.HasPendingAction);
             Assert.Equal("Confirm the folders", wizard.Chat.PendingAction!.ActionLabel);
             Assert.Equal("Confirm the folders to continue, or ask a question", wizard.Chat.Placeholder);
-            Assert.False(wizard.Chat.EnterSends);
 
             // The bubble's button is the card's own command.
             Assert.Same(wizard.ConfirmFoldersCommand, wizard.Chat.PendingAction.Action);
@@ -127,6 +132,8 @@ public partial class CreateTeamWizardTests
         // The next wait point takes over: /inpdf is still to choose before the trial.
         Assert.Equal(WizardWaitPoint.ChooseFolder, vm.WaitPoint);
         Assert.Equal("Show the folder", vm.Chat.PendingAction!.ActionLabel);
+        // UX lot 06: the card says it once; the composer only invites a question.
+        Assert.Equal("Ask the assistant a question…", vm.Chat.Placeholder);
     }
 
     /// <summary>
@@ -236,9 +243,13 @@ public partial class CreateTeamWizardTests
         Assert.Equal(2, vm.Step);
         Assert.Equal(WizardWaitPoint.ChooseFolder, vm.WaitPoint);
         Assert.True(vm.IsWaitOnChooseFolder);
-        Assert.Equal("Waiting for you: choose a folder", vm.Progress.WaitPhrase);
         Assert.True(vm.Chat.HasPendingAction);
-        Assert.Equal("Choose the folder to continue, or ask a question", vm.Chat.Placeholder);
+        // UX lot 06: one reminder — the card; neither the status bar nor the composer repeat it
+        // while the panel is open, and the status bar names it again once the panel closes.
+        Assert.Null(vm.Progress.WaitPhrase);
+        Assert.Equal("Ask the assistant a question…", vm.Chat.Placeholder);
+        vm.Chat.CloseCommand.Execute(null);
+        Assert.Equal("Waiting for you: choose a folder", vm.Progress.WaitPhrase);
 
         // From another step, « Waiting for you: … » brings step 2 back.
         var raised = new List<string?>();

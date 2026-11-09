@@ -130,21 +130,39 @@
                   controls:ButtonIcon.Kind="x"
                   ToolTip="{Binding [Studio.Chat.Close], Source={x:Static services:I18n.Instance}}"
                   AutomationProperties.Name="{Binding [Studio.Chat.Close], Source={x:Static services:I18n.Instance}}"/>
+          <!-- UX lot 06 (076): a stop sign, not a check box, 16 px off the « × ». -->
           <Button DockPanel.Dock="Right" Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="32"
-                  Margin="0,0,8,0" Command="{Binding StopCommand}" controls:ButtonIcon.Kind="square"
+                  Margin="0,0,16,0" Command="{Binding StopCommand}" controls:ButtonIcon.Kind="circle-stop"
                   Content="{Binding [Studio.Chat.Stop], Source={x:Static services:I18n.Instance}}"
                   Visibility="{Binding IsBusy, Converter={StaticResource BooleanToVisibility}}"/>
 
           <StackPanel VerticalAlignment="Center">
-            <!-- A07: waiting on the user is said by the header badge, never by dimming. -->
+            <!-- A07: waiting on the user is said by the header badge, never by dimming. UX lot 06:
+                 while a pinned card carries the action, the card alone says it — no badge. -->
             <DockPanel>
               <controls:Badge DockPanel.Dock="Right" Tone="Warning" Margin="8,0,0,0" VerticalAlignment="Center"
-                              Content="{Binding [Studio.Chat.WaitingBadge], Source={x:Static services:I18n.Instance}}"
-                              Visibility="{Binding IsWaitingOnUser, Converter={StaticResource BooleanToVisibility}}"/>
+                              Content="{Binding [Studio.Chat.WaitingBadge], Source={x:Static services:I18n.Instance}}">
+                <controls:Badge.Style>
+                  <Style TargetType="controls:Badge" BasedOn="{StaticResource {x:Type controls:Badge}}">
+                    <Setter Property="Visibility" Value="Collapsed"/>
+                    <Style.Triggers>
+                      <MultiDataTrigger>
+                        <MultiDataTrigger.Conditions>
+                          <Condition Binding="{Binding IsWaitingOnUser}" Value="True"/>
+                          <Condition Binding="{Binding HasPendingAction}" Value="False"/>
+                        </MultiDataTrigger.Conditions>
+                        <Setter Property="Visibility" Value="Visible"/>
+                      </MultiDataTrigger>
+                    </Style.Triggers>
+                  </Style>
+                </controls:Badge.Style>
+              </controls:Badge>
               <TextBlock Style="{StaticResource Subhead}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
                          Text="{Binding [Studio.Chat.Title], Source={x:Static services:I18n.Instance}}"/>
             </DockPanel>
+            <!-- UX lot 06 (077): the subtitle wraps on two lines rather than being cut. -->
             <TextBlock FontSize="13" Margin="0,1,0,0" Foreground="{DynamicResource InkMutedBrush}"
+                       TextWrapping="Wrap" TextTrimming="CharacterEllipsis" MaxHeight="36"
                        Text="{Binding [Studio.Chat.Subtitle], Source={x:Static services:I18n.Instance}}"/>
             <!-- The status line steps aside while the badge says the same thing. -->
             <TextBlock Style="{StaticResource MonoText}" FontSize="13" Margin="0,1,0,0"
@@ -158,8 +176,33 @@
       <!-- ── « Ce que j'ai retenu » ── -->
       <Button DockPanel.Dock="Top" Style="{StaticResource RecapHeader}" Command="{Binding ToggleRecapCommand}">
         <!-- R16: the one fold pattern, label then chevron (down closed, up open); the count
-             stays on the right edge. -->
+             stays on the right edge. UX lot 06 (075): folded, three pills say the work, what comes
+             in and what comes out — known (success) or still pending (neutral); the rest unfolds. -->
         <DockPanel>
+          <ItemsControl DockPanel.Dock="Bottom" Margin="0,8,0,0" Focusable="False" ItemsSource="{Binding Pills}"
+                        Visibility="{Binding IsRecapExpanded, Converter={StaticResource InverseBooleanToVisibility}}">
+            <ItemsControl.ItemsPanel>
+              <ItemsPanelTemplate>
+                <WrapPanel Orientation="Horizontal"/>
+              </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+              <DataTemplate>
+                <controls:Badge Margin="0,0,6,0" Content="{Binding Label}" ToolTip="{Binding Value}">
+                  <controls:Badge.Style>
+                    <Style TargetType="controls:Badge" BasedOn="{StaticResource {x:Type controls:Badge}}">
+                      <Setter Property="Tone" Value="Neutral"/>
+                      <Style.Triggers>
+                        <DataTrigger Binding="{Binding IsKnown}" Value="True">
+                          <Setter Property="Tone" Value="Success"/>
+                        </DataTrigger>
+                      </Style.Triggers>
+                    </Style>
+                  </controls:Badge.Style>
+                </controls:Badge>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
           <TextBlock DockPanel.Dock="Right" Style="{StaticResource MonoText}" FontSize="13"
                      VerticalAlignment="Center" Foreground="{DynamicResource InkFaintBrush}"
                      Text="{Binding RecapProgress}"/>
@@ -250,9 +293,6 @@
                        a KeyBinding matches the exact modifier set, so Shift+Return never reaches
                        the command and falls through to the box, which AcceptsReturn (T-32). -->
                   <KeyBinding Key="Return" Command="{Binding EnterCommand}"/>
-                  <!-- R13: while a card waits on the user, Enter no longer sends; Ctrl+Enter
-                       still does, and the footer says so. -->
-                  <KeyBinding Key="Return" Modifiers="Control" Command="{Binding SendCommand}"/>
                 </TextBox.InputBindings>
               </TextBox>
               <!-- The placeholder: the question's own example while one is on the table,
@@ -270,11 +310,7 @@
 
           <DockPanel Margin="0,8,0,0">
             <TextBlock Style="{StaticResource MonoText}" FontSize="13" Foreground="{DynamicResource InkFaintBrush}"
-                       Text="{Binding [Studio.Chat.KeyHint], Source={x:Static services:I18n.Instance}}"
-                       Visibility="{Binding EnterSends, Converter={StaticResource BooleanToVisibility}}"/>
-            <TextBlock Style="{StaticResource MonoText}" FontSize="13" Foreground="{DynamicResource InkFaintBrush}"
-                       Text="{Binding [Studio.Chat.KeyHintPending], Source={x:Static services:I18n.Instance}}"
-                       Visibility="{Binding HasPendingAction, Converter={StaticResource BooleanToVisibility}}"/>
+                       Text="{Binding [Studio.Chat.KeyHint], Source={x:Static services:I18n.Instance}}"/>
           </DockPanel>
         </StackPanel>
       </Border>
