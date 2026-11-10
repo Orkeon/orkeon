@@ -1,4 +1,5 @@
 using System.Reflection;
+using System.Text.RegularExpressions;
 using Orkeon.Studio.Core.Process;
 using Orkeon.Studio.Wpf.ViewModels.Mvvm;
 
@@ -10,7 +11,7 @@ namespace Orkeon.Studio.Wpf.ViewModels.Shell;
 /// a disk-and-fork touch that the window must not pay at startup, and a missing binary simply
 /// leaves the CLI segment out of the line rather than surfacing an error in an About box.
 /// </summary>
-public sealed class AboutViewModel : ObservableObject
+public sealed partial class AboutViewModel : ObservableObject
 {
     private readonly OrkeonProcessRunner _runner;
     private readonly IUiDispatcher _dispatcher;
@@ -31,7 +32,8 @@ public sealed class AboutViewModel : ObservableObject
 
         _runner = runner;
         _dispatcher = dispatcher ?? ImmediateUiDispatcher.Instance;
-        StudioVersion = studioVersion ?? DetectStudioVersion();
+        FullVersion = studioVersion ?? DetectFullVersion();
+        StudioVersion = TrimBuildMetadata(FullVersion);
         OpenCommand = new RelayCommand(Open);
         CloseCommand = new RelayCommand(() => IsOpen = false);
     }
@@ -43,8 +45,11 @@ public sealed class AboutViewModel : ObservableObject
         private set => SetProperty(ref _isOpen, value);
     }
 
-    /// <summary>Studio's own version, without the build-metadata suffix.</summary>
+    /// <summary>Studio's own version, without the build metadata (<c>+sha</c>) nor the local build label.</summary>
     public string StudioVersion { get; }
+
+    /// <summary>The raw <c>AssemblyInformationalVersion</c>, for the tooltip of the Studio line.</summary>
+    public string FullVersion { get; }
 
     /// <summary>The CLI's version, or null while unknown (not yet asked, or no binary).</summary>
     public string? CliVersion
@@ -53,7 +58,7 @@ public sealed class AboutViewModel : ObservableObject
         private set
         {
             if (SetProperty(ref _cliVersion, value))
-                OnPropertyChanged(nameof(VersionLine));
+                OnPropertiesChanged(nameof(VersionLine), nameof(CliVersionLine), nameof(VersionLines));
         }
     }
 
@@ -65,6 +70,19 @@ public sealed class AboutViewModel : ObservableObject
         CliVersion is { Length: > 0 } cli
             ? $"Studio {StudioVersion} · CLI {cli} · .NET {Environment.Version.Major}"
             : $"Studio {StudioVersion} · .NET {Environment.Version.Major}";
+
+    /// <summary>"Studio 1.0.0-rc.6": the splash footer's only line, and the first line of About.</summary>
+    public string StudioVersionLine => $"Studio {StudioVersion}";
+
+    /// <summary>"CLI 1.0.0-rc.6", or empty while <c>orkeon --version</c> has not answered.</summary>
+    public string CliVersionLine => CliVersion is { Length: > 0 } cli ? $"CLI {cli}" : string.Empty;
+
+    /// <summary>".NET 10": the runtime's major version.</summary>
+    public static string RuntimeLine => $".NET {Environment.Version.Major}";
+
+    /// <summary>The versions one per line (008), Studio first, no empty line while the CLI is unknown.</summary>
+    public IReadOnlyList<string> VersionLines =>
+        [.. new[] { StudioVersionLine, CliVersionLine, RuntimeLine }.Where(line => line.Length > 0)];
 
     /// <summary>Opens the overlay (and asks the CLI its version, the first time).</summary>
     public RelayCommand OpenCommand { get; }
@@ -105,19 +123,28 @@ public sealed class AboutViewModel : ObservableObject
         _dispatcher.Post(() => CliVersion = version);
     }
 
-    private static string DetectStudioVersion()
+    private static string DetectFullVersion()
     {
         var informational = typeof(AboutViewModel).Assembly
             .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion;
 
         return informational is { Length: > 0 }
-            ? TrimBuildMetadata(informational)
+            ? informational
             : typeof(AboutViewModel).Assembly.GetName().Version?.ToString(3) ?? "?";
     }
 
-    private static string TrimBuildMetadata(string version)
+    /// <summary>
+    /// Drops the build metadata (<c>+sha</c>), then the local build label that
+    /// <c>scripts/resolve-version.ps1</c> appends: <c>1.0.0-rc.6.local.202611072029</c> and
+    /// <c>1.0.1-local.202611072029</c> both read as their release version.
+    /// </summary>
+    internal static string TrimBuildMetadata(string version)
     {
         var plus = version.IndexOf('+', StringComparison.Ordinal);
-        return plus > 0 ? version[..plus] : version;
+        var trimmed = plus > 0 ? version[..plus] : version;
+        return LocalLabel().Replace(trimmed, string.Empty);
     }
+
+    [GeneratedRegex(@"[.-]local\.\d{12}$", RegexOptions.CultureInvariant, matchTimeoutMilliseconds: 1000)]
+    private static partial Regex LocalLabel();
 }

@@ -95,6 +95,12 @@ public sealed record LlmPresetInfo(
         string.IsNullOrWhiteSpace(KeyConsoleUrl)
             ? null
             : new Uri(Uri.UriSchemeHttps + Uri.SchemeDelimiter + KeyConsoleUrl.Trim(), UriKind.Absolute);
+
+    /// <summary>
+    /// Whether the editor marks the card « Recommended » (UX lot 04, 063): one local and one cloud
+    /// choice, so a first-time user is not left alone in front of every provider.
+    /// </summary>
+    public bool IsRecommended { get; init; }
 }
 
 /// <summary>How the profile editor groups a provider card (design v3, "volets" rev. 2).</summary>
@@ -274,7 +280,7 @@ public static class LlmPresets
         [
             new(Ollama, strings[StudioStringKeys.PresetOllamaTitle], strings[StudioStringKeys.PresetOllamaDescription],
                 LlmProviderEndpoints.OllamaDefault, LlmProviderDefaultModels.Ollama, RequiresApiKey: false,
-                Kind: LlmPresetKind.Local),
+                Kind: LlmPresetKind.Local) { IsRecommended = true },
             new(DockerModelRunner, strings[StudioStringKeys.PresetDmrTitle], strings[StudioStringKeys.PresetDmrDescription],
                 DockerModelRunnerBaseUrl, DockerModelRunnerDefaultModel, RequiresApiKey: false,
                 Kind: LlmPresetKind.Local),
@@ -287,7 +293,7 @@ public static class LlmPresets
             new(DeepSeek, strings[StudioStringKeys.ProviderDeepSeekTitle], strings[StudioStringKeys.ProviderDeepSeekDescription],
                 LlmProviderEndpoints.DeepSeek, LlmProviderDefaultModels.DeepSeek, RequiresApiKey: true,
                 "DEEPSEEK_API_KEY", LlmPresetKind.Cloud, "platform.deepseek.com",
-                RecommendedTimeoutSeconds: ReasoningTimeoutSeconds),
+                RecommendedTimeoutSeconds: ReasoningTimeoutSeconds) { IsRecommended = true },
             new(Mistral, strings[StudioStringKeys.ProviderMistralTitle], strings[StudioStringKeys.ProviderMistralDescription],
                 LlmProviderEndpoints.Mistral, LlmProviderDefaultModels.Mistral, RequiresApiKey: true,
                 "MISTRAL_API_KEY", LlmPresetKind.Cloud, "console.mistral.ai"),

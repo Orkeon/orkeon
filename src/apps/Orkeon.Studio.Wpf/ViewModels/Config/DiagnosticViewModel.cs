@@ -24,7 +24,7 @@ public sealed class DoctorCheckViewModel
     /// <summary>
     /// The plain-language name of the check (audit 09/20), resolved per identifier from
     /// the localization port; the raw identifier stays the expert detail. An unknown
-    /// check degrades to its own identifier, never to a blank.
+    /// check degrades to « Engine check », never to its raw identifier.
     /// </summary>
     public string FriendlyName
     {
@@ -33,8 +33,16 @@ public sealed class DoctorCheckViewModel
             // Keyed by the CLI's own check name, so the key is computed rather than
             // written: «Studio.Diagnostics.Check.» + what doctor called it.
             var key = CheckKeyPrefix + Name;
+            // An unknown check reads as a generic engine check in both modes: the raw
+            // identifier stays the expert detail, never the novice's title.
             var localized = _strings[key];
-            return localized == key ? Name : localized;
+            if (localized != key)
+                return localized;
+
+            // A check the engine added since Studio learnt its name: say so to whoever debugs,
+            // no logger being injected here.
+            System.Diagnostics.Debug.WriteLine($"Studio.Diagnostics: no key {key} for doctor check '{Name}'.");
+            return _strings[StudioStringKeys.DiagCheckUnknown];
         }
     }
 
@@ -98,7 +106,7 @@ public sealed class DoctorCheckViewModel
         "llm-profile-key" => FixKeys,
         "llm-reachability" => FixTest,
         "workspace-write" => FixFolders,
-        "appsettings" => FixFile,
+        "appsettings" or "runner-settings" => FixFile,
         _ => FixAgain,
     };
 
@@ -211,6 +219,8 @@ public sealed class DiagnosticViewModel : ObservableObject
     private readonly IStudioStrings _strings;
     private readonly string? _forgeWorkspace;
     private readonly string? _teamsRoot;
+    private readonly IBrowserOpener? _browser;
+    private readonly Uri? _installGuide;
     private DoctorReport? _lastReport;
     private string? _summary;
     private string? _errorMessage;
@@ -229,12 +239,20 @@ public sealed class DiagnosticViewModel : ObservableObject
     /// The teams directory: a team moved or renamed there is found by its id, so its session is no
     /// orphan. Null consults none.
     /// </param>
+    /// <param name="browser">What opens the install guide (UX lot 04, 065); none when null.</param>
+    /// <param name="installGuide">
+    /// The https page that says how to install the engine; when null, <see cref="InstallGuideUrlFrench"/>
+    /// while the strings read in French, <see cref="InstallGuideUrl"/> otherwise. No button shows
+    /// while there is none, or it is not https.
+    /// </param>
     public DiagnosticViewModel(
         OrkeonProcessRunner runner,
         IUiDispatcher? dispatcher = null,
         IStudioStrings? strings = null,
         string? forgeWorkspace = null,
-        string? teamsRoot = null)
+        string? teamsRoot = null,
+        IBrowserOpener? browser = null,
+        Uri? installGuide = null)
     {
         ArgumentNullException.ThrowIfNull(runner);
 
@@ -243,6 +261,8 @@ public sealed class DiagnosticViewModel : ObservableObject
         _strings = strings ?? EnglishStudioStrings.Instance;
         _forgeWorkspace = forgeWorkspace;
         _teamsRoot = teamsRoot;
+        _browser = browser;
+        _installGuide = installGuide;
 
         // Only the verdict line re-describes on a language switch: the check names and details
         // are `orkeon doctor`'s own output and stay as the CLI printed them (STUDIO-11 decision).
@@ -253,11 +273,71 @@ public sealed class DiagnosticViewModel : ObservableObject
                 Summary = Describe(report);
                 OnPropertyChanged(nameof(VerdictHeadline));
                 OnPropertyChanged(nameof(VerdictDetail));
+                OnPropertyChanged(nameof(DangerMessage));
             }
         };
 
         RunCommand = new AsyncRelayCommand(() => RunAsync());
+        OpenInstallGuideCommand = new RelayCommand(OpenInstallGuide, () => HasInstallGuide);
     }
+
+    /// <summary>
+    /// The page that says how to install the Orkeon engine from the release binaries (UX lot 04,
+    /// 065): what the « How to install the engine » button opens.
+    /// </summary>
+    public const string InstallGuideUrl =
+        "https://github.com/Orkeon/orkeon/blob/main/docs/getting-started/three-ways-to-run-orkeon.md#2-release-binary";
+
+    /// <summary>The French mirror of <see cref="InstallGuideUrl"/>, opened while the strings read in French.</summary>
+    public const string InstallGuideUrlFrench =
+        "https://github.com/Orkeon/orkeon/blob/main/docs/fr/getting-started/three-ways-to-run-orkeon.md#2-binaire-de-release";
+
+    /// <summary>Opens <see cref="InstallGuide"/> in the browser.</summary>
+    public RelayCommand OpenInstallGuideCommand { get; }
+
+    /// <summary>
+    /// The install page the button opens: the one given at construction, else the page in the
+    /// language the strings read in now (French, or English for any other).
+    /// </summary>
+    public Uri? InstallGuide =>
+        _installGuide
+        ?? (HttpsAddress.TryParse(
+                string.Equals(_strings.Language, "fr", StringComparison.Ordinal) ? InstallGuideUrlFrench : InstallGuideUrl,
+                out var page)
+            ? page
+            : null);
+
+    /// <summary>Whether an install guide can be opened: an https address, and a browser to open it in.</summary>
+    public bool HasInstallGuide => _browser is not null && HttpsAddress.Is(InstallGuide);
+
+    /// <summary>
+    /// What the danger banner says to do (UX lot 04, 065): install the engine when it is missing;
+    /// nothing for an unreadable report, whose engine text sits in its technical details.
+    /// </summary>
+    public string? DangerMessage => IsEngineMissing ? _strings[StudioStringKeys.DiagEngineMissingHow] : null;
+
+    /// <summary>
+    /// Whether the verdict banner shows (UX lot 04, 043-063): one banner per state, so never under
+    /// the danger banner of a missing engine or an unreadable report.
+    /// </summary>
+    public bool ShowVerdict => HasRun && !IsEngineMissing && string.IsNullOrEmpty(ErrorMessage);
+
+    /// <summary>The first check that carries an action, failures first: what « Fix the first issue » fixes.</summary>
+    public DoctorCheckViewModel? FirstFixable => Checks.FirstOrDefault(c => c.HasFix);
+
+    private void OpenInstallGuide()
+    {
+        if (_browser is { } browser && InstallGuide is { } page && HttpsAddress.Is(page))
+            browser.Open(page);
+    }
+
+    // Failures first, then warnings, then the rest, each group in the engine's order (UX lot 04, 064).
+    private static int Rank(DoctorStatus status) => status switch
+    {
+        DoctorStatus.Failure => 0,
+        DoctorStatus.Warning => 1,
+        _ => 2,
+    };
 
     /// <summary>
     /// The silent first run (audit 09/20, T-09): the window triggers it once at startup so
@@ -490,7 +570,7 @@ public sealed class DiagnosticViewModel : ObservableObject
             OnPropertyChanged(nameof(HasOrphanSessions));
 
             Checks.Clear();
-            foreach (var check in report.Checks)
+            foreach (var check in report.Checks.OrderBy(c => Rank(c.Status)))
                 Checks.Add(new DoctorCheckViewModel(check, _strings));
 
             _lastReport = report;
@@ -507,6 +587,9 @@ public sealed class DiagnosticViewModel : ObservableObject
             OnPropertyChanged(nameof(VerdictHeadline));
             OnPropertyChanged(nameof(VerdictDetail));
             OnPropertyChanged(nameof(IsEngineMissing));
+            OnPropertyChanged(nameof(DangerMessage));
+            OnPropertyChanged(nameof(ShowVerdict));
+            OnPropertyChanged(nameof(FirstFixable));
         });
 
         return report;

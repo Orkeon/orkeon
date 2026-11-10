@@ -80,7 +80,7 @@ public sealed class TourOverlay : Grid
         // theme-aware brushes
         _dim.SetResourceReference(Shape.FillProperty, "TourScrimBrush");
         _pop.SetResourceReference(Border.BackgroundProperty, "SurfaceBrush");
-        _pop.SetResourceReference(Border.BorderBrushProperty, "LineBrush");
+        _pop.SetResourceReference(Border.BorderBrushProperty, "LineStrongBrush");
         _ring.SetResourceReference(Shape.StrokeProperty, "AccentBrush");
         label.SetResourceReference(TextBlock.FontFamilyProperty, "MonoFont");
         _counter.SetResourceReference(TextBlock.FontFamilyProperty, "MonoFont");
@@ -107,7 +107,7 @@ public sealed class TourOverlay : Grid
     /// <summary>
     /// Shows the tour from <paramref name="startIndex"/>. The index is a parameter rather than
     /// always zero because the screenshot campaign photographs every stop: without it only the
-    /// first of the five is reachable from outside.
+    /// first stop is reachable from outside.
     /// </summary>
     public void Start(IReadOnlyList<TourStep> steps, int startIndex = 0)
     {
@@ -146,9 +146,8 @@ public sealed class TourOverlay : Grid
         _counter.Text = I18nStudioStrings.Instance.Format(
             "Studio.Shell.CounterPattern", _index + 1, _steps.Count);
         _back.Visibility = _index > 0 ? Visibility.Visible : Visibility.Collapsed;
-        // The last step closes the tour itself: "Skip" next to "Finish" would be two ways out
-        // with one meaning (R21: the closing step offers Back and Finish only).
-        _skip.Visibility = _index < _steps.Count - 1 ? Visibility.Visible : Visibility.Collapsed;
+        // "Skip" stays on every step, the last one included: the way out never moves.
+        _skip.Visibility = Visibility.Visible;
         _nextKeyHolder?.SetBinding(ContentControl.ContentProperty,
             new System.Windows.Data.Binding("[" + (_index == _steps.Count - 1 ? "Studio.Shell.Finish" : "Studio.Shell.Next") + "]") { Source = I18n.Instance });
 
@@ -156,7 +155,7 @@ public sealed class TourOverlay : Grid
 
         _pop.Measure(new Size(PopW, double.PositiveInfinity));
         var ph = Math.Max(_pop.DesiredSize.Height, 200);
-        var (x, y) = ClearPageHeader(PlacePopover(spotlight, ph), spotlight, ph);
+        var (x, y) = ClearPageHeader(PlacePopover(step.TargetName, spotlight, ph), spotlight, ph);
         Canvas.SetLeft(_pop, x); Canvas.SetTop(_pop, y);
     }
 
@@ -210,30 +209,87 @@ public sealed class TourOverlay : Grid
         }
     }
 
-    /// <summary>Popover placement: below the target, above it, beside it, else centered.</summary>
-    private (double X, double Y) PlacePopover(Rect? spotlight, double ph)
-    {
-        (double X, double Y) centered = ((ActualWidth - PopW) / 2, (ActualHeight - ph) / 2);
+    /// <summary>
+    /// Zones the card never covers: the need box, the help slot of the section list and the
+    /// section bar of <see cref="StepTabs"/>. A zone not drawn on the current screen is ignored.
+    /// </summary>
+    private static readonly string[] KeepClearNames = ["NeedBox", "SideSlot", "PART_GroupBar"];
 
+    /// <summary>Targets of the create screen: their card shares one column, anchored on the need box.</summary>
+    private static readonly string[] CreateScreenTargets = ["NeedBox", "StepRail"];
+
+    /// <summary>
+    /// Popover placement. The preferred spot depends on the target, so that the card stays put
+    /// from one stop to the next: a sidebar target (<c>Nav*</c>) takes the card on its right,
+    /// aligned on its top; a create-screen target takes it right of the need box when the window
+    /// leaves room, else below the step rail. Then come below, above, right and left of the
+    /// target. A spot is kept only when it fits the window and covers neither the target nor a
+    /// keep-clear zone; when none does, the card goes right of the target, aligned on its top.
+    /// No target means the centred card.
+    /// </summary>
+    private (double X, double Y) PlacePopover(string? targetName, Rect? spotlight, double ph)
+    {
         if (spotlight is null)
-            return centered;
+            return ((ActualWidth - PopW) / 2, (ActualHeight - ph) / 2);
 
         var t = spotlight.Value;
+        var avoid = KeepClearZones();
+        var rightOfTarget = (t.Right + 18, ClampY(t.Top, ph));
 
-        if (ActualHeight - t.Bottom - 14 >= ph)
-            return (Clamp(t.X, 12, ActualWidth - PopW - 12), t.Bottom + 14);
+        foreach (var spot in Candidates(targetName, t, ph))
+        {
+            if (Fits(spot, ph) && !Covers(spot, ph, t, avoid))
+                return spot;
+        }
 
-        if (t.Y - 14 >= ph)
-            return (Clamp(t.X, 12, ActualWidth - PopW - 12), t.Y - ph - 14);
-
-        if (ActualWidth - t.Right - 18 >= PopW + 12)
-            return (t.Right + 18, Clamp(t.Y + 8, 12, ActualHeight - ph - 12));
-
-        if (t.X - 18 >= PopW + 12)
-            return (t.X - PopW - 18, Clamp(t.Y + 8, 12, ActualHeight - ph - 12));
-
-        return centered;
+        return rightOfTarget;
     }
+
+    private IEnumerable<(double X, double Y)> Candidates(string? targetName, Rect t, double ph)
+    {
+        if (targetName is not null && targetName.StartsWith("Nav", StringComparison.Ordinal))
+            yield return (t.Right + 18, ClampY(t.Top, ph));
+
+        if (targetName is not null && CreateScreenTargets.Contains(targetName, StringComparer.Ordinal))
+        {
+            var needBox = ZoneOf("NeedBox") ?? t;
+            if (ActualWidth - needBox.Right >= PopW + 36)
+                yield return (needBox.Right + 18, ClampY(t.Top, ph));
+            if (ZoneOf("StepRail") is { } rail)
+                yield return (ClampX(rail.X), rail.Bottom + 14);
+        }
+
+        yield return (ClampX(t.X), t.Bottom + 14);
+        yield return (ClampX(t.X), t.Y - ph - 14);
+        yield return (t.Right + 18, ClampY(t.Y + 8, ph));
+        yield return (t.X - PopW - 18, ClampY(t.Y + 8, ph));
+    }
+
+    private bool Fits((double X, double Y) spot, double ph) =>
+        spot.X >= 12 && spot.Y >= 12
+        && spot.X + PopW <= ActualWidth - 12 && spot.Y + ph <= ActualHeight - 12;
+
+    private static bool Covers((double X, double Y) spot, double ph, Rect target, IReadOnlyList<Rect> avoid)
+    {
+        var card = new Rect(spot.X, spot.Y, PopW, ph);
+        return card.IntersectsWith(target) || avoid.Any(zone => card.IntersectsWith(zone));
+    }
+
+    private List<Rect> KeepClearZones() =>
+        [.. KeepClearNames.Select(ZoneOf).OfType<Rect>()];
+
+    /// <summary>The on-screen rectangle of a named element, padded like a spotlight; null when not drawn.</summary>
+    private Rect? ZoneOf(string name)
+    {
+        if (ResolveTarget(name) is not { } el)
+            return null;
+        var origin = el.TransformToVisual(this).Transform(new Point(0, 0));
+        return new Rect(origin.X - Pad, origin.Y - Pad, el.ActualWidth + 2 * Pad, el.ActualHeight + 2 * Pad);
+    }
+
+    private double ClampX(double x) => Clamp(x, 12, ActualWidth - PopW - 12);
+
+    private double ClampY(double y, double ph) => Clamp(y, 12, ActualHeight - ph - 12);
 
     /// <summary>
     /// Keeps the popover off the page header (title, subtitle and the page actions on its right,

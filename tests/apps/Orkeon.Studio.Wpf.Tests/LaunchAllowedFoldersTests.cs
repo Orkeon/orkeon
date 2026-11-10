@@ -76,6 +76,9 @@ public sealed class LaunchAllowedFoldersTests : IDisposable
 
         Assert.True(tab.IsBlockedByUndeclaredFolders);
         Assert.Equal(["/archives"], tab.UndeclaredTeamFolders);
+        Assert.Equal(
+            [("/docs", false), ("/archives", true)],
+            tab.FolderRows.Select(row => (row.VirtualPath, row.IsUndeclared)));
         Assert.False(tab.RunCommand.CanExecute(null));
         // The dry run is a run too: it spawns the same engine against the same mounts.
         Assert.False(tab.ValidateCommand.CanExecute(null));

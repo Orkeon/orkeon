@@ -135,7 +135,10 @@ public sealed class EmailAccountRowViewModel : ObservableObject
         CancelRemoveCommand = new RelayCommand(() => IsConfirmingRemove = false);
         TestCommand = new AsyncRelayCommand(TestAsync, () => _owner.CanTest);
         SignInCommand = new RelayCommand(BeginSignIn, () => CanSign && _signIn is not { IsWaiting: true });
-        SignOutCommand = new RelayCommand(() => { if (CanSign) _owner.ArmSignOut(this); }, () => CanSign);
+        // Signing out needs an account the engine found signed in, and no sign-in under way (UX lot 04, 059).
+        SignOutCommand = new RelayCommand(
+            () => { if (CanSign) _owner.ArmSignOut(this); },
+            () => CanSign && IsReady && _signIn is not { IsWaiting: true });
         ConfirmSignOutCommand = new AsyncRelayCommand(SignOutAsync, () => _isConfirmingSignOut);
         CancelSignOutCommand = new RelayCommand(() => IsConfirmingSignOut = false);
         ShowAccountTabCommand = new RelayCommand(() => ActiveTab = AccountTab);
@@ -512,11 +515,44 @@ public sealed class EmailAccountRowViewModel : ObservableObject
     };
 
     /// <summary>
-    /// The engine's sentence on what a not-ready account lacks, in English, as printed — it names
-    /// the variable or the sign-in to run. Null otherwise: an account set aside already says why
-    /// through <see cref="Problems"/>, and the reason of an unknown state is in <see cref="State"/>.
+    /// What a not-ready account lacks, in the user's language, and where on this screen to supply
+    /// it. Chosen on the engine's structured fields — how the account signs in, which variable
+    /// the file names, whether it holds a value — in the order the engine checks them (password,
+    /// client secret, token), never by reading its English sentence, which
+    /// <see cref="EngineProblem"/> keeps for the expert. Null otherwise: an account set aside
+    /// already says why through <see cref="Problems"/>, and the reason of an unknown state is in
+    /// <see cref="State"/>.
     /// </summary>
-    public string? StateDetail =>
+    public string? StateDetail
+    {
+        get
+        {
+            if (StateKind != EmailAccountReadiness.NotReady)
+                return null;
+
+            if (string.Equals(_state!.Auth, EmailSection.Values.Password, StringComparison.Ordinal))
+            {
+                return string.IsNullOrWhiteSpace(_passwordEnvVar)
+                    ? _strings[StudioStringKeys.MailStateNotReady]
+                    : _strings.Format(StudioStringKeys.MailNotReadyPassword, _passwordEnvVar);
+            }
+
+            if (string.Equals(_state.Auth, EmailSection.Values.OAuth2, StringComparison.Ordinal))
+            {
+                return !string.IsNullOrWhiteSpace(_clientSecretEnvVar) && !ClientSecretStored
+                    ? _strings.Format(StudioStringKeys.MailNotReadySecret, _clientSecretEnvVar)
+                    : _strings[StudioStringKeys.MailNotReadyOAuth];
+            }
+
+            return _strings[StudioStringKeys.MailStateNotReady];
+        }
+    }
+
+    /// <summary>
+    /// The engine's own sentence on what a not-ready account lacks, in English, as printed — shown
+    /// to the expert under <see cref="StateDetail"/>, never read. Null otherwise.
+    /// </summary>
+    public string? EngineProblem =>
         StateKind == EmailAccountReadiness.NotReady && _state?.Problem is { Length: > 0 } problem ? problem : null;
 
     /// <summary>Whether the row has a state to show.</summary>
@@ -695,8 +731,12 @@ public sealed class EmailAccountRowViewModel : ObservableObject
     /// </summary>
     public bool ShowHosts => _owner.IsExpert || Provider is not (EmailSection.Values.Gmail or EmailSection.Values.Outlook);
 
-    /// <summary>Whether the OAuth client id shows: for the expert, and for everyone once the account signs in with OAuth2.</summary>
-    public bool ShowClientId => _owner.IsExpert || _effective.AuthMethod == EmailSection.Values.OAuth2;
+    /// <summary>
+    /// Whether the OAuth client id shows: for everyone once the account signs in with OAuth2, and
+    /// for the expert when the file already names one — a password account shows no OAuth field (UX lot 04, 058).
+    /// </summary>
+    public bool ShowClientId =>
+        _effective.AuthMethod == EmailSection.Values.OAuth2 || (_owner.IsExpert && !string.IsNullOrWhiteSpace(_clientId));
 
     // The expert's sign-in fields show when the account's method or provider calls for them, or
     // when the file already holds them: a key the file carries must stay reachable, and a key
@@ -939,6 +979,7 @@ public sealed class EmailAccountRowViewModel : ObservableObject
         _state = state;
         _stateFailure = failure;
         RefreshState();
+        SignOutCommand.RaiseCanExecuteChanged();
     }
 
     /// <summary>
@@ -1211,12 +1252,14 @@ public sealed class EmailAccountRowViewModel : ObservableObject
 
     private void RefreshState() =>
         OnPropertiesChanged(
-            nameof(StateKind), nameof(State), nameof(StateDetail), nameof(HasState), nameof(HasStateDetail), nameof(IsReady));
+            nameof(StateKind), nameof(State), nameof(StateDetail), nameof(EngineProblem), nameof(HasState), nameof(HasStateDetail),
+            nameof(IsReady));
 
     private void RefreshSecretStates() =>
         OnPropertiesChanged(
             nameof(PasswordStored), nameof(PasswordStatus), nameof(PasswordVariable),
-            nameof(ClientSecretStored), nameof(ClientSecretStatus), nameof(ClientSecretVariable));
+            nameof(ClientSecretStored), nameof(ClientSecretStatus), nameof(ClientSecretVariable),
+            nameof(StateDetail), nameof(HasStateDetail));
 
     /// <summary>
     /// Whether the run will find the secret: a value under a variable the file names. A value left

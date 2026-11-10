@@ -1,4 +1,6 @@
-<!-- Orkeon Studio — dark theme tokens ("deep ocean night", Crew Console dark override). -->
+<!-- Orkeon Studio — dark theme tokens ("deep ocean night", Crew Console dark override).
+     Thresholds: text 4.5:1, field borders and components 3:1 (WCAG); disabled states and
+     panel borders >= 3:1 for comfort. -->
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
@@ -12,19 +14,24 @@
   <!-- editable fields (T-31): on a dark ground the field is a well deeper than the surface,
        never a white rectangle; the line stays visible against both. -->
   <SolidColorBrush x:Key="FieldBrush"       Color="#091420"/>
-  <SolidColorBrush x:Key="FieldBorderBrush" Color="#41617A"/>
+  <!-- UX lot 09: 3.50:1 on surface, 4.37:1 on field, 4.20:1 on the scrim. -->
+  <SolidColorBrush x:Key="FieldBorderBrush" Color="#5C7F99"/>
   <SolidColorBrush x:Key="FieldShadowBrush" Color="#33000000"/>
 
   <!-- text -->
   <SolidColorBrush x:Key="InkBrush"         Color="#EAF1F3"/>
   <SolidColorBrush x:Key="InkMutedBrush"    Color="#A9BCC6"/>
-  <SolidColorBrush x:Key="InkFaintBrush"    Color="#748996"/>
-  <SolidColorBrush x:Key="InkDisabledBrush" Color="#50626F"/>
+  <!-- UX lot 09: faint 5.68:1 on surface, 4.93:1 on surface-2; disabled 3.56:1 on surface, 4.07:1 on paper. -->
+  <SolidColorBrush x:Key="InkFaintBrush"    Color="#8FA3B0"/>
+  <SolidColorBrush x:Key="InkDisabledBrush" Color="#6B7F8C"/>
 
   <!-- lines -->
   <SolidColorBrush x:Key="LineBrush"        Color="#243A4C"/>
-  <SolidColorBrush x:Key="LineStrongBrush"  Color="#324D60"/>
+  <!-- UX lot 09: strong line 2.59:1 on surface, 3.19:1 on paper-sunk, 3.11:1 on the scrim (modal border). -->
+  <SolidColorBrush x:Key="LineStrongBrush"  Color="#4A6A80"/>
   <SolidColorBrush x:Key="LineFaintBrush"   Color="#1B303F"/>
+  <!-- UX lot 09: 1 px ring around the header mark so its square stays visible on the dark header. -->
+  <SolidColorBrush x:Key="LogoRingBrush"    Color="#4A6A80"/>
 
   <!-- accent: the charter teal (refonte R1, 2026-10). The former ocean blue stays as
        SecondaryBrush, for charts and secondary surfaces only. -->
@@ -55,7 +62,7 @@
   <SolidColorBrush x:Key="InfoBrush"          Color="#3DA0AC"/>
   <SolidColorBrush x:Key="InfoWeakBrush"      Color="#1B3E4A"/>
   <SolidColorBrush x:Key="InfoBorderBrush"    Color="#2D5D6A"/>
-  <SolidColorBrush x:Key="NeutralDotBrush"    Color="#748996"/>
+  <SolidColorBrush x:Key="NeutralDotBrush"    Color="#8FA3B0"/> <!-- UX lot 09: 5.68:1 on surface -->
   <SolidColorBrush x:Key="SandWeakBrush"      Color="#3D3318"/>
 
   <!-- log console (unchanged) -->

@@ -115,7 +115,8 @@ public sealed class ConfigTabViewModel : ObservableObject
             seams.Dispatcher,
             _strings,
             forgeWorkspace,
-            teamsRoot);
+            teamsRoot,
+            seams.BrowserOpener);
 
         // A language change at runtime, STUDIO-11: the tab lives as long as the window, so the
         // subscription needs no teardown.

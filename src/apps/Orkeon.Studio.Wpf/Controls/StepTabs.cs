@@ -27,6 +27,9 @@ public enum StepTabState
     /// <summary>A green check (no circle): the section was checked and holds.</summary>
     Verified,
 
+    /// <summary>A hollow sand ring: something there is still open, but a crew runs without it (UX lot 04, Settings).</summary>
+    Optional,
+
     /// <summary>A turning ring: the engine is working on the section.</summary>
     Working,
 }
@@ -254,6 +257,7 @@ public sealed class StepTabs : TabControl
                 var group = Groups[index];
                 group.Label = titles[index];
                 group.Count = visible.Count;
+                // What waits on the user lights the group; an optional tab's hollow ring does not (UX lot 04).
                 group.HasDot = visible.Any(entry => entry.Tab.State is StepTabState.Expected or StepTabState.Warning);
                 group.IsActive = index == _activeGroup;
             }

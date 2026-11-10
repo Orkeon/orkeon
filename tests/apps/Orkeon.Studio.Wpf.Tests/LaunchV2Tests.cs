@@ -35,6 +35,23 @@ public sealed class LaunchV2Tests : IDisposable
         return (tab, launcher);
     }
 
+    // UX lot 10 (B13): untouched options say "Default settings"; a change names the level and the display.
+    [Fact]
+    public void The_options_tab_subtitle_says_default_settings_until_an_option_changes()
+    {
+        var (tab, _) = Build(new FakeTargetProbe());
+        var raised = new List<string>();
+        tab.PropertyChanged += (_, e) => raised.Add(e.PropertyName ?? "");
+
+        Assert.Equal("Default settings", tab.OptionsTabSubtitle);
+
+        tab.Options.Verbosity = 1;
+        tab.Options.WatchProgress = false;
+
+        Assert.Equal("detailed level · Raw output", tab.OptionsTabSubtitle);
+        Assert.Contains(nameof(LaunchTabViewModel.OptionsTabSubtitle), raised);
+    }
+
     [Fact]
     public async Task Validate_first_runs_the_dry_pass_then_the_real_one()
     {

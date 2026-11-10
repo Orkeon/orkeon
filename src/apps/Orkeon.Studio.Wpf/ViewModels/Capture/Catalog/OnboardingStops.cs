@@ -19,7 +19,7 @@ internal static class OnboardingStops
             Teardown = CaptureAction.Sync(static c => c.Surface.HideSplash()),
         },
 
-        // Projected from the catalogue the window reads, so a sixth tour stop arrives in the
+        // Projected from the catalogue the window reads, so a fourth tour stop arrives in the
         // collection on its own instead of being silently missing from it.
         .. GuidedTourCatalog.Steps.Select((step, index) => new CaptureStop
         {

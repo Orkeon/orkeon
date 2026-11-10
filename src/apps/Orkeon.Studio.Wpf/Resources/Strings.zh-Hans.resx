@@ -84,34 +84,22 @@
     <value>完成</value>
   </data>
   <data name="Studio.Shell.TourStep1Title" xml:space="preserve">
-    <value>两种模式，同一产品</value>
+    <value>在这里写下您的需求</value>
   </data>
   <data name="Studio.Shell.TourStep1Body" xml:space="preserve">
-    <value>新手模式解释每一步并隐藏内部机制。专家模式展示全部：命令行、日志、原始 JSON。随时切换，毫无损失。</value>
+    <value>用几句话描述您希望团队为您做什么。无需技术词汇：像对同事那样说出来即可。</value>
   </data>
   <data name="Studio.Shell.TourStep2Title" xml:space="preserve">
-    <value>一切围绕团队</value>
+    <value>助手来组建，您来试用</value>
   </data>
   <data name="Studio.Shell.TourStep2Body" xml:space="preserve">
-    <value>智能体团队是核心对象：您创建它、保有它、启动它。应用的其余部分都为它服务。</value>
+    <value>Studio 会根据您的需求提出一个智能体团队。采用之前，您可以先用一个示例试用；此步骤不会真正运行任何内容。</value>
   </data>
   <data name="Studio.Shell.TourStep3Title" xml:space="preserve">
-    <value>日常工作</value>
+    <value>在这里找到您的团队</value>
   </data>
   <data name="Studio.Shell.TourStep3Body" xml:space="preserve">
-    <value>先试再跑，执行后在历史记录中找到每一次——包含结果与原样重放所需的一切。</value>
-  </data>
-  <data name="Studio.Shell.TourStep4Title" xml:space="preserve">
-    <value>环境，一次配好</value>
-  </data>
-  <data name="Studio.Shell.TourStep4Body" xml:space="preserve">
-    <value>只有两项设置：AI 模型和智能体可见的文件夹。出现阻碍时诊断会提醒您。</value>
-  </data>
-  <data name="Studio.Shell.TourStep5Title" xml:space="preserve">
-    <value>帮助与上下文相关</value>
-  </data>
-  <data name="Studio.Shell.TourStep5Body" xml:space="preserve">
-    <value>在新手模式下，带步骤的界面（创建团队、执行）在左侧分区列表下方有一个“这一步做什么”说明框。切换到专家模式后它会隐去。</value>
+    <value>每个已采用的团队都会出现在“我的团队”中：您可以从它的卡片运行、计划或修改它。</value>
   </data>
   <!-- STUDIO-34: the status bar at the foot of the window -->
   <data name="Studio.Shell.StatusWaiting" xml:space="preserve">
@@ -289,6 +277,9 @@
   <data name="Studio.Settings.MountsRemove" xml:space="preserve">
     <value>移除</value>
   </data>
+  <data name="Studio.Settings.MountSuggestions" xml:space="preserve">
+    <value>建议：</value>
+  </data>
   <data name="Studio.Settings.Unparsed" xml:space="preserve">
     <value>无法解析该条目。它被原样保留，不会丢失任何内容。</value>
   </data>
@@ -355,6 +346,7 @@
   <data name="Studio.Run.SettingsAuto" xml:space="preserve">
     <value>自动（由运行时解析）</value>
   </data>
+  <data name="Studio.Run.SettingsFileTitle" xml:space="preserve"><value>设置文件</value></data>
   <data name="Studio.Run.SettingsExplicit" xml:space="preserve">
     <value>显式路径</value>
   </data>
@@ -374,33 +366,27 @@
     <value>输入</value>
   </data>
   <data name="Studio.Run.LblInputsJson" xml:space="preserve">
-    <value>内联 JSON（--inputs）</value>
+    <value>内联 JSON</value>
   </data>
   <data name="Studio.Run.LblInputsFile" xml:space="preserve">
-    <value>文件（--inputs-file）</value>
+    <value>文件</value>
   </data>
   <data name="Studio.Run.LblVerbosity" xml:space="preserve">
-    <value>详细程度（--verbose）</value>
+    <value>日志详细程度</value>
   </data>
   <data name="Studio.Run.LlmLog" xml:space="preserve">
-    <value>记录 LLM 交互（--llm-log）</value>
+    <value>保留与模型的交互</value>
   </data>
   <data name="Studio.Run.SettingsMountsTitle" xml:space="preserve">
     <value>所选 appsettings 中已有的挂载</value>
   </data>
   <data name="Studio.Run.AllowExternal" xml:space="preserve">
-    <value>允许工作目录之外的挂载（--allow-external-mounts）</value>
+    <value>允许工作目录之外的文件夹</value>
   </data>
   <data name="Studio.Run.CopyCommand" xml:space="preserve"><value>复制命令</value></data>
   <data name="Studio.Run.CommandCopied" xml:space="preserve"><value>命令已复制</value></data>
   <data name="Studio.Run.StateIdle" xml:space="preserve">
     <value>准备就绪</value>
-  </data>
-  <data name="Studio.Run.StateRunning" xml:space="preserve">
-    <value>执行中</value>
-  </data>
-  <data name="Studio.Run.StateDone" xml:space="preserve">
-    <value>执行完成</value>
   </data>
   <data name="Studio.Run.BadgeIdle" xml:space="preserve">
     <value>等待中</value>
@@ -411,6 +397,7 @@
   <data name="Studio.Run.BadgeDone" xml:space="preserve">
     <value>成功</value>
   </data>
+  <data name="Studio.Run.BadgeDoneSkipped" xml:space="preserve"><value>成功 · {0} 个智能体未执行</value></data>
   <data name="Studio.Run.BadgeFailed" xml:space="preserve">
     <value>失败</value>
   </data>
@@ -467,7 +454,7 @@
     <value>历史记录</value>
   </data>
   <data name="Studio.History.Sub" xml:space="preserve">
-    <value>每次执行都保存在本地，可原样重放。</value>
+    <value>每次真实运行都会记录在此。您可以使用相同的设置再次运行。</value>
   </data>
   <data name="Studio.History.Replay" xml:space="preserve">
     <value>准备重放</value>
@@ -496,6 +483,12 @@
   <data name="Studio.Run.ExitCode" xml:space="preserve">
     <value>退出码 {0} — {1}</value>
   </data>
+  <data name="Studio.Run.ExitSuccess" xml:space="preserve"><value>运行成功完成</value></data>
+  <data name="Studio.Run.ExitScriptError" xml:space="preserve"><value>脚本或设置错误：请检查团队文件及其使用的设置</value></data>
+  <data name="Studio.Run.ExitRuntimeError" xml:space="preserve"><value>运行时错误：日志的最后几行说明了原因</value></data>
+  <data name="Studio.Run.ExitCancelled" xml:space="preserve"><value>运行已中断</value></data>
+  <data name="Studio.Run.ExitUnknown" xml:space="preserve"><value>意外结束：请查看上方的输出</value></data>
+  <data name="Studio.Run.ExitNotStarted" xml:space="preserve"><value>引擎未启动</value></data>
   <data name="Studio.Settings.OllamaTitle" xml:space="preserve">
     <value>Ollama</value>
   </data>
@@ -981,12 +974,6 @@
   <data name="Studio.Shell.Expert" xml:space="preserve">
     <value>专家</value>
   </data>
-  <data name="Studio.Shell.HelpTitle" xml:space="preserve">
-    <value>需要帮助？</value>
-  </data>
-  <data name="Studio.Shell.HelpBody" xml:space="preserve">
-    <value>新手模式解释每一步。想看全部时切换到专家模式。</value>
-  </data>
   <data name="Studio.Common.GuidedTour" xml:space="preserve">
     <value>引导游览</value>
   </data>
@@ -1025,6 +1012,15 @@
   </data>
   <data name="Studio.Common.SubNovice" xml:space="preserve">
     <value>要设置两件事：用哪个 AI 模型，以及智能体能看哪些文件夹。</value>
+  </data>
+  <data name="Studio.Settings.AutoSaveNote" xml:space="preserve">
+    <value>您的更改会自动保存。</value>
+  </data>
+  <data name="Studio.Settings.ValidateTip" xml:space="preserve">
+    <value>检查设置但不保存。</value>
+  </data>
+  <data name="Studio.Settings.SaveTip" xml:space="preserve">
+    <value>检查后写入设置文件。</value>
   </data>
   <data name="Studio.Common.SubExpert" xml:space="preserve">
     <value>appsettings.json —— 类型化表单、挂载、速率限制，以及只读的原始文件。</value>
@@ -1116,17 +1112,41 @@
   <data name="Studio.Settings.NewName" xml:space="preserve">
     <value>新建配置</value>
   </data>
+  <data name="Studio.Settings.FirstProfileName" xml:space="preserve">
+    <value>主模型</value>
+  </data>
+  <data name="Studio.Settings.ChooseModelCta" xml:space="preserve">
+    <value>选择我的 AI 模型</value>
+  </data>
+  <data name="Studio.Settings.ModelMissingTip" xml:space="preserve">
+    <value>未选择模型：助手无法组建团队。</value>
+  </data>
   <data name="Studio.Settings.GroupLocal" xml:space="preserve">
     <value>本机运行 · 免费、无需密钥</value>
   </data>
   <data name="Studio.Settings.GroupCloud" xml:space="preserve">
     <value>云端 · 需要 API 密钥</value>
   </data>
+  <data name="Studio.Settings.ProviderRecommended" xml:space="preserve">
+    <value>推荐</value>
+  </data>
+  <data name="Studio.Settings.GroupOthers" xml:space="preserve">
+    <value>其他提供商</value>
+  </data>
   <data name="Studio.Settings.KeyTitleFor" xml:space="preserve">
     <value>API 密钥 {0}</value>
   </data>
   <data name="Studio.Settings.KeyTitleService" xml:space="preserve">
     <value>服务的 API 密钥</value>
+  </data>
+  <data name="Studio.Settings.ToolSecretWebSearch" xml:space="preserve">
+    <value>网页搜索（Tavily）</value>
+  </data>
+  <data name="Studio.Settings.ToolSecretBraveSearch" xml:space="preserve">
+    <value>网页搜索（Brave）</value>
+  </data>
+  <data name="Studio.Settings.ToolSecretImageGeneration" xml:space="preserve">
+    <value>图像生成（OpenAI）</value>
   </data>
   <data name="Studio.Settings.KeyExplainer" xml:space="preserve">
     <value>Studio 将它存放在您的 Windows 会话中——绝不写入文件，绝不放进共享文件夹。</value>
@@ -1136,6 +1156,9 @@
   </data>
   <data name="Studio.Settings.KeyStore" xml:space="preserve">
     <value>记住密钥</value>
+  </data>
+  <data name="Studio.Settings.SecretStore" xml:space="preserve">
+    <value>记住</value>
   </data>
   <data name="Studio.Settings.KeyStatusSet" xml:space="preserve">
     <value>密钥已记住</value>
@@ -1199,6 +1222,9 @@
   </data>
   <data name="Studio.Create.ManageSettings" xml:space="preserve">
     <value>管理配置</value>
+  </data>
+  <data name="Studio.Create.ChooseModel" xml:space="preserve">
+    <value>选择模型</value>
   </data>
   <data name="Studio.Create.Step1" xml:space="preserve">
     <value>描述</value>
@@ -1344,9 +1370,7 @@
   <data name="Studio.Teams.Delete" xml:space="preserve">
     <value>删除</value>
   </data>
-  <data name="Studio.Teams.InProgress" xml:space="preserve">
-    <value>进行中的会话</value>
-  </data>
+  <data name="Studio.Teams.InProgressCount" xml:space="preserve"><value>草稿 · {0}</value></data>
   <data name="Studio.Teams.Resume" xml:space="preserve">
     <value>继续</value>
   </data>
@@ -1365,6 +1389,9 @@
   <data name="Studio.Create.ActivityDone" xml:space="preserve">
     <value>{0} — 用时 {1} 秒完成</value>
   </data>
+  <data name="Studio.Create.ActivityDoneUntimed" xml:space="preserve">
+    <value>{0} — 已完成</value>
+  </data>
   <data name="Studio.Create.ActivityFailed" xml:space="preserve">
     <value>{0} — 失败</value>
   </data>
@@ -1375,7 +1402,7 @@
     <value>请先为助手选择一个模型。</value>
   </data>
   <data name="Studio.Create.HintReady" xml:space="preserve">
-    <value>信息齐全——我可以组建团队了。</value>
+    <value>就绪：您可以组建团队了。</value>
   </data>
   <data name="Studio.Create.DecisionAccept" xml:space="preserve">
     <value>可以</value>
@@ -1602,6 +1629,7 @@
   <data name="Studio.History.Result" xml:space="preserve">
     <value>打开结果</value>
   </data>
+  <data name="Studio.History.ShowError" xml:space="preserve"><value>查看错误</value></data>
   <data name="Studio.Diagnostics.Check.appsettings" xml:space="preserve">
     <value>设置可读取</value>
   </data>
@@ -1611,6 +1639,7 @@
   <data name="Studio.Diagnostics.Check.esbuild" xml:space="preserve">
     <value>脚本编译器（esbuild）</value>
   </data>
+  <data name="Studio.Diagnostics.Check.install-channel" xml:space="preserve"><value>引擎安装渠道</value></data>
   <data name="Studio.Diagnostics.Check.llm-config" xml:space="preserve">
     <value>模型配置详情</value>
   </data>
@@ -1629,11 +1658,15 @@
   <data name="Studio.Diagnostics.Check.onnx-reranker" xml:space="preserve">
     <value>ONNX 重排序器</value>
   </data>
+  <data name="Studio.Diagnostics.Check.runner-settings" xml:space="preserve"><value>启动器设置</value></data>
   <data name="Studio.Diagnostics.Check.tree-sitter" xml:space="preserve">
     <value>代码分析器（tree-sitter）</value>
   </data>
   <data name="Studio.Diagnostics.Check.workspace-write" xml:space="preserve">
     <value>对工作目录的写入权限</value>
+  </data>
+  <data name="Studio.Diagnostics.Check.Unknown" xml:space="preserve">
+    <value>引擎检查</value>
   </data>
   <data name="Studio.Diagnostics.AllGood" xml:space="preserve">
     <value>一切就绪。</value>
@@ -1689,6 +1722,8 @@
   <data name="Studio.Import.TestFirst" xml:space="preserve">
     <value>先试运行</value>
   </data>
+  <data name="Studio.Import.DetectHint" xml:space="preserve"><value>请先选择团队文件或文件夹。</value></data>
+  <data name="Studio.Import.PathPlaceholder" xml:space="preserve"><value>示例：C:\Teams\watch\team.yaml</value></data>
   <data name="Studio.Run.Browse" xml:space="preserve">
     <value>浏览…</value>
   </data>
@@ -1730,6 +1765,12 @@
   </data>
   <data name="Studio.Settings.ToolsIntro" xml:space="preserve">
     <value>团队在运行中可使用的全部工具，按家族列出。大多数无需配置；需要配置的会说明需要什么、在哪里设置。</value>
+  </data>
+  <data name="Studio.Settings.ToolKeysElsewhere" xml:space="preserve">
+    <value>工具密钥（网页搜索、图像…）在 访问 › 工具密钥 中设置。</value>
+  </data>
+  <data name="Studio.Settings.ApiKeysElsewhere" xml:space="preserve">
+    <value>模型密钥在 模型 › API 密钥 中设置。</value>
   </data>
   <data name="Studio.Settings.ShellTitle" xml:space="preserve">
     <value>Shell 命令</value>
@@ -2028,6 +2069,9 @@
   <data name="Studio.Settings.MailStateNotReady" xml:space="preserve">
     <value>未就绪</value>
   </data>
+  <data name="Studio.Settings.MailNotReadyPassword" xml:space="preserve"><value>密码尚未保存：此计算机上的变量 {0} 为空。请在「登录」标签页中输入。</value></data>
+  <data name="Studio.Settings.MailNotReadySecret" xml:space="preserve"><value>客户端密钥尚未保存：此计算机上的变量 {0} 为空。请在「登录」标签页中输入。</value></data>
+  <data name="Studio.Settings.MailNotReadyOAuth" xml:space="preserve"><value>此账户尚未登录：请使用下方的「登录」。</value></data>
   <data name="Studio.Settings.MailStateSetAside" xml:space="preserve">
     <value>已搁置</value>
   </data>
@@ -2083,11 +2127,13 @@
     <value>正在开始登录…</value>
   </data>
   <data name="Studio.Settings.MailDeviceCode" xml:space="preserve">
-    <value>打开 {0} 并输入此代码：</value>
+    <value>打开下方的授权页面并输入此代码：</value>
   </data>
   <data name="Studio.Settings.MailDeviceCodeExpiresIn" xml:space="preserve">
     <value>代码将在 {0} 后过期</value>
   </data>
+  <data name="Studio.Settings.MailDeviceCodeExpiresSoon" xml:space="preserve"><value>代码将在一分钟内过期</value></data>
+  <data name="Studio.Common.Minutes" xml:space="preserve"><value>{0} 分钟</value></data>
   <data name="Studio.Settings.MailDeviceCodeExpired" xml:space="preserve">
     <value>代码已过期 — 请重新开始</value>
   </data>
@@ -2267,7 +2313,7 @@
     <value>恢复</value>
   </data>
   <data name="Studio.Run.BlockedUndeclared" xml:space="preserve">
-    <value>该团队使用了您的设置未授权的文件夹：{0}。请在「设置 › 授权文件夹」中声明它们，或将其从团队中移除。</value>
+    <value>该团队使用了您的设置未授权的文件夹：{0}。请在「设置 › 授权文件夹」中授权它们，或将其从团队中移除。</value>
   </data>
   <data name="Studio.Run.OpenAllowedFolders" xml:space="preserve">
     <value>打开授权文件夹</value>
@@ -2302,7 +2348,7 @@
   <data name="Studio.Settings.TeamFoldersUnknownId" xml:space="preserve"><value>{0} · {1} — 此机器上缺少声明 {2}</value></data>
   <data name="Studio.Create.UnknownMountId" xml:space="preserve"><value>此机器上缺少该声明（{0}）</value></data>
   <data name="Studio.Create.DeclaredFolder" xml:space="preserve"><value>“{0}”已授权并绑定为 {1}</value></data>
-  <data name="Studio.Run.BlockedUnknownMountId" xml:space="preserve"><value>该团队引用了此处缺少的文件夹声明：{0}。请在“设置 › 已授权文件夹”中声明它们，或更改团队的文件夹。</value></data>
+  <data name="Studio.Run.BlockedUnknownMountId" xml:space="preserve"><value>该团队引用了此处缺少的已授权文件夹：{0}。请在“设置 › 已授权文件夹”中授权它们，或更改团队的文件夹。</value></data>
   <data name="Studio.Run.OriginSelectedById" xml:space="preserve"><value>{0}（在 {1} 个条目中按标识选中）</value></data>
   <data name="Studio.Run.OriginNotSelected" xml:space="preserve"><value>{0}（本次运行未挂载）</value></data>
   <data name="Studio.Run.OriginConflict" xml:space="preserve"><value>{0}（{1} 个条目之一 — 没有任何选择）</value></data>
@@ -2342,6 +2388,7 @@
   <data name="Studio.Create.FoldersHint" xml:space="preserve">
     <value>这些文件夹会在采纳时随团队一起记录——而试运行本身在自己的沙箱中进行。</value>
   </data>
+  <data name="Studio.Create.FoldersQuestion" xml:space="preserve"><value>您的文件在哪里？结果保存到哪里？</value></data>
   <data name="Studio.Teams.Modify" xml:space="preserve">
     <value>编辑</value>
   </data>
@@ -2366,6 +2413,9 @@
   <data name="Studio.Create.AddAgent" xml:space="preserve">
     <value>添加智能体</value>
   </data>
+  <data name="Studio.Create.AdjustTeam" xml:space="preserve">
+    <value>调整团队…</value>
+  </data>
   <data name="Studio.Teams.MountRo" xml:space="preserve">
     <value>{0} · 读取</value>
   </data>
@@ -2378,6 +2428,8 @@
   <data name="Studio.Teams.ToTest" xml:space="preserve">
     <value>待试运行</value>
   </data>
+  <data name="Studio.Teams.NeedsFolderBadge" xml:space="preserve"><value>待授权文件夹</value></data>
+  <data name="Studio.Teams.ReadyBadge" xml:space="preserve"><value>就绪 · 按需运行</value></data>
   <data name="Studio.Teams.LastRun" xml:space="preserve">
     <value>上次执行：{0}，{1}</value>
   </data>
@@ -2439,7 +2491,7 @@
     <value>助手会提出一个团队：每项任务一个智能体，各自只拥有必需的能力。您可以修改某个智能体、新增一个，并选择团队被采纳后能看到哪些文件夹。</value>
   </data>
   <data name="Studio.Create.HelpStep3" xml:space="preserve">
-    <value>团队会在自己的沙箱里用一个样例排练——沙箱之外的一切都不会被触碰。结论会如实告诉您结果是否符合您在第 1 步提出的要求。</value>
+    <value>团队在自己的沙箱里用一个样例排练——其他一切都不会被触碰。结论会告诉您结果是否符合您在第 1 步提出的要求。</value>
   </data>
   <data name="Studio.Create.HelpStep4" xml:space="preserve">
     <value>采纳会把团队保存为您个人目录下的一个普通文件夹。如果您选择了排程，Studio 随后会提议把它安装到系统的计划程序中；团队会出现在「我的团队」中。</value>
@@ -2465,6 +2517,8 @@
   <data name="Studio.Teams.DeleteConfirm" xml:space="preserve">
     <value>删除这个团队？</value>
   </data>
+  <data name="Studio.Teams.DeleteConfirmNamed" xml:space="preserve"><value>删除团队“{0}”？</value></data>
+  <data name="Studio.Teams.DeleteConsequence" xml:space="preserve"><value>其文件夹和历史将被清除。您添加的文件夹保持不变。</value></data>
   <data name="Studio.Teams.SessionDeleteConfirm" xml:space="preserve">
     <value>删除这份草稿？</value>
   </data>
@@ -2479,9 +2533,6 @@
   </data>
   <data name="Studio.Teams.Import" xml:space="preserve">
     <value>导入团队</value>
-  </data>
-  <data name="Studio.Teams.NoSessions" xml:space="preserve">
-    <value>中断的创建会重新出现在这里。</value>
   </data>
   <data name="Studio.Create.DraftStepPattern" xml:space="preserve">
     <value>第 {0} / {1} 步 · {2}</value>
@@ -2564,6 +2615,7 @@
   <data name="Studio.Chat.SessionEnded" xml:space="preserve">
     <value>助手在完成简报前中断了。您可以随时重新开始。</value>
   </data>
+  <data name="Studio.Chat.Restart" xml:space="preserve"><value>继续</value></data>
   <data name="Studio.Create.HintComposing" xml:space="preserve">
     <value>正在组建：助手正在准备团队。</value>
   </data>
@@ -2601,7 +2653,7 @@
     <value>正在处理…</value>
   </data>
   <data name="Studio.Create.StageIdle" xml:space="preserve">
-    <value>已停止。</value>
+    <value>组建已停止。</value>
   </data>
   <data name="Studio.Create.TokensUp" xml:space="preserve">
     <value>发送给模型的令牌</value>
@@ -2671,6 +2723,15 @@
   </data>
   <data name="Studio.Chat.FactOutput" xml:space="preserve">
     <value>输出内容</value>
+  </data>
+  <data name="Studio.Chat.PillBrief" xml:space="preserve">
+    <value>需求</value>
+  </data>
+  <data name="Studio.Chat.PillSource" xml:space="preserve">
+    <value>输入</value>
+  </data>
+  <data name="Studio.Chat.PillOutput" xml:space="preserve">
+    <value>输出</value>
   </data>
   <data name="Studio.Chat.FactComposeNote" xml:space="preserve">
     <value>组建指令</value>
@@ -2786,6 +2847,7 @@
   <data name="Studio.Run.ChooseTeam" xml:space="preserve">
     <value>选择一个团队</value>
   </data>
+  <data name="Studio.Run.PickTeamPrompt" xml:space="preserve"><value>选择一个团队…</value></data>
   <data name="Studio.Diagnostics.StatusOk" xml:space="preserve">
     <value>已就绪。</value>
   </data>
@@ -2824,7 +2886,7 @@
     <value>停止计划</value>
   </data>
   <data name="Studio.Teams.ScheduleManual" xml:space="preserve">
-    <value>手动执行：</value>
+    <value>手动执行的命令：</value>
   </data>
   <data name="Studio.Teams.ScheduleInstallFailed" xml:space="preserve">
     <value>无法安装计划：{0}</value>
@@ -2926,6 +2988,7 @@
   <data name="Studio.Teams.DeleteAskArchive" xml:space="preserve">
     <value>将团队及其相关内容移至工作坊的归档？</value>
   </data>
+  <data name="Studio.Teams.DeleteAskArchiveNamed" xml:space="preserve"><value>将团队“{0}”移入归档？</value></data>
   <data name="Studio.Teams.ArchivedToWorkshop" xml:space="preserve">
     <value>已移至 {0}。</value>
   </data>
@@ -2945,8 +3008,10 @@
     <value>副本将使用默认设置运行：无法复制 {0}。</value>
   </data>
   <data name="Studio.Create.RenameHint" xml:space="preserve">
-    <value>要重命名文件夹，请在“我的团队”中使用“重命名”。</value>
+    <value>此处只更改标题。“我的团队”中的“重命名”也会重命名文件夹。</value>
   </data>
+  <data name="Studio.Create.AdoptModelDefault" xml:space="preserve"><value>{0}（默认）</value></data>
+  <data name="Studio.Create.NameIsFolder" xml:space="preserve"><value>名称同时用作文件夹名称。</value></data>
   <!-- STUDIO-32: My teams — the search, the order, the Archives view, the archive gestures and their undo banner, the archive suggestion and its Settings › Studio card -->
   <data name="Studio.Teams.SearchHint" xml:space="preserve">
     <value>按名称或需求搜索团队…</value>
@@ -2967,8 +3032,10 @@
     <value>归档（{0}）</value>
   </data>
   <data name="Studio.Teams.ArchivesHint" xml:space="preserve">
-    <value>已归档的团队不再出现在列表、「执行」界面的选择器和余额中；它们的文件夹、会话和历史保持原样。“恢复”可让团队回到其他团队之中。</value>
+    <value>归档会将团队移出列表，但不删除任何内容。恢复可让它回来。</value>
   </data>
+  <data name="Studio.Teams.ArchivesTitle" xml:space="preserve"><value>已归档的团队</value></data>
+  <data name="Studio.Teams.ArchivesBack" xml:space="preserve"><value>← 返回我的团队</value></data>
   <data name="Studio.Teams.Archive" xml:space="preserve">
     <value>归档</value>
   </data>
@@ -3125,6 +3192,7 @@
   <data name="Studio.Settings.RightsBadgeRwnd" xml:space="preserve">
     <value>读写，不可删除</value>
   </data>
+  <data name="Studio.Settings.RightsRwndTip" xml:space="preserve"><value>可修改，绝不删除。</value></data>
   <!-- STUDIO-14 settings: the read-only « Team folders » section of the folders tab -->
   <data name="Studio.Settings.TeamFoldersTitle" xml:space="preserve">
     <value>团队文件夹</value>
@@ -3155,6 +3223,7 @@
   <data name="Studio.Create.FailureEngineMissing" xml:space="preserve">
     <value>在这台机器上找不到 orkeon 引擎。</value>
   </data>
+  <data name="Studio.Create.FailureEngineMissingHow" xml:space="preserve"><value>请安装 Orkeon 引擎，然后重新运行诊断。</value></data>
   <data name="Studio.Create.FailureConfigRefused" xml:space="preserve">
     <value>引擎拒绝继续。</value>
   </data>
@@ -3229,6 +3298,7 @@
   <data name="Studio.Create.OpenFolderSession" xml:space="preserve">
     <value>打开工作会话——助手正在写入的文件夹。</value>
   </data>
+  <data name="Studio.Create.OpenFolderLater" xml:space="preserve"><value>组建完成后可用：会话文件夹尚不存在。</value></data>
   <data name="Studio.Create.OpenFolderTeam" xml:space="preserve">
     <value>打开已采纳团队的文件夹。</value>
   </data>
@@ -3253,8 +3323,10 @@
   <data name="Studio.Create.GalleryReference" xml:space="preserve"><value>参考：{0}</value></data>
   <data name="Studio.Create.GalleryAllCategories" xml:space="preserve"><value>全部</value></data>
   <data name="Studio.Create.GalleryAnyProcess" xml:space="preserve"><value>不限</value></data>
-  <data name="Studio.Create.GalleryCount" xml:space="preserve"><value>共 {1} 个用例，显示 {0} 个</value></data>
+  <data name="Studio.Create.GalleryCountShort" xml:space="preserve"><value>共 {1} 个，显示 {0} 个</value></data>
   <data name="Studio.Create.GallerySuggested" xml:space="preserve"><value>与您的需求相近（{0}）</value></data>
+  <data name="Studio.Create.GalleryMoreFilters" xml:space="preserve"><value>更多筛选</value></data>
+  <data name="Studio.Create.GalleryAgentsLine" xml:space="preserve"><value>{0} 个智能体 · {1}</value></data>
   <data name="Studio.Create.GalleryUnreadable" xml:space="preserve"><value>无法读取用例。</value></data>
   <data name="Studio.Create.GalleryCategoryEnterprise" xml:space="preserve"><value>企业</value></data>
   <data name="Studio.Create.GalleryCategoryScience" xml:space="preserve"><value>科学与研究</value></data>
@@ -3289,6 +3361,7 @@
   <data name="Studio.Create.GalleryOpenTeams" xml:space="preserve"><value>打开我的团队</value></data>
   <data name="Studio.Create.GalleryEmpty" xml:space="preserve"><value>没有符合这些筛选条件的用例。</value></data>
   <data name="Studio.Create.GalleryClearFilters" xml:space="preserve"><value>清除筛选</value></data>
+  <data name="Studio.Create.GalleryClear" xml:space="preserve"><value>清除</value></data>
   <data name="Studio.Create.GalleryLoading" xml:space="preserve"><value>正在读取用例…</value></data>
   <data name="Studio.Create.GalleryClose" xml:space="preserve"><value>关闭</value></data>
   <data name="Studio.Create.GalleryRemoveReference" xml:space="preserve"><value>移除参考——您的需求保持不变。</value></data>
@@ -3451,6 +3524,9 @@
   <data name="Studio.Create.FolderLocation" xml:space="preserve"><value>位置</value></data>
   <data name="Studio.Create.FolderOnMachine" xml:space="preserve"><value>此计算机上的文件夹</value></data>
   <data name="Studio.Create.ChooseShort" xml:space="preserve"><value>选择…</value></data>
+  <data name="Studio.Create.UseExistingFolder" xml:space="preserve"><value>使用现有文件夹…</value></data>
+  <data name="Studio.Create.OutputFolderLabel" xml:space="preserve"><value>结果 (/output)</value></data>
+  <data name="Studio.Create.WorkspaceFolderLabel" xml:space="preserve"><value>工作区 (/workspace)</value></data>
   <data name="Studio.Run.OutcomeSucceeded" xml:space="preserve"><value>成功</value></data>
   <data name="Studio.Run.OutcomeFailed" xml:space="preserve"><value>失败</value></data>
   <data name="Studio.Run.OutcomeCancelled" xml:space="preserve"><value>已取消</value></data>
@@ -3597,6 +3673,7 @@
   <data name="Studio.Teams.LlmSaved" xml:space="preserve"><value>{0} 现在运行于：{1}。</value></data>
   <data name="Studio.Teams.ConfigureModel" xml:space="preserve"><value>配置模型</value></data>
   <data name="Studio.Run.LlmForThisRun" xml:space="preserve"><value>本次运行：{0}</value></data>
+  <data name="Studio.Run.LlmDefaultEntry" xml:space="preserve"><value>默认（{0}）</value></data>
   <data name="Studio.Run.RememberLlmForTeam" xml:space="preserve"><value>为此团队记住</value></data>
   <data name="Studio.Settings.UsedByDefault" xml:space="preserve"><value>{0} 个团队，其中 {1} 个使用默认</value></data>
   <data name="Studio.Settings.TabModelCount" xml:space="preserve">
@@ -3691,11 +3768,11 @@
   <data name="Studio.Teams.RowSchedule" xml:space="preserve"><value>计划</value></data>
   <data name="Studio.Teams.ChangeShort" xml:space="preserve"><value>更改</value></data>
   <data name="Studio.Teams.NoMountsValue" xml:space="preserve"><value>无文件夹</value></data>
-  <data name="Studio.Teams.RefusedRuns" xml:space="preserve"><value>{0} 个计划运行将在下次执行时被拒绝：已保存的设置文件尚未包含 {1}。</value></data>
-  <data name="Studio.Teams.SaveSettings" xml:space="preserve"><value>保存设置</value></data>
+  <data name="Studio.Teams.RefusedRuns" xml:space="preserve"><value>{0} 个计划团队在下次执行时将无法启动：其设置（模型或文件夹）尚未保存。</value></data>
+  <data name="Studio.Teams.SaveSettings" xml:space="preserve"><value>立即修复</value></data>
   <data name="Studio.Teams.ImportShort" xml:space="preserve"><value>导入</value></data>
-  <data name="Studio.Teams.ScheduleManualValue" xml:space="preserve"><value>手动</value></data>
-  <data name="Studio.Teams.LaunchNeedsFolder" xml:space="preserve"><value>请先允许文件夹 {0}。</value></data>
+  <data name="Studio.Teams.ScheduleManualValue" xml:space="preserve"><value>按需</value></data>
+  <data name="Studio.Teams.LaunchNeedsFolder" xml:space="preserve"><value>请先允许文件夹 {0}，才能启动团队。</value></data>
   <data name="Studio.Teams.AllowFolder" xml:space="preserve"><value>允许</value></data>
   <data name="Studio.Create.SessionRunning" xml:space="preserve"><value>运行中</value></data>
   <data name="Studio.Create.SessionWaiting" xml:space="preserve"><value>等待您操作</value></data>
@@ -3703,7 +3780,10 @@
   <data name="Studio.Create.DraftSavedAt" xml:space="preserve"><value>草稿已于 {0} 保存</value></data>
   <data name="Studio.Create.ResumeUnavailable" xml:space="preserve"><value>此会话无法在此继续：请重新开始，或在「我的团队」的「进行中的会话」中找到它。</value></data>
   <data name="Studio.Create.FoldersToChoose" xml:space="preserve"><value>试运行前还需选择 {0} 个文件夹。</value></data>
+  <data name="Studio.Create.TryTeamNoProposal" xml:space="preserve"><value>组建完成后可用。</value></data>
   <data name="Studio.Create.VerdictSummary" xml:space="preserve"><value>{1} 项标准中已满足 {0} 项</value></data>
+  <data name="Studio.Create.VerdictReady" xml:space="preserve"><value>可以采用</value></data>
+  <data name="Studio.Create.VerdictToFix" xml:space="preserve"><value>待修正：{0} 项</value></data>
   <data name="Studio.Create.ScreenSub" xml:space="preserve"><value>采用之前，不会向您的计算机写入任何内容。</value></data>
   <data name="Studio.Create.Back" xml:space="preserve"><value>返回</value></data>
   <data name="Studio.Create.Resume" xml:space="preserve"><value>继续</value></data>
@@ -3807,6 +3887,8 @@
   <data name="Studio.Run.OptionsFooter" xml:space="preserve">
     <value>{0} · {1} · {2} 个文件夹</value>
   </data>
+  <data name="Studio.Run.OptionsDefault" xml:space="preserve"><value>默认设置</value></data>
+  <data name="Studio.Run.VerbosityPrefix" xml:space="preserve"><value>{0}级别</value></data>
   <data name="Studio.Run.FoldersSection" xml:space="preserve">
     <value>允许的文件夹 — 团队的 {0} 个文件夹，{1}</value>
   </data>
@@ -3900,6 +3982,8 @@
   <data name="Studio.Run.BlockedFolders" xml:space="preserve">
     <value>团队的某个文件夹在此计算机上未获允许。</value>
   </data>
+  <data name="Studio.Run.FolderNotAllowed" xml:space="preserve"><value>未允许</value></data>
+  <data name="Studio.Run.AllowThisFolder" xml:space="preserve"><value>允许此文件夹</value></data>
   <data name="Studio.Run.BlockedArchived" xml:space="preserve">
     <value>该团队已归档：请恢复后再启动。</value>
   </data>
@@ -3942,12 +4026,17 @@
   <data name="Studio.Settings.GroupAccess" xml:space="preserve"><value>访问</value></data>
   <data name="Studio.Settings.GroupConnections" xml:space="preserve"><value>连接</value></data>
   <data name="Studio.Settings.GroupAdvanced" xml:space="preserve"><value>高级</value></data>
+  <data name="Studio.Settings.DotRequiredTip" xml:space="preserve"><value>运行团队前必须设置</value></data>
+  <data name="Studio.Settings.DotOptionalTip" xml:space="preserve"><value>可选</value></data>
   <data name="Studio.Diagnostics.OpenModels" xml:space="preserve"><value>打开模型</value></data>
   <data name="Studio.Diagnostics.OpenKeys" xml:space="preserve">
     <value>打开 API 密钥</value>
   </data>
   <data name="Studio.Diagnostics.OpenFolders" xml:space="preserve"><value>打开授权文件夹</value></data>
   <data name="Studio.Diagnostics.OpenFile" xml:space="preserve"><value>打开设置文件</value></data>
+  <data name="Studio.Diagnostics.EngineMissingHow" xml:space="preserve"><value>请安装 Orkeon 引擎，然后重新运行诊断。</value></data>
+  <data name="Studio.Diagnostics.InstallGuide" xml:space="preserve"><value>如何安装引擎</value></data>
+  <data name="Studio.Diagnostics.FixFirst" xml:space="preserve"><value>修复第一个问题</value></data>
   <data name="Studio.Diagnostics.TestConnection" xml:space="preserve"><value>测试连接</value></data>
   <data name="Studio.Diagnostics.CheckAgain" xml:space="preserve"><value>重新检查</value></data>
   <data name="Studio.Diagnostics.SettingsFile" xml:space="preserve"><value>设置文件</value></data>
@@ -3956,12 +4045,14 @@
   <data name="Studio.Diagnostics.Problem.appsettings" xml:space="preserve"><value>Studio 无法读取设置文件。</value></data>
   <data name="Studio.Diagnostics.Problem.dotnet-runtime" xml:space="preserve"><value>找不到引擎所需的 .NET 运行时。</value></data>
   <data name="Studio.Diagnostics.Problem.esbuild" xml:space="preserve"><value>此计算机上缺少脚本编译器。</value></data>
+  <data name="Studio.Diagnostics.Problem.install-channel" xml:space="preserve"><value>Studio 无法识别引擎的安装方式；将不会提供更新。</value></data>
   <data name="Studio.Diagnostics.Problem.llm-config" xml:space="preserve"><value>尚未为团队配置模型。</value></data>
   <data name="Studio.Diagnostics.Problem.llm-profile-key" xml:space="preserve"><value>某个模型没有密钥，或找不到其密钥。</value></data>
   <data name="Studio.Diagnostics.Problem.llm-profiles" xml:space="preserve"><value>设置中有模型不完整。</value></data>
   <data name="Studio.Diagnostics.Problem.llm-reachability" xml:space="preserve"><value>模型无响应：请检查其地址和密钥。</value></data>
   <data name="Studio.Diagnostics.Problem.local-embeddings" xml:space="preserve"><value>此计算机上没有可用的本地嵌入。</value></data>
   <data name="Studio.Diagnostics.Problem.onnx-reranker" xml:space="preserve"><value>此计算机上没有可用的 ONNX 重排序器。</value></data>
+  <data name="Studio.Diagnostics.Problem.runner-settings" xml:space="preserve"><value>启动器设置包含引擎拒绝的值：请在专家模式下打开「设置」→「文件」标签页。</value></data>
   <data name="Studio.Diagnostics.Problem.tree-sitter" xml:space="preserve"><value>此计算机上没有可用的代码解析器。</value></data>
   <data name="Studio.Diagnostics.Problem.workspace-write" xml:space="preserve"><value>引擎无法写入其工作文件夹。</value></data>
   <data name="Studio.Chat.StatusWaitingCard" xml:space="preserve"><value>等待您操作</value></data>
@@ -3971,13 +4062,11 @@
   <data name="Studio.Create.HintConfirmFolders" xml:space="preserve"><value>确认文件夹以进入组建。</value></data>
   <data name="Studio.Create.HintDecide" xml:space="preserve"><value>在对话中做出选择以继续。</value></data>
   <data name="Studio.Create.TabNeedDone" xml:space="preserve"><value>已描述</value></data>
+  <data name="Studio.Create.TabNeedInterrupted" xml:space="preserve"><value>已描述，需求简报中断</value></data>
   <data name="Studio.Create.TabNeedDoneAnswers" xml:space="preserve">
     <value>已描述，已解决 {0} 个问题</value>
   </data>
   <data name="Studio.Create.TabNeedEmpty" xml:space="preserve"><value>待描述</value></data>
-  <data name="Studio.Create.TabNeedEmptyFooter" xml:space="preserve"><value>需求尚未描述。</value></data>
-  <data name="Studio.Create.TabNeedFooter" xml:space="preserve"><value>需求已描述。</value></data>
-  <data name="Studio.Create.TabNeedFooterAnswers" xml:space="preserve"><value>需求已描述，已与助手解决 {0} 个问题</value></data>
   <data name="Studio.Create.TabFoldersPending" xml:space="preserve"><value>{0} 个文件夹待确认</value></data>
   <data name="Studio.Create.TabFoldersPendingToChoose" xml:space="preserve">
     <value>{0} 个文件夹 · {1} 个待选择</value>
@@ -4028,6 +4117,8 @@
   <data name="Studio.Create.TabCompositionStopped" xml:space="preserve">
     <value>已停止 · 已写入 {0} 个文件</value>
   </data>
+  <data name="Studio.Create.TabCompositionDone" xml:space="preserve"><value>已组建 · 已写入 {0} 个文件</value></data>
+  <data name="Studio.Create.TabCompositionInvalid" xml:space="preserve"><value>需修正 · 已写入 {0} 个文件</value></data>
   <data name="Studio.Create.TabCompositionRunning" xml:space="preserve">
     <value>进行中</value>
   </data>
@@ -4053,13 +4144,13 @@
     <value>进行中</value>
   </data>
   <data name="Studio.Create.CompositionStateValid" xml:space="preserve">
-    <value>已停止 — 定义已检查</value>
+    <value>已组建 — 定义已检查</value>
   </data>
   <data name="Studio.Create.CompositionStateInvalid" xml:space="preserve">
-    <value>已停止 — 定义需修正</value>
+    <value>组建需修正</value>
   </data>
   <data name="Studio.Create.CompositionStateStopped" xml:space="preserve">
-    <value>已停止</value>
+    <value>组建已停止</value>
   </data>
   <data name="Studio.Create.CompositionFiles" xml:space="preserve">
     <value>团队草稿中有 {0} 个文件</value>
@@ -4076,6 +4167,8 @@
   <data name="Studio.Create.CompositionFooterRunning" xml:space="preserve">
     <value>组建进行中。</value>
   </data>
+  <data name="Studio.Create.CompositionFooterInvalid" xml:space="preserve"><value>组建需修正：定义无效。</value></data>
+  <data name="Studio.Create.CompositionFooterStopped" xml:space="preserve"><value>组建已停止。</value></data>
   <data name="Studio.Create.MoreTools" xml:space="preserve">
     <value>+ {0}</value>
   </data>
@@ -4106,7 +4199,6 @@
   <data name="Studio.Create.WaitPlaceholderFillFolders" xml:space="preserve">
     <value>放入文件后继续，或提出问题</value>
   </data>
-  <data name="Studio.Create.WaitPlaceholderChooseFolder" xml:space="preserve"><value>选择文件夹以继续，或提出问题</value></data>
   <data name="Studio.Create.WaitPlaceholderAdopt" xml:space="preserve"><value>采用团队以完成，或提出问题</value></data>
   <data name="Studio.Create.WaitShowCard" xml:space="preserve"><value>查看文件夹</value></data>
   <data name="Studio.Create.TabNeed" xml:space="preserve"><value>需求</value></data>
@@ -4135,8 +4227,9 @@
     <value>引擎的组建</value>
   </data>
   <data name="Studio.Create.CompositionSub" xml:space="preserve">
-    <value>引擎为生成此提议所做的工作。只读；完整细节见技术日志。</value>
+    <value>引擎为生成此提议所做的工作。只读。</value>
   </data>
+  <data name="Studio.Create.CompositionSubExpert" xml:space="preserve"><value>完整细节见下方的技术日志。</value></data>
   <data name="Studio.Create.FieldState" xml:space="preserve">
     <value>状态</value>
   </data>
@@ -4168,7 +4261,6 @@
   <data name="Studio.Create.NotesTabSub" xml:space="preserve"><value>可选。指令适用于所有智能体，随团队一起保存，并成为试运行时的检查点。</value></data>
   <data name="Studio.Create.NotesPlaceholder" xml:space="preserve"><value>例如：每个回答都用中文撰写，并引用来源文档。</value></data>
   <data name="Studio.Create.NotesLeaveEmpty" xml:space="preserve"><value>如果没有要强制的内容，请留空：助手会在“组建”步骤中提出自己的规则。</value></data>
-  <data name="Studio.Chat.KeyHintPending" xml:space="preserve"><value>Ctrl+Enter 发送 · Shift+Enter 换行</value></data>
   <data name="Studio.Chat.PendingReveal" xml:space="preserve"><value>查看卡片</value></data>
   <data name="Studio.Create.DecisionQuestion" xml:space="preserve"><value>试运行已评估。接下来怎么做？</value></data>
 
@@ -4201,9 +4293,6 @@
   <!-- hrm:L05 end -->
 
   <!-- hrm:L06 begin -->
-  <data name="Studio.Teams.NoSessionsTitle" xml:space="preserve">
-    <value>没有进行中的会话</value>
-  </data>
   <!-- hrm:L06 end -->
 
   <!-- hrm:L07 begin -->
@@ -4211,6 +4300,7 @@
 
   <!-- hrm:L08 begin -->
   <data name="Studio.Run.LaneNotRun" xml:space="preserve"><value>未执行</value></data>
+  <data name="Studio.Run.TaskDetails" xml:space="preserve"><value>任务详情</value></data>
   <data name="Studio.Run.PaneFinishedContext" xml:space="preserve"><value>运行已结束</value></data>
   <!-- hrm:L08 end -->
 

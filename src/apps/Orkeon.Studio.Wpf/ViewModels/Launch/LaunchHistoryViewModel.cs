@@ -58,7 +58,23 @@ public sealed class LaunchHistoryEntryViewModel : ObservableObject
             },
             () => onRestore is not null);
         DismissRestoreCommand = new RelayCommand(() => IsOfferingRestore = false);
+        ShowErrorCommand = new RelayCommand(() => IsShowingError = !IsShowingError, () => HasError);
     }
+
+    private bool _isShowingError;
+
+    /// <summary>Whether the run did not succeed: « Show the error » is offered on its line.</summary>
+    public bool HasError => Outcome != RunOutcome.Success;
+
+    /// <summary>Whether the line unfolds the plain-language reason of the failure under it.</summary>
+    public bool IsShowingError
+    {
+        get => _isShowingError;
+        private set => SetProperty(ref _isShowingError, value);
+    }
+
+    /// <summary>Unfolds or folds the reason the run did not succeed (<see cref="OutcomeSentence"/>).</summary>
+    public RelayCommand ShowErrorCommand { get; }
 
     private readonly Func<IReadOnlyList<string>>? _declaredMounts;
     private readonly Func<string, string?>? _teamNameOf;
@@ -324,6 +340,7 @@ public sealed class LaunchHistoryViewModel : ObservableObject
         Func<DateTimeOffset>? now = null)
     {
         _store = store;
+        LaunchTeamCommand = new RelayCommand(() => LaunchRequested?.Invoke(this, EventArgs.Empty));
         _dispatcher = dispatcher ?? ImmediateUiDispatcher.Instance;
         _strings = strings;
         _shellOpener = shellOpener;
@@ -337,6 +354,12 @@ public sealed class LaunchHistoryViewModel : ObservableObject
 
     /// <summary>Raised when the user asks to replay <see cref="SelectedEntry"/>.</summary>
     public event EventHandler<LaunchReplayEventArgs>? ReplayRequested;
+
+    /// <summary>Raised by the empty history's « Launch a team »: the shell shows the Launch screen.</summary>
+    public event EventHandler? LaunchRequested;
+
+    /// <summary>Asks the shell for the Launch screen.</summary>
+    public RelayCommand LaunchTeamCommand { get; }
 
     /// <summary>
     /// Raised by « Restore » on a card whose replay found its team archived (STUDIO-31, D-07) — the

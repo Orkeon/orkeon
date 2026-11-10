@@ -118,7 +118,7 @@
                      shared rights pill, «Read only» neutral, every writing right sky. -->
                 <controls:Badge Margin="6,0,0,0" MaxWidth="160"
                                 HorizontalAlignment="Right" VerticalAlignment="Center"
-                                ToolTip="{Binding RightsLabel, Mode=OneWay}"
+                                ToolTip="{Binding RightsTip, Mode=OneWay}"
                                 Visibility="{Binding IsParsed, Converter={StaticResource BooleanToVisibility}}">
                   <controls:Badge.Style>
                     <Style TargetType="controls:Badge" BasedOn="{StaticResource {x:Type controls:Badge}}">
@@ -171,19 +171,23 @@
                     Visibility="{Binding SelectedMount, Converter={StaticResource NullToVisibility}}">
         <StackPanel DataContext="{Binding SelectedMount}">
 
-          <!-- VFS-90: the entry's identity, read-only, with a copy button and the teams naming it. -->
-          <DockPanel Margin="0,0,0,7" Visibility="{Binding IsParsed, Converter={StaticResource BooleanToVisibility}}">
-            <Button DockPanel.Dock="Right" Margin="6,0,0,0" Style="{StaticResource IconBtnGhost}" controls:ButtonIcon.Kind="copy"
-                    ToolTip="{Binding [Studio.Settings.CopyId], Source={x:Static services:I18n.Instance}}"
-                    AutomationProperties.Name="{Binding [Studio.Settings.CopyId], Source={x:Static services:I18n.Instance}}"
-                    Command="{Binding CopyIdCommand}"/>
-            <StackPanel>
-              <TextBlock Style="{StaticResource MonoText}" FontSize="13" Foreground="{DynamicResource InkFaintBrush}"
-                         Text="{Binding IdDisplay, Mode=OneWay}"/>
-              <TextBlock Style="{StaticResource Hint}" FontSize="13" Text="{Binding UsedByDisplay, Mode=OneWay}"
-                         Visibility="{Binding IsReferenced, Converter={StaticResource BooleanToVisibility}}"/>
-            </StackPanel>
-          </DockPanel>
+          <!-- VFS-90: the teams naming the entry, then its identity, read-only, with a copy button.
+               UX lot 04 (048): the identifier folds under « Technical details », closed. -->
+          <StackPanel Margin="0,0,0,7" Visibility="{Binding IsParsed, Converter={StaticResource BooleanToVisibility}}">
+            <TextBlock Style="{StaticResource Hint}" FontSize="13" Text="{Binding UsedByDisplay, Mode=OneWay}"
+                       Visibility="{Binding IsReferenced, Converter={StaticResource BooleanToVisibility}}"/>
+            <controls:Disclosure IsExpanded="False"
+                                 Header="{Binding [Studio.Common.TechnicalDetails], Source={x:Static services:I18n.Instance}}">
+              <DockPanel Margin="0,4,0,0">
+                <Button DockPanel.Dock="Right" Margin="6,0,0,0" Style="{StaticResource IconBtnGhost}" controls:ButtonIcon.Kind="copy"
+                        ToolTip="{Binding [Studio.Settings.CopyId], Source={x:Static services:I18n.Instance}}"
+                        AutomationProperties.Name="{Binding [Studio.Settings.CopyId], Source={x:Static services:I18n.Instance}}"
+                        Command="{Binding CopyIdCommand}"/>
+                <TextBlock Style="{StaticResource MonoText}" FontSize="13" Foreground="{DynamicResource InkFaintBrush}"
+                           VerticalAlignment="Center" Text="{Binding IdDisplay, Mode=OneWay}"/>
+              </DockPanel>
+            </controls:Disclosure>
+          </StackPanel>
 
           <TextBlock Style="{StaticResource Hint}" Foreground="{DynamicResource WarningInkBrush}" Margin="0,0,0,7"
                      Visibility="{Binding IsParsed, Converter={StaticResource InverseBooleanToVisibility}}"
@@ -211,7 +215,10 @@
 
             <TextBlock Style="{StaticResource FieldLabel}" Margin="0,12,0,0" Text="{Binding [Studio.Settings.LblVirtual], Source={x:Static services:I18n.Instance}}"/>
             <TextBox Style="{StaticResource InputMono}" Text="{Binding VirtualPath, UpdateSourceTrigger=PropertyChanged}"/>
-            <ItemsControl ItemsSource="{x:Static mounts:MountEditorViewModel.SuggestedVirtualPaths}" Margin="0,6,0,0">
+            <!-- UX lot 04 (048): the shortcuts say what they are. -->
+            <TextBlock Style="{StaticResource Hint}" Margin="0,6,0,0"
+                       Text="{Binding [Studio.Settings.MountSuggestions], Source={x:Static services:I18n.Instance}}"/>
+            <ItemsControl ItemsSource="{x:Static mounts:MountEditorViewModel.SuggestedVirtualPaths}" Margin="0,4,0,0">
               <ItemsControl.ItemsPanel>
                 <ItemsPanelTemplate><StackPanel Orientation="Horizontal"/></ItemsPanelTemplate>
               </ItemsControl.ItemsPanel>

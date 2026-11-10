@@ -40,9 +40,20 @@
                Tag="{Binding [Studio.Create.GallerySearch], Source={x:Static services:I18n.Instance}}"
                Text="{Binding Query, UpdateSourceTrigger=PropertyChanged}"/>
 
-      <TextBlock Style="{StaticResource FieldLabel}" Margin="0,12,0,5"
-                 Text="{Binding [Studio.Create.GalleryFilterCategory], Source={x:Static services:I18n.Instance}}"/>
-      <ItemsControl ItemsSource="{Binding Categories}">
+      <!-- UX lot 11: the count and the way out sit under the search; the domains with the
+           most cases and the cases close to the need stay in view, the rest is folded -->
+      <TextBlock Style="{StaticResource MetaText}" Margin="0,8,0,0">
+        <Run Text="{Binding CountLabel, Mode=OneWay}"/>
+        <InlineUIContainer BaselineAlignment="Center">
+          <TextBlock Visibility="{Binding HasActiveFilter, Converter={StaticResource BooleanToVisibility}}">
+            <Run Text=" · "/><Hyperlink Command="{Binding ClearFiltersCommand}"><Run Text="{Binding [Studio.Create.GalleryClear], Source={x:Static services:I18n.Instance}, Mode=OneWay}"/></Hyperlink>
+          </TextBlock>
+        </InlineUIContainer>
+      </TextBlock>
+
+      <!-- UX lot 11: one row — the cases the need's suggestions found (what « N close use cases »
+           under the need opens the panel on) at its head while there are some, then the domains. -->
+      <ItemsControl ItemsSource="{Binding PrimaryChips}" Margin="0,8,0,0">
         <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
         <ItemsControl.ItemTemplate>
           <DataTemplate>
@@ -51,9 +62,12 @@
         </ItemsControl.ItemTemplate>
       </ItemsControl>
 
-      <TextBlock Style="{StaticResource FieldLabel}" Margin="0,6,0,5"
-                 Text="{Binding [Studio.Create.GalleryFilterProcess], Source={x:Static services:I18n.Instance}}"/>
-      <ItemsControl ItemsSource="{Binding Processes}">
+      <controls:Disclosure Margin="0,6,0,0"
+                           Header="{Binding [Studio.Create.GalleryMoreFilters], Source={x:Static services:I18n.Instance}}">
+        <StackPanel Margin="0,6,0,0">
+          <TextBlock Style="{StaticResource FieldLabel}" Margin="0,0,0,5"
+                     Text="{Binding [Studio.Create.GalleryFilterProcess], Source={x:Static services:I18n.Instance}}"/>
+          <ItemsControl ItemsSource="{Binding Processes}">
         <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
         <ItemsControl.ItemTemplate>
           <DataTemplate>
@@ -61,23 +75,24 @@
           </DataTemplate>
         </ItemsControl.ItemTemplate>
       </ItemsControl>
-
-      <WrapPanel Margin="0,4,0,0">
-        <CheckBox Margin="0,0,16,6" IsChecked="{Binding WithoutWeb}"
-                  Content="{Binding [Studio.Create.GalleryNoWeb], Source={x:Static services:I18n.Instance}}"/>
-        <CheckBox Margin="0,0,16,6" IsChecked="{Binding WithoutKeys}"
-                  Content="{Binding [Studio.Create.GalleryNoKey], Source={x:Static services:I18n.Instance}}"/>
-        <!-- The cases the need's suggestions found, best first — what « N close use cases »
-             under the need opens the panel on. -->
-        <CheckBox Margin="0,0,16,6" IsChecked="{Binding SuggestedOnly}" Content="{Binding SuggestedFilterLabel}"
-                  Visibility="{Binding HasSuggestions, Converter={StaticResource BooleanToVisibility}}"/>
-      </WrapPanel>
-
-      <DockPanel Margin="0,6,0,0">
-        <Button DockPanel.Dock="Right" Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="32" Command="{Binding ClearFiltersCommand}"
-                Content="{Binding [Studio.Create.GalleryClearFilters], Source={x:Static services:I18n.Instance}}"/>
-        <TextBlock Style="{StaticResource MetaText}" VerticalAlignment="Center" Text="{Binding CountLabel}"/>
-      </DockPanel>
+          <TextBlock Style="{StaticResource FieldLabel}" Margin="0,6,0,5"
+                     Text="{Binding [Studio.Create.GalleryFilterCategory], Source={x:Static services:I18n.Instance}}"/>
+          <ItemsControl ItemsSource="{Binding MoreCategories}">
+        <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+        <ItemsControl.ItemTemplate>
+          <DataTemplate>
+            <Button Style="{StaticResource SelectableChip}" Command="{Binding SelectCommand}" Content="{Binding Label}"/>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+          <WrapPanel Margin="0,4,0,0">
+            <CheckBox Margin="0,0,16,6" IsChecked="{Binding WithoutWeb}"
+                      Content="{Binding [Studio.Create.GalleryNoWeb], Source={x:Static services:I18n.Instance}}"/>
+            <CheckBox Margin="0,0,16,6" IsChecked="{Binding WithoutKeys}"
+                      Content="{Binding [Studio.Create.GalleryNoKey], Source={x:Static services:I18n.Instance}}"/>
+          </WrapPanel>
+        </StackPanel>
+      </controls:Disclosure>
     </StackPanel>
 
     <!-- STUDIO-41: « Import as is » — the name already taken (D-05: what holds it, the free name,
@@ -154,15 +169,24 @@
     <controls:Alert DockPanel.Dock="Top" Tone="Danger" Margin="24,16,24,0"
                     Message="{Binding Failure.Headline}" Details="{Binding Failure.Detail}"
                     Visibility="{Binding HasFailure, Converter={StaticResource BooleanToVisibility}}">
+      <!-- UX lot 05 (071): no engine — the sentence that says what to do, and the diagnostic as
+           the one primary. -->
+      <TextBlock Style="{StaticResource Hint}" TextWrapping="Wrap"
+                 Text="{Binding [Studio.Create.FailureEngineMissingHow], Source={x:Static services:I18n.Instance}}"
+                 Visibility="{Binding IsEngineMissing, Converter={StaticResource BooleanToVisibility}}"/>
       <controls:Alert.Actions>
         <WrapPanel>
+          <Button Style="{StaticResource BtnPrimary}" controls:ButtonSize.Height="32" Margin="0,0,8,0" Command="{Binding OpenDiagnosticCommand}"
+                  controls:ButtonIcon.Kind="stethoscope"
+                  Content="{Binding [Studio.Create.FailureOpenDiagnostic], Source={x:Static services:I18n.Instance}}"
+                  Visibility="{Binding IsEngineMissing, Converter={StaticResource BooleanToVisibility}}"/>
           <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="32" Margin="0,0,8,0" Command="{Binding RetryCommand}"
                   controls:ButtonIcon.Kind="rotate-cw"
                   Content="{Binding [Studio.Create.FailureRetry], Source={x:Static services:I18n.Instance}}"/>
           <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="32" Command="{Binding OpenDiagnosticCommand}"
                   controls:ButtonIcon.Kind="stethoscope"
                   Content="{Binding [Studio.Create.FailureOpenDiagnostic], Source={x:Static services:I18n.Instance}}"
-                  Visibility="{Binding FailureOffersDiagnostic, Converter={StaticResource BooleanToVisibility}}"/>
+                  Visibility="{Binding FailureOffersDiagnosticSecondary, Converter={StaticResource BooleanToVisibility}}"/>
         </WrapPanel>
       </controls:Alert.Actions>
     </controls:Alert>
@@ -184,7 +208,12 @@
       <ItemsControl ItemsSource="{Binding Cards}">
         <ItemsControl.ItemTemplate>
           <DataTemplate>
-            <Border Style="{StaticResource Card}" Padding="16,14" Margin="0,0,0,10">
+            <!-- UX lot 02: the expert reads the case's id and process in the card's tooltip too -->
+            <Border Style="{StaticResource Card}" Padding="16,14" Margin="0,0,0,10"
+                    ToolTipService.IsEnabled="{Binding DataContext.Mode.IsExpert, RelativeSource={RelativeSource AncestorType=Window}}">
+              <Border.ToolTip>
+                <TextBlock><Run Text="{Binding Id, Mode=OneWay}"/><Run Text=" · "/><Run Text="{Binding Process, Mode=OneWay}"/></TextBlock>
+              </Border.ToolTip>
               <!-- C21 (R15): the actions sit in a fixed 160 px column on the right, so both
                    buttons have the same width on every card whatever their label or the text
                    beside them. R05: «Start from this case» is the card's one primary — the
@@ -203,36 +232,40 @@
                                Text="{Binding [Studio.Create.GalleryChoose], Source={x:Static services:I18n.Instance}}"/>
                   </Button>
                   <!-- STUDIO-41 (D-01, D-03): the expert's shortcut — the case as a team of My
-                       teams, ready to run and to modify; never on a reference-only case. -->
-                  <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="32" HorizontalAlignment="Stretch" Margin="0,8,0,0"
-                          Command="{Binding ImportAsIsCommand}" controls:ButtonIcon.Kind="arrow-down"
-                          ToolTip="{Binding [Studio.Create.GalleryImportAsIsTip], Source={x:Static services:I18n.Instance}}"
-                          Visibility="{Binding CanImportAsIs, Converter={StaticResource BooleanToVisibility}}">
-                    <TextBlock TextTrimming="CharacterEllipsis"
-                               Text="{Binding [Studio.Create.GalleryImportAsIs], Source={x:Static services:I18n.Instance}}"/>
-                  </Button>
+                       teams, ready to run and to modify; never on a reference-only case. UX lot 11:
+                       it sits in the «…» menu, the card's one visible action is the primary. -->
+                  <controls:OverflowMenuButton HorizontalAlignment="Right" Margin="0,8,0,0"
+                                               Visibility="{Binding CanImportAsIs, Converter={StaticResource BooleanToVisibility}}">
+                    <MenuItem Command="{Binding ImportAsIsCommand}"
+                              Header="{Binding [Studio.Create.GalleryImportAsIs], Source={x:Static services:I18n.Instance}}"
+                              ToolTip="{Binding [Studio.Create.GalleryImportAsIsTip], Source={x:Static services:I18n.Instance}}"/>
+                  </controls:OverflowMenuButton>
                 </StackPanel>
                 <StackPanel Grid.Column="0" Margin="0,0,12,0">
                   <!-- R11: card title 16/600, the problem as body text; both wrap, never cut (R09) -->
-                  <TextBlock Style="{StaticResource CardTitle}" TextWrapping="Wrap" Text="{Binding Title}"/>
+                  <!-- expert: the id STUDIO-40 hands the engine, and the process as the engine spells
+                       it, after the name on the same line, faint (UX lot 02) -->
+                  <TextBlock Style="{StaticResource CardTitle}" TextWrapping="Wrap">
+                    <Run Text="{Binding Title, Mode=OneWay}"/><InlineUIContainer BaselineAlignment="Center"><TextBlock Style="{StaticResource MonoText}" FontSize="13" FontWeight="Normal" Margin="8,0,0,0"
+                               Foreground="{DynamicResource InkFaintBrush}"
+                               Visibility="{Binding DataContext.Mode.IsExpert, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BooleanToVisibility}}"><Run Text="{Binding Id, Mode=OneWay}"/><Run Text=" · "/><Run Text="{Binding Process, Mode=OneWay}"/></TextBlock></InlineUIContainer>
+                  </TextBlock>
+                  <!-- UX lot 11: « 3 agents · Step by step » right under the title. -->
+                  <TextBlock Style="{StaticResource MetaText}" Margin="0,2,0,0" Text="{Binding AgentsLine}"/>
                   <TextBlock Style="{StaticResource BodyText}" Foreground="{DynamicResource InkMutedBrush}"
                              Margin="0,4,0,0" Text="{Binding Problem}"
                              Visibility="{Binding HasProblem, Converter={StaticResource BooleanToVisibility}}"/>
                   <!-- D09 (R12, R20): the shared Badge — its tinted ground is kept in the dark
                        theme, so the domain tag never turns into bare text. -->
                   <WrapPanel Margin="0,9,0,0">
-                    <controls:Badge Tone="Neutral" Margin="0,0,6,4" Content="{Binding ProcessLabel}"/>
                     <controls:Badge Tone="Info" Margin="0,0,6,4" Content="{Binding CategoryLabel}"/>
                     <controls:Badge Tone="Warning" Margin="0,0,6,4"
-                                    ToolTip="{Binding [Studio.Create.GalleryReferenceOnlyTip], Source={x:Static services:I18n.Instance}}"
                                     Visibility="{Binding IsReferenceOnly, Converter={StaticResource BooleanToVisibility}}"
                                     Content="{Binding [Studio.Create.GalleryReferenceOnly], Source={x:Static services:I18n.Instance}}"/>
-                    <!-- expert: the id STUDIO-40 hands the engine, and the process as the engine spells it -->
-                    <TextBlock Style="{StaticResource MonoText}" FontSize="13" VerticalAlignment="Center" Margin="2,0,0,4"
-                               Visibility="{Binding DataContext.Mode.IsExpert, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BooleanToVisibility}}">
-                      <Run Text="{Binding Id, Mode=OneWay}"/><Run Text=" · "/><Run Text="{Binding Process, Mode=OneWay}"/>
-                    </TextBlock>
                   </WrapPanel>
+                  <TextBlock Style="{StaticResource MetaText}" FontSize="12" TextWrapping="Wrap"
+                             Text="{Binding [Studio.Create.GalleryReferenceOnlyTip], Source={x:Static services:I18n.Instance}}"
+                             Visibility="{Binding IsReferenceOnly, Converter={StaticResource BooleanToVisibility}}"/>
                 </StackPanel>
               </Grid>
             </Border>

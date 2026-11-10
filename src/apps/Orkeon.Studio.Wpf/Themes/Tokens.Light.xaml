@@ -13,7 +13,8 @@
        or nothing says «you can type here». The shadow is the inset hairline under the top edge. -->
   <SolidColorBrush x:Key="FieldBrush"       Color="#FFFFFF"/>
   <!-- hrm R10: the field border of the palette (#C9D3D2). -->
-  <SolidColorBrush x:Key="FieldBorderBrush" Color="#C9D3D2"/>
+  <!-- UX lot 09: 3.68:1 on surface, 3.39:1 on paper, 3.14:1 on paper-sunk. -->
+  <SolidColorBrush x:Key="FieldBorderBrush" Color="#758893"/>
   <SolidColorBrush x:Key="FieldShadowBrush" Color="#1416293B"/>
 
   <!-- text -->
@@ -21,11 +22,13 @@
   <SolidColorBrush x:Key="InkMutedBrush"    Color="#3E5163"/>
   <!-- hrm R11: the meta ink of the palette. -->
   <SolidColorBrush x:Key="InkFaintBrush"    Color="#5B6B78"/>
-  <SolidColorBrush x:Key="InkDisabledBrush" Color="#A9B5BF"/>
+  <SolidColorBrush x:Key="InkDisabledBrush" Color="#7F8F9B"/> <!-- UX lot 09: 3.33:1 on surface, 3.07:1 on paper -->
 
   <!-- lines -->
   <SolidColorBrush x:Key="LineBrush"        Color="#DCE4E3"/>
   <SolidColorBrush x:Key="LineStrongBrush"  Color="#C9D3D2"/>
+  <!-- UX lot 09: the header mark needs no ring on a light header (dark: #4A6A80). -->
+  <SolidColorBrush x:Key="LogoRingBrush"    Color="Transparent"/>
   <SolidColorBrush x:Key="LineFaintBrush"   Color="#E8EDEC"/>
 
   <!-- accent: the charter teal (refonte R1, 2026-10). The former ocean blue stays as
@@ -47,7 +50,7 @@
   <SolidColorBrush x:Key="SuccessWeakBrush"   Color="#E2F0EB"/>
   <SolidColorBrush x:Key="SuccessBorderBrush" Color="#BFDDD1"/>
   <SolidColorBrush x:Key="SuccessInkBrush"    Color="#1F6B55"/>
-  <SolidColorBrush x:Key="WarningIconBrush"   Color="#D9A441"/>
+  <SolidColorBrush x:Key="WarningIconBrush"   Color="#B8842A"/> <!-- UX lot 09: 3.30:1 on surface, 3.04:1 on paper -->
   <SolidColorBrush x:Key="WarningWeakBrush"   Color="#F8EED5"/>
   <SolidColorBrush x:Key="WarningBorderBrush" Color="#EBD7A3"/>
   <SolidColorBrush x:Key="WarningInkBrush"    Color="#7A4F0E"/>
@@ -61,7 +64,7 @@
   <SolidColorBrush x:Key="InfoWeakBrush"      Color="#E6F1F2"/>
   <SolidColorBrush x:Key="InfoBorderBrush"    Color="#C3DEE1"/>
   <!-- The 8 px state dot of a progress message (R08), neutral tone. -->
-  <SolidColorBrush x:Key="NeutralDotBrush"    Color="#8A99A5"/>
+  <SolidColorBrush x:Key="NeutralDotBrush"    Color="#6E7F8B"/> <!-- UX lot 09: 4.14:1 on surface, 3.81:1 on paper -->
   <!-- hrm R04: the former Assistant blue and its family are gone — off the palette.
        The assistant button is a secondary button; its active state is sky + AccentInk. -->
   <SolidColorBrush x:Key="SandWeakBrush"      Color="#F8EED5"/>

@@ -38,8 +38,25 @@ internal static class MountLabels
         return (
             strings.Format(
                 readWrite ? StudioStringKeys.TeamsMountRw : StudioStringKeys.TeamsMountRo,
-                mount.VirtualPath),
+                DisplayName(mount.VirtualPath, strings)),
             readWrite);
+    }
+
+    /// <summary>
+    /// The name a virtual path is shown under: the engine's fixed roots keep their alias but
+    /// say what they hold — "Results (/output)", "Workspace (/workspace)" — every other alias
+    /// is shown as it is spelled.
+    /// </summary>
+    public static string DisplayName(string virtualPath, IStudioStrings strings)
+    {
+        ArgumentNullException.ThrowIfNull(strings);
+
+        return virtualPath switch
+        {
+            "/output" => strings[StudioStringKeys.WizardOutputFolderLabel],
+            "/workspace" => strings[StudioStringKeys.WizardWorkspaceFolderLabel],
+            _ => virtualPath,
+        };
     }
 
     /// <summary>

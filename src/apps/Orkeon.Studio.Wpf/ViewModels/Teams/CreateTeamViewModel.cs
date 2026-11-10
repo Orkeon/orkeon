@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
+using System.Text.RegularExpressions;
 using Orkeon.Domain.FileSystem;
 using Orkeon.Studio.Core.Events;
 using Orkeon.Studio.Core.FileSystem;
@@ -299,6 +300,19 @@ public sealed record MountRow(
     /// never dropped.
     /// </summary>
     public bool IsDroppable => !IsBound && !HasTitle;
+
+    /// <summary>
+    /// Whether the row shows its one « Retirer » (UX lot 01): a bound folder is retired, a bare
+    /// implied root is dropped — one button, <see cref="CreateTeamViewModel.RemoveMountCommand"/>
+    /// telling the two apart.
+    /// </summary>
+    public bool CanRemove => IsBound || IsDroppable;
+
+    /// <summary>
+    /// The last segment of <see cref="Folder"/> — what a Novice row shows in place of the full
+    /// path on this machine, which goes in its tooltip (UX lot 01).
+    /// </summary>
+    public string FolderName => FolderNames.Of(Folder);
 }
 
 /// <summary>
@@ -522,9 +536,13 @@ public sealed partial class CreateTeamViewModel : ObservableObject
         // STUDIO-46: the Folders step, between the brief and the plan.
         InitializeFolderStep();
         ToggleAdoptProfilePickerCommand = new RelayCommand(() => IsAdoptProfilePickerOpen = !IsAdoptProfilePickerOpen);
+        UseDefaultAdoptLlmCommand = new RelayCommand(() =>
+        {
+            AdoptUsesDefaultLlm = true;
+            IsAdoptProfilePickerOpen = false;
+        });
         PickAdoptProfileCommand = new RelayCommand(PickAdoptProfile);
-        RemoveTeamMountCommand = new RelayCommand(RemoveTeamMount, IsStringParameter);
-        RemoveDerivedMountCommand = new RelayCommand(DropDerivedMount, IsStringParameter);
+        RemoveMountCommand = new RelayCommand(RemoveMount, parameter => parameter is MountRow { CanRemove: true });
         RestoreDerivedMountsCommand = new RelayCommand(
             RestoreDerivedMounts,
             () => _droppedDerivedRoots.Count > 0);
@@ -551,7 +569,8 @@ public sealed partial class CreateTeamViewModel : ObservableObject
                 .. _model.BriefOutput is { Length: > 0 } output ? [output] : Array.Empty<string>(),
             ],
             profileName: () => Profiles.Set.Studio?.Name,
-            askEngine: AskEngine);
+            askEngine: AskEngine,
+            nameResolver: ResolveAgentNames);
         Chat.StopRequested += (_, _) => StopEngine();
         // «Edit» on the brief card means the form, not just a hidden panel. Without this the
         // pencil closed the thread and dropped the user back on whatever step they were on,
@@ -562,8 +581,11 @@ public sealed partial class CreateTeamViewModel : ObservableObject
         // The gesture IS the engine. The questions belong to the model, asked during its
         // brief stage; a local questionnaire played first only interviewed the user twice.
         ComposeCommand = new AsyncRelayCommand(ComposeAsync, () => CanCompose);
+        // « Try again » after a missing engine: the same run, past the greyed « Compose » — the user
+        // installed the engine since, and nothing else would ever lift that failure but « Start over ».
+        RetryComposeCommand = new AsyncRelayCommand(ComposeAsync, () => CanComposeIgnoringEngine);
         TryTeamCommand = new AsyncRelayCommand(TryTeamAsync, () => CanTryTeamNow);
-        AdoptWithoutTrialCommand = new AsyncRelayCommand(AdoptWithoutTrialAsync, () => CanTryTeam);
+        AdoptWithoutTrialCommand = new AsyncRelayCommand(AdoptWithoutTrialAsync, () => CanTryTeamNow);
         UseExampleCommand = new RelayCommand(p => Need = p as string ?? Need);
         RestartCommand = new RelayCommand(
             Restart,
@@ -745,6 +767,7 @@ public sealed partial class CreateTeamViewModel : ObservableObject
             return;
 
         AdoptProfileName = profileName;
+        AdoptUsesDefaultLlm = false;
         IsAdoptProfilePickerOpen = false;
     }
 
@@ -765,6 +788,17 @@ public sealed partial class CreateTeamViewModel : ObservableObject
         // The ✕ of an unanswered row: a root the team addresses is dropped, with its banner.
         if (_droppedDerivedRoots.Add(virtualPath))
             RefreshMountSurfaces();
+    }
+
+    private void RemoveMount(object? parameter)
+    {
+        if (parameter is not MountRow row)
+            return;
+
+        if (row.IsBound)
+            RemoveTeamMount(row.MountString);
+        else if (row.IsDroppable)
+            DropDerivedMount(row.VirtualPath);
     }
 
     private void RestoreDerivedMounts()
@@ -805,13 +839,21 @@ public sealed partial class CreateTeamViewModel : ObservableObject
         ComposeNotes.RefreshMessageCount();
         TryNotes.RefreshMessageCount();
         AdoptNotes.RefreshMessageCount();
-        OnPropertiesChanged(nameof(NeedFooter), nameof(NeedTabSubtitle));
+        OnPropertyChanged(nameof(NeedTabSubtitle));
     }
 
     private void OnChatPropertyChanged(string? propertyName)
     {
         if (propertyName is nameof(ChatThreadViewModel.IsStarted))
             RestartCommand?.RaiseCanExecuteChanged();
+
+        // UX lot 06: the wait reminder steps aside while the open panel's card carries it, and
+        // comes back on the status bar the moment the panel closes.
+        if (propertyName is nameof(ChatThreadViewModel.IsOpen) or nameof(ChatThreadViewModel.ShowsWizardThread))
+        {
+            OnPropertiesChanged(nameof(WaitPointLabel), nameof(StatusMessage));
+            SyncProgress();
+        }
 
         // The nav's draft block reads the conversation too: the assistant awaiting your
         // reply is the state a user must never walk away from without seeing.
@@ -841,9 +883,10 @@ public sealed partial class CreateTeamViewModel : ObservableObject
         // CanCompose starts with HasAssistant: an election must wake the button too. The step-4 card
         // reads the setting it names among them — renamed, edited or newly elected (STUDIO-52).
         OnPropertiesChanged(
-            nameof(HasAssistant), nameof(NeedsAssistant), nameof(CanCompose), nameof(Step1Hint),
-            nameof(AdoptProfileName), nameof(AdoptProfileSummary), nameof(AdoptUseDefaultLlmLabel));
+            nameof(HasAssistant), nameof(NeedsAssistant), nameof(ShowsAssistantGate), nameof(CanCompose), nameof(Step1Hint),
+            nameof(AdoptProfileName), nameof(AdoptProfileSummary), nameof(AdoptUseDefaultLlmLabel), nameof(AdoptModelLine));
         ComposeCommand.RaiseCanExecuteChanged();
+        RetryComposeCommand.RaiseCanExecuteChanged();
         // A model elected (or the last one removed) opens or closes the « choose a model » wait.
         SyncWaitPoint();
     }
@@ -863,7 +906,8 @@ public sealed partial class CreateTeamViewModel : ObservableObject
     }
 
     /// <summary>The language switched: the step-4 card titles its setting's card in it (STUDIO-54).</summary>
-    private void OnAdoptProfileLanguageChanged() => OnPropertyChanged(nameof(AdoptProfileSummary));
+    private void OnAdoptProfileLanguageChanged() =>
+        OnPropertiesChanged(nameof(AdoptProfileSummary), nameof(AdoptModelLine), nameof(VerdictHeadline));
 
     /// <summary>Raised when a session becomes active — the shell brings the screen forward.</summary>
     public event EventHandler? SessionActivated;
@@ -922,6 +966,12 @@ public sealed partial class CreateTeamViewModel : ObservableObject
 
     /// <summary>The gate card's visibility.</summary>
     public bool NeedsAssistant => !HasAssistant;
+
+    /// <summary>
+    /// UX lot 05 (071): the « the assistant needs a model » gate, unless the gallery found no
+    /// engine — the missing engine comes first, one cause on screen.
+    /// </summary>
+    public bool ShowsAssistantGate => NeedsAssistant && !Gallery.IsEngineMissing;
 
     // ── stepper ──
 
@@ -1068,6 +1118,7 @@ public sealed partial class CreateTeamViewModel : ObservableObject
                 Chat.OwnerChanged();
                 RaiseDraftChanged();
                 ComposeCommand.RaiseCanExecuteChanged();
+                RetryComposeCommand.RaiseCanExecuteChanged();
                 RefreshRephrase();
                 ScheduleSuggestions();
             }
@@ -1087,10 +1138,22 @@ public sealed partial class CreateTeamViewModel : ObservableObject
     /// Whether the brief is complete enough to compose: the need is typed (STUDIO-45). What
     /// it leaves unsaid the forge asks for itself.
     /// </summary>
-    public bool CanCompose =>
+    public bool CanCompose => CanComposeIgnoringEngine && !IsEngineMissing;
+
+    /// <summary>
+    /// <see cref="CanCompose"/> without the missing engine: what the failure's « Try again » waits
+    /// on, so a run that found no engine can be retried once the engine is installed, the need kept.
+    /// </summary>
+    public bool CanComposeIgnoringEngine =>
         HasAssistant
         && !IsEngineRunning
         && _need.Trim().Length > 0;
+
+    /// <summary>
+    /// UX lot 05 (012): whether the last run found no engine — the alert says how to install it,
+    /// « Compose the team » waits greyed with the reason in its tooltip.
+    /// </summary>
+    public bool IsEngineMissing => _failure?.Kind == WizardFailureKind.EngineMissing;
 
     /// <summary>The sentence under the compose button, tracking what is still missing.</summary>
     public string Step1Hint
@@ -1128,6 +1191,9 @@ public sealed partial class CreateTeamViewModel : ObservableObject
 
     /// <summary>Sends the brief to the engine — the wizard's "compose the team" button.</summary>
     public AsyncRelayCommand ComposeCommand { get; }
+
+    /// <summary>The failure card's « Try again » after a missing engine (<see cref="CanComposeIgnoringEngine"/>).</summary>
+    public AsyncRelayCommand RetryComposeCommand { get; }
 
     // ── step 1 : the use-case gallery (STUDIO-39) ──────────────────────────────────────────
     // The four quick examples stay first (D-01); the link under them opens the gallery over the
@@ -1329,6 +1395,8 @@ public sealed partial class CreateTeamViewModel : ObservableObject
     {
         if (propertyName is nameof(UseCaseGalleryViewModel.HasCatalog) or nameof(UseCaseGalleryViewModel.Count))
             OnPropertiesChanged(nameof(BrowseUseCasesLabel), nameof(ReferenceUseCaseLabel));
+        if (propertyName is nameof(UseCaseGalleryViewModel.IsEngineMissing))
+            OnPropertyChanged(nameof(ShowsAssistantGate));
     }
 
     /// <summary>The titles and labels here are catalogue text: a language switch re-reads them.</summary>
@@ -1380,6 +1448,7 @@ public sealed partial class CreateTeamViewModel : ObservableObject
             SyncProgress();
             RaiseDraftChanged();
             ComposeCommand.RaiseCanExecuteChanged();
+            RetryComposeCommand.RaiseCanExecuteChanged();
             StopCommand.RaiseCanExecuteChanged();
             RestartCommand.RaiseCanExecuteChanged();
             SaveTeamCommand.RaiseCanExecuteChanged();
@@ -1684,14 +1753,11 @@ public sealed partial class CreateTeamViewModel : ObservableObject
     /// <summary>« Autoriser un dossier » — the shell opens the shared picker.</summary>
     public RelayCommand AllowFolderCommand { get; }
 
-    /// <summary>Retires one mount chip.</summary>
-    public RelayCommand RemoveTeamMountCommand { get; }
-
     /// <summary>
-    /// Drops one of the folders the agents imply. The command parameter is the virtual root:
-    /// nothing is bound to it at adoption afterwards, and the warning line says so.
+    /// The one « Retirer » of a Composer row (UX lot 01); the parameter is the <see cref="MountRow"/>:
+    /// a bound folder is retired from the team, a bare implied root is dropped.
     /// </summary>
-    public RelayCommand RemoveDerivedMountCommand { get; }
+    public RelayCommand RemoveMountCommand { get; }
 
     /// <summary>Puts every dropped agent-addressed root back — the way out of a wrong ✕.</summary>
     public RelayCommand RestoreDerivedMountsCommand { get; }
@@ -1859,7 +1925,14 @@ public sealed partial class CreateTeamViewModel : ObservableObject
             nameof(HasDerivedMounts),
             nameof(DroppedDerivedRoots),
             nameof(HasDroppedDerivedRoots),
-            nameof(DroppedDerivedWarning));
+            nameof(DroppedDerivedWarning), nameof(IsStep3Done));
+        // UX lot 05 (021): the last folder chosen releases the steps the milestone held back.
+        if (MaxStep >= 2 && !HasFoldersToChoose && _model.Slug is not null && !IsFillFoldersStep)
+        {
+            var released = Math.Max(MilestoneStep(), _reopenedMaxStep);
+            if (released > MaxStep)
+                MaxStep = released;
+        }
         RefreshStep2Tabs();
         SyncWaitPoint();
     }
@@ -2179,7 +2252,7 @@ public sealed partial class CreateTeamViewModel : ObservableObject
         set
         {
             if (SetProperty(ref _adoptProfileName, value))
-                OnPropertyChanged(nameof(AdoptProfileSummary));
+                OnPropertiesChanged(nameof(AdoptProfileSummary), nameof(AdoptModelLine));
         }
     }
 
@@ -2200,10 +2273,26 @@ public sealed partial class CreateTeamViewModel : ObservableObject
         get => _adoptUsesDefaultLlm;
         set
         {
-            if (SetProperty(ref _adoptUsesDefaultLlm, value) && value)
+            if (!SetProperty(ref _adoptUsesDefaultLlm, value))
+                return;
+
+            OnPropertyChanged(nameof(AdoptModelLine));
+            if (value)
                 IsAdoptProfilePickerOpen = false;
         }
     }
+
+    /// <summary>
+    /// UX lot 05 (022): the step-4 « Model » line, one control for one choice — « DeepSeek
+    /// (default) » while the team follows the machine's default, else the profile it pins.
+    /// </summary>
+    public string AdoptModelLine =>
+        AdoptUsesDefaultLlm
+            ? _strings.Format(StudioStringKeys.WizardAdoptModelDefault, Profiles.DefaultProfileName ?? "")
+            : AdoptProfileName ?? "";
+
+    /// <summary>The unfolded picker's first row: back to the machine's default model.</summary>
+    public RelayCommand UseDefaultAdoptLlmCommand { get; }
 
     /// <summary>« Use the default model (X) », X the setting elected now.</summary>
     public string AdoptUseDefaultLlmLabel =>
@@ -2431,10 +2520,16 @@ public sealed partial class CreateTeamViewModel : ObservableObject
         // writes back as it is (STUDIO-14, D-07).
         foreach (var mount in team.Metadata?.Mounts ?? team.Mounts)
             TeamMounts.Add(mount);
+        // UX lot 05 (021): the steps the reopened team really went through — a folder still to
+        // choose stops it at step 2, a team never adopted from this session at the trial. The
+        // last folder chosen releases the rest (RefreshMountSurfaces).
+        _reopenedMaxStep = session.PromotedTo is { Length: > 0 } ? 4 : 3;
         RefreshMountSurfaces();
 
-        MaxStep = 4;
+        MaxStep = HasFoldersToChoose ? 2 : _reopenedMaxStep;
         Step = 2;
+        if (HasFoldersToChoose)
+            Step2TabIndex = Step2FoldersTab;
         SyncFromModel();
 
         // The dry pause (a rebuilt session, or one adopted without a trial and reopened):
@@ -2540,7 +2635,7 @@ public sealed partial class CreateTeamViewModel : ObservableObject
 
     private async Task ComposeAsync()
     {
-        if (!CanCompose)
+        if (!CanComposeIgnoringEngine)
             return;
 
         ResetProjection();
@@ -2661,6 +2756,10 @@ public sealed partial class CreateTeamViewModel : ObservableObject
         request = request with { Language = _uiLanguage() };
 
         IsEngineRunning = true;
+        // UX lot 05 (011-012): a new run takes back the interrupted brief's « Resume ».
+        if (_resumeAction is not null && ReferenceEquals(Chat.PendingAction, _resumeAction))
+            Chat.SetPendingAction(null);
+        _resumeAction = null;
         _lastStderr = null;
         // A card left over from the previous run would contradict this one (STUDIO-13, D-05).
         Failure = null;
@@ -2699,6 +2798,10 @@ public sealed partial class CreateTeamViewModel : ObservableObject
                 // composer writing into a closed pipe.
                 Chat.EngineFinished(interrupted: Chat.IsStarted && !Chat.IsDone);
                 SyncFromModel();
+                // UX lot 05 (011-012): « start again when you are ready » comes with its button.
+                if (Chat.WasInterrupted && _waitPoint == WizardWaitPoint.None)
+                    Chat.SetPendingAction(ResumeActionAfterInterruption());
+                RefreshStep1Tabs();
             }).ConfigureAwait(false);
         }
     }
@@ -2959,7 +3062,7 @@ public sealed partial class CreateTeamViewModel : ObservableObject
         // The adoption fields too (review, lot 7): a reopened team seeds profile and
         // schedule — without this reset they would leak into the NEXT session's sidecar.
         _adoptProfileName = null;
-        OnPropertiesChanged(nameof(AdoptProfileName), nameof(AdoptProfileSummary));
+        OnPropertiesChanged(nameof(AdoptProfileName), nameof(AdoptProfileSummary), nameof(AdoptModelLine));
         AdoptUsesDefaultLlm = true;
         ScheduleChoice = 0;
         ScheduleTime = "07:30";
@@ -2967,6 +3070,7 @@ public sealed partial class CreateTeamViewModel : ObservableObject
         StatusMessage = "";
         Step = 1;
         MaxStep = 1;
+        _reopenedMaxStep = 0;
     }
 
     /// <summary>
@@ -3004,6 +3108,32 @@ public sealed partial class CreateTeamViewModel : ObservableObject
             _strings[key],
             value is { Length: > 0 } known ? known : pending,
             value is { Length: > 0 });
+    }
+
+    /// <summary>
+    /// The engine's agent keys, read by their role in the assistant's words (UX lot 06, 073-076):
+    /// « veilleur-tri » becomes « Veilleur ». A whole key only, any case; the longest key first so
+    /// that one key never eats part of another.
+    /// </summary>
+    private string ResolveAgentNames(string text)
+    {
+        if (_model.Proposal?.Agents is not { Count: > 0 } agents)
+            return text;
+
+        // An agent with no role keeps its key: replacing it with nothing would erase its name.
+        foreach (var agent in agents
+                     .Where(a => a.Key.Length > 0 && !string.IsNullOrWhiteSpace(a.Role))
+                     .OrderByDescending(a => a.Key.Length))
+        {
+            text = Regex.Replace(
+                text,
+                $@"(?<![\w-]){Regex.Escape(agent.Key)}(?![\w-])",
+                _ => agent.Role,
+                RegexOptions.IgnoreCase | RegexOptions.CultureInvariant,
+                TimeSpan.FromSeconds(1));
+        }
+
+        return text;
     }
 
     private string ChatMessageCount() => Chat.Turns.Count == 0
@@ -3153,6 +3283,25 @@ public sealed partial class CreateTeamViewModel : ObservableObject
             StatusMessage = failure.Headline;
     }
 
+    /// <summary>The steps a reopened team went through (3, or 4 once adopted from this session); 0 otherwise.</summary>
+    private int _reopenedMaxStep;
+
+    /// <summary>
+    /// The step the engine's milestone reaches — on a reopened team, held at step 2 while a folder
+    /// is still to choose (UX lot 05, 021): the trial waits for the folders, and so do the steps after it.
+    /// </summary>
+    private int MilestoneStep()
+    {
+        var reached = _model.Milestone switch
+        {
+            ForgeMilestone.Describe => 1,
+            ForgeMilestone.Propose => 2,
+            ForgeMilestone.Try => 3,
+            _ => 4,
+        };
+        return _reopenedMaxStep > 0 && HasFoldersToChoose ? Math.Min(reached, 2) : reached;
+    }
+
     private void GoStep(int step)
     {
         if (step <= MaxStep)
@@ -3179,13 +3328,7 @@ public sealed partial class CreateTeamViewModel : ObservableObject
 
         // The milestone drives the stepper; the user may look back, never skip ahead. The fill
         // question holds it: the step moves on once the user answered (STUDIO-57, R15).
-        var reached = _model.Milestone switch
-        {
-            ForgeMilestone.Describe => 1,
-            ForgeMilestone.Propose => 2,
-            ForgeMilestone.Try => 3,
-            _ => 4,
-        };
+        var reached = MilestoneStep();
         if (reached > MaxStep && !IsFillFoldersStep)
         {
             MaxStep = reached;
@@ -3245,7 +3388,8 @@ public sealed partial class CreateTeamViewModel : ObservableObject
             nameof(CrewDefinitionYaml), nameof(HasCrewDefinition),
             nameof(CanSaveTeam), nameof(DecisionPending), nameof(CanEditAgents), nameof(CanTryTeam),
             nameof(IsEngineWaitingOnUser), nameof(IsEngineWorking), nameof(IsModifyingTeam),
-            nameof(VerdictSummary), nameof(HasVerdictSummary), nameof(Step2Hint));
+            nameof(VerdictSummary), nameof(HasVerdictSummary), nameof(Step2Hint),
+            nameof(VerdictHeadline), nameof(VerdictHeadlineTone), nameof(IsStep3Done));
         RaiseSessionStateChanged();
         RefreshStep1Tabs();
         RefreshStep2Tabs();
@@ -3322,7 +3466,9 @@ public sealed partial class CreateTeamViewModel : ObservableObject
         _model.TokensRemaining,
         // A model to choose is not a session's wait: the gate's alert names it, and the status
         // bar stays at rest until a creation is under way.
-        HasWaitPoint && _waitPoint != WizardWaitPoint.ChooseModel ? WaitPointLabel : null));
+        HasWaitPoint && _waitPoint != WizardWaitPoint.ChooseModel && WaitPointLabel is { Length: > 0 } waitLabel
+            ? waitLabel
+            : null));
 
     private void SyncActivity()
     {
@@ -3334,11 +3480,14 @@ public sealed partial class CreateTeamViewModel : ObservableObject
             // owns two tasks rendered the same sentence twice, with nothing to tell the
             // reader which of the two had just finished.
             var role = task.AgentRole ?? task.TaskId ?? fallback;
-            var text = task.Success
-                ? _strings.Format(
-                    StudioStringKeys.WizardActivityDone,
-                    role, Math.Round(task.DurationMs / 1000.0, 1))
-                : _strings.Format(StudioStringKeys.WizardActivityFailed, role);
+            var text = (task.Success, task.DurationMs) switch
+            {
+                (true, { } durationMs) => _strings.Format(
+                    StudioStringKeys.WizardActivityDone, role, Math.Round(durationMs / 1000.0, 1)),
+                // The run did not say how long it took: no "done in 0 s" it never measured.
+                (true, null) => _strings.Format(StudioStringKeys.WizardActivityDoneUntimed, role),
+                _ => _strings.Format(StudioStringKeys.WizardActivityFailed, role),
+            };
 
             var detail = task.AgentRole is not null && task.TaskId is { Length: > 0 } id ? id : "";
             Activity.Add(new WizardActivityLine(text, detail, task.Success));
@@ -3409,8 +3558,9 @@ public sealed partial class CreateTeamViewModel : ObservableObject
     public bool CanOpenFolder => HasShellOpener && FolderToOpen() is not null;
 
     /// <summary>Which of the two folders opens, said on the button: the working session, or the adopted team.</summary>
-    public string OpenFolderTooltip => _strings[TeamFolderToOpen() is not null
-        ? StudioStringKeys.WizardOpenFolderTeam
+    public string OpenFolderTooltip => _strings[
+        !CanOpenFolder ? StudioStringKeys.WizardOpenFolderLater
+        : TeamFolderToOpen() is not null ? StudioStringKeys.WizardOpenFolderTeam
         : StudioStringKeys.WizardOpenFolderSession];
 
     /// <summary>The team folder, once there is one: a team reopened from its card.</summary>
@@ -3584,7 +3734,11 @@ public sealed partial class CreateTeamViewModel : ObservableObject
             FailureReportCopied = false;
             OnPropertiesChanged(
                 nameof(HasFailure), nameof(CanCopyFailureReport), nameof(FailureRetryCommand),
-                nameof(FailureOffersRetry), nameof(FailureOffersDiagnostic), nameof(FailureOffersSettings));
+                nameof(FailureOffersRetry), nameof(FailureOffersDiagnostic), nameof(FailureOffersSettings),
+                nameof(IsEngineMissing), nameof(FailureOffersDiagnosticSecondary),
+                nameof(CanCompose), nameof(ComposeTip), nameof(HasComposeTip));
+            ComposeCommand.RaiseCanExecuteChanged();
+            RetryComposeCommand.RaiseCanExecuteChanged();
         }
     }
 
@@ -3608,7 +3762,12 @@ public sealed partial class CreateTeamViewModel : ObservableObject
     /// </summary>
     public AsyncRelayCommand FailureRetryCommand
     {
-        get => _failure?.Kind == WizardFailureKind.PromoteRefused ? SaveTeamCommand : ComposeCommand;
+        get => _failure?.Kind switch
+        {
+            WizardFailureKind.PromoteRefused => SaveTeamCommand,
+            WizardFailureKind.EngineMissing => RetryComposeCommand,
+            _ => ComposeCommand,
+        };
     }
 
     /// <summary>
@@ -3623,6 +3782,12 @@ public sealed partial class CreateTeamViewModel : ObservableObject
     /// <summary>Whether the card offers "Open the diagnostic" — the doctor names what is missing or unreachable.</summary>
     public bool FailureOffersDiagnostic =>
         _failure?.Kind is WizardFailureKind.EngineMissing or WizardFailureKind.EngineStopped or WizardFailureKind.Unknown;
+
+    /// <summary>
+    /// Whether « Open the diagnostic » stands as a secondary — the primary one is the missing
+    /// engine's (<see cref="IsEngineMissing"/>, UX lot 05).
+    /// </summary>
+    public bool FailureOffersDiagnosticSecondary => FailureOffersDiagnostic && !IsEngineMissing;
 
     /// <summary>Whether the card offers "Open the settings" — the engine refused what the settings gave it.</summary>
     public bool FailureOffersSettings => _failure?.Kind is WizardFailureKind.ConfigRefused;
@@ -3687,6 +3852,11 @@ public sealed partial class CreateTeamViewModel : ObservableObject
     /// unless another shown name starts with the same one: it then takes two letters — the
     /// first two words' initials («Data Analyst» → «DA»), else its first two letters
     /// («Writer» → «Wr», «Reviewer» → «Re»). An empty name stays «?».
+    /// <para>
+    /// UX lot 12 (016): two pairs an accent or a case apart (an accented «Re» against a plain «Re»,
+    /// as the French writer and reviewer roles give) read as one; such names take, after their capital, the first letter where
+    /// they differ («Rd» / «Rl»).
+    /// </para>
     /// </summary>
     public static IReadOnlyList<string> AvatarInitials(IReadOnlyList<string> names)
     {
@@ -3698,7 +3868,45 @@ public sealed partial class CreateTeamViewModel : ObservableObject
             .Where(group => group.Count() > 1)
             .Select(group => group.Key)
             .ToHashSet(StringComparer.Ordinal);
-        return [.. names.Select((name, index) => shared.Contains(single[index]) ? TwoLetters(name, single[index]) : single[index])];
+        var initials = names.Select((name, index) => shared.Contains(single[index]) ? TwoLetters(name, single[index]) : single[index]).ToList();
+
+        // The pairs that read alike: same letters once accents and case are set aside.
+        var lookAlikes = initials
+            .Select((initial, index) => (Initial: initial, Index: index))
+            .Where(entry => entry.Initial.Length == 2)
+            .GroupBy(entry => entry.Initial, LookAlike)
+            .Where(group => group.Count() > 1);
+        foreach (var group in lookAlikes)
+        {
+            var indexes = group.Select(entry => entry.Index).ToList();
+            foreach (var index in indexes)
+            {
+                var others = indexes.Where(other => other != index).Select(other => names[other]).ToList();
+                if (FirstDistinctLetter(names[index], others) is { } letter)
+                    initials[index] = string.Concat(single[index], letter.ToString());
+            }
+        }
+
+        return initials;
+    }
+
+    // Accents and case set aside: an accented «Re» and «re» compare equal. A comparison, not a fold.
+    private static readonly StringComparer LookAlike =
+        StringComparer.Create(CultureInfo.InvariantCulture, CompareOptions.IgnoreNonSpace | CompareOptions.IgnoreCase);
+
+    // The name's first letter, after its capital, where it differs from every other name.
+    private static char? FirstDistinctLetter(string name, IReadOnlyList<string> others)
+    {
+        for (var i = 1; i < name.Length; i++)
+        {
+            if (!char.IsLetter(name[i]))
+                continue;
+            var letter = name[i].ToString();
+            if (others.All(other => i >= other.Length || !LookAlike.Equals(other[i].ToString(), letter)))
+                return char.ToLowerInvariant(name[i]);
+        }
+
+        return null;
     }
 
     private static string TwoLetters(string name, string single)

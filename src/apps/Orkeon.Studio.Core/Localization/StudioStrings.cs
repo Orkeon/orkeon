@@ -140,6 +140,24 @@ public static class StudioStringKeys
     /// <summary>"Exit code {0} — {1}"</summary>
     public const string LaunchExitCode = "Studio.Run.ExitCode";
 
+    /// <summary>"run completed successfully" — {1} of <see cref="LaunchExitCode"/> for exit code 0.</summary>
+    public const string LaunchExitSuccess = "Studio.Run.ExitSuccess";
+
+    /// <summary>"script or settings error: check the team file and the settings it uses" — exit code 1.</summary>
+    public const string LaunchExitScriptError = "Studio.Run.ExitScriptError";
+
+    /// <summary>"runtime error: the last log lines say why" — exit code 2.</summary>
+    public const string LaunchExitRuntimeError = "Studio.Run.ExitRuntimeError";
+
+    /// <summary>"run interrupted" — a run cancelled, or exit code 130.</summary>
+    public const string LaunchExitCancelled = "Studio.Run.ExitCancelled";
+
+    /// <summary>"unexpected end: check the output above" — any other exit code.</summary>
+    public const string LaunchExitUnknown = "Studio.Run.ExitUnknown";
+
+    /// <summary>"the engine did not start" — {0} of <see cref="LaunchNothingRan"/>.</summary>
+    public const string LaunchExitNotStarted = "Studio.Run.ExitNotStarted";
+
     // ---- Usage metric chips (Launch/UsageMetricsFormatter, W-08) ---------
 
     /// <summary>"{0} tokens"</summary>
@@ -251,6 +269,8 @@ public static class StudioStringKeys
 
     /// <summary>Said in the thread when the engine stops mid-interview.</summary>
     public const string ChatSessionEnded = "Studio.Chat.SessionEnded";
+    /// <summary>UX lot 05: « Resume » on the bubble said when the engine stops mid-interview.</summary>
+    public const string ChatRestart = "Studio.Chat.Restart";
 
     /// <summary>The status line while the assistant waits on the user.</summary>
     public const string ChatStatusWaiting = "Studio.Chat.StatusWaiting";
@@ -280,6 +300,12 @@ public static class StudioStringKeys
     public const string ChatFactSource = "Studio.Chat.FactSource";
     /// <summary>"What comes out" — the validated brief's expected output (STUDIO-45)</summary>
     public const string ChatFactOutput = "Studio.Chat.FactOutput";
+    /// <summary>"Work" — the brief's pill in the folded recap header (UX lot 06)</summary>
+    public const string ChatPillBrief = "Studio.Chat.PillBrief";
+    /// <summary>"Inputs" — the inputs' pill in the folded recap header (UX lot 06)</summary>
+    public const string ChatPillSource = "Studio.Chat.PillSource";
+    /// <summary>"Output" — the output's pill in the folded recap header (UX lot 06)</summary>
+    public const string ChatPillOutput = "Studio.Chat.PillOutput";
     /// <summary>"Composition instruction"</summary>
     public const string ChatFactComposeNote = "Studio.Chat.FactComposeNote";
     /// <summary>"Trial instruction"</summary>
@@ -418,6 +444,12 @@ public static class StudioStringKeys
     /// <summary>"The team's tools are checked at its first launch."</summary>
     public const string ImportToolsLaterDetail = "Studio.Import.ToolsLaterDetail";
 
+    /// <summary>"Choose a team file or folder first." (UX lot 08).</summary>
+    public const string ImportDetectHint = "Studio.Import.DetectHint";
+
+    /// <summary>"Example: C:\Teams\watch\team.yaml" (UX lot 08).</summary>
+    public const string ImportPathPlaceholder = "Studio.Import.PathPlaceholder";
+
     // ---- Diagnostic verdict card (Config/DiagnosticViewModel, audit 09/20) --
 
     /// <summary>"Everything is in place."</summary>
@@ -439,11 +471,17 @@ public static class StudioStringKeys
     /// <summary>A check's action: "Open the settings file".</summary>
     public const string DiagOpenFile = "Studio.Diagnostics.OpenFile";
 
+    /// <summary>What the danger banner says to do when the engine is missing (UX lot 04).</summary>
+    public const string DiagEngineMissingHow = "Studio.Diagnostics.EngineMissingHow";
+
     /// <summary>A check's action: "Test the connection".</summary>
     public const string DiagTestConnection = "Studio.Diagnostics.TestConnection";
 
     /// <summary>A check's action when Studio has no fix of its own: "Check again".</summary>
     public const string DiagCheckAgain = "Studio.Diagnostics.CheckAgain";
+
+    /// <summary>A check the engine reports under a name Studio has no label for: "Engine check".</summary>
+    public const string DiagCheckUnknown = "Studio.Diagnostics.Check.Unknown";
 
     /// <summary>The settings-file line of the checks (lot 5, the former sidebar card): "Settings file".</summary>
     public const string DiagSettingsFile = "Studio.Diagnostics.SettingsFile";
@@ -574,7 +612,7 @@ public static class StudioStringKeys
     /// <summary>"“{0}” authorized and bound as {1}" — the wizard declared a folder under the row's root.</summary>
     public const string WizardDeclaredFolder = "Studio.Create.DeclaredFolder";
 
-    /// <summary>"This team refers to folder declarations missing here: {0}. Declare them in Settings › Authorized folders or change the team's folders."</summary>
+    /// <summary>"This team refers to authorized folders missing here: {0}. Allow them in Settings › Authorized folders or change the team's folders."</summary>
     public const string RunBlockedUnknownMountId = "Studio.Run.BlockedUnknownMountId";
 
     /// <summary>"Open the result" — the Launch screen's button once a run finished, one writable folder.</summary>
@@ -628,6 +666,9 @@ public static class StudioStringKeys
     public const string RunTeamLastRun = "Studio.Run.TeamLastRun";
     public const string RunTeamNeverRun = "Studio.Run.TeamNeverRun";
     public const string RunOptionsFooter = "Studio.Run.OptionsFooter";
+    public const string RunOptionsDefault = "Studio.Run.OptionsDefault";
+    public const string RunVerbosityPrefix = "Studio.Run.VerbosityPrefix";
+    public const string RunSettingsFileTitle = "Studio.Run.SettingsFileTitle";
     public const string RunFoldersSection = "Studio.Run.FoldersSection";
     public const string RunFoldersAddedNone = "Studio.Run.FoldersAddedNone";
     public const string RunFoldersAdded = "Studio.Run.FoldersAdded";
@@ -661,6 +702,12 @@ public static class StudioStringKeys
     public const string RunBlockedNoCli = "Studio.Run.BlockedNoCli";
     public const string RunBlockedNoTeam = "Studio.Run.BlockedNoTeam";
     public const string RunBlockedFolders = "Studio.Run.BlockedFolders";
+
+    /// <summary>"Not allowed" (UX lot 08).</summary>
+    public const string RunFolderNotAllowed = "Studio.Run.FolderNotAllowed";
+
+    /// <summary>"Allow this folder" (UX lot 08).</summary>
+    public const string RunAllowThisFolder = "Studio.Run.AllowThisFolder";
     public const string RunBlockedArchived = "Studio.Run.BlockedArchived";
     public const string RunRunningLine = "Studio.Run.RunningLine";
     public const string RunLaneWaiting = "Studio.Run.LaneWaiting";
@@ -723,8 +770,12 @@ public static class StudioStringKeys
     /// </summary>
     public const string TeamsMountUnreadable = "Studio.Teams.MountUnreadable";
 
-    /// <summary>"to try" — the badge of a team that never ran and has no schedule.</summary>
+    /// <summary>"To try" — the badge of a team that never ran and has no schedule (Warning tone).</summary>
     public const string TeamsToTest = "Studio.Teams.ToTest";
+    public const string TeamsNeedsFolderBadge = "Studio.Teams.NeedsFolderBadge";
+
+    /// <summary>"Ready · on demand" — the badge of an unscheduled team that already ran (Success tone, UX lot 11).</summary>
+    public const string TeamsReadyBadge = "Studio.Teams.ReadyBadge";
 
     /// <summary>"Last run: {0}, {1}" — the meta line's history part.</summary>
     public const string TeamsLastRun = "Studio.Teams.LastRun";
@@ -957,6 +1008,7 @@ public static class StudioStringKeys
 
     /// <summary>"write, no delete" — the badge of a read-write-no-delete mount row.</summary>
     public const string RightsBadgeReadWriteNoDelete = "Studio.Settings.RightsBadgeRwnd";
+    public const string RightsReadWriteNoDeleteTip = "Studio.Settings.RightsRwndTip";
 
     // STUDIO-14 settings — the read-only « Team folders » section of Settings › Authorized
     // folders (WPF Config/TeamFoldersViewModel, D-13): a team's own folders, vouched for by
@@ -1119,12 +1171,6 @@ public static class StudioStringKeys
     /// <summary>"Ready to work"</summary>
     public const string RunStateIdle = "Studio.Run.StateIdle";
 
-    /// <summary>"Run in progress"</summary>
-    public const string RunStateRunning = "Studio.Run.StateRunning";
-
-    /// <summary>"Run finished"</summary>
-    public const string RunStateDone = "Studio.Run.StateDone";
-
     /// <summary>"waiting"</summary>
     public const string RunBadgeIdle = "Studio.Run.BadgeIdle";
 
@@ -1133,6 +1179,15 @@ public static class StudioStringKeys
 
     /// <summary>"succeeded"</summary>
     public const string RunBadgeDone = "Studio.Run.BadgeDone";
+
+    /// <summary>"Succeeded · {0} {0:plural:agent not run|agents not run}" (UX lot 08).</summary>
+    public const string RunBadgeDoneSkipped = "Studio.Run.BadgeDoneSkipped";
+
+    /// <summary>"Task details" (UX lot 08).</summary>
+    public const string RunTaskDetails = "Studio.Run.TaskDetails";
+
+    /// <summary>"Show the error" (UX lot 08).</summary>
+    public const string HistoryShowError = "Studio.History.ShowError";
 
     /// <summary>"failed"</summary>
     public const string RunBadgeFailed = "Studio.Run.BadgeFailed";
@@ -1364,6 +1419,9 @@ public static class StudioStringKeys
     /// <summary>"New setting" — the freshly created profile's placeholder name.</summary>
     public const string ProfileNewName = "Studio.Settings.NewName";
 
+    /// <summary>The name of the very first model setting, when none exists yet (UX lot 04).</summary>
+    public const string ProfileFirstName = "Studio.Settings.FirstProfileName";
+
     /// <summary>"ON YOUR MACHINE · FREE, NO KEY"</summary>
     public const string ProfileGroupLocal = "Studio.Settings.GroupLocal";
 
@@ -1375,6 +1433,15 @@ public static class StudioStringKeys
 
     /// <summary>"The service's API key"</summary>
     public const string ProfileKeyTitleService = "Studio.Settings.KeyTitleService";
+
+    /// <summary>The tool a key serves, for <c>web_search</c>: "Web search (Tavily)".</summary>
+    public const string ToolSecretWebSearch = "Studio.Settings.ToolSecretWebSearch";
+
+    /// <summary>The tool a key serves, for <c>brave_search</c>: "Web search (Brave)".</summary>
+    public const string ToolSecretBraveSearch = "Studio.Settings.ToolSecretBraveSearch";
+
+    /// <summary>The tool a key serves, for <c>image_generation</c>: "Image generation (OpenAI)".</summary>
+    public const string ToolSecretImageGeneration = "Studio.Settings.ToolSecretImageGeneration";
 
     /// <summary>"Studio keeps it in your Windows session — never in a file, never in a shared folder."</summary>
     public const string ProfileKeyExplainer = "Studio.Settings.KeyExplainer";
@@ -1528,8 +1595,17 @@ public static class StudioStringKeys
     /// <summary>"Ready"</summary>
     public const string MailStateReady = "Studio.Settings.MailStateReady";
 
-    /// <summary>"Not ready" — the engine's own sentence follows, as printed.</summary>
+    /// <summary>"Not ready" — a sentence of Studio's on what is missing follows.</summary>
     public const string MailStateNotReady = "Studio.Settings.MailStateNotReady";
+
+    /// <summary>"The password is not stored: variable {0} is empty on this machine. Enter it in the Sign-in tab." — {0} is the variable the file names.</summary>
+    public const string MailNotReadyPassword = "Studio.Settings.MailNotReadyPassword";
+
+    /// <summary>"The client secret is not stored: variable {0} is empty on this machine. Enter it in the Sign-in tab." — {0} is the variable the file names.</summary>
+    public const string MailNotReadySecret = "Studio.Settings.MailNotReadySecret";
+
+    /// <summary>"This account is not signed in yet: use “Sign in” below."</summary>
+    public const string MailNotReadyOAuth = "Studio.Settings.MailNotReadyOAuth";
 
     /// <summary>"Set aside" — the findings of the form already say why.</summary>
     public const string MailStateSetAside = "Studio.Settings.MailStateSetAside";
@@ -1587,11 +1663,17 @@ public static class StudioStringKeys
     /// <summary>"Starting the sign-in…" — the verb has not said yet what to do.</summary>
     public const string MailSignInStarting = "Studio.Settings.MailSignInStarting";
 
-    /// <summary>"Open {0} and enter this code:" — {0} is the page the provider names.</summary>
+    /// <summary>"Open the authorization page below and enter this code:" — the page is shown once, under it.</summary>
     public const string MailDeviceCode = "Studio.Settings.MailDeviceCode";
 
-    /// <summary>"The code expires in {0}" — {0} is minutes and seconds.</summary>
+    /// <summary>"The code expires in {0}" — {0} is <see cref="CommonMinutes"/>.</summary>
     public const string MailDeviceCodeExpiresIn = "Studio.Settings.MailDeviceCodeExpiresIn";
+
+    /// <summary>"The code expires in under a minute"</summary>
+    public const string MailDeviceCodeExpiresSoon = "Studio.Settings.MailDeviceCodeExpiresSoon";
+
+    /// <summary>"{0} min" — a whole number of minutes.</summary>
+    public const string CommonMinutes = "Studio.Common.Minutes";
 
     /// <summary>"The code expired — start again"</summary>
     public const string MailDeviceCodeExpired = "Studio.Settings.MailDeviceCodeExpired";
@@ -1748,6 +1830,9 @@ public static class StudioStringKeys
     /// <summary>"{0} — done in {1} s"</summary>
     public const string WizardActivityDone = "Studio.Create.ActivityDone";
 
+    /// <summary>"{0} — done"</summary>
+    public const string WizardActivityDoneUntimed = "Studio.Create.ActivityDoneUntimed";
+
     /// <summary>"{0} — failed"</summary>
     public const string WizardActivityFailed = "Studio.Create.ActivityFailed";
 
@@ -1789,21 +1874,14 @@ public static class StudioStringKeys
 
     /// <summary>"Described" — the need tab's subtitle once typed.</summary>
     public const string WizardTabNeedDone = "Studio.Create.TabNeedDone";
+    /// <summary>UX lot 05: "Described, brief interrupted" — the need tab after the assistant stopped.</summary>
+    public const string WizardTabNeedInterrupted = "Studio.Create.TabNeedInterrupted";
 
     /// <summary>"Described, {0} questions settled" — the need tab's subtitle once the assistant asked.</summary>
     public const string WizardTabNeedDoneAnswers = "Studio.Create.TabNeedDoneAnswers";
 
     /// <summary>"To describe" — the need tab's subtitle before.</summary>
     public const string WizardTabNeedEmpty = "Studio.Create.TabNeedEmpty";
-
-    /// <summary>"Need not described yet." — the need pane's footer before; the page footer says what to do (C04).</summary>
-    public const string WizardTabNeedEmptyFooter = "Studio.Create.TabNeedEmptyFooter";
-
-    /// <summary>"Need described."</summary>
-    public const string WizardTabNeedFooter = "Studio.Create.TabNeedFooter";
-
-    /// <summary>"Need described, {0} questions settled with the assistant".</summary>
-    public const string WizardTabNeedFooterAnswers = "Studio.Create.TabNeedFooterAnswers";
 
     /// <summary>"{0} folders to confirm" — the folders tab's subtitle while they wait.</summary>
     public const string WizardTabFoldersPending = "Studio.Create.TabFoldersPending";
@@ -1846,6 +1924,15 @@ public static class StudioStringKeys
     public const string WizardTabTeamFoldersNone = "Studio.Create.TabTeamFoldersNone";
     public const string WizardTabComposition = "Studio.Create.TabComposition";
     public const string WizardTabCompositionStopped = "Studio.Create.TabCompositionStopped";
+
+    /// <summary>
+    /// Composition tab subtitle once the run stopped and the definition validated: "Composed · {0} files written".
+    /// Composition state scale (UX lot 11): None (Neutral) → Running (Attention) → Done (Ready) | Invalid (Attention) | Stopped (Neutral, no validation).
+    /// </summary>
+    public const string WizardTabCompositionDone = "Studio.Create.TabCompositionDone";
+
+    /// <summary>Composition tab subtitle once the run stopped and the definition failed validation: "To fix · {0} files written" (UX lot 11).</summary>
+    public const string WizardTabCompositionInvalid = "Studio.Create.TabCompositionInvalid";
     public const string WizardTabCompositionRunning = "Studio.Create.TabCompositionRunning";
     public const string WizardTabCompositionNone = "Studio.Create.TabCompositionNone";
     public const string WizardTeamFooterStopped = "Studio.Create.TeamFooterStopped";
@@ -1862,6 +1949,12 @@ public static class StudioStringKeys
     public const string WizardCompositionDraftNotSaved = "Studio.Create.CompositionDraftNotSaved";
     public const string WizardCompositionFooterDone = "Studio.Create.CompositionFooterDone";
     public const string WizardCompositionFooterRunning = "Studio.Create.CompositionFooterRunning";
+    /// <summary>UX lot 05: the composition pane's footer when the definition is not valid.</summary>
+    public const string WizardCompositionFooterInvalid = "Studio.Create.CompositionFooterInvalid";
+    /// <summary>UX lot 05: the composition pane's footer when the composition stopped unchecked.</summary>
+    public const string WizardCompositionFooterStopped = "Studio.Create.CompositionFooterStopped";
+    /// <summary>UX lot 05: the Expert's pointer to the technical journal under the composition tab.</summary>
+    public const string WizardCompositionSubExpert = "Studio.Create.CompositionSubExpert";
     public const string WizardMoreTools = "Studio.Create.MoreTools";
 
     /// <summary>"No instruction yet."</summary>
@@ -1907,9 +2000,6 @@ public static class StudioStringKeys
     /// <summary>The composer's placeholder while the folders wait.</summary>
     public const string WizardWaitPlaceholderFolders = "Studio.Create.WaitPlaceholderFolders";
     public const string WizardWaitPlaceholderFillFolders = "Studio.Create.WaitPlaceholderFillFolders";
-
-    /// <summary>The composer's placeholder while a folder is to choose.</summary>
-    public const string WizardWaitPlaceholderChooseFolder = "Studio.Create.WaitPlaceholderChooseFolder";
 
     /// <summary>The composer's placeholder while the team waits to be adopted.</summary>
     public const string WizardWaitPlaceholderAdopt = "Studio.Create.WaitPlaceholderAdopt";
@@ -2011,6 +2101,10 @@ public static class StudioStringKeys
 
     /// <summary>"These folders are kept inside the team. ..."</summary>
     public const string WizardFillFoldersHint = "Studio.Create.FillFoldersHint";
+    public const string WizardFoldersQuestion = "Studio.Create.FoldersQuestion";
+    public const string WizardUseExistingFolder = "Studio.Create.UseExistingFolder";
+    public const string WizardOutputFolderLabel = "Studio.Create.OutputFolderLabel";
+    public const string WizardWorkspaceFolderLabel = "Studio.Create.WorkspaceFolderLabel";
 
     /// <summary>"Yes"</summary>
     public const string WizardFillFoldersYes = "Studio.Create.FillFoldersYes";
@@ -2069,10 +2163,19 @@ public static class StudioStringKeys
     /// <summary>"Delete this team?" — the delete banner's question in a plain catalogue (STUDIO-27).</summary>
     public const string TeamsDeleteConfirm = "Studio.Teams.DeleteConfirm";
 
+    /// <summary>"Delete the team “{0}”?" (UX lot 08).</summary>
+    public const string TeamsDeleteConfirmNamed = "Studio.Teams.DeleteConfirmNamed";
+
+    /// <summary>"Its folder and its history are erased. The folders you added stay where they are." (UX lot 08).</summary>
+    public const string TeamsDeleteConsequence = "Studio.Teams.DeleteConsequence";
+
     // ---- STUDIO-64: in a workshop, Rename, Delete and Duplicate follow the team's trees ----
 
     /// <summary>"Move the team and what goes with it to the workshop's archive?" — the delete banner's question in a workshop, where Delete archives (STUDIO-64).</summary>
     public const string TeamsDeleteAskArchive = "Studio.Teams.DeleteAskArchive";
+
+    /// <summary>"Move the team “{0}” to the archive?" — the same question in Novice: the team named, no workshop (UX lot 08).</summary>
+    public const string TeamsDeleteAskArchiveNamed = "Studio.Teams.DeleteAskArchiveNamed";
 
     /// <summary>"Moved to {0}." — the screen's line once a team and its trees went under the workshop's archive; {0} is archive/&lt;slug&gt; (STUDIO-64).</summary>
     public const string TeamsArchivedToWorkshop = "Studio.Teams.ArchivedToWorkshop";
@@ -2142,6 +2245,12 @@ public static class StudioStringKeys
 
     /// <summary>"This run: {0}" - the model the next launch of the Run or Test screen takes (STUDIO-73).</summary>
     public const string RunLlmForThisRun = "Studio.Run.LlmForThisRun";
+
+    /// <summary>"Choose a team…" (UX lot 08).</summary>
+    public const string RunPickTeamPrompt = "Studio.Run.PickTeamPrompt";
+
+    /// <summary>"Default ({0})" (UX lot 08).</summary>
+    public const string RunLlmDefaultEntry = "Studio.Run.LlmDefaultEntry";
 
     /// <summary>"Remember for this team" - writes the Run screen's model choice into the team (STUDIO-73).</summary>
     public const string RunRememberLlmForTeam = "Studio.Run.RememberLlmForTeam";
@@ -2285,6 +2394,15 @@ public static class StudioStringKeys
 
     /// <summary>"Archives ({0})" — the toggle of the Archives view; {0} is the number of archived teams (STUDIO-32, D-01).</summary>
     public const string TeamsArchivesLabel = "Studio.Teams.ArchivesLabel";
+
+    /// <summary>"Drafts · {0}" (UX lot 08).</summary>
+    public const string TeamsInProgressCount = "Studio.Teams.InProgressCount";
+
+    /// <summary>"Archived teams" (UX lot 08).</summary>
+    public const string TeamsArchivesTitle = "Studio.Teams.ArchivesTitle";
+
+    /// <summary>"← Back to my teams" (UX lot 08).</summary>
+    public const string TeamsArchivesBack = "Studio.Teams.ArchivesBack";
 
     /// <summary>"No team matches “{0}”." — the search found nothing; {0} is what was typed (STUDIO-32, D-04).</summary>
     public const string TeamsSearchNoMatch = "Studio.Teams.SearchNoMatch";
@@ -2464,12 +2582,18 @@ public static class StudioStringKeys
 
     /// <summary>"{0} folder(s) to choose before the trial." — the step-2 action bar.</summary>
     public const string WizardFoldersToChoose = "Studio.Create.FoldersToChoose";
+    /// <summary>UX lot 05: "Available after the composition." — the disabled « Try the team »'s reason.</summary>
+    public const string WizardTryTeamNoProposal = "Studio.Create.TryTeamNoProposal";
 
     /// <summary>"Composed and validated — nothing has run yet." — the step-2 action bar at the pause.</summary>
     public const string WizardPausedHint = "Studio.Create.PausedHint";
 
     /// <summary>"{0} of {1} criteria met" — the verdict's summary sentence.</summary>
     public const string WizardVerdictSummary = "Studio.Create.VerdictSummary";
+    /// <summary>UX lot 05: "Ready to adopt" — the verdict's header when the engine says passing.</summary>
+    public const string WizardVerdictReady = "Studio.Create.VerdictReady";
+    /// <summary>UX lot 05: "To fix: {0} points" — the verdict's header when it does not pass.</summary>
+    public const string WizardVerdictToFix = "Studio.Create.VerdictToFix";
 
     /// <summary>"Attempt {0}"</summary>
     public const string ForgeAttempt = "Studio.Create.Attempt";
@@ -2489,6 +2613,8 @@ public static class StudioStringKeys
 
     /// <summary>"The orkeon engine was not found on this machine."</summary>
     public const string WizardFailureEngineMissing = "Studio.Create.FailureEngineMissing";
+    /// <summary>UX lot 05: the missing engine's action sentence, as on the diagnostic.</summary>
+    public const string WizardFailureEngineMissingHow = "Studio.Create.FailureEngineMissingHow";
 
     /// <summary>"The engine refused to go on."</summary>
     public const string WizardFailureConfigRefused = "Studio.Create.FailureConfigRefused";
@@ -2639,6 +2765,12 @@ public static class StudioStringKeys
 
     /// <summary>The tooltip of the header button before adoption: the working session opens.</summary>
     public const string WizardOpenFolderSession = "Studio.Create.OpenFolderSession";
+    /// <summary>UX lot 05: why « Open the folder » is greyed — no session folder yet.</summary>
+    public const string WizardOpenFolderLater = "Studio.Create.OpenFolderLater";
+    /// <summary>UX lot 05: "{0} (default)" — the step-4 model line when the team follows the default.</summary>
+    public const string WizardAdoptModelDefault = "Studio.Create.AdoptModelDefault";
+    /// <summary>UX lot 05: under a new team's name — it is also the folder's name.</summary>
+    public const string WizardNameIsFolder = "Studio.Create.NameIsFolder";
 
     /// <summary>The tooltip of the header button after adoption: the team folder opens.</summary>
     public const string WizardOpenFolderTeam = "Studio.Create.OpenFolderTeam";
@@ -2669,11 +2801,17 @@ public static class StudioStringKeys
     /// <summary>"Any" — the process chip that filters nothing.</summary>
     public const string WizardGalleryAnyProcess = "Studio.Create.GalleryAnyProcess";
 
-    /// <summary>"{0} of {1} use cases" — the panel's count line.</summary>
-    public const string WizardGalleryCount = "Studio.Create.GalleryCount";
+    /// <summary>"{0} of {1} cases" — the panel's count line, before « · Clear » (UX lot 11).</summary>
+    public const string WizardGalleryCountShort = "Studio.Create.GalleryCountShort";
 
     /// <summary>"Close to your need ({0})" — the filter the suggestion hint opens the panel on.</summary>
     public const string WizardGallerySuggested = "Studio.Create.GallerySuggested";
+
+    /// <summary>"More filters" — the folded section of the use-case gallery holding the secondary filters (UX lot 11).</summary>
+    public const string WizardGalleryMoreFilters = "Studio.Create.GalleryMoreFilters";
+
+    /// <summary>"{0} agents · {1}" — the line under a use-case card title: agent count and team organisation (UX lot 11).</summary>
+    public const string WizardGalleryAgentsLine = "Studio.Create.GalleryAgentsLine";
 
     /// <summary>"The use cases could not be read." — the panel's card when the CLI answered no catalogue.</summary>
     public const string WizardGalleryUnreadable = "Studio.Create.GalleryUnreadable";
@@ -2749,7 +2887,7 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.RagWebFallbackTransportOff] = "Inactive: the corrective policy allows it, but the transport (Orkeon:Rag:WebFallback) is still off.",
         [StudioStringKeys.RagWebFallbackPolicyOff] = "Inactive: the transport is on, but the corrective policy (Orkeon:Rag:Corrective:WebFallback) is still off.",
         [StudioStringKeys.RagWebFallbackOff] = "Off. Both switches must be turned on for the corrective loop to reach the web.",
-        [StudioStringKeys.RunBlockedUndeclared] = "This team uses folders your settings do not allow: {0}. Declare them in Settings › Authorized folders, or remove them from the team.",
+        [StudioStringKeys.RunBlockedUndeclared] = "This team uses folders your settings do not allow: {0}. Allow them in Settings › Authorized folders, or remove them from the team.",
         [StudioStringKeys.WizardDroppedDerived] = "{0}: nothing will be bound to it — the agents writing there will fail.",
         [StudioStringKeys.AllowedFoldersAlreadyAdded] = "already added",
         [StudioStringKeys.AllowedFoldersConflict] = "{0} is already used by another folder",
@@ -2772,7 +2910,7 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.WizardUnknownMountId] = "This declaration ({0}) is missing on this machine",
         [StudioStringKeys.WizardDeclaredFolder] = "“{0}” authorized and bound as {1}",
         [StudioStringKeys.RunBlockedUnknownMountId] =
-            "This team refers to folder declarations missing here: {0}. Declare them in Settings › Authorized folders or change the team's folders.",
+            "This team refers to authorized folders missing here: {0}. Allow them in Settings › Authorized folders or change the team's folders.",
         [StudioStringKeys.RunOpenResult] = "Open the result",
         [StudioStringKeys.RunOpenLogs] = "Open logs folder",
         [StudioStringKeys.RunOpenLogsNotYet] = "The logs folder does not exist yet: it is created at the first logged call.",
@@ -2813,6 +2951,9 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.RunTeamLastRun] = "launched on {0}",
         [StudioStringKeys.RunTeamNeverRun] = "never launched",
         [StudioStringKeys.RunOptionsFooter] = "{0} · {1} · {2} {2:plural:folder|folders}",
+        [StudioStringKeys.RunOptionsDefault] = "Default settings",
+        [StudioStringKeys.RunVerbosityPrefix] = "{0} level",
+        [StudioStringKeys.RunSettingsFileTitle] = "Settings file",
         [StudioStringKeys.RunFoldersSection] = "Allowed folders — {0} {0:plural:folder|folders} of the team, {1}",
         [StudioStringKeys.RunFoldersAddedNone] = "nothing added",
         [StudioStringKeys.RunFoldersAdded] = "{0} added",
@@ -2844,6 +2985,8 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.RunBlockedNoCli] = "The Orkeon engine is not found: the launch waits for the diagnostic.",
         [StudioStringKeys.RunBlockedNoTeam] = "Choose a team first.",
         [StudioStringKeys.RunBlockedFolders] = "A folder of the team is not allowed on this machine.",
+        [StudioStringKeys.RunFolderNotAllowed] = "Not allowed",
+        [StudioStringKeys.RunAllowThisFolder] = "Allow this folder",
         [StudioStringKeys.RunBlockedArchived] = "This team is archived: restore it to launch it.",
         [StudioStringKeys.RunRunningLine] = "{0} · running · {1}",
         [StudioStringKeys.RunLaneWaiting] = "Waiting",
@@ -2867,7 +3010,9 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.TeamsMountRo] = "{0} · read",
         [StudioStringKeys.TeamsMountRw] = "{0} · read, write",
         [StudioStringKeys.TeamsMountUnreadable] = "unreadable folder",
-        [StudioStringKeys.TeamsToTest] = "to try",
+        [StudioStringKeys.TeamsToTest] = "To try",
+        [StudioStringKeys.TeamsNeedsFolderBadge] = "Folder to allow",
+        [StudioStringKeys.TeamsReadyBadge] = "Ready · on demand",
         [StudioStringKeys.TeamsLastRun] = "Last run: {0}, {1}",
         [StudioStringKeys.TeamsRunOk] = "succeeded",
         [StudioStringKeys.TeamsRunFail] = "failed",
@@ -2901,6 +3046,7 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.DiagOpenKeys] = "Open API keys",
         [StudioStringKeys.DiagOpenFolders] = "Open Allowed folders",
         [StudioStringKeys.DiagOpenFile] = "Open the settings file",
+        [StudioStringKeys.DiagEngineMissingHow] = "Install the Orkeon engine, then run the diagnostic again.",
         [StudioStringKeys.DiagTestConnection] = "Test the connection",
         [StudioStringKeys.DiagCheckAgain] = "Check again",
         [StudioStringKeys.DiagSettingsFile] = "Settings file",
@@ -2954,6 +3100,7 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.ChatStatusMessagesPattern] = "{0} message(s)",
         [StudioStringKeys.ChatStatusNoQuestion] = "no question yet",
         [StudioStringKeys.ChatSessionEnded] = "The assistant stopped before the brief was finished. Start again when you are ready.",
+        [StudioStringKeys.ChatRestart] = "Resume",
         [StudioStringKeys.ChatPlaceholderAnswer] = "Answer the assistant…",
         [StudioStringKeys.ChatStatusWaiting] = "waiting for your answer",
         [StudioStringKeys.ChatRecapProgressPattern] = "{0} / {1}",
@@ -2969,6 +3116,9 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.ChatFactBrief] = "The work you described",
         [StudioStringKeys.ChatFactSource] = "What comes in",
         [StudioStringKeys.ChatFactOutput] = "What comes out",
+        [StudioStringKeys.ChatPillBrief] = "Request",
+        [StudioStringKeys.ChatPillSource] = "Inputs",
+        [StudioStringKeys.ChatPillOutput] = "Output",
         [StudioStringKeys.ChatFactComposeNote] = "Composition instruction",
         [StudioStringKeys.ChatFactTryNote] = "Trial instruction",
         [StudioStringKeys.ChatFactAdoptNote] = "Adoption instruction",
@@ -3000,23 +3150,28 @@ public sealed class EnglishStudioStrings : IStudioStrings
         ["Studio.Diagnostics.Check.appsettings"] = "The settings file is readable",
         ["Studio.Diagnostics.Check.dotnet-runtime"] = "The .NET runtime",
         ["Studio.Diagnostics.Check.esbuild"] = "The script compiler (esbuild)",
+        ["Studio.Diagnostics.Check.install-channel"] = "Engine install channel",
         ["Studio.Diagnostics.Check.llm-config"] = "The model configuration",
         ["Studio.Diagnostics.Check.llm-profile-key"] = "The key of an LLM profile",
         ["Studio.Diagnostics.Check.llm-profiles"] = "The LLM profiles",
         ["Studio.Diagnostics.Check.llm-reachability"] = "The connection to the model",
         ["Studio.Diagnostics.Check.local-embeddings"] = "Local embeddings",
         ["Studio.Diagnostics.Check.onnx-reranker"] = "The ONNX reranker",
+        ["Studio.Diagnostics.Check.runner-settings"] = "Runner settings",
         ["Studio.Diagnostics.Check.tree-sitter"] = "The code parser (tree-sitter)",
         ["Studio.Diagnostics.Check.workspace-write"] = "Write access to the workspace",
+        [StudioStringKeys.DiagCheckUnknown] = "Engine check",
         ["Studio.Diagnostics.Problem.appsettings"] = "Studio cannot read the settings file.",
         ["Studio.Diagnostics.Problem.dotnet-runtime"] = "The .NET runtime the engine needs is not found.",
         ["Studio.Diagnostics.Problem.esbuild"] = "The script compiler is missing on this machine.",
+        ["Studio.Diagnostics.Problem.install-channel"] = "Studio does not recognise how the engine was installed; updates will not be offered.",
         ["Studio.Diagnostics.Problem.llm-config"] = "No model is set up for the teams.",
         ["Studio.Diagnostics.Problem.llm-profile-key"] = "A model has no key, or its key is not found.",
         ["Studio.Diagnostics.Problem.llm-profiles"] = "A model is incomplete in the settings.",
         ["Studio.Diagnostics.Problem.llm-reachability"] = "The model does not answer: check its address and its key.",
         ["Studio.Diagnostics.Problem.local-embeddings"] = "Local embeddings are not available on this machine.",
         ["Studio.Diagnostics.Problem.onnx-reranker"] = "The ONNX reranker is not available on this machine.",
+        ["Studio.Diagnostics.Problem.runner-settings"] = "The runner settings hold a value the engine refuses: in Expert mode, open Settings → File tab.",
         ["Studio.Diagnostics.Problem.tree-sitter"] = "The code parser is not available on this machine.",
         ["Studio.Diagnostics.Problem.workspace-write"] = "The engine cannot write to its working folder.",
         [StudioStringKeys.ImportRecognizedAgents] = "{0} — {1} agent(s)",
@@ -3026,6 +3181,8 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.ImportSecretsFoundDetail] = "{0} file(s) carry what looks like an inline secret — see the warning below.",
         [StudioStringKeys.ImportToolsLater] = "Tools",
         [StudioStringKeys.ImportToolsLaterDetail] = "The team's tools are checked at its first launch.",
+        [StudioStringKeys.ImportDetectHint] = "Choose a team file or folder first.",
+        [StudioStringKeys.ImportPathPlaceholder] = "Example: C:\\Teams\\watch\\team.yaml",
         ["Studio.Diagnostics.Code.WIN-01"] = "No Llm section: the engine will start on its built-in defaults (Ollama, local).",
         ["Studio.Diagnostics.Code.STUDIO-JSON"] = "The settings file is not valid JSON.",
         ["Studio.Diagnostics.Code.STUDIO-TYPE"] = "A settings field has the wrong type.",
@@ -3091,16 +3248,23 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.ValidationSummary] = "Validation: {0} error(s), {1} warning(s), {2} note(s).",
         [StudioStringKeys.LaunchNothingRan] = "Nothing ran — {0}",
         [StudioStringKeys.LaunchExitCode] = "Exit code {0} — {1}",
+        [StudioStringKeys.LaunchExitSuccess] = "run completed successfully",
+        [StudioStringKeys.LaunchExitScriptError] = "script or settings error: check the team file and the settings it uses",
+        [StudioStringKeys.LaunchExitRuntimeError] = "runtime error: the last log lines say why",
+        [StudioStringKeys.LaunchExitCancelled] = "run interrupted",
+        [StudioStringKeys.LaunchExitUnknown] = "unexpected end: check the output above",
+        [StudioStringKeys.LaunchExitNotStarted] = "the engine did not start",
         [StudioStringKeys.UsageTokens] = "{0} tokens",
         [StudioStringKeys.UsageCache] = "cache {0} % · {1} tokens",
         [StudioStringKeys.UsageSeconds] = "{0} s",
         [StudioStringKeys.UsageMinutesSeconds] = "{0} min {1} s",
         [StudioStringKeys.RunStateIdle] = "Ready to work",
-        [StudioStringKeys.RunStateRunning] = "Run in progress",
-        [StudioStringKeys.RunStateDone] = "Run finished",
         [StudioStringKeys.RunBadgeIdle] = "waiting",
         [StudioStringKeys.RunBadgeRunning] = "running",
         [StudioStringKeys.RunBadgeDone] = "succeeded",
+        [StudioStringKeys.RunBadgeDoneSkipped] = "Succeeded · {0} {0:plural:agent not run|agents not run}",
+        [StudioStringKeys.RunTaskDetails] = "Task details",
+        [StudioStringKeys.HistoryShowError] = "Show the error",
         [StudioStringKeys.RunBadgeFailed] = "failed",
         [StudioStringKeys.RunButtonLaunch] = "Launch now",
         [StudioStringKeys.RunButtonRunning] = "Running…",
@@ -3191,6 +3355,7 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.RightsBadgeReadOnly] = "read",
         [StudioStringKeys.RightsBadgeReadWrite] = "write",
         [StudioStringKeys.RightsBadgeReadWriteNoDelete] = "write, no delete",
+        [StudioStringKeys.RightsReadWriteNoDeleteTip] = "Can modify, never delete.",
 
         // STUDIO-14 settings
         [StudioStringKeys.TeamFoldersTitle] = "TEAM FOLDERS",
@@ -3337,10 +3502,14 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.BalanceThresholdNoReading] = "not read yet this session",
 
         [StudioStringKeys.ProfileNewName] = "New setting",
+        [StudioStringKeys.ProfileFirstName] = "Main",
         [StudioStringKeys.ProfileGroupLocal] = "ON YOUR MACHINE · FREE, NO KEY",
         [StudioStringKeys.ProfileGroupCloud] = "IN THE CLOUD · API KEY REQUIRED",
         [StudioStringKeys.ProfileKeyTitleFor] = "API key {0}",
         [StudioStringKeys.ProfileKeyTitleService] = "The service's API key",
+        [StudioStringKeys.ToolSecretWebSearch] = "Web search (Tavily)",
+        [StudioStringKeys.ToolSecretBraveSearch] = "Web search (Brave)",
+        [StudioStringKeys.ToolSecretImageGeneration] = "Image generation (OpenAI)",
         [StudioStringKeys.ProfileKeyExplainer] = "Studio keeps it in your Windows session — never in a file, never in a shared folder.",
         [StudioStringKeys.ProfileKeyPlaceholder] = "Paste your key here (sk-…)",
         [StudioStringKeys.ProfileKeyStore] = "Remember the key",
@@ -3389,6 +3558,9 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.MailSecretVariable] = "Kept in the variable {0}",
         [StudioStringKeys.MailStateReady] = "Ready",
         [StudioStringKeys.MailStateNotReady] = "Not ready",
+        [StudioStringKeys.MailNotReadyPassword] = "The password is not stored: variable {0} is empty on this machine. Enter it in the Sign-in tab.",
+        [StudioStringKeys.MailNotReadySecret] = "The client secret is not stored: variable {0} is empty on this machine. Enter it in the Sign-in tab.",
+        [StudioStringKeys.MailNotReadyOAuth] = "This account is not signed in yet: use “Sign in” below.",
         [StudioStringKeys.MailStateSetAside] = "Set aside",
         [StudioStringKeys.MailStateUnknown] = "Unknown — {0}",
         [StudioStringKeys.MailStateOfSavedFile] = "As of the saved file — save to check again",
@@ -3407,8 +3579,10 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.MailSignOutConfirm] = "Forget the stored tokens of {0}? The account will need a new sign-in.",
         [StudioStringKeys.MailSignOutFailed] = "Could not sign out",
         [StudioStringKeys.MailSignInStarting] = "Starting the sign-in…",
-        [StudioStringKeys.MailDeviceCode] = "Open {0} and enter this code:",
+        [StudioStringKeys.MailDeviceCode] = "Open the authorization page below and enter this code:",
         [StudioStringKeys.MailDeviceCodeExpiresIn] = "The code expires in {0}",
+        [StudioStringKeys.MailDeviceCodeExpiresSoon] = "The code expires in under a minute",
+        [StudioStringKeys.CommonMinutes] = "{0} min",
         [StudioStringKeys.MailDeviceCodeExpired] = "The code expired — start again",
         [StudioStringKeys.MailSignInRestart] = "Start again",
         [StudioStringKeys.MailAuthorizationUrl] = "Open this address in a browser and allow the access:",
@@ -3473,7 +3647,7 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.ComposeStageVerdict] = "I am preparing the report…",
         [StudioStringKeys.ComposeStagePromote] = "I am saving the team…",
         [StudioStringKeys.ComposeStageWorking] = "Working…",
-        [StudioStringKeys.ComposeStageIdle] = "Stopped.",
+        [StudioStringKeys.ComposeStageIdle] = "Composition stopped.",
         [StudioStringKeys.ComposeTokensUp] = "Tokens sent to the model",
         [StudioStringKeys.ComposeTokensDown] = "Tokens received from the model",
         [StudioStringKeys.ComposeTokensEstimated] = "Estimate: this provider does not report token counts.",
@@ -3484,10 +3658,11 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.ComposeDefinitionValid] = "definition checked",
         [StudioStringKeys.ComposeDefinitionInvalid] = "definition refused",
         [StudioStringKeys.WizardActivityDone] = "{0} — done in {1} s",
+        [StudioStringKeys.WizardActivityDoneUntimed] = "{0} — done",
         [StudioStringKeys.WizardActivityFailed] = "{0} — failed",
         [StudioStringKeys.WizardHintDescribe] = "Describe the work to continue.",
         [StudioStringKeys.WizardHintAssistant] = "Choose a model for the assistant first.",
-        [StudioStringKeys.WizardHintReady] = "Everything is there — I can compose the team.",
+        [StudioStringKeys.WizardHintReady] = "Ready: you can compose the team.",
         [StudioStringKeys.WizardHintComposing] = "Composition under way: the assistant prepares the team.",
         [StudioStringKeys.ChatStatusWaitingCard] = "waiting for you",
         [StudioStringKeys.WizardComposeBusyTip] = "Composition under way",
@@ -3498,11 +3673,9 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.WizardHintConfirmFolders] = "Confirm the folders to move on to the composition.",
         [StudioStringKeys.WizardHintDecide] = "Settle the choice in the conversation to continue.",
         [StudioStringKeys.WizardTabNeedDone] = "Described",
+        [StudioStringKeys.WizardTabNeedInterrupted] = "Described, brief interrupted",
         [StudioStringKeys.WizardTabNeedDoneAnswers] = "Described, {0} {0:plural:question settled|questions settled}",
         [StudioStringKeys.WizardTabNeedEmpty] = "To describe",
-        [StudioStringKeys.WizardTabNeedEmptyFooter] = "Need not described yet.",
-        [StudioStringKeys.WizardTabNeedFooter] = "Need described.",
-        [StudioStringKeys.WizardTabNeedFooterAnswers] = "Need described, {0} {0:plural:question settled|questions settled} with the assistant",
         [StudioStringKeys.WizardTabFoldersPending] = "{0} {0:plural:folder to confirm|folders to confirm}",
         [StudioStringKeys.WizardTabFoldersPendingToChoose] = "{0} {0:plural:folder|folders} · {1} to choose",
         [StudioStringKeys.WizardTabFoldersConfirmed] = "{0} {0:plural:folder confirmed|folders confirmed}",
@@ -3525,6 +3698,8 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.WizardTabTeamFoldersNone] = "No folder",
         [StudioStringKeys.WizardTabComposition] = "Composition",
         [StudioStringKeys.WizardTabCompositionStopped] = "Stopped · {0} {0:plural:file|files} written",
+        [StudioStringKeys.WizardTabCompositionDone] = "Composed · {0} {0:plural:file written|files written}",
+        [StudioStringKeys.WizardTabCompositionInvalid] = "To fix · {0} {0:plural:file written|files written}",
         [StudioStringKeys.WizardTabCompositionRunning] = "Under way",
         [StudioStringKeys.WizardTabCompositionNone] = "Not started",
         [StudioStringKeys.WizardTeamFooterStopped] = "{0} {0:plural:agent|agents}, composition stopped.",
@@ -3533,14 +3708,17 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.WizardStep2FoldersFooterSet] = "{0} {0:plural:folder, set|folders, all set}.",
         [StudioStringKeys.WizardStep2FoldersFooterNone] = "This team uses no folder.",
         [StudioStringKeys.WizardCompositionStateRunning] = "Under way",
-        [StudioStringKeys.WizardCompositionStateValid] = "Stopped — definition checked",
-        [StudioStringKeys.WizardCompositionStateInvalid] = "Stopped — definition to fix",
-        [StudioStringKeys.WizardCompositionStateStopped] = "Stopped",
+        [StudioStringKeys.WizardCompositionStateValid] = "Composed — definition checked",
+        [StudioStringKeys.WizardCompositionStateInvalid] = "Composition to fix",
+        [StudioStringKeys.WizardCompositionStateStopped] = "Composition stopped",
         [StudioStringKeys.WizardCompositionFiles] = "{0} {0:plural:file|files} in the team's draft",
         [StudioStringKeys.WizardCompositionDraftSaved] = "saved at {0}",
         [StudioStringKeys.WizardCompositionDraftNotSaved] = "not saved yet",
         [StudioStringKeys.WizardCompositionFooterDone] = "Composition finished.",
         [StudioStringKeys.WizardCompositionFooterRunning] = "Composition under way.",
+        [StudioStringKeys.WizardCompositionFooterInvalid] = "Composition to fix: the definition is not valid.",
+        [StudioStringKeys.WizardCompositionFooterStopped] = "Composition stopped.",
+        [StudioStringKeys.WizardCompositionSubExpert] = "The full detail is in the technical journal below.",
         [StudioStringKeys.WizardMoreTools] = "+ {0}",
         [StudioStringKeys.WizardTabNotesFooterEmpty] = "No instruction yet.",
         [StudioStringKeys.WizardTabNotesFooterTaken] = "Instruction taken as written.",
@@ -3560,7 +3738,6 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.WizardWaitBubbleAdopt] = "The team is ready. Adopt it to find it in your teams.",
         [StudioStringKeys.WizardWaitPlaceholderFolders] = "Confirm the folders to continue, or ask a question",
         [StudioStringKeys.WizardWaitPlaceholderFillFolders] = "Drop your files then continue, or ask a question",
-        [StudioStringKeys.WizardWaitPlaceholderChooseFolder] = "Choose the folder to continue, or ask a question",
         [StudioStringKeys.WizardWaitPlaceholderAdopt] = "Adopt the team to finish, or ask a question",
         [StudioStringKeys.WizardWaitShowCard] = "Show the folder",
         [StudioStringKeys.WizardSuggestions] = "What the engine suggests changing",
@@ -3574,6 +3751,10 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.WizardDecisionQuestion] = "The trial is judged. What do we do next?",
         [StudioStringKeys.WizardFillFoldersQuestion] = "Do you want to put files or sub-folders in the folders you set up?",
         [StudioStringKeys.WizardFillFoldersHint] = "These folders are kept inside the team. What you drop there now is what the trial reads, and it moves into the team when you adopt it.",
+        [StudioStringKeys.WizardFoldersQuestion] = "Where are your files? Where should results go?",
+        [StudioStringKeys.WizardUseExistingFolder] = "Use an existing folder…",
+        [StudioStringKeys.WizardOutputFolderLabel] = "Results (/output)",
+        [StudioStringKeys.WizardWorkspaceFolderLabel] = "Workspace (/workspace)",
         [StudioStringKeys.WizardFillFoldersYes] = "Yes",
         [StudioStringKeys.WizardFillFoldersNo] = "No",
         [StudioStringKeys.WizardFillFoldersContinue] = "Continue",
@@ -3594,9 +3775,12 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.TeamsDeleteUnscheduleFailed] = "Not deleted: its schedule could not be stopped — {0}",
         [StudioStringKeys.TeamsDeleteRefused] = "Not deleted: the disk refused — a file of the team may be open.",
         [StudioStringKeys.TeamsDeleteConfirm] = "Delete this team?",
+        [StudioStringKeys.TeamsDeleteConfirmNamed] = "Delete the team “{0}”?",
+        [StudioStringKeys.TeamsDeleteConsequence] = "Its folder and its history are erased. The folders you added stay where they are.",
 
         // STUDIO-64: in a workshop, Rename, Delete and Duplicate follow the team's trees
         [StudioStringKeys.TeamsDeleteAskArchive] = "Move the team and what goes with it to the workshop's archive?",
+        [StudioStringKeys.TeamsDeleteAskArchiveNamed] = "Move the team “{0}” to the archive?",
         [StudioStringKeys.TeamsArchivedToWorkshop] = "Moved to {0}.",
         [StudioStringKeys.TeamsRenameSiblingTaken] = "In the workshop, {0} is already taken: choose another name.",
         [StudioStringKeys.TeamsRenamedWithSiblings] = "Its workbook, tests, settings and mount sets followed it.",
@@ -3618,6 +3802,8 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.TeamsLlmSaved] = "{0} now runs on: {1}.",
         [StudioStringKeys.TeamsConfigureModel] = "Configure a model",
         [StudioStringKeys.RunLlmForThisRun] = "This run: {0}",
+        [StudioStringKeys.RunPickTeamPrompt] = "Choose a team…",
+        [StudioStringKeys.RunLlmDefaultEntry] = "Default ({0})",
         [StudioStringKeys.RunRememberLlmForTeam] = "Remember for this team",
         [StudioStringKeys.SettingsUsedByDefault] = "{0} team(s), {1} by default",
         [StudioStringKeys.SettingsTabModelCount] = "{0} {0:plural:model|models} · {1} by default",
@@ -3681,12 +3867,15 @@ public sealed class EnglishStudioStrings : IStudioStrings
 
         // STUDIO-32: My teams — search, order, the Archives view, the undo banner, the suggestion
         [StudioStringKeys.TeamsArchivesLabel] = "Archives ({0})",
+        [StudioStringKeys.TeamsInProgressCount] = "Drafts · {0}",
+        [StudioStringKeys.TeamsArchivesTitle] = "Archived teams",
+        [StudioStringKeys.TeamsArchivesBack] = "← Back to my teams",
         [StudioStringKeys.TeamsSearchNoMatch] = "No team matches “{0}”.",
         [StudioStringKeys.TeamsArchivedUndo] = "Team “{0}” archived.",
         [StudioStringKeys.TeamsArchivedScheduleStoppedUndo] = "Team “{0}” archived and its schedule stopped — Undo brings the team back, not its schedule.",
         [StudioStringKeys.TeamsArchivedManyUndo] = "{0} teams archived.",
-        [StudioStringKeys.TeamsLaunchNeedsFolder] = "Allow the folder {0} first.",
-        [StudioStringKeys.TeamsRefusedRuns] = "{0} {0:plural:scheduled run|scheduled runs} will be refused on the next pass: the saved settings file does not hold {1} yet.",
+        [StudioStringKeys.TeamsLaunchNeedsFolder] = "Allow the folder {0} first to launch the team.",
+        [StudioStringKeys.TeamsRefusedRuns] = "{0} {0:plural:scheduled team will not be able|scheduled teams will not be able} to start on the next pass: their settings (model or folders) are not saved.",
         [StudioStringKeys.TeamsSuggestionOne] = "“{0}” has not been launched for {1} days — archive it?",
         [StudioStringKeys.TeamsSuggestionMany] = "{0} teams not launched for {1} days — archive them?",
         [StudioStringKeys.TeamsArchivedBadge] = "Archived",
@@ -3742,8 +3931,11 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.WizardDraftSavedAt] = "Draft saved at {0}",
         [StudioStringKeys.WizardResumeUnavailable] = "This session can no longer be resumed here: start over, or look for it under Sessions underway in My teams.",
         [StudioStringKeys.WizardFoldersToChoose] = "{0} {0:plural:folder|folders} to choose before the trial.",
+        [StudioStringKeys.WizardTryTeamNoProposal] = "Available after the composition.",
         [StudioStringKeys.WizardPausedHint] = "Team composed — you can try it.",
         [StudioStringKeys.WizardVerdictSummary] = "{0} of {1} {1:plural:criterion|criteria} met",
+        [StudioStringKeys.WizardVerdictReady] = "Ready to adopt",
+        [StudioStringKeys.WizardVerdictToFix] = "To fix: {0} {0:plural:point|points}",
         [StudioStringKeys.ForgeAttempt] = "Attempt {0}",
         [StudioStringKeys.ForgeCheckUnverified] = "I could not check this automatically — judge for yourself.",
         [StudioStringKeys.ForgeResultScore] = "The try is done (score {0}).",
@@ -3751,6 +3943,7 @@ public sealed class EnglishStudioStrings : IStudioStrings
 
         // STUDIO-13: the wizard's failure card, one headline per family
         [StudioStringKeys.WizardFailureEngineMissing] = "The orkeon engine was not found on this machine.",
+        [StudioStringKeys.WizardFailureEngineMissingHow] = "Install the Orkeon engine, then run the diagnostic again.",
         [StudioStringKeys.WizardFailureConfigRefused] = "The engine refused to go on.",
         [StudioStringKeys.WizardFailureEngineStopped] = "The engine stopped (exit code {0}).",
         [StudioStringKeys.WizardFailureUnknown] = "Something went wrong before the engine could answer.",
@@ -3799,6 +3992,9 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.WizardDefaultOutputPurpose] = "Where the team writes its results.",
         [StudioStringKeys.WizardOpenFolder] = "Open the folder",
         [StudioStringKeys.WizardOpenFolderSession] = "Opens the working session — the folder the assistant is writing in.",
+        [StudioStringKeys.WizardOpenFolderLater] = "Available after the composition: the session folder does not exist yet.",
+        [StudioStringKeys.WizardAdoptModelDefault] = "{0} (default)",
+        [StudioStringKeys.WizardNameIsFolder] = "The name is also the folder's name.",
         [StudioStringKeys.WizardOpenFolderTeam] = "Opens the folder of the adopted team.",
 
         // STUDIO-39: the use-case gallery
@@ -3809,8 +4005,10 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.WizardGalleryReference] = "Inspired by: {0}",
         [StudioStringKeys.WizardGalleryAllCategories] = "All",
         [StudioStringKeys.WizardGalleryAnyProcess] = "Any",
-        [StudioStringKeys.WizardGalleryCount] = "{0} of {1} use cases",
+        [StudioStringKeys.WizardGalleryCountShort] = "{0} of {1} cases",
         [StudioStringKeys.WizardGallerySuggested] = "Close to your need ({0})",
+        [StudioStringKeys.WizardGalleryMoreFilters] = "More filters",
+        [StudioStringKeys.WizardGalleryAgentsLine] = "{0} {0:plural:agent|agents} · {1}",
         [StudioStringKeys.WizardGalleryUnreadable] = "The use cases could not be read.",
         // STUDIO-41: « Import as is »
         [StudioStringKeys.WizardGalleryImporting] = "Importing “{0}”…",

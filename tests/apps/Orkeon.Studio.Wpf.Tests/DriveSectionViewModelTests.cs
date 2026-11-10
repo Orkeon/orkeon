@@ -491,7 +491,7 @@ public sealed class DriveSectionViewModelTests
         Assert.Equal(EmailSignInPhase.DeviceCode, signIn.Phase);
         Assert.Equal(UserCode, signIn.UserCode);
         Assert.Equal(DevicePage, signIn.Address);
-        Assert.Equal("The code expires in 15:00", signIn.ExpiresInText);
+        Assert.Equal("The code expires in 15 min", signIn.ExpiresInText);
         Assert.True(fixture.Ticker.IsRunning);
         Assert.Empty(fixture.Browser.Opened);
 

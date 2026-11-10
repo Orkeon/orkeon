@@ -39,7 +39,12 @@ public partial class MainWindow : Window
             return;
 
         shell.CreateTeam.SessionActivated += (_, _) => NavCreate.IsChecked = true;
-        shell.CreateTeam.OpenSettingsRequested += (_, _) => NavSettings.IsChecked = true;
+        // UX lot 04 (015): the gate asks for a model, so the settings open on Models.
+        shell.CreateTeam.OpenSettingsRequested += (_, _) =>
+        {
+            shell.Settings.ShowSection(ViewModels.Config.SettingsScreenViewModel.ModelTab);
+            NavSettings.IsChecked = true;
+        };
         shell.CreateTeam.OpenDiagnosticRequested += (_, _) => NavDiag.IsChecked = true;
         shell.CreateTeam.OpenTeamRequested += (_, _) => NavTeams.IsChecked = true;
         shell.AllowedFolders.OpenSettingsRequested += (_, _) => NavSettings.IsChecked = true;
@@ -64,6 +69,7 @@ public partial class MainWindow : Window
         };
         shell.TestRequested += (_, _) => NavRun.IsChecked = true;
         shell.Teams.LaunchRequested += (_, _) => NavRun.IsChecked = true;
+        shell.Launch.History.LaunchRequested += (_, _) => NavRun.IsChecked = true;
         shell.Teams.ResumeRequested += (_, _) => NavCreate.IsChecked = true;
         shell.Import.TeamImported += (_, _) => NavTeams.IsChecked = true;
         // STUDIO-34 (D-04): a click on a group of the status bar opens its activity's screen.
@@ -117,6 +123,27 @@ public partial class MainWindow : Window
             else if (e.Key == System.Windows.Input.Key.Escape && shell.CreateTeam.Gallery.IsOpen)
             {
                 shell.CreateTeam.Gallery.CloseCommand.Execute(null);
+                e.Handled = true;
+            }
+            // Lot 11 (072): the four modals close on Escape like their cross and Cancel do.
+            else if (e.Key == System.Windows.Input.Key.Escape && shell.TeamMounts.IsOpen)
+            {
+                shell.TeamMounts.CancelCommand.Execute(null);
+                e.Handled = true;
+            }
+            else if (e.Key == System.Windows.Input.Key.Escape && shell.CreateTeam.AgentEditor.IsOpen)
+            {
+                shell.CreateTeam.AgentEditor.CancelCommand.Execute(null);
+                e.Handled = true;
+            }
+            else if (e.Key == System.Windows.Input.Key.Escape && shell.AllowedFolders.IsOpen)
+            {
+                shell.AllowedFolders.CancelCommand.Execute(null);
+                e.Handled = true;
+            }
+            else if (e.Key == System.Windows.Input.Key.Escape && shell.About.IsOpen)
+            {
+                shell.About.CloseCommand.Execute(null);
                 e.Handled = true;
             }
         };
@@ -193,18 +220,26 @@ public partial class MainWindow : Window
         };
 
     /// <summary>
-    /// R04 (A05): the language menu under its button, right edges aligned, 6 px below. The
-    /// popup's root is wider than the visible menu by the card's 10 px side margins (room for
-    /// its shadow): the visible right edge is 10 px inside the root's. The sizes come in device
-    /// pixels, so the DIP offsets are scaled.
+    /// R04 (A05), 007: the language menu under its button, left edges aligned, 8 px below, so the
+    /// page actions under the title bar (« Recommencer ») stay uncovered. The popup's root is
+    /// wider than the visible menu by the card's 10 px side margins (room for its shadow): the
+    /// visible left edge is 10 px inside the root's. When the window leaves no room on the right,
+    /// the menu falls back to right edges aligned. The sizes come in device pixels, so the DIP
+    /// offsets are scaled.
     /// </summary>
     private CustomPopupPlacement[] PlaceLanguageMenu(Size popupSize, Size targetSize, Point offset)
     {
         const double ShadowMargin = 10;
-        const double Gap = 6;
+        const double Gap = 8;
         var dpi = VisualTreeHelper.GetDpi(this);
-        var x = targetSize.Width - popupSize.Width + (ShadowMargin * dpi.DpiScaleX);
         var y = targetSize.Height + (Gap * dpi.DpiScaleY);
+        var leftAligned = -(ShadowMargin * dpi.DpiScaleX);
+
+        var buttonLeft = LanguageButton.TranslatePoint(new Point(0, 0), this).X * dpi.DpiScaleX;
+        var room = (ActualWidth * dpi.DpiScaleX) - buttonLeft;
+        var x = popupSize.Width + leftAligned <= room
+            ? leftAligned
+            : targetSize.Width - popupSize.Width + (ShadowMargin * dpi.DpiScaleX);
         return [new CustomPopupPlacement(new Point(x, y), PopupPrimaryAxis.Horizontal)];
     }
 
@@ -250,17 +285,34 @@ public partial class MainWindow : Window
 
 
 
-    // ── guided tour (v3: five stops — the mode, the three sidebar groups, the help column) ──
-    private void OnStartTour(object sender, RoutedEventArgs e) => Tour.Start(TourSteps);
+    // ── guided tour (v4: three stops — write the need, compose and try, find the teams) ──
+    private void OnStartTour(object sender, RoutedEventArgs e) => Tour.Start(BuildTourSteps());
 
     /// <summary>
     /// The overlay's own step type, projected from the catalogue the campaign reads too. The
-    /// literals used to live here; two consumers of one list is what keeps a new stop from
-    /// existing on screen and nowhere in the collection.
+    /// targets of the create screen (<see cref="ViewModels.Shell.GuidedTourCatalog.CreateScreenTargets"/>)
+    /// carry a <see cref="TourStep.Prepare"/> that brings that screen up at step 1: the tour
+    /// starts from the "?" button of any screen, and those targets exist nowhere else.
     /// </summary>
-    internal static IReadOnlyList<TourStep> TourSteps { get; } =
-        [.. ViewModels.Shell.GuidedTourCatalog.Steps.Select(
-            step => new TourStep(step.TargetName, step.TitleKey, step.BodyKey))];
+    internal IReadOnlyList<TourStep> BuildTourSteps() =>
+        [.. ViewModels.Shell.GuidedTourCatalog.Steps.Select(step => new TourStep(
+            step.TargetName,
+            step.TitleKey,
+            step.BodyKey,
+            step.TargetName is { } target && ViewModels.Shell.GuidedTourCatalog.CreateScreenTargets.Contains(target)
+                ? ShowCreateStep1
+                : null))];
+
+    /// <summary>Brings the create screen up at its first step, where the need box and the step rail live.</summary>
+    private void ShowCreateStep1()
+    {
+        NavCreate.IsChecked = true;
+        if (DataContext is ViewModels.Shell.MainWindowViewModel shell
+            && shell.CreateTeam.GoStep1Command.CanExecute(null))
+        {
+            shell.CreateTeam.GoStep1Command.Execute(null);
+        }
+    }
 
     private void OnAboutBackdropClick(object sender, System.Windows.Input.MouseButtonEventArgs e)
     {
@@ -396,12 +448,12 @@ public partial class MainWindow : Window
     private void OnResumeDraft(object sender, RoutedEventArgs e) => NavCreate.IsChecked = true;
 
     /// <summary>The assistant's panel width, as the markup declares it.</summary>
-    private const double AssistantPanelWidth = 420;
+    private const double AssistantPanelWidth = 360;
 
     /// <summary>
     /// The narrowest content column the docked panel may leave: 720 px (R15: the assistant
     /// overlays below 720 px). Below it the panel overlays the content; at 1440 px the content
-    /// keeps 808 px beside it, so every control of the screen stays reachable.
+    /// keeps 868 px beside it, so every control of the screen stays reachable.
     /// </summary>
     private const double MinDockedContentWidth = 720;
 

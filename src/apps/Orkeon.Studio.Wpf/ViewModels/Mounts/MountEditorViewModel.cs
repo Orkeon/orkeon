@@ -157,9 +157,18 @@ public sealed class MountEditorViewModel : ObservableObject
         set
         {
             if (SetProperty(ref _physicalPath, value))
+            {
+                OnPropertyChanged(nameof(FolderName));
                 RaiseEdited();
+            }
         }
     }
+
+    /// <summary>
+    /// The last segment of <see cref="PhysicalPath"/> — the title of a Novice card, the full
+    /// path going in its tooltip; the whole path when it has no segment to cut.
+    /// </summary>
+    public string FolderName => FolderNames.Of(_physicalPath);
 
     /// <summary>The path the agents see, e.g. <c>/workspace</c>.</summary>
     public string VirtualPath
@@ -183,7 +192,7 @@ public sealed class MountEditorViewModel : ObservableObject
         {
             if (SetProperty(ref _rights, value))
             {
-                OnPropertiesChanged(nameof(RightsLabel), nameof(RightsBadge));
+                OnPropertiesChanged(nameof(RightsLabel), nameof(RightsBadge), nameof(RightsTip));
                 RaiseEdited();
             }
         }
@@ -208,6 +217,9 @@ public sealed class MountEditorViewModel : ObservableObject
     /// the badge's tooltip now.
     /// </summary>
     public string RightsBadge => MountRightsTokens.GetBadge(Rights, _strings);
+
+    /// <summary>The badge's tooltip: "can modify, never delete" for a no-delete mount, <see cref="RightsLabel"/> otherwise.</summary>
+    public string RightsTip => MountRightsTokens.GetTip(Rights, _strings);
 
     /// <summary>Whether <see cref="VirtualPath"/> satisfies the Domain rule, checked as the user types.</summary>
     public bool IsVirtualPathValid => MountDefinition.IsValidVirtualPath(VirtualPath);
@@ -287,7 +299,7 @@ public sealed class MountEditorViewModel : ObservableObject
     /// </summary>
     public void RefreshCulture()
     {
-        OnPropertiesChanged(nameof(RightsChoices), nameof(RightsLabel), nameof(RightsBadge), nameof(IdDisplay), nameof(UsedByDisplay));
+        OnPropertiesChanged(nameof(RightsChoices), nameof(RightsLabel), nameof(RightsBadge), nameof(RightsTip), nameof(IdDisplay), nameof(UsedByDisplay));
 
         foreach (var item in Overrides)
             item.RefreshCulture();

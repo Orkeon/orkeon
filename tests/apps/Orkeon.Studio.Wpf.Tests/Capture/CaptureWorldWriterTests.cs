@@ -222,7 +222,7 @@ public sealed class CaptureWorldWriterTests : IAsyncLifetime
     public async Task The_seeded_history_and_profiles_come_back_through_their_real_stores()
     {
         var history = await _worlds.Seeded.HistoryStore.LoadAsync(TestContext.Current.CancellationToken);
-        Assert.Equal(7, history.Entries.Count);
+        Assert.Equal(9, history.Entries.Count);
 
         var profiles = (await _worlds.Seeded.ProfileStore.LoadAsync(TestContext.Current.CancellationToken)).Set;
         Assert.Equal(4, profiles.Profiles.Count);

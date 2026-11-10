@@ -205,7 +205,9 @@ public sealed class EmailSignInViewModelTests
         Assert.False(fixture.Row("work").ShowSignIn);
 
         Assert.True(fixture.Row("hotmail").SignInCommand.CanExecute(null));
-        Assert.True(fixture.Row("hotmail").SignOutCommand.CanExecute(null));
+        // UX lot 04 (059): no account signed in, nothing to sign out of.
+        Assert.False(fixture.Row("hotmail").IsReady);
+        Assert.False(fixture.Row("hotmail").SignOutCommand.CanExecute(null));
         Assert.False(fixture.Row("work").SignInCommand.CanExecute(null));
         Assert.False(fixture.Row("work").SignOutCommand.CanExecute(null));
 
@@ -287,7 +289,8 @@ public sealed class EmailSignInViewModelTests
         // The address shows in clear, as the verb wrote it, before anything can open it.
         Assert.Equal(DevicePage, signIn.Address);
         Assert.True(signIn.HasAddress);
-        Assert.Equal($"Open {DevicePage} and enter this code:", signIn.DeviceCodeLine);
+        // UX lot 04 (059): the page is shown once, under the code - the sentence does not repeat it.
+        Assert.Equal("Open the authorization page below and enter this code:", signIn.DeviceCodeLine);
         Assert.False(signIn.IsAuthorizationUrl);
         // Nothing was opened: the panel only says what to do.
         Assert.Empty(fixture.Browser.Opened);
@@ -301,7 +304,7 @@ public sealed class EmailSignInViewModelTests
         var signIn = fixture.SignIn("hotmail");
 
         Assert.True(signIn.HasExpiry);
-        Assert.Equal("The code expires in 15:00", signIn.ExpiresInText);
+        Assert.Equal("The code expires in 15 min", signIn.ExpiresInText);
         Assert.True(fixture.Ticker.IsRunning);
         Assert.Equal(TimeSpan.FromSeconds(1), fixture.Ticker.Interval);
 
@@ -310,13 +313,13 @@ public sealed class EmailSignInViewModelTests
         fixture.Clock.Now += TimeSpan.FromSeconds(61);
         fixture.Ticker.Tick();
 
-        Assert.Equal("The code expires in 13:59", signIn.ExpiresInText);
+        Assert.Equal("The code expires in 14 min", signIn.ExpiresInText);
         Assert.Contains(nameof(EmailSignInViewModel.ExpiresInText), raised);
         Assert.True(signIn.IsDeviceCode);
 
         fixture.Clock.Now += TimeSpan.FromMinutes(13) + TimeSpan.FromSeconds(54);
         fixture.Ticker.Tick();
-        Assert.Equal("The code expires in 0:05", signIn.ExpiresInText);
+        Assert.Equal("The code expires in under a minute", signIn.ExpiresInText);
     }
 
     [Fact]
@@ -348,7 +351,7 @@ public sealed class EmailSignInViewModelTests
         Assert.Equal(2, fixture.Runs("login"));
         Assert.Equal(EmailSignInPhase.DeviceCode, signIn.Phase);
         Assert.Equal(UserCode, signIn.UserCode);
-        Assert.Equal("The code expires in 15:00", signIn.ExpiresInText);
+        Assert.Equal("The code expires in 15 min", signIn.ExpiresInText);
         Assert.Equal(1, fixture.Cli.LiveConversations);
     }
 
@@ -917,6 +920,7 @@ public sealed class EmailSignInViewModelTests
         await fixture.Section.RefreshStatesAsync();
         var hotmail = fixture.Row("hotmail");
         Assert.True(hotmail.IsReady);
+        Assert.True(hotmail.SignOutCommand.CanExecute(null));
 
         hotmail.SignOutCommand.Execute(null);
 
@@ -958,6 +962,8 @@ public sealed class EmailSignInViewModelTests
             .Answer("email accounts", 0, Accounts(hotmailReady: true))
             .Answer("email logout", 1);
         var fixture = Build(cli);
+        // UX lot 04 (059): only an account the engine found signed in can be signed out of.
+        await fixture.Section.RefreshStatesAsync();
         var hotmail = fixture.Row("hotmail");
 
         hotmail.SignOutCommand.Execute(null);
@@ -966,13 +972,15 @@ public sealed class EmailSignInViewModelTests
         Assert.True(hotmail.HasSignOutFailure);
         Assert.False(string.IsNullOrWhiteSpace(hotmail.SignOutFailure));
         Assert.False(hotmail.IsConfirmingSignOut);
-        Assert.Equal(0, fixture.Runs("accounts"));
+        // The one reading is the one before the sign-out: a refusal reads nothing again.
+        Assert.Equal(1, fixture.Runs("accounts"));
     }
 
     [Fact]
-    public void Arming_the_sign_out_question_disarms_the_other_questions_of_the_tab()
+    public async Task Arming_the_sign_out_question_disarms_the_other_questions_of_the_tab()
     {
-        var fixture = Build(DeviceCli());
+        var fixture = Build(new ScriptedOrkeonCli().Answer("email accounts", 0, Accounts(hotmailReady: true)));
+        await fixture.Section.RefreshStatesAsync();
         var hotmail = fixture.Row("hotmail");
         fixture.Section.RemoveAccountCommand.Execute(fixture.Row("perso"));
         Assert.True(fixture.Row("perso").IsConfirmingRemove);
@@ -1000,8 +1008,8 @@ public sealed class EmailSignInViewModelTests
 
         strings.SwitchToFrench();
 
-        Assert.Equal($"Ouvrez {DevicePage} et saisissez ce code :", signIn.DeviceCodeLine);
-        Assert.Equal("Le code expire dans 15:00", signIn.ExpiresInText);
+        Assert.Equal("Ouvrez la page d'autorisation ci-dessous et saisissez ce code :", signIn.DeviceCodeLine);
+        Assert.Equal("Le code expire dans 15 min", signIn.ExpiresInText);
         Assert.Equal(UserCode, signIn.UserCode);
         Assert.Equal(DevicePage, signIn.Address);
         Assert.Contains(nameof(EmailSignInViewModel.DeviceCodeLine), raised);
@@ -1016,7 +1024,7 @@ public sealed class EmailSignInViewModelTests
 
         public string this[string key] => (_french, key) switch
         {
-            (true, StudioStringKeys.MailDeviceCode) => "Ouvrez {0} et saisissez ce code :",
+            (true, StudioStringKeys.MailDeviceCode) => "Ouvrez la page d'autorisation ci-dessous et saisissez ce code :",
             (true, StudioStringKeys.MailDeviceCodeExpiresIn) => "Le code expire dans {0}",
             (true, StudioStringKeys.MailSignOutConfirm) => "Oublier les jetons de {0} ?",
             _ => EnglishStudioStrings.Instance[key],

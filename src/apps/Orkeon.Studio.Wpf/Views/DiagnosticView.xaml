@@ -20,12 +20,17 @@
         </Style>
       </controls:PageHeader.Style>
       <StackPanel Orientation="Horizontal">
-        <Button Margin="0,0,8,0" Click="OnCopyReport" controls:ButtonIcon.Kind="copy"
-                Visibility="{Binding CanCopyReport, Converter={StaticResource BooleanToVisibility}}">
+        <!-- Expert only (UX lot 02): the visibility lives in the style, a local value would
+             beat the novice trigger. -->
+        <Button Margin="0,0,8,0" Click="OnCopyReport" controls:ButtonIcon.Kind="copy">
           <Button.Style>
             <Style TargetType="Button" BasedOn="{StaticResource BtnSecondary}">
               <Setter Property="Content" Value="{Binding [Studio.Diagnostics.CopyReport], Source={x:Static services:I18n.Instance}}"/>
+              <Setter Property="Visibility" Value="{Binding CanCopyReport, Converter={StaticResource BooleanToVisibility}}"/>
               <Style.Triggers>
+                <DataTrigger Binding="{Binding DataContext.Mode.IsNovice, RelativeSource={RelativeSource AncestorType=Window}}" Value="True">
+                  <Setter Property="Visibility" Value="Collapsed"/>
+                </DataTrigger>
                 <DataTrigger Binding="{Binding ReportCopied}" Value="True">
                   <Setter Property="Content" Value="{Binding [Studio.Diagnostics.Copied], Source={x:Static services:I18n.Instance}}"/>
                 </DataTrigger>
@@ -41,7 +46,7 @@
     <!-- D01, C02 (R07, R18): the unusable report is one danger banner - Studio's French sentence as
          its title, the engine's own text untranslated in « Technical details ». It is the point the
          headline counts and no row of the list: the counts below leave it out (D02). -->
-    <controls:Alert Tone="Danger" Margin="0,0,0,16" Details="{Binding ErrorMessage}"
+    <controls:Alert Tone="Danger" Margin="0,0,0,16" Details="{Binding ErrorMessage}" Message="{Binding DangerMessage}"
                     Visibility="{Binding ErrorMessage, Converter={StaticResource StringPresentToVisibility}}">
       <controls:Alert.Style>
         <Style TargetType="controls:Alert" BasedOn="{StaticResource {x:Type controls:Alert}}">
@@ -58,16 +63,39 @@
           <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="32" Margin="0,0,8,0"
                   controls:ButtonIcon.Kind="rotate-cw" Command="{Binding RunCommand}"
                   Content="{Binding [Studio.Create.FailureRetry], Source={x:Static services:I18n.Instance}}"/>
-          <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="32" Click="OnOpenSettingsFile"
-                  Content="{Binding [Studio.Diagnostics.OpenFile], Source={x:Static services:I18n.Instance}}"/>
+          <Button controls:ButtonSize.Height="32" Margin="0,0,8,0" Click="OnOpenSettingsFile">
+            <Button.Style>
+              <Style TargetType="Button" BasedOn="{StaticResource BtnSecondary}">
+                <Setter Property="Content" Value="{Binding [Studio.Diagnostics.OpenFile], Source={x:Static services:I18n.Instance}}"/>
+                <Style.Triggers>
+                  <!-- UX lot 04 (064): the novice cannot see the File tab; the button opens Models. -->
+                  <DataTrigger Binding="{Binding DataContext.Mode.IsNovice, RelativeSource={RelativeSource AncestorType=Window}}" Value="True">
+                    <Setter Property="Content" Value="{Binding [Studio.Create.FailureOpenSettings], Source={x:Static services:I18n.Instance}}"/>
+                  </DataTrigger>
+                </Style.Triggers>
+              </Style>
+            </Button.Style>
+          </Button>
+          <!-- UX lot 04 (065): the missing engine says where to install it, once the page exists. -->
+          <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="32"
+                  controls:ButtonIcon.Kind="external-link" Command="{Binding OpenInstallGuideCommand}"
+                  Content="{Binding [Studio.Diagnostics.InstallGuide], Source={x:Static services:I18n.Instance}}">
+            <Button.Visibility>
+              <MultiBinding Converter="{StaticResource AllTrueToVisibility}">
+                <Binding Path="IsEngineMissing"/>
+                <Binding Path="HasInstallGuide"/>
+              </MultiBinding>
+            </Button.Visibility>
+          </Button>
         </StackPanel>
       </controls:Alert.Actions>
     </controls:Alert>
 
     <!-- verdict (audit 09/20, R07): the headline with the exact count, then the counts of the rows
          listed below (D02); each problem carries its own action in the list (lot 5). -->
+    <!-- UX lot 04 (043-063): one banner per state - no verdict under the danger banner. -->
     <controls:Alert Margin="0,0,0,16" Title="{Binding VerdictHeadline}" Message="{Binding VerdictDetail}"
-                    Visibility="{Binding HasRun, Converter={StaticResource BooleanToVisibility}}">
+                    Visibility="{Binding ShowVerdict, Converter={StaticResource BooleanToVisibility}}">
       <controls:Alert.Style>
         <Style TargetType="controls:Alert" BasedOn="{StaticResource {x:Type controls:Alert}}">
           <Setter Property="Tone" Value="Success"/>
@@ -78,6 +106,14 @@
           </Style.Triggers>
         </Style>
       </controls:Alert.Style>
+      <!-- UX lot 04 (064): one action for the whole list - the first point, fixed as its own button does. -->
+      <controls:Alert.Actions>
+        <StackPanel Style="{StaticResource ActionRow}">
+          <Button Style="{StaticResource BtnPrimary}" controls:ButtonSize.Height="32" Click="OnFixFirst"
+                  Visibility="{Binding HasIssues, Converter={StaticResource BooleanToVisibility}}"
+                  Content="{Binding [Studio.Diagnostics.FixFirst], Source={x:Static services:I18n.Instance}}"/>
+        </StackPanel>
+      </controls:Alert.Actions>
     </controls:Alert>
 
     <!-- checks card -->
@@ -98,10 +134,21 @@
         </TextBlock>
         <!-- lot 5: the settings file, the former sidebar card - Studio's own line, first -->
         <DockPanel x:Name="SettingsFileLine" Margin="0,4">
-          <Button DockPanel.Dock="Right" Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="32"
+          <Button DockPanel.Dock="Right" controls:ButtonSize.Height="32"
                   VerticalAlignment="Top" Margin="12,0,0,0" Click="OnOpenSettingsFile"
-                  Visibility="{Binding IsSettingsFileInvalid, Converter={StaticResource BooleanToVisibility}}"
-                  Content="{Binding [Studio.Diagnostics.OpenFile], Source={x:Static services:I18n.Instance}}"/>
+                  Visibility="{Binding IsSettingsFileInvalid, Converter={StaticResource BooleanToVisibility}}">
+            <Button.Style>
+              <Style TargetType="Button" BasedOn="{StaticResource BtnSecondary}">
+                <Setter Property="Content" Value="{Binding [Studio.Diagnostics.OpenFile], Source={x:Static services:I18n.Instance}}"/>
+                <Style.Triggers>
+                  <!-- UX lot 04 (064): the novice cannot see the File tab; the button opens Models. -->
+                  <DataTrigger Binding="{Binding DataContext.Mode.IsNovice, RelativeSource={RelativeSource AncestorType=Window}}" Value="True">
+                    <Setter Property="Content" Value="{Binding [Studio.Create.FailureOpenSettings], Source={x:Static services:I18n.Instance}}"/>
+                  </DataTrigger>
+                </Style.Triggers>
+              </Style>
+            </Button.Style>
+          </Button>
           <controls:LucideIcon Size="14" VerticalAlignment="Top" Margin="0,2,10,0">
             <controls:LucideIcon.Style>
               <Style TargetType="controls:LucideIcon" BasedOn="{StaticResource {x:Type controls:LucideIcon}}">
@@ -128,10 +175,25 @@
             <DataTemplate>
               <DockPanel Margin="0,4">
                 <!-- lot 5: one action per problem, the one that fixes it -->
-                <Button DockPanel.Dock="Right" Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="32"
+                <Button DockPanel.Dock="Right" controls:ButtonSize.Height="32"
                         VerticalAlignment="Top" Margin="12,0,0,0" Click="OnFixCheck"
-                        Visibility="{Binding HasFix, Converter={StaticResource BooleanToVisibility}}"
-                        Content="{Binding FixLabel, Mode=OneWay}"/>
+                        Visibility="{Binding HasFix, Converter={StaticResource BooleanToVisibility}}">
+                  <Button.Style>
+                    <Style TargetType="Button" BasedOn="{StaticResource BtnSecondary}">
+                      <Setter Property="Content" Value="{Binding FixLabel, Mode=OneWay}"/>
+                      <Style.Triggers>
+                        <!-- UX lot 04 (064): a settings-file fix opens Models for the novice. -->
+                        <MultiDataTrigger>
+                          <MultiDataTrigger.Conditions>
+                            <Condition Binding="{Binding FixKind}" Value="file"/>
+                            <Condition Binding="{Binding DataContext.Mode.IsNovice, RelativeSource={RelativeSource AncestorType=Window}}" Value="True"/>
+                          </MultiDataTrigger.Conditions>
+                          <Setter Property="Content" Value="{Binding [Studio.Create.FailureOpenSettings], Source={x:Static services:I18n.Instance}}"/>
+                        </MultiDataTrigger>
+                      </Style.Triggers>
+                    </Style>
+                  </Button.Style>
+                </Button>
                 <controls:LucideIcon Size="14" VerticalAlignment="Top" Margin="0,2,10,0">
                   <controls:LucideIcon.Style>
                     <Style TargetType="controls:LucideIcon" BasedOn="{StaticResource {x:Type controls:LucideIcon}}">

@@ -108,6 +108,24 @@ public sealed class AllTrueToVisibilityConverter : IMultiValueConverter
         throw new NotSupportedException();
 }
 
+/// <summary>
+/// Any bound value true → Visible, none → Collapsed. An agent card's « Edit » is the case it
+/// exists for (UX lot 12): always in Expert, in Novice once « Adjust the team… » is pressed —
+/// two conditions that live on different objects.
+/// </summary>
+public sealed class AnyTrueToVisibilityConverter : IMultiValueConverter
+{
+    /// <inheritdoc />
+    public object Convert(object?[] values, Type targetType, object? parameter, CultureInfo culture) =>
+        values is not null && values.Any(v => v is true)
+            ? Visibility.Visible
+            : Visibility.Collapsed;
+
+    /// <inheritdoc />
+    public object[] ConvertBack(object? value, Type[] targetTypes, object? parameter, CultureInfo culture) =>
+        throw new NotSupportedException();
+}
+
 /// <summary>Boolean inverter — a null (an unset IsChecked) reads as false, so it negates to true.</summary>
 public sealed class NegateConverter : IValueConverter
 {
@@ -148,6 +166,46 @@ public sealed class TeamLastRunConverter : IValueConverter
             ? Services.I18n.Instance["Studio.Run.TeamLastRun"].Replace(
                 "{0}", at.ToLocalTime().ToString("dd/MM", CultureInfo.CurrentCulture), StringComparison.Ordinal)
             : Services.I18n.Instance["Studio.Run.TeamNeverRun"];
+
+    /// <inheritdoc />
+    public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) =>
+        throw new NotSupportedException();
+}
+
+/// <summary>
+/// A state name (the view-model's <c>ok</c> / <c>warn</c> / <c>muted</c> / <c>idle</c> / <c>running</c> /
+/// <c>fail</c>) to the <see cref="Controls.Tone"/> of a <see cref="Controls.Badge"/> (UX lot 11): ok →
+/// Success, warn → Warning, muted and idle → Neutral, running → Info, fail → Danger, anything else
+/// Neutral. Running is Info by the spec's literal table, although Info is otherwise reserved for categories.
+/// Bound to a <see cref="Controls.StatusDot"/>'s <see cref="Controls.DotTone"/>, the same state takes the
+/// dot's side of the scale (Components.xaml): Success → Ready, Warning → Attention, Danger → Error, the
+/// rest (running included) Neutral.
+/// </summary>
+public sealed class StateToneConverter : IValueConverter
+{
+    /// <inheritdoc />
+    public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        var tone = value is string state
+            ? state switch
+            {
+                "ok" => Controls.Tone.Success,
+                "warn" => Controls.Tone.Warning,
+                "running" => Controls.Tone.Info,
+                "fail" => Controls.Tone.Danger,
+                _ => Controls.Tone.Neutral,
+            }
+            : Controls.Tone.Neutral;
+        return targetType == typeof(Controls.DotTone) ? DotToneOf(tone) : tone;
+    }
+
+    private static Controls.DotTone DotToneOf(Controls.Tone tone) => tone switch
+    {
+        Controls.Tone.Success => Controls.DotTone.Ready,
+        Controls.Tone.Warning => Controls.DotTone.Attention,
+        Controls.Tone.Danger => Controls.DotTone.Error,
+        _ => Controls.DotTone.Neutral,
+    };
 
     /// <inheritdoc />
     public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) =>

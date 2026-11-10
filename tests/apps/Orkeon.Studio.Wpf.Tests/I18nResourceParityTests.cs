@@ -126,6 +126,51 @@ public sealed partial class I18nResourceParityTests
             MountPathLiterals.Aggregate(value, (text, literal) => text.Replace(literal, "", StringComparison.Ordinal));
     }
 
+    [Fact]
+    public void Should_Put_A_No_Break_Space_Before_Double_Punctuation_When_Reading_The_French_Values()
+    {
+        // French typography: a colon, semicolon, question or exclamation mark follows a no-break
+        // space (U+00A0), so a line never wraps before it. A plain space before one is the defect.
+        var offenders = ReadEntries("Strings.fr.resx")
+            .Where(e => PlainSpaceBeforeDoublePunctuation().IsMatch(e.Value))
+            .Select(e => e.Key)
+            .Order()
+            .ToList();
+
+        Assert.True(offenders.Count == 0, $"French values with a plain space before : ; ? !: {string.Join(", ", offenders)}");
+    }
+
+    [System.Text.RegularExpressions.GeneratedRegex(@" [:;?!](?=\s|$)")]
+    private static partial System.Text.RegularExpressions.Regex PlainSpaceBeforeDoublePunctuation();
+
+    /// <summary>
+    /// The glossary of the launch screens (UX lot 10): the act is a "lancement", the user's text a
+    /// "demande". These keys sit on the same screens as the "Lancement" tab and the "Votre demande"
+    /// recap, so the older words for them must not come back.
+    /// </summary>
+    private static readonly string[] LaunchGlossaryKeys =
+    [
+        "Studio.Run.NoRunFooter", "Studio.Run.RunningFooter", "Studio.Run.DoneFooter",
+        "Studio.Teams.LastRunDate", "Studio.Run.ModeHint", "Studio.Run.ScreenSub",
+        "Studio.Run.LockedDuringRun", "Studio.History.Empty", "Studio.History.NoMatch",
+        "Studio.Create.TabNeedInterrupted", "Studio.Chat.Status1", "Studio.Chat.StatusDonePattern",
+        "Studio.Chat.PillBrief",
+    ];
+
+    [Fact]
+    public void Should_Say_Lancement_And_Demande_When_Reading_The_French_Launch_Screen_Values()
+    {
+        var french = ReadEntries("Strings.fr.resx");
+        var offenders = LaunchGlossaryKeys
+            .Where(key => french[key].Contains("exécution", StringComparison.OrdinalIgnoreCase)
+                || french[key].Contains("brief", StringComparison.OrdinalIgnoreCase)
+                || french[key].Contains("travail", StringComparison.OrdinalIgnoreCase))
+            .ToList();
+
+        Assert.True(offenders.Count == 0, $"French launch-screen values off the glossary: {string.Join(", ", offenders)}");
+        Assert.Equal(french["Studio.Chat.FactBrief"], "Votre " + french["Studio.Chat.PillBrief"].ToLowerInvariant());
+    }
+
     /// <summary>
     /// How many strings a satellite still carries verbatim from English.
     /// <para>
@@ -171,8 +216,10 @@ public sealed partial class I18nResourceParityTests
         // Refonte lot 12: raised by the Launch classeur's labels no language rewrites —
         // « Options », « Mode » and « MODE » (fr), « Team » and « Engine » (de) — the same
         // floor, measured, not above it.
+        // UX lot 03: es raised by one for « {0} min », the device code's lifetime — Spanish
+        // abbreviates minutes as English does, a real cognate (the same floor), measured, not above it.
         ["Strings.fr.resx"] = 65,
-        ["Strings.es.resx"] = 45,
+        ["Strings.es.resx"] = 46,
         ["Strings.de.resx"] = 52,
         ["Strings.zh-Hans.resx"] = 37,
     };

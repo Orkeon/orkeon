@@ -1,4 +1,3 @@
-using System.Globalization;
 using Orkeon.Studio.Core.Email;
 using Orkeon.Studio.Core.Localization;
 using Orkeon.Studio.Wpf.ViewModels.Mvvm;
@@ -210,15 +209,18 @@ public sealed class EmailSignInViewModel : ObservableObject
     /// <summary>The code to type on the page of a device sign-in; null in every other phase.</summary>
     public string? UserCode => _userCode;
 
-    /// <summary>"Open {page} and enter this code:", localized; null outside a device sign-in.</summary>
+    /// <summary>
+    /// "Open the authorization page below and enter this code:", localized; null outside a device
+    /// sign-in. The page itself is shown once, under the code (UX lot 04, 059).
+    /// </summary>
     public string? DeviceCodeLine => IsDeviceCode
-        ? _strings.Format(StudioStringKeys.MailDeviceCode, _address)
+        ? _strings[StudioStringKeys.MailDeviceCode]
         : null;
 
     /// <summary>Whether the device code has a known lifetime to count down.</summary>
     public bool HasExpiry => IsDeviceCode && _deadline is not null;
 
-    /// <summary>"The code expires in 14:59", localized, read on the clock at each beat; null without a lifetime.</summary>
+    /// <summary>"The code expires in 15 min", or "in under a minute" for the last one, localized, read on the clock at each beat; null without a lifetime.</summary>
     public string? ExpiresInText
     {
         get
@@ -230,8 +232,12 @@ public sealed class EmailSignInViewModel : ObservableObject
             if (remaining < TimeSpan.Zero)
                 remaining = TimeSpan.Zero;
 
-            var clock = string.Create(CultureInfo.InvariantCulture, $"{(int)remaining.TotalMinutes}:{remaining.Seconds:00}");
-            return _strings.Format(StudioStringKeys.MailDeviceCodeExpiresIn, clock);
+            if (remaining.TotalMinutes < 1)
+                return _strings[StudioStringKeys.MailDeviceCodeExpiresSoon];
+
+            // Whole minutes, rounded up: « 15 min » reads as a lapse, where « 15:00 » read as an hour.
+            var minutes = _strings.Format(StudioStringKeys.CommonMinutes, (int)Math.Ceiling(remaining.TotalMinutes));
+            return _strings.Format(StudioStringKeys.MailDeviceCodeExpiresIn, minutes);
         }
     }
 

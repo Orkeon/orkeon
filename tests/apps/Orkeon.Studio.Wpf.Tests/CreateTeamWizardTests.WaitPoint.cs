@@ -17,7 +17,6 @@ public partial class CreateTeamWizardTests
 
         Assert.Equal(CreateTeamViewModel.Step1NeedTab, vm.Step1TabIndex);
         Assert.Equal("Empty", vm.NeedTabState);
-        Assert.Equal("Need not described yet.", vm.NeedFooter);
         Assert.Equal("Empty", vm.FoldersTabState);
         Assert.True(vm.IsFoldersTabEmpty);
         Assert.Equal("Proposed after the composition", vm.FoldersTabSubtitle);
@@ -29,7 +28,6 @@ public partial class CreateTeamWizardTests
         vm.ComposeNotes.Consigne = "Cite every source.";
 
         Assert.Equal("Done", vm.NeedTabState);
-        Assert.Equal("Need described.", vm.NeedFooter);
         Assert.Equal("Done", vm.NotesTabState);
         Assert.Equal("Instruction taken as written.", vm.NotesFooter);
 
@@ -91,19 +89,29 @@ public partial class CreateTeamWizardTests
             Assert.Equal(string.Empty, wizard.SessionStateLabel);
             Assert.False(wizard.IsSessionWorking);
             Assert.Equal("Confirm the folders to move on to the composition.", wizard.Step1Hint);
+            // UX lot 06: the open panel's card carries the wait; closed, the label names it again.
+            Assert.True(wizard.Chat.IsOpen);
+            Assert.Equal(string.Empty, wizard.WaitPointLabel);
+            wizard.Chat.CloseCommand.Execute(null);
+            Assert.Equal("Waiting for you: confirm the folders", wizard.WaitPointLabel);
             Assert.Equal("Waiting for you: confirm the folders", wizard.Progress.Title);
+            wizard.Chat.OpenCommand.Execute(null);
 
             // The tab opens itself, with the amber dot.
             Assert.Equal(CreateTeamViewModel.Step1FoldersTab, wizard.Step1TabIndex);
             Assert.Equal("Expected", wizard.FoldersTabState);
+            Assert.Equal("2 folders to confirm", wizard.FoldersTabSubtitle);
+            Assert.All(wizard.FolderRows, row => Assert.True(row.ShowsDeduced));
+
+            // An input put back to unanswered is a folder to choose, and the next wait point.
+            wizard.FolderRows[0].IsInsideTeam = false;
             Assert.Equal("2 folders · 1 to choose", wizard.FoldersTabSubtitle);
 
-            // The assistant stops its indicator, names the action and holds Enter back.
+            // The assistant stops its indicator and names the action; Enter still sends (UX lot 06).
             Assert.False(wizard.Chat.IsBusy);
             Assert.True(wizard.Chat.HasPendingAction);
             Assert.Equal("Confirm the folders", wizard.Chat.PendingAction!.ActionLabel);
             Assert.Equal("Confirm the folders to continue, or ask a question", wizard.Chat.Placeholder);
-            Assert.False(wizard.Chat.EnterSends);
 
             // The bubble's button is the card's own command.
             Assert.Same(wizard.ConfirmFoldersCommand, wizard.Chat.PendingAction.Action);
@@ -122,6 +130,8 @@ public partial class CreateTeamWizardTests
         // The next wait point takes over: /inpdf is still to choose before the trial.
         Assert.Equal(WizardWaitPoint.ChooseFolder, vm.WaitPoint);
         Assert.Equal("Show the folder", vm.Chat.PendingAction!.ActionLabel);
+        // UX lot 06: the card says it once; the composer only invites a question.
+        Assert.Equal("Ask the assistant a question…", vm.Chat.Placeholder);
     }
 
     /// <summary>
@@ -166,11 +176,21 @@ public partial class CreateTeamWizardTests
             var input = wizard.FolderRows[0];
             var output = wizard.FolderRows[1];
 
+            // Every folder starts inside the team, deduced and not marked as modified.
             Assert.True(input.ShowsDeduced);
-            Assert.True(input.NeedsChoice);
-            Assert.True(input.IsOnMachine);
+            Assert.True(output.ShowsDeduced);
+            Assert.True(input.IsInsideTeam);
+            Assert.False(input.NeedsChoice);
+            Assert.False(input.IsOnMachine);
             Assert.False(output.NeedsChoice);
             Assert.False(output.IsOnMachine);
+            Assert.Equal("2 folders to confirm", wizard.FoldersTabSubtitle);
+            Assert.DoesNotContain("to choose", wizard.FoldersFooter, StringComparison.Ordinal);
+
+            // Back to unanswered, an input is a read folder to choose and names the footer.
+            input.IsInsideTeam = false;
+            Assert.True(input.NeedsChoice);
+            Assert.True(input.IsOnMachine);
             Assert.Equal("2 folders · 1 to choose", wizard.FoldersTabSubtitle);
             Assert.StartsWith("1 folder to choose. You can confirm now:", wizard.FoldersFooter, StringComparison.Ordinal);
             Assert.Contains("« inpdf »", wizard.FoldersFooter, StringComparison.Ordinal);
@@ -221,9 +241,13 @@ public partial class CreateTeamWizardTests
         Assert.Equal(2, vm.Step);
         Assert.Equal(WizardWaitPoint.ChooseFolder, vm.WaitPoint);
         Assert.True(vm.IsWaitOnChooseFolder);
-        Assert.Equal("Waiting for you: choose a folder", vm.Progress.WaitPhrase);
         Assert.True(vm.Chat.HasPendingAction);
-        Assert.Equal("Choose the folder to continue, or ask a question", vm.Chat.Placeholder);
+        // UX lot 06: one reminder — the card; neither the status bar nor the composer repeat it
+        // while the panel is open, and the status bar names it again once the panel closes.
+        Assert.Null(vm.Progress.WaitPhrase);
+        Assert.Equal("Ask the assistant a question…", vm.Chat.Placeholder);
+        vm.Chat.CloseCommand.Execute(null);
+        Assert.Equal("Waiting for you: choose a folder", vm.Progress.WaitPhrase);
 
         // From another step, « Waiting for you: … » brings step 2 back.
         var raised = new List<string?>();

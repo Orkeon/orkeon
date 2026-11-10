@@ -21,6 +21,8 @@ public sealed class DiagnosticActionsTests
     [InlineData("llm-reachability", DoctorCheckViewModel.FixTest)]
     [InlineData("workspace-write", DoctorCheckViewModel.FixFolders)]
     [InlineData("appsettings", DoctorCheckViewModel.FixFile)]
+    [InlineData("runner-settings", DoctorCheckViewModel.FixFile)]
+    [InlineData("install-channel", DoctorCheckViewModel.FixAgain)]
     [InlineData("esbuild", DoctorCheckViewModel.FixAgain)]
     [InlineData("a-future-check", DoctorCheckViewModel.FixAgain)]
     public void Each_problem_carries_the_action_that_fixes_it(string name, string kind)
@@ -70,5 +72,80 @@ public sealed class DiagnosticActionsTests
         Assert.True(diagnostic.IsSettingsFileInvalid);
         Assert.Equal(3, diagnostic.IssueCount);
         Assert.Equal(EnglishStudioStrings.Instance[StudioStringKeys.DiagSettingsFileInvalid], diagnostic.SettingsFileSentence);
+    }
+
+    private static DiagnosticViewModel Installed(FakeProcessLauncher launcher) =>
+        new(new OrkeonProcessRunner(
+            launcher,
+            new OrkeonBinaryLocator(FakeExecutableProbe.WithOrkeonInstalled(), ["orkeon"])));
+
+    [Fact]
+    public async Task Failures_come_first_and_the_first_fix_is_the_first_failure()
+    {
+        // UX lot 04 (064): the list reads failures, then warnings, then the rest.
+        var launcher = new FakeProcessLauncher();
+        launcher.OutputToEmit.Add(ProcessOutputLine.Now(
+            ProcessOutputChannel.StandardOutput,
+            """[{"check":"appsettings","status":"ok","detail":"readable"},""" +
+            """{"check":"llm-reachability","status":"warn","detail":"slow"},""" +
+            """{"check":"llm-config","status":"fail","detail":"none"}]"""));
+        var diagnostic = Installed(launcher);
+
+        await diagnostic.RunAsync(cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.Equal(["llm-config", "llm-reachability", "appsettings"], diagnostic.Checks.Select(c => c.Name));
+        Assert.Equal("llm-config", diagnostic.FirstFixable?.Name);
+        Assert.True(diagnostic.ShowVerdict);
+        Assert.Null(diagnostic.DangerMessage);
+    }
+
+    [Fact]
+    public async Task A_missing_engine_shows_one_banner_that_says_what_to_do()
+    {
+        // UX lot 04 (043-063, 065): the danger banner alone, it says to install the engine, and
+        // the « How to install » button opens the release-binary page.
+        var browser = new RecordingBrowserOpener();
+        var diagnostic = new DiagnosticViewModel(new OrkeonProcessRunner(
+            new FakeProcessLauncher(), new OrkeonBinaryLocator(new FakeExecutableProbe())), browser: browser);
+
+        await diagnostic.RunAsync(cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.True(diagnostic.IsEngineMissing);
+        Assert.False(diagnostic.ShowVerdict);
+        Assert.Equal(EnglishStudioStrings.Instance[StudioStringKeys.DiagEngineMissingHow], diagnostic.DangerMessage);
+        Assert.True(diagnostic.HasInstallGuide);
+        diagnostic.OpenInstallGuideCommand.Execute(null);
+        Assert.Equal([new Uri(DiagnosticViewModel.InstallGuideUrl)], browser.Opened);
+    }
+
+    [Fact]
+    public void The_install_guide_opens_the_french_page_in_french()
+    {
+        var browser = new RecordingBrowserOpener();
+        var runner = new OrkeonProcessRunner(new FakeProcessLauncher(), new OrkeonBinaryLocator(new FakeExecutableProbe()));
+        var diagnostic = new DiagnosticViewModel(runner, strings: new FakeResxStudioStrings("fr", "fr"), browser: browser);
+
+        diagnostic.OpenInstallGuideCommand.Execute(null);
+
+        Assert.Equal([new Uri(DiagnosticViewModel.InstallGuideUrlFrench)], browser.Opened);
+        Assert.Contains("/docs/fr/", DiagnosticViewModel.InstallGuideUrlFrench, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void The_install_guide_opens_only_an_https_page_in_the_browser()
+    {
+        var browser = new RecordingBrowserOpener();
+        var page = new Uri("https://example.org/install");
+        var runner = new OrkeonProcessRunner(new FakeProcessLauncher(), new OrkeonBinaryLocator(new FakeExecutableProbe()));
+
+        var diagnostic = new DiagnosticViewModel(runner, browser: browser, installGuide: page);
+        Assert.True(diagnostic.HasInstallGuide);
+        diagnostic.OpenInstallGuideCommand.Execute(null);
+        Assert.Equal([page], browser.Opened);
+
+        var plain = new DiagnosticViewModel(runner, browser: browser, installGuide: new Uri("http://example.org/install"));
+        Assert.False(plain.HasInstallGuide);
+        Assert.False(plain.OpenInstallGuideCommand.CanExecute(null));
+        Assert.False(new DiagnosticViewModel(runner, installGuide: page).HasInstallGuide);
     }
 }

@@ -165,4 +165,52 @@ public sealed class LaunchHistoryScreenTests
         Assert.False(history.HasNoMatch);
         Assert.Empty(history.Groups);
     }
+
+    [Fact]
+    public void Show_the_error_is_offered_only_on_a_run_that_did_not_succeed_and_unfolds_its_reason()
+    {
+        var history = Build(null,
+            Run("/teams/alpha", Now.AddHours(-1), RunOutcome.Success),
+            Run("/teams/beta", Now.AddMinutes(-20), RunOutcome.ScriptError));
+
+        var rows = history.Groups.Single().Entries;
+        var failed = rows[0];
+        var succeeded = rows[1];
+        Assert.True(failed.HasError);
+        Assert.False(succeeded.HasError);
+        Assert.False(succeeded.ShowErrorCommand.CanExecute(null));
+
+        Assert.False(failed.IsShowingError);
+        failed.ShowErrorCommand.Execute(null);
+        Assert.True(failed.IsShowingError);
+        Assert.False(string.IsNullOrEmpty(failed.OutcomeSentence));
+        failed.ShowErrorCommand.Execute(null);
+        Assert.False(failed.IsShowingError);
+    }
+
+    [Fact]
+    public void The_runs_of_the_day_each_carry_their_own_time_and_duration()
+    {
+        var history = Build(null,
+            Run("/teams/a", Now.AddMinutes(-20), RunOutcome.ScriptError, 8.6),
+            Run("/teams/b", Now.AddHours(-1), RunOutcome.Success, 142.5),
+            Run("/teams/c", Now.AddHours(-2), RunOutcome.Success, 74.2));
+
+        var rows = history.Groups.Single().Entries;
+        Assert.Equal(3, rows.Select(row => row.TimeText).Distinct().Count());
+        Assert.Equal(3, rows.Select(row => row.DurationText).Distinct().Count());
+        Assert.DoesNotContain(rows, row => row.DurationText == "< 1 s");
+    }
+
+    [Fact]
+    public void Launch_a_team_from_the_empty_history_asks_the_shell_for_the_launch_screen()
+    {
+        var history = Build();
+        var raised = 0;
+        history.LaunchRequested += (_, _) => raised++;
+
+        history.LaunchTeamCommand.Execute(null);
+
+        Assert.Equal(1, raised);
+    }
 }

@@ -26,7 +26,7 @@ internal static class StudioFixture
     public const string DeviceSignInCode = "DEMO-1234";
 
     /// <summary>Name of the profile the assistant runs on; the wizard's gate keys on it.</summary>
-    public const string AssistantProfile = "Studio";
+    public const string AssistantProfile = "Principal";
 
     /// <summary>The variable the assistant's DeepSeek key is remembered under.</summary>
     public const string DeepSeekKeyVariable = "DEEPSEEK_API_KEY";
@@ -140,8 +140,20 @@ internal static class StudioFixture
         "Bonjour. Décrivez-moi ce que vous voulez obtenir, avec vos mots — je m'occupe de la forme.",
         "D'accord : une note quotidienne à partir de ce que vos concurrents publient. "
         + "Dans quel dossier vos sources arrivent-elles ?",
-        "Parfait. Je compose une équipe de trois : un veilleur qui lit, un analyste qui trie, "
-        + "un rédacteur qui écrit la note.",
+        // UX lot 06: four agents, as the fixture's team lists them (veilleur, analyste,
+        // writer, reviewer) — the bubble no longer miscounts the team on screen.
+        "Parfait. Je compose une équipe de quatre : un veilleur qui lit, un analyste qui trie, "
+        + "un rédacteur qui écrit la note et un relecteur qui vérifie.",
+    ];
+
+    /// <summary>
+    /// The user's side of <see cref="AssistantTurns"/>, one reply after each but the last, so
+    /// the conversation reads as a dialogue (UX lot 06, 074).
+    /// </summary>
+    public static IReadOnlyList<string> UserTurns { get; } =
+    [
+        "Un résumé, chaque matin, de ce que publient mes concurrents.",
+        "Dans le dossier docs : j'y dépose leurs communiqués chaque soir.",
     ];
 
     /// <summary>
@@ -266,6 +278,8 @@ internal static class StudioFixture
         ],
         History =
         [
+            new("rapport-hebdo", Now.AddMinutes(-20), 1, RunOutcome.ScriptError, 8.6, null, null),
+            new("tri-factures", Now.AddHours(-1), 0, RunOutcome.Success, 142.5, 21_300, 4_100),
             new("veille-concurrentielle", Now.AddHours(-2), 0, RunOutcome.Success, 74.2, 18_430, 11_200),
             new("rapport-hebdo", Now.AddDays(-1), 0, RunOutcome.Success, 212.8, 46_100, 9_800),
             new("veille-concurrentielle", Now.AddDays(-1).AddHours(-2), 2, RunOutcome.RuntimeError, 31.4, 6_020, 0),
@@ -345,12 +359,12 @@ internal static class StudioFixture
     /// <summary>Six checks with one warning and one failure — the shape worth photographing.</summary>
     private const string DoctorWithIssues = """
         [
-          { "check": "cli", "status": "ok", "detail": "orkeon 1.0.0-rc.2" },
-          { "check": "appsettings", "status": "ok", "detail": "chargé depuis le dossier de configuration" },
-          { "check": "mounts", "status": "warn", "detail": "un dossier déclaré est introuvable : /perdu" },
-          { "check": "llm-provider", "status": "ok", "detail": "deepseek / deepseek-chat" },
-          { "check": "llm-reachability", "status": "fail", "detail": "le point de terminaison a refusé la connexion" },
-          { "check": "workspace", "status": "ok", "detail": "accessible en écriture" }
+          { "check": "install-channel", "status": "ok", "detail": "dotnet global tool" },
+          { "check": "appsettings", "status": "ok", "detail": "loaded from the configuration folder" },
+          { "check": "runner-settings", "status": "warn", "detail": "Runner:MaxParallelRuns must be a positive integer" },
+          { "check": "llm-config", "status": "ok", "detail": "deepseek / deepseek-chat" },
+          { "check": "llm-reachability", "status": "fail", "detail": "the endpoint refused the connection" },
+          { "check": "workspace-write", "status": "ok", "detail": "writable" }
         ]
         """;
 

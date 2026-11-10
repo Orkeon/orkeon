@@ -1,6 +1,8 @@
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Media;
 using System.Windows.Threading;
+using Orkeon.Studio.Wpf.Controls;
 
 namespace Orkeon.Studio.Wpf.Views;
 
@@ -19,6 +21,16 @@ public partial class TeamsView : UserControl
     {
         if (e.NewValue is not true || sender is not FrameworkElement editor)
             return;
+
+        // UX lot 08: an editor inside a fold (the drafts) opens it first, or there is nothing to show.
+        for (var node = VisualTreeHelper.GetParent(editor); node is not null; node = VisualTreeHelper.GetParent(node))
+        {
+            if (node is Disclosure fold)
+            {
+                fold.SetCurrentValue(Disclosure.IsExpandedProperty, true);
+                break;
+            }
+        }
 
         _ = editor.Dispatcher.InvokeAsync(editor.BringIntoView, DispatcherPriority.Loaded);
     }

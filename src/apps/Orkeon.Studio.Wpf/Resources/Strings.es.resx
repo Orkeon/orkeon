@@ -84,34 +84,22 @@
     <value>Terminar</value>
   </data>
   <data name="Studio.Shell.TourStep1Title" xml:space="preserve">
-    <value>Dos modos, un solo producto</value>
+    <value>Escriba aquí su necesidad</value>
   </data>
   <data name="Studio.Shell.TourStep1Body" xml:space="preserve">
-    <value>Principiante explica cada paso y oculta la maquinaria. Experto lo muestra todo: línea de comandos, registro, JSON bruto. Cambie cuando quiera, sin perder nada.</value>
+    <value>Describa en pocas frases lo que el equipo debe hacer por usted. Sin vocabulario técnico: dígalo como se lo diría a un colega.</value>
   </data>
   <data name="Studio.Shell.TourStep2Title" xml:space="preserve">
-    <value>Todo gira en torno a los equipos</value>
+    <value>El asistente compone, usted prueba</value>
   </data>
   <data name="Studio.Shell.TourStep2Body" xml:space="preserve">
-    <value>Un equipo de agentes es el objeto central: usted lo crea, lo conserva, lo lanza. El resto de la aplicación solo sirve a ese objeto.</value>
+    <value>A partir de su necesidad, Studio propone un equipo de agentes. Lo prueba con un ejemplo antes de adoptarlo; en este paso no se ejecuta nada de verdad.</value>
   </data>
   <data name="Studio.Shell.TourStep3Title" xml:space="preserve">
-    <value>El trabajo diario</value>
+    <value>Encuentre aquí sus equipos</value>
   </data>
   <data name="Studio.Shell.TourStep3Body" xml:space="preserve">
-    <value>Probar antes de lanzar, ejecutar, y luego encontrar cada ejecución en el historial — con su resultado y lo necesario para repetirla idéntica.</value>
-  </data>
-  <data name="Studio.Shell.TourStep4Title" xml:space="preserve">
-    <value>El entorno, de una vez por todas</value>
-  </data>
-  <data name="Studio.Shell.TourStep4Body" xml:space="preserve">
-    <value>Solo dos ajustes: el modelo de IA y las carpetas que los agentes pueden ver. El diagnóstico le avisa cuando algo bloquea.</value>
-  </data>
-  <data name="Studio.Shell.TourStep5Title" xml:space="preserve">
-    <value>La ayuda es contextual</value>
-  </data>
-  <data name="Studio.Shell.TourStep5Body" xml:space="preserve">
-    <value>En modo Principiante, las pantallas con pasos (Crear un equipo, Ejecutar) llevan un recuadro «Lo que hace este paso» a la izquierda, bajo la lista de secciones. Desaparece en modo Experto.</value>
+    <value>Cada equipo adoptado aparece en «Mis equipos»: lo ejecuta, lo programa o lo modifica desde su tarjeta.</value>
   </data>
   <!-- STUDIO-34: the status bar at the foot of the window -->
   <data name="Studio.Shell.StatusWaiting" xml:space="preserve">
@@ -289,6 +277,9 @@
   <data name="Studio.Settings.MountsRemove" xml:space="preserve">
     <value>Quitar</value>
   </data>
+  <data name="Studio.Settings.MountSuggestions" xml:space="preserve">
+    <value>Sugerencias:</value>
+  </data>
   <data name="Studio.Settings.Unparsed" xml:space="preserve">
     <value>No se pudo analizar esta entrada. Se conserva tal cual, no se pierde nada.</value>
   </data>
@@ -355,6 +346,7 @@
   <data name="Studio.Run.SettingsAuto" xml:space="preserve">
     <value>Automático (resuelto por el runtime)</value>
   </data>
+  <data name="Studio.Run.SettingsFileTitle" xml:space="preserve"><value>Archivo de ajustes</value></data>
   <data name="Studio.Run.SettingsExplicit" xml:space="preserve">
     <value>Ruta explícita</value>
   </data>
@@ -374,33 +366,27 @@
     <value>Entradas</value>
   </data>
   <data name="Studio.Run.LblInputsJson" xml:space="preserve">
-    <value>JSON en línea (--inputs)</value>
+    <value>JSON en línea</value>
   </data>
   <data name="Studio.Run.LblInputsFile" xml:space="preserve">
-    <value>Archivo (--inputs-file)</value>
+    <value>Archivo</value>
   </data>
   <data name="Studio.Run.LblVerbosity" xml:space="preserve">
-    <value>Verbosidad (--verbose)</value>
+    <value>Detalle del registro</value>
   </data>
   <data name="Studio.Run.LlmLog" xml:space="preserve">
-    <value>Registrar los intercambios LLM (--llm-log)</value>
+    <value>Conservar los intercambios con el modelo</value>
   </data>
   <data name="Studio.Run.SettingsMountsTitle" xml:space="preserve">
     <value>Montajes ya presentes en el appsettings seleccionado</value>
   </data>
   <data name="Studio.Run.AllowExternal" xml:space="preserve">
-    <value>Permitir montajes fuera del directorio de trabajo (--allow-external-mounts)</value>
+    <value>Permitir carpetas fuera del directorio de trabajo</value>
   </data>
   <data name="Studio.Run.CopyCommand" xml:space="preserve"><value>Copiar el comando</value></data>
   <data name="Studio.Run.CommandCopied" xml:space="preserve"><value>Comando copiado</value></data>
   <data name="Studio.Run.StateIdle" xml:space="preserve">
     <value>Lista para trabajar</value>
-  </data>
-  <data name="Studio.Run.StateRunning" xml:space="preserve">
-    <value>Ejecución en curso</value>
-  </data>
-  <data name="Studio.Run.StateDone" xml:space="preserve">
-    <value>Ejecución terminada</value>
   </data>
   <data name="Studio.Run.BadgeIdle" xml:space="preserve">
     <value>en espera</value>
@@ -411,6 +397,7 @@
   <data name="Studio.Run.BadgeDone" xml:space="preserve">
     <value>exitosa</value>
   </data>
+  <data name="Studio.Run.BadgeDoneSkipped" xml:space="preserve"><value>Exitosa · {0} {0:plural:agente no ejecutado|agentes no ejecutados}</value></data>
   <data name="Studio.Run.BadgeFailed" xml:space="preserve">
     <value>fallida</value>
   </data>
@@ -467,7 +454,7 @@
     <value>Historial</value>
   </data>
   <data name="Studio.History.Sub" xml:space="preserve">
-    <value>Cada ejecución se guarda localmente y puede repetirse de forma idéntica.</value>
+    <value>Cada ejecución real se guarda aquí. Puede volver a lanzarla con los mismos ajustes.</value>
   </data>
   <data name="Studio.History.Replay" xml:space="preserve">
     <value>Preparar la repetición</value>
@@ -496,6 +483,12 @@
   <data name="Studio.Run.ExitCode" xml:space="preserve">
     <value>Código de salida {0} — {1}</value>
   </data>
+  <data name="Studio.Run.ExitSuccess" xml:space="preserve"><value>ejecución completada sin errores</value></data>
+  <data name="Studio.Run.ExitScriptError" xml:space="preserve"><value>error de script o de configuración: revise el archivo del equipo y la configuración que usa</value></data>
+  <data name="Studio.Run.ExitRuntimeError" xml:space="preserve"><value>error durante la ejecución: las últimas líneas del registro explican por qué</value></data>
+  <data name="Studio.Run.ExitCancelled" xml:space="preserve"><value>ejecución interrumpida</value></data>
+  <data name="Studio.Run.ExitUnknown" xml:space="preserve"><value>final inesperado: revise la salida de arriba</value></data>
+  <data name="Studio.Run.ExitNotStarted" xml:space="preserve"><value>el motor no se inició</value></data>
   <data name="Studio.Settings.OllamaTitle" xml:space="preserve">
     <value>Ollama</value>
   </data>
@@ -981,12 +974,6 @@
   <data name="Studio.Shell.Expert" xml:space="preserve">
     <value>Experto</value>
   </data>
-  <data name="Studio.Shell.HelpTitle" xml:space="preserve">
-    <value>¿Necesita ayuda?</value>
-  </data>
-  <data name="Studio.Shell.HelpBody" xml:space="preserve">
-    <value>El modo Principiante explica cada paso. Pase a Experto cuando quiera verlo todo.</value>
-  </data>
   <data name="Studio.Common.GuidedTour" xml:space="preserve">
     <value>Visita guiada</value>
   </data>
@@ -1025,6 +1012,15 @@
   </data>
   <data name="Studio.Common.SubNovice" xml:space="preserve">
     <value>Dos cosas por configurar: qué modelo de IA, y qué carpetas pueden ver sus agentes.</value>
+  </data>
+  <data name="Studio.Settings.AutoSaveNote" xml:space="preserve">
+    <value>Sus cambios se guardan automáticamente.</value>
+  </data>
+  <data name="Studio.Settings.ValidateTip" xml:space="preserve">
+    <value>Comprueba los ajustes sin guardarlos.</value>
+  </data>
+  <data name="Studio.Settings.SaveTip" xml:space="preserve">
+    <value>Comprueba y luego escribe el archivo de ajustes.</value>
   </data>
   <data name="Studio.Common.SubExpert" xml:space="preserve">
     <value>appsettings.json — formularios tipados, montajes, límites de tasa, y el archivo bruto en solo lectura.</value>
@@ -1116,17 +1112,41 @@
   <data name="Studio.Settings.NewName" xml:space="preserve">
     <value>Nuevo perfil</value>
   </data>
+  <data name="Studio.Settings.FirstProfileName" xml:space="preserve">
+    <value>Principal</value>
+  </data>
+  <data name="Studio.Settings.ChooseModelCta" xml:space="preserve">
+    <value>Elegir mi modelo de IA</value>
+  </data>
+  <data name="Studio.Settings.ModelMissingTip" xml:space="preserve">
+    <value>Ningún modelo elegido: el asistente no puede componer un equipo.</value>
+  </data>
   <data name="Studio.Settings.GroupLocal" xml:space="preserve">
     <value>EN SU MÁQUINA · GRATIS, SIN CLAVE</value>
   </data>
   <data name="Studio.Settings.GroupCloud" xml:space="preserve">
     <value>EN LA NUBE · CLAVE DE API REQUERIDA</value>
   </data>
+  <data name="Studio.Settings.ProviderRecommended" xml:space="preserve">
+    <value>Recomendado</value>
+  </data>
+  <data name="Studio.Settings.GroupOthers" xml:space="preserve">
+    <value>Otros proveedores</value>
+  </data>
   <data name="Studio.Settings.KeyTitleFor" xml:space="preserve">
     <value>Clave de API {0}</value>
   </data>
   <data name="Studio.Settings.KeyTitleService" xml:space="preserve">
     <value>Clave de API del servicio</value>
+  </data>
+  <data name="Studio.Settings.ToolSecretWebSearch" xml:space="preserve">
+    <value>Búsqueda web (Tavily)</value>
+  </data>
+  <data name="Studio.Settings.ToolSecretBraveSearch" xml:space="preserve">
+    <value>Búsqueda web (Brave)</value>
+  </data>
+  <data name="Studio.Settings.ToolSecretImageGeneration" xml:space="preserve">
+    <value>Generación de imágenes (OpenAI)</value>
   </data>
   <data name="Studio.Settings.KeyExplainer" xml:space="preserve">
     <value>Studio la guarda en su sesión de Windows — nunca en un archivo, nunca en una carpeta compartida.</value>
@@ -1136,6 +1156,9 @@
   </data>
   <data name="Studio.Settings.KeyStore" xml:space="preserve">
     <value>Recordar la clave</value>
+  </data>
+  <data name="Studio.Settings.SecretStore" xml:space="preserve">
+    <value>Recordar</value>
   </data>
   <data name="Studio.Settings.KeyStatusSet" xml:space="preserve">
     <value>clave recordada</value>
@@ -1199,6 +1222,9 @@
   </data>
   <data name="Studio.Create.ManageSettings" xml:space="preserve">
     <value>Gestionar los perfiles</value>
+  </data>
+  <data name="Studio.Create.ChooseModel" xml:space="preserve">
+    <value>Elegir un modelo</value>
   </data>
   <data name="Studio.Create.Step1" xml:space="preserve">
     <value>Describir</value>
@@ -1344,9 +1370,7 @@
   <data name="Studio.Teams.Delete" xml:space="preserve">
     <value>Eliminar</value>
   </data>
-  <data name="Studio.Teams.InProgress" xml:space="preserve">
-    <value>SESIONES EN CURSO</value>
-  </data>
+  <data name="Studio.Teams.InProgressCount" xml:space="preserve"><value>Borradores · {0}</value></data>
   <data name="Studio.Teams.Resume" xml:space="preserve">
     <value>Reanudar</value>
   </data>
@@ -1365,6 +1389,9 @@
   <data name="Studio.Create.ActivityDone" xml:space="preserve">
     <value>{0} — terminado en {1} s</value>
   </data>
+  <data name="Studio.Create.ActivityDoneUntimed" xml:space="preserve">
+    <value>{0} — terminado</value>
+  </data>
   <data name="Studio.Create.ActivityFailed" xml:space="preserve">
     <value>{0} — en fallo</value>
   </data>
@@ -1375,7 +1402,7 @@
     <value>Elija primero un modelo para el asistente.</value>
   </data>
   <data name="Studio.Create.HintReady" xml:space="preserve">
-    <value>Todo está aquí — puedo componer el equipo.</value>
+    <value>Listo: puede componer el equipo.</value>
   </data>
   <data name="Studio.Create.DecisionAccept" xml:space="preserve">
     <value>Me sirve</value>
@@ -1602,6 +1629,7 @@
   <data name="Studio.History.Result" xml:space="preserve">
     <value>Abrir el resultado</value>
   </data>
+  <data name="Studio.History.ShowError" xml:space="preserve"><value>Ver el error</value></data>
   <data name="Studio.Diagnostics.Check.appsettings" xml:space="preserve">
     <value>Los ajustes son legibles</value>
   </data>
@@ -1611,6 +1639,7 @@
   <data name="Studio.Diagnostics.Check.esbuild" xml:space="preserve">
     <value>El compilador de scripts (esbuild)</value>
   </data>
+  <data name="Studio.Diagnostics.Check.install-channel" xml:space="preserve"><value>Canal de instalación del motor</value></data>
   <data name="Studio.Diagnostics.Check.llm-config" xml:space="preserve">
     <value>Configuración del modelo</value>
   </data>
@@ -1629,11 +1658,15 @@
   <data name="Studio.Diagnostics.Check.onnx-reranker" xml:space="preserve">
     <value>El reordenador ONNX</value>
   </data>
+  <data name="Studio.Diagnostics.Check.runner-settings" xml:space="preserve"><value>Configuración del lanzador</value></data>
   <data name="Studio.Diagnostics.Check.tree-sitter" xml:space="preserve">
     <value>El analizador de código (tree-sitter)</value>
   </data>
   <data name="Studio.Diagnostics.Check.workspace-write" xml:space="preserve">
     <value>La escritura en la carpeta de trabajo</value>
+  </data>
+  <data name="Studio.Diagnostics.Check.Unknown" xml:space="preserve">
+    <value>Comprobación del motor</value>
   </data>
   <data name="Studio.Diagnostics.AllGood" xml:space="preserve">
     <value>Todo está en su sitio.</value>
@@ -1689,6 +1722,8 @@
   <data name="Studio.Import.TestFirst" xml:space="preserve">
     <value>Probar primero</value>
   </data>
+  <data name="Studio.Import.DetectHint" xml:space="preserve"><value>Indique primero un archivo o una carpeta de equipo.</value></data>
+  <data name="Studio.Import.PathPlaceholder" xml:space="preserve"><value>Ejemplo: C:\Equipos\vigilancia\team.yaml</value></data>
   <data name="Studio.Run.Browse" xml:space="preserve">
     <value>Examinar…</value>
   </data>
@@ -1730,6 +1765,12 @@
   </data>
   <data name="Studio.Settings.ToolsIntro" xml:space="preserve">
     <value>Todas las herramientas que un equipo puede usar en una ejecución, por familia. La mayoría no necesita nada; las que sí, lo dicen, y dónde.</value>
+  </data>
+  <data name="Studio.Settings.ToolKeysElsewhere" xml:space="preserve">
+    <value>Las claves de las herramientas (búsqueda web, imágenes…) se configuran en Acceso › Claves de las herramientas.</value>
+  </data>
+  <data name="Studio.Settings.ApiKeysElsewhere" xml:space="preserve">
+    <value>Las claves de los modelos se configuran en Modelos › Claves de API.</value>
   </data>
   <data name="Studio.Settings.ShellTitle" xml:space="preserve">
     <value>Comandos de shell</value>
@@ -2028,6 +2069,9 @@
   <data name="Studio.Settings.MailStateNotReady" xml:space="preserve">
     <value>No está lista</value>
   </data>
+  <data name="Studio.Settings.MailNotReadyPassword" xml:space="preserve"><value>La contraseña no está almacenada: la variable {0} está vacía en este equipo. Escríbala en la pestaña Inicio de sesión.</value></data>
+  <data name="Studio.Settings.MailNotReadySecret" xml:space="preserve"><value>El secreto de cliente no está almacenado: la variable {0} está vacía en este equipo. Escríbalo en la pestaña Inicio de sesión.</value></data>
+  <data name="Studio.Settings.MailNotReadyOAuth" xml:space="preserve"><value>Esta cuenta aún no ha iniciado sesión: use « Iniciar sesión » más abajo.</value></data>
   <data name="Studio.Settings.MailStateSetAside" xml:space="preserve">
     <value>Apartada</value>
   </data>
@@ -2083,11 +2127,13 @@
     <value>Iniciando la sesión…</value>
   </data>
   <data name="Studio.Settings.MailDeviceCode" xml:space="preserve">
-    <value>Abra {0} e introduzca este código:</value>
+    <value>Abra la página de autorización de abajo e introduzca este código:</value>
   </data>
   <data name="Studio.Settings.MailDeviceCodeExpiresIn" xml:space="preserve">
     <value>El código caduca en {0}</value>
   </data>
+  <data name="Studio.Settings.MailDeviceCodeExpiresSoon" xml:space="preserve"><value>El código caduca en menos de un minuto</value></data>
+  <data name="Studio.Common.Minutes" xml:space="preserve"><value>{0} min</value></data>
   <data name="Studio.Settings.MailDeviceCodeExpired" xml:space="preserve">
     <value>El código ha caducado — empiece de nuevo</value>
   </data>
@@ -2267,7 +2313,7 @@
     <value>Restablecer</value>
   </data>
   <data name="Studio.Run.BlockedUndeclared" xml:space="preserve">
-    <value>Este equipo usa carpetas que sus ajustes no autorizan: {0}. Declárelas en Ajustes › Carpetas autorizadas, o retírelas del equipo.</value>
+    <value>Este equipo usa carpetas que sus ajustes no autorizan: {0}. Autorícelas en Ajustes › Carpetas autorizadas, o retírelas del equipo.</value>
   </data>
   <data name="Studio.Run.OpenAllowedFolders" xml:space="preserve">
     <value>Abrir las carpetas autorizadas</value>
@@ -2302,7 +2348,7 @@
   <data name="Studio.Settings.TeamFoldersUnknownId" xml:space="preserve"><value>{0} · {1} — la declaración {2} falta en esta máquina</value></data>
   <data name="Studio.Create.UnknownMountId" xml:space="preserve"><value>Esta declaración ({0}) falta en esta máquina</value></data>
   <data name="Studio.Create.DeclaredFolder" xml:space="preserve"><value>«{0}» autorizada y vinculada como {1}</value></data>
-  <data name="Studio.Run.BlockedUnknownMountId" xml:space="preserve"><value>Este equipo hace referencia a declaraciones de carpeta que faltan aquí: {0}. Decláralas en Ajustes › Carpetas autorizadas o cambia las carpetas del equipo.</value></data>
+  <data name="Studio.Run.BlockedUnknownMountId" xml:space="preserve"><value>Este equipo hace referencia a carpetas autorizadas que faltan aquí: {0}. Autorízalas en Ajustes › Carpetas autorizadas o cambia las carpetas del equipo.</value></data>
   <data name="Studio.Run.OriginSelectedById" xml:space="preserve"><value>{0} (seleccionada por identificador entre {1})</value></data>
   <data name="Studio.Run.OriginNotSelected" xml:space="preserve"><value>{0} (no montada en esta ejecución)</value></data>
   <data name="Studio.Run.OriginConflict" xml:space="preserve"><value>{0} (una de {1} entradas — nada la selecciona)</value></data>
@@ -2342,6 +2388,7 @@
   <data name="Studio.Create.FoldersHint" xml:space="preserve">
     <value>Estas carpetas se registran con el equipo en el momento de la adopción — el ensayo, en cambio, corre en su propio entorno aislado.</value>
   </data>
+  <data name="Studio.Create.FoldersQuestion" xml:space="preserve"><value>¿Dónde están sus archivos? ¿Dónde guardar los resultados?</value></data>
   <data name="Studio.Teams.Modify" xml:space="preserve">
     <value>Editar</value>
   </data>
@@ -2366,6 +2413,9 @@
   <data name="Studio.Create.AddAgent" xml:space="preserve">
     <value>Añadir un agente</value>
   </data>
+  <data name="Studio.Create.AdjustTeam" xml:space="preserve">
+    <value>Ajustar el equipo…</value>
+  </data>
   <data name="Studio.Teams.MountRo" xml:space="preserve">
     <value>{0} · lectura</value>
   </data>
@@ -2376,8 +2426,10 @@
     <value>carpeta ilegible</value>
   </data>
   <data name="Studio.Teams.ToTest" xml:space="preserve">
-    <value>por probar</value>
+    <value>Por probar</value>
   </data>
+  <data name="Studio.Teams.NeedsFolderBadge" xml:space="preserve"><value>Carpeta por autorizar</value></data>
+  <data name="Studio.Teams.ReadyBadge" xml:space="preserve"><value>Lista · bajo demanda</value></data>
   <data name="Studio.Teams.LastRun" xml:space="preserve">
     <value>Última ejecución: {0}, {1}</value>
   </data>
@@ -2439,7 +2491,7 @@
     <value>El asistente propone un equipo: un agente por tarea, cada uno con las capacidades justas. Puede modificar un agente, añadir otro, y elegir qué carpetas verá el equipo una vez adoptado.</value>
   </data>
   <data name="Studio.Create.HelpStep3" xml:space="preserve">
-    <value>El equipo ensaya sobre un ejemplo, en su propio entorno aislado — no se toca nada fuera de él. El veredicto le dice honestamente si el resultado corresponde a lo que pidió en el paso 1.</value>
+    <value>El equipo ensaya sobre un ejemplo, en su entorno aislado — no se toca nada más. El veredicto le dice si el resultado corresponde a lo que pidió en el paso 1.</value>
   </data>
   <data name="Studio.Create.HelpStep4" xml:space="preserve">
     <value>Adoptar guarda el equipo como una carpeta ordinaria de su perfil. Si eligió una planificación, Studio le propone después instalarla en el programador de su sistema; el equipo aparece en Mis equipos.</value>
@@ -2465,6 +2517,8 @@
   <data name="Studio.Teams.DeleteConfirm" xml:space="preserve">
     <value>¿Eliminar este equipo?</value>
   </data>
+  <data name="Studio.Teams.DeleteConfirmNamed" xml:space="preserve"><value>¿Eliminar el equipo «{0}»?</value></data>
+  <data name="Studio.Teams.DeleteConsequence" xml:space="preserve"><value>Su carpeta y su historial se borran. Las carpetas que añadió se quedan donde están.</value></data>
   <data name="Studio.Teams.SessionDeleteConfirm" xml:space="preserve">
     <value>¿Eliminar este borrador?</value>
   </data>
@@ -2479,9 +2533,6 @@
   </data>
   <data name="Studio.Teams.Import" xml:space="preserve">
     <value>Importar un equipo</value>
-  </data>
-  <data name="Studio.Teams.NoSessions" xml:space="preserve">
-    <value>Una creación interrumpida reaparecerá aquí.</value>
   </data>
   <data name="Studio.Create.DraftStepPattern" xml:space="preserve">
     <value>Paso {0} de {1} · {2}</value>
@@ -2564,6 +2615,7 @@
   <data name="Studio.Chat.SessionEnded" xml:space="preserve">
     <value>El asistente se detuvo antes de terminar el resumen. Vuelve a empezar cuando quieras.</value>
   </data>
+  <data name="Studio.Chat.Restart" xml:space="preserve"><value>Reanudar</value></data>
   <data name="Studio.Create.HintComposing" xml:space="preserve">
     <value>Composición en curso: el asistente prepara el equipo.</value>
   </data>
@@ -2601,7 +2653,7 @@
     <value>Trabajando…</value>
   </data>
   <data name="Studio.Create.StageIdle" xml:space="preserve">
-    <value>Detenido.</value>
+    <value>Composición detenida.</value>
   </data>
   <data name="Studio.Create.TokensUp" xml:space="preserve">
     <value>Tokens enviados al modelo</value>
@@ -2671,6 +2723,15 @@
   </data>
   <data name="Studio.Chat.FactOutput" xml:space="preserve">
     <value>Lo que sale</value>
+  </data>
+  <data name="Studio.Chat.PillBrief" xml:space="preserve">
+    <value>Solicitud</value>
+  </data>
+  <data name="Studio.Chat.PillSource" xml:space="preserve">
+    <value>Entradas</value>
+  </data>
+  <data name="Studio.Chat.PillOutput" xml:space="preserve">
+    <value>Salida</value>
   </data>
   <data name="Studio.Chat.FactComposeNote" xml:space="preserve">
     <value>Instrucción de composición</value>
@@ -2786,6 +2847,7 @@
   <data name="Studio.Run.ChooseTeam" xml:space="preserve">
     <value>Elegir un equipo</value>
   </data>
+  <data name="Studio.Run.PickTeamPrompt" xml:space="preserve"><value>Elija un equipo…</value></data>
   <data name="Studio.Diagnostics.StatusOk" xml:space="preserve">
     <value>En su sitio.</value>
   </data>
@@ -2824,7 +2886,7 @@
     <value>Detener la planificación</value>
   </data>
   <data name="Studio.Teams.ScheduleManual" xml:space="preserve">
-    <value>A mano:</value>
+    <value>Comando para ejecutar a mano:</value>
   </data>
   <data name="Studio.Teams.ScheduleInstallFailed" xml:space="preserve">
     <value>No se pudo instalar la planificación: {0}</value>
@@ -2926,6 +2988,7 @@
   <data name="Studio.Teams.DeleteAskArchive" xml:space="preserve">
     <value>¿Mover el equipo y lo que lo acompaña al archivo del taller?</value>
   </data>
+  <data name="Studio.Teams.DeleteAskArchiveNamed" xml:space="preserve"><value>¿Mover el equipo «{0}» al archivo?</value></data>
   <data name="Studio.Teams.ArchivedToWorkshop" xml:space="preserve">
     <value>Movido a {0}.</value>
   </data>
@@ -2945,8 +3008,10 @@
     <value>La copia corre con el ajuste predeterminado: no se pudo copiar {0}.</value>
   </data>
   <data name="Studio.Create.RenameHint" xml:space="preserve">
-    <value>Para renombrar la carpeta, use Renombrar en Mis equipos.</value>
+    <value>Aquí solo cambia el título. «Renombrar» en Mis equipos también renombra la carpeta.</value>
   </data>
+  <data name="Studio.Create.AdoptModelDefault" xml:space="preserve"><value>{0} (predeterminado)</value></data>
+  <data name="Studio.Create.NameIsFolder" xml:space="preserve"><value>El nombre también es el nombre de la carpeta.</value></data>
   <!-- STUDIO-32: My teams — the search, the order, the Archives view, the archive gestures and their undo banner, the archive suggestion and its Settings › Studio card -->
   <data name="Studio.Teams.SearchHint" xml:space="preserve">
     <value>Buscar un equipo por su nombre o su necesidad…</value>
@@ -2967,8 +3032,10 @@
     <value>Archivados ({0})</value>
   </data>
   <data name="Studio.Teams.ArchivesHint" xml:space="preserve">
-    <value>Los equipos archivados salen de la lista, del selector de la pantalla Ejecutar y del saldo; sus carpetas, sesiones e historial se quedan donde están. « Restaurar » devuelve un equipo junto a los demás.</value>
+    <value>Archivar saca el equipo de la lista sin borrar nada. Restaurar lo devuelve.</value>
   </data>
+  <data name="Studio.Teams.ArchivesTitle" xml:space="preserve"><value>Equipos archivados</value></data>
+  <data name="Studio.Teams.ArchivesBack" xml:space="preserve"><value>← Volver a mis equipos</value></data>
   <data name="Studio.Teams.Archive" xml:space="preserve">
     <value>Archivar</value>
   </data>
@@ -3123,8 +3190,9 @@
     <value>escritura</value>
   </data>
   <data name="Studio.Settings.RightsBadgeRwnd" xml:space="preserve">
-    <value>escritura, sin borrado</value>
+    <value>escritura sin borrado</value>
   </data>
+  <data name="Studio.Settings.RightsRwndTip" xml:space="preserve"><value>Puede modificar, nunca borrar.</value></data>
   <!-- STUDIO-14 settings: the read-only « Team folders » section of the folders tab -->
   <data name="Studio.Settings.TeamFoldersTitle" xml:space="preserve">
     <value>CARPETAS DE LOS EQUIPOS</value>
@@ -3155,6 +3223,7 @@
   <data name="Studio.Create.FailureEngineMissing" xml:space="preserve">
     <value>El motor orkeon no se encuentra en esta máquina.</value>
   </data>
+  <data name="Studio.Create.FailureEngineMissingHow" xml:space="preserve"><value>Instale el motor de Orkeon y vuelva a ejecutar el diagnóstico.</value></data>
   <data name="Studio.Create.FailureConfigRefused" xml:space="preserve">
     <value>El motor se negó a continuar.</value>
   </data>
@@ -3229,6 +3298,7 @@
   <data name="Studio.Create.OpenFolderSession" xml:space="preserve">
     <value>Abre la sesión de trabajo — la carpeta en la que escribe el asistente.</value>
   </data>
+  <data name="Studio.Create.OpenFolderLater" xml:space="preserve"><value>Disponible después de la composición: la carpeta de la sesión aún no existe.</value></data>
   <data name="Studio.Create.OpenFolderTeam" xml:space="preserve">
     <value>Abre la carpeta del equipo adoptado.</value>
   </data>
@@ -3253,8 +3323,10 @@
   <data name="Studio.Create.GalleryReference" xml:space="preserve"><value>Inspirado en: {0}</value></data>
   <data name="Studio.Create.GalleryAllCategories" xml:space="preserve"><value>Todos</value></data>
   <data name="Studio.Create.GalleryAnyProcess" xml:space="preserve"><value>Cualquiera</value></data>
-  <data name="Studio.Create.GalleryCount" xml:space="preserve"><value>{0} de {1} casos de uso</value></data>
+  <data name="Studio.Create.GalleryCountShort" xml:space="preserve"><value>{0} casos de {1}</value></data>
   <data name="Studio.Create.GallerySuggested" xml:space="preserve"><value>Cercanos a su necesidad ({0})</value></data>
+  <data name="Studio.Create.GalleryMoreFilters" xml:space="preserve"><value>Más filtros</value></data>
+  <data name="Studio.Create.GalleryAgentsLine" xml:space="preserve"><value>{0} {0:plural:agente|agentes} · {1}</value></data>
   <data name="Studio.Create.GalleryUnreadable" xml:space="preserve"><value>No se pudieron leer los casos de uso.</value></data>
   <data name="Studio.Create.GalleryCategoryEnterprise" xml:space="preserve"><value>Empresa</value></data>
   <data name="Studio.Create.GalleryCategoryScience" xml:space="preserve"><value>Ciencia e investigación</value></data>
@@ -3289,6 +3361,7 @@
   <data name="Studio.Create.GalleryOpenTeams" xml:space="preserve"><value>Abrir Mis equipos</value></data>
   <data name="Studio.Create.GalleryEmpty" xml:space="preserve"><value>Ningún caso de uso coincide con estos filtros.</value></data>
   <data name="Studio.Create.GalleryClearFilters" xml:space="preserve"><value>Borrar los filtros</value></data>
+  <data name="Studio.Create.GalleryClear" xml:space="preserve"><value>Borrar</value></data>
   <data name="Studio.Create.GalleryLoading" xml:space="preserve"><value>Leyendo los casos de uso…</value></data>
   <data name="Studio.Create.GalleryClose" xml:space="preserve"><value>Cerrar</value></data>
   <data name="Studio.Create.GalleryRemoveReference" xml:space="preserve"><value>Quitar la referencia: su necesidad queda como está.</value></data>
@@ -3451,6 +3524,9 @@
   <data name="Studio.Create.FolderLocation" xml:space="preserve"><value>Ubicación</value></data>
   <data name="Studio.Create.FolderOnMachine" xml:space="preserve"><value>Carpeta en este equipo</value></data>
   <data name="Studio.Create.ChooseShort" xml:space="preserve"><value>Elegir…</value></data>
+  <data name="Studio.Create.UseExistingFolder" xml:space="preserve"><value>Usar una carpeta existente…</value></data>
+  <data name="Studio.Create.OutputFolderLabel" xml:space="preserve"><value>Resultados (/output)</value></data>
+  <data name="Studio.Create.WorkspaceFolderLabel" xml:space="preserve"><value>Espacio de trabajo (/workspace)</value></data>
   <data name="Studio.Run.OutcomeSucceeded" xml:space="preserve"><value>Correcto</value></data>
   <data name="Studio.Run.OutcomeFailed" xml:space="preserve"><value>Fallido</value></data>
   <data name="Studio.Run.OutcomeCancelled" xml:space="preserve"><value>Cancelado</value></data>
@@ -3597,6 +3673,7 @@
   <data name="Studio.Teams.LlmSaved" xml:space="preserve"><value>{0} se ejecuta ahora con: {1}.</value></data>
   <data name="Studio.Teams.ConfigureModel" xml:space="preserve"><value>Configurar un modelo</value></data>
   <data name="Studio.Run.LlmForThisRun" xml:space="preserve"><value>Esta ejecución: {0}</value></data>
+  <data name="Studio.Run.LlmDefaultEntry" xml:space="preserve"><value>Predeterminado ({0})</value></data>
   <data name="Studio.Run.RememberLlmForTeam" xml:space="preserve"><value>Recordar para este equipo</value></data>
   <data name="Studio.Settings.UsedByDefault" xml:space="preserve"><value>{0} equipo(s), {1} por defecto</value></data>
   <data name="Studio.Settings.TabModelCount" xml:space="preserve">
@@ -3691,11 +3768,11 @@
   <data name="Studio.Teams.RowSchedule" xml:space="preserve"><value>Programación</value></data>
   <data name="Studio.Teams.ChangeShort" xml:space="preserve"><value>Cambiar</value></data>
   <data name="Studio.Teams.NoMountsValue" xml:space="preserve"><value>Ninguna carpeta</value></data>
-  <data name="Studio.Teams.RefusedRuns" xml:space="preserve"><value>{0} {0:plural:ejecución programada será rechazada|ejecuciones programadas serán rechazadas} en la próxima pasada: el archivo de ajustes guardado aún no contiene {1}.</value></data>
-  <data name="Studio.Teams.SaveSettings" xml:space="preserve"><value>Guardar los ajustes</value></data>
+  <data name="Studio.Teams.RefusedRuns" xml:space="preserve"><value>{0} {0:plural:equipo programado no podrá|equipos programados no podrán} arrancar en la próxima pasada: sus ajustes (modelo o carpetas) no están guardados.</value></data>
+  <data name="Studio.Teams.SaveSettings" xml:space="preserve"><value>Corregir ahora</value></data>
   <data name="Studio.Teams.ImportShort" xml:space="preserve"><value>Importar</value></data>
-  <data name="Studio.Teams.ScheduleManualValue" xml:space="preserve"><value>Sin programar</value></data>
-  <data name="Studio.Teams.LaunchNeedsFolder" xml:space="preserve"><value>Autorice primero la carpeta {0}.</value></data>
+  <data name="Studio.Teams.ScheduleManualValue" xml:space="preserve"><value>Bajo demanda</value></data>
+  <data name="Studio.Teams.LaunchNeedsFolder" xml:space="preserve"><value>Autorice primero la carpeta {0} para lanzar el equipo.</value></data>
   <data name="Studio.Teams.AllowFolder" xml:space="preserve"><value>Autorizar</value></data>
   <data name="Studio.Create.SessionRunning" xml:space="preserve"><value>En curso</value></data>
   <data name="Studio.Create.SessionWaiting" xml:space="preserve"><value>Esperando su respuesta</value></data>
@@ -3703,7 +3780,10 @@
   <data name="Studio.Create.DraftSavedAt" xml:space="preserve"><value>Borrador guardado a las {0}</value></data>
   <data name="Studio.Create.ResumeUnavailable" xml:space="preserve"><value>Esta sesión ya no se puede reanudar aquí: empiece de nuevo o búsquela en Sesiones en curso, en Mis equipos.</value></data>
   <data name="Studio.Create.FoldersToChoose" xml:space="preserve"><value>{0} {0:plural:carpeta|carpetas} por elegir antes de la prueba.</value></data>
+  <data name="Studio.Create.TryTeamNoProposal" xml:space="preserve"><value>Disponible después de la composición.</value></data>
   <data name="Studio.Create.VerdictSummary" xml:space="preserve"><value>{0} de {1} {1:plural:criterio cumplido|criterios cumplidos}</value></data>
+  <data name="Studio.Create.VerdictReady" xml:space="preserve"><value>Listo para adoptar</value></data>
+  <data name="Studio.Create.VerdictToFix" xml:space="preserve"><value>Por corregir: {0} {0:plural:punto|puntos}</value></data>
   <data name="Studio.Create.ScreenSub" xml:space="preserve"><value>Nada se escribe en su equipo antes de la adopción.</value></data>
   <data name="Studio.Create.Back" xml:space="preserve"><value>Atrás</value></data>
   <data name="Studio.Create.Resume" xml:space="preserve"><value>Reanudar</value></data>
@@ -3807,6 +3887,8 @@
   <data name="Studio.Run.OptionsFooter" xml:space="preserve">
     <value>{0} · {1} · {2} {2:plural:carpeta|carpetas}</value>
   </data>
+  <data name="Studio.Run.OptionsDefault" xml:space="preserve"><value>Ajustes predeterminados</value></data>
+  <data name="Studio.Run.VerbosityPrefix" xml:space="preserve"><value>Nivel {0}</value></data>
   <data name="Studio.Run.FoldersSection" xml:space="preserve">
     <value>Carpetas autorizadas — {0} {0:plural:carpeta|carpetas} del equipo, {1}</value>
   </data>
@@ -3900,6 +3982,8 @@
   <data name="Studio.Run.BlockedFolders" xml:space="preserve">
     <value>Una carpeta del equipo no está autorizada en esta máquina.</value>
   </data>
+  <data name="Studio.Run.FolderNotAllowed" xml:space="preserve"><value>No autorizada</value></data>
+  <data name="Studio.Run.AllowThisFolder" xml:space="preserve"><value>Autorizar esta carpeta</value></data>
   <data name="Studio.Run.BlockedArchived" xml:space="preserve">
     <value>Este equipo está archivado: restáurelo para lanzarlo.</value>
   </data>
@@ -3942,12 +4026,17 @@
   <data name="Studio.Settings.GroupAccess" xml:space="preserve"><value>Acceso</value></data>
   <data name="Studio.Settings.GroupConnections" xml:space="preserve"><value>Conexiones</value></data>
   <data name="Studio.Settings.GroupAdvanced" xml:space="preserve"><value>Avanzado</value></data>
+  <data name="Studio.Settings.DotRequiredTip" xml:space="preserve"><value>Necesario para ejecutar un equipo</value></data>
+  <data name="Studio.Settings.DotOptionalTip" xml:space="preserve"><value>Opcional</value></data>
   <data name="Studio.Diagnostics.OpenModels" xml:space="preserve"><value>Abrir Modelos</value></data>
   <data name="Studio.Diagnostics.OpenKeys" xml:space="preserve">
     <value>Abrir Claves API</value>
   </data>
   <data name="Studio.Diagnostics.OpenFolders" xml:space="preserve"><value>Abrir Carpetas autorizadas</value></data>
   <data name="Studio.Diagnostics.OpenFile" xml:space="preserve"><value>Abrir el archivo de configuración</value></data>
+  <data name="Studio.Diagnostics.EngineMissingHow" xml:space="preserve"><value>Instale el motor de Orkeon y vuelva a ejecutar el diagnóstico.</value></data>
+  <data name="Studio.Diagnostics.InstallGuide" xml:space="preserve"><value>Cómo instalar el motor</value></data>
+  <data name="Studio.Diagnostics.FixFirst" xml:space="preserve"><value>Corregir el primer punto</value></data>
   <data name="Studio.Diagnostics.TestConnection" xml:space="preserve"><value>Probar la conexión</value></data>
   <data name="Studio.Diagnostics.CheckAgain" xml:space="preserve"><value>Comprobar de nuevo</value></data>
   <data name="Studio.Diagnostics.SettingsFile" xml:space="preserve"><value>Archivo de configuración</value></data>
@@ -3956,12 +4045,14 @@
   <data name="Studio.Diagnostics.Problem.appsettings" xml:space="preserve"><value>Studio no puede leer el archivo de configuración.</value></data>
   <data name="Studio.Diagnostics.Problem.dotnet-runtime" xml:space="preserve"><value>No se encuentra el entorno .NET que necesita el motor.</value></data>
   <data name="Studio.Diagnostics.Problem.esbuild" xml:space="preserve"><value>Falta el compilador de scripts en este equipo.</value></data>
+  <data name="Studio.Diagnostics.Problem.install-channel" xml:space="preserve"><value>Studio no reconoce cómo se instaló el motor; no se ofrecerán actualizaciones.</value></data>
   <data name="Studio.Diagnostics.Problem.llm-config" xml:space="preserve"><value>No hay ningún modelo configurado para los equipos.</value></data>
   <data name="Studio.Diagnostics.Problem.llm-profile-key" xml:space="preserve"><value>Un modelo no tiene clave, o no se encuentra su clave.</value></data>
   <data name="Studio.Diagnostics.Problem.llm-profiles" xml:space="preserve"><value>Un modelo está incompleto en la configuración.</value></data>
   <data name="Studio.Diagnostics.Problem.llm-reachability" xml:space="preserve"><value>El modelo no responde: compruebe su dirección y su clave.</value></data>
   <data name="Studio.Diagnostics.Problem.local-embeddings" xml:space="preserve"><value>Los embeddings locales no están disponibles en este equipo.</value></data>
   <data name="Studio.Diagnostics.Problem.onnx-reranker" xml:space="preserve"><value>El reclasificador ONNX no está disponible en este equipo.</value></data>
+  <data name="Studio.Diagnostics.Problem.runner-settings" xml:space="preserve"><value>La configuración del lanzador contiene un valor que el motor rechaza: en modo Experto, abra Configuración → pestaña Archivo.</value></data>
   <data name="Studio.Diagnostics.Problem.tree-sitter" xml:space="preserve"><value>El analizador de código no está disponible en este equipo.</value></data>
   <data name="Studio.Diagnostics.Problem.workspace-write" xml:space="preserve"><value>El motor no puede escribir en su carpeta de trabajo.</value></data>
   <data name="Studio.Chat.StatusWaitingCard" xml:space="preserve"><value>esperando su acción</value></data>
@@ -3971,13 +4062,11 @@
   <data name="Studio.Create.HintConfirmFolders" xml:space="preserve"><value>Confirme las carpetas para pasar a la composición.</value></data>
   <data name="Studio.Create.HintDecide" xml:space="preserve"><value>Resuelva la elección en la conversación para continuar.</value></data>
   <data name="Studio.Create.TabNeedDone" xml:space="preserve"><value>Descrito</value></data>
+  <data name="Studio.Create.TabNeedInterrupted" xml:space="preserve"><value>Descrito, briefing interrumpido</value></data>
   <data name="Studio.Create.TabNeedDoneAnswers" xml:space="preserve">
     <value>Descrito, {0} {0:plural:pregunta resuelta|preguntas resueltas}</value>
   </data>
   <data name="Studio.Create.TabNeedEmpty" xml:space="preserve"><value>Por describir</value></data>
-  <data name="Studio.Create.TabNeedEmptyFooter" xml:space="preserve"><value>Necesidad aún no descrita.</value></data>
-  <data name="Studio.Create.TabNeedFooter" xml:space="preserve"><value>Necesidad descrita.</value></data>
-  <data name="Studio.Create.TabNeedFooterAnswers" xml:space="preserve"><value>Necesidad descrita, {0} {0:plural:pregunta resuelta|preguntas resueltas} con el asistente</value></data>
   <data name="Studio.Create.TabFoldersPending" xml:space="preserve"><value>{0} {0:plural:carpeta por confirmar|carpetas por confirmar}</value></data>
   <data name="Studio.Create.TabFoldersPendingToChoose" xml:space="preserve">
     <value>{0} {0:plural:carpeta|carpetas} · {1} por elegir</value>
@@ -4028,6 +4117,8 @@
   <data name="Studio.Create.TabCompositionStopped" xml:space="preserve">
     <value>Detenida · {0} {0:plural:archivo escrito|archivos escritos}</value>
   </data>
+  <data name="Studio.Create.TabCompositionDone" xml:space="preserve"><value>Compuesta · {0} {0:plural:archivo escrito|archivos escritos}</value></data>
+  <data name="Studio.Create.TabCompositionInvalid" xml:space="preserve"><value>Por corregir · {0} {0:plural:archivo escrito|archivos escritos}</value></data>
   <data name="Studio.Create.TabCompositionRunning" xml:space="preserve">
     <value>En curso</value>
   </data>
@@ -4053,13 +4144,13 @@
     <value>En curso</value>
   </data>
   <data name="Studio.Create.CompositionStateValid" xml:space="preserve">
-    <value>Detenida — definición verificada</value>
+    <value>Compuesta — definición verificada</value>
   </data>
   <data name="Studio.Create.CompositionStateInvalid" xml:space="preserve">
-    <value>Detenida — definición por corregir</value>
+    <value>Composición por corregir</value>
   </data>
   <data name="Studio.Create.CompositionStateStopped" xml:space="preserve">
-    <value>Detenida</value>
+    <value>Composición detenida</value>
   </data>
   <data name="Studio.Create.CompositionFiles" xml:space="preserve">
     <value>{0} {0:plural:archivo|archivos} en el borrador del equipo</value>
@@ -4076,6 +4167,8 @@
   <data name="Studio.Create.CompositionFooterRunning" xml:space="preserve">
     <value>Composición en curso.</value>
   </data>
+  <data name="Studio.Create.CompositionFooterInvalid" xml:space="preserve"><value>Composición por corregir: la definición no es válida.</value></data>
+  <data name="Studio.Create.CompositionFooterStopped" xml:space="preserve"><value>Composición detenida.</value></data>
   <data name="Studio.Create.MoreTools" xml:space="preserve">
     <value>+ {0}</value>
   </data>
@@ -4106,7 +4199,6 @@
   <data name="Studio.Create.WaitPlaceholderFillFolders" xml:space="preserve">
     <value>Deje sus archivos y continúe, o haga una pregunta</value>
   </data>
-  <data name="Studio.Create.WaitPlaceholderChooseFolder" xml:space="preserve"><value>Elija la carpeta para continuar, o haga una pregunta</value></data>
   <data name="Studio.Create.WaitPlaceholderAdopt" xml:space="preserve"><value>Adopte el equipo para terminar, o haga una pregunta</value></data>
   <data name="Studio.Create.WaitShowCard" xml:space="preserve"><value>Ver la carpeta</value></data>
   <data name="Studio.Create.TabNeed" xml:space="preserve"><value>Necesidad</value></data>
@@ -4135,8 +4227,9 @@
     <value>Composición por el motor</value>
   </data>
   <data name="Studio.Create.CompositionSub" xml:space="preserve">
-    <value>Lo que hizo el motor para producir esta propuesta. Solo lectura; el detalle completo está en el diario técnico.</value>
+    <value>Lo que hizo el motor para producir esta propuesta. Solo lectura.</value>
   </data>
+  <data name="Studio.Create.CompositionSubExpert" xml:space="preserve"><value>El detalle completo está en el diario técnico, más abajo.</value></data>
   <data name="Studio.Create.FieldState" xml:space="preserve">
     <value>Estado</value>
   </data>
@@ -4168,7 +4261,6 @@
   <data name="Studio.Create.NotesTabSub" xml:space="preserve"><value>Opcional. Una instrucción se aplica a todos los agentes, viaja con el equipo y se convierte en un punto a verificar en la prueba.</value></data>
   <data name="Studio.Create.NotesPlaceholder" xml:space="preserve"><value>Por ejemplo: redactar cada respuesta en español y citar el documento de origen.</value></data>
   <data name="Studio.Create.NotesLeaveEmpty" xml:space="preserve"><value>Déjelo vacío si no tiene nada que imponer: el asistente propondrá sus propias reglas en el paso Componer.</value></data>
-  <data name="Studio.Chat.KeyHintPending" xml:space="preserve"><value>Ctrl+Intro para enviar · Mayús+Intro para una nueva línea</value></data>
   <data name="Studio.Chat.PendingReveal" xml:space="preserve"><value>Ver la tarjeta</value></data>
   <data name="Studio.Create.DecisionQuestion" xml:space="preserve"><value>La prueba está evaluada. ¿Qué hacemos ahora?</value></data>
 
@@ -4201,9 +4293,6 @@
   <!-- hrm:L05 end -->
 
   <!-- hrm:L06 begin -->
-  <data name="Studio.Teams.NoSessionsTitle" xml:space="preserve">
-    <value>Ninguna sesión en curso</value>
-  </data>
   <!-- hrm:L06 end -->
 
   <!-- hrm:L07 begin -->
@@ -4211,6 +4300,7 @@
 
   <!-- hrm:L08 begin -->
   <data name="Studio.Run.LaneNotRun" xml:space="preserve"><value>No ejecutado</value></data>
+  <data name="Studio.Run.TaskDetails" xml:space="preserve"><value>Detalle de las tareas</value></data>
   <data name="Studio.Run.PaneFinishedContext" xml:space="preserve"><value>Ejecución terminada</value></data>
   <!-- hrm:L08 end -->
 

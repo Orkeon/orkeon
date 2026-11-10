@@ -11,9 +11,26 @@ public partial class CreateTeamWizardTests
     [Fact]
     public void Names_that_share_an_initial_take_two_letters()
     {
+        var initials = CreateTeamViewModel.AvatarInitials(["Writer", "Wrangler", "Reviewer", "Analyst"]);
+
+        Assert.Equal("Wi|Wa|R|A", string.Join('|', initials));
+    }
+
+    [Fact]
+    public void Two_letters_an_accent_apart_take_the_first_letter_where_the_names_differ()
+    {
+        // UX lot 12 (016): an accented "Re" and a plain "Re" read as one avatar.
         var initials = CreateTeamViewModel.AvatarInitials(["Rédacteur", "Relecteur", "Analyste"]);
 
-        Assert.Equal("Ré|Re|A", string.Join('|', initials));
+        Assert.Equal("Rd|Rl|A", string.Join('|', initials));
+    }
+
+    [Fact]
+    public void Two_letters_that_differ_stay_the_first_two()
+    {
+        var initials = CreateTeamViewModel.AvatarInitials(["Writer", "Reader", "Router"]);
+
+        Assert.Equal("W|Re|Ro", string.Join('|', initials));
     }
 
     [Fact]

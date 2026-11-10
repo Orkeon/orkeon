@@ -27,14 +27,20 @@
       <StackPanel Orientation="Horizontal" Visibility="{Binding Mode.IsExpert, Converter={StaticResource BooleanToVisibility}}">
         <Button Style="{StaticResource BtnSecondary}" Command="{Binding Config.ValidateCommand}" Margin="0,0,8,0"
                 controls:ButtonIcon.Kind="badge-check"
+                ToolTip="{Binding [Studio.Settings.ValidateTip], Source={x:Static services:I18n.Instance}}"
                 Content="{Binding [Studio.Common.Validate], Source={x:Static services:I18n.Instance}}"/>
         <!-- Novice saves automatically (audit 07/16); the explicit ending of the cycle is
              the expert's. -->
         <Button Style="{StaticResource BtnPrimary}" Command="{Binding Config.SaveCommand}"
                 controls:ButtonIcon.Kind="save"
+                ToolTip="{Binding [Studio.Settings.SaveTip], Source={x:Static services:I18n.Instance}}"
                 Content="{Binding [Studio.Common.Save], Source={x:Static services:I18n.Instance}}"/>
       </StackPanel>
     </controls:PageHeader>
+    <!-- UX lot 04 (043-062): the novice is told the changes save themselves. -->
+    <TextBlock Style="{StaticResource Hint}" Margin="0,6,0,0" TextWrapping="Wrap"
+               Visibility="{Binding Mode.IsNovice, Converter={StaticResource BooleanToVisibility}}"
+               Text="{Binding [Studio.Settings.AutoSaveNote], Source={x:Static services:I18n.Instance}}"/>
     <!-- Lot 11: the outcomes only; « Loaded: path » is said once, in the File section. -->
     <TextBlock Style="{StaticResource MonoText}" FontSize="13" Margin="0,6,0,0" Text="{Binding Config.HeaderStatusMessage}"
                Visibility="{Binding Config.HeaderStatusMessage, Converter={StaticResource StringPresentToVisibility}}"/>
@@ -87,7 +93,13 @@
 
           <!-- lot 9: the model Studio itself uses (wizard, verdicts), distinct from the teams'
                models: a property row and its list. The tab's subtitle says when it is missing. -->
-          <StackPanel Margin="0,0,0,18">
+          <!-- UX lot 04 (043): with no model yet, the tab starts with the one useful action, not an empty list. -->
+          <Button Style="{StaticResource BtnPrimary}" HorizontalAlignment="Left" Margin="0,0,0,18"
+                  Command="{Binding Profiles.NewProfileCommand}" controls:ButtonIcon.Kind="plus"
+                  Visibility="{Binding Profiles.IsEmpty, Converter={StaticResource BooleanToVisibility}}"
+                  Content="{Binding [Studio.Settings.ChooseModelCta], Source={x:Static services:I18n.Instance}}"/>
+          <StackPanel Margin="0,0,0,18"
+                      Visibility="{Binding Profiles.IsEmpty, Converter={StaticResource InverseBooleanToVisibility}}">
             <controls:PropertyRow Label="{Binding [Studio.Settings.AssistantRow], Source={x:Static services:I18n.Instance}}">
               <Grid Width="320" HorizontalAlignment="Left">
                 <ComboBox ItemsSource="{Binding Profiles.ProfileNames}"
@@ -160,39 +172,34 @@
                       <StackPanel>
                         <StackPanel Orientation="Horizontal">
                           <TextBlock Style="{StaticResource Subhead}" VerticalAlignment="Center" Text="{Binding Name}"/>
-                          <Border Style="{StaticResource BadgeRun}" Margin="10,0,0,0"
-                                  Visibility="{Binding IsDefault, Converter={StaticResource BooleanToVisibility}}">
-                            <TextBlock Style="{StaticResource BadgeText}"
-                                       Text="{Binding [Studio.Settings.DefaultBadge], Source={x:Static services:I18n.Instance}}"/>
-                          </Border>
-                          <Border Style="{StaticResource BadgeNeutral}" Margin="10,0,0,0"
-                                  Visibility="{Binding IsDefault, Converter={StaticResource InverseBooleanToVisibility}}">
-                            <TextBlock Style="{StaticResource BadgeText}" Text="{Binding Provider}"/>
-                          </Border>
-                          <Border Style="{StaticResource BadgeSky}" Margin="10,0,0,0"
-                                  Visibility="{Binding IsStudio, Converter={StaticResource BooleanToVisibility}}">
-                            <TextBlock Style="{StaticResource BadgeText}"
-                                       Text="{Binding [Studio.Settings.StudioBadge], Source={x:Static services:I18n.Instance}}"/>
-                          </Border>
+                          <controls:Badge Tone="Info" Margin="10,0,0,0"
+                                          Visibility="{Binding IsDefault, Converter={StaticResource BooleanToVisibility}}"
+                                          Content="{Binding [Studio.Settings.DefaultBadge], Source={x:Static services:I18n.Instance}}"/>
+                          <controls:Badge Tone="Neutral" Margin="10,0,0,0"
+                                          Visibility="{Binding IsDefault, Converter={StaticResource InverseBooleanToVisibility}}"
+                                          Content="{Binding Provider}"/>
+                          <controls:Badge Tone="Info" Margin="10,0,0,0"
+                                          Visibility="{Binding IsStudio, Converter={StaticResource BooleanToVisibility}}"
+                                          Content="{Binding [Studio.Settings.StudioBadge], Source={x:Static services:I18n.Instance}}"/>
                           <!-- STUDIO-35 (D-04): what the profile's account has left, once this session
                                read it — in the warning tone under its provider's threshold. -->
-                          <Border Margin="10,0,0,0" ToolTip="{Binding BalanceTip}"
-                                  Visibility="{Binding HasBalance, Converter={StaticResource BooleanToVisibility}}">
-                            <Border.Style>
-                              <Style TargetType="Border" BasedOn="{StaticResource BadgeNeutral}">
+                          <controls:Badge Margin="10,0,0,0" ToolTip="{Binding BalanceTip}"
+                                          Visibility="{Binding HasBalance, Converter={StaticResource BooleanToVisibility}}">
+                            <controls:Badge.Style>
+                              <Style TargetType="controls:Badge" BasedOn="{StaticResource {x:Type controls:Badge}}">
+                                <Setter Property="Tone" Value="Neutral"/>
                                 <Style.Triggers>
                                   <DataTrigger Binding="{Binding IsBalanceLow}" Value="True">
-                                    <Setter Property="Background" Value="{DynamicResource WarningWeakBrush}"/>
-                                    <Setter Property="TextElement.Foreground" Value="{DynamicResource WarningInkBrush}"/>
+                                    <Setter Property="Tone" Value="Warning"/>
                                   </DataTrigger>
                                 </Style.Triggers>
                               </Style>
-                            </Border.Style>
+                            </controls:Badge.Style>
                             <StackPanel Orientation="Horizontal">
                               <controls:LucideIcon Kind="wallet" Size="10" Margin="0,0,5,0" VerticalAlignment="Center"/>
                               <TextBlock Style="{StaticResource BadgeText}" Text="{Binding Balance}"/>
                             </StackPanel>
-                          </Border>
+                          </controls:Badge>
                         </StackPanel>
                         <TextBlock FontSize="13" Foreground="{DynamicResource InkMutedBrush}" Margin="0,4,0,8" Text="{Binding Summary}"/>
                         <controls:PropertyRow Label="{Binding [Studio.Settings.FieldProvider], Source={x:Static services:I18n.Instance}}">
@@ -263,11 +270,11 @@
                             </ItemsControl.ItemsPanel>
                             <ItemsControl.ItemTemplate>
                               <DataTemplate>
-                                <Border Style="{StaticResource BadgeNeutral}" Margin="0,0,6,3"
-                                        MaxWidth="260" ToolTip="{Binding}">
+                                <controls:Badge Tone="Neutral" Margin="0,0,6,3"
+                                                MaxWidth="260" ToolTip="{Binding}">
                                   <TextBlock Style="{StaticResource BadgeText}"
                                              TextTrimming="CharacterEllipsis" Text="{Binding}"/>
-                                </Border>
+                                </controls:Badge>
                               </DataTemplate>
                             </ItemsControl.ItemTemplate>
                           </ItemsControl>
@@ -330,7 +337,8 @@
                           <TextBlock FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}" Text="{Binding Id}"/>
                           <TextBlock FontSize="13" Foreground="{DynamicResource InkMutedBrush}" Margin="0,3,0,0" Text="{Binding Summary}"
                                      Visibility="{Binding HasSummary, Converter={StaticResource BooleanToVisibility}}"/>
-                          <TextBlock Style="{StaticResource Hint}" Margin="0,3,0,0" TextWrapping="Wrap" Text="{Binding HostIdText}"/>
+                          <TextBlock Style="{StaticResource Hint}" Margin="0,3,0,0" TextWrapping="Wrap" Text="{Binding HostIdText}"
+                                     Visibility="{Binding DataContext.Mode.IsExpert, RelativeSource={RelativeSource AncestorType=views:SettingsView}, Converter={StaticResource BooleanToVisibility}}"/>
                         </StackPanel>
                       </Border>
                     </DataTemplate>
@@ -391,6 +399,14 @@
               <ItemsControl ItemsSource="{Binding Profiles.Secrets}" ItemTemplate="{StaticResource KeyRowTemplate}"/>
             </StackPanel>
           </Border>
+          <!-- UX lot 04 (046, 051): each key stays by what uses it; this tab points at the other. -->
+          <DockPanel Margin="0,0,0,8">
+            <Button DockPanel.Dock="Right" Style="{StaticResource BtnGhost}" VerticalAlignment="Center" Margin="12,0,0,0"
+                    Command="{Binding ShowToolKeysCommand}" controls:ButtonIcon.Kind="arrow-right"
+                    Content="{Binding [Studio.Settings.ToolKeysTitle], Source={x:Static services:I18n.Instance}}"/>
+            <TextBlock Style="{StaticResource Hint}" TextWrapping="Wrap" VerticalAlignment="Center"
+                       Text="{Binding [Studio.Settings.ToolKeysElsewhere], Source={x:Static services:I18n.Instance}}"/>
+          </DockPanel>
 
         </StackPanel>
       </controls:StepTab>
@@ -425,6 +441,8 @@
                           <Button.Style>
                             <Style TargetType="Button" BasedOn="{StaticResource ChipAction}">
                               <Setter Property="FontSize" Value="13"/>
+                              <!-- UX lot 01: a fill, no border — a pill, not a second button. -->
+                              <Setter Property="BorderThickness" Value="0"/>
                               <Setter Property="Background" Value="{DynamicResource Surface2Brush}"/>
                               <Setter Property="Foreground" Value="{DynamicResource InkMutedBrush}"/>
                               <Style.Triggers>
@@ -438,14 +456,17 @@
                         </Button>
                         <Button Width="29" Height="29" Padding="0" Style="{StaticResource BtnSecondary}"
                                 Command="{Binding DataContext.Config.Mounts.DropMountCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                CommandParameter="{Binding}">
+                                CommandParameter="{Binding}"
+                                ToolTip="{Binding [Studio.Settings.MountsRemove], Source={x:Static services:I18n.Instance}}"
+                                AutomationProperties.Name="{Binding [Studio.Settings.MountsRemove], Source={x:Static services:I18n.Instance}}">
                           <controls:LucideIcon Kind="x" Size="13"/>
                         </Button>
                       </StackPanel>
                       <StackPanel>
-                        <!-- R09: the folder's path is cut in the middle, whole in its tooltip. -->
-                        <controls:MiddleEllipsisText Style="{StaticResource PathText}" FontWeight="SemiBold"
-                                                     Foreground="{DynamicResource InkBrush}" Text="{Binding PhysicalPath}"/>
+                        <!-- UX lot 01: the folder's name is the card's title, in the body font; the full
+                             path is its tooltip. -->
+                        <TextBlock FontWeight="SemiBold" FontSize="14" Foreground="{DynamicResource InkBrush}"
+                                   TextTrimming="CharacterEllipsis" Text="{Binding FolderName}" ToolTip="{Binding PhysicalPath}"/>
                         <TextBlock Style="{StaticResource MonoText}" FontSize="13" Margin="0,3,0,0"
                                    Foreground="{DynamicResource InkFaintBrush}">
                           <Run Text="{Binding [Studio.Settings.SeenAs], Source={x:Static services:I18n.Instance}, Mode=OneWay}"/><Run Text=" "/><Run Text="{Binding VirtualPath}"/>
@@ -490,24 +511,28 @@
           <StackPanel Visibility="{Binding Mode.IsExpert, Converter={StaticResource BooleanToVisibility}}">
             <views:MountsEditorView x:Name="MountsPanel" DataContext="{Binding Config.Mounts}"/>
           </StackPanel>
-          <Border Style="{StaticResource Well}" Margin="0,14,0,0" Padding="13,10"
-                  Visibility="{Binding Mode.IsExpert, Converter={StaticResource BooleanToVisibility}}">
-            <StackPanel>
-              <!-- D01 (R18): the eyebrow is Studio's, translated; the strings below stay raw, in mono. -->
-              <TextBlock Style="{StaticResource Eyebrow}" Margin="0,0,0,5"
-                         Text="{Binding [Studio.Settings.MountStringsEyebrow], Source={x:Static services:I18n.Instance}}"/>
-              <TextBlock Style="{StaticResource Hint}" Margin="0,0,0,8"
-                       Text="{Binding [Studio.Settings.NoviceEmpty], Source={x:Static services:I18n.Instance}}"
-                       Visibility="{Binding Config.Mounts.Mounts.Count, Converter={StaticResource ZeroToVisibility}}"/>
-            <ItemsControl ItemsSource="{Binding Config.Mounts.Mounts}">
-                <ItemsControl.ItemTemplate>
-                  <DataTemplate>
-                    <TextBlock Style="{StaticResource MonoText}" FontSize="13" Text="{Binding MountString}"/>
-                  </DataTemplate>
-                </ItemsControl.ItemTemplate>
-              </ItemsControl>
-            </StackPanel>
-          </Border>
+          <!-- UX lot 04 (048): the mount strings repeat the editor's preview; they fold away, closed. -->
+          <controls:Disclosure Margin="0,14,0,0" IsExpanded="False"
+                               Header="{Binding [Studio.Common.TechnicalDetails], Source={x:Static services:I18n.Instance}}"
+                               Visibility="{Binding Mode.IsExpert, Converter={StaticResource BooleanToVisibility}}">
+            <Border Style="{StaticResource Well}" Margin="0,6,0,0" Padding="13,10">
+              <StackPanel>
+                <!-- D01 (R18): the eyebrow is Studio's, translated; the strings below stay raw, in mono. -->
+                <TextBlock Style="{StaticResource Eyebrow}" Margin="0,0,0,5"
+                           Text="{Binding [Studio.Settings.MountStringsEyebrow], Source={x:Static services:I18n.Instance}}"/>
+                <TextBlock Style="{StaticResource Hint}" Margin="0,0,0,8"
+                         Text="{Binding [Studio.Settings.NoviceEmpty], Source={x:Static services:I18n.Instance}}"
+                         Visibility="{Binding Config.Mounts.Mounts.Count, Converter={StaticResource ZeroToVisibility}}"/>
+              <ItemsControl ItemsSource="{Binding Config.Mounts.Mounts}">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                      <TextBlock Style="{StaticResource MonoText}" FontSize="13" Text="{Binding MountString}"/>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </StackPanel>
+            </Border>
+          </controls:Disclosure>
 
           <!-- STUDIO-14 (D-13, P-1): the teams' own folders, read-only, after the declared ones in
                BOTH modes — under the novice list, under the expert editor and its mount strings.
@@ -539,7 +564,7 @@
                                  Text="{Binding Label, Mode=OneWay}"/>
                       <!-- R12: the rights pill of every screen — read-only neutral, read-write sky. -->
                       <controls:Badge Margin="8,0,0,0" MaxWidth="160" HorizontalAlignment="Right"
-                                      ToolTip="{Binding RightsLabel, Mode=OneWay}">
+                                      ToolTip="{Binding RightsTip, Mode=OneWay}">
                         <controls:Badge.Style>
                           <Style TargetType="controls:Badge" BasedOn="{StaticResource {x:Type controls:Badge}}">
                             <Setter Property="Tone" Value="Neutral"/>

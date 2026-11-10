@@ -71,9 +71,14 @@
           </Viewbox>-->
           <!-- Icône de l'application (cadrage buste, coins arrondis détourés dans le PNG).
                Source 64 px rendue à 23 : nette jusqu'à ~275 % de mise à l'échelle. -->
-          <Image Source="/Assets/orkeon-studio-mark.png" Width="23" Height="23"
-                 RenderOptions.BitmapScalingMode="HighQuality"
-                 VerticalAlignment="Center"/>
+          <!-- UX lot 09: a 1 px ring (LogoRingBrush, transparent in light) keeps the mark's square
+               visible on the dark header. -->
+          <Border BorderBrush="{DynamicResource LogoRingBrush}" BorderThickness="1" CornerRadius="6"
+                  VerticalAlignment="Center">
+            <Image Source="/Assets/orkeon-studio-mark.png" Width="23" Height="23"
+                   RenderOptions.BitmapScalingMode="HighQuality"
+                   VerticalAlignment="Center"/>
+          </Border>
           <TextBlock Text="Orkeon" FontFamily="{StaticResource DisplayFont}" FontSize="16.5" FontWeight="Bold"
                      Foreground="{DynamicResource InkBrush}" Margin="9,0,0,0" VerticalAlignment="Center"/>
           <TextBlock Text="STUDIO" Style="{StaticResource Eyebrow}" Margin="9,2,0,0" VerticalAlignment="Center"/>
@@ -155,25 +160,13 @@
                 <controls:LucideIcon Kind="chevron-down" Size="16" Margin="6,0,0,0" VerticalAlignment="Center"
                                      Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
                                      RenderTransformOrigin="0.5,0.5">
-                  <controls:LucideIcon.RenderTransform><RotateTransform/></controls:LucideIcon.RenderTransform>
                   <controls:LucideIcon.Style>
+                    <!-- 008: a static angle, no animation: a capture can never catch the chevron half-turned. -->
                     <Style TargetType="controls:LucideIcon" BasedOn="{StaticResource {x:Type controls:LucideIcon}}">
+                      <Setter Property="RenderTransform"><Setter.Value><RotateTransform Angle="0"/></Setter.Value></Setter>
                       <Style.Triggers>
                         <DataTrigger Binding="{Binding Language.IsMenuOpen}" Value="True">
-                          <DataTrigger.EnterActions>
-                            <BeginStoryboard>
-                              <Storyboard>
-                                <DoubleAnimation Storyboard.TargetProperty="RenderTransform.Angle" To="180" Duration="0:0:0.14"/>
-                              </Storyboard>
-                            </BeginStoryboard>
-                          </DataTrigger.EnterActions>
-                          <DataTrigger.ExitActions>
-                            <BeginStoryboard>
-                              <Storyboard>
-                                <DoubleAnimation Storyboard.TargetProperty="RenderTransform.Angle" To="0" Duration="0:0:0.14"/>
-                              </Storyboard>
-                            </BeginStoryboard>
-                          </DataTrigger.ExitActions>
+                          <Setter Property="RenderTransform"><Setter.Value><RotateTransform Angle="180"/></Setter.Value></Setter>
                         </DataTrigger>
                       </Style.Triggers>
                     </Style>
@@ -181,8 +174,9 @@
                 </controls:LucideIcon>
               </StackPanel>
             </Button>
-            <!-- R04 (A05): the menu opens under «FR», its right edge on the button's
-                 (MainWindow.PlaceLanguageMenu) — never under the mode switch. -->
+            <!-- R04 (A05), 007: the menu opens under «FR», its left edge on the button's
+                 (MainWindow.PlaceLanguageMenu), so it leaves the page actions below
+                 (« Recommencer ») uncovered; right-aligned only when the window is too narrow. -->
             <Popup x:Name="LanguagePopup" IsOpen="{Binding Language.IsMenuOpen, Mode=TwoWay}" StaysOpen="False"
                    PlacementTarget="{Binding ElementName=LanguageButton}" Placement="Custom"
                    AllowsTransparency="True" PopupAnimation="Fade">
@@ -192,21 +186,26 @@
                 <StackPanel>
                   <!-- One sentence-case line in the UI font («Langue choisie · Français»), no mono capitals. -->
                   <TextBlock Style="{StaticResource MetaText}" Padding="8,5,8,6" Text="{Binding Language.MenuHeader}"/>
-                  <ItemsControl ItemsSource="{Binding Language.Others}">
+                  <ItemsControl ItemsSource="{Binding Language.Options}">
                     <ItemsControl.ItemTemplate>
                       <DataTemplate>
                         <!-- Anchored on the ItemsControl, not on the Popup: a Popup's child
                              lives in its own visual tree, so walking up to the Popup itself
                              relies on the logical hop. The ItemsControl is an ancestor in the
                              ordinary way and carries the same inherited DataContext. -->
+                        <!-- 007: the language in force is listed too, with a check, and does nothing. -->
                         <Button Style="{StaticResource LangRow}" CommandParameter="{Binding Code}"
+                                IsEnabled="{Binding IsCurrent, Converter={StaticResource Negate}}"
                                 Command="{Binding DataContext.Language.PickCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}">
-                          <StackPanel Orientation="Horizontal">
-                            <TextBlock Style="{StaticResource MonoText}" FontSize="13" FontWeight="SemiBold" Width="20"
+                          <DockPanel LastChildFill="False">
+                            <TextBlock DockPanel.Dock="Left" Style="{StaticResource MonoText}" FontSize="13" FontWeight="SemiBold" Width="20"
                                        Foreground="{DynamicResource AccentBrush}" Text="{Binding Display}"/>
-                            <TextBlock FontSize="13" Margin="9,0,0,0" Foreground="{DynamicResource InkBrush}"
+                            <TextBlock DockPanel.Dock="Left" FontSize="13" Margin="9,0,0,0" Foreground="{DynamicResource InkBrush}"
                                        Text="{Binding Name}"/>
-                          </StackPanel>
+                            <controls:LucideIcon DockPanel.Dock="Right" Kind="check" Size="14" Margin="12,0,0,0" VerticalAlignment="Center"
+                                                 Foreground="{DynamicResource AccentBrush}"
+                                                 Visibility="{Binding IsCurrent, Converter={StaticResource BooleanToVisibility}}"/>
+                          </DockPanel>
                         </Button>
                       </DataTemplate>
                     </ItemsControl.ItemTemplate>
@@ -247,27 +246,10 @@
       <Border x:Name="Sidebar" Grid.Column="0" Background="{DynamicResource PaperSunkBrush}"
               BorderBrush="{DynamicResource LineBrush}" BorderThickness="0,0,1,0">
         <DockPanel Margin="10,14,10,12">
-          <!-- settings-file card (bottom) -->
-          <!-- novice: a hand; expert: the settings file being edited (design v3 sidebar foot) -->
-          <Border x:Name="HelpCard" DockPanel.Dock="Bottom" Background="{DynamicResource SkyBrush}"
-                  BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" CornerRadius="11" Padding="11"
-                  Visibility="{Binding Mode.IsNovice, Converter={StaticResource BooleanToVisibility}}">
-            <StackPanel>
-              <StackPanel Orientation="Horizontal">
-                <controls:LucideIcon Kind="circle-help" Size="13" Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center"/>
-                <TextBlock FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}" Margin="7,0,0,0"
-                           Text="{Binding [Studio.Shell.HelpTitle], Source={x:Static services:I18n.Instance}}"/>
-              </StackPanel>
-              <TextBlock Style="{StaticResource Hint}" TextWrapping="Wrap" Margin="0,6,0,8"
-                         Text="{Binding [Studio.Shell.HelpBody], Source={x:Static services:I18n.Instance}}"/>
-              <Button Style="{StaticResource BtnSecondary}" HorizontalAlignment="Stretch" Click="OnStartTour"
-                      Content="{Binding [Studio.Common.GuidedTour], Source={x:Static services:I18n.Instance}}"/>
-            </StackPanel>
-          </Border>
           <!-- Only from somewhere else: the draft says where it stopped, so leaving the
                assistant is never the same as forgetting it. On the Créer screen itself it
                would only repeat what is on screen. R13 (A10): a contextual block goes to the
-               foot of the nav column — above «Besoin d'aide ?» in Novice — never between two
+               foot of the nav column, never between two
                entries, so the nav never moves when it comes or goes. -->
           <Button x:Name="DraftNote" DockPanel.Dock="Bottom" Margin="0,8,0,8" Style="{StaticResource DraftNote}" Click="OnResumeDraft">
             <StackPanel>
@@ -330,9 +312,19 @@
               <DockPanel LastChildFill="False">
                 <controls:LucideIcon DockPanel.Dock="Left" Kind="brain-circuit" Size="14" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}"/>
                 <TextBlock DockPanel.Dock="Left" Margin="10,0,0,0" Text="{Binding [Studio.Shell.NavTeams], Source={x:Static services:I18n.Instance}}"/>
-                <TextBlock DockPanel.Dock="Right" FontFamily="{StaticResource MonoFont}" FontSize="13"
+                <TextBlock DockPanel.Dock="Right" FontSize="13"
                            Foreground="{DynamicResource InkFaintBrush}" VerticalAlignment="Center"
-                           Text="{Binding DataContext.Teams.ActiveCount, RelativeSource={RelativeSource AncestorType=Window}}"/>
+                           Text="{Binding DataContext.Teams.ActiveCount, RelativeSource={RelativeSource AncestorType=Window}}">
+                  <TextBlock.Style>
+                    <Style TargetType="TextBlock">
+                      <Style.Triggers>
+                        <DataTrigger Binding="{Binding DataContext.Teams.ActiveCount, RelativeSource={RelativeSource AncestorType=Window}}" Value="0">
+                          <Setter Property="Visibility" Value="Collapsed"/>
+                        </DataTrigger>
+                      </Style.Triggers>
+                    </Style>
+                  </TextBlock.Style>
+                </TextBlock>
               </DockPanel>
             </RadioButton>
             <RadioButton x:Name="NavImport" GroupName="Nav" Style="{StaticResource NavItem}">
@@ -378,6 +370,12 @@
                         <DataTrigger Binding="{Binding Config.HasPendingChanges}" Value="True">
                           <Setter Property="Visibility" Value="Visible"/>
                         </DataTrigger>
+                        <!-- UX lot 04 (015): no model chosen, no crew - red until one is. -->
+                        <DataTrigger Binding="{Binding Settings.Profiles.HasStudioProfile}" Value="False">
+                          <Setter Property="Visibility" Value="Visible"/>
+                          <Setter Property="Fill" Value="{DynamicResource DangerBrush}"/>
+                          <Setter Property="ToolTip" Value="{Binding [Studio.Settings.ModelMissingTip], Source={x:Static services:I18n.Instance}}"/>
+                        </DataTrigger>
                         <DataTrigger Binding="{Binding Config.HasBlockingErrors}" Value="True">
                           <Setter Property="Visibility" Value="Visible"/>
                           <Setter Property="Fill" Value="{DynamicResource DangerBrush}"/>
@@ -403,17 +401,17 @@
       </Border>
 
       <!-- CONTENT: one panel per nav item, visibility driven by the RadioButtons; the
-           assistant's side panel (420 px) on the right while it is open (refonte R10). -->
+           assistant's side panel (360 px) on the right while it is open (refonte R10). -->
       <Grid Grid.Column="1">
         <Grid.ColumnDefinitions>
           <ColumnDefinition Width="*"/>
           <ColumnDefinition Width="Auto"/>
         </Grid.ColumnDefinitions>
-        <!-- R15 (A06, B04, C18): an anchored 420 px panel with its own scroll bar. It docks in
+        <!-- R15 (A06, B04, C18), UX lot 06: an anchored 360 px panel with its own scroll bar. It docks in
              the Auto column while the content keeps 720 px beside it; narrower, it lays over the
              content, right-aligned and shadowed, instead of squeezing it (PlaceAssistantPanel).
              Closed, it is collapsed: the Auto column reserves nothing. -->
-        <views:ChatThreadView x:Name="AssistantPanel" Grid.Column="1" Width="420"
+        <views:ChatThreadView x:Name="AssistantPanel" Grid.Column="1" Width="360"
                               AutomationProperties.AutomationId="AssistantPanel"
                               DataContext="{Binding Chat}"
                               Loaded="OnAssistantPanelLoaded"
@@ -450,13 +448,14 @@
              scrolled content (a ScrollViewer's Padding sits outside the viewport and left a dead
              band above the bar). The right margin only shows below 1440 px. -->
         <Grid Grid.Column="0">
-        <ScrollViewer VerticalScrollBarVisibility="Visible"
-                      Visibility="{Binding IsChecked, ElementName=NavCreate, Converter={StaticResource BooleanToVisibility}}">
+        <!-- UX lot 05 (016, 022): no ScrollViewer here — the view scrolls its own content and keeps
+             the step's action bar docked below it, always on screen. -->
+        <Grid Visibility="{Binding IsChecked, ElementName=NavCreate, Converter={StaticResource BooleanToVisibility}}">
           <Grid Style="{StaticResource PageHost}">
             <Grid.ColumnDefinitions><ColumnDefinition Style="{StaticResource PageColumn}"/></Grid.ColumnDefinitions>
             <views:CreateTeamView x:Name="CreatePanel" DataContext="{Binding CreateTeam}"/>
           </Grid>
-        </ScrollViewer>
+        </Grid>
         <ScrollViewer VerticalScrollBarVisibility="Visible"
                       Visibility="{Binding IsChecked, ElementName=NavTeams, Converter={StaticResource BooleanToVisibility}}">
           <Grid Style="{StaticResource PageHost}">
@@ -605,6 +604,7 @@
               <!-- «~» when Studio or the runtime had to estimate for a provider that reported nothing, as in the assistant's group. -->
               <TextBlock Style="{StaticResource StatusFigure}" Margin="0,0,2,0" Text="~"
                          Foreground="{DynamicResource InkFaintBrush}"
+                         ToolTip="{Binding [Studio.Create.TokensEstimated], Source={x:Static services:I18n.Instance}}"
                          Visibility="{Binding TokensEstimated, Converter={StaticResource BooleanToVisibility}}"/>
               <controls:LucideIcon Kind="arrow-up" Size="11" VerticalAlignment="Center"
                                    Foreground="{DynamicResource InkMutedBrush}"/>
@@ -710,6 +710,7 @@
                 <!-- «~» when Studio or the runtime had to estimate for a provider that reported nothing, as on the card. -->
                 <TextBlock Style="{StaticResource StatusFigure}" Margin="0,0,2,0" Text="~"
                            Foreground="{DynamicResource InkFaintBrush}"
+                           ToolTip="{Binding [Studio.Create.TokensEstimated], Source={x:Static services:I18n.Instance}}"
                            Visibility="{Binding TokensEstimated, Converter={StaticResource BooleanToVisibility}}"/>
                 <controls:LucideIcon Kind="arrow-up" Size="11" VerticalAlignment="Center"
                                      Foreground="{DynamicResource InkMutedBrush}"/>
@@ -785,13 +786,20 @@
             </RadioButton.IsChecked>
             <RadioButton.Template>
               <ControlTemplate TargetType="RadioButton">
+                <!-- UX lot 09: LineStrong so a card is delimited without hover; the chosen one is Accent. -->
                 <Border x:Name="Card" Background="{DynamicResource SurfaceBrush}"
-                        BorderBrush="{DynamicResource LineBrush}" BorderThickness="1"
+                        BorderBrush="{DynamicResource LineStrongBrush}" BorderThickness="1"
                         CornerRadius="10" Padding="11,8">
                   <StackPanel>
                     <!-- R09 (B10): a trimmed title or description gives its full text on hover. -->
-                    <TextBlock FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}"
-                               TextTrimming="CharacterEllipsis" Text="{Binding Title}" ToolTip="{Binding Title}"/>
+                    <!-- UX lot 04 (063): the recommended cards say so. -->
+                    <DockPanel>
+                      <controls:Badge DockPanel.Dock="Right" Tone="Success" Margin="6,0,0,0" VerticalAlignment="Center"
+                                      Content="{Binding [Studio.Settings.ProviderRecommended], Source={x:Static services:I18n.Instance}}"
+                                      Visibility="{Binding IsRecommended, Converter={StaticResource BooleanToVisibility}}"/>
+                      <TextBlock FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}"
+                                 TextTrimming="CharacterEllipsis" Text="{Binding Title}" ToolTip="{Binding Title}"/>
+                    </DockPanel>
                     <TextBlock FontSize="13" Foreground="{DynamicResource InkMutedBrush}" Margin="0,1,0,0"
                                TextTrimming="CharacterEllipsis" Text="{Binding Description}" ToolTip="{Binding Description}"/>
                   </StackPanel>
@@ -808,7 +816,7 @@
         </DataTemplate>
       </Grid.Resources>
       <Border Width="680" HorizontalAlignment="Center" VerticalAlignment="Center" MouseLeftButtonDown="OnSwallowClick"
-              Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1"
+              Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource LineStrongBrush}" BorderThickness="1"
               CornerRadius="20" DataContext="{Binding Settings.Profiles.Editor}" Effect="{DynamicResource ShadowLg}">
         <StackPanel>
           <!-- R15 (C21): the header stays put; only the body below it scrolls, so the scroll bar
@@ -841,11 +849,20 @@
             <!-- STUDIO-48: the name a crew writes to run on this setting, as the name is typed —
                  or why none can; « default », or an id another setting or the settings file
                  already holds, refuses the save. -->
-            <TextBlock Margin="0,4,0,0" TextWrapping="Wrap" Text="{Binding HostIdText}"
-                       Visibility="{Binding HostIdText, Converter={StaticResource StringPresentToVisibility}}">
+            <!-- UX lot 02: the expert's line; the novice reads it only when it says why the
+                 name is refused. -->
+            <TextBlock Margin="0,4,0,0" TextWrapping="Wrap" Text="{Binding HostIdText}">
               <TextBlock.Style>
                 <Style TargetType="TextBlock" BasedOn="{StaticResource Hint}">
+                  <Setter Property="Visibility" Value="{Binding HostIdText, Converter={StaticResource StringPresentToVisibility}}"/>
                   <Style.Triggers>
+                    <MultiDataTrigger>
+                      <MultiDataTrigger.Conditions>
+                        <Condition Binding="{Binding DataContext.Mode.IsNovice, RelativeSource={RelativeSource AncestorType=Window}}" Value="True"/>
+                        <Condition Binding="{Binding IsHostIdIssue}" Value="False"/>
+                      </MultiDataTrigger.Conditions>
+                      <Setter Property="Visibility" Value="Collapsed"/>
+                    </MultiDataTrigger>
                     <DataTrigger Binding="{Binding IsHostIdIssue}" Value="True">
                       <Setter Property="Foreground" Value="{DynamicResource WarningInkBrush}"/>
                     </DataTrigger>
@@ -881,11 +898,16 @@
               </ItemsControl.ItemsPanel>
             </ItemsControl>
 
-            <ItemsControl ItemsSource="{Binding OtherProviders}" ItemTemplate="{StaticResource ProviderCard}" Margin="0,7,0,0">
-              <ItemsControl.ItemsPanel>
-                <ItemsPanelTemplate><UniformGrid Columns="3"/></ItemsPanelTemplate>
-              </ItemsControl.ItemsPanel>
-            </ItemsControl>
+            <!-- UX lot 04 (063): the catch-all and the offline fallback fold away, closed - open
+                 while the picked card is one of them. -->
+            <controls:Disclosure Margin="0,7,0,0" IsExpanded="{Binding OtherProvidersExpanded}"
+                                 Header="{Binding [Studio.Settings.GroupOthers], Source={x:Static services:I18n.Instance}}">
+              <ItemsControl ItemsSource="{Binding OtherProviders}" ItemTemplate="{StaticResource ProviderCard}" Margin="0,6,0,0">
+                <ItemsControl.ItemsPanel>
+                  <ItemsPanelTemplate><UniformGrid Columns="3"/></ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+              </ItemsControl>
+            </controls:Disclosure>
 
             <!-- URL/model: pointless without a model; the URL is expert-only except for
                  the catch-all card, where everyone must type it. -->
@@ -1174,17 +1196,23 @@
     <Grid Grid.Row="0" Grid.RowSpan="3" Background="{DynamicResource ScrimBrush}" MouseLeftButtonDown="OnTeamMountsBackdropClick"
           Visibility="{Binding TeamMounts.IsOpen, Converter={StaticResource BooleanToVisibility}}">
       <Border Width="600" HorizontalAlignment="Center" VerticalAlignment="Center" MouseLeftButtonDown="OnSwallowClick"
-              Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1"
+              Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource LineStrongBrush}" BorderThickness="1"
               CornerRadius="20" DataContext="{Binding TeamMounts}" Effect="{DynamicResource ShadowLg}">
         <StackPanel>
           <StackPanel Margin="22,20,22,0">
             <!-- R11 (D07): the shared 20/600 modal title. R09 (B06): a long team name wraps to a
                  second line, then ends on «…» with the whole title as a tooltip — never cut bare. -->
-            <TextBlock Style="{StaticResource ModalTitle}" Text="{Binding Title}" ToolTip="{Binding Title}"
-                       TextTrimming="CharacterEllipsis" LineHeight="26" LineStackingStrategy="BlockLineHeight" MaxHeight="52"/>
+            <DockPanel>
+              <Button DockPanel.Dock="Right" Style="{StaticResource IconBtnGhost}" VerticalAlignment="Top" Margin="12,0,0,0"
+                      Command="{Binding CancelCommand}" controls:ButtonIcon.Kind="x"
+                      ToolTip="{Binding [Studio.Shell.Close], Source={x:Static services:I18n.Instance}}"
+                      AutomationProperties.Name="{Binding [Studio.Shell.Close], Source={x:Static services:I18n.Instance}}"/>
+              <TextBlock Style="{StaticResource ModalTitle}" Text="{Binding Title}" ToolTip="{Binding Title}"
+                         TextTrimming="CharacterEllipsis" LineHeight="26" LineStackingStrategy="BlockLineHeight" MaxHeight="52"/>
+            </DockPanel>
             <TextBlock FontSize="13" Foreground="{DynamicResource InkMutedBrush}" TextWrapping="Wrap" LineHeight="18.5"
                        Margin="0,6,0,0" Text="{Binding [Studio.Teams.TeamMountsSub], Source={x:Static services:I18n.Instance}}"/>
-            <ItemsControl ItemsSource="{Binding Rows}" Margin="0,14,0,0">
+            <ItemsControl ItemsSource="{Binding Rows}" Margin="0,14,0,0" Grid.IsSharedSizeScope="True">
               <ItemsControl.ItemTemplate>
                 <DataTemplate>
                   <ToggleButton IsChecked="{Binding IsChecked}" Cursor="Hand" Margin="0,0,0,8">
@@ -1193,8 +1221,13 @@
                         <Border x:Name="Row" Background="{DynamicResource SurfaceBrush}"
                                 BorderBrush="{DynamicResource LineBrush}" BorderThickness="1"
                                 CornerRadius="10" Padding="13,11">
-                          <DockPanel>
-                            <Border x:Name="Box" DockPanel.Dock="Left" Width="16" Height="16" CornerRadius="5"
+                          <Grid>
+                            <Grid.ColumnDefinitions>
+                              <ColumnDefinition Width="Auto"/>
+                              <ColumnDefinition Width="*"/>
+                              <ColumnDefinition Width="Auto" SharedSizeGroup="RightsBadge"/>
+                            </Grid.ColumnDefinitions>
+                            <Border x:Name="Box" Grid.Column="0" Width="16" Height="16" CornerRadius="5"
                                     BorderThickness="1.5" BorderBrush="{DynamicResource LineStrongBrush}"
                                     Background="{DynamicResource PaperSunkBrush}" VerticalAlignment="Center" Margin="0,0,12,0">
                               <controls:LucideIcon x:Name="Tick" Kind="check" Size="11"
@@ -1202,8 +1235,8 @@
                             </Border>
                             <!-- One word in the pill, the full label as its tooltip (STUDIO-16): the full
                                  label ate the width and the disk path read as «C:\Users\…\orkeon\…». -->
-                            <!-- R12 (C13): the shared rights badge, «Lecture seule» neutral, «Lecture et écriture» sky. -->
-                            <controls:Badge DockPanel.Dock="Right" Margin="12,0,0,0" ToolTip="{Binding RightsLabel}" Content="{Binding RightsBadge}">
+                            <!-- R12 (C13): the shared rights badge, «Lecture» neutral, «Écriture» sky. -->
+                            <controls:Badge Grid.Column="2" VerticalAlignment="Center" Margin="12,0,0,0" ToolTip="{Binding RightsTip}" Content="{Binding RightsBadge}">
                               <controls:Badge.Style>
                                 <Style TargetType="controls:Badge" BasedOn="{StaticResource {x:Type controls:Badge}}">
                                   <Style.Triggers>
@@ -1214,17 +1247,21 @@
                                 </Style>
                               </controls:Badge.Style>
                             </controls:Badge>
-                            <StackPanel>
-                              <!-- The name the agents use, then the tail of the entry's id (VFS-90): two /output
-                                   rows are told apart here, not by squinting at a truncated path. -->
+                            <StackPanel Grid.Column="1">
+                              <!-- The name the agents use. The entry's id stays in Réglages › Dossiers, for the
+                                   expert (UX lot 02): the path, or the folder's name, tells two /output rows apart. -->
                               <TextBlock Style="{StaticResource MonoText}" FontSize="13" Foreground="{DynamicResource InkBrush}">
-                                <Run Text="{Binding VirtualPath, Mode=OneWay}"/><Run Text=" · " Foreground="{DynamicResource InkFaintBrush}"/><Run Text="{Binding ShortId, Mode=OneWay}" Foreground="{DynamicResource InkFaintBrush}"/>
+                                <Run Text="{Binding VirtualPath, Mode=OneWay}"/>
                               </TextBlock>
-                              <!-- The real folder, whole: wrapped rather than trimmed. -->
+                              <!-- The real folder on one line, trimmed, whole in the tooltip (lot 11, 067). -->
                               <TextBlock x:Name="Disk" FontSize="13" Foreground="{DynamicResource InkFaintBrush}" Margin="0,2,0,0"
-                                         TextWrapping="Wrap" Text="{Binding PhysicalPath}"/>
+                                         TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" ToolTip="{Binding PhysicalPath}" Text="{Binding PhysicalPath}"
+                                         Visibility="{Binding DataContext.Mode.IsExpert, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BooleanToVisibility}}"/>
+                              <TextBlock x:Name="DiskName" FontSize="13" Foreground="{DynamicResource InkFaintBrush}" Margin="0,2,0,0"
+                                         TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" Text="{Binding FolderName}" ToolTip="{Binding PhysicalPath}"
+                                         Visibility="{Binding DataContext.Mode.IsExpert, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource InverseBooleanToVisibility}}"/>
                             </StackPanel>
-                          </DockPanel>
+                          </Grid>
                         </Border>
                         <ControlTemplate.Triggers>
                           <Trigger Property="IsChecked" Value="True">
@@ -1238,6 +1275,7 @@
                           <DataTrigger Binding="{Binding IsUndeclared}" Value="True">
                             <Setter TargetName="Row" Property="BorderBrush" Value="{DynamicResource DangerBrush}"/>
                             <Setter TargetName="Disk" Property="Foreground" Value="{DynamicResource DangerBrush}"/>
+                            <Setter TargetName="DiskName" Property="Foreground" Value="{DynamicResource DangerBrush}"/>
                           </DataTrigger>
                         </ControlTemplate.Triggers>
                       </ControlTemplate>
@@ -1255,7 +1293,7 @@
             <DockPanel>
               <Button DockPanel.Dock="Right" Style="{StaticResource BtnPrimary}" Command="{Binding SaveCommand}" controls:ButtonIcon.Kind="check"
                       Content="{Binding [Studio.Common.Save], Source={x:Static services:I18n.Instance}}"/>
-              <Button DockPanel.Dock="Right" Style="{StaticResource BtnSecondary}" Margin="0,0,10,0" Command="{Binding CancelCommand}"
+              <Button DockPanel.Dock="Left" Style="{StaticResource BtnSecondary}" Margin="0,0,12,0" Command="{Binding CancelCommand}"
                       Content="{Binding [Studio.Common.Cancel], Source={x:Static services:I18n.Instance}}"/>
               <TextBlock FontSize="13" Foreground="{DynamicResource InkFaintBrush}" VerticalAlignment="Center"
                          TextTrimming="CharacterEllipsis" Margin="0,0,12,0" Text="{Binding Summary}" ToolTip="{Binding Summary}"/>
@@ -1269,11 +1307,17 @@
     <Grid Grid.Row="0" Grid.RowSpan="3" Background="{DynamicResource ScrimBrush}" MouseLeftButtonDown="OnAgentEditorBackdropClick"
           Visibility="{Binding CreateTeam.AgentEditor.IsOpen, Converter={StaticResource BooleanToVisibility}}">
       <Border Width="620" HorizontalAlignment="Center" VerticalAlignment="Center" MouseLeftButtonDown="OnSwallowClick"
-              Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1"
+              Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource LineStrongBrush}" BorderThickness="1"
               CornerRadius="20" DataContext="{Binding CreateTeam.AgentEditor}" Effect="{DynamicResource ShadowLg}">
         <StackPanel>
           <StackPanel Margin="22,20,22,0">
-            <TextBlock Style="{StaticResource ModalTitle}" Text="{Binding Title}"/>
+            <DockPanel>
+              <Button DockPanel.Dock="Right" Style="{StaticResource IconBtnGhost}" VerticalAlignment="Top" Margin="12,0,0,0"
+                      Command="{Binding CancelCommand}" controls:ButtonIcon.Kind="x"
+                      ToolTip="{Binding [Studio.Shell.Close], Source={x:Static services:I18n.Instance}}"
+                      AutomationProperties.Name="{Binding [Studio.Shell.Close], Source={x:Static services:I18n.Instance}}"/>
+              <TextBlock Style="{StaticResource ModalTitle}" Text="{Binding Title}"/>
+            </DockPanel>
             <TextBlock FontSize="13" Foreground="{DynamicResource InkMutedBrush}" TextWrapping="Wrap" LineHeight="18.5"
                        Margin="0,6,0,0" Text="{Binding [Studio.Create.AgentEditorSub], Source={x:Static services:I18n.Instance}}"/>
             <TextBlock Style="{StaticResource FieldLabel}" Margin="0,14,0,5"
@@ -1293,15 +1337,21 @@
                 <DataTemplate>
                   <!-- toggleable chip — the ONE chip recipe (mono 11.5, pill), plus the
                        on/off and hover states a plain ToolChip border cannot carry -->
-                  <Button Command="{Binding ToggleCommand}" Cursor="Hand" Margin="0,0,6,6">
+                  <!-- UX lot 02: the chip says what the tool does (« lire /docs »), its identifier
+                       in the tooltip, and under the words for the expert. -->
+                  <Button Command="{Binding ToggleCommand}" Cursor="Hand" Margin="0,0,6,6" ToolTip="{Binding Tool}">
                     <Button.Template>
                       <ControlTemplate TargetType="Button">
                         <Border x:Name="Chip" Style="{StaticResource ToolChip}"
                                 Background="{DynamicResource SurfaceBrush}"
                                 BorderBrush="{DynamicResource LineBrush}">
-                          <TextBlock x:Name="Label" FontSize="13"
-                                     Foreground="{DynamicResource InkMutedBrush}" VerticalAlignment="Center"
-                                     FontFamily="{StaticResource MonoFont}" Text="{Binding Tool}"/>
+                          <StackPanel VerticalAlignment="Center">
+                            <TextBlock x:Name="Label" FontSize="13"
+                                       Foreground="{DynamicResource InkMutedBrush}" Text="{Binding Label}"/>
+                            <TextBlock FontSize="11.5" FontFamily="{StaticResource MonoFont}"
+                                       Foreground="{DynamicResource InkFaintBrush}" Text="{Binding Tool}"
+                                       Visibility="{Binding DataContext.Mode.IsExpert, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BooleanToVisibility}}"/>
+                          </StackPanel>
                         </Border>
                         <ControlTemplate.Triggers>
                           <Trigger Property="IsMouseOver" Value="True">
@@ -1335,10 +1385,10 @@
             <DockPanel>
               <Button DockPanel.Dock="Right" Style="{StaticResource BtnPrimary}" Command="{Binding SaveCommand}" controls:ButtonIcon.Kind="check"
                       Content="{Binding SaveLabel}"/>
-              <Button DockPanel.Dock="Right" Style="{StaticResource BtnSecondary}" Margin="0,0,10,0" Command="{Binding CancelCommand}"
+              <Button DockPanel.Dock="Left" Style="{StaticResource BtnSecondary}" Margin="0,0,12,0" Command="{Binding CancelCommand}"
                       Content="{Binding [Studio.Common.Cancel], Source={x:Static services:I18n.Instance}}"/>
               <!-- R06: removing the agent from the team is definitive — danger outline with the trash
-                   icon, apart from Cancel and the one primary on the right. -->
+                   icon, after Cancel on the left, the one primary on the right (lot 11 modal template). -->
               <Button Style="{StaticResource BtnDanger}" HorizontalAlignment="Left" Command="{Binding RemoveCommand}"
                       controls:ButtonIcon.Kind="trash-2"
                       Content="{Binding [Studio.Create.Remove], Source={x:Static services:I18n.Instance}}"
@@ -1358,7 +1408,7 @@
     <Grid Grid.Row="1" Grid.RowSpan="2" Background="{DynamicResource ScrimBrush}" MouseLeftButtonDown="OnGalleryBackdropClick"
           Visibility="{Binding CreateTeam.Gallery.IsOpen, Converter={StaticResource BooleanToVisibility}}">
       <Border Width="560" HorizontalAlignment="Right" MouseLeftButtonDown="OnSwallowClick"
-              Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1,0,0,0"
+              Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource LineStrongBrush}" BorderThickness="1,0,0,0"
               CornerRadius="18,0,0,18" DataContext="{Binding CreateTeam.Gallery}" Effect="{DynamicResource ShadowLg}">
         <views:UseCaseGalleryView/>
       </Border>
@@ -1372,12 +1422,18 @@
     <Grid Grid.Row="0" Grid.RowSpan="3" Background="{DynamicResource ScrimBrush}" MouseLeftButtonDown="OnAllowedFoldersBackdropClick"
           Visibility="{Binding AllowedFolders.IsOpen, Converter={StaticResource BooleanToVisibility}}">
       <Border Width="600" HorizontalAlignment="Center" VerticalAlignment="Center" MouseLeftButtonDown="OnSwallowClick"
-              Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1"
+              Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource LineStrongBrush}" BorderThickness="1"
               CornerRadius="20" DataContext="{Binding AllowedFolders}" Effect="{DynamicResource ShadowLg}">
         <StackPanel>
           <StackPanel Margin="22,20,22,0">
-            <TextBlock Style="{StaticResource ModalTitle}" Text="{Binding Title}" ToolTip="{Binding Title}"
-                       TextTrimming="CharacterEllipsis" LineHeight="26" LineStackingStrategy="BlockLineHeight" MaxHeight="52"/>
+            <DockPanel>
+              <Button DockPanel.Dock="Right" Style="{StaticResource IconBtnGhost}" VerticalAlignment="Top" Margin="12,0,0,0"
+                      Command="{Binding CancelCommand}" controls:ButtonIcon.Kind="x"
+                      ToolTip="{Binding [Studio.Shell.Close], Source={x:Static services:I18n.Instance}}"
+                      AutomationProperties.Name="{Binding [Studio.Shell.Close], Source={x:Static services:I18n.Instance}}"/>
+              <TextBlock Style="{StaticResource ModalTitle}" Text="{Binding Title}" ToolTip="{Binding Title}"
+                         TextTrimming="CharacterEllipsis" LineHeight="26" LineStackingStrategy="BlockLineHeight" MaxHeight="52"/>
+            </DockPanel>
             <TextBlock FontSize="13" Foreground="{DynamicResource InkMutedBrush}" TextWrapping="Wrap" LineHeight="18.5"
                        Margin="0,6,0,0" Text="{Binding [Studio.Settings.AllowedFoldersSub], Source={x:Static services:I18n.Instance}}"/>
 
@@ -1390,7 +1446,7 @@
 
             <ScrollViewer MaxHeight="264" VerticalScrollBarVisibility="Auto" Margin="0,14,0,0"
                           Visibility="{Binding HasRows, Converter={StaticResource BooleanToVisibility}}">
-              <ItemsControl ItemsSource="{Binding Rows}">
+              <ItemsControl ItemsSource="{Binding Rows}" Grid.IsSharedSizeScope="True">
                 <ItemsControl.ItemTemplate>
                   <DataTemplate>
                     <ToggleButton IsChecked="{Binding IsChecked}" IsEnabled="{Binding IsSelectable}"
@@ -1400,8 +1456,13 @@
                           <Border x:Name="Row" Background="{DynamicResource SurfaceBrush}"
                                   BorderBrush="{DynamicResource LineBrush}" BorderThickness="1"
                                   CornerRadius="10" Padding="13,11">
-                            <DockPanel>
-                              <Border x:Name="Box" DockPanel.Dock="Left" Width="16" Height="16" CornerRadius="5"
+                            <Grid>
+                              <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto" SharedSizeGroup="RightsBadge"/>
+                              </Grid.ColumnDefinitions>
+                              <Border x:Name="Box" Grid.Column="0" Width="16" Height="16" CornerRadius="5"
                                       BorderThickness="1.5" BorderBrush="{DynamicResource LineStrongBrush}"
                                       Background="{DynamicResource PaperSunkBrush}" VerticalAlignment="Center" Margin="0,0,12,0">
                                 <controls:LucideIcon x:Name="Tick" Kind="check" Size="11"
@@ -1410,8 +1471,8 @@
                               <!-- Les droits viennent des Réglages et ne se rechoisissent pas ici. One word in
                                    the pill, the full label as its tooltip (STUDIO-16): the full label ate the
                                    width and the disk path read as «C:\Users\…\orkeon\…». -->
-                              <!-- R12 (C13): the shared rights badge, «Lecture seule» neutral, «Lecture et écriture» sky. -->
-                              <controls:Badge DockPanel.Dock="Right" Margin="12,0,0,0" ToolTip="{Binding RightsLabel}" Content="{Binding RightsBadge}">
+                              <!-- R12 (C13): the shared rights badge, «Lecture» neutral, «Écriture» sky. -->
+                              <controls:Badge Grid.Column="2" VerticalAlignment="Center" Margin="12,0,0,0" ToolTip="{Binding RightsTip}" Content="{Binding RightsBadge}">
                                 <controls:Badge.Style>
                                   <Style TargetType="controls:Badge" BasedOn="{StaticResource {x:Type controls:Badge}}">
                                     <Style.Triggers>
@@ -1422,15 +1483,19 @@
                                   </Style>
                                 </controls:Badge.Style>
                               </controls:Badge>
-                              <StackPanel>
-                                <!-- The name the agents use, then the tail of the entry's id (VFS-90): two
-                                     /output rows are told apart here, not by squinting at a truncated path. -->
+                              <StackPanel Grid.Column="1">
+                                <!-- The name the agents use. The entry's id stays in Réglages › Dossiers, for the
+                                     expert (UX lot 02): the path, or the folder's name, tells two /output rows apart. -->
                                 <TextBlock Style="{StaticResource MonoText}" FontSize="13" Foreground="{DynamicResource InkBrush}">
-                                  <Run Text="{Binding VirtualPath, Mode=OneWay}"/><Run Text=" · " Foreground="{DynamicResource InkFaintBrush}"/><Run Text="{Binding ShortId, Mode=OneWay}" Foreground="{DynamicResource InkFaintBrush}"/>
+                                  <Run Text="{Binding VirtualPath, Mode=OneWay}"/>
                                 </TextBlock>
-                                <!-- The real folder, whole: wrapped rather than trimmed. -->
+                                <!-- The real folder on one line, trimmed, whole in the tooltip (lot 11, 067). -->
                                 <TextBlock FontSize="13" Foreground="{DynamicResource InkFaintBrush}" Margin="0,2,0,0"
-                                           TextWrapping="Wrap" Text="{Binding PhysicalPath}"/>
+                                           TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" ToolTip="{Binding PhysicalPath}" Text="{Binding PhysicalPath}"
+                                           Visibility="{Binding DataContext.Mode.IsExpert, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BooleanToVisibility}}"/>
+                                <TextBlock FontSize="13" Foreground="{DynamicResource InkFaintBrush}" Margin="0,2,0,0"
+                                           TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" Text="{Binding FolderName}" ToolTip="{Binding PhysicalPath}"
+                                           Visibility="{Binding DataContext.Mode.IsExpert, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource InverseBooleanToVisibility}}"/>
                                 <!-- Why the row cannot be picked, or that its root is shared: under the path, where
                                      a sentence has room, not beside the pill where it squeezed the path. -->
                                 <TextBlock FontSize="13" Margin="0,3,0,0" TextWrapping="Wrap"
@@ -1440,7 +1505,7 @@
                                            Foreground="{DynamicResource InkFaintBrush}" Text="{Binding SharedRootNote}"
                                            Visibility="{Binding HasSharedRootNote, Converter={StaticResource BooleanToVisibility}}"/>
                               </StackPanel>
-                            </DockPanel>
+                            </Grid>
                           </Border>
                           <ControlTemplate.Triggers>
                             <Trigger Property="IsChecked" Value="True">
@@ -1473,7 +1538,7 @@
             <DockPanel>
               <Button DockPanel.Dock="Right" Style="{StaticResource BtnPrimary}" Command="{Binding ConfirmCommand}" controls:ButtonIcon.Kind="check"
                       Content="{Binding [Studio.Settings.AllowedFoldersConfirm], Source={x:Static services:I18n.Instance}}"/>
-              <Button DockPanel.Dock="Right" Style="{StaticResource BtnSecondary}" Margin="0,0,10,0" Command="{Binding CancelCommand}"
+              <Button DockPanel.Dock="Left" Style="{StaticResource BtnSecondary}" Margin="0,0,12,0" Command="{Binding CancelCommand}"
                       Content="{Binding [Studio.Common.Cancel], Source={x:Static services:I18n.Instance}}"/>
               <TextBlock Style="{StaticResource Hint}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
                          Text="{Binding Summary}" ToolTip="{Binding Summary}"/>
@@ -1487,7 +1552,7 @@
     <Grid Grid.Row="0" Grid.RowSpan="3" Background="{DynamicResource ScrimBrush}" MouseLeftButtonDown="OnAboutBackdropClick"
           Visibility="{Binding About.IsOpen, Converter={StaticResource BooleanToVisibility}}">
       <Border Width="660" HorizontalAlignment="Center" VerticalAlignment="Center" MouseLeftButtonDown="OnSwallowClick"
-              Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1"
+              Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource LineStrongBrush}" BorderThickness="1"
               CornerRadius="20" ClipToBounds="True" Effect="{DynamicResource ShadowLg}">
         <Grid>
           <Grid.ColumnDefinitions>
@@ -1504,11 +1569,30 @@
               </Border.Background>
           </Border>
           <StackPanel Grid.Column="1" Margin="28,26">
-            <TextBlock Style="{StaticResource Eyebrow}"
-                       Text="{Binding [Studio.Shell.Eyebrow], Source={x:Static services:I18n.Instance}}"/>
+            <DockPanel>
+              <Button DockPanel.Dock="Right" Style="{StaticResource IconBtnGhost}" VerticalAlignment="Top" Margin="12,0,0,0"
+                      Command="{Binding About.CloseCommand}" controls:ButtonIcon.Kind="x"
+                      ToolTip="{Binding [Studio.Shell.Close], Source={x:Static services:I18n.Instance}}"
+                      AutomationProperties.Name="{Binding [Studio.Shell.Close], Source={x:Static services:I18n.Instance}}"/>
+              <TextBlock Style="{StaticResource Eyebrow}"
+                         Text="{Binding [Studio.Shell.Eyebrow], Source={x:Static services:I18n.Instance}}"/>
+            </DockPanel>
             <TextBlock Text="Orkeon Studio" FontFamily="{StaticResource DisplayFont}" FontSize="24" FontWeight="SemiBold"
                        Foreground="{DynamicResource InkBrush}" Margin="0,8,0,0"/>
-            <TextBlock Style="{StaticResource MonoText}" FontSize="13" Margin="0,8,0,0" Text="{Binding About.VersionLine}"/>
+            <!-- 008: the versions one per line; the raw informational version in the Studio line's tooltip. -->
+            <ItemsControl Margin="0,8,0,0" ItemsSource="{Binding About.VersionLines}" AlternationCount="1000">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                  <TextBlock x:Name="line" Style="{StaticResource MonoText}" FontSize="13" Text="{Binding}"/>
+                  <DataTemplate.Triggers>
+                    <DataTrigger Binding="{Binding (ItemsControl.AlternationIndex), RelativeSource={RelativeSource AncestorType=ContentPresenter}}" Value="0">
+                      <Setter TargetName="line" Property="ToolTip"
+                              Value="{Binding DataContext.About.FullVersion, RelativeSource={RelativeSource AncestorType=ItemsControl}}"/>
+                    </DataTrigger>
+                  </DataTemplate.Triggers>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
             <TextBlock FontSize="13" Foreground="{DynamicResource InkMutedBrush}" TextWrapping="Wrap" LineHeight="21" Margin="0,16,0,0"
                        Text="{Binding [Studio.Shell.Line], Source={x:Static services:I18n.Instance}}"/>
             <Border Background="{DynamicResource SkyBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1"
@@ -1570,8 +1654,9 @@
             </Rectangle.Triggers>
           </Rectangle>
         </Border>
+        <!-- 001-003: the Studio version alone, in both modes; the detail stays in About. -->
         <TextBlock FontSize="13" Foreground="{DynamicResource InkFaintBrush}" HorizontalAlignment="Center" Margin="0,14,0,0"
-                   Text="{Binding About.VersionLine}"/>
+                   Text="{Binding About.StudioVersionLine}"/>
       </StackPanel>
     </Border>
 

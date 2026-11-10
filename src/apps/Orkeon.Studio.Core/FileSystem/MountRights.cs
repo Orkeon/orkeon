@@ -174,6 +174,20 @@ public static class MountRightsTokens
     }
 
     /// <summary>
+    /// Returns the tooltip of a rights badge through a culture port: "can modify, never delete"
+    /// for <see cref="MountRights.ReadWriteNoDelete"/>, whose one-word badge needs saying in a
+    /// sentence, and the long label of <see cref="GetLabel(MountRights, IStudioStrings)"/> otherwise.
+    /// </summary>
+    public static string GetTip(MountRights rights, IStudioStrings strings)
+    {
+        ArgumentNullException.ThrowIfNull(strings);
+
+        return rights == MountRights.ReadWriteNoDelete
+            ? strings[StudioStringKeys.RightsReadWriteNoDeleteTip]
+            : GetLabel(rights, strings);
+    }
+
+    /// <summary>
     /// Position of <paramref name="rights"/> in <see cref="Choices"/> — the index a
     /// drop-down or a choice list has to be set to. Unknown values fall back to the first
     /// entry, which is the safest of the three.

@@ -34,6 +34,7 @@ public sealed class TeamMountRowViewModel : ObservableObject
             ? StudioStringKeys.RightsReadWrite
             : StudioStringKeys.RightsReadOnly];
         RightsBadge = MountRightsTokens.GetBadge(mount?.Rights ?? MountRights.ReadOnly, strings);
+        RightsTip = MountRightsTokens.GetTip(mount?.Rights ?? MountRights.ReadOnly, strings);
         _isChecked = true;
         ShortId = shortId;
         IsUnknownId = isUnknownId;
@@ -57,11 +58,17 @@ public sealed class TeamMountRowViewModel : ObservableObject
     /// <summary>The physical folder behind it.</summary>
     public string PhysicalPath { get; }
 
+    /// <summary>The folder's own name, what the novice reads instead of the path (UX lot 02).</summary>
+    public string FolderName => FolderNames.Of(PhysicalPath);
+
     /// <summary>The rights pill's text.</summary>
     public string RightsLabel { get; }
 
     /// <summary>The one-word rights pill (STUDIO-16); <see cref="RightsLabel"/> is its tooltip.</summary>
     public string RightsBadge { get; }
+
+    /// <summary>The badge's tooltip: "can modify, never delete" for a no-delete entry, the full label otherwise.</summary>
+    public string RightsTip { get; }
 
     /// <summary>True for a read-only mount — the pill's quiet tone.</summary>
     public bool IsReadOnly { get; }

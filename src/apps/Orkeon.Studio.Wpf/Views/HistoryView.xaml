@@ -26,7 +26,12 @@
     <controls:EmptyState Icon="history" Margin="0,32,0,0"
                          Title="{Binding [Studio.History.EmptyTitle], Source={x:Static services:I18n.Instance}}"
                          Text="{Binding [Studio.History.Empty], Source={x:Static services:I18n.Instance}}"
-                         Visibility="{Binding IsEmpty, Converter={StaticResource BooleanToVisibility}}"/>
+                         Visibility="{Binding IsEmpty, Converter={StaticResource BooleanToVisibility}}">
+      <controls:EmptyState.Actions>
+        <Button Style="{StaticResource BtnPrimary}" Command="{Binding LaunchTeamCommand}"
+                Content="{Binding [Studio.Run.Title], Source={x:Static services:I18n.Instance}}"/>
+      </controls:EmptyState.Actions>
+    </controls:EmptyState>
     <controls:EmptyState Icon="search" Margin="0,32,0,0"
                          Title="{Binding [Studio.History.NoMatch], Source={x:Static services:I18n.Instance}}"
                          Visibility="{Binding HasNoMatch, Converter={StaticResource BooleanToVisibility}}"/>
@@ -100,6 +105,10 @@
                                 </Style>
                               </Button.Style>
                             </Button>
+                            <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="32" Margin="0,0,8,0"
+                                    controls:ButtonIcon.Kind="triangle-alert" Command="{Binding ShowErrorCommand}"
+                                    Visibility="{Binding HasError, Converter={StaticResource BooleanToVisibility}}"
+                                    Content="{Binding [Studio.History.ShowError], Source={x:Static services:I18n.Instance}}"/>
                             <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="32"
                                     controls:ButtonIcon.Kind="rotate-ccw" Command="{Binding ReplayCommand}"
                                     Content="{Binding [Studio.History.Replay], Source={x:Static services:I18n.Instance}}"/>
@@ -120,6 +129,10 @@
                             </StackPanel>
                           </controls:Disclosure>
                         </StackPanel>
+
+                        <!-- « Show the error »: the plain reason the run did not succeed, in place. -->
+                        <controls:Alert Tone="Danger" Margin="0,8,0,4" Message="{Binding OutcomeSentence, Mode=OneWay}"
+                                        Visibility="{Binding IsShowingError, Converter={StaticResource BooleanToVisibility}}"/>
 
                         <!-- STUDIO-31 (D-07): « Replay » found the team archived and ran nothing. The line
                              asks in place; « Restore » only restores - the next « Replay » runs it. -->

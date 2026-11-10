@@ -50,6 +50,7 @@ public sealed class TeamFolderRowViewModel
         IsReadWrite = rights != MountRights.ReadOnly;
         RightsLabel = MountRightsTokens.GetLabel(rights, strings);
         RightsBadge = MountRightsTokens.GetBadge(rights, strings);
+        RightsTip = MountRightsTokens.GetTip(rights, strings);
         // An archived team's folders are still its folders (STUDIO-31, D-08): listed, its state said.
         var shownName = isArchived
             ? strings.Format(StudioStringKeys.TeamFoldersArchived, teamName)
@@ -88,6 +89,9 @@ public sealed class TeamFolderRowViewModel
 
     /// <summary>The one-word rights badge (STUDIO-16).</summary>
     public string RightsBadge { get; }
+
+    /// <summary>The badge's tooltip: "can modify, never delete" for a no-delete entry, the full label otherwise.</summary>
+    public string RightsTip { get; }
 
     /// <summary>True for a folder the team writes to.</summary>
     public bool IsReadWrite { get; }

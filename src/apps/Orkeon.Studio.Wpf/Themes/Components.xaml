@@ -9,6 +9,12 @@
                     xmlns:services="clr-namespace:Orkeon.Studio.Wpf.Services"
                     xmlns:views="clr-namespace:Orkeon.Studio.Wpf.Views">
 
+  <!-- State scale (UX lot 11): a Badge's Tone and a StatusDot's DotTone say the same four states.
+       Badge.Tone  <->  StatusDot.DotTone:  Neutral <-> Neutral, Warning <-> Attention, Danger <-> Error,
+       Success <-> Ready. Info is reserved for categories (a folder's rights, a kind), never a state.
+       A view-model names a state ("ok", "warn", "muted", "running", "fail") and StateToneConverter
+       turns it into the Tone: no view repeats that mapping in DataTriggers. -->
+
   <!-- A converter used INSIDE a theme template is declared by the theme: the theme cannot
        reach the converters App.xaml declares (DesignTokenConformityTests, STUDIO-21). -->
   <views:StringPresentToVisibilityConverter x:Key="AlertDetailsVisibility"/>
@@ -137,7 +143,7 @@
     </Style.Triggers>
   </Style>
 
-  <!-- ══ Badge (R12): a 22 px pill, radius exactly 11 (the h/2 rule of BadgeBase), the tone's
+  <!-- ══ Badge (R12): a 22 px pill, radius exactly 11 (the h/2 rule), the tone's
        tinted background and the tone's dark ink — the background is kept in the dark theme.
        Neutral paper-sunk / muted ink; Info sky / accent ink (folder rights «Read and
        write», a running run); Success, Warning, Danger their weak background and ink. ══ -->
@@ -625,9 +631,12 @@
             <Trigger Property="IsOutsideActiveGroup" Value="True">
               <Setter TargetName="TabRoot" Property="Visibility" Value="Collapsed"/>
             </Trigger>
+            <!-- UX lot 04 (043-062): a full dot is what a crew needs or what waits on the user, a hollow ring
+                 (Optional, Settings only) is optional; the tooltip says which. -->
             <Trigger Property="State" Value="Warning">
               <Setter TargetName="EmptyMark" Property="Visibility" Value="Collapsed"/>
               <Setter TargetName="ExpectedMark" Property="Visibility" Value="Visible"/>
+              <Setter TargetName="ExpectedMark" Property="ToolTip" Value="{Binding [Studio.Settings.DotRequiredTip], Source={x:Static services:I18n.Instance}}"/>
               <Setter TargetName="Sub" Property="Foreground" Value="{DynamicResource WarningInkBrush}"/>
             </Trigger>
             <Trigger Property="State" Value="Verified">
@@ -645,6 +654,14 @@
             <Trigger Property="State" Value="Expected">
               <Setter TargetName="EmptyMark" Property="Visibility" Value="Collapsed"/>
               <Setter TargetName="ExpectedMark" Property="Visibility" Value="Visible"/>
+            </Trigger>
+            <Trigger Property="State" Value="Optional">
+              <Setter TargetName="EmptyMark" Property="Visibility" Value="Collapsed"/>
+              <Setter TargetName="ExpectedMark" Property="Visibility" Value="Visible"/>
+              <Setter TargetName="ExpectedMark" Property="Fill" Value="Transparent"/>
+              <Setter TargetName="ExpectedMark" Property="Stroke" Value="{DynamicResource WarningIconBrush}"/>
+              <Setter TargetName="ExpectedMark" Property="StrokeThickness" Value="1.5"/>
+              <Setter TargetName="ExpectedMark" Property="ToolTip" Value="{Binding [Studio.Settings.DotOptionalTip], Source={x:Static services:I18n.Instance}}"/>
             </Trigger>
             <MultiTrigger>
               <MultiTrigger.Conditions>

@@ -694,12 +694,34 @@ public sealed class TeamCardViewModel : ObservableObject
     public bool HasDeleteManualCommand => _deleteManualCommand is { Length: > 0 };
 
     /// <summary>
-    /// The banner's question: « Delete this team? » in a plain catalogue; in a workshop, where
-    /// Delete moves the team and its trees under <c>archive/</c>, « Move the team and what goes
-    /// with it to the workshop's archive? » (STUDIO-64).
+    /// The banner's question: « Delete the team “Veille”? » in a plain catalogue — the team named,
+    /// the banner may sit far from its title (UX lot 08); in a workshop, where Delete moves the team
+    /// and its trees under <c>archive/</c>, « Move the team and what goes with it to the workshop's
+    /// archive? » (STUDIO-64).
     /// </summary>
     public string DeleteQuestion =>
-        _strings[_archivesInWorkshop ? StudioStringKeys.TeamsDeleteAskArchive : StudioStringKeys.TeamsDeleteConfirm];
+        _archivesInWorkshop
+            ? _strings[StudioStringKeys.TeamsDeleteAskArchive]
+            : _strings.Format(StudioStringKeys.TeamsDeleteConfirmNamed, Name);
+
+    /// <summary>
+    /// The banner's question in Novice (UX lot 08): the team always named, and in a workshop the
+    /// archive said without the workshop — the Expert keeps <see cref="DeleteQuestion"/>.
+    /// </summary>
+    public string DeleteQuestionNovice =>
+        _archivesInWorkshop
+            ? _strings.Format(StudioStringKeys.TeamsDeleteAskArchiveNamed, Name)
+            : _strings.Format(StudioStringKeys.TeamsDeleteConfirmNamed, Name);
+
+    /// <summary>
+    /// What the delete takes and what it leaves, in the user's words (UX lot 08): the team's folder
+    /// and history go, the allowed folders stay. Empty in a workshop, whose question already says
+    /// where the team goes.
+    /// </summary>
+    public string DeleteConsequence => _archivesInWorkshop ? "" : _strings[StudioStringKeys.TeamsDeleteConsequence];
+
+    /// <summary>Whether the banner says what the delete takes.</summary>
+    public bool HasDeleteConsequence => !_archivesInWorkshop;
 
     /// <summary>
     /// Arms the banner's answers: the linked session, the box ticked, no refusal yet — and, with
@@ -710,7 +732,7 @@ public sealed class TeamCardViewModel : ObservableObject
         _linkedSession = linkedSession;
         _archivesInWorkshop = archivesInWorkshop;
         OnPropertyChanged(nameof(CanDeleteSessionToo));
-        OnPropertyChanged(nameof(DeleteQuestion));
+        OnPropertiesChanged(nameof(DeleteQuestion), nameof(DeleteQuestionNovice), nameof(DeleteConsequence), nameof(HasDeleteConsequence));
         DeleteSessionToo = false;
         RefuseDelete("", null);
     }
@@ -847,6 +869,19 @@ public sealed class TeamCardViewModel : ObservableObject
     /// <summary>The virtual path of the first folder the team names that nothing vouches for (STUDIO-14); null when none.</summary>
     public string? UndeclaredFolder { get; }
 
+    /// <summary>
+    /// The archive suggestion as this card's line, while the refusals hold the screen's banner (UX
+    /// lot 08: one banner); empty otherwise.
+    /// </summary>
+    public string ArchiveSuggestionNotice => _owner.SuggestionNoticeFor(this);
+
+    /// <summary>Whether the card carries the archive suggestion.</summary>
+    public bool HasArchiveSuggestionNotice => ArchiveSuggestionNotice.Length > 0;
+
+    /// <summary>The owner's suggestion changed: the card's line is read again.</summary>
+    internal void OnSuggestionChanged() =>
+        OnPropertiesChanged(nameof(ArchiveSuggestionNotice), nameof(HasArchiveSuggestionNotice));
+
     /// <summary>Whether a folder of the team waits to be allowed: the row offers « Allow », « Launch » waits.</summary>
     public bool HasUndeclaredFolder => UndeclaredFolder is not null;
 
@@ -858,8 +893,8 @@ public sealed class TeamCardViewModel : ObservableObject
     public RelayCommand AllowFolderCommand { get; }
 
     /// <summary>
-    /// The card badge (mock: scheduled = green, to be tested = amber, on demand = accent).
-    /// A team that never ran and is not scheduled still has to earn its first run.
+    /// The card badge (UX lot 11): archived = muted; a folder to allow = warn; a scheduled team says its
+    /// schedule; otherwise « To try » (warn) until the first run, then « Ready · on demand » (ok).
     /// </summary>
     public string BadgeText
     {
@@ -868,12 +903,21 @@ public sealed class TeamCardViewModel : ObservableObject
             if (IsArchived)
                 return _strings[StudioStringKeys.TeamsArchivedBadge];
 
-            return IsScheduled || LastRun is not null ? ScheduleDisplay : _strings[StudioStringKeys.TeamsToTest];
+            // UX lot 01: a team that cannot launch says why first — the card's sentence and the
+            // « Allow » next to it tell which folder.
+            if (HasUndeclaredFolder)
+                return _strings[StudioStringKeys.TeamsNeedsFolderBadge];
+
+            if (IsScheduled)
+                return ScheduleDisplay;
+
+            // Never run nor scheduled: « To try »; run at least once, on demand: « Ready · on demand ».
+            return _strings[LastRun is null ? StudioStringKeys.TeamsToTest : StudioStringKeys.TeamsReadyBadge];
         }
     }
 
     /// <summary>
-    /// ok / warn / accent / muted — the badge's tone name for the view's triggers. A scheduled team
+    /// ok / warn / muted — the badge's state name, mapped to a tone by <c>StateToneConverter</c>. A scheduled team
     /// is green only once the engine said the operating system runs it (STUDIO-27); not installed or
     /// to reinstall reads amber, and not asked yet claims nothing. An archived team is muted
     /// (STUDIO-32): out of the list, nothing about it is urgent.
@@ -885,14 +929,17 @@ public sealed class TeamCardViewModel : ObservableObject
             if (IsArchived)
                 return "muted";
 
+            if (HasUndeclaredFolder)
+                return "warn";
+
             if (!IsScheduled)
-                return LastRun is null ? "warn" : "accent";
+                return LastRun is null ? "warn" : "ok";
 
             return _scheduleState switch
             {
                 TeamScheduleState.Installed => "ok",
                 TeamScheduleState.Absent or TeamScheduleState.Stale => "warn",
-                _ => "accent",
+                _ => "muted",
             };
         }
     }
@@ -1029,6 +1076,9 @@ public sealed class InProgressSessionViewModel : ObservableObject
                 return;
 
             OnPropertyChanged(nameof(IsIdle));
+            // UX lot 08: the drafts sit in a fold — a confirmation armed in it unfolds it.
+            if (value)
+                _owner.IsDraftsExpanded = true;
             _owner.OnQuestionChanged();
         }
     }
@@ -1204,6 +1254,7 @@ public sealed class TeamsViewModel : ObservableObject
     public TeamsViewModel(TeamsDependencies? dependencies = null)
     {
         var wired = dependencies ?? new TeamsDependencies();
+        PropertyChanged += OnSuggestionStateChanged;
         _declaredMounts = wired.DeclaredMounts ?? (() => []);
         _shellOpener = wired.ShellOpener;
         _historyStore = wired.HistoryStore;
@@ -1238,7 +1289,7 @@ public sealed class TeamsViewModel : ObservableObject
         DismissSuggestionCommand = new RelayCommand(DismissSuggestion);
         // The screen's own sentences follow the language; the cards' are rebuilt on each refresh.
         _strings.CultureChanged += (_, _) => OnPropertiesChanged(
-            nameof(ArchivesLabel), nameof(NoMatchLine), nameof(UndoNotice), nameof(ArchiveSuggestionLine));
+            nameof(ArchivesLabel), nameof(NoMatchLine), nameof(UndoNotice), nameof(ArchiveSuggestionLine), nameof(InProgressHeader));
         Refresh();
     }
 
@@ -1372,6 +1423,29 @@ public sealed class TeamsViewModel : ObservableObject
     /// <summary>Whether resumable sessions are listed.</summary>
     public bool HasInProgress => InProgress.Count > 0;
 
+    /// <summary>Whether the fold of the drafts is open — closed at first, opened by a confirmation armed in it (UX lot 08).</summary>
+    public bool IsDraftsExpanded
+    {
+        get => _isDraftsExpanded;
+        set => SetProperty(ref _isDraftsExpanded, value);
+    }
+
+    private bool _isDraftsExpanded;
+
+    /// <summary>The suggestion moved or came back: the screen's banner and the cards' own lines follow it (UX lot 08).</summary>
+    private void OnSuggestionStateChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName != nameof(HasArchiveSuggestion))
+            return;
+
+        OnPropertyChanged(nameof(ShowsArchiveSuggestionBanner));
+        foreach (var card in AllCards)
+            card.OnSuggestionChanged();
+    }
+
+    /// <summary>« Drafts · 3 » — the folded header of the creations underway, over the cards (UX lot 08).</summary>
+    public string InProgressHeader => _strings.Format(StudioStringKeys.TeamsInProgressCount, InProgress.Count);
+
     /// <summary>Opens the creation wizard.</summary>
     public RelayCommand CreateCommand { get; }
 
@@ -1405,7 +1479,9 @@ public sealed class TeamsViewModel : ObservableObject
                 StudioStringKeys.TeamsRefusedRuns,
                 refused.Count,
                 string.Join(", ", refused.Select(notice => notice.Subject).Distinct(StringComparer.Ordinal)));
-        OnPropertiesChanged(nameof(RefusedRunsLine), nameof(HasRefusedRuns));
+        // UX lot 08: one banner at the head of the screen — the refusals come first, the archive
+        // suggestion waits for them to be fixed.
+        OnPropertiesChanged(nameof(RefusedRunsLine), nameof(HasRefusedRuns), nameof(HasArchiveSuggestion));
     }
 
     // ── the view (D-01) ──
@@ -1520,6 +1596,22 @@ public sealed class TeamsViewModel : ObservableObject
     public bool HasArchiveSuggestion =>
         _suggested.Count > 0 && !_suggestionAnswered && !_showArchives && _undo is null && !IsAnyQuestionOpen;
 
+    /// <summary>
+    /// Whether the suggestion is the screen's banner (UX lot 08: one banner at the head of the
+    /// screen). The refusals come first: while they show, the suggestion moves into the card it
+    /// names (<see cref="SuggestionNoticeFor"/>).
+    /// </summary>
+    public bool ShowsArchiveSuggestionBanner => HasArchiveSuggestion && !HasRefusedRuns;
+
+    /// <summary>
+    /// The suggestion as the card's own line while the refusals hold the banner — « Veille has not
+    /// been launched for 30 days — archive it? »; empty for any other card, or when the banner says it.
+    /// </summary>
+    internal string SuggestionNoticeFor(TeamCardViewModel card) =>
+        HasArchiveSuggestion && HasRefusedRuns && _suggested.Contains(card)
+            ? _strings.Format(StudioStringKeys.TeamsSuggestionOne, card.Name, _suggestionDays)
+            : "";
+
     /// <summary>« 3 teams not launched for 60 days — archive them? », or the one team by its name.</summary>
     public string ArchiveSuggestionLine => _suggested switch
     {
@@ -1577,7 +1669,7 @@ public sealed class TeamsViewModel : ObservableObject
         RefreshArchiveSuggestion();
         RefreshRefusedRuns();
         OnPropertiesChanged(
-            nameof(ActiveCount), nameof(IsEmpty), nameof(IsAllArchived), nameof(HasInProgress),
+            nameof(ActiveCount), nameof(IsEmpty), nameof(IsAllArchived), nameof(HasInProgress), nameof(InProgressHeader),
             nameof(ArchivedCount), nameof(HasArchives), nameof(ArchivesLabel));
     }
 

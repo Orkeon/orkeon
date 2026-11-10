@@ -35,6 +35,7 @@ public sealed partial class CreateTeamViewModel
     private int _step2TabIndex;
     private bool _showAllTeamTools;
     private bool _isYamlView;
+    private bool _isAdjustingTeam;
 
     /// <summary>The tab on screen in step 2.</summary>
     public int Step2TabIndex
@@ -54,6 +55,26 @@ public sealed partial class CreateTeamViewModel
 
     /// <summary>« ← Back to the team », the composition pane's footer.</summary>
     public RelayCommand BackToTeamCommand { get; private set; } = null!;
+
+    /// <summary>
+    /// UX lot 12 (016): the Novice's one « Adjust the team… » under the agents — it brings out
+    /// each card's « Edit », which the Expert always sees. A new creation folds them again.
+    /// </summary>
+    public RelayCommand AdjustTeamCommand { get; private set; } = null!;
+
+    /// <summary>Whether the Novice asked to adjust the team: each agent card shows its « Edit ».</summary>
+    public bool IsAdjustingTeam
+    {
+        get => _isAdjustingTeam;
+        private set
+        {
+            if (SetProperty(ref _isAdjustingTeam, value))
+                OnPropertyChanged(nameof(OffersAdjustTeam));
+        }
+    }
+
+    /// <summary>Whether « Adjust the team… » stands: not yet pressed (the view keeps it to the Novice).</summary>
+    public bool OffersAdjustTeam => !_isAdjustingTeam;
 
     /// <summary>The Proposal | YAML switch (Expert): the proposal side.</summary>
     public RelayCommand ShowProposalViewCommand { get; private set; } = null!;
@@ -162,18 +183,43 @@ public sealed partial class CreateTeamViewModel
     /// <summary>Whether a composition has run in this session (stopped or under way).</summary>
     private bool HasComposition => IsComposing || _model.FinishedStatus is not null;
 
-    /// <summary>The composition tab: turning while it runs, a check once stopped, the warning on a definition to fix.</summary>
+    /// <summary>
+    /// The composition tab's state — the scale of the composition (UX lot 11, mod. 11), one row per
+    /// state: state → subtitle key → tab state (→ dot / badge tone).
+    /// <list type="bullet">
+    /// <item>none (never composed) → <c>WizardTabCompositionNone</c> → Empty (Neutral)</item>
+    /// <item>running → <c>WizardTabCompositionRunning</c> → Working (Attention)</item>
+    /// <item>stopped, <c>ValidationOk == true</c> → <c>WizardTabCompositionDone</c> → Done (Ready / Success)</item>
+    /// <item>stopped, <c>ValidationOk == false</c> → <c>WizardTabCompositionInvalid</c> → Warning (Attention / Warning)</item>
+    /// <item>stopped, <c>ValidationOk == null</c> (not checked) → <c>WizardTabCompositionStopped</c> → Empty (Neutral)</item>
+    /// </list>
+    /// <see cref="CompositionTabSubtitle"/> and <see cref="CompositionStateText"/> follow the same scale.
+    /// </summary>
     public string CompositionTabState =>
         IsComposing ? TabWorking
-        : _model.FinishedStatus is null ? TabEmpty
-        : ValidationOk == false ? TabWarning
-        : TabDone;
+        : _model.FinishedStatus is null && !HasProposal ? TabEmpty
+        : ValidationOk switch
+        {
+            true => TabDone,
+            false => TabWarning,
+            null => TabEmpty,
+        };
 
-    /// <summary>« Stopped · 4 files written », « Under way », « Not started ».</summary>
+    /// <summary>
+    /// « Composed · 4 files written », « To fix · … », « Stopped · … », « Under way », « Not started »:
+    /// the subtitle key of <see cref="CompositionTabState"/>'s scale (state → key → tone).
+    /// </summary>
     public string CompositionTabSubtitle =>
         IsComposing ? _strings[StudioStringKeys.WizardTabCompositionRunning]
-        : _model.FinishedStatus is null ? _strings[StudioStringKeys.WizardTabCompositionNone]
-        : _strings.Format(StudioStringKeys.WizardTabCompositionStopped, Files.Count);
+        : _model.FinishedStatus is null && !HasProposal ? _strings[StudioStringKeys.WizardTabCompositionNone]
+        : _strings.Format(
+            ValidationOk switch
+            {
+                true => StudioStringKeys.WizardTabCompositionDone,
+                false => StudioStringKeys.WizardTabCompositionInvalid,
+                null => StudioStringKeys.WizardTabCompositionStopped,
+            },
+            Files.Count);
 
     /// <summary>The « State » row: under way, or stopped with what the validation said.</summary>
     public string CompositionStateText =>
@@ -210,10 +256,18 @@ public sealed partial class CreateTeamViewModel
         }
     }
 
-    /// <summary>The composition pane's footer.</summary>
-    public string CompositionFooter => _strings[IsComposing
-        ? StudioStringKeys.WizardCompositionFooterRunning
-        : StudioStringKeys.WizardCompositionFooterDone];
+    /// <summary>
+    /// The composition pane's footer, on the « State » row's scale (UX lot 05, 017): under way,
+    /// finished when the definition holds, to fix when it does not, stopped when unchecked.
+    /// </summary>
+    public string CompositionFooter => _strings[
+        IsComposing ? StudioStringKeys.WizardCompositionFooterRunning
+        : ValidationOk switch
+        {
+            true => StudioStringKeys.WizardCompositionFooterDone,
+            false => StudioStringKeys.WizardCompositionFooterInvalid,
+            null => StudioStringKeys.WizardCompositionFooterStopped,
+        }];
 
     /// <summary>Whether the composition pane has anything to report.</summary>
     public bool IsCompositionTabEmpty => !HasComposition;
@@ -224,9 +278,13 @@ public sealed partial class CreateTeamViewModel
     /// </summary>
     public bool CanTryTeamNow => CanTryTeam && !HasFoldersToChoose;
 
-    /// <summary>The disabled « Try the team → »'s reason; empty when it runs.</summary>
-    public string TryTeamTip => CanTryTeam && HasFoldersToChoose
-        ? _strings.Format(StudioStringKeys.WizardFoldersToChoose, FoldersToChooseCount)
+    /// <summary>
+    /// The disabled « Try the team → »'s reason — the folders left to choose, else that the
+    /// composition comes first (UX lot 05, 021); empty when it runs. The button always stands.
+    /// </summary>
+    public string TryTeamTip =>
+        HasFoldersToChoose ? _strings.Format(StudioStringKeys.WizardFoldersToChoose, FoldersToChooseCount)
+        : !HasProposal ? _strings[StudioStringKeys.WizardTryTeamNoProposal]
         : string.Empty;
 
     /// <summary>Whether the action bar has a sentence — its dot shows with it.</summary>
@@ -241,6 +299,7 @@ public sealed partial class CreateTeamViewModel
         SeeNotesCommand = new RelayCommand(() => Step2TabIndex = Step2NotesTab);
         SeeCompositionCommand = new RelayCommand(() => Step2TabIndex = Step2CompositionTab);
         BackToTeamCommand = new RelayCommand(() => Step2TabIndex = Step2TeamTab);
+        AdjustTeamCommand = new RelayCommand(() => IsAdjustingTeam = true);
         ShowProposalViewCommand = new RelayCommand(() => IsYamlView = false);
         ShowYamlViewCommand = new RelayCommand(() => IsYamlView = true);
         ShowAllTeamToolsCommand = new RelayCommand(() =>
@@ -256,6 +315,7 @@ public sealed partial class CreateTeamViewModel
     {
         Step2TabIndex = Step2TeamTab;
         IsYamlView = false;
+        IsAdjustingTeam = false;
         _showAllTeamTools = false;
         RefreshStep2Tabs();
     }

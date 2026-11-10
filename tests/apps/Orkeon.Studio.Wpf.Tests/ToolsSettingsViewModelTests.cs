@@ -20,7 +20,9 @@ public sealed class ToolsSettingsViewModelTests
         Assert.True(tools.HasSecrets);
         Assert.Equal([ToolCatalog.TavilyKeyEnv, ToolCatalog.BraveKeyEnv, ToolCatalog.OpenAiImageKeyEnv], tools.Secrets.Select(s => s.EnvName));
         var tavily = tools.Secrets[0];
-        Assert.Equal("web_search", tavily.UsedBy);
+        // UX lot 02: the row is titled by what the key serves, never by the tool's identifier.
+        Assert.Equal("Web search (Tavily)", tavily.UsedBy);
+        Assert.Equal(["Web search (Tavily)", "Web search (Brave)", "Image generation (OpenAI)"], tools.Secrets.Select(s => s.UsedBy));
         Assert.True(tavily.HasConsoleUrl);
         Assert.False(tavily.HasKey);
         Assert.Equal("no key detected", tavily.StatusText);
@@ -169,5 +171,32 @@ public sealed class ToolsSettingsViewModelTests
 
         Assert.All(tools.Families, f => Assert.NotEqual(f.Key, f.Label));
         Assert.Equal(tools.Families.Count, tools.Families.Select(f => f.Label).Distinct(StringComparer.Ordinal).Count());
+    }
+
+    [Fact]
+    public void A_tool_key_row_is_retitled_in_the_new_language_when_the_language_switches()
+    {
+        var strings = new FakeSwitchableStudioStrings("fr");
+        var tools = new ToolsSettingsViewModel(new FakeApiKeyStore(), strings);
+        var tavily = tools.Secrets[0];
+        var raised = new List<string?>();
+        tavily.PropertyChanged += (_, e) => raised.Add(e.PropertyName);
+
+        strings.Switch();
+
+        Assert.Contains(nameof(SecretRowViewModel.UsedBy), raised);
+        Assert.Equal(strings[Orkeon.Studio.Core.Localization.StudioStringKeys.ToolSecretWebSearch], tavily.UsedBy);
+        Assert.NotEqual("Web search (Tavily)", tavily.UsedBy);
+    }
+
+    [Theory]
+    [InlineData("web_scraper", "Web scraper")]
+    [InlineData("pdf-reader", "Pdf reader")]
+    [InlineData("ocr", "Ocr")]
+    public void A_tool_Studio_has_no_label_for_is_humanised_never_raw(string toolId, string expected)
+    {
+        var tools = new ToolsSettingsViewModel(new FakeApiKeyStore());
+
+        Assert.Equal(expected, tools.ToolLabel(toolId));
     }
 }

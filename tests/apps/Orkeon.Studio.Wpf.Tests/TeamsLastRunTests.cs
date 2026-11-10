@@ -101,7 +101,7 @@ public sealed class TeamsLastRunTests : IDisposable
         var card = Assert.Single(teams.Teams);
         Assert.Equal(recorded, card.LastRun);
         Assert.Null(card.LastOutcome);
-        Assert.Equal("accent", card.BadgeTone);
+        Assert.Equal("ok", card.BadgeTone);
         Assert.Equal(
             string.Format(
                 System.Globalization.CultureInfo.CurrentCulture,

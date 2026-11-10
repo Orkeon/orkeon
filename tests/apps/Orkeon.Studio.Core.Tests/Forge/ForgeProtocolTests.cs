@@ -242,6 +242,20 @@ public class ForgeSessionModelTests
     }
 
     [Fact]
+    public void A_try_task_without_a_duration_has_none_rather_than_zero()
+    {
+        var model = new ForgeSessionModel();
+        model.Feed(Event(
+            """{"v":2,"seq":1,"ts":"t","kind":"task.completed","taskId":"collecte","agentRole":"Web Researcher","success":true}"""));
+        model.Feed(Event(
+            """{"v":2,"seq":2,"ts":"t","kind":"task.completed","taskId":"resume","agentRole":"Writer","success":false,"skipped":true,"durationMs":0}"""));
+        model.Feed(Event(
+            """{"v":2,"seq":3,"ts":"t","kind":"task.completed","taskId":"envoi","agentRole":"Writer","success":true,"durationMs":1200}"""));
+
+        Assert.Equal([null, null, 1200L], model.Activity.Select(task => task.DurationMs));
+    }
+
+    [Fact]
     public void Before_any_brief_nothing_is_known_about_inputs_or_output()
     {
         var model = new ForgeSessionModel();
@@ -283,21 +297,27 @@ public class ForgeSessionModelTests
     }
 
     /// <summary>
-    /// Lot 3: a finding the engine does not block on (major, minor) is a remark, not a
-    /// failure — the screen marks it amber, never with the red of a criterion that failed.
+    /// UX lot 05 (019, 020): only a minor finding is a remark — the criterion stays met, marked
+    /// amber; a major or blocking one fails it, as the engine judges the verdict not passing.
     /// </summary>
     [Fact]
-    public void A_finding_that_blocks_nothing_is_a_remark_and_a_blocking_one_is_a_failure()
+    public void A_minor_finding_is_a_remark_and_a_major_or_blocking_one_is_a_failure()
     {
         var model = FullCycle();
 
-        var remarked = model.BuildChecklist();
+        var major = model.BuildChecklist();
 
-        Assert.True(remarked[0].IsRemark);
-        Assert.False(remarked[1].IsRemark);
+        Assert.False(major[0].Passed);
+        Assert.False(major[0].IsRemark);
+        Assert.False(major[1].IsRemark);
 
         model.Feed(Event(
-            """{"v":2,"seq":21,"ts":"t","kind":"verdict.ready","score":0.4,"passing":false,"findings":[{"id":"F1","severity":"blocking","acceptance":"A1","statement":"Les sources ne sont pas citées"}],"suggestions":[],"judge":"llm"}"""));
+            """{"v":2,"seq":21,"ts":"t","kind":"verdict.ready","score":0.8,"passing":true,"findings":[{"id":"F1","severity":"minor","acceptance":"A1","statement":"Les sources ne sont pas citées"}],"suggestions":[],"judge":"llm"}"""));
+
+        Assert.True(model.BuildChecklist()[0].IsRemark);
+
+        model.Feed(Event(
+            """{"v":2,"seq":22,"ts":"t","kind":"verdict.ready","score":0.4,"passing":false,"findings":[{"id":"F1","severity":"blocking","acceptance":"A1","statement":"Les sources ne sont pas citées"}],"suggestions":[],"judge":"llm"}"""));
 
         var blocked = model.BuildChecklist();
 

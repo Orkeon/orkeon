@@ -170,13 +170,15 @@ public partial class CreateTeamWizardTests
         Assert.True(vm.Checklist[1].IsMet);
         Assert.Equal(EnglishStudioStrings.Instance.Format(StudioStringKeys.WizardVerdictSummary, 2, 2), vm.VerdictSummary);
         Assert.True(vm.HasVerdictSummary);
+        Assert.Equal(EnglishStudioStrings.Instance[StudioStringKeys.WizardVerdictReady], vm.VerdictHeadline);
+        Assert.Equal("Warning", vm.VerdictHeadlineTone);
     }
 
     [Fact]
     public async Task The_summary_counts_remarks_as_met_even_when_the_score_fails_the_verdict()
     {
-        // hrm D02 (020): a remark on every criterion and a failing verdict at 0.41 — the two
-        // criteria are met (two checks on screen); the score alone fails the trial, on its badge.
+        // hrm D02 (020), UX lot 05: a minor finding is a remark (met), a major one is a failure —
+        // one criterion met out of two, and the headline counts the one point to fix.
         var (vm, processes, _) = Build();
         processes.WhileRunning = () =>
         {
@@ -188,9 +190,14 @@ public partial class CreateTeamWizardTests
 
         await Compose(vm);
 
-        Assert.All(vm.Checklist, line => Assert.True(line.IsMet));
+        Assert.True(vm.Checklist[0].IsRemark);
+        Assert.True(vm.Checklist[0].IsMet);
+        Assert.True(vm.Checklist[1].IsFailure);
+        Assert.False(vm.Checklist[1].IsMet);
         Assert.False(vm.VerdictPassing);
-        Assert.Equal(EnglishStudioStrings.Instance.Format(StudioStringKeys.WizardVerdictSummary, 2, 2), vm.VerdictSummary);
+        Assert.Equal(EnglishStudioStrings.Instance.Format(StudioStringKeys.WizardVerdictSummary, 1, 2), vm.VerdictSummary);
+        Assert.Equal(EnglishStudioStrings.Instance.Format(StudioStringKeys.WizardVerdictToFix, 1), vm.VerdictHeadline);
+        Assert.Equal("Danger", vm.VerdictHeadlineTone);
     }
 
     [Fact]
@@ -250,6 +257,8 @@ public partial class CreateTeamWizardTests
 
         Assert.True(vm.Checklist[0].IsFailure);
         Assert.False(vm.Checklist[0].IsRemark);
+        Assert.Equal(EnglishStudioStrings.Instance.Format(StudioStringKeys.WizardVerdictToFix, 1), vm.VerdictHeadline);
+        Assert.Equal("Danger", vm.VerdictHeadlineTone);
     }
 
     [Fact]

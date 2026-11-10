@@ -129,6 +129,21 @@ public sealed class RunPanePresentationTests : IDisposable
     }
 
     [Fact]
+    public async Task A_success_with_an_agent_not_run_says_so_in_its_badge_with_the_warning_tone()
+    {
+        var crew = WriteCrew("analyste", "redacteur", "relecteur");
+        var (tab, launcher) = Build(new FakeTargetProbe().WithFile(crew));
+        launcher.OutputToEmit.Add(Completed("Analyste"));
+        launcher.OutputToEmit.Add(Completed("Rédacteur"));
+        tab.Target.Select(crew);
+
+        await tab.RunAsync(TestContext.Current.CancellationToken);
+
+        Assert.Equal("Succeeded · 1 agent not run", tab.RunBadgeText);
+        Assert.Equal("warn", tab.RunBadgeTone);
+    }
+
+    [Fact]
     public async Task While_the_run_lives_its_announcement_and_the_ready_verdict_are_not_said()
     {
         var (tab, launcher) = Build(new FakeTargetProbe().WithFile("/crews/team.yaml"));

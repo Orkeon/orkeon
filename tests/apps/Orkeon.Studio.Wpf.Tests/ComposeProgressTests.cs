@@ -114,6 +114,8 @@ public sealed class ComposeProgressTests
                 """{"v":2,"seq":3,"ts":"t","kind":"stage.entered","stage":"verdict","iteration":1}"""));
             processes.Emit(Out(
                 """{"v":2,"seq":8,"ts":"t","kind":"decision.needed","options":["accept","retry","refine","abort"]}"""));
+            // UX lot 06: the open panel carries the wait; the card names it with the panel closed.
+            vm.Chat.CloseCommand.Execute(null);
             (title, working, waiting) = (vm.Progress.Title, vm.Progress.IsWorking, vm.Progress.IsWaiting);
         };
 
@@ -140,7 +142,7 @@ public sealed class ComposeProgressTests
         await vm.ComposeCommand.ExecuteAsync();
 
         Assert.False(vm.Progress.IsWorking);
-        Assert.Equal("Stopped.", vm.Progress.Title);
+        Assert.Equal("Composition stopped.", vm.Progress.Title);
     }
 
     /// <summary>

@@ -44,6 +44,17 @@ public class RunProgressViewModelTests
     }
 
     [Fact]
+    public void A_task_without_a_duration_shows_a_dash_not_zero_seconds()
+    {
+        var panel = Watching();
+
+        panel.TryApply("""{"v":2,"seq":1,"ts":"t","kind":"task.completed","taskId":"t1","agentRole":"analyst","success":true}""");
+        panel.TryApply("""{"v":2,"seq":2,"ts":"t","kind":"task.completed","taskId":"t2","agentRole":"writer","success":false,"skipped":true,"durationMs":0}""");
+
+        Assert.All(panel.Tasks, task => Assert.Equal("—", task.Duration));
+    }
+
+    [Fact]
     public void A_running_task_has_a_row_until_it_finishes()
     {
         // STUDIO-17: the row the screen lacked — between the start and the close, the panel

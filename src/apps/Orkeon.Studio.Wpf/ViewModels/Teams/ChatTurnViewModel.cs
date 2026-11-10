@@ -20,6 +20,7 @@ public sealed class ChatTurnViewModel : ObservableObject
     private readonly string _detail;
     private readonly string _hint;
     private readonly string? _bodyKey;
+    private readonly string? _replyBody;
 
     internal ChatTurnViewModel(
         IStudioStrings strings,
@@ -28,9 +29,11 @@ public sealed class ChatTurnViewModel : ObservableObject
         string detail = "",
         string hint = "",
         string? bodyKey = null,
-        bool isClosing = false)
+        bool isClosing = false,
+        string? replyBody = null)
     {
         _bodyKey = bodyKey;
+        _replyBody = replyBody;
         _strings = strings;
         _body = body;
         _detail = detail;
@@ -47,6 +50,12 @@ public sealed class ChatTurnViewModel : ObservableObject
 
     /// <summary>The bubble's first line — the question, or what the user typed.</summary>
     public string Body => Catalogued("Body") ?? _body;
+
+    /// <summary>
+    /// The body as the engine sent it, before its agent keys were read as roles: the answers a
+    /// question lists go back to the engine in its own words (<see cref="ChatReplyReader"/>).
+    /// </summary>
+    internal string ReplyBody => _replyBody ?? Body;
 
     /// <summary>The paragraph under it; empty when the turn has none.</summary>
     public string Detail => Catalogued("Detail") ?? _detail;

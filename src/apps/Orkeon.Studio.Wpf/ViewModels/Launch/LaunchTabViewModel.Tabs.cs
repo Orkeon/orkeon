@@ -6,6 +6,7 @@ using Orkeon.Studio.Core.FileSystem;
 using Orkeon.Studio.Core.Launch;
 using Orkeon.Studio.Core.Localization;
 using Orkeon.Studio.Core.Teams;
+using Orkeon.Studio.Wpf.ViewModels.Mounts;
 using Orkeon.Studio.Wpf.ViewModels.Mvvm;
 using Orkeon.Studio.Wpf.ViewModels.Shell;
 
@@ -16,7 +17,12 @@ namespace Orkeon.Studio.Wpf.ViewModels.Launch;
 /// <param name="RightsLabel">« Read » or « Read and write ».</param>
 /// <param name="IsWritable">Whether the agents may write there.</param>
 /// <param name="PhysicalPath">The folder on this machine; empty when the entry names none.</param>
-public sealed record RunFolderRow(string VirtualPath, string RightsLabel, bool IsWritable, string PhysicalPath);
+/// <param name="IsUndeclared">Whether no setting of this machine allows the folder: the run is refused on it.</param>
+public sealed record RunFolderRow(string VirtualPath, string RightsLabel, bool IsWritable, string PhysicalPath, bool IsUndeclared = false)
+{
+    /// <summary>The folder's own name, what the novice reads instead of the path (UX lot 02).</summary>
+    public string FolderName => FolderNames.Of(PhysicalPath);
+}
 
 /// <summary>
 /// One agent's column of the run tab (refonte lot 12): there before the launch, from the crew's
@@ -96,7 +102,7 @@ public sealed partial class LaunchTabViewModel
 
             if (!value && _activeTab == CommandTab)
                 ActiveTab = OptionsTab;
-            OnPropertyChanged(nameof(OptionsNextLabel));
+            OnPropertiesChanged(nameof(OptionsNextLabel), nameof(ExitTooltip));
         }
     }
 
@@ -144,10 +150,15 @@ public sealed partial class LaunchTabViewModel
     {
         get
         {
+            var metaParts = TeamMetaParts();
             var parts = new List<string>(3);
-            if (TeamMetaLine is { Length: > 0 } meta)
-                parts.Add(meta);
-            parts.Add(RunLlmLabelOf(RunLlmChoice));
+            if (metaParts.Count > 0)
+                parts.Add(string.Join(" · ", metaParts));
+            // « model Local · Local » says it twice (UX lot 08): the run's model is left out only when the
+            // team's own « model X » part names the same setting — never on a mere substring.
+            var llmLabel = RunLlmLabelOf(RunLlmChoice);
+            if (!metaParts.Contains(_strings.Format(StudioStringKeys.RunMetaProfile, llmLabel), StringComparer.Ordinal))
+                parts.Add(llmLabel);
             if (Target.KindDisplay is { Length: > 0 } kind)
                 parts.Add(kind);
             return parts.Count > 0 ? string.Join(" · ", parts) : null;
@@ -165,8 +176,10 @@ public sealed partial class LaunchTabViewModel
     /// <summary>The options keep their marks to themselves: an empty circle.</summary>
     public static string OptionsTabState => "Empty";
 
-    /// <summary>« Normal · progress »: the verbosity and the display.</summary>
-    public string OptionsTabSubtitle => string.Join(" · ", VerbosityLabel(Options.Verbosity), DisplayLabel.ToLower(CultureInfo.CurrentCulture));
+    /// <summary>« Default settings » while the options are untouched; otherwise « Detailed level · Raw output »: the verbosity and the display.</summary>
+    public string OptionsTabSubtitle => Options.Verbosity == 0 && Options.WatchProgress
+        ? _strings[StudioStringKeys.RunOptionsDefault]
+        : string.Join(" · ", _strings.Format(StudioStringKeys.RunVerbosityPrefix, VerbosityLabel(Options.Verbosity)), DisplayLabel);
 
     /// <summary>The options pane's footer: the verbosity, the display and the folders the launch mounts.</summary>
     public string OptionsFooter => _strings.Format(
@@ -190,6 +203,7 @@ public sealed partial class LaunchTabViewModel
         get
         {
             var rows = new List<RunFolderRow>();
+            var undeclared = UndeclaredTeamFolders;
             var definitions = Mounts.ResolvedTeamMounts
                 .Select(mount => MountDefinition.TryParse(mount.Effective, out var parsed, out _) ? parsed : null)
                 .OfType<MountDefinition>();
@@ -200,7 +214,8 @@ public sealed partial class LaunchTabViewModel
                     definition.VirtualPath,
                     _strings[writable ? StudioStringKeys.RunRightsReadWrite : StudioStringKeys.RunRightsRead],
                     writable,
-                    definition.PhysicalPath ?? string.Empty));
+                    definition.PhysicalPath ?? string.Empty,
+                    undeclared.Contains(definition.VirtualPath, StringComparer.Ordinal)));
             }
 
             return rows;
@@ -356,8 +371,8 @@ public sealed partial class LaunchTabViewModel
     /// <summary>Whether the panes take changes: not while a run lives (« Can be changed after the run »).</summary>
     public bool IsEditable => !IsRunning;
 
-    /// <summary>ok | danger | running — the dot of the action bar.</summary>
-    public string LaunchReadinessTone => IsRunning ? "running" : LaunchBlockedReason is null ? "ok" : "danger";
+    /// <summary>ok | fail | running — the dot of the action bar, on the state scale StateToneConverter reads (UX lot 11).</summary>
+    public string LaunchReadinessTone => IsRunning ? "running" : LaunchBlockedReason is null ? "ok" : "fail";
 
     /// <summary>
     /// The action bar's sentence: « Ready to launch in Real mode. The result will go to /output. »,

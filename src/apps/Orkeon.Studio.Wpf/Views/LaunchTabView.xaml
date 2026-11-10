@@ -106,6 +106,7 @@
                        the title only: the meta line takes its visibility from the nearest resource,
                        Collapsed on the ComboBox, Visible in each ComboBoxItem's style. -->
                   <ComboBox Style="{StaticResource ComboM}"
+                            Tag="{Binding [Studio.Run.PickTeamPrompt], Source={x:Static services:I18n.Instance}}"
                             ItemsSource="{Binding DataContext.TeamChoices, RelativeSource={RelativeSource AncestorType=views:RunScreenView}}"
                             SelectedItem="{Binding DataContext.SelectedTeam, RelativeSource={RelativeSource AncestorType=views:RunScreenView}}">
                     <ComboBox.Resources>
@@ -139,18 +140,11 @@
                             Visibility="{Binding HasTeamCard, Converter={StaticResource BooleanToVisibility}}">
                   <TextBlock Style="{StaticResource FieldLabel}"
                              Text="{Binding [Studio.Run.LblModel], Source={x:Static services:I18n.Instance}}"/>
-                  <!-- The team card's « Change the model » editor, as is (TeamsView): the box « Use the
-                       default model (X) », then the settings of this machine by name, held by plain
-                       strings. A list of entries selected by item or by key stayed empty on arrival. -->
-                  <CheckBox IsChecked="{Binding RunUsesDefaultLlm}" IsEnabled="{Binding HasLlmProfiles}"
-                            Foreground="{DynamicResource InkBrush}" Content="{Binding UseDefaultLlmLabel}"
+                  <!-- One list: « Default (X) » first, then the settings of this machine by name, held by
+                       plain strings (a list selected by item or by key stayed empty on arrival). -->
+                  <ComboBox Style="{StaticResource ComboM}" ItemsSource="{Binding LlmChoices}"
+                            SelectedItem="{Binding SelectedLlmChoice}" IsEnabled="{Binding HasLlmProfiles}"
                             ToolTip="{Binding [Studio.Teams.UseDefaultLlmHint], Source={x:Static services:I18n.Instance}}"/>
-                  <StackPanel Orientation="Horizontal" Margin="0,7,0,0"
-                              Visibility="{Binding RunUsesDefaultLlm, Converter={StaticResource InverseBooleanToVisibility}}">
-                    <TextBlock Style="{StaticResource Hint}" VerticalAlignment="Center" Margin="0,0,8,0"
-                               Text="{Binding [Studio.Teams.PinnedLlm], Source={x:Static services:I18n.Instance}}"/>
-                    <ComboBox Style="{StaticResource ComboM}" ItemsSource="{Binding LlmProfiles}" SelectedItem="{Binding RunLlmProfile}"/>
-                  </StackPanel>
                   <StackPanel Orientation="Horizontal" Margin="0,7,0,0">
                     <Button Style="{StaticResource BtnSecondary}"
                             VerticalAlignment="Center" Command="{Binding RememberLlmForTeamCommand}"
@@ -194,8 +188,20 @@
                             Content="{Binding [Studio.Run.Folder], Source={x:Static services:I18n.Instance}}"/>
                   </StackPanel>
                 </Grid>
-                <!-- the team-type note, once: what a multi-file folder asks of « orkeon run », else the shape -->
-                <TextBlock Style="{StaticResource Hint}" Margin="0,6,0,0" TextWrapping="Wrap" Text="{Binding TargetTypeNote}"/>
+                <!-- the team-type note, once: what a multi-file folder asks of « orkeon run », else the shape.
+                     UX lot 02: no CLI, command or version in Novice, which reads the detected shape alone. -->
+                <TextBlock Margin="0,6,0,0" TextWrapping="Wrap">
+                  <TextBlock.Style>
+                    <Style TargetType="TextBlock" BasedOn="{StaticResource Hint}">
+                      <Setter Property="Text" Value="{Binding Target.StatusDisplay}"/>
+                      <Style.Triggers>
+                        <DataTrigger Binding="{Binding IsExpertMode}" Value="True">
+                          <Setter Property="Text" Value="{Binding TargetTypeNote}"/>
+                        </DataTrigger>
+                      </Style.Triggers>
+                    </Style>
+                  </TextBlock.Style>
+                </TextBlock>
 
                 <StackPanel Visibility="{Binding Target.NeedsShapeChoice, Converter={StaticResource BooleanToVisibility}}">
                   <TextBlock Style="{StaticResource Hint}" Foreground="{DynamicResource WarningInkBrush}" Text="{Binding Target.YamlLayoutBlockedMessage}"/>
@@ -218,9 +224,21 @@
                            Text="{Binding [Studio.Run.Empty], Source={x:Static services:I18n.Instance}}"
                            Visibility="{Binding IsExpertMode, Converter={StaticResource InverseBooleanToVisibility}}"/>
                 <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
-                  <Button Style="{StaticResource BtnPrimary}" Command="{Binding ChooseTeamCommand}"
+                  <Button Command="{Binding ChooseTeamCommand}"
                           controls:ButtonIcon.Kind="brain-circuit"
-                          Content="{Binding [Studio.Run.ChooseTeam], Source={x:Static services:I18n.Instance}}"/>
+                          Content="{Binding [Studio.Run.ChooseTeam], Source={x:Static services:I18n.Instance}}">
+                    <!-- The team list above is the one way to choose; this button only stays when it is empty. -->
+                    <Button.Style>
+                      <Style TargetType="Button" BasedOn="{StaticResource BtnPrimary}">
+                        <Setter Property="Visibility" Value="Collapsed"/>
+                        <Style.Triggers>
+                          <DataTrigger Binding="{Binding DataContext.TeamChoices.Count, RelativeSource={RelativeSource AncestorType=views:RunScreenView}}" Value="0">
+                            <Setter Property="Visibility" Value="Visible"/>
+                          </DataTrigger>
+                        </Style.Triggers>
+                      </Style>
+                    </Button.Style>
+                  </Button>
                   <Button Style="{StaticResource BtnSecondary}" Margin="8,0,0,0" Command="{Binding CreateTeamCommand}"
                           controls:ButtonIcon.Kind="plus"
                           Content="{Binding [Studio.Shell.Create], Source={x:Static services:I18n.Instance}}"/>
@@ -311,66 +329,71 @@
             </Border>
 
             <StackPanel IsEnabled="{Binding IsEditable}">
-              <!-- two columns: Check first · Verbosity / Display (+ token by token) · Log the LLM calls -->
-              <Grid>
-                <Grid.ColumnDefinitions>
-                  <ColumnDefinition Width="*"/>
-                  <ColumnDefinition Width="24"/>
-                  <ColumnDefinition Width="*"/>
-                </Grid.ColumnDefinitions>
-                <Grid.RowDefinitions>
-                  <RowDefinition Height="Auto"/>
-                  <RowDefinition Height="Auto"/>
-                </Grid.RowDefinitions>
-                <CheckBox Margin="0,0,0,12" VerticalAlignment="Center"
-                          IsChecked="{Binding Options.ValidateFirst}"
-                          Content="{Binding [Studio.Run.ValidateFirst], Source={x:Static services:I18n.Instance}}"/>
-                <StackPanel Grid.Column="2" Orientation="Horizontal" Margin="0,0,0,12">
-                  <TextBlock Style="{StaticResource FieldLabel}" Margin="0,0,10,0" VerticalAlignment="Center"
-                             Text="{Binding [Studio.Run.LblVerbosity], Source={x:Static services:I18n.Instance}}"/>
-                  <ComboBox Style="{StaticResource ComboS}" ItemsSource="{x:Static launch:LaunchOptionsViewModel.VerbosityChoices}"
-                            SelectedItem="{Binding Options.Verbosity}">
-                    <ComboBox.ItemTemplate>
-                      <DataTemplate>
-                        <TextBlock Text="{Binding Converter={StaticResource VerbosityLabel}}"/>
-                      </DataTemplate>
-                    </ComboBox.ItemTemplate>
-                  </ComboBox>
-                </StackPanel>
-                <StackPanel Grid.Row="1" Margin="0,0,0,12">
-                  <StackPanel Orientation="Horizontal">
-                    <TextBlock Style="{StaticResource FieldLabel}" Margin="0,0,10,0" VerticalAlignment="Center"
-                               Text="{Binding [Studio.Run.LblDisplay], Source={x:Static services:I18n.Instance}}"/>
-                    <Border Style="{StaticResource SegmentedGroup}" Height="30" CornerRadius="15">
-                      <StackPanel Orientation="Horizontal" Margin="2">
-                        <Button Style="{StaticResource SegmentBtnOn}" Command="{Binding ShowProgressDisplayCommand}"
-                                Tag="{Binding Options.WatchProgress}"
-                                Content="{Binding [Studio.Run.DisplayProgress], Source={x:Static services:I18n.Instance}}"/>
-                        <Button Style="{StaticResource SegmentBtnOn}" Command="{Binding ShowRawDisplayCommand}"
-                                Tag="{Binding Options.WatchProgress, Converter={StaticResource Negate}}"
-                                Content="{Binding [Studio.Run.DisplayRaw], Source={x:Static services:I18n.Instance}}"/>
-                      </StackPanel>
-                    </Border>
-                  </StackPanel>
-                  <!-- the stream rides on the progress: greyed, and says why, in raw output -->
-                  <CheckBox Margin="0,8,0,0"
-                            IsChecked="{Binding Options.StreamGeneratedText}"
-                            IsEnabled="{Binding Options.CanStreamGeneratedText}"
-                            ToolTipService.ShowOnDisabled="True"
-                            ToolTip="{Binding [Studio.Run.StreamNeedsWatch], Source={x:Static services:I18n.Instance}}"
-                            Content="{Binding [Studio.Run.StreamShort], Source={x:Static services:I18n.Instance}}"/>
-                </StackPanel>
-                <CheckBox Grid.Row="1" Grid.Column="2" Margin="0,6,0,12" VerticalAlignment="Top"
-                          IsChecked="{Binding Options.LlmLogEnabled}"
-                          Content="{Binding [Studio.Run.LlmLog], Source={x:Static services:I18n.Instance}}"/>
-              </Grid>
+              <!-- UX lot 02: only « Check first » stays above the fold; the engine's knobs
+                   (verbosity, display, model log) live in the advanced options, their CLI flag
+                   in an expert-only tooltip. -->
+              <CheckBox Margin="0,0,0,12" HorizontalAlignment="Left" VerticalAlignment="Center"
+                        IsChecked="{Binding Options.ValidateFirst}"
+                        Content="{Binding [Studio.Run.ValidateFirst], Source={x:Static services:I18n.Instance}}"/>
 
               <!-- advanced options, folded. C12 (R16): the shared Disclosure, « label + chevron »,
                    the label stable; closed by default as before. -->
               <controls:Disclosure x:Name="AdvancedFold"
                                    Header="{Binding [Studio.Run.Advanced], Source={x:Static services:I18n.Instance}}">
               <StackPanel Margin="0,0,0,4">
-                <TextBlock Style="{StaticResource Subhead}" Text="appsettings.json"/>
+                <!-- two columns: Verbosity · Log the model exchanges / Display (+ token by token) -->
+                <Grid Margin="0,0,0,8">
+                  <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="24"/>
+                    <ColumnDefinition Width="*"/>
+                  </Grid.ColumnDefinitions>
+                  <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                  </Grid.RowDefinitions>
+                  <StackPanel Orientation="Horizontal" Margin="0,0,0,12"
+                              ToolTip="--verbose" ToolTipService.IsEnabled="{Binding IsExpertMode}">
+                    <TextBlock Style="{StaticResource FieldLabel}" Margin="0,0,10,0" VerticalAlignment="Center"
+                               Text="{Binding [Studio.Run.LblVerbosity], Source={x:Static services:I18n.Instance}}"/>
+                    <ComboBox Style="{StaticResource ComboS}" ItemsSource="{x:Static launch:LaunchOptionsViewModel.VerbosityChoices}"
+                              SelectedItem="{Binding Options.Verbosity}">
+                      <ComboBox.ItemTemplate>
+                        <DataTemplate>
+                          <TextBlock Text="{Binding Converter={StaticResource VerbosityLabel}}"/>
+                        </DataTemplate>
+                      </ComboBox.ItemTemplate>
+                    </ComboBox>
+                  </StackPanel>
+                  <CheckBox Grid.Column="2" Margin="0,6,0,12" VerticalAlignment="Top"
+                            IsChecked="{Binding Options.LlmLogEnabled}"
+                            ToolTip="--llm-log" ToolTipService.IsEnabled="{Binding IsExpertMode}"
+                            Content="{Binding [Studio.Run.LlmLog], Source={x:Static services:I18n.Instance}}"/>
+                  <StackPanel Grid.Row="1" Grid.ColumnSpan="3" Margin="0,0,0,4">
+                    <StackPanel Orientation="Horizontal">
+                      <TextBlock Style="{StaticResource FieldLabel}" Margin="0,0,10,0" VerticalAlignment="Center"
+                                 Text="{Binding [Studio.Run.LblDisplay], Source={x:Static services:I18n.Instance}}"/>
+                      <Border Style="{StaticResource SegmentedGroup}" Height="30" CornerRadius="15">
+                        <StackPanel Orientation="Horizontal" Margin="2">
+                          <Button Style="{StaticResource SegmentBtnOn}" Command="{Binding ShowProgressDisplayCommand}"
+                                  Tag="{Binding Options.WatchProgress}"
+                                  Content="{Binding [Studio.Run.DisplayProgress], Source={x:Static services:I18n.Instance}}"/>
+                          <Button Style="{StaticResource SegmentBtnOn}" Command="{Binding ShowRawDisplayCommand}"
+                                  Tag="{Binding Options.WatchProgress, Converter={StaticResource Negate}}"
+                                  Content="{Binding [Studio.Run.DisplayRaw], Source={x:Static services:I18n.Instance}}"/>
+                        </StackPanel>
+                      </Border>
+                    </StackPanel>
+                    <!-- the stream rides on the progress: greyed, and says why, in raw output -->
+                    <CheckBox Margin="0,8,0,0"
+                              IsChecked="{Binding Options.StreamGeneratedText}"
+                              IsEnabled="{Binding Options.CanStreamGeneratedText}"
+                              ToolTipService.ShowOnDisabled="True"
+                              ToolTip="{Binding [Studio.Run.StreamNeedsWatch], Source={x:Static services:I18n.Instance}}"
+                              Content="{Binding [Studio.Run.StreamShort], Source={x:Static services:I18n.Instance}}"/>
+                  </StackPanel>
+                </Grid>
+                <TextBlock Style="{StaticResource Subhead}" Text="{Binding [Studio.Run.SettingsFileTitle], Source={x:Static services:I18n.Instance}}"/>
                 <RadioButton Margin="0,8,0,0" GroupName="{Binding IsTrial, StringFormat=RunSettings-{0}}" Checked="OnSettingsAutomaticChecked"
                              IsChecked="{Binding Options.IsSettingsAutomatic, Mode=OneWay}"
                              Content="{Binding [Studio.Run.SettingsAuto], Source={x:Static services:I18n.Instance}}"/>
@@ -482,11 +505,28 @@
                                 </Style>
                               </controls:Badge.Style>
                             </controls:Badge>
+                            <controls:Badge Margin="8,0,0,0" VerticalAlignment="Center" Tone="Danger"
+                                            Visibility="{Binding IsUndeclared, Converter={StaticResource BooleanToVisibility}}"
+                                            Content="{Binding [Studio.Run.FolderNotAllowed], Source={x:Static services:I18n.Instance}}"/>
+                            <Button Style="{StaticResource BtnSecondary}" Margin="8,0,0,0" VerticalAlignment="Center"
+                                    Command="{Binding DataContext.OpenAllowedFoldersCommand, RelativeSource={RelativeSource AncestorType=views:LaunchTabView}}"
+                                    Visibility="{Binding IsUndeclared, Converter={StaticResource BooleanToVisibility}}"
+                                    Content="{Binding [Studio.Run.AllowThisFolder], Source={x:Static services:I18n.Instance}}"/>
                           </StackPanel>
-                          <!-- R09: a path is cut in the middle, the whole of it in the tooltip once cut -->
-                          <controls:MiddleEllipsisText Style="{StaticResource PathText}" FontSize="12.5" Margin="0,2,0,0"
-                                     HorizontalAlignment="Left" Text="{Binding PhysicalPath}"
-                                     Visibility="{Binding PhysicalPath, Converter={StaticResource StringPresentToVisibility}}"/>
+                          <!-- R09: a path is cut in the middle, the whole of it in the tooltip once cut.
+                               UX lot 02: the expert reads the path, the novice the folder's name,
+                               the path in its tooltip. -->
+                          <StackPanel Visibility="{Binding DataContext.IsExpertMode, RelativeSource={RelativeSource AncestorType=views:LaunchTabView}, Converter={StaticResource BooleanToVisibility}}">
+                            <controls:MiddleEllipsisText Style="{StaticResource PathText}" FontSize="12.5" Margin="0,2,0,0"
+                                       HorizontalAlignment="Left" Text="{Binding PhysicalPath}"
+                                       Visibility="{Binding PhysicalPath, Converter={StaticResource StringPresentToVisibility}}"/>
+                          </StackPanel>
+                          <StackPanel Visibility="{Binding DataContext.IsExpertMode, RelativeSource={RelativeSource AncestorType=views:LaunchTabView}, Converter={StaticResource InverseBooleanToVisibility}}">
+                            <TextBlock FontSize="12.5" Margin="0,2,0,0" HorizontalAlignment="Left"
+                                       Foreground="{DynamicResource InkMutedBrush}" TextTrimming="CharacterEllipsis"
+                                       Text="{Binding FolderName}" ToolTip="{Binding PhysicalPath}"
+                                       Visibility="{Binding FolderName, Converter={StaticResource StringPresentToVisibility}}"/>
+                          </StackPanel>
                         </StackPanel>
                       </DockPanel>
                     </DataTemplate>
@@ -504,21 +544,44 @@
                 <StackPanel Margin="0,14,0,0" Visibility="{Binding IsExpertMode, Converter={StaticResource BooleanToVisibility}}">
                   <TextBlock Style="{StaticResource Subhead}"
                              Text="{Binding [Studio.Run.SettingsMountsTitle], Source={x:Static services:I18n.Instance}}"/>
-                  <ItemsControl ItemsSource="{Binding Mounts.SettingsMounts}" Margin="0,7,0,0">
+                  <!-- UX lot 12 (036 E): one readable line per folder — name, path, rights in a
+                       word — the raw string (id|path:root:rights) in the line's tooltip. -->
+                  <ItemsControl ItemsSource="{Binding Mounts.SettingsMountRows}" Margin="0,7,0,0" Grid.IsSharedSizeScope="True">
                     <ItemsControl.ItemTemplate>
                       <DataTemplate>
-                        <TextBlock Style="{StaticResource MonoText}" FontSize="13" Margin="0,1" Text="{Binding}"/>
+                        <!-- The rights as the one-word badge of the folder modals, one shared width (UX lot 11, 067). -->
+                        <Grid Margin="0,2" Background="Transparent" ToolTip="{Binding Raw}">
+                          <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="160"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto" SharedSizeGroup="RightsBadge"/>
+                          </Grid.ColumnDefinitions>
+                          <TextBlock Grid.Column="0" FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center"
+                                     Foreground="{DynamicResource InkBrush}" TextTrimming="CharacterEllipsis"
+                                     Text="{Binding Name}"/>
+                          <controls:MiddleEllipsisText Grid.Column="1" Style="{StaticResource PathText}" FontSize="12.5"
+                                     HorizontalAlignment="Left" VerticalAlignment="Center" Text="{Binding PhysicalPath}"/>
+                          <controls:Badge Grid.Column="2" Tone="Neutral" VerticalAlignment="Center" Margin="12,0,0,0"
+                                          Content="{Binding Rights}" ToolTip="{Binding RightsTip}"/>
+                        </Grid>
                       </DataTemplate>
                     </ItemsControl.ItemTemplate>
                   </ItemsControl>
 
                   <CheckBox Margin="0,12,0,0"
-                            IsChecked="{Binding Mounts.AllowExternalMounts}"
+                            IsChecked="{Binding Mounts.AllowExternalMounts}" ToolTip="--allow-external-mounts"
                             Content="{Binding [Studio.Run.AllowExternal], Source={x:Static services:I18n.Instance}}"/>
-                  <TextBlock Style="{StaticResource Hint}" Foreground="{DynamicResource WarningInkBrush}"
-                             Text="{Binding Mounts.ExternalMountsWarning, Mode=OneWay}"/>
+                  <!-- UX lot 12 (036 E): the switch follows the team's folders (a launch may need it),
+                       so while it is on its security warning is an alert, not small print. -->
+                  <controls:Alert Tone="Warning" Margin="0,8,0,0"
+                                  Message="{Binding Mounts.ExternalMountsWarning, Mode=OneWay}"
+                                  Visibility="{Binding Mounts.ShowsExternalMountsWarning, Converter={StaticResource BooleanToVisibility}}"/>
 
-                  <TextBlock Style="{StaticResource Hint}" Margin="0,7,0,0" Text="{Binding Mounts.OverrideExplanation, Mode=OneWay}"/>
+                  <!-- UX lot 12 (036 E): the mount-id paragraph is a technical detail, folded. -->
+                  <controls:Disclosure Margin="0,7,0,0" IsExpanded="False"
+                                       Header="{Binding [Studio.Common.TechnicalDetails], Source={x:Static services:I18n.Instance}}">
+                    <TextBlock Style="{StaticResource Hint}" Margin="0,4,0,4" Text="{Binding Mounts.OverrideExplanation, Mode=OneWay}"/>
+                  </controls:Disclosure>
                   <TextBlock Style="{StaticResource Hint}" Text="{Binding Mounts.Summary}"/>
                   <!-- effective mounts: plain rows (the DataGrid's stock chrome broke T-04) -->
                   <ScrollViewer MaxHeight="140" VerticalScrollBarVisibility="Auto" Margin="0,7,0,0">
@@ -630,28 +693,6 @@
                     <TextBlock Text="{Binding [Studio.Run.BackToTeam], Source={x:Static services:I18n.Instance}}"/>
                   </StackPanel>
                 </Button>
-                <!-- «Open the result», or «Open the N result folders» — one window per writable folder -->
-                <Button Style="{StaticResource BtnPrimary}" controls:ButtonSize.Height="40" Margin="8,0,0,0"
-                        Command="{Binding OpenResultCommand}">
-                  <Button.Visibility>
-                    <MultiBinding Converter="{StaticResource AllTrueToVisibility}">
-                      <Binding Path="HasResult"/>
-                      <Binding Path="CanOpenResult"/>
-                    </MultiBinding>
-                  </Button.Visibility>
-                  <StackPanel Orientation="Horizontal">
-                    <controls:LucideIcon Kind="folder-open" Size="14" Margin="0,0,7,0" Foreground="{DynamicResource AccentFgBrush}"/>
-                    <TextBlock Text="{Binding OpenResultLabel, Mode=OneWay}"/>
-                  </StackPanel>
-                </Button>
-                <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="40" Margin="8,0,0,0"
-                        Command="{Binding RunCommand}"
-                        Visibility="{Binding HasResult, Converter={StaticResource BooleanToVisibility}}">
-                  <StackPanel Orientation="Horizontal">
-                    <controls:LucideIcon Kind="rotate-ccw" Size="14" Margin="0,0,7,0"/>
-                    <TextBlock Text="{Binding RunButtonLabel}"/>
-                  </StackPanel>
-                </Button>
               </StackPanel>
               <TextBlock Style="{StaticResource Hint}" FontSize="13" VerticalAlignment="Center" TextWrapping="Wrap"
                          Margin="0,0,12,0" Text="{Binding RunFooter}"/>
@@ -671,7 +712,7 @@
                     <Style.Triggers>
                       <!-- No Storyboard.TargetName — a Style has no namescope — so the animation
                            addresses the badge itself; CapturePose holds it at full opacity. -->
-                      <DataTrigger Binding="{Binding RunBadgeTone}" Value="running">
+                      <DataTrigger Binding="{Binding IsRunBadgePulsing}" Value="True">
                         <DataTrigger.EnterActions>
                           <BeginStoryboard Name="RunBadgePulse">
                             <Storyboard RepeatBehavior="Forever" AutoReverse="True">
@@ -686,40 +727,50 @@
                     </Style.Triggers>
                   </Style>
                 </Border.Style>
-                <controls:Badge Content="{Binding RunBadgeText}">
-                  <controls:Badge.Style>
-                    <Style TargetType="controls:Badge" BasedOn="{StaticResource {x:Type controls:Badge}}">
-                      <Setter Property="Tone" Value="Neutral"/>
-                      <Style.Triggers>
-                        <DataTrigger Binding="{Binding RunBadgeTone}" Value="running">
-                          <Setter Property="Tone" Value="Info"/>
-                        </DataTrigger>
-                        <DataTrigger Binding="{Binding RunBadgeTone}" Value="ok">
-                          <Setter Property="Tone" Value="Success"/>
-                        </DataTrigger>
-                        <DataTrigger Binding="{Binding RunBadgeTone}" Value="warn">
-                          <Setter Property="Tone" Value="Warning"/>
-                        </DataTrigger>
-                        <DataTrigger Binding="{Binding RunBadgeTone}" Value="fail">
-                          <Setter Property="Tone" Value="Danger"/>
-                        </DataTrigger>
-                      </Style.Triggers>
-                    </Style>
-                  </controls:Badge.Style>
-                </controls:Badge>
+                <controls:Badge Content="{Binding RunBadgeText}"
+                                Tone="{Binding RunBadgeTone, Converter={StaticResource StateToneConverter}}"/>
               </Border>
+              <!-- UX lot 08: Stop is within sight while the run lives; once it ended, « Open the result »
+                   and « Run again » sit by the badge, not at the foot of the pane. -->
+              <Button x:Name="StopRunTop" Style="{StaticResource BtnDanger}" Margin="12,0,0,0" VerticalAlignment="Center"
+                      controls:ButtonSize.Height="32"
+                      Command="{Binding CancelCommand}" controls:ButtonIcon.Kind="square"
+                      Content="{Binding [Studio.Run.Stop], Source={x:Static services:I18n.Instance}}"
+                      Visibility="{Binding IsRunning, Converter={StaticResource BooleanToVisibility}}"/>
+                <!-- «Open the result», or «Open the N result folders» — one window per writable folder -->
+                <Button Style="{StaticResource BtnPrimary}" controls:ButtonSize.Height="32" Margin="12,0,0,0" VerticalAlignment="Center"
+                        Command="{Binding OpenResultCommand}">
+                  <Button.Visibility>
+                    <MultiBinding Converter="{StaticResource AllTrueToVisibility}">
+                      <Binding Path="HasResult"/>
+                      <Binding Path="CanOpenResult"/>
+                    </MultiBinding>
+                  </Button.Visibility>
+                  <StackPanel Orientation="Horizontal">
+                    <controls:LucideIcon Kind="folder-open" Size="14" Margin="0,0,7,0" Foreground="{DynamicResource AccentFgBrush}"/>
+                    <TextBlock Text="{Binding OpenResultLabel, Mode=OneWay}"/>
+                  </StackPanel>
+                </Button>
+                <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="32" Margin="12,0,0,0" VerticalAlignment="Center"
+                        Command="{Binding RunCommand}"
+                        Visibility="{Binding HasResult, Converter={StaticResource BooleanToVisibility}}">
+                  <StackPanel Orientation="Horizontal">
+                    <controls:LucideIcon Kind="rotate-ccw" Size="14" Margin="0,0,7,0"/>
+                    <TextBlock Text="{Binding RunButtonLabel}"/>
+                  </StackPanel>
+                </Button>
               <TextBlock Style="{StaticResource MonoText}" FontSize="13" Margin="12,0,0,0" VerticalAlignment="Center"
                          Text="{Binding RunDuration}"
                          Visibility="{Binding RunDuration, Converter={StaticResource StringPresentToVisibility}}"/>
             </WrapPanel>
             <!-- What is going on, or what the pane will show; once the run ended (D01, R18), Studio's
-                 own sentence «Exécution terminée · code de sortie 0» — the engine's sentence stays in
-                 the journal, in mono, and in the tooltip. -->
+                 own sentence «Lancement terminé · code de sortie 0» — the engine's English sentence
+                 is the expert's tooltip only (ExitTooltip). -->
             <TextBlock FontSize="13" Foreground="{DynamicResource InkMutedBrush}" Margin="0,6,0,0" TextWrapping="Wrap"
                        Text="{Binding RunPaneContext}"
                        Visibility="{Binding ShowsFinishedSubtitle, Converter={StaticResource InverseBooleanToVisibility}}"/>
             <TextBlock FontSize="13" Foreground="{DynamicResource InkMutedBrush}" Margin="0,6,0,0" TextWrapping="Wrap"
-                       ToolTip="{Binding ExitDescription}"
+                       ToolTip="{Binding ExitTooltip}"
                        Visibility="{Binding ShowsFinishedSubtitle, Converter={StaticResource BooleanToVisibility}}">
               <Run Text="{Binding [Studio.Run.PaneFinishedContext], Source={x:Static services:I18n.Instance}, Mode=OneWay}"/>
               <Run Text=" · "/>
@@ -777,20 +828,25 @@
                     <StackPanel>
                       <TextBlock FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}"
                                  TextTrimming="CharacterEllipsis" Text="{Binding DisplayName}" ToolTip="{Binding DisplayName}"/>
-                      <TextBlock Style="{StaticResource MonoText}" FontSize="12" Foreground="{DynamicResource InkFaintBrush}"
-                                 Margin="0,2,0,0" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis"
-                                 Text="{Binding Identifier}" ToolTip="{Binding Identifier}"
-                                 Visibility="{Binding HasIdentifier, Converter={StaticResource BooleanToVisibility}}"/>
-                      <Border x:Name="Bar" Height="4" CornerRadius="2" Margin="0,8,0,8" Background="{DynamicResource LineBrush}"/>
+                      <!-- UX lot 02: the identifier and the technical detail are the expert's -->
+                      <StackPanel Visibility="{Binding DataContext.IsExpertMode, RelativeSource={RelativeSource AncestorType=views:LaunchTabView}, Converter={StaticResource BooleanToVisibility}}">
+                        <TextBlock Style="{StaticResource MonoText}" FontSize="12" Foreground="{DynamicResource InkFaintBrush}"
+                                   Margin="0,2,0,0" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis"
+                                   Text="{Binding Identifier}" ToolTip="{Binding Identifier}"
+                                   Visibility="{Binding HasIdentifier, Converter={StaticResource BooleanToVisibility}}"/>
+                      </StackPanel>
+                      <Border x:Name="Bar" Height="4" CornerRadius="2" Margin="0,8,0,8" Background="{DynamicResource LineStrongBrush}"/>
                       <DockPanel>
                         <controls:LucideIcon x:Name="Mark" DockPanel.Dock="Left" Kind="circle" Size="12" Margin="0,0,6,0"
                                              VerticalAlignment="Center" Foreground="{DynamicResource NeutralDotBrush}"/>
                         <TextBlock x:Name="Status" FontSize="12.5" Foreground="{DynamicResource InkMutedBrush}"
                                    TextTrimming="CharacterEllipsis" Text="{Binding StatusText}"/>
                       </DockPanel>
-                      <TextBlock Style="{StaticResource MonoText}" FontSize="12" Margin="0,4,0,0" TextWrapping="NoWrap"
-                                 TextTrimming="CharacterEllipsis" Text="{Binding Detail}" ToolTip="{Binding Detail}"
-                                 Visibility="{Binding Detail, Converter={StaticResource StringPresentToVisibility}}"/>
+                      <StackPanel Visibility="{Binding DataContext.IsExpertMode, RelativeSource={RelativeSource AncestorType=views:LaunchTabView}, Converter={StaticResource BooleanToVisibility}}">
+                        <TextBlock Style="{StaticResource MonoText}" FontSize="12" Margin="0,4,0,0" TextWrapping="NoWrap"
+                                   TextTrimming="CharacterEllipsis" Text="{Binding Detail}" ToolTip="{Binding Detail}"
+                                   Visibility="{Binding Detail, Converter={StaticResource StringPresentToVisibility}}"/>
+                      </StackPanel>
                     </StackPanel>
                   </Border>
                   <DataTemplate.Triggers>
@@ -821,17 +877,17 @@
               </ItemsControl.ItemTemplate>
             </ItemsControl>
 
-            <!-- the figures: sent, received, model, where the result lands. D06/R11: the labels are
+            <!-- the figures: sent, received (expert only, UX lot 02), model, where the result lands. D06/R11: the labels are
                  Hanken meta, only the values are mono; a value never breaks (deepseek-chat), it ends
                  in «…» with the whole value in its tooltip. -->
             <UniformGrid Columns="4" Margin="0,6,0,0"
                          Visibility="{Binding HasRunFigures, Converter={StaticResource BooleanToVisibility}}">
-              <StackPanel Margin="0,0,12,0">
+              <StackPanel Margin="0,0,12,0" Visibility="{Binding IsExpertMode, Converter={StaticResource BooleanToVisibility}}">
                 <TextBlock Style="{StaticResource MetaText}" Text="{Binding [Studio.Run.FigSent], Source={x:Static services:I18n.Instance}}"/>
                 <TextBlock Style="{StaticResource MonoText}" FontSize="14" Foreground="{DynamicResource InkBrush}" Margin="0,4,0,0"
                            TextWrapping="NoWrap" Typography.NumeralAlignment="Tabular" Text="{Binding SentFigure}"/>
               </StackPanel>
-              <StackPanel Margin="0,0,12,0">
+              <StackPanel Margin="0,0,12,0" Visibility="{Binding IsExpertMode, Converter={StaticResource BooleanToVisibility}}">
                 <TextBlock Style="{StaticResource MetaText}" Text="{Binding [Studio.Run.FigReceived], Source={x:Static services:I18n.Instance}}"/>
                 <TextBlock Style="{StaticResource MonoText}" FontSize="14" Foreground="{DynamicResource InkBrush}" Margin="0,4,0,0"
                            TextWrapping="NoWrap" Typography.NumeralAlignment="Tabular" Text="{Binding ReceivedFigure}"/>
@@ -860,8 +916,13 @@
 
             <!-- The tasks as a table (#117): Agent | Tool calls | Tokens | Duration. A zero call on a
                  task meant to write a file is the diagnosis a green run hides (STUDIO-17). -->
-            <StackPanel Grid.IsSharedSizeScope="True" Margin="0,14,0,0"
-                        Visibility="{Binding Progress.Tasks.Count, Converter={StaticResource CountToVisibility}}">
+            <!-- UX lot 08: the agent cards above are the one representation for the novice; the
+                 expert gets the tasks' table, folded. -->
+            <StackPanel Visibility="{Binding Progress.Tasks.Count, Converter={StaticResource CountToVisibility}}">
+            <controls:Disclosure x:Name="TaskDetailsFold" IsExpanded="False" Margin="0,14,0,0"
+                                 Visibility="{Binding IsExpertMode, Converter={StaticResource BooleanToVisibility}}"
+                                 Header="{Binding [Studio.Run.TaskDetails], Source={x:Static services:I18n.Instance}}">
+            <StackPanel Grid.IsSharedSizeScope="True">
               <Grid Margin="0,0,0,6">
                 <Grid.ColumnDefinitions>
                   <ColumnDefinition Width="*"/>
@@ -950,6 +1011,8 @@
               </ItemsControl>
               <Rectangle Style="{StaticResource HSeparator}"/>
             </StackPanel>
+            </controls:Disclosure>
+            </StackPanel>
 
             <!-- What is running now (STUDIO-17): the task the run announced and has not yet reported
                  finished. TargetName is fine here — a DataTemplate has a namescope. -->
@@ -994,6 +1057,7 @@
             <!-- The text the model is generating (the "stream" option). -->
             <Border Margin="0,10,0,0" Padding="10" CornerRadius="8"
                     Background="{DynamicResource ConsoleBgBrush}"
+                    BorderBrush="{DynamicResource LineStrongBrush}" BorderThickness="1"
                     MaxHeight="160"
                     Visibility="{Binding Progress.HasGeneratedText, Converter={StaticResource BooleanToVisibility}}">
               <ScrollViewer VerticalScrollBarVisibility="Auto">
@@ -1053,7 +1117,8 @@
                            Foreground="{DynamicResource InkMutedBrush}"
                            Text="{Binding Progress.AgentRequestFrom}"/>
                 <Border Margin="0,6,0,0" Padding="8" CornerRadius="6"
-                        Background="{DynamicResource ConsoleBgBrush}" MaxHeight="120">
+                        Background="{DynamicResource ConsoleBgBrush}" MaxHeight="120"
+                        BorderBrush="{DynamicResource LineStrongBrush}" BorderThickness="1">
                   <ScrollViewer VerticalScrollBarVisibility="Auto">
                     <TextBlock FontFamily="Consolas" FontSize="13" TextWrapping="Wrap"
                                Foreground="{DynamicResource ConsoleFgBrush}"
@@ -1075,7 +1140,8 @@
               <TextBlock Style="{StaticResource Hint}"
                          Text="{Binding [Studio.Run.HubMessages], Source={x:Static services:I18n.Instance}}"/>
               <Border Margin="0,4,0,0" Padding="8" CornerRadius="6"
-                      Background="{DynamicResource ConsoleBgBrush}" MaxHeight="120">
+                      Background="{DynamicResource ConsoleBgBrush}" MaxHeight="120"
+                      BorderBrush="{DynamicResource LineStrongBrush}" BorderThickness="1">
                 <ScrollViewer VerticalScrollBarVisibility="Auto">
                   <ItemsControl ItemsSource="{Binding Progress.HubMessages}">
                     <ItemsControl.ItemTemplate>
@@ -1138,7 +1204,8 @@
                     </StackPanel>
                   </Button>
                 </WrapPanel>
-                <Border Background="{DynamicResource ConsoleBgBrush}" CornerRadius="9" Padding="6" Margin="0,4,0,0">
+                <Border Background="{DynamicResource ConsoleBgBrush}" BorderBrush="{DynamicResource LineStrongBrush}" BorderThickness="1"
+                        CornerRadius="9" Padding="6" Margin="0,4,0,0">
                   <Border.Style>
                     <Style TargetType="Border">
                       <Setter Property="Height" Value="150"/>
@@ -1205,19 +1272,16 @@
         </StackPanel>
         <!-- C04 (R08): the page footer says what is missing to launch, behind the shared dot - never
              the card footer's sentence. Ready in green, refused in red, running in the neutral grey. -->
-        <controls:StatusDot x:Name="ReadinessDot" Content="{Binding LaunchReadinessText}">
+        <!-- UX lot 11: the dot's tone comes from the state scale (StateToneConverter), not from string triggers. -->
+        <controls:StatusDot x:Name="ReadinessDot" Content="{Binding LaunchReadinessText}"
+                            Tone="{Binding LaunchReadinessTone, Converter={StaticResource StateToneConverter}}">
           <controls:StatusDot.Style>
             <Style TargetType="controls:StatusDot" BasedOn="{StaticResource {x:Type controls:StatusDot}}">
-              <Setter Property="Tone" Value="Ready"/>
               <Setter Property="Foreground" Value="{DynamicResource InkBrush}"/>
               <Style.Triggers>
-                <DataTrigger Binding="{Binding LaunchReadinessTone}" Value="danger">
-                  <Setter Property="Tone" Value="Error"/>
+                <Trigger Property="Tone" Value="Error">
                   <Setter Property="Foreground" Value="{DynamicResource DangerInkBrush}"/>
-                </DataTrigger>
-                <DataTrigger Binding="{Binding LaunchReadinessTone}" Value="running">
-                  <Setter Property="Tone" Value="Neutral"/>
-                </DataTrigger>
+                </Trigger>
               </Style.Triggers>
             </Style>
           </controls:StatusDot.Style>

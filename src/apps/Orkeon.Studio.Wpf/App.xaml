@@ -21,8 +21,10 @@
       <views:CountToVisibilityConverter x:Key="CountToVisibility" />
       <views:ZeroToVisibilityConverter x:Key="ZeroToVisibility" />
       <views:AllTrueToVisibilityConverter x:Key="AllTrueToVisibility" />
+      <views:AnyTrueToVisibilityConverter x:Key="AnyTrueToVisibility" />
       <views:NegateConverter x:Key="Negate" />
       <views:NullToVisibilityConverter x:Key="NullToVisibility" />
+      <views:StateToneConverter x:Key="StateToneConverter" />
 
     </ResourceDictionary>
   </Application.Resources>

@@ -37,8 +37,12 @@ public sealed partial class CreateTeamViewModel
     /// <summary>Whether step 2 is behind the session.</summary>
     public bool IsStep2Done => MaxStep > 2;
 
-    /// <summary>Whether step 3 is behind the session.</summary>
-    public bool IsStep3Done => MaxStep > 3;
+    /// <summary>
+    /// Whether step 3 is behind the session: a later step reached, no folder left to choose and
+    /// a verdict on screen — a reopened team never shows « Try » checked over a folder to choose
+    /// (UX lot 05, 021).
+    /// </summary>
+    public bool IsStep3Done => MaxStep > 3 && !HasFoldersToChoose && _model.Verdict is not null;
 
     /// <summary>Whether step 2 was reached: its pill opens it again.</summary>
     public bool IsStep2Reached => MaxStep >= 2;
@@ -151,6 +155,34 @@ public sealed partial class CreateTeamViewModel
 
     /// <summary>Whether the verdict card leads with its summary sentence.</summary>
     public bool HasVerdictSummary => VerdictSummary.Length > 0;
+
+    /// <summary>
+    /// UX lot 05 (019, 020): the verdict's header, on the engine's own « passing » — « Ready to
+    /// adopt », or « To fix: 1 point », counting the unmet criterion lines (at least one when the engine
+    /// says not passing). <see cref="VerdictSummary"/> stays as the line under it.
+    /// </summary>
+    public string VerdictHeadline
+    {
+        get
+        {
+            if (_model.Verdict is null)
+                return string.Empty;
+            if (VerdictPassing)
+                return _strings[StudioStringKeys.WizardVerdictReady];
+
+            var failed = Checklist.Count(line => line.IsCriterion && line.IsFailure);
+            return _strings.Format(StudioStringKeys.WizardVerdictToFix, Math.Max(1, failed));
+        }
+    }
+
+    /// <summary>
+    /// The header's tone: <c>Danger</c> when a point is to fix, <c>Warning</c> when only remarks
+    /// stand, <c>Success</c> otherwise — the view maps it to its ink.
+    /// </summary>
+    public string VerdictHeadlineTone =>
+        !VerdictPassing || Checklist.Any(line => line.IsFailure) ? "Danger"
+        : Checklist.Any(line => line.IsRemark) ? "Warning"
+        : "Success";
 
     /// <summary>A run ended: stopped by the user, or the session saved where the engine left it.</summary>
     private void NoteRunEnded(bool cancelled)

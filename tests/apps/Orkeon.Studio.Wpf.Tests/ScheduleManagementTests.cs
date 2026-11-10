@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Orkeon.Studio.Core.Forge;
+using Orkeon.Studio.Core.History;
 using Orkeon.Studio.Core.Localization;
 using Orkeon.Studio.Core.Process;
 using Orkeon.Studio.Core.Teams;
@@ -192,6 +193,7 @@ public sealed class ScheduleManagementTests : IDisposable
     public async Task A_readoption_on_demand_whose_schedule_cannot_be_stopped_is_not_saved()
     {
         var (vm, processes, teamDir) = await ReopenScheduledTeamAsync();
+        var maxStepBefore = vm.MaxStep;
         vm.ScheduleChoice = 0;
         processes.NextRuns.Enqueue([Refused("The windows scheduler refused: ERROR: Access is denied.", "schtasks /Delete /TN \"Orkeon veille-docs\" /F")]);
         processes.ExitCode = 1;
@@ -202,7 +204,9 @@ public sealed class ScheduleManagementTests : IDisposable
         Assert.Contains("Access is denied", vm.StatusMessage, StringComparison.Ordinal);
         Assert.Contains("schtasks /Delete", vm.StatusMessage, StringComparison.Ordinal);
         Assert.Equal("daily@07:30", TeamCatalog.Describe(teamDir).Schedule);
-        Assert.Equal(4, vm.MaxStep);
+        // Nothing saved: the stepper stays where the reopen left it (UX lot 05 counts the steps
+        // the reopened team really went through, no longer a flat 4).
+        Assert.Equal(maxStepBefore, vm.MaxStep);
     }
 
     // ── the card (D-05) ──
@@ -223,7 +227,7 @@ public sealed class ScheduleManagementTests : IDisposable
         var teams = Teams(processes);
 
         var byName = teams.Teams.ToDictionary(card => card.Slug, StringComparer.Ordinal);
-        Assert.Equal("accent", byName["installee"].BadgeTone);
+        Assert.Equal("muted", byName["installee"].BadgeTone);
         Assert.False(byName["installee"].HasScheduleStateLine);
         Assert.False(byName["a-la-demande"].HasScheduleRow);
 
@@ -596,7 +600,7 @@ public sealed class ScheduleManagementTests : IDisposable
 
         Assert.True(teams.HasRefusedRuns);
         Assert.Equal(
-            "2 scheduled runs will be refused on the next pass: the saved settings file does not hold Local yet.",
+            "2 scheduled teams will not be able to start on the next pass: their settings (model or folders) are not saved.",
             teams.RefusedRunsLine);
 
         var quiet = new TeamsViewModel(new TeamsDependencies { TeamsRoot = TeamsRoot, WorkspaceDirectory = _root });
@@ -621,7 +625,10 @@ public sealed class ScheduleManagementTests : IDisposable
 
         Assert.Equal("/factures", card.UndeclaredFolder);
         Assert.False(card.LaunchCommand.CanExecute(null));
-        Assert.Equal("Allow the folder /factures first.", card.LaunchBlockedReason);
+        Assert.Equal("Allow the folder /factures first to launch the team.", card.LaunchBlockedReason);
+        // UX lot 01: the card's badge says why it cannot launch, in the warning tone.
+        Assert.Equal("Folder to allow", card.BadgeText);
+        Assert.Equal("warn", card.BadgeTone);
         card.AllowFolderCommand.Execute(null);
         Assert.Equal(1, opened);
 
@@ -630,6 +637,34 @@ public sealed class ScheduleManagementTests : IDisposable
         card = Assert.Single(teams.Teams);
         Assert.False(card.HasUndeclaredFolder);
         Assert.Null(card.LaunchBlockedReason);
+        Assert.NotEqual("Folder to allow", card.BadgeText);
         Assert.True(card.LaunchCommand.CanExecute(null));
+    }
+
+    /// <summary>UX lot 11: never run nor scheduled = « To try » (warn); run once, on demand = « Ready · on demand » (ok).</summary>
+    [Fact]
+    public async Task An_on_demand_team_says_to_try_until_its_first_run_then_ready()
+    {
+        var team = Team("veille", schedule: null);
+        var store = new FakeLaunchHistoryStore
+        {
+            History = LaunchHistory.Empty.Add(new LaunchHistoryEntry
+            {
+                Target = team,
+                StartedAt = new DateTimeOffset(2026, 8, 22, 8, 0, 0, TimeSpan.Zero),
+                Outcome = RunOutcome.Success,
+            }),
+        };
+        var teams = new TeamsViewModel(new TeamsDependencies { TeamsRoot = TeamsRoot, WorkspaceDirectory = _root, HistoryStore = store });
+        var card = Assert.Single(teams.Teams);
+
+        Assert.Equal(EnglishStudioStrings.Instance[StudioStringKeys.TeamsToTest], card.BadgeText);
+        Assert.Equal("warn", card.BadgeTone);
+
+        await teams.LoadLastRunsAsync(TestContext.Current.CancellationToken);
+
+        card = Assert.Single(teams.Teams);
+        Assert.Equal(EnglishStudioStrings.Instance[StudioStringKeys.TeamsReadyBadge], card.BadgeText);
+        Assert.Equal("ok", card.BadgeTone);
     }
 }

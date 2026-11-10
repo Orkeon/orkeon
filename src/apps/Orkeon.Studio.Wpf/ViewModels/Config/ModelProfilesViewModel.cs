@@ -297,6 +297,7 @@ public sealed class ModelProfileEditorViewModel : ObservableObject
     private string _modelFilter = "";
     private string? _keyStoreFailure;
     private bool _isTestingConnection;
+    private bool _otherProvidersExpanded;
     private int _settingsGeneration;
     private string _temperatureText = "";
     private string _timeoutText = "";
@@ -386,6 +387,7 @@ public sealed class ModelProfileEditorViewModel : ObservableObject
         // whatever an older setting holds; a setting always has one.
         var card = LlmPresets.CardOf(profile);
         _selectedProvider = providers.FirstOrDefault(p => string.Equals(p.Name, card, StringComparison.Ordinal));
+        _otherProvidersExpanded = IsOtherProvider(_selectedProvider);
         // The id crews may already write: the one this setting was offered under when it opened.
         _originalHostId = previousName is null ? null : owner.OfferedHostId(previousName);
 
@@ -444,6 +446,8 @@ public sealed class ModelProfileEditorViewModel : ObservableObject
             if (!SetProperty(ref _selectedProvider, value) || value is null)
                 return;
 
+            if (IsOtherProvider(value))
+                OtherProvidersExpanded = true;      // the picked card never hides in a closed fold
             BaseUrl = value.DefaultBaseUrl;
             Model = value.DefaultModel;
             _apiKeyEnv = value.DefaultApiKeyEnv;
@@ -548,6 +552,20 @@ public sealed class ModelProfileEditorViewModel : ObservableObject
     /// <inheritdoc cref="LocalProviders" />
     public IEnumerable<LlmPresetInfo> OtherProviders =>
         Providers.Where(p => p.Kind is LlmPresetKind.Other or LlmPresetKind.None);
+
+    /// <summary>
+    /// Whether the « Other providers » fold is open: closed by default (UX lot 04, 063), but open
+    /// whenever the picked card is one of <see cref="OtherProviders"/>, so the selection is in sight.
+    /// The user may still close it by hand.
+    /// </summary>
+    public bool OtherProvidersExpanded
+    {
+        get => _otherProvidersExpanded;
+        set => SetProperty(ref _otherProvidersExpanded, value);
+    }
+
+    private static bool IsOtherProvider(LlmPresetInfo? provider) =>
+        provider?.Kind is LlmPresetKind.Other or LlmPresetKind.None;
 
     /// <summary>True when the picked card is the echo fallback.</summary>
     public bool IsNone => _selectedProvider?.Kind == LlmPresetKind.None;
@@ -1600,7 +1618,8 @@ public sealed class ModelProfilesViewModel : ObservableObject
             catalog,
             new ModelProfile
             {
-                Name = _strings[StudioStringKeys.ProfileNewName],
+                // UX lot 04 (044): the very first model is « Main », never a name that reads as the application.
+                Name = _strings[IsEmpty ? StudioStringKeys.ProfileFirstName : StudioStringKeys.ProfileNewName],
                 Provider = seed?.Name,
                 Model = seed?.DefaultModel,
                 BaseUrl = seed?.DefaultBaseUrl,

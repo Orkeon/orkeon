@@ -20,8 +20,19 @@ public sealed class SecretRowViewModel : ObservableObject
     private string _keyInput = "";
     private string? _storeFailure;
 
+    private readonly Func<string> _usedBy;
+
     /// <summary>Builds a row; <paramref name="consoleUrl"/> is where the key is issued, when the card can say so.</summary>
     public SecretRowViewModel(string envName, string usedBy, IApiKeyStore keyStore, IStudioStrings strings, Uri? consoleUrl = null)
+        : this(envName, Constant(usedBy), keyStore, strings, consoleUrl)
+    {
+    }
+
+    /// <summary>
+    /// Builds a row whose title is read in the current language (a tool's name, a mail key's label):
+    /// <see cref="RefreshTexts"/> re-reads it after a language switch.
+    /// </summary>
+    public SecretRowViewModel(string envName, Func<string> usedBy, IApiKeyStore keyStore, IStudioStrings strings, Uri? consoleUrl = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(envName);
         ArgumentNullException.ThrowIfNull(usedBy);
@@ -29,7 +40,7 @@ public sealed class SecretRowViewModel : ObservableObject
         ArgumentNullException.ThrowIfNull(strings);
 
         EnvName = envName;
-        UsedBy = usedBy;
+        _usedBy = usedBy;
         ConsoleUrl = consoleUrl?.ToString();
         _keyStore = keyStore;
         _strings = strings;
@@ -40,7 +51,13 @@ public sealed class SecretRowViewModel : ObservableObject
     public string EnvName { get; }
 
     /// <summary>What resolves this variable: the profile names, comma-joined, or the tool's name.</summary>
-    public string UsedBy { get; }
+    public string UsedBy => _usedBy();
+
+    private static Func<string> Constant(string value)
+    {
+        ArgumentNullException.ThrowIfNull(value);
+        return () => value;
+    }
 
     /// <summary>Where the key is issued, as text, when known; null hides the line.</summary>
     [SuppressMessage("Design", "CA1056",
@@ -84,7 +101,7 @@ public sealed class SecretRowViewModel : ObservableObject
     /// The language switched (STUDIO-56): called by the tab that owns the row — a row never
     /// subscribes to the port itself (STUDIO-11).
     /// </summary>
-    public void RefreshTexts() => OnPropertiesChanged(nameof(StatusText), nameof(StoreError));
+    public void RefreshTexts() => OnPropertiesChanged(nameof(UsedBy), nameof(StatusText), nameof(StoreError));
 
     private void ShowStoreFailure(string? cause)
     {

@@ -187,12 +187,15 @@ public sealed class ActionBar : Panel
         {
             var item = new MenuItem
             {
-                Header = LabelOf(button),
+                Header = HeaderOf(button),
                 ToolTip = button.ToolTip,
             };
             // The item follows the button while the menu is open: a command whose CanExecute
             // changes greys the item as it would the button.
             item.SetBinding(IsEnabledProperty, new System.Windows.Data.Binding(nameof(IsEnabled)) { Source = button });
+            // A sentence tooltip is said once: as the hint under a greyed item, as the tooltip of an active one.
+            if (button.ToolTip is string { Length: > 0 })
+                item.SetBinding(ToolTipService.IsEnabledProperty, new System.Windows.Data.Binding(nameof(IsEnabled)) { Source = button });
             // The icon: a LucideIcon in the button's content, else the one ButtonIcon.Kind draws.
             var kind = FirstIcon(button)?.Kind ?? ButtonIcon.GetKind(button);
             if (!string.IsNullOrEmpty(kind))
@@ -220,6 +223,39 @@ public sealed class ActionBar : Panel
         {
             invoke.Invoke();
         }
+    }
+
+    /// <summary>
+    /// The item's header: the button's label — and, for a button whose tooltip is a sentence, that
+    /// sentence under it in the Hint style while the button is disabled (UX lot 08): the reason a
+    /// greyed « Modify » cannot run is read without hovering. The hint follows the button live, so an
+    /// item enabled while the menu is open drops it.
+    /// </summary>
+    private static object HeaderOf(ButtonBase button)
+    {
+        var label = LabelOf(button);
+        if (button.ToolTip is not string { Length: > 0 })
+        {
+            return label;
+        }
+
+        var header = new StackPanel();
+        header.Children.Add(new TextBlock { Text = label });
+        var hint = new TextBlock { FontSize = 12, TextWrapping = TextWrapping.Wrap, MaxWidth = 320 };
+        hint.SetBinding(TextBlock.TextProperty, new System.Windows.Data.Binding(nameof(ToolTip)) { Source = button });
+        hint.SetBinding(VisibilityProperty, new System.Windows.Data.Binding(nameof(IsEnabled))
+        {
+            Source = button,
+            Converter = new Views.InverseBooleanToVisibilityConverter(),
+        });
+        if (button.TryFindResource("Hint") is Style hintStyle)
+        {
+            hint.Style = hintStyle;
+            hint.FontSize = 12;
+        }
+
+        header.Children.Add(hint);
+        return header;
     }
 
     private static string LabelOf(ButtonBase button)

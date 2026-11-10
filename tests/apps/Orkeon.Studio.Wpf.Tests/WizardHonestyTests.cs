@@ -149,6 +149,20 @@ public sealed class WizardHonestyTests
         Assert.True(line.HasDetail);
     }
 
+    [Fact]
+    public async Task A_task_without_a_duration_is_not_said_done_in_zero_seconds()
+    {
+        var (vm, processes) = Build();
+        processes.WhileRunning = () => processes.Emit(Out(
+            """{"v":2,"seq":7,"ts":"t","kind":"task.completed","taskId":"extraction","agentRole":"Lecteur","success":true}"""));
+
+        await vm.ComposeCommand.ExecuteAsync();
+
+        var line = Assert.Single(vm.Activity);
+        Assert.True(line.Success);
+        Assert.Equal("Lecteur — done", line.Text);
+    }
+
     /// <summary>
     /// The owner's own screenshot: score 0,70, a green «passing» badge, and four «?» beside
     /// it. Every one of those is honest — 0.70 is the deterministic fallback's constant and

@@ -106,7 +106,9 @@ public sealed partial class LaunchTabViewModel : ObservableObject
         {
             OnPropertiesChanged(nameof(BinaryStatus), nameof(ValidationSummary),
                 nameof(CliBanner), nameof(TeamMetaLine), nameof(TeamDescription), nameof(OpenResultLabel), nameof(ArchivedTargetMessage),
-                nameof(TeamSettingsLine), nameof(RunLlmLine), nameof(UseDefaultLlmLabel), nameof(CrewLlmWarning));
+                nameof(TeamSettingsLine), nameof(CrewLlmWarning));
+            // The « Default (X) » entry is worded in the language: the list and its selection move with it.
+            RaiseRunLlmChanged();
             RaiseRunStateChanged();
         };
 
@@ -303,7 +305,8 @@ public sealed partial class LaunchTabViewModel : ObservableObject
         private set
         {
             if (SetProperty(ref _lastResult, value))
-                OnPropertiesChanged(nameof(ExitCode), nameof(Outcome), nameof(ExitDescription), nameof(HasResult), nameof(ResultMetricsLine));
+                OnPropertiesChanged(nameof(ExitCode), nameof(Outcome), nameof(ExitDescription), nameof(ExitTooltip), nameof(HasResult),
+                    nameof(ResultMetricsLine));
             RaiseRunStateChanged();
         }
     }
@@ -319,6 +322,12 @@ public sealed partial class LaunchTabViewModel : ObservableObject
 
     /// <summary>The plain-language reading of the last exit code.</summary>
     public string? ExitDescription => LastResult?.Description;
+
+    /// <summary>
+    /// The tooltip of the finished subtitle: the engine's English sentence, for the expert only —
+    /// the novice reads Studio's own sentence in the journal and nothing else.
+    /// </summary>
+    public string? ExitTooltip => IsExpertMode ? ExitDescription : null;
 
     /// <summary>
     /// What the finished run cost, under the result sentence (T-23): tokens, cache hit as a
@@ -1069,30 +1078,37 @@ public sealed partial class LaunchTabViewModel : ObservableObject
     {
         get
         {
-            var parts = new List<string>(4);
-            if (_team.AgentCount is { } agents)
-                parts.Add(_strings.Format(StudioStringKeys.RunMetaAgents, agents));
-            foreach (var mountString in _team.Mounts)
-            {
-                // "reads /docs · writes to /output" — the sidecar's mounts, in words.
-                if (MountDefinition.TryParse(mountString, out var mount, out _) && mount is not null)
-                {
-                    parts.Add(_strings.Format(
-                        mount.Rights == MountRights.ReadOnly ? StudioStringKeys.RunMetaReads : StudioStringKeys.RunMetaWrites,
-                        mount.VirtualPath));
-                }
-            }
-
-            // A setting no setting of this machine bears runs on the default: said with the card's
-            // own words (STUDIO-52).
-            if (_team.Profile is { Length: > 0 } profile)
-            {
-                var setting = _modelSettings is null ? profile : TeamSettingStanding.Of(profile, _modelSettings()).Label(_strings);
-                parts.Add(_strings.Format(StudioStringKeys.RunMetaProfile, setting));
-            }
-
+            var parts = TeamMetaParts();
             return parts.Count > 0 ? string.Join(" · ", parts) : null;
         }
+    }
+
+    /// <summary>The parts of <see cref="TeamMetaLine"/>, each as shown: agents, folders, then « model X ».</summary>
+    private List<string> TeamMetaParts()
+    {
+        var parts = new List<string>(4);
+        if (_team.AgentCount is { } agents)
+            parts.Add(_strings.Format(StudioStringKeys.RunMetaAgents, agents));
+        foreach (var mountString in _team.Mounts)
+        {
+            // "reads /docs · writes to /output" — the sidecar's mounts, in words.
+            if (MountDefinition.TryParse(mountString, out var mount, out _) && mount is not null)
+            {
+                parts.Add(_strings.Format(
+                    mount.Rights == MountRights.ReadOnly ? StudioStringKeys.RunMetaReads : StudioStringKeys.RunMetaWrites,
+                    mount.VirtualPath));
+            }
+        }
+
+        // A setting no setting of this machine bears runs on the default: said with the card's
+        // own words (STUDIO-52).
+        if (_team.Profile is { Length: > 0 } profile)
+        {
+            var setting = _modelSettings is null ? profile : TeamSettingStanding.Of(profile, _modelSettings()).Label(_strings);
+            parts.Add(_strings.Format(StudioStringKeys.RunMetaProfile, setting));
+        }
+
+        return parts;
     }
 
     // ── STUDIO-73: the model this run takes ──
@@ -1136,6 +1152,39 @@ public sealed partial class LaunchTabViewModel : ObservableObject
             RaiseRunLlmChanged();
         }
     }
+
+    /// <summary>The entries of the model list: « Default (X) » first, then the settings by name.</summary>
+    public IReadOnlyList<string> LlmChoices => [DefaultLlmEntry, .. LlmProfiles];
+
+    /// <summary>The entry the list shows selected, held by string; the default entry is <see cref="RunUsesDefaultLlm"/>.</summary>
+    public string? SelectedLlmChoice
+    {
+        get => _runUsesDefaultLlm || _runLlmProfile is null ? DefaultLlmEntry : _runLlmProfile;
+        set
+        {
+            if (value is null)
+                return;
+
+            if (string.Equals(value, DefaultLlmEntry, StringComparison.Ordinal))
+            {
+                RunUsesDefaultLlm = true;
+                return;
+            }
+
+            // Only a setting's name pins the run: a stale « Default (X) » worded in another language is no setting.
+            if (!LlmProfiles.Contains(value, StringComparer.Ordinal))
+                return;
+
+            _runUsesDefaultLlm = false;
+            RunLlmProfile = value;
+            RaiseRunLlmChanged();
+        }
+    }
+
+    private string DefaultLlmEntry =>
+        _strings.Format(
+            StudioStringKeys.RunLlmDefaultEntry,
+            _modelSettings?.Invoke().Default?.Name ?? _strings[StudioStringKeys.TeamsLlmNoDefault]);
 
     /// <summary>The settings of this machine a run can take, by name; empty without model settings.</summary>
     public IReadOnlyList<string> LlmProfiles =>
@@ -1204,7 +1253,7 @@ public sealed partial class LaunchTabViewModel : ObservableObject
     private void RaiseRunLlmChanged()
     {
         OnPropertiesChanged(nameof(RunUsesDefaultLlm), nameof(RunLlmProfile), nameof(LlmProfiles), nameof(HasLlmProfiles),
-            nameof(UseDefaultLlmLabel), nameof(RunLlmChoice), nameof(RunLlmLine), nameof(CanRememberLlmForTeam),
+            nameof(UseDefaultLlmLabel), nameof(LlmChoices), nameof(SelectedLlmChoice), nameof(RunLlmChoice), nameof(RunLlmLine), nameof(CanRememberLlmForTeam),
             nameof(TeamSettingsLine));
         RememberLlmForTeamCommand.RaiseCanExecuteChanged();
     }
@@ -1388,18 +1437,11 @@ public sealed partial class LaunchTabViewModel : ObservableObject
         }
     }
 
-    /// <summary>Plain-language state of the progress card: ready / running / finished.</summary>
-    public string RunStateTitle =>
-        _strings[CardState switch
-        {
-            RunCardState.Running => StudioStringKeys.RunStateRunning,
-            RunCardState.Idle => StudioStringKeys.RunStateIdle,
-            _ => StudioStringKeys.RunStateDone,
-        }];
-
     /// <summary>The state badge next to the title.</summary>
     public string RunBadgeText =>
-        _strings[CardState switch
+        CardState == RunCardState.Succeeded && AgentCards.Count(card => card.State == "notrun") is > 0 and var skipped
+            ? _strings.Format(StudioStringKeys.RunBadgeDoneSkipped, skipped)
+            : _strings[CardState switch
         {
             RunCardState.Running => StudioStringKeys.RunBadgeRunning,
             RunCardState.Idle => StudioStringKeys.RunBadgeIdle,
@@ -1408,12 +1450,15 @@ public sealed partial class LaunchTabViewModel : ObservableObject
             _ => StudioStringKeys.RunBadgeFailed,
         }];
 
+    /// <summary>Whether the run's badge pulses: while the process lives (STUDIO-17).</summary>
+    public bool IsRunBadgePulsing => CardState == RunCardState.Running;
+
     /// <summary>Tone key the view maps to colours: idle | running | ok | warn | fail.</summary>
     public string RunBadgeTone => CardState switch
     {
         RunCardState.Running => "running",
         RunCardState.Idle => "idle",
-        RunCardState.Succeeded => "ok",
+        RunCardState.Succeeded => AgentCards.Any(card => card.State == "notrun") ? "warn" : "ok",
         RunCardState.Cancelled => "warn",
         _ => "fail",
     };
@@ -1559,7 +1604,7 @@ public sealed partial class LaunchTabViewModel : ObservableObject
     private void RaiseRunStateChanged()
     {
         ForgetLogFolderProbe();
-        OnPropertiesChanged(nameof(RunStateTitle), nameof(RunBadgeText), nameof(RunBadgeTone),
+        OnPropertiesChanged(nameof(RunBadgeText), nameof(RunBadgeTone), nameof(IsRunBadgePulsing),
             nameof(RunButtonLabel), nameof(CanOpenResult), nameof(OpenResultLabel));
         OpenResultCommand.RaiseCanExecuteChanged();
         RememberLlmForTeamCommand.RaiseCanExecuteChanged();
@@ -1799,6 +1844,7 @@ public sealed partial class LaunchTabViewModel : ObservableObject
         AgentCards.Clear();
         foreach (var card in cards)
             AgentCards.Add(card);
+        OnPropertiesChanged(nameof(RunBadgeText), nameof(RunBadgeTone), nameof(IsRunBadgePulsing));
     }
 
     private static RunAgentCard CardOf(RunAgentLane lane, string identifier, bool finished) => new(

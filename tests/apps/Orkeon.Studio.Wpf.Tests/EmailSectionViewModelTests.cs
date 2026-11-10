@@ -60,6 +60,8 @@ public sealed partial class EmailSectionViewModelTests
         public const string FrenchNotStored = "Pas encore mémorisé";
         public const string FrenchNotReady = "Pas prêt";
         public const string FrenchReachable = "Joignable";
+        public const string FrenchWorkNotStored =
+            "Le mot de passe n'est pas mémorisé\u00a0: la variable WORK_MAIL_PASSWORD est vide sur cette machine. Saisissez-le dans l'onglet Connexion.";
 
         private bool _french;
 
@@ -68,6 +70,8 @@ public sealed partial class EmailSectionViewModelTests
             (true, StudioStringKeys.MailChoicePreset) => FrenchPreset,
             (true, StudioStringKeys.MailPasswordMissing) => FrenchNotStored,
             (true, StudioStringKeys.MailStateNotReady) => FrenchNotReady,
+            (true, StudioStringKeys.MailNotReadyPassword) =>
+                "Le mot de passe n'est pas mémorisé\u00a0: la variable {0} est vide sur cette machine. Saisissez-le dans l'onglet Connexion.",
             (true, StudioStringKeys.MailTestReachable) => FrenchReachable,
             (true, _) when key == ValidationMessageKey(ValidationCodes.EmailRights) => FrenchRights,
             _ => EnglishStudioStrings.Instance[key],
@@ -912,7 +916,12 @@ public sealed partial class EmailSectionViewModelTests
 
         Assert.True(gmail.ShowExpertFields);
         Assert.True(gmail.ShowHosts);
+        // UX lot 04 (058): a password account shows no OAuth field, the expert's neither -
+        // until the file names a client id, which then stays reachable.
+        Assert.False(gmail.ShowClientId);
+        gmail.ClientId = "client-id";
         Assert.True(gmail.ShowClientId);
+        gmail.ClientId = "";
         // No key is the raw file's alone: the expert reaches the sending rules of an account that does not send yet.
         Assert.True(gmail.ShowRecipients);
         Assert.False(gmail.ShowSendClosed);

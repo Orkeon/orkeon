@@ -22,6 +22,7 @@ public sealed class UseCaseCardViewModel
         Title = useCase.TitleIn(language) is { Length: > 0 } title ? title : useCase.Id;
         Problem = useCase.ProblemIn(language);
         ProcessLabel = UseCaseLabels.Process(useCase.Process, strings);
+        AgentsLine = strings.Format(StudioStringKeys.WizardGalleryAgentsLine, useCase.Agents, ProcessLabel);
         CategoryLabel = UseCaseLabels.Category(useCase.Category, strings);
         ChooseCommand = new RelayCommand(() => choose(useCase));
         CanImportAsIs = importAsIs is not null && useCase.Importable;
@@ -48,8 +49,11 @@ public sealed class UseCaseCardViewModel
     /// <summary>The orchestration mode as the engine spells it — expert mono.</summary>
     public string Process => UseCase.Process;
 
-    /// <summary>The same mode in plain words — the badge.</summary>
+    /// <summary>The same mode in plain words.</summary>
     public string ProcessLabel { get; }
+
+    /// <summary>« 3 agents · Step by step »: the team's size and how it works, under the title.</summary>
+    public string AgentsLine { get; }
 
     /// <summary>The category, localized.</summary>
     public string CategoryLabel { get; }
@@ -93,6 +97,21 @@ internal static class UseCaseLabels
         ["iot-smart-systems"] = StudioStringKeys.WizardGalleryCategoryIot,
         ["experimental"] = StudioStringKeys.WizardGalleryCategoryExperimental,
     };
+
+    /// <summary>Where a category folder sorts: the order of <see cref="CategoryKeys"/>, an unknown one last.</summary>
+    public static int CategoryOrder(string folder)
+    {
+        var name = Name(folder);
+        var index = 0;
+        foreach (var key in CategoryKeys.Keys)
+        {
+            if (string.Equals(key, name, StringComparison.Ordinal))
+                return index;
+            index++;
+        }
+
+        return int.MaxValue;
+    }
 
     /// <summary>The six modes of <c>ProcessType</c>, in the order the chips show them.</summary>
     private static readonly (string Process, string Key)[] ProcessKeys =
@@ -169,6 +188,9 @@ public sealed class UseCaseGalleryViewModel : ObservableObject
     private IReadOnlyList<UseCaseCardViewModel> _cards = [];
     private IReadOnlyList<WizardChoice> _categories = [];
     private IReadOnlyList<WizardChoice> _processes = [];
+    private IReadOnlyList<WizardChoice> _primaryCategories = [];
+    private IReadOnlyList<WizardChoice> _moreCategories = [];
+    private WizardChoice _suggestedChip = null!;
 
     /// <summary>
     /// Builds the panel. <paramref name="language"/> answers the catalogue code of the UI's
@@ -196,6 +218,7 @@ public sealed class UseCaseGalleryViewModel : ObservableObject
         Import = new UseCaseImportViewModel(client, importSeams, dispatcher, strings, language, Close);
         Import.AvailabilityChanged += (_, _) => Refilter();
 
+        RefreshSuggestedChip();
         CloseCommand = new RelayCommand(Close);
         ClearFiltersCommand = new RelayCommand(ClearFilters);
         RetryCommand = new AsyncRelayCommand(() => LoadAsync(), () => !_isLoading && _catalog is null);
@@ -260,7 +283,9 @@ public sealed class UseCaseGalleryViewModel : ObservableObject
         private set
         {
             if (SetProperty(ref _failure, value))
-                OnPropertiesChanged(nameof(HasFailure), nameof(IsEngineMissing), nameof(FailureOffersDiagnostic));
+                OnPropertiesChanged(
+                    nameof(HasFailure), nameof(IsEngineMissing), nameof(FailureOffersDiagnostic),
+                    nameof(FailureOffersDiagnosticSecondary));
         }
     }
 
@@ -273,6 +298,12 @@ public sealed class UseCaseGalleryViewModel : ObservableObject
     /// <summary>Whether the card offers the diagnostic — the doctor names what is missing.</summary>
     public bool FailureOffersDiagnostic =>
         _failure?.Kind is WizardFailureKind.EngineMissing or WizardFailureKind.EngineStopped;
+
+    /// <summary>
+    /// Whether « Open the diagnostic » stands as a secondary — a missing engine makes it the card's
+    /// one primary (UX lot 05, 071).
+    /// </summary>
+    public bool FailureOffersDiagnosticSecondary => FailureOffersDiagnostic && !IsEngineMissing;
 
     /// <summary>Closes the panel; the filters stay for the next opening.</summary>
     public RelayCommand CloseCommand { get; }
@@ -302,6 +333,35 @@ public sealed class UseCaseGalleryViewModel : ObservableObject
         get => _categories;
         private set => SetProperty(ref _categories, value);
     }
+
+    /// <summary>« All », then the four domains holding the most use cases — the chips always in view.</summary>
+    public IReadOnlyList<WizardChoice> PrimaryCategories
+    {
+        get => _primaryCategories;
+        private set
+        {
+            if (SetProperty(ref _primaryCategories, value))
+                OnPropertyChanged(nameof(PrimaryChips));
+        }
+    }
+
+    /// <summary>
+    /// The row always in view (UX lot 11): the « Close to your need (N) » chip at its head while the
+    /// need has suggestions, then <see cref="PrimaryCategories"/> — one row, no line of its own.
+    /// </summary>
+    public IReadOnlyList<WizardChoice> PrimaryChips =>
+        HasSuggestions ? [_suggestedChip, .. _primaryCategories] : _primaryCategories;
+
+    /// <summary>The other domains, folded under « More filters ».</summary>
+    public IReadOnlyList<WizardChoice> MoreCategories
+    {
+        get => _moreCategories;
+        private set => SetProperty(ref _moreCategories, value);
+    }
+
+    /// <summary>Whether the search or a filter narrows the list — « Clear the filters » shows only then.</summary>
+    public bool HasActiveFilter =>
+        _query.Length > 0 || _category is not null || _process is not null || _withoutWeb || _withoutKeys || _suggestedOnly;
 
     /// <summary>« Any », then one chip per process the catalogue uses.</summary>
     public IReadOnlyList<WizardChoice> Processes
@@ -343,6 +403,18 @@ public sealed class UseCaseGalleryViewModel : ObservableObject
         }
     }
 
+    /// <summary>The « Close to your need (N) » chip at the head of the primary row; it toggles <see cref="SuggestedOnly"/>.</summary>
+    public WizardChoice SuggestedChip => _suggestedChip;
+
+    private void RefreshSuggestedChip()
+    {
+        _suggestedChip = new WizardChoice("suggested", SuggestedFilterLabel, _ => SuggestedOnly = !SuggestedOnly)
+        {
+            IsSelected = _suggestedOnly,
+        };
+        OnPropertiesChanged(nameof(SuggestedChip), nameof(PrimaryChips));
+    }
+
     /// <summary>Whether the need has close use cases — the suggestions filter shows only then.</summary>
     public bool HasSuggestions => _suggested.Count > 0;
 
@@ -374,10 +446,10 @@ public sealed class UseCaseGalleryViewModel : ObservableObject
     /// <summary>Whether the filters kept nothing of a loaded catalogue — the empty state and its way out.</summary>
     public bool HasNoMatch => _catalog is not null && _cards.Count == 0;
 
-    /// <summary>« 12 of 105 use cases ».</summary>
+    /// <summary>« 12 of 105 cases », the « · Clear » link after it (UX lot 11).</summary>
     public string CountLabel => _catalog is null
         ? ""
-        : _strings.Format(StudioStringKeys.WizardGalleryCount, _cards.Count, _catalog.Count);
+        : _strings.Format(StudioStringKeys.WizardGalleryCountShort, _cards.Count, _catalog.Count);
 
     /// <summary>« Import as is » (STUDIO-41): the expert's action on the cards, and the banner that follows it.</summary>
     public UseCaseImportViewModel Import { get; }
@@ -412,6 +484,7 @@ public sealed class UseCaseGalleryViewModel : ObservableObject
         }
 
         OnPropertiesChanged(nameof(HasSuggestions), nameof(SuggestedFilterLabel));
+        RefreshSuggestedChip();
         if (_suggestedOnly)
             Refilter();
     }
@@ -519,6 +592,17 @@ public sealed class UseCaseGalleryViewModel : ObservableObject
                     .Distinct(StringComparer.Ordinal)
                     .Select(category => new WizardChoice(category, UseCaseLabels.Category(category, _strings), _ => SelectCategory(category))),
             ];
+            var counts = catalog.UseCases
+                .GroupBy(useCase => useCase.Category, StringComparer.Ordinal)
+                .OrderByDescending(group => group.Count())
+                .ThenBy(group => UseCaseLabels.CategoryOrder(group.Key))
+                .ThenBy(group => group.Key, StringComparer.Ordinal)
+                .Select(group => group.Key)
+                .ToList();
+            var byKey = Categories.Skip(1).ToDictionary(chip => chip.Key, StringComparer.Ordinal);
+            var domains = counts.Select(category => byKey[category]).ToList();
+            PrimaryCategories = [Categories[0], .. domains.Take(4)];
+            MoreCategories = [.. domains.Skip(4)];
             Processes =
             [
                 new WizardChoice("", _strings[StudioStringKeys.WizardGalleryAnyProcess], _ => SelectProcess(null)),
@@ -534,6 +618,7 @@ public sealed class UseCaseGalleryViewModel : ObservableObject
 
         Refilter();
         OnPropertiesChanged(nameof(SuggestedFilterLabel), nameof(CountLabel));
+        RefreshSuggestedChip();
     }
 
     private void SelectCategory(string? category)
@@ -573,6 +658,8 @@ public sealed class UseCaseGalleryViewModel : ObservableObject
 
     private void Refilter()
     {
+        OnPropertyChanged(nameof(HasActiveFilter));
+        _suggestedChip.IsSelected = _suggestedOnly;
         if (_catalog is not { } catalog)
         {
             Cards = [];

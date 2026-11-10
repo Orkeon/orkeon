@@ -623,7 +623,7 @@
                     <PasswordBox Style="{StaticResource InputPassword}" Width="320" VerticalAlignment="Center" Margin="0,0,8,0"
                                  views:PasswordBinding.Text="{Binding ClientSecret.KeyInput}"/>
                     <Button Style="{StaticResource BtnSecondary}" Command="{Binding ClientSecret.StoreCommand}"
-                            Content="{Binding [Studio.Common.Save], Source={x:Static services:I18n.Instance}}"/>
+                            Content="{Binding [Studio.Settings.SecretStore], Source={x:Static services:I18n.Instance}}"/>
                   </StackPanel>
                   <!-- the state, never the value: saving again replaces what is kept -->
                   <TextBlock Margin="0,4,0,0" TextWrapping="Wrap" Text="{Binding ClientSecretStatus}">

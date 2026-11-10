@@ -101,6 +101,21 @@ public class RunProgressModelTests
     }
 
     [Fact]
+    public void A_task_whose_line_names_no_duration_has_none_rather_than_zero()
+    {
+        // A line without durationMs (an older producer, a capture fixture) and a task that never
+        // ran (skipped: the producer stamps 0) have no duration: the screen says "—", never "0,0 s".
+        var model = Fold(
+            """{"v":2,"seq":1,"ts":"t","kind":"task.completed","taskId":"t1","agentRole":"analyst","success":true}""",
+            """{"v":2,"seq":2,"ts":"t","kind":"task.completed","taskId":"t2","agentRole":"writer","success":false,"skipped":true,"durationMs":0,"skipReason":"dependency t0 failed"}""",
+            """{"v":2,"seq":3,"ts":"t","kind":"task.completed","taskId":"t3","agentRole":"editor","success":true,"durationMs":0}""");
+
+        Assert.Null(model.Tasks[0].DurationMs);
+        Assert.Null(model.Tasks[1].DurationMs);
+        Assert.Equal(0, model.Tasks[2].DurationMs);
+    }
+
+    [Fact]
     public void The_stream_becomes_progress_cost_and_an_outcome()
     {
         var model = Fold(

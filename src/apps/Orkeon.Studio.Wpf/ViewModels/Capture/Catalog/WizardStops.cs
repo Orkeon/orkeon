@@ -280,12 +280,22 @@ internal static class WizardStops
             // straight after « etape2-equipe-rouverte », which does that; the language sweep skips
             // that stop, and this one used to inherit nothing to stand on (IsStep4 false in every
             // sweep language). The stop now reopens the team itself when it is not already open.
+            // UX lot 05: a reopened team with folders still to choose holds the stepper at step 2;
+            // the stop chooses them (all inside the team) before stepping on to the adoption.
             Arrange = static async c =>
             {
                 var wizard = c.Shell.CreateTeam;
                 if (!wizard.GoStep4Command.CanExecute(null))
                 {
-                    ReopenAdoptedTeam(c);
+                    if (!wizard.IsModifyingTeam)
+                    {
+                        ReopenAdoptedTeam(c);
+                        await CaptureWait.UntilAsync(() => wizard.IsModifyingTeam && !wizard.IsEngineRunning
+                            && (wizard.GoStep4Command.CanExecute(null) || wizard.HasFoldersToChoose));
+                    }
+
+                    if (wizard.HasFoldersToChoose)
+                        wizard.CreateAllInsideTeamCommand.Execute(null);
                     await CaptureWait.UntilAsync(() => wizard.GoStep4Command.CanExecute(null));
                 }
 
