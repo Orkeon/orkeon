@@ -1,15 +1,15 @@
 Package: orkeon
 Architecture: amd64
-Version: 1.0.0~rc.6.dev.548
+Version: 1.0.0~rc.6.dev.567
 Priority: optional
 Section: devel
 Maintainer: Orkeon Contributors <arion@orkeon.org>
 Installed-Size: 343620
 Depends: libicu78 | libicu77 | libicu76 | libicu74 | libicu72 | libicu70, libssl3t64 | libssl3, zlib1g, libgcc-s1, libc6 (>= 2.34), ca-certificates, bubblewrap
 Recommends: orkeon-archive-keyring
-Filename: releases/download/apt-dev/orkeon_1.0.0-rc.6.dev.548_amd64.deb
-Size: 101981432
-SHA256: d8465815df644eee8d18089bddb8f9bb84e508ac2d40becc4ce60efa4ec97d0f
+Filename: releases/download/apt-dev/orkeon_1.0.0-rc.6.dev.567_amd64.deb
+Size: 102126610
+SHA256: d82f70df4f7e7bf0178af25645fccb32498563f77dac0ba7b437645b70047f6e
 Homepage: https://github.com/Orkeon/orkeon
 Description: multi-agent AI orchestration framework and CLI
  Orkeon builds teams of LLM agents that collaborate on a goal: sequential,
@@ -34,16 +34,16 @@ Description: multi-agent AI orchestration framework and CLI
 
 Package: orkeon
 Architecture: arm64
-Version: 1.0.0~rc.6.dev.548
+Version: 1.0.0~rc.6.dev.567
 Priority: optional
 Section: devel
 Maintainer: Orkeon Contributors <arion@orkeon.org>
-Installed-Size: 345372
+Installed-Size: 345388
 Depends: libicu78 | libicu77 | libicu76 | libicu74 | libicu72 | libicu70, libssl3t64 | libssl3, zlib1g, libgcc-s1, libc6 (>= 2.34), ca-certificates, bubblewrap
 Recommends: orkeon-archive-keyring
-Filename: releases/download/apt-dev/orkeon_1.0.0-rc.6.dev.548_arm64.deb
-Size: 98203164
-SHA256: 49f3b10b880cc70f00dc27eefb27cc282875cda8dddeb5c005ad0788242e3c93
+Filename: releases/download/apt-dev/orkeon_1.0.0-rc.6.dev.567_arm64.deb
+Size: 98591058
+SHA256: 7a101ff0474184f35ea68900f9b219d98d2c352a9af40dee803b379d4269da4b
 Homepage: https://github.com/Orkeon/orkeon
 Description: multi-agent AI orchestration framework and CLI
  Orkeon builds teams of LLM agents that collaborate on a goal: sequential,
@@ -68,16 +68,16 @@ Description: multi-agent AI orchestration framework and CLI
 
 Package: orkeon
 Architecture: amd64
-Version: 1.0.0~rc.6.dev.552
+Version: 1.0.0~rc.6.dev.570
 Priority: optional
 Section: devel
 Maintainer: Orkeon Contributors <arion@orkeon.org>
-Installed-Size: 343616
+Installed-Size: 343656
 Depends: libicu78 | libicu77 | libicu76 | libicu74 | libicu72 | libicu70, libssl3t64 | libssl3, zlib1g, libgcc-s1, libc6 (>= 2.34), ca-certificates, bubblewrap
 Recommends: orkeon-archive-keyring
-Filename: releases/download/apt-dev/orkeon_1.0.0-rc.6.dev.552_amd64.deb
-Size: 101818796
-SHA256: 91a8c33d0a877e75b475af9a7d9c0125e7ad3aa176b87202943d10735da54e74
+Filename: releases/download/apt-dev/orkeon_1.0.0-rc.6.dev.570_amd64.deb
+Size: 102136888
+SHA256: 47cc51600236a774e848080947e435753e6a23513b7ad49c721a8a8100433850
 Homepage: https://github.com/Orkeon/orkeon
 Description: multi-agent AI orchestration framework and CLI
  Orkeon builds teams of LLM agents that collaborate on a goal: sequential,
@@ -102,16 +102,16 @@ Description: multi-agent AI orchestration framework and CLI
 
 Package: orkeon
 Architecture: arm64
-Version: 1.0.0~rc.6.dev.552
+Version: 1.0.0~rc.6.dev.570
 Priority: optional
 Section: devel
 Maintainer: Orkeon Contributors <arion@orkeon.org>
-Installed-Size: 345372
+Installed-Size: 345412
 Depends: libicu78 | libicu77 | libicu76 | libicu74 | libicu72 | libicu70, libssl3t64 | libssl3, zlib1g, libgcc-s1, libc6 (>= 2.34), ca-certificates, bubblewrap
 Recommends: orkeon-archive-keyring
-Filename: releases/download/apt-dev/orkeon_1.0.0-rc.6.dev.552_arm64.deb
-Size: 98202958
-SHA256: 08bdcaa24399475d2b980d3dbd374bd9166d4ff054225552b5424c26b5d93d26
+Filename: releases/download/apt-dev/orkeon_1.0.0-rc.6.dev.570_arm64.deb
+Size: 98597602
+SHA256: d83e898466a9f4d5ebf12795b5d3bab5401cad99c9c84e07437c5ef926212148
 Homepage: https://github.com/Orkeon/orkeon
 Description: multi-agent AI orchestration framework and CLI
  Orkeon builds teams of LLM agents that collaborate on a goal: sequential,
@@ -136,16 +136,16 @@ Description: multi-agent AI orchestration framework and CLI
 
 Package: orkeon
 Architecture: amd64
-Version: 1.0.0~rc.6.dev.565
+Version: 1.0.0~rc.6.dev.573
 Priority: optional
 Section: devel
 Maintainer: Orkeon Contributors <arion@orkeon.org>
-Installed-Size: 343616
+Installed-Size: 343768
 Depends: libicu78 | libicu77 | libicu76 | libicu74 | libicu72 | libicu70, libssl3t64 | libssl3, zlib1g, libgcc-s1, libc6 (>= 2.34), ca-certificates, bubblewrap
 Recommends: orkeon-archive-keyring
-Filename: releases/download/apt-dev/orkeon_1.0.0-rc.6.dev.565_amd64.deb
-Size: 101750230
-SHA256: 1006918c7a99a0b972492c17e5388cc4dc6824d7a3ae02a994cacd4869e72cc4
+Filename: releases/download/apt-dev/orkeon_1.0.0-rc.6.dev.573_amd64.deb
+Size: 102163390
+SHA256: b48fdb57473eb63a444f72f160684e02236e6e3419afe983501500c37fec8579
 Homepage: https://github.com/Orkeon/orkeon
 Description: multi-agent AI orchestration framework and CLI
  Orkeon builds teams of LLM agents that collaborate on a goal: sequential,
@@ -170,16 +170,16 @@ Description: multi-agent AI orchestration framework and CLI
 
 Package: orkeon
 Architecture: arm64
-Version: 1.0.0~rc.6.dev.565
+Version: 1.0.0~rc.6.dev.573
 Priority: optional
 Section: devel
 Maintainer: Orkeon Contributors <arion@orkeon.org>
-Installed-Size: 345372
+Installed-Size: 345524
 Depends: libicu78 | libicu77 | libicu76 | libicu74 | libicu72 | libicu70, libssl3t64 | libssl3, zlib1g, libgcc-s1, libc6 (>= 2.34), ca-certificates, bubblewrap
 Recommends: orkeon-archive-keyring
-Filename: releases/download/apt-dev/orkeon_1.0.0-rc.6.dev.565_arm64.deb
-Size: 98204126
-SHA256: b3fed1055dc72e72d750b345e7823d965c614a354a88b4fd8e5438413f1b57a3
+Filename: releases/download/apt-dev/orkeon_1.0.0-rc.6.dev.573_arm64.deb
+Size: 98633856
+SHA256: 124f3228fb6031c9a5ba524ecde2f0ba75c11a9478e51e64586ade11e2bbdd03
 Homepage: https://github.com/Orkeon/orkeon
 Description: multi-agent AI orchestration framework and CLI
  Orkeon builds teams of LLM agents that collaborate on a goal: sequential,
