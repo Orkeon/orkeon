@@ -4616,7 +4616,7 @@ variable at all (GAP-36).
   showed (`Studio.Settings.NoBaseUrl`, `Studio.Settings.CustomProvider`,
   `Studio.Settings.ApiKeyRecommendation`, in the five languages).
 
-Documented in [Orkeon Studio](docs/architecture/studio.md).
+Documented in [Orkeon Studio](https://github.com/Orkeon/orkeon-studio/blob/main/docs/architecture/studio.md).
 
 ### Fixed — `orkeon init`'s probe presents the key a run presents, a run reads no settings file but the one it resolved, and `orkeon-host` names only the profiles it offers **[breaking]**
 
@@ -5167,7 +5167,7 @@ the run exited 2 (STUDIO-49).
 
 Documented in [Configuration](docs/reference/configuration.md#the-api-key-apikey-apikeyenvvar),
 [API keys: the variable per provider](docs/reference/llm-providers-comparison.md#api-keys-the-variable-per-provider),
-[CLI](docs/reference/cli.md), [Orkeon Studio](docs/architecture/studio.md),
+[CLI](docs/reference/cli.md), [Orkeon Studio](https://github.com/Orkeon/orkeon-studio/blob/main/docs/architecture/studio.md),
 [The service host](docs/architecture/service-host.md),
 [Security](docs/architecture/security.md#llm-keys-the-settings-file-names-the-variable) and
 [Limitations](docs/reference/limitations.md).
@@ -5288,8 +5288,8 @@ settings define `Llm:Profiles:claude`, which nothing in Studio wrote: a Studio u
 - `Orkeon.Constants.Llm` gains `LlmProfileNames.Default` (ADR-009): the reserved name the runtime
   refuses for a profile, which Studio refuses too; `LlmProfiles.Default` reads it.
 
-Documented in [Configuration](docs/reference/configuration.md#studio-writes-this-section),
-[Orkeon Studio](docs/architecture/studio.md) and
+Documented in [Configuration](docs/reference/configuration.md),
+[Orkeon Studio](https://github.com/Orkeon/orkeon-studio/blob/main/docs/architecture/studio.md) and
 [YAML and builders](docs/getting-started/yaml-and-builders.md#one-provider-per-agent-profiles).
 
 ### Fixed — a crew's manager runs on the LLM the crew gives it, the RAG subsystem on the profile the host names, a `.ork.ts` task changes profile, and an address is no glob **[breaking]**
