@@ -78,15 +78,11 @@ internal sealed partial class HostApiServer : IHostedService, IDisposable
         HealthCheckService health,
         RunIdempotencyStore idempotency,
         ILogger<HostApiServer> logger,
-        IServiceProvider services)
+        HostApiOptionalServices optional)
     {
-        ArgumentNullException.ThrowIfNull(services);
-        // A run's questions are persisted only with Orkeon:Checkpointing:Enabled (the durable human input engages on it): the
-        // checkpoint manager is registered either way, so its presence alone says nothing.
-        var checkpointing = services.GetService<Microsoft.Extensions.Options.IOptions<Orkeon.Infrastructure.Checkpointing.CheckpointingOptions>>();
-        var checkpoints = services.GetService<Orkeon.Application.Interfaces.Checkpointing.ICheckpointManager>();
-        _input = checkpointing?.Value.Enabled == true ? checkpoints as IPendingInputStore : null;
-        _broker = services.GetService<IPendingInputBroker>();
+        ArgumentNullException.ThrowIfNull(optional);
+        _input = optional.Input;
+        _broker = optional.Broker;
         ArgumentNullException.ThrowIfNull(options);
         _options = options.Value.Api;
         _runner = runner ?? throw new ArgumentNullException(nameof(runner));
@@ -94,10 +90,10 @@ internal sealed partial class HostApiServer : IHostedService, IDisposable
         _health = health ?? throw new ArgumentNullException(nameof(health));
         _idempotency = idempotency ?? throw new ArgumentNullException(nameof(idempotency));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-        _history = services.GetService<IRunHistoryReader>();
-        _bearerProviders = services.GetService<IEnumerable<IAuthenticationProvider>>() ?? [];
-        _secrets = services.GetService<ISecretProvider>();
-        _time = services.GetService<TimeProvider>() ?? TimeProvider.System;
+        _history = optional.History;
+        _bearerProviders = optional.BearerProviders;
+        _secrets = optional.Secrets;
+        _time = optional.Time;
     }
 
     /// <summary>Whether the listener is up.</summary>

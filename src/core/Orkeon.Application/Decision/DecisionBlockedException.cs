@@ -9,6 +9,7 @@ namespace Orkeon.Application.Decision;
 /// the risk and the reason in its metadata; <see cref="FromResponse"/> reads them back, and a
 /// caller that cannot return such a response (a text stream) throws this exception instead.
 /// </summary>
+[System.Diagnostics.CodeAnalysis.SuppressMessage("Major Code Smell", "S3925", Justification = "False positive: binary serialization of exceptions is obsolete in .NET 10 (SYSLIB0051), so no ISerializable constructor or GetObjectData is added.")]
 public sealed class DecisionBlockedException : Exception
 {
     /// <summary>The <see cref="LlmResponse.ErrorType"/> of a call a decision stage blocked.</summary>

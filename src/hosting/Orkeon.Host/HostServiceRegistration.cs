@@ -174,6 +174,7 @@ internal static class HostServiceRegistration
         ArgumentNullException.ThrowIfNull(services);
         services.AddHostedService<McpConnectionService>();
         services.AddHostedService<HostA2AService>();
+        services.TryAddSingleton<Api.HostApiOptionalServices>();
         services.AddHostedService<Api.HostApiServer>();
         services.AddHostedService<Gateway.ChatChannelService>();
         services.AddHostedService<CrewHostService>();

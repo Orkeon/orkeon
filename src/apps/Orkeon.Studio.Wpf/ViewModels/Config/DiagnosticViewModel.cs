@@ -281,7 +281,9 @@ public sealed class DiagnosticViewModel : ObservableObject
         OpenInstallGuideCommand = new RelayCommand(OpenInstallGuide, () => HasInstallGuide);
     }
 
-    private const string DocsRoot = "https" + "://github.com/Orkeon/orkeon/blob/main/docs";
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Minor Code Smell", "S1075:URIs should not be hardcoded",
+        Justification = "The public documentation of the product: a fixed address the Studio opens, not a setting of a deployment.")]
+    private const string DocsRoot = "https://github.com/Orkeon/orkeon/blob/main/docs";
 
     /// <summary>
     /// The page that says how to install the Orkeon engine from the release binaries (UX lot 04,

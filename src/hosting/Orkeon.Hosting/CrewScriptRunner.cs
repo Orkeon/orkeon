@@ -99,6 +99,7 @@ public sealed class CrewScriptRunnerOptions
 /// The run could not start: the target, a setting or a mount was refused before the crew ran.
 /// The message is the line <c>orkeon run</c> would have written before exiting 1 or 2.
 /// </summary>
+[System.Diagnostics.CodeAnalysis.SuppressMessage("Major Code Smell", "S3925", Justification = "False positive: binary serialization of exceptions is obsolete in .NET 10 (SYSLIB0051), so no ISerializable constructor or GetObjectData is added.")]
 public sealed class CrewScriptRunException : Exception
 {
     /// <summary>Creates the exception with an empty message.</summary>

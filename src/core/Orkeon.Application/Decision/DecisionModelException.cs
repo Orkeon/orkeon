@@ -4,6 +4,7 @@ namespace Orkeon.Application.Decision;
 /// A decision provider refused or failed a request. The message names what to fix and never
 /// carries the API key.
 /// </summary>
+[System.Diagnostics.CodeAnalysis.SuppressMessage("Major Code Smell", "S3925", Justification = "False positive: binary serialization of exceptions is obsolete in .NET 10 (SYSLIB0051), so no ISerializable constructor or GetObjectData is added.")]
 public sealed class DecisionModelException : Exception
 {
     /// <summary>Initializes a new instance of <see cref="DecisionModelException"/>.</summary>
