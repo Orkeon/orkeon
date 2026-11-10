@@ -34,47 +34,63 @@ internal static class PhysicalRealPath
 
         var hops = 0;
         var path = fullPath;
-        var restart = true;
-        while (restart)
+        while (true)
         {
-            restart = false;
-            var root = Path.GetPathRoot(path);
-            if (string.IsNullOrEmpty(root))
-                return path;
+            if (TryWalk(ref path, ref hops, out var result))
+                return result;
+        }
+    }
 
-            var components = path[root.Length..].Split(
-                [Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar],
-                StringSplitOptions.RemoveEmptyEntries);
-            var current = root;
-            for (var i = 0; i < components.Length; i++)
-            {
-                var candidate = Path.Combine(current, components[i]);
-                var linkTarget = TryReadLink(candidate, out var exists);
-                if (!exists)
-                    return AppendTail(candidate, components, i + 1);
-
-                if (linkTarget is null)
-                {
-                    current = candidate;
-                    continue;
-                }
-
-                if (++hops > MaxLinkHops)
-                    return null;
-
-                // Replace the link by its target and walk the new path again from its root:
-                // the target itself may run through other links.
-                var target = Path.GetFullPath(linkTarget, current);
-                path = AppendTail(target, components, i + 1);
-                restart = true;
-                break;
-            }
-
-            if (!restart)
-                return current;
+    /// <summary>
+    /// Walks <paramref name="path"/> once from its root. Returns true when the walk is over, with the real
+    /// path (or null for a loop) in <paramref name="result"/>; false when a link was replaced by its target
+    /// in <paramref name="path"/> and the walk must start again.
+    /// </summary>
+    private static bool TryWalk(ref string path, ref int hops, out string? result)
+    {
+        var root = Path.GetPathRoot(path);
+        if (string.IsNullOrEmpty(root))
+        {
+            result = path;
+            return true;
         }
 
-        return path;
+        var components = path[root.Length..].Split(
+            [Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar],
+            StringSplitOptions.RemoveEmptyEntries);
+        var current = root;
+        for (var i = 0; i < components.Length; i++)
+        {
+            var candidate = Path.Combine(current, components[i]);
+            var linkTarget = TryReadLink(candidate, out var exists);
+            if (!exists)
+            {
+                result = AppendTail(candidate, components, i + 1);
+                return true;
+            }
+
+            if (linkTarget is null)
+            {
+                current = candidate;
+                continue;
+            }
+
+            if (++hops > MaxLinkHops)
+            {
+                result = null;
+                return true;
+            }
+
+            // Replace the link by its target and walk the new path again from its root:
+            // the target itself may run through other links.
+            var target = Path.GetFullPath(linkTarget, current);
+            path = AppendTail(target, components, i + 1);
+            result = null;
+            return false;
+        }
+
+        result = current;
+        return true;
     }
 
     private static string AppendTail(string head, string[] components, int from)

@@ -131,8 +131,7 @@ public class EmbeddingDimensionPropagationTests
             new RaggableTreeCache(fs),
             new FileSystemDiscoverer(fs),
             fs,
-            () => new RaggableTreeBuilder(adapters, fs),
-            () => new IncrementalReindexEngine(adapters, fs),
+            new TreeFactories(() => new RaggableTreeBuilder(adapters, fs), () => new IncrementalReindexEngine(adapters, fs)),
             CachingTreeBuilder.DescribeEnvironment(adapters, [], null, new Doubles.StubEmbeddingProvider { Size = dimensions }));
     }
 

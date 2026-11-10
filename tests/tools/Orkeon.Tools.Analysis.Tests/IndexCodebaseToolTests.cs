@@ -157,8 +157,7 @@ public class IndexCodebaseToolTests
             new RaggableTreeCache(fs),
             new FileSystemDiscoverer(fs),
             fs,
-            () => new RaggableTreeBuilder(new TypeScriptAdapter(), fs),
-            () => new IncrementalReindexEngine(new TypeScriptAdapter(), fs),
+            new TreeFactories(() => new RaggableTreeBuilder(new TypeScriptAdapter(), fs), () => new IncrementalReindexEngine(new TypeScriptAdapter(), fs)),
             "test");
         using var tool = new IndexCodebaseTool(TestGraph.Store([], []), () => new RaggableTreeBuilder(new TypeScriptAdapter(), fs), caching);
         return await tool.ExecuteTypedForTest(request, CancellationToken.None);

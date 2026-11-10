@@ -119,7 +119,7 @@ public sealed class IncrementalReindexEngine
         foreach (var path in changedVirtual)
         {
             ct.ThrowIfCancellationRequested();
-            await ParseChangedFileAsync(path, root, opts, ignore, packageNodes, monorepo, parsed, ct).ConfigureAwait(false);
+            await ParseChangedFileAsync(path, new ParseScope(root, opts, ignore, packageNodes, monorepo), parsed, ct).ConfigureAwait(false);
         }
 
         var newNodes = parsed.NewNodes;
@@ -227,14 +227,11 @@ public sealed class IncrementalReindexEngine
     // A changed file of an indexed language is read and mapped; one that is excluded, ignored, unsupported or gone is skipped.
     private async Task ParseChangedFileAsync(
         string path,
-        string root,
-        IndexCodebaseRequest opts,
-        IgnoreFiles? ignore,
-        List<RaggableNode> packageNodes,
-        RaggableNode monorepo,
+        ParseScope scope,
         ChangedFiles parsed,
         CancellationToken ct)
     {
+        var (root, opts, ignore, packageNodes, monorepo) = scope;
         if (ignore is not null && path.StartsWith(root + "/", StringComparison.Ordinal) && ignore.IsIgnored(path[(root.Length + 1)..])) return;
         var language = FileSystemDiscoverer.IndexableLanguage(root, path, opts.Exclude, opts.Languages);
         if (language is null) return;
@@ -542,6 +539,14 @@ public sealed class IncrementalReindexEngine
             node.ImplementsIdsMutable.RemoveAll(removedIds.Contains);
         }
     }
+
+    // What every changed file of one reindex is parsed against.
+    private sealed record ParseScope(
+        string Root,
+        IndexCodebaseRequest Opts,
+        IgnoreFiles? Ignore,
+        List<RaggableNode> PackageNodes,
+        RaggableNode Monorepo);
 
     // What the parse of the changed files collects for the graph rebuild.
     private sealed class ChangedFiles

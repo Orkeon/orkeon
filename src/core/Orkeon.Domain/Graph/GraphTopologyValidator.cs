@@ -131,14 +131,13 @@ public static class GraphTopologyValidator
             var node = queue.Dequeue();
             if (!outgoing.TryGetValue(node, out var edges))
                 continue;
-            foreach (var edge in edges)
+            var targets = edges
+                .SelectMany(edge => (IEnumerable<string>?)edge.Targets ?? declared)
+                .Where(t => t != endId && declared.Contains(t));
+            foreach (var target in targets)
             {
-                IEnumerable<string> targets = edge.Targets ?? [.. declared];
-                foreach (var target in targets.Where(t => t != endId && declared.Contains(t)))
-                {
-                    if (seen.Add(target))
-                        queue.Enqueue(target);
-                }
+                if (seen.Add(target))
+                    queue.Enqueue(target);
             }
         }
 
@@ -151,8 +150,8 @@ public static class GraphTopologyValidator
         Dictionary<string, List<GraphEdgeDescription>> outgoing)
     {
         var good = new HashSet<string>(StringComparer.Ordinal);
-        var changed = true;
-        while (changed)
+        bool changed;
+        do
         {
             changed = false;
             foreach (var (from, edges) in outgoing)
@@ -163,6 +162,7 @@ public static class GraphTopologyValidator
                     changed |= good.Add(from);
             }
         }
+        while (changed);
 
         return good;
     }

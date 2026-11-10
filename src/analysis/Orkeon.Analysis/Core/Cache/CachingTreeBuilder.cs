@@ -35,6 +35,16 @@ public sealed record CachedBuildResult(BuildResult Build, IndexCacheOutcome Outc
 /// <see cref="IncrementalReindexEngine"/>, anything else - another key, a package marker changed, a root alias, more
 /// than half of the files changed - builds from scratch. Every build or refresh is saved for the next session.
 /// </summary>
+/// <summary>The factories of the builder and of the reindex engine a <see cref="CachingTreeBuilder"/> calls per build.</summary>
+public sealed class TreeFactories(Func<RaggableTreeBuilder> builder, Func<IncrementalReindexEngine> engine)
+{
+    /// <summary>Creates the tree builder of a full build.</summary>
+    public Func<RaggableTreeBuilder> Builder { get; } = builder ?? throw new ArgumentNullException(nameof(builder));
+
+    /// <summary>Creates the engine of an incremental reindex.</summary>
+    public Func<IncrementalReindexEngine> Engine { get; } = engine ?? throw new ArgumentNullException(nameof(engine));
+}
+
 public sealed partial class CachingTreeBuilder
 {
     // Bumped when what a cached tree holds changes in a way the serializer version does not tell.
@@ -60,8 +70,7 @@ public sealed partial class CachingTreeBuilder
         IRaggableTreeCache cache,
         IFileSystemDiscoverer discoverer,
         IFileSystemService fileSystem,
-        Func<RaggableTreeBuilder> builderFactory,
-        Func<IncrementalReindexEngine> engineFactory,
+        TreeFactories factories,
         string environment,
         IVectorStoreProvider? vectorStore = null,
         ILogger<CachingTreeBuilder>? logger = null)
@@ -69,8 +78,9 @@ public sealed partial class CachingTreeBuilder
         _cache = cache ?? throw new ArgumentNullException(nameof(cache));
         _discoverer = discoverer ?? throw new ArgumentNullException(nameof(discoverer));
         _fs = fileSystem ?? throw new ArgumentNullException(nameof(fileSystem));
-        _builderFactory = builderFactory ?? throw new ArgumentNullException(nameof(builderFactory));
-        _engineFactory = engineFactory ?? throw new ArgumentNullException(nameof(engineFactory));
+        ArgumentNullException.ThrowIfNull(factories);
+        _builderFactory = factories.Builder;
+        _engineFactory = factories.Engine;
         _environment = environment ?? throw new ArgumentNullException(nameof(environment));
         _vectorStore = vectorStore;
         _logger = logger ?? (ILogger)NullLogger.Instance;
@@ -169,12 +179,12 @@ public sealed partial class CachingTreeBuilder
     {
         var root = discovery.RootPath.TrimEnd('/');
         var hashes = new Dictionary<string, string>(StringComparer.Ordinal);
-        foreach (var package in discovery.Packages)
+        foreach (var markerPath in discovery.Packages.Select(p => p.MarkerPath))
         {
             string? text;
-            try { text = await _fs.TryReadAllTextAsync($"{root}/{package.MarkerPath}", ct).ConfigureAwait(false); }
+            try { text = await _fs.TryReadAllTextAsync($"{root}/{markerPath}", ct).ConfigureAwait(false); }
             catch (FileAccessDeniedException) { text = null; }
-            hashes[package.MarkerPath] = text is null ? "" : Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(text)));
+            hashes[markerPath] = text is null ? "" : Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(text)));
         }
         // An ignore file is a marker too: a change to what is ignored rebuilds the whole tree. The cache's own
         // .gitignore is written by the save, so it is no input of the tree.

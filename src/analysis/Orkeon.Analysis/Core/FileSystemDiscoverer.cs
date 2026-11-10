@@ -134,12 +134,8 @@ public sealed class FileSystemDiscoverer : IFileSystemDiscoverer
         "physical root for filter-stats reporting only. Bypasses the VFS by design — " +
         "the whole point is to distinguish 'VFS yielded nothing' from 'disk is empty'.")]
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Best-effort diagnostic probe: any failure counting physical entries leaves the stats unset and must not interrupt VFS-driven discovery.")]
-    private async IAsyncEnumerable<DiscoveredEntry> EnumerateAsync(
-        DiscoveryContext ctx,
-        FilterStatsAccumulator stats,
-        [EnumeratorCancellation] CancellationToken ct)
+    private static void ProbePhysicalEntries(DiscoveryContext ctx, FilterStatsAccumulator stats)
     {
-        stats.PhysicalRoot = ctx.PhysicalRoot;
         // OUT-OF-SCOPE: direct-from-disk probe to surface VFS path-mapping issues.
         // The physical root is already resolved + access-validated by PrepareAsync.
         try
@@ -159,6 +155,15 @@ public sealed class FileSystemDiscoverer : IFileSystemDiscoverer
             stats.PhysicalEntriesProbe = probeCount;
         }
         catch { /* probe is best-effort */ }
+    }
+
+    private async IAsyncEnumerable<DiscoveredEntry> EnumerateAsync(
+        DiscoveryContext ctx,
+        FilterStatsAccumulator stats,
+        [EnumeratorCancellation] CancellationToken ct)
+    {
+        stats.PhysicalRoot = ctx.PhysicalRoot;
+        ProbePhysicalEntries(ctx, stats);
 
         // The walk first, the ignore files after it: a nested .gitignore governs files the walk may have
         // yielded before it, so the whole tree is known before any path is judged.
@@ -182,10 +187,7 @@ public sealed class FileSystemDiscoverer : IFileSystemDiscoverer
             walked.Add(new DiscoveredEntry(entry, relative));
         }
 
-        var ignore = ctx.RespectGitignore
-            ? await IgnoreFiles.LoadAsync(_fs, ctx.VirtualRoot, gitignores, ct).ConfigureAwait(false)
-            : null;
-        if (ignore is not null) stats.IgnoreFileTexts.AddRange(ignore.Contents.Select(kv => (kv.Key, kv.Value)));
+        var ignore = await LoadIgnoreAsync(ctx, gitignores, stats, ct).ConfigureAwait(false);
         foreach (var entry in walked)
         {
             if (ignore is not null && ignore.IsIgnored(entry.Relative))
@@ -196,6 +198,15 @@ public sealed class FileSystemDiscoverer : IFileSystemDiscoverer
 
             yield return entry;
         }
+    }
+
+    private async Task<IgnoreFiles?> LoadIgnoreAsync(
+        DiscoveryContext ctx, List<string> gitignores, FilterStatsAccumulator stats, CancellationToken ct)
+    {
+        if (!ctx.RespectGitignore) return null;
+        var ignore = await IgnoreFiles.LoadAsync(_fs, ctx.VirtualRoot, gitignores, ct).ConfigureAwait(false);
+        stats.IgnoreFileTexts.AddRange(ignore.Contents.Select(kv => (kv.Key, kv.Value)));
+        return ignore;
     }
 
     private async Task<DiscoveredFile?> TryBuildAsync(

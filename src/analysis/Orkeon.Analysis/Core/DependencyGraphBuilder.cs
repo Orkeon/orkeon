@@ -99,7 +99,7 @@ public sealed partial class DependencyGraphBuilder
             var moduleNode = ctx.Nodes.FirstOrDefault(n => n.Level == NodeLevel.L2_Module);
             if (moduleNode is null) continue;
 
-            CollectFileEdges(edges, unresolvedCalls, scope, byShortName, queries, filePath, moduleNode, ctx);
+            CollectFileEdges(edges, unresolvedCalls, scope, byShortName, queries, new FileUnit(filePath, moduleNode, ctx));
         }
 
         var resolved = await resolver.ResolveAsync(unresolvedCalls, index, ct).ConfigureAwait(false);
@@ -116,10 +116,9 @@ public sealed partial class DependencyGraphBuilder
         ImportScope scope,
         ShortNameIndex byShortName,
         QueryCache queries,
-        string filePath,
-        RaggableNode moduleNode,
-        FileContext ctx)
+        FileUnit unit)
     {
+        var (filePath, moduleNode, ctx) = unit;
         using var parsed = _pool.Parse(ctx.Source, ctx.Adapter.LanguageName);
         var language = parsed.Tree.Language;
 
@@ -521,30 +520,24 @@ public sealed partial class DependencyGraphBuilder
 
     private static string? ExtractImportSpecifier(TsNode importNode)
     {
-        foreach (var descendant in Descend(importNode))
+        // C names its include `string_literal` or `system_lib_string`, PHP its double-quoted string
+        // `encapsed_string`; a Bash `source` path is a `word` or a `raw_string`.
+        foreach (var descendant in Descend(importNode).Where(d => d.Type is "string" or "string_fragment" or "string_literal"
+            or "system_lib_string" or "encapsed_string" or "word" or "raw_string"))
         {
-            // C names its include `string_literal` or `system_lib_string`, PHP its double-quoted string
-            // `encapsed_string`; a Bash `source` path is a `word` or a `raw_string`.
-            if (descendant.Type is "string" or "string_fragment" or "string_literal" or "system_lib_string"
-                or "encapsed_string" or "word" or "raw_string")
-            {
-                var text = descendant.Text ?? string.Empty;
-                if (!string.IsNullOrEmpty(text)) return text;
-            }
+            var text = descendant.Text ?? string.Empty;
+            if (!string.IsNullOrEmpty(text)) return text;
         }
         return null;
     }
 
     private static IEnumerable<string> ExtractTypeNames(TsNode clause)
     {
-        foreach (var descendant in Descend(clause))
+        // `name` is PHP's identifier, `constant` Ruby's class name.
+        foreach (var descendant in Descend(clause).Where(d => d.Type is "identifier" or "type_identifier" or "name" or "constant"))
         {
-            // `name` is PHP's identifier, `constant` Ruby's class name.
-            if (descendant.Type is "identifier" or "type_identifier" or "name" or "constant")
-            {
-                var text = descendant.Text ?? string.Empty;
-                if (!string.IsNullOrEmpty(text)) yield return text;
-            }
+            var text = descendant.Text ?? string.Empty;
+            if (!string.IsNullOrEmpty(text)) yield return text;
         }
     }
 
@@ -712,6 +705,9 @@ public sealed partial class DependencyGraphBuilder
         var bytes = Encoding.UTF8.GetBytes(content);
         return Convert.ToHexStringLower(SHA256.HashData(bytes));
     }
+
+    // The file one pass of CollectFileEdges works on: its path, its module node and its parsed context.
+    private sealed record FileUnit(string FilePath, RaggableNode ModuleNode, FileContext Ctx);
 
     private sealed record FileContext(string Source, IReadOnlyList<RaggableNode> Nodes, ILanguageAdapter Adapter);
 }

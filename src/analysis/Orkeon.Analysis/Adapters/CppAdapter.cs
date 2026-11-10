@@ -172,11 +172,8 @@ public sealed class CppAdapter : ILanguageAdapter
     {
         ArgumentNullException.ThrowIfNull(declarationNode);
         var modifiers = new List<string>();
-        foreach (var child in declarationNode.Children)
-        {
-            if (child.Type is "storage_class_specifier" or "virtual" or "explicit_function_specifier")
-                modifiers.Add((child.Text ?? string.Empty).Trim());
-        }
+        foreach (var child in declarationNode.Children.Where(c => c.Type is "storage_class_specifier" or "virtual" or "explicit_function_specifier"))
+            modifiers.Add((child.Text ?? string.Empty).Trim());
 
         var declarator = declarationNode.GetChildForField("declarator");
         if (declarator?.Children.Any(c => c.Type == "virtual_specifier" && c.Text == "override") == true) modifiers.Add("override");
