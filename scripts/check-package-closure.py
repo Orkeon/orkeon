@@ -61,6 +61,7 @@ PACKAGING = {
     "Orkeon.Interop.AgentFramework": REPO / "src/packaging/Orkeon.Interop.AgentFramework/Orkeon.Interop.AgentFramework.Package.csproj",
     "Orkeon.Hosting.Aspire": REPO / "src/packaging/Orkeon.Hosting.Aspire/Orkeon.Hosting.Aspire.Package.csproj",
     "Orkeon.Scripting": REPO / "src/packaging/Orkeon.Scripting/Orkeon.Scripting.Package.csproj",
+    "Orkeon.Cli.TerminalGui": REPO / "src/packaging/Orkeon.Cli.TerminalGui/Orkeon.Cli.TerminalGui.Package.csproj",
 }
 NON_FLOWING = {"Microsoft.CodeAnalysis.PublicApiAnalyzers"}  # PrivateAssets=all analyzers
 
@@ -73,11 +74,14 @@ LINEUP = [
     "Orkeon.Rag.Onnx",
     "Orkeon.Rag.Onnx.Model",
     "Orkeon.Tools.Embeddings.Local",
+    "Orkeon.Constants.Cli",
     "Orkeon.Scripting",
     "Orkeon.Scripting.Cli",
     "Orkeon.Compliance.Vfs",
     "Orkeon.Interop.AgentFramework",
     "Orkeon.Hosting.Aspire",
+    "Orkeon.Cli.Abstractions",
+    "Orkeon.Cli.TerminalGui",
     "Orkeon.Templates",
 ]
 
@@ -202,16 +206,40 @@ def wrapped_lineup_id(project: Path) -> str | None:
     return pkg_id if project in embedded_projects(wrapper) else None
 
 
+def direct_lineup_projects(packaging_csproj: Path) -> list[Path]:
+    """The library projects packed straight from their own csproj that `packaging_csproj`
+    takes a nuspec dependency on: a ProjectReference without PrivateAssets="all" to a
+    packable project that is neither a packaging project nor wrapped by one
+    (`Orkeon.Constants.Cli`, `Orkeon.Cli.Abstractions`)."""
+    packaging = {csproj.resolve() for csproj in PACKAGING.values()}
+    out: list[Path] = []
+    for include, attributes in project_references(packaging_csproj.read_text(encoding="utf-8")):
+        if 'PrivateAssets="all"' in attributes:
+            continue
+        target = (packaging_csproj.parent / include.replace("\\", "/")).resolve()
+        if target in packaging or not target.is_file() or wrapped_lineup_id(target) is not None:
+            continue
+        if is_packable(target.read_text(encoding="utf-8")):
+            out.append(target)
+    return out
+
+
 def provided_by_dependencies(packaging_csproj: Path) -> tuple[set[str], set[str]]:
     """What the lineup packages `packaging_csproj` depends on already carry: the externals
     they declare, and the assemblies they embed. The `Orkeon` umbrella counts for every
-    package, since each one depends on it."""
+    package, since each one depends on it. A package packed straight from its project
+    carries its own assembly and, through its own nuspec, its project closure and their
+    externals."""
     deps = packaging_dependencies(packaging_csproj) | {"Orkeon"}
     externals: set[str] = set()
     assemblies: set[str] = set()
+    direct = direct_lineup_projects(packaging_csproj)
     for dep in deps:
         externals |= set(csproj_refs(PACKAGING[dep], "Package"))
         assemblies |= {p.stem for p in embedded_projects(PACKAGING[dep])}
+        direct += direct_lineup_projects(PACKAGING[dep])
+    externals |= external_union(direct)
+    assemblies |= {p.stem for p in transitive_projects(direct)}
     return externals, assemblies
 
 

@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — the CLI family ships to NuGet, for a standalone Orkeon Studio
+
+- **Packages** **[breaking]**: three ids join the NuGet.org lineup, so an application outside this repository (Orkeon Studio) builds against packages rather than project references. `Orkeon.Constants.Cli` (runner option names, exit codes, session-state keys) and `Orkeon.Cli.Abstractions` (the interactive-runner contracts) are packed straight from their projects; `Orkeon.Cli.TerminalGui` is packed by the new `src/packaging/Orkeon.Cli.TerminalGui` wrapper and depends on `Orkeon`, which carries the `Orkeon.Constants.Configuration` it reads, and on `Orkeon.Cli.Abstractions`. `Orkeon.Scripting` no longer embeds `Orkeon.Constants.Cli`: it takes a nuspec dependency on it, so no assembly ships in two packages. `Orkeon.Hosting` stays inside `Orkeon.Scripting`, and the `SuppressVfsCompliance` / `SuppressConsoleCompliance` attributes inside `Orkeon` (`Orkeon.Domain`); `Orkeon.Compliance.Vfs` remains the analyzer alone. `scripts/check-package-closure.py` counts a lineup package packed from its own project as carrying its assembly and project closure.
+
+  | Before | After |
+  |---|---|
+  | `Orkeon.Scripting` carries `Orkeon.Constants.Cli.dll` in `lib/` | `Orkeon.Scripting` depends on the `Orkeon.Constants.Cli` package, restored with it |
+
 ### Fixed — `orkeon run --validate` judges a `.ork.ts` the way `orkeon run` does (#315, #316)
 
 - **`--validate`, procedural scripts** (#316): a `.ork.ts` whose source never assigns `globalThis.crew` (a crew published through an imported helper, or run with `crew.run()`) runs on the scripting host, and `--validate` no longer loads it through the declarative loader, whose checks (a task required, no `contextTokens` on an autonomous budget) are not the ones such a script answers to. It checks the version directive, the types and the esbuild bundle, never evaluates the script — the old load ran a `crew.run()` at its top level — and prints `VALIDATION OK: <config> (procedural script: bundled, not run)`. `RunnerOptionsBase.ProceduralScript` carries the routing.

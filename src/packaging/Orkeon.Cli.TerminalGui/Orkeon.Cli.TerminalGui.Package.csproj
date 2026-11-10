@@ -1,0 +1,59 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Wrapper: packs the Orkeon.Cli.TerminalGui assembly (the Terminal.Gui split-pane console the
+       Studio terminal applications build on) as the public `Orkeon.Cli.TerminalGui` package.
+
+       A wrapper rather than a pack of the project itself because Orkeon.Cli.TerminalGui references
+       Orkeon.Constants.Configuration, which the `Orkeon` umbrella embeds: the package takes a
+       nuspec dependency on `Orkeon` instead of carrying a second copy of that assembly, and one on
+       `Orkeon.Cli.Abstractions`, packed straight from its own project. -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Description>Terminal.Gui v2 split-pane console (REPL + dedicated logs pane) for Orkeon interactive runners: the console host, layout, log routing and telemetry the Orkeon Studio terminal applications build on.</Description>
+    <PackageTags>AI;Agents;Orkeon;Cli;TerminalGui;TUI</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <OrkeonIconFamily>cli</OrkeonIconFamily>
+    <OrkeonFreezePublicApi>false</OrkeonFreezePublicApi>
+    <IncludeBuildOutput>false</IncludeBuildOutput>
+    <TargetsForTfmSpecificContentInPackage>$(TargetsForTfmSpecificContentInPackage);OrkeonEmbedWrappedAssembly</TargetsForTfmSpecificContentInPackage>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="..\..\cli\Orkeon.Cli.TerminalGui\README.md" Pack="true" PackagePath="/" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\cli\Orkeon.Cli.TerminalGui\Orkeon.Cli.TerminalGui.csproj" PrivateAssets="all" />
+    <ProjectReference Include="..\..\cli\Orkeon.Cli.Abstractions\Orkeon.Cli.Abstractions.csproj" />
+    <ProjectReference Include="..\Orkeon\Orkeon.csproj" />
+  </ItemGroup>
+
+  <!-- Externals of the wrapped assembly that neither `Orkeon` nor `Orkeon.Cli.Abstractions`
+       already carries. Kept in sync by scripts/check-package-closure.py. -->
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Configuration.Binder" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Json" />
+    <PackageReference Include="Microsoft.Extensions.Options" />
+    <PackageReference Include="Terminal.Gui" />
+  </ItemGroup>
+
+  <Target Name="OrkeonEmbedWrappedAssembly" DependsOnTargets="BuildOnlySettings;ResolveReferences">
+    <ItemGroup>
+      <_OrkeonWrapped Include="@(ReferenceCopyLocalPaths)"
+                      Condition="'%(ReferenceCopyLocalPaths.ReferenceSourceTarget)' == 'ProjectReference'
+                                 And ('%(ReferenceCopyLocalPaths.Extension)' == '.dll' Or '%(ReferenceCopyLocalPaths.Extension)' == '.xml')
+                                 And '%(ReferenceCopyLocalPaths.Filename)' == 'Orkeon.Cli.TerminalGui'" />
+      <TfmSpecificPackageFile Include="@(_OrkeonWrapped)" PackagePath="lib/$(TargetFramework)" />
+    </ItemGroup>
+  </Target>
+
+  <!-- The public PackageId is the wrapped assembly's name, which is also the real project's
+       restore name: two projects may not share a restore identity in one solution, so the id
+       is applied at pack time only. -->
+  <Target Name="OrkeonWrapperPackageIdentity" BeforeTargets="_GetAbsoluteOutputPathsForPack;_GetOutputItemsFromPack;GenerateNuspec">
+    <PropertyGroup>
+      <PackageId>Orkeon.Cli.TerminalGui</PackageId>
+    </PropertyGroup>
+  </Target>
+
+</Project>

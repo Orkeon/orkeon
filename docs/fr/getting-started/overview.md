@@ -268,7 +268,7 @@ Les agents collaborent par la délégation : les outils `AskQuestionTool` et `De
 
 ```
 Orkeon.sln
-├── src/                            # 51 projets, 14 zones
+├── src/                            # 52 projets, 14 zones
 │   ├── core/
 │   │   ├── Orkeon.Domain/          # Entités, value objects, interfaces, événements
 │   │   ├── Orkeon.Application/     # CQRS, services, orchestration, ports

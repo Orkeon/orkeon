@@ -267,7 +267,7 @@ Agents collaborate through delegation: the `AskQuestionTool` and `DelegateWorkTo
 
 ```
 Orkeon.sln
-├── src/                            # 51 projects, 14 zones
+├── src/                            # 52 projects, 14 zones
 │   ├── core/
 │   │   ├── Orkeon.Domain/          # Entities, value objects, interfaces, events
 │   │   ├── Orkeon.Application/     # CQRS, services, orchestration, ports
