@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Net.Http.Headers;
 using Orkeon.Infrastructure.MCP.Auth;
 
@@ -22,9 +23,16 @@ internal sealed class FakeSignInAuthenticator : IMcpSignInAuthenticator
 
     public int QuietApplications => Volatile.Read(ref _quiet);
 
+    /// <summary>
+    /// Every credential applied, in order: the verb of the request and whether the quiet path (no sign-in) carried it.
+    /// A background GET may apply its own while a test runs, so a test about one request reads its verb here.
+    /// </summary>
+    public ConcurrentQueue<(HttpMethod Verb, bool Quiet)> Applications { get; } = new();
+
     public ValueTask ApplyAsync(HttpRequestMessage request, CancellationToken ct = default)
     {
         Interlocked.Increment(ref _applied);
+        Applications.Enqueue((request.Method, false));
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", "fake-token");
         return ValueTask.CompletedTask;
     }
@@ -38,6 +46,7 @@ internal sealed class FakeSignInAuthenticator : IMcpSignInAuthenticator
     public ValueTask ApplyWithoutSignInAsync(HttpRequestMessage request, CancellationToken ct = default)
     {
         Interlocked.Increment(ref _quiet);
+        Applications.Enqueue((request.Method, true));
         if (QuietFailure is { } failure)
             throw failure;
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", "fake-token");
