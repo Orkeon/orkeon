@@ -7,13 +7,21 @@ namespace Orkeon.Studio.Wpf.ViewModels.Capture;
 /// <para>
 /// An arrange that slept would be a guess twice over: too short on a loaded machine, and pure
 /// waste on a fast one, several hundred times over. The timeout is the only wall clock, and
-/// reaching it is a failure with the condition's own source text in the message.
+/// reaching it is a failure with the condition's own source text in the message. It guards
+/// against a condition that will never hold, not against a slow one: it is set far beyond any
+/// honest wait, so a machine loaded by coverage or by parallel test runs still gets there.
 /// </para>
 /// </summary>
 internal static class CaptureWait
 {
-    /// <summary>How long a condition has to become true before the stop is called failed.</summary>
-    private static readonly TimeSpan Limit = TimeSpan.FromSeconds(10);
+    /// <summary>How long a condition has to become true before the stop is called failed: a hang guard, not a speed bound.</summary>
+    private static readonly TimeSpan Limit = TimeSpan.FromMinutes(2);
+
+    /// <summary>
+    /// The pause between two looks at the condition. A short delay rather than a yield: a loop that
+    /// only yields keeps a pool thread spinning, which starves the very work it waits for on a small runner.
+    /// </summary>
+    private static readonly TimeSpan PollInterval = TimeSpan.FromMilliseconds(10);
 
     /// <summary>Yields until <paramref name="condition"/> holds, or throws saying which one did not.</summary>
     public static async Task UntilAsync(
@@ -28,7 +36,7 @@ internal static class CaptureWait
             if (DateTimeOffset.UtcNow > deadline)
                 throw new TimeoutException($"the campaign waited for {description} and it never became true");
 
-            await Task.Yield();
+            await Task.Delay(PollInterval);
         }
     }
 }
