@@ -84,6 +84,14 @@ jobs:
             exit 1
           fi
           echo "Tag v$tag matches props version $version."
+      # The same release-readiness gate publish.yml runs (CHANGELOG cut, PublicAPI
+      # shipped), here too so that a tag which is not release-ready stops before any
+      # installer is built — let alone attached to a Release or indexed by apt. Python 3
+      # ships with the ubuntu-latest image; the script needs the standard library only.
+      # Tag only: a workflow_dispatch run validates installers between two releases.
+      - name: Verify the release checklist (CHANGELOG cut, PublicAPI shipped)
+        if: startsWith(github.ref, 'refs/tags/')
+        run: python3 scripts/check-release-readiness.py
 
       # Every artifact this workflow uploads is a 1-day courier between jobs,
       # but GitHub recalculates storage only every 6-12 h — leftovers from a
@@ -1007,14 +1015,14 @@ jobs:
 
   # Builds and pushes the example-runners container image to GHCR. Same v* trigger
   # as the installers; runs independently (own job, package-scoped permissions).
-  # Tag-only: a workflow_dispatch run would otherwise push a `latest` tag built
-  # from a branch, with a version resolved from a ref that is not a version.
+  # On workflow_dispatch the image is BUILT (both platforms) but never pushed: no
+  # GHCR login, `push: false`, no manifest read-back — a dry run proves the
+  # Dockerfile builds without moving `latest` to a branch build.
   runners-image:
     runs-on: ubuntu-latest
     # Gated on the smokes like the release job: a red smoke must not move the
     # :latest tag on GHCR either.
     needs: [smoke-windows, smoke-windows-service, smoke-deb, smoke-macos, msi]
-    if: startsWith(github.ref, 'refs/tags/')
     permissions:
       contents: read
       packages: write
@@ -1026,9 +1034,19 @@ jobs:
           sudo docker image prune --all --force >/dev/null 2>&1 || true
           echo "After:"; df -h / | tail -1
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      # On a tag, the tag minus its v. On a dry run the ref is a branch, whose name may
+      # hold a `/` no image tag accepts: the local form of scripts/resolve-version.sh
+      # (<props version>.local.<stamp>) stands in — a valid tag, never pushed.
       - name: Resolve version tag (strip leading v)
         id: ver
-        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
+            version="${GITHUB_REF_NAME#v}"
+          else
+            version=$(bash scripts/resolve-version.sh --props src/Directory.Build.props)
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "Image version: $version"
       # linux/amd64 and linux/arm64 in one tag. The build stage of Dockerfile.runners runs on
       # this runner's own platform for either target, but the RUN steps of its runtime stage
       # (apt-get, chmod, printf) execute in the target architecture, so the arm64 image is
@@ -1042,6 +1060,7 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
       - name: Log in to GHCR
+        if: startsWith(github.ref, 'refs/tags/')
         uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
         with:
           registry: ghcr.io
@@ -1057,7 +1076,7 @@ jobs:
           file: Dockerfile.runners
           platforms: linux/amd64,linux/arm64
           provenance: false
-          push: true
+          push: ${{ startsWith(github.ref, 'refs/tags/') }}
           tags: |
             ghcr.io/orkeon/orkeon-runners:${{ steps.ver.outputs.version }}
             ghcr.io/orkeon/orkeon-runners:latest
@@ -1065,6 +1084,7 @@ jobs:
       # (a platforms: line lost, a builder that pushed the single image) fails the job here, not
       # on the first Apple Silicon machine that pulls it.
       - name: Check the pushed image lists linux/amd64 and linux/arm64
+        if: startsWith(github.ref, 'refs/tags/')
         env:
           VERSION: ${{ steps.ver.outputs.version }}
         run: |

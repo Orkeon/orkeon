@@ -33,15 +33,22 @@
 # the tagged releases plus the latest main and nothing in between. Tagged versions
 # are never touched. No tests (CI just ran them on this very commit), no attestation
 # or SBOM: a dev build is not a release.
+#
+# Dry run (workflow_dispatch, any branch): the `publish` job runs every gate of the
+# tag path — version check (against the props version itself, the ref being a
+# branch), release readiness, build, tests, pack, closure, templates, SBOM — and
+# stops there: no attestation, no GitHub Packages push, no NuGet.org login or push.
+# It is how a release is rehearsed before its tag is pushed.
 name: Publish packages
 on:
   push: { tags: [ 'v*' ] }
+  workflow_dispatch:
   workflow_run: { workflows: [ CI ], types: [ completed ], branches: [ main ] }
 # id-token is required by the NuGet.org Trusted Publishing OIDC exchange.
 permissions: { contents: read, packages: write, id-token: write }
 jobs:
   publish:
-    if: github.event_name == 'push'
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     # Restated at job scope so that attestations: write is granted here and
     # nowhere else. The three others are what the workflow default already
     # carries: contents to read the tree, packages to push to GitHub Packages,
@@ -64,6 +71,7 @@ jobs:
       # guard would outlive the condition it guards. The API is the only thing that
       # answers "is it public now".
       - name: Attestation needs a public repository
+        if: github.event_name == 'push'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -81,11 +89,21 @@ jobs:
       # Anti-0.9.1 guard: the tag decides nothing — the packed version comes from
       # src/Directory.Build.props, so a tag that doesn't match it would re-pack an
       # existing version and --skip-duplicate would "publish" nothing, silently.
+      # On a dry run (workflow_dispatch) the ref is a branch: the props version stands
+      # in for the tag, so the check passes and the steps below get a clean version.
       - name: Verify tag matches Directory.Build.props version
+        id: ver
+        env:
+          EVENT: ${{ github.event_name }}
         run: |
           prefix=$(sed -n 's/.*<VersionPrefix>\(.*\)<\/VersionPrefix>.*/\1/p' src/Directory.Build.props)
           suffix=$(sed -n 's/.*<VersionSuffix>\(.*\)<\/VersionSuffix>.*/\1/p' src/Directory.Build.props)
           version="$prefix${suffix:+-$suffix}"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          if [ "$EVENT" != "push" ]; then
+            echo "Dry run on ${GITHUB_REF_NAME}: props version $version (would be tag v$version)."
+            exit 0
+          fi
           tag="${GITHUB_REF_NAME#v}"
           if [ "$tag" != "$version" ]; then
             echo "::error::Tag v$tag does not match src/Directory.Build.props version $version — bump the props (and CHANGELOG) before tagging. See the 0.9.1-beta incident in CHANGELOG."
@@ -141,11 +159,14 @@ jobs:
       # dotnet tool, not a third-party action. Generated before the attestation so
       # the same statement covers it, and kept as a run artefact — nuget.org has no
       # slot for an SBOM; release.yml attaches the same document to the Release.
+      # The props version, not the ref name: on a dry run the ref is a branch.
       - name: Generate the SBOM
+        env:
+          VERSION: ${{ steps.ver.outputs.version }}
         run: |
           dotnet tool install --tool-path .tools CycloneDX --version 6.2.0
-          .tools/dotnet-CycloneDX Orkeon.sln -o artifacts -fn "orkeon-${GITHUB_REF_NAME#v}.sbom.cdx.json" -F Json -t -sn Orkeon -sv "${GITHUB_REF_NAME#v}"
-          python3 -c "import json,sys; d=json.load(open(sys.argv[1])); print(f\"{len(d.get('components', []))} components\")" "artifacts/orkeon-${GITHUB_REF_NAME#v}.sbom.cdx.json"
+          .tools/dotnet-CycloneDX Orkeon.sln -o artifacts -fn "orkeon-${VERSION}.sbom.cdx.json" -F Json -t -sn Orkeon -sv "${VERSION}"
+          python3 -c "import json,sys; d=json.load(open(sys.argv[1])); print(f\"{len(d.get('components', []))} components\")" "artifacts/orkeon-${VERSION}.sbom.cdx.json"
       # Build provenance for the packages and the SBOM: generated once the nupkgs
       # exist and the closure gate has cleared them, and before the first push sends
       # them anywhere — so both feeds receive bytes an attestation already covers.
@@ -156,7 +177,10 @@ jobs:
       # NuGet.org shows nothing of this; the attestation lives in this repository,
       # and it is what turns "the package claims to be Orkeon" into "GitHub Actions
       # built it from this commit of Orkeon/orkeon".
+      # Tag only, like every step below that sends anything anywhere: a dry run
+      # attests nothing it does not publish.
       - name: Attest the packages and the SBOM (build provenance)
+        if: github.event_name == 'push'
         uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4
         with:
           subject-path: |
@@ -167,7 +191,9 @@ jobs:
           name: sbom
           path: artifacts/*.sbom.cdx.json
           if-no-files-found: error
-      - run: >
+      - name: Push every package to GitHub Packages
+        if: github.event_name == 'push'
+        run: >
           dotnet nuget push "artifacts/*.nupkg"
           --source "https://nuget.pkg.github.com/Orkeon/index.json"
           --api-key ${{ secrets.GITHUB_TOKEN }} --skip-duplicate
@@ -177,16 +203,16 @@ jobs:
       # in the matrix, not a workflow edit made in passing. Keep it in sync with the
       # closure-gate lineup above.
       - name: Warn when NuGet.org publishing is not configured
-        if: env.NUGET_USER == ''
+        if: github.event_name == 'push' && env.NUGET_USER == ''
         run: echo "::warning::NuGet.org publish SKIPPED — the NUGET_USER repository variable is not set. Owner action -- on nuget.org create a Trusted Publishing policy (repo Orkeon/orkeon, workflow publish.yml), then set NUGET_USER to the policy's package owner (Settings > Secrets and variables > Actions > Variables)."
       - name: NuGet.org login (Trusted Publishing — OIDC, short-lived key)
-        if: env.NUGET_USER != ''
+        if: github.event_name == 'push' && env.NUGET_USER != ''
         id: nuget-login
         uses: NuGet/login@8d196754b4036150537f80ac539e15c2f1028841 # v1
         with:
           user: ${{ env.NUGET_USER }}
       - name: Push the v1 lineup to NuGet.org
-        if: env.NUGET_USER != ''
+        if: github.event_name == 'push' && env.NUGET_USER != ''
         env:
           NUGET_API_KEY: ${{ steps.nuget-login.outputs.NUGET_API_KEY }}
         run: |
