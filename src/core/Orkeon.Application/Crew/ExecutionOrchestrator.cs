@@ -420,9 +420,7 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
 
             // The agent's time limit (CH-01): opened before anything waits — the maxRpm turn
             // included — so every wait counts inside it; the one place a task runs in the six modes.
-            using var deadline = agent.MaxExecutionTime is { } limit
-                ? TaskDeadline.Begin(limit, TimeProvider, cancellationToken)
-                : null;
+            using var deadline = BeginDeadline(agent, cancellationToken);
             var taskToken = deadline?.Token ?? cancellationToken;
 
             try
@@ -460,8 +458,7 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
 
                 // While the output phase is guarded, what the turns stream is held until the guardian has
                 // judged the output (FWK-19): released when it allows it, dropped when it blocks it.
-                OutputHold? outputHold = null;
-                using var outputHoldScope = Guardian?.IsPhaseGuarded(GuardPhase.Output) == true ? OutputHold.Begin(out outputHold) : null;
+                using var outputHoldScope = BeginOutputHold(out var outputHold);
 
                 var loopResult = await ExecuteWithProviderAsync(
                     new ExecutionInvocationContext(
@@ -511,7 +508,7 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
             {
                 return ExitedResult("Operation was cancelled", AgentExitReason.Cancelled, toolsUsed, startTime);
             }
-            catch (OperationCanceledException) when (deadline is { HasExpired: true } && !cancellationToken.IsCancellationRequested)
+            catch (OperationCanceledException) when (HasDeadlineExpired(deadline, cancellationToken))
             {
                 var max = agent.MaxExecutionTime!.Value;
                 LogExecutionTimeExceeded(_logger, agent.Role, max.TotalSeconds);
@@ -532,6 +529,21 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
                     Error: ex.Message);
             }
         }
+    }
+
+    // The agent's time limit (CH-01), when it declares one.
+    private TaskDeadline? BeginDeadline(DomainAgent agent, CancellationToken cancellationToken) =>
+        agent.MaxExecutionTime is { } limit ? TaskDeadline.Begin(limit, TimeProvider, cancellationToken) : null;
+
+    // A cancellation that is the agent's own time limit running out, not the caller's.
+    private static bool HasDeadlineExpired(TaskDeadline? deadline, CancellationToken cancellationToken) =>
+        deadline is { HasExpired: true } && !cancellationToken.IsCancellationRequested;
+
+    // Holds what the turns stream while the output phase is guarded (FWK-19); no hold otherwise.
+    private IDisposable? BeginOutputHold(out OutputHold? outputHold)
+    {
+        outputHold = null;
+        return Guardian?.IsPhaseGuarded(GuardPhase.Output) == true ? OutputHold.Begin(out outputHold) : null;
     }
 
     private TaskResult? RefuseOwnTools(
