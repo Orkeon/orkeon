@@ -103,12 +103,12 @@ public sealed class ConfiguredLlmProviderBootstrapperTests
         Assert.Equal(40, config.StreamIdleSeconds);
     }
 
-    // ── STUDIO-49: the key a section names ──────────────────────────────────
+    // ── the key a section names ──────────────────────────────────
 
     [Fact]
     public void The_key_is_read_from_the_variable_the_section_names()
     {
-        // The file Studio writes names the variable it remembers the key in; the REPL reads it as
+        // A file that names the variable the key is remembered in: the REPL reads it as
         // the runners do — the same file, the same variable, and the key is there.
         var variable = "ORKEON_TEST_" + Guid.NewGuid().ToString("N");
         Environment.SetEnvironmentVariable(variable, "sk-repl-reference");

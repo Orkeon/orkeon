@@ -33,7 +33,7 @@ namespace Orkeon.ConsoleApp.DependencyInjection;
 /// <para>
 /// The section is read by <see cref="LlmSettings"/>, the reader the runners use: the REPL accepts
 /// exactly the keys <c>orkeon run</c> does — <c>ApiKeyEnvVar</c>, the variable holding the key,
-/// included (STUDIO-49). The provider type is inferred from the configured <c>BaseUrl</c> by
+/// included. The provider type is inferred from the configured <c>BaseUrl</c> by
 /// <c>LlmProviderFactory</c> (e.g. <c>api.deepseek.com</c> → DeepSeek).
 /// </para>
 /// </remarks>
@@ -92,7 +92,7 @@ internal static partial class ConfiguredLlmProviderBootstrapper
     /// <summary>
     /// Says, once per REPL start, where each LLM key comes from — the default's, then each
     /// profile's: the configuration, the variable <c>ApiKeyEnvVar</c> names, none — and warns once
-    /// per reference that names a variable set nowhere (STUDIO-49), as the runner host does. Never
+    /// per reference that names a variable set nowhere, as the runner host does. Never
     /// the key, never the variable's name: a key pasted into <c>ApiKeyEnvVar</c> must not reach the
     /// log pane.
     /// </summary>

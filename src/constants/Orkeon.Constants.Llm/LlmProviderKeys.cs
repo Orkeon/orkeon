@@ -4,7 +4,7 @@ namespace Orkeon.Constants.Llm;
 /// The keys that name an LLM provider, as a user writes them.
 /// <para>
 /// This is the vocabulary of <c>"Provider": "kimi"</c> in a settings file, of
-/// <c>orkeon init</c>'s prompts, of Studio's endpoint detector and of the factory switch that
+/// <c>orkeon init</c>'s prompts, of a client's endpoint detector and of the factory switch that
 /// turns the answer into a provider. Nothing validates the agreement between them at build time:
 /// a key the tooling offers and the factory does not recognise falls through to the OpenAI
 /// default, which then talks the OpenAI dialect to whatever endpoint was configured and fails as

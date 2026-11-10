@@ -106,8 +106,8 @@ dotnet test Orkeon.sln --no-build --filter "Category!=Integration&Category!=Slow
 
 ## Structure du projet
 
-La solution compte **52 projets src répartis en 14 zones** et **38 projets de tests**.
-Trente-six projets src ont un projet de tests miroir ; `tests/e2e` et `tests/shared`
+La solution compte **48 projets src répartis en 14 zones** et **34 projets de tests**.
+Trente-deux projets src ont un projet de tests miroir ; `tests/e2e` et `tests/shared`
 forment les deux autres. Seize projets src n'ont volontairement pas de miroir : les cinq
 satellites `Orkeon.Constants.*` et `Orkeon.Rag.Onnx.Model` ne portent que des constantes et
 des ressources embarquées, `Orkeon.Analysis.Abstractions` est exercé via
@@ -133,7 +133,7 @@ src/
 ├── packaging/   # Projets d'empaquetage NuGet (PUB-25) : Orkeon (le framework en un nupkg), Orkeon.Tools,
 │                #   + les wrappers Rag.Onnx / Tools.Embeddings.Local / Interop.AgentFramework /
 │                #   Hosting.Aspire / Scripting / Cli.TerminalGui dépendant de l'ombrelle Orkeon
-└── apps/        # Orkeon.ConsoleApp (orkeon-repl) + Orkeon.Studio.{Config,Core,Run,Wpf}
+└── apps/        # Orkeon.ConsoleApp (orkeon-repl)
 
 examples/        # 104 exemples embarqués (9 catégories + vitrines) — solution dédiée
 docs/            # Documentation, EN + miroir docs/fr (gate de parité CI)
@@ -186,7 +186,7 @@ public class AgentService : IAgentService
 ### Les commentaires sont en anglais, et jamais accentués
 
 Un invariant, tenu par `scripts/check-comment-accents.py` en CI : tout commentaire est en
-anglais et ne porte aucune lettre accentuée. L'interface de Studio étant en français, le
+anglais et ne porte aucune lettre accentuée. L'interface d'un client pouvant être en français, le
 piège est le commentaire qui cite un libellé : **traduisez le libellé, n'enlevez pas ses
 accents** — un commentaire citant `"Modele d'IA"` nomme quelque chose que le produit
 n'affiche jamais. Nommez plutôt le rôle (`the model-settings tab`). Une phrase française
@@ -328,7 +328,7 @@ réponses et inspecter les appels. La référence est
   `Directory.Packages.props`. Un épinglage ne vaut que pour une référence directe : un
   paquet qu'une application ne reçoit que transitivement, sous son épinglage, demande une
   référence directe dans un projet sur lequel elle repose (`Orkeon.Cli.TerminalGui` porte
-  celles que `Terminal.Gui` apporte aux TUI de Studio).
+  celles que `Terminal.Gui` apporte aux interfaces terminal).
 * Un `Dockerfile` qui publie une application copie `LICENSE.md` et `THIRD-PARTY-NOTICES.md`
   dans l'image qu'il produit, sous `/usr/share/doc/orkeon/`, et `.dockerignore` garde les
   deux dans le contexte de build : sinon, le `--check` échoue. Les installeurs copient les
@@ -349,7 +349,7 @@ réponses et inspecter les appels. La référence est
 
 Orkeon embarque déjà 16 fournisseurs LLM (quatorze vendeurs et deux
 agrégateurs), 91 outils intégrés, 6 stores de mémoire, deux pipelines RAG,
-RaggableTree, un DSL de scripting, des plugins, MCP, A2A et un Studio —
+RaggableTree, un DSL de scripting, des plugins, MCP et A2A —
 maintenus par une seule personne. Tant que de vrais utilisateurs n'en
 demandent pas davantage, **la surface fonctionnelle ne grandit pas** :
 

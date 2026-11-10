@@ -10,7 +10,7 @@ Orkeon project, no third-party package — so any layer may reference it without
 runtime along ([ADR-009](https://github.com/Orkeon/orkeon/blob/main/docs/adr/ADR-009-shared-constants-satellites.md)).
 
 It exists because the producer and the consumer live in projects that cannot reference each other:
-the CLI runner emits the stream, Orkeon Studio reads it. Nothing validates their agreement — an
+the CLI runner emits the stream, a client reads it. Nothing validates their agreement — an
 event kind one side stopped emitting, or never learned to read, is silently ignored rather than
 reported, and that had already happened. The same kinds name the events a C# host reads in
 process from `ICrewOrchestrationService.KickoffStreamingAsync`, which is why `Orkeon.Application`

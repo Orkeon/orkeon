@@ -319,7 +319,7 @@ public sealed class SettingsCommandTests
         Assert.Contains("Orkeon:Host is not read by orkeon", stderr, StringComparison.Ordinal);
         Assert.Contains("orkeon-host", stderr, StringComparison.Ordinal);
 
-        var (unknownExit, _, unknown) = await RunAsync("settings", "--host", "studio");
+        var (unknownExit, _, unknown) = await RunAsync("settings", "--host", "unknown");
 
         Assert.Equal(Program.ExitScriptError, unknownExit);
         Assert.Contains("run, host or repl", unknown, StringComparison.Ordinal);

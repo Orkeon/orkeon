@@ -10,7 +10,7 @@ public interface ICrewExecutionHook
     /// <summary>
     /// Called each time a task starts inside a crew run, before its agent is asked anything.
     /// Every orchestration mode dispatches it, so a watcher can show what is in progress
-    /// rather than only what has finished (STUDIO-17).
+    /// rather than only what has finished.
     /// </summary>
     /// <param name="snapshot">Which task, which agent, since when.</param>
     /// <param name="ct">Cancellation token.</param>

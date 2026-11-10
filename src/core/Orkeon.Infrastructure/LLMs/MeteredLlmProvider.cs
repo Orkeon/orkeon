@@ -10,7 +10,7 @@ using Orkeon.Infrastructure.CostTracking;
 namespace Orkeon.Infrastructure.LLMs;
 
 /// <summary>
-/// The one place LLM usage is measured (STUDIO-42 D-01): a decorator that reports every
+/// The one place LLM usage is measured: a decorator that reports every
 /// generation call of the provider it wraps to the host's <see cref="ILlmUsageSink"/>, stamped
 /// with the attribution in effect when the call started (<see cref="LlmUsageScope"/>).
 /// <para>

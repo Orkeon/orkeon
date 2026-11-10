@@ -1,3 +1,8 @@
 #nullable enable
 const Orkeon.Constants.Configuration.ConfigurationKeys.CliMemoryPersist = "Orkeon:Cli:Memory:Persist" -> string!
 const Orkeon.Constants.Configuration.ConfigurationKeys.CliMemoryRootDirectory = "Orkeon:Cli:Memory:RootDirectory" -> string!
+*REMOVED*const Orkeon.Constants.Configuration.EnvironmentVariableNames.CliDirectory = "ORKEON_CLI_DIR" -> string!
+*REMOVED*const Orkeon.Constants.Configuration.EnvironmentVariableNames.CustomLlmApiKey = "ORKEON_CUSTOM_LLM_API_KEY" -> string!
+*REMOVED*const Orkeon.Constants.Configuration.EnvironmentVariableNames.StudioTeamsRoot = "ORKEON_STUDIO_TEAMS_ROOT" -> string!
+*REMOVED*const Orkeon.Constants.Configuration.OperatorMessages.LlmApiKeyReferenceUnresolved = "{0} names an environment variable that is not set: calls on that LLM profile answer that an API key is required. Set the variable — in Orkeon Studio, remember the setting's key again — or remove the reference." -> string!
+const Orkeon.Constants.Configuration.OperatorMessages.LlmApiKeyReferenceUnresolved = "{0} names an environment variable that is not set: calls on that LLM profile answer that an API key is required. Set the variable or remove the reference." -> string!

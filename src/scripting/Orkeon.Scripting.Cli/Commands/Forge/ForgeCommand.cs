@@ -21,7 +21,7 @@ internal sealed record ForgeCommandOptions
     public string? Need { get; init; }
 
     /// <summary>
-    /// <c>forge rephrase &lt;request&gt;</c> (STUDIO-57): the assistant's LLM rewrites the request
+    /// <c>forge rephrase &lt;request&gt;</c>: the assistant's LLM rewrites the request
     /// typed on the command line as a clear brief — what comes in, what comes out, the rules
     /// stated — and nothing else happens: no session, no interview. <c>--events jsonl</c> answers
     /// with one <c>need.rephrased</c> line; the terminal prints the text.
@@ -39,26 +39,26 @@ internal sealed record ForgeCommandOptions
 
     /// <summary>
     /// <c>forge reopen &lt;team-folder&gt;</c>: the promoted folder to reopen the atelier on
-    /// (FORGE-09). Offline: finds the session rule R links it to (STUDIO-25), or rebuilds one
+    /// (FORGE-09). Offline: finds the session rule R links it to, or rebuilds one
     /// from its <c>crew/</c> when none is — the session gone, never here, or the folder a copy.
     /// </summary>
     public string? ReopenDirectory { get; init; }
 
     /// <summary>
-    /// <c>forge schedule &lt;team-folder&gt;</c> (STUDIO-27): installs the schedule the folder
+    /// <c>forge schedule &lt;team-folder&gt;</c>: installs the schedule the folder
     /// declares with the operating system's own scheduler — or, with <see cref="Check"/>, says
     /// where it stands. Offline, no session: the folder is all it reads.
     /// </summary>
     public string? ScheduleDirectory { get; init; }
 
     /// <summary>
-    /// <c>forge unschedule &lt;team-folder&gt;</c> (STUDIO-27): removes the registration the
+    /// <c>forge unschedule &lt;team-folder&gt;</c>: removes the registration the
     /// folder installed, its <c>schedule/</c> and the block of its <c>forge.json</c>.
     /// </summary>
     public string? UnscheduleDirectory { get; init; }
 
     /// <summary>
-    /// <c>forge rename &lt;team-folder&gt; --name &lt;name&gt;</c> (STUDIO-28): renames the team — its
+    /// <c>forge rename &lt;team-folder&gt; --name &lt;name&gt;</c>: renames the team — its
     /// folder by the one folder rule, the session rule R links to it, every title and generated
     /// file, the schedule the operating system runs — all of it or nothing. Offline, no session
     /// started: a team imported without one is renamed all the same.
@@ -72,9 +72,9 @@ internal sealed record ForgeCommandOptions
     public string? Destination { get; init; }
 
     /// <summary>
-    /// <c>--name</c>: the team's name (STUDIO-26, D-01) — the title the promotion gives
+    /// <c>--name</c>: the team's name — the title the promotion gives
     /// <c>FORGE.md</c>, <c>forge.json</c> and the session; for <c>forge rename</c>, the team's new
-    /// name, which names its folder too (STUDIO-28). Taken as written, a leading dash included: it
+    /// name, which names its folder too. Taken as written, a leading dash included: it
     /// is the user's words, not the next option. On one line: a line break in it would split the
     /// card's title in two.
     /// </summary>
@@ -138,21 +138,21 @@ internal sealed record ForgeCommandOptions
     /// list binds to no directory (<c>/workspace</c> by default). The workspace keeps every other
     /// role — the sessions live under it, the settings resolve next to it — so a client can
     /// point a trial at the documents the team is meant to read without moving its sessions
-    /// there. Null: the session's own folder for that input (STUDIO-57), where the user dropped
+    /// there. Null: the session's own folder for that input, where the user dropped
     /// files after confirming the folders; the workspace itself only for a session that never
     /// confirmed a list.
     /// </summary>
     public string? ReadDirectory { get; init; }
 
     /// <summary>
-    /// <c>--reference &lt;id&gt;</c> (STUDIO-40): the use case of the catalogue a new session is
+    /// <c>--reference &lt;id&gt;</c>: the use case of the catalogue a new session is
     /// composed from — its crew's structure is the composer's model, and the session records it.
     /// </summary>
     public string? Reference { get; init; }
 
     /// <summary>
-    /// <c>--lang &lt;code&gt;</c> (#119): the language the assistant converses in — Studio's
-    /// interface language — until the user writes in or asks for another one. Null: English.
+    /// <c>--lang &lt;code&gt;</c> (#119): the language the assistant converses in — the
+    /// client's interface language — until the user writes in or asks for another one. Null: English.
     /// One of <see cref="ForgeBrief.Languages"/>.
     /// </summary>
     public string? Language { get; init; }
@@ -182,7 +182,7 @@ internal sealed record ForgeCommandOptions
 
     /// <summary>
     /// The options whose value is taken as written, a leading dash included: a team's name is the
-    /// user's words, and « -Veille- » is one (STUDIO-26, D-01). Every other value starting with a
+    /// user's words, and « -Veille- » is one. Every other value starting with a
     /// dash is read as the next option, so a missing value is said rather than swallowed.
     /// </summary>
     private static readonly HashSet<string> VerbatimValueOptions = new(StringComparer.Ordinal) { "--name" };
@@ -288,7 +288,7 @@ internal sealed record ForgeCommandOptions
         if (arg == "--events")
         {
             // The only stream format is jsonl, and the value is optional: it is consumed only
-            // when it IS `jsonl` (the spec's spelling, the one Studio sends). Any other word is
+            // when it IS `jsonl` (the spec's spelling). Any other word is
             // the need's — `--events veille des prix` used to send "des prix" (GAP-13).
             if (i + 1 < args.Length && string.Equals(args[i + 1], EventsFormat, StringComparison.OrdinalIgnoreCase))
                 i++;
@@ -514,8 +514,8 @@ internal sealed record ForgeCommandOptions
 /// <c>promote &lt;slug&gt; --to &lt;dir&gt;</c> ships a Ready session as an ordinary folder;
 /// <c>reopen &lt;dir&gt;</c> finds or rebuilds the session of a promoted folder (FORGE-09);
 /// <c>schedule &lt;dir&gt; [--check]</c> and <c>unschedule &lt;dir&gt;</c> install, check and remove
-/// its schedule with the operating system's own scheduler (STUDIO-27); <c>rename &lt;dir&gt; --name
-/// &lt;name&gt;</c> renames the team, all of it or nothing (STUDIO-28).
+/// its schedule with the operating system's own scheduler; <c>rename &lt;dir&gt; --name
+/// &lt;name&gt;</c> renames the team, all of it or nothing.
 /// </summary>
 internal static class ForgeCommand
 {
@@ -664,8 +664,8 @@ internal static class ForgeCommand
             return ExitError;
         }
 
-        // A reference that names no use case is refused the same way, and just as early
-        // (STUDIO-40, D-05): before the session is opened and before any host boots, so a
+        // A reference that names no use case is refused the same way, and just as early:
+        // before the session is opened and before any host boots, so a
         // mistyped id leaves no stray session behind and no model is ever asked.
         var reference = LoadReference(options.Reference, out var unknownReference);
         if (unknownReference is not null)
@@ -791,11 +791,11 @@ internal static class ForgeCommand
     /// not, the refusal already written in one line.
     /// <para>
     /// Forge accepts no --mount: its three roots are its own CliMounts, and the host places
-    /// a CliMount by virtual root against the settings (STUDIO-15 D-01) — a settings entry
+    /// a CliMount by virtual root against the settings — a settings entry
     /// on /workspace, /forge or /output is replaced for the trial, and logged as such. So
     /// they are NOT reserved here, and must not be: /output is an ordinary mount for a run,
-    /// and the name Studio gives a team's write folder, so a settings file naming it is the
-    /// normal case on every Studio machine, not a mistake. Refusing it — as the guard that
+    /// and the name a team's write folder usually has, so a settings file naming it is the
+    /// normal case, not a mistake. Refusing it — as the guard that
     /// predated D-01 did — stopped the wizard's first trial on the very folder the user had
     /// just associated. The one root the forge does not mount itself is /sandbox: the file
     /// system registers it internally in every host, a settings entry there still reaches
@@ -863,8 +863,8 @@ internal static class ForgeCommand
     /// The interview stage. A run that does not stop before its trial holds that trial in this
     /// process: a folder it confirms must be one the host's path validator — fixed now, at the
     /// host's build — lets the trial read (GAP-27). A --dry run leaves the trial to a resume,
-    /// which mounts and allows the confirmed folders when its own host is built (the way Studio
-    /// forges).
+    /// which mounts and allows the confirmed folders when its own host is built (the way a resumed session
+    /// does).
     /// </summary>
     private static BriefStage BriefStageOf(
         ForgeCrewAssistant assistant, IForgeUserChannel channel, ForgeCommandOptions options, bool resumed, Microsoft.Extensions.Hosting.IHost host)
@@ -881,7 +881,7 @@ internal static class ForgeCommand
     /// The VFS surface of a cycle: the read folder as <c>/workspace</c> (read-only), the
     /// session as <c>/forge</c> and the session's output folder as <c>/output</c> (both
     /// writable) — the assistant's view — plus, once the session has them, the confirmed
-    /// folders (STUDIO-46) where the trial mounts them (<see cref="ForgeFolders.TrialMounts"/>);
+    /// folders where the trial mounts them (<see cref="ForgeFolders.TrialMounts"/>);
     /// a confirmed folder on <c>/workspace</c> or <c>/output</c> replaces the default one. <paramref name="readRoot"/> is <c>--read</c>, resolved; null reads the
     /// workspace itself, the default. The workspace keeps every other role whatever is read:
     /// the session stays under <see cref="ForgeSession.RootFor"/> of the workspace and the
@@ -900,8 +900,8 @@ internal static class ForgeCommand
         ArgumentException.ThrowIfNullOrWhiteSpace(workspace);
         ArgumentNullException.ThrowIfNull(session);
 
-        // The confirmed folders (STUDIO-46), when the session already has them — a resume, the
-        // trial Studio launches after the composition: mounted at the host's build, so a
+        // The confirmed folders, when the session already has them — a resume, the
+        // trial a client launches after the composition: mounted at the host's build, so a
         // directory the user bound outside the working directory is whitelisted like --read.
         // A list confirmed later in this same run reaches the trial through its scope instead
         // (ForgeTrialScope); its directories are the session's own, or --read, or the workspace.
@@ -981,7 +981,7 @@ internal static class ForgeCommand
         Path.Combine(session.Directory, TestStage.OutputDirectoryName);
 
     /// <summary>
-    /// An unknown <c>--reference</c> (STUDIO-40, D-05): the catalogue's own typed error,
+    /// An unknown <c>--reference</c>: the catalogue's own typed error,
     /// <c>USECASES-UNKNOWN-ID</c>. No session exists, so the stream carries the error and closes on
     /// «failed», like a reopen that could produce none; the terminal gets the one line.
     /// </summary>
@@ -1214,10 +1214,10 @@ internal static class ForgeCommand
 
     /// <summary>
     /// <c>forge reopen &lt;team-folder&gt;</c> (FORGE-09): makes sure a session exists for a
-    /// promoted team, so the atelier can be reopened on it — « Modify » in Studio, or
+    /// promoted team, so the atelier can be reopened on it — « Modify » in a client, or
     /// <c>forge resume</c> here. Fully offline — no host, no LLM.
     /// <para>
-    /// Rule R (<see cref="ForgeTeamLink"/>, STUDIO-25) decides which session the folder is
+    /// Rule R (<see cref="ForgeTeamLink"/>) decides which session the folder is
     /// linked to: the one whose id its <c>forge.json</c> carries, unless that session's
     /// <c>promotedTo</c> names another folder still carrying the same id — then this one is a
     /// copy. A linked session is reported as it stands; nothing is moved — the resume that
@@ -1350,8 +1350,8 @@ internal static class ForgeCommand
     }
 
     /// <summary>
-    /// <c>forge schedule &lt;team-folder&gt; [--check]</c> and <c>forge unschedule &lt;team-folder&gt;</c>
-    /// (STUDIO-27): the operating system runs the team, the CLI — which owns the artifacts —
+    /// <c>forge schedule &lt;team-folder&gt; [--check]</c> and <c>forge unschedule &lt;team-folder&gt;</c>:
+    /// the operating system runs the team, the CLI — which owns the artifacts —
     /// registers, checks and removes it (<see cref="ForgeScheduler"/>). Fully offline, no session:
     /// the stream carries the <c>warning</c>s, then either the folder's <c>schedule.state</c> —
     /// exit 0 — or an <c>error</c> with the command a person can run instead — exit 1.
@@ -1392,7 +1392,7 @@ internal static class ForgeCommand
     }
 
     /// <summary>
-    /// <c>forge rename &lt;team-folder&gt; --name &lt;name&gt;</c> (STUDIO-28, D-01): the team folder, the
+    /// <c>forge rename &lt;team-folder&gt; --name &lt;name&gt;</c>: the team folder, the
     /// session rule R links to it, every title and generated file and the schedule the operating
     /// system runs take the new name — all of it or nothing (<see cref="ForgeTeamRenamer"/>).
     /// Fully offline, no session started. The stream carries the <c>warning</c>s,
@@ -1447,7 +1447,7 @@ internal static class ForgeCommand
     /// <para>
     /// The team's name, when given, titles the session, <c>FORGE.md</c> and <c>forge.json</c>;
     /// once the promotion is written the session folder follows the team folder's name
-    /// (STUDIO-26, <see cref="ForgeSessionFolder"/>) — a move the disk refuses is a warning, and
+    /// (<see cref="ForgeSessionFolder"/>) — a move the disk refuses is a warning, and
     /// the command still succeeds: the promotion stands, the id links the two.
     /// </para>
     /// </summary>
@@ -1519,7 +1519,7 @@ internal static class ForgeCommand
                 updated = result.Updated,
             });
 
-        // A re-adoption that drops the schedule touches no OS (STUDIO-27): the registration this
+        // A re-adoption that drops the schedule touches no OS: the registration this
         // folder installed keeps running the team, and saying so is the promotion's whole part.
         if (options.Schedule is null
             && ForgeScheduler.StillInstalled(result.Destination, scheduleHost?.Adapter.Family ?? ForgePromoter.DetectPlatform()) is { } stillInstalled)
@@ -1527,7 +1527,7 @@ internal static class ForgeCommand
             events.Warning(ForgeErrorCodes.ScheduleStillInstalled, stillInstalled);
         }
 
-        // STUDIO-51: a run.cmd that launches nothing — the command is longer than cmd holds — is
+        // A run.cmd that launches nothing — the command is longer than cmd holds — is
         // said, and the promotion stands: run.sh is complete, and run.cmd says why each time it is
         // run. On stderr too when stdout carries the stream: a person reads stderr.
         if (result.WindowsLauncherTooLong is { } tooLong)

@@ -23,7 +23,7 @@ using DomainCrew = Orkeon.Domain.Crew.Crew;
 namespace Orkeon.Scripting.Cli.Tests.Run;
 
 /// <summary>
-/// STUDIO-42's acceptance criterion: for a hierarchical crew with planning and a RAG tool,
+/// The acceptance criterion: for a hierarchical crew with planning and a RAG tool,
 /// the total the run displays is the sum of what the provider reported — the plan, the
 /// manager's assignment and review, the agent's turns and the RAG pipeline's answer, every
 /// one of them. The meter used to see only the agent's turns, and <c>run.finished</c> read
@@ -53,7 +53,7 @@ public sealed class RunMeterCoverageTests : IDisposable
         var vendor = new ScriptedCrewVendor();
         using var console = new TestConsole(stdin: string.Empty);
         await using var observed = new ObservedRunContext(
-            RunEventStreams.Stdout(_output, null, new FakeRunTimeProvider()), stream: false, clientName: "studio", console.Input);
+            RunEventStreams.Stdout(_output, null, new FakeRunTimeProvider()), stream: false, clientName: "client", console.Input);
 
         // The real runner host, observed the way `orkeon run --events jsonl` observes it; the
         // vendor enters it like any provider the factory does not build.

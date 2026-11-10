@@ -9,7 +9,7 @@ using static Orkeon.Scripting.Cli.Tests.Forge.ScheduleForms;
 namespace Orkeon.Scripting.Cli.Tests.Forge;
 
 /// <summary>
-/// <c>forge rename &lt;team-folder&gt; --name &lt;name&gt;</c> (STUDIO-28, D-01): the team folder takes
+/// <c>forge rename &lt;team-folder&gt; --name &lt;name&gt;</c>: the team folder takes
 /// the folder rule's name, the linked session's folder follows it, every title and generated file
 /// says the new name and the new path, and an installed schedule is reinstalled under it — all of
 /// it, or nothing: a step that fails puts back everything done before it. The operating system is
@@ -23,7 +23,7 @@ public sealed class ForgeRenameTests : IDisposable
     private readonly string _workspace =
         Path.Combine(Path.GetTempPath(), "orkeon-forge-rename-" + Guid.NewGuid().ToString("N"));
 
-    /// <summary>A team folder the way Studio names one.</summary>
+    /// <summary>A team folder the way a client names one.</summary>
     private string Team => Path.Combine(_workspace, "teams", "ma-veille");
 
     /// <summary>Where « Veille du matin » goes: the folder rule's name, next to the team.</summary>
@@ -51,7 +51,7 @@ public sealed class ForgeRenameTests : IDisposable
 
     /// <summary>
     /// D-01: the team folder and the linked session's folder both take the new name, and every
-    /// title follows — session.json, forge.json, studio-team.json (whose other fields, known or
+    /// title follows — session.json, forge.json, team.json (whose other fields, known or
     /// not, stay as they were), FORGE.md — while the launchers' header names the new folder. The
     /// id does not change, so rule R still links the two.
     /// </summary>
@@ -117,7 +117,7 @@ public sealed class ForgeRenameTests : IDisposable
     /// <summary>
     /// D-01 step 5: the team's schedule/ is regenerated for the folder as it is now — every unit,
     /// task and cron line names the new folder's launchers under the new name. FORGE.md has no
-    /// command to follow any more — it names nothing of the machine (STUDIO-52) —: its title does.
+    /// command to follow any more — it names nothing of the machine —: its title does.
     /// A schedule declared and never installed asks the OS nothing.
     /// </summary>
     [Fact]
@@ -156,7 +156,7 @@ public sealed class ForgeRenameTests : IDisposable
     /// <summary>
     /// D-01 step 5: a schedule the OS runs is reinstalled under the new name — the registration of
     /// the former name removed, the new one running the new folder's launcher, one registration in
-    /// all — and schedule/installed.json records what is installed now (STUDIO-52).
+    /// all — and schedule/installed.json records what is installed now.
     /// </summary>
     [Theory]
     [MemberData(nameof(Families))]
@@ -281,7 +281,7 @@ public sealed class ForgeRenameTests : IDisposable
     }
 
     /// <summary>
-    /// STUDIO-58: the sidecar another tool wrote comes back from the rename byte for byte, except
+    /// The sidecar another tool wrote comes back from the rename byte for byte, except
     /// <c>name</c> — its accents as letters, its own keys in their order — and ends with a newline.
     /// </summary>
     [Fact]
@@ -486,9 +486,9 @@ public sealed class ForgeRenameTests : IDisposable
     }
 
     /// <summary>
-    /// A team adopted the way Studio adopts one: promoted into <paramref name="team"/> as
+    /// A team adopted the way a client adopts one: promoted into <paramref name="team"/> as
     /// <paramref name="platform"/> would, the session promoted and its folder named after the
-    /// team's (STUDIO-26), and Studio's sidecar beside the crew — with a field no version of the
+    /// team's, and a team sidecar beside the crew — with a field no version of the
     /// CLI knows, which a rename must carry over untouched.
     /// </summary>
     private ForgeSession Adopt(string team, ForgePromotePlatform platform, string? schedule = "daily@07:30")

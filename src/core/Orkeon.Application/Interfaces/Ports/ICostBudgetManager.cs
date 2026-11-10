@@ -53,7 +53,7 @@ public record CostUsageEvent
     /// <summary>
     /// True when the token counts are an APPROXIMATION the runtime computed itself,
     /// because the provider returned no usage at all. Callers that display a figure must
-    /// say so (Studio prefixes it with «≈»); callers that bill or budget on it are
+    /// say so (for instance with a "≈" prefix); callers that bill or budget on it are
     /// deliberately biased high — an estimate trips a budget early, never late.
     /// </summary>
     public bool Estimated { get; init; }

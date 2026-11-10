@@ -83,7 +83,7 @@ public class ListMountsToolTests
     }
 
     /// <summary>
-    /// VFS-90 D-08: a mount's id is for hosts and Studio, never for agents. The DTO has no id
+    /// VFS-90 D-08: a mount's id is for hosts and clients, never for agents. The DTO has no id
     /// field, so <c>list_mounts</c> cannot leak one whatever the registry carries.
     /// </summary>
     [Fact]

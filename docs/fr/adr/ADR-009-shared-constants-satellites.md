@@ -5,7 +5,7 @@
 # ADR-009 — Une constante sur laquelle deux projets doivent s'accorder vit dans un satellite, pas dans une copie
 
 **Statut** : Accepté — mis en œuvre : les cinq satellites listés sous *Tel que construit* existent sous `src/constants/` · **Date** : 2026-08-29
-· **Périmètre** : `src/constants/*`, `Orkeon.Domain`, `Orkeon.Infrastructure`, `Orkeon.Hosting`, `Orkeon.Studio.Core`
+· **Périmètre** : `src/constants/*`, `Orkeon.Domain`, `Orkeon.Infrastructure`, `Orkeon.Hosting`
 
 ## Contexte
 
@@ -15,15 +15,15 @@ sur sept projets, sous une forme qui ne varie jamais — `static class` portant 
 record, aucune énumération détournée en porteur de chaînes.
 
 Ce qui n'est pas résolu, c'est **l'accord entre projets qui n'ont pas le droit de se référencer**.
-`Orkeon.Studio.Core` ne peut référencer ni `Orkeon.Infrastructure` ni `Orkeon.Hosting` : Studio
-est une application hôte, et dépendre des internes du runtime inverserait précisément la
-stratification que la règle Clean Architecture protège. Mais Studio a besoin des mêmes valeurs
-que le runtime — l'endpoint LLM qu'il écrit dans un fichier de réglages doit être celui que le
-provider appellera, et la racine virtuelle qu'il prédit dans un aperçu de lancement doit être
-celle que le runner monte.
+`Orkeon.Studio.Core` (Orkeon Studio, désormais dans son propre dépôt) ne pouvait référencer ni
+`Orkeon.Infrastructure` ni `Orkeon.Hosting` : Studio est une application hôte, et dépendre des
+internes du runtime inverserait précisément la stratification que la règle Clean Architecture
+protège. Mais Studio avait besoin des mêmes valeurs que le runtime — l'endpoint LLM qu'il
+écrit dans un fichier de réglages devait être celui que le provider appellera, et la racine
+virtuelle qu'il prédit dans un aperçu de lancement devait être celle que le runner monte.
 
 L'issue prise jusqu'ici a été de **recopier les valeurs à la main et de garder les copies par un
-test**. `tests/apps/Orkeon.Studio.Core.Tests/ConstantDriftTests.cs` n'existe pour rien d'autre.
+test**. `tests/apps/Orkeon.Studio.Core.Tests/ConstantDriftTests.cs` n'existait pour rien d'autre.
 Il épingle huit familles :
 
 | Famille | Source de vérité | Copie manuelle |
@@ -133,8 +133,8 @@ Un assemblage satellite s'expédie seul.
   la classe dont il est l'identité. L'éloigner n'achète rien et coûte une indirection. Seules les
   *références* à un nom d'outil depuis d'autres projets sont candidates.
 - **Le texte visible par l'utilisateur.** Une formulation partagée (WIN-01) est une constante
-  comme une autre, mais le texte qui appartient à la localisation de Studio passe par
-  `IStudioStrings` et y reste.
+  comme une autre, mais le texte qui appartient à la localisation d'un client passe par
+  le port de chaînes de ce client et y reste.
 - **Les paramètres de réglage de la recherche.** `Bm25CodeIndex` (Analysis) et `Bm25Index` (Rag)
   portent tous deux `k1 = 1.2`, `b = 0.75`, et les deux fusions de rangs portent `k = 60`. Ce sont
   les valeurs de la littérature, atteintes séparément, pas un accord entre les deux sous-systèmes :
@@ -164,3 +164,7 @@ surface publique figée du parapluie, et les `PublicAPI.*.txt` la gardent toujou
 
 - Le tableau « Source of truth » liste les copies telles qu'elles étaient à l'écriture de cet ADR (2026-08-29), avant la migration vers les satellites ; les constantes d'endpoints et de modèles par défaut qu'il place sous `Constants/Llm/` vivent maintenant dans `Orkeon.Constants.Llm`.
 - `Hosting/RunnerMounts.cs` s'appelle maintenant `RunnerVirtualRoots` (`src/constants/Orkeon.Constants.FileSystem/RunnerVirtualRoots.cs`), et `RunnerMounts.CrewVirtualRoot` est `RunnerVirtualRoots.Crew`.
+
+## Amendement (2026-11-10)
+
+Orkeon Studio a déménagé dans son propre dépôt (Orkeon/orkeon-studio). `Orkeon.Studio.Core`, ses copies manuelles et `ConstantDriftTests` ont quitté ce dépôt ; la décision tient, et les satellites restent le vocabulaire partagé de tout projet qui ne peut pas référencer les internes du runtime. Les tableaux ci-dessus décrivent le dépôt tel qu'il était à l'écriture de l'ADR.

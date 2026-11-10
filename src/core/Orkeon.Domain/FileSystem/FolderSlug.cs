@@ -6,7 +6,7 @@ namespace Orkeon.Domain.FileSystem;
 /// <summary>
 /// The folder name a free text becomes: lowercase ASCII letters and digits, accents dropped,
 /// one dash between words, at most <see cref="MaxLength"/> characters cut at a word. One
-/// implementation for the CLI and Studio (STUDIO-24), because both name folders from the same
+/// implementation for the CLI and its clients, because both name folders from the same
 /// words — a forge session, an adopted team — and the two rules they used to follow disagreed
 /// on the cap, the cut and the fallback: a name could not be trusted to give the folder the
 /// other side would compute for it.
@@ -92,8 +92,8 @@ public static class FolderSlug
 
     /// <summary>
     /// Whether <paramref name="word"/> is an article, a preposition or a conjunction of one of
-    /// the languages of Studio's interface (fr, en, es, de) — a word a name or a folder cut by
-    /// a cap must not end on. Case and accents do not matter: an accented "a" is "a".
+    /// the languages the CLI and its clients support (fr, en, es, de) — a word a name or a folder
+    /// cut by a cap must not end on. Case and accents do not matter: an accented "a" is "a".
     /// </summary>
     public static bool IsStopWord(string? word) =>
         From(word) is { } slug && StopWords.Contains(slug);

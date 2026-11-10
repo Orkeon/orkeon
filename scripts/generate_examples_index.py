@@ -7,7 +7,7 @@ each carrying a crew definition (``config.yaml``, or a ``main.ork.ts`` TypeScrip
 a use-case sheet (``usecase.yaml``) and usually a ``README.md``, and produces:
 
   * ``examples/INDEX.md``      — a navigable Markdown catalog;
-  * ``examples/usecases.json`` — the use-case manifest (STUDIO-36): one entry per
+  * ``examples/usecases.json`` — the use-case manifest: one entry per
     example, joining the hand-written fields of its ``usecase.yaml`` to the fields
     derived from its folder and its crew. The format of both is documented in
     examples/README.md ("Use-case sheet").
@@ -358,7 +358,7 @@ def render(cats: list[Category]) -> str:
     return "\n".join(out) + "\n"
 
 
-# The five languages of Studio's interface (STUDIO-37). French comes first: it is the
+# The five languages of the use-case sheets. French comes first: it is the
 # reference text, and the other four are reviewed translations of it.
 LANGUAGES = ("fr", "en", "es", "de", "zh-Hans")
 
@@ -369,7 +369,7 @@ TEXT_KEYS = ("title", "problem")
 # A tag is an English identifier, never displayed: lowercase words joined by hyphens.
 TAG_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 
-# A mount in the team-relative spelling of Studio's TeamMountPaths: a folder inside the
+# A mount in the team-relative spelling: a folder inside the
 # team (never "." or ".."), the virtual root it backs, ro or rw — "./data:/data:ro".
 _SEGMENT = r"[A-Za-z0-9_][A-Za-z0-9._-]*"
 MOUNT_RE = re.compile(
@@ -602,7 +602,7 @@ class ToolNeeds:
 
 
 # web_search's Tavily key: WebSearchTool asks the secret chain for TAVILY_API_KEY, which
-# `orkeon run` reads from ORKEON_TAVILY_API_KEY (Studio.Core's ToolCatalog.TavilyKeyEnv).
+# `orkeon run` reads from ORKEON_TAVILY_API_KEY.
 TAVILY_KEY_ENV = "ORKEON_TAVILY_API_KEY"
 
 # The tools of the finance crews' shared TypeScript module (examples/03-finance-trading/

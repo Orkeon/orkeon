@@ -50,7 +50,7 @@ public sealed class EmailRightsCheckTests : IDisposable
         Assert.Equal(2, lines.Count);
         var send = Assert.Single(lines, l => l.Contains("email_send", StringComparison.Ordinal));
         Assert.Contains("Send", send, StringComparison.Ordinal);
-        Assert.Contains("Settings › E-mail", send, StringComparison.Ordinal);
+        Assert.Contains("Orkeon:Tools:Email:Accounts", send, StringComparison.Ordinal);
         Assert.Contains("Orkeon:Tools:Email:Accounts", send, StringComparison.Ordinal);
         var read = Assert.Single(lines, l => l.Contains("email_read", StringComparison.Ordinal));
         Assert.Contains("Read", read, StringComparison.Ordinal);

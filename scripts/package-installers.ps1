@@ -18,8 +18,7 @@
 .PARAMETER AppSet
   Which apps go in the archive. 'full' (default) keeps the historical every-app
   archive; 'cli' ships the `orkeon` onboarding binary plus the apps for the
-  platform (win-x64: orkeon-studio; linux-*: orkeon-repl, orkeon-studio-config
-  and orkeon-studio-run; osx-*: CLI only) as orkeon-cli-<ver>-<rid>.zip.
+  platform (linux-*: orkeon-repl; win-x64 and osx-*: CLI only) as orkeon-cli-<ver>-<rid>.zip.
 .PARAMETER NoArchive
   Prepares the staging tree (artifacts\installers\_stage\<name>) and stops there: no
   zip, no SHA256SUMS. It is what scripts\install-from-source.ps1 passes -- it installs
@@ -96,26 +95,18 @@ $Apps = @(
     @{ Name = 'orkeon';              Csproj = 'src/scripting/Orkeon.Scripting.Cli/Orkeon.Scripting.Cli.csproj';                                    Apphost = 'orkeon';                                       SelfContained = $true }
     @{ Name = 'orkeon-slim';         Csproj = 'src/scripting/Orkeon.Scripting.Cli/Orkeon.Scripting.Cli.csproj';                                    Apphost = 'orkeon';                                       SelfContained = $false }
     @{ Name = 'orkeon-repl';         Csproj = 'src/apps/Orkeon.ConsoleApp/Orkeon.ConsoleApp.csproj';                                               Apphost = 'Orkeon.ConsoleApp';                            SelfContained = $true }
-    # Rids (optional) is a RID filter: absent/empty = publish for every RID; the
-    # WPF orkeon-studio can only target Windows RIDs, hence the filter.
-    @{ Name = 'orkeon-studio';        Csproj = 'src/apps/Orkeon.Studio.Wpf/Orkeon.Studio.Wpf.csproj';       Apphost = 'Orkeon.Studio';        SelfContained = $true; Rids = @('win-x64') }
-    @{ Name = 'orkeon-studio-config'; Csproj = 'src/apps/Orkeon.Studio.Config/Orkeon.Studio.Config.csproj'; Apphost = 'Orkeon.Studio.Config'; SelfContained = $true }
-    @{ Name = 'orkeon-studio-run';    Csproj = 'src/apps/Orkeon.Studio.Run/Orkeon.Studio.Run.csproj';       Apphost = 'Orkeon.Studio.Run';    SelfContained = $true }
+    # Rids (optional) is a RID filter: absent/empty = publish for every RID.
     # The service host (GATE-05). Self-contained: a daemon supervised by systemd or the
     # Windows SCM must not depend on a runtime someone may upgrade underneath it.
     @{ Name = 'orkeon-host';          Csproj = 'src/hosting/Orkeon.Host/Orkeon.Host.csproj';                Apphost = 'orkeon-host';          SelfContained = $true }
 )
 
 # -AppSet cli ships the onboarding binary plus the apps for the platform: win-*
-# adds the WPF orkeon-studio, linux-* adds the REPL (orkeon-repl) and the two TUIs,
-# osx-* stays CLI-only (V1). Mirrors cli_set_includes in package-installers.sh.
+# stays CLI-only, linux-* adds the REPL (orkeon-repl), osx-* stays CLI-only (V1). Mirrors cli_set_includes in package-installers.sh.
 function Test-CliSetIncludes([string]$AppName, [string]$Rid) {
     switch ($AppName) {
         'orkeon'              { return $true }
         'orkeon-repl'         { return $Rid -like 'linux-*' }
-        'orkeon-studio'       { return $Rid -like 'win-*' }
-        'orkeon-studio-config' { return $Rid -like 'linux-*' }
-        'orkeon-studio-run'   { return $Rid -like 'linux-*' }
         default               { return $false }
     }
 }

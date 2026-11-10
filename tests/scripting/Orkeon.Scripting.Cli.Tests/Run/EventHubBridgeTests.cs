@@ -22,7 +22,7 @@ public class EventHubBridgeTests
         public InMemoryEventHub Inner { get; }
         public JsonLinesEventHubBridge Bridge { get; }
 
-        public Harness(string clientName = "studio")
+        public Harness(string clientName = "client")
         {
             Inner = new InMemoryEventHub(Caller, NullLogger<InMemoryEventHub>.Instance);
             Bridge = new JsonLinesEventHubBridge(Inner, new OrkeonEventWriter(Output), clientName, Caller);
@@ -49,12 +49,12 @@ public class EventHubBridgeTests
         await using var harness = new Harness();
 
         await harness.Bridge.PostAsync(
-            Address("client://studio"), new { hello = "world" }, null, TestContext.Current.CancellationToken);
+            Address("client://client"), new { hello = "world" }, null, TestContext.Current.CancellationToken);
 
         var emitted = Assert.Single(harness.Emitted());
         Assert.Equal("hub.message", emitted.GetProperty("kind").GetString());
         // No ambient caller in this harness → no `from`, omitted rather than null. The first
-        // version asserted `from == "client://studio"` — the *recipient's* own address — and
+        // version asserted `from == "client://client"` — the *recipient's* own address — and
         // certified a line that told the peer every message came from itself.
         Assert.False(emitted.TryGetProperty("from", out _));
         Assert.Equal("world", emitted.GetProperty("payload").GetProperty("hello").GetString());
@@ -163,7 +163,7 @@ public class EventHubBridgeTests
         await using var harness = new Harness();
 
         var asking = harness.Bridge.SendAsync<object, JsonElement>(
-            Address("client://studio"),
+            Address("client://client"),
             new { question = "continue?" },
             TimeSpan.FromSeconds(5),
             null,
@@ -189,7 +189,7 @@ public class EventHubBridgeTests
         await using var harness = new Harness();
 
         var asking = harness.Bridge.SendAsync<object, JsonElement>(
-            Address("client://studio"),
+            Address("client://client"),
             new { question = "continue?" },
             TimeSpan.FromSeconds(5),
             null,
@@ -210,7 +210,7 @@ public class EventHubBridgeTests
         await using var harness = new Harness();
 
         await harness.Bridge.PostAsync(
-            Address("client://studio"), new { hello = "world" }, null, TestContext.Current.CancellationToken);
+            Address("client://client"), new { hello = "world" }, null, TestContext.Current.CancellationToken);
 
         await harness.Bridge.HandleCommandAsync("""{"kind":"subscribe","topic":"t"}""", TestContext.Current.CancellationToken);
         await harness.Inner.PublishAsync("t", new { n = 1 }, null, TestContext.Current.CancellationToken);
@@ -231,7 +231,7 @@ public class EventHubBridgeTests
 
         await Assert.ThrowsAsync<SendTimeoutException>(
             () => harness.Bridge.SendAsync<object, JsonElement>(
-                Address("client://studio"),
+                Address("client://client"),
                 new { question = "continue?" },
                 TimeSpan.FromMilliseconds(100),
                 null,
@@ -281,7 +281,7 @@ public class EventHubBridgeTests
         using (harness.Caller.Push(new EventHubCaller(crew, null)))
         {
             await harness.Bridge.PostAsync(
-                Address("client://studio"), new { hello = "world" }, null, TestContext.Current.CancellationToken);
+                Address("client://client"), new { hello = "world" }, null, TestContext.Current.CancellationToken);
         }
 
         var emitted = Assert.Single(harness.Emitted());

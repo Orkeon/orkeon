@@ -19,12 +19,6 @@ optionnels (`--settings`, `-v`, `--mount`, `--var`, `--llm-log`, …) sont docum
 seule fois, en détail, dans
 [Lancer votre premier exemple](./run-your-first-example.md#chaque-flag-expliqué).
 
-> **Vous préférez une fenêtre à une invite ?** Les paquets de release Windows et
-> Linux embarquent aussi **[Orkeon Studio](#orkeon-studio-la-voie-graphique)** —
-> une interface graphique par-dessus ce même CLI, installée à côté de lui. Ce
-> n'est pas une quatrième façon d'exécuter une crew : Studio édite le même
-> fichier de configuration et délègue au même `orkeon run`.
-
 ---
 
 ## 1. Depuis les sources
@@ -132,11 +126,11 @@ Chaque [GitHub Release](https://github.com/Orkeon/orkeon/releases) attache un
 
 | Artefact | Contenu | Prérequis runtime | Idéal pour |
 |---|---|---|---|
-| **`orkeon-cli-<version>-win-x64.zip`** | le CLI `orkeon` + **Orkeon Studio** (`orkeon-studio`, l'application de bureau) + `install.cmd` et `install.ps1` | pas de .NET — self-contained. Double-cliquez `install.cmd` : il tourne sur le PowerShell livré avec Windows. Voir [Avant de commencer](#avant-de-commencer) | **Windows : le téléchargement recommandé** |
-| **`orkeon-<version>-win-x64.msi`** | les deux mêmes, MSI per-user, avec un raccourci menu Démarrer « Orkeon Studio » | pas de .NET — self-contained. Non signé : Windows demande avant de le lancer, voir [Avant de commencer](#avant-de-commencer) | Windows, si vous préférez le double-clic et une entrée « Applications installées » |
-| **`orkeon_<version>_amd64.deb`** / **`_arm64.deb`** | le CLI `orkeon` en `/usr/bin/orkeon` + le REPL en `/usr/bin/orkeon-repl` + les deux applications terminal **Orkeon Studio** | aucun — self-contained | **Debian / Ubuntu** — de préférence depuis le [dépôt apt](../guides/install-with-apt.md), qui sert ces mêmes paquets et leurs mises à jour |
-| **`orkeon-cli-<version>-osx-arm64.tar.gz`** / **`-osx-x64.tar.gz`** | le seul CLI `orkeon` + `install.sh` (pas de Studio en V1 — le canal d'onboarding macOS reste CLI seul) | aucun — self-contained | **macOS**, Apple Silicon et Intel respectivement |
-| **`orkeon-<version>-<rid>.tar.gz`** / **`.zip`** | **tous** les launchers (`orkeon`, `orkeon-repl`, `orkeon-host`…) + les applications Studio que la plateforme supporte + `install.sh` / `install.cmd` et `install.ps1` | mixte — voir le tableau des commandes ci-dessous | Le REPL et l'hôte de service |
+| **`orkeon-cli-<version>-win-x64.zip`** | le CLI `orkeon` + `install.cmd` et `install.ps1` | pas de .NET — self-contained. Double-cliquez `install.cmd` : il tourne sur le PowerShell livré avec Windows. Voir [Avant de commencer](#avant-de-commencer) | **Windows : le téléchargement recommandé** |
+| **`orkeon-<version>-win-x64.msi`** | le même CLI, MSI per-user | pas de .NET — self-contained. Non signé : Windows demande avant de le lancer, voir [Avant de commencer](#avant-de-commencer) | Windows, si vous préférez le double-clic et une entrée « Applications installées » |
+| **`orkeon_<version>_amd64.deb`** / **`_arm64.deb`** | le CLI `orkeon` en `/usr/bin/orkeon` + le REPL en `/usr/bin/orkeon-repl` | aucun — self-contained | **Debian / Ubuntu** — de préférence depuis le [dépôt apt](../guides/install-with-apt.md), qui sert ces mêmes paquets et leurs mises à jour |
+| **`orkeon-cli-<version>-osx-arm64.tar.gz`** / **`-osx-x64.tar.gz`** | le seul CLI `orkeon` + `install.sh` (le canal d'onboarding macOS reste CLI seul) | aucun — self-contained | **macOS**, Apple Silicon et Intel respectivement |
+| **`orkeon-<version>-<rid>.tar.gz`** / **`.zip`** | **tous** les launchers (`orkeon`, `orkeon-repl`, `orkeon-host`…) + `install.sh` / `install.cmd` et `install.ps1` | mixte — voir le tableau des commandes ci-dessous | Le REPL et l'hôte de service |
 | **`dotnet tool install --global Orkeon.Scripting.Cli --prerelease`** | le seul CLI `orkeon` — **sans esbuild** : un script `.ork.ts` demande `npm install -g esbuild` (ou `ORKEON_ESBUILD_PATH`) ; les crews YAML non. `orkeon typings` écrit les typings d'éditeur | **SDK** .NET 10 | Obtenir uniquement le CLI sur un poste qui compile déjà du .NET |
 
 `<rid>` vaut `linux-x64`, `linux-arm64`, `osx-x64`, `osx-arm64` (`.tar.gz`) ou
@@ -154,13 +148,10 @@ L'archive multi-apps est la seule à embarquer plus que le CLI :
 | `orkeon-slim` | Le même CLI, framework-dependent et bien plus petit | requiert .NET 10 |
 | `orkeon-repl` | Console REPL interactive complète (tous les outils intégrés, analyse de code, embeddings locaux) | self-contained |
 | `orkeon-host` | Le daemon d'hébergement — enregistre des crews et les sert en continu (unité systemd, service Windows via le script embarqué ou son MSI per-machine dédié, passerelle de chat, canal Discord ; voir [le service host](../architecture/service-host.md)) | autonome |
-| `orkeon-studio` | **Orkeon Studio**, l'application de bureau — archives Windows uniquement (voir [plus bas](#orkeon-studio-la-voie-graphique)) | self-contained |
-| `orkeon-studio-config` / `orkeon-studio-run` | **Orkeon Studio** dans le terminal : éditeur de settings et lanceur de crew | self-contained |
 
 > **Le prérequis runtime, en une ligne.** Les paquets CLI (zip, MSI, `.deb`), les
-> launcher `orkeon`, le REPL et les applications Orkeon Studio
-> embarquent leur propre runtime et n'exigent aucune installation .NET. Tout le
-> reste de l'archive multi-apps (`orkeon-slim`) — et
+> launcher `orkeon` et le REPL embarquent leur propre runtime et n'exigent aucune
+> installation .NET. Tout le reste de l'archive multi-apps (`orkeon-slim`) — et
 > le tool dotnet — requiert le
 > [runtime .NET 10](https://dotnet.microsoft.com/download/dotnet/10.0) (à
 > vérifier avec `dotnet --list-runtimes`). `install.sh` et `install.ps1`
@@ -221,8 +212,7 @@ cd orkeon-cli-<version>-win-x64
 
 `install.cmd` passe ses arguments à `install.ps1` (`-InstallDir <dossier>`, `-Uninstall`)
 et rend son code de sortie. Installer par-dessus une installation la remplace — c'est
-ainsi que le canal zip se met à jour. **Fermez Orkeon Studio et laissez finir une crew en
-cours d'abord** : tant qu'un programme de l'installation tourne, l'installeur refuse, le
+ainsi que le canal zip se met à jour. **Laissez finir une crew en cours d'abord** : tant qu'un programme de l'installation tourne, l'installeur refuse, le
 nomme, et laisse l'installation comme elle était.
 
 ```powershell
@@ -355,32 +345,6 @@ vérification échoue, et accepte `--json` pour les scripts.
 > vrai modèle, lancez `orkeon init`, puis `orkeon doctor` pour confirmer que
 > l'endpoint est joignable.
 
-### Orkeon Studio, la voie graphique
-
-Les paquets Windows et Linux installent **Orkeon Studio** à côté du CLI. C'est
-une interface, pas un second produit : elle édite le `appsettings.json` qu'écrit
-`orkeon init`, et lance les crews en exécutant le binaire `orkeon` co-installé.
-Tout ce qu'elle fait est faisable depuis le terminal, et tout ce qu'elle écrit
-est lu par le CLI — vous pouvez passer de l'une à l'autre à tout moment.
-
-| Plateforme | Commande | Livrée dans | Ce qu'elle apporte |
-|---|---|---|---|
-| **Windows** | `orkeon-studio` | le zip `win-x64` et le MSI | Une fenêtre de bureau à navigation latérale — éditeur de settings (presets, sections, montages, JSON brut, diagnostic) et lanceur de crew (exécution + historique) — avec thème clair/sombre, sélecteur de langue à cinq entrées (anglais, français, espagnol, allemand, chinois) et visite guidée. Le MSI enregistre en plus un **raccourci menu Démarrer « Orkeon Studio »**, donc aucun terminal n'est nécessaire pour la lancer |
-| **Linux** | `orkeon-studio-config` | le `.deb` et les archives linux | Un éditeur plein écran dans le terminal pour le fichier de settings : presets de fournisseur, modèle et endpoint, et la table des points de montage VFS |
-| **Linux** | `orkeon-studio-run` | le `.deb` et les archives linux | Choisir une cible (un `config.yaml`, un dossier de crew, ou un script `.ork.ts`), régler les options d'exécution — dont `--validate` pour un essai à blanc — puis suivre la sortie en direct et annuler au besoin |
-| **macOS** | — | — | Pas en V1 sur le canal d'onboarding : les tarballs `orkeon-cli-*-osx-*` et Homebrew n'embarquent que le CLI. Les archives multi-apps `orkeon-<version>-osx-*` contiennent bien les deux applications terminal (seule l'application WPF a un filtre RID), non testées sur macOS en V1 |
-
-```bash
-orkeon-studio-config    # écrire ~/.config/Orkeon/appsettings.json sans l'assistant
-orkeon-studio-run       # choisir une crew, la lancer, la suivre
-```
-
-Sous Windows, double-cliquez sur **Orkeon Studio** dans le menu Démarrer (canal
-MSI) ou lancez `orkeon-studio` depuis un terminal — c'est la même fenêtre dans
-les deux cas. Les deux applications terminal acceptent également `--version` et
-`--help`, qu'elles affichent sans ouvrir d'interface plein écran : c'est ce qui
-les rend scriptables et vérifiables en CI.
-
 ### Exécuter
 
 Le CLI résout les settings LLM exactement comme depuis les sources.
@@ -424,8 +388,7 @@ sans disposition reconnue : Orkeon ne devine jamais lequel vous vouliez. Voir
 `config.yaml` (ou `crew.yaml`) liste les racines virtuelles que la crew lit et écrit —
 `/output`, ou `<ulid>|/output` pour épingler une entrée des settings quand plusieurs
 déclarent cette racine (une entrée des settings peut porter un identifiant de
-26 caractères devant son `|` ; Orkeon Studio en écrit un à chaque enregistrement).
-`orkeon run crew/` résout alors le bloc face au fichier de settings sans aucun
+26 caractères devant son `|`). `orkeon run crew/` résout alors le bloc face au fichier de settings sans aucun
 `--mount`, et refuse en une ligne une racine absente ou ambiguë ; `--mount-id <ulid>`
 choisit une entrée depuis la ligne de commande, et un simple
 `--mount <dossier>:/output:rw` remplace toutes les entrées des settings de cette racine
@@ -659,10 +622,6 @@ docker run -it --rm -e ORKEON_RUNNER=shell -v "$PWD:/workspace" \
   - Sur **Debian / Ubuntu** : le [dépôt apt](../guides/install-with-apt.md), puis
     `sudo apt install orkeon orkeon-archive-keyring`.
   - Puis `orkeon init` → `orkeon doctor` → `orkeon run`.
-- **Vous préférez ne rien taper de tout cela ?** Sous Windows et Linux, ces
-  mêmes paquets installent [Orkeon Studio](#orkeon-studio-la-voie-graphique) —
-  une fenêtre (ou une application terminal plein écran) par-dessus le même
-  fichier de configuration et le même `orkeon run`.
 - **Vous voulez le REPL ou l'hôte de service ?** Le REPL est dans le paquet Debian et
   Ubuntu (`/usr/bin/orkeon-repl`) et dans l'archive multi-apps (voie 2) ; l'hôte de
   service est dans l'archive. Tous deux sont self-contained : aucun runtime .NET à
@@ -692,7 +651,7 @@ un script.
 |---|---|
 | Le tool dotnet | `dotnet tool update -g Orkeon.Scripting.Cli --prerelease` |
 | Des paquets NuGet, dans un projet | `dotnet add package Orkeon --prerelease` — et `Orkeon.Tools` si le projet le référence — réécrit la version |
-| Zip Windows, tarball macOS ou Linux | Extraire la nouvelle archive et lancer son `install.cmd` / `install.sh` : il supprime l'installation précédente et met la nouvelle à sa place. Sous Windows, fermer Orkeon Studio d'abord : l'installeur refuse tant qu'un programme de l'installation tourne |
+| Zip Windows, tarball macOS ou Linux | Extraire la nouvelle archive et lancer son `install.cmd` / `install.sh` : il supprime l'installation précédente et met la nouvelle à sa place. Sous Windows, laisser finir une crew en cours d'abord : l'installeur refuse tant qu'un programme de l'installation tourne |
 | MSI Windows | Lancer le nouveau MSI : il remplace celui qui est installé, y compris entre deux pré-releases |
 | Le dépôt apt | `sudo apt update && sudo apt upgrade` |
 | Un paquet Debian téléchargé | `sudo apt install ./orkeon_<version>_amd64.deb` (`_arm64.deb` sur ARM) — ou passer au [dépôt apt](../guides/install-with-apt.md), qui se met à jour seul |
@@ -712,8 +671,7 @@ Le canal sert les **canaux NuGet** : le tool `orkeon`, le tool `orkeon-repl` (pa
 `Orkeon.ConsoleApp`) et les paquets. Sous Debian et Ubuntu, le paquet `orkeon` suit aussi
 `main`, par le canal apt `dev` — voir
 [Installer avec apt](../guides/install-with-apt.md#suivre-main-builds-dev). Les autres
-installeurs, l'image conteneur et Orkeon Studio pour Windows ne sont construits que sur les
-tags.
+installeurs et l'image conteneur ne sont construits que sur les tags.
 
 1. **Créez un jeton.** GitHub Packages en exige un même pour lire un paquet public : un
    personal access token (classic) avec le scope `read:packages` —
@@ -756,10 +714,7 @@ tags.
 trouvent alors sur la machine, et c'est le premier du `PATH` qui s'exécute. Sous Linux, le
 `/usr/bin/orkeon` du `.deb` passe en général avant `~/.dotnet/tools` : `orkeon` continue donc
 de lancer la release. `command -v orkeon` (PowerShell : `Get-Command orkeon`) montre lequel
-répond ; désinstallez le paquet, ou appelez `~/.dotnet/tools/orkeon` explicitement. Orkeon
-Studio lance l'`orkeon` installé à côté de lui, qui reste la release ; l'application Windows
-prend `--cli-dir` pour en lancer un autre :
-`orkeon-studio --cli-dir "$env:USERPROFILE\.dotnet\tools"`.
+répond ; désinstallez le paquet, ou appelez `~/.dotnet/tools/orkeon` explicitement.
 
 **Dans un projet**, faites flotter la version plutôt que de l'épingler :
 `<PackageReference Include="Orkeon" Version="*-*" />` (et de même pour `Orkeon.Tools`), puis

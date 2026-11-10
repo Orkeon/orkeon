@@ -338,7 +338,7 @@ and serves its tools to an MCP client, `human_input` aside — see
 | `web_search`, `cache_search` | ✅ | ❌ |
 | `brave_search` | ✅ only if `BRAVE_API_KEY` is set | ❌ |
 | `slack_send_message`, `slack_read_messages` | ❌ (host opt-in) | ❌ |
-| The tools of the MCP servers `MCP:Servers` declares | ✅ connected before the crew loads, under their own names (STUDIO-21) — an agent lists them in `tools:` like any other tool (see the resolution pipeline below) | ❌ |
+| The tools of the MCP servers `MCP:Servers` declares | ✅ connected before the crew loads, under their own names — an agent lists them in `tools:` like any other tool (see the resolution pipeline below) | ❌ |
 | `semantic_search` | ✅ for a YAML crew (wired by the run command) | ❌ |
 | `human_input` | ✅ for a YAML crew (on the event stream under `--events`, auto-approved otherwise) | ✅ (console prompt) |
 | `ask_question_to_coworker`, `delegate_work_to_coworker` | per agent, when `AllowDelegation` is on | per agent |

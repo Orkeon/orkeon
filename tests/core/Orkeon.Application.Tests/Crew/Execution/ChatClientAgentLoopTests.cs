@@ -422,13 +422,13 @@ public class ChatClientAgentLoopTests
             agent, BuildTask(), "sys", "user", [], TestContext.Current.CancellationToken);
 
         // The iteration budget is the cause and the empty answer its symptom: a failed exit
-        // as before, with a reason written for the summary rather than a code (STUDIO-12 C5a).
+        // as before, with a reason written for the summary rather than a code.
         Assert.Equal(AgentExitReason.MaxIterationsReached, result.ExitReason);
         Assert.Equal(FinalAnswerPolicy.MaxIterationsWithoutAnswerReason, result.LastError);
         Assert.Equal(string.Empty, result.Output);
     }
 
-    // ── STUDIO-12 C5a: an empty final text is never a completed task ─────────────────
+    // ── an empty final text is never a completed task ─────────────────
 
     [Fact]
     public async System.Threading.Tasks.Task FailsWithAnEmptyFinalAnswer_WhenTheRetryAfterAnEmptyTurnStaysEmpty()

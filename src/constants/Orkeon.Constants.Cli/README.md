@@ -7,8 +7,8 @@ Part of [Orkeon](https://github.com/Orkeon/orkeon) — build and orchestrate AI 
 ([ADR-009](https://github.com/Orkeon/orkeon/blob/main/docs/adr/ADR-009-shared-constants-satellites.md)).
 
 It exists because the same grammar was declared three times: the YAML runner's options, the
-scripting runner's options, and Orkeon Studio's prediction of the command line it is about to
-spawn. Studio composes an argument list for a process it does not reference; a flag renamed on one
+scripting runner's options, and the prediction of the command line a client is about to
+spawn. A client composes an argument list for a process it does not reference; a flag renamed on one
 side and not the other produces a launch that fails on an unrecognised option, at the one moment a
 user has no console to read.
 

@@ -8,7 +8,7 @@ namespace Orkeon.Scripting.Cli.Commands.Forge;
 /// the UX study): a <see cref="TextWriter"/> the engine's <see cref="ForgeEventWriter"/>
 /// writes its JSONL into, re-projected as human lines. One emission path for both modes —
 /// a capability absent from the stream cannot exist on the terminal either, which is the
-/// same guarantee the Studio client gets.
+/// same guarantee a client of the stream gets.
 /// </summary>
 internal sealed class ForgeTerminalRenderer : TextWriter
 {

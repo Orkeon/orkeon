@@ -134,7 +134,7 @@ public sealed partial class StagedRagPipeline : IRagPipeline, IRagRetrievalCapab
         CancellationToken cancellationToken = default)
     {
         // Every LLM call below — rewrite, rerank, answer, check — is RAG work, metered for
-        // whoever queried: the agent whose tool asked stays the one charged (STUDIO-42).
+        // whoever queried: the agent whose tool asked stays the one charged.
         using var usageScope = LlmUsageScope.Begin(LlmUsageOperations.Rag);
 
         var retrieval = await RetrieveCoreAsync(query, cancellationToken).ConfigureAwait(false);

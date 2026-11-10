@@ -291,7 +291,7 @@ internal sealed class InboundCommandPump : IAnswerChannel, IAsyncDisposable
 
         // The read loop is deliberately NOT awaited. Console stdin has no truly cancellable
         // read: TextReader.ReadLineAsync(ct) checks the token and then blocks in ReadLine(),
-        // so a parent that keeps our stdin open (Studio does) would hold this await — and the
+        // so a parent that keeps our stdin open (a GUI parent does) would hold this await — and the
         // whole process — hostage after run.finished. The loop runs on a background pool
         // thread; abandoning it is safe, and Close() below releases every waiter it guarded.
         Close();

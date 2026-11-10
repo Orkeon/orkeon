@@ -12,7 +12,7 @@ using Orkeon.Tools.Embeddings.Local.DependencyInjection;
 namespace Orkeon.Scripting.Cli.Commands.UseCases;
 
 /// <summary>
-/// The local embedding model (BGE-micro-v2, English) out of a minimal container (STUDIO-38 D-04).
+/// The local embedding model (BGE-micro-v2, English) out of a minimal container.
 /// <para>
 /// Not the runner host: <c>RunnerHost.Build</c> reads a settings file, warns when it has no
 /// <c>Llm</c> section and wires RaggableTree — none of which a search of the catalogue needs, and

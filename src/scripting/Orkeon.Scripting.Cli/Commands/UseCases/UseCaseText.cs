@@ -4,7 +4,7 @@ using System.Text;
 namespace Orkeon.Scripting.Cli.Commands.UseCases;
 
 /// <summary>
-/// The one normalization the use-case index and every query go through (STUDIO-38 D-01):
+/// The one normalization the use-case index and every query go through:
 /// lowercase, accents folded, Chinese cut into character bigrams.
 /// <para>
 /// <c>Bm25Index</c> matches terms by exact spelling, and its tokenizer keeps runs of letters or

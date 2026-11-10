@@ -82,7 +82,7 @@ internal static class InitCommand
 
     /// <summary>
     /// Docker Model Runner defaults. Shared with the committed appsettings template and with
-    /// Orkeon Studio's preset catalogue, hence <see cref="DockerModelRunnerDefaults"/> rather
+    /// the preset catalogue of other clients, hence <see cref="DockerModelRunnerDefaults"/> rather
     /// than a private copy here.
     /// </summary>
     private const string DockerModelRunnerBaseUrl = DockerModelRunnerDefaults.BaseUrl;
@@ -471,7 +471,7 @@ internal static class InitCommand
                 ["Model"] = plan.Model,
                 ["BaseUrl"] = plan.BaseUrl,
             };
-            // STUDIO-49: the file names the variable holding the key — never the key — and every
+            // The file names the variable holding the key — never the key — and every
             // run reads it. The native variable needs no reference: the runtime reads it anyway.
             if (ReferenceFor(plan.ApiKeyEnvName) is { } reference)
                 llm[ConfigurationKeys.LlmApiKeyEnvVar] = reference;
@@ -547,7 +547,7 @@ internal static class InitCommand
     /// Windows user scope —, at the endpoint the run calls. Says where the key comes from, never the
     /// key; a reference set nowhere is warned about first, in the runners' words. The probe used to
     /// read the named variable in its own process alone, before <c>ORKEON_Llm__ApiKey</c>: it failed
-    /// on a key Studio remembered, which the run found, and tested a key the run would not send.
+    /// on a key a client remembered, which the run found, and tested a key the run would not send.
     /// </summary>
     /// <returns>False when a run would refuse the section: the reader's message is printed, the file stays written.</returns>
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Globalization", "CA1303", Justification = "Framework is not localized; literals are CLI diagnostic messages.")]

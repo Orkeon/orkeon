@@ -35,11 +35,11 @@ public enum TeamSessionLinkKind
 }
 
 /// <summary>
-/// Rule R (STUDIO-25): the one rule that decides whether a team folder is linked to a forge
-/// session, written once for the CLI and Studio. The link used to be an absolute path alone —
+/// Rule R: the one rule that decides whether a team folder is linked to a forge
+/// session, written once for the CLI and its clients. The link used to be an absolute path alone —
 /// the session's <c>promotedTo</c> — which a moved team lost and a copied one could not
 /// disprove; the two implementations of the lookup disagreed on top of it (directory order in
-/// the CLI, newest first in Studio). Now a session carries a stable id, its promotion copies
+/// the CLI, newest first in a client). Now a session carries a stable id, its promotion copies
 /// the id into the team's <c>forge.json</c>, and the path only arbitrates between the folders
 /// that carry the same id.
 /// <para>

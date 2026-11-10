@@ -166,21 +166,18 @@ thinking pour les champs de DashScope et l'objet `reasoning` d'OpenRouter. Le
 ## Clés d'API : la variable par fournisseur
 
 **Un run prend la clé que résout la configuration, sinon la variable que nomme le fichier de
-réglages** (STUDIO-49) : `Llm:ApiKey` dans le fichier, surchargée par `ORKEON_Llm__ApiKey` dans
+réglages** : `Llm:ApiKey` dans le fichier, surchargée par `ORKEON_Llm__ApiKey` dans
 l'environnement (`ORKEON_Llm__Profiles__<id>__ApiKey` pour un profil) ; sinon la variable que
 nomme l'`ApiKeyEnvVar` de la section — lue dans l'environnement du processus, puis, sous Windows,
-dans la portée Utilisateur où Orkeon Studio mémorise les clés
+dans la portée Utilisateur
 ([configuration](./configuration.md#la-clé-dapi-apikey-apikeyenvvar)). Les noms de fournisseurs
-ci-dessous sont la convention que porte l'éditeur de réglages de modèle d'Orkeon Studio
-(`LlmPresets.ProviderCatalogFor`) : un profil stocke le *nom* de la variable et jamais la clé
-(`ModelProfile.KeyEnvName`), écrit ce nom dans le fichier de réglages comme `ApiKeyEnvVar` de la
-section `Llm` élue et de l'entrée `Llm:Profiles:<id>` du profil, et pose la valeur sur le processus
-enfant d'un lancement Studio en `ORKEON_Llm__ApiKey`. Exporter `DEEPSEEK_API_KEY` suffit donc à un
-`orkeon run` en terminal sur un fichier que Studio a écrit — ou sur un fichier écrit à la main qui
+ci-dessous sont les noms conventionnels : un fichier de réglages stocke le *nom* de la variable et
+jamais la clé, comme `ApiKeyEnvVar` de la section `Llm` et de l'entrée `Llm:Profiles:<id>` d'un
+profil. Exporter `DEEPSEEK_API_KEY` suffit donc à un `orkeon run` en terminal sur un fichier qui
 la nomme : `"ApiKeyEnvVar": "DEEPSEEK_API_KEY"`. Un fichier qui ne nomme aucune variable ne lit
 toujours que `Llm:ApiKey` et `ORKEON_Llm__ApiKey`.
 
-| Fournisseur | Variable (ce que Studio écrit dans `ApiKeyEnvVar`) | Clé délivrée sur | Timeout pré-rempli par Studio | Solde exposé par l'API ([détails](#ce-que-chaque-api-dit-du-solde-du-compte)) |
+| Fournisseur | Variable (le nom conventionnel pour `ApiKeyEnvVar`) | Clé délivrée sur | Timeout conseillé | Solde exposé par l'API ([détails](#ce-que-chaque-api-dit-du-solde-du-compte)) |
 |---|---|---|---|---|
 | OpenAI | `OPENAI_API_KEY` | `platform.openai.com/api-keys` | défaut moteur (30 s) | ✗ (dépense seulement, pour une clé admin) |
 | Anthropic | `ANTHROPIC_API_KEY` | `console.anthropic.com` | défaut moteur | ✗ (dépense seulement, pour une clé Admin API) |
@@ -197,14 +194,13 @@ toujours que `Llm:ApiKey` et `ORKEON_Llm__ApiKey`.
 | OpenRouter | `OPENROUTER_API_KEY` | `openrouter.ai/keys` | défaut moteur | ◐ par clé (`GET /api/v1/key`) ; les crédits du compte pour une clé de gestion seulement |
 | Mammouth AI | `MAMMOUTH_API_KEY` | `mammouth.ai` — le fournisseur documente « depuis les réglages API » ; la page exacte se confirme avec la première clé | défaut moteur | ✗ (dépense d'une clé, réponse non documentée) |
 | Ollama · Docker Model Runner | aucune | — | défaut moteur | — (local, sans compte) |
-| Compatible OpenAI (`custom`) | `ORKEON_CUSTOM_LLM_API_KEY` — un réglage créé avant STUDIO-49 garde `ORKEON_Llm__ApiKey`, la clé du défaut de chaque run (sa carte le dit) | — | défaut moteur | ✗ (hôte inconnu) · — sur cette machine |
-| Azure OpenAI | pas de carte, par conception : son endpoint par ressource en fait une entrée « compatible OpenAI » | — | — | ✗ (dépense dans Cost Management, pour une identité Microsoft Entra) |
+| Compatible OpenAI (`custom`) | aucune en propre : les réglages la nomment par `ApiKeyEnvVar`, sinon `ORKEON_Llm__ApiKey` est lue, la clé du défaut de chaque run | — | défaut moteur | ✗ (hôte inconnu) |
+| Azure OpenAI | pas de variable dédiée : son endpoint par ressource en fait une entrée « compatible OpenAI » | — | — | ✗ (dépense dans Cost Management, pour une identité Microsoft Entra) |
 
-Les 600 s pré-remplies ne sont pas décoratives. Les quatre fournisseurs dont le modèle **par
+Les 600 s conseillées ne sont pas décoratives. Les quatre fournisseurs dont le modèle **par
 défaut** raisonne avant de répondre débordent les 30 s du moteur, et le run du 2026-09-20 a
-été perdu sur deux timeouts Kimi remontés comme réponse vide (LLM-11). Studio pré-remplit le
-champ timeout du profil ; un fichier de réglages écrit à la main demande de monter
-`Llm:TimeoutSeconds` explicitement.
+été perdu sur deux timeouts Kimi remontés comme réponse vide (LLM-11). Un fichier de réglages
+demande de monter `Llm:TimeoutSeconds` explicitement.
 
 Deux noms qui ne sont **pas** celui-là, et qu'on confond avec lui :
 
@@ -221,20 +217,14 @@ chaque run lit la variable qu'il nomme.
 
 ## Ce que chaque API dit du solde du compte
 
-Orkeon Studio peut demander à un fournisseur ce qu'il reste sur le compte derrière la clé d'un
-profil (`IProviderBalanceProbe`, STUDIO-33). Il ne le demande jamais de lui-même — pas de
-minuterie, pas de rafraîchissement en arrière-plan : c'est l'écran qui affiche le solde qui
-décide quand une lecture vaut une requête. La requête part vers l'hôte du profil, jamais vers un
-hôte choisi par la sonde : une clé de la plateforme `.cn` de Kimi est refusée par l'hôte `.ai`,
-et inversement.
+Ce qu'il reste sur le compte derrière une clé, tel que l'API de chaque fournisseur le dit. Trois
+fournisseurs seulement servent un solde à la clé d'inférence que porte un run ; pour tous les
+autres, c'est la console du fournisseur qu'il faut consulter — la colonne « Clé délivrée sur »
+ci-dessus, précédée de `https://`. Une requête de solde part vers l'hôte de la clé : une clé de la
+plateforme `.cn` de Kimi est refusée par l'hôte `.ai`, et inversement. Chaque ligne a été lue
+dans la documentation de référence du fournisseur le 2026-09-24.
 
-Trois fournisseurs seulement servent un solde à la clé d'inférence que porte un profil. Pour
-tous les autres, la sonde répond d'après la table ci-dessous sans rien envoyer, et l'écran
-renvoie vers la console du fournisseur — la colonne « Clé délivrée sur » ci-dessus, précédée de
-`https://`. Chaque ligne a été lue dans la documentation de référence du fournisseur le
-2026-09-24.
-
-| Fournisseur | Verdict de la sonde | Endpoint | Ce qu'il renvoie | Clé acceptée | Source |
+| Fournisseur | Solde | Endpoint | Ce qu'il renvoie | Clé acceptée | Source |
 |---|---|---|---|---|---|
 | DeepSeek | ✓ disponible | `GET /user/balance` | `balance_infos[]`, une entrée par devise (`CNY`, `USD`) : `total_balance`, `granted_balance`, `topped_up_balance` en chaînes décimales ; `is_available` | la clé d'API (Bearer) | api-docs.deepseek.com/api/get-user-balance |
 | Kimi (Moonshot) | ✓ disponible | `GET /v1/users/me/balance` | `data.available_balance`, `voucher_balance`, `cash_balance` (négatif en cas d'impayé) — dollars US sur `api.moonshot.ai`, yuans sur `api.moonshot.cn` ; la réponse ne nomme aucune devise | la clé d'API (Bearer) de cette plateforme | platform.kimi.ai/docs/api/balance · platform.kimi.com/docs/api/balance |
@@ -253,25 +243,9 @@ renvoie vers la console du fournisseur — la colonne « Clé délivrée sur » 
 | Mammouth AI | ✗ non exposé | aucun — `GET /key/info`, documenté avec un hôte fictif | « how much credits has been spent on a key » : la dépense, réponse non documentée | la clé d'API | info.mammouth.ai/docs/api-quick-start |
 | Ollama · Docker Model Runner | — sans objet | aucun | un runtime local n'a pas de compte | — | — |
 
-Comment la sonde lit une réponse, pour qu'un écran distingue les cas :
-
-- **Clé refusée** : un 401 ou un 403 — ou pas de clé du tout, et la sonde n'envoie alors rien.
-- **Non exposé** : un 404 sur un chemin vérifié se lit « cet hôte ne sert pas de solde ici ».
-- **Erreur réseau** : pas de réponse, aucune dans le délai propre de la sonde (5 s par défaut),
-  ou tout autre statut d'erreur.
-- **Réponse inattendue** : un succès dont le corps n'a pas la forme documentée — le fournisseur
-  a changé son endpoint depuis le 2026-09-24, et réessayer n'y changera rien.
-- **Clé admin requise** couvre aussi la réponse d'OpenRouter quand la clé ne porte aucune limite
-  de dépense : les crédits du compte sont alors réservés à une clé de gestion.
-- Un endpoint compatible OpenAI (`custom`) est **non exposé** — la sonde ne connaît aucun solde
-  pour un hôte inconnu — ou **sans objet** quand il tourne sur cette machine.
-
-Aucun détail ne cite la réponse du fournisseur ni la clé : une réponse peut contenir des données
-de compte, la sonde dit donc ce qu'elle a appris et ne répète jamais ce qu'elle a lu — l'inverse
-du test de connexion derrière le bouton de l'éditeur de profil, qui cite un corps d'erreur pour
-aider au diagnostic. Deux endpoints sont documentés sans la forme de leur réponse, et restent de
-côté jusqu'à ce qu'une vraie clé les mesure : le `remains` du Token Plan de MiniMax et le
-`key/info` de Mammouth.
+Deux endpoints sont documentés sans la forme de leur réponse : le `remains` du Token Plan de
+MiniMax et le `key/info` de Mammouth. Un endpoint compatible OpenAI (`custom`) n'expose aucun
+solde connu, et un endpoint local n'a pas de compte.
 
 ## Défauts et modèles plus récents — revue des catalogues du 2026-09-19
 
@@ -456,7 +430,7 @@ raisonneur dépense ce budget à réfléchir et répond vide, la relance sans ou
 le livrable au lieu de l'écrire, et le run passe vert sans fichier (recette propriétaire du
 2026-09-19, `kimi-k3`). Depuis LLM-10, le plafond non épinglé est **le maximum documenté du
 modèle**, lu dans le catalogue `LlmModelOutputLimits` d'`Orkeon.Constants.Llm` ; une valeur
-épinglée (`Llm:MaxTokens`, un profil Studio, le `max_tokens` d'une crew) gagne toujours ; un
+épinglée (`Llm:MaxTokens`, un profil, le `max_tokens` d'une crew) gagne toujours ; un
 modèle inconnu du catalogue garde le repli 4096. N'y entrent que des chiffres documentés, chacun
 lu le 2026-09-19 :
 
@@ -485,10 +459,7 @@ point d'accès refuse (Qwen « Range of max_tokens », Kimi « prompt tokens + m
 Gemini `maxOutputTokens`, le 422 de DeepSeek, les moteurs Together avec `max_new_tokens` /
 `context_length_exceeded`) est **rejoué une
 fois sans le champ** quand il vient du catalogue, avec un avertissement qui nomme le modèle —
-une valeur épinglée appartient à l'utilisateur, et son rejet remonte tel quel. L'éditeur de
-profil de Studio lit le même catalogue : l'indication sous le champ « Réponse maximale » dit ce
-qu'un champ vide signifie pour le modèle choisi, et invite à épingler quand le modèle est
-inconnu.
+une valeur épinglée appartient à l'utilisateur, et son rejet remonte tel quel.
 
 ## Valeurs de paramètres obligatoires, par modèle
 
@@ -518,8 +489,8 @@ réel ; rien n'est inféré.
 | Mistral | `mistral-medium-2604` | `top_p` | `1` explicite quand `temperature` vaut 0 et que le raisonnement est actif (l'omission n'y vaut PAS 1) | `top_p must be 1 when using greedy sampling.` | 2026-08-30 |
 
 Une température que rien ne fixe ne part pas (GAP-36) : un hôte qui n'en épingle aucune fait
-tourner ces modèles sur leur propre défaut, qu'ils acceptent — `orkeon init` et Studio n'en
-écrivent pas. Un hôte qui en épingle une doit épingler la valeur imposée. Avant GAP-36, le moteur
+tourner ces modèles sur leur propre défaut, qu'ils acceptent — `orkeon init` n'en
+écrit pas. Un hôte qui en épingle une doit épingler la valeur imposée. Avant GAP-36, le moteur
 envoyait 0,7 quand rien n'était fixé — une valeur que refusent les deux modèles par défaut du
 tableau, `gpt-5.6-sol` et `claude-sonnet-5` (mesuré ci-dessus).
 

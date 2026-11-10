@@ -12,7 +12,7 @@ using Orkeon.Scripting.Cli.Tests.Doubles;
 namespace Orkeon.Scripting.Cli.Tests.Run;
 
 /// <summary>
-/// Architecture guard, behavioural half (STUDIO-42 D-04): every LLM surface the runner host
+/// Architecture guard, behavioural half: every LLM surface the runner host
 /// hands the runtime — <see cref="ILlmProvider"/>, <see cref="IBasicLlmProvider"/>,
 /// <see cref="IChatClient"/> — calls through the meter, whether the host runs on the echo
 /// provider or on a configured one. The source half lives with the Infrastructure tests; this

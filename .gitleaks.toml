@@ -32,7 +32,9 @@ useDefault = true
 #   sk-test-key-1234567890            the API key the three ImageGenerationTool test files
 #                                     wire into a fake HTTP handler.
 #   tvly-test-api-key-12345           the same, for WebSearchTool (Tavily).
-#   sk-abcdef1234567890               TeamCatalogTests writes credential-shaped fixtures
+# Entries marked (history) cover Orkeon Studio files that left this repository for
+# Orkeon/orkeon-studio: the scan reads the whole history, where those files remain.
+#   sk-abcdef1234567890               (history) TeamCatalogTests writes credential-shaped fixtures
 #   totally-a-secret-1234             into temp files and asserts the team catalogue
 #   ${ORKEON_Llm__ApiKey}             refuses them; the third is the literal placeholder
 #                                     used as that test's clean case.
@@ -40,20 +42,23 @@ useDefault = true
 #                                     var to prove the provider reads it back.
 #   orkeon-encryption-key-v2          documentation of ProvisionNewKeyAsync(store, NAME).
 #                                     A key *name*, not a key — not a credential at all.
-#   sk-live-0123456789                the API key ProviderBalanceTests (Studio.Wpf.Tests) and
+#   sk-live-0123456789                (history) the API key ProviderBalanceTests (Studio.Wpf.Tests) and
 #                                     HttpProviderBalanceProbeTests (Studio.Core.Tests) hand
 #                                     to a fake HTTP handler, to assert the Bearer header.
-#   03-finance-trading                not a credential at all: the examples category of that
+#   03-finance-trading                (history) not a credential at all: the examples category of that
 #                                     name (examples/03-finance-trading/). It fires only after
 #                                     a property called `Key` — `chip.Key == "..."` in
 #                                     ModalStops and the use-case wizard tests.
+#   sk-live-0123456789-do-not-print   the API key SettingsCommandTests writes as the `Llm:ApiKey`
+#                                     of a throw-away machine settings file, to prove `orkeon
+#                                     settings` never prints it.
 #   sk-from-the-variable-0123456789   the key RunnerHostApiKeyReferenceTests sets into a
 #                                     throw-away environment variable, to prove the host reads
 #                                     ApiKeyEnvVar and never prints the key in its startup lines.
-#   zai-secret-key-1234               the key HttpLlmEndpointProbeTests (Studio.Core.Tests)
+#   zai-secret-key-1234               (history) the key HttpLlmEndpointProbeTests (Studio.Core.Tests)
 #                                     hands its fake Z.AI handler, to assert what the probe
 #                                     sends and that its diagnostic never prints it.
-#   GOCSPX=secret                     what EmailValidationTests (Studio.Core.Tests) writes where a
+#   GOCSPX=secret                     (history) what EmailValidationTests (Studio.Core.Tests) writes where a
 #                                     variable NAME is expected (`Auth:ClientSecretEnvVar`), to prove
 #                                     Studio warns that it is no variable name and never repeats
 #                                     what was typed. Six letters of Google's prefix, `=`, a word.
@@ -72,6 +77,7 @@ regexes = [
   '''^"?sk-test1234567890abcdef"?$''',
   '''^"?orkeon-encryption-key-v2"?$''',
   '''^"?sk-live-0123456789"?$''',
+  '''^"?sk-live-0123456789-do-not-print"?$''',
   '''^"?03-finance-trading"?$''',
   '''^"?sk-from-the-variable-0123456789"?$''',
   '''^"?zai-secret-key-1234"?$''',

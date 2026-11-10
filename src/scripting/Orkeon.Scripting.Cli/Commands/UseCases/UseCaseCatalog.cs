@@ -20,7 +20,7 @@ internal interface IUseCaseFileSource
 }
 
 /// <summary>
-/// The catalogue embedded in the <c>orkeon</c> tool (STUDIO-38 D-03): the manifest, each
+/// The catalogue embedded in the <c>orkeon</c> tool: the manifest, each
 /// example's crew file and its <c>data/</c> folder, as resources named <c>usecases/…</c>.
 /// <para>
 /// The examples are not shipped anywhere else — the installers copy a sample settings file and

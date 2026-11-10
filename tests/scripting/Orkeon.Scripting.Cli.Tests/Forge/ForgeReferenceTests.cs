@@ -5,8 +5,8 @@ using Orkeon.Scripting.Cli.Commands.UseCases;
 namespace Orkeon.Scripting.Cli.Tests.Forge;
 
 /// <summary>
-/// STUDIO-40: the use case a composition starts from — its sheet, and the structure of its crew
-/// read from the file the tool embeds (STUDIO-38), reduced to what the composer is to take from
+/// The use case a composition starts from — its sheet, and the structure of its crew
+/// read from the file the tool embeds, reduced to what the composer is to take from
 /// it: agents, tasks, process, tools. Offline throughout, over the real catalogue.
 /// </summary>
 public sealed class ForgeReferenceTests

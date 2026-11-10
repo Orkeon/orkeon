@@ -173,7 +173,7 @@ public sealed class CrewDirectoryLayoutTests : IDisposable
     }
 
 
-    // ── STUDIO-59: a crew/ sub-folder wins over the root ───────────────────────────────
+    // ── a crew/ sub-folder wins over the root ───────────────────────────────
 
     /// <summary>
     /// A team folder written by <c>forge promote</c> keeps its definition under <c>crew/</c>

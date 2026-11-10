@@ -44,7 +44,7 @@ public sealed record LlmConfig
     /// (<c>ORKEON_Llm__ApiKey</c>), or name the variable that holds it in the settings file
     /// (<c>Llm:ApiKeyEnvVar</c>, and <c>Llm:Profiles:&lt;name&gt;:ApiKeyEnvVar</c> per profile),
     /// which is what the runners read — a key the configuration resolves first, then the named
-    /// variable, in the process environment and then the user's on Windows (STUDIO-49).
+    /// variable, in the process environment and then the user's on Windows.
     /// <c>Llm:ApiKey</c> in clear text in the file works, and is discouraged.
     /// </remarks>
     public string? ApiKey { get; init; }
@@ -75,7 +75,7 @@ public sealed record LlmConfig
     /// The output cap pinned on this configuration, or null when nothing pins one — the
     /// request then carries the model's documented maximum, and 4096 only for a model the
     /// catalogue does not know (LLM-10, <see cref="ResolveMaxTokens"/>). Set from
-    /// <c>Llm:MaxTokens</c>, a Studio profile or a crew's <c>max_tokens</c>; never defaulted
+    /// <c>Llm:MaxTokens</c>, a profile or a crew's <c>max_tokens</c>; never defaulted
     /// here, so "pinned" and "left to the model" stay distinguishable all the way to the wire.
     /// </summary>
     public int? MaxTokens { get; init; }

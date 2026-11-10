@@ -159,7 +159,7 @@ public SwarmYamlConfig? SwarmConfig { get; set; }   // key: swarmConfig
 
 ---
 
-## Step 6 — Scripting DSL and Studio
+## Step 6 — Scripting DSL
 
 | File | Change |
 |------|--------|
@@ -167,8 +167,6 @@ public SwarmYamlConfig? SwarmConfig { get; set; }   // key: swarmConfig
 | `src/scripting/Orkeon.Scripting/Typings/crew.d.ts` | Add it to the `Process` union |
 | `src/scripting/Orkeon.Scripting/Adapters/JsCrewConfigurationAdapter.cs` | Nothing for the name (`ProcessType.TryFrom`); map the mode's config when the DSL exposes it, or list it in `CollectIgnoredFeatures` |
 | `src/scripting/Orkeon.Scripting.Cli/Commands/UseCases/UseCasesCommand.cs` | The `--process` help text of `orkeon usecases list` |
-| `src/apps/Orkeon.Studio.Wpf/ViewModels/Teams/UseCaseGalleryViewModel.cs` | The gallery's process filter entry |
-| `src/apps/Orkeon.Studio.Core/Localization/StudioStrings.cs` + `src/apps/Orkeon.Studio.Wpf/Resources/Strings*.resx` | `WizardGalleryProcess<Mode>` key, English default and the translations (fr, de, es, zh-Hans) |
 
 The procedural script shape (`await crew.run()`) ignores the process; only the declarative shape (`globalThis.crew = crew`) runs the strategy — see [Scripting](../architecture/scripting.md).
 
@@ -253,7 +251,7 @@ python3 scripts/check-doc-claims.py
 | Observable | Hook terminal event on every exit, token metadata, structured logs | [ ] |
 | Honest outcome | `CreateFailure` when the mode's contract fails | [ ] |
 | Configurable | Per-crew config read off the crew, both YAML layouts, load-time validation | [ ] |
-| Scriptable | `AllowedProcesses`, `crew.d.ts`, `orkeon usecases`, Studio gallery | [ ] |
+| Scriptable | `AllowedProcesses`, `crew.d.ts`, `orkeon usecases` | [ ] |
 | Tested | Domain, strategy, factory, orchestrator, YAML, mapping, scripting | [ ] |
 | Documented | Mode page + FR mirror, process-types, yaml-schema, INDEX/toc, CHANGELOG, `check-doc-claims.py` green | [ ] |
 | Example | Working `config.yaml` with README, listed in `examples/INDEX.md` | [ ] |

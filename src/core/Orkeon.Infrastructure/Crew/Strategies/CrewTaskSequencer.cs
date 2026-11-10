@@ -8,7 +8,7 @@ namespace Orkeon.Infrastructure.Crew.Strategies;
 
 /// <summary>
 /// The order a strategy runs a crew's tasks in — one answer for every mode that runs them
-/// one after another (STUDIO-12 C2), and the order the crew's planner numbers them in (GAP-31).
+/// one after another, and the order the crew's planner numbers them in (GAP-31).
 /// <list type="bullet">
 ///   <item><description>The tasks run in a stable topological order on their declared
 ///   dependencies (<see cref="TaskExecutionOrder"/>): a task runs after every task it depends

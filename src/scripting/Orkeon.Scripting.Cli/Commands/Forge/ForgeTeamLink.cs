@@ -3,9 +3,9 @@ using Orkeon.Domain.FileSystem;
 namespace Orkeon.Scripting.Cli.Commands.Forge;
 
 /// <summary>
-/// Rule R (<see cref="TeamSessionLink"/>, STUDIO-25) over the forge's own files: a team
+/// Rule R (<see cref="TeamSessionLink"/>) over the forge's own files: a team
 /// folder's <c>forge.json</c>, the workspace's sessions, and the record of the folder a session
-/// names. The rule itself lives in Orkeon.Domain, once for the CLI and Studio; this type only
+/// names. The rule itself lives in Orkeon.Domain, once for the CLI and any other client; this type only
 /// reads what it needs — the verbs that act on a team folder (<c>reopen</c>, the re-adoption of
 /// <c>promote</c>) ask here, never by comparing paths themselves.
 /// </summary>

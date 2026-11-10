@@ -77,9 +77,8 @@ public class ForgeEventWriterTests
     }
 
     /// <summary>
-    /// STUDIO-26's two lines, pinned like the rest: <c>session.renamed</c> when the session folder
+    /// The two lines of a team rename, pinned like the rest: <c>session.renamed</c> when the session folder
     /// followed its team, <c>warning</c> when the disk refused — the promotion stands either way.
-    /// Studio.Core's <c>ForgeProtocolTests</c> carries the same lines, verbatim.
     /// </summary>
     [Fact]
     public void The_rename_and_warning_lines_are_the_pinned_golden_form()
@@ -99,9 +98,9 @@ public class ForgeEventWriterTests
     }
 
     /// <summary>
-    /// The folders step (STUDIO-46): the proposal as it goes out — a folder inside the team
-    /// carries no <c>dir</c>, <c>defaults</c> says whether the request named none (STUDIO-57) —
-    /// and Studio's answer, verbatim from its <c>ForgeFoldersProtocolTests</c>,
+    /// The folders step: the proposal as it goes out — a folder inside the team
+    /// carries no <c>dir</c>, <c>defaults</c> says whether the request named none —
+    /// and a client's answer,
     /// as the channel reads it back.
     /// </summary>
     [Fact]
@@ -124,9 +123,9 @@ public class ForgeEventWriterTests
             """{"v":2,"seq":1,"ts":"2026-08-19T12:00:00Z","kind":"folders.proposed","folders":[{"path":"/inpdf","role":"input","purpose":"Les PDF à convertir"},{"path":"/outmd","role":"output","purpose":"Les fichiers Markdown"}],"defaults":false}""" + "\n",
             output.ToString().ReplaceLineEndings("\n"));
 
-        var studio = new StringReader(
+        var client = new StringReader(
             """{"kind":"folders.confirmed","folders":[{"path":"/inpdf","role":"input","purpose":"Les PDF \u00E0 convertir","dir":"/data/pdf"},{"path":"/markdown","role":"output","purpose":"Les fichiers Markdown"}]}""");
-        var confirmed = await new JsonLinesUserChannel(studio).ReadFoldersAsync([], TestContext.Current.CancellationToken);
+        var confirmed = await new JsonLinesUserChannel(client).ReadFoldersAsync([], TestContext.Current.CancellationToken);
 
         Assert.NotNull(confirmed);
         Assert.Equal(["/inpdf", "/markdown"], confirmed.Select(f => f.Path));
@@ -156,9 +155,8 @@ public class ForgeEventWriterTests
     }
 
     /// <summary>
-    /// STUDIO-27's lines, pinned like the rest: <c>schedule.state</c> for each of the three states,
-    /// and the <c>error</c> of a refusal carrying the command a person can run instead. Studio.Core's
-    /// <c>ForgeProtocolTests</c> carries the same lines, verbatim.
+    /// The lines, pinned like the rest: <c>schedule.state</c> for each of the three states,
+    /// and the <c>error</c> of a refusal carrying the command a person can run instead.
     /// </summary>
     [Fact]
     public void The_schedule_lines_are_the_pinned_golden_form()
@@ -206,9 +204,8 @@ public class ForgeEventWriterTests
     }
 
     /// <summary>
-    /// STUDIO-28's lines, pinned like the rest: the session's folder following its team, the team
-    /// renamed, and a refusal — after which nothing changed. Studio.Core's
-    /// <c>ForgeRenameClientTests</c> carries the same lines, verbatim.
+    /// The lines, pinned like the rest: the session's folder following its team, the team
+    /// renamed, and a refusal — after which nothing changed.
     /// </summary>
     [Fact]
     public void The_rename_lines_are_the_pinned_golden_form()

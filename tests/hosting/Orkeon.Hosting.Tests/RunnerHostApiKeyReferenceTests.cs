@@ -7,7 +7,7 @@ using Orkeon.Hosting.Tests.Doubles;
 namespace Orkeon.Hosting.Tests;
 
 /// <summary>
-/// STUDIO-49 through the runner host: a section of the <c>Llm</c> shape names the variable that
+/// The API key reference, through the runner host: a section of the <c>Llm</c> shape names the variable that
 /// holds its key (<c>ApiKeyEnvVar</c>), and the host reads it. The startup lines say where each
 /// key came from — the configuration, the variable, the variable in the user environment, none —
 /// and never the key nor the variable's name; a reference to a variable set nowhere is warned

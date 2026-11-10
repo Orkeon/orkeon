@@ -239,7 +239,7 @@ public sealed class ForgeEngineTests : IDisposable
 
     /// <summary>
     /// The client cannot show what the wire does not carry. The split reached the engine and
-    /// stopped there: cost.updated said «tokens» and nothing else, so Studio's ↑/↓ meter had
+    /// stopped there: cost.updated said «tokens» and nothing else, so a client's ↑/↓ meter had
     /// no source and stood empty through a whole session.
     /// </summary>
     [Fact]

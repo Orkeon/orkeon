@@ -11,7 +11,7 @@ namespace Orkeon.Infrastructure.FileSystem;
 /// <para>
 /// The registry takes <see cref="RunnerVirtualRoots.Workspace"/> by itself when it is mounted.
 /// A run that mounts no workspace (<c>orkeon run</c> on a crew writing to <c>/output</c>, a hosted
-/// crew, a Studio launch) used to get one by accident: <c>shell_command</c> picked the first mount
+/// crew, a client launch) used to get one by accident: <c>shell_command</c> picked the first mount
 /// that granted the rights asked, in the registry's order (longest virtual path first), which put a
 /// read in <c>/session-history</c> when that mount was present. The runner now names it instead:
 /// the configured <see cref="ConfigurationKeys.FileSystemWorkingDirectory"/>, else the workspace,

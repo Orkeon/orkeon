@@ -150,20 +150,17 @@ details the `response_format` surfaces.
 ## API keys: the variable per provider
 
 **A run takes the key the configuration resolves, else the variable the settings file
-names** (STUDIO-49): `Llm:ApiKey` in the file, overridden by `ORKEON_Llm__ApiKey` in the
+names**: `Llm:ApiKey` in the file, overridden by `ORKEON_Llm__ApiKey` in the
 environment (`ORKEON_Llm__Profiles__<id>__ApiKey` for a profile); otherwise the variable the
 section's `ApiKeyEnvVar` names — read in the process environment, then, on Windows, in the
-user scope where Orkeon Studio remembers keys ([configuration](./configuration.md#the-api-key-apikey-apikeyenvvar)).
-The vendor names below are the convention Orkeon Studio's model-profile editor carries
-(`LlmPresets.ProviderCatalogFor`): a profile stores the *name* of the variable and never the
-key (`ModelProfile.KeyEnvName`), writes that name into the settings file as the `ApiKeyEnvVar`
-of the elected `Llm` section and of the profile's `Llm:Profiles:<id>` entry, and lays the value
-over the child process of a Studio launch as `ORKEON_Llm__ApiKey`. So exporting
-`DEEPSEEK_API_KEY` is enough for a terminal `orkeon run` on a file Studio wrote — or on a
-hand-written one that names it: `"ApiKeyEnvVar": "DEEPSEEK_API_KEY"`. A file that names no
+user scope ([configuration](./configuration.md#the-api-key-apikey-apikeyenvvar)).
+The vendor names below are the conventional ones: a settings file stores the *name* of the
+variable and never the key, as the `ApiKeyEnvVar` of the `Llm` section and of a profile's
+`Llm:Profiles:<id>` entry. So exporting `DEEPSEEK_API_KEY` is enough for a terminal
+`orkeon run` on a file that names it: `"ApiKeyEnvVar": "DEEPSEEK_API_KEY"`. A file that names no
 variable still reads `Llm:ApiKey` and `ORKEON_Llm__ApiKey` only.
 
-| Provider | Variable (what Studio writes in `ApiKeyEnvVar`) | Key issued at | Timeout Studio pre-fills | Balance exposed by the API ([details](#account-balance-what-each-api-tells)) |
+| Provider | Variable (the conventional name for `ApiKeyEnvVar`) | Key issued at | Suggested timeout | Balance exposed by the API ([details](#account-balance-what-each-api-tells)) |
 |---|---|---|---|---|
 | OpenAI | `OPENAI_API_KEY` | `platform.openai.com/api-keys` | engine default (30 s) | ✗ (spend only, to an admin key) |
 | Anthropic | `ANTHROPIC_API_KEY` | `console.anthropic.com` | engine default | ✗ (spend only, to an Admin API key) |
@@ -180,13 +177,13 @@ variable still reads `Llm:ApiKey` and `ORKEON_Llm__ApiKey` only.
 | OpenRouter | `OPENROUTER_API_KEY` | `openrouter.ai/keys` | engine default | ◐ per key (`GET /api/v1/key`); the account's credits to a management key only |
 | Mammouth AI | `MAMMOUTH_API_KEY` | `mammouth.ai` — the vendor documents "from the API settings"; the exact page is confirmed with the first key | engine default | ✗ (a key's spend, answer undocumented) |
 | Ollama · Docker Model Runner | none | — | engine default | — (local, no account) |
-| OpenAI-compatible (`custom`) | `ORKEON_CUSTOM_LLM_API_KEY` — a setting created before STUDIO-49 keeps `ORKEON_Llm__ApiKey`, the default key of every run (its card says so) | — | engine default | ✗ (unknown host) · — on this machine |
-| Azure OpenAI | no card by design: its per-resource endpoint makes it an OpenAI-compatible entry | — | — | ✗ (spend in Cost Management, to a Microsoft Entra identity) |
+| OpenAI-compatible (`custom`) | none of its own: the settings name it through `ApiKeyEnvVar`, else `ORKEON_Llm__ApiKey` is read, the default key of every run | — | engine default | ✗ (unknown host) |
+| Azure OpenAI | no dedicated variable: its per-resource endpoint makes it an OpenAI-compatible entry | — | — | ✗ (spend in Cost Management, to a Microsoft Entra identity) |
 
-The pre-filled 600 s is not decorative. The four providers whose **default** model reasons
+The suggested 600 s is not decorative. The four providers whose **default** model reasons
 before it answers overrun the engine's 30 s, and the run of 2026-09-20 was lost to two Kimi
-timeouts reported as an empty answer (LLM-11). Studio pre-fills the profile's timeout field;
-a hand-written settings file needs `Llm:TimeoutSeconds` raised explicitly.
+timeouts reported as an empty answer (LLM-11). A settings file needs `Llm:TimeoutSeconds` raised
+explicitly.
 
 Two names that are **not** this one, and get confused with it:
 
@@ -203,18 +200,13 @@ every run reads the variable it names.
 
 ## Account balance: what each API tells
 
-Orkeon Studio can ask a provider what is left on the account behind a profile's key
-(`IProviderBalanceProbe`, STUDIO-33). It never asks on its own — no timer, no background
-refresh: the screen that shows the balance decides when a read is worth a request. The request
-goes to the profile's own host, never to a host the probe picks: a key of Kimi's `.cn`
-platform is refused by the `.ai` host, and the other way round.
+What is left on the account behind a key, as each vendor's API tells it. Only three vendors
+serve a balance to the inference key a run holds; for every other provider, the vendor's console
+is the place to look — the "Key issued at" column above, behind `https://`. A balance request
+goes to the key's own host: a key of Kimi's `.cn` platform is refused by the `.ai` host, and the
+other way round. Each row was read on the vendor's own reference on 2026-09-24.
 
-Only three vendors serve a balance to the inference key a profile holds. For every other
-provider the probe answers from the table below without sending anything, and the screen points
-at the vendor's console — the "Key issued at" column above, behind `https://`. Each row was read
-on the vendor's own reference on 2026-09-24.
-
-| Provider | Probe verdict | Endpoint | What it returns | Key it takes | Source |
+| Provider | Balance | Endpoint | What it returns | Key it takes | Source |
 |---|---|---|---|---|---|
 | DeepSeek | ✓ available | `GET /user/balance` | `balance_infos[]`, one entry per currency (`CNY`, `USD`): `total_balance`, `granted_balance`, `topped_up_balance` as decimal strings; `is_available` | the API key (Bearer) | api-docs.deepseek.com/api/get-user-balance |
 | Kimi (Moonshot) | ✓ available | `GET /v1/users/me/balance` | `data.available_balance`, `voucher_balance`, `cash_balance` (negative in arrears) — US dollars on `api.moonshot.ai`, yuan on `api.moonshot.cn`; the answer names no currency | the API key (Bearer) of that platform | platform.kimi.ai/docs/api/balance · platform.kimi.com/docs/api/balance |
@@ -233,24 +225,9 @@ on the vendor's own reference on 2026-09-24.
 | Mammouth AI | ✗ not exposed | none — `GET /key/info`, documented with a placeholder host | "how much credits has been spent on a key": spend, answer undocumented | the API key | info.mammouth.ai/docs/api-quick-start |
 | Ollama · Docker Model Runner | — not applicable | none | a local runtime has no account | — | — |
 
-How the probe reads an answer, so a screen can tell the cases apart:
-
-- **Refused key**: a 401 or a 403 — or no key at all, and then the probe sends nothing.
-- **Not exposed**: a 404 on a verified path is read as "this host serves no balance there".
-- **Network error**: no answer, none within the probe's own deadline (5 s by default), or any
-  other error status.
-- **Unexpected answer**: a success whose body is not in the documented shape — the vendor has
-  changed its endpoint since 2026-09-24, and retrying will not help.
-- **Admin key required** also covers OpenRouter's answer when the key carries no spending limit:
-  the account's credits are then for a management key only.
-- An OpenAI-compatible endpoint (`custom`) is **not exposed** — the probe knows no balance for an
-  unknown host — or **not applicable** when it runs on this machine.
-
-No detail quotes the vendor's answer or the key: an answer may hold account data, so the probe
-states what it learned and never repeats what it read — the opposite of the connectivity test
-behind the profile editor's button, which quotes an error body to help diagnose it. Two
-endpoints are documented without the shape of their answer, and are left out until a real key
-measures them: MiniMax's Token Plan `remains` and Mammouth's `key/info`.
+Two endpoints are documented without the shape of their answer: MiniMax's Token Plan `remains`
+and Mammouth's `key/info`. An OpenAI-compatible endpoint (`custom`) exposes no balance anyone
+knows of, and a local one has no account.
 
 ## Defaults and newer models — catalogue review of 2026-09-19
 
@@ -432,7 +409,7 @@ budget thinking and answers empty, the tool-free retry that follows narrates the
 instead of writing it, and the run goes green with no file (owner recette 2026-09-19,
 `kimi-k3`). Since LLM-10 the cap left unpinned is **the model's documented maximum**, from the
 `LlmModelOutputLimits` catalogue in `Orkeon.Constants.Llm`; a pinned value (`Llm:MaxTokens`, a
-Studio profile, a crew's `max_tokens`) always wins; a model the catalogue does not know keeps
+profile, a crew's `max_tokens`) always wins; a model the catalogue does not know keeps
 the 4096 fallback. Only documented figures go in, each read on 2026-09-19:
 
 | Provider | Model | Cap sent | Source | Note |
@@ -460,9 +437,7 @@ max_tokens", Kimi "prompt tokens + max_tokens exceeds", Gemini `maxOutputTokens`
 422, Together's engines with `max_new_tokens` / `context_length_exceeded`) is **retried once
 without the field** when it came from the
 catalogue, with a warning naming the model — a pinned value is the user's, and its rejection
-surfaces unchanged. The Studio profile editor reads the same catalogue: the hint under the
-« Maximum response » field says what an empty field means for the chosen model, and invites a
-pin when the model is unknown.
+surfaces unchanged.
 
 ## Per-model mandatory parameter values
 
@@ -491,7 +466,7 @@ breaking the sibling model. Every row below was measured live; nothing is inferr
 | Mistral | `mistral-medium-2604` | `top_p` | explicit `1` when `temperature` is 0 and reasoning is on (omission is NOT 1 there) | `top_p must be 1 when using greedy sampling.` | 2026-08-30 |
 
 A temperature nothing sets is not sent (GAP-36): a host that pins none runs these models on their
-own default, which they accept — `orkeon init` and Studio write none. A host that pins one must pin
+own default, which they accept — `orkeon init` writes none. A host that pins one must pin
 the mandated value. Before GAP-36 the engine sent 0.7 when nothing was set — a value the two
 default models of the table, `gpt-5.6-sol` and `claude-sonnet-5`, refuse (measured above).
 

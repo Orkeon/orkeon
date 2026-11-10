@@ -247,7 +247,7 @@ internal static class HostStartup
     /// <summary>
     /// Reads the flags the daemon understands out of the raw argument array. A long name is read
     /// as <c>--name value</c> or <c>--name=value</c> (cut at the first '='); a short name takes the
-    /// next argument whole, '=' included (STUDIO-51).
+    /// next argument whole, '=' included.
     /// </summary>
     public static HostCommandLine Read(string[] args)
     {

@@ -329,7 +329,7 @@ public class ExecutionOrchestratorTests
     [Fact]
     public async System.Threading.Tasks.Task ShouldFailTheTaskWithItsReason_WhenTheModelAnswersWithNothing()
     {
-        // STUDIO-12 C5a: an empty final answer is a failed task, and the failure carries its
+        // An empty final answer is a failed task, and the failure carries its
         // reason in Error — the strategies, AUTO_SUMMARY and the runner read Error, which
         // stayed null on every non-Completed exit ("Task failed: unknown error").
         var logger = new TestLogger();

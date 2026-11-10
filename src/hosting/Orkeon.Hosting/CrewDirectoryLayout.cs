@@ -18,8 +18,8 @@ namespace Orkeon.Hosting;
 /// </param>
 /// <param name="CrewRoot">
 /// The directory holding the definition the loader reads, as a full physical path: the
-/// inspected directory itself, or its <c>crew/</c> sub-folder when that one is the crew
-/// (STUDIO-59). <see langword="null"/> when <paramref name="IsCrewDirectory"/> is false.
+/// inspected directory itself, or its <c>crew/</c> sub-folder when that one is the crew.
+/// <see langword="null"/> when <paramref name="IsCrewDirectory"/> is false.
 /// </param>
 public sealed record CrewDirectoryInspection(bool IsCrewDirectory, string? Error, string? CrewRoot = null);
 
@@ -35,11 +35,10 @@ public sealed record CrewDirectoryInspection(bool IsCrewDirectory, string? Error
 /// </list>
 /// A directory whose <c>crew/</c> sub-folder holds one of those layouts — the team folder
 /// <c>forge promote</c> writes, one folder per mount point beside the definition — is a crew
-/// whose definition is <c>crew/</c>, whatever the root holds (STUDIO-59): a mount point named
+/// whose definition is <c>crew/</c>, whatever the root holds: a mount point named
 /// <c>agents/</c> or a launcher script at the root is set aside, never read as a crew. The
 /// descent is one step, never into <c>crew/crew/</c>, and a <c>crew/</c> that is no crew leaves
-/// the root under its own rules. Orkeon Studio applies the same order
-/// (<c>RunTargetDetector</c>), so a folder is read one way.
+/// the root under its own rules. Clients apply the same order, so a folder is read one way.
 /// A directory that also holds a scripting entry point is rejected as ambiguous instead of
 /// silently preferring one form over the other, and a directory with no recognized layout is
 /// rejected with the list of what was searched.
@@ -49,7 +48,7 @@ public static class CrewDirectoryLayout
 {
     /// <summary>
     /// The sub-folder a promoted team keeps its definition in (mirrors the forge renderer's
-    /// <c>CrewDirectoryName</c> and Studio's <c>RunTargetDetector.PromotedCrewDirectoryName</c>).
+    /// <c>CrewDirectoryName</c>).
     /// </summary>
     public const string PromotedCrewFolder = "crew";
 

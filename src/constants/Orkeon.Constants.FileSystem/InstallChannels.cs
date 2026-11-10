@@ -6,7 +6,7 @@ namespace Orkeon.Constants.FileSystem;
 /// <para>
 /// The marker is written by whoever packs or installs — a packaging script, an MSI build, the
 /// Debian package, the Homebrew formula — and read by <c>orkeon doctor</c> and
-/// <c>orkeon --version --verbose</c>; Orkeon Studio reads the same names. Nothing deduces a
+/// <c>orkeon --version --verbose</c>. Nothing deduces a
 /// channel from the shape of an installation, with one exception: a dotnet tool carries no
 /// marker and is known by the path NuGet gives it.
 /// </para>

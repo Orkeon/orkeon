@@ -25,7 +25,7 @@ public static class EnvironmentVariableNames
     public const string SettingsPrefix = "ORKEON_";
 
     /// <summary>
-    /// The variable <c>orkeon init --api-key-env</c> and Orkeon Studio propose for the key of the
+    /// The variable <c>orkeon init --api-key-env</c> proposes for the key of the
     /// default model: the one the configuration reads natively as <c>Llm:ApiKey</c>.
     /// </summary>
     public const string LlmApiKeySetting = "ORKEON_Llm__ApiKey";
@@ -42,17 +42,8 @@ public static class EnvironmentVariableNames
     /// <summary>Where the scripting toolchain finds esbuild.</summary>
     public const string EsbuildPath = "ORKEON_ESBUILD_PATH";
 
-    /// <summary>The directory Orkeon Studio looks for the <c>orkeon</c> executable in.</summary>
-    public const string CliDirectory = "ORKEON_CLI_DIR";
-
-    /// <summary>The folder Orkeon Studio keeps its teams in.</summary>
-    public const string StudioTeamsRoot = "ORKEON_STUDIO_TEAMS_ROOT";
-
     /// <summary>The variable <c>orkeon llm</c> reads a key from when <c>--api-key-env</c> names no other.</summary>
     public const string LlmCommandApiKey = "ORKEON_LLM_API_KEY";
-
-    /// <summary>The variable Orkeon Studio keeps the key of an OpenAI-compatible model setting in.</summary>
-    public const string CustomLlmApiKey = "ORKEON_CUSTOM_LLM_API_KEY";
 
     /// <summary>The bot token of the Discord channel, unless the settings name another variable.</summary>
     public const string DiscordToken = "ORKEON_DISCORD_TOKEN";
@@ -84,9 +75,6 @@ public static class EnvironmentVariableNames
     private const string Cli = "orkeon";
     private const string ServiceHost = "orkeon-host";
     private const string Repl = "orkeon-repl";
-    private const string Studio = "orkeon-studio";
-    private const string StudioConfig = "orkeon-studio-config";
-    private const string StudioRun = "orkeon-studio-run";
 
     /// <summary>
     /// Every variable a binary reads by its name, in the order the reference lists them: Orkeon's
@@ -116,16 +104,7 @@ public static class EnvironmentVariableNames
         new(OllamaBaseUrl, [Cli, ServiceHost, Repl], "the address of an Ollama server",
             "The address the Ollama provider uses when it is given none: `Llm:BaseUrl` wins over it, and " +
             "`http://localhost:11434` is what remains without either."),
-        new(CliDirectory, [Studio, StudioConfig, StudioRun], "a directory",
-            "Where Orkeon Studio looks for the `orkeon` executable, after `--cli-dir` and its own install directory, " +
-            "before `PATH`."),
-        new(StudioTeamsRoot, [Studio, StudioRun], "a fully qualified directory",
-            "The folder Orkeon Studio keeps its teams in. It wins over `--teams-root` and over the folder chosen in " +
-            "Settings › Studio."),
-        new(CustomLlmApiKey, [Studio, StudioConfig], "an API key",
-            "The variable Orkeon Studio proposes for the key of an OpenAI-compatible model setting, and writes in that " +
-            "setting's `ApiKeyEnvVar`: a run reads it through that key, not by this name."),
-        new(TuiDriver, [Repl, StudioConfig, StudioRun], "`windows`, `dotnet` or `ansi`",
+        new(TuiDriver, [Repl], "`windows`, `dotnet` or `ansi`",
             "The Terminal.Gui driver of the text interfaces, for diagnosis. Unset: `windows` under Windows, `dotnet` " +
             "elsewhere — `ansi` draws nothing under WSL and in many container terminals."),
         new(TuiDiagnostics, [Repl], "`1`",
@@ -133,13 +112,12 @@ public static class EnvironmentVariableNames
         new(OtlpEndpoint, [Cli, ServiceHost], "the address of an OTLP collector",
             "Turns the OpenTelemetry export on when `Telemetry:OtlpEndpoint` is empty; the exporter reads the address, " +
             "and the other `OTEL_EXPORTER_OTLP_*` variables, by itself."),
-        new(XdgConfigHome, [Cli, ServiceHost, Repl, StudioConfig, StudioRun], "an absolute directory",
+        new(XdgConfigHome, [Cli, ServiceHost, Repl], "an absolute directory",
             "Under Linux and macOS, the root of the per-user settings — `$XDG_CONFIG_HOME/Orkeon/appsettings.json`, " +
             "`~/.config` when it is unset — and of the systemd user units `orkeon forge schedule` installs."),
-        new(ContinuousIntegration, [Repl, StudioConfig, StudioRun], "`true`",
-            "No text interface opens: `orkeon-repl` falls back to its plain console, the two Studio terminal " +
-            "applications say they need a terminal and exit."),
-        new(Terminal, [Repl, StudioConfig, StudioRun], "a terminal type",
+        new(ContinuousIntegration, [Repl], "`true`",
+            "No text interface opens: `orkeon-repl` falls back to its plain console."),
+        new(Terminal, [Repl], "a terminal type",
             "Under Linux, unset or empty has the effect of `CI=true`: there is no terminal to draw in."),
     ];
 

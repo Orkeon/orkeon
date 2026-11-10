@@ -133,7 +133,7 @@ public sealed class RunnerExecutionMailRightsTests : IDisposable
         Assert.StartsWith("ERROR: ", lastLine, StringComparison.Ordinal);
         Assert.Contains("email_send", lastLine, StringComparison.Ordinal);
         Assert.Contains("Send", lastLine, StringComparison.Ordinal);
-        Assert.Contains("Settings › E-mail", lastLine, StringComparison.Ordinal);
+        Assert.Contains("Orkeon:Tools:Email:Accounts", lastLine, StringComparison.Ordinal);
     }
 
     private Task<(int exit, string stderr)> RunAsync(Action<IServiceCollection> configure)

@@ -153,7 +153,7 @@ public sealed class ForgeCrewAssistantTests : IDisposable
     /// <summary>
     /// The production assistant over <paramref name="provider"/>; <paramref name="crewTools"/> are
     /// stub tools added to the catalogue the blueprint prompt shows, <paramref name="reference"/>
-    /// the use case the composition starts from (STUDIO-40), <paramref name="session"/> another
+    /// the use case the composition starts from, <paramref name="session"/> another
     /// session than the fixture's.
     /// </summary>
     private ForgeCrewAssistant Build(
@@ -178,7 +178,7 @@ public sealed class ForgeCrewAssistantTests : IDisposable
             .AddSingleton<ILlmDeltaSink>(_tally)
             .AddSingleton<IBaseTool>(new BriefSubmitTool(_box))
             .AddSingleton<IBaseTool>(new BlueprintSubmitTool(_box))
-            // The way every provider reaches a host: metered for the tally above (STUDIO-42).
+            // The way every provider reaches a host: metered for the tally above.
             .AddOrkeonLlmProvider(_ => provider);
         foreach (var tool in crewTools ?? [])
             services.AddSingleton<IBaseTool>(new StubBaseTool(tool) { Description = $"The {tool} tool." });
@@ -187,7 +187,7 @@ public sealed class ForgeCrewAssistantTests : IDisposable
     }
 
     /// <summary>
-    /// STUDIO-40, D-02: the use case the user started from reaches the composer as a model of
+    /// The use case the user started from reaches the composer as a model of
     /// structure — in the blueprint phase only, right after the tool catalogue, so the start of
     /// the header stays the same for every session, and cut down to that catalogue.
     /// </summary>
@@ -300,7 +300,7 @@ public sealed class ForgeCrewAssistantTests : IDisposable
     }
 
     /// <summary>
-    /// STUDIO-57. What the user put in a folder kept inside the team reaches the design prompt,
+    /// What the user put in a folder kept inside the team reaches the design prompt,
     /// by names relative to the folder, so the tasks are made for the files that are there.
     /// </summary>
     [Fact]
@@ -387,7 +387,7 @@ public sealed class ForgeCrewAssistantTests : IDisposable
     }
 
     /// <summary>
-    /// STUDIO-45: step 1 no longer asks how often, where from or what out. The interview
+    /// Step 1 no longer asks how often, where from or what out. The interview
     /// asks about input and output only when the request leaves them unsaid, a complete
     /// request goes through with no question at all, and frequency is never its business —
     /// the wizard's adoption step schedules.
@@ -483,7 +483,7 @@ public sealed class ForgeCrewAssistantTests : IDisposable
     /// phase», with the interview visibly running.
     /// <para>
     /// Every seam between the model call and the wire had its own test, and all of them were
-    /// green: the tally splits, the stage reports, the engine emits, Studio binds. None of
+    /// green: the tally splits, the stage reports, the engine emits, a client binds. None of
     /// them ran the REAL assistant against a REAL stage, which is the only place a live meter
     /// can actually go missing. This is that test — the production assistant, the embedded
     /// pack, a real <see cref="BriefStage"/> and a real writer — and <c>cost.updated</c> must

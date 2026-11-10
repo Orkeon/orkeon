@@ -24,7 +24,7 @@ namespace Orkeon.Infrastructure.LLMs;
 /// <remarks>
 /// The only place a vendor provider is built, and therefore the place it is metered and limited:
 /// every provider comes out wrapped in <see cref="MeteredLlmProvider"/> when the host registered an
-/// <see cref="ILlmUsageSink"/> (STUDIO-42), and in the host's <see cref="RateLimitedLlmProvider"/>
+/// <see cref="ILlmUsageSink"/>, and in the host's <see cref="RateLimitedLlmProvider"/>
 /// when it registered an <see cref="ILlmRateLimiter"/> (GAP-38). A provider built anywhere else
 /// would spend tokens no meter sees, past every cap — an architecture test holds that line.
 /// </remarks>

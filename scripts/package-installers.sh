@@ -9,9 +9,8 @@
 #                                 [--app-set full|cli] [--keep-stage all|none|"RIDS"]
 #                                 [--no-archive]
 #
-# --app-set cli ships the `orkeon` CLI plus the apps for the platform (win-x64:
-# `orkeon-studio`; linux-*: `orkeon-repl`, `orkeon-studio-config` and
-# `orkeon-studio-run`; osx-*: CLI only) as orkeon-cli-<ver>-<rid>.{zip,tar.gz};
+# --app-set cli ships the `orkeon` CLI plus the apps for the platform (linux-*:
+# `orkeon-repl`; win-x64 and osx-*: CLI only) as orkeon-cli-<ver>-<rid>.{zip,tar.gz};
 # full (the default) keeps the historical every-app archive.
 #
 # --keep-stage decides what becomes of the per-RID staging trees under
@@ -128,15 +127,11 @@ esbuild_lock_integrity() { # $1=npm-rid
 # depends on a dotnet-runtime package.
 # The optional 5th column is a space-separated RID filter: empty = publish for
 # every RID (the historical behaviour); non-empty = publish only for the listed
-# RIDs. The WPF `orkeon-studio` is the motivating case — WPF cannot target
-# non-Windows RIDs, so publishing it for linux/osx would fail the whole run.
+# RIDs.
 APPS=(
   "orkeon|src/scripting/Orkeon.Scripting.Cli/Orkeon.Scripting.Cli.csproj|orkeon|true"
   "orkeon-slim|src/scripting/Orkeon.Scripting.Cli/Orkeon.Scripting.Cli.csproj|orkeon|false"
   "orkeon-repl|src/apps/Orkeon.ConsoleApp/Orkeon.ConsoleApp.csproj|Orkeon.ConsoleApp|true"
-  "orkeon-studio|src/apps/Orkeon.Studio.Wpf/Orkeon.Studio.Wpf.csproj|Orkeon.Studio|true|win-x64"
-  "orkeon-studio-config|src/apps/Orkeon.Studio.Config/Orkeon.Studio.Config.csproj|Orkeon.Studio.Config|true|"
-  "orkeon-studio-run|src/apps/Orkeon.Studio.Run/Orkeon.Studio.Run.csproj|Orkeon.Studio.Run|true|"
   # The service host (GATE-05). Self-contained: a daemon supervised by systemd or the
   # Windows SCM must not depend on a runtime someone may upgrade underneath it.
   "orkeon-host|src/hosting/Orkeon.Host/Orkeon.Host.csproj|orkeon-host|true|"
@@ -148,9 +143,8 @@ rid_allowed() { # $1=rids-filter $2=rid
 }
 
 # --app-set cli ships the onboarding binary plus the apps for the platform:
-# win-* adds the WPF `orkeon-studio`, linux-* adds the REPL (`orkeon-repl`) and the
-# two TUIs (`orkeon-studio-config` / `orkeon-studio-run`), osx-* stays CLI-only
-# (V1 — the Homebrew channel does not ship Studio yet). Same staging layout, same
+# win-* stays CLI-only, linux-* adds the REPL (`orkeon-repl`), osx-* stays CLI-only
+# (V1). Same staging layout, same
 # wrappers, same installer — the sets stay structurally interchangeable for
 # install.sh/ps1, which iterate over whatever bin/ contains. The MSI harvests the
 # win cli tree and the Homebrew formula the osx ones: neither grows the REPL.
@@ -158,8 +152,6 @@ cli_set_includes() { # $1=app-name $2=rid
   case "$1" in
     orkeon) return 0 ;;
     orkeon-repl) [[ "$2" == linux-* ]] ;;
-    orkeon-studio) [[ "$2" == win-* ]] ;;
-    orkeon-studio-config|orkeon-studio-run) [[ "$2" == linux-* ]] ;;
     *) return 1 ;;
   esac
 }

@@ -216,7 +216,7 @@ internal sealed class BlueprintSubmitTool : ForgeSubmitToolBase
 
 /// <summary>
 /// What a stretch of the session cost, split by direction: what went UP to the model and
-/// what came back DOWN. Studio shows the two separately (↑/↓) while the user waits, so
+/// what came back DOWN. A client can show the two separately (↑/↓) while the user waits, so
 /// the grand total alone is not enough to carry.
 /// </summary>
 /// <param name="PromptTokens">Ascending — everything sent to the model.</param>

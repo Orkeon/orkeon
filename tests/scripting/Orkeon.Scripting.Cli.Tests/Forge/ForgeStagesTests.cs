@@ -207,7 +207,7 @@ public sealed class ForgeStagesTests : IDisposable
         Assert.True(File.Exists(Path.Combine(session.Directory, "crew", "agents", "collecteur.yaml")));
 
         // The stream tells the whole story, ending paused — the folders are proposed between
-        // the brief and the plan (STUDIO-46), and brief.ready carries the confirmed list.
+        // the brief and the plan, and brief.ready carries the confirmed list.
         Assert.Equal(
             ["session.started", "stage.entered", "assistant.message", "folders.proposed", "brief.ready", "folders.filled",
              "stage.entered", "blueprint.ready", "stage.entered", "file.written", "file.written",

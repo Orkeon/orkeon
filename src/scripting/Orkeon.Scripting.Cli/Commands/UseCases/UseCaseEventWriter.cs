@@ -112,7 +112,7 @@ internal sealed class UseCaseEventWriter : OrkeonEventWriter
     }
 
     /// <summary>
-    /// One use case written as a team folder (STUDIO-41): its id, the folder, the team's name and
+    /// One use case written as a team folder: its id, the folder, the team's name and
     /// the language it was read in, the files written and the mounts the sidecar records.
     /// </summary>
     public void Exported(UseCaseExport export)

@@ -6,7 +6,7 @@ namespace Orkeon.Scripting.Cli.Commands.Forge;
 /// The engine's own version — what build of <c>orkeon</c> is actually running this session.
 /// <para>
 /// It rides on <c>session.started</c> because a client cannot otherwise tell an engine that
-/// reports nothing from an engine too old to report it. Studio launches whichever
+/// reports nothing from an engine too old to report it. A client launches whichever
 /// <c>orkeon</c> its locator finds first — the co-installed one, the one on <c>PATH</c>, the
 /// development tree's — and until this field existed, a session driven by a stale binary was
 /// indistinguishable on screen from a working one that simply had nothing to say. That

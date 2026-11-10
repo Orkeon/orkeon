@@ -12,9 +12,9 @@
   <img src="docs/assets/orkeon-mascot.png" alt="Kama, the Orkeon chameleon" width="320">
 </p>
 
-**Give a team of AI agents real work — your files, your inbox, your drives, your code — and know exactly what it may touch.** Orkeon is a .NET runtime that executes teams of agents under rules declared up front and enforced on every call, and a suite of tools — Orkeon Studio, Orkeon Workshop, Orkeon Code, the `orkeon` CLI — to design, try, run and manage those teams. It runs as happily on a model on your own machine as on a cloud provider; no API key to start.
+**Give a team of AI agents real work — your files, your inbox, your drives, your code — and know exactly what it may touch.** Orkeon is a .NET runtime that executes teams of agents under rules declared up front and enforced on every call, and a suite of tools — Orkeon Workshop, Orkeon Code, the `orkeon` CLI — to design, try, run and manage those teams. It runs as happily on a model on your own machine as on a cloud provider; no API key to start.
 
-MIT, .NET 10. Three repositories: this one (the runtime, the CLI, Studio), [orkeon-workshop](https://github.com/Orkeon/orkeon-workshop) and [orkeon-code](https://github.com/Orkeon/orkeon-code).
+MIT, .NET 10. Three repositories: this one (the runtime, the CLI), [orkeon-workshop](https://github.com/Orkeon/orkeon-workshop) and [orkeon-code](https://github.com/Orkeon/orkeon-code).
 
 ## What a team does for you
 
@@ -29,12 +29,11 @@ Each of these is a team you can describe in a sentence — `orkeon forge "a team
 
 ```mermaid
 flowchart LR
-    you(["You"]) --> studio["Orkeon Studio<br/>describe · compose · try · adopt"]
-    you --> workshop["Orkeon Workshop<br/>build it with Claude Code,<br/>prove it works"]
+    you(["You"]) --> workshop["Orkeon Workshop<br/>build it with Claude Code,<br/>prove it works"]
     you --> code["Orkeon Code<br/>a coding assistant<br/>on your repository"]
     you --> cli["orkeon CLI<br/>YAML · TypeScript (.ork.ts)"]
     you --> app["Your own .NET app<br/>C# builders, NuGet"]
-    studio & workshop & code & cli & app --> runtime["The Orkeon runtime<br/>virtual file system · budgets · sandbox<br/>124 tools · 16 LLM providers"]
+    workshop & code & cli & app --> runtime["The Orkeon runtime<br/>virtual file system · budgets · sandbox<br/>124 tools · 16 LLM providers"]
     runtime --> world(["Your files, mailboxes, drives, APIs<br/>— only the ones you mounted, with the rights you gave"])
 ```
 
@@ -75,13 +74,12 @@ Refused before any byte lands. CI runs both blocks on every change, against a pi
 
 | | |
 |---|---|
-| **Orkeon Studio** | The desktop app. **Describe → Compose → Try → Adopt**: say what the team should do, let the assistant propose the agents, their tasks and the folders they may touch — or start from one of the 104 use cases —, try it on a sample, adopt it on demand, hourly or daily. Then run it, follow what it costs, read the history, manage models, folders, mailboxes and drives from one settings screen. Novice or expert mode, five languages, no code. The desktop app is Windows; Linux gets two terminal apps, a settings editor and a run launcher — [Orkeon Studio](docs/architecture/studio.md). |
-| **Orkeon Workshop** | Claude Code, harnessed. A container image — Claude Code, the Orkeon CLI, local models on your GPU — and a method: need → tests → team → runs → accepted, every attempt and decision kept on disk, a paid run waiting for your approval. Teams come out ready for Studio; the same harness works on Orkeon itself — [Orkeon/orkeon-workshop](https://github.com/Orkeon/orkeon-workshop). |
+| **Orkeon Workshop** | Claude Code, harnessed. A container image — Claude Code, the Orkeon CLI, local models on your GPU — and a method: need → tests → team → runs → accepted, every attempt and decision kept on disk, a paid run waiting for your approval. Teams come out ready for the `orkeon` CLI; the same harness works on Orkeon itself — [Orkeon/orkeon-workshop](https://github.com/Orkeon/orkeon-workshop). |
 | **Orkeon Code** | A coding assistant on the Orkeon runtime. Pair with it in the terminal under the permission mode you choose, or let it run a task to the end; `/review`, `/commit`, `/security-review`, `/analyze`; one mounted project, an allow-listed shell. Alpha — [Orkeon/orkeon-code](https://github.com/Orkeon/orkeon-code). |
 | **`orkeon` CLI** | `orkeon run` executes a team written in YAML or TypeScript (`.ork.ts`); `orkeon forge "…"` drafts, sandbox-tests and promotes one from a sentence; `orkeon quickstart` writes the two-minute crew above; `init`, `doctor`, `email login` and `drive login` do the plumbing — [CLI reference](docs/reference/cli.md). |
 | **The library** | `dotnet add package Orkeon --prerelease` — the same engine inside your product: C# builders, Clean Architecture, typed end to end — [Bootstrap and execution](docs/getting-started/bootstrap.md). |
 
-The team you compose in Studio is the YAML the CLI runs, and the crew your own .NET code loads. One runtime, same rules, whichever door you take.
+The team you forge from a sentence is the YAML the CLI runs, and the crew your own .NET code loads. One runtime, same rules, whichever door you take.
 
 ## What's in the box
 
@@ -91,8 +89,8 @@ The team you compose in Studio is the YAML the CLI runs, and the crew your own .
 
 | | |
 |---|---|
-| **Windows** — CLI + Studio | `orkeon-cli-<version>-win-x64.zip` or the `.msi` from the [releases](https://github.com/Orkeon/orkeon/releases), then `install.cmd`. Self-contained. |
-| **Debian / Ubuntu** — CLI + Studio terminal apps | `sudo apt install orkeon` after adding the [signed apt source](docs/guides/install-with-apt.md). |
+| **Windows** — CLI | `orkeon-cli-<version>-win-x64.zip` or the `.msi` from the [releases](https://github.com/Orkeon/orkeon/releases), then `install.cmd`. Self-contained. |
+| **Debian / Ubuntu** — CLI | `sudo apt install orkeon` after adding the [signed apt source](docs/guides/install-with-apt.md). |
 | **macOS** — CLI | The `osx-arm64` / `osx-x64` tarball from the releases, then `./install.sh`. |
 | **Container** | `docker run -it --rm -e ORKEON_RUNNER=shell ghcr.io/orkeon/orkeon-runners` — the examples bundled. |
 | **In your .NET app** | `dotnet add package Orkeon --prerelease` (+ `Orkeon.Tools` for the built-in tools). |
@@ -102,7 +100,7 @@ Then `orkeon init` to pick a provider and a model; `orkeon doctor` when somethin
 
 ## Learn more
 
-[Getting started](docs/getting-started/overview.md) · [Write a team in YAML, TypeScript or C#](docs/getting-started/yaml-and-builders.md) · [Forge a team from a need](docs/getting-started/forge-a-team-from-a-need.md) · [Give your agents a mailbox](docs/getting-started/give-your-agents-a-mailbox.md) · [Local models](docs/guides/local-models.md) · [Orchestration](docs/orchestration/process-types.md) · [Orkeon Studio](docs/architecture/studio.md) · [Examples](https://github.com/Orkeon/orkeon/tree/main/examples) · [Full index](docs/INDEX.md) *(also [in French](docs/fr/INDEX.md))* — published at **<https://orkeon.github.io/orkeon/>**.
+[Getting started](docs/getting-started/overview.md) · [Write a team in YAML, TypeScript or C#](docs/getting-started/yaml-and-builders.md) · [Forge a team from a need](docs/getting-started/forge-a-team-from-a-need.md) · [Give your agents a mailbox](docs/getting-started/give-your-agents-a-mailbox.md) · [Local models](docs/guides/local-models.md) · [Orchestration](docs/orchestration/process-types.md) · [Examples](https://github.com/Orkeon/orkeon/tree/main/examples) · [Full index](docs/INDEX.md) *(also [in French](docs/fr/INDEX.md))* — published at **<https://orkeon.github.io/orkeon/>**.
 
 ## Join in
 

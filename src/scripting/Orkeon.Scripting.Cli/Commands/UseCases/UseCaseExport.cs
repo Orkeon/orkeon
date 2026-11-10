@@ -7,7 +7,7 @@ using Orkeon.Scripting.Cli.Commands.Forge;
 
 namespace Orkeon.Scripting.Cli.Commands.UseCases;
 
-/// <summary>What <c>orkeon usecases export</c> wrote (STUDIO-41): the <c>usecases.exported</c> answer.</summary>
+/// <summary>What <c>orkeon usecases export</c> wrote: the <c>usecases.exported</c> answer.</summary>
 internal sealed record UseCaseExport
 {
     /// <summary>The use case written.</summary>
@@ -33,11 +33,11 @@ internal sealed record UseCaseExport
 }
 
 /// <summary>
-/// Writes one use case as a team folder (STUDIO-41, D-02) — the shape of a promoted team, less
+/// Writes one use case as a team folder — the shape of a promoted team, less
 /// what only a workshop session can say. <c>crew/</c> holds the example's crew file byte for
 /// byte; <c>data/</c> its sample data; a folder stands behind each team-relative mount of the
-/// manifest (<c>output/</c> for every crew that writes files); and <c>studio-team.json</c> names
-/// the team, describes it and records those mounts the way Studio records its own
+/// manifest (<c>output/</c> for every crew that writes files); and <c>team.json</c> names
+/// the team, describes it and records those mounts the way a team sidecar records its own
 /// (<c>./data:/data:ro</c>). No <c>forge.json</c> and no launchers: no session made this team,
 /// and <c>forge reopen</c> rebuilds one from <c>crew/</c> the first time the team is modified.
 /// Only the manifest's mounts are recorded — an input folder the manifest does not declare is
@@ -51,7 +51,7 @@ internal static class UseCaseExporter
     /// <summary>The sample data's folder, in an example and in its team alike.</summary>
     public const string DataDirectoryName = "data";
 
-    /// <summary>What a team-relative physical segment starts with — Studio's sidecar convention.</summary>
+    /// <summary>What a team-relative physical segment starts with — the sidecar convention.</summary>
     public const string RelativePrefix = "./";
 
     private static readonly JsonSerializerOptions SidecarOptions = new()
@@ -150,7 +150,7 @@ internal static class UseCaseExporter
     /// <summary>
     /// The folder a team-relative mount names — <c>data</c> for <c>./data:/data:ro</c> — or null
     /// for anything else: an absolute or unreadable entry, and a <c>./</c> segment that would
-    /// leave the team (<c>./../x</c>) or names no folder. Studio reads the same rule.
+    /// leave the team (<c>./../x</c>) or names no folder. A client reading the sidecar applies the same rule.
     /// </summary>
     internal static string? TeamFolderOf(string mount)
     {
@@ -208,8 +208,8 @@ internal static class UseCaseExporter
     }
 
     /// <summary>
-    /// <c>studio-team.json</c>, under the names Studio's <c>StudioTeamMetadata</c> reads: the CLI
-    /// and Studio cannot reference each other, so the shape is pinned by a golden test on each side.
+    /// <c>team.json</c>, under the names the team sidecar's readers expect: those readers live
+    /// outside Orkeon and share no type with the CLI, so the shape is pinned by a golden test.
     /// </summary>
     private sealed record Sidecar(
         [property: JsonPropertyName("name")] string Name,

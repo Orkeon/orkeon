@@ -5,7 +5,7 @@
 # ADR-009 — A constant two projects must agree on lives in a satellite, not in a copy
 
 **Status**: Accepted — implemented: the five satellites listed under *As built* exist under `src/constants/` · **Date**: 2026-08-29
-· **Scope**: `src/constants/*`, `Orkeon.Domain`, `Orkeon.Infrastructure`, `Orkeon.Hosting`, `Orkeon.Studio.Core`
+· **Scope**: `src/constants/*`, `Orkeon.Domain`, `Orkeon.Infrastructure`, `Orkeon.Hosting`
 
 ## Context
 
@@ -15,15 +15,15 @@ projects, in a shape that never varies — `static class` holding `const`, no re
 pressed into service as string holders.
 
 What is not solved is **agreement between projects that are forbidden from referencing each
-other**. `Orkeon.Studio.Core` may not reference `Orkeon.Infrastructure` or `Orkeon.Hosting`:
-Studio is a host application, and taking a dependency on the runtime's internals would invert
-the layering the Clean Architecture rule exists to protect. But Studio needs the same values the
-runtime uses — the LLM endpoint it writes into a settings file must be the endpoint the provider
-will call, and the virtual root it predicts in a launch preview must be the root the runner
-mounts.
+other**. `Orkeon.Studio.Core` (Orkeon Studio, now in its own repository) could not reference
+`Orkeon.Infrastructure` or `Orkeon.Hosting`: Studio is a host application, and taking a dependency
+on the runtime's internals would invert the layering the Clean Architecture rule exists to
+protect. But Studio needed the same values the runtime uses — the LLM endpoint it writes into
+a settings file must be the endpoint the provider will call, and the virtual root it predicts
+in a launch preview must be the root the runner mounts.
 
 The way out taken so far was to **copy the values by hand and guard the copies with a test**.
-`tests/apps/Orkeon.Studio.Core.Tests/ConstantDriftTests.cs` exists for no other reason. It pins
+`tests/apps/Orkeon.Studio.Core.Tests/ConstantDriftTests.cs` existed for no other reason. It pins
 eight families:
 
 | Family | Source of truth | Hand-written copy |
@@ -128,7 +128,7 @@ assembly ships alone.
   whose identity it is. Moving it away buys nothing and costs a lookup. Only the *references* to
   a tool name from other projects are candidates.
 - **User-facing text.** Shared wording (WIN-01) is a constant like any other, but text that
-  belongs to Studio's localisation flows through `IStudioStrings` and stays there.
+  belongs to a client's localisation flows through that client's own strings port and stays there.
 - **Retrieval tuning parameters.** `Bm25CodeIndex` (Analysis) and `Bm25Index` (Rag) both carry
   `k1 = 1.2`, `b = 0.75`, and both rank-fusion helpers carry `k = 60`. Those are the values from
   the literature, reached independently, not an agreement between the two subsystems: prose chunks
@@ -157,3 +157,7 @@ the umbrella, and `PublicAPI.*.txt` still guards it.
 
 - The "Source of truth" table lists the copies as they stood when this ADR was written (2026-08-29), before the migration into the satellites; the endpoint and default-model constants it places under `Constants/Llm/` now live in `Orkeon.Constants.Llm`.
 - `Hosting/RunnerMounts.cs` is now `RunnerVirtualRoots` (`src/constants/Orkeon.Constants.FileSystem/RunnerVirtualRoots.cs`), and `RunnerMounts.CrewVirtualRoot` is `RunnerVirtualRoots.Crew`.
+
+## Amendment (2026-11-10)
+
+Orkeon Studio moved to its own repository (Orkeon/orkeon-studio). `Orkeon.Studio.Core`, its hand-written copies and `ConstantDriftTests` left this repository; the decision stands, and the satellites remain the shared vocabulary for any project that may not reference the runtime's internals. The tables above describe the repository as it stood when the ADR was written.

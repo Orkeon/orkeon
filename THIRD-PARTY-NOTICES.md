@@ -7,7 +7,7 @@ notices their licenses require.
 one of: (a) its bits are **redistributed** by this repository's packages or release
 artifacts, so its license's notice obligations attach to us — the `orkeon` and
 `orkeon-repl` dotnet tools and the installers and archives built from the binaries
-(`orkeon-host` and Orkeon Studio included) redistribute the **whole runtime closure**
+(`orkeon-host` included) redistribute the **whole runtime closure**
 of those binaries, every package of which is listed in the generated inventory that
 closes this file, and the model weights they embed are covered by sections 2 and 7;
 (b) its package metadata is missing or misleading and the license **provenance had to
@@ -24,9 +24,8 @@ there, as Apache.Arrow's `NOTICE` is in section 5.
 **Written by hand, and generated.** The numbered sections below are written by hand:
 provenance established, decisions recorded, upstream texts retrieved from their
 repositories. The inventory after them is written by `scripts/third-party-notices.py`,
-from the restored `project.assets.json` of the six applications the tool packages, the
-installers and the container images publish (`orkeon`, `orkeon-repl`, `orkeon-host`,
-`orkeon-studio`, `orkeon-studio-config`, `orkeon-studio-run`) and from the `.nuspec`
+from the restored `project.assets.json` of the three applications the tool packages, the
+installers and the container images publish (`orkeon`, `orkeon-repl`, `orkeon-host`) and from the `.nuspec`
 files of the local NuGet cache, never the network: every package version of their
 runtime closure with its license, copyright and project URL, then the license files and
 the notices those packages ship, copied verbatim. CI runs it with `--check` and fails
@@ -42,8 +41,7 @@ and under `/usr/share/doc/orkeon/` in the Debian package and in the container im
 beside `LICENSE.md` in the images. The .NET runtime the self-contained installers bundle
 is not a package of the closure: its license and third-party notices are those of the
 runtime packs the publish used, copied byte for byte at packaging time into the payload's
-`licenses/<pack>/` — `licenses/Microsoft.NETCore.App.Runtime.<rid>/`, and
-`licenses/Microsoft.WindowsDesktop.App.Runtime.win-x64/` beside Orkeon Studio on Windows
+`licenses/<pack>/` — `licenses/Microsoft.NETCore.App.Runtime.<rid>/`
 (`/usr/share/doc/orkeon/licenses/` in the Debian package). The container images run their
 applications on Microsoft's .NET runtime base image, which carries its own.
 
@@ -820,10 +818,9 @@ Written by `scripts/third-party-notices.py`, never by hand: after a package chan
 `python3 scripts/third-party-notices.py` and commit the result. CI runs it with `--check`
 after its restore, and fails while this section lags the restored closure.
 
-Every package the applications this repository ships redistribute: `orkeon`,
-`orkeon-repl`, `orkeon-host`, `orkeon-studio`, `orkeon-studio-config` and
-`orkeon-studio-run`. A package is listed when its restored target puts at least one file
-in the build output: a managed or satellite assembly, a native or RID-specific library, a
+Every package the applications this repository ships redistribute: `orkeon`, `orkeon-repl`
+and `orkeon-host`. A package is listed when its restored target puts at least one file in
+the build output: a managed or satellite assembly, a native or RID-specific library, a
 content file copied to the output. Compilers, analyzers and meta-packages put none there
 and are left out. 151 package versions of 151 packages.
 
@@ -860,7 +857,7 @@ hand-written section above also covers points to it (§).
 | BouncyCastle.Cryptography (§10) | 2.7.0 | MIT | Copyright © Legion of the Bouncy Castle Inc. 2000-2026 | <https://www.bouncycastle.org/stable/nuget/csharp/website> | orkeon, orkeon-repl, orkeon-host | L2 |
 | ClosedXML | 0.105.1 | MIT | — | <https://github.com/ClosedXML/ClosedXML> | orkeon, orkeon-repl, orkeon-host | — |
 | ClosedXML.Parser | 2.0.0 | MIT | — | <https://github.com/ClosedXML/ClosedXML.Parser> | orkeon, orkeon-repl, orkeon-host | — |
-| ColorHelper | 1.8.1 | MIT | — | <https://github.com/iamartyom/ColorHelper> | orkeon-repl, orkeon-studio-config, orkeon-studio-run | — |
+| ColorHelper | 1.8.1 | MIT | — | <https://github.com/iamartyom/ColorHelper> | orkeon-repl | — |
 | CommandLineParser | 2.9.1 | file `License.md` | Copyright (c) 2005 - 2020 Giacomo Stelluti Scala & Contributors | <https://github.com/commandlineparser/commandline> | orkeon, orkeon-repl, orkeon-host | L3 |
 | CsvHelper | 33.1.0 | MS-PL OR Apache-2.0 | Copyright © 2009-2024 Josh Close | <https://joshclose.github.io/CsvHelper/> | orkeon, orkeon-repl, orkeon-host | — |
 | Discord.Net.Commands | 3.20.2 | MIT | — | <https://github.com/Discord-Net/Discord.Net> | orkeon-host | — |
@@ -878,10 +875,10 @@ hand-written section above also covers points to it (§).
 | Google.Protobuf | 3.30.2 | BSD-3-Clause | Copyright 2015, Google Inc. | <https://github.com/protocolbuffers/protobuf> | orkeon, orkeon-repl, orkeon-host | — |
 | Gremlin.Net | 3.8.2 | Apache-2.0 | — | <https://tinkerpop.apache.org/> | orkeon, orkeon-repl, orkeon-host | L4, N1 |
 | HtmlAgilityPack (§11) | 1.13.1 | MIT | Copyright © ZZZ Projects Inc. | <http://html-agility-pack.net/> | orkeon, orkeon-repl, orkeon-host | — |
-| JetBrains.Annotations | 2026.2.0 | MIT | Copyright (c) 2016-2025 JetBrains s.r.o. | <https://www.jetbrains.com/help/resharper/Code_Analysis__Code_Annotations.html> | orkeon-repl, orkeon-studio-config, orkeon-studio-run | — |
+| JetBrains.Annotations | 2026.2.0 | MIT | Copyright (c) 2016-2025 JetBrains s.r.o. | <https://www.jetbrains.com/help/resharper/Code_Analysis__Code_Annotations.html> | orkeon-repl | — |
 | Jint (§6) | 4.17.0 | BSD-2-Clause | Sebastien Ros | <https://github.com/sebastienros/jint> | orkeon, orkeon-repl, orkeon-host | — |
 | MailKit (§8) | 4.18.2 | MIT | .NET Foundation and Contributors | <http://www.mimekit.net/> | orkeon, orkeon-repl, orkeon-host | — |
-| Markdig | 1.5.0 | BSD-2-Clause | Alexandre Mutel | <https://xoofx.github.io/markdig> | orkeon, orkeon-repl, orkeon-host, orkeon-studio-config, orkeon-studio-run | — |
+| Markdig | 1.5.0 | BSD-2-Clause | Alexandre Mutel | <https://xoofx.github.io/markdig> | orkeon, orkeon-repl, orkeon-host | — |
 | Microsoft.Bcl.AsyncInterfaces | 10.0.3 | MIT | © Microsoft Corporation. All rights reserved. | <https://dot.net/> | orkeon, orkeon-repl, orkeon-host | N2 |
 | Microsoft.Bcl.Cryptography | 10.0.2 | MIT | © Microsoft Corporation. All rights reserved. | <https://dot.net/> | orkeon, orkeon-repl, orkeon-host | N2 |
 | Microsoft.CodeAnalysis.Common | 5.9.0 | MIT | © Microsoft Corporation. All rights reserved. | <https://github.com/dotnet/roslyn> | orkeon, orkeon-repl, orkeon-host | N3 |
@@ -898,39 +895,39 @@ hand-written section above also covers points to it (§).
 | Microsoft.Extensions.AI.OpenAI | 10.11.0 | MIT | © Microsoft Corporation. All rights reserved. | <https://dot.net/> | orkeon, orkeon-repl, orkeon-host | — |
 | Microsoft.Extensions.Caching.Abstractions | 10.0.13 | MIT | © Microsoft Corporation. All rights reserved. | <https://dot.net/> | orkeon, orkeon-repl, orkeon-host | N2 |
 | Microsoft.Extensions.Caching.Memory | 9.0.18 | MIT | © Microsoft Corporation. All rights reserved. | <https://dot.net/> | orkeon, orkeon-repl, orkeon-host | L6, N4 |
-| Microsoft.Extensions.Configuration | 10.0.13 | MIT | © Microsoft Corporation. All rights reserved. | <https://dot.net/> | orkeon, orkeon-repl, orkeon-host, orkeon-studio-config, orkeon-studio-run | N2 |
-| Microsoft.Extensions.Configuration.Abstractions | 10.0.13 | MIT | © Microsoft Corporation. All rights reserved. | <https://dot.net/> | orkeon, orkeon-repl, orkeon-host, orkeon-studio-config, orkeon-studio-run | N2 |
-| Microsoft.Extensions.Configuration.Binder | 10.0.13 | MIT | © Microsoft Corporation. All rights reserved. | <https://dot.net/> | orkeon, orkeon-repl, orkeon-host, orkeon-studio-config, orkeon-studio-run | N2 |
+| Microsoft.Extensions.Configuration | 10.0.13 | MIT | © Microsoft Corporation. All rights reserved. | <https://dot.net/> | orkeon, orkeon-repl, orkeon-host | N2 |
+| Microsoft.Extensions.Configuration.Abstractions | 10.0.13 | MIT | © Microsoft Corporation. All rights reserved. | <https://dot.net/> | orkeon, orkeon-repl, orkeon-host | N2 |
+| Microsoft.Extensions.Configuration.Binder | 10.0.13 | MIT | © Microsoft Corporation. All rights reserved. | <https://dot.net/> | orkeon, orkeon-repl, orkeon-host | N2 |
 | Microsoft.Extensions.Configuration.CommandLine | 10.0.13 | MIT | © Microsoft Corporation. All rights reserved. | <https://dot.net/> | orkeon, orkeon-repl, orkeon-host | N2 |
 | Microsoft.Extensions.Configuration.EnvironmentVariables | 10.0.13 | MIT | © Microsoft Corporation. All rights reserved. | <https://dot.net/> | orkeon, orkeon-repl, orkeon-host | N2 |
-| Microsoft.Extensions.Configuration.FileExtensions | 10.0.13 | MIT | © Microsoft Corporation. All rights reserved. | <https://dot.net/> | orkeon, orkeon-repl, orkeon-host, orkeon-studio-config, orkeon-studio-run | N2 |
-| Microsoft.Extensions.Configuration.Json | 10.0.13 | MIT | © Microsoft Corporation. All rights reserved. | <https://dot.net/> | orkeon, orkeon-repl, orkeon-host, orkeon-studio-config, orkeon-studio-run | N2 |
+| Microsoft.Extensions.Configuration.FileExtensions | 10.0.13 | MIT | © Microsoft Corporation. All rights reserved. | <https://dot.net/> | orkeon, orkeon-repl, orkeon-host | N2 |
+| Microsoft.Extensions.Configuration.Json | 10.0.13 | MIT | © Microsoft Corporation. All rights reserved. | <https://dot.net/> | orkeon, orkeon-repl, orkeon-host | N2 |
 | Microsoft.Extensions.Configuration.UserSecrets | 10.0.13 | MIT | © Microsoft Corporation. All rights reserved. | <https://dot.net/> | orkeon, orkeon-repl, orkeon-host | N2 |
 | Microsoft.Extensions.DependencyInjection | 10.0.13 | MIT | © Microsoft Corporation. All rights reserved. | <https://dot.net/> | orkeon, orkeon-repl, orkeon-host | N2 |
-| Microsoft.Extensions.DependencyInjection.Abstractions | 10.0.13 | MIT | © Microsoft Corporation. All rights reserved. | <https://dot.net/> | orkeon, orkeon-repl, orkeon-host, orkeon-studio, orkeon-studio-config, orkeon-studio-run | N2 |
+| Microsoft.Extensions.DependencyInjection.Abstractions | 10.0.13 | MIT | © Microsoft Corporation. All rights reserved. | <https://dot.net/> | orkeon, orkeon-repl, orkeon-host | N2 |
 | Microsoft.Extensions.Diagnostics | 10.0.13 | MIT | © Microsoft Corporation. All rights reserved. | <https://dot.net/> | orkeon, orkeon-repl, orkeon-host | N2 |
 | Microsoft.Extensions.Diagnostics.Abstractions | 10.0.13 | MIT | © Microsoft Corporation. All rights reserved. | <https://dot.net/> | orkeon, orkeon-repl, orkeon-host | N2 |
 | Microsoft.Extensions.Diagnostics.HealthChecks | 10.0.13 | MIT | © Microsoft Corporation. All rights reserved. | <https://asp.net/> | orkeon, orkeon-repl, orkeon-host | N5 |
 | Microsoft.Extensions.Diagnostics.HealthChecks.Abstractions | 10.0.13 | MIT | © Microsoft Corporation. All rights reserved. | <https://asp.net/> | orkeon, orkeon-repl, orkeon-host | N5 |
-| Microsoft.Extensions.FileProviders.Abstractions | 10.0.13 | MIT | © Microsoft Corporation. All rights reserved. | <https://dot.net/> | orkeon, orkeon-repl, orkeon-host, orkeon-studio-config, orkeon-studio-run | N2 |
-| Microsoft.Extensions.FileProviders.Physical | 10.0.13 | MIT | © Microsoft Corporation. All rights reserved. | <https://dot.net/> | orkeon, orkeon-repl, orkeon-host, orkeon-studio-config, orkeon-studio-run | N2 |
-| Microsoft.Extensions.FileSystemGlobbing | 10.0.13 | MIT | © Microsoft Corporation. All rights reserved. | <https://dot.net/> | orkeon, orkeon-repl, orkeon-host, orkeon-studio-config, orkeon-studio-run | N2 |
+| Microsoft.Extensions.FileProviders.Abstractions | 10.0.13 | MIT | © Microsoft Corporation. All rights reserved. | <https://dot.net/> | orkeon, orkeon-repl, orkeon-host | N2 |
+| Microsoft.Extensions.FileProviders.Physical | 10.0.13 | MIT | © Microsoft Corporation. All rights reserved. | <https://dot.net/> | orkeon, orkeon-repl, orkeon-host | N2 |
+| Microsoft.Extensions.FileSystemGlobbing | 10.0.13 | MIT | © Microsoft Corporation. All rights reserved. | <https://dot.net/> | orkeon, orkeon-repl, orkeon-host | N2 |
 | Microsoft.Extensions.Hosting | 10.0.13 | MIT | © Microsoft Corporation. All rights reserved. | <https://dot.net/> | orkeon, orkeon-repl, orkeon-host | N2 |
 | Microsoft.Extensions.Hosting.Abstractions | 10.0.13 | MIT | © Microsoft Corporation. All rights reserved. | <https://dot.net/> | orkeon, orkeon-repl, orkeon-host | N2 |
 | Microsoft.Extensions.Hosting.Systemd | 10.0.13 | MIT | © Microsoft Corporation. All rights reserved. | <https://dot.net/> | orkeon-host | N2 |
 | Microsoft.Extensions.Hosting.WindowsServices | 10.0.13 | MIT | © Microsoft Corporation. All rights reserved. | <https://dot.net/> | orkeon-host | N2 |
 | Microsoft.Extensions.Http | 10.0.13 | MIT | © Microsoft Corporation. All rights reserved. | <https://dot.net/> | orkeon, orkeon-repl, orkeon-host | N2 |
 | Microsoft.Extensions.Logging | 10.0.13 | MIT | © Microsoft Corporation. All rights reserved. | <https://dot.net/> | orkeon, orkeon-repl, orkeon-host | N2 |
-| Microsoft.Extensions.Logging.Abstractions | 10.0.13 | MIT | © Microsoft Corporation. All rights reserved. | <https://dot.net/> | orkeon, orkeon-repl, orkeon-host, orkeon-studio, orkeon-studio-config, orkeon-studio-run | N2 |
+| Microsoft.Extensions.Logging.Abstractions | 10.0.13 | MIT | © Microsoft Corporation. All rights reserved. | <https://dot.net/> | orkeon, orkeon-repl, orkeon-host | N2 |
 | Microsoft.Extensions.Logging.Configuration | 10.0.13 | MIT | © Microsoft Corporation. All rights reserved. | <https://dot.net/> | orkeon, orkeon-repl, orkeon-host | N2 |
 | Microsoft.Extensions.Logging.Console | 10.0.13 | MIT | © Microsoft Corporation. All rights reserved. | <https://dot.net/> | orkeon, orkeon-repl, orkeon-host | N2 |
 | Microsoft.Extensions.Logging.Debug | 10.0.13 | MIT | © Microsoft Corporation. All rights reserved. | <https://dot.net/> | orkeon, orkeon-repl, orkeon-host | N2 |
 | Microsoft.Extensions.Logging.EventLog | 10.0.13 | MIT | © Microsoft Corporation. All rights reserved. | <https://dot.net/> | orkeon, orkeon-repl, orkeon-host | N2 |
 | Microsoft.Extensions.Logging.EventSource | 10.0.13 | MIT | © Microsoft Corporation. All rights reserved. | <https://dot.net/> | orkeon, orkeon-repl, orkeon-host | N2 |
 | Microsoft.Extensions.ObjectPool | 8.0.1 | MIT | © Microsoft Corporation. All rights reserved. | <https://asp.net/> | orkeon, orkeon-repl, orkeon-host | N5 |
-| Microsoft.Extensions.Options | 10.0.13 | MIT | © Microsoft Corporation. All rights reserved. | <https://dot.net/> | orkeon, orkeon-repl, orkeon-host, orkeon-studio-config, orkeon-studio-run | N2 |
+| Microsoft.Extensions.Options | 10.0.13 | MIT | © Microsoft Corporation. All rights reserved. | <https://dot.net/> | orkeon, orkeon-repl, orkeon-host | N2 |
 | Microsoft.Extensions.Options.ConfigurationExtensions | 10.0.13 | MIT | © Microsoft Corporation. All rights reserved. | <https://dot.net/> | orkeon, orkeon-repl, orkeon-host | N2 |
-| Microsoft.Extensions.Primitives | 10.0.13 | MIT | © Microsoft Corporation. All rights reserved. | <https://dot.net/> | orkeon, orkeon-repl, orkeon-host, orkeon-studio-config, orkeon-studio-run | N2 |
+| Microsoft.Extensions.Primitives | 10.0.13 | MIT | © Microsoft Corporation. All rights reserved. | <https://dot.net/> | orkeon, orkeon-repl, orkeon-host | N2 |
 | Microsoft.Identity.Client | 4.83.1 | MIT | © Microsoft Corporation. All rights reserved. | <https://go.microsoft.com/fwlink/?linkid=844761> | orkeon, orkeon-repl, orkeon-host | — |
 | Microsoft.Identity.Client.Extensions.Msal | 4.83.1 | MIT | © Microsoft Corporation. All rights reserved. | <https://go.microsoft.com/fwlink/?linkid=844761> | orkeon, orkeon-repl, orkeon-host | — |
 | Microsoft.IdentityModel.Abstractions | 8.23.0 | MIT | © Microsoft Corporation. All rights reserved. | <https://github.com/AzureAD/azure-activedirectory-identitymodel-extensions-for-dotnet> | orkeon, orkeon-repl, orkeon-host | — |
@@ -950,7 +947,7 @@ hand-written section above also covers points to it (§).
 | Neo4j.Driver | 6.4.0 | Apache-2.0 | Copyright 2002-2023 | <https://github.com/neo4j/neo4j-dotnet-driver> | orkeon, orkeon-repl, orkeon-host | — |
 | Newtonsoft.Json | 13.0.4 | MIT | Copyright © James Newton-King 2008 | <https://www.newtonsoft.com/json> | orkeon-host | L8 |
 | Npgsql | 10.0.3 | PostgreSQL | Copyright 2025 © The Npgsql Development Team | <https://github.com/npgsql/npgsql> | orkeon, orkeon-repl, orkeon-host | — |
-| Onigwrap | 1.0.11 | MIT | Copyright (c) 2024 Aikawa Yataro | <https://github.com/aikawayataro/Onigwrap> | orkeon-repl, orkeon-studio-config, orkeon-studio-run | N8 |
+| Onigwrap | 1.0.11 | MIT | Copyright (c) 2024 Aikawa Yataro | <https://github.com/aikawayataro/Onigwrap> | orkeon-repl | N8 |
 | OpenAI | 2.14.0 | MIT | Copyright (c) 2026 OpenAI (https://openai.com) | <https://github.com/openai/openai-dotnet/tree/OpenAI_2.14.0> | orkeon, orkeon-repl, orkeon-host | — |
 | OpenTelemetry | 1.20.1 | Apache-2.0 | Copyright The OpenTelemetry Authors | <https://opentelemetry.io/> | orkeon, orkeon-repl, orkeon-host | L4, N9 |
 | OpenTelemetry.Api | 1.20.1 | Apache-2.0 | Copyright The OpenTelemetry Authors | <https://opentelemetry.io/> | orkeon, orkeon-repl, orkeon-host | L4, N9 |
@@ -978,7 +975,7 @@ hand-written section above also covers points to it (§).
 | System.Configuration.ConfigurationManager | 9.0.18 | MIT | © Microsoft Corporation. All rights reserved. | <https://dot.net/> | orkeon, orkeon-repl, orkeon-host | L6, N4 |
 | System.Diagnostics.EventLog | 10.0.13 | MIT | © Microsoft Corporation. All rights reserved. | <https://dot.net/> | orkeon, orkeon-repl, orkeon-host | N2 |
 | System.IdentityModel.Tokens.Jwt | 8.23.0 | MIT | © Microsoft Corporation. All rights reserved. | <https://github.com/AzureAD/azure-activedirectory-identitymodel-extensions-for-dotnet> | orkeon, orkeon-repl, orkeon-host | — |
-| System.IO.Abstractions | 22.2.0 | MIT | Copyright © Tatham Oddie & friends 2010-2026 | <https://github.com/TestableIO/System.IO.Abstractions> | orkeon-repl, orkeon-studio-config, orkeon-studio-run | — |
+| System.IO.Abstractions | 22.2.0 | MIT | Copyright © Tatham Oddie & friends 2010-2026 | <https://github.com/TestableIO/System.IO.Abstractions> | orkeon-repl | — |
 | System.IO.Hashing | 10.0.13 | MIT | © Microsoft Corporation. All rights reserved. | <https://dot.net/> | orkeon, orkeon-repl, orkeon-host | N2 |
 | System.IO.Packaging | 10.0.2 | MIT | © Microsoft Corporation. All rights reserved. | <https://dot.net/> | orkeon, orkeon-repl, orkeon-host | N2 |
 | System.Memory.Data | 10.0.9 | MIT | © Microsoft Corporation. All rights reserved. | <https://dot.net/> | orkeon, orkeon-repl, orkeon-host | N2 |
@@ -988,15 +985,15 @@ hand-written section above also covers points to it (§).
 | System.Security.Cryptography.ProtectedData | 10.0.13 | MIT | © Microsoft Corporation. All rights reserved. | <https://dot.net/> | orkeon, orkeon-repl, orkeon-host | N2 |
 | System.ServiceProcess.ServiceController | 10.0.13 | MIT | © Microsoft Corporation. All rights reserved. | <https://dot.net/> | orkeon-host | N2 |
 | System.Threading.RateLimiting | 10.0.13 | MIT | © Microsoft Corporation. All rights reserved. | <https://dot.net/> | orkeon, orkeon-repl, orkeon-host | N2 |
-| Terminal.Gui | 2.5.0 | MIT | — | <https://github.com/tui-cs/Terminal.Gui> | orkeon-repl, orkeon-studio-config, orkeon-studio-run | — |
-| TestableIO.System.IO.Abstractions | 22.2.0 | MIT | Copyright © Tatham Oddie & friends 2010-2026 | <https://github.com/TestableIO/System.IO.Abstractions> | orkeon-repl, orkeon-studio-config, orkeon-studio-run | — |
-| TestableIO.System.IO.Abstractions.Wrappers | 22.2.0 | MIT | Copyright © Tatham Oddie & friends 2010-2026 | <https://github.com/TestableIO/System.IO.Abstractions> | orkeon-repl, orkeon-studio-config, orkeon-studio-run | — |
-| Testably.Abstractions.FileSystem.Interface | 10.3.0 | MIT | Copyright (c) 2024- 2026 Testably | <https://github.com/Testably/Testably.Abstractions> | orkeon-repl, orkeon-studio-config, orkeon-studio-run | — |
-| TextMateSharp | 2.0.4 | MIT | — | <https://github.com/danipen/TextMateSharp> | orkeon-repl, orkeon-studio-config, orkeon-studio-run | — |
-| TextMateSharp.Grammars | 2.0.4 | MIT | — | <https://github.com/danipen/TextMateSharp> | orkeon-repl, orkeon-studio-config, orkeon-studio-run | — |
+| Terminal.Gui | 2.5.0 | MIT | — | <https://github.com/tui-cs/Terminal.Gui> | orkeon-repl | — |
+| TestableIO.System.IO.Abstractions | 22.2.0 | MIT | Copyright © Tatham Oddie & friends 2010-2026 | <https://github.com/TestableIO/System.IO.Abstractions> | orkeon-repl | — |
+| TestableIO.System.IO.Abstractions.Wrappers | 22.2.0 | MIT | Copyright © Tatham Oddie & friends 2010-2026 | <https://github.com/TestableIO/System.IO.Abstractions> | orkeon-repl | — |
+| Testably.Abstractions.FileSystem.Interface | 10.3.0 | MIT | Copyright (c) 2024- 2026 Testably | <https://github.com/Testably/Testably.Abstractions> | orkeon-repl | — |
+| TextMateSharp | 2.0.4 | MIT | — | <https://github.com/danipen/TextMateSharp> | orkeon-repl | — |
+| TextMateSharp.Grammars | 2.0.4 | MIT | — | <https://github.com/danipen/TextMateSharp> | orkeon-repl | — |
 | TreeSitter.DotNet | 1.3.0 | MIT | Copyright (c) 2025 Marius Greuel | <https://github.com/mariusgreuel/tree-sitter-dotnet-bindings> | orkeon, orkeon-repl, orkeon-host | — |
-| Ulid | 1.4.1 | MIT | © Cysharp, Inc. | <https://github.com/Cysharp/Ulid> | orkeon, orkeon-repl, orkeon-host, orkeon-studio, orkeon-studio-config, orkeon-studio-run | — |
-| Wcwidth | 4.0.1 | MIT | — | <https://github.com/spectreconsole/wcwidth> | orkeon-repl, orkeon-studio-config, orkeon-studio-run | — |
+| Ulid | 1.4.1 | MIT | © Cysharp, Inc. | <https://github.com/Cysharp/Ulid> | orkeon, orkeon-repl, orkeon-host | — |
+| Wcwidth | 4.0.1 | MIT | — | <https://github.com/spectreconsole/wcwidth> | orkeon-repl | — |
 | YamlDotNet | 18.1.0 | MIT | Copyright (c) Antoine Aubry and contributors | <https://github.com/aaubry/YamlDotNet/wiki> | orkeon, orkeon-repl, orkeon-host | — |
 | ZstdSharp.Port | 0.7.3 | MIT | Copyright Oleg Stepanischev 2023 | <https://github.com/oleg-st/ZstdSharp> | orkeon, orkeon-repl, orkeon-host | — |
 

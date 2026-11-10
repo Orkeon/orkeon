@@ -7,7 +7,7 @@ using Orkeon.Infrastructure.Tests.Doubles;
 namespace Orkeon.Infrastructure.Tests.LLMs.Adapters;
 
 /// <summary>
-/// STUDIO-29: the vendor's charge crosses the adapter. The provider leaves it in the response
+/// The vendor's charge crosses the adapter. The provider leaves it in the response
 /// metadata, which a <see cref="ChatResponse"/> does not carry — so OpenRouter's real cost was
 /// read, stored, and dropped here, before the agent loop that reports usage ever saw it.
 /// </summary>

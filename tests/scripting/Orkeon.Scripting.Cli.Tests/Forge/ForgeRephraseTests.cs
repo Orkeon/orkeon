@@ -6,7 +6,7 @@ using Orkeon.Scripting.Cli.Commands.Forge;
 namespace Orkeon.Scripting.Cli.Tests.Forge;
 
 /// <summary>
-/// <c>orkeon forge rephrase</c> (STUDIO-57): the verb parses with the request after it and
+/// <c>orkeon forge rephrase</c>: the verb parses with the request after it and
 /// refuses every cycle option; one call to the LLM rewrites the request and the answer comes
 /// back cleaned of what a model wraps it in.
 /// </summary>

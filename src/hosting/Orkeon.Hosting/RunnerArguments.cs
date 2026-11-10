@@ -5,8 +5,8 @@ namespace Orkeon.Hosting;
 
 /// <summary>
 /// How a runner reads its argument vector: CommandLineParser, every single-value option written
-/// <c>--option=value</c> read with its value as written (STUDIO-51). The team launchers and
-/// Orkeon Studio write a single-value option that way — <c>--option value</c> reads a value
+/// <c>--option=value</c> read with its value as written. The team launchers
+/// write a single-value option that way — <c>--option value</c> reads a value
 /// starting with <c>-</c> as the next option, and an initial context is often a bullet list —,
 /// but CommandLineParser 2.9.1 reads an attached value only when it holds no line break and
 /// starts with no space (its tokenizer matches <c>^([^=]+)=([^ ].*)$</c>): a context of two

@@ -13,7 +13,7 @@ using ProtocolToolCallRequest = Orkeon.Domain.Tools.Protocol.ToolCallRequest;
 namespace Orkeon.Scripting.Tests.Runtime;
 
 /// <summary>
-/// The scripted surface on the token meter (STUDIO-42): the host hands <c>ctx.llm</c> a
+/// The scripted surface on the token meter: the host hands <c>ctx.llm</c> a
 /// metered provider, the provider reports each call — once, whatever path it takes — and
 /// the facade says whose call it is: the <c>ctx.llm.*</c> method as the operation, the
 /// context's crew and agent. Before the meter moved into the provider the facade reported

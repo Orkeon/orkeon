@@ -1,17 +1,17 @@
 > 🇫🇷 [Version française](../fr/adr/ADR-011-aspire-dashboard-observability.md)
 
-> **See also**: [ADR-010](./ADR-010-agent-framework-interop.md) · [Orkeon Studio](../architecture/studio.md) · [Back to the index](../INDEX.md)
+> **See also**: [ADR-010](./ADR-010-agent-framework-interop.md) · [Back to the index](../INDEX.md)
 
-# ADR-011 — The Aspire dashboard is the cross-platform observability surface; there is no web Studio
+# ADR-011 — The Aspire dashboard is the cross-platform observability surface; there is no web front-end
 
 **Status**: Accepted · **Date**: 2026-09-11
-· **Scope**: `src/hosting/Orkeon.Hosting.Aspire`, `src/packaging/Orkeon.Hosting.Aspire`, `Orkeon.Hosting` (telemetry activation), `Orkeon.Studio.Wpf`
+· **Scope**: `src/hosting/Orkeon.Hosting.Aspire`, `src/packaging/Orkeon.Hosting.Aspire`, `Orkeon.Hosting` (telemetry activation)
 
 ## Context
 
-Two facts sat side by side. `Orkeon.Studio.Wpf` is the only project targeting
-`net10.0-windows`: the desktop Studio — launch, watch, capture — exists for Windows alone,
-and the question of a web Studio came up every time the platform list did. And the runners
+Two facts sat side by side. The desktop front-end (Orkeon Studio, now in its own repository)
+was the only project targeting `net10.0-windows`: launch, watch, capture existed for Windows
+alone, and the question of a web front-end came up every time the platform list did. And the runners
 carried a complete OpenTelemetry plumbing that exported nothing: `orkeon run` and
 `orkeon-host` built their host with the parameterless `AddOrkeonInfrastructure()` (no
 telemetry section), never started the host (so OpenTelemetry's hosted service never
@@ -38,12 +38,11 @@ Microsoft, already open on the machine of the developer the README now targets.
    applied so the dashboard receives the run. Verified: an AppHost launched the quickstart
    crew as a resource, the crew wrote `out/hello.md`, Aspire handed the process the OTLP
    endpoint (pinned by a launch-free test on the evaluated environment).
-3. **The Aspire dashboard is the observability surface for every platform. No web Studio
-   will be built.** `Orkeon.Studio.Wpf` stays what it is — a Windows desktop application
-   for launching, watching and capturing — and gains no web twin; what a web Studio would
-   have shown (a run's spans, tokens, logs) the dashboard already shows, for anyone, with
-   no code to maintain here. The observability half of the "Windows-only Studio" concern
-   is closed by this decision; the launch half stays desktop.
+3. **The Aspire dashboard is the observability surface for every platform. No web front-end
+   will be built in this repository.** What a web front-end would have shown (a run's spans,
+   tokens, logs) the dashboard already shows, for anyone, with no code to maintain here. The
+   observability half of the "Windows-only front-end" concern is closed by this decision; the
+   launch half stays desktop and lives outside this repository.
 
 ## Consequences
 

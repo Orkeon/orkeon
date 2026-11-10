@@ -153,7 +153,7 @@ public static partial class RunnerHost
     /// <summary>
     /// WIN-01: the actionable warning emitted once per host build when no <c>Llm</c>
     /// section is configured and the runtime will fall back to the echo provider. Public
-    /// because Orkeon Studio reproduces this wording in its own pre-save validation and pins
+    /// because a client may reproduce this wording in its own pre-save validation and pin
     /// the two texts together — a UI that warns differently from the runtime is worse than
     /// one that does not warn at all.
     /// </summary>
@@ -172,7 +172,7 @@ public static partial class RunnerHost
     /// tell its supervisor it is up, and that is decided on the builder, not in the services.
     /// </param>
     /// <param name="llmProfile">
-    /// The host LLM profile the run takes as its default (<c>--llm-profile</c>, STUDIO-50): the
+    /// The host LLM profile the run takes as its default (<c>--llm-profile</c>): the
     /// <c>Llm</c> section becomes <c>Llm:Profiles:&lt;id&gt;</c>, whole — a field the profile leaves
     /// unset is unset, the default's key and the variable holding it included —, laid over the
     /// settings file and the <c>ORKEON_</c> environment. Null or <c>default</c> keeps the section.
@@ -201,8 +201,7 @@ public static partial class RunnerHost
         // Collected while the configuration is composed, logged once the host exists: no
         // logger is available inside ConfigureAppConfiguration, and the replacement of a
         // settings entry by a --mount — or its selection by id, or its withdrawal — is exactly
-        // the kind of decision an operator reading the log must be able to see (STUDIO-15 D-01,
-        // VFS-90 D-10).
+        // the kind of decision an operator reading the log must be able to see (VFS-90 D-10).
         var decisions = new MountDecisions();
         var builder = CreateBuilder(settingsPath, mounts, configureLogging, configureServices, llmProfile, decisions);
 
@@ -609,8 +608,8 @@ public static partial class RunnerHost
     /// Warning, so the stderr line is the guarantee). Runs after <c>Build()</c> because no
     /// logger exists yet at service-registration time. The same pass says where each section's
     /// API key came from, and warns — logger and stderr, once per section — about an
-    /// <c>ApiKeyEnvVar</c> that names a variable set nowhere (STUDIO-49). A run that elected a
-    /// profile (<c>--llm-profile</c>, STUDIO-50) says which, and tells the default's key by that
+    /// <c>ApiKeyEnvVar</c> that names a variable set nowhere. A run that elected a
+    /// profile (<c>--llm-profile</c>) says which, and tells the default's key by that
     /// profile's path: the section is the profile, warned about once.
     /// <para>
     /// The profiles are those the host offers crews (GAP-36): <see cref="ILlmProfileRegistry.Names"/>,
@@ -637,7 +636,7 @@ public static partial class RunnerHost
         if (hidden.Count > 0)
             LogLlmProfilesHidden(logger, hidden);
 
-        // STUDIO-50: the Llm section IS the elected profile for this run, so its key is told by
+        // The Llm section IS the elected profile for this run, so its key is told by
         // the profile's own path — the one the settings were written with — and a reference that
         // resolves nothing is warned about once, there.
         var keySection = electedProfile is null
@@ -740,7 +739,7 @@ public static partial class RunnerHost
     }
 
     /// <summary>
-    /// STUDIO-49: an ApiKeyEnvVar naming a variable set nowhere — once per host build and per
+    /// An ApiKeyEnvVar naming a variable set nowhere — once per host build and per
     /// section, by its configuration path, never the name it holds (a key pasted in the wrong
     /// field must not reach a log). The calls on that profile answer "API key is required".
     /// A hidden profile's is no reason to warn, unless the run elected it as its default.
@@ -909,7 +908,7 @@ public static partial class RunnerHost
     /// default host's files of the current directory, nor its user secrets), then this method's own
     /// in-memory source, which is added last and therefore wins on an identical key.
     /// <para>
-    /// A <c>--mount</c> is placed <b>by virtual root</b> (STUDIO-15 D-01). On a root the
+    /// A <c>--mount</c> is placed <b>by virtual root</b>. On a root the
     /// declared array — settings file AND environment, read from the builder's own snapshot —
     /// already holds, it is written at that entry's index: the mount of this run replaces the
     /// machine's default for that root, which is the most specific intent there is. On a new
@@ -918,7 +917,7 @@ public static partial class RunnerHost
     /// from index 0 replaced the operator's first entry on every run (the crew mount is always
     /// there), and appending unconditionally produced "Duplicate virtual paths" out of a DI
     /// factory the moment a settings entry and a <c>--mount</c> named the same root — which
-    /// is exactly what Studio's team flow produces by design, since a team associates a folder
+    /// is exactly what a client's team flow produces by design, since a team associates a folder
     /// the settings already declare.
     /// </para>
     /// <para>
@@ -929,7 +928,7 @@ public static partial class RunnerHost
     /// </para>
     /// <para>
     /// A mount the settings declare is the machine owner's explicit intent, so its base path
-    /// is always whitelisted for <c>PathValidator</c> (STUDIO-12 C4): until then such a folder
+    /// is always whitelisted for <c>PathValidator</c>: until then such a folder
     /// was mounted and every access to it refused as "outside the workspace root", with no
     /// flag able to rescue it — <c>--allow-external-mounts</c> only ever whitelisted the
     /// <c>--mount</c> arguments, and still does exactly that, and only that.
@@ -1147,13 +1146,13 @@ public static partial class RunnerHost
     }
 
     /// <summary>
-    /// <c>--llm-profile</c> (STUDIO-50): the <c>Llm</c> section becomes the profile the run elects —
+    /// <c>--llm-profile</c>: the <c>Llm</c> section becomes the profile the run elects —
     /// every key the section declares besides <c>Profiles</c> unset, the profile's own keys written
     /// over them —, in the in-memory source laid last. Every reader of the section then reads the
     /// profile: the default provider, the startup line, the endpoint probe before a kickoff. A field
     /// the profile leaves unset stays unset, so neither the default's key nor the variable holding
-    /// it ever reaches the profile's endpoint — the rule a Studio launch on a team's setting follows
-    /// (STUDIO-49, decision 4). The profiles stay as declared: the elected one is still offered by its
+    /// it ever reaches the profile's endpoint — the rule a client launch on a team's setting follows.
+    /// The profiles stay as declared: the elected one is still offered by its
     /// name. Nothing happens when no snapshot could be read; the build itself reports that file.
     /// </summary>
     /// <exception cref="RunnerSettingsException">The settings and the environment define no such profile.</exception>
@@ -1759,7 +1758,7 @@ public static partial class RunnerHost
         if (!string.IsNullOrEmpty(braveKey))
             services.AddOrkeonBraveSearchTool(braveKey);
 
-        // The MCP servers the settings declare (STUDIO-21): bound and provided here, connected
+        // The MCP servers the settings declare: bound and provided here, connected
         // by McpStartup before the crew loads, since the runners never start the host.
         RegisterMcp(context, services);
 
@@ -1812,7 +1811,7 @@ public static partial class RunnerHost
     }
 
     /// <summary>
-    /// The <c>MCP</c> section of the settings, when it declares servers (STUDIO-21). Until then
+    /// The <c>MCP</c> section of the settings, when it declares servers. Until then
     /// the section was bound by nobody: <c>orkeon run</c> built its host without configuration,
     /// so a server written in the settings changed nothing. An absent or empty
     /// <c>MCP:Servers</c>, or <c>MCP:Enabled = false</c>, registers nothing — exactly the
@@ -2197,7 +2196,7 @@ public static partial class RunnerHost
     /// <remarks>
     /// Registered like any provider the factory does not build (<c>AddOrkeonLlmProvider</c>):
     /// metered, so an observed run still reports each call — at the zero tokens the echo
-    /// declares (STUDIO-42).
+    /// declares.
     /// </remarks>
     private static void RegisterEchoProvider(IServiceCollection services) =>
         services.AddOrkeonLlmProvider(_ => new UndefinedLlmProvider());

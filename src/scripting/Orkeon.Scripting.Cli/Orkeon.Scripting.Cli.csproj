@@ -20,7 +20,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <!-- ADR-009: the .orkeon state directory, shared with Studio and the index cache. -->
+    <!-- ADR-009: the .orkeon state directory, shared with the index cache and other clients. -->
     <!-- ADR-009: the run event stream's vocabulary, shared with whatever watches the run. -->
     <!-- ADR-009: the run option grammar, shared with the tooling that predicts it. -->
     <!-- ADR-009: the Llm configuration section, shared with the REPL and the runner host. -->
@@ -73,7 +73,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- STUDIO-38: the example catalogue. The examples ship nowhere else, so the tool carries
+    <!-- The example catalogue. The examples ship nowhere else, so the tool carries
          what `orkeon usecases` serves: the manifest, and for each catalogued example its crew
          file and its data/ folder, as usecases/<category>/<id>/<path>. The finance examples'
          shared _tools/ stays out: they are reference-only (DC-3). No culture is inferred from a

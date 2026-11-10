@@ -89,7 +89,7 @@ internal sealed class LegacyTextAgentLoop
                 toolsUsed.AddRange(fallbackToolUsage);
 
                 // An empty text is not a final answer: it used to exit Completed here and the
-                // task went green with no deliverable (STUDIO-12 C5a).
+                // task went green with no deliverable.
                 if (string.IsNullOrWhiteSpace(fallbackOutput))
                 {
                     ExecutionLog.LogEmptyFinalAnswer(_logger, agent.Role, task.Id);

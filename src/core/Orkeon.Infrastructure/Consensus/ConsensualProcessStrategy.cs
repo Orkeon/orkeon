@@ -182,7 +182,7 @@ public sealed partial class ConsensualProcessStrategy : IProcessStrategy
         var (arbiter, agents) = await ResolveVotersAsync(crew, ct).ConfigureAwait(false);
 
         // Execute each task with consensus, in the declared order sorted on the tasks' dependencies
-        // (STUDIO-12 C2) — never a plan's (GAP-31).
+        // — never a plan's (GAP-31).
         var taskIds = await CrewTaskSequencer.ResolveAsync(
             crew, _taskRepository, _logger, ct).ConfigureAwait(false);
         await DecisionPreflight.RefuseUnsupportedAsync(

@@ -4,7 +4,7 @@ namespace Orkeon.Constants.Protocol;
 /// The <c>code</c> an <see cref="RunEventKinds.Error"/> event carries when a run stops: whether it
 /// was cancelled or failed. Spelled once, like the kinds: the CLI writes them on the wire
 /// (<c>orkeon run --events jsonl</c>), a C# host reads them on the events of
-/// <c>ICrewOrchestrationService.KickoffStreamingAsync</c> (GAP-32), and Orkeon Studio reads the wire.
+/// <c>ICrewOrchestrationService.KickoffStreamingAsync</c> (GAP-32), and an external client reads the wire.
 /// </summary>
 public static class RunEventErrorCodes
 {

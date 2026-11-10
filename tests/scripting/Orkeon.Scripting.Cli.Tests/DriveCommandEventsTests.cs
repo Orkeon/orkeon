@@ -8,7 +8,7 @@ using Orkeon.Tests.Shared.Network;
 namespace Orkeon.Scripting.Cli.Tests;
 
 /// <summary>
-/// <c>orkeon drive login | check --events jsonl</c>: the protocol Orkeon Studio's Drive tab
+/// <c>orkeon drive login | check --events jsonl</c>: the protocol a client
 /// drives, one JSON line per step on standard output and nothing else there, the vocabulary of
 /// <see cref="DriveEventKinds"/>.
 /// </summary>

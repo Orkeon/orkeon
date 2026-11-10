@@ -289,7 +289,7 @@ hold for it to run; the clauses are listed in the
 - **`otherwise`.** It holds exactly when no sibling condition on that decision task holds on the
   answers, a confidence under the floor included; whether a sibling then ran or was skipped for
   another reason does not matter.
-- A skipped task is reported as skipped by the run's JSONL and by Studio, with its reason (see
+- A skipped task is reported as skipped by the run's JSONL, with its reason (see
   [the run event bus](./run-event-bus.md)).
 
 ### Failure

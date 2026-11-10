@@ -6,7 +6,7 @@
     <Nullable>enable</Nullable>
 
     <PackageId>Orkeon.Constants.Cli</PackageId>
-    <!-- Its own package (the Cli family ships to NuGet for a standalone Orkeon Studio):
+    <!-- Its own package (the Cli family ships to NuGet for standalone consumers):
          `Orkeon.Scripting` takes a nuspec dependency on it instead of embedding it. -->
     <Description>Shared CLI vocabulary for Orkeon: the option names the runners accept and the tooling predicts. Depends on nothing.</Description>
     <PackageTags>AI;Agents;Orkeon;Constants;Cli</PackageTags>

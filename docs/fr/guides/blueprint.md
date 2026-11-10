@@ -159,7 +159,7 @@ public SwarmYamlConfig? SwarmConfig { get; set; }   // clé : swarmConfig
 
 ---
 
-## Étape 6 — DSL de scripting et Studio
+## Étape 6 — DSL de scripting
 
 | Fichier | Changement |
 |------|--------|
@@ -167,8 +167,6 @@ public SwarmYamlConfig? SwarmConfig { get; set; }   // clé : swarmConfig
 | `src/scripting/Orkeon.Scripting/Typings/crew.d.ts` | L'ajouter à l'union `Process` |
 | `src/scripting/Orkeon.Scripting/Adapters/JsCrewConfigurationAdapter.cs` | Rien pour le nom (`ProcessType.TryFrom`) ; mapper la config du mode quand le DSL l'expose, ou la lister dans `CollectIgnoredFeatures` |
 | `src/scripting/Orkeon.Scripting.Cli/Commands/UseCases/UseCasesCommand.cs` | Le texte d'aide de `--process` de `orkeon usecases list` |
-| `src/apps/Orkeon.Studio.Wpf/ViewModels/Teams/UseCaseGalleryViewModel.cs` | L'entrée du filtre de process de la galerie |
-| `src/apps/Orkeon.Studio.Core/Localization/StudioStrings.cs` + `src/apps/Orkeon.Studio.Wpf/Resources/Strings*.resx` | Clé `WizardGalleryProcess<Mode>`, valeur anglaise par défaut et traductions (fr, de, es, zh-Hans) |
 
 La forme procédurale d'un script (`await crew.run()`) ignore le process ; seule la forme déclarative (`globalThis.crew = crew`) exécute la stratégie — voir [Scripting](../architecture/scripting.md).
 
@@ -253,7 +251,7 @@ python3 scripts/check-doc-claims.py
 | Observable | Événement terminal du hook sur chaque sortie, métadonnées de tokens, logs structurés | [ ] |
 | Résultat honnête | `CreateFailure` quand le contrat du mode échoue | [ ] |
 | Configurable | Config par crew lue sur la crew, les deux dispositions YAML, validation au chargement | [ ] |
-| Scriptable | `AllowedProcesses`, `crew.d.ts`, `orkeon usecases`, galerie Studio | [ ] |
+| Scriptable | `AllowedProcesses`, `crew.d.ts`, `orkeon usecases` | [ ] |
 | Testé | Domain, stratégie, factory, orchestrateur, YAML, mapping, scripting | [ ] |
 | Documenté | Page du mode + miroir FR, process-types, yaml-schema, INDEX/toc, CHANGELOG, `check-doc-claims.py` au vert | [ ] |
 | Exemple | `config.yaml` fonctionnel avec README, listé dans `examples/INDEX.md` | [ ] |

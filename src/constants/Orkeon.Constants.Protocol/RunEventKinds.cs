@@ -4,7 +4,7 @@ namespace Orkeon.Constants.Protocol;
 /// The event kinds a run streams as it executes.
 /// <para>
 /// This is a wire protocol between processes: the CLI runner writes the stream as JSON lines,
-/// and whatever watches the run - Orkeon Studio, a script, a terminal - reads it. Producer and
+/// and whatever watches the run - a client, a script, a terminal - reads it. Producer and
 /// consumer live in projects that cannot reference each other, so the vocabulary was written
 /// twice, and nothing checked the two spellings against each other.
 /// </para>
@@ -15,7 +15,7 @@ namespace Orkeon.Constants.Protocol;
 /// </para>
 /// <para>
 /// The two copies had already drifted: the runner emitted <c>tool.called</c>,
-/// <c>tool.returned</c>, <c>delegation.started</c> and <c>agent.spawned</c>, and Studio's copy
+/// <c>tool.returned</c>, <c>delegation.started</c> and <c>agent.spawned</c>, and the client's copy
 /// knew none of them. An unknown kind is not an error on either side - the reader ignores it -
 /// so the drift showed up as a run whose tool activity and delegations simply never appeared on
 /// screen, with nothing anywhere reporting a problem. That is why the set below is exhaustive
@@ -31,7 +31,7 @@ public static class RunEventKinds
     /// <summary>
     /// One task of the crew started: its agent's turn begins. Between this and the matching
     /// <see cref="TaskCompleted"/> a watcher shows the task as in progress - the moment the
-    /// screen could not tell apart from a run that had stalled (STUDIO-17).
+    /// screen could not tell apart from a run that had stalled.
     /// </summary>
     public const string TaskStarted = "task.started";
 
@@ -44,7 +44,7 @@ public static class RunEventKinds
     /// <summary>Token-by-token generation; only under <c>--stream</c>.</summary>
     public const string LlmDelta = "llm.delta";
 
-    /// <summary>A model call was sent: its id, the mode on the wire and its estimated prompt tokens (STUDIO-71).</summary>
+    /// <summary>A model call was sent: its id, the mode on the wire and its estimated prompt tokens.</summary>
     public const string LlmCallStarted = "llm.call.started";
 
     /// <summary>A streamed model call received more: its cumulative estimated completion tokens, at most every 250 ms.</summary>

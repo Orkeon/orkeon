@@ -25,7 +25,7 @@ internal static class Program
     /// The verb table: every top-level command and the entry point that owns it. Each verb
     /// parses its own tail — `orkeon rag ingest` (RAG-03/C3, RAG-04/C1), `orkeon llm probe`
     /// (LLM-08/C1), `orkeon init` (WIN-02), `orkeon doctor` (WIN-03), `orkeon forge`
-    /// (FORGE-03), `orkeon usecases search` (STUDIO-38), `orkeon email login` (MAIL-05), `orkeon drive login` (DRIVE-05),
+    /// (FORGE-03), `orkeon usecases search`, `orkeon email login` (MAIL-05), `orkeon drive login` (DRIVE-05),
     /// `orkeon typings` (GAP-13), `orkeon runs` (FWK-08), `orkeon quickstart`, `orkeon mcp serve` (GAP-24), `orkeon settings` — so the
     /// option grammars never collide. A verb is looked up before a first word is taken for a crew
     /// to run: `orkeon settings` stays the verb where a `settings/` folder exists.
@@ -115,7 +115,7 @@ internal static class Program
 
     /// <summary>
     /// Parses the `run` option grammar and executes it. A single-value option written
-    /// <c>--option=value</c> — how the team launchers and Studio write one — is read with its value
+    /// <c>--option=value</c> — how the team launchers write one — is read with its value
     /// as written, a line break and a leading space included (<see cref="RunnerArguments"/>).
     /// </summary>
     private static async Task<int> RunAsync(IRunnerConsole console, string[] args)

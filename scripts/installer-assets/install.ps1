@@ -16,7 +16,7 @@
   it passes its arguments through (install.cmd -Uninstall).
 
   Installing over an installation replaces it. While a program of that
-  installation is running -- Orkeon Studio left open, a crew still going --
+  installation is running -- a crew still going --
   both the install and the uninstall refuse, name the process and change
   nothing.
 .PARAMETER InstallDir

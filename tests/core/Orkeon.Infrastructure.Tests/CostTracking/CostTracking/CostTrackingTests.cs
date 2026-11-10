@@ -488,7 +488,7 @@ public class CostBudgetManagerTests
     [Fact]
     public void A_vendor_cost_of_zero_is_a_free_call_and_is_never_replaced_by_an_estimate()
     {
-        // STUDIO-29: a free model on OpenRouter bills 0. The manager used to read 0 as "not
+        // A free model on OpenRouter bills 0. The manager used to read 0 as "not
         // provided" and charge the registry price for a call that cost nothing.
         _sut.RecordUsage(new CostUsageEvent
         {

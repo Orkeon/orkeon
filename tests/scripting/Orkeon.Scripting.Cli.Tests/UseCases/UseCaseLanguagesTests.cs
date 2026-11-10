@@ -3,7 +3,7 @@ using Orkeon.Scripting.Cli.Commands.UseCases;
 namespace Orkeon.Scripting.Cli.Tests.UseCases;
 
 /// <summary>
-/// The query's language decides whether meaning is fused in (STUDIO-38 D-02) and which title
+/// The query's language decides whether meaning is fused in and which title
 /// the answer shows. <c>--lang</c> names it; without it, a sentence gives it away.
 /// </summary>
 public sealed class UseCaseLanguagesTests

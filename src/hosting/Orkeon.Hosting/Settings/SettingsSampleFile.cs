@@ -21,7 +21,7 @@ namespace Orkeon.Hosting;
 /// <para>
 /// The file is JSON with <c>//</c> comments and a comma after every member, which the three readers
 /// of a settings file take — .NET's JSON configuration, the runner's own reading of the mounts and
-/// Orkeon Studio — and which let a line be uncommented without touching its neighbours.
+/// clients — and which let a line be uncommented without touching its neighbours.
 /// </para>
 /// </summary>
 internal static class SettingsSampleFile

@@ -34,7 +34,7 @@ links:
   - to: pricing-crew
     direction: outbound
     allowedTopics: [prices, stock]
-  - to: client:studio
+  - to: client:desk
     direction: inbound
   - to: audit-crew
     direction: both

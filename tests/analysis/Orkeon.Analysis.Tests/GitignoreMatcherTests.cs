@@ -5,9 +5,9 @@ namespace Orkeon.Analysis.Tests;
 public class GitignoreMatcherTests
 {
     [Theory]
-    [InlineData("src/apps/Orkeon.Studio.Wpf/obj-linux", true)]
-    [InlineData("src/apps/Orkeon.Studio.Wpf/Obj-Linux", true)]
-    [InlineData("src/apps/Orkeon.Studio.Wpf/xbj-linux", false)]
+    [InlineData("src/apps/Orkeon.ConsoleApp/obj-linux", true)]
+    [InlineData("src/apps/Orkeon.ConsoleApp/Obj-Linux", true)]
+    [InlineData("src/apps/Orkeon.ConsoleApp/xbj-linux", false)]
     public void ShouldMatchACharacterClass_WhenThePatternHoldsOne(string path, bool ignored)
     {
         var matcher = new GitignoreMatcher(["[Oo]bj-[Ll]inux/"]);

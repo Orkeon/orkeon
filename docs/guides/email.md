@@ -9,7 +9,7 @@ read a message, save its attachments, sort mail into folders, mark it, delete it
 drafts for a human to send — and, when an operator allows it, send mail themselves. The
 family speaks IMAP, POP3 and SMTP through MailKit, and Microsoft Graph for Outlook.com,
 Hotmail and Microsoft 365. Presets fill in the servers for Gmail and Outlook, and an OAuth2
-account signs in once, with `orkeon email login` in a terminal or « Sign in » in Orkeon Studio.
+account signs in once, with `orkeon email login` in a terminal.
 
 Three rules hold the whole family together:
 
@@ -66,16 +66,6 @@ to declare, `email_accounts` lists none, and `email_parser`, which needs no acco
 
 The shortest path, and the recommended one for Gmail: IMAP and SMTP with an **app
 password**, a 16-character password Google generates for one application.
-
-**In Orkeon Studio**, steps 3 and 4 are a form: **Settings › E-mail** — « Add an account », its
-name, Gmail, the address, the rights to tick, and the app password of step 2, typed in the form.
-Studio writes the section below into the settings file it edits (the tab names it); a team
-launched on another settings file does not see the account. The password is in no file: Studio
-keeps it in your Windows user environment, in a variable named after the account
-(`EMAIL_GMAIL_PASSWORD` for an account called `gmail`), and writes that name as `PasswordEnvVar`.
-A run finds it there whether Studio, a terminal or a scheduled task starts it
-([where a secret variable is read](#where-a-secret-variable-is-read)). The JSON stays the
-reference for whoever writes the file by hand.
 
 1. Turn on **2-Step Verification** for the Google account (Google Account › Security). App
    passwords do not exist without it.
@@ -179,8 +169,7 @@ Under `Orkeon:Tools:Email:Accounts`:
 `Auth:Method` may be left out: the `Outlook` preset always signs in with OAuth2. `Tenant`
 defaults to `consumers`, the tenant of personal accounts; for a work or school account set
 `"Tenant": "organizations"` or your tenant id (your administrator may have to consent to the
-application). Then sign in — **in Orkeon Studio**: Settings › E-mail, the account, « Sign in »,
-which shows the address and the code below and counts the code down; in a terminal:
+application). Then sign in, in a terminal:
 
 ```bash
 orkeon email login hotmail
@@ -214,8 +203,7 @@ consent page, for you to open in a browser, and receives the answer on a loopbac
 2. Configure the **OAuth consent screen**: user type **External**, add the scope
    `https://mail.google.com/`, and add your own address as a **test user**.
 3. Create an **OAuth client ID** of type **Desktop app**. Copy its client ID, and put its
-   client secret in an environment variable (`GOOGLE_CLIENT_SECRET` below) — in Orkeon Studio,
-   type it in the account's form, which keeps it as it keeps a password.
+   client secret in an environment variable (`GOOGLE_CLIENT_SECRET` below).
 4. Declare the account, under `Orkeon:Tools:Email:Accounts`:
 
    ```json
@@ -231,19 +219,16 @@ consent page, for you to open in a browser, and receives the answer on a loopbac
    }
    ```
 
-5. Sign in — **in Orkeon Studio**: Settings › E-mail, the account, « Sign in », which shows
-   Google's address with « Copy the link » and « Open in the browser », and a field for the
-   address the browser ends on; in a terminal, run `orkeon email login gmail`. It prints a
-   Google address to open and listens on a free port of `127.0.0.1`. Sign in and accept; Google shows a warning screen for an application
-   it has not verified, which you may continue past for your own application. The browser
-   then lands on the loopback address and says it can be closed.
+5. Sign in: in a terminal, run `orkeon email login gmail`. It prints a Google address to open
+   and listens on a free port of `127.0.0.1`. Sign in and accept; Google shows a warning screen
+   for an application it has not verified, which you may continue past for your own
+   application. The browser then lands on the loopback address and says it can be closed.
    **When the browser runs on another machine** — WSL, a container, an SSH session — that
    last page cannot load: copy the address it ends on (`http://127.0.0.1:…/?state=…&code=…`)
-   from the browser's address bar, paste it in the terminal and press Enter — or in the field
-   of Studio's panel. An address that is not that one — cut short, the address you were told
-   to open, anything else — is not taken and the sign-in goes on waiting: the terminal says
-   why and asks for the complete address, and Studio's panel says the same under the field,
-   which keeps what you pasted so that you can correct it.
+   from the browser's address bar, paste it in the terminal and press Enter. An address that
+   is not that one — cut short, the address you were told to open, anything else — is not
+   taken and the sign-in goes on waiting: the terminal says why and asks for the complete
+   address.
 
 **Keep the sign-in alive.** A Google application left in the **Testing** publishing status
 gets refresh tokens that expire after 7 days, after which every call asks for a new login.
@@ -292,13 +277,6 @@ the message itself is sent.
 
 ## Settings reference
 
-**In Orkeon Studio**, every key below has its field in **Settings › E-mail** (the expert mode
-shows them all, each with its key as a tooltip; a field left empty shows the default as a
-watermark) — see [Orkeon Studio](../architecture/studio.md#e-mail-accounts-in-the-settings-studio-65-to-70).
-The password and the Gmail client secret are typed there too: Studio keeps each in a variable of
-the user's environment and writes only the variable's name. What follows is the file as the
-engine reads it.
-
 Everything lives under `Orkeon:Tools:Email`. Nothing is validated when a host starts — the
 runner only reads whether an OAuth account needs the token store: the e-mail section is the one
 exception to [the rule](../reference/configuration.md#when-a-setting-is-refused) that a host
@@ -340,9 +318,8 @@ until it is fixed. `orkeon email accounts` shows those problems without connecti
 when the account connects:
 
 - **Under Windows**, in the environment of the process that runs the crew, then in the user's
-  persistent environment (`HKCU\Environment`), where `setx` and Orkeon Studio put it. A terminal
-  opened before the password was stored, and a scheduled team, find it all the same. The value
-  is read, never copied into the process: what the run starts — a shell tool, a stdio MCP
+  persistent environment (`HKCU\Environment`), where `setx` puts it. A terminal opened before
+  the password was stored, and a scheduled team, find it all the same. The value is read, never copied into the process: what the run starts — a shell tool, a stdio MCP
   server — inherits no secret it did not have. A user environment that cannot be read (a
   service account without a profile) counts as an absent variable.
 - **Under Linux and macOS**, in the environment of the process alone: there is no user
@@ -405,16 +382,15 @@ allow-list and drafts — see [Security](../architecture/security.md#e-mail-tool
 
 ### A run whose mail tools lack a right is refused at start
 
-Before any model call, `orkeon run` — and so every Studio launch and every scheduled launch,
-which go through it, and `orkeon-host`, which loads crews the same way — checks the crew's mail
-tools against the accounts that are ready (secret present, no network check). Each tool needs
+Before any model call, `orkeon run` — and so every scheduled launch, which goes through it,
+and `orkeon-host`, which loads crews the same way — checks the crew's mail tools against the accounts that are ready (secret present, no network check). Each tool needs
 its base right: `email_folders`, `email_search`, `email_read` and `email_save_attachment` need
 `Read`; `email_create_folder`, `email_rename_folder`, `email_move` and `email_mark` need
 `Organize`; `email_delete` needs `Delete`; `email_draft` needs `Draft`; `email_send` needs `Send`
 with a non-empty `Send:AllowedRecipients` on the same account; `email_accounts` needs nothing.
 When no ready account grants one of them, the run stops before any model call: `orkeon run`
 exits with code 2 and an `ERROR:` message holding one line per tool, naming the right and
-where to add it — Studio's **Settings › E-mail**, or `Orkeon:Tools:Email:Accounts:<name>:Rights`;
+where to add it — `Orkeon:Tools:Email:Accounts:<name>:Rights`;
 `--validate` fails (exit code 1) with the same lines; `orkeon-host` fails the run and keeps
 the lines in its log. The
 variants known only at the call (`permanent: true` needs `Purge`, `mark_read` needs `Organize`)
@@ -558,7 +534,7 @@ account of the settings file it resolves.
 
 ## Forged crews
 
-`orkeon forge` (and Studio's **Create a team**) offers the twelve mailbox tools like any other
+`orkeon forge` offers the twelve mailbox tools like any other
 tool, configured account or not. A try never touches a real mailbox: the bench enters a
 **mail trial** around the run, and every mailbox tool then works on a fictitious mailbox.
 
@@ -571,7 +547,7 @@ tool, configured account or not. A try never touches a real mailbox: the bench e
 - **Nothing leaves.** A send, a draft, a move, a mark, a delete, a folder created or renamed,
   an attachment saved: each is applied to the trial mailbox only and recorded as a simulated
   action — in `runs/<n>/run.json` (`mailActions`), on the `run.finished` event, on the terminal
-  and under the verdict in Studio, with recipients, subject and body for a send. The judge
+  and under the verdict, with recipients, subject and body for a send. The judge
   reads them too, and fails a crew that hands a mail to internal messaging (`post_message`, a
   `client://` address): that never sends an e-mail.
 - **The account's guards already judge the try.** With accounts declared, the try sees their
@@ -593,7 +569,7 @@ The operator's side of the family — never an agent's:
 | Command | What it does |
 |---|---|
 | `orkeon email accounts [--settings <file>] [--json]` | Lists the declared accounts, their preset, protocols, rights and readiness, with what to fix — ready means the password variable is set, or the client secret the account names is set and a usable (valid or refreshable) token is stored. No network, no secret printed. `--json` writes a JSON array of the entries `email_accounts` lists (`name`, `address`, `provider`, `reads`, `sends`, `rights`, `default`, `ready`, `problem`), plus `auth` (`Password` or `OAuth2`) |
-| `orkeon email login <account> [--settings <file>] [--events jsonl]` | Signs an OAuth2 account in and stores its tokens (device code for Microsoft, browser and loopback for Google). `--events jsonl` writes each step as one JSON event for a program that drives it — what Orkeon Studio does |
+| `orkeon email login <account> [--settings <file>] [--events jsonl]` | Signs an OAuth2 account in and stores its tokens (device code for Microsoft, browser and loopback for Google). `--events jsonl` writes each step as one JSON event for a program that drives it |
 | `orkeon email logout <account> [--settings <file>]` | Forgets the stored tokens of an OAuth account |
 | `orkeon email check <account> [--settings <file>] [--events jsonl]` | Connects, authenticates, lists the folders and prints the inbox counts |
 
@@ -608,20 +584,6 @@ credentials or an authorization the provider refused (a state mismatch included)
 cancelled. The tools never start a sign-in themselves: an OAuth account without a usable token
 answers "run `orkeon email login <account>`". The full reference is in the
 [CLI reference](../reference/cli.md#orkeon-email).
-
-In Orkeon Studio, the state and the test are in Settings › E-mail: each account says whether
-it is ready — what `orkeon email accounts --json` answers for the settings file the tab
-writes, as saved — and « Test the connection » runs `orkeon email check` on it, with no
-terminal. The verdict follows the exit code — reachable, to fix on this machine, or the server
-or the network — over the sentence the command prints, shown as is
-([E-mail accounts in the settings](../architecture/studio.md#e-mail-accounts-in-the-settings-studio-65-to-70)).
-An account that signs in with OAuth2 also has « Sign in » and « Sign out » there: the first
-runs `orkeon email login --events jsonl` and shows what to do while it waits — the address and
-the code for Microsoft, with the time the code has left; Google's address and a field for the
-address the browser ended on —, the second asks first, then runs `orkeon email logout`. Studio
-opens no browser by itself: « Open in the browser » is a click, and only ever an `https`
-address. Both act on the settings file as saved, and « Cancel », another tab or closing Studio
-stops the command.
 
 ## Where the tokens live
 
@@ -661,10 +623,10 @@ scopes: change one of them and the account asks for a new login instead of sendi
 somewhere it was not issued for. Run `orkeon email logout` before such a change, or delete
 the old file. `orkeon-repl` registers the tools but keeps no token store: there, password
 accounts work and OAuth accounts are refused with a message that says so — an account signed
-in from Orkeon Studio serves the `orkeon` runs, not the REPL. A user mount that
+in with `orkeon email login` serves the `orkeon` runs, not the REPL. A user mount that
 claims `/credentials` is refused whatever the accounts — by every `orkeon` command, by
 `orkeon-host` and by `orkeon-repl` before they start (the REPL mounts no `/credentials`, and
-refuses the root all the same, as every command does), and by Orkeon Studio in its mount editor.
+refuses the root all the same, as every command does).
 
 ## In a host of your own
 
@@ -701,17 +663,14 @@ maps to its exit codes.
   from the desktop or a service does not see a variable exported in a terminal.
 - **"… which is set neither in the process environment nor in the user's"** (Windows) — the
   run looked in both places ([where a secret variable is read](#where-a-secret-variable-is-read)).
-  Type the password in Studio (Settings › E-mail) or store it with `setx`, under the Windows
-  account that runs the crew; a variable set with `$env:` in another terminal is in neither.
+  Store the password with `setx`, under the Windows account that runs the crew; a variable set with `$env:` in another terminal is in neither.
 - **"… needs an OAuth sign-in: run `orkeon email login <account>`"** — no token yet, or the
   refresh token was revoked or expired (a Google application left in Testing: 7 days). Run
   the login again.
 - **The device code expired** — Microsoft's codes last about fifteen minutes; run the login
-  again and enter the new code. In Studio the panel counts the code down and, once it is over,
-  says so and offers « Start again », which asks for a new code.
+  again and enter the new code.
 - **The browser cannot reach `127.0.0.1`** during a Google login — paste the final address
-  into the terminal, or into the field of Studio's panel and « Use this address » (see
-  [Gmail with OAuth2](#gmail-with-oauth2)). "That is not the address the browser ended on",
+  into the terminal (see [Gmail with OAuth2](#gmail-with-oauth2)). "That is not the address the browser ended on",
   followed by a reason ("The pasted text is not an address.", "The pasted address is the one
   to open, not the one the browser ended on.", "The pasted address is not the redirect address
   of this sign-in (…).", "The pasted address carries no authorization code: it may be cut
@@ -720,8 +679,7 @@ maps to its exit codes.
   from this sign-in (state mismatch)" means the pasted address belongs to an earlier attempt.
 - **"The provider issued no refresh token"** — Microsoft: add `offline_access` to the
   application's permissions. Google: revoke the application's access in your Google
-  Account's third-party access page, then log in again. Studio shows the sentence as printed
-  and does not try again by itself: nothing was stored.
+  Account's third-party access page, then log in again.
 - **Outlook over IMAP: "User is authenticated but not connected"** — Microsoft's regression
   of 2026-09-24 for personal accounts. Remove `Incoming:Protocol` to go back to Graph.
 - **Graph answers 403** — the application lacks `Mail.ReadWrite` or `Mail.Send`; 401 means

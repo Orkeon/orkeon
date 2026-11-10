@@ -5,8 +5,8 @@ using Orkeon.Scripting.Cli.Commands.UseCases;
 namespace Orkeon.Scripting.Cli.Tests.UseCases;
 
 /// <summary>
-/// <c>orkeon usecases export</c> (STUDIO-41, D-02): one use case written as a team folder Orkeon
-/// Studio imports as it is — the crew under <c>crew/</c>, the sample data, a folder behind each
+/// <c>orkeon usecases export</c>: one use case written as a team folder a client
+/// imports as it is — the crew under <c>crew/</c>, the sample data, a folder behind each
 /// mount, and the sidecar that names the team and records its mounts. Driven in-process on the
 /// real disk: the five-sheet fixture through the options' seam, the embedded catalogue through
 /// the grammar.
@@ -47,17 +47,17 @@ public sealed class UseCasesExportTests : IDisposable
 
         // No session made this team: no forge.json — and nothing else beside what it needs.
         Assert.Equal(
-            ["crew", "data", "output", "studio-team.json"],
+            ["crew", "data", "output", "team.json"],
             Directory.EnumerateFileSystemEntries(destination).Select(Path.GetFileName).Order(StringComparer.Ordinal));
     }
 
     /// <summary>
-    /// The drift pin of the sidecar's shape, the CLI's half: Studio's <c>StudioTeamMetadata</c>
-    /// reads these very names, and <c>UseCaseImporterTests.The_sidecar_the_cli_writes_is_read_whole</c>
-    /// reads this very text on Studio's side — the two cannot reference each other.
+    /// The drift pin of the sidecar's shape, the CLI's half: the sidecar's readers
+    /// expect these very names, and a golden test on their side reads this very text — the two
+    /// cannot reference each other.
     /// </summary>
     [Fact]
-    public async Task The_sidecar_is_written_in_the_shape_studio_reads()
+    public async Task The_sidecar_is_written_in_the_shape_its_readers_expect()
     {
         using var console = new TestConsole();
         var destination = Path.Combine(_root, "digest");
@@ -75,7 +75,7 @@ public sealed class UseCasesExportTests : IDisposable
               ]
             }
             """.ReplaceLineEndings("\n"),
-            (await File.ReadAllTextAsync(Path.Combine(destination, "studio-team.json"), TestContext.Current.CancellationToken)).ReplaceLineEndings("\n"));
+            (await File.ReadAllTextAsync(Path.Combine(destination, "team.json"), TestContext.Current.CancellationToken)).ReplaceLineEndings("\n"));
     }
 
     [Fact]
@@ -84,7 +84,7 @@ public sealed class UseCasesExportTests : IDisposable
         using var console = new TestConsole();
         var destination = Path.Combine(_root, "digest");
 
-        // Studio says «zh», the catalogue «zh-Hans»: both are read.
+        // A client says «zh», the catalogue «zh-Hans»: both are read.
         var exit = await UseCasesCommand.ExecuteExportAsync(console, Export(UseCaseFixtures.MailDigest, destination, "zh"));
 
         Assert.Equal(Program.ExitOk, exit);
@@ -94,7 +94,7 @@ public sealed class UseCasesExportTests : IDisposable
         // Written as the letters themselves, not as escape sequences: the file is read by people too.
         Assert.Contains(
             "每日邮件摘要",
-            await File.ReadAllTextAsync(Path.Combine(destination, "studio-team.json"), TestContext.Current.CancellationToken),
+            await File.ReadAllTextAsync(Path.Combine(destination, "team.json"), TestContext.Current.CancellationToken),
             StringComparison.Ordinal);
     }
 
@@ -116,7 +116,7 @@ public sealed class UseCasesExportTests : IDisposable
         Assert.False(sidecar.TryGetProperty("mounts", out _));
         // A crew that writes nothing has no output folder to write into.
         Assert.Equal(
-            ["crew", "studio-team.json"],
+            ["crew", "team.json"],
             Directory.EnumerateFileSystemEntries(destination).Select(Path.GetFileName).Order(StringComparer.Ordinal));
     }
 
@@ -135,7 +135,7 @@ public sealed class UseCasesExportTests : IDisposable
         Assert.Equal("Daily email digest", exported.GetProperty("name").GetString());
         Assert.Equal("en", exported.GetProperty("lang").GetString());
         Assert.Equal(
-            ["crew/config.yaml", "data/inbox.eml", "studio-team.json"],
+            ["crew/config.yaml", "data/inbox.eml", "team.json"],
             exported.GetProperty("files").EnumerateArray().Select(f => f.GetString()));
         Assert.Equal(["./data:/data:ro", "./output:/output:rw"], exported.GetProperty("mounts").EnumerateArray().Select(m => m.GetString()));
         Assert.All(Events(console.Stdout), e => Assert.Contains(e.GetProperty("kind").GetString(), UseCaseEventKinds.All));
@@ -153,7 +153,7 @@ public sealed class UseCasesExportTests : IDisposable
         Assert.Contains(UseCaseFixtures.MailDigest, console.Stdout, StringComparison.Ordinal);
         Assert.Contains(Path.GetFullPath(destination), console.Stdout, StringComparison.Ordinal);
         Assert.Contains("\"Daily email digest\"", console.Stdout, StringComparison.Ordinal);
-        foreach (var written in (string[])["crew/config.yaml", "data/inbox.eml", "output/", "studio-team.json"])
+        foreach (var written in (string[])["crew/config.yaml", "data/inbox.eml", "output/", "team.json"])
             Assert.Contains(written, console.Stdout, StringComparison.Ordinal);
         // The folder's own launch: from inside it, with its mounts — a bare run would write nowhere.
         Assert.Contains("orkeon run crew/config.yaml --mount ./data:/data:ro ./output:/output:rw", console.Stdout, StringComparison.Ordinal);
@@ -289,7 +289,7 @@ public sealed class UseCasesExportTests : IDisposable
         };
 
     private static JsonElement Sidecar(string destination) =>
-        JsonElement.Parse(File.ReadAllText(Path.Combine(destination, "studio-team.json")));
+        JsonElement.Parse(File.ReadAllText(Path.Combine(destination, "team.json")));
 
     private static byte[] Bytes(UseCaseCatalog catalog, string id, string path)
     {

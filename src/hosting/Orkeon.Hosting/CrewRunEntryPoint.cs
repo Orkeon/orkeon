@@ -152,7 +152,7 @@ internal sealed class CrewRunEntryPoint : IDisposable
     {
         var host = _bootstrap.Host;
 
-        // The MCP tools must be in the registry before the crew resolves its tools (STUDIO-21): once
+        // The MCP tools must be in the registry before the crew resolves its tools: once
         // per host, however many runs it serves.
         if (!_mcpConnected)
         {

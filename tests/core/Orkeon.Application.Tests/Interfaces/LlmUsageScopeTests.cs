@@ -3,7 +3,7 @@ using Orkeon.Application.Interfaces.Ports;
 namespace Orkeon.Application.Tests.Interfaces;
 
 /// <summary>
-/// The ambient attribution every metered LLM call is stamped with (STUDIO-42 D-02): who the
+/// The ambient attribution every metered LLM call is stamped with: who the
 /// call is for travels with the async flow, a scope says what it knows and inherits the
 /// rest, and a call outside any scope is still somebody's — the unattributed bucket's.
 /// </summary>

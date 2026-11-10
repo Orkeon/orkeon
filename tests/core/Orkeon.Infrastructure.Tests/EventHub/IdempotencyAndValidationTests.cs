@@ -39,7 +39,7 @@ public class IdempotencyAndValidationTests
     public async Task A_mailbox_message_is_delivered_once()
     {
         var stage = new IdempotencyEventHubMiddleware();
-        var message = Message(mailbox: MailboxAddress.Parse(new Uri("client://studio")));
+        var message = Message(mailbox: MailboxAddress.Parse(new Uri("client://desk")));
 
         await stage.OnReceiveAsync(message, Pass, CancellationToken.None);
 
@@ -68,7 +68,7 @@ public class IdempotencyAndValidationTests
     public async Task Publishing_the_same_message_twice_is_the_callers_business()
     {
         var stage = new IdempotencyEventHubMiddleware();
-        var message = Message(mailbox: MailboxAddress.Parse(new Uri("client://studio")));
+        var message = Message(mailbox: MailboxAddress.Parse(new Uri("client://desk")));
 
         var first = await stage.OnPublishAsync(message, Pass, CancellationToken.None);
         var second = await stage.OnPublishAsync(message, Pass, CancellationToken.None);
@@ -82,7 +82,7 @@ public class IdempotencyAndValidationTests
     public async Task The_memory_is_bounded_and_forgets_the_oldest_first()
     {
         var stage = new IdempotencyEventHubMiddleware(capacity: 2);
-        var mailbox = MailboxAddress.Parse(new Uri("client://studio"));
+        var mailbox = MailboxAddress.Parse(new Uri("client://desk"));
         var first = Message(mailbox: mailbox);
 
         await stage.OnReceiveAsync(first, Pass, CancellationToken.None);

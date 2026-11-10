@@ -37,7 +37,7 @@ internal sealed record ForgeSessionDocument
     public int Version { get; init; } = 1;
 
     /// <summary>
-    /// The session's stable id (STUDIO-25): created with it, never changed — a rebuilt session
+    /// The session's stable id: created with it, never changed — a rebuilt session
     /// is a new session and gets a new one. The promotion copies it into the team's
     /// <c>forge.json</c>, and rule R (<see cref="TeamSessionLink"/>) links a team folder to the
     /// session carrying its id. Null for a file written before the id existed: such a session is
@@ -59,7 +59,7 @@ internal sealed record ForgeSessionDocument
     public string Format { get; set; } = "yaml";
 
     /// <summary>
-    /// The use case the session was composed from, <c>--reference</c> (STUDIO-40, D-01): recorded
+    /// The use case the session was composed from, <c>--reference</c>: recorded
     /// at creation, so a resume composes with it again and a client reopening the session reads it
     /// back. Titled in English until the promotion titles it in the brief's language (D-04). Null
     /// for a session started from nothing.
@@ -225,7 +225,7 @@ internal sealed class ForgeSession
     {
         var root = RootFor(workspaceDirectory);
         var stamp = (now ?? DateTimeOffset.UtcNow).UtcDateTime;
-        // The folder rule Studio's teams follow too, with the session's own fallback: a need
+        // The folder rule team folders follow too, with the session's own fallback: a need
         // that keeps no usable character names its session after the instant it was opened.
         var baseSlug = FolderSlug.From(requestedSlug) ?? stamp.ToString("'forge-'yyyyMMdd-HHmmss", CultureInfo.InvariantCulture);
 
@@ -304,7 +304,7 @@ internal sealed class ForgeSession
     /// <summary>
     /// The session of <paramref name="workspaceDirectory"/> whose id is <paramref name="id"/>, or
     /// null. Two sessions only share an id when a session directory was copied by hand; the most
-    /// recently touched one answers then — the order Studio's catalog lists them in — so both
+    /// recently touched one answers then — the order a catalog lists them in — so both
     /// sides name the same one. Corrupt sessions are skipped, like <see cref="List"/>.
     /// </summary>
     public static ForgeSession? FindById(string workspaceDirectory, Guid id)
@@ -349,7 +349,7 @@ internal sealed class ForgeSession
 
     /// <summary>
     /// The folder name this session takes to follow a team folder named
-    /// <paramref name="teamFolderName"/> (STUDIO-26): that name as it is, or suffixed <c>-2</c>,
+    /// <paramref name="teamFolderName"/>: that name as it is, or suffixed <c>-2</c>,
     /// <c>-3</c>… past any other entry of the session root — never over one (D-04). Null when the
     /// session already stands there: its own folder is no collision, so a re-adoption finds
     /// nothing to move. Compared the way the platform compares paths, so a name differing only in

@@ -26,7 +26,7 @@
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="System.Threading.RateLimiting" />
-    <!-- ADR-009: the LLM vocabulary the providers, `orkeon init` and Studio must agree on. -->
+    <!-- ADR-009: the LLM vocabulary the providers and `orkeon init` must agree on. -->
     <!-- ADR-009: the virtual roots, so the sandbox mount stops declaring its own. -->
     <!-- ADR-009: configuration paths more than one project must spell identically. -->
     <ProjectReference Include="..\..\constants\Orkeon.Constants.Configuration\Orkeon.Constants.Configuration.csproj" />

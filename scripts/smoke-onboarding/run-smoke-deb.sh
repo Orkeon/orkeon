@@ -18,10 +18,7 @@
 #  2a. the notices shipped with it: /usr/share/doc/orkeon holds `copyright`,
 #      THIRD-PARTY-NOTICES.md and one licenses/<pack>/ per .NET runtime an
 #      application of the package bundles (GAP-52);
-#  2b. the two Orkeon Studio TUIs shipped too — /usr/bin/orkeon-studio-config and
-#      /usr/bin/orkeon-studio-run are installed and answer `--version` with no
-#      terminal at all (STUDIO-08, spec §8.4);
-#  2c. the REPL shipped too — /usr/bin/orkeon-repl is installed and starts: with a
+#  2b. the REPL shipped too — /usr/bin/orkeon-repl is installed and starts: with a
 #      closed stdin and no terminal it opens its plain console, prints its banner
 #      and leaves at the end of input with exit code 0 (the payload is
 #      self-contained, so apt resolved no dotnet-runtime-* package for it);
@@ -157,12 +154,12 @@ if [[ -n "$DEB_PATH" ]]; then
   fi
   ORKEON_BIN="$INSTALLED_BIN"
   PAYLOAD_ROOT="$INSTALLED_PREFIX"
-  STUDIO_INSTALLED=true
+  PACKAGE_INSTALLED=true
 else
   smoke_skip "apt-install" "--orkeon given: smoking an already-available binary"
   smoke_skip "launcher" "--orkeon given"
   smoke_skip "dpkg-verify" "--orkeon given"
-  STUDIO_INSTALLED=false
+  PACKAGE_INSTALLED=false
   if [[ ! -x "$ORKEON_BIN" ]]; then
     smoke_fail "launcher" "not executable: $ORKEON_BIN"
     smoke_summary "DEB SMOKE"
@@ -185,32 +182,18 @@ smoke_assert_payload "$PAYLOAD_ROOT" "$PAYLOAD_ROOT/esbuild-bin/esbuild"
 # to expect are read from those applications (GAP-52). Nothing to assert on a bare
 # binary: --orkeon installs no package.
 if [[ -n "$DEB_PATH" ]]; then
-  smoke_assert_notices /usr/share/doc/orkeon copyright /usr/lib/orkeon /usr/lib/orkeon-repl /usr/lib/orkeon-studio-*
+  smoke_assert_notices /usr/share/doc/orkeon copyright /usr/lib/orkeon /usr/lib/orkeon-repl
 else
   smoke_skip "notices" "--orkeon given"
 fi
 
 # --------------------------------------------------------------------------- #
-# 2b. Orkeon Studio TUIs (STUDIO-08)
-# --------------------------------------------------------------------------- #
-# The package installs /usr/bin/orkeon-studio-{config,run} next to /usr/bin/orkeon,
-# each execing its own self-contained payload under /usr/lib/<app> (package-deb.sh
-# §1b/§2). Nothing else in this smoke would notice their absence, so they get
-# their own step — presence plus the headless `--version` contract.
-if [[ "$STUDIO_INSTALLED" == true ]]; then
-  smoke_step_studio_present "$(dirname "$INSTALLED_BIN")"
-else
-  smoke_skip "studio-launchers" "--orkeon given: nothing was installed"
-  smoke_skip "studio-version" "--orkeon given"
-fi
-
-# --------------------------------------------------------------------------- #
-# 2c. The REPL
+# 2b. The REPL
 # --------------------------------------------------------------------------- #
 # /usr/bin/orkeon-repl execs the self-contained payload under /usr/lib/orkeon-repl
-# (package-deb.sh §1c/§2) and borrows the esbuild of /usr/lib/orkeon. Nothing else in
+# (package-deb.sh §1b/§2) and borrows the esbuild of /usr/lib/orkeon. Nothing else in
 # this smoke would notice its absence or a payload that does not start.
-if [[ "$STUDIO_INSTALLED" == true ]]; then
+if [[ "$PACKAGE_INSTALLED" == true ]]; then
   smoke_step_repl_present "$(dirname "$INSTALLED_BIN")"
 else
   smoke_skip "repl-launcher" "--orkeon given: nothing was installed"
@@ -224,7 +207,7 @@ smoke_step_init
 smoke_step_doctor
 # The package says it is one: its marker sits beside the apphost. A binary handed over
 # with --orkeon was installed by nobody here, and may say anything.
-if [[ "$STUDIO_INSTALLED" == true ]]; then
+if [[ "$PACKAGE_INSTALLED" == true ]]; then
   smoke_step_install_channel deb
 else
   smoke_skip "install-channel" "--orkeon given"
@@ -243,12 +226,6 @@ if [[ -n "$DEB_PATH" ]]; then
     # /usr/lib/orkeon may survive as an empty directory (dpkg keeps directories it
     # did not create alone); a leftover *payload* is the regression to catch.
     [[ -e "$INSTALLED_PREFIX/orkeon" ]] && leftovers="$leftovers $INSTALLED_PREFIX/orkeon still present;"
-    # Same rule for the Studio TUIs the package brought along.
-    for studio_app in $SMOKE_STUDIO_APPS; do
-      [[ -e "/usr/bin/$studio_app" ]] && leftovers="$leftovers /usr/bin/$studio_app still present;"
-      [[ -n "$(find "/usr/lib/$studio_app" -maxdepth 1 -type f 2>/dev/null | head -n1)" ]] \
-        && leftovers="$leftovers /usr/lib/$studio_app payload still present;"
-    done
     # And the REPL.
     [[ -e "/usr/bin/orkeon-repl" ]] && leftovers="$leftovers /usr/bin/orkeon-repl still present;"
     [[ -n "$(find "/usr/lib/orkeon-repl" -maxdepth 1 -type f 2>/dev/null | head -n1)" ]] \

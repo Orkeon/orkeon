@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Removed — Orkeon Studio moved to its own repository (Orkeon/orkeon-studio) **[breaking]**
+
+- **Orkeon Studio** **[breaking]**: the desktop and terminal front-end lives in [Orkeon/orkeon-studio](https://github.com/Orkeon/orkeon-studio) and is no longer built, tested, packaged or documented here. Removed from this repository: the `Orkeon.Studio.Core`, `Orkeon.Studio.Config`, `Orkeon.Studio.Run` and `Orkeon.Studio.Wpf` projects and their test projects, all out of `Orkeon.sln`; the `orkeon-studio`, `orkeon-studio-config` and `orkeon-studio-run` executables from the MSI, ZIP, tarball and `.deb` installers (the "Orkeon Studio" Start-menu shortcut included); the Studio smoke steps of the release pipeline; the Studio documentation page (`docs/architecture/studio.md`, EN and FR); and the third-party notices only Studio needed. Studio drives the `orkeon` CLI and its event protocol from its own repository; what it needs from them is generic (see the next section).
+
+  | Before | After |
+  |---|---|
+  | The Windows zip, the MSI, the Linux archives and the `.deb` install Orkeon Studio next to the CLI | They install the CLI (and the REPL, the service host where packaged) only; install Orkeon Studio from [Orkeon/orkeon-studio](https://github.com/Orkeon/orkeon-studio) |
+
+### Changed — no Studio name left in what Orkeon writes or defaults to **[breaking]**
+
+- **Launchers, `TeamLauncherSpec`** **[breaking]**: `WrittenByStudio` is removed, replaced by `string? WriterNote`. When it is set, `TeamLauncherScript` writes it as one comment line right after the header of both `run.cmd` (`rem`) and `run.sh` (`#`); a line break or any control character becomes a space, and in `run.cmd` a character beyond ASCII becomes `?` and a trailing caret is dropped, so the note never leaves its comment. Null or blank, no line.
+- **`orkeon run --client`** **[breaking]**: the default observing peer is `client` (`client://client`), no longer `studio`. A client that relied on the default passes `--client <name>`; a crew whose `links:` block named `client:studio` for the default peer names `client:client`.
+- **Team sidecar** **[breaking]**: `ConventionalNames.TeamSidecarFile` is `team.json`, no longer `studio-team.json`. `orkeon usecases export` writes it, `orkeon forge rename` renames the team in it and `orkeon forge promote` keeps it under that name only: a `studio-team.json` is not read. Rename it in an existing team folder.
+
+  | Before | After |
+  |---|---|
+  | `new TeamLauncherSpec { …, WrittenByStudio = true }` | `new TeamLauncherSpec { …, WriterNote = "<the writer's note>" }` |
+  | `orkeon run crew.yaml --events jsonl` answers at `client://studio` | it answers at `client://client`; pass `--client studio` to keep the old address |
+  | `<team>/studio-team.json` | `<team>/team.json` |
+
 ### Added — the CLI family ships to NuGet, for a standalone Orkeon Studio
 
 - **Packages** **[breaking]**: three ids join the NuGet.org lineup, so an application outside this repository (Orkeon Studio) builds against packages rather than project references. `Orkeon.Constants.Cli` (runner option names, exit codes, session-state keys) and `Orkeon.Cli.Abstractions` (the interactive-runner contracts) are packed straight from their projects; `Orkeon.Cli.TerminalGui` is packed by the new `src/packaging/Orkeon.Cli.TerminalGui` wrapper and depends on `Orkeon`, which carries the `Orkeon.Constants.Configuration` it reads, and on `Orkeon.Cli.Abstractions`. `Orkeon.Scripting` no longer embeds `Orkeon.Constants.Cli`: it takes a nuspec dependency on it, so no assembly ships in two packages. `Orkeon.Hosting` stays inside `Orkeon.Scripting`, and the `SuppressVfsCompliance` / `SuppressConsoleCompliance` attributes inside `Orkeon` (`Orkeon.Domain`); `Orkeon.Compliance.Vfs` remains the analyzer alone. `scripts/check-package-closure.py` counts a lineup package packed from its own project as carrying its assembly and project closure.
@@ -4596,7 +4616,7 @@ variable at all (GAP-36).
   showed (`Studio.Settings.NoBaseUrl`, `Studio.Settings.CustomProvider`,
   `Studio.Settings.ApiKeyRecommendation`, in the five languages).
 
-Documented in [Orkeon Studio](docs/architecture/studio.md).
+Documented in [Orkeon Studio](https://github.com/Orkeon/orkeon-studio/blob/main/docs/architecture/studio.md).
 
 ### Fixed — `orkeon init`'s probe presents the key a run presents, a run reads no settings file but the one it resolved, and `orkeon-host` names only the profiles it offers **[breaking]**
 
@@ -5147,7 +5167,7 @@ the run exited 2 (STUDIO-49).
 
 Documented in [Configuration](docs/reference/configuration.md#the-api-key-apikey-apikeyenvvar),
 [API keys: the variable per provider](docs/reference/llm-providers-comparison.md#api-keys-the-variable-per-provider),
-[CLI](docs/reference/cli.md), [Orkeon Studio](docs/architecture/studio.md),
+[CLI](docs/reference/cli.md), [Orkeon Studio](https://github.com/Orkeon/orkeon-studio/blob/main/docs/architecture/studio.md),
 [The service host](docs/architecture/service-host.md),
 [Security](docs/architecture/security.md#llm-keys-the-settings-file-names-the-variable) and
 [Limitations](docs/reference/limitations.md).
@@ -5268,8 +5288,8 @@ settings define `Llm:Profiles:claude`, which nothing in Studio wrote: a Studio u
 - `Orkeon.Constants.Llm` gains `LlmProfileNames.Default` (ADR-009): the reserved name the runtime
   refuses for a profile, which Studio refuses too; `LlmProfiles.Default` reads it.
 
-Documented in [Configuration](docs/reference/configuration.md#studio-writes-this-section),
-[Orkeon Studio](docs/architecture/studio.md) and
+Documented in [Configuration](docs/reference/configuration.md),
+[Orkeon Studio](https://github.com/Orkeon/orkeon-studio/blob/main/docs/architecture/studio.md) and
 [YAML and builders](docs/getting-started/yaml-and-builders.md#one-provider-per-agent-profiles).
 
 ### Fixed — a crew's manager runs on the LLM the crew gives it, the RAG subsystem on the profile the host names, a `.ork.ts` task changes profile, and an address is no glob **[breaking]**

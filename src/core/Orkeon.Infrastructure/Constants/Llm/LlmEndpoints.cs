@@ -6,7 +6,7 @@ namespace Orkeon.Infrastructure.Constants.Llm;
 /// LLM provider base URLs and vector store default endpoints, as this assembly publishes them.
 /// <para>
 /// The provider URLs are no longer written here: they come from
-/// <see cref="LlmProviderEndpoints"/> (ADR-009), which is also what Orkeon Studio reads. These
+/// <see cref="LlmProviderEndpoints"/> (ADR-009), which clients read too. These
 /// names stay because they are a shipped public surface; their value now has one home. The two
 /// vector-store entries below are not shared with anything and remain declared here.
 /// </para>

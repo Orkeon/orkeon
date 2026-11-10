@@ -9,7 +9,7 @@ namespace Orkeon.Scripting.Cli.Commands.Forge;
 
 /// <summary>
 /// The use case a session was composed from, as <c>session.json</c>, <c>forge.json</c> and
-/// <c>FORGE.md</c> trace it (STUDIO-40, D-01/D-04): its id, and its title in the brief's
+/// <c>FORGE.md</c> trace it: its id, and its title in the brief's
 /// language — in English until there is a brief.
 /// </summary>
 internal sealed record ForgeReferenceRecord
@@ -44,8 +44,8 @@ internal sealed record ForgeReferenceTask(
     string Key, string? Agent, string? Description, string? ExpectedOutput, IReadOnlyList<string> Dependencies);
 
 /// <summary>
-/// The use case a composition starts from (STUDIO-40): its sheet, and the structure of its crew —
-/// agents, tasks, process, tools — read from the crew file the tool embeds (STUDIO-38). The
+/// The use case a composition starts from: its sheet, and the structure of its crew —
+/// agents, tasks, process, tools — read from the crew file the tool embeds. The
 /// composer gets that structure as a model, never the file: a backstory is the example's content,
 /// and the file's tools are the example's, not the forge's.
 /// <para>

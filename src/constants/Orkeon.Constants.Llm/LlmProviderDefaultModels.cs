@@ -9,7 +9,7 @@ namespace Orkeon.Constants.Llm;
 /// </para>
 /// <para>
 /// They live in a satellite (ADR-009) because three components must agree on them: the provider
-/// implementations, <c>orkeon init</c>, and Orkeon Studio's connection form. Studio may not
+/// implementations, <c>orkeon init</c>, and a client's connection form. A client may not
 /// reference <c>Orkeon.Infrastructure</c>, so it used to declare its own copy of all twelve and
 /// a drift test compared them one by one against the runtime lookup.
 /// </para>
@@ -180,7 +180,7 @@ public static class LlmProviderDefaultModels
 
     /// <summary>
     /// Docker Model Runner. Parity with the committed <c>examples/appsettings/appsettings.json</c>,
-    /// which <c>orkeon init</c> writes and Studio offers.
+    /// which <c>orkeon init</c> writes.
     /// </summary>
     public const string DockerModelRunner = "ai/granite-4.0-h-tiny";
 

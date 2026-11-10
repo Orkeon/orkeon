@@ -5,7 +5,7 @@ using Orkeon.Scripting.Cli.Tests.Doubles;
 namespace Orkeon.Scripting.Cli.Tests.UseCases;
 
 /// <summary>
-/// The catalogue the <c>orkeon</c> tool carries (STUDIO-38 D-03): the manifest, each example's
+/// The catalogue the <c>orkeon</c> tool carries: the manifest, each example's
 /// crew file and its <c>data/</c> folder, embedded — the examples themselves are not shipped.
 /// These tests read the repository next to the binary to prove the embedding is exact.
 /// </summary>

@@ -5,8 +5,7 @@
 .DESCRIPTION
   Dot-sourced, never executed. The ZIP channel (run-smoke-service.ps1) and the MSI
   channel (run-smoke-service-msi.ps1) install to the same layout and register the
-  same service — the assertions must not be written twice and allowed to drift,
-  same doctrine as lib\studio-windows.ps1.
+  same service — the assertions must not be written twice and allowed to drift.
 
   What both channels must prove about a registered 'Orkeon' service:
     - it runs under the virtual account NT SERVICE\Orkeon, not LocalSystem;

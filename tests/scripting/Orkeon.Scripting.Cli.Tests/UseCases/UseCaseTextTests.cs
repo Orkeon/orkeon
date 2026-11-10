@@ -3,7 +3,7 @@ using Orkeon.Scripting.Cli.Commands.UseCases;
 namespace Orkeon.Scripting.Cli.Tests.UseCases;
 
 /// <summary>
-/// The normalization shared by the indexed text and the query (STUDIO-38 D-01). BM25 matches
+/// The normalization shared by the indexed text and the query. BM25 matches
 /// terms by exact spelling and its own tokenizer neither folds accents nor segments Chinese, so
 /// whatever the index and the query disagree on here is a match that silently never happens.
 /// </summary>

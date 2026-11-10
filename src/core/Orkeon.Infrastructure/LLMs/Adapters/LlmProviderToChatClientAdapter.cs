@@ -367,9 +367,9 @@ public sealed class LlmProviderToChatClientAdapter : IChatClient
     /// response's <see cref="ChatResponse.AdditionalProperties"/>, as a decimal under
     /// <see cref="LlmUsageMetadataKeys.Cost"/> with its currency beside it: the provider
     /// metadata it comes from does not cross this adapter, and an <see cref="IChatClient"/>
-    /// consumer has no other way to read OpenRouter's real charge (STUDIO-29). The token meter
+    /// consumer has no other way to read OpenRouter's real charge. The token meter
     /// does not depend on it — the metered provider under this adapter reads the charge from
-    /// the provider's own answer (STUDIO-42). Nothing is written for a call the vendor did not
+    /// the provider's own answer. Nothing is written for a call the vendor did not
     /// bill: absent is unknown.
     /// </summary>
     private static void AttachVendorCost(ChatResponse chatResponse, LlmResponse response)

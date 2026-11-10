@@ -469,7 +469,7 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
         CancellationToken cancellationToken)
     {
         // Every LLM call of the run is metered for this crew, whichever part of the run makes
-        // it — the planner, the manager, an agent, a tool (STUDIO-42). The narrower scopes
+        // it — the planner, the manager, an agent, a tool. The narrower scopes
         // opened below say what the work was; this one says whose run it is.
         using var usageScope = Orkeon.Application.Interfaces.Ports.LlmUsageScope.Begin(crewId: crew.Id.ToString());
 
@@ -1080,7 +1080,7 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
     /// <summary>
     /// The variables the prompt composer interpolates and lists under "Context Variables".
     /// The initial context joins them as <c>initial_context</c>: until 2026-09-11 it was
-    /// mapped into the domain input and read by nothing -- `--initial-context`, Studio's
+    /// mapped into the domain input and read by nothing -- `--initial-context`, a client's
     /// field and every programmatic <c>CrewInput.Empty("...")</c> reached no agent. A
     /// caller that already set an <c>initial_context</c> variable keeps its own value.
     /// </summary>

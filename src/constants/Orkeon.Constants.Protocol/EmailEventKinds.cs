@@ -2,11 +2,11 @@ namespace Orkeon.Constants.Protocol;
 
 /// <summary>
 /// The event kinds <c>orkeon email login --events jsonl</c> and <c>orkeon email check --events
-/// jsonl</c> write for whatever drives them (STUDIO-70).
+/// jsonl</c> write for whatever drives them.
 /// <para>
 /// Same protocol as the run stream — one JSON document per line, the envelope of
 /// <see cref="RunEventKinds"/> — and the same reason to declare the vocabulary once: the CLI
-/// signs the account in, Orkeon Studio shows what the person has to do meanwhile, and the two
+/// signs the account in, a client shows what the person has to do meanwhile, and the two
 /// cannot reference each other. The other direction is not made of events: the driver writes
 /// the address the browser ended on as one plain line on the verb's standard input, and closes
 /// that input to abort the sign-in. A kind one side spells differently is not an error anywhere

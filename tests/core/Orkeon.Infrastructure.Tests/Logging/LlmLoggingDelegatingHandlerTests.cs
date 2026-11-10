@@ -326,8 +326,8 @@ public sealed class LlmLoggingDelegatingHandlerTests : IDisposable
     /// <summary>
     /// <see cref="LlmLoggingOptions.LogStreamingExchanges"/> is honoured.
     /// <para>
-    /// It was bound from configuration in <c>RunnerHost</c>, offered as a checkbox in both
-    /// Studio surfaces and pinned by Studio's settings validator — and read by no code at all,
+    /// It was bound from configuration in <c>RunnerHost</c>, offered as a setting in
+    /// clients and pinned by their settings validators — and read by no code at all,
     /// so turning it off still captured every streaming exchange. Nothing failed; the switch
     /// simply had no wire behind it.
     /// </para>

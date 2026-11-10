@@ -141,7 +141,6 @@ inside() {
   else
     smoke_fail "version" "installed '$installed', orkeon --version '$line'; expected $deb_version and 'orkeon $EXPECTED'"
   fi
-  smoke_step_studio_present /usr/bin
   # apt-health.yml replays this script against the newest package a channel offers, which
   # may be one built before the REPL joined the package: the step runs when the installed
   # package lists the launcher. run-smoke-deb.sh, the gate of every build, requires it.

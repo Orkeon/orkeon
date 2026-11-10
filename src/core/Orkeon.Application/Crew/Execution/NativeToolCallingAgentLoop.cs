@@ -164,7 +164,7 @@ internal sealed class NativeToolCallingAgentLoop
     /// <summary>
     /// The loop's final answer — or, when the model answered with nothing, the
     /// <see cref="AgentExitReason.EmptyFinalAnswer"/> failure: an empty text used to exit
-    /// Completed here and the task went green with no deliverable (STUDIO-12 C5a).
+    /// Completed here and the task went green with no deliverable.
     /// </summary>
     private AgentLoopResult FinalAnswer(DomainAgent agent, Domain.Task.CrewTask task, string text, int iteration)
     {

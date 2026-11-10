@@ -71,7 +71,7 @@ internal sealed class RunCommandOptions : CliOptions
             => AllowExternalMounts || RunnerEnvironment.AllowExternalMounts;
 
         /// <summary>
-        /// The host LLM profile the run takes as its default (STUDIO-50): <c>Llm:Profiles:&lt;id&gt;</c>
+        /// The host LLM profile the run takes as its default: <c>Llm:Profiles:&lt;id&gt;</c>
         /// becomes the <c>Llm</c> section for this run, whole. Null keeps the settings' default.
         /// </summary>
         [Option(RunOptionNames.LlmProfile, Required = false, Default = null,
@@ -170,7 +170,7 @@ internal sealed class RunCommandOptions : CliOptions
         /// </summary>
         [Option(RunOptionNames.Events, Required = false, Default = null,
             HelpText = "Emit the versioned JSONL event protocol on stdout (task progress, cost, " +
-                       "run outcome) instead of plain text. This is how Orkeon Studio drives a run.")]
+                       "run outcome) instead of plain text. This is how a client drives a run.")]
         public string? Events { get; set; }
 
         /// <summary>
@@ -185,12 +185,16 @@ internal sealed class RunCommandOptions : CliOptions
         /// <summary>
         /// The name the observing process answers to, as it appears in <c>client://{name}</c>.
         /// Agents post to that address to reach it, and a crew authorizes the exchange by
-        /// declaring <c>to: "client:{name}"</c> in its <c>links:</c> block.
+        /// declaring <c>to: "client:{name}"</c> in its <c>links:</c> block. <see cref="DefaultClient"/>
+        /// when none is given.
         /// </summary>
-        [Option(RunOptionNames.Client, Required = false, Default = "studio",
+        [Option(RunOptionNames.Client, Required = false, Default = DefaultClient,
             HelpText = "With --events, the name of the observing peer on the hub (client://<name>). " +
                        "Agents can post and send to that address; a crew's links: block authorizes it.")]
-        public string Client { get; set; } = "studio";
+        public string Client { get; set; } = DefaultClient;
+
+        /// <summary>The observing peer's name when <c>--client</c> gives none: <c>client://client</c>.</summary>
+        internal const string DefaultClient = "client";
 
         /// <summary>Whether the run must emit the event protocol.</summary>
         internal bool EmitsEvents => Events is not null;
@@ -320,7 +324,7 @@ internal static partial class RunCommand
 
         // --client only means something on an evented run: the peer's seat exists on the hub
         // the bridge opens. Saying so beats silently ignoring the option.
-        if (!options.EmitsEvents && !string.Equals(options.Client, "studio", StringComparison.Ordinal))
+        if (!options.EmitsEvents && !string.Equals(options.Client, RunCommandOptions.DefaultClient, StringComparison.Ordinal))
         {
             await console.ErrorOutput.WriteLineAsync(
                 "orkeon run: --client has no effect without --events jsonl.").ConfigureAwait(false);
@@ -434,7 +438,7 @@ internal static partial class RunCommand
 
         // A crew can also be a DIRECTORY holding a multi-file YAML definition (config.yaml +
         // agents/ + tasks/, or the flat triplet) — at its root, or under its crew/
-        // sub-folder, which wins over the root (STUDIO-59); the shared runner then loads the
+        // sub-folder, which wins over the root; the shared runner then loads the
         // definition the inspection designates. Classify it before every other branch —
         // including --validate — so an ambiguous or layout-less directory reports the layout
         // diagnostic here instead of falling through to an extension test that cannot describe it.
@@ -523,7 +527,7 @@ internal static partial class RunCommand
 
         // BUS-02 on the script path too: the first version consulted EmitsEvents only on the
         // shared-runner branch, so `--events jsonl` on a .ork.ts printed plain text and not a
-        // single protocol line — while Studio added the flag for both dialects.
+        // single protocol line — while a client added the flag for both dialects.
         Run.ObservedRunContext? observed = null;
         IDisposable? runIdentity = null;
         var toStdout = options.EmitsEvents;
@@ -869,7 +873,7 @@ internal static partial class RunCommand
         if (selection is null)
             return Program.ExitScriptError;
 
-        // Same guard as the YAML runner (STUDIO-50): an --llm-profile the settings do not
+        // Same guard as the YAML runner: an --llm-profile the settings do not
         // define is one line naming the ones they do, not an exception out of the host build.
         if (!RunnerExecution.EnsureLlmProfileIsKnown(options.LlmProfile, settingsPath, console.ErrorOutput))
             return Program.ExitScriptError;
@@ -1012,7 +1016,7 @@ internal static partial class RunCommand
 
         // On an observed run stdout belongs to the protocol: the pretty-printed result blob
         // between the last event and run.finished was a parser error handed to every client.
-        // Humans (a terminal, Studio's raw pane) read it from stderr instead.
+        // Humans (a terminal, a client's raw pane) read it from stderr instead.
         await (observed is null ? console.Output : console.ErrorOutput)
             .WriteLineAsync(SerializeRunResult(result)).ConfigureAwait(false);
         return Program.ExitOk;
@@ -1043,7 +1047,7 @@ internal static partial class RunCommand
         // a user mount claiming a root this runner needs, would otherwise surface as a
         // duplicate-virtual-path exception thrown out of a DI factory, not as the
         // configuration mistake it is. A --mount on a root the settings declare is not a
-        // duplicate: the host replaces that settings entry by name (STUDIO-15 D-01).
+        // duplicate: the host replaces that settings entry by name.
         if (!RunnerExecution.EnsureVirtualRootsAreUnique(cliMounts, settingsPath, console.ErrorOutput))
             return null;
 

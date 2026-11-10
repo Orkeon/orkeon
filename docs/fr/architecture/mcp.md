@@ -226,7 +226,7 @@ serveur hérite de l'environnement où tourne Orkeon : une référence `${NOM}` 
 `Args`, `Url` ou une valeur d'`Env` refuse le démarrage, avant la connexion d'un serveur, avec sa correction
 ([une référence de variable n'est jamais développée](../reference/configuration.md#une-référence-de-variable-nest-jamais-développée)).
 
-**L'hôte partagé des runners honore la section de lui-même (STUDIO-21).** `orkeon run`
+**L'hôte partagé des runners honore la section de lui-même.** `orkeon run`
 — et tout runner bâti sur `RunnerHost` — appelle `AddOrkeonMcp` dès que `MCP:Servers`
 déclare au moins un serveur et que `MCP:Enabled` n'est pas `false`, puis connecte chaque
 serveur dans un pas de démarrage explicite (`McpStartup`) avant le chargement de la crew
@@ -246,7 +246,7 @@ d'erreur nomme le serveur et l'outil (`The tool 'file_read' of MCP server 'x' co
 an already-registered tool and was not registered`), dans le journal et sur stderr, et
 l'outil qui tenait le nom le garde, y compris après la déconnexion de ce serveur. Les
 autres outils du serveur sont enregistrés normalement (`--list-tools` montre la surface
-fusionnée). Orkeon Studio écrit la section depuis son onglet « Réglages › MCP ».
+fusionnée).
 **`orkeon-host` les connecte aussi (GAP-11) :** bâti sur `RunnerHost`, il lit la même
 section et exécute le même pas, une fois, depuis son premier service hébergé, au démarrage
 du démon — avant que le canal de chat puisse livrer un message qui charge une crew — et

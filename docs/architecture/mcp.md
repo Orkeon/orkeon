@@ -217,7 +217,7 @@ server inherits the environment Orkeon runs in: a `${NAME}` or `%NAME%` referenc
 `Args`, `Url` or an `Env` value refuses the start, before any server connects, with its correction
 ([a variable reference is never expanded](../reference/configuration.md#a-variable-reference-is-never-expanded)).
 
-**The shared runner host honours the section on its own (STUDIO-21).** `orkeon run`
+**The shared runner host honours the section on its own.** `orkeon run`
 — and every runner built on `RunnerHost` — calls `AddOrkeonMcp` when `MCP:Servers`
 declares at least one server and `MCP:Enabled` is not `false`, then connects every
 server in an explicit startup step (`McpStartup`) before the crew loads — and before
@@ -236,9 +236,8 @@ MCP tool is not registered, one error line names the server and the tool (`The t
 'file_read' of MCP server 'x' collides with an already-registered tool and was not
 registered`), on the log and on stderr, and the tool that held the name keeps it, including
 after that server disconnects. The server's other tools are registered normally
-(`--list-tools` shows the merged surface). Orkeon Studio writes the section from its
-«Settings › MCP» tab. **`orkeon-host` connects them too (GAP-11):** built on `RunnerHost`,
-it reads the same section and runs the same step once, from its first hosted service, when
+(`--list-tools` shows the merged surface). **`orkeon-host` connects them too (GAP-11):** built
+on `RunnerHost`, it reads the same section and runs the same step once, from its first hosted service, when
 the daemon starts — before the chat channel can deliver a message that loads a crew — and
 disconnects the servers when it stops, after the drain. The same settings give `orkeon run`
 and `orkeon-host` the same tools; an unreachable server costs the same error line and the

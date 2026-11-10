@@ -6,7 +6,7 @@ namespace Orkeon.Infrastructure.LLMs;
 
 /// <summary>
 /// The one function every entrance of the metered path applies to the provider it hands the
-/// runtime (GAP-38): the meter (<see cref="MeteredLlmProvider"/>, STUDIO-42) and, around it, the
+/// runtime (GAP-38): the meter (<see cref="MeteredLlmProvider"/>) and, around it, the
 /// host's limiter (<see cref="RateLimitedLlmProvider"/>). The entrances are the provider factory,
 /// <c>AddOrkeonLlmProvider</c> and <c>AddOrkeonLlmProfile</c>, the profile registry's
 /// <c>ForProvider</c>, <c>ManagerLlmResolver</c> and <c>SequentialCrewOrchestrator</c> — the points

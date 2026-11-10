@@ -5,8 +5,8 @@ namespace Orkeon.Constants.Cli;
 /// bare, without the leading dashes.
 /// <para>
 /// The same grammar is declared in three places - the YAML runner's options, the scripting
-/// runner's options, and Orkeon Studio's prediction of the command line it is about to spawn -
-/// in projects that cannot reference each other. Studio builds an argument list for a process it
+/// runner's options, and a client's prediction of the command line it is about to spawn -
+/// in projects that cannot reference each other. A client builds an argument list for a process it
 /// has no reference to, so a flag renamed on one side and not the other produces a launch that
 /// dies on an unrecognised option, at the one moment the user has no console to read it in.
 /// </para>
@@ -36,7 +36,7 @@ public static class RunOptionNames
 
     /// <summary>
     /// The host LLM profile (<c>Llm:Profiles:&lt;id&gt;</c>) the run takes as its default
-    /// (STUDIO-50) — what Orkeon Studio writes into a team's launchers for the team's model setting.
+    /// - what a team's launchers write for the team's model setting.
     /// </summary>
     public const string LlmProfile = "llm-profile";
 

@@ -21,8 +21,7 @@
 #
 # Layout: payload in /usr/lib/orkeon, launcher /usr/bin/orkeon; the REPL lands
 # in /usr/lib/orkeon-repl with launcher /usr/bin/orkeon-repl (it uses the esbuild
-# of /usr/lib/orkeon/esbuild-bin); the Orkeon Studio TUIs land in
-# /usr/lib/orkeon-studio-{config,run} with launchers /usr/bin/orkeon-studio-{config,run}.
+# of /usr/lib/orkeon/esbuild-bin).
 # Everything is self-contained, so the package depends on system libraries only —
 # never on dotnet-runtime-*.
 set -euo pipefail
@@ -163,26 +162,7 @@ printf 'deb\n' > "$PKG_DIR/usr/lib/orkeon/INSTALL-CHANNEL"
 mkdir -p "$PKG_DIR/usr/lib/orkeon/esbuild-bin"
 cp "$SRC_STAGE/libexec/esbuild-bin/esbuild" "$PKG_DIR/usr/lib/orkeon/esbuild-bin/esbuild"
 
-# --- 1b. Orkeon Studio TUI payloads (STUDIO-07) --------------------------------
-# The linux cli staging tree ships the two Terminal.Gui Studio apps next to the
-# CLI (see cli_set_includes in package-installers.sh). Both are self-contained,
-# so Depends stays free of dotnet-runtime-* — the package invariant holds.
-STUDIO_APPS="orkeon-studio-config orkeon-studio-run"
-studio_apphost() { # $1=app-name -> apphost file name (AssemblyName)
-  case "$1" in
-    orkeon-studio-config) echo "Orkeon.Studio.Config" ;;
-    orkeon-studio-run)    echo "Orkeon.Studio.Run" ;;
-  esac
-}
-for app in $STUDIO_APPS; do
-  apphost="$(studio_apphost "$app")"
-  [[ -x "$SRC_STAGE/libexec/$app/$apphost" ]] || { echo "Missing apphost $SRC_STAGE/libexec/$app/$apphost (staging tree predates STUDIO-07?)" >&2; exit 1; }
-  check_arch "$SRC_STAGE/libexec/$app/$apphost"
-  mkdir -p "$PKG_DIR/usr/lib/$app"
-  cp -R "$SRC_STAGE/libexec/$app/." "$PKG_DIR/usr/lib/$app/"
-done
-
-# --- 1c. The REPL (orkeon-repl) ------------------------------------------------
+# --- 1b. The REPL (orkeon-repl) ------------------------------------------------
 # The `*.cmd.ts` commands run only in the REPL, never in the `orkeon` CLI, so whoever
 # installs the package for them needs it. Its APPS row in package-installers.sh is
 # self-contained and the linux cli set admits it. A staging tree that predates that
@@ -229,17 +209,6 @@ if [ -z "\${ORKEON_ESBUILD_PATH:-}" ] && [ -x "\$ORKEON_HOME/esbuild-bin/esbuild
 fi
 exec /usr/lib/$REPL_APP/$REPL_APPHOST "\$@"
 EOF
-
-# Studio TUI launchers — no esbuild indirection needed (the TUIs never invoke
-# the scripting toolchain themselves; they spawn /usr/bin/orkeon, which does).
-for app in $STUDIO_APPS; do
-  apphost="$(studio_apphost "$app")"
-  cat > "$PKG_DIR/usr/bin/$app" <<EOF
-#!/bin/sh
-# $app launcher — installed by the orkeon Debian package.
-exec /usr/lib/$app/$apphost "\$@"
-EOF
-done
 
 # --- 3. Documentation ---------------------------------------------------------
 cat > "$PKG_DIR/usr/share/doc/orkeon/copyright" <<EOF
@@ -320,17 +289,8 @@ find "$PKG_DIR/usr/lib/$REPL_APP" -type f -name '*.so' -exec chmod 755 {} +
 if [[ -f "$PKG_DIR/usr/lib/$REPL_APP/createdump" ]]; then
   chmod 755 "$PKG_DIR/usr/lib/$REPL_APP/createdump"
 fi
-for app in $STUDIO_APPS; do
-  apphost="$(studio_apphost "$app")"
-  chmod 755 "$PKG_DIR/usr/bin/$app" "$PKG_DIR/usr/lib/$app/$apphost"
-  find "$PKG_DIR/usr/lib/$app" -type f -name '*.so' -exec chmod 755 {} +
-  if [[ -f "$PKG_DIR/usr/lib/$app/createdump" ]]; then
-    chmod 755 "$PKG_DIR/usr/lib/$app/createdump"
-  fi
-done
-
 # --- 4b. Payload dedup --------------------------------------------------------
-# dpkg preserves hard links, so the byte-identical files the four
+# dpkg preserves hard links, so the byte-identical files the two
 # self-contained payloads share (.NET runtime, common Orkeon assemblies) are
 # stored and unpacked once. Runs after the permission reset so the shared
 # inodes keep the settled modes, and before Installed-Size so the estimate
@@ -378,10 +338,6 @@ Description: multi-agent AI orchestration framework and CLI
  The package also ships orkeon-repl, the interactive console: it drives agents,
  crews and tools from a terminal and runs the TypeScript-scripted commands
  (*.cmd.ts) that the orkeon command line tool does not run.
- .
- It ships the Orkeon Studio console apps too: orkeon-studio-config
- (guided appsettings editor) and orkeon-studio-run (crew launcher with live
- logs), both built on Terminal.Gui.
  .
  This package is self-contained: the .NET runtime and the esbuild toolchain
  ship inside it, so no .NET installation or third-party repository is needed.

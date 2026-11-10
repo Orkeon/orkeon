@@ -109,7 +109,7 @@ function stableHeader() {
     lines.push("  and submit again. Do not converse in this phase.");
   }
 
-  // The folders the user confirmed (STUDIO-46): the team reads and writes these and nothing
+  // The folders the user confirmed: the team reads and writes these and nothing
   // else — the trial mounts exactly this list, and so does the adopted team.
   var folders = (input.brief && input.brief.folders) || [];
   if (phase !== "brief" && folders.length > 0) {
@@ -121,7 +121,7 @@ function stableHeader() {
       var folder = folders[f];
       lines.push("- " + folder.path + " — " + (folder.role === "input" ? "read-only input" : "writable output")
         + (folder.purpose ? ": " + folder.purpose : ""));
-      // STUDIO-57: what the user put in a folder kept inside the team, read after the fill step.
+      // What the user put in a folder kept inside the team, read after the fill step.
       if (folder.contents && folder.contents.length > 0)
         lines.push("  The user put in it: " + folder.contents.join(", "));
     }
@@ -134,7 +134,7 @@ function stableHeader() {
       lines.push("Every task deliverable is a path under one of the output folders above");
       lines.push("(\"" + output + "/result.md\"). Agents that read files read the input folders.");
     } else {
-      lines.push("No folder is written to (STUDIO-57): the team writes no file, so no task has a");
+      lines.push("No folder is written to: the team writes no file, so no task has a");
       lines.push("`deliverable` — its result is what it does (mails sent, an API called, an answer");
       lines.push("given) and what it reports in its final output. Agents that read files read the");
       lines.push("input folders.");
@@ -142,7 +142,7 @@ function stableHeader() {
   } else if (phase !== "brief" && input.brief) {
     lines.push("");
     lines.push("## The team's folders");
-    lines.push("The user confirmed no folder at all (STUDIO-57): the team reads and writes no file.");
+    lines.push("The user confirmed no folder at all: the team reads and writes no file.");
     lines.push("No agent needs a file tool, no task has a `deliverable`; the result is what the team");
     lines.push("does and what it reports in its final output.");
   }
@@ -156,7 +156,7 @@ function stableHeader() {
     lines.push("A task that sends mail names each recipient by e-mail address only, and names no account and no client:// address: the mail tools use the account the operator configured.");
   }
 
-  // The use case the user started from (STUDIO-40): its team, as a model of structure. Right
+  // The use case the user started from: its team, as a model of structure. Right
   // after the catalogue its tools were cut down to, so everything above it stays the same for
   // every session — and cacheable — whichever reference follows.
   var reference = input.reference;
@@ -192,7 +192,7 @@ function stableHeader() {
 }
 
 // The first output folder of the confirmed list — the example deliverable root; null when
-// the team writes nowhere (STUDIO-57).
+// the team writes nowhere.
 function firstOutput(folders) {
   for (var i = 0; i < folders.length; i++)
     if (folders[i].role === "output")

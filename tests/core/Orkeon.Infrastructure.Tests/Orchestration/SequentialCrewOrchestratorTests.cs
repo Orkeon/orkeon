@@ -779,7 +779,7 @@ public class SequentialCrewOrchestratorTests
         Assert.Equal(Orkeon.Domain.Common.CrewId.System, callerContext.Current.CrewId);
     }
 
-    #region LLM usage attribution (STUDIO-42)
+    #region LLM usage attribution
 
     /// <summary>
     /// GAP-33: the provider C# gives the planner (<c>WithPlanningLlm</c>) is metered where the run

@@ -21,11 +21,11 @@ namespace Orkeon.Infrastructure.LLMs.Profiles;
 /// (GAP-36) — the reader filled in the engine's 0.7, which the default models of OpenAI and
 /// Anthropic refuse.
 /// <para>
-/// The key (STUDIO-49): an <c>ApiKey</c> the configuration resolves — the settings file, an
-/// <c>ORKEON_</c> variable, the environment of a Studio launch — wins; otherwise
+/// The key: an <c>ApiKey</c> the configuration resolves — the settings file, an
+/// <c>ORKEON_</c> variable, the environment of a client launch — wins; otherwise
 /// <c>ApiKeyEnvVar</c> names the environment variable holding it, read in the process, then in
 /// the user's persistent scope on Windows, never copied into the process. A value left blank
-/// reads as absent: a Studio launch blanks the default fields its team's setting does not set.
+/// reads as absent: a client launch may blank the default fields its team's setting does not set.
 /// </para>
 /// </summary>
 public static class LlmSettings
@@ -33,8 +33,8 @@ public static class LlmSettings
     /// <summary>
     /// Whether the host configures a default provider: an <c>Llm</c> section with at least one
     /// key besides <c>Profiles</c> that holds a value. A section holding profiles alone leaves the
-    /// default unset, and so does one whose every value is blank — a Studio launch on the « no
-    /// model » setting blanks the whole default, and its team runs on the echo provider.
+    /// default unset, and so does one whose every value is blank — a client launch on a "no
+    /// model" setting blanks the whole default, and its team runs on the echo provider.
     /// </summary>
     /// <param name="configuration">The host configuration.</param>
     /// <returns>True when the <c>Llm</c> section describes a provider.</returns>

@@ -2,7 +2,7 @@ namespace Orkeon.Constants.Protocol;
 
 /// <summary>
 /// The event kinds <c>orkeon drive login --events jsonl</c> and <c>orkeon drive check --events
-/// jsonl</c> write for whatever drives them — Orkeon Studio's Drive tab.
+/// jsonl</c> write for whatever drives them.
 /// <para>
 /// The protocol of <see cref="EmailEventKinds"/>, spelt for the drive family: one JSON document
 /// per line in the envelope of <see cref="RunEventKinds"/>; the driver writes the address the

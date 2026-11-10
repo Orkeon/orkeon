@@ -50,7 +50,7 @@ internal static class ForgeDocuments
 /// </summary>
 public class ForgeBriefTests
 {
-    /// <summary>#119: a brief records any of the five languages of Studio's interface, and no other.</summary>
+    /// <summary>#119: a brief records any of the five languages of the interface, and no other.</summary>
     [Theory]
     [InlineData("fr", true)]
     [InlineData("en", true)]
@@ -197,7 +197,7 @@ public class ForgeBlueprintTests
             {
               "crew": { "name": "x", "goal": "g" },
               "agents": [ { "key": "a", "role": "r", "goal": "g", "tools": [ "post_message" ] } ],
-              "tasks": [ { "key": "t", "description": "Post the progress to client://studio", "expectedOutput": "o", "agent": "a" } ]
+              "tasks": [ { "key": "t", "description": "Post the progress to client://observer", "expectedOutput": "o", "agent": "a" } ]
             }
             """;
 

@@ -261,13 +261,13 @@ public class AclEventHubMiddlewareTests
         // The extension HUB-03 makes to the spec: client:// is not a crew, so CrewLink has
         // to be able to name it — otherwise the external peer would escape the ACL by
         // simply not being modelled.
-        var studio = MailboxAddress.Parse(new Uri("client://studio"));
+        var desk = MailboxAddress.Parse(new Uri("client://desk"));
         var links = World().Declare(
             Billing, "billing",
-            new CrewLink { To = CrewLink.ForClient("studio"), Direction = CrewLinkDirection.Bidirectional });
+            new CrewLink { To = CrewLink.ForClient("desk"), Direction = CrewLinkDirection.Bidirectional });
         var acl = new AclEventHubMiddleware(links);
 
-        await Run(acl, Message("run.progress", Billing, mailbox: studio));
+        await Run(acl, Message("run.progress", Billing, mailbox: desk));
 
         // A different peer name is a different peer.
         await Assert.ThrowsAsync<EventAclException>(
@@ -277,7 +277,7 @@ public class AclEventHubMiddlewareTests
         var stranger = new AclEventHubMiddleware(World().Declare(
             Fraud, "fraud", new CrewLink { To = "audit" }));
         await Assert.ThrowsAsync<EventAclException>(
-            () => Run(stranger, Message("run.progress", Fraud, mailbox: studio)));
+            () => Run(stranger, Message("run.progress", Fraud, mailbox: desk)));
     }
 
     [Fact]
@@ -300,9 +300,9 @@ public class AclEventHubMiddlewareTests
         // cannot be named by any link, so under the closed policy it could be neither
         // authorized nor granted: the daemon's own gateway would have refused itself.
         var acl = new AclEventHubMiddleware(World(), RestrictiveCrewLinkPolicy.Instance);
-        var studio = MailboxAddress.Parse(new Uri("client://studio"));
+        var desk = MailboxAddress.Parse(new Uri("client://desk"));
 
-        var message = await Run(acl, Message("_mailbox.post", CrewId.System, mailbox: studio));
+        var message = await Run(acl, Message("_mailbox.post", CrewId.System, mailbox: desk));
 
         Assert.Equal("_mailbox.post", message.Topic);
     }

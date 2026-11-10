@@ -43,7 +43,7 @@ public sealed class EmailCredentialProviderTests
     [Fact]
     public async Task Should_find_the_password_in_the_user_scope_When_the_process_does_not_hold_it_and_copy_nothing_into_the_process()
     {
-        // Studio remembers a password in the user scope (HKCU\Environment): a terminal opened
+        // A client remembers a password in the user scope (HKCU\Environment): a terminal opened
         // before it, or a scheduled task, has no copy in its environment block. The run reads the
         // user scope and leaves the process alone — what it starts must not inherit the secret.
         var name = "EMAIL_TEST_" + Guid.NewGuid().ToString("N");

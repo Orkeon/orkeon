@@ -52,7 +52,7 @@ public sealed class LlmFallbackRunEventTests : IDisposable
         var crew = scratch.WriteScript("crew.yaml", Crew);
         using var console = new TestConsole(stdin: string.Empty);
         await using var observed = new ObservedRunContext(
-            RunEventStreams.Stdout(_output, null, new FakeRunTimeProvider()), stream: false, clientName: "studio", console.Input);
+            RunEventStreams.Stdout(_output, null, new FakeRunTimeProvider()), stream: false, clientName: "client", console.Input);
 
         var exit = await RunnerExecution.RunOneShotAsync(
             RunCommand.ToRunnerOptions(console, new RunCommandOptions { ScriptPath = crew, AllowExternalMounts = true, Events = "jsonl" }),

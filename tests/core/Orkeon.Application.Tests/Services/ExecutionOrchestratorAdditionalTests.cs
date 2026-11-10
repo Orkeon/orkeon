@@ -637,7 +637,7 @@ public class ExecutionOrchestratorAdditionalTests
 
     #endregion
 
-    #region Usage Metering Tests (STUDIO-29, STUDIO-42)
+    #region Usage Metering Tests
 
     [Fact]
     public async System.Threading.Tasks.Task Every_call_of_a_task_is_metered_for_the_crew_it_runs_in_the_correction_round_included()

@@ -115,7 +115,7 @@ public sealed class RunEventsTests : IDisposable
     [Fact]
     public async Task A_started_task_lands_on_the_stream_before_anything_is_known_about_it()
     {
-        // STUDIO-17: the one moment a watcher can show as "in progress". The payload is
+        // The one moment a watcher can show as "in progress". The payload is
         // deliberately thin — no duration, no tokens, no verdict — because none exists yet.
         var inner = new RecordingHook();
         var observer = new RunEventObserver(Writer(), inner, stream: false);
@@ -284,7 +284,7 @@ public sealed class RunEventsTests : IDisposable
     [Fact]
     public void The_meter_carries_both_directions_at_every_call()
     {
-        // STUDIO-29: the split used to arrive with run.finished only — a watcher saw one number
+        // The split used to arrive with run.finished only — a watcher saw one number
         // grow and learnt what went up and what came back once the run was over.
         var observer = new RunEventObserver(Writer(), inner: null, stream: false);
 
@@ -366,7 +366,7 @@ public sealed class RunEventsTests : IDisposable
     [Fact]
     public void The_part_of_the_meter_the_runtime_estimated_is_marked_and_only_that_part()
     {
-        // STUDIO-42 D-06: a provider that counted nothing is estimated, and the wire says how
+        // A provider that counted nothing is estimated, and the wire says how
         // much of the total is the runtime's own reading — absent while every call was counted.
         var observer = new RunEventObserver(Writer(), inner: null, stream: false);
 
@@ -385,7 +385,7 @@ public sealed class RunEventsTests : IDisposable
     [Fact]
     public void Each_reading_names_the_work_its_call_was_for_and_an_unclaimed_call_names_none()
     {
-        // Every call of a run is on the meter (STUDIO-42), so a watcher that names the model a
+        // Every call of a run is on the meter, so a watcher that names the model a
         // team works on has to tell an agent's reading from a judge's. The engine's attribution
         // travels as it is; a call nothing claimed leaves the field out rather than say
         // "unattributed", and so does an event built without a kind of work.
@@ -463,7 +463,7 @@ public sealed class RunEventsTests : IDisposable
         using var scratch = new ScriptScratch();
         var crew = scratch.WriteScript("crew.yaml", TwoTaskCrew);
         using var console = new TestConsole(stdin: string.Empty);
-        await using var observed = new ObservedRunContext(RunEventStreams.Stdout(_output, null, new FakeRunTimeProvider()), stream: false, clientName: "studio", console.Input);
+        await using var observed = new ObservedRunContext(RunEventStreams.Stdout(_output, null, new FakeRunTimeProvider()), stream: false, clientName: "client", console.Input);
 
         var exit = await RunnerExecution.RunOneShotAsync(
             RunCommand.ToRunnerOptions(console, new RunCommandOptions { ScriptPath = crew, AllowExternalMounts = true, Events = "jsonl" }),
@@ -471,7 +471,7 @@ public sealed class RunEventsTests : IDisposable
             configureServices: (_, services) =>
             {
                 // The vendor enters the host the way any provider the factory does not build
-                // does: metered, for the run's observer (STUDIO-42).
+                // does: metered, for the run's observer.
                 services.AddOrkeonLlmProvider(_ => vendor);
                 observed.WireServices(services);
             },

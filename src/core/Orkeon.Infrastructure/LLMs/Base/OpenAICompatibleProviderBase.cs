@@ -1880,7 +1880,7 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
             metadata.Add("reasoning_content", extractedReasoning);
         // The one vendor of the fleet that bills in the response (OpenRouter, in credits/USD)
         // writes it here; everyone else leaves the key absent. It travels from here to the
-        // run's meter as billed (STUDIO-29): the chat client adapter carries it onto the
+        // run's meter as billed: the chat client adapter carries it onto the
         // ChatResponse, the agent loop reports it, and CostBudgetManager takes it as is.
         if (TryReadDouble(usage, "cost") is { } cost)
             AddVendorCost(metadata, cost);

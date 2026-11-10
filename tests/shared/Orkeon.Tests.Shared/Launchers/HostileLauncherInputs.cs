@@ -4,7 +4,7 @@ namespace Orkeon.Tests.Shared.Launchers;
 
 /// <summary>
 /// The values, launcher folders and team folders every suite that writes a team's launcher holds
-/// it against (STUDIO-51 § 3): the composer itself, <c>forge promote</c> and Orkeon Studio. Each
+/// it against: the composer itself, <c>forge promote</c> and any client that adopts a team. Each
 /// one broke a launcher, or would have: a <c>%</c> <c>cmd</c> expands, a <c>"</c> that takes it
 /// out of its quotes, an operator after it, a trailing backslash the runner reads as an escape, a
 /// leading dash the grammar reads as an option, a byte the console's code page reads otherwise, a

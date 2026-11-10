@@ -11,8 +11,7 @@ lists them, between two markers, and `--check` fails while that part lags the cl
 What is shipped: SHIPPED_APPS, the applications the installers, the tool packages and the
 container images publish. A cross-check reads those recipes (the installer tables, the
 `PackAsTool` projects, the Dockerfiles' `dotnet publish`) and fails on a project the list
-misses: the first count of this inventory was taken on three binaries, while the installers
-also ship the three Studio applications.
+misses.
 
 What is redistributed: a package of an application's restored graph (`project.assets.json`,
 every target) whose target carries at least one file the build copies to the output -- a
@@ -83,17 +82,12 @@ NOTICES_FILE = "THIRD-PARTY-NOTICES.md"
 
 # The applications this repository ships, by the name they ship under, and the project each
 # one publishes. `orkeon` and `orkeon-repl` are dotnet tools (PackAsTool) and installer
-# payloads, `orkeon-host` the service of the installers and of deploy/Dockerfile.host; the
-# three Studio applications are added to the installers per platform by
-# scripts/package-installers.{sh,ps1}. shipping_drift() keeps this list honest against those
-# recipes.
+# payloads, `orkeon-host` the service of the installers and of deploy/Dockerfile.host.
+# shipping_drift() keeps this list honest against the installer recipes.
 SHIPPED_APPS: list[tuple[str, str]] = [
     ("orkeon", "src/scripting/Orkeon.Scripting.Cli/Orkeon.Scripting.Cli.csproj"),
     ("orkeon-repl", "src/apps/Orkeon.ConsoleApp/Orkeon.ConsoleApp.csproj"),
     ("orkeon-host", "src/hosting/Orkeon.Host/Orkeon.Host.csproj"),
-    ("orkeon-studio", "src/apps/Orkeon.Studio.Wpf/Orkeon.Studio.Wpf.csproj"),
-    ("orkeon-studio-config", "src/apps/Orkeon.Studio.Config/Orkeon.Studio.Config.csproj"),
-    ("orkeon-studio-run", "src/apps/Orkeon.Studio.Run/Orkeon.Studio.Run.csproj"),
 ]
 
 # The container images. Each one ships what it publishes, so it carries the license and the

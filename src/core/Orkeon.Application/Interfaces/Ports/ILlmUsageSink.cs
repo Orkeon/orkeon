@@ -6,7 +6,7 @@ namespace Orkeon.Application.Interfaces.Ports;
 /// pipeline, a memory service, an evaluator, a <c>ctx.llm.*</c> script call —
 /// carrying the token counts the provider reported and the attribution in effect
 /// (<see cref="LlmUsageScope"/>). The events come from a single place, the metering
-/// decorator every provider is wrapped in (STUDIO-42); no caller reports its own. A host
+/// decorator every provider is wrapped in; no caller reports its own. A host
 /// typically forwards them to <see cref="ICostBudgetManager"/> (session accounting) and/or
 /// attributes them to the unit of work that made the call (per-agent token readouts).
 /// Embedding calls are not generation calls and are not reported. A host that registers no

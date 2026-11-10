@@ -249,7 +249,7 @@ public sealed class ForgeYamlRendererTests : IDisposable
     {
         // VFS-90: the crew says which roots it expects (mounts:), so a bare `orkeon run crew/`
         // refuses instead of writing nowhere — and the same list reaches the configuration the
-        // validator judges. The confirmed folder list is that set (STUDIO-46); a plan compiled
+        // validator judges. The confirmed folder list is that set; a plan compiled
         // without one names what it addresses by itself.
         Assert.True(ForgeBlueprint.TryParse(ForgeDocuments.ValidBlueprint, out var blueprint, out _));
         var derived = ForgePromoter.DerivedMounts(blueprint).Select(m => m.VirtualRoot).ToList();

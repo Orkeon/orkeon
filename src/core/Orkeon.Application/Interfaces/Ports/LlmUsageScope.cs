@@ -3,7 +3,7 @@ namespace Orkeon.Application.Interfaces.Ports;
 /// <summary>
 /// Who an LLM call is made for: the crew, the agent and the task it serves, and the kind of
 /// work it is (<see cref="LlmUsageOperations"/>). The metering decorator every provider is
-/// wrapped in stamps it on the usage event of each call (STUDIO-42): the code that makes a
+/// wrapped in stamps it on the usage event of each call: the code that makes a
 /// call never reports its usage, it only says what it is doing.
 /// </summary>
 public sealed record LlmUsageAttribution

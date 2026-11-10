@@ -4,8 +4,8 @@
 
 # ADR-008 — Virtual paths are the only currency agents are paid in
 
-**Status**: Accepted — since [ADR-009](./ADR-009-shared-constants-satellites.md), the roots this ADR calls `RunnerMounts` are `RunnerVirtualRoots` in `Orkeon.Constants.FileSystem`, which Studio references directly; the decision stands, the type moved · **Date**: 2026-08-25
-· **Scope**: `Orkeon.Domain/FileSystem`, `Orkeon.Hosting`, `Orkeon.Host`, `Orkeon.Scripting.Cli`, `Orkeon.Studio.*`
+**Status**: Accepted — since [ADR-009](./ADR-009-shared-constants-satellites.md), the roots this ADR calls `RunnerMounts` are `RunnerVirtualRoots` in `Orkeon.Constants.FileSystem`, which any project may reference directly; the decision stands, the type moved · **Date**: 2026-08-25
+· **Scope**: `Orkeon.Domain/FileSystem`, `Orkeon.Hosting`, `Orkeon.Host`, `Orkeon.Scripting.Cli`
 
 ## Context
 
@@ -47,9 +47,8 @@ listed to agents:
   the sentence *"All file operations must use these virtual paths. Absolute or unmounted paths
   are not allowed."*
 
-Studio then mirrored all of it faithfully — including into two screens a novice reads: the
-Composer's folder chips and, worse, the agent editor's « Sur quel dossier » line, which joined
-raw `physical:virtual:rights` strings under a label about what that agent can see.
+A graphical client then mirrored all of it faithfully — including into screens a novice reads,
+where it joined raw `physical:virtual:rights` strings under a label about what an agent can see.
 
 There was never a technical need for the shortcut. The scripting path had always mounted its
 input as `/script:ro`, the forge bench mounts `/workspace`, `/forge` and `/output`, and the crew
@@ -106,9 +105,7 @@ sides (`/output:/output:rw`, the container convention). It no longer covers runn
   `/crew` and the hosted crews `/crews*`. Nothing in the repository relied on the old spelling,
   and no published crew can: mount strings are supplied per launch, not stored in a crew.
 - Turning `--llm-log` on no longer shifts `Orkeon:FileSystem:Mounts:{i}`, because the log rides
-  its own key. Studio's index prediction gets simpler and stays true.
-- Studio duplicates the three virtual roots (it cannot reference `Orkeon.Hosting`); a drift test
-  pins them to `RunnerMounts`.
+  its own key.
 
 ## What this ADR deliberately does not settle
 
@@ -119,7 +116,7 @@ runners resolve it against the settings before any host — a root nothing provi
 entry carries, is refused in one line rather than at the first tool call. The block selects and
 validates; the virtual→physical binding itself is still supplied from outside the portable
 artifact — by a settings entry (now with an identity of its own), by a `--mount` argument, or by
-Studio's sidecar. That is what closes the gap that let a promoted team launch with no `/output`
+a team's sidecar. That is what closes the gap that let a promoted team launch with no `/output`
 at all while its own tasks declared `deliverable: /output/…`: `forge promote` writes the block,
 and a bare `orkeon run crew/` refuses instead of writing nowhere.
 
@@ -137,9 +134,9 @@ touch the Domain contract far more deeply than one boolean on the registry does.
 
 Three facts moved since this ADR was written; the decision stands.
 
-- **Studio no longer duplicates the three virtual roots.** `Orkeon.Studio.Core` references
-  `Orkeon.Constants.FileSystem` directly (ADR-009) and reads `RunnerVirtualRoots`; the copy the
-  Consequences describe no longer exists.
+- **No copy of the three virtual roots remains.** Orkeon Studio, the one consumer that held a
+  copy, moved to its own repository and reads `RunnerVirtualRoots` from
+  `Orkeon.Constants.FileSystem` (ADR-009); the copy the Consequences describe no longer exists.
 - **A fourth, internal root: `/credentials`.** `RunnerVirtualRoots.Credentials` is where the
   runner keeps the credentials it obtained for the run (the OAuth tokens of e-mail accounts).
   `FileSystemEmailTokenStore` reads and writes it through `PrivilegedFileSystemAccess`

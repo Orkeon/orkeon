@@ -47,7 +47,7 @@ internal sealed class DriveLoginCommandOptions : DriveCommandOptionsBase
 
     /// <summary><c>--events jsonl</c>: the sign-in as protocol lines on stdout, for a program that drives it.</summary>
     [Option("events", Required = false,
-        HelpText = "jsonl: write each step of the sign-in as one event line on stdout, read the pasted redirect address on stdin, and abort when stdin closes (the way Orkeon Studio drives it).")]
+        HelpText = "jsonl: write each step of the sign-in as one event line on stdout, read the pasted redirect address on stdin, and abort when stdin closes (the way a client that drives the CLI uses it).")]
     public string? Events { get; set; }
 
     /// <summary>Test seam: the terminal interaction.</summary>
@@ -73,7 +73,7 @@ internal sealed class DriveCheckCommandOptions : DriveCommandOptionsBase
 
     /// <summary><c>--events jsonl</c>: the verdict as one event line on stdout, for a program that drives the check.</summary>
     [Option("events", Required = false,
-        HelpText = "jsonl: write the verdict as one event line on stdout — what the root folder holds, or the error with its code (the way Orkeon Studio drives it).")]
+        HelpText = "jsonl: write the verdict as one event line on stdout — what the root folder holds, or the error with its code (the way a client that drives the CLI uses it).")]
     public string? Events { get; set; }
 }
 
@@ -133,7 +133,7 @@ internal static class DriveCommand
     /// <summary>
     /// Signs an account in. With <c>--events jsonl</c> the steps are event lines on standard
     /// output, the pasted redirect address is read on standard input, and the end of that input
-    /// aborts the sign-in — as <c>orkeon email login</c> does for Studio's Mails tab.
+    /// aborts the sign-in — as <c>orkeon email login</c> does.
     /// </summary>
     public static async Task<int> ExecuteLoginAsync(IRunnerConsole console, DriveLoginCommandOptions options)
     {

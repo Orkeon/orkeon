@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""test-examples-catalog.py — Tests of the use-case catalogue tooling (STUDIO-36).
+"""test-examples-catalog.py — Tests of the use-case catalogue tooling.
 
 Covers scripts/generate_examples_index.py (examples/INDEX.md + examples/usecases.json)
 and the use-case checks of scripts/lint-example-configs.py, on a two-example catalogue

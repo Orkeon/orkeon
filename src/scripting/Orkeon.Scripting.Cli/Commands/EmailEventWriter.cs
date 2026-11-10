@@ -4,7 +4,7 @@ using Orkeon.Scripting.Cli.Events;
 namespace Orkeon.Scripting.Cli.Commands;
 
 /// <summary>
-/// The e-mail sign-in's view of the shared event protocol (STUDIO-70): the envelope and the
+/// The e-mail sign-in's view of the shared event protocol: the envelope and the
 /// emission come from <see cref="OrkeonEventWriter"/>, this type adds the typed lines of
 /// <see cref="EmailEventKinds"/>. A sign-in belongs to no crew, so its events carry no identity.
 /// </summary>

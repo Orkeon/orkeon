@@ -30,7 +30,7 @@ par l'une de deux catégories, vérifiées par `SuppressionReasonCategoryTests` 
 | Catégorie | Sens | Où |
 |---|---|---|
 | `CONSOLE-ADAPTER` | Une implémentation d'une abstraction de console sur la console du processus | `SystemConsoleAdapter`, `LineEditingConsoleAdapter`, `SystemLineEditorConsole` (`Orkeon.Cli.Abstractions`), `SystemRunnerConsole` (`Orkeon.Hosting`), `SystemTerminalProbe` (`Orkeon.Cli.TerminalGui`) |
-| `CONSOLE-SINK` | L'unique point d'un exécutable qui transmet les vrais flux | `orkeon` (`Program.UseUtf8Console`), `orkeon-repl` (`Program.Main`), `orkeon-host` (`HostConsole`, `StartupFailureReporting.cs`), `orkeon-studio-config` et `orkeon-studio-run` (`Program.Main`), Orkeon Studio (`App()`) |
+| `CONSOLE-SINK` | L'unique point d'un exécutable qui transmet les vrais flux | `orkeon` (`Program.UseUtf8Console`), `orkeon-repl` (`Program.Main`), `orkeon-host` (`HostConsole`, `StartupFailureReporting.cs`) |
 
 Rien d'autre ne le porte : un nouvel exécutable reçoit un puits, une nouvelle abstraction de console
 un adaptateur.

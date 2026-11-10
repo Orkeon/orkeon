@@ -16,7 +16,7 @@ public enum MailboxKind
     Topic,
     /// <summary>
     /// An external peer attached to the hub from outside the process
-    /// (<c>client://{name}</c>) — Orkeon Studio, a terminal client, any process driving a run
+    /// (<c>client://{name}</c>) — a terminal client, any process driving a run
     /// over the event protocol. It is not a crew and not an agent, which is why it needs a
     /// scheme of its own rather than borrowing one (RC2 R3).
     /// </summary>

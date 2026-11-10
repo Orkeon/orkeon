@@ -79,11 +79,11 @@ Use native xUnit assertions only: no mocking framework (Moq, NSubstitute, FakeIt
 
 ## Architecture map
 
-The repository holds **52 src projects** and **38 test projects** (`Orkeon.sln`; examples in `examples/Orkeon.Examples.sln`), all `net10.0` (`net10.0-windows` for `Orkeon.Studio.Wpf`).
+The repository holds **48 src projects** and **34 test projects** (`Orkeon.sln`; examples in `examples/Orkeon.Examples.sln`), all `net10.0`.
 - `src/core/`: Clean Architecture. `Orkeon.Domain` holds entities, value objects and most interfaces (`ILlmProvider`, `IMemoryProvider`, `IAgentFactory`) and references only `Orkeon.Constants.Llm` (ADR-009). `Orkeon.Application` holds use cases, ports and DTOs. `Orkeon.Infrastructure` holds the adapters: 16 LLM providers in `LLMs/`, memory stores, and orchestration strategies in `Crew/Strategies/` + `Consensus/`. Allowed cross-layer exceptions are in ADR-002, 003, 005, 006 and 012.
 - `src/tools/`: the tool families (`ToolBase<TReq,TRes>`). `src/rag/`: the RAG subsystem (ADR-006). `src/analysis/`: RaggableTree, the semantic code graph.
 - `src/scripting/`: the `.ork.ts` DSL (Jint + esbuild) and the `orkeon` CLI. `src/cli/`: REPL command contracts and the Terminal.Gui console.
-- `src/hosting/`: `RunnerHost`, the `orkeon-host` daemon, Aspire. `src/apps/`: the REPL and Orkeon Studio (TUI + WPF). `src/plugins/`, `src/interop/` (Microsoft Agent Framework, ADR-010), `src/packaging/` (NuGet).
+- `src/hosting/`: `RunnerHost`, the `orkeon-host` daemon, Aspire. `src/apps/`: the REPL. `src/plugins/`, `src/interop/` (Microsoft Agent Framework, ADR-010), `src/packaging/` (NuGet).
 - `src/constants/`: zero-dependency shared-constant satellites. `src/analyzers/`: the VFS analyzer. `src/generators/`: source generators.
 - `tests/` mirrors `src/`; shared fixtures are in `tests/shared/Orkeon.Tests.Shared`.
 - `tools/`: npm bootstraps (esbuild, type checker), the vision-probe image generator. `scripts/`: Sonar, doc gates, example linters, third-party notices.

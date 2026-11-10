@@ -4,12 +4,11 @@ Command-line executables for the [Orkeon](https://github.com/Orkeon/orkeon) AI a
 
 ## Prerequisite
 
-**If this is the CLI archive** (`bin/` holds `orkeon` and, on Windows and Linux, the
-Orkeon Studio apps, and on Linux `orkeon-repl`): no .NET. Everything in it is
+**If this is the CLI archive** (`bin/` holds `orkeon` and, on Linux, `orkeon-repl`): no .NET. Everything in it is
 self-contained — the .NET runtime ships inside.
 
-**If `bin/` holds every launcher** (the multi-app archive): `orkeon`, `orkeon-repl`,
-`orkeon-host` and the Orkeon Studio apps are self-contained;
+**If `bin/` holds every launcher** (the multi-app archive): `orkeon`, `orkeon-repl`
+and `orkeon-host` are self-contained;
 `orkeon-slim` is **framework-dependent** and
 requires the **.NET 10 runtime** (`Microsoft.NETCore.App 10.x`). Install it from
 <https://dotnet.microsoft.com/download/dotnet/10.0>, then verify with
@@ -42,7 +41,7 @@ execution policy that holds for that one command: no PowerShell 7 to install, no
 (`-InstallDir <folder>`, `-Uninstall`). `install.ps1` itself is written for Windows
 PowerShell 5.1 and for PowerShell 7, should you rather run it yourself.
 
-Running it again over an installation replaces it. Close Orkeon Studio and let a running
+Running it again over an installation replaces it. Let a running
 crew finish first: while a program of the installation is running, the installer refuses,
 names it, and leaves the installation as it was.
 
@@ -78,10 +77,8 @@ default, by category: a file to read, or to copy — as it is, it changes nothin
 ## Contents
 
 The CLI archive (`orkeon-cli-{{VERSION}}-{{RID}}`) ships `bin/orkeon` — the first row
-below — and the Orkeon Studio apps of its platform: `orkeon-studio` (the desktop app) on
-Windows, `orkeon-studio-config` and `orkeon-studio-run` (the terminal apps) on Linux,
-none on macOS; on Linux it also ships `orkeon-repl`. The multi-app archive ships every
-command in this table, and the Studio apps too.
+below; on Linux it also ships `orkeon-repl`. The multi-app archive ships every
+command in this table.
 
 | Command | Description |
 |---|---|

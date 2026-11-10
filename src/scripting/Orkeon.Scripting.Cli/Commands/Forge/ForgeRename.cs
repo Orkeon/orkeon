@@ -50,13 +50,13 @@ internal sealed record ForgeRenameOutcome
 }
 
 /// <summary>
-/// <c>forge rename &lt;team-folder&gt; --name &lt;name&gt;</c> (STUDIO-28, D-01): renames a team, all of it
+/// <c>forge rename &lt;team-folder&gt; --name &lt;name&gt;</c>: renames a team, all of it
 /// or nothing. In order:
 /// <list type="number">
 /// <item><description>the new folder name, by the one folder rule (<see cref="FolderSlug"/>) — refused when something is already there (D-03);</description></item>
 /// <item><description>the team folder, moved to it;</description></item>
-/// <item><description>the session rule R links to the team, its folder following the team's (STUDIO-26) — a copy's original is never touched;</description></item>
-/// <item><description>the titles: <c>session.json</c> (and <c>promotedTo</c>), <c>forge.json</c>, Studio's <c>studio-team.json</c>, <c>FORGE.md</c>'s title line, the launchers' header;</description></item>
+/// <item><description>the session rule R links to the team, its folder following the team's — a copy's original is never touched;</description></item>
+/// <item><description>the titles: <c>session.json</c> (and <c>promotedTo</c>), <c>forge.json</c>, the team sidecar <c>team.json</c>, <c>FORGE.md</c>'s title line, the launchers' header;</description></item>
 /// <item><description><c>schedule/</c>, regenerated for the folder as it is now — the record of what was installed kept;</description></item>
 /// <item><description>the registration the operating system holds, reinstalled under the new name when one ran the team.</description></item>
 /// </list>
@@ -67,7 +67,7 @@ internal sealed record ForgeRenameOutcome
 internal static class ForgeTeamRenamer
 {
     /// <summary>
-    /// The sidecar's writing contract, Studio's (STUDIO-58): two spaces, LF line breaks on every
+    /// The sidecar's writing contract: two spaces, LF line breaks on every
     /// platform, non-ASCII text as the letters themselves — a local file people open, never HTML —
     /// and a final newline at the write.
     /// </summary>
@@ -102,8 +102,8 @@ internal static class ForgeTeamRenamer
                 recoverable: false);
         }
 
-        // (1) The folder rule's name, with a team folder's fallback — the very name Studio would
-        // have given the team at its adoption.
+        // (1) The folder rule's name, with a team folder's fallback — the very name a client would
+        // give the team at its adoption.
         var folderName = FolderSlug.From(name) ?? FolderSlug.TeamFallback;
         var destination = Path.Combine(parent, folderName);
         var moves = !ForgeScheduler.SamePath(team, destination);
@@ -237,7 +237,7 @@ internal static class ForgeTeamRenamer
     private static readonly string[] CrewFileExtensions = [".yaml", ".yml", ".ork.ts"];
 
     /// <summary>
-    /// Whether <paramref name="folder"/> holds a team: a promotion's record, Studio's sidecar, a
+    /// Whether <paramref name="folder"/> holds a team: a promotion's record, the team sidecar, a
     /// <c>crew/</c>, or a crew definition at its root — what an import keeps of a crew folder or of a
     /// single crew file.
     /// </summary>
@@ -298,7 +298,7 @@ internal static class ForgeTeamRenamer
     }
 
     /// <summary>
-    /// The session's folder takes the team folder's name (STUDIO-26), journaled: the move, and the
+    /// The session's folder takes the team folder's name, journaled: the move, and the
     /// bytes <c>session.json</c> had before — the move itself rewrites it under the new slug.
     /// </summary>
     private static (ForgeSession Session, ForgeRenamedSession? Move) FollowTeam(
@@ -330,7 +330,7 @@ internal static class ForgeTeamRenamer
     }
 
     /// <summary>
-    /// The name in Studio's sidecar, every other field — Studio's, known to this build or not — as
+    /// The name in the team sidecar, every other field — known to this build or not — as
     /// it was. A sidecar that is not a JSON object is left alone and said: the rename stands.
     /// </summary>
     private static void RenameInSidecar(string directory, string name, RenameJournal journal, List<(string Code, string Message)> warnings)

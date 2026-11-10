@@ -153,7 +153,7 @@ public sealed partial class HierarchicalProcessStrategy : IProcessStrategy
             LogManagerLlm(crew.Id, managerRole, managerLlm.Name);
 
             // The manager hands out the work: its assignments and reviews are metered under its
-            // role (STUDIO-42). Each worker's execution opens its own scope and names itself.
+            // role. Each worker's execution opens its own scope and names itself.
             using var managerUsageScope = LlmUsageScope.Begin(agentId: managerRole);
 
             var variables = inputVariables != null
@@ -168,13 +168,13 @@ public sealed partial class HierarchicalProcessStrategy : IProcessStrategy
             // Token telemetry propagation (R10.8) — same metadata channel as Sequential.
             // Records every worker execution, including revision re-executions. The manager's
             // own assign/review usage belongs to no task, so no task's figure carries it; the
-            // run's token meter counts it through the metered provider (STUDIO-42).
+            // run's token meter counts it through the metered provider.
             var tokenTally = new TokenUsageTally();
             var run = new HierarchicalRun(
                 workerAgents, managerLlm, managerRole, applicationTaskOutputs, tokenTally, outcome, results, taskSnapshots);
 
             // The manager hands the tasks out one after another, so the order is the
-            // sequential one: the declared order sorted on the dependencies (STUDIO-12 C2).
+            // sequential one: the declared order sorted on the dependencies.
             var taskIds = await CrewTaskSequencer.ResolveAsync(
                 crew, _taskRepository, _logger, cancellationToken).ConfigureAwait(false);
             await DecisionPreflight.RefuseUnsupportedAsync(
@@ -286,7 +286,7 @@ public sealed partial class HierarchicalProcessStrategy : IProcessStrategy
         {
             TaskId = task.Id.Value.ToString(),
             // The role, not the agent's GUID the output carries: the start event names
-            // the role and a watcher pairs the two by it (STUDIO-17).
+            // the role and a watcher pairs the two by it.
             AgentRole = processed.Assignee!.Role.Value,
             Success = domainOutput.Success,
             Duration = domainOutput.ExecutionTime,

@@ -4,8 +4,8 @@
 
 # ADR-008 — Les chemins virtuels sont la seule monnaie versée aux agents
 
-**Statut** : Accepté — depuis l'[ADR-009](./ADR-009-shared-constants-satellites.md), les racines que cet ADR appelle `RunnerMounts` sont `RunnerVirtualRoots` dans `Orkeon.Constants.FileSystem`, que Studio référence directement ; la décision tient, le type a bougé · **Date** : 2026-08-25
-· **Portée** : `Orkeon.Domain/FileSystem`, `Orkeon.Hosting`, `Orkeon.Host`, `Orkeon.Scripting.Cli`, `Orkeon.Studio.*`
+**Statut** : Accepté — depuis l'[ADR-009](./ADR-009-shared-constants-satellites.md), les racines que cet ADR appelle `RunnerMounts` sont `RunnerVirtualRoots` dans `Orkeon.Constants.FileSystem`, que tout projet peut référencer directement ; la décision tient, le type a bougé · **Date** : 2026-08-25
+· **Portée** : `Orkeon.Domain/FileSystem`, `Orkeon.Hosting`, `Orkeon.Host`, `Orkeon.Scripting.Cli`
 
 ## Contexte
 
@@ -48,10 +48,9 @@ Les conséquences n'étaient pas théoriques. Un montage issu d'une mount-string
   apparaissait sous la phrase *« All file operations must use these virtual paths. Absolute or
   unmounted paths are not allowed. »*
 
-Studio reflétait ensuite tout cela fidèlement — y compris dans deux écrans que lit un novice :
-les chips de dossiers du Composer et, pire, la ligne « Sur quel dossier » de l'éditeur d'agent,
-qui joignait les mount-strings `physique:virtuel:droits` brutes sous un libellé parlant de ce que
-cet agent peut voir.
+Un client graphique reflétait ensuite tout cela fidèlement — y compris dans des écrans que lit un
+novice, où il joignait les mount-strings `physique:virtuel:droits` brutes sous un libellé parlant
+de ce qu'un agent peut voir.
 
 Le raccourci n'a jamais eu de nécessité technique. Le chemin scripté montait déjà son entrée en
 `/script:ro`, le banc de la forge monte `/workspace`, `/forge` et `/output`, et le chargeur de
@@ -113,9 +112,7 @@ côtés (`/output:/output:rw`, la convention conteneur). Elle ne couvre plus l'i
   orthographe, et aucun crew publié ne le peut : les mount-strings sont fournies par lancement,
   jamais stockées dans un crew.
 - Activer `--llm-log` ne décale plus `Orkeon:FileSystem:Mounts:{i}`, le journal ayant sa propre
-  clé. La prédiction d'index de Studio se simplifie et reste vraie.
-- Studio duplique les trois racines virtuelles (il ne peut pas référencer `Orkeon.Hosting`) ; un
-  test de dérive les épingle sur `RunnerMounts`.
+  clé.
 
 ## Ce que cet ADR ne tranche délibérément pas
 
@@ -126,8 +123,8 @@ modèle du bloc `links:` existant, et les runners le résolvent face aux setting
 une racine que rien ne fournit, ou un identifiant qu'aucune entrée ne porte, est refusé en une
 ligne plutôt qu'au premier appel d'outil. Le bloc sélectionne et valide ; le liage
 virtuel→physique lui-même reste fourni depuis l'extérieur de l'artefact portable — par une entrée
-des settings (désormais dotée d'une identité), par un argument `--mount`, ou par le sidecar de
-Studio. C'est ce qui referme le trou qui permettait de lancer une équipe promue sans aucun
+des settings (désormais dotée d'une identité), par un argument `--mount`, ou par le sidecar
+d'une équipe. C'est ce qui referme le trou qui permettait de lancer une équipe promue sans aucun
 `/output` alors que ses propres tâches déclaraient `deliverable: /output/…` : `forge promote` écrit
 le bloc, et un `orkeon run crew/` nu refuse au lieu d'écrire nulle part.
 
@@ -146,9 +143,9 @@ plus profondément qu'un booléen sur le registre.
 
 Trois faits ont bougé depuis la rédaction de cet ADR ; la décision tient.
 
-- **Studio ne duplique plus les trois racines virtuelles.** `Orkeon.Studio.Core` référence
-  directement `Orkeon.Constants.FileSystem` (ADR-009) et lit `RunnerVirtualRoots` ; la copie que
-  décrivent les Conséquences n'existe plus.
+- **Aucune copie des trois racines virtuelles ne subsiste.** Orkeon Studio, le seul consommateur à
+  en tenir une copie, a déménagé dans son propre dépôt et lit `RunnerVirtualRoots` dans
+  `Orkeon.Constants.FileSystem` (ADR-009) ; la copie que décrivent les Conséquences n'existe plus.
 - **Une quatrième racine, interne : `/credentials`.** `RunnerVirtualRoots.Credentials` est
   l'endroit où le runner garde les identifiants obtenus pour le run (les jetons OAuth des
   comptes e-mail). `FileSystemEmailTokenStore` y lit et y écrit via `PrivilegedFileSystemAccess`

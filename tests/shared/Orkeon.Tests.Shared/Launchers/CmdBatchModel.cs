@@ -6,10 +6,10 @@ namespace Orkeon.Tests.Shared.Launchers;
 public sealed class CmdModelException(string message) : Exception(message);
 
 /// <summary>
-/// How <c>cmd.exe</c> reads a line, as the documented rules have it (STUDIO-51 § 2, readings 1 to
+/// How <c>cmd.exe</c> reads a line, as the documented rules have it (readings 1 to
 /// 7) — a model, not <c>cmd</c>: the proof on <c>cmd</c> is the owner's Windows recipe. Three
 /// readings: a line of a batch file (<c>run.cmd</c>), the line of <c>cmd /d /v:off /s /c</c> (what
-/// a scheduled task runs) and a line pasted at the prompt (what Studio's « Copy the command »
+/// a scheduled task runs) and a line pasted at the prompt (what a client's "Copy the command"
 /// gives). Each gives the line <c>cmd</c> hands to <c>CreateProcess</c> — <see cref="CrtArgv"/>
 /// splits it — or throws <see cref="CmdModelException"/> where <c>cmd</c> would cut, run or drop
 /// something: an operator or a parenthesis outside quotes, a line break, a lone <c>%</c> in a

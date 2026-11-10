@@ -10,7 +10,7 @@ public sealed record PostMessageRequest
 {
     /// <summary>Target mailbox URI (<c>agent://</c>, <c>crew://</c>, <c>topic://</c>, or <c>client://</c>).</summary>
     [JsonPropertyName("target_mailbox")]
-    [FieldSchema(Description = "Mailbox URI (agent://, crew://, topic://, or client:// for an external client such as Studio)", Example = "agent://crew-1/agent-7")]
+    [FieldSchema(Description = "Mailbox URI (agent://, crew://, topic://, or client:// for an external client)", Example = "agent://crew-1/agent-7")]
     public string TargetMailbox { get; init; } = "";
 
     /// <summary>JSON payload carried by the message.</summary>

@@ -6,7 +6,7 @@ using Orkeon.Scripting.Cli.Tests.Doubles;
 namespace Orkeon.Scripting.Cli.Tests.UseCases;
 
 /// <summary>
-/// <c>orkeon usecases search | list | show</c> driven in-process (STUDIO-38 D-06, D-07). The
+/// <c>orkeon usecases search | list | show</c> driven in-process. The
 /// grammar and the embedded catalogue run for real; the search tests swap the catalogue for the
 /// five-sheet fixture and the model for a hand-written double through the options' seams.
 /// </summary>

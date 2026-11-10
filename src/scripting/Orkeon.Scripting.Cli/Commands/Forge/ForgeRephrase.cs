@@ -13,7 +13,7 @@ using Orkeon.Scripting.Cli.Commands.Run;
 namespace Orkeon.Scripting.Cli.Commands.Forge;
 
 /// <summary>
-/// <c>orkeon forge rephrase &lt;request&gt;</c> (STUDIO-57): one call to the assistant's LLM that
+/// <c>orkeon forge rephrase &lt;request&gt;</c>: one call to the assistant's LLM that
 /// rewrites the request typed at step 1 as a clear brief — what comes in, what comes out and in
 /// which shape, every rule the user stated — in the user's own language, adding nothing. No
 /// session is opened, nothing is written: the verb answers and exits. With <c>--events jsonl</c>

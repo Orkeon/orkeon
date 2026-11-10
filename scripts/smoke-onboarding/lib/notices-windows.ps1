@@ -9,7 +9,7 @@
   CLI MSI (the `msi` job in .github\workflows\release.yml), the full archive
   (run-smoke-service.ps1) and the service MSI (run-smoke-service-msi.ps1). The
   four lay out the same tree, so the assertions must not be written four times
-  and allowed to drift -- same doctrine as lib\studio-windows.ps1.
+  and allowed to drift.
 
   What every payload must carry (GAP-45), under its root:
     <root>\LICENSE.md
@@ -20,9 +20,7 @@
   payload: each <root>\libexec\<app>\*.runtimeconfig.json names the frameworks
   its application carries (`includedFrameworks`, absent from a framework-dependent
   one), and the pack is `<framework>.Runtime.<rid>`, the RID being the one the
-  *.deps.json beside it was published for. So the WPF Studio, which bundles
-  Microsoft.WindowsDesktop.App beside Microsoft.NETCore.App, is expected to bring
-  both folders without a name written in a smoke. A root whose libexec\ holds no
+  *.deps.json beside it was published for. No pack name is written in a smoke. A root whose libexec\ holds no
   *.runtimeconfig.json at all is a problem, never an empty pass: the caller
   pointed at the wrong place.
 

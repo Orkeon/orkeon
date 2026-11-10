@@ -4,7 +4,7 @@ using Orkeon.Tests.Shared.FileSystem;
 namespace Orkeon.Domain.Tests.FileSystem;
 
 /// <summary>
-/// The one slug rule of the CLI and Studio (STUDIO-24): lowercase ASCII, accents dropped, one
+/// The one slug rule of the CLI and its clients: lowercase ASCII, accents dropped, one
 /// dash between words, at most 64 characters cut at a word — and nothing at all when nothing
 /// usable remains, because each caller owns its fallback. Two implementations used to disagree
 /// on the cap, the cut and the fallback, so one name could name two different folders.
@@ -51,7 +51,7 @@ public sealed class FolderSlugTests
     /// Nothing, not a fallback: a forge session falls back on its timestamp, a team or an
     /// agent on <see cref="FolderSlug.TeamFallback"/>, and a rule that picked one for them
     /// would be wrong for the other. A name written in a non-Latin script lands here — zh-Hans
-    /// is one of the five languages of Studio's interface.
+    /// is one of the five languages the CLI and its clients support.
     /// </summary>
     [Theory]
     [InlineData(null)]
@@ -146,7 +146,7 @@ public sealed class FolderSlugTests
         Assert.Equal(FolderSlug.TeamFallback, FolderSlug.From(FolderSlug.TeamFallback));
     }
 
-    /// <summary>The corpus the CLI and Studio suites also check, read against the rule itself.</summary>
+    /// <summary>The corpus the CLI and client suites also check, read against the rule itself.</summary>
     [Theory]
     [MemberData(nameof(FolderSlugCorpus.Entries), MemberType = typeof(FolderSlugCorpus))]
     public void The_shared_corpus_follows_the_rule(string name, string folder)

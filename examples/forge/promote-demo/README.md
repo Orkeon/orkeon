@@ -32,7 +32,7 @@ The team can be renamed afterwards, all of it or nothing — the folder, its ses
 orkeon forge rename ./my-solution --name "Supplier watch"   # my-solution/ becomes supplier-watch/
 ```
 
-From there, `orkeon run my-solution/crew --var supplier_url=…` runs it like any crew (this one needs an LLM and network access for `web_scrape`), and the Orkeon Studio launcher detects the folder.
+From there, `orkeon run my-solution/crew --var supplier_url=…` runs it like any crew (this one needs an LLM and network access for `web_scrape`), and any client that drives the CLI can recognize the folder.
 
 ## What to look at
 

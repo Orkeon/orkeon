@@ -3,7 +3,7 @@ using System.Text.Json.Serialization;
 namespace Orkeon.Scripting.Cli.Commands.UseCases;
 
 /// <summary>
-/// One entry of <c>examples/usecases.json</c> (STUDIO-36), under the manifest's own field names:
+/// One entry of <c>examples/usecases.json</c>, under the manifest's own field names:
 /// the JSON the CLI reads is the JSON it writes back on the event stream, so a reader of either
 /// learns one vocabulary.
 /// </summary>

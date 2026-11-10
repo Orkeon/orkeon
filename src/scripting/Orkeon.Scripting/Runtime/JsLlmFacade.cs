@@ -111,7 +111,7 @@ public sealed partial class JsLlmFacade
     /// Opens the attribution scope of one <c>ctx.llm.*</c> call: the method's name as the kind
     /// of work, and the crew and agent this context runs for. The call itself is reported by
     /// the metered provider the host hands the engine — once, whatever path it takes, a
-    /// streamed <c>act</c> turn included (STUDIO-42). The facade used to report each response
+    /// streamed <c>act</c> turn included. The facade used to report each response
     /// itself, and nothing else in the runtime did.
     /// </summary>
     /// <param name="method">The <c>ctx.llm.*</c> entry point, reported as the operation.</param>

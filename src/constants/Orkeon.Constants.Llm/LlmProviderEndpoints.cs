@@ -5,7 +5,7 @@ namespace Orkeon.Constants.Llm;
 /// <para>
 /// They live in a satellite (ADR-009) because three components must agree on them and cannot
 /// all reference one another: the provider implementations call them, <c>orkeon init</c> writes
-/// them into a settings file, and Orkeon Studio offers them in its connection form. Studio may
+/// them into a settings file, and a client offers them in its connection form. A client may
 /// not reference <c>Orkeon.Infrastructure</c>, so it used to declare its own copy of all twelve
 /// and a drift test asserted them one by one.
 /// </para>
@@ -112,7 +112,7 @@ public static class LlmProviderEndpoints
     /// <summary>
     /// Docker Model Runner's llama.cpp OpenAI-compatible endpoint. Not a provider of its own —
     /// it is driven through the OpenAI dialect — but <c>orkeon init</c> writes it, the committed
-    /// example settings ship it and Studio offers it, so the three cannot be left to drift.
+    /// example settings ship it and clients offer it, so the three cannot be left to drift.
     /// </summary>
     public const string DockerModelRunner = "http://localhost:12434/engines/llama.cpp/v1";
 #pragma warning restore S1075

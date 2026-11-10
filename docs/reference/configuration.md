@@ -72,18 +72,17 @@ others in [Environment variables](#environment-variables).
 over it is an ephemeral layer that lives and dies with one process. `orkeon doctor`'s
 `llm-config` check composes exactly like a runner (same resolution chain, same layers: the
 variables without a prefix, the file, the `ORKEON_` overlay), so its verdict answers: *what
-would a run launched from this shell use, absent any per-launch overlay?* Orkeon Studio's named model profiles ride layer 2:
-the profile elected as default is written into the file's `Llm` section whole — endpoint,
-model, timeout, thinking switch and the variable that holds its key (`ApiKeyEnvVar`), never
+would a run launched from this shell use, absent any per-launch overlay?* A client's named
+model profiles can ride layer 2: the profile elected as default may be written into the
+file's `Llm` section whole — endpoint, model, timeout, thinking switch and the variable that holds its key (`ApiKeyEnvVar`), never
 the key — so a manual terminal `orkeon run` or a scheduled team follows the same election,
 its 600 s and its key included (that is what `llm-config` reflects), while a team that
-elected a different profile receives it as `ORKEON_Llm__*` variables on its own launch
+elected a different profile can receive it as `ORKEON_Llm__*` variables on its own launch
 only — every field the profile models, blank where it sets none, so nothing of the default,
 its key least of all, reaches the team's endpoint; `llm-config` cannot see those, because
-they exist nowhere until that launch starts. Every profile is also written into the file's
+they exist nowhere until that launch starts. Every profile can also be written into the file's
 `Llm:Profiles`, naming the variable that holds its key and never the key, as a host profile
-a crew can name ([below](#studio-writes-this-section)), and every launch from Studio carries
-them all, keys included, as `ORKEON_Llm__Profiles__<id>__*`. No file is ever generated: the
+a crew can name ([below](#named-profiles-llmprofiles)). No file is ever generated: the
 composition is in-memory.
 
 **A file to start from.** Every installation carries `appsettings.sample.json` at the root of
@@ -93,7 +92,7 @@ loads it. Copied as it is in place of the settings file, it changes nothing: eac
 holds the value that key has when it is left out, and what cannot be written that way — a key
 without a default, a secret, a list, an entry under a name you choose, a key a RAG profile sets,
 the whole `Llm` section — is shown as a comment to uncomment. It is JSON with `//` comments and a
-comma after every member, which the settings readers take (the runners and Orkeon Studio); a
+comma after every member, which the settings readers take (the runners); a
 strict JSON parser does not.
 
 ## When a setting is refused
@@ -242,8 +241,8 @@ calls themselves are under [Rate and budgets](#rate-and-budgets).
 The `Llm` section is read by `RunnerHost.RegisterLlmProvider` and turned into an
 `ILlmProvider` via `ILlmProviderFactory`; the REPL reads it with the same reader
 (`LlmSettings.ReadDefault`). **The provider is inferred automatically**, in
-order: the base URL alone when there is one — the same reading for the run, the CLI and
-Studio (a vendor host such as `deepseek.com` → DeepSeek or `api.x.ai` → Grok; `/engines/` or port
+order: the base URL alone when there is one — the same reading for the run and the CLI
+(a vendor host such as `deepseek.com` → DeepSeek or `api.x.ai` → Grok; `/engines/` or port
 `12434` → Docker Model Runner; port `11434` → Ollama at its root; any other address → an
 OpenAI-compatible server, reported as silent when it has no path; an address no run serves —
 not an absolute `http(s)` URL, or a vendor host under `/anthropic` — refuses the start) — then,
@@ -326,7 +325,7 @@ the same way with its own keys.
   to keep the engine's former default (GAP-36).
 - **`Thinking:Enabled`, `Thinking:Effort`** are for thinking-capable providers.
 - **`Profiles:<name>`** holds the named profiles a crew picks per agent or per task, each with
-  the same keys as the section itself ([below](#named-profiles-llmprofiles)); Orkeon Studio writes
+  the same keys as the section itself ([below](#named-profiles-llmprofiles)); a client can write
   one per model setting, naming the variable holding its key, never the key.
 - **`AvailableModels`** is the model list a scripted `/model` REPL command can offer (string
   array, or one comma-separated string), read by `AddOrkeonSessionTools(configuration)`.
@@ -339,7 +338,7 @@ default): set 600 s, or turn thinking off with `Thinking:Enabled = false`. A cal
 timeout is retried once, then fails its task with a message naming the setting — it is never
 reported as an empty answer (LLM-11).
 
-The timeout bounds the whole call, streamed or not: a streamed call (every Studio or `--events`
+The timeout bounds the whole call, streamed or not: a streamed call (every `--events`
 run) used to be bounded only until its headers arrived, and a model that thought for minutes
 before its first token hung the run (LLM-12). `StreamIdleSeconds` adds a second bound, unset by
 default: the longest silence between two streamed chunks. A model that thinks before it writes
@@ -357,10 +356,9 @@ no cap at all where the vendor documents none (Mistral, a local Ollama), and **4
 model the catalogue does not know** — the value the engine used to send for every model, which
 a reasoning model spends thinking before it writes a word and answers empty (an empty final
 answer fails the task rather than passing for a completed one). Pin it when the model is not in
-the catalogue or when you want a tighter cap; a Studio model profile pins it as
-`ORKEON_Llm__MaxTokens`, and the profile editor says what an empty field means for the chosen
-model. A catalogue cap the endpoint refuses is retried once without the field, with a warning
-naming the model.
+the catalogue or when you want a tighter cap; a client's model profile can pin it as
+`ORKEON_Llm__MaxTokens`. A catalogue cap the endpoint refuses is retried once without the
+field, with a warning naming the model.
 
 #### `Provider: mock` answers from a file
 
@@ -385,11 +383,11 @@ the name, never the key — in the `Llm` section and in every profile:
 `"ApiKeyEnvVar": "DEEPSEEK_API_KEY"`. A run takes, in this order:
 
 1. **A key the configuration resolves**: `ApiKey` in the file, `ORKEON_Llm__ApiKey`
-   (`ORKEON_Llm__Profiles__<id>__ApiKey` for a profile), or what an Orkeon Studio launch lays over
+   (`ORKEON_Llm__Profiles__<id>__ApiKey` for a profile), or what a client launch lays over
    its child. An existing installation keeps the key it had, and the environment still wins over
    the file.
 2. **Otherwise the variable `ApiKeyEnvVar` names**, read in the process environment, then — on
-   Windows — in the user's persistent scope (`HKCU\Environment`), where Orkeon Studio remembers a
+   Windows — in the user's persistent scope (`HKCU\Environment`), where a client may remember a
    key: a terminal opened before the key was remembered, or a scheduled team, finds it all the
    same. The value is read, never copied into the process, so what the run starts — a shell tool,
    a stdio MCP server, the code sandbox — inherits no key it did not have. A user scope that cannot
@@ -411,12 +409,11 @@ environment)`, `none`) — and warns once per section whose reference names a va
 by its path, on its logger and on stderr; `orkeon doctor`, `orkeon init`'s probe and the REPL say
 the same. A profile `orkeon-host`'s allow-list hides is named on a line of its own and never warned
 about: no crew can name it ([service host](../architecture/service-host.md)). A value left blank reads as
-absent, for every key of the section (`Thinking:Effort` included): a Studio launch blanks the
+absent, for every key of the section (`Thinking:Effort` included): a client launch may blank the
 default fields its team's setting does not set, and a section whose every value is blank
 configures no default — the echo provider, with its warning. `orkeon init --api-key-env <name>`
-and `orkeon-studio-config` write `Llm:ApiKeyEnvVar`; Orkeon Studio writes it for the elected
-setting and for every profile it owns ([below](#studio-writes-this-section)). The reference may
-name any variable: a settings file is trusted configuration ([Security](../architecture/security.md#llm-keys-the-settings-file-names-the-variable)).
+writes `Llm:ApiKeyEnvVar`. The reference may name any variable: a settings file is trusted
+configuration ([Security](../architecture/security.md#llm-keys-the-settings-file-names-the-variable)).
 
 ### A variable reference is never expanded
 
@@ -469,7 +466,7 @@ agent and `taskBuilder().withProfile("claude")` on a task in `.ork.ts` ([YAML an
 Keys stay out of files the same way: the profile names its variable (`ApiKeyEnvVar`), and
 `ORKEON_Llm__Profiles__claude__ApiKey` wins over it when set. Each profile's
 provider is built once, on first use, metered like the default one — the run's `cost.updated`
-readings name each call's provider, and Studio's status bar breaks the tokens down per
+readings name each call's provider, and a client can break the tokens down per
 provider. The profiles are validated when the host starts: `default` is a reserved name (it
 designates the `Llm` section, and a crew may name it to bring an agent back to the default), and
 an invalid `BaseUrl` (the same reading refuses it) or a value that is not a number fails the start with the key to fix. A
@@ -513,82 +510,7 @@ agent's too.
 default ([CLI](./cli.md#orkeon-run)): for that run the `Llm` section is that profile, whole — what it
 leaves unset is unset, its key is its own —, and every role above that runs on the default runs on
 it. An id the configuration does not define refuses the run, listing the ones it does. It is what
-Orkeon Studio writes into a scheduled team's launchers.
-
-#### Studio writes this section
-
-No `Orkeon:Studio` section exists, and Studio writes none of its own preferences here: this is the file `orkeon run` reads, and the host refuses at start any `Orkeon:*` section it does not know — a `Orkeon:Studio:TeamsRoot` key would fail every run of the machine. The teams folder Studio lists is chosen by the `ORKEON_STUDIO_TEAMS_ROOT` variable, the `--teams-root` option or Settings › Studio, whose preference lives in Studio's own `ui-preferences.json` (STUDIO-61, [Studio](../architecture/studio.md)).
-
-Orkeon Studio's model settings are the host's profiles (STUDIO-48). Each setting of the AI-model
-tab that names a provider is the profile named after it by the folder-name rule of the teams —
-« Claude » is `claude`, « Z.AI » is `z-ai` — and its card and its editor show what a crew writes,
-`profile: claude`. Creating, editing, renaming or deleting the setting writes, moves or removes
-its entry: every field the setting pins (`BaseUrl`, `Model`, `Temperature`, `TimeoutSeconds`,
-`MaxTokens`, `Thinking`) and the variable Studio remembers its key in (`ApiKeyEnvVar`, none for a
-setting that needs no key), never the key, and a key Studio does not model (`MaxRetries`,
-`Grammar`) stays where it is. A Docker Model Runner setting writes `"ApiKey": "not-needed"` where
-its entry holds no key, as `orkeon init` does (STUDIO-54): the run reads that server as OpenAI,
-whose dialect refuses to call without a key, and the server checks none — a key already there
-stays. A setting without a model (the echo card), or whose name keeps no
-ASCII letter or digit, is offered to no crew; `default`, a name another setting already answers
-to, and a name that would take over an entry written by hand are refused.
-
-- **Keys.** The file names the variable Studio remembers each key in — `ApiKeyEnvVar`, the
-  provider's conventional name (`DEEPSEEK_API_KEY`, `ZAI_API_KEY`) — and a run outside Studio reads
-  it ([above](#the-api-key-apikey-apikeyenvvar)): `orkeon run` in a terminal, a scheduled team,
-  `orkeon-host` started by the user, `orkeon-repl`. The editor names that variable in expert mode. A
-  launch from Studio — a run, a trial, the creation assistant — still lays every setting over its
-  child as `ORKEON_Llm__Profiles__<id>__*`, key included, so it never depends on the file having been
-  saved nor on which settings file it reads. A team of an Orkeon Workshop folder — its folder right
-  under the teams root, with `settings/<slug>/appsettings.json` beside that root — is launched on
-  that file, passed as `--settings` unless Expert mode pins another (STUDIO-62): its `Llm` section
-  and its `RateLimiting` apply as they are when the team's card names no setting; a card naming a
-  setting of this machine lays that setting's `ORKEON_Llm__*` over it, key by key.
-- **The default.** The elected setting is written into `Llm` whole — every field it pins and its
-  `ApiKeyEnvVar`, a field it leaves unset removing its key; `ApiKey`, `MaxRetries`, `Grammar`,
-  `AvailableModels` and `Profiles` stay. Docker Model Runner's placeholder alone follows the card
-  (STUDIO-54): an elected Docker Model Runner setting writes `"ApiKey": "not-needed"` where `Llm`
-  holds no key, and electing any other card takes exactly that value out — left, it would pass
-  before the elected setting's `ApiKeyEnvVar`; the file `orkeon init --provider docker-model-runner`
-  wrote, then DeepSeek elected in Studio, included. Any other `ApiKey` stays. A team launched on
-  another setting lays all those fields over its child as `ORKEON_Llm__*`, value or blank,
-  `ORKEON_Llm__ApiKeyEnvVar` included: a team on Z.AI whose key is not remembered fails without a
-  key rather than send the default's DeepSeek key to Z.AI; a team on a Docker Model Runner setting
-  lays `ORKEON_Llm__ApiKey=not-needed`. A team on the elected setting itself lays what it sets. `orkeon-studio-config` edits
-  `Llm` field by field; an election made in Studio afterwards rewrites the fields it owns.
-- **An older file heals at the next gesture.** An entry Studio owns without its reference, and an
-  `Llm` without the elected setting's, are written again — the whole setting — at the next change
-  on the model settings (edit then save a setting), never at startup; so are an entry and an `Llm`
-  whose key their card disagrees with (STUDIO-54): a Docker Model Runner setting's without the
-  placeholder receives it, another card's with it loses it — once, since writing makes them agree.
-  A setting written before in another language, or whose provider the default blanked, finds its
-  card again as Studio reads `studio-model-profiles.json`, with that card's key variable, and the
-  card's name reaches the file at that same gesture.
-- **A scheduled team.** The launchers of a team Studio adopted carry the team's setting as
-  `--llm-profile <id>` — its entry here —, so the run the operating system schedules takes it, as a
-  launch from Studio does ([Studio](../architecture/studio.md#a-scheduled-team-runs-as-studio-launches-it-studio-50)).
-  That run reads this file as saved, keys where it names them: the team's card says when this file
-  does not define its entry yet, holds an older version of it, or when the setting is one no run
-  outside Studio can take — the run then takes the default —, and « Install the schedule » saves the
-  settings first when they lack it. A setting renamed in Studio carries its teams
-  ([Studio](../architecture/studio.md#a-team-keeps-its-setting-and-its-folders-studio-52)).
-- **« Other OpenAI-compatible ».** A setting created from that card keeps its key in
-  `ORKEON_CUSTOM_LLM_API_KEY`, shared by the settings of the card. One created before keeps
-  `ORKEON_Llm__ApiKey` — the runtime's own key of the default: remembered in the user scope, it is
-  the default key of every run of the user, whatever its settings file or its endpoint. Its card says
-  so in expert mode when it is not the default, with the way back: create it again from the card,
-  delete the old one, remove `ORKEON_Llm__ApiKey` from the user environment. Studio never migrates
-  it on its own: it cannot tell its own write from a variable set by hand.
-- **Entries written by hand** — no setting owns them — are listed read-only under the settings,
-  and Studio never rewrites nor removes them. Ownership is the setting's name: an id is Studio's
-  when a setting of `studio-model-profiles.json` answers to it.
-- **The RAG's profile** (`Orkeon:Rag:LlmProfile`) is chosen on the same tab, in expert mode, among
-  the profiles; it follows its setting through a rename and falls back to the default when the
-  setting is deleted. Studio warns, before saving, about a file whose RAG profile names a profile
-  the file does not define.
-
-`orkeon-studio-config` shows the section — each profile with the variable that holds its key,
-`key: ZAI_API_KEY` — and the RAG's profile read-only.
+a scheduled team's launchers pass.
 
 ### `LlmLogging`
 
@@ -1082,7 +1004,7 @@ The query pipeline, stage by stage:
   generation, query transformers, listwise reranker, corrective evaluator and groundedness
   checker, `llm` classifier, evaluation judge; unset or `default` is the default profile. An
   unknown name refuses the host start, listing the known ones; `orkeon eval rag --offline` ignores
-  it. Chosen in Studio › Settings › AI model (expert).
+  it.
 - **`Provider`** — TYPE of the RAG document-store provider (`RagStoreOptions` — a
   `MemoryProviderFactory` type alias), connected from that provider's own section (`Orkeon:Redis`,
   `Orkeon:Sqlite`, …); default is the ambient `IMemoryProvider`.
@@ -1193,10 +1115,10 @@ The folders a run may reach, and where the code an agent writes may run.
 
 **`Mounts`** — the VFS mounts (see [VFS compliance](../architecture/vfs-compliance.md)). An entry
 may carry an **id** — `<ulid>|<physical>:<virtual>:<rights>` (VFS-90): what a crew's `mounts:`
-block, Studio's team sidecar and `--mount-id` name it by; Studio writes one on every save. A CLI
-`--mount` on the same virtual root **replaces every entry of that root** for that run; on a new
-root it is appended (never merged, never dropped). One root declared twice is legitimate only when
-every entry of it carries an id — `--mount-id`, or the crew's `mounts:`, then selects one and the
+block, a team sidecar and `--mount-id` name it by. A CLI `--mount` on the same virtual root
+**replaces every entry of that root** for that run; on a new root it is appended (never
+merged, never dropped). One root declared twice is legitimate only when every entry of it
+carries an id — `--mount-id`, or the crew's `mounts:`, then selects one and the
 others are withdrawn for the run; with nothing selecting one the run is refused before any host
 builds (`'/output' is declared twice in <settings> (<idA>: <folderA>, <idB>: <folderB>) and nothing selects one. Pass --mount-id <id>, list '<id>|/output' under mounts: in the crew, or pass --mount <folder>:/output:rw to replace them all.`),
 except under `orkeon forge` and a command that offers no way to select an entry (`orkeon mcp serve`),
@@ -1567,9 +1489,8 @@ broken section never breaks a crew that sends no mail. Secrets are never values 
 **names** of the environment variables that hold them (`Auth:PasswordEnvVar`,
 `Auth:ClientSecretEnvVar`), read as the variable `ApiKeyEnvVar` names is
 ([above](#the-api-key-apikey-apikeyenvvar)): in the process environment, then — on Windows — in
-the user's persistent scope (`HKCU\Environment`), where Orkeon Studio remembers a password typed
-in **Settings › E-mail**; read, never copied into the process; the process environment alone on
-Linux and macOS. Provider walkthroughs and the key-by-key table:
+the user's persistent scope (`HKCU\Environment`), where a client may remember a password; read,
+never copied into the process; the process environment alone on Linux and macOS. Provider walkthroughs and the key-by-key table:
 [E-mail tools](../guides/email.md#where-a-secret-variable-is-read).
 
 - **`DefaultAccount`** — the account a call that names none uses (optional with a single account).
@@ -1711,7 +1632,7 @@ MCP client connections (`MCP:Servers:<name>`) and the switch `MCP:Enabled`. No s
 MCP server (GAP-24): a key the section does not carry is refused at startup like any unknown key.
 Read by `RunnerHost` (`orkeon run`, `orkeon-host`, `orkeon mcp serve`) when `MCP:Servers` declares
 at least one server and `MCP:Enabled` is not `false` — the servers are connected before the crew
-loads (STUDIO-21), by `orkeon-host` once at startup, before its first message (GAP-11), and by
+loads, by `orkeon-host` once at startup, before its first message (GAP-11), and by
 `orkeon mcp serve` before it serves; library hosts call `AddOrkeonMcp(configuration)` or the
 `AddOrkeonInfrastructure(configuration)` overload — see
 [MCP integration](../architecture/mcp.md).
@@ -2320,7 +2241,7 @@ two spellings a setting has under Linux and macOS are in
 
 | Variable | What it is | Where it sits |
 |---|---|---|
-| `ORKEON_<Section>__<Key>` | Any setting, by its path: `ORKEON_Llm__Model` is `Llm:Model`, `ORKEON_RateLimiting__MaxConcurrentRequests` is `RateLimiting:MaxConcurrentRequests`, `ORKEON_Orkeon__Rag__Profile` is `Orkeon:Rag:Profile`. `ORKEON_Llm__ApiKey` is the variable `orkeon init` and Orkeon Studio propose for the key of the default model. | Over the settings file: the variable wins. |
+| `ORKEON_<Section>__<Key>` | Any setting, by its path: `ORKEON_Llm__Model` is `Llm:Model`, `ORKEON_RateLimiting__MaxConcurrentRequests` is `RateLimiting:MaxConcurrentRequests`, `ORKEON_Orkeon__Rag__Profile` is `Orkeon:Rag:Profile`. `ORKEON_Llm__ApiKey` is the variable `orkeon init` proposes for the key of the default model. | Over the settings file: the variable wins. |
 | `<Section>__<Key>` | The same setting without the prefix: `Llm__Model`. | Under the settings file: the file wins. |
 | `ORKEON_<NAME>` | A secret, by its name: `ORKEON_TAVILY_API_KEY` is the key of `web_search`, `ORKEON_OPENAI_API_KEY` the key of `image_generation`. | The first stop of the secret chain, before `Secrets:<NAME>` in the file. |
 
@@ -2343,15 +2264,12 @@ variable itself. The list is the one the code carries — a test holds this tabl
 | `BRAVE_API_KEY` | `orkeon`, `orkeon-host` | a Brave Search API key | Registers the `brave_search` tool. It is read as a configuration key first, so the settings file and `ORKEON_BRAVE_API_KEY` give it too. |
 | `ORKEON_DISCORD_TOKEN` | `orkeon-host` | a Discord bot token | The token of the Discord channel: the default of `Orkeon:Host:Discord:TokenEnvironmentVariable`, which may name another variable. |
 | `OLLAMA_BASE_URL` | `orkeon`, `orkeon-host`, `orkeon-repl` | the address of an Ollama server | The address the Ollama provider uses when it is given none: `Llm:BaseUrl` wins over it, and `http://localhost:11434` is what remains without either. |
-| `ORKEON_CLI_DIR` | `orkeon-studio`, `orkeon-studio-config`, `orkeon-studio-run` | a directory | Where Orkeon Studio looks for the `orkeon` executable, after `--cli-dir` and its own install directory, before `PATH`. |
-| `ORKEON_STUDIO_TEAMS_ROOT` | `orkeon-studio`, `orkeon-studio-run` | a fully qualified directory | The folder Orkeon Studio keeps its teams in. It wins over `--teams-root` and over the folder chosen in Settings › Studio. |
-| `ORKEON_CUSTOM_LLM_API_KEY` | `orkeon-studio`, `orkeon-studio-config` | an API key | The variable Orkeon Studio proposes for the key of an OpenAI-compatible model setting, and writes in that setting's `ApiKeyEnvVar`: a run reads it through that key, not by this name. |
-| `TUI_DRIVER` | `orkeon-repl`, `orkeon-studio-config`, `orkeon-studio-run` | `windows`, `dotnet` or `ansi` | The Terminal.Gui driver of the text interfaces, for diagnosis. Unset: `windows` under Windows, `dotnet` elsewhere — `ansi` draws nothing under WSL and in many container terminals. |
+| `TUI_DRIVER` | `orkeon-repl` | `windows`, `dotnet` or `ansi` | The Terminal.Gui driver of the text interfaces, for diagnosis. Unset: `windows` under Windows, `dotnet` elsewhere — `ansi` draws nothing under WSL and in many container terminals. |
 | `TUI_DIAG` | `orkeon-repl` | `1` | The split-pane console writes `[tui-diag]` lines on stderr while it starts: the terminal, the driver chosen. |
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | `orkeon`, `orkeon-host` | the address of an OTLP collector | Turns the OpenTelemetry export on when `Telemetry:OtlpEndpoint` is empty; the exporter reads the address, and the other `OTEL_EXPORTER_OTLP_*` variables, by itself. |
-| `XDG_CONFIG_HOME` | `orkeon`, `orkeon-host`, `orkeon-repl`, `orkeon-studio-config`, `orkeon-studio-run` | an absolute directory | Under Linux and macOS, the root of the per-user settings — `$XDG_CONFIG_HOME/Orkeon/appsettings.json`, `~/.config` when it is unset — and of the systemd user units `orkeon forge schedule` installs. |
-| `CI` | `orkeon-repl`, `orkeon-studio-config`, `orkeon-studio-run` | `true` | No text interface opens: `orkeon-repl` falls back to its plain console, the two Studio terminal applications say they need a terminal and exit. |
-| `TERM` | `orkeon-repl`, `orkeon-studio-config`, `orkeon-studio-run` | a terminal type | Under Linux, unset or empty has the effect of `CI=true`: there is no terminal to draw in. |
+| `XDG_CONFIG_HOME` | `orkeon`, `orkeon-host`, `orkeon-repl` | an absolute directory | Under Linux and macOS, the root of the per-user settings — `$XDG_CONFIG_HOME/Orkeon/appsettings.json`, `~/.config` when it is unset — and of the systemd user units `orkeon forge schedule` installs. |
+| `CI` | `orkeon-repl` | `true` | No text interface opens: `orkeon-repl` falls back to its plain console. |
+| `TERM` | `orkeon-repl` | a terminal type | Under Linux, unset or empty has the effect of `CI=true`: there is no terminal to draw in. |
 
 **Passed on, not read.** The `shell_command` tool hands the command it starts a fixed list of the
 host's variables — `PATH`, `HOME`, the locale, the temporary folders, `DOTNET_ROOT`,
@@ -2365,7 +2283,7 @@ true, and under bubblewrap the sockets follow only when `Confinement:AllowNetwor
 the three sockets included. Both add the names of `Orkeon:Tools:Shell:Environment:Propagate` that
 pass its secret filter. Neither reads them as settings,
 and no key travels that way — `OPENAI_API_KEY`, `ORKEON_*` and every other variable stay behind. `PATH`
-is also where a `.ork.ts` script looks for esbuild last, and Orkeon Studio for `orkeon`; `HOME` is
+is also where a `.ork.ts` script looks for esbuild last; `HOME` is
 read when the system names no profile folder, to place the per-user settings. The variables
 written under `MCP:Servers:<name>:Env` are the operator's: Orkeon hands them to the server it
 starts and reads none. The container image has variables of its own, read by its entry script

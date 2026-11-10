@@ -28,7 +28,7 @@ internal enum UseCaseMatchReason
 }
 
 /// <summary>
-/// The search mode of each language (STUDIO-38 D-02): meaning is fused in only where the golden
+/// The search mode of each language: meaning is fused in only where the golden
 /// set (<c>examples/usecases.golden.yaml</c>) measured a gain — the local model reads English, and
 /// its vector for a query in another language is closer to noise than to meaning.
 /// </summary>
@@ -37,7 +37,7 @@ internal sealed class UseCaseSearchPolicy
     /// <summary>
     /// The shipped policy: hybrid where the golden set gains from it, terms elsewhere.
     /// <c>UseCaseGoldenSetTests</c> prints the recall of each language in each mode. Measured on
-    /// 2026-09-24 with the five-language texts of STUDIO-37: terms alone reach recall@5 1.00 in
+    /// 2026-09-24 with the five-language texts, terms alone reach recall@5 1.00 in
     /// every language, and the English model helps only in English (MRR 1.00 against 0.57); in
     /// French it costs recall (0.83) and elsewhere it lowers the ranking. Measure again whenever
     /// the texts change, and set each language from the report.
@@ -139,7 +139,7 @@ internal sealed record UseCaseAnswer
 }
 
 /// <summary>
-/// The use-case search (STUDIO-38): no LLM, no network, no file. BM25 carries the five
+/// The use-case search: no LLM, no network, no file. BM25 carries the five
 /// languages over one normalized document per sheet (D-01); the local model's English vectors
 /// are fused in by RRF for the languages whose policy says so (D-02) — loaded, and the sheets
 /// embedded, at the first search that needs them, then kept for the life of the process (D-03).

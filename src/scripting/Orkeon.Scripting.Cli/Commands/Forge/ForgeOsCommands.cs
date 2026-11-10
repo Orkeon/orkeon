@@ -35,7 +35,7 @@ internal sealed record ForgeOsCommandResult(bool Started, int ExitCode, string S
 }
 
 /// <summary>
-/// The one seam through which the schedule verbs reach the operating system (STUDIO-27, D-04):
+/// The one seam through which the schedule verbs reach the operating system:
 /// a binary and its arguments as a LIST — never a command line, never a shell — and, for
 /// <c>crontab -</c>, the text to write on its stdin. The tests put a hand-written double here;
 /// nothing under test ever runs <c>schtasks</c>, <c>systemctl</c> or <c>crontab</c>.
@@ -68,8 +68,8 @@ internal sealed class SystemForgeOsCommands : IForgeOsCommands
 
         // No CreateNoWindow: the child shares this process's console, so it writes in the code
         // page this process reads it back in (orkeon switches its console to UTF-8 at start),
-        // and a console-less launch from Studio flashes no window either — the console it
-        // shares is Studio's hidden one.
+        // and a console-less launch from a GUI client flashes no window either — the console it
+        // shares is that client's hidden one.
         var startInfo = new ProcessStartInfo
         {
             FileName = fileName,

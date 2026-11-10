@@ -503,7 +503,7 @@ links:
   - to: audit-crew
     direction: outbound
     allowed_topics: [audit.event]
-  - to: "client:studio"        # an external peer, not a crew — see below
+  - to: "client:monitor"       # an external peer, not a crew — see below
     direction: bidirectional
 ```
 
@@ -528,7 +528,7 @@ One YAML shape escapes that rule, and it is stated rather than hidden: a **bare 
 
 ### 10.2.1 Naming an external peer
 
-`CrewLink` authorizes a crew to talk to a crew. A process outside the hub — Studio watching a run, a gateway — is not one, and it reaches the hub through the `client://{name}` mailbox scheme. A link names it with the reserved `client:` prefix, as in the example above.
+`CrewLink` authorizes a crew to talk to a crew. A process outside the hub — a client watching a run, a gateway — is not one, and it reaches the hub through the `client://{name}` mailbox scheme. A link names it with the reserved `client:` prefix, as in the example above.
 
 Without that, an external peer would escape the ACL simply by not being modelled. This is the one place the implementation extends this specification rather than applying it.
 
@@ -544,7 +544,7 @@ A `CrewLink` is checked on the **sender** side, at `PublishAsync` / `PostAsync` 
 
 `inbound` is a **grant**: "the named peer may send to me". It is consulted on the *target's* declarations when the sender itself never declared a `links:` block and the deployment refuses undeclared traffic — which is exactly when the keyword matters. It never reopens a door the sender closed itself: a crew that declared links not naming the target stays refused, whatever the target grants.
 
-Authorization happens **once**, on the send: the receive path deliberately does not check again, since re-checking would refuse a message that already passed. One assumption travels with that decision: **the reader of a mailbox is its owner.** The hub auto-registers waiters and reading is destructive, so `receive_message` only accepts mailboxes of the calling crew — without that restriction, any agent could siphon `client://studio`, the very traffic the write-side ACL guards.
+Authorization happens **once**, on the send: the receive path deliberately does not check again, since re-checking would refuse a message that already passed. One assumption travels with that decision: **the reader of a mailbox is its owner.** The hub auto-registers waiters and reading is destructive, so `receive_message` only accepts mailboxes of the calling crew — without that restriction, any agent could siphon a `client://<name>` mailbox, the very traffic the write-side ACL guards.
 
 ### 10.4 Ordering guarantees
 

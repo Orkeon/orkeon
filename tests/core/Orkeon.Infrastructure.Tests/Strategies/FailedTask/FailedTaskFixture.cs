@@ -18,7 +18,7 @@ namespace Orkeon.Infrastructure.Tests.Strategies.FailedTask;
 /// GAP-03 — what the six "a failed task fails the crew" suites share: in-memory repositories,
 /// an execution double that fails the tasks a test names and records which ones it ran, a
 /// recording hook, and the assertion every mode must pass — the rule Sequential set in
-/// STUDIO-12 C5a / LLM-11.
+/// LLM-11.
 /// </summary>
 internal sealed class FailedTaskFixture : IDisposable
 {

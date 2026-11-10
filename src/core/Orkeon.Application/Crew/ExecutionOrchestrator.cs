@@ -411,7 +411,7 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
 
             // Whose calls these are: every LLM call this task makes — its turns, its retries,
             // its correction round, its knowledge retrieval — is metered under this agent,
-            // this task, this crew (STUDIO-42). The scope never leaks past this method.
+            // this task, this crew. The scope never leaks past this method.
             using var usageScope = LlmUsageScope.Begin(
                 LlmUsageOperations.Agent,
                 crewId: context.CrewId.ToString(),

@@ -178,7 +178,7 @@ tasks:
     [MemberData(nameof(Modes))]
     public async Task Every_mode_announces_a_task_before_it_reports_it_finished(string mode)
     {
-        // STUDIO-17: the run screen shows a task as in progress between these two notifications.
+        // The run screen shows a task as in progress between these two notifications.
         // A mode that only reported completions left the screen unable to tell a working run
         // from a stalled one — so every mode has to announce the start, and announce it first.
         var (_, _, _, hook) = await RunAsync(CrewYaml(mode), TestContext.Current.CancellationToken);
@@ -271,7 +271,7 @@ tasks:
     /// <summary>
     /// R5 of the rc.2 train: **no orchestration mode is second-class**. Before BUS-03 only
     /// the sequential strategy notified <see cref="ICrewExecutionHook"/>, so anything
-    /// observing a run — Studio's screen, AUTO_SUMMARY.md — saw nothing on the five others.
+    /// observing a run — a client's screen, AUTO_SUMMARY.md — saw nothing on the five others.
     /// This is the acceptance test for that decision, and it runs on all six modes.
     /// </summary>
     [Theory]

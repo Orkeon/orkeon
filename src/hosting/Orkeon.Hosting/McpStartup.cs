@@ -10,7 +10,7 @@ using Orkeon.Infrastructure.MCP;
 namespace Orkeon.Hosting;
 
 /// <summary>
-/// Connects the MCP servers the settings declare, before a crew loads (STUDIO-21).
+/// Connects the MCP servers the settings declare, before a crew loads.
 /// <para>
 /// The runners never start the host, so no hosted service could do this; it is an explicit
 /// step, like the telemetry activation, called by the kickoff, by <c>--validate</c> and by

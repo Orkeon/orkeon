@@ -25,8 +25,8 @@ Orkeon" and would rebuild the token storage, the rights and the screening.
 
 The e-mail family already had a hand-written OAuth2 client (device code, loopback PKCE with a
 paste fallback, refresh with rotation), a token store behind the internal `/credentials` root,
-the secret reading of Studio's user scope, and Microsoft Graph in plain HTTP — all internal to
-`Orkeon.Tools.Email`.
+the secret reading of the user's environment scope, and Microsoft Graph in plain HTTP — all
+internal to `Orkeon.Tools.Email`.
 
 ## Decision
 
@@ -62,8 +62,7 @@ the secret reading of Studio's user scope, and Microsoft Graph in plain HTTP —
 - 102 built-in tool classes, 49 src and 37 test projects; the umbrella package carries nine
   families.
 - `orkeon drive accounts | login | logout | check`; the typings of `.ork.ts` scripts; a "Drive"
-  family in Studio's tool list, whose requirement sends to Studio's Drive settings tab — the
-  accounts declared, tested and signed in from there, over `login` and `check --events jsonl`.
+  family in an external client's tool list, driven over `login` and `check --events jsonl`.
 - Google shared drives, SharePoint libraries, revisions, comments, copies and a VFS mount are out
   of scope, documented in the guide.
 - The real-account campaign is the owner's (DRIVE-07): the offline tests script both APIs, and the

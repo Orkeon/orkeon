@@ -12,7 +12,7 @@ namespace Orkeon.Scripting.Cli.Commands.Forge;
 /// <c>forge.json</c> — the machine-readable twin of <c>FORGE.md</c>, written by
 /// <c>forge promote</c> next to the crew (FORGE-09). It carries what the crew files cannot:
 /// the brief the team was built against, and the session's identity — its id above all, which
-/// rule R reads to link the folder to its session (STUDIO-25). <c>forge reopen</c> reads it to
+/// rule R reads to link the folder to its session. <c>forge reopen</c> reads it to
 /// rebuild a faithful session; without it, the brief is derived from the plan. Nothing secret
 /// goes in it — the folder is made to be shared.
 /// </summary>
@@ -35,7 +35,7 @@ internal sealed record ForgeTeamRecord
     public int Version { get; init; } = 1;
 
     /// <summary>
-    /// The id of the session the folder is linked to (STUDIO-25): copied by the promotion,
+    /// The id of the session the folder is linked to: copied by the promotion,
     /// rewritten by a rebuild. Kept as the text the file holds — a record hand-edited into an
     /// id that does not parse stays readable, brief and all, and simply links to nothing.
     /// </summary>
@@ -67,16 +67,16 @@ internal sealed record ForgeTeamRecord
     public ForgeBrief? Brief { get; init; }
 
     /// <summary>
-    /// The use case the team was composed from, titled in the brief's language (STUDIO-40, D-04);
+    /// The use case the team was composed from, titled in the brief's language;
     /// a rebuilt session takes it back. Null for a team composed from nothing.
     /// </summary>
     [JsonPropertyName("reference")]
     public ForgeReferenceRecord? Reference { get; init; }
 
     /// <summary>
-    /// The schedule the folder declares (STUDIO-27, D-03); null when it declares none. What
+    /// The schedule the folder declares; null when it declares none. What
     /// <c>forge schedule</c> installed of it is this machine's, recorded beside the artifacts in
-    /// <c>schedule/installed.json</c> — never here: the record travels with the folder (STUDIO-52).
+    /// <c>schedule/installed.json</c> — never here: the record travels with the folder.
     /// </summary>
     [JsonPropertyName("schedule")]
     public ForgeTeamSchedule? Schedule { get; init; }
@@ -87,7 +87,7 @@ internal sealed record ForgeTeamRecord
     /// declares. What a previous <c>forge schedule</c> installed is not this record's: it stays in
     /// <c>schedule/installed.json</c>, which a re-adoption keeps whatever it says, because the
     /// registration is still there — a re-adoption touches no operating system, and the names are
-    /// the only way back to it (D-03, STUDIO-52).
+    /// the only way back to it (D-03).
     /// </summary>
     public static void Write(string destination, ForgeSession session, ForgeBrief? brief, DateTimeOffset now, ForgeSchedule? schedule = null)
     {
@@ -124,7 +124,7 @@ internal sealed record ForgeTeamRecord
     }
 
     /// <summary>
-    /// Links <paramref name="teamDirectory"/> to the session a rebuild just gave it (STUDIO-25):
+    /// Links <paramref name="teamDirectory"/> to the session a rebuild just gave it:
     /// the record takes that session's id and slug and keeps everything else the promotion
     /// recorded. A folder without a readable record gets one holding the session's identity
     /// alone — no brief, so a later rebuild still says its brief was derived, never recorded.
@@ -147,7 +147,7 @@ internal sealed record ForgeTeamRecord
     }
 
     /// <summary>
-    /// Renames the team in <paramref name="teamDirectory"/>'s record (STUDIO-28): its title, and the
+    /// Renames the team in <paramref name="teamDirectory"/>'s record: its title, and the
     /// slug of its session — the one it is linked to, or the one a rebuild will name after the
     /// team — everything else kept, the id above all. A folder without a readable record is left
     /// as it is: a rename invents no record.
@@ -374,7 +374,7 @@ internal sealed record ForgeRebuildResult(ForgeSession Session, ForgeBriefSource
 /// the plan otherwise; the crew copied as it is, so what the session tries is what the folder
 /// runs. The session lands at the dry pause — Test, Active, nothing run — with
 /// <c>promotedTo</c> pointing back at the folder, and the folder's <c>forge.json</c> carrying
-/// the new session's id (STUDIO-25), so the next reopen finds it and a later promotion
+/// the new session's id, so the next reopen finds it and a later promotion
 /// updates the folder in place.
 /// </summary>
 internal static class ForgeSessionRebuilder
@@ -424,11 +424,11 @@ internal static class ForgeSessionRebuilder
 
         session.SaveArtifact(ForgeSession.BriefFileName, brief);
         session.SaveArtifact(ForgeSession.BlueprintFileName, blueprint!);
-        // The team's folders, confirmed already (STUDIO-46): the ones its record's brief lists,
-        // else what its plan addresses — the list the trial, the re-adoption and Studio share.
+        // The team's folders, confirmed already: the ones its record's brief lists,
+        // else what its plan addresses — the list the trial, the re-adoption and a client share.
         session.SaveArtifact(ForgeFolders.FileName, new ForgeFolderList { Folders = ForgeFolders.Of(session), Filled = true });
         session.Document.Title = record?.Title is { Length: > 0 } title ? title : blueprint!.Crew?.Name;
-        // The use case the team was composed from (STUDIO-40): a reopen keeps it, like a resume.
+        // The use case the team was composed from: a reopen keeps it, like a resume.
         session.Document.Reference = record?.Reference;
         session.Document.PromotedTo = Path.GetFullPath(teamDirectory);
         session.AppendHistory(ForgeState.Brief, ForgeTrigger.Rebuilt, ForgeState.Test, now);

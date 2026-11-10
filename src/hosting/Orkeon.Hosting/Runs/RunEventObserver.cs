@@ -128,7 +128,7 @@ internal sealed class RunEventObserver : ICrewExecutionHook, ILlmUsageSink, ILlm
 
     /// <summary>
     /// How much of <see cref="TokensUsed"/> the runtime estimated because a provider counted
-    /// nothing (STUDIO-42 D-06), or null when every call was counted by its provider — a
+    /// nothing, or null when every call was counted by its provider — a
     /// figure a screen must mark as approximate rather than pass off as a count.
     /// </summary>
     public long? EstimatedTokens
@@ -161,7 +161,7 @@ internal sealed class RunEventObserver : ICrewExecutionHook, ILlmUsageSink, ILlm
 
         // Which task and whose turn — nothing else is known yet, and the stream says only
         // what it knows. Between this line and the matching task.completed a watcher shows
-        // the task as in progress (STUDIO-17).
+        // the task as in progress.
         _events.Emit(
             RunEventKinds.TaskStarted,
             new RunEventScope { AgentId = snapshot.AgentRole },
@@ -216,7 +216,7 @@ internal sealed class RunEventObserver : ICrewExecutionHook, ILlmUsageSink, ILlm
 
         // The strategies' terminal dispatch has to reach the WIRE, not just AUTO_SUMMARY.md:
         // without this line the `error` kind had no producer on the run path at all, and
-        // Studio's error surface was unreachable for the exact events built to feed it.
+        // a client's error surface was unreachable for the exact events built to feed it.
         _events.Emit(
             RunEventKinds.Error,
             new RunEventScope { CrewId = Blank(isPartial.CrewId) },
@@ -235,12 +235,12 @@ internal sealed class RunEventObserver : ICrewExecutionHook, ILlmUsageSink, ILlm
     /// <inheritdoc />
     /// <remarks>
     /// Every reading carries the run's standing meter, cumulative like <c>run.finished</c>: both
-    /// directions at every call (STUDIO-29 — the split used to wait for the closing event),
+    /// directions at every call,
     /// the cache pair once a provider measured it, the part the runtime had to estimate once a
     /// provider counted nothing, and the vendor's own charge once a vendor billed one. Every
     /// generation call of the run reaches here — the agents', the manager's, the planner's, the
-    /// RAG pipelines', the memory services' — through the one metered provider (STUDIO-42), and
-    /// each reading says which kind of work its own call was (STUDIO-30).
+    /// RAG pipelines', the memory services' — through the one metered provider, and
+    /// each reading says which kind of work its own call was.
     /// </remarks>
     public void Record(CostUsageEvent usage)
     {
@@ -326,7 +326,7 @@ internal sealed class RunEventObserver : ICrewExecutionHook, ILlmUsageSink, ILlm
     private static readonly string UnnamedOperation = new CostUsageEvent().OperationType;
 
     /// <summary>
-    /// The kind of work a reading measured, as the engine attributed its call (STUDIO-30): what
+    /// The kind of work a reading measured, as the engine attributed its call: what
     /// lets a watcher name the model the agents work on rather than a judge's or a RAG
     /// pipeline's. A call nothing claimed names none — an unknown kind is left out, not guessed.
     /// </summary>

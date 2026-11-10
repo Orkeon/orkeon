@@ -52,7 +52,7 @@ building a host from a clone of the repository — a `PackageReference` to any o
 - **`Orkeon.Plugins`** — the plugin system
   ([building a plugin project](../docs/architecture/plugins.md#building-a-plugin-project)).
 - **`Orkeon.Constants.{Protocol,Cli}`** — the run-event vocabulary and the run option grammar
-  shared between the CLI and Studio.
+  shared between the CLI and external clients.
 
 `Orkeon.Scripting.Cli` is the sixth NuGet package (the `orkeon` dotnet tool) and has no pages
 here: it is an executable entry point, not a library with a referenceable surface.

@@ -4,7 +4,7 @@ using Orkeon.Domain.Task;
 namespace Orkeon.Domain.Tests.Task;
 
 /// <summary>
-/// The execution order of a crew's tasks when no plan decides it (STUDIO-12 C2): a stable
+/// The execution order of a crew's tasks when no plan decides it: a stable
 /// topological sort on the declared dependencies. The multi-file layout lists the tasks in
 /// the ordinal order of their file names, which is how <c>consolidate.yaml</c> ran before the
 /// <c>extract.yaml</c> it depends on — the sort is what makes both layouts run the same.

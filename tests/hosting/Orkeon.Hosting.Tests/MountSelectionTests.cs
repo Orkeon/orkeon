@@ -65,7 +65,7 @@ public sealed class MountSelectionTests
         Assert.Equal(
             $"'/output' is declared twice in {Settings} ({A}|/srv/a:/output:rw and /srv/b:/output:rw) and "
             + "'/srv/b:/output:rw' has no id. Give every entry an id (<ulid>|<physical>:/output:<rights>; "
-            + "Studio > Allowed folders writes one on save) or keep one.",
+            + "a client that edits the settings writes one on save) or keep one.",
             error);
     }
 
@@ -222,7 +222,7 @@ public sealed class MountSelectionTests
 
         var error = Assert.Single(plan.Errors);
         Assert.Equal(
-            $"no entry of {Settings} carries mount id {B} (passed as --mount-id). Declare it (Studio > Allowed folders) or drop the option.",
+            $"no entry of {Settings} carries mount id {B} (passed as --mount-id). Declare it in the settings or drop the option.",
             error);
     }
 
@@ -234,7 +234,7 @@ public sealed class MountSelectionTests
         var error = Assert.Single(plan.Errors);
         Assert.Equal(
             $"no entry of {Settings} carries mount id {B} (referenced by the crew's mounts: for '/output'). "
-            + "Declare it (Studio > Allowed folders) or pass --mount <folder>:/output:rw.",
+            + "Declare it in the settings or pass --mount <folder>:/output:rw.",
             error);
     }
 

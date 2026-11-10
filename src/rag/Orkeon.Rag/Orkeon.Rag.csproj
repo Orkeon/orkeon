@@ -21,7 +21,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- ADR-009: the Orkeon:Rag section path, which Studio also names. -->
+    <!-- ADR-009: the Orkeon:Rag section path, which clients also name. -->
     <ProjectReference Include="..\..\constants\Orkeon.Constants.Configuration\Orkeon.Constants.Configuration.csproj" />
     <ProjectReference Include="..\Orkeon.Rag.Abstractions\Orkeon.Rag.Abstractions.csproj" />
     <ProjectReference Include="..\..\core\Orkeon.Domain\Orkeon.Domain.csproj" />

@@ -3,7 +3,7 @@ using Orkeon.Tests.Shared.Launchers;
 namespace Orkeon.Domain.Tests.FileSystem;
 
 /// <summary>
-/// The two models the launcher suites read a <c>run.cmd</c> with (STUDIO-51 § 3): how <c>cmd</c>
+/// The two models the launcher suites read a <c>run.cmd</c> with: how <c>cmd</c>
 /// reads a line (<see cref="CmdBatchModel"/>) and how the C runtime splits what it hands over
 /// (<see cref="CrtArgv"/>). Pinned on the documented readings — the ones that broke the launchers
 /// included — and, for the C runtime, held against .NET on this machine.
