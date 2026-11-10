@@ -15,8 +15,6 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="Orkeon.Tools.Drive.Tests" />
-    <!-- The Studio drift tests hold Core's copy of the keys and the enumeration spellings to the binder. -->
-    <InternalsVisibleTo Include="Orkeon.Studio.Core.Tests" />
   </ItemGroup>
 
   <ItemGroup>

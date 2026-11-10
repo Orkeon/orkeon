@@ -32,7 +32,7 @@ internal sealed record ForgeSchedule
 
     /// <summary>
     /// The schedule as the grammar spells it — <c>daily@HH:mm</c> or <c>hourly</c> — which is
-    /// what <c>forge.json</c> records and Studio's sidecar holds (STUDIO-27).
+    /// what <c>forge.json</c> records and the team sidecar holds.
     /// </summary>
     public string Expression => Kind == KindHourly
         ? KindHourly
@@ -90,9 +90,9 @@ internal sealed record ForgePromotionResult
 
     /// <summary>
     /// The host platform's install command, for a person installing by hand on this machine: the
-    /// <c>promoted</c> event carries it, never a file — <c>FORGE.md</c> names nothing of the machine
-    /// (STUDIO-52). The promotion never runs it: <c>forge schedule</c> installs the schedule, when
-    /// the user agrees (STUDIO-27).
+    /// <c>promoted</c> event carries it, never a file — <c>FORGE.md</c> names nothing of the machine.
+    /// The promotion never runs it: <c>forge schedule</c> installs the schedule, when
+    /// the user agrees.
     /// </summary>
     public string? InstallCommand { get; init; }
 
@@ -105,7 +105,7 @@ internal sealed record ForgePromotionResult
     /// <summary>
     /// When the team's <c>orkeon</c> command is longer than a <c>cmd</c> command holds: its length
     /// and its longest option — <c>run.cmd</c> launches nothing and says why, <c>run.sh</c> is
-    /// complete (STUDIO-51); null when <c>run.cmd</c> runs the team.
+    /// complete; null when <c>run.cmd</c> runs the team.
     /// </summary>
     public TeamLauncherCommandLength? WindowsLauncherTooLong { get; init; }
 }
@@ -114,14 +114,14 @@ internal sealed record ForgePromotionResult
 /// Promotion of a Ready session (SPEC-ORKEON-FORGE §11): the crew leaves the session
 /// directory as an ordinary folder — <c>crew/</c>, <c>run.cmd</c>/<c>run.sh</c>,
 /// <c>FORGE.md</c>, and on request a <c>schedule/</c> of generated artifacts. Nothing here is
-/// proprietary to the forge: <c>orkeon run</c> launches the folder, Studio's launcher detects it.
+/// proprietary to the forge: <c>orkeon run</c> launches the folder, and a client's launcher detects it.
 /// <para>
 /// The launchers say what this promotion knows — the crew, the settings, the folders, the
 /// brief's sample — with the option names of <c>Orkeon.Constants.Cli</c>, and the composer
-/// <see cref="TeamLauncherScript"/> writes them (STUDIO-51): the frame, the header <c>forge
+/// <see cref="TeamLauncherScript"/> writes them: the frame, the header <c>forge
 /// rename</c> finds the team's name in, each value as <c>cmd</c> and the runner read it back.
-/// For a team it adopts, Orkeon Studio writes the two launchers again through the same composer
-/// (STUDIO-50, <c>TeamLaunchers</c>), with the team's model setting and every folder bound to it,
+/// A client adopting a team may write the two launchers again through the same composer
+/// (<c>TeamLaunchers</c>), with the team's model setting and every folder bound to it,
 /// which this promotion cannot know.
 /// </para>
 /// </summary>
@@ -138,7 +138,7 @@ internal static class ForgePromoter
 
     /// <summary>
     /// Name of the schedule directory: the artifacts, and the record of what <c>forge schedule</c>
-    /// installed (<see cref="ForgeScheduleInstallation"/>, STUDIO-52).
+    /// installed (<see cref="ForgeScheduleInstallation"/>).
     /// </summary>
     public const string ScheduleDirectoryName = ConventionalNames.ScheduleDirectory;
 
@@ -155,12 +155,12 @@ internal static class ForgePromoter
     }
 
     /// <summary>
-    /// The name every generated artifact carries (STUDIO-26, D-06): the team folder's — the unit
+    /// The name every generated artifact carries: the team folder's — the unit
     /// files, the timer and the scheduled task, their descriptions, the install command, the
     /// launchers' header. Never the session's slug: that slug is the need the session was opened
     /// with, and it outlived the name the user gave the team everywhere a scheduler shows it. A
     /// systemd unit and a scheduled task only take a restricted alphabet, so the folder's name
-    /// goes through the one folder rule (<see cref="FolderSlug"/>) — for every folder Studio adopts
+    /// goes through the one folder rule (<see cref="FolderSlug"/>) — for every folder a client adopts
     /// into, which that very rule named, the folder's name itself — and a name that keeps no
     /// usable character falls back the way a team folder does.
     /// </summary>
@@ -169,7 +169,7 @@ internal static class ForgePromoter
 
     /// <summary>
     /// A launcher's text with its header (<see cref="TeamLauncherScript.Header"/>) naming
-    /// <paramref name="name"/> rather than <paramref name="formerName"/> (STUDIO-28): every other
+    /// <paramref name="name"/> rather than <paramref name="formerName"/>: every other
     /// line — the sample inputs a user adapted included — as it was. Nothing else in a launcher
     /// names the team: its paths are anchored to the script's own folder.
     /// </summary>
@@ -177,9 +177,9 @@ internal static class ForgePromoter
         launcher.Replace(TeamLauncherScript.Header(formerName), TeamLauncherScript.Header(name), StringComparison.Ordinal);
 
     /// <summary>
-    /// <c>FORGE.md</c>'s text for a team renamed <paramref name="title"/> (STUDIO-28): its title line.
+    /// <c>FORGE.md</c>'s text for a team renamed <paramref name="title"/>: its title line.
     /// Nothing else in the card names the team or its folder — its schedule section names no command
-    /// of the machine (STUDIO-52) —; everything else, hand edits included, as it was.
+    /// of the machine —; everything else, hand edits included, as it was.
     /// </summary>
     internal static string RetitleCard(string card, string title)
     {
@@ -192,11 +192,11 @@ internal static class ForgePromoter
 
     /// <summary>
     /// A non-empty destination, refused unless it is the folder this very session is linked to by
-    /// rule R (STUDIO-25) — where it promoted to, or that folder moved or renamed since; never a
+    /// rule R — where it promoted to, or that folder moved or renamed since; never a
     /// copy of it —, then cleared of what the promotion regenerates: the generated artifacts
     /// (crew/, schedule/, launchers, FORGE.md), everything else — sidecar, user files, outputs —
     /// preserved. Omitting the schedule on a re-adoption removes its artifacts: the folder says
-    /// what is true. The record of what forge schedule installed stays (STUDIO-52): the
+    /// what is true. The record of what forge schedule installed stays: the
     /// registration is still there, and its names are the only way back to it.
     /// </summary>
     private static void ClearForUpdate(ForgeSession session, string destination, bool copySettings)
@@ -262,12 +262,12 @@ internal static class ForgePromoter
             throw new InvalidOperationException($"The session holds no rendered crew under '{ForgeYamlRenderer.CrewDirectoryName}/'.");
 
         // A non-empty destination is refused — with ONE exception (W-09): the folder this
-        // very session is linked to by rule R (STUDIO-25) — where it promoted to, or that
+        // very session is linked to by rule R — where it promoted to, or that
         // folder moved or renamed since; never a copy of it. Re-adoption then UPDATES it in
         // place: the generated artifacts (crew/, schedule/, launchers, FORGE.md) are
         // regenerated, everything else — sidecar, user files, outputs — is preserved. Omitting
         // the schedule on a re-adoption removes its artifacts: the folder says what is true. The
-        // record of what forge schedule installed stays (STUDIO-52): the registration is still
+        // record of what forge schedule installed stays: the registration is still
         // there, and its names are the only way back to it.
         var updating = Directory.Exists(destination) && Directory.EnumerateFileSystemEntries(destination).Any();
         if (updating)
@@ -282,7 +282,7 @@ internal static class ForgePromoter
         var verdict = session.TryLoadArtifact<ForgeVerdict>(ForgeSession.VerdictFileName);
 
         // The use case the team was composed from, titled in the brief's language now that it is
-        // known (STUDIO-40, D-04): the card, the record and the session say the same thing. In
+        // known: the card, the record and the session say the same thing. In
         // memory, like the team's name: the caller saves the session once the promotion stands.
         if (session.Document.Reference is { } reference)
             session.Document.Reference = ForgeReference.Retitle(reference, brief?.Language);
@@ -296,7 +296,7 @@ internal static class ForgePromoter
         foreach (var mount in writeMounts)
             Directory.CreateDirectory(Path.Combine(destination, mount.Folder));
 
-        // A folder the session held «inside the team» until now (STUDIO-46) — an input the
+        // A folder the session held «inside the team» until now — an input the
         // user filled for the trial — moves into the team it was meant for.
         MoveSessionFolders(session, destination, writeMounts);
 
@@ -356,7 +356,7 @@ internal static class ForgePromoter
 
     /// <summary>
     /// Empties <paramref name="teamDirectory"/>'s <c>schedule/</c> of its artifacts and keeps the record
-    /// of what <c>forge schedule</c> installed (STUDIO-52, <see cref="ForgeScheduleInstallation"/>):
+    /// of what <c>forge schedule</c> installed(<see cref="ForgeScheduleInstallation"/>):
     /// nothing here touches the operating system, the registration it names is still there, and its
     /// names are the only way back to it. The folder goes when nothing is left in it.
     /// </summary>
@@ -404,7 +404,7 @@ internal static class ForgePromoter
         };
 
         // A single-value option is written --option=value: a value starting with '-' stays its
-        // value for the runner's grammar (STUDIO-51, decision 7).
+        // value for the runner's grammar.
         if (settingsReference is not null)
         {
             segments.Add(
@@ -496,7 +496,7 @@ internal static class ForgePromoter
     private static readonly IReadOnlyList<string> ReservedVirtualRoots = RunnerVirtualRoots.All;
 
     /// <summary>
-    /// The folders the promoted team mounts: the session's confirmed list (STUDIO-46), each
+    /// The folders the promoted team mounts: the session's confirmed list, each
     /// backed by a folder inside the team — the one list the trial used, applied where it
     /// becomes true: the launcher.
     /// <para>
@@ -632,7 +632,7 @@ internal static class ForgePromoter
     /// The read mount is derived first, so a deliverable landing under the SAME root meets a
     /// read-only entry. Skipping on the name alone left the team with `/workspace:ro` and a
     /// deliverable it could never write — the run reports success and produces nothing.
-    /// Studio deduped the other way and showed two /workspace chips, one promising a write
+    /// A client deduping the other way showed two /workspace chips, one promising a write
     /// that was then silently dropped. One root, one mount, and a write requirement wins
     /// over a read one.
     /// </para>
@@ -672,7 +672,7 @@ internal static class ForgePromoter
         }
     }
 
-    /// <summary><c>run.cmd</c>: UTF-8 without a BOM, which <c>cmd</c> would read as text (STUDIO-51).</summary>
+    /// <summary><c>run.cmd</c>: UTF-8 without a BOM, which <c>cmd</c> would read as text.</summary>
     private static void WriteWindowsLauncher(string destination, TeamLauncherSpec launchers) =>
         File.WriteAllText(
             Path.Combine(destination, WindowsLauncherName),
@@ -684,7 +684,7 @@ internal static class ForgePromoter
     /// install time, not at generation time: the folder is portable and the artifacts are a few
     /// hundred bytes. Every name in them is <paramref name="teamName"/> (<see cref="ArtifactName"/>)
     /// and every path this folder's own. <c>forge schedule</c> installs the host's family from
-    /// them (STUDIO-27); <see cref="ForgeScheduleAdapters.ManualInstallCommand"/> is the same
+    /// them; <see cref="ForgeScheduleAdapters.ManualInstallCommand"/> is the same
     /// install, by hand.
     /// </summary>
     internal static void WriteScheduleArtifacts(string destination, string teamName, ForgeSchedule schedule, DateTimeOffset now)
@@ -748,7 +748,7 @@ internal static class ForgePromoter
     }
 
     /// <summary>
-    /// The task's action running <paramref name="windowsLauncher"/> (STUDIO-51, decision 6):
+    /// The task's action running <paramref name="windowsLauncher"/>:
     /// <c>cmd.exe</c> itself, under the quoting rule that does not depend on the path, the launcher
     /// its one argument — written again, it needs no reinstall. One line, the one
     /// <see cref="ScheduleArtifactsDescribe"/> looks for.
@@ -791,11 +791,11 @@ internal static class ForgePromoter
 
     /// <summary>
     /// Makes <c>schedule/</c> describe <paramref name="teamDirectory"/> as it is now before an
-    /// install (STUDIO-27): the artifacts are left as they are — hand edits included — when they
+    /// install: the artifacts are left as they are — hand edits included — when they
     /// name this folder's launchers under <paramref name="teamName"/>, and regenerated from
     /// <paramref name="schedule"/> when they do not: a copy of a scheduled team, a team moved or
-    /// renamed since its promotion, or artifacts deleted. The record of what was installed stays
-    /// (STUDIO-52): a regeneration forgets no name an installation was made under.
+    /// renamed since its promotion, or artifacts deleted. The record of what was installed stays:
+    /// a regeneration forgets no name an installation was made under.
     /// </summary>
     internal static void EnsureScheduleArtifacts(string teamDirectory, string teamName, ForgeSchedule schedule, DateTimeOffset now)
     {
@@ -811,7 +811,7 @@ internal static class ForgePromoter
     /// <summary>
     /// Whether every family's artifact names this folder's launcher, under <paramref name="teamName"/>,
     /// in the form this version writes: artifacts an earlier version wrote — a task running
-    /// <c>run.cmd</c> by itself, an unescaped <c>ExecStart</c> or cron line (STUDIO-51) — are
+    /// <c>run.cmd</c> by itself, an unescaped <c>ExecStart</c> or cron line — are
     /// written again before an install.
     /// </summary>
     private static bool ScheduleArtifactsDescribe(string teamDirectory, string teamName)
@@ -827,7 +827,7 @@ internal static class ForgePromoter
     }
 
     /// <summary>
-    /// The warning of a promotion whose <c>run.cmd</c> launches nothing (STUDIO-51, decision 8):
+    /// The warning of a promotion whose <c>run.cmd</c> launches nothing:
     /// the length, the bound and the longest option — names and numbers, never a value.
     /// </summary>
     internal static string LauncherTooLongWarning(TeamLauncherCommandLength length)
@@ -893,7 +893,7 @@ internal static class ForgePromoter
         card.AppendLine(CultureInfo.InvariantCulture,
             $"> {language.Pick("Généré par l'Atelier Orkeon le", "Generated by the Orkeon Forge on")} {content.Now:yyyy-MM-dd} — Orkeon {ForgeEngineVersion.Current}.");
 
-        // Where the team's structure came from (STUDIO-40, D-04), next to where the team came from.
+        // Where the team's structure came from, next to where the team came from.
         if (content.Session.Document.Reference is { Id.Length: > 0 } reference)
         {
             card.AppendLine(">");
@@ -1005,7 +1005,7 @@ internal static class ForgePromoter
                 $"`./{PosixLauncherName}` (Linux/macOS) ou `{WindowsLauncherName}` (Windows) — les entrées d'exemple y sont à adapter.",
                 $"`./{PosixLauncherName}` (Linux/macOS) or `{WindowsLauncherName}` (Windows) — adapt the sample inputs inside.")
             + bareCommand
-            + language.Pick(" Orkeon Studio détecte le dossier.", " Orkeon Studio detects the folder."));
+            + language.Pick(" Un client qui pilote le CLI reconnaît ce dossier.", " A client that drives the CLI recognizes the folder."));
     }
 
     /// <summary>Where the mounts land, so the folder explains itself.</summary>
@@ -1038,9 +1038,8 @@ internal static class ForgePromoter
     }
 
     /// <summary>
-    /// The schedule: the artifacts, and who installs them — Orkeon Studio with the user's consent, or
-    /// <c>forge schedule</c> (STUDIO-27, DA-3). Nothing of the machine that promoted the team
-    /// (STUDIO-52): the card travels with the folder, and the command that installs the schedule by
+    /// The schedule: the artifacts, and who installs them — <c>forge schedule</c>. Nothing of the machine that promoted the team:
+    /// the card travels with the folder, and the command that installs the schedule by
     /// hand on this machine rides the <c>promoted</c> event, and a refusal's <c>error</c>.
     /// </summary>
     private static void AppendScheduleSection(StringBuilder card, ForgeSchedule? schedule, CardLanguage language)
@@ -1052,8 +1051,8 @@ internal static class ForgePromoter
         card.AppendLine(CultureInfo.InvariantCulture, $"## {language.Pick("Planification", "Schedule")}");
         card.AppendLine();
         card.AppendLine(language.Pick(
-            $"Les artefacts sous `{ScheduleDirectoryName}/` couvrent les trois plateformes (tâche planifiée Windows, timer systemd, ligne cron). Orkeon n'a pas d'ordonnanceur à lui : c'est le système qui lance l'équipe. Orkeon Studio installe la planification avec votre accord ; en ligne de commande, depuis ce dossier, `orkeon forge schedule .` l'installe et `orkeon forge unschedule .` la retire.",
-            $"The artifacts under `{ScheduleDirectoryName}/` cover the three platforms (Windows scheduled task, systemd timer, cron line). Orkeon has no scheduler of its own: the operating system runs the team. Orkeon Studio installs the schedule with your consent; from a terminal, in this folder, `orkeon forge schedule .` installs it and `orkeon forge unschedule .` removes it."));
+            $"Les artefacts sous `{ScheduleDirectoryName}/` couvrent les trois plateformes (tâche planifiée Windows, timer systemd, ligne cron). Orkeon n'a pas d'ordonnanceur à lui : c'est le système qui lance l'équipe. En ligne de commande, depuis ce dossier, `orkeon forge schedule .` l'installe et `orkeon forge unschedule .` la retire.",
+            $"The artifacts under `{ScheduleDirectoryName}/` cover the three platforms (Windows scheduled task, systemd timer, cron line). Orkeon has no scheduler of its own: the operating system runs the team. From a terminal, in this folder, `orkeon forge schedule .` installs it and `orkeon forge unschedule .` removes it."));
     }
 
     private static DateTime NextOccurrence(DateTimeOffset now, int hour, int minute)

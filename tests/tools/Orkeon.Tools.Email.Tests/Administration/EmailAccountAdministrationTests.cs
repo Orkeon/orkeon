@@ -49,7 +49,7 @@ public sealed class EmailAccountAdministrationTests
     [Fact]
     public async Task Should_call_an_account_ready_When_its_password_is_only_in_the_user_scope()
     {
-        // `orkeon email accounts` reads through the seam the run reads through: a password Studio
+        // `orkeon email accounts` reads through the seam the run reads through: a password a client
         // stored makes the account ready for the verb as it is for the run.
         using var fixture = new AdministrationFixture(
             Accounts(("perso", TestAccounts.Gmail())), TestAccounts.UserScope((TestAccounts.PasswordVariable, TestAccounts.Password)));
@@ -84,7 +84,7 @@ public sealed class EmailAccountAdministrationTests
     [Fact]
     public async Task Should_say_how_long_the_device_code_lives_as_the_provider_granted_it()
     {
-        // What a screen counts down from (STUDIO-70): the provider's own figure, not the default.
+        // What a screen counts down from: the provider's own figure, not the default.
         using var fixture = new AdministrationFixture(Accounts(("hotmail", TestAccounts.Outlook())));
         fixture.Credentials.Handler.EnqueueJson("""{"device_code":"dev-1","user_code":"WDJB-MJHT","verification_uri":"https://microsoft.com/devicelogin","expires_in":600,"interval":5}""");
         fixture.Credentials.Handler.EnqueueJson("""{"access_token":"at-1","refresh_token":"rt-1","expires_in":3600}""");

@@ -23,7 +23,7 @@ namespace Orkeon.Application.Crew.Execution;
 /// <para>
 /// It reports no usage of its own: the provider under the chat client is metered, so every
 /// call made here — each turn and each retry — reaches the token meter once, attributed to
-/// the scope <see cref="ExecutionOrchestrator"/> opens for the task (STUDIO-42). The loop
+/// the scope <see cref="ExecutionOrchestrator"/> opens for the task. The loop
 /// used to report its turns itself and missed its retries.
 /// </para>
 /// <para>
@@ -207,8 +207,8 @@ internal sealed class ChatClientAgentLoop
             // tool_calls across several iterations and then terminate with no assistant text,
             // and a reasoning model whose budget went into thinking answers empty on its very
             // first turn. Force one retry with tool_choice disabled so the model must produce
-            // text; an answer that stays empty is a failed task, never a green one (STUDIO-12
-            // C5a — the first-turn case used to exit Completed with an empty deliverable).
+            // text; an answer that stays empty is a failed task, never a green one (the first-turn case
+            // used to exit Completed with an empty deliverable).
             if (string.IsNullOrWhiteSpace(responseText))
             {
                 var (result, _) = await HandleEmptyResponseAsync(
@@ -606,9 +606,8 @@ internal sealed class ChatClientAgentLoop
         }
 
         // Every iteration went to tool calls and the synthesis retry came back empty: the
-        // iteration budget is the cause, the empty answer its symptom. Already a failed exit
-        // before STUDIO-12; only the reason changed, from a code to a sentence the summary
-        // and the runner's last stderr line can carry.
+        // iteration budget is the cause, the empty answer its symptom. The reason is a sentence
+        // the summary and the runner's last stderr line can carry.
         ExecutionLog.LogMaxIterationsReached(_logger, maxIter, taskId);
         return new AgentLoopResult(string.Empty, totalTokensUsed,
             AgentExitReason.MaxIterationsReached, IterationsUsed: maxIter,

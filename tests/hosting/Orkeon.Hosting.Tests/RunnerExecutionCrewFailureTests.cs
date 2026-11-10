@@ -8,7 +8,7 @@ using Orkeon.Hosting.Tests.Doubles;
 namespace Orkeon.Hosting.Tests;
 
 /// <summary>
-/// STUDIO-12 C5a — the one-shot runner's exit code follows the crew's outcome. KickoffAsync
+/// An empty final answer: the one-shot runner's exit code follows the crew's outcome. KickoffAsync
 /// never throws (its fault barrier turns every failure into an output), so the runner used
 /// to return 0 for every crew failure: an agent that answered with nothing ended as
 /// <c>run.finished success:true exitCode:0</c>. Now a failed crew exits 2 with the reason as

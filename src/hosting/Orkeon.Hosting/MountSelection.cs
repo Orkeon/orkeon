@@ -160,7 +160,7 @@ public static class MountSelection
             errors.Add(
                 $"'{root}' is declared {Times(group.Count)} in {where} ({JoinAnd(group.Select(entry => entry.Spec))}) "
                 + $"and '{withoutId.Spec}' has no id. Give every entry an id (<ulid>|<physical>:{root}:<rights>; "
-                + "Studio > Allowed folders writes one on save) or keep one.");
+                + "a client that edits the settings writes one on save) or keep one.");
         }
 
         return errors;
@@ -298,7 +298,7 @@ public static class MountSelection
 
             resolution.Errors.Add(
                 $"no entry of {resolution.SettingsLabel} carries mount id {id} (passed as --mount-id). "
-                + "Declare it (Studio > Allowed folders) or drop the option.");
+                + "Declare it in the settings or drop the option.");
         }
     }
 
@@ -324,7 +324,7 @@ public static class MountSelection
                 resolution.RootsInError.Add(root);
                 resolution.Errors.Add(
                     $"no entry of {resolution.SettingsLabel} carries mount id {reference.Id} (referenced by the crew's mounts: for '{root}'). "
-                    + $"Declare it (Studio > Allowed folders) or pass --mount <folder>:{root}:rw.");
+                    + $"Declare it in the settings or pass --mount <folder>:{root}:rw.");
                 continue;
             }
 

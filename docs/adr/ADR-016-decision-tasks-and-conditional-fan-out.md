@@ -5,7 +5,7 @@
 # ADR-016 — Decision tasks, and a `when` condition that skips instead of failing
 
 **Status**: Accepted · **Date**: 2026-10-28
-· **Scope**: `Orkeon.Domain` (`TaskDecision`, `DecisionOutcome`, `CrewTaskBase`), `Orkeon.Infrastructure` (`Crew/Strategies/`: Sequential, Parallel and Graph, `DecisionPreflight`), `Orkeon.Application` (`TaskExecutionSnapshot`), the `orkeon run` CLI (`--no-decision`, the `task.completed` event) and Studio (`RunProgressModel`)
+· **Scope**: `Orkeon.Domain` (`TaskDecision`, `DecisionOutcome`, `CrewTaskBase`), `Orkeon.Infrastructure` (`Crew/Strategies/`: Sequential, Parallel and Graph, `DecisionPreflight`), `Orkeon.Application` (`TaskExecutionSnapshot`), the `orkeon run` CLI (`--no-decision`, the `task.completed` event)
 
 ## Context
 
@@ -37,10 +37,9 @@ the next task had to parse.
    failing request is never turned into the fallback.
 6. **The run reports it.** `task.completed` carries `skipReason`, `defaulted`, `isDecision` and
    `decision` (the answers as compact JSON); `TaskExecutionSnapshot` carries `SkipReason`,
-   `Defaulted`, `IsDecision` and `DecisionAnswers`; the consoles and Studio's `RunProgressModel`
-   show them. `TaskCompletedEvent.AgentId` is nullable, a decision task having no agent.
+   `Defaulted`, `IsDecision` and `DecisionAnswers`; the consoles show them. `TaskCompletedEvent.AgentId` is nullable, a decision task having no agent.
 
-   > Amendment 2026-10-31: the reason of a jump is read by the run's JSONL and by Studio's `RunProgressModel`, not by "the consoles"; the question name `defaulted` is reserved.
+   > Amendment 2026-10-31: the reason of a jump is read by the run's JSONL, not by "the consoles"; the question name `defaulted` is reserved.
 
    > Amendment 2026-10-31: the decision model behind a decision task may be TypeSafe, Liquid or Kev; the task, its circuit and its fallback do not change.
 

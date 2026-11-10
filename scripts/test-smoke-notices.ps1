@@ -96,11 +96,11 @@ try {
     Check '... and names the missing folder' (Test-Says "licenses/$netcore.Runtime.linux-x64/ is missing")
     Check '... and the application that bundles the runtime' (Test-Says 'the runtime orkeon bundles')
 
-    Write-Host '# a WPF application bundles two runtimes'
-    $tree = Join-Path $work 'wpf'
+    Write-Host '# a desktop application bundles two runtimes'
+    $tree = Join-Path $work 'desktop'
     New-Notices $tree @("$netcore.Runtime.win-x64")
     New-App $tree 'orkeon' 'orkeon' 'win-x64' @($netcore)
-    New-App $tree 'orkeon-studio' 'Orkeon.Studio' 'win-x64' @($netcore, $desktop)
+    New-App $tree 'orkeon-desktop' 'Orkeon.Desktop' 'win-x64' @($netcore, $desktop)
     Assert-Notices $tree
     Check 'the .NET folder alone: fails' (Test-Refuses)
     Check '... and names the Windows Desktop pack' (Test-Says "licenses/$desktop.Runtime.win-x64/ is missing")

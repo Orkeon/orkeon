@@ -3,12 +3,12 @@ using Xunit;
 namespace Orkeon.Tests.Shared.FileSystem;
 
 /// <summary>
-/// Names and the folder each one becomes (STUDIO-24), checked by every suite that turns a
-/// name into a folder: the Domain rule itself, the CLI's forge session and Studio's adopted
-/// team. The same name handed to the CLI or typed in Studio must land in the same folder, so
+/// Names and the folder each one becomes, checked by every suite that turns a
+/// name into a folder: the Domain rule itself, the CLI's forge session and a client's adopted
+/// team. The same name handed to the CLI or typed in a client must land in the same folder, so
 /// an entry here is a promise both sides keep.
 /// <para>
-/// Every name is one Studio's name field keeps as typed — one line, no Markdown, under the
+/// Every name is one a client's name field keeps as typed — one line, no Markdown, under the
 /// 64-character cap — and keeps at least one ASCII letter or digit: a name that keeps none
 /// falls back differently on each side by design (a timestamp for a session, the team
 /// fallback for a team), so each suite pins its own.

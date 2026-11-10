@@ -9,7 +9,7 @@ using Orkeon.Infrastructure.MCP;
 namespace Orkeon.Hosting.Tests;
 
 /// <summary>
-/// STUDIO-21 — the shared runner host honours the <c>MCP</c> section of the settings: the
+/// Runner host: the shared runner host honours the <c>MCP</c> section of the settings: the
 /// provider exists only when servers are declared and MCP is not switched off, and a server
 /// that cannot be connected is reported and skipped rather than ending the run.
 /// </summary>

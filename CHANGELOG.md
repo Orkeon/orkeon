@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Removed — Orkeon Studio moved to its own repository (Orkeon/orkeon-studio) **[breaking]**
+
+- **Orkeon Studio** **[breaking]**: the desktop and terminal front-end lives in [Orkeon/orkeon-studio](https://github.com/Orkeon/orkeon-studio) and is no longer built, tested, packaged or documented here. Removed from this repository: the `Orkeon.Studio.Core`, `Orkeon.Studio.Config`, `Orkeon.Studio.Run` and `Orkeon.Studio.Wpf` projects and their test projects, all out of `Orkeon.sln`; the `orkeon-studio`, `orkeon-studio-config` and `orkeon-studio-run` executables from the MSI, ZIP, tarball and `.deb` installers (the "Orkeon Studio" Start-menu shortcut included); the Studio smoke steps of the release pipeline; the Studio documentation page (`docs/architecture/studio.md`, EN and FR); and the third-party notices only Studio needed. The `orkeon` CLI and its event protocol are unchanged: Studio drives them from its own repository.
+
+  | Before | After |
+  |---|---|
+  | The Windows zip, the MSI, the Linux archives and the `.deb` install Orkeon Studio next to the CLI | They install the CLI (and the REPL, the service host where packaged) only; install Orkeon Studio from [Orkeon/orkeon-studio](https://github.com/Orkeon/orkeon-studio) |
+
 ### Added — the CLI family ships to NuGet, for a standalone Orkeon Studio
 
 - **Packages** **[breaking]**: three ids join the NuGet.org lineup, so an application outside this repository (Orkeon Studio) builds against packages rather than project references. `Orkeon.Constants.Cli` (runner option names, exit codes, session-state keys) and `Orkeon.Cli.Abstractions` (the interactive-runner contracts) are packed straight from their projects; `Orkeon.Cli.TerminalGui` is packed by the new `src/packaging/Orkeon.Cli.TerminalGui` wrapper and depends on `Orkeon`, which carries the `Orkeon.Constants.Configuration` it reads, and on `Orkeon.Cli.Abstractions`. `Orkeon.Scripting` no longer embeds `Orkeon.Constants.Cli`: it takes a nuspec dependency on it, so no assembly ships in two packages. `Orkeon.Hosting` stays inside `Orkeon.Scripting`, and the `SuppressVfsCompliance` / `SuppressConsoleCompliance` attributes inside `Orkeon` (`Orkeon.Domain`); `Orkeon.Compliance.Vfs` remains the analyzer alone. `scripts/check-package-closure.py` counts a lineup package packed from its own project as carrying its assembly and project closure.

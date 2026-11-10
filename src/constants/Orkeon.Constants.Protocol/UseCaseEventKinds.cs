@@ -1,11 +1,11 @@
 namespace Orkeon.Constants.Protocol;
 
 /// <summary>
-/// The event kinds <c>orkeon usecases</c> exchanges with whatever drives it (STUDIO-38).
+/// The event kinds <c>orkeon usecases</c> exchanges with whatever drives it.
 /// <para>
 /// Same protocol as the run stream — one JSON document per line, the envelope of
 /// <see cref="RunEventKinds"/> — and the same reason to declare the vocabulary once: the CLI
-/// answers, Orkeon Studio asks, and the two cannot reference each other. Studio keeps one
+/// answers, a client asks, and the two cannot reference each other. The client keeps one
 /// <c>usecases search --events jsonl</c> process open while its assistant is open, sends a
 /// <see cref="Query"/> down stdin after each pause in the typing, and matches every
 /// <see cref="Results"/> to its query by the envelope's <c>correlationId</c>. A kind one side
@@ -42,8 +42,8 @@ public static class UseCaseEventKinds
     public const string Sheet = "usecases.sheet";
 
     /// <summary>
-    /// One use case written as a team folder (STUDIO-41): the <c>export</c> answer — the folder,
-    /// the team's name, the files written and the mounts its sidecar records. What Studio
+    /// One use case written as a team folder: the <c>export</c> answer — the folder,
+    /// the team's name, the files written and the mounts its sidecar records. What a client
     /// imports next.
     /// </summary>
     public const string Exported = "usecases.exported";

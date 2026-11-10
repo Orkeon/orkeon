@@ -7,11 +7,11 @@ using Orkeon.Infrastructure.LLMs.Profiles;
 namespace Orkeon.Infrastructure.Tests.LLMs.Profiles;
 
 /// <summary>
-/// STUDIO-49: a section of the <c>Llm</c> shape names the environment variable holding its key —
+/// A section of the <c>Llm</c> shape names the environment variable holding its key —
 /// <c>ApiKeyEnvVar</c>, the name, never the key —, and the runtime reads it when the
 /// configuration resolves no <c>ApiKey</c>: the process environment first, then, on Windows, the
-/// user's persistent scope, which is where Studio remembers a key. Studio remembered keys under
-/// the provider's variable (<c>ZAI_API_KEY</c>), which no run read: outside Studio — a terminal,
+/// user's persistent scope, which is where a client may remember a key. A client remembered keys under
+/// the provider's variable (<c>ZAI_API_KEY</c>), which no run read: outside that client — a terminal,
 /// a scheduled team, the REPL — every call answered "API key is required".
 /// <para>
 /// The environment is the reader's seam (<see cref="LlmKeyEnvironment"/>): no test sets a
@@ -70,7 +70,7 @@ public sealed class LlmSettingsApiKeyReferenceTests
     [Fact]
     public void A_key_the_configuration_resolves_wins_over_the_reference()
     {
-        // The file's ApiKey, ORKEON_Llm__ApiKey, a Studio launch: every existing installation
+        // The file's ApiKey, ORKEON_Llm__ApiKey, a client launch: every existing installation
         // keeps the key it had, and "the environment wins over the file" stays true.
         var configuration = Configuration(
             ("Llm:BaseUrl", "https://api.deepseek.com"),
@@ -107,7 +107,7 @@ public sealed class LlmSettingsApiKeyReferenceTests
     [Fact]
     public void A_variable_only_in_the_user_scope_is_found_and_never_copied_into_the_process()
     {
-        // Studio remembers a key in the user scope (HKCU\Environment): a terminal opened before
+        // A client remembers a key in the user scope (HKCU\Environment): a terminal opened before
         // it, or a scheduled task, has no copy in its environment block. The run reads the user
         // scope, and leaves the process alone — what it starts must not inherit a key it had not.
         var name = "ORKEON_TEST_" + Guid.NewGuid().ToString("N");
@@ -237,7 +237,7 @@ public sealed class LlmSettingsApiKeyReferenceTests
         Assert.Equal(TimeSpan.FromMinutes(10), config.MaxRateLimitWait);
     }
 
-    // ── blank values: the overlay of a Studio launch ────────────────────────
+    // ── blank values: the overlay of a client launch ────────────────────────
 
     [Fact]
     public void Blank_values_read_as_absent_Thinking_Effort_included()

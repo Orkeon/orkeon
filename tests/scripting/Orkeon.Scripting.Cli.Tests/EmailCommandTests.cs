@@ -78,13 +78,13 @@ public sealed partial class EmailCommandTests
     }
 
     /// <summary>
-    /// The contract Orkeon Studio reads (STUDIO-69): its settings screen pairs each account with
+    /// The contract a client reads: its settings screen pairs each account with
     /// its state by these names. A property renamed or dropped here leaves every account
     /// "unknown" there, so the ten names are pinned, for an account the engine resolved and for
     /// one it set aside alike.
     /// </summary>
     [Fact]
-    public async Task Accounts_Json_CarriesTheTenPropertiesStudioReads()
+    public async Task Accounts_Json_CarriesTheTenPropertiesAClientReads()
     {
         using var scratch = new ScriptScratch();
         scratch.WriteFile("appsettings.json", """

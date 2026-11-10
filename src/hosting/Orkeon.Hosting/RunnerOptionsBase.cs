@@ -70,7 +70,7 @@ public abstract class RunnerOptionsBase
         => AllowExternalMounts || RunnerEnvironment.AllowExternalMounts;
 
     /// <summary>
-    /// The host LLM profile the run takes as its default (STUDIO-50): <c>Llm:Profiles:&lt;id&gt;</c>
+    /// The host LLM profile the run takes as its default: <c>Llm:Profiles:&lt;id&gt;</c>
     /// becomes the <c>Llm</c> section for this run, whole. Null keeps the settings' default.
     /// </summary>
     [Option(RunOptionNames.LlmProfile, Required = false, Default = null,

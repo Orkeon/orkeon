@@ -29,7 +29,7 @@ using DomainAgent = Orkeon.Domain.Agent.Agent;
 namespace Orkeon.Infrastructure.Tests.LLMs;
 
 /// <summary>
-/// STUDIO-42, the families the meter used to miss: the hierarchical manager, the flows, the
+/// The families the meter used to miss: the hierarchical manager, the flows, the
 /// memory services, the LLM judges and the streamed agent turn. For each one, a provider that
 /// counts its calls under the one metering decorator: as many usage events as calls, never a
 /// duplicate — and each tagged with the work it was (D-02).

@@ -154,7 +154,7 @@ jobs:
       - name: Package the CLI archives (win-x64, osx-arm64, osx-x64)
         run: ./scripts/package-installers.sh --app-set cli --rids "win-x64 osx-arm64 osx-x64" ${{ steps.pkg.outputs.version_arg }} --out artifacts/installers
 
-      # package-deb.sh only lifts the CLI and Studio payloads out of a staging
+      # package-deb.sh only lifts the CLI payloads out of a staging
       # tree, and each multi-app linux staging already holds them from the same
       # self-contained, pruned publish. Reusing it saves a second publish (~3 min
       # and a couple of GB per architecture) for a byte-identical payload. The
@@ -289,9 +289,7 @@ jobs:
           retention-days: 1
       # The linux payloads the smoke-deb matrix installs: the two .deb (amd64 and
       # arm64), and the multi-app linux-x64 tarball. The tarball rides along because it is the
-      # only published archive that carries the two Studio TUIs on a runner we
-      # actually have — smoke-macos exercises run-smoke-tarball.sh with
-      # `--studio absent`, and nothing exercised the `present` side.
+      # published archive installed and run headless on a linux runner.
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: orkeon-linux
@@ -339,9 +337,6 @@ jobs:
 
   # Installs the published Windows archive on a real Windows runner and walks the
   # onboarding chain on it (WIN-06). Exercises WIN-01 through WIN-05 end to end,
-  # plus the Orkeon Studio payload and its `--smoke-exit` start/close smoke
-  # (STUDIO-08) — this job is the only place a WPF window is ever opened, so a
-  # Studio that fails to resolve its XAML or its runtime surfaces here.
   # The smoke runs twice, once per PowerShell: under `pwsh` (PowerShell 7), then
   # under `powershell` (Windows PowerShell 5.1, the one a Windows machine has
   # before anything is installed on it). install.ps1 is written for both, and
@@ -490,7 +485,7 @@ jobs:
       # both are a successful install/uninstall) run-smoke.ps1 documents for
       # the ZIP channel's own quirks. PATH is not reloaded in this session, so
       # the installed orkeon.cmd is called by its full path throughout.
-      - name: Smoke — install, orkeon doctor, Orkeon Studio, uninstall
+      - name: Smoke — install, orkeon doctor, uninstall
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
@@ -529,8 +524,7 @@ jobs:
 
           # The notices Package.wxs harvests with the rest of the stage tree (GAP-52).
           # Same assertions as the ZIP channel, shared from lib\notices-windows.ps1:
-          # the runtimes to expect are read from the installed applications, the
-          # Windows Desktop pack of the WPF Studio included.
+          # the runtimes to expect are read from the installed applications.
           . ./scripts/smoke-onboarding/lib/notices-windows.ps1
           $notices = Invoke-OrkeonNoticesAssertions -Root $installDir
           if ($notices.Problems.Count -gt 0) { throw ("notices: " + ($notices.Problems -join '; ')) }
@@ -575,17 +569,6 @@ jobs:
           $userPathEntries = @((Get-UserPathRaw) -split ';' | Where-Object { $_ })
           if ($userPathEntries -notcontains (Join-Path $installDir 'bin')) { throw "$(Join-Path $installDir 'bin') not on the user PATH after install." }
           Write-Host 'PASS path -- bin\ added to the user PATH'
-
-          # Orkeon Studio (STUDIO-08, spec §8.4). Same assertions the ZIP channel
-          # runs in run-smoke.ps1 -- shared from lib\studio-windows.ps1 so the two
-          # channels cannot drift -- plus the Start-menu shortcut, which is the
-          # MSI's own addition (Package.wxs StudioShortcutComponent) and exists in
-          # no other channel.
-          . ./scripts/smoke-onboarding/lib/studio-windows.ps1
-          $studio = Invoke-OrkeonStudioWindowsSmoke -InstallRoot $installDir -LogDir $logsDir -ExpectStartMenuShortcut
-          foreach ($note in $studio.Notes) { Write-Host "     $note" }
-          if ($studio.Problems.Count -gt 0) { throw ("Orkeon Studio: " + ($studio.Problems -join '; ')) }
-          Write-Host 'PASS studio -- launcher + WPF apphost installed, Start-menu shortcut present, --smoke-exit returned 0'
 
           # Windows PowerShell 5.1 raises NativeCommandError on any stderr output
           # under a `2>` redirection while $ErrorActionPreference is 'Stop' --
@@ -696,16 +679,10 @@ jobs:
   # architecture, the arm64 one on a real ARM runner.
   #
   # First the .deb: installed through apt, walked along the same onboarding chain
-  # as every other channel, then removed (LIN-02). It asserts the two Orkeon
-  # Studio TUIs the package carries — /usr/bin/orkeon-studio-{config,run} present,
-  # and both answering `--version` with stdin and stdout redirected, the headless
-  # contract of STUDIO-08.
+  # as every other channel, then removed (LIN-02).
   #
-  # Then, on the amd64 entry only, the tar.gz channel, which is where
-  # `--studio present` gets its only run:
-  # smoke-macos is the sole other caller of run-smoke-tarball.sh and it passes
-  # `--studio absent`, so until this step the "installed from an archive, and
-  # working headless" half of STUDIO-08 was asserted nowhere.
+  # Then, on the amd64 entry only, the tar.gz channel: installed from the
+  # archive and working headless.
   smoke-deb:
     strategy:
       fail-fast: false
@@ -744,13 +721,10 @@ jobs:
 
       # --prefix keeps this install off /usr entirely, so it cannot collide with
       # the .deb the step above installed and removed — the two channels stay
-      # independent even if that removal ever regresses. --studio present is
-      # spelled out rather than left to the script's `auto` deduction, for the
-      # same reason smoke-macos spells out `absent`: the assertion this step
-      # exists to make must not be able to degrade into "nothing to check".
+      # independent even if that removal ever regresses.
       # --work-dir / --keep pin the scratch tree to an uploadable path and hold
       # its logs/ on a pass too, not just on failure.
-      - name: Smoke the linux tarball (Studio TUIs present)
+      - name: Smoke the linux tarball
         if: matrix.arch == 'amd64'
         run: |
           tarball="$(find artifacts -maxdepth 1 -name 'orkeon-*-linux-x64.tar.gz' | head -n1)"
@@ -760,7 +734,6 @@ jobs:
           fi
           ./scripts/smoke-onboarding/run-smoke-tarball.sh \
             --tarball "$tarball" \
-            --studio present \
             --prefix "$RUNNER_TEMP/orkeon-tarball" \
             --work-dir "$RUNNER_TEMP/orkeon-smoke-tarball" \
             --keep
@@ -792,13 +765,6 @@ jobs:
       # --work-dir pins the scratch tree to a known, uploadable path and --keep
       # holds it on a pass too (the script's own default only keeps it on
       # failure), so the upload step below always has something to attach.
-      #
-      # --studio absent is the anti-regression guard of STUDIO-07's RID filter:
-      # V1 ships no Orkeon Studio on macOS, so anything named orkeon-studio* in
-      # this archive — or in the tree install.sh lays down from it — fails the
-      # job. Spelled out rather than left to the script's `auto` deduction: this
-      # is the assertion the macOS channel exists to make, and it must not be
-      # able to degrade into "nothing to check" if the archives are ever renamed.
       - name: Smoke the installed CLI
         run: |
           tarball="$(find artifacts -maxdepth 1 -name 'orkeon-cli-*-osx-arm64.tar.gz' | head -n1)"
@@ -808,7 +774,6 @@ jobs:
           fi
           ./scripts/smoke-onboarding/run-smoke-tarball.sh \
             --tarball "$tarball" \
-            --studio absent \
             --work-dir "$RUNNER_TEMP/orkeon-smoke" \
             --keep
 

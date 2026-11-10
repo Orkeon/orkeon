@@ -156,7 +156,7 @@ public sealed partial class SequentialProcessStrategy : IProcessStrategy
 
             // A pipeline with a failed step is a failed pipeline: the crew used to report
             // success whatever its tasks did, so an empty deliverable went green all the way
-            // to the runner's exit code (STUDIO-12 C5a). The reason names every failed task.
+            // to the runner's exit code. The reason names every failed task.
             if (run.Outcome.HasFailures)
                 LogSequentialExecutionFailedForCrew(crew.Id, run.Outcome.Failures.Count, run.Outcome.Reason);
             else

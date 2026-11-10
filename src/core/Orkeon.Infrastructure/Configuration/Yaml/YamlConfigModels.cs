@@ -444,7 +444,7 @@ public class LinkYamlConfig
 {
     /// <summary>
     /// Gets or sets the correspondent: a crew identifier, or <c>client:name</c> for an external
-    /// peer such as Studio — that peer is not a crew, and the ACL has to be able to name it.
+    /// peer such as a desktop client — that peer is not a crew, and the ACL has to be able to name it.
     /// </summary>
     public string? To { get; set; }
     /// <summary>Gets or sets the direction (<c>outbound</c> by default).</summary>

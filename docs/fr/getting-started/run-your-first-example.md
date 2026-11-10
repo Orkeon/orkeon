@@ -159,7 +159,7 @@ Les options de la CLI `orkeon` que vous utiliserez vraiment :
 | `--llm-log-path <dir>` | | Comme `--llm-log`, mais écrit dans `<dir>` (et implique `--llm-log`). Un `<dir>` hors du répertoire de travail demande `--allow-external-mounts`. |
 | `--validate` | | Dry-run : résout les settings, construit l'hôte et charge la crew (résolution stricte des outils) **sans** sonder le LLM ni rien exécuter. Imprime `VALIDATION OK/FAILED` et sort 0 / non-zéro. |
 | `--list-tools` | | Construit l'hôte et imprime les noms d'outils enregistrés, triés, un par ligne, puis sort — aucune crew requise. |
-| `--events jsonl` | | Émet le protocole d'événements JSONL versionné sur stdout au lieu du texte brut (c'est ainsi qu'Orkeon Studio pilote un run) — voir [le bus d'événements de run](../architecture/run-event-bus.md). |
+| `--events jsonl` | | Émet le protocole d'événements JSONL versionné sur stdout au lieu du texte brut (c'est ainsi qu'un client externe pilote un run) — voir [le bus d'événements de run](../architecture/run-event-bus.md). |
 | `--stream` | | Avec `--events`, émet aussi les événements `llm.delta` token par token (verbeux par nature ; désactivé sauf demande). |
 | `--client <nom>` | | Avec `--events`, le nom du pair observateur sur le hub (`client://<nom>`, défaut `studio`). |
 | `--memory-limit-mb <n>` | | Plafond mémoire Jint pour un run `.ork.ts` (surcharge l'appsettings ; `0` le désactive). |

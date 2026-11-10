@@ -87,11 +87,11 @@ check "without licenses/: fails" refuses
 check "... and names the missing folder" says "licenses/$NETCORE.Runtime.linux-x64/"
 check "... and the application that bundles the runtime" says "orkeon"
 
-echo "# a WPF application bundles two runtimes"
-tree="$work/wpf"
+echo "# a desktop application bundles two runtimes"
+tree="$work/desktop"
 notices "$tree" LICENSE.md "$NETCORE.Runtime.win-x64"
 app "$tree/libexec/orkeon" orkeon win-x64 "$NETCORE"
-app "$tree/libexec/orkeon-studio" Orkeon.Studio win-x64 "$NETCORE" "$DESKTOP"
+app "$tree/libexec/orkeon-desktop" Orkeon.Desktop win-x64 "$NETCORE" "$DESKTOP"
 assert_notices "$tree" LICENSE.md "$tree"/libexec/*/
 check "the .NET folder alone: fails" refuses
 check "... and names the Windows Desktop pack" says "licenses/$DESKTOP.Runtime.win-x64/"
@@ -135,9 +135,7 @@ tree="$work/deb"
 notices "$tree/usr/share/doc/orkeon" copyright "$NETCORE.Runtime.linux-arm64"
 app "$tree/usr/lib/orkeon" orkeon linux-arm64 "$NETCORE"
 app "$tree/usr/lib/orkeon-repl" Orkeon.ConsoleApp linux-arm64 "$NETCORE"
-app "$tree/usr/lib/orkeon-studio-config" Orkeon.Studio.Config linux-arm64 "$NETCORE"
-app "$tree/usr/lib/orkeon-studio-run" Orkeon.Studio.Run linux-arm64 "$NETCORE"
-assert_notices "$tree/usr/share/doc/orkeon" copyright "$tree/usr/lib/orkeon" "$tree/usr/lib/orkeon-repl" "$tree"/usr/lib/orkeon-studio-*
+assert_notices "$tree/usr/share/doc/orkeon" copyright "$tree/usr/lib/orkeon" "$tree/usr/lib/orkeon-repl"
 check "passes on copyright" passes
 check "names the license file of the layout" says "copyright, THIRD-PARTY-NOTICES.md"
 check "names the runtime's folder" says "licenses/$NETCORE.Runtime.linux-arm64/"

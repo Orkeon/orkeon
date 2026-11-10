@@ -5,7 +5,7 @@ namespace Orkeon.Compliance.Vfs.Tests;
 /// <summary>
 /// Guards the rule of docs/architecture/vfs-compliance.md ("Suppression categories"): every
 /// <c>[SuppressVfsCompliance]</c> reason in <c>src/</c> starts with a ratified category. Nothing
-/// checked it before GAP-16, and four Studio reasons drifted without one.
+/// checked it before GAP-16, and four reasons drifted without one.
 /// </summary>
 public sealed partial class SuppressionReasonCategoryTests
 {

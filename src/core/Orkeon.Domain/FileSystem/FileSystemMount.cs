@@ -9,7 +9,7 @@ public sealed record FileSystemMount
     /// The identity of the settings entry this mount came from (VFS-90), or null for a mount
     /// declared without one — a hand-written settings line, a <c>--mount</c> argument, a
     /// runner's own root. Written as the <c>&lt;ulid&gt;|</c> prefix of the mount string; what a
-    /// crew's <c>mounts:</c> block and Studio's team sidecar name an entry by, so two entries
+    /// crew's <c>mounts:</c> block and a team sidecar name an entry by, so two entries
     /// may share a virtual root and still be told apart.
     /// </summary>
     public MountId? Id { get; }
@@ -121,7 +121,7 @@ public sealed record FileSystemMount
 
     /// <summary>
     /// The id an entry carries before its <see cref="IdSeparator"/>, read without parsing the
-    /// rest — the cheap question the hosts and Studio ask of every declared entry. Null when
+    /// rest — the cheap question the hosts and clients ask of every declared entry. Null when
     /// the string carries no prefix, or one that is not a well-formed id (the parser reports
     /// that one with its remedy).
     /// </summary>

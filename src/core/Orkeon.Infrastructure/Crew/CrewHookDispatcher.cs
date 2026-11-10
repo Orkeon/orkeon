@@ -46,7 +46,7 @@ internal sealed partial class CrewHookDispatcher
     internal bool HasHook => _hook is not null || CrewStreamScope.IsOpen;
 
     /// <summary>
-    /// Notifies that one task is starting (STUDIO-17). Dispatched by every mode at the moment
+    /// Notifies that one task is starting. Dispatched by every mode at the moment
     /// the task and its agent are both known and nothing has been asked yet — the point a
     /// watcher shows as "in progress" until the matching <see cref="TaskCompletedAsync"/>.
     /// </summary>

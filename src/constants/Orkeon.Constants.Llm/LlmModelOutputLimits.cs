@@ -8,8 +8,8 @@ namespace Orkeon.Constants.Llm;
 /// budget thinking and answers empty; the retry that follows cannot call tools; the run
 /// goes green with no deliverable (owner recette 2026-09-19, kimi-k3). So the default is
 /// now what the vendor documents as the model's own maximum, and 4096 is only the fallback
-/// for a model this table does not know. An explicit value — <c>Llm:MaxTokens</c>, a Studio
-/// profile, a crew's <c>max_tokens</c> — always wins over both.
+/// for a model this table does not know. An explicit value — <c>Llm:MaxTokens</c>, a profile,
+/// a crew's <c>max_tokens</c> — always wins over both.
 /// </para>
 /// <para>
 /// <b>Only documented figures go in</b>, each with its page and the date it was read: an

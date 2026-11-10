@@ -1,17 +1,17 @@
 > 🇬🇧 [English version](../../adr/ADR-011-aspire-dashboard-observability.md)
 
-> **Voir aussi** : [ADR-010](./ADR-010-agent-framework-interop.md) · [Orkeon Studio](../architecture/studio.md) · [Retour à l'index](../INDEX.md)
+> **Voir aussi** : [ADR-010](./ADR-010-agent-framework-interop.md) · [Retour à l'index](../INDEX.md)
 
-# ADR-011 — Le dashboard Aspire est la surface d'observabilité cross-platform ; il n'y a pas de Studio web
+# ADR-011 — Le dashboard Aspire est la surface d'observabilité cross-platform ; il n'y a pas de front-end web
 
 **Statut** : Accepté · **Date** : 2026-09-11
-· **Périmètre** : `src/hosting/Orkeon.Hosting.Aspire`, `src/packaging/Orkeon.Hosting.Aspire`, `Orkeon.Hosting` (activation de la télémétrie), `Orkeon.Studio.Wpf`
+· **Périmètre** : `src/hosting/Orkeon.Hosting.Aspire`, `src/packaging/Orkeon.Hosting.Aspire`, `Orkeon.Hosting` (activation de la télémétrie)
 
 ## Contexte
 
-Deux faits se côtoyaient. `Orkeon.Studio.Wpf` est le seul projet ciblant `net10.0-windows` :
-le Studio de bureau — lancer, observer, capturer — n'existe que pour Windows, et la question
-d'un Studio web revenait à chaque fois que la liste des plateformes revenait. Et les runners
+Deux faits se côtoyaient. Le front-end de bureau (Orkeon Studio, désormais dans son propre dépôt) était le seul projet
+ciblant `net10.0-windows` : lancer, observer, capturer n'existait que pour Windows, et la question
+d'un front-end web revenait à chaque fois que la liste des plateformes revenait. Et les runners
 portaient une plomberie OpenTelemetry complète qui n'exportait rien : `orkeon run` et
 `orkeon-host` construisaient leur hôte avec le `AddOrkeonInfrastructure()` sans paramètre
 (pas de section de télémétrie), ne démarraient jamais l'hôte (le service hébergé
@@ -42,12 +42,10 @@ Microsoft, déjà ouvert sur la machine du développeur que le README vise déso
    Aspire a transmis au processus l'endpoint OTLP (épinglé par un test sans lancement sur
    l'environnement évalué).
 3. **Le dashboard Aspire est la surface d'observabilité pour toutes les plateformes. Aucun
-   Studio web ne sera construit.** `Orkeon.Studio.Wpf` reste ce qu'il est — une application
-   de bureau Windows pour lancer, observer et capturer — et ne gagne pas de jumeau web ; ce
-   qu'un Studio web aurait montré (les spans, tokens et logs d'un run), le dashboard le
-   montre déjà, pour tout le monde, sans code à maintenir ici. La moitié observabilité de la
-   préoccupation « Studio Windows seulement » est close par cette décision ; la moitié
-   lancement reste sur le bureau.
+   front-end web ne sera construit dans ce dépôt.** Ce qu'un front-end web aurait montré (les
+   spans, tokens et logs d'un run), le dashboard le montre déjà, pour tout le monde, sans code à
+   maintenir ici. La moitié observabilité de la préoccupation « front-end Windows seulement » est
+   close par cette décision ; la moitié lancement reste sur le bureau, hors de ce dépôt.
 
 ## Conséquences
 

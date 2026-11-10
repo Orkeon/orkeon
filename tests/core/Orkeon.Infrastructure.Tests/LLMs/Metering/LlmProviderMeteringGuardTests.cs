@@ -5,7 +5,7 @@ using Orkeon.Infrastructure.LLMs;
 namespace Orkeon.Infrastructure.Tests.LLMs;
 
 /// <summary>
-/// Architecture guard (STUDIO-42 D-04): an LLM provider reaches the runtime on the metered
+/// Architecture guard: an LLM provider reaches the runtime on the metered
 /// path, or its calls escape the token meter. The path has five entrances — the provider
 /// factory, which meters every vendor provider it builds, <c>AddOrkeonLlmProvider</c> (with its named-profile twin <c>AddOrkeonLlmProfile</c>),
 /// which meters a provider registered by hand, <c>ManagerLlmResolver</c>, which meters the
@@ -123,7 +123,7 @@ public sealed partial class LlmProviderMeteringGuardTests
         {
             Assert.Fail(
                 "An LLM provider is built off the metered path, so its calls escape the token meter "
-                + "(STUDIO-42 D-04). Build it in LlmProviderFactory, or hand it to AddOrkeonLlmProvider "
+                + ". Build it in LlmProviderFactory, or hand it to AddOrkeonLlmProvider "
                 + "in the statement that builds it:\n - " + string.Join("\n - ", violations));
         }
     }
@@ -137,7 +137,7 @@ public sealed partial class LlmProviderMeteringGuardTests
         {
             Assert.Fail(
                 "The meter or the limiter is applied off the metered path — a second meter counts the same "
-                + "calls twice (STUDIO-42 D-03), a second limiter takes two leases (GAP-38). Apply "
+                + "calls twice, a second limiter takes two leases (GAP-38). Apply "
                 + "LlmProviderEntrance.Enter at an entrance:\n - " + string.Join("\n - ", violations));
         }
     }

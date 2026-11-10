@@ -42,7 +42,7 @@ bridged. The agent layer was not: nothing turned a crew into an `AIAgent`, nothi
    `ILlmProvider`, `ToolBase`); nothing in Domain, Application or Infrastructure changed
    for it — with one exception below, which was a bug.
 3. **The initial context of a kickoff reaches the agents.** `CrewInput.InitialContext` was
-   mapped into the domain input and read by nothing: `--initial-context`, Studio's field and
+   mapped into the domain input and read by nothing: `--initial-context`, a client's field and
    every programmatic `CrewInput.Empty("…")` reached no prompt. The orchestrator now exposes
    it as the `initial_context` prompt variable (a caller-supplied variable of that name
    wins). `CrewAgent` relies on it; so does every user who ever passed `--initial-context`.

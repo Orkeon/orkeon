@@ -503,7 +503,7 @@ links:
   - to: audit-crew
     direction: outbound
     allowed_topics: [audit.event]
-  - to: "client:studio"        # un pair externe, pas une crew — voir plus bas
+  - to: "client:monitor"       # un pair externe, pas une crew — voir plus bas
     direction: bidirectional
 ```
 
@@ -528,7 +528,7 @@ Une forme YAML échappe à cette règle, et elle est dite plutôt que cachée : 
 
 ### 10.2.1 Nommer un pair externe
 
-`CrewLink` autorise une crew à parler à une crew. Un processus hors du hub — Studio qui regarde un run, une passerelle — n'en est pas une, et il atteint le hub par le schéma de boîte aux lettres `client://{nom}`. Un lien le nomme avec le préfixe réservé `client:`, comme dans l'exemple ci-dessus.
+`CrewLink` autorise une crew à parler à une crew. Un processus hors du hub — un client qui regarde un run, une passerelle — n'en est pas une, et il atteint le hub par le schéma de boîte aux lettres `client://{nom}`. Un lien le nomme avec le préfixe réservé `client:`, comme dans l'exemple ci-dessus.
 
 Sans cela, un pair externe échapperait à l'ACL simplement en n'étant pas modélisé. C'est le seul endroit où l'implémentation étend cette spécification au lieu de l'appliquer.
 
@@ -544,7 +544,7 @@ Une `CrewLink` est vérifiée côté **émetteur**, au moment du `PublishAsync` 
 
 `inbound` est un **grant** : « le pair nommé peut m'écrire ». Il est consulté sur les déclarations de la *cible* quand l'émetteur n'a lui-même jamais déclaré de bloc `links:` et que le déploiement refuse le trafic non déclaré — exactement le moment où le mot-clé compte. Il ne rouvre jamais une porte que l'émetteur a fermée lui-même : une crew qui a déclaré des liens ne nommant pas la cible reste refusée, quoi que la cible accorde.
 
-L'autorisation a lieu **une fois**, à l'envoi : le chemin de réception ne revérifie délibérément pas, car revérifier refuserait un message déjà passé. Une hypothèse voyage avec cette décision : **le lecteur d'une boîte en est le propriétaire.** Le hub auto-enregistre les attentes et la lecture est destructive, donc `receive_message` n'accepte que les boîtes de la crew appelante — sans cette restriction, n'importe quel agent pourrait siphonner `client://studio`, le trafic même que l'ACL garde à l'écriture.
+L'autorisation a lieu **une fois**, à l'envoi : le chemin de réception ne revérifie délibérément pas, car revérifier refuserait un message déjà passé. Une hypothèse voyage avec cette décision : **le lecteur d'une boîte en est le propriétaire.** Le hub auto-enregistre les attentes et la lecture est destructive, donc `receive_message` n'accepte que les boîtes de la crew appelante — sans cette restriction, n'importe quel agent pourrait siphonner une boîte `client://<nom>`, le trafic même que l'ACL garde à l'écriture.
 
 ### 10.4 Garanties d'ordering
 

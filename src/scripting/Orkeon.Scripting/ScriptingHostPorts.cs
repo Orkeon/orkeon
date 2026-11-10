@@ -6,7 +6,7 @@ namespace Orkeon.Scripting;
 /// deltas to. Bundled so <see cref="JsEngineFactory"/> keeps a readable constructor; every
 /// member stays individually optional and a null bundle simply means the host wired none
 /// of them. Usage is not a port here: the provider the host hands the engine is metered
-/// where the host builds it (STUDIO-42).
+/// where the host builds it.
 /// </summary>
 public sealed record ScriptingHostPorts
 {

@@ -64,8 +64,6 @@
       href: architecture/coding-agent-ts.md
     - name: Client & serveur MCP
       href: architecture/mcp.md
-    - name: Orkeon Studio
-      href: architecture/studio.md
     - name: Host de service et passerelle de chat
       href: architecture/service-host.md
     - name: Référence YAML

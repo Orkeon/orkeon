@@ -13,11 +13,11 @@ namespace Orkeon.Constants.FileSystem;
 /// </para>
 /// <para>
 /// They live in a satellite (ADR-009) because the engine and the tooling must agree on them and
-/// cannot reference each other. Studio predicts, in a launch preview, the roots the runner will
+/// cannot reference each other. A client predicts, in a launch preview, the roots the runner will
 /// mount; it may not reference <c>Orkeon.Hosting</c> to read them, so it used to copy them and a
 /// drift test pinned the copies pairwise. That test could not catch an omission: when
 /// <see cref="Sandbox"/> joined the reserved roots the copy never gained it, three equalities
-/// stayed true, and the Studio editor kept accepting a mount every runner refuses.
+/// stayed true, and a client editor kept accepting a mount every runner refuses.
 /// </para>
 /// </summary>
 public static class RunnerVirtualRoots
@@ -89,7 +89,7 @@ public static class RunnerVirtualRoots
     /// Where a run writes what it produces, writable. Conventional, like <see cref="Workspace"/>
     /// - the summary writer and the forge bench both use it, and a crew may declare its own.
     /// The forge places its bench on it the way it places <see cref="Workspace"/>, so a settings
-    /// file naming <c>/output</c> - Studio's own name for a team's write folder - forges unchanged.
+    /// file naming <c>/output</c> - a client's name for a team's write folder - forges unchanged.
     /// </summary>
     public const string Output = "/output";
 

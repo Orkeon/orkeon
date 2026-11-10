@@ -1126,7 +1126,7 @@ declare global {
             metadata?: Record<string, string> | null;
             /** JSON payload */
             payload?: unknown;
-            /** Mailbox URI (agent://, crew://, topic://, or client:// for an external client such as Studio) */
+            /** Mailbox URI (agent://, crew://, topic://, or client:// for an external client) */
             target_mailbox: string;
         }, ctx?: ExecutionContext): Promise<{
             readonly message_id: string;

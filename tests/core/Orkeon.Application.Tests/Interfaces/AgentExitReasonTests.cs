@@ -16,7 +16,7 @@ public class AgentExitReasonTests
         Assert.Equal(2, (int)AgentExitReason.CircuitBreakerTripped);
         Assert.Equal(3, (int)AgentExitReason.Cancelled);
         Assert.Equal(4, (int)AgentExitReason.BudgetExhausted);
-        Assert.Equal(5, (int)AgentExitReason.EmptyFinalAnswer); // STUDIO-12 C5a
+        Assert.Equal(5, (int)AgentExitReason.EmptyFinalAnswer);
         Assert.Equal(6, (int)AgentExitReason.LlmCallFailed);    // LLM-11
         Assert.Equal(7, (int)AgentExitReason.GuardianBlocked);  // GAP-09
 

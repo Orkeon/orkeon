@@ -6,7 +6,7 @@ namespace Orkeon.Domain.Common;
 
 /// <summary>
 /// Strongly-typed identifier of one entry of the file-system mount list (VFS-90). It is the
-/// <c>&lt;ulid&gt;|</c> prefix of a mount string, what a crew's <c>mounts:</c> block and Studio's
+/// <c>&lt;ulid&gt;|</c> prefix of a mount string, what a crew's <c>mounts:</c> block and a
 /// team sidecar name a settings entry by — so two entries may share a virtual root and still be
 /// told apart, and the association crew ↔ settings no longer rests on the root's name alone.
 /// </summary>

@@ -4,9 +4,9 @@ using Orkeon.Scripting.Cli.Tests.Forge;
 namespace Orkeon.Scripting.Cli.Tests.UseCases;
 
 /// <summary>
-/// The lines Studio reads (STUDIO-38 D-06, D-07) are a wire contract, like the run and forge
+/// The lines a client reads are a wire contract, like the run and forge
 /// streams: this golden test pins their serialized form. A failure here means the protocol
-/// changed — update the reader in Studio, or fix the regression.
+/// changed — update the readers, or fix the regression.
 /// </summary>
 public sealed class UseCaseEventWriterTests
 {

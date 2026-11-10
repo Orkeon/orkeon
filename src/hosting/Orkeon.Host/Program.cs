@@ -11,7 +11,7 @@ using Orkeon.Host;
 // It hosts crews; it does not schedule them. Orkeon ships no scheduler, deliberately — a crew
 // that should run every morning is run by the operating system, from the artifact
 // `orkeon forge promote --schedule` produces, which `orkeon forge schedule` installs with the
-// user's consent (Studio asks first) and `orkeon forge unschedule` removes (STUDIO-27).
+// user's consent (a client asks first) and `orkeon forge unschedule` removes.
 //
 // The startup decisions themselves live in HostStartup: each answers with the operator-facing
 // refusal instead of writing it, so this file stays the sequence — ask, report, exit 78 — and

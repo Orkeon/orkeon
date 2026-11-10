@@ -57,7 +57,7 @@ public sealed class ForgeSessionTests : IDisposable
     }
 
     /// <summary>
-    /// STUDIO-25: a session carries an id from its creation, written into <c>session.json</c>
+    /// A session carries an id from its creation, written into <c>session.json</c>
     /// and read back unchanged — the one name left for it once its team folder is moved,
     /// renamed or copied. Two sessions never share one, and a lookup by id finds the right one.
     /// </summary>
@@ -110,7 +110,7 @@ public sealed class ForgeSessionTests : IDisposable
     }
 
     /// <summary>
-    /// A session named from the need takes the team rule (STUDIO-24): up to 64 characters,
+    /// A session named from the need takes the team rule: up to 64 characters,
     /// cut before the word that would cross the cap — no longer a hard cut at 40, wherever
     /// it fell.
     /// </summary>
@@ -127,11 +127,11 @@ public sealed class ForgeSessionTests : IDisposable
 
     /// <summary>
     /// The CLI's half of the shared corpus: the folder a name gives a session is the folder
-    /// the same name gives a team adopted in Studio.
+    /// the same name gives a team folder.
     /// </summary>
     [Theory]
     [MemberData(nameof(FolderSlugCorpus.Entries), MemberType = typeof(FolderSlugCorpus))]
-    public void A_session_takes_the_folder_studio_gives_a_team_of_the_same_name(string name, string folder)
+    public void A_session_takes_the_folder_a_team_of_the_same_name_gets(string name, string folder)
     {
         var session = ForgeSession.Create(_workspace, name, now: FixedNow);
 

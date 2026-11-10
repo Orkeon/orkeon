@@ -102,7 +102,7 @@ dotnet test Orkeon.sln --no-build --filter "Category!=Integration&Category!=Slow
 
 ## Project Structure
 
-The solution has **52 src projects across 14 zones** and **38 test projects**. Thirty-six
+The solution has **48 src projects across 14 zones** and **34 test projects**. Thirty-two
 src projects are mirrored one-for-one by a test project; `tests/e2e` and `tests/shared` make
 up the other two test projects. Sixteen src projects carry no test mirror by design: the five
 `Orkeon.Constants.*` satellites and `Orkeon.Rag.Onnx.Model` hold constants and embedded
@@ -129,7 +129,7 @@ src/
 ├── packaging/   # NuGet packaging projects (PUB-25): Orkeon (the framework in one nupkg), Orkeon.Tools,
 │                #   + the Rag.Onnx / Tools.Embeddings.Local / Interop.AgentFramework / Hosting.Aspire
 │                #   / Scripting / Cli.TerminalGui wrappers depending on the Orkeon umbrella
-└── apps/        # Orkeon.ConsoleApp (orkeon-repl) + Orkeon.Studio.{Config,Core,Run,Wpf}
+└── apps/        # Orkeon.ConsoleApp (orkeon-repl)
 
 examples/        # 104 bundled examples (9 categories + showcases) — own solution
 docs/            # Documentation, EN + docs/fr mirror (CI parity gate)
@@ -182,7 +182,7 @@ public class AgentService : IAgentService
 ### Comments are English, and never accented
 
 An invariant, enforced by `scripts/check-comment-accents.py` in CI: every comment is in
-English and carries no accented letter. Studio's interface is in French, so the trap is a
+English and carries no accented letter. A client's interface may be in French, so the trap is a
 comment quoting a UI label — **translate the label, do not strip its accents**: a comment
 citing `"Modele d'IA"` names something the product never displays. Name the role instead
 (`the model-settings tab`). An accent-stripped French sentence is still French, only worse.
@@ -315,7 +315,7 @@ project, exposing plain fields or properties to configure answers and inspect ca
   package resolves at least to the version `Directory.Packages.props` pins. A pin holds for
   direct references only: a package an application gets transitively, below its pin, needs a
   direct reference in a project that application builds on (`Orkeon.Cli.TerminalGui` holds
-  the ones `Terminal.Gui` brings to the Studio TUIs).
+  the ones `Terminal.Gui` brings to the terminal UIs).
 * A Dockerfile that publishes an application copies `LICENSE.md` and
   `THIRD-PARTY-NOTICES.md` into the image it produces, under `/usr/share/doc/orkeon/`, and
   `.dockerignore` keeps both in the build context: `--check` fails otherwise. The installers
@@ -335,7 +335,7 @@ project, exposing plain fields or properties to configure answers and inspect ca
 
 Orkeon already ships 16 LLM providers (fourteen vendors and two aggregators), 91
 built-in tools, 6 memory stores, two RAG pipelines, RaggableTree, a scripting
-DSL, plugins, MCP, A2A and a Studio — maintained by one person. Until real users
+DSL, plugins, MCP and A2A — maintained by one person. Until real users
 ask for more, **the functional surface does not grow**:
 
 - no 17th LLM provider — the OpenAI-compatible base covers any endpoint that

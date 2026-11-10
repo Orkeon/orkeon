@@ -119,7 +119,7 @@ internal sealed class BriefStage : IForgeStageRunner
 
     /// <summary>
     /// The stage's outcome once a submission settled it: an accepted brief goes through the
-    /// folders step first (STUDIO-46) — between the brief and the plan, the user confirms the
+    /// folders step first — between the brief and the plan, the user confirms the
     /// folders the request named, or the defaults —; a failure is returned as it is.
     /// </summary>
     private async Task<ForgeStageOutcome> SettleAsync(
@@ -169,7 +169,7 @@ internal sealed class BriefStage : IForgeStageRunner
     }
 
     /// <summary>
-    /// The folders step (STUDIO-46): proposes the brief's folders — or the defaults when the
+    /// The folders step: proposes the brief's folders — or the defaults when the
     /// request named none — as <c>folders.proposed</c>, and waits for <c>folders.confirmed</c>.
     /// A list that breaks the rules, binds a directory that is not there, or — when this run
     /// tries the team in this process — binds an input to a directory the trial could not read
@@ -178,7 +178,7 @@ internal sealed class BriefStage : IForgeStageRunner
     /// brief (without them — a physical path never reaches a prompt), then announced by
     /// <c>brief.ready</c>, whose <c>heldFolders</c> are the folders the session holds for the
     /// team — kept «inside the team», each created now under the session's <c>folders/</c> so
-    /// the user can drop files in it before the trial (STUDIO-57). The proposal says whether it
+    /// the user can drop files in it before the trial. The proposal says whether it
     /// is the defaults (<c>defaults</c>): the request named no folder.
     /// </summary>
     private async Task ConfirmFoldersAsync(
@@ -256,7 +256,7 @@ internal sealed class BriefStage : IForgeStageRunner
     }
 
     /// <summary>
-    /// The fill step (STUDIO-57): once <c>brief.ready</c> named folders kept inside the team,
+    /// The fill step: once <c>brief.ready</c> named folders kept inside the team,
     /// the engine waits for <c>folders.filled</c> — the user dropped files or sub-folders in
     /// them, or there is nothing to drop — and only then designs the team. What each folder
     /// holds then goes into the brief (<see cref="ForgeFolder.Contents"/>, names relative to the

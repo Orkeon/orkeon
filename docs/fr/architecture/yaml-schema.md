@@ -44,7 +44,7 @@ llm:                      # LLM par défaut de la crew, fusionné CHAMP PAR CHAM
   temperature: float
 
 links:                    # ACL EventHub (optionnel) — à qui cette crew peut parler sur le hub
-  - to: string            # Le name: de la crew cible, tel quel — ou "client:<nom>" pour un pair externe (p. ex. Studio)
+  - to: string            # Le name: de la crew cible, tel quel — ou "client:<nom>" pour un pair externe (p. ex. un front-end de bureau)
     direction: string     # "outbound" (défaut) | "inbound" | "bidirectional" (alias "both") — une valeur illisible écarte l'entrée avec un warning
     allowed_topics: [string] # Omis ou vide = tous les topics
 

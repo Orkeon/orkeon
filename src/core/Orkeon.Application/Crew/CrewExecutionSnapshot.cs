@@ -5,7 +5,7 @@ namespace Orkeon.Application.Crew;
 /// <summary>
 /// What a crew knows about a task the moment it starts it: which one, who runs it, since when.
 /// Deliberately thin — nothing has been measured yet — so a watcher can show the task as in
-/// progress without the strategy pretending to know how it will go (STUDIO-17).
+/// progress without the strategy pretending to know how it will go.
 /// </summary>
 public sealed record TaskStartSnapshot
 {

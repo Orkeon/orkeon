@@ -5,7 +5,7 @@ namespace Orkeon.Infrastructure.CostTracking;
 
 /// <summary>
 /// What a vendor billed for one call, read back from the response its provider built — the
-/// real charge, never an estimate (STUDIO-29, DD-1).
+/// real charge, never an estimate.
 /// <para>
 /// Only a vendor that bills in its answer has one. OpenRouter writes it in <c>usage.cost</c>;
 /// the OpenAI-compatible base copies it under <see cref="LlmUsageMetadataKeys.Cost"/>, and a

@@ -5,7 +5,7 @@ using Orkeon.Scripting.Cli.Tests.Doubles;
 namespace Orkeon.Scripting.Cli.Tests.UseCases;
 
 /// <summary>
-/// The use-case search (STUDIO-38): BM25 over the five languages, normalized on both sides
+/// The use-case search: BM25 over the five languages, normalized on both sides
 /// (D-01); the English embeddings fused in by RRF only for the languages whose policy says so,
 /// loaded once, at the first search that needs them (D-02, D-03); and a fall-back to terms that
 /// always says why (D-05).
@@ -64,7 +64,7 @@ public sealed class UseCaseSearchEngineTests
         Assert.Equal(["facture", "fournisseur"], answer.Matches[0].Terms);
     }
 
-    /// <summary>Every sheet of the real manifest has empty texts until STUDIO-37: it must stay findable.</summary>
+    /// <summary>Every sheet of the real manifest has empty texts: it must stay findable.</summary>
     [Fact]
     public async Task A_sheet_with_empty_texts_is_still_found_by_its_id_tools_and_category()
     {

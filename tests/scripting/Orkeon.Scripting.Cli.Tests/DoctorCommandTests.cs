@@ -499,7 +499,7 @@ public sealed class DoctorCommandTests : IDisposable
         Assert.Equal("ok", byCheck["appsettings"].GetProperty("status").GetString());
     }
 
-    // ── STUDIO-49: where each key comes from, never the key ─────────────────
+    // ── Where each key comes from, never the key ─────────────────
 
     private static Dictionary<string, JsonElement> ByCheck(JsonDocument doc) =>
         doc.RootElement.EnumerateArray()

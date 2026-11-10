@@ -268,7 +268,7 @@ Les agents collaborent par la délégation : les outils `AskQuestionTool` et `De
 
 ```
 Orkeon.sln
-├── src/                            # 52 projets, 14 zones
+├── src/                            # 48 projets, 14 zones
 │   ├── core/
 │   │   ├── Orkeon.Domain/          # Entités, value objects, interfaces, événements
 │   │   ├── Orkeon.Application/     # CQRS, services, orchestration, ports
@@ -297,9 +297,8 @@ Orkeon.sln
 │   ├── analyzers/                  # Orkeon.Compliance.Vfs (analyseur Roslyn)
 │   ├── packaging/                  # Projets d'empaquetage NuGet (Orkeon, Orkeon.Tools + 4 wrappers opt-in)
 │   └── apps/
-│       ├── Orkeon.ConsoleApp/      # REPL interactif (`orkeon-repl`)
-│       └── Orkeon.Studio.*/        # Orkeon Studio (Config, Core, Run, Wpf)
-├── tests/                          # 38 projets (miroirs de src + e2e, shared)
+│       └── Orkeon.ConsoleApp/      # REPL interactif (`orkeon-repl`)
+├── tests/                          # 34 projets (miroirs de src + e2e, shared)
 ├── examples/                       # 104 exemples embarqués (9 catégories + vitrines)
 └── docs/                           # Documentation (EN + miroir docs/fr)
 ```

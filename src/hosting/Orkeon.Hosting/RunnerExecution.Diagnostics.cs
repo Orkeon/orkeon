@@ -68,7 +68,7 @@ public static partial class RunnerExecution
                 RunnerLogging.LogMounts(cliMounts, logger);
                 LogValidatingCrew(logger, configPath);
 
-                // Same order as a kickoff (STUDIO-21): the MCP tools exist before the crew
+                // Same order as a kickoff: the MCP tools exist before the crew
                 // resolves its own, so --validate judges the crew a run would actually get.
                 await McpStartup.ConnectConfiguredServersAsync(host, cts.Token).ConfigureAwait(false);
 
@@ -149,7 +149,7 @@ public static partial class RunnerExecution
             var settingsPath = RunnerSettings.ResolveSettingsPath(opts.SettingsPath, cwd, console.ErrorOutput);
 
             // The tool list does not depend on the model, but an --llm-profile the settings do
-            // not define is refused here as on a run, rather than ignored in silence (STUDIO-50).
+            // not define is refused here as on a run, rather than ignored in silence.
             if (!EnsureLlmProfileIsKnown(opts.LlmProfile, settingsPath, console.ErrorOutput))
                 return 1;
 
@@ -195,7 +195,7 @@ public static partial class RunnerExecution
     /// The host <c>--list-tools</c> prints and <c>orkeon mcp serve</c> serves (GAP-24): the runner
     /// host over the settings' mounts and the <c>--mount</c> values of <paramref name="mounts"/>, no crew, every log line on
     /// stderr — stdout carries the manifest, or the protocol — and the MCP servers of the settings
-    /// connected, so both see the tools a kickoff sees (STUDIO-21).
+    /// connected, so both see the tools a kickoff sees.
     /// <para>
     /// The host needs a file system even to list the tools: without one <c>IFileSystemService</c>
     /// is not registered, and the filesystem-backed tools cannot be constructed when the registry

@@ -45,8 +45,8 @@ public sealed class EmailRightsCheck
             }
 
             lines.Add(needsRecipients
-                ? $"{tool} needs the {right} right with a non-empty Send:AllowedRecipients on a ready e-mail account, and no account has it. Add it in Studio (Settings › E-mail) or under Orkeon:Tools:Email:Accounts:<name>:Rights and Send:AllowedRecipients."
-                : $"{tool} needs the {right} right on a ready e-mail account, and no account has it. Add it in Studio (Settings › E-mail) or under Orkeon:Tools:Email:Accounts:<name>:Rights.");
+                ? $"{tool} needs the {right} right with a non-empty Send:AllowedRecipients on a ready e-mail account, and no account has it. Add it under Orkeon:Tools:Email:Accounts:<name>:Rights and Send:AllowedRecipients."
+                : $"{tool} needs the {right} right on a ready e-mail account, and no account has it. Add it under Orkeon:Tools:Email:Accounts:<name>:Rights.");
         }
 
         return lines;

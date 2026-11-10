@@ -338,8 +338,7 @@ def _load_catalog():
 
 CATALOG = _load_catalog()
 
-# `title` and `problem` are mandatory in the five languages: every sheet has them since
-# STUDIO-37 (2026-09-24), which turned this on as its last step. A new example therefore
+# `title` and `problem` are mandatory in the five languages: every sheet has them. A new example therefore
 # ships its texts with its sheet.
 REQUIRE_TEXTS = True
 

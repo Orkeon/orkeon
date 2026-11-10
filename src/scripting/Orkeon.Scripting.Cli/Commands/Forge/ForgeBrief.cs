@@ -85,7 +85,7 @@ internal sealed record ForgeBrief
     public ForgeExpectedOutput? ExpectedOutput { get; init; }
 
     /// <summary>
-    /// The team's folders as the request names them (STUDIO-46): each a virtual root, its
+    /// The team's folders as the request names them: each a virtual root, its
     /// role (<c>input</c> | <c>output</c>) and its purpose. Empty when the request names none —
     /// the forge then proposes the defaults (<see cref="ForgeFolders.Defaults"/>). The list the
     /// rest of the cycle uses is the one the user confirms, never this one as submitted.
@@ -94,7 +94,7 @@ internal sealed record ForgeBrief
     public IReadOnlyList<ForgeFolder>? Folders { get; init; }
 
     /// <summary>
-    /// Whether the team reads files or documents from a folder (STUDIO-57) — false when what
+    /// Whether the team reads files or documents from a folder — false when what
     /// comes in is typed, pasted or fetched from the web: a URL, a text, a question. Null when
     /// the assistant did not say; the defaults then fall back on the inputs. Decides whether
     /// the default proposal holds a folder to read (<see cref="ForgeFolders.Defaults"/>).
@@ -125,7 +125,7 @@ internal sealed record ForgeBrief
     [JsonPropertyName("language")]
     public string? Language { get; init; }
 
-    /// <summary>The languages of Studio's interface, the ones a brief may record (#119).</summary>
+    /// <summary>The interface languages a client may pass, the ones a brief may record (#119).</summary>
     public static readonly IReadOnlySet<string> Languages =
         new HashSet<string>(StringComparer.Ordinal) { "fr", "en", "es", "de", "zh" };
 

@@ -28,7 +28,7 @@ les droits et le filtrage.
 
 La famille e-mail avait déjà un client OAuth2 écrit à la main (code d'appareil, PKCE en bouclage
 avec un repli par collage, rafraîchissement avec rotation), un magasin de jetons derrière la
-racine interne `/credentials`, la lecture des secrets dans la portée utilisateur de Studio, et
+racine interne `/credentials`, la lecture des secrets dans la portée utilisateur de l'environnement, et
 Microsoft Graph en HTTP simple — le tout interne à `Orkeon.Tools.Email`.
 
 ## Décision
@@ -68,9 +68,8 @@ Microsoft Graph en HTTP simple — le tout interne à `Orkeon.Tools.Email`.
 - 102 classes d'outils intégrés, 49 projets src et 37 projets de test ; le paquet ombrelle porte
   neuf familles.
 - `orkeon drive accounts | login | logout | check` ; les typings des scripts `.ork.ts` ; une
-  famille « Drive » dans la liste des outils de Studio, dont l'exigence renvoie à l'onglet de
-  réglages Stockage cloud de Studio — les comptes y sont déclarés, testés et connectés, par
-  `login` et `check --events jsonl`.
+  famille « Drive » dans la liste des outils d'un client externe, pilotée par `login` et
+  `check --events jsonl`.
 - Les drives partagés Google, les bibliothèques SharePoint, les révisions, les commentaires, les
   copies et un montage VFS sont hors périmètre, documentés dans le guide.
 - La campagne sur de vrais comptes est celle du propriétaire (DRIVE-07) : les tests hors ligne

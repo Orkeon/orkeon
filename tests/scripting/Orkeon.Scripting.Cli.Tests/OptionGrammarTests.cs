@@ -14,7 +14,7 @@ namespace Orkeon.Scripting.Cli.Tests;
 /// (<c>Program.ParseArguments&lt;RunCommandOptions&gt;</c>, <c>RagCommand.DispatchAsync</c>).
 /// A fix applied to the shared base therefore changes text nobody reads: that is exactly how
 /// "Repeatable." survived in `orkeon run --help` after being corrected in the docs, in
-/// Studio's argument builder, in `forge promote` and in the base class itself. Asserting the
+/// a client's argument builder, in `forge promote` and in the base class itself. Asserting the
 /// parser's answer is the only guard that cannot drift away from the user's experience.
 /// </para>
 /// </summary>
@@ -46,7 +46,7 @@ public sealed class OptionGrammarTests
 
     /// <summary>
     /// The flag cannot be repeated. Every generator of an `orkeon run` command line depends on
-    /// this — `forge promote`'s launchers, Studio's argument builder — and a help text saying
+    /// this — `forge promote`'s launchers, a client's argument builder — and a help text saying
     /// "Repeatable." sends the user straight into it.
     /// </summary>
     [Fact]
@@ -82,8 +82,8 @@ public sealed class OptionGrammarTests
     }
 
     /// <summary>
-    /// STUDIO-50: <c>--llm-profile</c> takes one id, is spelled by the shared constant — the one
-    /// Studio writes into a team's launchers — and reaches the shared runner, whose own grammar
+    /// <c>--llm-profile</c> takes one id, is spelled by the shared constant — the one
+    /// a client writes into a team's launchers — and reaches the shared runner, whose own grammar
     /// (<see cref="Orkeon.Hosting.RunnerOptionsBase"/>) reads it the same way.
     /// </summary>
     [Fact]
@@ -105,8 +105,8 @@ public sealed class OptionGrammarTests
     private sealed class SharedRunnerOptions : Orkeon.Hosting.RunnerOptionsBase;
 
     /// <summary>
-    /// STUDIO-51, decision 7: a single-value option written <c>--option=value</c> — how the team
-    /// launchers and Studio write one — is read by both grammars, cut at the first <c>=</c> and the
+    /// A single-value option written <c>--option=value</c> — how the team
+    /// launchers write one — is read by both grammars, cut at the first <c>=</c> and the
     /// rest kept as it is: a value starting with a dash stays the option's value, where
     /// <c>--initial-context "- x"</c> is an unknown option. Read the way <c>orkeon run</c> reads its
     /// arguments (<see cref="Orkeon.Hosting.RunnerArguments"/>), a line break stays too.
@@ -134,10 +134,10 @@ public sealed class OptionGrammarTests
     }
 
     /// <summary>
-    /// STUDIO-51: <c>orkeon run</c> reads its arguments through
+    /// <c>orkeon run</c> reads its arguments through
     /// <see cref="Orkeon.Hosting.RunnerArguments"/>, which sets aside only an attached value
     /// CommandLineParser refuses alone. Over a corpus of what the runner is handed today — the shapes
-    /// the docs show, the launchers and Studio write, and what the grammar refuses —, both readings
+    /// the docs show, the launchers write, and what the grammar refuses —, both readings
     /// give the same options, every one of them, or the same errors: nothing that parses today parses
     /// otherwise.
     /// </summary>
@@ -257,7 +257,7 @@ public sealed class OptionGrammarTests
     }
 
     /// <summary>
-    /// CH-04: the forms the docs (<c>docs/reference/cli.md</c>), Studio, the smokes and
+    /// CH-04: the forms the docs (<c>docs/reference/cli.md</c>), clients, the smokes and
     /// <c>.github/workflows/rag-eval.yml</c> write, per options type, and the refusals.
     /// </summary>
     private static IEnumerable<(Type Type, string[] Args)> Corpus()

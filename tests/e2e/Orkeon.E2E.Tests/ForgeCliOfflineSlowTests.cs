@@ -76,7 +76,7 @@ public sealed class ForgeCliOfflineSlowTests : IDisposable
         Assert.Contains("The summary cites its sources",
             File.ReadAllText(Path.Combine(destination, "FORGE.md")), StringComparison.Ordinal);
 
-        // STUDIO-26: after the adoption the atelier holds one session folder, named after the team.
+        // After the adoption the atelier holds one session folder, named after the team.
         Assert.Equal(
             ["my-solution"],
             Directory.GetDirectories(Path.Combine(workspace, ".orkeon", "forge")).Select(Path.GetFileName));
@@ -86,7 +86,7 @@ public sealed class ForgeCliOfflineSlowTests : IDisposable
         Assert.Equal(1, againCode);
         Assert.Contains("only a ready session", againOutput, StringComparison.Ordinal);
 
-        // STUDIO-28: the adopted team is renamed through the real binary, offline — the folder and
+        // The adopted team is renamed through the real binary, offline — the folder and
         // the session's folder take the new name, and so do the card and the schedule artifacts.
         var renamed = Path.Combine(workspace, "veille-fournisseurs");
         var (renameCode, renameOutput) = RunCli(

@@ -27,7 +27,7 @@ internal interface IForgeUserChannel
     Task<string?> ReadBlueprintAsync(CancellationToken cancellationToken);
 
     /// <summary>
-    /// Reads the folder list the user confirms after a <c>folders.proposed</c> (STUDIO-46):
+    /// Reads the folder list the user confirms after a <c>folders.proposed</c>:
     /// <paramref name="proposed"/> as it is, or amended — renamed, re-roled, bound to a real
     /// directory. The engine validates what comes back; this only carries it. Null means the
     /// channel closed.
@@ -37,7 +37,7 @@ internal interface IForgeUserChannel
 
     /// <summary>
     /// Waits for the user to settle the fill step after a <c>brief.ready</c> that named folders
-    /// kept inside the team (STUDIO-57): the files are in <paramref name="held"/>, or there is
+    /// kept inside the team: the files are in <paramref name="held"/>, or there is
     /// nothing to put there. False means the channel closed.
     /// </summary>
     Task<bool> ReadFolderFillAsync(IReadOnlyList<ForgeFolder> held, CancellationToken cancellationToken);
@@ -310,8 +310,8 @@ internal sealed class TerminalUserChannel : IForgeUserChannel
     public async Task<IReadOnlyList<ForgeFolder>?> ReadFoldersAsync(
         IReadOnlyList<ForgeFolder> proposed, CancellationToken cancellationToken)
     {
-        // The terminal takes the proposal as it is (STUDIO-46): the folders were just printed,
-        // and a request that wants others names them. Studio is where a list is edited.
+        // The terminal takes the proposal as it is: the folders were just printed,
+        // and a request that wants others names them. A client of the stream is where a list is edited.
         await _output.WriteLineAsync("  folders accepted as proposed — name others in the request to change them.")
             .ConfigureAwait(false);
         await _output.FlushAsync(cancellationToken).ConfigureAwait(false);

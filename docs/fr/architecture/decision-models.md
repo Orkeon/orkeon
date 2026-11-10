@@ -298,7 +298,7 @@ doivent valoir pour qu'elle tourne ; les clauses sont listées dans la
 - **`otherwise`.** Elle vaut exactement quand aucune condition sœur sur cette tâche de décision ne vaut
   sur les réponses, une confiance sous le seuil comprise ; qu'une sœur ait alors tourné ou été sautée
   pour une autre raison n'y change rien.
-- Une tâche sautée est rapportée comme sautée par le JSONL du run et par Studio, avec sa raison (voir
+- Une tâche sautée est rapportée comme sautée par le JSONL du run, avec sa raison (voir
   [le bus d'événements de run](./run-event-bus.md)).
 
 ### Échec

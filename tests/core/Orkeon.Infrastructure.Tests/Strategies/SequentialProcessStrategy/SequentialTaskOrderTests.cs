@@ -21,7 +21,7 @@ using DomainCrew = Orkeon.Domain.Crew.Crew;
 namespace Orkeon.Infrastructure.Tests.Strategies;
 
 /// <summary>
-/// STUDIO-12 C2 — the sequential strategy runs the crew's tasks in a stable topological order on
+/// The sequential strategy runs the crew's tasks in a stable topological order on
 /// their declared dependencies, whichever layout the crew was written in. The multi-file layout
 /// lists the tasks in the ordinal order of their file names, so <c>aaa-second.yaml</c> (which
 /// depends on <c>zzz-first</c>) used to run first, silently. No plan reaches the strategy (GAP-31):

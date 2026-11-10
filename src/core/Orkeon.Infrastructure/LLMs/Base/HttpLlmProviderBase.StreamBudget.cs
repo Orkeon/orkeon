@@ -12,7 +12,7 @@ namespace Orkeon.Infrastructure.LLMs.Base;
 /// a streamed one is sent with <see cref="HttpCompletionOption.ResponseHeadersRead"/>, and that
 /// timeout stops counting once the headers are in: the body was read on the caller's token
 /// alone, so a model that thinks for minutes before its first token — GLM, Kimi, DeepSeek do by
-/// default — hung a Studio run past any <c>Llm:TimeoutSeconds</c>, and a stream the provider
+/// default — hung a run past any <c>Llm:TimeoutSeconds</c>, and a stream the provider
 /// closed without an answer came back as an empty answer, which the agent loop blamed on
 /// <c>Llm:MaxTokens</c> and retried without tools (LLM-12; the buffered half is LLM-11).
 /// </summary>

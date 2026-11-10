@@ -10,7 +10,7 @@ using Orkeon.Infrastructure.Tests.Doubles;
 namespace Orkeon.Infrastructure.Tests.LLMs;
 
 /// <summary>
-/// The one measuring point of LLM usage (STUDIO-42 D-01): every generation call through the
+/// The one measuring point of LLM usage: every generation call through the
 /// metered provider reaches the sink exactly once — buffered or streamed, counted by the
 /// provider or estimated, whoever makes it — stamped with the attribution in effect.
 /// </summary>

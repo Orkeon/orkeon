@@ -50,7 +50,7 @@ internal static class ForgeDocuments
 /// </summary>
 public class ForgeBriefTests
 {
-    /// <summary>#119: a brief records any of the five languages of Studio's interface, and no other.</summary>
+    /// <summary>#119: a brief records any of the five languages of the interface, and no other.</summary>
     [Theory]
     [InlineData("fr", true)]
     [InlineData("en", true)]

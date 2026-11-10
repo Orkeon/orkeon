@@ -212,7 +212,7 @@ public sealed class ReplMountsTests : IDisposable
         Assert.Equal(d, MountsByRoot(host)["/cli-commands"].BasePath);
     }
 
-    /// <summary>A Studio machine's global file with two <c>/output</c>: a <c>--mount</c> on the root chooses for them.</summary>
+    /// <summary>A machine's global file with two <c>/output</c>: a <c>--mount</c> on the root chooses for them.</summary>
     [Fact]
     public void A_mount_on_a_root_the_global_file_declares_twice_replaces_both()
     {

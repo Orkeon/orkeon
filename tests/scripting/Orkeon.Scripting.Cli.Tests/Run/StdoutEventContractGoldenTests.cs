@@ -15,7 +15,7 @@ namespace Orkeon.Scripting.Cli.Tests.Run;
 /// <summary>
 /// FWK-08: the stdout JSONL contract of <c>orkeon run --events jsonl</c> is pinned byte for byte, from
 /// the first line to the last, whatever sinks the events also reach. The golden was captured from the
-/// writer that preceded the sink port: a drift here is a break of the wire contract Studio reads.
+/// writer that preceded the sink port: a drift here is a break of the wire contract clients read.
 /// </summary>
 public sealed class StdoutEventContractGoldenTests : IDisposable
 {

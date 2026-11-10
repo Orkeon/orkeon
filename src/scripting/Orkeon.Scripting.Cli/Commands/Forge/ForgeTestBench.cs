@@ -130,7 +130,7 @@ internal sealed class ForgeCrewTestBench : IForgeTestBench
     {
         ArgumentNullException.ThrowIfNull(session);
 
-        // The trial sees the confirmed folders and nothing else of the team's (STUDIO-46): one
+        // The trial sees the confirmed folders and nothing else of the team's: one
         // mount set for this run, entered for its whole flow and left with it.
         using var folders = _workspace is null ? null : ForgeTrialScope.Enter(_services, session, _workspace, _readRoot);
 
@@ -270,7 +270,7 @@ internal sealed class ForgeCrewTestBench : IForgeTestBench
 }
 
 /// <summary>
-/// The trial's mount set (STUDIO-46): the session's folders at the places
+/// The trial's mount set: the session's folders at the places
 /// <see cref="ForgeFolders.TrialMounts"/> gives them, every other mount of the host carried
 /// forward — <c>/forge</c>, the settings' own roots, the internal ones — except the two canonical
 /// roots the forge mounts for its assistant, which the team only sees when its list holds them.

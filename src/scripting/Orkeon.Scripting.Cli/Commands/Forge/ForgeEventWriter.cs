@@ -23,13 +23,13 @@ internal sealed class ForgeEventWriter : OrkeonEventWriter
         Emit("session.started", new
         {
             slug = session.Document.Slug,
-            // The session's stable id (STUDIO-25): what its team's forge.json carries, and the
+            // The session's stable id: what its team's forge.json carries, and the
             // one name that survives the folder being moved, renamed or copied. Absent for a
             // session written before the id existed.
             id = session.Document.Id,
             dir = session.Directory,
             format = session.Document.Format,
-            // The use case the session is composed from (STUDIO-40): what a client reopening the
+            // The use case the session is composed from: what a client reopening the
             // session shows again. Absent for a session started from nothing.
             reference = session.Document.Reference,
             resumed,
@@ -50,7 +50,7 @@ internal sealed class ForgeEventWriter : OrkeonEventWriter
         Emit("error", new { code, message, recoverable });
 
     /// <summary>
-    /// An anomaly with the command a person can run instead (STUDIO-27, D-04): the operating
+    /// An anomaly with the command a person can run instead: the operating
     /// system refused a schedule verb, and <paramref name="command"/> does by hand what Orkeon
     /// could not. Omitted from the line when there is none.
     /// </summary>
@@ -59,7 +59,7 @@ internal sealed class ForgeEventWriter : OrkeonEventWriter
 
     /// <summary>
     /// Where a team folder's schedule stands after <c>forge schedule</c>, <c>--check</c> or
-    /// <c>forge unschedule</c> (STUDIO-27): <c>installed</c>, <c>absent</c> or <c>stale</c> — to
+    /// <c>forge unschedule</c>: <c>installed</c>, <c>absent</c> or <c>stale</c> — to
     /// reinstall, <c>reason</c> saying why — with the schedule the folder declares, this machine's
     /// OS family, the names of the registration concerned, and for a removal whether one was removed.
     /// </summary>
@@ -79,7 +79,7 @@ internal sealed class ForgeEventWriter : OrkeonEventWriter
     }
 
     /// <summary>
-    /// The session folder followed its team (STUDIO-26): <paramref name="from"/> and
+    /// The session folder followed its team: <paramref name="from"/> and
     /// <paramref name="to"/> are its slugs, <paramref name="dir"/> its new absolute folder — what a
     /// client that reads the session's files next must read from — and <paramref name="suffixed"/>
     /// says the team's own name was already another session's (D-04).
@@ -88,7 +88,7 @@ internal sealed class ForgeEventWriter : OrkeonEventWriter
         Emit("session.renamed", new { from, to, dir, suffixed });
 
     /// <summary>
-    /// <c>forge rename</c> renamed a team (STUDIO-28): <paramref name="from"/> is the folder it
+    /// <c>forge rename</c> renamed a team: <paramref name="from"/> is the folder it
     /// had, <paramref name="path"/> the folder it has now — the same one when the new name keeps
     /// its folder — and <paramref name="name"/> the name every title now carries. The last line of
     /// a rename that stands.
@@ -98,7 +98,7 @@ internal sealed class ForgeEventWriter : OrkeonEventWriter
 
     /// <summary>
     /// Something the command could not do while everything it was asked for stands — a session
-    /// folder the disk would not rename after a written promotion (STUDIO-26, D-05). Never an
+    /// folder the disk would not rename after a written promotion. Never an
     /// <c>error</c>: a client that stops on one must not stop here, and the exit code is the
     /// command's own.
     /// </summary>

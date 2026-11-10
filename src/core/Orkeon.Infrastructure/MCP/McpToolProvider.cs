@@ -995,7 +995,7 @@ public sealed partial class McpToolProvider : IAsyncDisposable, IDisposable
     /// <summary>
     /// The synchronous bridge a DI container needs: a singleton that only implements
     /// <see cref="IAsyncDisposable"/> makes <c>ServiceProvider.Dispose()</c> throw, and the
-    /// runners dispose their host synchronously (STUDIO-21). Blocking here is the end of a
+    /// runners dispose their host synchronously. Blocking here is the end of a
     /// process: the stdio servers it spawned are killed with it, and there is nothing left to
     /// starve.
     /// </summary>

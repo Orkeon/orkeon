@@ -8,11 +8,11 @@ using YamlDotNet.Serialization.NamingConventions;
 namespace Orkeon.Scripting.Cli.Tests.UseCases;
 
 /// <summary>
-/// The golden set of <c>orkeon usecases search</c> (STUDIO-38 D-08), run against the embedded
+/// The golden set of <c>orkeon usecases search</c>, run against the embedded
 /// catalogue in both modes — BM25 alone, and hybrid with the real local model — and reported as
 /// recall@k per language and per mode. There is no threshold yet: the report is the product,
 /// the measure that decides, language by language, whether meaning is fused in (D-02). A floor
-/// comes once the sheets carry their texts (STUDIO-37) and a first real measurement exists.
+/// comes once the sheets carry their texts and a first real measurement exists.
 /// <para>
 /// Loads the ONNX Runtime native library, like <c>Orkeon.Tools.Embeddings.Local.Tests</c>.
 /// </para>

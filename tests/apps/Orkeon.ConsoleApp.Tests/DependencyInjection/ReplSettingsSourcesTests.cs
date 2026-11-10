@@ -5,7 +5,7 @@ using Microsoft.Extensions.Hosting;
 namespace Orkeon.ConsoleApp.Tests.DependencyInjection;
 
 /// <summary>
-/// STUDIO-49, decision 10: the REPL reads the settings the runners read — the global file
+/// The REPL reads the settings the runners read — the global file
 /// <c>orkeon init</c> writes, unless <c>--settings</c> names files, then the <c>ORKEON_</c>
 /// variables, prefix removed. The default host read the variables without a prefix only:
 /// <c>ORKEON_Llm__ApiKey</c> never reached the REPL as <c>Llm:ApiKey</c>, nor did the global file.

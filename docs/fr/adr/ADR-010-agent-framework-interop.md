@@ -42,7 +42,7 @@ un agent Orkeon ni être appelé par lui.
    `ILlmProvider`, `ToolBase`) ; rien n'a changé dans Domain, Application ou Infrastructure
    pour elle — à une exception près ci-dessous, qui était un bug.
 3. **Le contexte initial d'un kickoff atteint les agents.** `CrewInput.InitialContext` était
-   mappé dans l'entrée domaine et lu par rien : `--initial-context`, le champ de Studio et
+   mappé dans l'entrée domaine et lu par rien : `--initial-context`, le champ d'un client et
    tout `CrewInput.Empty("…")` programmatique n'atteignaient aucun prompt. L'orchestrateur
    l'expose désormais comme variable de prompt `initial_context` (une variable de ce nom
    fournie par l'appelant l'emporte). `CrewAgent` s'y appuie ; tout utilisateur qui a un jour

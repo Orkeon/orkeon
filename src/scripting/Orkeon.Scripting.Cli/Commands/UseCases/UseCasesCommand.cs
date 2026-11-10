@@ -19,7 +19,7 @@ internal abstract class UseCasesCommandOptions : CliOptions
 
     /// <summary><c>--events jsonl</c>: the answer as protocol lines on stdout.</summary>
     [Option("events", Required = false,
-        HelpText = "jsonl: answer with the versioned event protocol on stdout (the way Orkeon Studio reads it).")]
+        HelpText = "jsonl: answer with the versioned event protocol on stdout (the way a client reads it).")]
     public string? Events { get; set; }
 
     /// <summary>Test seam: a catalogue in place of the embedded one.</summary>
@@ -78,8 +78,8 @@ internal sealed class UseCasesShowOptions : UseCasesCommandOptions
     public bool Crew { get; set; }
 }
 
-/// <summary>Parsed options of <c>orkeon usecases export</c> (STUDIO-41).</summary>
-[Verb("export", HelpText = "Write one use case as a team folder — crew/, its data/, its output folders and studio-team.json — that Orkeon Studio imports as it is.")]
+/// <summary>Parsed options of <c>orkeon usecases export</c>.</summary>
+[Verb("export", HelpText = "Write one use case as a team folder — crew/, its data/, its output folders and studio-team.json — a team folder a client can import as it is.")]
 internal sealed class UseCasesExportOptions : UseCasesCommandOptions
 {
     /// <summary>The use case's id.</summary>
@@ -93,12 +93,12 @@ internal sealed class UseCasesExportOptions : UseCasesCommandOptions
 }
 
 /// <summary>
-/// <c>orkeon usecases search | list | show | export</c> (STUDIO-38, STUDIO-41): the example
+/// <c>orkeon usecases search | list | show | export</c>: the example
 /// catalogue, embedded in the tool, searched without an LLM and without the network, and
 /// written out as a team folder on request. One verb class per subcommand, each parsing its own
 /// tail.
 /// <para>
-/// <c>search --events jsonl</c> without a text is the session mode Orkeon Studio keeps open while
+/// <c>search --events jsonl</c> without a text is the session mode a client keeps open while
 /// its assistant is: one <see cref="UseCaseEventKinds.Query"/> per stdin line, one
 /// <see cref="UseCaseEventKinds.Results"/> per query, the model loaded once for all of them, and
 /// the end of stdin the end of the process.
@@ -256,7 +256,7 @@ internal static class UseCasesCommand
     }
 
     /// <summary>
-    /// Writes one use case as a team folder (STUDIO-41, D-02); returns the CLI exit code. A
+    /// Writes one use case as a team folder; returns the CLI exit code. A
     /// reference-only case (D-03) and a destination that holds anything are refused before a
     /// byte is written.
     /// </summary>
@@ -618,7 +618,7 @@ internal static class UseCasesCommand
         text.AppendLine(CultureInfo.InvariantCulture, $"  {export.Files[^1]}");
 
         var mounts = export.UseCase.Mounts.Count > 0 ? " --mount " + string.Join(' ', export.UseCase.Mounts) : string.Empty;
-        text.AppendLine("Import the folder in Orkeon Studio (Import a team), or run it from inside the folder:");
+        text.AppendLine("Run it from inside the folder:");
         text.AppendLine(CultureInfo.InvariantCulture, $"  orkeon run {crewFile}{mounts}");
         return text.ToString();
     }
@@ -633,7 +633,7 @@ internal static class UseCasesCommand
     /// <summary>
     /// The verb's fault barrier and its two outputs: Ctrl+C → 130, a refused input → 1, anything
     /// unexpected → 2 — the exit codes every verb shares. With <c>--events jsonl</c> a refusal is
-    /// an <c>error</c> line on stdout, the channel Studio reads; otherwise one line on stderr.
+    /// an <c>error</c> line on stdout, the channel a client reads; otherwise one line on stderr.
     /// </summary>
     [SuppressMessage("Design", "CA1031", Justification =
         "Top-level CLI fault barrier: an unexpected failure becomes the runtime-error exit code with one line, not a stack trace.")]

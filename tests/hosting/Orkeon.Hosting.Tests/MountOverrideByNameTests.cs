@@ -13,7 +13,7 @@ namespace Orkeon.Hosting.Tests;
 
 /// <summary>
 /// Where a mount the runner adds lands against what <c>appsettings.json</c> declares: by
-/// virtual root (STUDIO-15 D-01). A <c>--mount</c> on a root the settings already declare is
+/// virtual root. A <c>--mount</c> on a root the settings already declare is
 /// written at that entry's index and replaces it for the run; a <c>--mount</c> on a new root
 /// is appended after the highest declared index; internal mounts keep appending.
 /// <para>
@@ -21,7 +21,7 @@ namespace Orkeon.Hosting.Tests;
 /// entry on every run — the crew mount is always there — and nothing said a mount had been
 /// dropped. Appending unconditionally kept every entry and produced "Duplicate virtual paths"
 /// out of a DI factory the moment a settings entry and a <c>--mount</c> named the same root,
-/// which is exactly what Studio's team flow produces by design: a team associates a folder
+/// which is exactly what a client's team flow produces by design: a team associates a folder
 /// the settings already declare, verbatim. These tests read the merged registry and the
 /// bound configuration rather than the strings the runner produces, which is what the
 /// earlier suites looked at and why none of them could see either failure.
@@ -191,7 +191,7 @@ public sealed class MountOverrideByNameTests : IDisposable
     }
 
     /// <summary>
-    /// STUDIO-12 C4. A folder declared in the settings — outside the process working directory,
+    /// A folder declared in the settings — outside the process working directory,
     /// as an operator's data folder usually is — was mounted and then refused on every access:
     /// <c>PathValidator</c> only knows the working directory and the whitelist, and
     /// <c>--allow-external-mounts</c> only ever whitelists the <c>--mount</c> arguments. A
@@ -450,7 +450,7 @@ public sealed class MountOverrideByNameTests : IDisposable
 }
 
 /// <summary>
-/// The pre-checks and the fault barrier around the by-name rule (STUDIO-15 D-02, D-03), on the
+/// The pre-checks and the fault barrier around the by-name rule, on the
 /// model of <see cref="MountSourceExistenceGuardTests"/>. Joins
 /// <see cref="ConsoleSerialCollection"/> because every test redirects the process-global
 /// <see cref="Console"/> streams.
@@ -573,7 +573,7 @@ public sealed class VirtualRootUniquenessGuardTests : IDisposable
         var line = Assert.Single(Lines(stderr));
         Assert.Equal(
             $"ERROR: '/x' is declared twice in {settingsPath} ({a}:/x:ro and {b}:/x:rw) and '{a}:/x:ro' has no id. "
-            + "Give every entry an id (<ulid>|<physical>:/x:<rights>; Studio > Allowed folders writes one on save) or keep one.",
+            + "Give every entry an id (<ulid>|<physical>:/x:<rights>; a client that edits the settings writes one on save) or keep one.",
             line);
     }
 
@@ -670,7 +670,7 @@ public sealed class VirtualRootUniquenessGuardTests : IDisposable
 
     /// <summary>
     /// The settings × command-line case is the one the by-name rule exists for: not a
-    /// duplicate, a replacement. The guard must let it through, or Studio's team flow — a
+    /// duplicate, a replacement. The guard must let it through, or a client's team flow — a
     /// team associates a folder the settings already declare — fails exactly as before.
     /// </summary>
     [Fact]

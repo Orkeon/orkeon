@@ -6,8 +6,8 @@ namespace Orkeon.Scripting.Cli.Tests.UseCases;
 
 /// <summary>
 /// A five-sheet catalogue with its texts written in the five languages, shaped exactly like
-/// <c>examples/usecases.json</c>. The real manifest's titles and problems stay empty until
-/// STUDIO-37 writes them, so the search is proven here; the fifth sheet keeps them empty on
+/// <c>examples/usecases.json</c>. The real manifest's titles and problems stay empty until they
+/// are written, so the search is proven here; the fifth sheet keeps them empty on
 /// purpose, like every sheet of the real manifest today.
 /// </summary>
 internal static class UseCaseFixtures

@@ -43,7 +43,7 @@ public sealed class ForgeScheduleTests
 /// ordinary folder — crew copy, launch scripts against the CLI's own run grammar,
 /// FORGE.md identity card, generated schedule artifacts whose install command the
 /// <c>promoted</c> event offers and nothing executes — and nothing of the machine in the
-/// card or the record (STUDIO-52).
+/// card or the record.
 /// </summary>
 [Collection(CliCollection.Name)]
 public sealed class ForgePromoteTests : IDisposable
@@ -53,7 +53,7 @@ public sealed class ForgePromoteTests : IDisposable
     private readonly string _workspace =
         Path.Combine(Path.GetTempPath(), "orkeon-forge-promote-" + Guid.NewGuid().ToString("N"));
 
-    /// <summary>A team folder the way Studio names one: under the teams root, after the team's name.</summary>
+    /// <summary>A team folder the way a client names one: under the teams root, after the team's name.</summary>
     private string Destination => Path.Combine(_workspace, "teams", "ma-veille");
 
     public void Dispose()
@@ -98,7 +98,7 @@ public sealed class ForgePromoteTests : IDisposable
     /// The read mount is derived first, so a deliverable under <c>/workspace</c> met a
     /// read-only entry and was skipped on the name alone: the promoted team launched with
     /// <c>/workspace:ro</c> and could never write the deliverable it was built to produce —
-    /// the resolver logged a warning and the run reported that it had finished. Studio's
+    /// the resolver logged a warning and the run reported that it had finished. A client's
     /// sibling derivation deduped the other way and showed two chips for one root. Both hold
     /// the same rule now.
     /// </para>
@@ -230,7 +230,7 @@ public sealed class ForgePromoteTests : IDisposable
         Assert.Equal(ForgePromoter.ScheduleDirectoryName, result.ScheduleDirectory);
         Assert.Contains("systemctl --user enable --now orkeon-ma-veille.timer", result.InstallCommand, StringComparison.Ordinal);
 
-        // STUDIO-52: the card says who installs the schedule — `orkeon forge schedule .` from the
+        // The card says who installs the schedule — `orkeon forge schedule .` from the
         // folder — and nothing of this machine: the install command rides the promoted event alone.
         var card = File.ReadAllText(Path.Combine(Destination, ForgePromoter.CardFileName));
         Assert.Contains("Planification", card, StringComparison.Ordinal);
@@ -249,7 +249,7 @@ public sealed class ForgePromoteTests : IDisposable
     }
 
     /// <summary>
-    /// STUDIO-52, in the card's other language: the schedule section names <c>orkeon forge schedule .</c>
+    /// In the card's other language: the schedule section names <c>orkeon forge schedule .</c>
     /// and no command of the machine that promoted the team, whatever the platform.
     /// </summary>
     [Theory]
@@ -374,7 +374,7 @@ public sealed class ForgePromoteTests : IDisposable
     {
         // W-09: the one exception to the fresh-directory rule is the folder THIS session
         // already promoted to. Generated artifacts are regenerated; the user's own files
-        // — the Studio sidecar, outputs — survive; a dropped schedule is removed.
+        // — the team sidecar, outputs — survive; a dropped schedule is removed.
         var session = ReadySession();
         Assert.True(ForgeSchedule.TryParse("daily@07:30", out var daily, out _));
         var first = ForgePromoter.Promote(
@@ -397,7 +397,7 @@ public sealed class ForgePromoteTests : IDisposable
     }
 
     /// <summary>
-    /// Rule R, case 3 (STUDIO-25): the promoted folder moved or renamed since is still this
+    /// Rule R, case 3: the promoted folder moved or renamed since is still this
     /// session's folder — its record carries the session's id and nothing is left where
     /// <c>promotedTo</c> says. Re-adoption updates it where it now is.
     /// </summary>
@@ -419,7 +419,7 @@ public sealed class ForgePromoteTests : IDisposable
     }
 
     /// <summary>
-    /// Rule R, case 2 (STUDIO-25): a copy of the promoted folder carries the same id while its
+    /// Rule R, case 2: a copy of the promoted folder carries the same id while its
     /// original is still where the session says. It is not this session's folder: promoting into
     /// it is refused like any non-empty directory, and the refusal says why and what to do.
     /// </summary>
@@ -563,8 +563,8 @@ public sealed class ForgePromoteTests : IDisposable
         Assert.Contains("--mount \"\\\"$DIRQ/output\\\":/output:rw\"", posix, StringComparison.Ordinal);
         Assert.Equal(1, posix.Split("--mount").Length - 1);
 
-        // On Windows the anchor stays between cmd's quotes, the mount grammar's own outside them
-        // (STUDIO-51): a team folder holding '&' no longer cuts the command.
+        // On Windows the anchor stays between cmd's quotes, the mount grammar's own outside them:
+        // a team folder holding '&' no longer cuts the command.
         var windows = File.ReadAllText(Path.Combine(Destination, ForgePromoter.WindowsLauncherName));
         Assert.Contains("--mount ^\"\\\"%~dp0output\\\":/output:rw^\"", windows, StringComparison.Ordinal);
 
@@ -684,7 +684,7 @@ public sealed class ForgePromoteTests : IDisposable
 
     [Fact]
     [Trait("BR", "CH-13")]
-    public void ShouldWriteTheAnchoredMountByTheGrammar_WhenStudioOrForgePromoteWritesALauncher()
+    public void ShouldWriteTheAnchoredMountByTheGrammar_WhenAClientOrForgePromoteWritesALauncher()
     {
         var session = ReadySession();
         session.SaveArtifact(ForgeSession.BlueprintFileName, JsonSerializer.Deserialize<JsonElement>(
@@ -758,7 +758,7 @@ public sealed class ForgePromoteTests : IDisposable
         Assert.DoesNotContain("--mount", posix, StringComparison.Ordinal);
     }
 
-    // ── STUDIO-51: the launchers hand the runner what the brief says ──
+    // ── The launchers hand the runner what the brief says ──
 
     /// <summary>
     /// What a profile with an accented user name and a team in a OneDrive « R&amp;D » folder make
@@ -801,7 +801,7 @@ public sealed class ForgePromoteTests : IDisposable
     private sealed class RunnerOptions : RunnerOptionsBase;
 
     /// <summary>
-    /// STUDIO-51: <c>run.cmd</c>, read by <c>cmd</c> from a folder holding <c>&amp;</c>, <c>%</c>,
+    /// <c>run.cmd</c>, read by <c>cmd</c> from a folder holding <c>&amp;</c>, <c>%</c>,
     /// spaces and accents, then split by the C runtime, hands the runner's grammar the sample as
     /// the brief wrote it: <c>10%</c> keeps its <c>%</c>, <c>C:\temp\</c> its backslash, the quote
     /// and the <c>&amp;</c> stay in their value, the context starting with a dash is the value of
@@ -825,7 +825,7 @@ public sealed class ForgePromoteTests : IDisposable
         Assert.Contains("\r\nrem A line break in a value below is written as a space", runCmd, StringComparison.Ordinal);
     }
 
-    /// <summary>STUDIO-51: <c>run.sh</c>, through a real shell from a folder a shell would read, hands the sample over exactly.</summary>
+    /// <summary><c>run.sh</c>, through a real shell from a folder a shell would read, hands the sample over exactly.</summary>
     [Fact]
     [Trait("Category", "Integration")]
     public void The_posix_launcher_hands_the_runner_the_sample_exactly()
@@ -851,7 +851,7 @@ public sealed class ForgePromoteTests : IDisposable
     }
 
     /// <summary>
-    /// STUDIO-51, decision 8: a sample longer than a <c>cmd</c> command holds — 8 191 characters once
+    /// A sample longer than a <c>cmd</c> command holds — 8 191 characters once
     /// expanded — gives a <c>run.cmd</c> that launches nothing and says why, and a complete
     /// <c>run.sh</c>. The promotion succeeds and says it, on the stream and on stderr: Linux and
     /// macOS lose nothing.
@@ -867,7 +867,7 @@ public sealed class ForgePromoteTests : IDisposable
 
         Assert.Equal(0, exitCode);
         var warning = Assert.Single(Events(console.Stdout), e => e.GetProperty("kind").GetString() == "warning");
-        // The literal Studio's adoption reads too (ForgeWarningCodes.LauncherTooLong).
+        // The literal a client's adoption reads too (ForgeWarningCodes.LauncherTooLong).
         Assert.Equal("FORGE-LAUNCHER-TOO-LONG", warning.GetProperty("code").GetString());
         Assert.Equal(ForgeErrorCodes.LauncherTooLong, warning.GetProperty("code").GetString());
         var message = warning.GetProperty("message").GetString();
@@ -884,7 +884,7 @@ public sealed class ForgePromoteTests : IDisposable
             StringComparison.Ordinal);
     }
 
-    /// <summary>STUDIO-51, decision 4: both launchers are UTF-8 without a BOM, named so — <c>cmd</c> reads a BOM as text.</summary>
+    /// <summary>Both launchers are UTF-8 without a BOM, named so — <c>cmd</c> reads a BOM as text.</summary>
     [Fact]
     public void Both_launchers_are_utf8_without_a_bom()
     {
@@ -900,13 +900,13 @@ public sealed class ForgePromoteTests : IDisposable
     }
 
     /// <summary>
-    /// STUDIO-50, STUDIO-51: Orkeon Studio writes the launchers of the teams it adopts again through
+    /// A client may write the launchers of the teams it adopts again through
     /// the same composer (<see cref="TeamLauncherScript"/>), so <c>forge rename</c> finds the team's
     /// name in the header of both writers' launchers, under the names both share
     /// (<c>ConventionalNames</c>).
     /// </summary>
     [Fact]
-    public void The_launcher_header_and_names_are_the_ones_Studio_writes_too()
+    public void The_launcher_header_and_names_are_the_ones_a_client_writes_too()
     {
         Assert.Equal("Generated by Orkeon Forge for the team 'veille-docs'.", TeamLauncherScript.Header("veille-docs"));
         Assert.Equal("run.cmd", ForgePromoter.WindowsLauncherName);
@@ -1021,7 +1021,7 @@ public sealed class ForgePromoteTests : IDisposable
     }
 
     /// <summary>
-    /// STUDIO-25: the promotion copies the session's id into <c>forge.json</c> — what links the
+    /// The promotion copies the session's id into <c>forge.json</c> — what links the
     /// folder back to its session wherever the folder goes, and what tells a copy from it.
     /// </summary>
     [Fact]
@@ -1039,7 +1039,7 @@ public sealed class ForgePromoteTests : IDisposable
         Assert.Null(ForgeTeamRecord.ReadSessionId(Path.Combine(_workspace, "nowhere")));
     }
 
-    // ── STUDIO-26: the team's name reaches the engine, and the session folder follows the team ──
+    // ── The team's name reaches the engine, and the session folder follows the team ──
 
     /// <summary>
     /// D-01/D-02: the name the user gave the team reaches the engine. It titles the card a
@@ -1253,7 +1253,7 @@ public sealed class ForgePromoteTests : IDisposable
 
     /// <summary>
     /// A folder whose name a unit file cannot carry — spaces, capitals — names its artifacts through
-    /// the one folder rule: what systemd and schtasks accept, and for every folder Studio names, the
+    /// the one folder rule: what systemd and schtasks accept, and for every folder a client names, the
     /// folder's name itself.
     /// </summary>
     [Fact]

@@ -156,7 +156,7 @@ The `orkeon` CLI options you will actually reach for:
 | `--llm-log-path <dir>` | | Same as `--llm-log`, but writes to `<dir>` (and implies `--llm-log`). A `<dir>` outside the working directory needs `--allow-external-mounts`. |
 | `--validate` | | Dry-run: resolve settings, build the host and load the crew (strict tool resolution) **without** probing the LLM or running anything. Prints `VALIDATION OK/FAILED` and exits 0 / non-zero. |
 | `--list-tools` | | Build the host and print the sorted registered tool names, one per line, then exit — no crew required. |
-| `--events jsonl` | | Emit the versioned JSONL event protocol on stdout instead of plain text (how Orkeon Studio drives a run) — see [the run event bus](../architecture/run-event-bus.md). |
+| `--events jsonl` | | Emit the versioned JSONL event protocol on stdout instead of plain text (how an external client drives a run) — see [the run event bus](../architecture/run-event-bus.md). |
 | `--stream` | | With `--events`, also emit token-by-token `llm.delta` events (verbose by nature; off unless asked). |
 | `--client <name>` | | With `--events`, the observing peer's hub name (`client://<name>`, default `studio`). |
 | `--memory-limit-mb <n>` | | Jint memory ceiling for a `.ork.ts` run (overrides appsettings; `0` disables it). |

@@ -3,7 +3,7 @@ using Orkeon.Domain.FileSystem;
 namespace Orkeon.Domain.Tests.FileSystem;
 
 /// <summary>
-/// Rule R (STUDIO-25): the one rule that decides whether a team folder is linked to the forge
+/// Rule R: the one rule that decides whether a team folder is linked to the forge
 /// session its <c>forge.json</c> names. The path alone could not tell a moved original from a
 /// copy, and the id alone could not tell a copy from its original; together they can. Pure:
 /// every folder here is a path nobody created, and the ids other folders carry are a table.

@@ -57,7 +57,7 @@ internal sealed class FolderBench(string workspace, string? readRoot, string rea
 }
 
 /// <summary>
-/// The folders step (STUDIO-46): the folders the request names — or the defaults — proposed
+/// The folders step: the folders the request names — or the defaults — proposed
 /// between the brief and the plan, confirmed by the user, then the one list the plan, the
 /// trial, the deliverable check and the adopted team use.
 /// </summary>
@@ -167,7 +167,7 @@ public sealed class ForgeFoldersTests : IDisposable
         var wire = Event("folders.proposed").GetProperty("folders");
         Assert.Equal(["/inpdf", "/outmd"], wire.EnumerateArray().Select(f => f.GetProperty("path").GetString()));
 
-        // Read from the request, not the defaults (STUDIO-57).
+        // Read from the request, not the defaults.
         Assert.False(Event("folders.proposed").GetProperty("defaults").GetBoolean());
 
         // Confirmed: the brief the plan reads carries them — never the physical path.
@@ -175,7 +175,7 @@ public sealed class ForgeFoldersTests : IDisposable
         Assert.Equal(["/inpdf", "/outmd"], briefFolders.EnumerateArray().Select(f => f.GetProperty("path").GetString()));
         Assert.DoesNotContain(pdfs, Event("brief.ready").GetRawText(), StringComparison.Ordinal);
 
-        // Held: the one folder kept inside the team, created now so the user can fill it (STUDIO-57).
+        // Held: the one folder kept inside the team, created now so the user can fill it.
         var held = Assert.Single(Event("brief.ready").GetProperty("heldFolders").EnumerateArray());
         Assert.Equal("/outmd", held.GetProperty("path").GetString());
         Assert.Equal(Path.Combine(session.Directory, "folders", "outmd"), held.GetProperty("dir").GetString());
@@ -247,7 +247,7 @@ public sealed class ForgeFoldersTests : IDisposable
     }
 
     /// <summary>
-    /// STUDIO-57. A URL comes in, a Markdown summary comes out: the team reads no folder, and
+    /// A URL comes in, a Markdown summary comes out: the team reads no folder, and
     /// a « /workspace » to read answered a question nobody asked. <c>readsFiles</c> decides:
     /// false drops the folder to read even with an input, true proposes it even with none.
     /// </summary>
@@ -263,7 +263,7 @@ public sealed class ForgeFoldersTests : IDisposable
         Assert.Equal(["/workspace", "/output"], ForgeFolders.ProposalOf(files).Select(f => f.Path));
     }
 
-    /// <summary>STUDIO-57. A default's purpose is said in the brief's language, not always in English.</summary>
+    /// <summary>A default's purpose is said in the brief's language, not always in English.</summary>
     [Fact]
     public void A_default_folder_says_its_purpose_in_the_briefs_language()
     {
@@ -275,7 +275,7 @@ public sealed class ForgeFoldersTests : IDisposable
     }
 
     /// <summary>
-    /// STUDIO-57. The proposal says it is the defaults, and once the list is confirmed the
+    /// The proposal says it is the defaults, and once the list is confirmed the
     /// session holds every folder kept inside the team: each directory exists — an explorer
     /// can open it, the user can drop files in it before the trial — and <c>brief.ready</c>
     /// names it.
@@ -302,7 +302,7 @@ public sealed class ForgeFoldersTests : IDisposable
     }
 
     /// <summary>
-    /// STUDIO-57. With folders kept inside the team, the engine waits on the fill step before it
+    /// With folders kept inside the team, the engine waits on the fill step before it
     /// designs anything; once settled, what the user dropped in each folder is in the brief —
     /// names relative to the folder, never a physical path — and <c>folders.filled</c> counts it.
     /// </summary>
@@ -337,7 +337,7 @@ public sealed class ForgeFoldersTests : IDisposable
         Assert.DoesNotContain(session.Directory, await File.ReadAllTextAsync(Path.Combine(session.Directory, ForgeSession.BriefFileName), TestContext.Current.CancellationToken), StringComparison.Ordinal);
     }
 
-    /// <summary>STUDIO-57. A run stopped at the fill step asks it again on resume — without a new interview — and --auto never waits.</summary>
+    /// <summary>A run stopped at the fill step asks it again on resume — without a new interview — and --auto never waits.</summary>
     [Fact]
     public async Task A_session_stopped_at_the_fill_step_asks_it_again_and_auto_never_waits()
     {
@@ -408,7 +408,7 @@ public sealed class ForgeFoldersTests : IDisposable
     }
 
     /// <summary>
-    /// STUDIO-57: a list with no output, or no folder at all, is a valid one — a team that sends
+    /// A list with no output, or no folder at all, is a valid one — a team that sends
     /// mails from what it reads writes no file. What is still refused: a root twice, an unknown role.
     /// </summary>
     [Fact]
@@ -427,7 +427,7 @@ public sealed class ForgeFoldersTests : IDisposable
 
     // ── the confirmation ─────────────────────────────────────────────────────────
 
-    /// <summary>STUDIO-57: the user kept no folder at all — the confirmed empty list is the team's, not the plan's guess.</summary>
+    /// <summary>The user kept no folder at all — the confirmed empty list is the team's, not the plan's guess.</summary>
     [Fact]
     public async Task A_confirmed_empty_list_is_honoured_over_what_the_plan_implies()
     {
@@ -515,7 +515,7 @@ public sealed class ForgeFoldersTests : IDisposable
     [Fact]
     public async Task A_dry_run_confirms_a_folder_outside_the_working_directory_its_trial_comes_later()
     {
-        // Studio's path: the folders are confirmed in a run that stops before its trial, which
+        // A client's path: the folders are confirmed in a run that stops before its trial, which
         // a resume then runs in a process that mounts and allows them from its start.
         var outside = Directory.CreateDirectory(Path.Combine(_workspace, "elsewhere", "pdfs")).FullName;
         var session = ForgeSession.Create(_workspace, "dry");
@@ -642,7 +642,7 @@ public sealed class ForgeFoldersTests : IDisposable
         Assert.Equal(Path.Combine(session.Directory, "folders", "output"), defaults[1].PhysicalPath);
 
         // Once a list is confirmed, a /workspace kept inside the team reads the session's own
-        // folder — what the user dropped there (STUDIO-57) — like every other such input.
+        // folder — what the user dropped there — like every other such input.
         session.SaveArtifact(ForgeFolders.FileName, new ForgeFolderList { Folders = [Folder("/workspace", "input"), Folder("/output", "output")] });
         var confirmed = ForgeFolders.TrialMounts(session, ForgeFolders.Of(session), _workspace, null);
         Assert.Equal(Path.Combine(session.Directory, "folders", "workspace"), confirmed[0].PhysicalPath);

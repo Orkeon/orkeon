@@ -16,9 +16,8 @@ public sealed class EnvironmentVariablesReferenceTests
     private const string EnglishPage = "docs/reference/configuration.md";
     private const string FrenchPage = "docs/fr/reference/configuration.md";
 
-    /// <summary>The binaries a row may name: the three that read settings, and the three of Orkeon Studio.</summary>
-    private static readonly string[] Binaries =
-        [.. SettingsHosts.All, "orkeon-studio", "orkeon-studio-config", "orkeon-studio-run"];
+    /// <summary>The binaries a row may name: the three that read settings.</summary>
+    private static readonly string[] Binaries = [.. SettingsHosts.All];
 
     // ── the table of the code ──
 

@@ -1,7 +1,7 @@
 namespace Orkeon.Scripting.Cli.Commands.Forge;
 
 /// <summary>
-/// The session folder follows its team (STUDIO-26). A session is named after the need it was
+/// The session folder follows its team. A session is named after the need it was
 /// opened with, and the team it makes after whatever the user calls it: left alone, the atelier
 /// lists its sessions under names no team carries. Once a promotion is written, the session
 /// under <c>.orkeon/forge/</c> takes the name of the folder it promoted to — the name as it is,

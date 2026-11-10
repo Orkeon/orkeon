@@ -509,12 +509,12 @@ public sealed class InitCommandTests
         var llm = doc.RootElement.GetProperty("Llm");
         Assert.Equal("https://api.mistral.ai/v1", llm.GetProperty("BaseUrl").GetString());
         Assert.False(llm.TryGetProperty("ApiKey", out _));
-        // STUDIO-49: the file names the variable, and the runtime reads it — the key stays out.
+        // The file names the variable, and the runtime reads it — the key stays out.
         Assert.Equal("MY_LLM_KEY", llm.GetProperty("ApiKeyEnvVar").GetString());
         Assert.Contains("MY_LLM_KEY", console.Stdout, StringComparison.Ordinal);
     }
 
-    // --- STUDIO-49: --api-key-env names the variable in the file, the runtime reads it ---
+    // --- --api-key-env names the variable in the file, the runtime reads it ---
 
     [Fact]
     public async Task ApiKeyEnv_IsWrittenAsTheReference_TheRuntimeReads()

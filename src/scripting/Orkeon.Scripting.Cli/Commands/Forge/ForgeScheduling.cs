@@ -8,9 +8,9 @@ using Orkeon.Domain.FileSystem;
 namespace Orkeon.Scripting.Cli.Commands.Forge;
 
 /// <summary>
-/// The <c>schedule</c> block of <c>forge.json</c> (STUDIO-27, D-03): the schedule the folder
+/// The <c>schedule</c> block of <c>forge.json</c>: the schedule the folder
 /// declares — its promotion's <c>--schedule</c>. Absent from a folder that declares none. What
-/// <c>forge schedule</c> installed of it is no part of it (STUDIO-52): it is this machine's, and
+/// <c>forge schedule</c> installed of it is no part of it: it is this machine's, and
 /// <c>forge.json</c> travels with the folder — <see cref="ForgeScheduleInstallation"/> records it
 /// beside the artifacts.
 /// </summary>
@@ -29,7 +29,7 @@ internal sealed record ForgeTeamSchedule
 /// What <c>forge schedule</c> registered, recorded so that a check and a removal act on these
 /// names and never on names they would compute (D-03): a folder renamed since still removes the
 /// registration it made under its former name. Recorded in <c>schedule/installed.json</c>, beside
-/// the artifacts it describes (STUDIO-52): what this machine's scheduler knows of the team — the
+/// the artifacts it describes: what this machine's scheduler knows of the team — the
 /// folder it was made for among it —, which a copy made by hand carries, and is recognised by, and
 /// which an export leaves behind with the artifacts; <c>forge.json</c>, which travels with the
 /// folder, keeps the declared schedule alone. Every field is optional on read — a record
@@ -175,7 +175,7 @@ internal static class ForgeScheduleReasons
     /// <summary>
     /// Stale: it runs the folder's launcher the way an earlier version registered it — a Windows
     /// task whose command is <c>run.cmd</c> itself, whose quotes <c>cmd /c</c> keeps or strips by
-    /// what the path holds (STUDIO-51).
+    /// what the path holds.
     /// </summary>
     public const string Outdated = "outdated";
 
@@ -212,16 +212,16 @@ internal sealed record ForgeScheduleHost(IForgeScheduleAdapter Adapter, Func<Dat
 }
 
 /// <summary>
-/// The managed schedule (STUDIO-27, DA-3): the operating system runs the team — Orkeon has no
+/// The managed schedule: the operating system runs the team — Orkeon has no
 /// scheduler of its own — and the CLI, which owns the artifacts, installs, checks and removes
-/// the registration on the user's behalf. Studio asks first; the verbs themselves are idempotent.
+/// the registration on the user's behalf. A client asks first; the verbs themselves are idempotent.
 /// <list type="bullet">
 /// <item><description><b>Install</b> registers what <c>schedule/</c> describes, regenerated first when it describes another folder (a copy, a moved or renamed team); a registration of this folder's under a former name goes first.</description></item>
 /// <item><description><b>Check</b> compares what the OS holds under the recorded names with what the folder is now.</description></item>
 /// <item><description><b>Remove</b> unregisters, deletes <c>schedule/</c> — the record with it — and the <c>forge.json</c> block; nothing to remove is a success.</description></item>
 /// </list>
 /// Which registration a folder may act on is recorded, never computed: its own
-/// <c>schedule/installed.json</c> (<see cref="ForgeScheduleInstallation"/>, STUDIO-52). A copy of a
+/// <c>schedule/installed.json</c> (<see cref="ForgeScheduleInstallation"/>). A copy of a
 /// scheduled team made by hand inherits its original's record; the record names the folder it was
 /// made for, and while that folder still claims it, the copy leaves it alone.
 /// </summary>
@@ -277,7 +277,7 @@ internal sealed class ForgeScheduler(ForgeScheduleHost host)
                 $"'{teamDirectory}' holds no {Path.GetFileName(launcher)} for the schedule to run — adopt it again to regenerate its launchers.");
         }
 
-        // Read before schedule/ is regenerated (STUDIO-52): the names of an installation made under a
+        // Read before schedule/ is regenerated: the names of an installation made under a
         // former name are the only way back to it, a refusal of the system after the regeneration
         // included.
         var installed = ForgeScheduleInstallation.TryRead(teamDirectory);

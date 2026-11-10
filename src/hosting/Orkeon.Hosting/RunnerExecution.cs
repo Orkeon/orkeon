@@ -290,8 +290,8 @@ public static partial class RunnerExecution
 
         // A crew target is either a single file (.yaml / .ork.ts) or a directory holding a
         // multi-file crew (config.yaml + agents/ + tasks/, or the flat triplet) — at its
-        // root, or under its crew/ sub-folder, which then wins over whatever the root holds
-        // (STUDIO-59). The directory form is classified here so an ambiguous or empty directory
+        // root, or under its crew/ sub-folder, which then wins over whatever the root holds.
+        // The directory form is classified here so an ambiguous or empty directory
         // reports its own diagnostic instead of the generic "config file not found".
         var inspection = CrewDirectoryLayout.Inspect(configPath);
         if (inspection.Error is not null)
@@ -476,8 +476,7 @@ public static partial class RunnerExecution
     /// arguments, or two entries of the settings file that nothing can tell apart. Without this
     /// the collision surfaces as a raw <see cref="InvalidOperationException"/> ("Duplicate
     /// virtual paths") thrown out of a DI factory at kickoff — after "Using settings", under a
-    /// stack trace — where one line and an exit code 1 before any host boots say what to fix
-    /// (STUDIO-15 D-02).
+    /// stack trace — where one line and an exit code 1 before any host boots say what to fix.
     /// <para>
     /// A <c>--mount</c> on a root the settings declare is NOT a duplicate: the host places a
     /// command-line mount by root and it replaces that settings entry for the run
@@ -684,7 +683,7 @@ public static partial class RunnerExecution
     }
 
     /// <summary>
-    /// Refuses an <c>--llm-profile</c> the configuration does not define (STUDIO-50) in one line —
+    /// Refuses an <c>--llm-profile</c> the configuration does not define in one line —
     /// the sentence a crew naming an unknown profile fails its load with, listing the profiles the
     /// configuration a run reads defines (<see cref="RunnerSettings.ReadConfiguration"/>) — before
     /// any host is built. Null,
@@ -906,7 +905,7 @@ public static partial class RunnerExecution
         // The failure line is written AFTER the host is disposed: disposing flushes the
         // console logger's queue, so "ERROR: <message>" is the last thing on stderr — the
         // sentence exit code 2 promises ("the last stderr lines say why") — rather than a
-        // line the logger's own output then buries (STUDIO-15 D-03).
+        // line the logger's own output then buries.
         var (exitCode, failure) = await RunWithHostAsync(bootstrap!, opts, externalCt).ConfigureAwait(false);
         if (failure is not null)
             await opts.RunnerConsole.ErrorOutput.WriteLineAsync($"ERROR: {failure}").ConfigureAwait(false);
@@ -1017,8 +1016,8 @@ public static partial class RunnerExecution
 
         // The load, the scope and the kickoff are the entry point's (FWK-09); what stays here is what
         // only the one-shot command does between the load and the kickoff: parse the --var input and
-        // probe the endpoint. The MCP tools join the registry before the crew resolves its own
-        // (STUDIO-21): a server that fails costs one error line and the run goes on.
+        // probe the endpoint. The MCP tools join the registry before the crew resolves its own:
+        // a server that fails costs one error line and the run goes on.
         // TypeCheck=always: the script's types are checked before every run, not only --validate (FWK-12).
         if (!await TypeCheckScriptAsync(host, bootstrap, console, validating: false, ct).ConfigureAwait(false))
             return (2, null);
@@ -1089,7 +1088,7 @@ public static partial class RunnerExecution
             // The crew ran and failed: exit 2, the reason handed back so the caller writes it
             // as the last stderr line once the host — and its console logger queue — is
             // disposed. KickoffAsync never throws, so this exit code was 0 for every crew
-            // failure: an empty deliverable went green (STUDIO-12 C5a).
+            // failure: an empty deliverable went green.
             return (2, output.Error ?? output.FinalOutput);
         }
 
@@ -1567,7 +1566,7 @@ public static partial class RunnerExecution
                 b.SetMinimumLevel(LogLevel.Warning);
                 // The host's own decisions — which LLM endpoint was resolved, which settings
                 // mount a --mount replaced — are what an operator reading a -v 1 log needs
-                // first; Studio launches at this level.
+                // first; client launches run at this level.
                 b.AddFilter("Orkeon.Hosting", LogLevel.Information);
                 b.AddFilter("Orkeon.Application.Crew.ExecutionOrchestrator", LogLevel.Information);
                 b.AddFilter("Orkeon.Application.Agent", LogLevel.Information);

@@ -24,9 +24,8 @@
 #   scripts/install-from-source.sh [--app-set cli|full] [--prefix DIR] [--modify-path]
 #                                  [--uninstall] [--dry-run]
 #
-# --app-set      cli (the default): the `orkeon` CLI and, on Linux, the REPL and the two
-#                Orkeon Studio terminal apps. full: every launcher (the service host, and
-#                the REPL on macOS).
+# --app-set      cli (the default): the `orkeon` CLI and, on Linux, the REPL.
+#                full: every launcher (the service host, and the REPL on macOS).
 # --prefix       where install.sh installs. Default: ~/.local (no sudo needed).
 # --modify-path  passed to install.sh: appends <prefix>/bin to your shell rc files.
 # --uninstall    removes what is installed under --prefix. Builds nothing.

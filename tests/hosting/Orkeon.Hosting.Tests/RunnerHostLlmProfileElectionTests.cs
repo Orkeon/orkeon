@@ -11,7 +11,7 @@ using Orkeon.Hosting.Tests.Doubles;
 namespace Orkeon.Hosting.Tests;
 
 /// <summary>
-/// STUDIO-50: <c>orkeon run --llm-profile &lt;id&gt;</c> elects one of the host's profiles
+/// <c>orkeon run --llm-profile &lt;id&gt;</c> elects one of the host's profiles
 /// (<c>Llm:Profiles:&lt;id&gt;</c>) as the run's default. The <c>Llm</c> section becomes that
 /// profile, whole — every field the profile leaves unset is unset, the default's key and the
 /// variable holding it included —, so every call on the default (an agent that names no profile,

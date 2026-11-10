@@ -3,8 +3,8 @@ using CommandLine;
 namespace Orkeon.Hosting.Tests;
 
 /// <summary>
-/// STUDIO-51: the run grammar reads a single-value option written <c>--option=value</c> — how the
-/// team launchers and Studio write one, so a value starting with <c>-</c> stays its value — with
+/// The run grammar reads a single-value option written <c>--option=value</c> — how the
+/// team launchers write one, so a value starting with <c>-</c> stays its value — with
 /// the value as written. CommandLineParser 2.9.1 alone refuses an attached value that holds a line
 /// break or starts with a space, which left a context of two bullet lines no spelling at all.
 /// </summary>

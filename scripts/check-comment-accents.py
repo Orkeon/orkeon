@@ -17,10 +17,9 @@ deliberately narrow, and narrow in two different ways depending on the file:
     by name.
 
     The word list exists because the accent test alone was blind to the most
-    common shape of the defect: a comment quoting a French UI label. Studio ships
-    five catalogues, so a comment naming a button in French names it in one
-    culture out of five — and after the catalogue rewrite, several of those
-    labels no longer existed in any of them. The .cs list is matched
+    common shape of the defect: a comment quoting a French UI label. A UI ships
+    several catalogues, so a comment naming a button in French names it in one
+    culture only. The .cs list is matched
     CASE-SENSITIVELY on lowercase words: `TRes` is a type parameter, `tres` is
     French, and only the second may fire. It also omits `importer`, which is an
     English verb.

@@ -14,7 +14,7 @@ using Orkeon.Infrastructure.Tests.Doubles;
 namespace Orkeon.Infrastructure.Tests.LLMs;
 
 /// <summary>
-/// The decorated path (STUDIO-42 D-01): a provider reaches the runtime either through the
+/// The decorated path: a provider reaches the runtime either through the
 /// factory or through <see cref="LlmProviderRegistrationExtensions.AddOrkeonLlmProvider"/>,
 /// and either way every surface the runtime consumes — <see cref="ILlmProvider"/>,
 /// <see cref="IBasicLlmProvider"/>, <see cref="IChatClient"/> — calls through one meter.

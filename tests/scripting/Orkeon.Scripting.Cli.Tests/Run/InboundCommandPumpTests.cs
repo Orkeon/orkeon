@@ -165,7 +165,7 @@ public sealed class InboundCommandPumpTests
     public async Task Dispose_returns_even_while_a_read_is_parked_on_a_silent_stream()
     {
         // Console stdin has no truly cancellable read. A dispose that awaited the loop held
-        // the whole process hostage after run.finished whenever the parent (Studio) kept our
+        // the whole process hostage after run.finished whenever the parent (a GUI client) kept our
         // stdin open — the pump abandons the read instead.
         var reader = new FeedableReader();
         var pump = new InboundCommandPump(reader);

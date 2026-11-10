@@ -3,7 +3,7 @@ using Orkeon.Scripting.Cli.Commands;
 namespace Orkeon.Scripting.Cli.Tests;
 
 /// <summary>
-/// STUDIO-50 on the scripting path: a procedural <c>.ork.ts</c> builds its host itself, and an
+/// <c>--llm-profile</c> on the scripting path: a procedural <c>.ork.ts</c> builds its host itself, and an
 /// <c>--llm-profile</c> the settings do not define is refused there too — in one line, listing the
 /// profiles they do, before any host or esbuild, with the exit code of a configuration mistake.
 /// </summary>

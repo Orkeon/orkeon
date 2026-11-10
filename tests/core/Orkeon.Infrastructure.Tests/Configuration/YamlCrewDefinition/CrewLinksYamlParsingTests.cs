@@ -28,7 +28,7 @@ links:
   - to: fraud
     direction: bidirectional
     allowed_topics: [fraud.check, fraud.result]
-  - to: "client:studio"
+  - to: "client:desk"
     direction: outbound
 agents:
   worker:
@@ -49,10 +49,10 @@ agents:
 
         // The external peer is named through the reserved prefix rather than pretending to be
         // a crew — the one place HUB-03 extends the spec.
-        var studio = config.Links[1];
-        Assert.True(studio.TargetsClient);
-        Assert.Equal("studio", studio.ClientName);
-        Assert.True(studio.Authorizes("anything"));
+        var desk = config.Links[1];
+        Assert.True(desk.TargetsClient);
+        Assert.Equal("desk", desk.ClientName);
+        Assert.True(desk.Authorizes("anything"));
     }
 
     [Fact]

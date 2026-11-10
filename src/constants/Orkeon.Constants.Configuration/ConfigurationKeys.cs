@@ -6,7 +6,7 @@ namespace Orkeon.Constants.Configuration;
 /// Only those. Orkeon declares 58 distinct <c>Orkeon:*</c> keys and 51 of them are written in a
 /// single project, where they belong — a key one component reads is that component's business.
 /// What lands here is the handful the engine and the tooling must agree on and cannot share by
-/// reference, because <c>Orkeon.Studio.Core</c> may not reference <c>Orkeon.Hosting</c> or
+/// reference, because a client of the CLI may not reference <c>Orkeon.Hosting</c> or
 /// <c>Orkeon.Infrastructure</c> (ADR-009).
 /// </para>
 /// <para>
@@ -19,8 +19,8 @@ public static class ConfigurationKeys
 {
     /// <summary>
     /// The agent-facing mount array. The runner appends its own entries after whatever this
-    /// declares, and Orkeon Studio edits the same array — which is why both must name it the
-    /// same way, and why Studio predicts the index each <c>--mount</c> will occupy.
+    /// declares, and a client may edit the same array — which is why both must name it the
+    /// same way, and why a client can predict the index each <c>--mount</c> will occupy.
     /// </summary>
     public const string FileSystemMounts = "Orkeon:FileSystem:Mounts";
 
@@ -45,15 +45,14 @@ public static class ConfigurationKeys
     public const string FileSystemWriteDirectory = "Orkeon:FileSystem:WriteDirectory";
 
     /// <summary>
-    /// Root of the RAG subsystem's options. Bound by <c>AddOrkeonRag</c>, and read by Studio to
-    /// show what a machine has configured.
+    /// Root of the RAG subsystem's options. Bound by <c>AddOrkeonRag</c>.
     /// </summary>
     public const string Rag = "Orkeon:Rag";
 
     /// <summary>
     /// Root of the e-mail tool family's settings: its accounts, their rights and the credentials
     /// directory. Bound by <c>AddOrkeonEmailTools</c>, read by the runner host to decide whether
-    /// the OAuth token store needs a mount, and named by Studio's tool catalogue.
+    /// the OAuth token store needs a mount.
     /// </summary>
     public const string ToolsEmail = "Orkeon:Tools:Email";
 
@@ -61,7 +60,7 @@ public static class ConfigurationKeys
     /// Root of the drive tool family's settings (Google Drive, OneDrive): its accounts, their
     /// rights, their root folders and the credentials directory. Bound by
     /// <c>AddOrkeonDriveTools</c>, read by the runner host to decide whether the OAuth token store
-    /// needs a mount, and named by Studio's tool catalogue.
+    /// needs a mount.
     /// </summary>
     public const string ToolsDrive = "Orkeon:Tools:Drive";
 
@@ -118,10 +117,10 @@ public static class ConfigurationKeys
 
     /// <summary>
     /// The key, in <see cref="LlmSection"/> and in each of its <see cref="LlmProfiles"/>, that
-    /// names the environment variable holding the section's API key — the name, never the key
-    /// (STUDIO-49). The runtime reads the variable when the configuration resolves no
-    /// <c>ApiKey</c>; Orkeon Studio, <c>orkeon init</c> and <c>orkeon-studio-config</c> write it,
-    /// and <c>orkeon doctor</c> reports it — four projects, one spelling.
+    /// names the environment variable holding the section's API key — the name, never the key.
+    /// The runtime reads the variable when the configuration resolves no
+    /// <c>ApiKey</c>; <c>orkeon init</c> writes it, and <c>orkeon doctor</c> reports it
+    /// — two projects, one spelling.
     /// </summary>
     public const string LlmApiKeyEnvVar = "ApiKeyEnvVar";
 
@@ -129,7 +128,7 @@ public static class ConfigurationKeys
     /// The MCP section, at the configuration ROOT like <see cref="LlmSection"/>: the servers a
     /// machine declares (<c>MCP:Servers:&lt;id&gt;</c>), the switch (<c>MCP:Enabled</c>) and the
     /// optional outbound server (<c>MCP:Server</c>). Bound by the infrastructure, honoured by the
-    /// shared runner host, edited by Orkeon Studio (STUDIO-21) — three projects that cannot
+    /// shared runner host — projects that cannot
     /// reference each other, and a section whose absence reads as "no MCP" everywhere.
     /// </summary>
     public const string McpSection = "MCP";

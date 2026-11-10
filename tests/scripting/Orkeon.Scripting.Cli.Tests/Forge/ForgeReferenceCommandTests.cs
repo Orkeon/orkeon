@@ -5,7 +5,7 @@ using Orkeon.Scripting.Cli.Commands.UseCases;
 namespace Orkeon.Scripting.Cli.Tests.Forge;
 
 /// <summary>
-/// STUDIO-40 through the command: <c>forge --reference &lt;id&gt;</c> refused before anything when
+/// The use case a composition starts from, through the command: <c>forge --reference &lt;id&gt;</c> refused before anything when
 /// the id names no use case (D-05), recorded in the session (D-01), handed to the composer — on a
 /// resume too — and traced by the promotion in <c>FORGE.md</c> and <c>forge.json</c> (D-04).
 /// Offline: where a cycle runs, a probe pack stands in for the composer and calls no model.

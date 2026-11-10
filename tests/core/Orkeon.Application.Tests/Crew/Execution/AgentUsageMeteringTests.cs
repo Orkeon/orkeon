@@ -21,7 +21,7 @@ using Orkeon.Tests.Shared.FileSystem;
 namespace Orkeon.Application.Tests.Crew.Execution;
 
 /// <summary>
-/// STUDIO-42, the agent families: every call an agent's task makes — its turns, the retry of
+/// The agent families: every call an agent's task makes — its turns, the retry of
 /// an empty answer, the synthesis once the iterations run out, the fallback loops without a
 /// chat client, the correction round — reaches the meter exactly once, attributed to that
 /// agent, that task, that crew. The provider is metered the way the factory meters every

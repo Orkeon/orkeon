@@ -47,7 +47,7 @@ public class PipelineOnMailboxTrafficTests
     {
         var billing = CrewId.Create();
         var registry = new InMemoryCrewLinkRegistry();
-        registry.Register(billing, "billing", [new CrewLink { To = CrewLink.ForClient("studio") }]);
+        registry.Register(billing, "billing", [new CrewLink { To = CrewLink.ForClient("desk") }]);
         return (new DefaultEventHubCallerContext(), registry, billing);
     }
 
@@ -57,14 +57,14 @@ public class PipelineOnMailboxTrafficTests
         var (caller, registry, billing) = World();
         using var hub = Build(caller, new AclEventHubMiddleware(registry));
 
-        var studio = MailboxAddress.Parse(new Uri("client://studio"));
+        var desk = MailboxAddress.Parse(new Uri("client://desk"));
         var stranger = MailboxAddress.Parse(new Uri("client://someone-else"));
-        hub.RegisterMailbox(studio);
+        hub.RegisterMailbox(desk);
         hub.RegisterMailbox(stranger);
 
         using (caller.Push(new EventHubCaller(billing, null)))
         {
-            await hub.PostAsync(studio, new { ok = true }, null, TestContext.Current.CancellationToken);
+            await hub.PostAsync(desk, new { ok = true }, null, TestContext.Current.CancellationToken);
 
             // Same crew, an address no link names: declaring one link closed the door.
             await Assert.ThrowsAsync<EventAclException>(
@@ -82,11 +82,11 @@ public class PipelineOnMailboxTrafficTests
         var counter = new CountingMiddleware();
         using var hub = Build(caller, counter);
 
-        var studio = MailboxAddress.Parse(new Uri("client://studio"));
-        hub.RegisterMailbox(studio);
+        var desk = MailboxAddress.Parse(new Uri("client://desk"));
+        hub.RegisterMailbox(desk);
 
         using (caller.Push(new EventHubCaller(billing, null)))
-            await hub.PostAsync(studio, new { ok = true }, null, TestContext.Current.CancellationToken);
+            await hub.PostAsync(desk, new { ok = true }, null, TestContext.Current.CancellationToken);
 
         Assert.NotNull(counter.LastPublished);
         Assert.Equal(billing, counter.LastPublished!.SourceCrewId);
@@ -125,7 +125,7 @@ public class PipelineOnMailboxTrafficTests
         var counter = new CountingMiddleware();
         using var hub = Build(caller, counter);
 
-        var mailbox = MailboxAddress.Parse(new Uri("client://studio"));
+        var mailbox = MailboxAddress.Parse(new Uri("client://desk"));
         hub.RegisterMailbox(mailbox);
 
         await hub.PostAsync(mailbox, new { ok = true }, null, TestContext.Current.CancellationToken);
@@ -148,7 +148,7 @@ public class PipelineOnMailboxTrafficTests
         var counter = new CountingMiddleware();
         using var hub = Build(caller, counter);
 
-        var mailbox = MailboxAddress.Parse(new Uri("client://studio"));
+        var mailbox = MailboxAddress.Parse(new Uri("client://desk"));
         using var registration = hub.RegisterMailbox(mailbox) as IDisposable;
 
         var send = hub.SendAsync<object, object>(
@@ -211,7 +211,7 @@ public class PipelineOnMailboxTrafficTests
         // caller must hear that — a TryWrite into a completed channel, silently dropped, is a
         // message the caller was told was posted and that nobody will ever read.
         var caller = new DefaultEventHubCallerContext();
-        var mailbox = MailboxAddress.Parse(new Uri("client://studio"));
+        var mailbox = MailboxAddress.Parse(new Uri("client://desk"));
 
         IDisposable? registration = null;
         using var hub = Build(caller, new UnregisterDuringPublishMiddleware(() => registration?.Dispose()));
@@ -230,7 +230,7 @@ public class PipelineOnMailboxTrafficTests
         var caller = new DefaultEventHubCallerContext();
         using var hub = Build(caller);
 
-        var mailbox = MailboxAddress.Parse(new Uri("client://studio"));
+        var mailbox = MailboxAddress.Parse(new Uri("client://desk"));
         using var registration = hub.RegisterMailbox(mailbox) as IDisposable;
 
         var send = hub.SendAsync<object, object>(
@@ -276,7 +276,7 @@ public class PipelineOnMailboxTrafficTests
         var slow = new DelayingMiddleware(TimeSpan.FromMilliseconds(50));
         using var hub = Build(caller, slow);
 
-        var mailbox = MailboxAddress.Parse(new Uri("client://studio"));
+        var mailbox = MailboxAddress.Parse(new Uri("client://desk"));
         using var registration = hub.RegisterMailbox(mailbox) as IDisposable;
 
         await hub.PostAsync(mailbox, new { ok = true }, null, TestContext.Current.CancellationToken);

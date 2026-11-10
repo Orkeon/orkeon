@@ -152,7 +152,7 @@ jobs:
             echo "No orkeon-cli-*-osx-arm64.tar.gz among the published assets." >&2
             exit 1
           fi
-          ./scripts/smoke-onboarding/run-smoke-tarball.sh --tarball "$tarball" --studio absent
+          ./scripts/smoke-onboarding/run-smoke-tarball.sh --tarball "$tarball"
 
   # Every published asset has exactly one checksum line, and every line names a
   # published asset: the asset list comes from the Release itself, not from the

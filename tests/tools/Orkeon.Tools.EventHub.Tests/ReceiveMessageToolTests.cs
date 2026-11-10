@@ -49,7 +49,7 @@ public sealed class ReceiveMessageToolTests : IClassFixture<EventHubToolsFixture
     public async System.Threading.Tasks.Task A_crew_may_only_read_its_own_mailboxes()
     {
         // Reading is destructive — the hub auto-registers waiters and they compete for every
-        // message. Without this refusal, receive_message(mailbox: "client://studio") would let
+        // message. Without this refusal, receive_message(mailbox: "client://desk") would let
         // any agent siphon the traffic of the external peer the ACL guards on the write side.
         var crewId = CrewId.Create();
         using (_fx.Caller.Push(new EventHubCaller(crewId, AgentId.Create())))
@@ -65,7 +65,7 @@ public sealed class ReceiveMessageToolTests : IClassFixture<EventHubToolsFixture
 
             var client = new Dictionary<string, object?>
             {
-                ["mailbox"] = "client://studio",
+                ["mailbox"] = "client://desk",
                 ["timeout_ms"] = 50
             };
             var refusedClient = await _fx.ReceiveMessage.CallAsync(new ToolCallRequest("receive_message", client), TestContext.Current.CancellationToken);

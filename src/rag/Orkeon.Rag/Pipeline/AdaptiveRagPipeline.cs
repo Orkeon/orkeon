@@ -83,7 +83,7 @@ public sealed partial class AdaptiveRagPipeline : IRagPipeline
         ArgumentNullException.ThrowIfNull(query);
         ArgumentException.ThrowIfNullOrWhiteSpace(query.Text);
 
-        // The routing call and whatever the route leads to are RAG work (STUDIO-42).
+        // The routing call and whatever the route leads to are RAG work.
         using var usageScope = LlmUsageScope.Begin(LlmUsageOperations.Rag);
 
         var watch = Stopwatch.StartNew();

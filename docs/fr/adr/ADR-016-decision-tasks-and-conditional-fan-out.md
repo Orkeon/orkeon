@@ -5,7 +5,7 @@
 # ADR-016 — Des tâches de décision, et une condition `when` qui ignore au lieu d'échouer
 
 **Statut** : Accepté · **Date** : 2026-10-28
-· **Périmètre** : `Orkeon.Domain` (`TaskDecision`, `DecisionOutcome`, `CrewTaskBase`), `Orkeon.Infrastructure` (`Crew/Strategies/` : Sequential, Parallel et Graph, `DecisionPreflight`), `Orkeon.Application` (`TaskExecutionSnapshot`), le CLI `orkeon run` (`--no-decision`, l'événement `task.completed`) et Studio (`RunProgressModel`)
+· **Périmètre** : `Orkeon.Domain` (`TaskDecision`, `DecisionOutcome`, `CrewTaskBase`), `Orkeon.Infrastructure` (`Crew/Strategies/` : Sequential, Parallel et Graph, `DecisionPreflight`), `Orkeon.Application` (`TaskExecutionSnapshot`), le CLI `orkeon run` (`--no-decision`, l'événement `task.completed`)
 
 ## Contexte
 
@@ -40,11 +40,10 @@ d'un modèle sans qu'un agent écrive un texte que la tâche suivante devait ana
    réponse. Une requête en échec n'est jamais transformée en repli.
 6. **Le run le rapporte.** `task.completed` porte `skipReason`, `defaulted`, `isDecision` et
    `decision` (les réponses en JSON compact) ; `TaskExecutionSnapshot` porte `SkipReason`,
-   `Defaulted`, `IsDecision` et `DecisionAnswers` ; les consoles et le `RunProgressModel` de Studio
-   les montrent. `TaskCompletedEvent.AgentId` est nullable, une tâche de décision n'ayant pas
+   `Defaulted`, `IsDecision` et `DecisionAnswers` ; les consoles les montrent. `TaskCompletedEvent.AgentId` est nullable, une tâche de décision n'ayant pas
    d'agent.
 
-   > Amendement 2026-10-31 : la raison d'un saut est lue par le JSONL du run et par le `RunProgressModel` de Studio, pas par « les consoles » ; le nom de question `defaulted` est réservé.
+   > Amendement 2026-10-31 : la raison d'un saut est lue par le JSONL du run, pas par « les consoles » ; le nom de question `defaulted` est réservé.
 
    > Amendement 2026-10-31 : le modèle de décision derrière une tâche de décision peut être TypeSafe, Liquid ou Kev ; la tâche, son circuit et son repli ne changent pas.
 

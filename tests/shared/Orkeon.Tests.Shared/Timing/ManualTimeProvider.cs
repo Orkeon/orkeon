@@ -4,7 +4,7 @@ namespace Orkeon.Tests.Shared.Timing;
 /// A <see cref="TimeProvider"/> whose clock only moves when the test calls <see cref="Advance"/>:
 /// the timers due by then fire, timestamps follow. <c>Task.Delay(TimeSpan, TimeProvider,
 /// CancellationToken)</c> creates one of its timers, so a wait of a minute is exercised without
-/// waiting a minute. The shape of the clock of <c>Orkeon.Studio.Core.Tests</c>, with periodic timers
+/// waiting a minute. With periodic timers
 /// and <see cref="PendingTimers"/>, which tells a test that something is waiting on the clock.
 /// </summary>
 /// <remarks>

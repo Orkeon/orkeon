@@ -3,9 +3,9 @@ using System.Diagnostics.CodeAnalysis;
 namespace Orkeon.Tools.Abstractions.Auth;
 
 /// <summary>
-/// Where the variable an account names for its password or its client secret is read
-/// (STUDIO-68): the process environment, then the user's persistent scope —
-/// <c>HKCU\Environment</c> on Windows, where Orkeon Studio remembers a secret. Linux and macOS
+/// Where the variable an account names for its password or its client secret is read:
+/// the process environment, then the user's persistent scope —
+/// <c>HKCU\Environment</c> on Windows, where a client may remember a secret. Linux and macOS
 /// have no such scope, and <see cref="User"/> is then null. Read only, never written: a secret
 /// found in the user scope is not copied into the process, so what a run starts — a shell tool,
 /// an MCP server — inherits no secret it did not have. The seam of Infrastructure's

@@ -361,7 +361,7 @@ public class OpenAICompatibleProviderBaseAdditionalTests
     #region Local Server Tests
 
     /// <summary>
-    /// Characterisation (STUDIO-54 decision 4): the OpenAI dialect requires a key even for a local server.
+    /// Characterisation: the OpenAI dialect requires a key even for a local server.
     /// </summary>
     [Fact]
     [Trait("BR", "CH-08")]

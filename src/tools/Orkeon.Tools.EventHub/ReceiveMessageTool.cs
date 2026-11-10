@@ -84,7 +84,7 @@ public sealed class ReceiveMessageTool : ToolBase<ReceiveMessageRequest, Receive
 
             // Reading a mailbox is destructive — the hub auto-registers waiters, so a reader
             // competes with the legitimate owner for every message. A crew may therefore only
-            // read its *own* mailboxes: without this, receive_message(mailbox: "client://studio")
+            // read its *own* mailboxes: without this, receive_message(mailbox: "client://desk")
             // would let any agent siphon the traffic of an external peer the ACL guards on the
             // write side. The system caller (in-process host code, no crew pushed) stays
             // unrestricted — it is the process itself.

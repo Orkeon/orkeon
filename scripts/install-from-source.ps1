@@ -17,8 +17,8 @@
     4. installs that tree with the install.ps1 every archive carries, and marks the
        installation `source`, the channel `orkeon doctor` then names.
 
-  It installs what the released zip installs -- same layout, same launchers, Orkeon
-  Studio and esbuild included -- and nothing else: no runtime, no tool, no package is
+  It installs what the released zip installs -- same layout, same launchers,
+  esbuild included -- and nothing else: no runtime, no tool, no package is
   installed on the machine for you.
 
   Run it again after a `git pull`: the installation is replaced.
@@ -28,7 +28,7 @@
   needs PowerShell 7, and where to get it. A #Requires line would stop it without
   that second half.
 .PARAMETER AppSet
-  cli (the default): the `orkeon` CLI and Orkeon Studio. full: every launcher (the
+  cli (the default): the `orkeon` CLI. full: every launcher (the
   REPL, the service host).
 .PARAMETER InstallDir
   Passed to install.ps1. Default: %LOCALAPPDATA%\Programs\Orkeon.
@@ -204,7 +204,7 @@ if ($WhatIf) {
 
 # --- Build the tree ----------------------------------------------------------------------
 Write-Host ''
-Write-Host "==> Building the $rid tree (several minutes: the CLI and Orkeon Studio are each published self-contained)"
+Write-Host "==> Building the $rid tree (several minutes: the CLI is published self-contained)"
 Write-Host 'The first run restores NuGet packages from nuget.org and fetches the esbuild binary from'
 Write-Host 'registry.npmjs.org; a later run downloads nothing that is already cached.'
 try {

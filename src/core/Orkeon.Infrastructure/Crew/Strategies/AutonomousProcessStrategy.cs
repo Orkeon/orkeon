@@ -168,7 +168,7 @@ public sealed partial class AutonomousProcessStrategy : IProcessStrategy
                 : [];
 
             // The crew's tasks are handed out one after another, so the order is the
-            // sequential one: the declared order sorted on the dependencies (STUDIO-12 C2).
+            // sequential one: the declared order sorted on the dependencies.
             taskIds = await CrewTaskSequencer.ResolveAsync(
                 crew, _taskRepository, _logger, cancellationToken).ConfigureAwait(false);
             await DecisionPreflight.RefuseUnsupportedAsync(

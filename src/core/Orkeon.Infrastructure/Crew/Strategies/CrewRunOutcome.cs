@@ -12,7 +12,7 @@ namespace Orkeon.Infrastructure.Crew.Strategies;
 /// <summary>
 /// The outcome rule every orchestration mode applies (GAP-03): a crew with a failed task is a
 /// failed crew, and a task depending on one that did not succeed is skipped and counted as a
-/// failure. Sequential set that rule (STUDIO-12 C5a, LLM-11); the five other modes reported
+/// failure. Sequential set that rule; the five other modes reported
 /// success whatever their tasks did, so the runner's exit code depended on the mode. A mode
 /// that wants to tolerate a failure — Graph and its retries, Autonomous and its delegation —
 /// does so <b>before</b> recording it here, never by masking the crew's result.

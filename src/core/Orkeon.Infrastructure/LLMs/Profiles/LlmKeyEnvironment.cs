@@ -1,9 +1,9 @@
 namespace Orkeon.Infrastructure.LLMs.Profiles;
 
 /// <summary>
-/// Where <see cref="LlmSettings"/> reads the variable an <c>ApiKeyEnvVar</c> names (STUDIO-49):
+/// Where <see cref="LlmSettings"/> reads the variable an <c>ApiKeyEnvVar</c> names:
 /// the process environment, then the user's persistent scope — <c>HKCU\Environment</c> on
-/// Windows, where Orkeon Studio remembers a key; .NET reads it as absent elsewhere. Read only,
+/// Windows, where a client may remember a key; .NET reads it as absent elsewhere. Read only,
 /// never written: a key found in the user scope is not copied into the process, so what a run
 /// starts — a shell tool, an MCP server, the code sandbox — inherits no key it did not have.
 /// A seam rather than a static field, as the e-mail tools' <c>EmailEnvironment</c>: the suites

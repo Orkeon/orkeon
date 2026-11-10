@@ -205,7 +205,7 @@ public sealed class OpenRouterLlmProviderTests : IDisposable
         Assert.Equal("weighing", response.Metadata["reasoning_content"]);
         Assert.Equal(0.00042, Assert.IsType<double>(response.Metadata["cost"]));
         // OpenRouter bills in credits, and a credit is a dollar: the provider says so, so no
-        // reader downstream has to guess the unit (STUDIO-29).
+        // reader downstream has to guess the unit.
         Assert.Equal("USD", response.Metadata["cost_currency"]);
         Assert.Equal(0.0004, Assert.IsType<double>(response.Metadata["upstream_inference_cost"]));
         Assert.False(Assert.IsType<bool>(response.Metadata["is_byok"]));

@@ -127,7 +127,7 @@ public sealed class RunCommandDirectoryTests
     }
 
     /// <summary>
-    /// STUDIO-59: a team folder written by <c>forge promote</c> keeps its crew under
+    /// A team folder written by <c>forge promote</c> keeps its crew under
     /// <c>crew/</c> and one folder per mount point at its root. A mount point named
     /// <c>agents/</c> used to make the root the crew, and the run failed on the settings file
     /// the root never had. Handed the team folder, the runner loads <c>crew/</c>.

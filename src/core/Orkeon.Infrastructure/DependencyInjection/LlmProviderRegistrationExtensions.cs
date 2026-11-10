@@ -30,7 +30,7 @@ public static class LlmProviderRegistrationExtensions
     /// <see cref="IChatClient"/> — all three over one instance, metered for the host's
     /// <see cref="ILlmUsageSink"/> (<see cref="MeteredLlmProvider"/>) and limited by its
     /// <see cref="ILlmRateLimiter"/> (<see cref="RateLimitedLlmProvider"/>, GAP-38). A provider
-    /// registered any other way would spend tokens no meter sees (STUDIO-42), past every cap.
+    /// registered any other way would spend tokens no meter sees, past every cap.
     /// </summary>
     /// <param name="services">The service collection.</param>
     /// <param name="provider">Builds the provider, once, from the container.</param>

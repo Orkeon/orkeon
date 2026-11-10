@@ -61,4 +61,4 @@ an answer — prompting there would only hang.
 every inbound command, and the `client://` seat a watching process gets at the run's own
 EventHub, which lets agents write to it and it write back.
 
-Orkeon Studio's Launch screen is the same protocol with a window instead of a terminal.
+Any GUI client can show the same protocol with a window instead of a terminal.

@@ -253,7 +253,7 @@ internal static class DoctorCommand
         var baseUrl = Blank(section["BaseUrl"]);
         context = context with { HasLlmSection = true, Model = model, BaseUrl = baseUrl, SilentDefault = SilentAddress(section) };
 
-        // The key as a run resolves it (STUDIO-49) — LlmSettings, the reader the runners use,
+        // The key as a run resolves it — LlmSettings, the reader the runners use,
         // rather than a second reading of Llm:ApiKey that would miss ApiKeyEnvVar.
         LlmConfig settings;
         try
@@ -417,7 +417,7 @@ internal static class DoctorCommand
             return new DoctorCheckResult { Check = "llm-config", Status = StatusFail, Detail = error };
         }
 
-        // STUDIO-49: where the key comes from — the configuration, the variable ApiKeyEnvVar
+        // Where the key comes from — the configuration, the variable ApiKeyEnvVar
         // names, none —, never the key nor the variable's name; a reference set nowhere warns.
         var unresolved = llm.UnresolvedReferences.Contains(DefaultApiKeyReference, StringComparer.Ordinal);
         var provider = llm.ProviderDisplayName ?? "unrecognised";

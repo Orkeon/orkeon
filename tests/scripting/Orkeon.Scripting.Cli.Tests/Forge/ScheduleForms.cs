@@ -5,7 +5,7 @@ using Orkeon.Tests.Shared.Launchers;
 namespace Orkeon.Scripting.Cli.Tests.Forge;
 
 /// <summary>
-/// The forms a registration runs a team's launcher in (STUDIO-51, decision 6), as the schedule
+/// The forms a registration runs a team's launcher in, as the schedule
 /// suites expect them — written out here, never borrowed from the adapters they check: the
 /// Windows task read the way the operating system runs it, <c>ExecStart</c>'s and the cron line's
 /// quoting, and what an earlier version wrote.

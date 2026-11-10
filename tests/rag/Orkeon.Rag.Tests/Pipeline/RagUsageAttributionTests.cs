@@ -14,7 +14,7 @@ using Orkeon.Tests.Shared.Doubles;
 namespace Orkeon.Rag.Tests.Pipeline;
 
 /// <summary>
-/// STUDIO-42, the RAG family: every generation call a RAG pipeline makes — the HyDE probe,
+/// The RAG family: every generation call a RAG pipeline makes — the HyDE probe,
 /// the query variants, the listwise rerank, the complexity classifier, the retrieval grade,
 /// the grounded answer, the groundedness check — happens under the <c>rag</c> operation, and stays the work of
 /// the agent whose tool asked. The host's metered provider does the counting; the pipeline

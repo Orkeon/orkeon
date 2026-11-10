@@ -107,7 +107,7 @@ internal static partial class ExecutionLog
     [LoggerMessage(Level = LogLevel.Debug, Message = "ChatClient iteration {Iteration} for [{AgentRole}] → final response in {ElapsedMs}ms")]
     internal static partial void LogChatClientFinalResponse(ILogger logger, object agentRole, int iteration, long elapsedMs);
 
-    // The cap is named because it is the usual cause (STUDIO-17): a reasoning model spends the
+    // The cap is named because it is the usual cause: a reasoning model spends the
     // whole output budget thinking and answers empty, and the tool-free retry that follows can
     // only narrate a deliverable it was supposed to write with a tool. The journal has to say so
     // at the moment it happens, not leave the reader to infer it from a green run with no file.

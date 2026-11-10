@@ -24,7 +24,7 @@ internal sealed record ForgeScheduleProbe
 
     /// <summary>
     /// Whether the registration runs <see cref="Launcher"/> the way an earlier version registered it
-    /// — a Windows task naming <c>run.cmd</c> as its command (STUDIO-51) —: to reinstall.
+    /// — a Windows task naming <c>run.cmd</c> as its command —: to reinstall.
     /// </summary>
     public bool Outdated { get; init; }
 
@@ -58,7 +58,7 @@ internal sealed record ForgeScheduleOsOutcome(bool Changed, string? Refusal)
 internal sealed record ForgeScheduleTarget(string TeamDirectory, string ScheduleDirectory, string Launcher, IReadOnlyList<string> Names);
 
 /// <summary>
-/// One family of operating system's scheduler behind the schedule verbs (STUDIO-27, D-02): the
+/// One family of operating system's scheduler behind the schedule verbs: the
 /// Windows Task Scheduler, the systemd user manager, or the user's crontab. Every command goes
 /// through <see cref="IForgeOsCommands"/> as a binary and a list of arguments, never a shell;
 /// every name it acts on is one it is handed — computed by <see cref="NamesFor"/> at install,
@@ -107,7 +107,7 @@ internal static class ForgeScheduleAdapters
     /// The command a person runs to install <paramref name="teamDirectory"/>'s schedule by hand on
     /// <paramref name="platform"/> — the fallback every refusal carries, and the one the
     /// <c>promoted</c> event displays: for this machine, never written into a file — <c>FORGE.md</c>
-    /// names nothing of the machine (STUDIO-52). Displayed, never executed: what Orkeon itself runs
+    /// names nothing of the machine. Displayed, never executed: what Orkeon itself runs
     /// is the adapter's list of arguments.
     /// </summary>
     public static string ManualInstallCommand(ForgePromotePlatform platform, string teamDirectory, string artifactName)
@@ -147,7 +147,7 @@ internal sealed class WindowsTaskScheduleAdapter(IForgeOsCommands commands) : IF
 
     /// <summary>
     /// The program a task runs: <c>cmd.exe</c> itself, under the variable the Task Scheduler
-    /// expands (STUDIO-51, decision 6). A task naming <c>run.cmd</c> as its command had the
+    /// expands. A task naming <c>run.cmd</c> as its command had the
     /// Scheduler compose <c>cmd /c</c>'s line, whose quotes <c>cmd</c> keeps or strips by what the
     /// path holds — a <c>&amp;</c>, a <c>(</c> or a <c>^</c> could keep the team from starting.
     /// </summary>
@@ -463,7 +463,7 @@ internal sealed class SystemdUserScheduleAdapter(IForgeOsCommands commands, stri
     }
 
     /// <summary>
-    /// <c>ExecStart</c>'s value running <paramref name="launcher"/> (STUDIO-51, decision 6): one
+    /// <c>ExecStart</c>'s value running <paramref name="launcher"/>: one
     /// quoted word in which systemd reads a backslash and a quote as C escapes, a <c>%</c> as a
     /// specifier and a <c>$</c> as a variable — all four escaped, so a path holding them runs.
     /// </summary>
@@ -530,7 +530,7 @@ internal sealed class CronScheduleAdapter(IForgeOsCommands commands) : IForgeSch
     public static string Marker(string tag) => $"# {tag}";
 
     /// <summary>
-    /// The command of a cron line running <paramref name="launcher"/> (STUDIO-51, decision 6):
+    /// The command of a cron line running <paramref name="launcher"/>:
     /// between single quotes — the <c>/bin/sh</c> cron hands it to expands nothing there, a quote
     /// closed, escaped and reopened —, and every <c>%</c> escaped: it is cron's line separator.
     /// </summary>

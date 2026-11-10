@@ -14,7 +14,7 @@ namespace Orkeon.Infrastructure.Tests.LLMs;
 /// and body; <c>Llm:StreamIdleSeconds</c> bounds the silence between two lines; a stream closed
 /// before <c>message_stop</c> with no answer is a failed call, and one closed after some answer
 /// is that answer flagged <c>stream_truncated</c>. A reasoning model that thinks for minutes
-/// used to hang a Studio run past any timeout, then come back as an empty answer.
+/// used to hang a run past any timeout, then come back as an empty answer.
 /// </summary>
 public class AnthropicStreamBudgetTests
 {

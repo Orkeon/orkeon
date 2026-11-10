@@ -16,7 +16,7 @@ namespace Orkeon.Scripting.Cli.Commands.Run;
 /// Everything an observed run wires, in one place — because there are two hosts to wire it
 /// into. The YAML/directory path goes through the shared runner and the <c>.ork.ts</c> path
 /// builds its own host; the first version of this wiring lived inside the first path only,
-/// and <c>--events</c> on a script was silently a no-op: Studio launched, added the flag for
+/// and <c>--events</c> on a script was silently a no-op: a client launched it, added the flag for
 /// both dialects, and watched "nothing reported yet" forever.
 /// </summary>
 internal sealed class ObservedRunContext : IAsyncDisposable
@@ -237,8 +237,8 @@ internal sealed class ObservedRunContext : IAsyncDisposable
         await DisposeCoreAsync().ConfigureAwait(false);
 
         // W-08: the closing event carries what the run cost — duration, the token split,
-        // and the cache partition of the prompt side (null = not measured, never zero) — and,
-        // since STUDIO-42, how much of it the runtime estimated (null = all counted).
+        // and the cache partition of the prompt side (null = not measured, never zero) — and
+        // how much of it the runtime estimated (null = all counted).
         var waiting = exitCode == Orkeon.Constants.Cli.RunExitCodes.WaitingForInput;
         _events.Emit(RunEventKinds.RunFinished, new
         {

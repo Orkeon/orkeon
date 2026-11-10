@@ -8,7 +8,7 @@ using Orkeon.Tests.Shared.Timing;
 namespace Orkeon.Scripting.Cli.Tests;
 
 /// <summary>
-/// <c>orkeon email login --events jsonl</c> (STUDIO-70): the sign-in a program drives. Each step
+/// <c>orkeon email login --events jsonl</c>: the sign-in a program drives. Each step
 /// is one event line on standard output and nothing else is written there; the address the
 /// browser ended on is read as a plain line on standard input; closing that input aborts the
 /// sign-in, so a driver that goes away never leaves the verb waiting. Without the option the verb
@@ -73,7 +73,7 @@ public sealed partial class EmailCommandTests
         Assert.Equal(Program.ExitScriptError, exit);
         var error = Assert.Single(EventLines(console.Stdout));
         Assert.Equal(EmailEventKinds.Error, error.GetProperty("kind").GetString());
-        // The code is what a driver acts on: Studio answers it with its own « Sign in » button.
+        // The code is what a driver acts on: a client answers it with its own « Sign in » button.
         Assert.Equal("LoginRequired", error.GetProperty("code").GetString());
         Assert.Contains("needs an OAuth sign-in", error.GetProperty("message").GetString(), StringComparison.Ordinal);
         Assert.DoesNotContain("orkeon email check", console.Stderr, StringComparison.Ordinal);
@@ -317,7 +317,7 @@ public sealed partial class EmailCommandTests
     }
 
     /// <summary>
-    /// The vocabulary is declared once, for the CLI that writes it and Orkeon Studio that reads
+    /// The vocabulary is declared once, for the CLI that writes it and the clients that read
     /// it: the three journeys together write every declared kind, and no other.
     /// </summary>
     [Fact]

@@ -10,7 +10,7 @@ using static Orkeon.Scripting.Cli.Tests.Forge.ScheduleForms;
 namespace Orkeon.Scripting.Cli.Tests.Forge;
 
 /// <summary>
-/// The managed schedule (STUDIO-27): <c>forge schedule</c>, <c>forge schedule --check</c> and
+/// The managed schedule: <c>forge schedule</c>, <c>forge schedule --check</c> and
 /// <c>forge unschedule</c> over each of the three families — the Windows Task Scheduler, the
 /// systemd user manager, the crontab — through a hand-written double of the operating system.
 /// Nothing here ever runs schtasks, systemctl or crontab.
@@ -23,7 +23,7 @@ public sealed class ForgeSchedulingTests : IDisposable
     private readonly string _workspace =
         Path.Combine(Path.GetTempPath(), "orkeon-forge-schedule-" + Guid.NewGuid().ToString("N"));
 
-    /// <summary>A team folder the way Studio names one.</summary>
+    /// <summary>A team folder the way a client names one.</summary>
     private string Team => Path.Combine(_workspace, "teams", "ma-veille");
 
     /// <summary>The user unit directory the systemd adapter writes into — never the real one.</summary>
@@ -51,7 +51,7 @@ public sealed class ForgeSchedulingTests : IDisposable
     /// task « Orkeon ma-veille », the timer orkeon-ma-veille.timer, the cron line marked
     /// « # orkeon:ma-veille » — running its own launcher, and records what was installed —
     /// expression, family, names, folder, date — in schedule/installed.json, beside the artifacts
-    /// it describes (STUDIO-52): forge.json keeps the declared schedule alone.
+    /// it describes: forge.json keeps the declared schedule alone.
     /// </summary>
     [Theory]
     [MemberData(nameof(Families))]
@@ -85,7 +85,7 @@ public sealed class ForgeSchedulingTests : IDisposable
     }
 
     /// <summary>
-    /// STUDIO-52: the record of what was installed is read in schedule/installed.json and nowhere
+    /// The record of what was installed is read in schedule/installed.json and nowhere
     /// else — the check and the removal act on the names it holds; without it, the folder installed
     /// nothing as far as they know, and the OS is not even asked. The removal takes it with
     /// schedule/, and leaves forge.json declaring no schedule, as before.
@@ -380,8 +380,7 @@ public sealed class ForgeSchedulingTests : IDisposable
     }
 
     /// <summary>
-    /// DA-3: the card no longer asks a person to install the schedule — Studio installs it with the
-    /// user's consent, or <c>forge schedule</c> does. STUDIO-52: and it names nothing of the machine
+    /// DA-3: the card no longer asks a person to install the schedule — <c>forge schedule</c> does. And it names nothing of the machine
     /// that promoted the team — a folder made to be shared carries no path of it. The command by
     /// hand, for this machine, rides the <c>promoted</c> event, never a file.
     /// </summary>
@@ -400,7 +399,7 @@ public sealed class ForgeSchedulingTests : IDisposable
         var card = await File.ReadAllTextAsync(Path.Combine(Team, ForgePromoter.CardFileName), TestContext.Current.CancellationToken);
         Assert.Contains("`orkeon forge schedule .`", card, StringComparison.Ordinal);
         Assert.Contains("`orkeon forge unschedule .`", card, StringComparison.Ordinal);
-        Assert.Contains("Orkeon Studio installe la planification avec votre accord", card, StringComparison.Ordinal);
+        Assert.Contains("En ligne de commande, depuis ce dossier", card, StringComparison.Ordinal);
         Assert.DoesNotContain("installez l'artefact vous-même", card, StringComparison.Ordinal);
         Assert.DoesNotContain("À la main", card, StringComparison.Ordinal);
         Assert.DoesNotContain(manual, card, StringComparison.Ordinal);
@@ -483,7 +482,7 @@ public sealed class ForgeSchedulingTests : IDisposable
 
     /// <summary>
     /// A copy of a scheduled team, made by hand, carries its original's schedule/ — the record of what
-    /// was installed included, with the folder it was made for (STUDIO-52). The registration it names
+    /// was installed included, with the folder it was made for. The registration it names
     /// is the original's, which still claims it: the copy checks absent, its removal leaves the
     /// original's in place, and installing it registers one of its own.
     /// </summary>
@@ -520,7 +519,7 @@ public sealed class ForgeSchedulingTests : IDisposable
     }
 
     /// <summary>
-    /// STUDIO-52: an install regenerates the artifacts of a copy or of a moved folder — and keeps the
+    /// An install regenerates the artifacts of a copy or of a moved folder — and keeps the
     /// record of what was installed, read before the regeneration: the system refusing the new
     /// registration afterwards forgets nothing. The copy still checks as a copy; the moved folder
     /// still knows the names it installed under, which the next install removes.
@@ -606,7 +605,7 @@ public sealed class ForgeSchedulingTests : IDisposable
 
     /// <summary>
     /// A re-adoption rewrites forge.json and schedule/ and keeps the record of what was installed —
-    /// the names are the only way back to the registration (STUDIO-52: schedule/installed.json, the
+    /// the names are the only way back to the registration (Schedule/installed.json, the
     /// one file of schedule/ it keeps). One that drops the schedule touches no OS: it warns that the
     /// registration still runs the team, and the check calls it stale until it is removed.
     /// </summary>
@@ -704,7 +703,7 @@ public sealed class ForgeSchedulingTests : IDisposable
         Assert.Contains("orkeon-ma-veille-copy.timer", os.EnabledUnits);
     }
 
-    // ── STUDIO-51: the line that runs a scheduled launcher ──
+    // ── The line that runs a scheduled launcher ──
 
     /// <summary>
     /// Decision 6: the task runs <c>cmd.exe</c> itself — <c>/d</c> no AutoRun command, <c>/v:off</c>
@@ -734,7 +733,7 @@ public sealed class ForgeSchedulingTests : IDisposable
 
     /// <summary>
     /// A task an earlier version registered — <c>run.cmd</c> as its command, whose quotes
-    /// <c>cmd /c</c> keeps or strips by what the path holds — reads « to reinstall », which Studio's
+    /// <c>cmd /c</c> keeps or strips by what the path holds — reads « to reinstall », which the
     /// card offers; installing again writes the current form.
     /// </summary>
     [Fact]
@@ -944,7 +943,7 @@ public sealed class ForgeSchedulingTests : IDisposable
         _ => (os.Crontab ?? "").Split('\n').Count(line => line.Contains("# orkeon:", StringComparison.Ordinal)),
     };
 
-    /// <summary>Where <c>forge schedule</c> records what it installed (STUDIO-52).</summary>
+    /// <summary>Where <c>forge schedule</c> records what it installed.</summary>
     private static string InstallationRecord(string team) =>
         Path.Combine(team, ConventionalNames.ScheduleDirectory, ConventionalNames.ScheduleInstallationFile);
 

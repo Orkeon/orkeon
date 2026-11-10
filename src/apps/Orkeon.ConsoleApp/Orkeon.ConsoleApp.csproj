@@ -40,7 +40,7 @@
   <ItemGroup>
     <!-- ADR-009: the session context-window key, shared with Orkeon.Infrastructure. -->
     <ProjectReference Include="..\..\constants\Orkeon.Constants.Configuration\Orkeon.Constants.Configuration.csproj" />
-    <!-- STUDIO-49 (decision 10): the REPL reads the settings the runners read — the global file
+    <!-- The REPL reads the settings the runners read — the global file
          `orkeon init` writes (RunnerSettings.GetGlobalSettingsPath), then the ORKEON_ layer. -->
     <ProjectReference Include="..\..\hosting\Orkeon.Hosting\Orkeon.Hosting.csproj" />
     <ProjectReference Include="..\..\cli\Orkeon.Cli.Abstractions\Orkeon.Cli.Abstractions.csproj" />

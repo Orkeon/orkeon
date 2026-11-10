@@ -42,7 +42,7 @@ llm:                      # Crew-default LLM, merged FIELD BY FIELD under each a
   temperature: float
 
 links:                    # EventHub ACL (optional) — who this crew may talk to on the hub
-  - to: string            # The target crew's name:, verbatim — or "client:<name>" for an external peer (e.g. Studio)
+  - to: string            # The target crew's name:, verbatim — or "client:<name>" for an external peer (e.g. a desktop front-end)
     direction: string     # "outbound" (default) | "inbound" | "bidirectional" (alias "both") — an unreadable value drops the entry with a warning
     allowed_topics: [string] # Omitted or empty = every topic
 

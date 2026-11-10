@@ -499,10 +499,10 @@ class GeneratorTests(unittest.TestCase):
         for pack in (netcore, desktop):
             self.fx.runtime_pack(pack, "10.0.9")
         to = self.fx.root / "stage" / "licenses"
-        studio = self.fx.published("studio", f"{netcore}/10.0.9", f"{desktop}/10.0.9", rid="win-x64")
+        desktopapp = self.fx.published("desktopapp", f"{netcore}/10.0.9", f"{desktop}/10.0.9", rid="win-x64")
         cli = self.fx.published("orkeon", f"{netcore}/10.0.9", rid="win-x64")
         (cli / "orkeon.other.deps.json").write_text(_deps(f"{netcore}/10.0.9", rid="win-x64"), encoding="utf-8")
-        self.assertEqual(0, self.fx.runtime_notices(studio, to)[0])
+        self.assertEqual(0, self.fx.runtime_notices(desktopapp, to)[0])
         code, out, err = self.fx.runtime_notices(cli, to)
         self.assertEqual(0, code, err)
         self.assertEqual(1, out.count(f"{netcore} 10.0.9:"))

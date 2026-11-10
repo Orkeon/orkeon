@@ -7,7 +7,7 @@ namespace Orkeon.Scripting.Cli.Commands.Run;
 /// the vocabulary.
 /// <para>
 /// The declarations themselves live in the satellite because the process that READS this stream
-/// - Orkeon Studio - cannot reference this project, and used to carry its own copy. The two
+/// - a client - cannot reference this project, and used to carry its own copy. The two
 /// drifted: four kinds emitted here were unknown there, and an unknown kind is silently ignored
 /// rather than reported.
 /// </para>

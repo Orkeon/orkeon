@@ -5,11 +5,11 @@ using Orkeon.Domain.FileSystem;
 namespace Orkeon.Scripting.Cli.Commands.Forge;
 
 /// <summary>
-/// One folder of the team (STUDIO-46): a virtual root its agents address, whether they read
+/// One folder of the team: a virtual root its agents address, whether they read
 /// it or write to it, and why. The forge LLM extracts the list from the request into the
 /// brief (<c>folders</c>); the user confirms it (<c>folders.confirmed</c>); from then on it is
 /// the one list every consumer reads — the blueprint prompt, the deliverable check, the trial
-/// bench's mounts, the promoted team's launcher and Studio's sidecar.
+/// bench's mounts, the promoted team's launcher and the team sidecar.
 /// </summary>
 internal sealed record ForgeFolder
 {
@@ -79,7 +79,7 @@ internal sealed record ForgeTrialMount(ForgeFolder Folder, string PhysicalPath)
 }
 
 /// <summary>
-/// The rules of the folder list (STUDIO-46): what a valid list is, the defaults when the
+/// The rules of the folder list: what a valid list is, the defaults when the
 /// request names none, which list a session uses, and where each folder lands for the trial.
 /// </summary>
 internal static class ForgeFolders
@@ -109,7 +109,7 @@ internal static class ForgeFolders
     /// <summary>
     /// The structural rules of a list: absolute one-segment paths the mount grammar can spell,
     /// no reserved root, a known role, no root twice. An empty list is a valid one, and so is a
-    /// list with no output (STUDIO-57): a team that sends mails from what it reads writes no
+    /// list with no output: a team that sends mails from what it reads writes no
     /// file, and its result is what it did — the run's own output, which the judge reads.
     /// <paramref name="where"/> prefixes each message (<c>folders</c> in a brief).
     /// </summary>
@@ -175,7 +175,7 @@ internal static class ForgeFolders
     /// <summary>
     /// The folders proposed when the request names none: <c>/workspace</c> to read, only when
     /// the team reads files (the brief's <c>readsFiles</c>; when the assistant did not say,
-    /// when something comes in — STUDIO-57: a team given a URL or a text reads no folder), and
+    /// when something comes in: a team given a URL or a text reads no folder), and
     /// <c>/output</c> to write — the two roots a team had before the list existed, now a
     /// proposal the user confirms rather than a default nobody chose. Each purpose is said in
     /// the brief's language.
@@ -232,7 +232,7 @@ internal static class ForgeFolders
     /// The folders of a confirmed list the session holds for the team — the ones bound to no
     /// directory, kept «inside the team» — each with its session directory
     /// (<c>folders/&lt;name&gt;</c>), created here so the user can drop files in it before the
-    /// trial (STUDIO-57): a folder that exists is one an explorer can open.
+    /// trial: a folder that exists is one an explorer can open.
     /// </summary>
     public static IReadOnlyList<ForgeFolder> Hold(ForgeSession session, IReadOnlyList<ForgeFolder> folders)
     {
@@ -313,7 +313,7 @@ internal static class ForgeFolders
 
     /// <summary>
     /// The list a session's team uses: the confirmed one — empty included, when the user kept
-    /// no folder at all (STUDIO-57); for a session that never confirmed one — rebuilt by
+    /// no folder at all; for a session that never confirmed one — rebuilt by
     /// <c>forge reopen</c> from a team folder — the brief's, else what its plan addresses (a
     /// reading agent reads <c>/workspace</c>, each deliverable root is written).
     /// </summary>
@@ -346,7 +346,7 @@ internal static class ForgeFolders
     /// the run's snapshot takes it from there. An input reads the directory the user bound
     /// behind it; else the first unbound input reads <c>--read</c> when one is given; else the
     /// session's <c>folders/&lt;name&gt;</c> — the folder «inside the team», readable before the
-    /// team exists (the user drops files in it, STUDIO-57) and moved into it at the adoption.
+    /// team exists (the user drops files in it) and moved into it at the adoption.
     /// Only a session that never confirmed a list — rebuilt from a team folder, its folders
     /// derived from the plan — keeps reading the workspace behind <c>/workspace</c>, as it did
     /// before the list existed. Every session directory is created here.

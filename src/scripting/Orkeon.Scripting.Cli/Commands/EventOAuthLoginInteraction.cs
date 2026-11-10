@@ -17,7 +17,7 @@ internal interface IOAuthLoginEvents
 }
 
 /// <summary>
-/// The sign-in a program drives (STUDIO-70), shared by <c>orkeon email login</c> and
+/// The sign-in a program drives, shared by <c>orkeon email login</c> and
 /// <c>orkeon drive login</c> with <c>--events jsonl</c>: each step is an event line, and the redirect
 /// address is whatever line the driver writes on standard input — a line that is not one is
 /// answered by an event too, never by silence. That input is read from the start, on a thread

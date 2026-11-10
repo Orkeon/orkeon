@@ -94,7 +94,7 @@ internal sealed class ForgeCrewAssistant : IForgeAssistant
     /// Builds the assistant over the engine host's services. The pack must already be
     /// materialized (<see cref="ForgePack.Ensure"/>) and the session directory mounted at
     /// <paramref name="sessionVirtualRoot"/>. <paramref name="reference"/> is the use case the
-    /// composition starts from (STUDIO-40), when there is one.
+    /// composition starts from, when there is one.
     /// </summary>
     public ForgeCrewAssistant(
         IServiceProvider services,
@@ -119,7 +119,7 @@ internal sealed class ForgeCrewAssistant : IForgeAssistant
         // descriptions — a closed list the blueprint prompt shows and validation enforces.
         _crewTools = ForgeSandbox.SelectCrewTools(tools);
 
-        // The reference's structure, cut down to that very catalogue (STUDIO-40, D-02): read
+        // The reference's structure, cut down to that very catalogue: read
         // once, since neither the crew file nor the catalogue changes during a session.
         _reference = reference;
         _language = language;
@@ -285,7 +285,7 @@ internal sealed class ForgeCrewAssistant : IForgeAssistant
             crewTools = isBrief
                 ? null
                 : _crewTools.Select(tool => new { name = tool.Name, description = tool.Description }),
-            // The use case the composition starts from (STUDIO-40, D-02): its structure, for the
+            // The use case the composition starts from: its structure, for the
             // blueprint phase only — the interview's brief is the user's need, not the example's.
             reference = isBrief || _reference is null
                 ? null

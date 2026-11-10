@@ -1,4 +1,4 @@
-# Golden queries of `orkeon usecases search` (STUDIO-38 D-08).
+# Golden queries of `orkeon usecases search`.
 #
 # Each case is a need phrased the way a user types it, in one of the five catalogue languages,
 # and the ids of examples/usecases.json a good answer must hold in its first five results.
@@ -6,8 +6,8 @@
 #
 # UseCaseGoldenSetTests runs every case twice, BM25 alone and hybrid (BM25 + the local English
 # embeddings fused by RRF), and reports recall@5 per language and per mode: the measure that
-# decides, language by language, whether meaning is fused in (D-02). No threshold is enforced
-# yet: a floor is set once the sheets carry their texts (STUDIO-37) and a first real
+# decides, language by language, whether meaning is fused in. No threshold is enforced
+# yet: a floor is set once the sheets carry their texts and a first real
 # measurement exists.
 name: usecases-golden
 k: 5

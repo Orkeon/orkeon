@@ -4,8 +4,7 @@ namespace Orkeon.Tests.Shared.Launchers;
 
 /// <summary>
 /// How a Windows program built on the Microsoft C runtime — <c>orkeon.exe</c>, a .NET apphost —
-/// splits the command line <c>CreateProcess</c> hands it into <c>argv</c> (STUDIO-51 § 2, reading
-/// 4): a <c>"</c> opens or closes, <c>2n</c> backslashes before a <c>"</c> give <c>n</c> and a
+/// splits the command line <c>CreateProcess</c> hands it into <c>argv</c> (reading 4): a <c>"</c> opens or closes, <c>2n</c> backslashes before a <c>"</c> give <c>n</c> and a
 /// delimiter, <c>2n+1</c> give <c>n</c> and a literal <c>"</c>, a backslash anywhere else is
 /// literal, and <c>""</c> inside quotes is one literal <c>"</c>. A model, not the CRT: the
 /// Integration suite holds it against .NET on Linux, which splits

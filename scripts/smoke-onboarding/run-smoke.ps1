@@ -30,15 +30,6 @@
        second install runs install.ps1 in the PowerShell that runs this smoke,
        so both PowerShell editions go through it across the two CI steps;
     4. a fresh session resolves `orkeon` from that PATH entry alone;
-   4b. Orkeon Studio shipped and starts: bin\orkeon-studio.cmd and
-       libexec\orkeon-studio\Orkeon.Studio.exe are installed, and
-       `orkeon-studio --smoke-exit` opens the WPF window, lets it render and
-       exits 0 (STUDIO-08, spec section 8.4) -- the assertions live in
-       lib\studio-windows.ps1, shared with the MSI job;
-   4c. while a program of the installation is running (Orkeon Studio, left
-       open), install.ps1 refuses to install and refuses to uninstall, names
-       the process, and leaves the installation in place intact: the same
-       tree, and `orkeon --version` still answers;
     5. `orkeon init --provider none --force` writes %APPDATA%\Orkeon (WIN-02);
     6. `orkeon doctor --json` reports no fail, and the three payload-backed checks
        are green rather than merely non-failing -- doctor only *warns* on a missing
@@ -91,8 +82,6 @@ $ProgressPreference = 'SilentlyContinue'
 
 $fixtures = Join-Path $PSScriptRoot 'fixtures'
 
-# Orkeon Studio assertions, shared with the msi job (see the file's header).
-. (Join-Path $PSScriptRoot 'lib\studio-windows.ps1')
 # Notices assertions, shared with the msi job and the two service smokes.
 . (Join-Path $PSScriptRoot 'lib\notices-windows.ps1')
 
@@ -377,10 +366,6 @@ $expected = New-Object System.Collections.ArrayList
 [void]$expected.Add((Join-Path $archiveRoot 'install.cmd'))
 [void]$expected.Add((Join-Path $archiveRoot 'VERSION'))
 [void]$expected.Add((Join-Path $appDir 'orkeon.exe'))
-# Orkeon Studio rides in the same win-x64 cli staging tree (STUDIO-07): its
-# launcher and its self-contained WPF apphost are part of the archive contract.
-[void]$expected.Add((Join-Path (Join-Path $archiveRoot 'bin') 'orkeon-studio.cmd'))
-[void]$expected.Add((Join-Path (Join-Path (Join-Path $archiveRoot 'libexec') 'orkeon-studio') 'Orkeon.Studio.exe'))
 [void]$expected.Add((Join-Path $esbuildDir 'esbuild.exe'))
 [void]$expected.Add((Join-Path $modelDir 'model.onnx'))
 [void]$expected.Add((Join-Path $modelDir 'vocab.txt'))
@@ -534,83 +519,6 @@ if ($resolved -and $resolved.Source -and $resolved.Source.StartsWith($installDir
     Step-Fail 'resolve' "orkeon did not resolve to the install directory (got: $where)"
     # Fall back to the known path so the remaining steps still produce signal.
     $script:OrkeonCmd = Join-Path $binDir 'orkeon.cmd'
-}
-
-# ---------------------------------------------------------------------------- #
-# 4b. Orkeon Studio -- installed, and it actually starts (STUDIO-08)
-# ---------------------------------------------------------------------------- #
-# The ZIP channel has no Start-menu shortcut (that is the MSI's own addition), so
-# only the payload and the start/exit smoke are asserted here.
-Write-Section 'orkeon-studio --smoke-exit'
-$studio = Invoke-OrkeonStudioWindowsSmoke -InstallRoot $installDir -LogDir $script:LogDir
-foreach ($note in $studio.Notes) { Write-Info $note }
-if ($studio.Problems.Count -gt 0) {
-    Step-Fail 'studio' ($studio.Problems -join '; ')
-} else {
-    Step-Pass 'studio' 'orkeon-studio.cmd + Orkeon.Studio.exe installed; window opened and closed, exit 0'
-}
-
-# ---------------------------------------------------------------------------- #
-# 4c. A program of the installation is running: the installer refuses, intact
-# ---------------------------------------------------------------------------- #
-# Windows does not delete a running executable: without install.ps1's guard the
-# delete-and-replace stops half-way through the tree. Orkeon Studio left open is
-# the case a user meets; started here without --smoke-exit, it stays open.
-Write-Section 'install.ps1 while Orkeon Studio is running'
-$studioExe = Join-Path $installDir 'libexec\orkeon-studio\Orkeon.Studio.exe'
-if (-not (Test-Path -LiteralPath $studioExe)) {
-    Step-Fail 'running-install' "nothing to leave running: $studioExe is missing"
-} else {
-    $treeBefore = @(Get-TreeListing $installDir)
-    $studioProcess = Start-Process -FilePath $studioExe -PassThru
-    try {
-        # Past its startup: a process that exits at once would prove nothing.
-        Start-Sleep -Seconds 5
-        if ($studioProcess.HasExited) {
-            Step-Fail 'running-install' 'Orkeon Studio exited before the installer could meet it'
-        } else {
-            $named = [regex]::Escape("Orkeon.Studio (PID $($studioProcess.Id))")
-            foreach ($attempt in @(
-                    @{ Label = 'running-install';   What = 'install';   Script = $installPs1;                             Extra = @{} },
-                    @{ Label = 'running-uninstall'; What = 'uninstall'; Script = (Join-Path $installDir 'install.ps1'); Extra = @{ Uninstall = $true } })) {
-                $refusal = $null
-                $extra = $attempt.Extra
-                try {
-                    & $attempt.Script -InstallDir $installDir @extra
-                } catch {
-                    $refusal = $_.Exception.Message
-                }
-                $difference = Compare-TreeListing $treeBefore @(Get-TreeListing $installDir)
-                if (-not $refusal) {
-                    Step-Fail $attempt.Label "the $($attempt.What) went ahead while Orkeon Studio was running"
-                } elseif ($refusal -notmatch $named) {
-                    Step-Fail $attempt.Label "refused, but without naming the running process: $refusal"
-                } elseif ($difference) {
-                    Step-Fail $attempt.Label "refused, but the installation changed: $difference"
-                } else {
-                    Step-Pass $attempt.Label "refused, names Orkeon.Studio (PID $($studioProcess.Id)), $($treeBefore.Count) files untouched"
-                }
-            }
-        }
-    } finally {
-        # Close what this step opened, and whatever it started in turn, before
-        # the steps below -- the real uninstall among them -- meet it.
-        foreach ($leftover in @(Get-ProcessesUnder $installDir)) {
-            Stop-Process -Id $leftover.Id -Force -ErrorAction SilentlyContinue
-        }
-        $deadline = (Get-Date).AddSeconds(30)
-        while (@(Get-ProcessesUnder $installDir).Count -gt 0 -and (Get-Date) -lt $deadline) {
-            Start-Sleep -Milliseconds 500
-        }
-    }
-
-    $stillThere = Invoke-Orkeon -Label 'version-after-refusal' -Arguments @('--version')
-    if ($stillThere.ExitCode -eq 0 -and $stillThere.StdOut -match [regex]::Escape($version)) {
-        Step-Pass 'running-intact' "orkeon --version still answers $version"
-    } else {
-        Write-Tail $stillThere.ErrFile
-        Step-Fail 'running-intact' "orkeon --version exited $($stillThere.ExitCode) after the refusals: '$($stillThere.StdOut.Trim())'"
-    }
 }
 
 # ---------------------------------------------------------------------------- #

@@ -7,8 +7,8 @@ namespace Orkeon.Infrastructure.Constants.Llm;
 /// an OpenAI-compatible API. It is not an <see cref="LlmEndpoints"/> provider (no dedicated
 /// <c>ILlmProvider</c>: it is driven through the OpenAI dialect), but its endpoint, model and
 /// placeholder key are written by <c>orkeon init</c>, shipped in
-/// <c>examples/appsettings/appsettings.json</c> and written by Orkeon Studio. Each is an alias of
-/// the <c>Orkeon.Constants.Llm</c> satellite's value, which Studio reads too, so the three writers
+/// <c>examples/appsettings/appsettings.json</c>. Each is an alias of
+/// the <c>Orkeon.Constants.Llm</c> satellite's value, so the writers
 /// cannot drift apart.
 /// </summary>
 public static class DockerModelRunnerDefaults
@@ -21,7 +21,7 @@ public static class DockerModelRunnerDefaults
 
     /// <summary>
     /// The endpoint authenticates nothing, but the OpenAI dialect wants a key: this
-    /// placeholder is what the committed template, <c>orkeon init</c> and Studio write.
+    /// placeholder is what the committed template, and <c>orkeon init</c> write.
     /// </summary>
     public const string ApiKeyPlaceholder = LlmProviderDefaultModels.DockerModelRunnerApiKeyPlaceholder;
 }

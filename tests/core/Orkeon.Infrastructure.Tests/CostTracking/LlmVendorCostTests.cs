@@ -9,8 +9,8 @@ using Orkeon.Infrastructure.Tests.Doubles;
 namespace Orkeon.Infrastructure.Tests.CostTracking;
 
 /// <summary>
-/// What a vendor billed for one call, read back from the metadata the provider wrote
-/// (STUDIO-29). Absent means unknown — never free — and a billed 0 is a free call that must
+/// What a vendor billed for one call, read back from the metadata the provider wrote.
+/// Absent means unknown — never free — and a billed 0 is a free call that must
 /// stay 0 all the way to the wire.
 /// </summary>
 public sealed class LlmVendorCostTests

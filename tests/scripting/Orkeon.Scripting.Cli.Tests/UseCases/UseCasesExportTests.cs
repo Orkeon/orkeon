@@ -5,8 +5,8 @@ using Orkeon.Scripting.Cli.Commands.UseCases;
 namespace Orkeon.Scripting.Cli.Tests.UseCases;
 
 /// <summary>
-/// <c>orkeon usecases export</c> (STUDIO-41, D-02): one use case written as a team folder Orkeon
-/// Studio imports as it is — the crew under <c>crew/</c>, the sample data, a folder behind each
+/// <c>orkeon usecases export</c>: one use case written as a team folder a client
+/// imports as it is — the crew under <c>crew/</c>, the sample data, a folder behind each
 /// mount, and the sidecar that names the team and records its mounts. Driven in-process on the
 /// real disk: the five-sheet fixture through the options' seam, the embedded catalogue through
 /// the grammar.
@@ -52,12 +52,12 @@ public sealed class UseCasesExportTests : IDisposable
     }
 
     /// <summary>
-    /// The drift pin of the sidecar's shape, the CLI's half: Studio's <c>StudioTeamMetadata</c>
-    /// reads these very names, and <c>UseCaseImporterTests.The_sidecar_the_cli_writes_is_read_whole</c>
-    /// reads this very text on Studio's side — the two cannot reference each other.
+    /// The drift pin of the sidecar's shape, the CLI's half: the sidecar's readers
+    /// expect these very names, and a golden test on their side reads this very text — the two
+    /// cannot reference each other.
     /// </summary>
     [Fact]
-    public async Task The_sidecar_is_written_in_the_shape_studio_reads()
+    public async Task The_sidecar_is_written_in_the_shape_its_readers_expect()
     {
         using var console = new TestConsole();
         var destination = Path.Combine(_root, "digest");
@@ -84,7 +84,7 @@ public sealed class UseCasesExportTests : IDisposable
         using var console = new TestConsole();
         var destination = Path.Combine(_root, "digest");
 
-        // Studio says «zh», the catalogue «zh-Hans»: both are read.
+        // A client says «zh», the catalogue «zh-Hans»: both are read.
         var exit = await UseCasesCommand.ExecuteExportAsync(console, Export(UseCaseFixtures.MailDigest, destination, "zh"));
 
         Assert.Equal(Program.ExitOk, exit);

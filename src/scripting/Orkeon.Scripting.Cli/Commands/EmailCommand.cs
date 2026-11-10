@@ -46,7 +46,7 @@ internal sealed class EmailLoginCommandOptions : EmailCommandOptionsBase
 
     /// <summary><c>--events jsonl</c>: the sign-in as protocol lines on stdout, for a program that drives it.</summary>
     [Option("events", Required = false,
-        HelpText = "jsonl: write each step of the sign-in as one event line on stdout, read the pasted redirect address on stdin, and abort when stdin closes (the way Orkeon Studio drives it).")]
+        HelpText = "jsonl: write each step of the sign-in as one event line on stdout, read the pasted redirect address on stdin, and abort when stdin closes (the way a client that drives the CLI uses it).")]
     public string? Events { get; set; }
 
     /// <summary>Test seam: the terminal interaction.</summary>
@@ -72,7 +72,7 @@ internal sealed class EmailCheckCommandOptions : EmailCommandOptionsBase
 
     /// <summary><c>--events jsonl</c>: the verdict as one event line on stdout, for a program that drives the check.</summary>
     [Option("events", Required = false,
-        HelpText = "jsonl: write the verdict as one event line on stdout — the folder counts, or the error with its code (the way Orkeon Studio drives it).")]
+        HelpText = "jsonl: write the verdict as one event line on stdout — the folder counts, or the error with its code (the way a client that drives the CLI uses it).")]
     public string? Events { get; set; }
 }
 
@@ -130,7 +130,7 @@ internal static class EmailCommand
     }
 
     /// <summary>
-    /// Signs an account in. With <c>--events jsonl</c> (STUDIO-70) the steps are event lines on
+    /// Signs an account in. With <c>--events jsonl</c> the steps are event lines on
     /// standard output for a program that drives the verb, and that program's hold on it is the
     /// verb's standard input: the pasted redirect address is read there, and its end aborts the
     /// sign-in — the loopback wait has no deadline, so a driver that goes away must not leave it
@@ -216,7 +216,7 @@ internal static class EmailCommand
                 .ContinueWith(_ => Program.ExitScriptError, TaskScheduler.Default);
         }
 
-        // With events (STUDIO-69), the verdict is one event line — the counts on success, the
+        // With events, the verdict is one event line — the counts on success, the
         // error with its code on a refusal — so that a driver reads what happened instead of a sentence.
         var events = options.Events is null ? null : new EmailEventWriter(console.Output);
         return GuardedAsync(console, "check", options, async (administration, ct) =>

@@ -118,7 +118,7 @@ jobs:
             ~/.nuget/packages
           key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj', '**/Directory.Packages.props') }}
           restore-keys: nuget-${{ runner.os }}-
-      # The CLI set for the two linux RIDs only: the orkeon CLI and the two Studio TUIs the
+      # The CLI set for the two linux RIDs only: the orkeon CLI the
       # package carries, cross-published from this x64 runner like release.yml does. The
       # staging trees are kept for package-deb.sh --stage; the archives are by-products.
       - name: Publish the CLI payloads (linux-x64, linux-arm64)

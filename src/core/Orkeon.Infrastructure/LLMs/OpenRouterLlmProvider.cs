@@ -83,7 +83,7 @@ public class OpenRouterLlmProvider : OpenAICompatibleProviderBase
     /// <summary>
     /// OpenRouter bills in credits, and one credit is one US dollar: the charge in
     /// <c>usage.cost</c> is a dollar amount, and this provider says so rather than leaving
-    /// every reader to guess (STUDIO-29).
+    /// every reader to guess.
     /// </summary>
     protected override string? CostCurrency => "USD";
 

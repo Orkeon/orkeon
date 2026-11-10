@@ -280,7 +280,7 @@ public sealed class ForgeCommandTests : IDisposable
         Assert.Equal("trier mes mails", quoted.Need);
     }
 
-    /// <summary>The spec's spelling, the one Studio always sends, still consumes its value.</summary>
+    /// <summary>The spec's spelling, still consumes its value.</summary>
     [Fact]
     public void Events_jsonl_still_takes_its_value()
     {
@@ -477,9 +477,9 @@ public sealed class ForgeCommandTests : IDisposable
 
     /// <summary>
     /// A settings file naming <c>/output</c> or <c>/workspace</c> is the normal case, not a
-    /// mistake: <c>/output</c> is an ordinary mount for a run and the name Studio gives a
+    /// mistake: <c>/output</c> is an ordinary mount for a run and the name a
     /// team's write folder, declared in the allowed folders the moment the wizard associates
-    /// one. The forge's own mounts are placed by root against it (STUDIO-15 D-01), so each
+    /// one. The forge's own mounts are placed by root against it, so each
     /// entry is replaced for the trial, said so in the log, and the cycle goes on to the host
     /// — which here refuses for want of an LLM, the proof that nothing refused it earlier.
     /// <para>
@@ -488,7 +488,7 @@ public sealed class ForgeCommandTests : IDisposable
     /// "Duplicate virtual paths: /output" out of a DI factory. That refusal outlived its
     /// reason: the team composer writes <c>/output</c> into the settings the moment a team
     /// produces a deliverable, and the wizard declares the folder associated at step 1 under
-    /// that very name — so it stopped the first trial of every Studio team on a real folder.
+    /// that very name — so it stopped the first trial of every team on a real folder.
     /// </para>
     /// </summary>
     [Fact]
@@ -576,7 +576,7 @@ public sealed class ForgeCommandTests : IDisposable
     }
 
     /// <summary>
-    /// #119: <c>--lang</c> names the language the assistant converses in — Studio's interface
+    /// #119: <c>--lang</c> names the language the assistant converses in — the client's interface
     /// language — for a new session or a resume, the two verbs that hold a conversation; one of
     /// the five languages of the interface, nothing else.
     /// </summary>

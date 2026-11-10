@@ -169,7 +169,7 @@ internal sealed class TestStage : IForgeStageRunner
 
     /// <summary>
     /// Moves what the run wrote into <c>runs/&lt;n&gt;/folders/&lt;name&gt;</c>, one directory per
-    /// confirmed output folder (STUDIO-46) — the inputs the session holds stay where they are.
+    /// confirmed output folder — the inputs the session holds stay where they are.
     /// </summary>
     private static void SnapshotOutputs(ForgeSession session, string runDirectory)
     {
@@ -314,7 +314,7 @@ internal sealed class DiagnoseStage : IForgeStageRunner
         }
 
         // Every deliverable the blueprint promised must exist in the run's snapshot, under the
-        // output folder it lands in (STUDIO-46): /outmd/x.md is runs/<n>/folders/outmd/x.md.
+        // output folder it lands in: /outmd/x.md is runs/<n>/folders/outmd/x.md.
         var blueprint = session.TryLoadArtifact<ForgeBlueprint>(ForgeSession.BlueprintFileName);
         var folders = ForgeFolders.Of(session);
         foreach (var task in blueprint?.Tasks ?? [])

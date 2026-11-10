@@ -5,8 +5,8 @@ using Orkeon.Tests.Shared.Launchers;
 namespace Orkeon.Domain.Tests.FileSystem;
 
 /// <summary>
-/// STUDIO-51: one composer writes a team's <c>run.cmd</c> and <c>run.sh</c> for both writers —
-/// <c>forge promote</c> and Orkeon Studio. <c>cmd</c> reads <c>run.cmd</c> first and the runner
+/// One composer writes a team's <c>run.cmd</c> and <c>run.sh</c> for both writers —
+/// <c>forge promote</c> and any client that adopts a team. <c>cmd</c> reads <c>run.cmd</c> first and the runner
 /// splits what it hands over second, so every value is written for the C runtime, then for
 /// <c>cmd</c>: held here against models of both readings (<see cref="CmdBatchModel"/>,
 /// <see cref="CrtArgv"/>), for every hostile value under every hostile launcher folder. The
@@ -34,7 +34,7 @@ public sealed class TeamLauncherScriptTests : IDisposable
     }
 
     /// <summary>Every kind of argument a launcher writes, carrying <paramref name="value"/>.</summary>
-    private static TeamLauncherSpec Spec(string value, string teamDirectory = @"C:\teams\veille-docs", bool studio = false)
+    private static TeamLauncherSpec Spec(string value, string teamDirectory = @"C:\teams\veille-docs")
     {
         var segments = new List<IReadOnlyList<TeamLauncherArgument>>
         {
@@ -56,7 +56,6 @@ public sealed class TeamLauncherScriptTests : IDisposable
         {
             TeamName = "veille-docs",
             TeamDirectory = teamDirectory,
-            WrittenByStudio = studio,
             Segments = segments,
         };
     }
@@ -266,7 +265,7 @@ public sealed class TeamLauncherScriptTests : IDisposable
     [InlineData(true)]
     public void Every_byte_up_to_chcp_65001_is_ascii(bool script)
     {
-        var text = TeamLauncherScript.Windows(Spec("Économie 日本語 🚀") with { IsScript = script, WrittenByStudio = true });
+        var text = TeamLauncherScript.Windows(Spec("Économie 日本語 🚀") with { IsScript = script });
 
         var bytes = new UTF8Encoding(false).GetBytes(text);
         var marker = Encoding.ASCII.GetBytes("chcp 65001 >nul\r\n");
@@ -401,16 +400,14 @@ public sealed class TeamLauncherScriptTests : IDisposable
     }
 
     [Fact]
-    public void Studio_says_it_writes_the_file_again_and_a_script_crew_says_where_it_lives()
+    public void A_script_crew_says_where_it_lives()
     {
-        var studio = Spec("x", studio: true) with { IsScript = true };
+        var script = Spec("x") with { IsScript = true };
 
-        const string Note = "Orkeon Studio writes this file again from studio-team.json whenever the team's model setting or folders change, at its import and before its schedule is installed: an edit made here is lost then.";
-        Assert.Contains($"\r\nrem {Note}\r\nrem The crew lives in crew\\crew.ork.ts - edit it there, this script only launches it.\r\n",
-            TeamLauncherScript.Windows(studio), StringComparison.Ordinal);
-        Assert.Contains($"\n# {Note}\n# The crew lives in crew/crew.ork.ts — edit it there, this script only launches it.\n",
-            TeamLauncherScript.Posix(studio), StringComparison.Ordinal);
-        Assert.DoesNotContain("Orkeon Studio", TeamLauncherScript.Windows(Spec("x")), StringComparison.Ordinal);
+        Assert.Contains("\r\nrem The crew lives in crew\\crew.ork.ts - edit it there, this script only launches it.\r\n",
+            TeamLauncherScript.Windows(script), StringComparison.Ordinal);
+        Assert.Contains("\n# The crew lives in crew/crew.ork.ts — edit it there, this script only launches it.\n",
+            TeamLauncherScript.Posix(script), StringComparison.Ordinal);
     }
 
     /// <summary>The header <c>forge rename</c> finds the team's name in: not one character changes.</summary>
@@ -533,19 +530,17 @@ public sealed class TeamLauncherScriptTests : IDisposable
         Assert.Throws<ArgumentException>(() => TeamLauncherArgument.Word("&"));
         Assert.Throws<ArgumentException>(() => TeamLauncherScript.Header("Zoé & co"));
     }
-    // ── STUDIO-63: the header as the signature of a launcher Orkeon wrote ──
+    // ── the header as the signature of a launcher Orkeon wrote ──
 
     /// <summary>The workshop's own line 2, which <c>orkeon-bench scaffold</c> writes: not Orkeon's header.</summary>
     private const string WorkshopHeaderLine = "Launcher of the Orkeon team 'x', written by `orkeon-bench scaffold` from mounts.json:";
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(false, true)]
-    [InlineData(true, false)]
-    [InlineData(true, true)]
-    public void The_composers_own_output_carries_the_header(bool windows, bool studio)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void The_composers_own_output_carries_the_header(bool windows)
     {
-        var spec = Spec("", studio: studio);
+        var spec = Spec("");
         var launcher = windows ? TeamLauncherScript.Windows(spec) : TeamLauncherScript.Posix(spec);
 
         Assert.True(TeamLauncherScript.CarriesHeader(launcher));
@@ -573,8 +568,8 @@ public sealed class TeamLauncherScriptTests : IDisposable
     [InlineData("#!/usr/bin/env sh\n# Generated by Orkeon Forge (session 'veille-docs').\nexec orkeon run \"$DIR/crew\"\n")]
     [InlineData("@echo off\r\nrem Generated by Orkeon Forge (session 'veille-docs').\r\norkeon run \"%~dp0crew\"\r\n")]
     public void The_header_of_the_releases_up_to_rc4_names_the_session_and_still_counts(string launcher) =>
-        // A team promoted by a shipped release carries it: it is Orkeon's, and Studio keeps
-        // writing its launchers again as it did before the header became the signature.
+        // A team promoted by a shipped release carries it: it is Orkeon's, and it still counts
+        // as the signature, as it did before the header became one.
         Assert.True(TeamLauncherScript.CarriesHeader(launcher));
 
     [Fact]
