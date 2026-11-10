@@ -35,6 +35,8 @@ Orkeon.Tools.Embeddings.Local.LocalEmbeddingProvider.Dimensions.get -> int
 Orkeon.Tools.Embeddings.Local.LocalEmbeddingProvider.Dispose() -> void
 Orkeon.Tools.Embeddings.Local.LocalEmbeddingProvider.EmbedBatchAsync(System.Collections.Generic.IReadOnlyList<string!>! texts, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<System.ReadOnlyMemory<float>>!>!
 Orkeon.Tools.Embeddings.Local.LocalEmbeddingProvider.LocalEmbeddingProvider(Orkeon.Domain.FileSystem.IFileSystemService! fileSystem, Orkeon.Analysis.Abstractions.DependencyInjection.LocalEmbeddingOptions? options = null, Microsoft.Extensions.Logging.ILogger<Orkeon.Tools.Embeddings.Local.LocalEmbeddingProvider!>? logger = null) -> void
+Orkeon.Tools.Embeddings.Local.LocalEmbeddingProvider.ModelName.get -> string!
+const Orkeon.Tools.Embeddings.Local.LocalEmbeddingProvider.EmbeddedModelName = "bge-micro-v2" -> string!
 override Orkeon.Tools.Embeddings.Local.LocalEmbedRequest.Equals(object? obj) -> bool
 override Orkeon.Tools.Embeddings.Local.LocalEmbedRequest.GetHashCode() -> int
 override Orkeon.Tools.Embeddings.Local.LocalEmbedRequest.ToString() -> string!

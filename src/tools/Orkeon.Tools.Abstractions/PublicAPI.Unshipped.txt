@@ -1,2 +1,1 @@
 #nullable enable
-*REMOVED*virtual Orkeon.Tools.Abstractions.Base.ToolBase.ExecuteCoreAsync(string! input, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Orkeon.Domain.Tools.ToolResult!>!

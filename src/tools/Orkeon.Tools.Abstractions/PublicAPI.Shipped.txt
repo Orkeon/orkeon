@@ -199,7 +199,6 @@ virtual Orkeon.Tools.Abstractions.Base.ToolBase.AccessFor(System.Collections.Gen
 virtual Orkeon.Tools.Abstractions.Base.ToolBase.Category.get -> string!
 virtual Orkeon.Tools.Abstractions.Base.ToolBase.Description.get -> string!
 virtual Orkeon.Tools.Abstractions.Base.ToolBase.Dispose(bool disposing) -> void
-virtual Orkeon.Tools.Abstractions.Base.ToolBase.ExecuteCoreAsync(string! input, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Orkeon.Domain.Tools.ToolResult!>!
 virtual Orkeon.Tools.Abstractions.Base.ToolBase.Name.get -> string!
 virtual Orkeon.Tools.Abstractions.Base.ToolBase.Parameters.get -> Orkeon.Domain.Tools.ITypedToolParameters?
 virtual Orkeon.Tools.Abstractions.Base.ToolBase.RateLimitPerMinute.get -> int?

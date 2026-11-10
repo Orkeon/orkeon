@@ -226,6 +226,14 @@ Orkeon.Tools.FileSystem.GlobResponse.Truncated.get -> bool
 Orkeon.Tools.FileSystem.GlobResponse.Truncated.init -> void
 Orkeon.Tools.FileSystem.GlobTool
 Orkeon.Tools.FileSystem.GlobTool.GlobTool(Orkeon.Domain.FileSystem.IFileSystemService! fileSystemService, Orkeon.Domain.Tools.Security.IPathValidator! pathValidator, Microsoft.Extensions.Logging.ILogger<Orkeon.Tools.FileSystem.GlobTool!>? logger = null) -> void
+Orkeon.Tools.FileSystem.GrepFileCount
+Orkeon.Tools.FileSystem.GrepFileCount.<Clone>$() -> Orkeon.Tools.FileSystem.GrepFileCount!
+Orkeon.Tools.FileSystem.GrepFileCount.Count.get -> int
+Orkeon.Tools.FileSystem.GrepFileCount.Count.init -> void
+Orkeon.Tools.FileSystem.GrepFileCount.Equals(Orkeon.Tools.FileSystem.GrepFileCount? other) -> bool
+Orkeon.Tools.FileSystem.GrepFileCount.GrepFileCount() -> void
+Orkeon.Tools.FileSystem.GrepFileCount.Path.get -> string!
+Orkeon.Tools.FileSystem.GrepFileCount.Path.init -> void
 Orkeon.Tools.FileSystem.GrepHit
 Orkeon.Tools.FileSystem.GrepHit.<Clone>$() -> Orkeon.Tools.FileSystem.GrepHit!
 Orkeon.Tools.FileSystem.GrepHit.Equals(Orkeon.Tools.FileSystem.GrepHit? other) -> bool
@@ -236,6 +244,7 @@ Orkeon.Tools.FileSystem.GrepHit.Path.get -> string!
 Orkeon.Tools.FileSystem.GrepHit.Path.init -> void
 Orkeon.Tools.FileSystem.GrepHit.Text.get -> string!
 Orkeon.Tools.FileSystem.GrepHit.Text.init -> void
+Orkeon.Tools.FileSystem.GrepOutputModes
 Orkeon.Tools.FileSystem.GrepRequest
 Orkeon.Tools.FileSystem.GrepRequest.<Clone>$() -> Orkeon.Tools.FileSystem.GrepRequest!
 Orkeon.Tools.FileSystem.GrepRequest.CaseInsensitive.get -> bool
@@ -248,6 +257,8 @@ Orkeon.Tools.FileSystem.GrepRequest.MaxFiles.get -> int
 Orkeon.Tools.FileSystem.GrepRequest.MaxFiles.init -> void
 Orkeon.Tools.FileSystem.GrepRequest.MaxResults.get -> int
 Orkeon.Tools.FileSystem.GrepRequest.MaxResults.init -> void
+Orkeon.Tools.FileSystem.GrepRequest.OutputMode.get -> string!
+Orkeon.Tools.FileSystem.GrepRequest.OutputMode.init -> void
 Orkeon.Tools.FileSystem.GrepRequest.Path.get -> string!
 Orkeon.Tools.FileSystem.GrepRequest.Path.init -> void
 Orkeon.Tools.FileSystem.GrepRequest.Pattern.get -> string!
@@ -256,7 +267,11 @@ Orkeon.Tools.FileSystem.GrepResponse
 Orkeon.Tools.FileSystem.GrepResponse.<Clone>$() -> Orkeon.Tools.FileSystem.GrepResponse!
 Orkeon.Tools.FileSystem.GrepResponse.AlreadyBounded.get -> bool
 Orkeon.Tools.FileSystem.GrepResponse.AlreadyBounded.init -> void
+Orkeon.Tools.FileSystem.GrepResponse.Counts.get -> System.Collections.Immutable.ImmutableList<Orkeon.Tools.FileSystem.GrepFileCount!>!
+Orkeon.Tools.FileSystem.GrepResponse.Counts.init -> void
 Orkeon.Tools.FileSystem.GrepResponse.Equals(Orkeon.Tools.FileSystem.GrepResponse? other) -> bool
+Orkeon.Tools.FileSystem.GrepResponse.FilesMatched.get -> int
+Orkeon.Tools.FileSystem.GrepResponse.FilesMatched.init -> void
 Orkeon.Tools.FileSystem.GrepResponse.FilesScanned.get -> int
 Orkeon.Tools.FileSystem.GrepResponse.FilesScanned.init -> void
 Orkeon.Tools.FileSystem.GrepResponse.FilesSkipped.get -> int
@@ -264,8 +279,12 @@ Orkeon.Tools.FileSystem.GrepResponse.FilesSkipped.init -> void
 Orkeon.Tools.FileSystem.GrepResponse.GrepResponse() -> void
 Orkeon.Tools.FileSystem.GrepResponse.Hits.get -> System.Collections.Immutable.ImmutableList<Orkeon.Tools.FileSystem.GrepHit!>!
 Orkeon.Tools.FileSystem.GrepResponse.Hits.init -> void
+Orkeon.Tools.FileSystem.GrepResponse.ScanComplete.get -> bool
+Orkeon.Tools.FileSystem.GrepResponse.ScanComplete.init -> void
 Orkeon.Tools.FileSystem.GrepResponse.TimedOut.get -> bool
 Orkeon.Tools.FileSystem.GrepResponse.TimedOut.init -> void
+Orkeon.Tools.FileSystem.GrepResponse.TotalMatches.get -> int
+Orkeon.Tools.FileSystem.GrepResponse.TotalMatches.init -> void
 Orkeon.Tools.FileSystem.GrepResponse.Truncated.get -> bool
 Orkeon.Tools.FileSystem.GrepResponse.Truncated.init -> void
 Orkeon.Tools.FileSystem.GrepTool
@@ -280,6 +299,8 @@ Orkeon.Tools.FileSystem.PatternCount.Matches.init -> void
 Orkeon.Tools.FileSystem.PatternCount.Pattern.get -> string!
 Orkeon.Tools.FileSystem.PatternCount.Pattern.set -> void
 Orkeon.Tools.FileSystem.PatternCount.PatternCount() -> void
+const Orkeon.Tools.FileSystem.GrepOutputModes.Count = "count" -> string!
+const Orkeon.Tools.FileSystem.GrepOutputModes.Hits = "hits" -> string!
 const Orkeon.Tools.FileSystem.GrepTool.LineCutMarker = "[...]" -> string!
 override Orkeon.Tools.FileSystem.CountPatternTool.Access.get -> Orkeon.Domain.Tools.ToolAccess
 override Orkeon.Tools.FileSystem.CountPatternTool.Description.get -> string!
@@ -332,6 +353,9 @@ override Orkeon.Tools.FileSystem.GlobResponse.ToString() -> string!
 override Orkeon.Tools.FileSystem.GlobTool.Access.get -> Orkeon.Domain.Tools.ToolAccess
 override Orkeon.Tools.FileSystem.GlobTool.Description.get -> string!
 override Orkeon.Tools.FileSystem.GlobTool.Name.get -> string!
+override Orkeon.Tools.FileSystem.GrepFileCount.Equals(object? obj) -> bool
+override Orkeon.Tools.FileSystem.GrepFileCount.GetHashCode() -> int
+override Orkeon.Tools.FileSystem.GrepFileCount.ToString() -> string!
 override Orkeon.Tools.FileSystem.GrepHit.Equals(object? obj) -> bool
 override Orkeon.Tools.FileSystem.GrepHit.GetHashCode() -> int
 override Orkeon.Tools.FileSystem.GrepHit.ToString() -> string!
@@ -361,6 +385,8 @@ static Orkeon.Tools.FileSystem.GlobRequest.operator !=(Orkeon.Tools.FileSystem.G
 static Orkeon.Tools.FileSystem.GlobRequest.operator ==(Orkeon.Tools.FileSystem.GlobRequest? left, Orkeon.Tools.FileSystem.GlobRequest? right) -> bool
 static Orkeon.Tools.FileSystem.GlobResponse.operator !=(Orkeon.Tools.FileSystem.GlobResponse? left, Orkeon.Tools.FileSystem.GlobResponse? right) -> bool
 static Orkeon.Tools.FileSystem.GlobResponse.operator ==(Orkeon.Tools.FileSystem.GlobResponse? left, Orkeon.Tools.FileSystem.GlobResponse? right) -> bool
+static Orkeon.Tools.FileSystem.GrepFileCount.operator !=(Orkeon.Tools.FileSystem.GrepFileCount? left, Orkeon.Tools.FileSystem.GrepFileCount? right) -> bool
+static Orkeon.Tools.FileSystem.GrepFileCount.operator ==(Orkeon.Tools.FileSystem.GrepFileCount? left, Orkeon.Tools.FileSystem.GrepFileCount? right) -> bool
 static Orkeon.Tools.FileSystem.GrepHit.operator !=(Orkeon.Tools.FileSystem.GrepHit? left, Orkeon.Tools.FileSystem.GrepHit? right) -> bool
 static Orkeon.Tools.FileSystem.GrepHit.operator ==(Orkeon.Tools.FileSystem.GrepHit? left, Orkeon.Tools.FileSystem.GrepHit? right) -> bool
 static Orkeon.Tools.FileSystem.GrepRequest.operator !=(Orkeon.Tools.FileSystem.GrepRequest? left, Orkeon.Tools.FileSystem.GrepRequest? right) -> bool
