@@ -117,7 +117,7 @@ jobs:
       # dependency outside the lineup — the rc.1/rc.2 NU1101 incident), and the umbrella
       # packages' hand-declared external dependencies must match their embedded projects.
       - name: Check package closure
-        run: python3 scripts/check-package-closure.py --artifacts artifacts --lineup Orkeon Orkeon.Tools Orkeon.Rag.Onnx Orkeon.Rag.Onnx.Model Orkeon.Tools.Embeddings.Local Orkeon.Scripting Orkeon.Scripting.Cli Orkeon.Compliance.Vfs Orkeon.Interop.AgentFramework Orkeon.Hosting.Aspire Orkeon.Templates
+        run: python3 scripts/check-package-closure.py --artifacts artifacts --lineup Orkeon Orkeon.Tools Orkeon.Rag.Onnx Orkeon.Rag.Onnx.Model Orkeon.Tools.Embeddings.Local Orkeon.Constants.Cli Orkeon.Scripting Orkeon.Scripting.Cli Orkeon.Compliance.Vfs Orkeon.Interop.AgentFramework Orkeon.Hosting.Aspire Orkeon.Cli.Abstractions Orkeon.Cli.TerminalGui Orkeon.Templates
       # Templates gate (FWK-26): the packed Orkeon.Templates installs into a throw-away
       # `dotnet new` hive, each of its three templates generates a project, and that project
       # builds against the packs of this run (artifacts/) plus nuget.org for the transitive
@@ -202,7 +202,7 @@ jobs:
           # while the file sat right there. The GitHub Packages push above never met this:
           # `artifacts/*.nupkg` is inside that dialect. So: unquoted glob, bash expands it,
           # and the CLI is handed a real path.
-          for id in Orkeon Orkeon.Tools Orkeon.Rag.Onnx Orkeon.Rag.Onnx.Model Orkeon.Tools.Embeddings.Local Orkeon.Scripting Orkeon.Scripting.Cli Orkeon.Compliance.Vfs Orkeon.Interop.AgentFramework Orkeon.Hosting.Aspire Orkeon.Templates; do
+          for id in Orkeon Orkeon.Tools Orkeon.Rag.Onnx Orkeon.Rag.Onnx.Model Orkeon.Tools.Embeddings.Local Orkeon.Constants.Cli Orkeon.Scripting Orkeon.Scripting.Cli Orkeon.Compliance.Vfs Orkeon.Interop.AgentFramework Orkeon.Hosting.Aspire Orkeon.Cli.Abstractions Orkeon.Cli.TerminalGui Orkeon.Templates; do
             # No nullglob: an unmatched pattern stays literal, so test the first element
             # rather than trust the count — a missing package must stop the release, not
             # be pushed as a filename.

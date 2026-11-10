@@ -99,13 +99,14 @@ public sealed class McpFinalReviewR1Tests
         var transport = new StreamableHttpMcpTransport(server.Url, http, null, authenticator);
         await transport.ConnectAsync(Ct);
         await HandshakeAsync(transport);
-        var applied = authenticator.Applied;
 
         await transport.DisposeAsync();
 
-        Assert.Equal(applied, authenticator.Applied);
+        // The session's GET stream may still apply a credential of its own while the transport closes:
+        // only the DELETE's credential is under test, so the assertions read it by verb.
         Assert.Equal(0, authenticator.SignIns);
-        Assert.Equal(1, authenticator.QuietApplications);
+        var deletes = authenticator.Applications.Where(a => a.Verb == HttpMethod.Delete).ToList();
+        Assert.Equal([(HttpMethod.Delete, true)], deletes);
         Assert.Single(server.Requests, r => r.Verb == "DELETE");
     }
 

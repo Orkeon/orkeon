@@ -5,9 +5,9 @@
        services.AddOrkeonScripting()) instead of starting the `orkeon` tool.
 
        Embedded: Orkeon.Scripting (the Jint host, the esbuild bundler driver, the DSL typings as
-       the embedded resource Orkeon.Scripting.Typings.orkeon.d.ts), Orkeon.Hosting (the runner
-       bootstrap `orkeon run` and orkeon-host build on, and the in-process runner) and
-       Orkeon.Constants.Cli, which Hosting references and no other package carries.
+       the embedded resource Orkeon.Scripting.Typings.orkeon.d.ts) and Orkeon.Hosting (the runner
+       bootstrap `orkeon run` and orkeon-host build on, and the in-process runner).
+       Orkeon.Constants.Cli, which Hosting references, is its own package: a nuspec dependency.
 
        Kept out of the `Orkeon` umbrella for the reason every opt-in is: what it forces on a
        consumer. Orkeon.Hosting composes every built-in tool family, so it depends on
@@ -34,7 +34,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\scripting\Orkeon.Scripting\Orkeon.Scripting.csproj" PrivateAssets="all" />
     <ProjectReference Include="..\..\hosting\Orkeon.Hosting\Orkeon.Hosting.csproj" PrivateAssets="all" />
-    <ProjectReference Include="..\..\constants\Orkeon.Constants.Cli\Orkeon.Constants.Cli.csproj" PrivateAssets="all" />
+    <ProjectReference Include="..\..\constants\Orkeon.Constants.Cli\Orkeon.Constants.Cli.csproj" />
     <ProjectReference Include="..\Orkeon\Orkeon.csproj" />
     <ProjectReference Include="..\Orkeon.Tools\Orkeon.Tools.csproj" />
     <!-- The wrapped project, not its wrapper: a nuspec dependency takes the restore name of the
@@ -60,8 +60,7 @@
                       Condition="'%(ReferenceCopyLocalPaths.ReferenceSourceTarget)' == 'ProjectReference'
                                  And ('%(ReferenceCopyLocalPaths.Extension)' == '.dll' Or '%(ReferenceCopyLocalPaths.Extension)' == '.xml')
                                  And ('%(ReferenceCopyLocalPaths.Filename)' == 'Orkeon.Scripting'
-                                      Or '%(ReferenceCopyLocalPaths.Filename)' == 'Orkeon.Hosting'
-                                      Or '%(ReferenceCopyLocalPaths.Filename)' == 'Orkeon.Constants.Cli')" />
+                                      Or '%(ReferenceCopyLocalPaths.Filename)' == 'Orkeon.Hosting')" />
       <TfmSpecificPackageFile Include="@(_OrkeonWrapped)" PackagePath="lib/$(TargetFramework)" />
     </ItemGroup>
   </Target>
