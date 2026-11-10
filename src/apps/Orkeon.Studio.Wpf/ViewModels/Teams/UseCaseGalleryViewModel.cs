@@ -338,8 +338,19 @@ public sealed class UseCaseGalleryViewModel : ObservableObject
     public IReadOnlyList<WizardChoice> PrimaryCategories
     {
         get => _primaryCategories;
-        private set => SetProperty(ref _primaryCategories, value);
+        private set
+        {
+            if (SetProperty(ref _primaryCategories, value))
+                OnPropertyChanged(nameof(PrimaryChips));
+        }
     }
+
+    /// <summary>
+    /// The row always in view (UX lot 11): the « Close to your need (N) » chip at its head while the
+    /// need has suggestions, then <see cref="PrimaryCategories"/> — one row, no line of its own.
+    /// </summary>
+    public IReadOnlyList<WizardChoice> PrimaryChips =>
+        HasSuggestions ? [_suggestedChip, .. _primaryCategories] : _primaryCategories;
 
     /// <summary>The other domains, folded under « More filters ».</summary>
     public IReadOnlyList<WizardChoice> MoreCategories
@@ -401,7 +412,7 @@ public sealed class UseCaseGalleryViewModel : ObservableObject
         {
             IsSelected = _suggestedOnly,
         };
-        OnPropertyChanged(nameof(SuggestedChip));
+        OnPropertiesChanged(nameof(SuggestedChip), nameof(PrimaryChips));
     }
 
     /// <summary>Whether the need has close use cases — the suggestions filter shows only then.</summary>
@@ -435,10 +446,10 @@ public sealed class UseCaseGalleryViewModel : ObservableObject
     /// <summary>Whether the filters kept nothing of a loaded catalogue — the empty state and its way out.</summary>
     public bool HasNoMatch => _catalog is not null && _cards.Count == 0;
 
-    /// <summary>« 12 of 105 use cases ».</summary>
+    /// <summary>« 12 of 105 cases », the « · Clear » link after it (UX lot 11).</summary>
     public string CountLabel => _catalog is null
         ? ""
-        : _strings.Format(StudioStringKeys.WizardGalleryCount, _cards.Count, _catalog.Count);
+        : _strings.Format(StudioStringKeys.WizardGalleryCountShort, _cards.Count, _catalog.Count);
 
     /// <summary>« Import as is » (STUDIO-41): the expert's action on the cards, and the banner that follows it.</summary>
     public UseCaseImportViewModel Import { get; }

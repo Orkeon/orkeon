@@ -1520,7 +1520,8 @@ public sealed class LaunchTabViewModelTests
     private static (LaunchTabViewModel Tab, List<EnvironmentAsk> Asks, FakeLaunchHistoryStore History) BuildForModel(
         string team,
         Orkeon.Studio.Core.Profiles.ModelProfileSet? settings = null,
-        Func<string, TeamLlmChoice, string?>? remember = null)
+        Func<string, TeamLlmChoice, string?>? remember = null,
+        IStudioStrings? strings = null)
     {
         var asks = new List<EnvironmentAsk>();
         var history = new FakeLaunchHistoryStore();
@@ -1534,6 +1535,7 @@ public sealed class LaunchTabViewModelTests
             HistoryStore = history,
             ModelSettings = () => settings ?? TwoSettings,
             RememberLlmChoice = remember,
+            Strings = strings,
             EnvironmentForTarget = (target, choice, settingsPath) =>
             {
                 asks.Add(new EnvironmentAsk(target, choice, settingsPath));
@@ -1572,6 +1574,70 @@ public sealed class LaunchTabViewModelTests
             tab.SelectedLlmChoice = "GLM";
             Assert.False(tab.RunUsesDefaultLlm);
             Assert.Equal("GLM", tab.RunLlmProfile);
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void Should_RewordTheDefaultEntry_And_NeverPinAStaleOne_When_TheLanguageSwitches()
+    {
+        var (root, pinned) = ModelTeamOnDisk("Qwen", useDefault: null);
+        try
+        {
+            var strings = new FakeSwitchableStudioStrings("fr");
+            var (tab, _, _) = BuildForModel(pinned, strings: strings);
+            tab.Target.Select(pinned);
+            var englishDefault = tab.LlmChoices[0];
+            var raised = new List<string?>();
+            tab.PropertyChanged += (_, e) => raised.Add(e.PropertyName);
+
+            strings.Switch();
+
+            var frenchDefault = strings.Format(StudioStringKeys.RunLlmDefaultEntry, "GLM");
+            Assert.NotEqual(englishDefault, frenchDefault);
+            Assert.Contains(nameof(LaunchTabViewModel.LlmChoices), raised);
+            Assert.Contains(nameof(LaunchTabViewModel.SelectedLlmChoice), raised);
+            Assert.Equal([frenchDefault, "GLM", "Qwen"], tab.LlmChoices);
+
+            // The combo still holding the English entry writes it back: no setting takes that name.
+            tab.SelectedLlmChoice = englishDefault;
+            Assert.Equal("Qwen", tab.RunLlmProfile);
+            Assert.False(tab.RunUsesDefaultLlm);
+
+            tab.SelectedLlmChoice = frenchDefault;
+            Assert.True(tab.RunUsesDefaultLlm);
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void Should_KeepTheRunsModelInTheFicheLine_When_TheTeamsModelOnlyContainsItsName()
+    {
+        var main = new Orkeon.Studio.Core.Profiles.ModelProfile { Name = "Main", Provider = "ollama", Model = "qwen3" };
+        var large = new Orkeon.Studio.Core.Profiles.ModelProfile { Name = "Main-large", Provider = "ollama", Model = "qwen3:32b" };
+        var settings = Orkeon.Studio.Core.Profiles.ModelProfileSet.Empty.Upsert(main).Upsert(large);
+        var (root, pinned) = ModelTeamOnDisk("Main-large", useDefault: null);
+        try
+        {
+            var (tab, _, _) = BuildForModel(pinned, settings);
+            tab.Target.Select(pinned);
+
+            // The run's own model, the team's: said once.
+            var teamPart = EnglishStudioStrings.Instance.Format(StudioStringKeys.RunMetaProfile, "Main-large");
+            Assert.DoesNotContain("Main-large · Main-large", tab.TeamFicheLine, StringComparison.Ordinal);
+            Assert.Contains(teamPart, tab.TeamFicheLine, StringComparison.Ordinal);
+
+            // « Main » is a substring of « model Main-large », yet another setting: both are said.
+            tab.SelectedLlmChoice = "Main";
+            var parts = tab.TeamFicheLine!.Split(" · ");
+            Assert.Contains(teamPart, parts);
+            Assert.Contains("Main", parts);
         }
         finally
         {
@@ -1788,15 +1854,23 @@ public sealed class LaunchScreenFacetsTests
         tab.Target.Select("/crews/team.yaml");
 
         Assert.Equal("idle", tab.RunBadgeTone);
+        Assert.False(tab.IsRunBadgePulsing);
         var launchLabel = tab.RunButtonLabel;
-        var idleTitle = tab.RunStateTitle;
+        // The badge pulses while the process lives, on a flag rather than a "running" string (UX lot 11).
+        var pulses = new List<bool>();
+        tab.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(LaunchTabViewModel.IsRunBadgePulsing))
+                pulses.Add(tab.IsRunBadgePulsing);
+        };
 
         await tab.RunAsync(TestContext.Current.CancellationToken);
 
         // The fake launcher exits 0: the badge turns "ok" and the button becomes "Relaunch".
         Assert.Equal("ok", tab.RunBadgeTone);
+        Assert.Contains(true, pulses);
+        Assert.False(tab.IsRunBadgePulsing);
         Assert.NotEqual(launchLabel, tab.RunButtonLabel);
-        Assert.NotEqual(idleTitle, tab.RunStateTitle);
         Assert.NotEqual(tab.RunBadgeText, string.Empty);
     }
 

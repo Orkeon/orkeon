@@ -152,8 +152,6 @@
   <data name="Studio.Run.CopyCommand" xml:space="preserve"><value>Copy the command</value></data>
   <data name="Studio.Run.CommandCopied" xml:space="preserve"><value>Command copied</value></data>
   <data name="Studio.Run.StateIdle" xml:space="preserve"><value>Ready to work</value></data>
-  <data name="Studio.Run.StateRunning" xml:space="preserve"><value>Run in progress</value></data>
-  <data name="Studio.Run.StateDone" xml:space="preserve"><value>Run finished</value></data>
   <data name="Studio.Run.BadgeIdle" xml:space="preserve"><value>waiting</value></data>
   <data name="Studio.Run.BadgeRunning" xml:space="preserve"><value>running</value></data>
   <data name="Studio.Run.BadgeDone" xml:space="preserve"><value>succeeded</value></data>
@@ -1391,6 +1389,7 @@
   <data name="Studio.Teams.DeleteAskArchive" xml:space="preserve">
     <value>Move the team and what goes with it to the workshop's archive?</value>
   </data>
+  <data name="Studio.Teams.DeleteAskArchiveNamed" xml:space="preserve"><value>Move the team “{0}” to the archive?</value></data>
   <data name="Studio.Teams.ArchivedToWorkshop" xml:space="preserve">
     <value>Moved to {0}.</value>
   </data>
@@ -1707,7 +1706,7 @@
   <data name="Studio.Create.GalleryReference" xml:space="preserve"><value>Inspired by: {0}</value></data>
   <data name="Studio.Create.GalleryAllCategories" xml:space="preserve"><value>All</value></data>
   <data name="Studio.Create.GalleryAnyProcess" xml:space="preserve"><value>Any</value></data>
-  <data name="Studio.Create.GalleryCount" xml:space="preserve"><value>{0} of {1} use cases</value></data>
+  <data name="Studio.Create.GalleryCountShort" xml:space="preserve"><value>{0} of {1} cases</value></data>
   <data name="Studio.Create.GallerySuggested" xml:space="preserve"><value>Close to your need ({0})</value></data>
   <data name="Studio.Create.GalleryMoreFilters" xml:space="preserve"><value>More filters</value></data>
   <data name="Studio.Create.GalleryAgentsLine" xml:space="preserve"><value>{0} {0:plural:agent|agents} · {1}</value></data>
@@ -1745,6 +1744,7 @@
   <data name="Studio.Create.GalleryOpenTeams" xml:space="preserve"><value>Open My teams</value></data>
   <data name="Studio.Create.GalleryEmpty" xml:space="preserve"><value>No use case matches these filters.</value></data>
   <data name="Studio.Create.GalleryClearFilters" xml:space="preserve"><value>Clear the filters</value></data>
+  <data name="Studio.Create.GalleryClear" xml:space="preserve"><value>Clear</value></data>
   <data name="Studio.Create.GalleryLoading" xml:space="preserve"><value>Reading the use cases…</value></data>
   <data name="Studio.Create.GalleryClose" xml:space="preserve"><value>Close</value></data>
   <data name="Studio.Create.GalleryRemoveReference" xml:space="preserve"><value>Remove the reference — your need stays as it is.</value></data>

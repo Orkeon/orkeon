@@ -388,12 +388,6 @@
   <data name="Studio.Run.StateIdle" xml:space="preserve">
     <value>Lista para trabajar</value>
   </data>
-  <data name="Studio.Run.StateRunning" xml:space="preserve">
-    <value>Ejecución en curso</value>
-  </data>
-  <data name="Studio.Run.StateDone" xml:space="preserve">
-    <value>Ejecución terminada</value>
-  </data>
   <data name="Studio.Run.BadgeIdle" xml:space="preserve">
     <value>en espera</value>
   </data>
@@ -2994,6 +2988,7 @@
   <data name="Studio.Teams.DeleteAskArchive" xml:space="preserve">
     <value>¿Mover el equipo y lo que lo acompaña al archivo del taller?</value>
   </data>
+  <data name="Studio.Teams.DeleteAskArchiveNamed" xml:space="preserve"><value>¿Mover el equipo «{0}» al archivo?</value></data>
   <data name="Studio.Teams.ArchivedToWorkshop" xml:space="preserve">
     <value>Movido a {0}.</value>
   </data>
@@ -3328,7 +3323,7 @@
   <data name="Studio.Create.GalleryReference" xml:space="preserve"><value>Inspirado en: {0}</value></data>
   <data name="Studio.Create.GalleryAllCategories" xml:space="preserve"><value>Todos</value></data>
   <data name="Studio.Create.GalleryAnyProcess" xml:space="preserve"><value>Cualquiera</value></data>
-  <data name="Studio.Create.GalleryCount" xml:space="preserve"><value>{0} de {1} casos de uso</value></data>
+  <data name="Studio.Create.GalleryCountShort" xml:space="preserve"><value>{0} casos de {1}</value></data>
   <data name="Studio.Create.GallerySuggested" xml:space="preserve"><value>Cercanos a su necesidad ({0})</value></data>
   <data name="Studio.Create.GalleryMoreFilters" xml:space="preserve"><value>Más filtros</value></data>
   <data name="Studio.Create.GalleryAgentsLine" xml:space="preserve"><value>{0} {0:plural:agente|agentes} · {1}</value></data>
@@ -3366,6 +3361,7 @@
   <data name="Studio.Create.GalleryOpenTeams" xml:space="preserve"><value>Abrir Mis equipos</value></data>
   <data name="Studio.Create.GalleryEmpty" xml:space="preserve"><value>Ningún caso de uso coincide con estos filtros.</value></data>
   <data name="Studio.Create.GalleryClearFilters" xml:space="preserve"><value>Borrar los filtros</value></data>
+  <data name="Studio.Create.GalleryClear" xml:space="preserve"><value>Borrar</value></data>
   <data name="Studio.Create.GalleryLoading" xml:space="preserve"><value>Leyendo los casos de uso…</value></data>
   <data name="Studio.Create.GalleryClose" xml:space="preserve"><value>Cerrar</value></data>
   <data name="Studio.Create.GalleryRemoveReference" xml:space="preserve"><value>Quitar la referencia: su necesidad queda como está.</value></data>

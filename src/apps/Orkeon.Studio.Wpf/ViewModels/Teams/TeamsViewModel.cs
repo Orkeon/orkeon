@@ -705,6 +705,15 @@ public sealed class TeamCardViewModel : ObservableObject
             : _strings.Format(StudioStringKeys.TeamsDeleteConfirmNamed, Name);
 
     /// <summary>
+    /// The banner's question in Novice (UX lot 08): the team always named, and in a workshop the
+    /// archive said without the workshop — the Expert keeps <see cref="DeleteQuestion"/>.
+    /// </summary>
+    public string DeleteQuestionNovice =>
+        _archivesInWorkshop
+            ? _strings.Format(StudioStringKeys.TeamsDeleteAskArchiveNamed, Name)
+            : _strings.Format(StudioStringKeys.TeamsDeleteConfirmNamed, Name);
+
+    /// <summary>
     /// What the delete takes and what it leaves, in the user's words (UX lot 08): the team's folder
     /// and history go, the allowed folders stay. Empty in a workshop, whose question already says
     /// where the team goes.
@@ -723,7 +732,7 @@ public sealed class TeamCardViewModel : ObservableObject
         _linkedSession = linkedSession;
         _archivesInWorkshop = archivesInWorkshop;
         OnPropertyChanged(nameof(CanDeleteSessionToo));
-        OnPropertiesChanged(nameof(DeleteQuestion), nameof(DeleteConsequence), nameof(HasDeleteConsequence));
+        OnPropertiesChanged(nameof(DeleteQuestion), nameof(DeleteQuestionNovice), nameof(DeleteConsequence), nameof(HasDeleteConsequence));
         DeleteSessionToo = false;
         RefuseDelete("", null);
     }
@@ -1280,7 +1289,7 @@ public sealed class TeamsViewModel : ObservableObject
         DismissSuggestionCommand = new RelayCommand(DismissSuggestion);
         // The screen's own sentences follow the language; the cards' are rebuilt on each refresh.
         _strings.CultureChanged += (_, _) => OnPropertiesChanged(
-            nameof(ArchivesLabel), nameof(NoMatchLine), nameof(UndoNotice), nameof(ArchiveSuggestionLine));
+            nameof(ArchivesLabel), nameof(NoMatchLine), nameof(UndoNotice), nameof(ArchiveSuggestionLine), nameof(InProgressHeader));
         Refresh();
     }
 

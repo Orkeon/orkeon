@@ -2242,8 +2242,10 @@ public partial class CreateTeamWizardTests
         Assert.DoesNotContain(vm.SidecarMounts(), m => m.Contains(":/workspace:", StringComparison.Ordinal) || m.Contains(":/output:", StringComparison.Ordinal));
 
         // Dropping the output sticks: nothing re-answers it at the next sync.
-        vm.RemoveTeamMountCommand.Execute("./outmd:/outmd:rw");
-        vm.RemoveDerivedMountCommand.Execute("/outmd");
+        // The row's one « Remove » (UX lot 01): the bound folder goes first, then the bare implied root.
+        vm.RemoveMountCommand.Execute(vm.MountRows.Single(r => r.VirtualPath == "/outmd"));
+        if (vm.MountRows.SingleOrDefault(r => r.VirtualPath == "/outmd") is { } implied)
+            vm.RemoveMountCommand.Execute(implied);
         Assert.DoesNotContain(vm.SidecarMounts(), m => m.EndsWith(":/outmd:rw", StringComparison.Ordinal));
         Assert.True(vm.HasDroppedDerivedRoots);
     }

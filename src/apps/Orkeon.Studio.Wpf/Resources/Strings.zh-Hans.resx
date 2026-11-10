@@ -388,12 +388,6 @@
   <data name="Studio.Run.StateIdle" xml:space="preserve">
     <value>准备就绪</value>
   </data>
-  <data name="Studio.Run.StateRunning" xml:space="preserve">
-    <value>执行中</value>
-  </data>
-  <data name="Studio.Run.StateDone" xml:space="preserve">
-    <value>执行完成</value>
-  </data>
   <data name="Studio.Run.BadgeIdle" xml:space="preserve">
     <value>等待中</value>
   </data>
@@ -2994,6 +2988,7 @@
   <data name="Studio.Teams.DeleteAskArchive" xml:space="preserve">
     <value>将团队及其相关内容移至工作坊的归档？</value>
   </data>
+  <data name="Studio.Teams.DeleteAskArchiveNamed" xml:space="preserve"><value>将团队“{0}”移入归档？</value></data>
   <data name="Studio.Teams.ArchivedToWorkshop" xml:space="preserve">
     <value>已移至 {0}。</value>
   </data>
@@ -3328,7 +3323,7 @@
   <data name="Studio.Create.GalleryReference" xml:space="preserve"><value>参考：{0}</value></data>
   <data name="Studio.Create.GalleryAllCategories" xml:space="preserve"><value>全部</value></data>
   <data name="Studio.Create.GalleryAnyProcess" xml:space="preserve"><value>不限</value></data>
-  <data name="Studio.Create.GalleryCount" xml:space="preserve"><value>共 {1} 个用例，显示 {0} 个</value></data>
+  <data name="Studio.Create.GalleryCountShort" xml:space="preserve"><value>共 {1} 个，显示 {0} 个</value></data>
   <data name="Studio.Create.GallerySuggested" xml:space="preserve"><value>与您的需求相近（{0}）</value></data>
   <data name="Studio.Create.GalleryMoreFilters" xml:space="preserve"><value>更多筛选</value></data>
   <data name="Studio.Create.GalleryAgentsLine" xml:space="preserve"><value>{0} 个智能体 · {1}</value></data>
@@ -3366,6 +3361,7 @@
   <data name="Studio.Create.GalleryOpenTeams" xml:space="preserve"><value>打开我的团队</value></data>
   <data name="Studio.Create.GalleryEmpty" xml:space="preserve"><value>没有符合这些筛选条件的用例。</value></data>
   <data name="Studio.Create.GalleryClearFilters" xml:space="preserve"><value>清除筛选</value></data>
+  <data name="Studio.Create.GalleryClear" xml:space="preserve"><value>清除</value></data>
   <data name="Studio.Create.GalleryLoading" xml:space="preserve"><value>正在读取用例…</value></data>
   <data name="Studio.Create.GalleryClose" xml:space="preserve"><value>关闭</value></data>
   <data name="Studio.Create.GalleryRemoveReference" xml:space="preserve"><value>移除参考——您的需求保持不变。</value></data>

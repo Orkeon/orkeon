@@ -122,7 +122,7 @@ public partial class CreateTeamWizardTests
 
         Assert.True(vm.Gallery.IsOpen);
         Assert.Equal(6, vm.Gallery.Cards.Count);
-        Assert.Equal("6 of 6 use cases", vm.Gallery.CountLabel);
+        Assert.Equal("6 of 6 cases", vm.Gallery.CountLabel);
         var card = vm.Gallery.Cards[0];
         Assert.Equal("Tri et réponse aux e-mails", card.Title);
         Assert.Equal("Trier mes e-mails et préparer les réponses", card.Problem);
@@ -237,6 +237,26 @@ public partial class CreateTeamWizardTests
 
         Assert.False(vm.Gallery.SuggestedOnly);
         Assert.Equal(6, vm.Gallery.Cards.Count);
+    }
+
+    [Fact]
+    public async Task The_suggestions_chip_heads_the_primary_row_only_while_the_need_has_suggestions()
+    {
+        var vm = WizardWithGallery(UseCaseCli());
+        await vm.Gallery.LoadAsync(TestContext.Current.CancellationToken);
+
+        Assert.Equal(vm.Gallery.PrimaryCategories, vm.Gallery.PrimaryChips);
+
+        var raised = new List<string?>();
+        vm.Gallery.PropertyChanged += (_, e) => raised.Add(e.PropertyName);
+        vm.Gallery.Suggest(["56-adaptive-tutor"]);
+
+        Assert.Contains(nameof(UseCaseGalleryViewModel.PrimaryChips), raised);
+        Assert.Same(vm.Gallery.SuggestedChip, vm.Gallery.PrimaryChips[0]);
+        Assert.Equal(vm.Gallery.PrimaryCategories, vm.Gallery.PrimaryChips.Skip(1));
+
+        vm.Gallery.Suggest([]);
+        Assert.Equal(vm.Gallery.PrimaryCategories, vm.Gallery.PrimaryChips);
     }
 
     [Fact]

@@ -685,9 +685,20 @@
                         Visibility="{Binding IsConfirmingDelete, Converter={StaticResource BooleanToVisibility}}">
                   <StackPanel>
                     <WrapPanel>
+                      <!-- UX lot 08: the Novice reads the team named and no workshop; the Expert keeps the workshop's question. -->
                       <TextBlock FontSize="14" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,8,0"
-                                 TextWrapping="Wrap" Foreground="{DynamicResource DangerInkBrush}"
-                                 Text="{Binding DeleteQuestion}"/>
+                                 TextWrapping="Wrap" Foreground="{DynamicResource DangerInkBrush}">
+                        <TextBlock.Style>
+                          <Style TargetType="TextBlock">
+                            <Setter Property="Text" Value="{Binding DeleteQuestionNovice}"/>
+                            <Style.Triggers>
+                              <DataTrigger Binding="{Binding DataContext.Mode.IsExpert, RelativeSource={RelativeSource AncestorType=Window}}" Value="True">
+                                <Setter Property="Text" Value="{Binding DeleteQuestion}"/>
+                              </DataTrigger>
+                            </Style.Triggers>
+                          </Style>
+                        </TextBlock.Style>
+                      </TextBlock>
                       <Button Style="{StaticResource BtnDangerSolid}" controls:ButtonSize.Height="32" Command="{Binding ConfirmDeleteCommand}"
                               controls:ButtonIcon.Kind="trash-2"
                               Content="{Binding [Studio.Teams.Delete], Source={x:Static services:I18n.Instance}}"/>

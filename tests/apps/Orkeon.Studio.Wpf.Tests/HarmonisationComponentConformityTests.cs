@@ -255,4 +255,17 @@ public sealed class HarmonisationComponentConformityTests
 
         Assert.Empty(offenders);
     }
+
+    [Fact]
+    public void Should_Say_A_Greyed_Overflow_Reason_Once_And_Live_When_Reading_The_ActionBar()
+    {
+        // UX lot 08: the hint under a greyed menu item follows the button's IsEnabled, and the item's
+        // tooltip is off while that hint shows: the sentence is never read twice.
+        var code = File.ReadAllText(Path.Combine(WpfSourceRoot(), "Controls", "ActionBar.cs"));
+
+        Assert.Contains("hint.SetBinding(VisibilityProperty", code, StringComparison.Ordinal);
+        Assert.Contains("InverseBooleanToVisibilityConverter", code, StringComparison.Ordinal);
+        Assert.Contains("item.SetBinding(ToolTipService.IsEnabledProperty", code, StringComparison.Ordinal);
+        Assert.DoesNotContain("if (button.IsEnabled ||", code, StringComparison.Ordinal);
+    }
 }

@@ -41,7 +41,7 @@ public sealed class LaunchTabsTests : IDisposable
 
         Assert.Equal(LaunchTabViewModel.TeamTab, tab.ActiveTab);
         Assert.Equal("Expected", tab.TeamTabState);
-        Assert.Equal("danger", tab.LaunchReadinessTone);
+        Assert.Equal("fail", tab.LaunchReadinessTone);
         Assert.NotNull(tab.LaunchBlockedReason);
         Assert.Equal(tab.LaunchBlockedReason, tab.LaunchReadinessText);
         Assert.Equal("Empty", tab.RunTabState);

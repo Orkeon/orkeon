@@ -542,8 +542,6 @@ public sealed partial class CreateTeamViewModel : ObservableObject
             IsAdoptProfilePickerOpen = false;
         });
         PickAdoptProfileCommand = new RelayCommand(PickAdoptProfile);
-        RemoveTeamMountCommand = new RelayCommand(RemoveTeamMount, IsStringParameter);
-        RemoveDerivedMountCommand = new RelayCommand(DropDerivedMount, IsStringParameter);
         RemoveMountCommand = new RelayCommand(RemoveMount, parameter => parameter is MountRow { CanRemove: true });
         RestoreDerivedMountsCommand = new RelayCommand(
             RestoreDerivedMounts,
@@ -1739,15 +1737,6 @@ public sealed partial class CreateTeamViewModel : ObservableObject
 
     /// <summary>« Autoriser un dossier » — the shell opens the shared picker.</summary>
     public RelayCommand AllowFolderCommand { get; }
-
-    /// <summary>Retires one mount chip.</summary>
-    public RelayCommand RemoveTeamMountCommand { get; }
-
-    /// <summary>
-    /// Drops one of the folders the agents imply. The command parameter is the virtual root:
-    /// nothing is bound to it at adoption afterwards, and the warning line says so.
-    /// </summary>
-    public RelayCommand RemoveDerivedMountCommand { get; }
 
     /// <summary>
     /// The one « Retirer » of a Composer row (UX lot 01); the parameter is the <see cref="MountRow"/>:

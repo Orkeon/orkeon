@@ -150,11 +150,14 @@ public sealed partial class LaunchTabViewModel
     {
         get
         {
+            var metaParts = TeamMetaParts();
             var parts = new List<string>(3);
-            if (TeamMetaLine is { Length: > 0 } meta)
-                parts.Add(meta);
+            if (metaParts.Count > 0)
+                parts.Add(string.Join(" · ", metaParts));
+            // « model Local · Local » says it twice (UX lot 08): the run's model is left out only when the
+            // team's own « model X » part names the same setting — never on a mere substring.
             var llmLabel = RunLlmLabelOf(RunLlmChoice);
-            if (!parts.Exists(part => part.Contains(llmLabel, StringComparison.Ordinal)))
+            if (!metaParts.Contains(_strings.Format(StudioStringKeys.RunMetaProfile, llmLabel), StringComparer.Ordinal))
                 parts.Add(llmLabel);
             if (Target.KindDisplay is { Length: > 0 } kind)
                 parts.Add(kind);
@@ -368,8 +371,8 @@ public sealed partial class LaunchTabViewModel
     /// <summary>Whether the panes take changes: not while a run lives (« Can be changed after the run »).</summary>
     public bool IsEditable => !IsRunning;
 
-    /// <summary>ok | danger | running — the dot of the action bar.</summary>
-    public string LaunchReadinessTone => IsRunning ? "running" : LaunchBlockedReason is null ? "ok" : "danger";
+    /// <summary>ok | fail | running — the dot of the action bar, on the state scale StateToneConverter reads (UX lot 11).</summary>
+    public string LaunchReadinessTone => IsRunning ? "running" : LaunchBlockedReason is null ? "ok" : "fail";
 
     /// <summary>
     /// The action bar's sentence: « Ready to launch in Real mode. The result will go to /output. »,

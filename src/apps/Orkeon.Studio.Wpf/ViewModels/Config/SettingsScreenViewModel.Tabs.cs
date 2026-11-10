@@ -7,7 +7,7 @@ namespace Orkeon.Studio.Wpf.ViewModels.Config;
 /// The Settings classeur (refonte lot 9, R14 grouped variant): each tab says its state under its
 /// title — what it holds, in the warning tone when something there needs fixing, the green dot
 /// when the settings file was checked and holds. The marks are the StepTab states' names
-/// (Empty, Done, Expected, Warning, Verified), read from what the sections already hold. Since
+/// (Empty, Done, Optional, Warning, Verified), read from what the sections already hold. Since
 /// lot 11 the Models group holds three tabs: the AI model, the RAG's model and the API keys.
 /// </summary>
 public sealed partial class SettingsScreenViewModel
@@ -16,7 +16,7 @@ public sealed partial class SettingsScreenViewModel
     private const string DoneState = "Done";
     private const string WarningState = "Warning";
     private const string VerifiedState = "Verified";
-    private const string ExpectedState = "Expected";
+    private const string OptionalState = "Optional";
 
     private readonly IStudioStrings _strings;
 
@@ -49,9 +49,9 @@ public sealed partial class SettingsScreenViewModel
                 ? _strings.Format(StudioStringKeys.SettingsTabKeysCount, stored)
                 : _strings.Format(StudioStringKeys.SettingsTabKeysNoneStored, Profiles.Secrets.Count);
 
-    /// <summary>The green dot when every key is in place, the amber dot while one is missing, empty without keys.</summary>
+    /// <summary>The green dot when every key is in place, the hollow optional ring while one is missing, empty without keys.</summary>
     public string KeysTabState =>
-        !Profiles.HasSecrets ? EmptyState : StoredKeyCount == Profiles.Secrets.Count ? VerifiedState : ExpectedState;
+        !Profiles.HasSecrets ? EmptyState : StoredKeyCount == Profiles.Secrets.Count ? VerifiedState : OptionalState;
 
     /// <summary>The fiches whose row carries a finding of the validation.</summary>
     private int FolderProblemCount => Config.Mounts.Mounts.Count(mount => mount.HasRowProblem);
@@ -81,9 +81,9 @@ public sealed partial class SettingsScreenViewModel
                 ? _strings.Format(StudioStringKeys.SettingsTabKeysCount, stored)
                 : _strings.Format(StudioStringKeys.SettingsTabKeysNoneStored, Tools.Secrets.Count);
 
-    /// <summary>Verified once every tool key is remembered, expected while one is not.</summary>
+    /// <summary>Verified once every tool key is remembered, the optional ring while one is not.</summary>
     public string ToolKeysTabState =>
-        !Tools.HasSecrets ? EmptyState : StoredToolKeyCount == Tools.Secrets.Count ? VerifiedState : ExpectedState;
+        !Tools.HasSecrets ? EmptyState : StoredToolKeyCount == Tools.Secrets.Count ? VerifiedState : OptionalState;
 
     /// <summary>The shell commands section: the default list, a replaced one, or how many were added.</summary>
     public string ShellTabSubtitle =>

@@ -24,7 +24,7 @@ public sealed class ToolsSettingsViewModel : ObservableObject
         var store = keyStore ?? new EnvironmentApiKeyStore();
 
         Secrets = [.. ToolCatalog.Secrets.Select(secret =>
-            new SecretRowViewModel(secret.EnvName, ToolLabel(secret.UsedBy), store, _strings, secret.ConsoleUrl))];
+            new SecretRowViewModel(secret.EnvName, () => ToolLabel(secret.UsedBy), store, _strings, secret.ConsoleUrl))];
         Families = [.. ToolCatalog.Families.Select(family => new ToolFamilyViewModel(family, _strings))];
 
         // The labels are read live; a language switch re-emits every one of them, the key rows'
@@ -39,16 +39,24 @@ public sealed class ToolsSettingsViewModel : ObservableObject
     }
 
     /// <summary>
-    /// The human name of the tool a key serves (« Web search (Tavily) »); an identifier Studio
-    /// has no label for stays raw, and the card shows it to the expert only.
+    /// The human name of the tool a key serves (« Web search (Tavily) »), read in the current
+    /// language. An identifier Studio has no label for is humanised (« web_scraper » → « Web
+    /// scraper »), never shown raw to the novice; the variable stays the expert's subtitle (UX lot 02).
     /// </summary>
-    private string ToolLabel(string toolId) => toolId switch
+    internal string ToolLabel(string toolId) => toolId switch
     {
         "web_search" => _strings[StudioStringKeys.ToolSecretWebSearch],
         "brave_search" => _strings[StudioStringKeys.ToolSecretBraveSearch],
         "image_generation" => _strings[StudioStringKeys.ToolSecretImageGeneration],
-        _ => toolId,
+        _ => Humanise(toolId),
     };
+
+    /// <summary>« web_scraper » → « Web scraper »: separators become spaces, the first letter is raised.</summary>
+    internal static string Humanise(string toolId)
+    {
+        var words = toolId.Replace('_', ' ').Replace('-', ' ').Trim();
+        return words.Length == 0 ? toolId : char.ToUpperInvariant(words[0]) + words[1..];
+    }
 
     /// <summary>The keys the tools need, in the card's order.</summary>
     public IReadOnlyList<SecretRowViewModel> Secrets { get; }

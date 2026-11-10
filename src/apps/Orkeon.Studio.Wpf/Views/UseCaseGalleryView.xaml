@@ -46,19 +46,14 @@
         <Run Text="{Binding CountLabel, Mode=OneWay}"/>
         <InlineUIContainer BaselineAlignment="Center">
           <TextBlock Visibility="{Binding HasActiveFilter, Converter={StaticResource BooleanToVisibility}}">
-            <Run Text=" · "/><Hyperlink Command="{Binding ClearFiltersCommand}"><Run Text="{Binding [Studio.Create.GalleryClearFilters], Source={x:Static services:I18n.Instance}, Mode=OneWay}"/></Hyperlink>
+            <Run Text=" · "/><Hyperlink Command="{Binding ClearFiltersCommand}"><Run Text="{Binding [Studio.Create.GalleryClear], Source={x:Static services:I18n.Instance}, Mode=OneWay}"/></Hyperlink>
           </TextBlock>
         </InlineUIContainer>
       </TextBlock>
 
-      <WrapPanel Margin="0,12,0,0">
-        <!-- The cases the need's suggestions found, best first — what « N close use cases »
-             under the need opens the panel on. -->
-        <Button Style="{StaticResource SelectableChip}" DataContext="{Binding SuggestedChip}"
-                Command="{Binding SelectCommand}" Content="{Binding Label}"
-                Visibility="{Binding DataContext.HasSuggestions, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource BooleanToVisibility}}"/>
-      </WrapPanel>
-      <ItemsControl ItemsSource="{Binding PrimaryCategories}">
+      <!-- UX lot 11: one row — the cases the need's suggestions found (what « N close use cases »
+           under the need opens the panel on) at its head while there are some, then the domains. -->
+      <ItemsControl ItemsSource="{Binding PrimaryChips}" Margin="0,8,0,0">
         <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
         <ItemsControl.ItemTemplate>
           <DataTemplate>
@@ -255,10 +250,11 @@
                                Foreground="{DynamicResource InkFaintBrush}"
                                Visibility="{Binding DataContext.Mode.IsExpert, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BooleanToVisibility}}"><Run Text="{Binding Id, Mode=OneWay}"/><Run Text=" · "/><Run Text="{Binding Process, Mode=OneWay}"/></TextBlock></InlineUIContainer>
                   </TextBlock>
+                  <!-- UX lot 11: « 3 agents · Step by step » right under the title. -->
+                  <TextBlock Style="{StaticResource MetaText}" Margin="0,2,0,0" Text="{Binding AgentsLine}"/>
                   <TextBlock Style="{StaticResource BodyText}" Foreground="{DynamicResource InkMutedBrush}"
                              Margin="0,4,0,0" Text="{Binding Problem}"
                              Visibility="{Binding HasProblem, Converter={StaticResource BooleanToVisibility}}"/>
-                  <TextBlock Style="{StaticResource MetaText}" Margin="0,2,0,0" Text="{Binding AgentsLine}"/>
                   <!-- D09 (R12, R20): the shared Badge — its tinted ground is kept in the dark
                        theme, so the domain tag never turns into bare text. -->
                   <WrapPanel Margin="0,9,0,0">

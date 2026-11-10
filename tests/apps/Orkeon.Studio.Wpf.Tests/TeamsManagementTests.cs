@@ -105,6 +105,8 @@ public sealed class TeamsManagementTests
 
             card.AskDeleteCommand.Execute(null);
             Assert.Equal(EnglishStudioStrings.Instance[StudioStringKeys.TeamsDeleteAskArchive], card.DeleteQuestion);
+            // The Novice reads the team named, and no workshop (UX lot 08).
+            Assert.Equal("Move the team “Veille” to the archive?", card.DeleteQuestionNovice);
             Assert.False(card.HasDeleteConsequence);
             Assert.True(card.CanDeleteSessionToo);
             card.DeleteSessionToo = true;
@@ -184,6 +186,7 @@ public sealed class TeamsManagementTests
             card.AskDeleteCommand.Execute(null);
             // UX lot 08: the question names the team, and says what goes and what stays.
             Assert.Equal("Delete the team “Veille”?", card.DeleteQuestion);
+            Assert.Equal("Delete the team “Veille”?", card.DeleteQuestionNovice);
             Assert.True(card.HasDeleteConsequence);
             Assert.Equal(EnglishStudioStrings.Instance[StudioStringKeys.TeamsDeleteConsequence], card.DeleteConsequence);
             await card.ConfirmDeleteCommand.ExecuteAsync();

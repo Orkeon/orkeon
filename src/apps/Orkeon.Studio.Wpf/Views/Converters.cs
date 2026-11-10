@@ -177,12 +177,16 @@ public sealed class TeamLastRunConverter : IValueConverter
 /// <c>fail</c>) to the <see cref="Controls.Tone"/> of a <see cref="Controls.Badge"/> (UX lot 11): ok →
 /// Success, warn → Warning, muted and idle → Neutral, running → Info, fail → Danger, anything else
 /// Neutral. Running is Info by the spec's literal table, although Info is otherwise reserved for categories.
+/// Bound to a <see cref="Controls.StatusDot"/>'s <see cref="Controls.DotTone"/>, the same state takes the
+/// dot's side of the scale (Components.xaml): Success → Ready, Warning → Attention, Danger → Error, the
+/// rest (running included) Neutral.
 /// </summary>
 public sealed class StateToneConverter : IValueConverter
 {
     /// <inheritdoc />
-    public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture) =>
-        value is string state
+    public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        var tone = value is string state
             ? state switch
             {
                 "ok" => Controls.Tone.Success,
@@ -192,6 +196,16 @@ public sealed class StateToneConverter : IValueConverter
                 _ => Controls.Tone.Neutral,
             }
             : Controls.Tone.Neutral;
+        return targetType == typeof(Controls.DotTone) ? DotToneOf(tone) : tone;
+    }
+
+    private static Controls.DotTone DotToneOf(Controls.Tone tone) => tone switch
+    {
+        Controls.Tone.Success => Controls.DotTone.Ready,
+        Controls.Tone.Warning => Controls.DotTone.Attention,
+        Controls.Tone.Danger => Controls.DotTone.Error,
+        _ => Controls.DotTone.Neutral,
+    };
 
     /// <inheritdoc />
     public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) =>

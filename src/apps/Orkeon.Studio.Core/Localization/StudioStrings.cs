@@ -1171,12 +1171,6 @@ public static class StudioStringKeys
     /// <summary>"Ready to work"</summary>
     public const string RunStateIdle = "Studio.Run.StateIdle";
 
-    /// <summary>"Run in progress"</summary>
-    public const string RunStateRunning = "Studio.Run.StateRunning";
-
-    /// <summary>"Run finished"</summary>
-    public const string RunStateDone = "Studio.Run.StateDone";
-
     /// <summary>"waiting"</summary>
     public const string RunBadgeIdle = "Studio.Run.BadgeIdle";
 
@@ -2189,6 +2183,9 @@ public static class StudioStringKeys
     /// <summary>"Move the team and what goes with it to the workshop's archive?" — the delete banner's question in a workshop, where Delete archives (STUDIO-64).</summary>
     public const string TeamsDeleteAskArchive = "Studio.Teams.DeleteAskArchive";
 
+    /// <summary>"Move the team “{0}” to the archive?" — the same question in Novice: the team named, no workshop (UX lot 08).</summary>
+    public const string TeamsDeleteAskArchiveNamed = "Studio.Teams.DeleteAskArchiveNamed";
+
     /// <summary>"Moved to {0}." — the screen's line once a team and its trees went under the workshop's archive; {0} is archive/&lt;slug&gt; (STUDIO-64).</summary>
     public const string TeamsArchivedToWorkshop = "Studio.Teams.ArchivedToWorkshop";
 
@@ -2813,8 +2810,8 @@ public static class StudioStringKeys
     /// <summary>"Any" — the process chip that filters nothing.</summary>
     public const string WizardGalleryAnyProcess = "Studio.Create.GalleryAnyProcess";
 
-    /// <summary>"{0} of {1} use cases" — the panel's count line.</summary>
-    public const string WizardGalleryCount = "Studio.Create.GalleryCount";
+    /// <summary>"{0} of {1} cases" — the panel's count line, before « · Clear » (UX lot 11).</summary>
+    public const string WizardGalleryCountShort = "Studio.Create.GalleryCountShort";
 
     /// <summary>"Close to your need ({0})" — the filter the suggestion hint opens the panel on.</summary>
     public const string WizardGallerySuggested = "Studio.Create.GallerySuggested";
@@ -3271,8 +3268,6 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.UsageSeconds] = "{0} s",
         [StudioStringKeys.UsageMinutesSeconds] = "{0} min {1} s",
         [StudioStringKeys.RunStateIdle] = "Ready to work",
-        [StudioStringKeys.RunStateRunning] = "Run in progress",
-        [StudioStringKeys.RunStateDone] = "Run finished",
         [StudioStringKeys.RunBadgeIdle] = "waiting",
         [StudioStringKeys.RunBadgeRunning] = "running",
         [StudioStringKeys.RunBadgeDone] = "succeeded",
@@ -3797,6 +3792,7 @@ public sealed class EnglishStudioStrings : IStudioStrings
 
         // STUDIO-64: in a workshop, Rename, Delete and Duplicate follow the team's trees
         [StudioStringKeys.TeamsDeleteAskArchive] = "Move the team and what goes with it to the workshop's archive?",
+        [StudioStringKeys.TeamsDeleteAskArchiveNamed] = "Move the team “{0}” to the archive?",
         [StudioStringKeys.TeamsArchivedToWorkshop] = "Moved to {0}.",
         [StudioStringKeys.TeamsRenameSiblingTaken] = "In the workshop, {0} is already taken: choose another name.",
         [StudioStringKeys.TeamsRenamedWithSiblings] = "Its workbook, tests, settings and mount sets followed it.",
@@ -4021,7 +4017,7 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.WizardGalleryReference] = "Inspired by: {0}",
         [StudioStringKeys.WizardGalleryAllCategories] = "All",
         [StudioStringKeys.WizardGalleryAnyProcess] = "Any",
-        [StudioStringKeys.WizardGalleryCount] = "{0} of {1} use cases",
+        [StudioStringKeys.WizardGalleryCountShort] = "{0} of {1} cases",
         [StudioStringKeys.WizardGallerySuggested] = "Close to your need ({0})",
         [StudioStringKeys.WizardGalleryMoreFilters] = "More filters",
         [StudioStringKeys.WizardGalleryAgentsLine] = "{0} {0:plural:agent|agents} · {1}",

@@ -43,12 +43,35 @@ public sealed partial class StateScaleConformityTests
         var text = File.ReadAllText(Path.Combine(WpfSourceRoot(), "Views", view));
 
         Assert.Contains("StateToneConverter", text, StringComparison.Ordinal);
-        // The "running" trigger left in LaunchTabView is the badge's pulse (a storyboard), not a tone.
         Assert.DoesNotMatch(StateTriggerPattern(), text);
     }
 
     [GeneratedRegex("Value=\"(ok|warn|muted|fail)\"")]
     private static partial Regex StateTriggerPattern();
+
+    [Fact]
+    public void The_run_badge_and_the_readiness_dot_read_no_state_string_in_the_launch_view()
+    {
+        // Lot 11 criterion 8: the pulse rides a flag, the readiness dot the converter's dot scale.
+        var text = File.ReadAllText(Path.Combine(WpfSourceRoot(), "Views", "LaunchTabView.xaml"));
+
+        Assert.DoesNotContain("Binding RunBadgeTone}\" Value=", text, StringComparison.Ordinal);
+        Assert.DoesNotContain("Binding LaunchReadinessTone}\" Value=", text, StringComparison.Ordinal);
+        Assert.Contains("LaunchReadinessTone, Converter={StaticResource StateToneConverter}", text, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("Success", "Ready")]
+    [InlineData("Warning", "Attention")]
+    [InlineData("Danger", "Error")]
+    [InlineData("_", "Neutral")]
+    public void StateToneConverter_gives_a_status_dot_its_side_of_the_scale(string tone, string dotTone)
+    {
+        var source = File.ReadAllText(Path.Combine(WpfSourceRoot(), "Views", "Converters.cs"));
+        var arm = tone == "_" ? "_" : $"Controls.Tone.{tone}";
+
+        Assert.Contains($"{arm} => Controls.DotTone.{dotTone},", source, StringComparison.Ordinal);
+    }
 
     [Fact]
     public void No_view_or_theme_keeps_the_retired_badge_styles()

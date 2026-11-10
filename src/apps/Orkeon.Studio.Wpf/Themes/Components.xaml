@@ -631,7 +631,8 @@
             <Trigger Property="IsOutsideActiveGroup" Value="True">
               <Setter TargetName="TabRoot" Property="Visibility" Value="Collapsed"/>
             </Trigger>
-            <!-- UX lot 04 (043-062): a full dot is what a crew needs, a hollow one is optional; the tooltip says which. -->
+            <!-- UX lot 04 (043-062): a full dot is what a crew needs or what waits on the user, a hollow ring
+                 (Optional, Settings only) is optional; the tooltip says which. -->
             <Trigger Property="State" Value="Warning">
               <Setter TargetName="EmptyMark" Property="Visibility" Value="Collapsed"/>
               <Setter TargetName="ExpectedMark" Property="Visibility" Value="Visible"/>
@@ -651,6 +652,10 @@
               <Setter TargetName="WorkingMark" Property="Visibility" Value="Visible"/>
             </Trigger>
             <Trigger Property="State" Value="Expected">
+              <Setter TargetName="EmptyMark" Property="Visibility" Value="Collapsed"/>
+              <Setter TargetName="ExpectedMark" Property="Visibility" Value="Visible"/>
+            </Trigger>
+            <Trigger Property="State" Value="Optional">
               <Setter TargetName="EmptyMark" Property="Visibility" Value="Collapsed"/>
               <Setter TargetName="ExpectedMark" Property="Visibility" Value="Visible"/>
               <Setter TargetName="ExpectedMark" Property="Fill" Value="Transparent"/>

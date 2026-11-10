@@ -188,8 +188,20 @@
                             Content="{Binding [Studio.Run.Folder], Source={x:Static services:I18n.Instance}}"/>
                   </StackPanel>
                 </Grid>
-                <!-- the team-type note, once: what a multi-file folder asks of « orkeon run », else the shape -->
-                <TextBlock Style="{StaticResource Hint}" Margin="0,6,0,0" TextWrapping="Wrap" Text="{Binding TargetTypeNote}"/>
+                <!-- the team-type note, once: what a multi-file folder asks of « orkeon run », else the shape.
+                     UX lot 02: no CLI, command or version in Novice, which reads the detected shape alone. -->
+                <TextBlock Margin="0,6,0,0" TextWrapping="Wrap">
+                  <TextBlock.Style>
+                    <Style TargetType="TextBlock" BasedOn="{StaticResource Hint}">
+                      <Setter Property="Text" Value="{Binding Target.StatusDisplay}"/>
+                      <Style.Triggers>
+                        <DataTrigger Binding="{Binding IsExpertMode}" Value="True">
+                          <Setter Property="Text" Value="{Binding TargetTypeNote}"/>
+                        </DataTrigger>
+                      </Style.Triggers>
+                    </Style>
+                  </TextBlock.Style>
+                </TextBlock>
 
                 <StackPanel Visibility="{Binding Target.NeedsShapeChoice, Converter={StaticResource BooleanToVisibility}}">
                   <TextBlock Style="{StaticResource Hint}" Foreground="{DynamicResource WarningInkBrush}" Text="{Binding Target.YamlLayoutBlockedMessage}"/>
@@ -700,7 +712,7 @@
                     <Style.Triggers>
                       <!-- No Storyboard.TargetName — a Style has no namescope — so the animation
                            addresses the badge itself; CapturePose holds it at full opacity. -->
-                      <DataTrigger Binding="{Binding RunBadgeTone}" Value="running">
+                      <DataTrigger Binding="{Binding IsRunBadgePulsing}" Value="True">
                         <DataTrigger.EnterActions>
                           <BeginStoryboard Name="RunBadgePulse">
                             <Storyboard RepeatBehavior="Forever" AutoReverse="True">
@@ -1260,19 +1272,16 @@
         </StackPanel>
         <!-- C04 (R08): the page footer says what is missing to launch, behind the shared dot - never
              the card footer's sentence. Ready in green, refused in red, running in the neutral grey. -->
-        <controls:StatusDot x:Name="ReadinessDot" Content="{Binding LaunchReadinessText}">
+        <!-- UX lot 11: the dot's tone comes from the state scale (StateToneConverter), not from string triggers. -->
+        <controls:StatusDot x:Name="ReadinessDot" Content="{Binding LaunchReadinessText}"
+                            Tone="{Binding LaunchReadinessTone, Converter={StaticResource StateToneConverter}}">
           <controls:StatusDot.Style>
             <Style TargetType="controls:StatusDot" BasedOn="{StaticResource {x:Type controls:StatusDot}}">
-              <Setter Property="Tone" Value="Ready"/>
               <Setter Property="Foreground" Value="{DynamicResource InkBrush}"/>
               <Style.Triggers>
-                <DataTrigger Binding="{Binding LaunchReadinessTone}" Value="danger">
-                  <Setter Property="Tone" Value="Error"/>
+                <Trigger Property="Tone" Value="Error">
                   <Setter Property="Foreground" Value="{DynamicResource DangerInkBrush}"/>
-                </DataTrigger>
-                <DataTrigger Binding="{Binding LaunchReadinessTone}" Value="running">
-                  <Setter Property="Tone" Value="Neutral"/>
-                </DataTrigger>
+                </Trigger>
               </Style.Triggers>
             </Style>
           </controls:StatusDot.Style>
