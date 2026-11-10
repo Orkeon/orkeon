@@ -27,9 +27,12 @@ public partial class CreateTeamWizardTests
         Assert.False(vm.TryTeamCommand.CanExecute(null));
         Assert.Equal(vm.Step2Hint, vm.TryTeamTip);
         Assert.True(vm.IsStep2HintWarning);
-        Assert.True(vm.AdoptWithoutTrialCommand.CanExecute(null));
+        // UX lot 05 (mod 3): « Adopt without trial » waits for the folders like « Try the team ».
+        Assert.False(vm.AdoptWithoutTrialCommand.CanExecute(null));
 
         vm.CreateAllInsideTeamCommand.Execute(null);
+
+        Assert.True(vm.AdoptWithoutTrialCommand.CanExecute(null));
 
         Assert.Equal("Done", vm.Step2FoldersTabState);
         Assert.EndsWith("· inside the team", vm.Step2FoldersTabSubtitle, StringComparison.Ordinal);

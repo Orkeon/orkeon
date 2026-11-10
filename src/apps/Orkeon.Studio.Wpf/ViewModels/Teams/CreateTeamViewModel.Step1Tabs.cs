@@ -75,24 +75,6 @@ public sealed partial class CreateTeamViewModel
     /// <summary>The answers given in the conversation: what the need tab counts as settled.</summary>
     private int AnswersGiven => Chat.Turns.Count(turn => turn.IsUser);
 
-    /// <summary>
-    /// The « Need » pane's footer: « Need described, 2 questions settled with the assistant »,
-    /// counted on the answers given in the conversation.
-    /// </summary>
-    public string NeedFooter
-    {
-        get
-        {
-            if (_need.Trim().Length == 0)
-                return _strings[StudioStringKeys.WizardTabNeedEmptyFooter];
-
-            var answers = AnswersGiven;
-            return answers == 0
-                ? _strings[StudioStringKeys.WizardTabNeedFooter]
-                : _strings.Format(StudioStringKeys.WizardTabNeedFooterAnswers, answers);
-        }
-    }
-
     /// <summary>Whether the folders were confirmed in this session.</summary>
     private bool FoldersConfirmed => !_model.FoldersPending && _model.Folders.Count > 0;
 
@@ -215,7 +197,7 @@ public sealed partial class CreateTeamViewModel
 
     /// <summary>Republishes every tab's state, subtitle and footer.</summary>
     private void RefreshStep1Tabs() => OnPropertiesChanged(
-        nameof(NeedTabState), nameof(NeedTabSubtitle), nameof(NeedFooter),
+        nameof(NeedTabState), nameof(NeedTabSubtitle),
         nameof(FoldersTabState), nameof(FoldersTabSubtitle), nameof(IsFoldersTabEmpty), nameof(FoldersFooter),
         nameof(NotesTabState), nameof(NotesTabSubtitle), nameof(NotesFooter), nameof(ComposeTip), nameof(HasComposeTip));
 }

@@ -70,10 +70,11 @@ public sealed partial class CreateTeamViewModel
 
     /// <summary>
     /// « Waiting for you: confirm the folders »; empty when nothing waits, and while the assistant's
-    /// panel is open — its pinned card carries the action, once (UX lot 06, 073-075).
+    /// panel is open on the wizard's thread — its pinned card carries the action, once (UX lot 06,
+    /// 073-075). The panel open on the Run or History thread carries no such card.
     /// </summary>
     public string WaitPointLabel =>
-        _waitPoint == WizardWaitPoint.None || Chat.IsOpen
+        _waitPoint == WizardWaitPoint.None || (Chat.IsOpen && Chat.ShowsWizardThread)
             ? string.Empty
             : _strings.Format(StudioStringKeys.WizardWaitingFor, _strings[WaitActionKey(_waitPoint)]);
 

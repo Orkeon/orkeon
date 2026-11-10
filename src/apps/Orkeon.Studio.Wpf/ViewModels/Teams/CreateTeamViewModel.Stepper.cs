@@ -158,7 +158,7 @@ public sealed partial class CreateTeamViewModel
 
     /// <summary>
     /// UX lot 05 (019, 020): the verdict's header, on the engine's own « passing » — « Ready to
-    /// adopt », or « To fix: 1 point », counting the failed lines (at least one when the engine
+    /// adopt », or « To fix: 1 point », counting the unmet criterion lines (at least one when the engine
     /// says not passing). <see cref="VerdictSummary"/> stays as the line under it.
     /// </summary>
     public string VerdictHeadline
@@ -170,7 +170,7 @@ public sealed partial class CreateTeamViewModel
             if (VerdictPassing)
                 return _strings[StudioStringKeys.WizardVerdictReady];
 
-            var failed = Checklist.Count(line => line.IsFailure);
+            var failed = Checklist.Count(line => line.IsCriterion && line.IsFailure);
             return _strings.Format(StudioStringKeys.WizardVerdictToFix, Math.Max(1, failed));
         }
     }

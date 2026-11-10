@@ -17,7 +17,6 @@ public partial class CreateTeamWizardTests
 
         Assert.Equal(CreateTeamViewModel.Step1NeedTab, vm.Step1TabIndex);
         Assert.Equal("Empty", vm.NeedTabState);
-        Assert.Equal("Need not described yet.", vm.NeedFooter);
         Assert.Equal("Empty", vm.FoldersTabState);
         Assert.True(vm.IsFoldersTabEmpty);
         Assert.Equal("Proposed after the composition", vm.FoldersTabSubtitle);
@@ -29,7 +28,6 @@ public partial class CreateTeamWizardTests
         vm.ComposeNotes.Consigne = "Cite every source.";
 
         Assert.Equal("Done", vm.NeedTabState);
-        Assert.Equal("Need described.", vm.NeedFooter);
         Assert.Equal("Done", vm.NotesTabState);
         Assert.Equal("Instruction taken as written.", vm.NotesFooter);
 

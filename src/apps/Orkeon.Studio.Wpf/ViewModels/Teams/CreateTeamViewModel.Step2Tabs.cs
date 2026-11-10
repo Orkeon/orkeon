@@ -284,7 +284,7 @@ public sealed partial class CreateTeamViewModel
     /// </summary>
     public string TryTeamTip =>
         HasFoldersToChoose ? _strings.Format(StudioStringKeys.WizardFoldersToChoose, FoldersToChooseCount)
-        : !CanTryTeam ? _strings[StudioStringKeys.WizardTryTeamNoProposal]
+        : !HasProposal ? _strings[StudioStringKeys.WizardTryTeamNoProposal]
         : string.Empty;
 
     /// <summary>Whether the action bar has a sentence — its dot shows with it.</summary>

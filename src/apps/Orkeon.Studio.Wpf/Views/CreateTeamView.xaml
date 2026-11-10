@@ -302,8 +302,9 @@
               Content="{Binding [Studio.Create.Back], Source={x:Static services:I18n.Instance}}" controls:ButtonIcon.Kind="arrow-left"/>
               <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="40" Margin="8,0,0,0"
                       Command="{Binding AdoptWithoutTrialCommand}"
+                      IsEnabled="{Binding CanTryTeamNow}"
                       ToolTip="{Binding [Studio.Create.AdoptWithoutTrialTip], Source={x:Static services:I18n.Instance}}"
-                      Visibility="{Binding CanTryTeam, Converter={StaticResource BooleanToVisibility}}"
+                      ToolTipService.ShowOnDisabled="True"
                       Content="{Binding [Studio.Create.AdoptWithoutTrial], Source={x:Static services:I18n.Instance}}"/>
               <Button Style="{StaticResource BtnPrimary}" controls:ButtonSize.Height="40" Margin="8,0,0,0"
                       Command="{Binding TryTeamCommand}"
@@ -754,12 +755,13 @@
           <controls:StepTab Header="{Binding [Studio.Create.TabNeed], Source={x:Static services:I18n.Instance}}"
                             Subtitle="{Binding NeedTabSubtitle}" State="{Binding NeedTabState}">
             <DockPanel>
-              <Border DockPanel.Dock="Bottom" Style="{StaticResource PaneFooter}">
-                <DockPanel>
-                  <!-- UX lot 05 (009-014): « See the folders → » only once the folders tab has
-                       something to show; the step's state is said once, by the action bar. -->
+              <!-- UX lot 05 (009-014): « See the folders → » only once the folders tab has
+                   something to show — the footer goes with it, never an empty band; the step's
+                   state is said once, by the action bar. -->
+              <Border DockPanel.Dock="Bottom" Style="{StaticResource PaneFooter}"
+                      Visibility="{Binding IsFoldersTabEmpty, Converter={StaticResource InverseBooleanToVisibility}}">
+                <DockPanel LastChildFill="False">
                   <Button DockPanel.Dock="Right" Style="{StaticResource BtnSecondary}" Command="{Binding ShowFoldersTabCommand}"
-                          Visibility="{Binding IsFoldersTabEmpty, Converter={StaticResource InverseBooleanToVisibility}}"
                   Content="{Binding [Studio.Create.SeeFolders], Source={x:Static services:I18n.Instance}}" controls:ButtonIcon.Kind="arrow-right" controls:ButtonIcon.Placement="Trailing"/>
                 </DockPanel>
               </Border>

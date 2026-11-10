@@ -2191,7 +2191,8 @@ public partial class CreateTeamWizardTests
     /// <summary>
     /// STUDIO-46 (rewritten from the policy switch). A renamed row is the name confirmed —
     /// normalized the way the engine reads it — and a folder chosen under its old name no longer
-    /// answers it: the binding goes, and the row falls back to its default answer.
+    /// answers it: the binding goes, and the row falls back to inside the team, as a role flip
+    /// does — never to « To choose » the user did not ask for (UX lot 01, mod 5).
     /// </summary>
     [Fact]
     public async Task A_renamed_folder_is_the_one_confirmed_and_drops_the_folder_chosen_under_its_old_name()
@@ -2205,7 +2206,8 @@ public partial class CreateTeamWizardTests
 
             wizard.FolderRows[0].VirtualPath = " /Factures ";
             Assert.Null(wizard.FolderRows[0].Directory);
-            Assert.True(wizard.FolderRows[0].IsUnanswered);
+            Assert.True(wizard.FolderRows[0].IsInsideTeam);
+            Assert.False(wizard.FolderRows[0].IsUnanswered);
             Assert.Empty(wizard.TeamMounts);
 
             wizard.FolderRows[1].VirtualPath = "markdown";
@@ -2217,8 +2219,8 @@ public partial class CreateTeamWizardTests
         await Compose(vm);
 
         Assert.Equal([("/factures", (string?)null), ("/markdown", null)], Confirmed(processes));
-        Assert.Equal(["./markdown:/markdown:rw"], vm.TeamMounts);
-        Assert.Equal(["/markdown", "/factures"], vm.MountRows.Select(r => r.VirtualPath));
+        Assert.Equal(["./factures:/factures:ro", "./markdown:/markdown:rw"], vm.TeamMounts);
+        Assert.Equal(["/factures", "/markdown"], vm.MountRows.Select(r => r.VirtualPath));
     }
 
     /// <summary>
@@ -3214,7 +3216,7 @@ public partial class CreateTeamWizardTests
         Assert.True(vm.FailureOffersDiagnostic);
         Assert.False(vm.FailureOffersSettings);
         Assert.True(vm.FailureOffersRetry);
-        Assert.Same(vm.ComposeCommand, vm.FailureRetryCommand);
+        Assert.Same(vm.RetryComposeCommand, vm.FailureRetryCommand);
     }
 
     /// <summary>

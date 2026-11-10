@@ -68,11 +68,11 @@ public sealed class WizardFolderRow : ObservableObject
             MarkEdited();
 
             // A folder chosen on the disk was declared under the previous name: it no longer
-            // answers this one. The row falls back to its default answer.
+            // answers this one. The row falls back to inside the team, as a role flip does (UX lot 01).
             if (_directory is not null)
             {
                 _directory = null;
-                _isInsideTeam = !IsInput;
+                _isInsideTeam = true;
                 RaiseAnswer();
             }
 

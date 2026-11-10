@@ -1883,15 +1883,6 @@ public static class StudioStringKeys
     /// <summary>"To describe" — the need tab's subtitle before.</summary>
     public const string WizardTabNeedEmpty = "Studio.Create.TabNeedEmpty";
 
-    /// <summary>"Need not described yet." — the need pane's footer before; the page footer says what to do (C04).</summary>
-    public const string WizardTabNeedEmptyFooter = "Studio.Create.TabNeedEmptyFooter";
-
-    /// <summary>"Need described."</summary>
-    public const string WizardTabNeedFooter = "Studio.Create.TabNeedFooter";
-
-    /// <summary>"Need described, {0} questions settled with the assistant".</summary>
-    public const string WizardTabNeedFooterAnswers = "Studio.Create.TabNeedFooterAnswers";
-
     /// <summary>"{0} folders to confirm" — the folders tab's subtitle while they wait.</summary>
     public const string WizardTabFoldersPending = "Studio.Create.TabFoldersPending";
 
@@ -3685,9 +3676,6 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.WizardTabNeedInterrupted] = "Described, brief interrupted",
         [StudioStringKeys.WizardTabNeedDoneAnswers] = "Described, {0} {0:plural:question settled|questions settled}",
         [StudioStringKeys.WizardTabNeedEmpty] = "To describe",
-        [StudioStringKeys.WizardTabNeedEmptyFooter] = "Need not described yet.",
-        [StudioStringKeys.WizardTabNeedFooter] = "Need described.",
-        [StudioStringKeys.WizardTabNeedFooterAnswers] = "Need described, {0} {0:plural:question settled|questions settled} with the assistant",
         [StudioStringKeys.WizardTabFoldersPending] = "{0} {0:plural:folder to confirm|folders to confirm}",
         [StudioStringKeys.WizardTabFoldersPendingToChoose] = "{0} {0:plural:folder|folders} · {1} to choose",
         [StudioStringKeys.WizardTabFoldersConfirmed] = "{0} {0:plural:folder confirmed|folders confirmed}",

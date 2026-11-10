@@ -64,6 +64,9 @@ public sealed class ChatThreadViewModel : ObservableObject
     private bool _busyBeforeAction;
     private AssistantContext _context = AssistantContext.WizardStep1;
 
+    // Bumped by Reset: a bank answer still due from before it belongs to a thread that is gone.
+    private int _generation;
+
     // The thread not on show (UX lot 06): the wizard's while another screen holds the panel,
     // the other screens' while the wizard does.
     private readonly ParkedThread _parkedWizard = new();
@@ -444,7 +447,15 @@ public sealed class ChatThreadViewModel : ObservableObject
             Restore(toWizard ? _parkedWizard : _parkedOther);
 
         OnPropertiesChanged(nameof(Primer), nameof(ShowsBrief), nameof(ShowsBriefCard));
+        if (fromWizard != toWizard)
+            OnPropertyChanged(nameof(ShowsWizardThread));
     }
+
+    /// <summary>
+    /// Whether the thread on show is the wizard's — the Run and History screens hold their own
+    /// (UX lot 06, 077). The wizard's wait reminder steps aside only for its own thread.
+    /// </summary>
+    public bool ShowsWizardThread => InWizard;
 
     private static bool IsWizard(AssistantContext context) => context
         is AssistantContext.WizardStep1 or AssistantContext.WizardStep2
@@ -545,7 +556,8 @@ public sealed class ChatThreadViewModel : ObservableObject
         if (string.IsNullOrWhiteSpace(text))
             return;
 
-        PushWizard(new ChatTurnViewModel(_strings, isBot: true, _nameResolver?.Invoke(text) ?? text));
+        PushWizard(new ChatTurnViewModel(
+            _strings, isBot: true, _nameResolver?.Invoke(text) ?? text, replyBody: text));
         StopWizardBusy();
     }
 
@@ -722,9 +734,14 @@ public sealed class ChatThreadViewModel : ObservableObject
         if (ReferenceEquals(turn, _askedTurn) && _askedQuestion is not null)
             return _askedQuestion;
 
-        var replies = ChatReplyReader.Read(turn.Body)
-            .Select(option => new ChatReply(
-                option.Label, new RelayCommand(() => Send(option.Label)), option.IsRecommended))
+        // The answers are read from what the engine sent, so the one clicked goes back with the
+        // agent key it named; the button and the bubble show it by its role.
+        var replies = ChatReplyReader.Read(turn.ReplyBody)
+            .Select(option =>
+            {
+                var shown = _nameResolver?.Invoke(option.Label) ?? option.Label;
+                return new ChatReply(shown, new RelayCommand(() => Send(option.Label, shown)), option.IsRecommended);
+            })
             .ToList();
         var offersChoices = replies.Count > 0;
         replies.Add(new ChatReply(_strings[StudioStringKeys.ChatSkip], SkipCommand));
@@ -785,6 +802,17 @@ public sealed class ChatThreadViewModel : ObservableObject
     public void Reset()
     {
         _parkedWizard.Clear();
+        _generation++;
+        // Another screen holds the panel: its thread is not the wizard's to clear. Only the
+        // wizard's parked thread and the session's flags go.
+        if (!InWizard)
+        {
+            IsStarted = false;
+            WasInterrupted = false;
+            IsDone = false;
+            return;
+        }
+
         _delay.CancelPending();
         Turns.Clear();
         _tick = 0;
@@ -818,7 +846,7 @@ public sealed class ChatThreadViewModel : ObservableObject
         _delay.After(BeatTwo, () => { if (_isBusy) { _tick = 2; RaiseDerived(); } });
     }
 
-    private void Send(string text)
+    private void Send(string text, string? shown = null)
     {
         var said = (text ?? "").Trim();
         if (said.Length == 0 || _isBusy)
@@ -827,7 +855,7 @@ public sealed class ChatThreadViewModel : ObservableObject
         // No CancelPending: its only job was killing the scripted beats, and it would now
         // eat the closing pause — the thread would sit «done» with the column never handed
         // back. The beats defend themselves through their own _isBusy guard.
-        Push(new ChatTurnViewModel(_strings, isBot: false, said));
+        Push(new ChatTurnViewModel(_strings, isBot: false, shown?.Trim() ?? said));
         Draft = "";
 
         // The engine wins whenever one is listening — a canned line would be a downgrade of
@@ -859,11 +887,32 @@ public sealed class ChatThreadViewModel : ObservableObject
         var answerKey = _answers.AnswerKey(said, _context);
         IsBusy = true;
         StartBeats();
+        var askedInWizard = InWizard;
+        var generation = _generation;
         _delay.After(LocalAnswer, () =>
         {
-            IsBusy = false;
-            Push(new ChatTurnViewModel(_strings, isBot: true, "", bodyKey: answerKey));
+            if (generation == _generation)
+                DeliverLocalAnswer(askedInWizard, new ChatTurnViewModel(_strings, isBot: true, "", bodyKey: answerKey));
         });
+    }
+
+    /// <summary>
+    /// The bank's answer, due after its pause, lands in the thread it was asked in: a switch of
+    /// screen meanwhile parked that thread, and the answer goes with it rather than into the
+    /// thread now on show, whose spinner it would also have stopped.
+    /// </summary>
+    private void DeliverLocalAnswer(bool askedInWizard, ChatTurnViewModel turn)
+    {
+        if (askedInWizard == InWizard)
+        {
+            IsBusy = false;
+            Push(turn);
+            return;
+        }
+
+        var slot = askedInWizard ? _parkedWizard : _parkedOther;
+        slot.Turns.Add(turn);
+        slot.Busy = false;
     }
 
     private void Stop()

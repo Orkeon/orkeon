@@ -581,8 +581,11 @@ public sealed partial class CreateTeamViewModel : ObservableObject
         // The gesture IS the engine. The questions belong to the model, asked during its
         // brief stage; a local questionnaire played first only interviewed the user twice.
         ComposeCommand = new AsyncRelayCommand(ComposeAsync, () => CanCompose);
+        // « Try again » after a missing engine: the same run, past the greyed « Compose » — the user
+        // installed the engine since, and nothing else would ever lift that failure but « Start over ».
+        RetryComposeCommand = new AsyncRelayCommand(ComposeAsync, () => CanComposeIgnoringEngine);
         TryTeamCommand = new AsyncRelayCommand(TryTeamAsync, () => CanTryTeamNow);
-        AdoptWithoutTrialCommand = new AsyncRelayCommand(AdoptWithoutTrialAsync, () => CanTryTeam);
+        AdoptWithoutTrialCommand = new AsyncRelayCommand(AdoptWithoutTrialAsync, () => CanTryTeamNow);
         UseExampleCommand = new RelayCommand(p => Need = p as string ?? Need);
         RestartCommand = new RelayCommand(
             Restart,
@@ -836,7 +839,7 @@ public sealed partial class CreateTeamViewModel : ObservableObject
         ComposeNotes.RefreshMessageCount();
         TryNotes.RefreshMessageCount();
         AdoptNotes.RefreshMessageCount();
-        OnPropertiesChanged(nameof(NeedFooter), nameof(NeedTabSubtitle));
+        OnPropertyChanged(nameof(NeedTabSubtitle));
     }
 
     private void OnChatPropertyChanged(string? propertyName)
@@ -846,7 +849,7 @@ public sealed partial class CreateTeamViewModel : ObservableObject
 
         // UX lot 06: the wait reminder steps aside while the open panel's card carries it, and
         // comes back on the status bar the moment the panel closes.
-        if (propertyName is nameof(ChatThreadViewModel.IsOpen))
+        if (propertyName is nameof(ChatThreadViewModel.IsOpen) or nameof(ChatThreadViewModel.ShowsWizardThread))
         {
             OnPropertiesChanged(nameof(WaitPointLabel), nameof(StatusMessage));
             SyncProgress();
@@ -883,6 +886,7 @@ public sealed partial class CreateTeamViewModel : ObservableObject
             nameof(HasAssistant), nameof(NeedsAssistant), nameof(ShowsAssistantGate), nameof(CanCompose), nameof(Step1Hint),
             nameof(AdoptProfileName), nameof(AdoptProfileSummary), nameof(AdoptUseDefaultLlmLabel), nameof(AdoptModelLine));
         ComposeCommand.RaiseCanExecuteChanged();
+        RetryComposeCommand.RaiseCanExecuteChanged();
         // A model elected (or the last one removed) opens or closes the « choose a model » wait.
         SyncWaitPoint();
     }
@@ -902,7 +906,8 @@ public sealed partial class CreateTeamViewModel : ObservableObject
     }
 
     /// <summary>The language switched: the step-4 card titles its setting's card in it (STUDIO-54).</summary>
-    private void OnAdoptProfileLanguageChanged() => OnPropertyChanged(nameof(AdoptProfileSummary));
+    private void OnAdoptProfileLanguageChanged() =>
+        OnPropertiesChanged(nameof(AdoptProfileSummary), nameof(AdoptModelLine), nameof(VerdictHeadline));
 
     /// <summary>Raised when a session becomes active — the shell brings the screen forward.</summary>
     public event EventHandler? SessionActivated;
@@ -1113,6 +1118,7 @@ public sealed partial class CreateTeamViewModel : ObservableObject
                 Chat.OwnerChanged();
                 RaiseDraftChanged();
                 ComposeCommand.RaiseCanExecuteChanged();
+                RetryComposeCommand.RaiseCanExecuteChanged();
                 RefreshRephrase();
                 ScheduleSuggestions();
             }
@@ -1132,11 +1138,16 @@ public sealed partial class CreateTeamViewModel : ObservableObject
     /// Whether the brief is complete enough to compose: the need is typed (STUDIO-45). What
     /// it leaves unsaid the forge asks for itself.
     /// </summary>
-    public bool CanCompose =>
+    public bool CanCompose => CanComposeIgnoringEngine && !IsEngineMissing;
+
+    /// <summary>
+    /// <see cref="CanCompose"/> without the missing engine: what the failure's « Try again » waits
+    /// on, so a run that found no engine can be retried once the engine is installed, the need kept.
+    /// </summary>
+    public bool CanComposeIgnoringEngine =>
         HasAssistant
         && !IsEngineRunning
-        && _need.Trim().Length > 0
-        && !IsEngineMissing;
+        && _need.Trim().Length > 0;
 
     /// <summary>
     /// UX lot 05 (012): whether the last run found no engine — the alert says how to install it,
@@ -1180,6 +1191,9 @@ public sealed partial class CreateTeamViewModel : ObservableObject
 
     /// <summary>Sends the brief to the engine — the wizard's "compose the team" button.</summary>
     public AsyncRelayCommand ComposeCommand { get; }
+
+    /// <summary>The failure card's « Try again » after a missing engine (<see cref="CanComposeIgnoringEngine"/>).</summary>
+    public AsyncRelayCommand RetryComposeCommand { get; }
 
     // ── step 1 : the use-case gallery (STUDIO-39) ──────────────────────────────────────────
     // The four quick examples stay first (D-01); the link under them opens the gallery over the
@@ -1434,6 +1448,7 @@ public sealed partial class CreateTeamViewModel : ObservableObject
             SyncProgress();
             RaiseDraftChanged();
             ComposeCommand.RaiseCanExecuteChanged();
+            RetryComposeCommand.RaiseCanExecuteChanged();
             StopCommand.RaiseCanExecuteChanged();
             RestartCommand.RaiseCanExecuteChanged();
             SaveTeamCommand.RaiseCanExecuteChanged();
@@ -2620,7 +2635,7 @@ public sealed partial class CreateTeamViewModel : ObservableObject
 
     private async Task ComposeAsync()
     {
-        if (!CanCompose)
+        if (!CanComposeIgnoringEngine)
             return;
 
         ResetProjection();
@@ -3105,7 +3120,10 @@ public sealed partial class CreateTeamViewModel : ObservableObject
         if (_model.Proposal?.Agents is not { Count: > 0 } agents)
             return text;
 
-        foreach (var agent in agents.Where(a => a.Key.Length > 0).OrderByDescending(a => a.Key.Length))
+        // An agent with no role keeps its key: replacing it with nothing would erase its name.
+        foreach (var agent in agents
+                     .Where(a => a.Key.Length > 0 && !string.IsNullOrWhiteSpace(a.Role))
+                     .OrderByDescending(a => a.Key.Length))
         {
             text = Regex.Replace(
                 text,
@@ -3720,6 +3738,7 @@ public sealed partial class CreateTeamViewModel : ObservableObject
                 nameof(IsEngineMissing), nameof(FailureOffersDiagnosticSecondary),
                 nameof(CanCompose), nameof(ComposeTip), nameof(HasComposeTip));
             ComposeCommand.RaiseCanExecuteChanged();
+            RetryComposeCommand.RaiseCanExecuteChanged();
         }
     }
 
@@ -3743,7 +3762,12 @@ public sealed partial class CreateTeamViewModel : ObservableObject
     /// </summary>
     public AsyncRelayCommand FailureRetryCommand
     {
-        get => _failure?.Kind == WizardFailureKind.PromoteRefused ? SaveTeamCommand : ComposeCommand;
+        get => _failure?.Kind switch
+        {
+            WizardFailureKind.PromoteRefused => SaveTeamCommand,
+            WizardFailureKind.EngineMissing => RetryComposeCommand,
+            _ => ComposeCommand,
+        };
     }
 
     /// <summary>

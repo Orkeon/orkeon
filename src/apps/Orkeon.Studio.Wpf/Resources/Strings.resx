@@ -2365,9 +2365,6 @@
     <value>Described, {0} {0:plural:question settled|questions settled}</value>
   </data>
   <data name="Studio.Create.TabNeedEmpty" xml:space="preserve"><value>To describe</value></data>
-  <data name="Studio.Create.TabNeedEmptyFooter" xml:space="preserve"><value>Need not described yet.</value></data>
-  <data name="Studio.Create.TabNeedFooter" xml:space="preserve"><value>Need described.</value></data>
-  <data name="Studio.Create.TabNeedFooterAnswers" xml:space="preserve"><value>Need described, {0} {0:plural:question settled|questions settled} with the assistant</value></data>
   <data name="Studio.Create.TabFoldersPending" xml:space="preserve"><value>{0} {0:plural:folder to confirm|folders to confirm}</value></data>
   <data name="Studio.Create.TabFoldersPendingToChoose" xml:space="preserve">
     <value>{0} {0:plural:folder|folders} · {1} to choose</value>

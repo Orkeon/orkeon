@@ -2365,9 +2365,6 @@
     <value>Décrit, {0} {0:plural:question réglée|questions réglées}</value>
   </data>
   <data name="Studio.Create.TabNeedEmpty" xml:space="preserve"><value>À décrire</value></data>
-  <data name="Studio.Create.TabNeedEmptyFooter" xml:space="preserve"><value>Besoin pas encore décrit.</value></data>
-  <data name="Studio.Create.TabNeedFooter" xml:space="preserve"><value>Besoin décrit.</value></data>
-  <data name="Studio.Create.TabNeedFooterAnswers" xml:space="preserve"><value>Besoin décrit, {0} {0:plural:question réglée|questions réglées} avec l'assistant</value></data>
   <data name="Studio.Create.TabFoldersPending" xml:space="preserve"><value>{0} {0:plural:dossier à confirmer|dossiers à confirmer}</value></data>
   <data name="Studio.Create.TabFoldersPendingToChoose" xml:space="preserve">
     <value>{0} {0:plural:dossier|dossiers} · {1} à choisir</value>
