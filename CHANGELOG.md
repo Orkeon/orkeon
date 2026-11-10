@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-11-10
+
+The first stable release. Since `1.0.0-rc.6`: Orkeon Studio moves to its own repository
+and the CLI family ships to NuGet for it; the framework closes its gaps — record and
+replay of LLM calls, durable human-in-the-loop, a durable run history, one checkpoint per
+task and `orkeon run --resume`, a retry per task, an LLM judge, `orkeon eval`, the YAML
+`graph:` block, `dotnet new` templates, OAuth and Streamable HTTP for MCP, crews served as
+MCP tools, health probes and a run API on `orkeon-host` (FWK-01..28) —; decision tasks and
+`when` conditions serve three decision-model providers (ADR-015, ADR-016); the
+compatibility shims are removed; and from this version on, the public API in
+`PublicAPI.Shipped.txt` is the 1.x stability commitment.
+
 ### Removed — Orkeon Studio moved to its own repository (Orkeon/orkeon-studio) **[breaking]**
 
 - **Orkeon Studio** **[breaking]**: the desktop and terminal front-end lives in [Orkeon/orkeon-studio](https://github.com/Orkeon/orkeon-studio) and is no longer built, tested, packaged or documented here. Removed from this repository: the `Orkeon.Studio.Core`, `Orkeon.Studio.Config`, `Orkeon.Studio.Run` and `Orkeon.Studio.Wpf` projects and their test projects, all out of `Orkeon.sln`; the `orkeon-studio`, `orkeon-studio-config` and `orkeon-studio-run` executables from the MSI, ZIP, tarball and `.deb` installers (the "Orkeon Studio" Start-menu shortcut included); the Studio smoke steps of the release pipeline; the Studio documentation page (`docs/architecture/studio.md`, EN and FR); and the third-party notices only Studio needed. Studio drives the `orkeon` CLI and its event protocol from its own repository; what it needs from them is generic (see the next section).
@@ -11571,7 +11583,8 @@ Initial public development snapshot. Core domain model established in C# followi
 - Standalone mode (no Redis required)
 - Console application entry point
 
-[Unreleased]: https://github.com/Orkeon/orkeon/compare/v1.0.0-rc.6...HEAD
+[Unreleased]: https://github.com/Orkeon/orkeon/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/Orkeon/orkeon/compare/v1.0.0-rc.6...v1.0.0
 [1.0.0-rc.6]: https://github.com/Orkeon/orkeon/compare/v1.0.0-rc.5...v1.0.0-rc.6
 [1.0.0-rc.5]: https://github.com/Orkeon/orkeon/compare/v1.0.0-rc.4...v1.0.0-rc.5
 [1.0.0-rc.4]: https://github.com/Orkeon/orkeon/compare/v1.0.0-rc.3...v1.0.0-rc.4
