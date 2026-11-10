@@ -170,15 +170,15 @@ public sealed class StatusLineView : View
     }
 
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Host-supplied delegate fault barrier: a throwing approvals provider degrades to no approval line, never crashes the UI timer.")]
-    private IReadOnlyList<Orkeon.Cli.Abstractions.Runners.PendingToolApproval>? ReadPendingApprovals()
+    private IReadOnlyList<Orkeon.Cli.Abstractions.Runners.PendingToolApproval> ReadPendingApprovals()
     {
         try
         {
-            return _integration?.PendingApprovals?.Invoke();
+            return _integration?.PendingApprovals?.Invoke() ?? [];
         }
         catch
         {
-            return null;
+            return [];
         }
     }
 

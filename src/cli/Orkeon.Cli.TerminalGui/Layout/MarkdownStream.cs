@@ -6,10 +6,16 @@ namespace Orkeon.Cli.TerminalGui.Layout;
 /// Markdown arriving in pieces cut anywhere: the finished lines come out styled, the line being written comes out as
 /// it stands, to be replaced once it is finished.
 /// </summary>
-internal sealed class MarkdownStream(GlyphSet glyphs)
+internal sealed class MarkdownStream
 {
-    private readonly MarkdownLines _lines = new(glyphs);
-    private readonly StringBuilder _partial = new();
+    private readonly MarkdownLines _lines;
+    private readonly StringBuilder _partial;
+
+    public MarkdownStream(GlyphSet glyphs)
+    {
+        _lines = new MarkdownLines(glyphs);
+        _partial = new StringBuilder();
+    }
 
     /// <summary>Whether what is shown of this stream is under a command's echo.</summary>
     public bool UnderCommand { get; set; }

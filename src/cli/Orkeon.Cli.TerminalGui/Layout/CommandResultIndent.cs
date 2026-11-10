@@ -4,13 +4,20 @@ namespace Orkeon.Cli.TerminalGui.Layout;
 /// Hangs what a slash command writes under its echo: the first line after an elbow, the next ones aligned
 /// with it. Text arrives in pieces cut anywhere, so the state is whether the next char opens a line.
 /// </summary>
-internal sealed class CommandResultIndent(GlyphSet glyphs)
+internal sealed class CommandResultIndent
 {
-    private readonly string _first = $"{TranscriptModel.Indent}{glyphs.Elbow}  ";
-    private readonly string _next = new(' ', TranscriptModel.Indent.Length + glyphs.Elbow.Length + 2);
+    private readonly string _first;
+    private readonly string _next;
     private bool _active;
     private bool _elbowDue;
     private bool _lineStart;
+
+    public CommandResultIndent(GlyphSet glyphs)
+    {
+        ArgumentNullException.ThrowIfNull(glyphs);
+        _first = $"{TranscriptModel.Indent}{glyphs.Elbow}  ";
+        _next = new string(' ', TranscriptModel.Indent.Length + glyphs.Elbow.Length + 2);
+    }
 
     /// <summary>Starts a command's result (<paramref name="active"/>), or ends the one in flight.</summary>
     public void Reset(bool active)
@@ -21,7 +28,14 @@ internal sealed class CommandResultIndent(GlyphSet glyphs)
     }
 
     /// <summary>What the next line opens with; nothing when no result is in flight.</summary>
-    public string Next => !_active ? string.Empty : _elbowDue ? _first : _next;
+    public string Next
+    {
+        get
+        {
+            if (!_active) return string.Empty;
+            return _elbowDue ? _first : _next;
+        }
+    }
 
     /// <summary>The styled lines to show for <paramref name="lines"/>; the lines themselves when no result is in flight.</summary>
     public IReadOnlyList<TranscriptLine> Apply(IReadOnlyList<TranscriptLine> lines)

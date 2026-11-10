@@ -357,6 +357,11 @@ public sealed class AgentsPaneView : View
         {
             foreach (var line in _tracker.Observe(rows, hasFeed ? finished : null)) sink(line);
         }
+        SettleSelection();
+    }
+
+    private void SettleSelection()
+    {
         if (Navigator is { } navigator)
         {
             // The machine keeps the selection by ticket and decides what an emptied list does,

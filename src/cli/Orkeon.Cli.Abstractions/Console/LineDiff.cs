@@ -71,7 +71,14 @@ public static class LineDiff
         var columns = endRight - start;
         if (rows == 0 || columns == 0 || (long)rows * columns > MaxCells) return (keptLeft, keptRight);
 
-        // table[i * (columns + 1) + j]: how much the rest of each side shares from i and j.
+        var table = BuildTable(left, right, start, rows, columns);
+        MarkFromTable(table, left, right, start, rows, columns, keptLeft, keptRight);
+        return (keptLeft, keptRight);
+    }
+
+    // table[i * (columns + 1) + j]: how much the rest of each side shares from i and j.
+    private static int[] BuildTable(IReadOnlyList<string> left, IReadOnlyList<string> right, int start, int rows, int columns)
+    {
         var table = new int[(rows + 1) * (columns + 1)];
         for (var i = rows - 1; i >= 0; i--)
         {
@@ -82,7 +89,11 @@ public static class LineDiff
                     : Math.Max(table[((i + 1) * (columns + 1)) + j], table[(i * (columns + 1)) + j + 1]);
             }
         }
+        return table;
+    }
 
+    private static void MarkFromTable(int[] table, IReadOnlyList<string> left, IReadOnlyList<string> right, int start, int rows, int columns, bool[] keptLeft, bool[] keptRight)
+    {
         for (int i = 0, j = 0; i < rows && j < columns;)
         {
             if (left[start + i] == right[start + j])
@@ -99,7 +110,6 @@ public static class LineDiff
                 j++;
             }
         }
-        return (keptLeft, keptRight);
     }
 
     /// <summary>The changes from <paramref name="before"/> to <paramref name="after"/>, with the lines around them.</summary>

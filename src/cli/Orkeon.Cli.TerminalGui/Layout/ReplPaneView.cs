@@ -345,126 +345,167 @@ public sealed class ReplPaneView : View, ITaskListNavigator, IToolActivityObserv
     // the end; a user who scrolled up stays put.
     private void ApplyTranscriptWrites(IReadOnlyList<TranscriptWrite> writes)
     {
-        var pending = new Dictionary<TranscriptView, System.Text.StringBuilder>();
-        var stepsChanged = false;
-        foreach (var write in writes)
+        var batch = new WriteBatch(this);
+        foreach (var write in writes) batch.Apply(write);
+        batch.Complete();
+    }
+
+    // The state of one burst of transcript writes: the text held per screen, and whether a step moved.
+    private sealed class WriteBatch(ReplPaneView pane)
+    {
+        private readonly Dictionary<TranscriptView, System.Text.StringBuilder> _pending = [];
+        private bool _stepsChanged;
+
+        public void Apply(TranscriptWrite write)
         {
-            if (write.CallStarted is { } started)
-            {
-                StepOf(write.Thread).Start(started);
-                stepsChanged = true;
-                continue;
-            }
-            if (write.CallFinished is { } finished)
-            {
-                StepOf(write.Thread).Finish(finished);
-                stepsChanged = true;
-                if (finished.Diff is { } diff)
-                {
-                    // A change shows where it happens; it does not end the step.
-                    var target = _screens.For(write.Thread);
-                    FlushPending(target);
-                    target.AppendStyled(DiffRenderer.ForCall(diff, _glyphs));
-                }
-                continue;
-            }
-            var screen = _screens.For(write.Thread);
+            if (TryApplyCall(write)) return;
+            var screen = pane._screens.For(write.Thread);
             if (write.EndsSteps)
             {
-                FoldStepOnto(write.Thread, screen, workEnded: true);
-                FlushMarkdown(screen);
-                _markdown.Remove(screen);
-                continue;
+                EndSteps(write, screen);
+                return;
             }
             if (write.Then is { } then)
             {
-                FoldStepOnto(write.Thread, screen, workEnded: true);
-                // The turn that ended is this screen's: a thread still streaming keeps its line and its fence.
-                FlushMarkdown(screen);
-                _markdown.Remove(screen);
-                foreach (var (target, builder) in pending)
-                {
-                    if (builder.Length == 0) continue;
-                    target.Append(builder.ToString());
-                    builder.Clear();
-                }
-                then();
-                continue;
+                ApplyThen(write, screen, then);
+                return;
             }
             if (write.Scope != CommandResultScope.None)
             {
-                // What is held belongs to the result it was written under.
-                FlushPending(_screens.For(_commandResultThread));
-                FlushPending(screen);
-                _commandResult.Reset(write.Scope == CommandResultScope.Begin);
-                _commandResultThread = write.Thread;
-                continue;
+                ApplyScope(write, screen);
+                return;
             }
             if (write.Lines is { } lines)
             {
                 FoldStepOnto(write.Thread, screen);
                 FlushPending(screen);
                 screen.AppendStyled(lines);
-                continue;
+                return;
             }
             if (write.Text is null)
             {
-                if (pending.TryGetValue(screen, out var cleared)) cleared.Clear();
-                _markdown.Remove(screen);
-                screen.Clear();
-                _steps.Remove(ThreadKey(write.Thread));
-                _lastSteps.Remove(ThreadKey(write.Thread));
-                stepsChanged = true;
-                continue;
+                ClearScreen(write, screen);
+                return;
             }
-            if (!string.IsNullOrWhiteSpace(write.Text)) FoldStepOnto(write.Thread, screen);
-            var inCommand = !write.Attention && write.Thread == _commandResultThread;
+            ApplyText(write, screen, write.Text);
+        }
+
+        public void Complete()
+        {
+            foreach (var (screen, builder) in _pending)
+                if (builder.Length > 0) screen.Append(builder.ToString());
+            if (_stepsChanged) pane.SyncStepArea();
+        }
+
+        private bool TryApplyCall(TranscriptWrite write)
+        {
+            if (write.CallStarted is { } started)
+            {
+                pane.StepOf(write.Thread).Start(started);
+                _stepsChanged = true;
+                return true;
+            }
+            if (write.CallFinished is not { } finished) return false;
+            pane.StepOf(write.Thread).Finish(finished);
+            _stepsChanged = true;
+            if (finished.Diff is { } diff)
+            {
+                // A change shows where it happens; it does not end the step.
+                var target = pane._screens.For(write.Thread);
+                FlushPending(target);
+                target.AppendStyled(DiffRenderer.ForCall(diff, pane._glyphs));
+            }
+            return true;
+        }
+
+        private void EndSteps(TranscriptWrite write, TranscriptView screen)
+        {
+            FoldStepOnto(write.Thread, screen, workEnded: true);
+            pane.FlushMarkdown(screen);
+            pane._markdown.Remove(screen);
+        }
+
+        private void ApplyThen(TranscriptWrite write, TranscriptView screen, Action then)
+        {
+            FoldStepOnto(write.Thread, screen, workEnded: true);
+            // The turn that ended is this screen's: a thread still streaming keeps its line and its fence.
+            pane.FlushMarkdown(screen);
+            pane._markdown.Remove(screen);
+            foreach (var (target, builder) in _pending)
+            {
+                if (builder.Length == 0) continue;
+                target.Append(builder.ToString());
+                builder.Clear();
+            }
+            then();
+        }
+
+        private void ApplyScope(TranscriptWrite write, TranscriptView screen)
+        {
+            // What is held belongs to the result it was written under.
+            FlushPending(pane._screens.For(pane._commandResultThread));
+            FlushPending(screen);
+            pane._commandResult.Reset(write.Scope == CommandResultScope.Begin);
+            pane._commandResultThread = write.Thread;
+        }
+
+        private void ClearScreen(TranscriptWrite write, TranscriptView screen)
+        {
+            if (_pending.TryGetValue(screen, out var cleared)) cleared.Clear();
+            pane._markdown.Remove(screen);
+            screen.Clear();
+            pane._steps.Remove(ThreadKey(write.Thread));
+            pane._lastSteps.Remove(ThreadKey(write.Thread));
+            _stepsChanged = true;
+        }
+
+        private void ApplyText(TranscriptWrite write, TranscriptView screen, string text)
+        {
+            if (!string.IsNullOrWhiteSpace(text)) FoldStepOnto(write.Thread, screen);
+            var inCommand = !write.Attention && write.Thread == pane._commandResultThread;
             if (write.Stream)
             {
                 FlushText(screen);
-                ShowStream(screen, write.Text, inCommand);
-                continue;
+                pane.ShowStream(screen, text, inCommand);
+                return;
             }
-            Enqueue(screen, inCommand ? _commandResult.Apply(write.Text) : write.Text);
-            if (write.Attention && !ReferenceEquals(screen, _screens.Displayed))
-                Enqueue(_screens.Displayed, write.Text);
+            Enqueue(screen, inCommand ? pane._commandResult.Apply(text) : text);
+            if (write.Attention && !ReferenceEquals(screen, pane._screens.Displayed))
+                Enqueue(pane._screens.Displayed, text);
         }
-        foreach (var (screen, builder) in pending)
-            if (builder.Length > 0) screen.Append(builder.ToString());
-        if (stepsChanged) SyncStepArea();
 
         // What the batch holds for this screen goes first: the order of the writes is the order shown.
-        void FlushPending(TranscriptView target)
+        private void FlushPending(TranscriptView target)
         {
-            FlushMarkdown(target);
+            pane.FlushMarkdown(target);
             FlushText(target);
         }
 
-        void FlushText(TranscriptView target)
+        private void FlushText(TranscriptView target)
         {
-            if (!pending.TryGetValue(target, out var earlier) || earlier.Length == 0) return;
+            if (!_pending.TryGetValue(target, out var earlier) || earlier.Length == 0) return;
             target.Append(earlier.ToString());
             earlier.Clear();
         }
 
         // A step ends with what comes after it, once none of its calls runs any more, or with the work it belongs to
         // (a tool that ignored its cancellation stays open for good, and a call that ends late is ignored).
-        void FoldStepOnto(string? thread, TranscriptView target, bool workEnded = false)
+        private void FoldStepOnto(string? thread, TranscriptView target, bool workEnded = false)
         {
             var key = ThreadKey(thread);
-            if (!_steps.TryGetValue(key, out var step) || step.IsEmpty || (step.HasOpenCall && !workEnded)) return;
+            if (!pane._steps.TryGetValue(key, out var step) || step.IsEmpty || (step.HasOpenCall && !workEnded)) return;
             var folded = step.Fold();
-            _lastSteps[key] = folded;
-            stepsChanged = true;
+            pane._lastSteps[key] = folded;
+            _stepsChanged = true;
             FlushPending(target);
             target.AppendStyled([folded.Summary]);
         }
 
-        void Enqueue(TranscriptView target, string text)
+        private void Enqueue(TranscriptView target, string text)
         {
-            FlushMarkdown(target);
-            if (!pending.TryGetValue(target, out var builder))
-                pending[target] = builder = new System.Text.StringBuilder();
+            pane.FlushMarkdown(target);
+            if (!_pending.TryGetValue(target, out var builder))
+                _pending[target] = builder = new System.Text.StringBuilder();
             builder.Append(text);
         }
     }
@@ -999,39 +1040,12 @@ public sealed class ReplPaneView : View, ITaskListNavigator, IToolActivityObserv
             return;
         }
 
-        // Away from the tail, Ctrl+End comes back to it; at the tail it stays the draft's.
-        if (key.KeyCode == (KeyCode.End | KeyCode.CtrlMask) && _screens.Displayed.ChipText is not null)
-        {
-            key.Handled = true;
-            _escapeArmed = false;
-            _screens.Displayed.MoveEnd();
-            return;
-        }
-
-        // On an empty prompt, ? shows the shortcuts instead of starting a message; a script's read keeps it as text.
-        if (PrintableText(key) == "?" && string.IsNullOrEmpty(_input.Text) && _navigation.State != InputNavigationState.List && !ScriptReads)
-        {
-            key.Handled = true;
-            _escapeArmed = false;
-            AppendThreadLines(_screens.DisplayedThread, ShortcutsHelp.Lines(_glyphs));
-            return;
-        }
+        if (TryHandleChipEnd(key) || TryHandleShortcutsKey(key)) return;
 
         var bare = PaneClipboard.BareKey(key);
-
-        // Escape never quits the app from the prompt: the first Escape clears the draft and arms,
-        // a second consecutive Escape requests an interrupt (Esc-Esc). Any other key disarms the sequence.
         if (bare == KeyCode.Esc)
         {
-            key.Handled = true;
-            if (_escapeArmed)
-            {
-                _escapeArmed = false;
-                InterruptRequested?.Invoke(this, EventArgs.Empty);
-                return;
-            }
-            ClearInput();
-            _escapeArmed = true;
+            HandleEscape(key);
             return;
         }
         _escapeArmed = false;
@@ -1047,19 +1061,58 @@ public sealed class ReplPaneView : View, ITaskListNavigator, IToolActivityObserv
             return;
         }
 
-        // Enter submits. Shift+Enter adds a newline where the terminal reports it as distinct
-        // (Ctrl+O is the portable fallback). Alt+Enter is left untouched for the terminal/OS.
-        if (bare == KeyCode.Enter && !key.IsAlt)
-        {
-            if (key.IsShift)
-                _input.InsertText("\n");
-            else
-                Navigate(InputNavigationKey.Enter, key);
-            key.Handled = true;
-            return;
-        }
+        if (TryHandleEnter(bare, key)) return;
 
         HandleNavigationKey(key);
+    }
+
+    // Away from the tail, Ctrl+End comes back to it; at the tail it stays the draft's.
+    private bool TryHandleChipEnd(Key key)
+    {
+        if (key.KeyCode != (KeyCode.End | KeyCode.CtrlMask) || _screens.Displayed.ChipText is null) return false;
+        key.Handled = true;
+        _escapeArmed = false;
+        _screens.Displayed.MoveEnd();
+        return true;
+    }
+
+    // On an empty prompt, ? shows the shortcuts instead of starting a message; a script's read keeps it as text.
+    private bool TryHandleShortcutsKey(Key key)
+    {
+        if (PrintableText(key) != "?" || !string.IsNullOrEmpty(_input.Text) || _navigation.State == InputNavigationState.List || ScriptReads)
+            return false;
+        key.Handled = true;
+        _escapeArmed = false;
+        AppendThreadLines(_screens.DisplayedThread, ShortcutsHelp.Lines(_glyphs));
+        return true;
+    }
+
+    // Escape never quits the app from the prompt: the first Escape clears the draft and arms,
+    // a second consecutive Escape requests an interrupt (Esc-Esc). Any other key disarms the sequence.
+    private void HandleEscape(Key key)
+    {
+        key.Handled = true;
+        if (_escapeArmed)
+        {
+            _escapeArmed = false;
+            InterruptRequested?.Invoke(this, EventArgs.Empty);
+            return;
+        }
+        ClearInput();
+        _escapeArmed = true;
+    }
+
+    // Enter submits. Shift+Enter adds a newline where the terminal reports it as distinct
+    // (Ctrl+O is the portable fallback). Alt+Enter is left untouched for the terminal/OS.
+    private bool TryHandleEnter(KeyCode bare, Key key)
+    {
+        if (bare != KeyCode.Enter || key.IsAlt) return false;
+        if (key.IsShift)
+            _input.InsertText("\n");
+        else
+            Navigate(InputNavigationKey.Enter, key);
+        key.Handled = true;
+        return true;
     }
 
     /// <summary>

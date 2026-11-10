@@ -180,18 +180,7 @@ public static class PromptDispatcher
         }
 
         var defaultValue = GetString(spec, "default");
-        var defaultIdx = -1;
-        if (defaultValue is not null)
-        {
-            for (var i = 0; i < choices.Count; i++)
-            {
-                if (Names(choices[i], defaultValue))
-                {
-                    defaultIdx = i;
-                    break;
-                }
-            }
-        }
+        var defaultIdx = defaultValue is null ? -1 : choices.FindIndex(c => Names(c, defaultValue));
 
         var hint = defaultIdx >= 0 ? $"[{defaultIdx}]" : string.Empty;
         console.Write($"? {hint} > ");

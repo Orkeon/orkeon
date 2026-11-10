@@ -17,12 +17,20 @@ internal sealed partial class StepActivityModel : IPanelRows
     private readonly GlyphSet _glyphs;
     private readonly List<Call> _calls = [];
 
-    private sealed class Call(long id, string tool, string subject)
+    private sealed class Call
     {
-        public long Id { get; } = id;
-        public string Tool { get; } = tool;
-        public string Subject { get; } = subject;
-        public bool Open { get; set; } = true;
+        public Call(long id, string tool, string subject)
+        {
+            Id = id;
+            Tool = tool;
+            Subject = subject;
+            Open = true;
+        }
+
+        public long Id { get; }
+        public string Tool { get; }
+        public string Subject { get; }
+        public bool Open { get; set; }
         public bool Failed { get; set; }
         public int Added { get; set; }
         public int Removed { get; set; }
@@ -73,8 +81,8 @@ internal sealed partial class StepActivityModel : IPanelRows
     public FoldedStep Fold()
     {
         var counts = new Dictionary<string, int>(StringComparer.Ordinal);
-        foreach (var call in _calls)
-            counts[call.Tool] = counts.GetValueOrDefault(call.Tool) + 1;
+        foreach (var tool in _calls.Select(call => call.Tool))
+            counts[tool] = counts.GetValueOrDefault(tool) + 1;
 
         var details = new List<TranscriptLine>(_calls.Count);
         for (var i = 0; i < _calls.Count; i++)
@@ -91,8 +99,8 @@ internal sealed partial class StepActivityModel : IPanelRows
     private List<RowSegment> TitleRow(int width)
     {
         var counts = new Dictionary<string, int>(StringComparer.Ordinal);
-        foreach (var call in _calls)
-            counts[call.Tool] = counts.GetValueOrDefault(call.Tool) + 1;
+        foreach (var tool in _calls.Select(call => call.Tool))
+            counts[tool] = counts.GetValueOrDefault(tool) + 1;
         var text = TerminalText.Truncate($"{_glyphs.Bullet} {Sentence(counts)}", width, _glyphs.Ellipsis);
         var segments = new List<RowSegment>();
         foreach (var run in CountRuns(text))

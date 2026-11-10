@@ -78,12 +78,16 @@ internal sealed class SlashMenuModel : IPanelRows
         var rows = new List<IReadOnlyList<RowSegment>>(visible);
         for (var i = top; i < top + visible; i++)
         {
-            var mark = i == top && top > 0 ? _glyphs.Up
-                : i == top + visible - 1 && i < _matches.Count - 1 ? _glyphs.Down
-                : " ";
+            var mark = ScrollMark(i, top, visible);
             rows.Add(Row(i, labelColumns, mark, width));
         }
         return rows;
+    }
+
+    private string ScrollMark(int index, int top, int visible)
+    {
+        if (index == top && top > 0) return _glyphs.Up;
+        return index == top + visible - 1 && index < _matches.Count - 1 ? _glyphs.Down : " ";
     }
 
     // 0 a name that starts with the query, 1 an alias that does, 2 a name that holds it; -1 nothing.

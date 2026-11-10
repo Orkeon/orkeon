@@ -162,9 +162,7 @@ internal sealed class InlinePanelModel : IPanelRows
         var rows = new List<IReadOnlyList<RowSegment>>(visible + 1);
         for (var i = top; i < top + visible; i++)
         {
-            var scrollMark = i == top && top > 0 ? _glyphs.Up
-                : i == top + visible - 1 && i < choices.Count - 1 ? _glyphs.Down
-                : " ";
+            var scrollMark = ScrollMark(i, top, visible, choices.Count);
             rows.Add(ChoiceRow(i, numberColumns, labelColumns, scrollMark));
         }
         if (visible < choices.Count)
@@ -172,11 +170,23 @@ internal sealed class InlinePanelModel : IPanelRows
         return rows;
     }
 
+    private string ScrollMark(int index, int top, int visible, int count)
+    {
+        if (index == top && top > 0) return _glyphs.Up;
+        return index == top + visible - 1 && index < count - 1 ? _glyphs.Down : " ";
+    }
+
+    private static PaletteRole ChoiceRole(bool selected, bool isCurrent)
+    {
+        if (selected) return PaletteRole.Accent;
+        return isCurrent ? PaletteRole.Ok : PaletteRole.Normal;
+    }
+
     private RowSegment[] ChoiceRow(int index, int numberColumns, int labelColumns, string scrollMark)
     {
         var choice = _request.Choices[index];
         var selected = index == Selected;
-        var role = selected ? PaletteRole.Accent : choice.IsCurrent ? PaletteRole.Ok : PaletteRole.Normal;
+        var role = ChoiceRole(selected, choice.IsCurrent);
         var number = (index + 1).ToString(System.Globalization.CultureInfo.InvariantCulture).PadLeft(numberColumns);
         var cursor = selected ? _glyphs.Prompt : scrollMark;
         var label = TerminalText.Truncate(choice.Label, labelColumns, _glyphs.Ellipsis);

@@ -38,9 +38,10 @@ public static class AgentsPaneModel
         if (width <= 0) return [];
 
         var ended = row.State is TaskRowState.Done or TaskRowState.Failed or TaskRowState.Cancelled;
-        var metricsText = ended
-            ? (row.Elapsed is { } final ? StatusLineFormatter.FormatElapsed(final) : string.Empty)
-            : ComposeMetrics(glyphs, row);
+        string metricsText;
+        if (!ended) metricsText = ComposeMetrics(glyphs, row);
+        else if (row.Elapsed is { } final) metricsText = StatusLineFormatter.FormatElapsed(final);
+        else metricsText = string.Empty;
         var metrics = TerminalText.Truncate(metricsText, Math.Max(0, width - LeadWidth), glyphs.Ellipsis);
         var metricsColumns = TerminalText.Columns(metrics);
         var reserved = metricsColumns > 0 ? metricsColumns + ColumnGap : 0;

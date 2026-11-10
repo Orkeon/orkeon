@@ -197,16 +197,7 @@ internal sealed class TranscriptBuffer
         {
             var newline = normalized.IndexOf('\n', start);
             var fragment = newline < 0 ? normalized[start..] : normalized[start..newline];
-            if (first && Held > 0)
-            {
-                if (fragment.Length > 0) ExtendLast(fragment);
-                // Written to or closed by a newline, the open line is a line of the transcript.
-                if (fragment.Length > 0 || newline >= 0) PromoteOpenTail();
-            }
-            else
-            {
-                AddLine(fragment, unit: true);
-            }
+            AppendFragment(fragment, first, newline >= 0);
             first = false;
             if (newline < 0) break;
             start = newline + 1;
@@ -218,6 +209,20 @@ internal sealed class TranscriptBuffer
             }
         }
         Trim();
+    }
+
+    private void AppendFragment(string fragment, bool first, bool closedByNewline)
+    {
+        if (first && Held > 0)
+        {
+            if (fragment.Length > 0) ExtendLast(fragment);
+            // Written to or closed by a newline, the open line is a line of the transcript.
+            if (fragment.Length > 0 || closedByNewline) PromoteOpenTail();
+        }
+        else
+        {
+            AddLine(fragment, unit: true);
+        }
     }
 
     /// <summary>Appends each item as its own entry (a log entry): never extends the open line.</summary>
@@ -402,19 +407,23 @@ internal sealed class TranscriptBuffer
         for (var line = from.Line; line <= to.Line; line++)
         {
             var entry = _items[(int)(line - _firstLineId) + _head];
-            var text = entry.Text;
-            var start = line == from.Line ? Math.Min(from.Offset, text.Length) : 0;
-            var end = line == to.Line ? Math.Min(to.Offset, text.Length) : text.Length;
-            var whole = start == 0 && end == text.Length;
+            var start = line == from.Line ? Math.Min(from.Offset, entry.Text.Length) : 0;
+            var end = line == to.Line ? Math.Min(to.Offset, entry.Text.Length) : entry.Text.Length;
+            var whole = start == 0 && end == entry.Text.Length;
             // What is only drawn (a table's border) has no line in a copy.
-            if (whole && text.Length > 0 && entry.Style?.CopySource is { Length: 0 }) continue;
+            if (whole && entry.Text.Length > 0 && entry.Style?.CopySource is { Length: 0 }) continue;
             if (opened) builder.Append('\n');
             opened = true;
-            if (whole && from.Line < to.Line && entry.Style?.CopyLead is { } lead) builder.Append(lead).Append('\n');
-            if (entry.Style?.CopySource is { } source && whole) builder.Append(source);
-            else if (end > start) builder.Append(text, start, end - start);
+            AppendCopy(builder, entry, start, end, whole && from.Line < to.Line, whole);
         }
         return builder.ToString();
+    }
+
+    private static void AppendCopy(System.Text.StringBuilder builder, Entry entry, int start, int end, bool withLead, bool whole)
+    {
+        if (withLead && entry.Style?.CopyLead is { } lead) builder.Append(lead).Append('\n');
+        if (entry.Style?.CopySource is { } source && whole) builder.Append(source);
+        else if (end > start) builder.Append(entry.Text, start, end - start);
     }
 
     private TranscriptPosition Clamp(TranscriptPosition position)
@@ -545,21 +554,9 @@ internal sealed class TranscriptBuffer
     {
         var text = entry.Text;
         var width = EffectiveWidth;
-        var hang = HangOf(entry);
         if (resumeFrom >= 0 && width == 0)
         {
-            // Resume at the start of the previous last grapheme: the new text may extend it.
-            var from = entry.TailStart;
-            var column = entry.TailColumn;
-            CharactersWrapped += text.Length - from;
-            foreach (var grapheme in GraphemeHelper.GetGraphemes(text[from..]))
-            {
-                entry.TailStart = from;
-                entry.TailColumn = column;
-                column += ColumnsOf(grapheme, column);
-                from += grapheme.Length;
-            }
-            entry.Columns = column;
+            WrapResumedUnwrapped(entry);
             return;
         }
 
@@ -568,57 +565,84 @@ internal sealed class TranscriptBuffer
         {
             starts.Clear();
             starts.Add(0);
-        }
-        var index = starts[^1];
-        CharactersWrapped += text.Length - index;
-        var columns = 0;
-        var peak = 0;
-        var breakAt = -1;
-        if (resumeFrom < 0)
-        {
             entry.TailStart = 0;
             entry.TailColumn = 0;
         }
-        foreach (var grapheme in GraphemeHelper.GetGraphemes(text[index..]))
-        {
-            if (width == 0)
-            {
-                entry.TailStart = index;
-                entry.TailColumn = columns;
-            }
-            var w = ColumnsOf(grapheme, columns);
-            var isSpace = grapheme is " " or "\t";
-            var rowWidth = starts.Count > 1 ? width - hang : width;
-            var overflows = width > 0 && columns + w > rowWidth;
-            // A space or a tab that overflows from the row end hangs there (clipped when drawn)
-            // instead of opening the next row with a blank. A tab that overflows before the row end
-            // is clipped to the columns left (ColumnsAt), so what follows it opens the next row.
-            if (isSpace && overflows) w = columns < rowWidth ? rowWidth - columns : 0;
-            else if (overflows && columns > 0)
-            {
-                // The word carried over and the grapheme that carried it must fit the row they land on,
-                // narrower when the line hangs.
-                var carried = breakAt > starts[^1] ? Measure(text, breakAt, index) : 0;
-                if (breakAt > starts[^1] && carried + ColumnsOf(grapheme, carried) <= width - hang)
-                {
-                    starts.Add(breakAt);
-                    columns = carried;
-                }
-                else
-                {
-                    starts.Add(index);
-                    columns = 0;
-                }
-                breakAt = -1;
-                w = ColumnsOf(grapheme, columns);
-            }
-            columns += w;
-            var reached = columns + (starts.Count > 1 ? hang : 0);
-            if (reached > peak) peak = reached;
-            index += grapheme.Length;
-            if (isSpace) breakAt = index;
-        }
+        var run = new WrapRun { Width = width, Hang = HangOf(entry), Starts = starts, Index = starts[^1], BreakAt = -1 };
+        CharactersWrapped += text.Length - run.Index;
+        foreach (var grapheme in GraphemeHelper.GetGraphemes(text[run.Index..]))
+            WrapStep(entry, run, grapheme);
         // The widest row: the line width with the wrap off (one row), at most the width with it on.
-        entry.Columns = resumeFrom >= 0 ? Math.Max(entry.Columns, peak) : peak;
+        entry.Columns = resumeFrom >= 0 ? Math.Max(entry.Columns, run.Peak) : run.Peak;
+    }
+
+    // Resume at the start of the previous last grapheme: the new text may extend it.
+    private void WrapResumedUnwrapped(Entry entry)
+    {
+        var text = entry.Text;
+        var from = entry.TailStart;
+        var column = entry.TailColumn;
+        CharactersWrapped += text.Length - from;
+        foreach (var grapheme in GraphemeHelper.GetGraphemes(text[from..]))
+        {
+            entry.TailStart = from;
+            entry.TailColumn = column;
+            column += ColumnsOf(grapheme, column);
+            from += grapheme.Length;
+        }
+        entry.Columns = column;
+    }
+
+    private sealed class WrapRun
+    {
+        public int Width { get; init; }
+        public int Hang { get; init; }
+        public required List<int> Starts { get; init; }
+        public int Index { get; set; }
+        public int Columns { get; set; }
+        public int Peak { get; set; }
+        public int BreakAt { get; set; }
+    }
+
+    private static void WrapStep(Entry entry, WrapRun run, string grapheme)
+    {
+        if (run.Width == 0)
+        {
+            entry.TailStart = run.Index;
+            entry.TailColumn = run.Columns;
+        }
+        var w = ColumnsOf(grapheme, run.Columns);
+        var isSpace = grapheme is " " or "\t";
+        var rowWidth = run.Starts.Count > 1 ? run.Width - run.Hang : run.Width;
+        var overflows = run.Width > 0 && run.Columns + w > rowWidth;
+        // A space or a tab that overflows from the row end hangs there (clipped when drawn)
+        // instead of opening the next row with a blank. A tab that overflows before the row end
+        // is clipped to the columns left (ColumnsAt), so what follows it opens the next row.
+        if (isSpace && overflows) w = Math.Max(0, rowWidth - run.Columns);
+        else if (overflows && run.Columns > 0) w = OpenNextRow(entry.Text, run, grapheme);
+        run.Columns += w;
+        run.Peak = Math.Max(run.Peak, run.Columns + (run.Starts.Count > 1 ? run.Hang : 0));
+        run.Index += grapheme.Length;
+        if (isSpace) run.BreakAt = run.Index;
+    }
+
+    // The word carried over and the grapheme that carried it must fit the row they land on,
+    // narrower when the line hangs. Returns the width of the grapheme on its new row.
+    private static int OpenNextRow(string text, WrapRun run, string grapheme)
+    {
+        var starts = run.Starts;
+        var carried = run.BreakAt > starts[^1] ? Measure(text, run.BreakAt, run.Index) : 0;
+        if (run.BreakAt > starts[^1] && carried + ColumnsOf(grapheme, carried) <= run.Width - run.Hang)
+        {
+            starts.Add(run.BreakAt);
+            run.Columns = carried;
+        }
+        else
+        {
+            starts.Add(run.Index);
+            run.Columns = 0;
+        }
+        run.BreakAt = -1;
+        return ColumnsOf(grapheme, run.Columns);
     }
 }
