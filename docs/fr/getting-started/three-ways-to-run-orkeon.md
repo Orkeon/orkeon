@@ -150,9 +150,8 @@ L'archive multi-apps est la seule à embarquer plus que le CLI :
 | `orkeon-host` | Le daemon d'hébergement — enregistre des crews et les sert en continu (unité systemd, service Windows via le script embarqué ou son MSI per-machine dédié, passerelle de chat, canal Discord ; voir [le service host](../architecture/service-host.md)) | autonome |
 
 > **Le prérequis runtime, en une ligne.** Les paquets CLI (zip, MSI, `.deb`), les
-> launcher `orkeon` et le REPL
-> embarquent leur propre runtime et n'exigent aucune installation .NET. Tout le
-> reste de l'archive multi-apps (`orkeon-slim`) — et
+> launcher `orkeon` et le REPL embarquent leur propre runtime et n'exigent aucune
+> installation .NET. Tout le reste de l'archive multi-apps (`orkeon-slim`) — et
 > le tool dotnet — requiert le
 > [runtime .NET 10](https://dotnet.microsoft.com/download/dotnet/10.0) (à
 > vérifier avec `dotnet --list-runtimes`). `install.sh` et `install.ps1`
@@ -213,8 +212,7 @@ cd orkeon-cli-<version>-win-x64
 
 `install.cmd` passe ses arguments à `install.ps1` (`-InstallDir <dossier>`, `-Uninstall`)
 et rend son code de sortie. Installer par-dessus une installation la remplace — c'est
-ainsi que le canal zip se met à jour. **Laissez finir une crew en
-cours d'abord** : tant qu'un programme de l'installation tourne, l'installeur refuse, le
+ainsi que le canal zip se met à jour. **Laissez finir une crew en cours d'abord** : tant qu'un programme de l'installation tourne, l'installeur refuse, le
 nomme, et laisse l'installation comme elle était.
 
 ```powershell
@@ -390,8 +388,7 @@ sans disposition reconnue : Orkeon ne devine jamais lequel vous vouliez. Voir
 `config.yaml` (ou `crew.yaml`) liste les racines virtuelles que la crew lit et écrit —
 `/output`, ou `<ulid>|/output` pour épingler une entrée des settings quand plusieurs
 déclarent cette racine (une entrée des settings peut porter un identifiant de
-26 caractères devant son `|` ).
-`orkeon run crew/` résout alors le bloc face au fichier de settings sans aucun
+26 caractères devant son `|`). `orkeon run crew/` résout alors le bloc face au fichier de settings sans aucun
 `--mount`, et refuse en une ligne une racine absente ou ambiguë ; `--mount-id <ulid>`
 choisit une entrée depuis la ligne de commande, et un simple
 `--mount <dossier>:/output:rw` remplace toutes les entrées des settings de cette racine
@@ -674,8 +671,7 @@ Le canal sert les **canaux NuGet** : le tool `orkeon`, le tool `orkeon-repl` (pa
 `Orkeon.ConsoleApp`) et les paquets. Sous Debian et Ubuntu, le paquet `orkeon` suit aussi
 `main`, par le canal apt `dev` — voir
 [Installer avec apt](../guides/install-with-apt.md#suivre-main-builds-dev). Les autres
-installeurs, l'image conteneur ne sont construits que sur les
-tags.
+installeurs et l'image conteneur ne sont construits que sur les tags.
 
 1. **Créez un jeton.** GitHub Packages en exige un même pour lire un paquet public : un
    personal access token (classic) avec le scope `read:packages` —

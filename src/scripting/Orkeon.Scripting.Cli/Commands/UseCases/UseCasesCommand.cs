@@ -79,7 +79,7 @@ internal sealed class UseCasesShowOptions : UseCasesCommandOptions
 }
 
 /// <summary>Parsed options of <c>orkeon usecases export</c>.</summary>
-[Verb("export", HelpText = "Write one use case as a team folder — crew/, its data/, its output folders and studio-team.json — a team folder a client can import as it is.")]
+[Verb("export", HelpText = "Write one use case as a team folder — crew/, its data/, its output folders and team.json — a team folder a client can import as it is.")]
 internal sealed class UseCasesExportOptions : UseCasesCommandOptions
 {
     /// <summary>The use case's id.</summary>

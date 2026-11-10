@@ -25,8 +25,8 @@ Orkeon" and would rebuild the token storage, the rights and the screening.
 
 The e-mail family already had a hand-written OAuth2 client (device code, loopback PKCE with a
 paste fallback, refresh with rotation), a token store behind the internal `/credentials` root,
-the secret reading of the user's environment scope, and Microsoft Graph in plain HTTP — all internal to
-`Orkeon.Tools.Email`.
+the secret reading of the user's environment scope, and Microsoft Graph in plain HTTP — all
+internal to `Orkeon.Tools.Email`.
 
 ## Decision
 

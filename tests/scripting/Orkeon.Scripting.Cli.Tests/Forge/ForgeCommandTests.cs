@@ -280,7 +280,7 @@ public sealed class ForgeCommandTests : IDisposable
         Assert.Equal("trier mes mails", quoted.Need);
     }
 
-    /// <summary>The spec's spelling, still consumes its value.</summary>
+    /// <summary>The spec's spelling still consumes its value.</summary>
     [Fact]
     public void Events_jsonl_still_takes_its_value()
     {
@@ -478,7 +478,7 @@ public sealed class ForgeCommandTests : IDisposable
     /// <summary>
     /// A settings file naming <c>/output</c> or <c>/workspace</c> is the normal case, not a
     /// mistake: <c>/output</c> is an ordinary mount for a run and the name a
-    /// team's write folder, declared in the allowed folders the moment the wizard associates
+    /// client gives a team's write folder, declared in the allowed folders the moment the wizard associates
     /// one. The forge's own mounts are placed by root against it, so each
     /// entry is replaced for the trial, said so in the log, and the cycle goes on to the host
     /// — which here refuses for want of an LLM, the proof that nothing refused it earlier.

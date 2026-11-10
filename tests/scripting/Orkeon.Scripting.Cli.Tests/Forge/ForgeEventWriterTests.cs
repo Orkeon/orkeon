@@ -77,7 +77,7 @@ public class ForgeEventWriterTests
     }
 
     /// <summary>
-    /// The two lines, pinned like the rest: <c>session.renamed</c> when the session folder
+    /// The two lines of a team rename, pinned like the rest: <c>session.renamed</c> when the session folder
     /// followed its team, <c>warning</c> when the disk refused — the promotion stands either way.
     /// </summary>
     [Fact]

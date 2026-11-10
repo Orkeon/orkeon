@@ -51,7 +51,7 @@ public sealed class ForgeRenameTests : IDisposable
 
     /// <summary>
     /// D-01: the team folder and the linked session's folder both take the new name, and every
-    /// title follows — session.json, forge.json, studio-team.json (whose other fields, known or
+    /// title follows — session.json, forge.json, team.json (whose other fields, known or
     /// not, stay as they were), FORGE.md — while the launchers' header names the new folder. The
     /// id does not change, so rule R still links the two.
     /// </summary>

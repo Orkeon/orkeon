@@ -135,8 +135,8 @@ touch the Domain contract far more deeply than one boolean on the registry does.
 Three facts moved since this ADR was written; the decision stands.
 
 - **No copy of the three virtual roots remains.** Orkeon Studio, the one consumer that held a
-  copy, moved to its own repository and reads `RunnerVirtualRoots` from `Orkeon.Constants.FileSystem`
-  (ADR-009); the copy the Consequences describe no longer exists.
+  copy, moved to its own repository and reads `RunnerVirtualRoots` from
+  `Orkeon.Constants.FileSystem` (ADR-009); the copy the Consequences describe no longer exists.
 - **A fourth, internal root: `/credentials`.** `RunnerVirtualRoots.Credentials` is where the
   runner keeps the credentials it obtained for the run (the OAuth tokens of e-mail accounts).
   `FileSystemEmailTokenStore` reads and writes it through `PrivilegedFileSystemAccess`

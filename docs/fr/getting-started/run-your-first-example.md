@@ -161,7 +161,7 @@ Les options de la CLI `orkeon` que vous utiliserez vraiment :
 | `--list-tools` | | Construit l'hôte et imprime les noms d'outils enregistrés, triés, un par ligne, puis sort — aucune crew requise. |
 | `--events jsonl` | | Émet le protocole d'événements JSONL versionné sur stdout au lieu du texte brut (c'est ainsi qu'un client externe pilote un run) — voir [le bus d'événements de run](../architecture/run-event-bus.md). |
 | `--stream` | | Avec `--events`, émet aussi les événements `llm.delta` token par token (verbeux par nature ; désactivé sauf demande). |
-| `--client <nom>` | | Avec `--events`, le nom du pair observateur sur le hub (`client://<nom>`, défaut `studio`). |
+| `--client <nom>` | | Avec `--events`, le nom du pair observateur sur le hub (`client://<nom>`, défaut `client`). |
 | `--memory-limit-mb <n>` | | Plafond mémoire Jint pour un run `.ork.ts` (surcharge l'appsettings ; `0` le désactive). |
 
 ### Les montages et le VFS

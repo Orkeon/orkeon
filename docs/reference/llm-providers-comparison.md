@@ -160,29 +160,30 @@ variable and never the key, as the `ApiKeyEnvVar` of the `Llm` section and of a 
 `orkeon run` on a file that names it: `"ApiKeyEnvVar": "DEEPSEEK_API_KEY"`. A file that names no
 variable still reads `Llm:ApiKey` and `ORKEON_Llm__ApiKey` only.
 
-| Provider | Variable (the conventional name for `ApiKeyEnvVar`) | Key issued at | Suggested timeout |
-|---|---|---|---|
-| OpenAI | `OPENAI_API_KEY` | `platform.openai.com/api-keys` | engine default (30 s) |
-| Anthropic | `ANTHROPIC_API_KEY` | `console.anthropic.com` | engine default |
-| DeepSeek | `DEEPSEEK_API_KEY` | `platform.deepseek.com` | **600 s** |
-| Mistral AI | `MISTRAL_API_KEY` | `console.mistral.ai` | engine default |
-| Google Gemini | `GEMINI_API_KEY` | `aistudio.google.com/apikey` | engine default |
-| Grok (x.AI) | `XAI_API_KEY` | `console.x.ai` | engine default |
-| MiniMax | `MINIMAX_API_KEY` | `platform.minimax.io` | **600 s** |
-| Together AI | `TOGETHER_API_KEY` | `api.together.ai` | engine default |
-| Qwen | `DASHSCOPE_API_KEY` | `dashscope.console.aliyun.com` | engine default |
-| Kimi (Moonshot) | `MOONSHOT_API_KEY` | `platform.moonshot.ai` | **600 s** |
-| HuggingFace | `HF_TOKEN` | `huggingface.co/settings/tokens` | engine default |
-| Z.AI (GLM) | `ZAI_API_KEY` | `z.ai/manage-apikey` | **600 s** |
-| OpenRouter | `OPENROUTER_API_KEY` | `openrouter.ai/keys` | engine default |
-| Mammouth AI | `MAMMOUTH_API_KEY` | `mammouth.ai` — the vendor documents "from the API settings"; the exact page is confirmed with the first key | engine default |
-| Ollama · Docker Model Runner | none | — | engine default |
-| OpenAI-compatible (`custom`) | `ORKEON_CUSTOM_LLM_API_KEY` — or `ORKEON_Llm__ApiKey`, the default key of every run | — | engine default |
-| Azure OpenAI | no dedicated variable: its per-resource endpoint makes it an OpenAI-compatible entry | — | — |
+| Provider | Variable (the conventional name for `ApiKeyEnvVar`) | Key issued at | Suggested timeout | Balance exposed by the API ([details](#account-balance-what-each-api-tells)) |
+|---|---|---|---|---|
+| OpenAI | `OPENAI_API_KEY` | `platform.openai.com/api-keys` | engine default (30 s) | ✗ (spend only, to an admin key) |
+| Anthropic | `ANTHROPIC_API_KEY` | `console.anthropic.com` | engine default | ✗ (spend only, to an Admin API key) |
+| DeepSeek | `DEEPSEEK_API_KEY` | `platform.deepseek.com` | **600 s** | ✓ `GET /user/balance` |
+| Mistral AI | `MISTRAL_API_KEY` | `console.mistral.ai` | engine default | ✗ (usage only, to an Admin API key) |
+| Google Gemini | `GEMINI_API_KEY` | `aistudio.google.com/apikey` | engine default | ✗ |
+| Grok (x.AI) | `XAI_API_KEY` | `console.x.ai` | engine default | ◐ to a management key only |
+| MiniMax | `MINIMAX_API_KEY` | `platform.minimax.io` | **600 s** | ✗ |
+| Together AI | `TOGETHER_API_KEY` | `api.together.ai` | engine default | ✗ |
+| Qwen | `DASHSCOPE_API_KEY` | `dashscope.console.aliyun.com` | engine default | ◐ to an Alibaba Cloud AccessKey only |
+| Kimi (Moonshot) | `MOONSHOT_API_KEY` | `platform.moonshot.ai` | **600 s** | ✓ `GET /v1/users/me/balance` (USD on `.ai`, CNY on `.cn`) |
+| HuggingFace | `HF_TOKEN` | `huggingface.co/settings/tokens` | engine default | ✗ |
+| Z.AI (GLM) | `ZAI_API_KEY` | `z.ai/manage-apikey` | **600 s** | ✗ |
+| OpenRouter | `OPENROUTER_API_KEY` | `openrouter.ai/keys` | engine default | ◐ per key (`GET /api/v1/key`); the account's credits to a management key only |
+| Mammouth AI | `MAMMOUTH_API_KEY` | `mammouth.ai` — the vendor documents "from the API settings"; the exact page is confirmed with the first key | engine default | ✗ (a key's spend, answer undocumented) |
+| Ollama · Docker Model Runner | none | — | engine default | — (local, no account) |
+| OpenAI-compatible (`custom`) | none of its own: the settings name it through `ApiKeyEnvVar`, else `ORKEON_Llm__ApiKey` is read, the default key of every run | — | engine default | ✗ (unknown host) |
+| Azure OpenAI | no dedicated variable: its per-resource endpoint makes it an OpenAI-compatible entry | — | — | ✗ (spend in Cost Management, to a Microsoft Entra identity) |
 
 The suggested 600 s is not decorative. The four providers whose **default** model reasons
 before it answers overrun the engine's 30 s, and the run of 2026-09-20 was lost to two Kimi
-timeouts reported as an empty answer (LLM-11). A settings file needs `Llm:TimeoutSeconds` raised explicitly.
+timeouts reported as an empty answer (LLM-11). A settings file needs `Llm:TimeoutSeconds` raised
+explicitly.
 
 Two names that are **not** this one, and get confused with it:
 
@@ -196,6 +197,37 @@ Two names that are **not** this one, and get confused with it:
 `orkeon init --api-key-env <name>` is no longer one of them: it writes `Llm:ApiKeyEnvVar: <name>`
 into the generated file — nothing for `ORKEON_Llm__ApiKey`, which the runtime reads natively — so
 every run reads the variable it names.
+
+## Account balance: what each API tells
+
+What is left on the account behind a key, as each vendor's API tells it. Only three vendors
+serve a balance to the inference key a run holds; for every other provider, the vendor's console
+is the place to look — the "Key issued at" column above, behind `https://`. A balance request
+goes to the key's own host: a key of Kimi's `.cn` platform is refused by the `.ai` host, and the
+other way round. Each row was read on the vendor's own reference on 2026-09-24.
+
+| Provider | Balance | Endpoint | What it returns | Key it takes | Source |
+|---|---|---|---|---|---|
+| DeepSeek | ✓ available | `GET /user/balance` | `balance_infos[]`, one entry per currency (`CNY`, `USD`): `total_balance`, `granted_balance`, `topped_up_balance` as decimal strings; `is_available` | the API key (Bearer) | api-docs.deepseek.com/api/get-user-balance |
+| Kimi (Moonshot) | ✓ available | `GET /v1/users/me/balance` | `data.available_balance`, `voucher_balance`, `cash_balance` (negative in arrears) — US dollars on `api.moonshot.ai`, yuan on `api.moonshot.cn`; the answer names no currency | the API key (Bearer) of that platform | platform.kimi.ai/docs/api/balance · platform.kimi.com/docs/api/balance |
+| OpenRouter | ◐ per key | `GET /api/v1/key` | `data.limit_remaining`: US dollars the key may still spend under its limit, `null` when it has none; `limit`, `usage`. The account's credits (`total_credits`, `total_usage`) are on `GET /api/v1/credits` | the API key for `/key`; a **management key** for `/credits`, which answers 403 to any other | openrouter.ai/docs/api/api-reference/api-keys/get-current-api-key · openrouter.ai/docs/api/api-reference/credits/get-remaining-credits |
+| Grok (x.AI) | ◐ admin key required | `GET /v1/billing/teams/{team_id}/prepaid/balance` on `management-api.x.ai` | the prepaid balance, in US cents | a **management key** only | docs.x.ai/developers/rest-api-reference/management/billing |
+| Qwen | ◐ admin key required | `QueryAccountBalance`, Alibaba Cloud billing OpenAPI | `AvailableAmount`, `AvailableCashAmount`, `CreditAmount`, `Currency` | an **Alibaba Cloud AccessKey** allowed `bss:DescribeAcccount` — never the DashScope key | alibabacloud.com/help/en/user-center/developer-reference/api-bssopenapi-2017-12-14-queryaccountbalance |
+| OpenAI | ✗ not exposed | none — `GET /v1/organization/costs` reports spend | spend per day (`amount.value`, `currency`), not a balance | an admin key | developers.openai.com/cookbook/examples/completions_usage_api |
+| Anthropic | ✗ not exposed | none — `GET /v1/organizations/cost_report` reports spend | spend in US cents, not a balance | Admin API credentials — "workspace API keys don't work" | platform.claude.com/docs/en/manage-claude/usage-cost-api |
+| Mistral AI | ✗ not exposed | none — `GET /v1/admin/usage` reports usage | consumption per category for a month; the credit balance is on the console's Billing page only | an Admin API key | docs.mistral.ai/admin/admin-api/usage-metrics · docs.mistral.ai/admin/billing-usage/billing |
+| Azure OpenAI | ✗ not exposed | none — Cost Management reports spend | spend per meter | a Microsoft Entra identity with Cost Management Reader, never the resource key | learn.microsoft.com/en-us/azure/foundry/concepts/manage-costs |
+| Google Gemini | ✗ not exposed | none | the prepay balance is managed "directly within the Google AI Studio Billing tab" | — | ai.google.dev/gemini-api/docs/billing |
+| Together AI | ✗ not exposed | none | the "Credit balance" card of the billing settings | — | docs.together.ai/docs/billing-credits · docs.together.ai/docs/billing-usage-limits |
+| HuggingFace | ✗ not exposed | none | the billing page and the Inference Providers settings | — | huggingface.co/docs/inference-providers/pricing |
+| Z.AI (GLM) | ✗ not exposed | none | the API reference lists no billing endpoint | — | docs.z.ai/llms.txt |
+| MiniMax | ✗ not exposed | none for pay-as-you-go; `GET /v1/token_plan/remains` on `www.minimax.io` for a Token Plan | Token Plan only, answer undocumented | a Token Plan subscription key | platform.minimax.io/docs/token-plan/faq |
+| Mammouth AI | ✗ not exposed | none — `GET /key/info`, documented with a placeholder host | "how much credits has been spent on a key": spend, answer undocumented | the API key | info.mammouth.ai/docs/api-quick-start |
+| Ollama · Docker Model Runner | — not applicable | none | a local runtime has no account | — | — |
+
+Two endpoints are documented without the shape of their answer: MiniMax's Token Plan `remains`
+and Mammouth's `key/info`. An OpenAI-compatible endpoint (`custom`) exposes no balance anyone
+knows of, and a local one has no account.
 
 ## Defaults and newer models — catalogue review of 2026-09-19
 

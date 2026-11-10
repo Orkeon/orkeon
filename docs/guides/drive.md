@@ -19,7 +19,8 @@ operator allows:
   under it; an item outside is reported as not found.
 - **Sharing is closed by default**: an empty `Share:AllowedRecipients` allows nobody, and public
   links stay off until `Share:AllowPublicLinks` is `true`.
-- **Every account signs in once with OAuth2** (`orkeon drive login` in a terminal), and the tools refresh the access token by themselves.
+- **Every account signs in once with OAuth2** (`orkeon drive login` in a terminal), and the
+  tools refresh the access token by themselves.
 
 > **Campaign status.** The family is covered by offline tests against scripted Google and
 > Microsoft APIs. A campaign pass (DRIVE-07) ran on 2026-10-24 and revealed two `drive_search`
@@ -82,8 +83,6 @@ Under `Orkeon:Tools:Drive:Accounts`:
 `Auth:Tenant` defaults to `consumers`, the tenant of personal accounts; for OneDrive for work or
 school set `"Tenant": "organizations"` or your tenant id.
 
-
-
 In a terminal:
 
 ```bash
@@ -122,8 +121,8 @@ PKCE — the same flow as a Gmail account with OAuth2.
    }
    ```
 
-5. Sign in: in a terminal, run `orkeon drive login perso`. It prints a Google address to open and listens on a free port
-   of `127.0.0.1`. Sign in and accept; Google shows a warning screen for an application it has not
+5. Sign in: in a terminal, run `orkeon drive login perso`. It prints a Google address to open
+   and listens on a free port of `127.0.0.1`. Sign in and accept; Google shows a warning screen for an application it has not
    verified, which you may continue past for your own application. **When the browser runs on
    another machine** — WSL, a container, an SSH session — the last page cannot load: copy the
    address it ends on (`http://127.0.0.1:…/?state=…&code=…`) from the address bar, paste it in the

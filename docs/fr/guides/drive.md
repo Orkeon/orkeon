@@ -20,7 +20,8 @@ déplace, renomme, supprime et partage — dans les limites de ce qu'autorise l'
 - **Le partage est fermé par défaut** : une liste `Share:AllowedRecipients` vide n'autorise
   personne, et les liens publics restent désactivés tant que `Share:AllowPublicLinks` ne vaut pas
   `true`.
-- **Chaque compte se connecte une fois en OAuth2** (`orkeon drive login` dans un terminal), et les outils rafraîchissent eux-mêmes le jeton d'accès.
+- **Chaque compte se connecte une fois en OAuth2** (`orkeon drive login` dans un terminal), et
+  les outils rafraîchissent eux-mêmes le jeton d'accès.
 
 > **État de la campagne.** La famille est couverte par des tests hors ligne contre des API Google
 > et Microsoft scriptées. Un passage de campagne (DRIVE-07) a eu lieu le 2026-10-24 et a révélé deux
@@ -84,8 +85,6 @@ Sous `Orkeon:Tools:Drive:Accounts` :
 `Auth:Tenant` vaut par défaut `consumers`, le tenant des comptes personnels ; pour un OneDrive
 professionnel ou scolaire, mettez `"Tenant": "organizations"` ou l'id de votre tenant.
 
-
-
 Dans un terminal :
 
 ```bash
@@ -126,9 +125,9 @@ page de consentement de Google, à ouvrir, et reçoit la réponse sur une adress
    ```
 
 5. Connectez-vous : dans un terminal, lancez `orkeon drive login perso`. La commande affiche
-   une adresse Google à ouvrir et écoute sur un port libre de `127.0.0.1`. Connectez-vous et acceptez ; Google affiche un écran
-   d'avertissement pour une application qu'il n'a pas vérifiée, que vous pouvez passer pour votre
-   propre application. **Quand le navigateur tourne sur une autre machine** — WSL, un conteneur,
+   une adresse Google à ouvrir et écoute sur un port libre de `127.0.0.1`. Connectez-vous et
+   acceptez ; Google affiche un écran d'avertissement pour une application qu'il n'a pas
+   vérifiée, que vous pouvez passer pour votre propre application. **Quand le navigateur tourne sur une autre machine** — WSL, un conteneur,
    une session SSH — la dernière page ne peut pas se charger : copiez l'adresse où elle aboutit
    (`http://127.0.0.1:…/?state=…&code=…`) depuis la barre d'adresse, collez-la dans le terminal
    et appuyez sur Entrée.

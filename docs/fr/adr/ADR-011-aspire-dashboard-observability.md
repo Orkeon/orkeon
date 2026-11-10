@@ -9,9 +9,10 @@
 
 ## Contexte
 
-Deux faits se côtoyaient. Le front-end de bureau (Orkeon Studio, désormais dans son propre dépôt) était le seul projet
-ciblant `net10.0-windows` : lancer, observer, capturer n'existait que pour Windows, et la question
-d'un front-end web revenait à chaque fois que la liste des plateformes revenait. Et les runners
+Deux faits se côtoyaient. Le front-end de bureau (Orkeon Studio, désormais dans son propre
+dépôt) était le seul projet ciblant `net10.0-windows` : lancer, observer, capturer n'existait
+que pour Windows, et la question d'un front-end web revenait à chaque fois que la liste des
+plateformes revenait. Et les runners
 portaient une plomberie OpenTelemetry complète qui n'exportait rien : `orkeon run` et
 `orkeon-host` construisaient leur hôte avec le `AddOrkeonInfrastructure()` sans paramètre
 (pas de section de télémétrie), ne démarraient jamais l'hôte (le service hébergé

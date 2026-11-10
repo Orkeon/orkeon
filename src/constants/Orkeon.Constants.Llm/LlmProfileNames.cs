@@ -5,8 +5,8 @@ namespace Orkeon.Constants.Llm;
 /// project must spell identically.
 /// <para>
 /// The runtime reserves <see cref="Default"/> — a host that defines <c>Llm:Profiles:default</c>
-/// refuses to start — and a client that writes that section
-/// and cannot reference the runtime must refuse the same name before it writes it.
+/// refuses to start — and a client that writes that section and
+/// cannot reference the runtime must refuse the same name before it writes it.
 /// </para>
 /// </summary>
 public static class LlmProfileNames

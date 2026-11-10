@@ -36,7 +36,7 @@ public static class RunOptionNames
 
     /// <summary>
     /// The host LLM profile (<c>Llm:Profiles:&lt;id&gt;</c>) the run takes as its default
-    /// — what a team's launchers write for the team's model setting.
+    /// - what a team's launchers write for the team's model setting.
     /// </summary>
     public const string LlmProfile = "llm-profile";
 

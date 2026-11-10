@@ -51,7 +51,7 @@ public sealed class FolderSlugTests
     /// Nothing, not a fallback: a forge session falls back on its timestamp, a team or an
     /// agent on <see cref="FolderSlug.TeamFallback"/>, and a rule that picked one for them
     /// would be wrong for the other. A name written in a non-Latin script lands here — zh-Hans
-    /// is one of the five languages of the supported interfaces.
+    /// is one of the five languages the CLI and its clients support.
     /// </summary>
     [Theory]
     [InlineData(null)]

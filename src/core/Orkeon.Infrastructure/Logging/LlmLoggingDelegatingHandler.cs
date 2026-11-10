@@ -164,8 +164,7 @@ public sealed partial class LlmLoggingDelegatingHandler : DelegatingHandler
             var exchange = BuildExchangeRecord(capture);
 
             // The option, honoured. LogStreamingExchanges was bound from configuration,
-            // offered as a setting in clients and read by nothing: turning
-            // it off still captured every streaming exchange. Streaming records are the
+            // offered as a setting in clients and read by nothing: turning it off still captured every streaming exchange. Streaming records are the
             // ones that carry a request and no usable response body, so an operator
             // silencing them is asking for something the writer can actually deliver.
             if (exchange.IsStreaming && !_options.LogStreamingExchanges)

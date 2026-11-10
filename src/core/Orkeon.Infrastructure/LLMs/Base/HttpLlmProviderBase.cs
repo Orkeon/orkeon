@@ -361,7 +361,7 @@ public abstract partial class HttpLlmProviderBase : ILlmProvider, IStreamingLlmP
         "before any response arrived, so this is a failed call, not an empty answer. A model that thinks before it " +
         "writes routinely needs longer — raise Llm:TimeoutSeconds (600 s is a safe value for a reasoning model), or " +
         "turn thinking off: Llm:Thinking:Enabled = false in the settings, `thinking: { enabled: false }` under `llm:` " +
-        "in the crew, or the profile's thinking switch in the client.";
+        "in the crew, or the profile's thinking switch in the client that manages it.";
 
     // Effective model of the buffered call in flight: the policy's retry hook is built once, in the constructor.
     private readonly AsyncLocal<string?> _callModel = new();

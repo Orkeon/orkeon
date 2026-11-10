@@ -13,8 +13,8 @@ public static class ConventionalNames
 {
     /// <summary>
     /// The settings file, wherever it sits: beside a crew, in the per-user configuration
-    /// directory, or next to the daemon. Written by <c>orkeon init</c>,
-    /// resolved by every runner.
+    /// directory, or next to the daemon. Written by <c>orkeon init</c>
+    /// and resolved by every runner.
     /// </summary>
     public const string SettingsFile = "appsettings.json";
 
@@ -41,11 +41,12 @@ public static class ConventionalNames
 
     /// <summary>
     /// The sidecar at the root of a team folder: the team's name, its description,
-    /// its model profile, its schedule and its mounts. Written by <c>orkeon usecases export</c>; <c>orkeon forge rename</c> renames the team in it
-    /// and leaves every other field alone. Read by clients that list teams — a
-    /// sidecar written under another name is a team without a name, a description or its folders.
+    /// its model profile, its schedule and its mounts. Written by <c>orkeon usecases export</c>;
+    /// <c>orkeon forge rename</c> renames the team in it and leaves every other field alone. Read by
+    /// clients that list teams: a sidecar written under another name is a team without a name, a
+    /// description or its folders.
     /// </summary>
-    public const string TeamSidecarFile = "studio-team.json";
+    public const string TeamSidecarFile = "team.json";
 
     /// <summary>
     /// A promoted team's launcher on Windows, at the root of its folder — what its scheduled task
@@ -63,9 +64,9 @@ public static class ConventionalNames
 
     /// <summary>
     /// A promoted team's schedule folder, at the root of its folder: the artifacts of the three
-    /// scheduler families and what this machine's scheduler registered — what the
-    /// operating system of one machine knows of the team. Written by <c>orkeon forge promote</c>
-    /// and <c>forge schedule</c>; an export or import of a team leaves it behind:
+    /// scheduler families and what this machine's scheduler registered — what the operating
+    /// system of one machine knows of the team. Written by <c>orkeon forge promote</c> and
+    /// <c>forge schedule</c>; an export or import of a team leaves it behind:
     /// <c>forge schedule</c> writes it again on the machine that installs.
     /// </summary>
     public const string ScheduleDirectory = "schedule";

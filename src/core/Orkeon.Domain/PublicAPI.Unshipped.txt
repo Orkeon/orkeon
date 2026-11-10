@@ -409,3 +409,5 @@ static Orkeon.Domain.Tools.CoworkerDelegation.ToolNames.get -> System.Collection
 static Orkeon.Domain.Security.PermissionModes.Stricter(this Orkeon.Domain.Security.PermissionMode own, Orkeon.Domain.Security.PermissionMode? inherited) -> Orkeon.Domain.Security.PermissionMode
 *REMOVED*Orkeon.Domain.FileSystem.TeamLauncherSpec.WrittenByStudio.get -> bool
 *REMOVED*Orkeon.Domain.FileSystem.TeamLauncherSpec.WrittenByStudio.init -> void
+Orkeon.Domain.FileSystem.TeamLauncherSpec.WriterNote.get -> string?
+Orkeon.Domain.FileSystem.TeamLauncherSpec.WriterNote.init -> void

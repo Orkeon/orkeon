@@ -9,9 +9,9 @@
 
 ## Context
 
-Two facts sat side by side. The desktop front-end (Orkeon Studio, now in its own repository) was the only
-project targeting `net10.0-windows`: launch, watch, capture existed for Windows alone,
-and the question of a web front-end came up every time the platform list did. And the runners
+Two facts sat side by side. The desktop front-end (Orkeon Studio, now in its own repository)
+was the only project targeting `net10.0-windows`: launch, watch, capture existed for Windows
+alone, and the question of a web front-end came up every time the platform list did. And the runners
 carried a complete OpenTelemetry plumbing that exported nothing: `orkeon run` and
 `orkeon-host` built their host with the parameterless `AddOrkeonInfrastructure()` (no
 telemetry section), never started the host (so OpenTelemetry's hosted service never

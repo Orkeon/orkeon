@@ -197,7 +197,7 @@ public class ForgeBlueprintTests
             {
               "crew": { "name": "x", "goal": "g" },
               "agents": [ { "key": "a", "role": "r", "goal": "g", "tools": [ "post_message" ] } ],
-              "tasks": [ { "key": "t", "description": "Post the progress to client://studio", "expectedOutput": "o", "agent": "a" } ]
+              "tasks": [ { "key": "t", "description": "Post the progress to client://observer", "expectedOutput": "o", "agent": "a" } ]
             }
             """;
 

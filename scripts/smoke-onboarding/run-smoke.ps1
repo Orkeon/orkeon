@@ -30,6 +30,10 @@
        second install runs install.ps1 in the PowerShell that runs this smoke,
        so both PowerShell editions go through it across the two CI steps;
     4. a fresh session resolves `orkeon` from that PATH entry alone;
+   4c. while a program of the installation is running (`orkeon mcp serve`,
+       waiting on a stdin left open), install.ps1 refuses to install and
+       refuses to uninstall, names the process, and leaves the installation
+       in place intact: the same tree, and `orkeon --version` still answers;
     5. `orkeon init --provider none --force` writes %APPDATA%\Orkeon (WIN-02);
     6. `orkeon doctor --json` reports no fail, and the three payload-backed checks
        are green rather than merely non-failing -- doctor only *warns* on a missing
@@ -519,6 +523,77 @@ if ($resolved -and $resolved.Source -and $resolved.Source.StartsWith($installDir
     Step-Fail 'resolve' "orkeon did not resolve to the install directory (got: $where)"
     # Fall back to the known path so the remaining steps still produce signal.
     $script:OrkeonCmd = Join-Path $binDir 'orkeon.cmd'
+}
+
+# ---------------------------------------------------------------------------- #
+# 4c. A program of the installation is running: the installer refuses, intact
+# ---------------------------------------------------------------------------- #
+# Windows does not delete a running executable: without install.ps1's guard the
+# delete-and-replace stops half-way through the tree. `orkeon mcp serve` stays
+# alive headless for as long as its stdin is open: this step holds the pipe.
+Write-Section 'install.ps1 while orkeon is running'
+$runningExe = Join-Path $installDir 'libexec\orkeon\orkeon.exe'
+if (-not (Test-Path -LiteralPath $runningExe)) {
+    Step-Fail 'running-install' "nothing to leave running: $runningExe is missing"
+} else {
+    $treeBefore = @(Get-TreeListing $installDir)
+    $startInfo = New-Object System.Diagnostics.ProcessStartInfo
+    $startInfo.FileName = $runningExe
+    $startInfo.Arguments = 'mcp serve'
+    $startInfo.WorkingDirectory = $script:RunDir
+    $startInfo.UseShellExecute = $false
+    $startInfo.CreateNoWindow = $true
+    $startInfo.RedirectStandardInput = $true
+    $runningProcess = [System.Diagnostics.Process]::Start($startInfo)
+    try {
+        # Past its startup: a process that exits at once would prove nothing.
+        Start-Sleep -Seconds 5
+        if ($runningProcess.HasExited) {
+            Step-Fail 'running-install' "orkeon mcp serve exited ($($runningProcess.ExitCode)) before the installer could meet it"
+        } else {
+            $named = [regex]::Escape("orkeon (PID $($runningProcess.Id))")
+            foreach ($attempt in @(
+                    @{ Label = 'running-install';   What = 'install';   Script = $installPs1;                             Extra = @{} },
+                    @{ Label = 'running-uninstall'; What = 'uninstall'; Script = (Join-Path $installDir 'install.ps1'); Extra = @{ Uninstall = $true } })) {
+                $refusal = $null
+                $extra = $attempt.Extra
+                try {
+                    & $attempt.Script -InstallDir $installDir @extra
+                } catch {
+                    $refusal = $_.Exception.Message
+                }
+                $difference = Compare-TreeListing $treeBefore @(Get-TreeListing $installDir)
+                if (-not $refusal) {
+                    Step-Fail $attempt.Label "the $($attempt.What) went ahead while orkeon was running"
+                } elseif ($refusal -notmatch $named) {
+                    Step-Fail $attempt.Label "refused, but without naming the running process: $refusal"
+                } elseif ($difference) {
+                    Step-Fail $attempt.Label "refused, but the installation changed: $difference"
+                } else {
+                    Step-Pass $attempt.Label "refused, names orkeon (PID $($runningProcess.Id)), $($treeBefore.Count) files untouched"
+                }
+            }
+        }
+    } finally {
+        # Close what this step opened, and whatever it started in turn, before
+        # the steps below -- the real uninstall among them -- meet it.
+        try { $runningProcess.StandardInput.Close() } catch { }
+        foreach ($leftover in @(Get-ProcessesUnder $installDir)) {
+            Stop-Process -Id $leftover.Id -Force -ErrorAction SilentlyContinue
+        }
+        $deadline = (Get-Date).AddSeconds(30)
+        while (@(Get-ProcessesUnder $installDir).Count -gt 0 -and (Get-Date) -lt $deadline) {
+            Start-Sleep -Milliseconds 500
+        }
+    }
+
+    $stillThere = Invoke-Orkeon -Label 'version-after-refusal' -Arguments @('--version')
+    if ($stillThere.ExitCode -eq 0 -and $stillThere.StdOut -match [regex]::Escape($version)) {
+        Step-Pass 'running-intact' "orkeon --version still answers $version"
+    } else {
+        Write-Tail $stillThere.ErrFile
+        Step-Fail 'running-intact' "orkeon --version exited $($stillThere.ExitCode) after the refusals: '$($stillThere.StdOut.Trim())'"
+    }
 }
 
 # ---------------------------------------------------------------------------- #

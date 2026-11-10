@@ -158,7 +158,7 @@ The `orkeon` CLI options you will actually reach for:
 | `--list-tools` | | Build the host and print the sorted registered tool names, one per line, then exit — no crew required. |
 | `--events jsonl` | | Emit the versioned JSONL event protocol on stdout instead of plain text (how an external client drives a run) — see [the run event bus](../architecture/run-event-bus.md). |
 | `--stream` | | With `--events`, also emit token-by-token `llm.delta` events (verbose by nature; off unless asked). |
-| `--client <name>` | | With `--events`, the observing peer's hub name (`client://<name>`, default `studio`). |
+| `--client <name>` | | With `--events`, the observing peer's hub name (`client://<name>`, default `client`). |
 | `--memory-limit-mb <n>` | | Jint memory ceiling for a `.ork.ts` run (overrides appsettings; `0` disables it). |
 
 ### Mounts and the VFS

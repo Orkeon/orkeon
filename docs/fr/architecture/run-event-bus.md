@@ -109,14 +109,14 @@ Si aucune réponse ne vient — canal fermé, run annulé — la confirmation es
 
 ## 5. Le siège au hub
 
-Un processus observateur est adressable en `client://{nom}` (`--client`, défaut `studio` ; le nom doit être non vide et ne contenir aucun `/`, sinon le run refuse de démarrer). Les agents lui écrivent exactement comme à un autre agent, et il peut écrire, publier et s'abonner en retour.
+Un processus observateur est adressable en `client://{nom}` (`--client`, défaut `client` ; le nom doit être non vide et ne contenir aucun `/`, sinon le run refuse de démarrer). Les agents lui écrivent exactement comme à un autre agent, et il peut écrire, publier et s'abonner en retour.
 
 **Qui a le droit de l'atteindre est la décision de la crew**, pas celle du protocole. Une crew autorise l'échange en nommant le pair dans son bloc `links:` :
 
 ```yaml
 name: billing-crew
 links:
-  - to: "client:studio"
+  - to: "client:client"
     direction: bidirectional
     allowed_topics: [run.progress]
 ```

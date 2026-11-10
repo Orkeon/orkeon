@@ -177,30 +177,30 @@ profil. Exporter `DEEPSEEK_API_KEY` suffit donc à un `orkeon run` en terminal s
 la nomme : `"ApiKeyEnvVar": "DEEPSEEK_API_KEY"`. Un fichier qui ne nomme aucune variable ne lit
 toujours que `Llm:ApiKey` et `ORKEON_Llm__ApiKey`.
 
-| Fournisseur | Variable (le nom conventionnel pour `ApiKeyEnvVar`) | Clé délivrée sur | Timeout conseillé |
-|---|---|---|---|
-| OpenAI | `OPENAI_API_KEY` | `platform.openai.com/api-keys` | défaut moteur (30 s) |
-| Anthropic | `ANTHROPIC_API_KEY` | `console.anthropic.com` | défaut moteur |
-| DeepSeek | `DEEPSEEK_API_KEY` | `platform.deepseek.com` | **600 s** |
-| Mistral AI | `MISTRAL_API_KEY` | `console.mistral.ai` | défaut moteur |
-| Google Gemini | `GEMINI_API_KEY` | `aistudio.google.com/apikey` | défaut moteur |
-| Grok (x.AI) | `XAI_API_KEY` | `console.x.ai` | défaut moteur |
-| MiniMax | `MINIMAX_API_KEY` | `platform.minimax.io` | **600 s** |
-| Together AI | `TOGETHER_API_KEY` | `api.together.ai` | défaut moteur |
-| Qwen | `DASHSCOPE_API_KEY` | `dashscope.console.aliyun.com` | défaut moteur |
-| Kimi (Moonshot) | `MOONSHOT_API_KEY` | `platform.moonshot.ai` | **600 s** |
-| HuggingFace | `HF_TOKEN` | `huggingface.co/settings/tokens` | défaut moteur |
-| Z.AI (GLM) | `ZAI_API_KEY` | `z.ai/manage-apikey` | **600 s** |
-| OpenRouter | `OPENROUTER_API_KEY` | `openrouter.ai/keys` | défaut moteur |
-| Mammouth AI | `MAMMOUTH_API_KEY` | `mammouth.ai` — le fournisseur documente « depuis les réglages API » ; la page exacte se confirme avec la première clé | défaut moteur |
-| Ollama · Docker Model Runner | aucune | — | défaut moteur |
-| Compatible OpenAI (`custom`) | `ORKEON_CUSTOM_LLM_API_KEY` — ou `ORKEON_Llm__ApiKey`, la clé du défaut de chaque run | — | défaut moteur |
-| Azure OpenAI | pas de variable dédiée : son endpoint par ressource en fait une entrée « compatible OpenAI » | — | — |
+| Fournisseur | Variable (le nom conventionnel pour `ApiKeyEnvVar`) | Clé délivrée sur | Timeout conseillé | Solde exposé par l'API ([détails](#ce-que-chaque-api-dit-du-solde-du-compte)) |
+|---|---|---|---|---|
+| OpenAI | `OPENAI_API_KEY` | `platform.openai.com/api-keys` | défaut moteur (30 s) | ✗ (dépense seulement, pour une clé admin) |
+| Anthropic | `ANTHROPIC_API_KEY` | `console.anthropic.com` | défaut moteur | ✗ (dépense seulement, pour une clé Admin API) |
+| DeepSeek | `DEEPSEEK_API_KEY` | `platform.deepseek.com` | **600 s** | ✓ `GET /user/balance` |
+| Mistral AI | `MISTRAL_API_KEY` | `console.mistral.ai` | défaut moteur | ✗ (consommation seulement, pour une clé Admin API) |
+| Google Gemini | `GEMINI_API_KEY` | `aistudio.google.com/apikey` | défaut moteur | ✗ |
+| Grok (x.AI) | `XAI_API_KEY` | `console.x.ai` | défaut moteur | ◐ pour une clé de gestion seulement |
+| MiniMax | `MINIMAX_API_KEY` | `platform.minimax.io` | **600 s** | ✗ |
+| Together AI | `TOGETHER_API_KEY` | `api.together.ai` | défaut moteur | ✗ |
+| Qwen | `DASHSCOPE_API_KEY` | `dashscope.console.aliyun.com` | défaut moteur | ◐ pour une AccessKey Alibaba Cloud seulement |
+| Kimi (Moonshot) | `MOONSHOT_API_KEY` | `platform.moonshot.ai` | **600 s** | ✓ `GET /v1/users/me/balance` (USD sur `.ai`, CNY sur `.cn`) |
+| HuggingFace | `HF_TOKEN` | `huggingface.co/settings/tokens` | défaut moteur | ✗ |
+| Z.AI (GLM) | `ZAI_API_KEY` | `z.ai/manage-apikey` | **600 s** | ✗ |
+| OpenRouter | `OPENROUTER_API_KEY` | `openrouter.ai/keys` | défaut moteur | ◐ par clé (`GET /api/v1/key`) ; les crédits du compte pour une clé de gestion seulement |
+| Mammouth AI | `MAMMOUTH_API_KEY` | `mammouth.ai` — le fournisseur documente « depuis les réglages API » ; la page exacte se confirme avec la première clé | défaut moteur | ✗ (dépense d'une clé, réponse non documentée) |
+| Ollama · Docker Model Runner | aucune | — | défaut moteur | — (local, sans compte) |
+| Compatible OpenAI (`custom`) | aucune en propre : les réglages la nomment par `ApiKeyEnvVar`, sinon `ORKEON_Llm__ApiKey` est lue, la clé du défaut de chaque run | — | défaut moteur | ✗ (hôte inconnu) |
+| Azure OpenAI | pas de variable dédiée : son endpoint par ressource en fait une entrée « compatible OpenAI » | — | — | ✗ (dépense dans Cost Management, pour une identité Microsoft Entra) |
 
 Les 600 s conseillées ne sont pas décoratives. Les quatre fournisseurs dont le modèle **par
 défaut** raisonne avant de répondre débordent les 30 s du moteur, et le run du 2026-09-20 a
-été perdu sur deux timeouts Kimi remontés comme réponse vide (LLM-11). Un fichier de réglages demande de monter
-`Llm:TimeoutSeconds` explicitement.
+été perdu sur deux timeouts Kimi remontés comme réponse vide (LLM-11). Un fichier de réglages
+demande de monter `Llm:TimeoutSeconds` explicitement.
 
 Deux noms qui ne sont **pas** celui-là, et qu'on confond avec lui :
 
@@ -214,6 +214,38 @@ Deux noms qui ne sont **pas** celui-là, et qu'on confond avec lui :
 `orkeon init --api-key-env <nom>` n'en fait plus partie : il écrit `Llm:ApiKeyEnvVar: <nom>` dans
 le fichier généré — rien pour `ORKEON_Llm__ApiKey`, que le runtime lit nativement —, si bien que
 chaque run lit la variable qu'il nomme.
+
+## Ce que chaque API dit du solde du compte
+
+Ce qu'il reste sur le compte derrière une clé, tel que l'API de chaque fournisseur le dit. Trois
+fournisseurs seulement servent un solde à la clé d'inférence que porte un run ; pour tous les
+autres, c'est la console du fournisseur qu'il faut consulter — la colonne « Clé délivrée sur »
+ci-dessus, précédée de `https://`. Une requête de solde part vers l'hôte de la clé : une clé de la
+plateforme `.cn` de Kimi est refusée par l'hôte `.ai`, et inversement. Chaque ligne a été lue
+dans la documentation de référence du fournisseur le 2026-09-24.
+
+| Fournisseur | Solde | Endpoint | Ce qu'il renvoie | Clé acceptée | Source |
+|---|---|---|---|---|---|
+| DeepSeek | ✓ disponible | `GET /user/balance` | `balance_infos[]`, une entrée par devise (`CNY`, `USD`) : `total_balance`, `granted_balance`, `topped_up_balance` en chaînes décimales ; `is_available` | la clé d'API (Bearer) | api-docs.deepseek.com/api/get-user-balance |
+| Kimi (Moonshot) | ✓ disponible | `GET /v1/users/me/balance` | `data.available_balance`, `voucher_balance`, `cash_balance` (négatif en cas d'impayé) — dollars US sur `api.moonshot.ai`, yuans sur `api.moonshot.cn` ; la réponse ne nomme aucune devise | la clé d'API (Bearer) de cette plateforme | platform.kimi.ai/docs/api/balance · platform.kimi.com/docs/api/balance |
+| OpenRouter | ◐ par clé | `GET /api/v1/key` | `data.limit_remaining` : les dollars US que la clé peut encore dépenser sous sa limite, `null` quand elle n'en a pas ; `limit`, `usage`. Les crédits du compte (`total_credits`, `total_usage`) sont sur `GET /api/v1/credits` | la clé d'API pour `/key` ; une **clé de gestion** pour `/credits`, qui répond 403 à toute autre | openrouter.ai/docs/api/api-reference/api-keys/get-current-api-key · openrouter.ai/docs/api/api-reference/credits/get-remaining-credits |
+| Grok (x.AI) | ◐ clé admin requise | `GET /v1/billing/teams/{team_id}/prepaid/balance` sur `management-api.x.ai` | le solde prépayé, en cents US | une **clé de gestion** seulement | docs.x.ai/developers/rest-api-reference/management/billing |
+| Qwen | ◐ clé admin requise | `QueryAccountBalance`, OpenAPI de facturation d'Alibaba Cloud | `AvailableAmount`, `AvailableCashAmount`, `CreditAmount`, `Currency` | une **AccessKey Alibaba Cloud** autorisée à `bss:DescribeAcccount` — jamais la clé DashScope | alibabacloud.com/help/en/user-center/developer-reference/api-bssopenapi-2017-12-14-queryaccountbalance |
+| OpenAI | ✗ non exposé | aucun — `GET /v1/organization/costs` rapporte la dépense | la dépense par jour (`amount.value`, `currency`), pas un solde | une clé admin | developers.openai.com/cookbook/examples/completions_usage_api |
+| Anthropic | ✗ non exposé | aucun — `GET /v1/organizations/cost_report` rapporte la dépense | la dépense en cents US, pas un solde | des identifiants Admin API — « workspace API keys don't work » | platform.claude.com/docs/en/manage-claude/usage-cost-api |
+| Mistral AI | ✗ non exposé | aucun — `GET /v1/admin/usage` rapporte la consommation | la consommation par catégorie sur un mois ; le solde de crédits n'est que sur la page Billing de la console | une clé Admin API | docs.mistral.ai/admin/admin-api/usage-metrics · docs.mistral.ai/admin/billing-usage/billing |
+| Azure OpenAI | ✗ non exposé | aucun — Cost Management rapporte la dépense | la dépense par compteur | une identité Microsoft Entra avec le rôle Cost Management Reader, jamais la clé de la ressource | learn.microsoft.com/en-us/azure/foundry/concepts/manage-costs |
+| Google Gemini | ✗ non exposé | aucun | le solde prépayé se gère « directly within the Google AI Studio Billing tab » | — | ai.google.dev/gemini-api/docs/billing |
+| Together AI | ✗ non exposé | aucun | la carte « Credit balance » des réglages de facturation | — | docs.together.ai/docs/billing-credits · docs.together.ai/docs/billing-usage-limits |
+| HuggingFace | ✗ non exposé | aucun | la page de facturation et les réglages Inference Providers | — | huggingface.co/docs/inference-providers/pricing |
+| Z.AI (GLM) | ✗ non exposé | aucun | la référence de l'API ne liste aucun endpoint de facturation | — | docs.z.ai/llms.txt |
+| MiniMax | ✗ non exposé | aucun en paiement à l'usage ; `GET /v1/token_plan/remains` sur `www.minimax.io` pour un Token Plan | Token Plan seulement, réponse non documentée | une clé d'abonnement Token Plan | platform.minimax.io/docs/token-plan/faq |
+| Mammouth AI | ✗ non exposé | aucun — `GET /key/info`, documenté avec un hôte fictif | « how much credits has been spent on a key » : la dépense, réponse non documentée | la clé d'API | info.mammouth.ai/docs/api-quick-start |
+| Ollama · Docker Model Runner | — sans objet | aucun | un runtime local n'a pas de compte | — | — |
+
+Deux endpoints sont documentés sans la forme de leur réponse : le `remains` du Token Plan de
+MiniMax et le `key/info` de Mammouth. Un endpoint compatible OpenAI (`custom`) n'expose aucun
+solde connu, et un endpoint local n'a pas de compte.
 
 ## Défauts et modèles plus récents — revue des catalogues du 2026-09-19
 

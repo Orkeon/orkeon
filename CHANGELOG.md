@@ -9,11 +9,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Removed — Orkeon Studio moved to its own repository (Orkeon/orkeon-studio) **[breaking]**
 
-- **Orkeon Studio** **[breaking]**: the desktop and terminal front-end lives in [Orkeon/orkeon-studio](https://github.com/Orkeon/orkeon-studio) and is no longer built, tested, packaged or documented here. Removed from this repository: the `Orkeon.Studio.Core`, `Orkeon.Studio.Config`, `Orkeon.Studio.Run` and `Orkeon.Studio.Wpf` projects and their test projects, all out of `Orkeon.sln`; the `orkeon-studio`, `orkeon-studio-config` and `orkeon-studio-run` executables from the MSI, ZIP, tarball and `.deb` installers (the "Orkeon Studio" Start-menu shortcut included); the Studio smoke steps of the release pipeline; the Studio documentation page (`docs/architecture/studio.md`, EN and FR); and the third-party notices only Studio needed. The `orkeon` CLI and its event protocol are unchanged: Studio drives them from its own repository.
+- **Orkeon Studio** **[breaking]**: the desktop and terminal front-end lives in [Orkeon/orkeon-studio](https://github.com/Orkeon/orkeon-studio) and is no longer built, tested, packaged or documented here. Removed from this repository: the `Orkeon.Studio.Core`, `Orkeon.Studio.Config`, `Orkeon.Studio.Run` and `Orkeon.Studio.Wpf` projects and their test projects, all out of `Orkeon.sln`; the `orkeon-studio`, `orkeon-studio-config` and `orkeon-studio-run` executables from the MSI, ZIP, tarball and `.deb` installers (the "Orkeon Studio" Start-menu shortcut included); the Studio smoke steps of the release pipeline; the Studio documentation page (`docs/architecture/studio.md`, EN and FR); and the third-party notices only Studio needed. Studio drives the `orkeon` CLI and its event protocol from its own repository; what it needs from them is generic (see the next section).
 
   | Before | After |
   |---|---|
   | The Windows zip, the MSI, the Linux archives and the `.deb` install Orkeon Studio next to the CLI | They install the CLI (and the REPL, the service host where packaged) only; install Orkeon Studio from [Orkeon/orkeon-studio](https://github.com/Orkeon/orkeon-studio) |
+
+### Changed — no Studio name left in what Orkeon writes or defaults to **[breaking]**
+
+- **Launchers, `TeamLauncherSpec`** **[breaking]**: `WrittenByStudio` is removed, replaced by `string? WriterNote`. When it is set, `TeamLauncherScript` writes it as one comment line right after the header of both `run.cmd` (`rem`) and `run.sh` (`#`); a line break or any control character becomes a space, and in `run.cmd` a character beyond ASCII becomes `?` and a trailing caret is dropped, so the note never leaves its comment. Null or blank, no line.
+- **`orkeon run --client`** **[breaking]**: the default observing peer is `client` (`client://client`), no longer `studio`. A client that relied on the default passes `--client <name>`; a crew whose `links:` block named `client:studio` for the default peer names `client:client`.
+- **Team sidecar** **[breaking]**: `ConventionalNames.TeamSidecarFile` is `team.json`, no longer `studio-team.json`. `orkeon usecases export` writes it, `orkeon forge rename` renames the team in it and `orkeon forge promote` keeps it under that name only: a `studio-team.json` is not read. Rename it in an existing team folder.
+
+  | Before | After |
+  |---|---|
+  | `new TeamLauncherSpec { …, WrittenByStudio = true }` | `new TeamLauncherSpec { …, WriterNote = "<the writer's note>" }` |
+  | `orkeon run crew.yaml --events jsonl` answers at `client://studio` | it answers at `client://client`; pass `--client studio` to keep the old address |
+  | `<team>/studio-team.json` | `<team>/team.json` |
 
 ### Added — the CLI family ships to NuGet, for a standalone Orkeon Studio
 

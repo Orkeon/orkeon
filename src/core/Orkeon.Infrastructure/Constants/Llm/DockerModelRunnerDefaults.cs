@@ -21,7 +21,7 @@ public static class DockerModelRunnerDefaults
 
     /// <summary>
     /// The endpoint authenticates nothing, but the OpenAI dialect wants a key: this
-    /// placeholder is what the committed template, and <c>orkeon init</c> write.
+    /// placeholder is what the committed template and <c>orkeon init</c> write.
     /// </summary>
     public const string ApiKeyPlaceholder = LlmProviderDefaultModels.DockerModelRunnerApiKeyPlaceholder;
 }

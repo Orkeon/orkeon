@@ -59,7 +59,7 @@ Generic adapters (`ChatClientToLlmProviderAdapter`, `LlmProviderToChatClientAdap
 - `Create(config)` infers the provider — this is what a run does, since the `Llm` section of
   the settings file carries no provider key. The first rule that matches wins:
   1. **With a base URL, the address alone decides** (`LlmEndpointReading`, the one reading the
-     run, and the CLI share; the model and the key are not consulted):
+     run and the CLI share; the model and the key are not consulted):
 
      | Address | Provider |
      |---|---|

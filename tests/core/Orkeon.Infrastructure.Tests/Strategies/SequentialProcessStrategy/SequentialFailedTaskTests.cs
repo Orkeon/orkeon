@@ -15,7 +15,7 @@ using DomainCrew = Orkeon.Domain.Crew.Crew;
 namespace Orkeon.Infrastructure.Tests.Strategies;
 
 /// <summary>
-/// An empty final answer: a sequential crew with a failed task is a failed crew. It used to report
+/// A sequential crew with a failed task is a failed crew. It used to report
 /// success whatever its tasks did, so an agent that answered with nothing went green all the
 /// way to the runner's exit code and to an AUTO_SUMMARY.md saying "Completed" over an empty
 /// output mount.

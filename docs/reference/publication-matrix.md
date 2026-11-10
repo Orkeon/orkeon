@@ -41,7 +41,7 @@ runtimes, a pre-release upstream).
 | `Orkeon.Interop.AgentFramework` | The bridge to Microsoft Agent Framework, both ways: an Orkeon crew as a MAF `AIAgent` (`CrewAgent`), a MAF `AIAgent` as the brain (`WithAgentFrameworkAgent`) or as a tool (`WithAgentFrameworkTool`) of an Orkeon agent. Separate from `Orkeon` because the `Microsoft.Agents.AI.Abstractions` dependency is a consumer's choice. Depends on `Orkeon`. |
 | `Orkeon.Hosting.Aspire` | The .NET Aspire hosting integration: `AddOrkeonHost` (the `orkeon-host` daemon) and `AddOrkeonCrewRun` (one `orkeon run`) as AppHost resources, `WithOrkeonModel` / `WithOrkeonSetting` for the `ORKEON_` environment, OTLP export wired so the dashboard reads the run. Separate from `Orkeon` because `Aspire.Hosting` is an AppHost's choice. Depends on `Orkeon`. |
 | `Orkeon.Cli.Abstractions` | The contracts of the interactive runners and command registries (`IConsoleAdapter`, the command registry, the runner options). No Orkeon dependency: two `Microsoft.Extensions` abstractions only, packed straight from its project. |
-| `Orkeon.Cli.TerminalGui` | The Terminal.Gui v2 split-pane console (REPL + logs pane) terminal applications build on. Separate from `Orkeon` for its `Terminal.Gui` dependency. Depends on `Orkeon` (which carries the `Orkeon.Constants.Configuration` it reads) and `Orkeon.Cli.Abstractions`. |
+| `Orkeon.Cli.TerminalGui` | The Terminal.Gui v2 split-pane console (REPL + logs pane) that terminal applications build on. Separate from `Orkeon` for its `Terminal.Gui` dependency. Depends on `Orkeon` (which carries the `Orkeon.Constants.Configuration` it reads) and `Orkeon.Cli.Abstractions`. |
 | `Orkeon.Templates` | The `dotnet new` templates (FWK-26): `orkeon-host` (a generic host that runs a crew in its own process, shaped like the `orkeon-host` daemon), `orkeon-plugin` (an `IOrkeonPlugin`, one tool and its `plugin.json`) and `orkeon-tool` (a `ToolBase` class). `PackageType=Template`: no assembly, no dependency. A generated project references `Orkeon` (and `Orkeon.Scripting` for the host) at the version of the template package, written out in its project file. |
 
 ### How the packaging projects are built
@@ -222,7 +222,7 @@ scripting DSL).
 
 | Artifact | Built by | Contents | Runtime |
 |---|---|---|---|
-| `orkeon-<version>-<rid>.tar.gz` / `.zip` | `package-installers.sh` (default `--app-set full`) | every launcher — `orkeon`, `orkeon-slim`, `orkeon-repl`, `orkeon-host`, plus one shared esbuild + the `deploy/` tree (systemd unit, SCM registration script, Dockerfile.host) | mixed: `orkeon-slim` is framework-dependent, every other launcher (`orkeon`, `orkeon-repl`, `orkeon-host`) is self-contained |
+| `orkeon-<version>-<rid>.tar.gz` / `.zip` | `package-installers.sh` (default `--app-set full`) | every launcher — `orkeon`, `orkeon-slim`, `orkeon-repl`, `orkeon-host` — + one shared esbuild + the `deploy/` tree (systemd unit, SCM registration script, Dockerfile.host) | mixed: `orkeon-slim` is framework-dependent, every other launcher (`orkeon`, `orkeon-repl`, `orkeon-host`) is self-contained |
 | `orkeon-cli-<version>-win-x64.zip` | `package-installers.sh --app-set cli --rids win-x64` | the `orkeon` CLI + `install.cmd` and `install.ps1` | self-contained |
 | `orkeon_<version>_amd64.deb` / `orkeon_<version>_arm64.deb` | `package-deb.sh --arch amd64\|arm64` (reuses the `linux-x64` and `linux-arm64` staging trees — one publish, two packages per architecture) | the `orkeon` CLI at `/usr/bin/orkeon` + the REPL at `/usr/bin/orkeon-repl` (it uses the one esbuild under `/usr/lib/orkeon`) | self-contained; `Depends` on system libraries only (`libicu78` down to `libicu70`, `libssl3t64 \| libssl3`, `libc6 (>= 2.34)`…, so Debian 12/13 and Ubuntu 22.04 to 26.04), never on `dotnet-runtime-*`; `Recommends: orkeon-archive-keyring`; ships `md5sums` (`dpkg -V orkeon`); byte-identical across two builds of the same commit (`SOURCE_DATE_EPOCH`) |
 | `orkeon-archive-keyring_<YYYY.MM.DD>_all.deb` | `package-keyring-deb.sh`, once per keyring version (a date, such as `2026.10.04`, from `installers/apt/keyring.version`); later Releases attach the bytes already published, never a rebuild | `/usr/share/keyrings/orkeon-archive-keyring.gpg`, the public key of the [apt repository](#the-apt-repository) | — |
@@ -314,13 +314,13 @@ The `orkeon` CLI is distributed through **eight channels**:
 | Channel | Artifact | Runtime | Audience |
 |---|---|---|---|
 | NuGet dotnet tool | `Orkeon.Scripting.Cli` (`PackAsTool`, command `orkeon`) | needs .NET 10 SDK (`dotnet tool install`) | .NET developers. Part of the NuGet.org lineup (PUB-25) — publishable since the package dropped from 262.5 MB to 137.6 MB (iOS/Android onnxruntime natives excluded) |
-| Windows zip + `install.cmd` | `orkeon-cli-<version>-win-x64.zip` | self-contained | Windows onboarding — the recommended channel. |
+| Windows zip + `install.cmd` | `orkeon-cli-<version>-win-x64.zip` | self-contained | Windows onboarding — the recommended channel |
 | Windows MSI (per-user) | `orkeon-<version>-win-x64.msi` | self-contained | Windows, double-click install and an "Installed apps" entry. One channel at a time: the MSI refuses to install over a zip install |
 | Debian / Ubuntu apt repository | the `.deb` packages below, indexed on the `apt` branch (channels `stable`, `rc`, `dev`) | self-contained | Debian / Ubuntu, amd64 and arm64 — the recommended channel: `apt install`, `apt upgrade`. See [The apt repository](#the-apt-repository) |
 | Debian package | `orkeon_<version>_amd64.deb` / `_arm64.deb` | self-contained | Debian / Ubuntu without the repository (one version, no updates). Ships the `orkeon-repl` REPL next to the CLI |
 | macOS tarball + `install.sh` | `orkeon-cli-<version>-osx-arm64.tar.gz` / `-osx-x64.tar.gz` | self-contained | macOS onboarding today; `install.sh` clears the Gatekeeper quarantine attribute and ad-hoc re-signs the Mach-O files `codesign -v` rejects |
 | Homebrew | the same osx tarballs, via `installers/homebrew/orkeon.rb` | self-contained | macOS, once the tap exists — **not published yet**, see below |
-| Multi-app installer archive | `orkeon` / `orkeon-slim` launchers | `orkeon` self-contained, `orkeon-slim` framework-dependent | devs who also want the REPL, or the service host |
+| Multi-app installer archive | `orkeon` / `orkeon-slim` launchers | `orkeon` self-contained, `orkeon-slim` framework-dependent | devs who also want the REPL or the service host |
 
 **Homebrew — formula in the repository, tap not yet created.** `installers/homebrew/orkeon.rb`
 is a binary formula: it downloads the osx tarball matching the machine's architecture

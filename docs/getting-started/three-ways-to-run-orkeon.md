@@ -206,8 +206,7 @@ cd orkeon-cli-<version>-win-x64
 
 `install.cmd` passes its arguments to `install.ps1` (`-InstallDir <folder>`,
 `-Uninstall`) and returns its exit code. Installing over an installation replaces it —
-that is how the zip channel updates. **Let a running crew
-finish first**: while a program of the installation is running, the installer refuses,
+that is how the zip channel updates. **Let a running crew finish first**: while a program of the installation is running, the installer refuses,
 names it, and leaves the installation as it was.
 
 ```powershell
@@ -375,8 +374,9 @@ which one you meant. See
 **A crew can name the folders it uses.** A `mounts:` block in `config.yaml` (or
 `crew.yaml`) lists the virtual roots the crew reads and writes — `/output`, or
 `<ulid>|/output` to pin one settings entry when several declare that root (a settings
-entry may carry a 26-character id before its `|`). `orkeon run crew/` then resolves the block against the settings file with no
-`--mount` at all, and refuses in one line when a root is missing or ambiguous;
+entry may carry a 26-character id before its `|`). `orkeon run crew/` then resolves the block
+against the settings file with no `--mount` at all, and refuses in one line when a root is
+missing or ambiguous;
 `--mount-id <ulid>` picks an entry from the command line, and a plain
 `--mount <folder>:/output:rw` replaces every settings entry of that root for the run.
 
@@ -640,7 +640,7 @@ The channel reaches the **NuGet channels**: the `orkeon` tool, the `orkeon-repl`
 (package `Orkeon.ConsoleApp`) and the packages. On Debian and Ubuntu, the `orkeon` package
 follows `main` too, through the apt `dev` channel — see
 [Install with apt](../guides/install-with-apt.md#follow-main-dev-builds). The other
-installers, the container image are built from tags alone.
+installers and the container image are built from tags alone.
 
 1. **Create a token.** GitHub Packages asks for one even to read a public package: a personal
    access token (classic) with the `read:packages` scope —

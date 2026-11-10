@@ -5,8 +5,8 @@ namespace Orkeon.Hosting.Tests;
 /// <summary>
 /// The settings files the repository holds, by their path from its root: what an operator is handed
 /// to copy — the examples' <c>appsettings*.json</c>, their <c>*.json.example</c> templates, the sample
-/// an installation carries —, and what a release smoke starts a run on. Listed from what git tracks, so a clone that keeps other
-/// projects under <c>examples/others</c> does not pay for them.
+/// an installation carries —, and what a release smoke starts a run on. Listed from what git
+/// tracks, so a clone that keeps other projects under <c>examples/others</c> does not pay for them.
 /// </summary>
 internal static class RepositorySettingsFiles
 {

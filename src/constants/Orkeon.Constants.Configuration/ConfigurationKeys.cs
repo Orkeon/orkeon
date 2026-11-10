@@ -118,9 +118,9 @@ public static class ConfigurationKeys
     /// <summary>
     /// The key, in <see cref="LlmSection"/> and in each of its <see cref="LlmProfiles"/>, that
     /// names the environment variable holding the section's API key — the name, never the key.
-    /// The runtime reads the variable when the configuration resolves no
-    /// <c>ApiKey</c>; <c>orkeon init</c> writes it, and <c>orkeon doctor</c> reports it
-    /// — two projects, one spelling.
+    /// The runtime reads the variable when the configuration resolves no <c>ApiKey</c>;
+    /// <c>orkeon init</c> writes it and <c>orkeon doctor</c> reports it: several projects, one
+    /// spelling.
     /// </summary>
     public const string LlmApiKeyEnvVar = "ApiKeyEnvVar";
 
@@ -128,8 +128,8 @@ public static class ConfigurationKeys
     /// The MCP section, at the configuration ROOT like <see cref="LlmSection"/>: the servers a
     /// machine declares (<c>MCP:Servers:&lt;id&gt;</c>), the switch (<c>MCP:Enabled</c>) and the
     /// optional outbound server (<c>MCP:Server</c>). Bound by the infrastructure, honoured by the
-    /// shared runner host — projects that cannot
-    /// reference each other, and a section whose absence reads as "no MCP" everywhere.
+    /// shared runner host, which are projects that cannot reference each other: a section whose
+    /// absence reads as "no MCP" everywhere.
     /// </summary>
     public const string McpSection = "MCP";
 }

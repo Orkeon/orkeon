@@ -219,15 +219,16 @@ consent page, for you to open in a browser, and receives the answer on a loopbac
    }
    ```
 
-5. Sign in: in a terminal, run `orkeon email login gmail`. It prints a
-   Google address to open and listens on a free port of `127.0.0.1`. Sign in and accept; Google shows a warning screen for an application
-   it has not verified, which you may continue past for your own application. The browser
-   then lands on the loopback address and says it can be closed.
+5. Sign in: in a terminal, run `orkeon email login gmail`. It prints a Google address to open
+   and listens on a free port of `127.0.0.1`. Sign in and accept; Google shows a warning screen
+   for an application it has not verified, which you may continue past for your own
+   application. The browser then lands on the loopback address and says it can be closed.
    **When the browser runs on another machine** — WSL, a container, an SSH session — that
    last page cannot load: copy the address it ends on (`http://127.0.0.1:…/?state=…&code=…`)
-   from the browser's address bar, paste it in the terminal and press Enter. An address that is not that one — cut short, the address you were told
-   to open, anything else — is not taken and the sign-in goes on waiting: the terminal says
-   why and asks for the complete address.
+   from the browser's address bar, paste it in the terminal and press Enter. An address that
+   is not that one — cut short, the address you were told to open, anything else — is not
+   taken and the sign-in goes on waiting: the terminal says why and asks for the complete
+   address.
 
 **Keep the sign-in alive.** A Google application left in the **Testing** publishing status
 gets refresh tokens that expire after 7 days, after which every call asks for a new login.
@@ -317,9 +318,8 @@ until it is fixed. `orkeon email accounts` shows those problems without connecti
 when the account connects:
 
 - **Under Windows**, in the environment of the process that runs the crew, then in the user's
-  persistent environment (`HKCU\Environment`), where `setx` puts it. A terminal
-  opened before the password was stored, and a scheduled team, find it all the same. The value
-  is read, never copied into the process: what the run starts — a shell tool, a stdio MCP
+  persistent environment (`HKCU\Environment`), where `setx` puts it. A terminal opened before
+  the password was stored, and a scheduled team, find it all the same. The value is read, never copied into the process: what the run starts — a shell tool, a stdio MCP
   server — inherits no secret it did not have. A user environment that cannot be read (a
   service account without a profile) counts as an absent variable.
 - **Under Linux and macOS**, in the environment of the process alone: there is no user
@@ -382,9 +382,8 @@ allow-list and drafts — see [Security](../architecture/security.md#e-mail-tool
 
 ### A run whose mail tools lack a right is refused at start
 
-Before any model call, `orkeon run` — and so every scheduled launch,
-which goes through it, and `orkeon-host`, which loads crews the same way — checks the crew's mail
-tools against the accounts that are ready (secret present, no network check). Each tool needs
+Before any model call, `orkeon run` — and so every scheduled launch, which goes through it,
+and `orkeon-host`, which loads crews the same way — checks the crew's mail tools against the accounts that are ready (secret present, no network check). Each tool needs
 its base right: `email_folders`, `email_search`, `email_read` and `email_save_attachment` need
 `Read`; `email_create_folder`, `email_rename_folder`, `email_move` and `email_mark` need
 `Organize`; `email_delete` needs `Delete`; `email_draft` needs `Draft`; `email_send` needs `Send`
@@ -664,16 +663,14 @@ maps to its exit codes.
   from the desktop or a service does not see a variable exported in a terminal.
 - **"… which is set neither in the process environment nor in the user's"** (Windows) — the
   run looked in both places ([where a secret variable is read](#where-a-secret-variable-is-read)).
-  Store the password with `setx`, under the Windows
-  account that runs the crew; a variable set with `$env:` in another terminal is in neither.
+  Store the password with `setx`, under the Windows account that runs the crew; a variable set with `$env:` in another terminal is in neither.
 - **"… needs an OAuth sign-in: run `orkeon email login <account>`"** — no token yet, or the
   refresh token was revoked or expired (a Google application left in Testing: 7 days). Run
   the login again.
 - **The device code expired** — Microsoft's codes last about fifteen minutes; run the login
   again and enter the new code.
 - **The browser cannot reach `127.0.0.1`** during a Google login — paste the final address
-  into the terminal (see
-  [Gmail with OAuth2](#gmail-with-oauth2)). "That is not the address the browser ended on",
+  into the terminal (see [Gmail with OAuth2](#gmail-with-oauth2)). "That is not the address the browser ended on",
   followed by a reason ("The pasted text is not an address.", "The pasted address is the one
   to open, not the one the browser ended on.", "The pasted address is not the redirect address
   of this sign-in (…).", "The pasted address carries no authorization code: it may be cut

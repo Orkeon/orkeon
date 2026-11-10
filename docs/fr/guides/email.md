@@ -81,9 +81,9 @@ passe d'application**, un mot de passe de 16 caractères que Google génère pou
 3. Mettez le mot de passe dans une variable d'environnement — pas dans un fichier. N'importe
    quel nom convient : le compte le nomme (`PasswordEnvVar`). Un run lit la variable dans
    l'environnement de son propre processus, puis, sous Windows, dans l'environnement de
-   l'utilisateur, où `setx` la pose. Écrivez le nom seul : Orkeon ne développe aucune variable, et un compte
-   dont `Incoming:Host`, `Outgoing:Host`, `Auth:PasswordEnvVar` ou `Auth:ClientSecretEnvVar` contient une
-   référence `${NOM}` ou `%NOM%` est mis de côté, avec ce problème.
+   l'utilisateur, où `setx` la pose. Écrivez le nom seul : Orkeon ne développe aucune variable,
+   et un compte dont `Incoming:Host`, `Outgoing:Host`, `Auth:PasswordEnvVar` ou
+   `Auth:ClientSecretEnvVar` contient une référence `${NOM}` ou `%NOM%` est mis de côté, avec ce problème.
 
    ```bash
    export GMAIL_APP_PASSWORD='abcdefghijklmnop'        # bash / zsh
@@ -229,17 +229,17 @@ et reçoit la réponse sur une adresse de bouclage (`127.0.0.1`), avec PKCE.
    }
    ```
 
-5. Connectez-vous : dans un terminal, lancez `orkeon email login gmail`. La commande affiche une adresse Google à ouvrir et écoute
-   sur un port libre de `127.0.0.1`. Connectez-vous et acceptez ; Google affiche un écran
-   d'avertissement pour une application qu'il n'a pas vérifiée, que vous pouvez passer pour
-   votre propre application. Le navigateur arrive ensuite sur l'adresse de bouclage et dit
-   qu'on peut fermer l'onglet.
+5. Connectez-vous : dans un terminal, lancez `orkeon email login gmail`. La commande affiche une adresse Google à
+   ouvrir et écoute sur un port libre de `127.0.0.1`. Connectez-vous et acceptez ; Google
+   affiche un écran d'avertissement pour une application qu'il n'a pas vérifiée, que vous
+   pouvez passer pour votre propre application. Le navigateur arrive ensuite sur l'adresse de
+   bouclage et dit qu'on peut fermer l'onglet.
    **Quand le navigateur tourne sur une autre machine** — WSL, un conteneur, une session SSH —
    cette dernière page ne peut pas se charger : copiez l'adresse où elle aboutit
    (`http://127.0.0.1:…/?state=…&code=…`) depuis la barre d'adresse, collez-la dans le terminal
-   et appuyez sur Entrée. Une adresse qui n'est pas
-   celle-là — tronquée, l'adresse qu'on vous a dit d'ouvrir, autre chose — n'est pas prise et
-   la connexion continue d'attendre : le terminal dit pourquoi et demande l'adresse complète.
+   et appuyez sur Entrée. Une adresse qui n'est pas celle-là — tronquée, l'adresse qu'on vous a
+   dit d'ouvrir, autre chose — n'est pas prise et la connexion continue d'attendre : le
+   terminal dit pourquoi et demande l'adresse complète.
 
 **Garder la connexion.** Une application Google laissée au statut de publication **Test**
 reçoit des jetons de rafraîchissement qui expirent au bout de 7 jours ; ensuite chaque appel
@@ -331,9 +331,9 @@ sans se connecter.
 lue quand le compte se connecte :
 
 - **Sous Windows**, dans l'environnement du processus qui lance le crew, puis dans
-  l'environnement persistant de l'utilisateur (`HKCU\Environment`), où `setx` la
-  pose. Un terminal ouvert avant que le mot de passe soit mémorisé, et une équipe planifiée,
-  la trouvent quand même. La valeur est lue, jamais recopiée dans le processus : ce que le run
+  l'environnement persistant de l'utilisateur (`HKCU\Environment`), où `setx` la pose. Un
+  terminal ouvert avant que le mot de passe soit mémorisé, et une équipe planifiée, la
+  trouvent quand même. La valeur est lue, jamais recopiée dans le processus : ce que le run
   lance — un outil shell, un serveur MCP stdio — n'hérite d'aucun secret qu'il n'avait pas. Un
   environnement utilisateur illisible (un compte de service sans profil) compte comme une
   variable absente.
@@ -398,9 +398,8 @@ vraie frontière, ce sont les droits du compte, la liste d'autorisation et les b
 
 ### Un run dont les outils mail manquent d'un droit est refusé au départ
 
-Avant tout appel au modèle, `orkeon run` — donc chaque
-lancement planifié, qui passe par lui, et `orkeon-host`, qui charge les crews de la même
-façon — confronte les outils mail du crew aux comptes prêts (secret présent, sans contrôle
+Avant tout appel au modèle, `orkeon run` — donc chaque lancement planifié, qui passe par lui,
+et `orkeon-host`, qui charge les crews de la même façon — confronte les outils mail du crew aux comptes prêts (secret présent, sans contrôle
 réseau). Chaque outil demande son droit de base : `email_folders`, `email_search`, `email_read`
 et `email_save_attachment` demandent `Read` ; `email_create_folder`, `email_rename_folder`,
 `email_move` et `email_mark` demandent `Organize` ; `email_delete` demande `Delete` ;
@@ -699,8 +698,7 @@ brancher, les codes que le CLI traduit en codes de sortie.
   démarré depuis le bureau ou un service ne voit pas une variable exportée dans un terminal.
 - **« … which is set neither in the process environment nor in the user's »** (Windows) — le
   run a cherché aux deux endroits ([où une variable de secret est lue](#où-une-variable-de-secret-est-lue)).
-  Posez le mot de passe avec `setx`, sous le
-  compte Windows qui lance le crew ; une variable posée avec `$env:` dans un autre terminal
+  Posez le mot de passe avec `setx`, sous le compte Windows qui lance le crew ; une variable posée avec `$env:` dans un autre terminal
   n'est à aucun des deux.
 - **« … needs an OAuth sign-in: run `orkeon email login <account>` »** — pas encore de jeton, ou
   le jeton de rafraîchissement a été révoqué ou a expiré (une application Google laissée en
@@ -708,8 +706,7 @@ brancher, les codes que le CLI traduit en codes de sortie.
 - **Le code d'appareil a expiré** — les codes de Microsoft durent environ quinze minutes ;
   relancez le login et saisissez le nouveau code.
 - **Le navigateur n'atteint pas `127.0.0.1`** pendant un login Google — collez l'adresse finale
-  dans le terminal (voir
-  [Gmail avec OAuth2](#gmail-avec-oauth2)). « That is not the address the browser ended on »,
+  dans le terminal (voir [Gmail avec OAuth2](#gmail-avec-oauth2)). « That is not the address the browser ended on »,
   suivi d'une raison (« The pasted text is not an address. », « The pasted address is the one
   to open, not the one the browser ended on. », « The pasted address is not the redirect address
   of this sign-in (…). », « The pasted address carries no authorization code: it may be cut

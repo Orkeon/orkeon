@@ -40,10 +40,11 @@ d'un modèle sans qu'un agent écrive un texte que la tâche suivante devait ana
    réponse. Une requête en échec n'est jamais transformée en repli.
 6. **Le run le rapporte.** `task.completed` porte `skipReason`, `defaulted`, `isDecision` et
    `decision` (les réponses en JSON compact) ; `TaskExecutionSnapshot` porte `SkipReason`,
-   `Defaulted`, `IsDecision` et `DecisionAnswers` ; les consoles les montrent. `TaskCompletedEvent.AgentId` est nullable, une tâche de décision n'ayant pas
-   d'agent.
+   `Defaulted`, `IsDecision` et `DecisionAnswers` ; Orkeon Studio les montrait alors (il vit
+   désormais dans son propre dépôt), et aucune console d'Orkeon ne les montre.
+   `TaskCompletedEvent.AgentId` est nullable, une tâche de décision n'ayant pas d'agent.
 
-   > Amendement 2026-10-31 : la raison d'un saut est lue par le JSONL du run, pas par « les consoles » ; le nom de question `defaulted` est réservé.
+   > Amendement 2026-10-31 : la raison d'un saut est lue par le JSONL du run (et l'était alors par Studio), pas par « les consoles » ; le nom de question `defaulted` est réservé.
 
    > Amendement 2026-10-31 : le modèle de décision derrière une tâche de décision peut être TypeSafe, Liquid ou Kev ; la tâche, son circuit et son repli ne changent pas.
 

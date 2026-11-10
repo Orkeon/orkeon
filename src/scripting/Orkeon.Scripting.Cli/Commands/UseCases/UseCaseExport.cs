@@ -36,7 +36,7 @@ internal sealed record UseCaseExport
 /// Writes one use case as a team folder — the shape of a promoted team, less
 /// what only a workshop session can say. <c>crew/</c> holds the example's crew file byte for
 /// byte; <c>data/</c> its sample data; a folder stands behind each team-relative mount of the
-/// manifest (<c>output/</c> for every crew that writes files); and <c>studio-team.json</c> names
+/// manifest (<c>output/</c> for every crew that writes files); and <c>team.json</c> names
 /// the team, describes it and records those mounts the way a team sidecar records its own
 /// (<c>./data:/data:ro</c>). No <c>forge.json</c> and no launchers: no session made this team,
 /// and <c>forge reopen</c> rebuilds one from <c>crew/</c> the first time the team is modified.
@@ -208,8 +208,8 @@ internal static class UseCaseExporter
     }
 
     /// <summary>
-    /// <c>studio-team.json</c>, under the names the team sidecar's readers expect: the CLI
-    /// and those readers cannot reference each other, so the shape is pinned by a golden test.
+    /// <c>team.json</c>, under the names the team sidecar's readers expect: those readers live
+    /// outside Orkeon and share no type with the CLI, so the shape is pinned by a golden test.
     /// </summary>
     private sealed record Sidecar(
         [property: JsonPropertyName("name")] string Name,

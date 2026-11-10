@@ -16,11 +16,11 @@ pressed into service as string holders.
 
 What is not solved is **agreement between projects that are forbidden from referencing each
 other**. `Orkeon.Studio.Core` (Orkeon Studio, now in its own repository) could not reference
-`Orkeon.Infrastructure` or `Orkeon.Hosting`: Studio is a host application, and taking a dependency on the runtime's internals would invert
-the layering the Clean Architecture rule exists to protect. But Studio needed the same values the
-runtime uses — the LLM endpoint it writes into a settings file must be the endpoint the provider
-will call, and the virtual root it predicts in a launch preview must be the root the runner
-mounts.
+`Orkeon.Infrastructure` or `Orkeon.Hosting`: Studio is a host application, and taking a dependency
+on the runtime's internals would invert the layering the Clean Architecture rule exists to
+protect. But Studio needed the same values the runtime uses — the LLM endpoint it writes into
+a settings file must be the endpoint the provider will call, and the virtual root it predicts
+in a launch preview must be the root the runner mounts.
 
 The way out taken so far was to **copy the values by hand and guard the copies with a test**.
 `tests/apps/Orkeon.Studio.Core.Tests/ConstantDriftTests.cs` existed for no other reason. It pins

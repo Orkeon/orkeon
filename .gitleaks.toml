@@ -32,19 +32,13 @@ useDefault = true
 #   sk-test-key-1234567890            the API key the three ImageGenerationTool test files
 #                                     wire into a fake HTTP handler.
 #   tvly-test-api-key-12345           the same, for WebSearchTool (Tavily).
-#   sk-abcdef1234567890               TeamCatalogTests writes credential-shaped fixtures
-#   totally-a-secret-1234             into temp files and asserts the team catalogue
-#   ${ORKEON_Llm__ApiKey}             refuses them; the third is the literal placeholder
-#                                     used as that test's clean case.
 #   sk-test1234567890abcdef           EnvironmentSecretProviderTests sets it into an env
 #                                     var to prove the provider reads it back.
 #   orkeon-encryption-key-v2          documentation of ProvisionNewKeyAsync(store, NAME).
 #                                     A key *name*, not a key — not a credential at all.
-#   sk-live-0123456789                an API key handed to a fake HTTP handler, to assert the
-#                                     Bearer header.
-#   03-finance-trading                not a credential at all: the examples category of that
-#                                     name (examples/03-finance-trading/). It fires only after
-#                                     a property called `Key`.
+#   sk-live-0123456789-do-not-print   the API key SettingsCommandTests writes as the `Llm:ApiKey`
+#                                     of a throw-away machine settings file, to prove `orkeon
+#                                     settings` never prints it.
 #   sk-from-the-variable-0123456789   the key RunnerHostApiKeyReferenceTests sets into a
 #                                     throw-away environment variable, to prove the host reads
 #                                     ApiKeyEnvVar and never prints the key in its startup lines.
@@ -57,13 +51,9 @@ regexes = [
   '''^"?abcdefgh1234567890xyz"?$''',
   '''^"?sk-test-key-1234567890"?$''',
   '''^"?tvly-test-api-key-12345"?$''',
-  '''^"?sk-abcdef1234567890"?$''',
-  '''^"?totally-a-secret-1234"?$''',
-  '''^"?\$\{ORKEON_Llm__ApiKey\}"?$''',
   '''^"?sk-test1234567890abcdef"?$''',
   '''^"?orkeon-encryption-key-v2"?$''',
-  '''^"?sk-live-0123456789"?$''',
-  '''^"?03-finance-trading"?$''',
+  '''^"?sk-live-0123456789-do-not-print"?$''',
   '''^"?sk-from-the-variable-0123456789"?$''',
 ]
 

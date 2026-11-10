@@ -85,11 +85,11 @@ réglages nommés d'un client peuvent emprunter la couche 2 : le réglage élu p
 réflexion et variable qui contient sa clé (`ApiKeyEnvVar`), jamais la clé —, si bien qu'un
 `orkeon run` manuel en terminal ou une équipe planifiée suit la même élection, ses 600 s et sa
 clé comprises (c'est ce que `llm-config` reflète), tandis qu'une équipe qui a élu un autre
-réglage peut le recevoir en variables `ORKEON_Llm__*` sur son seul lancement — chaque champ que le
-réglage modélise, vide là où il n'en fixe pas, pour que rien du défaut, et sa clé moins que tout,
-n'atteigne l'adresse de l'équipe ; `llm-config` ne peut pas les voir, car elles n'existent nulle
-part tant que ce lancement n'a pas démarré. Chaque réglage peut aussi être écrit dans `Llm:Profiles` du
-fichier, avec le nom de la variable qui contient sa clé et jamais la clé, comme profil d'hôte
+réglage peut le recevoir en variables `ORKEON_Llm__*` sur son seul lancement — chaque champ
+que le réglage modélise, vide là où il n'en fixe pas, pour que rien du défaut, et sa clé
+moins que tout, n'atteigne l'adresse de l'équipe ; `llm-config` ne peut pas les voir, car
+elles n'existent nulle part tant que ce lancement n'a pas démarré. Chaque réglage peut aussi
+être écrit dans `Llm:Profiles` du fichier, avec le nom de la variable qui contient sa clé et jamais la clé, comme profil d'hôte
 qu'une crew peut nommer ([plus bas](#profils-nommés-llmprofiles)). Aucun fichier n'est
 jamais généré : la composition est en mémoire.
 
@@ -344,8 +344,8 @@ avec ses propres clés.
 - **`Thinking:Enabled`, `Thinking:Effort`** concernent les providers à raisonnement.
 - **`Profiles:<nom>`** porte les profils nommés qu'une crew choisit par agent ou par tâche,
   chacun avec les mêmes clés que la section elle-même ([plus bas](#profils-nommés-llmprofiles)) ;
-  un client peut en écrire un par réglage de modèle, avec le nom de la variable qui contient sa clé,
-  jamais la clé.
+  un client peut en écrire un par réglage de modèle, avec le nom de la variable qui contient
+  sa clé, jamais la clé.
 - **`AvailableModels`** est la liste de modèles qu'une commande REPL scriptée `/model` peut
   proposer (tableau de chaînes, ou une chaîne séparée par des virgules), lue par
   `AddOrkeonSessionTools(configuration)`.
@@ -378,8 +378,9 @@ seulement pour un modèle inconnu du catalogue** — la valeur que le moteur env
 les modèles, qu'un modèle raisonneur dépense à réfléchir avant d'écrire un mot et qui revient
 vide (une réponse finale vide fait échouer la tâche au lieu de passer pour une tâche
 accomplie). Épinglez-le quand le modèle n'est pas au catalogue ou pour un plafond plus serré ;
-un profil de modèle d'un client peut l'épingler en `ORKEON_Llm__MaxTokens`. Un plafond du catalogue que le point d'accès
-refuse est rejoué une fois sans le champ, avec un avertissement qui nomme le modèle.
+un profil de modèle d'un client peut l'épingler en `ORKEON_Llm__MaxTokens`. Un plafond du
+catalogue que le point d'accès refuse est rejoué une fois sans le champ, avec un
+avertissement qui nomme le modèle.
 
 #### `Provider: mock` répond depuis un fichier
 
@@ -409,8 +410,8 @@ contient — le nom, jamais la clé —, dans la section `Llm` comme dans chaque
    l'environnement l'emporte toujours sur le fichier.
 2. **Sinon la variable que nomme `ApiKeyEnvVar`**, lue dans l'environnement du processus, puis —
    sous Windows — dans la portée Utilisateur persistante (`HKCU\Environment`), où un client
-   peut mémoriser une clé : un terminal ouvert avant la mémorisation, ou une équipe planifiée, la trouve
-   quand même. La valeur est lue, jamais recopiée dans le processus : ce que le run lance — un outil
+   peut mémoriser une clé : un terminal ouvert avant la mémorisation, ou une équipe
+   planifiée, la trouve quand même. La valeur est lue, jamais recopiée dans le processus : ce que le run lance — un outil
    shell, un serveur MCP stdio, le bac à sable de code — n'hérite d'aucune clé qu'il n'aurait pas eue.
    Une portée Utilisateur illisible (registre refusé, compte de service virtuel) vaut une variable
    absente. Linux et macOS n'ont pas de portée Utilisateur : le processus seul.
@@ -434,8 +435,8 @@ signalé : aucune crew ne peut le nommer ([hôte de service](../architecture/ser
 absente, pour chaque clé de la section (`Thinking:Effort` comprise) : un lancement de client peut vider les
 champs du défaut que le réglage de son équipe ne fixe pas, et une section dont toutes les valeurs
 sont vides ne configure aucun défaut — le provider écho, avec son avertissement.
-`orkeon init --api-key-env <nom>` écrit `Llm:ApiKeyEnvVar`. La référence peut nommer n'importe quelle variable : un
-fichier de réglages est une configuration de confiance ([Sécurité](../architecture/security.md#clés-llm--le-fichier-de-réglages-nomme-la-variable)).
+`orkeon init --api-key-env <nom>` écrit `Llm:ApiKeyEnvVar`. La référence peut nommer
+n'importe quelle variable : un fichier de réglages est une configuration de confiance ([Sécurité](../architecture/security.md#clés-llm--le-fichier-de-réglages-nomme-la-variable)).
 
 ### Une référence de variable n'est jamais développée
 
@@ -489,8 +490,8 @@ Les clés restent hors des fichiers de la même façon : le profil nomme sa vari
 (`ApiKeyEnvVar`), et `ORKEON_Llm__Profiles__claude__ApiKey` l'emporte sur elle quand elle est
 posée. Le
 fournisseur de chaque profil est construit une fois, au premier usage, compté comme celui par
-défaut — les relevés `cost.updated` d'un run nomment le fournisseur de chaque appel, et un client peut
-ventiler les jetons par fournisseur. Les profils sont validés au démarrage de
+défaut — les relevés `cost.updated` d'un run nomment le fournisseur de chaque appel, et un client
+peut ventiler les jetons par fournisseur. Les profils sont validés au démarrage de
 l'hôte : `default` est un nom réservé (il désigne la section `Llm`, et une crew peut le nommer pour
 ramener un agent au défaut), et une `BaseUrl` invalide (la même lecture la refuse) ou une valeur qui n'est pas un nombre fait
 échouer le démarrage en nommant la clé à corriger. Une crew qui nomme un profil que l'hôte ne
@@ -1148,8 +1149,8 @@ Les dossiers qu'un run peut atteindre, et l'endroit où peut tourner le code qu'
 
 **`Mounts`** — les montages VFS (voir [Conformité VFS](../architecture/vfs-compliance.md)). Une
 entrée peut porter un **identifiant** — `<ulid>|<physique>:<virtuel>:<droits>` (VFS-90) : ce par
-quoi le bloc `mounts:` d'une crew, un sidecar d'équipe et `--mount-id` la désignent. Un `--mount` CLI sur la même racine virtuelle
-**remplace toutes les entrées de cette racine** pour ce run ; sur une racine neuve il est ajouté
+quoi le bloc `mounts:` d'une crew, un sidecar d'équipe et `--mount-id` la désignent. Un `--mount` CLI sur la même racine
+virtuelle **remplace toutes les entrées de cette racine** pour ce run ; sur une racine neuve il est ajouté
 (jamais fusionné, jamais perdu). Une racine déclarée deux fois n'est légitime que si chacune de
 ses entrées porte un identifiant — `--mount-id`, ou le `mounts:` de la crew, en sélectionne alors
 une et les autres sont retirées pour le run ; si rien n'en sélectionne une, le run est refusé
@@ -1681,8 +1682,8 @@ livré : c'est celui qui est installé sur la machine. La fenêtre est visible s
 Connexions client MCP (`MCP:Servers:<nom>`) et l'interrupteur `MCP:Enabled`. Aucun réglage ne
 démarre un serveur MCP (GAP-24) : une clé que la section ne porte pas est refusée au démarrage comme toute clé inconnue. Lue par `RunnerHost` (`orkeon run`, `orkeon-host`,
 `orkeon mcp serve`) dès que `MCP:Servers` déclare au moins un serveur et que `MCP:Enabled` n'est
-pas `false` — les serveurs sont connectés avant le chargement de la crew par
-`orkeon-host` une fois au démarrage, avant son premier message (GAP-11), et par
+pas `false` — les serveurs sont connectés avant le chargement de la crew,
+par `orkeon-host` une fois au démarrage, avant son premier message (GAP-11), et par
 `orkeon mcp serve` avant qu'il serve ; les hôtes bibliothèque appellent
 `AddOrkeonMcp(configuration)` ou la surcharge `AddOrkeonInfrastructure(configuration)` — voir
 [Intégration MCP](../architecture/mcp.md).
@@ -2338,9 +2339,9 @@ bubblewrap les sockets ne suivent que si `Confinement:AllowNetwork` vaut true
 ([sécurité](../architecture/security.md)). Le bac à sable de code bâtit un environnement plus
 réduit encore, les trois sockets comprises. Tous
 deux ajoutent les noms de `Orkeon:Tools:Shell:Environment:Propagate` qui passent son filtre des
-secrets. Ni l'un ni l'autre ne les lit comme des réglages, et aucune clé ne passe par là — `OPENAI_API_KEY`,
-`ORKEON_*` et toute autre variable restent derrière. `PATH` est aussi l'endroit où un script `.ork.ts` cherche esbuild en
-dernier ; `HOME` est lue quand le système ne nomme aucun
+secrets. Ni l'un ni l'autre ne les lit comme des réglages, et aucune clé ne passe par là —
+`OPENAI_API_KEY`, `ORKEON_*` et toute autre variable restent derrière. `PATH` est aussi
+l'endroit où un script `.ork.ts` cherche esbuild en dernier ; `HOME` est lue quand le système ne nomme aucun
 dossier de profil, pour placer les réglages par utilisateur. Les variables écrites sous
 `MCP:Servers:<nom>:Env` sont celles de l'opérateur : Orkeon les remet au serveur qu'il lance et
 n'en lit aucune. L'image de conteneur a ses propres variables, lues par son script d'entrée et

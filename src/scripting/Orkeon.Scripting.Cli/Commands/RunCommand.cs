@@ -185,12 +185,16 @@ internal sealed class RunCommandOptions : CliOptions
         /// <summary>
         /// The name the observing process answers to, as it appears in <c>client://{name}</c>.
         /// Agents post to that address to reach it, and a crew authorizes the exchange by
-        /// declaring <c>to: "client:{name}"</c> in its <c>links:</c> block.
+        /// declaring <c>to: "client:{name}"</c> in its <c>links:</c> block. <see cref="DefaultClient"/>
+        /// when none is given.
         /// </summary>
-        [Option(RunOptionNames.Client, Required = false, Default = "studio",
+        [Option(RunOptionNames.Client, Required = false, Default = DefaultClient,
             HelpText = "With --events, the name of the observing peer on the hub (client://<name>). " +
                        "Agents can post and send to that address; a crew's links: block authorizes it.")]
-        public string Client { get; set; } = "studio";
+        public string Client { get; set; } = DefaultClient;
+
+        /// <summary>The observing peer's name when <c>--client</c> gives none: <c>client://client</c>.</summary>
+        internal const string DefaultClient = "client";
 
         /// <summary>Whether the run must emit the event protocol.</summary>
         internal bool EmitsEvents => Events is not null;
@@ -320,7 +324,7 @@ internal static partial class RunCommand
 
         // --client only means something on an evented run: the peer's seat exists on the hub
         // the bridge opens. Saying so beats silently ignoring the option.
-        if (!options.EmitsEvents && !string.Equals(options.Client, "studio", StringComparison.Ordinal))
+        if (!options.EmitsEvents && !string.Equals(options.Client, RunCommandOptions.DefaultClient, StringComparison.Ordinal))
         {
             await console.ErrorOutput.WriteLineAsync(
                 "orkeon run: --client has no effect without --events jsonl.").ConfigureAwait(false);

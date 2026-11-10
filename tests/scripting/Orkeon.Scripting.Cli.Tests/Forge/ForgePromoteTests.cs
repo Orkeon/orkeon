@@ -383,7 +383,7 @@ public sealed class ForgePromoteTests : IDisposable
         Assert.True(Directory.Exists(Path.Combine(Destination, ForgePromoter.ScheduleDirectoryName)));
 
         session.Document.PromotedTo = Destination;
-        File.WriteAllText(Path.Combine(Destination, "studio-team.json"), """{"name":"Veille"}""");
+        File.WriteAllText(Path.Combine(Destination, "team.json"), """{"name":"Veille"}""");
         File.WriteAllText(Path.Combine(Destination, "note.txt"), "mine");
 
         var second = ForgePromoter.Promote(
@@ -392,7 +392,7 @@ public sealed class ForgePromoteTests : IDisposable
         Assert.True(second.Updated);
         Assert.False(Directory.Exists(Path.Combine(Destination, ForgePromoter.ScheduleDirectoryName)));
         Assert.True(File.Exists(Path.Combine(Destination, "crew", "config.yaml")));
-        Assert.Equal("""{"name":"Veille"}""", File.ReadAllText(Path.Combine(Destination, "studio-team.json")));
+        Assert.Equal("""{"name":"Veille"}""", File.ReadAllText(Path.Combine(Destination, "team.json")));
         Assert.Equal("mine", File.ReadAllText(Path.Combine(Destination, "note.txt")));
     }
 

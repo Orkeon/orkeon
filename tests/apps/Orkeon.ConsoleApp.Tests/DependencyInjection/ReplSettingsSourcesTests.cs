@@ -22,7 +22,7 @@ namespace Orkeon.ConsoleApp.Tests.DependencyInjection;
 public sealed class ReplSettingsSourcesTests : IDisposable
 {
     private readonly string _root = Path.Combine(Path.GetTempPath(), "orkeon-repl-sources-" + Guid.NewGuid().ToString("N"));
-    private readonly string _key = "ReplStudio49" + Guid.NewGuid().ToString("N");
+    private readonly string _key = "ReplSources" + Guid.NewGuid().ToString("N");
 
     public ReplSettingsSourcesTests() => Directory.CreateDirectory(_root);
 

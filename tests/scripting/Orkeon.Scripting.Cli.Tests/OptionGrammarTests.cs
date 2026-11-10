@@ -157,8 +157,8 @@ public sealed class OptionGrammarTests
     [InlineData("crew.yaml", "-v", "1", "--llm-log-path=/var/log/orkeon")]
     [InlineData("crew.ork.ts", "--inputs", "{\"topic\":\"rag\"}", "--inputs-file", "/crews/inputs.json")]
     [InlineData("crew.ork.ts", "--inputs={\"a\":\"b=c\"}", "--memory-limit-mb", "200")]
-    [InlineData("crew.yaml", "--events", "jsonl", "--stream", "--client", "studio")]
-    [InlineData("crew.yaml", "--events", "jsonl", "--client=studio")]
+    [InlineData("crew.yaml", "--events", "jsonl", "--stream", "--client", "observer")]
+    [InlineData("crew.yaml", "--events", "jsonl", "--client=observer")]
     [InlineData("crew.yaml", "--llm-profile", "z-ai", "--allow-external-mounts")]
     [InlineData("--list-tools")]
     [InlineData("crew.yaml", "--initial-context=")]
@@ -314,7 +314,7 @@ public sealed class OptionGrammarTests
             Row<McpServeCommandOptions>("--settings", "s.json", "--tools", "a,b"),
             Row<McpServeCommandOptions>("--tools=a,b"),
             Row<McpServeCommandOptions>("--nope"),
-            Row<RunCommandOptions>("crew.yaml", "--settings=/etc/orkeon/appsettings.json", "--events", "jsonl", "--client=studio"),
+            Row<RunCommandOptions>("crew.yaml", "--settings=/etc/orkeon/appsettings.json", "--events", "jsonl", "--client=observer"),
         ];
     }
 

@@ -178,7 +178,8 @@ static class Program
     }
 
     /// <summary>
-    /// Composes the REPL's configuration as every runner composes its own (GAP-36, decision 5): <see cref="Orkeon.Hosting.RunnerSettings.ComposeSources(IConfigurationBuilder, IEnumerable{string}, bool)"/>
+    /// Composes the REPL's configuration as every runner composes its own (GAP-36, decision 5):
+    /// <see cref="Orkeon.Hosting.RunnerSettings.ComposeSources(IConfigurationBuilder, IEnumerable{string}, bool)"/>
     /// — the environment variables without a prefix, the settings files, then the <c>ORKEON_</c>
     /// variables, prefix removed — over the <c>--settings &lt;path&gt;</c> files or, when none is
     /// named, the global file <c>orkeon init</c> writes, as a runner falls back to it; then the

@@ -122,8 +122,8 @@ public sealed partial class LlmProviderMeteringGuardTests
         if (violations.Count > 0)
         {
             Assert.Fail(
-                "An LLM provider is built off the metered path, so its calls escape the token meter "
-                + ". Build it in LlmProviderFactory, or hand it to AddOrkeonLlmProvider "
+                "An LLM provider is built off the metered path, so its calls escape the token meter. "
+                + "Build it in LlmProviderFactory, or hand it to AddOrkeonLlmProvider "
                 + "in the statement that builds it:\n - " + string.Join("\n - ", violations));
         }
     }

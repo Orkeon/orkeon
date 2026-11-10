@@ -102,7 +102,7 @@ public class LegacyTextAgentLoopTests
     [Fact]
     public async System.Threading.Tasks.Task FailsWithAnEmptyFinalAnswer_WhenTheModelAnswersWithNothing()
     {
-        // Empty answer: an empty single-turn answer used to exit Completed — a green task with no deliverable.
+        // An empty single-turn answer used to exit Completed — a green task with no deliverable.
         var agent = BuildAgent(5);
         var (loop, provider) = BuildLoop();
         provider.Enqueue("");

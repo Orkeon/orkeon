@@ -104,7 +104,7 @@ public class NativeToolCallingAgentLoopTests
     [Fact]
     public async System.Threading.Tasks.Task FailsWithAnEmptyFinalAnswer_WhenTheTextAnswerIsEmpty()
     {
-        // Empty answer: an empty text used to exit Completed here — a green task with no deliverable.
+        // An empty text used to exit Completed here — a green task with no deliverable.
         var agent = BuildAgent();
         var (loop, provider, _) = BuildLoop(agent);
         provider.EnqueueText("   ");

@@ -72,9 +72,9 @@ others in [Environment variables](#environment-variables).
 over it is an ephemeral layer that lives and dies with one process. `orkeon doctor`'s
 `llm-config` check composes exactly like a runner (same resolution chain, same layers: the
 variables without a prefix, the file, the `ORKEON_` overlay), so its verdict answers: *what
-would a run launched from this shell use, absent any per-launch overlay?* A client's named model profiles can ride layer 2:
-the profile elected as default may be written into the file's `Llm` section whole — endpoint,
-model, timeout, thinking switch and the variable that holds its key (`ApiKeyEnvVar`), never
+would a run launched from this shell use, absent any per-launch overlay?* A client's named
+model profiles can ride layer 2: the profile elected as default may be written into the
+file's `Llm` section whole — endpoint, model, timeout, thinking switch and the variable that holds its key (`ApiKeyEnvVar`), never
 the key — so a manual terminal `orkeon run` or a scheduled team follows the same election,
 its 600 s and its key included (that is what `llm-config` reflects), while a team that
 elected a different profile can receive it as `ORKEON_Llm__*` variables on its own launch
@@ -357,8 +357,8 @@ model the catalogue does not know** — the value the engine used to send for ev
 a reasoning model spends thinking before it writes a word and answers empty (an empty final
 answer fails the task rather than passing for a completed one). Pin it when the model is not in
 the catalogue or when you want a tighter cap; a client's model profile can pin it as
-`ORKEON_Llm__MaxTokens`. A catalogue cap the endpoint refuses is retried once without the field, with a warning
-naming the model.
+`ORKEON_Llm__MaxTokens`. A catalogue cap the endpoint refuses is retried once without the
+field, with a warning naming the model.
 
 #### `Provider: mock` answers from a file
 
@@ -412,8 +412,8 @@ about: no crew can name it ([service host](../architecture/service-host.md)). A 
 absent, for every key of the section (`Thinking:Effort` included): a client launch may blank the
 default fields its team's setting does not set, and a section whose every value is blank
 configures no default — the echo provider, with its warning. `orkeon init --api-key-env <name>`
-writes `Llm:ApiKeyEnvVar`. The reference may
-name any variable: a settings file is trusted configuration ([Security](../architecture/security.md#llm-keys-the-settings-file-names-the-variable)).
+writes `Llm:ApiKeyEnvVar`. The reference may name any variable: a settings file is trusted
+configuration ([Security](../architecture/security.md#llm-keys-the-settings-file-names-the-variable)).
 
 ### A variable reference is never expanded
 
@@ -1004,7 +1004,7 @@ The query pipeline, stage by stage:
   generation, query transformers, listwise reranker, corrective evaluator and groundedness
   checker, `llm` classifier, evaluation judge; unset or `default` is the default profile. An
   unknown name refuses the host start, listing the known ones; `orkeon eval rag --offline` ignores
-  it. 
+  it.
 - **`Provider`** — TYPE of the RAG document-store provider (`RagStoreOptions` — a
   `MemoryProviderFactory` type alias), connected from that provider's own section (`Orkeon:Redis`,
   `Orkeon:Sqlite`, …); default is the ambient `IMemoryProvider`.
@@ -1115,10 +1115,10 @@ The folders a run may reach, and where the code an agent writes may run.
 
 **`Mounts`** — the VFS mounts (see [VFS compliance](../architecture/vfs-compliance.md)). An entry
 may carry an **id** — `<ulid>|<physical>:<virtual>:<rights>` (VFS-90): what a crew's `mounts:`
-block, a team sidecar and `--mount-id` name it by. A CLI
-`--mount` on the same virtual root **replaces every entry of that root** for that run; on a new
-root it is appended (never merged, never dropped). One root declared twice is legitimate only when
-every entry of it carries an id — `--mount-id`, or the crew's `mounts:`, then selects one and the
+block, a team sidecar and `--mount-id` name it by. A CLI `--mount` on the same virtual root
+**replaces every entry of that root** for that run; on a new root it is appended (never
+merged, never dropped). One root declared twice is legitimate only when every entry of it
+carries an id — `--mount-id`, or the crew's `mounts:`, then selects one and the
 others are withdrawn for the run; with nothing selecting one the run is refused before any host
 builds (`'/output' is declared twice in <settings> (<idA>: <folderA>, <idB>: <folderB>) and nothing selects one. Pass --mount-id <id>, list '<id>|/output' under mounts: in the crew, or pass --mount <folder>:/output:rw to replace them all.`),
 except under `orkeon forge` and a command that offers no way to select an entry (`orkeon mcp serve`),
@@ -1489,8 +1489,8 @@ broken section never breaks a crew that sends no mail. Secrets are never values 
 **names** of the environment variables that hold them (`Auth:PasswordEnvVar`,
 `Auth:ClientSecretEnvVar`), read as the variable `ApiKeyEnvVar` names is
 ([above](#the-api-key-apikey-apikeyenvvar)): in the process environment, then — on Windows — in
-the user's persistent scope (`HKCU\Environment`), where a client may remember a password; read, never copied into the process; the process environment alone on
-Linux and macOS. Provider walkthroughs and the key-by-key table:
+the user's persistent scope (`HKCU\Environment`), where a client may remember a password; read,
+never copied into the process; the process environment alone on Linux and macOS. Provider walkthroughs and the key-by-key table:
 [E-mail tools](../guides/email.md#where-a-secret-variable-is-read).
 
 - **`DefaultAccount`** — the account a call that names none uses (optional with a single account).

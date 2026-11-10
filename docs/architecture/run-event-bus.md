@@ -107,14 +107,14 @@ If no answer comes — channel closed, run cancelled — the confirmation is **r
 
 ## 5. The seat at the hub
 
-A watching process is addressable at `client://{name}` (`--client`, default `studio`; the name must be non-empty and hold no `/`, or the run refuses to start). Agents post and send to it exactly as they would to another agent, and it can post, publish and subscribe back.
+A watching process is addressable at `client://{name}` (`--client`, default `client`; the name must be non-empty and hold no `/`, or the run refuses to start). Agents post and send to it exactly as they would to another agent, and it can post, publish and subscribe back.
 
 **Who may reach it is the crew's decision**, not the protocol's. A crew authorizes the exchange by naming the peer in its `links:` block:
 
 ```yaml
 name: billing-crew
 links:
-  - to: "client:studio"
+  - to: "client:client"
     direction: bidirectional
     allowed_topics: [run.progress]
 ```

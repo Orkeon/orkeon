@@ -28,8 +28,8 @@ les droits et le filtrage.
 
 La famille e-mail avait déjà un client OAuth2 écrit à la main (code d'appareil, PKCE en bouclage
 avec un repli par collage, rafraîchissement avec rotation), un magasin de jetons derrière la
-racine interne `/credentials`, la lecture des secrets dans la portée utilisateur de l'environnement, et
-Microsoft Graph en HTTP simple — le tout interne à `Orkeon.Tools.Email`.
+racine interne `/credentials`, la lecture des secrets dans la portée utilisateur de
+l'environnement, et Microsoft Graph en HTTP simple — le tout interne à `Orkeon.Tools.Email`.
 
 ## Décision
 

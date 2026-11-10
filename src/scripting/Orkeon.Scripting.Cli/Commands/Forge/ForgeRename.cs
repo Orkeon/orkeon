@@ -56,7 +56,7 @@ internal sealed record ForgeRenameOutcome
 /// <item><description>the new folder name, by the one folder rule (<see cref="FolderSlug"/>) — refused when something is already there (D-03);</description></item>
 /// <item><description>the team folder, moved to it;</description></item>
 /// <item><description>the session rule R links to the team, its folder following the team's — a copy's original is never touched;</description></item>
-/// <item><description>the titles: <c>session.json</c> (and <c>promotedTo</c>), <c>forge.json</c>, the team sidecar <c>studio-team.json</c>, <c>FORGE.md</c>'s title line, the launchers' header;</description></item>
+/// <item><description>the titles: <c>session.json</c> (and <c>promotedTo</c>), <c>forge.json</c>, the team sidecar <c>team.json</c>, <c>FORGE.md</c>'s title line, the launchers' header;</description></item>
 /// <item><description><c>schedule/</c>, regenerated for the folder as it is now — the record of what was installed kept;</description></item>
 /// <item><description>the registration the operating system holds, reinstalled under the new name when one ran the team.</description></item>
 /// </list>

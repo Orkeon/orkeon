@@ -37,9 +37,11 @@ the next task had to parse.
    failing request is never turned into the fallback.
 6. **The run reports it.** `task.completed` carries `skipReason`, `defaulted`, `isDecision` and
    `decision` (the answers as compact JSON); `TaskExecutionSnapshot` carries `SkipReason`,
-   `Defaulted`, `IsDecision` and `DecisionAnswers`; the consoles show them. `TaskCompletedEvent.AgentId` is nullable, a decision task having no agent.
+   `Defaulted`, `IsDecision` and `DecisionAnswers`; Orkeon Studio showed them at the time (it now
+   lives in its own repository), and no Orkeon console shows them. `TaskCompletedEvent.AgentId` is
+   nullable, a decision task having no agent.
 
-   > Amendment 2026-10-31: the reason of a jump is read by the run's JSONL, not by "the consoles"; the question name `defaulted` is reserved.
+   > Amendment 2026-10-31: the reason of a jump is read by the run's JSONL (and was by Studio at the time), not by "the consoles"; the question name `defaulted` is reserved.
 
    > Amendment 2026-10-31: the decision model behind a decision task may be TypeSafe, Liquid or Kev; the task, its circuit and its fallback do not change.
 

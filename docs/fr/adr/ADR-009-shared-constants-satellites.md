@@ -16,11 +16,11 @@ record, aucune énumération détournée en porteur de chaînes.
 
 Ce qui n'est pas résolu, c'est **l'accord entre projets qui n'ont pas le droit de se référencer**.
 `Orkeon.Studio.Core` (Orkeon Studio, désormais dans son propre dépôt) ne pouvait référencer ni
-`Orkeon.Infrastructure` ni `Orkeon.Hosting` : Studio est une application hôte, et dépendre des internes du runtime inverserait précisément la
-stratification que la règle Clean Architecture protège. Mais Studio avait besoin des mêmes valeurs
-que le runtime — l'endpoint LLM qu'il écrit dans un fichier de réglages devait être celui que le
-provider appellera, et la racine virtuelle qu'il prédit dans un aperçu de lancement devait être
-celle que le runner monte.
+`Orkeon.Infrastructure` ni `Orkeon.Hosting` : Studio est une application hôte, et dépendre des
+internes du runtime inverserait précisément la stratification que la règle Clean Architecture
+protège. Mais Studio avait besoin des mêmes valeurs que le runtime — l'endpoint LLM qu'il
+écrit dans un fichier de réglages devait être celui que le provider appellera, et la racine
+virtuelle qu'il prédit dans un aperçu de lancement devait être celle que le runner monte.
 
 L'issue prise jusqu'ici a été de **recopier les valeurs à la main et de garder les copies par un
 test**. `tests/apps/Orkeon.Studio.Core.Tests/ConstantDriftTests.cs` n'existait pour rien d'autre.

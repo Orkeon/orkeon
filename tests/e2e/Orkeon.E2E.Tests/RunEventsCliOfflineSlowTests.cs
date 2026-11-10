@@ -157,7 +157,7 @@ tasks:
     [Fact]
     public void The_meter_reports_both_directions_before_the_run_finishes()
     {
-        // Cost.updated carries the prompt/completion split at every call, not only
+        // The cost.updated event carries the prompt/completion split at every call, not only
         // run.finished. The echo provider counts nothing, so both sides read 0 — present, not
         // absent — and it bills nothing, so no cost goes on the wire at all.
         var (exitCode, stdout, _) = RunTheOfflineCrew();
