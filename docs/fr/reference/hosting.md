@@ -20,7 +20,7 @@ Dans ce dépôt, elle est consommée par `Orkeon.Scripting.Cli` (l'outil `orkeon
 `IsPackable=false`, il n'existe donc d'identifiant `Orkeon.Hosting` sur aucun flux : la
 [matrice de publication](publication-matrix.md#le-lineup-nugetorg) liste l'opt-in
 `Orkeon.Scripting`, dont le wrapper (`src/packaging/Orkeon.Scripting/Orkeon.Scripting.Package.csproj`)
-embarque `Orkeon.Hosting.dll` à côté d'`Orkeon.Scripting.dll` et d'`Orkeon.Constants.Cli.dll`.
+embarque `Orkeon.Hosting.dll` à côté d'`Orkeon.Scripting.dll` ; `Orkeon.Constants.Cli` arrive comme dépendance de paquet.
 
 ```bash
 dotnet add package Orkeon.Scripting --prerelease
