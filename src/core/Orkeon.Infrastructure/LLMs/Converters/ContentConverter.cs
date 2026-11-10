@@ -395,14 +395,15 @@ public static class ContentConverter
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(model);
         var entry = (capabilities ?? ModelCapabilityRegistry.Default).TryGet(model);
-        if (entry is { AudioInput: true })
-            return model;
-
-        var reason = entry is null
-            ? $"the model capability table does not know '{model}'; declare it with Llm:ModelCapabilities:<id>:AudioInput if it takes audio"
-            : $"'{model}' takes no audio input; pick an audio model, or declare it with Llm:ModelCapabilities:<id>:AudioInput";
-        throw new NotSupportedException($"Content part of type 'audio' is not supported for the model '{model}': {reason}.");
+        if (entry is null)
+            throw AudioRefused(model, $"the model capability table does not know '{model}'; declare it with Llm:ModelCapabilities:<id>:AudioInput if it takes audio");
+        if (!entry.AudioInput)
+            throw AudioRefused(model, $"'{model}' takes no audio input; pick an audio model, or declare it with Llm:ModelCapabilities:<id>:AudioInput");
+        return model;
     }
+
+    private static NotSupportedException AudioRefused(string model, string reason) =>
+        new($"Content part of type 'audio' is not supported for the model '{model}': {reason}.");
 
     private static byte[] AsByteArray(IReadOnlyList<byte> data) =>
         data as byte[] ?? [.. data];

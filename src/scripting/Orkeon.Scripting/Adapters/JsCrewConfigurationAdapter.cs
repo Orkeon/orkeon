@@ -62,8 +62,8 @@ public static class JsCrewConfigurationAdapter
         RefuseReferencesOutsideTheCrew(crew, jsTasks, agentMap, taskMap);
 
         var seen = new HashSet<string>(StringComparer.Ordinal);
-        foreach (var jsTask in jsTasks.Where(t => !seen.Add(t.Key!)))
-            throw new InvalidOperationException($"Task '{jsTask.name}' is declared twice: a task name is unique in a crew.");
+        if (jsTasks.FirstOrDefault(t => !seen.Add(t.Key!)) is { } duplicate)
+            throw new InvalidOperationException($"Task '{duplicate.name}' is declared twice: a task name is unique in a crew.");
 
         var decisions = new Dictionary<string, TaskDecision>(StringComparer.Ordinal);
         foreach (var jsTask in jsTasks.Where(t => t.DecisionSpec is not null))
@@ -188,8 +188,8 @@ public static class JsCrewConfigurationAdapter
 
         // The state a decision reads names tasks of the crew, as the YAML loader holds it to.
         var stateFrom = decisions.TryGetValue(jsTask.name, out var own) && jsTask.DecisionSpec is not null ? own.StateFrom : [];
-        foreach (var name in stateFrom.Where(name => jsTasks.All(t => t.Key != name)))
-            throw new InvalidOperationException($"Task '{jsTask.name}' decision.state names '{name}', which is no task of the crew.");
+        if (stateFrom.FirstOrDefault(name => jsTasks.All(t => t.Key != name)) is { } unknown)
+            throw new InvalidOperationException($"Task '{jsTask.name}' decision.state names '{unknown}', which is no task of the crew.");
 
         // The decision task and the tasks the decision reads its state from run before this task.
         var needed = (condition is null ? [] : new[] { condition.DecisionTask }).Concat(stateFrom);
