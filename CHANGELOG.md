@@ -14,7 +14,7 @@ and the CLI family ships to NuGet for it; the framework closes its gaps — reco
 replay of LLM calls, durable human-in-the-loop, a durable run history, one checkpoint per
 task and `orkeon run --resume`, a retry per task, an LLM judge, `orkeon eval`, the YAML
 `graph:` block, `dotnet new` templates, OAuth and Streamable HTTP for MCP, crews served as
-MCP tools, health probes and a run API on `orkeon-host` (FWK-01..28) —; decision tasks and
+MCP tools, health probes and a run API on `orkeon-host` (FWK-01..28); decision tasks and
 `when` conditions serve three decision-model providers (ADR-015, ADR-016); the
 compatibility shims are removed; and from this version on, the public API in
 `PublicAPI.Shipped.txt` is the 1.x stability commitment.
