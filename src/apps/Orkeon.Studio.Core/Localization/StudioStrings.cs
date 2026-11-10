@@ -1836,6 +1836,9 @@ public static class StudioStringKeys
     /// <summary>"{0} — done in {1} s"</summary>
     public const string WizardActivityDone = "Studio.Create.ActivityDone";
 
+    /// <summary>"{0} — done"</summary>
+    public const string WizardActivityDoneUntimed = "Studio.Create.ActivityDoneUntimed";
+
     /// <summary>"{0} — failed"</summary>
     public const string WizardActivityFailed = "Studio.Create.ActivityFailed";
 
@@ -3669,6 +3672,7 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.ComposeDefinitionValid] = "definition checked",
         [StudioStringKeys.ComposeDefinitionInvalid] = "definition refused",
         [StudioStringKeys.WizardActivityDone] = "{0} — done in {1} s",
+        [StudioStringKeys.WizardActivityDoneUntimed] = "{0} — done",
         [StudioStringKeys.WizardActivityFailed] = "{0} — failed",
         [StudioStringKeys.WizardHintDescribe] = "Describe the work to continue.",
         [StudioStringKeys.WizardHintAssistant] = "Choose a model for the assistant first.",

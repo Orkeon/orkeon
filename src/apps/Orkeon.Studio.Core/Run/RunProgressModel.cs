@@ -32,12 +32,16 @@ public sealed record RunDelegationInFlight(string? ToRole, DateTimeOffset? Start
 /// <param name="SpawnedAt">The run's own clock at the spawn; null when it did not parse.</param>
 public sealed record RunSpawnedAgent(string? Role, string? Reason, DateTimeOffset? SpawnedAt);
 
-/// <summary>One task the run has finished.</summary>
+/// <summary>
+/// One task the run has finished. <see cref="DurationMs"/> is null when the run did not say how
+/// long the task took — its line carried no <c>durationMs</c> — or when the task never ran
+/// (skipped): a screen shows "—" then, never a duration of zero it did not measure.
+/// </summary>
 public sealed record RunTaskProgress(
     string? TaskId,
     string? AgentRole,
     bool Success,
-    long DurationMs,
+    long? DurationMs,
     long? Tokens,
     int? ToolCalls,
     bool Skipped = false,
@@ -448,16 +452,18 @@ public sealed class RunProgressModel
 
     private bool ApplyTaskCompleted(OrkeonEvent orkeonEvent)
     {
+        var skipped = orkeonEvent.GetBool("skipped") ?? false;
         var finished = new RunTaskProgress(
             orkeonEvent.GetString("taskId"),
             orkeonEvent.GetString("agentRole"),
             orkeonEvent.GetBool("success") ?? false,
-            orkeonEvent.GetInt64("durationMs") ?? 0,
+            // No duration on the line, or a task that never ran (its producer stamps 0): none.
+            skipped ? null : orkeonEvent.GetInt64("durationMs"),
             orkeonEvent.GetInt64("tokens"),
             (int?)orkeonEvent.GetInt64("toolCalls"),
             // A task that never ran because a dependency failed (LLM-11): not started,
             // completed with success=false, and told apart from a failure by this flag.
-            orkeonEvent.GetBool("skipped") ?? false,
+            skipped,
             orkeonEvent.GetString("skipReason"),
             orkeonEvent.GetBool("isDecision") ?? false,
             orkeonEvent.GetBool("defaulted") ?? false,

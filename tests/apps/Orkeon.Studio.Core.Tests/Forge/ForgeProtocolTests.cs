@@ -242,6 +242,20 @@ public class ForgeSessionModelTests
     }
 
     [Fact]
+    public void A_try_task_without_a_duration_has_none_rather_than_zero()
+    {
+        var model = new ForgeSessionModel();
+        model.Feed(Event(
+            """{"v":2,"seq":1,"ts":"t","kind":"task.completed","taskId":"collecte","agentRole":"Web Researcher","success":true}"""));
+        model.Feed(Event(
+            """{"v":2,"seq":2,"ts":"t","kind":"task.completed","taskId":"resume","agentRole":"Writer","success":false,"skipped":true,"durationMs":0}"""));
+        model.Feed(Event(
+            """{"v":2,"seq":3,"ts":"t","kind":"task.completed","taskId":"envoi","agentRole":"Writer","success":true,"durationMs":1200}"""));
+
+        Assert.Equal([null, null, 1200L], model.Activity.Select(task => task.DurationMs));
+    }
+
+    [Fact]
     public void Before_any_brief_nothing_is_known_about_inputs_or_output()
     {
         var model = new ForgeSessionModel();

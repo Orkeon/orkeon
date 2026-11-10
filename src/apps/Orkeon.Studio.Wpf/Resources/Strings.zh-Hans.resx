@@ -1395,6 +1395,9 @@
   <data name="Studio.Create.ActivityDone" xml:space="preserve">
     <value>{0} — 用时 {1} 秒完成</value>
   </data>
+  <data name="Studio.Create.ActivityDoneUntimed" xml:space="preserve">
+    <value>{0} — 已完成</value>
+  </data>
   <data name="Studio.Create.ActivityFailed" xml:space="preserve">
     <value>{0} — 失败</value>
   </data>

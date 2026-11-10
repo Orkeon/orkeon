@@ -30,11 +30,12 @@ public sealed class RunTaskViewModel
     /// <summary>Whether it succeeded.</summary>
     public bool Success => Task.Success;
 
-    /// <summary>How long it took, in seconds, for a compact label.</summary>
-    public string Duration =>
-        _strings.Format(
+    /// <summary>How long it took, in seconds, for a compact label; "—" when the run did not say.</summary>
+    public string Duration => Task.DurationMs is { } durationMs
+        ? _strings.Format(
             StudioStringKeys.UsageSeconds,
-            (Task.DurationMs / 1000.0).ToString("0.0", CultureInfo.CurrentCulture));
+            (durationMs / 1000.0).ToString("0.0", CultureInfo.CurrentCulture))
+        : "—";
 
     /// <summary>Tokens spent, or an empty label when the run did not say.</summary>
     public string Tokens => Task.Tokens is { } tokens

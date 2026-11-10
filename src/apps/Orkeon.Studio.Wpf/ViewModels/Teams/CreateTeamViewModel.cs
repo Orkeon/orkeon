@@ -3473,11 +3473,14 @@ public sealed partial class CreateTeamViewModel : ObservableObject
             // owns two tasks rendered the same sentence twice, with nothing to tell the
             // reader which of the two had just finished.
             var role = task.AgentRole ?? task.TaskId ?? fallback;
-            var text = task.Success
-                ? _strings.Format(
-                    StudioStringKeys.WizardActivityDone,
-                    role, Math.Round(task.DurationMs / 1000.0, 1))
-                : _strings.Format(StudioStringKeys.WizardActivityFailed, role);
+            var text = (task.Success, task.DurationMs) switch
+            {
+                (true, { } durationMs) => _strings.Format(
+                    StudioStringKeys.WizardActivityDone, role, Math.Round(durationMs / 1000.0, 1)),
+                // The run did not say how long it took: no "done in 0 s" it never measured.
+                (true, null) => _strings.Format(StudioStringKeys.WizardActivityDoneUntimed, role),
+                _ => _strings.Format(StudioStringKeys.WizardActivityFailed, role),
+            };
 
             var detail = task.AgentRole is not null && task.TaskId is { Length: > 0 } id ? id : "";
             Activity.Add(new WizardActivityLine(text, detail, task.Success));

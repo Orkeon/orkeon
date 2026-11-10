@@ -516,6 +516,7 @@
 <data name="Studio.Create.PromoteFailed" xml:space="preserve"><value>The save failed — the engine refused the promotion: {0}</value></data>
 <data name="Studio.Import.Failed" xml:space="preserve"><value>The import failed — nothing was copied. Check access to the source and try again.</value></data>
 <data name="Studio.Create.ActivityDone" xml:space="preserve"><value>{0} — done in {1} s</value></data>
+<data name="Studio.Create.ActivityDoneUntimed" xml:space="preserve"><value>{0} — done</value></data>
 <data name="Studio.Create.ActivityFailed" xml:space="preserve"><value>{0} — failed</value></data>
 <data name="Studio.Create.HintDescribe" xml:space="preserve"><value>Describe the work to continue.</value></data>
 <data name="Studio.Create.HintAssistant" xml:space="preserve"><value>Choose a model for the assistant first.</value></data>

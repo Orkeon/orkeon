@@ -147,10 +147,10 @@ internal static class CaptureScripts
     public static IReadOnlyList<string> RunToSuccess { get; } =
     [
         """{"v":2,"seq":1,"ts":"2026-08-28T07:10:00Z","kind":"run.started","target":"veille-concurrentielle","stream":false}""",
-        """{"v":2,"seq":2,"ts":"2026-08-28T07:10:14Z","kind":"task.completed","agentId":"Veilleur","taskId":"collecter","agentRole":"Veilleur","success":true}""",
+        """{"v":2,"seq":2,"ts":"2026-08-28T07:10:14Z","kind":"task.completed","agentId":"Veilleur","taskId":"collecter","agentRole":"Veilleur","success":true,"durationMs":14000}""",
         """{"v":2,"seq":3,"ts":"2026-08-28T07:10:41Z","kind":"cost.updated","tokens":11300,"promptTokens":9200,"completionTokens":2100,"model":"deepseek-chat","provider":"deepseek","operation":"agent"}""",
-        """{"v":2,"seq":4,"ts":"2026-08-28T07:10:52Z","kind":"task.completed","agentId":"Analyste","taskId":"analyser","agentRole":"Analyste","success":true}""",
-        """{"v":2,"seq":5,"ts":"2026-08-28T07:11:08Z","kind":"task.completed","agentId":"Rédacteur","taskId":"rediger","agentRole":"Rédacteur","success":true}""",
+        """{"v":2,"seq":4,"ts":"2026-08-28T07:10:52Z","kind":"task.completed","agentId":"Analyste","taskId":"analyser","agentRole":"Analyste","success":true,"durationMs":38000}""",
+        """{"v":2,"seq":5,"ts":"2026-08-28T07:11:08Z","kind":"task.completed","agentId":"Rédacteur","taskId":"rediger","agentRole":"Rédacteur","success":true,"durationMs":16000}""",
         """{"v":2,"seq":6,"ts":"2026-08-28T07:11:14Z","kind":"run.finished","success":true,"exitCode":0,"tokens":11300,"durationMs":74000,"promptTokens":9200,"completionTokens":2100}""",
     ];
     // ── the use-case catalogue (STUDIO-39): what `orkeon usecases` answers ─────────────────
