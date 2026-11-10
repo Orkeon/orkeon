@@ -35,15 +35,15 @@ public partial class CreateTaskHandler : ICommandHandler<CreateTaskCommand, Task
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(command);
-        return HandleCoreAsync();
+        return HandleCoreAsync(command);
 
-        async System.Threading.Tasks.Task<TaskDto> HandleCoreAsync()
+        async System.Threading.Tasks.Task<TaskDto> HandleCoreAsync(CreateTaskCommand request)
         {
-            LogCreatingTask(command.Description);
+            LogCreatingTask(request.Description);
 
             // Create value objects
-            var description = TaskDescription.From(command.Description);
-            var expectedOutput = ExpectedOutput.From(command.ExpectedOutput);
+            var description = TaskDescription.From(request.Description);
+            var expectedOutput = ExpectedOutput.From(request.ExpectedOutput);
 
             // Create the task domain entity
             var task = CrewTask.Create(
@@ -51,12 +51,12 @@ public partial class CreateTaskHandler : ICommandHandler<CreateTaskCommand, Task
                 expectedOutput: expectedOutput);
 
             // Assign agent if provided (format already validated by CreateTaskCommandValidator)
-            if (!string.IsNullOrWhiteSpace(command.AgentId))
+            if (!string.IsNullOrWhiteSpace(request.AgentId))
             {
-                if (!AgentIdText.TryParse(command.AgentId, out var agentId))
-                    throw new ArgumentException($"AgentId '{command.AgentId}' is not a valid agent id.", nameof(command));
+                if (!AgentIdText.TryParse(request.AgentId, out var agentId))
+                    throw new ArgumentException($"AgentId '{request.AgentId}' is not a valid agent id.", nameof(request));
                 task.AssignTo(agentId);
-                LogAgentAssigned(command.AgentId);
+                LogAgentAssigned(request.AgentId);
             }
 
             // Save the task

@@ -142,11 +142,11 @@ internal sealed class TaskTranscriptTracker
             var dim = elbow ? line.Length : line.IndexOf(' ', TranscriptModel.Indent.Length);
             return new TranscriptLine(line) { Runs = [new TranscriptRun(0, dim < 0 ? line.Length : dim, PaletteRole.Dim)] };
         }
-        var role =
-            line.StartsWith(_glyphs.Cross, StringComparison.Ordinal) ? PaletteRole.Error
-            : line.StartsWith(_glyphs.Slashed, StringComparison.Ordinal) ? PaletteRole.Dim
-            : line.Contains("\" finished", StringComparison.Ordinal) ? PaletteRole.Ok
-            : PaletteRole.Accent;
+        PaletteRole role;
+        if (line.StartsWith(_glyphs.Cross, StringComparison.Ordinal)) role = PaletteRole.Error;
+        else if (line.StartsWith(_glyphs.Slashed, StringComparison.Ordinal)) role = PaletteRole.Dim;
+        else if (line.Contains("\" finished", StringComparison.Ordinal)) role = PaletteRole.Ok;
+        else role = PaletteRole.Accent;
         var glyph = line.IndexOf(' ', StringComparison.Ordinal);
         return new TranscriptLine(line) { Runs = [new TranscriptRun(0, glyph < 0 ? line.Length : glyph, role)] };
     }

@@ -1210,10 +1210,10 @@ public static partial class RunnerHost
         if (declared.Section(llm) is not { } section)
             return;
 
-        foreach (var profile in section.GetSection(ConfigurationKeys.LlmProfiles).GetChildren())
+        foreach (var profileKey in section.GetSection(ConfigurationKeys.LlmProfiles).GetChildren().Select(profile => profile.Key))
         {
-            overrides[$"{llm}:{ConfigurationKeys.LlmProfiles}:{profile.Key}:Provider"] = Orkeon.Constants.Llm.LlmProviderKeys.Mock;
-            overrides[$"{llm}:{ConfigurationKeys.LlmProfiles}:{profile.Key}:Responses"] = responses;
+            overrides[$"{llm}:{ConfigurationKeys.LlmProfiles}:{profileKey}:Provider"] = Orkeon.Constants.Llm.LlmProviderKeys.Mock;
+            overrides[$"{llm}:{ConfigurationKeys.LlmProfiles}:{profileKey}:Responses"] = responses;
         }
     }
 

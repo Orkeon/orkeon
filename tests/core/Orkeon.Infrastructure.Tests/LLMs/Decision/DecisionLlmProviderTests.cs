@@ -29,8 +29,7 @@ public class DecisionLlmProviderTests
         new(
             "triage",
             _target,
-            request ?? [],
-            response ?? [],
+            new DecisionStages(request ?? [], response ?? []),
             name => name == "strong" ? _strong : throw new InvalidOperationException(name),
             failClosed,
             logger ?? NullLogger.Instance,

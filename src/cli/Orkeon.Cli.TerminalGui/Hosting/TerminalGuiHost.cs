@@ -182,7 +182,7 @@ public sealed class TerminalGuiHost : IAsyncDisposable
         // passes it on while the TUI holds the mouse, so it has no selection of its own). With a
         // selection in the focused pane it goes to the clipboard; the navigation names the REPL
         // pane rather than its field over SSH, so the field is asked next unless a modal owns the
-        // keyboard; the transcript is not focusable, so its mouse selection is looked at last;
+        // keyboard; the transcript is not focusable, so its mouse selection is looked at last,
         // without any the hint names the key that interrupts the turn.
         var focused = Application.Navigation?.GetFocused();
         diag?.Invoke($"Ctrl+C focused={focused?.GetType().Name ?? "<none>"}");

@@ -40,7 +40,7 @@ public sealed class ResumeSkipsCompletedTasksTests
         var resumed = await harness.RunAsync(crew, secondPass, resume: runId, hook: hook, ct: TestContext.Current.CancellationToken);
 
         Assert.True(resumed.Exit == 0, $"exit={resumed.Exit} stderr={resumed.Stderr}");
-        Assert.True(!secondPass.Calls.Contains("first"), $"the second pass ran: {string.Join(", ", secondPass.Calls)}; first pass ran: {string.Join(", ", firstPass.Calls)}");
+        Assert.False(secondPass.Calls.Contains("first"), $"the second pass ran: {string.Join(", ", secondPass.Calls)}; first pass ran: {string.Join(", ", firstPass.Calls)}");
         Assert.Contains("second", secondPass.Calls);
         Assert.Contains("third", secondPass.Calls);
         Assert.Contains("out:first", secondPass.PreviousOutputsOf("second"), StringComparison.Ordinal);
@@ -52,7 +52,7 @@ public sealed class ResumeSkipsCompletedTasksTests
         Assert.Equal(3, completed.Count);
         Assert.Equal(1, completed.Count(c => c.Resumed));
         Assert.All(completed.Where(c => c.Resumed), c => Assert.True(c.Success));
-        Assert.True(Assert.Single(hook.CrewCompleted).Status == CrewHookStatus.Completed);
+        Assert.Equal(CrewHookStatus.Completed, Assert.Single(hook.CrewCompleted).Status);
         Assert.Equal(Outcome(clean.Stdout), Outcome(resumed.Stdout));
     }
 

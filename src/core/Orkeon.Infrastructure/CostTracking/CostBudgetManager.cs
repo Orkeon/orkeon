@@ -377,9 +377,9 @@ public sealed partial class CostBudgetManager : ICostBudgetManager
             PromptTokens = events.Sum(e => (long)e.PromptTokens),
             CompletionTokens = events.Sum(e => (long)e.CompletionTokens),
             // Null when no call reported the count: a provider that measures no cache is not a cache that missed (#254).
-            CacheWriteTokens = ModelUsage.SumReported(events.Select(e => (long?)e.CacheWriteTokens)),
-            CacheReadTokens = ModelUsage.SumReported(events.Select(e => (long?)e.CacheHitTokens)),
-            ReasoningTokens = ModelUsage.SumReported(events.Select(e => (long?)e.ReasoningTokens)),
+            CacheWriteTokens = ModelUsage.SumReported(events.Select(e => e.CacheWriteTokens)),
+            CacheReadTokens = ModelUsage.SumReported(events.Select(e => e.CacheHitTokens)),
+            ReasoningTokens = ModelUsage.SumReported(events.Select(e => e.ReasoningTokens)),
             Calls = events.Count,
             UnpricedCalls = unpricedCalls,
             Priced = unpricedCalls < events.Count,

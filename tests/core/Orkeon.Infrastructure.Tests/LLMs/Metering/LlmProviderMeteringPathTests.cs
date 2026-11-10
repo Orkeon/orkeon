@@ -47,7 +47,7 @@ public sealed class LlmProviderMeteringPathTests
     {
         using var http = VendorAnswering(out var handler);
         var sink = new MockLlmUsageSink();
-        var factory = new LlmProviderFactory(http, NullLoggerFactory.Instance, new Orkeon.Tests.Shared.FileSystem.FakeFileSystemService(), sink);
+        var factory = new LlmProviderFactory(http, NullLoggerFactory.Instance, new Orkeon.Tests.Shared.FileSystem.FakeFileSystemService(), new LlmProviderFactoryOptions { UsageSink = sink });
         var ct = TestContext.Current.CancellationToken;
 
         var basic = Assert.IsType<LlmProviderAdapter>(factory.Create(OpenAiConfig()));

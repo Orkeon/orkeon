@@ -77,51 +77,57 @@ public sealed partial class TscTypeChecker
         // An explicit setting is the only candidate: a path that is wrong is the operator's to fix. It is absolute:
         // a relative one would resolve against the working directory, whose checkout may be untrusted.
         if (!string.IsNullOrWhiteSpace(_options.TscPath))
-        {
-            if (!Path.IsPathFullyQualified(_options.TscPath))
-            {
-                throw new TscNotFoundException(
-                    $"TypeScript compiler not found: '{ScriptingToolchainOptions.SectionName}:TscPath' is a relative path; it must be absolute, never resolved against the working directory. {InstallHint}");
-            }
+            return ExplicitBinary(_options.TscPath);
 
-            return File.Exists(_options.TscPath)
-                ? _options.TscPath
-                : throw new TscNotFoundException(
-                    $"TypeScript compiler not found: '{ScriptingToolchainOptions.SectionName}:TscPath' names a file that does not exist. {InstallHint}");
-        }
-
-        // The install directory and its ancestors only (a checkout's build output, a tool's layout): never the
-        // working directory, whose checkout may be untrusted and would have `orkeon run --validate` execute its binary.
-        foreach (var seed in new[] { AppContext.BaseDirectory })
-        {
-            var dir = new DirectoryInfo(seed);
-            for (var i = 0; i < 8 && dir is not null; i++, dir = dir.Parent)
-            {
-                foreach (var name in names)
-                {
-                    var candidate = Path.Combine(dir.FullName, "tools", "scripting-typecheck", "node_modules", ".bin", name);
-                    if (File.Exists(candidate))
-                        return candidate;
-                }
-            }
-        }
-
-        var pathEnv = Environment.GetEnvironmentVariable("PATH") ?? string.Empty;
-        foreach (var dir in pathEnv.Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries))
-        {
-            foreach (var name in names)
-            {
-                var candidate = Path.Combine(dir, name);
-                if (File.Exists(candidate))
-                    return candidate;
-            }
-        }
-
-        throw new TscNotFoundException(
-            "TypeScript compiler (tsc) not found. Tried (in order): " +
-            $"config '{ScriptingToolchainOptions.SectionName}:TscPath', " +
-            "'tools/scripting-typecheck/node_modules/.bin/' above the install directory, PATH lookup. " + InstallHint);
+        return FindInInstallDirectories(names) ?? FindOnPath(names) ?? throw NotFound();
     }
+
+    [SuppressVfsCompliance("OUT-OF-SCOPE: probes the location of an external toolchain binary (tsc), not a VFS mount.")]
+    private static string ExplicitBinary(string tscPath)
+    {
+        if (!Path.IsPathFullyQualified(tscPath))
+        {
+            throw new TscNotFoundException(
+                $"TypeScript compiler not found: '{ScriptingToolchainOptions.SectionName}:TscPath' is a relative path; it must be absolute, never resolved against the working directory. {InstallHint}");
+        }
+
+        return File.Exists(tscPath)
+            ? tscPath
+            : throw new TscNotFoundException(
+                $"TypeScript compiler not found: '{ScriptingToolchainOptions.SectionName}:TscPath' names a file that does not exist. {InstallHint}");
+    }
+
+    // The install directory and its ancestors only (a checkout's build output, a tool's layout): never the
+    // working directory, whose checkout may be untrusted and would have `orkeon run --validate` execute its binary.
+    [SuppressVfsCompliance("OUT-OF-SCOPE: probes the location of an external toolchain binary (tsc), not a VFS mount.")]
+    private static string? FindInInstallDirectories(string[] names)
+    {
+        var dir = new DirectoryInfo(AppContext.BaseDirectory);
+        for (var i = 0; i < 8 && dir is not null; i++, dir = dir.Parent)
+        {
+            var found = names
+                .Select(name => Path.Combine(dir.FullName, "tools", "scripting-typecheck", "node_modules", ".bin", name))
+                .FirstOrDefault(File.Exists);
+            if (found is not null)
+                return found;
+        }
+
+        return null;
+    }
+
+    [SuppressVfsCompliance("OUT-OF-SCOPE: probes the location of an external toolchain binary (tsc), not a VFS mount.")]
+    private static string? FindOnPath(string[] names)
+    {
+        var pathEnv = Environment.GetEnvironmentVariable("PATH") ?? string.Empty;
+        return pathEnv.Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries)
+            .SelectMany(dir => names.Select(name => Path.Combine(dir, name)))
+            .FirstOrDefault(File.Exists);
+    }
+
+    private static TscNotFoundException NotFound() => new(
+        "TypeScript compiler (tsc) not found. Tried (in order): " +
+        $"config '{ScriptingToolchainOptions.SectionName}:TscPath', " +
+        "'tools/scripting-typecheck/node_modules/.bin/' above the install directory, PATH lookup. " + InstallHint);
 
     private const string InstallHint =
         "Bootstrap it with `npm --prefix tools/scripting-typecheck install --prefer-offline` in a checkout, or install it " +

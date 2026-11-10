@@ -109,9 +109,9 @@ public sealed class ConditionClause
         if (!IsThreshold)
             return answer.Chosen is not null && Options.Contains(answer.Chosen) && answer.Confidence >= decision.ConfidenceFloor;
 
-        var measured = Option is not null
-            ? answer.Probabilities.TryGetValue(Option, out var p) ? p : (double?)null
-            : answer.Score ?? answer.Probability;
+        var measured = Option is null
+            ? answer.Score ?? answer.Probability
+            : answer.Probabilities.TryGetValue(Option, out var p) ? p : (double?)null;
         return measured is { } m && Comparison switch
         {
             ConditionComparison.GreaterOrEqual => m >= Value,

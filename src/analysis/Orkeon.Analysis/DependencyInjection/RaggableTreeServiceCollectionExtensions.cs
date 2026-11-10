@@ -291,8 +291,7 @@ public static class RaggableTreeServiceCollectionExtensions
             sp.GetRequiredService<IRaggableTreeCache>(),
             sp.GetRequiredService<IFileSystemDiscoverer>(),
             sp.GetRequiredService<IFileSystemService>(),
-            () => sp.GetRequiredService<RaggableTreeBuilder>(),
-            () => CreateReindexEngine(sp),
+            new TreeFactories(() => sp.GetRequiredService<RaggableTreeBuilder>(), () => CreateReindexEngine(sp)),
             CachingTreeBuilder.DescribeEnvironment(
                 sp.GetServices<ILanguageAdapter>(),
                 sp.GetServices<IFrameworkFingerprinter>(),

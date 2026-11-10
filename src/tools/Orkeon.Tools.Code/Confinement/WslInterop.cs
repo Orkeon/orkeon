@@ -28,6 +28,8 @@ internal sealed class WslInterop(
         : new(_ => null, _ => null, _ => false);
 
     private bool? _isWsl;
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Minor Code Smell", "S3604:Member initializer values should not be redundant",
+        Justification = "False positive: the primary constructor takes no value for this cache, so the initializer is its only one.")]
     private readonly System.Collections.Concurrent.ConcurrentDictionary<string, bool> _windowsPrograms = new(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>True when the process runs in a WSL distribution; probed once.</summary>

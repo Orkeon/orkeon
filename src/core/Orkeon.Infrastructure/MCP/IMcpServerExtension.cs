@@ -61,6 +61,7 @@ public interface IMcpProgress
 
 /// <summary>A request the server refuses with a JSON-RPC error: what an extension throws for arguments it does not accept.</summary>
 [Experimental("ORKEXP004", UrlFormat = "https://github.com/Orkeon/orkeon/blob/main/docs/reference/experimental-apis.md")]
+[SuppressMessage("Major Code Smell", "S3925", Justification = "False positive: binary serialization of exceptions is obsolete in .NET 10 (SYSLIB0051), so no ISerializable constructor or GetObjectData is added.")]
 public sealed class McpRequestException : Exception
 {
     /// <summary>Initializes a refusal with the JSON-RPC error <paramref name="code"/> (<see cref="JsonRpcErrorCodes.InvalidParams"/> for a bad argument).</summary>

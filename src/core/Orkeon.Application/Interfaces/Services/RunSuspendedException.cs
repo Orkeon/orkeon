@@ -4,6 +4,7 @@ namespace Orkeon.Application.Interfaces.Services;
 /// Raised when a run stops on a question to a human it cannot wait for (FWK-23): the question is persisted and the run
 /// ends as <c>waiting_for_input</c>. It is final: a retry never replays it and a checkpoint never records it as a failure.
 /// </summary>
+[System.Diagnostics.CodeAnalysis.SuppressMessage("Major Code Smell", "S3925", Justification = "False positive: binary serialization of exceptions is obsolete in .NET 10 (SYSLIB0051), so no ISerializable constructor or GetObjectData is added.")]
 public sealed class RunSuspendedException : Exception
 {
     /// <summary>Initializes a new instance.</summary>

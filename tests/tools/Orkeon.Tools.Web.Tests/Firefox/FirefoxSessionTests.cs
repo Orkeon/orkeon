@@ -224,6 +224,8 @@ public class FirefoxSessionTests : FirefoxSessionTestBase
 
         await Polling.WaitUntilAsync(() => press.IsCompleted);
         await press;
+
+        Assert.True(press.IsCompletedSuccessfully);
     }
 
     [Theory]

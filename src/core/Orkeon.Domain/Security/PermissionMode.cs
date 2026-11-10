@@ -61,16 +61,10 @@ public static class PermissionModes
     /// <returns>Whether <paramref name="name"/> names a mode.</returns>
     public static bool TryParse(string? name, out PermissionMode mode)
     {
-        foreach (var candidate in Enum.GetValues<PermissionMode>())
-        {
-            if (string.Equals(candidate.ToWireName(), name?.Trim(), StringComparison.OrdinalIgnoreCase))
-            {
-                mode = candidate;
-                return true;
-            }
-        }
-
-        mode = PermissionMode.Default;
-        return false;
+        var trimmed = name?.Trim();
+        var modes = Enum.GetValues<PermissionMode>();
+        var index = Array.FindIndex(modes, c => string.Equals(c.ToWireName(), trimmed, StringComparison.OrdinalIgnoreCase));
+        mode = index >= 0 ? modes[index] : PermissionMode.Default;
+        return index >= 0;
     }
 }

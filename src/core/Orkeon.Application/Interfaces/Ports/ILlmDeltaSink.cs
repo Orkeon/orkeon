@@ -27,6 +27,7 @@ public interface ILlmDeltaSink
     /// <param name="toolCall">The fragment.</param>
     void OnToolCallDelta(Orkeon.Domain.SharedKernel.ValueObjects.ToolCallDelta toolCall)
     {
+        // Intentionally empty: a sink that renders text only ignores tool call fragments.
     }
 
     /// <summary>

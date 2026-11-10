@@ -4,6 +4,7 @@ namespace Orkeon.Infrastructure.LLMs.Replay;
 /// A replayed call the cassette holds no answer for. A replay never falls back on the network: the
 /// call fails with this exception instead.
 /// </summary>
+[System.Diagnostics.CodeAnalysis.SuppressMessage("Major Code Smell", "S3925", Justification = "False positive: binary serialization of exceptions is obsolete in .NET 10 (SYSLIB0051), so no ISerializable constructor or GetObjectData is added.")]
 public sealed class ReplayMissException : InvalidOperationException
 {
     /// <summary>Creates the exception.</summary>

@@ -128,13 +128,8 @@ public static class DecisionProfileServiceCollectionExtensions
     private static string KindOf(string kind)
     {
         var trimmed = kind.Trim();
-        foreach (var known in s_knownKinds)
-        {
-            if (string.Equals(known, trimmed, StringComparison.OrdinalIgnoreCase))
-                return known;
-        }
-
-        return trimmed;
+        return s_knownKinds.FirstOrDefault(known => string.Equals(known, trimmed, StringComparison.OrdinalIgnoreCase))
+            ?? trimmed;
     }
 
     private static void Probability(string key, double value)
@@ -143,19 +138,59 @@ public static class DecisionProfileServiceCollectionExtensions
             throw new InvalidOperationException($"{key}: {value} is not a probability between 0 and 1.");
     }
 
-    private static DecisionStagePhase ParsePhase(string path, string? phase) =>
-        string.IsNullOrWhiteSpace(phase)
-            ? DecisionStagePhase.Both
-            : Enum.TryParse<DecisionStagePhase>(phase.Trim(), ignoreCase: true, out var parsed) && Enum.IsDefined(parsed)
-                ? parsed
-                : throw new InvalidOperationException($"{path}:Phase: '{phase}' is not request, response or both.");
+    private static DecisionStagePhase ParsePhase(string path, string? phase)
+    {
+        if (string.IsNullOrWhiteSpace(phase))
+            return DecisionStagePhase.Both;
+        if (Enum.TryParse<DecisionStagePhase>(phase.Trim(), ignoreCase: true, out var parsed) && Enum.IsDefined(parsed))
+            return parsed;
+        throw new InvalidOperationException($"{path}:Phase: '{phase}' is not request, response or both.");
+    }
 
-    private static DecisionVerifySteps ParseSteps(string path, string? steps) =>
-        string.IsNullOrWhiteSpace(steps)
-            ? DecisionVerifySteps.Final
-            : Enum.TryParse<DecisionVerifySteps>(steps.Trim(), ignoreCase: true, out var parsed) && Enum.IsDefined(parsed)
-                ? parsed
-                : throw new InvalidOperationException($"{path}:Steps: '{steps}' is not final or all.");
+    private static DecisionVerifySteps ParseSteps(string path, string? steps)
+    {
+        if (string.IsNullOrWhiteSpace(steps))
+            return DecisionVerifySteps.Final;
+        if (Enum.TryParse<DecisionVerifySteps>(steps.Trim(), ignoreCase: true, out var parsed) && Enum.IsDefined(parsed))
+            return parsed;
+        throw new InvalidOperationException($"{path}:Steps: '{steps}' is not final or all.");
+    }
+
+    private static void AddStage(
+        DecisionStageOptions stage,
+        string stagePath,
+        IDecisionModel model,
+        ILoggerFactory loggerFactory,
+        Func<string, ILlmProvider> resolve,
+        List<IDecisionStage> request,
+        List<IDecisionStage> response)
+    {
+        switch (KindOf(stage.Kind))
+        {
+            case RouteKind:
+                foreach (var route in stage.Routes.Keys)
+                    resolve(route);
+                if (!string.IsNullOrWhiteSpace(stage.Fallback))
+                    resolve(stage.Fallback.Trim());
+                request.Add(new RouteDecisionStage(model, stage.Routes, stage.MinConfidence, stage.Fallback));
+                break;
+            case GuardKind:
+                var phase = ParsePhase(stagePath, stage.Phase);
+                var guard = new GuardDecisionStage(
+                    model, stage.Risks, phase, stage.BlockThreshold, stage.WarnThreshold,
+                    loggerFactory.CreateLogger<GuardDecisionStage>());
+                if (phase != DecisionStagePhase.Response)
+                    request.Add(guard);
+                if (phase != DecisionStagePhase.Request)
+                    response.Add(guard);
+                break;
+            case VerifyKind:
+                resolve(stage.EscalateTo!.Trim());
+                response.Add(new VerifyDecisionStage(
+                    model, stage.EscalateTo, stage.MinProbability, stage.Criterion, ParseSteps(stagePath, stage.Steps)));
+                break;
+        }
+    }
 
     private static DecisionLlmProvider Build(IServiceProvider services, string name, DecisionProfileOptions profile)
     {
@@ -174,41 +209,12 @@ public static class DecisionProfileServiceCollectionExtensions
         var request = new List<IDecisionStage>();
         var response = new List<IDecisionStage>();
         for (var i = 0; i < profile.Stages.Count; i++)
-        {
-            var stage = profile.Stages[i];
-            var stagePath = $"{path}:Stages:{i}";
-            switch (KindOf(stage.Kind))
-            {
-                case RouteKind:
-                    foreach (var route in stage.Routes.Keys)
-                        Resolve(route);
-                    if (!string.IsNullOrWhiteSpace(stage.Fallback))
-                        Resolve(stage.Fallback.Trim());
-                    request.Add(new RouteDecisionStage(model, stage.Routes, stage.MinConfidence, stage.Fallback));
-                    break;
-                case GuardKind:
-                    var phase = ParsePhase(stagePath, stage.Phase);
-                    var guard = new GuardDecisionStage(
-                        model, stage.Risks, phase, stage.BlockThreshold, stage.WarnThreshold,
-                        loggerFactory.CreateLogger<GuardDecisionStage>());
-                    if (phase != DecisionStagePhase.Response)
-                        request.Add(guard);
-                    if (phase != DecisionStagePhase.Request)
-                        response.Add(guard);
-                    break;
-                case VerifyKind:
-                    Resolve(stage.EscalateTo!.Trim());
-                    response.Add(new VerifyDecisionStage(
-                        model, stage.EscalateTo, stage.MinProbability, stage.Criterion, ParseSteps(stagePath, stage.Steps)));
-                    break;
-            }
-        }
+            AddStage(profile.Stages[i], $"{path}:Stages:{i}", model, loggerFactory, Resolve, request, response);
 
         return new DecisionLlmProvider(
             name,
             Resolve(profile.Target.Trim()),
-            request,
-            response,
+            new DecisionStages(request, response),
             Resolve,
             profile.FailClosed,
             loggerFactory.CreateLogger<DecisionLlmProvider>(),

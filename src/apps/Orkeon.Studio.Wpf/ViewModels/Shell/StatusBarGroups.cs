@@ -44,7 +44,7 @@ public sealed class StatusBarRunGroupViewModel : ObservableObject
         _launcher = launcher;
         _strings = strings;
         _isExpert = isExpert;
-        OpenCommand = new RelayCommand(() => open(activity), CanOpen);
+        OpenCommand = new RelayCommand(() => open(activity), static () => true);
 
         if (launcher is null)
             return;
@@ -292,12 +292,6 @@ public sealed class StatusBarRunGroupViewModel : ObservableObject
         nameof(Team), nameof(CurrentTask), nameof(Duration), nameof(Cache), nameof(BilledCost),
         nameof(Tools), nameof(ToolsDetail), nameof(Delegations), nameof(DelegationsDetail),
         nameof(ReportedModel), nameof(Details), nameof(DetailsTip), nameof(ShowsDetails));
-
-    /// <summary>
-    /// Every group opens its screen: since the merge (refonte, lot 4) a trial is the Launch screen
-    /// in trial mode, which a novice reaches too.
-    /// </summary>
-    private static bool CanOpen() => true;
 
     /// <summary>«pdf_reader · since 10:31:02», local time, from the run's own clock; the bare name when the call carried none.</summary>
     private string DescribeTool(RunToolInFlight tool)

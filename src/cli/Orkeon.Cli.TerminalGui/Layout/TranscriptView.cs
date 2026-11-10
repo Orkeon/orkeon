@@ -291,53 +291,61 @@ internal sealed class TranscriptView : View
         // reaches that row from below (or is already scrolling up) scrolls up instead. A selection
         // started or moved along that row scrolls nothing.
         var atScreenTop = point.Y == 0 && mouse.ScreenPosition.Y == 0 && (_lastDragRow > 0 || _dragScroll < 0);
-        var edge = point.Y < 0 || atScreenTop ? -1
-            : point.Y >= Viewport.Height ? 1
-            : 0;
-        if (flags.HasFlag(MouseFlags.LeftButtonPressed))
-        {
-            if (!_dragging)
-            {
-                _dragging = true;
-                _anchor = position;
-                App?.Mouse.GrabMouse(this);
-                edge = 0;
-            }
-            _lastDragRow = point.Y;
-            if (edge == 0)
-            {
-                StopDragScroll();
-                _caret = position;
-            }
-            else
-            {
-                _dragScroll = edge;
-                _dragColumn = Viewport.X + point.X;
-                DragScrollStep();
-                StartDragScroll();
-            }
-            SetNeedsDraw();
-            return true;
-        }
-
+        var edge = DragEdge(point.Y, atScreenTop);
+        if (flags.HasFlag(MouseFlags.LeftButtonPressed)) return OnLeftPressed(point, position, edge);
         if (flags.HasFlag(MouseFlags.LeftButtonReleased) || flags.HasFlag(MouseFlags.LeftButtonClicked))
-        {
-            if (_dragging)
-            {
-                _dragging = false;
-                StopDragScroll();
-                // Released past an edge: the caret stays on the edge row the scroll brought it to.
-                if (edge == 0) _caret = position;
-                App?.Mouse.UngrabMouse();
-            }
-            var selected = SelectedText;
-            if (selected.Length > 0) TuiClipboard.Copy(selected);
-            else _anchor = null;
-            SetNeedsDraw();
-            return true;
-        }
+            return OnLeftReleased(position, edge);
 
         return base.OnMouseEvent(mouse);
+    }
+
+    private int DragEdge(int y, bool atScreenTop)
+    {
+        if (y < 0 || atScreenTop) return -1;
+        return y >= Viewport.Height ? 1 : 0;
+    }
+
+    private bool OnLeftPressed(Point point, TranscriptPosition position, int edge)
+    {
+        if (!_dragging)
+        {
+            _dragging = true;
+            _anchor = position;
+            App?.Mouse.GrabMouse(this);
+            edge = 0;
+        }
+        _lastDragRow = point.Y;
+        if (edge == 0)
+        {
+            StopDragScroll();
+            _caret = position;
+        }
+        else
+        {
+            _dragScroll = edge;
+            _dragColumn = Viewport.X + point.X;
+            DragScrollStep();
+            StartDragScroll();
+        }
+        SetNeedsDraw();
+        return true;
+    }
+
+    private bool OnLeftReleased(TranscriptPosition position, int edge)
+    {
+        if (_dragging)
+        {
+            _dragging = false;
+            StopDragScroll();
+            // Released past an edge: the caret stays on the edge row the scroll brought it to.
+            if (edge == 0) _caret = position;
+            App?.Mouse.UngrabMouse();
+        }
+        var selected = SelectedText;
+        if (selected.Length > 0) TuiClipboard.Copy(selected);
+        else _anchor = null;
+        SetNeedsDraw();
+        return true;
     }
 
     /// <inheritdoc />

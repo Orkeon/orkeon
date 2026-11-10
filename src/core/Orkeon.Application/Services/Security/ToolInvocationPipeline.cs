@@ -57,9 +57,7 @@ public sealed partial class ToolInvocationPipeline : IToolInvocationPipeline
     /// <param name="logger">The logger.</param>
     /// <param name="limits">The per-tool result cuts; without it the <c>AgentDefaults</c> ones apply.</param>
     /// <param name="permissionGate">The permission gate consulted after the guardian for the calls of an agent; without it nothing is gated.</param>
-    /// <param name="approvalChannel">Where an <c>Ask</c> verdict of the gate is put to an operator; without it an <c>Ask</c> is a refusal.</param>
-    /// <param name="defaultMode">The mode of a caller that declares none.</param>
-    /// <param name="runScope">The ambient run: a tool that left it waiting for a human ends the agent's loop with the suspension (FWK-23).</param>
+    /// <param name="options">The approval channel, the default mode and the ambient run scope; without it none is set.</param>
     public ToolInvocationPipeline(
         IGuardianPipeline? guardian = null,
         IToolResultSanitizer? sanitizer = null,
@@ -67,14 +65,12 @@ public sealed partial class ToolInvocationPipeline : IToolInvocationPipeline
         ILogger<ToolInvocationPipeline>? logger = null,
         Microsoft.Extensions.Options.IOptions<Orkeon.Domain.Tools.ToolResultLimitsOptions>? limits = null,
         IPermissionGate? permissionGate = null,
-        IToolApprovalChannel? approvalChannel = null,
-        Orkeon.Domain.Security.PermissionMode defaultMode = Orkeon.Domain.Security.PermissionMode.Default,
-        Orkeon.Application.Interfaces.Services.IRunScope? runScope = null)
+        ToolInvocationPipelineOptions? options = null)
     {
-        _runScope = runScope;
+        _runScope = options?.RunScope;
         _permissionGate = permissionGate;
-        _approvalChannel = approvalChannel;
-        _defaultMode = defaultMode;
+        _approvalChannel = options?.ApprovalChannel;
+        _defaultMode = options?.DefaultMode ?? Orkeon.Domain.Security.PermissionMode.Default;
         _guardian = guardian;
         _sanitizer = sanitizer;
         _auditLogger = auditLogger;
@@ -104,65 +100,16 @@ public sealed partial class ToolInvocationPipeline : IToolInvocationPipeline
         var isDelegation = delegation is not null;
         var chain = s_delegationChain.Value ?? ImmutableList<string>.Empty;
 
-        var verdict = await GuardAsync(invocation, caller, delegation, chain, cancellationToken).ConfigureAwait(false);
-        if (verdict is { IsAllowed: false })
-        {
-            var text = $"Error: Blocked by Guardian ({(isDelegation ? GuardPhase.Delegation : GuardPhase.ToolExecution)}): {verdict.Reason}";
-            OrkeonMeter.RecordToolExecution(tool.Name, "blocked", null);
-            await AuditCallAsync(tool.Name, caller, AuditOutcome.Blocked, 0, cancellationToken).ConfigureAwait(false);
-            return new ToolInvocationResult { ConversationText = text, RawText = text, Blocked = true };
-        }
-
-        var refusal = await GateAsync(invocation, caller, isDelegation, cancellationToken).ConfigureAwait(false);
-        if (refusal is not null)
-        {
-            var text = $"Error: Blocked by the permission gate: {refusal}";
-            OrkeonMeter.RecordToolExecution(tool.Name, "blocked", null);
-            await AuditCallAsync(tool.Name, caller, AuditOutcome.Blocked, 0, cancellationToken).ConfigureAwait(false);
-            return new ToolInvocationResult { ConversationText = text, RawText = text, Blocked = true };
-        }
+        var refused = await RefuseAsync(invocation, caller, delegation, chain, cancellationToken).ConfigureAwait(false);
+        if (refused is not null)
+            return refused;
 
         // Admitted: the caller charges what a call costs it (a script's tool-call budget) only now, so a refused
         // call costs nothing. What it throws ends the call before the tool runs.
         caller.Admitted?.Invoke();
 
         var stopwatch = Stopwatch.StartNew();
-        var inheritedMode = s_delegatedMode.Value;
-        ToolCallResponse response;
-        try
-        {
-            // A synchronous delegation runs the coworker's task inside this call: its own
-            // tool calls see this agent at the end of the chain.
-            if (isDelegation)
-            {
-                s_delegationChain.Value = chain.Add(caller.AgentRole);
-                if (!caller.GateExempt)
-                    s_delegatedMode.Value = Stricter(s_delegatedMode.Value, ResolveMode(caller));
-            }
-
-            response = await tool.CallAsync(new ToolCallRequest(tool.Name, invocation.Arguments), cancellationToken)
-                .ConfigureAwait(false);
-        }
-        catch (OperationCanceledException)
-        {
-            OrkeonMeter.RecordToolExecution(tool.Name, "cancelled", stopwatch.Elapsed.TotalSeconds);
-            throw;
-        }
-        catch (Exception)
-        {
-            OrkeonMeter.RecordToolExecution(tool.Name, "failure", stopwatch.Elapsed.TotalSeconds);
-            await AuditCallAsync(tool.Name, caller, AuditOutcome.Failure, stopwatch.ElapsedMilliseconds, cancellationToken)
-                .ConfigureAwait(false);
-            throw;
-        }
-        finally
-        {
-            if (isDelegation)
-            {
-                s_delegationChain.Value = chain;
-                s_delegatedMode.Value = inheritedMode;
-            }
-        }
+        var response = await CallToolAsync(invocation, caller, isDelegation, chain, stopwatch, cancellationToken).ConfigureAwait(false);
 
         // A tool swallows what it throws into a failed answer. One that left the run waiting for a human (FWK-23) is told
         // from the run: the agent's loop ends here with the suspension, it is not handed an error to reason about.
@@ -202,6 +149,81 @@ public sealed partial class ToolInvocationPipeline : IToolInvocationPipeline
             Success = response.Success,
             Response = response,
         };
+    }
+
+    // The guardian phase, then the permission gate: the blocked result of the first that refuses, else null.
+    private async System.Threading.Tasks.Task<ToolInvocationResult?> RefuseAsync(
+        ToolInvocation invocation,
+        ToolInvocationCaller caller,
+        Orkeon.Domain.Tools.ICoworkerDelegationTool? delegation,
+        ImmutableList<string> chain,
+        CancellationToken cancellationToken)
+    {
+        var tool = invocation.Tool;
+        var isDelegation = delegation is not null;
+        string text;
+        var verdict = await GuardAsync(invocation, caller, delegation, chain, cancellationToken).ConfigureAwait(false);
+        if (verdict is { IsAllowed: false })
+        {
+            text = $"Error: Blocked by Guardian ({(isDelegation ? GuardPhase.Delegation : GuardPhase.ToolExecution)}): {verdict.Reason}";
+        }
+        else
+        {
+            var refusal = await GateAsync(invocation, caller, isDelegation, cancellationToken).ConfigureAwait(false);
+            if (refusal is null)
+                return null;
+            text = $"Error: Blocked by the permission gate: {refusal}";
+        }
+
+        OrkeonMeter.RecordToolExecution(tool.Name, "blocked", null);
+        await AuditCallAsync(tool.Name, caller, AuditOutcome.Blocked, 0, cancellationToken).ConfigureAwait(false);
+        return new ToolInvocationResult { ConversationText = text, RawText = text, Blocked = true };
+    }
+
+    private async System.Threading.Tasks.Task<ToolCallResponse> CallToolAsync(
+        ToolInvocation invocation,
+        ToolInvocationCaller caller,
+        bool isDelegation,
+        ImmutableList<string> chain,
+        Stopwatch stopwatch,
+        CancellationToken cancellationToken)
+    {
+        var tool = invocation.Tool;
+        var inheritedMode = s_delegatedMode.Value;
+        try
+        {
+            // A synchronous delegation runs the coworker's task inside this call: its own
+            // tool calls see this agent at the end of the chain.
+            if (isDelegation)
+            {
+                s_delegationChain.Value = chain.Add(caller.AgentRole);
+                if (!caller.GateExempt)
+                    s_delegatedMode.Value = Stricter(s_delegatedMode.Value, ResolveMode(caller));
+            }
+
+            return await tool.CallAsync(new ToolCallRequest(tool.Name, invocation.Arguments), cancellationToken)
+                .ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+            OrkeonMeter.RecordToolExecution(tool.Name, "cancelled", stopwatch.Elapsed.TotalSeconds);
+            throw;
+        }
+        catch (Exception)
+        {
+            OrkeonMeter.RecordToolExecution(tool.Name, "failure", stopwatch.Elapsed.TotalSeconds);
+            await AuditCallAsync(tool.Name, caller, AuditOutcome.Failure, stopwatch.ElapsedMilliseconds, cancellationToken)
+                .ConfigureAwait(false);
+            throw;
+        }
+        finally
+        {
+            if (isDelegation)
+            {
+                s_delegationChain.Value = chain;
+                s_delegatedMode.Value = inheritedMode;
+            }
+        }
     }
 
     private async System.Threading.Tasks.Task<GuardResult?> GuardAsync(
@@ -379,4 +401,19 @@ public sealed partial class ToolInvocationPipeline : IToolInvocationPipeline
 
     [LoggerMessage(Level = LogLevel.Error, Message = "Failed to write the audit event of tool '{ToolName}'")]
     private partial void LogAuditFailed(Exception ex, string toolName);
+}
+
+/// <summary>
+/// The optional collaborators of a <see cref="ToolInvocationPipeline"/> beyond its guardian, sanitizer, audit and gate.
+/// </summary>
+public sealed class ToolInvocationPipelineOptions
+{
+    /// <summary>Gets the channel where an <c>Ask</c> verdict of the gate is put to an operator; without it an <c>Ask</c> is a refusal.</summary>
+    public IToolApprovalChannel? ApprovalChannel { get; init; }
+
+    /// <summary>Gets the mode of a caller that declares none.</summary>
+    public Orkeon.Domain.Security.PermissionMode DefaultMode { get; init; } = Orkeon.Domain.Security.PermissionMode.Default;
+
+    /// <summary>Gets the ambient run: a tool that left it waiting for a human ends the agent's loop with the suspension (FWK-23).</summary>
+    public Orkeon.Application.Interfaces.Services.IRunScope? RunScope { get; init; }
 }

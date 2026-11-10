@@ -128,55 +128,59 @@ public static class SchemeFactory
         _ => DarkBackground(role, trueColor),
     };
 
+    // The 24-bit colour on a true-colour terminal, else the nearest of the 16 names.
+    private static Color Pick(bool trueColor, byte r, byte g, byte b, ColorName16 name)
+        => trueColor ? new Color(r, g, b) : new Color(name);
+
     private static Color LightForeground(PaletteRole role, bool trueColor) => role switch
     {
-        PaletteRole.Dim => trueColor ? new Color(0x6a, 0x6a, 0x6a) : new Color(ColorName16.DarkGray),
-        PaletteRole.Accent => trueColor ? new Color(0xc0, 0x42, 0x2a) : new Color(ColorName16.Cyan),
-        PaletteRole.Ok => trueColor ? new Color(0x1a, 0x7f, 0x37) : new Color(ColorName16.Green),
-        PaletteRole.Alert => trueColor ? new Color(0x9a, 0x67, 0x00) : new Color(ColorName16.Magenta),
-        PaletteRole.Error => trueColor ? new Color(0xcf, 0x22, 0x2e) : new Color(ColorName16.Red),
+        PaletteRole.Dim => Pick(trueColor, 0x6a, 0x6a, 0x6a, ColorName16.DarkGray),
+        PaletteRole.Accent => Pick(trueColor, 0xc0, 0x42, 0x2a, ColorName16.Cyan),
+        PaletteRole.Ok => Pick(trueColor, 0x1a, 0x7f, 0x37, ColorName16.Green),
+        PaletteRole.Alert => Pick(trueColor, 0x9a, 0x67, 0x00, ColorName16.Magenta),
+        PaletteRole.Error => Pick(trueColor, 0xcf, 0x22, 0x2e, ColorName16.Red),
         PaletteRole.UserBar or PaletteRole.DiffAdded or PaletteRole.DiffRemoved or PaletteRole.AddedWord or PaletteRole.RemovedWord
-            => trueColor ? new Color(0x1f, 0x1f, 0x1f) : new Color(ColorName16.Black),
-        PaletteRole.Code => trueColor ? new Color(0x05, 0x50, 0xae) : new Color(ColorName16.Blue),
-        PaletteRole.FileRef => trueColor ? new Color(0x09, 0x69, 0xda) : new Color(ColorName16.Blue),
-        PaletteRole.PanelRule => trueColor ? new Color(0xb0, 0xb0, 0xb0) : new Color(ColorName16.Gray),
+            => Pick(trueColor, 0x1f, 0x1f, 0x1f, ColorName16.Black),
+        PaletteRole.Code => Pick(trueColor, 0x05, 0x50, 0xae, ColorName16.Blue),
+        PaletteRole.FileRef => Pick(trueColor, 0x09, 0x69, 0xda, ColorName16.Blue),
+        PaletteRole.PanelRule => Pick(trueColor, 0xb0, 0xb0, 0xb0, ColorName16.Gray),
         _ => Default,
     };
 
     private static Color LightBackground(PaletteRole role, bool trueColor) => role switch
     {
-        PaletteRole.UserBar => trueColor ? new Color(0xe8, 0xe8, 0xe8) : new Color(ColorName16.Gray),
-        PaletteRole.DiffAdded => trueColor ? new Color(0xd8, 0xf5, 0xdd) : new Color(ColorName16.BrightGreen),
-        PaletteRole.DiffRemoved => trueColor ? new Color(0xfb, 0xdc, 0xdc) : new Color(ColorName16.BrightRed),
-        PaletteRole.AddedWord => trueColor ? new Color(0xa6, 0xe9, 0xb5) : new Color(ColorName16.Green),
-        PaletteRole.RemovedWord => trueColor ? new Color(0xf5, 0xae, 0xb0) : new Color(ColorName16.Red),
+        PaletteRole.UserBar => Pick(trueColor, 0xe8, 0xe8, 0xe8, ColorName16.Gray),
+        PaletteRole.DiffAdded => Pick(trueColor, 0xd8, 0xf5, 0xdd, ColorName16.BrightGreen),
+        PaletteRole.DiffRemoved => Pick(trueColor, 0xfb, 0xdc, 0xdc, ColorName16.BrightRed),
+        PaletteRole.AddedWord => Pick(trueColor, 0xa6, 0xe9, 0xb5, ColorName16.Green),
+        PaletteRole.RemovedWord => Pick(trueColor, 0xf5, 0xae, 0xb0, ColorName16.Red),
         _ => Default,
     };
 
     private static Color DarkForeground(PaletteRole role, bool trueColor) => role switch
     {
-        PaletteRole.Dim => trueColor ? new Color(0x8a, 0x8a, 0x8a) : new Color(ColorName16.DarkGray),
-        PaletteRole.Accent => trueColor ? new Color(0xe8, 0x65, 0x4a) : new Color(ColorName16.BrightRed),
-        PaletteRole.Ok => trueColor ? new Color(0x3f, 0xb9, 0x50) : new Color(ColorName16.Green),
-        PaletteRole.Alert => trueColor ? new Color(0xd4, 0xa7, 0x2c) : new Color(ColorName16.Yellow),
-        PaletteRole.Error => trueColor ? new Color(0xf8, 0x51, 0x49) : new Color(ColorName16.Red),
+        PaletteRole.Dim => Pick(trueColor, 0x8a, 0x8a, 0x8a, ColorName16.DarkGray),
+        PaletteRole.Accent => Pick(trueColor, 0xe8, 0x65, 0x4a, ColorName16.BrightRed),
+        PaletteRole.Ok => Pick(trueColor, 0x3f, 0xb9, 0x50, ColorName16.Green),
+        PaletteRole.Alert => Pick(trueColor, 0xd4, 0xa7, 0x2c, ColorName16.Yellow),
+        PaletteRole.Error => Pick(trueColor, 0xf8, 0x51, 0x49, ColorName16.Red),
         PaletteRole.UserBar or PaletteRole.DiffAdded or PaletteRole.DiffRemoved
-            => trueColor ? new Color(0xe8, 0xe8, 0xe8) : new Color(ColorName16.White),
+            => Pick(trueColor, 0xe8, 0xe8, 0xe8, ColorName16.White),
         PaletteRole.AddedWord or PaletteRole.RemovedWord
-            => trueColor ? new Color(0xff, 0xff, 0xff) : new Color(ColorName16.Black),
-        PaletteRole.Code => trueColor ? new Color(0x8f, 0xb4, 0xe8) : new Color(ColorName16.Cyan),
-        PaletteRole.FileRef => trueColor ? new Color(0x5c, 0xa8, 0xf0) : new Color(ColorName16.BrightBlue),
-        PaletteRole.PanelRule => trueColor ? new Color(0x5f, 0x5f, 0x5f) : new Color(ColorName16.DarkGray),
+            => Pick(trueColor, 0xff, 0xff, 0xff, ColorName16.Black),
+        PaletteRole.Code => Pick(trueColor, 0x8f, 0xb4, 0xe8, ColorName16.Cyan),
+        PaletteRole.FileRef => Pick(trueColor, 0x5c, 0xa8, 0xf0, ColorName16.BrightBlue),
+        PaletteRole.PanelRule => Pick(trueColor, 0x5f, 0x5f, 0x5f, ColorName16.DarkGray),
         _ => Default,
     };
 
     private static Color DarkBackground(PaletteRole role, bool trueColor) => role switch
     {
-        PaletteRole.UserBar => trueColor ? new Color(0x3a, 0x3a, 0x3a) : new Color(ColorName16.DarkGray),
-        PaletteRole.DiffAdded => trueColor ? new Color(0x12, 0x3d, 0x22) : new Color(ColorName16.Green),
-        PaletteRole.DiffRemoved => trueColor ? new Color(0x4d, 0x1a, 0x1e) : new Color(ColorName16.Red),
-        PaletteRole.AddedWord => trueColor ? new Color(0x1f, 0x74, 0x3c) : new Color(ColorName16.BrightGreen),
-        PaletteRole.RemovedWord => trueColor ? new Color(0x93, 0x2f, 0x35) : new Color(ColorName16.BrightRed),
+        PaletteRole.UserBar => Pick(trueColor, 0x3a, 0x3a, 0x3a, ColorName16.DarkGray),
+        PaletteRole.DiffAdded => Pick(trueColor, 0x12, 0x3d, 0x22, ColorName16.Green),
+        PaletteRole.DiffRemoved => Pick(trueColor, 0x4d, 0x1a, 0x1e, ColorName16.Red),
+        PaletteRole.AddedWord => Pick(trueColor, 0x1f, 0x74, 0x3c, ColorName16.BrightGreen),
+        PaletteRole.RemovedWord => Pick(trueColor, 0x93, 0x2f, 0x35, ColorName16.BrightRed),
         _ => Default,
     };
 

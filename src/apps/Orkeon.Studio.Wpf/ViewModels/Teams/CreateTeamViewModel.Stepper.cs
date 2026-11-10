@@ -179,10 +179,18 @@ public sealed partial class CreateTeamViewModel
     /// The header's tone: <c>Danger</c> when a point is to fix, <c>Warning</c> when only remarks
     /// stand, <c>Success</c> otherwise — the view maps it to its ink.
     /// </summary>
-    public string VerdictHeadlineTone =>
-        !VerdictPassing || Checklist.Any(line => line.IsFailure) ? "Danger"
-        : Checklist.Any(line => line.IsRemark) ? "Warning"
-        : "Success";
+    public string VerdictHeadlineTone
+    {
+        get
+        {
+            if (!VerdictPassing || Checklist.Any(line => line.IsFailure))
+            {
+                return "Danger";
+            }
+
+            return Checklist.Any(line => line.IsRemark) ? "Warning" : "Success";
+        }
+    }
 
     /// <summary>A run ended: stopped by the user, or the session saved where the engine left it.</summary>
     private void NoteRunEnded(bool cancelled)

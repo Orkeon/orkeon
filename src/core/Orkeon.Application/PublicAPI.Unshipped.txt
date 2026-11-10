@@ -1018,7 +1018,15 @@ Orkeon.Application.Interfaces.Services.CrewOutput.PendingInput.get -> Orkeon.App
 Orkeon.Application.Interfaces.Services.CrewOutput.PendingInput.init -> void
 Orkeon.Application.Interfaces.Services.KickoffOptions.ResumeInput.get -> string?
 Orkeon.Application.Interfaces.Services.KickoffOptions.ResumeInput.init -> void
-Orkeon.Application.Services.Security.ToolInvocationPipeline.ToolInvocationPipeline(Orkeon.Application.Interfaces.Security.IGuardianPipeline? guardian = null, Orkeon.Application.Interfaces.Security.IToolResultSanitizer? sanitizer = null, Orkeon.Application.Interfaces.Security.IAuditLogger? auditLogger = null, Microsoft.Extensions.Logging.ILogger<Orkeon.Application.Services.Security.ToolInvocationPipeline!>? logger = null, Microsoft.Extensions.Options.IOptions<Orkeon.Domain.Tools.ToolResultLimitsOptions!>? limits = null, Orkeon.Application.Interfaces.Security.IPermissionGate? permissionGate = null, Orkeon.Application.Interfaces.Security.IToolApprovalChannel? approvalChannel = null, Orkeon.Domain.Security.PermissionMode defaultMode = Orkeon.Domain.Security.PermissionMode.Default, Orkeon.Application.Interfaces.Services.IRunScope? runScope = null) -> void
+Orkeon.Application.Services.Security.ToolInvocationPipeline.ToolInvocationPipeline(Orkeon.Application.Interfaces.Security.IGuardianPipeline? guardian = null, Orkeon.Application.Interfaces.Security.IToolResultSanitizer? sanitizer = null, Orkeon.Application.Interfaces.Security.IAuditLogger? auditLogger = null, Microsoft.Extensions.Logging.ILogger<Orkeon.Application.Services.Security.ToolInvocationPipeline!>? logger = null, Microsoft.Extensions.Options.IOptions<Orkeon.Domain.Tools.ToolResultLimitsOptions!>? limits = null, Orkeon.Application.Interfaces.Security.IPermissionGate? permissionGate = null, Orkeon.Application.Services.Security.ToolInvocationPipelineOptions? options = null) -> void
+Orkeon.Application.Services.Security.ToolInvocationPipelineOptions
+Orkeon.Application.Services.Security.ToolInvocationPipelineOptions.ToolInvocationPipelineOptions() -> void
+Orkeon.Application.Services.Security.ToolInvocationPipelineOptions.ApprovalChannel.get -> Orkeon.Application.Interfaces.Security.IToolApprovalChannel?
+Orkeon.Application.Services.Security.ToolInvocationPipelineOptions.ApprovalChannel.init -> void
+Orkeon.Application.Services.Security.ToolInvocationPipelineOptions.DefaultMode.get -> Orkeon.Domain.Security.PermissionMode
+Orkeon.Application.Services.Security.ToolInvocationPipelineOptions.DefaultMode.init -> void
+Orkeon.Application.Services.Security.ToolInvocationPipelineOptions.RunScope.get -> Orkeon.Application.Interfaces.Services.IRunScope?
+Orkeon.Application.Services.Security.ToolInvocationPipelineOptions.RunScope.init -> void
 [ORKEXP007]Orkeon.Application.Runs.RunStatus.WaitingForInput = 4 -> Orkeon.Application.Runs.RunStatus
 [ORKEXP001]Orkeon.Application.Interfaces.AgentCommunication.A2ATaskStatus.InputRequired = 5 -> Orkeon.Application.Interfaces.AgentCommunication.A2ATaskStatus
 Orkeon.Application.Configuration.EmbeddingOptions.Endpoint.get -> string!

@@ -50,10 +50,18 @@ public sealed partial class CreateTeamViewModel
     /// The « Need » tab's state: done once the need is typed — amber when the assistant stopped
     /// before the brief was accepted (UX lot 05, 011-012).
     /// </summary>
-    public string NeedTabState =>
-        _need.Trim().Length == 0 ? TabEmpty
-        : Chat.WasInterrupted ? TabWarning
-        : TabDone;
+    public string NeedTabState
+    {
+        get
+        {
+            if (_need.Trim().Length == 0)
+            {
+                return TabEmpty;
+            }
+
+            return Chat.WasInterrupted ? TabWarning : TabDone;
+        }
+    }
 
     /// <summary>« To describe », « Described », or « Described, 2 questions settled ».</summary>
     public string NeedTabSubtitle
@@ -82,8 +90,18 @@ public sealed partial class CreateTeamViewModel
     /// The folders tab's state: the amber dot while they wait for the confirm or for the files
     /// the user drops in them, a check once confirmed.
     /// </summary>
-    public string FoldersTabState =>
-        _model.FoldersPending || IsFillingFolders ? TabExpected : FoldersConfirmed ? TabDone : TabEmpty;
+    public string FoldersTabState
+    {
+        get
+        {
+            if (_model.FoldersPending || IsFillingFolders)
+            {
+                return TabExpected;
+            }
+
+            return FoldersConfirmed ? TabDone : TabEmpty;
+        }
+    }
 
     /// <summary>
     /// « Proposed after the composition », « 3 folders to confirm », « 2 folders · 1 to choose »,
@@ -159,10 +177,18 @@ public sealed partial class CreateTeamViewModel
     /// The disabled « Compose the team »'s reason: « Composition under way », or that the engine
     /// was not found (UX lot 05, 012); empty otherwise.
     /// </summary>
-    public string ComposeTip =>
-        IsEngineRunning ? _strings[StudioStringKeys.WizardComposeBusyTip]
-        : IsEngineMissing ? _strings[StudioStringKeys.WizardFailureEngineMissing]
-        : string.Empty;
+    public string ComposeTip
+    {
+        get
+        {
+            if (IsEngineRunning)
+            {
+                return _strings[StudioStringKeys.WizardComposeBusyTip];
+            }
+
+            return IsEngineMissing ? _strings[StudioStringKeys.WizardFailureEngineMissing] : string.Empty;
+        }
+    }
 
     /// <summary>Whether « Compose the team » carries a reason in its tooltip.</summary>
     public bool HasComposeTip => ComposeTip.Length > 0;

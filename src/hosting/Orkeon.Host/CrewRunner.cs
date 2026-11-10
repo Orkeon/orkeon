@@ -116,14 +116,14 @@ internal sealed partial class CrewRunner : ICrewRunner
         IOptions<OrkeonHostOptions> options,
         ILogger<CrewRunner> logger,
         HostCrewMountPlan? mountPlan = null,
-        TimeProvider? time = null,
         Orkeon.Application.Interfaces.Checkpointing.IPendingInputBroker? broker = null)
     {
-        _time = time ?? TimeProvider.System;
+        ArgumentNullException.ThrowIfNull(host);
+        _time = host.Services.GetService<TimeProvider>() ?? TimeProvider.System;
         _broker = broker;
         _scopes = scopes ?? throw new ArgumentNullException(nameof(scopes));
         _registry = registry ?? throw new ArgumentNullException(nameof(registry));
-        _host = host ?? throw new ArgumentNullException(nameof(host));
+        _host = host;
         ArgumentNullException.ThrowIfNull(options);
         _options = options.Value;
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -231,15 +231,7 @@ internal sealed partial class CrewRunner : ICrewRunner
             if (onProgress is not null && scope.ServiceProvider.GetService<RunProgressHook>() is { } progressHook)
                 progressHook.OnProgress = onProgress;
 
-            var mapped = _mountPlan?.VirtualPaths.TryGetValue(hosted.Name, out var virtualPath) == true
-                ? virtualPath
-                : null;
-            // A crew DIRECTORY is mounted as the root itself; a crew FILE is addressed inside
-            // one. So the plan already answers "directory?", and answering it here rather than
-            // asking the VFS again is what keeps a symlinked crew directory loading.
-            var isDirectory = mapped is not null
-                ? _mountPlan!.Roots.Contains(mapped, StringComparer.Ordinal)
-                : (bool?)null;
+            var (mapped, isDirectory) = ResolveMountedPath(hosted.Name);
             var crew = await RunnerExecution
                 .LoadCrewAsync(_host, factory, scope.ServiceProvider, mapped ?? hosted.Path, _logger, run.Cancellation.Token, isDirectory)
                 .ConfigureAwait(false);
@@ -264,34 +256,7 @@ internal sealed partial class CrewRunner : ICrewRunner
                 recording.WaitingForInput = output.PendingInput is not null;
             }
 
-            // KickoffAsync never throws — its fault barrier converts everything into an
-            // output. Reading that output as Completed reported every timeout, /stop and
-            // crew failure as a success, logged "finished", and handed the user the
-            // apology string as if it were the answer. Order matters here: a completed
-            // answer beats a stop that raced in after the fact — the user already paid
-            // for it, and "The run was stopped." would throw it away.
-            if (output.Succeeded)
-            {
-                LogRunFinished(run.Id, hosted.Name);
-                return new HostedRunResult(
-                    HostedRunOutcome.Completed,
-                    run.Id,
-                    output.FinalOutput ?? string.Empty);
-            }
-
-            if (output.PendingInput is { } waiting)
-            {
-                return new HostedRunResult(
-                    HostedRunOutcome.WaitingForInput,
-                    run.Id,
-                    $"The run is waiting for input ({waiting.RequestId}): {Orkeon.Infrastructure.Runs.RedactingRunEventSink.RedactText(waiting.Prompt)}");
-            }
-
-            if (run.Cancellation.IsCancellationRequested)
-                return Cancelled(run, hosted.Name);
-
-            LogRunFailedWithOutput(run.Id, hosted.Name, output.FinalOutput ?? string.Empty);
-            return new HostedRunResult(HostedRunOutcome.Failed, run.Id, FailureMessage(run.Id));
+            return ResultOf(output, run, hosted.Name);
         }
         catch (OperationCanceledException)
         {
@@ -312,6 +277,52 @@ internal sealed partial class CrewRunner : ICrewRunner
             _registry.Finish(run.Id);
             ReleasePerRunState(crewId);
         }
+    }
+
+    private HostedRunResult ResultOf(CrewOutput output, HostedRun run, string crewName)
+    {
+        // KickoffAsync never throws — its fault barrier converts everything into an
+        // output. Reading that output as Completed reported every timeout, /stop and
+        // crew failure as a success, logged "finished", and handed the user the
+        // apology string as if it were the answer. Order matters here: a completed
+        // answer beats a stop that raced in after the fact — the user already paid
+        // for it, and "The run was stopped." would throw it away.
+        if (output.Succeeded)
+        {
+            LogRunFinished(run.Id, crewName);
+            return new HostedRunResult(
+                HostedRunOutcome.Completed,
+                run.Id,
+                output.FinalOutput ?? string.Empty);
+        }
+
+        if (output.PendingInput is { } waiting)
+        {
+            return new HostedRunResult(
+                HostedRunOutcome.WaitingForInput,
+                run.Id,
+                $"The run is waiting for input ({waiting.RequestId}): {Orkeon.Infrastructure.Runs.RedactingRunEventSink.RedactText(waiting.Prompt)}");
+        }
+
+        if (run.Cancellation.IsCancellationRequested)
+            return Cancelled(run, crewName);
+
+        LogRunFailedWithOutput(run.Id, crewName, output.FinalOutput ?? string.Empty);
+        return new HostedRunResult(HostedRunOutcome.Failed, run.Id, FailureMessage(run.Id));
+    }
+
+    // A crew DIRECTORY is mounted as the root itself; a crew FILE is addressed inside
+    // one. So the plan already answers "directory?", and answering it here rather than
+    // asking the VFS again is what keeps a symlinked crew directory loading.
+    private (string? Mapped, bool? IsDirectory) ResolveMountedPath(string crewName)
+    {
+        var mapped = _mountPlan?.VirtualPaths.TryGetValue(crewName, out var virtualPath) == true
+            ? virtualPath
+            : null;
+        var isDirectory = mapped is not null
+            ? _mountPlan!.Roots.Contains(mapped, StringComparer.Ordinal)
+            : (bool?)null;
+        return (mapped, isDirectory);
     }
 
     private static string FailureMessage(string runId) =>

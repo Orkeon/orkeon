@@ -191,7 +191,7 @@ public sealed class ScriptCommandUsage
             reasoningTokens = usage.ReasoningTokens,
             calls = usage.Calls,
             unpricedCalls = usage.UnpricedCalls,
-            cost = usage.Cost is { } cost ? (double)cost : null,
+            cost = usage.Cost is { } usageCost ? (double)usageCost : null,
         };
     }
 }

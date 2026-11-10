@@ -40,10 +40,7 @@ internal static class FirefoxKeys
         if (string.IsNullOrEmpty(key))
             return false;
 
-        // "+" alone, and the last part of "Control++", are the plus key.
-        var parts = key.Length > 1 && key.EndsWith("++", StringComparison.Ordinal)
-            ? [.. key[..^2].Split('+'), "+"]
-            : key.Length == 1 ? [key] : key.Split('+');
+        var parts = SplitParts(key);
 
         var values = new List<string>(parts.Length);
         for (var i = 0; i < parts.Length - 1; i++)
@@ -63,6 +60,14 @@ internal static class FirefoxKeys
 
         chord = values;
         return true;
+    }
+
+    /// <summary>The parts of a chord. A lone plus, and the last part of Control++, are the plus key.</summary>
+    private static string[] SplitParts(string key)
+    {
+        if (key.Length > 1 && key.EndsWith("++", StringComparison.Ordinal))
+            return [.. key[..^2].Split('+'), "+"];
+        return key.Length == 1 ? [key] : key.Split('+');
     }
 
     /// <summary>

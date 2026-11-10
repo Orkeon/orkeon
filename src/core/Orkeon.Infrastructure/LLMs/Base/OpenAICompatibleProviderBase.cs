@@ -894,9 +894,11 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
                 arguments = argumentsElement.GetString() ?? string.Empty;
         }
 
-        return string.IsNullOrEmpty(id) && string.IsNullOrEmpty(name) && arguments.Length == 0
-            ? null
-            : new ToolCallDelta(index, string.IsNullOrEmpty(id) ? null : id, string.IsNullOrEmpty(name) ? null : name, arguments);
+        if (string.IsNullOrEmpty(id)) id = null;
+        if (string.IsNullOrEmpty(name)) name = null;
+        if (id is null && name is null && arguments.Length == 0)
+            return null;
+        return new ToolCallDelta(index, id, name, arguments);
     }
 
     private static void MergeToolCallFragment(JsonElement fragment, StreamedToolCall call)
@@ -1541,32 +1543,8 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
             return;
         }
 
-        // An explicit on/off switch needs more than an effort hint.
-        if (thinking.Enabled.HasValue)
-        {
-            if (support >= ThinkingSupport.Toggle)
-            {
-                payload["thinking"] = new Dictionary<string, object?>
-                {
-                    ["type"] = thinking.Enabled.Value ? "enabled" : "disabled",
-                };
-            }
-            else
-            {
-                LogUnsupportedOption("thinking.enabled", ProviderDisplayName,
-                    "this API always decides on its own whether to reason; only the effort hint is honoured");
-            }
-        }
-
-        if (!string.IsNullOrWhiteSpace(thinking.Effort))
-        {
-            // A level the declared field does not know is lowered to the nearest it knows, said aloud (LLM-02).
-            var sent = LlmThinkingConfig.EffortFor(thinking.Effort, Capabilities.EffortLevels);
-            if (sent != thinking.Effort)
-                LogEffortLowered(thinking.Effort, ProviderDisplayName, string.Join(", ", Capabilities.EffortLevels), sent);
-            if (ModelTakesEffort(model, sent))
-                payload["reasoning_effort"] = sent;
-        }
+        ApplyThinkingToggle(payload, thinking, support);
+        ApplyThinkingEffort(payload, thinking, model);
 
         // No OpenAI-dialect field carries a reasoning budget; only DashScope does, and Qwen
         // overrides this method to emit it.
@@ -1575,6 +1553,39 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
             LogUnsupportedOption("thinking.budgetTokens", ProviderDisplayName,
                 "this API takes no reasoning token budget; use the effort hint instead");
         }
+    }
+
+    private void ApplyThinkingToggle(Dictionary<string, object> payload, LlmThinkingConfig thinking, ThinkingSupport support)
+    {
+        // An explicit on/off switch needs more than an effort hint.
+        if (!thinking.Enabled.HasValue)
+            return;
+
+        if (support >= ThinkingSupport.Toggle)
+        {
+            payload["thinking"] = new Dictionary<string, object?>
+            {
+                ["type"] = thinking.Enabled.Value ? "enabled" : "disabled",
+            };
+        }
+        else
+        {
+            LogUnsupportedOption("thinking.enabled", ProviderDisplayName,
+                "this API always decides on its own whether to reason; only the effort hint is honoured");
+        }
+    }
+
+    private void ApplyThinkingEffort(Dictionary<string, object> payload, LlmThinkingConfig thinking, string model)
+    {
+        if (string.IsNullOrWhiteSpace(thinking.Effort))
+            return;
+
+        // A level the declared field does not know is lowered to the nearest it knows, said aloud (LLM-02).
+        var sent = LlmThinkingConfig.EffortFor(thinking.Effort, Capabilities.EffortLevels);
+        if (sent != thinking.Effort)
+            LogEffortLowered(thinking.Effort, ProviderDisplayName, string.Join(", ", Capabilities.EffortLevels), sent);
+        if (ModelTakesEffort(model, sent))
+            payload["reasoning_effort"] = sent;
     }
 
     /// <summary>

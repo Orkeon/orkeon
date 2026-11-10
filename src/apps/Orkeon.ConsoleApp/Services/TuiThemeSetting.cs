@@ -11,11 +11,9 @@ internal static class TuiThemeSetting
     /// <summary>The palette <paramref name="value"/> names, whatever its case; null when it names none.</summary>
     public static ConsoleTheme? Parse(string? value)
     {
-        foreach (var theme in Enum.GetValues<ConsoleTheme>())
-        {
-            if (string.Equals(theme.ToString(), value, StringComparison.OrdinalIgnoreCase)) return theme;
-        }
-        return null;
+        return Enum.GetValues<ConsoleTheme>()
+            .Cast<ConsoleTheme?>()
+            .FirstOrDefault(theme => string.Equals(theme.ToString(), value, StringComparison.OrdinalIgnoreCase));
     }
 
     /// <summary>Refuses a value of <paramref name="path"/> that is present and names no palette.</summary>

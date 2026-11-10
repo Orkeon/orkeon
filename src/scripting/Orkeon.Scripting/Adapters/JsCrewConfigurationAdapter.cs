@@ -62,8 +62,8 @@ public static class JsCrewConfigurationAdapter
         RefuseReferencesOutsideTheCrew(crew, jsTasks, agentMap, taskMap);
 
         var seen = new HashSet<string>(StringComparer.Ordinal);
-        foreach (var jsTask in jsTasks.Where(t => !seen.Add(t.Key!)))
-            throw new InvalidOperationException($"Task '{jsTask.name}' is declared twice: a task name is unique in a crew.");
+        if (jsTasks.FirstOrDefault(t => !seen.Add(t.Key!)) is { } duplicate)
+            throw new InvalidOperationException($"Task '{duplicate.name}' is declared twice: a task name is unique in a crew.");
 
         var decisions = new Dictionary<string, TaskDecision>(StringComparer.Ordinal);
         foreach (var jsTask in jsTasks.Where(t => t.DecisionSpec is not null))
@@ -159,6 +159,41 @@ public static class JsCrewConfigurationAdapter
         };
     }
 
+    private static TaskCondition? BuildCondition(JsTask jsTask, Dictionary<string, TaskDecision> decisions)
+    {
+        if (jsTask.WhenTask is not { } whenTask)
+            return null;
+
+        if (!decisions.TryGetValue(whenTask, out var target))
+            throw new InvalidOperationException($"Task '{jsTask.name}' when: '{whenTask}' is not a decision task of the crew.");
+        return JsDecisionMapper.MapCondition(jsTask.name, whenTask, jsTask.WhenSpec!, target);
+    }
+
+    /// <summary>The context tasks, then the decision task and the tasks the decision reads its state from: they run before this task.</summary>
+    private static List<TaskId> BuildDependencies(
+        JsTask jsTask,
+        Dictionary<JsTask, TaskId> taskMap,
+        IReadOnlyList<JsTask> jsTasks,
+        TaskCondition? condition,
+        IEnumerable<string> stateFrom)
+    {
+        var deps = new List<TaskId>();
+        foreach (var ctxTask in jsTask.Context)
+        {
+            if (taskMap.TryGetValue(ctxTask, out var depId))
+                deps.Add(depId);
+        }
+
+        var needed = (condition is null ? [] : new[] { condition.DecisionTask }).Concat(stateFrom);
+        foreach (var other in needed.SelectMany(n => jsTasks.Where(t => t.Key == n)))
+        {
+            if (taskMap.TryGetValue(other, out var neededId) && !deps.Contains(neededId))
+                deps.Add(neededId);
+        }
+
+        return deps;
+    }
+
     private static TaskConfiguration BuildTaskConfiguration(
         TaskId id,
         JsTask jsTask,
@@ -171,33 +206,14 @@ public static class JsCrewConfigurationAdapter
         if (jsTask.AssignedAgent is { } a && agentMap.TryGetValue(a, out var aid))
             assigned = aid;
 
-        var deps = new List<TaskId>();
-        foreach (var ctxTask in jsTask.Context)
-        {
-            if (taskMap.TryGetValue(ctxTask, out var depId))
-                deps.Add(depId);
-        }
-
-        TaskCondition? condition = null;
-        if (jsTask.WhenTask is { } whenTask)
-        {
-            if (!decisions.TryGetValue(whenTask, out var target))
-                throw new InvalidOperationException($"Task '{jsTask.name}' when: '{whenTask}' is not a decision task of the crew.");
-            condition = JsDecisionMapper.MapCondition(jsTask.name, whenTask, jsTask.WhenSpec!, target);
-        }
+        var condition = BuildCondition(jsTask, decisions);
 
         // The state a decision reads names tasks of the crew, as the YAML loader holds it to.
         var stateFrom = decisions.TryGetValue(jsTask.name, out var own) && jsTask.DecisionSpec is not null ? own.StateFrom : [];
-        foreach (var name in stateFrom.Where(name => jsTasks.All(t => t.Key != name)))
-            throw new InvalidOperationException($"Task '{jsTask.name}' decision.state names '{name}', which is no task of the crew.");
+        if (stateFrom.FirstOrDefault(name => jsTasks.All(t => t.Key != name)) is { } unknown)
+            throw new InvalidOperationException($"Task '{jsTask.name}' decision.state names '{unknown}', which is no task of the crew.");
 
-        // The decision task and the tasks the decision reads its state from run before this task.
-        var needed = (condition is null ? [] : new[] { condition.DecisionTask }).Concat(stateFrom);
-        foreach (var other in needed.SelectMany(n => jsTasks.Where(t => t.Key == n)))
-        {
-            if (taskMap.TryGetValue(other, out var neededId) && !deps.Contains(neededId))
-                deps.Add(neededId);
-        }
+        var deps = BuildDependencies(jsTask, taskMap, jsTasks, condition, stateFrom);
 
         return new TaskConfiguration
         {

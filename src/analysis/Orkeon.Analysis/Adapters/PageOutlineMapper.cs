@@ -72,22 +72,9 @@ public static class PageOutlineMapper
         {
             var element = elements[i];
             var container = ContainerOf(elements, i);
+            CloseHeadings(elements, openHeadings, element, container);
 
-            // A heading ends with the region that holds it, and with a heading of its level or above.
-            while (openHeadings.Count > 0 && !Encloses(elements, ContainerOf(elements, openHeadings.Peek()), container))
-                openHeadings.Pop();
-            if (element.Kind == PageElementKind.Heading)
-            {
-                while (openHeadings.Count > 0 && HeadingLevel(elements[openHeadings.Peek()]) >= HeadingLevel(element))
-                    openHeadings.Pop();
-            }
-
-            // The open heading holds the element when both sit in the same region; a heading outside
-            // the element's region holds that region, not the element.
-            var parent = openHeadings.Count > 0 && ContainerOf(elements, openHeadings.Peek()) == container
-                ? byIndex[openHeadings.Peek()]
-                : container >= 0 ? byIndex[container] : root;
-
+            var parent = ParentOf(elements, openHeadings, byIndex, root, container);
             var node = CreateElement(outline.Path, i, element, parent);
             byIndex[i] = node;
             nodes.Add(node);
@@ -100,6 +87,25 @@ public static class PageOutlineMapper
         LinkAnchors(elements, byIndex, edges);
 
         return new RaggableTree(nodes, edges, nodes.ToDictionary(n => n.Fqn, StringComparer.Ordinal));
+    }
+
+    // A heading ends with the region that holds it, and with a heading of its level or above.
+    private static void CloseHeadings(ImmutableList<PageElement> elements, Stack<int> openHeadings, PageElement element, int container)
+    {
+        while (openHeadings.Count > 0 && !Encloses(elements, ContainerOf(elements, openHeadings.Peek()), container))
+            openHeadings.Pop();
+        if (element.Kind != PageElementKind.Heading) return;
+        while (openHeadings.Count > 0 && HeadingLevel(elements[openHeadings.Peek()]) >= HeadingLevel(element))
+            openHeadings.Pop();
+    }
+
+    // The open heading holds the element when both sit in the same region; a heading outside
+    // the element's region holds that region, not the element.
+    private static RaggableNode ParentOf(ImmutableList<PageElement> elements, Stack<int> openHeadings, RaggableNode[] byIndex, RaggableNode root, int container)
+    {
+        if (openHeadings.Count > 0 && ContainerOf(elements, openHeadings.Peek()) == container)
+            return byIndex[openHeadings.Peek()];
+        return container >= 0 ? byIndex[container] : root;
     }
 
     private static RaggableNode CreateElement(string path, int index, PageElement element, RaggableNode parent)

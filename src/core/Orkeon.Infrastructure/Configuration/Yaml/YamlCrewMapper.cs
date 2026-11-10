@@ -80,17 +80,24 @@ public sealed partial class YamlCrewMapper
     }
 
     /// <summary>The <c>budget:</c> block as the crew's budget (#218); the validator refuses a limit of zero or less.</summary>
-    private static Orkeon.Domain.Crew.ValueObjects.CrewBudget? MapBudget(CrewBudgetYamlConfig? yaml) =>
-        yaml is null
-            ? null
-            : new Orkeon.Domain.Crew.ValueObjects.CrewBudget
-            {
-                Tokens = yaml.Tokens,
-                WallTime = yaml.WallTimeSeconds is { } seconds ? TimeSpan.FromSeconds(seconds) : null,
-                ToolCalls = yaml.ToolCalls,
-                DelegationDepth = yaml.DelegationDepth,
-                SpawnedAgents = yaml.SpawnedAgents,
-            };
+    private static Orkeon.Domain.Crew.ValueObjects.CrewBudget? MapBudget(CrewBudgetYamlConfig? yaml)
+    {
+        if (yaml is null)
+            return null;
+
+        TimeSpan? wallTime = null;
+        if (yaml.WallTimeSeconds is { } seconds)
+            wallTime = TimeSpan.FromSeconds(seconds);
+
+        return new Orkeon.Domain.Crew.ValueObjects.CrewBudget
+        {
+            Tokens = yaml.Tokens,
+            WallTime = wallTime,
+            ToolCalls = yaml.ToolCalls,
+            DelegationDepth = yaml.DelegationDepth,
+            SpawnedAgents = yaml.SpawnedAgents,
+        };
+    }
 
     // The permissionMode: of an agent, refused at load when it names no mode.
     private static Orkeon.Domain.Security.PermissionMode? ReadPermissionMode(string agentKey, string? written)

@@ -402,14 +402,22 @@ internal sealed class ReplayConsoleAdapter : IConsoleAdapter, IThreadedConsole, 
     };
 
     /// <summary>One replay in progress.</summary>
-    private sealed class ReplayRun(IReadOnlyList<ReplayLine> lines, bool closeInputAtEnd)
+    private sealed class ReplayRun
     {
+        private readonly IReadOnlyList<ReplayLine> lines;
         private int _next;
 
-        public bool CloseInputAtEnd { get; } = closeInputAtEnd;
+        public ReplayRun(IReadOnlyList<ReplayLine> lines, bool closeInputAtEnd)
+        {
+            this.lines = lines;
+            CloseInputAtEnd = closeInputAtEnd;
+            Interrupt = new CancellationTokenSource();
+        }
+
+        public bool CloseInputAtEnd { get; }
 
         /// <summary>Cancelled by Ctrl-C; never disposed (no timer), so its token can be read at any time.</summary>
-        public CancellationTokenSource Interrupt { get; } = new();
+        public CancellationTokenSource Interrupt { get; }
 
         /// <summary>Whether Ctrl-C was already pressed for this replay.</summary>
         public bool Interrupted { get; set; }

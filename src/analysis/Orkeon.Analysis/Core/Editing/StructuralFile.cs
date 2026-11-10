@@ -315,22 +315,28 @@ internal sealed class StructuralFile
                 Walk(child, prefix);
                 continue;
             }
-            var declared = DeclaredNode(child);
-            var name = declared is null ? null : NameOf(declared);
-            if (declared is null || string.IsNullOrEmpty(name)) continue;
-
-            var fullName = prefix.Length == 0 ? name : $"{prefix}.{name}";
-            var inner = declared.Type == child.Type ? child : PathNode.Of(declared);
-            // A Rust impl block adds members to its type: they are listed under the type's name, the block itself is not.
-            if (declared.Type == "impl_item")
-            {
-                Walk(inner, fullName);
-                continue;
-            }
-
-            _declarations.Add(DeclarationOf(fullName, declared, child, named, i));
-            if (Containers.Contains(declared.Type)) Walk(inner, fullName);
+            WalkDeclaration(child, prefix, named, i);
         }
+    }
+
+    private void WalkDeclaration(PathNode child, string prefix, IReadOnlyList<PathNode> named, int index)
+    {
+        var declared = DeclaredNode(child);
+        if (declared is null) return;
+        var name = NameOf(declared);
+        if (string.IsNullOrEmpty(name)) return;
+
+        var fullName = prefix.Length == 0 ? name : $"{prefix}.{name}";
+        var inner = declared.Type == child.Type ? child : PathNode.Of(declared);
+        // A Rust impl block adds members to its type: they are listed under the type's name, the block itself is not.
+        if (declared.Type == "impl_item")
+        {
+            Walk(inner, fullName);
+            return;
+        }
+
+        _declarations.Add(DeclarationOf(fullName, declared, child, named, index));
+        if (Containers.Contains(declared.Type)) Walk(inner, fullName);
     }
 
     // The container or member a child declares, looking through a wrapper; null for anything else.
@@ -376,11 +382,11 @@ internal sealed class StructuralFile
     private void OutlineByPath(PathNode root)
     {
         var node = root;
-        var path = $"@ts:{root.Type}";
+        var pathBuilder = new System.Text.StringBuilder($"@ts:{root.Type}");
         var named = Uncommented(root);
         while (named.Count == 1 && named[0].NamedChildren.Count > 0)
         {
-            path += $"/{IndexIn(node, named[0])}/{named[0].Type}";
+            pathBuilder.Append('/').Append(IndexIn(node, named[0])).Append('/').Append(named[0].Type);
             node = named[0];
             named = Uncommented(node);
         }
@@ -388,7 +394,7 @@ internal sealed class StructuralFile
         foreach (var child in named)
         {
             var index = IndexIn(node, child);
-            var selector = $"{path}/{index}/{child.Type}";
+            var selector = $"{pathBuilder}/{index}/{child.Type}";
             _declarations.Add(new Declaration(selector, selector, child.Type, null, child, node.NamedChildren, index));
         }
     }

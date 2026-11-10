@@ -101,6 +101,19 @@ public sealed partial class GraphProcessStrategy : IProcessStrategy
         return ExecuteSequentialCoreAsync(crew, inputVariables, cancellationToken);
     }
 
+    private async Task<List<Orkeon.Domain.Task.CrewTask>> LoadTasksAsync(
+        IReadOnlyList<TaskId> taskIds, CancellationToken cancellationToken)
+    {
+        var loaded = new List<Orkeon.Domain.Task.CrewTask>(taskIds.Count);
+        foreach (var id in taskIds)
+        {
+            if (await _taskRepository.GetByIdAsync(id, cancellationToken).ConfigureAwait(false) is { } found)
+                loaded.Add(found);
+        }
+
+        return loaded;
+    }
+
     private async Task<DomainCrewOutput> ExecuteSequentialCoreAsync(
         DomainCrew crew,
         IReadOnlyDictionary<string, string>? inputVariables,
@@ -129,12 +142,7 @@ public sealed partial class GraphProcessStrategy : IProcessStrategy
         var taskIds = await CrewTaskSequencer.ResolveAsync(
             crew, _taskRepository, _logger, cancellationToken).ConfigureAwait(false);
 
-        var loaded = new List<Orkeon.Domain.Task.CrewTask>(taskIds.Count);
-        foreach (var id in taskIds)
-        {
-            if (await _taskRepository.GetByIdAsync(id, cancellationToken).ConfigureAwait(false) is { } found)
-                loaded.Add(found);
-        }
+        var loaded = await LoadTasksAsync(taskIds, cancellationToken).ConfigureAwait(false);
 
         // Only a task an agent runs needs one: a crew of decisions runs with none.
         if (agents.Count == 0 && loaded.Any(t => !t.IsDecision))
@@ -392,13 +400,10 @@ public sealed partial class GraphProcessStrategy : IProcessStrategy
             throw new InvalidOperationException("Graph is invalid: " + string.Join(" ", faults));
 
         // A node that branches needs the edge without a condition (the otherwise): found at build, never mid-run.
-        foreach (var leaving in topology.Edges.GroupBy(e => e.From, StringComparer.Ordinal))
+        if (topology.Edges.GroupBy(e => e.From, StringComparer.Ordinal).FirstOrDefault(g => g.All(e => e.When is not null)) is { } unguarded)
         {
-            if (leaving.All(e => e.When is not null))
-            {
-                throw new InvalidOperationException(
-                    $"Graph is invalid: node '{leaving.Key}' branches on a condition but has no otherwise edge (an edge without 'when').");
-            }
+            throw new InvalidOperationException(
+                $"Graph is invalid: node '{unguarded.Key}' branches on a condition but has no otherwise edge (an edge without 'when').");
         }
 
         const string end = StateGraph<CrewGraphState>.EndNode;

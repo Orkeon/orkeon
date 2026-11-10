@@ -93,7 +93,7 @@ public sealed partial class CommandDispatchService
     public CommandDispatchScope BeginCommand(string commandName, CancellationToken ct, TimeSpan? timeout = null, string? promptLine = null, int parentDepth = 0, bool fromCompleted = false)
     {
         var previous = _ambient.Value;
-        var scope = new CommandDispatchScope(commandName ?? string.Empty, timeout, () => _ambient.Value = previous, ct, promptLine is not null, previous?.PromptOwner, parentDepth, fromCompleted);
+        var scope = new CommandDispatchScope(commandName ?? string.Empty, timeout, () => _ambient.Value = previous, ct, new ScopeChain(promptLine is not null, previous?.PromptOwner, parentDepth, fromCompleted));
         if (promptLine is not null) _promptScope = scope;
         _ambient.Value = scope;
         return scope;

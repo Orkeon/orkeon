@@ -70,24 +70,7 @@ internal sealed class GitignoreMatcher
             switch (c)
             {
                 case '*':
-                    if (i + 1 < pattern.Length && pattern[i + 1] == '*')
-                    {
-                        var atSegmentStart = i == 0 || pattern[i - 1] == '/';
-                        if (atSegmentStart && i + 2 < pattern.Length && pattern[i + 2] == '/')
-                        {
-                            sb.Append("(.*/)?");
-                            i += 2;
-                        }
-                        else
-                        {
-                            sb.Append(".*");
-                            i++;
-                        }
-                    }
-                    else
-                    {
-                        sb.Append("[^/]*");
-                    }
+                    i = AppendStar(sb, pattern, i);
                     break;
                 case '?': sb.Append("[^/]"); break;
                 case '[':
@@ -104,6 +87,26 @@ internal sealed class GitignoreMatcher
         }
         sb.Append("(/|$)");
         return new Regex(sb.ToString(), RegexOptions.Compiled, TimeSpan.FromSeconds(1));
+    }
+
+    // Translates the '*' or '**' at pattern[index] and returns the index of the last character consumed.
+    private static int AppendStar(System.Text.StringBuilder sb, string pattern, int index)
+    {
+        if (index + 1 >= pattern.Length || pattern[index + 1] != '*')
+        {
+            sb.Append("[^/]*");
+            return index;
+        }
+
+        var atSegmentStart = index == 0 || pattern[index - 1] == '/';
+        if (atSegmentStart && index + 2 < pattern.Length && pattern[index + 2] == '/')
+        {
+            sb.Append("(.*/)?");
+            return index + 2;
+        }
+
+        sb.Append(".*");
+        return index + 1;
     }
 
     // Copies the class opening at pattern[start] as a regex class and returns the index of its
@@ -128,6 +131,15 @@ internal sealed class GitignoreMatcher
 
         sb.Append('[');
         if (negate) sb.Append('^');
+        AppendClassMembers(sb, pattern, first, i);
+        if (negate) sb.Append('/');
+        sb.Append(']');
+        return i;
+    }
+
+    private static void AppendClassMembers(System.Text.StringBuilder sb, string pattern, int first, int end)
+    {
+        var i = end;
         for (var j = first; j < i; j++)
         {
             var c = pattern[j];
@@ -140,9 +152,6 @@ internal sealed class GitignoreMatcher
             if (c is '\\' or ']' or '[' or '^' or '-') sb.Append('\\');
             sb.Append(c);
         }
-        if (negate) sb.Append('/');
-        sb.Append(']');
-        return i;
     }
 
     private sealed record GitignorePattern(Regex Regex, bool Negate, bool DirectoryOnly);

@@ -413,9 +413,7 @@ public partial class AnthropicLlmProvider : HttpLlmProviderBase
     private static object ToToolUseBlock(JsonElement tc, int index)
     {
         var hasFunction = tc.TryGetProperty("function", out var function);
-        var name = (hasFunction ? function : tc).TryGetProperty("name", out var nameProp) && nameProp.ValueKind == JsonValueKind.String
-            ? nameProp.GetString() ?? ""
-            : "";
+        var name = ReadToolCallName(hasFunction ? function : tc);
 
         if (!tc.TryGetProperty("id", out var idProp) || idProp.ValueKind != JsonValueKind.String)
             throw MalformedToolCall(index, name, "id", "is missing or not a string");
@@ -425,29 +423,37 @@ public partial class AnthropicLlmProvider : HttpLlmProviderBase
             throw MalformedToolCall(index, name, "name", "is missing or not a string");
 
         if (hasFunction)
-        {
-            var argumentsJson = function.TryGetProperty("arguments", out var args) && args.ValueKind == JsonValueKind.String
-                ? args.GetString()
-                : null;
-            var input = new Dictionary<string, object>();
-            if (!string.IsNullOrWhiteSpace(argumentsJson))
-            {
-                try
-                {
-                    input = JsonSerializer.Deserialize<Dictionary<string, object>>(argumentsJson) ?? input;
-                }
-                catch (JsonException)
-                {
-                    throw MalformedToolCall(index, name, "arguments", "is not a JSON object");
-                }
-            }
-            return new { type = "tool_use", id, name, input };
-        }
+            return new { type = "tool_use", id, name, input = ParseFunctionArguments(function, index, name) };
 
         var blockInput = tc.TryGetProperty("input", out var inputProp) && inputProp.ValueKind == JsonValueKind.Object
             ? inputProp.Clone()
             : JsonSerializer.SerializeToElement(new Dictionary<string, object>());
         return new { type = "tool_use", id, name, input = blockInput };
+    }
+
+    private static string ReadToolCallName(JsonElement holder)
+    {
+        if (holder.TryGetProperty("name", out var nameProp) && nameProp.ValueKind == JsonValueKind.String)
+            return nameProp.GetString() ?? "";
+        return "";
+    }
+
+    private static Dictionary<string, object> ParseFunctionArguments(JsonElement function, int index, string name)
+    {
+        var argumentsJson = function.TryGetProperty("arguments", out var args) && args.ValueKind == JsonValueKind.String
+            ? args.GetString()
+            : null;
+        var input = new Dictionary<string, object>();
+        if (string.IsNullOrWhiteSpace(argumentsJson))
+            return input;
+        try
+        {
+            return JsonSerializer.Deserialize<Dictionary<string, object>>(argumentsJson) ?? input;
+        }
+        catch (JsonException)
+        {
+            throw MalformedToolCall(index, name, "arguments", "is not a JSON object");
+        }
     }
 
     private static InvalidOperationException MalformedToolCall(int index, string name, string field, string problem) =>
@@ -1018,46 +1024,12 @@ public partial class AnthropicLlmProvider : HttpLlmProviderBase
                     };
                     break;
 
-                // A tool call opens its own block (GAP-32): its id and name come first, its input
-                // after, as input_json_delta fragments of the same block index.
-                case "content_block_start" when root.TryGetProperty("content_block", out var block)
-                    && block.TryGetProperty("type", out var blockType) && blockType.GetString() == "tool_use":
-                    var opened = new StreamedToolUse(
-                        block.TryGetProperty("id", out var toolId) ? toolId.GetString() ?? string.Empty : string.Empty,
-                        block.TryGetProperty("name", out var toolName) ? toolName.GetString() ?? string.Empty : string.Empty);
-                    state.ToolUses[BlockIndex(root)] = opened;
-                    events.Add(LlmStreamEvent.ToolCallFragment(new ToolCallDelta(
-                        BlockIndex(root),
-                        string.IsNullOrEmpty(opened.Id) ? null : opened.Id,
-                        string.IsNullOrEmpty(opened.Name) ? null : opened.Name,
-                        string.Empty)));
-                    break;
-
-                case "content_block_start" when root.TryGetProperty("content_block", out var thinkingStart)
-                    && thinkingStart.TryGetProperty("type", out var thinkingType)
-                    && thinkingType.GetString() is "thinking" or "redacted_thinking":
-                    state.ThinkingBlocks[BlockIndex(root)] = new StreamedThinkingBlock(
-                        thinkingType.GetString()!,
-                        thinkingStart.TryGetProperty("data", out var redacted) ? redacted.GetString() ?? string.Empty : string.Empty);
+                case "content_block_start":
+                    HandleBlockStart(root, state, events);
                     break;
 
                 case "content_block_delta" when root.TryGetProperty("delta", out var blockDelta):
-                    AccumulateBlockDelta(blockDelta, state, events);
-                    if (state.ThinkingBlocks.TryGetValue(BlockIndex(root), out var thinkingBlock))
-                    {
-                        if (blockDelta.TryGetProperty("thinking", out var thinkingPart))
-                            thinkingBlock.Thinking.Append(thinkingPart.GetString());
-                        if (blockDelta.TryGetProperty("signature", out var signaturePart))
-                            thinkingBlock.Signature.Append(signaturePart.GetString());
-                    }
-                    if (blockDelta.TryGetProperty("partial_json", out var partialJson)
-                        && state.ToolUses.TryGetValue(BlockIndex(root), out var toolUse))
-                    {
-                        var piece = partialJson.GetString();
-                        toolUse.InputJson.Append(piece);
-                        if (!string.IsNullOrEmpty(piece))
-                            events.Add(LlmStreamEvent.ToolCallFragment(new ToolCallDelta(BlockIndex(root), null, null, piece)));
-                    }
+                    HandleBlockDelta(root, blockDelta, state, events);
                     break;
 
                 // The end of a complete answer. A stream that closes without it was cut short (LLM-12).
@@ -1077,6 +1049,55 @@ public partial class AnthropicLlmProvider : HttpLlmProviderBase
         }
 
         return events;
+    }
+
+    private static void HandleBlockStart(JsonElement root, AnthropicStreamState state, List<LlmStreamEvent> events)
+    {
+        if (!root.TryGetProperty("content_block", out var block)
+            || !block.TryGetProperty("type", out var blockType))
+            return;
+
+        // A tool call opens its own block (GAP-32): its id and name come first, its input
+        // after, as input_json_delta fragments of the same block index.
+        if (blockType.GetString() == "tool_use")
+        {
+            var opened = new StreamedToolUse(
+                block.TryGetProperty("id", out var toolId) ? toolId.GetString() ?? string.Empty : string.Empty,
+                block.TryGetProperty("name", out var toolName) ? toolName.GetString() ?? string.Empty : string.Empty);
+            state.ToolUses[BlockIndex(root)] = opened;
+            events.Add(LlmStreamEvent.ToolCallFragment(new ToolCallDelta(
+                BlockIndex(root),
+                string.IsNullOrEmpty(opened.Id) ? null : opened.Id,
+                string.IsNullOrEmpty(opened.Name) ? null : opened.Name,
+                string.Empty)));
+        }
+        else if (blockType.GetString() is "thinking" or "redacted_thinking")
+        {
+            state.ThinkingBlocks[BlockIndex(root)] = new StreamedThinkingBlock(
+                blockType.GetString()!,
+                block.TryGetProperty("data", out var redacted) ? redacted.GetString() ?? string.Empty : string.Empty);
+        }
+    }
+
+    private static void HandleBlockDelta(
+        JsonElement root, JsonElement blockDelta, AnthropicStreamState state, List<LlmStreamEvent> events)
+    {
+        AccumulateBlockDelta(blockDelta, state, events);
+        if (state.ThinkingBlocks.TryGetValue(BlockIndex(root), out var thinkingBlock))
+        {
+            if (blockDelta.TryGetProperty("thinking", out var thinkingPart))
+                thinkingBlock.Thinking.Append(thinkingPart.GetString());
+            if (blockDelta.TryGetProperty("signature", out var signaturePart))
+                thinkingBlock.Signature.Append(signaturePart.GetString());
+        }
+        if (blockDelta.TryGetProperty("partial_json", out var partialJson)
+            && state.ToolUses.TryGetValue(BlockIndex(root), out var toolUse))
+        {
+            var piece = partialJson.GetString();
+            toolUse.InputJson.Append(piece);
+            if (!string.IsNullOrEmpty(piece))
+                events.Add(LlmStreamEvent.ToolCallFragment(new ToolCallDelta(BlockIndex(root), null, null, piece)));
+        }
     }
 
     /// <summary>The vendor's <c>error.type</c> and sanitized <c>error.message</c> of a mid-stream <c>error</c> event.</summary>

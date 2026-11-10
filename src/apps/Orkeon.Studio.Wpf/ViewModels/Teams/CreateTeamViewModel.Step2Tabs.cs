@@ -121,13 +121,34 @@ public sealed partial class CreateTeamViewModel
         : string.Empty;
 
     /// <summary>The team tab: turning while the engine composes, a check once a team is proposed.</summary>
-    public string TeamTabState => IsComposing ? TabWorking : HasProposal ? TabDone : TabEmpty;
+    public string TeamTabState
+    {
+        get
+        {
+            if (IsComposing)
+            {
+                return TabWorking;
+            }
+
+            return HasProposal ? TabDone : TabEmpty;
+        }
+    }
 
     /// <summary>« 3 agents · proposed », « Being composed », « Not proposed yet ».</summary>
-    public string TeamTabSubtitle =>
-        IsComposing ? _strings[StudioStringKeys.WizardTabTeamComposing]
-        : HasProposal ? _strings.Format(StudioStringKeys.WizardTabTeamProposed, Agents.Count)
-        : _strings[StudioStringKeys.WizardTabTeamEmpty];
+    public string TeamTabSubtitle
+    {
+        get
+        {
+            if (IsComposing)
+            {
+                return _strings[StudioStringKeys.WizardTabTeamComposing];
+            }
+
+            return HasProposal
+                ? _strings.Format(StudioStringKeys.WizardTabTeamProposed, Agents.Count)
+                : _strings[StudioStringKeys.WizardTabTeamEmpty];
+        }
+    }
 
     /// <summary>The team pane's footer: « 3 agents, composition stopped. », or that it goes on.</summary>
     public string TeamFooter => IsComposing
@@ -135,8 +156,18 @@ public sealed partial class CreateTeamViewModel
         : _strings.Format(StudioStringKeys.WizardTeamFooterStopped, Agents.Count);
 
     /// <summary>The folders tab of step 2: the amber dot while a folder is to choose (R13).</summary>
-    public string Step2FoldersTabState =>
-        HasFoldersToChoose ? TabExpected : HasMountRows ? TabDone : TabEmpty;
+    public string Step2FoldersTabState
+    {
+        get
+        {
+            if (HasFoldersToChoose)
+            {
+                return TabExpected;
+            }
+
+            return HasMountRows ? TabDone : TabEmpty;
+        }
+    }
 
     /// <summary>« 2 folders · 1 to choose », « 2 folders · inside the team », « 2 folders set », « No folder ».</summary>
     public string Step2FoldersTabSubtitle
@@ -195,31 +226,57 @@ public sealed partial class CreateTeamViewModel
     /// </list>
     /// <see cref="CompositionTabSubtitle"/> and <see cref="CompositionStateText"/> follow the same scale.
     /// </summary>
-    public string CompositionTabState =>
-        IsComposing ? TabWorking
-        : _model.FinishedStatus is null && !HasProposal ? TabEmpty
-        : ValidationOk switch
+    public string CompositionTabState
+    {
+        get
         {
-            true => TabDone,
-            false => TabWarning,
-            null => TabEmpty,
-        };
+            if (IsComposing)
+            {
+                return TabWorking;
+            }
+
+            if (_model.FinishedStatus is null && !HasProposal)
+            {
+                return TabEmpty;
+            }
+
+            return ValidationOk switch
+            {
+                true => TabDone,
+                false => TabWarning,
+                null => TabEmpty,
+            };
+        }
+    }
 
     /// <summary>
     /// « Composed · 4 files written », « To fix · … », « Stopped · … », « Under way », « Not started »:
     /// the subtitle key of <see cref="CompositionTabState"/>'s scale (state → key → tone).
     /// </summary>
-    public string CompositionTabSubtitle =>
-        IsComposing ? _strings[StudioStringKeys.WizardTabCompositionRunning]
-        : _model.FinishedStatus is null && !HasProposal ? _strings[StudioStringKeys.WizardTabCompositionNone]
-        : _strings.Format(
-            ValidationOk switch
+    public string CompositionTabSubtitle
+    {
+        get
+        {
+            if (IsComposing)
             {
-                true => StudioStringKeys.WizardTabCompositionDone,
-                false => StudioStringKeys.WizardTabCompositionInvalid,
-                null => StudioStringKeys.WizardTabCompositionStopped,
-            },
-            Files.Count);
+                return _strings[StudioStringKeys.WizardTabCompositionRunning];
+            }
+
+            if (_model.FinishedStatus is null && !HasProposal)
+            {
+                return _strings[StudioStringKeys.WizardTabCompositionNone];
+            }
+
+            return _strings.Format(
+                ValidationOk switch
+                {
+                    true => StudioStringKeys.WizardTabCompositionDone,
+                    false => StudioStringKeys.WizardTabCompositionInvalid,
+                    null => StudioStringKeys.WizardTabCompositionStopped,
+                },
+                Files.Count);
+        }
+    }
 
     /// <summary>The « State » row: under way, or stopped with what the validation said.</summary>
     public string CompositionStateText =>
@@ -282,10 +339,18 @@ public sealed partial class CreateTeamViewModel
     /// The disabled « Try the team → »'s reason — the folders left to choose, else that the
     /// composition comes first (UX lot 05, 021); empty when it runs. The button always stands.
     /// </summary>
-    public string TryTeamTip =>
-        HasFoldersToChoose ? _strings.Format(StudioStringKeys.WizardFoldersToChoose, FoldersToChooseCount)
-        : !HasProposal ? _strings[StudioStringKeys.WizardTryTeamNoProposal]
-        : string.Empty;
+    public string TryTeamTip
+    {
+        get
+        {
+            if (HasFoldersToChoose)
+            {
+                return _strings.Format(StudioStringKeys.WizardFoldersToChoose, FoldersToChooseCount);
+            }
+
+            return !HasProposal ? _strings[StudioStringKeys.WizardTryTeamNoProposal] : string.Empty;
+        }
+    }
 
     /// <summary>Whether the action bar has a sentence — its dot shows with it.</summary>
     public bool HasStep2Hint => Step2Hint.Length > 0;

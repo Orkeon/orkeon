@@ -219,29 +219,7 @@ public sealed class FileSystemRegistry : IDisposable
 
             if (mount is null)
             {
-                // Agent-facing only: a denial message is read by the LLM, so it names exactly
-                // what GetAvailableMounts() names (ADR-008). Listing an Internal mount here
-                // would hand an agent the one thing its visibility exists to withhold — the
-                // exchange-log directory, which holds every prompt and API payload, was
-                // advertised as "writable" in this very sentence.
-                var visible = _mounts.Where(m => m.Visibility == MountVisibility.AgentFacing).ToList();
-                var availableVirtualPaths = visible.Select(m => m.VirtualPath).ToList();
-                // Annotate rights so a tool-calling agent can self-correct on the next
-                // iteration (e.g. retry a write under the mount marked writable).
-                var described = visible.Select(m => m.DefaultRights.HasFlag(FileAccessRights.Write)
-                    ? $"{m.VirtualPath} (writable)"
-                    : $"{m.VirtualPath} (read-only)");
-                // The hint shows the shape of an address: a model that wrote a path relative to the
-                // project (src/stats.js) learns how to spell it, not only where it could go.
-                var example = visible.FirstOrDefault(m => m.VirtualPath == DefaultWorkingDirectory)?.VirtualPath
-                              ?? visible.LastOrDefault()?.VirtualPath
-                              ?? DefaultWorkingDirectory;
-                throw new FileAccessDeniedException(
-                    $"No mount found for virtual path '{virtualPath}': a path starts with a mount: {example.TrimEnd('/')}/src/stats.js. " +
-                    $"Available mounts: {string.Join(", ", described)}",
-                    virtualPath,
-                    requiredRight,
-                    availableVirtualPaths);
+                throw NoMountFound(virtualPath, requiredRight);
             }
 
             // 2. Extract relative path
@@ -250,18 +228,7 @@ public sealed class FileSystemRegistry : IDisposable
             // 3. Check rights
             var effectiveRights = mount.ResolveRights(relativePath);
             if (!effectiveRights.HasFlag(requiredRight))
-            {
-                var granting = _mounts
-                    .Where(m => m.Visibility == MountVisibility.AgentFacing
-                                && m.DefaultRights.HasFlag(requiredRight))
-                    .Select(m => m.VirtualPath)
-                    .ToList();
-                throw new FileAccessDeniedException(
-                    $"Access denied for '{virtualPath}': required {requiredRight}, effective {effectiveRights}. " +
-                    $"Mounts granting {requiredRight}: {(granting.Count > 0 ? string.Join(", ", granting) : "(none)")}.",
-                    virtualPath,
-                    requiredRight);
-            }
+                throw RightsDenied(virtualPath, requiredRight, effectiveRights);
 
             // 4. Build physical path
             var physicalPath = Path.GetFullPath(Path.Combine(mount.BasePath, relativePath));
@@ -310,6 +277,49 @@ public sealed class FileSystemRegistry : IDisposable
             return physicalPath;
         }
         finally { _lock.ExitReadLock(); }
+    }
+
+    /// <summary>Builds the denial for a path no visible mount covers. The caller holds the read lock.</summary>
+    private FileAccessDeniedException NoMountFound(string virtualPath, FileAccessRights requiredRight)
+    {
+        // Agent-facing only: a denial message is read by the LLM, so it names exactly
+        // what GetAvailableMounts() names (ADR-008). Listing an Internal mount here
+        // would hand an agent the one thing its visibility exists to withhold — the
+        // exchange-log directory, which holds every prompt and API payload, was
+        // advertised as "writable" in this very sentence.
+        var visible = _mounts.Where(m => m.Visibility == MountVisibility.AgentFacing).ToList();
+        var availableVirtualPaths = visible.Select(m => m.VirtualPath).ToList();
+        // Annotate rights so a tool-calling agent can self-correct on the next
+        // iteration (e.g. retry a write under the mount marked writable).
+        var described = visible.Select(m => m.DefaultRights.HasFlag(FileAccessRights.Write)
+            ? $"{m.VirtualPath} (writable)"
+            : $"{m.VirtualPath} (read-only)");
+        // The hint shows the shape of an address: a model that wrote a path relative to the
+        // project (src/stats.js) learns how to spell it, not only where it could go.
+        var example = visible.FirstOrDefault(m => m.VirtualPath == DefaultWorkingDirectory)?.VirtualPath
+                      ?? visible.LastOrDefault()?.VirtualPath
+                      ?? DefaultWorkingDirectory;
+        return new FileAccessDeniedException(
+            $"No mount found for virtual path '{virtualPath}': a path starts with a mount: {example.TrimEnd('/')}/src/stats.js. " +
+            $"Available mounts: {string.Join(", ", described)}",
+            virtualPath,
+            requiredRight,
+            availableVirtualPaths);
+    }
+
+    /// <summary>Builds the denial for a path whose effective rights lack the required one. The caller holds the read lock.</summary>
+    private FileAccessDeniedException RightsDenied(string virtualPath, FileAccessRights requiredRight, FileAccessRights effectiveRights)
+    {
+        var granting = _mounts
+            .Where(m => m.Visibility == MountVisibility.AgentFacing
+                        && m.DefaultRights.HasFlag(requiredRight))
+            .Select(m => m.VirtualPath)
+            .ToList();
+        return new FileAccessDeniedException(
+            $"Access denied for '{virtualPath}': required {requiredRight}, effective {effectiveRights}. " +
+            $"Mounts granting {requiredRight}: {(granting.Count > 0 ? string.Join(", ", granting) : "(none)")}.",
+            virtualPath,
+            requiredRight);
     }
 
     /// <summary>

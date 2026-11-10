@@ -108,6 +108,32 @@ public sealed class ActionBar : Panel
             ? finalSize.Width
             : finalSize.Width - _more.DesiredSize.Width - Gap;
 
+        var shown = SelectShown(onLine, budget);
+        RemoveStrayRules(shown);
+
+        // The menu takes everything that is not on the line, in the order given.
+        _hidden.Clear();
+        _hidden.AddRange(visible.Where(c => !shown.Contains(c)));
+
+        var x = ArrangeShown(shown, finalSize.Height);
+        ArrangeHidden();
+
+        foreach (var child in InternalChildren.Cast<UIElement>().Where(c => c.Visibility == Visibility.Collapsed))
+        {
+            child.Arrange(new Rect(0, 0, 0, 0));
+        }
+
+        var showMore = _hidden.Any(c => c is ButtonBase);
+        _more.Visibility = showMore ? Visibility.Visible : Visibility.Hidden;
+        _more.Arrange(showMore
+            ? new Rect(x, (finalSize.Height - _more.DesiredSize.Height) / 2, _more.DesiredSize.Width, _more.DesiredSize.Height)
+            : new Rect(0, 0, 0, 0));
+
+        return finalSize;
+    }
+
+    private static List<UIElement> SelectShown(List<UIElement> onLine, double budget)
+    {
         var shown = new List<UIElement>();
         var overflowed = false;
         double used = 0;
@@ -125,7 +151,12 @@ public sealed class ActionBar : Panel
             }
         }
 
-        // A rule is only drawn between two shown buttons: never at an edge, never doubled.
+        return shown;
+    }
+
+    // A rule is only drawn between two shown buttons: never at an edge, never doubled.
+    private static void RemoveStrayRules(List<UIElement> shown)
+    {
         for (var i = shown.Count - 1; i >= 0; i--)
         {
             if (IsRule(shown[i]) && (i == 0 || i == shown.Count - 1 || IsRule(shown[i - 1])))
@@ -133,15 +164,15 @@ public sealed class ActionBar : Panel
                 shown.RemoveAt(i);
             }
         }
+    }
 
-        // The menu takes everything that is not on the line, in the order given.
-        _hidden.Clear();
-        _hidden.AddRange(visible.Where(c => !shown.Contains(c)));
-
+    /// <summary>Arranges the buttons on the line and returns the x where the line ends.</summary>
+    private double ArrangeShown(List<UIElement> shown, double height)
+    {
         double x = 0;
         foreach (var child in shown)
         {
-            var y = (finalSize.Height - child.DesiredSize.Height) / 2;
+            var y = (height - child.DesiredSize.Height) / 2;
             child.Arrange(new Rect(x, y, child.DesiredSize.Width, child.DesiredSize.Height));
             child.Clip = null;
             child.IsHitTestVisible = true;
@@ -153,6 +184,11 @@ public sealed class ActionBar : Panel
             x += child.DesiredSize.Width + Gap;
         }
 
+        return x;
+    }
+
+    private void ArrangeHidden()
+    {
         foreach (var child in _hidden)
         {
             child.Arrange(new Rect(0, 0, 0, 0));
@@ -165,19 +201,6 @@ public sealed class ActionBar : Panel
                 _untabbed.Add(hiddenControl);
             }
         }
-
-        foreach (var child in InternalChildren.Cast<UIElement>().Where(c => c.Visibility == Visibility.Collapsed))
-        {
-            child.Arrange(new Rect(0, 0, 0, 0));
-        }
-
-        var showMore = _hidden.Any(c => c is ButtonBase);
-        _more.Visibility = showMore ? Visibility.Visible : Visibility.Hidden;
-        _more.Arrange(showMore
-            ? new Rect(x, (finalSize.Height - _more.DesiredSize.Height) / 2, _more.DesiredSize.Width, _more.DesiredSize.Height)
-            : new Rect(0, 0, 0, 0));
-
-        return finalSize;
     }
 
     private void FillMenu()

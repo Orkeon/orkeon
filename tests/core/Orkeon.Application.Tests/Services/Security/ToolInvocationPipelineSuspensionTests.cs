@@ -26,7 +26,7 @@ public sealed class ToolInvocationPipelineSuspensionTests
         var scope = new AsyncLocalRunScope();
         var run = new RunScope(ExecutionId.New(), "crew");
         var tool = new SpyTool("human_input", result: "Tool execution failed: waiting", succeed: false) { OnCall = () => run.Suspend(Question) };
-        var pipeline = new ToolInvocationPipeline(runScope: scope);
+        var pipeline = new ToolInvocationPipeline(options: new ToolInvocationPipelineOptions { RunScope = scope });
 
         using (scope.Enter(run))
         {
@@ -42,7 +42,7 @@ public sealed class ToolInvocationPipelineSuspensionTests
     {
         var scope = new AsyncLocalRunScope();
         var tool = new SpyTool("echo", result: "fine");
-        var pipeline = new ToolInvocationPipeline(runScope: scope);
+        var pipeline = new ToolInvocationPipeline(options: new ToolInvocationPipelineOptions { RunScope = scope });
 
         using (scope.Enter(new RunScope(ExecutionId.New(), "crew")))
         {

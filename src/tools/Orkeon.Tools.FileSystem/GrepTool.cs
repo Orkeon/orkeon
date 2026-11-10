@@ -202,15 +202,7 @@ public sealed class GrepTool : FileToolBase<GrepRequest, GrepResponse>
         ArgumentNullException.ThrowIfNull(request);
         // A relative root resolves against the working directory, as ValidateTypedRequest judged it.
         request = request with { Path = AbsolutizePath(request.Path) };
-        Regex regex;
-        try
-        {
-            regex = new Regex(request.Pattern, request.CaseInsensitive ? RegexOptions.IgnoreCase | RegexOptions.CultureInvariant : RegexOptions.CultureInvariant, _matchTimeout);
-        }
-        catch (ArgumentException)
-        {
-            throw new ArgumentException($"Invalid regular expression: {request.Pattern}");
-        }
+        var regex = BuildRegex(request);
 
         if (!await _fileSystemService.ExistsAsync(request.Path, cancellationToken).ConfigureAwait(false)
             || await _fileSystemService.GetEntryKindAsync(request.Path, cancellationToken).ConfigureAwait(false) != VirtualEntryKind.Directory)
@@ -226,25 +218,7 @@ public sealed class GrepTool : FileToolBase<GrepRequest, GrepResponse>
 
         var scan = new GrepScan();
         var collectHits = request.OutputMode == GrepOutputModes.Hits;
-        foreach (var path in candidates.Select(candidate => candidate.Location))
-        {
-            if (scan.Scanned + scan.Skipped >= request.MaxFiles)
-            {
-                scan.FilesCut = true;
-                break;
-            }
-
-            var text = await ReadCandidateAsync(path, sizes, scan, cancellationToken).ConfigureAwait(false);
-            if (text is null)
-            {
-                scan.Skipped++;
-                continue;
-            }
-            scan.Scanned++;
-
-            ScanText(path, text, regex, collectHits ? request.MaxResults : null, scan);
-            if (scan.TimedOut) break;
-        }
+        await ScanCandidatesAsync(request, candidates.Select(candidate => candidate.Location), sizes, regex, collectHits, scan, cancellationToken).ConfigureAwait(false);
 
         var counts = collectHits ? [] : TopCounts(scan, request.MaxResults);
         return new GrepResponse
@@ -260,6 +234,44 @@ public sealed class GrepTool : FileToolBase<GrepRequest, GrepResponse>
             FilesSkipped = scan.Skipped,
             AlreadyBounded = scan.Bounded,
         };
+    }
+
+    private Regex BuildRegex(GrepRequest request)
+    {
+        var options = request.CaseInsensitive ? RegexOptions.IgnoreCase | RegexOptions.CultureInvariant : RegexOptions.CultureInvariant;
+        try
+        {
+            return new Regex(request.Pattern, options, _matchTimeout);
+        }
+        catch (ArgumentException)
+        {
+            throw new ArgumentException($"Invalid regular expression: {request.Pattern}");
+        }
+    }
+
+    private async Task ScanCandidatesAsync(
+        GrepRequest request, IEnumerable<string> paths, Dictionary<string, long> sizes, Regex regex, bool collectHits,
+        GrepScan scan, CancellationToken cancellationToken)
+    {
+        foreach (var path in paths)
+        {
+            if (scan.Scanned + scan.Skipped >= request.MaxFiles)
+            {
+                scan.FilesCut = true;
+                return;
+            }
+
+            var text = await ReadCandidateAsync(path, sizes, scan, cancellationToken).ConfigureAwait(false);
+            if (text is null)
+            {
+                scan.Skipped++;
+                continue;
+            }
+
+            scan.Scanned++;
+            ScanText(path, text, regex, collectHits ? request.MaxResults : null, scan);
+            if (scan.TimedOut) return;
+        }
     }
 
     /// <summary>The per-file counts, highest first, cut to <paramref name="maxResults"/> entries and to <see cref="MaxTotalChars"/>.</summary>

@@ -219,17 +219,8 @@ internal static class EvalCommand
         ArgumentNullException.ThrowIfNull(options);
         return RagCommand.GuardedAsync(console, "eval bench", async ct =>
         {
-            if (await RefuseAsync(console, "eval bench", options).ConfigureAwait(false) is { } refused)
+            if (await PreflightBenchAsync(console, options).ConfigureAwait(false) is { } refused)
                 return refused;
-
-            if (options.Runs < 1)
-            {
-                await console.ErrorOutput.WriteLineAsync("orkeon eval bench: --runs must be at least 1.").ConfigureAwait(false);
-                return Program.ExitScriptError;
-            }
-
-            if (await RefuseThresholdAsync(console, "eval bench", options.Threshold).ConfigureAwait(false) is { } badThreshold)
-                return badThreshold;
 
             var cwd = RagCommand.ResolveCwd(options);
             using var host = BuildScoringHost(console, options, cwd);
@@ -244,22 +235,9 @@ internal static class EvalCommand
             var fileSystem = host.Services.GetRequiredService<IFileSystemService>();
             var jsonPath = $"{options.Output.TrimEnd('/')}/{ReportName(name)}-bench.json";
 
-            // The baseline is read before the run writes anything: the report this run writes could be
-            // the baseline itself (the default --output is ./.orkeon/eval), and overwritten first it
-            // would compare with itself and never regress.
-            BenchmarkReport? baseline = null;
-            if (options.Baseline is not null)
-            {
-                if (SameFile(fileSystem, options.Baseline, cwd, jsonPath))
-                {
-                    await console.ErrorOutput.WriteLineAsync(
-                        $"orkeon eval bench: --baseline '{options.Baseline}' is the report this run writes ({jsonPath}): keep the baseline elsewhere (copy it, or pass another --output).")
-                        .ConfigureAwait(false);
-                    return Program.ExitScriptError;
-                }
-
-                baseline = await ReadReportAsync(fileSystem, options.Baseline, cwd, ct).ConfigureAwait(false);
-            }
+            var (baseline, baselineFailed) = await ReadBenchBaselineAsync(console, fileSystem, options, cwd, jsonPath, ct).ConfigureAwait(false);
+            if (baselineFailed)
+                return Program.ExitScriptError;
 
             var runner = host.Services.GetRequiredService<IBenchmarkRunner>();
             var report = await runner.RunAsync(
@@ -292,6 +270,48 @@ internal static class EvalCommand
                 $"orkeon eval bench: REGRESSION - score {comparison.CurrentScore:F4} against baseline {comparison.BaselineScore:F4} (delta {comparison.ScoreDelta:+0.0000;-0.0000;0.0000}).")).ConfigureAwait(false);
             return Program.ExitScriptError;
         });
+    }
+
+    /// <summary>The refusals of <c>eval bench</c> that need no host: the shared checks, --runs and --threshold; null when none applies.</summary>
+    private static async Task<int?> PreflightBenchAsync(IRunnerConsole console, EvalBenchOptions options)
+    {
+        if (await RefuseAsync(console, "eval bench", options).ConfigureAwait(false) is { } refused)
+            return refused;
+
+        if (options.Runs < 1)
+        {
+            await console.ErrorOutput.WriteLineAsync("orkeon eval bench: --runs must be at least 1.").ConfigureAwait(false);
+            return Program.ExitScriptError;
+        }
+
+        return await RefuseThresholdAsync(console, "eval bench", options.Threshold).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Reads the baseline before the run writes anything: the report this run writes could be the baseline
+    /// itself (the default --output is ./.orkeon/eval), and overwritten first it would compare with itself
+    /// and never regress. <c>Failed</c> is true when the baseline is the report this run writes.
+    /// </summary>
+    private static async Task<(BenchmarkReport? Baseline, bool Failed)> ReadBenchBaselineAsync(
+        IRunnerConsole console,
+        IFileSystemService fileSystem,
+        EvalBenchOptions options,
+        string cwd,
+        string jsonPath,
+        CancellationToken ct)
+    {
+        if (options.Baseline is null)
+            return (null, false);
+
+        if (SameFile(fileSystem, options.Baseline, cwd, jsonPath))
+        {
+            await console.ErrorOutput.WriteLineAsync(
+                $"orkeon eval bench: --baseline '{options.Baseline}' is the report this run writes ({jsonPath}): keep the baseline elsewhere (copy it, or pass another --output).")
+                .ConfigureAwait(false);
+            return (null, true);
+        }
+
+        return (await ReadReportAsync(fileSystem, options.Baseline, cwd, ct).ConfigureAwait(false), false);
     }
 
     /// <summary>Compares two reports; returns the CLI exit code: 1 on a regression.</summary>
@@ -389,7 +409,7 @@ internal static class EvalCommand
             return Program.ExitScriptError;
         }
 
-        if (options.Evaluators is not null && ParseEvaluators(options.Evaluators, out var unknown) is null)
+        if (options.Evaluators is not null && ParseEvaluators(options.Evaluators, out var unknown).Count == 0)
         {
             await console.ErrorOutput.WriteLineAsync(
                 $"orkeon {command}: unknown evaluator '{unknown}'. Known: format, schema, text-quality, similarity, tool-accuracy, coherence, fluency, groundedness.")
@@ -400,8 +420,8 @@ internal static class EvalCommand
         return null;
     }
 
-    /// <summary>The canonical evaluator names of <paramref name="list"/>, or null (and the first unknown token) when one is unknown.</summary>
-    private static List<string>? ParseEvaluators(string list, out string? unknown)
+    /// <summary>The canonical evaluator names of <paramref name="list"/>, or an empty list (and the first unknown token) when one is unknown.</summary>
+    private static List<string> ParseEvaluators(string list, out string? unknown)
     {
         unknown = null;
         var names = new List<string>();
@@ -411,7 +431,7 @@ internal static class EvalCommand
             if (!KnownEvaluators.TryGetValue(key, out var name))
             {
                 unknown = token;
-                return null;
+                return [];
             }
 
             if (!names.Contains(name, StringComparer.Ordinal))
@@ -421,7 +441,7 @@ internal static class EvalCommand
         if (names.Count == 0)
         {
             unknown = list;
-            return null;
+            return [];
         }
 
         return names;
@@ -430,7 +450,12 @@ internal static class EvalCommand
     /// <summary>The shared runner host, with the judge switch the options ask for laid over the settings.</summary>
     private static IHost? BuildScoringHost(IRunnerConsole console, EvalScoringOptions options, string cwd)
     {
-        var judge = options.LlmJudge ? "true" : options.Offline ? "false" : null;
+        string? judge = null;
+        if (options.LlmJudge)
+            judge = "true";
+        else if (options.Offline)
+            judge = "false";
+
         return RagCommand.BuildHost(
             console,
             options,
@@ -494,7 +519,7 @@ internal static class EvalCommand
         var suite = host.Services.GetRequiredService<IEvaluationSuite>();
         if (options.Evaluators is not null)
         {
-            var wanted = ParseEvaluators(options.Evaluators, out _)!;
+            var wanted = ParseEvaluators(options.Evaluators, out _);
             var missing = wanted.Where(w => !suite.Evaluators.Any(e => string.Equals(e.Name, w, StringComparison.Ordinal))).ToList();
             if (missing.Count > 0)
             {

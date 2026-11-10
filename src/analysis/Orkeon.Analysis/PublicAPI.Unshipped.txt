@@ -53,7 +53,7 @@ Orkeon.Analysis.Core.Cache.CachedBuildResult.ReindexedFileCount.get -> int
 Orkeon.Analysis.Core.Cache.CachedBuildResult.ReindexedFileCount.init -> void
 Orkeon.Analysis.Core.Cache.CachingTreeBuilder
 Orkeon.Analysis.Core.Cache.CachingTreeBuilder.BuildAsync(string! virtualRoot, Orkeon.Analysis.Abstractions.DTOs.Tools.IndexCodebaseRequest! request, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<Orkeon.Analysis.Core.Cache.CachedBuildResult!>!
-Orkeon.Analysis.Core.Cache.CachingTreeBuilder.CachingTreeBuilder(Orkeon.Analysis.Core.Cache.IRaggableTreeCache! cache, Orkeon.Analysis.Abstractions.Interfaces.IFileSystemDiscoverer! discoverer, Orkeon.Domain.FileSystem.IFileSystemService! fileSystem, System.Func<Orkeon.Analysis.Core.RaggableTreeBuilder!>! builderFactory, System.Func<Orkeon.Analysis.Core.IncrementalReindexEngine!>! engineFactory, string! environment, Orkeon.Analysis.Abstractions.Interfaces.IVectorStoreProvider? vectorStore = null, Microsoft.Extensions.Logging.ILogger<Orkeon.Analysis.Core.Cache.CachingTreeBuilder!>? logger = null) -> void
+Orkeon.Analysis.Core.Cache.CachingTreeBuilder.CachingTreeBuilder(Orkeon.Analysis.Core.Cache.IRaggableTreeCache! cache, Orkeon.Analysis.Abstractions.Interfaces.IFileSystemDiscoverer! discoverer, Orkeon.Domain.FileSystem.IFileSystemService! fileSystem, Orkeon.Analysis.Core.Cache.TreeFactories! factories, string! environment, Orkeon.Analysis.Abstractions.Interfaces.IVectorStoreProvider? vectorStore = null, Microsoft.Extensions.Logging.ILogger<Orkeon.Analysis.Core.Cache.CachingTreeBuilder!>? logger = null) -> void
 Orkeon.Analysis.Core.Cache.IRaggableTreeCache.LoadAsync(string! rootPath, string! cacheKey, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<Orkeon.Analysis.Core.Cache.RaggableTreeCacheEntry?>!
 Orkeon.Analysis.Core.Cache.IRaggableTreeCache.SaveAsync(string! rootPath, Orkeon.Analysis.Core.Cache.RaggableTreeCacheEntry! entry, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<bool>!
 Orkeon.Analysis.Core.Cache.IndexCacheOutcome
@@ -161,3 +161,7 @@ const Orkeon.Analysis.Adapters.PageOutlineMapper.LevelTag = "level" -> string!
 const Orkeon.Analysis.Adapters.PageOutlineMapper.RoleTag = "role" -> string!
 Orkeon.Analysis.Vectors.OllamaEmbeddingProvider.ModelName.get -> string!
 Orkeon.Analysis.Vectors.OpenAIEmbeddingProvider.ModelName.get -> string!
+Orkeon.Analysis.Core.Cache.TreeFactories
+Orkeon.Analysis.Core.Cache.TreeFactories.Builder.get -> System.Func<Orkeon.Analysis.Core.RaggableTreeBuilder!>!
+Orkeon.Analysis.Core.Cache.TreeFactories.Engine.get -> System.Func<Orkeon.Analysis.Core.IncrementalReindexEngine!>!
+Orkeon.Analysis.Core.Cache.TreeFactories.TreeFactories(System.Func<Orkeon.Analysis.Core.RaggableTreeBuilder!>! builder, System.Func<Orkeon.Analysis.Core.IncrementalReindexEngine!>! engine) -> void

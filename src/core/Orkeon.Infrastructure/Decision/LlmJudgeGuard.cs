@@ -81,6 +81,71 @@ public sealed partial class LlmJudgeGuard : IGuardian
         var what = context.Phase == GuardPhase.Output ? "output" : "input";
         var content = context.Content;
         var closed = _options.FailMode == GuardianJudgeFailMode.Closed;
+        var (chunks, refusal) = await BuildChunksAsync(context, what, content, closed, ct).ConfigureAwait(false);
+        if (refusal is not null)
+            return refusal;
+
+        Dictionary<string, double> merged;
+        try
+        {
+            merged = await AssessChunksAsync(chunks, ct).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            LogModelFailed(ex, context.Phase, context.AgentRole);
+            var reason = $"the decision model could not judge the {what}: {ex.Message}";
+            // Both modes audit the unavailability: what closed refused and what open let in is observable.
+            await AuditAsync(context, UnavailableThreatType, $"{reason} (fail mode: {_options.FailMode})", AuditSeverity.Warning, ct).ConfigureAwait(false);
+            if (closed)
+                return GuardResult.Block(reason, [Violation(context.Phase, reason, GuardThreatSeverity.Medium)]);
+
+            return GuardResult.Warn(reason, [Violation(context.Phase, reason, GuardThreatSeverity.Low)]);
+        }
+
+        return Verdict(context, what, merged);
+    }
+
+    // The highest probability of each risk over every chunk.
+    private async Task<Dictionary<string, double>> AssessChunksAsync(List<string> chunks, CancellationToken ct)
+    {
+        var merged = new Dictionary<string, double>(StringComparer.Ordinal);
+        foreach (var chunk in chunks)
+        {
+            var part = await GuardDecisionStage.AssessAsync(_model, _risks, JsonValue.Create(chunk), ct).ConfigureAwait(false);
+            foreach (var (risk, probability) in part)
+                merged[risk] = merged.TryGetValue(risk, out var seen) ? Math.Max(seen, probability) : probability;
+        }
+
+        return merged;
+    }
+
+    private GuardResult Verdict(GuardContext context, string what, Dictionary<string, double> merged)
+    {
+        IReadOnlyList<(string Risk, double Probability)> assessed = [.. merged.Select(kv => (kv.Key, kv.Value))];
+
+        var blocking = assessed.Where(r => r.Probability >= _options.BlockThreshold).ToList();
+        if (blocking.Count > 0)
+        {
+            var violations = blocking.Select(r => Violation(context.Phase, Describe(r), GuardThreatSeverity.High)).ToList();
+            return GuardResult.Block($"The {what} matches {Describe(blocking[0])}.", violations);
+        }
+
+        var warning = assessed.Where(r => r.Probability >= _options.WarnThreshold).ToList();
+        return warning.Count == 0
+            ? GuardResult.Allow()
+            : GuardResult.Warn(
+                $"The {what} may match {Describe(warning[0])}.",
+                [.. warning.Select(r => Violation(context.Phase, Describe(r), GuardThreatSeverity.Medium))]);
+    }
+
+    // The text to judge, in chunks; or the refusal when a fail-closed text is longer than the judge reads in full.
+    private async Task<(List<string> Chunks, GuardResult? Refusal)> BuildChunksAsync(
+        GuardContext context, string what, string content, bool closed, CancellationToken ct)
+    {
         var chunkSize = Math.Max(1, _options.MaxContentChars);
         var chunks = new List<string>();
         if (content.Length <= chunkSize)
@@ -99,7 +164,7 @@ public sealed partial class LlmJudgeGuard : IGuardian
             {
                 var tooLong = $"the {what} of {content.Length} characters is longer than the {chunkSize + ((MaxChunks - 1) * step)} characters the judge reads in full (fail mode: Closed)";
                 await AuditAsync(context, TruncatedThreatType, tooLong, AuditSeverity.Warning, ct).ConfigureAwait(false);
-                return GuardResult.Block(tooLong, [Violation(context.Phase, tooLong, GuardThreatSeverity.Medium)]);
+                return (chunks, GuardResult.Block(tooLong, [Violation(context.Phase, tooLong, GuardThreatSeverity.Medium)]));
             }
 
             for (var start = 0; ; start += step)
@@ -122,47 +187,7 @@ public sealed partial class LlmJudgeGuard : IGuardian
             chunks.Add(string.Concat(content.AsSpan(0, half), $"\n[... {omitted} characters not judged ...]\n", content.AsSpan(content.Length - half)));
         }
 
-        var merged = new Dictionary<string, double>(StringComparer.Ordinal);
-        try
-        {
-            foreach (var chunk in chunks)
-            {
-                var part = await GuardDecisionStage.AssessAsync(_model, _risks, JsonValue.Create(chunk), ct).ConfigureAwait(false);
-                foreach (var (risk, probability) in part)
-                    merged[risk] = merged.TryGetValue(risk, out var seen) ? Math.Max(seen, probability) : probability;
-            }
-        }
-        catch (OperationCanceledException) when (ct.IsCancellationRequested)
-        {
-            throw;
-        }
-        catch (Exception ex)
-        {
-            LogModelFailed(ex, context.Phase, context.AgentRole);
-            var reason = $"the decision model could not judge the {what}: {ex.Message}";
-            // Both modes audit the unavailability: what closed refused and what open let in is observable.
-            await AuditAsync(context, UnavailableThreatType, $"{reason} (fail mode: {_options.FailMode})", AuditSeverity.Warning, ct).ConfigureAwait(false);
-            if (closed)
-                return GuardResult.Block(reason, [Violation(context.Phase, reason, GuardThreatSeverity.Medium)]);
-
-            return GuardResult.Warn(reason, [Violation(context.Phase, reason, GuardThreatSeverity.Low)]);
-        }
-
-        IReadOnlyList<(string Risk, double Probability)> assessed = [.. merged.Select(kv => (kv.Key, kv.Value))];
-
-        var blocking = assessed.Where(r => r.Probability >= _options.BlockThreshold).ToList();
-        if (blocking.Count > 0)
-        {
-            var violations = blocking.Select(r => Violation(context.Phase, Describe(r), GuardThreatSeverity.High)).ToList();
-            return GuardResult.Block($"The {what} matches {Describe(blocking[0])}.", violations);
-        }
-
-        var warning = assessed.Where(r => r.Probability >= _options.WarnThreshold).ToList();
-        return warning.Count == 0
-            ? GuardResult.Allow()
-            : GuardResult.Warn(
-                $"The {what} may match {Describe(warning[0])}.",
-                [.. warning.Select(r => Violation(context.Phase, Describe(r), GuardThreatSeverity.Medium))]);
+        return (chunks, null);
     }
 
     private static string Describe((string Risk, double Probability) risk) =>

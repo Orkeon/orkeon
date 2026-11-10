@@ -62,78 +62,110 @@ internal sealed record ScriptedCommandsCliOptions(
     /// <summary>A usage error of these flags (exit code 2); null when they are valid.</summary>
     public string? UsageError { get; init; }
 
-    public static ScriptedCommandsCliOptions Parse(string[] args)
+    /// <summary>The lists and flags the arguments fill in, before they become an options record.</summary>
+    private sealed class ParseState
     {
-        ArgumentNullException.ThrowIfNull(args);
-        var boot = false;
-        var dirs = new List<string>();
-        var disabled = false;
-        var strict = false;
-        var settings = new List<string>();
-        var mounts = new List<string>();
-        var crewDirs = new List<string>();
-        var allowExternalMounts = false;
-        var llmLog = false;
-        var llmLogPaths = new List<string>();
-        var replayFiles = new List<string>();
-        var logLevels = new List<string>();
-        var interactive = false;
-        string? usageError = null;
+        public bool Boot;
+        public bool Disabled;
+        public bool Strict;
+        public bool AllowExternalMounts;
+        public bool LlmLog;
+        public bool Interactive;
+        public string? UsageError;
+        public readonly List<string> Dirs = [];
+        public readonly List<string> Settings = [];
+        public readonly List<string> Mounts = [];
+        public readonly List<string> CrewDirs = [];
+        public readonly List<string> LlmLogPaths = [];
+        public readonly List<string> ReplayFiles = [];
+        public readonly List<string> LogLevels = [];
+    }
 
-        for (var i = 0; i < args.Length; i++)
+    /// <summary>Tries each value option in turn; the first that matches captures its value (and advances <paramref name="i"/>).</summary>
+    private static bool TryAddAnyValueOption(string a, string[] args, ref int i, ParseState st)
+    {
+        return TryAddValueOption(a, "--commands-dir", args, ref i, st.Dirs)
+            || TryAddValueOption(a, "--settings", args, ref i, st.Settings)
+            || TryAddValueOption(a, "--mount", args, ref i, st.Mounts)
+            || TryAddValueOption(a, "--crews-dir", args, ref i, st.CrewDirs)
+            || TryAddValueOption(a, LlmLogPathFlag, args, ref i, st.LlmLogPaths)
+            || TryAddValueOption(a, ReplayFlag, args, ref i, st.ReplayFiles)
+            || TryAddValueOption(a, LogLevelFlag, args, ref i, st.LogLevels);
+    }
+
+    /// <summary>Sets the plain switch <paramref name="a"/> names; false when it is not one.</summary>
+    private static bool TryApplySwitch(string a, ParseState st)
+    {
+        switch (a)
         {
-            var a = args[i];
-            if (a == "--runner=scripted-commands") boot = true;
-            else if (a == "--no-script-commands") disabled = true;
-            else if (a == "--strict-commands") strict = true;
-            else if (a == AllowExternalMountsFlag) allowExternalMounts = true;
-            else if (a == LlmLogFlag) llmLog = true;
-            else if (a == InteractiveFlag) interactive = true;
-            else if (a is ReplayFlag or LogLevelFlag && i + 1 >= args.Length)
-                usageError ??= $"{a} needs a value";
-            else if (a.StartsWith(AllowExternalMountsFlag + "=", StringComparison.Ordinal))
-                allowExternalMounts = IsTruthy(a[(AllowExternalMountsFlag.Length + 1)..]);
-            // Value options: TryAddValueOption captures the value (and advances i) as its side
-            // effect; a true return only stops the chain, so the bodies are intentionally empty.
-            else if (TryAddValueOption(a, "--commands-dir", args, ref i, dirs)) { /* captured */ }
-            else if (TryAddValueOption(a, "--settings", args, ref i, settings)) { /* captured */ }
-            else if (TryAddValueOption(a, "--mount", args, ref i, mounts)) { /* captured */ }
-            else if (TryAddValueOption(a, "--crews-dir", args, ref i, crewDirs)) { /* captured */ }
-            else if (TryAddValueOption(a, LlmLogPathFlag, args, ref i, llmLogPaths)) { /* captured */ }
-            else if (TryAddValueOption(a, ReplayFlag, args, ref i, replayFiles)) { /* captured */ }
-            else if (TryAddValueOption(a, LogLevelFlag, args, ref i, logLevels)) { /* captured */ }
+            case "--runner=scripted-commands": st.Boot = true; return true;
+            case "--no-script-commands": st.Disabled = true; return true;
+            case "--strict-commands": st.Strict = true; return true;
+            case AllowExternalMountsFlag: st.AllowExternalMounts = true; return true;
+            case LlmLogFlag: st.LlmLog = true; return true;
+            case InteractiveFlag: st.Interactive = true; return true;
+            default: return false;
         }
+    }
 
-        // A value that starts with "--" is the next flag, not a value: `--replay --interactive` names no file.
+    private static void ApplyArgument(string[] args, ref int i, ParseState st)
+    {
+        var a = args[i];
+        if (TryApplySwitch(a, st)) return;
+        if (a is ReplayFlag or LogLevelFlag && i + 1 >= args.Length)
+            st.UsageError ??= $"{a} needs a value";
+        else if (a.StartsWith(AllowExternalMountsFlag + "=", StringComparison.Ordinal))
+            st.AllowExternalMounts = IsTruthy(a[(AllowExternalMountsFlag.Length + 1)..]);
+        else
+            _ = TryAddAnyValueOption(a, args, ref i, st);
+    }
+
+    /// <summary>A value that starts with "--" is the next flag, not a value: `--replay --interactive` names no file.</summary>
+    private static void RejectFlagLikeValues(List<string> replayFiles, List<string> logLevels, ref string? usageError)
+    {
         foreach (var (flag, values) in new[] { (ReplayFlag, replayFiles), (LogLevelFlag, logLevels) })
         {
             if (values.FirstOrDefault(v => v.StartsWith("--", StringComparison.Ordinal)) is { } flagLike)
                 usageError ??= $"{flag} needs a value, not the flag '{flagLike}'";
         }
+    }
 
-        var replayFile = replayFiles.Count > 0 ? replayFiles[^1] : null;
+    private static Microsoft.Extensions.Logging.LogLevel? ParseLogLevel(List<string> logLevels, ref string? usageError)
+    {
+        if (logLevels.Count == 0) return null;
+        var last = logLevels[^1];
+        if (Enum.TryParse<Microsoft.Extensions.Logging.LogLevel>(last, ignoreCase: true, out var parsed)
+            && Enum.IsDefined(parsed) && !int.TryParse(last, out _))
+            return parsed;
+        usageError ??= $"{LogLevelFlag} '{last}' is none of Trace, Debug, Information, Warning, Error, Critical, None";
+        return null;
+    }
+
+    public static ScriptedCommandsCliOptions Parse(string[] args)
+    {
+        ArgumentNullException.ThrowIfNull(args);
+        var st = new ParseState();
+        for (var i = 0; i < args.Length; i++)
+            ApplyArgument(args, ref i, st);
+
+        var usageError = st.UsageError;
+        RejectFlagLikeValues(st.ReplayFiles, st.LogLevels, ref usageError);
+
+        var replayFile = st.ReplayFiles.Count > 0 ? st.ReplayFiles[^1] : null;
         if (replayFile is { Length: 0 })
             usageError ??= $"{ReplayFlag} needs a file";
-        if (interactive && replayFile is null)
+        if (st.Interactive && replayFile is null)
             usageError ??= $"{InteractiveFlag} needs {ReplayFlag} <file>";
 
-        Microsoft.Extensions.Logging.LogLevel? logLevel = null;
-        if (logLevels.Count > 0)
-        {
-            if (Enum.TryParse<Microsoft.Extensions.Logging.LogLevel>(logLevels[^1], ignoreCase: true, out var parsed)
-                && Enum.IsDefined(parsed) && !int.TryParse(logLevels[^1], out _))
-                logLevel = parsed;
-            else
-                usageError ??= $"{LogLevelFlag} '{logLevels[^1]}' is none of Trace, Debug, Information, Warning, Error, Critical, None";
-        }
+        var logLevel = ParseLogLevel(st.LogLevels, ref usageError);
 
-        return new ScriptedCommandsCliOptions(boot, dirs, disabled, strict, settings, mounts, crewDirs)
+        return new ScriptedCommandsCliOptions(st.Boot, st.Dirs, st.Disabled, st.Strict, st.Settings, st.Mounts, st.CrewDirs)
         {
-            AllowExternalMounts = allowExternalMounts,
-            LlmLogEnabled = llmLog,
-            LlmLogPath = llmLogPaths.Count > 0 ? llmLogPaths[^1] : null,
+            AllowExternalMounts = st.AllowExternalMounts,
+            LlmLogEnabled = st.LlmLog,
+            LlmLogPath = st.LlmLogPaths.Count > 0 ? st.LlmLogPaths[^1] : null,
             ReplayFile = replayFile,
-            ReplayInteractive = interactive,
+            ReplayInteractive = st.Interactive,
             LogLevel = logLevel,
             UsageError = usageError,
         };

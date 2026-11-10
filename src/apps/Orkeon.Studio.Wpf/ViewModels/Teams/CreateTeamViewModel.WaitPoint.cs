@@ -231,10 +231,16 @@ public sealed partial class CreateTeamViewModel
     /// </summary>
     private ChatPendingAction? ResumeActionAfterInterruption()
     {
-        AsyncRelayCommand action =
-            CanResumeHere ? ResumeHereCommand
-            : HasFailure ? FailureRetryCommand
-            : ComposeCommand;
+        AsyncRelayCommand action = ComposeCommand;
+        if (CanResumeHere)
+        {
+            action = ResumeHereCommand;
+        }
+        else if (HasFailure)
+        {
+            action = FailureRetryCommand;
+        }
+
         if (!action.CanExecute(null))
         {
             _resumeAction = null;

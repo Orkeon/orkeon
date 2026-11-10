@@ -35,14 +35,7 @@ internal static class McpRequestAuthenticators
         if (config.ConnectTimeout <= TimeSpan.Zero)
             throw new McpServerConfigurationException($"{prefix}:ConnectTimeout", $"{prefix}:ConnectTimeout must be a positive duration.");
 
-        // Credentials a stdio server could never receive: refused rather than silently not sent.
-        if (config.Transport == McpTransportType.Stdio)
-        {
-            if (config.Auth.Type != McpAuthType.None)
-                throw new McpServerConfigurationException($"{prefix}:Auth", $"{prefix}:Auth applies to the Sse transport only; this server is Stdio.");
-            if (config.Headers.Count > 0)
-                throw new McpServerConfigurationException($"{prefix}:Headers", $"{prefix}:Headers applies to the Sse transport only; this server is Stdio.");
-        }
+        RejectStdioCredentials(prefix, config);
 
         var headers = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         var secretHeader = false;
@@ -76,7 +69,31 @@ internal static class McpRequestAuthenticators
         if (headers.Count > 0)
             links.Add(new StaticHeaderAuthenticator(headers));
 
-        var auth = config.Auth;
+        AddAuthLink(links, serverId, prefix, config.Auth, environment, oauth);
+
+        return links.Count switch
+        {
+            0 => null,
+            1 => links[0],
+            _ => new ChainedMcpRequestAuthenticator(links),
+        };
+    }
+
+    // Credentials a stdio server could never receive: refused rather than silently not sent.
+    private static void RejectStdioCredentials(string prefix, McpServerConfig config)
+    {
+        if (config.Transport != McpTransportType.Stdio)
+            return;
+        if (config.Auth.Type != McpAuthType.None)
+            throw new McpServerConfigurationException($"{prefix}:Auth", $"{prefix}:Auth applies to the Sse transport only; this server is Stdio.");
+        if (config.Headers.Count > 0)
+            throw new McpServerConfigurationException($"{prefix}:Headers", $"{prefix}:Headers applies to the Sse transport only; this server is Stdio.");
+    }
+
+    private static void AddAuthLink(
+        List<IMcpRequestAuthenticator> links, string serverId, string prefix, McpAuthConfig auth,
+        Func<string, string?> environment, McpOAuthServices? oauth)
+    {
         switch (auth.Type)
         {
             case McpAuthType.None:
@@ -100,13 +117,6 @@ internal static class McpRequestAuthenticators
             default:
                 throw new McpServerConfigurationException($"{prefix}:Auth:Type", $"{prefix}:Auth:Type '{auth.Type}' is not supported.");
         }
-
-        return links.Count switch
-        {
-            0 => null,
-            1 => links[0],
-            _ => new ChainedMcpRequestAuthenticator(links),
-        };
     }
 
     private static OAuthMcpAuthenticator CreateOAuth(

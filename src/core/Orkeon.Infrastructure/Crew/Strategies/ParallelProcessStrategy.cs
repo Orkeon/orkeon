@@ -166,7 +166,6 @@ public sealed partial class ParallelProcessStrategy : IProcessStrategy
         if (faults.Count > 0)
             return await DecisionPreflight.FailAtEntryAsync(_hooks, crew.Id.ToString(), startedAt, string.Join(' ', faults)).ConfigureAwait(false);
 
-        var taskIndex = 0;
         var runContext = new SimpleExecutionContext(crew.Id, variables, _memoryScope, [], cancellationToken);
 
         // Waves, not one flat fan-out. A crew declaring `dependencies:` used to have them
@@ -183,57 +182,7 @@ public sealed partial class ParallelProcessStrategy : IProcessStrategy
             // same context, and the list must not be mutated while they run.
             var previousOutputs = run.CompletedOutputs.ToList();
 
-            var launched = new List<(DomainTask Task, DomainAgent? Agent)>();
-            foreach (var task in wave)
-            {
-                // The agent the crew declared, round-robin only when it declared none — the same
-                // choice Sequential and Graph make. This mode used to take loop order alone, so a
-                // YAML `agent:` was silently ignored in parallel mode and nowhere else.
-                var agent = task.IsDecision
-                    ? null
-                    : await _agentSelector
-                        .ForTaskAsync(task, agents, taskIndex, cancellationToken)
-                        .ConfigureAwait(false);
-
-                cancellationToken.ThrowIfCancellationRequested();
-
-                // A task depending on one that did not succeed is skipped, as in Sequential
-                // (GAP-03): it used to run in the next wave with "Task failed: …" as its input.
-                if (outcome.BlockingDependency(task) is { } blockedBy)
-                {
-                    await SkipBlockedTaskAsync(run, task, agent, blockedBy, cancellationToken).ConfigureAwait(false);
-                    continue;
-                }
-
-                // A condition that does not hold skips the task: neither a failure nor an output.
-                // The decision it reads was recorded when its own wave joined.
-                if (ConditionGate.ShouldRun(task, outcome, tasks) is { Run: false } notRun)
-                {
-                    await SkipByConditionAsync(run, task, agent, notRun.Reason!, cancellationToken).ConfigureAwait(false);
-                    continue;
-                }
-
-                // The round-robin cursor moves only for a task an agent runs.
-                if (agent is not null)
-                    taskIndex++;
-
-                // Derived from the run's context, never rebuilt (GAP-30): every task of the wave
-                // reads what the previous waves produced.
-                var context = runContext with { PreviousOutputs = previousOutputs };
-
-                var capturedTask = task;
-                var capturedAgent = agent;
-
-                // Started as it is launched, so the start goes out before its agent runs (GAP-21).
-                // One agent given two tasks of the wave runs both at once.
-                await (agent is null
-                    ? outcome.RecordStartWithoutAgentAsync(task, [])
-                    : outcome.RecordStartAsync(task, agent)).ConfigureAwait(false);
-                launched.Add((task, agent));
-                executionTasks.Add(System.Threading.Tasks.Task.Run(async () => await ExecuteWaveTaskAsync(
-                    capturedAgent, capturedTask, tasks, context, run.TokenTally, run.TaskSnapshots, cancellationToken)
-                    .ConfigureAwait(false)));
-            }
+            var launched = await LaunchWaveAsync(run, new WaveLaunch(wave, tasks, agents, runContext, previousOutputs, executionTasks), cancellationToken).ConfigureAwait(false);
 
             // Wait for this wave. One faulted task means WhenAll throws — the terminal event
             // must still go out, or a watcher sees a run frozen at its last completed sibling.
@@ -286,6 +235,79 @@ public sealed partial class ParallelProcessStrategy : IProcessStrategy
             finalOutput)).ConfigureAwait(false);
     }
 
+    /// <summary>What a wave launches, and the list its executions are added to.</summary>
+    private sealed record WaveLaunch(
+        List<DomainTask> Wave,
+        List<DomainTask> Tasks,
+        List<DomainAgent> Agents,
+        SimpleExecutionContext RunContext,
+        List<ApplicationTaskOutput> PreviousOutputs,
+        List<System.Threading.Tasks.Task<(DomainTaskOutput domainOutput, ApplicationTaskOutput appOutput, string? error, DateTimeOffset? endedAt)>> ExecutionTasks);
+
+    /// <summary>
+    /// Launches the tasks of one wave: each is skipped (blocked dependency, condition that does not
+    /// hold) or started alongside its siblings. Returns the tasks launched, in launch order.
+    /// </summary>
+    private async System.Threading.Tasks.Task<List<(DomainTask Task, DomainAgent? Agent)>> LaunchWaveAsync(
+        ParallelRun run, WaveLaunch launch, CancellationToken cancellationToken)
+    {
+        var (wave, tasks, agents, runContext, previousOutputs, _) = launch;
+        var outcome = run.Outcome;
+        var launched = new List<(DomainTask Task, DomainAgent? Agent)>();
+        foreach (var task in wave)
+        {
+            // The agent the crew declared, round-robin only when it declared none — the same
+            // choice Sequential and Graph make. This mode used to take loop order alone, so a
+            // YAML `agent:` was silently ignored in parallel mode and nowhere else.
+            var agent = task.IsDecision
+                ? null
+                : await _agentSelector
+                    .ForTaskAsync(task, agents, run.AgentCursor, cancellationToken)
+                    .ConfigureAwait(false);
+
+            cancellationToken.ThrowIfCancellationRequested();
+
+            // A task depending on one that did not succeed is skipped, as in Sequential
+            // (GAP-03): it used to run in the next wave with "Task failed: …" as its input.
+            if (outcome.BlockingDependency(task) is { } blockedBy)
+            {
+                await SkipBlockedTaskAsync(run, task, agent, blockedBy, cancellationToken).ConfigureAwait(false);
+                continue;
+            }
+
+            // A condition that does not hold skips the task: neither a failure nor an output.
+            // The decision it reads was recorded when its own wave joined.
+            if (ConditionGate.ShouldRun(task, outcome, tasks) is { Run: false } notRun)
+            {
+                await SkipByConditionAsync(run, task, agent, notRun.Reason!, cancellationToken).ConfigureAwait(false);
+                continue;
+            }
+
+            // The round-robin cursor moves only for a task an agent runs.
+            if (agent is not null)
+                run.AgentCursor++;
+
+            // Derived from the run's context, never rebuilt (GAP-30): every task of the wave
+            // reads what the previous waves produced.
+            var context = runContext with { PreviousOutputs = previousOutputs };
+
+            var capturedTask = task;
+            var capturedAgent = agent;
+
+            // Started as it is launched, so the start goes out before its agent runs (GAP-21).
+            // One agent given two tasks of the wave runs both at once.
+            await (agent is null
+                ? outcome.RecordStartWithoutAgentAsync(task, [])
+                : outcome.RecordStartAsync(task, agent)).ConfigureAwait(false);
+            launched.Add((task, agent));
+            launch.ExecutionTasks.Add(System.Threading.Tasks.Task.Run(async () => await ExecuteWaveTaskAsync(
+                capturedAgent, capturedTask, tasks, context, run.TokenTally, run.TaskSnapshots, cancellationToken)
+                .ConfigureAwait(false)));
+        }
+
+        return launched;
+    }
+
     /// <summary>
     /// What one parallel run accumulates across its waves: the outcome (failures, lifecycle), the
     /// outputs in the order the waves recorded them, the outputs the next wave reads, the snapshots
@@ -304,6 +326,9 @@ public sealed partial class ParallelProcessStrategy : IProcessStrategy
         public List<ApplicationTaskOutput> CompletedOutputs { get; } = [];
         public System.Collections.Concurrent.ConcurrentBag<TaskExecutionSnapshot> TaskSnapshots { get; } = [];
         public TokenUsageTally TokenTally { get; } = new();
+
+        /// <summary>The round-robin cursor over the agents: it moves only for a task an agent runs.</summary>
+        public int AgentCursor { get; set; }
     }
 
     /// <summary>

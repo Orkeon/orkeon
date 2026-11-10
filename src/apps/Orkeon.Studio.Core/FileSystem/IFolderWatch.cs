@@ -49,7 +49,7 @@ public sealed class PhysicalFolderWatch : IFolderWatch
     {
         ArgumentNullException.ThrowIfNull(changed);
         if (!Directory.Exists(directory))
-            return NoWatch.Instance;
+            return NoWatch.Shared;
 
         try
         {
@@ -66,13 +66,13 @@ public sealed class PhysicalFolderWatch : IFolderWatch
         }
         catch (Exception e) when (e is IOException or ArgumentException or UnauthorizedAccessException)
         {
-            return NoWatch.Instance;
+            return NoWatch.Shared;
         }
     }
 
     private sealed class NoWatch : IDisposable
     {
-        public static NoWatch Instance { get; } = new();
+        public static NoWatch Shared { get; } = new();
 
         public void Dispose()
         {

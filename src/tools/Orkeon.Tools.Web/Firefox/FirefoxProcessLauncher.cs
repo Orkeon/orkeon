@@ -144,19 +144,28 @@ internal sealed partial class FirefoxProcessLauncher : IFirefoxLauncher
         }
     }
 
+    private static string[] KnownLocations()
+    {
+        if (OperatingSystem.IsWindows())
+        {
+            return
+            [
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "Mozilla Firefox", "firefox.exe"),
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86), "Mozilla Firefox", "firefox.exe"),
+            ];
+        }
+
+        if (OperatingSystem.IsMacOS())
+            return ["/Applications/Firefox.app/Contents/MacOS/firefox"];
+
+        return ["/usr/bin/firefox", "/snap/bin/firefox", "/usr/local/bin/firefox"];
+    }
+
     [SuppressVfsCompliance("OUT-OF-SCOPE: probes the host for the Firefox program, as the docker sandbox probes for docker; not a VFS path.")]
     internal string? LocateOnHost()
     {
         // OUT-OF-SCOPE: binary discovery on the host, not a VFS mount.
-        string[] known = OperatingSystem.IsWindows()
-            ?
-            [
-                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "Mozilla Firefox", "firefox.exe"),
-                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86), "Mozilla Firefox", "firefox.exe"),
-            ]
-            : OperatingSystem.IsMacOS()
-                ? ["/Applications/Firefox.app/Contents/MacOS/firefox"]
-                : ["/usr/bin/firefox", "/snap/bin/firefox", "/usr/local/bin/firefox"];
+        var known = KnownLocations();
         return Locate(_options.ExecutablePath, _readEnvironment("PATH"), known, File.Exists, OperatingSystem.IsWindows());
     }
 
@@ -304,16 +313,29 @@ internal sealed partial class FirefoxProcessLauncher : IFirefoxLauncher
         Message = "The firefox tool starts its browser headless: this machine has no display (neither DISPLAY nor WAYLAND_DISPLAY is set).")]
     private static partial void LogHeadlessFallback(ILogger logger);
 
-    private sealed class Browser(
-        Process process, FirefoxProfile folder, FirefoxProfileChoice profile, IBiDiTransport transport, bool headless, TimeSpan exitGrace) : IFirefoxBrowser
+    private sealed class Browser : IFirefoxBrowser
     {
+        private readonly Process _process;
+        private readonly FirefoxProfile _folder;
+        private readonly TimeSpan _exitGrace;
         private int _disposed;
 
-        public IBiDiTransport Transport { get; } = transport;
+        public Browser(
+            Process process, FirefoxProfile folder, FirefoxProfileChoice profile, IBiDiTransport transport, bool headless, TimeSpan exitGrace)
+        {
+            _process = process;
+            _folder = folder;
+            _exitGrace = exitGrace;
+            Profile = profile;
+            Transport = transport;
+            Headless = headless;
+        }
 
-        public bool Headless { get; } = headless;
+        public IBiDiTransport Transport { get; }
 
-        public FirefoxProfileChoice Profile { get; } = profile;
+        public bool Headless { get; }
+
+        public FirefoxProfileChoice Profile { get; }
 
         public async ValueTask DisposeAsync()
         {
@@ -322,7 +344,7 @@ internal sealed partial class FirefoxProcessLauncher : IFirefoxLauncher
 
             // The channel is closed first when its owner did not: a browser nobody talks to has no use.
             await Transport.DisposeAsync().ConfigureAwait(false);
-            await StopAsync(process, folder, exitGrace).ConfigureAwait(false);
+            await StopAsync(_process, _folder, _exitGrace).ConfigureAwait(false);
         }
     }
 }

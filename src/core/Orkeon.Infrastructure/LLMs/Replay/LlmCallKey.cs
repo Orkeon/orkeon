@@ -42,7 +42,7 @@ internal static partial class LlmCallKey
             tools = config?.Tools is null ? null : Serialize(config.Tools),
             // Defaults weigh as nothing: a call without a configuration and one with the default
             // configuration ask the same.
-            toolMode = config is null || config.ToolMode == Orkeon.Domain.Tools.Protocol.ToolCallMode.Auto ? null : config.ToolMode.ToString(),
+            toolMode = ToolModeKey(config),
             responseFormat = config?.ResponseFormat is null ? null : Serialize(config.ResponseFormat),
             grammar = config is { GrammarEnabled: true } ? config.GrammarGbnf ?? string.Empty : null,
             model = string.IsNullOrWhiteSpace(config?.Model) ? null : config.Model,
@@ -58,9 +58,7 @@ internal static partial class LlmCallKey
             // of a configuration written before SystemMessage existed); the others are the profile's
             // plumbing (the mock's responses file, an API version) and a replay on another profile
             // must still find the call.
-            customSystemMessage = config?.CustomParameters.TryGetValue("system_message", out var custom) == true && custom is not null
-                ? Normalize(custom.ToString() ?? string.Empty)
-                : null,
+            customSystemMessage = CustomSystemMessageKey(config),
         };
         return Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(request))));
     }
@@ -76,6 +74,14 @@ internal static partial class LlmCallKey
         var text = Normalize(last?.Content ?? string.Empty);
         return text.Length <= 80 ? text : text[..80] + "...";
     }
+
+    private static string? ToolModeKey(LlmConfig? config) =>
+        config is null || config.ToolMode == Orkeon.Domain.Tools.Protocol.ToolCallMode.Auto ? null : config.ToolMode.ToString();
+
+    private static string? CustomSystemMessageKey(LlmConfig? config) =>
+        config?.CustomParameters.TryGetValue("system_message", out var custom) == true && custom is not null
+            ? Normalize(custom.ToString() ?? string.Empty)
+            : null;
 
     private static string Normalize(string text) =>
         Identifier().Replace(Timestamp().Replace(CassetteRedaction.Text(text), "<time>"), "<id>");

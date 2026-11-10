@@ -174,12 +174,6 @@ public sealed class PluginAssemblyDiscovery : IPluginAssemblyDiscovery
             searchPattern, fileName, ignoreCase: true);
     }
 
-    private static string GetVirtualFileName(string virtualPath)
-    {
-        var idx = virtualPath.LastIndexOf('/');
-        return idx < 0 ? virtualPath : virtualPath[(idx + 1)..];
-    }
-
     private static string NormalizeVirtualDirectory(string directory)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(directory);

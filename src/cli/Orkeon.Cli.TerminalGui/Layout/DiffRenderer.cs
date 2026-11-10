@@ -14,7 +14,7 @@ internal static partial class DiffRenderer
     // Below this share of common text a pair of lines is a rewrite, and marking its words would say nothing.
     private const double MinCommonShare = 0.4;
 
-    private readonly record struct WordMarks(IReadOnlyList<(int Start, int Length)> Spans);
+    private readonly record struct WordMarks(IReadOnlyList<(int Start, int Length)> Marked);
 
     /// <summary>The lines a tool call's change leaves in the transcript, under a line that names the file.</summary>
     public static IReadOnlyList<TranscriptLine> ForCall(ToolCallDiff diff, GlyphSet glyphs)
@@ -50,50 +50,9 @@ internal static partial class DiffRenderer
         ArgumentNullException.ThrowIfNull(text);
         var source = text.Split('\n');
         var parsed = new List<(DiffRow? Row, string Raw)>(source.Length);
-        int oldLine = 0, newLine = 0;
-
-        // The lines the hunk still announces: until they are read, a line like "+++i;" or "--- x" is a change.
-        int oldLeft = 0, newLeft = 0;
+        var state = new HunkState();
         foreach (var raw in source)
-        {
-            var inHunk = raw.StartsWith('+') ? newLeft > 0 : raw.StartsWith('-') && oldLeft > 0;
-            if ((IsFileHeader(raw) && !inHunk) || raw.StartsWith("@@", StringComparison.Ordinal))
-            {
-                var hunk = Hunk().Match(raw);
-                if (hunk.Success)
-                {
-                    oldLine = int.Parse(hunk.Groups[1].Value, CultureInfo.InvariantCulture);
-                    newLine = int.Parse(hunk.Groups[3].Value, CultureInfo.InvariantCulture);
-                    oldLeft = Announced(hunk.Groups[2]);
-                    newLeft = Announced(hunk.Groups[4]);
-                }
-                parsed.Add((null, raw));
-            }
-            else if (raw.StartsWith('+'))
-            {
-                parsed.Add((new DiffRow(DiffRowKind.Added, null, Number(newLine), raw[1..]), raw));
-                if (newLine > 0) newLine++;
-                newLeft--;
-            }
-            else if (raw.StartsWith('-'))
-            {
-                parsed.Add((new DiffRow(DiffRowKind.Removed, Number(oldLine), null, raw[1..]), raw));
-                if (oldLine > 0) oldLine++;
-                oldLeft--;
-            }
-            else if (newLine > 0 && raw.StartsWith(' '))
-            {
-                parsed.Add((new DiffRow(DiffRowKind.Context, Number(oldLine), Number(newLine), raw[1..]), raw));
-                oldLine++;
-                newLine++;
-                oldLeft--;
-                newLeft--;
-            }
-            else
-            {
-                parsed.Add((null, raw));
-            }
-        }
+            parsed.Add((state.Read(raw), raw));
 
         var rows = parsed.Where(p => p.Row is not null).Select(p => p.Row!.Value).ToList();
         var numberWidth = NumberWidth(rows);
@@ -110,6 +69,66 @@ internal static partial class DiffRenderer
                 lines.Add(OtherLine(raw));
         }
         return lines;
+    }
+
+    // Line counters of the hunk being read; the left counts are the lines the hunk still announces:
+    // until they are read, a header-looking line inside the hunk is a change.
+    private sealed class HunkState
+    {
+        private int _oldLine;
+        private int _newLine;
+        private int _oldLeft;
+        private int _newLeft;
+
+        public DiffRow? Read(string raw)
+        {
+            var inHunk = raw.StartsWith('+') ? _newLeft > 0 : raw.StartsWith('-') && _oldLeft > 0;
+            if ((IsFileHeader(raw) && !inHunk) || raw.StartsWith("@@", StringComparison.Ordinal))
+            {
+                ReadHeader(raw);
+                return null;
+            }
+            if (raw.StartsWith('+')) return ReadAdded(raw);
+            if (raw.StartsWith('-')) return ReadRemoved(raw);
+            if (_newLine > 0 && raw.StartsWith(' ')) return ReadContext(raw);
+            return null;
+        }
+
+        private void ReadHeader(string raw)
+        {
+            var hunk = Hunk().Match(raw);
+            if (!hunk.Success) return;
+            _oldLine = int.Parse(hunk.Groups[1].Value, CultureInfo.InvariantCulture);
+            _newLine = int.Parse(hunk.Groups[3].Value, CultureInfo.InvariantCulture);
+            _oldLeft = Announced(hunk.Groups[2]);
+            _newLeft = Announced(hunk.Groups[4]);
+        }
+
+        private DiffRow ReadAdded(string raw)
+        {
+            var row = new DiffRow(DiffRowKind.Added, null, Number(_newLine), raw[1..]);
+            if (_newLine > 0) _newLine++;
+            _newLeft--;
+            return row;
+        }
+
+        private DiffRow ReadRemoved(string raw)
+        {
+            var row = new DiffRow(DiffRowKind.Removed, Number(_oldLine), null, raw[1..]);
+            if (_oldLine > 0) _oldLine++;
+            _oldLeft--;
+            return row;
+        }
+
+        private DiffRow ReadContext(string raw)
+        {
+            var row = new DiffRow(DiffRowKind.Context, Number(_oldLine), Number(_newLine), raw[1..]);
+            _oldLine++;
+            _newLine++;
+            _oldLeft--;
+            _newLeft--;
+            return row;
+        }
     }
 
     private static int? Number(int line) => line > 0 ? line : null;
@@ -166,7 +185,7 @@ internal static partial class DiffRenderer
         {
             runs.Add(new TranscriptRun(0, head.Length, PaletteRole.Dim));
         }
-        else if (marks.Spans is { } spans)
+        else if (marks.Marked is { } spans)
         {
             var word = row.Kind == DiffRowKind.Added ? PaletteRole.AddedWord : PaletteRole.RemovedWord;
             foreach (var (start, length) in spans)

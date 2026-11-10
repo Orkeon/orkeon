@@ -376,7 +376,6 @@ public class CachingTreeBuilderTests
         new RaggableTreeCache(fs),
         new FileSystemDiscoverer(fs),
         fs,
-        () => new RaggableTreeBuilder(new TypeScriptAdapter(), fs),
-        () => new IncrementalReindexEngine(new TypeScriptAdapter(), fs),
+        new TreeFactories(() => new RaggableTreeBuilder(new TypeScriptAdapter(), fs), () => new IncrementalReindexEngine(new TypeScriptAdapter(), fs)),
         environment);
 }

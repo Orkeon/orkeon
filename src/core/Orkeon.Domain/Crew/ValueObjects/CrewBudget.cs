@@ -53,11 +53,18 @@ public sealed record CrewBudget : ValueObjectRecord
     };
 
     /// <summary>The first limit set to zero or less, as <c>budget.&lt;name&gt;: value</c>; null when every limit set is valid.</summary>
-    internal string? FirstInvalidLimit() =>
-        Tokens is <= 0 ? $"budget.tokens: {Tokens}"
-        : WallTime is { } wallTime && wallTime <= TimeSpan.Zero ? $"budget.wallTime: {wallTime:g}"
-        : ToolCalls is <= 0 ? $"budget.toolCalls: {ToolCalls}"
-        : DelegationDepth is <= 0 ? $"budget.delegationDepth: {DelegationDepth}"
-        : SpawnedAgents is <= 0 ? $"budget.spawnedAgents: {SpawnedAgents}"
-        : null;
+    internal string? FirstInvalidLimit()
+    {
+        if (Tokens is <= 0)
+            return $"budget.tokens: {Tokens}";
+        if (WallTime is { } wallTime && wallTime <= TimeSpan.Zero)
+            return $"budget.wallTime: {wallTime:g}";
+        if (ToolCalls is <= 0)
+            return $"budget.toolCalls: {ToolCalls}";
+        if (DelegationDepth is <= 0)
+            return $"budget.delegationDepth: {DelegationDepth}";
+        if (SpawnedAgents is <= 0)
+            return $"budget.spawnedAgents: {SpawnedAgents}";
+        return null;
+    }
 }

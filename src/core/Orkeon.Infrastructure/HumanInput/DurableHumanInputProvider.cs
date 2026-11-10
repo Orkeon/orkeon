@@ -188,7 +188,7 @@ public sealed partial class DurableHumanInputProvider : IHumanInputProvider
                     throw await SuspendAsync(run, sessionId, shown).ConfigureAwait(false);
                 }
 
-                return await HoldAsync(run, sessionId, requestId, shown, context, askThePerson, held!, hold, timeout, ct).ConfigureAwait(false);
+                return await HoldAsync(run, sessionId, requestId, shown, context, new HoldWait(held!, hold, timeout, askThePerson), ct).ConfigureAwait(false);
             }
             finally
             {
@@ -200,18 +200,23 @@ public sealed partial class DurableHumanInputProvider : IHumanInputProvider
         }
     }
 
+    // What a hold waits on: the held answer, its two cancellation sources and the way to ask the person.
+    private readonly record struct HoldWait(
+        System.Threading.Tasks.Task<string> Held,
+        CancellationTokenSource Hold,
+        CancellationTokenSource Timeout,
+        Func<HumanInputContext, CancellationToken, System.Threading.Tasks.Task<string>> AskThePerson);
+
     private async System.Threading.Tasks.Task<string?> HoldAsync(
         RunScope run,
         string sessionId,
         string requestId,
         PendingInputRequest shown,
         HumanInputContext context,
-        Func<HumanInputContext, CancellationToken, System.Threading.Tasks.Task<string>> askThePerson,
-        System.Threading.Tasks.Task<string> held,
-        CancellationTokenSource hold,
-        CancellationTokenSource timeout,
+        HoldWait wait,
         CancellationToken ct)
     {
+        var (held, hold, timeout, askThePerson) = wait;
         // A provider that asks a person tells the stream itself (with the id in its context); any other leaves it to us.
         System.Threading.Tasks.Task<string>? person = null;
         var innerAsks = _inner.AsksAPerson;

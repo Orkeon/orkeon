@@ -154,6 +154,54 @@ internal static class RunsCommand
         string? SettingsPath = null,
         string? Error = null);
 
+    /// <summary>Applies the argument at <paramref name="i"/> (and its value, advancing <paramref name="i"/>) to <paramref name="parsed"/>; sets <c>Error</c> when it is refused.</summary>
+    private static RunsArguments ParseArgument(RunsArguments parsed, string[] args, ref int i)
+    {
+        var arg = args[i];
+        var next = i + 1 < args.Length ? args[i + 1] : null;
+        if (TakesValue(arg, parsed.Action) && next is not null)
+            i++;
+
+        return ApplyOption(parsed, arg, next);
+    }
+
+    private static bool TakesValue(string arg, string action) => arg switch
+    {
+        "--crew" or "--limit" => action == "list",
+        "--from" => action == "tail",
+        "--settings" or "-s" => true,
+        _ => false,
+    };
+
+    private static RunsArguments ApplyLimit(RunsArguments parsed, string? next) => ParsePositive(next) switch
+    {
+        { } limit => parsed with { Limit = limit },
+        null => parsed with { Error = "--limit needs a positive number." },
+    };
+
+    private static RunsArguments ApplyFrom(RunsArguments parsed, string? next) => ParsePositive(next) switch
+    {
+        { } from => parsed with { From = from },
+        null => parsed with { Error = "--from needs a sequence number (1 or more)." },
+    };
+
+    private static RunsArguments ApplyOption(RunsArguments parsed, string arg, string? next) => arg switch
+    {
+        "--crew" when parsed.Action == "list" =>
+            next is null ? parsed with { Error = "--crew needs a crew key." } : parsed with { Crew = next },
+        "--limit" when parsed.Action == "list" => ApplyLimit(parsed, next),
+        "--from" when parsed.Action == "tail" => ApplyFrom(parsed, next),
+        "--follow" when parsed.Action == "tail" => parsed with { Follow = true },
+        "--settings" or "-s" =>
+            next is null ? parsed with { Error = "--settings needs a path." } : parsed with { SettingsPath = next },
+        _ when arg.StartsWith('-') || parsed.Action == "list" || parsed.RunId is not null =>
+            parsed with { Error = $"unexpected argument '{arg}'." },
+        _ => parsed with { RunId = arg },
+    };
+
+    private static int? ParsePositive(string? text) =>
+        int.TryParse(text, NumberStyles.None, CultureInfo.InvariantCulture, out var value) && value >= 1 ? value : null;
+
     private static RunsArguments Parse(string[] args)
     {
         var parsed = new RunsArguments { Action = args[0] };
@@ -162,39 +210,9 @@ internal static class RunsCommand
 
         for (var i = 1; i < args.Length; i++)
         {
-            var arg = args[i];
-            string? Value() => i + 1 < args.Length ? args[++i] : null;
-            switch (arg)
-            {
-                case "--crew" when parsed.Action == "list":
-                    if (Value() is not { } crew)
-                        return parsed with { Error = "--crew needs a crew key." };
-                    parsed = parsed with { Crew = crew };
-                    break;
-                case "--limit" when parsed.Action == "list":
-                    if (!int.TryParse(Value(), NumberStyles.None, CultureInfo.InvariantCulture, out var limit) || limit < 1)
-                        return parsed with { Error = "--limit needs a positive number." };
-                    parsed = parsed with { Limit = limit };
-                    break;
-                case "--from" when parsed.Action == "tail":
-                    if (!int.TryParse(Value(), NumberStyles.None, CultureInfo.InvariantCulture, out var from) || from < 1)
-                        return parsed with { Error = "--from needs a sequence number (1 or more)." };
-                    parsed = parsed with { From = from };
-                    break;
-                case "--follow" when parsed.Action == "tail":
-                    parsed = parsed with { Follow = true };
-                    break;
-                case "--settings" or "-s":
-                    if (Value() is not { } settings)
-                        return parsed with { Error = "--settings needs a path." };
-                    parsed = parsed with { SettingsPath = settings };
-                    break;
-                default:
-                    if (arg.StartsWith('-') || parsed.Action == "list" || parsed.RunId is not null)
-                        return parsed with { Error = $"unexpected argument '{arg}'." };
-                    parsed = parsed with { RunId = arg };
-                    break;
-            }
+            parsed = ParseArgument(parsed, args, ref i);
+            if (parsed.Error is not null)
+                return parsed;
         }
 
         return parsed.Action != "list" && parsed.RunId is null

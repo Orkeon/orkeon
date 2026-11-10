@@ -312,8 +312,8 @@ public sealed class StepTabs : TabControl
     {
         public event EventHandler? CanExecuteChanged
         {
-            add { }
-            remove { }
+            add { /* CanExecute never changes: nothing to subscribe. */ }
+            remove { /* CanExecute never changes: nothing to unsubscribe. */ }
         }
 
         public bool CanExecute(object? parameter) => parameter is StepTabGroup;

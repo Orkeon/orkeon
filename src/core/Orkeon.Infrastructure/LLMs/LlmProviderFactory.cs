@@ -51,40 +51,21 @@ public sealed partial class LlmProviderFactory : ILlmProviderFactory
     /// <param name="fileSystem">
     /// The virtual file system the <c>mock</c> provider reads its responses file through (the host's).
     /// </param>
-    /// <param name="usageSink">
-    /// The host's usage receiver: every provider built is metered for it. Null — no host
-    /// listening — builds the providers unmetered.
-    /// </param>
-    /// <param name="rateLimiter">
-    /// The host's limiter (<c>RateLimiting</c>): every call of a provider built takes one of its
-    /// leases. Null builds the providers unlimited.
-    /// </param>
-    /// <param name="callObserver">The host's call observer: every call of a provider built is announced to it. Null observes nothing.</param>
-    /// <param name="tokenCounter">Estimates the tokens the observer is told; null uses <see cref="SimpleTokenCounter"/>.</param>
-    /// <param name="capabilities">The per-model table (FWK-21) every provider built reads; null uses the built-in one.</param>
-    /// <param name="replay">
-    /// Record or replay (FWK-11): every provider built is wrapped, under the call-mode layer, in a decorator that writes its
-    /// calls to the cassette or answers them from it. Null, or <see cref="LlmReplayMode.Off"/>, adds no layer.
-    /// </param>
-
+    /// <param name="options">The host's optional services (metering, limiting, observing, capabilities, replay); null uses none.</param>
     public LlmProviderFactory(
         IHttpClientFactory httpClientFactory,
         ILoggerFactory loggerFactory,
         IFileSystemService fileSystem,
-        ILlmUsageSink? usageSink = null,
-        ILlmRateLimiter? rateLimiter = null,
-        ILlmCallObserver? callObserver = null,
-        ITokenCounter? tokenCounter = null,
-        IModelCapabilityRegistry? capabilities = null,
-        LlmReplayOptions? replay = null)
+        LlmProviderFactoryOptions? options = null)
     {
+        var replay = options?.Replay;
         if (replay is { Mode: not LlmReplayMode.Off })
         {
             _replayMode = replay.Mode;
             _cassette = new LlmCassette(
                 fileSystem,
                 string.IsNullOrWhiteSpace(replay.Cassette)
-                    ? throw new ArgumentException("A record or replay mode needs the virtual path of its cassette.", nameof(replay))
+                    ? throw new ArgumentException("A record or replay mode needs the virtual path of its cassette.", nameof(options))
                     : replay.Cassette);
         }
 
@@ -94,11 +75,11 @@ public sealed partial class LlmProviderFactory : ILlmProviderFactory
         _httpClientFactory = httpClientFactory;
         ArgumentNullException.ThrowIfNull(loggerFactory);
         _loggerFactory = loggerFactory;
-        _usageSink = usageSink;
-        _rateLimiter = rateLimiter;
-        _callObserver = callObserver ?? NullLlmCallObserver.Instance;
-        _tokenCounter = tokenCounter ?? new SimpleTokenCounter();
-        _capabilities = capabilities ?? ModelCapabilityRegistry.Default;
+        _usageSink = options?.UsageSink;
+        _rateLimiter = options?.RateLimiter;
+        _callObserver = options?.CallObserver ?? NullLlmCallObserver.Instance;
+        _tokenCounter = options?.TokenCounter ?? new SimpleTokenCounter();
+        _capabilities = options?.Capabilities ?? ModelCapabilityRegistry.Default;
 
         // Create tool calling strategies
         _openAiStrategy = new OpenAIToolCallingStrategy(
@@ -258,11 +239,17 @@ public sealed partial class LlmProviderFactory : ILlmProviderFactory
     /// <paramref name="built"/> under the cassette decorator the host asked for, or as it is. The cassette
     /// holds what went over the wire, so the decorator sits under the call-mode layer, on the vendor's provider.
     /// </summary>
-    private ILlmProvider Cassette(ILlmProvider built, LlmConfig config) => _cassette is null
-        ? built
-        : _replayMode == LlmReplayMode.Replay
+    private ILlmProvider Cassette(ILlmProvider built, LlmConfig config)
+    {
+        if (_cassette is null)
+        {
+            return built;
+        }
+
+        return _replayMode == LlmReplayMode.Replay
             ? new ReplayLlmProvider(built, _cassette, ProfileOf(config))
             : new RecordingLlmProvider(built, _cassette, ProfileOf(config));
+    }
 
     private static string ProfileOf(LlmConfig config) => string.IsNullOrWhiteSpace(config.Profile) ? "default" : config.Profile;
 

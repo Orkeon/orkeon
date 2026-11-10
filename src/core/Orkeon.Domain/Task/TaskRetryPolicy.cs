@@ -27,8 +27,8 @@ public sealed record TaskRetryPolicy
     /// <exception cref="ArgumentOutOfRangeException">An argument is out of its range.</exception>
     public TaskRetryPolicy(int attempts, int backoffMs = 0, TaskRetryBackoff backoff = TaskRetryBackoff.Fixed)
     {
-        ArgumentOutOfRangeException.ThrowIfLessThan(attempts, 1, nameof(attempts));
-        ArgumentOutOfRangeException.ThrowIfNegative(backoffMs, nameof(backoffMs));
+        ArgumentOutOfRangeException.ThrowIfLessThan(attempts, 1);
+        ArgumentOutOfRangeException.ThrowIfNegative(backoffMs);
         if (!Enum.IsDefined(backoff))
             throw new ArgumentOutOfRangeException(nameof(backoff), backoff, "backoff is fixed or exponential.");
         Attempts = attempts;

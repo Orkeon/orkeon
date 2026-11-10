@@ -522,17 +522,28 @@ public sealed class LaunchHistoryViewModel : ObservableObject
                      .GroupBy(row => row.StartedAt.ToLocalTime().Date)
                      .OrderByDescending(group => group.Key))
         {
-            var header = day.Key == today ? strings[StudioStringKeys.HistToday]
-                : day.Key == today.AddDays(-1) ? strings[StudioStringKeys.HistYesterday]
-                : SentenceCase(day.Key.ToString("D", CultureInfo.CurrentCulture));
+            string header;
+            if (day.Key == today)
+            {
+                header = strings[StudioStringKeys.HistToday];
+            }
+            else if (day.Key == today.AddDays(-1))
+            {
+                header = strings[StudioStringKeys.HistYesterday];
+            }
+            else
+            {
+                header = SentenceCase(day.Key.ToString("D", CultureInfo.CurrentCulture));
+            }
+
             Groups.Add(new LaunchHistoryDayGroup(header, [.. day.OrderByDescending(row => row.StartedAt)]));
         }
 
         OnPropertyChanged(nameof(HasNoMatch));
     }
 
-    // D05: a long date is a header, so it starts with a capital like the "Today" header;
-    // the culture's own upper case, the rest of the long date as the culture writes it.
+    // D05: a long date is a header, so it starts with a capital like the "Today" header.
+    // The first letter takes the culture's own upper case and the rest stays as the culture writes it.
     internal static string SentenceCase(string header) =>
         header.Length == 0 ? header
             : string.Concat(CultureInfo.CurrentCulture.TextInfo.ToUpper(header[0]).ToString(), header[1..]);

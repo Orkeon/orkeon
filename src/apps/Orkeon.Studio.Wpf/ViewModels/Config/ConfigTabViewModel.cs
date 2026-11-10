@@ -33,7 +33,7 @@ public sealed class ConfigTabViewModel : ObservableObject
     private string? _statusMessage;
     private bool _statusNamesFile;
     private string? _loadedPath;
-    private string _savedJson = "";
+    private string _savedJson;
     private int _pendingChangeCount;
 
     /// <summary>
@@ -49,6 +49,8 @@ public sealed class ConfigTabViewModel : ObservableObject
         string? forgeWorkspace = null,
         string? teamsRoot = null)
     {
+        // Set first: the sections built below may read it while they raise their first change.
+        _savedJson = "";
         var seams = services ?? new StudioServices();
 
         _store = seams.SettingsStore ?? PhysicalAppSettingsStore.Instance;

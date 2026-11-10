@@ -12,11 +12,11 @@ public sealed class CommandDispatchScope : IDisposable
     private readonly List<CommandInstance> _captured = new();
     private readonly List<CommandInstance> _turn = new();
 
-    internal CommandDispatchScope(string commandName, TimeSpan? timeout, Action onDispose, CancellationToken cancellationToken, bool isPrompt = false, CommandDispatchScope? promptOwner = null, int depth = 0, bool fromCompleted = false)
+    internal CommandDispatchScope(string commandName, TimeSpan? timeout, Action onDispose, CancellationToken cancellationToken, ScopeChain chain = default)
     {
-        Depth = depth;
-        FromCompleted = fromCompleted;
-        PromptOwner = isPrompt ? this : promptOwner;
+        Depth = chain.Depth;
+        FromCompleted = chain.FromCompleted;
+        PromptOwner = chain.IsPrompt ? this : chain.PromptOwner;
         CommandName = commandName;
         CancellationToken = cancellationToken;
         Timeout = timeout;
@@ -61,3 +61,10 @@ public sealed class CommandDispatchScope : IDisposable
     /// <inheritdoc />
     public void Dispose() => _onDispose();
 }
+
+/// <summary>Where a <see cref="CommandDispatchScope"/> sits in the chain of dispatches that led to it.</summary>
+/// <param name="IsPrompt">Whether the scope is opened with a prompt line.</param>
+/// <param name="PromptOwner">The prompt scope the new scope belongs to, when it is not one itself.</param>
+/// <param name="Depth">Chain depth.</param>
+/// <param name="FromCompleted">Whether a <c>completed</c> runs in the scope.</param>
+internal readonly record struct ScopeChain(bool IsPrompt = false, CommandDispatchScope? PromptOwner = null, int Depth = 0, bool FromCompleted = false);

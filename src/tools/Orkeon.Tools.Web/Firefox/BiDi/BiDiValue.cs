@@ -47,23 +47,25 @@ internal static class BiDiValue
             case "array" or "set" or "nodelist" or "htmlcollection":
                 return value is JsonArray items ? new JsonArray([.. items.Select(ToJson)]) : $"[{type}]";
             case "object" or "map":
-                if (value is not JsonArray entries)
-                    return $"[{type}]";
-
-                var result = new JsonObject();
-                foreach (var entry in entries.OfType<JsonArray>().Where(entry => entry.Count == 2))
-                {
-                    // A key is a plain string, or a described value when it is not one (a map).
-                    var key = entry[0] is JsonValue plain && plain.TryGetValue<string>(out var text) ? text : Render(entry[0]);
-                    result[key] = ToJson(entry[1]);
-                }
-
-                return result;
+                return value is JsonArray entries ? ObjectToJson(entries) : $"[{type}]";
             case "regexp":
                 return $"/{value?["pattern"]?.GetValue<string>()}/{value?["flags"]?.GetValue<string>()}";
             default:
                 return $"[{type}]";
         }
+    }
+
+    private static JsonObject ObjectToJson(JsonArray entries)
+    {
+        var result = new JsonObject();
+        foreach (var entry in entries.OfType<JsonArray>().Where(entry => entry.Count == 2))
+        {
+            // A key is a plain string, or a described value when it is not one (a map).
+            var key = entry[0] is JsonValue plain && plain.TryGetValue<string>(out var text) ? text : Render(entry[0]);
+            result[key] = ToJson(entry[1]);
+        }
+
+        return result;
     }
 
     private static string TypeOf(JsonObject described) =>

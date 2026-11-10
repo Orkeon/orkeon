@@ -11,11 +11,8 @@ internal static class OAuthRedaction
     {
         ArgumentNullException.ThrowIfNull(message);
         ArgumentNullException.ThrowIfNull(credentials);
-        foreach (var credential in credentials)
-        {
-            if (credential is { Length: >= MinimumLength })
-                message = message.Replace(credential, "***", StringComparison.Ordinal);
-        }
+        foreach (var credential in credentials.Where(credential => credential is { Length: >= MinimumLength }))
+            message = message.Replace(credential!, "***", StringComparison.Ordinal);
 
         return message;
     }

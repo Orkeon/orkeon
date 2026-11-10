@@ -31,7 +31,7 @@ public sealed class LlmProviderFactoryReplayTests
         NewFileSystem().AddMount("/llm-mock").AddFile("/llm-mock/a.jsonl", """{"match":"ping","content":"pong"}""");
 
     private static LlmProviderFactory Factory(FakeFileSystemService fs, LlmReplayMode mode) =>
-        new(new NoHttpClientFactory(), NullLoggerFactory.Instance, fs, replay: new LlmReplayOptions { Mode = mode, Cassette = CassettePath });
+        new(new NoHttpClientFactory(), NullLoggerFactory.Instance, fs, new LlmProviderFactoryOptions { Replay = new LlmReplayOptions { Mode = mode, Cassette = CassettePath } });
 
     private static ILlmProvider Provider(IBasicLlmProvider created) => Assert.IsType<LlmProviderAdapter>(created).UnderlyingProvider;
 
@@ -130,13 +130,13 @@ public sealed class LlmProviderFactoryReplayTests
         // FWK review LLM-7: replay answers from the cassette without a network call, so it never waits on the limiter.
         var recording = WithResponses();
         var recordLimiter = new Orkeon.Infrastructure.Tests.Doubles.CountingLlmRateLimiter();
-        await Provider(new LlmProviderFactory(new NoHttpClientFactory(), NullLoggerFactory.Instance, recording, rateLimiter: recordLimiter,
-                replay: new LlmReplayOptions { Mode = LlmReplayMode.Record, Cassette = CassettePath }).Create(OfflineProfile()))
+        await Provider(new LlmProviderFactory(new NoHttpClientFactory(), NullLoggerFactory.Instance, recording,
+                new LlmProviderFactoryOptions { RateLimiter = recordLimiter, Replay = new LlmReplayOptions { Mode = LlmReplayMode.Record, Cassette = CassettePath } }).Create(OfflineProfile()))
             .ChatAsync(User("ping"), null, TestContext.Current.CancellationToken);
         var replayLimiter = new Orkeon.Infrastructure.Tests.Doubles.CountingLlmRateLimiter();
         var provider = Provider(new LlmProviderFactory(new NoHttpClientFactory(), NullLoggerFactory.Instance,
-            NewFileSystem().AddFile(CassettePath, await ReadAsync(recording)), rateLimiter: replayLimiter,
-            replay: new LlmReplayOptions { Mode = LlmReplayMode.Replay, Cassette = CassettePath }).Create(OfflineProfile()));
+            NewFileSystem().AddFile(CassettePath, await ReadAsync(recording)),
+            new LlmProviderFactoryOptions { RateLimiter = replayLimiter, Replay = new LlmReplayOptions { Mode = LlmReplayMode.Replay, Cassette = CassettePath } }).Create(OfflineProfile()));
 
         var response = await provider.ChatAsync(User("ping"), null, TestContext.Current.CancellationToken);
 

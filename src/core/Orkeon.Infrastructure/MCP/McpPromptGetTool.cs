@@ -88,9 +88,8 @@ public sealed class McpPromptGetTool : ToolBase<McpPromptGetRequest, McpPromptGe
     /// <summary>Initializes a new instance of <see cref="McpPromptGetTool"/>.</summary>
     /// <param name="provider">The provider that holds the connected servers.</param>
     public McpPromptGetTool(McpToolProvider provider)
-        : this(() => provider ?? throw new ArgumentNullException(nameof(provider)))
+        : this(Capture(provider))
     {
-        ArgumentNullException.ThrowIfNull(provider);
     }
 
     /// <summary>
@@ -103,6 +102,12 @@ public sealed class McpPromptGetTool : ToolBase<McpPromptGetRequest, McpPromptGe
     {
         ArgumentNullException.ThrowIfNull(provider);
         _provider = provider;
+    }
+
+    private static Func<McpToolProvider> Capture(McpToolProvider provider)
+    {
+        ArgumentNullException.ThrowIfNull(provider);
+        return () => provider;
     }
 
     /// <inheritdoc />

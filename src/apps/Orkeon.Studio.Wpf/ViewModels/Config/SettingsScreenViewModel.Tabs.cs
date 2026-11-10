@@ -24,10 +24,16 @@ public sealed partial class SettingsScreenViewModel
     public string ModelTabSubtitle =>
         Profiles.IsEmpty
             ? _strings[StudioStringKeys.SettingsTabModelEmpty]
-            : Profiles.HasStudioProfile
-                ? _strings.Format(StudioStringKeys.SettingsTabModelCount, Profiles.Profiles.Count,
-                    Profiles.DefaultProfileName ?? Profiles.StudioProfileName ?? string.Empty)
-                : _strings[StudioStringKeys.SettingsTabModelNoAssistant];
+            : ModelTabAssistantSubtitle();
+
+    private string ModelTabAssistantSubtitle()
+    {
+        if (!Profiles.HasStudioProfile)
+            return _strings[StudioStringKeys.SettingsTabModelNoAssistant];
+
+        return _strings.Format(StudioStringKeys.SettingsTabModelCount, Profiles.Profiles.Count,
+            Profiles.DefaultProfileName ?? Profiles.StudioProfileName ?? string.Empty);
+    }
 
     /// <summary>Warning while the assistant has no model; done once it has one.</summary>
     public string ModelTabState => Profiles.HasStudioProfile ? DoneState : WarningState;
@@ -45,13 +51,24 @@ public sealed partial class SettingsScreenViewModel
     public string KeysTabSubtitle =>
         !Profiles.HasSecrets
             ? _strings[StudioStringKeys.SettingsTabKeysNone]
-            : StoredKeyCount is > 0 and var stored
-                ? _strings.Format(StudioStringKeys.SettingsTabKeysCount, stored)
-                : _strings.Format(StudioStringKeys.SettingsTabKeysNoneStored, Profiles.Secrets.Count);
+            : KeysCountSubtitle(StoredKeyCount, Profiles.Secrets.Count);
+
+    private string KeysCountSubtitle(int stored, int total) =>
+        stored > 0
+            ? _strings.Format(StudioStringKeys.SettingsTabKeysCount, stored)
+            : _strings.Format(StudioStringKeys.SettingsTabKeysNoneStored, total);
+
+    private static string KeysState(bool hasSecrets, int stored, int total)
+    {
+        if (!hasSecrets)
+            return EmptyState;
+
+        return stored == total ? VerifiedState : OptionalState;
+    }
 
     /// <summary>The green dot when every key is in place, the hollow optional ring while one is missing, empty without keys.</summary>
     public string KeysTabState =>
-        !Profiles.HasSecrets ? EmptyState : StoredKeyCount == Profiles.Secrets.Count ? VerifiedState : OptionalState;
+        KeysState(Profiles.HasSecrets, StoredKeyCount, Profiles.Secrets.Count);
 
     /// <summary>The fiches whose row carries a finding of the validation.</summary>
     private int FolderProblemCount => Config.Mounts.Mounts.Count(mount => mount.HasRowProblem);
@@ -60,13 +77,18 @@ public sealed partial class SettingsScreenViewModel
     public string FoldersTabSubtitle =>
         FolderProblemCount is > 0 and var problems
             ? _strings.Format(StudioStringKeys.SettingsTabFoldersProblems, problems)
-            : Config.Mounts.Mounts.Count == 0
-                ? _strings[StudioStringKeys.SettingsTabFoldersEmpty]
-                : _strings.Format(StudioStringKeys.SettingsTabFoldersCount, Config.Mounts.Mounts.Count);
+            : FoldersAllowedSubtitle(Config.Mounts.Mounts.Count);
+
+    private string FoldersAllowedSubtitle(int count) =>
+        count == 0
+            ? _strings[StudioStringKeys.SettingsTabFoldersEmpty]
+            : _strings.Format(StudioStringKeys.SettingsTabFoldersCount, count);
 
     /// <summary>Warning on a folder to fix, done with folders allowed, empty without.</summary>
     public string FoldersTabState =>
-        FolderProblemCount > 0 ? WarningState : Config.Mounts.Mounts.Count == 0 ? EmptyState : DoneState;
+        FolderProblemCount > 0 ? WarningState : FoldersAllowedState(Config.Mounts.Mounts.Count);
+
+    private static string FoldersAllowedState(int count) => count == 0 ? EmptyState : DoneState;
 
     /// <summary>« 119 tools ».</summary>
     public string ToolsTabSubtitle => _strings.Format(StudioStringKeys.SettingsTabToolsCount, Tools.ToolCount);
@@ -77,21 +99,22 @@ public sealed partial class SettingsScreenViewModel
     public string ToolKeysTabSubtitle =>
         !Tools.HasSecrets
             ? _strings[StudioStringKeys.SettingsTabKeysNone]
-            : StoredToolKeyCount is > 0 and var stored
-                ? _strings.Format(StudioStringKeys.SettingsTabKeysCount, stored)
-                : _strings.Format(StudioStringKeys.SettingsTabKeysNoneStored, Tools.Secrets.Count);
+            : KeysCountSubtitle(StoredToolKeyCount, Tools.Secrets.Count);
 
     /// <summary>Verified once every tool key is remembered, the optional ring while one is not.</summary>
     public string ToolKeysTabState =>
-        !Tools.HasSecrets ? EmptyState : StoredToolKeyCount == Tools.Secrets.Count ? VerifiedState : OptionalState;
+        KeysState(Tools.HasSecrets, StoredToolKeyCount, Tools.Secrets.Count);
 
     /// <summary>The shell commands section: the default list, a replaced one, or how many were added.</summary>
     public string ShellTabSubtitle =>
         Config.ShellTools.ReplacesDefaults
             ? _strings[StudioStringKeys.SettingsTabShellReplaced]
-            : Config.ShellTools.ExtraCommandCount is > 0 and var extra
-                ? _strings.Format(StudioStringKeys.SettingsTabShellExtra, extra)
-                : _strings[StudioStringKeys.SettingsTabShellDefault];
+            : ShellExtraSubtitle(Config.ShellTools.ExtraCommandCount);
+
+    private string ShellExtraSubtitle(int extra) =>
+        extra > 0
+            ? _strings.Format(StudioStringKeys.SettingsTabShellExtra, extra)
+            : _strings[StudioStringKeys.SettingsTabShellDefault];
 
     /// <summary>« 2 accounts », or none.</summary>
     public string MailsTabSubtitle => AccountsSubtitle(Config.Email.Accounts.Count);

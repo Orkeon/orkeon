@@ -177,13 +177,8 @@ public sealed class Crew : AggregateRoot<CrewId>
         ProcessType = ProcessType.Sequential;
     }
 
-    /// <summary>
-    /// Creates a new crew with the specified options.
-    /// </summary>
-    public static Crew Create(CrewCreateOptions options)
+    private static void ValidateCreateOptions(CrewCreateOptions options)
     {
-        ArgumentNullException.ThrowIfNull(options);
-
         if (string.IsNullOrWhiteSpace(options.Goal))
             throw new ArgumentException("options.Goal cannot be empty.", nameof(options));
 
@@ -207,6 +202,22 @@ public sealed class Crew : AggregateRoot<CrewId>
         if (options.Budget?.FirstInvalidLimit() is { } invalidLimit)
             throw new ArgumentException($"{invalidLimit} - every limit of a crew's budget is 1 or more.", nameof(options));
 
+        if (options.MaxRpm is <= 0)
+            throw new ArgumentException("options.MaxRpm must be positive.", nameof(options));
+
+        if (options.ProcessType == ProcessType.Hierarchical && options.ManagerAgentId == null && options.ManagerLlm == null)
+            throw new ArgumentException("Hierarchical process requires either a manager agent or manager LLM.", nameof(options));
+    }
+
+    /// <summary>
+    /// Creates a new crew with the specified options.
+    /// </summary>
+    public static Crew Create(CrewCreateOptions options)
+    {
+        ArgumentNullException.ThrowIfNull(options);
+
+        ValidateCreateOptions(options);
+
         var crew = new Crew(CrewId.Create())
         {
             Goal = CrewGoal.From(options.Goal),
@@ -215,7 +226,7 @@ public sealed class Crew : AggregateRoot<CrewId>
             Verbose = options.Verbose,
             Planning = options.Planning,
             Status = CrewStatus.Idle,
-            MaxRpm = options.MaxRpm is null or > 0 ? options.MaxRpm : throw new ArgumentException("options.MaxRpm must be positive.", nameof(options)),
+            MaxRpm = options.MaxRpm,
             Budget = options.Budget ?? CrewBudget.Unset,
             ManagerLlm = options.ManagerLlm,
             ManagerAgentId = options.ManagerAgentId,
@@ -227,11 +238,6 @@ public sealed class Crew : AggregateRoot<CrewId>
             ToolAccessPolicy = options.ToolAccessPolicy,
             GraphConfig = options.GraphConfig
         };
-
-        if (options.ProcessType == ProcessType.Hierarchical && options.ManagerAgentId == null && options.ManagerLlm == null)
-        {
-            throw new ArgumentException("Hierarchical process requires either a manager agent or manager LLM.", nameof(options));
-        }
 
         crew.RaiseDomainEvent(new CrewCreatedEvent
         {

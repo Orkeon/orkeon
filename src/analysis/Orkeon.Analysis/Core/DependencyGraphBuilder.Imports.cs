@@ -41,9 +41,11 @@ public sealed partial class DependencyGraphBuilder
     }
 
     // The whole-graph lookups of one resolution, built on the first file that needs them.
-    private sealed class ImportScope(Dictionary<string, RaggableNode> index)
+    private sealed class ImportScope
     {
-        public Dictionary<string, RaggableNode> Index { get; } = index;
+        public ImportScope(Dictionary<string, RaggableNode> index) => Index = index;
+
+        public Dictionary<string, RaggableNode> Index { get; }
         public CSharpNamespaceIndex? CSharp { get; set; }
         public Dictionary<string, List<RaggableNode>>? GoFilesByDir { get; set; }
     }
@@ -64,7 +66,7 @@ public sealed partial class DependencyGraphBuilder
     private void CollectCSharpUsings(
         EdgeSet edges, ImportScope scope, RaggableNode moduleNode, FileContext ctx, List<TsNode> usings)
     {
-        HashSet<string>? identifiers = null;
+        var identifiers = new Lazy<HashSet<string>>(() => CSharpIdentifiers(ctx.Source));
         foreach (var directive in usings)
         {
             var name = CSharpUsingName(directive.Text ?? string.Empty);
@@ -73,27 +75,39 @@ public sealed partial class DependencyGraphBuilder
             scope.CSharp ??= BuildCSharpNamespaceIndex();
             if (scope.CSharp.Namespaces.Contains(name))
             {
-                if (!scope.CSharp.Types.TryGetValue(name, out var types)) continue;
-                identifiers ??= CSharpIdentifiers(ctx.Source);
-                foreach (var (typeName, modules) in types)
-                {
-                    if (!identifiers.Contains(typeName)) continue;
-                    foreach (var module in modules) AddImport(edges, moduleNode, module);
-                }
+                AddNamedNamespaceTypes(edges, scope.CSharp, moduleNode, name, identifiers);
                 continue;
             }
-
-            var lastDot = name.LastIndexOf('.');
-            if (lastDot > 0
-                && scope.CSharp.Types.TryGetValue(name[..lastDot], out var parentTypes)
-                && parentTypes.TryGetValue(name[(lastDot + 1)..], out var typeModules))
-            {
-                foreach (var module in typeModules) AddImport(edges, moduleNode, module);
-                continue;
-            }
+            if (TryAddNamedType(edges, scope.CSharp, moduleNode, name)) continue;
 
             AddImport(edges, moduleNode, External($"ext::dotnet::{name}", scope.Index));
         }
+    }
+
+    // The files declaring a type of the namespace that the importing file names.
+    private static void AddNamedNamespaceTypes(
+        EdgeSet edges, CSharpNamespaceIndex index, RaggableNode moduleNode, string name, Lazy<HashSet<string>> identifiers)
+    {
+        if (!index.Types.TryGetValue(name, out var types)) return;
+        foreach (var (typeName, modules) in types)
+        {
+            if (!identifiers.Value.Contains(typeName)) continue;
+            foreach (var module in modules) AddImport(edges, moduleNode, module);
+        }
+    }
+
+    // `using static N.T;` or `using A = N.T;` names the type itself.
+    private static bool TryAddNamedType(EdgeSet edges, CSharpNamespaceIndex index, RaggableNode moduleNode, string name)
+    {
+        var lastDot = name.LastIndexOf('.');
+        if (lastDot <= 0
+            || !index.Types.TryGetValue(name[..lastDot], out var parentTypes)
+            || !parentTypes.TryGetValue(name[(lastDot + 1)..], out var typeModules))
+        {
+            return false;
+        }
+        foreach (var module in typeModules) AddImport(edges, moduleNode, module);
+        return true;
     }
 
     // `global using static A.B;`, `using X = A.B.C<int>;` -> the namespace or type named, without alias,
@@ -136,68 +150,90 @@ public sealed partial class DependencyGraphBuilder
     private CSharpNamespaceIndex BuildCSharpNamespaceIndex()
     {
         var result = new CSharpNamespaceIndex();
-        foreach (var ctx in _files.Values)
+        foreach (var nodes in _files.Values.Select(f => f.Nodes))
         {
-            var module = ctx.Nodes.FirstOrDefault(n => n.Level == NodeLevel.L2_Module);
+            var module = nodes.FirstOrDefault(n => n.Level == NodeLevel.L2_Module);
             if (module is null || module.Language != "csharp") continue;
+            IndexCSharpFile(result, nodes, module);
+        }
+        return result;
+    }
 
-            var byId = new Dictionary<string, RaggableNode>(StringComparer.Ordinal);
-            foreach (var node in ctx.Nodes) byId.TryAdd(node.Id, node);
-            var namespaceNames = new Dictionary<string, string>(StringComparer.Ordinal);
+    private static void IndexCSharpFile(CSharpNamespaceIndex result, IEnumerable<RaggableNode> nodes, RaggableNode module)
+    {
+        var all = nodes as IReadOnlyCollection<RaggableNode> ?? nodes.ToList();
+        var resolver = new CSharpNamespaceResolver(all, module);
+        foreach (var node in all)
+        {
+            if (node.Level != NodeLevel.L3_Symbol) continue;
+            if (node.Kind == UniversalNodeKind.Namespace)
+            {
+                result.Namespaces.Add(resolver.FullName(node));
+                continue;
+            }
+            if (!IsCSharpTypeKind(node.Kind)) continue;
+            var ns = resolver.NamespaceOf(node);
+            if (ns is null || string.IsNullOrEmpty(node.Name)) continue;
+            AddCSharpType(result, ns, node.Name, module);
+        }
+    }
+
+    private static bool IsCSharpTypeKind(UniversalNodeKind kind)
+        => kind is UniversalNodeKind.Class or UniversalNodeKind.Struct or UniversalNodeKind.Record
+            or UniversalNodeKind.Interface or UniversalNodeKind.Enum or UniversalNodeKind.Type;
+
+    private static void AddCSharpType(CSharpNamespaceIndex result, string ns, string typeName, RaggableNode module)
+    {
+        if (!result.Types.TryGetValue(ns, out var types))
+        {
+            types = new Dictionary<string, List<RaggableNode>>(StringComparer.Ordinal);
+            result.Types[ns] = types;
+        }
+        if (!types.TryGetValue(typeName, out var modules))
+        {
+            modules = [];
+            types[typeName] = modules;
+        }
+        if (!modules.Contains(module)) modules.Add(module);
+    }
+
+    // The namespace of the nodes of one C# file.
+    private sealed class CSharpNamespaceResolver
+    {
+        private readonly Dictionary<string, RaggableNode> _byId = new(StringComparer.Ordinal);
+        private readonly Dictionary<string, string> _namespaceNames = new(StringComparer.Ordinal);
+        private readonly RaggableNode? _fileScoped;
+
+        public CSharpNamespaceResolver(IReadOnlyCollection<RaggableNode> nodes, RaggableNode module)
+        {
+            foreach (var node in nodes) _byId.TryAdd(node.Id, node);
 
             // A file-scoped `namespace N;` encloses nothing in the syntax tree: it is the top-level namespace
             // no node is a child of, and it holds the types no block namespace encloses.
-            var parentIds = new HashSet<string>(ctx.Nodes.Select(n => n.ParentId ?? string.Empty), StringComparer.Ordinal);
-            var fileScoped = ctx.Nodes.FirstOrDefault(n => n.Kind == UniversalNodeKind.Namespace
+            var parentIds = new HashSet<string>(nodes.Select(n => n.ParentId ?? string.Empty), StringComparer.Ordinal);
+            _fileScoped = nodes.FirstOrDefault(n => n.Kind == UniversalNodeKind.Namespace
                 && n.ParentId == module.Id && !parentIds.Contains(n.Id));
-
-            string? NamespaceOf(RaggableNode node)
-            {
-                var parentId = node.ParentId;
-                while (parentId is not null && byId.TryGetValue(parentId, out var parent))
-                {
-                    if (parent.Kind == UniversalNodeKind.Namespace) return FullName(parent);
-                    parentId = parent.ParentId;
-                }
-                return node.Kind == UniversalNodeKind.Namespace || fileScoped is null ? null : FullName(fileScoped);
-            }
-
-            string FullName(RaggableNode ns)
-            {
-                if (namespaceNames.TryGetValue(ns.Id, out var known)) return known;
-                var outer = NamespaceOf(ns);
-                var full = outer is null ? ns.Name : $"{outer}.{ns.Name}";
-                namespaceNames[ns.Id] = full;
-                return full;
-            }
-
-            foreach (var node in ctx.Nodes)
-            {
-                if (node.Level != NodeLevel.L3_Symbol) continue;
-                if (node.Kind == UniversalNodeKind.Namespace)
-                {
-                    result.Namespaces.Add(FullName(node));
-                    continue;
-                }
-                if (node.Kind is not (UniversalNodeKind.Class or UniversalNodeKind.Struct or UniversalNodeKind.Record
-                    or UniversalNodeKind.Interface or UniversalNodeKind.Enum or UniversalNodeKind.Type)) continue;
-                var ns = NamespaceOf(node);
-                if (ns is null || string.IsNullOrEmpty(node.Name)) continue;
-
-                if (!result.Types.TryGetValue(ns, out var types))
-                {
-                    types = new Dictionary<string, List<RaggableNode>>(StringComparer.Ordinal);
-                    result.Types[ns] = types;
-                }
-                if (!types.TryGetValue(node.Name, out var modules))
-                {
-                    modules = [];
-                    types[node.Name] = modules;
-                }
-                if (!modules.Contains(module)) modules.Add(module);
-            }
         }
-        return result;
+
+        public string? NamespaceOf(RaggableNode node)
+        {
+            var parentId = node.ParentId;
+            while (parentId is not null && _byId.TryGetValue(parentId, out var parent))
+            {
+                if (parent.Kind == UniversalNodeKind.Namespace) return FullName(parent);
+                parentId = parent.ParentId;
+            }
+            return node.Kind == UniversalNodeKind.Namespace || _fileScoped is null ? null : FullName(_fileScoped);
+        }
+
+        public string FullName(RaggableNode ns)
+        {
+            if (_namespaceNames.TryGetValue(ns.Id, out var known)) return known;
+            var outer = NamespaceOf(ns);
+            var full = outer is null ? ns.Name : $"{outer}.{ns.Name}";
+            _namespaceNames[ns.Id] = full;
+            return full;
+        }
     }
 
     // The identifiers of a C# source, comments left out. String contents count: an interpolated string
@@ -209,30 +245,23 @@ public sealed partial class DependencyGraphBuilder
         while (i < source.Length)
         {
             var c = source[i];
-            if (c == '/' && i + 1 < source.Length && source[i + 1] == '/')
+            if (StartsWith(source, i, '/', '/'))
             {
                 var end = source.IndexOf('\n', i);
                 i = end < 0 ? source.Length : end + 1;
             }
-            else if (c == '/' && i + 1 < source.Length && source[i + 1] == '*')
+            else if (StartsWith(source, i, '/', '*'))
             {
                 var end = source.IndexOf("*/", i + 2, StringComparison.Ordinal);
                 i = end < 0 ? source.Length : end + 2;
             }
             else if (c == '"')
             {
-                // A `//` or `/*` inside a string literal (`"http://..."`) opens no comment: the literal is
-                // scanned to its closing quote and its identifiers kept.
-                var verbatim = i > 0 && source[i - 1] == '@';
-                var end = StringLiteralEnd(source, i + 1, verbatim);
-                AddIdentifiers(source, i + 1, end, result);
-                i = Math.Min(end + 1, source.Length);
+                i = ScanStringLiteral(source, i, result);
             }
-            else if (char.IsLetter(c) || c == '_')
+            else if (IsIdentifierStart(c))
             {
-                var start = i;
-                while (i < source.Length && (char.IsLetterOrDigit(source[i]) || source[i] == '_')) i++;
-                result.Add(source[start..i]);
+                i = ScanIdentifier(source, i, source.Length, result);
             }
             else
             {
@@ -240,6 +269,30 @@ public sealed partial class DependencyGraphBuilder
             }
         }
         return result;
+    }
+
+    private static bool StartsWith(string source, int index, char first, char second)
+        => source[index] == first && index + 1 < source.Length && source[index + 1] == second;
+
+    private static bool IsIdentifierStart(char c) => char.IsLetter(c) || c == '_';
+
+    // A `//` or `/*` inside a string literal (`"http://..."`) opens no comment: the literal is
+    // scanned to its closing quote and its identifiers kept. Returns the index after the literal.
+    private static int ScanStringLiteral(string source, int quoteIndex, HashSet<string> result)
+    {
+        var verbatim = quoteIndex > 0 && source[quoteIndex - 1] == '@';
+        var end = StringLiteralEnd(source, quoteIndex + 1, verbatim);
+        AddIdentifiers(source, quoteIndex + 1, end, result);
+        return Math.Min(end + 1, source.Length);
+    }
+
+    // Adds the identifier starting at `start` (bounded by `to`) and returns the index after it.
+    private static int ScanIdentifier(string source, int start, int to, HashSet<string> result)
+    {
+        var i = start;
+        while (i < to && (char.IsLetterOrDigit(source[i]) || source[i] == '_')) i++;
+        result.Add(source[start..i]);
+        return i;
     }
 
     // The index of the quote closing a literal whose contents start at `from`: `\"` escapes a quote in a
@@ -267,16 +320,7 @@ public sealed partial class DependencyGraphBuilder
         var i = from;
         while (i < to)
         {
-            if (char.IsLetter(source[i]) || source[i] == '_')
-            {
-                var start = i;
-                while (i < to && (char.IsLetterOrDigit(source[i]) || source[i] == '_')) i++;
-                result.Add(source[start..i]);
-            }
-            else
-            {
-                i++;
-            }
+            i = IsIdentifierStart(source[i]) ? ScanIdentifier(source, i, to, result) : i + 1;
         }
     }
 
@@ -288,23 +332,25 @@ public sealed partial class DependencyGraphBuilder
     {
         foreach (var import in imports)
         {
-            foreach (var literal in Descend(import))
+            foreach (var literal in Descend(import).Where(l => l.Type is "interpreted_string_literal" or "raw_string_literal"))
             {
-                if (literal.Type is not ("interpreted_string_literal" or "raw_string_literal")) continue;
                 var path = (literal.Text ?? string.Empty).Trim('"', '`');
-                if (path.Length == 0) continue;
-
-                var dir = GoImportDirectory(path);
-                if (dir is null)
-                {
-                    AddImport(edges, moduleNode, External($"ext::go::{path}", scope.Index));
-                    continue;
-                }
-                scope.GoFilesByDir ??= BuildGoFilesByDir();
-                if (!scope.GoFilesByDir.TryGetValue(dir, out var files)) continue;
-                foreach (var file in files) AddImport(edges, moduleNode, file);
+                if (path.Length > 0) AddGoImport(edges, scope, moduleNode, path);
             }
         }
+    }
+
+    private void AddGoImport(EdgeSet edges, ImportScope scope, RaggableNode moduleNode, string path)
+    {
+        var dir = GoImportDirectory(path);
+        if (dir is null)
+        {
+            AddImport(edges, moduleNode, External($"ext::go::{path}", scope.Index));
+            return;
+        }
+        scope.GoFilesByDir ??= BuildGoFilesByDir();
+        if (!scope.GoFilesByDir.TryGetValue(dir, out var files)) return;
+        foreach (var file in files) AddImport(edges, moduleNode, file);
     }
 
     private string? GoImportDirectory(string importPath)
@@ -355,8 +401,7 @@ public sealed partial class DependencyGraphBuilder
         {
             var argument = use.GetChildForField("argument")?.Text;
             if (string.IsNullOrWhiteSpace(argument)) continue;
-            var inline = InlineRustModules(use);
-            if (inline is null) continue;
+            if (!TryGetInlineRustModules(use, out var inline)) continue;
             var crate = fileCrate with { Current = [.. fileCrate.Current, .. inline] };
             foreach (var path in ExpandRustUse(argument))
             {
@@ -365,18 +410,18 @@ public sealed partial class DependencyGraphBuilder
         }
     }
 
-    // The names of the inline `mod x { ... }` blocks enclosing a node, outermost first; null when one is unnamed.
-    private static List<string>? InlineRustModules(TsNode node)
+    // The names of the inline `mod x { ... }` blocks enclosing a node, outermost first; false when one is unnamed.
+    private static bool TryGetInlineRustModules(TsNode node, out List<string> names)
     {
-        var names = new List<string>();
+        names = [];
         for (var parent = node.Parent; parent is not null; parent = parent.Parent)
         {
             if (parent.Type != "mod_item") continue;
             var name = parent.GetChildForField("name")?.Text;
-            if (string.IsNullOrEmpty(name)) return null;
+            if (string.IsNullOrEmpty(name)) return false;
             names.Insert(0, name);
         }
-        return names;
+        return true;
     }
 
     private sealed record RustCrate(string RootDir, IReadOnlyList<string> CrateRootFiles, IReadOnlyList<string> Current);

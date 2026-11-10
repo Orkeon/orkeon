@@ -35,6 +35,8 @@ public static class RunEventWire
     /// order, null ones omitted (an absent key is omitted, never written as null) and the envelope's names dropped.
     /// Null when nothing is left.
     /// </summary>
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Major Code Smell", "S1168:Empty arrays and collections should be returned instead of null",
+        Justification = "null is a state of the wire here: no payload omits the key from the event, while an empty object would write it.")]
     public static JsonObject? ToPayload(object? payload)
     {
         if (payload is null)

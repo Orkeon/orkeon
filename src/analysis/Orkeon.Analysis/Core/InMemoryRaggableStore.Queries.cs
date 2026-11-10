@@ -254,47 +254,9 @@ public sealed partial class InMemoryRaggableStore
     {
         var take = Math.Clamp(query.Take, 1, MaxNodes);
         var scope = string.IsNullOrEmpty(query.RootFqn) ? null : RootScope.Resolve(query.RootFqn, this);
-        var seen = new HashSet<string>(StringComparer.Ordinal);
-        var matching = new List<ListedEdge>();
-        foreach (var bucket in _edgesBySource.Values)
-        {
-            ct.ThrowIfCancellationRequested();
-            foreach (var edge in bucket)
-            {
-                if (query.Kinds != EdgeKind.None && (query.Kinds & edge.Kind) == EdgeKind.None) continue;
-                if (!seen.Add(edge.Id)) continue;
-                var from = Resolve(edge.FromId);
-                var to = Resolve(edge.ToId);
-                var fromFqn = from is { Fqn.Length: > 0 } ? from.Fqn : edge.FromId;
-                var toFqn = to is { Fqn.Length: > 0 } ? to.Fqn : edge.ToId;
-                if (scope is not null && !scope.Contains(from, fromFqn) && !scope.Contains(to, toFqn)) continue;
-                matching.Add(new ListedEdge
-                {
-                    Id = edge.Id,
-                    FromId = edge.FromId,
-                    FromFqn = fromFqn,
-                    ToId = edge.ToId,
-                    ToFqn = toFqn,
-                    Kind = edge.Kind,
-                });
-            }
-        }
-
+        var matching = CollectMatchingEdges(query, scope, ct);
         matching.Sort(CompareEdges);
-        var start = 0;
-        if (query.After is { } after)
-        {
-            // The first edge strictly after the key: an edge removed since the previous page moves nothing.
-            var low = 0;
-            var high = matching.Count;
-            while (low < high)
-            {
-                var mid = (low + high) / 2;
-                if (CompareToKey(matching[mid], after) <= 0) low = mid + 1;
-                else high = mid;
-            }
-            start = low;
-        }
+        var start = query.After is { } after ? FirstAfter(matching, after) : 0;
 
         var page = matching.GetRange(start, Math.Min(take, matching.Count - start)).ToImmutableArray();
         return new EdgeListPage
@@ -305,23 +267,74 @@ public sealed partial class InMemoryRaggableStore
         };
     }
 
+    private List<ListedEdge> CollectMatchingEdges(EdgeListQuery query, RootScope? scope, CancellationToken ct)
+    {
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+        var matching = new List<ListedEdge>();
+        foreach (var bucket in _edgesBySource.Values)
+        {
+            ct.ThrowIfCancellationRequested();
+            foreach (var edge in bucket)
+            {
+                if (query.Kinds != EdgeKind.None && (query.Kinds & edge.Kind) == EdgeKind.None) continue;
+                if (!seen.Add(edge.Id)) continue;
+                var listed = ListedEdgeOf(edge, scope);
+                if (listed is not null) matching.Add(listed);
+            }
+        }
+        return matching;
+    }
+
+    // The edge as listed, or null when a root scope is set and neither end lies inside it.
+    private ListedEdge? ListedEdgeOf(RaggableEdge edge, RootScope? scope)
+    {
+        var from = Resolve(edge.FromId);
+        var to = Resolve(edge.ToId);
+        var fromFqn = from is { Fqn.Length: > 0 } ? from.Fqn : edge.FromId;
+        var toFqn = to is { Fqn.Length: > 0 } ? to.Fqn : edge.ToId;
+        if (scope is not null && !scope.Contains(from, fromFqn) && !scope.Contains(to, toFqn)) return null;
+        return new ListedEdge
+        {
+            Id = edge.Id,
+            FromId = edge.FromId,
+            FromFqn = fromFqn,
+            ToId = edge.ToId,
+            ToFqn = toFqn,
+            Kind = edge.Kind,
+        };
+    }
+
+    // The first edge strictly after the key: an edge removed since the previous page moves nothing.
+    private static int FirstAfter(List<ListedEdge> matching, EdgeListKey after)
+    {
+        var low = 0;
+        var high = matching.Count;
+        while (low < high)
+        {
+            var mid = (low + high) / 2;
+            if (CompareToKey(matching[mid], after) <= 0) low = mid + 1;
+            else high = mid;
+        }
+        return low;
+    }
+
+    private readonly record struct EdgeSortKey(string From, string To, EdgeKind Kind, string Id);
+
     /// <summary>The order of <see cref="EdgeListKey"/>, read off the edges without building a key.</summary>
     private static int CompareEdges(ListedEdge x, ListedEdge y)
-        => Compare(x.FromFqn, x.ToFqn, x.Kind, x.Id, y.FromFqn, y.ToFqn, y.Kind, y.Id);
+        => Compare(new EdgeSortKey(x.FromFqn, x.ToFqn, x.Kind, x.Id), new EdgeSortKey(y.FromFqn, y.ToFqn, y.Kind, y.Id));
 
     private static int CompareToKey(ListedEdge x, EdgeListKey key)
-        => Compare(x.FromFqn, x.ToFqn, x.Kind, x.Id, key.FromFqn, key.ToFqn, key.Kind, key.EdgeId);
+        => Compare(new EdgeSortKey(x.FromFqn, x.ToFqn, x.Kind, x.Id), new EdgeSortKey(key.FromFqn, key.ToFqn, key.Kind, key.EdgeId));
 
-    private static int Compare(
-        string xFrom, string xTo, EdgeKind xKind, string xId,
-        string yFrom, string yTo, EdgeKind yKind, string yId)
+    private static int Compare(EdgeSortKey x, EdgeSortKey y)
     {
-        var c = string.CompareOrdinal(xFrom, yFrom);
+        var c = string.CompareOrdinal(x.From, y.From);
         if (c != 0) return c;
-        c = string.CompareOrdinal(xTo, yTo);
+        c = string.CompareOrdinal(x.To, y.To);
         if (c != 0) return c;
-        c = ((int)xKind).CompareTo((int)yKind);
-        return c != 0 ? c : string.CompareOrdinal(xId, yId);
+        c = ((int)x.Kind).CompareTo((int)y.Kind);
+        return c != 0 ? c : string.CompareOrdinal(x.Id, y.Id);
     }
 
     public Task<SubGraph> ExpandAsync(ExpandQuery query, CancellationToken ct)

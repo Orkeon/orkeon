@@ -71,6 +71,36 @@ internal sealed class PluginSemVer : IComparable<PluginSemVer>
         return _pre.Length.CompareTo(other._pre.Length);
     }
 
+    public override bool Equals(object? obj) => obj is PluginSemVer other && CompareTo(other) == 0;
+
+    public override int GetHashCode()
+    {
+        var hash = new HashCode();
+        foreach (var number in _numbers)
+            hash.Add(number);
+        return hash.ToHashCode();
+    }
+
+    public static bool operator ==(PluginSemVer? left, PluginSemVer? right) => Compare(left, right) == 0;
+
+    public static bool operator !=(PluginSemVer? left, PluginSemVer? right) => Compare(left, right) != 0;
+
+    public static bool operator <(PluginSemVer? left, PluginSemVer? right) => Compare(left, right) < 0;
+
+    public static bool operator <=(PluginSemVer? left, PluginSemVer? right) => Compare(left, right) <= 0;
+
+    public static bool operator >(PluginSemVer? left, PluginSemVer? right) => Compare(left, right) > 0;
+
+    public static bool operator >=(PluginSemVer? left, PluginSemVer? right) => Compare(left, right) >= 0;
+
+    /// <summary>Orders two versions, a missing one sorting first.</summary>
+    private static int Compare(PluginSemVer? left, PluginSemVer? right)
+    {
+        if (left is null)
+            return right is null ? 0 : -1;
+        return right is null ? 1 : left.CompareTo(right);
+    }
+
     private static int CompareIdentifier(string left, string right)
     {
         var leftNumeric = int.TryParse(left, NumberStyles.None, CultureInfo.InvariantCulture, out var l);

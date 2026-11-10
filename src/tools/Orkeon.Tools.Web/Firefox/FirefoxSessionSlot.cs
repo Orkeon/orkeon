@@ -8,17 +8,26 @@ namespace Orkeon.Tools.Web.Firefox;
 /// the run's scope, which disposes it when the run ends; a host's slot (<c>Lifetime: host</c>) is one per
 /// profile, disposed with the host. It holds at most one live session at a time, replaced after a reset.
 /// </summary>
-/// <param name="keepOnFailure">
-/// <c>true</c> keeps the session when an action fails or is cancelled, as long as its browser is there
-/// (the host's browser outlives the actions); <c>false</c> closes it, and the next action starts afresh.
-/// </param>
-internal sealed class FirefoxSessionSlot(bool keepOnFailure = false) : IAsyncDisposable
+internal sealed class FirefoxSessionSlot : IAsyncDisposable
 {
     [SuppressMessage("Usage", "CA2213:Disposable fields should be disposed", Justification = "An action may still be queued on the gate when the slot ends; a SemaphoreSlim without AvailableWaitHandle holds no unmanaged resource.")]
-    private readonly SemaphoreSlim _gate = new(1, 1);
-    private readonly Lock _sync = new();
+    private readonly SemaphoreSlim _gate;
+    private readonly Lock _sync;
+    private readonly bool _keepOnFailure;
     private FirefoxSession? _session;
     private bool _disposed;
+
+    /// <summary>Creates an empty slot.</summary>
+    /// <param name="keepOnFailure">
+    /// <c>true</c> keeps the session when an action fails or is cancelled, as long as its browser is there
+    /// (the host's browser outlives the actions); <c>false</c> closes it, and the next action starts afresh.
+    /// </param>
+    public FirefoxSessionSlot(bool keepOnFailure = false)
+    {
+        _gate = new SemaphoreSlim(1, 1);
+        _sync = new Lock();
+        _keepOnFailure = keepOnFailure;
+    }
 
     /// <summary>
     /// <c>true</c> while the slot holds a session whose browser is still there, or while an action is
@@ -98,7 +107,7 @@ internal sealed class FirefoxSessionSlot(bool keepOnFailure = false) : IAsyncDis
                 // The agent reads the reason and goes on in the same page.
                 throw;
             }
-            catch when (!keepOnFailure || !session.IsAlive)
+            catch when (!_keepOnFailure || !session.IsAlive)
             {
                 // Cancelled, or the browser died: the next action starts afresh.
                 await ResetAsync(session).ConfigureAwait(false);

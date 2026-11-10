@@ -67,6 +67,7 @@ public sealed class ConsoleLlmDeltaSink : ILlmDeltaSink
     /// <param name="toolCall">The fragment.</param>
     public void OnToolCallDelta(Orkeon.Domain.SharedKernel.ValueObjects.ToolCallDelta toolCall)
     {
+        // Intentionally empty: the console renders the model's text only, never a partial tool call.
     }
 
     /// <summary>The end of the shared turn of the callers that opened none.</summary>
@@ -154,21 +155,37 @@ public sealed class ConsoleLlmDeltaSink : ILlmDeltaSink
     /// tells the receipt of the flow that opened it (<see cref="InlineStreamReceipt"/>) whether its text was
     /// shown unprefixed on the main console (inline, or as whole unprefixed lines) or carried a prefix or thread.
     /// </summary>
-    private sealed class TurnSink(ConsoleLlmDeltaSink owner, string prefix, string? thread, bool inlineEligible, InlineStreamReceipt? receipt) : ILlmDeltaSink
+    private sealed class TurnSink : ILlmDeltaSink
     {
-        private readonly StringBuilder _line = new();
-        private readonly object _gate = new();
+        private readonly ConsoleLlmDeltaSink _owner;
+        private readonly string _prefix;
+        private readonly string? _thread;
+        private readonly bool _inlineEligible;
+        private readonly InlineStreamReceipt? _receipt;
+        private readonly StringBuilder _line;
+        private readonly object _gate;
         private bool? _inline;
         private int _scanFrom;
+
+        public TurnSink(ConsoleLlmDeltaSink owner, string prefix, string? thread, bool inlineEligible, InlineStreamReceipt? receipt)
+        {
+            _owner = owner;
+            _prefix = prefix;
+            _thread = thread;
+            _inlineEligible = inlineEligible;
+            _receipt = receipt;
+            _line = new StringBuilder();
+            _gate = new object();
+        }
 
         public void OnDelta(string delta)
         {
             lock (_gate)
             {
-                _inline ??= inlineEligible && owner.TryClaimInline(this);
+                _inline ??= _inlineEligible && _owner.TryClaimInline(this);
                 if (_inline.Value)
                 {
-                    owner.WriteInline(delta);
+                    _owner.WriteInline(delta);
                     return;
                 }
 
@@ -189,15 +206,15 @@ public sealed class ConsoleLlmDeltaSink : ILlmDeltaSink
                 // A turn that wrote text tells its receipt whether the user saw it: an inline turn, and an
                 // eligible one that lost the inline claim, both write unprefixed on the main console.
                 if (_inline is not null)
-                    receipt?.Record(inlineEligible);
+                    _receipt?.Record(_inlineEligible);
                 if (_inline == true)
                 {
-                    owner.EndInline(this);
+                    _owner.EndInline(this);
                     return;
                 }
 
-                if (_line.Length > 0 || inlineEligible)
-                    owner.WriteLine(thread, prefix + _line);
+                if (_line.Length > 0 || _inlineEligible)
+                    _owner.WriteLine(_thread, _prefix + _line);
                 _line.Clear();
                 _scanFrom = 0;
             }
@@ -213,7 +230,7 @@ public sealed class ConsoleLlmDeltaSink : ILlmDeltaSink
                 if (_line[i] != '\n')
                     continue;
                 var end = i > 0 && _line[i - 1] == '\r' ? i - 1 : i;
-                owner.WriteLine(thread, prefix + _line.ToString(0, end));
+                _owner.WriteLine(_thread, _prefix + _line.ToString(0, end));
                 _line.Remove(0, i + 1);
                 i = -1;
             }

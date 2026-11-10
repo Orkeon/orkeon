@@ -45,11 +45,23 @@ internal sealed record IdempotentStart(bool Conflict, bool Replay, StartOutcome?
 /// and the TTL has not passed. With the history off, a restart forgets every key.
 /// </para>
 /// </summary>
-internal sealed class RunIdempotencyStore(TimeSpan ttl, int maxKeys, TimeProvider? time = null)
+internal sealed class RunIdempotencyStore
 {
-    private readonly Lock _gate = new();
-    private readonly Dictionary<string, Entry> _entries = new(StringComparer.Ordinal);
-    private readonly TimeProvider _time = time ?? TimeProvider.System;
+    private readonly Lock _gate;
+    private readonly Dictionary<string, Entry> _entries;
+    private readonly TimeProvider _time;
+    private readonly TimeSpan _ttl;
+    private readonly int _maxKeys;
+
+    /// <summary>Builds a store keeping at most <paramref name="maxKeys"/> keys, each for <paramref name="ttl"/>.</summary>
+    public RunIdempotencyStore(TimeSpan ttl, int maxKeys, TimeProvider? time = null)
+    {
+        _gate = new Lock();
+        _entries = new Dictionary<string, Entry>(StringComparer.Ordinal);
+        _time = time ?? TimeProvider.System;
+        _ttl = ttl;
+        _maxKeys = maxKeys;
+    }
 
     /// <summary>The number of keys held.</summary>
     public int Count
@@ -136,9 +148,9 @@ internal sealed class RunIdempotencyStore(TimeSpan ttl, int maxKeys, TimeProvide
     {
         ArgumentNullException.ThrowIfNull(history);
 
-        var horizon = _time.GetUtcNow() - ttl;
+        var horizon = _time.GetUtcNow() - _ttl;
         var recovered = 0;
-        var runs = await history.ListAsync(new RunQuery { Limit = Math.Min(maxKeys, 1000) }, ct).ConfigureAwait(false);
+        var runs = await history.ListAsync(new RunQuery { Limit = Math.Min(_maxKeys, 1000) }, ct).ConfigureAwait(false);
         foreach (var run in runs.Where(r => r.StartedAt >= horizon))
         {
             var events = await history.ReadEventsAsync(run.RunId, 1, 1, ct).ConfigureAwait(false);
@@ -164,15 +176,15 @@ internal sealed class RunIdempotencyStore(TimeSpan ttl, int maxKeys, TimeProvide
     // Under the lock: drops what outlived the TTL, then the oldest finished entries beyond the bound.
     private void Purge()
     {
-        var horizon = _time.GetUtcNow() - ttl;
+        var horizon = _time.GetUtcNow() - _ttl;
         foreach (var expired in _entries.Where(e => e.Value.Outcome.IsCompleted && e.Value.At < horizon).Select(e => e.Key).ToList())
             _entries.Remove(expired);
 
-        if (_entries.Count < maxKeys)
+        if (_entries.Count < _maxKeys)
             return;
 
         foreach (var oldest in _entries.Where(e => e.Value.Outcome.IsCompleted)
-                     .OrderBy(e => e.Value.At).Take(_entries.Count - maxKeys + 1).Select(e => e.Key).ToList())
+                     .OrderBy(e => e.Value.At).Take(_entries.Count - _maxKeys + 1).Select(e => e.Key).ToList())
         {
             _entries.Remove(oldest);
         }

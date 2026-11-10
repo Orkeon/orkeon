@@ -149,21 +149,31 @@ public partial class YamlCrewExporter
             MemoryProvider = config.MemoryProvider,
             Planning = config.Planning ? true : null,
             MaxRpm = config.MaxRpm,
-            Budget = config.Budget is { } budget
-                ? new CrewBudgetYamlConfig
-                {
-                    Tokens = budget.Tokens,
-                    WallTimeSeconds = budget.WallTime is { } wallTime ? (int)Math.Ceiling(wallTime.TotalSeconds) : null,
-                    ToolCalls = budget.ToolCalls,
-                    DelegationDepth = budget.DelegationDepth,
-                    SpawnedAgents = budget.SpawnedAgents,
-                }
-                : null,
+            Budget = MapBudget(config.Budget),
             ManagerAgent = config.ManagerAgentId is { } manager ? names.Of(manager) : null,
             Graph = MapGraph(config, names),
             Rag = MapRag(config.Rag),
             Links = MapLinks(config.Links),
             Mounts = MapMounts(config),
+        };
+    }
+
+    private static CrewBudgetYamlConfig? MapBudget(Orkeon.Domain.Crew.ValueObjects.CrewBudget? budget)
+    {
+        if (budget is null)
+            return null;
+
+        int? wallTimeSeconds = null;
+        if (budget.WallTime is { } wallTime)
+            wallTimeSeconds = (int)Math.Ceiling(wallTime.TotalSeconds);
+
+        return new CrewBudgetYamlConfig
+        {
+            Tokens = budget.Tokens,
+            WallTimeSeconds = wallTimeSeconds,
+            ToolCalls = budget.ToolCalls,
+            DelegationDepth = budget.DelegationDepth,
+            SpawnedAgents = budget.SpawnedAgents,
         };
     }
 
@@ -207,15 +217,26 @@ public partial class YamlCrewExporter
         _ => throw new InvalidOperationException($"A links: direction the loader cannot read: {direction}."),
     };
 
-    private static RetryYamlConfig? MapRetry(TaskRetryPolicy? retry) =>
-        retry is null
-            ? null
-            : new RetryYamlConfig
-            {
-                Attempts = retry.Attempts,
-                BackoffMs = retry.BackoffMs > 0 ? retry.BackoffMs : null,
-                Backoff = retry.Backoff == TaskRetryBackoff.Exponential ? "exponential" : null,
-            };
+    private static RetryYamlConfig? MapRetry(TaskRetryPolicy? retry)
+    {
+        if (retry is null)
+            return null;
+
+        int? backoffMs = null;
+        if (retry.BackoffMs > 0)
+            backoffMs = retry.BackoffMs;
+
+        string? backoff = null;
+        if (retry.Backoff == TaskRetryBackoff.Exponential)
+            backoff = "exponential";
+
+        return new RetryYamlConfig
+        {
+            Attempts = retry.Attempts,
+            BackoffMs = backoffMs,
+            Backoff = backoff,
+        };
+    }
 
     /// <summary>
     /// The <c>graph:</c> block; null when the crew has none. The topology is checked before it is written
