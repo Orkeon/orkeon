@@ -108,22 +108,16 @@ internal sealed partial class FallbackLlmProvider : ILlmProvider, IStreamingLlmP
                 failures.Add(Describe(link, response.Error));
                 lastException = null;
             }
-            catch (Exception ex) when (!cancellationToken.IsCancellationRequested
-                && LlmFailureClassifier.FailsOver(kind = LlmFailureClassifier.Classify(ex)))
+            catch (Exception ex) when (FailsOver(ex, cancellationToken, out kind))
             {
                 failures.Add(Describe(link, ex.Message));
                 lastException = ex;
             }
 
-            if (i + 1 < _links.Count)
+            if (SwitchOrStop(i, started, kind))
             {
-                if (BudgetSpent(started))
-                {
-                    budgetSpent = true;
-                    break;
-                }
-
-                Switched(link, _links[i + 1], kind);
+                budgetSpent = true;
+                break;
             }
         }
 
@@ -157,8 +151,7 @@ internal sealed partial class FallbackLlmProvider : ILlmProvider, IStreamingLlmP
                 if (has)
                     first = chunks.Current;
             }
-            catch (Exception ex) when (!cancellationToken.IsCancellationRequested
-                && LlmFailureClassifier.FailsOver(kind = LlmFailureClassifier.Classify(ex)))
+            catch (Exception ex) when (FailsOver(ex, cancellationToken, out kind))
             {
                 failures.Add(Describe(link, ex.Message));
                 lastException = ex;
@@ -179,15 +172,10 @@ internal sealed partial class FallbackLlmProvider : ILlmProvider, IStreamingLlmP
                 yield break;
             }
 
-            if (i + 1 < _links.Count)
+            if (SwitchOrStop(i, started, kind))
             {
-                if (BudgetSpent(started))
-                {
-                    budgetSpent = true;
-                    break;
-                }
-
-                Switched(link, _links[i + 1], kind);
+                budgetSpent = true;
+                break;
             }
         }
 
@@ -218,21 +206,15 @@ internal sealed partial class FallbackLlmProvider : ILlmProvider, IStreamingLlmP
                 if (has)
                 {
                     first = events.Current;
-                    if (first.Kind == LlmStreamEventKind.Completed && first.FinalResponse is { } final)
+                    if (FirstEventFailsOver(first, cancellationToken, out kind, out var error))
                     {
-                        kind = LlmFailureClassifier.Classify(final);
-                        if (LlmFailureClassifier.FailsOver(kind))
-                        {
-                            cancellationToken.ThrowIfCancellationRequested();
-                            failures.Add(Describe(link, final.Error));
-                            lastException = null;
-                            failed = true;
-                        }
+                        failures.Add(Describe(link, error));
+                        lastException = null;
+                        failed = true;
                     }
                 }
             }
-            catch (Exception ex) when (!cancellationToken.IsCancellationRequested
-                && LlmFailureClassifier.FailsOver(kind = LlmFailureClassifier.Classify(ex)))
+            catch (Exception ex) when (FailsOver(ex, cancellationToken, out kind))
             {
                 failures.Add(Describe(link, ex.Message));
                 lastException = ex;
@@ -252,15 +234,10 @@ internal sealed partial class FallbackLlmProvider : ILlmProvider, IStreamingLlmP
                 yield break;
             }
 
-            if (i + 1 < _links.Count)
+            if (SwitchOrStop(i, started, kind))
             {
-                if (BudgetSpent(started))
-                {
-                    budgetSpent = true;
-                    break;
-                }
-
-                Switched(link, _links[i + 1], kind);
+                budgetSpent = true;
+                break;
             }
         }
 
@@ -268,6 +245,45 @@ internal sealed partial class FallbackLlmProvider : ILlmProvider, IStreamingLlmP
         if (lastException is not null)
             throw new HttpRequestException(text, lastException);
         yield return LlmStreamEvent.Complete(Exhausted(text));
+    }
+
+    private static bool FailsOver(Exception ex, CancellationToken cancellationToken, out LlmFailureKind kind)
+    {
+        kind = LlmFailureKind.None;
+        if (cancellationToken.IsCancellationRequested)
+            return false;
+        kind = LlmFailureClassifier.Classify(ex);
+        return LlmFailureClassifier.FailsOver(kind);
+    }
+
+    /// <summary>Whether the first event of a stream is a completed response that fails over (the failure arrives in-band).</summary>
+    private static bool FirstEventFailsOver(
+        LlmStreamEvent first, CancellationToken cancellationToken, out LlmFailureKind kind, out string? error)
+    {
+        kind = LlmFailureKind.None;
+        error = null;
+        if (first.Kind != LlmStreamEventKind.Completed || first.FinalResponse is not { } final)
+            return false;
+        kind = LlmFailureClassifier.Classify(final);
+        if (!LlmFailureClassifier.FailsOver(kind))
+            return false;
+        cancellationToken.ThrowIfCancellationRequested();
+        error = final.Error;
+        return true;
+    }
+
+    /// <summary>
+    /// Announces the switch to the link after <paramref name="index"/>; true when the budget is spent and the
+    /// chain must stop instead. A last link switches to nothing.
+    /// </summary>
+    private bool SwitchOrStop(int index, long started, LlmFailureKind kind)
+    {
+        if (index + 1 >= _links.Count)
+            return false;
+        if (BudgetSpent(started))
+            return true;
+        Switched(_links[index], _links[index + 1], kind);
+        return false;
     }
 
     private static IAsyncEnumerable<string> OpenText(FallbackLink link, string prompt, LlmConfig? config, CancellationToken ct) =>
@@ -318,11 +334,8 @@ internal sealed partial class FallbackLlmProvider : ILlmProvider, IStreamingLlmP
         var link = _links[index];
         var own = link.BaseConfig ?? link.Provider.BaseConfig ?? LlmConfig.OnProfile();
         var result = config with { };
-        foreach (var property in s_settable)
-        {
-            if (SameValue(property.GetValue(config), property.GetValue(primary)))
-                property.SetValue(result, property.GetValue(own));
-        }
+        foreach (var property in s_settable.Where(p => SameValue(p.GetValue(config), p.GetValue(primary))))
+            property.SetValue(result, property.GetValue(own));
 
         return result;
     }

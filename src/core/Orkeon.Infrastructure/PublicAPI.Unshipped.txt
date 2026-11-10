@@ -34,11 +34,15 @@ Orkeon.Infrastructure.LLMs.Decision.DecisionCircuitOptions.DecisionCircuitOption
 Orkeon.Infrastructure.LLMs.Decision.DecisionCircuitOptions.Enabled.get -> bool
 Orkeon.Infrastructure.LLMs.Decision.DecisionCircuitOptions.Enabled.set -> void
 Orkeon.Infrastructure.LLMs.Decision.DecisionLlmProvider
+Orkeon.Infrastructure.LLMs.Decision.DecisionStages
+Orkeon.Infrastructure.LLMs.Decision.DecisionStages.DecisionStages(System.Collections.Generic.IReadOnlyList<Orkeon.Application.Interfaces.Ports.IDecisionStage!>! request, System.Collections.Generic.IReadOnlyList<Orkeon.Application.Interfaces.Ports.IDecisionStage!>! response) -> void
+Orkeon.Infrastructure.LLMs.Decision.DecisionStages.Request.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Application.Interfaces.Ports.IDecisionStage!>!
+Orkeon.Infrastructure.LLMs.Decision.DecisionStages.Response.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Application.Interfaces.Ports.IDecisionStage!>!
 Orkeon.Infrastructure.LLMs.Decision.DecisionLlmProvider.BaseConfig.get -> Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig?
 Orkeon.Infrastructure.LLMs.Decision.DecisionLlmProvider.Capabilities.get -> Orkeon.Domain.SharedKernel.ValueObjects.LlmProviderCapabilities!
 Orkeon.Infrastructure.LLMs.Decision.DecisionLlmProvider.ChatAsync(Orkeon.Domain.SharedKernel.ValueObjects.LlmMessage![]! messages, Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig? config = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Domain.SharedKernel.ValueObjects.LlmResponse!>!
 Orkeon.Infrastructure.LLMs.Decision.DecisionLlmProvider.ChatStreamingAsync(Orkeon.Domain.SharedKernel.ValueObjects.LlmMessage![]! messages, Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig? config = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Collections.Generic.IAsyncEnumerable<Orkeon.Domain.SharedKernel.ValueObjects.LlmStreamEvent!>!
-Orkeon.Infrastructure.LLMs.Decision.DecisionLlmProvider.DecisionLlmProvider(string! profile, Orkeon.Domain.SharedKernel.ILlmProvider! target, System.Collections.Generic.IReadOnlyList<Orkeon.Application.Interfaces.Ports.IDecisionStage!>! requestStages, System.Collections.Generic.IReadOnlyList<Orkeon.Application.Interfaces.Ports.IDecisionStage!>! responseStages, System.Func<string!, Orkeon.Domain.SharedKernel.ILlmProvider!>! resolve, bool failClosed, Microsoft.Extensions.Logging.ILogger! logger, Orkeon.Application.Interfaces.Security.IAuditLogger? audit = null) -> void
+Orkeon.Infrastructure.LLMs.Decision.DecisionLlmProvider.DecisionLlmProvider(string! profile, Orkeon.Domain.SharedKernel.ILlmProvider! target, Orkeon.Infrastructure.LLMs.Decision.DecisionStages! stages, System.Func<string!, Orkeon.Domain.SharedKernel.ILlmProvider!>! resolve, bool failClosed, Microsoft.Extensions.Logging.ILogger! logger, Orkeon.Application.Interfaces.Security.IAuditLogger? audit = null) -> void
 Orkeon.Infrastructure.LLMs.Decision.DecisionLlmProvider.GenerateAsync(string! prompt, Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig? config = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Domain.SharedKernel.ValueObjects.LlmResponse!>!
 Orkeon.Infrastructure.LLMs.Decision.DecisionLlmProvider.GenerateStreamingAsync(string! prompt, Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig? config = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Collections.Generic.IAsyncEnumerable<string!>!
 Orkeon.Infrastructure.LLMs.Decision.DecisionLlmProvider.Name.get -> string!
@@ -736,7 +740,7 @@ Orkeon.Infrastructure.Configuration.GraphYamlConfig.Start.set -> void
 [ORKEXP004]Orkeon.Infrastructure.MCP.McpRequestException.McpRequestException(int code, string! message) -> void
 [ORKEXP004]Orkeon.Infrastructure.MCP.McpRequestException.McpRequestException(string! message) -> void
 [ORKEXP004]Orkeon.Infrastructure.MCP.McpRequestException.McpRequestException(string! message, System.Exception! innerException) -> void
-Orkeon.Infrastructure.LLMs.LlmProviderFactory.LlmProviderFactory(System.Net.Http.IHttpClientFactory! httpClientFactory, Microsoft.Extensions.Logging.ILoggerFactory! loggerFactory, Orkeon.Domain.FileSystem.IFileSystemService! fileSystem, Orkeon.Application.Interfaces.Ports.ILlmUsageSink? usageSink = null, Orkeon.Application.Interfaces.Security.ILlmRateLimiter? rateLimiter = null, Orkeon.Application.Interfaces.Ports.ILlmCallObserver? callObserver = null, Orkeon.Domain.SharedKernel.ITokenCounter? tokenCounter = null, Orkeon.Infrastructure.LLMs.Capabilities.IModelCapabilityRegistry? capabilities = null, Orkeon.Infrastructure.LLMs.Replay.LlmReplayOptions? replay = null) -> void
+Orkeon.Infrastructure.LLMs.LlmProviderFactory.LlmProviderFactory(System.Net.Http.IHttpClientFactory! httpClientFactory, Microsoft.Extensions.Logging.ILoggerFactory! loggerFactory, Orkeon.Domain.FileSystem.IFileSystemService! fileSystem, Orkeon.Infrastructure.LLMs.LlmProviderFactoryOptions? options = null) -> void
 [ORKEXP005]Orkeon.Infrastructure.LLMs.Capabilities.IModelCapabilityRegistry
 [ORKEXP005]Orkeon.Infrastructure.LLMs.Capabilities.IModelCapabilityRegistry.TryGet(string? model) -> Orkeon.Infrastructure.LLMs.Capabilities.ModelCapabilities?
 [ORKEXP005]Orkeon.Infrastructure.LLMs.Capabilities.ModelCapabilities
@@ -867,3 +871,17 @@ Orkeon.Infrastructure.Tools.MemoryRecallTool.MemoryRecallTool(Orkeon.Application
 static Orkeon.Infrastructure.Decision.LlmJudgeGuard.ChunkStep(int chunkSize) -> int
 static Orkeon.Infrastructure.Evaluation.CompareReports.Incompatibility(Orkeon.Application.Evaluation.BenchmarkReport! baseline, Orkeon.Application.Evaluation.BenchmarkReport! current) -> string?
 static Orkeon.Infrastructure.Evaluation.CompareReports.IsValidThreshold(double threshold) -> bool
+Orkeon.Infrastructure.LLMs.LlmProviderFactoryOptions
+Orkeon.Infrastructure.LLMs.LlmProviderFactoryOptions.LlmProviderFactoryOptions() -> void
+Orkeon.Infrastructure.LLMs.LlmProviderFactoryOptions.UsageSink.get -> Orkeon.Application.Interfaces.Ports.ILlmUsageSink?
+Orkeon.Infrastructure.LLMs.LlmProviderFactoryOptions.UsageSink.init -> void
+Orkeon.Infrastructure.LLMs.LlmProviderFactoryOptions.RateLimiter.get -> Orkeon.Application.Interfaces.Security.ILlmRateLimiter?
+Orkeon.Infrastructure.LLMs.LlmProviderFactoryOptions.RateLimiter.init -> void
+Orkeon.Infrastructure.LLMs.LlmProviderFactoryOptions.CallObserver.get -> Orkeon.Application.Interfaces.Ports.ILlmCallObserver?
+Orkeon.Infrastructure.LLMs.LlmProviderFactoryOptions.CallObserver.init -> void
+Orkeon.Infrastructure.LLMs.LlmProviderFactoryOptions.TokenCounter.get -> Orkeon.Domain.SharedKernel.ITokenCounter?
+Orkeon.Infrastructure.LLMs.LlmProviderFactoryOptions.TokenCounter.init -> void
+Orkeon.Infrastructure.LLMs.LlmProviderFactoryOptions.Capabilities.get -> Orkeon.Infrastructure.LLMs.Capabilities.IModelCapabilityRegistry?
+Orkeon.Infrastructure.LLMs.LlmProviderFactoryOptions.Capabilities.init -> void
+Orkeon.Infrastructure.LLMs.LlmProviderFactoryOptions.Replay.get -> Orkeon.Infrastructure.LLMs.Replay.LlmReplayOptions?
+Orkeon.Infrastructure.LLMs.LlmProviderFactoryOptions.Replay.init -> void

@@ -123,12 +123,12 @@ public abstract class OpenAICompatibleEmbeddingProviderBase : IEmbeddingProvider
         }
 
         var vectors = data.OrderBy(d => d.Index).Select(d => d.Embedding ?? []).ToList();
-        foreach (var vector in vectors)
+        foreach (var length in vectors.Select(vector => vector.Length))
         {
-            if (vector.Length != Dimensions)
+            if (length != Dimensions)
             {
                 throw new InvalidOperationException(
-                    $"{Name} model '{Model}' returned vectors of {vector.Length} dimensions but " +
+                    $"{Name} model '{Model}' returned vectors of {length} dimensions but " +
                     $"Orkeon:Embeddings:Dimension is {Dimensions}. Set Dimension to the model's size: " +
                     "stored vectors depend on it.");
             }

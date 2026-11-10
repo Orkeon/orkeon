@@ -205,12 +205,15 @@ public static class InfrastructureExtensions
             sp.GetRequiredService<IHttpClientFactory>(),
             sp.GetRequiredService<ILoggerFactory>(),
             FileSystemForLlmProviders(sp),
-            sp.GetService<ILlmUsageSink>(),
-            sp.GetService<ILlmRateLimiter>(),
-            sp.GetService<ILlmCallObserver>(),
-            sp.GetService<ITokenCounter>(),
-            sp.GetService<IModelCapabilityRegistry>(),
-            sp.GetService<LLMs.Replay.LlmReplayOptions>()));
+            new LlmProviderFactoryOptions
+            {
+                UsageSink = sp.GetService<ILlmUsageSink>(),
+                RateLimiter = sp.GetService<ILlmRateLimiter>(),
+                CallObserver = sp.GetService<ILlmCallObserver>(),
+                TokenCounter = sp.GetService<ITokenCounter>(),
+                Capabilities = sp.GetService<IModelCapabilityRegistry>(),
+                Replay = sp.GetService<LLMs.Replay.LlmReplayOptions>(),
+            }));
 
         // The host's named LLM profiles (GAP-17): the default provider plus every profile
         // registered by AddOrkeonLlmProfile(s). Always present, so a crew naming a profile the
@@ -878,11 +881,8 @@ public static class InfrastructureExtensions
                         $"{GuardianLlmOptions.SectionName}:Enabled is true but no decision model is registered: " +
                         "call AddOrkeonDecisionProvider, or turn the LLM judge off.");
                 var judge = new LlmJudgeGuard(model, Options.Create(options.Llm), sp.GetRequiredService<ILogger<LlmJudgeGuard>>(), auditLogger);
-                foreach (var phase in new[] { GuardPhase.Input, GuardPhase.Output })
-                {
-                    if (options.Llm.Judges(phase))
-                        pipeline.AddGuard(phase, judge);
-                }
+                foreach (var phase in new[] { GuardPhase.Input, GuardPhase.Output }.Where(options.Llm.Judges))
+                    pipeline.AddGuard(phase, judge);
             }
             pipeline.AddGuard(GuardPhase.ToolExecution, sp.GetRequiredService<ToolGuard>());
             pipeline.AddGuard(GuardPhase.Delegation, sp.GetRequiredService<DelegationGuard>());

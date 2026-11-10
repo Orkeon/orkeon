@@ -10,6 +10,27 @@ using Orkeon.Domain.SharedKernel.ValueObjects;
 
 namespace Orkeon.Infrastructure.LLMs.Decision;
 
+/// <summary>The stages of a decision profile: those judging the conversation and those judging the answer.</summary>
+public sealed class DecisionStages
+{
+    /// <summary>Initializes a new instance of <see cref="DecisionStages"/>.</summary>
+    /// <param name="request">The stages that judge the conversation before the call, in order.</param>
+    /// <param name="response">The stages that judge the answer, in order.</param>
+    public DecisionStages(IReadOnlyList<IDecisionStage> request, IReadOnlyList<IDecisionStage> response)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        ArgumentNullException.ThrowIfNull(response);
+        Request = request;
+        Response = response;
+    }
+
+    /// <summary>The stages that judge the conversation before the call, in order.</summary>
+    public IReadOnlyList<IDecisionStage> Request { get; }
+
+    /// <summary>The stages that judge the answer, in order.</summary>
+    public IReadOnlyList<IDecisionStage> Response { get; }
+}
+
 /// <summary>
 /// A decision profile: an <see cref="ILlmProvider"/> that runs its <see cref="IDecisionStage"/>s
 /// around the calls it forwards to a target profile. Before the call, the request stages run in
@@ -49,8 +70,7 @@ public sealed partial class DecisionLlmProvider : ILlmProvider, IStreamingLlmPro
     /// <summary>Initializes a new instance of <see cref="DecisionLlmProvider"/>.</summary>
     /// <param name="profile">The decision profile's own name, in logs and audit events.</param>
     /// <param name="target">The provider a call goes to when no stage routes it.</param>
-    /// <param name="requestStages">The stages that judge the conversation before the call, in order.</param>
-    /// <param name="responseStages">The stages that judge the answer, in order.</param>
+    /// <param name="stages">The stages that judge the conversation before the call and the answer after it.</param>
     /// <param name="resolve">Resolves the provider of a profile a stage routes or escalates to.</param>
     /// <param name="failClosed">Whether a failing stage blocks the call rather than letting it go on.</param>
     /// <param name="logger">The logger.</param>
@@ -58,8 +78,7 @@ public sealed partial class DecisionLlmProvider : ILlmProvider, IStreamingLlmPro
     public DecisionLlmProvider(
         string profile,
         ILlmProvider target,
-        IReadOnlyList<IDecisionStage> requestStages,
-        IReadOnlyList<IDecisionStage> responseStages,
+        DecisionStages stages,
         Func<string, ILlmProvider> resolve,
         bool failClosed,
         ILogger logger,
@@ -67,14 +86,13 @@ public sealed partial class DecisionLlmProvider : ILlmProvider, IStreamingLlmPro
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(profile);
         ArgumentNullException.ThrowIfNull(target);
-        ArgumentNullException.ThrowIfNull(requestStages);
-        ArgumentNullException.ThrowIfNull(responseStages);
+        ArgumentNullException.ThrowIfNull(stages);
         ArgumentNullException.ThrowIfNull(resolve);
         ArgumentNullException.ThrowIfNull(logger);
         _profile = profile;
         _target = target;
-        _requestStages = requestStages;
-        _responseStages = responseStages;
+        _requestStages = stages.Request;
+        _responseStages = stages.Response;
         _resolve = resolve;
         _failClosed = failClosed;
         _logger = logger;

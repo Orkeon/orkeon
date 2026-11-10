@@ -38,7 +38,7 @@ public class ReasoningEffortModelValidationTests
         http.RegisterClient(nameof(OpenAIProvider), new HttpClient(handler));
         using var loggers = new RecordingLoggerFactory();
         var factory = new LlmProviderFactory(
-            http, loggers, LlmProviderFactory.MountlessFileSystem(), capabilities: registry);
+            http, loggers, LlmProviderFactory.MountlessFileSystem(), new LlmProviderFactoryOptions { Capabilities = registry });
 
         var provider = ((LlmProviderAdapter)factory.Create("openai", config)).UnderlyingProvider;
         await provider.ChatAsync(messages ?? [new LlmMessage { Role = "user", Content = "hi" }], config, TestContext.Current.CancellationToken);

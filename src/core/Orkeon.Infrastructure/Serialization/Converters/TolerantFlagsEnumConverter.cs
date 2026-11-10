@@ -13,6 +13,8 @@ namespace Orkeon.Infrastructure.Serialization.Converters;
 /// Reading is tolerant: case, underscores, hyphens and spaces inside a name are ignored, the names of a
 /// combination are separated by <c>,</c> or <c>|</c>. A number is refused: the wire carries names only.
 /// </remarks>
+[System.Diagnostics.CodeAnalysis.SuppressMessage("Major Code Smell", "S2743",
+    Justification = "The tables are per-enum by design: each closed TEnum needs its own names and bits.")]
 internal static class FlagsEnumNames<TEnum>
     where TEnum : struct, Enum
 {

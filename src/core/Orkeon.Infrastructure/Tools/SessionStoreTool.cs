@@ -185,36 +185,34 @@ public sealed class SessionStoreTool : ToolBase<SessionStoreRequest, SessionStor
         var values = request.Values is { Count: > 0 } ? request.Values : null;
         var removed = request.Keys is { Count: > 0 } ? request.Keys : null;
         if (values is not null || removed is not null)
-        {
-            if (!string.IsNullOrWhiteSpace(request.Key) || request.Value is not null)
-                return new SessionStoreResponse { Success = false };
-            if (values?.Keys.Any(string.IsNullOrWhiteSpace) == true || removed?.Any(string.IsNullOrWhiteSpace) == true)
-                return new SessionStoreResponse { Success = false };
-            if (values is not null && removed is not null)
-            {
-                var overlap = removed.Where(values.ContainsKey).Distinct(StringComparer.Ordinal).ToArray();
-                if (overlap.Length > 0)
-                    throw new ArgumentException($"set_state: keys present in both values and keys: {string.Join(", ", overlap)}.");
-            }
-            var batch = new Dictionary<string, string?>(StringComparer.Ordinal);
-            if (values is not null)
-            {
-                foreach (var (key, value) in values)
-                    batch[key] = value;
-            }
-            if (removed is not null)
-            {
-                foreach (var key in removed)
-                    batch[key] = null;
-            }
-            _buffer.SetStates(batch);
-            return new SessionStoreResponse { Success = true, Values = values is null ? [] : new Dictionary<string, string>(values, StringComparer.Ordinal) };
-        }
+            return SetStateBatch(request, values, removed);
 
         if (string.IsNullOrWhiteSpace(request.Key))
             return new SessionStoreResponse { Success = false };
         _buffer.SetState(request.Key, request.Value);
         return new SessionStoreResponse { Success = true, Value = request.Value };
+    }
+
+    private SessionStoreResponse SetStateBatch(
+        SessionStoreRequest request, IReadOnlyDictionary<string, string>? values, IReadOnlyList<string>? removed)
+    {
+        if (!string.IsNullOrWhiteSpace(request.Key) || request.Value is not null)
+            return new SessionStoreResponse { Success = false };
+        if (values?.Keys.Any(string.IsNullOrWhiteSpace) == true || removed?.Any(string.IsNullOrWhiteSpace) == true)
+            return new SessionStoreResponse { Success = false };
+        if (values is not null && removed is not null)
+        {
+            var overlap = removed.Where(values.ContainsKey).Distinct(StringComparer.Ordinal).ToArray();
+            if (overlap.Length > 0)
+                throw new ArgumentException($"set_state: keys present in both values and keys: {string.Join(", ", overlap)}.");
+        }
+        var batch = new Dictionary<string, string?>(StringComparer.Ordinal);
+        foreach (var (key, value) in values ?? Enumerable.Empty<KeyValuePair<string, string>>())
+            batch[key] = value;
+        foreach (var key in removed ?? Enumerable.Empty<string>())
+            batch[key] = null;
+        _buffer.SetStates(batch);
+        return new SessionStoreResponse { Success = true, Values = values is null ? [] : new Dictionary<string, string>(values, StringComparer.Ordinal) };
     }
 
     /// <summary>Appends one message (role, content, optional timestamp) at the end of the buffer; the buffer is neither returned nor rewritten.</summary>

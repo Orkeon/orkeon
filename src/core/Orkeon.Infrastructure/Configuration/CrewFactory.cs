@@ -348,42 +348,7 @@ public partial class CrewFactory : ICrewFactory
             ct.ThrowIfCancellationRequested();
             var resolvedTools = await ResolveToolsAsync(taskConfig.Tools).ConfigureAwait(false);
 
-            var builder = new CrewTaskBuilder()
-                .Description(TaskDescription.From(taskConfig.Description))
-                .ExpectedOutput(taskConfig.ExpectedOutput)
-                .Async(taskConfig.AsyncExecution)
-                .Retry(taskConfig.Retry)
-                .HumanInput(taskConfig.HumanInput)
-                .WithTools(resolvedTools)
-                .WithKey(taskConfig.Key);
-
-            if (taskConfig.Decision is not null)
-                builder.WithDecision(taskConfig.Decision);
-
-            if (taskConfig.Condition is not null)
-            {
-                if (idByName.TryGetValue(taskConfig.Condition.DecisionTask, out var decisionId))
-                    builder.When(decisionId, taskConfig.Condition);
-                else
-                    builder.When(taskConfig.Condition);
-            }
-
-            if (taskConfig.AssignedAgentId is not null
-                && agentMap.TryGetValue(taskConfig.AssignedAgentId.ToString(), out var assignedAgent))
-            {
-                builder.AssignTo(assignedAgent);
-            }
-
-            var task = builder.Build();
-
-            if (taskConfig.Deliverable is not null)
-                task.SetDeliverable(taskConfig.Deliverable);
-
-            if (taskConfig.LlmOverride is not null)
-                task.SetLlmOverride(taskConfig.LlmOverride);
-
-            if (taskConfig.Guardrails is not null)
-                task.SetGuardrails(taskConfig.Guardrails);
+            var task = BuildTask(taskConfig, resolvedTools, idByName, agentMap);
 
             created[taskConfig.Id] = task;
             if (taskConfig.Decision is not null)
@@ -393,10 +358,54 @@ public partial class CrewFactory : ICrewFactory
         }
 
         var taskMap = new Dictionary<string, CrewTask>();
-        foreach (var taskConfig in taskConfigs)
-            taskMap[taskConfig.Id] = created[taskConfig.Id];
+        foreach (var id in taskConfigs.Select(taskConfig => taskConfig.Id))
+            taskMap[id] = created[id];
 
         return taskMap;
+    }
+
+    private static CrewTask BuildTask(
+        TaskConfiguration taskConfig, IReadOnlyList<IBaseTool> resolvedTools,
+        Dictionary<string, TaskId> idByName, Dictionary<string, DomainAgent> agentMap)
+    {
+        var builder = new CrewTaskBuilder()
+            .Description(TaskDescription.From(taskConfig.Description))
+            .ExpectedOutput(taskConfig.ExpectedOutput)
+            .Async(taskConfig.AsyncExecution)
+            .Retry(taskConfig.Retry)
+            .HumanInput(taskConfig.HumanInput)
+            .WithTools(resolvedTools)
+            .WithKey(taskConfig.Key);
+
+        if (taskConfig.Decision is not null)
+            builder.WithDecision(taskConfig.Decision);
+
+        if (taskConfig.Condition is not null)
+        {
+            if (idByName.TryGetValue(taskConfig.Condition.DecisionTask, out var decisionId))
+                builder.When(decisionId, taskConfig.Condition);
+            else
+                builder.When(taskConfig.Condition);
+        }
+
+        if (taskConfig.AssignedAgentId is not null
+            && agentMap.TryGetValue(taskConfig.AssignedAgentId.ToString(), out var assignedAgent))
+        {
+            builder.AssignTo(assignedAgent);
+        }
+
+        var task = builder.Build();
+
+        if (taskConfig.Deliverable is not null)
+            task.SetDeliverable(taskConfig.Deliverable);
+
+        if (taskConfig.LlmOverride is not null)
+            task.SetLlmOverride(taskConfig.LlmOverride);
+
+        if (taskConfig.Guardrails is not null)
+            task.SetGuardrails(taskConfig.Guardrails);
+
+        return task;
     }
 
     private static void SetupTaskDependencies(

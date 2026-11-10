@@ -120,7 +120,6 @@ public sealed partial class SequentialProcessStrategy : IProcessStrategy
 
             var taskIds = await CrewTaskSequencer.ResolveAsync(
                 crew, _taskRepository, _logger, cancellationToken).ConfigureAwait(false);
-            var agentIndex = 0;
 
             var loaded = new List<Orkeon.Domain.Task.CrewTask?>(taskIds.Count);
             foreach (var taskId in taskIds)
@@ -136,29 +135,7 @@ public sealed partial class SequentialProcessStrategy : IProcessStrategy
             if (faults.Count > 0)
                 return await DecisionPreflight.FailAtEntryAsync(_hooks, crew.Id.Value.ToString(), startedAt, string.Join(' ', faults)).ConfigureAwait(false);
 
-            for (var position = 0; position < taskIds.Count; position++)
-            {
-                var taskId = taskIds[position];
-                cancellationToken.ThrowIfCancellationRequested();
-                LogExecutingTask(taskId);
-
-                var task = loaded[position];
-                if (task == null)
-                {
-                    LogTaskNotFoundSkipping(taskId);
-                    continue;
-                }
-
-                var agent = task.IsDecision
-                    ? null
-                    : await _agentSelector
-                        .ForTaskAsync(task, agents, agentIndex, cancellationToken)
-                        .ConfigureAwait(false);
-
-                // The round-robin cursor moves only for a task an agent ran: a skipped task keeps its turn for the next.
-                if (await DispatchTaskAsync(run, position, task, agent, crewTasks, cancellationToken).ConfigureAwait(false))
-                    agentIndex++;
-            }
+            await RunTasksInOrderAsync(run, taskIds, loaded, agents, crewTasks, cancellationToken).ConfigureAwait(false);
 
             // Nothing outlives the run: the crew waits for every task it launched (GAP-22),
             // recording them in declared order, so its error reads the same whichever ended first.
@@ -212,6 +189,38 @@ public sealed partial class SequentialProcessStrategy : IProcessStrategy
                     crew.Id.Value.ToString(), startedAt, run.TaskSnapshots, CrewHookStatus.Failed, ex.Message),
                 ex, CancellationToken.None).ConfigureAwait(false);
             throw;
+        }
+    }
+
+    /// <summary>The declared tasks in their turn: each is dispatched (skipped, launched or run) with the agent the round-robin cursor names.</summary>
+    private async System.Threading.Tasks.Task RunTasksInOrderAsync(
+        SequentialRun run, IReadOnlyList<TaskId> taskIds,
+        List<Orkeon.Domain.Task.CrewTask?> loaded, IReadOnlyList<DomainAgent> agents,
+        IReadOnlyList<Orkeon.Domain.Task.CrewTask> crewTasks, CancellationToken cancellationToken)
+    {
+        var agentIndex = 0;
+        for (var position = 0; position < taskIds.Count; position++)
+        {
+            var taskId = taskIds[position];
+            cancellationToken.ThrowIfCancellationRequested();
+            LogExecutingTask(taskId);
+
+            var task = loaded[position];
+            if (task == null)
+            {
+                LogTaskNotFoundSkipping(taskId);
+                continue;
+            }
+
+            var agent = task.IsDecision
+                ? null
+                : await _agentSelector
+                    .ForTaskAsync(task, agents, agentIndex, cancellationToken)
+                    .ConfigureAwait(false);
+
+            // The round-robin cursor moves only for a task an agent ran: a skipped task keeps its turn for the next.
+            if (await DispatchTaskAsync(run, position, task, agent, crewTasks, cancellationToken).ConfigureAwait(false))
+                agentIndex++;
         }
     }
 

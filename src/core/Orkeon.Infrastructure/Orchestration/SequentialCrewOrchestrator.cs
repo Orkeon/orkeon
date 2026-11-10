@@ -173,12 +173,7 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
         {
             LogCrewIdNull();
             stopwatch.Stop();
-            return new CrewOutput(
-                FinalOutput: "Crew execution failed: CrewId cannot be null",
-                TaskOutputs: [],
-                Duration: stopwatch.Elapsed,
-                TokensUsed: null) // nothing executed — nothing was measured
-            { Succeeded = false, Error = "CrewId cannot be null" };
+            return NullCrewIdOutput(stopwatch.Elapsed);
         }
 
         LogOrchestratingCrewExecution(crewId);
@@ -214,7 +209,7 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
                 // checkpoint session, the correlation id of the run's events and the id of its
                 // task for the API and A2A (FWK-01), and it is visible to every decorator.
                 var executionId = options?.ExecutionId ?? ExecutionId.New();
-                var crewKey = options?.CrewKey is { Length: > 0 } named && !string.IsNullOrWhiteSpace(named) ? named : crew.Name ?? crewId.ToString();
+                var crewKey = ResolveCrewKey(options, crew, crewId);
 
                 // A resumed run is the run it resumes: it takes the id of that run's session, which it
                 // continues, and carries the outputs of the tasks that session completed.
@@ -264,16 +259,7 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
 
                 // The tasks were checkpointed as they completed (CheckpointingAgentExecutionService): the
                 // session ends here, completed when the crew succeeded, failed, and so resumable, when not.
-                if (_checkpointManager != null && sessionId != null)
-                {
-                    if (domainOutput.Success)
-                        await _checkpointManager.CompleteSessionAsync(sessionId, cancellationToken).ConfigureAwait(false);
-                    else
-                        await _checkpointManager.FailSessionAsync(
-                            sessionId,
-                            new InvalidOperationException(Orkeon.Infrastructure.Security.LogSanitizer.SanitizeString(RunFailureReason(crew, domainOutput.Error))),
-                            CancellationToken.None).ConfigureAwait(false);
-                }
+                await EndCheckpointSessionAsync(sessionId, crew, domainOutput, cancellationToken).ConfigureAwait(false);
 
                 stopwatch.Stop();
 
@@ -282,16 +268,7 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
                 // when the strategy collected no token data, TokensUsed stays null so that
                 // consumers can distinguish "not measured" from a genuine zero-cost run
                 // (R10.8 / MAT-004 — no fabricated TokenUsage(0,0,0)).
-                output = new CrewOutput(
-                    FinalOutput: domainOutput.Output,
-                    TaskOutputs: domainOutput.TaskOutputs?.Select(ConvertTaskOutput).ToList() ?? [],
-                    Duration: stopwatch.Elapsed,
-                    TokensUsed: ExtractTokenUsage(domainOutput))
-                {
-                    Succeeded = domainOutput.Success,
-                    // The reason the domain failed the crew with — a readable one when the run gave none.
-                    Error = domainOutput.Success ? null : RunFailureReason(crew, domainOutput.Error),
-                };
+                output = ToCrewOutput(crew, domainOutput, stopwatch.Elapsed);
             }
             catch (Exception) when (run?.Suspension is not null)
             {
@@ -319,10 +296,7 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
             if (!output.Succeeded && output.PendingInput is null)
             {
                 if (runSpan is not null)
-                {
-                    Orkeon.Application.Telemetry.CrewRunTracing.Fail(
-                        output.Error ?? "the run failed", cause?.GetType().FullName ?? Orkeon.Application.Telemetry.OrkeonRunSpans.ErrorCrewFailed);
-                }
+                    TraceRunFailure(output, cause);
 
                 await ReportUnreportedFailureAsync(crewId, startedAt, output, cause, end).ConfigureAwait(false);
             }
@@ -338,9 +312,8 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
             // asked for it (FWK-04). Never for a cancelled run, and never allowed to replace the run's
             // own result or exception.
             // A run that stopped on a question to a human is not over: it resumes, and consolidates when it ends.
-            if (crew is not null && crew.MemoryEnabled && _memoryCoordinator is not null && !cancellationToken.IsCancellationRequested
-                && run?.Suspension is null)
-                await FinishMemoryAsync(_memoryCoordinator, crew.Id, cancellationToken).ConfigureAwait(false);
+            if (crew is not null && ShouldConsolidateMemory(crew, run, cancellationToken))
+                await FinishMemoryAsync(_memoryCoordinator!, crew.Id, cancellationToken).ConfigureAwait(false);
 
             // Success, failure and cancellation all end here: the crew's queued events
             // (construction events, then Started and Completed/Failed) go to the
@@ -349,6 +322,53 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
                 await DispatchCrewEventsAsync(crew).ConfigureAwait(false);
         }
     }
+
+    private static CrewOutput NullCrewIdOutput(TimeSpan elapsed) =>
+        new(
+            FinalOutput: "Crew execution failed: CrewId cannot be null",
+            TaskOutputs: [],
+            Duration: elapsed,
+            TokensUsed: null) // nothing executed — nothing was measured
+        { Succeeded = false, Error = "CrewId cannot be null" };
+
+    private static string ResolveCrewKey(KickoffOptions? options, Orkeon.Domain.Crew.Crew crew, CrewId crewId) =>
+        options?.CrewKey is { Length: > 0 } named && !string.IsNullOrWhiteSpace(named) ? named : crew.Name ?? crewId.ToString();
+
+    // The tasks were checkpointed as they completed: the session ends completed when the crew succeeded, failed otherwise.
+    private async System.Threading.Tasks.Task EndCheckpointSessionAsync(
+        string? sessionId, Orkeon.Domain.Crew.Crew crew, DomainCrewOutput domainOutput, CancellationToken cancellationToken)
+    {
+        if (_checkpointManager == null || sessionId == null)
+            return;
+
+        if (domainOutput.Success)
+            await _checkpointManager.CompleteSessionAsync(sessionId, cancellationToken).ConfigureAwait(false);
+        else
+            await _checkpointManager.FailSessionAsync(
+                sessionId,
+                new InvalidOperationException(Orkeon.Infrastructure.Security.LogSanitizer.SanitizeString(RunFailureReason(crew, domainOutput.Error))),
+                CancellationToken.None).ConfigureAwait(false);
+    }
+
+    private static CrewOutput ToCrewOutput(Orkeon.Domain.Crew.Crew crew, DomainCrewOutput domainOutput, TimeSpan elapsed) =>
+        new(
+            FinalOutput: domainOutput.Output,
+            TaskOutputs: domainOutput.TaskOutputs?.Select(ConvertTaskOutput).ToList() ?? [],
+            Duration: elapsed,
+            TokensUsed: ExtractTokenUsage(domainOutput))
+        {
+            Succeeded = domainOutput.Success,
+            // The reason the domain failed the crew with — a readable one when the run gave none.
+            Error = domainOutput.Success ? null : RunFailureReason(crew, domainOutput.Error),
+        };
+
+    private static void TraceRunFailure(CrewOutput output, Exception? cause) =>
+        Orkeon.Application.Telemetry.CrewRunTracing.Fail(
+            output.Error ?? "the run failed", cause?.GetType().FullName ?? Orkeon.Application.Telemetry.OrkeonRunSpans.ErrorCrewFailed);
+
+    private bool ShouldConsolidateMemory(Orkeon.Domain.Crew.Crew crew, RunScope? run, CancellationToken cancellationToken) =>
+        crew.MemoryEnabled && _memoryCoordinator is not null && !cancellationToken.IsCancellationRequested
+        && run?.Suspension is null;
 
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "A consolidation at the end of a run is best-effort: whatever it throws must not mask the run's own outcome (FWK-04).")]
     private async Task FinishMemoryAsync(IMemoryCoordinator coordinator, CrewId crewId, CancellationToken cancellationToken)

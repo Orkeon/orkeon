@@ -59,6 +59,8 @@ public sealed partial class YamlCrewMapper
     }
 
     /// <summary>The nodes written, or null for the implicit graph; <paramref name="nodeTask"/> holds every node id with its task, in order.</summary>
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Major Code Smell", "S1168:Empty arrays and collections should be returned instead of null",
+        Justification = "null means the graph declares no nodes: block (the implicit graph); an empty list means it declared an empty one. The two states are read apart.")]
     private static List<GraphNodeConfig>? MapGraphNodes(
         GraphYamlConfig yaml, Dictionary<string, TaskYamlConfig> tasks, List<string> faults, out Dictionary<string, string> nodeTask)
     {
@@ -123,19 +125,21 @@ public sealed partial class YamlCrewMapper
         }
 
         foreach (var from in edges.GroupBy(e => e.From, StringComparer.Ordinal).Where(g => nodeTask.ContainsKey(g.Key)))
-        {
-            var isDecision = tasks.TryGetValue(nodeTask[from.Key], out var task) && task.Decision is not null;
-            var count = from.Count();
-            var otherwise = from.Count(e => e.When is null);
-            if (!isDecision && count > 1)
-                faults.Add($"Node '{from.Key}' runs task '{nodeTask[from.Key]}', which is not a decision task, and has {count} edges: an ordinary task has exactly one.");
-            else if (otherwise > 1)
-                faults.Add($"Node '{from.Key}' has {otherwise} edges without when: only one edge is the otherwise.");
-            else if (isDecision && otherwise == 0)
-                faults.Add($"Node '{from.Key}' runs decision task '{nodeTask[from.Key]}' and has no edge without when: add the otherwise edge, taken when no when holds.");
-        }
+            CheckLeavingEdges(from.Key, from.Count(), from.Count(e => e.When is null), tasks, nodeTask, faults);
 
         return edges;
+    }
+
+    private static void CheckLeavingEdges(
+        string node, int count, int otherwise, Dictionary<string, TaskYamlConfig> tasks, Dictionary<string, string> nodeTask, List<string> faults)
+    {
+        var isDecision = tasks.TryGetValue(nodeTask[node], out var task) && task.Decision is not null;
+        if (!isDecision && count > 1)
+            faults.Add($"Node '{node}' runs task '{nodeTask[node]}', which is not a decision task, and has {count} edges: an ordinary task has exactly one.");
+        else if (otherwise > 1)
+            faults.Add($"Node '{node}' has {otherwise} edges without when: only one edge is the otherwise.");
+        else if (isDecision && otherwise == 0)
+            faults.Add($"Node '{node}' runs decision task '{nodeTask[node]}' and has no edge without when: add the otherwise edge, taken when no when holds.");
     }
 
     private static TaskCondition? MapEdgeCondition(

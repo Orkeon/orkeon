@@ -389,9 +389,9 @@ public static class ContentConverter
 
     /// <summary>
     /// Refuses audio for a model the table does not credit with audio input, naming the model — and, when the
-    /// table does not know it at all, the override that declares it. Returns the model for chaining.
+    /// table does not know it at all, the override that declares it.
     /// </summary>
-    private static string RequireAudioInput(string model, IModelCapabilityRegistry? capabilities)
+    private static void RequireAudioInput(string model, IModelCapabilityRegistry? capabilities)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(model);
         var entry = (capabilities ?? ModelCapabilityRegistry.Default).TryGet(model);
@@ -399,7 +399,6 @@ public static class ContentConverter
             throw AudioRefused(model, $"the model capability table does not know '{model}'; declare it with Llm:ModelCapabilities:<id>:AudioInput if it takes audio");
         if (!entry.AudioInput)
             throw AudioRefused(model, $"'{model}' takes no audio input; pick an audio model, or declare it with Llm:ModelCapabilities:<id>:AudioInput");
-        return model;
     }
 
     private static NotSupportedException AudioRefused(string model, string reason) =>

@@ -745,21 +745,11 @@ public partial class OllamaLlmProvider : HttpLlmProviderBase
         {
             var root = doc.RootElement;
 
-            if (root.TryGetProperty("done", out var done)
-                && done.ValueKind is JsonValueKind.True or JsonValueKind.False
-                && done.GetBoolean())
-            {
-                state.Finished = true;
-                state.PromptTokens = ReadInt(root, "prompt_eval_count") ?? state.PromptTokens;
-                state.CompletionTokens = ReadInt(root, "eval_count") ?? state.CompletionTokens;
-            }
+            ReadDone(root, state);
 
             var message = chatEndpoint && root.TryGetProperty("message", out var m) ? m : default;
 
-            if (message.ValueKind == JsonValueKind.Object
-                && message.TryGetProperty("thinking", out var thinking)
-                && thinking.ValueKind == JsonValueKind.String
-                && thinking.GetString() is { Length: > 0 } thinkingDelta)
+            if (ReadThinking(message) is { } thinkingDelta)
             {
                 state.Thinking.Append(thinkingDelta);
                 yield return LlmStreamEvent.Reasoning(thinkingDelta);
@@ -773,18 +763,8 @@ public partial class OllamaLlmProvider : HttpLlmProviderBase
             {
                 state.ToolCallsJson = toolCalls.GetRawText();
 
-                // Whole calls, one delta each (FWK-20): Ollama has no argument fragments to forward.
-                foreach (var call in toolCalls.EnumerateArray())
-                {
-                    if (!call.TryGetProperty("function", out var function) || function.ValueKind != JsonValueKind.Object)
-                        continue;
-                    var callName = ReadStringProperty(function, "name");
-                    var callArguments = function.TryGetProperty("arguments", out var args)
-                        ? args.ValueKind == JsonValueKind.String ? args.GetString() ?? string.Empty : args.GetRawText()
-                        : string.Empty;
-                    yield return LlmStreamEvent.ToolCallFragment(
-                        new ToolCallDelta(state.ToolCallDeltas++, ReadStringProperty(call, "id"), callName, callArguments));
-                }
+                foreach (var delta in ReadToolCallDeltas(toolCalls, state))
+                    yield return delta;
             }
 
             var text = chatEndpoint
@@ -797,6 +777,49 @@ public partial class OllamaLlmProvider : HttpLlmProviderBase
                 yield return LlmStreamEvent.Content(text);
             }
         }
+    }
+
+    private static void ReadDone(JsonElement root, OllamaStreamState state)
+    {
+        if (root.TryGetProperty("done", out var done)
+            && done.ValueKind is JsonValueKind.True or JsonValueKind.False
+            && done.GetBoolean())
+        {
+            state.Finished = true;
+            state.PromptTokens = ReadInt(root, "prompt_eval_count") ?? state.PromptTokens;
+            state.CompletionTokens = ReadInt(root, "eval_count") ?? state.CompletionTokens;
+        }
+    }
+
+    private static string? ReadThinking(JsonElement message) =>
+        message.ValueKind == JsonValueKind.Object
+        && message.TryGetProperty("thinking", out var thinking)
+        && thinking.ValueKind == JsonValueKind.String
+        && thinking.GetString() is { Length: > 0 } thinkingDelta
+            ? thinkingDelta
+            : null;
+
+    // Whole calls, one delta each (FWK-20): Ollama has no argument fragments to forward.
+    private static IEnumerable<LlmStreamEvent> ReadToolCallDeltas(JsonElement toolCalls, OllamaStreamState state)
+    {
+        foreach (var call in toolCalls.EnumerateArray())
+        {
+            if (!call.TryGetProperty("function", out var function) || function.ValueKind != JsonValueKind.Object)
+                continue;
+            var callName = ReadStringProperty(function, "name");
+            var callArguments = function.TryGetProperty("arguments", out var args)
+                ? ReadArguments(args)
+                : string.Empty;
+            yield return LlmStreamEvent.ToolCallFragment(
+                new ToolCallDelta(state.ToolCallDeltas++, ReadStringProperty(call, "id"), callName, callArguments));
+        }
+    }
+
+    private static string ReadArguments(JsonElement args)
+    {
+        if (args.ValueKind == JsonValueKind.String)
+            return args.GetString() ?? string.Empty;
+        return args.GetRawText();
     }
 
     private static string? ReadStringProperty(JsonElement element, string propertyName) =>

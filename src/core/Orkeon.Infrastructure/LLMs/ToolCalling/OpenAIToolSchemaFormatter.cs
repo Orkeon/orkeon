@@ -75,6 +75,22 @@ public sealed class OpenAIToolSchemaFormatter : IToolSchemaFormatter
         };
     }
 
+    private static Dictionary<string, object> FormatItems(ParameterSchema param, string itemsType)
+    {
+        var items = new Dictionary<string, object> { ["type"] = itemsType };
+        if (param.ItemsFormat is not null)
+            items["format"] = param.ItemsFormat;
+        // An array of objects publishes its items' shape (#210): their properties and the required ones.
+        if (param.ItemProperties is { Count: > 0 })
+        {
+            items["properties"] = param.ItemProperties.ToDictionary(p => p.Key, p => (object)FormatParameter(p.Value));
+            if (param.RequiredItemProperties() is { Count: > 0 } required)
+                items["required"] = required;
+        }
+
+        return items;
+    }
+
     private static Dictionary<string, object> FormatParameter(ParameterSchema param)
     {
         var prop = new Dictionary<string, object>();
@@ -102,17 +118,7 @@ public sealed class OpenAIToolSchemaFormatter : IToolSchemaFormatter
 
         if (param.Type == "array" && param.ItemsType is not null)
         {
-            var items = new Dictionary<string, object> { ["type"] = param.ItemsType };
-            if (param.ItemsFormat is not null)
-                items["format"] = param.ItemsFormat;
-            // An array of objects publishes its items' shape (#210): their properties and the required ones.
-            if (param.ItemProperties is { Count: > 0 })
-            {
-                items["properties"] = param.ItemProperties.ToDictionary(p => p.Key, p => (object)FormatParameter(p.Value));
-                if (param.RequiredItemProperties() is { Count: > 0 } required)
-                    items["required"] = required;
-            }
-            prop["items"] = items;
+            prop["items"] = FormatItems(param, param.ItemsType);
         }
 
         if (param.Values is not null)

@@ -97,42 +97,51 @@ public sealed class MemoryStoreTool : ToolBase<MemoryStoreRequest, MemoryStoreRe
 #pragma warning disable CA1308 // lowercase is the normalized switch subject for the operation keyword
             var op = (request.Operation ?? "list").Trim().ToLowerInvariant();
 #pragma warning restore CA1308
-            switch (op)
+            return op switch
             {
-                case "list":
-                {
-                    var entries = await _store.ListAsync(request.Category, request.NewestFirst, cancellationToken).ConfigureAwait(false);
-                    return new MemoryStoreResponse { Success = true, Entries = entries.ToArray<object>() };
-                }
-                case "add":
-                {
-                    if (string.IsNullOrWhiteSpace(request.Content))
-                        return new MemoryStoreResponse { Success = false, Error = "content is required for add." };
-                    var id = await _store.AddAsync(request.Category ?? "user", request.Content, cancellationToken).ConfigureAwait(false);
-                    return new MemoryStoreResponse { Success = true, Id = id };
-                }
-                case "replace":
-                {
-                    if (string.IsNullOrWhiteSpace(request.Content))
-                        return new MemoryStoreResponse { Success = false, Error = "content is required for replace." };
-                    var replaced = await _store.ReplaceAsync(request.Id, request.Content, cancellationToken).ConfigureAwait(false);
-                    return new MemoryStoreResponse { Success = replaced, Id = request.Id, Error = replaced ? null : $"no entry with id {request.Id}." };
-                }
-                case "delete":
-                {
-                    var ok = await _store.DeleteAsync(request.Id, cancellationToken).ConfigureAwait(false);
-                    return new MemoryStoreResponse { Success = ok, Id = request.Id, Error = ok ? null : $"no entry with id {request.Id}." };
-                }
-                case "get":
-                {
-                    var entry = await _store.GetAsync(request.Id, cancellationToken).ConfigureAwait(false);
-                    return entry is null
-                        ? new MemoryStoreResponse { Success = false, Error = $"no entry with id {request.Id}." }
-                        : new MemoryStoreResponse { Success = true, Entry = entry };
-                }
-                default:
-                    return new MemoryStoreResponse { Success = false, Error = $"unknown operation '{op}'." };
-            }
+                "list" => await ListAsync(request, cancellationToken).ConfigureAwait(false),
+                "add" => await AddAsync(request, cancellationToken).ConfigureAwait(false),
+                "replace" => await ReplaceAsync(request, cancellationToken).ConfigureAwait(false),
+                "delete" => await DeleteAsync(request, cancellationToken).ConfigureAwait(false),
+                "get" => await GetAsync(request, cancellationToken).ConfigureAwait(false),
+                _ => new MemoryStoreResponse { Success = false, Error = $"unknown operation '{op}'." },
+            };
         }
+    }
+
+    private async Task<MemoryStoreResponse> ListAsync(MemoryStoreRequest request, CancellationToken cancellationToken)
+    {
+        var entries = await _store.ListAsync(request.Category, request.NewestFirst, cancellationToken).ConfigureAwait(false);
+        return new MemoryStoreResponse { Success = true, Entries = entries.ToArray<object>() };
+    }
+
+    private async Task<MemoryStoreResponse> AddAsync(MemoryStoreRequest request, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(request.Content))
+            return new MemoryStoreResponse { Success = false, Error = "content is required for add." };
+        var id = await _store.AddAsync(request.Category ?? "user", request.Content, cancellationToken).ConfigureAwait(false);
+        return new MemoryStoreResponse { Success = true, Id = id };
+    }
+
+    private async Task<MemoryStoreResponse> ReplaceAsync(MemoryStoreRequest request, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(request.Content))
+            return new MemoryStoreResponse { Success = false, Error = "content is required for replace." };
+        var replaced = await _store.ReplaceAsync(request.Id, request.Content, cancellationToken).ConfigureAwait(false);
+        return new MemoryStoreResponse { Success = replaced, Id = request.Id, Error = replaced ? null : $"no entry with id {request.Id}." };
+    }
+
+    private async Task<MemoryStoreResponse> DeleteAsync(MemoryStoreRequest request, CancellationToken cancellationToken)
+    {
+        var ok = await _store.DeleteAsync(request.Id, cancellationToken).ConfigureAwait(false);
+        return new MemoryStoreResponse { Success = ok, Id = request.Id, Error = ok ? null : $"no entry with id {request.Id}." };
+    }
+
+    private async Task<MemoryStoreResponse> GetAsync(MemoryStoreRequest request, CancellationToken cancellationToken)
+    {
+        var entry = await _store.GetAsync(request.Id, cancellationToken).ConfigureAwait(false);
+        return entry is null
+            ? new MemoryStoreResponse { Success = false, Error = $"no entry with id {request.Id}." }
+            : new MemoryStoreResponse { Success = true, Entry = entry };
     }
 }

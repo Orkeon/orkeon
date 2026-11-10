@@ -84,9 +84,11 @@ public sealed partial class RateLimitResetHeaders
             || !double.TryParse(raw, NumberStyles.Float, CultureInfo.InvariantCulture, out var milliseconds)
             || double.IsNaN(milliseconds))
             return null;
-        return milliseconds >= TimeSpan.MaxValue.TotalMilliseconds ? TimeSpan.MaxValue
-            : milliseconds <= TimeSpan.MinValue.TotalMilliseconds ? TimeSpan.Zero
-            : TimeSpan.FromMilliseconds(milliseconds);
+        if (milliseconds >= TimeSpan.MaxValue.TotalMilliseconds)
+            return TimeSpan.MaxValue;
+        if (milliseconds <= TimeSpan.MinValue.TotalMilliseconds)
+            return TimeSpan.Zero;
+        return TimeSpan.FromMilliseconds(milliseconds);
     }
 
     private static bool TryFirstValue(HttpResponseHeaders headers, string name, out string value)
