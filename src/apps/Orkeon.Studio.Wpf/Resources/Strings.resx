@@ -921,7 +921,7 @@
     <value>Delete this team?</value>
   </data>
   <data name="Studio.Teams.DeleteConfirmNamed" xml:space="preserve"><value>Delete the team “{0}”?</value></data>
-  <data name="Studio.Teams.DeleteConsequence" xml:space="preserve"><value>Its folder and its history are erased. The folders you allowed stay where they are.</value></data>
+  <data name="Studio.Teams.DeleteConsequence" xml:space="preserve"><value>Its folder and its history are erased. The folders you added stay where they are.</value></data>
   <data name="Studio.Teams.SessionDeleteConfirm" xml:space="preserve">
     <value>Delete this draft?</value>
   </data>

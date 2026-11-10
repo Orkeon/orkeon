@@ -2524,7 +2524,7 @@
     <value>删除这个团队？</value>
   </data>
   <data name="Studio.Teams.DeleteConfirmNamed" xml:space="preserve"><value>删除团队“{0}”？</value></data>
-  <data name="Studio.Teams.DeleteConsequence" xml:space="preserve"><value>其文件夹和历史将被清除。您已允许的文件夹保持不变。</value></data>
+  <data name="Studio.Teams.DeleteConsequence" xml:space="preserve"><value>其文件夹和历史将被清除。您添加的文件夹保持不变。</value></data>
   <data name="Studio.Teams.SessionDeleteConfirm" xml:space="preserve">
     <value>删除这份草稿？</value>
   </data>

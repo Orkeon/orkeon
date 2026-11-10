@@ -2524,7 +2524,7 @@
     <value>¿Eliminar este equipo?</value>
   </data>
   <data name="Studio.Teams.DeleteConfirmNamed" xml:space="preserve"><value>¿Eliminar el equipo «{0}»?</value></data>
-  <data name="Studio.Teams.DeleteConsequence" xml:space="preserve"><value>Su carpeta y su historial se borran. Las carpetas que autorizó se quedan donde están.</value></data>
+  <data name="Studio.Teams.DeleteConsequence" xml:space="preserve"><value>Su carpeta y su historial se borran. Las carpetas que añadió se quedan donde están.</value></data>
   <data name="Studio.Teams.SessionDeleteConfirm" xml:space="preserve">
     <value>¿Eliminar este borrador?</value>
   </data>

@@ -2181,7 +2181,7 @@ public static class StudioStringKeys
     /// <summary>"Delete the team “{0}”?" (UX lot 08).</summary>
     public const string TeamsDeleteConfirmNamed = "Studio.Teams.DeleteConfirmNamed";
 
-    /// <summary>"Its folder and its history are erased. The folders you allowed stay where they are." (UX lot 08).</summary>
+    /// <summary>"Its folder and its history are erased. The folders you added stay where they are." (UX lot 08).</summary>
     public const string TeamsDeleteConsequence = "Studio.Teams.DeleteConsequence";
 
     // ---- STUDIO-64: in a workshop, Rename, Delete and Duplicate follow the team's trees ----
@@ -3793,7 +3793,7 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.TeamsDeleteRefused] = "Not deleted: the disk refused — a file of the team may be open.",
         [StudioStringKeys.TeamsDeleteConfirm] = "Delete this team?",
         [StudioStringKeys.TeamsDeleteConfirmNamed] = "Delete the team “{0}”?",
-        [StudioStringKeys.TeamsDeleteConsequence] = "Its folder and its history are erased. The folders you allowed stay where they are.",
+        [StudioStringKeys.TeamsDeleteConsequence] = "Its folder and its history are erased. The folders you added stay where they are.",
 
         // STUDIO-64: in a workshop, Rename, Delete and Duplicate follow the team's trees
         [StudioStringKeys.TeamsDeleteAskArchive] = "Move the team and what goes with it to the workshop's archive?",

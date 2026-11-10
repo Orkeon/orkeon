@@ -2524,7 +2524,7 @@
     <value>Dieses Team löschen?</value>
   </data>
   <data name="Studio.Teams.DeleteConfirmNamed" xml:space="preserve"><value>Das Team „{0}“ löschen?</value></data>
-  <data name="Studio.Teams.DeleteConsequence" xml:space="preserve"><value>Sein Ordner und sein Verlauf werden gelöscht. Die Ordner, die Sie erlaubt haben, bleiben bestehen.</value></data>
+  <data name="Studio.Teams.DeleteConsequence" xml:space="preserve"><value>Sein Ordner und sein Verlauf werden gelöscht. Die Ordner, die Sie hinzugefügt haben, bleiben bestehen.</value></data>
   <data name="Studio.Teams.SessionDeleteConfirm" xml:space="preserve">
     <value>Diesen Entwurf löschen?</value>
   </data>
