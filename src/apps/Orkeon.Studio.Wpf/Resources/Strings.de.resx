@@ -2731,7 +2731,7 @@
     <value>Was herauskommt</value>
   </data>
   <data name="Studio.Chat.PillBrief" xml:space="preserve">
-    <value>Arbeit</value>
+    <value>Anfrage</value>
   </data>
   <data name="Studio.Chat.PillSource" xml:space="preserve">
     <value>Eingaben</value>
@@ -3776,7 +3776,7 @@
   <data name="Studio.Teams.SaveSettings" xml:space="preserve"><value>Jetzt beheben</value></data>
   <data name="Studio.Teams.ImportShort" xml:space="preserve"><value>Importieren</value></data>
   <data name="Studio.Teams.ScheduleManualValue" xml:space="preserve"><value>Auf Abruf</value></data>
-  <data name="Studio.Teams.LaunchNeedsFolder" xml:space="preserve"><value>Geben Sie zuerst den Ordner {0} frei.</value></data>
+  <data name="Studio.Teams.LaunchNeedsFolder" xml:space="preserve"><value>Geben Sie zuerst den Ordner {0} frei, um das Team zu starten.</value></data>
   <data name="Studio.Teams.AllowFolder" xml:space="preserve"><value>Freigeben</value></data>
   <data name="Studio.Create.SessionRunning" xml:space="preserve"><value>Läuft</value></data>
   <data name="Studio.Create.SessionWaiting" xml:space="preserve"><value>Wartet auf Sie</value></data>

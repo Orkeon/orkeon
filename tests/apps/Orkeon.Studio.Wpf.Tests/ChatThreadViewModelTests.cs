@@ -369,7 +369,7 @@ public class ChatThreadViewModelTests
             ],
             () => "", () => [], () => null, _ => false);
 
-        Assert.Equal(["Work", "Inputs", "Output"], chat.Pills.Select(p => p.Label));
+        Assert.Equal(["Request", "Inputs", "Output"], chat.Pills.Select(p => p.Label));
         Assert.Equal([true, false, true], chat.Pills.Select(p => p.IsKnown));
     }
 

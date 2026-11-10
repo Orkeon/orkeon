@@ -2731,7 +2731,7 @@
     <value>输出内容</value>
   </data>
   <data name="Studio.Chat.PillBrief" xml:space="preserve">
-    <value>工作</value>
+    <value>需求</value>
   </data>
   <data name="Studio.Chat.PillSource" xml:space="preserve">
     <value>输入</value>
@@ -3776,7 +3776,7 @@
   <data name="Studio.Teams.SaveSettings" xml:space="preserve"><value>立即修复</value></data>
   <data name="Studio.Teams.ImportShort" xml:space="preserve"><value>导入</value></data>
   <data name="Studio.Teams.ScheduleManualValue" xml:space="preserve"><value>按需</value></data>
-  <data name="Studio.Teams.LaunchNeedsFolder" xml:space="preserve"><value>请先允许文件夹 {0}。</value></data>
+  <data name="Studio.Teams.LaunchNeedsFolder" xml:space="preserve"><value>请先允许文件夹 {0}，才能启动团队。</value></data>
   <data name="Studio.Teams.AllowFolder" xml:space="preserve"><value>允许</value></data>
   <data name="Studio.Create.SessionRunning" xml:space="preserve"><value>运行中</value></data>
   <data name="Studio.Create.SessionWaiting" xml:space="preserve"><value>等待您操作</value></data>

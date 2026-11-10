@@ -201,7 +201,7 @@
   <data name="Studio.Run.MinutesSeconds" xml:space="preserve"><value>{0} min {1} s</value></data>
   <data name="Studio.Run.ExitCode" xml:space="preserve"><value>Exit code {0} — {1}</value></data>
   <data name="Studio.Run.ExitSuccess" xml:space="preserve"><value>run completed successfully</value></data>
-  <data name="Studio.Run.ExitScriptError" xml:space="preserve"><value>script or settings error: check the crew file and the settings it uses</value></data>
+  <data name="Studio.Run.ExitScriptError" xml:space="preserve"><value>script or settings error: check the team file and the settings it uses</value></data>
   <data name="Studio.Run.ExitRuntimeError" xml:space="preserve"><value>runtime error: the last log lines say why</value></data>
   <data name="Studio.Run.ExitCancelled" xml:space="preserve"><value>run interrupted</value></data>
   <data name="Studio.Run.ExitUnknown" xml:space="preserve"><value>unexpected end: check the output above</value></data>
@@ -425,7 +425,7 @@
 <data name="Studio.Settings.NewName" xml:space="preserve"><value>New setting</value></data>
 <data name="Studio.Settings.FirstProfileName" xml:space="preserve"><value>Main</value></data>
 <data name="Studio.Settings.ChooseModelCta" xml:space="preserve"><value>Choose my AI model</value></data>
-<data name="Studio.Settings.ModelMissingTip" xml:space="preserve"><value>No model chosen: the assistant cannot compose a crew.</value></data>
+<data name="Studio.Settings.ModelMissingTip" xml:space="preserve"><value>No model chosen: the assistant cannot compose a team.</value></data>
   <data name="Studio.Settings.GroupLocal" xml:space="preserve"><value>ON YOUR MACHINE · FREE, NO KEY</value></data>
   <data name="Studio.Settings.GroupCloud" xml:space="preserve"><value>IN THE CLOUD · API KEY REQUIRED</value></data>
   <data name="Studio.Settings.ProviderRecommended" xml:space="preserve"><value>Recommended</value></data>
@@ -1128,7 +1128,7 @@
     <value>What comes out</value>
   </data>
   <data name="Studio.Chat.PillBrief" xml:space="preserve">
-    <value>Work</value>
+    <value>Request</value>
   </data>
   <data name="Studio.Chat.PillSource" xml:space="preserve">
     <value>Inputs</value>
@@ -2324,7 +2324,7 @@
   <data name="Studio.Settings.GroupAccess" xml:space="preserve"><value>Access</value></data>
   <data name="Studio.Settings.GroupConnections" xml:space="preserve"><value>Connections</value></data>
   <data name="Studio.Settings.GroupAdvanced" xml:space="preserve"><value>Advanced</value></data>
-  <data name="Studio.Settings.DotRequiredTip" xml:space="preserve"><value>Needed to run a crew</value></data>
+  <data name="Studio.Settings.DotRequiredTip" xml:space="preserve"><value>Needed to run a team</value></data>
   <data name="Studio.Settings.DotOptionalTip" xml:space="preserve"><value>Optional</value></data>
   <data name="Studio.Diagnostics.OpenModels" xml:space="preserve"><value>Open Models</value></data>
   <data name="Studio.Diagnostics.OpenKeys" xml:space="preserve">

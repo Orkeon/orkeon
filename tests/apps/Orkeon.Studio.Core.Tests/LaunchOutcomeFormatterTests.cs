@@ -48,7 +48,7 @@ public class LaunchOutcomeFormatterTests
 
     [Theory]
     [InlineData(OrkeonExitCodes.Success, "Exit code 0 — run completed successfully")]
-    [InlineData(OrkeonExitCodes.ScriptError, "Exit code 1 — script or settings error: check the crew file and the settings it uses")]
+    [InlineData(OrkeonExitCodes.ScriptError, "Exit code 1 — script or settings error: check the team file and the settings it uses")]
     [InlineData(OrkeonExitCodes.RuntimeError, "Exit code 2 — runtime error: the last log lines say why")]
     [InlineData(OrkeonExitCodes.Cancelled, "Exit code 130 — run interrupted")]
     [InlineData(42, "Exit code 42 — unexpected end: check the output above")]

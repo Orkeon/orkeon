@@ -143,7 +143,7 @@ public static class StudioStringKeys
     /// <summary>"run completed successfully" — {1} of <see cref="LaunchExitCode"/> for exit code 0.</summary>
     public const string LaunchExitSuccess = "Studio.Run.ExitSuccess";
 
-    /// <summary>"script or settings error: check the crew file and the settings it uses" — exit code 1.</summary>
+    /// <summary>"script or settings error: check the team file and the settings it uses" — exit code 1.</summary>
     public const string LaunchExitScriptError = "Studio.Run.ExitScriptError";
 
     /// <summary>"runtime error: the last log lines say why" — exit code 2.</summary>
@@ -3128,7 +3128,7 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.ChatFactBrief] = "The work you described",
         [StudioStringKeys.ChatFactSource] = "What comes in",
         [StudioStringKeys.ChatFactOutput] = "What comes out",
-        [StudioStringKeys.ChatPillBrief] = "Work",
+        [StudioStringKeys.ChatPillBrief] = "Request",
         [StudioStringKeys.ChatPillSource] = "Inputs",
         [StudioStringKeys.ChatPillOutput] = "Output",
         [StudioStringKeys.ChatFactComposeNote] = "Composition instruction",
@@ -3261,7 +3261,7 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.LaunchNothingRan] = "Nothing ran — {0}",
         [StudioStringKeys.LaunchExitCode] = "Exit code {0} — {1}",
         [StudioStringKeys.LaunchExitSuccess] = "run completed successfully",
-        [StudioStringKeys.LaunchExitScriptError] = "script or settings error: check the crew file and the settings it uses",
+        [StudioStringKeys.LaunchExitScriptError] = "script or settings error: check the team file and the settings it uses",
         [StudioStringKeys.LaunchExitRuntimeError] = "runtime error: the last log lines say why",
         [StudioStringKeys.LaunchExitCancelled] = "run interrupted",
         [StudioStringKeys.LaunchExitUnknown] = "unexpected end: check the output above",
