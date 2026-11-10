@@ -148,6 +148,8 @@ Orkeon.Tools.Analysis.DocumentsOfSymbol.Kind.get -> string!
 Orkeon.Tools.Analysis.DocumentsOfSymbol.Kind.init -> void
 Orkeon.Tools.Analysis.DocumentsOfTool
 Orkeon.Tools.Analysis.DocumentsOfTool.DocumentsOfTool(Orkeon.Analysis.Abstractions.Interfaces.IRaggableStore! store, Microsoft.Extensions.Logging.ILogger<Orkeon.Tools.Analysis.DocumentsOfTool!>? logger = null) -> void
+Orkeon.Tools.Analysis.EdgeListTool
+Orkeon.Tools.Analysis.EdgeListTool.EdgeListTool(Orkeon.Analysis.Abstractions.Interfaces.IRaggableStore! store, Microsoft.Extensions.Logging.ILogger<Orkeon.Tools.Analysis.EdgeListTool!>? logger = null) -> void
 Orkeon.Tools.Analysis.EditBatchOperation
 Orkeon.Tools.Analysis.EditBatchOperation.<Clone>$() -> Orkeon.Tools.Analysis.EditBatchOperation!
 Orkeon.Tools.Analysis.EditBatchOperation.EditBatchOperation() -> void
@@ -205,9 +207,9 @@ Orkeon.Tools.Analysis.FlowTraceTool.FlowTraceTool(Orkeon.Analysis.Abstractions.I
 Orkeon.Tools.Analysis.ImpactAnalysisTool
 Orkeon.Tools.Analysis.ImpactAnalysisTool.ImpactAnalysisTool(Orkeon.Analysis.Abstractions.Interfaces.IRaggableStore! store, Microsoft.Extensions.Logging.ILogger<Orkeon.Tools.Analysis.ImpactAnalysisTool!>? logger = null) -> void
 Orkeon.Tools.Analysis.IncrementalReindexTool
-Orkeon.Tools.Analysis.IncrementalReindexTool.IncrementalReindexTool(Orkeon.Analysis.Core.InMemoryRaggableStore! store, System.Func<Orkeon.Analysis.Core.RaggableTreeBuilder!>! builderFactory, Orkeon.Analysis.Abstractions.Interfaces.IGitDiffProvider? gitDiff = null, Microsoft.Extensions.Logging.ILogger<Orkeon.Tools.Analysis.IncrementalReindexTool!>? logger = null, Orkeon.Analysis.Core.IndexFreshnessService? freshness = null) -> void
+Orkeon.Tools.Analysis.IncrementalReindexTool.IncrementalReindexTool(Orkeon.Analysis.Core.IndexFreshnessService! freshness, Orkeon.Analysis.Abstractions.Interfaces.IGitDiffProvider? gitDiff = null, Microsoft.Extensions.Logging.ILogger<Orkeon.Tools.Analysis.IncrementalReindexTool!>? logger = null) -> void
 Orkeon.Tools.Analysis.IndexCodebaseTool
-Orkeon.Tools.Analysis.IndexCodebaseTool.IndexCodebaseTool(Orkeon.Analysis.Core.InMemoryRaggableStore! store, System.Func<Orkeon.Analysis.Core.RaggableTreeBuilder!>! builderFactory, Microsoft.Extensions.Logging.ILogger<Orkeon.Tools.Analysis.IndexCodebaseTool!>? logger = null) -> void
+Orkeon.Tools.Analysis.IndexCodebaseTool.IndexCodebaseTool(Orkeon.Analysis.Core.InMemoryRaggableStore! store, System.Func<Orkeon.Analysis.Core.RaggableTreeBuilder!>! builderFactory, Orkeon.Analysis.Core.Cache.CachingTreeBuilder? cachingBuilder = null, Microsoft.Extensions.Logging.ILogger<Orkeon.Tools.Analysis.IndexCodebaseTool!>? logger = null) -> void
 Orkeon.Tools.Analysis.IndexStatusTool
 Orkeon.Tools.Analysis.IndexStatusTool.IndexStatusTool(Orkeon.Analysis.Abstractions.Interfaces.IRaggableStore! store, Microsoft.Extensions.Logging.ILogger<Orkeon.Tools.Analysis.IndexStatusTool!>? logger = null, Orkeon.Analysis.Abstractions.Interfaces.IIndexInvalidation? invalidation = null) -> void
 Orkeon.Tools.Analysis.IsPathIndexedTool
@@ -536,6 +538,9 @@ override Orkeon.Tools.Analysis.DocumentsOfSymbol.ToString() -> string!
 override Orkeon.Tools.Analysis.DocumentsOfTool.Access.get -> Orkeon.Domain.Tools.ToolAccess
 override Orkeon.Tools.Analysis.DocumentsOfTool.Description.get -> string!
 override Orkeon.Tools.Analysis.DocumentsOfTool.Name.get -> string!
+override Orkeon.Tools.Analysis.EdgeListTool.Access.get -> Orkeon.Domain.Tools.ToolAccess
+override Orkeon.Tools.Analysis.EdgeListTool.Description.get -> string!
+override Orkeon.Tools.Analysis.EdgeListTool.Name.get -> string!
 override Orkeon.Tools.Analysis.EditBatchOperation.Equals(object? obj) -> bool
 override Orkeon.Tools.Analysis.EditBatchOperation.GetHashCode() -> int
 override Orkeon.Tools.Analysis.EditBatchOperation.ToString() -> string!

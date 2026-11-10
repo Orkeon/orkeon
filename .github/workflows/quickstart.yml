@@ -11,7 +11,7 @@
 # Everything the block needs is provided the way a reader would provide it, pinned:
 # the .NET 10 SDK, an Ollama binary downloaded from its GitHub release and checked
 # against the release's sha256sum.txt (no curl | sh), and the `orkeon` tool. The only
-# indirection is where `dotnet tool install -g Orkeon.Scripting.Cli --prerelease`
+# indirection is where `dotnet tool install -g Orkeon.Scripting.Cli`
 # resolves the package: a nuget.config in the working directory makes a local pack of
 # THIS checkout the only source (a tool package carries its dependencies, so no feed
 # is needed), and the block installs the code under test, never a published release
@@ -105,19 +105,18 @@ jobs:
             sleep 1
           done
 
-      # `dotnet tool install -g Orkeon.Scripting.Cli --prerelease` -- the block's own line --
-      # must install this checkout. The nuget.config below makes the pack directory the ONLY
-      # source in the directory the block runs from: with nuget.org as a fallback, a
-      # published stable 1.0.0 would outrank a local 1.0.0-ci<run> and the job would test
-      # the release instead of the change. The .ci<run> suffix only labels the pack.
+      # `dotnet tool install -g Orkeon.Scripting.Cli` -- the block's own line -- must install
+      # this checkout. The nuget.config below makes the pack directory the ONLY source in the
+      # directory the block runs from: with nuget.org as a fallback, a published release
+      # could outrank the local pack and the job would test the release instead of the
+      # change. The line carries no --prerelease, so the pack is stable whatever the props
+      # say: VersionSuffix is emptied, the package is the bare VersionPrefix.
       - name: Pack the orkeon tool from this checkout, as the only source
         run: |
           prefix=$(sed -n 's/.*<VersionPrefix>\([^<]*\)<\/VersionPrefix>.*/\1/p' src/Directory.Build.props)
-          suffix=$(sed -n 's/.*<VersionSuffix>\([^<]*\)<\/VersionSuffix>.*/\1/p' src/Directory.Build.props)
-          ci_suffix="${suffix:+$suffix.}ci${GITHUB_RUN_NUMBER}"
-          echo "packing $prefix-$ci_suffix"
+          echo "packing $prefix (run ${GITHUB_RUN_NUMBER})"
           dotnet pack src/scripting/Orkeon.Scripting.Cli/Orkeon.Scripting.Cli.csproj -c Release \
-            -o "$PWD/artifacts/cli" -p:VersionSuffix="$ci_suffix"
+            -o "$PWD/artifacts/cli" -p:VersionSuffix=
           cat > nuget.config <<XML
           <?xml version="1.0" encoding="utf-8"?>
           <configuration>

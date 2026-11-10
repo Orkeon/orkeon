@@ -12,7 +12,10 @@ ne divergent plus jamais (OSS-011 / R8.3).
 > gate `scripts/check-package-closure.py`. Ses six premiers paquets sont partis le 2026-09-09 ;
 > `Orkeon.Compliance.Vfs`, `Orkeon.Interop.AgentFramework` et `Orkeon.Hosting.Aspire` ont
 > rejoint le lineup le 2026-09-11 et sont arrivés sur NuGet.org avec la release suivante
-> (constaté sur api.nuget.org le 2026-10-12) — neuf paquets en tout depuis. Le Trusted
+> (constaté sur api.nuget.org le 2026-10-12) — neuf paquets à ce moment-là. Cinq autres l'ont
+> rejoint depuis (`Orkeon.Scripting`, `Orkeon.Constants.Cli`, `Orkeon.Templates`,
+> `Orkeon.Cli.Abstractions` et `Orkeon.Cli.TerminalGui`) : quatorze paquets en tout, la liste
+> que pousse `publish.yml`. Le Trusted
 > Publishing vers NuGet.org est **opérationnel** — les paquets par couche désormais
 > abandonnés `Orkeon.Domain` / `Orkeon.Application` / `Orkeon.Infrastructure` y ont publié
 > deux pré-versions (2026-08-18 et 2026-08-25), et ont été délistés le 2026-09-07
@@ -36,7 +39,7 @@ un amont en pré-release).
 | `Orkeon.Tools.Embeddings.Local` | Embeddings locaux sur la machine (BGE-micro-v2 ONNX). Reste **hors de l'ombrelle** parce qu'il porte une dépendance SmartComponents en pré-release, d'un amont archivé — l'inclure dans `Orkeon` imposerait cette pré-release à chaque consommateur. Dépend d'`Orkeon`. |
 | `Orkeon.Constants.Cli` | Le vocabulaire CLI partagé : les noms d'options qu'acceptent les runners (`RunOptionNames`), leurs codes de sortie (`RunExitCodes`) et les clés d'état de session (`SessionStateKeys`), pour un outil qui pilote `orkeon run`. Un satellite sans dépendance (ADR-009), packé directement depuis son projet ; `Orkeon.Scripting` en dépend au lieu de l'embarquer. |
 | `Orkeon.Scripting` | Exécute un `crew.ork.ts` dans une application .NET, sans démarrer de processus (#229) : `services.AddOrkeonScripting()` puis `ICrewScriptRunner.RunAsync(path)`, les chemins relatifs résolus contre le répertoire de travail du processus — voir [Orkeon.Hosting](hosting.md#exécuter-un-crew-dans-le-processus). Embarque `Orkeon.Scripting` (l'hôte Jint, le pilote du bundler esbuild, les typings du DSL en ressource embarquée), `Orkeon.Hosting` (l'amorçage de runner que partagent `orkeon run` et `orkeon-host`). Séparé d'`Orkeon` parce que l'hôte de runner compose toutes les familles d'outils intégrées : il dépend d'`Orkeon`, d'`Orkeon.Tools`, d'`Orkeon.Tools.Embeddings.Local` et d'`Orkeon.Constants.Cli` (donc de leurs pilotes de bases de données, de MailKit et de la pré-release SmartComponents), plus Jint, `Microsoft.Extensions.Hosting` et `CommandLineParser`. esbuild n'est pas livré, comme pour le tool. |
-| `Orkeon.Scripting.Cli` | Le tool dotnet `orkeon` (`PackAsTool` ; le PackageId est la commande d'installation — ADR-007). Publiable sur NuGet.org depuis l'exclusion des natifs onnxruntime iOS/Android qu'un tool CLI ne peut jamais charger : 262,5 Mo → 137,6 Mo, sous la limite de taille de nuget.org. |
+| `Orkeon.Scripting.Cli` | Le tool dotnet `orkeon` (`PackAsTool` ; le PackageId est la commande d'installation — ADR-007). Publiable sur NuGet.org depuis l'exclusion des natifs onnxruntime iOS/Android qu'un tool CLI ne peut jamais charger, dans chaque paquet tool : environ 187 Mo avec les natifs de chaque runtime de bureau (win, linux, osx), sous la limite de 250 Mo de nuget.org. |
 | `Orkeon.Compliance.Vfs` | L'analyseur Roslyn qui refuse `System.IO` direct dans votre propre code (règles `ORKVFS001`–`ORKVFS007`, `analyzers/dotnet/cs`, `DevelopmentDependency`). Autonome par conception : il ne dépend de rien d'Orkeon et fonctionne dans n'importe quel projet C# — ajoutez le `PackageReference`, compilez, et chaque appel `File.*`/`Directory.*` devient un diagnostic. Dans le lineup NuGet.org depuis le 2026-09-11 : la release publiée avant cette date n'a atteint que GitHub Packages (la boucle de push NuGet.org était une liste figée de six identifiants) et était de toute façon inerte, compilé contre un Roslyn plus récent que le compilateur du SDK. |
 | `Orkeon.Interop.AgentFramework` | Le pont vers Microsoft Agent Framework, dans les deux sens : un crew Orkeon comme `AIAgent` MAF (`CrewAgent`), un `AIAgent` MAF comme cerveau (`WithAgentFrameworkAgent`) ou comme outil (`WithAgentFrameworkTool`) d'un agent Orkeon. Séparé de `Orkeon` parce que la dépendance `Microsoft.Agents.AI.Abstractions` est un choix du consommateur. Dépend de `Orkeon`. |
 | `Orkeon.Hosting.Aspire` | L'intégration d'hébergement .NET Aspire : `AddOrkeonHost` (le démon `orkeon-host`) et `AddOrkeonCrewRun` (un `orkeon run`) comme ressources d'AppHost, `WithOrkeonModel` / `WithOrkeonSetting` pour l'environnement `ORKEON_`, export OTLP câblé pour que le dashboard lise le run. Séparé de `Orkeon` parce que `Aspire.Hosting` est un choix de l'AppHost. Dépend de `Orkeon`. |
@@ -97,7 +100,7 @@ couche de scripting.
 
 **Migration** : le code source et les namespaces sont inchangés, le code consommateur compile
 donc tel quel — seule l'installation change. Désinstallez les paquets par couche et
-`dotnet add package Orkeon --prerelease` (ajoutez `Orkeon.Tools` si vous utilisiez un paquet
+`dotnet add package Orkeon` (ajoutez `Orkeon.Tools` si vous utilisiez un paquet
 `Orkeon.Tools.<famille>` autre qu'`Embeddings.Local`).
 
 ## État réel de NuGet.org, et actions propriétaire restantes
@@ -153,7 +156,8 @@ NuGet.org ci-dessus **plus** les paquets build-time et runners qui restent hors 
 | PackageId | Commande tool | Projet source |
 |---|---|---|
 | `Orkeon.ConsoleApp` | `orkeon-repl` | `src/apps/Orkeon.ConsoleApp` |
-| `Orkeon.Scripting.Cli` | `orkeon` | `src/scripting/Orkeon.Scripting.Cli` |
+
+L'autre tool dotnet, `Orkeon.Scripting.Cli` (commande `orkeon`), fait partie du lineup NuGet.org ci-dessus.
 
 ### Canal dev : le dernier `main`, entre deux tags
 
@@ -331,7 +335,7 @@ Le CLI `orkeon` est distribué via **huit canaux** :
 
 | Canal | Artefact | Runtime | Public |
 |---|---|---|---|
-| Tool dotnet NuGet | `Orkeon.Scripting.Cli` (`PackAsTool`, commande `orkeon`) | requiert le SDK .NET 10 (`dotnet tool install`) | développeurs .NET. Fait partie du lineup NuGet.org (PUB-25) — publiable depuis que le paquet est passé de 262,5 Mo à 137,6 Mo (natifs onnxruntime iOS/Android exclus) |
+| Tool dotnet NuGet | `Orkeon.Scripting.Cli` (`PackAsTool`, commande `orkeon`) | requiert le SDK .NET 10 (`dotnet tool install`) | développeurs .NET. Fait partie du lineup NuGet.org (PUB-25) — publiable depuis l'exclusion des natifs onnxruntime iOS/Android : environ 187 Mo avec chaque runtime de bureau, sous la limite de 250 Mo |
 | Zip Windows + `install.cmd` | `orkeon-cli-<version>-win-x64.zip` | self-contained | onboarding Windows — le canal recommandé |
 | MSI Windows (per-user) | `orkeon-<version>-win-x64.msi` | self-contained | Windows, installation au double-clic et entrée « Applications installées ». Un canal à la fois : le MSI refuse de s'installer par-dessus une install zip |
 | Dépôt apt Debian / Ubuntu | les paquets `.deb` ci-dessous, indexés sur la branche `apt` (canaux `stable`, `rc`, `dev`) | self-contained | Debian / Ubuntu, amd64 et arm64 — le canal recommandé : `apt install`, `apt upgrade`. Voir [Le dépôt apt](#le-dépôt-apt) |
@@ -384,7 +388,7 @@ l'asset de la Release. La contrepartie est la limite de débit de GitHub sur les
 
 | Canal | Répertoire | Reçoit |
 |---|---|---|
-| `stable` | `stable/` | chaque tag `v*` sans segment de pré-version — le même test qui fixe `prerelease:` sur la Release. Vide tant qu'aucune version finale n'est publiée |
+| `stable` | `stable/` | chaque tag `v*` sans segment de pré-version — le même test qui fixe `prerelease:` sur la Release. Versions finales seulement : une release candidate n'y entre jamais |
 | `rc` | `rc/` | chaque tag `v*` : tout paquet de `stable` est donc aussi dans `rc` |
 | `dev` | `dev/` | le paquet `orkeon` de chaque push vert sur `main`, en version `<version des props avec ~>.dev.<n>` (`<X.Y.Z>~<pre>.dev.<n>`) ; ses assets sont sur l'unique prerelease à tag fixe `apt-dev` ; seuls les trois derniers builds sont gardés. Jamais publié sur NuGet.org, jamais attesté comme une release |
 

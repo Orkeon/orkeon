@@ -15,10 +15,18 @@
        file are untouched; `dotnet pack` copies nothing local and
        `dotnet publish -r <rid>` resolves a RID-specific graph where this item
        is empty, so both are unaffected. A build that must stay portable across
-       machines opts out with `-p:OrkeonAllRuntimes=true`. -->
+       machines opts out with `-p:OrkeonAllRuntimes=true`.
+
+       A dotnet tool is the exception: `dotnet pack` of a `PackAsTool` project
+       publishes it RID-less into `tools/<tfm>/any/`, from this same copy list, so
+       the trim would ship the natives of the packing machine alone (`linux-x64`
+       and `unix` from publish.yml's ubuntu runner) and the tool would fail on
+       Windows and macOS. A tool project is left untrimmed while `dotnet pack` runs
+       (`_IsPacking`, which the pack command sets); its plain builds stay trimmed. -->
   <Target Name="OrkeonTrimForeignRuntimes"
           AfterTargets="ResolvePackageAssets"
-          Condition="'$(OrkeonAllRuntimes)' != 'true' and '$(RuntimeIdentifier)' == '' and '$(NETCoreSdkRuntimeIdentifier)' != ''">
+          Condition="'$(OrkeonAllRuntimes)' != 'true' and '$(RuntimeIdentifier)' == '' and '$(NETCoreSdkRuntimeIdentifier)' != ''
+                     and !('$(PackAsTool)' == 'true' and '$(_IsPacking)' == 'true')">
     <PropertyGroup>
       <_OrkeonRid>$(NETCoreSdkRuntimeIdentifier)</_OrkeonRid>
       <_OrkeonRidFamily>$(_OrkeonRid)</_OrkeonRidFamily>
@@ -32,4 +40,21 @@
                    and '%(RuntimeTargetsCopyLocalItems.RuntimeIdentifier)' != 'any'" />
     </ItemGroup>
   </Target>
+
+  <!-- PUB-24 P1: a dotnet tool package (orkeon, orkeon-repl) used to weigh 262.5 MB —
+       above the nuget.org limit (250 MB) — because Microsoft.ML.OnnxRuntime ships iOS
+       (.xcframework.zip) and Android (.aar) natives that a dotnet CLI tool can never load.
+       Strip them from every tool package payload; desktop RIDs (win/linux/osx) stay. -->
+  <Target Name="OrkeonTrimMobileNativesFromToolPackage" AfterTargets="PackTool" Condition="'$(PackAsTool)' == 'true'">
+    <ItemGroup>
+      <_OrkeonMobileNative Include="@(TfmSpecificPackageFile)"
+                           Condition="$([System.String]::Copy('%(TfmSpecificPackageFile.Identity)').Contains('/runtimes/ios'))
+                                      Or $([System.String]::Copy('%(TfmSpecificPackageFile.Identity)').Contains('/runtimes/android'))
+                                      Or $([System.String]::Copy('%(TfmSpecificPackageFile.PackagePath)').Contains('runtimes/ios'))
+                                      Or $([System.String]::Copy('%(TfmSpecificPackageFile.PackagePath)').Contains('runtimes/android'))" />
+      <TfmSpecificPackageFile Remove="@(_OrkeonMobileNative)" />
+    </ItemGroup>
+    <Message Importance="high" Text="OrkeonTrim: removed @(_OrkeonMobileNative-&gt;Count()) mobile native file(s) from the tool package" />
+  </Target>
+
 </Project>

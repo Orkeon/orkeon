@@ -14,6 +14,7 @@ Orkeon.Plugins.IPluginRegistry.Plugins.get -> System.Collections.Generic.IReadOn
 Orkeon.Plugins.LoadedPluginAssembly
 Orkeon.Plugins.LoadedPluginAssembly.Assembly.get -> System.Reflection.Assembly!
 Orkeon.Plugins.LoadedPluginAssembly.IsUnloadRequested.get -> bool
+Orkeon.Plugins.LoadedPluginAssembly.Manifest.get -> Orkeon.Plugins.PluginManifest!
 Orkeon.Plugins.LoadedPluginAssembly.Plugins.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Plugins.IOrkeonPlugin!>!
 Orkeon.Plugins.LoadedPluginAssembly.Unload() -> void
 Orkeon.Plugins.LoadedPluginAssembly.VirtualPath.get -> string!
@@ -30,6 +31,10 @@ Orkeon.Plugins.OrkeonPluginsServiceCollectionExtensions
 Orkeon.Plugins.PluginAssemblyCandidate
 Orkeon.Plugins.PluginAssemblyCandidate.<Clone>$() -> Orkeon.Plugins.PluginAssemblyCandidate!
 Orkeon.Plugins.PluginAssemblyCandidate.Equals(Orkeon.Plugins.PluginAssemblyCandidate? other) -> bool
+Orkeon.Plugins.PluginAssemblyCandidate.Manifest.get -> Orkeon.Plugins.PluginManifest?
+Orkeon.Plugins.PluginAssemblyCandidate.Manifest.init -> void
+Orkeon.Plugins.PluginAssemblyCandidate.ManifestFailure.get -> string?
+Orkeon.Plugins.PluginAssemblyCandidate.ManifestFailure.init -> void
 Orkeon.Plugins.PluginAssemblyCandidate.PhysicalPath.get -> string!
 Orkeon.Plugins.PluginAssemblyCandidate.PhysicalPath.init -> void
 Orkeon.Plugins.PluginAssemblyCandidate.PluginAssemblyCandidate() -> void
@@ -58,6 +63,30 @@ Orkeon.Plugins.PluginLoadFailure.VirtualPath.init -> void
 Orkeon.Plugins.PluginLoader
 Orkeon.Plugins.PluginLoader.Load(Orkeon.Plugins.PluginAssemblyCandidate! candidate) -> Orkeon.Plugins.LoadedPluginAssembly!
 Orkeon.Plugins.PluginLoader.PluginLoader(System.Collections.Generic.IEnumerable<string!>! sharedAssemblyPrefixes) -> void
+Orkeon.Plugins.PluginLoader.PluginLoader(System.Collections.Generic.IEnumerable<string!>! sharedAssemblyPrefixes, string! orkeonVersion) -> void
+Orkeon.Plugins.PluginManifest
+Orkeon.Plugins.PluginManifest.<Clone>$() -> Orkeon.Plugins.PluginManifest!
+Orkeon.Plugins.PluginManifest.EntryAssembly.get -> string?
+Orkeon.Plugins.PluginManifest.EntryAssembly.init -> void
+Orkeon.Plugins.PluginManifest.EntryType.get -> string?
+Orkeon.Plugins.PluginManifest.EntryType.init -> void
+Orkeon.Plugins.PluginManifest.Equals(Orkeon.Plugins.PluginManifest? other) -> bool
+Orkeon.Plugins.PluginManifest.Name.get -> string?
+Orkeon.Plugins.PluginManifest.Name.init -> void
+Orkeon.Plugins.PluginManifest.OrkeonVersion.get -> string?
+Orkeon.Plugins.PluginManifest.OrkeonVersion.init -> void
+Orkeon.Plugins.PluginManifest.PluginManifest() -> void
+Orkeon.Plugins.PluginManifest.Tools.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Orkeon.Plugins.PluginManifest.Tools.init -> void
+Orkeon.Plugins.PluginManifest.Version.get -> string?
+Orkeon.Plugins.PluginManifest.Version.init -> void
+Orkeon.Plugins.PluginManifestException
+Orkeon.Plugins.PluginManifestException.PluginManifestException() -> void
+Orkeon.Plugins.PluginManifestException.PluginManifestException(string! message) -> void
+Orkeon.Plugins.PluginManifestException.PluginManifestException(string! message, System.Exception! innerException) -> void
+Orkeon.Plugins.PluginManifestException.PluginManifestException(string! message, string! virtualPath) -> void
+Orkeon.Plugins.PluginManifestException.PluginManifestException(string! message, string! virtualPath, System.Exception! innerException) -> void
+Orkeon.Plugins.PluginManifestValidator
 Orkeon.Plugins.PluginRegistry
 Orkeon.Plugins.PluginRegistry.Assemblies.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Plugins.LoadedPluginAssembly!>!
 Orkeon.Plugins.PluginRegistry.Dispose() -> void
@@ -66,15 +95,23 @@ Orkeon.Plugins.PluginRegistry.PluginRegistry() -> void
 Orkeon.Plugins.PluginRegistry.Plugins.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Plugins.IOrkeonPlugin!>!
 Orkeon.Plugins.PluginRegistry.UnloadAll() -> void
 const Orkeon.Plugins.OrkeonPluginsServiceCollectionExtensions.ConfigurationSection = "Plugins" -> string!
+const Orkeon.Plugins.PluginAssemblyDiscovery.ManifestFileName = "plugin.json" -> string!
 override Orkeon.Plugins.PluginAssemblyCandidate.Equals(object? obj) -> bool
 override Orkeon.Plugins.PluginAssemblyCandidate.GetHashCode() -> int
 override Orkeon.Plugins.PluginAssemblyCandidate.ToString() -> string!
 override Orkeon.Plugins.PluginLoadFailure.Equals(object? obj) -> bool
 override Orkeon.Plugins.PluginLoadFailure.GetHashCode() -> int
 override Orkeon.Plugins.PluginLoadFailure.ToString() -> string!
+override Orkeon.Plugins.PluginManifest.Equals(object? obj) -> bool
+override Orkeon.Plugins.PluginManifest.GetHashCode() -> int
+override Orkeon.Plugins.PluginManifest.ToString() -> string!
 static Orkeon.Plugins.OrkeonPluginsServiceCollectionExtensions.AddOrkeonPlugins(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, Orkeon.Domain.FileSystem.IFileSystemService! fileSystem, Microsoft.Extensions.Configuration.IConfiguration! configuration) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
 static Orkeon.Plugins.OrkeonPluginsServiceCollectionExtensions.AddOrkeonPlugins(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, Orkeon.Domain.FileSystem.IFileSystemService! fileSystem, System.Action<Orkeon.Plugins.OrkeonPluginsOptions!>? configure = null) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
 static Orkeon.Plugins.PluginAssemblyCandidate.operator !=(Orkeon.Plugins.PluginAssemblyCandidate? left, Orkeon.Plugins.PluginAssemblyCandidate? right) -> bool
 static Orkeon.Plugins.PluginAssemblyCandidate.operator ==(Orkeon.Plugins.PluginAssemblyCandidate? left, Orkeon.Plugins.PluginAssemblyCandidate? right) -> bool
 static Orkeon.Plugins.PluginLoadFailure.operator !=(Orkeon.Plugins.PluginLoadFailure? left, Orkeon.Plugins.PluginLoadFailure? right) -> bool
 static Orkeon.Plugins.PluginLoadFailure.operator ==(Orkeon.Plugins.PluginLoadFailure? left, Orkeon.Plugins.PluginLoadFailure? right) -> bool
+static Orkeon.Plugins.PluginManifest.Parse(string! json) -> Orkeon.Plugins.PluginManifest!
+static Orkeon.Plugins.PluginManifest.operator !=(Orkeon.Plugins.PluginManifest? left, Orkeon.Plugins.PluginManifest? right) -> bool
+static Orkeon.Plugins.PluginManifest.operator ==(Orkeon.Plugins.PluginManifest? left, Orkeon.Plugins.PluginManifest? right) -> bool
+static Orkeon.Plugins.PluginManifestValidator.Validate(Orkeon.Plugins.PluginManifest! manifest, string! orkeonVersion) -> void

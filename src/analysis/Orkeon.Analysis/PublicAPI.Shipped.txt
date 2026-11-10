@@ -127,6 +127,48 @@ Orkeon.Analysis.Adapters.MarkdownDocumentMapper
 Orkeon.Analysis.Adapters.MarkdownDocumentMapper.Map(string! virtualPath, string! content) -> System.Collections.Generic.IReadOnlyList<Orkeon.Analysis.Abstractions.Models.RaggableNode!>!
 Orkeon.Analysis.Adapters.MarkdownDocumentMapper.MarkdownDocumentMapper() -> void
 Orkeon.Analysis.Adapters.MarkdownDocumentMapper.ResolveLinksAsync(System.Collections.Generic.IReadOnlyList<Orkeon.Analysis.Abstractions.Models.RaggableNode!>! nodes, string! virtualPath, Orkeon.Analysis.Abstractions.Interfaces.IRaggableStore! store, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Orkeon.Analysis.Abstractions.Models.RaggableNode!>!>!
+Orkeon.Analysis.Adapters.PageElement
+Orkeon.Analysis.Adapters.PageElement.<Clone>$() -> Orkeon.Analysis.Adapters.PageElement!
+Orkeon.Analysis.Adapters.PageElement.Anchor.get -> string?
+Orkeon.Analysis.Adapters.PageElement.Anchor.init -> void
+Orkeon.Analysis.Adapters.PageElement.Container.get -> int
+Orkeon.Analysis.Adapters.PageElement.Container.init -> void
+Orkeon.Analysis.Adapters.PageElement.Equals(Orkeon.Analysis.Adapters.PageElement? other) -> bool
+Orkeon.Analysis.Adapters.PageElement.Kind.get -> Orkeon.Analysis.Adapters.PageElementKind
+Orkeon.Analysis.Adapters.PageElement.Kind.init -> void
+Orkeon.Analysis.Adapters.PageElement.Level.get -> int
+Orkeon.Analysis.Adapters.PageElement.Level.init -> void
+Orkeon.Analysis.Adapters.PageElement.Name.get -> string!
+Orkeon.Analysis.Adapters.PageElement.Name.init -> void
+Orkeon.Analysis.Adapters.PageElement.PageElement() -> void
+Orkeon.Analysis.Adapters.PageElement.Role.get -> string!
+Orkeon.Analysis.Adapters.PageElement.Role.init -> void
+Orkeon.Analysis.Adapters.PageElement.Target.get -> string?
+Orkeon.Analysis.Adapters.PageElement.Target.init -> void
+Orkeon.Analysis.Adapters.PageElement.Text.get -> string!
+Orkeon.Analysis.Adapters.PageElement.Text.init -> void
+Orkeon.Analysis.Adapters.PageElement.Visible.get -> bool
+Orkeon.Analysis.Adapters.PageElement.Visible.init -> void
+Orkeon.Analysis.Adapters.PageElementKind
+Orkeon.Analysis.Adapters.PageElementKind.Control = 3 -> Orkeon.Analysis.Adapters.PageElementKind
+Orkeon.Analysis.Adapters.PageElementKind.Heading = 0 -> Orkeon.Analysis.Adapters.PageElementKind
+Orkeon.Analysis.Adapters.PageElementKind.Link = 2 -> Orkeon.Analysis.Adapters.PageElementKind
+Orkeon.Analysis.Adapters.PageElementKind.Region = 1 -> Orkeon.Analysis.Adapters.PageElementKind
+Orkeon.Analysis.Adapters.PageOutline
+Orkeon.Analysis.Adapters.PageOutline.<Clone>$() -> Orkeon.Analysis.Adapters.PageOutline!
+Orkeon.Analysis.Adapters.PageOutline.Elements.get -> System.Collections.Immutable.ImmutableList<Orkeon.Analysis.Adapters.PageElement!>!
+Orkeon.Analysis.Adapters.PageOutline.Elements.init -> void
+Orkeon.Analysis.Adapters.PageOutline.Equals(Orkeon.Analysis.Adapters.PageOutline? other) -> bool
+Orkeon.Analysis.Adapters.PageOutline.Location.get -> string!
+Orkeon.Analysis.Adapters.PageOutline.Location.init -> void
+Orkeon.Analysis.Adapters.PageOutline.PageOutline() -> void
+Orkeon.Analysis.Adapters.PageOutline.Path.get -> string!
+Orkeon.Analysis.Adapters.PageOutline.Path.init -> void
+Orkeon.Analysis.Adapters.PageOutline.Text.get -> string!
+Orkeon.Analysis.Adapters.PageOutline.Text.init -> void
+Orkeon.Analysis.Adapters.PageOutline.Title.get -> string!
+Orkeon.Analysis.Adapters.PageOutline.Title.init -> void
+Orkeon.Analysis.Adapters.PageOutlineMapper
 Orkeon.Analysis.Adapters.PhpAdapter
 Orkeon.Analysis.Adapters.PhpAdapter.CallQuery.get -> string!
 Orkeon.Analysis.Adapters.PhpAdapter.DeclarationQuery.get -> string!
@@ -264,37 +306,55 @@ Orkeon.Analysis.Core.BuildResult.IndexId.get -> string!
 Orkeon.Analysis.Core.BuildResult.IndexId.init -> void
 Orkeon.Analysis.Core.BuildResult.Tree.get -> Orkeon.Analysis.Abstractions.Models.RaggableTree!
 Orkeon.Analysis.Core.BuildResult.Tree.init -> void
-Orkeon.Analysis.Core.Cache.EmbeddingCacheProfile
-Orkeon.Analysis.Core.Cache.EmbeddingCacheProfile.<Clone>$() -> Orkeon.Analysis.Core.Cache.EmbeddingCacheProfile!
-Orkeon.Analysis.Core.Cache.EmbeddingCacheProfile.Dimensions.get -> int
-Orkeon.Analysis.Core.Cache.EmbeddingCacheProfile.Dimensions.init -> void
-Orkeon.Analysis.Core.Cache.EmbeddingCacheProfile.EmbeddingCacheProfile() -> void
-Orkeon.Analysis.Core.Cache.EmbeddingCacheProfile.Equals(Orkeon.Analysis.Core.Cache.EmbeddingCacheProfile? other) -> bool
-Orkeon.Analysis.Core.Cache.EmbeddingCacheProfile.Model.get -> string!
-Orkeon.Analysis.Core.Cache.EmbeddingCacheProfile.Model.init -> void
-Orkeon.Analysis.Core.Cache.EmbeddingCacheProfile.Provider.get -> string!
-Orkeon.Analysis.Core.Cache.EmbeddingCacheProfile.Provider.init -> void
+Orkeon.Analysis.Core.Cache.CachedBuildResult
+Orkeon.Analysis.Core.Cache.CachedBuildResult.<Clone>$() -> Orkeon.Analysis.Core.Cache.CachedBuildResult!
+Orkeon.Analysis.Core.Cache.CachedBuildResult.Build.get -> Orkeon.Analysis.Core.BuildResult!
+Orkeon.Analysis.Core.Cache.CachedBuildResult.Build.init -> void
+Orkeon.Analysis.Core.Cache.CachedBuildResult.CachedBuildResult(Orkeon.Analysis.Core.BuildResult! Build, Orkeon.Analysis.Core.Cache.IndexCacheOutcome Outcome, int ReindexedFileCount) -> void
+Orkeon.Analysis.Core.Cache.CachedBuildResult.Deconstruct(out Orkeon.Analysis.Core.BuildResult! Build, out Orkeon.Analysis.Core.Cache.IndexCacheOutcome Outcome, out int ReindexedFileCount) -> void
+Orkeon.Analysis.Core.Cache.CachedBuildResult.Equals(Orkeon.Analysis.Core.Cache.CachedBuildResult? other) -> bool
+Orkeon.Analysis.Core.Cache.CachedBuildResult.Outcome.get -> Orkeon.Analysis.Core.Cache.IndexCacheOutcome
+Orkeon.Analysis.Core.Cache.CachedBuildResult.Outcome.init -> void
+Orkeon.Analysis.Core.Cache.CachedBuildResult.ReindexedFileCount.get -> int
+Orkeon.Analysis.Core.Cache.CachedBuildResult.ReindexedFileCount.init -> void
+Orkeon.Analysis.Core.Cache.CachingTreeBuilder
+Orkeon.Analysis.Core.Cache.CachingTreeBuilder.BuildAsync(string! virtualRoot, Orkeon.Analysis.Abstractions.DTOs.Tools.IndexCodebaseRequest! request, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<Orkeon.Analysis.Core.Cache.CachedBuildResult!>!
+Orkeon.Analysis.Core.Cache.CachingTreeBuilder.CachingTreeBuilder(Orkeon.Analysis.Core.Cache.IRaggableTreeCache! cache, Orkeon.Analysis.Abstractions.Interfaces.IFileSystemDiscoverer! discoverer, Orkeon.Domain.FileSystem.IFileSystemService! fileSystem, Orkeon.Analysis.Core.Cache.TreeFactories! factories, string! environment, Orkeon.Analysis.Abstractions.Interfaces.IVectorStoreProvider? vectorStore = null, Microsoft.Extensions.Logging.ILogger<Orkeon.Analysis.Core.Cache.CachingTreeBuilder!>? logger = null) -> void
 Orkeon.Analysis.Core.Cache.IRaggableTreeCache
 Orkeon.Analysis.Core.Cache.IRaggableTreeCache.InvalidateAsync(string! rootPath, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task!
-Orkeon.Analysis.Core.Cache.IRaggableTreeCache.IsValidAsync(string! rootPath, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<bool>!
-Orkeon.Analysis.Core.Cache.IRaggableTreeCache.LoadAsync(string! rootPath, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<Orkeon.Analysis.Core.Cache.RaggableTreeCacheLoadResult!>!
-Orkeon.Analysis.Core.Cache.IRaggableTreeCache.SaveAsync(Orkeon.Analysis.Abstractions.Models.RaggableTree! tree, string! indexId, string! rootPath, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task!
+Orkeon.Analysis.Core.Cache.IRaggableTreeCache.LoadAsync(string! rootPath, string! cacheKey, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<Orkeon.Analysis.Core.Cache.RaggableTreeCacheEntry?>!
+Orkeon.Analysis.Core.Cache.IRaggableTreeCache.SaveAsync(string! rootPath, Orkeon.Analysis.Core.Cache.RaggableTreeCacheEntry! entry, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<bool>!
+Orkeon.Analysis.Core.Cache.IndexCacheOutcome
+Orkeon.Analysis.Core.Cache.IndexCacheOutcome.Bypassed = 0 -> Orkeon.Analysis.Core.Cache.IndexCacheOutcome
+Orkeon.Analysis.Core.Cache.IndexCacheOutcome.Hit = 2 -> Orkeon.Analysis.Core.Cache.IndexCacheOutcome
+Orkeon.Analysis.Core.Cache.IndexCacheOutcome.Miss = 1 -> Orkeon.Analysis.Core.Cache.IndexCacheOutcome
+Orkeon.Analysis.Core.Cache.IndexCacheOutcome.Refreshed = 3 -> Orkeon.Analysis.Core.Cache.IndexCacheOutcome
 Orkeon.Analysis.Core.Cache.RaggableTreeCache
 Orkeon.Analysis.Core.Cache.RaggableTreeCache.InvalidateAsync(string! rootPath, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task!
-Orkeon.Analysis.Core.Cache.RaggableTreeCache.IsValidAsync(string! rootPath, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<bool>!
-Orkeon.Analysis.Core.Cache.RaggableTreeCache.LoadAsync(string! rootPath, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<Orkeon.Analysis.Core.Cache.RaggableTreeCacheLoadResult!>!
-Orkeon.Analysis.Core.Cache.RaggableTreeCache.RaggableTreeCache(Orkeon.Analysis.Core.Serialization.IRaggableTreeSerializer! serializer, Orkeon.Analysis.Abstractions.Interfaces.IFileSystemDiscoverer! discoverer, Orkeon.Domain.FileSystem.IFileSystemService! fileSystem, System.Collections.Generic.IReadOnlyDictionary<string!, string!>? adapterVersions = null, Orkeon.Analysis.Core.Cache.EmbeddingCacheProfile? embeddingProfile = null) -> void
-Orkeon.Analysis.Core.Cache.RaggableTreeCache.SaveAsync(Orkeon.Analysis.Abstractions.Models.RaggableTree! tree, string! indexId, string! rootPath, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task!
-Orkeon.Analysis.Core.Cache.RaggableTreeCacheLoadResult
-Orkeon.Analysis.Core.Cache.RaggableTreeCacheLoadResult.<Clone>$() -> Orkeon.Analysis.Core.Cache.RaggableTreeCacheLoadResult!
-Orkeon.Analysis.Core.Cache.RaggableTreeCacheLoadResult.Deconstruct(out Orkeon.Analysis.Abstractions.Models.RaggableTree? Tree, out string? IndexId) -> void
-Orkeon.Analysis.Core.Cache.RaggableTreeCacheLoadResult.Equals(Orkeon.Analysis.Core.Cache.RaggableTreeCacheLoadResult? other) -> bool
-Orkeon.Analysis.Core.Cache.RaggableTreeCacheLoadResult.Hit.get -> bool
-Orkeon.Analysis.Core.Cache.RaggableTreeCacheLoadResult.IndexId.get -> string?
-Orkeon.Analysis.Core.Cache.RaggableTreeCacheLoadResult.IndexId.init -> void
-Orkeon.Analysis.Core.Cache.RaggableTreeCacheLoadResult.RaggableTreeCacheLoadResult(Orkeon.Analysis.Abstractions.Models.RaggableTree? Tree, string? IndexId) -> void
-Orkeon.Analysis.Core.Cache.RaggableTreeCacheLoadResult.Tree.get -> Orkeon.Analysis.Abstractions.Models.RaggableTree?
-Orkeon.Analysis.Core.Cache.RaggableTreeCacheLoadResult.Tree.init -> void
+Orkeon.Analysis.Core.Cache.RaggableTreeCache.LoadAsync(string! rootPath, string! cacheKey, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<Orkeon.Analysis.Core.Cache.RaggableTreeCacheEntry?>!
+Orkeon.Analysis.Core.Cache.RaggableTreeCache.RaggableTreeCache(Orkeon.Domain.FileSystem.IFileSystemService! fileSystem) -> void
+Orkeon.Analysis.Core.Cache.RaggableTreeCache.SaveAsync(string! rootPath, Orkeon.Analysis.Core.Cache.RaggableTreeCacheEntry! entry, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<bool>!
+Orkeon.Analysis.Core.Cache.RaggableTreeCacheEntry
+Orkeon.Analysis.Core.Cache.RaggableTreeCacheEntry.<Clone>$() -> Orkeon.Analysis.Core.Cache.RaggableTreeCacheEntry!
+Orkeon.Analysis.Core.Cache.RaggableTreeCacheEntry.CacheKey.get -> string!
+Orkeon.Analysis.Core.Cache.RaggableTreeCacheEntry.CacheKey.init -> void
+Orkeon.Analysis.Core.Cache.RaggableTreeCacheEntry.Deconstruct(out Orkeon.Analysis.Abstractions.Models.RaggableTree! Tree, out string! IndexId, out string! CacheKey, out System.Collections.Generic.IReadOnlyDictionary<string!, Orkeon.Analysis.Abstractions.Interfaces.FileStamp!>! Files, out System.Collections.Generic.IReadOnlyDictionary<string!, string!>! Markers) -> void
+Orkeon.Analysis.Core.Cache.RaggableTreeCacheEntry.Equals(Orkeon.Analysis.Core.Cache.RaggableTreeCacheEntry? other) -> bool
+Orkeon.Analysis.Core.Cache.RaggableTreeCacheEntry.Files.get -> System.Collections.Generic.IReadOnlyDictionary<string!, Orkeon.Analysis.Abstractions.Interfaces.FileStamp!>!
+Orkeon.Analysis.Core.Cache.RaggableTreeCacheEntry.Files.init -> void
+Orkeon.Analysis.Core.Cache.RaggableTreeCacheEntry.IndexId.get -> string!
+Orkeon.Analysis.Core.Cache.RaggableTreeCacheEntry.IndexId.init -> void
+Orkeon.Analysis.Core.Cache.RaggableTreeCacheEntry.Markers.get -> System.Collections.Generic.IReadOnlyDictionary<string!, string!>!
+Orkeon.Analysis.Core.Cache.RaggableTreeCacheEntry.Markers.init -> void
+Orkeon.Analysis.Core.Cache.RaggableTreeCacheEntry.RaggableTreeCacheEntry(Orkeon.Analysis.Abstractions.Models.RaggableTree! Tree, string! IndexId, string! CacheKey, System.Collections.Generic.IReadOnlyDictionary<string!, Orkeon.Analysis.Abstractions.Interfaces.FileStamp!>! Files, System.Collections.Generic.IReadOnlyDictionary<string!, string!>! Markers) -> void
+Orkeon.Analysis.Core.Cache.RaggableTreeCacheEntry.Runtime.get -> string!
+Orkeon.Analysis.Core.Cache.RaggableTreeCacheEntry.Runtime.init -> void
+Orkeon.Analysis.Core.Cache.RaggableTreeCacheEntry.Tree.get -> Orkeon.Analysis.Abstractions.Models.RaggableTree!
+Orkeon.Analysis.Core.Cache.RaggableTreeCacheEntry.Tree.init -> void
+Orkeon.Analysis.Core.Cache.TreeFactories
+Orkeon.Analysis.Core.Cache.TreeFactories.Builder.get -> System.Func<Orkeon.Analysis.Core.RaggableTreeBuilder!>!
+Orkeon.Analysis.Core.Cache.TreeFactories.Engine.get -> System.Func<Orkeon.Analysis.Core.IncrementalReindexEngine!>!
+Orkeon.Analysis.Core.Cache.TreeFactories.TreeFactories(System.Func<Orkeon.Analysis.Core.RaggableTreeBuilder!>! builder, System.Func<Orkeon.Analysis.Core.IncrementalReindexEngine!>! engine) -> void
 Orkeon.Analysis.Core.CitationBlockValidator
 Orkeon.Analysis.Core.CitationBlockValidator.CitationBlockValidator(Orkeon.Analysis.Abstractions.Interfaces.IRaggableStore! store) -> void
 Orkeon.Analysis.Core.CitationBlockValidator.ValidateAsync(string! fileContent, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<Orkeon.Analysis.Abstractions.Interfaces.ValidationResult!>!
@@ -405,12 +465,13 @@ Orkeon.Analysis.Core.InMemoryRaggableStore.GetSourceAsync(string! fqn, Orkeon.An
 Orkeon.Analysis.Core.InMemoryRaggableStore.GetStatementsAsync(string! parentSymbolId, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Orkeon.Analysis.Abstractions.Models.StatementNode!>!>!
 Orkeon.Analysis.Core.InMemoryRaggableStore.InMemoryRaggableStore(Orkeon.Analysis.Abstractions.Models.RaggableTree! tree, Orkeon.Domain.FileSystem.IFileSystemService! fileSystem, System.Func<string!, System.Threading.CancellationToken, System.Threading.Tasks.Task<System.ReadOnlyMemory<float>?>!>? queryEmbedder = null) -> void
 Orkeon.Analysis.Core.InMemoryRaggableStore.InMemoryRaggableStore(System.Collections.Generic.IReadOnlyList<Orkeon.Analysis.Abstractions.Models.RaggableNode!>! nodes, System.Collections.Generic.IReadOnlyList<Orkeon.Analysis.Abstractions.Models.RaggableEdge!>! edges, Orkeon.Domain.FileSystem.IFileSystemService! fileSystem, System.Func<string!, System.Threading.CancellationToken, System.Threading.Tasks.Task<System.ReadOnlyMemory<float>?>!>? queryEmbedder = null) -> void
+Orkeon.Analysis.Core.InMemoryRaggableStore.ListEdgesAsync(Orkeon.Analysis.Abstractions.DTOs.Queries.EdgeListQuery! query, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<Orkeon.Analysis.Abstractions.DTOs.Responses.EdgeListPage!>!
 Orkeon.Analysis.Core.InMemoryRaggableStore.MarkDirty(string! virtualPath) -> void
 Orkeon.Analysis.Core.InMemoryRaggableStore.QueryAsync(Orkeon.Analysis.Abstractions.DTOs.Queries.NodeQuery! query, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Orkeon.Analysis.Abstractions.Models.RaggableNode!>!>!
 Orkeon.Analysis.Core.InMemoryRaggableStore.RemoveFilesAndDescendants(System.Collections.Generic.IReadOnlyCollection<string!>! filePaths) -> void
 Orkeon.Analysis.Core.InMemoryRaggableStore.Replace(System.Collections.Generic.IReadOnlyList<Orkeon.Analysis.Abstractions.Models.RaggableNode!>! nodes, System.Collections.Generic.IReadOnlyList<Orkeon.Analysis.Abstractions.Models.RaggableEdge!>! edges) -> void
 Orkeon.Analysis.Core.InMemoryRaggableStore.ReplaceFile(string! path, System.Collections.Generic.IReadOnlyList<Orkeon.Analysis.Abstractions.Models.RaggableNode!>! nodes, System.Collections.Generic.IReadOnlyList<Orkeon.Analysis.Abstractions.Models.RaggableEdge!>! edges) -> void
-Orkeon.Analysis.Core.InMemoryRaggableStore.SemanticSearchAsync(Orkeon.Analysis.Abstractions.DTOs.Queries.SemanticQuery! query, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Orkeon.Analysis.Abstractions.DTOs.Responses.SearchHit!>!>!
+Orkeon.Analysis.Core.InMemoryRaggableStore.SemanticSearchAsync(Orkeon.Analysis.Abstractions.DTOs.Queries.SemanticQuery! query, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<Orkeon.Analysis.Abstractions.DTOs.Responses.SemanticSearchResult!>!
 Orkeon.Analysis.Core.InMemoryRaggableStore.SetQueryEmbedder(System.Func<string!, System.Threading.CancellationToken, System.Threading.Tasks.Task<System.ReadOnlyMemory<float>?>!>? embedder) -> void
 Orkeon.Analysis.Core.InMemoryRaggableStore.ShortestPathAsync(Orkeon.Analysis.Abstractions.DTOs.Queries.ShortestPathQuery! query, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<Orkeon.Analysis.Abstractions.DTOs.Responses.CallPath?>!
 Orkeon.Analysis.Core.InMemoryRaggableStore.TopCentralityAsync(Orkeon.Analysis.Abstractions.DTOs.Queries.CentralityQuery! query, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Orkeon.Analysis.Abstractions.DTOs.Responses.CentralityEntry!>!>!
@@ -485,6 +546,7 @@ Orkeon.Analysis.Core.RaggableEnrichmentServices.Summarizer.init -> void
 Orkeon.Analysis.Core.RaggableEnrichmentServices.VectorStore.get -> Orkeon.Analysis.Abstractions.Interfaces.IVectorStoreProvider?
 Orkeon.Analysis.Core.RaggableEnrichmentServices.VectorStore.init -> void
 Orkeon.Analysis.Core.RaggableTreeBuilder
+Orkeon.Analysis.Core.RaggableTreeBuilder.BuildAsync(Orkeon.Analysis.Abstractions.Interfaces.DiscoveryResult! discovery, Orkeon.Analysis.Abstractions.DTOs.Tools.IndexCodebaseRequest! opts, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<Orkeon.Analysis.Core.BuildResult!>!
 Orkeon.Analysis.Core.RaggableTreeBuilder.BuildAsync(string! virtualRoot, Orkeon.Analysis.Abstractions.DTOs.Tools.IndexCodebaseRequest! opts, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<Orkeon.Analysis.Core.BuildResult!>!
 Orkeon.Analysis.Core.RaggableTreeBuilder.RaggableTreeBuilder(Orkeon.Analysis.Abstractions.Interfaces.ILanguageAdapter! adapter, Orkeon.Domain.FileSystem.IFileSystemService! fileSystem) -> void
 Orkeon.Analysis.Core.RaggableTreeBuilder.RaggableTreeBuilder(System.Collections.Generic.IEnumerable<Orkeon.Analysis.Abstractions.Interfaces.ILanguageAdapter!>! adapters, Orkeon.Analysis.Abstractions.Interfaces.IFileSystemDiscoverer! discoverer, Orkeon.Domain.FileSystem.IFileSystemService! fileSystem, Orkeon.Analysis.TreeSitter.TreeSitterParserPool! pool, Orkeon.Analysis.Abstractions.Interfaces.IReferenceResolver! resolver, Orkeon.Analysis.Abstractions.Interfaces.IEmbeddingTextComposer! composer, Orkeon.Analysis.Core.RaggableEnrichmentServices? enrichment = null) -> void
@@ -659,6 +721,7 @@ Orkeon.Analysis.Vectors.OllamaEmbeddingProvider
 Orkeon.Analysis.Vectors.OllamaEmbeddingProvider.Dimensions.get -> int
 Orkeon.Analysis.Vectors.OllamaEmbeddingProvider.Dispose() -> void
 Orkeon.Analysis.Vectors.OllamaEmbeddingProvider.EmbedBatchAsync(System.Collections.Generic.IReadOnlyList<string!>! texts, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<System.ReadOnlyMemory<float>>!>!
+Orkeon.Analysis.Vectors.OllamaEmbeddingProvider.ModelName.get -> string!
 Orkeon.Analysis.Vectors.OllamaEmbeddingProvider.OllamaEmbeddingProvider(Orkeon.Analysis.Vectors.OllamaEmbeddingOptions! options, System.Net.Http.HttpClient? client = null) -> void
 Orkeon.Analysis.Vectors.OllamaEmbeddingProvider.OllamaEmbeddingProvider(Orkeon.Analysis.Vectors.OllamaEmbeddingOptions! options, System.Net.Http.HttpMessageHandler? handler) -> void
 Orkeon.Analysis.Vectors.OpenAIEmbeddingOptions
@@ -687,12 +750,17 @@ Orkeon.Analysis.Vectors.OpenAIEmbeddingProvider
 Orkeon.Analysis.Vectors.OpenAIEmbeddingProvider.Dimensions.get -> int
 Orkeon.Analysis.Vectors.OpenAIEmbeddingProvider.Dispose() -> void
 Orkeon.Analysis.Vectors.OpenAIEmbeddingProvider.EmbedBatchAsync(System.Collections.Generic.IReadOnlyList<string!>! texts, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<System.ReadOnlyMemory<float>>!>!
+Orkeon.Analysis.Vectors.OpenAIEmbeddingProvider.ModelName.get -> string!
 Orkeon.Analysis.Vectors.OpenAIEmbeddingProvider.OpenAIEmbeddingProvider(Orkeon.Analysis.Vectors.OpenAIEmbeddingOptions! options, System.Net.Http.HttpClient? client = null, Microsoft.Extensions.Logging.ILogger<Orkeon.Analysis.Vectors.OpenAIEmbeddingProvider!>? logger = null) -> void
 Orkeon.Analysis.Vectors.OpenAIEmbeddingProvider.OpenAIEmbeddingProvider(Orkeon.Analysis.Vectors.OpenAIEmbeddingOptions! options, System.Net.Http.HttpMessageHandler? handler, Microsoft.Extensions.Logging.ILogger<Orkeon.Analysis.Vectors.OpenAIEmbeddingProvider!>? logger = null) -> void
 Orkeon.Analysis.Vectors.VectorDocumentFactory
-const Orkeon.Analysis.Core.Cache.RaggableTreeCache.CacheDirectoryName = ".orkeon" -> string!
-const Orkeon.Analysis.Core.Cache.RaggableTreeCache.ManifestFileName = "raggable-tree-manifest.json" -> string!
-const Orkeon.Analysis.Core.Cache.RaggableTreeCache.TreeFileName = "raggable-tree.json" -> string!
+const Orkeon.Analysis.Adapters.PageOutlineMapper.HiddenTag = "hidden" -> string!
+const Orkeon.Analysis.Adapters.PageOutlineMapper.Language = "html" -> string!
+const Orkeon.Analysis.Adapters.PageOutlineMapper.LevelTag = "level" -> string!
+const Orkeon.Analysis.Adapters.PageOutlineMapper.RoleTag = "role" -> string!
+const Orkeon.Analysis.Core.Cache.RaggableTreeCache.CacheDirectory = ".orkeon/cache/raggable-tree" -> string!
+const Orkeon.Analysis.Core.Cache.RaggableTreeCache.DatabaseFileName = "index.db" -> string!
+const Orkeon.Analysis.Core.Cache.RaggableTreeCache.MaxEntries = 3 -> int
 const Orkeon.Analysis.Core.ControlFlowBuilder.ExitSentinel = "$exit" -> string!
 const Orkeon.Analysis.Core.InMemoryRaggableStore.MaxChildren = 200 -> int
 const Orkeon.Analysis.Core.InMemoryRaggableStore.MaxDepth = 6 -> int
@@ -713,6 +781,12 @@ const Orkeon.Analysis.Fingerprinters.FlaskRules.Framework = "flask" -> string!
 const Orkeon.Analysis.Fingerprinters.FlaskRules.Language = "python" -> string!
 const Orkeon.Analysis.Fingerprinters.NestJsRules.Framework = "nestjs" -> string!
 const Orkeon.Analysis.Fingerprinters.NestJsRules.Language = "typescript" -> string!
+override Orkeon.Analysis.Adapters.PageElement.Equals(object? obj) -> bool
+override Orkeon.Analysis.Adapters.PageElement.GetHashCode() -> int
+override Orkeon.Analysis.Adapters.PageElement.ToString() -> string!
+override Orkeon.Analysis.Adapters.PageOutline.Equals(object? obj) -> bool
+override Orkeon.Analysis.Adapters.PageOutline.GetHashCode() -> int
+override Orkeon.Analysis.Adapters.PageOutline.ToString() -> string!
 override Orkeon.Analysis.Core.AffectedTestsResult.Equals(object? obj) -> bool
 override Orkeon.Analysis.Core.AffectedTestsResult.GetHashCode() -> int
 override Orkeon.Analysis.Core.AffectedTestsResult.ToString() -> string!
@@ -725,12 +799,12 @@ override Orkeon.Analysis.Core.AnchorsOverlap.ToString() -> string!
 override Orkeon.Analysis.Core.BuildResult.Equals(object? obj) -> bool
 override Orkeon.Analysis.Core.BuildResult.GetHashCode() -> int
 override Orkeon.Analysis.Core.BuildResult.ToString() -> string!
-override Orkeon.Analysis.Core.Cache.EmbeddingCacheProfile.Equals(object? obj) -> bool
-override Orkeon.Analysis.Core.Cache.EmbeddingCacheProfile.GetHashCode() -> int
-override Orkeon.Analysis.Core.Cache.EmbeddingCacheProfile.ToString() -> string!
-override Orkeon.Analysis.Core.Cache.RaggableTreeCacheLoadResult.Equals(object? obj) -> bool
-override Orkeon.Analysis.Core.Cache.RaggableTreeCacheLoadResult.GetHashCode() -> int
-override Orkeon.Analysis.Core.Cache.RaggableTreeCacheLoadResult.ToString() -> string!
+override Orkeon.Analysis.Core.Cache.CachedBuildResult.Equals(object? obj) -> bool
+override Orkeon.Analysis.Core.Cache.CachedBuildResult.GetHashCode() -> int
+override Orkeon.Analysis.Core.Cache.CachedBuildResult.ToString() -> string!
+override Orkeon.Analysis.Core.Cache.RaggableTreeCacheEntry.Equals(object? obj) -> bool
+override Orkeon.Analysis.Core.Cache.RaggableTreeCacheEntry.GetHashCode() -> int
+override Orkeon.Analysis.Core.Cache.RaggableTreeCacheEntry.ToString() -> string!
 override Orkeon.Analysis.Core.DocumentedInResult.Equals(object? obj) -> bool
 override Orkeon.Analysis.Core.DocumentedInResult.GetHashCode() -> int
 override Orkeon.Analysis.Core.DocumentedInResult.ToString() -> string!
@@ -784,6 +858,13 @@ static Orkeon.Analysis.Adapters.LanguageAdapterFactory.GetAll() -> System.Collec
 static Orkeon.Analysis.Adapters.LanguageAdapterFactory.GetByExtension(string! fileExtension) -> Orkeon.Analysis.Abstractions.Interfaces.ILanguageAdapter?
 static Orkeon.Analysis.Adapters.LanguageAdapterFactory.GetByExtensionOrThrow(string! fileExtension) -> Orkeon.Analysis.Abstractions.Interfaces.ILanguageAdapter!
 static Orkeon.Analysis.Adapters.LanguageAdapterFactory.Register(Orkeon.Analysis.Abstractions.Interfaces.ILanguageAdapter! adapter) -> void
+static Orkeon.Analysis.Adapters.PageElement.operator !=(Orkeon.Analysis.Adapters.PageElement? left, Orkeon.Analysis.Adapters.PageElement? right) -> bool
+static Orkeon.Analysis.Adapters.PageElement.operator ==(Orkeon.Analysis.Adapters.PageElement? left, Orkeon.Analysis.Adapters.PageElement? right) -> bool
+static Orkeon.Analysis.Adapters.PageOutline.operator !=(Orkeon.Analysis.Adapters.PageOutline? left, Orkeon.Analysis.Adapters.PageOutline? right) -> bool
+static Orkeon.Analysis.Adapters.PageOutline.operator ==(Orkeon.Analysis.Adapters.PageOutline? left, Orkeon.Analysis.Adapters.PageOutline? right) -> bool
+static Orkeon.Analysis.Adapters.PageOutlineMapper.Map(Orkeon.Analysis.Adapters.PageOutline! outline) -> Orkeon.Analysis.Abstractions.Models.RaggableTree!
+static Orkeon.Analysis.Adapters.PageOutlineMapper.NodeId(string! path, int index) -> string!
+static Orkeon.Analysis.Adapters.PageOutlineMapper.RootId(string! path) -> string!
 static Orkeon.Analysis.Core.AccessCostService.DefaultReceivers.get -> System.Text.RegularExpressions.Regex!
 static Orkeon.Analysis.Core.AffectedTestsQuery.RunAsync(Orkeon.Analysis.Abstractions.Interfaces.IRaggableStore! store, System.Collections.Generic.IReadOnlyList<string!>! changedFiles, string! rootVirtualPath, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<Orkeon.Analysis.Core.AffectedTestsResult!>!
 static Orkeon.Analysis.Core.AffectedTestsResult.operator !=(Orkeon.Analysis.Core.AffectedTestsResult? left, Orkeon.Analysis.Core.AffectedTestsResult? right) -> bool
@@ -796,11 +877,11 @@ static Orkeon.Analysis.Core.AnchorsQuery.ClosureAsync(Orkeon.Analysis.Abstractio
 static Orkeon.Analysis.Core.AnchorsQuery.Overlap(Orkeon.Analysis.Core.AnchorClosure! a, Orkeon.Analysis.Core.AnchorClosure! b) -> Orkeon.Analysis.Core.AnchorsOverlap!
 static Orkeon.Analysis.Core.BuildResult.operator !=(Orkeon.Analysis.Core.BuildResult? left, Orkeon.Analysis.Core.BuildResult? right) -> bool
 static Orkeon.Analysis.Core.BuildResult.operator ==(Orkeon.Analysis.Core.BuildResult? left, Orkeon.Analysis.Core.BuildResult? right) -> bool
-static Orkeon.Analysis.Core.Cache.EmbeddingCacheProfile.operator !=(Orkeon.Analysis.Core.Cache.EmbeddingCacheProfile? left, Orkeon.Analysis.Core.Cache.EmbeddingCacheProfile? right) -> bool
-static Orkeon.Analysis.Core.Cache.EmbeddingCacheProfile.operator ==(Orkeon.Analysis.Core.Cache.EmbeddingCacheProfile? left, Orkeon.Analysis.Core.Cache.EmbeddingCacheProfile? right) -> bool
-static Orkeon.Analysis.Core.Cache.RaggableTreeCacheLoadResult.Miss.get -> Orkeon.Analysis.Core.Cache.RaggableTreeCacheLoadResult!
-static Orkeon.Analysis.Core.Cache.RaggableTreeCacheLoadResult.operator !=(Orkeon.Analysis.Core.Cache.RaggableTreeCacheLoadResult? left, Orkeon.Analysis.Core.Cache.RaggableTreeCacheLoadResult? right) -> bool
-static Orkeon.Analysis.Core.Cache.RaggableTreeCacheLoadResult.operator ==(Orkeon.Analysis.Core.Cache.RaggableTreeCacheLoadResult? left, Orkeon.Analysis.Core.Cache.RaggableTreeCacheLoadResult? right) -> bool
+static Orkeon.Analysis.Core.Cache.CachedBuildResult.operator !=(Orkeon.Analysis.Core.Cache.CachedBuildResult? left, Orkeon.Analysis.Core.Cache.CachedBuildResult? right) -> bool
+static Orkeon.Analysis.Core.Cache.CachedBuildResult.operator ==(Orkeon.Analysis.Core.Cache.CachedBuildResult? left, Orkeon.Analysis.Core.Cache.CachedBuildResult? right) -> bool
+static Orkeon.Analysis.Core.Cache.CachingTreeBuilder.DescribeEnvironment(System.Collections.Generic.IEnumerable<Orkeon.Analysis.Abstractions.Interfaces.ILanguageAdapter!>! adapters, System.Collections.Generic.IEnumerable<Orkeon.Analysis.Abstractions.Interfaces.IFrameworkFingerprinter!>! fingerprinters, Orkeon.Analysis.Abstractions.Interfaces.INodeSummarizer? summarizer, Orkeon.Analysis.Abstractions.Interfaces.IEmbeddingProvider? embedder) -> string!
+static Orkeon.Analysis.Core.Cache.RaggableTreeCacheEntry.operator !=(Orkeon.Analysis.Core.Cache.RaggableTreeCacheEntry? left, Orkeon.Analysis.Core.Cache.RaggableTreeCacheEntry? right) -> bool
+static Orkeon.Analysis.Core.Cache.RaggableTreeCacheEntry.operator ==(Orkeon.Analysis.Core.Cache.RaggableTreeCacheEntry? left, Orkeon.Analysis.Core.Cache.RaggableTreeCacheEntry? right) -> bool
 static Orkeon.Analysis.Core.ControlFlowBuilder.Build(System.Collections.Generic.IReadOnlyList<Orkeon.Analysis.Abstractions.Models.StatementNode!>! statements) -> Orkeon.Analysis.Abstractions.Models.ControlFlowGraph!
 static Orkeon.Analysis.Core.DataFlowAnalyzer.Analyze(System.Collections.Generic.IReadOnlyList<Orkeon.Analysis.Abstractions.Models.StatementNode!>! statements) -> System.Collections.Generic.IReadOnlyList<Orkeon.Analysis.Abstractions.Models.DataFlowLink!>!
 static Orkeon.Analysis.Core.DependencyGraphBuilder.GraphGroupOf(string! languageName) -> string!
@@ -821,6 +902,7 @@ static Orkeon.Analysis.Core.Lexical.RankFusion.Fuse(int topK, params System.Coll
 static Orkeon.Analysis.Core.RaggableEnrichmentServices.None.get -> Orkeon.Analysis.Core.RaggableEnrichmentServices!
 static Orkeon.Analysis.Core.RaggableEnrichmentServices.operator !=(Orkeon.Analysis.Core.RaggableEnrichmentServices? left, Orkeon.Analysis.Core.RaggableEnrichmentServices? right) -> bool
 static Orkeon.Analysis.Core.RaggableEnrichmentServices.operator ==(Orkeon.Analysis.Core.RaggableEnrichmentServices? left, Orkeon.Analysis.Core.RaggableEnrichmentServices? right) -> bool
+static Orkeon.Analysis.Core.RaggableTreeBuilder.DiscoveryRequestOf(string! virtualRoot, Orkeon.Analysis.Abstractions.DTOs.Tools.IndexCodebaseRequest! opts) -> Orkeon.Analysis.Abstractions.Interfaces.DiscoveryRequest!
 static Orkeon.Analysis.Core.Serialization.RaggableTreeSnapshot.operator !=(Orkeon.Analysis.Core.Serialization.RaggableTreeSnapshot? left, Orkeon.Analysis.Core.Serialization.RaggableTreeSnapshot? right) -> bool
 static Orkeon.Analysis.Core.Serialization.RaggableTreeSnapshot.operator ==(Orkeon.Analysis.Core.Serialization.RaggableTreeSnapshot? left, Orkeon.Analysis.Core.Serialization.RaggableTreeSnapshot? right) -> bool
 static Orkeon.Analysis.Core.StatementExtractionResult.operator !=(Orkeon.Analysis.Core.StatementExtractionResult? left, Orkeon.Analysis.Core.StatementExtractionResult? right) -> bool

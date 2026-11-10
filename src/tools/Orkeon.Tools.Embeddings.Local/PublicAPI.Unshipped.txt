@@ -1,3 +1,1 @@
 #nullable enable
-const Orkeon.Tools.Embeddings.Local.LocalEmbeddingProvider.EmbeddedModelName = "bge-micro-v2" -> string!
-Orkeon.Tools.Embeddings.Local.LocalEmbeddingProvider.ModelName.get -> string!

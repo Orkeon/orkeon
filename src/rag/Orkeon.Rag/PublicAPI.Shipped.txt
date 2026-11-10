@@ -291,6 +291,10 @@ Orkeon.Rag.QueryTransform.MultiQueryTransformer.MultiQueryTransformer(Microsoft.
 Orkeon.Rag.QueryTransform.QueryTransformFactoryDefaults
 Orkeon.Rag.QueryTransform.RagFusionTransformer
 Orkeon.Rag.QueryTransform.RagFusionTransformer.RagFusionTransformer(Microsoft.Extensions.AI.IChatClient! chatClient, Microsoft.Extensions.Logging.ILogger<Orkeon.Rag.QueryTransform.RagFusionTransformer!>? logger = null) -> void
+Orkeon.Rag.Reranking.DecisionModelReranker
+Orkeon.Rag.Reranking.DecisionModelReranker.DecisionModelReranker(Orkeon.Application.Interfaces.Ports.IDecisionModel! model) -> void
+Orkeon.Rag.Reranking.DecisionModelReranker.Name.get -> string!
+Orkeon.Rag.Reranking.DecisionModelReranker.RerankAsync(string! query, System.Collections.Generic.IReadOnlyList<Orkeon.Rag.Abstractions.Models.ScoredChunk!>! candidates, int topN, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Orkeon.Rag.Abstractions.Models.ScoredChunk!>!>!
 Orkeon.Rag.Reranking.IRerankerRegistrar
 Orkeon.Rag.Reranking.IRerankerRegistrar.Register(Orkeon.Rag.Factories.RerankerFactory! factory, System.IServiceProvider! serviceProvider) -> void
 Orkeon.Rag.Reranking.LlmListwiseReranker
@@ -571,7 +575,6 @@ const Orkeon.Rag.Loaders.InlineTextLoader.ContentOptionKey = "content" -> string
 const Orkeon.Rag.Loaders.InlineTextLoader.MetadataOptionPrefix = "meta." -> string!
 const Orkeon.Rag.Loaders.InlineTextLoader.TextKind = "text" -> string!
 const Orkeon.Rag.Loaders.WebPageLoader.UrlKind = "url" -> string!
-const Orkeon.Rag.Loaders.WebPageLoader.WebKind = "web" -> string!
 const Orkeon.Rag.Pipeline.AdaptiveRagPipeline.DirectAnswerSystemPrompt = "Answer the user directly and concisely. No knowledge-base retrieval was performed for this query; do not fabricate citations." -> string!
 const Orkeon.Rag.Pipeline.ProfileRagPipelineResolver.DefaultProfileName = "default" -> string!
 const Orkeon.Rag.Pipeline.StagedRagPipeline.DefaultSystemPrompt = "You are a retrieval-augmented assistant. Answer ONLY from the provided context. Cite the context passages you use with their [n] markers. If the context does not contain the answer, say so explicitly instead of guessing." -> string!
@@ -582,6 +585,9 @@ const Orkeon.Rag.QueryTransform.IdentityQueryTransformer.TransformerName = "none
 const Orkeon.Rag.QueryTransform.LlmQueryVariantTransformerBase.SystemPrompt = "You are a search query expansion assistant. Given a user question, generate alternative phrasings that express the same information need from different angles (synonyms, specificity, perspective). Respond with ONLY the requested number of variants, one per line, numbered. No preamble, no explanation." -> string!
 const Orkeon.Rag.QueryTransform.MultiQueryTransformer.TransformerName = "multi-query" -> string!
 const Orkeon.Rag.QueryTransform.RagFusionTransformer.TransformerName = "rag-fusion" -> string!
+const Orkeon.Rag.Reranking.DecisionModelReranker.MaxPassageChars = 4000 -> int
+const Orkeon.Rag.Reranking.DecisionModelReranker.RerankerName = "decision" -> string!
+const Orkeon.Rag.Reranking.DecisionModelReranker.ScoreOrigin = "decision-rerank" -> string!
 const Orkeon.Rag.Reranking.LlmListwiseReranker.RerankerName = "llm" -> string!
 const Orkeon.Rag.Reranking.LlmListwiseReranker.ScoreOrigin = "llm-rerank" -> string!
 const Orkeon.Rag.Reranking.LlmListwiseReranker.SystemPrompt = "You are a relevance ranking assistant. Given a query and numbered passages, respond with ONLY a JSON array of the passage numbers ordered from most to least relevant to the query (example: [3,1,2]). No prose, no explanation." -> string!

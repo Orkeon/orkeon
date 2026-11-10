@@ -1,10 +1,1 @@
 #nullable enable
-*REMOVED*Orkeon.Tools.Analysis.IndexCodebaseTool.IndexCodebaseTool(Orkeon.Analysis.Core.InMemoryRaggableStore! store, System.Func<Orkeon.Analysis.Core.RaggableTreeBuilder!>! builderFactory, Microsoft.Extensions.Logging.ILogger<Orkeon.Tools.Analysis.IndexCodebaseTool!>? logger = null) -> void
-Orkeon.Tools.Analysis.IndexCodebaseTool.IndexCodebaseTool(Orkeon.Analysis.Core.InMemoryRaggableStore! store, System.Func<Orkeon.Analysis.Core.RaggableTreeBuilder!>! builderFactory, Orkeon.Analysis.Core.Cache.CachingTreeBuilder? cachingBuilder = null, Microsoft.Extensions.Logging.ILogger<Orkeon.Tools.Analysis.IndexCodebaseTool!>? logger = null) -> void
-Orkeon.Tools.Analysis.EdgeListTool
-Orkeon.Tools.Analysis.EdgeListTool.EdgeListTool(Orkeon.Analysis.Abstractions.Interfaces.IRaggableStore! store, Microsoft.Extensions.Logging.ILogger<Orkeon.Tools.Analysis.EdgeListTool!>? logger = null) -> void
-override Orkeon.Tools.Analysis.EdgeListTool.Access.get -> Orkeon.Domain.Tools.ToolAccess
-override Orkeon.Tools.Analysis.EdgeListTool.Description.get -> string!
-override Orkeon.Tools.Analysis.EdgeListTool.Name.get -> string!
-*REMOVED*Orkeon.Tools.Analysis.IncrementalReindexTool.IncrementalReindexTool(Orkeon.Analysis.Core.InMemoryRaggableStore! store, System.Func<Orkeon.Analysis.Core.RaggableTreeBuilder!>! builderFactory, Orkeon.Analysis.Abstractions.Interfaces.IGitDiffProvider? gitDiff = null, Microsoft.Extensions.Logging.ILogger<Orkeon.Tools.Analysis.IncrementalReindexTool!>? logger = null, Orkeon.Analysis.Core.IndexFreshnessService? freshness = null) -> void
-Orkeon.Tools.Analysis.IncrementalReindexTool.IncrementalReindexTool(Orkeon.Analysis.Core.IndexFreshnessService! freshness, Orkeon.Analysis.Abstractions.Interfaces.IGitDiffProvider? gitDiff = null, Microsoft.Extensions.Logging.ILogger<Orkeon.Tools.Analysis.IncrementalReindexTool!>? logger = null) -> void

@@ -102,11 +102,21 @@ Orkeon.Hosting.RunnerMountPlan.InternalMounts.get -> System.Collections.Generic.
 Orkeon.Hosting.RunnerMountPlan.InternalMounts.init -> void
 Orkeon.Hosting.RunnerMountPlan.LlmLogVirtualPath.get -> string?
 Orkeon.Hosting.RunnerMountPlan.LlmLogVirtualPath.init -> void
+Orkeon.Hosting.RunnerMountPlan.LlmMockResponses.get -> string?
+Orkeon.Hosting.RunnerMountPlan.LlmMockResponses.init -> void
+Orkeon.Hosting.RunnerMountPlan.LlmRecordCassette.get -> string?
+Orkeon.Hosting.RunnerMountPlan.LlmRecordCassette.init -> void
+Orkeon.Hosting.RunnerMountPlan.LlmReplayCassette.get -> string?
+Orkeon.Hosting.RunnerMountPlan.LlmReplayCassette.init -> void
+Orkeon.Hosting.RunnerMountPlan.RunHistoryByDefault.get -> bool
+Orkeon.Hosting.RunnerMountPlan.RunHistoryByDefault.init -> void
 Orkeon.Hosting.RunnerMountPlan.RunnerMountPlan() -> void
 Orkeon.Hosting.RunnerMountPlan.SelectedMountIds.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Common.MountId!>!
 Orkeon.Hosting.RunnerMountPlan.SelectedMountIds.init -> void
 Orkeon.Hosting.RunnerMountPlan.WithdrawsAmbiguousRoots.get -> bool
 Orkeon.Hosting.RunnerMountPlan.WithdrawsAmbiguousRoots.init -> void
+Orkeon.Hosting.RunnerMountPlan.WorkingDirectory.get -> string?
+Orkeon.Hosting.RunnerMountPlan.WorkingDirectory.init -> void
 Orkeon.Hosting.RunnerOptionsBase
 Orkeon.Hosting.RunnerOptionsBase.AllowExternalMounts.get -> bool
 Orkeon.Hosting.RunnerOptionsBase.AllowExternalMounts.set -> void
@@ -115,14 +125,22 @@ Orkeon.Hosting.RunnerOptionsBase.ConfigPath.set -> void
 Orkeon.Hosting.RunnerOptionsBase.EffectiveAllowExternalMounts.get -> bool
 Orkeon.Hosting.RunnerOptionsBase.InitialContext.get -> string?
 Orkeon.Hosting.RunnerOptionsBase.InitialContext.set -> void
+Orkeon.Hosting.RunnerOptionsBase.Input.get -> string?
+Orkeon.Hosting.RunnerOptionsBase.Input.set -> void
 Orkeon.Hosting.RunnerOptionsBase.ListTools.get -> bool
 Orkeon.Hosting.RunnerOptionsBase.ListTools.set -> void
 Orkeon.Hosting.RunnerOptionsBase.LlmLogEnabled.get -> bool
 Orkeon.Hosting.RunnerOptionsBase.LlmLogEnabled.set -> void
 Orkeon.Hosting.RunnerOptionsBase.LlmLogPath.get -> string?
 Orkeon.Hosting.RunnerOptionsBase.LlmLogPath.set -> void
+Orkeon.Hosting.RunnerOptionsBase.LlmMock.get -> string?
+Orkeon.Hosting.RunnerOptionsBase.LlmMock.set -> void
 Orkeon.Hosting.RunnerOptionsBase.LlmProfile.get -> string?
 Orkeon.Hosting.RunnerOptionsBase.LlmProfile.set -> void
+Orkeon.Hosting.RunnerOptionsBase.LlmRecord.get -> string?
+Orkeon.Hosting.RunnerOptionsBase.LlmRecord.set -> void
+Orkeon.Hosting.RunnerOptionsBase.LlmReplay.get -> string?
+Orkeon.Hosting.RunnerOptionsBase.LlmReplay.set -> void
 Orkeon.Hosting.RunnerOptionsBase.MachineReadableStdout.get -> bool
 Orkeon.Hosting.RunnerOptionsBase.MachineReadableStdout.set -> void
 Orkeon.Hosting.RunnerOptionsBase.MountIds.get -> System.Collections.Generic.IEnumerable<string!>!
@@ -130,7 +148,12 @@ Orkeon.Hosting.RunnerOptionsBase.MountIds.set -> void
 Orkeon.Hosting.RunnerOptionsBase.Mounts.get -> System.Collections.Generic.IEnumerable<string!>!
 Orkeon.Hosting.RunnerOptionsBase.Mounts.set -> void
 Orkeon.Hosting.RunnerOptionsBase.ParseVariables() -> System.Collections.Generic.IReadOnlyDictionary<string!, string!>!
+Orkeon.Hosting.RunnerOptionsBase.ProceduralScript.get -> bool
+Orkeon.Hosting.RunnerOptionsBase.ProceduralScript.set -> void
 Orkeon.Hosting.RunnerOptionsBase.ResolvedLlmLogPath.get -> string?
+Orkeon.Hosting.RunnerOptionsBase.ResolvedLlmMockPath.get -> string?
+Orkeon.Hosting.RunnerOptionsBase.Resume.get -> string?
+Orkeon.Hosting.RunnerOptionsBase.Resume.set -> void
 Orkeon.Hosting.RunnerOptionsBase.RunnerConsole.get -> Orkeon.Hosting.IRunnerConsole!
 Orkeon.Hosting.RunnerOptionsBase.RunnerConsole.set -> void
 Orkeon.Hosting.RunnerOptionsBase.RunnerOptionsBase() -> void
@@ -142,6 +165,8 @@ Orkeon.Hosting.RunnerOptionsBase.Variables.get -> System.Collections.Generic.IEn
 Orkeon.Hosting.RunnerOptionsBase.Variables.set -> void
 Orkeon.Hosting.RunnerOptionsBase.Verbose.get -> int
 Orkeon.Hosting.RunnerOptionsBase.Verbose.set -> void
+Orkeon.Hosting.RunnerOptionsBase.WorkingDirectory.get -> string?
+Orkeon.Hosting.RunnerOptionsBase.WorkingDirectory.set -> void
 Orkeon.Hosting.RunnerSettings
 Orkeon.Hosting.RunnerSettingsException
 Orkeon.Hosting.RunnerSettingsException.RunnerSettingsException() -> void

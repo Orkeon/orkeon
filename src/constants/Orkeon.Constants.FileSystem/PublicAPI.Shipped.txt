@@ -9,7 +9,7 @@ const Orkeon.Constants.FileSystem.ConventionalNames.ScheduleDirectory = "schedul
 const Orkeon.Constants.FileSystem.ConventionalNames.ScheduleInstallationFile = "installed.json" -> string!
 const Orkeon.Constants.FileSystem.ConventionalNames.SettingsFile = "appsettings.json" -> string!
 const Orkeon.Constants.FileSystem.ConventionalNames.StateDirectory = ".orkeon" -> string!
-const Orkeon.Constants.FileSystem.ConventionalNames.TeamSidecarFile = "studio-team.json" -> string!
+const Orkeon.Constants.FileSystem.ConventionalNames.TeamSidecarFile = "team.json" -> string!
 const Orkeon.Constants.FileSystem.ConventionalNames.WindowsTeamLauncher = "run.cmd" -> string!
 const Orkeon.Constants.FileSystem.InstallChannels.Deb = "deb" -> string!
 const Orkeon.Constants.FileSystem.InstallChannels.DotnetTool = "dotnet-tool" -> string!
@@ -24,10 +24,14 @@ const Orkeon.Constants.FileSystem.InstallChannels.Zip = "zip" -> string!
 const Orkeon.Constants.FileSystem.RunnerVirtualRoots.Credentials = "/credentials" -> string!
 const Orkeon.Constants.FileSystem.RunnerVirtualRoots.Crew = "/crew" -> string!
 const Orkeon.Constants.FileSystem.RunnerVirtualRoots.Forge = "/forge" -> string!
+const Orkeon.Constants.FileSystem.RunnerVirtualRoots.LlmCassette = "/llm-cassette" -> string!
 const Orkeon.Constants.FileSystem.RunnerVirtualRoots.LlmLogs = "/llm-logs" -> string!
+const Orkeon.Constants.FileSystem.RunnerVirtualRoots.LlmMock = "/llm-mock" -> string!
 const Orkeon.Constants.FileSystem.RunnerVirtualRoots.Output = "/output" -> string!
+const Orkeon.Constants.FileSystem.RunnerVirtualRoots.Runs = "/runs" -> string!
 const Orkeon.Constants.FileSystem.RunnerVirtualRoots.Sandbox = "/sandbox" -> string!
 const Orkeon.Constants.FileSystem.RunnerVirtualRoots.Script = "/script" -> string!
+const Orkeon.Constants.FileSystem.RunnerVirtualRoots.State = "/state" -> string!
 const Orkeon.Constants.FileSystem.RunnerVirtualRoots.Workspace = "/workspace" -> string!
 static Orkeon.Constants.FileSystem.ConventionalNames.FlatCrewLayoutFiles.get -> System.Collections.Generic.IReadOnlyList<string!>!
 static Orkeon.Constants.FileSystem.RunnerVirtualRoots.All.get -> System.Collections.Generic.IReadOnlyList<string!>!

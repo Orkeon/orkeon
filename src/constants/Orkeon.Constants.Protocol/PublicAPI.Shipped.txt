@@ -3,6 +3,7 @@ Orkeon.Constants.Protocol.DriveEventKinds
 Orkeon.Constants.Protocol.EmailEventKinds
 Orkeon.Constants.Protocol.RunEventErrorCodes
 Orkeon.Constants.Protocol.RunEventKinds
+Orkeon.Constants.Protocol.RunFinishedStatuses
 Orkeon.Constants.Protocol.UseCaseEventKinds
 const Orkeon.Constants.Protocol.DriveEventKinds.CheckCompleted = "drive.check.completed" -> string!
 const Orkeon.Constants.Protocol.DriveEventKinds.Error = "error" -> string!
@@ -22,6 +23,7 @@ const Orkeon.Constants.Protocol.RunEventKinds.AgentSpawned = "agent.spawned" -> 
 const Orkeon.Constants.Protocol.RunEventKinds.CostUpdated = "cost.updated" -> string!
 const Orkeon.Constants.Protocol.RunEventKinds.DelegationStarted = "delegation.started" -> string!
 const Orkeon.Constants.Protocol.RunEventKinds.Error = "error" -> string!
+const Orkeon.Constants.Protocol.RunEventKinds.GraphNodeEntered = "graph.node.entered" -> string!
 const Orkeon.Constants.Protocol.RunEventKinds.HubMessage = "hub.message" -> string!
 const Orkeon.Constants.Protocol.RunEventKinds.InputGiven = "input.given" -> string!
 const Orkeon.Constants.Protocol.RunEventKinds.InputNeeded = "input.needed" -> string!
@@ -29,12 +31,14 @@ const Orkeon.Constants.Protocol.RunEventKinds.LlmCallFinished = "llm.call.finish
 const Orkeon.Constants.Protocol.RunEventKinds.LlmCallProgress = "llm.call.progress" -> string!
 const Orkeon.Constants.Protocol.RunEventKinds.LlmCallStarted = "llm.call.started" -> string!
 const Orkeon.Constants.Protocol.RunEventKinds.LlmDelta = "llm.delta" -> string!
+const Orkeon.Constants.Protocol.RunEventKinds.LlmFallback = "llm.fallback" -> string!
 const Orkeon.Constants.Protocol.RunEventKinds.RunFinished = "run.finished" -> string!
 const Orkeon.Constants.Protocol.RunEventKinds.RunStarted = "run.started" -> string!
 const Orkeon.Constants.Protocol.RunEventKinds.TaskCompleted = "task.completed" -> string!
 const Orkeon.Constants.Protocol.RunEventKinds.TaskStarted = "task.started" -> string!
 const Orkeon.Constants.Protocol.RunEventKinds.ToolCalled = "tool.called" -> string!
 const Orkeon.Constants.Protocol.RunEventKinds.ToolReturned = "tool.returned" -> string!
+const Orkeon.Constants.Protocol.RunFinishedStatuses.WaitingForInput = "waiting_for_input" -> string!
 const Orkeon.Constants.Protocol.UseCaseEventKinds.Catalog = "usecases.catalog" -> string!
 const Orkeon.Constants.Protocol.UseCaseEventKinds.Error = "error" -> string!
 const Orkeon.Constants.Protocol.UseCaseEventKinds.Exported = "usecases.exported" -> string!
