@@ -38,6 +38,21 @@ public partial class MainWindow : Window
         if (DataContext is not ViewModels.Shell.MainWindowViewModel shell)
             return;
 
+        WireScreenRequests(shell);
+        WireStatusBarNavigation(shell);
+        WireScreenTracking(shell);
+        WireEscapeKey(shell);
+
+        // The wizard's use-case search session lives as long as the window (STUDIO-39, D-03):
+        // closing it closes the session's stdin, the CLI's own clean exit.
+        Closed += (_, _) => shell.CreateTeam.CloseUseCaseSession();
+
+        WireSettingsScreen(shell);
+        WireChatContext(shell);
+    }
+
+    private void WireScreenRequests(ViewModels.Shell.MainWindowViewModel shell)
+    {
         shell.CreateTeam.SessionActivated += (_, _) => NavCreate.IsChecked = true;
         // UX lot 04 (015): the gate asks for a model, so the settings open on Models.
         shell.CreateTeam.OpenSettingsRequested += (_, _) =>
@@ -72,6 +87,10 @@ public partial class MainWindow : Window
         shell.Launch.History.LaunchRequested += (_, _) => NavRun.IsChecked = true;
         shell.Teams.ResumeRequested += (_, _) => NavCreate.IsChecked = true;
         shell.Import.TeamImported += (_, _) => NavTeams.IsChecked = true;
+    }
+
+    private void WireStatusBarNavigation(ViewModels.Shell.MainWindowViewModel shell)
+    {
         // STUDIO-34 (D-04): a click on a group of the status bar opens its activity's screen.
         shell.StatusBar.OpenRequested += (_, e) =>
         {
@@ -84,74 +103,82 @@ public partial class MainWindow : Window
             if (e.Activity is ViewModels.Shell.StatusBarActivity.Test or ViewModels.Shell.StatusBarActivity.Launch)
                 shell.Run.Active.ActiveTab = ViewModels.Launch.LaunchTabViewModel.RunTab;
             NavFor(e.Activity).IsChecked = true;
-            // R13: the assistant's group names a wait point — the click lands on it.
-            if (e.Activity == ViewModels.Shell.StatusBarActivity.Atelier
-                && shell.CreateTeam.GoToWaitPointCommand.CanExecute(null))
-            {
-                shell.CreateTeam.GoToWaitPointCommand.Execute(null);
-            }
+            GoToWaitPointOf(shell, e.Activity);
         };
-        // R03 (A03): the status bar's centre zone reads which screen is on show.
-        void Shown(System.Windows.Controls.RadioButton nav, ViewModels.Shell.StatusBarScreen screen)
+    }
+
+    // R03 (A03): the status bar's centre zone reads which screen is on show.
+    private static void Shown(
+        ViewModels.Shell.MainWindowViewModel shell, System.Windows.Controls.RadioButton nav, ViewModels.Shell.StatusBarScreen screen)
+    {
+        nav.Checked += (_, _) => shell.StatusBar.ShownScreen = screen;
+        if (nav.IsChecked == true)
+            shell.StatusBar.ShownScreen = screen;
+    }
+
+    // R13: the assistant's group names a wait point — the click lands on it.
+    private static void GoToWaitPointOf(ViewModels.Shell.MainWindowViewModel shell, ViewModels.Shell.StatusBarActivity activity)
+    {
+        if (activity == ViewModels.Shell.StatusBarActivity.Atelier
+            && shell.CreateTeam.GoToWaitPointCommand.CanExecute(null))
         {
-            nav.Checked += (_, _) => shell.StatusBar.ShownScreen = screen;
-            if (nav.IsChecked == true)
-                shell.StatusBar.ShownScreen = screen;
+            shell.CreateTeam.GoToWaitPointCommand.Execute(null);
         }
-        Shown(NavCreate, ViewModels.Shell.StatusBarScreen.Create);
-        Shown(NavTeams, ViewModels.Shell.StatusBarScreen.Teams);
-        Shown(NavImport, ViewModels.Shell.StatusBarScreen.Import);
-        Shown(NavRun, ViewModels.Shell.StatusBarScreen.Run);
-        Shown(NavHistory, ViewModels.Shell.StatusBarScreen.History);
-        Shown(NavSettings, ViewModels.Shell.StatusBarScreen.Settings);
-        Shown(NavDiag, ViewModels.Shell.StatusBarScreen.Diagnostic);
+    }
+
+    private void WireScreenTracking(ViewModels.Shell.MainWindowViewModel shell)
+    {
+        Shown(shell, NavCreate, ViewModels.Shell.StatusBarScreen.Create);
+        Shown(shell, NavTeams, ViewModels.Shell.StatusBarScreen.Teams);
+        Shown(shell, NavImport, ViewModels.Shell.StatusBarScreen.Import);
+        Shown(shell, NavRun, ViewModels.Shell.StatusBarScreen.Run);
+        Shown(shell, NavHistory, ViewModels.Shell.StatusBarScreen.History);
+        Shown(shell, NavSettings, ViewModels.Shell.StatusBarScreen.Settings);
+        Shown(shell, NavDiag, ViewModels.Shell.StatusBarScreen.Diagnostic);
         // The lists refresh on arrival: a session stopped mid-wizard, or a folder dropped in
         // by hand, shows up without waiting for an adopt or an app restart.
         NavTeams.Checked += (_, _) => { shell.Teams.Refresh(); shell.Run.RefreshTeams(); };
+    }
 
+    private void WireEscapeKey(ViewModels.Shell.MainWindowViewModel shell)
+    {
         // Escape closes the language menu; StaysOpen=False already answers the click
         // elsewhere. Handled on the window because the popup is not in its visual tree.
         // It closes the use-case gallery too (STUDIO-39), the side panel a user reaches for
         // Escape to leave.
         PreviewKeyDown += (_, e) =>
         {
-            if (e.Key == System.Windows.Input.Key.Escape && shell.Language.IsMenuOpen)
-            {
-                shell.Language.CloseMenuCommand.Execute(null);
-                e.Handled = true;
-            }
-            else if (e.Key == System.Windows.Input.Key.Escape && shell.CreateTeam.Gallery.IsOpen)
-            {
-                shell.CreateTeam.Gallery.CloseCommand.Execute(null);
-                e.Handled = true;
-            }
-            // Lot 11 (072): the four modals close on Escape like their cross and Cancel do.
-            else if (e.Key == System.Windows.Input.Key.Escape && shell.TeamMounts.IsOpen)
-            {
-                shell.TeamMounts.CancelCommand.Execute(null);
-                e.Handled = true;
-            }
-            else if (e.Key == System.Windows.Input.Key.Escape && shell.CreateTeam.AgentEditor.IsOpen)
-            {
-                shell.CreateTeam.AgentEditor.CancelCommand.Execute(null);
-                e.Handled = true;
-            }
-            else if (e.Key == System.Windows.Input.Key.Escape && shell.AllowedFolders.IsOpen)
-            {
-                shell.AllowedFolders.CancelCommand.Execute(null);
-                e.Handled = true;
-            }
-            else if (e.Key == System.Windows.Input.Key.Escape && shell.About.IsOpen)
-            {
-                shell.About.CloseCommand.Execute(null);
-                e.Handled = true;
-            }
+            if (e.Key != System.Windows.Input.Key.Escape || !CloseTopmostOverlay(shell))
+                return;
+
+            e.Handled = true;
         };
+    }
 
-        // The wizard's use-case search session lives as long as the window (STUDIO-39, D-03):
-        // closing it closes the session's stdin, the CLI's own clean exit.
-        Closed += (_, _) => shell.CreateTeam.CloseUseCaseSession();
+    /// <summary>Closes the first open overlay in priority order; false when none was open.</summary>
+    private static bool CloseTopmostOverlay(ViewModels.Shell.MainWindowViewModel shell)
+    {
+        if (shell.Language.IsMenuOpen)
+            shell.Language.CloseMenuCommand.Execute(null);
+        else if (shell.CreateTeam.Gallery.IsOpen)
+            shell.CreateTeam.Gallery.CloseCommand.Execute(null);
+        // Lot 11 (072): the four modals close on Escape like their cross and Cancel do.
+        else if (shell.TeamMounts.IsOpen)
+            shell.TeamMounts.CancelCommand.Execute(null);
+        else if (shell.CreateTeam.AgentEditor.IsOpen)
+            shell.CreateTeam.AgentEditor.CancelCommand.Execute(null);
+        else if (shell.AllowedFolders.IsOpen)
+            shell.AllowedFolders.CancelCommand.Execute(null);
+        else if (shell.About.IsOpen)
+            shell.About.CloseCommand.Execute(null);
+        else
+            return false;
 
+        return true;
+    }
+
+    private void WireSettingsScreen(ViewModels.Shell.MainWindowViewModel shell)
+    {
         // The e-mail tab asks the CLI about its accounts and can test a connection (STUDIO-69):
         // what it has running stops with the screen - another sidebar entry, or the window
         // closing - and the states are read again when the screen comes back onto that tab.
@@ -188,7 +215,10 @@ public partial class MainWindow : Window
             shell.Settings.Leave();
         };
         Closed += (_, _) => shell.Settings.Leave();
+    }
 
+    private void WireChatContext(ViewModels.Shell.MainWindowViewModel shell)
+    {
         // The conversation follows the screen it is mounted on: what a free question with
         // no keyword gets back, and what the primer says on an empty thread, both depend
         // on where the user actually stands (T-06).

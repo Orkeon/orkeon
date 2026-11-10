@@ -17,8 +17,8 @@ public sealed class ChatTurnViewModel : ObservableObject
 {
     private readonly IStudioStrings _strings;
     private readonly string _body;
-    private readonly string _detail;
-    private readonly string _hint;
+    private readonly string _detail = "";
+    private readonly string _hint = "";
     private readonly string? _bodyKey;
     private readonly string? _replyBody;
 
@@ -26,8 +26,6 @@ public sealed class ChatTurnViewModel : ObservableObject
         IStudioStrings strings,
         bool isBot,
         string body,
-        string detail = "",
-        string hint = "",
         string? bodyKey = null,
         bool isClosing = false,
         string? replyBody = null)
@@ -36,8 +34,6 @@ public sealed class ChatTurnViewModel : ObservableObject
         _replyBody = replyBody;
         _strings = strings;
         _body = body;
-        _detail = detail;
-        _hint = hint;
         IsBot = isBot;
         IsClosing = isClosing;
     }

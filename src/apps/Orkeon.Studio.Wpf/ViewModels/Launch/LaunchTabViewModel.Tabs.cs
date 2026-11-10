@@ -124,23 +124,53 @@ public sealed partial class LaunchTabViewModel
     // ── The team tab ──
 
     /// <summary>A check once a team is chosen and can run, the amber dot while one is to choose or a refusal holds.</summary>
-    public string TeamTabState => !HasTeamCard ? "Expected" : IsTeamRefused ? "Warning" : "Done";
+    public string TeamTabState
+    {
+        get
+        {
+            if (!HasTeamCard)
+            {
+                return "Expected";
+            }
+
+            return IsTeamRefused ? "Warning" : "Done";
+        }
+    }
 
     /// <summary>The team's name, « To choose », or that it cannot be launched.</summary>
-    public string TeamTabSubtitle =>
-        !HasTeamCard ? _strings[StudioStringKeys.RunTabTeamToChoose]
-        : IsTeamRefused ? _strings.Format(StudioStringKeys.RunTabTeamBlocked, TeamHeadline ?? string.Empty)
-        : TeamHeadline ?? string.Empty;
+    public string TeamTabSubtitle
+    {
+        get
+        {
+            if (!HasTeamCard)
+            {
+                return _strings[StudioStringKeys.RunTabTeamToChoose];
+            }
+
+            return IsTeamRefused
+                ? _strings.Format(StudioStringKeys.RunTabTeamBlocked, TeamHeadline ?? string.Empty)
+                : TeamHeadline ?? string.Empty;
+        }
+    }
 
     /// <summary>
     /// The team pane's footer: « Team ready: 3 agents, 2 declared folders. » when the crew's files
     /// name its agents, « Team ready: X » when they do not (a scripted team), or that none is chosen.
     /// </summary>
-    public string TeamFooter => !HasTeamCard
-        ? _strings[StudioStringKeys.RunTeamNotChosen]
-        : _crewRoles.Count > 0
-            ? _strings.Format(StudioStringKeys.RunTeamReadyCounts, _crewRoles.Count, FolderRows.Count)
-            : _strings.Format(StudioStringKeys.RunTeamReady, TeamHeadline ?? string.Empty);
+    public string TeamFooter
+    {
+        get
+        {
+            if (!HasTeamCard)
+            {
+                return _strings[StudioStringKeys.RunTeamNotChosen];
+            }
+
+            return _crewRoles.Count > 0
+                ? _strings.Format(StudioStringKeys.RunTeamReadyCounts, _crewRoles.Count, FolderRows.Count)
+                : _strings.Format(StudioStringKeys.RunTeamReady, TeamHeadline ?? string.Empty);
+        }
+    }
 
     /// <summary>
     /// The fiche's mono line: the catalog's « 3 agents · reads … · writes to … », then the model
@@ -241,9 +271,18 @@ public sealed partial class LaunchTabViewModel
     public static string CommandTabState => "Empty";
 
     /// <summary>The start of the command, the rest folded behind an ellipsis.</summary>
-    public string CommandTabSubtitle => CommandLinePreview is { Length: > 0 } command
-        ? command.Length <= CommandSubtitleLength ? command : command[..CommandSubtitleLength].TrimEnd() + "…"
-        : string.Empty;
+    public string CommandTabSubtitle
+    {
+        get
+        {
+            if (CommandLinePreview is not { Length: > 0 } command)
+            {
+                return string.Empty;
+            }
+
+            return command.Length <= CommandSubtitleLength ? command : command[..CommandSubtitleLength].TrimEnd() + "…";
+        }
+    }
 
     /// <summary>The R6 row « Engine »: where the CLI was found, or that it was not.</summary>
     public string EngineRow => BinaryLocation is { Found: true, Path: { Length: > 0 } path } ? path : _strings[StudioStringKeys.RunEngineMissing];
@@ -372,7 +411,18 @@ public sealed partial class LaunchTabViewModel
     public bool IsEditable => !IsRunning;
 
     /// <summary>ok | fail | running — the dot of the action bar, on the state scale StateToneConverter reads (UX lot 11).</summary>
-    public string LaunchReadinessTone => IsRunning ? "running" : LaunchBlockedReason is null ? "ok" : "fail";
+    public string LaunchReadinessTone
+    {
+        get
+        {
+            if (IsRunning)
+            {
+                return "running";
+            }
+
+            return LaunchBlockedReason is null ? "ok" : "fail";
+        }
+    }
 
     /// <summary>
     /// The action bar's sentence: « Ready to launch in Real mode. The result will go to /output. »,
@@ -393,12 +443,30 @@ public sealed partial class LaunchTabViewModel
     }
 
     /// <summary>Why « Launch now » is greyed — the tooltip of the button —; null when it is not.</summary>
-    public string? LaunchBlockedReason =>
-        !IsBinaryAvailable ? _strings[StudioStringKeys.RunBlockedNoCli]
-        : !Target.IsResolved ? _strings[StudioStringKeys.RunBlockedNoTeam]
-        : IsTargetArchived ? _strings[StudioStringKeys.RunBlockedArchived]
-        : IsBlockedByUndeclaredFolders || IsBlockedByUnknownMountIds ? _strings[StudioStringKeys.RunBlockedFolders]
-        : null;
+    public string? LaunchBlockedReason
+    {
+        get
+        {
+            if (!IsBinaryAvailable)
+            {
+                return _strings[StudioStringKeys.RunBlockedNoCli];
+            }
+
+            if (!Target.IsResolved)
+            {
+                return _strings[StudioStringKeys.RunBlockedNoTeam];
+            }
+
+            if (IsTargetArchived)
+            {
+                return _strings[StudioStringKeys.RunBlockedArchived];
+            }
+
+            return IsBlockedByUndeclaredFolders || IsBlockedByUnknownMountIds
+                ? _strings[StudioStringKeys.RunBlockedFolders]
+                : null;
+        }
+    }
 
     /// <summary>Whether a refusal of the team itself holds: an undeclared folder, an unknown id, an archive.</summary>
     private bool IsTeamRefused => IsBlockedByUndeclaredFolders || IsBlockedByUnknownMountIds || IsTargetArchived;

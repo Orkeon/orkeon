@@ -3558,10 +3558,20 @@ public sealed partial class CreateTeamViewModel : ObservableObject
     public bool CanOpenFolder => HasShellOpener && FolderToOpen() is not null;
 
     /// <summary>Which of the two folders opens, said on the button: the working session, or the adopted team.</summary>
-    public string OpenFolderTooltip => _strings[
-        !CanOpenFolder ? StudioStringKeys.WizardOpenFolderLater
-        : TeamFolderToOpen() is not null ? StudioStringKeys.WizardOpenFolderTeam
-        : StudioStringKeys.WizardOpenFolderSession];
+    public string OpenFolderTooltip
+    {
+        get
+        {
+            if (!CanOpenFolder)
+            {
+                return _strings[StudioStringKeys.WizardOpenFolderLater];
+            }
+
+            return _strings[TeamFolderToOpen() is not null
+                ? StudioStringKeys.WizardOpenFolderTeam
+                : StudioStringKeys.WizardOpenFolderSession];
+        }
+    }
 
     /// <summary>The team folder, once there is one: a team reopened from its card.</summary>
     private string? TeamFolderToOpen() =>

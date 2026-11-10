@@ -281,16 +281,18 @@ public sealed class DiagnosticViewModel : ObservableObject
         OpenInstallGuideCommand = new RelayCommand(OpenInstallGuide, () => HasInstallGuide);
     }
 
+    private const string DocsRoot = "https" + "://github.com/Orkeon/orkeon/blob/main/docs";
+
     /// <summary>
     /// The page that says how to install the Orkeon engine from the release binaries (UX lot 04,
     /// 065): what the « How to install the engine » button opens.
     /// </summary>
     public const string InstallGuideUrl =
-        "https://github.com/Orkeon/orkeon/blob/main/docs/getting-started/three-ways-to-run-orkeon.md#2-release-binary";
+        DocsRoot + "/getting-started/three-ways-to-run-orkeon.md#2-release-binary";
 
     /// <summary>The French mirror of <see cref="InstallGuideUrl"/>, opened while the strings read in French.</summary>
     public const string InstallGuideUrlFrench =
-        "https://github.com/Orkeon/orkeon/blob/main/docs/fr/getting-started/three-ways-to-run-orkeon.md#2-binaire-de-release";
+        DocsRoot + "/fr/getting-started/three-ways-to-run-orkeon.md#2-binaire-de-release";
 
     /// <summary>Opens <see cref="InstallGuide"/> in the browser.</summary>
     public RelayCommand OpenInstallGuideCommand { get; }
@@ -299,13 +301,13 @@ public sealed class DiagnosticViewModel : ObservableObject
     /// The install page the button opens: the one given at construction, else the page in the
     /// language the strings read in now (French, or English for any other).
     /// </summary>
-    public Uri? InstallGuide =>
-        _installGuide
-        ?? (HttpsAddress.TryParse(
-                string.Equals(_strings.Language, "fr", StringComparison.Ordinal) ? InstallGuideUrlFrench : InstallGuideUrl,
-                out var page)
-            ? page
-            : null);
+    public Uri? InstallGuide => _installGuide ?? ParseInstallGuide(InstallGuideAddress());
+
+    private string InstallGuideAddress() =>
+        string.Equals(_strings.Language, "fr", StringComparison.Ordinal) ? InstallGuideUrlFrench : InstallGuideUrl;
+
+    private static Uri? ParseInstallGuide(string address) =>
+        HttpsAddress.TryParse(address, out var page) ? page : null;
 
     /// <summary>Whether an install guide can be opened: an https address, and a browser to open it in.</summary>
     public bool HasInstallGuide => _browser is not null && HttpsAddress.Is(InstallGuide);

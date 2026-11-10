@@ -57,11 +57,21 @@ public sealed class RunTaskViewModel
         : string.Empty;
 
     /// <summary>"decision" or "decision (defaulted)" for a decision task, else an empty label.</summary>
-    public string DecisionLabel => !Task.IsDecision
-        ? string.Empty
-        : _strings[Task.Defaulted
-            ? StudioStringKeys.RunProgressDecisionDefaulted
-            : StudioStringKeys.RunProgressDecision];
+    public string DecisionLabel
+    {
+        get
+        {
+            if (!Task.IsDecision)
+            {
+                return string.Empty;
+            }
+
+            var key = Task.Defaulted
+                ? StudioStringKeys.RunProgressDecisionDefaulted
+                : StudioStringKeys.RunProgressDecision;
+            return _strings[key];
+        }
+    }
 }
 
 /// <summary>One task the run has started and not yet finished, as the progress panel shows it (STUDIO-17).</summary>

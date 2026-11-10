@@ -178,14 +178,7 @@ public sealed class TeamCardViewModel : ObservableObject
             return new TeamMountChip(
                 label, readWrite, IsUndeclared: !DeclaredMounts.IsVouchedFor(mountString, declaredMounts, summary.Path), Path: path);
         })];
-        ScheduleDisplay = summary.Schedule switch
-        {
-            null or "" => strings[StudioStringKeys.TeamsOnDemand],
-            "hourly" => strings[StudioStringKeys.TeamsHourly],
-            var schedule when schedule.StartsWith("daily@", StringComparison.Ordinal) =>
-                strings.Format(StudioStringKeys.TeamsDaily, schedule["daily@".Length..]),
-            var schedule => schedule,
-        };
+        ScheduleDisplay = DescribeSchedule(summary.Schedule, strings);
         // STUDIO-32 (D-02): an archived card offers « Restore » and « Delete », nothing else — it is
         // neither launched, modified, renamed nor copied, and its folders are not changed.
         // Refonte lot 2: a folder nothing vouches for holds « Launch » back, its reason in the tooltip,
@@ -228,14 +221,7 @@ public sealed class TeamCardViewModel : ObservableObject
         // team with neither keeps the button disabled, the tooltip saying why. Resolved at card
         // build; Refresh() rebuilds the cards.
         CanModify = TeamsViewModel.CanReopen(summary);
-        string modifyTipKey;
-        if (summary.ForgeSessionId is not null)
-            modifyTipKey = StudioStringKeys.TeamsModifyTip;
-        else if (summary.HasYamlCrew)
-            modifyTipKey = StudioStringKeys.TeamsModifyRebuild;
-        else
-            modifyTipKey = StudioStringKeys.TeamsModifyNoSession;
-        ModifyTooltip = strings[modifyTipKey];
+        ModifyTooltip = strings[ModifyTipKeyFor(summary)];
         ModifyCommand = new RelayCommand(() => owner.RequestModify(summary), () => CanModify && !IsArchived);
         ToggleDescriptionCommand = new RelayCommand(() => IsDescriptionExpanded = !IsDescriptionExpanded);
         // STUDIO-28 (D-07): « Rename » opens an editor in place of the action row, like the delete
@@ -252,6 +238,23 @@ public sealed class TeamCardViewModel : ObservableObject
         var declarations = CrewLlmDeclarations.CountIn(summary.Path);
         CrewLlmWarning = declarations > 0 ? strings.Format(StudioStringKeys.TeamsCrewOverridesLlm, declarations) : null;
         _scheduledRun = ReadScheduledRun();
+    }
+
+    private static string DescribeSchedule(string? schedule, IStudioStrings strings) => schedule switch
+    {
+        null or "" => strings[StudioStringKeys.TeamsOnDemand],
+        "hourly" => strings[StudioStringKeys.TeamsHourly],
+        var daily when daily.StartsWith("daily@", StringComparison.Ordinal) =>
+            strings.Format(StudioStringKeys.TeamsDaily, daily["daily@".Length..]),
+        var other => other,
+    };
+
+    private static string ModifyTipKeyFor(TeamSummary summary)
+    {
+        if (summary.ForgeSessionId is not null)
+            return StudioStringKeys.TeamsModifyTip;
+
+        return summary.HasYamlCrew ? StudioStringKeys.TeamsModifyRebuild : StudioStringKeys.TeamsModifyNoSession;
     }
 
     // ── STUDIO-73: the model the team runs on, changed on its card ──
