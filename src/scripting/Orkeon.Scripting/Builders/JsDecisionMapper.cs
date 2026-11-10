@@ -13,36 +13,17 @@ internal static class JsDecisionMapper
     internal static TaskDecision MapDecision(string task, object spec)
     {
         var map = AsMap(spec) ?? throw new InvalidOperationException($"Task '{task}' decision: expects an object.");
-        var questions = new List<DecisionQuestionSpec>();
-        if (map.TryGetValue("questions", out var raw) && AsMap(raw) is { } asked)
-        {
-            foreach (var (name, question) in asked)
-            {
-                try
-                {
-                    questions.Add(MapQuestion(name, AsMap(question) ?? throw new ArgumentException("A question is an object.")));
-                }
-                catch (ArgumentException ex)
-                {
-                    throw new InvalidOperationException($"Task '{task}' decision.questions.{name}: {ex.Message}", ex);
-                }
-            }
-        }
+        var questions = MapQuestions(task, map);
 
         try
         {
             return TaskDecision.Create(
                 questions,
-                map.TryGetValue("minConfidence", out var floor) && floor is not null
-                    ? IsNumber(floor)
-                        ? Convert.ToDouble(floor, CultureInfo.InvariantCulture)
-                        : throw new ArgumentException("minConfidence must be a number.")
-                    : null,
+                MinConfidence(map),
                 map.TryGetValue("state", out var state)
-                    ? Strings(state) ?? throw new ArgumentException("state must be an array of task names.")
+                    ? StringList(state, "state must be an array of task names.")
                     : null,
-                map.TryGetValue("longContext", out var longContext) && longContext is not null
-                    && (longContext is bool flag ? flag : throw new ArgumentException("longContext must be a bool.")),
+                LongContext(map),
                 map.TryGetValue("fallback", out var fallback)
                     ? StringMap(fallback, "fallback", "an object of strings")
                     : null);
@@ -53,6 +34,46 @@ internal static class JsDecisionMapper
             throw new InvalidOperationException($"Task '{task}' {part}: {ex.Message}", ex);
         }
     }
+
+    private static List<DecisionQuestionSpec> MapQuestions(string task, IDictionary<string, object?> map)
+    {
+        var questions = new List<DecisionQuestionSpec>();
+        if (!map.TryGetValue("questions", out var raw) || AsMap(raw) is not { } asked)
+            return questions;
+
+        foreach (var (name, question) in asked)
+        {
+            try
+            {
+                questions.Add(MapQuestion(name, AsMap(question) ?? throw new ArgumentException("A question is an object.")));
+            }
+            catch (ArgumentException ex)
+            {
+                throw new InvalidOperationException($"Task '{task}' decision.questions.{name}: {ex.Message}", ex);
+            }
+        }
+
+        return questions;
+    }
+
+    private static double? MinConfidence(IDictionary<string, object?> map)
+    {
+        if (!map.TryGetValue("minConfidence", out var floor) || floor is null)
+            return null;
+        if (!IsNumber(floor))
+            throw new ArgumentException("minConfidence must be a number.");
+        return Convert.ToDouble(floor, CultureInfo.InvariantCulture);
+    }
+
+    private static bool LongContext(IDictionary<string, object?> map)
+    {
+        if (!map.TryGetValue("longContext", out var longContext) || longContext is null)
+            return false;
+        return longContext is bool flag ? flag : throw new ArgumentException("longContext must be a bool.");
+    }
+
+    private static List<string> StringList(object? value, string message) =>
+        TryStrings(value, out var list) ? list : throw new ArgumentException(message);
 
     /// <summary>Builds the condition of task <paramref name="task"/> against the decision it reads.</summary>
     internal static TaskCondition MapCondition(string task, string decisionTask, object spec, TaskDecision decision)
@@ -102,7 +123,7 @@ internal static class JsDecisionMapper
         if (question.TryGetValue("choice", out var choice))
             return ChoiceQuestionSpec.Create(name, instructions, StringMap(choice, "choice", "an object of strings"));
         if (question.TryGetValue("score", out var score))
-            return ScoreQuestionSpec.Create(name, instructions, Strings(score) ?? throw new ArgumentException("score must be an array of strings."));
+            return ScoreQuestionSpec.Create(name, instructions, StringList(score, "score must be an array of strings."));
         return YesNoQuestionSpec.Create(name, question.TryGetValue("noul", out var statement) ? statement?.ToString() ?? string.Empty : string.Empty);
     }
 
@@ -116,8 +137,17 @@ internal static class JsDecisionMapper
 
     private static IDictionary<string, object?>? AsMap(object? value) => value as IDictionary<string, object?>;
 
-    private static List<string>? Strings(object? value) =>
-        value is IEnumerable<object?> items && items.All(o => o is string) ? items.Select(o => (string)o!).ToList() : null;
+    private static bool TryStrings(object? value, out List<string> strings)
+    {
+        if (value is IEnumerable<object?> items && items.All(o => o is string))
+        {
+            strings = items.Select(o => (string)o!).ToList();
+            return true;
+        }
+
+        strings = [];
+        return false;
+    }
 
     private static Dictionary<string, string> StringMap(object? value, string part, string expected) =>
         AsMap(value) is { } map && map.Values.All(v => v is string)

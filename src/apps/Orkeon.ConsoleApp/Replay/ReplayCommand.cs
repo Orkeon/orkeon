@@ -14,9 +14,16 @@ namespace Orkeon.ConsoleApp.Replay;
 /// which resolves the console being built — the start then hangs with stdin a terminal, where the line editor
 /// or the TUI takes the completion; stdin redirected takes the dumb adapter, which does not).
 /// </remarks>
-internal sealed class ReplayCommand(Func<ReplayConsoleAdapter> replay, IFileSystemService fileSystem) : IInteractiveCommand
+internal sealed class ReplayCommand : IInteractiveCommand
 {
-    private readonly Func<ReplayConsoleAdapter> _replay = replay ?? throw new ArgumentNullException(nameof(replay));
+    private readonly Func<ReplayConsoleAdapter> _replay;
+    private readonly IFileSystemService _fileSystem;
+
+    public ReplayCommand(Func<ReplayConsoleAdapter> replay, IFileSystemService fileSystem)
+    {
+        _replay = replay ?? throw new ArgumentNullException(nameof(replay));
+        _fileSystem = fileSystem;
+    }
 
     /// <inheritdoc />
     public string Name => "replay";
@@ -37,7 +44,7 @@ internal sealed class ReplayCommand(Func<ReplayConsoleAdapter> replay, IFileSyst
         if (replay.IsActive)
             return CommandResult.Fail("a replay is already running");
 
-        var load = await ReplayFile.LoadAsync(fileSystem, string.Join(' ', context.Args), cancellationToken).ConfigureAwait(false);
+        var load = await ReplayFile.LoadAsync(_fileSystem, string.Join(' ', context.Args), cancellationToken).ConfigureAwait(false);
         if (load.Lines is not { } lines)
             return CommandResult.Fail(load.Error ?? $"cannot read the replay file {load.VirtualPath}");
 

@@ -62,6 +62,42 @@ internal sealed record ScriptedCommandsCliOptions(
     /// <summary>A usage error of these flags (exit code 2); null when they are valid.</summary>
     public string? UsageError { get; init; }
 
+    /// <summary>Tries each value option in turn; the first that matches captures its value (and advances <paramref name="i"/>).</summary>
+    private static bool TryAddAnyValueOption(
+        string a, string[] args, ref int i,
+        List<string> dirs, List<string> settings, List<string> mounts, List<string> crewDirs,
+        List<string> llmLogPaths, List<string> replayFiles, List<string> logLevels)
+    {
+        return TryAddValueOption(a, "--commands-dir", args, ref i, dirs)
+            || TryAddValueOption(a, "--settings", args, ref i, settings)
+            || TryAddValueOption(a, "--mount", args, ref i, mounts)
+            || TryAddValueOption(a, "--crews-dir", args, ref i, crewDirs)
+            || TryAddValueOption(a, LlmLogPathFlag, args, ref i, llmLogPaths)
+            || TryAddValueOption(a, ReplayFlag, args, ref i, replayFiles)
+            || TryAddValueOption(a, LogLevelFlag, args, ref i, logLevels);
+    }
+
+    /// <summary>A value that starts with "--" is the next flag, not a value: `--replay --interactive` names no file.</summary>
+    private static void RejectFlagLikeValues(List<string> replayFiles, List<string> logLevels, ref string? usageError)
+    {
+        foreach (var (flag, values) in new[] { (ReplayFlag, replayFiles), (LogLevelFlag, logLevels) })
+        {
+            if (values.FirstOrDefault(v => v.StartsWith("--", StringComparison.Ordinal)) is { } flagLike)
+                usageError ??= $"{flag} needs a value, not the flag '{flagLike}'";
+        }
+    }
+
+    private static Microsoft.Extensions.Logging.LogLevel? ParseLogLevel(List<string> logLevels, ref string? usageError)
+    {
+        if (logLevels.Count == 0) return null;
+        var last = logLevels[^1];
+        if (Enum.TryParse<Microsoft.Extensions.Logging.LogLevel>(last, ignoreCase: true, out var parsed)
+            && Enum.IsDefined(parsed) && !int.TryParse(last, out _))
+            return parsed;
+        usageError ??= $"{LogLevelFlag} '{last}' is none of Trace, Debug, Information, Warning, Error, Critical, None";
+        return null;
+    }
+
     public static ScriptedCommandsCliOptions Parse(string[] args)
     {
         ArgumentNullException.ThrowIfNull(args);
@@ -93,23 +129,11 @@ internal sealed record ScriptedCommandsCliOptions(
                 usageError ??= $"{a} needs a value";
             else if (a.StartsWith(AllowExternalMountsFlag + "=", StringComparison.Ordinal))
                 allowExternalMounts = IsTruthy(a[(AllowExternalMountsFlag.Length + 1)..]);
-            // Value options: TryAddValueOption captures the value (and advances i) as its side
-            // effect; a true return only stops the chain, so the bodies are intentionally empty.
-            else if (TryAddValueOption(a, "--commands-dir", args, ref i, dirs)) { /* captured */ }
-            else if (TryAddValueOption(a, "--settings", args, ref i, settings)) { /* captured */ }
-            else if (TryAddValueOption(a, "--mount", args, ref i, mounts)) { /* captured */ }
-            else if (TryAddValueOption(a, "--crews-dir", args, ref i, crewDirs)) { /* captured */ }
-            else if (TryAddValueOption(a, LlmLogPathFlag, args, ref i, llmLogPaths)) { /* captured */ }
-            else if (TryAddValueOption(a, ReplayFlag, args, ref i, replayFiles)) { /* captured */ }
-            else if (TryAddValueOption(a, LogLevelFlag, args, ref i, logLevels)) { /* captured */ }
+            else
+                _ = TryAddAnyValueOption(a, args, ref i, dirs, settings, mounts, crewDirs, llmLogPaths, replayFiles, logLevels);
         }
 
-        // A value that starts with "--" is the next flag, not a value: `--replay --interactive` names no file.
-        foreach (var (flag, values) in new[] { (ReplayFlag, replayFiles), (LogLevelFlag, logLevels) })
-        {
-            if (values.FirstOrDefault(v => v.StartsWith("--", StringComparison.Ordinal)) is { } flagLike)
-                usageError ??= $"{flag} needs a value, not the flag '{flagLike}'";
-        }
+        RejectFlagLikeValues(replayFiles, logLevels, ref usageError);
 
         var replayFile = replayFiles.Count > 0 ? replayFiles[^1] : null;
         if (replayFile is { Length: 0 })
@@ -117,15 +141,7 @@ internal sealed record ScriptedCommandsCliOptions(
         if (interactive && replayFile is null)
             usageError ??= $"{InteractiveFlag} needs {ReplayFlag} <file>";
 
-        Microsoft.Extensions.Logging.LogLevel? logLevel = null;
-        if (logLevels.Count > 0)
-        {
-            if (Enum.TryParse<Microsoft.Extensions.Logging.LogLevel>(logLevels[^1], ignoreCase: true, out var parsed)
-                && Enum.IsDefined(parsed) && !int.TryParse(logLevels[^1], out _))
-                logLevel = parsed;
-            else
-                usageError ??= $"{LogLevelFlag} '{logLevels[^1]}' is none of Trace, Debug, Information, Warning, Error, Critical, None";
-        }
+        var logLevel = ParseLogLevel(logLevels, ref usageError);
 
         return new ScriptedCommandsCliOptions(boot, dirs, disabled, strict, settings, mounts, crewDirs)
         {

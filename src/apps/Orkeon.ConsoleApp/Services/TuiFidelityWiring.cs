@@ -139,6 +139,44 @@ internal static class TuiFidelityWiring
         };
     }
 
+    private static void WireApprovals(TuiIntegration integration, IToolApprovalWatch? approvals)
+    {
+        if (approvals is null) return;
+        integration.PendingApprovals = () => approvals.Pending;
+        integration.AnswerApproval = approvals.TryAnswer;
+        approvals.PendingChanged += (_, _) => integration.NotifyApprovalsChanged();
+    }
+
+    private static void WirePermissionMode(TuiIntegration integration, ISessionBufferService? buffer)
+    {
+        if (buffer is null) return;
+        integration.PermissionMode = () => buffer.GetState(DefaultModeStateKey) ?? "default";
+        integration.CyclePermissionMode = () =>
+        {
+            var current = buffer.GetState(DefaultModeStateKey) ?? "default";
+            var idx = Array.IndexOf(ModeCycle, current);
+            buffer.SetState(DefaultModeStateKey, ModeCycle[(idx + 1 + ModeCycle.Length) % ModeCycle.Length]);
+        };
+    }
+
+    private static void WireContextPercent(
+        TuiIntegration integration, IServiceProvider services, ISessionBufferService? buffer, CommandDispatchService dispatch)
+    {
+        // The window token_budget reports: unset is the session's default. A new prompt shows the last figure until its first call answers.
+        var contextWindow = services.GetService<IOptions<CliSessionOptions>>()?.Value.ContextWindowTokens ?? CliSessionOptions.DefaultContextWindowTokens;
+        var contextTokens = 0L;
+        var sessionHeldMessages = false;
+        integration.ContextPercent = () =>
+        {
+            // A session emptied (a /clear that resets it) no longer holds what the figure measured.
+            var sessionHoldsMessages = buffer?.MessageCount > 0;
+            if (sessionHeldMessages && !sessionHoldsMessages) contextTokens = 0;
+            sessionHeldMessages = sessionHoldsMessages;
+            if (dispatch.PromptTurnContextTokens() is > 0 and var latest) contextTokens = latest;
+            return ContextPercent(contextTokens, contextWindow);
+        };
+    }
+
     /// <summary>
     /// Fills the delegate bag from the built provider. Every closure is defensive:
     /// a missing service leaves its delegate null and the view omits the readout.
@@ -151,23 +189,8 @@ internal static class TuiFidelityWiring
         var dispatch = services.GetService<CommandDispatchService>();
         integration.ToolActivity = services.GetService<Orkeon.Cli.Abstractions.Console.ToolActivityFeed>();
         var approvals = services.GetService<IToolApprovalWatch>();
-        if (approvals is not null)
-        {
-            integration.PendingApprovals = () => approvals.Pending;
-            integration.AnswerApproval = approvals.TryAnswer;
-            approvals.PendingChanged += (_, _) => integration.NotifyApprovalsChanged();
-        }
-
-        if (buffer is not null)
-        {
-            integration.PermissionMode = () => buffer.GetState(DefaultModeStateKey) ?? "default";
-            integration.CyclePermissionMode = () =>
-            {
-                var current = buffer.GetState(DefaultModeStateKey) ?? "default";
-                var idx = Array.IndexOf(ModeCycle, current);
-                buffer.SetState(DefaultModeStateKey, ModeCycle[(idx + 1 + ModeCycle.Length) % ModeCycle.Length]);
-            };
-        }
+        WireApprovals(integration, approvals);
+        WirePermissionMode(integration, buffer);
 
         integration.ModelWitness = BuildModelWitnessReader(
             buffer,
@@ -178,21 +201,7 @@ internal static class TuiFidelityWiring
             integration.SessionTokens = () => cost.GetReport().TotalTokens;
 
         if (dispatch is not null)
-        {
-            // The window token_budget reports: unset is the session's default. A new prompt shows the last figure until its first call answers.
-            var contextWindow = services.GetService<IOptions<CliSessionOptions>>()?.Value.ContextWindowTokens ?? CliSessionOptions.DefaultContextWindowTokens;
-            var contextTokens = 0L;
-            var sessionHeldMessages = false;
-            integration.ContextPercent = () =>
-            {
-                // A session emptied (a /clear that resets it) no longer holds what the figure measured.
-                var sessionHoldsMessages = buffer?.MessageCount > 0;
-                if (sessionHeldMessages && !sessionHoldsMessages) contextTokens = 0;
-                sessionHeldMessages = sessionHoldsMessages;
-                if (dispatch.PromptTurnContextTokens() is > 0 and var latest) contextTokens = latest;
-                return ContextPercent(contextTokens, contextWindow);
-            };
-        }
+            WireContextPercent(integration, services, buffer, dispatch);
 
         if (dispatch is not null)
         {
@@ -383,11 +392,13 @@ internal static class TuiFidelityWiring
                 // A live progress snapshot replaces the static intent while it runs —
                 // "pass 2/3 · compacting" says more than the launch wording.
                 // A question the task waits on says more than either: the task stopped until it is answered (#194).
-                var description = approvals?.FirstOrDefault(a => a.Ticket == v.ticket) is { } asked
-                    ? $"? waits for approval of {asked.ToolName}"
-                    : v.progress is { } p
-                        ? ComposeProgressDescription(p)
-                        : v.intent ?? "";
+                string description;
+                if (approvals?.FirstOrDefault(a => a.Ticket == v.ticket) is { } asked)
+                    description = $"? waits for approval of {asked.ToolName}";
+                else if (v.progress is { } p)
+                    description = ComposeProgressDescription(p);
+                else
+                    description = v.intent ?? "";
                 return new AgentRowInfo
                 {
                     Name = RowName(v),

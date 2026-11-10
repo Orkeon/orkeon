@@ -232,9 +232,6 @@ internal static partial class BuiltInToolTypings
     [ThreadStatic]
     private static NullabilityInfoContext? t_nullability;
 
-    /// <summary>The TypeScript type of a CLR property type, by the JSON shape it reads.</summary>
-    private static string TypeOf(Type clr) => TypeOf(clr, expand: false, []);
-
     /// <summary>
     /// <paramref name="expand"/> renders a record type by its members - the elements of an array, a member
     /// of a tool's result, and whatever those members hold - where a bare input property keeps
@@ -256,26 +253,8 @@ internal static partial class BuiltInToolTypings
         {
             try
             {
-                var members = type.GetProperties(BindingFlags.Public | BindingFlags.Instance)
-                    .Where(p => p.GetMethod is { IsPublic: true } && p.GetIndexParameters().Length == 0
-                        && p.GetCustomAttribute<JsonIgnoreAttribute>() is not { Condition: JsonIgnoreCondition.Always })
-                    .Select(p => (Property: p, Name: SerializedName(p)))
-                    .OrderBy(m => m.Name, StringComparer.Ordinal)
-                    .ToList();
-                if (members.Count > 0)
-                {
-                    // A member's [FieldSchema] rules as at the top level (#210): its Enum is the literal union,
-                    // its IsRequired the optionality; the schema the model reads and the typings say the same.
-                    return "{ " + string.Join(" ", members.Select(m =>
-                    {
-                        var schema = m.Property.GetCustomAttribute<FieldSchemaAttribute>();
-                        var required = schema?.Required ?? ToolSchemaGenerator.InferRequired(m.Property);
-                        var memberType = schema?.Enum is { Length: > 0 } choices
-                            ? string.Join(" | ", choices.Select(c => JsonSerializer.Serialize(c)))
-                            : TypeOf(m.Property.PropertyType, expand: true, path);
-                        return $"readonly {PropertyName(m.Name)}{(required ? "" : "?")}: {memberType};";
-                    })) + " }";
-                }
+                if (RecordType(type, path) is { } record)
+                    return record;
             }
             finally
             {
@@ -283,6 +262,31 @@ internal static partial class BuiltInToolTypings
             }
         }
         return ScalarType(schemaType);
+    }
+
+    /// <summary>A record type by its members, or null when it has none.</summary>
+    private static string? RecordType(Type type, HashSet<Type> path)
+    {
+        var members = type.GetProperties(BindingFlags.Public | BindingFlags.Instance)
+            .Where(p => p.GetMethod is { IsPublic: true } && p.GetIndexParameters().Length == 0
+                && p.GetCustomAttribute<JsonIgnoreAttribute>() is not { Condition: JsonIgnoreCondition.Always })
+            .Select(p => (Property: p, Name: SerializedName(p)))
+            .OrderBy(m => m.Name, StringComparer.Ordinal)
+            .ToList();
+        if (members.Count == 0)
+            return null;
+
+        // A member's [FieldSchema] rules as at the top level (#210): its Enum is the literal union,
+        // its IsRequired the optionality; the schema the model reads and the typings say the same.
+        return "{ " + string.Join(" ", members.Select(m =>
+        {
+            var schema = m.Property.GetCustomAttribute<FieldSchemaAttribute>();
+            var required = schema?.Required ?? ToolSchemaGenerator.InferRequired(m.Property);
+            var memberType = schema?.Enum is { Length: > 0 } choices
+                ? string.Join(" | ", choices.Select(c => JsonSerializer.Serialize(c)))
+                : TypeOf(m.Property.PropertyType, expand: true, path);
+            return $"readonly {PropertyName(m.Name)}{(required ? "" : "?")}: {memberType};";
+        })) + " }";
     }
 
     /// <summary>

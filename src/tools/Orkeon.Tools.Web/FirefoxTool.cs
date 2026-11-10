@@ -394,6 +394,11 @@ public sealed partial class FirefoxTool : ToolBase<FirefoxRequest, FirefoxRespon
         if (!string.IsNullOrWhiteSpace(request.NodeId) && !PageSnapshot.TryParseId(request.NodeId.Trim(), out _, out _))
             return $"'{request.NodeId}' is not a node id: node ids come from snapshot and find (p1#12)";
 
+        return ValidateAction(request, action);
+    }
+
+    private static string? ValidateAction(FirefoxRequest request, string action)
+    {
         return action switch
         {
             Navigate => InvalidUrl(request.Url),
@@ -401,17 +406,27 @@ public sealed partial class FirefoxTool : ToolBase<FirefoxRequest, FirefoxRespon
             SwitchTab => Missing(request.Tab, "tab", action),
             Click => Missing(request.NodeId, "node_id", action),
             TypeText => Missing(request.NodeId, "node_id", action) ?? (request.Text is null ? "text is required for action 'type'" : null),
-            Press => string.IsNullOrEmpty(request.Key)
-                ? "key is required for action 'press'"
-                : FirefoxKeys.TryParse(request.Key, out _) ? null : $"'{request.Key}' is not a key. {FirefoxKeys.Names}",
+            Press => ValidateKey(request.Key),
             Evaluate => Missing(request.Script, "script", action),
             Search => Missing(request.Query, "query", action),
             Screenshot => Missing(request.SaveToPath, "save_to_path", action),
-            Find => string.IsNullOrWhiteSpace(request.Kind) || s_kinds.ContainsKey(request.Kind.Trim())
-                ? null
-                : $"Unsupported kind: {request.Kind}. Supported kinds: section, link, control",
+            Find => ValidateKind(request.Kind),
             _ => null,
         };
+    }
+
+    private static string? ValidateKey(string? key)
+    {
+        if (string.IsNullOrEmpty(key))
+            return "key is required for action 'press'";
+        return FirefoxKeys.TryParse(key, out _) ? null : $"'{key}' is not a key. {FirefoxKeys.Names}";
+    }
+
+    private static string? ValidateKind(string? kind)
+    {
+        if (string.IsNullOrWhiteSpace(kind) || s_kinds.ContainsKey(kind.Trim()))
+            return null;
+        return $"Unsupported kind: {kind}. Supported kinds: section, link, control";
     }
 
     /// <inheritdoc />
@@ -705,11 +720,13 @@ public sealed partial class FirefoxTool : ToolBase<FirefoxRequest, FirefoxRespon
         foreach (var candidate in found.Results.Where(scored => scored.Chunk.Metadata.ContainsKey(ElementKey)).OrderByDescending(scored => scored.Score))
         {
             var element = candidate.Chunk.Metadata[ElementKey];
-            var nodeId = element == PageItself
-                ? page.RootId
-                : int.TryParse(element, NumberStyles.None, CultureInfo.InvariantCulture, out var index) && index < page.Outline.Elements.Count
-                    ? PageOutlineMapper.NodeId(page.Outline.Path, index)
-                    : null;
+            string? nodeId;
+            if (element == PageItself)
+                nodeId = page.RootId;
+            else if (int.TryParse(element, NumberStyles.None, CultureInfo.InvariantCulture, out var index) && index < page.Outline.Elements.Count)
+                nodeId = PageOutlineMapper.NodeId(page.Outline.Path, index);
+            else
+                nodeId = null;
             if (nodeId is null || !seen.Add(nodeId))
                 continue;
 

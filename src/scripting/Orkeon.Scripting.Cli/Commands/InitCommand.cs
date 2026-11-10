@@ -148,35 +148,40 @@ internal static class InitCommand
         }
     }
 
-    private static async Task<int> ExecuteCoreAsync(IRunnerConsole console, InitCommandOptions options, CancellationToken ct)
+    /// <summary>The plan from the flags or the wizard; the exit code (with the message written) when none can be made.</summary>
+    private static async Task<(InitPlan? Plan, int Failure)> ObtainPlanAsync(IRunnerConsole console, InitCommandOptions options)
     {
-        InitPlan? plan;
         if (!string.IsNullOrWhiteSpace(options.Provider))
         {
-            if (!TryBuildPlanFromFlags(options, out plan, out var flagError))
-            {
-                await console.ErrorOutput.WriteLineAsync($"orkeon init: {flagError}").ConfigureAwait(false);
-                return Program.ExitScriptError;
-            }
-        }
-        else
-        {
-            var input = options.InputOverride;
-            if (input is null && console.IsInputRedirected)
-            {
-                await console.ErrorOutput.WriteLineAsync(
-                    "orkeon init: stdin is not interactive — pass --provider " +
-                    "(ollama | docker-model-runner | openai | custom | none) and related flags.").ConfigureAwait(false);
-                return Program.ExitScriptError;
-            }
+            if (TryBuildPlanFromFlags(options, out var flagPlan, out var flagError))
+                return (flagPlan, 0);
 
-            plan = RunWizard(input ?? console.Input, console.Output, options);
-            if (plan is null)
-            {
-                await console.ErrorOutput.WriteLineAsync("orkeon init: aborted (end of input).").ConfigureAwait(false);
-                return Program.ExitScriptError;
-            }
+            await console.ErrorOutput.WriteLineAsync($"orkeon init: {flagError}").ConfigureAwait(false);
+            return (null, Program.ExitScriptError);
         }
+
+        var input = options.InputOverride;
+        if (input is null && console.IsInputRedirected)
+        {
+            await console.ErrorOutput.WriteLineAsync(
+                "orkeon init: stdin is not interactive — pass --provider " +
+                "(ollama | docker-model-runner | openai | custom | none) and related flags.").ConfigureAwait(false);
+            return (null, Program.ExitScriptError);
+        }
+
+        var wizardPlan = RunWizard(input ?? console.Input, console.Output, options);
+        if (wizardPlan is not null)
+            return (wizardPlan, 0);
+
+        await console.ErrorOutput.WriteLineAsync("orkeon init: aborted (end of input).").ConfigureAwait(false);
+        return (null, Program.ExitScriptError);
+    }
+
+    private static async Task<int> ExecuteCoreAsync(IRunnerConsole console, InitCommandOptions options, CancellationToken ct)
+    {
+        var (plan, failure) = await ObtainPlanAsync(console, options).ConfigureAwait(false);
+        if (plan is null)
+            return failure;
 
         var reading = ReadAddress(plan);
         var accordError = AccordError(plan, reading);

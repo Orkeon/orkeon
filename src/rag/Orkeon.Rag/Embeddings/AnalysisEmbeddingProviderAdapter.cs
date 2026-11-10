@@ -53,9 +53,12 @@ public sealed class AnalysisEmbeddingProviderAdapter : IEmbeddingProvider
         ArgumentNullException.ThrowIfNull(inner);
         _inner = inner;
         Name = string.IsNullOrWhiteSpace(name) ? inner.GetType().Name : name;
-        Model = !string.IsNullOrWhiteSpace(model) ? model
-            : !string.IsNullOrWhiteSpace(inner.ModelName) ? inner.ModelName
-            : DefaultModel;
+        if (!string.IsNullOrWhiteSpace(model))
+            Model = model;
+        else if (!string.IsNullOrWhiteSpace(inner.ModelName))
+            Model = inner.ModelName;
+        else
+            Model = DefaultModel;
     }
 
     /// <inheritdoc />

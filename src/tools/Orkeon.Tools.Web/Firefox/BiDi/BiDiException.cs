@@ -1,4 +1,4 @@
-#pragma warning disable CA1032, CA1064 // internal to the tool, one domain constructor: a code and its message
+#pragma warning disable CA1032 // one domain constructor: a code and its message
 
 using Orkeon.Tools.Abstractions.Base;
 
@@ -8,7 +8,7 @@ namespace Orkeon.Tools.Web.Firefox.BiDi;
 /// A command the browser refused, did not answer, or could not receive. An expected tool error: the
 /// agent reads its code and message, not a stack trace.
 /// </summary>
-internal sealed class BiDiException : Exception, IExpectedToolError
+public sealed class BiDiException : Exception, IExpectedToolError
 {
     /// <summary>Code of a command sent on a closed connection, or pending when it closed.</summary>
     public const string ConnectionClosed = "connection closed";
@@ -22,6 +22,7 @@ internal sealed class BiDiException : Exception, IExpectedToolError
     /// <summary>Code the browser gives a command that names a tab or frame it no longer holds.</summary>
     public const string NoSuchFrame = "no such frame";
 
+    /// <summary>Creates the error of a command: its WebDriver code, the browser message and the cause.</summary>
     public BiDiException(string code, string message, Exception? innerException = null)
         : base(string.IsNullOrEmpty(message) ? code : $"{code}: {message}", innerException)
     {

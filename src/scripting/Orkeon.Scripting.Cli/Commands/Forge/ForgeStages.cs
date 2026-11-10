@@ -195,17 +195,7 @@ internal sealed class BriefStage : IForgeStageRunner
                 : await _channel.ReadFoldersAsync(proposal, cancellationToken).ConfigureAwait(false)
                   ?? throw new OperationCanceledException("The user channel closed at the folders step.");
 
-            var errors = new List<string>(ForgeFolders.Validate(answer));
-            foreach (var folder in answer)
-            {
-                if (folder.Directory is not { Length: > 0 } directory || !Path.IsPathFullyQualified(directory))
-                    continue;
-
-                if (!Directory.Exists(directory))
-                    errors.Add($"'{folder.Path}' is bound to a directory that does not exist.");
-                else if (TrialCannotRead(folder, directory))
-                    errors.Add(OutsideTheTrialMessage(folder, session));
-            }
+            var errors = FolderErrors(session, answer);
 
             if (errors.Count > 0)
             {
@@ -223,6 +213,24 @@ internal sealed class BriefStage : IForgeStageRunner
                 await FillFoldersAsync(session, events, confirmed, list, held, cancellationToken).ConfigureAwait(false);
             return;
         }
+    }
+
+    /// <summary>The rule breaks of a confirmed folder list, then the bound directories that are missing or that the trial could not read.</summary>
+    private List<string> FolderErrors(ForgeSession session, IReadOnlyList<ForgeFolder> answer)
+    {
+        var errors = new List<string>(ForgeFolders.Validate(answer));
+        foreach (var folder in answer)
+        {
+            if (folder.Directory is not { Length: > 0 } directory || !Path.IsPathFullyQualified(directory))
+                continue;
+
+            if (!Directory.Exists(directory))
+                errors.Add($"'{folder.Path}' is bound to a directory that does not exist.");
+            else if (TrialCannotRead(folder, directory))
+                errors.Add(OutsideTheTrialMessage(folder, session));
+        }
+
+        return errors;
     }
 
     private static void EmitBriefReady(ForgeEventWriter events, ForgeBrief brief, IReadOnlyList<ForgeFolder> held) =>

@@ -552,7 +552,7 @@ public sealed partial class JsLlmFacade
         // target shape, and sent as a json_schema constraint when the provider validates one;
         // (2) response_format defaults to json_object otherwise (unless the caller explicitly asked
         // for text), so OpenAI-compatible providers (DeepSeek/OpenAI/Grok/...) emit raw JSON; (3) the
-        // reply is stripped of ```json fences before parsing, tolerating models that wrap the object
+        // reply is stripped of markdown json fences before parsing, tolerating models that wrap the object
         // anyway. Without these, any prose/markdown reply threw and aborted the whole crew.
         var instruction = ExtractInstruction(schema);
         var system = ResolveSystem(options);
@@ -1217,68 +1217,12 @@ public sealed partial class JsLlmFacade
             if (_provider is null)
                 return new { output = $"<undefined-llm:act:{session.Prompt}>", iterations = 0 };
 
-            var messages = session.Messages;
             for (var i = 0; i < session.MaxIterations; i++)
             {
                 completedIterations = i;
-                _ct.ThrowIfCancellationRequested();
-                session.ThrowIfAborted();
-                // Each completion of a background child is one user turn, delivered once.
-                if (_background is not null)
-                    messages.AddRange(_background.Drain().Select(m => new LlmMessage { Role = "user", Content = m }));
-                // Pre-flight gate: refuse to pay for another LLM turn once any budget
-                // dimension is spent. Throws BudgetExhaustedException (surfaced typed to the
-                // host via JsCrew.TryUnwrapTypedHostException), except a spent token budget,
-                // which ends the act with one last call that may call no tool (#218).
-                try
-                {
-                    _budget?.ThrowIfExhausted();
-                }
-                catch (Orkeon.Domain.Autonomous.BudgetExhaustedException spent)
-                    when (spent.Dimension == Orkeon.Domain.Autonomous.BudgetDimension.Tokens)
-                {
-                    return await WrapUpAsync(session, messages, spent, i).ConfigureAwait(false);
-                }
-                using var activity = StartChatActivity("act");
-                activity?.SetTag("orkeon.llm.act.iteration", i);
-
-                var cfg = session.ToolSchemas is null
-                    ? session.Config
-                    : session.Config with { Tools = session.ToolSchemas, ToolMode = ToolCallMode.Auto };
-                var resp = await SendChatAsync(messages.ToArray(), cfg, session).ConfigureAwait(false);
-                RecordCallTokens(resp, session);
-
-                var (calls, assistantTurn) = ReadToolCalls(resp);
-                // A token budget this very call spent runs none of the tools it asked for: the act
-                // ends with the wrap-up, whatever iteration this is (#218).
-                if (assistantTurn is not null && TokenBudgetSpent() is { } spentByThisCall)
-                    return await WrapUpAsync(session, messages, spentByThisCall, i + 1).ConfigureAwait(false);
-                if (assistantTurn is null)
-                {
-                    var answer = RenderAnswer(resp);
-                    if (!session.WaitsForChildren || _background is not { HasPendingWork: true })
-                    {
-                        messages.Add(new LlmMessage { Role = "assistant", Content = answer });
-                        KeepTranscript(messages, interrupted: false);
-                        return new { output = answer, iterations = i + 1 };
-                    }
-
-                    // The model answered while children are out: wait for their next completion
-                    // (or for the last of them to settle) and take another turn.
-                    messages.Add(new LlmMessage { Role = "assistant", Content = answer });
-                    await _background.WaitForCompletionAsync(_ct).ConfigureAwait(false);
-                    continue;
-                }
-
-                activity?.SetTag("orkeon.llm.act.tool", string.Join(",", calls.Select(c => c.ToolName)));
-
-                // The assistant turn that asked, then one tool turn per call, in order: the
-                // provider replays them in its own protocol (OpenAI tool_calls and tool messages,
-                // Anthropic tool_use and tool_result blocks). Every call gets its answer, a refusal
-                // or an error included, since a provider rejects a call left unanswered. The tool
-                // schemas stay in `cfg` every iteration, so the model can chain further calls or answer.
-                messages.Add(assistantTurn);
-                await RunToolCallsAsync(session, calls, messages, activity).ConfigureAwait(false);
+                var result = await RunActIterationAsync(session, i).ConfigureAwait(false);
+                if (result is not null)
+                    return result;
             }
         }
         catch (OperationCanceledException) when (IsLocalInterrupt)
@@ -1306,6 +1250,82 @@ public sealed partial class JsLlmFacade
             iterations = session.MaxIterations,
             exhausted = true,
         };
+    }
+
+    /// <summary>
+    /// One turn of the act loop: the gates, one chat call and the tool calls it returns. Returns the
+    /// act's result when this turn ends it, or null when the loop goes on with another turn.
+    /// </summary>
+    private async Task<object?> RunActIterationAsync(ActSession session, int i)
+    {
+        var messages = session.Messages;
+        _ct.ThrowIfCancellationRequested();
+        session.ThrowIfAborted();
+        // Each completion of a background child is one user turn, delivered once.
+        if (_background is not null)
+            messages.AddRange(_background.Drain().Select(m => new LlmMessage { Role = "user", Content = m }));
+        // Pre-flight gate: refuse to pay for another LLM turn once any budget
+        // dimension is spent. Throws BudgetExhaustedException (surfaced typed to the
+        // host via JsCrew.TryUnwrapTypedHostException), except a spent token budget,
+        // which ends the act with one last call that may call no tool (#218).
+        try
+        {
+            _budget?.ThrowIfExhausted();
+        }
+        catch (Orkeon.Domain.Autonomous.BudgetExhaustedException spent)
+            when (spent.Dimension == Orkeon.Domain.Autonomous.BudgetDimension.Tokens)
+        {
+            return await WrapUpAsync(session, messages, spent, i).ConfigureAwait(false);
+        }
+        using var activity = StartChatActivity("act");
+        activity?.SetTag("orkeon.llm.act.iteration", i);
+
+        var cfg = session.ToolSchemas is null
+            ? session.Config
+            : session.Config with { Tools = session.ToolSchemas, ToolMode = ToolCallMode.Auto };
+        var resp = await SendChatAsync(messages.ToArray(), cfg, session).ConfigureAwait(false);
+        RecordCallTokens(resp, session);
+
+        var (calls, assistantTurn) = ReadToolCalls(resp);
+        // A token budget this very call spent runs none of the tools it asked for: the act
+        // ends with the wrap-up, whatever iteration this is (#218).
+        if (assistantTurn is not null && TokenBudgetSpent() is { } spentByThisCall)
+            return await WrapUpAsync(session, messages, spentByThisCall, i + 1).ConfigureAwait(false);
+        if (assistantTurn is null)
+            return await AnswerOrWaitAsync(session, resp, i).ConfigureAwait(false);
+
+        activity?.SetTag("orkeon.llm.act.tool", string.Join(",", calls.Select(c => c.ToolName)));
+
+        // The assistant turn that asked, then one tool turn per call, in order: the
+        // provider replays them in its own protocol (OpenAI tool_calls and tool messages,
+        // Anthropic tool_use and tool_result blocks). Every call gets its answer, a refusal
+        // or an error included, since a provider rejects a call left unanswered. The tool
+        // schemas stay in `cfg` every iteration, so the model can chain further calls or answer.
+        messages.Add(assistantTurn);
+        await RunToolCallsAsync(session, calls, messages, activity).ConfigureAwait(false);
+        return null;
+    }
+
+    /// <summary>
+    /// The model answered without a tool call: the act ends with that answer, unless background children
+    /// are still out, in which case the answer is kept, their next completion awaited, and null returned
+    /// so the loop takes another turn.
+    /// </summary>
+    private async Task<object?> AnswerOrWaitAsync(ActSession session, LlmResponse resp, int i)
+    {
+        var messages = session.Messages;
+        var answer = RenderAnswer(resp);
+        messages.Add(new LlmMessage { Role = "assistant", Content = answer });
+        if (!session.WaitsForChildren || _background is not { HasPendingWork: true })
+        {
+            KeepTranscript(messages, interrupted: false);
+            return new { output = answer, iterations = i + 1 };
+        }
+
+        // The model answered while children are out: wait for their next completion
+        // (or for the last of them to settle) and take another turn.
+        await _background.WaitForCompletionAsync(_ct).ConfigureAwait(false);
+        return null;
     }
 
     /// <summary>
@@ -1864,48 +1884,59 @@ public sealed partial class JsLlmFacade
         // held until the stream ends, for the sink and for the script's callback alike.
         var dlp = _toolCallDlp ?? (_deltaSink as Orkeon.Application.Crew.ToolCallDlpDeltaSink)?.Dlp;
         var held = dlp is null ? null : new Orkeon.Application.Crew.ToolCallDeltaHold();
-        void SendToolCall(ToolCallDelta fragment)
-        {
-            turn?.OnToolCallDelta(fragment);
-            session.OfferToolCallDelta(fragment);
-        }
-
         await foreach (var ev in provider.ChatStreamingAsync(messages, cfg, _ct).ConfigureAwait(false))
         {
-            if (ev.Kind == LlmStreamEventKind.ToolCallDelta && ev.ToolCall is { } fragment)
-            {
-                session.ThrowIfAborted();
-                if (held is null)
-                    SendToolCall(fragment);
-                else
-                    held.Add(fragment);
-            }
-            else if (ev.Kind == LlmStreamEventKind.ContentDelta && !string.IsNullOrEmpty(ev.Delta))
-            {
-                // An abandoned run stops mid-stream: leaving the enumeration disposes it, and
-                // with it the provider's HTTP read.
-                session.ThrowIfAborted();
-                if (turn is not null)
-                {
-                    turn.OnDelta(ev.Delta);
-                    sankDeltas = true;
-                }
-                session.OfferDelta(ev.Delta);
-            }
-            else if (ev.Kind == LlmStreamEventKind.Completed)
-            {
+            if (ev.Kind == LlmStreamEventKind.Completed)
                 final = ev.FinalResponse;
-            }
+            else
+                sankDeltas |= HandleStreamDelta(ev, session, turn, held);
         }
         if (held is not null)
         {
             foreach (var redacted in await held.RedactAsync(dlp!, _logger, _ct).ConfigureAwait(false))
-                SendToolCall(redacted);
+                SendToolCall(redacted, turn, session);
         }
 
         if (sankDeltas)
             turn!.OnTurnCompleted();
         return final ?? new LlmResponse { Content = "" };
+    }
+
+    private static void SendToolCall(ToolCallDelta fragment, Orkeon.Application.Interfaces.Ports.ILlmDeltaSink? turn, ActSession session)
+    {
+        turn?.OnToolCallDelta(fragment);
+        session.OfferToolCallDelta(fragment);
+    }
+
+    /// <summary>
+    /// Routes one streamed delta event to the turn sink and the session. Returns true when a content
+    /// delta was rendered, so the turn terminator is emitted.
+    /// </summary>
+    private static bool HandleStreamDelta(
+        LlmStreamEvent ev,
+        ActSession session,
+        Orkeon.Application.Interfaces.Ports.ILlmDeltaSink? turn,
+        Orkeon.Application.Crew.ToolCallDeltaHold? held)
+    {
+        if (ev.Kind == LlmStreamEventKind.ToolCallDelta && ev.ToolCall is { } fragment)
+        {
+            session.ThrowIfAborted();
+            if (held is null)
+                SendToolCall(fragment, turn, session);
+            else
+                held.Add(fragment);
+            return false;
+        }
+
+        if (ev.Kind != LlmStreamEventKind.ContentDelta || string.IsNullOrEmpty(ev.Delta))
+            return false;
+
+        // An abandoned run stops mid-stream: leaving the enumeration disposes it, and
+        // with it the provider's HTTP read.
+        session.ThrowIfAborted();
+        turn?.OnDelta(ev.Delta);
+        session.OfferDelta(ev.Delta);
+        return turn is not null;
     }
 
     /// <summary>

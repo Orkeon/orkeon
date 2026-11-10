@@ -501,11 +501,7 @@ internal sealed partial class FirefoxSession : IAsyncDisposable
 
         if (method == "browsingContext.contextCreated")
         {
-            // A link of one of the session's tabs opened a tab of its own: the agent follows it, as a
-            // user's eyes would. A tab another session, or the user, opened is not the agent's.
-            var opener = parameters["originalOpener"] is JsonValue described && described.TryGetValue<string>(out var by) ? by : null;
-            if (parameters["parent"] is null && opener is not null && IsOwn(opener))
-                AddTab(context, drive: true);
+            OnContextCreated(context, parameters);
             return;
         }
 
@@ -532,6 +528,20 @@ internal sealed partial class FirefoxSession : IAsyncDisposable
                 return;
         }
 
+        OnNavigationEvent(method, parameters);
+    }
+
+    private void OnContextCreated(string context, JsonObject parameters)
+    {
+        // A link of one of the session's tabs opened a tab of its own: the agent follows it, as a
+        // user's eyes would. A tab another session, or the user, opened is not the agent's.
+        var opener = parameters["originalOpener"] is JsonValue described && described.TryGetValue<string>(out var by) ? by : null;
+        if (parameters["parent"] is null && opener is not null && IsOwn(opener))
+            AddTab(context, drive: true);
+    }
+
+    private void OnNavigationEvent(string method, JsonObject parameters)
+    {
         var navigation = parameters["navigation"] is JsonValue numbered && numbered.TryGetValue<string>(out var number) ? number : null;
         switch (method)
         {

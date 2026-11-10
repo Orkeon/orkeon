@@ -810,6 +810,12 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
             };
         }
 
+        return BuildRunResponse(request, result, outboundReplacements);
+    }
+
+    private ShellCommandResponse BuildRunResponse(
+        ShellCommandRequest request, ShellRunResult result, IReadOnlyList<(string PhysicalBase, string VirtualPrefix)> outboundReplacements)
+    {
         if (result.TimedOut)
         {
             LogCommandTimedOut(request.Command, request.TimeoutSeconds);
@@ -1276,11 +1282,11 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
     private Dictionary<string, (string Root, string WindowsBase)> WindowsBasesOf(IReadOnlyList<MountInfo> mounts)
     {
         var bases = new Dictionary<string, (string Root, string WindowsBase)>(StringComparer.Ordinal);
-        foreach (var mount in mounts)
+        foreach (var virtualPath in mounts.Select(mount => mount.VirtualPath))
         {
-            var root = _fileSystem.ResolveAndValidate(mount.VirtualPath, FileAccessRights.None).ResolvedPath;
-            if (root is not null && WindowsBaseOf(mount.VirtualPath, root) is { } windowsBase)
-                bases[mount.VirtualPath.TrimEnd('/')] = (root, windowsBase);
+            var root = _fileSystem.ResolveAndValidate(virtualPath, FileAccessRights.None).ResolvedPath;
+            if (root is not null && WindowsBaseOf(virtualPath, root) is { } windowsBase)
+                bases[virtualPath.TrimEnd('/')] = (root, windowsBase);
         }
 
         return bases;
@@ -1452,20 +1458,30 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
             sb.Append(virtualPrefix);
             var limit = quotedUntil >= 0 ? quotedUntil : ClosingQuoteOf(output, index, end);
             index = end;
-            while (index < output.Length
-                   && (limit >= 0 ? index < limit && output[index] != ';' : !IsPathDelimiter(output[index])))
-            {
-                var c = output[index];
-                sb.Append(c == '\\' ? '/' : c);
-                index++;
-                if (limit >= 0 && !ContinuesPathToken(c))
-                    TryRewriteTokenAt(sb, output, replacements, ref index, limit);
-            }
-
+            CopyTokenRemainder(sb, output, replacements, ref index, limit);
             return true;
         }
 
         return false;
+    }
+
+    /// <summary>Appends the rest of a rewritten token with its separators normalized, rewriting further bases inside a quoted span.</summary>
+    private static void CopyTokenRemainder(
+        System.Text.StringBuilder sb,
+        string output,
+        IReadOnlyList<(string PhysicalBase, string VirtualPrefix)> replacements,
+        ref int index,
+        int limit)
+    {
+        while (index < output.Length
+               && (limit >= 0 ? index < limit && output[index] != ';' : !IsPathDelimiter(output[index])))
+        {
+            var c = output[index];
+            sb.Append(c == '\\' ? '/' : c);
+            index++;
+            if (limit >= 0 && !ContinuesPathToken(c))
+                TryRewriteTokenAt(sb, output, replacements, ref index, limit);
+        }
     }
 
     /// <summary>

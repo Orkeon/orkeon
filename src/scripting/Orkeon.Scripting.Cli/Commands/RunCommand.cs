@@ -380,6 +380,35 @@ internal static partial class RunCommand
         }
     }
 
+    /// <summary>A crew directory: the layout diagnostic when it is not one, else the shared one-shot runner.</summary>
+    private static async Task<int> RouteCrewDirectoryAsync(IRunnerConsole console, RunCommandOptions options)
+    {
+        var inspection = CrewDirectoryLayout.Inspect(options.ScriptPath);
+        if (!inspection.IsCrewDirectory)
+        {
+            await console.ErrorOutput.WriteLineAsync($"orkeon run: {inspection.Error}").ConfigureAwait(false);
+            return Program.ExitScriptError;
+        }
+
+        // Same shared one-shot runner as a .yaml crew — it owns --validate, the mounts and
+        // the exit codes, so every option behaves identically on a directory and on a file.
+        if (await RefuseTestSwitchAsync(console, options, "a crew directory").ConfigureAwait(false) is { } refusedDirectory)
+            return refusedDirectory;
+        return await RunViaSharedRunnerAsync(console, options).ConfigureAwait(false);
+    }
+
+    /// <summary>A <c>--validate</c> run: routed as a run is (#316), so a handoff-less <c>.ork.ts</c> runs on the scripting host.</summary>
+    private static async Task<int> RouteValidationAsync(IRunnerConsole console, RunCommandOptions options)
+    {
+        if (await RefuseTestSwitchAsync(console, options, "a validation run").ConfigureAwait(false) is { } refusedValidation)
+            return refusedValidation;
+        // Routed as a run is (#316): a .ork.ts whose source never assigns globalThis.crew runs on
+        // the scripting host, so it is not judged by the declarative loader either.
+        var procedural = RunnerExecution.IsScriptedCrewDefinition(options.ScriptPath)
+            && !await DeclaresCrewHandoffAsync(options.ScriptPath).ConfigureAwait(false);
+        return await RunViaSharedRunnerAsync(console, options, procedural).ConfigureAwait(false);
+    }
+
     /// <summary>
     /// Routes everything that is not a procedural <c>.ork.ts</c> script to the shared one-shot
     /// runner - the diagnostic modes, a crew directory, a YAML crew, and a script that hands
@@ -412,33 +441,12 @@ internal static partial class RunCommand
         // OUT-OF-SCOPE: probing the user-supplied crew path; CLI entry runs outside the VFS
         // abstraction (crews live wherever the user invokes us from).
         if (Directory.Exists(options.ScriptPath))
-        {
-            var inspection = CrewDirectoryLayout.Inspect(options.ScriptPath);
-            if (!inspection.IsCrewDirectory)
-            {
-                await console.ErrorOutput.WriteLineAsync($"orkeon run: {inspection.Error}").ConfigureAwait(false);
-                return Program.ExitScriptError;
-            }
-
-            // Same shared one-shot runner as a .yaml crew — it owns --validate, the mounts and
-            // the exit codes, so every option behaves identically on a directory and on a file.
-            if (await RefuseTestSwitchAsync(console, options, "a crew directory").ConfigureAwait(false) is { } refusedDirectory)
-                return refusedDirectory;
-            return await RunViaSharedRunnerAsync(console, options).ConfigureAwait(false);
-        }
+            return await RouteCrewDirectoryAsync(console, options).ConfigureAwait(false);
 
         // --validate is a crew-load concern (YAML or .ork.ts crew definition): the shared runner
         // loads the crew strictly and never probes the LLM, dispatching on the config extension.
         if (options.Validate)
-        {
-            if (await RefuseTestSwitchAsync(console, options, "a validation run").ConfigureAwait(false) is { } refusedValidation)
-                return refusedValidation;
-            // Routed as a run is (#316): a .ork.ts whose source never assigns globalThis.crew runs on
-            // the scripting host, so it is not judged by the declarative loader either.
-            var procedural = RunnerExecution.IsScriptedCrewDefinition(options.ScriptPath)
-                && !await DeclaresCrewHandoffAsync(options.ScriptPath).ConfigureAwait(false);
-            return await RunViaSharedRunnerAsync(console, options, procedural).ConfigureAwait(false);
-        }
+            return await RouteValidationAsync(console, options).ConfigureAwait(false);
 
         // Dispatch by extension BEFORE any script-specific setup (esbuild, /script:ro mount).
         // YAML crews delegate entirely to the shared one-shot runner — the same code path the

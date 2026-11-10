@@ -166,3 +166,12 @@ Orkeon.Tools.Web.FirefoxToolOptions.AllowedProfiles.get -> System.Collections.Ob
 Orkeon.Tools.Web.FirefoxToolOptions.DeniedProfiles.get -> System.Collections.ObjectModel.Collection<string!>!
 Orkeon.Tools.Web.FirefoxToolOptions.SharedInstance.get -> bool
 Orkeon.Tools.Web.FirefoxToolOptions.SharedInstance.set -> void
+Orkeon.Tools.Web.Firefox.BiDi.BiDiException
+Orkeon.Tools.Web.Firefox.BiDi.BiDiException.BiDiException(string! code, string! message, System.Exception? innerException = null) -> void
+Orkeon.Tools.Web.Firefox.BiDi.BiDiException.Code.get -> string!
+const Orkeon.Tools.Web.Firefox.BiDi.BiDiException.ConnectionClosed = "connection closed" -> string!
+const Orkeon.Tools.Web.Firefox.BiDi.BiDiException.NoSuchFrame = "no such frame" -> string!
+const Orkeon.Tools.Web.Firefox.BiDi.BiDiException.NoSuchNode = "no such node" -> string!
+const Orkeon.Tools.Web.Firefox.BiDi.BiDiException.Timeout = "timeout" -> string!
+Orkeon.Tools.Web.Firefox.FirefoxException
+Orkeon.Tools.Web.Firefox.FirefoxException.FirefoxException(string! message, System.Exception? innerException = null) -> void
