@@ -22,35 +22,36 @@ internal static class SseEventReader
     /// <summary>The longest line, in characters, the reader accepts.</summary>
     internal const int MaxLineLength = 16 * 1024 * 1024;
 
-    /// <summary>Reads lines ended by LF, CR or CRLF, none longer than <paramref name="max"/>.</summary>
-    private sealed class BoundedLineReader(TextReader reader, int max)
+    /// <summary>Reads lines ended by LF, CR or CRLF, none longer than the bound.</summary>
+    private sealed class BoundedLineReader
     {
-        private readonly char[] _buffer = new char[4096];
-        private readonly StringBuilder _line = new();
+        private readonly TextReader _reader;
+        private readonly int _max;
+        private readonly char[] _buffer;
+        private readonly StringBuilder _line;
         private int _position;
         private int _length;
         private bool _skipLf;
+
+        public BoundedLineReader(TextReader reader, int max)
+        {
+            _reader = reader;
+            _max = max;
+            _buffer = new char[4096];
+            _line = new StringBuilder();
+        }
 
         public async ValueTask<string?> ReadLineAsync(CancellationToken ct)
         {
             _line.Clear();
             while (true)
             {
-                if (_position == _length)
-                {
-                    _length = await reader.ReadAsync(_buffer.AsMemory(), ct).ConfigureAwait(false);
-                    _position = 0;
-                    if (_length == 0)
-                        return _line.Length > 0 ? _line.ToString() : null;
-                }
+                if (_position == _length && !await FillAsync(ct).ConfigureAwait(false))
+                    return _line.Length > 0 ? _line.ToString() : null;
 
                 var c = _buffer[_position++];
-                if (_skipLf)
-                {
-                    _skipLf = false;
-                    if (c == '\n')
-                        continue;
-                }
+                if (SkipsPendingLf(c))
+                    continue;
 
                 if (c == '\n')
                     return _line.ToString();
@@ -60,10 +61,91 @@ internal static class SseEventReader
                     return _line.ToString();
                 }
 
-                if (_line.Length >= max)
-                    throw new InvalidDataException($"An SSE line is longer than {max} characters: the stream is refused.");
+                if (_line.Length >= _max)
+                    throw new InvalidDataException($"An SSE line is longer than {_max} characters: the stream is refused.");
                 _line.Append(c);
             }
+        }
+
+        /// <summary>Refills the buffer; false at the end of the stream.</summary>
+        private async ValueTask<bool> FillAsync(CancellationToken ct)
+        {
+            _length = await _reader.ReadAsync(_buffer.AsMemory(), ct).ConfigureAwait(false);
+            _position = 0;
+            return _length != 0;
+        }
+
+        /// <summary>True when <paramref name="c"/> is the LF of a CRLF whose CR ended the previous line.</summary>
+        private bool SkipsPendingLf(char c)
+        {
+            if (!_skipLf)
+                return false;
+            _skipLf = false;
+            return c == '\n';
+        }
+    }
+
+    /// <summary>The fields of the event being read.</summary>
+    private sealed class EventBuilder(int maxLength)
+    {
+        private readonly StringBuilder _data = new();
+        private string? _id;
+        private string _eventType = "";
+        private bool _hasData;
+        private int? _retry;
+
+        public bool IsReady => _hasData || _id is not null || _retry is not null;
+
+        public SseEvent Build() =>
+            new(_id, _eventType.Length == 0 ? "message" : _eventType, _data.ToString(), _retry);
+
+        public void Reset()
+        {
+            _id = null;
+            _eventType = "";
+            _data.Clear();
+            _hasData = false;
+            _retry = null;
+        }
+
+        /// <summary>Applies one non-empty line: a comment is skipped, a field is recorded.</summary>
+        public void Apply(string line)
+        {
+            if (line[0] == ':')
+                return;
+
+            var colon = line.IndexOf(':', StringComparison.Ordinal);
+            var field = colon < 0 ? line : line[..colon];
+            var value = colon < 0 ? "" : line[(colon + 1)..];
+            if (value.StartsWith(' '))
+                value = value[1..];
+
+            switch (field)
+            {
+                case "data":
+                    AppendData(value);
+                    break;
+                case "event":
+                    _eventType = value;
+                    break;
+                case "id":
+                    _id = value;
+                    break;
+                case "retry":
+                    if (int.TryParse(value, NumberStyles.None, CultureInfo.InvariantCulture, out var ms))
+                        _retry = ms;
+                    break;
+            }
+        }
+
+        private void AppendData(string value)
+        {
+            if (_data.Length + value.Length + 1 > maxLength)
+                throw new InvalidDataException($"An SSE event is longer than {maxLength} characters: the stream is refused.");
+            if (_hasData)
+                _data.Append('\n');
+            _data.Append(value);
+            _hasData = true;
         }
     }
 
@@ -76,11 +158,7 @@ internal static class SseEventReader
         ArgumentNullException.ThrowIfNull(stream);
         using var text = new StreamReader(stream, Encoding.UTF8, detectEncodingFromByteOrderMarks: false, leaveOpen: true);
         var reader = new BoundedLineReader(text, maxLineLength);
-        string? id = null;
-        var eventType = "";
-        var data = new StringBuilder();
-        var hasData = false;
-        int? retry = null;
+        var pending = new EventBuilder(maxLineLength);
 
         while (true)
         {
@@ -88,48 +166,15 @@ internal static class SseEventReader
             if (line is null)
                 yield break;
 
-            if (line.Length == 0)
+            if (line.Length > 0)
             {
-                if (hasData || id is not null || retry is not null)
-                    yield return new SseEvent(id, eventType.Length == 0 ? "message" : eventType, data.ToString(), retry);
-                id = null;
-                eventType = "";
-                data.Clear();
-                hasData = false;
-                retry = null;
+                pending.Apply(line);
                 continue;
             }
 
-            if (line[0] == ':')
-                continue;
-
-            var colon = line.IndexOf(':', StringComparison.Ordinal);
-            var field = colon < 0 ? line : line[..colon];
-            var value = colon < 0 ? "" : line[(colon + 1)..];
-            if (value.StartsWith(' '))
-                value = value[1..];
-
-            switch (field)
-            {
-                case "data":
-                    if (data.Length + value.Length + 1 > maxLineLength)
-                        throw new InvalidDataException($"An SSE event is longer than {maxLineLength} characters: the stream is refused.");
-                    if (hasData)
-                        data.Append('\n');
-                    data.Append(value);
-                    hasData = true;
-                    break;
-                case "event":
-                    eventType = value;
-                    break;
-                case "id":
-                    id = value;
-                    break;
-                case "retry":
-                    if (int.TryParse(value, NumberStyles.None, CultureInfo.InvariantCulture, out var ms))
-                        retry = ms;
-                    break;
-            }
+            if (pending.IsReady)
+                yield return pending.Build();
+            pending.Reset();
         }
     }
 }

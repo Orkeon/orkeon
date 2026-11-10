@@ -536,105 +536,44 @@ public partial class StreamableHttpMcpTransport : IMcpTransport
         }
     }
 
+    /// <summary>How one opening of the GET stream ended.</summary>
+    private enum GetOutcome
+    {
+        /// <summary>The stream ended or failed: open it again after the backoff.</summary>
+        Backoff,
+
+        /// <summary>Open it again at once (a renewed credential).</summary>
+        RetryNow,
+
+        /// <summary>Give the stream up.</summary>
+        Stop,
+    }
+
+    /// <summary>What the GET loop remembers from one opening to the next.</summary>
+    private sealed class GetLoopState
+    {
+        public int Attempt { get; set; }
+
+        public int Reinitializations { get; set; }
+
+        public bool UnauthorizedRetried { get; set; }
+
+        public bool Opened { get; set; }
+
+        public TimeSpan? ServerRetry { get; set; }
+    }
+
     [SuppressMessage("Design", "CA1031", Justification = "Fault barrier of a background stream: any failure re-opens it after the backoff, and is logged.")]
     private async Task GetLoopAsync(CancellationToken ct)
     {
-        var attempt = 0;
-        var reinitializations = 0;
-        var unauthorizedRetried = false;
-        var opened = false;
+        var state = new GetLoopState();
         while (!ct.IsCancellationRequested)
         {
-            TimeSpan? serverRetry = null;
+            state.ServerRetry = null;
+            GetOutcome outcome;
             try
             {
-                var sentSession = SessionId;
-                using var message = new HttpRequestMessage(HttpMethod.Get, _url);
-                message.Headers.TryAddWithoutValidation("Accept", SseMediaType);
-                AddMcpHeaders(message, "", null);
-                string? lastEventId;
-                lock (_state)
-                    lastEventId = _lastEventId;
-                if (lastEventId is not null)
-                    message.Headers.TryAddWithoutValidation("Last-Event-ID", lastEventId);
-                if (_authenticator is not null)
-                    await _authenticator.ApplyAsync(message, ct).ConfigureAwait(false);
-                var credential = message.Headers.Authorization?.ToString();
-
-                using var response = await _httpClient.SendAsync(message, HttpCompletionOption.ResponseHeadersRead, ct).ConfigureAwait(false);
-                if (response.StatusCode == HttpStatusCode.Unauthorized && _authenticator is not null)
-                {
-                    // A refused credential is renewed and the stream opens again at once, once in a row: a server
-                    // that refuses the new one too is backed off like any other failure.
-                    if (!unauthorizedRetried && await _authenticator.HandleUnauthorizedAsync(credential, ct).ConfigureAwait(false))
-                    {
-                        unauthorizedRetried = true;
-                        continue;
-                    }
-                }
-                else
-                {
-                    unauthorizedRetried = false;
-                }
-
-                if (response.StatusCode is HttpStatusCode.MethodNotAllowed or HttpStatusCode.NotImplemented)
-                {
-                    LogNoGetStream(_url);
-                    return;
-                }
-
-                if (response.StatusCode == HttpStatusCode.NotFound && sentSession is not null)
-                {
-                    // A server that takes initialize and then refuses the stream again would otherwise make this
-                    // a hot loop: the session is initialised again a bounded number of times, each time after the
-                    // backoff, and the stream is given up when that does not help.
-                    if (++reinitializations > MaxConsecutiveReinitializations)
-                    {
-                        LogGetStreamGivenUp(_url, MaxConsecutiveReinitializations);
-                        return;
-                    }
-
-                    await ReinitializeAsync(sentSession, ct).ConfigureAwait(false);
-                    throw new HttpRequestException("The server forgot the session of the GET stream: it was initialised again.", null, HttpStatusCode.NotFound);
-                }
-
-                response.EnsureSuccessStatusCode();
-                if (!string.Equals(response.Content.Headers.ContentType?.MediaType, SseMediaType, StringComparison.OrdinalIgnoreCase))
-                {
-                    LogNoGetStream(_url);
-                    return;
-                }
-
-                attempt = 0;
-                reinitializations = 0;
-                if (opened)
-                    Resumed?.Invoke();
-                opened = true;
-                var stream = await response.Content.ReadAsStreamAsync(ct).ConfigureAwait(false);
-                await using (stream.ConfigureAwait(false))
-                {
-                    await foreach (var sse in SseEventReader.ReadAsync(stream, ct).ConfigureAwait(false))
-                    {
-                        // An empty id: field resets the last event id, as the SSE specification says.
-                        if (sse.Id is not null)
-                        {
-                            lock (_state)
-                                _lastEventId = sse.Id.Length == 0 ? null : sse.Id;
-                        }
-
-                        if (sse.RetryMilliseconds is { } retry)
-                            serverRetry = TimeSpan.FromMilliseconds(retry);
-
-                        if (sse.Data.Length == 0)
-                            continue;
-
-                        var frame = ReadFrame(sse.Data);
-                        if (frame.Kind == FrameKind.Notification)
-                            _notifications.Writer.TryWrite(frame.Notification!);
-                        else if (frame.Kind == FrameKind.ServerRequest)
-                            await AnswerServerRequestAsync(frame.RequestId!.Value, frame.Method, ct).ConfigureAwait(false);
-                    }
-                }
+                outcome = await OpenGetStreamAsync(state, ct).ConfigureAwait(false);
             }
             catch (OperationCanceledException) when (ct.IsCancellationRequested)
             {
@@ -643,10 +582,16 @@ public partial class StreamableHttpMcpTransport : IMcpTransport
             catch (Exception ex)
             {
                 LogGetStreamFailed(ex, _url);
+                outcome = GetOutcome.Backoff;
             }
 
-            var delay = serverRetry is { } hinted ? TimeSpan.FromTicks(Math.Min(hinted.Ticks, ReconnectMaxDelay.Ticks)) : Backoff(attempt);
-            attempt++;
+            if (outcome == GetOutcome.Stop)
+                return;
+            if (outcome == GetOutcome.RetryNow)
+                continue;
+
+            var delay = state.ServerRetry is { } hinted ? TimeSpan.FromTicks(Math.Min(hinted.Ticks, ReconnectMaxDelay.Ticks)) : Backoff(state.Attempt);
+            state.Attempt++;
             try
             {
                 await Task.Delay(delay, _time, ct).ConfigureAwait(false);
@@ -657,7 +602,116 @@ public partial class StreamableHttpMcpTransport : IMcpTransport
             }
 
             // The token may have expired during the wait: the next 401 is renewed again.
-            unauthorizedRetried = false;
+            state.UnauthorizedRetried = false;
+        }
+    }
+
+    private async Task<GetOutcome> OpenGetStreamAsync(GetLoopState state, CancellationToken ct)
+    {
+        var sentSession = SessionId;
+        using var message = new HttpRequestMessage(HttpMethod.Get, _url);
+        message.Headers.TryAddWithoutValidation("Accept", SseMediaType);
+        AddMcpHeaders(message, "", null);
+        string? lastEventId;
+        lock (_state)
+            lastEventId = _lastEventId;
+        if (lastEventId is not null)
+            message.Headers.TryAddWithoutValidation("Last-Event-ID", lastEventId);
+        if (_authenticator is not null)
+            await _authenticator.ApplyAsync(message, ct).ConfigureAwait(false);
+        var credential = message.Headers.Authorization?.ToString();
+
+        using var response = await _httpClient.SendAsync(message, HttpCompletionOption.ResponseHeadersRead, ct).ConfigureAwait(false);
+        var early = await TriageGetResponseAsync(response, sentSession, credential, state, ct).ConfigureAwait(false);
+        if (early is { } outcome)
+            return outcome;
+
+        response.EnsureSuccessStatusCode();
+        if (!string.Equals(response.Content.Headers.ContentType?.MediaType, SseMediaType, StringComparison.OrdinalIgnoreCase))
+        {
+            LogNoGetStream(_url);
+            return GetOutcome.Stop;
+        }
+
+        state.Attempt = 0;
+        state.Reinitializations = 0;
+        if (state.Opened)
+            Resumed?.Invoke();
+        state.Opened = true;
+        var stream = await response.Content.ReadAsStreamAsync(ct).ConfigureAwait(false);
+        await using (stream.ConfigureAwait(false))
+        {
+            await PumpGetStreamAsync(stream, state, ct).ConfigureAwait(false);
+        }
+
+        return GetOutcome.Backoff;
+    }
+
+    /// <summary>Decides what a GET response that is not a stream means; null when it may be one.</summary>
+    private async Task<GetOutcome?> TriageGetResponseAsync(
+        HttpResponseMessage response, string? sentSession, string? credential, GetLoopState state, CancellationToken ct)
+    {
+        if (response.StatusCode == HttpStatusCode.Unauthorized && _authenticator is not null)
+        {
+            // A refused credential is renewed and the stream opens again at once, once in a row: a server
+            // that refuses the new one too is backed off like any other failure.
+            if (!state.UnauthorizedRetried && await _authenticator.HandleUnauthorizedAsync(credential, ct).ConfigureAwait(false))
+            {
+                state.UnauthorizedRetried = true;
+                return GetOutcome.RetryNow;
+            }
+        }
+        else
+        {
+            state.UnauthorizedRetried = false;
+        }
+
+        if (response.StatusCode is HttpStatusCode.MethodNotAllowed or HttpStatusCode.NotImplemented)
+        {
+            LogNoGetStream(_url);
+            return GetOutcome.Stop;
+        }
+
+        if (response.StatusCode == HttpStatusCode.NotFound && sentSession is not null)
+        {
+            // A server that takes initialize and then refuses the stream again would otherwise make this
+            // a hot loop: the session is initialised again a bounded number of times, each time after the
+            // backoff, and the stream is given up when that does not help.
+            if (++state.Reinitializations > MaxConsecutiveReinitializations)
+            {
+                LogGetStreamGivenUp(_url, MaxConsecutiveReinitializations);
+                return GetOutcome.Stop;
+            }
+
+            await ReinitializeAsync(sentSession, ct).ConfigureAwait(false);
+            throw new HttpRequestException("The server forgot the session of the GET stream: it was initialised again.", null, HttpStatusCode.NotFound);
+        }
+
+        return null;
+    }
+
+    private async Task PumpGetStreamAsync(Stream stream, GetLoopState state, CancellationToken ct)
+    {
+        await foreach (var sse in SseEventReader.ReadAsync(stream, ct).ConfigureAwait(false))
+        {
+            // An empty id: field resets the last event id, as the SSE specification says.
+            if (sse.Id is not null)
+            {
+                lock (_state)
+                    _lastEventId = sse.Id.Length == 0 ? null : sse.Id;
+            }
+
+            if (sse.RetryMilliseconds is { } retry)
+                state.ServerRetry = TimeSpan.FromMilliseconds(retry);
+
+            if (sse.Data.Length == 0)
+                continue;
+
+            var frame = ReadFrame(sse.Data);
+            if (frame.Kind == FrameKind.Notification)
+                _notifications.Writer.TryWrite(frame.Notification!);
+            else if (frame.Kind == FrameKind.ServerRequest)
+                await AnswerServerRequestAsync(frame.RequestId!.Value, frame.Method, ct).ConfigureAwait(false);
         }
     }
 

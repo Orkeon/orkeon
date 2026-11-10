@@ -8,6 +8,7 @@ namespace Orkeon.Infrastructure.MCP.Auth;
 /// </summary>
 [Experimental("ORKEXP004", UrlFormat = "https://github.com/Orkeon/orkeon/blob/main/docs/reference/experimental-apis.md")]
 [SuppressMessage("Design", "CA1032", Justification = "Raised only by this library with a settings key; the standard constructors would build an exception without one.")]
+[SuppressMessage("Major Code Smell", "S3925", Justification = "False positive: binary serialization of exceptions is obsolete in .NET 10 (SYSLIB0051), so no ISerializable constructor or GetObjectData is added.")]
 public sealed class McpServerConfigurationException : InvalidOperationException
 {
     /// <summary>Creates the exception for <paramref name="key"/>.</summary>

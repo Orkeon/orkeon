@@ -39,31 +39,52 @@ public sealed partial class McpToolProvider : IAsyncDisposable, IDisposable
     /// </summary>
     internal static readonly TimeSpan ToolListDebounce = TimeSpan.FromMilliseconds(500);
 
-    private sealed record RegisteredTool(IBaseTool Adapter, string Fingerprint);
+    private sealed record RegisteredTool(IBaseTool Adapter, string Signature);
 
     /// <summary>One connected server: its client, the tools it registered, and the watch of its notifications.</summary>
-    private sealed class McpClientEntry(McpClient client, IMcpTransport transport, McpServerCapabilities? capabilities)
+    private sealed class McpClientEntry
     {
-        private readonly object _state = new();
-        private readonly Dictionary<string, RegisteredTool> _tools = [];
-        private readonly List<string> _rejected = [];
-        private List<string> _unmatched = [];
+        private readonly object _state;
+        private readonly Dictionary<string, RegisteredTool> _tools;
+        private readonly List<string> _rejected;
+        private List<string> _unmatched;
         private long _notifications;
         private long _resyncs;
         private int _dirty;
         private long _resourceUpdates;
-        private readonly ConcurrentDictionary<string, Uri> _subscriptions = new();
-        private readonly ConcurrentDictionary<string, McpResourceReadResult> _resourceCache = new();
-        private readonly ConcurrentDictionary<string, long> _resourceVersions = new();
-        private readonly object _cacheLock = new();
+        private readonly ConcurrentDictionary<string, Uri> _subscriptions;
+        private readonly ConcurrentDictionary<string, McpResourceReadResult> _resourceCache;
+        private readonly ConcurrentDictionary<string, long> _resourceVersions;
+        private readonly object _cacheLock;
         private long _cacheEpoch;
         private int _reopenRequested;
 
-        public McpClient Client { get; } = client;
+        public McpClientEntry(McpClient client, IMcpTransport transport, McpServerCapabilities? capabilities)
+        {
+            Client = client;
+            Transport = transport;
+            Capabilities = capabilities;
+            _state = new object();
+            _tools = [];
+            _rejected = [];
+            _unmatched = [];
+            _subscriptions = new ConcurrentDictionary<string, Uri>();
+            _resourceCache = new ConcurrentDictionary<string, McpResourceReadResult>();
+            _resourceVersions = new ConcurrentDictionary<string, long>();
+            _cacheLock = new object();
+            Gate = new SemaphoreSlim(1, 1);
+            Stop = new CancellationTokenSource();
+            Wake = new SemaphoreSlim(0, 1);
+            Reader = Task.CompletedTask;
+            Watcher = Task.CompletedTask;
+            Listener = Task.CompletedTask;
+        }
 
-        public IMcpTransport Transport { get; } = transport;
+        public McpClient Client { get; }
 
-        public McpServerCapabilities? Capabilities { get; } = capabilities;
+        public IMcpTransport Transport { get; }
+
+        public McpServerCapabilities? Capabilities { get; }
 
         /// <summary>The server's settings; null for a server connected without them.</summary>
         public McpServerConfig? Config { get; init; }
@@ -74,17 +95,17 @@ public sealed partial class McpToolProvider : IAsyncDisposable, IDisposable
         public IMcpSignInAuthenticator? SignIn { get; init; }
 
         /// <summary>One re-synchronisation at a time per server.</summary>
-        public SemaphoreSlim Gate { get; } = new(1, 1);
+        public SemaphoreSlim Gate { get; }
 
         /// <summary>Cancelled when the server is disconnected: ends the watch of its notifications.</summary>
-        public CancellationTokenSource Stop { get; } = new();
+        public CancellationTokenSource Stop { get; }
 
         /// <summary>Woken by the reader each time the server says its tool list changed.</summary>
-        public SemaphoreSlim Wake { get; } = new(0, 1);
+        public SemaphoreSlim Wake { get; }
 
-        public Task Reader { get; set; } = Task.CompletedTask;
+        public Task Reader { get; set; }
 
-        public Task Watcher { get; set; } = Task.CompletedTask;
+        public Task Watcher { get; set; }
 
         public long NotificationsSeen => Interlocked.Read(ref _notifications);
 
@@ -95,7 +116,7 @@ public sealed partial class McpToolProvider : IAsyncDisposable, IDisposable
         /// <summary>The <c>subscriptions/listen</c> request in flight: cancelled to open it again with another filter.</summary>
         public CancellationTokenSource? ListenRound { get; set; }
 
-        public Task Listener { get; set; } = Task.CompletedTask;
+        public Task Listener { get; set; }
 
         /// <summary>The handler of the transport's <c>Resumed</c> event, kept to be detached at disconnection.</summary>
         public Action? ResumedHandler { get; set; }
@@ -731,44 +752,14 @@ public sealed partial class McpToolProvider : IAsyncDisposable, IDisposable
             {
                 using var round = CancellationTokenSource.CreateLinkedTokenSource(ct);
                 entry.ListenRound = round;
-                var failed = false;
-                try
-                {
-                    if (!first)
-                    {
-                        entry.MarkDirty();
-                        entry.ClearCache();
-                    }
-
-                    first = false;
-                    var opened = _time.GetTimestamp();
-                    await entry.Client.ListenAsync(entry.SubscribedUris(), round.Token).ConfigureAwait(false);
-
-                    // A stream that ends at once is no healthier than one that fails: the attempts go on counting.
-                    failed = _time.GetElapsedTime(opened) < ListenHealthyAfter;
-                }
-                catch (OperationCanceledException) when (ct.IsCancellationRequested)
-                {
+                var outcome = await RunListenRoundAsync(serverId, entry, round, first).ConfigureAwait(false);
+                first = false;
+                if (outcome == ListenOutcome.Stop)
                     return;
-                }
-                catch (OperationCanceledException) when (round.IsCancellationRequested && entry.TakeReopenRequest())
-                {
-                    // A subscription changed: the stream opens again at once, with the new filter. Any other
-                    // cancellation (an HTTP timeout, say) is a failure like the rest and waits out the backoff.
+                if (outcome == ListenOutcome.Reopen)
                     continue;
-                }
-                catch (McpListenRefusedException ex)
-                {
-                    LogMcpListenRefused(ex, serverId);
-                    return;
-                }
-                catch (Exception ex)
-                {
-                    failed = true;
-                    LogMcpListenFailed(ex, serverId);
-                }
 
-                attempt = failed ? attempt + 1 : 0;
+                attempt = outcome == ListenOutcome.Failed ? attempt + 1 : 0;
                 try
                 {
                     // The round's token: a subscription that changes during the wait opens the stream at once.
@@ -784,6 +775,48 @@ public sealed partial class McpToolProvider : IAsyncDisposable, IDisposable
         catch (OperationCanceledException)
         {
             // The server was disconnected.
+        }
+    }
+
+    private enum ListenOutcome { Healthy, Failed, Reopen, Stop }
+
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Fault barrier of a background stream: any failure re-opens it after the backoff, and is logged.")]
+    private async Task<ListenOutcome> RunListenRoundAsync(string serverId, McpClientEntry entry, CancellationTokenSource round, bool first)
+    {
+        var ct = entry.Stop.Token;
+        try
+        {
+            if (!first)
+            {
+                entry.MarkDirty();
+                entry.ClearCache();
+            }
+
+            var opened = _time.GetTimestamp();
+            await entry.Client.ListenAsync(entry.SubscribedUris(), round.Token).ConfigureAwait(false);
+
+            // A stream that ends at once is no healthier than one that fails: the attempts go on counting.
+            return _time.GetElapsedTime(opened) < ListenHealthyAfter ? ListenOutcome.Failed : ListenOutcome.Healthy;
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            return ListenOutcome.Stop;
+        }
+        catch (OperationCanceledException) when (round.IsCancellationRequested && entry.TakeReopenRequest())
+        {
+            // A subscription changed: the stream opens again at once, with the new filter. Any other
+            // cancellation (an HTTP timeout, say) is a failure like the rest and waits out the backoff.
+            return ListenOutcome.Reopen;
+        }
+        catch (McpListenRefusedException ex)
+        {
+            LogMcpListenRefused(ex, serverId);
+            return ListenOutcome.Stop;
+        }
+        catch (Exception ex)
+        {
+            LogMcpListenFailed(ex, serverId);
+            return ListenOutcome.Failed;
         }
     }
 
@@ -861,7 +894,7 @@ public sealed partial class McpToolProvider : IAsyncDisposable, IDisposable
                     await _toolRegistry.UnregisterToolAsync(name).ConfigureAwait(false);
                     entry.Forget(name);
                 }
-                else if (held.Fingerprint != Fingerprint(definition))
+                else if (held.Signature != Fingerprint(definition))
                 {
                     var adapter = new McpToolAdapter(definition, entry.Client, entry.TrustAnnotations, entry.Config?.CallTimeout) { BeforeCall = BeforeCallOf(entry.SignIn) };
                     if (await _toolRegistry.ReplaceToolAsync(held.Adapter, adapter).ConfigureAwait(false))

@@ -38,7 +38,7 @@ public partial class McpServer
     /// <summary>The virtual folder served as resources, and the only one.</summary>
     private const string OutputRoot = "/output";
 
-    private const string OutputUriPrefix = "orkeon:///output/";
+    private const string OutputUriPrefix = $"orkeon://{OutputRoot}/";
 
     /// <summary>MCP's "resource not found" error code.</summary>
     private const int ResourceNotFound = -32002;
@@ -229,19 +229,7 @@ public partial class McpServer
                 if (line == null) break;
                 if (string.IsNullOrWhiteSpace(line)) continue;
 
-                JsonRpcRequest? request;
-                try
-                {
-                    request = JsonSerializer.Deserialize<JsonRpcRequest>(line);
-                }
-                catch (JsonException ex)
-                {
-                    LogFailedToParseRequest(ex, line);
-                    outbox.Writer.TryWrite(JsonSerializer.Serialize(CreateErrorResponse(null, JsonRpcErrorCodes.ParseError,
-                        "Failed to parse JSON-RPC request")));
-                    continue;
-                }
-
+                var request = ParseRequest(line, outbox.Writer);
                 if (request == null) continue;
 
                 if (string.Equals(request.Method, CancelledMethod, StringComparison.Ordinal))
@@ -298,6 +286,22 @@ public partial class McpServer
             {
                 // Stopped: the answers still queued are dropped with the connection.
             }
+        }
+    }
+
+    /// <summary>Parses one line; a line that is not JSON-RPC is answered with a parse error and yields <see langword="null"/>.</summary>
+    private JsonRpcRequest? ParseRequest(string line, ChannelWriter<string> outbox)
+    {
+        try
+        {
+            return JsonSerializer.Deserialize<JsonRpcRequest>(line);
+        }
+        catch (JsonException ex)
+        {
+            LogFailedToParseRequest(ex, line);
+            outbox.TryWrite(JsonSerializer.Serialize(CreateErrorResponse(null, JsonRpcErrorCodes.ParseError,
+                "Failed to parse JSON-RPC request")));
+            return null;
         }
     }
 
@@ -475,14 +479,25 @@ public partial class McpServer
 
         public void Report(double progress, double? total = null, string? message = null)
         {
+            // Nothing to report: the caller sent no progress token.
         }
     }
 
     /// <summary>Turns each report into a <c>notifications/progress</c>; a value that does not exceed the last one is dropped, as the spec requires.</summary>
-    private sealed class NotifyingProgress(JsonElement token, Action<JsonRpcNotification> notify) : IMcpProgress
+    private sealed class NotifyingProgress : IMcpProgress
     {
-        private readonly Lock _gate = new();
-        private double _last = double.NegativeInfinity;
+        private readonly JsonElement _token;
+        private readonly Action<JsonRpcNotification> _notify;
+        private readonly Lock _gate;
+        private double _last;
+
+        public NotifyingProgress(JsonElement token, Action<JsonRpcNotification> notify)
+        {
+            _token = token;
+            _notify = notify;
+            _gate = new Lock();
+            _last = double.NegativeInfinity;
+        }
 
         public void Report(double progress, double? total = null, string? message = null)
         {
@@ -491,12 +506,12 @@ public partial class McpServer
                 if (progress <= _last)
                     return;
                 _last = progress;
-                var parameters = new Dictionary<string, object?> { ["progressToken"] = token, ["progress"] = progress };
+                var parameters = new Dictionary<string, object?> { ["progressToken"] = _token, ["progress"] = progress };
                 if (total is { } t)
                     parameters["total"] = t;
                 if (message is not null)
                     parameters["message"] = message;
-                notify(new JsonRpcNotification
+                _notify(new JsonRpcNotification
                 {
                     Method = "notifications/progress",
                     Params = JsonSerializer.SerializeToElement(parameters),
@@ -734,14 +749,8 @@ public partial class McpServer
             // No link is followed: every folder on the way must be a plain directory (a symlinked
             // one may lead out of /output, where the lexical path check cannot see), and the file
             // a plain file (a link is reported as a SymLink entry, never served).
-            var folder = OutputRoot;
-            foreach (var segment in path[(OutputRoot.Length + 1)..].Split('/')[..^1])
-            {
-                folder += "/" + segment;
-                var parent = await _fileSystem.TryGetEntryAsync(folder, ct).ConfigureAwait(false);
-                if (parent == null || parent.Kind != VirtualEntryKind.Directory || parent.LinkTarget != null)
-                    return CreateErrorResponse(request.Id, ResourceNotFound, $"Resource not found: {uri}");
-            }
+            if (!await FoldersArePlainAsync(path, ct).ConfigureAwait(false))
+                return CreateErrorResponse(request.Id, ResourceNotFound, $"Resource not found: {uri}");
 
             var entry = await _fileSystem.TryGetEntryAsync(path, ct).ConfigureAwait(false);
             if (entry == null || entry.Kind != VirtualEntryKind.File || entry.LinkTarget != null)
@@ -751,14 +760,7 @@ public partial class McpServer
                     $"Resource too large (limit {_options.MaxResourceBytes} bytes): {uri}");
 
             // Bounded read: a file that grew since the size check is cut at the limit and refused.
-            using var stream = await _fileSystem.OpenReadStreamAsync(path, ct).ConfigureAwait(false);
-            using var buffer = new MemoryStream();
-            var chunk = new byte[81_920];
-            int read;
-            while (buffer.Length <= _options.MaxResourceBytes &&
-                   (read = await stream.ReadAsync(chunk.AsMemory(0, (int)Math.Min(chunk.Length, _options.MaxResourceBytes + 1L - buffer.Length)), ct).ConfigureAwait(false)) > 0)
-                await buffer.WriteAsync(chunk.AsMemory(0, read), ct).ConfigureAwait(false);
-            bytes = buffer.ToArray();
+            bytes = await ReadBoundedAsync(path, ct).ConfigureAwait(false);
         }
         catch (FileAccessDeniedException)
         {
@@ -780,6 +782,33 @@ public partial class McpServer
             ? new Dictionary<string, object> { ["uri"] = uri, ["mimeType"] = MimeTypeOf(path, text: true), ["text"] = text }
             : new Dictionary<string, object> { ["uri"] = uri, ["mimeType"] = MimeTypeOf(path, text: false), ["blob"] = Convert.ToBase64String(bytes) };
         return CreateSuccessResponse(request.Id, new { contents = new[] { content } });
+    }
+
+    /// <summary>Whether every folder on the way to <paramref name="path"/> is a plain directory (no link).</summary>
+    private async Task<bool> FoldersArePlainAsync(string path, CancellationToken ct)
+    {
+        var folder = new System.Text.StringBuilder(OutputRoot);
+        foreach (var segment in path[(OutputRoot.Length + 1)..].Split('/')[..^1])
+        {
+            folder.Append('/').Append(segment);
+            var parent = await _fileSystem.TryGetEntryAsync(folder.ToString(), ct).ConfigureAwait(false);
+            if (parent == null || parent.Kind != VirtualEntryKind.Directory || parent.LinkTarget != null)
+                return false;
+        }
+
+        return true;
+    }
+
+    private async Task<byte[]> ReadBoundedAsync(string path, CancellationToken ct)
+    {
+        using var stream = await _fileSystem.OpenReadStreamAsync(path, ct).ConfigureAwait(false);
+        using var buffer = new MemoryStream();
+        var chunk = new byte[81_920];
+        int read;
+        while (buffer.Length <= _options.MaxResourceBytes &&
+               (read = await stream.ReadAsync(chunk.AsMemory(0, (int)Math.Min(chunk.Length, _options.MaxResourceBytes + 1L - buffer.Length)), ct).ConfigureAwait(false)) > 0)
+            await buffer.WriteAsync(chunk.AsMemory(0, read), ct).ConfigureAwait(false);
+        return buffer.ToArray();
     }
 
     private static string ToUri(string virtualPath) =>
