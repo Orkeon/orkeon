@@ -54,69 +54,15 @@ public sealed partial class ResumeEngine : IResumeEngine
     {
         options ??= new ResumeOptions();
 
-        SessionState? latest;
+        var located = !string.IsNullOrEmpty(options.ExecutionId)
+            ? await LocateByExecutionIdAsync(crewKey, options.ExecutionId, ct).ConfigureAwait(false)
+            : !string.IsNullOrEmpty(options.FromVersionId)
+                ? await LocateByVersionAsync(crewKey, options.FromVersionId, ct).ConfigureAwait(false)
+                : await LocateLatestUnfinishedAsync(crewKey, ct).ConfigureAwait(false);
+        if (located.Early is not null)
+            return located.Early;
 
-        // A session the caller names is the one resumed, when it is this crew's: another crew's state is
-        // never handed to a run that happens to be given its id.
-        if (!string.IsNullOrEmpty(options.ExecutionId))
-        {
-            latest = await _store.GetAsync(options.ExecutionId, ct).ConfigureAwait(false);
-            if (latest is null || !string.Equals(latest.CrewKey, crewKey, StringComparison.Ordinal))
-            {
-                LogNoCheckpointFound(crewKey);
-                return new ResumeResult();
-            }
-
-            // A session another process still drives (a daemon that holds a run on its question) is not taken over, named or not.
-            if (latest.Phase is SessionPhase.Running or SessionPhase.WaitingForInput or SessionPhase.Failed
-                && await ProvenLiveAsync(latest.SessionId, ct).ConfigureAwait(false))
-            {
-                LogRunningNotResumed(crewKey, latest.SessionId);
-                return new ResumeResult { Refusal = LiveRefusal(latest.SessionId, latest.Phase) };
-            }
-        }
-        // If a specific version is requested, restore from that version
-        else if (!string.IsNullOrEmpty(options.FromVersionId))
-        {
-            var checkpoint = await _checkpointManager.GetLatestCheckpointAsync(crewKey, ct).ConfigureAwait(false);
-            if (checkpoint == null)
-            {
-                LogNoCheckpointFound(crewKey);
-                return new ResumeResult();
-            }
-
-            latest = await _checkpointManager.RestoreToVersionAsync(checkpoint.SessionId, options.FromVersionId, ct).ConfigureAwait(false);
-            if (latest == null)
-            {
-                LogNoCheckpointFound(crewKey);
-                return new ResumeResult();
-            }
-        }
-        else
-        {
-            // `latest` is the newest run of this crew that is not completed: a newer completed run does not
-            // hide an older failed one. A run still marked Running may be alive in another process (the
-            // store holds no lease), so it is resumed only when its id is given.
-            var unfinished = (await _store.ListAsync(ct).ConfigureAwait(false))
-                .Where(s => string.Equals(s.CrewKey, crewKey, StringComparison.Ordinal) && s.Phase != SessionPhase.Completed)
-                .OrderByDescending(s => s.UpdatedAt)
-                .FirstOrDefault();
-            if (unfinished is null)
-            {
-                LogNoCheckpointFound(crewKey);
-                return new ResumeResult();
-            }
-
-            if (unfinished.Phase == SessionPhase.Running
-                || (unfinished.Phase is SessionPhase.WaitingForInput or SessionPhase.Failed && await ProvenLiveAsync(unfinished.SessionId, ct).ConfigureAwait(false)))
-            {
-                LogRunningNotResumed(crewKey, unfinished.SessionId);
-                return new ResumeResult { Refusal = LiveRefusal(unfinished.SessionId, unfinished.Phase) };
-            }
-
-            latest = await _store.GetAsync(unfinished.SessionId, ct).ConfigureAwait(false);
-        }
-
+        var latest = located.State;
         if (latest == null)
         {
             LogNoCheckpointFound(crewKey);
@@ -146,26 +92,16 @@ public sealed partial class ResumeEngine : IResumeEngine
                 case CheckpointStatus.Failed:
                     if (options.SkipFailed)
                     {
-                        // Mark as skipped: update the checkpoint status in the store
-                        var checkpoints = new Dictionary<string, TaskCheckpoint>(latest.TaskCheckpoints)
-                        {
-                            [taskId] = checkpoint with { Status = CheckpointStatus.Skipped }
-                        };
-                        latest = latest with { TaskCheckpoints = checkpoints, UpdatedAt = DateTime.UtcNow };
-                        await _store.SaveAsync(latest, ct).ConfigureAwait(false);
-
+                        latest = await SkipFailedTaskAsync(latest, taskId, checkpoint, ct).ConfigureAwait(false);
                         skipCount++;
-                        LogSkippedFailedTask(taskId, latest.SessionId);
                     }
                     else if (options.RetryFailed && checkpoint.RetryCount < options.MaxRetries)
                     {
                         // Task will be retried: it stays out of the completed outputs
                         LogTaskWillBeRetried(taskId, checkpoint.RetryCount + 1, options.MaxRetries);
                     }
-                    else
-                    {
-                        // Cannot retry and not skipping, just advance past it
-                    }
+
+                    // Otherwise it cannot be retried and is not skipped: just advance past it
                     break;
 
                 case CheckpointStatus.Skipped:
@@ -188,6 +124,86 @@ public sealed partial class ResumeEngine : IResumeEngine
             CompletedTaskIds = completedIds,
             CompletedOutputs = completedOutputs,
         };
+    }
+
+    // The state found for a resume, or the result that ends it early (nothing found, or a live run).
+    private readonly record struct Located(SessionState? State, ResumeResult? Early);
+
+    // Mark as skipped: update the checkpoint status in the store.
+    private async System.Threading.Tasks.Task<SessionState> SkipFailedTaskAsync(
+        SessionState latest, string taskId, TaskCheckpoint checkpoint, CancellationToken ct)
+    {
+        var checkpoints = new Dictionary<string, TaskCheckpoint>(latest.TaskCheckpoints)
+        {
+            [taskId] = checkpoint with { Status = CheckpointStatus.Skipped }
+        };
+        var updated = latest with { TaskCheckpoints = checkpoints, UpdatedAt = DateTime.UtcNow };
+        await _store.SaveAsync(updated, ct).ConfigureAwait(false);
+        LogSkippedFailedTask(taskId, updated.SessionId);
+        return updated;
+    }
+
+    // A session the caller names is the one resumed, when it is this crew's: another crew's state is
+    // never handed to a run that happens to be given its id.
+    private async System.Threading.Tasks.Task<Located> LocateByExecutionIdAsync(string crewKey, string executionId, CancellationToken ct)
+    {
+        var latest = await _store.GetAsync(executionId, ct).ConfigureAwait(false);
+        if (latest is null || !string.Equals(latest.CrewKey, crewKey, StringComparison.Ordinal))
+        {
+            LogNoCheckpointFound(crewKey);
+            return new Located(null, new ResumeResult());
+        }
+
+        // A session another process still drives (a daemon that holds a run on its question) is not taken over, named or not.
+        if (latest.Phase is SessionPhase.Running or SessionPhase.WaitingForInput or SessionPhase.Failed
+            && await ProvenLiveAsync(latest.SessionId, ct).ConfigureAwait(false))
+        {
+            LogRunningNotResumed(crewKey, latest.SessionId);
+            return new Located(null, new ResumeResult { Refusal = LiveRefusal(latest.SessionId, latest.Phase) });
+        }
+
+        return new Located(latest, null);
+    }
+
+    // If a specific version is requested, restore from that version.
+    private async System.Threading.Tasks.Task<Located> LocateByVersionAsync(string crewKey, string versionId, CancellationToken ct)
+    {
+        var checkpoint = await _checkpointManager.GetLatestCheckpointAsync(crewKey, ct).ConfigureAwait(false);
+        var restored = checkpoint == null
+            ? null
+            : await _checkpointManager.RestoreToVersionAsync(checkpoint.SessionId, versionId, ct).ConfigureAwait(false);
+        if (restored == null)
+        {
+            LogNoCheckpointFound(crewKey);
+            return new Located(null, new ResumeResult());
+        }
+
+        return new Located(restored, null);
+    }
+
+    // `latest` is the newest run of this crew that is not completed: a newer completed run does not
+    // hide an older failed one. A run still marked Running may be alive in another process (the
+    // store holds no lease), so it is resumed only when its id is given.
+    private async System.Threading.Tasks.Task<Located> LocateLatestUnfinishedAsync(string crewKey, CancellationToken ct)
+    {
+        var unfinished = (await _store.ListAsync(ct).ConfigureAwait(false))
+            .Where(s => string.Equals(s.CrewKey, crewKey, StringComparison.Ordinal) && s.Phase != SessionPhase.Completed)
+            .OrderByDescending(s => s.UpdatedAt)
+            .FirstOrDefault();
+        if (unfinished is null)
+        {
+            LogNoCheckpointFound(crewKey);
+            return new Located(null, new ResumeResult());
+        }
+
+        if (unfinished.Phase == SessionPhase.Running
+            || (unfinished.Phase is SessionPhase.WaitingForInput or SessionPhase.Failed && await ProvenLiveAsync(unfinished.SessionId, ct).ConfigureAwait(false)))
+        {
+            LogRunningNotResumed(crewKey, unfinished.SessionId);
+            return new Located(null, new ResumeResult { Refusal = LiveRefusal(unfinished.SessionId, unfinished.Phase) });
+        }
+
+        return new Located(await _store.GetAsync(unfinished.SessionId, ct).ConfigureAwait(false), null);
     }
 
     private static string LiveRefusal(string sessionId, SessionPhase phase) =>

@@ -184,9 +184,7 @@ internal sealed class JsonLinesFileRunEventSink : IRunEventSink
                 var success = runEvent.Payload?["success"]?.GetValue<bool>() == true;
                 line = started with
                 {
-                    Status = runEvent.Payload?["status"]?.ToString() == RunFinishedStatuses.WaitingForInput
-                        ? RunStatus.WaitingForInput
-                        : success ? RunStatus.Succeeded : RunStatus.Failed,
+                    Status = JsonLinesRunHistoryReader.FinishedStatus(runEvent, success),
                     FinishedAt = runEvent.Timestamp,
                 };
                 break;
@@ -324,43 +322,15 @@ internal sealed class JsonLinesRunHistoryReader : IRunHistoryReader
 
         var index = await fs.TryReadAllTextAsync($"{folder}/{JsonLinesFileRunEventSink.IndexFile}", ct).ConfigureAwait(false);
         foreach (var line in (index ?? string.Empty).Split('\n', StringSplitOptions.RemoveEmptyEntries))
-        {
-            try
-            {
-                using var document = JsonDocument.Parse(line);
-                if (document.RootElement.ValueKind != JsonValueKind.Object || !document.RootElement.TryGetProperty("run_id", out var id) || id.GetString() is not { } runId)
-                    continue;
-
-                if (document.RootElement.TryGetProperty("purged", out _))
-                {
-                    purged.Add(runId);
-                    byRun.Remove(runId);
-                }
-                else if (JsonSerializer.Deserialize<RunSummary>(line, JsonLinesFileRunEventSink.SummaryOptions) is { } summary)
-                {
-                    // A run started again under its id (resumed) after a purge is back.
-                    purged.Remove(runId);
-                    byRun[runId] = summary;
-                }
-            }
-            catch (JsonException)
-            {
-                // A torn line (a crash mid-append) is skipped, not fatal.
-            }
-        }
+            ApplyIndexLine(line, byRun, purged);
 
         if (await fs.ExistsAsync(folder, ct).ConfigureAwait(false))
         {
             await foreach (var entry in fs.EnumerateFilesAsync(folder, new VirtualEnumerationOptions(Recursive: false, SearchPattern: "*.jsonl"), ct).ConfigureAwait(false))
             {
                 var id = Path.GetFileNameWithoutExtension(entry.VirtualPath);
-                if (entry.Kind != VirtualEntryKind.File
-                    || string.Equals(id, Path.GetFileNameWithoutExtension(JsonLinesFileRunEventSink.IndexFile), StringComparison.Ordinal)
-                    || byRun.ContainsKey(id)
-                    || purged.Contains(id))
-                {
+                if (entry.Kind != VirtualEntryKind.File || IsKnownOrIndex(id, byRun, purged))
                     continue;
-                }
 
                 var text = await fs.TryReadAllTextAsync(entry.VirtualPath, ct).ConfigureAwait(false);
                 if (text is not null && Summarise(id, ParseEvents(text, id), entry.LastModified) is { } found)
@@ -369,6 +339,38 @@ internal sealed class JsonLinesRunHistoryReader : IRunHistoryReader
         }
 
         return [.. byRun.Values.Select(run => RunLiveness.Apply(run, probe, localHost))];
+    }
+
+    private static bool IsKnownOrIndex(string id, Dictionary<string, RunSummary> byRun, HashSet<string> purged) =>
+        string.Equals(id, Path.GetFileNameWithoutExtension(JsonLinesFileRunEventSink.IndexFile), StringComparison.Ordinal)
+        || byRun.ContainsKey(id)
+        || purged.Contains(id);
+
+    // Folds one index line in: the last line of a run wins, a tombstone removes it, a torn line is skipped.
+    private static void ApplyIndexLine(string line, Dictionary<string, RunSummary> byRun, HashSet<string> purged)
+    {
+        try
+        {
+            using var document = JsonDocument.Parse(line);
+            if (document.RootElement.ValueKind != JsonValueKind.Object || !document.RootElement.TryGetProperty("run_id", out var id) || id.GetString() is not { } runId)
+                return;
+
+            if (document.RootElement.TryGetProperty("purged", out _))
+            {
+                purged.Add(runId);
+                byRun.Remove(runId);
+            }
+            else if (JsonSerializer.Deserialize<RunSummary>(line, JsonLinesFileRunEventSink.SummaryOptions) is { } summary)
+            {
+                // A run started again under its id (resumed) after a purge is back.
+                purged.Remove(runId);
+                byRun[runId] = summary;
+            }
+        }
+        catch (JsonException)
+        {
+            // A torn line (a crash mid-append) is skipped, not fatal.
+        }
     }
 
     /// <summary>The sequence number of the last event a run file holds, 0 for none.</summary>
@@ -387,6 +389,13 @@ internal sealed class JsonLinesRunHistoryReader : IRunHistoryReader
         return events;
     }
 
+    internal static RunStatus FinishedStatus(RunEvent finished, bool success)
+    {
+        if (finished.Payload?["status"]?.ToString() == RunFinishedStatuses.WaitingForInput)
+            return RunStatus.WaitingForInput;
+        return success ? RunStatus.Succeeded : RunStatus.Failed;
+    }
+
     // A summary from the events alone, for a run file whose index line is lost. The process is unknown then: an unfinished
     // run stays running.
     private static RunSummary? Summarise(string runId, List<RunEvent> events, DateTimeOffset modified)
@@ -403,8 +412,7 @@ internal sealed class JsonLinesRunHistoryReader : IRunHistoryReader
             CrewKey = started?.CrewId ?? started?.Payload?["crewKey"]?.ToString() ?? started?.Payload?["target"]?.ToString(),
             Status = finished is null
                 ? RunStatus.Running
-                : finished.Payload?["status"]?.ToString() == RunFinishedStatuses.WaitingForInput ? RunStatus.WaitingForInput
-                : finished.Payload?["success"]?.GetValue<bool>() == true ? RunStatus.Succeeded : RunStatus.Failed,
+                : FinishedStatus(finished, finished.Payload?["success"]?.GetValue<bool>() == true),
             StartedAt = (started?.Timestamp ?? events[0].Timestamp) is { } first && first != default ? first : modified,
             FinishedAt = finished?.Timestamp,
             Error = error,

@@ -187,7 +187,7 @@ public sealed class JsLlmFacadeSingleGateTests
         var facade = new JsLlmFacade(
             engine, new ScriptedProvider(), CancellationToken.None, new IBaseTool[] { tool },
             new JsLlmActGuards { PermissionGate = gate },
-            new JsLlmObservability { ToolInvocation = new ToolInvocationPipeline(permissionGate: gate, approvalChannel: channel), AgentName = "coder" });
+            new JsLlmObservability { ToolInvocation = new ToolInvocationPipeline(permissionGate: gate, options: new ToolInvocationPipelineOptions { ApprovalChannel = channel }), AgentName = "coder" });
         var options = await engine.EvaluateAsync(
             "({ permissionMode: 'plan', onToolCall: (call) => 'ask' })", null, TestContext.Current.CancellationToken);
 

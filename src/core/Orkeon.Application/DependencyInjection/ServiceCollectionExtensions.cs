@@ -106,9 +106,12 @@ public static class ServiceCollectionExtensions
                 sp.GetService<Microsoft.Extensions.Logging.ILogger<Services.Security.ToolInvocationPipeline>>(),
                 limits: null,
                 permissionGate: sp.GetService<Interfaces.Security.IPermissionGate>(),
-                approvalChannel: sp.GetService<Interfaces.Security.IToolApprovalChannel>(),
-                defaultMode: DefaultPermissionMode(sp.GetService<Microsoft.Extensions.Configuration.IConfiguration>()),
-                runScope: sp.GetService<Interfaces.Services.IRunScope>()));
+                options: new Services.Security.ToolInvocationPipelineOptions
+                {
+                    ApprovalChannel = sp.GetService<Interfaces.Security.IToolApprovalChannel>(),
+                    DefaultMode = DefaultPermissionMode(sp.GetService<Microsoft.Extensions.Configuration.IConfiguration>()),
+                    RunScope = sp.GetService<Interfaces.Services.IRunScope>(),
+                }));
         return services;
     }
 

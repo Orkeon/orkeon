@@ -67,11 +67,17 @@ public sealed class ToolCallDeltaHold
         return redacted;
     }
 
-    private sealed class Call(int index)
+    private sealed class Call
     {
-        public int Index { get; } = index;
+        public Call(int index)
+        {
+            Index = index;
+            Arguments = new StringBuilder();
+        }
+
+        public int Index { get; }
         public string? Id { get; set; }
         public string? Name { get; set; }
-        public StringBuilder Arguments { get; } = new();
+        public StringBuilder Arguments { get; }
     }
 }

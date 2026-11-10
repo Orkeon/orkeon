@@ -5,6 +5,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -77,18 +78,15 @@ internal sealed partial class HostApiServer : IHostedService, IDisposable
         HealthCheckService health,
         RunIdempotencyStore idempotency,
         ILogger<HostApiServer> logger,
-        IRunHistoryReader? history = null,
-        IEnumerable<IAuthenticationProvider>? bearerProviders = null,
-        ISecretProvider? secrets = null,
-        TimeProvider? time = null,
-        Orkeon.Application.Interfaces.Checkpointing.ICheckpointManager? checkpoints = null,
-        IPendingInputBroker? broker = null,
-        Microsoft.Extensions.Options.IOptions<Orkeon.Infrastructure.Checkpointing.CheckpointingOptions>? checkpointing = null)
+        IServiceProvider services)
     {
+        ArgumentNullException.ThrowIfNull(services);
         // A run's questions are persisted only with Orkeon:Checkpointing:Enabled (the durable human input engages on it): the
         // checkpoint manager is registered either way, so its presence alone says nothing.
+        var checkpointing = services.GetService<Microsoft.Extensions.Options.IOptions<Orkeon.Infrastructure.Checkpointing.CheckpointingOptions>>();
+        var checkpoints = services.GetService<Orkeon.Application.Interfaces.Checkpointing.ICheckpointManager>();
         _input = checkpointing?.Value.Enabled == true ? checkpoints as IPendingInputStore : null;
-        _broker = broker;
+        _broker = services.GetService<IPendingInputBroker>();
         ArgumentNullException.ThrowIfNull(options);
         _options = options.Value.Api;
         _runner = runner ?? throw new ArgumentNullException(nameof(runner));
@@ -96,10 +94,10 @@ internal sealed partial class HostApiServer : IHostedService, IDisposable
         _health = health ?? throw new ArgumentNullException(nameof(health));
         _idempotency = idempotency ?? throw new ArgumentNullException(nameof(idempotency));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-        _history = history;
-        _bearerProviders = bearerProviders ?? [];
-        _secrets = secrets;
-        _time = time ?? TimeProvider.System;
+        _history = services.GetService<IRunHistoryReader>();
+        _bearerProviders = services.GetService<IEnumerable<IAuthenticationProvider>>() ?? [];
+        _secrets = services.GetService<ISecretProvider>();
+        _time = services.GetService<TimeProvider>() ?? TimeProvider.System;
     }
 
     /// <summary>Whether the listener is up.</summary>
@@ -620,27 +618,15 @@ internal sealed partial class HostApiServer : IHostedService, IDisposable
             return;
         }
 
-        var held = requestId is null
-            ? heldIds.Count == 1 ? heldIds[0] : null
-            : heldIds.FirstOrDefault(h => string.Equals(h, requestId, StringComparison.Ordinal));
+        var held = PickHeldRequest(heldIds, requestId);
         if (heldIds.Count > 0 && held is null)
         {
             await WriteAsync(context, 409, new ApiErrorDto { Error = "request_mismatch", Message = "The run waits on another question." }).ConfigureAwait(false);
             return;
         }
 
-        if (held is not null)
-        {
-            _delivered[(id, held)] = answer;
-            if (_broker.TryComplete(id, held, answer))
-            {
-                await WriteAsync(context, 200, new InputAcceptedDto { RunId = id, RequestId = held, Status = "delivered" }).ConfigureAwait(false);
-                return;
-            }
-        }
-
-        if (held is not null)
-            _delivered.Remove((id, held));
+        if (held is not null && await TryDeliverToHeldRunAsync(context, id, held, answer).ConfigureAwait(false))
+            return;
 
         // The question already handed to the run, which has not recorded it yet: the first answer won.
         var target = requestId ?? (await _input!.GetPendingAsync(id, ct).ConfigureAwait(false))?.RequestId;
@@ -652,6 +638,33 @@ internal sealed partial class HostApiServer : IHostedService, IDisposable
             return;
         }
 
+        await RecordAnswerAsync(context, id, requestId, answer, ct).ConfigureAwait(false);
+    }
+
+    private static string? PickHeldRequest(IReadOnlyList<string> heldIds, string? requestId)
+    {
+        if (requestId is not null)
+            return heldIds.FirstOrDefault(h => string.Equals(h, requestId, StringComparison.Ordinal));
+
+        return heldIds.Count == 1 ? heldIds[0] : null;
+    }
+
+    // True when the broker took the answer for the held run and the reply is written.
+    private async Task<bool> TryDeliverToHeldRunAsync(HttpListenerContext context, string id, string held, string answer)
+    {
+        _delivered[(id, held)] = answer;
+        if (_broker!.TryComplete(id, held, answer))
+        {
+            await WriteAsync(context, 200, new InputAcceptedDto { RunId = id, RequestId = held, Status = "delivered" }).ConfigureAwait(false);
+            return true;
+        }
+
+        _delivered.Remove((id, held));
+        return false;
+    }
+
+    private async Task RecordAnswerAsync(HttpListenerContext context, string id, string? requestId, string answer, CancellationToken ct)
+    {
         var answered = await _input!.AnswerAsync(id, requestId, answer, ct).ConfigureAwait(false);
         switch (answered.Outcome)
         {
@@ -740,16 +753,21 @@ internal sealed partial class HostApiServer : IHostedService, IDisposable
         }
     }
 
+    private static int ResumePosition(HttpListenerContext context)
+    {
+        // Last-Event-ID is the seq the client last received: it resumes after it. ?from= is inclusive, as the history reads.
+        var lastEventId = context.Request.Headers["Last-Event-ID"];
+        if (int.TryParse(lastEventId, NumberStyles.None, CultureInfo.InvariantCulture, out var last))
+            return last + 1;
+        if (int.TryParse(context.Request.QueryString["from"], NumberStyles.None, CultureInfo.InvariantCulture, out var from) && from >= 1)
+            return from;
+        return 1;
+    }
+
     private async Task ServeStreamAsync(HttpListenerContext context, string id, CancellationToken ct)
     {
         var history = _history!;
-        // Last-Event-ID is the seq the client last received: it resumes after it. ?from= is inclusive, as the history reads.
-        var next = 1;
-        var lastEventId = context.Request.Headers["Last-Event-ID"];
-        if (int.TryParse(lastEventId, NumberStyles.None, CultureInfo.InvariantCulture, out var last))
-            next = last + 1;
-        else if (int.TryParse(context.Request.QueryString["from"], NumberStyles.None, CultureInfo.InvariantCulture, out var from) && from >= 1)
-            next = from;
+        var next = ResumePosition(context);
 
         var sse = (context.Request.Headers["Accept"] ?? string.Empty).Contains("text/event-stream", StringComparison.OrdinalIgnoreCase);
         var response = context.Response;
@@ -765,12 +783,7 @@ internal sealed partial class HostApiServer : IHostedService, IDisposable
             var finished = false;
             foreach (var runEvent in events)
             {
-                var wire = RunEventWire.Serialize(runEvent);
-                var frame = sse
-                    ? $"id: {runEvent.Seq.ToString(CultureInfo.InvariantCulture)}\nevent: {runEvent.Kind}\ndata: {wire}\n\n"
-                    : wire + "\n";
-                var bytes = Encoding.UTF8.GetBytes(frame);
-                await response.OutputStream.WriteAsync(bytes, ct).ConfigureAwait(false);
+                await WriteEventFrameAsync(response, runEvent, sse, ct).ConfigureAwait(false);
                 next = runEvent.Seq + 1;
                 finished = runEvent.Kind == RunEventKinds.RunFinished;
                 lastWrite = _time.GetTimestamp();
@@ -785,16 +798,26 @@ internal sealed partial class HostApiServer : IHostedService, IDisposable
             }
 
             await response.OutputStream.FlushAsync(ct).ConfigureAwait(false);
-            if (finished)
-                return;
-
-            // Nothing new: stop when the run is over without a run.finished (a killed process), else wait.
-            if (events.Count == 0 && !IsRunning(id) && await history.GetAsync(id, ct).ConfigureAwait(false) is { Status: not RunStatus.Running })
+            if (finished || await StreamEndedWithoutFinishAsync(id, events.Count, ct).ConfigureAwait(false))
                 return;
 
             await Task.Delay(s_eventPoll, _time, ct).ConfigureAwait(false);
         }
     }
+
+    private static async Task WriteEventFrameAsync(HttpListenerResponse response, RunEvent runEvent, bool sse, CancellationToken ct)
+    {
+        var wire = RunEventWire.Serialize(runEvent);
+        var frame = sse
+            ? $"id: {runEvent.Seq.ToString(CultureInfo.InvariantCulture)}\nevent: {runEvent.Kind}\ndata: {wire}\n\n"
+            : wire + "\n";
+        var bytes = Encoding.UTF8.GetBytes(frame);
+        await response.OutputStream.WriteAsync(bytes, ct).ConfigureAwait(false);
+    }
+
+    // Nothing new: the stream ends when the run is over without a run.finished (a killed process), else it waits.
+    private async Task<bool> StreamEndedWithoutFinishAsync(string id, int eventCount, CancellationToken ct) =>
+        eventCount == 0 && !IsRunning(id) && await _history!.GetAsync(id, ct).ConfigureAwait(false) is { Status: not RunStatus.Running };
 
     private static string StatusName(HealthStatus status) => status switch
     {

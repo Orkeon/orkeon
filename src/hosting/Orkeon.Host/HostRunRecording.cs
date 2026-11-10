@@ -56,7 +56,11 @@ internal sealed class HostRunRecording
     public ICrewExecutionHook Hook(ICrewExecutionHook inner)
     {
         ArgumentNullException.ThrowIfNull(inner);
-        return _publisher is null ? inner : _observer ??= new RunEventObserver(_publisher, inner, stream: false);
+        if (_publisher is null)
+            return inner;
+
+        _observer ??= new RunEventObserver(_publisher, inner, stream: false);
+        return _observer;
     }
 
     /// <summary>
@@ -92,7 +96,7 @@ internal sealed class HostRunRecording
     private void Finish(Func<bool> cancelled, long started)
     {
         var success = Succeeded;
-        var exitCode = WaitingForInput ? Orkeon.Constants.Cli.RunExitCodes.WaitingForInput : success ? 0 : cancelled() ? CancelledExitCode : 1;
+        var exitCode = ExitCodeFor(success, cancelled);
         _publisher?.Emit(RunEventKinds.RunFinished, new
         {
             success,
@@ -100,6 +104,15 @@ internal sealed class HostRunRecording
             status = WaitingForInput ? RunFinishedStatuses.WaitingForInput : null,
             durationMs = (long)Stopwatch.GetElapsedTime(started).TotalMilliseconds,
         });
+    }
+
+    private int ExitCodeFor(bool success, Func<bool> cancelled)
+    {
+        if (WaitingForInput)
+            return Orkeon.Constants.Cli.RunExitCodes.WaitingForInput;
+        if (success)
+            return 0;
+        return cancelled() ? CancelledExitCode : 1;
     }
 
     private sealed class Recording(HostRunRecording owner, IDisposable identity, Func<bool> cancelled, long started) : IDisposable

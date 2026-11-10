@@ -91,37 +91,9 @@ public static partial class RunnerExecution
         var llmMockPath = opts.ResolvedLlmMockPath;
         var cassette = RunnerLlmCassette.Resolve(opts.LlmRecord, opts.LlmReplay);
 
-        // The crew's own mounts: block, read raw before any host: it is one of the inputs that
-        // decide which settings entries the host mounts (VFS-90), and the loader that reads it
-        // properly runs over the VFS those very mounts build.
-        var crewMounts = target.IsScript
-            ? CrewMountDeclarations.None
-            : CrewMountDeclarations.Read(target.ConfigPath, target.IsCrewDirectory);
-
-        // The layers the host will read its mounts from, read once for every guard (GAP-49,
-        // decision 2): the environment without a prefix, the settings file, ORKEON_. A script has
-        // no mounts: block (VFS-90, D-11), so its selection line names --mount-id and --mount only.
-        var layers = RunnerSettings.ReadMountConfiguration(target.SettingsPath);
-        var offered = target.IsScript
-            ? OfferedMountSelectors.MountIdOption | OfferedMountSelectors.MountOption
-            : OfferedMountSelectors.All;
         var error = opts.RunnerConsole.ErrorOutput;
 
-        if (!RunnerLlmCassette.EnsureExclusive(opts.LlmRecord, opts.LlmReplay, opts.LlmMock, error)
-            || !RunnerLlmCassette.EnsureReadable(cassette, error)
-            || !RunnerLlmCassette.EnsureSeparateFrom(cassette, target.ConfigDir, error)
-            || !RunnerLlmCassette.EnsureWriteAllowed(cassette, opts.EffectiveAllowExternalMounts, error)
-            || !RunnerLlmMock.EnsureReadable(llmMockPath, error)
-            || !RunnerLlmMock.EnsureSeparateFrom(llmMockPath, target.ConfigDir, error)
-            || !EnsureVirtualRootsAreUnique(cliMounts, layers, target.SettingsPath, error)
-            || !EnsureExternalMountsAllowed(opts, target.IsScript ? null : target.ConfigDir, llmLogPath, error)
-            || !EnsureReservedRootsAreFree(
-                cliMounts, layers, error,
-                target.VirtualRoot, RunnerVirtualRoots.LlmLogs, RunnerVirtualRoots.LlmMock, RunnerVirtualRoots.LlmCassette, RunnerVirtualRoots.Sandbox, RunnerVirtualRoots.State, RunnerVirtualRoots.Runs)
-            || !EnsureMountSelectionIsResolvable(
-                cliMounts, opts.MountIds, crewMounts, new MountLayers(layers, target.SettingsPath), offered, error, out var selection)
-            || !EnsureMountSourcesExist(cliMounts, layers, selection, error)
-            || !EnsureLlmProfileIsKnown(opts.LlmProfile, target.SettingsPath, error))
+        if (!EnsureLaunchGuardsPass(opts, target, cliMounts, (llmLogPath, llmMockPath, cassette), out var selection))
         {
             errorCode = 1;
             return false;
@@ -206,6 +178,53 @@ public static partial class RunnerExecution
         bootstrap = new HostBootstrap(
             host, logger, target.ConfigPath, target.VirtualConfigPath, target.IsCrewDirectory, cliMounts);
         return true;
+    }
+
+    /// <summary>
+    /// Runs every pre-launch guard over the options, the mounts and the settings layers; the first
+    /// refusal is written on the console and ends the chain.
+    /// </summary>
+    private static bool EnsureLaunchGuardsPass(
+        RunnerOptionsBase opts,
+        CrewTarget target,
+        List<string> cliMounts,
+        (string? LlmLogPath, string? LlmMockPath, RunnerLlmCassette.Choice? Cassette) llm,
+        [System.Diagnostics.CodeAnalysis.NotNullWhen(true)] out MountSelectionPlan? selection)
+    {
+        var (llmLogPath, llmMockPath, cassette) = llm;
+        selection = null;
+
+        // The crew's own mounts: block, read raw before any host: it is one of the inputs that
+        // decide which settings entries the host mounts (VFS-90), and the loader that reads it
+        // properly runs over the VFS those very mounts build.
+        var crewMounts = target.IsScript
+            ? CrewMountDeclarations.None
+            : CrewMountDeclarations.Read(target.ConfigPath, target.IsCrewDirectory);
+
+        // The layers the host will read its mounts from, read once for every guard (GAP-49,
+        // decision 2): the environment without a prefix, the settings file, ORKEON_. A script has
+        // no mounts: block (VFS-90, D-11), so its selection line names --mount-id and --mount only.
+        var layers = RunnerSettings.ReadMountConfiguration(target.SettingsPath);
+        var offered = target.IsScript
+            ? OfferedMountSelectors.MountIdOption | OfferedMountSelectors.MountOption
+            : OfferedMountSelectors.All;
+        var error = opts.RunnerConsole.ErrorOutput;
+
+        return RunnerLlmCassette.EnsureExclusive(opts.LlmRecord, opts.LlmReplay, opts.LlmMock, error)
+            && RunnerLlmCassette.EnsureReadable(cassette, error)
+            && RunnerLlmCassette.EnsureSeparateFrom(cassette, target.ConfigDir, error)
+            && RunnerLlmCassette.EnsureWriteAllowed(cassette, opts.EffectiveAllowExternalMounts, error)
+            && RunnerLlmMock.EnsureReadable(llmMockPath, error)
+            && RunnerLlmMock.EnsureSeparateFrom(llmMockPath, target.ConfigDir, error)
+            && EnsureVirtualRootsAreUnique(cliMounts, layers, target.SettingsPath, error)
+            && EnsureExternalMountsAllowed(opts, target.IsScript ? null : target.ConfigDir, llmLogPath, error)
+            && EnsureReservedRootsAreFree(
+                cliMounts, layers, error,
+                target.VirtualRoot, RunnerVirtualRoots.LlmLogs, RunnerVirtualRoots.LlmMock, RunnerVirtualRoots.LlmCassette, RunnerVirtualRoots.Sandbox, RunnerVirtualRoots.State, RunnerVirtualRoots.Runs)
+            && EnsureMountSelectionIsResolvable(
+                cliMounts, opts.MountIds, crewMounts, new MountLayers(layers, target.SettingsPath), offered, error, out selection)
+            && EnsureMountSourcesExist(cliMounts, layers, selection, error)
+            && EnsureLlmProfileIsKnown(opts.LlmProfile, target.SettingsPath, error);
     }
 
     /// <summary>
@@ -870,19 +889,9 @@ public static partial class RunnerExecution
         {
         // Diagnostic modes short-circuit the kickoff: --list-tools dumps the runtime tool
         // registry (no crew), --validate loads the crew strictly but never probes the LLM.
-        if (opts.Resume is not null && (opts.Validate || opts.ListTools))
+        if (IncompatibleOptionsMessage(opts) is { } refusal)
         {
-            await opts.RunnerConsole.ErrorOutput.WriteLineAsync(
-                $"ERROR: --resume cannot be combined with {(opts.Validate ? "--validate" : "--list-tools")}: that mode runs nothing, so there is no run to resume.")
-                .ConfigureAwait(false);
-            return 1;
-        }
-
-        if (opts.Input is not null && opts.Resume is null)
-        {
-            await opts.RunnerConsole.ErrorOutput.WriteLineAsync(
-                "ERROR: --input answers the question of a run that stopped, so it needs --resume <id>: without a run to resume there is no question.")
-                .ConfigureAwait(false);
+            await opts.RunnerConsole.ErrorOutput.WriteLineAsync(refusal).ConfigureAwait(false);
             return 1;
         }
 
@@ -903,6 +912,17 @@ public static partial class RunnerExecution
             await opts.RunnerConsole.ErrorOutput.WriteLineAsync($"ERROR: {failure}").ConfigureAwait(false);
         return exitCode;
         }
+    }
+
+    private static string? IncompatibleOptionsMessage(RunnerOptionsBase opts)
+    {
+        if (opts.Resume is not null && (opts.Validate || opts.ListTools))
+            return $"ERROR: --resume cannot be combined with {(opts.Validate ? "--validate" : "--list-tools")}: that mode runs nothing, so there is no run to resume.";
+
+        if (opts.Input is not null && opts.Resume is null)
+            return "ERROR: --input answers the question of a run that stopped, so it needs --resume <id>: without a run to resume there is no question.";
+
+        return null;
     }
 
     /// <summary>

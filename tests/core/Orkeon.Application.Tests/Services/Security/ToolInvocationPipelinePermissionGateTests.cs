@@ -66,7 +66,7 @@ public sealed class ToolInvocationPipelinePermissionGateTests
         var tool = new SpyTool("shell_command");
         var gate = new StubPermissionGate { Verdict = PermissionVerdict.Ask("needs approval") };
         var channel = new StubToolApprovalChannel { Decision = decision };
-        var pipeline = new ToolInvocationPipeline(permissionGate: gate, approvalChannel: channel);
+        var pipeline = new ToolInvocationPipeline(permissionGate: gate, options: new ToolInvocationPipelineOptions { ApprovalChannel = channel });
 
         var result = await pipeline.InvokeAsync(Call(tool), Ct);
 
@@ -81,7 +81,7 @@ public sealed class ToolInvocationPipelinePermissionGateTests
     public async System.Threading.Tasks.Task ACallerWithoutAMode_RunsUnderTheDefaultMode()
     {
         var gate = new StubPermissionGate();
-        var pipeline = new ToolInvocationPipeline(permissionGate: gate, defaultMode: PermissionMode.AcceptEdits);
+        var pipeline = new ToolInvocationPipeline(permissionGate: gate, options: new ToolInvocationPipelineOptions { DefaultMode = PermissionMode.AcceptEdits });
 
         await pipeline.InvokeAsync(Call(new SpyTool("file_write")), Ct);
 
@@ -198,7 +198,7 @@ public sealed class ToolInvocationPipelinePermissionGateTests
         bool? openInChannel = null;
         var gate = new StubPermissionGate { Verdict = PermissionVerdict.Ask("needs approval"), OnCheck = () => openInGate = open > 0 };
         var channel = new StubToolApprovalChannel { OnRequest = () => openInChannel = open > 0 };
-        var pipeline = new ToolInvocationPipeline(permissionGate: gate, approvalChannel: channel);
+        var pipeline = new ToolInvocationPipeline(permissionGate: gate, options: new ToolInvocationPipelineOptions { ApprovalChannel = channel });
         var caller = Agent with { WaitScope = () => { open++; return new Scope(() => open--); } };
 
         await pipeline.InvokeAsync(Call(new SpyTool("shell_command"), caller), Ct);
@@ -248,7 +248,7 @@ public sealed class ToolInvocationPipelinePermissionGateTests
                 : PermissionVerdict.Ask("needs approval"),
         };
         var channel = new StubToolApprovalChannel { Decision = ToolApprovalDecision.AllowOnce };
-        var pipeline = new ToolInvocationPipeline(permissionGate: gate, approvalChannel: channel);
+        var pipeline = new ToolInvocationPipeline(permissionGate: gate, options: new ToolInvocationPipelineOptions { ApprovalChannel = channel });
 
         var result = await pipeline.InvokeAsync(Call(tool, Agent with { PermissionMode = mode, RequireApproval = true }), Ct);
 
@@ -267,7 +267,7 @@ public sealed class ToolInvocationPipelinePermissionGateTests
             VerdictFor = (checkedMode, _) => checkedMode == "plan" ? PermissionVerdict.Deny("plan") : PermissionVerdict.Ask("needs approval"),
         };
         var channel = new StubToolApprovalChannel { Decision = ToolApprovalDecision.AllowOnce };
-        var pipeline = new ToolInvocationPipeline(permissionGate: gate, approvalChannel: channel);
+        var pipeline = new ToolInvocationPipeline(permissionGate: gate, options: new ToolInvocationPipelineOptions { ApprovalChannel = channel });
         var coworker = new ToolInvocationCaller("agent-2", "editor") { PermissionMode = "bypassPermissions", RequireApproval = true };
         var delegateTool = new FakeCoworkerDelegationTool(onCall: async ct => await pipeline.InvokeAsync(Call(tool, coworker), ct));
 

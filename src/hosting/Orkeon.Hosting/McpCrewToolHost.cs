@@ -211,10 +211,17 @@ internal sealed partial class McpCrewToolHost : IMcpServerExtension, IDisposable
             _publisher.Emit(RunEventKinds.RunFinished, new
             {
                 success = Succeeded,
-                exitCode = Succeeded ? 0 : Cancelled ? 130 : 1,
+                exitCode = ExitCode(),
                 durationMs = (long)Stopwatch.GetElapsedTime(_started).TotalMilliseconds,
             });
             _identity.Dispose();
+        }
+
+        private int ExitCode()
+        {
+            if (Succeeded)
+                return 0;
+            return Cancelled ? 130 : 1;
         }
     }
 

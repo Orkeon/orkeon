@@ -39,25 +39,25 @@ public partial class CreateCrewHandler : ICommandHandler<CreateCrewCommand, Crew
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(command);
-        return HandleCoreAsync();
+        return HandleCoreAsync(command);
 
-        async System.Threading.Tasks.Task<CrewDto> HandleCoreAsync()
+        async System.Threading.Tasks.Task<CrewDto> HandleCoreAsync(CreateCrewCommand request)
         {
-            LogCreatingCrew(command.Name, command.Goal);
+            LogCreatingCrew(request.Name, request.Goal);
 
             // Create the crew domain entity
             var crew = DomainCrew.Create(
-                goal: command.Goal,
-                processType: command.ProcessType,
+                goal: request.Goal,
+                processType: request.ProcessType,
                 verbose: false);
 
             // Add agents if provided (format already validated by CreateCrewCommandValidator)
-            if (command.AgentIds?.Count > 0)
+            if (request.AgentIds?.Count > 0)
             {
-                foreach (var agentIdStr in command.AgentIds)
+                foreach (var agentIdStr in request.AgentIds)
                 {
                     if (!AgentIdText.TryParse(agentIdStr, out var agentId))
-                        throw new ArgumentException($"Agent ID '{agentIdStr}' is not a valid agent id.", nameof(command));
+                        throw new ArgumentException($"Agent ID '{agentIdStr}' is not a valid agent id.", nameof(request));
                     crew.AddAgent(agentId);
                 }
             }
@@ -69,16 +69,16 @@ public partial class CreateCrewHandler : ICommandHandler<CreateCrewCommand, Crew
             // through the API — which cannot declare links — must be resolvable as somebody
             // else's target. Without this, the first YAML crew to declare a `links:` block
             // silently made every API-created crew unreachable.
-            if (!string.IsNullOrWhiteSpace(command.Name))
-                _linkRegistry?.Register(crew.Id, command.Name, links: null);
+            if (!string.IsNullOrWhiteSpace(request.Name))
+                _linkRegistry?.Register(crew.Id, request.Name, links: null);
 
             // Map to DTO and return
             return new CrewDto
             {
                 Id = crew.Id.ToString(),
-                Name = command.Name,
-                Description = command.Goal,
-                ProcessType = command.ProcessType.Value,
+                Name = request.Name,
+                Description = request.Goal,
+                ProcessType = request.ProcessType.Value,
                 Status = "Idle",
                 Verbosity = crew.Verbose ? "verbose" : "normal",
                 CreatedAt = crew.CreatedAt

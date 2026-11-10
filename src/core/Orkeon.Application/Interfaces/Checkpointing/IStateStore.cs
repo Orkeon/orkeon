@@ -126,11 +126,9 @@ public sealed record SessionState
     {
         get
         {
-            foreach (var question in PendingInputs)
-            {
-                if (string.Equals(question.RequestId, SuspendedOn, StringComparison.Ordinal))
-                    return question;
-            }
+            var suspended = PendingInputs.FirstOrDefault(q => string.Equals(q.RequestId, SuspendedOn, StringComparison.Ordinal));
+            if (suspended is not null)
+                return suspended;
 
             return PendingInputs.Count > 0 ? PendingInputs[0] : null;
         }

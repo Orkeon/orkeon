@@ -211,11 +211,17 @@ public sealed class CrewScriptRunner : ICrewScriptRunner
     /// caller's writer, the diagnostics are also kept to explain a refusal, no input is read and
     /// the interrupt key is the application's.
     /// </summary>
-    private sealed class EmbeddedRunnerConsole(TextWriter diagnostics, TextWriter errors) : IRunnerConsole
+    private sealed class EmbeddedRunnerConsole : IRunnerConsole
     {
-        public TextWriter Output { get; } = diagnostics;
+        public EmbeddedRunnerConsole(TextWriter diagnostics, TextWriter errors)
+        {
+            Output = diagnostics;
+            ErrorOutput = new TeeWriter(diagnostics, errors);
+        }
 
-        public TextWriter ErrorOutput { get; } = new TeeWriter(diagnostics, errors);
+        public TextWriter Output { get; }
+
+        public TextWriter ErrorOutput { get; }
 
         public TextReader Input => TextReader.Null;
 

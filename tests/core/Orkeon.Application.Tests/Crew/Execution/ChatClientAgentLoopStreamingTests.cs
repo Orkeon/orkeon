@@ -134,7 +134,8 @@ public class ChatClientAgentLoopStreamingTests
         var logger = new SpyExecutionLogger();
         var gate = new LlmCallGate(logger, new ScriptedBasicLlmProvider());
         var composer = new ChatOptionsComposer(logger, [], new FakeFileSystemService(), ToolInvocationPipeline.Unguarded);
-        return new ChatClientAgentLoop(logger, client, gate, composer, new ChatToolDispatcher(logger, ToolInvocationPipeline.Unguarded), sink);
+        return new ChatClientAgentLoop(logger, client, gate, composer, new ChatToolDispatcher(logger, ToolInvocationPipeline.Unguarded),
+            new ChatClientAgentLoop.ChatClientAgentLoopOptions(DeltaSink: sink));
     }
 
     private static System.Threading.Tasks.Task<AgentLoopResult> RunAsync(ChatClientAgentLoop loop) =>

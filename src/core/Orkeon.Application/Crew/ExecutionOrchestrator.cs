@@ -70,7 +70,8 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
         _optionsComposer ??= new ChatOptionsComposer(_logger, _registeredTools, _fileSystem, Tools);
 
     private ChatClientAgentLoop ChatLoop =>
-        _chatLoop ??= new ChatClientAgentLoop(_logger, _chatClient!, LlmGate, OptionsComposer, ToolDispatcher, DeltaSink, _verboseLogger, ToolCallDlp);
+        _chatLoop ??= new ChatClientAgentLoop(_logger, _chatClient!, LlmGate, OptionsComposer, ToolDispatcher,
+            new ChatClientAgentLoop.ChatClientAgentLoopOptions(DeltaSink, _verboseLogger, ToolCallDlp));
 
     private LegacyTextAgentLoop LegacyLoop =>
         _legacyLoop ??= new LegacyTextAgentLoop(_logger, _llmProvider, LlmGate, Tools, _registeredTools, _verboseLogger);
@@ -468,20 +469,9 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
                 var inputVerdict = await CheckInputAsync(agent, context, userPrompt, taskToken).ConfigureAwait(false);
                 if (inputVerdict is { IsAllowed: false })
                 {
-                    var reason = $"Blocked by Guardian (input): {inputVerdict.Reason}";
                     ExecutionLog.LogInputBlocked(_logger, agent.Role, task.Id, inputVerdict.Reason ?? "");
-                    return new TaskResult(
-                        Success: false,
-                        Output: string.Empty,
-                        StructuredOutput: null,
-                        ToolsUsed: toolsUsed,
-                        ExecutionTime: DateTime.UtcNow - startTime,
-                        Error: reason)
-                    {
-                        ExitReason = AgentExitReason.GuardianBlocked,
-                        IterationsUsed = 0,
-                        LastError = reason,
-                    };
+                    return GuardianBlockedResult(
+                        $"Blocked by Guardian (input): {inputVerdict.Reason}", 0, toolsUsed, startTime);
                 }
 
                 var validationContext = OutputValidationCoordinator.BuildOutputValidationContext(task);
@@ -523,35 +513,10 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
                 // policy — before the deliverable is written, the memory kept or task.completed raised.
                 // A call the provider never answered has no output to judge. A refusal is a readable
                 // task failure, not a provider failure: a profile never fails over on it.
-                if (loopResult.ExitReason != AgentExitReason.LlmCallFailed)
-                {
-                    var outputVerdict = await CheckOutputAsync(agent, context, finalOutput, taskToken).ConfigureAwait(false);
-                    if (outputVerdict is { IsAllowed: false })
-                    {
-                        outputHold?.Drop();
-                        var reason = $"Blocked by Guardian (output): {outputVerdict.Reason}";
-                        ExecutionLog.LogOutputBlocked(_logger, agent.Role, task.Id, outputVerdict.Reason ?? "");
-                        return new TaskResult(
-                            Success: false,
-                            Output: string.Empty,
-                            StructuredOutput: null,
-                            ToolsUsed: toolsUsed,
-                            ExecutionTime: DateTime.UtcNow - startTime,
-                            Error: reason)
-                        {
-                            ExitReason = AgentExitReason.GuardianBlocked,
-                            IterationsUsed = loopResult.IterationsUsed,
-                            LastError = reason,
-                        };
-                    }
-
-                    outputHold?.Release();
-                }
-                else
-                {
-                    // A failed call has no output to judge, and what it streamed was never judged either.
-                    outputHold?.Drop();
-                }
+                var outputBlocked = await ApplyOutputPhaseAsync(
+                    agent, task, context, loopResult, finalOutput, outputHold, toolsUsed, startTime, taskToken).ConfigureAwait(false);
+                if (outputBlocked is not null)
+                    return outputBlocked;
 
                 // Framework-managed deliverable persistence (Solution A / B).
                 // Legacy tasks with Deliverable == null or Source == ToolCall keep the existing
@@ -604,6 +569,56 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
             }
         }
     }
+
+    /// <summary>
+    /// The output phase (FWK-19) on a task's validated output: null when the output may go on (the hold is released),
+    /// else the failed result of a refusal (the hold is dropped). A call the provider never answered has no output to
+    /// judge, and what it streamed was never judged either: its hold is dropped.
+    /// </summary>
+    private async System.Threading.Tasks.Task<TaskResult?> ApplyOutputPhaseAsync(
+        DomainAgent agent,
+        CrewTask task,
+        SimpleExecutionContext context,
+        AgentLoopResult loopResult,
+        string finalOutput,
+        OutputHold? outputHold,
+        List<Domain.Tools.ToolUsage> toolsUsed,
+        DateTime startTime,
+        CancellationToken cancellationToken)
+    {
+        if (loopResult.ExitReason == AgentExitReason.LlmCallFailed)
+        {
+            outputHold?.Drop();
+            return null;
+        }
+
+        var outputVerdict = await CheckOutputAsync(agent, context, finalOutput, cancellationToken).ConfigureAwait(false);
+        if (outputVerdict is { IsAllowed: false })
+        {
+            outputHold?.Drop();
+            ExecutionLog.LogOutputBlocked(_logger, agent.Role, task.Id, outputVerdict.Reason ?? "");
+            return GuardianBlockedResult(
+                $"Blocked by Guardian (output): {outputVerdict.Reason}", loopResult.IterationsUsed, toolsUsed, startTime);
+        }
+
+        outputHold?.Release();
+        return null;
+    }
+
+    private static TaskResult GuardianBlockedResult(
+        string reason, int iterationsUsed, List<Domain.Tools.ToolUsage> toolsUsed, DateTime startTime) =>
+        new(
+            Success: false,
+            Output: string.Empty,
+            StructuredOutput: null,
+            ToolsUsed: toolsUsed,
+            ExecutionTime: DateTime.UtcNow - startTime,
+            Error: reason)
+        {
+            ExitReason = AgentExitReason.GuardianBlocked,
+            IterationsUsed = iterationsUsed,
+            LastError = reason,
+        };
 
     /// <summary>
     /// Runs the guardian's input phase on the composed user prompt; null when no guardian is set.
@@ -793,8 +808,7 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
             new LlmCallGate(_logger, profile.BasicProvider, TimeProvider, AgentRequestsPerMinute, _verboseLogger),
             OptionsComposer,
             ToolDispatcher,
-            DeltaSink,
-            _verboseLogger);
+            new ChatClientAgentLoop.ChatClientAgentLoopOptions(DeltaSink, _verboseLogger));
 
     /// <summary>
     /// Why <paramref name="task"/> cannot run on <paramref name="provider"/>, or null (GAP-34): the
