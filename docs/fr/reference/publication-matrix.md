@@ -12,7 +12,10 @@ ne divergent plus jamais (OSS-011 / R8.3).
 > gate `scripts/check-package-closure.py`. Ses six premiers paquets sont partis le 2026-09-09 ;
 > `Orkeon.Compliance.Vfs`, `Orkeon.Interop.AgentFramework` et `Orkeon.Hosting.Aspire` ont
 > rejoint le lineup le 2026-09-11 et sont arrivés sur NuGet.org avec la release suivante
-> (constaté sur api.nuget.org le 2026-10-12) — neuf paquets en tout depuis. Le Trusted
+> (constaté sur api.nuget.org le 2026-10-12) — neuf paquets à ce moment-là. Cinq autres l'ont
+> rejoint depuis (`Orkeon.Scripting`, `Orkeon.Constants.Cli`, `Orkeon.Templates`,
+> `Orkeon.Cli.Abstractions` et `Orkeon.Cli.TerminalGui`) : quatorze paquets en tout, la liste
+> que pousse `publish.yml`. Le Trusted
 > Publishing vers NuGet.org est **opérationnel** — les paquets par couche désormais
 > abandonnés `Orkeon.Domain` / `Orkeon.Application` / `Orkeon.Infrastructure` y ont publié
 > deux pré-versions (2026-08-18 et 2026-08-25), et ont été délistés le 2026-09-07
@@ -97,7 +100,7 @@ couche de scripting.
 
 **Migration** : le code source et les namespaces sont inchangés, le code consommateur compile
 donc tel quel — seule l'installation change. Désinstallez les paquets par couche et
-`dotnet add package Orkeon --prerelease` (ajoutez `Orkeon.Tools` si vous utilisiez un paquet
+`dotnet add package Orkeon` (ajoutez `Orkeon.Tools` si vous utilisiez un paquet
 `Orkeon.Tools.<famille>` autre qu'`Embeddings.Local`).
 
 ## État réel de NuGet.org, et actions propriétaire restantes
@@ -153,7 +156,8 @@ NuGet.org ci-dessus **plus** les paquets build-time et runners qui restent hors 
 | PackageId | Commande tool | Projet source |
 |---|---|---|
 | `Orkeon.ConsoleApp` | `orkeon-repl` | `src/apps/Orkeon.ConsoleApp` |
-| `Orkeon.Scripting.Cli` | `orkeon` | `src/scripting/Orkeon.Scripting.Cli` |
+
+L'autre tool dotnet, `Orkeon.Scripting.Cli` (commande `orkeon`), fait partie du lineup NuGet.org ci-dessus.
 
 ### Canal dev : le dernier `main`, entre deux tags
 
@@ -384,7 +388,7 @@ l'asset de la Release. La contrepartie est la limite de débit de GitHub sur les
 
 | Canal | Répertoire | Reçoit |
 |---|---|---|
-| `stable` | `stable/` | chaque tag `v*` sans segment de pré-version — le même test qui fixe `prerelease:` sur la Release. Vide tant qu'aucune version finale n'est publiée |
+| `stable` | `stable/` | chaque tag `v*` sans segment de pré-version — le même test qui fixe `prerelease:` sur la Release. Versions finales seulement : une release candidate n'y entre jamais |
 | `rc` | `rc/` | chaque tag `v*` : tout paquet de `stable` est donc aussi dans `rc` |
 | `dev` | `dev/` | le paquet `orkeon` de chaque push vert sur `main`, en version `<version des props avec ~>.dev.<n>` (`<X.Y.Z>~<pre>.dev.<n>`) ; ses assets sont sur l'unique prerelease à tag fixe `apt-dev` ; seuls les trois derniers builds sont gardés. Jamais publié sur NuGet.org, jamais attesté comme une release |
 

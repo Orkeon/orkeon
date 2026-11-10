@@ -8,7 +8,7 @@
 ## Install
 
 ```
-dotnet add package Orkeon.Rag.Onnx.Model --prerelease
+dotnet add package Orkeon.Rag.Onnx.Model
 ```
 
 > Published to NuGet.org as part of the consolidated lineup (since 2026-09-09; earlier versions reached the GitHub Packages feed only). It declares **no dependency**: it is a pure weights package, referenced next to [`Orkeon.Rag.Onnx`](https://www.nuget.org/packages/Orkeon.Rag.Onnx), which is the package that depends on [`Orkeon`](https://www.nuget.org/packages/Orkeon) — see the [publication matrix](https://github.com/Orkeon/orkeon/blob/main/docs/reference/publication-matrix.md).

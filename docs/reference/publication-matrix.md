@@ -12,7 +12,9 @@ never drift again (OSS-011 / R8.3).
 > `scripts/check-package-closure.py` gate. Its first six packages went out on 2026-09-09;
 > `Orkeon.Compliance.Vfs`, `Orkeon.Interop.AgentFramework` and `Orkeon.Hosting.Aspire` joined
 > the lineup on 2026-09-11 and reached NuGet.org with the next release (seen on api.nuget.org
-> on 2026-10-12) — nine packages in all since. Trusted Publishing to NuGet.org
+> on 2026-10-12) — nine packages at that point. Five more joined since (`Orkeon.Scripting`,
+> `Orkeon.Constants.Cli`, `Orkeon.Templates`, `Orkeon.Cli.Abstractions` and
+> `Orkeon.Cli.TerminalGui`): fourteen packages in all, the list `publish.yml` pushes. Trusted Publishing to NuGet.org
 > is **operational** — the discontinued per-layer packages `Orkeon.Domain` /
 > `Orkeon.Application` / `Orkeon.Infrastructure` shipped two pre-releases through it
 > (2026-08-18 and 2026-08-25), and were unlisted on 2026-09-07 (see the owner
@@ -93,7 +95,7 @@ in the lineup again since #229, as the opt-in that carries the scripting layer.
 
 **Migration**: the source code and namespaces are unchanged, so consumer code compiles as-is —
 only the install changes. Uninstall the per-layer packages and
-`dotnet add package Orkeon --prerelease` (add `Orkeon.Tools` if you used a
+`dotnet add package Orkeon` (add `Orkeon.Tools` if you used a
 `Orkeon.Tools.<family>` package other than `Embeddings.Local`).
 
 ## Actual NuGet.org state, and the remaining owner actions
@@ -145,7 +147,8 @@ NuGet.org lineup above **plus** the build-time and runner packages that stay off
 | PackageId | Tool command | Source project |
 |---|---|---|
 | `Orkeon.ConsoleApp` | `orkeon-repl` | `src/apps/Orkeon.ConsoleApp` |
-| `Orkeon.Scripting.Cli` | `orkeon` | `src/scripting/Orkeon.Scripting.Cli` |
+
+The other dotnet tool, `Orkeon.Scripting.Cli` (command `orkeon`), is in the NuGet.org lineup above.
 
 ### Dev channel: the latest `main`, between two tags
 
@@ -365,7 +368,7 @@ treats it as a warning, a Docker build retries.
 
 | Channel | Directory | Receives |
 |---|---|---|
-| `stable` | `stable/` | every `v*` tag without a pre-release segment — the same test that sets `prerelease:` on the Release. Empty until a final version is published |
+| `stable` | `stable/` | every `v*` tag without a pre-release segment — the same test that sets `prerelease:` on the Release. Final versions only: a release candidate never reaches it |
 | `rc` | `rc/` | every `v*` tag, so every package of `stable` is in `rc` too |
 | `dev` | `dev/` | the `orkeon` package of every green push to `main`, versioned `<props version with ~>.dev.<n>` (`<X.Y.Z>~<pre>.dev.<n>`); its assets sit on the single fixed-tag prerelease `apt-dev`; only the three latest builds are kept. Never published to NuGet.org, never attested as a release |
 

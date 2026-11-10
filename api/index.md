@@ -26,7 +26,7 @@ authority on what ships where is the
 - **`Orkeon.Rag.Abstractions`, `Orkeon.Rag`** — the RAG contracts and pipeline.
 
 The eleven assemblies above are the closure embedded in the single `Orkeon` package —
-`dotnet add package Orkeon --prerelease` installs all of them at once. The remaining shipped assemblies are
+`dotnet add package Orkeon` installs all of them at once. The remaining shipped assemblies are
 opt-in packages of their own:
 
 - **`Orkeon.Tools.{Analysis,Code,Data,EventHub,FileSystem,Rag,Web}`** — the seven agent tool

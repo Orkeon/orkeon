@@ -5,7 +5,7 @@
 ## Install
 
 ```
-dotnet new install Orkeon.Templates --prerelease
+dotnet new install Orkeon.Templates
 ```
 
 ## Templates

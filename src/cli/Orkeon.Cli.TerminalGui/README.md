@@ -8,7 +8,7 @@ the prompt.
 ## Install
 
 ```bash
-dotnet add package Orkeon.Cli.TerminalGui --prerelease
+dotnet add package Orkeon.Cli.TerminalGui
 ```
 
 See the [publication matrix](https://github.com/Orkeon/orkeon/blob/main/docs/reference/publication-matrix.md) for the rest of the lineup.
