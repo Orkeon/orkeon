@@ -14,7 +14,11 @@ user has no console to read.
 
 ## Install
 
-This project is no longer distributed as a NuGet package — reference it from source (`ProjectReference` inside this repository); its assembly ships through the release artifacts. See the [publication matrix](https://github.com/Orkeon/orkeon/blob/main/docs/reference/publication-matrix.md).
+```bash
+dotnet add package Orkeon.Constants.Cli --prerelease
+```
+
+See the [publication matrix](https://github.com/Orkeon/orkeon/blob/main/docs/reference/publication-matrix.md) for the rest of the lineup.
 
 ## Contents
 

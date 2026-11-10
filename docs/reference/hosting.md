@@ -19,7 +19,7 @@ integration that launches its executables.
 `IsPackable=false`, so there is no `Orkeon.Hosting` id on any feed: the
 [publication matrix](publication-matrix.md#the-nugetorg-lineup) lists the `Orkeon.Scripting`
 opt-in, whose wrapper (`src/packaging/Orkeon.Scripting/Orkeon.Scripting.Package.csproj`) embeds
-`Orkeon.Hosting.dll` next to `Orkeon.Scripting.dll` and `Orkeon.Constants.Cli.dll`.
+`Orkeon.Hosting.dll` next to `Orkeon.Scripting.dll`; `Orkeon.Constants.Cli` comes as a package dependency.
 
 ```bash
 dotnet add package Orkeon.Scripting --prerelease
