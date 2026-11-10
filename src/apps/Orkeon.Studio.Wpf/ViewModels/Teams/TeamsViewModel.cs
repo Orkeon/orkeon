@@ -244,9 +244,9 @@ public sealed class TeamCardViewModel : ObservableObject
     {
         null or "" => strings[StudioStringKeys.TeamsOnDemand],
         "hourly" => strings[StudioStringKeys.TeamsHourly],
-        var daily when daily.StartsWith("daily@", StringComparison.Ordinal) =>
-            strings.Format(StudioStringKeys.TeamsDaily, daily["daily@".Length..]),
-        var other => other,
+        _ when schedule.StartsWith("daily@", StringComparison.Ordinal) =>
+            strings.Format(StudioStringKeys.TeamsDaily, schedule["daily@".Length..]),
+        _ => schedule,
     };
 
     private static string ModifyTipKeyFor(TeamSummary summary)

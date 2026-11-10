@@ -244,22 +244,7 @@ public partial class McpServer
                     continue;
                 }
 
-                // Registered before the task starts: a cancel read right after this line always finds it.
-                var key = request.Id!.Value.GetRawText();
-                var cts = CancellationTokenSource.CreateLinkedTokenSource(token);
-                if (!inFlight.TryAdd(key, cts))
-                {
-                    cts.Dispose();
-                    outbox.Writer.TryWrite(JsonSerializer.Serialize(CreateErrorResponse(request.Id,
-                        JsonRpcErrorCodes.InvalidRequest, "A request with this id is already in flight")));
-                    continue;
-                }
-
-                var run = new RequestRun(key, cts, gate, inFlight, outbox.Writer);
-                var task = ServeRequestAsync(request, run);
-                running[task] = 0;
-                _ = task.ContinueWith(done => running.TryRemove(done, out _), CancellationToken.None,
-                    TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
+                StartRequest(request, new RequestScope(gate, inFlight, running, outbox.Writer, token));
             }
         }
         finally
@@ -287,6 +272,39 @@ public partial class McpServer
                 // Stopped: the answers still queued are dropped with the connection.
             }
         }
+    }
+
+    /// <summary>What every request of one serving loop shares: the stop token, the concurrency gate, the requests in flight and the outbox.</summary>
+    private sealed record RequestScope(
+        SemaphoreSlim Gate,
+        ConcurrentDictionary<string, CancellationTokenSource> InFlight,
+        ConcurrentDictionary<Task, byte> Running,
+        ChannelWriter<string> Outbox,
+        CancellationToken Token);
+
+    /// <summary>
+    /// Starts one request on its own task. Synchronous on purpose: the cancellation source is handed to the
+    /// request's run (or disposed) before anything can throw, so no await sits between its creation and its owner.
+    /// </summary>
+    private void StartRequest(JsonRpcRequest request, RequestScope scope)
+    {
+        var (gate, inFlight, running, outbox, token) = scope;
+        // Registered before the task starts: a cancel read right after this line always finds it.
+        var key = request.Id!.Value.GetRawText();
+        var cts = CancellationTokenSource.CreateLinkedTokenSource(token);
+        if (!inFlight.TryAdd(key, cts))
+        {
+            cts.Dispose();
+            outbox.TryWrite(JsonSerializer.Serialize(CreateErrorResponse(request.Id,
+                JsonRpcErrorCodes.InvalidRequest, "A request with this id is already in flight")));
+            return;
+        }
+
+        var run = new RequestRun(key, cts, gate, inFlight, outbox);
+        var task = ServeRequestAsync(request, run);
+        running[task] = 0;
+        _ = task.ContinueWith(done => running.TryRemove(done, out _), CancellationToken.None,
+            TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
     }
 
     /// <summary>Parses one line; a line that is not JSON-RPC is answered with a parse error and yields <see langword="null"/>.</summary>

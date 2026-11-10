@@ -251,7 +251,7 @@ public sealed partial class ParallelProcessStrategy : IProcessStrategy
     private async System.Threading.Tasks.Task<List<(DomainTask Task, DomainAgent? Agent)>> LaunchWaveAsync(
         ParallelRun run, WaveLaunch launch, CancellationToken cancellationToken)
     {
-        var (wave, tasks, agents, runContext, previousOutputs, executionTasks) = launch;
+        var (wave, tasks, agents, runContext, previousOutputs, _) = launch;
         var outcome = run.Outcome;
         var launched = new List<(DomainTask Task, DomainAgent? Agent)>();
         foreach (var task in wave)
@@ -300,7 +300,7 @@ public sealed partial class ParallelProcessStrategy : IProcessStrategy
                 ? outcome.RecordStartWithoutAgentAsync(task, [])
                 : outcome.RecordStartAsync(task, agent)).ConfigureAwait(false);
             launched.Add((task, agent));
-            executionTasks.Add(System.Threading.Tasks.Task.Run(async () => await ExecuteWaveTaskAsync(
+            launch.ExecutionTasks.Add(System.Threading.Tasks.Task.Run(async () => await ExecuteWaveTaskAsync(
                 capturedAgent, capturedTask, tasks, context, run.TokenTally, run.TaskSnapshots, cancellationToken)
                 .ConfigureAwait(false)));
         }
