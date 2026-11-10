@@ -1976,7 +1976,7 @@
   <data name="Studio.Run.LlmForThisRun" xml:space="preserve"><value>Cette exécution : {0}</value></data>
   <data name="Studio.Run.LlmDefaultEntry" xml:space="preserve"><value>Par défaut ({0})</value></data>
   <data name="Studio.Run.RememberLlmForTeam" xml:space="preserve"><value>Mémoriser pour cette équipe</value></data>
-  <data name="Studio.Settings.UsedByDefault" xml:space="preserve"><value>Utilisé par {0} {0:plural:équipe|équipes} ({1} sans réglage propre)</value></data>
+  <data name="Studio.Settings.UsedByDefault" xml:space="preserve"><value>{0} {0:plural:équipe|équipes} ({1} sans réglage propre)</value></data>
   <data name="Studio.Settings.TabModelCount" xml:space="preserve">
     <value>{0} {0:plural:modèle|modèles} · {1} par défaut</value>
   </data>
