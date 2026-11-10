@@ -139,32 +139,16 @@ internal sealed partial class FallbackLlmProvider : ILlmProvider, IStreamingLlmP
         for (var i = 0; i < _links.Count; i++)
         {
             var link = _links[i];
-            var kind = LlmFailureKind.None;
-            var failed = false;
             var chunks = OpenText(link, prompt, ConfigFor(i, config), cancellationToken).GetAsyncEnumerator(cancellationToken);
             await using var chunksScope = chunks.ConfigureAwait(false);
-            string? first = null;
-            var has = false;
-            try
-            {
-                has = await chunks.MoveNextAsync().ConfigureAwait(false);
-                if (has)
-                    first = chunks.Current;
-            }
-            catch (Exception ex) when (FailsOver(ex, cancellationToken, out kind))
-            {
-                failures.Add(Describe(link, ex.Message));
-                lastException = ex;
-                failed = true;
-            }
-
-            if (!failed)
+            var opening = await PullFirstAsync(chunks, null, cancellationToken).ConfigureAwait(false);
+            if (!opening.Failed)
             {
                 // Committed: the first chunk reached the caller, or the stream was empty; a failure
                 // from here on is the caller's.
-                if (has)
+                if (opening.Has)
                 {
-                    yield return first!;
+                    yield return opening.First!;
                     while (await chunks.MoveNextAsync().ConfigureAwait(false))
                         yield return chunks.Current;
                 }
@@ -172,7 +156,9 @@ internal sealed partial class FallbackLlmProvider : ILlmProvider, IStreamingLlmP
                 yield break;
             }
 
-            if (SwitchOrStop(i, started, kind))
+            failures.Add(Describe(link, opening.Failure!));
+            lastException = opening.Exception;
+            if (SwitchOrStop(i, started, opening.Kind))
             {
                 budgetSpent = true;
                 break;
@@ -194,39 +180,15 @@ internal sealed partial class FallbackLlmProvider : ILlmProvider, IStreamingLlmP
         for (var i = 0; i < _links.Count; i++)
         {
             var link = _links[i];
-            var kind = LlmFailureKind.None;
-            var failed = false;
             var events = OpenChat(link, messages, ConfigFor(i, config), cancellationToken).GetAsyncEnumerator(cancellationToken);
             await using var eventsScope = events.ConfigureAwait(false);
-            LlmStreamEvent? first = null;
-            var has = false;
-            try
-            {
-                has = await events.MoveNextAsync().ConfigureAwait(false);
-                if (has)
-                {
-                    first = events.Current;
-                    if (FirstEventFailsOver(first, cancellationToken, out kind, out var error))
-                    {
-                        failures.Add(Describe(link, error));
-                        lastException = null;
-                        failed = true;
-                    }
-                }
-            }
-            catch (Exception ex) when (FailsOver(ex, cancellationToken, out kind))
-            {
-                failures.Add(Describe(link, ex.Message));
-                lastException = ex;
-                failed = true;
-            }
-
-            if (!failed)
+            var opening = await PullFirstAsync(events, InBandFailure, cancellationToken).ConfigureAwait(false);
+            if (!opening.Failed)
             {
                 // Committed: the first event reached the caller, or the stream was empty.
-                if (has)
+                if (opening.Has)
                 {
-                    yield return first!;
+                    yield return opening.First!;
                     while (await events.MoveNextAsync().ConfigureAwait(false))
                         yield return events.Current;
                 }
@@ -234,7 +196,9 @@ internal sealed partial class FallbackLlmProvider : ILlmProvider, IStreamingLlmP
                 yield break;
             }
 
-            if (SwitchOrStop(i, started, kind))
+            failures.Add(Describe(link, opening.Failure!));
+            lastException = opening.Exception;
+            if (SwitchOrStop(i, started, opening.Kind))
             {
                 budgetSpent = true;
                 break;
@@ -245,6 +209,58 @@ internal sealed partial class FallbackLlmProvider : ILlmProvider, IStreamingLlmP
         if (lastException is not null)
             throw new HttpRequestException(text, lastException);
         yield return LlmStreamEvent.Complete(Exhausted(text));
+    }
+
+    /// <summary>What pulling the first element of a stream produced: committed, empty or failed over.</summary>
+    private sealed class StreamOpening<T>
+    {
+        public bool Has { get; set; }
+
+        public T? First { get; set; }
+
+        public bool Failed { get; set; }
+
+        public LlmFailureKind Kind { get; set; } = LlmFailureKind.None;
+
+        public string? Failure { get; set; }
+
+        public Exception? Exception { get; set; }
+    }
+
+    private static (LlmFailureKind Kind, string? Error)? InBandFailure(LlmStreamEvent first, CancellationToken cancellationToken) =>
+        FirstEventFailsOver(first, cancellationToken, out var kind, out var error) ? (kind, error) : null;
+
+    /// <summary>
+    /// Pulls the first element of a stream, the one point where a link can still be left: a failure
+    /// that fails over (thrown, or in-band when <paramref name="inBandFailure"/> says so) is reported, not thrown.
+    /// </summary>
+    private static async System.Threading.Tasks.Task<StreamOpening<T>> PullFirstAsync<T>(
+        IAsyncEnumerator<T> stream, Func<T, CancellationToken, (LlmFailureKind Kind, string? Error)?>? inBandFailure, CancellationToken cancellationToken)
+    {
+        var opening = new StreamOpening<T>();
+        try
+        {
+            opening.Has = await stream.MoveNextAsync().ConfigureAwait(false);
+            if (opening.Has)
+            {
+                opening.First = stream.Current;
+                if (inBandFailure?.Invoke(opening.First, cancellationToken) is { } failure)
+                {
+                    opening.Kind = failure.Kind;
+                    opening.Failure = failure.Error;
+                    opening.Failed = true;
+                }
+            }
+        }
+        catch (Exception ex) when (FailsOver(ex, cancellationToken, out var kind))
+        {
+            opening.Kind = kind;
+            opening.Failure = ex.Message;
+            opening.Exception = ex;
+            opening.Failed = true;
+        }
+
+        return opening;
     }
 
     private static bool FailsOver(Exception ex, CancellationToken cancellationToken, out LlmFailureKind kind)

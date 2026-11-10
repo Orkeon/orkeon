@@ -49,16 +49,21 @@ public sealed partial class ResumeEngine : IResumeEngine
         return latest.Phase != SessionPhase.Completed;
     }
 
+    private async System.Threading.Tasks.Task<Located> LocateAsync(string crewKey, ResumeOptions options, CancellationToken ct)
+    {
+        if (!string.IsNullOrEmpty(options.ExecutionId))
+            return await LocateByExecutionIdAsync(crewKey, options.ExecutionId, ct).ConfigureAwait(false);
+        if (!string.IsNullOrEmpty(options.FromVersionId))
+            return await LocateByVersionAsync(crewKey, options.FromVersionId, ct).ConfigureAwait(false);
+        return await LocateLatestUnfinishedAsync(crewKey, ct).ConfigureAwait(false);
+    }
+
     /// <inheritdoc />
     public async System.Threading.Tasks.Task<ResumeResult> ResumeAsync(string crewKey, ResumeOptions? options = null, CancellationToken ct = default)
     {
         options ??= new ResumeOptions();
 
-        var located = !string.IsNullOrEmpty(options.ExecutionId)
-            ? await LocateByExecutionIdAsync(crewKey, options.ExecutionId, ct).ConfigureAwait(false)
-            : !string.IsNullOrEmpty(options.FromVersionId)
-                ? await LocateByVersionAsync(crewKey, options.FromVersionId, ct).ConfigureAwait(false)
-                : await LocateLatestUnfinishedAsync(crewKey, ct).ConfigureAwait(false);
+        var located = await LocateAsync(crewKey, options, ct).ConfigureAwait(false);
         if (located.Early is not null)
             return located.Early;
 

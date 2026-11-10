@@ -182,7 +182,7 @@ public sealed partial class ParallelProcessStrategy : IProcessStrategy
             // same context, and the list must not be mutated while they run.
             var previousOutputs = run.CompletedOutputs.ToList();
 
-            var launched = await LaunchWaveAsync(run, wave, tasks, agents, runContext, previousOutputs, executionTasks, cancellationToken).ConfigureAwait(false);
+            var launched = await LaunchWaveAsync(run, new WaveLaunch(wave, tasks, agents, runContext, previousOutputs, executionTasks), cancellationToken).ConfigureAwait(false);
 
             // Wait for this wave. One faulted task means WhenAll throws — the terminal event
             // must still go out, or a watcher sees a run frozen at its last completed sibling.
@@ -235,16 +235,23 @@ public sealed partial class ParallelProcessStrategy : IProcessStrategy
             finalOutput)).ConfigureAwait(false);
     }
 
+    /// <summary>What a wave launches, and the list its executions are added to.</summary>
+    private sealed record WaveLaunch(
+        List<DomainTask> Wave,
+        List<DomainTask> Tasks,
+        List<DomainAgent> Agents,
+        SimpleExecutionContext RunContext,
+        List<ApplicationTaskOutput> PreviousOutputs,
+        List<System.Threading.Tasks.Task<(DomainTaskOutput domainOutput, ApplicationTaskOutput appOutput, string? error, DateTimeOffset? endedAt)>> ExecutionTasks);
+
     /// <summary>
     /// Launches the tasks of one wave: each is skipped (blocked dependency, condition that does not
     /// hold) or started alongside its siblings. Returns the tasks launched, in launch order.
     /// </summary>
     private async System.Threading.Tasks.Task<List<(DomainTask Task, DomainAgent? Agent)>> LaunchWaveAsync(
-        ParallelRun run, List<DomainTask> wave, List<DomainTask> tasks, List<DomainAgent> agents,
-        SimpleExecutionContext runContext, List<ApplicationTaskOutput> previousOutputs,
-        List<System.Threading.Tasks.Task<(DomainTaskOutput domainOutput, ApplicationTaskOutput appOutput, string? error, DateTimeOffset? endedAt)>> executionTasks,
-        CancellationToken cancellationToken)
+        ParallelRun run, WaveLaunch launch, CancellationToken cancellationToken)
     {
+        var (wave, tasks, agents, runContext, previousOutputs, executionTasks) = launch;
         var outcome = run.Outcome;
         var launched = new List<(DomainTask Task, DomainAgent? Agent)>();
         foreach (var task in wave)

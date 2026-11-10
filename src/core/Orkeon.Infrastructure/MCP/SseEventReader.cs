@@ -86,13 +86,21 @@ internal static class SseEventReader
     }
 
     /// <summary>The fields of the event being read.</summary>
-    private sealed class EventBuilder(int maxLength)
+    private sealed class EventBuilder
     {
-        private readonly StringBuilder _data = new();
+        private readonly int _maxLength;
+        private readonly StringBuilder _data;
         private string? _id;
-        private string _eventType = "";
+        private string _eventType;
         private bool _hasData;
         private int? _retry;
+
+        public EventBuilder(int maxLength)
+        {
+            _maxLength = maxLength;
+            _data = new StringBuilder();
+            _eventType = "";
+        }
 
         public bool IsReady => _hasData || _id is not null || _retry is not null;
 
@@ -140,8 +148,8 @@ internal static class SseEventReader
 
         private void AppendData(string value)
         {
-            if (_data.Length + value.Length + 1 > maxLength)
-                throw new InvalidDataException($"An SSE event is longer than {maxLength} characters: the stream is refused.");
+            if (_data.Length + value.Length + 1 > _maxLength)
+                throw new InvalidDataException($"An SSE event is longer than {_maxLength} characters: the stream is refused.");
             if (_hasData)
                 _data.Append('\n');
             _data.Append(value);

@@ -92,12 +92,6 @@ public sealed class McpPromptGetTool : ToolBase<McpPromptGetRequest, McpPromptGe
     {
     }
 
-    private static Func<McpToolProvider> Capture(McpToolProvider provider)
-    {
-        ArgumentNullException.ThrowIfNull(provider);
-        return () => provider;
-    }
-
     /// <summary>
     /// Initializes a new instance of <see cref="McpPromptGetTool"/> that reaches the provider when a call
     /// needs it: the provider needs the tool registry, which holds this tool, so the container cannot hand
@@ -108,6 +102,12 @@ public sealed class McpPromptGetTool : ToolBase<McpPromptGetRequest, McpPromptGe
     {
         ArgumentNullException.ThrowIfNull(provider);
         _provider = provider;
+    }
+
+    private static Func<McpToolProvider> Capture(McpToolProvider provider)
+    {
+        ArgumentNullException.ThrowIfNull(provider);
+        return () => provider;
     }
 
     /// <inheritdoc />

@@ -436,21 +436,8 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
                 // A provider that runs its own tools — a Microsoft Agent Framework agent — never calls
                 // Orkeon's: a task that would hand it some fails before any call, saying what to do
                 // (GAP-34). Its prompt therefore never lists a tool.
-                if (OwnToolsRefusal(agent, task, llm.Provider, toolbelt) is { } refusal)
-                {
-                    ExecutionLog.LogOwnToolsRefused(_logger, agent.Role, task.Id, refusal);
-                    return new TaskResult(
-                        Success: false,
-                        Output: string.Empty,
-                        StructuredOutput: null,
-                        ToolsUsed: toolsUsed,
-                        ExecutionTime: DateTime.UtcNow - startTime,
-                        Error: refusal)
-                    {
-                        IterationsUsed = 0,
-                        LastError = refusal,
-                    };
-                }
+                if (RefuseOwnTools(agent, task, llm.Provider, toolbelt, toolsUsed, startTime) is { } refused)
+                    return refused;
 
                 var systemPrompt = AgentPromptComposer.BuildSystemPrompt(
                     agent, task, toolbelt,
@@ -466,13 +453,8 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
                 // Input phase: the prompt the provider is about to read — previous outputs and
                 // retrieved knowledge included — is screened first. A block is a readable task
                 // failure; a warning is logged and audited, and the prompt is never rewritten.
-                var inputVerdict = await CheckInputAsync(agent, context, userPrompt, taskToken).ConfigureAwait(false);
-                if (inputVerdict is { IsAllowed: false })
-                {
-                    ExecutionLog.LogInputBlocked(_logger, agent.Role, task.Id, inputVerdict.Reason ?? "");
-                    return GuardianBlockedResult(
-                        $"Blocked by Guardian (input): {inputVerdict.Reason}", 0, toolsUsed, startTime);
-                }
+                if (await BlockInputAsync(agent, task, context, userPrompt, toolsUsed, startTime, taskToken).ConfigureAwait(false) is { } inputBlocked)
+                    return inputBlocked;
 
                 var validationContext = OutputValidationCoordinator.BuildOutputValidationContext(task);
 
@@ -514,7 +496,7 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
                 // A call the provider never answered has no output to judge. A refusal is a readable
                 // task failure, not a provider failure: a profile never fails over on it.
                 var outputBlocked = await ApplyOutputPhaseAsync(
-                    agent, task, context, loopResult, finalOutput, outputHold, toolsUsed, startTime, taskToken).ConfigureAwait(false);
+                    new OutputPhaseRequest(agent, task, context, loopResult, finalOutput, outputHold, toolsUsed, startTime), taskToken).ConfigureAwait(false);
                 if (outputBlocked is not null)
                     return outputBlocked;
 
@@ -527,33 +509,15 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
-                return new TaskResult(
-                    Success: false,
-                    Output: string.Empty,
-                    StructuredOutput: null,
-                    ToolsUsed: toolsUsed,
-                    ExecutionTime: DateTime.UtcNow - startTime,
-                    Error: "Operation was cancelled")
-                {
-                    ExitReason = AgentExitReason.Cancelled,
-                    IterationsUsed = 0
-                };
+                return ExitedResult("Operation was cancelled", AgentExitReason.Cancelled, toolsUsed, startTime);
             }
             catch (OperationCanceledException) when (deadline is { HasExpired: true } && !cancellationToken.IsCancellationRequested)
             {
                 var max = agent.MaxExecutionTime!.Value;
                 LogExecutionTimeExceeded(_logger, agent.Role, max.TotalSeconds);
-                return new TaskResult(
-                    Success: false,
-                    Output: string.Empty,
-                    StructuredOutput: null,
-                    ToolsUsed: toolsUsed,
-                    ExecutionTime: DateTime.UtcNow - startTime,
-                    Error: $"Agent exceeded its maximum execution time of {max.TotalSeconds}s")
-                {
-                    ExitReason = AgentExitReason.ExecutionTimeExceeded,
-                    IterationsUsed = 0
-                };
+                return ExitedResult(
+                    $"Agent exceeded its maximum execution time of {max.TotalSeconds}s",
+                    AgentExitReason.ExecutionTimeExceeded, toolsUsed, startTime);
             }
             catch (Exception ex)
             {
@@ -570,22 +534,79 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
         }
     }
 
+    private TaskResult? RefuseOwnTools(
+        DomainAgent agent, CrewTask task, Domain.SharedKernel.ILlmProvider? provider, IReadOnlyList<Domain.Tools.IBaseTool> toolbelt,
+        List<Domain.Tools.ToolUsage> toolsUsed, DateTime startTime)
+    {
+        if (OwnToolsRefusal(agent, task, provider, toolbelt) is not { } refusal)
+            return null;
+
+        ExecutionLog.LogOwnToolsRefused(_logger, agent.Role, task.Id, refusal);
+        return OwnToolsRefusedResult(refusal, toolsUsed, startTime);
+    }
+
+    private async System.Threading.Tasks.Task<TaskResult?> BlockInputAsync(
+        DomainAgent agent, CrewTask task, SimpleExecutionContext context, string userPrompt,
+        List<Domain.Tools.ToolUsage> toolsUsed, DateTime startTime, CancellationToken cancellationToken)
+    {
+        var inputVerdict = await CheckInputAsync(agent, context, userPrompt, cancellationToken).ConfigureAwait(false);
+        if (inputVerdict is not { IsAllowed: false })
+            return null;
+
+        ExecutionLog.LogInputBlocked(_logger, agent.Role, task.Id, inputVerdict.Reason ?? "");
+        return GuardianBlockedResult(
+            $"Blocked by Guardian (input): {inputVerdict.Reason}", 0, toolsUsed, startTime);
+    }
+
+    private static TaskResult OwnToolsRefusedResult(
+        string refusal, List<Domain.Tools.ToolUsage> toolsUsed, DateTime startTime) =>
+        new(
+            Success: false,
+            Output: string.Empty,
+            StructuredOutput: null,
+            ToolsUsed: toolsUsed,
+            ExecutionTime: DateTime.UtcNow - startTime,
+            Error: refusal)
+        {
+            IterationsUsed = 0,
+            LastError = refusal,
+        };
+
+    private static TaskResult ExitedResult(
+        string error, AgentExitReason exitReason, List<Domain.Tools.ToolUsage> toolsUsed, DateTime startTime) =>
+        new(
+            Success: false,
+            Output: string.Empty,
+            StructuredOutput: null,
+            ToolsUsed: toolsUsed,
+            ExecutionTime: DateTime.UtcNow - startTime,
+            Error: error)
+        {
+            ExitReason = exitReason,
+            IterationsUsed = 0
+        };
+
+    /// <summary>The inputs of the output phase, grouped to keep its signature short.</summary>
+    private sealed record OutputPhaseRequest(
+        DomainAgent Agent,
+        CrewTask Task,
+        SimpleExecutionContext Context,
+        AgentLoopResult LoopResult,
+        string FinalOutput,
+        OutputHold? OutputHold,
+        List<Domain.Tools.ToolUsage> ToolsUsed,
+        DateTime StartTime);
+
     /// <summary>
     /// The output phase (FWK-19) on a task's validated output: null when the output may go on (the hold is released),
     /// else the failed result of a refusal (the hold is dropped). A call the provider never answered has no output to
     /// judge, and what it streamed was never judged either: its hold is dropped.
     /// </summary>
     private async System.Threading.Tasks.Task<TaskResult?> ApplyOutputPhaseAsync(
-        DomainAgent agent,
-        CrewTask task,
-        SimpleExecutionContext context,
-        AgentLoopResult loopResult,
-        string finalOutput,
-        OutputHold? outputHold,
-        List<Domain.Tools.ToolUsage> toolsUsed,
-        DateTime startTime,
+        OutputPhaseRequest request,
         CancellationToken cancellationToken)
     {
+        var (agent, task, context, loopResult, finalOutput, outputHold, toolsUsed, startTime) = request;
         if (loopResult.ExitReason == AgentExitReason.LlmCallFailed)
         {
             outputHold?.Drop();

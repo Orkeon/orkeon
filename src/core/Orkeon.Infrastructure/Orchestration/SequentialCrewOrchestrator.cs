@@ -288,18 +288,11 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
                     TokensUsed: null) // failed before telemetry could be collected
                 { Succeeded = false, Error = ex.Message };
 
-                // The run's token is not passed: a cancelled run still records its failure.
-                if (_checkpointManager != null && sessionId != null)
-                    await _checkpointManager.FailSessionAsync(sessionId, Orkeon.Infrastructure.Checkpointing.CheckpointErrors.Redacted(ex), CancellationToken.None).ConfigureAwait(false);
+                await FailCheckpointSessionAsync(sessionId, ex).ConfigureAwait(false);
             }
 
             if (!output.Succeeded && output.PendingInput is null)
-            {
-                if (runSpan is not null)
-                    TraceRunFailure(output, cause);
-
-                await ReportUnreportedFailureAsync(crewId, startedAt, output, cause, end).ConfigureAwait(false);
-            }
+                await ReportRunFailureAsync(crewId, startedAt, output, cause, end, runSpan is not null).ConfigureAwait(false);
 
             return output with { ExecutionId = runId };
         }
@@ -312,15 +305,36 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
             // asked for it (FWK-04). Never for a cancelled run, and never allowed to replace the run's
             // own result or exception.
             // A run that stopped on a question to a human is not over: it resumes, and consolidates when it ends.
-            if (crew is not null && ShouldConsolidateMemory(crew, run, cancellationToken))
-                await FinishMemoryAsync(_memoryCoordinator!, crew.Id, cancellationToken).ConfigureAwait(false);
-
-            // Success, failure and cancellation all end here: the crew's queued events
-            // (construction events, then Started and Completed/Failed) go to the
-            // IDomainEventHandler<T> registrations once, and the aggregate is emptied.
             if (crew is not null)
-                await DispatchCrewEventsAsync(crew).ConfigureAwait(false);
+                await EndRunAsync(crew, run, cancellationToken).ConfigureAwait(false);
         }
+    }
+
+    private async Task EndRunAsync(Orkeon.Domain.Crew.Crew crew, RunScope? run, CancellationToken cancellationToken)
+    {
+        if (ShouldConsolidateMemory(crew, run, cancellationToken))
+            await FinishMemoryAsync(_memoryCoordinator!, crew.Id, cancellationToken).ConfigureAwait(false);
+
+        // Success, failure and cancellation all end here: the crew's queued events
+        // (construction events, then Started and Completed/Failed) go to the
+        // IDomainEventHandler<T> registrations once, and the aggregate is emptied.
+        await DispatchCrewEventsAsync(crew).ConfigureAwait(false);
+    }
+
+    // The run's token is not passed: a cancelled run still records its failure.
+    private async Task FailCheckpointSessionAsync(string? sessionId, Exception ex)
+    {
+        if (_checkpointManager != null && sessionId != null)
+            await _checkpointManager.FailSessionAsync(sessionId, Orkeon.Infrastructure.Checkpointing.CheckpointErrors.Redacted(ex), CancellationToken.None).ConfigureAwait(false);
+    }
+
+    private async Task ReportRunFailureAsync(
+        CrewId crewId, DateTimeOffset startedAt, CrewOutput output, Exception? cause, CrewRunEnding.Mark end, bool traced)
+    {
+        if (traced)
+            TraceRunFailure(output, cause);
+
+        await ReportUnreportedFailureAsync(crewId, startedAt, output, cause, end).ConfigureAwait(false);
     }
 
     private static CrewOutput NullCrewIdOutput(TimeSpan elapsed) =>

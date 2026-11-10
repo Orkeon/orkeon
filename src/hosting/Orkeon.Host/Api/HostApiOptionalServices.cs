@@ -11,28 +11,38 @@ namespace Orkeon.Host.Api;
 /// passes the default for a service it does not hold. Kept apart so the server's constructor names its required
 /// dependencies alone.
 /// </summary>
-internal sealed class HostApiOptionalServices(
-    IRunHistoryReader? history = null,
-    IEnumerable<IAuthenticationProvider>? bearerProviders = null,
-    ISecretProvider? secrets = null,
-    TimeProvider? time = null,
-    ICheckpointManager? checkpoints = null,
-    IPendingInputBroker? broker = null,
-    IOptions<CheckpointingOptions>? checkpointing = null)
+internal sealed class HostApiOptionalServices
 {
-    public IRunHistoryReader? History { get; } = history;
+    public HostApiOptionalServices(
+        IRunHistoryReader? history = null,
+        IEnumerable<IAuthenticationProvider>? bearerProviders = null,
+        ISecretProvider? secrets = null,
+        TimeProvider? time = null,
+        ICheckpointManager? checkpoints = null,
+        IPendingInputBroker? broker = null,
+        IOptions<CheckpointingOptions>? checkpointing = null)
+    {
+        History = history;
+        BearerProviders = bearerProviders?.ToList() ?? [];
+        Secrets = secrets;
+        Time = time ?? TimeProvider.System;
+        Broker = broker;
+        Input = checkpointing?.Value.Enabled == true ? checkpoints as IPendingInputStore : null;
+    }
 
-    public IReadOnlyList<IAuthenticationProvider> BearerProviders { get; } = bearerProviders?.ToList() ?? [];
+    public IRunHistoryReader? History { get; }
 
-    public ISecretProvider? Secrets { get; } = secrets;
+    public IReadOnlyList<IAuthenticationProvider> BearerProviders { get; }
 
-    public TimeProvider Time { get; } = time ?? TimeProvider.System;
+    public ISecretProvider? Secrets { get; }
 
-    public IPendingInputBroker? Broker { get; } = broker;
+    public TimeProvider Time { get; }
+
+    public IPendingInputBroker? Broker { get; }
 
     /// <summary>
     /// Where a run's questions are persisted: only with Orkeon:Checkpointing:Enabled (the durable human input engages on
     /// it). The checkpoint manager is registered either way, so its presence alone says nothing.
     /// </summary>
-    public IPendingInputStore? Input { get; } = checkpointing?.Value.Enabled == true ? checkpoints as IPendingInputStore : null;
+    public IPendingInputStore? Input { get; }
 }

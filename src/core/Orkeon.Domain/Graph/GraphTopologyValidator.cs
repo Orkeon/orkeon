@@ -134,11 +134,8 @@ public static class GraphTopologyValidator
             var targets = edges
                 .SelectMany(edge => (IEnumerable<string>?)edge.Targets ?? declared)
                 .Where(t => t != endId && declared.Contains(t));
-            foreach (var target in targets)
-            {
-                if (seen.Add(target))
-                    queue.Enqueue(target);
-            }
+            foreach (var target in targets.Where(seen.Add))
+                queue.Enqueue(target);
         }
 
         return seen;
