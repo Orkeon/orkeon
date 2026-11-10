@@ -400,10 +400,10 @@ public sealed partial class GraphProcessStrategy : IProcessStrategy
             throw new InvalidOperationException("Graph is invalid: " + string.Join(" ", faults));
 
         // A node that branches needs the edge without a condition (the otherwise): found at build, never mid-run.
-        foreach (var leaving in topology.Edges.GroupBy(e => e.From, StringComparer.Ordinal).Where(g => g.All(e => e.When is not null)))
+        if (topology.Edges.GroupBy(e => e.From, StringComparer.Ordinal).FirstOrDefault(g => g.All(e => e.When is not null)) is { } unguarded)
         {
             throw new InvalidOperationException(
-                $"Graph is invalid: node '{leaving.Key}' branches on a condition but has no otherwise edge (an edge without 'when').");
+                $"Graph is invalid: node '{unguarded.Key}' branches on a condition but has no otherwise edge (an edge without 'when').");
         }
 
         const string end = StateGraph<CrewGraphState>.EndNode;

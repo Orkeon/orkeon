@@ -123,7 +123,7 @@ internal sealed partial class CrewRunner : ICrewRunner
         _broker = broker;
         _scopes = scopes ?? throw new ArgumentNullException(nameof(scopes));
         _registry = registry ?? throw new ArgumentNullException(nameof(registry));
-        _host = host ?? throw new ArgumentNullException(nameof(host));
+        _host = host;
         ArgumentNullException.ThrowIfNull(options);
         _options = options.Value;
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));

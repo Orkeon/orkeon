@@ -62,14 +62,9 @@ public static class PermissionModes
     public static bool TryParse(string? name, out PermissionMode mode)
     {
         var trimmed = name?.Trim();
-        foreach (var candidate in Enum.GetValues<PermissionMode>()
-                     .Where(c => string.Equals(c.ToWireName(), trimmed, StringComparison.OrdinalIgnoreCase)))
-        {
-            mode = candidate;
-            return true;
-        }
-
-        mode = PermissionMode.Default;
-        return false;
+        var modes = Enum.GetValues<PermissionMode>();
+        var index = Array.FindIndex(modes, c => string.Equals(c.ToWireName(), trimmed, StringComparison.OrdinalIgnoreCase));
+        mode = index >= 0 ? modes[index] : PermissionMode.Default;
+        return index >= 0;
     }
 }
