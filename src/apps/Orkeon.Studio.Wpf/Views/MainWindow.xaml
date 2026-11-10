@@ -898,8 +898,9 @@
               </ItemsControl.ItemsPanel>
             </ItemsControl>
 
-            <!-- UX lot 04 (063): the catch-all and the offline fallback fold away, closed. -->
-            <controls:Disclosure Margin="0,7,0,0" IsExpanded="False"
+            <!-- UX lot 04 (063): the catch-all and the offline fallback fold away, closed - open
+                 while the picked card is one of them. -->
+            <controls:Disclosure Margin="0,7,0,0" IsExpanded="{Binding OtherProvidersExpanded}"
                                  Header="{Binding [Studio.Settings.GroupOthers], Source={x:Static services:I18n.Instance}}">
               <ItemsControl ItemsSource="{Binding OtherProviders}" ItemTemplate="{StaticResource ProviderCard}" Margin="0,6,0,0">
                 <ItemsControl.ItemsPanel>

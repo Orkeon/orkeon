@@ -93,4 +93,40 @@ public sealed class ModelSettingCardTests
             File.Delete(path);
         }
     }
+
+    [Fact]
+    public async Task The_other_providers_fold_opens_while_the_picked_card_sits_in_it()
+    {
+        // UX lot 04 (063): closed by default, never hiding the selection.
+        var seeded = StudioFixture.Seeded.Profiles;
+        var store = new InMemoryModelProfileStore();
+        await store.SaveAsync(
+            seeded with
+            {
+                Profiles =
+                [
+                    .. seeded.Profiles,
+                    new() { Name = "Box", Provider = LlmPresets.Custom, Model = "qwen3", BaseUrl = "https://llm.example.com/v1" },
+                ],
+            },
+            TestContext.Current.CancellationToken);
+        var profiles = Screen(store, AppSettingsDocument.CreateEmpty());
+        await profiles.InitializeAsync(TestContext.Current.CancellationToken);
+
+        profiles.BeginEdit(profiles.Set.Find(StudioFixture.AssistantProfile)!);
+        var editor = profiles.Editor!;
+        Assert.Equal(LlmPresetKind.Cloud, editor.SelectedProvider?.Kind);
+        Assert.False(editor.OtherProvidersExpanded);
+
+        editor.SelectedProvider = editor.Providers.Single(p => p.Name == LlmPresets.Custom);
+        Assert.True(editor.OtherProvidersExpanded);
+        Assert.Contains(editor.SelectedProvider, editor.OtherProviders);
+
+        profiles.CancelEdit();
+
+        // A setting whose card is one of the others opens with the fold open.
+        profiles.BeginEdit(profiles.Set.Find("Box")!);
+        Assert.Equal(LlmPresets.Custom, profiles.Editor!.SelectedProvider?.Name);
+        Assert.True(profiles.Editor.OtherProvidersExpanded);
+    }
 }

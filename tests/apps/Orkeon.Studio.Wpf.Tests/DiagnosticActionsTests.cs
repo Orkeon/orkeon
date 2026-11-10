@@ -102,16 +102,33 @@ public sealed class DiagnosticActionsTests
     [Fact]
     public async Task A_missing_engine_shows_one_banner_that_says_what_to_do()
     {
-        // UX lot 04 (043-063, 065): the danger banner alone, and it says to install the engine.
+        // UX lot 04 (043-063, 065): the danger banner alone, it says to install the engine, and
+        // the « How to install » button opens the release-binary page.
+        var browser = new RecordingBrowserOpener();
         var diagnostic = new DiagnosticViewModel(new OrkeonProcessRunner(
-            new FakeProcessLauncher(), new OrkeonBinaryLocator(new FakeExecutableProbe())));
+            new FakeProcessLauncher(), new OrkeonBinaryLocator(new FakeExecutableProbe())), browser: browser);
 
         await diagnostic.RunAsync(cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.True(diagnostic.IsEngineMissing);
         Assert.False(diagnostic.ShowVerdict);
         Assert.Equal(EnglishStudioStrings.Instance[StudioStringKeys.DiagEngineMissingHow], diagnostic.DangerMessage);
-        Assert.False(diagnostic.HasInstallGuide);
+        Assert.True(diagnostic.HasInstallGuide);
+        diagnostic.OpenInstallGuideCommand.Execute(null);
+        Assert.Equal([new Uri(DiagnosticViewModel.InstallGuideUrl)], browser.Opened);
+    }
+
+    [Fact]
+    public void The_install_guide_opens_the_french_page_in_french()
+    {
+        var browser = new RecordingBrowserOpener();
+        var runner = new OrkeonProcessRunner(new FakeProcessLauncher(), new OrkeonBinaryLocator(new FakeExecutableProbe()));
+        var diagnostic = new DiagnosticViewModel(runner, strings: new FakeResxStudioStrings("fr", "fr"), browser: browser);
+
+        diagnostic.OpenInstallGuideCommand.Execute(null);
+
+        Assert.Equal([new Uri(DiagnosticViewModel.InstallGuideUrlFrench)], browser.Opened);
+        Assert.Contains("/docs/fr/", DiagnosticViewModel.InstallGuideUrlFrench, StringComparison.Ordinal);
     }
 
     [Fact]

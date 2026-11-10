@@ -13,8 +13,11 @@ public sealed class FakeResxStudioStrings : IStudioStrings
     private readonly Dictionary<string, string> _values;
 
     /// <summary>Reads <c>Resources/Strings.&lt;culture&gt;.resx</c> from the test output.</summary>
-    public FakeResxStudioStrings(string culture)
+    /// <param name="culture">The satellite to read.</param>
+    /// <param name="language">What <see cref="Language"/> reports; English when null.</param>
+    public FakeResxStudioStrings(string culture, string? language = null)
     {
+        Language = language ?? "en";
         var path = Path.Combine(AppContext.BaseDirectory, "Resources", $"Strings.{culture}.resx");
         _values = XDocument.Load(path).Root!
             .Elements("data")
@@ -26,6 +29,9 @@ public sealed class FakeResxStudioStrings : IStudioStrings
 
     /// <inheritdoc />
     public string this[string key] => _values.TryGetValue(key, out var value) ? value : key;
+
+    /// <inheritdoc />
+    public string Language { get; }
 
     /// <inheritdoc />
     public event EventHandler? CultureChanged
