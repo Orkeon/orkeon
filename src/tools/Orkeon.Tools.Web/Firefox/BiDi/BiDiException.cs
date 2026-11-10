@@ -8,6 +8,7 @@ namespace Orkeon.Tools.Web.Firefox.BiDi;
 /// A command the browser refused, did not answer, or could not receive. An expected tool error: the
 /// agent reads its code and message, not a stack trace.
 /// </summary>
+[System.Diagnostics.CodeAnalysis.SuppressMessage("Major Code Smell", "S3925", Justification = "False positive: binary serialization of exceptions is obsolete in .NET 10 (SYSLIB0051), so no ISerializable constructor or GetObjectData is added.")]
 public sealed class BiDiException : Exception, IExpectedToolError
 {
     /// <summary>Code of a command sent on a closed connection, or pending when it closed.</summary>

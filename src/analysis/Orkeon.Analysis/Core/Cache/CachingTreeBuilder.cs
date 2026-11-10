@@ -36,13 +36,20 @@ public sealed record CachedBuildResult(BuildResult Build, IndexCacheOutcome Outc
 /// than half of the files changed - builds from scratch. Every build or refresh is saved for the next session.
 /// </summary>
 /// <summary>The factories of the builder and of the reindex engine a <see cref="CachingTreeBuilder"/> calls per build.</summary>
-public sealed class TreeFactories(Func<RaggableTreeBuilder> builder, Func<IncrementalReindexEngine> engine)
+public sealed class TreeFactories
 {
+    /// <summary>Creates the factories from the builder and the engine delegates.</summary>
+    public TreeFactories(Func<RaggableTreeBuilder> builder, Func<IncrementalReindexEngine> engine)
+    {
+        Builder = builder ?? throw new ArgumentNullException(nameof(builder));
+        Engine = engine ?? throw new ArgumentNullException(nameof(engine));
+    }
+
     /// <summary>Creates the tree builder of a full build.</summary>
-    public Func<RaggableTreeBuilder> Builder { get; } = builder ?? throw new ArgumentNullException(nameof(builder));
+    public Func<RaggableTreeBuilder> Builder { get; }
 
     /// <summary>Creates the engine of an incremental reindex.</summary>
-    public Func<IncrementalReindexEngine> Engine { get; } = engine ?? throw new ArgumentNullException(nameof(engine));
+    public Func<IncrementalReindexEngine> Engine { get; }
 }
 
 public sealed partial class CachingTreeBuilder

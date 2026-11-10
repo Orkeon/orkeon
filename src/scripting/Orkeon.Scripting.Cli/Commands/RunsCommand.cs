@@ -159,38 +159,45 @@ internal static class RunsCommand
     {
         var arg = args[i];
         var next = i + 1 < args.Length ? args[i + 1] : null;
-        var takesValue = arg switch
-        {
-            "--crew" or "--limit" => parsed.Action == "list",
-            "--from" => parsed.Action == "tail",
-            "--settings" or "-s" => true,
-            _ => false,
-        };
-        if (takesValue && next is not null)
+        if (TakesValue(arg, parsed.Action) && next is not null)
             i++;
 
-        return arg switch
-        {
-            "--crew" when parsed.Action == "list" =>
-                next is null ? parsed with { Error = "--crew needs a crew key." } : parsed with { Crew = next },
-            "--limit" when parsed.Action == "list" => ParsePositive(next) switch
-            {
-                { } limit => parsed with { Limit = limit },
-                null => parsed with { Error = "--limit needs a positive number." },
-            },
-            "--from" when parsed.Action == "tail" => ParsePositive(next) switch
-            {
-                { } from => parsed with { From = from },
-                null => parsed with { Error = "--from needs a sequence number (1 or more)." },
-            },
-            "--follow" when parsed.Action == "tail" => parsed with { Follow = true },
-            "--settings" or "-s" =>
-                next is null ? parsed with { Error = "--settings needs a path." } : parsed with { SettingsPath = next },
-            _ when arg.StartsWith('-') || parsed.Action == "list" || parsed.RunId is not null =>
-                parsed with { Error = $"unexpected argument '{arg}'." },
-            _ => parsed with { RunId = arg },
-        };
+        return ApplyOption(parsed, arg, next);
     }
+
+    private static bool TakesValue(string arg, string action) => arg switch
+    {
+        "--crew" or "--limit" => action == "list",
+        "--from" => action == "tail",
+        "--settings" or "-s" => true,
+        _ => false,
+    };
+
+    private static RunsArguments ApplyLimit(RunsArguments parsed, string? next) => ParsePositive(next) switch
+    {
+        { } limit => parsed with { Limit = limit },
+        null => parsed with { Error = "--limit needs a positive number." },
+    };
+
+    private static RunsArguments ApplyFrom(RunsArguments parsed, string? next) => ParsePositive(next) switch
+    {
+        { } from => parsed with { From = from },
+        null => parsed with { Error = "--from needs a sequence number (1 or more)." },
+    };
+
+    private static RunsArguments ApplyOption(RunsArguments parsed, string arg, string? next) => arg switch
+    {
+        "--crew" when parsed.Action == "list" =>
+            next is null ? parsed with { Error = "--crew needs a crew key." } : parsed with { Crew = next },
+        "--limit" when parsed.Action == "list" => ApplyLimit(parsed, next),
+        "--from" when parsed.Action == "tail" => ApplyFrom(parsed, next),
+        "--follow" when parsed.Action == "tail" => parsed with { Follow = true },
+        "--settings" or "-s" =>
+            next is null ? parsed with { Error = "--settings needs a path." } : parsed with { SettingsPath = next },
+        _ when arg.StartsWith('-') || parsed.Action == "list" || parsed.RunId is not null =>
+            parsed with { Error = $"unexpected argument '{arg}'." },
+        _ => parsed with { RunId = arg },
+    };
 
     private static int? ParsePositive(string? text) =>
         int.TryParse(text, NumberStyles.None, CultureInfo.InvariantCulture, out var value) && value >= 1 ? value : null;

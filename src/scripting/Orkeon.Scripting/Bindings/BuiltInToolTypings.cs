@@ -264,31 +264,6 @@ internal static partial class BuiltInToolTypings
         return ScalarType(schemaType);
     }
 
-    /// <summary>A record type by its members, or null when it has none.</summary>
-    private static string? RecordType(Type type, HashSet<Type> path)
-    {
-        var members = type.GetProperties(BindingFlags.Public | BindingFlags.Instance)
-            .Where(p => p.GetMethod is { IsPublic: true } && p.GetIndexParameters().Length == 0
-                && p.GetCustomAttribute<JsonIgnoreAttribute>() is not { Condition: JsonIgnoreCondition.Always })
-            .Select(p => (Property: p, Name: SerializedName(p)))
-            .OrderBy(m => m.Name, StringComparer.Ordinal)
-            .ToList();
-        if (members.Count == 0)
-            return null;
-
-        // A member's [FieldSchema] rules as at the top level (#210): its Enum is the literal union,
-        // its IsRequired the optionality; the schema the model reads and the typings say the same.
-        return "{ " + string.Join(" ", members.Select(m =>
-        {
-            var schema = m.Property.GetCustomAttribute<FieldSchemaAttribute>();
-            var required = schema?.Required ?? ToolSchemaGenerator.InferRequired(m.Property);
-            var memberType = schema?.Enum is { Length: > 0 } choices
-                ? string.Join(" | ", choices.Select(c => JsonSerializer.Serialize(c)))
-                : TypeOf(m.Property.PropertyType, expand: true, path);
-            return $"readonly {PropertyName(m.Name)}{(required ? "" : "?")}: {memberType};";
-        })) + " }";
-    }
-
     /// <summary>
     /// The TypeScript type of a published parameter: a dictionary by its values, an enum map (a C# enum)
     /// or a flat enum as the literal union of its names, an array of records by their item properties
@@ -313,6 +288,31 @@ internal static partial class BuiltInToolTypings
         }
 
         return ScalarType(schema.Type);
+    }
+
+    /// <summary>A record type by its members, or null when it has none.</summary>
+    private static string? RecordType(Type type, HashSet<Type> path)
+    {
+        var members = type.GetProperties(BindingFlags.Public | BindingFlags.Instance)
+            .Where(p => p.GetMethod is { IsPublic: true } && p.GetIndexParameters().Length == 0
+                && p.GetCustomAttribute<JsonIgnoreAttribute>() is not { Condition: JsonIgnoreCondition.Always })
+            .Select(p => (Property: p, Name: SerializedName(p)))
+            .OrderBy(m => m.Name, StringComparer.Ordinal)
+            .ToList();
+        if (members.Count == 0)
+            return null;
+
+        // A member's [FieldSchema] rules as at the top level (#210): its Enum is the literal union,
+        // its IsRequired the optionality; the schema the model reads and the typings say the same.
+        return "{ " + string.Join(" ", members.Select(m =>
+        {
+            var schema = m.Property.GetCustomAttribute<FieldSchemaAttribute>();
+            var required = schema?.Required ?? ToolSchemaGenerator.InferRequired(m.Property);
+            var memberType = schema?.Enum is { Length: > 0 } choices
+                ? string.Join(" | ", choices.Select(c => JsonSerializer.Serialize(c)))
+                : TypeOf(m.Property.PropertyType, expand: true, path);
+            return $"readonly {PropertyName(m.Name)}{(required ? "" : "?")}: {memberType};";
+        })) + " }";
     }
 
     private const int MaxRecordDepth = 4;

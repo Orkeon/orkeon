@@ -547,13 +547,13 @@ public sealed partial class JsLlmFacade
             return JsonElementToObject(empty.RootElement);
         }
 
-        // extract's contract is "return structured JSON". Three things make that reliable instead
-        // of best-effort: (1) the schema arg is folded into the instruction so the model knows the
-        // target shape, and sent as a json_schema constraint when the provider validates one;
-        // (2) response_format defaults to json_object otherwise (unless the caller explicitly asked
-        // for text), so OpenAI-compatible providers (DeepSeek/OpenAI/Grok/...) emit raw JSON; (3) the
-        // reply is stripped of markdown json fences before parsing, tolerating models that wrap the object
-        // anyway. Without these, any prose/markdown reply threw and aborted the whole crew.
+        // The contract of extract is to return structured JSON. Three things make that reliable instead
+        // of best-effort. First, the schema argument is folded into the instruction so the model knows the
+        // target shape, and is sent as a json_schema constraint when the provider validates one.
+        // Second, response_format defaults to json_object otherwise, unless the caller explicitly asked
+        // for text, so OpenAI-compatible providers (DeepSeek, OpenAI, Grok and others) emit raw JSON.
+        // Third, the reply is stripped of markdown json fences before parsing, tolerating models that wrap
+        // the object anyway. Without these, any prose or markdown reply threw and aborted the whole crew.
         var instruction = ExtractInstruction(schema);
         var system = ResolveSystem(options);
         var cfg = ConfigForExtract(options, schema);

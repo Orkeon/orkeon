@@ -8,6 +8,7 @@ namespace Orkeon.Tools.Web.Firefox;
 /// What the firefox tool could not do for a reason the agent can act on: the browser is not installed,
 /// did not start, a node id is stale. An expected tool error: its message is the answer, not a stack trace.
 /// </summary>
+[System.Diagnostics.CodeAnalysis.SuppressMessage("Major Code Smell", "S3925", Justification = "False positive: binary serialization of exceptions is obsolete in .NET 10 (SYSLIB0051), so no ISerializable constructor or GetObjectData is added.")]
 public sealed class FirefoxException : Exception, IExpectedToolError
 {
     /// <summary>Creates the error with the message the agent reads.</summary>

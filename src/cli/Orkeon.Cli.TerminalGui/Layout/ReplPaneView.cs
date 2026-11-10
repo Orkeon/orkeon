@@ -351,10 +351,17 @@ public sealed class ReplPaneView : View, ITaskListNavigator, IToolActivityObserv
     }
 
     // The state of one burst of transcript writes: the text held per screen, and whether a step moved.
-    private sealed class WriteBatch(ReplPaneView pane)
+    private sealed class WriteBatch
     {
-        private readonly Dictionary<TranscriptView, System.Text.StringBuilder> _pending = [];
+        private readonly ReplPaneView pane;
+        private readonly Dictionary<TranscriptView, System.Text.StringBuilder> _pending;
         private bool _stepsChanged;
+
+        public WriteBatch(ReplPaneView pane)
+        {
+            this.pane = pane;
+            _pending = [];
+        }
 
         public void Apply(TranscriptWrite write)
         {

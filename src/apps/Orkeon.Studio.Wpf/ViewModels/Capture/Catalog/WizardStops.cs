@@ -277,11 +277,11 @@ internal static class WizardStops
             Covers = ["CreateTeam.IsStep4"],
             SweepsLanguages = true,
             // Step 4 is reachable only on a reopened adopted team. The full pass reaches this stop
-            // straight after the stop that reopens the team; the language sweep skips that stop,
-            // and this one used to inherit nothing to stand on, step 4 being out of reach in every
+            // straight after the stop that reopens the team. The language sweep skips that stop, and
+            // this one used to inherit nothing to stand on, step 4 being out of reach in every
             // sweep language. The stop now reopens the team itself when it is not already open.
-            // UX lot 05: a reopened team with folders still to choose holds the stepper at step 2;
-            // the stop chooses them, all inside the team, before stepping on to the adoption.
+            // UX lot 05: a reopened team with folders still to choose holds the stepper at step 2.
+            // The stop chooses them, all inside the team, before stepping on to the adoption.
             Arrange = static async c =>
             {
                 var wizard = c.Shell.CreateTeam;

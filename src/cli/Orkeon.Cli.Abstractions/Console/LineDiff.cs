@@ -72,7 +72,7 @@ public static class LineDiff
         if (rows == 0 || columns == 0 || (long)rows * columns > MaxCells) return (keptLeft, keptRight);
 
         var table = BuildTable(left, right, start, rows, columns);
-        MarkFromTable(table, left, right, start, rows, columns, keptLeft, keptRight);
+        MarkFromTable(table, left, right, new Window(start, rows, columns), keptLeft, keptRight);
         return (keptLeft, keptRight);
     }
 
@@ -92,8 +92,12 @@ public static class LineDiff
         return table;
     }
 
-    private static void MarkFromTable(int[] table, IReadOnlyList<string> left, IReadOnlyList<string> right, int start, int rows, int columns, bool[] keptLeft, bool[] keptRight)
+    // The part of both sides left to compare once the common head and tail are marked.
+    private readonly record struct Window(int Start, int Rows, int Columns);
+
+    private static void MarkFromTable(int[] table, IReadOnlyList<string> left, IReadOnlyList<string> right, Window window, bool[] keptLeft, bool[] keptRight)
     {
+        var (start, rows, columns) = window;
         for (int i = 0, j = 0; i < rows && j < columns;)
         {
             if (left[start + i] == right[start + j])
