@@ -541,9 +541,12 @@ internal sealed class ChatClientAgentLoop
     /// must keep propagating as <see cref="AgentExitReason.Cancelled"/>. An
     /// <see cref="OperationCanceledException"/> whose token is not the caller's (an HTTP
     /// timeout surfaced by a client that does not wrap it) is a failed call like any other.
+    /// A spent budget is no failed call either: it propagates, so the task ends
+    /// <see cref="AgentExitReason.BudgetExhausted"/> and no retry asks again.
     /// </summary>
     private static bool IsCallFailure(Exception exception, CancellationToken cancellationToken) =>
-        exception is not OperationCanceledException || !cancellationToken.IsCancellationRequested;
+        (exception is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
+        && BudgetRefusal.Find(exception) is null;
 
     /// <summary>
     /// The <see cref="AgentExitReason.LlmCallFailed"/> exit: the provider's own reason is the

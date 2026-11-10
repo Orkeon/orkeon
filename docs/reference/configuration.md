@@ -178,7 +178,7 @@ closed list, and what it means.
 <!-- settings-index -->
 | Category | Sections | Keys |
 |---|---|---|
-| [Models](#models) | [`Evaluation`](#evaluation), [`Llm`](#llm), [`LlmLogging`](#llmlogging), [`Orkeon:CostTracking`](#orkeoncosttracking), [`Orkeon:Decision`](#orkeondecision), [`Orkeon:Kev`](#orkeonkev), [`Orkeon:Liquid`](#orkeonliquid), [`Orkeon:TokenCounter`](#orkeontokencounter), [`Orkeon:TypeSafe`](#orkeontypesafe) | 102 |
+| [Models](#models) | [`Evaluation`](#evaluation), [`Llm`](#llm), [`LlmLogging`](#llmlogging), [`Orkeon:CostTracking`](#orkeoncosttracking), [`Orkeon:Decision`](#orkeondecision), [`Orkeon:Kev`](#orkeonkev), [`Orkeon:Liquid`](#orkeonliquid), [`Orkeon:TokenCounter`](#orkeontokencounter), [`Orkeon:TypeSafe`](#orkeontypesafe) | 101 |
 | [Rate and budgets](#rate-and-budgets) | [`RateLimiting`](#ratelimiting), [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting) | 11 |
 | [Memory and vectors](#memory-and-vectors) | [`Memory`](#memory), [`Orkeon:ChromaDb`](#orkeonchromadb), [`Orkeon:CognitiveMemory`](#orkeoncognitivememory), [`Orkeon:CrewMemory`](#orkeoncrewmemory), [`Orkeon:EmbeddingCache`](#orkeonembeddingcache), [`Orkeon:Embeddings`](#orkeonembeddings), [`Orkeon:Encryption`](#orkeonencryption), [`Orkeon:LanceDb`](#orkeonlancedb), [`Orkeon:Pinecone`](#orkeonpinecone), [`Orkeon:Redis`](#orkeonredis), [`Orkeon:Sqlite`](#orkeonsqlite), [`Orkeon:VectorSearch`](#orkeonvectorsearch) | 69 |
 | [RAG](#rag) | [`Orkeon:Rag`](#orkeonrag), [`Orkeon:Rag:Ingestion`](#orkeonragingestion), [`Orkeon:Rag:QueryRouting`](#orkeonragqueryrouting), [`Orkeon:Rag:Retrieval:Hybrid`](#orkeonragretrievalhybrid), [`Orkeon:Rag:WebFallback`](#orkeonragwebfallback) | 34 |
@@ -190,7 +190,7 @@ closed list, and what it means.
 | [Service host and A2A](#service-host-and-a2a) | [`A2A`](#a2a), [`A2A:Security`](#a2asecurity), [`A2A:Security:AzureAD`](#a2asecurityazuread), [`A2A:Security:Oidc`](#a2asecurityoidc), [`Orkeon:Host`](#orkeonhost), [`Orkeon:Host:Discord`](#orkeonhostdiscord) | 59 |
 | [Observability](#observability) | [`Logging`](#logging), [`Orkeon:Monitoring`](#orkeonmonitoring), [`Telemetry`](#telemetry) | 8 |
 
-80 sections, 529 keys. Read by no shipped binary, only by a host written in C# (6): [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Monitoring`](#orkeonmonitoring).
+80 sections, 528 keys. Read by no shipped binary, only by a host written in C# (6): [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Monitoring`](#orkeonmonitoring).
 <!-- /settings-index -->
 
 How to read a table:
@@ -534,7 +534,13 @@ passing `--llm-log`. Recipe: [follow the run and keep the LLM exchanges](../gett
 
 LLM cost tracking: a default budget per crew (`DefaultCrewBudget`) and the price of a model, by
 name or pattern (`CustomPricings`). Registered by `AddOrkeonInfrastructure()`; the section gates
-behavior. The caps on the number of calls are [`RateLimiting`](#ratelimiting).
+behavior. The budget covers every LLM call made inside a crew run (YAML, `.ork.ts`, the service
+host) and is summed per crew id: a YAML or C# crew takes a new id at each load, so in practice the
+budget is per run; the calls a script makes itself through `ctx.llm` are summed under the crew's
+name for the life of the process, apart from its orchestrated tasks. A call outside a crew is under
+no budget. The call that crosses a cap completes; the next one is refused before anything is sent
+and the task ends `BudgetExhausted`, never retried. The caps
+on the number of calls are [`RateLimiting`](#ratelimiting).
 
 <!-- settings:Orkeon:CostTracking -->
 **Read by**: `orkeon`, `orkeon-host`, `orkeon-repl`.
@@ -550,10 +556,9 @@ behavior. The caps on the number of calls are [`RateLimiting`](#ratelimiting).
 | `CustomPricings:<i>:ModelPattern` | string | `""` | Model name or pattern (e.g., "gpt-4o", "claude-3-opus"). |
 | `CustomPricings:<i>:PromptPricePerMillion` | number | `0` | Cost per million prompt (input) tokens in the specified currency. |
 | `DefaultCrewBudget:AlertThresholdPercent` | number | `80` | Percentage of budget at which a warning alert is fired (default: 80%). |
-| `DefaultCrewBudget:MaxCallsPerMinute` | integer | — | Maximum LLM calls per minute (null = unlimited). |
-| `DefaultCrewBudget:MaxCostUsd` | number | — | Maximum total cost in USD (null = unlimited). |
-| `DefaultCrewBudget:MaxTokens` | integer | — | Maximum total tokens (null = unlimited). |
-| `Enabled` | boolean | `true` | Whether cost tracking is enabled (default: true). |
+| `DefaultCrewBudget:MaxCostUsd` | number | — | Maximum total cost in USD (null = unlimited): once the calls recorded reach it, the next LLM call is refused (`BudgetExhaustedException`, dimension `Cost`). |
+| `DefaultCrewBudget:MaxTokens` | integer | — | Maximum total tokens (null = unlimited): once the calls recorded reach it, the next LLM call is refused (`BudgetExhaustedException`, dimension `Tokens`). |
+| `Enabled` | boolean | `true` | Whether the budgets are enforced (default: true); false records the calls but refuses none. |
 <!-- /settings -->
 
 ### `Orkeon:TokenCounter`

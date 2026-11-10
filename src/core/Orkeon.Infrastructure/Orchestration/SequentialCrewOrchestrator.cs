@@ -50,6 +50,7 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
     private readonly ICrewExecutionHook? _executionHook;
     private readonly Orkeon.Application.Interfaces.Ports.ILlmUsageSink? _usageSink;
     private readonly Orkeon.Application.Interfaces.Security.ILlmRateLimiter? _rateLimiter;
+    private readonly Orkeon.Application.Interfaces.Ports.ICostBudgetManager? _budget;
     private readonly TimeProvider _time;
     private readonly IRunScope? _runScope;
 
@@ -68,7 +69,8 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
     /// crew gives its planner (<c>WithPlanningLlm</c>, GAP-33), and the <paramref name="rateLimiter"/> —
     /// the host's <c>RateLimiting</c> — caps them (GAP-38); without them, nothing is metered or limited
     /// here. The <paramref name="timeProvider"/> is the clock a crew's <c>maxRpm</c> window counts on
-    /// (GAP-38), <see cref="TimeProvider.System"/> when none is given.
+    /// (GAP-38), <see cref="TimeProvider.System"/> when none is given. The <paramref name="budget"/> — the
+    /// host's <c>CostTracking</c> budgets — records the planner's calls and refuses one whose budget is spent.
     /// </remarks>
 #pragma warning disable S107 // Methods should not have too many parameters — DI constructor with optional services
     public SequentialCrewOrchestrator(
@@ -90,7 +92,8 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
         Orkeon.Application.Interfaces.Security.ILlmRateLimiter? rateLimiter = null,
         TimeProvider? timeProvider = null,
         IRunScope? runScope = null,
-        IResumeEngine? resumeEngine = null)
+        IResumeEngine? resumeEngine = null,
+        Orkeon.Application.Interfaces.Ports.ICostBudgetManager? budget = null)
 #pragma warning restore S107
     {
         ArgumentNullException.ThrowIfNull(crewRepository);
@@ -118,6 +121,7 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
         _time = timeProvider ?? TimeProvider.System;
         _runScope = runScope;
         _resumeEngine = resumeEngine;
+        _budget = budget;
     }
 
     /// <summary>
@@ -571,7 +575,7 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
         // manager's (GAP-19, GAP-33, GAP-38). The default profile's comes from the container, entered
         // there. The plan counts for the host only, never in the crew's window: no gate is crossed.
         var planningLlm = crew.PlanningLlm is { } own
-            ? Orkeon.Infrastructure.LLMs.LlmProviderEntrance.Enter(own, _usageSink, _rateLimiter)
+            ? Orkeon.Infrastructure.LLMs.LlmProviderEntrance.Enter(own, _usageSink, _rateLimiter, _budget)
             : DefaultPlanningLlm(crew);
         if (planningLlm.Capabilities.ReplaysPrompt)
         {

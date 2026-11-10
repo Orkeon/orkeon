@@ -43,7 +43,7 @@ thinking pour les champs de DashScope et l'objet `reasoning` d'OpenRouter. Le
   sans schéma y est signalée plutôt qu'envoyée.
 - **`thinking`** — `effort` n'accepte qu'une indication de niveau ; `toggle` peut en plus activer
   et désactiver le raisonnement ; `budget` accepte en outre un budget de tokens explicite (Qwen
-  uniquement — Anthropic rejette `budget_tokens` avec un 400 sur la génération actuelle). Sur le
+  et OpenRouter uniquement — Anthropic rejette `budget_tokens` avec un 400 sur la génération actuelle). Sur le
   fil, le toggle d'Anthropic s'écrit `thinking: {type: adaptive|disabled}` — un détail de payload,
   pas un niveau de capacité.
 - **Tout ce qu'un fournisseur ne supporte pas est signalé.** Une option déclarée en YAML sur un

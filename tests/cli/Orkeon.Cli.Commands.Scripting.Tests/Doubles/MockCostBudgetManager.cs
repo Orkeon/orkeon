@@ -25,6 +25,8 @@ internal sealed class MockCostBudgetManager : ICostBudgetManager
         return CostBudgetCheckResult.WithinBudget() with { Cost = NextCost };
     }
 
+    public CostBudgetCheckResult CheckBudget(string? crewId, string? agentId) => CostBudgetCheckResult.WithinBudget();
+
     public CostReport GetReport(string? crewId = null, string? agentId = null) => Report;
     public CostReport GetReportForPeriod(DateTime from, DateTime toDate, string? crewId = null) => Report;
     public void SetCrewBudget(string crewId, BudgetLimit budget) { }

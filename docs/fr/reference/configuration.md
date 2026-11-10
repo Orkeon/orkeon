@@ -189,7 +189,7 @@ qu'elle accepte quand leur liste est fermée, et son sens.
 <!-- settings-index -->
 | Catégorie | Sections | Clés |
 |---|---|---|
-| [Modèles](#modèles) | [`Evaluation`](#evaluation), [`Llm`](#llm), [`LlmLogging`](#llmlogging), [`Orkeon:CostTracking`](#orkeoncosttracking), [`Orkeon:Decision`](#orkeondecision), [`Orkeon:Kev`](#orkeonkev), [`Orkeon:Liquid`](#orkeonliquid), [`Orkeon:TokenCounter`](#orkeontokencounter), [`Orkeon:TypeSafe`](#orkeontypesafe) | 102 |
+| [Modèles](#modèles) | [`Evaluation`](#evaluation), [`Llm`](#llm), [`LlmLogging`](#llmlogging), [`Orkeon:CostTracking`](#orkeoncosttracking), [`Orkeon:Decision`](#orkeondecision), [`Orkeon:Kev`](#orkeonkev), [`Orkeon:Liquid`](#orkeonliquid), [`Orkeon:TokenCounter`](#orkeontokencounter), [`Orkeon:TypeSafe`](#orkeontypesafe) | 101 |
 | [Débit et budgets](#débit-et-budgets) | [`RateLimiting`](#ratelimiting), [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting) | 11 |
 | [Mémoire et vecteurs](#mémoire-et-vecteurs) | [`Memory`](#memory), [`Orkeon:ChromaDb`](#orkeonchromadb), [`Orkeon:CognitiveMemory`](#orkeoncognitivememory), [`Orkeon:CrewMemory`](#orkeoncrewmemory), [`Orkeon:EmbeddingCache`](#orkeonembeddingcache), [`Orkeon:Embeddings`](#orkeonembeddings), [`Orkeon:Encryption`](#orkeonencryption), [`Orkeon:LanceDb`](#orkeonlancedb), [`Orkeon:Pinecone`](#orkeonpinecone), [`Orkeon:Redis`](#orkeonredis), [`Orkeon:Sqlite`](#orkeonsqlite), [`Orkeon:VectorSearch`](#orkeonvectorsearch) | 69 |
 | [RAG](#rag) | [`Orkeon:Rag`](#orkeonrag), [`Orkeon:Rag:Ingestion`](#orkeonragingestion), [`Orkeon:Rag:QueryRouting`](#orkeonragqueryrouting), [`Orkeon:Rag:Retrieval:Hybrid`](#orkeonragretrievalhybrid), [`Orkeon:Rag:WebFallback`](#orkeonragwebfallback) | 34 |
@@ -201,7 +201,7 @@ qu'elle accepte quand leur liste est fermée, et son sens.
 | [Hôte de service et A2A](#hôte-de-service-et-a2a) | [`A2A`](#a2a), [`A2A:Security`](#a2asecurity), [`A2A:Security:AzureAD`](#a2asecurityazuread), [`A2A:Security:Oidc`](#a2asecurityoidc), [`Orkeon:Host`](#orkeonhost), [`Orkeon:Host:Discord`](#orkeonhostdiscord) | 59 |
 | [Observabilité](#observabilité) | [`Logging`](#logging), [`Orkeon:Monitoring`](#orkeonmonitoring), [`Telemetry`](#telemetry) | 8 |
 
-80 sections, 529 clés. Lues par aucun binaire livré, seulement par un hôte écrit en C# (6) : [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Monitoring`](#orkeonmonitoring).
+80 sections, 528 clés. Lues par aucun binaire livré, seulement par un hôte écrit en C# (6) : [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Monitoring`](#orkeonmonitoring).
 <!-- /settings-index -->
 
 Lire un tableau :
@@ -560,7 +560,13 @@ refuse le démarrage d'un run qui passe `--llm-log`. Recette : [suivre le run et
 
 Suivi des coûts LLM : un budget par défaut par crew (`DefaultCrewBudget`) et le prix d'un modèle,
 par nom ou par motif (`CustomPricings`). Enregistré par `AddOrkeonInfrastructure()` ; la section
-gouverne le comportement. Les plafonds sur le nombre d'appels sont
+gouverne le comportement. Le budget couvre chaque appel LLM fait dans l'exécution d'un crew (YAML,
+`.ork.ts`, l'hôte de service) et se cumule par identifiant de crew : une crew YAML ou C# prend un
+nouvel identifiant à chaque chargement, le budget vaut donc en pratique par exécution ; les appels
+qu'un script fait lui-même par `ctx.llm` se cumulent sous le nom de la crew pendant toute la vie du
+processus, à part de ses tâches orchestrées. Un appel hors crew n'est soumis à aucun budget. L'appel
+qui franchit un plafond va à son terme ; le suivant est refusé avant tout envoi et la tâche se
+termine `BudgetExhausted`, sans nouvelle tentative. Les plafonds sur le nombre d'appels sont
 [`RateLimiting`](#ratelimiting).
 
 <!-- settings:Orkeon:CostTracking -->
@@ -577,10 +583,9 @@ gouverne le comportement. Les plafonds sur le nombre d'appels sont
 | `CustomPricings:<i>:ModelPattern` | chaîne | `""` | Nom ou motif du modèle (p. ex. "gpt-4o", "claude-3-opus"). |
 | `CustomPricings:<i>:PromptPricePerMillion` | nombre | `0` | Coût par million de tokens de prompt (entrée), dans la devise indiquée. |
 | `DefaultCrewBudget:AlertThresholdPercent` | nombre | `80` | Pourcentage du budget à partir duquel une alerte d'avertissement est émise (défaut : 80 %). |
-| `DefaultCrewBudget:MaxCallsPerMinute` | entier | — | Nombre maximal d'appels LLM par minute (null = illimité). |
-| `DefaultCrewBudget:MaxCostUsd` | nombre | — | Coût total maximal en USD (null = illimité). |
-| `DefaultCrewBudget:MaxTokens` | entier | — | Nombre total maximal de tokens (null = illimité). |
-| `Enabled` | booléen | `true` | Si le suivi des coûts est activé (défaut : true). |
+| `DefaultCrewBudget:MaxCostUsd` | nombre | — | Coût total maximal en USD (null = illimité) : une fois que les appels enregistrés l'atteignent, l'appel LLM suivant est refusé (`BudgetExhaustedException`, dimension `Cost`). |
+| `DefaultCrewBudget:MaxTokens` | entier | — | Nombre total maximal de tokens (null = illimité) : une fois que les appels enregistrés l'atteignent, l'appel LLM suivant est refusé (`BudgetExhaustedException`, dimension `Tokens`). |
+| `Enabled` | booléen | `true` | Si les budgets sont appliqués (défaut : true) ; false enregistre les appels sans en refuser aucun. |
 <!-- /settings -->
 
 ### `Orkeon:TokenCounter`

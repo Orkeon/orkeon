@@ -3,6 +3,7 @@ using System.Runtime.CompilerServices;
 using Orkeon.Application.Common.DTOs;
 using Orkeon.Application.Interfaces.Ports;
 using Orkeon.Application.Telemetry;
+using Orkeon.Domain.Autonomous;
 using Orkeon.Domain.SharedKernel;
 using Orkeon.Domain.SharedKernel.ValueObjects;
 using Orkeon.Infrastructure.CostTracking;
@@ -48,6 +49,7 @@ public sealed class MeteredLlmProvider : ILlmProvider, IStreamingLlmProvider
 
     private readonly ILlmProvider _inner;
     private readonly ILlmUsageSink? _sink;
+    private readonly ICostBudgetManager? _budget;
 
     /// <summary>
     /// One metered call, and whether a meter nearer the model counted during it. Held by the call's
@@ -57,7 +59,8 @@ public sealed class MeteredLlmProvider : ILlmProvider, IStreamingLlmProvider
     private sealed class MeteredCall
     {
         private int _countedInside;
-        private int _reportedInside;
+        private int _sinkReportedInside;
+        private int _budgetRecordedInside;
 
         public MeteredCall(MeteredCall? outer)
         {
@@ -75,7 +78,13 @@ public sealed class MeteredLlmProvider : ILlmProvider, IStreamingLlmProvider
         public bool CountedInside => Volatile.Read(ref _countedInside) != 0;
 
         /// <summary>Whether a meter inside this call reported its usage to a sink.</summary>
-        public bool ReportedInside => Volatile.Read(ref _reportedInside) != 0;
+        public bool SinkReportedInside => Volatile.Read(ref _sinkReportedInside) != 0;
+
+        /// <summary>Whether a meter inside this call recorded its usage against the budgets.</summary>
+        public bool BudgetRecordedInside => Volatile.Read(ref _budgetRecordedInside) != 0;
+
+        /// <summary>Whether a meter inside this call reported its usage anywhere.</summary>
+        public bool ReportedInside => SinkReportedInside || BudgetRecordedInside;
 
         /// <summary>Tells every call around this one that a meter inside them counted.</summary>
         public void MarkOuters()
@@ -84,11 +93,19 @@ public sealed class MeteredLlmProvider : ILlmProvider, IStreamingLlmProvider
                 Interlocked.Exchange(ref call._countedInside, 1);
         }
 
-        /// <summary>Tells every call around this one that a meter inside them reported to a sink.</summary>
-        public void MarkOutersReported()
+        /// <summary>
+        /// Tells every call around this one what a meter inside them did with the usage: reported it to
+        /// a sink, recorded it against the budgets, or both. An outer meter still does what was left.
+        /// </summary>
+        public void MarkOutersReported(bool toSink, bool toBudget)
         {
             for (var call = Outer; call is not null; call = call.Outer)
-                Interlocked.Exchange(ref call._reportedInside, 1);
+            {
+                if (toSink)
+                    Interlocked.Exchange(ref call._sinkReportedInside, 1);
+                if (toBudget)
+                    Interlocked.Exchange(ref call._budgetRecordedInside, 1);
+            }
         }
     }
 
@@ -98,10 +115,11 @@ public sealed class MeteredLlmProvider : ILlmProvider, IStreamingLlmProvider
     /// </summary>
     private static MeteredCall BeginCall() => s_currentCall.Value = new MeteredCall(s_currentCall.Value);
 
-    private MeteredLlmProvider(ILlmProvider inner, ILlmUsageSink? sink)
+    private MeteredLlmProvider(ILlmProvider inner, ILlmUsageSink? sink, ICostBudgetManager? budget)
     {
         _inner = inner;
         _sink = sink;
+        _budget = budget;
 
         // Reading the meter creates its instruments: a listener sees them before the first call.
         _ = OrkeonMeter.Meter;
@@ -116,14 +134,21 @@ public sealed class MeteredLlmProvider : ILlmProvider, IStreamingLlmProvider
     /// </summary>
     /// <param name="provider">The provider to meter.</param>
     /// <param name="sink">The host's usage receiver; null measures for the meter only.</param>
+    /// <param name="budget">
+    /// The host's budgets (<c>CostTracking</c>): every call is recorded against them, and a call of a crew
+    /// or agent whose budget is spent is refused before it starts, with a <see cref="BudgetExhaustedException"/>.
+    /// Null records and refuses nothing.
+    /// </param>
     /// <returns>The metered provider.</returns>
-    public static ILlmProvider Wrap(ILlmProvider provider, ILlmUsageSink? sink)
+    public static ILlmProvider Wrap(ILlmProvider provider, ILlmUsageSink? sink, ICostBudgetManager? budget = null)
     {
         ArgumentNullException.ThrowIfNull(provider);
-        // A meter without a sink never takes the report from a sink: that one is wrapped around it.
-        return UnderEntranceLayers(provider) is MeteredLlmProvider existing && (existing._sink is not null || sink is null)
+        // A meter without a sink or a budget never takes the report from one: a meter with it is wrapped around it.
+        return UnderEntranceLayers(provider) is MeteredLlmProvider existing
+               && (existing._sink is not null || sink is null)
+               && (existing._budget is not null || budget is null)
             ? provider
-            : new MeteredLlmProvider(provider, sink);
+            : new MeteredLlmProvider(provider, sink, budget);
     }
 
     /// <summary>The provider under the entrance's limiter and traced layers, the meter still on it.</summary>
@@ -176,6 +201,7 @@ public sealed class MeteredLlmProvider : ILlmProvider, IStreamingLlmProvider
         string prompt, LlmConfig? config = null, CancellationToken cancellationToken = default)
     {
         var attribution = LlmUsageScope.Current;
+        RefuseWhenSpent(attribution);
         var call = BeginCall();
         LlmResponse response;
         try
@@ -197,6 +223,7 @@ public sealed class MeteredLlmProvider : ILlmProvider, IStreamingLlmProvider
         LlmMessage[] messages, LlmConfig? config = null, CancellationToken cancellationToken = default)
     {
         var attribution = LlmUsageScope.Current;
+        RefuseWhenSpent(attribution);
         var call = BeginCall();
         LlmResponse response;
         try
@@ -225,6 +252,7 @@ public sealed class MeteredLlmProvider : ILlmProvider, IStreamingLlmProvider
         // Read while the consumer's first MoveNextAsync runs in its own scope: after a yield,
         // this iterator resumes in whatever context the consumer is in at the time.
         var attribution = LlmUsageScope.Current;
+        RefuseWhenSpent(attribution);
         var call = BeginCall();
 
         if (_inner is not IStreamingLlmProvider streaming)
@@ -329,6 +357,7 @@ public sealed class MeteredLlmProvider : ILlmProvider, IStreamingLlmProvider
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         var attribution = LlmUsageScope.Current;
+        RefuseWhenSpent(attribution);
         var call = BeginCall();
 
         if (_inner is not IStreamingLlmProvider streaming)
@@ -464,7 +493,7 @@ public sealed class MeteredLlmProvider : ILlmProvider, IStreamingLlmProvider
     /// </summary>
     private void Report(LlmResponse? response, LlmUsageAttribution attribution, Prompt prompt, MeteredCall call)
     {
-        if (response is null || call.ReportedInside)
+        if (response is null || (call.ReportedInside && NothingLeftFor(call)))
             return;
 
         var counted = LlmUsageEstimator.Reported(response);
@@ -487,12 +516,12 @@ public sealed class MeteredLlmProvider : ILlmProvider, IStreamingLlmProvider
             AddUsdCost(billed, cost, currency);
         }
 
-        if (_sink is null)
+        if (_sink is null && _budget is null)
             return;
 
-        call.MarkOutersReported();
+        call.MarkOutersReported(_sink is not null, _budget is not null);
 
-        Record(new CostUsageEvent
+        Record(call, new CostUsageEvent
         {
             CrewId = attribution.CrewId,
             AgentId = attribution.AgentId,
@@ -556,19 +585,19 @@ public sealed class MeteredLlmProvider : ILlmProvider, IStreamingLlmProvider
     /// </summary>
     private void ReportStreamEstimate(LlmUsageAttribution attribution, int promptTokens, long characters, LlmConfig? config, MeteredCall call)
     {
-        if (call.ReportedInside)
+        if (call.ReportedInside && NothingLeftFor(call))
             return;
 
         // No answer names the model on this path: the one asked for is the best reading —
         // and a call that names none runs on the provider's own (GAP-18).
         var model = RequestedModel(config);
         MeasureOnce(call, model, null, null, null);
-        if (_sink is null)
+        if (_sink is null && _budget is null)
             return;
 
-        call.MarkOutersReported();
+        call.MarkOutersReported(_sink is not null, _budget is not null);
 
-        Record(new CostUsageEvent
+        Record(call, new CostUsageEvent
         {
             CrewId = attribution.CrewId,
             AgentId = attribution.AgentId,
@@ -581,6 +610,13 @@ public sealed class MeteredLlmProvider : ILlmProvider, IStreamingLlmProvider
             Estimated = true,
         });
     }
+
+    /// <summary>
+    /// Whether a meter inside this call already did all this meter would: reported to a sink when
+    /// this one has a sink, recorded against the budgets when this one has budgets.
+    /// </summary>
+    private bool NothingLeftFor(MeteredCall call) =>
+        (_sink is null || call.SinkReportedInside) && (_budget is null || call.BudgetRecordedInside);
 
     private static string? NamedModel(LlmConfig? config) =>
         string.IsNullOrWhiteSpace(config?.Model) ? null : config.Model;
@@ -618,15 +654,41 @@ public sealed class MeteredLlmProvider : ILlmProvider, IStreamingLlmProvider
     /// failed call: the meter must not break what it measures.
     /// </summary>
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Host-sink fault barrier: usage accounting must never fail the LLM call it observes.")]
-    private void Record(CostUsageEvent usage)
+    private void Record(MeteredCall call, CostUsageEvent usage)
     {
         try
         {
-            _sink!.Record(usage);
+            if (!call.SinkReportedInside)
+                _sink?.Record(usage);
         }
         catch (Exception)
         {
             // Deliberately swallowed — see the fault-barrier contract above.
         }
+
+        try
+        {
+            // The same event the sink saw: a host sink that records it too is counted once.
+            if (!call.BudgetRecordedInside)
+                _budget?.RecordUsage(usage);
+        }
+        catch (Exception)
+        {
+            // Deliberately swallowed — see the fault-barrier contract above.
+        }
+    }
+
+    /// <summary>
+    /// Refuses a call whose crew or agent has spent its budget, before anything is sent: the call that
+    /// crossed the cap ran to its end, the next one never starts.
+    /// </summary>
+    /// <exception cref="BudgetExhaustedException">The budget the call would be charged to is spent.</exception>
+    private void RefuseWhenSpent(LlmUsageAttribution attribution)
+    {
+        if (_budget?.CheckBudget(attribution.CrewId, attribution.AgentId) is not { IsWithinBudget: false } spent)
+            return;
+
+        var dimension = spent.Alert?.Type == BudgetAlertType.CostBudgetExceeded ? BudgetDimension.Cost : BudgetDimension.Tokens;
+        throw new BudgetExhaustedException(dimension, spent.Message ?? "The LLM budget is spent.");
     }
 }

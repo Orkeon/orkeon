@@ -163,7 +163,7 @@ public sealed partial class LlmProfileRegistry : ILlmProfileRegistry
             // AgentBuilder.WithLlm, or by WithAgentFrameworkAgent: metered and limited here, where the
             // run resolves it, as the agent's work; a provider metered or limited already is left as it is.
             Assemble(ManagerLlm.ProviderPrefix + own.Name,
-                LlmProviderEntrance.Enter(own, _services.GetService<ILlmUsageSink>(), _services.GetService<ILlmRateLimiter>()),
+                LlmProviderEntrance.Enter(own, _services.GetService<ILlmUsageSink>(), _services.GetService<ILlmRateLimiter>(), _services.GetService<ICostBudgetManager>()),
                 baseConfig: null));
     }
 
