@@ -63,6 +63,8 @@ internal sealed record OAuthTokenSet
     public IReadOnlyList<string> Scopes { get; init; } = [];
 
     // The generated formatting would print both tokens: a log line or an exception that holds this record must not.
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Major Code Smell", "S1144:Unused private types or members should be removed",
+        Justification = "False positive: the compiler-generated ToString of the record calls PrintMembers.")]
     private bool PrintMembers(System.Text.StringBuilder builder)
     {
         builder.Append("AccessToken = ***, RefreshToken = ").Append(RefreshToken is null ? "null" : "***")
