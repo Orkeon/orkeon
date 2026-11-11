@@ -131,7 +131,7 @@ public sealed class TemplatesPackTests : IClassFixture<TemplatesPackTests.Templa
     }
 
     /// <summary>
-    /// Packs the lineup the templates restore from (the umbrella, the tools, the local embeddings, the
+    /// Packs the lineup the templates restore from (the umbrella, the tools, the local embeddings, the CLI constants, the
     /// scripting package) and the template package into one local feed, installs the latter into a
     /// throw-away hive, and removes the whole scratch folder when the class is done.
     /// </summary>
@@ -144,6 +144,8 @@ public sealed class TemplatesPackTests : IClassFixture<TemplatesPackTests.Templa
             "src/packaging/Orkeon.Tools/Orkeon.Tools.csproj",
             "src/packaging/Orkeon.Tools.Embeddings.Local/Orkeon.Tools.Embeddings.Local.Package.csproj",
             "src/packaging/Orkeon.Scripting/Orkeon.Scripting.Package.csproj",
+            // Orkeon.Scripting depends on it as a package of its own (ADR-009).
+            "src/constants/Orkeon.Constants.Cli/Orkeon.Constants.Cli.csproj",
         ];
 
         /// <summary>Initializes the fixture: packs, then installs; failures are kept for the tests to assert on.</summary>
@@ -159,7 +161,8 @@ public sealed class TemplatesPackTests : IClassFixture<TemplatesPackTests.Templa
 
             var props = System.Xml.Linq.XDocument.Load(Path.Combine(repoRoot, "src", "Directory.Build.props"));
             var prefix = props.Descendants("VersionPrefix").Single().Value;
-            var suffix = props.Descendants("VersionSuffix").Single().Value;
+            // A final version carries no VersionSuffix element at all.
+            var suffix = props.Descendants("VersionSuffix").SingleOrDefault()?.Value ?? "";
             Version = suffix.Length == 0 ? prefix : $"{prefix}-{suffix}";
 
             var configuration = AppContext.BaseDirectory.Contains($"{Path.DirectorySeparatorChar}Release{Path.DirectorySeparatorChar}", StringComparison.Ordinal)
