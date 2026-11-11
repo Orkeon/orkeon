@@ -44,6 +44,45 @@ public class ZaiLlmProvider : OpenAICompatibleProviderBase
         Vision = true,
     };
 
+    /// <summary>
+    /// The GLM-5.3 family (<c>glm-5.3</c>, <c>glm-5.3-flash</c>, <c>glm-5.3-flashx</c>) always
+    /// reasons: thinking cannot be switched off (catalogue review 2026-09-19; the served listing
+    /// marks it mandatory). A <c>thinking: disabled</c> block is therefore not sent to those models,
+    /// and the removal is reported as a structured warning rather than left to the API to ignore
+    /// or refuse. An enabled toggle and the effort hint are sent as on any other GLM model.
+    /// </summary>
+    protected override void ApplyProviderSpecificOptions(Dictionary<string, object> payload, LlmConfig effectiveConfig)
+    {
+        ArgumentNullException.ThrowIfNull(payload);
+        ArgumentNullException.ThrowIfNull(effectiveConfig);
+
+        base.ApplyProviderSpecificOptions(payload, effectiveConfig);
+
+        if (effectiveConfig.Thinking?.Enabled != false || !payload.ContainsKey("thinking"))
+            return;
+
+        var model = ResolveModel(effectiveConfig);
+        if (!IsAlwaysThinkingModel(model))
+            return;
+
+        payload.Remove("thinking");
+        LogUnsupportedOption("thinking.enabled", ProviderDisplayName,
+            $"the model '{model}' always reasons and cannot switch thinking off; remove the option, or pick glm-5.2 to turn reasoning off");
+    }
+
+    /// <summary>
+    /// Whether <paramref name="model"/> belongs to the GLM-5.3 family: <c>glm-5.3</c> itself, or an id
+    /// that continues it at a boundary (<c>glm-5.3-flashx</c>), case-insensitive.
+    /// </summary>
+    internal static bool IsAlwaysThinkingModel(string? model)
+    {
+        const string family = "glm-5.3";
+        if (model is null || !model.StartsWith(family, StringComparison.OrdinalIgnoreCase))
+            return false;
+
+        return model.Length == family.Length || model[family.Length] is '.' or '-';
+    }
+
     /// <summary>Initializes a new instance of <see cref="ZaiLlmProvider"/>.</summary>
     public ZaiLlmProvider(
         LlmConfig config,

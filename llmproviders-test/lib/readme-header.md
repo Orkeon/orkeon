@@ -188,11 +188,11 @@ JSON > the catalog's `defaultModel`.
 | `ollama` | `llama3.2` | `llava` | `qwen3.5:4b` *(pull it first)* |
 | `together` | `zai-org/GLM-5.3-Flash` *(since 2026-11-11: the Llama 3.3 default left serverless)* | *(the default sees)* | `Qwen/Qwen3.5-9B` |
 | `deepseek` | `deepseek-flash` *(renamed 2026-09-19, campaigned 2026-09-21)* | *(the default sees)* | |
-| `kimi` | `kimi-k2.6` | | `kimi-k3.1-pro`, `kimi-k3`, `kimi-k2.7-code` |
+| `kimi` | `kimi-k3.1-pro` | | `kimi-k2.6`, `kimi-k3`, `kimi-k2.7-code` |
 | `qwen` | `qwen3.7-plus` | | `qwen3.8-flash`, `qwen3.8-max` |
 | `mistral` | `mistral-medium-2604` | | `mistral-large-4`, `mistral-small-2603` |
 | `huggingface` | `meta-llama/Llama-3.1-8B-Instruct` | `Qwen/Qwen3-VL-30B-A3B-Instruct` | `Qwen/Qwen3.5-9B` |
-| `zai` | `glm-5.2` | `glm-4.6v-flash` | `glm-5.3`, `glm-5.3-flash`, `glm-5.3-flashx` |
+| `zai` | `glm-5.3-flashx` | `glm-4.6v-flash` | `glm-5.2`, `glm-5.3`, `glm-5.3-flash` |
 | `gemini` | `gemini-3.7-flash` | *(the default sees)* | `gemini-3.8-flash`, `gemini-4-argon`, `gemini-4-carbon` |
 | `grok` | `grok-4.6` | *(the default sees)* | `grok-4.7` |
 | `minimax` | `MiniMax-M2` | `MiniMax-M3` *(the successor sees — measured 2026-09-21; the VL family is still absent from `/models`)* | `MiniMax-M3`, `MiniMax-M3.1-Flash` |

@@ -67,7 +67,11 @@ public static class LlmModelOutputLimits
         // "256K − prompt_tokens" (troubleshooting page): half its window — the K3 default carried
         // over — is a pin, not a documented maximum; a prompt above 128K gets the field dropped on
         // the retry. The 4096 the engine used to send starved K3 into empty answers.
+        // K3.1 Pro (1M window, the default since 2026-11-11) takes the same pin: the quickstart
+        // documents the K3 default only, and "kimi-k3" does not claim "kimi-k3.1-pro" ('.' is not a
+        // separator), so without an entry it would fall back to the 4096 that starved K3.
         ["kimi-k3"] = 131_072,
+        ["kimi-k3.1-pro"] = 131_072,
         ["kimi-k2.6"] = 131_072,
 
         // Qwen — alibabacloud.com/help/en/model-studio/{qwen3-7-plus,qwen3-8-flash,qwen3-8-max},
@@ -81,6 +85,7 @@ public static class LlmModelOutputLimits
         ["glm-5.2"] = 131_072,
         ["glm-5.3"] = 131_072,
         ["glm-5.3-flash"] = 131_072,
+        ["glm-5.3-flashx"] = 131_072,
         ["glm-4.6v-flash"] = 32_768,
 
         // MiniMax — platform.minimax.io/docs/guides/models-intro, 2026-09-19: M2 "128k (including

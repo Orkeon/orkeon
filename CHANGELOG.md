@@ -32,6 +32,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   |---|---|
   | no model, or `meta-llama/Llama-3.3-70B-Instruct-Turbo` on Together | `zai-org/GLM-5.3-Flash`, or a dedicated endpoint for the Llama model |
 
+### Changed — Kimi's and Z.AI's default models **[breaking]**
+
+- **`LlmProviderDefaultModels.Kimi`** **[breaking]** is now `kimi-k3.1-pro` (was `kimi-k2.6`): 12/12 on the LLM campaign of 2026-11-11, where `kimi-k2.6` stayed 10/1/1 (M8 `json_object` fenced in markdown, M10 no cache breakdown). The K3 family fixes `temperature` (only 1 is allowed) and `top_p` and refuses a `thinking` field: `KimiLlmProvider` now leaves those three fields out of a K3 request, on the buffered and the streaming paths alike, and reports each as a structured warning (event 110) instead of letting the API answer 400. The output-cap catalogue pins `kimi-k3.1-pro` at 131 072 like `kimi-k3`. The value changes in `PublicAPI.Shipped.txt`.
+- **`LlmProviderDefaultModels.Zai`** **[breaking]** is now `glm-5.3-flashx` (was `glm-5.2`): 12/12 on 2026-10-07 and 2026-11-11 (it reads images, its cache is read), where `glm-5.2` stayed 10/2 (M9 code `1210`, text only; M10 0 cached). The GLM-5.3 family cannot switch thinking off: `ZaiLlmProvider` no longer sends `thinking: disabled` to it and reports the option instead; an enabled toggle and the effort hint are sent as before. The value changes in `PublicAPI.Shipped.txt`.
+
+  | Before | After |
+  |---|---|
+  | no model on Kimi, running `kimi-k2.6` | `kimi-k3.1-pro`; pin `Model: kimi-k2.6` to keep the former model |
+  | `Temperature`, `TopP` or `Thinking.Enabled` set for a K3 model | not sent, one warning each; pick a `kimi-k2` model to steer them |
+  | no model on Z.AI, running `glm-5.2` | `glm-5.3-flashx`; pin `Model: glm-5.2` to keep the former model |
+  | `Thinking.Enabled = false` on a GLM-5.3 model | not sent, one warning; pick `glm-5.2` to turn reasoning off |
+
 ### Fixed
 
 - **`reasoning_effort: none` reaches OpenAI again** — since the effort levels gained `xhigh` and `max` (#242), a value outside `low`…`max` was "lowered" to `low`, and the `gpt-5` row of the model capability table caught `gpt-5.6-*` and omitted `none` there: every GPT-5.6 and GPT-6 tier that needs `none` to take function tools on chat/completions answered tools and the messages-array shape with a 400 (LLM campaign of 2026-11-11). `LlmThinkingConfig.EffortFor` now returns a value outside the levels unchanged, for the vendor to judge, and `gpt-5.6` has its own unrestricted row.
