@@ -28,6 +28,8 @@ on:
       - 'examples/**'
       - 'src/**'
       - 'scripts/**'
+      - 'Directory.Packages.props'
+      - 'Directory.Build.*'
       - '.github/workflows/examples-ci.yml'
   pull_request:
     branches: [ main ]
@@ -35,6 +37,8 @@ on:
       - 'examples/**'
       - 'src/**'
       - 'scripts/**'
+      - 'Directory.Packages.props'
+      - 'Directory.Build.*'
       - '.github/workflows/examples-ci.yml'
 permissions:
   contents: read

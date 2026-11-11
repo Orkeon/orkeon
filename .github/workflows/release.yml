@@ -1080,6 +1080,12 @@ jobs:
           tags: |
             ghcr.io/orkeon/orkeon:${{ steps.ver.outputs.version }}
             ghcr.io/orkeon/orkeon:latest
+          # The source label links the GHCR package to this repository on its first push, so it
+          # takes the repository's access instead of standing alone under the organisation.
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.description=Orkeon: the orkeon CLI, the REPL and the bundled examples
+            org.opencontainers.image.licenses=MIT
       # What the push produced is read back from the registry: a tag that lists one platform only
       # (a platforms: line lost, a builder that pushed the single image) fails the job here, not
       # on the first Apple Silicon machine that pulls it.

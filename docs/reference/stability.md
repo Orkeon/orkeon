@@ -12,7 +12,7 @@ contributor-side procedure is in [CONTRIBUTING](../../CONTRIBUTING.md#versioning
 
 | Release | May change | May not change |
 |---|---|---|
-| **Patch** (`1.x.y`) | Bug fixes, documentation, internal code, performance. | Any public member; the documented behaviour. |
+| **Patch** (`1.x.y`) | Bug fixes, documentation, internal code, performance. | Any public member outside `[Experimental]`; the documented behaviour. |
 | **Minor** (`1.x`) | Adds public members, tools, providers, options and settings; deprecates members with `[Obsolete]`; changes anything outside the commitment (below). | Removes or changes the signature of a member of the frozen surface. |
 | **Major** (`2.0`) | Removes what was deprecated; breaks the frozen surface. | — |
 

@@ -560,7 +560,7 @@ docker run -it --rm -e ORKEON_ENTRYPOINT=repl \
   ghcr.io/orkeon/orkeon
 ```
 
-There is no runner per example family: the finance crews are `main.ork.ts`
+There is no executable per example family: the finance crews are `main.ork.ts`
 scripts the same `orkeon` CLI runs, like every other example.
 
 ```bash
@@ -574,7 +574,7 @@ docker run --rm \
 `ORKEON_ENTRYPOINT=shell` opens an interactive **zsh** inside the image (starting
 in `/workspace`) — handy for poking at the bundled examples or debugging mounts.
 A welcome banner lists the available commands and paths (suppress it with
-`-e ORKEON_NO_BANNER=1`), and every runner is on the PATH under the same names
+`-e ORKEON_NO_BANNER=1`), and every executable is on the PATH under the same names
 as the release archives (`orkeon`, `orkeon-repl`, …):
 
 ```bash

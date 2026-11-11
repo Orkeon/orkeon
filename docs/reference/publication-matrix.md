@@ -487,7 +487,7 @@ print the runtime install commands rather than failing at first launch.
   why a nuget.org download must shed its repository signature first, is in
   [Verify what you install](../guides/verify-what-you-install.md).
 - **Locked dependency graphs.** The packages are built from locked dependency graphs: every
-  project of `Orkeon.sln` and of the examples commits a `packages.lock.json` next to it
+  project of `Orkeon.sln` outside `examples/` commits a `packages.lock.json` next to it
   (`Directory.Build.targets`), and CI restores in locked mode (`RestoreLockedMode` under the
   `CI` variable), so a restore that would resolve a transitive package differently fails
   instead of drifting. Two restores are deliberately unlocked: the `build-test-net11` lane

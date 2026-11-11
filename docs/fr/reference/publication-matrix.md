@@ -513,7 +513,7 @@ commandes d'installation du runtime plutôt que d'échouer au premier lancement.
   d'abord perdre sa signature repository, est dans
   [Vérifier ce que vous installez](../guides/verify-what-you-install.md).
 - **Graphes de dépendances verrouillés.** Les paquets sont construits à partir de graphes de
-  dépendances verrouillés : chaque projet de `Orkeon.sln` et des exemples commite un
+  dépendances verrouillés : chaque projet de `Orkeon.sln` hors `examples/` commite un
   `packages.lock.json` à côté de lui (`Directory.Build.targets`), et la CI restaure en mode
   verrouillé (`RestoreLockedMode` sous la variable `CI`), si bien qu'une restauration qui
   résoudrait autrement un paquet transitif échoue au lieu de dériver. Deux restaurations

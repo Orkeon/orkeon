@@ -9,6 +9,12 @@
          emit parasite packages. No example opts back in anymore (the last,
          Orkeon.Runners.Shared, retired with the trading stack - EX-01). -->
     <IsPackable>false</IsPackable>
+    <!-- No NuGet lock file for the examples: they ship nothing, so a lock file adds no
+         provenance, and their versions come from the root Directory.Packages.props, which a
+         Dependabot bump changes without regenerating the examples' locks (NU1004 in CI).
+         The root Directory.Build.targets enables lock files only where these are unset. -->
+    <RestorePackagesWithLockFile>false</RestorePackagesWithLockFile>
+    <RestoreLockedMode>false</RestoreLockedMode>
     <!-- Examples deliberately showcase experimental surfaces (Autonomous, A2A,
          corrective RAG, MCP); the ORKEXP diagnostics target consumers outside
          this repo (see docs/reference/experimental-apis.md). -->

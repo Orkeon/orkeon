@@ -416,8 +416,8 @@ matter of opinion — it is **recorded in the repository** and enforced at build
    VFS-compliance rules) goes into `AnalyzerReleases.Shipped.md` under a
    `## Release <version>` heading, leaving the `Unshipped` file with its header only.
    The release-tracking analyzer parses that heading as a plain `Major.Minor.Patch`
-   number and rejects a prerelease suffix (RS2007), so the heading for the 1.0.0 line
-   is `## Release 1.0.0` — it is already there, and the pre-release tags add nothing to it.
+   number and rejects a prerelease suffix (RS2007): a release candidate adds nothing there, its rules go
+   under the heading of the final version (`## Release 1.1.0` for the 1.1.0 line).
 5. Make sure CI is green on the commit you tag. Beyond the `-warnaserror` build and the
    test suites, the gates that must pass are `scripts/check-docs-parity.sh`,
    `scripts/check-doc-claims.py` (it also compares the hand-written copies of the NuGet

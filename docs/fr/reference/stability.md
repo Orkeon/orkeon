@@ -13,7 +13,7 @@ garantit ; la procédure côté contributeur est dans
 
 | Version | Peut changer | Ne peut pas changer |
 |---|---|---|
-| **Correctif** (`1.x.y`) | Corrections de bogues, documentation, code interne, performances. | Un membre public ; le comportement documenté. |
+| **Correctif** (`1.x.y`) | Corrections de bogues, documentation, code interne, performances. | Un membre public hors `[Experimental]` ; le comportement documenté. |
 | **Mineure** (`1.x`) | Ajoute des membres publics, des outils, des fournisseurs, des options et des réglages ; déprécie des membres avec `[Obsolete]` ; modifie tout ce qui est hors engagement (ci-dessous). | Retire un membre de la surface figée ou en change la signature. |
 | **Majeure** (`2.0`) | Retire ce qui était déprécié ; casse la surface figée. | — |
 

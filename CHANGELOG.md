@@ -41,10 +41,11 @@ job that builds it is now `docker-image`. `Dockerfile.runners` keeps its name, s
 
 ### Changed
 
-- **NuGet lock files** — every project of `Orkeon.sln` and `examples/Orkeon.Examples.sln` restores
-  with a committed `packages.lock.json`, and CI restores in locked mode (`CI=true`), so a package
-  is built from the dependency graph that was reviewed. The net11 lane and the per-RID installer
-  publishes restore unlocked; the `dotnet new` templates carry no lock file. A package change
+- **NuGet lock files** — every project of `Orkeon.sln` outside `examples/` restores with a
+  committed `packages.lock.json`, and CI restores in locked mode (`CI=true`), so a package is
+  built from the dependency graph that was reviewed. The net11 lane, the per-RID installer
+  publishes and the `dotnet publish -r` steps inside `Dockerfile.runners` restore unlocked; the
+  examples, which ship nothing, and the `dotnet new` templates carry no lock file. A package change
   regenerates the lock files with `dotnet restore` (`CONTRIBUTING.md`).
 - **The install commands drop `--prerelease`** — the READMEs, the docs and the package READMEs
   install the final release; the dev channel keeps it. `SECURITY.md` supports the latest 1.x

@@ -435,9 +435,8 @@ une affaire d'opinion — elle est **consignée dans le dépôt** et vérifiée 
    conformité VFS `ORKVFS00x`) passe dans `AnalyzerReleases.Shipped.md` sous un titre
    `## Release <version>`, ne laissant que son en-tête au fichier `Unshipped`.
    L'analyseur de suivi des releases lit ce titre comme un simple numéro
-   `Majeur.Mineur.Correctif` et refuse un suffixe de pré-release (RS2007) : le titre de la
-   ligne 1.0.0 est donc `## Release 1.0.0` — il est déjà là, et les tags de pré-version n'y ajoutent
-   rien.
+   `Majeur.Mineur.Correctif` et refuse un suffixe de pré-release (RS2007) : une version candidate n'y ajoute rien, ses règles
+   vont sous le titre de la version finale (`## Release 1.1.0` pour la ligne 1.1.0).
 5. Vérifier que la CI est verte sur le commit que vous taguez. Au-delà du build
    `-warnaserror` et des suites de tests, les gates qui doivent passer sont
    `scripts/check-docs-parity.sh`, `scripts/check-doc-claims.py` (qui compare aussi les
