@@ -14,6 +14,10 @@ Orkeon.Tools.Drive.Administration.DriveAccountStatus.AllowPublicLinks.get -> boo
 Orkeon.Tools.Drive.Administration.DriveAccountStatus.AllowPublicLinks.init -> void
 Orkeon.Tools.Drive.Administration.DriveAccountStatus.AllowedRecipients.get -> int
 Orkeon.Tools.Drive.Administration.DriveAccountStatus.AllowedRecipients.init -> void
+Orkeon.Tools.Drive.Administration.DriveAccountStatus.ConfigurationProblems.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Orkeon.Tools.Drive.Administration.DriveAccountStatus.ConfigurationProblems.init -> void
+Orkeon.Tools.Drive.Administration.DriveAccountStatus.CredentialProblem.get -> string?
+Orkeon.Tools.Drive.Administration.DriveAccountStatus.CredentialProblem.init -> void
 Orkeon.Tools.Drive.Administration.DriveAccountStatus.DriveAccountStatus() -> void
 Orkeon.Tools.Drive.Administration.DriveAccountStatus.Equals(Orkeon.Tools.Drive.Administration.DriveAccountStatus? other) -> bool
 Orkeon.Tools.Drive.Administration.DriveAccountStatus.IsDefault.get -> bool
@@ -30,6 +34,8 @@ Orkeon.Tools.Drive.Administration.DriveAccountStatus.Rights.get -> string?
 Orkeon.Tools.Drive.Administration.DriveAccountStatus.Rights.init -> void
 Orkeon.Tools.Drive.Administration.DriveAccountStatus.Root.get -> string?
 Orkeon.Tools.Drive.Administration.DriveAccountStatus.Root.init -> void
+Orkeon.Tools.Drive.Administration.DriveAccountStatus.TokenEndpoint.get -> string?
+Orkeon.Tools.Drive.Administration.DriveAccountStatus.TokenEndpoint.init -> void
 Orkeon.Tools.Drive.Administration.DriveCheckResult
 Orkeon.Tools.Drive.Administration.DriveCheckResult.<Clone>$() -> Orkeon.Tools.Drive.Administration.DriveCheckResult!
 Orkeon.Tools.Drive.Administration.DriveCheckResult.Account.get -> string!

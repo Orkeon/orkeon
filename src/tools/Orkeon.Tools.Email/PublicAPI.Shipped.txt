@@ -16,12 +16,28 @@ Orkeon.Tools.Email.Administration.EmailAccountStatus.AllowedRecipients.get -> in
 Orkeon.Tools.Email.Administration.EmailAccountStatus.AllowedRecipients.init -> void
 Orkeon.Tools.Email.Administration.EmailAccountStatus.Auth.get -> string?
 Orkeon.Tools.Email.Administration.EmailAccountStatus.Auth.init -> void
+Orkeon.Tools.Email.Administration.EmailAccountStatus.ConfigurationProblems.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Orkeon.Tools.Email.Administration.EmailAccountStatus.ConfigurationProblems.init -> void
+Orkeon.Tools.Email.Administration.EmailAccountStatus.CredentialProblem.get -> string?
+Orkeon.Tools.Email.Administration.EmailAccountStatus.CredentialProblem.init -> void
 Orkeon.Tools.Email.Administration.EmailAccountStatus.EmailAccountStatus() -> void
 Orkeon.Tools.Email.Administration.EmailAccountStatus.Equals(Orkeon.Tools.Email.Administration.EmailAccountStatus? other) -> bool
+Orkeon.Tools.Email.Administration.EmailAccountStatus.IncomingHost.get -> string?
+Orkeon.Tools.Email.Administration.EmailAccountStatus.IncomingHost.init -> void
+Orkeon.Tools.Email.Administration.EmailAccountStatus.IncomingPort.get -> int?
+Orkeon.Tools.Email.Administration.EmailAccountStatus.IncomingPort.init -> void
+Orkeon.Tools.Email.Administration.EmailAccountStatus.IncomingSecurity.get -> string?
+Orkeon.Tools.Email.Administration.EmailAccountStatus.IncomingSecurity.init -> void
 Orkeon.Tools.Email.Administration.EmailAccountStatus.IsDefault.get -> bool
 Orkeon.Tools.Email.Administration.EmailAccountStatus.IsDefault.init -> void
 Orkeon.Tools.Email.Administration.EmailAccountStatus.Name.get -> string!
 Orkeon.Tools.Email.Administration.EmailAccountStatus.Name.init -> void
+Orkeon.Tools.Email.Administration.EmailAccountStatus.OutgoingHost.get -> string?
+Orkeon.Tools.Email.Administration.EmailAccountStatus.OutgoingHost.init -> void
+Orkeon.Tools.Email.Administration.EmailAccountStatus.OutgoingPort.get -> int?
+Orkeon.Tools.Email.Administration.EmailAccountStatus.OutgoingPort.init -> void
+Orkeon.Tools.Email.Administration.EmailAccountStatus.OutgoingSecurity.get -> string?
+Orkeon.Tools.Email.Administration.EmailAccountStatus.OutgoingSecurity.init -> void
 Orkeon.Tools.Email.Administration.EmailAccountStatus.Problem.get -> string?
 Orkeon.Tools.Email.Administration.EmailAccountStatus.Problem.init -> void
 Orkeon.Tools.Email.Administration.EmailAccountStatus.Provider.get -> string!
@@ -32,8 +48,14 @@ Orkeon.Tools.Email.Administration.EmailAccountStatus.Ready.get -> bool
 Orkeon.Tools.Email.Administration.EmailAccountStatus.Ready.init -> void
 Orkeon.Tools.Email.Administration.EmailAccountStatus.Rights.get -> string?
 Orkeon.Tools.Email.Administration.EmailAccountStatus.Rights.init -> void
+Orkeon.Tools.Email.Administration.EmailAccountStatus.SaveSentCopy.get -> bool?
+Orkeon.Tools.Email.Administration.EmailAccountStatus.SaveSentCopy.init -> void
 Orkeon.Tools.Email.Administration.EmailAccountStatus.Sends.get -> string?
 Orkeon.Tools.Email.Administration.EmailAccountStatus.Sends.init -> void
+Orkeon.Tools.Email.Administration.EmailAccountStatus.TokenEndpoint.get -> string?
+Orkeon.Tools.Email.Administration.EmailAccountStatus.TokenEndpoint.init -> void
+Orkeon.Tools.Email.Administration.EmailAccountStatus.Username.get -> string?
+Orkeon.Tools.Email.Administration.EmailAccountStatus.Username.init -> void
 Orkeon.Tools.Email.Administration.EmailCheckResult
 Orkeon.Tools.Email.Administration.EmailCheckResult.<Clone>$() -> Orkeon.Tools.Email.Administration.EmailCheckResult!
 Orkeon.Tools.Email.Administration.EmailCheckResult.Account.get -> string!
