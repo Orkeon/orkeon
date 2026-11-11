@@ -3,8 +3,8 @@
 # APIs expérimentales
 
 Certaines surfaces d'Orkeon sont livrées pour recueillir des retours mais ne sont **pas
-encore couvertes par l'engagement de stabilité API** (voir
-[CONTRIBUTING — Versionnement et stabilité API](../../../CONTRIBUTING.fr.md#versionnement-et-stabilité-api)).
+encore couvertes par l'engagement de stabilité API** (voir la
+[politique de stabilité et de versionnement](./stability.md)).
 Elles portent `[Experimental]`
 (`System.Diagnostics.CodeAnalysis.ExperimentalAttribute`) : les référencer produit une
 **erreur de compilation** avec l'un des IDs de diagnostic ci-dessous, à supprimer
