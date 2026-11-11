@@ -1,7 +1,7 @@
 #!/bin/sh
-# orkeon-entrypoint — dispatcher for the orkeon-runners image (see
+# orkeon-entrypoint — dispatcher for the ghcr.io/orkeon/orkeon image (see
 # Dockerfile.runners for the full docs). Selects the executable from
-# ORKEON_RUNNER, optionally starts the embedded local LLM server (local-llm
+# ORKEON_ENTRYPOINT, optionally starts the embedded local LLM server (local-llm
 # image variant only), then drops root privileges to the bind-mount owner.
 set -e
 
@@ -33,12 +33,12 @@ if [ -f /app/local-llm/model.gguf ] && [ "${ORKEON_LOCAL_LLM:-1}" != "0" ]; then
   [ "$i" -lt 120 ] && echo "[orkeon] local model ready on http://127.0.0.1:12434/engines/llama.cpp/v1" >&2
 fi
 
-# --- Runner dispatch ------------------------------------------------------------
-case "${ORKEON_RUNNER:-orkeon}" in
+# --- Entrypoint dispatch ---------------------------------------------------------
+case "${ORKEON_ENTRYPOINT:-orkeon}" in
   orkeon)       set -- dotnet /app/runners/orkeon/orkeon.dll "$@" ;;
   repl)         set -- dotnet /app/runners/repl/Orkeon.ConsoleApp.dll "$@" ;;
   shell)        cd /workspace && set -- zsh "$@" ;;
-  *) echo "Unknown ORKEON_RUNNER=$ORKEON_RUNNER (expected: orkeon|repl|shell)" >&2; exit 2 ;;
+  *) echo "Unknown ORKEON_ENTRYPOINT=$ORKEON_ENTRYPOINT (expected: orkeon|repl|shell)" >&2; exit 2 ;;
 esac
 
 # --- Privilege drop --------------------------------------------------------------

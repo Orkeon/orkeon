@@ -471,7 +471,7 @@ une affaire d'opinion — elle est **consignée dans le dépôt** et vérifiée 
    RID, le MSI Windows per-user et le MSI de service `orkeon-host`, les tarballs macOS, le
    paquet Debian, le SBOM et les fichiers de sommes `SHA256SUMS` / `SHA256SUMS.msi` —
    chacun smoke-testé sur un vrai runner, puis attesté, avant publication de la Release —
-   plus l'image conteneur `orkeon-runners` poussée sur GHCR) et `docs.yml`
+   plus l'image conteneur `ghcr.io/orkeon/orkeon` poussée sur GHCR) et `docs.yml`
    (déploie le site de documentation sur GitHub Pages, à l'adresse <https://orkeon.github.io/orkeon/>).
    Une fois la Release publiée, `release-verify.yml` rejoue les smokes d'installation sur
    les assets tels que téléchargés depuis la page de la Release.

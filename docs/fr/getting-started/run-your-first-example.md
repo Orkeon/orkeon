@@ -11,7 +11,7 @@ binaire précompilé ou utiliser un conteneur, voir
 [Trois façons d'exécuter Orkeon](./three-ways-to-run-orkeon.md).
 
 > **Chemin le plus rapide (ni build, ni clone)** :
-> `docker run -it --rm -e ORKEON_RUNNER=shell ghcr.io/orkeon/orkeon-runners`
+> `docker run -it --rm -e ORKEON_ENTRYPOINT=shell ghcr.io/orkeon/orkeon`
 > puis `orkeon-example run 1` — détails dans
 > [Trois façons d'exécuter Orkeon §3](./three-ways-to-run-orkeon.md#3-conteneur).
 
@@ -148,7 +148,7 @@ Les options de la CLI `orkeon` que vous utiliserez vraiment :
 | `--verbose <0-2>` | `-v` | Verbosité. `0` (défaut) = silencieux, `1` = activité des agents et des outils, plus une ligne de résumé par échange LLM quand `--llm-log` est actif, `2` = debug complet. Le contenu des échanges n'est que dans les fichiers de `--llm-log`. |
 | `--mount <phys>:<virt>:<droits>` | `-m` | Expose un répertoire hôte au système de fichiers virtuel du crew. `droits` vaut `ro`, `rw` ou `rwnd` (lecture-écriture sans suppression) ; des segments `;<sous-chemin>:<droits>` surchargent les droits sous le montage. Plusieurs montages se passent **séparés par des espaces derrière un seul flag** (`--mount a:/x:ro b:/y:rw`) — le parseur rejette un `--mount` répété. Un crew qui écrit des résultats a besoin d'un montage `:rw` (`/output` est la convention qui déclenche l'écriture automatique du résumé). |
 | `--mount-id <id>` | | Quand plusieurs entrées `Orkeon:FileSystem:Mounts` des settings déclarent la même racine virtuelle, garde celle dont l'identifiant (le préfixe de 26 caractères avant son `\|`) est donné. Plusieurs identifiants se passent séparés par des espaces derrière un seul flag. |
-| `--allow-external-mounts` | | Autorise des montages (et un chemin `<config>` ou `--llm-log-path`) situés **hors** du répertoire de travail. Sans lui, un `--mount` hors du répertoire de travail est refusé au démarrage (code `1`) ; le dossier du script et toute entrée des settings en vigueur (une entrée choisie par id comprise) n'en demandent pas. La variable d'env `ORKEON_ALLOW_EXTERNAL_MOUNTS=1` l'active pour chaque invocation (l'image conteneur `orkeon-runners` l'embarque). |
+| `--allow-external-mounts` | | Autorise des montages (et un chemin `<config>` ou `--llm-log-path`) situés **hors** du répertoire de travail. Sans lui, un `--mount` hors du répertoire de travail est refusé au démarrage (code `1`) ; le dossier du script et toute entrée des settings en vigueur (une entrée choisie par id comprise) n'en demandent pas. La variable d'env `ORKEON_ALLOW_EXTERNAL_MOUNTS=1` l'active pour chaque invocation (l'image conteneur `ghcr.io/orkeon/orkeon` l'embarque). |
 | `--var CLE=VALEUR` | `-V` | Injecte une variable dans l'entrée du crew. Les descriptions de tâches contenant `{CLE}` sont développées en `VALEUR`. Plusieurs variables se passent séparées par des espaces derrière un seul `-V` (un flag répété est rejeté). **Crews YAML seulement** — ignoré pour les scripts `.ork.ts`, qui prennent `--inputs`. |
 | `--initial-context <texte>` | | Une chaîne de contexte libre passée à l'entrée du crew. **Crews YAML seulement** — ignoré pour les scripts `.ork.ts`. |
 | `--inputs <json>` | | Entrées JSON inline transmises à un script comme variable globale `inputs` (voie `.ork.ts`). |

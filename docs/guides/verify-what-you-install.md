@@ -23,7 +23,7 @@ the release you verify (the tag without its `v`).
 | Orkeon installed with apt | the archive key, once; apt then checks every package through the signed index | [Verify the APT signing key](#verify-the-apt-signing-key) |
 | A `.nupkg` from nuget.org | its repository signature, then the attestation of the bytes nuget.org received | [Verify a NuGet package](#verify-a-nuget-package) |
 | A `.nupkg` of a tagged version from GitHub Packages | its attestation, directly | [Verify a NuGet package](#verify-a-nuget-package) |
-| A dev build (`<version>.dev.<n>`) or the `orkeon-runners` image | nothing to check against: neither is attested | [What the chain establishes](#what-the-chain-establishes) |
+| A dev build (`<version>.dev.<n>`) or the `ghcr.io/orkeon/orkeon` image | nothing to check against: neither is attested | [What the chain establishes](#what-the-chain-establishes) |
 
 ## What the chain establishes
 
@@ -39,7 +39,7 @@ the release you verify (the tag without its `v`).
 | **Pinned actions and base images** | Every action a workflow `uses:` is pinned to a commit SHA (the only other `uses:` call the repository's own `release-verify.yml`); every external `FROM` image is pinned by digest | The actions and base images that ran are byte for byte the ones the repository names; a tag moved upstream changes nothing. |
 
 Two things carry **no** attestation: the dev builds of `main` on GitHub Packages
-(`<version>.dev.<n>`, see below) and the `orkeon-runners` container image on GHCR.
+(`<version>.dev.<n>`, see below) and the `ghcr.io/orkeon/orkeon` container image on GHCR.
 
 What the chain does **not** establish: anything about the *quality* of the code. An attestation
 says that the bytes came out of `.github/workflows/publish.yml` at commit X — not that

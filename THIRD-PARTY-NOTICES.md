@@ -60,7 +60,7 @@ dependency BouncyCastle.Cryptography — all distributed under the MIT License. 
 covers HtmlAgilityPack, the HTML parser of the RAG loader, `web_scrape`, the
 infrastructure's HTML parsing and the e-mail family's text rendering, distributed under
 the MIT License. Section 12 covers esbuild, the TypeScript transpiler of the scripting DSL
-that the archives, the Debian package, the CLI MSI and the `orkeon-runners` image ship as
+that the archives, the Debian package, the CLI MSI and the `ghcr.io/orkeon/orkeon` image ship as
 a native binary, distributed under the MIT License.
 
 **Which shipped artefacts actually embed model weights.** Two sets of weights leave
@@ -775,7 +775,7 @@ SOFTWARE.
   packaging fetches the `@esbuild/<platform>` package of the locked version from the npm
   registry, checks it against the lockfile's sha512 integrity, and ships its binary: in the
   archives (`libexec/esbuild-bin/`), the Debian package (`/usr/lib/orkeon/esbuild-bin/`), the
-  CLI MSI (`libexec\esbuild-bin\`) and the `orkeon-runners` image (`/app/esbuild-bin/`). The
+  CLI MSI (`libexec\esbuild-bin\`) and the `ghcr.io/orkeon/orkeon` image (`/app/esbuild-bin/`). The
   tool packages do not ship it.
 
 The `@esbuild/<platform>` packages carry no license file of their own. License text

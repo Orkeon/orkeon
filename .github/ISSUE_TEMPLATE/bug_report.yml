@@ -25,7 +25,7 @@ body:
         - orkeon CLI — Debian package
         - orkeon CLI — macOS tarball
         - dotnet tool install
-        - Container image (orkeon-runners)
+        - Container image (ghcr.io/orkeon/orkeon)
         - Source build
     validations:
       required: true

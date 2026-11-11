@@ -35,7 +35,7 @@ with durations — the budget fails out loud instead of on a reviewer's stopwatc
 |---|------|-------------------|
 | **A** | From sources | `docs/getting-started/run-your-first-example.md`: copy an `appsettings.*.local.json.example`, then run the `01-research-assistant` crew through the `orkeon` CLI (`orkeon run <crew.yaml>`). |
 | **B** | Experiments repository | `experiments/09-factures-extraction/run.sh`: (1) missing settings must print the actionable `cp …` message and exit 1; (2) after `cp` of the template, the runner (source mode) starts and reaches the LLM call. |
-| **C** | No SDK | The same showcase crew from a **self-contained Releases binary** (`ORKEON_SMOKE_RELEASE_URL`) or the **container image** (`ORKEON_SMOKE_IMAGE`, or a locally-built `orkeon-runners` image) — nothing is compiled. |
+| **C** | No SDK | The same showcase crew from a **self-contained Releases binary** (`ORKEON_SMOKE_RELEASE_URL`) or the **container image** (`ORKEON_SMOKE_IMAGE`, or a locally-built `ghcr.io/orkeon/orkeon` image) — nothing is compiled. |
 
 ## What "success" means
 
@@ -74,7 +74,7 @@ export ORKEON_SMOKE_SETTINGS=/abs/path/to/appsettings.local.json
 bash scripts/smoke-onboarding/run-smoke.sh
 
 # Scenario C against a published container image or a self-contained binary.
-export ORKEON_SMOKE_IMAGE=ghcr.io/orkeon/orkeon-runners:latest
+export ORKEON_SMOKE_IMAGE=ghcr.io/orkeon/orkeon:latest
 export ORKEON_SMOKE_RELEASE_URL=https://github.com/Orkeon/orkeon/releases/download/vX/orkeon-linux-x64.tar.gz
 bash scripts/smoke-onboarding/run-smoke.sh
 ```
@@ -85,7 +85,7 @@ bash scripts/smoke-onboarding/run-smoke.sh
 |----------|--------|
 | `ORKEON_SMOKE_SETTINGS` | Absolute path to a **working** `appsettings.json`. Switches all scenarios to full-run assertions (exit 0). Unset ⇒ no-key mode. |
 | `ORKEON_SMOKE_RELEASE_URL` | URL of a self-contained runner archive (`.tar.gz` / `.zip`) or bare binary for scenario C. Takes precedence over the image path. |
-| `ORKEON_SMOKE_IMAGE` | Container image for scenario C (e.g. `ghcr.io/orkeon/orkeon-runners:latest`). When unset, a locally-built `orkeon-runners:test` / `:latest` image is used if present. |
+| `ORKEON_SMOKE_IMAGE` | Container image for scenario C (e.g. `ghcr.io/orkeon/orkeon:latest`). When unset, a locally-built `orkeon:test` / `:latest` image is used if present. |
 | `ORKEON_SMOKE_TIMEOUT` | Per-run timeout in seconds (default `600`). The first source build plus a virtiofs/WSL2 runner start can take a couple of minutes; on a normal machine each run is well under 30 s. |
 
 ## When to run it
@@ -98,9 +98,9 @@ copies under `examples/` and `experiments/` in particular), so
 `output/`.
 
 > Scenario C is **skippable by design**: until the self-contained binary and the
-> `ghcr.io/orkeon/orkeon-runners` image are published, leave
+> `ghcr.io/orkeon/orkeon` image are published, leave
 > `ORKEON_SMOKE_RELEASE_URL` / `ORKEON_SMOKE_IMAGE` unset and the scenario reports
-> `SKIP` (unless a local `orkeon-runners` image is present, in which case it runs
+> `SKIP` (unless a local `orkeon` image is present, in which case it runs
 > for real). A `SKIP` does not fail the smoke.
 
 ## Interpreting the summary

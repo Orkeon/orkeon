@@ -36,7 +36,7 @@ set `"Grammar": true`: its llama.cpp engine honours the GBNF `grammar` a `struct
 deliverable produces. Leave the key out for any other endpoint — no vendor API takes the field,
 and a grammar sent there is dropped with a warning.
 
-## Inside the `orkeon-runners` container image
+## Inside the `ghcr.io/orkeon/orkeon` container image
 
 The image bakes a **container-appropriate default** over its copy of
 `appsettings.json`: the BaseUrl targets `host.docker.internal:12434` (Docker

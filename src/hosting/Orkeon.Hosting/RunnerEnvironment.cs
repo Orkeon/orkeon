@@ -5,7 +5,7 @@ namespace Orkeon.Hosting;
 /// <summary>
 /// Process-environment defaults shared by every runner. Environment variables provide
 /// deployment-level defaults for CLI flags: a sandboxed deployment (e.g. the
-/// orkeon-runners container image) bakes <c>ORKEON_ALLOW_EXTERNAL_MOUNTS=1</c> because
+/// ghcr.io/orkeon/orkeon container image) bakes <c>ORKEON_ALLOW_EXTERNAL_MOUNTS=1</c> because
 /// its own boundary already provides the isolation the flag's cwd guard approximates,
 /// so every mount "outside the cwd" is still inside the sandbox.
 /// </summary>

@@ -448,7 +448,7 @@ matter of opinion — it is **recorded in the repository** and enforced at build
    the Windows per-user MSI and the `orkeon-host` service MSI, the macOS tarballs, the
    Debian package, the SBOM and the `SHA256SUMS` / `SHA256SUMS.msi` checksum files —
    each smoked on a real runner, then attested, before the Release is published — plus
-   the `orkeon-runners` container image pushed to GHCR) and `docs.yml`
+   the `ghcr.io/orkeon/orkeon` container image pushed to GHCR) and `docs.yml`
    (deploys the documentation site to GitHub Pages, at <https://orkeon.github.io/orkeon/>).
    Once the Release is published, `release-verify.yml` re-runs the install smokes against
    the assets as downloaded from the Release page.

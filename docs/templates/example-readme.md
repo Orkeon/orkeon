@@ -104,7 +104,7 @@ under `/app/examples`):
 docker run --rm \
   -v "$PWD/out:/output" \
   -v "$PWD/appsettings.local.json:/app/appsettings.local.json:ro" \
-  ghcr.io/orkeon/orkeon-runners \
+  ghcr.io/orkeon/orkeon \
   run examples/<path>/config.yaml \
   --settings /app/appsettings.local.json \
   --mount /output:/output:rw

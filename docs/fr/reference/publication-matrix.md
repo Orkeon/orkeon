@@ -178,8 +178,8 @@ canal d'onboarding sur un vrai runner** (zip CLI Windows, service Windows, paque
 tarball macOS), et seulement ensuite les attache à la GitHub Release. Le pipeline est
 `installers → {smoke-windows, smoke-windows-service, smoke-deb, smoke-macos, msi} →
 release → {verify-published, apt-publish → verify-apt}` (les deux derniers sont décrits dans
-[Le dépôt apt](#le-dépôt-apt)) ; derrière ces mêmes cinq jobs, `runners-image` pousse l'image conteneur
-`orkeon-runners` sur GHCR (un seul tag multi-plateforme, `linux/amd64` et `linux/arm64`, vérifié
+[Le dépôt apt](#le-dépôt-apt)) ; derrière ces mêmes cinq jobs, `docker-image` pousse l'image conteneur
+`ghcr.io/orkeon/orkeon` sur GHCR (un seul tag multi-plateforme, `linux/amd64` et `linux/arm64`, vérifié
 une fois poussé) en parallèle de `release`, de sorte qu'un smoke rouge ne déplace
 ni la Release ni le tag `:latest`. `workflow_dispatch` exécute la même chose sans la
 publication (pas de tag, donc pas de Release à alimenter). Un tag portant un segment de
@@ -503,7 +503,7 @@ commandes d'installation du runtime plutôt que d'échouer au premier lancement.
   `actions/attest-build-provenance` (SLSA v1, signé via l'instance publique de Sigstore et
   inscrit dans son journal de transparence) :
   `publish.yml` chaque `*.nupkg` d'un tag (les builds du canal dev ne sont pas attestés),
-  `release.yml` chaque archive, `.deb` et MSI. L'image `orkeon-runners` que `release.yml`
+  `release.yml` chaque archive, `.deb` et MSI. L'image `ghcr.io/orkeon/orkeon` que `release.yml`
   pousse sur GHCR n'est pas attestée. Tous deux
   génèrent un **SBOM CycloneDX** de `Orkeon.sln` juste après le build (outil dotnet
   `CycloneDX`, version épinglée, aucune action tierce) — `orkeon-<version>.sbom.cdx.json` — et
