@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **A refused configuration stops the Windows service instead of crashing it** (#336). After a refusal (exit 78), `orkeon-host` used to leave without telling the SCM it had stopped. The SCM took that for a crash, and the MSI's recovery started the host again after 10 s, twice, on a configuration the operator had to fix first. The host now stops through its lifetime, which reports `SERVICE_STOPPED` with exit code 78 before the process leaves, so crash-only recovery stays out of it. The Windows service smokes also check the System log for an SCM crash record (events 7031 and 7034), which a status poll could miss.
+
 ## [1.0.0-rc.7] - 2026-11-11
 
 A release candidate for 1.0.0. Since `1.0.0-rc.6`: Orkeon Studio moves to its own repository

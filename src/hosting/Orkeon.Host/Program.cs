@@ -42,7 +42,8 @@ using var host = launch.Host;
 
 try
 {
-    await host.RunAsync().ConfigureAwait(false);
+    await host.StartAsync().ConfigureAwait(false);
+    await host.WaitForShutdownAsync().ConfigureAwait(false);
 }
 catch (HostConfigurationException ex)
 {
@@ -51,8 +52,33 @@ catch (HostConfigurationException ex)
     // would bury the one message the operator needs. Under the SCM that message also goes to
     // the Application event log — stderr is invisible there.
     StartupFailureReporter.Report($"orkeon-host: {ex.Message}");
+    await StopAfterRefusalAsync(host).ConfigureAwait(false);
     return HostConfigurationException.ExitCode;
 }
 
 // A channel crash sets a non-zero code before stopping the application; a clean stop leaves 0.
 return Environment.ExitCode;
+
+// A start that failed is stopped through the host, never left to the process exit. Under the
+// SCM, the host lifetime's stop reports SERVICE_STOPPED with the exit code before the process
+// leaves. A process that leaves without that report is a crash to the SCM, which then applies
+// the recovery actions of the MSI (restart after 10 s, twice) to a refusal the operator has
+// to fix first. The stop is best effort: the refusal is already reported, and the exit code
+// stays 78 whatever a hosted service does on its way down.
+static async Task StopAfterRefusalAsync(IHost host)
+{
+    if (OperatingSystem.IsWindows()
+        && host.Services.GetService(typeof(IHostLifetime)) is Microsoft.Extensions.Hosting.WindowsServices.WindowsServiceLifetime service)
+    {
+        service.ExitCode = HostConfigurationException.ExitCode;
+    }
+
+    try
+    {
+        await host.StopAsync().ConfigureAwait(false);
+    }
+    catch (Exception ex) when (ex is not OutOfMemoryException)
+    {
+        StartupFailureReporter.Report($"orkeon-host: stopping after the refusal failed: {ex.Message}");
+    }
+}

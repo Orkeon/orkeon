@@ -150,6 +150,7 @@ function Invoke-OrkeonServiceBrokenConfigAssertions {
     $problems = @()
     $notes = @()
     $since = [DateTime]::Now.AddMinutes(-1)
+    $startedAt = [DateTime]::Now
 
     $startFailed = $false
     try {
@@ -172,6 +173,15 @@ function Invoke-OrkeonServiceBrokenConfigAssertions {
     }
     if ($sawRunningTwice -gt 1) {
         $problems += "service flapped (seen Running $sawRunningTwice times) — the SCM is looping on a configuration refusal"
+    }
+    # The SCM's own record, which a poll every 2 s can miss: 7031 (terminated unexpectedly,
+    # a recovery action follows) or 7034 (terminated unexpectedly). Either means the process
+    # left without reporting SERVICE_STOPPED, so the SCM took the refusal for a crash.
+    $displayName = (Get-Service -Name $ServiceName).DisplayName
+    $crashes = @(Get-WinEvent -FilterHashtable @{ LogName = 'System'; ProviderName = 'Service Control Manager'; Id = 7031, 7034; StartTime = $startedAt } -ErrorAction SilentlyContinue |
+        Where-Object { $_.Message.Contains($displayName) })
+    if ($crashes.Count -gt 0) {
+        $problems += "the SCM recorded the refusal as a crash ($($crashes.Count) event(s) 7031/7034): $(($crashes[0].Message -split "`n")[0])"
     }
     if (-not $startFailed -and $final -eq 'Stopped') {
         $notes += 'start was accepted by the SCM, then the host refused the configuration and stopped'
